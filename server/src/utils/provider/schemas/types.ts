@@ -1,4 +1,4 @@
-import type { ProviderType } from '@utils/provider/ProviderDetector';
+import type { ProviderType } from "@utils/provider/ProviderDetector";
 
 export interface JSONSchema {
   type: string | string[];
@@ -24,7 +24,7 @@ export interface SchemaOptions {
 
 export function buildCapabilityOptions(
   options: SchemaOptions,
-  fallbackOperation: string
+  fallbackOperation: string,
 ): { operation?: string; model?: string; client?: string } {
   const params: { operation?: string; model?: string; client?: string } = {
     operation: options.operation ?? fallbackOperation,

@@ -1,14 +1,27 @@
-import { logger } from '@infrastructure/Logger';
+import { logger } from "@infrastructure/Logger";
 import type {
   SpanLabelingCacheServiceOptions,
   RedisClient,
   SpanLabelingCacheStats,
-  SpanLabelingPolicy
-} from './types';
-import { MemoryLruCache } from './spanLabeling/memoryLru';
-import { generateCacheKey, buildTextPattern, buildTextPrefix } from './spanLabeling/key';
-import { deleteRedisKey, deleteRedisPattern, getRedisValue, setRedisValue } from './spanLabeling/redisStore';
-import { recordCacheHit, recordCacheMiss, type SpanLabelingCacheMetrics } from './spanLabeling/metrics';
+  SpanLabelingPolicy,
+} from "./types";
+import { MemoryLruCache } from "./spanLabeling/memoryLru";
+import {
+  generateCacheKey,
+  buildTextPattern,
+  buildTextPrefix,
+} from "./spanLabeling/key";
+import {
+  deleteRedisKey,
+  deleteRedisPattern,
+  getRedisValue,
+  setRedisValue,
+} from "./spanLabeling/redisStore";
+import {
+  recordCacheHit,
+  recordCacheMiss,
+  type SpanLabelingCacheMetrics,
+} from "./spanLabeling/metrics";
 
 /**
  * SpanLabelingCacheService - Server-side caching for span labeling results
@@ -46,7 +59,10 @@ export class SpanLabelingCacheService {
   };
   private cleanupInterval: NodeJS.Timeout | null = null;
 
-  constructor(options: SpanLabelingCacheServiceOptions = {}, metricsService?: SpanLabelingCacheMetrics) {
+  constructor(
+    options: SpanLabelingCacheServiceOptions = {},
+    metricsService?: SpanLabelingCacheMetrics,
+  ) {
     this.metrics = metricsService;
     this.redis = options.redis || null;
     this.defaultTTL = options.defaultTTL || 3600; // 1 hour
@@ -64,7 +80,7 @@ export class SpanLabelingCacheService {
       errors: 0,
     };
 
-    logger.info('SpanLabelingCacheService initialized', {
+    logger.info("SpanLabelingCacheService initialized", {
       redisEnabled: !!this.redis,
       defaultTTL: this.defaultTTL,
       shortTTL: this.shortTTL,
@@ -79,7 +95,7 @@ export class SpanLabelingCacheService {
     text: string,
     policy: SpanLabelingPolicy | null,
     templateVersion: string | null,
-    provider: string | null = null
+    provider: string | null = null,
   ): Promise<unknown | null> {
     const startTime = Date.now();
     const cacheKey = generateCacheKey(text, policy, templateVersion, provider);
@@ -93,13 +109,13 @@ export class SpanLabelingCacheService {
         this.stats.hits++;
 
         const duration = Date.now() - startTime;
-        logger.debug('Cache hit (Redis)', {
+        logger.debug("Cache hit (Redis)", {
           cacheKey,
           duration,
           textLength: text.length,
         });
 
-        recordCacheHit(this.metrics, 'span_labeling_redis', duration);
+        recordCacheHit(this.metrics, "span_labeling_redis", duration);
 
         return result;
       }
@@ -110,23 +126,23 @@ export class SpanLabelingCacheService {
         this.stats.hits++;
 
         const duration = Date.now() - startTime;
-        logger.debug('Cache hit (memory)', {
+        logger.debug("Cache hit (memory)", {
           cacheKey,
           duration,
           textLength: text.length,
         });
 
-        recordCacheHit(this.metrics, 'span_labeling_memory', duration);
+        recordCacheHit(this.metrics, "span_labeling_memory", duration);
 
         return cacheEntry.data;
       }
 
       // Cache miss
       this.stats.misses++;
-      recordCacheMiss(this.metrics, 'span_labeling');
+      recordCacheMiss(this.metrics, "span_labeling");
 
       const duration = Date.now() - startTime;
-      logger.debug('Cache miss', {
+      logger.debug("Cache miss", {
         cacheKey,
         duration,
         textLength: text.length,
@@ -135,7 +151,7 @@ export class SpanLabelingCacheService {
       return null;
     } catch (error) {
       this.stats.errors++;
-      logger.error('Cache get error', error as Error, { cacheKey });
+      logger.error("Cache get error", error as Error, { cacheKey });
       return null;
     }
   }
@@ -148,13 +164,13 @@ export class SpanLabelingCacheService {
     policy: SpanLabelingPolicy | null,
     templateVersion: string | null,
     result: unknown,
-    options: { ttl?: number; provider?: string | null } = {}
+    options: { ttl?: number; provider?: string | null } = {},
   ): Promise<boolean> {
     const cacheKey = generateCacheKey(
       text,
       policy,
       templateVersion,
-      options.provider ?? null
+      options.provider ?? null,
     );
     const ttl = options.ttl || this.defaultTTL;
 
@@ -162,11 +178,14 @@ export class SpanLabelingCacheService {
       const serialized = JSON.stringify(result);
 
       // Set in Redis
-      const redisReady = !!this.redis && this.redis.status === 'ready' && typeof this.redis.set === 'function';
+      const redisReady =
+        !!this.redis &&
+        this.redis.status === "ready" &&
+        typeof this.redis.set === "function";
       await setRedisValue(this.redis, cacheKey, serialized, ttl);
 
       if (redisReady) {
-        logger.debug('Cache set (Redis)', {
+        logger.debug("Cache set (Redis)", {
           cacheKey,
           ttl,
           textLength: text.length,
@@ -180,7 +199,7 @@ export class SpanLabelingCacheService {
       return true;
     } catch (error) {
       this.stats.errors++;
-      logger.error('Cache set error', error as Error, { cacheKey });
+      logger.error("Cache set error", error as Error, { cacheKey });
       return false;
     }
   }
@@ -191,7 +210,7 @@ export class SpanLabelingCacheService {
   async invalidate(
     text: string,
     policy: SpanLabelingPolicy | null = null,
-    templateVersion: string | null = null
+    templateVersion: string | null = null,
   ): Promise<number> {
     if (policy && templateVersion) {
       // Invalidate specific cache entry
@@ -206,10 +225,10 @@ export class SpanLabelingCacheService {
           deletedCount++;
         }
 
-        logger.debug('Cache invalidated', { cacheKey, deletedCount });
+        logger.debug("Cache invalidated", { cacheKey, deletedCount });
         return deletedCount;
       } catch (error) {
-        logger.error('Cache invalidation error', error as Error, { cacheKey });
+        logger.error("Cache invalidation error", error as Error, { cacheKey });
         return 0;
       }
     }
@@ -228,10 +247,12 @@ export class SpanLabelingCacheService {
         }
       }
 
-      logger.debug('Cache invalidated (pattern)', { pattern, deletedCount });
+      logger.debug("Cache invalidated (pattern)", { pattern, deletedCount });
       return deletedCount;
     } catch (error) {
-      logger.error('Cache invalidation error (pattern)', error as Error, { pattern });
+      logger.error("Cache invalidation error (pattern)", error as Error, {
+        pattern,
+      });
       return 0;
     }
   }
@@ -242,15 +263,15 @@ export class SpanLabelingCacheService {
   async clear(): Promise<boolean> {
     try {
       // Clear Redis
-      await deleteRedisPattern(this.redis, 'span:*');
+      await deleteRedisPattern(this.redis, "span:*");
 
       // Clear memory cache
       this.memoryCache.clear();
 
-      logger.info('Cache cleared');
+      logger.info("Cache cleared");
       return true;
     } catch (error) {
-      logger.error('Cache clear error', error as Error);
+      logger.error("Cache clear error", error as Error);
       return false;
     }
   }
@@ -264,9 +285,9 @@ export class SpanLabelingCacheService {
 
     return {
       ...this.stats,
-      hitRate: hitRate.toFixed(2) + '%',
+      hitRate: hitRate.toFixed(2) + "%",
       cacheSize: this.memoryCache.size(),
-      redisConnected: this.redis ? this.redis.status === 'ready' : false,
+      redisConnected: this.redis ? this.redis.status === "ready" : false,
     };
   }
 
@@ -277,7 +298,7 @@ export class SpanLabelingCacheService {
     const removedCount = this.memoryCache.cleanupExpired();
 
     if (removedCount > 0) {
-      logger.debug('Cleaned up expired cache entries', {
+      logger.debug("Cleaned up expired cache entries", {
         count: removedCount,
       });
     }
@@ -295,7 +316,7 @@ export class SpanLabelingCacheService {
       this._cleanupExpired();
     }, intervalMs);
 
-    logger.info('Started periodic cache cleanup', { intervalMs });
+    logger.info("Started periodic cache cleanup", { intervalMs });
   }
 
   /**
@@ -305,7 +326,7 @@ export class SpanLabelingCacheService {
     if (this.cleanupInterval) {
       clearInterval(this.cleanupInterval);
       this.cleanupInterval = null;
-      logger.info('Stopped periodic cache cleanup');
+      logger.info("Stopped periodic cache cleanup");
     }
   }
 }
@@ -316,7 +337,10 @@ export let spanLabelingCache: SpanLabelingCacheService | null = null;
 /**
  * Initialize the span labeling cache service
  */
-export function initSpanLabelingCache(options: SpanLabelingCacheServiceOptions = {}, metricsService?: SpanLabelingCacheMetrics): SpanLabelingCacheService {
+export function initSpanLabelingCache(
+  options: SpanLabelingCacheServiceOptions = {},
+  metricsService?: SpanLabelingCacheMetrics,
+): SpanLabelingCacheService {
   spanLabelingCache = new SpanLabelingCacheService(options, metricsService);
   spanLabelingCache.startPeriodicCleanup();
   return spanLabelingCache;

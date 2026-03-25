@@ -1,6 +1,6 @@
-import React from 'react';
-import { cn } from '@/utils/cn';
-import { useResolvedMediaUrl } from '@/hooks/useResolvedMediaUrl';
+import React from "react";
+import { cn } from "@/utils/cn";
+import { useResolvedMediaUrl } from "@/hooks/useResolvedMediaUrl";
 
 interface ImagePreviewProps {
   src: string | null;
@@ -15,14 +15,14 @@ export function ImagePreview({
   src,
   storagePath,
   assetId,
-  alt = 'Image preview',
+  alt = "Image preview",
   className,
   onError,
 }: ImagePreviewProps) {
   const [didError, setDidError] = React.useState(false);
   const refreshAttemptedRef = React.useRef(false);
   const { url: resolvedSrc, refresh } = useResolvedMediaUrl({
-    kind: 'image',
+    kind: "image",
     url: src,
     storagePath: storagePath ?? null,
     assetId: assetId ?? null,
@@ -39,8 +39,8 @@ export function ImagePreview({
     return (
       <div
         className={cn(
-          'flex h-full w-full items-center justify-center rounded-md bg-[rgb(30,34,40)] text-xs text-faint',
-          className
+          "flex h-full w-full items-center justify-center rounded-md bg-[rgb(30,34,40)] text-xs text-faint",
+          className,
         )}
       >
         Image unavailable
@@ -50,9 +50,9 @@ export function ImagePreview({
 
   return (
     <img
-      src={resolvedSrc ?? ''}
+      src={resolvedSrc ?? ""}
       alt={alt}
-      className={cn('h-full w-full rounded-md object-cover', className)}
+      className={cn("h-full w-full rounded-md object-cover", className)}
       loading="lazy"
       onError={async () => {
         if (refreshAttemptedRef.current || !resolvedSrc) {
@@ -61,7 +61,7 @@ export function ImagePreview({
           return;
         }
         refreshAttemptedRef.current = true;
-        await refresh('error');
+        await refresh("error");
         setDidError(true);
         onError?.();
       }}

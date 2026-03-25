@@ -1,17 +1,17 @@
 /**
  * Validation Schemas - Backward Compatibility Exports
- * 
+ *
  * This file re-exports all schemas from their new organized locations
  * in server/src/config/schemas/ to maintain backward compatibility
  * with existing imports.
- * 
+ *
  * MIGRATION NOTE:
  * Schemas have been reorganized into config/schemas/ for better organization:
  * - promptSchemas.ts - Prompt optimization request schemas
  * - suggestionSchemas.ts - Enhancement suggestion request schemas
  * - videoSchemas.ts - Video/creative workflow request schemas
  * - outputSchemas.ts - LLM response expectation schemas
- * 
+ *
  * New code should import directly from config/schemas/, but this file
  * maintains compatibility with existing code importing from utils/validation.ts
  */
@@ -21,13 +21,13 @@ export {
   // Prompt schemas
   promptSchema,
   compileSchema,
-  
+
   // Suggestion schemas
   suggestionSchema,
   customSuggestionSchema,
   sceneChangeSchema,
   coherenceCheckSchema,
-  
+
   // Video/creative workflow schemas
   creativeSuggestionSchema,
   videoValidationSchema,
@@ -38,7 +38,7 @@ export {
   templateRecommendationsSchema,
   recordUserChoiceSchema,
   alternativePhrasingsSchema,
-  
+
   // LLM output schemas
   compatibilityOutputSchema,
   completeSceneOutputSchema,
@@ -50,4 +50,4 @@ export {
   validatePromptOutputSchema,
   smartDefaultsOutputSchema,
   alternativePhrasingsOutputSchema,
-} from '@config/schemas/index';
+} from "@config/schemas/index";

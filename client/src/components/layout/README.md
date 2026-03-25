@@ -3,7 +3,7 @@
 ## Quick Start
 
 ```tsx
-import { Box, Flex, Grid, Container, Section } from '@/components/layout';
+import { Box, Flex, Grid, Container, Section } from "@/components/layout";
 ```
 
 ## PromptStudio Spacing Tokens
@@ -17,6 +17,7 @@ All layout components support PromptStudio spacing tokens:
 ## Examples
 
 ### Basic Box with PromptStudio Spacing
+
 ```tsx
 <Box p="ps-base" m="ps-half">
   Content with PromptStudio spacing
@@ -28,6 +29,7 @@ All layout components support PromptStudio spacing tokens:
 ```
 
 ### Flex Layout
+
 ```tsx
 <Flex direction="row" align="center" justify="between" gap="ps-base">
   <Box>Left</Box>
@@ -41,6 +43,7 @@ All layout components support PromptStudio spacing tokens:
 ```
 
 ### Grid Layout
+
 ```tsx
 <Grid columns="repeat(3, 1fr)" gap="ps-base">
   <Box>Item 1</Box>
@@ -50,6 +53,7 @@ All layout components support PromptStudio spacing tokens:
 ```
 
 ### Container (PromptStudio Content Widths)
+
 ```tsx
 <Container size="lg">
   <h1>Page Content</h1>
@@ -61,6 +65,7 @@ All layout components support PromptStudio spacing tokens:
 ```
 
 ### Section Spacing (PromptStudio Spacing Scale)
+
 ```tsx
 <Section size="sm">
   <h2>Section Title</h2>
@@ -74,15 +79,16 @@ All layout components support PromptStudio spacing tokens:
 
 ## Spacing Reference
 
-| Token | Value | Use Case |
-|-------|-------|----------|
-| `ps-quarter` | 4pt (~5px) | Tight spacing, micro adjustments |
-| `ps-half` | 8pt (~11px) | Small spacing, compact layouts |
-| `ps-base` | 16pt (~21px) | Standard spacing, primary gaps |
+| Token        | Value        | Use Case                         |
+| ------------ | ------------ | -------------------------------- |
+| `ps-quarter` | 4pt (~5px)   | Tight spacing, micro adjustments |
+| `ps-half`    | 8pt (~11px)  | Small spacing, compact layouts   |
+| `ps-base`    | 16pt (~21px) | Standard spacing, primary gaps   |
 
 ## Integration
 
 These components work seamlessly with:
+
 - ✅ PromptStudio spacing tokens (`ps-quarter`, `ps-half`, `ps-base`)
 - ✅ PromptStudio typography classes
 - ✅ PromptStudio color tokens
@@ -91,23 +97,21 @@ These components work seamlessly with:
 
 ## Container Sizes
 
-| Size | Max Width | Use Case |
-|------|-----------|----------|
-| `sm` | 640px | Small content |
-| `md` | 768px | Medium content |
-| `lg` | 1024px | Large content (common) |
-| `xl` | 1280px | Extra large |
-| `2xl` | 1536px | Maximum width |
-| `full` | 100% | Full width |
+| Size   | Max Width | Use Case               |
+| ------ | --------- | ---------------------- |
+| `sm`   | 640px     | Small content          |
+| `md`   | 768px     | Medium content         |
+| `lg`   | 1024px    | Large content (common) |
+| `xl`   | 1280px    | Extra large            |
+| `2xl`  | 1536px    | Maximum width          |
+| `full` | 100%      | Full width             |
 
 ## Section Sizes
 
-| Size | Spacing | Use Case |
-|------|---------|----------|
-| `xs` | ps-half (8pt) | Tight spacing |
-| `sm` | ps-base (16pt) | Standard spacing |
-| `md` | 32pt | Medium spacing |
-| `lg` | 48pt | Large spacing |
-| `xl` | 64pt | Extra large spacing |
-
-
+| Size | Spacing        | Use Case            |
+| ---- | -------------- | ------------------- |
+| `xs` | ps-half (8pt)  | Tight spacing       |
+| `sm` | ps-base (16pt) | Standard spacing    |
+| `md` | 32pt           | Medium spacing      |
+| `lg` | 48pt           | Large spacing       |
+| `xl` | 64pt           | Extra large spacing |

@@ -1,6 +1,6 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef } from "react";
 
-import type { PromptCanvasState } from '../types';
+import type { PromptCanvasState } from "../types";
 
 export interface UsePromptStatusOptions {
   displayedPrompt: string | null;
@@ -28,12 +28,12 @@ export function usePromptStatus({
   useEffect(() => {
     if (!displayedPrompt) {
       hasSetTimestampRef.current = false;
-      setState({ promptState: 'generated', generatedTimestamp: null });
+      setState({ promptState: "generated", generatedTimestamp: null });
       return;
     }
 
     if (displayedPrompt === inputPrompt) {
-      setState({ promptState: 'synced' });
+      setState({ promptState: "synced" });
       return;
     }
 
@@ -42,21 +42,16 @@ export function usePromptStatus({
       if (!generatedTimestampRef.current && !hasSetTimestampRef.current) {
         hasSetTimestampRef.current = true;
         setState({
-          promptState: 'generated',
+          promptState: "generated",
           generatedTimestamp: Date.now(),
         });
       } else {
-        setState({ promptState: 'generated' });
+        setState({ promptState: "generated" });
       }
       return;
     }
 
     hasSetTimestampRef.current = false;
-    setState({ promptState: 'edited' });
-  }, [
-    displayedPrompt,
-    inputPrompt,
-    isProcessing,
-    setState,
-  ]);
+    setState({ promptState: "edited" });
+  }, [displayedPrompt, inputPrompt, isProcessing, setState]);
 }

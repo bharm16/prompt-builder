@@ -12,15 +12,15 @@
  * - Faster inference on fal.ai infrastructure
  */
 
-import { z, type ZodSchema } from 'zod';
-import { logger } from '@infrastructure/Logger';
-import { resolveFalApiKey } from '@utils/falApiKey';
-import { sleep } from '@utils/sleep';
+import { z, type ZodSchema } from "zod";
+import { logger } from "@infrastructure/Logger";
+import { resolveFalApiKey } from "@utils/falApiKey";
+import { sleep } from "@utils/sleep";
 
 export interface FalPulidKeyframeOptions {
   prompt: string;
   faceImageUrl: string;
-  aspectRatio?: '16:9' | '9:16' | '1:1' | '4:3' | '3:4' | undefined;
+  aspectRatio?: "16:9" | "9:16" | "1:1" | "4:3" | "3:4" | undefined;
   idWeight?: number | undefined; // PuLID identity strength (0.0-1.0), default 0.8
   negativePrompt?: string | undefined;
   numInferenceSteps?: number | undefined;
@@ -37,15 +37,24 @@ export interface FalPulidKeyframeResult {
   seed?: number | undefined;
 }
 
-const FAL_QUEUE_STATUS_SCHEMA = z.enum(['IN_QUEUE', 'IN_PROGRESS', 'COMPLETED', 'FAILED']);
+const FAL_QUEUE_STATUS_SCHEMA = z.enum([
+  "IN_QUEUE",
+  "IN_PROGRESS",
+  "COMPLETED",
+  "FAILED",
+]);
 
-const FAL_QUEUE_LOG_SCHEMA = z.object({
-  message: z.string().optional(),
-}).passthrough();
+const FAL_QUEUE_LOG_SCHEMA = z
+  .object({
+    message: z.string().optional(),
+  })
+  .passthrough();
 
-const FAL_QUEUE_ERROR_SCHEMA = z.object({
-  message: z.string().optional(),
-}).passthrough();
+const FAL_QUEUE_ERROR_SCHEMA = z
+  .object({
+    message: z.string().optional(),
+  })
+  .passthrough();
 
 const FAL_QUEUE_UPDATE_SCHEMA = z.object({
   status: FAL_QUEUE_STATUS_SCHEMA,
@@ -79,28 +88,29 @@ type FalPulidResponse = z.infer<typeof FAL_PULID_RESPONSE_SCHEMA>;
 
 // Aspect ratio to dimensions mapping for Flux
 const ASPECT_RATIO_DIMENSIONS = {
-  '16:9': { width: 1344, height: 768 },
-  '9:16': { width: 768, height: 1344 },
-  '1:1': { width: 1024, height: 1024 },
-  '4:3': { width: 1152, height: 896 },
-  '3:4': { width: 896, height: 1152 },
+  "16:9": { width: 1344, height: 768 },
+  "9:16": { width: 768, height: 1344 },
+  "1:1": { width: 1024, height: 1024 },
+  "4:3": { width: 1152, height: 896 },
+  "3:4": { width: 896, height: 1152 },
 } as const satisfies Record<string, { width: number; height: number }>;
 
 type AspectRatio = keyof typeof ASPECT_RATIO_DIMENSIONS;
 
-const DEFAULT_ASPECT_RATIO: AspectRatio = '16:9';
+const DEFAULT_ASPECT_RATIO: AspectRatio = "16:9";
 const DEFAULT_DIMENSIONS = ASPECT_RATIO_DIMENSIONS[DEFAULT_ASPECT_RATIO];
 const DEFAULT_ID_WEIGHT = 0.8;
 const DEFAULT_GUIDANCE_SCALE = 7.5;
 const DEFAULT_NUM_STEPS = 28;
-const DEFAULT_NEGATIVE_PROMPT = 'blurry, low quality, distorted face, deformed, ugly, bad anatomy, disfigured, poorly drawn face, mutation, mutated, extra limbs';
+const DEFAULT_NEGATIVE_PROMPT =
+  "blurry, low quality, distorted face, deformed, ugly, bad anatomy, disfigured, poorly drawn face, mutation, mutated, extra limbs";
 
 // fal.ai PuLID model endpoint
-const FAL_PULID_MODEL = 'fal-ai/flux-pulid';
+const FAL_PULID_MODEL = "fal-ai/flux-pulid";
 
 export class FalPulidKeyframeProvider {
   private readonly apiKey: string | null;
-  private readonly log = logger.child({ service: 'FalPulidKeyframeProvider' });
+  private readonly log = logger.child({ service: "FalPulidKeyframeProvider" });
 
   constructor(options: { apiKey?: string } = {}) {
     this.apiKey = resolveFalApiKey(options.apiKey);
@@ -113,21 +123,26 @@ export class FalPulidKeyframeProvider {
   /**
    * Generate a face-consistent keyframe using Flux + PuLID
    */
-  public async generateKeyframe(options: FalPulidKeyframeOptions): Promise<FalPulidKeyframeResult> {
+  public async generateKeyframe(
+    options: FalPulidKeyframeOptions,
+  ): Promise<FalPulidKeyframeResult> {
     if (!this.apiKey) {
-      throw new Error('Fal.ai provider is not configured. Set FAL_KEY or FAL_API_KEY.');
+      throw new Error(
+        "Fal.ai provider is not configured. Set FAL_KEY or FAL_API_KEY.",
+      );
     }
 
     if (!options.faceImageUrl) {
-      throw new Error('Face reference image URL is required');
+      throw new Error("Face reference image URL is required");
     }
 
-    const operation = 'generateKeyframe';
+    const operation = "generateKeyframe";
     const startTime = performance.now();
     const aspectRatio = options.aspectRatio ?? DEFAULT_ASPECT_RATIO;
-    const dimensions = (aspectRatio in ASPECT_RATIO_DIMENSIONS)
-      ? ASPECT_RATIO_DIMENSIONS[aspectRatio as AspectRatio]
-      : DEFAULT_DIMENSIONS;
+    const dimensions =
+      aspectRatio in ASPECT_RATIO_DIMENSIONS
+        ? ASPECT_RATIO_DIMENSIONS[aspectRatio as AspectRatio]
+        : DEFAULT_DIMENSIONS;
     const idWeight = options.idWeight ?? DEFAULT_ID_WEIGHT;
 
     const input = {
@@ -142,7 +157,7 @@ export class FalPulidKeyframeProvider {
       ...(options.seed !== undefined && { seed: options.seed }),
     };
 
-    this.log.info('Generating PuLID keyframe', {
+    this.log.info("Generating PuLID keyframe", {
       operation,
       promptLength: options.prompt.length,
       aspectRatio,
@@ -153,12 +168,16 @@ export class FalPulidKeyframeProvider {
     });
 
     try {
-      const result = await this.callFalApi(FAL_PULID_MODEL, input, FAL_PULID_RESPONSE_SCHEMA);
+      const result = await this.callFalApi(
+        FAL_PULID_MODEL,
+        input,
+        FAL_PULID_RESPONSE_SCHEMA,
+      );
       const durationMs = Math.round(performance.now() - startTime);
 
       const imageUrl = this.extractImageUrl(result);
       if (!imageUrl) {
-        throw new Error('PuLID generation returned no output image');
+        throw new Error("PuLID generation returned no output image");
       }
 
       let imageHost: string | undefined;
@@ -168,7 +187,7 @@ export class FalPulidKeyframeProvider {
         imageHost = undefined;
       }
 
-      this.log.info('PuLID keyframe generated successfully', {
+      this.log.info("PuLID keyframe generated successfully", {
         operation,
         ...(imageHost ? { imageHost } : {}),
         durationMs,
@@ -186,8 +205,9 @@ export class FalPulidKeyframeProvider {
         seed: result.seed,
       };
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      this.log.error('PuLID keyframe generation failed', error as Error, {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      this.log.error("PuLID keyframe generation failed", error as Error, {
         operation,
         durationMs: Math.round(performance.now() - startTime),
         promptLength: options.prompt.length,
@@ -202,14 +222,17 @@ export class FalPulidKeyframeProvider {
    * Generate multiple keyframe variations with different identity weights
    */
   public async generateKeyframeOptions(
-    options: FalPulidKeyframeOptions & { count?: number }
+    options: FalPulidKeyframeOptions & { count?: number },
   ): Promise<FalPulidKeyframeResult[]> {
     const count = options.count ?? 3;
     const baseIdWeight = options.idWeight ?? DEFAULT_ID_WEIGHT;
 
     // Generate variations with different ID weights (0.6, 0.8, 1.0 typical range)
     const variations = Array.from({ length: count }, (_, index) => {
-      const idWeight = Math.min(1.0, Math.max(0.4, baseIdWeight - 0.2 + (index * 0.2)));
+      const idWeight = Math.min(
+        1.0,
+        Math.max(0.4, baseIdWeight - 0.2 + index * 0.2),
+      );
       return this.generateKeyframe({
         ...options,
         idWeight,
@@ -225,32 +248,38 @@ export class FalPulidKeyframeProvider {
   private async callFalApi<T>(
     model: string,
     input: Record<string, unknown>,
-    resultSchema: ZodSchema<T>
+    resultSchema: ZodSchema<T>,
   ): Promise<T> {
-    const operation = 'callFalApi';
-    const baseUrl = 'https://queue.fal.run';
+    const operation = "callFalApi";
+    const baseUrl = "https://queue.fal.run";
     const submitUrl = `${baseUrl}/${model}`;
 
     // Submit the request
     const submitResponse = await fetch(submitUrl, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Authorization': `Key ${this.apiKey}`,
-        'Content-Type': 'application/json',
+        Authorization: `Key ${this.apiKey}`,
+        "Content-Type": "application/json",
       },
       body: JSON.stringify(input),
     });
 
     if (!submitResponse.ok) {
       const errorText = await submitResponse.text();
-      throw new Error(`Fal API submission failed (${submitResponse.status}): ${errorText}`);
+      throw new Error(
+        `Fal API submission failed (${submitResponse.status}): ${errorText}`,
+      );
     }
 
     const submitJson: unknown = await submitResponse.json();
     const submitResult = FAL_SUBMIT_RESPONSE_SCHEMA.parse(submitJson);
     const { request_id, status_url, response_url } = submitResult;
 
-    this.log.debug('Fal request submitted', { operation, model, requestId: request_id });
+    this.log.debug("Fal request submitted", {
+      operation,
+      model,
+      requestId: request_id,
+    });
 
     // Poll for completion
     const maxWaitTime = 120000; // 2 minutes
@@ -259,7 +288,7 @@ export class FalPulidKeyframeProvider {
 
     while (Date.now() < endTime) {
       const statusResponse = await fetch(status_url, {
-        headers: { 'Authorization': `Key ${this.apiKey}` },
+        headers: { Authorization: `Key ${this.apiKey}` },
       });
 
       if (!statusResponse.ok) {
@@ -269,10 +298,10 @@ export class FalPulidKeyframeProvider {
       const statusJson: unknown = await statusResponse.json();
       const status: FalQueueUpdate = FAL_QUEUE_UPDATE_SCHEMA.parse(statusJson);
 
-      if (status.status === 'COMPLETED') {
+      if (status.status === "COMPLETED") {
         // Fetch the result
         const resultResponse = await fetch(response_url, {
-          headers: { 'Authorization': `Key ${this.apiKey}` },
+          headers: { Authorization: `Key ${this.apiKey}` },
         });
 
         if (!resultResponse.ok) {
@@ -283,11 +312,11 @@ export class FalPulidKeyframeProvider {
         return resultSchema.parse(resultJson);
       }
 
-      if (status.status === 'FAILED') {
+      if (status.status === "FAILED") {
         const errorMessage =
-          typeof status.error === 'string'
+          typeof status.error === "string"
             ? status.error
-            : status.error?.message ?? 'Unknown error';
+            : (status.error?.message ?? "Unknown error");
         throw new Error(`Fal generation failed: ${errorMessage}`);
       }
 
@@ -295,19 +324,31 @@ export class FalPulidKeyframeProvider {
       if (status.logs && status.logs.length > 0) {
         const lastLog = status.logs[status.logs.length - 1];
         if (lastLog) {
-          this.log.debug('Fal progress', { operation, requestId: request_id, message: lastLog.message });
+          this.log.debug("Fal progress", {
+            operation,
+            requestId: request_id,
+            message: lastLog.message,
+          });
         }
       }
 
       await sleep(pollInterval);
     }
 
-    throw new Error('Fal generation timed out');
+    throw new Error("Fal generation timed out");
   }
 
   private enhancePromptForKeyframe(prompt: string): string {
-    const qualityTerms = ['high quality', '4k', 'detailed', 'sharp focus', 'professional'];
-    const hasQuality = qualityTerms.some(term => prompt.toLowerCase().includes(term));
+    const qualityTerms = [
+      "high quality",
+      "4k",
+      "detailed",
+      "sharp focus",
+      "professional",
+    ];
+    const hasQuality = qualityTerms.some((term) =>
+      prompt.toLowerCase().includes(term),
+    );
 
     if (hasQuality) {
       return prompt;
@@ -318,7 +359,11 @@ export class FalPulidKeyframeProvider {
 
   private extractImageUrl(result: FalPulidResponse): string | null {
     // Check for images array (common format)
-    if (result.images && Array.isArray(result.images) && result.images.length > 0) {
+    if (
+      result.images &&
+      Array.isArray(result.images) &&
+      result.images.length > 0
+    ) {
       const firstImage: FalImageOutput | undefined = result.images[0];
       return firstImage?.url ?? null;
     }
@@ -330,7 +375,6 @@ export class FalPulidKeyframeProvider {
 
     return null;
   }
-
 }
 
 export default FalPulidKeyframeProvider;

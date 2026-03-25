@@ -1,6 +1,6 @@
-import type { CapabilitiesSchema } from '../../../shared/capabilities';
-import type { CatalogEntry } from '../modelCatalog';
-import { transformOpenApiProperties } from '../transform';
+import type { CapabilitiesSchema } from "../../../shared/capabilities";
+import type { CatalogEntry } from "../modelCatalog";
+import { transformOpenApiProperties } from "../transform";
 
 interface OpenApiDocument {
   components?: {
@@ -9,18 +9,20 @@ interface OpenApiDocument {
 }
 
 const findInputSchema = (
-  schemas: Record<string, Record<string, unknown>>
+  schemas: Record<string, Record<string, unknown>>,
 ): Record<string, unknown> | null => {
   const candidates = Object.entries(schemas)
-    .filter(([, schema]) => schema.type === 'object' && schema.properties)
+    .filter(([, schema]) => schema.type === "object" && schema.properties)
     .map(([name, schema]) => ({ name, schema }));
 
   const hasPrompt = (schema: Record<string, unknown>): boolean => {
     const props = schema.properties as Record<string, unknown> | undefined;
-    return !!props && Object.prototype.hasOwnProperty.call(props, 'prompt');
+    return !!props && Object.prototype.hasOwnProperty.call(props, "prompt");
   };
 
-  const named = candidates.find((entry) => /input|request/i.test(entry.name) && hasPrompt(entry.schema));
+  const named = candidates.find(
+    (entry) => /input|request/i.test(entry.name) && hasPrompt(entry.schema),
+  );
   if (named) {
     return named.schema;
   }
@@ -38,7 +40,7 @@ export async function fetchFalCapabilities(
   falKey: string | null,
   generatedAt: string,
   version: string,
-  log: (message: string, meta?: Record<string, unknown>) => void
+  log: (message: string, meta?: Record<string, unknown>) => void,
 ): Promise<CapabilitiesSchema> {
   if (!entry.falEndpoint) {
     throw new Error(`Catalog entry ${entry.id} is missing falEndpoint`);
@@ -50,7 +52,7 @@ export async function fetchFalCapabilities(
     headers.Authorization = `Key ${falKey}`;
   }
 
-  log('Fetching Fal schema', { model: entry.id, endpoint: entry.falEndpoint });
+  log("Fetching Fal schema", { model: entry.id, endpoint: entry.falEndpoint });
   const response = await fetch(url, { headers });
   if (!response.ok) {
     throw new Error(`Fal API ${response.status} for ${entry.falEndpoint}`);
@@ -63,7 +65,9 @@ export async function fetchFalCapabilities(
     throw new Error(`No input schema found for ${entry.falEndpoint}`);
   }
 
-  const properties = inputSchema.properties as Record<string, Record<string, unknown>> | undefined;
+  const properties = inputSchema.properties as
+    | Record<string, Record<string, unknown>>
+    | undefined;
   if (!properties) {
     throw new Error(`No input properties found for ${entry.falEndpoint}`);
   }
@@ -81,6 +85,8 @@ export async function fetchFalCapabilities(
       text_to_video: transformed.features.text_to_video,
       image_to_video: transformed.features.image_to_video,
     },
-    ...(transformed.unknownFields.length > 0 ? { unknown_fields: transformed.unknownFields } : {}),
+    ...(transformed.unknownFields.length > 0
+      ? { unknown_fields: transformed.unknownFields }
+      : {}),
   };
 }

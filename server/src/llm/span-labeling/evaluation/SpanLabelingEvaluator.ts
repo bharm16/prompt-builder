@@ -1,7 +1,10 @@
-import { RelaxedF1Evaluator } from './RelaxedF1Evaluator.js';
-import type { LLMSpan } from '../types.js';
+import { RelaxedF1Evaluator } from "./RelaxedF1Evaluator.js";
+import type { LLMSpan } from "../types.js";
 
-export type Span = Pick<LLMSpan, 'start' | 'end' | 'role' | 'text' | 'confidence'> & {
+export type Span = Pick<
+  LLMSpan,
+  "start" | "end" | "role" | "text" | "confidence"
+> & {
   start: number;
   end: number;
   role: string;
@@ -30,7 +33,7 @@ export interface FragmentationMetrics {
   totalGroundTruth: number;
   examples: Array<{
     groundTruth: Span;
-    fragments: Array<Pick<Span, 'text' | 'role' | 'start' | 'end'>>;
+    fragments: Array<Pick<Span, "text" | "role" | "start" | "end">>;
   }>;
 }
 
@@ -56,56 +59,79 @@ export class SpanLabelingEvaluator extends RelaxedF1Evaluator {
     return super.calculateIoU(predicted, groundTruth);
   }
 
-  override evaluateSpans(predicted: Span[], groundTruth: Span[], iouThreshold = 0.5): F1Metrics {
-    return super.evaluateSpans(predicted, groundTruth, iouThreshold) as F1Metrics;
+  override evaluateSpans(
+    predicted: Span[],
+    groundTruth: Span[],
+    iouThreshold = 0.5,
+  ): F1Metrics {
+    return super.evaluateSpans(
+      predicted,
+      groundTruth,
+      iouThreshold,
+    ) as F1Metrics;
   }
 
   override evaluateTaxonomyAccuracy(
     predicted: Span[],
     groundTruth: Span[],
-    iouThreshold = 0.5
+    iouThreshold = 0.5,
   ): TaxonomyMetrics {
-    return super.evaluateTaxonomyAccuracy(predicted, groundTruth, iouThreshold) as TaxonomyMetrics;
+    return super.evaluateTaxonomyAccuracy(
+      predicted,
+      groundTruth,
+      iouThreshold,
+    ) as TaxonomyMetrics;
   }
 
   override calculateFragmentationRate(
     predicted: Span[],
     groundTruth: Span[],
     iouThreshold = 0.1,
-    useParentRole = true
+    useParentRole = true,
   ): FragmentationMetrics {
     return super.calculateFragmentationRate(
       predicted,
       groundTruth,
       iouThreshold,
-      useParentRole
+      useParentRole,
     ) as FragmentationMetrics;
   }
 
   override calculateOverExtractionRate(
     predicted: Span[],
     groundTruth: Span[],
-    iouThreshold = 0.5
+    iouThreshold = 0.5,
   ): OverExtractionMetrics {
-    return super.calculateOverExtractionRate(predicted, groundTruth, iouThreshold) as OverExtractionMetrics;
+    return super.calculateOverExtractionRate(
+      predicted,
+      groundTruth,
+      iouThreshold,
+    ) as OverExtractionMetrics;
   }
 
   override updateConfusionMatrix(
     matrix: ConfusionMatrix,
     predicted: Span[],
     groundTruth: Span[],
-    iouThreshold = 0.5
+    iouThreshold = 0.5,
   ): ConfusionMatrix {
-    return super.updateConfusionMatrix(matrix, predicted, groundTruth, iouThreshold) as ConfusionMatrix;
+    return super.updateConfusionMatrix(
+      matrix,
+      predicted,
+      groundTruth,
+      iouThreshold,
+    ) as ConfusionMatrix;
   }
 
   override generateConfusionMatrix(
     testResults: Array<{ predicted: Span[]; groundTruth: Span[] }>,
-    iouThreshold = 0.5
+    iouThreshold = 0.5,
   ): ConfusionMatrix {
-    return super.generateConfusionMatrix(testResults, iouThreshold) as ConfusionMatrix;
+    return super.generateConfusionMatrix(
+      testResults,
+      iouThreshold,
+    ) as ConfusionMatrix;
   }
 }
 
 export const spanLabelingEvaluator = new SpanLabelingEvaluator();
-

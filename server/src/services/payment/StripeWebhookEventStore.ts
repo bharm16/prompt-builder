@@ -1,13 +1,13 @@
-import { admin, getFirestore } from '@infrastructure/firebaseAdmin';
-import { logger } from '@infrastructure/Logger';
+import { admin, getFirestore } from "@infrastructure/firebaseAdmin";
+import { logger } from "@infrastructure/Logger";
 import {
   FirestoreCircuitExecutor,
   getFirestoreCircuitExecutor,
-} from '@services/firestore/FirestoreCircuitExecutor';
+} from "@services/firestore/FirestoreCircuitExecutor";
 
 const DEFAULT_PROCESSING_TTL_MS = 10 * 60 * 1000;
 
-type StripeWebhookStatus = 'processing' | 'processed' | 'failed';
+type StripeWebhookStatus = "processing" | "processed" | "failed";
 
 interface StripeWebhookEventRecord {
   status: StripeWebhookStatus;
@@ -27,19 +27,19 @@ export interface StripeWebhookUnprocessedSummary {
 }
 
 export type StripeWebhookClaimResult =
-  | { state: 'claimed' }
-  | { state: 'processed' }
-  | { state: 'in_progress' };
+  | { state: "claimed" }
+  | { state: "processed" }
+  | { state: "in_progress" };
 
 export class StripeWebhookEventStore {
   private readonly db = getFirestore();
-  private readonly collection = this.db.collection('stripe_webhook_events');
+  private readonly collection = this.db.collection("stripe_webhook_events");
   private readonly processingTtlMs: number;
   private readonly firestoreCircuitExecutor: FirestoreCircuitExecutor;
 
   constructor(
     processingTtlMs = DEFAULT_PROCESSING_TTL_MS,
-    firestoreCircuitExecutor: FirestoreCircuitExecutor = getFirestoreCircuitExecutor()
+    firestoreCircuitExecutor: FirestoreCircuitExecutor = getFirestoreCircuitExecutor(),
   ) {
     this.processingTtlMs = processingTtlMs;
     this.firestoreCircuitExecutor = firestoreCircuitExecutor;
@@ -47,12 +47,12 @@ export class StripeWebhookEventStore {
 
   async claimEvent(
     eventId: string,
-    metadata: { type: string; livemode: boolean }
+    metadata: { type: string; livemode: boolean },
   ): Promise<StripeWebhookClaimResult> {
     const now = Date.now();
 
     return await this.firestoreCircuitExecutor.executeWrite(
-      'payment.webhook.claimEvent',
+      "payment.webhook.claimEvent",
       async () =>
         await this.db.runTransaction(async (transaction) => {
           const docRef = this.collection.doc(eventId);
@@ -60,7 +60,7 @@ export class StripeWebhookEventStore {
 
           if (!snapshot.exists) {
             transaction.set(docRef, {
-              status: 'processing',
+              status: "processing",
               type: metadata.type,
               livemode: metadata.livemode,
               attempt: 1,
@@ -69,59 +69,62 @@ export class StripeWebhookEventStore {
               createdAt: admin.firestore.FieldValue.serverTimestamp(),
               updatedAt: admin.firestore.FieldValue.serverTimestamp(),
             });
-            return { state: 'claimed' };
+            return { state: "claimed" };
           }
 
-          const existing = snapshot.data() as StripeWebhookEventRecord | undefined;
-          if (existing?.status === 'processed') {
-            return { state: 'processed' };
+          const existing = snapshot.data() as
+            | StripeWebhookEventRecord
+            | undefined;
+          if (existing?.status === "processed") {
+            return { state: "processed" };
           }
 
-          if (existing?.status === 'processing') {
+          if (existing?.status === "processing") {
             const isStale =
-              typeof existing.updatedAtMs === 'number' && now - existing.updatedAtMs > this.processingTtlMs;
+              typeof existing.updatedAtMs === "number" &&
+              now - existing.updatedAtMs > this.processingTtlMs;
             if (!isStale) {
-              return { state: 'in_progress' };
+              return { state: "in_progress" };
             }
           }
 
           transaction.update(docRef, {
-            status: 'processing',
+            status: "processing",
             updatedAtMs: now,
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
             attempt: (existing?.attempt ?? 0) + 1,
             lastError: admin.firestore.FieldValue.delete(),
           });
 
-          return { state: 'claimed' };
-        })
+          return { state: "claimed" };
+        }),
     );
   }
 
   async hasProcessedEvent(eventId: string): Promise<boolean> {
     const doc = await this.firestoreCircuitExecutor.executeRead(
-      'payment.webhook.hasProcessedEvent',
-      async () => await this.collection.doc(eventId).get()
+      "payment.webhook.hasProcessedEvent",
+      async () => await this.collection.doc(eventId).get(),
     );
     if (!doc.exists) return false;
     const data = doc.data() as StripeWebhookEventRecord | undefined;
-    return data?.status === 'processed';
+    return data?.status === "processed";
   }
 
   async markProcessed(eventId: string): Promise<void> {
     const now = Date.now();
     await this.firestoreCircuitExecutor.executeWrite(
-      'payment.webhook.markProcessed',
+      "payment.webhook.markProcessed",
       async () =>
         await this.collection.doc(eventId).set(
           {
-            status: 'processed',
+            status: "processed",
             updatedAtMs: now,
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
             processedAt: admin.firestore.FieldValue.serverTimestamp(),
           },
-          { merge: true }
-        )
+          { merge: true },
+        ),
     );
   }
 
@@ -129,22 +132,26 @@ export class StripeWebhookEventStore {
     const now = Date.now();
     try {
       await this.firestoreCircuitExecutor.executeWrite(
-        'payment.webhook.markFailed',
+        "payment.webhook.markFailed",
         async () =>
           await this.collection.doc(eventId).set(
             {
-              status: 'failed',
+              status: "failed",
               updatedAtMs: now,
               updatedAt: admin.firestore.FieldValue.serverTimestamp(),
               lastError: error.message,
             },
-            { merge: true }
-          )
+            { merge: true },
+          ),
       );
     } catch (storeError) {
-      logger.error('Failed to record Stripe webhook failure', storeError as Error, {
-        eventId,
-      });
+      logger.error(
+        "Failed to record Stripe webhook failure",
+        storeError as Error,
+        {
+          eventId,
+        },
+      );
     }
   }
 
@@ -152,12 +159,14 @@ export class StripeWebhookEventStore {
     try {
       const [processingSnapshot, failedSnapshot] = await Promise.all([
         this.firestoreCircuitExecutor.executeRead(
-          'payment.webhook.getUnprocessedSummary.processing',
-          async () => await this.collection.where('status', '==', 'processing').get()
+          "payment.webhook.getUnprocessedSummary.processing",
+          async () =>
+            await this.collection.where("status", "==", "processing").get(),
         ),
         this.firestoreCircuitExecutor.executeRead(
-          'payment.webhook.getUnprocessedSummary.failed',
-          async () => await this.collection.where('status', '==', 'failed').get()
+          "payment.webhook.getUnprocessedSummary.failed",
+          async () =>
+            await this.collection.where("status", "==", "failed").get(),
         ),
       ]);
 
@@ -175,11 +184,17 @@ export class StripeWebhookEventStore {
       const now = Date.now();
       for (const doc of docs) {
         const data = doc.data() as StripeWebhookEventRecord;
-        if (typeof data.createdAtMs === 'number' && Number.isFinite(data.createdAtMs)) {
+        if (
+          typeof data.createdAtMs === "number" &&
+          Number.isFinite(data.createdAtMs)
+        ) {
           oldestCreatedAtMs = Math.min(oldestCreatedAtMs, data.createdAtMs);
           continue;
         }
-        if (typeof data.updatedAtMs === 'number' && Number.isFinite(data.updatedAtMs)) {
+        if (
+          typeof data.updatedAtMs === "number" &&
+          Number.isFinite(data.updatedAtMs)
+        ) {
           oldestCreatedAtMs = Math.min(oldestCreatedAtMs, data.updatedAtMs);
         }
       }
@@ -189,10 +204,12 @@ export class StripeWebhookEventStore {
         failedCount: failedSnapshot.size,
         totalUnprocessed: docs.length,
         oldestUnprocessedAgeMs:
-          oldestCreatedAtMs === Number.POSITIVE_INFINITY ? null : Math.max(0, now - oldestCreatedAtMs),
+          oldestCreatedAtMs === Number.POSITIVE_INFINITY
+            ? null
+            : Math.max(0, now - oldestCreatedAtMs),
       };
     } catch (error) {
-      logger.warn('Failed to read Stripe webhook unprocessed summary', {
+      logger.warn("Failed to read Stripe webhook unprocessed summary", {
         error: error instanceof Error ? error.message : String(error),
       });
       return {

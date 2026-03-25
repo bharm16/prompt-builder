@@ -4,36 +4,40 @@
  * @see ARCHITECTURE_STANDARD.md Section 1 - hooks/
  */
 
-import { useMemo } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useMemo } from "react";
+import { useLocation } from "react-router-dom";
 import {
   AUTH_ROUTES,
   NAV_ITEMS,
   WORKSPACE_ROUTE_PREFIXES,
   WORKSPACE_ROUTES_EXACT,
-} from '../constants';
-import type { NavItemsByVariant, NavigationConfig, ShellVariant } from '../types';
+} from "../constants";
+import type {
+  NavItemsByVariant,
+  NavigationConfig,
+  ShellVariant,
+} from "../types";
 
 /**
  * Determines shell variant based on current pathname.
  */
 function resolveVariant(pathname: string): ShellVariant {
   if ((AUTH_ROUTES as readonly string[]).includes(pathname)) {
-    return 'none';
+    return "none";
   }
 
   if ((WORKSPACE_ROUTES_EXACT as readonly string[]).includes(pathname)) {
-    return 'sidebar';
+    return "sidebar";
   }
 
   const isWorkspacePrefix = WORKSPACE_ROUTE_PREFIXES.some((prefix) =>
-    pathname.startsWith(prefix)
+    pathname.startsWith(prefix),
   );
   if (isWorkspacePrefix) {
-    return 'sidebar';
+    return "sidebar";
   }
 
-  return 'topnav';
+  return "topnav";
 }
 
 /**
@@ -44,7 +48,7 @@ export function useNavigationConfig(): NavigationConfig {
 
   const variant = useMemo(
     () => resolveVariant(location.pathname),
-    [location.pathname]
+    [location.pathname],
   );
 
   const navItems = useMemo((): NavItemsByVariant => {

@@ -1,9 +1,13 @@
-import { useEffect, useMemo, useState } from 'react';
-import type { CapabilitiesSchema } from '@shared/capabilities';
-import { capabilitiesApi } from '@/services';
-import { logger } from '@/services/LoggingService';
-import { sanitizeError } from '@/utils/logging';
-import { AI_MODEL_IDS, AI_MODEL_LABELS, AI_MODEL_PROVIDERS } from '@/config/videoModels';
+import { useEffect, useMemo, useState } from "react";
+import type { CapabilitiesSchema } from "@shared/capabilities";
+import { capabilitiesApi } from "@/services";
+import { logger } from "@/services/LoggingService";
+import { sanitizeError } from "@/utils/logging";
+import {
+  AI_MODEL_IDS,
+  AI_MODEL_LABELS,
+  AI_MODEL_PROVIDERS,
+} from "@/config/videoModels";
 
 export interface ModelOption {
   id: string;
@@ -26,12 +30,12 @@ const resolveModelLabel = (provider: string, modelId: string): string => {
 };
 
 const flattenRegistry = (
-  registry: Record<string, Record<string, CapabilitiesSchema>>
+  registry: Record<string, Record<string, CapabilitiesSchema>>,
 ): ModelOption[] => {
   const options: ModelOption[] = [];
 
   for (const [provider, models] of Object.entries(registry)) {
-    if (provider === 'generic') continue;
+    if (provider === "generic") continue;
 
     for (const modelId of Object.keys(models)) {
       options.push({
@@ -54,7 +58,7 @@ const fallbackModels = (): ModelOption[] =>
     }))
     .sort((a, b) => a.label.localeCompare(b.label));
 
-const log = logger.child('useModelRegistry');
+const log = logger.child("useModelRegistry");
 
 export const useModelRegistry = (): UseModelRegistryResult => {
   const [models, setModels] = useState<ModelOption[]>([]);
@@ -75,26 +79,26 @@ export const useModelRegistry = (): UseModelRegistryResult => {
 
         try {
           const availability = await capabilitiesApi.getVideoAvailability();
-          const availabilityList =
-            availability.availableCapabilityModels?.length
-              ? availability.availableCapabilityModels
-              : availability.availableModels;
+          const availabilityList = availability.availableCapabilityModels
+            ?.length
+            ? availability.availableCapabilityModels
+            : availability.availableModels;
           if (Array.isArray(availabilityList) && availabilityList.length > 0) {
             const availableSet = new Set(availabilityList);
             filtered = resolved.filter((model) => availableSet.has(model.id));
             if (filtered.length > 0) {
               availabilityApplied = true;
             } else {
-              log.warn('Video availability returned no matching models', {
-                operation: 'getVideoAvailability',
+              log.warn("Video availability returned no matching models", {
+                operation: "getVideoAvailability",
                 availableModels: availability.availableModels,
               });
             }
           }
         } catch (availabilityError) {
           const info = sanitizeError(availabilityError);
-          log.warn('Failed to load video availability', {
-            operation: 'getVideoAvailability',
+          log.warn("Failed to load video availability", {
+            operation: "getVideoAvailability",
             error: info.message,
             errorName: info.name,
           });
@@ -107,10 +111,12 @@ export const useModelRegistry = (): UseModelRegistryResult => {
         }
       } catch (err) {
         if (!active) return;
-        const message = err instanceof Error ? err.message : 'Unable to load models';
-        const errObj = err instanceof Error ? err : new Error(sanitizeError(err).message);
-        log.warn('Failed to load models; using fallback list', {
-          operation: 'fetchModels',
+        const message =
+          err instanceof Error ? err.message : "Unable to load models";
+        const errObj =
+          err instanceof Error ? err : new Error(sanitizeError(err).message);
+        log.warn("Failed to load models; using fallback list", {
+          operation: "fetchModels",
           error: errObj.message,
           errorName: errObj.name,
         });
@@ -130,5 +136,8 @@ export const useModelRegistry = (): UseModelRegistryResult => {
     };
   }, []);
 
-  return useMemo(() => ({ models, isLoading, error }), [models, isLoading, error]);
+  return useMemo(
+    () => ({ models, isLoading, error }),
+    [models, isLoading, error],
+  );
 };

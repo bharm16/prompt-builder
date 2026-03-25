@@ -1,6 +1,6 @@
 /**
  * Grammatical Analysis Configuration
- * 
+ *
  * Configuration for the grammatical analysis system that handles complex span enhancement.
  * This includes sigmoid-based complexity scoring, retry parameters, and routing thresholds.
  */
@@ -58,22 +58,22 @@ export const GRAMMATICAL_CONFIG: GrammaticalConfig = {
    * Each feature contributes to the raw complexity score
    */
   weights: {
-    verbDensity: 1.2,      // Weight for verb-to-word ratio
-    clauseDepth: 1.5,      // Weight for clause nesting
-    modifierDensity: 0.8,  // Weight for adjective/adverb density
-    structuralDepth: 2.0,  // Weight for structural complexity (prepositions, subordination)
+    verbDensity: 1.2, // Weight for verb-to-word ratio
+    clauseDepth: 1.5, // Weight for clause nesting
+    modifierDensity: 0.8, // Weight for adjective/adverb density
+    structuralDepth: 2.0, // Weight for structural complexity (prepositions, subordination)
   },
 
   /**
    * Sigmoid curve parameters for normalization
    * Formula: 1 / (1 + e^(-k * (x - x0)))
-   * 
+   *
    * - k: Steepness of the curve (higher = sharper transition)
    * - x0: Midpoint/inflection point of the curve
    */
   sigmoid: {
-    k: 2,      // Steepness factor
-    x0: 2.5,   // Tipping point value
+    k: 2, // Steepness factor
+    x0: 2.5, // Tipping point value
   },
 
   /**
@@ -87,16 +87,16 @@ export const GRAMMATICAL_CONFIG: GrammaticalConfig = {
    * Retry configuration for resilient generation
    */
   retry: {
-    maxAttempts: 3,           // Maximum retry attempts
-    initialTemperature: 0.9,  // Starting temperature (hot)
-    initialStrictness: 0.5,   // Starting strictness level (0.0 to 1.0)
+    maxAttempts: 3, // Maximum retry attempts
+    initialTemperature: 0.9, // Starting temperature (hot)
+    initialStrictness: 0.5, // Starting strictness level (0.0 to 1.0)
   },
 
   /**
    * Structure types that always route to complex handling
    * Regardless of complexity score
    */
-  complexStructures: ['gerund_phrase', 'complex_clause'],
+  complexStructures: ["gerund_phrase", "complex_clause"],
 
   /**
    * Validation rules for structure enforcement
@@ -104,15 +104,17 @@ export const GRAMMATICAL_CONFIG: GrammaticalConfig = {
   validation: {
     gerund_phrase: {
       requiresGerundStart: true,
-      correctionMessage: 'The phrase MUST start with an -ing verb form (e.g., "cascading", "glimmering").',
+      correctionMessage:
+        'The phrase MUST start with an -ing verb form (e.g., "cascading", "glimmering").',
     },
     prepositional_phrase: {
       requiresPrepositionStart: true,
-      correctionMessage: 'The phrase MUST start with a preposition (e.g., "in", "under", "through").',
+      correctionMessage:
+        'The phrase MUST start with a preposition (e.g., "in", "under", "through").',
     },
     complex_clause: {
       requiresVerbPresence: true,
-      correctionMessage: 'Complex clauses MUST contain at least one verb.',
+      correctionMessage: "Complex clauses MUST contain at least one verb.",
     },
   },
 
@@ -121,9 +123,9 @@ export const GRAMMATICAL_CONFIG: GrammaticalConfig = {
    * Controls safe algorithmic transformations when LLM fails
    */
   fallback: {
-    enableVerbIntensification: true,    // Convert verbs to continuous aspect
-    enableAdjectiveExpansion: true,     // Apply comparative forms
-    maxTransformations: 2,              // Limit number of transformations
+    enableVerbIntensification: true, // Convert verbs to continuous aspect
+    enableAdjectiveExpansion: true, // Apply comparative forms
+    maxTransformations: 2, // Limit number of transformations
   },
 };
 
@@ -138,13 +140,17 @@ export interface RetryParams {
 /**
  * Calculate retry parameters for a given attempt
  */
-export function calculateRetryParams(attempt: number, maxAttempts: number): RetryParams {
+export function calculateRetryParams(
+  attempt: number,
+  maxAttempts: number,
+): RetryParams {
   return {
     // Harmonic decay: 1.0 -> 0.5 -> 0.33
     temperature: GRAMMATICAL_CONFIG.retry.initialTemperature / (1 + attempt),
     // Linear ramp: 0.5 -> 0.75 -> 1.0
-    strictness: GRAMMATICAL_CONFIG.retry.initialStrictness + 
-                (0.5 * (attempt / maxAttempts)),
+    strictness:
+      GRAMMATICAL_CONFIG.retry.initialStrictness +
+      0.5 * (attempt / maxAttempts),
   };
 }
 
@@ -159,6 +165,7 @@ export function isComplexStructure(structure: string): boolean {
  * Get validation rules for a specific structure
  */
 export function getValidationRules(structure: string): ValidationRule | null {
-  return GRAMMATICAL_CONFIG.validation[structure as keyof ValidationRules] || null;
+  return (
+    GRAMMATICAL_CONFIG.validation[structure as keyof ValidationRules] || null
+  );
 }
-

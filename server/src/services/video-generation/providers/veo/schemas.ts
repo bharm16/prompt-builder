@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from "zod";
 
 export const VEO_START_RESPONSE_SCHEMA = z.object({
   name: z.string(),

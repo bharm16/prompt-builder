@@ -1,19 +1,24 @@
-import { useCallback, useEffect, useRef, type MutableRefObject } from 'react';
-import type { PromptHistory } from '../../context/types';
+import { useCallback, useEffect, useRef, type MutableRefObject } from "react";
+import type { PromptHistory } from "../../context/types";
 
 interface UseAutoSaveOptions {
   currentPromptUuid: string | null;
   currentPromptDocId: string | null;
   displayedPrompt: string | null;
   isApplyingHistoryRef: MutableRefObject<boolean>;
+  /** When true, auto-save is paused to prevent prompt edits from overwriting
+   *  the session identity while a generation is in-flight. */
+  isGeneratingRef?: MutableRefObject<boolean> | undefined;
   handleDisplayedPromptChange: (text: string) => void;
-  updateEntryOutput: PromptHistory['updateEntryOutput'];
-  setOutputSaveState: (state: 'idle' | 'saving' | 'saved' | 'error') => void;
+  updateEntryOutput: PromptHistory["updateEntryOutput"];
+  setOutputSaveState: (state: "idle" | "saving" | "saved" | "error") => void;
   setOutputLastSavedAt: (timestampMs: number | null) => void;
 }
 
 interface UseAutoSaveResult {
   handleDisplayedPromptChangeWithAutosave: (text: string) => void;
+  /** Immediately persist any pending auto-save (e.g., before a reload or blocked action). */
+  flushAutoSave: () => void;
 }
 
 export function useAutoSave({
@@ -21,12 +26,15 @@ export function useAutoSave({
   currentPromptDocId,
   displayedPrompt,
   isApplyingHistoryRef,
+  isGeneratingRef,
   handleDisplayedPromptChange,
   updateEntryOutput,
   setOutputSaveState,
   setOutputLastSavedAt,
 }: UseAutoSaveOptions): UseAutoSaveResult {
-  const saveOutputTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const saveOutputTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
   const lastSavedOutputRef = useRef<string | null>(null);
   const displayedPromptRef = useRef<string | null>(displayedPrompt);
   displayedPromptRef.current = displayedPrompt;
@@ -40,15 +48,23 @@ export function useAutoSave({
   });
 
   useEffect(() => {
-    promptMetaRef.current = { uuid: currentPromptUuid, docId: currentPromptDocId };
+    promptMetaRef.current = {
+      uuid: currentPromptUuid,
+      docId: currentPromptDocId,
+    };
     lastSavedOutputRef.current = null;
-    setOutputSaveState('idle');
+    setOutputSaveState("idle");
     setOutputLastSavedAt(null);
     if (saveOutputTimeoutRef.current) {
       clearTimeout(saveOutputTimeoutRef.current);
       saveOutputTimeoutRef.current = null;
     }
-  }, [currentPromptUuid, currentPromptDocId, setOutputLastSavedAt, setOutputSaveState]);
+  }, [
+    currentPromptUuid,
+    currentPromptDocId,
+    setOutputLastSavedAt,
+    setOutputSaveState,
+  ]);
 
   useEffect(() => {
     return () => {
@@ -66,7 +82,7 @@ export function useAutoSave({
       if (!currentUuid) return;
       if (isApplyingHistoryRef.current) return;
       if (lastSavedOutputRef.current === null) {
-        lastSavedOutputRef.current = displayedPromptRef.current ?? '';
+        lastSavedOutputRef.current = displayedPromptRef.current ?? "";
       }
       if (lastSavedOutputRef.current === newText) return;
 
@@ -76,12 +92,15 @@ export function useAutoSave({
 
       const scheduledUuid = currentUuid;
       const scheduledDocId = currentDocId;
-      setOutputSaveState('saving');
+      setOutputSaveState("saving");
 
       saveOutputTimeoutRef.current = setTimeout(() => {
         const currentPromptMeta = promptMetaRef.current;
         if (!scheduledUuid) return;
         if (isApplyingHistoryRef.current) return;
+        // Don't persist prompt changes while a generation is in-flight —
+        // overwriting the session's prompt would corrupt the render's identity.
+        if (isGeneratingRef?.current) return;
         if (
           currentPromptMeta.uuid !== scheduledUuid ||
           currentPromptMeta.docId !== scheduledDocId
@@ -92,12 +111,16 @@ export function useAutoSave({
 
         void (async () => {
           try {
-            await updateEntryOutputRef.current(scheduledUuid, scheduledDocId, newText);
+            await updateEntryOutputRef.current(
+              scheduledUuid,
+              scheduledDocId,
+              newText,
+            );
             lastSavedOutputRef.current = newText;
-            setOutputSaveState('saved');
+            setOutputSaveState("saved");
             setOutputLastSavedAt(Date.now());
           } catch {
-            setOutputSaveState('error');
+            setOutputSaveState("error");
           }
         })();
         saveOutputTimeoutRef.current = null;
@@ -105,10 +128,36 @@ export function useAutoSave({
     },
     [
       isApplyingHistoryRef,
+      isGeneratingRef,
       setOutputLastSavedAt,
       setOutputSaveState,
-    ]
+    ],
   );
 
-  return { handleDisplayedPromptChangeWithAutosave };
+  const flushAutoSave = useCallback((): void => {
+    if (!saveOutputTimeoutRef.current) return;
+    clearTimeout(saveOutputTimeoutRef.current);
+    saveOutputTimeoutRef.current = null;
+    const { uuid: currentUuid, docId: currentDocId } = promptMetaRef.current;
+    if (!currentUuid) return;
+    const currentText = displayedPromptRef.current ?? "";
+    if (lastSavedOutputRef.current === currentText) return;
+
+    void (async () => {
+      try {
+        await updateEntryOutputRef.current(
+          currentUuid,
+          currentDocId,
+          currentText,
+        );
+        lastSavedOutputRef.current = currentText;
+        setOutputSaveState("saved");
+        setOutputLastSavedAt(Date.now());
+      } catch {
+        setOutputSaveState("error");
+      }
+    })();
+  }, [setOutputLastSavedAt, setOutputSaveState]);
+
+  return { handleDisplayedPromptChangeWithAutosave, flushAutoSave };
 }

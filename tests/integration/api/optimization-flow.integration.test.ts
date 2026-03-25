@@ -1,12 +1,12 @@
-import express from 'express';
-import request from 'supertest';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { apiAuthMiddleware } from '@middleware/apiAuth';
-import { createOptimizeRoutes } from '@routes/optimize.routes';
+import express from "express";
+import request from "supertest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { apiAuthMiddleware } from "@middleware/apiAuth";
+import { createOptimizeRoutes } from "@routes/optimize.routes";
 
-const TEST_API_KEY = 'integration-optimize-key';
+const TEST_API_KEY = "integration-optimize-key";
 
-describe('Optimization Flow (integration)', () => {
+describe("Optimization Flow (integration)", () => {
   let previousAllowedApiKeys: string | undefined;
 
   beforeEach(() => {
@@ -22,15 +22,15 @@ describe('Optimization Flow (integration)', () => {
     process.env.ALLOWED_API_KEYS = previousAllowedApiKeys;
   });
 
-  it('POST /api/optimize returns the final optimized prompt payload', async () => {
+  it("POST /api/optimize returns the final optimized prompt payload", async () => {
     const promptOptimizationService = {
       optimize: vi.fn(async () => ({
-        prompt: 'A cinematic runner with atmosphere',
-        inputMode: 't2v' as const,
+        prompt: "A cinematic runner with atmosphere",
+        inputMode: "t2v" as const,
         metadata: {
-          provider: 'test',
-          genericPrompt: 'A generic runner prompt',
-          normalizedModelId: 'kling-v1',
+          provider: "test",
+          genericPrompt: "A generic runner prompt",
+          normalizedModelId: "kling-v1",
         },
       })),
       compilePrompt: vi.fn(),
@@ -39,44 +39,46 @@ describe('Optimization Flow (integration)', () => {
     const app = express();
     app.use(express.json());
     app.use(
-      '/api',
+      "/api",
       apiAuthMiddleware,
       createOptimizeRoutes({
         promptOptimizationService: promptOptimizationService as never,
-      })
+      }),
     );
 
     const response = await request(app)
-      .post('/api/optimize')
-      .set('x-api-key', TEST_API_KEY)
+      .post("/api/optimize")
+      .set("x-api-key", TEST_API_KEY)
       .send({
-        prompt: 'person walking on beach',
-        mode: 'video',
-        targetModel: 'kling-v1',
+        prompt: "person walking on beach",
+        mode: "video",
+        targetModel: "kling-v1",
       });
 
     expect(response.status).toBe(200);
     expect(response.body.success).toBe(true);
-    expect(response.body.prompt).toBe('A cinematic runner with atmosphere');
-    expect(response.body.optimizedPrompt).toBe('A cinematic runner with atmosphere');
+    expect(response.body.prompt).toBe("A cinematic runner with atmosphere");
+    expect(response.body.optimizedPrompt).toBe(
+      "A cinematic runner with atmosphere",
+    );
     expect(response.body.data).toEqual(
       expect.objectContaining({
-        prompt: 'A cinematic runner with atmosphere',
-        optimizedPrompt: 'A cinematic runner with atmosphere',
-        inputMode: 't2v',
+        prompt: "A cinematic runner with atmosphere",
+        optimizedPrompt: "A cinematic runner with atmosphere",
+        inputMode: "t2v",
         metadata: expect.objectContaining({
-          provider: 'test',
-          genericPrompt: 'A generic runner prompt',
-          normalizedModelId: 'kling-v1',
+          provider: "test",
+          genericPrompt: "A generic runner prompt",
+          normalizedModelId: "kling-v1",
         }),
-      })
+      }),
     );
     expect(promptOptimizationService.optimize).toHaveBeenCalledWith(
       expect.objectContaining({
-        prompt: 'person walking on beach',
-        mode: 'video',
-        targetModel: 'kling-v1',
-      })
+        prompt: "person walking on beach",
+        mode: "video",
+        targetModel: "kling-v1",
+      }),
     );
   });
 });

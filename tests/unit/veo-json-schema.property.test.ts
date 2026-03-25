@@ -11,89 +11,92 @@
  * @module veo-json-schema.property.test
  */
 
-import { describe, it, expect } from 'vitest';
-import * as fc from 'fast-check';
+import { describe, it, expect } from "vitest";
+import * as fc from "fast-check";
 
-import { VeoStrategy, type VeoPromptSchema } from '@services/video-prompt-analysis/strategies/VeoStrategy';
+import {
+  VeoStrategy,
+  type VeoPromptSchema,
+} from "@services/video-prompt-analysis/strategies/VeoStrategy";
 
-describe('VeoStrategy Property Tests', () => {
+describe("VeoStrategy Property Tests", () => {
   const strategy = new VeoStrategy();
   const getSchema = (value: unknown): VeoPromptSchema => {
     if (!strategy.isValidSchema(value)) {
-      throw new Error('Expected VeoPromptSchema');
+      throw new Error("Expected VeoPromptSchema");
     }
     return value;
   };
 
   // Sample prompts for testing
   const samplePrompts = [
-    'A woman walking in the park',
-    'A cinematic shot of a car driving through the city at night',
-    'Close up of a flower blooming in slow motion',
-    'A man running through a forest with dramatic lighting',
-    'Aerial view of a beach at sunset with golden hour lighting',
-    'A dog playing in the snow, wide shot',
-    'Two people talking in a cafe, medium shot',
-    'A bird flying over mountains with cloudy weather',
-    'A chef cooking in a kitchen with soft lighting',
-    'A dancer performing on stage with dramatic backlighting',
+    "A woman walking in the park",
+    "A cinematic shot of a car driving through the city at night",
+    "Close up of a flower blooming in slow motion",
+    "A man running through a forest with dramatic lighting",
+    "Aerial view of a beach at sunset with golden hour lighting",
+    "A dog playing in the snow, wide shot",
+    "Two people talking in a cafe, medium shot",
+    "A bird flying over mountains with cloudy weather",
+    "A chef cooking in a kitchen with soft lighting",
+    "A dancer performing on stage with dramatic backlighting",
   ];
 
   // Camera types for testing
   const cameraTypes = [
-    'wide shot',
-    'close up',
-    'medium shot',
-    'aerial view',
-    'low angle',
-    'high angle',
-    'pov',
-    'tracking shot',
+    "wide shot",
+    "close up",
+    "medium shot",
+    "aerial view",
+    "low angle",
+    "high angle",
+    "pov",
+    "tracking shot",
   ];
 
   // Camera movements for testing
   const cameraMovements = [
-    'pan left',
-    'pan right',
-    'tilt up',
-    'tilt down',
-    'dolly in',
-    'zoom out',
-    'tracking',
-    'static',
-    'orbit',
+    "pan left",
+    "pan right",
+    "tilt up",
+    "tilt down",
+    "dolly in",
+    "zoom out",
+    "tracking",
+    "static",
+    "orbit",
   ];
 
   // Lighting keywords for testing
   const lightingKeywords = [
-    'natural light',
-    'golden hour',
-    'dramatic lighting',
-    'soft lighting',
-    'backlit',
-    'neon',
-    'volumetric lighting',
+    "natural light",
+    "golden hour",
+    "dramatic lighting",
+    "soft lighting",
+    "backlit",
+    "neon",
+    "volumetric lighting",
   ];
 
   // Weather keywords for testing
   const weatherKeywords = [
-    'sunny',
-    'cloudy',
-    'rainy',
-    'snowy',
-    'foggy',
-    'stormy',
+    "sunny",
+    "cloudy",
+    "rainy",
+    "snowy",
+    "foggy",
+    "stormy",
   ];
 
   // Style presets for testing
   const stylePresets = [
-    'cinematic',
-    'documentary',
-    'commercial',
-    'anime',
-    'realistic',
-    'noir',
-    'sci-fi',
+    "cinematic",
+    "documentary",
+    "commercial",
+    "anime",
+    "realistic",
+    "noir",
+    "sci-fi",
   ];
 
   /**
@@ -106,26 +109,23 @@ describe('VeoStrategy Property Tests', () => {
    * **Feature: video-model-optimization, Property 5: Veo Prose Output**
    * **Validates: Requirements 7.2, 7.3, 7.5**
    */
-  describe('Property 5: Veo Cinematic Prose Output', () => {
-    it('produces prose string output for any prompt', async () => {
+  describe("Property 5: Veo Cinematic Prose Output", () => {
+    it("produces prose string output for any prompt", async () => {
       await fc.assert(
-        fc.asyncProperty(
-          fc.constantFrom(...samplePrompts),
-          async (prompt) => {
-            const normalized = strategy.normalize(prompt);
-            const result = await strategy.transform(normalized);
+        fc.asyncProperty(fc.constantFrom(...samplePrompts), async (prompt) => {
+          const normalized = strategy.normalize(prompt);
+          const result = await strategy.transform(normalized);
 
-            // Result should be a string (prose, not JSON schema)
-            expect(typeof result.prompt).toBe('string');
-            const prose = result.prompt as string;
-            expect(prose.length).toBeGreaterThan(0);
-          }
-        ),
-        { numRuns: 100 }
+          // Result should be a string (prose, not JSON schema)
+          expect(typeof result.prompt).toBe("string");
+          const prose = result.prompt as string;
+          expect(prose.length).toBeGreaterThan(0);
+        }),
+        { numRuns: 100 },
       );
     });
 
-    it('includes camera references in prose output', async () => {
+    it("includes camera references in prose output", async () => {
       await fc.assert(
         fc.asyncProperty(
           fc.constantFrom(...cameraTypes),
@@ -138,17 +138,17 @@ describe('VeoStrategy Property Tests', () => {
             const prose = result.prompt as string;
             // Should contain camera-related terms
             expect(
-              prose.toLowerCase().includes('shot') ||
-              prose.toLowerCase().includes('camera') ||
-              prose.toLowerCase().includes('angle')
+              prose.toLowerCase().includes("shot") ||
+                prose.toLowerCase().includes("camera") ||
+                prose.toLowerCase().includes("angle"),
             ).toBe(true);
-          }
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
 
-    it('includes movement references in prose output', async () => {
+    it("includes movement references in prose output", async () => {
       await fc.assert(
         fc.asyncProperty(
           fc.constantFrom(...cameraMovements),
@@ -161,20 +161,20 @@ describe('VeoStrategy Property Tests', () => {
             const prose = result.prompt as string;
             // Should contain movement-related terms
             expect(
-              prose.toLowerCase().includes('movement') ||
-              prose.toLowerCase().includes('camera') ||
-              prose.toLowerCase().includes('static') ||
-              prose.toLowerCase().includes('pan') ||
-              prose.toLowerCase().includes('dolly') ||
-              prose.toLowerCase().includes('tracking')
+              prose.toLowerCase().includes("movement") ||
+                prose.toLowerCase().includes("camera") ||
+                prose.toLowerCase().includes("static") ||
+                prose.toLowerCase().includes("pan") ||
+                prose.toLowerCase().includes("dolly") ||
+                prose.toLowerCase().includes("tracking"),
             ).toBe(true);
-          }
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
 
-    it('includes lighting references in prose output', async () => {
+    it("includes lighting references in prose output", async () => {
       await fc.assert(
         fc.asyncProperty(
           fc.constantFrom(...lightingKeywords),
@@ -187,17 +187,17 @@ describe('VeoStrategy Property Tests', () => {
             const prose = result.prompt as string;
             // Should contain lighting-related terms
             expect(
-              prose.toLowerCase().includes('lit') ||
-              prose.toLowerCase().includes('light') ||
-              prose.toLowerCase().includes('backlit')
+              prose.toLowerCase().includes("lit") ||
+                prose.toLowerCase().includes("light") ||
+                prose.toLowerCase().includes("backlit"),
             ).toBe(true);
-          }
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
 
-    it('includes weather references when detected in prose', async () => {
+    it("includes weather references when detected in prose", async () => {
       await fc.assert(
         fc.asyncProperty(
           fc.constantFrom(...weatherKeywords),
@@ -209,15 +209,15 @@ describe('VeoStrategy Property Tests', () => {
 
             const prose = result.prompt as string;
             // Should be a string
-            expect(typeof prose).toBe('string');
+            expect(typeof prose).toBe("string");
             expect(prose.length).toBeGreaterThan(0);
-          }
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
 
-    it('isValidSchema correctly validates schema structure', async () => {
+    it("isValidSchema correctly validates schema structure", async () => {
       // Note: isValidSchema expects VeoPromptSchema (JSON), not prose strings.
       // This test validates that the method correctly rejects strings.
       fc.assert(
@@ -225,57 +225,54 @@ describe('VeoStrategy Property Tests', () => {
           fc.string({ minLength: 1, maxLength: 100 }),
           (anyString) => {
             expect(strategy.isValidSchema(anyString)).toBe(false);
-          }
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
 
-    it('isValidSchema rejects invalid schemas', () => {
+    it("isValidSchema rejects invalid schemas", () => {
       fc.assert(
         fc.property(
           fc.oneof(
             fc.constant(null),
             fc.constant(undefined),
-            fc.constant('string'),
+            fc.constant("string"),
             fc.constant(123),
             fc.constant({}),
             fc.constant({ subject: {} }),
-            fc.constant({ subject: { description: 'test' } }),
-            fc.constant({ subject: { description: 'test', action: 'test' } }),
+            fc.constant({ subject: { description: "test" } }),
+            fc.constant({ subject: { description: "test", action: "test" } }),
             fc.constant({
-              subject: { description: 'test', action: 'test' },
-              camera: {}
+              subject: { description: "test", action: "test" },
+              camera: {},
             }),
           ),
           (invalidSchema) => {
             expect(strategy.isValidSchema(invalidSchema)).toBe(false);
-          }
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
 
-    it('augment enhances prose with style references', async () => {
+    it("augment enhances prose with style references", async () => {
       await fc.assert(
-        fc.asyncProperty(
-          fc.constantFrom(...samplePrompts),
-          async (prompt) => {
-            const normalized = strategy.normalize(prompt);
-            const transformResult = await strategy.transform(normalized);
-            const augmentResult = strategy.augment(transformResult);
+        fc.asyncProperty(fc.constantFrom(...samplePrompts), async (prompt) => {
+          const normalized = strategy.normalize(prompt);
+          const transformResult = await strategy.transform(normalized);
+          const augmentResult = strategy.augment(transformResult);
 
-            // Result should be string prose
-            expect(typeof augmentResult.prompt).toBe('string');
-            const prose = augmentResult.prompt as string;
-            expect(prose.length).toBeGreaterThan(0);
-          }
-        ),
-        { numRuns: 100 }
+          // Result should be string prose
+          expect(typeof augmentResult.prompt).toBe("string");
+          const prose = augmentResult.prompt as string;
+          expect(prose.length).toBeGreaterThan(0);
+        }),
+        { numRuns: 100 },
       );
     });
 
-    it('detects and incorporates style presets in prose', async () => {
+    it("detects and incorporates style presets in prose", async () => {
       await fc.assert(
         fc.asyncProperty(
           fc.constantFrom(...stylePresets),
@@ -288,39 +285,36 @@ describe('VeoStrategy Property Tests', () => {
 
             const prose = augmentResult.prompt as string;
             // Should be prose string containing some style reference
-            expect(typeof prose).toBe('string');
+            expect(typeof prose).toBe("string");
             expect(prose.length).toBeGreaterThan(0);
-          }
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
 
-    it('augmentation maintains readable prose structure', async () => {
+    it("augmentation maintains readable prose structure", async () => {
       await fc.assert(
-        fc.asyncProperty(
-          fc.constantFrom(...samplePrompts),
-          async (prompt) => {
-            const normalized = strategy.normalize(prompt);
-            const transformResult = await strategy.transform(normalized);
-            const augmentResult = strategy.augment(transformResult);
+        fc.asyncProperty(fc.constantFrom(...samplePrompts), async (prompt) => {
+          const normalized = strategy.normalize(prompt);
+          const transformResult = await strategy.transform(normalized);
+          const augmentResult = strategy.augment(transformResult);
 
-            const prose = augmentResult.prompt as string;
+          const prose = augmentResult.prompt as string;
 
-            // Should contain key cinematic descriptors
-            expect(
-              prose.toLowerCase().includes('shot') ||
-              prose.toLowerCase().includes('camera') ||
-              prose.toLowerCase().includes('lit') ||
-              prose.toLowerCase().includes('light')
-            ).toBe(true);
-          }
-        ),
-        { numRuns: 100 }
+          // Should contain key cinematic descriptors
+          expect(
+            prose.toLowerCase().includes("shot") ||
+              prose.toLowerCase().includes("camera") ||
+              prose.toLowerCase().includes("lit") ||
+              prose.toLowerCase().includes("light"),
+          ).toBe(true);
+        }),
+        { numRuns: 100 },
       );
     });
 
-    it('handles random text inputs gracefully', async () => {
+    it("handles random text inputs gracefully", async () => {
       await fc.assert(
         fc.asyncProperty(
           fc.string({ minLength: 10, maxLength: 100 }),
@@ -336,111 +330,108 @@ describe('VeoStrategy Property Tests', () => {
             const result = await strategy.transform(normalized);
 
             // Should produce prose string output
-            expect(typeof result.prompt).toBe('string');
+            expect(typeof result.prompt).toBe("string");
             const prose = result.prompt as string;
             expect(prose.length).toBeGreaterThan(0);
-          }
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
   });
 
-  describe('Normalization: Markdown and Filler Stripping', () => {
-    it('strips markdown formatting', () => {
+  describe("Normalization: Markdown and Filler Stripping", () => {
+    it("strips markdown formatting", () => {
       fc.assert(
         fc.property(
           fc.constantFrom(
-            '# Header text',
-            '**bold text**',
-            '*italic text*',
-            '`code text`',
-            '[link](url)',
-            '- list item',
-            '1. numbered item',
-            '> blockquote',
+            "# Header text",
+            "**bold text**",
+            "*italic text*",
+            "`code text`",
+            "[link](url)",
+            "- list item",
+            "1. numbered item",
+            "> blockquote",
           ),
           (markdownText) => {
             const result = strategy.normalize(markdownText);
 
             // Markdown syntax should be stripped
-            expect(result).not.toContain('#');
-            expect(result).not.toContain('**');
-            expect(result).not.toContain('`');
-            expect(result).not.toContain('[');
-            expect(result).not.toContain('](');
-          }
+            expect(result).not.toContain("#");
+            expect(result).not.toContain("**");
+            expect(result).not.toContain("`");
+            expect(result).not.toContain("[");
+            expect(result).not.toContain("](");
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
 
-    it('strips conversational filler', () => {
+    it("strips conversational filler", () => {
       fc.assert(
         fc.property(
           fc.constantFrom(
-            'I want a video of a cat',
-            'Please create a scene with a dog',
-            'Can you make a video of birds',
-            'I would like to see a sunset',
-            'Could you generate a forest scene',
+            "I want a video of a cat",
+            "Please create a scene with a dog",
+            "Can you make a video of birds",
+            "I would like to see a sunset",
+            "Could you generate a forest scene",
           ),
           (fillerText) => {
             const result = strategy.normalize(fillerText);
 
             // Conversational filler should be stripped
-            expect(result.toLowerCase()).not.toContain('i want');
-            expect(result.toLowerCase()).not.toContain('please create');
-            expect(result.toLowerCase()).not.toContain('can you');
-            expect(result.toLowerCase()).not.toContain('i would like');
-            expect(result.toLowerCase()).not.toContain('could you');
-          }
+            expect(result.toLowerCase()).not.toContain("i want");
+            expect(result.toLowerCase()).not.toContain("please create");
+            expect(result.toLowerCase()).not.toContain("can you");
+            expect(result.toLowerCase()).not.toContain("i would like");
+            expect(result.toLowerCase()).not.toContain("could you");
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
   });
 
-  describe('Flow Editing Mode', () => {
-    it('detects edit instructions and produces prose output', async () => {
+  describe("Flow Editing Mode", () => {
+    it("detects edit instructions and produces prose output", async () => {
       await fc.assert(
         fc.asyncProperty(
           fc.constantFrom(
-            'Remove the car from the scene',
-            'Delete the background',
-            'Add a tree to the left',
-            'Change the color to blue',
-            'Replace the sky with sunset',
+            "Remove the car from the scene",
+            "Delete the background",
+            "Add a tree to the left",
+            "Change the color to blue",
+            "Replace the sky with sunset",
           ),
           async (editInstruction) => {
             const normalized = strategy.normalize(editInstruction);
             const result = await strategy.transform(normalized);
 
             // Should produce prose string output
-            expect(typeof result.prompt).toBe('string');
+            expect(typeof result.prompt).toBe("string");
             const prose = result.prompt as string;
             expect(prose.length).toBeGreaterThan(0);
-          }
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
 
-    it('preserves generation for non-edit prompts with prose output', async () => {
+    it("preserves generation for non-edit prompts with prose output", async () => {
       await fc.assert(
-        fc.asyncProperty(
-          fc.constantFrom(...samplePrompts),
-          async (prompt) => {
-            const normalized = strategy.normalize(prompt);
-            const result = await strategy.transform(normalized);
+        fc.asyncProperty(fc.constantFrom(...samplePrompts), async (prompt) => {
+          const normalized = strategy.normalize(prompt);
+          const result = await strategy.transform(normalized);
 
-            // Should produce prose string output
-            expect(typeof result.prompt).toBe('string');
-            const prose = result.prompt as string;
-            expect(prose.length).toBeGreaterThan(0);
-          }
-        ),
-        { numRuns: 100 }
+          // Should produce prose string output
+          expect(typeof result.prompt).toBe("string");
+          const prose = result.prompt as string;
+          expect(prose.length).toBeGreaterThan(0);
+        }),
+        { numRuns: 100 },
       );
     });
   });

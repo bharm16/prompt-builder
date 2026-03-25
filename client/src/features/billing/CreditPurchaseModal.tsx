@@ -1,14 +1,14 @@
-import { useState } from 'react';
-import { createCheckoutSession } from '@/features/billing/api/billingApi';
-import { Button } from '@promptstudio/system/components/ui/button';
-import { logger } from '../../services/LoggingService';
-import { sanitizeError } from '../../utils/logging';
-import { SUBSCRIPTION_TIERS } from './subscriptionTiers';
-import { CREDIT_PACKS } from './creditPacks';
+import { useState } from "react";
+import { createCheckoutSession } from "@/features/billing/api/billingApi";
+import { Button } from "@promptstudio/system/components/ui/button";
+import { logger } from "../../services/LoggingService";
+import { sanitizeError } from "../../utils/logging";
+import { SUBSCRIPTION_TIERS } from "./subscriptionTiers";
+import { CREDIT_PACKS } from "./creditPacks";
 
 export const CreditPurchaseModal = () => {
   const [loading, setLoading] = useState<string | null>(null);
-  const log = logger.child('CreditPurchaseModal');
+  const log = logger.child("CreditPurchaseModal");
 
   const handlePurchase = async (priceId: string): Promise<void> => {
     setLoading(priceId);
@@ -16,13 +16,16 @@ export const CreditPurchaseModal = () => {
       const { url: redirectUrl } = await createCheckoutSession(priceId);
 
       if (!redirectUrl) {
-        throw new Error('Missing checkout URL');
+        throw new Error("Missing checkout URL");
       }
 
       window.location.href = redirectUrl;
     } catch (error) {
-      const err = error instanceof Error ? error : new Error(sanitizeError(error).message);
-      log.error('Checkout failed', err, { operation: 'checkout', priceId });
+      const err =
+        error instanceof Error
+          ? error
+          : new Error(sanitizeError(error).message);
+      log.error("Checkout failed", err, { operation: "checkout", priceId });
       setLoading(null);
     }
   };
@@ -45,7 +48,9 @@ export const CreditPurchaseModal = () => {
               <p className="mt-1 text-gray-500 font-medium">
                 {tier.creditsPerMonth.toLocaleString()} Credits
               </p>
-              <p className="mt-2 text-sm text-gray-400 flex-grow">{tier.description}</p>
+              <p className="mt-2 text-sm text-gray-400 flex-grow">
+                {tier.description}
+              </p>
 
               <Button
                 onClick={() => handlePurchase(tier.priceId)}
@@ -72,7 +77,9 @@ export const CreditPurchaseModal = () => {
               <p className="mt-1 text-gray-500 font-medium">
                 {pack.credits.toLocaleString()} Credits
               </p>
-              <p className="mt-2 text-sm text-gray-400 flex-grow">{pack.description}</p>
+              <p className="mt-2 text-sm text-gray-400 flex-grow">
+                {pack.description}
+              </p>
 
               <Button
                 onClick={() => handlePurchase(pack.priceId)}

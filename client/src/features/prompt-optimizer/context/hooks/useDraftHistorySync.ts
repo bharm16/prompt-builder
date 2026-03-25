@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useRef } from 'react';
-import type { CapabilityValues } from '@shared/capabilities';
-import type { PromptHistory, PromptOptimizer } from '../types';
-import { debounce } from '../../utils/debounce';
+import { useEffect, useMemo, useRef } from "react";
+import type { CapabilityValues } from "@shared/capabilities";
+import type { PromptHistory, PromptOptimizer } from "../types";
+import { debounce } from "../../utils/debounce";
 
 interface UseDraftHistorySyncOptions {
   currentPromptUuid: string | null;
@@ -13,11 +13,11 @@ interface UseDraftHistorySyncOptions {
 }
 
 const isObject = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null;
+  typeof value === "object" && value !== null;
 
 const areParamsEqual = (
   a: Record<string, unknown> | null | undefined,
-  b: Record<string, unknown> | null | undefined
+  b: Record<string, unknown> | null | undefined,
 ): boolean => {
   if (Object.is(a, b)) return true;
   if (!a || !b) return false;
@@ -56,6 +56,19 @@ const areParamsEqual = (
   return true;
 };
 
+const hasInFlightGeneration = (
+  historyEntry: PromptHistory["history"][number] | undefined,
+): boolean =>
+  Array.isArray(historyEntry?.versions) &&
+  historyEntry.versions.some(
+    (version) =>
+      Array.isArray(version.generations) &&
+      version.generations.some(
+        (generation) =>
+          generation.status === "pending" || generation.status === "generating",
+      ),
+  );
+
 export const useDraftHistorySync = ({
   currentPromptUuid,
   currentPromptDocId,
@@ -75,7 +88,7 @@ export const useDraftHistorySync = ({
           docId: string | null,
           input: string,
           targetModel: string | null,
-          params: CapabilityValues
+          params: CapabilityValues,
         ) => {
           updateEntryPersistedRef.current(uuid, docId, {
             input,
@@ -83,27 +96,31 @@ export const useDraftHistorySync = ({
             generationParams: params,
           });
         },
-        1000 // 1 second debounce
+        1000, // 1 second debounce
       ),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- callback accessed via stable ref
-    []
+    [],
   );
 
   useEffect(() => {
     if (!currentPromptUuid) return;
-    
+
     // Only sync if it's a draft (no output)
     const entry = history.find((item) => item.uuid === currentPromptUuid);
     if (!entry) return;
-    
+
     const isDraft = !entry.output || !entry.output.trim();
     if (!isDraft) return;
+    if (hasInFlightGeneration(entry)) return;
 
     const normalizedModel = selectedModel?.trim() ? selectedModel.trim() : null;
     const normalizedParams = generationParams ?? null;
     const hasInputChange = entry.input !== promptOptimizer.inputPrompt;
     const hasModelChange = (entry.targetModel ?? null) !== normalizedModel;
-    const hasParamsChange = !areParamsEqual(entry.generationParams ?? null, normalizedParams);
+    const hasParamsChange = !areParamsEqual(
+      entry.generationParams ?? null,
+      normalizedParams,
+    );
     if (!hasInputChange && !hasModelChange && !hasParamsChange) return;
 
     debouncedSave(
@@ -111,7 +128,7 @@ export const useDraftHistorySync = ({
       currentPromptDocId,
       promptOptimizer.inputPrompt,
       normalizedModel,
-      normalizedParams
+      normalizedParams,
     );
 
     return () => {

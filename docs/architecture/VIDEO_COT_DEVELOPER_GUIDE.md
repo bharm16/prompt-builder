@@ -24,19 +24,22 @@ The video prompt optimization now uses **Chain-of-Thought reasoning** to analyze
 ## How It Works
 
 ### 1. User Input
+
 ```javascript
-prompt: "A cat jumping over a fence"
+prompt: "A cat jumping over a fence";
 ```
 
 ### 2. CoT Template Forces Analysis
 
 **STEP 1: INTERNAL CINEMATOGRAPHIC ANALYSIS**
+
 - Subject Scale: Detail/intimacy (cat)
 - Motion: Dynamic (jumping)
 - Emotional Tone: Speed/Action
 - **Selected Shot:** Tracking shot
 
 **STEP 2: GENERATE COMPONENTS**
+
 - Main prompt paragraph
 - Technical specs
 - Variations
@@ -79,31 +82,34 @@ No changes needed! The output looks identical to the old system.
 
 ## Shot Type Variety Examples
 
-| Concept | Subject Scale | Motion | Tone | Selected Shot |
-|---------|--------------|--------|------|---------------|
-| Teardrop on cheek | Detail | Slow | Intimacy | Extreme close-up |
-| Grand Canyon | Landscape | Static | Epic | Wide shot / Aerial |
-| Child vs. skyscraper | Mixed | Static | Power | Low angle |
-| Elderly person alone | Human | Static | Vulnerable | High angle |
-| Race car in tunnel | Vehicle | Fast | Speed | Tracking shot |
-| Hand opening letter | Detail | Slow | Intimacy | Close-up |
-| Surreal dreamscape | Abstract | Floating | Disorienting | Dutch angle |
-| Mountain horizon | Landscape | Static | Epic | Bird's eye view |
+| Concept              | Subject Scale | Motion   | Tone         | Selected Shot      |
+| -------------------- | ------------- | -------- | ------------ | ------------------ |
+| Teardrop on cheek    | Detail        | Slow     | Intimacy     | Extreme close-up   |
+| Grand Canyon         | Landscape     | Static   | Epic         | Wide shot / Aerial |
+| Child vs. skyscraper | Mixed         | Static   | Power        | Low angle          |
+| Elderly person alone | Human         | Static   | Vulnerable   | High angle         |
+| Race car in tunnel   | Vehicle       | Fast     | Speed        | Tracking shot      |
+| Hand opening letter  | Detail        | Slow     | Intimacy     | Close-up           |
+| Surreal dreamscape   | Abstract      | Floating | Disorienting | Dutch angle        |
+| Mountain horizon     | Landscape     | Static   | Epic         | Bird's eye view    |
 
 ## Benefits
 
 ### For Users
+
 - ✅ More diverse, appropriate shot selections
 - ✅ Better prompt quality through explicit analysis
 - ✅ No visible changes (backward compatible)
 
 ### For Developers
+
 - ✅ Structured data for future UI enhancements
 - ✅ Reasoning logged for debugging
 - ✅ Robust JSON parsing with retries
 - ✅ Well-tested (51 tests passing)
 
 ### For Product
+
 - ✅ Reduces mode collapse (generic outputs)
 - ✅ Demonstrates sophisticated AI reasoning
 - ✅ Enables analytics on shot type distribution
@@ -112,20 +118,24 @@ No changes needed! The output looks identical to the old system.
 ## Debugging
 
 ### Check Logs
+
 ```javascript
-logger.info('Video optimization complete with CoT reasoning', {
+logger.info("Video optimization complete with CoT reasoning", {
   shotType: parsedResponse.shot_type,
   reasoning: parsedResponse._hidden_reasoning,
 });
 ```
 
 ### Verify JSON Structure
+
 If you see JSON parsing errors, check:
+
 1. Template has correct JSON example
 2. StructuredOutputEnforcer is being used
 3. Schema validation includes all required fields
 
 ### Test Template Output
+
 ```bash
 node tests/manual/video-cot-shot-diversity.js
 ```
@@ -133,27 +143,31 @@ node tests/manual/video-cot-shot-diversity.js
 ## Future Enhancements
 
 ### 1. Display Shot Type in UI
+
 ```jsx
 <Badge>{response.shot_type}</Badge>
 <Tooltip>{response._hidden_reasoning}</Tooltip>
 ```
 
 ### 2. Track Shot Distribution
+
 ```javascript
-analytics.track('shot_type_selected', {
+analytics.track("shot_type_selected", {
   shot_type: parsedResponse.shot_type,
-  concept_category: analyzeConceptCategory(userConcept)
+  concept_category: analyzeConceptCategory(userConcept),
 });
 ```
 
 ### 3. A/B Test Shot Selections
+
 ```javascript
-if (experimentGroup === 'alternative_logic') {
+if (experimentGroup === "alternative_logic") {
   // Test different shot selection mappings
 }
 ```
 
 ### 4. Allow Manual Shot Override
+
 ```jsx
 <select value={shotType} onChange={handleShotChange}>
   <option>Auto (AI Selected)</option>
@@ -177,30 +191,36 @@ No database migrations or frontend changes needed.
 ## Performance Considerations
 
 ### Latency
+
 - **Added:** ~100-200ms for JSON parsing and reassembly
 - **Mitigated:** StructuredOutputEnforcer caches prompt enhancements
 
 ### Token Usage
+
 - **Added:** ~50-100 tokens for `_hidden_reasoning` field
 - **Value:** Significantly improves output quality (worth the cost)
 
 ### Error Rate
+
 - **Improved:** StructuredOutputEnforcer retries reduce failures
 - **Monitoring:** Track parsing failures in logs
 
 ## Testing
 
 ### Run All Tests
+
 ```bash
 npm test -- tests/unit/client/services/VideoPromptTemplates.test.js tests/unit/server/services/VideoStrategy.test.js
 ```
 
 ### Run Manual Diversity Test
+
 ```bash
 node tests/manual/video-cot-shot-diversity.js
 ```
 
 ### Test with Real AI
+
 ```bash
 # If you have a manual test script for actual AI calls
 node tests/manual/prompt-optimization/test-video-strategy.js
@@ -216,6 +236,7 @@ node tests/manual/prompt-optimization/test-video-strategy.js
 ## Summary
 
 This implementation is:
+
 - ✅ **Production-ready:** All tests passing, no linting errors
 - ✅ **Backward compatible:** No breaking changes
 - ✅ **Well-documented:** Tests, comments, and guides
@@ -223,4 +244,3 @@ This implementation is:
 - ✅ **Monitored:** Logs reasoning and shot types
 
 The AI now "thinks" about shot selection before generating prompts, resulting in dynamic variety and higher quality outputs.
-

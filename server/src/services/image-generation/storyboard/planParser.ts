@@ -1,7 +1,7 @@
-import { z } from 'zod';
-import { extractAndParse } from '@utils/JsonExtractor';
+import { z } from "zod";
+import { extractAndParse } from "@utils/JsonExtractor";
 
-type DeltaSource = 'plan' | 'array' | 'lines';
+type DeltaSource = "plan" | "array" | "lines";
 
 const STORYBOARD_DELTAS_SCHEMA = z.array(z.string());
 const STORYBOARD_PLAN_SCHEMA = z.object({
@@ -31,20 +31,20 @@ export type StoryboardDeltasParseResult =
 
 const splitDeltaLines = (text: string): string[] =>
   text
-    .replace(/\\n/g, '\n')
+    .replace(/\\n/g, "\n")
     .split(/\r?\n/)
-    .map((line) => line.replace(/^\s*(?:-|\*|\d+\.)\s*/g, '').trim())
+    .map((line) => line.replace(/^\s*(?:-|\*|\d+\.)\s*/g, "").trim())
     .filter((line) => line.length > 0);
 
 const normalizeDeltas = (raw: unknown): string[] => {
   if (Array.isArray(raw)) {
     return raw
-      .map((delta) => (typeof delta === 'string' ? delta : ''))
+      .map((delta) => (typeof delta === "string" ? delta : ""))
       .map((delta) => delta.trim())
       .filter((delta) => delta.length > 0);
   }
 
-  if (typeof raw === 'string') {
+  if (typeof raw === "string") {
     return splitDeltaLines(raw);
   }
 
@@ -58,7 +58,7 @@ const tryParsePlanObject = (responseText: string): string[] | null => {
     if (validated.success) {
       return normalizeDeltas(validated.data.deltas);
     }
-    if (parsed && typeof parsed === 'object' && 'deltas' in parsed) {
+    if (parsed && typeof parsed === "object" && "deltas" in parsed) {
       return normalizeDeltas((parsed as { deltas?: unknown }).deltas);
     }
   } catch {
@@ -83,9 +83,14 @@ const tryParseDeltasArray = (responseText: string): string[] | null => {
   return null;
 };
 
-const tryParseLines = (responseText: string, allowSingleLine: boolean): string[] | null => {
+const tryParseLines = (
+  responseText: string,
+  allowSingleLine: boolean,
+): string[] | null => {
   const rawLines = responseText.split(/\r?\n/);
-  const hasListMarkers = rawLines.some((line) => /^\s*(?:-|\*|\d+\.)\s+/.test(line));
+  const hasListMarkers = rawLines.some((line) =>
+    /^\s*(?:-|\*|\d+\.)\s+/.test(line),
+  );
   const lines = splitDeltaLines(responseText);
   if (lines.length === 0) {
     return null;
@@ -97,28 +102,33 @@ const tryParseLines = (responseText: string, allowSingleLine: boolean): string[]
   return deltas.length > 0 ? deltas : null;
 };
 
-const collectCandidates = (responseText: string, allowSingleLine: boolean): DeltaCandidate[] => {
+const collectCandidates = (
+  responseText: string,
+  allowSingleLine: boolean,
+): DeltaCandidate[] => {
   const candidates: DeltaCandidate[] = [];
 
   const planObject = tryParsePlanObject(responseText);
   if (planObject) {
-    candidates.push({ source: 'plan', deltas: planObject });
+    candidates.push({ source: "plan", deltas: planObject });
   }
 
   const arrayDeltas = tryParseDeltasArray(responseText);
   if (arrayDeltas) {
-    candidates.push({ source: 'array', deltas: arrayDeltas });
+    candidates.push({ source: "array", deltas: arrayDeltas });
   }
 
   const lineDeltas = tryParseLines(responseText, allowSingleLine);
   if (lineDeltas) {
-    candidates.push({ source: 'lines', deltas: lineDeltas });
+    candidates.push({ source: "lines", deltas: lineDeltas });
   }
 
   return candidates;
 };
 
-const pickBestCandidate = (candidates: DeltaCandidate[]): DeltaCandidate | null => {
+const pickBestCandidate = (
+  candidates: DeltaCandidate[],
+): DeltaCandidate | null => {
   const firstCandidate = candidates[0];
   if (!firstCandidate) {
     return null;
@@ -133,10 +143,12 @@ const pickBestCandidate = (candidates: DeltaCandidate[]): DeltaCandidate | null 
 
 export const parseStoryboardDeltas = (
   responseText: string,
-  expectedCount: number
+  expectedCount: number,
 ): StoryboardDeltasParseResult => {
   const candidates = collectCandidates(responseText, expectedCount <= 1);
-  const match = candidates.find((candidate) => candidate.deltas.length >= expectedCount);
+  const match = candidates.find(
+    (candidate) => candidate.deltas.length >= expectedCount,
+  );
   if (!match) {
     const best = pickBestCandidate(candidates);
     return {

@@ -1,9 +1,12 @@
-import type { Asset } from '@shared/types/asset';
-import type { DraftModel, GenerationOverrides } from '@components/ToolSidebar/types';
+import type { Asset } from "@shared/types/asset";
+import type {
+  DraftModel,
+  GenerationOverrides,
+} from "@components/ToolSidebar/types";
 export type {
   GenerationControlsTab,
   ImageSubTab,
-} from '@features/generation-controls/context/generationControlsStoreTypes';
+} from "@features/generation-controls/context/generationControlsStoreTypes";
 
 export interface GenerationControlsPanelProps {
   isProcessing?: boolean;
@@ -21,4 +24,5 @@ export interface GenerationControlsPanelProps {
   onStoryboard: () => void;
 }
 
-export type GenerationControlsPanelInputProps = Partial<GenerationControlsPanelProps>;
+export type GenerationControlsPanelInputProps =
+  Partial<GenerationControlsPanelProps>;

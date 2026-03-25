@@ -1,8 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react';
-import type { KeyframeTile } from '@components/ToolSidebar/types';
-import type { PromptKeyframe } from '@features/prompt-optimizer/types/domain/prompt-session';
-import type { PromptHistory } from '../../context/types';
-import { areKeyframesEqual, hydrateKeyframes, serializeKeyframes } from '../../utils/keyframeTransforms';
+import { useCallback, useEffect, useMemo, useRef } from "react";
+import type { KeyframeTile } from "@components/ToolSidebar/types";
+import type { PromptKeyframe } from "@features/prompt-optimizer/types/domain/prompt-session";
+import type { PromptHistory } from "../../context/types";
+import {
+  areKeyframesEqual,
+  hydrateKeyframes,
+  serializeKeyframes,
+} from "../../utils/keyframeTransforms";
 
 type UsePromptKeyframesSyncParams = {
   keyframes: KeyframeTile[];
@@ -14,7 +18,7 @@ type UsePromptKeyframesSyncParams = {
   currentPromptUuid: string | null | undefined;
   currentPromptDocId: string | null | undefined;
   isLoadingHistory: boolean;
-  promptHistory: Pick<PromptHistory, 'history' | 'updateEntryPersisted'>;
+  promptHistory: Pick<PromptHistory, "history" | "updateEntryPersisted">;
 };
 
 export type UsePromptKeyframesSyncResult = {
@@ -36,15 +40,18 @@ export function usePromptKeyframesSync({
 }: UsePromptKeyframesSyncParams): UsePromptKeyframesSyncResult {
   const { history, updateEntryPersisted } = promptHistory;
   const keyframesRef = useRef<KeyframeTile[]>(keyframes);
-  const keyframeSessionRef = useRef<{ uuid: string | null; docId: string | null }>({
+  const keyframeSessionRef = useRef<{
+    uuid: string | null;
+    docId: string | null;
+  }>({
     uuid: currentPromptUuid ?? null,
     docId: currentPromptDocId ?? null,
   });
   const localWritePendingRef = useRef(false);
   const historySyncPendingRef = useRef(false);
   const hasRemoteSession = useMemo(() => {
-    const normalized = currentPromptDocId?.trim() ?? '';
-    return normalized.length > 0 && !normalized.startsWith('draft-');
+    const normalized = currentPromptDocId?.trim() ?? "";
+    return normalized.length > 0 && !normalized.startsWith("draft-");
   }, [currentPromptDocId]);
 
   useEffect(() => {
@@ -84,8 +91,9 @@ export function usePromptKeyframesSync({
       clearExtendVideo();
       return;
     }
-    const normalizedCurrentDocId = currentPromptDocId?.trim() ?? '';
-    const normalizedEntryDocId = typeof entry.id === 'string' ? entry.id.trim() : '';
+    const normalizedCurrentDocId = currentPromptDocId?.trim() ?? "";
+    const normalizedEntryDocId =
+      typeof entry.id === "string" ? entry.id.trim() : "";
     if (
       hasRemoteSession &&
       normalizedCurrentDocId.length > 0 &&
@@ -125,15 +133,17 @@ export function usePromptKeyframesSync({
     const { uuid, docId } = keyframeSessionRef.current;
     if (!uuid) return;
 
-    const normalizedDocId = docId?.trim() ?? '';
-    const isRemoteDocId = normalizedDocId.length > 0 && !normalizedDocId.startsWith('draft-');
+    const normalizedDocId = docId?.trim() ?? "";
+    const isRemoteDocId =
+      normalizedDocId.length > 0 && !normalizedDocId.startsWith("draft-");
     if (isLoadingHistory && isRemoteDocId) {
       return;
     }
 
     const entry = history.find((item) => item.uuid === uuid);
     if (!entry) return;
-    const normalizedEntryDocId = typeof entry.id === 'string' ? entry.id.trim() : '';
+    const normalizedEntryDocId =
+      typeof entry.id === "string" ? entry.id.trim() : "";
     if (
       isRemoteDocId &&
       normalizedEntryDocId.length > 0 &&
@@ -151,7 +161,10 @@ export function usePromptKeyframesSync({
     updateEntryPersisted(uuid, docId, { keyframes: serialized });
   }, [keyframes, history, isLoadingHistory, updateEntryPersisted]);
 
-  const serializedKeyframes = useMemo(() => serializeKeyframes(keyframes), [keyframes]);
+  const serializedKeyframes = useMemo(
+    () => serializeKeyframes(keyframes),
+    [keyframes],
+  );
 
   const onLoadKeyframes = useCallback(
     (stored: PromptKeyframe[] | null | undefined) => {
@@ -168,7 +181,7 @@ export function usePromptKeyframesSync({
       clearVideoReferences,
       setKeyframes,
       setStartFrame,
-    ]
+    ],
   );
 
   return { serializedKeyframes, onLoadKeyframes };

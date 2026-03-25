@@ -5,14 +5,17 @@
  * Following VideoConceptBuilder pattern: components/ElementCard.tsx
  */
 
-import { useState, useCallback } from 'react';
-import { renderCompatibilityBadge, normalizeSuggestion } from '../utils/suggestionHelpers';
-import { MAX_KEYBOARD_SHORTCUTS } from '../config/panelConfig';
-import { simpleHash } from '@/features/prompt-optimizer/utils/SuggestionCache';
-import { logger } from '@/services/LoggingService';
-import { useToast } from '@/components/Toast';
-import { Button } from '@promptstudio/system/components/ui/button';
-import type { SuggestionItem } from '../hooks/types';
+import { useState, useCallback } from "react";
+import {
+  renderCompatibilityBadge,
+  normalizeSuggestion,
+} from "../utils/suggestionHelpers";
+import { MAX_KEYBOARD_SHORTCUTS } from "../config/panelConfig";
+import { simpleHash } from "@/features/prompt-optimizer/utils/SuggestionCache";
+import { logger } from "@/services/LoggingService";
+import { useToast } from "@/components/Toast";
+import { Button } from "@promptstudio/system/components/ui/button";
+import type { SuggestionItem } from "../hooks/types";
 
 /**
  * Generate deterministic key for a suggestion.
@@ -22,20 +25,25 @@ import type { SuggestionItem } from '../hooks/types';
  * @param index - The index in the list
  * @returns A unique key string
  */
-export function generateSuggestionKey(suggestion: SuggestionItem, index: number): string {
+export function generateSuggestionKey(
+  suggestion: SuggestionItem,
+  index: number,
+): string {
   if (suggestion.id) {
     return suggestion.id;
   }
-  const hash = simpleHash(suggestion.text || '');
+  const hash = simpleHash(suggestion.text || "");
   return `suggestion_${hash}_${index}`;
 }
 
 interface SuggestionsListProps {
   suggestions?: SuggestionItem[];
-  onSuggestionClick?: (suggestion: SuggestionItem | string) => void | Promise<void>;
+  onSuggestionClick?: (
+    suggestion: SuggestionItem | string,
+  ) => void | Promise<void>;
   isPlaceholder?: boolean;
   showCopyAction?: boolean;
-  variant?: 'default' | 'tokenEditor';
+  variant?: "default" | "tokenEditor";
 }
 
 export function SuggestionsList({
@@ -43,11 +51,11 @@ export function SuggestionsList({
   onSuggestionClick = () => {},
   isPlaceholder: _isPlaceholder = false,
   showCopyAction = true,
-  variant = 'default',
+  variant = "default",
 }: SuggestionsListProps): React.ReactElement | null {
   const toast = useToast();
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
-  const log = logger.child('SuggestionsList');
+  const log = logger.child("SuggestionsList");
 
   /**
    * Copy text to clipboard with error handling.
@@ -55,38 +63,51 @@ export function SuggestionsList({
    * Requirement 9.1: Visual feedback on success
    * Requirement 9.2: Handle errors gracefully without crashing
    */
-  const copyToClipboard = useCallback(async (text: string, index: number): Promise<void> => {
-    if (typeof navigator === 'undefined' || !navigator?.clipboard) {
-      log.warn('Clipboard API not available', { component: 'SuggestionsList' });
-      return;
-    }
+  const copyToClipboard = useCallback(
+    async (text: string, index: number): Promise<void> => {
+      if (typeof navigator === "undefined" || !navigator?.clipboard) {
+        log.warn("Clipboard API not available", {
+          component: "SuggestionsList",
+        });
+        return;
+      }
 
-    try {
-      await navigator.clipboard.writeText(text);
-      // Show visual feedback on success
-      setCopiedIndex(index);
-      toast.success('Copied to clipboard!', 1500);
-      // Reset copied state after brief delay
-      setTimeout(() => setCopiedIndex(null), 1500);
-    } catch (error) {
-      // Log warning on failure, don't crash
-      log.warn('Failed to copy to clipboard', {
-        component: 'SuggestionsList',
-        error: error instanceof Error ? error.message : String(error),
-        textLength: text.length,
-      });
-      // Optionally show user-friendly feedback
-      toast.error('Failed to copy', 1500);
-    }
-  }, [log, toast]);
+      try {
+        await navigator.clipboard.writeText(text);
+        // Show visual feedback on success
+        setCopiedIndex(index);
+        toast.success("Copied to clipboard!", 1500);
+        // Reset copied state after brief delay
+        setTimeout(() => setCopiedIndex(null), 1500);
+      } catch (error) {
+        // Log warning on failure, don't crash
+        log.warn("Failed to copy to clipboard", {
+          component: "SuggestionsList",
+          error: error instanceof Error ? error.message : String(error),
+          textLength: text.length,
+        });
+        // Optionally show user-friendly feedback
+        toast.error("Failed to copy", 1500);
+      }
+    },
+    [log, toast],
+  );
 
-  const handleCopy = (text: string, index: number, e: React.MouseEvent): void => {
+  const handleCopy = (
+    text: string,
+    index: number,
+    e: React.MouseEvent,
+  ): void => {
     e.stopPropagation();
     void copyToClipboard(text, index);
   };
 
-  const handleCopyKeyDown = (text: string, index: number, e: React.KeyboardEvent): void => {
-    if (e.key === 'Enter' || e.key === ' ') {
+  const handleCopyKeyDown = (
+    text: string,
+    index: number,
+    e: React.KeyboardEvent,
+  ): void => {
+    if (e.key === "Enter" || e.key === " ") {
       e.stopPropagation();
       e.preventDefault();
       void copyToClipboard(text, index);
@@ -104,7 +125,7 @@ export function SuggestionsList({
     }
   };
 
-  if (variant === 'tokenEditor') {
+  if (variant === "tokenEditor") {
     return (
       <div
         className="flex flex-col gap-1.5"
@@ -114,7 +135,7 @@ export function SuggestionsList({
         {suggestions.map((suggestion, index) => {
           const suggestionObj = normalizeSuggestion(suggestion);
           if (!suggestionObj) return null;
-          const suggestionText = suggestionObj.text || '';
+          const suggestionText = suggestionObj.text || "";
           const key = generateSuggestionKey(suggestionObj, index);
 
           return (
@@ -183,10 +204,10 @@ export function SuggestionsList({
               >
                 {/* Keyboard Shortcut Badge */}
                 {index < MAX_KEYBOARD_SHORTCUTS && (
-                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                     <kbd className="rounded-md border border-border bg-surface-2 px-1.5 py-0.5 text-label-sm font-mono text-muted shadow-sm">
-                       {index + 1}
-                     </kbd>
+                  <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <kbd className="rounded-md border border-border bg-surface-2 px-1.5 py-0.5 text-label-sm font-mono text-muted shadow-sm">
+                      {index + 1}
+                    </kbd>
                   </div>
                 )}
 
@@ -198,7 +219,7 @@ export function SuggestionsList({
                     {suggestionObj?.compatibility !== undefined &&
                       renderCompatibilityBadge(suggestionObj.compatibility)}
                   </div>
-                  
+
                   {suggestionObj?.explanation && (
                     <p className="text-label-12 leading-relaxed text-muted">
                       {suggestionObj.explanation}
@@ -210,19 +231,21 @@ export function SuggestionsList({
               {/* Action Footer - Only shows on hover, outside main button */}
               {showCopyAction && (
                 <div className="mt-3 flex items-center justify-between gap-2 border-t border-border pt-2 opacity-0 transition-opacity group-hover:opacity-100">
-                   <span className="text-label-sm font-medium uppercase tracking-widest text-muted">
-                     Click to Apply
-                   </span>
-                   <Button
-                     type="button"
-                     onClick={(e) => handleCopy(suggestionText, index, e)}
-                     onKeyDown={(e) => handleCopyKeyDown(suggestionText, index, e)}
-                     variant="ghost"
-                     className="rounded px-1 text-label-sm font-medium uppercase tracking-widest text-muted transition-colors hover:text-foreground focus:outline-none focus-visible:ring-1 focus-visible:ring-accent"
-                     aria-label={`Copy suggestion ${index + 1}`}
-                   >
-                     {copiedIndex === index ? 'Copied!' : 'Copy'}
-                   </Button>
+                  <span className="text-label-sm font-medium uppercase tracking-widest text-muted">
+                    Click to Apply
+                  </span>
+                  <Button
+                    type="button"
+                    onClick={(e) => handleCopy(suggestionText, index, e)}
+                    onKeyDown={(e) =>
+                      handleCopyKeyDown(suggestionText, index, e)
+                    }
+                    variant="ghost"
+                    className="rounded px-1 text-label-sm font-medium uppercase tracking-widest text-muted transition-colors hover:text-foreground focus:outline-none focus-visible:ring-1 focus-visible:ring-accent"
+                    aria-label={`Copy suggestion ${index + 1}`}
+                  >
+                    {copiedIndex === index ? "Copied!" : "Copy"}
+                  </Button>
                 </div>
               )}
             </div>

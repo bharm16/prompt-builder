@@ -1,15 +1,15 @@
-import { act, renderHook, waitFor } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { act, renderHook, waitFor } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { mockEstimateDepth } = vi.hoisted(() => ({
   mockEstimateDepth: vi.fn(),
 }));
 
-vi.mock('@features/convergence/api/motionApi', () => ({
+vi.mock("@features/convergence/api/motionApi", () => ({
   estimateDepth: mockEstimateDepth,
 }));
 
-vi.mock('@/services/LoggingService', () => ({
+vi.mock("@/services/LoggingService", () => ({
   logger: {
     child: () => ({
       debug: vi.fn(),
@@ -20,12 +20,12 @@ vi.mock('@/services/LoggingService', () => ({
   },
 }));
 
-import { useCameraMotion } from '../useCameraMotion';
+import { useCameraMotion } from "../useCameraMotion";
 
 const cameraPath = {
-  id: 'orbit-left',
-  label: 'Orbit Left',
-  category: 'orbital' as const,
+  id: "orbit-left",
+  label: "Orbit Left",
+  category: "orbital" as const,
   duration: 4,
   start: {
     position: { x: 0, y: 0, z: 0 },
@@ -37,12 +37,12 @@ const cameraPath = {
   },
 };
 
-describe('useCameraMotion', () => {
+describe("useCameraMotion", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('starts with expected initial reducer state', () => {
+  it("starts with expected initial reducer state", () => {
     const { result } = renderHook(() => useCameraMotion());
 
     expect(result.current.state).toMatchObject({
@@ -53,13 +53,13 @@ describe('useCameraMotion', () => {
       fallbackMode: false,
       hasEstimated: false,
       selectedCameraMotion: null,
-      subjectMotion: '',
+      subjectMotion: "",
     });
   });
 
-  it('handles estimateDepth success transition', async () => {
+  it("handles estimateDepth success transition", async () => {
     mockEstimateDepth.mockResolvedValue({
-      depthMapUrl: 'https://cdn/depth.png',
+      depthMapUrl: "https://cdn/depth.png",
       cameraPaths: [cameraPath],
       fallbackMode: false,
     });
@@ -67,40 +67,40 @@ describe('useCameraMotion', () => {
     const { result } = renderHook(() => useCameraMotion());
 
     await act(async () => {
-      await result.current.actions.estimateDepth('  https://image/input.png  ');
+      await result.current.actions.estimateDepth("  https://image/input.png  ");
     });
 
-    expect(mockEstimateDepth).toHaveBeenCalledWith('https://image/input.png');
+    expect(mockEstimateDepth).toHaveBeenCalledWith("https://image/input.png");
     expect(result.current.state).toMatchObject({
       isEstimatingDepth: false,
       error: null,
-      depthMapUrl: 'https://cdn/depth.png',
+      depthMapUrl: "https://cdn/depth.png",
       cameraPaths: [cameraPath],
       fallbackMode: false,
       hasEstimated: true,
     });
   });
 
-  it('handles estimateDepth failure transition', async () => {
-    mockEstimateDepth.mockRejectedValue(new Error('Depth service unavailable'));
+  it("handles estimateDepth failure transition", async () => {
+    mockEstimateDepth.mockRejectedValue(new Error("Depth service unavailable"));
 
     const { result } = renderHook(() => useCameraMotion());
 
     await act(async () => {
-      await result.current.actions.estimateDepth('https://image/input.png');
+      await result.current.actions.estimateDepth("https://image/input.png");
     });
 
     expect(result.current.state).toMatchObject({
       isEstimatingDepth: false,
-      error: 'Depth service unavailable',
+      error: "Depth service unavailable",
       fallbackMode: true,
       hasEstimated: true,
     });
   });
 
-  it('supports select/clear subject motion and reset actions', async () => {
+  it("supports select/clear subject motion and reset actions", async () => {
     mockEstimateDepth.mockResolvedValue({
-      depthMapUrl: 'https://cdn/depth.png',
+      depthMapUrl: "https://cdn/depth.png",
       cameraPaths: [cameraPath],
       fallbackMode: false,
     });
@@ -108,16 +108,16 @@ describe('useCameraMotion', () => {
     const { result } = renderHook(() => useCameraMotion());
 
     await act(async () => {
-      await result.current.actions.estimateDepth('https://image/input.png');
+      await result.current.actions.estimateDepth("https://image/input.png");
     });
 
     act(() => {
       result.current.actions.selectCameraMotion(cameraPath);
-      result.current.actions.setSubjectMotion('Actor steps forward');
+      result.current.actions.setSubjectMotion("Actor steps forward");
     });
 
     expect(result.current.state.selectedCameraMotion).toEqual(cameraPath);
-    expect(result.current.state.subjectMotion).toBe('Actor steps forward');
+    expect(result.current.state.subjectMotion).toBe("Actor steps forward");
 
     act(() => {
       result.current.actions.clearSelection();
@@ -138,7 +138,7 @@ describe('useCameraMotion', () => {
         fallbackMode: false,
         hasEstimated: false,
         selectedCameraMotion: null,
-        subjectMotion: '',
+        subjectMotion: "",
       });
     });
   });

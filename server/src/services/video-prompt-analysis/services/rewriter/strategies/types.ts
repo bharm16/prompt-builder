@@ -1,5 +1,5 @@
-import type { VideoPromptIR } from '../../../types';
-import type { RewriteConstraints } from '../../../strategies/types';
+import type { VideoPromptIR } from "../../../types";
+import type { RewriteConstraints } from "../../../strategies/types";
 
 export interface PromptBuildContext {
   ir: VideoPromptIR;
@@ -8,8 +8,8 @@ export interface PromptBuildContext {
 }
 
 export type StrategyOutput =
-  | { format: 'text' }
-  | { format: 'structured'; schema: Record<string, unknown> };
+  | { format: "text" }
+  | { format: "structured"; schema: Record<string, unknown> };
 
 export interface ModelPromptStrategy {
   modelId: string;

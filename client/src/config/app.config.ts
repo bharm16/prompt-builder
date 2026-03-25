@@ -4,12 +4,18 @@
  * Centralized configuration for app-wide settings
  */
 
-import { MessageSquare, Lightbulb, Search, GraduationCap, Video } from '@promptstudio/system/components/ui';
-import type { AppIcon } from '@/types';
+import {
+  MessageSquare,
+  Lightbulb,
+  Search,
+  GraduationCap,
+  Video,
+} from "@promptstudio/system/components/ui";
+import type { AppIcon } from "@/types";
 
-const ENV = import.meta.env.MODE || 'development';
-const IS_DEV = ENV === 'development';
-const IS_PROD = ENV === 'production';
+const ENV = import.meta.env.MODE || "development";
+const IS_DEV = ENV === "development";
+const IS_PROD = ENV === "production";
 
 export interface Mode {
   id: string;
@@ -25,12 +31,12 @@ export const APP_CONFIG = {
   isProduction: IS_PROD,
 
   // App metadata
-  name: 'Prompt Builder',
-  version: '1.0.0',
+  name: "Prompt Builder",
+  version: "1.0.0",
 
   // UI Configuration
   ui: {
-    defaultMode: 'video', // Only video mode is currently supported
+    defaultMode: "video", // Only video mode is currently supported
     showHistory: true,
     animationDuration: 200,
     toastDuration: 3000,
@@ -40,7 +46,7 @@ export const APP_CONFIG = {
     historyAutoRefresh: true,
 
     // Suggestions
-    maxSuggestions: 9,  // For keyboard shortcuts 1-9
+    maxSuggestions: 9, // For keyboard shortcuts 1-9
   },
 
   // Mode Configuration
@@ -72,30 +78,32 @@ export const APP_CONFIG = {
     //   description: 'Learning journeys',
     // },
     {
-      id: 'video',
-      name: 'Video Prompt',
+      id: "video",
+      name: "Video Prompt",
       icon: Video,
-      description: 'Generate AI video prompts',
+      description: "Generate AI video prompts",
     },
   ] as const,
 
   // AI Names for cycling animation
-  aiNames: ['Claude AI', 'ChatGPT', 'Gemini'] as const,
-  aiNamesCycleInterval: 3000,  // 3 seconds
+  aiNames: ["Claude AI", "ChatGPT", "Gemini"] as const,
+  aiNamesCycleInterval: 3000, // 3 seconds
 
   // Undo/Redo
   undoRedoStackSize: 100,
 
   // Debug
   debug: {
-    enabled: IS_DEV || new URLSearchParams(window.location.search).get('debug') === 'true',
-    logLevel: IS_DEV ? 'debug' : 'error',
+    enabled:
+      IS_DEV ||
+      new URLSearchParams(window.location.search).get("debug") === "true",
+    logLevel: IS_DEV ? "debug" : "error",
   },
 
   // Links
   links: {
-    privacyPolicy: '/privacy-policy',
-    github: 'https://github.com/anthropics/prompt-builder',  // Update with actual repo
+    privacyPolicy: "/privacy-policy",
+    github: "https://github.com/anthropics/prompt-builder", // Update with actual repo
   },
 } as const;
 
@@ -103,12 +111,15 @@ export const APP_CONFIG = {
  * Get mode configuration by ID
  */
 export function getModeById(modeId: string): Mode | undefined {
-  return APP_CONFIG.modes.find(m => m.id === modeId) || APP_CONFIG.modes[0];
+  return APP_CONFIG.modes.find((m) => m.id === modeId) || APP_CONFIG.modes[0];
 }
 
 /**
  * Get default mode
  */
 export function getDefaultMode(): Mode {
-  return APP_CONFIG.modes.find(m => m.id === APP_CONFIG.ui.defaultMode) || APP_CONFIG.modes[0]!;
+  return (
+    APP_CONFIG.modes.find((m) => m.id === APP_CONFIG.ui.defaultMode) ||
+    APP_CONFIG.modes[0]!
+  );
 }

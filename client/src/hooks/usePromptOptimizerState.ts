@@ -4,11 +4,11 @@
  * State management hook for prompt optimizer using useReducer.
  */
 
-import { useCallback, useReducer } from 'react';
-import { logger } from '../services/LoggingService';
-import type { LockedSpan } from '@/features/prompt-optimizer/types';
+import { useCallback, useReducer } from "react";
+import { logger } from "../services/LoggingService";
+import type { LockedSpan } from "@/features/prompt-optimizer/types";
 
-const log = logger.child('usePromptOptimizerState');
+const log = logger.child("usePromptOptimizerState");
 
 interface RollbackSnapshot {
   inputPrompt: string;
@@ -41,32 +41,32 @@ export interface PromptOptimizerState {
 }
 
 export type PromptOptimizerAction =
-  | { type: 'SET_INPUT_PROMPT'; payload: string }
-  | { type: 'SET_OPTIMIZED_PROMPT'; payload: string }
-  | { type: 'SET_DISPLAYED_PROMPT'; payload: string }
-  | { type: 'SET_GENERIC_OPTIMIZED_PROMPT'; payload: string | null }
-  | { type: 'SET_ARTIFACT_KEY'; payload: string | null }
-  | { type: 'SET_PREVIEW_PROMPT'; payload: string | null }
-  | { type: 'SET_PREVIEW_ASPECT_RATIO'; payload: string | null }
-  | { type: 'SET_QUALITY_SCORE'; payload: number | null }
-  | { type: 'SET_SKIP_ANIMATION'; payload: boolean }
-  | { type: 'SET_IMPROVEMENT_CONTEXT'; payload: unknown | null }
-  | { type: 'SET_IS_PROCESSING'; payload: boolean }
-  | { type: 'INCREMENT_OPTIMIZATION_RESULT_VERSION' }
-  | { type: 'SET_LOCKED_SPANS'; payload: LockedSpan[] }
-  | { type: 'ADD_LOCKED_SPAN'; payload: LockedSpan }
-  | { type: 'REMOVE_LOCKED_SPAN'; payload: string }
-  | { type: 'CLEAR_LOCKED_SPANS' }
-  | { type: 'START_OPTIMIZATION' }
-  | { type: 'SNAPSHOT_FOR_ROLLBACK' }
-  | { type: 'ROLLBACK' }
-  | { type: 'RESET' };
+  | { type: "SET_INPUT_PROMPT"; payload: string }
+  | { type: "SET_OPTIMIZED_PROMPT"; payload: string }
+  | { type: "SET_DISPLAYED_PROMPT"; payload: string }
+  | { type: "SET_GENERIC_OPTIMIZED_PROMPT"; payload: string | null }
+  | { type: "SET_ARTIFACT_KEY"; payload: string | null }
+  | { type: "SET_PREVIEW_PROMPT"; payload: string | null }
+  | { type: "SET_PREVIEW_ASPECT_RATIO"; payload: string | null }
+  | { type: "SET_QUALITY_SCORE"; payload: number | null }
+  | { type: "SET_SKIP_ANIMATION"; payload: boolean }
+  | { type: "SET_IMPROVEMENT_CONTEXT"; payload: unknown | null }
+  | { type: "SET_IS_PROCESSING"; payload: boolean }
+  | { type: "INCREMENT_OPTIMIZATION_RESULT_VERSION" }
+  | { type: "SET_LOCKED_SPANS"; payload: LockedSpan[] }
+  | { type: "ADD_LOCKED_SPAN"; payload: LockedSpan }
+  | { type: "REMOVE_LOCKED_SPAN"; payload: string }
+  | { type: "CLEAR_LOCKED_SPANS" }
+  | { type: "START_OPTIMIZATION" }
+  | { type: "SNAPSHOT_FOR_ROLLBACK" }
+  | { type: "ROLLBACK" }
+  | { type: "RESET" };
 
 const initialState: PromptOptimizerState = {
-  inputPrompt: '',
+  inputPrompt: "",
   isProcessing: false,
-  optimizedPrompt: '',
-  displayedPrompt: '',
+  optimizedPrompt: "",
+  displayedPrompt: "",
   genericOptimizedPrompt: null,
   artifactKey: null,
   previewPrompt: null,
@@ -81,9 +81,9 @@ const initialState: PromptOptimizerState = {
 
 function reducer(
   state: PromptOptimizerState,
-  action: PromptOptimizerAction
+  action: PromptOptimizerAction,
 ): PromptOptimizerState {
-  log.debug('State transition', {
+  log.debug("State transition", {
     action: action.type,
     previousState: {
       isProcessing: state.isProcessing,
@@ -93,50 +93,54 @@ function reducer(
   });
 
   switch (action.type) {
-    case 'SET_INPUT_PROMPT':
+    case "SET_INPUT_PROMPT":
       return { ...state, inputPrompt: action.payload };
-    case 'SET_OPTIMIZED_PROMPT':
+    case "SET_OPTIMIZED_PROMPT":
       return { ...state, optimizedPrompt: action.payload };
-    case 'SET_DISPLAYED_PROMPT':
+    case "SET_DISPLAYED_PROMPT":
       return { ...state, displayedPrompt: action.payload };
-    case 'SET_GENERIC_OPTIMIZED_PROMPT':
+    case "SET_GENERIC_OPTIMIZED_PROMPT":
       return { ...state, genericOptimizedPrompt: action.payload };
-    case 'SET_ARTIFACT_KEY':
+    case "SET_ARTIFACT_KEY":
       return { ...state, artifactKey: action.payload };
-    case 'SET_PREVIEW_PROMPT':
+    case "SET_PREVIEW_PROMPT":
       return { ...state, previewPrompt: action.payload };
-    case 'SET_PREVIEW_ASPECT_RATIO':
+    case "SET_PREVIEW_ASPECT_RATIO":
       return { ...state, previewAspectRatio: action.payload };
-    case 'SET_QUALITY_SCORE':
+    case "SET_QUALITY_SCORE":
       return { ...state, qualityScore: action.payload };
-    case 'SET_SKIP_ANIMATION':
+    case "SET_SKIP_ANIMATION":
       return { ...state, skipAnimation: action.payload };
-    case 'SET_IMPROVEMENT_CONTEXT':
+    case "SET_IMPROVEMENT_CONTEXT":
       return { ...state, improvementContext: action.payload };
-    case 'SET_IS_PROCESSING':
+    case "SET_IS_PROCESSING":
       return { ...state, isProcessing: action.payload };
-    case 'INCREMENT_OPTIMIZATION_RESULT_VERSION':
+    case "INCREMENT_OPTIMIZATION_RESULT_VERSION":
       return {
         ...state,
         optimizationResultVersion: state.optimizationResultVersion + 1,
       };
-    case 'SET_LOCKED_SPANS':
+    case "SET_LOCKED_SPANS":
       return { ...state, lockedSpans: action.payload };
-    case 'ADD_LOCKED_SPAN': {
-      const exists = state.lockedSpans.some((span) => span.id === action.payload.id);
+    case "ADD_LOCKED_SPAN": {
+      const exists = state.lockedSpans.some(
+        (span) => span.id === action.payload.id,
+      );
       if (exists) {
         return state;
       }
       return { ...state, lockedSpans: [...state.lockedSpans, action.payload] };
     }
-    case 'REMOVE_LOCKED_SPAN':
+    case "REMOVE_LOCKED_SPAN":
       return {
         ...state,
-        lockedSpans: state.lockedSpans.filter((span) => span.id !== action.payload),
+        lockedSpans: state.lockedSpans.filter(
+          (span) => span.id !== action.payload,
+        ),
       };
-    case 'CLEAR_LOCKED_SPANS':
+    case "CLEAR_LOCKED_SPANS":
       return { ...state, lockedSpans: [] };
-    case 'SNAPSHOT_FOR_ROLLBACK':
+    case "SNAPSHOT_FOR_ROLLBACK":
       return {
         ...state,
         rollbackSnapshot: {
@@ -152,9 +156,9 @@ function reducer(
           improvementContext: state.improvementContext,
         },
       };
-    case 'ROLLBACK':
+    case "ROLLBACK":
       if (!state.rollbackSnapshot) {
-        log.warn('ROLLBACK dispatched without snapshot');
+        log.warn("ROLLBACK dispatched without snapshot");
         return {
           ...state,
           isProcessing: false,
@@ -166,18 +170,18 @@ function reducer(
         rollbackSnapshot: null,
         isProcessing: false,
       };
-    case 'START_OPTIMIZATION':
-      log.debug('Starting optimization', {
-        action: 'START_OPTIMIZATION',
+    case "START_OPTIMIZATION":
+      log.debug("Starting optimization", {
+        action: "START_OPTIMIZATION",
       });
       return {
         ...state,
         isProcessing: true,
         skipAnimation: false,
       };
-    case 'RESET':
-      log.debug('Resetting state to initial', {
-        action: 'RESET',
+    case "RESET":
+      log.debug("Resetting state to initial", {
+        action: "RESET",
       });
       return initialState;
     default:
@@ -189,83 +193,83 @@ export function usePromptOptimizerState() {
   const [state, dispatch] = useReducer(reducer, initialState);
 
   const setInputPrompt = useCallback((prompt: string) => {
-    dispatch({ type: 'SET_INPUT_PROMPT', payload: prompt });
+    dispatch({ type: "SET_INPUT_PROMPT", payload: prompt });
   }, []);
 
   const setOptimizedPrompt = useCallback((prompt: string) => {
-    dispatch({ type: 'SET_OPTIMIZED_PROMPT', payload: prompt });
+    dispatch({ type: "SET_OPTIMIZED_PROMPT", payload: prompt });
   }, []);
 
   const setDisplayedPrompt = useCallback((prompt: string) => {
-    dispatch({ type: 'SET_DISPLAYED_PROMPT', payload: prompt });
+    dispatch({ type: "SET_DISPLAYED_PROMPT", payload: prompt });
   }, []);
 
   const setGenericOptimizedPrompt = useCallback((prompt: string | null) => {
-    dispatch({ type: 'SET_GENERIC_OPTIMIZED_PROMPT', payload: prompt });
+    dispatch({ type: "SET_GENERIC_OPTIMIZED_PROMPT", payload: prompt });
   }, []);
 
   const setArtifactKey = useCallback((artifactKey: string | null) => {
-    dispatch({ type: 'SET_ARTIFACT_KEY', payload: artifactKey });
+    dispatch({ type: "SET_ARTIFACT_KEY", payload: artifactKey });
   }, []);
 
   const setQualityScore = useCallback((score: number | null) => {
-    dispatch({ type: 'SET_QUALITY_SCORE', payload: score });
+    dispatch({ type: "SET_QUALITY_SCORE", payload: score });
   }, []);
 
   const setPreviewPrompt = useCallback((prompt: string | null) => {
-    dispatch({ type: 'SET_PREVIEW_PROMPT', payload: prompt });
+    dispatch({ type: "SET_PREVIEW_PROMPT", payload: prompt });
   }, []);
 
   const setPreviewAspectRatio = useCallback((ratio: string | null) => {
-    dispatch({ type: 'SET_PREVIEW_ASPECT_RATIO', payload: ratio });
+    dispatch({ type: "SET_PREVIEW_ASPECT_RATIO", payload: ratio });
   }, []);
 
   const setSkipAnimation = useCallback((skip: boolean) => {
-    dispatch({ type: 'SET_SKIP_ANIMATION', payload: skip });
+    dispatch({ type: "SET_SKIP_ANIMATION", payload: skip });
   }, []);
 
   const setImprovementContext = useCallback((context: unknown | null) => {
-    dispatch({ type: 'SET_IMPROVEMENT_CONTEXT', payload: context });
+    dispatch({ type: "SET_IMPROVEMENT_CONTEXT", payload: context });
   }, []);
 
   const bumpOptimizationResultVersion = useCallback(() => {
-    dispatch({ type: 'INCREMENT_OPTIMIZATION_RESULT_VERSION' });
+    dispatch({ type: "INCREMENT_OPTIMIZATION_RESULT_VERSION" });
   }, []);
 
   const setLockedSpans = useCallback((spans: LockedSpan[]) => {
-    dispatch({ type: 'SET_LOCKED_SPANS', payload: spans });
+    dispatch({ type: "SET_LOCKED_SPANS", payload: spans });
   }, []);
 
   const addLockedSpan = useCallback((span: LockedSpan) => {
-    dispatch({ type: 'ADD_LOCKED_SPAN', payload: span });
+    dispatch({ type: "ADD_LOCKED_SPAN", payload: span });
   }, []);
 
   const removeLockedSpan = useCallback((spanId: string) => {
-    dispatch({ type: 'REMOVE_LOCKED_SPAN', payload: spanId });
+    dispatch({ type: "REMOVE_LOCKED_SPAN", payload: spanId });
   }, []);
 
   const clearLockedSpans = useCallback(() => {
-    dispatch({ type: 'CLEAR_LOCKED_SPANS' });
+    dispatch({ type: "CLEAR_LOCKED_SPANS" });
   }, []);
 
   const snapshotForRollback = useCallback(() => {
-    dispatch({ type: 'SNAPSHOT_FOR_ROLLBACK' });
+    dispatch({ type: "SNAPSHOT_FOR_ROLLBACK" });
   }, []);
 
   const rollback = useCallback(() => {
-    dispatch({ type: 'ROLLBACK' });
+    dispatch({ type: "ROLLBACK" });
   }, []);
 
   const startOptimization = useCallback(() => {
-    dispatch({ type: 'START_OPTIMIZATION' });
+    dispatch({ type: "START_OPTIMIZATION" });
   }, []);
 
   const resetPrompt = useCallback(() => {
-    dispatch({ type: 'RESET' });
+    dispatch({ type: "RESET" });
   }, []);
 
   const setIsProcessing = useCallback((processing: boolean) => {
-    dispatch({ type: 'SET_IS_PROCESSING', payload: processing });
+    dispatch({ type: "SET_IS_PROCESSING", payload: processing });
   }, []);
 
   return {

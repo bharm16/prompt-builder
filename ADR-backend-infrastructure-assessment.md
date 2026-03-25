@@ -58,11 +58,11 @@ Ordered teardown: stop accepting connections → stop background loops → drain
 
 **Recommendation:** Centralize flag evaluation. Instead of passing boolean flags through layers, create a `FeatureGates` service that encapsulates all flag logic. Services query `featureGates.isEnabled('convergence')` instead of receiving raw booleans. This also gives you a single place to add flag overrides, A/B testing, or per-user flags later.
 
-| Dimension | Current | Proposed |
-|-----------|---------|----------|
-| Complexity | Scattered booleans | Single service |
-| Risk of inconsistency | High (50+ checks) | Low (one source of truth) |
-| Effort | — | ~2-3 hours |
+| Dimension             | Current            | Proposed                  |
+| --------------------- | ------------------ | ------------------------- |
+| Complexity            | Scattered booleans | Single service            |
+| Risk of inconsistency | High (50+ checks)  | Low (one source of truth) |
+| Effort                | —                  | ~2-3 hours                |
 
 ### W2: EnhancementService Constructor Bloat — Low-Medium Risk
 
@@ -100,23 +100,25 @@ CLAUDE.md warns about legacy `EnhancementService.ts` and `VideoConceptService.ts
 
 ## Trade-off Analysis
 
-| Area | Current Choice | Alternative | Verdict |
-|------|---------------|-------------|---------|
-| DI Container | Hand-rolled | InversifyJS/tsyringe | **Keep current.** Simpler, no decorator overhead, fits the scale. |
-| Web Framework | Express | Fastify | **Keep current.** Express is fine for this workload. Fastify's perf gains don't justify migration cost. |
-| Caching | NodeCache + optional Redis | Redis-only | **Keep current.** Dual-tier with graceful degradation is the right call for a team that doesn't always have Redis running. |
-| LLM Routing | Custom AIModelService | LangChain/LiteLLM | **Keep current.** Custom routing gives you fine-grained circuit breaking and concurrency control that generic routers don't. |
-| Env Validation | Zod schemas | dotenv + manual checks | **Keep current.** Zod is strictly superior here. |
-| Error Handling | Domain errors + PII redaction | Generic Express error handler | **Keep current.** This is above average. |
+| Area           | Current Choice                | Alternative                   | Verdict                                                                                                                      |
+| -------------- | ----------------------------- | ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| DI Container   | Hand-rolled                   | InversifyJS/tsyringe          | **Keep current.** Simpler, no decorator overhead, fits the scale.                                                            |
+| Web Framework  | Express                       | Fastify                       | **Keep current.** Express is fine for this workload. Fastify's perf gains don't justify migration cost.                      |
+| Caching        | NodeCache + optional Redis    | Redis-only                    | **Keep current.** Dual-tier with graceful degradation is the right call for a team that doesn't always have Redis running.   |
+| LLM Routing    | Custom AIModelService         | LangChain/LiteLLM             | **Keep current.** Custom routing gives you fine-grained circuit breaking and concurrency control that generic routers don't. |
+| Env Validation | Zod schemas                   | dotenv + manual checks        | **Keep current.** Zod is strictly superior here.                                                                             |
+| Error Handling | Domain errors + PII redaction | Generic Express error handler | **Keep current.** This is above average.                                                                                     |
 
 ## Consequences
 
 **If you address W1-W3:**
+
 - Feature flag management becomes sustainable as the product grows
 - EnhancementService becomes easier to test and reason about
 - Redis failures become visible before they impact users
 
 **What stays hard:**
+
 - The conditional service registration pattern (null services) requires discipline from every developer. No architectural change eliminates this — it's inherent to optional features.
 - 10+ LLM provider configurations mean env setup for new developers is complex. The Zod validation helps, but onboarding docs should explicitly list the minimum viable env vars.
 

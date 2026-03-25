@@ -23,16 +23,20 @@ import {
   onAuthStateChanged as firebaseOnAuthStateChanged,
   type Auth,
   type User as FirebaseUser,
-} from 'firebase/auth';
-import type { User } from '../hooks/types';
-import { logger } from '@/services/LoggingService';
-import { sanitizeError } from '@/utils/logging';
+} from "firebase/auth";
+import type { User } from "../hooks/types";
+import { logger } from "@/services/LoggingService";
+import { sanitizeError } from "@/utils/logging";
 
-const log = logger.child('AuthRepository');
+const log = logger.child("AuthRepository");
 
 export interface SentryIntegration {
   setUser: (user: User | null) => void;
-  addBreadcrumb: (category: string, message: string, data?: Record<string, unknown>) => void;
+  addBreadcrumb: (
+    category: string,
+    message: string,
+    data?: Record<string, unknown>,
+  ) => void;
 }
 
 /**
@@ -60,16 +64,21 @@ export class AuthRepository {
       if (this.sentry) {
         const mappedUser = this._mapFirebaseUser(result.user);
         this.sentry.setUser(mappedUser);
-        this.sentry.addBreadcrumb('auth', 'User signed in with Google', {
+        this.sentry.addBreadcrumb("auth", "User signed in with Google", {
           userId: result.user.uid,
         });
       }
 
       return this._mapFirebaseUser(result.user);
     } catch (error) {
-      const errObj = error instanceof Error ? error : new Error(sanitizeError(error).message);
-      log.error('Error signing in with Google', errObj, { operation: 'signInWithGoogle' });
-      throw new AuthRepositoryError('Failed to sign in with Google', error);
+      const errObj =
+        error instanceof Error
+          ? error
+          : new Error(sanitizeError(error).message);
+      log.error("Error signing in with Google", errObj, {
+        operation: "signInWithGoogle",
+      });
+      throw new AuthRepositoryError("Failed to sign in with Google", error);
     }
   }
 
@@ -78,32 +87,50 @@ export class AuthRepository {
    */
   async signInWithEmail(email: string, password: string): Promise<User> {
     try {
-      const result = await signInWithEmailAndPassword(this.auth, email, password);
+      const result = await signInWithEmailAndPassword(
+        this.auth,
+        email,
+        password,
+      );
 
       if (this.sentry) {
         const mappedUser = this._mapFirebaseUser(result.user);
         this.sentry.setUser(mappedUser);
-        this.sentry.addBreadcrumb('auth', 'User signed in with email', {
+        this.sentry.addBreadcrumb("auth", "User signed in with email", {
           userId: result.user.uid,
         });
       }
 
       return this._mapFirebaseUser(result.user);
     } catch (error) {
-      const errObj = error instanceof Error ? error : new Error(sanitizeError(error).message);
-      log.error('Error signing in with email', errObj, { operation: 'signInWithEmail' });
-      throw new AuthRepositoryError('Failed to sign in with email', error);
+      const errObj =
+        error instanceof Error
+          ? error
+          : new Error(sanitizeError(error).message);
+      log.error("Error signing in with email", errObj, {
+        operation: "signInWithEmail",
+      });
+      throw new AuthRepositoryError("Failed to sign in with email", error);
     }
   }
 
   /**
    * Sign up with email + password
    */
-  async signUpWithEmail(email: string, password: string, displayName?: string): Promise<User> {
+  async signUpWithEmail(
+    email: string,
+    password: string,
+    displayName?: string,
+  ): Promise<User> {
     try {
-      const result = await createUserWithEmailAndPassword(this.auth, email, password);
+      const result = await createUserWithEmailAndPassword(
+        this.auth,
+        email,
+        password,
+      );
 
-      const normalizedName = typeof displayName === 'string' ? displayName.trim() : '';
+      const normalizedName =
+        typeof displayName === "string" ? displayName.trim() : "";
       if (normalizedName) {
         await updateProfile(result.user, { displayName: normalizedName });
       }
@@ -111,16 +138,21 @@ export class AuthRepository {
       if (this.sentry) {
         const mappedUser = this._mapFirebaseUser(result.user);
         this.sentry.setUser(mappedUser);
-        this.sentry.addBreadcrumb('auth', 'User signed up with email', {
+        this.sentry.addBreadcrumb("auth", "User signed up with email", {
           userId: result.user.uid,
         });
       }
 
       return this._mapFirebaseUser(result.user);
     } catch (error) {
-      const errObj = error instanceof Error ? error : new Error(sanitizeError(error).message);
-      log.error('Error signing up with email', errObj, { operation: 'signUpWithEmail' });
-      throw new AuthRepositoryError('Failed to sign up with email', error);
+      const errObj =
+        error instanceof Error
+          ? error
+          : new Error(sanitizeError(error).message);
+      log.error("Error signing up with email", errObj, {
+        operation: "signUpWithEmail",
+      });
+      throw new AuthRepositoryError("Failed to sign up with email", error);
     }
   }
 
@@ -129,19 +161,30 @@ export class AuthRepository {
    */
   async sendPasswordReset(email: string, redirectPath?: string): Promise<void> {
     try {
-      const actionCodeSettings = this._getActionCodeSettings('/reset-password', redirectPath);
+      const actionCodeSettings = this._getActionCodeSettings(
+        "/reset-password",
+        redirectPath,
+      );
       if (actionCodeSettings) {
         await sendPasswordResetEmail(this.auth, email, actionCodeSettings);
       } else {
         await sendPasswordResetEmail(this.auth, email);
       }
       if (this.sentry) {
-        this.sentry.addBreadcrumb('auth', 'Password reset email requested');
+        this.sentry.addBreadcrumb("auth", "Password reset email requested");
       }
     } catch (error) {
-      const errObj = error instanceof Error ? error : new Error(sanitizeError(error).message);
-      log.error('Error sending password reset email', errObj, { operation: 'sendPasswordReset' });
-      throw new AuthRepositoryError('Failed to send password reset email', error);
+      const errObj =
+        error instanceof Error
+          ? error
+          : new Error(sanitizeError(error).message);
+      log.error("Error sending password reset email", errObj, {
+        operation: "sendPasswordReset",
+      });
+      throw new AuthRepositoryError(
+        "Failed to send password reset email",
+        error,
+      );
     }
   }
 
@@ -152,10 +195,13 @@ export class AuthRepository {
     try {
       const currentUser = this.auth.currentUser;
       if (!currentUser) {
-        throw new AuthRepositoryError('No authenticated user to verify', null);
+        throw new AuthRepositoryError("No authenticated user to verify", null);
       }
 
-      const actionCodeSettings = this._getActionCodeSettings('/email-verification', redirectPath);
+      const actionCodeSettings = this._getActionCodeSettings(
+        "/email-verification",
+        redirectPath,
+      );
       if (actionCodeSettings) {
         await sendEmailVerification(currentUser, actionCodeSettings);
       } else {
@@ -163,14 +209,19 @@ export class AuthRepository {
       }
 
       if (this.sentry) {
-        this.sentry.addBreadcrumb('auth', 'Verification email requested', {
+        this.sentry.addBreadcrumb("auth", "Verification email requested", {
           userId: currentUser.uid,
         });
       }
     } catch (error) {
-      const errObj = error instanceof Error ? error : new Error(sanitizeError(error).message);
-      log.error('Error sending verification email', errObj, { operation: 'sendVerificationEmail' });
-      throw new AuthRepositoryError('Failed to send verification email', error);
+      const errObj =
+        error instanceof Error
+          ? error
+          : new Error(sanitizeError(error).message);
+      log.error("Error sending verification email", errObj, {
+        operation: "sendVerificationEmail",
+      });
+      throw new AuthRepositoryError("Failed to send verification email", error);
     }
   }
 
@@ -181,12 +232,17 @@ export class AuthRepository {
     try {
       await applyActionCode(this.auth, oobCode);
       if (this.sentry) {
-        this.sentry.addBreadcrumb('auth', 'Email verified via action code');
+        this.sentry.addBreadcrumb("auth", "Email verified via action code");
       }
     } catch (error) {
-      const errObj = error instanceof Error ? error : new Error(sanitizeError(error).message);
-      log.error('Error verifying email with action code', errObj, { operation: 'verifyEmailWithCode' });
-      throw new AuthRepositoryError('Failed to verify email', error);
+      const errObj =
+        error instanceof Error
+          ? error
+          : new Error(sanitizeError(error).message);
+      log.error("Error verifying email with action code", errObj, {
+        operation: "verifyEmailWithCode",
+      });
+      throw new AuthRepositoryError("Failed to verify email", error);
     }
   }
 
@@ -197,25 +253,44 @@ export class AuthRepository {
     try {
       return await verifyPasswordResetCode(this.auth, oobCode);
     } catch (error) {
-      const errObj = error instanceof Error ? error : new Error(sanitizeError(error).message);
-      log.error('Error validating password reset code', errObj, { operation: 'validatePasswordResetCode' });
-      throw new AuthRepositoryError('Invalid or expired password reset link', error);
+      const errObj =
+        error instanceof Error
+          ? error
+          : new Error(sanitizeError(error).message);
+      log.error("Error validating password reset code", errObj, {
+        operation: "validatePasswordResetCode",
+      });
+      throw new AuthRepositoryError(
+        "Invalid or expired password reset link",
+        error,
+      );
     }
   }
 
   /**
    * Confirm a password reset using the code from the email link
    */
-  async confirmPasswordResetWithCode(oobCode: string, newPassword: string): Promise<void> {
+  async confirmPasswordResetWithCode(
+    oobCode: string,
+    newPassword: string,
+  ): Promise<void> {
     try {
       await confirmPasswordReset(this.auth, oobCode, newPassword);
       if (this.sentry) {
-        this.sentry.addBreadcrumb('auth', 'Password reset confirmed via action code');
+        this.sentry.addBreadcrumb(
+          "auth",
+          "Password reset confirmed via action code",
+        );
       }
     } catch (error) {
-      const errObj = error instanceof Error ? error : new Error(sanitizeError(error).message);
-      log.error('Error confirming password reset', errObj, { operation: 'confirmPasswordResetWithCode' });
-      throw new AuthRepositoryError('Failed to reset password', error);
+      const errObj =
+        error instanceof Error
+          ? error
+          : new Error(sanitizeError(error).message);
+      log.error("Error confirming password reset", errObj, {
+        operation: "confirmPasswordResetWithCode",
+      });
+      throw new AuthRepositoryError("Failed to reset password", error);
     }
   }
 
@@ -234,9 +309,14 @@ export class AuthRepository {
       }
       return mapped;
     } catch (error) {
-      const errObj = error instanceof Error ? error : new Error(sanitizeError(error).message);
-      log.error('Error refreshing current user', errObj, { operation: 'refreshCurrentUser' });
-      throw new AuthRepositoryError('Failed to refresh user', error);
+      const errObj =
+        error instanceof Error
+          ? error
+          : new Error(sanitizeError(error).message);
+      log.error("Error refreshing current user", errObj, {
+        operation: "refreshCurrentUser",
+      });
+      throw new AuthRepositoryError("Failed to refresh user", error);
     }
   }
 
@@ -250,12 +330,15 @@ export class AuthRepository {
       // Clear Sentry user context if integration is provided
       if (this.sentry) {
         this.sentry.setUser(null);
-        this.sentry.addBreadcrumb('auth', 'User signed out');
+        this.sentry.addBreadcrumb("auth", "User signed out");
       }
     } catch (error) {
-      const errObj = error instanceof Error ? error : new Error(sanitizeError(error).message);
-      log.error('Error signing out', errObj, { operation: 'signOut' });
-      throw new AuthRepositoryError('Failed to sign out', error);
+      const errObj =
+        error instanceof Error
+          ? error
+          : new Error(sanitizeError(error).message);
+      log.error("Error signing out", errObj, { operation: "signOut" });
+      throw new AuthRepositoryError("Failed to sign out", error);
     }
   }
 
@@ -272,7 +355,9 @@ export class AuthRepository {
    */
   onAuthStateChanged(callback: (user: User | null) => void): () => void {
     return firebaseOnAuthStateChanged(this.auth, (firebaseUser) => {
-      const mappedUser = firebaseUser ? this._mapFirebaseUser(firebaseUser) : null;
+      const mappedUser = firebaseUser
+        ? this._mapFirebaseUser(firebaseUser)
+        : null;
 
       // Update Sentry user context if integration is provided
       if (this.sentry) {
@@ -290,23 +375,37 @@ export class AuthRepository {
   private _mapFirebaseUser(firebaseUser: FirebaseUser): User {
     return {
       uid: firebaseUser.uid,
-      ...(typeof firebaseUser.email === 'string' ? { email: firebaseUser.email } : {}),
-      ...(typeof firebaseUser.displayName === 'string'
+      ...(typeof firebaseUser.email === "string"
+        ? { email: firebaseUser.email }
+        : {}),
+      ...(typeof firebaseUser.displayName === "string"
         ? { displayName: firebaseUser.displayName }
         : {}),
-      ...(typeof firebaseUser.photoURL === 'string' ? { photoURL: firebaseUser.photoURL } : {}),
+      ...(typeof firebaseUser.photoURL === "string"
+        ? { photoURL: firebaseUser.photoURL }
+        : {}),
       emailVerified: firebaseUser.emailVerified,
       isAnonymous: firebaseUser.isAnonymous,
     };
   }
 
-  private _getActionCodeSettings(path: string, redirectPath?: string): { url: string; handleCodeInApp: true } | null {
-    const origin = typeof window !== 'undefined' && window.location?.origin ? window.location.origin : null;
+  private _getActionCodeSettings(
+    path: string,
+    redirectPath?: string,
+  ): { url: string; handleCodeInApp: true } | null {
+    const origin =
+      typeof window !== "undefined" && window.location?.origin
+        ? window.location.origin
+        : null;
     if (!origin) return null;
 
     const url = new URL(path, origin);
-    if (redirectPath && redirectPath.startsWith('/') && !redirectPath.startsWith('//')) {
-      url.searchParams.set('redirect', redirectPath);
+    if (
+      redirectPath &&
+      redirectPath.startsWith("/") &&
+      !redirectPath.startsWith("//")
+    ) {
+      url.searchParams.set("redirect", redirectPath);
     }
     return { url: url.toString(), handleCodeInApp: true };
   }
@@ -321,10 +420,13 @@ export class AuthRepositoryError extends Error {
 
   constructor(message: string, originalError: unknown) {
     super(message);
-    this.name = 'AuthRepositoryError';
+    this.name = "AuthRepositoryError";
     this.originalError = originalError;
     const extractedCode =
-      originalError && typeof originalError === 'object' && 'code' in originalError && typeof originalError.code === 'string'
+      originalError &&
+      typeof originalError === "object" &&
+      "code" in originalError &&
+      typeof originalError.code === "string"
         ? originalError.code
         : null;
     if (extractedCode) {
@@ -342,9 +444,9 @@ export class MockAuthRepository {
 
   async signInWithGoogle(): Promise<User> {
     this.currentUser = {
-      uid: 'mock-user-id',
-      email: 'test@example.com',
-      displayName: 'Test User',
+      uid: "mock-user-id",
+      email: "test@example.com",
+      displayName: "Test User",
       photoURL: null,
       emailVerified: true,
       isAnonymous: false,
@@ -356,9 +458,9 @@ export class MockAuthRepository {
 
   async signInWithEmail(email: string, _password: string): Promise<User> {
     this.currentUser = {
-      uid: 'mock-user-id',
+      uid: "mock-user-id",
       email,
-      displayName: 'Test User',
+      displayName: "Test User",
       emailVerified: true,
       isAnonymous: false,
     };
@@ -367,11 +469,15 @@ export class MockAuthRepository {
     return this.currentUser;
   }
 
-  async signUpWithEmail(email: string, _password: string, displayName?: string): Promise<User> {
+  async signUpWithEmail(
+    email: string,
+    _password: string,
+    displayName?: string,
+  ): Promise<User> {
     this.currentUser = {
-      uid: 'mock-user-id',
+      uid: "mock-user-id",
       email,
-      displayName: displayName || 'Test User',
+      displayName: displayName || "Test User",
       emailVerified: false,
       isAnonymous: false,
     };
@@ -397,12 +503,15 @@ export class MockAuthRepository {
   }
 
   async validatePasswordResetCode(_oobCode: string): Promise<string> {
-    return this.currentUser && typeof this.currentUser.email === 'string'
+    return this.currentUser && typeof this.currentUser.email === "string"
       ? this.currentUser.email
-      : 'test@example.com';
+      : "test@example.com";
   }
 
-  async confirmPasswordResetWithCode(_oobCode: string, _newPassword: string): Promise<void> {
+  async confirmPasswordResetWithCode(
+    _oobCode: string,
+    _newPassword: string,
+  ): Promise<void> {
     return;
   }
 
@@ -435,6 +544,6 @@ export class MockAuthRepository {
   }
 
   private _notifyAuthStateChange(): void {
-    this.authStateCallbacks.forEach(callback => callback(this.currentUser));
+    this.authStateCallbacks.forEach((callback) => callback(this.currentUser));
   }
 }

@@ -12,20 +12,20 @@ Test coverage sits at **40.42%** overall, with two services (`quality-feedback`,
 
 ### Priority scoring: (Impact + Risk) × (6 − Effort)
 
-| # | Item | Category | Impact | Risk | Effort | Score | Phase |
-|---|------|----------|--------|------|--------|-------|-------|
-| 1 | Zero test coverage: `quality-feedback` (408 lines) and `reference-images` (260 lines) | Test | 4 | 5 | 2 | **36** | 1 |
-| 2 | Cross-feature coupling: `prompt-optimizer` imports types from 5+ sibling features | Architecture | 5 | 4 | 4 | **18** | 2 |
-| 3 | Type system debt: 376 `as unknown` + 127 `as any` casts across server services | Code | 4 | 3 | 4 | **14** | 2–3 |
-| 4 | `ModelRecommendationDropdown.tsx` (706 lines) — monolithic component | Code | 3 | 3 | 2 | **24** | 1 |
-| 5 | `SuggestionValidationService.ts` (1152 lines) — single validation monolith | Code | 3 | 3 | 3 | **18** | 2 |
-| 6 | `sessions.routes.ts` (594 lines) — multiple concerns in one route handler | Code | 3 | 3 | 3 | **18** | 2 |
-| 7 | `SessionsPanel.tsx` (600 lines) — list + create + edit in one component | Code | 3 | 2 | 2 | **20** | 1 |
-| 8 | `PromptCanvas.tsx` (1125 lines) — presentation + state management mixed | Code | 4 | 3 | 4 | **14** | 3 |
-| 9 | Duplicate API modules (`billingApi`, `enhancementSuggestionsApi`) | Code | 2 | 2 | 1 | **20** | 1 |
-| 10 | Low `asset` service coverage (28.49%) | Test | 3 | 4 | 3 | **21** | 1 |
-| 11 | Vitest config sprawl (5 configs, some likely redundant) | Infra | 1 | 1 | 1 | **10** | 3 |
-| 12 | `gliner@0.0.19` pre-1.0 dependency | Dependency | 2 | 3 | 5 | **5** | 3 |
+| #   | Item                                                                                  | Category     | Impact | Risk | Effort | Score  | Phase |
+| --- | ------------------------------------------------------------------------------------- | ------------ | ------ | ---- | ------ | ------ | ----- |
+| 1   | Zero test coverage: `quality-feedback` (408 lines) and `reference-images` (260 lines) | Test         | 4      | 5    | 2      | **36** | 1     |
+| 2   | Cross-feature coupling: `prompt-optimizer` imports types from 5+ sibling features     | Architecture | 5      | 4    | 4      | **18** | 2     |
+| 3   | Type system debt: 376 `as unknown` + 127 `as any` casts across server services        | Code         | 4      | 3    | 4      | **14** | 2–3   |
+| 4   | `ModelRecommendationDropdown.tsx` (706 lines) — monolithic component                  | Code         | 3      | 3    | 2      | **24** | 1     |
+| 5   | `SuggestionValidationService.ts` (1152 lines) — single validation monolith            | Code         | 3      | 3    | 3      | **18** | 2     |
+| 6   | `sessions.routes.ts` (594 lines) — multiple concerns in one route handler             | Code         | 3      | 3    | 3      | **18** | 2     |
+| 7   | `SessionsPanel.tsx` (600 lines) — list + create + edit in one component               | Code         | 3      | 2    | 2      | **20** | 1     |
+| 8   | `PromptCanvas.tsx` (1125 lines) — presentation + state management mixed               | Code         | 4      | 3    | 4      | **14** | 3     |
+| 9   | Duplicate API modules (`billingApi`, `enhancementSuggestionsApi`)                     | Code         | 2      | 2    | 1      | **20** | 1     |
+| 10  | Low `asset` service coverage (28.49%)                                                 | Test         | 3      | 4    | 3      | **21** | 1     |
+| 11  | Vitest config sprawl (5 configs, some likely redundant)                               | Infra        | 1      | 1    | 1      | **10** | 3     |
+| 12  | `gliner@0.0.19` pre-1.0 dependency                                                    | Dependency   | 2      | 3    | 5      | **5**  | 3     |
 
 ---
 
@@ -132,15 +132,15 @@ A few things that look like debt but aren't:
 
 ## Metrics Snapshot
 
-| Metric | Value |
-|--------|-------|
-| Overall test coverage | 40.42% |
-| Files > 300 lines (client) | 76 |
-| Files > 300 lines (server) | 146 |
-| `as unknown` casts | 376 |
-| `as any` casts | 127 |
-| Cross-feature imports | 329 |
-| Zero-coverage services | 2 |
-| Production dependencies | 59 |
-| Dev dependencies | 54 |
-| TODO/FIXME/HACK markers | 1 |
+| Metric                     | Value  |
+| -------------------------- | ------ |
+| Overall test coverage      | 40.42% |
+| Files > 300 lines (client) | 76     |
+| Files > 300 lines (server) | 146    |
+| `as unknown` casts         | 376    |
+| `as any` casts             | 127    |
+| Cross-feature imports      | 329    |
+| Zero-coverage services     | 2      |
+| Production dependencies    | 59     |
+| Dev dependencies           | 54     |
+| TODO/FIXME/HACK markers    | 1      |

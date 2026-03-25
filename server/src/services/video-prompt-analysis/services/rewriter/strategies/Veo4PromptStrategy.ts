@@ -1,9 +1,9 @@
-import type { ModelPromptStrategy } from './types';
-import { buildBaseHeader } from './promptStrategyUtils';
+import type { ModelPromptStrategy } from "./types";
+import { buildBaseHeader } from "./promptStrategyUtils";
 
 export const veo4PromptStrategy: ModelPromptStrategy = {
-  modelId: 'veo-3',
-  output: { format: 'text' },
+  modelId: "veo-3",
+  output: { format: "text" },
   buildPrompt: (context) => `${buildBaseHeader(context)}
 INSTRUCTIONS for Google Veo 3:
 1. Output cinematic prose, not JSON. Target 40-120 words.

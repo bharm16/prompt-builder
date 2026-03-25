@@ -8,7 +8,7 @@ Function calling lets you connect models to external tools and APIs. Instead of 
 - **Extend Capabilities:**Use external tools to perform computations and extend the limitations of the model, such as using a calculator or creating charts.
 - **Take Actions:**Interact with external systems using APIs, such as scheduling appointments, creating invoices, sending emails, or controlling smart home devices.
 
-Get WeatherSchedule MeetingCreate Chart  
+Get WeatherSchedule MeetingCreate Chart
 
 ## Python
 
@@ -72,22 +72,23 @@ else:
 ## JavaScript
 
 ```javascript
-import { GoogleGenAI, Type } from '@google/genai';
+import { GoogleGenAI, Type } from "@google/genai";
 
 // Configure the client
 const ai = new GoogleGenAI({});
 
 // Define the function declaration for the model
 const scheduleMeetingFunctionDeclaration = {
-  name: 'schedule_meeting',
-  description: 'Schedules a meeting with specified attendees at a given time and date.',
+  name: "schedule_meeting",
+  description:
+    "Schedules a meeting with specified attendees at a given time and date.",
   parameters: {
     type: Type.OBJECT,
     properties: {
       attendees: {
         type: Type.ARRAY,
         items: { type: Type.STRING },
-        description: 'List of people attending the meeting.',
+        description: "List of people attending the meeting.",
       },
       date: {
         type: Type.STRING,
@@ -99,21 +100,24 @@ const scheduleMeetingFunctionDeclaration = {
       },
       topic: {
         type: Type.STRING,
-        description: 'The subject or topic of the meeting.',
+        description: "The subject or topic of the meeting.",
       },
     },
-    required: ['attendees', 'date', 'time', 'topic'],
+    required: ["attendees", "date", "time", "topic"],
   },
 };
 
 // Send request with function declarations
 const response = await ai.models.generateContent({
-  model: 'gemini-2.5-flash',
-  contents: 'Schedule a meeting with Bob and Alice for 03/27/2025 at 10:00 AM about the Q3 planning.',
+  model: "gemini-2.5-flash",
+  contents:
+    "Schedule a meeting with Bob and Alice for 03/27/2025 at 10:00 AM about the Q3 planning.",
   config: {
-    tools: [{
-      functionDeclarations: [scheduleMeetingFunctionDeclaration]
-    }],
+    tools: [
+      {
+        functionDeclarations: [scheduleMeetingFunctionDeclaration],
+      },
+    ],
   },
 });
 
@@ -201,7 +205,7 @@ This process can be repeated over multiple turns, allowing for complex interacti
 
 ### Step 1: Define a function declaration
 
-Define a function and its declaration within your application code that allows users to set light values and make an API request. This function could call external services or APIs.  
+Define a function and its declaration within your application code that allows users to set light values and make an API request. This function could call external services or APIs.
 
 ### Python
 
@@ -244,26 +248,28 @@ def set_light_values(brightness: int, color_temp: str) -> dict[str, int | str]:
 ### JavaScript
 
 ```javascript
-import { Type } from '@google/genai';
+import { Type } from "@google/genai";
 
 // Define a function that the model can call to control smart lights
 const setLightValuesFunctionDeclaration = {
-  name: 'set_light_values',
-  description: 'Sets the brightness and color temperature of a light.',
+  name: "set_light_values",
+  description: "Sets the brightness and color temperature of a light.",
   parameters: {
     type: Type.OBJECT,
     properties: {
       brightness: {
         type: Type.NUMBER,
-        description: 'Light level from 0 to 100. Zero is off and 100 is full brightness',
+        description:
+          "Light level from 0 to 100. Zero is off and 100 is full brightness",
       },
       color_temp: {
         type: Type.STRING,
-        enum: ['daylight', 'cool', 'warm'],
-        description: 'Color temperature of the light fixture, which can be `daylight`, `cool` or `warm`.',
+        enum: ["daylight", "cool", "warm"],
+        description:
+          "Color temperature of the light fixture, which can be `daylight`, `cool` or `warm`.",
       },
     },
-    required: ['brightness', 'color_temp'],
+    required: ["brightness", "color_temp"],
   },
 };
 
@@ -276,14 +282,14 @@ const setLightValuesFunctionDeclaration = {
 function setLightValues(brightness, color_temp) {
   return {
     brightness: brightness,
-    colorTemperature: color_temp
+    colorTemperature: color_temp,
   };
 }
 ```
 
 ### Step 2: Call the model with function declarations
 
-Once you have defined your function declarations, you can prompt the model to use them. It analyzes the prompt and function declarations and decides whether to respond directly or to call a function. If a function is called, the response object will contain a function call suggestion.  
+Once you have defined your function declarations, you can prompt the model to use them. It analyzes the prompt and function declarations and decides whether to respond directly or to call a function. If a function is called, the response object will contain a function call suggestion.
 
 ### Python
 
@@ -315,13 +321,15 @@ print(response.candidates[0].content.parts[0].function_call)
 ### JavaScript
 
 ```javascript
-import { GoogleGenAI } from '@google/genai';
+import { GoogleGenAI } from "@google/genai";
 
 // Generation config with function declaration
 const config = {
-  tools: [{
-    functionDeclarations: [setLightValuesFunctionDeclaration]
-  }]
+  tools: [
+    {
+      functionDeclarations: [setLightValuesFunctionDeclaration],
+    },
+  ],
 };
 
 // Configure the client
@@ -330,22 +338,22 @@ const ai = new GoogleGenAI({});
 // Define user prompt
 const contents = [
   {
-    role: 'user',
-    parts: [{ text: 'Turn the lights down to a romantic level' }]
-  }
+    role: "user",
+    parts: [{ text: "Turn the lights down to a romantic level" }],
+  },
 ];
 
 // Send request with function declarations
 const response = await ai.models.generateContent({
-  model: 'gemini-2.5-flash',
+  model: "gemini-2.5-flash",
   contents: contents,
-  config: config
+  config: config,
 });
 
 console.log(response.functionCalls[0]);
 ```
 
-The model then returns a`functionCall`object in an OpenAPI compatible schema specifying how to call one or more of the declared functions in order to respond to the user's question.  
+The model then returns a`functionCall`object in an OpenAPI compatible schema specifying how to call one or more of the declared functions in order to respond to the user's question.
 
 ### Python
 
@@ -364,7 +372,7 @@ id=None args={'color_temp': 'warm', 'brightness': 25} name='set_light_values'
 
 ### Step 3: Execute set_light_values function code
 
-Extract the function call details from the model's response, parse the arguments , and execute the`set_light_values`function.  
+Extract the function call details from the model's response, parse the arguments , and execute the`set_light_values`function.
 
 ### Python
 
@@ -381,10 +389,10 @@ if tool_call.name == "set_light_values":
 
 ```javascript
 // Extract tool call details
-const tool_call = response.functionCalls[0]
+const tool_call = response.functionCalls[0];
 
 let result;
-if (tool_call.name === 'set_light_values') {
+if (tool_call.name === "set_light_values") {
   result = setLightValues(tool_call.args.brightness, tool_call.args.color_temp);
   console.log(`Function execution result: ${JSON.stringify(result)}`);
 }
@@ -392,7 +400,7 @@ if (tool_call.name === 'set_light_values') {
 
 ### Step 4: Create user friendly response with function result and call the model again
 
-Finally, send the result of the function execution back to the model so it can incorporate this information into its final response to the user.  
+Finally, send the result of the function execution back to the model so it can incorporate this information into its final response to the user.
 
 ### Python
 
@@ -426,18 +434,21 @@ print(final_response.text)
 // Create a function response part
 const function_response_part = {
   name: tool_call.name,
-  response: { result }
-}
+  response: { result },
+};
 
 // Append function call and result of the function execution to contents
 contents.push(response.candidates[0].content);
-contents.push({ role: 'user', parts: [{ functionResponse: function_response_part }] });
+contents.push({
+  role: "user",
+  parts: [{ functionResponse: function_response_part }],
+});
 
 // Get the final response from the model
 const final_response = await ai.models.generateContent({
-  model: 'gemini-2.5-flash',
+  model: "gemini-2.5-flash",
   contents: contents,
-  config: config
+  config: config,
 });
 
 console.log(final_response.text);
@@ -487,7 +498,7 @@ If you are manipulating conversation history manually, refer to the[Thoughts Sig
 
 ### Inspecting thought signatures
 
-While not necessary for implementation, you can inspect the response to see the`thought_signature`for debugging or educational purposes.  
+While not necessary for implementation, you can inspect the response to see the`thought_signature`for debugging or educational purposes.
 
 ### Python
 
@@ -519,7 +530,7 @@ Learn more about limitations and usage of thought signatures, and about thinking
 
 ## Parallel function calling
 
-In addition to single turn function calling, you can also call multiple functions at once. Parallel function calling lets you execute multiple functions at once and is used when the functions are not dependent on each other. This is useful in scenarios like gathering data from multiple independent sources, such as retrieving customer details from different databases or checking inventory levels across various warehouses or performing multiple actions such as converting your apartment into a disco.  
+In addition to single turn function calling, you can also call multiple functions at once. Parallel function calling lets you execute multiple functions at once and is used when the functions are not dependent on each other. This is useful in scenarios like gathering data from multiple independent sources, such as retrieving customer details from different databases or checking inventory levels across various warehouses or performing multiple actions such as converting your apartment into a disco.
 
 ### Python
 
@@ -577,59 +588,59 @@ dim_lights = {
 ### JavaScript
 
 ```javascript
-import { Type } from '@google/genai';
+import { Type } from "@google/genai";
 
 const powerDiscoBall = {
-  name: 'power_disco_ball',
-  description: 'Powers the spinning disco ball.',
+  name: "power_disco_ball",
+  description: "Powers the spinning disco ball.",
   parameters: {
     type: Type.OBJECT,
     properties: {
       power: {
         type: Type.BOOLEAN,
-        description: 'Whether to turn the disco ball on or off.'
-      }
+        description: "Whether to turn the disco ball on or off.",
+      },
     },
-    required: ['power']
-  }
+    required: ["power"],
+  },
 };
 
 const startMusic = {
-  name: 'start_music',
-  description: 'Play some music matching the specified parameters.',
+  name: "start_music",
+  description: "Play some music matching the specified parameters.",
   parameters: {
     type: Type.OBJECT,
     properties: {
       energetic: {
         type: Type.BOOLEAN,
-        description: 'Whether the music is energetic or not.'
+        description: "Whether the music is energetic or not.",
       },
       loud: {
         type: Type.BOOLEAN,
-        description: 'Whether the music is loud or not.'
-      }
+        description: "Whether the music is loud or not.",
+      },
     },
-    required: ['energetic', 'loud']
-  }
+    required: ["energetic", "loud"],
+  },
 };
 
 const dimLights = {
-  name: 'dim_lights',
-  description: 'Dim the lights.',
+  name: "dim_lights",
+  description: "Dim the lights.",
   parameters: {
     type: Type.OBJECT,
     properties: {
       brightness: {
         type: Type.NUMBER,
-        description: 'The brightness of the lights, 0.0 is off, 1.0 is full.'
-      }
+        description: "The brightness of the lights, 0.0 is off, 1.0 is full.",
+      },
     },
-    required: ['brightness']
-  }
+    required: ["brightness"],
+  },
 };
 ```
 
-Configure the function calling mode to allow using all of the specified tools. To learn more, you can read about[configuring function calling](https://ai.google.dev/gemini-api/docs/function-calling#function_calling_modes).  
+Configure the function calling mode to allow using all of the specified tools. To learn more, you can read about[configuring function calling](https://ai.google.dev/gemini-api/docs/function-calling#function_calling_modes).
 
 ### Python
 
@@ -666,21 +677,23 @@ for fn in response.function_calls:
 ### JavaScript
 
 ```javascript
-import { GoogleGenAI } from '@google/genai';
+import { GoogleGenAI } from "@google/genai";
 
 // Set up function declarations
 const houseFns = [powerDiscoBall, startMusic, dimLights];
 
 const config = {
-    tools: [{
-        functionDeclarations: houseFns
-    }],
-    // Force the model to call 'any' function, instead of chatting.
-    toolConfig: {
-        functionCallingConfig: {
-            mode: 'any'
-        }
-    }
+  tools: [
+    {
+      functionDeclarations: houseFns,
+    },
+  ],
+  // Force the model to call 'any' function, instead of chatting.
+  toolConfig: {
+    functionCallingConfig: {
+      mode: "any",
+    },
+  },
 };
 
 // Configure the client
@@ -688,25 +701,27 @@ const ai = new GoogleGenAI({});
 
 // Create a chat session
 const chat = ai.chats.create({
-    model: 'gemini-2.5-flash',
-    config: config
+  model: "gemini-2.5-flash",
+  config: config,
 });
-const response = await chat.sendMessage({message: 'Turn this place into a party!'});
+const response = await chat.sendMessage({
+  message: "Turn this place into a party!",
+});
 
 // Print out each of the function calls requested from this single call
 console.log("Example 1: Forced function calling");
 for (const fn of response.functionCalls) {
-    const args = Object.entries(fn.args)
-        .map(([key, val]) => `${key}=${val}`)
-        .join(', ');
-    console.log(`${fn.name}(${args})`);
+  const args = Object.entries(fn.args)
+    .map(([key, val]) => `${key}=${val}`)
+    .join(", ");
+  console.log(`${fn.name}(${args})`);
 }
 ```
 
 Each of the printed results reflects a single function call that the model has requested. To send the results back, include the responses in the same order as they were requested.
 
 The Python SDK supports[automatic function calling](https://ai.google.dev/gemini-api/docs/function-calling#automatic_function_calling_python_only), which automatically converts Python functions to declarations, handles the function call execution and response cycle for you. Following is an example for the disco use case.
-**Note:** Automatic Function Calling is a Python SDK only feature at the moment.  
+**Note:** Automatic Function Calling is a Python SDK only feature at the moment.
 
 ### Python
 
@@ -773,11 +788,11 @@ print(response.text)
 
 Compositional or sequential function calling allows Gemini to chain multiple function calls together to fulfill a complex request. For example, to answer "Get the temperature in my current location", the Gemini API might first invoke a`get_current_location()`function followed by a`get_weather()`function that takes the location as a parameter.
 
-The following example demonstrates how to implement compositional function calling using the Python SDK and automatic function calling.  
+The following example demonstrates how to implement compositional function calling using the Python SDK and automatic function calling.
 
 ### Python
 
-This example uses the automatic function calling feature of the`google-genai`Python SDK. The SDK automatically converts the Python functions to the required schema, executes the function calls when requested by the model, and sends the results back to the model to complete the task.  
+This example uses the automatic function calling feature of the`google-genai`Python SDK. The SDK automatically converts the Python functions to the required schema, executes the function calls when requested by the model, and sends the results back to the model to complete the task.
 
 ```python
 import os
@@ -818,7 +833,7 @@ print(response.text)
 
 **Expected Output**
 
-When you run the code, you will see the SDK orchestrating the function calls. The model first calls`get_weather_forecast`, receives the temperature, and then calls`set_thermostat_temperature`with the correct value based on the logic in the prompt.  
+When you run the code, you will see the SDK orchestrating the function calls. The model first calls`get_weather_forecast`, receives the temperature, and then calls`set_thermostat_temperature`with the correct value based on the logic in the prompt.
 
 ```
 Tool Call: get_weather_forecast(location=London)
@@ -830,7 +845,7 @@ OK. I've set the thermostat to 20Â°C.
 
 ### JavaScript
 
-This example shows how to use JavaScript/TypeScript SDK to do comopositional function calling using a manual execution loop.  
+This example shows how to use JavaScript/TypeScript SDK to do comopositional function calling using a manual execution loop.
 
 ```javascript
 import { GoogleGenAI, Type } from "@google/genai";
@@ -960,7 +975,7 @@ while (true) {
 
 **Expected Output**
 
-When you run the code, you will see the SDK orchestrating the function calls. The model first calls`get_weather_forecast`, receives the temperature, and then calls`set_thermostat_temperature`with the correct value based on the logic in the prompt.  
+When you run the code, you will see the SDK orchestrating the function calls. The model first calls`get_weather_forecast`, receives the temperature, and then calls`set_thermostat_temperature`with the correct value based on the logic in the prompt.
 
 ```
 Tool Call: get_weather_forecast(location=London)
@@ -970,7 +985,7 @@ Tool Response: {'status': 'success'}
 OK. It's 25Â°C in London, so I've set the thermostat to 20Â°C.
 ```
 
-Compositional function calling is a native[Live API](https://ai.google.dev/gemini-api/docs/live)feature. This means Live API can handle the function calling similar to the Python SDK.  
+Compositional function calling is a native[Live API](https://ai.google.dev/gemini-api/docs/live)feature. This means Live API can handle the function calling similar to the Python SDK.
 
 ### Python
 
@@ -995,8 +1010,8 @@ await run(prompt, tools=tools, modality="AUDIO")
 
 ```javascript
 // Light control schemas
-const turnOnTheLightsSchema = { name: 'turn_on_the_lights' };
-const turnOffTheLightsSchema = { name: 'turn_off_the_lights' };
+const turnOnTheLightsSchema = { name: "turn_on_the_lights" };
+const turnOffTheLightsSchema = { name: "turn_off_the_lights" };
 
 const prompt = `
   Hey, can you write run some python code to turn on the lights, wait 10s and then turn off the lights?
@@ -1004,10 +1019,10 @@ const prompt = `
 
 const tools = [
   { codeExecution: {} },
-  { functionDeclarations: [turnOnTheLightsSchema, turnOffTheLightsSchema] }
+  { functionDeclarations: [turnOnTheLightsSchema, turnOffTheLightsSchema] },
 ];
 
-await run(prompt, tools=tools, modality="AUDIO")
+await run(prompt, (tools = tools), (modality = "AUDIO"));
 ```
 
 ## Function calling modes
@@ -1041,14 +1056,14 @@ config = types.GenerateContentConfig(
 ### JavaScript
 
 ```javascript
-import { FunctionCallingConfigMode } from '@google/genai';
+import { FunctionCallingConfigMode } from "@google/genai";
 
 // Configure function calling mode
 const toolConfig = {
   functionCallingConfig: {
     mode: FunctionCallingConfigMode.ANY,
-    allowedFunctionNames: ['get_current_temperature']
-  }
+    allowedFunctionNames: ["get_current_temperature"],
+  },
 };
 
 // Create the generation config
@@ -1067,7 +1082,7 @@ When using the Python SDK, you can provide Python functions directly as tools. T
 3. Send the function's response back to the model.
 4. Return the model's final text response.
 
-The SDK currently does not parse argument descriptions into the property description slots of the generated function declaration. Instead, it sends the entire docstring as the top-level function description.  
+The SDK currently does not parse argument descriptions into the property description slots of the generated function declaration. Instead, it sends the entire docstring as the top-level function description.
 
 ### Python
 
@@ -1104,7 +1119,7 @@ response = client.models.generate_content(
 print(response.text)  # The SDK handles the function call and returns the final text
 ```
 
-You can disable automatic function calling with:  
+You can disable automatic function calling with:
 
 ### Python
 
@@ -1117,7 +1132,7 @@ config = types.GenerateContentConfig(
 
 ### Automatic function schema declaration
 
-The API is able to describe any of the following types.`Pydantic`types are allowed, as long as the fields defined on them are also composed of allowed types. Dict types (like`dict[str: int]`) are not well supported here, don't use them.  
+The API is able to describe any of the following types.`Pydantic`types are allowed, as long as the fields defined on them are also composed of allowed types. Dict types (like`dict[str: int]`) are not well supported here, don't use them.
 
 ### Python
 
@@ -1126,7 +1141,7 @@ AllowedType = (
   int | float | bool | str | list['AllowedType'] | pydantic.BaseModel)
 ```
 
-To see what the inferred schema looks like, you can convert it using[`from_callable`](https://googleapis.github.io/python-genai/genai.html#genai.types.FunctionDeclaration.from_callable):  
+To see what the inferred schema looks like, you can convert it using[`from_callable`](https://googleapis.github.io/python-genai/genai.html#genai.types.FunctionDeclaration.from_callable):
 
 ### Python
 
@@ -1148,7 +1163,7 @@ print(fn_decl.to_json_dict())
 ## Multi-tool use: Combine native tools with function calling
 
 You can enable multiple tools combining native tools with function calling at the same time. Here's an example that enables two tools,[Grounding with Google Search](https://ai.google.dev/gemini-api/docs/grounding)and[code execution](https://ai.google.dev/gemini-api/docs/code-execution), in a request using the[Live API](https://ai.google.dev/gemini-api/docs/live).
-**Note:** Multi-tool use is a-[Live API](https://ai.google.dev/gemini-api/docs/live)only feature at the moment. The`run()`function declaration, which handles the asynchronous websocket setup, is omitted for brevity.  
+**Note:** Multi-tool use is a-[Live API](https://ai.google.dev/gemini-api/docs/live)only feature at the moment. The`run()`function declaration, which handles the asynchronous websocket setup, is omitted for brevity.
 
 ### Python
 
@@ -1191,11 +1206,11 @@ const prompt = `
 const tools = [
   { googleSearch: {} },
   { codeExecution: {} },
-  { functionDeclarations: [turnOnTheLightsSchema, turnOffTheLightsSchema] } // not defined here.
+  { functionDeclarations: [turnOnTheLightsSchema, turnOffTheLightsSchema] }, // not defined here.
 ];
 
 // Execute the prompt with specified tools in audio modality
-await run(prompt, {tools: tools, modality: "AUDIO"});
+await run(prompt, { tools: tools, modality: "AUDIO" });
 ```
 
 Python developers can try this out in the[Live API Tool Use notebook](https://colab.research.google.com/github/google-gemini/cookbook/blob/main/quickstarts/Get_started_LiveAPI_tools.ipynb).
@@ -1213,7 +1228,7 @@ To include multimodal data in a function response, include it as one or more par
 
 You can also reference a multimodal part from within the structured`response`field of the`functionResponse`part by using the JSON reference format`{"$ref": "<displayName>"}`. The model substitutes the reference with the multimodal content when processing the response. Each`displayName`can only be referenced once in the structured`response`field.
 
-The following example shows a message containing a`functionResponse`for a function named`get_image`and a nested part containing image data with`displayName: "wakeupcat.jpg"`. The`functionResponse`'s`response`field references this image part:  
+The following example shows a message containing a`functionResponse`for a function named`get_image`and a nested part containing image data with`displayName: "wakeupcat.jpg"`. The`functionResponse`'s`response`field references this image part:
 
 ### Python
 
@@ -1305,24 +1320,25 @@ print(f"\nFinal model response: {response_2.text}")
 ### JavaScript
 
 ```javascript
-import { GoogleGenAI, Type } from '@google/genai';
+import { GoogleGenAI, Type } from "@google/genai";
 
 const client = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 // This is a manual, two turn multimodal function calling workflow:
 // 1. Define the function tool
 const getImageDeclaration = {
-  name: 'get_image',
-  description: 'Retrieves the image file reference for a specific order item.',
+  name: "get_image",
+  description: "Retrieves the image file reference for a specific order item.",
   parameters: {
     type: Type.OBJECT,
     properties: {
       item_name: {
         type: Type.STRING,
-        description: "The name or description of the item ordered (e.g., 'green shirt').",
+        description:
+          "The name or description of the item ordered (e.g., 'green shirt').",
       },
     },
-    required: ['item_name'],
+    required: ["item_name"],
   },
 };
 
@@ -1331,9 +1347,9 @@ const toolConfig = {
 };
 
 // 2. Send a message that triggers the tool
-const prompt = 'Show me the green shirt I ordered last month.';
+const prompt = "Show me the green shirt I ordered last month.";
 const response1 = await client.models.generateContent({
-  model: 'gemini-3-flash-preview',
+  model: "gemini-3-flash-preview",
   contents: prompt,
   config: {
     tools: [toolConfig],
@@ -1350,24 +1366,24 @@ console.log(`Model wants to call: ${functionCall.name}`);
 console.log(`Calling external tool for: ${requestedItem}`);
 
 const functionResponseData = {
-  image_ref: { $ref: 'dress.jpg' },
+  image_ref: { $ref: "dress.jpg" },
 };
 
 const functionResponseMultimodalData = {
   fileData: {
-    mimeType: 'image/png',
-    displayName: 'dress.jpg',
-    fileUri: 'gs://cloud-samples-data/generative-ai/image/dress.jpg',
+    mimeType: "image/png",
+    displayName: "dress.jpg",
+    fileUri: "gs://cloud-samples-data/generative-ai/image/dress.jpg",
   },
 };
 
 // 4. Send the tool's result back
 // Append this turn's messages to history for a final response.
 const history = [
-  { role: 'user', parts: [{ text: prompt }] },
+  { role: "user", parts: [{ text: prompt }] },
   response1.candidates[0].content,
   {
-    role: 'tool',
+    role: "tool",
     parts: [
       {
         functionResponse: {
@@ -1381,7 +1397,7 @@ const history = [
 ];
 
 const response2 = await client.models.generateContent({
-  model: 'gemini-3-flash-preview',
+  model: "gemini-3-flash-preview",
   contents: history,
   config: {
     tools: [toolConfig],
@@ -1430,17 +1446,17 @@ console.log(`\nFinal model response: ${response2.text}`);
 
 The Gemini SDKs have built-in support for the MCP, reducing boilerplate code and offering[automatic tool calling](https://ai.google.dev/gemini-api/docs/function-calling#automatic_function_calling_python_only)for MCP tools. When the model generates an MCP tool call, the Python and JavaScript client SDK can automatically execute the MCP tool and send the response back to the model in a subsequent request, continuing this loop until no more tool calls are made by the model.
 
-Here, you can find an example of how to use a local MCP server with Gemini and`mcp`SDK.  
+Here, you can find an example of how to use a local MCP server with Gemini and`mcp`SDK.
 
 ### Python
 
-Make sure the latest version of the[`mcp`SDK](https://modelcontextprotocol.io/introduction)is installed on your platform of choice.  
+Make sure the latest version of the[`mcp`SDK](https://modelcontextprotocol.io/introduction)is installed on your platform of choice.
 
 ```bash
 pip install mcp
 ```
 
-**Note:** Python supports automatic tool calling by passing in the`ClientSession`into the`tools`parameters. If you want to disable it, you can provide`automatic_function_calling`with disabled`True`.  
+**Note:** Python supports automatic tool calling by passing in the`ClientSession`into the`tools`parameters. If you want to disable it, you can provide`automatic_function_calling`with disabled`True`.
 
 ```python
 import os
@@ -1489,31 +1505,33 @@ asyncio.run(run())
 
 ### JavaScript
 
-Make sure the latest version of the`mcp`SDK is installed on your platform of choice.  
+Make sure the latest version of the`mcp`SDK is installed on your platform of choice.
 
 ```bash
 npm install @modelcontextprotocol/sdk
 ```
 
-**Note:** JavaScript supports automatic tool calling by wrapping the`client`with`mcpToTool`. If you want to disable it, you can provide`automaticFunctionCalling`with disabled`true`.  
+**Note:** JavaScript supports automatic tool calling by wrapping the`client`with`mcpToTool`. If you want to disable it, you can provide`automaticFunctionCalling`with disabled`true`.
 
 ```javascript
-import { GoogleGenAI, FunctionCallingConfigMode , mcpToTool} from '@google/genai';
+import {
+  GoogleGenAI,
+  FunctionCallingConfigMode,
+  mcpToTool,
+} from "@google/genai";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 
 // Create server parameters for stdio connection
 const serverParams = new StdioClientTransport({
   command: "npx", // Executable
-  args: ["-y", "@philschmid/weather-mcp"] // MCP Server
+  args: ["-y", "@philschmid/weather-mcp"], // MCP Server
 });
 
-const client = new Client(
-  {
-    name: "example-client",
-    version: "1.0.0"
-  }
-);
+const client = new Client({
+  name: "example-client",
+  version: "1.0.0",
+});
 
 // Configure the client
 const ai = new GoogleGenAI({});
@@ -1526,14 +1544,14 @@ const response = await ai.models.generateContent({
   model: "gemini-2.5-flash",
   contents: `What is the weather in London in ${new Date().toLocaleDateString()}?`,
   config: {
-    tools: [mcpToTool(client)],  // uses the session, will automatically call the tool
+    tools: [mcpToTool(client)], // uses the session, will automatically call the tool
     // Uncomment if you **don't** want the sdk to automatically call the tool
     // automaticFunctionCalling: {
     //   disable: true,
     // },
   },
 });
-console.log(response.text)
+console.log(response.text);
 
 // Close the connection
 await client.close();
@@ -1553,8 +1571,8 @@ Manual integration of MCP servers is always an option if these limit what you're
 
 This section lists models and their function calling capabilities. Experimental models are not included. You can find a comprehensive capabilities overview on the[model overview](https://ai.google.dev/gemini-api/docs/models)page.
 
-|         Model         | Function Calling | Parallel Function Calling | Compositional Function Calling |
-|-----------------------|------------------|---------------------------|--------------------------------|
+| Model                 | Function Calling | Parallel Function Calling | Compositional Function Calling |
+| --------------------- | ---------------- | ------------------------- | ------------------------------ |
 | Gemini 3 Pro          | ✅               | ✅                        | ✅                             |
 | Gemini 3 Flash        | ✅               | ✅                        | ✅                             |
 | Gemini 2.5 Pro        | ✅               | ✅                        | ✅                             |
@@ -1577,6 +1595,7 @@ This section lists models and their function calling capabilities. Experimental 
 - **Temperature:**Use a low temperature (e.g., 0) for more deterministic and reliable function calls.
 
   | When using Gemini 3 models, we strongly recommend keeping the`temperature`at its default value of 1.0. Changing the temperature (setting it below 1.0) may lead to unexpected behavior, such as looping or degraded performance, particularly in complex mathematical or reasoning tasks.
+
 - **Validation:**If a function call has significant consequences (e.g., placing an order), validate the call with the user before executing it.
 
 - **Check Finish Reason:** Always check the[`finishReason`](https://ai.google.dev/api/generate-content#FinishReason)in the model's response to handle cases where the model failed to generate a valid function call.
@@ -1592,4 +1611,3 @@ This section lists models and their function calling capabilities. Experimental 
 - Only a[subset of the OpenAPI schema](https://ai.google.dev/api/caching#FunctionDeclaration)is supported.
 - Supported parameter types in Python are limited.
 - Automatic function calling is a Python SDK feature only.
-

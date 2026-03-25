@@ -1,6 +1,6 @@
-import { useCallback, useRef, useState } from 'react';
-import type { MutableRefObject } from 'react';
-import type { HighlightSnapshot, StateSnapshot } from '../types';
+import { useCallback, useRef, useState } from "react";
+import type { MutableRefObject } from "react";
+import type { HighlightSnapshot, StateSnapshot } from "../types";
 
 export function useHighlightState(): {
   initialHighlights: HighlightSnapshot | null;
@@ -17,12 +17,14 @@ export function useHighlightState(): {
   redoStackRef: MutableRefObject<StateSnapshot[]>;
   applyInitialHighlightSnapshot: (
     snapshot: HighlightSnapshot | null,
-    options?: { bumpVersion?: boolean; markPersisted?: boolean }
+    options?: { bumpVersion?: boolean; markPersisted?: boolean },
   ) => void;
   resetEditStacks: () => void;
 } {
-  const [initialHighlights, setInitialHighlights] = useState<HighlightSnapshot | null>(null);
-  const [initialHighlightsVersion, setInitialHighlightsVersion] = useState<number>(0);
+  const [initialHighlights, setInitialHighlights] =
+    useState<HighlightSnapshot | null>(null);
+  const [initialHighlightsVersion, setInitialHighlightsVersion] =
+    useState<number>(0);
   const [canUndo, setCanUndo] = useState<boolean>(false);
   const [canRedo, setCanRedo] = useState<boolean>(false);
 
@@ -34,7 +36,10 @@ export function useHighlightState(): {
   const applyInitialHighlightSnapshot = useCallback(
     (
       snapshot: HighlightSnapshot | null,
-      { bumpVersion = false, markPersisted = false }: { bumpVersion?: boolean; markPersisted?: boolean } = {}
+      {
+        bumpVersion = false,
+        markPersisted = false,
+      }: { bumpVersion?: boolean; markPersisted?: boolean } = {},
     ): void => {
       setInitialHighlights(snapshot ?? null);
       if (bumpVersion) {
@@ -45,7 +50,7 @@ export function useHighlightState(): {
         persistedSignatureRef.current = snapshot?.signature ?? null;
       }
     },
-    [setInitialHighlights, setInitialHighlightsVersion]
+    [setInitialHighlights, setInitialHighlightsVersion],
   );
 
   const resetEditStacks = useCallback((): void => {

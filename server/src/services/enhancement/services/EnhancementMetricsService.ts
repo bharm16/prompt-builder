@@ -1,6 +1,6 @@
-import { logger } from '@infrastructure/Logger';
-import type { EnhancementMetrics, MetricsService } from './types';
-import type { PromptMode } from '../constants';
+import { logger } from "@infrastructure/Logger";
+import type { EnhancementMetrics, MetricsService } from "./types";
+import type { PromptMode } from "../constants";
 
 interface MetricsParams {
   highlightedCategory: string | null;
@@ -11,7 +11,7 @@ interface MetricsParams {
 
 /**
  * EnhancementMetricsService - Handles metrics logging and latency monitoring
- * 
+ *
  * Extracted from EnhancementService to follow single responsibility principle.
  * Handles all metrics-related concerns: console logging, metrics service calls,
  * and latency threshold checking.
@@ -30,9 +30,9 @@ export class EnhancementMetricsService {
   logMetrics(
     metrics: EnhancementMetrics,
     params: MetricsParams,
-    error: Error | null = null
+    error: Error | null = null,
   ): void {
-    const isDev = process.env.NODE_ENV === 'development';
+    const isDev = process.env.NODE_ENV === "development";
 
     // Console logging in development
     if (isDev) {
@@ -44,18 +44,18 @@ export class EnhancementMetricsService {
       this.metricsService.recordEnhancementTiming(
         this._convertMetricsForService(metrics),
         {
-          category: params.highlightedCategory || 'unknown',
+          category: params.highlightedCategory || "unknown",
           isVideo: params.isVideoPrompt,
           modelTarget: params.modelTarget,
           promptSection: params.promptSection,
           promptMode: metrics.promptMode,
           error: error?.message,
-        }
+        },
       );
     }
 
     // Always log to structured logger
-    logger.info('Enhancement request completed', {
+    logger.info("Enhancement request completed", {
       ...metrics,
       category: params.highlightedCategory,
       isVideo: params.isVideoPrompt,
@@ -71,7 +71,7 @@ export class EnhancementMetricsService {
    */
   checkLatency(metrics: EnhancementMetrics): void {
     if (metrics.total > this.latencyThreshold) {
-      logger.warn('Enhancement request exceeded latency threshold', {
+      logger.warn("Enhancement request exceeded latency threshold", {
         total: metrics.total,
         threshold: this.latencyThreshold,
         breakdown: {
@@ -85,8 +85,8 @@ export class EnhancementMetricsService {
       });
 
       // Alert in production
-      if (process.env.NODE_ENV === 'production' && this.metricsService) {
-        this.metricsService.recordAlert('enhancement_latency_exceeded', {
+      if (process.env.NODE_ENV === "production" && this.metricsService) {
+        this.metricsService.recordAlert("enhancement_latency_exceeded", {
           total: metrics.total,
           threshold: this.latencyThreshold,
         });
@@ -99,11 +99,11 @@ export class EnhancementMetricsService {
    * @private
    */
   private _logToConsole(metrics: EnhancementMetrics): void {
-    logger.debug('Enhancement Service Performance', {
-      operation: 'logMetrics',
+    logger.debug("Enhancement Service Performance", {
+      operation: "logMetrics",
       total: metrics.total,
       promptMode: metrics.promptMode,
-      cache: metrics.cache ? 'HIT' : 'MISS',
+      cache: metrics.cache ? "HIT" : "MISS",
       cacheCheck: metrics.cacheCheck,
       modelDetection: metrics.modelDetection,
       sectionDetection: metrics.sectionDetection,
@@ -117,7 +117,9 @@ export class EnhancementMetricsService {
    * Convert EnhancementMetrics to Record<string, unknown> for metrics service
    * @private
    */
-  private _convertMetricsForService(metrics: EnhancementMetrics): Record<string, unknown> {
+  private _convertMetricsForService(
+    metrics: EnhancementMetrics,
+  ): Record<string, unknown> {
     return {
       total: metrics.total,
       cache: metrics.cache,
@@ -134,4 +136,3 @@ export class EnhancementMetricsService {
     };
   }
 }
-

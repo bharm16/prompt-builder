@@ -1,7 +1,7 @@
-import React, { type ReactNode, type ComponentType } from 'react';
-import * as Sentry from '@sentry/react';
-import { logger } from '@/services/LoggingService';
-import { Button } from '@promptstudio/system/components/ui/button';
+import React, { type ReactNode, type ComponentType } from "react";
+import * as Sentry from "@sentry/react";
+import { logger } from "@/services/LoggingService";
+import { Button } from "@promptstudio/system/components/ui/button";
 
 interface ErrorBoundaryState {
   hasError: boolean;
@@ -23,10 +23,18 @@ export interface FallbackProps {
   resetError: () => void;
 }
 
-export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+export class ErrorBoundary extends React.Component<
+  ErrorBoundaryProps,
+  ErrorBoundaryState
+> {
   constructor(props: ErrorBoundaryProps) {
     super(props);
-    this.state = { hasError: false, error: null, errorInfo: null, eventId: null };
+    this.state = {
+      hasError: false,
+      error: null,
+      errorInfo: null,
+      eventId: null,
+    };
   }
 
   static getDerivedStateFromError(_error: Error): Partial<ErrorBoundaryState> {
@@ -35,8 +43,8 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
 
   override componentDidCatch(error: Error, errorInfo: React.ErrorInfo): void {
     // Log error with full context
-    logger.error('Error caught by boundary', error, {
-      component: 'ErrorBoundary',
+    logger.error("Error caught by boundary", error, {
+      component: "ErrorBoundary",
       componentStack: errorInfo.componentStack,
       isDev: (import.meta as { env?: { DEV?: boolean } }).env?.DEV,
     });
@@ -64,14 +72,19 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
   };
 
   handleReset = (): void => {
-    this.setState({ hasError: false, error: null, errorInfo: null, eventId: null });
+    this.setState({
+      hasError: false,
+      error: null,
+      errorInfo: null,
+      eventId: null,
+    });
   };
 
   override render(): ReactNode {
     if (this.state.hasError) {
       // Custom fallback if provided
       if (this.props.fallback) {
-        if (typeof this.props.fallback === 'function') {
+        if (typeof this.props.fallback === "function") {
           return this.props.fallback({
             error: this.state.error,
             errorInfo: this.state.errorInfo,
@@ -100,26 +113,31 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
             </div>
 
             <h1 className="text-2xl font-bold text-gray-900 text-center mb-2">
-              {this.props.title || 'Something went wrong'}
+              {this.props.title || "Something went wrong"}
             </h1>
 
             <p className="text-gray-600 text-center mb-6">
               {this.props.message ||
-                'We apologize for the inconvenience. The application encountered an unexpected error.'}
+                "We apologize for the inconvenience. The application encountered an unexpected error."}
             </p>
 
-            {(import.meta as { env?: { DEV?: boolean } }).env?.DEV && this.state.error && (
-              <div className="mb-4 p-4 bg-gray-100 rounded text-sm">
-                <p className="font-semibold text-gray-800 mb-2">Error Details:</p>
-                <p className="text-red-600 font-mono text-xs break-all">{this.state.error.toString()}</p>
-              </div>
-            )}
+            {(import.meta as { env?: { DEV?: boolean } }).env?.DEV &&
+              this.state.error && (
+                <div className="mb-4 p-4 bg-gray-100 rounded text-sm">
+                  <p className="font-semibold text-gray-800 mb-2">
+                    Error Details:
+                  </p>
+                  <p className="text-red-600 font-mono text-xs break-all">
+                    {this.state.error.toString()}
+                  </p>
+                </div>
+              )}
 
             <div className="flex flex-col gap-3">
               <div className="flex gap-3">
                 <Button
                   onClick={() => {
-                    window.location.href = '/';
+                    window.location.href = "/";
                   }}
                   variant="ghost"
                   className="flex-1 bg-blue-600 text-white font-medium py-2 px-4 rounded transition-colors hover:bg-blue-700"
@@ -161,7 +179,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
  */
 export const withErrorBoundary = <P extends object>(
   Component: ComponentType<P>,
-  errorBoundaryProps: Partial<ErrorBoundaryProps> = {}
+  errorBoundaryProps: Partial<ErrorBoundaryProps> = {},
 ): ComponentType<P> => {
   const WrappedComponent = (props: P): React.ReactElement => (
     <ErrorBoundary {...errorBoundaryProps}>
@@ -169,7 +187,7 @@ export const withErrorBoundary = <P extends object>(
     </ErrorBoundary>
   );
 
-  WrappedComponent.displayName = `withErrorBoundary(${Component.displayName || Component.name || 'Component'})`;
+  WrappedComponent.displayName = `withErrorBoundary(${Component.displayName || Component.name || "Component"})`;
 
   return WrappedComponent;
 };

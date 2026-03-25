@@ -1,14 +1,17 @@
-import type { DrawerDisplayMode } from '@components/CollapsibleDrawer';
-import type { AssetSuggestion } from '@features/assets/hooks/useTriggerAutocomplete';
-import type { PromptVersionEntry } from '@features/prompt-optimizer/types/domain/prompt-session';
-import type { PromptContext } from '@utils/PromptContext/PromptContext';
-import type { InlineSuggestion, SuggestionItem } from '../types';
-import type { ExportFormat } from '@features/prompt-optimizer/types';
-import type { Generation, GenerationsPanelProps } from '@features/generations/types';
-import type { Span } from '@features/prompt-optimizer/SpanBentoGrid/components/types';
-import type { CoherenceIssue } from '@features/prompt-optimizer/components/coherence/useCoherenceAnnotations';
-import type { CoherenceRecommendation } from '@features/prompt-optimizer/types/coherence';
-import type { I2VContext } from '@features/prompt-optimizer/types/i2v';
+import type { DrawerDisplayMode } from "@components/CollapsibleDrawer";
+import type { AssetSuggestion } from "@features/assets/hooks/useTriggerAutocomplete";
+import type { PromptVersionEntry } from "@features/prompt-optimizer/types/domain/prompt-session";
+import type { PromptContext } from "@utils/PromptContext/PromptContext";
+import type { InlineSuggestion, SuggestionItem } from "../types";
+import type { ExportFormat } from "@features/prompt-optimizer/types";
+import type {
+  Generation,
+  GenerationsPanelProps,
+} from "@features/generations/types";
+import type { Span } from "@features/prompt-optimizer/SpanBentoGrid/components/types";
+import type { CoherenceIssue } from "@features/prompt-optimizer/components/coherence/useCoherenceAnnotations";
+import type { CoherenceRecommendation } from "@features/prompt-optimizer/types/coherence";
+import type { I2VContext } from "@features/prompt-optimizer/types/i2v";
 
 export interface VersionsDrawerState {
   isOpen: boolean;
@@ -28,7 +31,7 @@ export interface VersionsPanelPropsBase {
 export interface PromptCanvasViewProps {
   selectedMode: string;
   outlineOverlayActive: boolean;
-  outlineOverlayState: 'closed' | 'opening' | 'open' | 'closing';
+  outlineOverlayState: "closed" | "opening" | "open" | "closing";
   outlineOverlayRef: React.RefObject<HTMLDivElement>;
   bentoSpans: Span[];
   editorRef: React.RefObject<HTMLDivElement>;
@@ -73,7 +76,7 @@ export interface PromptCanvasViewProps {
   inlineSuggestions: InlineSuggestion[];
   activeSuggestionIndex: number;
   onActiveSuggestionChange: (index: number) => void;
-  interactionSourceRef: React.MutableRefObject<'keyboard' | 'mouse' | 'auto'>;
+  interactionSourceRef: React.MutableRefObject<"keyboard" | "mouse" | "auto">;
   onSuggestionClick: (suggestion: SuggestionItem | string) => void;
   onCloseInlinePopover: () => void;
   selectionLabel: string;
@@ -103,16 +106,18 @@ export interface PromptCanvasViewProps {
   onToggleCoherencePanelExpanded?: (() => void) | undefined;
   onDismissCoherenceIssue?: ((issueId: string) => void) | undefined;
   onDismissAllCoherenceIssues?: (() => void) | undefined;
-  onApplyCoherenceFix?: ((
-    issueId: string,
-    recommendation: CoherenceRecommendation
-  ) => void) | undefined;
+  onApplyCoherenceFix?:
+    | ((issueId: string, recommendation: CoherenceRecommendation) => void)
+    | undefined;
   onScrollToCoherenceSpan?: ((spanId: string) => void) | undefined;
   versionsDrawer: VersionsDrawerState;
   versionsPanelProps: VersionsPanelPropsBase;
   generationsPanelProps: GenerationsPanelProps;
   onReuseGeneration: (generation: Generation) => void;
-  onToggleGenerationFavorite: (generationId: string, isFavorite: boolean) => void;
+  onToggleGenerationFavorite: (
+    generationId: string,
+    isFavorite: boolean,
+  ) => void;
   generationsSheetOpen: boolean;
   onGenerationsSheetOpenChange: (open: boolean) => void;
   showDiff: boolean;

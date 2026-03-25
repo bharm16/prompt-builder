@@ -1,5 +1,5 @@
-import type { ILogger } from '@interfaces/ILogger';
-import type { CapabilityValues } from '@shared/capabilities';
+import type { ILogger } from "@interfaces/ILogger";
+import type { CapabilityValues } from "@shared/capabilities";
 import type {
   AIService,
   CompilationState,
@@ -11,8 +11,8 @@ import type {
   OptimizationResponse,
   ShotPlan,
   StructuredOptimizationArtifact,
-} from '../types';
-import type { I2VConstraintMode, I2VOptimizationResult } from '../types/i2v';
+} from "../types";
+import type { I2VConstraintMode, I2VOptimizationResult } from "../types/i2v";
 
 export type MetadataMap = Record<string, unknown>;
 
@@ -24,22 +24,36 @@ export type OptimizationCacheLike = {
     brainstormContext: Record<string, unknown> | null,
     targetModel?: string,
     generationParams?: Record<string, unknown> | null,
-    lockedSpans?: Array<{ text: string; leftCtx?: string | null; rightCtx?: string | null }>
+    lockedSpans?: Array<{
+      text: string;
+      leftCtx?: string | null;
+      rightCtx?: string | null;
+    }>,
   ): string;
   buildStructuredArtifactKeyFromInputs(params: {
     prompt: string;
     sourcePrompt?: string | null;
     shotPlan?: ShotPlan | null;
     generationParams?: Record<string, unknown> | null;
-    lockedSpans?: Array<{ text: string; leftCtx?: string | null; rightCtx?: string | null }>;
+    lockedSpans?: Array<{
+      text: string;
+      leftCtx?: string | null;
+      rightCtx?: string | null;
+    }>;
   }): string;
   getCachedResult(key: string): Promise<string | null>;
   getCachedMetadata(key: string): Promise<MetadataMap | null>;
-  getStructuredArtifact(key: string): Promise<StructuredOptimizationArtifact | null>;
-  cacheResult(key: string, result: string, metadata?: MetadataMap | null): Promise<void>;
+  getStructuredArtifact(
+    key: string,
+  ): Promise<StructuredOptimizationArtifact | null>;
+  cacheResult(
+    key: string,
+    result: string,
+    metadata?: MetadataMap | null,
+  ): Promise<void>;
   cacheStructuredArtifact(
     key: string,
-    artifact: StructuredOptimizationArtifact
+    artifact: StructuredOptimizationArtifact,
   ): Promise<void>;
 };
 
@@ -49,12 +63,16 @@ export type ShotInterpreterLike = {
 
 export type OptimizationStrategyLike = {
   optimize(request: OptimizationRequest): Promise<string>;
-  optimizeStructured?(request: OptimizationRequest): Promise<StructuredOptimizationArtifact>;
-  renderStructuredPrompt?(structuredPrompt: StructuredOptimizationArtifact['structuredPrompt']): string;
+  optimizeStructured?(
+    request: OptimizationRequest,
+  ): Promise<StructuredOptimizationArtifact>;
+  renderStructuredPrompt?(
+    structuredPrompt: StructuredOptimizationArtifact["structuredPrompt"],
+  ): string;
   generateDomainContent?(
     prompt: string,
     context?: InferredContext | null,
-    shotPlan?: ShotPlan | null
+    shotPlan?: ShotPlan | null,
   ): Promise<unknown>;
 };
 
@@ -78,7 +96,7 @@ export type CompilationServiceLike = {
 export type ConstitutionalReviewLike = (
   prompt: string,
   mode: OptimizationMode,
-  signal?: AbortSignal | undefined
+  signal?: AbortSignal | undefined,
 ) => Promise<string>;
 
 export type IntentLockLike = {
@@ -103,12 +121,14 @@ export type IntentLockLike = {
 };
 
 export type PromptLintLike = {
-  enforce(params: {
+  enforce(params: { prompt: string; modelId?: string | null }): {
     prompt: string;
-    modelId?: string | null;
-  }): {
-    prompt: string;
-    lint: { ok: boolean; errors: string[]; warnings: string[]; wordCount: number };
+    lint: {
+      ok: boolean;
+      errors: string[];
+      warnings: string[];
+      wordCount: number;
+    };
     repaired: boolean;
   };
 };
@@ -124,7 +144,7 @@ export interface OptimizeFlowArgs {
   logOptimizationMetrics: (
     originalPrompt: string,
     optimizedPrompt: string,
-    mode: OptimizationMode
+    mode: OptimizationMode,
   ) => void;
   intentLock: IntentLockLike;
   promptLint: PromptLintLike;

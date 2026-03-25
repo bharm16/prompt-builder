@@ -11,11 +11,13 @@
 ## Problem Statement
 
 User generates a video. It's close, but:
+
 - Camera is too static
 - Lighting is too flat
 - Character doesn't look confident enough
 
 To fix it, they need to:
+
 1. **Know what** prompt changes would help
 2. **Know the vocabulary** (cinematography terminology)
 3. **Manually edit** the prompt
@@ -34,6 +36,7 @@ Natural language refinement. User says what they want:
 > "Pull the camera back a bit and add some dramatic rim lighting"
 
 PromptCanvas:
+
 1. **Parses the intent** using LLM
 2. **Maps to specific prompt modifications** using your taxonomy
 3. **Shows the changes** before applying
@@ -160,16 +163,16 @@ client/src/features/director/
 ```typescript
 // server/src/services/director/types.ts
 
-import { TaxonomyCategory } from '@shared/taxonomy';
-import { LabeledSpan } from '@/llm/span-labeling/types';
+import { TaxonomyCategory } from "@shared/taxonomy";
+import { LabeledSpan } from "@/llm/span-labeling/types";
 
 /**
  * User's natural language direction
  */
 export interface DirectorInput {
-  text: string;                      // "Pull the camera back and add rim lighting"
-  conversationId?: string;           // For multi-turn
-  previousModifications?: PromptModification[];  // Context from previous turns
+  text: string; // "Pull the camera back and add rim lighting"
+  conversationId?: string; // For multi-turn
+  previousModifications?: PromptModification[]; // Context from previous turns
 }
 
 /**
@@ -178,20 +181,20 @@ export interface DirectorInput {
 export interface DirectorIntent {
   id: string;
   rawInput: string;
-  
+
   // Extracted modifications
   modifications: PromptModification[];
-  
+
   // Parsing confidence
   confidence: number;
-  
+
   // If clarification needed
   requiresClarification: boolean;
   clarificationQuestion?: string;
-  
+
   // For multi-turn
   isFollowUp: boolean;
-  referencedModifications?: string[];  // IDs of previous mods being refined
+  referencedModifications?: string[]; // IDs of previous mods being refined
 }
 
 /**
@@ -199,32 +202,32 @@ export interface DirectorIntent {
  */
 export interface PromptModification {
   id: string;
-  
+
   // Type of modification
-  type: 'add' | 'remove' | 'replace' | 'adjust';
-  
+  type: "add" | "remove" | "replace" | "adjust";
+
   // What category this affects
   category: TaxonomyCategory;
   subcategory?: string;
-  
+
   // For replace/remove: what to target
   target?: {
-    text: string;                    // Existing span text
-    spanId?: string;                 // If we have the span
+    text: string; // Existing span text
+    spanId?: string; // If we have the span
   };
-  
+
   // For add/replace: what to add
   value: string;
-  
+
   // For adjust: magnitude
   adjustment?: {
-    direction: 'increase' | 'decrease';
-    magnitude: 'slight' | 'moderate' | 'significant';
+    direction: "increase" | "decrease";
+    magnitude: "slight" | "moderate" | "significant";
   };
-  
+
   // Human-readable explanation
   reason: string;
-  
+
   // Confidence in this modification
   confidence: number;
 }
@@ -236,10 +239,10 @@ export interface ModificationResult {
   // Original and modified prompts
   originalPrompt: string;
   modifiedPrompt: string;
-  
+
   // What was changed
   changes: AppliedChange[];
-  
+
   // Summary
   summary: string;
 }
@@ -248,17 +251,17 @@ export interface ModificationResult {
  * A single applied change
  */
 export interface AppliedChange {
-  type: 'add' | 'remove' | 'replace';
+  type: "add" | "remove" | "replace";
   category: TaxonomyCategory;
-  
-  before?: string;                   // For replace/remove
-  after?: string;                    // For add/replace
-  
+
+  before?: string; // For replace/remove
+  after?: string; // For add/replace
+
   position?: {
     start: number;
     end: number;
   };
-  
+
   reason: string;
 }
 
@@ -267,25 +270,25 @@ export interface AppliedChange {
  */
 export interface DirectorConversation {
   id: string;
-  
+
   // Original generation
   originalPrompt: string;
   originalSpans: LabeledSpan[];
   originalVideoId?: string;
-  
+
   // Conversation turns
   turns: DirectorTurn[];
-  
+
   // Accumulated modifications
   pendingModifications: PromptModification[];
-  
+
   // Current preview
   previewPrompt: string;
   previewChanges: AppliedChange[];
-  
+
   // State
-  status: 'active' | 'applied' | 'cancelled';
-  
+  status: "active" | "applied" | "cancelled";
+
   // Timestamps
   createdAt: Date;
   updatedAt: Date;
@@ -296,17 +299,17 @@ export interface DirectorConversation {
  */
 export interface DirectorTurn {
   id: string;
-  type: 'user' | 'director';
-  
+  type: "user" | "director";
+
   // Content
   content: string;
-  
+
   // If director turn, the parsed intent
   intent?: DirectorIntent;
-  
+
   // If director turn, the proposed changes
   proposedChanges?: AppliedChange[];
-  
+
   timestamp: Date;
 }
 
@@ -315,8 +318,8 @@ export interface DirectorTurn {
  */
 export interface QuickSuggestion {
   id: string;
-  label: string;                     // "Tighter framing"
-  intent: string;                    // "Get closer to the subject"
+  label: string; // "Tighter framing"
+  intent: string; // "Get closer to the subject"
   category: TaxonomyCategory;
   icon?: string;
 }
@@ -343,7 +346,7 @@ export interface DirectorInputRequest {
  */
 export interface ApplyModificationsRequest {
   conversationId: string;
-  modelId?: string;                  // Override for regeneration
+  modelId?: string; // Override for regeneration
 }
 ```
 
@@ -358,17 +361,17 @@ Converts natural language to structured modifications.
 ```typescript
 // server/src/services/director/IntentParserService.ts
 
-import { LLMService } from '@/services/llm/LLMService';
-import { LabeledSpan } from '@/llm/span-labeling/types';
-import { DirectorInput, DirectorIntent, PromptModification } from './types';
-import { loadTemplate } from '@/utils/templates';
-import { INTENT_MAPPINGS } from './templates/intent-mappings';
+import { LLMService } from "@/services/llm/LLMService";
+import { LabeledSpan } from "@/llm/span-labeling/types";
+import { DirectorInput, DirectorIntent, PromptModification } from "./types";
+import { loadTemplate } from "@/utils/templates";
+import { INTENT_MAPPINGS } from "./templates/intent-mappings";
 
 export class IntentParserService {
   private parserPrompt: string;
 
   constructor(private llm: LLMService) {
-    this.parserPrompt = loadTemplate('director/intent-parser.md');
+    this.parserPrompt = loadTemplate("director/intent-parser.md");
   }
 
   /**
@@ -377,7 +380,7 @@ export class IntentParserService {
   async parseIntent(
     input: DirectorInput,
     currentPrompt: string,
-    currentSpans: LabeledSpan[]
+    currentSpans: LabeledSpan[],
   ): Promise<DirectorIntent> {
     // First, try rule-based parsing for common patterns
     const quickParse = this.tryQuickParse(input.text);
@@ -387,7 +390,7 @@ export class IntentParserService {
 
     // Fall back to LLM parsing
     const llmResult = await this.llmParse(input, currentPrompt, currentSpans);
-    
+
     // Merge with any quick parse results
     if (quickParse) {
       return this.mergeIntents(quickParse, llmResult);
@@ -406,60 +409,194 @@ export class IntentParserService {
 
     // Camera/framing patterns
     const framingPatterns = [
-      { pattern: /pull\s*(the\s+)?camera\s+back|wider\s+(shot|framing)|see\s+more/i, 
-        mod: this.createMod('replace', 'shot.type', 'wider framing', 'Pull camera back') },
-      { pattern: /get\s+closer|tighter\s+(shot|framing)|zoom\s+in/i,
-        mod: this.createMod('replace', 'shot.type', 'closer framing', 'Get closer') },
-      { pattern: /from\s+above|bird'?s?\s+eye|overhead/i,
-        mod: this.createMod('replace', 'shot.angle', 'high angle, from above', 'High angle') },
-      { pattern: /from\s+below|low\s+angle|looking\s+up/i,
-        mod: this.createMod('replace', 'shot.angle', 'low angle, looking up', 'Low angle') },
+      {
+        pattern:
+          /pull\s*(the\s+)?camera\s+back|wider\s+(shot|framing)|see\s+more/i,
+        mod: this.createMod(
+          "replace",
+          "shot.type",
+          "wider framing",
+          "Pull camera back",
+        ),
+      },
+      {
+        pattern: /get\s+closer|tighter\s+(shot|framing)|zoom\s+in/i,
+        mod: this.createMod(
+          "replace",
+          "shot.type",
+          "closer framing",
+          "Get closer",
+        ),
+      },
+      {
+        pattern: /from\s+above|bird'?s?\s+eye|overhead/i,
+        mod: this.createMod(
+          "replace",
+          "shot.angle",
+          "high angle, from above",
+          "High angle",
+        ),
+      },
+      {
+        pattern: /from\s+below|low\s+angle|looking\s+up/i,
+        mod: this.createMod(
+          "replace",
+          "shot.angle",
+          "low angle, looking up",
+          "Low angle",
+        ),
+      },
     ];
 
     // Camera movement patterns
     const movementPatterns = [
-      { pattern: /tracking\s+shot|follow\s+(the\s+)?subject/i,
-        mod: this.createMod('add', 'camera.movement', 'tracking shot following the subject', 'Add tracking') },
-      { pattern: /orbit|circle\s+around/i,
-        mod: this.createMod('add', 'camera.movement', 'orbital camera movement', 'Add orbit') },
-      { pattern: /dolly\s+in|push\s+in/i,
-        mod: this.createMod('add', 'camera.movement', 'slow dolly in', 'Push in') },
-      { pattern: /static|locked\s+off|no\s+movement/i,
-        mod: this.createMod('replace', 'camera.movement', 'static camera', 'Static camera') },
+      {
+        pattern: /tracking\s+shot|follow\s+(the\s+)?subject/i,
+        mod: this.createMod(
+          "add",
+          "camera.movement",
+          "tracking shot following the subject",
+          "Add tracking",
+        ),
+      },
+      {
+        pattern: /orbit|circle\s+around/i,
+        mod: this.createMod(
+          "add",
+          "camera.movement",
+          "orbital camera movement",
+          "Add orbit",
+        ),
+      },
+      {
+        pattern: /dolly\s+in|push\s+in/i,
+        mod: this.createMod(
+          "add",
+          "camera.movement",
+          "slow dolly in",
+          "Push in",
+        ),
+      },
+      {
+        pattern: /static|locked\s+off|no\s+movement/i,
+        mod: this.createMod(
+          "replace",
+          "camera.movement",
+          "static camera",
+          "Static camera",
+        ),
+      },
     ];
 
     // Lighting patterns
     const lightingPatterns = [
-      { pattern: /rim\s+light|backlight|back\s+light/i,
-        mod: this.createMod('add', 'lighting.direction', 'rim lighting from behind', 'Add rim light') },
-      { pattern: /more\s+dramatic|moodier|dramatic\s+lighting/i,
-        mod: this.createMod('add', 'lighting.quality', 'dramatic, high-contrast lighting', 'Dramatic lighting') },
-      { pattern: /softer\s+(light|lighting)|gentler/i,
-        mod: this.createMod('replace', 'lighting.quality', 'soft, diffused lighting', 'Softer lighting') },
-      { pattern: /warmer|warm\s+(up|tones)/i,
-        mod: this.createMod('add', 'lighting.color', 'warm golden tones', 'Warmer lighting') },
-      { pattern: /cooler|cool\s+tones|colder/i,
-        mod: this.createMod('add', 'lighting.color', 'cool blue tones', 'Cooler lighting') },
+      {
+        pattern: /rim\s+light|backlight|back\s+light/i,
+        mod: this.createMod(
+          "add",
+          "lighting.direction",
+          "rim lighting from behind",
+          "Add rim light",
+        ),
+      },
+      {
+        pattern: /more\s+dramatic|moodier|dramatic\s+lighting/i,
+        mod: this.createMod(
+          "add",
+          "lighting.quality",
+          "dramatic, high-contrast lighting",
+          "Dramatic lighting",
+        ),
+      },
+      {
+        pattern: /softer\s+(light|lighting)|gentler/i,
+        mod: this.createMod(
+          "replace",
+          "lighting.quality",
+          "soft, diffused lighting",
+          "Softer lighting",
+        ),
+      },
+      {
+        pattern: /warmer|warm\s+(up|tones)/i,
+        mod: this.createMod(
+          "add",
+          "lighting.color",
+          "warm golden tones",
+          "Warmer lighting",
+        ),
+      },
+      {
+        pattern: /cooler|cool\s+tones|colder/i,
+        mod: this.createMod(
+          "add",
+          "lighting.color",
+          "cool blue tones",
+          "Cooler lighting",
+        ),
+      },
     ];
 
     // Subject/character patterns
     const subjectPatterns = [
-      { pattern: /more\s+confident|confident\s+posture/i,
-        mod: this.createMod('add', 'subject.emotion', 'confident posture and expression', 'More confident') },
-      { pattern: /sadder|more\s+emotional|sad\s+expression/i,
-        mod: this.createMod('add', 'subject.emotion', 'sad, emotional expression', 'More emotional') },
-      { pattern: /more\s+intense|intense\s+focus/i,
-        mod: this.createMod('add', 'subject.emotion', 'intense, focused expression', 'More intense') },
+      {
+        pattern: /more\s+confident|confident\s+posture/i,
+        mod: this.createMod(
+          "add",
+          "subject.emotion",
+          "confident posture and expression",
+          "More confident",
+        ),
+      },
+      {
+        pattern: /sadder|more\s+emotional|sad\s+expression/i,
+        mod: this.createMod(
+          "add",
+          "subject.emotion",
+          "sad, emotional expression",
+          "More emotional",
+        ),
+      },
+      {
+        pattern: /more\s+intense|intense\s+focus/i,
+        mod: this.createMod(
+          "add",
+          "subject.emotion",
+          "intense, focused expression",
+          "More intense",
+        ),
+      },
     ];
 
     // Style patterns
     const stylePatterns = [
-      { pattern: /more\s+cinematic|cinematic\s+look/i,
-        mod: this.createMod('add', 'style.look', 'cinematic film quality', 'More cinematic') },
-      { pattern: /grittier|gritty|raw/i,
-        mod: this.createMod('add', 'style.look', 'gritty, raw aesthetic', 'Grittier') },
-      { pattern: /dreamier|dreamy|soft\s+focus/i,
-        mod: this.createMod('add', 'style.look', 'dreamy, soft focus', 'Dreamier') },
+      {
+        pattern: /more\s+cinematic|cinematic\s+look/i,
+        mod: this.createMod(
+          "add",
+          "style.look",
+          "cinematic film quality",
+          "More cinematic",
+        ),
+      },
+      {
+        pattern: /grittier|gritty|raw/i,
+        mod: this.createMod(
+          "add",
+          "style.look",
+          "gritty, raw aesthetic",
+          "Grittier",
+        ),
+      },
+      {
+        pattern: /dreamier|dreamy|soft\s+focus/i,
+        mod: this.createMod(
+          "add",
+          "style.look",
+          "dreamy, soft focus",
+          "Dreamier",
+        ),
+      },
     ];
 
     const allPatterns = [
@@ -497,17 +634,17 @@ export class IntentParserService {
   private async llmParse(
     input: DirectorInput,
     currentPrompt: string,
-    currentSpans: LabeledSpan[]
+    currentSpans: LabeledSpan[],
   ): Promise<DirectorIntent> {
     const prompt = this.buildParserPrompt(input, currentPrompt, currentSpans);
-    
+
     const response = await this.llm.complete({
       messages: [
-        { role: 'system', content: this.parserPrompt },
-        { role: 'user', content: prompt },
+        { role: "system", content: this.parserPrompt },
+        { role: "user", content: prompt },
       ],
-      responseFormat: 'json',
-      temperature: 0.3,  // Low temperature for consistency
+      responseFormat: "json",
+      temperature: 0.3, // Low temperature for consistency
       maxTokens: 1000,
     });
 
@@ -521,9 +658,9 @@ export class IntentParserService {
   private buildParserPrompt(
     input: DirectorInput,
     currentPrompt: string,
-    currentSpans: LabeledSpan[]
+    currentSpans: LabeledSpan[],
   ): string {
-    const spansJson = currentSpans.map(s => ({
+    const spansJson = currentSpans.map((s) => ({
       text: s.text,
       category: s.category,
       start: s.start,
@@ -539,10 +676,14 @@ ${currentPrompt}
 Current prompt elements (spans):
 ${JSON.stringify(spansJson, null, 2)}
 
-${input.previousModifications ? `
+${
+  input.previousModifications
+    ? `
 Previous modifications in this session:
 ${JSON.stringify(input.previousModifications, null, 2)}
-` : ''}
+`
+    : ""
+}
 
 User's direction:
 """
@@ -556,14 +697,17 @@ Parse this direction into specific prompt modifications.
   /**
    * Merge quick parse with LLM results
    */
-  private mergeIntents(quick: DirectorIntent, llm: DirectorIntent): DirectorIntent {
+  private mergeIntents(
+    quick: DirectorIntent,
+    llm: DirectorIntent,
+  ): DirectorIntent {
     // Prefer quick parse for high-confidence matches
     const merged = [...quick.modifications];
-    
+
     // Add LLM modifications that don't conflict
     for (const llmMod of llm.modifications) {
-      const conflicts = merged.some(m => 
-        m.category === llmMod.category && m.type === llmMod.type
+      const conflicts = merged.some(
+        (m) => m.category === llmMod.category && m.type === llmMod.type,
       );
       if (!conflicts) {
         merged.push(llmMod);
@@ -596,7 +740,7 @@ Parse this direction into specific prompt modifications.
             target: mod.target,
             value: mod.value,
             adjustment: mod.adjustment,
-            reason: mod.reason || 'User requested',
+            reason: mod.reason || "User requested",
             confidence: mod.confidence || 0.8,
           });
         }
@@ -619,10 +763,10 @@ Parse this direction into specific prompt modifications.
    * Create a modification object
    */
   private createMod(
-    type: PromptModification['type'],
+    type: PromptModification["type"],
     category: string,
     value: string,
-    reason: string
+    reason: string,
   ): PromptModification {
     return {
       id: this.generateModId(),
@@ -637,10 +781,10 @@ Parse this direction into specific prompt modifications.
   private isValidModification(mod: any): boolean {
     return (
       mod &&
-      typeof mod.type === 'string' &&
-      ['add', 'remove', 'replace', 'adjust'].includes(mod.type) &&
-      typeof mod.category === 'string' &&
-      (mod.type !== 'add' || typeof mod.value === 'string')
+      typeof mod.type === "string" &&
+      ["add", "remove", "replace", "adjust"].includes(mod.type) &&
+      typeof mod.category === "string" &&
+      (mod.type !== "add" || typeof mod.value === "string")
     );
   }
 
@@ -656,7 +800,7 @@ Parse this direction into specific prompt modifications.
 
 ### Intent Parser LLM Prompt
 
-```markdown
+````markdown
 <!-- server/src/services/director/templates/intent-parser.md -->
 
 You are a cinematography director assistant. Parse the user's natural language direction into specific prompt modifications.
@@ -666,12 +810,14 @@ Your job is to translate creative intent into technical prompt changes.
 ## Category Mappings
 
 CAMERA/FRAMING (shot.type, shot.angle):
+
 - "pull back", "wider", "see more" → shot.type: wider framing
-- "get closer", "tighter", "zoom in" → shot.type: closer framing  
+- "get closer", "tighter", "zoom in" → shot.type: closer framing
 - "from above", "bird's eye" → shot.angle: high angle
 - "from below", "low angle" → shot.angle: low angle
 
 CAMERA MOVEMENT (camera.movement):
+
 - "follow", "track" → tracking shot
 - "orbit", "circle around" → orbital movement
 - "push in", "dolly in" → dolly in
@@ -680,6 +826,7 @@ CAMERA MOVEMENT (camera.movement):
 - "static", "still", "locked off" → static camera
 
 LIGHTING (lighting.quality, lighting.direction, lighting.color):
+
 - "more dramatic", "moodier" → dramatic, high-contrast lighting
 - "rim light", "backlight" → rim lighting from behind
 - "softer", "gentler" → soft, diffused lighting
@@ -689,12 +836,14 @@ LIGHTING (lighting.quality, lighting.direction, lighting.color):
 - "darker", "dimmer" → decreased lighting intensity
 
 SUBJECT/CHARACTER (subject.emotion, subject.action):
+
 - "more confident" → confident posture and expression
 - "sadder", "more emotional" → sad, emotional expression
 - "more intense" → intense, focused expression
 - "relaxed" → relaxed, casual posture
 
 STYLE (style.look, style.aesthetic):
+
 - "more cinematic" → cinematic film quality
 - "grittier" → gritty, raw aesthetic
 - "dreamier" → dreamy, soft focus
@@ -726,6 +875,7 @@ Return a JSON object:
   "isFollowUp": false
 }
 ```
+````
 
 ## Guidelines
 
@@ -736,7 +886,8 @@ Return a JSON object:
 5. Multiple changes in one request should all be captured
 6. Consider context from previous modifications if provided
 7. Don't invent changes the user didn't ask for
-```
+
+````
 
 ### 2. PromptModifierService
 
@@ -780,7 +931,7 @@ export class PromptModifierService {
       if (result) {
         modifiedPrompt = result.prompt;
         changes.push(result.change);
-        
+
         // Update spans for subsequent modifications
         spans = await this.spanLabeler.labelSpans(modifiedPrompt);
       }
@@ -826,10 +977,10 @@ export class PromptModifierService {
   ): { prompt: string; change: AppliedChange } {
     // Find best insertion point based on category
     const insertPosition = this.findInsertPosition(prompt, spans, mod.category);
-    
+
     // Format the value
     const formattedValue = this.formatValue(mod.value, mod.category);
-    
+
     // Insert at position
     const newPrompt = this.insertAt(prompt, insertPosition, formattedValue);
 
@@ -855,7 +1006,7 @@ export class PromptModifierService {
   ): { prompt: string; change: AppliedChange } | null {
     // Find the span to remove
     const targetSpan = this.findTargetSpan(spans, mod);
-    
+
     if (!targetSpan) {
       return null;
     }
@@ -885,7 +1036,7 @@ export class PromptModifierService {
   ): { prompt: string; change: AppliedChange } | null {
     // Find the span to replace
     const targetSpan = this.findTargetSpan(spans, mod);
-    
+
     if (!targetSpan) {
       // If no existing span, treat as addition
       return this.applyAddition(prompt, spans, mod);
@@ -893,7 +1044,7 @@ export class PromptModifierService {
 
     // Format the new value
     const formattedValue = this.formatValue(mod.value, mod.category);
-    
+
     // Replace the span
     const newPrompt = this.replaceAt(prompt, targetSpan.start, targetSpan.end, formattedValue);
 
@@ -919,7 +1070,7 @@ export class PromptModifierService {
     mod: PromptModification
   ): Promise<{ prompt: string; change: AppliedChange } | null> {
     const targetSpan = this.findTargetSpan(spans, mod);
-    
+
     if (!targetSpan) {
       // If no existing span, add with the adjustment
       const adjustedValue = this.applyMagnitude(mod.value, mod.adjustment);
@@ -980,7 +1131,7 @@ export class PromptModifierService {
 
     if (spansAfter.length > 0) {
       // Insert before the first span that should come after
-      const firstAfter = spansAfter.reduce((min, s) => 
+      const firstAfter = spansAfter.reduce((min, s) =>
         s.start < min.start ? s : min
       );
       return firstAfter.start;
@@ -990,7 +1141,7 @@ export class PromptModifierService {
     const sameCategory = spans.filter(s => s.category.startsWith(categoryRoot));
     if (sameCategory.length > 0) {
       // Insert after the last span in same category
-      const lastSame = sameCategory.reduce((max, s) => 
+      const lastSame = sameCategory.reduce((max, s) =>
         s.end > max.end ? s : max
       );
       return lastSame.end;
@@ -1010,13 +1161,13 @@ export class PromptModifierService {
   ): LabeledSpan | null {
     // If we have explicit target text, find that
     if (mod.target?.text) {
-      const exactMatch = spans.find(s => 
+      const exactMatch = spans.find(s =>
         s.text.toLowerCase() === mod.target!.text.toLowerCase()
       );
       if (exactMatch) return exactMatch;
 
       // Try partial match
-      const partialMatch = spans.find(s => 
+      const partialMatch = spans.find(s =>
         s.text.toLowerCase().includes(mod.target!.text.toLowerCase()) ||
         mod.target!.text.toLowerCase().includes(s.text.toLowerCase())
       );
@@ -1024,8 +1175,8 @@ export class PromptModifierService {
     }
 
     // Find by category
-    const categoryMatches = spans.filter(s => 
-      s.category === mod.category || 
+    const categoryMatches = spans.filter(s =>
+      s.category === mod.category ||
       s.category.startsWith(mod.category + '.') ||
       mod.category.startsWith(s.category + '.')
     );
@@ -1048,7 +1199,7 @@ export class PromptModifierService {
   private formatValue(value: string, category: string): string {
     // Add appropriate punctuation/spacing
     let formatted = value.trim();
-    
+
     // Ensure it starts with lowercase (will be mid-sentence)
     if (!/^[A-Z][a-z]/.test(formatted)) {
       formatted = formatted.charAt(0).toLowerCase() + formatted.slice(1);
@@ -1086,7 +1237,7 @@ export class PromptModifierService {
   ): string {
     // This could be more sophisticated with LLM help
     // For now, simple word substitution
-    
+
     if (adjustment.direction === 'increase') {
       // Intensify
       if (existingValue.includes('soft')) {
@@ -1115,7 +1266,7 @@ export class PromptModifierService {
     // Check if we need to add comma/space
     const before = prompt.slice(0, position);
     const after = prompt.slice(position);
-    
+
     let separator = '';
     if (before.length > 0 && !before.endsWith(' ') && !before.endsWith(',')) {
       separator = ', ';
@@ -1163,21 +1314,21 @@ export class PromptModifierService {
   ): PromptModification[] {
     // Apply removals first (in reverse order), then replacements, then additions
     const typeOrder = { remove: 0, replace: 1, adjust: 2, add: 3 };
-    
+
     return [...modifications].sort((a, b) => {
       const typeCompare = typeOrder[a.type] - typeOrder[b.type];
       if (typeCompare !== 0) return typeCompare;
-      
+
       // For same type, sort by position (reverse for removals)
       const aSpan = spans.find(s => s.category === a.category);
       const bSpan = spans.find(s => s.category === b.category);
-      
+
       if (aSpan && bSpan) {
-        return a.type === 'remove' 
+        return a.type === 'remove'
           ? bSpan.start - aSpan.start  // Reverse for removals
           : aSpan.start - bSpan.start;
       }
-      
+
       return 0;
     });
   }
@@ -1203,7 +1354,7 @@ export class PromptModifierService {
     return parts.filter(Boolean).join('. ');
   }
 }
-```
+````
 
 ### 3. QuickSuggestionsService
 
@@ -1212,28 +1363,25 @@ Generates context-aware suggestions.
 ```typescript
 // server/src/services/director/QuickSuggestionsService.ts
 
-import { LabeledSpan } from '@/llm/span-labeling/types';
-import { QuickSuggestion } from './types';
+import { LabeledSpan } from "@/llm/span-labeling/types";
+import { QuickSuggestion } from "./types";
 
 export class QuickSuggestionsService {
   /**
    * Generate quick suggestions based on current prompt
    */
-  generateSuggestions(
-    prompt: string,
-    spans: LabeledSpan[]
-  ): QuickSuggestion[] {
+  generateSuggestions(prompt: string, spans: LabeledSpan[]): QuickSuggestion[] {
     const suggestions: QuickSuggestion[] = [];
 
     // Camera/framing suggestions
     suggestions.push(...this.getCameraSuggestions(spans));
-    
+
     // Lighting suggestions
     suggestions.push(...this.getLightingSuggestions(spans));
-    
+
     // Movement suggestions
     suggestions.push(...this.getMovementSuggestions(spans));
-    
+
     // Style suggestions
     suggestions.push(...this.getStyleSuggestions(spans));
 
@@ -1243,49 +1391,49 @@ export class QuickSuggestionsService {
 
   private getCameraSuggestions(spans: LabeledSpan[]): QuickSuggestion[] {
     const suggestions: QuickSuggestion[] = [];
-    
-    const shotSpan = spans.find(s => s.category === 'shot.type');
-    
+
+    const shotSpan = spans.find((s) => s.category === "shot.type");
+
     if (shotSpan) {
       const shotText = shotSpan.text.toLowerCase();
-      
-      if (shotText.includes('wide') || shotText.includes('establishing')) {
+
+      if (shotText.includes("wide") || shotText.includes("establishing")) {
         suggestions.push({
-          id: 'tighter',
-          label: 'Tighter framing',
-          intent: 'Get closer to the subject',
-          category: 'shot.type',
-          icon: '🔍',
+          id: "tighter",
+          label: "Tighter framing",
+          intent: "Get closer to the subject",
+          category: "shot.type",
+          icon: "🔍",
         });
-      } else if (shotText.includes('close')) {
+      } else if (shotText.includes("close")) {
         suggestions.push({
-          id: 'wider',
-          label: 'Pull back',
-          intent: 'Show more of the scene',
-          category: 'shot.type',
-          icon: '↔️',
+          id: "wider",
+          label: "Pull back",
+          intent: "Show more of the scene",
+          category: "shot.type",
+          icon: "↔️",
         });
       }
     } else {
       // No shot type specified
       suggestions.push({
-        id: 'add-shot',
-        label: 'Add shot type',
-        intent: 'Add a medium shot framing',
-        category: 'shot.type',
-        icon: '📷',
+        id: "add-shot",
+        label: "Add shot type",
+        intent: "Add a medium shot framing",
+        category: "shot.type",
+        icon: "📷",
       });
     }
 
     // Angle suggestions
-    const angleSpan = spans.find(s => s.category === 'shot.angle');
+    const angleSpan = spans.find((s) => s.category === "shot.angle");
     if (!angleSpan) {
       suggestions.push({
-        id: 'add-angle',
-        label: 'Add angle',
-        intent: 'Add a slight low angle for dramatic effect',
-        category: 'shot.angle',
-        icon: '📐',
+        id: "add-angle",
+        label: "Add angle",
+        intent: "Add a slight low angle for dramatic effect",
+        category: "shot.angle",
+        icon: "📐",
       });
     }
 
@@ -1294,38 +1442,44 @@ export class QuickSuggestionsService {
 
   private getLightingSuggestions(spans: LabeledSpan[]): QuickSuggestion[] {
     const suggestions: QuickSuggestion[] = [];
-    
-    const lightingSpans = spans.filter(s => s.category.startsWith('lighting.'));
-    
+
+    const lightingSpans = spans.filter((s) =>
+      s.category.startsWith("lighting."),
+    );
+
     if (lightingSpans.length === 0) {
       suggestions.push(
         {
-          id: 'dramatic-light',
-          label: 'Dramatic lighting',
-          intent: 'Add dramatic rim lighting',
-          category: 'lighting.quality',
-          icon: '💡',
+          id: "dramatic-light",
+          label: "Dramatic lighting",
+          intent: "Add dramatic rim lighting",
+          category: "lighting.quality",
+          icon: "💡",
         },
         {
-          id: 'golden-hour',
-          label: 'Golden hour',
-          intent: 'Set the lighting to golden hour',
-          category: 'lighting.quality',
-          icon: '🌅',
-        }
+          id: "golden-hour",
+          label: "Golden hour",
+          intent: "Set the lighting to golden hour",
+          category: "lighting.quality",
+          icon: "🌅",
+        },
       );
     } else {
       // Has some lighting, offer variations
-      const hasWarm = lightingSpans.some(s => 
-        s.text.toLowerCase().includes('warm') || s.text.toLowerCase().includes('golden')
+      const hasWarm = lightingSpans.some(
+        (s) =>
+          s.text.toLowerCase().includes("warm") ||
+          s.text.toLowerCase().includes("golden"),
       );
-      
+
       suggestions.push({
-        id: hasWarm ? 'cooler' : 'warmer',
-        label: hasWarm ? 'Cooler tones' : 'Warmer tones',
-        intent: hasWarm ? 'Make the lighting cooler' : 'Make the lighting warmer',
-        category: 'lighting.color',
-        icon: hasWarm ? '❄️' : '🔥',
+        id: hasWarm ? "cooler" : "warmer",
+        label: hasWarm ? "Cooler tones" : "Warmer tones",
+        intent: hasWarm
+          ? "Make the lighting cooler"
+          : "Make the lighting warmer",
+        category: "lighting.color",
+        icon: hasWarm ? "❄️" : "🔥",
       });
     }
 
@@ -1334,33 +1488,33 @@ export class QuickSuggestionsService {
 
   private getMovementSuggestions(spans: LabeledSpan[]): QuickSuggestion[] {
     const suggestions: QuickSuggestion[] = [];
-    
-    const movementSpan = spans.find(s => s.category === 'camera.movement');
-    
+
+    const movementSpan = spans.find((s) => s.category === "camera.movement");
+
     if (!movementSpan) {
       suggestions.push(
         {
-          id: 'tracking',
-          label: 'Add tracking',
-          intent: 'Add a slow tracking shot',
-          category: 'camera.movement',
-          icon: '🎥',
+          id: "tracking",
+          label: "Add tracking",
+          intent: "Add a slow tracking shot",
+          category: "camera.movement",
+          icon: "🎥",
         },
         {
-          id: 'static',
-          label: 'Lock off camera',
-          intent: 'Make the camera completely static',
-          category: 'camera.movement',
-          icon: '🔒',
-        }
+          id: "static",
+          label: "Lock off camera",
+          intent: "Make the camera completely static",
+          category: "camera.movement",
+          icon: "🔒",
+        },
       );
-    } else if (movementSpan.text.toLowerCase().includes('static')) {
+    } else if (movementSpan.text.toLowerCase().includes("static")) {
       suggestions.push({
-        id: 'add-movement',
-        label: 'Add movement',
-        intent: 'Add subtle camera movement',
-        category: 'camera.movement',
-        icon: '🎥',
+        id: "add-movement",
+        label: "Add movement",
+        intent: "Add subtle camera movement",
+        category: "camera.movement",
+        icon: "🎥",
       });
     }
 
@@ -1369,26 +1523,26 @@ export class QuickSuggestionsService {
 
   private getStyleSuggestions(spans: LabeledSpan[]): QuickSuggestion[] {
     const suggestions: QuickSuggestion[] = [];
-    
-    const styleSpans = spans.filter(s => s.category.startsWith('style.'));
-    
+
+    const styleSpans = spans.filter((s) => s.category.startsWith("style."));
+
     if (styleSpans.length === 0) {
       suggestions.push({
-        id: 'cinematic',
-        label: 'More cinematic',
-        intent: 'Make it more cinematic with film-like quality',
-        category: 'style.look',
-        icon: '🎬',
+        id: "cinematic",
+        label: "More cinematic",
+        intent: "Make it more cinematic with film-like quality",
+        category: "style.look",
+        icon: "🎬",
       });
     }
 
     // Always offer mood adjustments
     suggestions.push({
-      id: 'moodier',
-      label: 'More moody',
-      intent: 'Make the overall mood darker and more atmospheric',
-      category: 'style.mood',
-      icon: '🌑',
+      id: "moodier",
+      label: "More moody",
+      intent: "Make the overall mood darker and more atmospheric",
+      category: "style.mood",
+      icon: "🌑",
     });
 
     return suggestions;
@@ -1399,22 +1553,28 @@ export class QuickSuggestionsService {
    */
   private rankAndFilter(
     suggestions: QuickSuggestion[],
-    spans: LabeledSpan[]
+    spans: LabeledSpan[],
   ): QuickSuggestion[] {
     // Score each suggestion
-    const scored = suggestions.map(s => {
+    const scored = suggestions.map((s) => {
       let score = 0;
-      
+
       // Prefer suggestions for missing categories
-      const hasCategory = spans.some(sp => 
-        sp.category === s.category || sp.category.startsWith(s.category + '.')
+      const hasCategory = spans.some(
+        (sp) =>
+          sp.category === s.category ||
+          sp.category.startsWith(s.category + "."),
       );
       if (!hasCategory) {
         score += 2;
       }
-      
+
       // Prefer commonly used improvements
-      const popularCategories = ['lighting.quality', 'shot.type', 'camera.movement'];
+      const popularCategories = [
+        "lighting.quality",
+        "shot.type",
+        "camera.movement",
+      ];
       if (popularCategories.includes(s.category)) {
         score += 1;
       }
@@ -1424,10 +1584,10 @@ export class QuickSuggestionsService {
 
     // Sort by score and dedupe by category
     scored.sort((a, b) => b.score - a.score);
-    
+
     const seen = new Set<string>();
     const filtered: QuickSuggestion[] = [];
-    
+
     for (const { suggestion } of scored) {
       if (!seen.has(suggestion.category)) {
         seen.add(suggestion.category);
@@ -1445,21 +1605,21 @@ export class QuickSuggestionsService {
 ```typescript
 // server/src/services/director/DirectorService.ts
 
-import { SpanLabelingService } from '@/llm/span-labeling/SpanLabelingService';
-import { VideoGenerationService } from '@/services/video-generation/VideoGenerationService';
-import { 
-  DirectorConversation, 
-  DirectorTurn, 
+import { SpanLabelingService } from "@/llm/span-labeling/SpanLabelingService";
+import { VideoGenerationService } from "@/services/video-generation/VideoGenerationService";
+import {
+  DirectorConversation,
+  DirectorTurn,
   DirectorIntent,
   ModificationResult,
   QuickSuggestion,
   StartDirectorRequest,
   DirectorInputRequest,
-  ApplyModificationsRequest
-} from './types';
-import { IntentParserService } from './IntentParserService';
-import { PromptModifierService } from './PromptModifierService';
-import { QuickSuggestionsService } from './QuickSuggestionsService';
+  ApplyModificationsRequest,
+} from "./types";
+import { IntentParserService } from "./IntentParserService";
+import { PromptModifierService } from "./PromptModifierService";
+import { QuickSuggestionsService } from "./QuickSuggestionsService";
 
 export class DirectorService {
   private conversations: Map<string, DirectorConversation> = new Map();
@@ -1469,7 +1629,7 @@ export class DirectorService {
     private intentParser: IntentParserService,
     private promptModifier: PromptModifierService,
     private suggestionService: QuickSuggestionsService,
-    private videoGenerator: VideoGenerationService
+    private videoGenerator: VideoGenerationService,
   ) {}
 
   /**
@@ -1480,7 +1640,8 @@ export class DirectorService {
     suggestions: QuickSuggestion[];
   }> {
     // Get spans if not provided
-    const spans = request.spans || await this.spanLabeler.labelSpans(request.prompt);
+    const spans =
+      request.spans || (await this.spanLabeler.labelSpans(request.prompt));
 
     const conversation: DirectorConversation = {
       id: this.generateConversationId(),
@@ -1491,7 +1652,7 @@ export class DirectorService {
       pendingModifications: [],
       previewPrompt: request.prompt,
       previewChanges: [],
-      status: 'active',
+      status: "active",
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -1501,7 +1662,7 @@ export class DirectorService {
     // Generate initial suggestions
     const suggestions = this.suggestionService.generateSuggestions(
       request.prompt,
-      spans
+      spans,
     );
 
     return { conversation, suggestions };
@@ -1516,7 +1677,7 @@ export class DirectorService {
     suggestions: QuickSuggestion[];
   }> {
     const conversation = this.conversations.get(request.conversationId);
-    
+
     if (!conversation) {
       throw new Error(`Conversation not found: ${request.conversationId}`);
     }
@@ -1524,7 +1685,7 @@ export class DirectorService {
     // Add user turn
     const userTurn: DirectorTurn = {
       id: this.generateTurnId(),
-      type: 'user',
+      type: "user",
       content: request.input,
       timestamp: new Date(),
     };
@@ -1538,14 +1699,14 @@ export class DirectorService {
         previousModifications: conversation.pendingModifications,
       },
       conversation.previewPrompt,
-      conversation.originalSpans
+      conversation.originalSpans,
     );
 
     // Handle clarification needed
     if (intent.requiresClarification) {
       const directorTurn: DirectorTurn = {
         id: this.generateTurnId(),
-        type: 'director',
+        type: "director",
         content: intent.clarificationQuestion!,
         intent,
         timestamp: new Date(),
@@ -1559,7 +1720,7 @@ export class DirectorService {
           originalPrompt: conversation.originalPrompt,
           modifiedPrompt: conversation.previewPrompt,
           changes: [],
-          summary: 'Clarification needed',
+          summary: "Clarification needed",
         },
         suggestions: [],
       };
@@ -1572,7 +1733,7 @@ export class DirectorService {
     const preview = await this.promptModifier.applyModifications(
       conversation.originalPrompt,
       conversation.originalSpans,
-      conversation.pendingModifications
+      conversation.pendingModifications,
     );
 
     // Update preview state
@@ -1582,7 +1743,7 @@ export class DirectorService {
     // Add director turn
     const directorTurn: DirectorTurn = {
       id: this.generateTurnId(),
-      type: 'director',
+      type: "director",
       content: this.formatDirectorResponse(intent, preview),
       intent,
       proposedChanges: preview.changes,
@@ -1595,7 +1756,7 @@ export class DirectorService {
     const newSpans = await this.spanLabeler.labelSpans(preview.modifiedPrompt);
     const suggestions = this.suggestionService.generateSuggestions(
       preview.modifiedPrompt,
-      newSpans
+      newSpans,
     );
 
     return { intent, preview, suggestions };
@@ -1609,7 +1770,7 @@ export class DirectorService {
     prompt: string;
   }> {
     const conversation = this.conversations.get(request.conversationId);
-    
+
     if (!conversation) {
       throw new Error(`Conversation not found: ${request.conversationId}`);
     }
@@ -1622,7 +1783,7 @@ export class DirectorService {
     });
 
     // Mark conversation as applied
-    conversation.status = 'applied';
+    conversation.status = "applied";
     conversation.updatedAt = new Date();
 
     return {
@@ -1637,7 +1798,7 @@ export class DirectorService {
   cancelSession(conversationId: string): void {
     const conversation = this.conversations.get(conversationId);
     if (conversation) {
-      conversation.status = 'cancelled';
+      conversation.status = "cancelled";
       conversation.updatedAt = new Date();
     }
   }
@@ -1645,9 +1806,11 @@ export class DirectorService {
   /**
    * Undo last modification
    */
-  async undoLastModification(conversationId: string): Promise<ModificationResult | null> {
+  async undoLastModification(
+    conversationId: string,
+  ): Promise<ModificationResult | null> {
     const conversation = this.conversations.get(conversationId);
-    
+
     if (!conversation || conversation.pendingModifications.length === 0) {
       return null;
     }
@@ -1659,19 +1822,19 @@ export class DirectorService {
     if (conversation.pendingModifications.length === 0) {
       conversation.previewPrompt = conversation.originalPrompt;
       conversation.previewChanges = [];
-      
+
       return {
         originalPrompt: conversation.originalPrompt,
         modifiedPrompt: conversation.originalPrompt,
         changes: [],
-        summary: 'Reverted to original',
+        summary: "Reverted to original",
       };
     }
 
     const preview = await this.promptModifier.applyModifications(
       conversation.originalPrompt,
       conversation.originalSpans,
-      conversation.pendingModifications
+      conversation.pendingModifications,
     );
 
     conversation.previewPrompt = preview.modifiedPrompt;
@@ -1693,23 +1856,25 @@ export class DirectorService {
    */
   private formatDirectorResponse(
     intent: DirectorIntent,
-    preview: ModificationResult
+    preview: ModificationResult,
   ): string {
-    const changeDescriptions = preview.changes.map(c => {
+    const changeDescriptions = preview.changes.map((c) => {
       switch (c.type) {
-        case 'add':
+        case "add":
           return `+ Added: "${c.after}"`;
-        case 'remove':
+        case "remove":
           return `- Removed: "${c.before}"`;
-        case 'replace':
+        case "replace":
           return `~ Changed: "${c.before}" → "${c.after}"`;
         default:
-          return '';
+          return "";
       }
     });
 
-    return `I'll make these changes:\n\n${changeDescriptions.join('\n')}\n\n` +
-           `${preview.summary}`;
+    return (
+      `I'll make these changes:\n\n${changeDescriptions.join("\n")}\n\n` +
+      `${preview.summary}`
+    );
   }
 
   private generateConversationId(): string {
@@ -1729,8 +1894,8 @@ export class DirectorService {
 ```typescript
 // server/src/routes/director.ts
 
-import { Router } from 'express';
-import { authenticateUser } from '@/middleware/auth';
+import { Router } from "express";
+import { authenticateUser } from "@/middleware/auth";
 
 const router = Router();
 
@@ -1740,16 +1905,16 @@ router.use(authenticateUser);
  * POST /api/director/start
  * Start a new director session
  */
-router.post('/start', async (req, res) => {
+router.post("/start", async (req, res) => {
   const { prompt, spans, videoId } = req.body;
-  
+
   try {
-    const service = req.app.get('directorService');
+    const service = req.app.get("directorService");
     const result = await service.startSession({ prompt, spans, videoId });
-    
+
     res.json({ success: true, data: result });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to start director session' });
+    res.status(500).json({ error: "Failed to start director session" });
   }
 });
 
@@ -1757,19 +1922,19 @@ router.post('/start', async (req, res) => {
  * POST /api/director/:conversationId/direction
  * Process a user direction
  */
-router.post('/:conversationId/direction', async (req, res) => {
+router.post("/:conversationId/direction", async (req, res) => {
   const { input } = req.body;
-  
+
   try {
-    const service = req.app.get('directorService');
+    const service = req.app.get("directorService");
     const result = await service.processDirection({
       conversationId: req.params.conversationId,
       input,
     });
-    
+
     res.json({ success: true, data: result });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to process direction' });
+    res.status(500).json({ error: "Failed to process direction" });
   }
 });
 
@@ -1777,19 +1942,19 @@ router.post('/:conversationId/direction', async (req, res) => {
  * POST /api/director/:conversationId/apply
  * Apply modifications and regenerate
  */
-router.post('/:conversationId/apply', async (req, res) => {
+router.post("/:conversationId/apply", async (req, res) => {
   const { modelId } = req.body;
-  
+
   try {
-    const service = req.app.get('directorService');
+    const service = req.app.get("directorService");
     const result = await service.applyAndRegenerate({
       conversationId: req.params.conversationId,
       modelId,
     });
-    
+
     res.json({ success: true, data: result });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to apply modifications' });
+    res.status(500).json({ error: "Failed to apply modifications" });
   }
 });
 
@@ -1797,14 +1962,16 @@ router.post('/:conversationId/apply', async (req, res) => {
  * POST /api/director/:conversationId/undo
  * Undo last modification
  */
-router.post('/:conversationId/undo', async (req, res) => {
+router.post("/:conversationId/undo", async (req, res) => {
   try {
-    const service = req.app.get('directorService');
-    const result = await service.undoLastModification(req.params.conversationId);
-    
+    const service = req.app.get("directorService");
+    const result = await service.undoLastModification(
+      req.params.conversationId,
+    );
+
     res.json({ success: true, data: result });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to undo modification' });
+    res.status(500).json({ error: "Failed to undo modification" });
   }
 });
 
@@ -1812,10 +1979,10 @@ router.post('/:conversationId/undo', async (req, res) => {
  * DELETE /api/director/:conversationId
  * Cancel director session
  */
-router.delete('/:conversationId', (req, res) => {
-  const service = req.app.get('directorService');
+router.delete("/:conversationId", (req, res) => {
+  const service = req.app.get("directorService");
   service.cancelSession(req.params.conversationId);
-  
+
   res.json({ success: true });
 });
 
@@ -1823,14 +1990,14 @@ router.delete('/:conversationId', (req, res) => {
  * GET /api/director/:conversationId
  * Get conversation state
  */
-router.get('/:conversationId', (req, res) => {
-  const service = req.app.get('directorService');
+router.get("/:conversationId", (req, res) => {
+  const service = req.app.get("directorService");
   const conversation = service.getConversation(req.params.conversationId);
-  
+
   if (!conversation) {
-    return res.status(404).json({ error: 'Conversation not found' });
+    return res.status(404).json({ error: "Conversation not found" });
   }
-  
+
   res.json({ success: true, data: conversation });
 });
 
@@ -1848,11 +2015,11 @@ export default router;
 
 import React, { createContext, useContext, useReducer, useCallback } from 'react';
 import { directorApi } from '../api/directorApi';
-import type { 
-  DirectorConversation, 
-  DirectorIntent, 
+import type {
+  DirectorConversation,
+  DirectorIntent,
   ModificationResult,
-  QuickSuggestion 
+  QuickSuggestion
 } from '../types';
 
 interface DirectorState {
@@ -1873,29 +2040,29 @@ type DirectorAction =
 const reducer = (state: DirectorState, action: DirectorAction): DirectorState => {
   switch (action.type) {
     case 'OPEN':
-      return { 
-        ...state, 
-        isOpen: true, 
+      return {
+        ...state,
+        isOpen: true,
         conversation: action.conversation,
         suggestions: action.suggestions,
-        error: null 
+        error: null
       };
     case 'CLOSE':
-      return { 
-        ...state, 
-        isOpen: false, 
-        conversation: null, 
+      return {
+        ...state,
+        isOpen: false,
+        conversation: null,
         suggestions: [],
-        error: null 
+        error: null
       };
     case 'SET_PROCESSING':
       return { ...state, isProcessing: action.isProcessing };
     case 'UPDATE_CONVERSATION':
-      return { 
-        ...state, 
+      return {
+        ...state,
         conversation: action.conversation,
         suggestions: action.suggestions,
-        isProcessing: false 
+        isProcessing: false
       };
     case 'SET_ERROR':
       return { ...state, error: action.error, isProcessing: false };
@@ -1926,9 +2093,9 @@ export function DirectorModeProvider({ children }: { children: React.ReactNode }
 
   const openDirector = useCallback(async (prompt: string, videoId?: string) => {
     try {
-      const { conversation, suggestions } = await directorApi.startSession({ 
-        prompt, 
-        videoId 
+      const { conversation, suggestions } = await directorApi.startSession({
+        prompt,
+        videoId
       });
       dispatch({ type: 'OPEN', conversation, suggestions });
     } catch (error) {
@@ -1945,19 +2112,19 @@ export function DirectorModeProvider({ children }: { children: React.ReactNode }
 
   const sendDirection = useCallback(async (input: string) => {
     if (!state.conversation) return;
-    
+
     dispatch({ type: 'SET_PROCESSING', isProcessing: true });
-    
+
     try {
       const result = await directorApi.processDirection(state.conversation.id, input);
-      
+
       // Update conversation with new turn and preview
       const updatedConversation = await directorApi.getConversation(state.conversation.id);
-      
-      dispatch({ 
-        type: 'UPDATE_CONVERSATION', 
+
+      dispatch({
+        type: 'UPDATE_CONVERSATION',
         conversation: updatedConversation,
-        suggestions: result.suggestions 
+        suggestions: result.suggestions
       });
     } catch (error) {
       dispatch({ type: 'SET_ERROR', error: 'Failed to process direction' });
@@ -1970,12 +2137,12 @@ export function DirectorModeProvider({ children }: { children: React.ReactNode }
 
   const applyAndRegenerate = useCallback(async (modelId?: string) => {
     if (!state.conversation) throw new Error('No active conversation');
-    
+
     dispatch({ type: 'SET_PROCESSING', isProcessing: true });
-    
+
     try {
       const result = await directorApi.applyAndRegenerate(
-        state.conversation.id, 
+        state.conversation.id,
         modelId
       );
       dispatch({ type: 'CLOSE' });
@@ -1988,15 +2155,15 @@ export function DirectorModeProvider({ children }: { children: React.ReactNode }
 
   const undo = useCallback(async () => {
     if (!state.conversation) return;
-    
+
     dispatch({ type: 'SET_PROCESSING', isProcessing: true });
-    
+
     try {
       await directorApi.undo(state.conversation.id);
       const updatedConversation = await directorApi.getConversation(state.conversation.id);
-      
-      dispatch({ 
-        type: 'UPDATE_CONVERSATION', 
+
+      dispatch({
+        type: 'UPDATE_CONVERSATION',
         conversation: updatedConversation,
         suggestions: state.suggestions // Keep existing suggestions
       });
@@ -2073,7 +2240,7 @@ export function DirectorMode() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || isProcessing) return;
-    
+
     const direction = input;
     setInput('');
     await sendDirection(direction);
@@ -2092,7 +2259,7 @@ export function DirectorMode() {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
-      <div className="relative w-full max-w-2xl max-h-[90vh] bg-zinc-900 rounded-xl 
+      <div className="relative w-full max-w-2xl max-h-[90vh] bg-zinc-900 rounded-xl
                       shadow-2xl flex flex-col overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-700">
@@ -2100,7 +2267,7 @@ export function DirectorMode() {
             <span className="text-xl">🎬</span>
             <h2 className="text-lg font-semibold text-white">Director Mode</h2>
           </div>
-          <button 
+          <button
             onClick={closeDirector}
             className="p-1 text-zinc-400 hover:text-white transition-colors"
           >
@@ -2127,8 +2294,8 @@ export function DirectorMode() {
         {/* Quick suggestions */}
         {suggestions.length > 0 && (
           <div className="px-4 py-2 border-t border-zinc-700">
-            <QuickSuggestions 
-              suggestions={suggestions} 
+            <QuickSuggestions
+              suggestions={suggestions}
               onSelect={applySuggestion}
               disabled={isProcessing}
             />
@@ -2146,7 +2313,7 @@ export function DirectorMode() {
               placeholder="What would you like to change?"
               disabled={isProcessing}
               className="flex-1 px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg
-                       text-white placeholder:text-zinc-500 focus:outline-none 
+                       text-white placeholder:text-zinc-500 focus:outline-none
                        focus:border-blue-500 disabled:opacity-50"
             />
             <button
@@ -2162,12 +2329,12 @@ export function DirectorMode() {
 
         {/* Action bar */}
         {hasChanges && (
-          <div className="flex items-center justify-between px-4 py-3 border-t 
+          <div className="flex items-center justify-between px-4 py-3 border-t
                          border-zinc-700 bg-zinc-800">
             <button
               onClick={undo}
               disabled={isProcessing}
-              className="flex items-center gap-1 px-3 py-1.5 text-sm text-zinc-400 
+              className="flex items-center gap-1 px-3 py-1.5 text-sm text-zinc-400
                        hover:text-white transition-colors disabled:opacity-50"
             >
               <Undo size={16} />
@@ -2183,8 +2350,8 @@ export function DirectorMode() {
               <button
                 onClick={handleApply}
                 disabled={isProcessing}
-                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white 
-                         rounded-lg hover:bg-green-500 disabled:opacity-50 
+                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white
+                         rounded-lg hover:bg-green-500 disabled:opacity-50
                          disabled:cursor-not-allowed transition-colors"
               >
                 <Check size={16} />
@@ -2231,7 +2398,7 @@ export function DirectorButton({ prompt, videoId, className = '' }: DirectorButt
   return (
     <button
       onClick={() => openDirector(prompt, videoId)}
-      className={`flex items-center gap-2 px-3 py-1.5 text-sm text-zinc-400 
+      className={`flex items-center gap-2 px-3 py-1.5 text-sm text-zinc-400
                  hover:text-white hover:bg-zinc-800 rounded-lg transition-colors
                  ${className}`}
     >
@@ -2246,31 +2413,31 @@ export function DirectorButton({ prompt, videoId, className = '' }: DirectorButt
 
 ## Success Metrics
 
-| Metric | Target | How to Measure |
-|--------|--------|----------------|
-| Director mode activation | > 15% of generations | Track opens from generation view |
-| Avg turns per session | > 2 | Track conversation lengths |
-| Apply rate | > 50% of sessions | Track apply vs cancel |
-| Re-generation reduction | -20% | Compare before/after director mode |
-| Intent parsing accuracy | > 85% | Sample and evaluate |
+| Metric                   | Target               | How to Measure                     |
+| ------------------------ | -------------------- | ---------------------------------- |
+| Director mode activation | > 15% of generations | Track opens from generation view   |
+| Avg turns per session    | > 2                  | Track conversation lengths         |
+| Apply rate               | > 50% of sessions    | Track apply vs cancel              |
+| Re-generation reduction  | -20%                 | Compare before/after director mode |
+| Intent parsing accuracy  | > 85%                | Sample and evaluate                |
 
 ---
 
 ## Effort Breakdown
 
-| Task | Estimate | Dependencies |
-|------|----------|--------------|
-| IntentParserService (rule-based + LLM) | 3 days | LLM service |
-| PromptModifierService | 3 days | Span labeling |
-| QuickSuggestionsService | 1 day | Taxonomy |
-| DirectorService orchestrator | 2 days | All above |
-| API endpoints | 1 day | Services |
-| Client: Context provider | 2 days | API |
-| Client: DirectorMode component | 3 days | Context |
-| Client: ModificationPreview | 2 days | Context |
-| Client: QuickSuggestions | 1 day | Context |
-| Integration + testing | 3 days | All above |
-| **Total** | **~3.5 weeks** | |
+| Task                                   | Estimate       | Dependencies  |
+| -------------------------------------- | -------------- | ------------- |
+| IntentParserService (rule-based + LLM) | 3 days         | LLM service   |
+| PromptModifierService                  | 3 days         | Span labeling |
+| QuickSuggestionsService                | 1 day          | Taxonomy      |
+| DirectorService orchestrator           | 2 days         | All above     |
+| API endpoints                          | 1 day          | Services      |
+| Client: Context provider               | 2 days         | API           |
+| Client: DirectorMode component         | 3 days         | Context       |
+| Client: ModificationPreview            | 2 days         | Context       |
+| Client: QuickSuggestions               | 1 day          | Context       |
+| Integration + testing                  | 3 days         | All above     |
+| **Total**                              | **~3.5 weeks** |               |
 
 ---
 

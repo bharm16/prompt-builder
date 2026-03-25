@@ -1,7 +1,7 @@
-import { logger } from '@infrastructure/Logger';
-import { generateId } from '@utils/uid';
-import { VIDEO_MODELS } from '@config/modelConfig';
-import { STYLE_STRENGTH_PRESETS } from './StyleReferenceService';
+import { logger } from "@infrastructure/Logger";
+import { generateId } from "@utils/uid";
+import { VIDEO_MODELS } from "@config/modelConfig";
+import { STYLE_STRENGTH_PRESETS } from "./StyleReferenceService";
 import type {
   ContinuitySession,
   ContinuityShot,
@@ -9,28 +9,34 @@ import type {
   CreateSessionRequest,
   CreateShotRequest,
   StyleReference,
-} from './types';
-import { ContinuitySessionStore } from './ContinuitySessionStore';
-import { ContinuityProviderService } from './ContinuityProviderService';
-import { ContinuityMediaService } from './ContinuityMediaService';
-import { ContinuityPostProcessingService } from './ContinuityPostProcessingService';
-import { ContinuityShotGenerator } from './ContinuityShotGenerator';
-import { enforceImmutableVersions } from '@services/sessions/utils/immutableMedia';
-import type { ShotGenerationObserver } from './ShotGenerationProgress';
+} from "./types";
+import { ContinuitySessionStore } from "./ContinuitySessionStore";
+import { ContinuityProviderService } from "./ContinuityProviderService";
+import { ContinuityMediaService } from "./ContinuityMediaService";
+import { ContinuityPostProcessingService } from "./ContinuityPostProcessingService";
+import { ContinuityShotGenerator } from "./ContinuityShotGenerator";
+import { enforceImmutableVersions } from "@services/sessions/utils/immutableMedia";
+import type { ShotGenerationObserver } from "./ShotGenerationProgress";
 
 export class ContinuitySessionService {
-  private readonly log = logger.child({ service: 'ContinuitySessionService' });
+  private readonly log = logger.child({ service: "ContinuitySessionService" });
 
   constructor(
     private providerService: ContinuityProviderService,
     private mediaService: ContinuityMediaService,
     private postProcessingService: ContinuityPostProcessingService,
     private shotGenerator: ContinuityShotGenerator,
-    private sessionStore: ContinuitySessionStore
+    private sessionStore: ContinuitySessionStore,
   ) {}
 
-  async createSession(userId: string, request: CreateSessionRequest): Promise<ContinuitySession> {
-    this.log.info('Creating continuity session', { userId, name: request.name });
+  async createSession(
+    userId: string,
+    request: CreateSessionRequest,
+  ): Promise<ContinuitySession> {
+    this.log.info("Creating continuity session", {
+      userId,
+      name: request.name,
+    });
 
     if (request.sessionId) {
       const existing = await this.sessionStore.get(request.sessionId);
@@ -42,45 +48,58 @@ export class ContinuitySessionService {
     let primaryStyleReference: StyleReference;
 
     if (request.sourceVideoId) {
-      const videoUrl = await this.mediaService.getVideoUrl(request.sourceVideoId, userId);
+      const videoUrl = await this.mediaService.getVideoUrl(
+        request.sourceVideoId,
+        userId,
+      );
       if (!videoUrl && request.sourceImageUrl) {
-        this.log.warn('Source video URL unavailable; falling back to provided source image', {
-          userId,
-          sourceVideoId: request.sourceVideoId,
-        });
-        primaryStyleReference = await this.mediaService.createStyleReferenceFromImage(
-          request.sourceImageUrl
+        this.log.warn(
+          "Source video URL unavailable; falling back to provided source image",
+          {
+            userId,
+            sourceVideoId: request.sourceVideoId,
+          },
         );
+        primaryStyleReference =
+          await this.mediaService.createStyleReferenceFromImage(
+            request.sourceImageUrl,
+          );
       } else {
-        if (!videoUrl) throw new Error('Source video not found');
-        primaryStyleReference = await this.mediaService.createStyleReferenceFromVideoAsset(
-          userId,
-          request.sourceVideoId,
-          videoUrl,
-          'initial',
-          request.sourceImageUrl
-        );
+        if (!videoUrl) throw new Error("Source video not found");
+        primaryStyleReference =
+          await this.mediaService.createStyleReferenceFromVideoAsset(
+            userId,
+            request.sourceVideoId,
+            videoUrl,
+            "initial",
+            request.sourceImageUrl,
+          );
       }
     } else if (request.sourceImageUrl) {
-      primaryStyleReference = await this.mediaService.createStyleReferenceFromImage(
-        request.sourceImageUrl
-      );
+      primaryStyleReference =
+        await this.mediaService.createStyleReferenceFromImage(
+          request.sourceImageUrl,
+        );
     } else {
-      throw new Error('Must provide sourceVideoId or sourceImageUrl');
+      throw new Error("Must provide sourceVideoId or sourceImageUrl");
     }
 
-    primaryStyleReference = await this.mediaService.analyzeStyleReference(primaryStyleReference);
+    primaryStyleReference = await this.mediaService.analyzeStyleReference(
+      primaryStyleReference,
+    );
 
     const sessionId = request.sessionId ?? this.generateSessionId();
     const session: ContinuitySession = {
       id: sessionId,
       userId,
       name: request.name,
-      ...(typeof request.description === 'string' ? { description: request.description } : {}),
+      ...(typeof request.description === "string"
+        ? { description: request.description }
+        : {}),
       primaryStyleReference,
       shots: [],
       defaultSettings: { ...this.defaultSettings(), ...request.settings },
-      status: 'active',
+      status: "active",
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -122,40 +141,52 @@ export class ContinuitySessionService {
       request.styleReferenceId !== undefined
         ? request.styleReferenceId
         : previousShot?.id || null;
-    const continuityMode = request.continuityMode || session.defaultSettings.defaultContinuityMode;
-    const generationMode = request.generationMode || session.defaultSettings.generationMode;
+    const continuityMode =
+      request.continuityMode || session.defaultSettings.defaultContinuityMode;
+    const generationMode =
+      request.generationMode || session.defaultSettings.generationMode;
     const modelId = request.modelId || session.defaultSettings.defaultModel;
 
-    if (generationMode === 'continuity') {
+    if (generationMode === "continuity") {
       const provider = this.providerService.getProviderFromModel(modelId);
       const caps = this.providerService.getCapabilities(provider, modelId);
       if (!caps.supportsStartImage && !caps.supportsNativeStyleReference) {
         throw new Error(
-          `Model ${modelId} does not support continuity (no image input or style reference). Switch to an eligible model.`
+          `Model ${modelId} does not support continuity (no image input or style reference). Switch to an eligible model.`,
         );
       }
     }
 
     let frameBridge = previousShot?.frameBridge;
-    if (!frameBridge && continuityMode === 'frame-bridge' && previousShot?.videoAssetId) {
+    if (
+      !frameBridge &&
+      continuityMode === "frame-bridge" &&
+      previousShot?.videoAssetId
+    ) {
       try {
-        const videoUrl = await this.mediaService.getVideoUrl(previousShot.videoAssetId, session.userId);
+        const videoUrl = await this.mediaService.getVideoUrl(
+          previousShot.videoAssetId,
+          session.userId,
+        );
         if (videoUrl) {
           frameBridge = await this.mediaService.extractBridgeFrame(
             session.userId,
             previousShot.videoAssetId,
             videoUrl,
             previousShot.id,
-            'last'
+            "last",
           );
         }
       } catch (error) {
-        this.log.warn('Frame bridge extraction failed during shot creation; continuing without frame bridge', {
-          sessionId: session.id,
-          previousShotId: previousShot.id,
-          previousShotVideoAssetId: previousShot.videoAssetId,
-          error: error instanceof Error ? error.message : String(error),
-        });
+        this.log.warn(
+          "Frame bridge extraction failed during shot creation; continuing without frame bridge",
+          {
+            sessionId: session.id,
+            previousShotId: previousShot.id,
+            previousShotVideoAssetId: previousShot.videoAssetId,
+            error: error instanceof Error ? error.message : String(error),
+          },
+        );
       }
     }
 
@@ -167,16 +198,21 @@ export class ContinuitySessionService {
       userPrompt: request.prompt,
       generationMode,
       continuityMode,
-      styleStrength: request.styleStrength ?? session.defaultSettings.defaultStyleStrength,
+      styleStrength:
+        request.styleStrength ?? session.defaultSettings.defaultStyleStrength,
       styleReferenceId,
       modelId,
       ...(hasSourceVideo ? { videoAssetId: request.sourceVideoId } : {}),
-      status: hasSourceVideo ? 'completed' : 'draft',
+      status: hasSourceVideo ? "completed" : "draft",
       createdAt: new Date(),
       ...(hasSourceVideo ? { generatedAt: new Date() } : {}),
       ...(frameBridge ? { frameBridge } : {}),
-      ...(request.characterAssetId ? { characterAssetId: request.characterAssetId } : {}),
-      ...(request.faceStrength !== undefined ? { faceStrength: request.faceStrength } : {}),
+      ...(request.characterAssetId
+        ? { characterAssetId: request.characterAssetId }
+        : {}),
+      ...(request.faceStrength !== undefined
+        ? { faceStrength: request.faceStrength }
+        : {}),
       ...(request.camera ? { camera: request.camera } : {}),
     };
 
@@ -190,7 +226,7 @@ export class ContinuitySessionService {
   async generateShot(
     sessionId: string,
     shotId: string,
-    observer?: ShotGenerationObserver
+    observer?: ShotGenerationObserver,
   ): Promise<ContinuityShot> {
     return await this.shotGenerator.generateShot(sessionId, shotId, observer);
   }
@@ -200,16 +236,16 @@ export class ContinuitySessionService {
     shotId: string,
     updates: {
       prompt?: string;
-      continuityMode?: ContinuityShot['continuityMode'];
-      generationMode?: ContinuityShot['generationMode'];
-      styleReferenceId?: ContinuityShot['styleReferenceId'];
-      styleStrength?: ContinuityShot['styleStrength'];
-      modelId?: ContinuityShot['modelId'];
-      characterAssetId?: ContinuityShot['characterAssetId'] | null;
-      faceStrength?: ContinuityShot['faceStrength'];
-      camera?: ContinuityShot['camera'];
-      versions?: ContinuityShot['versions'];
-    }
+      continuityMode?: ContinuityShot["continuityMode"];
+      generationMode?: ContinuityShot["generationMode"];
+      styleReferenceId?: ContinuityShot["styleReferenceId"];
+      styleStrength?: ContinuityShot["styleStrength"];
+      modelId?: ContinuityShot["modelId"];
+      characterAssetId?: ContinuityShot["characterAssetId"] | null;
+      faceStrength?: ContinuityShot["faceStrength"];
+      camera?: ContinuityShot["camera"];
+      versions?: ContinuityShot["versions"];
+    },
   ): Promise<ContinuityShot> {
     const session = await this.sessionStore.get(sessionId);
     if (!session) throw new Error(`Session not found: ${sessionId}`);
@@ -219,27 +255,45 @@ export class ContinuitySessionService {
     const shot = session.shots[shotIndex]!;
     let nextVersions = updates.versions;
     if (updates.versions !== undefined) {
-      const enforced = enforceImmutableVersions(shot.versions ?? null, updates.versions ?? null);
+      const enforced = enforceImmutableVersions(
+        shot.versions ?? null,
+        updates.versions ?? null,
+      );
       nextVersions = enforced.versions ?? undefined;
       if (enforced.warnings.length) {
-        this.log.warn('Preserved immutable media references during continuity shot update', {
-          sessionId,
-          shotId,
-          warningCount: enforced.warnings.length,
-        });
+        this.log.warn(
+          "Preserved immutable media references during continuity shot update",
+          {
+            sessionId,
+            shotId,
+            warningCount: enforced.warnings.length,
+          },
+        );
       }
     }
 
     let next: ContinuityShot = {
       ...shot,
       ...(updates.prompt !== undefined ? { userPrompt: updates.prompt } : {}),
-      ...(updates.continuityMode ? { continuityMode: updates.continuityMode } : {}),
-      ...(updates.generationMode ? { generationMode: updates.generationMode } : {}),
-      ...(updates.styleReferenceId !== undefined ? { styleReferenceId: updates.styleReferenceId } : {}),
-      ...(updates.styleStrength !== undefined ? { styleStrength: updates.styleStrength } : {}),
+      ...(updates.continuityMode
+        ? { continuityMode: updates.continuityMode }
+        : {}),
+      ...(updates.generationMode
+        ? { generationMode: updates.generationMode }
+        : {}),
+      ...(updates.styleReferenceId !== undefined
+        ? { styleReferenceId: updates.styleReferenceId }
+        : {}),
+      ...(updates.styleStrength !== undefined
+        ? { styleStrength: updates.styleStrength }
+        : {}),
       ...(updates.modelId ? { modelId: updates.modelId } : {}),
-      ...(updates.faceStrength !== undefined ? { faceStrength: updates.faceStrength } : {}),
-      ...(updates.camera ? { camera: { ...(shot.camera ?? {}), ...updates.camera } } : {}),
+      ...(updates.faceStrength !== undefined
+        ? { faceStrength: updates.faceStrength }
+        : {}),
+      ...(updates.camera
+        ? { camera: { ...(shot.camera ?? {}), ...updates.camera } }
+        : {}),
       ...(nextVersions !== undefined ? { versions: nextVersions } : {}),
     };
 
@@ -261,7 +315,11 @@ export class ContinuitySessionService {
     return next;
   }
 
-  async updateShotStyleReference(sessionId: string, shotId: string, styleReferenceId: string | null): Promise<ContinuityShot> {
+  async updateShotStyleReference(
+    sessionId: string,
+    shotId: string,
+    styleReferenceId: string | null,
+  ): Promise<ContinuityShot> {
     const session = await this.sessionStore.get(sessionId);
     if (!session) throw new Error(`Session not found: ${sessionId}`);
     const shot = session.shots.find((s) => s.id === shotId);
@@ -276,27 +334,33 @@ export class ContinuitySessionService {
   async updatePrimaryStyleReference(
     sessionId: string,
     sourceVideoId?: string,
-    sourceImageUrl?: string
+    sourceImageUrl?: string,
   ): Promise<ContinuitySession> {
     const session = await this.sessionStore.get(sessionId);
     if (!session) throw new Error(`Session not found: ${sessionId}`);
 
     if (sourceVideoId) {
-      const videoUrl = await this.mediaService.getVideoUrl(sourceVideoId, session.userId);
-      if (!videoUrl) throw new Error('Source video not found');
-      session.primaryStyleReference = await this.mediaService.createStyleReferenceFromVideoAsset(
-        session.userId,
+      const videoUrl = await this.mediaService.getVideoUrl(
         sourceVideoId,
-        videoUrl,
-        'updated'
+        session.userId,
       );
+      if (!videoUrl) throw new Error("Source video not found");
+      session.primaryStyleReference =
+        await this.mediaService.createStyleReferenceFromVideoAsset(
+          session.userId,
+          sourceVideoId,
+          videoUrl,
+          "updated",
+        );
     } else if (sourceImageUrl) {
-      session.primaryStyleReference = await this.mediaService.createStyleReferenceFromImage(sourceImageUrl);
+      session.primaryStyleReference =
+        await this.mediaService.createStyleReferenceFromImage(sourceImageUrl);
     }
 
-    session.primaryStyleReference = await this.mediaService.analyzeStyleReference(
-      session.primaryStyleReference
-    );
+    session.primaryStyleReference =
+      await this.mediaService.analyzeStyleReference(
+        session.primaryStyleReference,
+      );
 
     session.updatedAt = new Date();
     await this.sessionStore.save(session);
@@ -305,22 +369,22 @@ export class ContinuitySessionService {
 
   async updateSessionSettings(
     sessionId: string,
-    settings: Partial<ContinuitySessionSettings>
+    settings: Partial<ContinuitySessionSettings>,
   ): Promise<ContinuitySession> {
     const session = await this.sessionStore.get(sessionId);
     if (!session) throw new Error(`Session not found: ${sessionId}`);
 
     const allowedKeys: Array<keyof ContinuitySessionSettings> = [
-      'generationMode',
-      'defaultContinuityMode',
-      'defaultStyleStrength',
-      'defaultModel',
-      'autoExtractFrameBridge',
-      'useCharacterConsistency',
-      'useSceneProxy',
-      'autoRetryOnFailure',
-      'maxRetries',
-      'qualityThresholds',
+      "generationMode",
+      "defaultContinuityMode",
+      "defaultStyleStrength",
+      "defaultModel",
+      "autoExtractFrameBridge",
+      "useCharacterConsistency",
+      "useSceneProxy",
+      "autoRetryOnFailure",
+      "maxRetries",
+      "qualityThresholds",
     ];
 
     const sanitized: Partial<ContinuitySessionSettings> = {};
@@ -341,8 +405,11 @@ export class ContinuitySessionService {
     return session;
   }
 
-
-  async createSceneProxy(sessionId: string, sourceShotId?: string, sourceVideoId?: string): Promise<ContinuitySession> {
+  async createSceneProxy(
+    sessionId: string,
+    sourceShotId?: string,
+    sourceVideoId?: string,
+  ): Promise<ContinuitySession> {
     const session = await this.sessionStore.get(sessionId);
     if (!session) throw new Error(`Session not found: ${sessionId}`);
 
@@ -351,23 +418,30 @@ export class ContinuitySessionService {
 
     if (sourceShotId) {
       const shot = session.shots.find((s) => s.id === sourceShotId);
-      if (!shot?.videoAssetId) throw new Error('Shot has no video asset');
+      if (!shot?.videoAssetId) throw new Error("Shot has no video asset");
       videoId = shot.videoAssetId;
-      videoUrl = await this.mediaService.getVideoUrl(shot.videoAssetId, session.userId);
+      videoUrl = await this.mediaService.getVideoUrl(
+        shot.videoAssetId,
+        session.userId,
+      );
     } else if (sourceVideoId) {
       videoId = sourceVideoId;
-      videoUrl = await this.mediaService.getVideoUrl(sourceVideoId, session.userId);
+      videoUrl = await this.mediaService.getVideoUrl(
+        sourceVideoId,
+        session.userId,
+      );
     }
 
-    if (!videoId || !videoUrl) throw new Error('Source video not found for proxy');
+    if (!videoId || !videoUrl)
+      throw new Error("Source video not found for proxy");
 
     const proxy = await this.postProcessingService.createSceneProxyFromVideo(
       session.userId,
       videoId,
-      videoUrl
+      videoUrl,
     );
     session.sceneProxy = proxy;
-    if (proxy.status === 'ready') {
+    if (proxy.status === "ready") {
       session.defaultSettings.useSceneProxy = true;
     }
     session.updatedAt = new Date();
@@ -378,13 +452,13 @@ export class ContinuitySessionService {
   async previewSceneProxy(
     sessionId: string,
     shotId: string,
-    camera?: ContinuityShot['camera']
+    camera?: ContinuityShot["camera"],
   ): Promise<ContinuityShot> {
     const session = await this.sessionStore.get(sessionId);
     if (!session) throw new Error(`Session not found: ${sessionId}`);
 
-    if (!session.sceneProxy || session.sceneProxy.status !== 'ready') {
-      throw new Error('Scene proxy is not ready');
+    if (!session.sceneProxy || session.sceneProxy.status !== "ready") {
+      throw new Error("Scene proxy is not ready");
     }
 
     const shot = session.shots.find((candidate) => candidate.id === shotId);
@@ -394,11 +468,11 @@ export class ContinuitySessionService {
       session.userId,
       session.sceneProxy,
       shot.id,
-      camera ?? shot.camera
+      camera ?? shot.camera,
     );
 
     shot.sceneProxyRenderUrl = render.renderUrl;
-    shot.continuityMechanismUsed = 'scene-proxy';
+    shot.continuityMechanismUsed = "scene-proxy";
     if (camera) {
       shot.camera = camera;
     }
@@ -410,8 +484,8 @@ export class ContinuitySessionService {
 
   private defaultSettings() {
     return {
-      generationMode: 'continuity' as const,
-      defaultContinuityMode: 'frame-bridge' as const,
+      generationMode: "continuity" as const,
+      defaultContinuityMode: "frame-bridge" as const,
       defaultStyleStrength: STYLE_STRENGTH_PRESETS.balanced,
       defaultModel: VIDEO_MODELS.PRO,
       autoExtractFrameBridge: true,
@@ -424,10 +498,10 @@ export class ContinuitySessionService {
   }
 
   private generateSessionId(): string {
-    return generateId('session');
+    return generateId("session");
   }
 
   private generateShotId(): string {
-    return generateId('shot');
+    return generateId("shot");
   }
 }

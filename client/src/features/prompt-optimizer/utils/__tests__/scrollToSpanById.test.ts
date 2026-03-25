@@ -1,10 +1,10 @@
 // @vitest-environment jsdom
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { scrollToSpanById } from '../scrollToSpanById';
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { scrollToSpanById } from "../scrollToSpanById";
 
-describe('scrollToSpanById', () => {
+describe("scrollToSpanById", () => {
   beforeEach(() => {
-    document.body.innerHTML = '';
+    document.body.innerHTML = "";
     vi.useFakeTimers();
   });
 
@@ -12,59 +12,59 @@ describe('scrollToSpanById', () => {
     vi.useRealTimers();
   });
 
-  describe('edge cases — early returns', () => {
-    it('does nothing for empty spanId', () => {
-      scrollToSpanById('');
+  describe("edge cases — early returns", () => {
+    it("does nothing for empty spanId", () => {
+      scrollToSpanById("");
       // No error thrown
     });
 
-    it('does nothing when no matching element found', () => {
-      scrollToSpanById('nonexistent-id');
+    it("does nothing when no matching element found", () => {
+      scrollToSpanById("nonexistent-id");
       // No error thrown
     });
   });
 
-  describe('core behavior', () => {
-    it('scrolls matching element into view', () => {
-      const el = document.createElement('div');
-      el.setAttribute('data-span-id', 'test-span');
+  describe("core behavior", () => {
+    it("scrolls matching element into view", () => {
+      const el = document.createElement("div");
+      el.setAttribute("data-span-id", "test-span");
       el.scrollIntoView = vi.fn();
       document.body.appendChild(el);
 
-      scrollToSpanById('test-span');
+      scrollToSpanById("test-span");
       expect(el.scrollIntoView).toHaveBeenCalledWith({
-        behavior: 'smooth',
-        block: 'center',
-        inline: 'nearest',
+        behavior: "smooth",
+        block: "center",
+        inline: "nearest",
       });
     });
 
-    it('adds pulse animation class', () => {
-      const el = document.createElement('div');
-      el.setAttribute('data-span-id', 'test-span');
+    it("adds pulse animation class", () => {
+      const el = document.createElement("div");
+      el.setAttribute("data-span-id", "test-span");
       el.scrollIntoView = vi.fn();
       document.body.appendChild(el);
 
-      scrollToSpanById('test-span');
-      expect(el.classList.contains('ps-animate-span-pulse')).toBe(true);
+      scrollToSpanById("test-span");
+      expect(el.classList.contains("ps-animate-span-pulse")).toBe(true);
     });
 
-    it('removes pulse class after 700ms', () => {
-      const el = document.createElement('div');
-      el.setAttribute('data-span-id', 'test-span');
+    it("removes pulse class after 700ms", () => {
+      const el = document.createElement("div");
+      el.setAttribute("data-span-id", "test-span");
       el.scrollIntoView = vi.fn();
       document.body.appendChild(el);
 
-      scrollToSpanById('test-span');
-      expect(el.classList.contains('ps-animate-span-pulse')).toBe(true);
+      scrollToSpanById("test-span");
+      expect(el.classList.contains("ps-animate-span-pulse")).toBe(true);
 
       vi.advanceTimersByTime(700);
-      expect(el.classList.contains('ps-animate-span-pulse')).toBe(false);
+      expect(el.classList.contains("ps-animate-span-pulse")).toBe(false);
     });
 
-    it('escapes special characters in spanId for querySelector', () => {
-      const el = document.createElement('div');
-      el.setAttribute('data-span-id', 'span"with"quotes');
+    it("escapes special characters in spanId for querySelector", () => {
+      const el = document.createElement("div");
+      el.setAttribute("data-span-id", 'span"with"quotes');
       el.scrollIntoView = vi.fn();
       document.body.appendChild(el);
 

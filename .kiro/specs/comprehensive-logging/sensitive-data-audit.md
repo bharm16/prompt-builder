@@ -38,16 +38,18 @@ A comprehensive audit of the codebase has been conducted to identify potential s
 ### ✅ Authentication Middleware (SECURE)
 
 **Files Checked:**
+
 - `server/src/middleware/apiAuth.js`
 - `server/src/middleware/metricsAuth.js`
 
 **Findings:**
+
 - API keys and bearer tokens are properly NOT logged
 - Only metadata is logged (IP, path, method, requestId)
 - Authentication failures log context without exposing credentials
 - Example secure pattern:
   ```javascript
-  logger.warn('Invalid API key attempt', {
+  logger.warn("Invalid API key attempt", {
     ip: req.ip,
     path: req.path,
     method: req.method,
@@ -59,6 +61,7 @@ A comprehensive audit of the codebase has been conducted to identify potential s
 ### ✅ Route Handlers (SECURE)
 
 **Files Checked:**
+
 - `server/src/routes/api.routes.js`
 - `server/src/routes/suggestions.js`
 - `server/src/routes/labelSpansRoute.ts`
@@ -67,12 +70,13 @@ A comprehensive audit of the codebase has been conducted to identify potential s
 - `server/src/routes/health.routes.js`
 
 **Findings:**
+
 - No instances of `req.body`, `req.headers`, `req.params`, or `req.query` being logged
 - Routes log only operation metadata (operation name, requestId, duration, status)
 - Request bodies are processed but never logged directly
 - Example secure pattern:
   ```javascript
-  logger.info('Optimize request received', {
+  logger.info("Optimize request received", {
     operation,
     requestId,
     mode,
@@ -84,15 +88,19 @@ A comprehensive audit of the codebase has been conducted to identify potential s
 ### ✅ Services (SECURE)
 
 **Files Checked:**
+
 - `server/src/services/image-generation/ImageGenerationService.ts`
 - All services in `server/src/services/`
 
 **Findings:**
+
 - Services log only that credentials are missing, not the actual values
 - Example secure pattern:
   ```typescript
   if (!apiToken) {
-    logger.warn('REPLICATE_API_TOKEN not provided, image generation will be disabled');
+    logger.warn(
+      "REPLICATE_API_TOKEN not provided, image generation will be disabled",
+    );
     // ✅ Does NOT log the token value
   }
   ```
@@ -100,18 +108,20 @@ A comprehensive audit of the codebase has been conducted to identify potential s
 ### ✅ Client-Side Code (SECURE)
 
 **Files Checked:**
+
 - `client/src/hooks/usePromptHistory.ts`
 - `client/src/repositories/PromptRepository.ts`
 - `client/src/services/LoggingService.ts`
 
 **Findings:**
+
 - localStorage/sessionStorage operations log only errors, not content
 - No user credentials or PII being logged
 - Example secure pattern:
   ```typescript
-  logger.error('Error loading from localStorage', error as Error, {
-    hook: 'usePromptHistory',
-    operation: 'loadHistoryFromFirestore',
+  logger.error("Error loading from localStorage", error as Error, {
+    hook: "usePromptHistory",
+    operation: "loadHistoryFromFirestore",
   });
   // ✅ Logs the error, not the localStorage content
   ```
@@ -119,10 +129,12 @@ A comprehensive audit of the codebase has been conducted to identify potential s
 ### ✅ Sanitization Utilities (IMPLEMENTED)
 
 **Files:**
+
 - `server/src/utils/logging/sanitize.ts`
 - `client/src/utils/logging/sanitize.ts`
 
 **Available Functions:**
+
 - `sanitizeHeaders()` - Redacts authorization, x-api-key, cookie headers
 - `redactSensitiveFields()` - Redacts password, token, apiKey, ssn, creditCard, etc.
 - `sanitizeUserData()` - Extracts only safe user metadata (userId, emailDomain)
@@ -130,31 +142,47 @@ A comprehensive audit of the codebase has been conducted to identify potential s
 - `summarize()` - Truncates large payloads
 
 **Protected Fields:**
+
 ```typescript
 const SENSITIVE_HEADERS = [
-  'authorization', 'x-api-key', 'cookie', 'set-cookie',
-  'x-auth-token', 'x-access-token', 'api-key', 'apikey'
+  "authorization",
+  "x-api-key",
+  "cookie",
+  "set-cookie",
+  "x-auth-token",
+  "x-access-token",
+  "api-key",
+  "apikey",
 ];
 
 const defaultSensitiveFields = [
-  'password', 'token', 'apikey', 'api_key', 'secret',
-  'authorization', 'cookie', 'ssn', 'creditcard',
-  'credit_card', 'cvv', 'pin'
+  "password",
+  "token",
+  "apikey",
+  "api_key",
+  "secret",
+  "authorization",
+  "cookie",
+  "ssn",
+  "creditcard",
+  "credit_card",
+  "cvv",
+  "pin",
 ];
 ```
 
 ## Search Results Summary
 
-| Search Pattern | Files Searched | Matches Found | Status |
-|---------------|----------------|---------------|---------|
-| password/token/apiKey/api_key | All .ts/.tsx/.js/.jsx | 0 | ✅ PASS |
-| authorization/cookie | All .ts/.tsx/.js/.jsx | 0 | ✅ PASS |
-| email/ssn/creditCard | All .ts/.tsx/.js/.jsx | 0 | ✅ PASS |
-| req.headers in logging | All server files | 0 | ✅ PASS |
-| req.body in logging | All server files | 0 | ✅ PASS |
-| req.params/query in logging | All server files | 0 | ✅ PASS |
-| process.env in logging | All files | 1 (script only) | ✅ PASS |
-| localStorage in logging | All client files | 0 (error msgs only) | ✅ PASS |
+| Search Pattern                | Files Searched        | Matches Found       | Status  |
+| ----------------------------- | --------------------- | ------------------- | ------- |
+| password/token/apiKey/api_key | All .ts/.tsx/.js/.jsx | 0                   | ✅ PASS |
+| authorization/cookie          | All .ts/.tsx/.js/.jsx | 0                   | ✅ PASS |
+| email/ssn/creditCard          | All .ts/.tsx/.js/.jsx | 0                   | ✅ PASS |
+| req.headers in logging        | All server files      | 0                   | ✅ PASS |
+| req.body in logging           | All server files      | 0                   | ✅ PASS |
+| req.params/query in logging   | All server files      | 0                   | ✅ PASS |
+| process.env in logging        | All files             | 1 (script only)     | ✅ PASS |
+| localStorage in logging       | All client files      | 0 (error msgs only) | ✅ PASS |
 
 ## Recommendations
 

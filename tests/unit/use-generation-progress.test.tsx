@@ -1,26 +1,26 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { renderHook, act } from "@testing-library/react";
 
-import { useGenerationProgress } from '@features/generations/hooks/useGenerationProgress';
-import type { Generation } from '@features/generations/types';
+import { useGenerationProgress } from "@features/generations/hooks/useGenerationProgress";
+import type { Generation } from "@features/generations/types";
 
 const createGeneration = (overrides: Partial<Generation> = {}): Generation => ({
-  id: 'gen-1',
-  tier: 'draft',
-  status: 'pending',
-  model: 'wan-2.2',
-  prompt: 'Prompt',
-  promptVersionId: 'version-1',
+  id: "gen-1",
+  tier: "draft",
+  status: "pending",
+  model: "wan-2.2",
+  prompt: "Prompt",
+  promptVersionId: "version-1",
   createdAt: 0,
   completedAt: null,
-  mediaType: 'video',
+  mediaType: "video",
   mediaUrls: [],
   thumbnailUrl: null,
   error: null,
   ...overrides,
 });
 
-describe('useGenerationProgress', () => {
+describe("useGenerationProgress", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.useFakeTimers();
@@ -31,9 +31,9 @@ describe('useGenerationProgress', () => {
     vi.useRealTimers();
   });
 
-  describe('error handling', () => {
-    it('marks failed generations correctly', () => {
-      const generation = createGeneration({ status: 'failed' });
+  describe("error handling", () => {
+    it("marks failed generations correctly", () => {
+      const generation = createGeneration({ status: "failed" });
       const { result } = renderHook(() => useGenerationProgress(generation));
 
       expect(result.current.isFailed).toBe(true);
@@ -41,9 +41,9 @@ describe('useGenerationProgress', () => {
     });
   });
 
-  describe('edge cases', () => {
-    it('returns a completed state without starting an interval', () => {
-      const generation = createGeneration({ status: 'completed' });
+  describe("edge cases", () => {
+    it("returns a completed state without starting an interval", () => {
+      const generation = createGeneration({ status: "completed" });
       const { result } = renderHook(() => useGenerationProgress(generation));
 
       expect(result.current.isCompleted).toBe(true);
@@ -51,9 +51,9 @@ describe('useGenerationProgress', () => {
     });
   });
 
-  describe('core behavior', () => {
-    it('updates progress while generating', () => {
-      const generation = createGeneration({ status: 'generating' });
+  describe("core behavior", () => {
+    it("updates progress while generating", () => {
+      const generation = createGeneration({ status: "generating" });
       const { result } = renderHook(() => useGenerationProgress(generation));
 
       const initialProgress = result.current.progressPercent;

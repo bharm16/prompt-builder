@@ -1,7 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { ApiError } from '../ApiClient';
-import { PromptOptimizationApi } from '../PromptOptimizationApi';
+import { ApiError } from "../ApiClient";
+import { PromptOptimizationApi } from "../PromptOptimizationApi";
 
 function createClient() {
   return {
@@ -9,101 +9,104 @@ function createClient() {
   };
 }
 
-describe('PromptOptimizationApi', () => {
+describe("PromptOptimizationApi", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('posts optimize requests to /optimize', async () => {
+  it("posts optimize requests to /optimize", async () => {
     const client = createClient();
     client.post.mockResolvedValue({
-      prompt: 'optimized prompt',
-      optimizedPrompt: 'optimized prompt',
-      metadata: { previewPrompt: 'preview output' },
+      prompt: "optimized prompt",
+      optimizedPrompt: "optimized prompt",
+      metadata: { previewPrompt: "preview output" },
     });
 
     const api = new PromptOptimizationApi(client as never);
     const result = await api.optimize({
-      prompt: 'input prompt',
-      mode: 'video',
-      targetModel: 'sora-2',
+      prompt: "input prompt",
+      mode: "video",
+      targetModel: "sora-2",
       skipCache: true,
     });
 
     expect(client.post).toHaveBeenCalledWith(
-      '/optimize',
+      "/optimize",
       expect.objectContaining({
-        prompt: 'input prompt',
-        mode: 'video',
-        targetModel: 'sora-2',
+        prompt: "input prompt",
+        mode: "video",
+        targetModel: "sora-2",
         skipCache: true,
       }),
-      {}
+      {},
     );
-    expect(result.prompt).toBe('optimized prompt');
+    expect(result.prompt).toBe("optimized prompt");
   });
 
-  it('uses offline fallback for optimize auth failures', async () => {
+  it("uses offline fallback for optimize auth failures", async () => {
     const client = createClient();
-    client.post.mockRejectedValue(new ApiError('Unauthorized', 401));
+    client.post.mockRejectedValue(new ApiError("Unauthorized", 401));
     const api = new PromptOptimizationApi(client as never);
 
     const result = await api.optimize({
-      prompt: 'legacy prompt',
-      mode: 'video',
+      prompt: "legacy prompt",
+      mode: "video",
     });
 
-    expect(result.prompt).toContain('Offline Prompt Assistant');
-    expect(result.optimizedPrompt).toContain('Offline Prompt Assistant');
+    expect(result.prompt).toContain("Offline Prompt Assistant");
+    expect(result.optimizedPrompt).toContain("Offline Prompt Assistant");
     expect(result.metadata).toEqual(
       expect.objectContaining({
         offline: true,
         usedFallback: true,
-        reason: 'unauthorized',
-      })
+        reason: "unauthorized",
+      }),
     );
   });
 
-  it('posts compile requests to /optimize-compile', async () => {
+  it("posts compile requests to /optimize-compile", async () => {
     const client = createClient();
-    client.post.mockResolvedValue({ compiledPrompt: 'compiled output' });
+    client.post.mockResolvedValue({ compiledPrompt: "compiled output" });
     const api = new PromptOptimizationApi(client as never);
 
     const result = await api.compilePrompt({
-      prompt: 'optimized prompt',
-      targetModel: 'sora-2',
+      prompt: "optimized prompt",
+      targetModel: "sora-2",
       context: { shots: 3 },
     });
 
     expect(client.post).toHaveBeenCalledWith(
-      '/optimize-compile',
+      "/optimize-compile",
       {
-        prompt: 'optimized prompt',
-        targetModel: 'sora-2',
+        prompt: "optimized prompt",
+        targetModel: "sora-2",
         context: { shots: 3 },
       },
-      {}
+      {},
     );
-    expect(result.compiledPrompt).toBe('compiled output');
+    expect(result.compiledPrompt).toBe("compiled output");
   });
 
-  it('includes artifactKey when compiling from a cached artifact', async () => {
+  it("includes artifactKey when compiling from a cached artifact", async () => {
     const client = createClient();
-    client.post.mockResolvedValue({ compiledPrompt: 'compiled output', artifactKey: 'artifact-123' });
+    client.post.mockResolvedValue({
+      compiledPrompt: "compiled output",
+      artifactKey: "artifact-123",
+    });
     const api = new PromptOptimizationApi(client as never);
 
     await api.compilePrompt({
-      artifactKey: 'artifact-123',
-      targetModel: 'wan-2.2',
+      artifactKey: "artifact-123",
+      targetModel: "wan-2.2",
     });
 
     expect(client.post).toHaveBeenCalledWith(
-      '/optimize-compile',
+      "/optimize-compile",
       {
-        artifactKey: 'artifact-123',
-        targetModel: 'wan-2.2',
+        artifactKey: "artifact-123",
+        targetModel: "wan-2.2",
       },
-      {}
+      {},
     );
   });
 });

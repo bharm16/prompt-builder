@@ -1,15 +1,15 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useCustomRequest } from '@components/SuggestionsPanel/hooks/useCustomRequest';
-import type { HighlightSpan } from '@features/span-highlighting/hooks/useHighlightRendering';
-import type { I2VContext } from '../../types/i2v';
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCustomRequest } from "@components/SuggestionsPanel/hooks/useCustomRequest";
+import type { HighlightSpan } from "@features/span-highlighting/hooks/useHighlightRendering";
+import type { I2VContext } from "../../types/i2v";
 import type {
   InlineSuggestion,
   PromptCanvasState,
   SuggestionItem,
   SuggestionsData,
-} from '../types';
-import { buildSuggestionContext } from '../../utils/enhancementSuggestionContext';
-import { useSuggestionFeedback } from './useSuggestionFeedback';
+} from "../types";
+import { buildSuggestionContext } from "../../utils/enhancementSuggestionContext";
+import { useSuggestionFeedback } from "./useSuggestionFeedback";
 
 interface UseInlineSuggestionStateOptions {
   suggestionsData: SuggestionsData | null;
@@ -28,8 +28,10 @@ interface UseInlineSuggestionStateResult {
   activeSuggestionIndex: number;
   setActiveSuggestionIndex: (value: number) => void;
   suggestionsListRef: React.RefObject<HTMLDivElement>;
-  interactionSourceRef: React.MutableRefObject<'keyboard' | 'mouse' | 'auto'>;
-  handleSuggestionClickWithFeedback: (suggestion: SuggestionItem | string) => void;
+  interactionSourceRef: React.MutableRefObject<"keyboard" | "mouse" | "auto">;
+  handleSuggestionClickWithFeedback: (
+    suggestion: SuggestionItem | string,
+  ) => void;
   closeInlinePopover: () => void;
   selectionLabel: string;
   customRequest: string;
@@ -61,12 +63,12 @@ export function useInlineSuggestionState({
   setState,
 }: UseInlineSuggestionStateOptions): UseInlineSuggestionStateResult {
   const suggestionsListRef = useRef<HTMLDivElement>(null!);
-  const interactionSourceRef = useRef<'keyboard' | 'mouse' | 'auto'>('auto');
+  const interactionSourceRef = useRef<"keyboard" | "mouse" | "auto">("auto");
   const previousSelectedSpanIdRef = useRef<string | null>(null);
   const previousSuggestionCountRef = useRef(0);
 
   const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(0);
-  const [customRequestError, setCustomRequestError] = useState('');
+  const [customRequestError, setCustomRequestError] = useState("");
 
   const { handleSuggestionClickWithFeedback } = useSuggestionFeedback({
     suggestionsData,
@@ -82,7 +84,7 @@ export function useInlineSuggestionState({
     return (
       parseResultSpans.find((span) => {
         const candidateId =
-          typeof span?.id === 'string' && span.id.length > 0
+          typeof span?.id === "string" && span.id.length > 0
             ? span.id
             : `span_${span.start}_${span.end}`;
         return candidateId === selectedSpanId;
@@ -91,20 +93,20 @@ export function useInlineSuggestionState({
   }, [parseResultSpans, selectedSpanId]);
 
   const selectedSpanText = useMemo(() => {
-    if (!selectedSpan) return '';
+    if (!selectedSpan) return "";
     const displayQuote =
-      typeof selectedSpan.displayQuote === 'string' &&
-        selectedSpan.displayQuote.trim()
+      typeof selectedSpan.displayQuote === "string" &&
+      selectedSpan.displayQuote.trim()
         ? selectedSpan.displayQuote
-        : '';
+        : "";
     const quote =
-      typeof selectedSpan.quote === 'string' && selectedSpan.quote.trim()
+      typeof selectedSpan.quote === "string" && selectedSpan.quote.trim()
         ? selectedSpan.quote
-        : '';
+        : "";
     const text =
-      typeof selectedSpan.text === 'string' && selectedSpan.text.trim()
+      typeof selectedSpan.text === "string" && selectedSpan.text.trim()
         ? selectedSpan.text
-        : '';
+        : "";
     return (displayQuote || quote || text).trim();
   }, [selectedSpan]);
 
@@ -115,26 +117,26 @@ export function useInlineSuggestionState({
     return rawSuggestions
       .map((item, index) => {
         const rawText =
-          typeof item === 'string'
+          typeof item === "string"
             ? item
-            : typeof item?.text === 'string'
+            : typeof item?.text === "string"
               ? item.text
-              : typeof (item as { label?: string } | null)?.label === 'string'
+              : typeof (item as { label?: string } | null)?.label === "string"
                 ? (item as { label?: string }).label
-                : '';
-        const text = (rawText ?? '').trim();
+                : "";
+        const text = (rawText ?? "").trim();
 
         if (!text) {
           return null;
         }
 
         const meta =
-          typeof item === 'object' && item
-            ? typeof item.compatibility === 'number'
+          typeof item === "object" && item
+            ? typeof item.compatibility === "number"
               ? `${Math.round(item.compatibility * 100)}% match`
-              : typeof item.category === 'string'
+              : typeof item.category === "string"
                 ? item.category
-                : typeof item.explanation === 'string'
+                : typeof item.explanation === "string"
                   ? item.explanation
                   : null
             : null;
@@ -153,11 +155,11 @@ export function useInlineSuggestionState({
 
   const i2vResponseMeta = useMemo(() => {
     const meta = suggestionsData?.responseMetadata;
-    if (!meta || typeof meta !== 'object') {
+    if (!meta || typeof meta !== "object") {
       return null;
     }
     const maybeI2v = (meta as { i2v?: unknown }).i2v;
-    if (!maybeI2v || typeof maybeI2v !== 'object') {
+    if (!maybeI2v || typeof maybeI2v !== "object") {
       return null;
     }
     return maybeI2v as {
@@ -168,12 +170,15 @@ export function useInlineSuggestionState({
   }, [suggestionsData?.responseMetadata]);
 
   const i2vLockReason =
-    typeof i2vResponseMeta?.reason === 'string' && i2vResponseMeta.reason.trim()
+    typeof i2vResponseMeta?.reason === "string" && i2vResponseMeta.reason.trim()
       ? i2vResponseMeta.reason.trim()
       : null;
   const resolvedI2VReason =
-    i2vLockReason || (i2vResponseMeta?.locked ? 'This category is locked by the image.' : null);
-  const i2vMotionAlternatives = Array.isArray(i2vResponseMeta?.motionAlternatives)
+    i2vLockReason ||
+    (i2vResponseMeta?.locked ? "This category is locked by the image." : null);
+  const i2vMotionAlternatives = Array.isArray(
+    i2vResponseMeta?.motionAlternatives,
+  )
     ? i2vResponseMeta?.motionAlternatives
     : [];
   const hasI2VLockNotice = Boolean(resolvedI2VReason);
@@ -187,29 +192,32 @@ export function useInlineSuggestionState({
 
   const isInlineLoading = Boolean(
     selectedSpanId &&
-    (suggestionsData?.isLoading || !suggestionsData || !selectionMatches)
+      (suggestionsData?.isLoading || !suggestionsData || !selectionMatches),
   );
   const isInlineError = Boolean(suggestionsData?.isError);
   const inlineErrorMessage =
-    typeof suggestionsData?.errorMessage === 'string' &&
-      suggestionsData.errorMessage.trim()
+    typeof suggestionsData?.errorMessage === "string" &&
+    suggestionsData.errorMessage.trim()
       ? suggestionsData.errorMessage.trim()
-      : 'Failed to load suggestions.';
+      : "Failed to load suggestions.";
   const isInlineEmpty = Boolean(
     selectedSpanId &&
-    !isInlineLoading &&
-    !isInlineError &&
-    suggestionCount === 0 &&
-    !hasI2VLockNotice
+      !isInlineLoading &&
+      !isInlineError &&
+      suggestionCount === 0 &&
+      !hasI2VLockNotice,
   );
-  const showI2VLockIndicator = Boolean(i2vContext?.isI2VMode && hasI2VLockNotice);
+  const showI2VLockIndicator = Boolean(
+    i2vContext?.isI2VMode && hasI2VLockNotice,
+  );
 
-  const selectionLabel = selectedSpanText || suggestionsData?.selectedText || '';
+  const selectionLabel =
+    selectedSpanText || suggestionsData?.selectedText || "";
   const customRequestSelection = selectionLabel.trim();
   const customRequestPrompt = (
     suggestionsData?.fullPrompt ||
     normalizedDisplayedPrompt ||
-    ''
+    ""
   ).trim();
 
   const customRequestPreferIndex = useMemo(() => {
@@ -218,7 +226,7 @@ export function useInlineSuggestionState({
       suggestionsData?.metadata?.start ??
       suggestionsData?.offsets?.start ??
       null;
-    return typeof preferIndexRaw === 'number' && Number.isFinite(preferIndexRaw)
+    return typeof preferIndexRaw === "number" && Number.isFinite(preferIndexRaw)
       ? preferIndexRaw
       : null;
   }, [suggestionsData?.metadata, suggestionsData?.offsets]);
@@ -227,13 +235,13 @@ export function useInlineSuggestionState({
     if (!customRequestSelection || !customRequestPrompt) {
       return null;
     }
-    const normalizedPrompt = customRequestPrompt.normalize('NFC');
-    const normalizedHighlight = customRequestSelection.normalize('NFC');
+    const normalizedPrompt = customRequestPrompt.normalize("NFC");
+    const normalizedHighlight = customRequestSelection.normalize("NFC");
     return buildSuggestionContext(
       normalizedPrompt,
       normalizedHighlight,
       customRequestPreferIndex,
-      1000
+      1000,
     );
   }, [customRequestSelection, customRequestPrompt, customRequestPreferIndex]);
 
@@ -245,10 +253,10 @@ export function useInlineSuggestionState({
   } = useCustomRequest({
     selectedText: customRequestSelection,
     fullPrompt: customRequestPrompt,
-    contextBefore: customRequestContext?.contextBefore ?? '',
-    contextAfter: customRequestContext?.contextAfter ?? '',
+    contextBefore: customRequestContext?.contextBefore ?? "",
+    contextAfter: customRequestContext?.contextAfter ?? "",
     metadata: suggestionsData?.metadata ?? null,
-    setSuggestions: suggestionsData?.setSuggestions ?? (() => { }),
+    setSuggestions: suggestionsData?.setSuggestions ?? (() => {}),
     setError: setCustomRequestError,
   });
 
@@ -263,7 +271,7 @@ export function useInlineSuggestionState({
       if (isCustomRequestDisabled) return;
       void handleCustomRequest();
     },
-    [handleCustomRequest, isCustomRequestDisabled]
+    [handleCustomRequest, isCustomRequestDisabled],
   );
 
   const closeInlinePopover = useCallback((): void => {
@@ -273,8 +281,8 @@ export function useInlineSuggestionState({
   }, [setSelectedSpanId, suggestionsData]);
 
   useEffect(() => {
-    setCustomRequest('');
-    setCustomRequestError('');
+    setCustomRequest("");
+    setCustomRequestError("");
   }, [selectedSpanId, setCustomRequest]);
 
   useEffect(() => {
@@ -283,7 +291,7 @@ export function useInlineSuggestionState({
     const countChanged = suggestionCount !== previousSuggestionCountRef.current;
 
     if (selectedSpanId && (justOpened || countChanged)) {
-      interactionSourceRef.current = 'auto';
+      interactionSourceRef.current = "auto";
       setActiveSuggestionIndex(0);
     }
 
@@ -295,14 +303,14 @@ export function useInlineSuggestionState({
     if (!selectedSpanId || !suggestionsListRef.current) return;
 
     // Skip scrolling if the change came from mouse hover to prevent fighting/looping
-    if (interactionSourceRef.current === 'mouse') return;
+    if (interactionSourceRef.current === "mouse") return;
 
     const list = suggestionsListRef.current;
     const activeItem = list.querySelector(
-      `[data-index="${activeSuggestionIndex}"]`
+      `[data-index="${activeSuggestionIndex}"]`,
     ) as HTMLElement | null;
     if (activeItem) {
-      activeItem.scrollIntoView({ block: 'nearest' });
+      activeItem.scrollIntoView({ block: "nearest" });
     }
   }, [selectedSpanId, activeSuggestionIndex]);
 
@@ -321,7 +329,7 @@ export function useInlineSuggestionState({
       handleSuggestionClickWithFeedback(suggestion);
       closeInlinePopover();
     },
-    [closeInlinePopover, handleSuggestionClickWithFeedback]
+    [closeInlinePopover, handleSuggestionClickWithFeedback],
   );
 
   useEffect(() => {
@@ -330,11 +338,11 @@ export function useInlineSuggestionState({
       const target = event.target as HTMLElement | null;
       const isTextInput =
         !!target &&
-        (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA');
+        (target.tagName === "INPUT" || target.tagName === "TEXTAREA");
       const isCustomRequestTarget =
-        !!target && Boolean(target.closest?.('[data-suggest-custom]'));
+        !!target && Boolean(target.closest?.("[data-suggest-custom]"));
 
-      if (event.key === 'Escape') {
+      if (event.key === "Escape") {
         event.preventDefault();
         closeInlinePopover();
         return;
@@ -347,31 +355,31 @@ export function useInlineSuggestionState({
 
       if (!suggestionCount) return;
 
-      if (event.key === 'ArrowDown') {
+      if (event.key === "ArrowDown") {
         event.preventDefault();
-        interactionSourceRef.current = 'keyboard';
+        interactionSourceRef.current = "keyboard";
         setActiveSuggestionIndex((prev) => (prev + 1) % suggestionCount);
         return;
       }
 
-      if (event.key === 'ArrowUp') {
+      if (event.key === "ArrowUp") {
         event.preventDefault();
-        interactionSourceRef.current = 'keyboard';
+        interactionSourceRef.current = "keyboard";
         setActiveSuggestionIndex((prev) =>
-          prev - 1 < 0 ? suggestionCount - 1 : prev - 1
+          prev - 1 < 0 ? suggestionCount - 1 : prev - 1,
         );
         return;
       }
 
-      if (event.key === 'Enter') {
+      if (event.key === "Enter") {
         event.preventDefault();
         handleApplyActiveSuggestion();
         closeInlinePopover();
       }
     };
 
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
   }, [
     selectedSpanId,
     suggestionCount,

@@ -5,8 +5,8 @@
  * Makes it easy to control feature rollouts and A/B testing
  */
 
-const ENV = import.meta.env.MODE || 'development';
-const IS_DEV = ENV === 'development';
+const ENV = import.meta.env.MODE || "development";
+const IS_DEV = ENV === "development";
 
 export const FEATURES = {
   // Core Features
@@ -34,9 +34,10 @@ export const FEATURES = {
   VERBOSE_LOGGING: IS_DEV,
 
   // Experimental Features (controlled by env vars)
-  AI_SUGGESTIONS_CACHING: import.meta.env.VITE_FEATURE_AI_CACHING !== 'false',
-  CONTEXT_PERSISTENCE: import.meta.env.VITE_FEATURE_CONTEXT_PERSIST !== 'false',
-  CANVAS_FIRST_LAYOUT: import.meta.env.VITE_FEATURE_CANVAS_FIRST_LAYOUT !== 'false',
+  AI_SUGGESTIONS_CACHING: import.meta.env.VITE_FEATURE_AI_CACHING !== "false",
+  CONTEXT_PERSISTENCE: import.meta.env.VITE_FEATURE_CONTEXT_PERSIST !== "false",
+  CANVAS_FIRST_LAYOUT:
+    import.meta.env.VITE_FEATURE_CANVAS_FIRST_LAYOUT !== "false",
 } as const;
 
 type FeatureName = keyof typeof FEATURES;

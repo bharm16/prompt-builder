@@ -1,40 +1,43 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from "vitest";
 
-import { parseLabelSpansResponse, parseSpanLabel } from '@features/span-highlighting/api/spanLabelingResponse';
+import {
+  parseLabelSpansResponse,
+  parseSpanLabel,
+} from "@features/span-highlighting/api/spanLabelingResponse";
 
-describe('spanLabelingResponse', () => {
-  it('parses valid span label', () => {
+describe("spanLabelingResponse", () => {
+  it("parses valid span label", () => {
     const span = parseSpanLabel({
       start: 1,
       end: 4,
-      category: 'style',
+      category: "style",
       confidence: 0.9,
-      text: 'test',
+      text: "test",
     });
 
     expect(span).toEqual({
       start: 1,
       end: 4,
-      category: 'style',
+      category: "style",
       confidence: 0.9,
-      text: 'test',
+      text: "test",
     });
   });
 
-  it('returns null for invalid span label', () => {
+  it("returns null for invalid span label", () => {
     expect(parseSpanLabel({ start: 1, end: 4 })).toBeNull();
   });
 
-  it('parses label spans response', () => {
+  it("parses label spans response", () => {
     const response = parseLabelSpansResponse({
       spans: [
-        { start: 1, end: 4, category: 'style', confidence: 0.5 },
+        { start: 1, end: 4, category: "style", confidence: 0.5 },
         { start: 0 },
       ],
-      meta: { source: 'test' },
+      meta: { source: "test" },
     });
 
     expect(response.spans).toHaveLength(1);
-    expect(response.meta).toEqual({ source: 'test' });
+    expect(response.meta).toEqual({ source: "test" });
   });
 });

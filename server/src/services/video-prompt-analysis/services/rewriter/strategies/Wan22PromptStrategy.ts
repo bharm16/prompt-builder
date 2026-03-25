@@ -1,9 +1,9 @@
-import type { ModelPromptStrategy } from './types';
-import { buildBaseHeader } from './promptStrategyUtils';
+import type { ModelPromptStrategy } from "./types";
+import { buildBaseHeader } from "./promptStrategyUtils";
 
 export const wan22PromptStrategy: ModelPromptStrategy = {
-  modelId: 'wan-2.2',
-  output: { format: 'text' },
+  modelId: "wan-2.2",
+  output: { format: "text" },
   buildPrompt: (context) => `${buildBaseHeader(context)}
 INSTRUCTIONS for Wan 2.2:
 1. Use the structure: Subject + Scene + Motion. Target 35-55 words (never exceed 55).

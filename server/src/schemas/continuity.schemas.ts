@@ -1,10 +1,12 @@
-import { z } from 'zod';
+import { z } from "zod";
 
 export const CreateShotSchema = z
   .object({
     prompt: z.string().min(1),
-    continuityMode: z.enum(['frame-bridge', 'style-match', 'native', 'none']).optional(),
-    generationMode: z.enum(['continuity', 'standard']).optional(),
+    continuityMode: z
+      .enum(["frame-bridge", "style-match", "native", "none"])
+      .optional(),
+    generationMode: z.enum(["continuity", "standard"]).optional(),
     styleReferenceId: z.string().nullable().optional(),
     styleStrength: z.number().optional(),
     sourceVideoId: z.string().optional(),
@@ -27,8 +29,10 @@ export const CreateShotSchema = z
 export const UpdateShotSchema = z
   .object({
     prompt: z.string().optional(),
-    continuityMode: z.enum(['frame-bridge', 'style-match', 'native', 'none']).optional(),
-    generationMode: z.enum(['continuity', 'standard']).optional(),
+    continuityMode: z
+      .enum(["frame-bridge", "style-match", "native", "none"])
+      .optional(),
+    generationMode: z.enum(["continuity", "standard"]).optional(),
     styleReferenceId: z.string().nullable().optional(),
     styleStrength: z.number().optional(),
     modelId: z.string().optional(),

@@ -1,16 +1,16 @@
-import { useCallback } from 'react';
-import type { PromptCanvasProps } from '../types';
+import { useCallback } from "react";
+import type { PromptCanvasProps } from "../types";
 
 type CanvasCoherenceParams = Pick<
   PromptCanvasProps,
-  | 'coherenceIssues'
-  | 'isCoherenceChecking'
-  | 'isCoherencePanelExpanded'
-  | 'onToggleCoherencePanelExpanded'
-  | 'onDismissCoherenceIssue'
-  | 'onDismissAllCoherenceIssues'
-  | 'onApplyCoherenceFix'
-  | 'onScrollToCoherenceSpan'
+  | "coherenceIssues"
+  | "isCoherenceChecking"
+  | "isCoherencePanelExpanded"
+  | "onToggleCoherencePanelExpanded"
+  | "onDismissCoherenceIssue"
+  | "onDismissAllCoherenceIssues"
+  | "onApplyCoherenceFix"
+  | "onScrollToCoherenceSpan"
 >;
 
 export function useCanvasCoherence({
@@ -27,7 +27,7 @@ export function useCanvasCoherence({
     (spanId: string): void => {
       onScrollToCoherenceSpan?.(spanId);
     },
-    [onScrollToCoherenceSpan]
+    [onScrollToCoherenceSpan],
   );
 
   return {

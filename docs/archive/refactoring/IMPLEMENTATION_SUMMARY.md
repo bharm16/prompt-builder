@@ -11,6 +11,7 @@
 Successfully implemented a complete architectural evolution of the span labeling system following the PDF's roadmap. The system has been transformed from a fragile, index-based approach to a robust, schema-first agentic architecture across three phases (Horizons 1-3).
 
 **Key Achievements:**
+
 - ✅ **Eliminated Index Drift** - LLM no longer predicts character indices
 - ✅ **Solved Visual-Semantic Gap** - Added disambiguation rules and Director's Lexicon
 - ✅ **Enhanced Security** - XML input fencing and injection detection
@@ -28,9 +29,11 @@ Successfully implemented a complete architectural evolution of the span labeling
 **Timeline**: Completed
 
 #### 1.1 Prompt Template Updates
+
 **File**: `server/src/llm/span-labeling/templates/span-labeling-prompt.md`
 
 **Changes**:
+
 - ✅ Removed all instructions about `start` and `end` indices
 - ✅ Added explicit instruction: "Return ONLY the exact substring text"
 - ✅ Emphasized character-for-character matching
@@ -38,26 +41,32 @@ Successfully implemented a complete architectural evolution of the span labeling
 - ✅ Enhanced adversarial input detection instructions
 
 #### 1.2 Schema Updates
+
 **File**: `server/src/llm/span-labeling/validation/schemas/spanResponseSchema.json`
 
 **Changes**:
+
 - ✅ Made `start` and `end` fields optional (no longer in `required` array)
 - ✅ Updated descriptions to clarify server-side computation
 - ✅ Added better documentation for `isAdversarial` field
 
 #### 1.3 Cache Enhancements
+
 **File**: `server/src/llm/span-labeling/cache/SubstringPositionCache.js`
 
 **Changes**:
+
 - ✅ Added unicode normalization (`NFD` decomposition)
 - ✅ Implemented telemetry tracking (exact/fuzzy/case-insensitive matches)
 - ✅ Added logging for fuzzy matching and large offset differences
 - ✅ Exposed `getTelemetry()` and `resetTelemetry()` methods
 
 #### 1.4 XML Input Wrapping
+
 **File**: `server/src/llm/span-labeling/utils/jsonUtils.js`
 
 **Changes**:
+
 - ✅ Updated `buildUserPayload()` to wrap text in `<user_input>` tags
 - ✅ Added security documentation explaining adversarial protection
 
@@ -69,9 +78,11 @@ Successfully implemented a complete architectural evolution of the span labeling
 **Timeline**: Completed
 
 #### 2.1 Disambiguation Rules
+
 **File**: `server/src/llm/span-labeling/templates/span-labeling-prompt.md`
 
 **Added Sections**:
+
 - ✅ **Disambiguation Rules** (5 rules):
   1. Camera vs Action Disambiguation
   2. Shot Type vs Camera Movement
@@ -80,24 +91,30 @@ Successfully implemented a complete architectural evolution of the span labeling
   5. Technical Specs Exempt from Word Limits
 
 #### 2.2 Director's Lexicon
+
 **File**: `server/src/llm/span-labeling/templates/span-labeling-prompt.md`
 
 **Added Sections**:
+
 - ✅ **Camera Movements**: Pan, tilt, dolly, truck, crane, zoom, rack focus, tracking shot
 - ✅ **Lighting Terms**: Chiaroscuro, Rembrandt, golden hour, high key, low key, practical
 - ✅ **Film Stock Terms**: 35mm, 16mm, Super 8, Kodak, Fuji, anamorphic
 
 #### 2.3 Negative Constraints
+
 **File**: `server/src/llm/span-labeling/templates/span-labeling-prompt.md`
 
 **Added Section**: What NOT to Do
+
 - ✅ Explicit anti-patterns for common mistakes
 - ✅ Category misalignment warnings
 
 #### 2.4 Relaxed F1 Evaluator
+
 **File**: `server/src/llm/span-labeling/evaluation/RelaxedF1Evaluator.js` (NEW)
 
 **Features**:
+
 - ✅ Implements IoU-based span matching (threshold: 0.5)
 - ✅ Calculates precision, recall, F1
 - ✅ Taxonomy accuracy measurement
@@ -106,9 +123,11 @@ Successfully implemented a complete architectural evolution of the span labeling
 - ✅ Target threshold validation (PDF Section 4.2)
 
 #### 2.6 Golden Dataset
+
 **Directory**: `server/src/llm/span-labeling/evaluation/golden-set/` (NEW)
 
 **Files Created**:
+
 - ✅ `core-prompts.json` - 5 standard prompts (50% of dataset)
 - ✅ `technical-prompts.json` - 5 Director's Lexicon prompts (20%)
 - ✅ `adversarial-prompts.json` - 5 injection/ambiguity tests (15%)
@@ -124,7 +143,9 @@ Successfully implemented a complete architectural evolution of the span labeling
 **Timeline**: Completed
 
 #### 3.1 Grammar-Constrained Decoding
+
 **Files Modified**:
+
 - ✅ `server/src/services/ai-model/AIModelService.js`
   - Added `responseFormat` parameter support
   - Updated documentation with examples
@@ -134,7 +155,9 @@ Successfully implemented a complete architectural evolution of the span labeling
   - Maintains backward compatibility with `jsonMode`
 
 #### 3.2 Evaluation Suite
+
 **Files Created**:
+
 - ✅ `scripts/evaluation/run-golden-set-evaluation.js` (NEW)
   - Loads golden dataset
   - Runs span labeling on each prompt
@@ -151,19 +174,20 @@ Successfully implemented a complete architectural evolution of the span labeling
 
 ## 📊 Target Metrics (PDF Section 4.2)
 
-| Metric | Target | Status |
-|--------|--------|--------|
-| JSON Validity Rate | >99.5% | ✅ Infrastructure ready |
-| Relaxed F1 | >0.85 | ✅ Evaluator implemented |
-| Taxonomy Accuracy | >90% | ✅ Evaluator ready |
-| Safety Pass Rate | 100% | ✅ Dataset ready |
-| Avg Latency | <1.5s | ✅ Telemetry in place |
+| Metric             | Target | Status                   |
+| ------------------ | ------ | ------------------------ |
+| JSON Validity Rate | >99.5% | ✅ Infrastructure ready  |
+| Relaxed F1         | >0.85  | ✅ Evaluator implemented |
+| Taxonomy Accuracy  | >90%   | ✅ Evaluator ready       |
+| Safety Pass Rate   | 100%   | ✅ Dataset ready         |
+| Avg Latency        | <1.5s  | ✅ Telemetry in place    |
 
 ---
 
 ## 🗂️ Files Created/Modified Summary
 
 ### New Files Created (10)
+
 1. `server/src/llm/span-labeling/evaluation/RelaxedF1Evaluator.js`
 2. `server/src/llm/span-labeling/evaluation/golden-set/core-prompts.json`
 3. `server/src/llm/span-labeling/evaluation/golden-set/technical-prompts.json`
@@ -176,6 +200,7 @@ Successfully implemented a complete architectural evolution of the span labeling
 10. (Note: `spa.plan.md` was pre-existing and not modified)
 
 ### Files Modified (6)
+
 1. `server/src/llm/span-labeling/templates/span-labeling-prompt.md` ⭐ Major changes
 2. `server/src/llm/span-labeling/validation/schemas/spanResponseSchema.json`
 3. `server/src/llm/span-labeling/cache/SubstringPositionCache.js`
@@ -191,12 +216,14 @@ Successfully implemented a complete architectural evolution of the span labeling
 ### Immediate Actions
 
 1. **Test Phase 1 Changes**
+
    ```bash
    # Test with sample prompts to validate alignment
    node tests/manual/test-span-labeling.js
    ```
 
 2. **Run Golden Set Evaluation**
+
    ```bash
    # Integrate with AI service first
    node scripts/evaluation/run-golden-set-evaluation.js
@@ -205,8 +232,8 @@ Successfully implemented a complete architectural evolution of the span labeling
 3. **Enable Feature Flags** (in SpanLabelingService or config)
    ```javascript
    const FEATURE_FLAGS = {
-     USE_SUBSTRING_EXTRACTION: true,  // Phase 1
-     USE_DISAMBIGUATION_RULES: true   // Phase 2
+     USE_SUBSTRING_EXTRACTION: true, // Phase 1
+     USE_DISAMBIGUATION_RULES: true, // Phase 2
    };
    ```
 
@@ -283,6 +310,7 @@ Each phase is backwards compatible:
 ## 📞 Contact & Support
 
 For questions about this implementation:
+
 - Review PDF document for design rationale
 - Check `spa.plan.md` for detailed specifications
 - Review individual file documentation

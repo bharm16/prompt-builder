@@ -2,14 +2,19 @@
  * Unit tests for PanelStates components
  */
 
-import { describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
-import type { ButtonHTMLAttributes } from 'react';
+import { describe, expect, it, vi } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
+import type { ButtonHTMLAttributes } from "react";
 
-import { LoadingState, EmptyState, ErrorState, InactiveState } from '@components/SuggestionsPanel/components/PanelStates';
-import { getLoadingSkeletonCount } from '@components/SuggestionsPanel/utils/suggestionHelpers';
+import {
+  LoadingState,
+  EmptyState,
+  ErrorState,
+  InactiveState,
+} from "@components/SuggestionsPanel/components/PanelStates";
+import { getLoadingSkeletonCount } from "@components/SuggestionsPanel/utils/suggestionHelpers";
 
-vi.mock('@promptstudio/system/components/ui/button', () => ({
+vi.mock("@promptstudio/system/components/ui/button", () => ({
   Button: ({ children, ...props }: ButtonHTMLAttributes<HTMLButtonElement>) => (
     <button {...props}>{children}</button>
   ),
@@ -17,78 +22,80 @@ vi.mock('@promptstudio/system/components/ui/button', () => ({
 
 const DummyIcon = () => <svg data-testid="icon" />;
 
-describe('PanelStates', () => {
-  describe('LoadingState', () => {
-    it('renders placeholder messaging for placeholder suggestions', () => {
+describe("PanelStates", () => {
+  describe("LoadingState", () => {
+    it("renders placeholder messaging for placeholder suggestions", () => {
       const { container } = render(
-        <LoadingState contextValue="short" isPlaceholder />
+        <LoadingState contextValue="short" isPlaceholder />,
       );
 
-      const skeletons = container.querySelectorAll('.animate-pulse');
+      const skeletons = container.querySelectorAll(".animate-pulse");
       expect(skeletons.length).toBe(getLoadingSkeletonCount(5, true));
-      expect(screen.getByText('Finding relevant values...')).toBeInTheDocument();
+      expect(
+        screen.getByText("Finding relevant values..."),
+      ).toBeInTheDocument();
     });
   });
 
-  describe('EmptyState', () => {
-    it('renders configured title and description', () => {
+  describe("EmptyState", () => {
+    it("renders configured title and description", () => {
       render(
         <EmptyState
           emptyState={{
-            title: 'No suggestions',
-            description: 'Try selecting text.',
+            title: "No suggestions",
+            description: "Try selecting text.",
             icon: DummyIcon,
           }}
-        />
+        />,
       );
 
-      expect(screen.getByText('No suggestions')).toBeInTheDocument();
-      expect(screen.getByText('Try selecting text.')).toBeInTheDocument();
+      expect(screen.getByText("No suggestions")).toBeInTheDocument();
+      expect(screen.getByText("Try selecting text.")).toBeInTheDocument();
     });
   });
 
-  describe('ErrorState', () => {
-    it('renders error message and triggers retry', () => {
+  describe("ErrorState", () => {
+    it("renders error message and triggers retry", () => {
       const onRetry = vi.fn();
 
       render(
         <ErrorState
           errorState={{
-            title: 'Error',
-            description: 'Default message',
+            title: "Error",
+            description: "Default message",
             icon: DummyIcon,
           }}
           errorMessage="Custom message"
           onRetry={onRetry}
-        />
+        />,
       );
 
-      expect(screen.getByText('Custom message')).toBeInTheDocument();
-      fireEvent.click(screen.getByText('Retry'));
+      expect(screen.getByText("Custom message")).toBeInTheDocument();
+      fireEvent.click(screen.getByText("Retry"));
       expect(onRetry).toHaveBeenCalled();
     });
   });
 
-  describe('InactiveState', () => {
-    it('renders example and tips when provided', () => {
+  describe("InactiveState", () => {
+    it("renders example and tips when provided", () => {
       render(
         <InactiveState
           inactiveState={{
-            title: 'Select text',
-            description: 'Highlight text to start.',
+            title: "Select text",
+            description: "Highlight text to start.",
             icon: DummyIcon,
             example: {
-              from: 'Old',
-              to: ['New A', 'New B'],
+              from: "Old",
+              to: ["New A", "New B"],
             },
-            tips: [{ text: 'Try shorter selections.' }],
+            tips: [{ text: "Try shorter selections." }],
           }}
-        />
+        />,
       );
 
-      expect(screen.getByText('Select text')).toBeInTheDocument();
-      expect(screen.getByText('Old → New A | New B')).toBeInTheDocument();
-      expect(screen.getByText('Try shorter selections.')).toBeInTheDocument();
+      expect(screen.getByText("Select text")).toBeInTheDocument();
+      expect(screen.getByText("Old → New A | New B")).toBeInTheDocument();
+      expect(screen.getByText("Try shorter selections.")).toBeInTheDocument();
     });
   });
 });

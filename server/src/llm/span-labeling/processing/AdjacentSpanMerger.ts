@@ -4,7 +4,7 @@
  * Merges adjacent spans that belong to the same parent category.
  * Fixes LLM fragmentation issues like "Action" + "Shot" → "Action Shot"
  */
-import type { SpanLike } from '../types.js';
+import type { SpanLike } from "../types.js";
 
 interface MergeOptions {
   maxMergedWords?: number;
@@ -23,8 +23,8 @@ interface MergeResult {
  * @returns {string} Parent category
  */
 function getParentCategory(role: unknown): string {
-  if (!role || typeof role !== 'string') return '';
-  const dotIndex = role.indexOf('.');
+  if (!role || typeof role !== "string") return "";
+  const dotIndex = role.indexOf(".");
   return dotIndex > 0 ? role.substring(0, dotIndex) : role;
 }
 
@@ -38,7 +38,7 @@ function getParentCategory(role: unknown): string {
 function areRolesCompatible(role1: string, role2: string): boolean {
   const parent1 = getParentCategory(role1);
   const parent2 = getParentCategory(role2);
-  return parent1 === parent2 && parent1 !== '';
+  return parent1 === parent2 && parent1 !== "";
 }
 
 /**
@@ -50,7 +50,7 @@ function areRolesCompatible(role1: string, role2: string): boolean {
 function isMergeableGap(gap: string): boolean {
   if (!gap || gap.length === 0) return true;
   if (gap.length > 3) return false; // Don't merge if gap is too large
-  
+
   // Allow only whitespace, comma, hyphen, underscore between spans
   return /^[\s,\-_]+$/.test(gap);
 }
@@ -63,13 +63,13 @@ function isMergeableGap(gap: string): boolean {
  * @returns {string} The more specific role
  */
 function selectMoreSpecificRole(role1: string, role2: string): string {
-  const hasAttribute1 = role1.includes('.');
-  const hasAttribute2 = role2.includes('.');
-  
+  const hasAttribute1 = role1.includes(".");
+  const hasAttribute2 = role2.includes(".");
+
   // Prefer the one with an attribute
   if (hasAttribute1 && !hasAttribute2) return role1;
   if (hasAttribute2 && !hasAttribute1) return role2;
-  
+
   // If both have attributes or neither, prefer the first one
   return role1;
 }
@@ -80,13 +80,16 @@ function selectMoreSpecificRole(role1: string, role2: string): string {
  * @returns {number} Word count
  */
 function countWords(text: unknown): number {
-  if (!text || typeof text !== 'string') return 0;
-  return text.trim().split(/\s+/).filter(w => w.length > 0).length;
+  if (!text || typeof text !== "string") return 0;
+  return text
+    .trim()
+    .split(/\s+/)
+    .filter((w) => w.length > 0).length;
 }
 
 /**
  * Merge adjacent spans with compatible categories
- * 
+ *
  * @param {Array} spans - Sorted spans array (must be sorted by start position)
  * @param {string} sourceText - Original text for gap analysis
  * @param {Object} options - Merge options
@@ -96,10 +99,10 @@ function countWords(text: unknown): number {
 export function mergeAdjacentSpans(
   spans: SpanLike[] | null | undefined,
   sourceText: string,
-  options: MergeOptions = {}
+  options: MergeOptions = {},
 ): MergeResult {
   const { maxMergedWords = 8 } = options;
-  
+
   if (!spans || spans.length <= 1) {
     return { spans: spans || [], notes: [] };
   }
@@ -124,13 +127,13 @@ export function mergeAdjacentSpans(
 
       // Check if spans are adjacent
       const gap = sourceText.substring(current.end, next.start);
-      
+
       if (!isMergeableGap(gap)) {
         break; // Gap too large or contains invalid characters
       }
 
       // Check if roles are compatible
-      if (typeof current.role !== 'string' || typeof next.role !== 'string') {
+      if (typeof current.role !== "string" || typeof next.role !== "string") {
         break;
       }
       if (!areRolesCompatible(current.role, next.role)) {
@@ -144,8 +147,10 @@ export function mergeAdjacentSpans(
       }
 
       // Merge the spans
-      const currentConfidence = typeof current.confidence === 'number' ? current.confidence : 0;
-      const nextConfidence = typeof next.confidence === 'number' ? next.confidence : 0;
+      const currentConfidence =
+        typeof current.confidence === "number" ? current.confidence : 0;
+      const nextConfidence =
+        typeof next.confidence === "number" ? next.confidence : 0;
       const mergedRole = selectMoreSpecificRole(current.role, next.role);
       current = {
         ...current,
@@ -161,7 +166,9 @@ export function mergeAdjacentSpans(
     }
 
     if (mergeCount > 0) {
-      notes.push(`Merged ${mergeCount + 1} adjacent ${getParentCategory(current.role)} spans: "${current.text}"`);
+      notes.push(
+        `Merged ${mergeCount + 1} adjacent ${getParentCategory(current.role)} spans: "${current.text}"`,
+      );
     }
 
     merged.push(current);

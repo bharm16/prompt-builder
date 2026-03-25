@@ -11,17 +11,18 @@ If 2+ → split by responsibility.
 
 ## Quick Tests
 
-| Test | How | Fail = Problem |
-|------|-----|----------------|
-| **Responsibility** | Describe in one sentence without "and" | Mixed concerns |
-| **Testability** | Mock ≤2 things to test it | Too much coupling |
-| **Change isolation** | Change X, only X's file changes | Shotgun surgery |
+| Test                 | How                                    | Fail = Problem    |
+| -------------------- | -------------------------------------- | ----------------- |
+| **Responsibility**   | Describe in one sentence without "and" | Mixed concerns    |
+| **Testability**      | Mock ≤2 things to test it              | Too much coupling |
+| **Change isolation** | Change X, only X's file changes        | Shotgun surgery   |
 
 ---
 
 ## 30-Second Templates
 
 ### Frontend Feature
+
 ```
 Add [feature name]
 PATTERN: VideoConceptBuilder
@@ -35,6 +36,7 @@ SHOW STRUCTURE FIRST
 ```
 
 ### Backend Service
+
 ```
 Add [service name]
 PATTERN: PromptOptimizationService
@@ -47,6 +49,7 @@ SHOW STRUCTURE FIRST
 ```
 
 ### Modify Existing
+
 ```
 Modify [file] to [do what]
 
@@ -61,26 +64,28 @@ SHOW WHAT CHANGES FIRST
 
 ## Where Things Go
 
-| Thing | Location |
-|-------|----------|
-| HTTP calls | api/ |
-| State logic | hooks/ |
-| Business rules | hooks/ (FE) or services/ (BE) |
-| Pure transforms | utils/ |
-| Display | components/ |
-| Constants | config/ |
+| Thing           | Location                      |
+| --------------- | ----------------------------- |
+| HTTP calls      | api/                          |
+| State logic     | hooks/                        |
+| Business rules  | hooks/ (FE) or services/ (BE) |
+| Pure transforms | utils/                        |
+| Display         | components/                   |
+| Constants       | config/                       |
 
 ---
 
 ## Red Flags
 
 ❌ **Stop if you see:**
+
 - Splitting "because it's too long"
 - Component used in exactly one place
 - Extracting code that always changes with its caller
 - `if` statements in orchestrator
 
 ⚠️ **Investigate if you see:**
+
 - Mocking 3+ things to test one function
 - One change touching 5+ files
 - Can't describe file in ≤10 words

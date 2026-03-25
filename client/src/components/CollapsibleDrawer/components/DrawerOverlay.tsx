@@ -1,5 +1,5 @@
-import React from 'react';
-import { cn } from '@/utils/cn';
+import React from "react";
+import { cn } from "@/utils/cn";
 
 interface DrawerOverlayProps {
   isOpen: boolean;
@@ -16,7 +16,10 @@ export function DrawerOverlay({
 
   return (
     <div
-      className={cn('absolute inset-0 z-40 bg-black/40 backdrop-blur-sm', className)}
+      className={cn(
+        "absolute inset-0 z-40 bg-black/40 backdrop-blur-sm",
+        className,
+      )}
       onClick={onClick}
       role="presentation"
       aria-hidden="true"

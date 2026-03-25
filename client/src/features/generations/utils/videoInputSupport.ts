@@ -1,5 +1,5 @@
-import { capabilitiesApi } from '@/services';
-import { logger } from '@/services/LoggingService';
+import { capabilitiesApi } from "@/services";
+import { logger } from "@/services/LoggingService";
 
 export interface VideoInputSupport {
   supportsEndFrame: boolean;
@@ -7,7 +7,7 @@ export interface VideoInputSupport {
   supportsExtendVideo: boolean;
 }
 
-const log = logger.child('videoInputSupport');
+const log = logger.child("videoInputSupport");
 
 const UNSUPPORTED_VIDEO_INPUTS: VideoInputSupport = {
   supportsEndFrame: false,
@@ -23,7 +23,7 @@ const normalizeModelId = (modelId: string): string => modelId.trim();
 const deriveSupportFromSchema = (
   schema: {
     fields?: Record<string, { default?: unknown }>;
-  } | null
+  } | null,
 ): VideoInputSupport => {
   const fields = schema?.fields;
   if (!fields) {
@@ -37,7 +37,9 @@ const deriveSupportFromSchema = (
   };
 };
 
-export async function getVideoInputSupport(modelId: string): Promise<VideoInputSupport> {
+export async function getVideoInputSupport(
+  modelId: string,
+): Promise<VideoInputSupport> {
   const normalizedModelId = normalizeModelId(modelId);
   if (!normalizedModelId) {
     return UNSUPPORTED_VIDEO_INPUTS;
@@ -54,17 +56,20 @@ export async function getVideoInputSupport(modelId: string): Promise<VideoInputS
   }
 
   const request = capabilitiesApi
-    .getCapabilities('generic', normalizedModelId)
+    .getCapabilities("generic", normalizedModelId)
     .then((schema) => {
       const support = deriveSupportFromSchema(schema);
       supportCache.set(normalizedModelId, support);
       return support;
     })
     .catch((error: unknown) => {
-      log.warn('Failed to resolve dispatch-model video input support; falling back to fail-closed', {
-        modelId: normalizedModelId,
-        error: error instanceof Error ? error.message : String(error),
-      });
+      log.warn(
+        "Failed to resolve dispatch-model video input support; falling back to fail-closed",
+        {
+          modelId: normalizedModelId,
+          error: error instanceof Error ? error.message : String(error),
+        },
+      );
       supportCache.set(normalizedModelId, UNSUPPORTED_VIDEO_INPUTS);
       return UNSUPPORTED_VIDEO_INPUTS;
     })

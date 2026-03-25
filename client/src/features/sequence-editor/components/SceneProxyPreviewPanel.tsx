@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 
 interface SceneProxyCamera {
   yaw?: number;
@@ -17,7 +17,7 @@ interface SceneProxyPreviewPanelProps {
 }
 
 const formatCameraValue = (value: number | undefined): string =>
-  `${Number.isFinite(value) ? Number(value).toFixed(2) : '0.00'}`;
+  `${Number.isFinite(value) ? Number(value).toFixed(2) : "0.00"}`;
 
 export function SceneProxyPreviewPanel({
   previewImageUrl,
@@ -37,7 +37,7 @@ export function SceneProxyPreviewPanel({
           Scene proxy preview
         </span>
         <span className="text-[11px] text-muted">
-          {isSceneProxyReady ? 'Ready' : 'Build proxy first'}
+          {isSceneProxyReady ? "Ready" : "Build proxy first"}
         </span>
       </header>
 
@@ -62,7 +62,7 @@ export function SceneProxyPreviewPanel({
           className="absolute bottom-2 right-2 rounded border border-border bg-black/55 px-2 py-1 text-[10px] font-medium text-foreground backdrop-blur-sm disabled:opacity-50"
           data-testid="preview-scene-proxy-button"
         >
-          {isPreviewingSceneProxy ? 'Rendering...' : 'Preview angle'}
+          {isPreviewingSceneProxy ? "Rendering..." : "Preview angle"}
         </button>
       </div>
 
@@ -77,4 +77,3 @@ export function SceneProxyPreviewPanel({
 }
 
 export default SceneProxyPreviewPanel;
-

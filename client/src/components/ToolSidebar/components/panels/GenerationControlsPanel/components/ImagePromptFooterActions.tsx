@@ -1,5 +1,10 @@
-import React from 'react';
-import { Copy, GraduationCap, ScanEye, Trash2 } from '@promptstudio/system/components/ui';
+import React from "react";
+import {
+  Copy,
+  GraduationCap,
+  ScanEye,
+  Trash2,
+} from "@promptstudio/system/components/ui";
 
 interface ImagePromptFooterActionsProps {
   onCopy: () => void;

@@ -1,11 +1,11 @@
-import React, { createContext, useContext, type ReactNode } from 'react';
+import React, { createContext, useContext, type ReactNode } from "react";
 import type {
   OptionalToolSidebarAssetsDomain,
   OptionalToolSidebarGenerationDomain,
   OptionalToolSidebarPromptInteractionDomain,
   OptionalToolSidebarSessionsDomain,
   OptionalToolSidebarWorkspaceDomain,
-} from '../types';
+} from "../types";
 
 export interface SidebarDataContextValue {
   sessions: OptionalToolSidebarSessionsDomain;
@@ -48,5 +48,9 @@ export function SidebarDataContextProvider({
   value: SidebarDataContextValue | null;
   children: ReactNode;
 }): React.ReactElement {
-  return <SidebarDataContext.Provider value={value}>{children}</SidebarDataContext.Provider>;
+  return (
+    <SidebarDataContext.Provider value={value}>
+      {children}
+    </SidebarDataContext.Provider>
+  );
 }

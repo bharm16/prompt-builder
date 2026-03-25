@@ -1,6 +1,6 @@
-import React from 'react';
-import { GalleryThumbnail } from './GalleryThumbnail';
-import type { GalleryPanelProps } from './types';
+import React from "react";
+import { GalleryThumbnail } from "./GalleryThumbnail";
+import type { GalleryPanelProps } from "./types";
 
 export function GalleryPanel({
   generations,

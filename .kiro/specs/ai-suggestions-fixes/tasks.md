@@ -162,13 +162,15 @@ This plan implements fixes for race conditions, error handling, and UX issues in
 All tests MUST follow the patterns in `docs/architecture/typescript/TEST_PATTERNS.md`:
 
 ### Type-Safe Mocking
+
 - Use `MockedFunction<typeof fn>` for typed mock functions
 - Create typed mock objects that implement interfaces fully
 - Never use `as unknown as Type` - maintain type safety
 
 ### Test Structure
+
 ```typescript
-import { vi, type MockedFunction } from 'vitest';
+import { vi, type MockedFunction } from "vitest";
 
 // Typed mocks
 let mockFetch: MockedFunction<typeof fetch>;
@@ -180,19 +182,21 @@ beforeEach(() => {
 ```
 
 ### Mock Return Values
+
 ```typescript
 // ✅ GOOD - TypeScript validates mock return type
 const validResponse: EnhancementSuggestionsResponse = {
-  suggestions: ['suggestion 1'],
+  suggestions: ["suggestion 1"],
   isPlaceholder: false,
 };
 mockFetch.mockResolvedValue(validResponse);
 
 // ❌ BAD - No type checking
-mockFetch.mockResolvedValue({ wrong: 'shape' });
+mockFetch.mockResolvedValue({ wrong: "shape" });
 ```
 
 ### Assertions
+
 ```typescript
 // ✅ GOOD - Type-safe assertion
 expect(result).toEqual<ExpectedType>({
@@ -202,8 +206,9 @@ expect(result).toEqual<ExpectedType>({
 ```
 
 ### Hook Tests
+
 ```typescript
-import { renderHook, act } from '@testing-library/react';
+import { renderHook, act } from "@testing-library/react";
 
 const { result } = renderHook(() => useCustomHook());
 
@@ -215,10 +220,11 @@ expect(result.current.state).toEqual(expectedState);
 ```
 
 ### Zod Schema Tests
-```typescript
-import { ZodError } from 'zod';
 
-it('should reject invalid response', () => {
+```typescript
+import { ZodError } from "zod";
+
+it("should reject invalid response", () => {
   expect(() => Schema.parse(invalidData)).toThrow(ZodError);
 });
 ```

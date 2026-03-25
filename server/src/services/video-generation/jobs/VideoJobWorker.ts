@@ -1,14 +1,14 @@
-import { v4 as uuidv4 } from 'uuid';
-import { logger } from '@infrastructure/Logger';
-import type { VideoGenerationService } from '../VideoGenerationService';
-import type { UserCreditService } from '@services/credits/UserCreditService';
-import type { StorageService } from '@services/storage/StorageService';
-import type { WorkerStatus } from '@services/credits/CreditRefundSweeper';
-import type { VideoJobRecord } from './types';
-import { VideoJobStore } from './VideoJobStore';
-import type { ProviderCircuitManager } from './ProviderCircuitManager';
-import { normalizeErrorMessage } from './classifyError';
-import { processVideoJob } from './processVideoJob';
+import { v4 as uuidv4 } from "uuid";
+import { logger } from "@infrastructure/Logger";
+import type { VideoGenerationService } from "../VideoGenerationService";
+import type { UserCreditService } from "@services/credits/UserCreditService";
+import type { StorageService } from "@services/storage/StorageService";
+import type { WorkerStatus } from "@services/credits/CreditRefundSweeper";
+import type { VideoJobRecord } from "./types";
+import { VideoJobStore } from "./VideoJobStore";
+import type { ProviderCircuitManager } from "./ProviderCircuitManager";
+import { normalizeErrorMessage } from "./classifyError";
+import { processVideoJob } from "./processVideoJob";
 
 interface VideoJobWorkerOptions {
   workerId?: string;
@@ -25,12 +25,15 @@ interface VideoJobWorkerOptions {
   workerHeartbeatStore?: {
     reportHeartbeat: (
       workerId: string,
-      metadata?: { hostname?: string; processRole?: string }
+      metadata?: { hostname?: string; processRole?: string },
     ) => Promise<void>;
     markStopped: (workerId: string) => Promise<void>;
   };
   metrics?: {
-    recordAlert: (alertName: string, metadata?: Record<string, unknown>) => void;
+    recordAlert: (
+      alertName: string,
+      metadata?: Record<string, unknown>,
+    ) => void;
   };
 }
 
@@ -61,8 +64,8 @@ export class VideoJobWorker {
   private readonly heartbeatIntervalMs: number;
   private readonly providerCircuitManager: ProviderCircuitManager | undefined;
   private readonly perProviderMaxConcurrent: number;
-  private readonly workerHeartbeatStore: VideoJobWorkerOptions['workerHeartbeatStore'];
-  private readonly metrics?: VideoJobWorkerOptions['metrics'];
+  private readonly workerHeartbeatStore: VideoJobWorkerOptions["workerHeartbeatStore"];
+  private readonly metrics?: VideoJobWorkerOptions["metrics"];
   private readonly log: ReturnType<typeof logger.child>;
   private timer: NodeJS.Timeout | null = null;
   private workerHeartbeatTimer: NodeJS.Timeout | null = null;
@@ -84,42 +87,53 @@ export class VideoJobWorker {
     videoGenerationService: VideoGenerationService,
     userCreditService: UserCreditService,
     storageService: StorageService,
-    options: VideoJobWorkerOptions
+    options: VideoJobWorkerOptions,
   ) {
     this.jobStore = jobStore;
     this.videoGenerationService = videoGenerationService;
     this.userCreditService = userCreditService;
     this.storageService = storageService;
     this.basePollIntervalMs = options.pollIntervalMs;
-    this.maxPollIntervalMs = options.maxPollIntervalMs ?? Math.max(this.basePollIntervalMs * 5, 10000);
+    this.maxPollIntervalMs =
+      options.maxPollIntervalMs ?? Math.max(this.basePollIntervalMs * 5, 10000);
     this.pollBackoffFactor = options.backoffFactor ?? 1.5;
     this.leaseMs = options.leaseMs;
     this.maxConcurrent = options.maxConcurrent;
     this.hostname = options.hostname;
-    this.processRole = options.processRole ?? 'worker';
-    this.workerId = options.workerId || options.hostname || `video-worker-${uuidv4()}`;
-    this.log = logger.child({ service: 'VideoJobWorker', workerId: this.workerId });
+    this.processRole = options.processRole ?? "worker";
+    this.workerId =
+      options.workerId || options.hostname || `video-worker-${uuidv4()}`;
+    this.log = logger.child({
+      service: "VideoJobWorker",
+      workerId: this.workerId,
+    });
     this.currentPollIntervalMs = this.basePollIntervalMs;
     this.heartbeatIntervalMs = options.heartbeatIntervalMs ?? 20_000;
     this.providerCircuitManager = options.providerCircuitManager;
-    this.perProviderMaxConcurrent = options.perProviderMaxConcurrent ?? Math.max(1, Math.ceil(this.maxConcurrent / 2));
+    this.perProviderMaxConcurrent =
+      options.perProviderMaxConcurrent ??
+      Math.max(1, Math.ceil(this.maxConcurrent / 2));
     this.workerHeartbeatStore = options.workerHeartbeatStore;
     this.metrics = options.metrics;
 
     // Validate heartbeat interval is meaningfully shorter than the lease period.
     // If heartbeatIntervalMs * MAX_HEARTBEAT_FAILURES >= leaseMs, the heartbeat
     // abort mechanism cannot fire before the lease expires.
-    const heartbeatWindow = this.heartbeatIntervalMs * VideoJobWorker.MAX_HEARTBEAT_FAILURES;
+    const heartbeatWindow =
+      this.heartbeatIntervalMs * VideoJobWorker.MAX_HEARTBEAT_FAILURES;
     if (heartbeatWindow >= this.leaseMs) {
-      this.log = logger.child({ service: 'VideoJobWorker', workerId: this.workerId });
+      this.log = logger.child({
+        service: "VideoJobWorker",
+        workerId: this.workerId,
+      });
       this.log.warn(
-        'Heartbeat interval too large relative to lease — zombie detection may be ineffective',
+        "Heartbeat interval too large relative to lease — zombie detection may be ineffective",
         {
           heartbeatIntervalMs: this.heartbeatIntervalMs,
           maxHeartbeatFailures: VideoJobWorker.MAX_HEARTBEAT_FAILURES,
           heartbeatWindowMs: heartbeatWindow,
           leaseMs: this.leaseMs,
-        }
+        },
       );
     }
   }
@@ -130,7 +144,7 @@ export class VideoJobWorker {
     }
     this.isRunning = true;
     this.currentPollIntervalMs = this.basePollIntervalMs;
-    this.log.info('Starting video job worker', {
+    this.log.info("Starting video job worker", {
       pollIntervalMs: this.basePollIntervalMs,
       maxPollIntervalMs: this.maxPollIntervalMs,
       leaseMs: this.leaseMs,
@@ -158,12 +172,14 @@ export class VideoJobWorker {
       this.timer = null;
     }
     if (this.workerHeartbeatStore) {
-      void this.workerHeartbeatStore.markStopped(this.workerId).catch((error) => {
-        this.log.warn('Failed to record worker stopped heartbeat', {
-          workerId: this.workerId,
-          error: error instanceof Error ? error.message : String(error),
+      void this.workerHeartbeatStore
+        .markStopped(this.workerId)
+        .catch((error) => {
+          this.log.warn("Failed to record worker stopped heartbeat", {
+            workerId: this.workerId,
+            error: error instanceof Error ? error.message : String(error),
+          });
         });
-      });
     }
   }
 
@@ -184,7 +200,9 @@ export class VideoJobWorker {
       this.timer = null;
     }
     this.scheduleNextTick(this.basePollIntervalMs);
-    this.log.info('Poll interval reset by circuit recovery', { pollIntervalMs: this.basePollIntervalMs });
+    this.log.info("Poll interval reset by circuit recovery", {
+      pollIntervalMs: this.basePollIntervalMs,
+    });
   }
 
   async shutdown(drainTimeoutMs: number): Promise<void> {
@@ -196,30 +214,39 @@ export class VideoJobWorker {
     }
 
     if (this.activeCount === 0) {
-      this.log.info('Video job worker drained cleanly');
+      this.log.info("Video job worker drained cleanly");
       return;
     }
 
-    this.log.warn('Video job worker drain timeout reached; releasing active jobs', {
-      activeCount: this.activeCount,
-      drainTimeoutMs,
-    });
-    this.metrics?.recordAlert('video_job_worker_drain_timeout', {
+    this.log.warn(
+      "Video job worker drain timeout reached; releasing active jobs",
+      {
+        activeCount: this.activeCount,
+        drainTimeoutMs,
+      },
+    );
+    this.metrics?.recordAlert("video_job_worker_drain_timeout", {
       activeCount: this.activeCount,
       drainTimeoutMs,
       workerId: this.workerId,
     });
 
-    const releases = Array.from(this.activeJobs.entries()).map(async ([jobId, context]) => {
-      try {
-        await context.release();
-      } catch (error) {
-        this.log.error('Failed to release active job during shutdown', error as Error, {
-          jobId,
-          workerId: this.workerId,
-        });
-      }
-    });
+    const releases = Array.from(this.activeJobs.entries()).map(
+      async ([jobId, context]) => {
+        try {
+          await context.release();
+        } catch (error) {
+          this.log.error(
+            "Failed to release active job during shutdown",
+            error as Error,
+            {
+              jobId,
+              workerId: this.workerId,
+            },
+          );
+        }
+      },
+    );
 
     await Promise.allSettled(releases);
   }
@@ -228,15 +255,17 @@ export class VideoJobWorker {
     if (!this.workerHeartbeatStore) {
       return;
     }
-    void this.workerHeartbeatStore.reportHeartbeat(this.workerId, {
-      ...(this.hostname ? { hostname: this.hostname } : {}),
-      processRole: this.processRole,
-    }).catch((error) => {
-      this.log.warn('Failed to record worker heartbeat', {
-        workerId: this.workerId,
-        error: error instanceof Error ? error.message : String(error),
+    void this.workerHeartbeatStore
+      .reportHeartbeat(this.workerId, {
+        ...(this.hostname ? { hostname: this.hostname } : {}),
+        processRole: this.processRole,
+      })
+      .catch((error) => {
+        this.log.warn("Failed to record worker heartbeat", {
+          workerId: this.workerId,
+          error: error instanceof Error ? error.message : String(error),
+        });
       });
-    });
   }
 
   private scheduleNextTick(delayMs: number): void {
@@ -266,7 +295,7 @@ export class VideoJobWorker {
     } catch (error) {
       this.lastRunAt = new Date();
       this.consecutiveFailures += 1;
-      this.log.error('Video job worker tick failed', error as Error, {
+      this.log.error("Video job worker tick failed", error as Error, {
         workerId: this.workerId,
       });
     } finally {
@@ -276,7 +305,7 @@ export class VideoJobWorker {
         if (claimedJobs === 0) {
           this.currentPollIntervalMs = Math.min(
             this.maxPollIntervalMs,
-            Math.round(this.currentPollIntervalMs * this.pollBackoffFactor)
+            Math.round(this.currentPollIntervalMs * this.pollBackoffFactor),
           );
         } else {
           this.currentPollIntervalMs = this.basePollIntervalMs;
@@ -314,11 +343,15 @@ export class VideoJobWorker {
       const activeForProvider = this.activeProviderCounts.get(provider) ?? 0;
       let slotsAvailable = Math.min(
         this.perProviderMaxConcurrent - activeForProvider,
-        this.maxConcurrent - this.activeCount
+        this.maxConcurrent - this.activeCount,
       );
 
       while (slotsAvailable > 0) {
-        const job = await this.jobStore.claimNextJob(this.workerId, this.leaseMs, provider);
+        const job = await this.jobStore.claimNextJob(
+          this.workerId,
+          this.leaseMs,
+          provider,
+        );
         if (!job) {
           break;
         }
@@ -332,7 +365,11 @@ export class VideoJobWorker {
 
     // Attempt to claim untagged/unknown-provider jobs with remaining global slots
     if (this.activeCount < this.maxConcurrent) {
-      const unknownJob = await this.jobStore.claimNextJob(this.workerId, this.leaseMs, 'unknown');
+      const unknownJob = await this.jobStore.claimNextJob(
+        this.workerId,
+        this.leaseMs,
+        "unknown",
+      );
       if (unknownJob) {
         claimed += 1;
         this.startJob(unknownJob);
@@ -343,14 +380,14 @@ export class VideoJobWorker {
   }
 
   private buildDispatchableProviders(): string[] {
-    const allProviders = ['replicate', 'openai', 'luma', 'kling', 'gemini'];
+    const allProviders = ["replicate", "openai", "luma", "kling", "gemini"];
     const dispatchable: string[] = [];
 
     for (const provider of allProviders) {
       if (this.providerCircuitManager!.canDispatch(provider)) {
         dispatchable.push(provider);
       } else {
-        this.log.debug('Skipping circuit-open provider', { provider });
+        this.log.debug("Skipping circuit-open provider", { provider });
       }
     }
 
@@ -364,9 +401,12 @@ export class VideoJobWorker {
   }
 
   private startJob(job: VideoJobRecord): void {
-    const provider = job.provider ?? 'unknown';
+    const provider = job.provider ?? "unknown";
     this.activeCount += 1;
-    this.activeProviderCounts.set(provider, (this.activeProviderCounts.get(provider) ?? 0) + 1);
+    this.activeProviderCounts.set(
+      provider,
+      (this.activeProviderCounts.get(provider) ?? 0) + 1,
+    );
 
     void this.processJob(job).finally(() => {
       this.activeCount = Math.max(0, this.activeCount - 1);
@@ -386,22 +426,22 @@ export class VideoJobWorker {
         const released = await this.jobStore.releaseClaim(
           job.id,
           this.workerId,
-          'worker shutdown before completion'
+          "worker shutdown before completion",
         );
         if (released) {
           await this.jobStore.enqueueDeadLetter(
-            { ...job, status: 'queued' },
+            { ...job, status: "queued" },
             {
-              message: 'Job released during worker shutdown',
-              code: 'VIDEO_JOB_RELEASED_ON_SHUTDOWN',
-              category: 'infrastructure',
+              message: "Job released during worker shutdown",
+              code: "VIDEO_JOB_RELEASED_ON_SHUTDOWN",
+              category: "infrastructure",
               retryable: true,
-              stage: 'shutdown',
+              stage: "shutdown",
               attempt: job.attempts,
             },
-            'shutdown-release'
+            "shutdown-release",
           );
-          this.metrics?.recordAlert('video_job_shutdown_release', {
+          this.metrics?.recordAlert("video_job_shutdown_release", {
             jobId: job.id,
             attempt: job.attempts,
             workerId: this.workerId,
@@ -424,49 +464,70 @@ export class VideoJobWorker {
           if (renewed) {
             this.heartbeatFailures.set(job.id, 0);
           } else {
-            const consecutiveHbFails = (this.heartbeatFailures.get(job.id) ?? 0) + 1;
+            const consecutiveHbFails =
+              (this.heartbeatFailures.get(job.id) ?? 0) + 1;
             this.heartbeatFailures.set(job.id, consecutiveHbFails);
-            this.log.warn('Video job lease heartbeat skipped (lease may have been reclaimed)', {
-              jobId: job.id,
-              workerId: this.workerId,
-              consecutiveFailures: consecutiveHbFails,
-            });
+            this.log.warn(
+              "Video job lease heartbeat skipped (lease may have been reclaimed)",
+              {
+                jobId: job.id,
+                workerId: this.workerId,
+                consecutiveFailures: consecutiveHbFails,
+              },
+            );
             if (consecutiveHbFails >= VideoJobWorker.MAX_HEARTBEAT_FAILURES) {
-              this.log.error('Aborting job due to repeated heartbeat failures — lease likely expired', undefined, {
+              this.log.error(
+                "Aborting job due to repeated heartbeat failures — lease likely expired",
+                undefined,
+                {
+                  jobId: job.id,
+                  workerId: this.workerId,
+                  consecutiveFailures: consecutiveHbFails,
+                },
+              );
+              this.metrics?.recordAlert("video_job_heartbeat_abort", {
                 jobId: job.id,
                 workerId: this.workerId,
                 consecutiveFailures: consecutiveHbFails,
               });
-              this.metrics?.recordAlert('video_job_heartbeat_abort', {
-                jobId: job.id,
-                workerId: this.workerId,
-                consecutiveFailures: consecutiveHbFails,
-              });
-              heartbeatAbort.abort(new Error('Lease heartbeat lost — aborting to prevent zombie job'));
+              heartbeatAbort.abort(
+                new Error(
+                  "Lease heartbeat lost — aborting to prevent zombie job",
+                ),
+              );
             }
           }
         })
         .catch((error) => {
-          const consecutiveHbFails = (this.heartbeatFailures.get(job.id) ?? 0) + 1;
+          const consecutiveHbFails =
+            (this.heartbeatFailures.get(job.id) ?? 0) + 1;
           this.heartbeatFailures.set(job.id, consecutiveHbFails);
-          this.log.warn('Video job heartbeat failed', {
+          this.log.warn("Video job heartbeat failed", {
             jobId: job.id,
             workerId: this.workerId,
             error: normalizeErrorMessage(error),
             consecutiveFailures: consecutiveHbFails,
           });
           if (consecutiveHbFails >= VideoJobWorker.MAX_HEARTBEAT_FAILURES) {
-            this.log.error('Aborting job due to repeated heartbeat errors — lease likely expired', undefined, {
+            this.log.error(
+              "Aborting job due to repeated heartbeat errors — lease likely expired",
+              undefined,
+              {
+                jobId: job.id,
+                workerId: this.workerId,
+                consecutiveFailures: consecutiveHbFails,
+              },
+            );
+            this.metrics?.recordAlert("video_job_heartbeat_abort", {
               jobId: job.id,
               workerId: this.workerId,
               consecutiveFailures: consecutiveHbFails,
             });
-            this.metrics?.recordAlert('video_job_heartbeat_abort', {
-              jobId: job.id,
-              workerId: this.workerId,
-              consecutiveFailures: consecutiveHbFails,
-            });
-            heartbeatAbort.abort(new Error('Lease heartbeat lost — aborting to prevent zombie job'));
+            heartbeatAbort.abort(
+              new Error(
+                "Lease heartbeat lost — aborting to prevent zombie job",
+              ),
+            );
           }
         });
     }, this.heartbeatIntervalMs);
@@ -490,9 +551,9 @@ export class VideoJobWorker {
           ? (provider) => this.providerCircuitManager!.recordFailure(provider)
           : undefined,
         metrics: this.metrics,
-        dlqSource: 'worker-terminal',
-        refundReason: 'video job worker failed',
-        logPrefix: 'Video job',
+        dlqSource: "worker-terminal",
+        refundReason: "video job worker failed",
+        logPrefix: "Video job",
       });
     } finally {
       clearInterval(workerHeartbeatTimer);

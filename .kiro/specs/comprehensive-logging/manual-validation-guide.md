@@ -1,6 +1,7 @@
 # Manual Validation Guide - Comprehensive Logging Implementation
 
 ## Overview
+
 This guide provides step-by-step instructions for manually validating the comprehensive logging implementation. Follow these procedures to verify that all logging is working correctly across the application.
 
 ## Prerequisites
@@ -8,6 +9,7 @@ This guide provides step-by-step instructions for manually validating the compre
 ### 1. Environment Setup
 
 **Backend (.env):**
+
 ```bash
 # Enable debug logging
 LOG_LEVEL=debug
@@ -17,6 +19,7 @@ NODE_ENV=development
 ```
 
 **Frontend (client/.env):**
+
 ```bash
 # Enable client-side logging
 VITE_DEBUG_LOGGING=true
@@ -41,7 +44,9 @@ npm run dev
 ### ✅ 1. Backend Service Logging
 
 #### Test: EnhancementService
+
 **Steps:**
+
 1. Make a POST request to `/api/enhance` with a prompt
 2. Check backend logs for:
    - ✅ Debug log: "Starting generateSuggestions" with operation and input summary
@@ -51,6 +56,7 @@ npm run dev
    - ✅ Verify service field is "EnhancementService"
 
 **Expected Log Pattern:**
+
 ```json
 {
   "level": "debug",
@@ -70,7 +76,9 @@ npm run dev
 ```
 
 #### Test: VideoConceptService
+
 **Steps:**
+
 1. Make a POST request to `/api/video-concept/generate`
 2. Check backend logs for:
    - ✅ Debug log at operation start
@@ -78,7 +86,9 @@ npm run dev
    - ✅ Verify service field is "VideoConceptService"
 
 #### Test: CacheService
+
 **Steps:**
+
 1. Trigger cache operations (get, set, delete)
 2. Check backend logs for:
    - ✅ Debug logs for cache operations
@@ -88,7 +98,9 @@ npm run dev
 ### ✅ 2. API Route Logging
 
 #### Test: Enhancement Route
+
 **Steps:**
+
 1. Make a POST request to `/api/enhance`
 2. Check backend logs for:
    - ✅ Info log: "Request received" with requestId, method, path
@@ -97,6 +109,7 @@ npm run dev
    - ✅ Verify headers are sanitized (no authorization tokens visible)
 
 **Expected Log Pattern:**
+
 ```json
 {
   "level": "info",
@@ -115,7 +128,9 @@ npm run dev
 ```
 
 #### Test: Error Handling
+
 **Steps:**
+
 1. Make a request that will fail (invalid input)
 2. Check backend logs for:
    - ✅ Error log with Error object (includes stack trace)
@@ -126,7 +141,9 @@ npm run dev
 ### ✅ 3. Frontend Component Logging
 
 #### Test: PromptCanvas
+
 **Steps:**
+
 1. Open the application
 2. Enter a prompt and generate suggestions
 3. Open browser console (F12)
@@ -137,21 +154,24 @@ npm run dev
    - ✅ Action log: Export with format and timing
 
 **Browser Console Commands:**
+
 ```javascript
 // View all stored logs
-window.__logger.getStoredLogs()
+window.__logger.getStoredLogs();
 
 // Filter logs by component
-window.__logger.getStoredLogs().filter(log => 
-  log.component === 'PromptCanvas'
-)
+window.__logger
+  .getStoredLogs()
+  .filter((log) => log.component === "PromptCanvas");
 
 // Export logs to clipboard
-copy(window.__logger.exportLogs())
+copy(window.__logger.exportLogs());
 ```
 
 #### Test: SuggestionsPanel
+
 **Steps:**
+
 1. Select text to open suggestions panel
 2. Switch between categories
 3. Check browser console for:
@@ -160,7 +180,9 @@ copy(window.__logger.exportLogs())
    - ✅ Effect log: Panel closed
 
 #### Test: PromptInput
+
 **Steps:**
+
 1. Change mode in dropdown
 2. Submit prompt via button
 3. Submit prompt via keyboard (Cmd/Ctrl+Enter)
@@ -172,7 +194,9 @@ copy(window.__logger.exportLogs())
 ### ✅ 4. Frontend Hook Logging
 
 #### Test: usePromptHistory
+
 **Steps:**
+
 1. Save a prompt to history
 2. Load history
 3. Delete a history entry
@@ -184,6 +208,7 @@ copy(window.__logger.exportLogs())
    - ✅ Verify userId is logged when authenticated
 
 **Expected Pattern:**
+
 ```javascript
 {
   level: "debug",
@@ -202,7 +227,9 @@ copy(window.__logger.exportLogs())
 ```
 
 #### Test: usePromptDebugger
+
 **Steps:**
+
 1. Click on a highlight to fetch suggestions
 2. Capture prompt data
 3. Check browser console for:
@@ -212,7 +239,9 @@ copy(window.__logger.exportLogs())
    - ✅ Info log: "Prompt data captured successfully" with duration
 
 #### Test: useHierarchyValidation
+
 **Steps:**
+
 1. Create spans with orphaned attributes
 2. Check browser console for:
    - ✅ Warn log: "Hierarchy validation issues detected" with error/warning counts
@@ -221,7 +250,9 @@ copy(window.__logger.exportLogs())
 ### ✅ 5. Error Logging Verification
 
 #### Test: Backend Error Logging
+
 **Steps:**
+
 1. Trigger an error (invalid API request)
 2. Check backend logs for:
    - ✅ Error log uses `error()` method (3 arguments)
@@ -231,20 +262,23 @@ copy(window.__logger.exportLogs())
    - ✅ Duration is logged even on failure
 
 **Verify Pattern:**
+
 ```javascript
 // ✅ CORRECT - error() with Error object
-logger.error('Operation failed', error, {
-  operation: 'processRequest',
-  requestId: 'req-123',
-  duration: 500
+logger.error("Operation failed", error, {
+  operation: "processRequest",
+  requestId: "req-123",
+  duration: 500,
 });
 
 // ❌ WRONG - would be warn() with error in meta
-logger.warn('Operation failed', error, { context });
+logger.warn("Operation failed", error, { context });
 ```
 
 #### Test: Frontend Error Logging
+
 **Steps:**
+
 1. Trigger a frontend error (network failure, invalid input)
 2. Check browser console for:
    - ✅ Error log includes Error object
@@ -255,7 +289,9 @@ logger.warn('Operation failed', error, { context });
 ### ✅ 6. Sensitive Data Protection
 
 #### Test: Header Sanitization
+
 **Steps:**
+
 1. Make an API request with authorization header
 2. Check backend logs for:
    - ✅ Authorization header is `[REDACTED]`
@@ -264,6 +300,7 @@ logger.warn('Operation failed', error, { context });
    - ✅ Other headers are visible
 
 **Verification Command:**
+
 ```bash
 # Search logs for sensitive data (should find NONE)
 grep -r "Bearer " server.log
@@ -272,7 +309,9 @@ grep -r "password.*:" server.log
 ```
 
 #### Test: User Data Sanitization
+
 **Steps:**
+
 1. Perform user-related operations
 2. Check logs for:
    - ✅ Full email addresses are NOT logged
@@ -282,7 +321,9 @@ grep -r "password.*:" server.log
    - ✅ API keys are NEVER logged
 
 #### Test: Payload Summarization
+
 **Steps:**
+
 1. Send a large payload (>200 chars)
 2. Check logs for:
    - ✅ Payload is truncated with "... (N chars)"
@@ -292,7 +333,9 @@ grep -r "password.*:" server.log
 ### ✅ 7. Performance Timing
 
 #### Test: Duration Measurements
+
 **Steps:**
+
 1. Perform various operations (API calls, cache operations, etc.)
 2. Check logs for:
    - ✅ All async operations log duration
@@ -301,18 +344,22 @@ grep -r "password.*:" server.log
    - ✅ Duration is logged even on failure
 
 **Verification:**
+
 ```javascript
 // Frontend: Check timing accuracy
 const logs = window.__logger.getStoredLogs();
-const timedOps = logs.filter(log => log.duration !== undefined);
-console.log('Operations with timing:', timedOps.length);
-console.log('Average duration:', 
-  timedOps.reduce((sum, log) => sum + log.duration, 0) / timedOps.length
+const timedOps = logs.filter((log) => log.duration !== undefined);
+console.log("Operations with timing:", timedOps.length);
+console.log(
+  "Average duration:",
+  timedOps.reduce((sum, log) => sum + log.duration, 0) / timedOps.length,
 );
 ```
 
 #### Test: Timer Cleanup
+
 **Steps:**
+
 1. Trigger operations that fail
 2. Verify:
    - ✅ endTimer() is called even on error
@@ -322,7 +369,9 @@ console.log('Average duration:',
 ### ✅ 8. Metadata Consistency
 
 #### Test: Standard Fields
+
 **Steps:**
+
 1. Review logs from various sources
 2. Verify all logs include:
    - ✅ `operation` field (method/function name)
@@ -332,30 +381,35 @@ console.log('Average duration:',
    - ✅ `userId` field (where user context exists)
 
 **Verification Script:**
+
 ```javascript
 // Frontend: Check metadata consistency
 const logs = window.__logger.getStoredLogs();
 
 // Check operation field
-const withOperation = logs.filter(log => log.operation);
+const withOperation = logs.filter((log) => log.operation);
 console.log(`Logs with operation: ${withOperation.length}/${logs.length}`);
 
 // Check component field
-const withComponent = logs.filter(log => log.component);
+const withComponent = logs.filter((log) => log.component);
 console.log(`Logs with component: ${withComponent.length}/${logs.length}`);
 
 // Check duration field (for info/error logs)
-const infoErrorLogs = logs.filter(log => 
-  log.level === 'info' || log.level === 'error'
+const infoErrorLogs = logs.filter(
+  (log) => log.level === "info" || log.level === "error",
 );
-const withDuration = infoErrorLogs.filter(log => log.duration !== undefined);
-console.log(`Info/Error logs with duration: ${withDuration.length}/${infoErrorLogs.length}`);
+const withDuration = infoErrorLogs.filter((log) => log.duration !== undefined);
+console.log(
+  `Info/Error logs with duration: ${withDuration.length}/${infoErrorLogs.length}`,
+);
 ```
 
 ### ✅ 9. Console Statement Elimination
 
 #### Test: No Console Statements
+
 **Steps:**
+
 1. Search codebase for console statements
 2. Verify:
    - ✅ No `console.log` in production code
@@ -364,6 +418,7 @@ console.log(`Info/Error logs with duration: ${withDuration.length}/${infoErrorLo
    - ✅ No `console.debug` in production code
 
 **Verification Commands:**
+
 ```bash
 # Search for console statements (should find NONE in src/)
 grep -r "console\.log" server/src/ client/src/
@@ -382,21 +437,25 @@ grep -r "console\." server/src/ client/src/ \
 ### ✅ 10. Log Export Functionality
 
 #### Test: Frontend Log Export
+
 **Steps:**
+
 1. Perform various operations to generate logs
 2. Open browser console
 3. Export logs:
+
    ```javascript
    // Get logs as JSON
    const logs = window.__logger.exportLogs();
-   
+
    // Copy to clipboard
    copy(logs);
-   
+
    // Verify format
    const parsed = JSON.parse(logs);
-   console.log('Exported log count:', parsed.length);
+   console.log("Exported log count:", parsed.length);
    ```
+
 4. Verify:
    - ✅ Logs are exported as valid JSON
    - ✅ All log fields are present
@@ -406,10 +465,13 @@ grep -r "console\." server/src/ client/src/ \
 ### ✅ 11. Configuration Verification
 
 #### Test: Log Level Configuration
+
 **Steps:**
+
 1. Test different log levels:
 
 **Backend:**
+
 ```bash
 # Test INFO level (should hide debug logs)
 LOG_LEVEL=info npm run dev
@@ -422,6 +484,7 @@ LOG_LEVEL=warn npm run dev
 ```
 
 **Frontend:**
+
 ```bash
 # Test different levels
 VITE_LOG_LEVEL=info npm run dev
@@ -436,8 +499,11 @@ VITE_LOG_LEVEL=warn npm run dev
    - ✅ Configuration changes take effect
 
 #### Test: Production vs Development
+
 **Steps:**
+
 1. Test production mode:
+
 ```bash
 # Backend
 NODE_ENV=production npm run dev
@@ -465,6 +531,7 @@ Use this template to record validation results:
 **Environment:** [Development/Staging/Production]
 
 ## Backend Service Logging
+
 - [ ] EnhancementService logs correctly
 - [ ] VideoConceptService logs correctly
 - [ ] CacheService logs correctly
@@ -474,6 +541,7 @@ Use this template to record validation results:
 **Issues Found:** [None / List issues]
 
 ## API Route Logging
+
 - [ ] Request logging includes requestId
 - [ ] Response logging includes status and duration
 - [ ] Error logging includes Error object and stack trace
@@ -482,6 +550,7 @@ Use this template to record validation results:
 **Issues Found:** [None / List issues]
 
 ## Frontend Component Logging
+
 - [ ] PromptCanvas logs user actions
 - [ ] SuggestionsPanel logs panel state changes
 - [ ] PromptInput logs mode changes and submissions
@@ -490,6 +559,7 @@ Use this template to record validation results:
 **Issues Found:** [None / List issues]
 
 ## Frontend Hook Logging
+
 - [ ] usePromptHistory logs all operations with timing
 - [ ] usePromptDebugger logs fetch operations
 - [ ] useHierarchyValidation logs validation results
@@ -498,6 +568,7 @@ Use this template to record validation results:
 **Issues Found:** [None / List issues]
 
 ## Error Logging
+
 - [ ] Backend errors use error() with Error object
 - [ ] Frontend errors include component context
 - [ ] Stack traces are present
@@ -506,6 +577,7 @@ Use this template to record validation results:
 **Issues Found:** [None / List issues]
 
 ## Sensitive Data Protection
+
 - [ ] Headers are sanitized (authorization, api-key, cookie)
 - [ ] Email addresses are not logged (only domains)
 - [ ] Passwords never logged
@@ -515,6 +587,7 @@ Use this template to record validation results:
 **Issues Found:** [None / List issues]
 
 ## Performance Timing
+
 - [ ] All async operations log duration
 - [ ] Duration is in milliseconds
 - [ ] Duration is reasonable (not 0 or negative)
@@ -523,6 +596,7 @@ Use this template to record validation results:
 **Issues Found:** [None / List issues]
 
 ## Metadata Consistency
+
 - [ ] All logs include operation field
 - [ ] All logs include service/component field
 - [ ] Timed operations include duration
@@ -532,6 +606,7 @@ Use this template to record validation results:
 **Issues Found:** [None / List issues]
 
 ## Console Statement Elimination
+
 - [ ] No console.log in production code
 - [ ] No console.error in production code
 - [ ] No console.warn in production code
@@ -540,6 +615,7 @@ Use this template to record validation results:
 **Issues Found:** [None / List issues]
 
 ## Log Export
+
 - [ ] Frontend logs can be exported
 - [ ] Exported logs are valid JSON
 - [ ] All fields are present
@@ -548,6 +624,7 @@ Use this template to record validation results:
 **Issues Found:** [None / List issues]
 
 ## Configuration
+
 - [ ] LOG_LEVEL environment variable works
 - [ ] VITE_LOG_LEVEL environment variable works
 - [ ] Debug logs hidden in production
@@ -557,6 +634,7 @@ Use this template to record validation results:
 **Issues Found:** [None / List issues]
 
 ## Overall Assessment
+
 - [ ] All validation checks passed
 - [ ] Ready for production
 
@@ -568,6 +646,7 @@ Use this template to record validation results:
 ## Automated Validation Scripts
 
 ### Backend Log Verification
+
 ```bash
 #!/bin/bash
 # scripts/validate-backend-logging.sh
@@ -598,6 +677,7 @@ echo "Backend validation complete"
 ```
 
 ### Frontend Log Verification
+
 ```bash
 #!/bin/bash
 # scripts/validate-frontend-logging.sh
@@ -647,27 +727,35 @@ The validation is successful when:
 ## Troubleshooting
 
 ### Issue: Logs not appearing
+
 **Solution:**
+
 - Check LOG_LEVEL / VITE_LOG_LEVEL environment variables
 - Verify logger is imported correctly
 - Check browser console for frontend logs
 - Check terminal output for backend logs
 
 ### Issue: Missing duration in logs
+
 **Solution:**
+
 - Verify startTimer() is called at operation start
 - Verify endTimer() is called on both success and error paths
 - Check that operation name matches between start and end
 
 ### Issue: Sensitive data in logs
+
 **Solution:**
+
 - Use sanitizeHeaders() for HTTP headers
 - Use sanitizeUserData() for user objects
 - Use redactSensitiveFields() for request bodies
 - Use summarize() for large payloads
 
 ### Issue: Console statements still present
+
 **Solution:**
+
 - Run grep search to find remaining console statements
 - Replace with appropriate logger calls
 - Verify imports are correct

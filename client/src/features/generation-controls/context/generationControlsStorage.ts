@@ -1,20 +1,20 @@
-import { z } from 'zod';
-import type { KeyframeTile } from '@components/ToolSidebar/types';
-import type { CameraPath } from '@/features/convergence/types';
-import { CAMERA_MOTION_CATEGORIES } from '@/features/convergence/types';
+import { z } from "zod";
+import type { KeyframeTile } from "@components/ToolSidebar/types";
+import type { CameraPath } from "@/features/convergence/types";
+import { CAMERA_MOTION_CATEGORIES } from "@/features/convergence/types";
 
 const STORAGE_KEYS = {
-  cameraMotion: 'generation-controls:cameraMotion',
-  subjectMotion: 'generation-controls:subjectMotion',
-  activeTab: 'generation-controls:activeTab',
-  imageSubTab: 'generation-controls:imageSubTab',
-  constraintMode: 'generation-controls:constraintMode',
-  keyframes: 'generation-controls:keyframes',
+  cameraMotion: "generation-controls:cameraMotion",
+  subjectMotion: "generation-controls:subjectMotion",
+  activeTab: "generation-controls:activeTab",
+  imageSubTab: "generation-controls:imageSubTab",
+  constraintMode: "generation-controls:constraintMode",
+  keyframes: "generation-controls:keyframes",
 } as const;
 
-const ActiveTabSchema = z.enum(['video', 'image']);
-const ImageSubTabSchema = z.enum(['references', 'styles']);
-const ConstraintModeSchema = z.enum(['strict', 'flexible', 'transform']);
+const ActiveTabSchema = z.enum(["video", "image"]);
+const ImageSubTabSchema = z.enum(["references", "styles"]);
+const ConstraintModeSchema = z.enum(["strict", "flexible", "transform"]);
 
 const Position3DSchema = z.object({
   x: z.number(),
@@ -33,14 +33,16 @@ const CameraTransformSchema = z.object({
   rotation: Rotation3DSchema,
 });
 
-const CameraPathSchema = z.object({
-  id: z.string(),
-  label: z.string(),
-  category: z.enum(CAMERA_MOTION_CATEGORIES),
-  start: CameraTransformSchema,
-  end: CameraTransformSchema,
-  duration: z.number(),
-}).passthrough();
+const CameraPathSchema = z
+  .object({
+    id: z.string(),
+    label: z.string(),
+    category: z.enum(CAMERA_MOTION_CATEGORIES),
+    start: CameraTransformSchema,
+    end: CameraTransformSchema,
+    duration: z.number(),
+  })
+  .passthrough();
 
 const SubjectMotionSchema = z.string();
 
@@ -53,7 +55,7 @@ const safeParseJson = (raw: string): unknown => {
 };
 
 export const loadCameraMotion = (): CameraPath | null => {
-  if (typeof window === 'undefined') return null;
+  if (typeof window === "undefined") return null;
   try {
     const raw = window.localStorage.getItem(STORAGE_KEYS.cameraMotion);
     if (!raw) return null;
@@ -65,32 +67,35 @@ export const loadCameraMotion = (): CameraPath | null => {
 };
 
 export const loadSubjectMotion = (): string => {
-  if (typeof window === 'undefined') return '';
+  if (typeof window === "undefined") return "";
   try {
     const value = window.localStorage.getItem(STORAGE_KEYS.subjectMotion);
-    if (!value) return '';
+    if (!value) return "";
     const parsed = SubjectMotionSchema.safeParse(value);
-    return parsed.success ? parsed.data : '';
+    return parsed.success ? parsed.data : "";
   } catch {
-    return '';
+    return "";
   }
 };
 
 export const persistCameraMotion = (value: CameraPath | null): void => {
-  if (typeof window === 'undefined') return;
+  if (typeof window === "undefined") return;
   try {
     if (!value) {
       window.localStorage.removeItem(STORAGE_KEYS.cameraMotion);
       return;
     }
-    window.localStorage.setItem(STORAGE_KEYS.cameraMotion, JSON.stringify(value));
+    window.localStorage.setItem(
+      STORAGE_KEYS.cameraMotion,
+      JSON.stringify(value),
+    );
   } catch {
     // ignore
   }
 };
 
 export const persistSubjectMotion = (value: string): void => {
-  if (typeof window === 'undefined') return;
+  if (typeof window === "undefined") return;
   try {
     if (!value) {
       window.localStorage.removeItem(STORAGE_KEYS.subjectMotion);
@@ -102,20 +107,20 @@ export const persistSubjectMotion = (value: string): void => {
   }
 };
 
-export const loadActiveTab = (): 'video' | 'image' => {
-  if (typeof window === 'undefined') return 'video';
+export const loadActiveTab = (): "video" | "image" => {
+  if (typeof window === "undefined") return "video";
   try {
     const value = window.localStorage.getItem(STORAGE_KEYS.activeTab);
-    if (!value) return 'video';
+    if (!value) return "video";
     const parsed = ActiveTabSchema.safeParse(value);
-    return parsed.success ? parsed.data : 'video';
+    return parsed.success ? parsed.data : "video";
   } catch {
-    return 'video';
+    return "video";
   }
 };
 
-export const persistActiveTab = (value: 'video' | 'image'): void => {
-  if (typeof window === 'undefined') return;
+export const persistActiveTab = (value: "video" | "image"): void => {
+  if (typeof window === "undefined") return;
   try {
     window.localStorage.setItem(STORAGE_KEYS.activeTab, value);
   } catch {
@@ -123,20 +128,20 @@ export const persistActiveTab = (value: 'video' | 'image'): void => {
   }
 };
 
-export const loadImageSubTab = (): 'references' | 'styles' => {
-  if (typeof window === 'undefined') return 'references';
+export const loadImageSubTab = (): "references" | "styles" => {
+  if (typeof window === "undefined") return "references";
   try {
     const value = window.localStorage.getItem(STORAGE_KEYS.imageSubTab);
-    if (!value) return 'references';
+    if (!value) return "references";
     const parsed = ImageSubTabSchema.safeParse(value);
-    return parsed.success ? parsed.data : 'references';
+    return parsed.success ? parsed.data : "references";
   } catch {
-    return 'references';
+    return "references";
   }
 };
 
-export const persistImageSubTab = (value: 'references' | 'styles'): void => {
-  if (typeof window === 'undefined') return;
+export const persistImageSubTab = (value: "references" | "styles"): void => {
+  if (typeof window === "undefined") return;
   try {
     window.localStorage.setItem(STORAGE_KEYS.imageSubTab, value);
   } catch {
@@ -144,20 +149,22 @@ export const persistImageSubTab = (value: 'references' | 'styles'): void => {
   }
 };
 
-export const loadConstraintMode = (): 'strict' | 'flexible' | 'transform' => {
-  if (typeof window === 'undefined') return 'strict';
+export const loadConstraintMode = (): "strict" | "flexible" | "transform" => {
+  if (typeof window === "undefined") return "strict";
   try {
     const value = window.localStorage.getItem(STORAGE_KEYS.constraintMode);
-    if (!value) return 'strict';
+    if (!value) return "strict";
     const parsed = ConstraintModeSchema.safeParse(value);
-    return parsed.success ? parsed.data : 'strict';
+    return parsed.success ? parsed.data : "strict";
   } catch {
-    return 'strict';
+    return "strict";
   }
 };
 
-export const persistConstraintMode = (value: 'strict' | 'flexible' | 'transform'): void => {
-  if (typeof window === 'undefined') return;
+export const persistConstraintMode = (
+  value: "strict" | "flexible" | "transform",
+): void => {
+  if (typeof window === "undefined") return;
   try {
     window.localStorage.setItem(STORAGE_KEYS.constraintMode, value);
   } catch {
@@ -168,7 +175,7 @@ export const persistConstraintMode = (value: 'strict' | 'flexible' | 'transform'
 const KeyframeTileSchema = z.object({
   id: z.string(),
   url: z.string(),
-  source: z.enum(['upload', 'library', 'generation', 'asset']),
+  source: z.enum(["upload", "library", "generation", "asset"]),
   assetId: z.string().optional(),
   sourcePrompt: z.string().optional(),
   storagePath: z.string().optional(),
@@ -178,7 +185,7 @@ const KeyframeTileSchema = z.object({
 const KeyframesArraySchema = z.array(KeyframeTileSchema).max(3);
 
 export const loadKeyframes = (): KeyframeTile[] => {
-  if (typeof window === 'undefined') return [];
+  if (typeof window === "undefined") return [];
   try {
     const raw = window.localStorage.getItem(STORAGE_KEYS.keyframes);
     if (!raw) return [];
@@ -190,7 +197,7 @@ export const loadKeyframes = (): KeyframeTile[] => {
 };
 
 export const persistKeyframes = (value: KeyframeTile[]): void => {
-  if (typeof window === 'undefined') return;
+  if (typeof window === "undefined") return;
   try {
     if (!value.length) {
       window.localStorage.removeItem(STORAGE_KEYS.keyframes);

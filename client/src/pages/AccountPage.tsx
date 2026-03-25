@@ -1,12 +1,20 @@
-import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { CreditCard, FileText, LogOut, Mail, SlidersHorizontal, Sparkles, User as UserIcon } from '@promptstudio/system/components/ui';
-import { getAuthRepository } from '@repositories/index';
-import { useToast } from '@components/Toast';
-import { Button } from '@promptstudio/system/components/ui/button';
-import { useAuthUser } from '@hooks/useAuthUser';
-import type { User } from '@features/prompt-optimizer/types/domain/prompt-session';
-import { AuthShell } from './auth/AuthShell';
+import React from "react";
+import { Link, useNavigate } from "react-router-dom";
+import {
+  CreditCard,
+  FileText,
+  LogOut,
+  Mail,
+  SlidersHorizontal,
+  Sparkles,
+  User as UserIcon,
+} from "@promptstudio/system/components/ui";
+import { getAuthRepository } from "@repositories/index";
+import { useToast } from "@components/Toast";
+import { Button } from "@promptstudio/system/components/ui/button";
+import { useAuthUser } from "@hooks/useAuthUser";
+import type { User } from "@features/prompt-optimizer/types/domain/prompt-session";
+import { AuthShell } from "./auth/AuthShell";
 import {
   AUTH_COLORS,
   AUTH_CTA_CLASS,
@@ -14,16 +22,17 @@ import {
   AUTH_SECONDARY_BTN_CLASS,
   AUTH_SECONDARY_BTN_STYLE,
   AUTH_CARD_STYLE,
-} from './auth/auth-styles';
+} from "./auth/auth-styles";
 
 function formatUserLabel(user: User): { title: string; subtitle: string } {
-  const displayName = typeof user.displayName === 'string' ? user.displayName.trim() : '';
-  const email = typeof user.email === 'string' ? user.email.trim() : '';
-  const emailPrefix = email.split('@')[0] ?? '';
-  const title = displayName || emailPrefix || 'Account';
+  const displayName =
+    typeof user.displayName === "string" ? user.displayName.trim() : "";
+  const email = typeof user.email === "string" ? user.email.trim() : "";
+  const emailPrefix = email.split("@")[0] ?? "";
+  const title = displayName || emailPrefix || "Account";
   return {
     title,
-    subtitle: email ? email : 'Signed in',
+    subtitle: email ? email : "Signed in",
   };
 }
 
@@ -37,30 +46,33 @@ export function AccountPage(): React.ReactElement {
     setIsBusy(true);
     try {
       await getAuthRepository().signOut();
-      toast.success('Signed out successfully');
-      navigate('/signin', { replace: true });
+      toast.success("Signed out successfully");
+      navigate("/signin", { replace: true });
     } catch {
-      toast.error('Failed to sign out');
+      toast.error("Failed to sign out");
     } finally {
       setIsBusy(false);
     }
   };
 
   const label = user ? formatUserLabel(user) : null;
-  const email = user && typeof user.email === 'string' ? user.email : '';
-  const isVerified = user && typeof user.emailVerified === 'boolean' ? user.emailVerified : false;
+  const email = user && typeof user.email === "string" ? user.email : "";
+  const isVerified =
+    user && typeof user.emailVerified === "boolean"
+      ? user.emailVerified
+      : false;
   const resetPasswordLink = email
-    ? `/forgot-password?email=${encodeURIComponent(email)}&redirect=${encodeURIComponent('/account')}`
-    : `/forgot-password?redirect=${encodeURIComponent('/account')}`;
+    ? `/forgot-password?email=${encodeURIComponent(email)}&redirect=${encodeURIComponent("/account")}`
+    : `/forgot-password?redirect=${encodeURIComponent("/account")}`;
 
   const handleResendVerification = async (): Promise<void> => {
     if (!user) return;
     setIsBusy(true);
     try {
-      await getAuthRepository().sendVerificationEmail('/account');
-      toast.success('Verification email sent.');
+      await getAuthRepository().sendVerificationEmail("/account");
+      toast.success("Verification email sent.");
     } catch {
-      toast.error('Failed to send verification email.');
+      toast.error("Failed to send verification email.");
     } finally {
       setIsBusy(false);
     }
@@ -73,7 +85,7 @@ export function AccountPage(): React.ReactElement {
       footer={
         user ? (
           <>
-            Want to switch accounts?{' '}
+            Want to switch accounts?{" "}
             <Button
               type="button"
               onClick={handleSignOut}
@@ -87,7 +99,7 @@ export function AccountPage(): React.ReactElement {
           </>
         ) : (
           <>
-            Need an account?{' '}
+            Need an account?{" "}
             <Link to="/signup" className="text-white hover:underline">
               Create one
             </Link>
@@ -101,22 +113,45 @@ export function AccountPage(): React.ReactElement {
           <div className="flex items-start gap-3">
             <span
               className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg"
-              style={{ background: AUTH_COLORS.inputBg, border: `1px solid ${AUTH_COLORS.inputBorder}` }}
+              style={{
+                background: AUTH_COLORS.inputBg,
+                border: `1px solid ${AUTH_COLORS.inputBorder}`,
+              }}
             >
-              <UserIcon className="h-5 w-5" style={{ color: AUTH_COLORS.textDim }} aria-hidden="true" />
+              <UserIcon
+                className="h-5 w-5"
+                style={{ color: AUTH_COLORS.textDim }}
+                aria-hidden="true"
+              />
             </span>
             <div className="min-w-0">
-              <h2 className="text-[15px] font-semibold tracking-tight text-white">{label?.title}</h2>
-              <p className="mt-0.5 text-[13px]" style={{ color: AUTH_COLORS.textSecondary }}>{label?.subtitle}</p>
+              <h2 className="text-[15px] font-semibold tracking-tight text-white">
+                {label?.title}
+              </h2>
+              <p
+                className="mt-0.5 text-[13px]"
+                style={{ color: AUTH_COLORS.textSecondary }}
+              >
+                {label?.subtitle}
+              </p>
             </div>
           </div>
 
           <div className="px-3.5 py-3" style={AUTH_CARD_STYLE}>
             <div className="flex items-start gap-2.5">
-              <Sparkles className="mt-0.5 h-4 w-4 shrink-0" style={{ color: AUTH_COLORS.textDim }} aria-hidden="true" />
+              <Sparkles
+                className="mt-0.5 h-4 w-4 shrink-0"
+                style={{ color: AUTH_COLORS.textDim }}
+                aria-hidden="true"
+              />
               <div className="min-w-0">
-                <p className="text-[13px] font-semibold text-white">Sync is on</p>
-                <p className="mt-1 text-[13px] leading-snug" style={{ color: AUTH_COLORS.textSecondary }}>
+                <p className="text-[13px] font-semibold text-white">
+                  Sync is on
+                </p>
+                <p
+                  className="mt-1 text-[13px] leading-snug"
+                  style={{ color: AUTH_COLORS.textSecondary }}
+                >
                   Prompt history is saved to the cloud when you're signed in.
                 </p>
               </div>
@@ -125,20 +160,38 @@ export function AccountPage(): React.ReactElement {
 
           <div className="px-3.5 py-3" style={AUTH_CARD_STYLE}>
             <div className="flex items-start gap-2.5">
-              <Mail className="mt-0.5 h-4 w-4 shrink-0" style={{ color: AUTH_COLORS.textDim }} aria-hidden="true" />
+              <Mail
+                className="mt-0.5 h-4 w-4 shrink-0"
+                style={{ color: AUTH_COLORS.textDim }}
+                aria-hidden="true"
+              />
               <div className="min-w-0 flex-1">
                 <p className="text-[13px] font-semibold text-white">Email</p>
-                <p className="mt-1 text-[13px] leading-snug" style={{ color: AUTH_COLORS.textSecondary }}>{email || '—'}</p>
+                <p
+                  className="mt-1 text-[13px] leading-snug"
+                  style={{ color: AUTH_COLORS.textSecondary }}
+                >
+                  {email || "—"}
+                </p>
 
                 <div className="mt-3 flex flex-wrap items-center gap-2">
                   <span
                     className="inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold tracking-wide"
-                    style={isVerified
-                      ? { borderColor: `${AUTH_COLORS.success}30`, background: `${AUTH_COLORS.success}15`, color: AUTH_COLORS.success }
-                      : { borderColor: '#f5c05c30', background: '#f5c05c15', color: '#f5c05c' }
+                    style={
+                      isVerified
+                        ? {
+                            borderColor: `${AUTH_COLORS.success}30`,
+                            background: `${AUTH_COLORS.success}15`,
+                            color: AUTH_COLORS.success,
+                          }
+                        : {
+                            borderColor: "#f5c05c30",
+                            background: "#f5c05c15",
+                            color: "#f5c05c",
+                          }
                     }
                   >
-                    {isVerified ? 'VERIFIED' : 'NOT VERIFIED'}
+                    {isVerified ? "VERIFIED" : "NOT VERIFIED"}
                   </span>
 
                   {!isVerified ? (
@@ -148,14 +201,21 @@ export function AccountPage(): React.ReactElement {
                       disabled={isBusy}
                       variant="ghost"
                       className="h-7 rounded-full px-3 text-[12px] font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-60"
-                      style={{ background: AUTH_COLORS.card, border: `1px solid ${AUTH_COLORS.cardBorder}` }}
+                      style={{
+                        background: AUTH_COLORS.card,
+                        border: `1px solid ${AUTH_COLORS.cardBorder}`,
+                      }}
                     >
                       Resend verification
                     </Button>
                   ) : null}
 
                   {!isVerified ? (
-                    <Link to="/email-verification?redirect=%2Faccount" className="text-[12px] font-semibold hover:text-white hover:underline" style={{ color: AUTH_COLORS.textDim }}>
+                    <Link
+                      to="/email-verification?redirect=%2Faccount"
+                      className="text-[12px] font-semibold hover:text-white hover:underline"
+                      style={{ color: AUTH_COLORS.textDim }}
+                    >
                       Open verification page
                     </Link>
                   ) : null}
@@ -169,7 +229,10 @@ export function AccountPage(): React.ReactElement {
               asChild
               variant="ghost"
               className="h-9 w-full rounded-lg text-[13px] font-semibold text-white transition"
-              style={{ background: AUTH_COLORS.card, border: `1px solid ${AUTH_COLORS.cardBorder}` }}
+              style={{
+                background: AUTH_COLORS.card,
+                border: `1px solid ${AUTH_COLORS.cardBorder}`,
+              }}
             >
               <Link to="/history">Open history</Link>
             </Button>
@@ -178,7 +241,11 @@ export function AccountPage(): React.ReactElement {
               asChild
               variant="ghost"
               className="h-9 w-full rounded-lg text-[13px] font-semibold transition"
-              style={{ background: AUTH_COLORS.inputBg, border: `1px solid ${AUTH_COLORS.inputBorder}`, color: AUTH_COLORS.textSecondary }}
+              style={{
+                background: AUTH_COLORS.inputBg,
+                border: `1px solid ${AUTH_COLORS.inputBorder}`,
+                color: AUTH_COLORS.textSecondary,
+              }}
             >
               <Link to={resetPasswordLink}>Reset password</Link>
             </Button>
@@ -187,7 +254,10 @@ export function AccountPage(): React.ReactElement {
               asChild
               variant="ghost"
               className="h-9 w-full gap-2 rounded-lg text-[13px] font-semibold text-white transition"
-              style={{ background: AUTH_COLORS.card, border: `1px solid ${AUTH_COLORS.cardBorder}` }}
+              style={{
+                background: AUTH_COLORS.card,
+                border: `1px solid ${AUTH_COLORS.cardBorder}`,
+              }}
             >
               <Link to="/settings/billing">
                 <CreditCard className="h-3.5 w-3.5" aria-hidden="true" />
@@ -199,7 +269,11 @@ export function AccountPage(): React.ReactElement {
               asChild
               variant="ghost"
               className="h-9 w-full gap-2 rounded-lg text-[13px] font-semibold transition"
-              style={{ background: AUTH_COLORS.inputBg, border: `1px solid ${AUTH_COLORS.inputBorder}`, color: AUTH_COLORS.textSecondary }}
+              style={{
+                background: AUTH_COLORS.inputBg,
+                border: `1px solid ${AUTH_COLORS.inputBorder}`,
+                color: AUTH_COLORS.textSecondary,
+              }}
             >
               <Link to="/settings/billing/invoices">
                 <FileText className="h-3.5 w-3.5" aria-hidden="true" />
@@ -211,7 +285,10 @@ export function AccountPage(): React.ReactElement {
               asChild
               variant="ghost"
               className="h-9 w-full gap-2 rounded-lg text-[13px] font-semibold text-white transition sm:col-span-2"
-              style={{ background: AUTH_COLORS.card, border: `1px solid ${AUTH_COLORS.cardBorder}` }}
+              style={{
+                background: AUTH_COLORS.card,
+                border: `1px solid ${AUTH_COLORS.cardBorder}`,
+              }}
             >
               <Link to="/?settings=1">
                 <SlidersHorizontal className="h-3.5 w-3.5" aria-hidden="true" />
@@ -226,7 +303,11 @@ export function AccountPage(): React.ReactElement {
             disabled={isBusy}
             variant="ghost"
             className="h-9 w-full gap-2 rounded-lg text-[13px] font-semibold transition disabled:cursor-not-allowed disabled:opacity-60"
-            style={{ background: `${AUTH_COLORS.danger}15`, border: `1px solid ${AUTH_COLORS.danger}30`, color: AUTH_COLORS.danger }}
+            style={{
+              background: `${AUTH_COLORS.danger}15`,
+              border: `1px solid ${AUTH_COLORS.danger}30`,
+              color: AUTH_COLORS.danger,
+            }}
           >
             <LogOut className="h-3.5 w-3.5" aria-hidden="true" />
             Sign out
@@ -234,15 +315,31 @@ export function AccountPage(): React.ReactElement {
         </div>
       ) : (
         <div className="flex flex-col gap-4">
-          <h2 className="text-[15px] font-semibold tracking-tight text-white">You're not signed in</h2>
-          <p className="text-[13px] leading-relaxed" style={{ color: AUTH_COLORS.textSecondary }}>
-            Sign in to sync prompt history and use Firestore storage across devices.
+          <h2 className="text-[15px] font-semibold tracking-tight text-white">
+            You're not signed in
+          </h2>
+          <p
+            className="text-[13px] leading-relaxed"
+            style={{ color: AUTH_COLORS.textSecondary }}
+          >
+            Sign in to sync prompt history and use Firestore storage across
+            devices.
           </p>
           <div className="flex flex-col gap-2.5">
-            <Button asChild variant="ghost" className={AUTH_CTA_CLASS} style={AUTH_CTA_STYLE}>
+            <Button
+              asChild
+              variant="ghost"
+              className={AUTH_CTA_CLASS}
+              style={AUTH_CTA_STYLE}
+            >
               <Link to="/signin">Sign in</Link>
             </Button>
-            <Button asChild variant="ghost" className={AUTH_SECONDARY_BTN_CLASS} style={AUTH_SECONDARY_BTN_STYLE}>
+            <Button
+              asChild
+              variant="ghost"
+              className={AUTH_SECONDARY_BTN_CLASS}
+              style={AUTH_SECONDARY_BTN_STYLE}
+            >
               <Link to="/signup">Create account</Link>
             </Button>
           </div>

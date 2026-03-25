@@ -1,11 +1,11 @@
-import { randomUUID } from 'node:crypto';
-import express, { type Request, type Response, type Router } from 'express';
-import { asyncHandler } from '@middleware/asyncHandler';
-import { sendApiError } from '@middleware/apiErrorResponse';
-import { GENERATION_ERROR_CODES } from '@routes/generationErrorCodes';
-import { buildRefundKey, refundWithGuard } from '@services/credits/refundGuard';
-import type { ConsistentVideoService } from '@services/video-generation/ConsistentVideoService';
-import type { UserCreditService } from '@services/credits/UserCreditService';
+import { randomUUID } from "node:crypto";
+import express, { type Request, type Response, type Router } from "express";
+import { asyncHandler } from "@middleware/asyncHandler";
+import { sendApiError } from "@middleware/apiErrorResponse";
+import { GENERATION_ERROR_CODES } from "@routes/generationErrorCodes";
+import { buildRefundKey, refundWithGuard } from "@services/credits/refundGuard";
+import type { ConsistentVideoService } from "@services/video-generation/ConsistentVideoService";
+import type { UserCreditService } from "@services/credits/UserCreditService";
 
 const KEYFRAME_COST = 2;
 const CONSISTENT_VIDEO_COST = 40;
@@ -17,7 +17,7 @@ function requireUserId(req: RequestWithUser, res: Response): string | null {
   const userId = req.user?.uid;
   if (!userId) {
     sendApiError(res, req, 401, {
-      error: 'Authentication required',
+      error: "Authentication required",
       code: GENERATION_ERROR_CODES.AUTH_REQUIRED,
     });
     return null;
@@ -26,15 +26,15 @@ function requireUserId(req: RequestWithUser, res: Response): string | null {
 }
 
 function getStatusCode(error: unknown): number {
-  if (!error || typeof error !== 'object') {
+  if (!error || typeof error !== "object") {
     return 500;
   }
   const statusCode = (error as { statusCode?: unknown }).statusCode;
   const status = (error as { status?: unknown }).status;
-  if (typeof statusCode === 'number' && Number.isFinite(statusCode)) {
+  if (typeof statusCode === "number" && Number.isFinite(statusCode)) {
     return statusCode;
   }
-  if (typeof status === 'number' && Number.isFinite(status)) {
+  if (typeof status === "number" && Number.isFinite(status)) {
     return status;
   }
   return 500;
@@ -42,19 +42,19 @@ function getStatusCode(error: unknown): number {
 
 export function createConsistentGenerationRoutes(
   consistentVideoService: ConsistentVideoService,
-  userCreditService?: UserCreditService | null
+  userCreditService?: UserCreditService | null,
 ): Router {
   const router = express.Router();
 
   router.post(
-    '/keyframe',
+    "/keyframe",
     asyncHandler(async (req: Request, res: Response) => {
       const userId = requireUserId(req as RequestWithUser, res);
       if (!userId) return;
 
       if (!userCreditService) {
         sendApiError(res, req, 503, {
-          error: 'Credit service unavailable',
+          error: "Credit service unavailable",
           code: GENERATION_ERROR_CODES.SERVICE_UNAVAILABLE,
         });
         return;
@@ -63,16 +63,19 @@ export function createConsistentGenerationRoutes(
       const { characterId, prompt, aspectRatio, count } = req.body || {};
       if (!characterId || !prompt) {
         sendApiError(res, req, 400, {
-          error: 'characterId and prompt are required',
+          error: "characterId and prompt are required",
           code: GENERATION_ERROR_CODES.INVALID_REQUEST,
         });
         return;
       }
 
-      const reserved = await userCreditService.reserveCredits(userId, KEYFRAME_COST);
+      const reserved = await userCreditService.reserveCredits(
+        userId,
+        KEYFRAME_COST,
+      );
       if (!reserved) {
         sendApiError(res, req, 402, {
-          error: 'Insufficient credits',
+          error: "Insufficient credits",
           code: GENERATION_ERROR_CODES.INSUFFICIENT_CREDITS,
           details: `This generation requires ${KEYFRAME_COST} credits.`,
         });
@@ -82,12 +85,23 @@ export function createConsistentGenerationRoutes(
       const requestId = (req as Request & { id?: string }).id;
       const operationToken =
         requestId ??
-        buildRefundKey(['consistent-keyframe', userId, characterId, prompt, Date.now(), randomUUID().slice(0, 8)]);
-      const refundKey = buildRefundKey(['consistent-generation', operationToken, 'keyframe']);
+        buildRefundKey([
+          "consistent-keyframe",
+          userId,
+          characterId,
+          prompt,
+          Date.now(),
+          randomUUID().slice(0, 8),
+        ]);
+      const refundKey = buildRefundKey([
+        "consistent-generation",
+        operationToken,
+        "keyframe",
+      ]);
 
       try {
         const normalizedCount =
-          typeof count === 'number'
+          typeof count === "number"
             ? Math.max(1, Math.min(5, Math.round(count)))
             : 1;
 
@@ -107,14 +121,14 @@ export function createConsistentGenerationRoutes(
           userId,
           amount: KEYFRAME_COST,
           refundKey,
-          reason: 'consistent keyframe generation failed',
+          reason: "consistent keyframe generation failed",
           metadata: {
             requestId,
-            endpoint: 'consistent:keyframe',
+            endpoint: "consistent:keyframe",
           },
         });
         sendApiError(res, req, statusCode, {
-          error: 'Generation failed',
+          error: "Generation failed",
           code:
             statusCode === 503
               ? GENERATION_ERROR_CODES.SERVICE_UNAVAILABLE
@@ -122,18 +136,18 @@ export function createConsistentGenerationRoutes(
           details: error instanceof Error ? error.message : String(error),
         });
       }
-    })
+    }),
   );
 
   router.post(
-    '/video',
+    "/video",
     asyncHandler(async (req: Request, res: Response) => {
       const userId = requireUserId(req as RequestWithUser, res);
       if (!userId) return;
 
       if (!userCreditService) {
         sendApiError(res, req, 503, {
-          error: 'Credit service unavailable',
+          error: "Credit service unavailable",
           code: GENERATION_ERROR_CODES.SERVICE_UNAVAILABLE,
         });
         return;
@@ -142,16 +156,19 @@ export function createConsistentGenerationRoutes(
       const { prompt, videoModel, aspectRatio, duration } = req.body || {};
       if (!prompt) {
         sendApiError(res, req, 400, {
-          error: 'prompt is required',
+          error: "prompt is required",
           code: GENERATION_ERROR_CODES.INVALID_REQUEST,
         });
         return;
       }
 
-      const reserved = await userCreditService.reserveCredits(userId, CONSISTENT_VIDEO_COST);
+      const reserved = await userCreditService.reserveCredits(
+        userId,
+        CONSISTENT_VIDEO_COST,
+      );
       if (!reserved) {
         sendApiError(res, req, 402, {
-          error: 'Insufficient credits',
+          error: "Insufficient credits",
           code: GENERATION_ERROR_CODES.INSUFFICIENT_CREDITS,
           details: `This generation requires ${CONSISTENT_VIDEO_COST} credits.`,
         });
@@ -161,8 +178,18 @@ export function createConsistentGenerationRoutes(
       const requestId = (req as Request & { id?: string }).id;
       const operationToken =
         requestId ??
-        buildRefundKey(['consistent-video', userId, prompt, Date.now(), randomUUID().slice(0, 8)]);
-      const refundKey = buildRefundKey(['consistent-generation', operationToken, 'video']);
+        buildRefundKey([
+          "consistent-video",
+          userId,
+          prompt,
+          Date.now(),
+          randomUUID().slice(0, 8),
+        ]);
+      const refundKey = buildRefundKey([
+        "consistent-generation",
+        operationToken,
+        "video",
+      ]);
 
       try {
         const result = await consistentVideoService.generateConsistentVideo({
@@ -181,14 +208,14 @@ export function createConsistentGenerationRoutes(
           userId,
           amount: CONSISTENT_VIDEO_COST,
           refundKey,
-          reason: 'consistent video generation failed',
+          reason: "consistent video generation failed",
           metadata: {
             requestId,
-            endpoint: 'consistent:video',
+            endpoint: "consistent:video",
           },
         });
         sendApiError(res, req, statusCode, {
-          error: 'Generation failed',
+          error: "Generation failed",
           code:
             statusCode === 503
               ? GENERATION_ERROR_CODES.SERVICE_UNAVAILABLE
@@ -196,36 +223,40 @@ export function createConsistentGenerationRoutes(
           details: error instanceof Error ? error.message : String(error),
         });
       }
-    })
+    }),
   );
 
   router.post(
-    '/from-keyframe',
+    "/from-keyframe",
     asyncHandler(async (req: Request, res: Response) => {
       const userId = requireUserId(req as RequestWithUser, res);
       if (!userId) return;
 
       if (!userCreditService) {
         sendApiError(res, req, 503, {
-          error: 'Credit service unavailable',
+          error: "Credit service unavailable",
           code: GENERATION_ERROR_CODES.SERVICE_UNAVAILABLE,
         });
         return;
       }
 
-      const { keyframeUrl, prompt, model, aspectRatio, duration } = req.body || {};
+      const { keyframeUrl, prompt, model, aspectRatio, duration } =
+        req.body || {};
       if (!keyframeUrl || !prompt) {
         sendApiError(res, req, 400, {
-          error: 'keyframeUrl and prompt are required',
+          error: "keyframeUrl and prompt are required",
           code: GENERATION_ERROR_CODES.INVALID_REQUEST,
         });
         return;
       }
 
-      const reserved = await userCreditService.reserveCredits(userId, FROM_KEYFRAME_COST);
+      const reserved = await userCreditService.reserveCredits(
+        userId,
+        FROM_KEYFRAME_COST,
+      );
       if (!reserved) {
         sendApiError(res, req, 402, {
-          error: 'Insufficient credits',
+          error: "Insufficient credits",
           code: GENERATION_ERROR_CODES.INSUFFICIENT_CREDITS,
           details: `This generation requires ${FROM_KEYFRAME_COST} credits.`,
         });
@@ -236,23 +267,28 @@ export function createConsistentGenerationRoutes(
       const operationToken =
         requestId ??
         buildRefundKey([
-          'consistent-from-keyframe',
+          "consistent-from-keyframe",
           userId,
           keyframeUrl,
           prompt,
           Date.now(),
           randomUUID().slice(0, 8),
         ]);
-      const refundKey = buildRefundKey(['consistent-generation', operationToken, 'from-keyframe']);
+      const refundKey = buildRefundKey([
+        "consistent-generation",
+        operationToken,
+        "from-keyframe",
+      ]);
 
       try {
-        const result = await consistentVideoService.generateVideoFromApprovedKeyframe({
-          keyframeUrl,
-          prompt,
-          model,
-          aspectRatio,
-          duration,
-        });
+        const result =
+          await consistentVideoService.generateVideoFromApprovedKeyframe({
+            keyframeUrl,
+            prompt,
+            model,
+            aspectRatio,
+            duration,
+          });
 
         res.json(result);
       } catch (error) {
@@ -262,14 +298,14 @@ export function createConsistentGenerationRoutes(
           userId,
           amount: FROM_KEYFRAME_COST,
           refundKey,
-          reason: 'consistent from-keyframe generation failed',
+          reason: "consistent from-keyframe generation failed",
           metadata: {
             requestId,
-            endpoint: 'consistent:from-keyframe',
+            endpoint: "consistent:from-keyframe",
           },
         });
         sendApiError(res, req, statusCode, {
-          error: 'Generation failed',
+          error: "Generation failed",
           code:
             statusCode === 503
               ? GENERATION_ERROR_CODES.SERVICE_UNAVAILABLE
@@ -277,7 +313,7 @@ export function createConsistentGenerationRoutes(
           details: error instanceof Error ? error.message : String(error),
         });
       }
-    })
+    }),
   );
 
   return router;

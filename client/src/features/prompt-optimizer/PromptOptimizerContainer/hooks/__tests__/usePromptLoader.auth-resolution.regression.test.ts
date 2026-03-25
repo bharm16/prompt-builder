@@ -1,10 +1,10 @@
-import { renderHook, waitFor } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { usePromptLoader } from '../usePromptLoader';
+import { renderHook, waitFor } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { usePromptLoader } from "../usePromptLoader";
 
 const mockGetById = vi.hoisted(() => vi.fn());
 
-vi.mock('@repositories/index', () => ({
+vi.mock("@repositories/index", () => ({
   getPromptRepositoryForUser: vi.fn(() => ({
     getById: mockGetById,
   })),
@@ -23,12 +23,12 @@ const buildParams = (overrides: Partial<LoaderParams> = {}): LoaderParams => {
   };
 
   return {
-    sessionId: 'session_123',
+    sessionId: "session_123",
     navigate: vi.fn(),
     toast: baseToast,
     user: null,
     promptOptimizer: {
-      displayedPrompt: '',
+      displayedPrompt: "",
       setInputPrompt: vi.fn(),
       setOptimizedPrompt: vi.fn(),
       setDisplayedPrompt: vi.fn(),
@@ -54,17 +54,17 @@ const buildParams = (overrides: Partial<LoaderParams> = {}): LoaderParams => {
   };
 };
 
-describe('regression: session route hydration waits for auth resolution', () => {
+describe("regression: session route hydration waits for auth resolution", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('does not load remote session data until auth state has resolved', async () => {
+  it("does not load remote session data until auth state has resolved", async () => {
     mockGetById.mockResolvedValue({
-      id: 'session_123',
-      uuid: 'uuid-123',
-      input: 'raw prompt',
-      output: 'optimized prompt',
+      id: "session_123",
+      uuid: "uuid-123",
+      input: "raw prompt",
+      output: "optimized prompt",
       keyframes: [],
     });
 
@@ -75,10 +75,12 @@ describe('regression: session route hydration waits for auth resolution', () => 
 
     const { rerender } = renderHook(
       ({ hookParams }: { hookParams: LoaderParams }) =>
-        usePromptLoader(hookParams as unknown as Parameters<typeof usePromptLoader>[0]),
+        usePromptLoader(
+          hookParams as unknown as Parameters<typeof usePromptLoader>[0],
+        ),
       {
         initialProps: { hookParams: params },
-      }
+      },
     );
 
     await new Promise((resolve) => {
@@ -101,7 +103,7 @@ describe('regression: session route hydration waits for auth resolution', () => 
     expect(mockGetById).not.toHaveBeenCalled();
 
     params = buildParams({
-      user: { uid: 'user-1' },
+      user: { uid: "user-1" },
       isAuthResolved: true,
     });
 
@@ -112,21 +114,21 @@ describe('regression: session route hydration waits for auth resolution', () => 
     });
   });
 
-  it('restores mode and generation params when hydrating a remote session', async () => {
+  it("restores mode and generation params when hydrating a remote session", async () => {
     const params = buildParams({
-      user: { uid: 'user-1' },
+      user: { uid: "user-1" },
       isAuthResolved: true,
     });
 
     mockGetById.mockResolvedValue({
-      id: 'session_123',
-      uuid: 'uuid-123',
-      input: 'raw prompt',
-      output: 'optimized prompt',
-      mode: 'video',
+      id: "session_123",
+      uuid: "uuid-123",
+      input: "raw prompt",
+      output: "optimized prompt",
+      mode: "video",
       generationParams: {
-        start_frame_asset_id: 'asset-123',
-        aspect_ratio: '16:9',
+        start_frame_asset_id: "asset-123",
+        aspect_ratio: "16:9",
       },
       keyframes: [],
     });
@@ -134,12 +136,12 @@ describe('regression: session route hydration waits for auth resolution', () => 
     renderHook(() => usePromptLoader(params));
 
     await waitFor(() => {
-      expect(params.setSelectedMode).toHaveBeenCalledWith('video');
+      expect(params.setSelectedMode).toHaveBeenCalledWith("video");
     });
 
     expect(params.setGenerationParams).toHaveBeenCalledWith({
-      start_frame_asset_id: 'asset-123',
-      aspect_ratio: '16:9',
+      start_frame_asset_id: "asset-123",
+      aspect_ratio: "16:9",
     });
   });
 });

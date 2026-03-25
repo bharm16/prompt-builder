@@ -1,7 +1,7 @@
-import React, { useMemo } from 'react';
-import type { SessionContinuityMode } from '@shared/types/session';
-import { cn } from '@/utils/cn';
-import { StrengthSlider } from '@/features/continuity/components/StyleReferencePanel/StrengthSlider';
+import React, { useMemo } from "react";
+import type { SessionContinuityMode } from "@shared/types/session";
+import { cn } from "@/utils/cn";
+import { StrengthSlider } from "@/features/continuity/components/StyleReferencePanel/StrengthSlider";
 
 interface ContinuityIntentPickerProps {
   mode: SessionContinuityMode;
@@ -10,7 +10,7 @@ interface ContinuityIntentPickerProps {
   onStrengthChange: (strength: number) => void;
 }
 
-type IntentMode = 'frame-bridge' | 'style-match' | 'none';
+type IntentMode = "frame-bridge" | "style-match" | "none";
 
 function BridgeIcon({ className }: { className?: string }): React.ReactElement {
   return (
@@ -29,7 +29,11 @@ function BridgeIcon({ className }: { className?: string }): React.ReactElement {
   );
 }
 
-function PaintbrushIcon({ className }: { className?: string }): React.ReactElement {
+function PaintbrushIcon({
+  className,
+}: {
+  className?: string;
+}): React.ReactElement {
   return (
     <svg
       viewBox="0 0 12 12"
@@ -48,14 +52,14 @@ function PaintbrushIcon({ className }: { className?: string }): React.ReactEleme
 }
 
 const normalizeMode = (mode: SessionContinuityMode): IntentMode => {
-  if (mode === 'frame-bridge' || mode === 'style-match') return mode;
-  return 'none';
+  if (mode === "frame-bridge" || mode === "style-match") return mode;
+  return "none";
 };
 
 const resolveStrengthLabel = (mode: IntentMode): string => {
-  if (mode === 'frame-bridge') return 'Temporal match';
-  if (mode === 'style-match') return 'Style fidelity';
-  return 'Continuity strength';
+  if (mode === "frame-bridge") return "Temporal match";
+  if (mode === "style-match") return "Style fidelity";
+  return "Continuity strength";
 };
 
 export function ContinuityIntentPicker({
@@ -69,39 +73,43 @@ export function ContinuityIntentPicker({
   const options = useMemo(
     () => [
       {
-        id: 'frame-bridge' as const,
-        label: 'Continue scene',
-        description: 'Next shot starts where this one ended',
-        baseClass: 'text-cyan-400',
-        activeClass: 'border-cyan-400/40 bg-cyan-400/7 text-cyan-400',
+        id: "frame-bridge" as const,
+        label: "Continue scene",
+        description: "Next shot starts where this one ended",
+        baseClass: "text-cyan-400",
+        activeClass: "border-cyan-400/40 bg-cyan-400/7 text-cyan-400",
         icon: <BridgeIcon className="h-3 w-3" />,
       },
       {
-        id: 'style-match' as const,
-        label: 'New angle, same look',
-        description: 'Different framing, consistent colors & style',
-        baseClass: 'text-accent',
-        activeClass: 'border-accent/50 bg-accent/10 text-accent',
+        id: "style-match" as const,
+        label: "New angle, same look",
+        description: "Different framing, consistent colors & style",
+        baseClass: "text-accent",
+        activeClass: "border-accent/50 bg-accent/10 text-accent",
         icon: <PaintbrushIcon className="h-3 w-3" />,
       },
       {
-        id: 'none' as const,
-        label: 'Independent',
-        description: 'Treat this as a standalone shot',
-        baseClass: 'text-muted',
-        activeClass: 'border-border-strong bg-surface-1 text-foreground',
-        icon: <span className="inline-block h-1.5 w-1.5 rounded-full bg-current" />,
+        id: "none" as const,
+        label: "Independent",
+        description: "Treat this as a standalone shot",
+        baseClass: "text-muted",
+        activeClass: "border-border-strong bg-surface-1 text-foreground",
+        icon: (
+          <span className="inline-block h-1.5 w-1.5 rounded-full bg-current" />
+        ),
       },
     ],
-    []
+    [],
   );
 
   const sliderLabel = resolveStrengthLabel(activeMode);
-  const sliderDisabled = activeMode === 'none';
+  const sliderDisabled = activeMode === "none";
 
   return (
     <section className="rounded-lg border border-border bg-surface-2 p-3">
-      <header className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted">Continuity intent</header>
+      <header className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted">
+        Continuity intent
+      </header>
 
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
         {options.map((option) => {
@@ -112,17 +120,21 @@ export function ContinuityIntentPicker({
               type="button"
               onClick={() => onModeChange(option.id)}
               className={cn(
-                'rounded-md border p-2 text-left transition-colors',
+                "rounded-md border p-2 text-left transition-colors",
                 isActive
                   ? option.activeClass
-                  : 'border-border bg-surface-1 text-muted hover:border-border-strong hover:text-foreground'
+                  : "border-border bg-surface-1 text-muted hover:border-border-strong hover:text-foreground",
               )}
             >
               <div className="mb-1 flex items-center gap-1.5 text-xs font-semibold">
-                <span className={isActive ? option.baseClass : 'text-muted'}>{option.icon}</span>
+                <span className={isActive ? option.baseClass : "text-muted"}>
+                  {option.icon}
+                </span>
                 <span>{option.label}</span>
               </div>
-              <p className="text-[11px] leading-4 text-muted">{option.description}</p>
+              <p className="text-[11px] leading-4 text-muted">
+                {option.description}
+              </p>
             </button>
           );
         })}

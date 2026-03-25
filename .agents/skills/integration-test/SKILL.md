@@ -45,14 +45,14 @@ If the user asks to fix failing integration tests:
 
 ## Integration Test Types
 
-| Type | When to Write | What to Assert |
-|------|--------------|----------------|
-| Bootstrap (Type 1) | Changed startup sequence, DI config, env validation | Server starts, health check returns 200 |
-| DI Container (Type 2) | Added/removed/renamed a service registration | Every registered name resolves without throwing |
-| Full-Stack Route (Type 3) | Changed middleware, auth, or route wiring | Request through real app gets expected status |
-| Database (Type 4) | Changed Firestore schema, transaction logic | Data round-trips correctly through emulator |
-| Workflow (Type 5) | Changed service that feeds into another service | Output of service A is valid input for service B |
-| Contract (Type 6) | Integrated new external API or updated client | Client handles real response fixtures correctly |
+| Type                      | When to Write                                       | What to Assert                                   |
+| ------------------------- | --------------------------------------------------- | ------------------------------------------------ |
+| Bootstrap (Type 1)        | Changed startup sequence, DI config, env validation | Server starts, health check returns 200          |
+| DI Container (Type 2)     | Added/removed/renamed a service registration        | Every registered name resolves without throwing  |
+| Full-Stack Route (Type 3) | Changed middleware, auth, or route wiring           | Request through real app gets expected status    |
+| Database (Type 4)         | Changed Firestore schema, transaction logic         | Data round-trips correctly through emulator      |
+| Workflow (Type 5)         | Changed service that feeds into another service     | Output of service A is valid input for service B |
+| Contract (Type 6)         | Integrated new external API or updated client       | Client handles real response fixtures correctly  |
 
 ## Running Integration Tests
 

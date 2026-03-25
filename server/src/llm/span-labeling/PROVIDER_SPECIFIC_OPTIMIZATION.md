@@ -6,19 +6,20 @@ This implementation uses **different strategies for OpenAI vs Groq** based on ho
 
 ## Key Difference
 
-| Aspect | OpenAI/GPT-4o | Groq/Llama 3 |
-|--------|---------------|--------------|
-| Schema mode | Grammar-constrained (strict) | Validation-only |
-| Description processing | **During generation** | Post-hoc validation |
-| Where rules live | Schema descriptions | System prompt |
-| Prompt size | Minimal (~400 tokens) | Full (~1000 tokens) |
-| Schema size | Rich (~600 tokens) | Basic (~200 tokens) |
+| Aspect                 | OpenAI/GPT-4o                | Groq/Llama 3        |
+| ---------------------- | ---------------------------- | ------------------- |
+| Schema mode            | Grammar-constrained (strict) | Validation-only     |
+| Description processing | **During generation**        | Post-hoc validation |
+| Where rules live       | Schema descriptions          | System prompt       |
+| Prompt size            | Minimal (~400 tokens)        | Full (~1000 tokens) |
+| Schema size            | Rich (~600 tokens)           | Basic (~200 tokens) |
 
 ## OpenAI/GPT-4o Strategy
 
 **Research basis**: OpenAI documentation confirms schema descriptions ARE processed during token generation.
 
 **Implementation**:
+
 ```
 ┌─────────────────────────────────────────┐
 │ SYSTEM PROMPT (~400 tokens)             │
@@ -38,7 +39,8 @@ This implementation uses **different strategies for OpenAI vs Groq** based on ho
 └─────────────────────────────────────────┘
 ```
 
-**Why this works**: 
+**Why this works**:
+
 - Grammar-constrained decoding guarantees structural compliance
 - Descriptions guide semantic decisions during generation
 - Model "reads" descriptions when deciding values
@@ -50,6 +52,7 @@ This implementation uses **different strategies for OpenAI vs Groq** based on ho
 **Research basis**: Llama 3 PDF Section 1.2 (GAtt mechanism), Section 3.1 (system prompt rules)
 
 **Implementation**:
+
 ```
 ┌─────────────────────────────────────────┐
 │ SYSTEM PROMPT (~1000 tokens)            │
@@ -83,6 +86,7 @@ This implementation uses **different strategies for OpenAI vs Groq** based on ho
 ```
 
 **Why this works**:
+
 - GAtt attention mechanism maintains focus on system prompt
 - Full rules ensure accurate disambiguation
 - Schema validates output but doesn't guide generation
@@ -93,66 +97,68 @@ This implementation uses **different strategies for OpenAI vs Groq** based on ho
 ## Usage
 
 ```typescript
-import { 
-  buildSystemPrompt, 
-  getSchema, 
+import {
+  buildSystemPrompt,
+  getSchema,
   getAdapterOptions,
-  buildSpanLabelingMessages 
-} from './utils/promptBuilder';
+  buildSpanLabelingMessages,
+} from "./utils/promptBuilder";
 
 // For OpenAI
-const openaiPrompt = buildSystemPrompt(text, false, 'openai');
-const openaiSchema = getSchema('openai');
-const openaiOptions = getAdapterOptions('openai');
+const openaiPrompt = buildSystemPrompt(text, false, "openai");
+const openaiSchema = getSchema("openai");
+const openaiOptions = getAdapterOptions("openai");
 
 // For Groq
-const groqPrompt = buildSystemPrompt(text, false, 'groq');
-const groqSchema = getSchema('groq');
-const groqOptions = getAdapterOptions('groq');
+const groqPrompt = buildSystemPrompt(text, false, "groq");
+const groqSchema = getSchema("groq");
+const groqOptions = getAdapterOptions("groq");
 
 // Or use complete message builder
-const messages = buildSpanLabelingMessages(text, true, 'openai');
+const messages = buildSpanLabelingMessages(text, true, "openai");
 ```
 
 ## Token Comparison
 
-| Component | OpenAI | Groq |
-|-----------|--------|------|
-| Prompt | 400 | 1000 |
-| Schema | 600 | 200 |
-| Few-shot (2 examples) | 300 | 450 |
-| **Total** | **1300** | **1650** |
+| Component             | OpenAI   | Groq     |
+| --------------------- | -------- | -------- |
+| Prompt                | 400      | 1000     |
+| Schema                | 600      | 200      |
+| Few-shot (2 examples) | 300      | 450      |
+| **Total**             | **1300** | **1650** |
 
 OpenAI saves ~350 tokens per request while maintaining accuracy through schema-embedded rules.
 
 ## What Each Schema Enforces
 
 ### OpenAI Schema (Enriched)
-| Field | Structural | Semantic |
-|-------|-----------|----------|
-| analysis_trace | Required string | CoT instruction in description |
-| spans[].text | Required string | Exact match rule in description |
-| spans[].role | Enum constraint | Full disambiguation in description |
-| spans[].confidence | Number 0-1 | Guidelines in description |
-| meta | Required object | Version hint in description |
-| isAdversarial | Required boolean | Detection rules in description |
+
+| Field              | Structural       | Semantic                           |
+| ------------------ | ---------------- | ---------------------------------- |
+| analysis_trace     | Required string  | CoT instruction in description     |
+| spans[].text       | Required string  | Exact match rule in description    |
+| spans[].role       | Enum constraint  | Full disambiguation in description |
+| spans[].confidence | Number 0-1       | Guidelines in description          |
+| meta               | Required object  | Version hint in description        |
+| isAdversarial      | Required boolean | Detection rules in description     |
 
 ### Groq Schema (Validation)
-| Field | Structural | Semantic |
-|-------|-----------|----------|
-| analysis_trace | Required string | Minimal description |
-| spans[].text | Required string | Minimal description |
-| spans[].role | Enum constraint | Validated post-hoc |
-| spans[].confidence | Number 0-1 | Minimal description |
-| meta | Required object | Minimal description |
-| isAdversarial | Required boolean | Minimal description |
+
+| Field              | Structural       | Semantic            |
+| ------------------ | ---------------- | ------------------- |
+| analysis_trace     | Required string  | Minimal description |
+| spans[].text       | Required string  | Minimal description |
+| spans[].role       | Enum constraint  | Validated post-hoc  |
+| spans[].confidence | Number 0-1       | Minimal description |
+| meta               | Required object  | Minimal description |
+| isAdversarial      | Required boolean | Minimal description |
 
 ## Files Structure
 
 ```
 schemas/
 ├── OpenAISchema.ts       # Enriched schema + minimal prompt
-├── GroqSchema.ts         # Basic schema + full prompt  
+├── GroqSchema.ts         # Basic schema + full prompt
 ├── SpanLabelingSchema.ts # Shared types and taxonomy IDs
 └── DescriptionEnrichedSchema.ts  # [DEPRECATED - use OpenAISchema.ts]
 

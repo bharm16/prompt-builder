@@ -66,10 +66,10 @@ export const OptimizationConfig = {
   // API timeout settings (in milliseconds)
   timeouts: {
     contextInference: 15000, // Context inference from prompt
-    modeDetection: 10000,   // Mode detection
+    modeDetection: 10000, // Mode detection
     optimization: {
       default: 30000,
-      video: 90000,         // Video prompts need more time
+      video: 90000, // Video prompts need more time
     },
   } as OptimizationTimeouts,
 
@@ -86,11 +86,11 @@ export const OptimizationConfig = {
 
   // Temperature settings for different operations
   temperatures: {
-    contextInference: 0.3,  // Low for consistent inference
-    modeDetection: 0.2,     // Very low for consistent mode detection
+    contextInference: 0.3, // Low for consistent inference
+    modeDetection: 0.2, // Very low for consistent mode detection
     optimization: {
       default: 0.3,
-      video: 0.7,           // Higher creativity for video
+      video: 0.7, // Higher creativity for video
     },
     domainContent: 0.4,
   } as OptimizationTemperatures,
@@ -103,20 +103,20 @@ export const OptimizationConfig = {
   // Mode detection thresholds
   modeDetection: {
     minConfidenceThreshold: 0.3,
-    defaultMode: 'video',
+    defaultMode: "video",
   } as ModeDetectionConfig,
 
   // Template versions for tracking improvements
   templateVersions: {
-    default: '2.0.0',
-    video: '1.0.0',
+    default: "2.0.0",
+    video: "1.0.0",
   } as TemplateVersions,
 
   // Span labeling configuration (for video mode)
   spanLabeling: {
     maxSpans: 60,
     minConfidence: 0.5,
-    templateVersion: 'v1',
+    templateVersion: "v1",
   } as SpanLabelingConfig,
 
   // Constitutional AI sampling (1 = always, 0 = never)
@@ -126,9 +126,9 @@ export const OptimizationConfig = {
 
   // Cache configuration keys
   cache: {
-    promptOptimization: 'promptOptimization',
-    contextInference: 'contextInference',
-    modeDetection: 'modeDetection',
+    promptOptimization: "promptOptimization",
+    contextInference: "contextInference",
+    modeDetection: "modeDetection",
   } as CacheConfig,
 } as const;
 

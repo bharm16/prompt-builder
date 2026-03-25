@@ -1,10 +1,10 @@
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { describe, it, expect, vi } from "vitest";
+import { render, screen, fireEvent } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
-import { FloatingToolbar } from '@features/prompt-optimizer/components/FloatingToolbar';
+import { FloatingToolbar } from "@features/prompt-optimizer/components/FloatingToolbar";
 
-describe('FloatingToolbar', () => {
+describe("FloatingToolbar", () => {
   const baseProps = {
     onCopy: vi.fn(),
     onExport: vi.fn(),
@@ -22,8 +22,8 @@ describe('FloatingToolbar', () => {
     canRedo: true,
   };
 
-  describe('error handling', () => {
-    it('closes the export menu when clicking outside', () => {
+  describe("error handling", () => {
+    it("closes the export menu when clicking outside", () => {
       const onToggleExportMenu = vi.fn();
 
       render(
@@ -31,7 +31,7 @@ describe('FloatingToolbar', () => {
           {...baseProps}
           showExportMenu
           onToggleExportMenu={onToggleExportMenu}
-        />
+        />,
       );
 
       fireEvent.mouseDown(document.body);
@@ -40,36 +40,28 @@ describe('FloatingToolbar', () => {
     });
   });
 
-  describe('edge cases', () => {
-    it('disables undo/redo buttons when unavailable', () => {
+  describe("edge cases", () => {
+    it("disables undo/redo buttons when unavailable", () => {
       render(
-        <FloatingToolbar
-          {...baseProps}
-          canUndo={false}
-          canRedo={false}
-        />
+        <FloatingToolbar {...baseProps} canUndo={false} canRedo={false} />,
       );
 
-      expect(screen.getByTitle('Undo')).toBeDisabled();
-      expect(screen.getByTitle('Redo')).toBeDisabled();
+      expect(screen.getByTitle("Undo")).toBeDisabled();
+      expect(screen.getByTitle("Redo")).toBeDisabled();
     });
   });
 
-  describe('core behavior', () => {
-    it('calls onExport for selected format', async () => {
+  describe("core behavior", () => {
+    it("calls onExport for selected format", async () => {
       const user = userEvent.setup();
       const onExport = vi.fn();
       render(
-        <FloatingToolbar
-          {...baseProps}
-          showExportMenu
-          onExport={onExport}
-        />
+        <FloatingToolbar {...baseProps} showExportMenu onExport={onExport} />,
       );
 
-      await user.click(screen.getByText('Text (.txt)'));
+      await user.click(screen.getByText("Text (.txt)"));
 
-      expect(onExport).toHaveBeenCalledWith('text');
+      expect(onExport).toHaveBeenCalledWith("text");
     });
   });
 });

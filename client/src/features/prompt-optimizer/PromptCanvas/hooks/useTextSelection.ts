@@ -1,22 +1,29 @@
 /**
  * useTextSelection Hook
- * 
+ *
  * Handles text selection and highlight interaction logic.
  * Extracted from PromptCanvas component to improve separation of concerns.
  */
 
-import { useCallback, useMemo, type RefObject } from 'react';
-import { getSelectionOffsets, selectRange } from '@features/prompt-optimizer/utils/textSelection';
+import { useCallback, useMemo, type RefObject } from "react";
+import {
+  getSelectionOffsets,
+  selectRange,
+} from "@features/prompt-optimizer/utils/textSelection";
 import {
   findHighlightNode,
   extractHighlightMetadata,
   createHighlightRange,
   resolveHighlightSpanId,
-} from '@features/prompt-optimizer/utils/highlightInteractionHelpers';
-import type { ParseResult, SuggestionPayload, SpanClickPayload } from '../types';
-import { logger } from '@/services/LoggingService';
+} from "@features/prompt-optimizer/utils/highlightInteractionHelpers";
+import type {
+  ParseResult,
+  SuggestionPayload,
+  SpanClickPayload,
+} from "../types";
+import { logger } from "@/services/LoggingService";
 
-const log = logger.child('useTextSelection');
+const log = logger.child("useTextSelection");
 
 export interface UseTextSelectionOptions {
   selectedMode: string;
@@ -48,11 +55,11 @@ export function useTextSelection({
 }: UseTextSelectionOptions): UseTextSelectionReturn {
   const spanContextSpans = useMemo(
     () => (Array.isArray(parseResult?.spans) ? parseResult.spans : []),
-    [parseResult?.spans]
+    [parseResult?.spans],
   );
 
   const handleTextSelection = useCallback((): void => {
-    if (selectedMode !== 'video') {
+    if (selectedMode !== "video") {
       return;
     }
 
@@ -68,30 +75,39 @@ export function useTextSelection({
     }
 
     if (onFetchSuggestions && editorRef.current) {
-      const cleanedText = trimmed.replace(/^-\s*/, '') || trimmed;
+      const cleanedText = trimmed.replace(/^-\s*/, "") || trimmed;
       const range = selection.getRangeAt(0).cloneRange();
       const offsets = getSelectionOffsets(editorRef.current, range);
       onFetchSuggestions({
         highlightedText: cleanedText,
         originalText: trimmed,
-        displayedPrompt: displayedPrompt ?? '',
+        displayedPrompt: displayedPrompt ?? "",
         range,
         offsets,
         metadata: null,
-        trigger: 'selection',
+        trigger: "selection",
         allLabeledSpans: spanContextSpans,
       });
     }
-  }, [selectedMode, editorRef, displayedPrompt, spanContextSpans, onFetchSuggestions]);
+  }, [
+    selectedMode,
+    editorRef,
+    displayedPrompt,
+    spanContextSpans,
+    onFetchSuggestions,
+  ]);
 
   const triggerSuggestionsFromTarget = useCallback(
     (targetElement: EventTarget | null, e: React.MouseEvent | null): void => {
-      if (selectedMode !== 'video' || !editorRef.current) {
+      if (selectedMode !== "video" || !editorRef.current) {
         return;
       }
 
       // Find the highlighted word element
-      const node = findHighlightNode(targetElement as HTMLElement | null, editorRef.current);
+      const node = findHighlightNode(
+        targetElement as HTMLElement | null,
+        editorRef.current,
+      );
       if (!node) {
         return;
       }
@@ -111,7 +127,7 @@ export function useTextSelection({
         spans: parseResult.spans,
         displayText: parseResult.displayText,
       });
-      const wordText = node.textContent?.trim() ?? '';
+      const wordText = node.textContent?.trim() ?? "";
       const spanId = resolveHighlightSpanId({
         spanId: metadata?.spanId ?? node.dataset?.spanId ?? null,
         start: metadata?.start ?? node.dataset?.start,
@@ -133,7 +149,7 @@ export function useTextSelection({
         const { range, rangeClone, offsets } = createHighlightRange(
           node,
           editorRef.current,
-          getSelectionOffsets
+          getSelectionOffsets,
         );
 
         // Update browser selection
@@ -141,8 +157,8 @@ export function useTextSelection({
 
         // Trigger suggestions
         if (import.meta.env.DEV) {
-          log.debug('Highlight click -> suggestion fetch', {
-            trigger: 'highlight',
+          log.debug("Highlight click -> suggestion fetch", {
+            trigger: "highlight",
             spanContextCount: spanContextSpans.length,
             hasMetadata: Boolean(metadata),
           });
@@ -150,11 +166,11 @@ export function useTextSelection({
         onFetchSuggestions({
           highlightedText: wordText,
           originalText: wordText,
-          displayedPrompt: displayedPrompt ?? '',
+          displayedPrompt: displayedPrompt ?? "",
           range: rangeClone,
           offsets,
           metadata: metadata ?? null,
-          trigger: 'highlight',
+          trigger: "highlight",
           allLabeledSpans: spanContextSpans,
         });
       }
@@ -169,34 +185,37 @@ export function useTextSelection({
       spanContextSpans,
       onSpanSelect,
       onIntentRefine,
-    ]
+    ],
   );
 
   const handleHighlightClick = useCallback(
     (e: React.MouseEvent): void => {
       triggerSuggestionsFromTarget(e.target, e);
     },
-    [triggerSuggestionsFromTarget]
+    [triggerSuggestionsFromTarget],
   );
 
   const handleHighlightMouseDown = useCallback(
     (e: React.MouseEvent): void => {
-      if (selectedMode !== 'video' || !editorRef.current) {
+      if (selectedMode !== "video" || !editorRef.current) {
         return;
       }
-      const node = findHighlightNode(e.target as HTMLElement | null, editorRef.current);
+      const node = findHighlightNode(
+        e.target as HTMLElement | null,
+        editorRef.current,
+      );
       if (!node) {
         return;
       }
       // Prevent native selection from interfering with click-based popover.
       e.preventDefault();
     },
-    [selectedMode, editorRef]
+    [selectedMode, editorRef],
   );
 
   const handleSpanClickFromBento = useCallback(
     (span: SpanClickPayload): void => {
-      if (!onFetchSuggestions || selectedMode !== 'video') {
+      if (!onFetchSuggestions || selectedMode !== "video") {
         return;
       }
 
@@ -218,7 +237,7 @@ export function useTextSelection({
       onFetchSuggestions({
         highlightedText: span.quote,
         originalText: span.quote,
-        displayedPrompt: displayedPrompt ?? '',
+        displayedPrompt: displayedPrompt ?? "",
         range: null, // Not needed for bento clicks
         offsets: { start: span.start, end: span.end },
         metadata: {
@@ -237,7 +256,7 @@ export function useTextSelection({
           idempotencyKey: span.idempotencyKey,
           span: span, // Full span object
         },
-        trigger: 'bento-grid',
+        trigger: "bento-grid",
         allLabeledSpans: spanContextSpans,
       });
     },
@@ -249,7 +268,7 @@ export function useTextSelection({
       spanContextSpans,
       onSpanSelect,
       onIntentRefine,
-    ]
+    ],
   );
 
   return {

@@ -1,13 +1,20 @@
-import React, { useCallback } from 'react';
-import { ChevronRight } from '@promptstudio/system/components/ui';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@promptstudio/system/components/ui/dialog';
-import { Button } from '@promptstudio/system/components/ui/button';
-import { Input } from '@promptstudio/system/components/ui/input';
-import { Textarea } from '@promptstudio/system/components/ui/textarea';
-import type { Asset } from '@shared/types/asset';
-import { cn } from '@/utils/cn';
-import { ImageUploadGrid } from './ImageUploadGrid';
-import { useQuickCharacterCreate } from './hooks/useQuickCharacterCreate';
+import React, { useCallback } from "react";
+import { ChevronRight } from "@promptstudio/system/components/ui";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@promptstudio/system/components/ui/dialog";
+import { Button } from "@promptstudio/system/components/ui/button";
+import { Input } from "@promptstudio/system/components/ui/input";
+import { Textarea } from "@promptstudio/system/components/ui/textarea";
+import type { Asset } from "@shared/types/asset";
+import { cn } from "@/utils/cn";
+import { ImageUploadGrid } from "./ImageUploadGrid";
+import { useQuickCharacterCreate } from "./hooks/useQuickCharacterCreate";
 
 interface QuickCharacterCreateProps {
   isOpen: boolean;
@@ -64,7 +71,9 @@ export function QuickCharacterCreate({
 
         <div className="space-y-4">
           <div>
-            <label className="mb-1 block text-sm font-medium text-foreground">Trigger</label>
+            <label className="mb-1 block text-sm font-medium text-foreground">
+              Trigger
+            </label>
             <div className="flex items-center gap-2">
               <span className="text-sm text-muted">@</span>
               <Input
@@ -79,7 +88,9 @@ export function QuickCharacterCreate({
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-foreground">Name</label>
+            <label className="mb-1 block text-sm font-medium text-foreground">
+              Name
+            </label>
             <Input
               value={name}
               onChange={(event) => setName(event.target.value)}
@@ -109,7 +120,10 @@ export function QuickCharacterCreate({
             className="flex items-center gap-1 text-sm text-muted"
           >
             <ChevronRight
-              className={cn('h-4 w-4 transition', isAdvancedOpen && 'rotate-90')}
+              className={cn(
+                "h-4 w-4 transition",
+                isAdvancedOpen && "rotate-90",
+              )}
             />
             Advanced options
           </button>
@@ -127,7 +141,7 @@ export function QuickCharacterCreate({
                   rows={2}
                 />
                 <p className="mt-1 text-xs text-muted">
-                  Added to prompts when @{trigger || 'trigger'} is used.
+                  Added to prompts when @{trigger || "trigger"} is used.
                 </p>
               </div>
 
@@ -149,11 +163,20 @@ export function QuickCharacterCreate({
         </div>
 
         <DialogFooter className="mt-4">
-          <Button type="button" variant="outline" onClick={onClose} disabled={isCreating}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onClose}
+            disabled={isCreating}
+          >
             Cancel
           </Button>
-          <Button type="button" onClick={handleCreate} disabled={isCreateDisabled}>
-            {isCreating ? 'Creating...' : `Create @${trigger || 'character'}`}
+          <Button
+            type="button"
+            onClick={handleCreate}
+            disabled={isCreateDisabled}
+          >
+            {isCreating ? "Creating..." : `Create @${trigger || "character"}`}
           </Button>
         </DialogFooter>
       </DialogContent>

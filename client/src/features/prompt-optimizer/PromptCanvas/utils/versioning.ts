@@ -1,13 +1,13 @@
-import type { Generation } from '@features/generations/types';
-import type { HighlightSnapshot } from '../types';
+import type { Generation } from "@features/generations/types";
+import type { HighlightSnapshot } from "../types";
 
 export const resolveVersionTimestamp = (
-  value: string | number | undefined
+  value: string | number | undefined,
 ): number | null => {
-  if (typeof value === 'number' && Number.isFinite(value)) {
+  if (typeof value === "number" && Number.isFinite(value)) {
     return value;
   }
-  if (typeof value === 'string' && value.trim()) {
+  if (typeof value === "string" && value.trim()) {
     const parsed = Date.parse(value);
     if (!Number.isNaN(parsed)) return parsed;
     const asNumber = Number(value);
@@ -17,17 +17,19 @@ export const resolveVersionTimestamp = (
 };
 
 export const mapShotStatusToGenerationStatus = (
-  status: string
-): Generation['status'] => {
-  if (status === 'completed') return 'completed';
-  if (status === 'failed') return 'failed';
-  if (status === 'generating-keyframe' || status === 'generating-video') {
-    return 'generating';
+  status: string,
+): Generation["status"] => {
+  if (status === "completed") return "completed";
+  if (status === "failed") return "failed";
+  if (status === "generating-keyframe" || status === "generating-video") {
+    return "generating";
   }
-  return 'pending';
+  return "pending";
 };
 
-export const isHighlightSnapshot = (value: unknown): value is HighlightSnapshot =>
+export const isHighlightSnapshot = (
+  value: unknown,
+): value is HighlightSnapshot =>
   !!value &&
-  typeof value === 'object' &&
+  typeof value === "object" &&
   Array.isArray((value as HighlightSnapshot).spans);

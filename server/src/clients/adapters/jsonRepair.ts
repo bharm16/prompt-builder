@@ -20,22 +20,22 @@ export function attemptJsonRepair(text: string): JsonRepairResult {
   // Fix trailing commas before closing brackets
   const trailingCommaPattern = /,(\s*[}\]])/g;
   if (trailingCommaPattern.test(repaired)) {
-    repaired = repaired.replace(trailingCommaPattern, '$1');
-    changes.push('Removed trailing commas');
+    repaired = repaired.replace(trailingCommaPattern, "$1");
+    changes.push("Removed trailing commas");
   }
 
   // Fix missing commas between array elements
   const missingCommaPattern = /}(\s*){/g;
   if (missingCommaPattern.test(repaired)) {
-    repaired = repaired.replace(missingCommaPattern, '},$1{');
-    changes.push('Added missing commas between objects');
+    repaired = repaired.replace(missingCommaPattern, "},$1{");
+    changes.push("Added missing commas between objects");
   }
 
   // Fix single quotes to double quotes
   const singleQuotePattern = /'([^']*)'(?=\s*:)/g;
   if (singleQuotePattern.test(repaired)) {
     repaired = repaired.replace(singleQuotePattern, '"$1"');
-    changes.push('Converted single quotes to double quotes');
+    changes.push("Converted single quotes to double quotes");
   }
 
   // Fix unquoted keys
@@ -43,7 +43,7 @@ export function attemptJsonRepair(text: string): JsonRepairResult {
   const originalRepaired = repaired;
   repaired = repaired.replace(unquotedKeyPattern, '$1"$2"$3');
   if (repaired !== originalRepaired) {
-    changes.push('Added quotes to unquoted keys');
+    changes.push("Added quotes to unquoted keys");
   }
 
   // Attempt to close unclosed JSON — track auto-close counts
@@ -51,7 +51,7 @@ export function attemptJsonRepair(text: string): JsonRepairResult {
   const closeBraces = (repaired.match(/}/g) || []).length;
   const autoClosedBraces = Math.max(0, openBraces - closeBraces);
   if (autoClosedBraces > 0) {
-    repaired += '}'.repeat(autoClosedBraces);
+    repaired += "}".repeat(autoClosedBraces);
     changes.push(`Added ${autoClosedBraces} closing braces`);
   }
 
@@ -59,7 +59,7 @@ export function attemptJsonRepair(text: string): JsonRepairResult {
   const closeBrackets = (repaired.match(/\]/g) || []).length;
   const autoClosedBrackets = Math.max(0, openBrackets - closeBrackets);
   if (autoClosedBrackets > 0) {
-    repaired += ']'.repeat(autoClosedBrackets);
+    repaired += "]".repeat(autoClosedBrackets);
     changes.push(`Added ${autoClosedBrackets} closing brackets`);
   }
 
@@ -76,7 +76,7 @@ export function attemptJsonRepair(text: string): JsonRepairResult {
  */
 export function assessRepairCompleteness(
   result: JsonRepairResult,
-  expectedMinItems?: number
+  expectedMinItems?: number,
 ): { isLikelyTruncated: boolean; reason?: string } {
   // Auto-closed delimiters are the strongest signal of truncation
   if (result.autoClosedBraces > 0 || result.autoClosedBrackets > 0) {
@@ -90,10 +90,14 @@ export function assessRepairCompleteness(
   // (the repaired string already has closers appended, so check the original-length substring)
   const originalLength = result.repaired.length; // no closers were added if we got here
   const trimmed = result.repaired.slice(0, originalLength).trimEnd();
-  if (trimmed.endsWith(',"') || trimmed.endsWith(':"') || trimmed.endsWith(': "')) {
+  if (
+    trimmed.endsWith(',"') ||
+    trimmed.endsWith(':"') ||
+    trimmed.endsWith(': "')
+  ) {
     return {
       isLikelyTruncated: true,
-      reason: 'Text ends with incomplete key-value pattern',
+      reason: "Text ends with incomplete key-value pattern",
     };
   }
 

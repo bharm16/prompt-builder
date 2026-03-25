@@ -5,7 +5,7 @@
  * re-export).  Used in contract tests to validate server payloads.
  * `.passthrough()` allows forward-compatible additions.
  */
-import { z } from 'zod';
+import { z } from "zod";
 
 const PreviewMetadataSchema = z.object({
   aspectRatio: z.string(),
@@ -124,13 +124,14 @@ export const GenerateVideoResponseSchema = z
     viewUrl: z.string().optional(),
     viewUrlExpiresAt: z.string().optional(),
     sizeBytes: z.number().optional(),
-    inputMode: z.enum(['t2v', 'i2v']).optional(),
+    inputMode: z.enum(["t2v", "i2v"]).optional(),
     startImageUrl: z.string().optional(),
     resolvedAspectRatio: z.string().optional(),
     jobId: z.string().optional(),
-    status: z.enum(['queued', 'processing', 'completed', 'failed']).optional(),
+    status: z.enum(["queued", "processing", "completed", "failed"]).optional(),
     creditsReserved: z.number().optional(),
     creditsDeducted: z.number().optional(),
+    remainingCredits: z.number().optional(),
     keyframeGenerated: z.boolean().optional(),
     keyframeUrl: z.string().nullish(),
     faceSwapApplied: z.boolean().optional(),
@@ -144,7 +145,7 @@ export const VideoJobStatusResponseSchema = z
   .object({
     success: z.boolean(),
     jobId: z.string(),
-    status: z.enum(['queued', 'processing', 'completed', 'failed']),
+    status: z.enum(["queued", "processing", "completed", "failed"]),
     requestId: z.string().optional(),
     progress: z.number().nullable().optional(),
     createdAtMs: z.number().optional(),
@@ -155,7 +156,7 @@ export const VideoJobStatusResponseSchema = z
     viewUrl: z.string().optional(),
     viewUrlExpiresAt: z.string().optional(),
     sizeBytes: z.number().optional(),
-    inputMode: z.enum(['t2v', 'i2v']).optional(),
+    inputMode: z.enum(["t2v", "i2v"]).optional(),
     startImageUrl: z.string().optional(),
     resolvedAspectRatio: z.string().optional(),
     serverTimeoutMs: z.number().optional(),

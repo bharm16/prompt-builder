@@ -1,6 +1,6 @@
-import type { Suggestion } from '../services/types.js';
-import type { VideoPromptService } from '@services/video-prompt-analysis/VideoPromptService';
-import type { SuggestionValidationService } from '../services/SuggestionValidationService.ts';
+import type { Suggestion } from "../services/types.js";
+import type { VideoPromptService } from "@services/video-prompt-analysis/VideoPromptService";
+import type { SuggestionValidationService } from "../services/SuggestionValidationService.ts";
 
 export interface SuggestionTestCase {
   id: string;
@@ -8,7 +8,9 @@ export interface SuggestionTestCase {
   span: { text: string; category: string };
   allowedCategories?: string[];
   forbiddenOutputs?: string[];
-  expectedQualities?: Partial<Record<SuggestionQualityDimension, { min?: number; max?: number }>>;
+  expectedQualities?: Partial<
+    Record<SuggestionQualityDimension, { min?: number; max?: number }>
+  >;
   contextBefore?: string;
   contextAfter?: string;
   spanAnchors?: string;
@@ -17,11 +19,11 @@ export interface SuggestionTestCase {
 }
 
 export type SuggestionQualityDimension =
-  | 'contextualFit'
-  | 'categoryAlignment'
-  | 'diversity'
-  | 'videoSpecificity'
-  | 'sceneCoherence';
+  | "contextualFit"
+  | "categoryAlignment"
+  | "diversity"
+  | "videoSpecificity"
+  | "sceneCoherence";
 
 export interface SuggestionQualityScores {
   contextualFit: number;
@@ -42,9 +44,9 @@ export interface SuggestionQualityResult {
 function normalizeText(text: string): string {
   return text
     .toLowerCase()
-    .normalize('NFKC')
-    .replace(/[^\p{L}\p{N}\s]+/gu, ' ')
-    .replace(/\s+/g, ' ')
+    .normalize("NFKC")
+    .replace(/[^\p{L}\p{N}\s]+/gu, " ")
+    .replace(/\s+/g, " ")
     .trim();
 }
 
@@ -82,15 +84,18 @@ export class SuggestionQualityEvaluator {
 
   constructor(
     private readonly validationService: SuggestionValidationService,
-    private readonly videoService: VideoPromptService
+    private readonly videoService: VideoPromptService,
   ) {}
 
   async evaluateCase(
     testCase: SuggestionTestCase,
-    suggestions: Suggestion[]
+    suggestions: Suggestion[],
   ): Promise<SuggestionQualityResult> {
     const failures: string[] = [];
-    const validSuggestions = suggestions.filter((suggestion) => typeof suggestion?.text === 'string' && suggestion.text.trim());
+    const validSuggestions = suggestions.filter(
+      (suggestion) =>
+        typeof suggestion?.text === "string" && suggestion.text.trim(),
+    );
     const texts = validSuggestions.map((suggestion) => suggestion.text.trim());
 
     const allowedCategories = (
@@ -124,31 +129,40 @@ export class SuggestionQualityEvaluator {
 
     const contextuallyValid = this.validationService.sanitizeSuggestions(
       validSuggestions,
-      sanitizationContext as Parameters<SuggestionValidationService['sanitizeSuggestions']>[1]
+      sanitizationContext as Parameters<
+        SuggestionValidationService["sanitizeSuggestions"]
+      >[1],
     );
-    const coherentSuggestions = this.validationService.sanitizeSuggestions(validSuggestions, {
-      ...sanitizationContext,
-    } as Parameters<SuggestionValidationService['sanitizeSuggestions']>[1]);
+    const coherentSuggestions = this.validationService.sanitizeSuggestions(
+      validSuggestions,
+      {
+        ...sanitizationContext,
+      } as Parameters<SuggestionValidationService["sanitizeSuggestions"]>[1],
+    );
     const categoryValid = this.validationService.validateSuggestions(
       validSuggestions,
       testCase.span.text,
-      testCase.span.category
+      testCase.span.category,
     );
-    const categoryValidTextSet = new Set(categoryValid.map((suggestion) => normalizeText(suggestion.text)));
+    const categoryValidTextSet = new Set(
+      categoryValid.map((suggestion) => normalizeText(suggestion.text)),
+    );
 
     const contextualFit = toFiveScale(
-      texts.length > 0 ? contextuallyValid.length / texts.length : 0
+      texts.length > 0 ? contextuallyValid.length / texts.length : 0,
     );
     const categoryAlignment = toFiveScale(
       texts.length > 0
         ? validSuggestions.filter((suggestion) => {
-            const normalizedCategory = String(suggestion.category || '').toLowerCase();
+            const normalizedCategory = String(
+              suggestion.category || "",
+            ).toLowerCase();
             return (
               allowedCategories.includes(normalizedCategory) &&
               categoryValidTextSet.has(normalizeText(suggestion.text))
             );
           }).length / texts.length
-        : 0
+        : 0,
     );
 
     let diversityRatio = 1;
@@ -174,11 +188,11 @@ export class SuggestionQualityEvaluator {
           if (hasConcreteCue) return 0.7;
           if (!hasAbstractCue) return 0.45;
           return 0.2;
-        })
-      )
+        }),
+      ),
     );
     const sceneCoherence = toFiveScale(
-      texts.length > 0 ? coherentSuggestions.length / texts.length : 0
+      texts.length > 0 ? coherentSuggestions.length / texts.length : 0,
     );
 
     if (testCase.forbiddenOutputs && testCase.forbiddenOutputs.length > 0) {
@@ -199,13 +213,19 @@ export class SuggestionQualityEvaluator {
     };
 
     if (testCase.expectedQualities) {
-      for (const [dimension, range] of Object.entries(testCase.expectedQualities)) {
+      for (const [dimension, range] of Object.entries(
+        testCase.expectedQualities,
+      )) {
         const value = scores[dimension as SuggestionQualityDimension];
         if (range?.min !== undefined && value < range.min) {
-          failures.push(`${dimension} (${value.toFixed(1)}) below min ${range.min}`);
+          failures.push(
+            `${dimension} (${value.toFixed(1)}) below min ${range.min}`,
+          );
         }
         if (range?.max !== undefined && value > range.max) {
-          failures.push(`${dimension} (${value.toFixed(1)}) above max ${range.max}`);
+          failures.push(
+            `${dimension} (${value.toFixed(1)}) above max ${range.max}`,
+          );
         }
       }
     }

@@ -5,19 +5,22 @@
  * Each method returns a Promise that resolves with the API response data.
  */
 
-import { logger } from '@/services/LoggingService';
-import { buildFirebaseAuthHeaders } from '@/services/http/firebaseAuth';
-import type { LabelSpansPayload, LabelSpansResponse } from './spanLabelingTypes';
-import { buildLabelSpansBody } from './spanLabelingRequest';
-import { buildRequestError } from './spanLabelingErrors';
-import { parseLabelSpansResponse } from './spanLabelingResponse';
-import { readSpanLabelStream } from './spanLabelingStream';
+import { logger } from "@/services/LoggingService";
+import { buildFirebaseAuthHeaders } from "@/services/http/firebaseAuth";
+import type {
+  LabelSpansPayload,
+  LabelSpansResponse,
+} from "./spanLabelingTypes";
+import { buildLabelSpansBody } from "./spanLabelingRequest";
+import { buildRequestError } from "./spanLabelingErrors";
+import { parseLabelSpansResponse } from "./spanLabelingResponse";
+import { readSpanLabelStream } from "./spanLabelingStream";
 
 /**
  * Span Labeling API
  */
 export class SpanLabelingApi {
-  private static log = logger.child('SpanLabelingApi');
+  private static log = logger.child("SpanLabelingApi");
   private static shouldFallbackToBlocking(status: number): boolean {
     return status === 404 || (status >= 500 && status < 600);
   }
@@ -32,13 +35,13 @@ export class SpanLabelingApi {
    */
   static async labelSpans(
     payload: LabelSpansPayload,
-    signal: AbortSignal | null = null
+    signal: AbortSignal | null = null,
   ): Promise<LabelSpansResponse> {
     const authHeaders = await buildFirebaseAuthHeaders();
-    const res = await fetch('/llm/label-spans', {
-      method: 'POST',
+    const res = await fetch("/llm/label-spans", {
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         ...authHeaders,
       },
       body: buildLabelSpansBody(payload),
@@ -62,10 +65,10 @@ export class SpanLabelingApi {
    */
   static async labelSpansStream(
     payload: LabelSpansPayload,
-    onChunk: (span: LabelSpansResponse['spans'][0]) => void,
-    signal: AbortSignal | null = null
+    onChunk: (span: LabelSpansResponse["spans"][0]) => void,
+    signal: AbortSignal | null = null,
   ): Promise<LabelSpansResponse> {
-    this.log.debug('Stream started', {
+    this.log.debug("Stream started", {
       textLength: payload.text.length,
       maxSpans: payload.maxSpans,
     });
@@ -73,10 +76,10 @@ export class SpanLabelingApi {
     const authHeaders = await buildFirebaseAuthHeaders();
     let res: Response;
     try {
-      res = await fetch('/llm/label-spans/stream', {
-        method: 'POST',
+      res = await fetch("/llm/label-spans/stream", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
           ...authHeaders,
         },
         body: buildLabelSpansBody(payload),
@@ -85,15 +88,18 @@ export class SpanLabelingApi {
     } catch (error) {
       const shouldSkipFallback =
         signal?.aborted ||
-        (error instanceof DOMException && error.name === 'AbortError');
+        (error instanceof DOMException && error.name === "AbortError");
 
       if (shouldSkipFallback) {
         throw error;
       }
 
-      this.log.warn('Stream request transport failed, falling back to blocking', {
-        error: error instanceof Error ? error.message : String(error),
-      });
+      this.log.warn(
+        "Stream request transport failed, falling back to blocking",
+        {
+          error: error instanceof Error ? error.message : String(error),
+        },
+      );
       const blocking = await this.labelSpans(payload, signal);
       blocking.spans.forEach(onChunk);
       return blocking;
@@ -101,7 +107,7 @@ export class SpanLabelingApi {
 
     if (!res.ok) {
       if (this.shouldFallbackToBlocking(res.status)) {
-        this.log.warn('Stream request failed, falling back to blocking', {
+        this.log.warn("Stream request failed, falling back to blocking", {
           status: res.status,
         });
         const blocking = await this.labelSpans(payload, signal);
@@ -110,16 +116,20 @@ export class SpanLabelingApi {
       }
 
       const error = await buildRequestError(res);
-      this.log.error('Stream request failed', error, { status: res.status });
+      this.log.error("Stream request failed", error, { status: res.status });
       throw error;
     }
 
     const reader = res.body?.getReader();
-    if (!reader) throw new Error('Response body not readable');
+    if (!reader) throw new Error("Response body not readable");
 
-    const { spans, linesProcessed, parseErrors } = await readSpanLabelStream(reader, onChunk, this.log);
+    const { spans, linesProcessed, parseErrors } = await readSpanLabelStream(
+      reader,
+      onChunk,
+      this.log,
+    );
 
-    this.log.info('Stream completed', {
+    this.log.info("Stream completed", {
       spanCount: spans.length,
       linesProcessed,
       parseErrors,

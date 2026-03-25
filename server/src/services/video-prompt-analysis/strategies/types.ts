@@ -3,8 +3,12 @@
  * Defines interfaces for the 3-phase optimization pipeline (Normalize → Transform → Augment)
  */
 
-import type { VideoPromptStructuredResponse } from '@services/prompt-optimization/strategies/videoPromptTypes';
-import type { ConstraintConfig, EditHistoryEntry, VideoPromptIR } from '../types';
+import type { VideoPromptStructuredResponse } from "@services/prompt-optimization/strategies/videoPromptTypes";
+import type {
+  ConstraintConfig,
+  EditHistoryEntry,
+  VideoPromptIR,
+} from "../types";
 
 export type { VideoPromptIR };
 
@@ -12,7 +16,7 @@ export type { VideoPromptIR };
  * Result of a single pipeline phase
  */
 export interface PhaseResult {
-  phase: 'normalize' | 'transform' | 'augment';
+  phase: "normalize" | "transform" | "augment";
   durationMs: number;
   changes: string[];
 }
@@ -50,7 +54,7 @@ export interface ModelConstraints {
  * Reference to an asset (image, video, or cameo identity)
  */
 export interface AssetReference {
-  type: 'image' | 'video' | 'cameo';
+  type: "image" | "video" | "cameo";
   localPath?: string;
   url?: string;
   token?: string;
@@ -94,7 +98,10 @@ export interface PromptOptimizationStrategy {
   /**
    * Phase 2: Translate intent into model-native structure
    */
-  transform(input: string, context?: PromptContext): Promise<PromptOptimizationResult>;
+  transform(
+    input: string,
+    context?: PromptContext,
+  ): Promise<PromptOptimizationResult>;
 
   /**
    * Phase 3: Inject model-specific triggers and enforce compliance
@@ -102,7 +109,7 @@ export interface PromptOptimizationStrategy {
    */
   augment(
     result: PromptOptimizationResult,
-    context?: PromptContext
+    context?: PromptContext,
   ): PromptOptimizationResult;
 }
 

@@ -13,7 +13,7 @@ export interface PromptRequirements {
     hasParticleSystems: boolean;
     hasFluidDynamics: boolean;
     hasSoftBodyPhysics: boolean;
-    physicsComplexity: 'none' | 'simple' | 'moderate' | 'complex';
+    physicsComplexity: "none" | "simple" | "moderate" | "complex";
   };
   character: {
     hasHumanCharacter: boolean;
@@ -22,18 +22,18 @@ export interface PromptRequirements {
     requiresFacialPerformance: boolean;
     requiresBodyLanguage: boolean;
     requiresLipSync: boolean;
-    emotionalIntensity: 'none' | 'subtle' | 'moderate' | 'intense';
+    emotionalIntensity: "none" | "subtle" | "moderate" | "intense";
   };
   environment: {
-    complexity: 'simple' | 'moderate' | 'complex';
-    type: 'interior' | 'exterior' | 'abstract' | 'mixed';
+    complexity: "simple" | "moderate" | "complex";
+    type: "interior" | "exterior" | "abstract" | "mixed";
     hasArchitecture: boolean;
     hasNature: boolean;
     hasUrbanElements: boolean;
   };
   lighting: {
-    requirements: 'natural' | 'stylized' | 'dramatic' | 'mixed';
-    complexity: 'simple' | 'moderate' | 'complex';
+    requirements: "natural" | "stylized" | "dramatic" | "mixed";
+    complexity: "simple" | "moderate" | "complex";
     hasPracticalLights: boolean;
     requiresAtmospherics: boolean;
   };
@@ -45,8 +45,8 @@ export interface PromptRequirements {
     hasSpecificAesthetic: string | null;
   };
   motion: {
-    cameraComplexity: 'static' | 'simple' | 'moderate' | 'complex';
-    subjectComplexity: 'static' | 'simple' | 'moderate' | 'complex';
+    cameraComplexity: "static" | "simple" | "moderate" | "complex";
+    subjectComplexity: "static" | "simple" | "moderate" | "complex";
     hasMorphing: boolean;
     hasTransitions: boolean;
   };
@@ -65,7 +65,7 @@ export interface ModelScore {
 
 export interface ModelRecommendationSummary {
   modelId: string;
-  confidence?: 'high' | 'medium' | 'low';
+  confidence?: "high" | "medium" | "low";
   reasoning: string;
 }
 
@@ -93,7 +93,7 @@ export interface ModelRecommendationSpan {
 
 export interface ModelRecommendationRequest {
   prompt: string;
-  mode?: 't2v' | 'i2v';
+  mode?: "t2v" | "i2v";
   spans?: ModelRecommendationSpan[];
   durationSeconds?: number;
 }

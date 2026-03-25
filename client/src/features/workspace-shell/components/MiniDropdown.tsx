@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { cn } from '@/utils/cn';
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { cn } from "@/utils/cn";
 
 interface MiniDropdownProps<T extends string | number> {
   value: T;
@@ -26,26 +26,23 @@ export function MiniDropdown<T extends string | number>({
         setOpen(false);
       }
     };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
   }, [open]);
 
   const label = formatLabel ? formatLabel(value) : String(value);
 
-  const handleToggle = useCallback(
-    (e: React.MouseEvent) => {
-      e.stopPropagation();
-      setOpen((prev) => !prev);
-    },
-    []
-  );
+  const handleToggle = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    setOpen((prev) => !prev);
+  }, []);
 
   const handleSelect = useCallback(
     (opt: T) => {
       onChange(opt);
       setOpen(false);
     },
-    [onChange]
+    [onChange],
   );
 
   return (
@@ -54,10 +51,10 @@ export function MiniDropdown<T extends string | number>({
         type="button"
         onClick={handleToggle}
         className={cn(
-          'inline-flex h-[30px] items-center gap-[6px] whitespace-nowrap rounded-full border border-surface-2 px-2.5 text-xs font-semibold transition-colors',
+          "inline-flex h-[30px] items-center gap-[6px] whitespace-nowrap rounded-full border border-surface-2 px-2.5 text-xs font-semibold transition-colors",
           open
-            ? 'bg-tool-nav-active text-foreground'
-            : 'bg-tool-nav-hover text-foreground hover:bg-tool-nav-active hover:text-foreground'
+            ? "bg-tool-nav-active text-foreground"
+            : "bg-tool-nav-hover text-foreground hover:bg-tool-nav-active hover:text-foreground",
         )}
       >
         {icon}
@@ -88,10 +85,10 @@ export function MiniDropdown<T extends string | number>({
                 type="button"
                 onClick={() => handleSelect(opt)}
                 className={cn(
-                  'flex w-full items-center px-3 py-[7px] text-[11px] transition-colors',
+                  "flex w-full items-center px-3 py-[7px] text-[11px] transition-colors",
                   isActive
-                    ? 'bg-[rgba(255,255,255,0.06)] font-semibold text-foreground'
-                    : 'bg-transparent font-normal text-tool-text-dim hover:bg-[rgba(255,255,255,0.04)] hover:text-foreground'
+                    ? "bg-[rgba(255,255,255,0.06)] font-semibold text-foreground"
+                    : "bg-transparent font-normal text-tool-text-dim hover:bg-[rgba(255,255,255,0.04)] hover:text-foreground",
                 )}
               >
                 {optLabel}

@@ -1,9 +1,9 @@
-import type { ModelPromptStrategy } from './types';
-import { buildBaseHeader } from './promptStrategyUtils';
+import type { ModelPromptStrategy } from "./types";
+import { buildBaseHeader } from "./promptStrategyUtils";
 
 export const runwayGen45PromptStrategy: ModelPromptStrategy = {
-  modelId: 'runway-gen45',
-  output: { format: 'text' },
+  modelId: "runway-gen45",
+  output: { format: "text" },
   buildPrompt: (context) => `${buildBaseHeader(context)}
 INSTRUCTIONS for Runway Gen-4.5 (A2D):
 1. Use the strict structure: [Camera Movement]: [Establishing Scene]. [Additional Details].

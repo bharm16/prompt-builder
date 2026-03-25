@@ -25,8 +25,8 @@ This implementation plan systematically fixes 512 TypeScript errors by addressin
 - [x] 3. Fix server path alias configuration
   - [x] 3.1 Update server/tsconfig.json paths
     - Ensure all path aliases resolve correctly without .js extensions
-    - Configure paths for @infrastructure/*, @interfaces/*, @utils/*, @config/*, @llm/*, @services/*, @types/*, @middleware/*, @routes/*, @clients/*
-    - Configure @shared/* and #shared/* paths
+    - Configure paths for @infrastructure/_, @interfaces/_, @utils/_, @config/_, @llm/_, @services/_, @types/_, @middleware/_, @routes/_, @clients/_
+    - Configure @shared/_ and #shared/_ paths
     - _Requirements: 1.1, 1.5, 1.6, 1.7_
   - [x] 3.2 Remove .js extensions from server imports
     - Search for imports with .js extension in server/src
@@ -41,8 +41,8 @@ This implementation plan systematically fixes 512 TypeScript errors by addressin
 
 - [x] 4. Fix client path alias configuration
   - [x] 4.1 Update client/tsconfig.json paths
-    - Configure paths for @/*, @hooks/*, @components/*, @features/*, @utils/*, @config/*, @types/*
-    - Configure @shared/* and #shared/* paths
+    - Configure paths for @/_, @hooks/_, @components/_, @features/_, @utils/_, @config/_, @types/\*
+    - Configure @shared/_ and #shared/_ paths
     - _Requirements: 1.2, 1.6_
   - [x] 4.2 Verify client imports resolve correctly
     - Run tsc --noEmit on client code

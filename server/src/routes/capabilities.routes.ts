@@ -1,74 +1,80 @@
-import express, { type Router } from 'express';
-import { asyncHandler } from '@middleware/asyncHandler';
-import { logger } from '@infrastructure/Logger';
+import express, { type Router } from "express";
+import { asyncHandler } from "@middleware/asyncHandler";
+import { logger } from "@infrastructure/Logger";
 import {
   getCapabilities,
   listModels,
   listProviders,
   resolveModelId,
   resolveProviderForModel,
-} from '@services/capabilities';
+} from "@services/capabilities";
 
 /** Cache-Control for deterministic, user-agnostic capability data. */
-const CACHE_1H = 'public, max-age=3600';
-const CACHE_1D = 'public, max-age=86400';
+const CACHE_1H = "public, max-age=3600";
+const CACHE_1D = "public, max-age=86400";
 
 export function createCapabilitiesRoutes(): Router {
   const router = express.Router();
 
   router.get(
-    '/providers',
+    "/providers",
     asyncHandler(async (_req, res) => {
-      res.setHeader('Cache-Control', CACHE_1D);
+      res.setHeader("Cache-Control", CACHE_1D);
       res.json({ providers: listProviders() });
-    })
+    }),
   );
 
   router.get(
-    '/registry',
+    "/registry",
     asyncHandler(async (_req, res) => {
-      const { getCapabilitiesRegistry } = await import('@services/capabilities');
-      res.setHeader('Cache-Control', CACHE_1D);
+      const { getCapabilitiesRegistry } = await import(
+        "@services/capabilities"
+      );
+      res.setHeader("Cache-Control", CACHE_1D);
       res.json(getCapabilitiesRegistry());
-    })
+    }),
   );
 
   router.get(
-    '/models',
+    "/models",
     asyncHandler(async (req, res) => {
-      const provider = typeof req.query.provider === 'string' ? req.query.provider : '';
+      const provider =
+        typeof req.query.provider === "string" ? req.query.provider : "";
       if (!provider) {
-        res.status(400).json({ error: 'provider is required' });
+        res.status(400).json({ error: "provider is required" });
         return;
       }
-      res.setHeader('Cache-Control', CACHE_1D);
+      res.setHeader("Cache-Control", CACHE_1D);
       res.json({ provider, models: listModels(provider) });
-    })
+    }),
   );
 
   router.get(
-    '/capabilities',
+    "/capabilities",
     asyncHandler(async (req, res) => {
       const requestedProvider =
-        typeof req.query.provider === 'string' && req.query.provider.trim()
+        typeof req.query.provider === "string" && req.query.provider.trim()
           ? req.query.provider.trim()
-          : 'generic';
+          : "generic";
       const model =
-        typeof req.query.model === 'string' && req.query.model.trim()
+        typeof req.query.model === "string" && req.query.model.trim()
           ? req.query.model.trim()
-          : 'auto';
+          : "auto";
 
       const resolvedModel = resolveModelId(model) ?? model;
-      const modelCandidates = resolvedModel === model ? [model] : [model, resolvedModel];
+      const modelCandidates =
+        resolvedModel === model ? [model] : [model, resolvedModel];
       const getSchema = (provider: string) =>
         modelCandidates
           .map((candidateModel) => getCapabilities(provider, candidateModel))
-          .find((candidate): candidate is NonNullable<typeof candidate> => Boolean(candidate)) ?? null;
+          .find((candidate): candidate is NonNullable<typeof candidate> =>
+            Boolean(candidate),
+          ) ?? null;
 
       let schema = getSchema(requestedProvider);
       let resolvedProvider: string | null = null;
 
-      if (!schema && requestedProvider === 'generic' && model !== 'auto') {
+      if (!schema && requestedProvider === "generic" && model !== "auto") {
         resolvedProvider = resolveProviderForModel(resolvedModel);
         if (resolvedProvider) {
           schema = getSchema(resolvedProvider);
@@ -76,14 +82,14 @@ export function createCapabilitiesRoutes(): Router {
       }
 
       if (!schema) {
-        logger.warn('Capabilities schema not found', {
+        logger.warn("Capabilities schema not found", {
           provider: requestedProvider,
           model,
           resolvedModel,
           resolvedProvider,
         });
         res.status(404).json({
-          error: 'Capabilities not found',
+          error: "Capabilities not found",
           provider: requestedProvider,
           model,
           resolvedModel,
@@ -92,9 +98,9 @@ export function createCapabilitiesRoutes(): Router {
         return;
       }
 
-      res.setHeader('Cache-Control', CACHE_1H);
+      res.setHeader("Cache-Control", CACHE_1H);
       res.json(schema);
-    })
+    }),
   );
 
   return router;

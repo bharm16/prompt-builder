@@ -4,7 +4,7 @@
  * Pure functions for extracting and cleaning JSON from LLM responses.
  * Handles mechanism (how to clean/parse) without policy (retry logic).
  */
-import type { AIResponse } from '@interfaces/IAIClient';
+import type { AIResponse } from "@interfaces/IAIClient";
 
 /**
  * Extract text from AI service response
@@ -14,10 +14,14 @@ export function extractResponseText(response: AIResponse): string {
   if (response.text) {
     return response.text;
   }
-  if (response.content && Array.isArray(response.content) && response.content.length > 0) {
-    return response.content[0]?.text || '';
+  if (
+    response.content &&
+    Array.isArray(response.content) &&
+    response.content.length > 0
+  ) {
+    return response.content[0]?.text || "";
   }
-  return '';
+  return "";
 }
 
 /**
@@ -26,18 +30,18 @@ export function extractResponseText(response: AIResponse): string {
 export function cleanJSONResponse(text: string, isArray: boolean): string {
   // Add more aggressive cleaning before parsing
   let cleanedResponse = text
-    .replace(/```json\n?/gi, '')  // Case-insensitive markdown removal
-    .replace(/```\n?/gi, '')       // Case-insensitive markdown removal
+    .replace(/```json\n?/gi, "") // Case-insensitive markdown removal
+    .replace(/```\n?/gi, "") // Case-insensitive markdown removal
     .trim();
 
   // Remove common preambles
   cleanedResponse = cleanedResponse.replace(
     /^(Here is|Here's|This is|The|Output:|Response:)\s*/i,
-    ''
+    "",
   );
 
   // If it starts with explanation text, find the array/object
-  const startChar = isArray ? '[' : '{';
+  const startChar = isArray ? "[" : "{";
   if (!cleanedResponse.startsWith(startChar)) {
     const arrayStart = cleanedResponse.indexOf(startChar);
     if (arrayStart !== -1) {
@@ -46,14 +50,14 @@ export function cleanJSONResponse(text: string, isArray: boolean): string {
   }
 
   // Find the actual JSON start and end
-  const endChar = isArray ? ']' : '}';
+  const endChar = isArray ? "]" : "}";
 
   const startIndex = cleanedResponse.indexOf(startChar);
   const lastIndex = cleanedResponse.lastIndexOf(endChar);
 
   if (startIndex === -1 || lastIndex === -1 || lastIndex < startIndex) {
     throw new Error(
-      `Invalid JSON structure: Expected ${startChar}...${endChar}`
+      `Invalid JSON structure: Expected ${startChar}...${endChar}`,
     );
   }
 
@@ -73,9 +77,9 @@ export function cleanJSONResponse(text: string, isArray: boolean): string {
 export function extractAndParse<T>(
   responseText: string,
   isArray: boolean,
-  schema?: { parse: (data: unknown) => T }
+  schema?: { parse: (data: unknown) => T },
 ): T {
   const cleanedText = cleanJSONResponse(responseText, isArray);
   const raw: unknown = JSON.parse(cleanedText);
-  return schema ? schema.parse(raw) : raw as T;
+  return schema ? schema.parse(raw) : (raw as T);
 }

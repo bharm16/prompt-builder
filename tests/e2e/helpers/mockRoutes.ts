@@ -5,57 +5,59 @@
  * surface so that spec files stay focused on assertions, not plumbing.
  */
 
-import type { Page } from '@playwright/test';
-import { jsonResponse } from './responses';
+import type { Page } from "@playwright/test";
+import { jsonResponse } from "./responses";
 
 /** Mock the v2 sessions API with empty defaults. */
 export async function mockSessionRoutes(page: Page): Promise<void> {
-  await page.route('**/api/v2/sessions**', async (route) => {
+  await page.route("**/api/v2/sessions**", async (route) => {
     const request = route.request();
     const url = new URL(request.url());
     const pathname = url.pathname;
     const method = request.method();
 
-    if (method === 'GET' && pathname.endsWith('/api/v2/sessions')) {
+    if (method === "GET" && pathname.endsWith("/api/v2/sessions")) {
       await route.fulfill(jsonResponse({ success: true, data: [] }));
       return;
     }
 
-    if (method === 'POST' && pathname.endsWith('/api/v2/sessions')) {
+    if (method === "POST" && pathname.endsWith("/api/v2/sessions")) {
       await route.fulfill(
         jsonResponse({
           success: true,
           data: {
-            id: 'session_e2e',
-            prompt: { uuid: 'prompt_e2e', input: '' },
+            id: "session_e2e",
+            prompt: { uuid: "prompt_e2e", input: "" },
           },
         }),
       );
       return;
     }
 
-    if (method === 'GET' && pathname.includes('/api/v2/sessions/by-prompt/')) {
+    if (method === "GET" && pathname.includes("/api/v2/sessions/by-prompt/")) {
       await route.fulfill(
-        jsonResponse({ success: true, data: { id: 'session_e2e' } }),
+        jsonResponse({ success: true, data: { id: "session_e2e" } }),
       );
       return;
     }
 
-    if (method === 'GET' && pathname.includes('/api/v2/sessions/session_e2e')) {
+    if (method === "GET" && pathname.includes("/api/v2/sessions/session_e2e")) {
       await route.fulfill(
         jsonResponse({
           success: true,
           data: {
-            id: 'session_e2e',
-            prompt: { uuid: 'prompt_e2e', input: '' },
+            id: "session_e2e",
+            prompt: { uuid: "prompt_e2e", input: "" },
           },
         }),
       );
       return;
     }
 
-    if (method === 'PATCH') {
-      await route.fulfill(jsonResponse({ success: true, data: { id: 'session_e2e' } }));
+    if (method === "PATCH") {
+      await route.fulfill(
+        jsonResponse({ success: true, data: { id: "session_e2e" } }),
+      );
       return;
     }
 
@@ -65,7 +67,7 @@ export async function mockSessionRoutes(page: Page): Promise<void> {
 
 /** Mock the capabilities endpoint. */
 export async function mockCapabilitiesRoute(page: Page): Promise<void> {
-  await page.route('**/api/capabilities', async (route) => {
+  await page.route("**/api/capabilities", async (route) => {
     await route.fulfill(
       jsonResponse({
         models: [],

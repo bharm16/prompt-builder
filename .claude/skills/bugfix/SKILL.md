@@ -18,6 +18,7 @@ Follow this sequence exactly. Do not skip steps.
 Before writing any code, answer: **what property should have held but didn't?**
 
 Frame it as a general rule, not a specific input→output pair:
+
 - "For any prompt with suggestions, the user never sees placeholder text"
 - "For any Runway prompt, at least one lighting-style trigger is injected"
 - "Dev requests with expired Firebase tokens fall back to API key auth"
@@ -38,12 +39,12 @@ Before writing the regression test, output these three lines:
 
 Route the test based on **where the user experienced the failure**, not where the code fix lives.
 
-| User experienced… | Test type | Mock boundary | Example |
-|---|---|---|---|
-| HTTP error (4xx/5xx) | Integration test via `supertest(app)` | None — real middleware, real auth, real services | Auth fallback returning 403 |
-| Wrong UI state / broken interaction | Component test with `@testing-library/react` | Network layer only (MSW or fetch mock) | Stale data after session switch |
-| Wrong data / corrupt output | Service integration test with real dependency chain | External APIs only (LLM, Firebase, Stripe) | Missing triggers in augmented prompt |
-| Pure function edge case | Unit test or property test (fast-check) | None | Parser returning null on empty input |
+| User experienced…                   | Test type                                           | Mock boundary                                    | Example                              |
+| ----------------------------------- | --------------------------------------------------- | ------------------------------------------------ | ------------------------------------ |
+| HTTP error (4xx/5xx)                | Integration test via `supertest(app)`               | None — real middleware, real auth, real services | Auth fallback returning 403          |
+| Wrong UI state / broken interaction | Component test with `@testing-library/react`        | Network layer only (MSW or fetch mock)           | Stale data after session switch      |
+| Wrong data / corrupt output         | Service integration test with real dependency chain | External APIs only (LLM, Firebase, Stripe)       | Missing triggers in augmented prompt |
+| Pure function edge case             | Unit test or property test (fast-check)             | None                                             | Parser returning null on empty input |
 
 **Default to the highest layer that reproduces the bug.** A test at the HTTP layer catches bugs in middleware, services, AND the function — a unit test only catches bugs in the function.
 
@@ -54,19 +55,19 @@ Name the file `*.regression.test.ts` so it can be audited separately.
 **Use property-based tests** (fast-check) when the invariant spans a class of inputs:
 
 ```typescript
-import * as fc from 'fast-check';
+import * as fc from "fast-check";
 
-describe('regression: [invariant description]', () => {
-  it('[invariant statement]', async () => {
+describe("regression: [invariant description]", () => {
+  it("[invariant statement]", async () => {
     await fc.assert(
       fc.asyncProperty(
         fc.string({ minLength: 1, maxLength: 200 }),
         async (input) => {
           const result = await realPipeline.process(input);
           expect(result).toSatisfy(invariantCheck);
-        }
+        },
       ),
-      { numRuns: 100 }
+      { numRuns: 100 },
     );
   });
 });
@@ -77,6 +78,7 @@ describe('regression: [invariant description]', () => {
 **If your regression test mocks the service being fixed, it's wrong.** A regression test for an auth bug must send an HTTP request through real auth middleware. A regression test for a suggestion bug must run suggestions through the real processing pipeline.
 
 **Name tests as invariants, not fixes:**
+
 - ✗ `it('fixes dev API key missing when Firebase token present')`
 - ✓ `it('dev requests with expired Firebase token fall back to API key auth')`
 

@@ -8,8 +8,8 @@
  * Stage (the parent) owns framing, empty states, and loading UI.
  */
 
-import React from 'react';
-import { useVideoPreview } from '../hooks/useVideoPreview';
+import React from "react";
+import { useVideoPreview } from "../hooks/useVideoPreview";
 
 interface VideoPreviewProps {
   prompt: string;
@@ -23,27 +23,31 @@ interface VideoPreviewProps {
   generateRequestId?: number;
   lastGeneratedAt?: number | null;
   videoRef?: React.Ref<HTMLVideoElement>;
-  onPreviewGenerated?: ((payload: {
-    prompt: string;
-    generatedAt: number;
-    videoUrl?: string | null;
-    aspectRatio?: string | null;
-    model?: string | null;
-  }) => void) | undefined;
+  onPreviewGenerated?:
+    | ((payload: {
+        prompt: string;
+        generatedAt: number;
+        videoUrl?: string | null;
+        aspectRatio?: string | null;
+        model?: string | null;
+      }) => void)
+    | undefined;
   onLoadingChange?: ((loading: boolean) => void) | undefined;
   onErrorChange?: ((error: string | null) => void) | undefined;
-  onPreviewStateChange?: ((payload: {
-    loading: boolean;
-    error: string | null;
-    videoUrl: string | null;
-  }) => void) | undefined;
+  onPreviewStateChange?:
+    | ((payload: {
+        loading: boolean;
+        error: string | null;
+        videoUrl: string | null;
+      }) => void)
+    | undefined;
 }
 
 const normalizeAspectRatio = (value?: string | null): string => {
-  if (!value) return '16:9';
-  const cleaned = value.trim().replace(/x/i, ':');
-  if (['16:9', '9:16', '21:9', '1:1'].includes(cleaned)) return cleaned;
-  return '16:9';
+  if (!value) return "16:9";
+  const cleaned = value.trim().replace(/x/i, ":");
+  if (["16:9", "9:16", "21:9", "1:1"].includes(cleaned)) return cleaned;
+  return "16:9";
 };
 
 export const VideoPreview: React.FC<VideoPreviewProps> = ({
@@ -64,7 +68,7 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
 }) => {
   const normalizedAspectRatio = React.useMemo(
     () => normalizeAspectRatio(aspectRatio),
-    [aspectRatio]
+    [aspectRatio],
   );
 
   const { videoUrl, loading, error, regenerate } = useVideoPreview({
@@ -72,13 +76,16 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
     isVisible,
     aspectRatio: normalizedAspectRatio,
     ...(model ? { model } : {}),
-    ...(inputReference?.trim() ? { inputReference: inputReference.trim() } : {}),
+    ...(inputReference?.trim()
+      ? { inputReference: inputReference.trim() }
+      : {}),
     ...(startImage?.trim() ? { startImage: startImage.trim() } : {}),
     ...(generationParams ? { generationParams } : {}),
   });
   const displayVideoUrl = videoUrl ?? seedVideoUrl;
 
-  const [lastRequestedPrompt, setLastRequestedPrompt] = React.useState<string>('');
+  const [lastRequestedPrompt, setLastRequestedPrompt] =
+    React.useState<string>("");
   const lastReportedUrlRef = React.useRef<string | null>(null);
   const prevGenerateRequestIdRef = React.useRef<number | null>(null);
 
@@ -95,7 +102,14 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
         model: model ?? null,
       });
     }
-  }, [videoUrl, lastRequestedPrompt, model, normalizedAspectRatio, onPreviewGenerated, prompt]);
+  }, [
+    videoUrl,
+    lastRequestedPrompt,
+    model,
+    normalizedAspectRatio,
+    onPreviewGenerated,
+    prompt,
+  ]);
 
   React.useEffect(() => {
     onLoadingChange?.(loading);

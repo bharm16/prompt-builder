@@ -1,41 +1,41 @@
-import React from 'react';
-import { describe, expect, it, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
-import { ToolRail } from '../ToolRail';
+import React from "react";
+import { describe, expect, it, vi } from "vitest";
+import { render, screen, fireEvent } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
+import { ToolRail } from "../ToolRail";
 
-vi.mock('@/contexts/CreditBalanceContext', () => ({
+vi.mock("@/contexts/CreditBalanceContext", () => ({
   useCreditBalance: () => ({
     balance: 10,
     isLoading: false,
   }),
 }));
 
-vi.mock('@/features/billing/hooks/useBillingStatus', () => ({
+vi.mock("@/features/billing/hooks/useBillingStatus", () => ({
   useBillingStatus: () => ({
     status: { isSubscribed: false },
     isLoading: false,
   }),
 }));
 
-vi.mock('../../context', () => ({
+vi.mock("../../context", () => ({
   useSidebarWorkspaceDomain: () => null,
 }));
 
-describe('ToolRail gallery button', () => {
-  it('renders gallery button as inert (no active state)', () => {
+describe("ToolRail gallery button", () => {
+  it("renders gallery button as inert (no active state)", () => {
     render(
       <MemoryRouter>
         <ToolRail activePanel="studio" onPanelChange={vi.fn()} user={null} />
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
-    const galleryButton = screen.getByRole('button', { name: 'Gallery' });
+    const galleryButton = screen.getByRole("button", { name: "Gallery" });
     expect(galleryButton).toBeTruthy();
-    expect(galleryButton.className).not.toContain('bg-tool-nav-active');
+    expect(galleryButton.className).not.toContain("bg-tool-nav-active");
   }, 30000);
 
-  it('clicking Gallery calls onGalleryToggle', () => {
+  it("clicking Gallery calls onGalleryToggle", () => {
     const onGalleryToggle = vi.fn();
     render(
       <MemoryRouter>
@@ -45,20 +45,22 @@ describe('ToolRail gallery button', () => {
           onGalleryToggle={onGalleryToggle}
           user={null}
         />
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Gallery' }));
+    fireEvent.click(screen.getByRole("button", { name: "Gallery" }));
     expect(onGalleryToggle).toHaveBeenCalledOnce();
   });
 
-  it('does not render the removed Apps rail entry', () => {
+  it("does not render the removed Apps rail entry", () => {
     render(
       <MemoryRouter>
         <ToolRail activePanel="studio" onPanelChange={vi.fn()} user={null} />
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
-    expect(screen.queryByRole('button', { name: 'Apps' })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Apps" }),
+    ).not.toBeInTheDocument();
   });
 });

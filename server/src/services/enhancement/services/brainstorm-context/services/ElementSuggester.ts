@@ -1,14 +1,14 @@
-import { logger } from '@infrastructure/Logger';
+import { logger } from "@infrastructure/Logger";
 import {
   MISSING_ELEMENT_RULES,
   NARRATIVE_MISSING_ELEMENT_RULES,
   COMPLEMENTARY_RULES,
-} from '../config/intentPatterns.js';
+} from "../config/intentPatterns.js";
 import type {
   CreativeIntent,
   MissingElement,
   ComplementaryElement,
-} from '@services/enhancement/services/types';
+} from "@services/enhancement/services/types";
 
 /**
  * Element Suggester
@@ -18,7 +18,7 @@ import type {
  * Single Responsibility: Gap analysis and relationship mapping.
  */
 export class ElementSuggester {
-  private readonly log = logger.child({ service: 'ElementSuggester' });
+  private readonly log = logger.child({ service: "ElementSuggester" });
 
   constructor() {
     // No dependencies - pure logic
@@ -34,18 +34,18 @@ export class ElementSuggester {
    */
   suggestMissingElements(
     intent: CreativeIntent | null,
-    elements: Record<string, string> | null | undefined
+    elements: Record<string, string> | null | undefined,
   ): MissingElement[] {
-    const operation = 'suggestMissingElements';
-    
+    const operation = "suggestMissingElements";
+
     if (!intent || !intent.primaryIntent) {
-      this.log.debug('No intent provided for missing element suggestions', {
+      this.log.debug("No intent provided for missing element suggestions", {
         operation,
       });
       return [];
     }
-    
-    this.log.debug('Suggesting missing elements', {
+
+    this.log.debug("Suggesting missing elements", {
       operation,
       primaryIntent: intent.primaryIntent,
       elementCount: elements ? Object.keys(elements).length : 0,
@@ -56,14 +56,14 @@ export class ElementSuggester {
     // Helper to check if elements contain any of the keywords
     const hasElement = (keywords: string[]): boolean => {
       const elementText = Object.values(elements || {})
-        .join(' ')
+        .join(" ")
         .toLowerCase();
       return keywords.some((k) => elementText.includes(k));
     };
 
     // Check intent-specific missing elements
     const intentRule = MISSING_ELEMENT_RULES.find(
-      (rule) => rule.intent === intent.primaryIntent
+      (rule) => rule.intent === intent.primaryIntent,
     );
 
     if (intentRule) {
@@ -81,7 +81,7 @@ export class ElementSuggester {
     // Check narrative-specific missing elements
     if (intent.narrativeDirection) {
       const narrativeRule = NARRATIVE_MISSING_ELEMENT_RULES.find(
-        (rule) => rule.narrativeDirection === intent.narrativeDirection
+        (rule) => rule.narrativeDirection === intent.narrativeDirection,
       );
 
       if (narrativeRule) {
@@ -97,7 +97,7 @@ export class ElementSuggester {
       }
     }
 
-    this.log.debug('Missing element suggestions complete', {
+    this.log.debug("Missing element suggestions complete", {
       operation,
       suggestionCount: suggestions.length,
     });
@@ -115,18 +115,18 @@ export class ElementSuggester {
    */
   getComplementaryElements(
     element: string,
-    intent: CreativeIntent | null
+    intent: CreativeIntent | null,
   ): ComplementaryElement[] {
-    const operation = 'getComplementaryElements';
-    
-    if (!element || typeof element !== 'string') {
-      this.log.debug('Invalid element provided for complementary lookup', {
+    const operation = "getComplementaryElements";
+
+    if (!element || typeof element !== "string") {
+      this.log.debug("Invalid element provided for complementary lookup", {
         operation,
       });
       return [];
     }
-    
-    this.log.debug('Finding complementary elements', {
+
+    this.log.debug("Finding complementary elements", {
       operation,
       element,
       hasIntent: !!intent,
@@ -153,7 +153,7 @@ export class ElementSuggester {
       }
     }
 
-    this.log.debug('Complementary elements found', {
+    this.log.debug("Complementary elements found", {
       operation,
       complementCount: complements.length,
     });

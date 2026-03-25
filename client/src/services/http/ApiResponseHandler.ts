@@ -1,5 +1,5 @@
-import { ApiError } from './ApiError';
-import type { ApiErrorFactory } from './ApiErrorFactory';
+import { ApiError } from "./ApiError";
+import type { ApiErrorFactory } from "./ApiErrorFactory";
 
 interface SafeParseOptions {
   allowEmpty?: boolean;
@@ -14,25 +14,36 @@ export class ApiResponseHandler {
 
   async handle(response: Response | null): Promise<unknown> {
     if (!response) {
-      throw this.errorFactory.create({ message: 'Empty response received' });
+      throw this.errorFactory.create({ message: "Empty response received" });
     }
 
     if (!response.ok) {
       const errorPayload = await this.safeParseErrorPayload(response);
       const message =
-        (errorPayload && typeof errorPayload === 'object' && 'error' in errorPayload && typeof errorPayload.error === 'string'
+        (errorPayload &&
+        typeof errorPayload === "object" &&
+        "error" in errorPayload &&
+        typeof errorPayload.error === "string"
           ? errorPayload.error
           : null) ||
-        (errorPayload && typeof errorPayload === 'object' && 'message' in errorPayload && typeof errorPayload.message === 'string'
+        (errorPayload &&
+        typeof errorPayload === "object" &&
+        "message" in errorPayload &&
+        typeof errorPayload.message === "string"
           ? errorPayload.message
           : null) ||
         response.statusText ||
         `HTTP ${response.status}`;
 
       const code =
-        errorPayload && typeof errorPayload === 'object' && 'code' in errorPayload && typeof errorPayload.code === 'string'
+        errorPayload &&
+        typeof errorPayload === "object" &&
+        "code" in errorPayload &&
+        typeof errorPayload.code === "string"
           ? errorPayload.code
-          : (response.status === 429 ? 'RATE_LIMITED' : undefined);
+          : response.status === 429
+            ? "RATE_LIMITED"
+            : undefined;
 
       throw this.errorFactory.create({
         message,
@@ -54,9 +65,9 @@ export class ApiResponseHandler {
       return error;
     }
 
-    if (error && typeof error === 'object' && 'name' in error) {
+    if (error && typeof error === "object" && "name" in error) {
       const name = error.name;
-      if (name === 'AbortError' || name === 'TimeoutError') {
+      if (name === "AbortError" || name === "TimeoutError") {
         return this.errorFactory.createTimeout();
       }
     }
@@ -64,7 +75,10 @@ export class ApiResponseHandler {
     return this.errorFactory.createNetwork(error);
   }
 
-  async safeParseJson(response: Response, { allowEmpty = false }: SafeParseOptions = {}): Promise<unknown> {
+  async safeParseJson(
+    response: Response,
+    { allowEmpty = false }: SafeParseOptions = {},
+  ): Promise<unknown> {
     const bodyText = await this.readBodyText(response);
     if (bodyText === null) {
       if (allowEmpty) {
@@ -72,7 +86,7 @@ export class ApiResponseHandler {
       }
 
       throw this.errorFactory.create({
-        message: 'Failed to parse JSON response',
+        message: "Failed to parse JSON response",
         status: response.status,
       });
     }
@@ -81,7 +95,7 @@ export class ApiResponseHandler {
       return JSON.parse(bodyText) as unknown;
     } catch {
       throw this.errorFactory.create({
-        message: 'Failed to parse JSON response',
+        message: "Failed to parse JSON response",
         status: response.status,
       });
     }

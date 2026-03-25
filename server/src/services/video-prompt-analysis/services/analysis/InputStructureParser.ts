@@ -1,18 +1,18 @@
 const TECHNICAL_HEADER_LABELS = [
-  'technical specs',
-  'technical specifications',
-  'technical details',
-  'tech specs',
-  'specifications',
-  'technical',
-  'parameters',
+  "technical specs",
+  "technical specifications",
+  "technical details",
+  "tech specs",
+  "specifications",
+  "technical",
+  "parameters",
 ] as const;
 
 const ALTERNATIVE_HEADER_LABELS = [
-  'alternative approaches',
-  'alternatives',
-  'variations',
-  'alt approaches',
+  "alternative approaches",
+  "alternatives",
+  "variations",
+  "alt approaches",
 ] as const;
 
 export interface ParsedInputSections {
@@ -23,7 +23,7 @@ export interface ParsedInputSections {
 
 export function parseInputStructure(text: string): ParsedInputSections {
   const trimmed = text.trim();
-  if (trimmed.startsWith('{')) {
+  if (trimmed.startsWith("{")) {
     const parsed = tryParseJsonStructure(trimmed);
     if (parsed) return parsed;
   }
@@ -58,14 +58,18 @@ function tryParseJsonStructure(text: string): ParsedInputSections | null {
     const parsed = JSON.parse(text);
     if (isRecord(parsed)) {
       const narrative =
-        typeof parsed.narrative === 'string'
+        typeof parsed.narrative === "string"
           ? parsed.narrative
-          : typeof parsed.description === 'string'
+          : typeof parsed.description === "string"
             ? parsed.description
-            : '';
+            : "";
       if (narrative) {
-        const technical = isRecord(parsed.technical) ? coerceTechnicalRecord(parsed.technical) : undefined;
-        const alternatives = Array.isArray(parsed.alternatives) ? parsed.alternatives : undefined;
+        const technical = isRecord(parsed.technical)
+          ? coerceTechnicalRecord(parsed.technical)
+          : undefined;
+        const alternatives = Array.isArray(parsed.alternatives)
+          ? parsed.alternatives
+          : undefined;
         const result: ParsedInputSections = { narrative };
         if (technical) {
           result.technical = technical;
@@ -83,16 +87,18 @@ function tryParseJsonStructure(text: string): ParsedInputSections | null {
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
+  return typeof value === "object" && value !== null;
 }
 
-function coerceTechnicalRecord(value: Record<string, unknown>): Record<string, string> | undefined {
+function coerceTechnicalRecord(
+  value: Record<string, unknown>,
+): Record<string, string> | undefined {
   const entries = Object.entries(value);
   if (entries.length === 0) return undefined;
 
   const technical: Record<string, string> = {};
   for (const [key, val] of entries) {
-    if (typeof val === 'string' && val.trim()) {
+    if (typeof val === "string" && val.trim()) {
       technical[key] = val.trim();
     }
   }
@@ -100,7 +106,10 @@ function coerceTechnicalRecord(value: Record<string, unknown>): Record<string, s
   return Object.keys(technical).length > 0 ? technical : undefined;
 }
 
-function extractSectionText(fullText: string, match: RegExpMatchArray | null): string | null {
+function extractSectionText(
+  fullText: string,
+  match: RegExpMatchArray | null,
+): string | null {
   if (!match || match.index === undefined) return null;
 
   const contentStart = match.index + match[0].length;
@@ -108,7 +117,10 @@ function extractSectionText(fullText: string, match: RegExpMatchArray | null): s
   return fullText.substring(contentStart, nextHeaderIndex).trim();
 }
 
-function matchSectionHeader(text: string, labels: readonly string[]): RegExpMatchArray | null {
+function matchSectionHeader(
+  text: string,
+  labels: readonly string[],
+): RegExpMatchArray | null {
   const pattern = getHeaderRegex(labels);
   return text.match(pattern);
 }
@@ -126,22 +138,22 @@ function findNextHeaderIndex(fullText: string, startIndex: number): number {
 function getHeaderRegex(labels: readonly string[]): RegExp {
   const escaped = labels.map((label) => escapeRegex(label));
   return new RegExp(
-    `(?:^|\\n)\\s*(?:\\*\\*|##)?\\s*(?:${escaped.join('|')})\\s*(?:\\*\\*|:)?\\s*(?:\\n|$)`,
-    'i'
+    `(?:^|\\n)\\s*(?:\\*\\*|##)?\\s*(?:${escaped.join("|")})\\s*(?:\\*\\*|:)?\\s*(?:\\n|$)`,
+    "i",
   );
 }
 
 function parseTechnicalSpecs(specsText: string): Record<string, string> {
   const specs: Record<string, string> = {};
-  const lines = specsText.split('\n');
+  const lines = specsText.split("\n");
   const regex = /[-*]\s*(.+?)\s*:\s*(.+)/;
 
   for (const line of lines) {
     const match = line.match(regex);
     if (match && match[1] && match[2]) {
-      let key = match[1].replace(/\*\*/g, '').trim().toLowerCase();
+      let key = match[1].replace(/\*\*/g, "").trim().toLowerCase();
       let value = match[2].trim();
-      if (value.startsWith('**')) value = value.substring(2).trim();
+      if (value.startsWith("**")) value = value.substring(2).trim();
       specs[key] = value;
     }
   }
@@ -149,5 +161,5 @@ function parseTechnicalSpecs(specsText: string): Record<string, string> {
 }
 
 function escapeRegex(str: string): string {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }

@@ -1,6 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { PERFORMANCE_CONFIG } from '@config/performance.config';
-import type { HighlightSnapshot, StateSnapshot } from '@features/prompt-optimizer/context/types';
+import { useCallback, useEffect, useRef, useState } from "react";
+import { PERFORMANCE_CONFIG } from "@config/performance.config";
+import type {
+  HighlightSnapshot,
+  StateSnapshot,
+} from "@features/prompt-optimizer/context/types";
 
 interface PromptOptimizer {
   displayedPrompt: string;
@@ -10,16 +13,20 @@ interface PromptOptimizer {
   setPreviewAspectRatio?: (ratio: string | null) => void;
 }
 
-type ChangeType = 'adding' | 'deleting' | null;
+type ChangeType = "adding" | "deleting" | null;
 
 export interface UseUndoRedoParams {
   promptOptimizer: PromptOptimizer;
   setDisplayedPromptSilently: (prompt: string) => void;
   applyInitialHighlightSnapshot: (
     highlight: HighlightSnapshot | null,
-    options: { bumpVersion: boolean; markPersisted: boolean }
+    options: { bumpVersion: boolean; markPersisted: boolean },
   ) => void;
-  onEdit?: (payload: { previousText: string; nextText: string; timestamp: number }) => void;
+  onEdit?: (payload: {
+    previousText: string;
+    nextText: string;
+    timestamp: number;
+  }) => void;
   undoStackRef: React.MutableRefObject<StateSnapshot[]>;
   redoStackRef: React.MutableRefObject<StateSnapshot[]>;
   latestHighlightRef: React.MutableRefObject<HighlightSnapshot | null>;
@@ -31,7 +38,10 @@ export interface UseUndoRedoParams {
 export interface UseUndoRedoReturn {
   handleUndo: () => void;
   handleRedo: () => void;
-  handleDisplayedPromptChange: (newText: string, cursorPosition?: number | null) => void;
+  handleDisplayedPromptChange: (
+    newText: string,
+    cursorPosition?: number | null,
+  ) => void;
   clearHistory: () => void;
 }
 
@@ -60,19 +70,19 @@ export function useUndoRedo({
   // Track setTimeout IDs for cleanup
   const undoTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const redoTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  
+
   // Edit grouping state
   const lastEditTimeRef = useRef(0);
   const lastCursorPositionRef = useRef<number | null>(null);
   const pendingChangeRef = useRef<ChangeType>(null);
-  
+
   // Version tracking for future UI features
   const [versionCounter, setVersionCounter] = useState(0);
-  
+
   // Smart edit grouping thresholds
   const EDIT_GROUP_TIME_MS = 400; // 300-500ms is the sweet spot for "thought grouping"
   const SIGNIFICANT_CHANGE_THRESHOLD = 20; // Characters added/removed
-  
+
   // Cleanup timeouts on unmount
   useEffect(() => {
     return () => {
@@ -93,24 +103,31 @@ export function useUndoRedo({
    * Create a snapshot of current state with metadata
    */
   const createSnapshot = useCallback(
-    (text: string | null = null, highlight: HighlightSnapshot | null = null): StateSnapshot => ({
+    (
+      text: string | null = null,
+      highlight: HighlightSnapshot | null = null,
+    ): StateSnapshot => ({
       text: text ?? promptOptimizerRef.current.displayedPrompt,
       highlight: highlight ?? latestHighlightRef.current,
       timestamp: Date.now(),
       version: versionCounter,
     }),
-    [latestHighlightRef, versionCounter]
+    [latestHighlightRef, versionCounter],
   );
 
   /**
    * Determines if a new undo point should be created
    */
   const shouldCreateUndoPoint = useCallback(
-    (currentText: string, newText: string, cursorPosition: number | null): boolean => {
+    (
+      currentText: string,
+      newText: string,
+      cursorPosition: number | null,
+    ): boolean => {
       const now = Date.now();
       const timeSinceLastEdit = now - lastEditTimeRef.current;
       const textLengthDiff = Math.abs(newText.length - currentText.length);
-      
+
       // Always create undo point if stack is empty
       if (undoStackRef.current.length === 0) return true;
 
@@ -122,8 +139,16 @@ export function useUndoRedo({
 
       // 3. Direction change (Switching from typing to backspacing creates a new group)
       // This allows users to undo their typos without undoing the whole sentence
-      if (pendingChangeRef.current === 'adding' && currentText.length > newText.length) return true;
-      if (pendingChangeRef.current === 'deleting' && currentText.length < newText.length) return true;
+      if (
+        pendingChangeRef.current === "adding" &&
+        currentText.length > newText.length
+      )
+        return true;
+      if (
+        pendingChangeRef.current === "deleting" &&
+        currentText.length < newText.length
+      )
+        return true;
 
       // 4. Cursor jump detection (if cursor position is provided)
       // If cursor info is available and moved significantly
@@ -131,12 +156,12 @@ export function useUndoRedo({
       if (lastCursor !== null && cursorPosition !== null) {
         const distance = Math.abs(cursorPosition - lastCursor);
         // If distance is > 1 (and not just the char we typed), they moved the cursor
-        if (distance > textLengthDiff + 1) return true; 
+        if (distance > textLengthDiff + 1) return true;
       }
 
       return false;
     },
-    [undoStackRef]
+    [undoStackRef],
   );
 
   /**
@@ -152,13 +177,13 @@ export function useUndoRedo({
       }
 
       undoStackRef.current.push(snapshot);
-      
+
       // Enforce stack limit
       if (undoStackRef.current.length > PERFORMANCE_CONFIG.UNDO_STACK_SIZE) {
         undoStackRef.current.shift();
       }
     },
-    [undoStackRef]
+    [undoStackRef],
   );
 
   /**
@@ -169,11 +194,11 @@ export function useUndoRedo({
 
     const previous = undoStackRef.current.pop();
     if (!previous) return;
-    
+
     // Save CURRENT state to redo stack before reverting
     const currentSnapshot = createSnapshot();
     redoStackRef.current.push(currentSnapshot);
-    
+
     if (redoStackRef.current.length > PERFORMANCE_CONFIG.UNDO_STACK_SIZE) {
       redoStackRef.current.shift();
     }
@@ -182,9 +207,9 @@ export function useUndoRedo({
     isApplyingHistoryRef.current = true;
     setDisplayedPromptSilently(previous.text);
     promptOptimizerRef.current.setOptimizedPrompt(previous.text);
-    applyInitialHighlightSnapshot(previous.highlight ?? null, { 
-      bumpVersion: true, 
-      markPersisted: false 
+    applyInitialHighlightSnapshot(previous.highlight ?? null, {
+      bumpVersion: true,
+      markPersisted: false,
     });
 
     // Update version and UI
@@ -215,7 +240,7 @@ export function useUndoRedo({
 
     const next = redoStackRef.current.pop();
     if (!next) return;
-    
+
     // Save CURRENT state to undo stack before advancing
     pushToUndoStack(createSnapshot());
 
@@ -223,9 +248,9 @@ export function useUndoRedo({
     isApplyingHistoryRef.current = true;
     setDisplayedPromptSilently(next.text);
     promptOptimizerRef.current.setOptimizedPrompt(next.text);
-    applyInitialHighlightSnapshot(next.highlight ?? null, { 
-      bumpVersion: true, 
-      markPersisted: false 
+    applyInitialHighlightSnapshot(next.highlight ?? null, {
+      bumpVersion: true,
+      markPersisted: false,
     });
 
     setVersionCounter(next.version || versionCounter + 1);
@@ -268,20 +293,25 @@ export function useUndoRedo({
       promptOptimizerRef.current.setPreviewAspectRatio?.(null);
 
       // Detect type of change for grouping logic
-      const changeType: ChangeType = newText.length > currentText.length ? 'adding' : 'deleting';
+      const changeType: ChangeType =
+        newText.length > currentText.length ? "adding" : "deleting";
 
       // DECISION: Do we start a new undo group?
-      const shouldCreate = shouldCreateUndoPoint(currentText, newText, cursorPosition);
+      const shouldCreate = shouldCreateUndoPoint(
+        currentText,
+        newText,
+        cursorPosition,
+      );
       if (shouldCreate) {
         // IMPORTANT: Save the state *BEFORE* the change (currentText)
         pushToUndoStack(createSnapshot(currentText));
-        
+
         // Clear redo stack on new divergence
         redoStackRef.current = [];
         setCanRedo(false);
-        
+
         // Increment version for this new editing session
-        setVersionCounter(v => v + 1);
+        setVersionCounter((v) => v + 1);
 
         onEdit?.({
           previousText: currentText,
@@ -308,7 +338,7 @@ export function useUndoRedo({
       redoStackRef,
       setCanRedo,
       updateUIState,
-    ]
+    ],
   );
 
   /**

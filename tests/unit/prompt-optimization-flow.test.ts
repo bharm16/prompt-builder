@@ -1,6 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock('@/services/LoggingService', () => ({
+vi.mock("@/services/LoggingService", () => ({
   logger: {
     child: () => ({
       debug: vi.fn(),
@@ -16,7 +16,7 @@ vi.mock('@/services/LoggingService', () => ({
 import {
   runOptimization,
   type PromptOptimizerActions,
-} from '@hooks/utils/promptOptimizationFlow';
+} from "@hooks/utils/promptOptimizationFlow";
 
 function createMockActions(): PromptOptimizerActions {
   return {
@@ -40,18 +40,18 @@ function createMockLog() {
   return { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() };
 }
 
-describe('runOptimization', () => {
+describe("runOptimization", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('propagates optimize errors', async () => {
-    const analyzeAndOptimize = vi.fn().mockRejectedValue(new Error('API down'));
+  it("propagates optimize errors", async () => {
+    const analyzeAndOptimize = vi.fn().mockRejectedValue(new Error("API down"));
 
     await expect(
       runOptimization({
-        promptToOptimize: 'test prompt',
-        selectedMode: 'video',
+        promptToOptimize: "test prompt",
+        selectedMode: "video",
         context: null,
         brainstormContext: null,
         abortController: new AbortController(),
@@ -60,28 +60,28 @@ describe('runOptimization', () => {
         log: createMockLog() as never,
         analyzeAndOptimize,
         calculateQualityScore: vi.fn(),
-      })
-    ).rejects.toThrow('API down');
+      }),
+    ).rejects.toThrow("API down");
   });
 
-  it('commits the final prompt, metadata, and result version', async () => {
+  it("commits the final prompt, metadata, and result version", async () => {
     const actions = createMockActions();
     const analyzeAndOptimize = vi.fn().mockResolvedValue({
-      prompt: 'optimized prompt',
-      artifactKey: 'artifact-123',
+      prompt: "optimized prompt",
+      artifactKey: "artifact-123",
       metadata: {
-        genericPrompt: 'generic prompt',
-        previewPrompt: 'preview prompt',
-        aspectRatio: '16:9',
+        genericPrompt: "generic prompt",
+        previewPrompt: "preview prompt",
+        aspectRatio: "16:9",
       },
     });
 
     const result = await runOptimization({
-      promptToOptimize: 'source prompt',
-      selectedMode: 'video',
-      selectedModel: 'sora-2',
-      context: { tone: 'cinematic' },
-      brainstormContext: { notes: 'keep motion' },
+      promptToOptimize: "source prompt",
+      selectedMode: "video",
+      selectedModel: "sora-2",
+      context: { tone: "cinematic" },
+      brainstormContext: { notes: "keep motion" },
       abortController: new AbortController(),
       skipCache: true,
       actions,
@@ -93,28 +93,30 @@ describe('runOptimization', () => {
 
     expect(analyzeAndOptimize).toHaveBeenCalledWith(
       expect.objectContaining({
-        prompt: 'source prompt',
-        targetModel: 'sora-2',
+        prompt: "source prompt",
+        targetModel: "sora-2",
         skipCache: true,
-      })
+      }),
     );
-    expect(actions.setOptimizedPrompt).toHaveBeenCalledWith('optimized prompt');
-    expect(actions.setDisplayedPrompt).toHaveBeenCalledWith('optimized prompt');
-    expect(actions.setGenericOptimizedPrompt).toHaveBeenCalledWith('generic prompt');
-    expect(actions.setArtifactKey).toHaveBeenCalledWith('artifact-123');
-    expect(actions.setPreviewPrompt).toHaveBeenCalledWith('preview prompt');
-    expect(actions.setPreviewAspectRatio).toHaveBeenCalledWith('16:9');
+    expect(actions.setOptimizedPrompt).toHaveBeenCalledWith("optimized prompt");
+    expect(actions.setDisplayedPrompt).toHaveBeenCalledWith("optimized prompt");
+    expect(actions.setGenericOptimizedPrompt).toHaveBeenCalledWith(
+      "generic prompt",
+    );
+    expect(actions.setArtifactKey).toHaveBeenCalledWith("artifact-123");
+    expect(actions.setPreviewPrompt).toHaveBeenCalledWith("preview prompt");
+    expect(actions.setPreviewAspectRatio).toHaveBeenCalledWith("16:9");
     expect(actions.setQualityScore).toHaveBeenCalledWith(88);
     expect(actions.bumpOptimizationResultVersion).toHaveBeenCalledTimes(1);
-    expect(result).toEqual({ optimized: 'optimized prompt', score: 88 });
+    expect(result).toEqual({ optimized: "optimized prompt", score: 88 });
   });
 
-  it('shows a low-score warning and i2v conflict notice when needed', async () => {
+  it("shows a low-score warning and i2v conflict notice when needed", async () => {
     const toast = createMockToast();
 
     await runOptimization({
-      promptToOptimize: 'source prompt',
-      selectedMode: 'video',
+      promptToOptimize: "source prompt",
+      selectedMode: "video",
       context: null,
       brainstormContext: null,
       abortController: new AbortController(),
@@ -122,18 +124,20 @@ describe('runOptimization', () => {
       toast,
       log: createMockLog() as never,
       analyzeAndOptimize: vi.fn().mockResolvedValue({
-        prompt: 'optimized prompt',
+        prompt: "optimized prompt",
         i2v: {
-          conflicts: [{ field: 'color', description: 'mismatch' }],
-          appliedMode: 'flexible',
+          conflicts: [{ field: "color", description: "mismatch" }],
+          appliedMode: "flexible",
         },
       }),
       calculateQualityScore: vi.fn().mockReturnValue(45),
     });
 
     expect(toast.warning).toHaveBeenCalledWith(
-      expect.stringContaining('Prompt could be improved. Score: 45%')
+      expect.stringContaining("Prompt could be improved. Score: 45%"),
     );
-    expect(toast.warning).toHaveBeenCalledWith(expect.stringContaining('1 visual conflict'));
+    expect(toast.warning).toHaveBeenCalledWith(
+      expect.stringContaining("1 visual conflict"),
+    );
   });
 });

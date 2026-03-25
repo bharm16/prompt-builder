@@ -5,8 +5,8 @@
  * access to CSS grid properties, with optional system spacing token support.
  */
 
-import React from 'react';
-import { Box, type BoxProps } from './Box';
+import React from "react";
+import { Box, type BoxProps } from "./Box";
 
 export interface GridProps extends BoxProps {
   /**
@@ -14,64 +14,67 @@ export interface GridProps extends BoxProps {
    * Examples: "1fr", "repeat(3, 1fr)", "1fr 2fr", etc.
    */
   columns?: string | { [key: string]: string };
-  
+
   /**
    * Grid rows - accepts CSS grid-template-rows value
    */
   rows?: string | { [key: string]: string };
-  
+
   /**
    * Gap between grid items
    */
   gap?: string | { [key: string]: string };
-  
+
   /**
    * Column gap
    */
   columnGap?: string | { [key: string]: string };
-  
+
   /**
    * Row gap
    */
   rowGap?: string | { [key: string]: string };
-  
+
   /**
    * Grid area
    */
   area?: string | { [key: string]: string };
-  
+
   /**
    * Grid column
    */
   column?: string | { [key: string]: string };
-  
+
   /**
    * Grid row
    */
   row?: string | { [key: string]: string };
 }
 
-function getGridClasses(prop: string | { [key: string]: string } | undefined, prefix: string): string {
-  if (!prop) return '';
-  
-  if (typeof prop === 'string') {
+function getGridClasses(
+  prop: string | { [key: string]: string } | undefined,
+  prefix: string,
+): string {
+  if (!prop) return "";
+
+  if (typeof prop === "string") {
     return `${prefix}-${prop}`;
   }
 
   const classes: string[] = [];
   Object.entries(prop).forEach(([breakpoint, value]) => {
-    if (breakpoint === 'initial' || breakpoint === 'base') {
+    if (breakpoint === "initial" || breakpoint === "base") {
       classes.push(`${prefix}-${value}`);
     } else {
       classes.push(`${breakpoint}:${prefix}-${value}`);
     }
   });
-  return classes.join(' ');
+  return classes.join(" ");
 }
 
 const SPACING_TOKEN_MAP = {
-  'ps-page': 'var(--ps-space-page)',
-  'ps-card': 'var(--ps-space-card)',
+  "ps-page": "var(--ps-space-page)",
+  "ps-card": "var(--ps-space-card)",
 } as const;
 
 function psTokenToCssVar(token: string): string | undefined {
@@ -94,36 +97,40 @@ export const Grid = React.forwardRef<HTMLDivElement, GridProps>(
       area,
       column,
       row,
-      className = '',
+      className = "",
       style = {},
       ...boxProps
     },
-    ref
+    ref,
   ): React.ReactElement => {
-    const gapToken = typeof gap === 'string' ? psTokenToCssVar(gap) : undefined;
-    const colGapToken = typeof columnGap === 'string' ? psTokenToCssVar(columnGap) : undefined;
-    const rowGapToken = typeof rowGap === 'string' ? psTokenToCssVar(rowGap) : undefined;
+    const gapToken = typeof gap === "string" ? psTokenToCssVar(gap) : undefined;
+    const colGapToken =
+      typeof columnGap === "string" ? psTokenToCssVar(columnGap) : undefined;
+    const rowGapToken =
+      typeof rowGap === "string" ? psTokenToCssVar(rowGap) : undefined;
 
     const gridClasses = [
-      'grid',
-      gapToken ? '' : getGridClasses(gap, 'gap'),
-      colGapToken ? '' : getGridClasses(columnGap, 'gap-x'),
-      rowGapToken ? '' : getGridClasses(rowGap, 'gap-y'),
+      "grid",
+      gapToken ? "" : getGridClasses(gap, "gap"),
+      colGapToken ? "" : getGridClasses(columnGap, "gap-x"),
+      rowGapToken ? "" : getGridClasses(rowGap, "gap-y"),
       className,
     ]
       .filter(Boolean)
-      .join(' ');
+      .join(" ");
 
     const inlineStyles: React.CSSProperties = {
       ...style,
       ...(gapToken ? { gap: gapToken } : {}),
       ...(colGapToken ? { columnGap: colGapToken } : {}),
       ...(rowGapToken ? { rowGap: rowGapToken } : {}),
-      ...(columns && typeof columns === 'string' ? { gridTemplateColumns: columns } : {}),
-      ...(rows && typeof rows === 'string' ? { gridTemplateRows: rows } : {}),
-      ...(area && typeof area === 'string' ? { gridArea: area } : {}),
-      ...(column && typeof column === 'string' ? { gridColumn: column } : {}),
-      ...(row && typeof row === 'string' ? { gridRow: row } : {}),
+      ...(columns && typeof columns === "string"
+        ? { gridTemplateColumns: columns }
+        : {}),
+      ...(rows && typeof rows === "string" ? { gridTemplateRows: rows } : {}),
+      ...(area && typeof area === "string" ? { gridArea: area } : {}),
+      ...(column && typeof column === "string" ? { gridColumn: column } : {}),
+      ...(row && typeof row === "string" ? { gridRow: row } : {}),
     };
 
     return (
@@ -135,9 +142,9 @@ export const Grid = React.forwardRef<HTMLDivElement, GridProps>(
         {...boxProps}
       />
     );
-  }
+  },
 );
 
-Grid.displayName = 'Grid';
+Grid.displayName = "Grid";
 
 export default Grid;

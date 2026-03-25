@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   loggerMock,
@@ -25,34 +25,34 @@ const {
   getConfigMock: vi.fn(),
 }));
 
-vi.mock('@infrastructure/Logger', () => ({
+vi.mock("@infrastructure/Logger", () => ({
   logger: loggerMock,
 }));
 
-vi.mock('@config/modelConfig', () => ({
+vi.mock("@config/modelConfig", () => ({
   ModelConfig: {
     optimize_standard: {},
   },
   shouldUseSeed: shouldUseSeedMock,
 }));
 
-vi.mock('@utils/hash', () => ({
+vi.mock("@utils/hash", () => ({
   hashString: hashStringMock,
 }));
 
-vi.mock('@utils/provider/ProviderDetector', () => ({
+vi.mock("@utils/provider/ProviderDetector", () => ({
   detectAndGetCapabilities: detectAndGetCapabilitiesMock,
 }));
 
-vi.mock('../request/RequestOptionsBuilder', () => ({
+vi.mock("../request/RequestOptionsBuilder", () => ({
   buildRequestOptions: buildRequestOptionsMock,
 }));
 
-vi.mock('../request/ResponseFormatBuilder', () => ({
+vi.mock("../request/ResponseFormatBuilder", () => ({
   buildResponseFormat: buildResponseFormatMock,
 }));
 
-vi.mock('../routing/ExecutionPlan', () => ({
+vi.mock("../routing/ExecutionPlan", () => ({
   ExecutionPlanResolver: class {
     resolve(operation: string) {
       return resolvePlanMock(operation);
@@ -63,34 +63,34 @@ vi.mock('../routing/ExecutionPlan', () => ({
   },
 }));
 
-vi.mock('@interfaces/IAIClient', () => ({
+vi.mock("@interfaces/IAIClient", () => ({
   AIClientError: class AIClientError extends Error {
     statusCode: number;
     constructor(message: string, statusCode: number) {
       super(message);
-      this.name = 'AIClientError';
+      this.name = "AIClientError";
       this.statusCode = statusCode;
     }
   },
 }));
 
-import { AIModelService } from '../AIModelService';
+import { AIModelService } from "../AIModelService";
 
 const baseConfig = {
-  client: 'openai',
-  model: 'gpt-4o',
+  client: "openai",
+  model: "gpt-4o",
   temperature: 0.2,
   maxTokens: 1000,
   timeout: 20000,
 };
 
-describe('AIModelService client-abort regression', () => {
+describe("AIModelService client-abort regression", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     shouldUseSeedMock.mockReturnValue(false);
     hashStringMock.mockReturnValue(12345);
     detectAndGetCapabilitiesMock.mockReturnValue({
-      provider: 'openai',
+      provider: "openai",
       capabilities: {
         strictJsonSchema: true,
         developerRole: true,
@@ -99,7 +99,7 @@ describe('AIModelService client-abort regression', () => {
     });
     buildResponseFormatMock.mockReturnValue({ jsonMode: false });
     buildRequestOptionsMock.mockReturnValue({
-      model: 'gpt-4o',
+      model: "gpt-4o",
       temperature: 0.2,
       maxTokens: 1000,
       timeout: 20000,
@@ -107,17 +107,19 @@ describe('AIModelService client-abort regression', () => {
     });
     resolvePlanMock.mockReturnValue({
       primaryConfig: baseConfig,
-      fallback: { client: 'qwen', model: 'qwen/qwen3-32b', timeout: 10000 },
+      fallback: { client: "qwen", model: "qwen/qwen3-32b", timeout: 10000 },
     });
     getConfigMock.mockReturnValue(baseConfig);
   });
 
-  it('for any client-aborted primary request, fallback must not execute', async () => {
-    const clientAbortError = new Error('openai API request aborted by client');
-    clientAbortError.name = 'ClientAbortError';
+  it("for any client-aborted primary request, fallback must not execute", async () => {
+    const clientAbortError = new Error("openai API request aborted by client");
+    clientAbortError.name = "ClientAbortError";
 
     const primaryComplete = vi.fn().mockRejectedValue(clientAbortError);
-    const fallbackComplete = vi.fn().mockResolvedValue({ text: 'fallback', metadata: {} });
+    const fallbackComplete = vi
+      .fn()
+      .mockResolvedValue({ text: "fallback", metadata: {} });
 
     const service = new AIModelService({
       clients: {
@@ -127,18 +129,20 @@ describe('AIModelService client-abort regression', () => {
     });
 
     await expect(
-      service.execute('optimize_standard', { systemPrompt: 'prompt' })
+      service.execute("optimize_standard", { systemPrompt: "prompt" }),
     ).rejects.toBe(clientAbortError);
 
     expect(fallbackComplete).not.toHaveBeenCalled();
   });
 
-  it('for retryable non-abort errors, fallback still executes', async () => {
-    const retryableError = new Error('openai 503');
+  it("for retryable non-abort errors, fallback still executes", async () => {
+    const retryableError = new Error("openai 503");
     (retryableError as Error & { isRetryable?: boolean }).isRetryable = true;
 
     const primaryComplete = vi.fn().mockRejectedValue(retryableError);
-    const fallbackComplete = vi.fn().mockResolvedValue({ text: 'fallback-ok', metadata: {} });
+    const fallbackComplete = vi
+      .fn()
+      .mockResolvedValue({ text: "fallback-ok", metadata: {} });
 
     const service = new AIModelService({
       clients: {
@@ -147,9 +151,11 @@ describe('AIModelService client-abort regression', () => {
       },
     });
 
-    const response = await service.execute('optimize_standard', { systemPrompt: 'prompt' });
+    const response = await service.execute("optimize_standard", {
+      systemPrompt: "prompt",
+    });
 
-    expect(response.text).toBe('fallback-ok');
+    expect(response.text).toBe("fallback-ok");
     expect(fallbackComplete).toHaveBeenCalledTimes(1);
   });
 });

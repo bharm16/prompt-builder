@@ -6,6 +6,6 @@ export {
   ReferenceImageProcessingService as ReferenceImageService,
   type ProcessedImageResult,
   type ImageValidationResult,
-} from './ReferenceImageProcessingService';
+} from "./ReferenceImageProcessingService";
 
-export { ReferenceImageProcessingService as default } from './ReferenceImageProcessingService';
+export { ReferenceImageProcessingService as default } from "./ReferenceImageProcessingService";

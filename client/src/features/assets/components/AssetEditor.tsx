@@ -1,22 +1,22 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from '@promptstudio/system/components/ui/dialog';
-import { Input } from '@promptstudio/system/components/ui/input';
-import { Textarea } from '@promptstudio/system/components/ui/textarea';
-import { Button } from '@promptstudio/system/components/ui/button';
-import type { Asset, AssetType } from '@shared/types/asset';
-import { ASSET_TYPES, getAssetTypeConfig } from '../config/assetConfig';
-import AssetTypeSelector from './AssetTypeSelector';
-import ReferenceImageUploader from './ReferenceImageUploader';
-import ReferenceImageGrid from './ReferenceImageGrid';
+} from "@promptstudio/system/components/ui/dialog";
+import { Input } from "@promptstudio/system/components/ui/input";
+import { Textarea } from "@promptstudio/system/components/ui/textarea";
+import { Button } from "@promptstudio/system/components/ui/button";
+import type { Asset, AssetType } from "@shared/types/asset";
+import { ASSET_TYPES, getAssetTypeConfig } from "../config/assetConfig";
+import AssetTypeSelector from "./AssetTypeSelector";
+import ReferenceImageUploader from "./ReferenceImageUploader";
+import ReferenceImageGrid from "./ReferenceImageGrid";
 
 interface AssetEditorProps {
-  mode: 'create' | 'edit';
+  mode: "create" | "edit";
   asset?: Asset | undefined;
   preselectedType?: AssetType | undefined;
   onClose: () => void;
@@ -29,9 +29,18 @@ interface AssetEditorProps {
   }) => Promise<Asset>;
   onUpdate: (
     assetId: string,
-    data: { trigger?: string; name?: string; textDefinition?: string; negativePrompt?: string }
+    data: {
+      trigger?: string;
+      name?: string;
+      textDefinition?: string;
+      negativePrompt?: string;
+    },
   ) => Promise<Asset>;
-  onAddImage: (assetId: string, file: File, metadata: Record<string, string | undefined>) => Promise<void>;
+  onAddImage: (
+    assetId: string,
+    file: File,
+    metadata: Record<string, string | undefined>,
+  ) => Promise<void>;
   onDeleteImage: (assetId: string, imageId: string) => Promise<void>;
   onSetPrimaryImage: (assetId: string, imageId: string) => Promise<void>;
 }
@@ -47,11 +56,17 @@ export function AssetEditor({
   onDeleteImage,
   onSetPrimaryImage,
 }: AssetEditorProps): React.ReactElement {
-  const [type, setType] = useState<AssetType>(preselectedType || asset?.type || 'character');
-  const [name, setName] = useState(asset?.name || '');
-  const [trigger, setTrigger] = useState(asset?.trigger || '');
-  const [textDefinition, setTextDefinition] = useState(asset?.textDefinition || '');
-  const [negativePrompt, setNegativePrompt] = useState(asset?.negativePrompt || '');
+  const [type, setType] = useState<AssetType>(
+    preselectedType || asset?.type || "character",
+  );
+  const [name, setName] = useState(asset?.name || "");
+  const [trigger, setTrigger] = useState(asset?.trigger || "");
+  const [textDefinition, setTextDefinition] = useState(
+    asset?.textDefinition || "",
+  );
+  const [negativePrompt, setNegativePrompt] = useState(
+    asset?.negativePrompt || "",
+  );
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -61,7 +76,7 @@ export function AssetEditor({
       setName(asset.name);
       setTrigger(asset.trigger);
       setTextDefinition(asset.textDefinition);
-      setNegativePrompt(asset.negativePrompt || '');
+      setNegativePrompt(asset.negativePrompt || "");
     } else if (preselectedType) {
       setType(preselectedType);
     }
@@ -73,11 +88,11 @@ export function AssetEditor({
     setIsSaving(true);
     setError(null);
     try {
-      if (type !== 'character' && !textDefinition.trim()) {
-        setError('Description is required for this asset type.');
+      if (type !== "character" && !textDefinition.trim()) {
+        setError("Description is required for this asset type.");
         return;
       }
-      if (mode === 'create') {
+      if (mode === "create") {
         await onCreate({
           type,
           trigger,
@@ -95,14 +110,15 @@ export function AssetEditor({
       }
       onClose();
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to save asset';
+      const message =
+        err instanceof Error ? err.message : "Failed to save asset";
       setError(message);
     } finally {
       setIsSaving(false);
     }
   };
 
-  const showReferenceImages = mode === 'edit' && asset;
+  const showReferenceImages = mode === "edit" && asset;
 
   return (
     <Dialog
@@ -116,27 +132,31 @@ export function AssetEditor({
       <DialogContent className="border-border bg-surface-1 max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-xl border p-6 shadow-lg">
         <DialogHeader className="mb-4">
           <DialogTitle className="text-lg font-semibold text-foreground">
-            {mode === 'create' ? 'Create asset' : 'Edit asset'}
+            {mode === "create" ? "Create asset" : "Edit asset"}
           </DialogTitle>
           <DialogDescription className="sr-only">
-            {mode === 'create'
-              ? 'Configure your asset type, name, and description.'
-              : 'Update your asset name and description.'}
+            {mode === "create"
+              ? "Configure your asset type, name, and description."
+              : "Update your asset name and description."}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-5">
-          {mode === 'create' ? (
+          {mode === "create" ? (
             <div>
               <label className="mb-2 block text-sm font-medium text-foreground">
                 Asset type
               </label>
               <AssetTypeSelector value={type} onChange={setType} />
-              <p className="mt-2 text-xs text-muted">{ASSET_TYPES[type].description}</p>
+              <p className="mt-2 text-xs text-muted">
+                {ASSET_TYPES[type].description}
+              </p>
             </div>
           ) : (
             <div className="flex items-center gap-2">
-              <span className={`rounded-full px-2 py-0.5 text-xs ${config.bgClass} ${config.colorClass}`}>
+              <span
+                className={`rounded-full px-2 py-0.5 text-xs ${config.bgClass} ${config.colorClass}`}
+              >
                 {config.label}
               </span>
               <span className="text-xs text-muted">Type is locked</span>
@@ -145,7 +165,9 @@ export function AssetEditor({
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <label className="mb-1 block text-sm font-medium text-foreground">Name</label>
+              <label className="mb-1 block text-sm font-medium text-foreground">
+                Name
+              </label>
               <Input
                 value={name}
                 onChange={(event) => setName(event.target.value)}
@@ -153,7 +175,9 @@ export function AssetEditor({
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-foreground">Trigger</label>
+              <label className="mb-1 block text-sm font-medium text-foreground">
+                Trigger
+              </label>
               <Input
                 value={trigger}
                 onChange={(event) => setTrigger(event.target.value)}
@@ -166,7 +190,9 @@ export function AssetEditor({
             <label className="mb-1 block text-sm font-medium text-foreground">
               Description
               <span className="ml-2 text-xs text-muted">
-                {type === 'character' ? 'Optional - images drive consistency' : 'Required'}
+                {type === "character"
+                  ? "Optional - images drive consistency"
+                  : "Required"}
               </span>
             </label>
             <Textarea
@@ -188,27 +214,40 @@ export function AssetEditor({
             />
           </div>
 
-          {error && <p className="motion-shake-x text-sm text-red-600">{error}</p>}
+          {error && (
+            <p className="motion-shake-x text-sm text-red-600">{error}</p>
+          )}
 
           <div className="flex items-center justify-end gap-2">
-            <Button type="button" variant="outline" onClick={onClose} disabled={isSaving}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
+              disabled={isSaving}
+            >
               Cancel
             </Button>
             <Button type="button" onClick={handleSave} disabled={isSaving}>
-              {isSaving ? 'Saving...' : 'Save'}
+              {isSaving ? "Saving..." : "Save"}
             </Button>
           </div>
 
           {showReferenceImages && asset && (
-            <div className="motion-presence-panel space-y-4" data-motion-state="entered">
-              {asset.type === 'character' && (
+            <div
+              className="motion-presence-panel space-y-4"
+              data-motion-state="entered"
+            >
+              {asset.type === "character" && (
                 <div className="rounded-lg border border-border bg-surface-2 px-3 py-2 text-xs text-muted">
-                  Character consistency comes from strong reference photos. Add a few clear face shots below.
+                  Character consistency comes from strong reference photos. Add
+                  a few clear face shots below.
                 </div>
               )}
               <ReferenceImageUploader
                 assetType={asset.type}
-                onUpload={(file, metadata) => onAddImage(asset.id, file, metadata)}
+                onUpload={(file, metadata) =>
+                  onAddImage(asset.id, file, metadata)
+                }
                 maxImages={config.maxReferenceImages}
                 currentCount={asset.referenceImages?.length || 0}
               />
@@ -221,7 +260,10 @@ export function AssetEditor({
           )}
 
           {!showReferenceImages && (
-            <p className="motion-presence-panel text-xs text-muted" data-motion-state="entered">
+            <p
+              className="motion-presence-panel text-xs text-muted"
+              data-motion-state="entered"
+            >
               You can add reference images after saving this asset.
             </p>
           )}

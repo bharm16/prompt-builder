@@ -1,6 +1,6 @@
-import React from 'react';
-import { useCreditBalance } from '@/contexts/CreditBalanceContext';
-import { cn } from '@/utils/cn';
+import React from "react";
+import { useCreditBalance } from "@/contexts/CreditBalanceContext";
+import { cn } from "@/utils/cn";
 
 interface NewSessionViewProps {
   className?: string;
@@ -14,8 +14,8 @@ export function NewSessionView({
   return (
     <div
       className={cn(
-        'pointer-events-none absolute inset-0 flex flex-col justify-between',
-        className
+        "pointer-events-none absolute inset-0 flex flex-col justify-between",
+        className,
       )}
       data-testid="new-session-view"
     >
@@ -38,8 +38,8 @@ export function NewSessionView({
           </span>
         </div>
         <p className="max-w-[420px] text-center text-sm leading-relaxed text-tool-text-dim">
-          Start with a scene, subject, or motion cue. The editor stays live while the workspace
-          grows around it.
+          Start with a scene, subject, or motion cue. The editor stays live
+          while the workspace grows around it.
         </p>
       </div>
 
@@ -47,7 +47,7 @@ export function NewSessionView({
         <div className="flex items-center gap-1.5">
           <span className="h-[6px] w-[6px] rounded-full bg-emerald-400" />
           <span className="text-[11px] font-medium text-tool-text-subdued">
-            {typeof balance === 'number' ? `${balance} cr` : '— cr'}
+            {typeof balance === "number" ? `${balance} cr` : "— cr"}
           </span>
         </div>
       </div>

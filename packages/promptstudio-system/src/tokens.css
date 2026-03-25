@@ -4,13 +4,17 @@
        Typography (dark-first, 14px base)
        Reference: Runway/Midjourney style guide
        ========================= */
-    --ps-font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
-      "Segoe UI", sans-serif;
-    --ps-font-display: 'Inter', ui-sans-serif, -apple-system, BlinkMacSystemFont, "SF Pro Display", system-ui,
-      sans-serif;
-    --ps-font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New",
-      monospace;
-    --ps-font-serif: ui-serif, "Iowan Old Style", "Palatino", "Times New Roman", serif;
+    --ps-font-sans:
+      "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+      "SF Pro Text", "Segoe UI", sans-serif;
+    --ps-font-display:
+      "Inter", ui-sans-serif, -apple-system, BlinkMacSystemFont,
+      "SF Pro Display", system-ui, sans-serif;
+    --ps-font-mono:
+      ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+      "Courier New", monospace;
+    --ps-font-serif:
+      ui-serif, "Iowan Old Style", "Palatino", "Times New Roman", serif;
     --ps-fw-regular: 400;
     --ps-fw-medium: 500;
     --ps-fw-semibold: 600;
@@ -45,15 +49,15 @@
        ========================= */
     /* Dense UI guideline: 4, 8, 10, 12, 14, 16, 20, 24, 32 */
     --ps-s-0: 0px;
-    --ps-s-1: 4px;   /* space-1 */
-    --ps-s-2: 8px;   /* space-2 */
+    --ps-s-1: 4px; /* space-1 */
+    --ps-s-2: 8px; /* space-2 */
     --ps-s-2-5: 10px; /* space-3 (Runway dense) */
-    --ps-s-3: 12px;  /* space-4 */
+    --ps-s-3: 12px; /* space-4 */
     --ps-s-3-5: 14px; /* space-5 (Runway dense) */
-    --ps-s-4: 16px;  /* space-6 */
-    --ps-s-5: 20px;  /* space-7 */
-    --ps-s-6: 24px;  /* space-8 */
-    --ps-s-7: 32px;  /* space-10 */
+    --ps-s-4: 16px; /* space-6 */
+    --ps-s-5: 20px; /* space-7 */
+    --ps-s-6: 24px; /* space-8 */
+    --ps-s-7: 32px; /* space-10 */
     --ps-s-8: 40px;
     --ps-s-9: 48px;
     --ps-s-10: 56px;
@@ -61,20 +65,22 @@
 
     /* Semantic spacing aliases (Runway reference naming) */
     --ps-space-0: 0px;
-    --ps-space-1: var(--ps-s-1);   /* 4px */
-    --ps-space-2: var(--ps-s-2);   /* 8px */
+    --ps-space-1: var(--ps-s-1); /* 4px */
+    --ps-space-2: var(--ps-s-2); /* 8px */
     --ps-space-3: var(--ps-s-2-5); /* 10px - Runway */
-    --ps-space-4: var(--ps-s-3);   /* 12px */
+    --ps-space-4: var(--ps-s-3); /* 12px */
     --ps-space-5: var(--ps-s-3-5); /* 14px - Runway */
-    --ps-space-6: var(--ps-s-4);   /* 16px */
-    --ps-space-7: var(--ps-s-5);   /* 20px */
-    --ps-space-8: var(--ps-s-6);   /* 24px */
-    --ps-space-9: var(--ps-s-9);   /* 48px */
-    --ps-space-10: var(--ps-s-7);  /* 32px */
+    --ps-space-6: var(--ps-s-4); /* 16px */
+    --ps-space-7: var(--ps-s-5); /* 20px */
+    --ps-space-8: var(--ps-s-6); /* 24px */
+    --ps-space-9: var(--ps-s-9); /* 48px */
+    --ps-space-10: var(--ps-s-7); /* 32px */
     --ps-space-11: var(--ps-s-11); /* 64px */
 
     /* Common semantic names */
-    --ps-space-page: var(--ps-s-6); /* 24px - default page padding / section rhythm */
+    --ps-space-page: var(
+      --ps-s-6
+    ); /* 24px - default page padding / section rhythm */
     --ps-space-card: var(--ps-s-4); /* 16px */
     --ps-space-panel: var(--ps-s-3); /* 12px - Runway panel padding */
     --ps-space-paragraph: 1.5em;
@@ -83,11 +89,11 @@
        Radius (Runway/Midjourney reference)
        ========================= */
     --ps-r-none: 0px;
-    --ps-r-xs: 2px;   /* Updated: was 4px */
-    --ps-r-sm: 4px;   /* Updated: was 6px */
-    --ps-r-md: 6px;   /* Updated: was 8px */
-    --ps-r-lg: 8px;   /* Updated: was 10px */
-    --ps-r-xl: 12px;  /* Same */
+    --ps-r-xs: 2px; /* Updated: was 4px */
+    --ps-r-sm: 4px; /* Updated: was 6px */
+    --ps-r-md: 6px; /* Updated: was 8px */
+    --ps-r-lg: 8px; /* Updated: was 10px */
+    --ps-r-xl: 12px; /* Same */
     --ps-r-2xl: 14px; /* Updated: was 16px */
     --ps-r-3xl: 16px; /* New */
     --ps-r-pill: 9999px; /* Updated: was 999px */
@@ -441,7 +447,7 @@
        Icon Sizes (Runway reference)
        ========================= */
     --ps-icon-sidebar: 24px; /* Sidebar icons */
-    --ps-icon-small: 16px;   /* Small inline icons */
+    --ps-icon-small: 16px; /* Small inline icons */
     --ps-icon-default: 20px; /* Default icons */
     --ps-icon-inactive-color: #aaaebb;
     --ps-icon-active-color: #ebecef;
@@ -450,20 +456,15 @@
        Shadows (Midjourney/Runway reference)
        ========================= */
     --ps-shadow-sm:
-      0 1px 2px rgba(0, 0, 0, 0.5),
-      0 0 0 1px rgba(255, 255, 255, 0.03);
+      0 1px 2px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.03);
     --ps-shadow-md:
-      0 4px 12px rgba(0, 0, 0, 0.6),
-      0 0 0 1px rgba(255, 255, 255, 0.04);
-    --ps-shadow-lg:
-      0 7px 21px rgba(0, 0, 0, 0.25); /* Updated: Midjourney panel shadow */
+      0 4px 12px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.04);
+    --ps-shadow-lg: 0 7px 21px rgba(0, 0, 0, 0.25); /* Updated: Midjourney panel shadow */
 
     --ps-shadow-elevated:
-      inset 0 1px 0 rgba(255, 255, 255, 0.06),
-      0 8px 24px rgba(0, 0, 0, 0.5);
+      inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 8px 24px rgba(0, 0, 0, 0.5);
     --ps-shadow-floating:
-      inset 0 1px 0 rgba(255, 255, 255, 0.08),
-      0 16px 48px rgba(0, 0, 0, 0.6);
+      inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 16px 48px rgba(0, 0, 0, 0.6);
     --ps-shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.06);
     /* New: Midjourney selected glow */
     --ps-shadow-glow-mj:
@@ -520,10 +521,24 @@
     --ps-glass-bg-subtle: rgba(255, 255, 255, 0.03);
     --ps-glass-border: rgba(255, 255, 255, 0.08);
     --ps-sidebar-bg: #131418;
-    --ps-thumb-gradient: radial-gradient(120% 120% at 20% 20%, rgba(104, 134, 255, 0.35) 0%, rgba(104, 134, 255, 0) 60%),
-      linear-gradient(145deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.02) 100%);
-    --ps-thumb-gradient-muted: linear-gradient(145deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.01) 100%);
-    --ps-glow-accent: 0 0 0 1px rgba(104, 134, 255, 0.6), 0 0 18px rgba(104, 134, 255, 0.35);
+    --ps-thumb-gradient:
+      radial-gradient(
+        120% 120% at 20% 20%,
+        rgba(104, 134, 255, 0.35) 0%,
+        rgba(104, 134, 255, 0) 60%
+      ),
+      linear-gradient(
+        145deg,
+        rgba(255, 255, 255, 0.08) 0%,
+        rgba(255, 255, 255, 0.02) 100%
+      );
+    --ps-thumb-gradient-muted: linear-gradient(
+      145deg,
+      rgba(255, 255, 255, 0.05) 0%,
+      rgba(255, 255, 255, 0.01) 100%
+    );
+    --ps-glow-accent:
+      0 0 0 1px rgba(104, 134, 255, 0.6), 0 0 18px rgba(104, 134, 255, 0.35);
 
     /* Compatibility aliases */
     --bg: var(--ps-bg);

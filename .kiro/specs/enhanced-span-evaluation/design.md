@@ -5,6 +5,7 @@
 This design document describes the enhanced span labeling evaluation system that provides detailed diagnostics for improving span extraction quality. The system extends the existing evaluation script with structured error typing, section boundary detection, per-category scoring, confidence correlation analysis, and enhanced comparison reporting.
 
 The implementation follows a layered approach:
+
 1. **Types Layer** - Shared TypeScript interfaces in a dedicated types file
 2. **Detection Layer** - Section boundary detection using regex patterns
 3. **Judge Layer** - Enhanced LLM judge prompt and response parsing with Zod validation
@@ -19,30 +20,30 @@ flowchart TD
         P[Prompt Text]
         S[Extracted Spans]
     end
-    
+
     subgraph Detection["Section Detection (P1)"]
         SD[detectSections]
         ST[tagSpansWithSections]
     end
-    
+
     subgraph Judge["LLM Judge (P0)"]
         JP[Enhanced Judge Prompt]
         JC[GPT-4o Judge Call]
         JV[Zod Schema Validation]
         JF[Fallback Parser]
     end
-    
+
     subgraph Analysis["Analysis (P2)"]
         CA[Confidence Analysis]
         SA[Summary Aggregation]
     end
-    
+
     subgraph Output
         ER[EvaluationResult]
         SS[Snapshot Summary]
         CR[Comparison Report]
     end
-    
+
     P --> SD
     SD --> ST
     S --> ST
@@ -69,35 +70,42 @@ All shared interfaces will be centralized in a types file for maintainability.
 // Core Types
 // =============================================================================
 
-export type SectionType = 'main' | 'technicalSpecs' | 'alternatives';
+export type SectionType = "main" | "technicalSpecs" | "alternatives";
 
-export type FalsePositiveReason = 
-  | 'section_header' 
-  | 'abstract_concept' 
-  | 'non_visual' 
-  | 'instruction_text' 
-  | 'duplicate' 
-  | 'other';
+export type FalsePositiveReason =
+  | "section_header"
+  | "abstract_concept"
+  | "non_visual"
+  | "instruction_text"
+  | "duplicate"
+  | "other";
 
-export type Severity = 'critical' | 'important' | 'minor';
+export type Severity = "critical" | "important" | "minor";
 
-export type GranularityIssue = 'too_fine' | 'too_coarse';
+export type GranularityIssue = "too_fine" | "too_coarse";
 
 // All 9 taxonomy categories
-export type TaxonomyCategory = 
-  | 'shot' 
-  | 'subject' 
-  | 'action' 
-  | 'environment' 
-  | 'lighting' 
-  | 'camera' 
-  | 'style' 
-  | 'technical' 
-  | 'audio';
+export type TaxonomyCategory =
+  | "shot"
+  | "subject"
+  | "action"
+  | "environment"
+  | "lighting"
+  | "camera"
+  | "style"
+  | "technical"
+  | "audio";
 
 export const TAXONOMY_CATEGORIES: TaxonomyCategory[] = [
-  'shot', 'subject', 'action', 'environment', 'lighting', 
-  'camera', 'style', 'technical', 'audio'
+  "shot",
+  "subject",
+  "action",
+  "environment",
+  "lighting",
+  "camera",
+  "style",
+  "technical",
+  "audio",
 ];
 
 // =============================================================================
@@ -161,7 +169,7 @@ export interface GranularityError {
 }
 
 export interface CategoryScore {
-  coverage: number;  // 1-5
+  coverage: number; // 1-5
   precision: number; // 1-5
 }
 
@@ -236,7 +244,7 @@ export interface EnhancedSummary {
   avgSpanCount: number;
   scoreDistribution: Record<string, number>;
   errorCount: number;
-  
+
   // Pipeline source tracking (existing)
   pipelineSources: {
     nlp: number;
@@ -248,7 +256,7 @@ export interface EnhancedSummary {
     openVocab: number;
     llm: number;
   };
-  
+
   // Enhanced fields
   avgCategoryScores: CategoryScores;
   falsePositiveReasons: Record<FalsePositiveReason, number>;
@@ -303,7 +311,8 @@ export interface Snapshot {
 
 ```typescript
 // Section header patterns (case-insensitive)
-const TECHNICAL_SPECS_PATTERN = /\*\*(?:TECHNICAL SPECS|Technical Specifications)\*\*/i;
+const TECHNICAL_SPECS_PATTERN =
+  /\*\*(?:TECHNICAL SPECS|Technical Specifications)\*\*/i;
 const ALTERNATIVES_PATTERN = /\*\*(?:ALTERNATIVE|VARIATIONS)\*\*/i;
 
 /**
@@ -313,39 +322,39 @@ const ALTERNATIVES_PATTERN = /\*\*(?:ALTERNATIVE|VARIATIONS)\*\*/i;
 export function detectSections(promptText: string): PromptSections {
   const techMatch = promptText.match(TECHNICAL_SPECS_PATTERN);
   const altMatch = promptText.match(ALTERNATIVES_PATTERN);
-  
+
   // Determine section boundaries
   let techStart: number | null = techMatch?.index ?? null;
   let altStart: number | null = altMatch?.index ?? null;
-  
+
   // Main section: from 0 to first header (or end)
   const mainEnd = Math.min(
     techStart ?? promptText.length,
-    altStart ?? promptText.length
+    altStart ?? promptText.length,
   );
-  
+
   // Technical specs section
   let technicalSpecs: SectionBoundary | null = null;
   if (techStart !== null) {
-    const techEnd = (altStart !== null && altStart > techStart) 
-      ? altStart 
-      : promptText.length;
+    const techEnd =
+      altStart !== null && altStart > techStart ? altStart : promptText.length;
     technicalSpecs = { start: techStart, end: techEnd };
   }
-  
+
   // Alternatives section
   let alternatives: SectionBoundary | null = null;
   if (altStart !== null) {
-    const altEnd = (techStart !== null && techStart > altStart)
-      ? techStart
-      : promptText.length;
+    const altEnd =
+      techStart !== null && techStart > altStart
+        ? techStart
+        : promptText.length;
     alternatives = { start: altStart, end: altEnd };
   }
-  
+
   return {
     main: { start: 0, end: mainEnd },
     technicalSpecs,
-    alternatives
+    alternatives,
   };
 }
 
@@ -353,32 +362,36 @@ export function detectSections(promptText: string): PromptSections {
  * Determine which section a span belongs to based on its start offset.
  */
 export function getSpanSection(
-  spanStart: number, 
-  sections: PromptSections
+  spanStart: number,
+  sections: PromptSections,
 ): SectionType {
-  if (sections.technicalSpecs && 
-      spanStart >= sections.technicalSpecs.start && 
-      spanStart < sections.technicalSpecs.end) {
-    return 'technicalSpecs';
+  if (
+    sections.technicalSpecs &&
+    spanStart >= sections.technicalSpecs.start &&
+    spanStart < sections.technicalSpecs.end
+  ) {
+    return "technicalSpecs";
   }
-  if (sections.alternatives && 
-      spanStart >= sections.alternatives.start && 
-      spanStart < sections.alternatives.end) {
-    return 'alternatives';
+  if (
+    sections.alternatives &&
+    spanStart >= sections.alternatives.start &&
+    spanStart < sections.alternatives.end
+  ) {
+    return "alternatives";
   }
-  return 'main';
+  return "main";
 }
 
 /**
  * Tag all spans with their section.
  */
 export function tagSpansWithSections(
-  spans: SpanResult[], 
-  sections: PromptSections
+  spans: SpanResult[],
+  sections: PromptSections,
 ): SpanResult[] {
-  return spans.map(span => ({
+  return spans.map((span) => ({
     ...span,
-    section: getSpanSection(span.start, sections)
+    section: getSpanSection(span.start, sections),
   }));
 }
 ```
@@ -495,18 +508,22 @@ Return ONLY valid JSON:
 ### Zod Schema Validation
 
 ```typescript
-import { z } from 'zod';
+import { z } from "zod";
 
-const SeveritySchema = z.enum(['critical', 'important', 'minor']);
+const SeveritySchema = z.enum(["critical", "important", "minor"]);
 const FalsePositiveReasonSchema = z.enum([
-  'section_header', 'abstract_concept', 'non_visual', 
-  'instruction_text', 'duplicate', 'other'
+  "section_header",
+  "abstract_concept",
+  "non_visual",
+  "instruction_text",
+  "duplicate",
+  "other",
 ]);
-const GranularityIssueSchema = z.enum(['too_fine', 'too_coarse']);
+const GranularityIssueSchema = z.enum(["too_fine", "too_coarse"]);
 
 const CategoryScoreSchema = z.object({
   coverage: z.number().min(1).max(5),
-  precision: z.number().min(1).max(5)
+  precision: z.number().min(1).max(5),
 });
 
 export const EnhancedJudgeResultSchema = z.object({
@@ -515,33 +532,41 @@ export const EnhancedJudgeResultSchema = z.object({
     precision: z.number().min(1).max(5),
     granularity: z.number().min(1).max(5),
     taxonomy: z.number().min(1).max(5),
-    technicalSpecs: z.number().min(1).max(5)
+    technicalSpecs: z.number().min(1).max(5),
   }),
   totalScore: z.number().min(0).max(25),
-  missedElements: z.array(z.object({
-    text: z.string(),
-    expectedRole: z.string(),
-    category: z.string(),
-    severity: SeveritySchema
-  })),
-  falsePositives: z.array(z.object({
-    spanIndex: z.number().int().min(0),
-    text: z.string(),
-    assignedRole: z.string(),
-    reason: FalsePositiveReasonSchema
-  })),
-  taxonomyErrors: z.array(z.object({
-    spanIndex: z.number().int().min(0),
-    text: z.string(),
-    assignedRole: z.string(),
-    expectedRole: z.string()
-  })),
-  granularityErrors: z.array(z.object({
-    spanIndex: z.number().int().min(0),
-    text: z.string(),
-    issue: GranularityIssueSchema,
-    suggestion: z.string()
-  })),
+  missedElements: z.array(
+    z.object({
+      text: z.string(),
+      expectedRole: z.string(),
+      category: z.string(),
+      severity: SeveritySchema,
+    }),
+  ),
+  falsePositives: z.array(
+    z.object({
+      spanIndex: z.number().int().min(0),
+      text: z.string(),
+      assignedRole: z.string(),
+      reason: FalsePositiveReasonSchema,
+    }),
+  ),
+  taxonomyErrors: z.array(
+    z.object({
+      spanIndex: z.number().int().min(0),
+      text: z.string(),
+      assignedRole: z.string(),
+      expectedRole: z.string(),
+    }),
+  ),
+  granularityErrors: z.array(
+    z.object({
+      spanIndex: z.number().int().min(0),
+      text: z.string(),
+      issue: GranularityIssueSchema,
+      suggestion: z.string(),
+    }),
+  ),
   categoryScores: z.object({
     shot: CategoryScoreSchema,
     subject: CategoryScoreSchema,
@@ -551,26 +576,26 @@ export const EnhancedJudgeResultSchema = z.object({
     camera: CategoryScoreSchema,
     style: CategoryScoreSchema,
     technical: CategoryScoreSchema,
-    audio: CategoryScoreSchema
+    audio: CategoryScoreSchema,
   }),
-  notes: z.string()
+  notes: z.string(),
 });
 
 /**
  * Parse and validate judge response with fallback to basic format.
  */
 export function parseJudgeResponse(
-  content: string, 
-  spanCount: number
+  content: string,
+  spanCount: number,
 ): EnhancedJudgeResult {
   // Extract JSON from response
   const jsonMatch = content.match(/\{[\s\S]*\}/);
   if (!jsonMatch) {
-    throw new Error('No JSON in judge response');
+    throw new Error("No JSON in judge response");
   }
-  
+
   const parsed = JSON.parse(jsonMatch[0]);
-  
+
   // Try enhanced schema first
   const result = EnhancedJudgeResultSchema.safeParse(parsed);
   if (result.success) {
@@ -583,9 +608,9 @@ export function parseJudgeResponse(
     }
     return result.data;
   }
-  
+
   // Fallback: convert basic format to enhanced
-  console.warn('Judge response failed enhanced validation, using fallback');
+  console.warn("Judge response failed enhanced validation, using fallback");
   return convertBasicToEnhanced(parsed);
 }
 
@@ -594,24 +619,30 @@ export function parseJudgeResponse(
  */
 function convertBasicToEnhanced(basic: any): EnhancedJudgeResult {
   const defaultCategoryScore = { coverage: 3, precision: 3 };
-  
+
   return {
     scores: basic.scores || {
-      coverage: 0, precision: 0, granularity: 0, taxonomy: 0, technicalSpecs: 0
+      coverage: 0,
+      precision: 0,
+      granularity: 0,
+      taxonomy: 0,
+      technicalSpecs: 0,
     },
     totalScore: basic.totalScore || 0,
     missedElements: (basic.missedElements || []).map((text: string) => ({
-      text: typeof text === 'string' ? text : text.text || '',
-      expectedRole: 'unknown',
-      category: 'unknown',
-      severity: 'minor' as const
+      text: typeof text === "string" ? text : text.text || "",
+      expectedRole: "unknown",
+      category: "unknown",
+      severity: "minor" as const,
     })),
-    falsePositives: (basic.incorrectExtractions || []).map((text: string, i: number) => ({
-      spanIndex: -1, // Unknown
-      text: typeof text === 'string' ? text : text.text || '',
-      assignedRole: 'unknown',
-      reason: 'other' as const
-    })),
+    falsePositives: (basic.incorrectExtractions || []).map(
+      (text: string, i: number) => ({
+        spanIndex: -1, // Unknown
+        text: typeof text === "string" ? text : text.text || "",
+        assignedRole: "unknown",
+        reason: "other" as const,
+      }),
+    ),
     taxonomyErrors: [],
     granularityErrors: [],
     categoryScores: {
@@ -623,9 +654,9 @@ function convertBasicToEnhanced(basic: any): EnhancedJudgeResult {
       camera: defaultCategoryScore,
       style: defaultCategoryScore,
       technical: defaultCategoryScore,
-      audio: defaultCategoryScore
+      audio: defaultCategoryScore,
     },
-    notes: basic.notes || 'Converted from basic format'
+    notes: basic.notes || "Converted from basic format",
   };
 }
 ```
@@ -638,9 +669,12 @@ function convertBasicToEnhanced(basic: any): EnhancedJudgeResult {
  * Example: "[0] 'Medium Shot' (shot.type, 0.95)"
  */
 export function formatSpansForJudge(spans: SpanResult[]): string {
-  return spans.map((span, index) => 
-    `[${index}] '${span.text}' (${span.role}, ${span.confidence.toFixed(2)})`
-  ).join('\n');
+  return spans
+    .map(
+      (span, index) =>
+        `[${index}] '${span.text}' (${span.role}, ${span.confidence.toFixed(2)})`,
+    )
+    .join("\n");
 }
 ```
 
@@ -651,18 +685,33 @@ export function formatSpansForJudge(spans: SpanResult[]): string {
  * Compute confidence correlation analysis.
  */
 export function computeConfidenceAnalysis(
-  results: EvaluationResult[]
+  results: EvaluationResult[],
 ): ConfidenceAnalysis {
   const buckets = {
-    high: { range: [0.8, 1.0] as [number, number], total: 0, errors: 0, errorRate: 0 },
-    medium: { range: [0.6, 0.8] as [number, number], total: 0, errors: 0, errorRate: 0 },
-    low: { range: [0.0, 0.6] as [number, number], total: 0, errors: 0, errorRate: 0 }
+    high: {
+      range: [0.8, 1.0] as [number, number],
+      total: 0,
+      errors: 0,
+      errorRate: 0,
+    },
+    medium: {
+      range: [0.6, 0.8] as [number, number],
+      total: 0,
+      errors: 0,
+      errorRate: 0,
+    },
+    low: {
+      range: [0.0, 0.6] as [number, number],
+      total: 0,
+      errors: 0,
+      errorRate: 0,
+    },
   };
-  
+
   // Collect all spans with their error status
   for (const result of results) {
     if (!result.judgeResult) continue;
-    
+
     // Build set of error span indices
     const errorIndices = new Set<number>();
     for (const fp of result.judgeResult.falsePositives) {
@@ -674,33 +723,33 @@ export function computeConfidenceAnalysis(
     for (const ge of result.judgeResult.granularityErrors) {
       if (ge.spanIndex >= 0) errorIndices.add(ge.spanIndex);
     }
-    
+
     // Categorize each span by confidence bucket
     for (let i = 0; i < result.spans.length; i++) {
       const span = result.spans[i];
       const conf = span.confidence;
       const isError = errorIndices.has(i);
-      
+
       let bucket: keyof typeof buckets;
-      if (conf >= 0.8) bucket = 'high';
-      else if (conf >= 0.6) bucket = 'medium';
-      else bucket = 'low';
-      
+      if (conf >= 0.8) bucket = "high";
+      else if (conf >= 0.6) bucket = "medium";
+      else bucket = "low";
+
       buckets[bucket].total++;
       if (isError) buckets[bucket].errors++;
     }
   }
-  
+
   // Compute error rates
   for (const key of Object.keys(buckets) as (keyof typeof buckets)[]) {
     const b = buckets[key];
     b.errorRate = b.total > 0 ? b.errors / b.total : 0;
   }
-  
+
   // Determine recommended threshold
   let recommendedThreshold: number | null = null;
-  let notes = '';
-  
+  let notes = "";
+
   if (buckets.low.errorRate > 0.5) {
     recommendedThreshold = 0.6;
     notes = `Low confidence spans (< 0.6) have ${(buckets.low.errorRate * 100).toFixed(1)}% error rate. Consider raising threshold to 0.6.`;
@@ -708,9 +757,10 @@ export function computeConfidenceAnalysis(
     recommendedThreshold = 0.8;
     notes = `Medium confidence spans (0.6-0.8) have ${(buckets.medium.errorRate * 100).toFixed(1)}% error rate. Consider raising threshold to 0.8.`;
   } else {
-    notes = 'Confidence scores correlate well with accuracy. Current threshold is appropriate.';
+    notes =
+      "Confidence scores correlate well with accuracy. Current threshold is appropriate.";
   }
-  
+
   return { buckets, recommendedThreshold, notes };
 }
 ```
@@ -722,16 +772,21 @@ export function computeConfidenceAnalysis(
  * Compute enhanced summary with all new aggregations.
  */
 export function computeEnhancedSummary(
-  results: EvaluationResult[]
+  results: EvaluationResult[],
 ): EnhancedSummary {
   // ... existing summary computation ...
-  
+
   // Initialize category score accumulators
-  const categoryTotals: Record<TaxonomyCategory, { coverage: number; precision: number; count: number }> = 
-    Object.fromEntries(
-      TAXONOMY_CATEGORIES.map(cat => [cat, { coverage: 0, precision: 0, count: 0 }])
-    ) as any;
-  
+  const categoryTotals: Record<
+    TaxonomyCategory,
+    { coverage: number; precision: number; count: number }
+  > = Object.fromEntries(
+    TAXONOMY_CATEGORIES.map((cat) => [
+      cat,
+      { coverage: 0, precision: 0, count: 0 },
+    ]),
+  ) as any;
+
   // Initialize false positive reason counts
   const falsePositiveReasons: Record<FalsePositiveReason, number> = {
     section_header: 0,
@@ -739,23 +794,23 @@ export function computeEnhancedSummary(
     non_visual: 0,
     instruction_text: 0,
     duplicate: 0,
-    other: 0
+    other: 0,
   };
-  
+
   // Initialize taxonomy confusion tracking
   const taxonomyConfusions = new Map<string, number>();
-  
+
   // Initialize section error counts
   const errorsBySection: Record<SectionType, SectionErrorCounts> = {
     main: { falsePositives: 0, missed: 0 },
     technicalSpecs: { falsePositives: 0, missed: 0 },
-    alternatives: { falsePositives: 0, missed: 0 }
+    alternatives: { falsePositives: 0, missed: 0 },
   };
-  
+
   // Aggregate from results
   for (const result of results) {
     if (!result.judgeResult) continue;
-    
+
     // Category scores
     for (const cat of TAXONOMY_CATEGORIES) {
       const score = result.judgeResult.categoryScores[cat];
@@ -765,59 +820,62 @@ export function computeEnhancedSummary(
         categoryTotals[cat].count++;
       }
     }
-    
+
     // False positive reasons
     for (const fp of result.judgeResult.falsePositives) {
       falsePositiveReasons[fp.reason]++;
-      
+
       // Section tracking (if span has section tag)
       if (fp.spanIndex >= 0 && fp.spanIndex < result.spans.length) {
-        const section = result.spans[fp.spanIndex].section || 'main';
+        const section = result.spans[fp.spanIndex].section || "main";
         errorsBySection[section].falsePositives++;
       }
     }
-    
+
     // Taxonomy confusions
     for (const te of result.judgeResult.taxonomyErrors) {
       const key = `${te.assignedRole} -> ${te.expectedRole}`;
       taxonomyConfusions.set(key, (taxonomyConfusions.get(key) || 0) + 1);
     }
-    
+
     // Missed elements by section (estimate from metadata if available)
     // Note: Missed elements don't have spanIndex, so we can't directly map to sections
     // This would require the judge to also report which section the missed element was in
   }
-  
+
   // Compute averages
   const avgCategoryScores: CategoryScores = Object.fromEntries(
-    TAXONOMY_CATEGORIES.map(cat => {
+    TAXONOMY_CATEGORIES.map((cat) => {
       const t = categoryTotals[cat];
-      return [cat, {
-        coverage: t.count > 0 ? t.coverage / t.count : 0,
-        precision: t.count > 0 ? t.precision / t.count : 0
-      }];
-    })
+      return [
+        cat,
+        {
+          coverage: t.count > 0 ? t.coverage / t.count : 0,
+          precision: t.count > 0 ? t.precision / t.count : 0,
+        },
+      ];
+    }),
   ) as CategoryScores;
-  
+
   // Top 10 taxonomy confusions
   const topTaxonomyErrors = [...taxonomyConfusions.entries()]
     .map(([key, count]) => {
-      const [assigned, expected] = key.split(' -> ');
+      const [assigned, expected] = key.split(" -> ");
       return { assignedRole: assigned, expectedRole: expected, count };
     })
     .sort((a, b) => b.count - a.count)
     .slice(0, 10);
-  
+
   // Compute confidence analysis
   const confidenceAnalysis = computeConfidenceAnalysis(results);
-  
+
   return {
     // ... existing fields ...
     avgCategoryScores,
     falsePositiveReasons,
     topTaxonomyErrors,
     errorsBySection,
-    confidenceAnalysis
+    confidenceAnalysis,
   };
 }
 ```
@@ -834,7 +892,7 @@ sequenceDiagram
     participant Label as labelSpans()
     participant Judge as judgeSpanQuality()
     participant Parse as parseJudgeResponse()
-    
+
     Main->>Eval: prompt record
     Eval->>Detect: prompt text
     Detect-->>Eval: PromptSections
@@ -859,38 +917,41 @@ function loadSnapshotWithDefaults(snapshot: any): Snapshot {
     ...snapshot,
     summary: {
       ...snapshot.summary,
-      avgCategoryScores: snapshot.summary.avgCategoryScores || getDefaultCategoryScores(),
-      falsePositiveReasons: snapshot.summary.falsePositiveReasons || getDefaultReasonCounts(),
+      avgCategoryScores:
+        snapshot.summary.avgCategoryScores || getDefaultCategoryScores(),
+      falsePositiveReasons:
+        snapshot.summary.falsePositiveReasons || getDefaultReasonCounts(),
       topTaxonomyErrors: snapshot.summary.topTaxonomyErrors || [],
-      errorsBySection: snapshot.summary.errorsBySection || getDefaultSectionErrors(),
-      confidenceAnalysis: snapshot.summary.confidenceAnalysis || null
-    }
+      errorsBySection:
+        snapshot.summary.errorsBySection || getDefaultSectionErrors(),
+      confidenceAnalysis: snapshot.summary.confidenceAnalysis || null,
+    },
   };
 }
 ```
 
-
 ## Correctness Properties
 
-*A property is a characteristic or behavior that should hold true across all valid executions of a system—essentially, a formal statement about what the system should do. Properties serve as the bridge between human-readable specifications and machine-verifiable correctness guarantees.*
+_A property is a characteristic or behavior that should hold true across all valid executions of a system—essentially, a formal statement about what the system should do. Properties serve as the bridge between human-readable specifications and machine-verifiable correctness guarantees._
 
 Based on the acceptance criteria analysis, the following properties must hold:
 
 ### Property 1: EnhancedJudgeResult Schema Round-Trip
 
-*For any* valid EnhancedJudgeResult object, serializing to JSON and parsing with the Zod schema should produce an equivalent object with all required fields present and correctly typed.
+_For any_ valid EnhancedJudgeResult object, serializing to JSON and parsing with the Zod schema should produce an equivalent object with all required fields present and correctly typed.
 
 **Validates: Requirements 1.1, 1.2, 1.3, 1.4, 1.5**
 
 ### Property 2: Fallback Parsing Produces Valid Defaults
 
-*For any* malformed or basic-format judge response, the fallback parser should produce a valid EnhancedJudgeResult with all required fields populated with sensible defaults (empty arrays, default scores).
+_For any_ malformed or basic-format judge response, the fallback parser should produce a valid EnhancedJudgeResult with all required fields populated with sensible defaults (empty arrays, default scores).
 
 **Validates: Requirements 1.6**
 
 ### Property 3: Section Boundary Detection
 
-*For any* prompt text containing section headers ("**TECHNICAL SPECS**", "**Technical Specifications**", "**ALTERNATIVE", "**VARIATIONS**"), the detectSections function should return boundaries where:
+_For any_ prompt text containing section headers ("**TECHNICAL SPECS**", "**Technical Specifications**", "**ALTERNATIVE", "**VARIATIONS\*\*"), the detectSections function should return boundaries where:
+
 - main.start is always 0
 - main.end equals the position of the first header (or prompt length if no headers)
 - technicalSpecs.start equals the header position (if present)
@@ -900,7 +961,8 @@ Based on the acceptance criteria analysis, the following properties must hold:
 
 ### Property 4: Span Section Tagging Correctness
 
-*For any* span with a start offset and any PromptSections boundaries, the getSpanSection function should return:
+_For any_ span with a start offset and any PromptSections boundaries, the getSpanSection function should return:
+
 - 'technicalSpecs' if start is within technicalSpecs boundaries
 - 'alternatives' if start is within alternatives boundaries
 - 'main' otherwise
@@ -909,13 +971,14 @@ Based on the acceptance criteria analysis, the following properties must hold:
 
 ### Property 5: Summary Category Score Aggregation
 
-*For any* list of EvaluationResults with known categoryScores, the computed avgCategoryScores should equal the arithmetic mean of each category's coverage and precision across all results.
+_For any_ list of EvaluationResults with known categoryScores, the computed avgCategoryScores should equal the arithmetic mean of each category's coverage and precision across all results.
 
 **Validates: Requirements 3.1**
 
 ### Property 6: Summary Error Aggregation
 
-*For any* list of EvaluationResults with known falsePositives and taxonomyErrors, the computed summary should have:
+_For any_ list of EvaluationResults with known falsePositives and taxonomyErrors, the computed summary should have:
+
 - falsePositiveReasons counts matching the sum of each reason type
 - topTaxonomyErrors containing the 10 most frequent (assignedRole, expectedRole) pairs sorted by count descending
 
@@ -923,13 +986,14 @@ Based on the acceptance criteria analysis, the following properties must hold:
 
 ### Property 7: Backward Compatibility with Defaults
 
-*For any* snapshot object missing enhanced fields (avgCategoryScores, falsePositiveReasons, topTaxonomyErrors, errorsBySection), loading with loadSnapshotWithDefaults should produce a valid Snapshot with default values without throwing errors.
+_For any_ snapshot object missing enhanced fields (avgCategoryScores, falsePositiveReasons, topTaxonomyErrors, errorsBySection), loading with loadSnapshotWithDefaults should produce a valid Snapshot with default values without throwing errors.
 
 **Validates: Requirements 3.5, 5.4**
 
 ### Property 8: Confidence Bucket Computation
 
-*For any* list of EvaluationResults with spans having known confidence values and error indices, the computeConfidenceAnalysis function should:
+_For any_ list of EvaluationResults with spans having known confidence values and error indices, the computeConfidenceAnalysis function should:
+
 - Correctly bucket spans by confidence (high: 0.8-1.0, medium: 0.6-0.8, low: 0.0-0.6)
 - Count total spans and error spans per bucket
 - Compute errorRate as errors/total for each bucket
@@ -938,13 +1002,14 @@ Based on the acceptance criteria analysis, the following properties must hold:
 
 ### Property 9: Confidence Threshold Recommendation
 
-*For any* confidence analysis where a bucket has errorRate > 0.5, the recommendedThreshold should be set to the upper bound of that bucket (0.6 for low, 0.8 for medium).
+_For any_ confidence analysis where a bucket has errorRate > 0.5, the recommendedThreshold should be set to the upper bound of that bucket (0.6 for low, 0.8 for medium).
 
 **Validates: Requirements 4.3**
 
 ### Property 10: Snapshot Comparison Deltas
 
-*For any* two snapshots with known avgCategoryScores and topTaxonomyErrors, the comparison should correctly compute:
+_For any_ two snapshots with known avgCategoryScores and topTaxonomyErrors, the comparison should correctly compute:
+
 - Per-category score deltas (current - baseline)
 - New taxonomy confusions (in current but not baseline)
 - Resolved taxonomy confusions (in baseline but not current)
@@ -953,7 +1018,7 @@ Based on the acceptance criteria analysis, the following properties must hold:
 
 ### Property 11: Span Formatting for Judge
 
-*For any* array of SpanResult objects, formatSpansForJudge should produce a string where each line contains the span's index, text, role, and confidence in the format: `[index] 'text' (role, confidence)`
+_For any_ array of SpanResult objects, formatSpansForJudge should produce a string where each line contains the span's index, text, role, and confidence in the format: `[index] 'text' (role, confidence)`
 
 **Validates: Requirements 6.4**
 
@@ -1044,6 +1109,7 @@ tests/unit/
 ### Property Test Coverage
 
 Each correctness property (1-11) will have a corresponding property-based test that:
+
 1. Generates random valid inputs using fast-check arbitraries
 2. Executes the function under test
 3. Asserts the property holds
@@ -1058,13 +1124,13 @@ const spanResultArb = fc.record({
   confidence: fc.float({ min: 0, max: 1 }),
   start: fc.nat({ max: 10000 }),
   end: fc.nat({ max: 10000 }),
-  section: fc.constantFrom('main', 'technicalSpecs', 'alternatives')
+  section: fc.constantFrom("main", "technicalSpecs", "alternatives"),
 });
 
 // CategoryScore generator
 const categoryScoreArb = fc.record({
   coverage: fc.integer({ min: 1, max: 5 }),
-  precision: fc.integer({ min: 1, max: 5 })
+  precision: fc.integer({ min: 1, max: 5 }),
 });
 
 // EnhancedJudgeResult generator
@@ -1074,7 +1140,7 @@ const enhancedJudgeResultArb = fc.record({
     precision: fc.integer({ min: 1, max: 5 }),
     granularity: fc.integer({ min: 1, max: 5 }),
     taxonomy: fc.integer({ min: 1, max: 5 }),
-    technicalSpecs: fc.integer({ min: 1, max: 5 })
+    technicalSpecs: fc.integer({ min: 1, max: 5 }),
   }),
   totalScore: fc.integer({ min: 0, max: 25 }),
   missedElements: fc.array(missedElementArb),
@@ -1082,13 +1148,14 @@ const enhancedJudgeResultArb = fc.record({
   taxonomyErrors: fc.array(taxonomyErrorArb),
   granularityErrors: fc.array(granularityErrorArb),
   categoryScores: categoryScoresArb,
-  notes: fc.string()
+  notes: fc.string(),
 });
 ```
 
 ### Integration Testing
 
 Manual integration testing with real prompts:
+
 1. Run evaluation on `data/evaluation-prompts-latest.json`
 2. Verify enhanced judge responses parse correctly
 3. Verify summary aggregations are accurate

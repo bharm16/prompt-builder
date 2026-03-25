@@ -1,30 +1,30 @@
-import { useEffect } from 'react';
-import type { RefObject } from 'react';
+import { useEffect } from "react";
+import type { RefObject } from "react";
 
 const COHERENCE_BASE_CLASSES = [
-  'underline',
-  'decoration-2',
-  'underline-offset-4',
+  "underline",
+  "decoration-2",
+  "underline-offset-4",
   'after:content-[""]',
-  'after:absolute',
-  'after:-right-1',
-  'after:-top-1',
-  'after:h-2',
-  'after:w-2',
-  'after:rounded-full',
-  'after:pointer-events-none',
+  "after:absolute",
+  "after:-right-1",
+  "after:-top-1",
+  "after:h-2",
+  "after:w-2",
+  "after:rounded-full",
+  "after:pointer-events-none",
 ];
 
 const CONFLICT_CLASSES = [
-  'decoration-error',
-  'decoration-wavy',
-  'after:bg-error',
+  "decoration-error",
+  "decoration-wavy",
+  "after:bg-error",
 ];
 
 const HARMONIZATION_CLASSES = [
-  'decoration-warning',
-  'decoration-dotted',
-  'after:bg-warning',
+  "decoration-warning",
+  "decoration-dotted",
+  "after:bg-warning",
 ];
 
 const ALL_CLASSES = [
@@ -38,7 +38,7 @@ export interface UseCoherenceSpanMarkersOptions {
   enableMLHighlighting: boolean;
   showHighlights: boolean;
   affectedSpanIds?: Set<string> | null;
-  spanIssueMap?: Map<string, 'conflict' | 'harmonization'> | null;
+  spanIssueMap?: Map<string, "conflict" | "harmonization"> | null;
   highlightFingerprint?: string | null;
 }
 
@@ -54,7 +54,7 @@ export function useCoherenceSpanMarkers({
     const editor = editorRef.current;
     if (!editor) return;
 
-    const highlightNodes = editor.querySelectorAll('.value-word');
+    const highlightNodes = editor.querySelectorAll(".value-word");
     if (!highlightNodes.length) return;
 
     const isActive = enableMLHighlighting && showHighlights;
@@ -64,10 +64,12 @@ export function useCoherenceSpanMarkers({
     highlightNodes.forEach((node) => {
       const element = node as HTMLElement;
       const spanId = element.dataset?.spanId;
-      let issueType: 'conflict' | 'harmonization' | null = null;
+      let issueType: "conflict" | "harmonization" | null = null;
 
       if (isActive && spanId) {
-        issueType = issueMap?.get(spanId) ?? (issueSet?.has(spanId) ? 'harmonization' : null);
+        issueType =
+          issueMap?.get(spanId) ??
+          (issueSet?.has(spanId) ? "harmonization" : null);
       }
 
       if (!issueType) {
@@ -77,7 +79,7 @@ export function useCoherenceSpanMarkers({
       }
 
       element.classList.add(...COHERENCE_BASE_CLASSES);
-      if (issueType === 'conflict') {
+      if (issueType === "conflict") {
         element.classList.add(...CONFLICT_CLASSES);
         element.classList.remove(...HARMONIZATION_CLASSES);
       } else {

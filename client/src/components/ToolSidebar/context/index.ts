@@ -6,5 +6,5 @@ export {
   useSidebarGenerationDomain,
   useSidebarAssetsDomain,
   useSidebarWorkspaceDomain,
-} from './SidebarDomainContexts';
-export type { SidebarDataContextValue } from './SidebarDomainContexts';
+} from "./SidebarDomainContexts";
+export type { SidebarDataContextValue } from "./SidebarDomainContexts";

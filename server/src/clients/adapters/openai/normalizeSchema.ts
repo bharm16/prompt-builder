@@ -1,4 +1,10 @@
-type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
+type JsonValue =
+  | string
+  | number
+  | boolean
+  | null
+  | JsonValue[]
+  | { [key: string]: JsonValue };
 type JsonRecord = { [key: string]: JsonValue };
 
 interface NormalizedOpenAiSchema {
@@ -6,15 +12,15 @@ interface NormalizedOpenAiSchema {
   schema: JsonRecord;
 }
 
-const SCHEMA_METADATA_KEYS = new Set(['name', 'strict', '$schema', '$id']);
-const OPENAI_FALLBACK_SCHEMA_NAME = 'structured_response';
+const SCHEMA_METADATA_KEYS = new Set(["name", "strict", "$schema", "$id"]);
+const OPENAI_FALLBACK_SCHEMA_NAME = "structured_response";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function toSchemaName(value: unknown): string | undefined {
-  if (typeof value !== 'string') {
+  if (typeof value !== "string") {
     return undefined;
   }
 
@@ -27,33 +33,33 @@ function looksLikeWrapperSchema(schema: Record<string, unknown>): boolean {
     return false;
   }
 
-  if ('name' in schema || 'strict' in schema) {
+  if ("name" in schema || "strict" in schema) {
     return true;
   }
 
   return !(
-    'type' in schema ||
-    'properties' in schema ||
-    'items' in schema ||
-    'anyOf' in schema ||
-    'oneOf' in schema ||
-    'allOf' in schema ||
-    'required' in schema
+    "type" in schema ||
+    "properties" in schema ||
+    "items" in schema ||
+    "anyOf" in schema ||
+    "oneOf" in schema ||
+    "allOf" in schema ||
+    "required" in schema
   );
 }
 
 function isObjectSchemaNode(schema: Record<string, JsonValue>): boolean {
-  if ('properties' in schema) {
+  if ("properties" in schema) {
     return true;
   }
 
   const nodeType = schema.type;
-  if (typeof nodeType === 'string') {
-    return nodeType === 'object';
+  if (typeof nodeType === "string") {
+    return nodeType === "object";
   }
 
   if (Array.isArray(nodeType)) {
-    return nodeType.includes('object');
+    return nodeType.includes("object");
   }
 
   return false;
@@ -85,9 +91,13 @@ function normalizeSchemaNode(value: unknown): JsonValue {
   return normalized;
 }
 
-export function normalizeOpenAiSchema(schemaInput: Record<string, unknown>): NormalizedOpenAiSchema {
+export function normalizeOpenAiSchema(
+  schemaInput: Record<string, unknown>,
+): NormalizedOpenAiSchema {
   const hasWrapper = looksLikeWrapperSchema(schemaInput);
-  const schemaBody = hasWrapper ? (schemaInput.schema as Record<string, unknown>) : schemaInput;
+  const schemaBody = hasWrapper
+    ? (schemaInput.schema as Record<string, unknown>)
+    : schemaInput;
 
   const schemaName =
     toSchemaName(schemaInput.name) ??
@@ -96,7 +106,7 @@ export function normalizeOpenAiSchema(schemaInput: Record<string, unknown>): Nor
 
   const normalizedBody = normalizeSchemaNode(schemaBody);
   if (!isRecord(normalizedBody)) {
-    throw new Error('Schema normalization failed: expected an object schema.');
+    throw new Error("Schema normalization failed: expected an object schema.");
   }
 
   return {
@@ -104,4 +114,3 @@ export function normalizeOpenAiSchema(schemaInput: Record<string, unknown>): Nor
     schema: normalizedBody as JsonRecord,
   };
 }
-

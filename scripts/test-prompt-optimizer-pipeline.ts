@@ -1,13 +1,13 @@
 #!/usr/bin/env tsx
 
-import { config as loadEnv } from 'dotenv';
-import { existsSync, readFileSync } from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import { config as loadEnv } from "dotenv";
+import { existsSync, readFileSync } from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
 
-import type { PromptOptimizationService } from '../server/src/services/prompt-optimization/PromptOptimizationService.ts';
-import type { VideoPromptService } from '../server/src/services/video-prompt-analysis/VideoPromptService.ts';
-import { resolvePromptModelId } from '../server/src/services/video-models/ModelRegistry.ts';
+import type { PromptOptimizationService } from "../server/src/services/prompt-optimization/PromptOptimizationService.ts";
+import type { VideoPromptService } from "../server/src/services/video-prompt-analysis/VideoPromptService.ts";
+import { resolvePromptModelId } from "../server/src/services/video-models/ModelRegistry.ts";
 
 interface CliOptions {
   prompts: string[];
@@ -20,7 +20,7 @@ interface CliOptions {
 
 const DEFAULT_TIMEOUT_MS = 120_000;
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
-const REPO_ROOT = path.resolve(SCRIPT_DIR, '..');
+const REPO_ROOT = path.resolve(SCRIPT_DIR, "..");
 
 function printUsage(): void {
   console.log(`\nPrompt Optimizer Pipeline Test\n
@@ -41,7 +41,7 @@ Options:
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
+  return typeof value === "object" && value !== null;
 }
 
 function normalizePrompt(text: string): string {
@@ -55,7 +55,7 @@ function parsePromptArray(value: unknown): string[] {
 
   const prompts: string[] = [];
   for (const item of value) {
-    if (typeof item === 'string') {
+    if (typeof item === "string") {
       const normalized = normalizePrompt(item);
       if (normalized) {
         prompts.push(normalized);
@@ -65,7 +65,7 @@ function parsePromptArray(value: unknown): string[] {
 
     if (isRecord(item)) {
       const candidate = item.prompt;
-      if (typeof candidate === 'string') {
+      if (typeof candidate === "string") {
         const normalized = normalizePrompt(candidate);
         if (normalized) {
           prompts.push(normalized);
@@ -79,10 +79,10 @@ function parsePromptArray(value: unknown): string[] {
 
 function loadEnvFiles(repoRoot: string): void {
   const candidates = [
-    path.join(repoRoot, '.env.development.local'),
-    path.join(repoRoot, '.env.local'),
-    path.join(repoRoot, '.env.development'),
-    path.join(repoRoot, '.env'),
+    path.join(repoRoot, ".env.development.local"),
+    path.join(repoRoot, ".env.local"),
+    path.join(repoRoot, ".env.development"),
+    path.join(repoRoot, ".env"),
   ];
 
   for (const file of candidates) {
@@ -94,8 +94,12 @@ function loadEnvFiles(repoRoot: string): void {
 }
 
 function applyEnvFallbacks(): void {
-  if (!process.env.FIREBASE_STORAGE_BUCKET && process.env.VITE_FIREBASE_STORAGE_BUCKET) {
-    process.env.FIREBASE_STORAGE_BUCKET = process.env.VITE_FIREBASE_STORAGE_BUCKET;
+  if (
+    !process.env.FIREBASE_STORAGE_BUCKET &&
+    process.env.VITE_FIREBASE_STORAGE_BUCKET
+  ) {
+    process.env.FIREBASE_STORAGE_BUCKET =
+      process.env.VITE_FIREBASE_STORAGE_BUCKET;
   }
 
   if (!process.env.GCS_BUCKET_NAME && process.env.FIREBASE_STORAGE_BUCKET) {
@@ -124,7 +128,7 @@ function loadPromptsFromFile(filePath: string): string[] {
     throw new Error(`Prompt file not found: ${absolutePath}`);
   }
 
-  const raw = readFileSync(absolutePath, 'utf8').trim();
+  const raw = readFileSync(absolutePath, "utf8").trim();
   if (!raw) {
     throw new Error(`Prompt file is empty: ${absolutePath}`);
   }
@@ -164,35 +168,35 @@ function parseCliArgs(argv: string[]): CliOptions {
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
 
-    if (arg === '--help' || arg === '-h') {
+    if (arg === "--help" || arg === "-h") {
       printUsage();
       process.exit(0);
     }
 
-    if (arg === '--prompt') {
+    if (arg === "--prompt") {
       const value = argv[i + 1];
       if (!value) {
-        throw new Error('Missing value for --prompt');
+        throw new Error("Missing value for --prompt");
       }
       prompts.push(normalizePrompt(value));
       i += 1;
       continue;
     }
 
-    if (arg === '--file') {
+    if (arg === "--file") {
       const value = argv[i + 1];
       if (!value) {
-        throw new Error('Missing value for --file');
+        throw new Error("Missing value for --file");
       }
       filePath = value;
       i += 1;
       continue;
     }
 
-    if (arg === '--timeout-ms') {
+    if (arg === "--timeout-ms") {
       const value = argv[i + 1];
       if (!value) {
-        throw new Error('Missing value for --timeout-ms');
+        throw new Error("Missing value for --timeout-ms");
       }
       const parsed = Number.parseInt(value, 10);
       if (!Number.isFinite(parsed) || parsed <= 0) {
@@ -203,30 +207,30 @@ function parseCliArgs(argv: string[]): CliOptions {
       continue;
     }
 
-    if (arg === '--models') {
+    if (arg === "--models") {
       const value = argv[i + 1];
       if (!value) {
-        throw new Error('Missing value for --models');
+        throw new Error("Missing value for --models");
       }
       modelFilter = value
-        .split(',')
+        .split(",")
         .map((model) => model.trim())
         .filter((model) => model.length > 0);
       i += 1;
       continue;
     }
 
-    if (arg === '--skip-initialize') {
+    if (arg === "--skip-initialize") {
       skipInitialize = true;
       continue;
     }
 
-    if (arg === '--verbose') {
+    if (arg === "--verbose") {
       verbose = true;
       continue;
     }
 
-    if (arg.startsWith('--')) {
+    if (arg.startsWith("--")) {
       throw new Error(`Unknown option: ${arg}`);
     }
 
@@ -243,7 +247,10 @@ function parseCliArgs(argv: string[]): CliOptions {
   };
 }
 
-function selectModels(requested: string[] | undefined, supported: string[]): string[] {
+function selectModels(
+  requested: string[] | undefined,
+  supported: string[],
+): string[] {
   if (!requested || requested.length === 0) {
     return supported;
   }
@@ -265,7 +272,7 @@ function selectModels(requested: string[] | undefined, supported: string[]): str
 
   if (unknown.length > 0) {
     throw new Error(
-      `Unknown model(s): ${unknown.join(', ')}. Supported models: ${supported.join(', ')}`
+      `Unknown model(s): ${unknown.join(", ")}. Supported models: ${supported.join(", ")}`,
     );
   }
 
@@ -276,12 +283,12 @@ async function runOptimization(
   promptOptimizationService: PromptOptimizationService,
   prompt: string,
   timeoutMs: number,
-  targetModel?: string
+  targetModel?: string,
 ): Promise<string> {
   const signal = AbortSignal.timeout(timeoutMs);
   const result = await promptOptimizationService.optimize({
     prompt,
-    mode: 'video',
+    mode: "video",
     ...(targetModel ? { targetModel } : {}),
     signal,
   });
@@ -296,24 +303,28 @@ async function main(): Promise<void> {
 
   // Keep script output readable unless explicitly requested.
   if (!cli.verbose) {
-    process.env.LOG_LEVEL = 'fatal';
+    process.env.LOG_LEVEL = "fatal";
   }
 
   const filePrompts = cli.filePath ? loadPromptsFromFile(cli.filePath) : [];
-  const allPrompts = [...cli.prompts, ...filePrompts].filter((prompt) => prompt.length > 0);
+  const allPrompts = [...cli.prompts, ...filePrompts].filter(
+    (prompt) => prompt.length > 0,
+  );
 
   if (allPrompts.length === 0) {
     printUsage();
-    throw new Error('No prompts provided. Use --prompt, --file, or positional prompt text.');
+    throw new Error(
+      "No prompts provided. Use --prompt, --file, or positional prompt text.",
+    );
   }
 
   // Service registration imports storage config eagerly; allow script use without storage env vars.
   if (!process.env.GCS_BUCKET_NAME && !process.env.FIREBASE_STORAGE_BUCKET) {
-    process.env.GCS_BUCKET_NAME = 'local-script-placeholder.appspot.com';
+    process.env.GCS_BUCKET_NAME = "local-script-placeholder.appspot.com";
   }
 
   const { configureServices, initializeServices } = await import(
-    '../server/src/config/services.config.ts'
+    "../server/src/config/services.config.ts"
   );
   const container = await configureServices();
 
@@ -322,43 +333,43 @@ async function main(): Promise<void> {
       await initializeServices(container);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      console.warn('initializeServices() failed, continuing anyway:', message);
+      console.warn("initializeServices() failed, continuing anyway:", message);
     }
   }
 
   const promptOptimizationService =
-    container.resolve<PromptOptimizationService>('promptOptimizationService');
-  const videoService = container.resolve<VideoPromptService>('videoService');
+    container.resolve<PromptOptimizationService>("promptOptimizationService");
+  const videoService = container.resolve<VideoPromptService>("videoService");
 
   const supportedModels = videoService.getSupportedModelIds();
   const selectedModels = selectModels(cli.modelFilter, supportedModels);
 
-  console.log('='.repeat(90));
-  console.log('Prompt Optimizer Pipeline Test');
-  console.log('='.repeat(90));
+  console.log("=".repeat(90));
+  console.log("Prompt Optimizer Pipeline Test");
+  console.log("=".repeat(90));
   console.log(`Prompts: ${allPrompts.length}`);
-  console.log(`Model-specific runs: ${selectedModels.join(', ')}`);
+  console.log(`Model-specific runs: ${selectedModels.join(", ")}`);
   console.log(`Timeout per pipeline run: ${cli.timeoutMs}ms`);
-  console.log('');
+  console.log("");
 
   for (let index = 0; index < allPrompts.length; index += 1) {
     const rawPrompt = allPrompts[index];
 
-    console.log('-'.repeat(90));
+    console.log("-".repeat(90));
     console.log(`Prompt ${index + 1}/${allPrompts.length}`);
-    console.log('-'.repeat(90));
-    console.log('[RAW USER PROMPT]');
+    console.log("-".repeat(90));
+    console.log("[RAW USER PROMPT]");
     console.log(rawPrompt);
-    console.log('');
+    console.log("");
 
-    let genericOptimizedPrompt = '';
+    let genericOptimizedPrompt = "";
     try {
       genericOptimizedPrompt = await runOptimization(
         promptOptimizationService,
         rawPrompt,
-        cli.timeoutMs
+        cli.timeoutMs,
       );
-      console.log('[GENERIC PIPELINE RESULT]');
+      console.log("[GENERIC PIPELINE RESULT]");
       console.log(genericOptimizedPrompt);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -367,13 +378,13 @@ async function main(): Promise<void> {
     }
 
     for (const modelId of selectedModels) {
-      console.log('');
+      console.log("");
       try {
         const modelOptimizedPrompt = await runOptimization(
           promptOptimizationService,
           rawPrompt,
           cli.timeoutMs,
-          modelId
+          modelId,
         );
         console.log(`[MODEL PIPELINE: ${modelId}]`);
         console.log(modelOptimizedPrompt);
@@ -383,7 +394,7 @@ async function main(): Promise<void> {
       }
     }
 
-    console.log('');
+    console.log("");
   }
 }
 

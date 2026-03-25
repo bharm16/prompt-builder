@@ -6,7 +6,7 @@
  * @module SuggestionRequestManager
  */
 
-import { CancellationError } from './signalUtils';
+import { CancellationError } from "./signalUtils";
 
 /**
  * Configuration for the request manager.
@@ -146,7 +146,9 @@ export class SuggestionRequestManager {
 
     // Reject any pending promise that's waiting for debounce
     if (this.state.pendingReject !== null) {
-      this.state.pendingReject(new CancellationError('Request cancelled during debounce'));
+      this.state.pendingReject(
+        new CancellationError("Request cancelled during debounce"),
+      );
       this.state.pendingReject = null;
     }
 
@@ -169,7 +171,10 @@ export class SuggestionRequestManager {
    * @throws CancellationError if request is cancelled
    * @throws Error for network/timeout errors
    */
-  scheduleRequest<T>(dedupKey: string, requestFn: (signal: AbortSignal) => Promise<T>): Promise<T> {
+  scheduleRequest<T>(
+    dedupKey: string,
+    requestFn: (signal: AbortSignal) => Promise<T>,
+  ): Promise<T> {
     return new Promise((resolve, reject) => {
       // Cancel any previous pending request
       this.cancelCurrentRequest();
@@ -192,7 +197,7 @@ export class SuggestionRequestManager {
 
         // Check if this request was cancelled during debounce
         if (abortController.signal.aborted) {
-          reject(new CancellationError('Request cancelled during debounce'));
+          reject(new CancellationError("Request cancelled during debounce"));
           return;
         }
 
@@ -202,7 +207,7 @@ export class SuggestionRequestManager {
 
           // Check if cancelled after request completed
           if (abortController.signal.aborted) {
-            reject(new CancellationError('Request cancelled after completion'));
+            reject(new CancellationError("Request cancelled after completion"));
             return;
           }
 
@@ -217,8 +222,8 @@ export class SuggestionRequestManager {
           this.clearRequestState(dedupKey);
 
           // Convert AbortError to CancellationError
-          if (error instanceof Error && error.name === 'AbortError') {
-            reject(new CancellationError('Request aborted'));
+          if (error instanceof Error && error.name === "AbortError") {
+            reject(new CancellationError("Request aborted"));
             return;
           }
 
@@ -235,7 +240,10 @@ export class SuggestionRequestManager {
    * @returns True if a request with this key is in-flight
    */
   isRequestInFlight(dedupKey: string): boolean {
-    return this.state.currentDedupKey === dedupKey && this.state.abortController !== null;
+    return (
+      this.state.currentDedupKey === dedupKey &&
+      this.state.abortController !== null
+    );
   }
 
   /**

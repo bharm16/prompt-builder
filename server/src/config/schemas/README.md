@@ -5,19 +5,25 @@ This directory contains all Joi validation schemas and LLM output schema expecta
 ## Organization
 
 ### promptSchemas.js
+
 Validation schemas for prompt optimization and parsing requests:
+
 - `promptSchema` - Main prompt optimization request
 - `generateQuestionsSchema` - Question generation request
 - `semanticParseSchema` - Semantic text parsing request
 
 ### suggestionSchemas.js
+
 Validation schemas for enhancement suggestion requests:
+
 - `suggestionSchema` - Main enhancement suggestion request
 - `customSuggestionSchema` - Custom suggestion request
 - `sceneChangeSchema` - Scene change detection request
 
 ### videoSchemas.js
+
 Validation schemas for video concept and creative workflow requests:
+
 - `creativeSuggestionSchema` - Creative element suggestions
 - `videoValidationSchema` - Video element validation
 - `completeSceneSchema` - Scene completion request
@@ -29,7 +35,9 @@ Validation schemas for video concept and creative workflow requests:
 - `alternativePhrasingsSchema` - Alternative phrasing request
 
 ### outputSchemas.js
+
 Lightweight JSON Schema-inspired shapes for LLM response expectations:
+
 - `compatibilityOutputSchema` - Compatibility check response
 - `variationsOutputSchema` - Variations response
 - `parseConceptOutputSchema` - Concept parsing response
@@ -43,13 +51,15 @@ Lightweight JSON Schema-inspired shapes for LLM response expectations:
 ### Importing Schemas
 
 **Recommended (direct import from organized files):**
+
 ```javascript
-import { promptSchema, suggestionSchema } from '../../config/schemas/index.js';
+import { promptSchema, suggestionSchema } from "../../config/schemas/index.js";
 ```
 
 **Legacy (backward compatible):**
+
 ```javascript
-import { promptSchema, suggestionSchema } from '../../utils/validation.js';
+import { promptSchema, suggestionSchema } from "../../utils/validation.js";
 ```
 
 ### Adding New Schemas
@@ -68,19 +78,19 @@ export const myNewSchema = Joi.object({
 });
 
 // In index.js
-export { myNewSchema } from './promptSchemas.js';
+export { myNewSchema } from "./promptSchemas.js";
 
 // In utils/validation.js (for backward compatibility)
-export { myNewSchema } from '../config/schemas/index.js';
+export { myNewSchema } from "../config/schemas/index.js";
 ```
 
 ## Migration Notes
 
 Schemas were moved from `server/src/utils/validation.js` to this organized structure for:
+
 - **Better organization** - Schemas grouped by domain
 - **Easier maintenance** - Find and update related schemas together
 - **Clear separation** - Configuration (schemas) separated from utils
 - **Backward compatibility** - Old imports still work via re-exports
 
 The original `utils/validation.js` file now acts as a re-export shim for backward compatibility.
-

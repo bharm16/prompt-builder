@@ -1,25 +1,28 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { WarningCircle } from '@promptstudio/system/components/ui';
-import { useResolvedMediaUrl } from '@/hooks/useResolvedMediaUrl';
-import { extractStorageObjectPath } from '@/utils/storageUrl';
-import { formatRelativeTime, getModelConfig } from '@features/generations/config/generationConfig';
-import type { Generation } from '@features/generations/types';
-import { getGenerationProgressPercent } from '@features/generations/utils/generationProgress';
-import { resolvePrimaryVideoSource } from '@features/generations/utils/videoSource';
+import React, { useEffect, useMemo, useState } from "react";
+import { WarningCircle } from "@promptstudio/system/components/ui";
+import { useResolvedMediaUrl } from "@/hooks/useResolvedMediaUrl";
+import { extractStorageObjectPath } from "@/utils/storageUrl";
+import {
+  formatRelativeTime,
+  getModelConfig,
+} from "@features/generations/config/generationConfig";
+import type { Generation } from "@features/generations/types";
+import { getGenerationProgressPercent } from "@features/generations/utils/generationProgress";
+import { resolvePrimaryVideoSource } from "@features/generations/utils/videoSource";
 
 interface CanvasHeroViewerProps {
   generation: Generation | null;
 }
 
 const resolveTierLabel = (generation: Generation | null): string => {
-  if (!generation) return '—';
-  if (generation.mediaType === 'image-sequence') return 'preview';
-  if (generation.tier === 'draft') return 'draft';
-  return 'final';
+  if (!generation) return "—";
+  if (generation.mediaType === "image-sequence") return "preview";
+  if (generation.tier === "draft") return "draft";
+  return "final";
 };
 
 const normalizeUrl = (value: string | null | undefined): string | null => {
-  if (typeof value !== 'string') return null;
+  if (typeof value !== "string") return null;
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : null;
 };
@@ -30,26 +33,27 @@ const formatElapsed = (createdAt: number): string => {
   if (seconds < 60) return `${seconds}s`;
   const minutes = Math.floor(seconds / 60);
   const remainingSeconds = seconds % 60;
-  return `${minutes}:${String(remainingSeconds).padStart(2, '0')}`;
+  return `${minutes}:${String(remainingSeconds).padStart(2, "0")}`;
 };
 
 const resolveProgressLabel = (generation: Generation): string => {
-  if (generation.status === 'pending') return 'Queued';
-  return 'Rendering';
+  if (generation.serverJobStatus === "queued") return "Queued";
+  if (generation.status === "pending") return "Starting";
+  return "Rendering";
 };
 
 const resolveAspectRatio = (generation: Generation | null): string => {
-  if (!generation?.aspectRatio) return '16 / 9';
-  const [left, right] = generation.aspectRatio.split(':');
-  const leftNumber = Number.parseFloat(left ?? '');
-  const rightNumber = Number.parseFloat(right ?? '');
+  if (!generation?.aspectRatio) return "16 / 9";
+  const [left, right] = generation.aspectRatio.split(":");
+  const leftNumber = Number.parseFloat(left ?? "");
+  const rightNumber = Number.parseFloat(right ?? "");
   if (
     !Number.isFinite(leftNumber) ||
     !Number.isFinite(rightNumber) ||
     leftNumber <= 0 ||
     rightNumber <= 0
   ) {
-    return '16 / 9';
+    return "16 / 9";
   }
   return `${leftNumber} / ${rightNumber}`;
 };
@@ -59,42 +63,43 @@ export function CanvasHeroViewer({
 }: CanvasHeroViewerProps): React.ReactElement | null {
   const rawPrimaryMediaUrl = useMemo(
     () => normalizeUrl(generation?.mediaUrls[0] ?? null),
-    [generation?.mediaUrls]
+    [generation?.mediaUrls],
   );
   const rawThumbnailUrl = useMemo(
     () => normalizeUrl(generation?.thumbnailUrl ?? null),
-    [generation?.thumbnailUrl]
+    [generation?.thumbnailUrl],
   );
   const primaryMediaRef = generation?.mediaAssetIds?.[0] ?? null;
   const { storagePath: videoStoragePath, assetId: videoAssetId } = useMemo(
     () => resolvePrimaryVideoSource(rawPrimaryMediaUrl, primaryMediaRef),
-    [primaryMediaRef, rawPrimaryMediaUrl]
+    [primaryMediaRef, rawPrimaryMediaUrl],
   );
   const { url: resolvedVideoUrl } = useResolvedMediaUrl({
-    kind: 'video',
+    kind: "video",
     url: rawPrimaryMediaUrl,
     storagePath: videoStoragePath,
     assetId: videoAssetId,
     deferUntilResolved: true,
     enabled: Boolean(
       generation &&
-      generation.mediaType === 'video' &&
-      (rawPrimaryMediaUrl || videoStoragePath || videoAssetId)
+        generation.mediaType === "video" &&
+        (rawPrimaryMediaUrl || videoStoragePath || videoAssetId),
     ),
   });
 
   const fallbackImageUrl = useMemo(() => {
-    if (generation?.mediaType === 'video') {
+    if (generation?.mediaType === "video") {
       return rawThumbnailUrl;
     }
     return rawThumbnailUrl ?? rawPrimaryMediaUrl;
   }, [generation?.mediaType, rawPrimaryMediaUrl, rawThumbnailUrl]);
   const fallbackImageStoragePath = useMemo(
-    () => (fallbackImageUrl ? extractStorageObjectPath(fallbackImageUrl) : null),
-    [fallbackImageUrl]
+    () =>
+      fallbackImageUrl ? extractStorageObjectPath(fallbackImageUrl) : null,
+    [fallbackImageUrl],
   );
   const { url: resolvedImageUrl } = useResolvedMediaUrl({
-    kind: 'image',
+    kind: "image",
     url: fallbackImageUrl,
     storagePath: fallbackImageStoragePath,
     deferUntilResolved: true,
@@ -102,7 +107,7 @@ export function CanvasHeroViewer({
   });
 
   const metadata = useMemo(() => {
-    if (!generation || generation.status !== 'completed') return null;
+    if (!generation || generation.status !== "completed") return null;
 
     const parts = [
       resolveTierLabel(generation),
@@ -110,15 +115,19 @@ export function CanvasHeroViewer({
       getModelConfig(generation.model)?.label ?? generation.model,
       formatRelativeTime(generation.completedAt ?? generation.createdAt),
     ].filter(Boolean);
-    return parts.join(' · ');
+    return parts.join(" · ");
   }, [generation]);
 
-  const aspectRatio = useMemo(() => resolveAspectRatio(generation), [generation]);
-  const isVideo = generation?.mediaType === 'video' && Boolean(resolvedVideoUrl);
+  const aspectRatio = useMemo(
+    () => resolveAspectRatio(generation),
+    [generation],
+  );
+  const isVideo =
+    generation?.mediaType === "video" && Boolean(resolvedVideoUrl);
   const previewUrl = isVideo ? resolvedVideoUrl : resolvedImageUrl;
   const isGenerating =
-    generation?.status === 'pending' || generation?.status === 'generating';
-  const isFailed = generation?.status === 'failed';
+    generation?.status === "pending" || generation?.status === "generating";
+  const isFailed = generation?.status === "failed";
 
   // Tick every second while generating so elapsed time updates
   const [, setTick] = useState(0);
@@ -133,8 +142,9 @@ export function CanvasHeroViewer({
   if (!generation) return null;
 
   if (isGenerating) {
-    const progress = getGenerationProgressPercent(generation, Date.now())
-      ?? (generation.status === 'pending' ? 5 : 10);
+    const progress =
+      getGenerationProgressPercent(generation, Date.now()) ??
+      (generation.status === "pending" ? 5 : 10);
     const clampedProgress = Math.max(0, Math.min(100, progress));
     const modelConfig = getModelConfig(generation.model);
     const modelLabel = modelConfig?.label ?? generation.model;
@@ -153,16 +163,24 @@ export function CanvasHeroViewer({
           <div className="flex flex-col items-center gap-5 px-6 text-center">
             {/* Pulsing ring indicator */}
             <div className="relative flex h-14 w-14 items-center justify-center">
-              <svg className="h-full w-full -rotate-90" viewBox="0 0 56 56" aria-hidden="true">
+              <svg
+                className="h-full w-full -rotate-90"
+                viewBox="0 0 56 56"
+                aria-hidden="true"
+              >
                 <circle
-                  cx="28" cy="28" r="24"
+                  cx="28"
+                  cy="28"
+                  r="24"
                   fill="none"
                   stroke="currentColor"
                   strokeWidth="2"
                   className="text-tool-text-dim/15"
                 />
                 <circle
-                  cx="28" cy="28" r="24"
+                  cx="28"
+                  cy="28"
+                  r="24"
                   fill="none"
                   stroke="currentColor"
                   strokeWidth="2.5"
@@ -183,7 +201,8 @@ export function CanvasHeroViewer({
                 {stageLabel}
               </p>
               <p className="text-xs tabular-nums text-tool-text-subdued">
-                {modelLabel} · {elapsed}{eta ? ` · est. ${eta}` : ''}
+                {modelLabel} · {elapsed}
+                {eta ? ` · est. ${eta}` : ""}
               </p>
             </div>
           </div>
@@ -209,11 +228,17 @@ export function CanvasHeroViewer({
           style={{ aspectRatio }}
         >
           <div className="flex max-w-[360px] flex-col items-center gap-3 text-center">
-            <WarningCircle size={28} className="text-danger/80" aria-hidden="true" />
+            <WarningCircle
+              size={28}
+              className="text-danger/80"
+              aria-hidden="true"
+            />
             <div className="space-y-1">
-              <p className="text-sm font-semibold text-foreground">Generation failed</p>
+              <p className="text-sm font-semibold text-foreground">
+                Generation failed
+              </p>
               <p className="text-xs text-tool-text-subdued">
-                {generation.error ?? 'Unable to load this generation.'}
+                {generation.error ?? "Unable to load this generation."}
               </p>
             </div>
           </div>
@@ -231,9 +256,15 @@ export function CanvasHeroViewer({
           style={{ aspectRatio }}
         >
           <div className="flex max-w-[360px] flex-col items-center gap-3 text-center">
-            <WarningCircle size={28} className="text-tool-text-dim" aria-hidden="true" />
+            <WarningCircle
+              size={28}
+              className="text-tool-text-dim"
+              aria-hidden="true"
+            />
             <div className="space-y-1">
-              <p className="text-sm font-semibold text-foreground">Generation unavailable</p>
+              <p className="text-sm font-semibold text-foreground">
+                Generation unavailable
+              </p>
               <p className="text-xs text-tool-text-subdued">
                 No media is available for this generation.
               </p>

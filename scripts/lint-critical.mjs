@@ -1,16 +1,16 @@
 #!/usr/bin/env node
 
-import { spawnSync } from 'node:child_process';
+import { spawnSync } from "node:child_process";
 
 const CRITICAL_RULES = new Set([
-  'react-hooks/rules-of-hooks',
-  'no-dupe-keys',
-  'no-unsafe-finally',
+  "react-hooks/rules-of-hooks",
+  "no-dupe-keys",
+  "no-unsafe-finally",
 ]);
-const CRITICAL_RULE_PREFIXES = ['security/'];
+const CRITICAL_RULE_PREFIXES = ["security/"];
 
 function isCriticalRule(ruleId) {
-  if (typeof ruleId !== 'string' || ruleId.length === 0) {
+  if (typeof ruleId !== "string" || ruleId.length === 0) {
     return false;
   }
 
@@ -22,23 +22,23 @@ function isCriticalRule(ruleId) {
 }
 
 const result = spawnSync(
-  'npx',
+  "npx",
   [
-    'eslint',
-    '.',
-    '--config',
-    'config/lint/eslint.config.js',
-    '--format',
-    'json',
+    "eslint",
+    ".",
+    "--config",
+    "config/lint/eslint.config.js",
+    "--format",
+    "json",
   ],
   {
-    encoding: 'utf8',
+    encoding: "utf8",
     maxBuffer: 1024 * 1024 * 20,
-  }
+  },
 );
 
 if (!result.stdout) {
-  if (typeof result.status === 'number') {
+  if (typeof result.status === "number") {
     process.exit(result.status);
   }
   process.exit(1);
@@ -48,7 +48,7 @@ let parsed;
 try {
   parsed = JSON.parse(result.stdout);
 } catch (error) {
-  console.error('[lint:critical] Failed to parse ESLint JSON output.');
+  console.error("[lint:critical] Failed to parse ESLint JSON output.");
   if (error instanceof Error) {
     console.error(error.message);
   }
@@ -64,7 +64,7 @@ for (const fileResult of parsed) {
         filePath: fileResult.filePath,
         line: message.line ?? 1,
         column: message.column ?? 1,
-        severity: message.severity === 2 ? 'error' : 'warn',
+        severity: message.severity === 2 ? "error" : "warn",
         ruleId: message.ruleId,
         message: message.message,
       });
@@ -73,16 +73,17 @@ for (const fileResult of parsed) {
 }
 
 if (findings.length === 0) {
-  console.log('[lint:critical] No critical lint findings.');
+  console.log("[lint:critical] No critical lint findings.");
   process.exit(0);
 }
 
-console.error(`[lint:critical] Found ${findings.length} critical lint finding(s):`);
+console.error(
+  `[lint:critical] Found ${findings.length} critical lint finding(s):`,
+);
 for (const finding of findings) {
   console.error(
-    `- ${finding.filePath}:${finding.line}:${finding.column} [${finding.severity}] ${finding.ruleId}: ${finding.message}`
+    `- ${finding.filePath}:${finding.line}:${finding.column} [${finding.severity}] ${finding.ruleId}: ${finding.message}`,
   );
 }
 
 process.exit(1);
-

@@ -1,9 +1,11 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { SignedUrlService } from '../services/SignedUrlService';
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { SignedUrlService } from "../services/SignedUrlService";
 
 const buildService = () => {
   const mockFile = {
-    getSignedUrl: vi.fn().mockResolvedValue(['https://storage.googleapis.com/signed']),
+    getSignedUrl: vi
+      .fn()
+      .mockResolvedValue(["https://storage.googleapis.com/signed"]),
     exists: vi.fn().mockResolvedValue([true]),
   };
   const mockBucket = {
@@ -17,28 +19,35 @@ const buildService = () => {
   return { service, mockFile };
 };
 
-describe('SignedUrlService', () => {
+describe("SignedUrlService", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('generates upload URL with write action', async () => {
+  it("generates upload URL with write action", async () => {
     const { service, mockFile } = buildService();
-    const result = await service.getUploadUrl('users/user123/file.webp', 'image/webp', 1024);
+    const result = await service.getUploadUrl(
+      "users/user123/file.webp",
+      "image/webp",
+      1024,
+    );
 
     expect(result.uploadUrl).toBeDefined();
     expect(mockFile.getSignedUrl).toHaveBeenCalledWith(
-      expect.objectContaining({ action: 'write', contentType: 'image/webp' })
+      expect.objectContaining({ action: "write", contentType: "image/webp" }),
     );
   });
 
-  it('generates a view URL with read action', async () => {
+  it("generates a view URL with read action", async () => {
     const { service, mockFile } = buildService();
-    const result = await service.getViewUrl('users/user123/missing.mp4');
+    const result = await service.getViewUrl("users/user123/missing.mp4");
 
     expect(result.viewUrl).toBeDefined();
     expect(mockFile.getSignedUrl).toHaveBeenCalledWith(
-      expect.objectContaining({ action: 'read', responseDisposition: 'inline' })
+      expect.objectContaining({
+        action: "read",
+        responseDisposition: "inline",
+      }),
     );
   });
 });

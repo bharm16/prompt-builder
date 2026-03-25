@@ -1,13 +1,13 @@
-import type { NextFunction, Request, Response } from 'express';
-import { logger } from '@infrastructure/Logger';
-import type { FirestoreCircuitExecutor } from '@services/firestore/FirestoreCircuitExecutor';
+import type { NextFunction, Request, Response } from "express";
+import { logger } from "@infrastructure/Logger";
+import type { FirestoreCircuitExecutor } from "@services/firestore/FirestoreCircuitExecutor";
 
-const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+const MUTATING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
 type RequestWithId = Request & { id?: string };
 
 export function createFirestoreWriteGateMiddleware(
-  firestoreCircuitExecutor: FirestoreCircuitExecutor
+  firestoreCircuitExecutor: FirestoreCircuitExecutor,
 ): (req: Request, res: Response, next: NextFunction) => void {
   return (req: Request, res: Response, next: NextFunction): void => {
     if (!MUTATING_METHODS.has(req.method.toUpperCase())) {
@@ -22,20 +22,20 @@ export function createFirestoreWriteGateMiddleware(
 
     const retryAfterSeconds = firestoreCircuitExecutor.getRetryAfterSeconds();
     const requestId = (req as RequestWithId).id;
-    logger.warn('Firestore write gate blocked mutating request', {
+    logger.warn("Firestore write gate blocked mutating request", {
       method: req.method,
       path: req.path,
       requestId,
       retryAfterSeconds,
     });
 
-    res.setHeader('Retry-After', String(retryAfterSeconds));
+    res.setHeader("Retry-After", String(retryAfterSeconds));
     res.status(503).json({
-      error: 'Service temporarily unavailable',
-      code: 'SERVICE_UNAVAILABLE',
-      details: 'Write operations are temporarily unavailable while datastore recovers.',
+      error: "Service temporarily unavailable",
+      code: "SERVICE_UNAVAILABLE",
+      details:
+        "Write operations are temporarily unavailable while datastore recovers.",
       ...(requestId ? { requestId } : {}),
     });
   };
 }
-

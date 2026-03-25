@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useReducer, useRef } from 'react';
-import type { Generation, GenerationTier } from '../types';
-import { areGenerationsEqual } from '../utils/generationComparison';
-import { mergeGenerations } from '../utils/generationUrlPreference';
+import { useCallback, useEffect, useReducer, useRef } from "react";
+import type { Generation, GenerationTier } from "../types";
+import { areGenerationsEqual } from "../utils/generationComparison";
+import { mergeGenerations } from "../utils/generationUrlPreference";
 
-export { mergeGenerations } from '../utils/generationUrlPreference';
+export { mergeGenerations } from "../utils/generationUrlPreference";
 
 export type GenerationsState = {
   generations: Generation[];
@@ -12,28 +12,38 @@ export type GenerationsState = {
 };
 
 export type GenerationsAction =
-  | { type: 'ADD_GENERATION'; payload: Generation }
-  | { type: 'UPDATE_GENERATION'; payload: { id: string; updates: Partial<Generation> } }
-  | { type: 'REMOVE_GENERATION'; payload: { id: string } }
-  | { type: 'SET_ACTIVE'; payload: string | null }
-  | { type: 'SET_GENERATIONS'; payload: Generation[] };
+  | { type: "ADD_GENERATION"; payload: Generation }
+  | {
+      type: "UPDATE_GENERATION";
+      payload: { id: string; updates: Partial<Generation> };
+    }
+  | { type: "REMOVE_GENERATION"; payload: { id: string } }
+  | { type: "SET_ACTIVE"; payload: string | null }
+  | { type: "SET_GENERATIONS"; payload: Generation[] };
 
 const deriveIsGenerating = (generations: Generation[]): boolean =>
-  generations.some((gen) => gen.status === 'pending' || gen.status === 'generating');
+  generations.some(
+    (gen) => gen.status === "pending" || gen.status === "generating",
+  );
 
 const buildInitialState = (initial?: Generation[]): GenerationsState => {
   const generations = initial ?? [];
-  const lastGeneration = generations.length > 0 ? generations[generations.length - 1]! : null;
+  const lastGeneration =
+    generations.length > 0 ? generations[generations.length - 1]! : null;
   const activeGenerationId = lastGeneration?.id ?? null;
-  return { generations, activeGenerationId, isGenerating: deriveIsGenerating(generations) };
+  return {
+    generations,
+    activeGenerationId,
+    isGenerating: deriveIsGenerating(generations),
+  };
 };
 
 function generationsReducer(
   state: GenerationsState,
-  action: GenerationsAction
+  action: GenerationsAction,
 ): GenerationsState {
   switch (action.type) {
-    case 'ADD_GENERATION': {
+    case "ADD_GENERATION": {
       const next = { ...action.payload };
       const generations = [...state.generations, next];
       return {
@@ -42,29 +52,41 @@ function generationsReducer(
         isGenerating: deriveIsGenerating(generations),
       };
     }
-    case 'UPDATE_GENERATION': {
+    case "UPDATE_GENERATION": {
       const updates = action.payload.updates;
       const generations = state.generations.map((gen) =>
-        gen.id === action.payload.id ? { ...gen, ...updates } : gen
+        gen.id === action.payload.id ? { ...gen, ...updates } : gen,
       );
-      return { ...state, generations, isGenerating: deriveIsGenerating(generations) };
+      return {
+        ...state,
+        generations,
+        isGenerating: deriveIsGenerating(generations),
+      };
     }
-    case 'REMOVE_GENERATION': {
-      const generations = state.generations.filter((gen) => gen.id !== action.payload.id);
+    case "REMOVE_GENERATION": {
+      const generations = state.generations.filter(
+        (gen) => gen.id !== action.payload.id,
+      );
       const activeGenerationId =
         state.activeGenerationId === action.payload.id
-          ? generations[generations.length - 1]?.id ?? null
+          ? (generations[generations.length - 1]?.id ?? null)
           : state.activeGenerationId;
-      return { generations, activeGenerationId, isGenerating: deriveIsGenerating(generations) };
+      return {
+        generations,
+        activeGenerationId,
+        isGenerating: deriveIsGenerating(generations),
+      };
     }
-    case 'SET_ACTIVE':
+    case "SET_ACTIVE":
       return { ...state, activeGenerationId: action.payload };
-    case 'SET_GENERATIONS': {
+    case "SET_GENERATIONS": {
       const generations = action.payload ?? [];
       // Bug 15 fix: preserve activeGenerationId if it still exists in the new set
-      const lastGeneration = generations.length > 0 ? generations[generations.length - 1]! : null;
+      const lastGeneration =
+        generations.length > 0 ? generations[generations.length - 1]! : null;
       const preservedActiveId =
-        state.activeGenerationId && generations.some((g) => g.id === state.activeGenerationId)
+        state.activeGenerationId &&
+        generations.some((g) => g.id === state.activeGenerationId)
           ? state.activeGenerationId
           : (lastGeneration?.id ?? null);
       return {
@@ -92,7 +114,7 @@ export function useGenerationsState({
   const [state, dispatch] = useReducer(
     generationsReducer,
     initialGenerations,
-    buildInitialState
+    buildInitialState,
   );
   const initialRef = useRef<Generation[] | undefined>(initialGenerations);
   const suppressOnChangeRef = useRef(false);
@@ -106,20 +128,28 @@ export function useGenerationsState({
   useEffect(() => {
     const hasInitial = Boolean(initialGenerations);
     const sameRef = initialRef.current === initialGenerations;
-    const mergedGenerations = mergeGenerations(initialGenerations, generationsRef.current);
-    const sameContent = areGenerationsEqual(mergedGenerations, generationsRef.current);
+    const mergedGenerations = mergeGenerations(
+      initialGenerations,
+      generationsRef.current,
+    );
+    const sameContent = areGenerationsEqual(
+      mergedGenerations,
+      generationsRef.current,
+    );
     const hasLocalForVersion = Boolean(
       promptVersionId &&
         Array.isArray(initialGenerations) &&
         initialGenerations.length === 0 &&
-        generationsRef.current.some((gen) => gen.promptVersionId === promptVersionId)
+        generationsRef.current.some(
+          (gen) => gen.promptVersionId === promptVersionId,
+        ),
     );
 
     if (!hasInitial || sameRef || sameContent || hasLocalForVersion) return;
 
     initialRef.current = initialGenerations;
     suppressOnChangeRef.current = true;
-    dispatch({ type: 'SET_GENERATIONS', payload: mergedGenerations ?? [] });
+    dispatch({ type: "SET_GENERATIONS", payload: mergedGenerations ?? [] });
   }, [initialGenerations, promptVersionId]);
 
   // Emit changes to parent
@@ -137,39 +167,43 @@ export function useGenerationsState({
   }, [state.generations]);
 
   const addGeneration = useCallback(
-    (generation: Generation) => dispatch({ type: 'ADD_GENERATION', payload: generation }),
-    []
+    (generation: Generation) =>
+      dispatch({ type: "ADD_GENERATION", payload: generation }),
+    [],
   );
 
   const updateGeneration = useCallback(
     (id: string, updates: Partial<Generation>) =>
-      dispatch({ type: 'UPDATE_GENERATION', payload: { id, updates } }),
-    []
+      dispatch({ type: "UPDATE_GENERATION", payload: { id, updates } }),
+    [],
   );
 
   const removeGeneration = useCallback(
-    (id: string) => dispatch({ type: 'REMOVE_GENERATION', payload: { id } }),
-    []
+    (id: string) => dispatch({ type: "REMOVE_GENERATION", payload: { id } }),
+    [],
   );
 
   const setActiveGeneration = useCallback(
-    (id: string | null) => dispatch({ type: 'SET_ACTIVE', payload: id }),
-    []
+    (id: string | null) => dispatch({ type: "SET_ACTIVE", payload: id }),
+    [],
   );
 
   const getDraftGenerations = useCallback(
-    () => state.generations.filter((gen) => gen.tier === 'draft'),
-    [state.generations]
+    () => state.generations.filter((gen) => gen.tier === "draft"),
+    [state.generations],
   );
 
   const getRenderGenerations = useCallback(
-    () => state.generations.filter((gen) => gen.tier === 'render'),
-    [state.generations]
+    () => state.generations.filter((gen) => gen.tier === "render"),
+    [state.generations],
   );
 
   const getActiveGeneration = useCallback(() => {
     if (!state.activeGenerationId) return null;
-    return state.generations.find((gen) => gen.id === state.activeGenerationId) ?? null;
+    return (
+      state.generations.find((gen) => gen.id === state.activeGenerationId) ??
+      null
+    );
   }, [state.activeGenerationId, state.generations]);
 
   const getLatestByTier = useCallback(
@@ -177,11 +211,11 @@ export function useGenerationsState({
       const items = state.generations.filter((gen) => gen.tier === tier);
       return items.length ? items[items.length - 1] : null;
     },
-    [state.generations]
+    [state.generations],
   );
 
   const clearGenerations = useCallback(() => {
-    dispatch({ type: 'SET_GENERATIONS', payload: [] });
+    dispatch({ type: "SET_GENERATIONS", payload: [] });
   }, []);
 
   return {

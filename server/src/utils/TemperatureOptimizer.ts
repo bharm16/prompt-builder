@@ -9,27 +9,27 @@
  */
 
 type TaskType =
-  | 'classification'
-  | 'analysis'
-  | 'structured-data'
-  | 'validation'
-  | 'scene-detection'
-  | 'extraction'
-  | 'optimization'
-  | 'question-generation'
-  | 'reasoning'
-  | 'research'
-  | 'explanation'
-  | 'creative-suggestion'
-  | 'brainstorming'
-  | 'video-generation'
-  | 'enhancement'
-  | 'socratic'
-  | 'rewriting'
-  | 'general';
+  | "classification"
+  | "analysis"
+  | "structured-data"
+  | "validation"
+  | "scene-detection"
+  | "extraction"
+  | "optimization"
+  | "question-generation"
+  | "reasoning"
+  | "research"
+  | "explanation"
+  | "creative-suggestion"
+  | "brainstorming"
+  | "video-generation"
+  | "enhancement"
+  | "socratic"
+  | "rewriting"
+  | "general";
 
-type DiversityLevel = 'low' | 'medium' | 'high' | 'maximum';
-type PrecisionLevel = 'low' | 'medium' | 'high' | 'maximum';
+type DiversityLevel = "low" | "medium" | "high" | "maximum";
+type PrecisionLevel = "low" | "medium" | "high" | "maximum";
 
 interface TemperatureOptions {
   diversity?: DiversityLevel;
@@ -61,30 +61,33 @@ export class TemperatureOptimizer {
   /**
    * Determine optimal temperature for a given task type
    */
-  static getOptimalTemperature(taskType: TaskType, options: TemperatureOptions = {}): number {
-    const { diversity = 'medium', precision = 'medium' } = options;
+  static getOptimalTemperature(
+    taskType: TaskType,
+    options: TemperatureOptions = {},
+  ): number {
+    const { diversity = "medium", precision = "medium" } = options;
 
     // Base temperatures by task type
     const temperatureMap: Record<TaskType, number> = {
       // Highly deterministic tasks (0.0-0.3)
       classification: 0.1,
       analysis: 0.2,
-      'structured-data': 0.1,
+      "structured-data": 0.1,
       validation: 0.1,
-      'scene-detection': 0.2,
+      "scene-detection": 0.2,
       extraction: 0.15,
 
       // Balanced tasks (0.4-0.6)
       optimization: 0.5,
-      'question-generation': 0.6,
+      "question-generation": 0.6,
       reasoning: 0.4,
       research: 0.5,
       explanation: 0.5,
 
       // Creative tasks (0.7-1.0)
-      'creative-suggestion': 0.8,
+      "creative-suggestion": 0.8,
       brainstorming: 0.9,
-      'video-generation': 0.7,
+      "video-generation": 0.7,
       enhancement: 0.7,
       socratic: 0.6,
       rewriting: 0.7,
@@ -119,7 +122,10 @@ export class TemperatureOptimizer {
   /**
    * Get temperature configuration with rationale
    */
-  static getTemperatureConfig(taskType: TaskType, options: TemperatureOptions = {}): TemperatureConfig {
+  static getTemperatureConfig(
+    taskType: TaskType,
+    options: TemperatureOptions = {},
+  ): TemperatureConfig {
     const temperature = this.getOptimalTemperature(taskType, options);
     const rationale = this._getRationale(taskType, temperature);
 
@@ -135,7 +141,10 @@ export class TemperatureOptimizer {
    * Get rationale for temperature choice
    * @private
    */
-  private static _getRationale(taskType: TaskType, temperature: number): string {
+  private static _getRationale(
+    taskType: TaskType,
+    temperature: number,
+  ): string {
     if (temperature <= 0.3) {
       return `Low temperature (${temperature}) for deterministic, factual ${taskType} task requiring consistency and precision`;
     } else if (temperature <= 0.6) {
@@ -148,23 +157,25 @@ export class TemperatureOptimizer {
   /**
    * Recommend temperature adjustments based on task requirements
    */
-  static recommendTemperature(requirements: TaskRequirements = {}): TemperatureConfig {
+  static recommendTemperature(
+    requirements: TaskRequirements = {},
+  ): TemperatureConfig {
     const {
       needsCreativity = false,
       needsConsistency = false,
       needsDiversity = false,
       needsPrecision = false,
-      taskType = 'general',
+      taskType = "general",
     } = requirements;
 
     // Determine diversity and precision levels
-    let diversity: DiversityLevel = 'medium';
-    let precision: PrecisionLevel = 'medium';
+    let diversity: DiversityLevel = "medium";
+    let precision: PrecisionLevel = "medium";
 
-    if (needsDiversity) diversity = 'high';
-    if (needsCreativity) diversity = 'high';
-    if (needsConsistency) precision = 'high';
-    if (needsPrecision) precision = 'high';
+    if (needsDiversity) diversity = "high";
+    if (needsCreativity) diversity = "high";
+    if (needsConsistency) precision = "high";
+    if (needsPrecision) precision = "high";
 
     // Get optimal temperature
     const config = this.getTemperatureConfig(taskType, {
@@ -177,19 +188,19 @@ export class TemperatureOptimizer {
 
     if (config.temperature < 0.3) {
       recommendations.push(
-        'Consider using caching for consistent results across similar requests'
+        "Consider using caching for consistent results across similar requests",
       );
       recommendations.push(
-        'Expect highly deterministic outputs with minimal variation'
+        "Expect highly deterministic outputs with minimal variation",
       );
     }
 
     if (config.temperature > 0.7) {
       recommendations.push(
-        'Expect high variability in outputs - good for generating options'
+        "Expect high variability in outputs - good for generating options",
       );
       recommendations.push(
-        'Consider generating multiple samples for broader coverage'
+        "Consider generating multiple samples for broader coverage",
       );
     }
 
@@ -205,38 +216,37 @@ export class TemperatureOptimizer {
   static getPresets(): Record<string, TemperaturePreset> {
     return {
       // Analysis and extraction
-      factExtraction: { temperature: 0.0, description: 'Pure fact extraction' },
+      factExtraction: { temperature: 0.0, description: "Pure fact extraction" },
       dataClassification: {
         temperature: 0.1,
-        description: 'Classification tasks',
+        description: "Classification tasks",
       },
       codeGeneration: {
         temperature: 0.2,
-        description: 'Deterministic code generation',
+        description: "Deterministic code generation",
       },
 
       // Balanced tasks
       generalQA: {
         temperature: 0.5,
-        description: 'General question answering',
+        description: "General question answering",
       },
-      explanation: { temperature: 0.5, description: 'Explaining concepts' },
-      summarization: { temperature: 0.4, description: 'Content summarization' },
+      explanation: { temperature: 0.5, description: "Explaining concepts" },
+      summarization: { temperature: 0.4, description: "Content summarization" },
 
       // Creative tasks
       brainstorming: {
         temperature: 0.9,
-        description: 'Generating diverse ideas',
+        description: "Generating diverse ideas",
       },
       creativeWriting: {
         temperature: 0.8,
-        description: 'Creative content generation',
+        description: "Creative content generation",
       },
       alternativeGeneration: {
         temperature: 0.7,
-        description: 'Multiple creative alternatives',
+        description: "Multiple creative alternatives",
       },
     };
   }
 }
-

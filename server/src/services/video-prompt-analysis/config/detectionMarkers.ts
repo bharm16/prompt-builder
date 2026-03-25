@@ -3,71 +3,62 @@
  */
 
 type DetectionMarkerGroup =
-  | 'LEGACY'
-  | 'MODERN'
-  | 'CINEMATOGRAPHIC'
-  | 'TECHNICAL_FIELDS';
+  | "LEGACY"
+  | "MODERN"
+  | "CINEMATOGRAPHIC"
+  | "TECHNICAL_FIELDS";
 
 export const DETECTION_MARKERS: Record<DetectionMarkerGroup, string[]> = {
   // Legacy template markers (original format)
-  LEGACY: [
-    '**main prompt:**',
-    '**technical parameters:**',
-    'camera movement:',
-  ],
+  LEGACY: ["**main prompt:**", "**technical parameters:**", "camera movement:"],
 
   // Modern template markers (current format)
   MODERN: [
-    '**prompt:**',
-    '**guiding principles',
-    '**writing rules',
-    '**technical specs',
-    '**alternative approaches',
-    'variation 1 (different camera)',
-    'variation 2 (different lighting/mood)',
+    "**prompt:**",
+    "**guiding principles",
+    "**writing rules",
+    "**technical specs",
+    "**alternative approaches",
+    "variation 1 (different camera)",
+    "variation 2 (different lighting/mood)",
   ],
 
   // Natural-language cinematographic markers
   CINEMATOGRAPHIC: [
-    'camera',
-    'close-up',
-    'close up',
-    'wide shot',
-    'medium shot',
-    'eye-level',
-    'eye level',
-    'low angle',
-    'high angle',
-    'tracking shot',
-    'dolly',
-    'pan',
-    'tilt',
-    'zoom',
-    'focus pull',
-    'depth of field',
-    'handheld',
-    'steadicam',
-    'crane shot',
-    'aerial shot',
-    'pov',
-    'slow motion',
-    'time-lapse',
-    'frame',
-    'cinematic',
-    'lens',
-    'bokeh',
-    'rack focus',
-    'establishing shot',
-    'over-the-shoulder',
+    "camera",
+    "close-up",
+    "close up",
+    "wide shot",
+    "medium shot",
+    "eye-level",
+    "eye level",
+    "low angle",
+    "high angle",
+    "tracking shot",
+    "dolly",
+    "pan",
+    "tilt",
+    "zoom",
+    "focus pull",
+    "depth of field",
+    "handheld",
+    "steadicam",
+    "crane shot",
+    "aerial shot",
+    "pov",
+    "slow motion",
+    "time-lapse",
+    "frame",
+    "cinematic",
+    "lens",
+    "bokeh",
+    "rack focus",
+    "establishing shot",
+    "over-the-shoulder",
   ],
 
   // Technical field markers
-  TECHNICAL_FIELDS: [
-    'duration:',
-    'aspect ratio:',
-    'frame rate:',
-    'audio:',
-  ],
+  TECHNICAL_FIELDS: ["duration:", "aspect ratio:", "frame rate:", "audio:"],
 };
 
 /**

@@ -4,14 +4,14 @@
 
 Generation settings are split across 3 state scopes with inconsistent persistence:
 
-| Setting | Current Location | Persisted? | Survives Mode Switch? |
-|---------|-----------------|------------|----------------------|
-| aspect_ratio, duration | `PromptStateContext.generationParams` | ✅ localStorage | ✅ |
-| selectedModel | `PromptStateContext` | ✅ localStorage | ✅ |
-| videoTier | Local `useState('render')` in Workspace | ❌ | ❌ |
-| selectedMode | Local `useState('video')` in usePromptConfigState | ❌ | ❌ |
-| cameraMotion | `GenerationControlsContext` useState | ❌ | ❌ Force-cleared |
-| subjectMotion | `GenerationControlsContext` useState | ❌ | ❌ Force-cleared |
+| Setting                | Current Location                                  | Persisted?      | Survives Mode Switch? |
+| ---------------------- | ------------------------------------------------- | --------------- | --------------------- |
+| aspect_ratio, duration | `PromptStateContext.generationParams`             | ✅ localStorage | ✅                    |
+| selectedModel          | `PromptStateContext`                              | ✅ localStorage | ✅                    |
+| videoTier              | Local `useState('render')` in Workspace           | ❌              | ❌                    |
+| selectedMode           | Local `useState('video')` in usePromptConfigState | ❌              | ❌                    |
+| cameraMotion           | `GenerationControlsContext` useState              | ❌              | ❌ Force-cleared      |
+| subjectMotion          | `GenerationControlsContext` useState              | ❌              | ❌ Force-cleared      |
 
 Additional bugs: convergence handoff logs but never applies motion values; subjectMotion omitted from optimization params; capability options not re-validated on tier change.
 
@@ -34,6 +34,7 @@ Additional bugs: convergence handoff logs but never applies motion values; subje
 **Pattern**: Extend the existing `promptStateStorage.ts` → `usePromptConfigState` → `usePromptStatePersistence` pipeline.
 
 **Files changed**:
+
 - `client/src/features/prompt-optimizer/context/promptStateStorage.ts` — Added keys, Zod schemas, load/persist functions
 - `client/src/features/prompt-optimizer/context/hooks/usePromptConfigState.ts` — Init from localStorage, added videoTier state
 - `client/src/features/prompt-optimizer/context/hooks/usePromptStatePersistence.ts` — Added persistence effects
@@ -50,6 +51,7 @@ Additional bugs: convergence handoff logs but never applies motion values; subje
 **Pattern**: New storage module for `GenerationControlsContext`, following the exact `promptStateStorage.ts` pattern.
 
 **Files**:
+
 - **NEW**: `client/src/features/prompt-optimizer/context/generationControlsStorage.ts`
   - Keys: `generation-controls:cameraMotion`, `generation-controls:subjectMotion`
   - Zod schemas for `CameraPath` (object: `id`, `label`, `category`, `start`, `end`, `duration`) and subject motion (`z.string()`)
@@ -67,12 +69,13 @@ Additional bugs: convergence handoff logs but never applies motion values; subje
 ### Commit 3: Fix mode-switch clearing + convergence handoff ✅ DONE
 
 **Files**:
+
 - `client/src/features/prompt-optimizer/PromptOptimizerContainer/PromptOptimizerWorkspace.tsx`
 
   **Remove the aggressive clearing effect** (lines 156-160):
   - Delete the `useEffect` that unconditionally clears cameraMotion/subjectMotion on `mode !== 'create'`
   - Motion state now persists in localStorage (Commit 2) and should survive mode switches
-  - The existing effect in `GenerationControlsContext` (lines 268-313) already clears motion when the *keyframe* changes, which is the correct invalidation trigger
+  - The existing effect in `GenerationControlsContext` (lines 268-313) already clears motion when the _keyframe_ changes, which is the correct invalidation trigger
 
   **Fix convergence handoff** (lines 187-217):
   - After setting the prompt, also apply motion values:
@@ -91,6 +94,7 @@ Additional bugs: convergence handoff logs but never applies motion values; subje
 ### Commit 4: Add `subjectMotion` to optimization params + enable motion in Studio ✅ DONE
 
 **Files**:
+
 - `client/src/features/prompt-optimizer/PromptOptimizerContainer/PromptOptimizerWorkspace.tsx`
   - Lines 611-617: Add `subjectMotion` to `optimizationGenerationParams`:
     ```typescript
@@ -108,6 +112,7 @@ Additional bugs: convergence handoff logs but never applies motion values; subje
 ### Commit 5: Validate capability options on tier/model change ✅ DONE
 
 **Files changed**:
+
 - `client/src/components/ToolSidebar/components/panels/GenerationControlsPanel/hooks/useGenerationControlsPanel.ts`
   - Destructured `onAspectRatioChange` and `onDurationChange` from props
   - Added clamping effects after capability resolution that validate current params against resolved options
@@ -120,6 +125,7 @@ Additional bugs: convergence handoff logs but never applies motion values; subje
 ### Commit 6: Update tests ✅ DONE
 
 **Files**:
+
 - `client/src/features/prompt-optimizer/context/__tests__/generationControlsStorage.test.ts` — Zod validation + corrupt storage handling
 - `client/src/components/ToolSidebar/components/panels/GenerationControlsPanel/hooks/__tests__/useGenerationControlsPanel.test.tsx` — clamping logic
 - `client/src/features/prompt-optimizer/context/__tests__/promptStateStorage.test.ts` — selectedMode/videoTier persistence helpers
@@ -144,6 +150,7 @@ Commits 1, 2, and 5 are independent. Commit 3 requires Commit 2. Commit 4 requir
 ## Root Cause (Architectural)
 
 The panel's state is split across **four scopes** with different lifetimes:
+
 1. **localStorage** (survives everything) — model, aspect ratio, duration
 2. **Context state** (survives within session) — camera motion, subject motion, keyframes
 3. **Component local state** (dies on unmount) — videoTier, selectedMode
@@ -170,20 +177,24 @@ Anything in scope 3 or 4 that the user expects to behave like scope 1 or 2 feels
 To start consolidating state without breaking existing consumers, a draft reducer-based store was added that hydrates from legacy storage keys and persists back to both the new key and the legacy keys.
 
 **Files**:
+
 - `client/src/features/prompt-optimizer/context/generationControlsStoreTypes.ts`
 - `client/src/features/prompt-optimizer/context/generationControlsStoreStorage.ts`
 - `client/src/features/prompt-optimizer/context/GenerationControlsStore.tsx`
 
 **State shape**:
+
 - `domain`: `selectedModel`, `generationParams`, `videoTier`, `keyframes`, `cameraMotion`, `subjectMotion`
 - `ui`: `activeTab`, `imageSubTab`, `constraintMode`
 
 **Migration behavior**:
+
 - If `prompt-optimizer:generationControlsStore` is missing or invalid, hydrate from:
   - `prompt-optimizer:*` (`selectedModel`, `generationParams`, `videoTier`)
   - `generation-controls:*` (`keyframes`, `cameraMotion`, `subjectMotion`, `activeTab`, `imageSubTab`, `constraintMode`)
 - Persist writes to the unified key and mirrors legacy keys for backward compatibility
 
 **Next wiring step (optional)**:
+
 - Wrap the app shell (or `PromptStateProvider`) with `GenerationControlsStoreProvider`
 - Move `GenerationControlsContext` and `PromptStateContext` to read/write through store actions

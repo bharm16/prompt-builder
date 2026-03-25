@@ -1,10 +1,13 @@
-import { act, renderHook } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Generation } from '@features/generations/types';
-import { useGenerationMediaRefresh } from '@features/generations/hooks/useGenerationMediaRefresh';
-import { resolveMediaUrl, resolveImageAssetBatch } from '@/services/media/MediaUrlResolver';
+import { act, renderHook } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { Generation } from "@features/generations/types";
+import { useGenerationMediaRefresh } from "@features/generations/hooks/useGenerationMediaRefresh";
+import {
+  resolveMediaUrl,
+  resolveImageAssetBatch,
+} from "@/services/media/MediaUrlResolver";
 
-vi.mock('@/services/media/MediaUrlResolver', () => ({
+vi.mock("@/services/media/MediaUrlResolver", () => ({
   resolveMediaUrl: vi.fn(),
   resolveImageAssetBatch: vi.fn().mockResolvedValue(new Map()),
   isMediaCircuitOpen: vi.fn().mockReturnValue(false),
@@ -15,14 +18,14 @@ const mockResolveImageAssetBatch = vi.mocked(resolveImageAssetBatch);
 
 const buildGeneration = (id: string): Generation => ({
   id,
-  tier: 'draft',
-  status: 'completed',
-  model: 'flux',
-  prompt: 'test prompt',
-  promptVersionId: 'version-1',
+  tier: "draft",
+  status: "completed",
+  model: "flux",
+  prompt: "test prompt",
+  promptVersionId: "version-1",
   createdAt: Date.now(),
   completedAt: Date.now(),
-  mediaType: 'image',
+  mediaType: "image",
   mediaUrls: [`/api/preview/image/view?assetId=${id}`],
   mediaAssetIds: [id],
   thumbnailUrl: null,
@@ -33,22 +36,22 @@ const buildGeneration = (id: string): Generation => ({
  * Uses Object.defineProperty because jsdom doesn't support setting
  * document.visibilityState directly.
  */
-const simulateVisibilityChange = (state: 'visible' | 'hidden'): void => {
-  Object.defineProperty(document, 'visibilityState', {
+const simulateVisibilityChange = (state: "visible" | "hidden"): void => {
+  Object.defineProperty(document, "visibilityState", {
     configurable: true,
     get: () => state,
   });
-  document.dispatchEvent(new Event('visibilitychange'));
+  document.dispatchEvent(new Event("visibilitychange"));
 };
 
-describe('regression: gallery thumbnails re-resolve media URLs after laptop sleep', () => {
+describe("regression: gallery thumbnails re-resolve media URLs after laptop sleep", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.clearAllMocks();
     // Start with page visible
-    Object.defineProperty(document, 'visibilityState', {
+    Object.defineProperty(document, "visibilityState", {
       configurable: true,
-      get: () => 'visible',
+      get: () => "visible",
     });
   });
 
@@ -56,15 +59,18 @@ describe('regression: gallery thumbnails re-resolve media URLs after laptop slee
     vi.useRealTimers();
   });
 
-  it('re-resolves already-processed generations when page becomes visible after extended sleep', async () => {
-    const freshSignedUrl = 'https://storage.example.com/fresh-signed-url';
+  it("re-resolves already-processed generations when page becomes visible after extended sleep", async () => {
+    const freshSignedUrl = "https://storage.example.com/fresh-signed-url";
     mockResolveMediaUrl.mockResolvedValue({
       url: freshSignedUrl,
-      source: 'preview',
+      source: "preview",
     });
 
     const dispatch = vi.fn();
-    const generations = [buildGeneration('asset-a'), buildGeneration('asset-b')];
+    const generations = [
+      buildGeneration("asset-a"),
+      buildGeneration("asset-b"),
+    ];
 
     renderHook(() => useGenerationMediaRefresh(generations, dispatch));
 
@@ -83,20 +89,20 @@ describe('regression: gallery thumbnails re-resolve media URLs after laptop slee
     dispatch.mockClear();
 
     mockResolveMediaUrl.mockResolvedValue({
-      url: 'https://storage.example.com/re-resolved-after-wake',
-      source: 'preview',
+      url: "https://storage.example.com/re-resolved-after-wake",
+      source: "preview",
     });
 
     // Simulate laptop sleep (page hidden) then wake (page visible) after >60s
     act(() => {
-      simulateVisibilityChange('hidden');
+      simulateVisibilityChange("hidden");
     });
     await act(async () => {
       // Advance time to simulate extended sleep (2 minutes)
       await vi.advanceTimersByTimeAsync(120_000);
     });
     await act(async () => {
-      simulateVisibilityChange('visible');
+      simulateVisibilityChange("visible");
     });
 
     // Let the visibility-triggered refresh settle

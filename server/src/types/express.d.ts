@@ -4,7 +4,7 @@
  * Extends the Express Request interface with custom properties
  * added by middleware (requestId and performanceMonitor).
  */
-import 'express';
+import "express";
 
 /**
  * Performance metrics returned by getMetrics()

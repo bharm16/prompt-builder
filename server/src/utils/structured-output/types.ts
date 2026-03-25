@@ -1,5 +1,5 @@
 export interface StructuredOutputSchema {
-  type: 'object' | 'array';
+  type: "object" | "array";
   required?: string[];
   items?: {
     required?: string[];

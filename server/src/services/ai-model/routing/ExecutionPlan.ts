@@ -1,20 +1,20 @@
-import { logger } from '@infrastructure/Logger';
-import { ModelConfig, DEFAULT_CONFIG } from '@config/modelConfig';
-import { AIClientError } from '@interfaces/IAIClient';
-import type { ExecutionPlan, ModelConfigEntry } from '../types';
-import type { ClientResolver } from './ClientResolver';
+import { logger } from "@infrastructure/Logger";
+import { ModelConfig, DEFAULT_CONFIG } from "@config/modelConfig";
+import { AIClientError } from "@interfaces/IAIClient";
+import type { ExecutionPlan, ModelConfigEntry } from "../types";
+import type { ClientResolver } from "./ClientResolver";
 
-const DEFAULT_FALLBACK_ORDER = ['openai', 'groq', 'gemini', 'qwen'] as const;
+const DEFAULT_FALLBACK_ORDER = ["openai", "groq", "gemini", "qwen"] as const;
 
 let providerSettings: Record<string, { model: string; timeout: number }> = {
   openai: { model: DEFAULT_CONFIG.model, timeout: DEFAULT_CONFIG.timeout },
-  groq: { model: 'llama-3.1-8b-instant', timeout: 5000 },
-  qwen: { model: 'qwen/qwen3-32b', timeout: 10000 },
-  gemini: { model: 'gemini-2.5-flash', timeout: 30000 },
+  groq: { model: "llama-3.1-8b-instant", timeout: 5000 },
+  qwen: { model: "qwen/qwen3-32b", timeout: 10000 },
+  gemini: { model: "gemini-2.5-flash", timeout: 30000 },
 };
 
 export function setProviderSettings(
-  settings: Record<string, { model: string; timeout: number }>
+  settings: Record<string, { model: string; timeout: number }>,
 ): void {
   providerSettings = { ...providerSettings, ...settings };
 }
@@ -28,7 +28,7 @@ export class ExecutionPlanResolver {
     const config = ModelConfig[operation] as ModelConfigEntry | undefined;
 
     if (!config) {
-      logger.warn('Operation not found in config, using default', {
+      logger.warn("Operation not found in config, using default", {
         operation,
         availableOperations: Object.keys(ModelConfig).slice(0, 5),
       } as Record<string, unknown>);
@@ -43,7 +43,10 @@ export class ExecutionPlanResolver {
     const primaryAvailable = this.clientResolver.hasClient(baseConfig.client);
 
     if (!primaryAvailable && !baseConfig.strictClient) {
-      const replacement = this.selectAvailableClient(baseConfig.fallbackTo, baseConfig.fallbackConfig);
+      const replacement = this.selectAvailableClient(
+        baseConfig.fallbackTo,
+        baseConfig.fallbackConfig,
+      );
       if (replacement) {
         const config: ModelConfigEntry = {
           ...baseConfig,
@@ -54,11 +57,14 @@ export class ExecutionPlanResolver {
 
         if (!this.loggedAutoFallbacks.has(operation)) {
           this.loggedAutoFallbacks.add(operation);
-          logger.warn('Primary client unavailable, remapping operation to available provider', {
-            operation,
-            requestedClient: baseConfig.client,
-            resolvedClient: replacement.client,
-          });
+          logger.warn(
+            "Primary client unavailable, remapping operation to available provider",
+            {
+              operation,
+              requestedClient: baseConfig.client,
+              resolvedClient: replacement.client,
+            },
+          );
         }
 
         return {
@@ -69,14 +75,20 @@ export class ExecutionPlanResolver {
     }
 
     if (!primaryAvailable && baseConfig.strictClient) {
-      logger.warn('Strict client unavailable; operation will not be remapped or auto-fallbacked', {
-        operation,
-        requiredClient: baseConfig.client,
-      });
+      logger.warn(
+        "Strict client unavailable; operation will not be remapped or auto-fallbacked",
+        {
+          operation,
+          requiredClient: baseConfig.client,
+        },
+      );
     }
 
     if (!primaryAvailable && !this.clientResolver.hasAnyClient()) {
-      throw new AIClientError('No AI providers configured; enable at least one LLM provider', 503);
+      throw new AIClientError(
+        "No AI providers configured; enable at least one LLM provider",
+        503,
+      );
     }
 
     return {
@@ -87,22 +99,33 @@ export class ExecutionPlanResolver {
 
   private resolveFallbackClient(
     primaryClient: string,
-    baseConfig: ModelConfigEntry
+    baseConfig: ModelConfigEntry,
   ): { client: string; model: string; timeout: number } | null {
     if (baseConfig.strictClient) {
       return null;
     }
 
-    if (baseConfig.fallbackTo && baseConfig.fallbackTo !== primaryClient && this.clientResolver.hasClient(baseConfig.fallbackTo)) {
+    if (
+      baseConfig.fallbackTo &&
+      baseConfig.fallbackTo !== primaryClient &&
+      this.clientResolver.hasClient(baseConfig.fallbackTo)
+    ) {
       return {
         client: baseConfig.fallbackTo,
-        model: baseConfig.fallbackConfig?.model || this.getDefaultProviderModel(baseConfig.fallbackTo),
-        timeout: baseConfig.fallbackConfig?.timeout || this.getDefaultProviderTimeout(baseConfig.fallbackTo),
+        model:
+          baseConfig.fallbackConfig?.model ||
+          this.getDefaultProviderModel(baseConfig.fallbackTo),
+        timeout:
+          baseConfig.fallbackConfig?.timeout ||
+          this.getDefaultProviderTimeout(baseConfig.fallbackTo),
       };
     }
 
     for (const candidate of DEFAULT_FALLBACK_ORDER) {
-      if (candidate !== primaryClient && this.clientResolver.hasClient(candidate)) {
+      if (
+        candidate !== primaryClient &&
+        this.clientResolver.hasClient(candidate)
+      ) {
         return {
           client: candidate,
           model: this.getDefaultProviderModel(candidate),
@@ -116,13 +139,14 @@ export class ExecutionPlanResolver {
 
   private selectAvailableClient(
     preferred?: string,
-    fallbackConfig?: { model: string; timeout: number }
+    fallbackConfig?: { model: string; timeout: number },
   ): { client: string; model: string; timeout: number } | null {
     if (preferred && this.clientResolver.hasClient(preferred)) {
       return {
         client: preferred,
         model: fallbackConfig?.model || this.getDefaultProviderModel(preferred),
-        timeout: fallbackConfig?.timeout || this.getDefaultProviderTimeout(preferred),
+        timeout:
+          fallbackConfig?.timeout || this.getDefaultProviderTimeout(preferred),
       };
     }
 

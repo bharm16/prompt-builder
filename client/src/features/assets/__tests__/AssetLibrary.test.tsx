@@ -1,8 +1,8 @@
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
-import AssetLibrary from '../AssetLibrary';
+import { describe, it, expect, vi } from "vitest";
+import { render, screen } from "@testing-library/react";
+import AssetLibrary from "../AssetLibrary";
 
-vi.mock('../api/assetApi', () => ({
+vi.mock("../api/assetApi", () => ({
   assetApi: {
     list: vi.fn().mockResolvedValue({
       assets: [],
@@ -20,9 +20,9 @@ vi.mock('../api/assetApi', () => ({
   },
 }));
 
-describe('AssetLibrary', () => {
-  it('renders empty state when no assets exist', async () => {
+describe("AssetLibrary", () => {
+  it("renders empty state when no assets exist", async () => {
     render(<AssetLibrary />);
-    expect(await screen.findByText('No assets yet')).toBeInTheDocument();
+    expect(await screen.findByText("No assets yet")).toBeInTheDocument();
   });
 });

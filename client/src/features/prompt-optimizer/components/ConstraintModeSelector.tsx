@@ -1,12 +1,12 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo } from "react";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
-} from '@promptstudio/system/components/ui/select';
-import { cn } from '@/utils/cn';
-import type { I2VConstraintMode } from '../types/i2v';
+} from "@promptstudio/system/components/ui/select";
+import { cn } from "@/utils/cn";
+import type { I2VConstraintMode } from "../types/i2v";
 
 interface ConstraintModeSelectorProps {
   mode: I2VConstraintMode;
@@ -22,19 +22,19 @@ const MODE_OPTIONS: Array<{
   description: string;
 }> = [
   {
-    id: 'strict',
-    label: 'Strict',
-    description: 'Motion only; image visuals stay fixed.',
+    id: "strict",
+    label: "Strict",
+    description: "Motion only; image visuals stay fixed.",
   },
   {
-    id: 'flexible',
-    label: 'Flexible',
-    description: 'Allow visual edits with warnings.',
+    id: "flexible",
+    label: "Flexible",
+    description: "Allow visual edits with warnings.",
   },
   {
-    id: 'transform',
-    label: 'Transform',
-    description: 'Full pass-through for style changes.',
+    id: "transform",
+    label: "Transform",
+    description: "Full pass-through for style changes.",
   },
 ];
 
@@ -46,15 +46,15 @@ export function ConstraintModeSelector({
   className,
 }: ConstraintModeSelectorProps): React.ReactElement {
   const resolvedMode = useMemo(
-    () => (MODE_OPTIONS.some((option) => option.id === mode) ? mode : 'strict'),
-    [mode]
+    () => (MODE_OPTIONS.some((option) => option.id === mode) ? mode : "strict"),
+    [mode],
   );
 
   const activeLabel = useMemo(
     () =>
       MODE_OPTIONS.find((option) => option.id === resolvedMode)?.label ??
-      'Strict',
-    [resolvedMode]
+      "Strict",
+    [resolvedMode],
   );
 
   const handleValueChange = useCallback(
@@ -65,11 +65,11 @@ export function ConstraintModeSelector({
       }
       onChange(nextMode);
     },
-    [onChange, resolvedMode]
+    [onChange, resolvedMode],
   );
 
   return (
-    <div className={cn('flex items-center gap-2', className)}>
+    <div className={cn("flex items-center gap-2", className)}>
       <span className="text-label-sm text-muted">I2V Mode</span>
       <Select
         value={resolvedMode}

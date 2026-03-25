@@ -1,5 +1,5 @@
-import { z } from 'zod';
-import { apiClient } from '@/services/ApiClient';
+import { z } from "zod";
+import { apiClient } from "@/services/ApiClient";
 
 const BillingSessionResponseSchema = z.object({
   url: z.string().url(),
@@ -42,36 +42,50 @@ const CreditHistoryResponseSchema = z.object({
   transactions: z.array(CreditTransactionSchema),
 });
 
+const CreditBalanceResponseSchema = z.object({
+  balance: z.number(),
+});
+
 export type InvoiceSummary = z.infer<typeof InvoiceSummarySchema>;
 export type BillingStatus = z.infer<typeof BillingStatusResponseSchema>;
 export type CreditTransaction = z.infer<typeof CreditTransactionSchema>;
 
-export async function createCheckoutSession(priceId: string): Promise<{ url: string }> {
-  const response = await apiClient.post('/payment/checkout', { priceId });
+export async function createCheckoutSession(
+  priceId: string,
+): Promise<{ url: string }> {
+  const response = await apiClient.post("/payment/checkout", { priceId });
   return BillingSessionResponseSchema.parse(response);
 }
 
 export async function createBillingPortalSession(): Promise<{ url: string }> {
-  const response = await apiClient.post('/payment/portal', {});
+  const response = await apiClient.post("/payment/portal", {});
   return BillingSessionResponseSchema.parse(response);
 }
 
 export async function fetchInvoices(): Promise<InvoiceSummary[]> {
-  const response = await apiClient.get('/payment/invoices');
+  const response = await apiClient.get("/payment/invoices");
   const parsed = InvoicesResponseSchema.parse(response);
   return parsed.invoices;
 }
 
 export async function fetchBillingStatus(): Promise<BillingStatus> {
-  const response = await apiClient.get('/payment/status');
+  const response = await apiClient.get("/payment/status");
   return BillingStatusResponseSchema.parse(response);
 }
 
-export async function fetchCreditHistory(limit?: number): Promise<CreditTransaction[]> {
+export async function fetchCreditBalance(): Promise<number> {
+  const response = await apiClient.get("/payment/credits/balance");
+  const parsed = CreditBalanceResponseSchema.parse(response);
+  return parsed.balance;
+}
+
+export async function fetchCreditHistory(
+  limit?: number,
+): Promise<CreditTransaction[]> {
   const endpoint =
-    typeof limit === 'number' && Number.isFinite(limit)
+    typeof limit === "number" && Number.isFinite(limit)
       ? `/payment/credits/history?limit=${Math.trunc(limit)}`
-      : '/payment/credits/history';
+      : "/payment/credits/history";
   const response = await apiClient.get(endpoint);
   const parsed = CreditHistoryResponseSchema.parse(response);
   return parsed.transactions;

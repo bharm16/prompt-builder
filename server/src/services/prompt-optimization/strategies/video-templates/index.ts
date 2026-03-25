@@ -10,15 +10,15 @@
  * - Returns appropriate builder (OpenAI vs Groq)
  */
 
-import { logger } from '@infrastructure/Logger';
-import { detectProvider } from '@utils/provider/ProviderDetector';
-import { OpenAIVideoTemplateBuilder } from './OpenAIVideoTemplateBuilder';
-import { OpenAIVideoTemplateBuilderLocked } from './OpenAIVideoTemplateBuilderLocked';
-import { GroqVideoTemplateBuilder } from './GroqVideoTemplateBuilder';
-import { GroqVideoTemplateBuilderLocked } from './GroqVideoTemplateBuilderLocked';
-import type { BaseVideoTemplateBuilder } from './BaseVideoTemplateBuilder';
+import { logger } from "@infrastructure/Logger";
+import { detectProvider } from "@utils/provider/ProviderDetector";
+import { OpenAIVideoTemplateBuilder } from "./OpenAIVideoTemplateBuilder";
+import { OpenAIVideoTemplateBuilderLocked } from "./OpenAIVideoTemplateBuilderLocked";
+import { GroqVideoTemplateBuilder } from "./GroqVideoTemplateBuilder";
+import { GroqVideoTemplateBuilderLocked } from "./GroqVideoTemplateBuilderLocked";
+import type { BaseVideoTemplateBuilder } from "./BaseVideoTemplateBuilder";
 
-const log = logger.child({ service: 'VideoTemplateBuilderFactory' });
+const log = logger.child({ service: "VideoTemplateBuilderFactory" });
 
 // Singleton instances (initialized on first use)
 let openaiBuilder: OpenAIVideoTemplateBuilder | null = null;
@@ -51,26 +51,27 @@ export function getVideoTemplateBuilder(options: {
   client?: string;
   lockedSpans?: Array<{ text: string }>;
 }): BaseVideoTemplateBuilder {
-  const operation = 'getVideoTemplateBuilder';
-  
-  log.debug('Getting video template builder', {
+  const operation = "getVideoTemplateBuilder";
+
+  log.debug("Getting video template builder", {
     operation,
     options,
   });
-  
-  const provider = detectProvider(options);
-  const hasLockedSpans = Array.isArray(options.lockedSpans) && options.lockedSpans.length > 0;
 
-  if (provider === 'openai') {
+  const provider = detectProvider(options);
+  const hasLockedSpans =
+    Array.isArray(options.lockedSpans) && options.lockedSpans.length > 0;
+
+  if (provider === "openai") {
     if (hasLockedSpans) {
       if (!openaiLockedBuilder) {
-        log.debug('Creating OpenAI locked video template builder instance', {
+        log.debug("Creating OpenAI locked video template builder instance", {
           operation,
           provider,
         });
         openaiLockedBuilder = new OpenAIVideoTemplateBuilderLocked();
       }
-      log.debug('Returning OpenAI locked video template builder', {
+      log.debug("Returning OpenAI locked video template builder", {
         operation,
         provider,
       });
@@ -78,18 +79,18 @@ export function getVideoTemplateBuilder(options: {
     }
 
     if (!openaiBuilder) {
-      log.debug('Creating OpenAI video template builder instance', {
+      log.debug("Creating OpenAI video template builder instance", {
         operation,
         provider,
       });
       openaiBuilder = new OpenAIVideoTemplateBuilder();
     }
-    
-    log.debug('Returning OpenAI video template builder', {
+
+    log.debug("Returning OpenAI video template builder", {
       operation,
       provider,
     });
-    
+
     return openaiBuilder;
   }
 
@@ -97,13 +98,13 @@ export function getVideoTemplateBuilder(options: {
   // (Anthropic, Gemini, and unknown providers use Groq template)
   if (hasLockedSpans) {
     if (!groqLockedBuilder) {
-      log.debug('Creating Groq locked video template builder instance', {
+      log.debug("Creating Groq locked video template builder instance", {
         operation,
         provider,
       });
       groqLockedBuilder = new GroqVideoTemplateBuilderLocked();
     }
-    log.debug('Returning Groq locked video template builder', {
+    log.debug("Returning Groq locked video template builder", {
       operation,
       provider,
     });
@@ -111,18 +112,18 @@ export function getVideoTemplateBuilder(options: {
   }
 
   if (!groqBuilder) {
-    log.debug('Creating Groq video template builder instance', {
+    log.debug("Creating Groq video template builder instance", {
       operation,
       provider,
     });
     groqBuilder = new GroqVideoTemplateBuilder();
   }
-  
-  log.debug('Returning Groq video template builder', {
+
+  log.debug("Returning Groq video template builder", {
     operation,
     provider,
   });
-  
+
   return groqBuilder;
 }
 
@@ -132,24 +133,29 @@ export function getVideoTemplateBuilder(options: {
  * @param provider - Provider type
  * @returns New template builder instance
  */
-export function createVideoTemplateBuilder(provider: 'openai' | 'groq'): BaseVideoTemplateBuilder {
-  const operation = 'createVideoTemplateBuilder';
-  
-  log.debug('Creating new video template builder instance', {
+export function createVideoTemplateBuilder(
+  provider: "openai" | "groq",
+): BaseVideoTemplateBuilder {
+  const operation = "createVideoTemplateBuilder";
+
+  log.debug("Creating new video template builder instance", {
     operation,
     provider,
   });
-  
-  if (provider === 'openai') {
+
+  if (provider === "openai") {
     return new OpenAIVideoTemplateBuilder();
   }
   return new GroqVideoTemplateBuilder();
 }
 
 // Re-export types and classes
-export { BaseVideoTemplateBuilder } from './BaseVideoTemplateBuilder';
-export type { VideoTemplateContext, VideoTemplateResult } from './BaseVideoTemplateBuilder';
-export { OpenAIVideoTemplateBuilder } from './OpenAIVideoTemplateBuilder';
-export { GroqVideoTemplateBuilder } from './GroqVideoTemplateBuilder';
-export { OpenAIVideoTemplateBuilderLocked } from './OpenAIVideoTemplateBuilderLocked';
-export { GroqVideoTemplateBuilderLocked } from './GroqVideoTemplateBuilderLocked';
+export { BaseVideoTemplateBuilder } from "./BaseVideoTemplateBuilder";
+export type {
+  VideoTemplateContext,
+  VideoTemplateResult,
+} from "./BaseVideoTemplateBuilder";
+export { OpenAIVideoTemplateBuilder } from "./OpenAIVideoTemplateBuilder";
+export { GroqVideoTemplateBuilder } from "./GroqVideoTemplateBuilder";
+export { OpenAIVideoTemplateBuilderLocked } from "./OpenAIVideoTemplateBuilderLocked";
+export { GroqVideoTemplateBuilderLocked } from "./GroqVideoTemplateBuilderLocked";

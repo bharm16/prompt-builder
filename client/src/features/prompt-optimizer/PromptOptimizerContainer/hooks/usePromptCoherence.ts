@@ -1,26 +1,29 @@
-import { useCallback, type MutableRefObject } from 'react';
-import { sanitizeError } from '@/utils/logging';
-import type { PromptHistory, PromptOptimizer } from '../../context/types';
-import type { HighlightSnapshot } from '../../context/types';
-import type { CoherenceRecommendation } from '../../types/coherence';
-import { useCoherenceAnnotations, type CoherenceIssue } from '../../components/coherence/useCoherenceAnnotations';
-import { applyCoherenceRecommendation } from '../../utils/applyCoherenceRecommendation';
+import { useCallback, type MutableRefObject } from "react";
+import { sanitizeError } from "@/utils/logging";
+import type { PromptHistory, PromptOptimizer } from "../../context/types";
+import type { HighlightSnapshot } from "../../context/types";
+import type { CoherenceRecommendation } from "../../types/coherence";
+import {
+  useCoherenceAnnotations,
+  type CoherenceIssue,
+} from "../../components/coherence/useCoherenceAnnotations";
+import { applyCoherenceRecommendation } from "../../utils/applyCoherenceRecommendation";
 
 type LoggerLike = {
   warn: (message: string, context?: Record<string, unknown>) => void;
 };
 
 type UsePromptCoherenceParams = {
-  promptOptimizer: Pick<PromptOptimizer, 'displayedPrompt'>;
+  promptOptimizer: Pick<PromptOptimizer, "displayedPrompt">;
   latestHighlightRef: MutableRefObject<HighlightSnapshot | null>;
   applyInitialHighlightSnapshot: (
     snapshot: HighlightSnapshot | null,
-    options?: { bumpVersion?: boolean; markPersisted?: boolean }
+    options?: { bumpVersion?: boolean; markPersisted?: boolean },
   ) => void;
   handleDisplayedPromptChange: (text: string) => void;
   currentPromptUuid: string | null | undefined;
   currentPromptDocId: string | null | undefined;
-  promptHistory: Pick<PromptHistory, 'updateEntryOutput'>;
+  promptHistory: Pick<PromptHistory, "updateEntryOutput">;
   toast: { info: (msg: string) => void; success: (msg: string) => void };
   log: LoggerLike;
 };
@@ -39,7 +42,10 @@ export function usePromptCoherence({
   const displayedPrompt = promptOptimizer.displayedPrompt;
   const updateEntryOutput = promptHistory.updateEntryOutput;
   const handleApplyCoherenceFix = useCallback(
-    (recommendation: CoherenceRecommendation, issue: CoherenceIssue): boolean => {
+    (
+      recommendation: CoherenceRecommendation,
+      issue: CoherenceIssue,
+    ): boolean => {
       const currentPrompt = displayedPrompt;
       if (!currentPrompt) {
         return false;
@@ -67,11 +73,15 @@ export function usePromptCoherence({
 
       if (currentPromptUuid) {
         try {
-          updateEntryOutput(currentPromptUuid, currentPromptDocId ?? null, result.updatedPrompt);
+          updateEntryOutput(
+            currentPromptUuid,
+            currentPromptDocId ?? null,
+            result.updatedPrompt,
+          );
         } catch (error) {
           const info = sanitizeError(error);
-          log.warn('Failed to persist coherence edits', {
-            operation: 'updateEntryOutput',
+          log.warn("Failed to persist coherence edits", {
+            operation: "updateEntryOutput",
             promptUuid: currentPromptUuid,
             promptDocId: currentPromptDocId ?? null,
             error: info.message,
@@ -91,7 +101,7 @@ export function usePromptCoherence({
       log,
       updateEntryOutput,
       displayedPrompt,
-    ]
+    ],
   );
 
   return useCoherenceAnnotations({

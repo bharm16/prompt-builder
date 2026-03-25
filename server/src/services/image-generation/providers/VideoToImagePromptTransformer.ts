@@ -6,8 +6,8 @@
  * action descriptions that regex patterns cannot cover.
  */
 
-import type { LLMClient } from '@clients/LLMClient';
-import { logger } from '@infrastructure/Logger';
+import type { LLMClient } from "@clients/LLMClient";
+import { logger } from "@infrastructure/Logger";
 
 const TRANSFORMATION_SYSTEM_PROMPT = `You convert video prompts into a single still-image prompt optimized for FLUX.1 [schnell].
 
@@ -50,43 +50,119 @@ PRESERVATION RULES:
 `;
 
 const CAMERA_SHOT_PATTERNS = [
-  { regex: /\bextreme[-\s]+wide[-\s]+shot\b/gi, canonical: 'extreme wide shot', category: 'shot' },
-  { regex: /\bwide[-\s]+establishing[-\s]+shot\b/gi, canonical: 'wide establishing shot', category: 'shot' },
-  { regex: /\bestablishing[-\s]+shot\b/gi, canonical: 'wide establishing shot', category: 'shot' },
-  { regex: /\bwide[-\s]+shot\b/gi, canonical: 'wide shot', category: 'shot' },
-  { regex: /\bfull[-\s]+shot\b/gi, canonical: 'full shot', category: 'shot' },
-  { regex: /\bmedium[-\s]+close[-\s]?up\b/gi, canonical: 'medium close-up', category: 'shot' },
-  { regex: /\bmedium[-\s]+shot\b/gi, canonical: 'medium shot', category: 'shot' },
-  { regex: /\bextreme[-\s]+close[-\s]?up\b/gi, canonical: 'extreme close-up', category: 'shot' },
-  { regex: /\bmacro[-\s]+close[-\s]?up\b/gi, canonical: 'macro close-up', category: 'shot' },
-  { regex: /\bmacro[-\s]+shot\b/gi, canonical: 'macro close-up', category: 'shot' },
-  { regex: /\bclose[-\s]?up\b/gi, canonical: 'close-up', category: 'shot' },
+  {
+    regex: /\bextreme[-\s]+wide[-\s]+shot\b/gi,
+    canonical: "extreme wide shot",
+    category: "shot",
+  },
+  {
+    regex: /\bwide[-\s]+establishing[-\s]+shot\b/gi,
+    canonical: "wide establishing shot",
+    category: "shot",
+  },
+  {
+    regex: /\bestablishing[-\s]+shot\b/gi,
+    canonical: "wide establishing shot",
+    category: "shot",
+  },
+  { regex: /\bwide[-\s]+shot\b/gi, canonical: "wide shot", category: "shot" },
+  { regex: /\bfull[-\s]+shot\b/gi, canonical: "full shot", category: "shot" },
+  {
+    regex: /\bmedium[-\s]+close[-\s]?up\b/gi,
+    canonical: "medium close-up",
+    category: "shot",
+  },
+  {
+    regex: /\bmedium[-\s]+shot\b/gi,
+    canonical: "medium shot",
+    category: "shot",
+  },
+  {
+    regex: /\bextreme[-\s]+close[-\s]?up\b/gi,
+    canonical: "extreme close-up",
+    category: "shot",
+  },
+  {
+    regex: /\bmacro[-\s]+close[-\s]?up\b/gi,
+    canonical: "macro close-up",
+    category: "shot",
+  },
+  {
+    regex: /\bmacro[-\s]+shot\b/gi,
+    canonical: "macro close-up",
+    category: "shot",
+  },
+  { regex: /\bclose[-\s]?up\b/gi, canonical: "close-up", category: "shot" },
 ] as const;
 
 const CAMERA_ANGLE_PATTERNS = [
-  { regex: /\beye[-\s]?level\b/gi, canonical: 'eye-level', category: 'angle' },
-  { regex: /\blow[-\s]+angle\b/gi, canonical: "low angle (worm's-eye view)", category: 'angle' },
-  { regex: /\bworm'?s[-\s]?eye\s+view\b/gi, canonical: "low angle (worm's-eye view)", category: 'angle' },
-  { regex: /\bhigh[-\s]+angle\b/gi, canonical: "high angle (bird's-eye view)", category: 'angle' },
-  { regex: /\bbird'?s[-\s]?eye\s+view\b/gi, canonical: "high angle (bird's-eye view)", category: 'angle' },
-  { regex: /\btop[-\s]+down\b/gi, canonical: 'top-down overhead', category: 'angle' },
-  { regex: /\boverhead\s+(view|shot|angle|perspective)\b/gi, canonical: 'top-down overhead', category: 'angle' },
-  { regex: /\bdutch[-\s]+angle\b/gi, canonical: 'Dutch angle', category: 'angle' },
-  { regex: /\btilted[-\s]+horizon\b/gi, canonical: 'Dutch angle', category: 'angle' },
-  { regex: /\bover[-\s]+the[-\s]+shoulder\b/gi, canonical: 'over-the-shoulder', category: 'angle' },
-  { regex: /\bfirst[-\s]+person[-\s]+pov\b/gi, canonical: 'first-person POV', category: 'angle' },
-  { regex: /\bfirst[-\s]+person\b/gi, canonical: 'first-person POV', category: 'angle' },
-  { regex: /\bpov\b/gi, canonical: 'first-person POV', category: 'angle' },
+  { regex: /\beye[-\s]?level\b/gi, canonical: "eye-level", category: "angle" },
+  {
+    regex: /\blow[-\s]+angle\b/gi,
+    canonical: "low angle (worm's-eye view)",
+    category: "angle",
+  },
+  {
+    regex: /\bworm'?s[-\s]?eye\s+view\b/gi,
+    canonical: "low angle (worm's-eye view)",
+    category: "angle",
+  },
+  {
+    regex: /\bhigh[-\s]+angle\b/gi,
+    canonical: "high angle (bird's-eye view)",
+    category: "angle",
+  },
+  {
+    regex: /\bbird'?s[-\s]?eye\s+view\b/gi,
+    canonical: "high angle (bird's-eye view)",
+    category: "angle",
+  },
+  {
+    regex: /\btop[-\s]+down\b/gi,
+    canonical: "top-down overhead",
+    category: "angle",
+  },
+  {
+    regex: /\boverhead\s+(view|shot|angle|perspective)\b/gi,
+    canonical: "top-down overhead",
+    category: "angle",
+  },
+  {
+    regex: /\bdutch[-\s]+angle\b/gi,
+    canonical: "Dutch angle",
+    category: "angle",
+  },
+  {
+    regex: /\btilted[-\s]+horizon\b/gi,
+    canonical: "Dutch angle",
+    category: "angle",
+  },
+  {
+    regex: /\bover[-\s]+the[-\s]+shoulder\b/gi,
+    canonical: "over-the-shoulder",
+    category: "angle",
+  },
+  {
+    regex: /\bfirst[-\s]+person[-\s]+pov\b/gi,
+    canonical: "first-person POV",
+    category: "angle",
+  },
+  {
+    regex: /\bfirst[-\s]+person\b/gi,
+    canonical: "first-person POV",
+    category: "angle",
+  },
+  { regex: /\bpov\b/gi, canonical: "first-person POV", category: "angle" },
 ] as const;
 
 const CAMERA_LENS_PATTERNS = [
-  { regex: /\bf\s*\/\s*\d+(?:\.\d+)?\b/gi, category: 'lens' },
-  { regex: /\bf\s*\d+(?:\.\d+)?\b/gi, category: 'lens' },
-  { regex: /\b\d{1,3}\s*mm\s+lens\b/gi, category: 'lens' },
-  { regex: /\b\d{1,3}\s*mm\b/gi, category: 'lens' },
+  { regex: /\bf\s*\/\s*\d+(?:\.\d+)?\b/gi, category: "lens" },
+  { regex: /\bf\s*\d+(?:\.\d+)?\b/gi, category: "lens" },
+  { regex: /\b\d{1,3}\s*mm\s+lens\b/gi, category: "lens" },
+  { regex: /\b\d{1,3}\s*mm\b/gi, category: "lens" },
 ] as const;
 
-type CameraCueCategory = 'shot' | 'angle' | 'lens';
+type CameraCueCategory = "shot" | "angle" | "lens";
 
 type CameraCueMatch = {
   category: CameraCueCategory;
@@ -109,19 +185,25 @@ const CAMERA_PATTERNS = [
 ] as const;
 
 const normalizeLensDetail = (value: string) =>
-  value.toLowerCase().replace(/\s+/g, '').replace(/lens/g, '');
+  value.toLowerCase().replace(/\s+/g, "").replace(/lens/g, "");
 
 const collectCameraCueMatches = (text: string): CameraCueMatch[] => {
   const matches: CameraCueMatch[] = [];
   const occupied: Array<{ start: number; end: number }> = [];
 
   const hasOverlap = (start: number, end: number) =>
-    occupied.some(({ start: occupiedStart, end: occupiedEnd }) => start < occupiedEnd && end > occupiedStart);
+    occupied.some(
+      ({ start: occupiedStart, end: occupiedEnd }) =>
+        start < occupiedEnd && end > occupiedStart,
+    );
 
   for (const pattern of CAMERA_PATTERNS) {
-    const regex = new RegExp(pattern.regex.source, pattern.regex.flags.includes('g')
-      ? pattern.regex.flags
-      : `${pattern.regex.flags}g`);
+    const regex = new RegExp(
+      pattern.regex.source,
+      pattern.regex.flags.includes("g")
+        ? pattern.regex.flags
+        : `${pattern.regex.flags}g`,
+    );
 
     for (const match of text.matchAll(regex)) {
       if (match.index === undefined) {
@@ -134,7 +216,7 @@ const collectCameraCueMatches = (text: string): CameraCueMatch[] => {
       }
 
       const rawText = match[0].trim();
-      const canonical = 'canonical' in pattern ? pattern.canonical : rawText;
+      const canonical = "canonical" in pattern ? pattern.canonical : rawText;
       matches.push({
         category: pattern.category,
         canonical,
@@ -150,12 +232,12 @@ const collectCameraCueMatches = (text: string): CameraCueMatch[] => {
 
 const extractCameraCues = (text: string): CameraCueExtraction => {
   const matches = collectCameraCueMatches(text);
-  const shotMatch = matches.find((match) => match.category === 'shot');
-  const angleMatch = matches.find((match) => match.category === 'angle');
+  const shotMatch = matches.find((match) => match.category === "shot");
+  const angleMatch = matches.find((match) => match.category === "angle");
   const lensDetails = new Map<string, string>();
 
   for (const match of matches) {
-    if (match.category !== 'lens') {
+    if (match.category !== "lens") {
       continue;
     }
     const key = normalizeLensDetail(match.text);
@@ -179,22 +261,34 @@ const extractCameraCues = (text: string): CameraCueExtraction => {
   return extracted;
 };
 
-const hasRequiredCameraCues = (text: string, required: CameraCueExtraction): boolean => {
+const hasRequiredCameraCues = (
+  text: string,
+  required: CameraCueExtraction,
+): boolean => {
   if (!required.hasAny) {
     return true;
   }
 
   const observed = extractCameraCues(text);
-  const shotOk = required.shotSize ? observed.shotSize === required.shotSize : true;
+  const shotOk = required.shotSize
+    ? observed.shotSize === required.shotSize
+    : true;
   const angleOk = required.angle ? observed.angle === required.angle : true;
-  const observedLensKeys = new Set(observed.lensDetails.map(normalizeLensDetail));
+  const observedLensKeys = new Set(
+    observed.lensDetails.map(normalizeLensDetail),
+  );
   const requiredLensKeys = required.lensDetails.map(normalizeLensDetail);
-  const lensOk = requiredLensKeys.every((lensKey) => observedLensKeys.has(lensKey));
+  const lensOk = requiredLensKeys.every((lensKey) =>
+    observedLensKeys.has(lensKey),
+  );
 
   return shotOk && angleOk && lensOk;
 };
 
-const removeMatchedRanges = (text: string, matches: CameraCueMatch[]): string => {
+const removeMatchedRanges = (
+  text: string,
+  matches: CameraCueMatch[],
+): string => {
   if (!matches.length) {
     return text;
   }
@@ -211,24 +305,27 @@ const removeMatchedRanges = (text: string, matches: CameraCueMatch[]): string =>
 
 const normalizePromptSpacing = (text: string): string =>
   text
-    .replace(/\s+/g, ' ')
-    .replace(/\s+([,.;:])/g, '$1')
-    .replace(/([,.;:])(?=[^\s])/g, '$1 ')
-    .replace(/^[,.;:\s]+/g, '')
+    .replace(/\s+/g, " ")
+    .replace(/\s+([,.;:])/g, "$1")
+    .replace(/([,.;:])(?=[^\s])/g, "$1 ")
+    .replace(/^[,.;:\s]+/g, "")
     .trim();
 
 type FrontLoadOptions = {
   allowedLensDetails?: string[];
 };
 
-const frontLoadCameraCues = (text: string, options: FrontLoadOptions = {}): string => {
+const frontLoadCameraCues = (
+  text: string,
+  options: FrontLoadOptions = {},
+): string => {
   const matches = collectCameraCueMatches(text);
   if (!matches.length) {
     return text;
   }
 
-  const shotMatch = matches.find((match) => match.category === 'shot');
-  const angleMatch = matches.find((match) => match.category === 'angle');
+  const shotMatch = matches.find((match) => match.category === "shot");
+  const angleMatch = matches.find((match) => match.category === "angle");
   const lensDetails = new Map<string, string>();
   const allowedLensDetails = options.allowedLensDetails;
   const allowedLensKeys = allowedLensDetails
@@ -236,10 +333,13 @@ const frontLoadCameraCues = (text: string, options: FrontLoadOptions = {}): stri
     : null;
 
   for (const match of matches) {
-    if (match.category !== 'lens') {
+    if (match.category !== "lens") {
       continue;
     }
-    if (allowedLensKeys && !allowedLensKeys.has(normalizeLensDetail(match.text))) {
+    if (
+      allowedLensKeys &&
+      !allowedLensKeys.has(normalizeLensDetail(match.text))
+    ) {
       continue;
     }
     const key = normalizeLensDetail(match.text);
@@ -265,10 +365,10 @@ const frontLoadCameraCues = (text: string, options: FrontLoadOptions = {}): stri
 
   const cleaned = normalizePromptSpacing(removeMatchedRanges(text, matches));
   if (!cleaned) {
-    return normalizePromptSpacing(cameraClauseParts.join(', '));
+    return normalizePromptSpacing(cameraClauseParts.join(", "));
   }
 
-  const prefix = `${cameraClauseParts.join(', ')}, `;
+  const prefix = `${cameraClauseParts.join(", ")}, `;
   return normalizePromptSpacing(`${prefix}${cleaned}`);
 };
 
@@ -287,7 +387,7 @@ const buildRepairSystemPrompt = (requiredCues: CameraCueExtraction): string => {
 
 REPAIR MODE:
 - You dropped camera constraints. Rewrite again with the camera clause FIRST.
-- Required camera cues: ${cueList.join(', ')}.
+- Required camera cues: ${cueList.join(", ")}.
 `;
 };
 
@@ -305,7 +405,9 @@ export interface VideoToImageTransformerOptions {
 export class VideoToImagePromptTransformer {
   private readonly llmClient: LLMClient;
   private readonly timeoutMs: number;
-  private readonly log = logger.child({ service: 'VideoToImagePromptTransformer' });
+  private readonly log = logger.child({
+    service: "VideoToImagePromptTransformer",
+  });
 
   constructor(options: VideoToImageTransformerOptions) {
     this.llmClient = options.llmClient;
@@ -329,34 +431,43 @@ export class VideoToImagePromptTransformer {
     const requiredCameraCues = extractCameraCues(trimmed);
 
     try {
-      const response = await this.llmClient.complete(TRANSFORMATION_SYSTEM_PROMPT, {
-        userMessage: trimmed,
-        maxTokens: 500,
-        temperature: 0.2, // Low temperature for consistent transformations
-        timeout: this.timeoutMs,
-        jsonMode: false,
-      });
+      const response = await this.llmClient.complete(
+        TRANSFORMATION_SYSTEM_PROMPT,
+        {
+          userMessage: trimmed,
+          maxTokens: 500,
+          temperature: 0.2, // Low temperature for consistent transformations
+          timeout: this.timeoutMs,
+          jsonMode: false,
+        },
+      );
 
       let transformed = frontLoadCameraCues(response.text.trim(), {
         allowedLensDetails: requiredCameraCues.lensDetails,
       });
       let wasRepaired = false;
 
-      if (requiredCameraCues.hasAny && !hasRequiredCameraCues(transformed, requiredCameraCues)) {
-        this.log.debug('Camera cues missing; attempting repair pass', {
+      if (
+        requiredCameraCues.hasAny &&
+        !hasRequiredCameraCues(transformed, requiredCameraCues)
+      ) {
+        this.log.debug("Camera cues missing; attempting repair pass", {
           shotSize: requiredCameraCues.shotSize,
           angle: requiredCameraCues.angle,
           lensDetails: requiredCameraCues.lensDetails,
         });
 
         try {
-          const repairResponse = await this.llmClient.complete(buildRepairSystemPrompt(requiredCameraCues), {
-            userMessage: trimmed,
-            maxTokens: 500,
-            temperature: 0, // Deterministic repair for missing camera cues
-            timeout: this.timeoutMs,
-            jsonMode: false,
-          });
+          const repairResponse = await this.llmClient.complete(
+            buildRepairSystemPrompt(requiredCameraCues),
+            {
+              userMessage: trimmed,
+              maxTokens: 500,
+              temperature: 0, // Deterministic repair for missing camera cues
+              timeout: this.timeoutMs,
+              jsonMode: false,
+            },
+          );
 
           const repaired = frontLoadCameraCues(repairResponse.text.trim(), {
             allowedLensDetails: requiredCameraCues.lensDetails,
@@ -366,8 +477,9 @@ export class VideoToImagePromptTransformer {
             wasRepaired = true;
           }
         } catch (error) {
-          const repairError = error instanceof Error ? error.message : String(error);
-          this.log.warn('Repair pass failed; keeping initial transformation', {
+          const repairError =
+            error instanceof Error ? error.message : String(error);
+          this.log.warn("Repair pass failed; keeping initial transformation", {
             error: repairError,
           });
         }
@@ -377,15 +489,18 @@ export class VideoToImagePromptTransformer {
 
       // Validate we got something back
       if (!transformed || transformed.length < 10) {
-        this.log.warn('LLM returned empty or too-short transformation, using original', {
-          originalLength: trimmed.length,
-          transformedLength: transformed.length,
-          duration,
-        });
+        this.log.warn(
+          "LLM returned empty or too-short transformation, using original",
+          {
+            originalLength: trimmed.length,
+            transformedLength: transformed.length,
+            duration,
+          },
+        );
         return trimmed;
       }
 
-      this.log.debug('Video prompt transformed for image generation', {
+      this.log.debug("Video prompt transformed for image generation", {
         originalLength: trimmed.length,
         transformedLength: transformed.length,
         duration,
@@ -394,14 +509,18 @@ export class VideoToImagePromptTransformer {
 
       return transformed;
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       const duration = Math.round(performance.now() - startTime);
 
-      this.log.warn('Video-to-image transformation failed, using original prompt', {
-        error: errorMessage,
-        duration,
-        promptPreview: trimmed.substring(0, 100),
-      });
+      this.log.warn(
+        "Video-to-image transformation failed, using original prompt",
+        {
+          error: errorMessage,
+          duration,
+          promptPreview: trimmed.substring(0, 100),
+        },
+      );
 
       // Graceful fallback: return original prompt
       return trimmed;

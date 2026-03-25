@@ -1,20 +1,23 @@
-import { describe, expect, it, vi } from 'vitest';
-import { AppError } from '@server/types/common';
-import { generateVideoWorkflow } from '../workflows/generateVideo';
-import type { VideoProvider, VideoProviderMap } from '../providers/VideoProviders';
-import type { VideoAssetStore, StoredVideoAsset } from '../storage';
+import { describe, expect, it, vi } from "vitest";
+import { AppError } from "@server/types/common";
+import { generateVideoWorkflow } from "../workflows/generateVideo";
+import type {
+  VideoProvider,
+  VideoProviderMap,
+} from "../providers/VideoProviders";
+import type { VideoAssetStore, StoredVideoAsset } from "../storage";
 
 const createAssetStore = (): VideoAssetStore => ({
   storeFromBuffer: vi.fn(async () => ({
-    id: 'asset-buffer',
-    url: 'https://example.com/buffer.mp4',
-    contentType: 'video/mp4',
+    id: "asset-buffer",
+    url: "https://example.com/buffer.mp4",
+    contentType: "video/mp4",
     createdAt: Date.now(),
   })),
   storeFromStream: vi.fn(async () => ({
-    id: 'asset-stream',
-    url: 'https://example.com/stream.mp4',
-    contentType: 'video/mp4',
+    id: "asset-stream",
+    url: "https://example.com/stream.mp4",
+    contentType: "video/mp4",
     createdAt: Date.now(),
   })),
   getStream: vi.fn(async () => null),
@@ -23,29 +26,35 @@ const createAssetStore = (): VideoAssetStore => ({
 });
 
 const createProvider = (
-  id: VideoProvider['id'],
+  id: VideoProvider["id"],
   isAvailable: boolean,
-  asset: StoredVideoAsset
+  asset: StoredVideoAsset,
 ): VideoProvider => ({
   id,
   isAvailable: () => isAvailable,
   generate: vi.fn(async () => ({ asset })),
 });
 
-const createProviderMap = (overrides?: Partial<Record<VideoProvider['id'], boolean>>): VideoProviderMap => {
+const createProviderMap = (
+  overrides?: Partial<Record<VideoProvider["id"], boolean>>,
+): VideoProviderMap => {
   const sharedAsset: StoredVideoAsset = {
-    id: 'asset-1',
-    url: 'https://example.com/video.mp4',
-    contentType: 'video/mp4',
+    id: "asset-1",
+    url: "https://example.com/video.mp4",
+    contentType: "video/mp4",
     createdAt: Date.now(),
   };
 
   return {
-    replicate: createProvider('replicate', overrides?.replicate ?? true, sharedAsset),
-    openai: createProvider('openai', overrides?.openai ?? true, sharedAsset),
-    luma: createProvider('luma', overrides?.luma ?? true, sharedAsset),
-    kling: createProvider('kling', overrides?.kling ?? true, sharedAsset),
-    gemini: createProvider('gemini', overrides?.gemini ?? true, sharedAsset),
+    replicate: createProvider(
+      "replicate",
+      overrides?.replicate ?? true,
+      sharedAsset,
+    ),
+    openai: createProvider("openai", overrides?.openai ?? true, sharedAsset),
+    luma: createProvider("luma", overrides?.luma ?? true, sharedAsset),
+    kling: createProvider("kling", overrides?.kling ?? true, sharedAsset),
+    gemini: createProvider("gemini", overrides?.gemini ?? true, sharedAsset),
   };
 };
 
@@ -56,127 +65,153 @@ const createLog = () => ({
   error: vi.fn(),
 });
 
-describe('generateVideoWorkflow', () => {
-  it('throws VIDEO_MODEL_UNAVAILABLE when credentials for requested model are missing', async () => {
-    const providers = createProviderMap({ openai: false, replicate: false, luma: false, kling: false, gemini: false });
+describe("generateVideoWorkflow", () => {
+  it("throws VIDEO_MODEL_UNAVAILABLE when credentials for requested model are missing", async () => {
+    const providers = createProviderMap({
+      openai: false,
+      replicate: false,
+      luma: false,
+      kling: false,
+      gemini: false,
+    });
     const assetStore = createAssetStore();
     const log = createLog();
 
     await expect(
-      generateVideoWorkflow('cinematic prompt', { model: 'sora-2' }, providers, assetStore, log)
+      generateVideoWorkflow(
+        "cinematic prompt",
+        { model: "sora-2" },
+        providers,
+        assetStore,
+        log,
+      ),
     ).rejects.toMatchObject({
-      code: 'VIDEO_MODEL_UNAVAILABLE',
+      code: "VIDEO_MODEL_UNAVAILABLE",
       statusCode: 424,
     });
   });
 
-  it('dispatches to provider resolved from canonical model id', async () => {
+  it("dispatches to provider resolved from canonical model id", async () => {
     const providers = createProviderMap({ openai: true });
     const assetStore = createAssetStore();
     const log = createLog();
 
     const result = await generateVideoWorkflow(
-      'a runner through rain',
-      { model: 'sora-2' },
+      "a runner through rain",
+      { model: "sora-2" },
       providers,
       assetStore,
-      log
+      log,
     );
 
     const openAIGenerate = providers.openai.generate;
     expect(openAIGenerate).toHaveBeenCalledTimes(1);
     expect(openAIGenerate).toHaveBeenCalledWith(
-      'a runner through rain',
-      'sora-2',
-      expect.objectContaining({ model: 'sora-2' }),
+      "a runner through rain",
+      "sora-2",
+      expect.objectContaining({ model: "sora-2" }),
       assetStore,
-      log
+      log,
     );
 
     expect(result).toMatchObject({
-      assetId: 'asset-1',
-      videoUrl: 'https://example.com/video.mp4',
-      contentType: 'video/mp4',
-      inputMode: 't2v',
+      assetId: "asset-1",
+      videoUrl: "https://example.com/video.mp4",
+      contentType: "video/mp4",
+      inputMode: "t2v",
     });
   });
 
-  it('uses i2v mode and startImageUrl when startImage is provided', async () => {
+  it("uses i2v mode and startImageUrl when startImage is provided", async () => {
     const providers = createProviderMap({ openai: true });
     const assetStore = createAssetStore();
     const log = createLog();
 
     const result = await generateVideoWorkflow(
-      'portrait shot',
-      { model: 'sora-2', startImage: 'https://images.example.com/start.png' },
+      "portrait shot",
+      { model: "sora-2", startImage: "https://images.example.com/start.png" },
       providers,
       assetStore,
-      log
+      log,
     );
 
-    expect(result.inputMode).toBe('i2v');
-    expect(result.startImageUrl).toBe('https://images.example.com/start.png');
+    expect(result.inputMode).toBe("i2v");
+    expect(result.startImageUrl).toBe("https://images.example.com/start.png");
   });
 
-  it('uses i2v mode when inputReference is provided', async () => {
+  it("uses i2v mode when inputReference is provided", async () => {
     const providers = createProviderMap({ openai: true });
     const assetStore = createAssetStore();
     const log = createLog();
 
     const result = await generateVideoWorkflow(
-      'portrait shot',
-      { model: 'sora-2', inputReference: 'https://images.example.com/reference.png' },
+      "portrait shot",
+      {
+        model: "sora-2",
+        inputReference: "https://images.example.com/reference.png",
+      },
       providers,
       assetStore,
-      log
+      log,
     );
 
-    expect(result.inputMode).toBe('i2v');
-    expect(result.startImageUrl).toBe('https://images.example.com/reference.png');
+    expect(result.inputMode).toBe("i2v");
+    expect(result.startImageUrl).toBe(
+      "https://images.example.com/reference.png",
+    );
   });
 
-  it('propagates provider errors and logs failure', async () => {
+  it("propagates provider errors and logs failure", async () => {
     const providers = createProviderMap({ openai: true });
     const assetStore = createAssetStore();
     const log = createLog();
-    const providerError = new Error('Provider rate limit');
+    const providerError = new Error("Provider rate limit");
     providers.openai.generate = vi.fn(async () => {
       throw providerError;
     });
 
     await expect(
-      generateVideoWorkflow('a cat on skateboard', { model: 'sora-2' }, providers, assetStore, log)
-    ).rejects.toThrow('Provider rate limit');
+      generateVideoWorkflow(
+        "a cat on skateboard",
+        { model: "sora-2" },
+        providers,
+        assetStore,
+        log,
+      ),
+    ).rejects.toThrow("Provider rate limit");
 
-    expect(log.error).toHaveBeenCalledWith('Video generation failed', providerError);
+    expect(log.error).toHaveBeenCalledWith(
+      "Video generation failed",
+      providerError,
+    );
   });
 
-  it('passes through seed from provider generation result', async () => {
+  it("passes through seed from provider generation result", async () => {
     const providers = createProviderMap({ openai: true });
     const assetStore = createAssetStore();
     const log = createLog();
     providers.openai.generate = vi.fn(async () => ({
       asset: {
-        id: 'asset-seeded',
-        url: 'https://example.com/seeded.mp4',
-        contentType: 'video/mp4',
+        id: "asset-seeded",
+        url: "https://example.com/seeded.mp4",
+        contentType: "video/mp4",
         createdAt: Date.now(),
       },
       seed: 1234,
     }));
 
     const result = await generateVideoWorkflow(
-      'seeded prompt',
-      { model: 'sora-2' },
+      "seeded prompt",
+      { model: "sora-2" },
       providers,
       assetStore,
-      log
+      log,
     );
 
     expect(result.seed).toBe(1234);
   });
 
-  it('returns structured AppError details for unsupported model selection', async () => {
+  it("returns structured AppError details for unsupported model selection", async () => {
     const providers = createProviderMap({
       replicate: true,
       openai: true,
@@ -188,66 +223,83 @@ describe('generateVideoWorkflow', () => {
     const log = createLog();
 
     await expect(
-      generateVideoWorkflow('x', { model: 'not-a-model' as never }, providers, assetStore, log)
+      generateVideoWorkflow(
+        "x",
+        { model: "not-a-model" as never },
+        providers,
+        assetStore,
+        log,
+      ),
     ).rejects.toBeInstanceOf(AppError);
 
     await expect(
-      generateVideoWorkflow('x', { model: 'not-a-model' as never }, providers, assetStore, log)
+      generateVideoWorkflow(
+        "x",
+        { model: "not-a-model" as never },
+        providers,
+        assetStore,
+        log,
+      ),
     ).rejects.toMatchObject({
-      code: 'VIDEO_MODEL_UNAVAILABLE',
+      code: "VIDEO_MODEL_UNAVAILABLE",
       statusCode: 400,
       details: expect.objectContaining({
-        reason: 'unsupported_model',
+        reason: "unsupported_model",
       }),
     });
   });
 
-  it('propagates resolvedAspectRatio from provider to result', async () => {
+  it("propagates resolvedAspectRatio from provider to result", async () => {
     const providers = createProviderMap({ kling: true });
     const assetStore = createAssetStore();
     const log = createLog();
     providers.kling.generate = vi.fn(async () => ({
       asset: {
-        id: 'asset-ar',
-        url: 'https://example.com/ar.mp4',
-        contentType: 'video/mp4',
+        id: "asset-ar",
+        url: "https://example.com/ar.mp4",
+        contentType: "video/mp4",
         createdAt: Date.now(),
       },
-      resolvedAspectRatio: '16:9',
+      resolvedAspectRatio: "16:9",
     }));
 
     const result = await generateVideoWorkflow(
-      'wide shot',
-      { model: 'kling-v2-1-master', aspectRatio: '21:9' },
+      "wide shot",
+      { model: "kling-v2-1-master", aspectRatio: "21:9" },
       providers,
       assetStore,
-      log
+      log,
     );
 
-    expect(result.resolvedAspectRatio).toBe('16:9');
+    expect(result.resolvedAspectRatio).toBe("16:9");
   });
 
-  it('omits resolvedAspectRatio when provider does not return one', async () => {
+  it("omits resolvedAspectRatio when provider does not return one", async () => {
     const providers = createProviderMap({ openai: true });
     const assetStore = createAssetStore();
     const log = createLog();
 
     const result = await generateVideoWorkflow(
-      'simple prompt',
-      { model: 'sora-2' },
+      "simple prompt",
+      { model: "sora-2" },
       providers,
       assetStore,
-      log
+      log,
     );
 
     expect(result.resolvedAspectRatio).toBeUndefined();
   });
 
-  it('enforces the workflow watchdog timeout when provider polling fails to terminate', async () => {
-    const { setTimeoutPolicyConfig } = await import('../providers/timeoutPolicy');
+  it("enforces the workflow watchdog timeout when provider polling fails to terminate", async () => {
+    const { setTimeoutPolicyConfig } = await import(
+      "../providers/timeoutPolicy"
+    );
     const savedPoll = 1000;
     const savedWorkflow = 2000;
-    setTimeoutPolicyConfig({ pollTimeoutMs: savedPoll, workflowTimeoutMs: savedWorkflow });
+    setTimeoutPolicyConfig({
+      pollTimeoutMs: savedPoll,
+      workflowTimeoutMs: savedWorkflow,
+    });
 
     vi.useFakeTimers();
     try {
@@ -256,23 +308,28 @@ describe('generateVideoWorkflow', () => {
         () =>
           new Promise<{ asset: StoredVideoAsset }>(() => {
             // Intentionally unresolved promise for watchdog coverage.
-          })
+          }),
       );
 
       const promise = generateVideoWorkflow(
-        'watchdog prompt',
-        { model: 'sora-2' },
+        "watchdog prompt",
+        { model: "sora-2" },
         providers,
         createAssetStore(),
-        createLog()
+        createLog(),
       );
 
-      const assertion = expect(promise).rejects.toThrow(/workflow timeout exceeded/i);
+      const assertion = expect(promise).rejects.toThrow(
+        /workflow timeout exceeded/i,
+      );
       await vi.advanceTimersByTimeAsync(11_000);
       await assertion;
     } finally {
       // Restore defaults
-      setTimeoutPolicyConfig({ pollTimeoutMs: 270_000, workflowTimeoutMs: 300_000 });
+      setTimeoutPolicyConfig({
+        pollTimeoutMs: 270_000,
+        workflowTimeoutMs: 300_000,
+      });
       vi.useRealTimers();
     }
   });

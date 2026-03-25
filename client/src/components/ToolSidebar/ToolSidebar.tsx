@@ -1,16 +1,22 @@
-import { useCallback, useEffect, useMemo, useRef, type ReactElement } from 'react';
-import { FEATURES } from '@/config/features.config';
-import { dispatchPromptFocusIntent } from '@features/workspace-shell/events';
-import type { PromptHistoryEntry } from '@/features/prompt-optimizer/types/domain/prompt-session';
-import { ToolRail } from './components/ToolRail';
-import { ToolPanel } from './components/ToolPanel';
-import { SessionsPanel } from './components/panels/SessionsPanel';
-import { GenerationControlsPanel } from './components/panels/GenerationControlsPanel';
-import { CharactersPanel } from './components/panels/CharactersPanel';
-import { StylesPanel } from './components/panels/StylesPanel';
-import { useToolSidebarState } from './hooks/useToolSidebarState';
-import type { ToolPanelType, ToolSidebarProps } from './types';
-import { useSidebarSessionsDomain, useSidebarWorkspaceDomain } from './context';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  type ReactElement,
+} from "react";
+import { FEATURES } from "@/config/features.config";
+import { dispatchPromptFocusIntent } from "@features/workspace-shell/events";
+import type { PromptHistoryEntry } from "@/features/prompt-optimizer/types/domain/prompt-session";
+import { ToolRail } from "./components/ToolRail";
+import { ToolPanel } from "./components/ToolPanel";
+import { SessionsPanel } from "./components/panels/SessionsPanel";
+import { GenerationControlsPanel } from "./components/panels/GenerationControlsPanel";
+import { CharactersPanel } from "./components/panels/CharactersPanel";
+import { StylesPanel } from "./components/panels/StylesPanel";
+import { useToolSidebarState } from "./hooks/useToolSidebarState";
+import type { ToolPanelType, ToolSidebarProps } from "./types";
+import { useSidebarSessionsDomain, useSidebarWorkspaceDomain } from "./context";
 
 /**
  * ToolSidebar - Main orchestrator for the Runway-style sidebar
@@ -29,8 +35,14 @@ export function ToolSidebar(props: ToolSidebarProps): ReactElement {
   const onSessionCreateNew = sessions?.onCreateNew;
   const onSessionLoadFromHistory = sessions?.onLoadFromHistory;
 
-  const stateOptions = useMemo(() => ({ forceDefault: forceDefaultPanel }), [forceDefaultPanel]);
-  const { activePanel, setActivePanel } = useToolSidebarState('studio', stateOptions);
+  const stateOptions = useMemo(
+    () => ({ forceDefault: forceDefaultPanel }),
+    [forceDefaultPanel],
+  );
+  const { activePanel, setActivePanel } = useToolSidebarState(
+    "studio",
+    stateOptions,
+  );
   const isCanvasFirstLayout = FEATURES.CANVAS_FIRST_LAYOUT;
   const activePanelRef = useRef(activePanel);
   useEffect(() => {
@@ -42,22 +54,26 @@ export function ToolSidebar(props: ToolSidebarProps): ReactElement {
       const previousPanel = activePanelRef.current;
       setActivePanel(panel);
 
-      if (isCanvasFirstLayout && panel === 'studio' && previousPanel !== 'studio') {
-        dispatchPromptFocusIntent({ source: 'tool-rail' });
+      if (
+        isCanvasFirstLayout &&
+        panel === "studio" &&
+        previousPanel !== "studio"
+      ) {
+        dispatchPromptFocusIntent({ source: "tool-rail" });
       }
     },
-    [isCanvasFirstLayout, setActivePanel]
+    [isCanvasFirstLayout, setActivePanel],
   );
   const handleSessionsBack = useCallback((): void => {
-    setActivePanel('studio');
+    setActivePanel("studio");
   }, [setActivePanel]);
   const handleStudioBack = useCallback((): void => {
-    setActivePanel('sessions');
+    setActivePanel("sessions");
   }, [setActivePanel]);
   const handleSessionsActionComplete = useCallback((): void => {
-    setActivePanel('studio');
+    setActivePanel("studio");
     if (isCanvasFirstLayout) {
-      dispatchPromptFocusIntent({ source: 'tool-rail' });
+      dispatchPromptFocusIntent({ source: "tool-rail" });
     }
   }, [isCanvasFirstLayout, setActivePanel]);
   const handleSessionCreateNew = useCallback((): void => {
@@ -69,11 +85,11 @@ export function ToolSidebar(props: ToolSidebarProps): ReactElement {
       onSessionLoadFromHistory?.(entry);
       handleSessionsActionComplete();
     },
-    [handleSessionsActionComplete, onSessionLoadFromHistory]
+    [handleSessionsActionComplete, onSessionLoadFromHistory],
   );
 
   const renderPanelContent = (panel: ToolPanelType): ReactElement | null => {
-    if (panel === 'sessions') {
+    if (panel === "sessions") {
       return (
         <SessionsPanel
           onBack={handleSessionsBack}
@@ -83,23 +99,25 @@ export function ToolSidebar(props: ToolSidebarProps): ReactElement {
       );
     }
 
-    if (panel === 'studio') {
+    if (panel === "studio") {
       return <GenerationControlsPanel onBack={handleStudioBack} />;
     }
 
-    if (panel === 'characters') {
+    if (panel === "characters") {
       return <CharactersPanel />;
     }
 
-    if (panel === 'styles') {
+    if (panel === "styles") {
       return <StylesPanel />;
     }
 
     return null;
   };
 
-  const isOverlayPanelActive = isCanvasFirstLayout && activePanel !== 'studio';
-  const overlayPanelContent = isOverlayPanelActive ? renderPanelContent(activePanel) : null;
+  const isOverlayPanelActive = isCanvasFirstLayout && activePanel !== "studio";
+  const overlayPanelContent = isOverlayPanelActive
+    ? renderPanelContent(activePanel)
+    : null;
 
   return (
     <div className="relative flex h-full overflow-visible">

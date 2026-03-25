@@ -1,7 +1,7 @@
-import React from 'react';
-import { Plus } from '@promptstudio/system/components/ui';
-import { cn } from '@/utils/cn';
-import type { PromptVersionEntry } from '@/hooks/types';
+import React from "react";
+import { Plus } from "@promptstudio/system/components/ui";
+import { cn } from "@/utils/cn";
+import type { PromptVersionEntry } from "@/hooks/types";
 
 interface CanvasVersionStripProps {
   versions: PromptVersionEntry[];
@@ -10,17 +10,32 @@ interface CanvasVersionStripProps {
 }
 
 const resolveVersionId = (entry: PromptVersionEntry): string | null => {
-  if ('versionId' in entry && typeof entry.versionId === 'string' && entry.versionId.trim()) return entry.versionId;
-  if ('id' in entry && typeof entry.id === 'string' && entry.id.trim()) return entry.id;
+  if (
+    "versionId" in entry &&
+    typeof entry.versionId === "string" &&
+    entry.versionId.trim()
+  )
+    return entry.versionId;
+  if ("id" in entry && typeof entry.id === "string" && entry.id.trim())
+    return entry.id;
   return null;
 };
 
 const resolveThumbnail = (entry: PromptVersionEntry): string | null => {
-  if ('preview' in entry && entry.preview && typeof entry.preview === 'object') {
+  if (
+    "preview" in entry &&
+    entry.preview &&
+    typeof entry.preview === "object"
+  ) {
     const previewImageUrl = entry.preview.imageUrl;
-    if (typeof previewImageUrl === 'string' && previewImageUrl.trim()) return previewImageUrl;
+    if (typeof previewImageUrl === "string" && previewImageUrl.trim())
+      return previewImageUrl;
   }
-  if ('thumbnailUrl' in entry && typeof entry.thumbnailUrl === 'string' && entry.thumbnailUrl.trim()) {
+  if (
+    "thumbnailUrl" in entry &&
+    typeof entry.thumbnailUrl === "string" &&
+    entry.thumbnailUrl.trim()
+  ) {
     return entry.thumbnailUrl;
   }
   return null;
@@ -63,10 +78,10 @@ export function CanvasVersionStrip({
             key={key}
             type="button"
             className={cn(
-              'relative h-[57px] w-[57px] overflow-hidden rounded-[10px] border-2 outline-none transition-all',
+              "relative h-[57px] w-[57px] overflow-hidden rounded-[10px] border-2 outline-none transition-all",
               isActive
-                ? 'border-foreground opacity-100'
-                : 'border-transparent opacity-60 hover:opacity-[0.85]'
+                ? "border-foreground opacity-100"
+                : "border-transparent opacity-60 hover:opacity-[0.85]",
             )}
             onClick={() => {
               if (versionId) onSelectVersion(versionId);

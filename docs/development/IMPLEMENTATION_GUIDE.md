@@ -37,23 +37,24 @@ useEffect(() => {
       }
     }
 
-    if (e.key === 'Escape' && activeElement) {
+    if (e.key === "Escape" && activeElement) {
       setActiveElement(null);
       setSuggestions([]);
     }
 
-    if (e.key === 'r' && activeElement && !e.ctrlKey && !e.metaKey) {
+    if (e.key === "r" && activeElement && !e.ctrlKey && !e.metaKey) {
       e.preventDefault();
       fetchSuggestionsForElement(activeElement);
     }
   };
 
-  window.addEventListener('keydown', handleKeyPress);
-  return () => window.removeEventListener('keydown', handleKeyPress);
+  window.addEventListener("keydown", handleKeyPress);
+  return () => window.removeEventListener("keydown", handleKeyPress);
 }, [activeElement, suggestions, fetchSuggestionsForElement]);
 ```
 
 **Usage:**
+
 - User presses `3` → Third suggestion is selected
 - User presses `Esc` → Suggestions panel closes
 - User presses `r` → Suggestions refresh
@@ -95,7 +96,7 @@ useEffect(() => {
       </span>
       <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-neutral-900 text-white rounded-md shadow-sm">
         {React.createElement(elementConfig[activeElement].icon, {
-          className: "h-3 w-3"
+          className: "h-3 w-3",
         })}
         <span className="text-[12px] font-medium">
           {elementConfig[activeElement].label}
@@ -107,6 +108,7 @@ useEffect(() => {
 ```
 
 **Design Notes:**
+
 - `backdrop-blur-sm` creates subtle glassmorphism
 - `bg-gradient-to-b` adds depth perception
 - Icon container uses gradient + ring for modern look
@@ -150,6 +152,7 @@ useEffect(() => {
 ```
 
 **Design Notes:**
+
 - 4 skeleton cards match actual card structure
 - Shimmer animation uses absolute positioned gradient
 - Staggered delays (75ms) create progressive loading feel
@@ -160,79 +163,88 @@ useEffect(() => {
 ### 4. Modern Suggestion Cards
 
 ```jsx
-{suggestions.map((suggestion, idx) => (
-  <div
-    key={idx}
-    className="group relative animate-[slideIn_0.3s_ease-out_forwards] opacity-0"
-    style={{
-      animationDelay: `${idx * 50}ms`
-    }}
-  >
-    <button
-      onClick={() => handleSuggestionClick(suggestion)}
-      className="w-full p-3.5 text-left bg-white border border-neutral-200 rounded-xl hover:border-neutral-300 hover:shadow-md transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-neutral-900/10 focus:border-neutral-400 active:scale-[0.98]"
+{
+  suggestions.map((suggestion, idx) => (
+    <div
+      key={idx}
+      className="group relative animate-[slideIn_0.3s_ease-out_forwards] opacity-0"
+      style={{
+        animationDelay: `${idx * 50}ms`,
+      }}
     >
-      {/* Keyboard Shortcut Badge (Hover-Reveal) */}
-      {idx < 8 && (
-        <kbd className="absolute top-2.5 right-2.5 px-1.5 py-0.5 text-[10px] font-semibold text-neutral-400 bg-neutral-100 border border-neutral-200 rounded shadow-sm opacity-0 group-hover:opacity-100 transition-opacity duration-150">
-          {idx + 1}
-        </kbd>
-      )}
+      <button
+        onClick={() => handleSuggestionClick(suggestion)}
+        className="w-full p-3.5 text-left bg-white border border-neutral-200 rounded-xl hover:border-neutral-300 hover:shadow-md transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-neutral-900/10 focus:border-neutral-400 active:scale-[0.98]"
+      >
+        {/* Keyboard Shortcut Badge (Hover-Reveal) */}
+        {idx < 8 && (
+          <kbd className="absolute top-2.5 right-2.5 px-1.5 py-0.5 text-[10px] font-semibold text-neutral-400 bg-neutral-100 border border-neutral-200 rounded shadow-sm opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+            {idx + 1}
+          </kbd>
+        )}
 
-      {/* Card Content */}
-      <div className="flex items-start justify-between gap-3 mb-2">
-        <div className="text-[14px] font-semibold text-neutral-900 leading-snug flex-1 pr-6">
-          {suggestion.text}
+        {/* Card Content */}
+        <div className="flex items-start justify-between gap-3 mb-2">
+          <div className="text-[14px] font-semibold text-neutral-900 leading-snug flex-1 pr-6">
+            {suggestion.text}
+          </div>
+
+          {/* Modern Compatibility Score */}
+          {suggestion.compatibility && (
+            <div className="flex-shrink-0 flex items-center gap-1.5">
+              <div
+                className={`h-1.5 w-1.5 rounded-full shadow-sm ${
+                  suggestion.compatibility >= 0.8
+                    ? "bg-emerald-500"
+                    : suggestion.compatibility >= 0.6
+                      ? "bg-amber-500"
+                      : "bg-rose-500"
+                }`}
+              />
+              <span
+                className={`text-[11px] font-bold tracking-tight ${
+                  suggestion.compatibility >= 0.8
+                    ? "text-emerald-700"
+                    : suggestion.compatibility >= 0.6
+                      ? "text-amber-700"
+                      : "text-rose-700"
+                }`}
+              >
+                {Math.round(suggestion.compatibility * 100)}%
+              </span>
+            </div>
+          )}
         </div>
 
-        {/* Modern Compatibility Score */}
-        {suggestion.compatibility && (
-          <div className="flex-shrink-0 flex items-center gap-1.5">
-            <div className={`h-1.5 w-1.5 rounded-full shadow-sm ${
-              suggestion.compatibility >= 0.8 ? 'bg-emerald-500'
-              : suggestion.compatibility >= 0.6 ? 'bg-amber-500'
-              : 'bg-rose-500'
-            }`} />
-            <span className={`text-[11px] font-bold tracking-tight ${
-              suggestion.compatibility >= 0.8 ? 'text-emerald-700'
-              : suggestion.compatibility >= 0.6 ? 'text-amber-700'
-              : 'text-rose-700'
-            }`}>
-              {Math.round(suggestion.compatibility * 100)}%
-            </span>
+        {/* Explanation Text */}
+        {suggestion.explanation && (
+          <div className="text-[12px] text-neutral-600 leading-relaxed line-clamp-2">
+            {suggestion.explanation}
           </div>
         )}
-      </div>
 
-      {/* Explanation Text */}
-      {suggestion.explanation && (
-        <div className="text-[12px] text-neutral-600 leading-relaxed line-clamp-2">
-          {suggestion.explanation}
+        {/* Hover Action Bar */}
+        <div className="mt-3 pt-3 border-t border-neutral-100 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              navigator.clipboard.writeText(suggestion.text);
+            }}
+            className="text-[11px] font-medium text-neutral-600 hover:text-neutral-900 transition-colors duration-150"
+          >
+            Copy
+          </button>
+          <span className="text-neutral-300">•</span>
+          <span className="text-[11px] text-neutral-500">Click to apply</span>
         </div>
-      )}
-
-      {/* Hover Action Bar */}
-      <div className="mt-3 pt-3 border-t border-neutral-100 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            navigator.clipboard.writeText(suggestion.text);
-          }}
-          className="text-[11px] font-medium text-neutral-600 hover:text-neutral-900 transition-colors duration-150"
-        >
-          Copy
-        </button>
-        <span className="text-neutral-300">•</span>
-        <span className="text-[11px] text-neutral-500">
-          Click to apply
-        </span>
-      </div>
-    </button>
-  </div>
-))}
+      </button>
+    </div>
+  ));
+}
 ```
 
 **Design Notes:**
+
 - `group` class enables hover-reveal patterns
 - `animate-[slideIn_0.3s_ease-out_forwards]` with stagger
 - Keyboard badge (`<kbd>`) appears on hover
@@ -260,7 +272,8 @@ useEffect(() => {
       Ready to inspire
     </h4>
     <p className="text-[12px] text-neutral-600 leading-relaxed mb-4">
-      Click any element card to get AI-powered suggestions tailored to your concept
+      Click any element card to get AI-powered suggestions tailored to your
+      concept
     </p>
 
     {/* Quick Tips */}
@@ -283,6 +296,7 @@ useEffect(() => {
 ```
 
 **Design Notes:**
+
 - Pulsing halo uses `blur-xl` + `animate-pulse`
 - Clear visual hierarchy (heading → description → tips)
 - Max-width constraint for readability
@@ -314,6 +328,7 @@ useEffect(() => {
 ```
 
 **Design Notes:**
+
 - `slideIn`: Cards slide up 8px while fading in
 - `shimmer`: Gradient sweeps left to right across skeleton
 - Both use transforms (GPU-accelerated)
@@ -324,6 +339,7 @@ useEffect(() => {
 ## Design System Tokens
 
 ### Spacing Scale (4px base)
+
 ```javascript
 // Tailwind classes aligned to 4px grid
 gap-2   = 8px   (2 × 4px)
@@ -339,6 +355,7 @@ py-3.5  = 14px  vertical
 ```
 
 ### Typography Scale
+
 ```javascript
 text-[10px]  → Keyboard shortcuts
 text-[11px]  → Micro-copy, badges, tips
@@ -355,6 +372,7 @@ leading-relaxed → Body text (1.625)
 ```
 
 ### Color Palette
+
 ```javascript
 // Neutrals (primary UI)
 neutral-50   → Backgrounds, subtle fills
@@ -379,6 +397,7 @@ rose-700     → Low compatibility text
 ```
 
 ### Shadow System
+
 ```javascript
 shadow-sm    → Subtle elevation (panel, icon box)
 shadow-md    → Card hover elevation
@@ -392,6 +411,7 @@ ring-1 ring-neutral-200/50 → 1px outline at 50% opacity
 ```
 
 ### Border System
+
 ```javascript
 border          → 1px solid
 border-neutral-200  → Default border
@@ -406,6 +426,7 @@ rounded-full    → 9999px (dots, circular elements)
 ```
 
 ### Transition System
+
 ```javascript
 transition-all      → All properties
 transition-colors   → Color properties only
@@ -422,23 +443,27 @@ ease-out        → Deceleration curve
 ## Accessibility Checklist
 
 ### Color Contrast (WCAG AA)
+
 - ✅ Text on backgrounds: ≥4.5:1 ratio
 - ✅ Large text (≥18px): ≥3:1 ratio
 - ✅ UI components: ≥3:1 ratio
 
 ### Keyboard Navigation
+
 - ✅ All interactive elements focusable
 - ✅ Visible focus indicators (ring-2)
 - ✅ Keyboard shortcuts (1-8, Esc, r)
 - ✅ Tab order follows visual flow
 
 ### Screen Readers
+
 - ✅ Semantic HTML (`<button>`, `<kbd>`)
 - ✅ Descriptive button labels
 - ✅ Icon buttons have titles
 - ✅ Status messages (loading text)
 
 ### Touch Targets
+
 - ✅ Minimum 44px height (p-3.5 = 14px × 2 + content)
 - ✅ Adequate spacing between interactive elements
 - ✅ No hover-dependent functionality
@@ -448,6 +473,7 @@ ease-out        → Deceleration curve
 ## Performance Optimization
 
 ### Animation Performance
+
 ```javascript
 // ✅ GOOD: Use transforms (GPU-accelerated)
 transform: translateY(8px);
@@ -461,6 +487,7 @@ left: 100%;
 ```
 
 ### Transition Timing
+
 ```javascript
 // Fast, instant feel
 duration-150  → 150ms (hover states, quick feedback)
@@ -473,6 +500,7 @@ duration-300  → 300ms (page transitions)
 ```
 
 ### Perceived Performance
+
 - Skeleton loaders reduce perceived wait time
 - Stagger animations create progressive feel
 - Instant hover feedback (150ms)
@@ -483,6 +511,7 @@ duration-300  → 300ms (page transitions)
 ## Common Customizations
 
 ### Change Number of Skeleton Cards
+
 ```javascript
 // Current: 4 cards
 {[1, 2, 3, 4].map((i) => ...)}
@@ -492,18 +521,20 @@ duration-300  → 300ms (page transitions)
 ```
 
 ### Adjust Stagger Delay
+
 ```javascript
 // Current: 50ms between cards
-animationDelay: `${idx * 50}ms`
+animationDelay: `${idx * 50}ms`;
 
 // Faster: 30ms
-animationDelay: `${idx * 30}ms`
+animationDelay: `${idx * 30}ms`;
 
 // Slower: 75ms
-animationDelay: `${idx * 75}ms`
+animationDelay: `${idx * 75}ms`;
 ```
 
 ### Change Panel Width
+
 ```javascript
 // Current: 320px (w-80)
 <div className="w-80 ...">
@@ -516,6 +547,7 @@ animationDelay: `${idx * 75}ms`
 ```
 
 ### Disable Keyboard Shortcuts
+
 ```javascript
 // Comment out or remove this useEffect
 useEffect(() => {
@@ -526,16 +558,21 @@ useEffect(() => {
 ```
 
 ### Change Compatibility Colors
+
 ```javascript
 // Current: Emerald (green), Amber (yellow), Rose (red)
-suggestion.compatibility >= 0.8 ? 'bg-emerald-500'
-: suggestion.compatibility >= 0.6 ? 'bg-amber-500'
-: 'bg-rose-500'
+suggestion.compatibility >= 0.8
+  ? "bg-emerald-500"
+  : suggestion.compatibility >= 0.6
+    ? "bg-amber-500"
+    : "bg-rose-500";
 
 // Alternative: Blue, Yellow, Red
-suggestion.compatibility >= 0.8 ? 'bg-blue-500'
-: suggestion.compatibility >= 0.6 ? 'bg-yellow-500'
-: 'bg-red-500'
+suggestion.compatibility >= 0.8
+  ? "bg-blue-500"
+  : suggestion.compatibility >= 0.6
+    ? "bg-yellow-500"
+    : "bg-red-500";
 ```
 
 ---
@@ -543,6 +580,7 @@ suggestion.compatibility >= 0.8 ? 'bg-blue-500'
 ## Testing Guide
 
 ### Visual Testing
+
 1. **Header**: Verify gradient background, icon container, refresh button
 2. **Active Badge**: Check dark badge appears when element selected
 3. **Loading State**: Confirm 4 skeleton cards with shimmer
@@ -551,6 +589,7 @@ suggestion.compatibility >= 0.8 ? 'bg-blue-500'
 6. **Empty State**: Verify pulsing halo, tips display correctly
 
 ### Interaction Testing
+
 1. **Click Suggestion**: Card applies to element
 2. **Keyboard Shortcuts**: Press 1-8 to select
 3. **Escape Key**: Press Esc to close panel
@@ -559,12 +598,14 @@ suggestion.compatibility >= 0.8 ? 'bg-blue-500'
 6. **Focus States**: Tab through cards, verify ring
 
 ### Accessibility Testing
+
 1. **Keyboard Navigation**: Navigate without mouse
 2. **Screen Reader**: Test with VoiceOver/NVDA
 3. **Color Contrast**: Use browser DevTools
 4. **Focus Indicators**: Verify visible on all elements
 
 ### Performance Testing
+
 1. **Animation Smoothness**: Check 60fps in DevTools
 2. **Loading Speed**: Verify skeleton appears instantly
 3. **Interaction Latency**: Confirm <150ms hover response
@@ -579,6 +620,7 @@ suggestion.compatibility >= 0.8 ? 'bg-blue-500'
 **Cause**: Custom CSS not applied
 
 **Solution**: Ensure `<style jsx>` block is present at end of component
+
 ```jsx
 <style jsx>{`
   @keyframes slideIn { ... }
@@ -593,6 +635,7 @@ suggestion.compatibility >= 0.8 ? 'bg-blue-500'
 **Cause**: useEffect dependency issues
 
 **Solution**: Verify dependencies include all used variables
+
 ```javascript
 useEffect(() => {
   // ...
@@ -607,6 +650,7 @@ useEffect(() => {
 **Cause**: Missing `group` class on parent
 
 **Solution**: Add `group` to parent div
+
 ```jsx
 <div className="group relative ...">
   <kbd className="... opacity-0 group-hover:opacity-100">
@@ -622,6 +666,7 @@ useEffect(() => {
 **Cause**: Animation name mismatch
 
 **Solution**: Verify `animate-[shimmer_2s_infinite]` matches `@keyframes shimmer`
+
 ```jsx
 <div className="... animate-[shimmer_2s_infinite] ...">
 ```
@@ -631,12 +676,15 @@ useEffect(() => {
 ## Future Enhancements
 
 ### Dark Mode Support
+
 ```javascript
 // Add dark: variants to all classes
-className="bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-700 ..."
+className =
+  "bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-700 ...";
 ```
 
 ### Favorite Suggestions
+
 ```javascript
 // Add star icon button in hover action bar
 <button onClick={() => favoriteSuggestion(suggestion)}>
@@ -645,6 +693,7 @@ className="bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-7
 ```
 
 ### Suggestion Preview
+
 ```javascript
 // Add tooltip on hover showing full prompt
 <div className="absolute bottom-full mb-2 ...">
@@ -655,6 +704,7 @@ className="bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-7
 ```
 
 ### Export Suggestions
+
 ```javascript
 // Add export button in footer
 <button onClick={() => exportSuggestions()}>
@@ -668,18 +718,21 @@ className="bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-7
 ## Maintenance Checklist
 
 ### Monthly
+
 - [ ] Review animation performance in DevTools
 - [ ] Test keyboard shortcuts on different browsers
 - [ ] Verify color contrast ratios
 - [ ] Check for console warnings/errors
 
 ### Quarterly
+
 - [ ] Update to latest design trends
 - [ ] Gather user feedback on interactions
 - [ ] Benchmark against competitor apps
 - [ ] Consider new micro-interactions
 
 ### When Adding New Features
+
 - [ ] Maintain 4px spacing grid
 - [ ] Use existing color tokens
 - [ ] Add keyboard shortcuts if applicable
@@ -691,6 +744,7 @@ className="bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-7
 ## Resources
 
 ### Design Inspiration
+
 - **Linear**: https://linear.app (keyboard shortcuts, clean UI)
 - **Vercel**: https://vercel.com (spacing, typography)
 - **Stripe**: https://stripe.com (data clarity)
@@ -698,12 +752,14 @@ className="bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-7
 - **Raycast**: https://raycast.com (command palette)
 
 ### Technical References
+
 - **Tailwind CSS**: https://tailwindcss.com/docs
 - **Lucide Icons**: https://lucide.dev
 - **WCAG Guidelines**: https://www.w3.org/WAI/WCAG21/quickref/
 - **CSS Transforms**: https://developer.mozilla.org/en-US/docs/Web/CSS/transform
 
 ### Tools
+
 - **Figma**: For design mockups
 - **Polypane**: For accessibility testing
 - **Chrome DevTools**: For performance profiling
@@ -714,6 +770,7 @@ className="bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-7
 ## Contact & Support
 
 For questions or issues with this implementation:
+
 1. Review this guide thoroughly
 2. Check the design comparison document
 3. Test in isolation (comment out other code)

@@ -1,7 +1,7 @@
-import React from 'react';
-import type { ModelRecommendation } from '@/features/model-intelligence/types';
-import { ModelRecommendationDropdown } from '@/components/ToolSidebar/components/panels/GenerationControlsPanel/components/ModelRecommendationDropdown';
-import { cn } from '@/utils/cn';
+import React from "react";
+import type { ModelRecommendation } from "@/features/model-intelligence/types";
+import { ModelRecommendationDropdown } from "@/components/ToolSidebar/components/panels/GenerationControlsPanel/components/ModelRecommendationDropdown";
+import { cn } from "@/utils/cn";
 
 interface ModelCornerSelectorProps {
   renderModelOptions: Array<{ id: string; label: string }>;
@@ -23,7 +23,10 @@ export function ModelCornerSelector({
   className,
 }: ModelCornerSelectorProps): React.ReactElement {
   return (
-    <div className={cn('absolute z-50', className)} onClick={(e) => e.stopPropagation()}>
+    <div
+      className={cn("absolute z-50", className)}
+      onClick={(e) => e.stopPropagation()}
+    >
       <ModelRecommendationDropdown
         renderModelOptions={renderModelOptions}
         renderModelId={renderModelId}

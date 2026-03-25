@@ -1,14 +1,14 @@
 /**
  * AI Model Configuration
- * 
+ *
  * Centralized configuration for routing LLM operations to specific providers.
  * This enables zero-code provider switching via configuration or environment variables.
- * 
+ *
  * Architecture: Dead Simple Router Pattern
  * - Each operation maps to a specific client + model configuration
  * - Supports automatic fallback to alternative providers
  * - Environment variables override defaults for production flexibility
- * 
+ *
  * Provider-Specific Optimizations:
  * - OpenAI: Temperature 0.0 for structured outputs (grammar-constrained)
  * - Groq/Qwen: Temperature 0.1 for structured outputs (avoids repetition loops)
@@ -27,7 +27,7 @@ interface ModelConfigEntry {
     timeout: number;
   };
   strictClient?: boolean;
-  responseFormat?: 'json_object';
+  responseFormat?: "json_object";
   /** Enable seed-based reproducibility for this operation */
   useSeed?: boolean;
   /** Use developer message for hard constraints (OpenAI only) */
@@ -37,13 +37,13 @@ interface ModelConfigEntry {
 type OperationName = keyof typeof ModelConfig;
 
 const QWEN_FALLBACK = {
-  model: process.env.QWEN_MODEL || 'qwen/qwen3-32b',
-  timeout: parseInt(process.env.QWEN_TIMEOUT_MS || '10000', 10),
+  model: process.env.QWEN_MODEL || "qwen/qwen3-32b",
+  timeout: parseInt(process.env.QWEN_TIMEOUT_MS || "10000", 10),
 };
 
 /**
  * Model Configuration Object
- * 
+ *
  * Each operation defines:
  * - client: Which API client to use ('openai', 'qwen', 'groq', or 'gemini')
  * - model: Specific model identifier
@@ -58,19 +58,19 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
   // ============================================================================
   // Prompt Optimization Operations
   // ============================================================================
-  
+
   /**
    * Standard prompt optimization (quality-focused)
    * Uses OpenAI GPT-4o for best results
    * Note: Temperature kept at 0.7 for creative text generation (not structured output)
    */
   optimize_standard: {
-    client: process.env.OPTIMIZE_PROVIDER || 'openai',
-    model: process.env.OPTIMIZE_MODEL || 'gpt-4o-2024-08-06',
+    client: process.env.OPTIMIZE_PROVIDER || "openai",
+    model: process.env.OPTIMIZE_MODEL || "gpt-4o-2024-08-06",
     temperature: 0.7,
     maxTokens: 4096,
     timeout: 60000,
-    fallbackTo: 'qwen',
+    fallbackTo: "qwen",
     fallbackConfig: QWEN_FALLBACK,
     useDeveloperMessage: true, // GPT-4o: Use developer role for format constraints
   },
@@ -79,8 +79,8 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
    * Context inference for reasoning mode
    */
   optimize_context_inference: {
-    client: 'openai',
-    model: 'gpt-4o-mini-2024-07-18',
+    client: "openai",
+    model: "gpt-4o-mini-2024-07-18",
     temperature: 0.2,
     maxTokens: 1024,
     timeout: 30000,
@@ -91,8 +91,8 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
    * Mode detection (determine optimal optimization strategy)
    */
   optimize_mode_detection: {
-    client: 'openai',
-    model: 'gpt-4o-mini-2024-07-18',
+    client: "openai",
+    model: "gpt-4o-mini-2024-07-18",
     temperature: 0.2,
     maxTokens: 512,
     timeout: 20000,
@@ -103,8 +103,8 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
    * Quality assessment of prompts
    */
   optimize_quality_assessment: {
-    client: 'openai',
-    model: 'gpt-4o-mini',
+    client: "openai",
+    model: "gpt-4o-mini",
     temperature: 0.2,
     maxTokens: 1024,
     timeout: 30000,
@@ -116,12 +116,12 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
    * Uses structured output - temperature 0.0 per GPT-4o best practices
    */
   optimize_shot_interpreter: {
-    client: 'openai',
-    model: 'gpt-4o-mini-2024-07-18',
+    client: "openai",
+    model: "gpt-4o-mini-2024-07-18",
     temperature: 0.0, // Deterministic mapping for structured output
     maxTokens: 600,
     timeout: 15000,
-    responseFormat: 'json_object',
+    responseFormat: "json_object",
     useSeed: true, // Same concept should produce same shot plan
     useDeveloperMessage: true,
   },
@@ -131,12 +131,12 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
    * Deterministic JSON output for pass/fail gating.
    */
   optimize_intent_check: {
-    client: 'openai',
-    model: 'gpt-4o-mini-2024-07-18',
+    client: "openai",
+    model: "gpt-4o-mini-2024-07-18",
     temperature: 0.0,
     maxTokens: 700,
     timeout: 20000,
-    responseFormat: 'json_object',
+    responseFormat: "json_object",
     useSeed: true,
     useDeveloperMessage: true,
   },
@@ -147,23 +147,23 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
 
   /**
    * Main enhancement suggestion generation
-   * 
+   *
    * Provider-specific temperature:
    * - OpenAI (when used): 0.0 for structured output
    * - Qwen: 0.1 (configured here, adapter may override)
-   * 
+   *
    * Diversity is achieved through:
    * - Prompt: "Generate 12 DIVERSE alternatives"
    * - ContrastiveDiversityEnforcer post-processing
    */
   enhance_suggestions: {
-    client: process.env.ENHANCE_PROVIDER || 'qwen',
-    model: process.env.ENHANCE_MODEL || 'qwen/qwen3-32b',
+    client: process.env.ENHANCE_PROVIDER || "qwen",
+    model: process.env.ENHANCE_MODEL || "qwen/qwen3-32b",
     temperature: 0.1, // Keep low temp for reliable JSON; diversity enforced by prompting/post-processing
     maxTokens: 1024,
     timeout: 8000,
-    responseFormat: 'json_object',
-    fallbackTo: 'openai',
+    responseFormat: "json_object",
+    fallbackTo: "openai",
     // Note: Seed not used - we want variation in suggestions
     useDeveloperMessage: true,
   },
@@ -172,13 +172,13 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
    * Custom suggestion requests (user-directed replacements)
    */
   custom_suggestions: {
-    client: process.env.ENHANCE_PROVIDER || 'qwen',
-    model: process.env.ENHANCE_MODEL || 'qwen/qwen3-32b',
+    client: process.env.ENHANCE_PROVIDER || "qwen",
+    model: process.env.ENHANCE_MODEL || "qwen/qwen3-32b",
     temperature: 0.1,
     maxTokens: 1024,
     timeout: 8000,
-    responseFormat: 'json_object',
-    fallbackTo: 'openai',
+    responseFormat: "json_object",
+    fallbackTo: "openai",
     useDeveloperMessage: true,
   },
 
@@ -186,8 +186,8 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
    * Style transfer for enhancement suggestions
    */
   enhance_style_transfer: {
-    client: 'openai',
-    model: 'gpt-4o-mini-2024-07-18',
+    client: "openai",
+    model: "gpt-4o-mini-2024-07-18",
     temperature: 0.7,
     maxTokens: 2048,
     timeout: 30000,
@@ -197,8 +197,8 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
    * Suggestion deduplication (diversity enforcement)
    */
   enhance_diversity: {
-    client: 'openai',
-    model: 'gpt-4o-mini-2024-07-18',
+    client: "openai",
+    model: "gpt-4o-mini-2024-07-18",
     temperature: 0.2,
     maxTokens: 512,
     timeout: 20000,
@@ -209,12 +209,12 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
    * Prompt-wide coherence checks after span edits
    */
   prompt_coherence_check: {
-    client: 'openai',
-    model: 'gpt-4o-mini-2024-07-18',
+    client: "openai",
+    model: "gpt-4o-mini-2024-07-18",
     temperature: 0.2,
     maxTokens: 2048,
     timeout: 25000,
-    responseFormat: 'json_object',
+    responseFormat: "json_object",
     useSeed: true, // Consistent coherence findings
     useDeveloperMessage: true,
   },
@@ -227,12 +227,12 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
    * Video concept suggestion generation
    */
   video_concept_suggestions: {
-    client: process.env.VIDEO_PROVIDER || 'openai',
-    model: process.env.VIDEO_MODEL || 'gpt-4o-2024-08-06',
+    client: process.env.VIDEO_PROVIDER || "openai",
+    model: process.env.VIDEO_MODEL || "gpt-4o-2024-08-06",
     temperature: 0.8,
     maxTokens: 2048,
     timeout: 45000,
-    fallbackTo: 'qwen',
+    fallbackTo: "qwen",
     fallbackConfig: QWEN_FALLBACK,
     useDeveloperMessage: true,
   },
@@ -241,8 +241,8 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
    * Scene completion (fill empty elements)
    */
   video_scene_completion: {
-    client: 'openai',
-    model: 'gpt-4o-mini-2024-07-18',
+    client: "openai",
+    model: "gpt-4o-mini-2024-07-18",
     temperature: 0.7,
     maxTokens: 1024,
     timeout: 30000,
@@ -253,8 +253,8 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
    * Note: High temperature for creativity, no seed (want variation)
    */
   video_scene_variation: {
-    client: 'openai',
-    model: 'gpt-4o-2024-08-06',
+    client: "openai",
+    model: "gpt-4o-2024-08-06",
     temperature: 0.9,
     maxTokens: 1536,
     timeout: 40000,
@@ -265,12 +265,12 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
    * Temperature 0.0 for deterministic parsing
    */
   video_concept_parsing: {
-    client: 'openai',
-    model: 'gpt-4o-mini-2024-07-18',
+    client: "openai",
+    model: "gpt-4o-mini-2024-07-18",
     temperature: 0.0,
     maxTokens: 1024,
     timeout: 25000,
-    responseFormat: 'json_object',
+    responseFormat: "json_object",
     useSeed: true, // Same concept should parse identically
     useDeveloperMessage: true,
   },
@@ -279,8 +279,8 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
    * Element refinement for coherence
    */
   video_refinement: {
-    client: 'openai',
-    model: 'gpt-4o-2024-08-06',
+    client: "openai",
+    model: "gpt-4o-2024-08-06",
     temperature: 0.6,
     maxTokens: 1536,
     timeout: 35000,
@@ -290,8 +290,8 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
    * Technical parameter generation (camera, lighting)
    */
   video_technical_params: {
-    client: 'openai',
-    model: 'gpt-4o-mini-2024-07-18',
+    client: "openai",
+    model: "gpt-4o-mini-2024-07-18",
     temperature: 0.2,
     maxTokens: 1024,
     timeout: 25000,
@@ -302,8 +302,8 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
    * Prompt validation and smart defaults
    */
   video_validation: {
-    client: 'openai',
-    model: 'gpt-4o-mini-2024-07-18',
+    client: "openai",
+    model: "gpt-4o-mini-2024-07-18",
     temperature: 0.2,
     maxTokens: 1024,
     timeout: 25000,
@@ -314,8 +314,8 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
    * Compatibility checking (semantic + thematic)
    */
   video_compatibility: {
-    client: 'openai',
-    model: 'gpt-4o-mini',
+    client: "openai",
+    model: "gpt-4o-mini",
     temperature: 0.2,
     maxTokens: 512,
     timeout: 20000,
@@ -326,8 +326,8 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
    * Conflict detection between elements
    */
   video_conflict_detection: {
-    client: 'openai',
-    model: 'gpt-4o-mini-2024-07-18',
+    client: "openai",
+    model: "gpt-4o-mini-2024-07-18",
     temperature: 0.2,
     maxTokens: 1024,
     timeout: 25000,
@@ -338,8 +338,8 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
    * Scene change detection
    */
   video_scene_detection: {
-    client: 'openai',
-    model: 'gpt-4o-mini-2024-07-18',
+    client: "openai",
+    model: "gpt-4o-mini-2024-07-18",
     temperature: 0.2,
     maxTokens: 1024,
     timeout: 25000,
@@ -355,13 +355,13 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
    * Temperature 0.0 for structured output
    */
   question_generation: {
-    client: process.env.QUESTION_PROVIDER || 'openai',
-    model: process.env.QUESTION_MODEL || 'gpt-4o-mini-2024-07-18',
+    client: process.env.QUESTION_PROVIDER || "openai",
+    model: process.env.QUESTION_MODEL || "gpt-4o-mini-2024-07-18",
     temperature: 0.0, // Deterministic question generation
     maxTokens: 2048,
     timeout: 30000,
-    responseFormat: 'json_object',
-    fallbackTo: 'qwen',
+    responseFormat: "json_object",
+    fallbackTo: "qwen",
     fallbackConfig: QWEN_FALLBACK,
     useSeed: true, // Same prompt should generate same questions
     useDeveloperMessage: true,
@@ -376,12 +376,12 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
    * Temperature 0.0 for deterministic categorization
    */
   text_categorization: {
-    client: process.env.CATEGORIZE_PROVIDER || 'openai',
-    model: process.env.CATEGORIZE_MODEL || 'gpt-4o-mini-2024-07-18',
+    client: process.env.CATEGORIZE_PROVIDER || "openai",
+    model: process.env.CATEGORIZE_MODEL || "gpt-4o-mini-2024-07-18",
     temperature: 0.0,
     maxTokens: 1024,
     timeout: 25000,
-    responseFormat: 'json_object',
+    responseFormat: "json_object",
     useSeed: true, // Same text should categorize identically
     useDeveloperMessage: true,
   },
@@ -392,22 +392,22 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
 
   /**
    * Label spans in video prompts
-   * 
+   *
    * Qwen/Groq best practices (via Groq-hosted Qwen models):
    * - Temperature 0.1 (not 0.0 - avoids repetition loops)
    * - Sandwich prompting for format adherence
    * - XML tagging for data segmentation
    */
   span_labeling: {
-    client: process.env.SPAN_PROVIDER || 'gemini',
-    model: process.env.SPAN_MODEL || 'gemini-2.5-flash',
+    client: process.env.SPAN_PROVIDER || "gemini",
+    model: process.env.SPAN_MODEL || "gemini-2.5-flash",
     temperature: 0.1, // Low temperature for reliable JSON
     maxTokens: 4096,
     timeout: 30000,
-    responseFormat: 'json_object',
-    fallbackTo: 'qwen',
+    responseFormat: "json_object",
+    fallbackTo: "qwen",
     fallbackConfig: {
-      model: 'qwen/qwen3-32b',
+      model: "qwen/qwen3-32b",
       timeout: 45000,
     },
     useSeed: true, // Same text should label identically
@@ -418,8 +418,8 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
    * Used by GeminiLlmClient to force Gemini usage regardless of SPAN_PROVIDER
    */
   span_labeling_gemini: {
-    client: 'gemini',
-    model: 'gemini-2.5-flash',
+    client: "gemini",
+    model: "gemini-2.5-flash",
     temperature: 0.1,
     maxTokens: 16384,
     timeout: 45000,
@@ -434,12 +434,12 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
    * Structured IR extraction for video prompt analysis.
    */
   video_prompt_ir_extraction: {
-    client: 'gemini',
-    model: process.env.VIDEO_PROMPT_IR_MODEL || 'gemini-2.5-flash',
+    client: "gemini",
+    model: process.env.VIDEO_PROMPT_IR_MODEL || "gemini-2.5-flash",
     temperature: 0.1,
     maxTokens: 4096,
     timeout: 30000,
-    responseFormat: 'json_object',
+    responseFormat: "json_object",
     strictClient: true,
     useSeed: true,
     useDeveloperMessage: true,
@@ -449,8 +449,8 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
    * Prompt rewrite for model-specific video prompt optimization.
    */
   video_prompt_rewrite: {
-    client: 'gemini',
-    model: process.env.VIDEO_PROMPT_REWRITE_MODEL || 'gemini-2.5-flash',
+    client: "gemini",
+    model: process.env.VIDEO_PROMPT_REWRITE_MODEL || "gemini-2.5-flash",
     temperature: 0.4,
     maxTokens: 8192,
     timeout: 45000,
@@ -467,12 +467,12 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
    * Requires a vision-capable model.
    */
   image_observation: {
-    client: process.env.IMAGE_OBSERVATION_PROVIDER || 'openai',
-    model: process.env.IMAGE_OBSERVATION_MODEL || 'gpt-4o-mini-2024-07-18',
+    client: process.env.IMAGE_OBSERVATION_PROVIDER || "openai",
+    model: process.env.IMAGE_OBSERVATION_MODEL || "gpt-4o-mini-2024-07-18",
     temperature: 0.1,
     maxTokens: 800,
     timeout: 30000,
-    responseFormat: 'json_object',
+    responseFormat: "json_object",
     useSeed: false,
   },
 
@@ -480,12 +480,12 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
    * Parse i2v prompts into motion vs visual components
    */
   parse_i2v_prompt: {
-    client: process.env.I2V_PARSE_PROVIDER || 'openai',
-    model: process.env.I2V_PARSE_MODEL || 'gpt-4o-mini-2024-07-18',
+    client: process.env.I2V_PARSE_PROVIDER || "openai",
+    model: process.env.I2V_PARSE_MODEL || "gpt-4o-mini-2024-07-18",
     temperature: 0.1,
     maxTokens: 800,
     timeout: 20000,
-    responseFormat: 'json_object',
+    responseFormat: "json_object",
     useSeed: true,
     useDeveloperMessage: true,
   },
@@ -495,12 +495,12 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
    * Temperature 0.0 for deterministic classification
    */
   role_classification: {
-    client: process.env.ROLE_PROVIDER || 'openai',
-    model: process.env.ROLE_MODEL || 'gpt-4o-mini-2024-07-18',
+    client: process.env.ROLE_PROVIDER || "openai",
+    model: process.env.ROLE_MODEL || "gpt-4o-mini-2024-07-18",
     temperature: 0,
     maxTokens: 600,
     timeout: 20000,
-    fallbackTo: 'qwen',
+    fallbackTo: "qwen",
     fallbackConfig: QWEN_FALLBACK,
     useSeed: true, // Same spans should classify identically
     useDeveloperMessage: true,
@@ -514,12 +514,12 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
    * LLM-as-a-Judge for video prompt evaluation
    */
   llm_judge_video: {
-    client: process.env.JUDGE_PROVIDER || 'openai',
-    model: process.env.JUDGE_MODEL || 'gpt-4o-2024-08-06',
+    client: process.env.JUDGE_PROVIDER || "openai",
+    model: process.env.JUDGE_MODEL || "gpt-4o-2024-08-06",
     temperature: 0.2,
     maxTokens: 2048,
     timeout: 45000,
-    fallbackTo: 'anthropic',
+    fallbackTo: "anthropic",
     useSeed: true, // Consistent evaluation scores
     useDeveloperMessage: true,
   },
@@ -528,19 +528,19 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
    * LLM-as-a-Judge for general text evaluation
    */
   llm_judge_general: {
-    client: process.env.JUDGE_GENERAL_PROVIDER || 'anthropic',
-    model: process.env.JUDGE_GENERAL_MODEL || 'claude-sonnet-4',
+    client: process.env.JUDGE_GENERAL_PROVIDER || "anthropic",
+    model: process.env.JUDGE_GENERAL_MODEL || "claude-sonnet-4",
     temperature: 0.3,
     maxTokens: 2048,
     timeout: 45000,
-    fallbackTo: 'openai',
+    fallbackTo: "openai",
     useSeed: true, // Consistent evaluation
   },
 };
 
-const WAN_2_2_T2V_FAST = 'wan-video/wan-2.2-t2v-fast';
-const WAN_2_2_I2V_FAST = 'wan-video/wan-2.2-i2v-fast';
-const WAN_2_5_I2V = process.env.WAN_2_5_I2V_MODEL || 'wan-video/wan-2.5-i2v';
+const WAN_2_2_T2V_FAST = "wan-video/wan-2.2-t2v-fast";
+const WAN_2_2_I2V_FAST = "wan-video/wan-2.2-i2v-fast";
+const WAN_2_5_I2V = process.env.WAN_2_5_I2V_MODEL || "wan-video/wan-2.5-i2v";
 const DEFAULT_DRAFT_I2V_MODEL = process.env.DRAFT_I2V_MODEL || WAN_2_5_I2V;
 
 /**
@@ -560,7 +560,7 @@ export const VIDEO_MODELS = {
 
   /** ⚡ DRAFT TIER i2v (Wan 2.5). */
   DRAFT_I2V_WAN_2_5: WAN_2_5_I2V,
-  
+
   /** 🎬 PRO TIER: Cinematic 1080p, MoE Architecture. Default for paid subscribers. */
   PRO: WAN_2_2_T2V_FAST,
 
@@ -578,13 +578,13 @@ export const VIDEO_MODELS = {
 
   /** 🔊 AUDIO: Google Veo 3.1 (official Gemini API, text → video with audio). */
   VEO_3: "google/veo-3",
-  
+
   /** 🎨 ARTISTIC / SPECIALIZED: High style adherence. */
   ARTISTIC: "genmo/mochi-1-final",
-  
+
   /** 🔒 PROPRIETARY FALLBACKS (API Wrappers / BYOK) */
   TIER_1: "minimax/video-02", // Hailuo-02
-  TIER_2: "google/veo-3"      // Google Veo
+  TIER_2: "google/veo-3", // Google Veo
 };
 
 /**
@@ -592,8 +592,8 @@ export const VIDEO_MODELS = {
  * Temperature 0.0 for structured outputs by default
  */
 export const DEFAULT_CONFIG: ModelConfigEntry = {
-  client: 'openai',
-  model: 'gpt-4o-mini-2024-07-18',
+  client: "openai",
+  model: "gpt-4o-mini-2024-07-18",
   temperature: 0.0,
   maxTokens: 2048,
   timeout: 30000,

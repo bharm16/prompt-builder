@@ -1,6 +1,9 @@
-import { logger } from '@infrastructure/Logger';
-import { STYLE_DEFINITIONS, DEFAULT_STYLE } from '../config/styleDefinitions.js';
-import type { AIService } from './types.js';
+import { logger } from "@infrastructure/Logger";
+import {
+  STYLE_DEFINITIONS,
+  DEFAULT_STYLE,
+} from "../config/styleDefinitions.js";
+import type { AIService } from "./types.js";
 
 /**
  * Service responsible for transferring text between different writing styles
@@ -21,24 +24,33 @@ export class StyleTransferService {
       Object.values(STYLE_DEFINITIONS)[0];
 
     if (!styleConfig) {
-      logger.warn('No style definitions available for transfer', {
+      logger.warn("No style definitions available for transfer", {
         targetStyle,
       });
       return text;
     }
 
-    const styleTransferPrompt = this._buildStyleTransferPrompt(text, targetStyle, styleConfig);
+    const styleTransferPrompt = this._buildStyleTransferPrompt(
+      text,
+      targetStyle,
+      styleConfig,
+    );
 
     try {
-      const response = await this.ai.execute('enhance_style_transfer', {
+      const response = await this.ai.execute("enhance_style_transfer", {
         systemPrompt: styleTransferPrompt,
         maxTokens: 1024,
         temperature: 0.7,
       });
 
-      return (response.text || (response as { content?: Array<{ text?: string }> }).content?.[0]?.text || '').trim();
+      return (
+        response.text ||
+        (response as { content?: Array<{ text?: string }> }).content?.[0]
+          ?.text ||
+        ""
+      ).trim();
     } catch (error) {
-      logger.warn('Failed to transfer style', { error });
+      logger.warn("Failed to transfer style", { error });
       return text; // Return original on error
     }
   }
@@ -47,7 +59,11 @@ export class StyleTransferService {
    * Build style transfer prompt
    * @private
    */
-  private _buildStyleTransferPrompt(text: string, targetStyle: string, styleConfig: typeof STYLE_DEFINITIONS[keyof typeof STYLE_DEFINITIONS]): string {
+  private _buildStyleTransferPrompt(
+    text: string,
+    targetStyle: string,
+    styleConfig: (typeof STYLE_DEFINITIONS)[keyof typeof STYLE_DEFINITIONS],
+  ): string {
     return `Transform the following text to ${targetStyle} style while preserving its core meaning and information.
 
 Original text: "${text}"

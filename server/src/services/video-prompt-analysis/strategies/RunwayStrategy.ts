@@ -19,128 +19,144 @@ import {
   type NormalizeResult,
   type TransformResult,
   type AugmentResult,
-} from './BaseStrategy';
-import { getPromptModelConstraints } from '@shared/videoModels';
-import type { PromptOptimizationResult, PromptContext, VideoPromptIR } from './types';
-import type { RewriteConstraints } from './types';
+} from "./BaseStrategy";
+import { getPromptModelConstraints } from "@shared/videoModels";
+import type {
+  PromptOptimizationResult,
+  PromptContext,
+  VideoPromptIR,
+} from "./types";
+import type { RewriteConstraints } from "./types";
 
 /**
  * Emotional/abstract terms to strip (unless translatable to lighting)
  */
 const EMOTIONAL_TERMS = [
-  'vibe',
-  'vibes',
-  'vibing',
-  'sad',
-  'sadness',
-  'happy',
-  'happiness',
-  'melancholy',
-  'melancholic',
-  'joyful',
-  'joyous',
-  'anxious',
-  'anxiety',
-  'peaceful',
-  'serene',
-  'serenity',
-  'tense',
-  'tension',
-  'calm',
-  'calming',
-  'exciting',
-  'excitement',
-  'boring',
-  'interesting',
-  'mysterious',
-  'mystery',
-  'romantic',
-  'romance',
-  'nostalgic',
-  'nostalgia',
-  'dreamy',
-  'dreamlike',
-  'ethereal',
-  'surreal',
-  'abstract',
-  'emotional',
-  'emotion',
-  'feeling',
-  'feelings',
-  'mood',
-  'moody',
-  'atmosphere',
-  'atmospheric',
+  "vibe",
+  "vibes",
+  "vibing",
+  "sad",
+  "sadness",
+  "happy",
+  "happiness",
+  "melancholy",
+  "melancholic",
+  "joyful",
+  "joyous",
+  "anxious",
+  "anxiety",
+  "peaceful",
+  "serene",
+  "serenity",
+  "tense",
+  "tension",
+  "calm",
+  "calming",
+  "exciting",
+  "excitement",
+  "boring",
+  "interesting",
+  "mysterious",
+  "mystery",
+  "romantic",
+  "romance",
+  "nostalgic",
+  "nostalgia",
+  "dreamy",
+  "dreamlike",
+  "ethereal",
+  "surreal",
+  "abstract",
+  "emotional",
+  "emotion",
+  "feeling",
+  "feelings",
+  "mood",
+  "moody",
+  "atmosphere",
+  "atmospheric",
 ] as const;
 
 /**
  * Morphing/blur terms to strip (unless explicitly requested as style)
  */
 const MORPHING_BLUR_TERMS = [
-  'morphing',
-  'morph',
-  'morphs',
-  'blur',
-  'blurry',
-  'blurred',
-  'blurring',
-  'soft focus',
-  'out of focus',
-  'defocused',
-  'hazy',
-  'haze',
-  'foggy',
-  'misty',
-  'smudge',
-  'smudged',
-  'smearing',
-  'distorted',
-  'distortion',
-  'warped',
-  'warping',
+  "morphing",
+  "morph",
+  "morphs",
+  "blur",
+  "blurry",
+  "blurred",
+  "blurring",
+  "soft focus",
+  "out of focus",
+  "defocused",
+  "hazy",
+  "haze",
+  "foggy",
+  "misty",
+  "smudge",
+  "smudged",
+  "smearing",
+  "distorted",
+  "distortion",
+  "warped",
+  "warping",
 ] as const;
 
 /**
  * Depth/3D terms that map to dolly camera motion
  */
-const DEPTH_TERMS = ['depth', '3d feel', '3d effect', 'dimensional', 'parallax'] as const;
+const DEPTH_TERMS = [
+  "depth",
+  "3d feel",
+  "3d effect",
+  "dimensional",
+  "parallax",
+] as const;
 
 /**
  * Vertigo/compression terms that map to zoom camera motion
  */
-const VERTIGO_TERMS = ['vertigo', 'compression', 'dolly zoom', 'zolly', 'contra-zoom'] as const;
+const VERTIGO_TERMS = [
+  "vertigo",
+  "compression",
+  "dolly zoom",
+  "zolly",
+  "contra-zoom",
+] as const;
 
 /**
  * Cinematographic aesthetic triggers for high-fidelity weights
  */
 const CINEMATOGRAPHIC_TRIGGERS = [
-  'chromatic aberration',
-  'anamorphic lens flare',
-  'shallow depth of field',
-  'film grain',
-  'cinematic lighting',
-  'volumetric lighting',
-  'lens distortion',
-  'bokeh',
+  "chromatic aberration",
+  "anamorphic lens flare",
+  "shallow depth of field",
+  "film grain",
+  "cinematic lighting",
+  "volumetric lighting",
+  "lens distortion",
+  "bokeh",
 ] as const;
 
 /**
  * Core stability triggers for A2D architecture
  */
 const STABILITY_TRIGGERS = [
-  'single continuous shot',
-  'fluid motion',
-  'consistent geometry',
+  "single continuous shot",
+  "fluid motion",
+  "consistent geometry",
 ] as const;
 
-const MODEL_CONSTRAINTS = getPromptModelConstraints('runway-gen45')!;
+const MODEL_CONSTRAINTS = getPromptModelConstraints("runway-gen45")!;
 
 /**
  * RunwayStrategy optimizes prompts for Runway Gen-4.5's A2D architecture
  */
 export class RunwayStrategy extends BaseStrategy {
-  readonly modelId = 'runway-gen45';
-  readonly modelName = 'Runway Gen-4.5';
+  readonly modelId = "runway-gen45";
+  readonly modelName = "Runway Gen-4.5";
 
   getModelConstraints() {
     return MODEL_CONSTRAINTS;
@@ -149,13 +165,18 @@ export class RunwayStrategy extends BaseStrategy {
   /**
    * Validate input against Runway-specific constraints
    */
-  protected async doValidate(input: string, context?: PromptContext): Promise<void> {
+  protected async doValidate(
+    input: string,
+    context?: PromptContext,
+  ): Promise<void> {
     // Check for aspect ratio constraints if provided
     if (context?.constraints?.formRequirement) {
       const aspectRatio = context.constraints.formRequirement;
-      const validAspectRatios = ['16:9', '9:16', '1:1', '4:3', '3:4', '21:9'];
+      const validAspectRatios = ["16:9", "9:16", "1:1", "4:3", "3:4", "21:9"];
       if (!validAspectRatios.includes(aspectRatio)) {
-        this.addWarning(`Aspect ratio "${aspectRatio}" may not be supported by Runway`);
+        this.addWarning(
+          `Aspect ratio "${aspectRatio}" may not be supported by Runway`,
+        );
       }
     }
 
@@ -163,7 +184,7 @@ export class RunwayStrategy extends BaseStrategy {
     const wordCount = input.split(/\s+/).length;
     if (wordCount > MODEL_CONSTRAINTS.wordLimits.max) {
       this.addWarning(
-        `Prompt exceeds ${MODEL_CONSTRAINTS.wordLimits.max} words; Runway may truncate or ignore excess content`
+        `Prompt exceeds ${MODEL_CONSTRAINTS.wordLimits.max} words; Runway may truncate or ignore excess content`,
       );
     }
   }
@@ -171,7 +192,10 @@ export class RunwayStrategy extends BaseStrategy {
   /**
    * Normalize input by stripping morphing/blur terms
    */
-  protected doNormalize(input: string, _context?: PromptContext): NormalizeResult {
+  protected doNormalize(
+    input: string,
+    _context?: PromptContext,
+  ): NormalizeResult {
     let text = input;
     const changes: string[] = [];
     const strippedTokens: string[] = [];
@@ -183,7 +207,7 @@ export class RunwayStrategy extends BaseStrategy {
     if (!isStyleRequest) {
       for (const term of MORPHING_BLUR_TERMS) {
         if (this.containsWord(text, term)) {
-          text = this.replaceWord(text, term, '');
+          text = this.replaceWord(text, term, "");
           changes.push(`Stripped morphing/blur term: "${term}"`);
           strippedTokens.push(term);
         }
@@ -201,35 +225,45 @@ export class RunwayStrategy extends BaseStrategy {
   /**
    * Final adjustments after LLM rewrite
    */
-  protected doTransform(llmPrompt: string | Record<string, unknown>, ir: VideoPromptIR, context?: PromptContext): TransformResult {
+  protected doTransform(
+    llmPrompt: string | Record<string, unknown>,
+    ir: VideoPromptIR,
+    context?: PromptContext,
+  ): TransformResult {
     const changes: string[] = [];
-    const llmText = typeof llmPrompt === 'string' ? llmPrompt : JSON.stringify(llmPrompt);
-    const isLlmRewriteAvailable = llmText.trim().length > 0 && llmText.trim() !== ir.raw?.trim();
+    const llmText =
+      typeof llmPrompt === "string" ? llmPrompt : JSON.stringify(llmPrompt);
+    const isLlmRewriteAvailable =
+      llmText.trim().length > 0 && llmText.trim() !== ir.raw?.trim();
 
     let prompt: string;
     if (isLlmRewriteAvailable) {
       prompt = this.cleanWhitespace(llmText);
-      changes.push('Used LLM rewrite as primary Runway output');
+      changes.push("Used LLM rewrite as primary Runway output");
     } else {
       // Fallback: deterministic slot assembly when LLM rewrite is unavailable
       const extractionSource = ir.raw || llmText;
-      const subject = ir.subjects[0]?.text?.trim() || '';
-      const action = this.extractActionPhrase(ir, extractionSource) || '';
-      const setting = ir.environment.setting?.trim() || '';
-      const lighting = ir.environment.lighting[0]?.trim() || '';
-      const move = ir.camera.movements[0]?.trim() || '';
+      const subject = ir.subjects[0]?.text?.trim() || "";
+      const action = this.extractActionPhrase(ir, extractionSource) || "";
+      const setting = ir.environment.setting?.trim() || "";
+      const lighting = ir.environment.lighting[0]?.trim() || "";
+      const move = ir.camera.movements[0]?.trim() || "";
 
       if (subject && action) {
-        const lead = move ? `${move}, ${subject} ${action}` : `${subject} ${action}`;
-        const place = setting ? ` in ${setting}` : '';
-        const light = lighting ? `. ${lighting}` : '';
+        const lead = move
+          ? `${move}, ${subject} ${action}`
+          : `${subject} ${action}`;
+        const place = setting ? ` in ${setting}` : "";
+        const light = lighting ? `. ${lighting}` : "";
         prompt = `${lead}${place}${light}`.trim();
-        changes.push('Rendered deterministic Runway prose from IR (LLM fallback)');
+        changes.push(
+          "Rendered deterministic Runway prose from IR (LLM fallback)",
+        );
       } else {
         this.enrichCameraFromRaw(ir);
         prompt = this.buildCsaePrompt(ir, extractionSource);
         if (prompt !== llmText) {
-          changes.push('Reordered output to CSAE structure (LLM fallback)');
+          changes.push("Reordered output to CSAE structure (LLM fallback)");
         }
       }
     }
@@ -237,9 +271,11 @@ export class RunwayStrategy extends BaseStrategy {
     // Handle visual reference descriptions from context (Runway-specific requirement)
     if (context?.assets) {
       for (const asset of context.assets) {
-        if (asset.type === 'image' && asset.description) {
+        if (asset.type === "image" && asset.description) {
           prompt = `${prompt}. Reference: ${asset.description}`;
-          changes.push('Appended visual reference description for concept consistency');
+          changes.push(
+            "Appended visual reference description for concept consistency",
+          );
         }
       }
     }
@@ -252,16 +288,20 @@ export class RunwayStrategy extends BaseStrategy {
    */
   protected doAugment(
     result: PromptOptimizationResult,
-    _context?: PromptContext
+    _context?: PromptContext,
   ): AugmentResult {
     const changes: string[] = [];
     const triggersInjected: string[] = [];
     let prompt = this.cleanWhitespace(
-      typeof result.prompt === 'string' ? result.prompt : JSON.stringify(result.prompt)
+      typeof result.prompt === "string"
+        ? result.prompt
+        : JSON.stringify(result.prompt),
     );
 
     // Enforce stability triggers as mandatory constraints
-    const stabilityResult = this.enforceMandatoryConstraints(prompt, [...STABILITY_TRIGGERS]);
+    const stabilityResult = this.enforceMandatoryConstraints(prompt, [
+      ...STABILITY_TRIGGERS,
+    ]);
     prompt = stabilityResult.prompt;
     changes.push(...stabilityResult.changes);
     triggersInjected.push(...stabilityResult.injected);
@@ -278,10 +318,13 @@ export class RunwayStrategy extends BaseStrategy {
   /**
    * Provide mandatory and suggested constraints for LLM rewrite.
    */
-  protected override getRewriteConstraints(ir: VideoPromptIR, _context?: PromptContext): RewriteConstraints {
+  protected override getRewriteConstraints(
+    ir: VideoPromptIR,
+    _context?: PromptContext,
+  ): RewriteConstraints {
     return {
       mandatory: [...STABILITY_TRIGGERS],
-      suggested: this.selectCinematographicTriggers(ir.raw || ''),
+      suggested: this.selectCinematographicTriggers(ir.raw || ""),
     };
   }
 
@@ -302,7 +345,7 @@ export class RunwayStrategy extends BaseStrategy {
       /(?:blur|morph)\s+aesthetic/i,
     ];
 
-    return stylePatterns.some(pattern => pattern.test(text));
+    return stylePatterns.some((pattern) => pattern.test(text));
   }
 
   /**
@@ -310,16 +353,16 @@ export class RunwayStrategy extends BaseStrategy {
    */
   private enrichCameraFromRaw(ir: VideoPromptIR): void {
     const lowerRaw = ir.raw.toLowerCase();
-    
+
     // Check for depth terms → dolly (EXCLUDING depth of field)
     for (const term of DEPTH_TERMS) {
       if (lowerRaw.includes(term)) {
         // Specifically avoid "depth of field"
-        if (term === 'depth' && lowerRaw.includes('depth of field')) {
-            continue;
+        if (term === "depth" && lowerRaw.includes("depth of field")) {
+          continue;
         }
-        if (!ir.camera.movements.includes('dolly')) {
-          ir.camera.movements.push('dolly');
+        if (!ir.camera.movements.includes("dolly")) {
+          ir.camera.movements.push("dolly");
         }
         break;
       }
@@ -328,8 +371,8 @@ export class RunwayStrategy extends BaseStrategy {
     // Check for vertigo terms → zoom
     for (const term of VERTIGO_TERMS) {
       if (lowerRaw.includes(term)) {
-        if (!ir.camera.movements.includes('zoom')) {
-          ir.camera.movements.push('zoom');
+        if (!ir.camera.movements.includes("zoom")) {
+          ir.camera.movements.push("zoom");
         }
         break;
       }
@@ -347,7 +390,7 @@ export class RunwayStrategy extends BaseStrategy {
     const environment = this.extractEnvironmentPhrase(ir, raw);
 
     const orderedParts = [camera, subject, action, environment].filter(
-      (part): part is string => Boolean(part && part.trim().length > 0)
+      (part): part is string => Boolean(part && part.trim().length > 0),
     );
 
     if (orderedParts.length === 0) {
@@ -359,12 +402,14 @@ export class RunwayStrategy extends BaseStrategy {
     for (const part of orderedParts) {
       remainder = this.removeFirstOccurrence(remainder, part);
     }
-    remainder = this.cleanWhitespace(remainder.replace(/^[,.;:\s]+|[,.;:\s]+$/g, ''));
+    remainder = this.cleanWhitespace(
+      remainder.replace(/^[,.;:\s]+|[,.;:\s]+$/g, ""),
+    );
     if (remainder.length > 0) {
       orderedParts.push(remainder);
     }
 
-    return this.cleanWhitespace(orderedParts.join(', '));
+    return this.cleanWhitespace(orderedParts.join(", "));
   }
 
   private extractCameraPhrase(ir: VideoPromptIR, raw: string): string | null {
@@ -376,24 +421,24 @@ export class RunwayStrategy extends BaseStrategy {
     }
 
     const cameraTerms = [
-      'pan left',
-      'pan right',
-      'tilt up',
-      'tilt down',
-      'dolly in',
-      'dolly out',
-      'zoom in',
-      'zoom out',
-      'tracking shot',
-      'crane shot',
-      'steadicam',
-      'handheld',
-      'low angle',
-      'high angle',
-      'wide angle',
-      'telephoto',
-      'dolly',
-      'zoom',
+      "pan left",
+      "pan right",
+      "tilt up",
+      "tilt down",
+      "dolly in",
+      "dolly out",
+      "zoom in",
+      "zoom out",
+      "tracking shot",
+      "crane shot",
+      "steadicam",
+      "handheld",
+      "low angle",
+      "high angle",
+      "wide angle",
+      "telephoto",
+      "dolly",
+      "zoom",
     ];
 
     return this.findFirstMatchingTerm(raw, cameraTerms);
@@ -406,33 +451,35 @@ export class RunwayStrategy extends BaseStrategy {
     }
 
     const subjectMatch = raw.match(
-      /\b(?:a man|a woman|a person|a child|a dog|a cat|the man|the woman|someone|a figure|a character)\b/i
+      /\b(?:a man|a woman|a person|a child|a dog|a cat|the man|the woman|someone|a figure|a character)\b/i,
     );
     return subjectMatch?.[0] ?? null;
   }
 
   private extractActionPhrase(ir: VideoPromptIR, raw: string): string | null {
-    const irAction = ir.actions[0]?.trim() || '';
+    const irAction = ir.actions[0]?.trim() || "";
     const actionTerms = [
       irAction,
-      'walking',
-      'running',
-      'jumping',
-      'sitting',
-      'standing',
-      'dancing',
-      'talking',
-      'looking',
-      'holding',
-      'reaching',
-      'falling',
-      'flying',
-      'swimming',
-      'driving',
-    ].filter((value): value is string => Boolean(value && value.trim().length > 0));
+      "walking",
+      "running",
+      "jumping",
+      "sitting",
+      "standing",
+      "dancing",
+      "talking",
+      "looking",
+      "holding",
+      "reaching",
+      "falling",
+      "flying",
+      "swimming",
+      "driving",
+    ].filter((value): value is string =>
+      Boolean(value && value.trim().length > 0),
+    );
 
     const cleanedRaw = this.cleanWhitespace(raw);
-    const leadSentence = cleanedRaw.split(/[.!?]/)[0] ?? '';
+    const leadSentence = cleanedRaw.split(/[.!?]/)[0] ?? "";
     const leadMatch = this.matchActionCandidate(leadSentence, actionTerms);
     if (leadMatch) {
       return leadMatch;
@@ -446,11 +493,14 @@ export class RunwayStrategy extends BaseStrategy {
     return null;
   }
 
-  private matchActionCandidate(text: string, candidates: string[]): string | null {
+  private matchActionCandidate(
+    text: string,
+    candidates: string[],
+  ): string | null {
     for (const term of candidates) {
       const pattern = new RegExp(
         `\\b${this.escapeRegex(term)}\\b(?:\\s+(?:[a-z0-9'-]+)){0,4}`,
-        'i'
+        "i",
       );
       const match = text.match(pattern);
       if (!match?.[0]) {
@@ -464,7 +514,10 @@ export class RunwayStrategy extends BaseStrategy {
     return null;
   }
 
-  private extractEnvironmentPhrase(ir: VideoPromptIR, raw: string): string | null {
+  private extractEnvironmentPhrase(
+    ir: VideoPromptIR,
+    raw: string,
+  ): string | null {
     if (ir.environment.setting && ir.environment.setting.trim().length > 0) {
       return ir.environment.setting.trim();
     }
@@ -474,23 +527,26 @@ export class RunwayStrategy extends BaseStrategy {
     }
 
     const environmentTerms = [
-      'in a forest',
-      'in the city',
-      'at the beach',
-      'on a mountain',
-      'in a room',
-      'at a park',
-      'in the desert',
-      'on the street',
-      'inside a building',
-      'outside',
-      'in the garden',
+      "in a forest",
+      "in the city",
+      "at the beach",
+      "on a mountain",
+      "in a room",
+      "at a park",
+      "in the desert",
+      "on the street",
+      "inside a building",
+      "outside",
+      "in the garden",
     ];
 
     return this.findFirstMatchingTerm(raw, environmentTerms);
   }
 
-  private findFirstMatchingTerm(text: string, terms: readonly string[]): string | null {
+  private findFirstMatchingTerm(
+    text: string,
+    terms: readonly string[],
+  ): string | null {
     const lower = text.toLowerCase();
     for (const term of terms) {
       const lowerTerm = term.toLowerCase();
@@ -505,38 +561,41 @@ export class RunwayStrategy extends BaseStrategy {
   private removeFirstOccurrence(text: string, value: string): string {
     const index = text.toLowerCase().indexOf(value.toLowerCase());
     if (index === -1) return text;
-    return `${text.slice(0, index)} ${text.slice(index + value.length)}`.replace(/\s+/g, ' ');
+    return `${text.slice(0, index)} ${text.slice(index + value.length)}`.replace(
+      /\s+/g,
+      " ",
+    );
   }
 
   private trimTrailingConnectors(value: string): string {
     const trailing = new Set([
-      'in',
-      'on',
-      'at',
-      'with',
-      'near',
-      'beside',
-      'past',
-      'through',
-      'across',
-      'to',
-      'from',
-      'into',
-      'onto',
-      'a',
-      'an',
-      'the',
+      "in",
+      "on",
+      "at",
+      "with",
+      "near",
+      "beside",
+      "past",
+      "through",
+      "across",
+      "to",
+      "from",
+      "into",
+      "onto",
+      "a",
+      "an",
+      "the",
     ]);
 
     const words = value.trim().split(/\s+/).filter(Boolean);
     while (words.length > 1) {
-      const last = words[words.length - 1]?.toLowerCase() ?? '';
+      const last = words[words.length - 1]?.toLowerCase() ?? "";
       if (!trailing.has(last)) {
         break;
       }
       words.pop();
     }
-    return words.join(' ');
+    return words.join(" ");
   }
 
   /**
@@ -547,40 +606,55 @@ export class RunwayStrategy extends BaseStrategy {
     const lowerPrompt = prompt.toLowerCase();
 
     // Always add shallow depth of field for subject focus
-    if (lowerPrompt.includes('person') || lowerPrompt.includes('man') ||
-        lowerPrompt.includes('woman') || lowerPrompt.includes('character')) {
-      selected.push('shallow depth of field');
+    if (
+      lowerPrompt.includes("person") ||
+      lowerPrompt.includes("man") ||
+      lowerPrompt.includes("woman") ||
+      lowerPrompt.includes("character")
+    ) {
+      selected.push("shallow depth of field");
     }
 
     // Add lens flare for outdoor/bright scenes
-    if (lowerPrompt.includes('sun') || lowerPrompt.includes('outdoor') ||
-        lowerPrompt.includes('bright') || lowerPrompt.includes('day')) {
-      selected.push('anamorphic lens flare');
+    if (
+      lowerPrompt.includes("sun") ||
+      lowerPrompt.includes("outdoor") ||
+      lowerPrompt.includes("bright") ||
+      lowerPrompt.includes("day")
+    ) {
+      selected.push("anamorphic lens flare");
     }
 
     // Add film grain for cinematic feel
-    if (lowerPrompt.includes('cinematic') || lowerPrompt.includes('film') ||
-        lowerPrompt.includes('movie')) {
-      selected.push('film grain');
+    if (
+      lowerPrompt.includes("cinematic") ||
+      lowerPrompt.includes("film") ||
+      lowerPrompt.includes("movie")
+    ) {
+      selected.push("film grain");
     }
 
     // Add volumetric lighting for atmospheric scenes
-    if (lowerPrompt.includes('fog') || lowerPrompt.includes('mist') ||
-        lowerPrompt.includes('smoke') || lowerPrompt.includes('dust')) {
-      selected.push('volumetric lighting');
+    if (
+      lowerPrompt.includes("fog") ||
+      lowerPrompt.includes("mist") ||
+      lowerPrompt.includes("smoke") ||
+      lowerPrompt.includes("dust")
+    ) {
+      selected.push("volumetric lighting");
     }
 
     // Baseline: keep a lighting-style trigger present even when subject-only cues matched.
     // Subject focus (depth of field) alone can under-specify the lighting profile.
     const hasLightingStyleTrigger =
-      selected.includes('anamorphic lens flare') ||
-      selected.includes('film grain') ||
-      selected.includes('volumetric lighting') ||
-      selected.includes('cinematic lighting') ||
-      lowerPrompt.includes('cinematic lighting');
+      selected.includes("anamorphic lens flare") ||
+      selected.includes("film grain") ||
+      selected.includes("volumetric lighting") ||
+      selected.includes("cinematic lighting") ||
+      lowerPrompt.includes("cinematic lighting");
 
     if (!hasLightingStyleTrigger) {
-      selected.push('cinematic lighting');
+      selected.push("cinematic lighting");
     }
 
     // Limit to 3 triggers

@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { randomUUID } from "node:crypto";
 
 /**
  * Generate a prefixed unique ID using cryptographically secure randomness.
@@ -9,5 +9,5 @@ import { randomUUID } from 'node:crypto';
  * Format: `{prefix}_{timestamp}_{8-char-hex}`
  */
 export function generateId(prefix: string): string {
-  return `${prefix}_${Date.now()}_${randomUUID().replace(/-/g, '').slice(0, 8)}`;
+  return `${prefix}_${Date.now()}_${randomUUID().replace(/-/g, "").slice(0, 8)}`;
 }

@@ -1,9 +1,9 @@
-import { describe, expect, it, vi, type MockedFunction } from 'vitest';
+import { describe, expect, it, vi, type MockedFunction } from "vitest";
 
-import { readSpanLabelStream } from '@features/span-highlighting/api/spanLabelingStream';
-import type { SpanLabel } from '@features/span-highlighting/api/spanLabelingTypes';
+import { readSpanLabelStream } from "@features/span-highlighting/api/spanLabelingStream";
+import type { SpanLabel } from "@features/span-highlighting/api/spanLabelingTypes";
 
-describe('readSpanLabelStream', () => {
+describe("readSpanLabelStream", () => {
   const createReader = (chunks: string[]) => {
     const encoder = new TextEncoder();
     let index = 0;
@@ -20,12 +20,14 @@ describe('readSpanLabelStream', () => {
     } as unknown as ReadableStreamDefaultReader<Uint8Array>;
   };
 
-  it('parses spans and counts parse errors', async () => {
+  it("parses spans and counts parse errors", async () => {
     const lines = [
-      JSON.stringify({ start: 0, end: 4, category: 'style', confidence: 0.8 }) + '\n',
-      '{ bad json }\n',
-      JSON.stringify({ error: 'bad line' }) + '\n',
-      JSON.stringify({ start: 5, end: 7, category: 'style', confidence: 0.6 }) + '\n',
+      JSON.stringify({ start: 0, end: 4, category: "style", confidence: 0.8 }) +
+        "\n",
+      "{ bad json }\n",
+      JSON.stringify({ error: "bad line" }) + "\n",
+      JSON.stringify({ start: 5, end: 7, category: "style", confidence: 0.6 }) +
+        "\n",
     ];
 
     const reader = createReader(lines);

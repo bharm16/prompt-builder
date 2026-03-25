@@ -1,9 +1,9 @@
-import { logger } from '@infrastructure/Logger';
-import type { ILogger } from '@interfaces/ILogger';
-import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer';
-import type { AIService } from '@services/prompt-optimization/types';
-import type { CacheService } from '@services/cache/CacheService';
-import type { Suggestion } from '../generation/SuggestionGeneratorService';
+import { logger } from "@infrastructure/Logger";
+import type { ILogger } from "@interfaces/ILogger";
+import { StructuredOutputEnforcer } from "@utils/StructuredOutputEnforcer";
+import type { AIService } from "@services/prompt-optimization/types";
+import type { CacheService } from "@services/cache/CacheService";
+import type { Suggestion } from "../generation/SuggestionGeneratorService";
 
 /**
  * Compatibility check result
@@ -28,7 +28,7 @@ export class CompatibilityService {
   constructor(aiService: AIService, cacheService: CacheService) {
     this.ai = aiService;
     this.cacheService = cacheService;
-    this.log = logger.child({ service: 'CompatibilityService' });
+    this.log = logger.child({ service: "CompatibilityService" });
   }
 
   /**
@@ -36,22 +36,22 @@ export class CompatibilityService {
    */
   async scoreSemanticCompatibility(
     suggestion: Suggestion,
-    existingElements: Record<string, unknown>
+    existingElements: Record<string, unknown>,
   ): Promise<number> {
     const startTime = performance.now();
-    const operation = 'scoreSemanticCompatibility';
+    const operation = "scoreSemanticCompatibility";
     const cacheKey = `${suggestion.text}_${JSON.stringify(existingElements)}`;
 
     // Check cache first
     if (this.semanticCache.has(cacheKey)) {
-      this.log.debug('Cache hit.', {
+      this.log.debug("Cache hit.", {
         operation,
         duration: Math.round(performance.now() - startTime),
       });
       return this.semanticCache.get(cacheKey)!;
     }
-    
-    this.log.debug('Starting operation.', {
+
+    this.log.debug("Starting operation.", {
       operation,
       suggestionLength: suggestion.text.length,
       elementCount: Object.keys(existingElements).length,
@@ -81,19 +81,23 @@ Respond with ONLY a decimal number between 0 and 1, where:
 Score:`;
 
     try {
-      const response = await this.ai.execute('video_compatibility', {
+      const response = await this.ai.execute("video_compatibility", {
         systemPrompt: compatibilityPrompt,
         maxTokens: 10,
         temperature: 0.1,
       });
 
-      const score = parseFloat((response.text || response.content?.[0]?.text || '').trim());
+      const score = parseFloat(
+        (response.text || response.content?.[0]?.text || "").trim(),
+      );
 
       // Cache the score
-      const normalizedScore = isNaN(score) ? 0.5 : Math.min(1, Math.max(0, score));
+      const normalizedScore = isNaN(score)
+        ? 0.5
+        : Math.min(1, Math.max(0, score));
       this.semanticCache.set(cacheKey, normalizedScore);
 
-      this.log.debug('Operation completed.', {
+      this.log.debug("Operation completed.", {
         operation,
         duration: Math.round(performance.now() - startTime),
         score: normalizedScore,
@@ -101,7 +105,7 @@ Score:`;
 
       return normalizedScore;
     } catch (error) {
-      this.log.warn('Operation failed.', {
+      this.log.warn("Operation failed.", {
         operation,
         duration: Math.round(performance.now() - startTime),
         error: error instanceof Error ? error.message : String(error),
@@ -119,12 +123,12 @@ Score:`;
       elementType: string;
       context: Record<string, string>;
       concept?: string;
-    }
+    },
   ): Promise<Suggestion[]> {
     const startTime = performance.now();
-    const operation = 'filterBySemanticCompatibility';
-    
-    this.log.debug('Starting operation.', {
+    const operation = "filterBySemanticCompatibility";
+
+    this.log.debug("Starting operation.", {
       operation,
       suggestionCount: suggestions.length,
       elementType: params.elementType,
@@ -135,7 +139,7 @@ Score:`;
     const existingElements = {
       elementType: params.elementType,
       context: params.context || {},
-      concept: params.concept || '',
+      concept: params.concept || "",
     };
 
     // Score all suggestions
@@ -144,25 +148,31 @@ Score:`;
         ...suggestion,
         compatibilityScore: await this.scoreSemanticCompatibility(
           suggestion,
-          existingElements
+          existingElements,
         ),
-      }))
+      })),
     );
 
     // Filter by threshold and sort by score
     const threshold = 0.6; // Minimum compatibility score
     const filtered = scoredSuggestions
-      .filter(s => s.compatibilityScore! >= threshold)
-      .sort((a, b) => (b.compatibilityScore || 0) - (a.compatibilityScore || 0));
+      .filter((s) => s.compatibilityScore! >= threshold)
+      .sort(
+        (a, b) => (b.compatibilityScore || 0) - (a.compatibilityScore || 0),
+      );
 
     // Ensure we return at least 4 suggestions
-    const result = filtered.length < 4
-      ? scoredSuggestions
-          .sort((a, b) => (b.compatibilityScore || 0) - (a.compatibilityScore || 0))
-          .slice(0, 8)
-      : filtered;
+    const result =
+      filtered.length < 4
+        ? scoredSuggestions
+            .sort(
+              (a, b) =>
+                (b.compatibilityScore || 0) - (a.compatibilityScore || 0),
+            )
+            .slice(0, 8)
+        : filtered;
 
-    this.log.info('Operation completed.', {
+    this.log.info("Operation completed.", {
       operation,
       duration: Math.round(performance.now() - startTime),
       inputCount: suggestions.length,
@@ -182,9 +192,9 @@ Score:`;
     existingElements: Record<string, string>;
   }): Promise<CompatibilityResult> {
     const startTime = performance.now();
-    const operation = 'checkCompatibility';
-    
-    this.log.debug('Starting operation.', {
+    const operation = "checkCompatibility";
+
+    this.log.debug("Starting operation.", {
       operation,
       elementType: params.elementType,
       valueLength: params.value.length,
@@ -192,12 +202,12 @@ Score:`;
     });
 
     if (!params.value || Object.keys(params.existingElements).length === 0) {
-      this.log.debug('Operation skipped.', {
+      this.log.debug("Operation skipped.", {
         operation,
-        reason: 'no_value_or_elements',
+        reason: "no_value_or_elements",
         duration: Math.round(performance.now() - startTime),
       });
-      return { score: 1, feedback: 'No conflicts detected' };
+      return { score: 1, feedback: "No conflicts detected" };
     }
 
     const prompt = `Analyze the compatibility of this element with existing elements.
@@ -208,7 +218,7 @@ Existing Elements:
 ${Object.entries(params.existingElements)
   .filter(([k, v]) => v && k !== params.elementType)
   .map(([k, v]) => `${k}: ${v}`)
-  .join('\n')}
+  .join("\n")}
 
 Consider:
 1. Logical consistency (do these make sense together?)
@@ -225,37 +235,37 @@ Respond with ONLY a JSON object:
 }`;
 
     try {
-      const schema: { type: 'object' | 'array'; required?: string[] } = {
-        type: 'object' as const,
-        required: ['score', 'feedback'],
+      const schema: { type: "object" | "array"; required?: string[] } = {
+        type: "object" as const,
+        required: ["score", "feedback"],
       };
-      
-      const result = await StructuredOutputEnforcer.enforceJSON(
+
+      const result = (await StructuredOutputEnforcer.enforceJSON(
         this.ai,
         prompt,
         {
-          operation: 'video_compatibility_check',
+          operation: "video_compatibility_check",
           schema,
           maxTokens: 256,
           temperature: 0.3,
-        }
-      ) as CompatibilityResult;
-      
-      this.log.info('Operation completed.', {
+        },
+      )) as CompatibilityResult;
+
+      this.log.info("Operation completed.", {
         operation,
         duration: Math.round(performance.now() - startTime),
         score: result.score,
         hasConflicts: !!result.conflicts && result.conflicts.length > 0,
       });
-      
+
       return result;
     } catch (error) {
-      this.log.error('Operation failed.', error as Error, {
+      this.log.error("Operation failed.", error as Error, {
         operation,
         duration: Math.round(performance.now() - startTime),
         elementType: params.elementType,
       });
-      return { score: 0.5, feedback: 'Unable to determine compatibility' };
+      return { score: 0.5, feedback: "Unable to determine compatibility" };
     }
   }
 

@@ -88,7 +88,12 @@ export class SuggestionCache<T> {
    * @param promptHash - Simple hash of full prompt
    * @returns Cache key string
    */
-  static generateKey(highlightedText: string, contextBefore: string, contextAfter: string, promptHash: string): string {
+  static generateKey(
+    highlightedText: string,
+    contextBefore: string,
+    contextAfter: string,
+    promptHash: string,
+  ): string {
     return `${highlightedText}|${contextBefore}|${contextAfter}|${promptHash}`;
   }
 

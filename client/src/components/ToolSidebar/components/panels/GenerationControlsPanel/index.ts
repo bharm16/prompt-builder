@@ -1,2 +1,2 @@
-export { GenerationControlsPanel } from './GenerationControlsPanel';
-export type { GenerationControlsPanelProps } from './types';
+export { GenerationControlsPanel } from "./GenerationControlsPanel";
+export type { GenerationControlsPanelProps } from "./types";

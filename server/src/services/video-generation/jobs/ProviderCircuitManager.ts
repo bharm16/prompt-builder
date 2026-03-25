@@ -1,6 +1,6 @@
-import { logger } from '@infrastructure/Logger';
+import { logger } from "@infrastructure/Logger";
 
-type ProviderCircuitState = 'closed' | 'open' | 'half-open';
+type ProviderCircuitState = "closed" | "open" | "half-open";
 
 interface ProviderCircuitRecord {
   state: ProviderCircuitState;
@@ -19,7 +19,10 @@ interface ProviderCircuitManagerOptions {
   /** Max time (ms) a half-open probe can be in-flight before it's considered stuck. Defaults to 5 minutes. */
   halfOpenProbeTimeoutMs?: number;
   metrics?: {
-    recordAlert?: (alertName: string, metadata?: Record<string, unknown>) => void;
+    recordAlert?: (
+      alertName: string,
+      metadata?: Record<string, unknown>,
+    ) => void;
   };
 }
 
@@ -38,40 +41,47 @@ const DEFAULT_MAX_SAMPLES = 50;
 const DEFAULT_HALF_OPEN_PROBE_TIMEOUT_MS = 5 * 60_000;
 
 export class ProviderCircuitManager {
-  private readonly log = logger.child({ service: 'ProviderCircuitManager' });
+  private readonly log = logger.child({ service: "ProviderCircuitManager" });
   private readonly records = new Map<string, ProviderCircuitRecord>();
   private readonly failureRateThreshold: number;
   private readonly minVolume: number;
   private readonly cooldownMs: number;
   private readonly maxSamples: number;
   private readonly halfOpenProbeTimeoutMs: number;
-  private readonly metrics: ProviderCircuitManagerOptions['metrics'];
+  private readonly metrics: ProviderCircuitManagerOptions["metrics"];
   private readonly recoveryCallbacks = new Set<(provider: string) => void>();
 
   /** Returns snapshots for all tracked providers. Useful for startup logging and diagnostics. */
   getAllSnapshots(): ProviderCircuitSnapshot[] {
-    return Array.from(this.records.keys()).map((provider) => this.getSnapshot(provider));
+    return Array.from(this.records.keys()).map((provider) =>
+      this.getSnapshot(provider),
+    );
   }
 
   constructor(options: ProviderCircuitManagerOptions = {}) {
     this.failureRateThreshold =
-      typeof options.failureRateThreshold === 'number' && Number.isFinite(options.failureRateThreshold)
+      typeof options.failureRateThreshold === "number" &&
+      Number.isFinite(options.failureRateThreshold)
         ? Math.min(1, Math.max(0.01, options.failureRateThreshold))
         : DEFAULT_FAILURE_RATE_THRESHOLD;
     this.minVolume =
-      typeof options.minVolume === 'number' && Number.isFinite(options.minVolume)
+      typeof options.minVolume === "number" &&
+      Number.isFinite(options.minVolume)
         ? Math.max(1, Math.trunc(options.minVolume))
         : DEFAULT_MIN_VOLUME;
     this.cooldownMs =
-      typeof options.cooldownMs === 'number' && Number.isFinite(options.cooldownMs)
+      typeof options.cooldownMs === "number" &&
+      Number.isFinite(options.cooldownMs)
         ? Math.max(1_000, Math.trunc(options.cooldownMs))
         : DEFAULT_COOLDOWN_MS;
     this.maxSamples =
-      typeof options.maxSamples === 'number' && Number.isFinite(options.maxSamples)
+      typeof options.maxSamples === "number" &&
+      Number.isFinite(options.maxSamples)
         ? Math.max(5, Math.trunc(options.maxSamples))
         : DEFAULT_MAX_SAMPLES;
     this.halfOpenProbeTimeoutMs =
-      typeof options.halfOpenProbeTimeoutMs === 'number' && Number.isFinite(options.halfOpenProbeTimeoutMs)
+      typeof options.halfOpenProbeTimeoutMs === "number" &&
+      Number.isFinite(options.halfOpenProbeTimeoutMs)
         ? Math.max(10_000, Math.trunc(options.halfOpenProbeTimeoutMs))
         : DEFAULT_HALF_OPEN_PROBE_TIMEOUT_MS;
     this.metrics = options.metrics;
@@ -81,18 +91,18 @@ export class ProviderCircuitManager {
     const record = this.getRecord(provider);
     const now = Date.now();
 
-    if (record.state === 'open') {
+    if (record.state === "open") {
       if (now < record.cooldownUntilMs) {
         return false;
       }
-      record.state = 'half-open';
+      record.state = "half-open";
       record.halfOpenProbeInFlight = false;
       record.halfOpenProbeDispatchedAtMs = 0;
-      this.log.warn('Provider circuit moved to half-open', { provider });
+      this.log.warn("Provider circuit moved to half-open", { provider });
       this.notifyRecovery(provider);
     }
 
-    if (record.state === 'half-open') {
+    if (record.state === "half-open") {
       if (
         record.halfOpenProbeInFlight &&
         record.halfOpenProbeDispatchedAtMs > 0 &&
@@ -102,12 +112,12 @@ export class ProviderCircuitManager {
         // Reset the probe flag so a new probe can be dispatched.
         record.halfOpenProbeInFlight = false;
         record.halfOpenProbeDispatchedAtMs = 0;
-        this.log.warn('Half-open probe timed out — allowing new probe', {
+        this.log.warn("Half-open probe timed out — allowing new probe", {
           provider,
           probeAge: now - record.halfOpenProbeDispatchedAtMs,
           timeoutMs: this.halfOpenProbeTimeoutMs,
         });
-        this.metrics?.recordAlert?.('video_provider_half_open_probe_timeout', {
+        this.metrics?.recordAlert?.("video_provider_half_open_probe_timeout", {
           provider,
           timeoutMs: this.halfOpenProbeTimeoutMs,
         });
@@ -120,7 +130,7 @@ export class ProviderCircuitManager {
 
   markDispatched(provider: string): void {
     const record = this.getRecord(provider);
-    if (record.state === 'half-open') {
+    if (record.state === "half-open") {
       record.halfOpenProbeInFlight = true;
       record.halfOpenProbeDispatchedAtMs = Date.now();
     }
@@ -129,14 +139,19 @@ export class ProviderCircuitManager {
   recordSuccess(provider: string): void {
     const record = this.getRecord(provider);
 
-    if (record.state === 'half-open') {
-      record.state = 'closed';
+    if (record.state === "half-open") {
+      record.state = "closed";
       record.outcomes = [true];
       record.cooldownUntilMs = 0;
       record.halfOpenProbeInFlight = false;
       record.halfOpenProbeDispatchedAtMs = 0;
-      this.log.info('Provider circuit closed after successful half-open probe', { provider });
-      this.metrics?.recordAlert?.('video_provider_circuit_closed', { provider });
+      this.log.info(
+        "Provider circuit closed after successful half-open probe",
+        { provider },
+      );
+      this.metrics?.recordAlert?.("video_provider_circuit_closed", {
+        provider,
+      });
       this.notifyRecovery(provider);
       return;
     }
@@ -148,8 +163,8 @@ export class ProviderCircuitManager {
   recordFailure(provider: string): void {
     const record = this.getRecord(provider);
 
-    if (record.state === 'half-open') {
-      this.openCircuit(provider, record, 'half-open probe failed');
+    if (record.state === "half-open") {
+      this.openCircuit(provider, record, "half-open probe failed");
       return;
     }
 
@@ -162,13 +177,13 @@ export class ProviderCircuitManager {
 
     const failureRate = this.computeFailureRate(record.outcomes);
     if (failureRate >= this.failureRateThreshold) {
-      this.openCircuit(provider, record, 'failure threshold exceeded');
+      this.openCircuit(provider, record, "failure threshold exceeded");
     }
   }
 
   isOpen(provider: string): boolean {
     const record = this.getRecord(provider);
-    return record.state === 'open' && Date.now() < record.cooldownUntilMs;
+    return record.state === "open" && Date.now() < record.cooldownUntilMs;
   }
 
   getSnapshot(provider: string): ProviderCircuitSnapshot {
@@ -185,7 +200,9 @@ export class ProviderCircuitManager {
   /** Register a callback that fires when any provider recovers (transitions to half-open or closed). Returns an unsubscribe function. */
   onRecovery(callback: (provider: string) => void): () => void {
     this.recoveryCallbacks.add(callback);
-    return () => { this.recoveryCallbacks.delete(callback); };
+    return () => {
+      this.recoveryCallbacks.delete(callback);
+    };
   }
 
   private notifyRecovery(provider: string): void {
@@ -198,19 +215,23 @@ export class ProviderCircuitManager {
     }
   }
 
-  private openCircuit(provider: string, record: ProviderCircuitRecord, reason: string): void {
-    record.state = 'open';
+  private openCircuit(
+    provider: string,
+    record: ProviderCircuitRecord,
+    reason: string,
+  ): void {
+    record.state = "open";
     record.cooldownUntilMs = Date.now() + this.cooldownMs;
     record.halfOpenProbeInFlight = false;
     record.halfOpenProbeDispatchedAtMs = 0;
-    this.log.warn('Provider circuit opened', {
+    this.log.warn("Provider circuit opened", {
       provider,
       reason,
       cooldownMs: this.cooldownMs,
       failureRate: this.computeFailureRate(record.outcomes),
       sampleSize: record.outcomes.length,
     });
-    this.metrics?.recordAlert?.('video_provider_circuit_opened', {
+    this.metrics?.recordAlert?.("video_provider_circuit_opened", {
       provider,
       reason,
       cooldownMs: this.cooldownMs,
@@ -223,7 +244,7 @@ export class ProviderCircuitManager {
       return existing;
     }
     const created: ProviderCircuitRecord = {
-      state: 'closed',
+      state: "closed",
       outcomes: [],
       cooldownUntilMs: 0,
       halfOpenProbeInFlight: false,

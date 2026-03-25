@@ -1,11 +1,11 @@
-import type { PromptVersionEntry } from '@features/prompt-optimizer/types/domain/prompt-session';
-import { getModelConfig } from '@features/generations/config/generationConfig';
-import type { Generation } from '@features/generations/types';
+import type { PromptVersionEntry } from "@features/prompt-optimizer/types/domain/prompt-session";
+import { getModelConfig } from "@features/generations/config/generationConfig";
+import type { Generation } from "@features/generations/types";
 import type {
   GalleryGeneration,
   GalleryPromptSpan,
   GalleryTier,
-} from '@/features/prompt-optimizer/components/GalleryPanel';
+} from "@/features/prompt-optimizer/components/GalleryPanel";
 
 interface GalleryGenerationEntry {
   gallery: GalleryGeneration;
@@ -25,25 +25,31 @@ type VersionGenerationSource = {
   versionPreviewAssetId: string | null;
 };
 
-const resolveTimestamp = (generation: Generation, versionTimestamp: number | null): number =>
-  generation.completedAt ?? generation.createdAt ?? versionTimestamp ?? Date.now();
+const resolveTimestamp = (
+  generation: Generation,
+  versionTimestamp: number | null,
+): number =>
+  generation.completedAt ??
+  generation.createdAt ??
+  versionTimestamp ??
+  Date.now();
 
 const mapTier = (generation: Generation): GalleryTier => {
-  if (generation.mediaType === 'image-sequence') return 'preview';
-  if (generation.tier === 'draft') return 'draft';
-  return 'final';
+  if (generation.mediaType === "image-sequence") return "preview";
+  if (generation.tier === "draft") return "draft";
+  return "final";
 };
 
 const isLikelyVideoUrl = (url: string): boolean => {
   const value = url.toLowerCase();
-  if (value.includes('/api/preview/video/content/')) {
+  if (value.includes("/api/preview/video/content/")) {
     return true;
   }
   return /\.(mp4|webm|mov|m3u8)(\?|#|$)/.test(value);
 };
 
 const normalizeNonEmpty = (value: string | null | undefined): string | null =>
-  typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
+  typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
 
 const toEpochMs = (value: string | null | undefined): number | null => {
   if (!value) return null;
@@ -52,7 +58,7 @@ const toEpochMs = (value: string | null | undefined): number | null => {
 };
 
 const buildVersionMediaFallbackGeneration = (
-  version: PromptVersionEntry
+  version: PromptVersionEntry,
 ): Generation | null => {
   const videoUrl = normalizeNonEmpty(version.video?.videoUrl ?? null);
   const previewUrl = normalizeNonEmpty(version.preview?.imageUrl ?? null);
@@ -61,25 +67,30 @@ const buildVersionMediaFallbackGeneration = (
     return null;
   }
 
-  const mediaType: Generation['mediaType'] = videoUrl ? 'video' : 'image';
+  const mediaType: Generation["mediaType"] = videoUrl ? "video" : "image";
   const mediaUrl = videoUrl ?? previewUrl;
   if (!mediaUrl) return null;
 
   const mediaRef = videoUrl
-    ? normalizeNonEmpty(version.video?.storagePath ?? version.video?.assetId ?? null)
-    : normalizeNonEmpty(version.preview?.storagePath ?? version.preview?.assetId ?? null);
+    ? normalizeNonEmpty(
+        version.video?.storagePath ?? version.video?.assetId ?? null,
+      )
+    : normalizeNonEmpty(
+        version.preview?.storagePath ?? version.preview?.assetId ?? null,
+      );
 
   const completedAt = toEpochMs(
-    (videoUrl ? version.video?.generatedAt : version.preview?.generatedAt) ?? version.timestamp
+    (videoUrl ? version.video?.generatedAt : version.preview?.generatedAt) ??
+      version.timestamp,
   );
   const createdAt = toEpochMs(version.timestamp) ?? completedAt ?? Date.now();
 
   return {
     id: `version-media-${version.versionId}`,
-    tier: 'render',
-    status: 'completed',
-    model: normalizeNonEmpty(version.video?.model ?? null) ?? 'unknown',
-    prompt: version.prompt ?? '',
+    tier: "render",
+    status: "completed",
+    model: normalizeNonEmpty(version.video?.model ?? null) ?? "unknown",
+    prompt: version.prompt ?? "",
     promptVersionId: version.versionId,
     createdAt,
     completedAt: completedAt ?? createdAt,
@@ -99,13 +110,13 @@ const buildVersionMediaFallbackGeneration = (
 
 const resolveThumbnailUrl = (
   generation: Generation,
-  versionPreviewImageUrl: string | null
+  versionPreviewImageUrl: string | null,
 ): string | null => {
-  const isCompletedGeneration = generation.status === 'completed';
+  const isCompletedGeneration = generation.status === "completed";
   const normalizedThumbnail = normalizeNonEmpty(generation.thumbnailUrl);
   const normalizedVersionPreview = normalizeNonEmpty(versionPreviewImageUrl);
 
-  if (generation.mediaType === 'video') {
+  if (generation.mediaType === "video") {
     if (normalizedThumbnail && !isLikelyVideoUrl(normalizedThumbnail)) {
       return normalizedThumbnail;
     }
@@ -137,9 +148,9 @@ const resolveThumbnailUrl = (
 
 const hasBrowsableMedia = (
   generation: Generation,
-  versionPreviewImageUrl: string | null
+  versionPreviewImageUrl: string | null,
 ): boolean => {
-  if (generation.status !== 'completed') {
+  if (generation.status !== "completed") {
     return false;
   }
 
@@ -151,23 +162,25 @@ const hasBrowsableMedia = (
   return generation.mediaUrls.some((url) => normalizeNonEmpty(url) !== null);
 };
 
-const parsePromptSpans = (highlights: PromptVersionEntry['highlights']): GalleryPromptSpan[] => {
-  if (!highlights || typeof highlights !== 'object') return [];
+const parsePromptSpans = (
+  highlights: PromptVersionEntry["highlights"],
+): GalleryPromptSpan[] => {
+  if (!highlights || typeof highlights !== "object") return [];
   if (!Array.isArray((highlights as { spans?: unknown }).spans)) return [];
 
   const spans = (highlights as { spans: unknown[] }).spans;
   return spans
     .map((candidate) => {
-      if (!candidate || typeof candidate !== 'object') return null;
+      if (!candidate || typeof candidate !== "object") return null;
       const maybe = candidate as {
         start?: unknown;
         end?: unknown;
         category?: unknown;
       };
       if (
-        typeof maybe.start !== 'number' ||
-        typeof maybe.end !== 'number' ||
-        typeof maybe.category !== 'string'
+        typeof maybe.start !== "number" ||
+        typeof maybe.end !== "number" ||
+        typeof maybe.category !== "string"
       ) {
         return null;
       }
@@ -183,29 +196,34 @@ const parsePromptSpans = (highlights: PromptVersionEntry['highlights']): Gallery
 
 const generationCompleteness = (generation: Generation): number => {
   let score = 0;
-  if (generation.status === 'completed') score += 10;
+  if (generation.status === "completed") score += 10;
   if (generation.mediaUrls.length > 0) score += 3;
   if (generation.thumbnailUrl) score += 1;
   if (generation.completedAt) score += 1;
   return score;
 };
 
-const mergeGeneration = (incoming: Generation, existing: Generation): Generation => ({
+const mergeGeneration = (
+  incoming: Generation,
+  existing: Generation,
+): Generation => ({
   ...(generationCompleteness(incoming) >= generationCompleteness(existing)
     ? incoming
     : existing),
   isFavorite:
-    typeof incoming.isFavorite === 'boolean'
+    typeof incoming.isFavorite === "boolean"
       ? incoming.isFavorite
-      : typeof existing.isFavorite === 'boolean'
+      : typeof existing.isFavorite === "boolean"
         ? existing.isFavorite
         : false,
   generationSettings:
     incoming.generationSettings ?? existing.generationSettings ?? null,
 });
 
-const formatDuration = (duration: number | null | undefined): string | undefined =>
-  typeof duration === 'number' && Number.isFinite(duration) && duration > 0
+const formatDuration = (
+  duration: number | null | undefined,
+): string | undefined =>
+  typeof duration === "number" && Number.isFinite(duration) && duration > 0
     ? `${duration}s`
     : undefined;
 
@@ -216,10 +234,10 @@ const resolveMediaAssetId = (generation: Generation): string | null => {
 
 const resolveThumbnailAssetId = (
   generation: Generation,
-  versionPreviewAssetId: string | null
+  versionPreviewAssetId: string | null,
 ): string | null => {
   // For images the thumbnail IS the primary media, so use its asset ID
-  if (generation.mediaType !== 'video') {
+  if (generation.mediaType !== "video") {
     return resolveMediaAssetId(generation);
   }
   // For videos prefer the version preview asset ID (image asset)
@@ -231,14 +249,14 @@ const mapGalleryGeneration = (
   promptSpans: GalleryPromptSpan[],
   versionTimestamp: number | null,
   versionPreviewImageUrl: string | null,
-  versionPreviewAssetId: string | null
+  versionPreviewAssetId: string | null,
 ): GalleryGeneration => ({
   id: generation.id,
   tier: mapTier(generation),
   thumbnailUrl: resolveThumbnailUrl(generation, versionPreviewImageUrl),
   mediaUrl: generation.mediaUrls[0] ?? null,
   mediaType: generation.mediaType,
-  prompt: generation.prompt ?? '',
+  prompt: generation.prompt ?? "",
   model: getModelConfig(generation.model)?.label ?? generation.model,
   duration: formatDuration(generation.duration),
   aspectRatio: generation.aspectRatio ?? undefined,
@@ -259,16 +277,22 @@ export function buildGalleryGenerationEntries({
     const timestamp = Date.parse(version.timestamp);
     const versionTimestamp = Number.isFinite(timestamp) ? timestamp : null;
     const promptSpans = parsePromptSpans(version.highlights);
-    const versionPreviewImageUrl = normalizeNonEmpty(version.preview?.imageUrl ?? null);
-    const versionPreviewAssetId = normalizeNonEmpty(version.preview?.assetId ?? null);
+    const versionPreviewImageUrl = normalizeNonEmpty(
+      version.preview?.imageUrl ?? null,
+    );
+    const versionPreviewAssetId = normalizeNonEmpty(
+      version.preview?.assetId ?? null,
+    );
     const explicitGenerations =
       Array.isArray(version.generations) && version.generations.length > 0
         ? version.generations
         : null;
-    const generations = explicitGenerations ?? (() => {
-      const fallback = buildVersionMediaFallbackGeneration(version);
-      return fallback ? [fallback] : [];
-    })();
+    const generations =
+      explicitGenerations ??
+      (() => {
+        const fallback = buildVersionMediaFallbackGeneration(version);
+        return fallback ? [fallback] : [];
+      })();
     for (const generation of generations) {
       versionGenerations.push({
         generation,
@@ -306,10 +330,7 @@ export function buildGalleryGenerationEntries({
 
   return Array.from(mergedById.values())
     .filter((source) =>
-      hasBrowsableMedia(
-        source.generation,
-        source.versionPreviewImageUrl
-      )
+      hasBrowsableMedia(source.generation, source.versionPreviewImageUrl),
     )
     .map((source) => ({
       gallery: mapGalleryGeneration(
@@ -317,7 +338,7 @@ export function buildGalleryGenerationEntries({
         source.promptSpans,
         source.versionTimestamp,
         source.versionPreviewImageUrl,
-        source.versionPreviewAssetId
+        source.versionPreviewAssetId,
       ),
       generation: source.generation,
     }))

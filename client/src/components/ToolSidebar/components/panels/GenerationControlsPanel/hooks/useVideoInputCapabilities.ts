@@ -1,5 +1,5 @@
-import { useMemo } from 'react';
-import type { CapabilitiesSchema } from '@shared/capabilities';
+import { useMemo } from "react";
+import type { CapabilitiesSchema } from "@shared/capabilities";
 
 export interface VideoInputCapabilities {
   supportsStartFrame: boolean;
@@ -18,7 +18,7 @@ const DEFAULT_VIDEO_INPUT_CAPABILITIES: VideoInputCapabilities = {
 };
 
 export function useVideoInputCapabilities(
-  schema: CapabilitiesSchema | null
+  schema: CapabilitiesSchema | null,
 ): VideoInputCapabilities {
   return useMemo(() => {
     if (!schema?.fields) {

@@ -1,8 +1,8 @@
-import type { Router } from 'express';
-import { logger } from '@infrastructure/Logger';
-import { asyncHandler } from '@middleware/asyncHandler';
-import { validateRequest } from '@middleware/validateRequest';
-import { customSuggestionSchema } from '@utils/validation';
+import type { Router } from "express";
+import { logger } from "@infrastructure/Logger";
+import { asyncHandler } from "@middleware/asyncHandler";
+import { validateRequest } from "@middleware/validateRequest";
+import { customSuggestionSchema } from "@utils/validation";
 
 interface CustomSuggestionsResult {
   suggestions?: unknown[];
@@ -11,21 +11,23 @@ interface CustomSuggestionsResult {
 
 interface CustomSuggestionsDeps {
   enhancementService: {
-    getCustomSuggestions: (payload: Record<string, unknown>) => Promise<CustomSuggestionsResult>;
+    getCustomSuggestions: (
+      payload: Record<string, unknown>,
+    ) => Promise<CustomSuggestionsResult>;
   };
 }
 
 export function registerCustomSuggestionsRoute(
   router: Router,
-  { enhancementService }: CustomSuggestionsDeps
+  { enhancementService }: CustomSuggestionsDeps,
 ): void {
   router.post(
-    '/get-custom-suggestions',
+    "/get-custom-suggestions",
     validateRequest(customSuggestionSchema),
     asyncHandler(async (req, res) => {
       const startTime = Date.now();
-      const requestId = req.id || 'unknown';
-      const operation = 'get-custom-suggestions';
+      const requestId = req.id || "unknown";
+      const operation = "get-custom-suggestions";
 
       const {
         highlightedText,
@@ -36,7 +38,7 @@ export function registerCustomSuggestionsRoute(
         metadata,
       } = req.body;
 
-      logger.info('Custom suggestions request received', {
+      logger.info("Custom suggestions request received", {
         operation,
         requestId,
         highlightedTextLength: highlightedText?.length || 0,
@@ -54,7 +56,7 @@ export function registerCustomSuggestionsRoute(
           metadata,
         });
 
-        logger.info('Custom suggestions request completed', {
+        logger.info("Custom suggestions request completed", {
           operation,
           requestId,
           duration: Date.now() - startTime,
@@ -63,13 +65,17 @@ export function registerCustomSuggestionsRoute(
 
         res.json(result);
       } catch (error) {
-        logger.error('Custom suggestions request failed', error instanceof Error ? error : new Error(String(error)), {
-          operation,
-          requestId,
-          duration: Date.now() - startTime,
-        });
+        logger.error(
+          "Custom suggestions request failed",
+          error instanceof Error ? error : new Error(String(error)),
+          {
+            operation,
+            requestId,
+            duration: Date.now() - startTime,
+          },
+        );
         throw error;
       }
-    })
+    }),
   );
 }

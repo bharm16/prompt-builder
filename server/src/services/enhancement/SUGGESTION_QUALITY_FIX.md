@@ -7,25 +7,30 @@ This document summarizes the changes made to fix poor suggestion quality from th
 ## Root Cause Analysis
 
 ### 1. Prompts Too Complex for 8B Model
+
 Meta explicitly states: "Llama 8B-Instruct can not reliably maintain a conversation alongside tool calling definitions."
 
 Our prompts were 25-40 lines with:
+
 - Multiple context fields
 - 6-8 rules per design
 - Complex constraint lines
 - Verbose guidance sections
 
 ### 2. Temperature Too High
+
 - Was: 0.8 for structured JSON output
 - Problem: High temperature causes unreliable JSON formatting
 - Groq recommends: Lower temperature for structured output
 
 ### 3. No Few-Shot Examples
+
 Groq explicitly recommends: "Include examples: add sample outputs or specific formats to guide the model into specific output structures"
 
 Our examples existed in `EnhancementExamples.ts` but were never injected into prompts.
 
 ### 4. Contrastive Decoding Made It Worse
+
 Temperatures were [0.7, 0.9, 1.0] - each batch got less reliable.
 
 ---
@@ -33,11 +38,14 @@ Temperatures were [0.7, 0.9, 1.0] - each batch got less reliable.
 ## Files Changed
 
 ### 1. `server/src/config/modelConfig.ts`
+
 - Changed `enhance_suggestions` temperature from 0.8 → 0.5
 - Added documentation explaining 8B model requirements
 
 ### 2. `server/src/services/enhancement/services/CleanPromptBuilder.ts`
+
 **Complete rewrite** - simplified for 8B models:
+
 - Reduced prompt length from 25-40 lines → ~15 lines
 - Added few-shot examples from `EnhancementExamples.ts`
 - Reduced rules from 6-8 → 4 per design
@@ -45,14 +53,17 @@ Temperatures were [0.7, 0.9, 1.0] - each batch got less reliable.
 - Trimmed context windows (100 chars vs 220 chars)
 
 ### 3. `server/src/services/enhancement/services/ContrastiveDiversityEnforcer.ts`
+
 - Changed temperatures from [0.7, 0.9, 1.0] → [0.4, 0.5, 0.6]
 - Simplified constraint injection (was verbose multi-paragraph → single line)
 
 ### 4. `server/src/utils/StructuredOutputEnforcer.ts`
+
 - Simplified JSON enforcement instructions
 - Reduced verbose multi-line instructions to single-line directives
 
 ### 5. `server/src/services/enhancement/services/types.ts`
+
 - Added documentation to `SharedPromptContext` interface
 
 ---
@@ -60,6 +71,7 @@ Temperatures were [0.7, 0.9, 1.0] - each batch got less reliable.
 ## Before/After Prompt Comparison
 
 ### BEFORE (Visual Decomposition - ~30 lines)
+
 ```
 You are a Visual Director translating abstract descriptors into grounded, camera-visible details.
 
@@ -103,6 +115,7 @@ Make explanations clear: what the viewer sees change on screen.
 ```
 
 ### AFTER (Visual Decomposition - ~15 lines)
+
 ```
 You are a visual director. Generate 12 descriptive phrase replacements.
 
@@ -157,6 +170,7 @@ Respond with ONLY valid JSON. Start with [ - no other text.
 ## Rollback Plan
 
 If issues occur, revert these files:
+
 - `server/src/config/modelConfig.ts` (temperature change)
 - `server/src/services/enhancement/services/CleanPromptBuilder.ts` (complete rewrite)
 - `server/src/services/enhancement/services/ContrastiveDiversityEnforcer.ts` (temperature + constraint changes)

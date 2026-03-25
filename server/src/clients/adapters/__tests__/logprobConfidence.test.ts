@@ -1,9 +1,9 @@
-import { describe, it, expect } from 'vitest';
-import { calculateConfidenceFromLogprobs } from '../logprobConfidence';
+import { describe, it, expect } from "vitest";
+import { calculateConfidenceFromLogprobs } from "../logprobConfidence";
 
-describe('calculateConfidenceFromLogprobs', () => {
-  describe('error handling', () => {
-    it('returns zeros for empty input', () => {
+describe("calculateConfidenceFromLogprobs", () => {
+  describe("error handling", () => {
+    it("returns zeros for empty input", () => {
       const result = calculateConfidenceFromLogprobs([]);
 
       expect(result).toEqual({
@@ -14,8 +14,10 @@ describe('calculateConfidenceFromLogprobs', () => {
       });
     });
 
-    it('returns zeros for undefined input', () => {
-      const result = calculateConfidenceFromLogprobs(undefined as unknown as Array<{ logprob: number }>);
+    it("returns zeros for undefined input", () => {
+      const result = calculateConfidenceFromLogprobs(
+        undefined as unknown as Array<{ logprob: number }>,
+      );
 
       expect(result).toEqual({
         average: 0,
@@ -26,8 +28,8 @@ describe('calculateConfidenceFromLogprobs', () => {
     });
   });
 
-  describe('edge cases', () => {
-    it('uses provided probabilities instead of exponentiating logprobs', () => {
+  describe("edge cases", () => {
+    it("uses provided probabilities instead of exponentiating logprobs", () => {
       const result = calculateConfidenceFromLogprobs([
         { logprob: Math.log(0.9) },
         { logprob: Math.log(0.2) },
@@ -41,8 +43,8 @@ describe('calculateConfidenceFromLogprobs', () => {
     });
   });
 
-  describe('core behavior', () => {
-    it('computes statistics from logprob values', () => {
+  describe("core behavior", () => {
+    it("computes statistics from logprob values", () => {
       const result = calculateConfidenceFromLogprobs([
         { logprob: Math.log(0.7) },
         { logprob: Math.log(0.6) },

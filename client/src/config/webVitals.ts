@@ -9,11 +9,11 @@
  * @see https://web.dev/articles/vitals
  */
 
-import * as Sentry from '@sentry/react';
-import { onCLS, onINP, onLCP, onFCP, onTTFB, type Metric } from 'web-vitals';
-import { logger } from '@/services/LoggingService';
+import * as Sentry from "@sentry/react";
+import { onCLS, onINP, onLCP, onFCP, onTTFB, type Metric } from "web-vitals";
+import { logger } from "@/services/LoggingService";
 
-const log = logger.child('webVitals');
+const log = logger.child("webVitals");
 
 /**
  * Report a single web-vitals metric to Sentry as a custom measurement
@@ -25,7 +25,7 @@ function reportMetric(metric: Metric): void {
   // Development logging for local profiling
   if (import.meta.env.DEV) {
     log.info(`${name}: ${Math.round(value)}ms [${rating}]`, {
-      operation: 'webVitals',
+      operation: "webVitals",
       metric: name,
       value: Math.round(value),
       rating,
@@ -33,7 +33,7 @@ function reportMetric(metric: Metric): void {
   }
 
   // Report to Sentry as a custom measurement attached to the active span
-  Sentry.setMeasurement(name, value, name === 'CLS' ? '' : 'millisecond');
+  Sentry.setMeasurement(name, value, name === "CLS" ? "" : "millisecond");
 
   // Tag the rating so we can filter in Sentry (good / needs-improvement / poor)
   Sentry.setTag(`web_vital.${name.toLowerCase()}`, rating);
@@ -59,8 +59,8 @@ export function initWebVitals(): void {
     onTTFB(reportMetric);
   } catch (error) {
     // Non-critical — don't let metrics collection crash the app
-    log.warn('Failed to initialize web vitals', {
-      operation: 'initWebVitals',
+    log.warn("Failed to initialize web vitals", {
+      operation: "initWebVitals",
       error: error instanceof Error ? error.message : String(error),
     });
   }

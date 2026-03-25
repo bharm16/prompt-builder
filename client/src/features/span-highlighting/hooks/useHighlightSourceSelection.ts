@@ -1,17 +1,17 @@
-import { useMemo } from 'react';
-import { createHighlightSignature } from './useSpanLabeling';
+import { useMemo } from "react";
+import { createHighlightSignature } from "./useSpanLabeling";
 import type {
   SpanData,
   HighlightSourceResult,
   UseHighlightSourceSelectionOptions,
-} from './types';
+} from "./types";
 
 // Re-export types for backward compatibility
 export type {
   SpanData,
   HighlightSourceResult,
   UseHighlightSourceSelectionOptions,
-} from './types';
+} from "./types";
 
 /**
  * Determines which persisted highlight source to use.
@@ -33,35 +33,34 @@ export function useHighlightSourceSelection({
 
     if (initialHighlights && hasLocalUpdate) {
       const resolvedSignature =
-        initialHighlights.signature ?? createHighlightSignature(displayedPrompt ?? '');
+        initialHighlights.signature ??
+        createHighlightSignature(displayedPrompt ?? "");
 
       return {
         spans: initialHighlights.spans,
         meta: initialHighlights.meta ?? null,
         signature: resolvedSignature,
-        cacheId: initialHighlights.cacheId ?? (promptUuid ? String(promptUuid) : null),
-        source: 'persisted',
+        cacheId:
+          initialHighlights.cacheId ?? (promptUuid ? String(promptUuid) : null),
+        source: "persisted",
       };
     }
 
     if (initialHighlights && Array.isArray(initialHighlights.spans)) {
       const resolvedSignature =
-        initialHighlights.signature ?? createHighlightSignature(displayedPrompt ?? '');
+        initialHighlights.signature ??
+        createHighlightSignature(displayedPrompt ?? "");
 
       return {
         spans: initialHighlights.spans,
         meta: initialHighlights.meta ?? null,
         signature: resolvedSignature,
-        cacheId: initialHighlights.cacheId ?? (promptUuid ? String(promptUuid) : null),
-        source: 'persisted',
+        cacheId:
+          initialHighlights.cacheId ?? (promptUuid ? String(promptUuid) : null),
+        source: "persisted",
       };
     }
 
     return null;
-  }, [
-    enableMLHighlighting,
-    initialHighlights,
-    promptUuid,
-    displayedPrompt,
-  ]);
+  }, [enableMLHighlighting, initialHighlights, promptUuid, displayedPrompt]);
 }

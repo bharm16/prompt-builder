@@ -8,4 +8,4 @@ export {
   ModelRecommendationSchema,
   ModelRecommendationResponseSchema,
   type ModelRecommendationResponse,
-} from '@shared/schemas/model-intelligence.schemas';
+} from "@shared/schemas/model-intelligence.schemas";

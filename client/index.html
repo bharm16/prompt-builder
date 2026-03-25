@@ -1,55 +1,66 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Vidra</title>
-    <meta name="description" content="Interactive editing canvas for AI video prompts with semantic span labeling, click-to-enhance suggestions, and fast previews." />
+    <meta
+      name="description"
+      content="Interactive editing canvas for AI video prompts with semantic span labeling, click-to-enhance suggestions, and fast previews."
+    />
     <meta property="og:title" content="Vidra" />
-    <meta property="og:description" content="Interactive editing canvas for AI video prompts with semantic span labeling, click-to-enhance suggestions, and fast previews." />
+    <meta
+      property="og:description"
+      content="Interactive editing canvas for AI video prompts with semantic span labeling, click-to-enhance suggestions, and fast previews."
+    />
     <meta property="og:type" content="website" />
     <meta name="twitter:card" content="summary" />
     <meta name="twitter:title" content="Vidra" />
-    <meta name="twitter:description" content="Interactive editing canvas for AI video prompts with semantic span labeling, click-to-enhance suggestions, and fast previews." />
+    <meta
+      name="twitter:description"
+      content="Interactive editing canvas for AI video prompts with semantic span labeling, click-to-enhance suggestions, and fast previews."
+    />
     <style>
       /* FORCE LIGHT MODE - Nuclear option */
-      html, body {
+      html,
+      body {
         background-color: white !important;
         color: #171717 !important;
       }
-      html.dark, html.dark body {
+      html.dark,
+      html.dark body {
         background-color: white !important;
         color: #171717 !important;
       }
     </style>
     <script>
       // Force light mode immediately - before anything else loads
-      (function() {
-        document.documentElement.classList.remove('dark');
+      (function () {
+        document.documentElement.classList.remove("dark");
 
         // Clear dark mode from localStorage
         try {
-          const settings = localStorage.getItem('app-settings');
+          const settings = localStorage.getItem("app-settings");
           if (settings) {
             const parsed = JSON.parse(settings);
             parsed.darkMode = false;
-            localStorage.setItem('app-settings', JSON.stringify(parsed));
+            localStorage.setItem("app-settings", JSON.stringify(parsed));
           }
         } catch (e) {
-          console.error('Failed to clear dark mode:', e);
+          console.error("Failed to clear dark mode:", e);
         }
 
         // Watch for any attempts to add dark class and remove it
         const observer = new MutationObserver(() => {
-          if (document.documentElement.classList.contains('dark')) {
-            document.documentElement.classList.remove('dark');
+          if (document.documentElement.classList.contains("dark")) {
+            document.documentElement.classList.remove("dark");
           }
         });
 
         observer.observe(document.documentElement, {
           attributes: true,
-          attributeFilter: ['class']
+          attributeFilter: ["class"],
         });
       })();
     </script>

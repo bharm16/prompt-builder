@@ -1,15 +1,23 @@
-import { logger } from '@infrastructure/Logger';
-import { CATEGORY_GUIDANCE, GUIDANCE_MAPPING } from '@services/video-prompt-analysis/config/categoryGuidance';
-import { TAXONOMY } from '#shared/taxonomy';
-import { normalizeText } from '@services/video-prompt-analysis/utils/textHelpers';
-import type { GuidanceSpan, EditHistoryEntry, ExistingElements, CategoryRelationships } from '@services/video-prompt-analysis/types';
+import { logger } from "@infrastructure/Logger";
+import {
+  CATEGORY_GUIDANCE,
+  GUIDANCE_MAPPING,
+} from "@services/video-prompt-analysis/config/categoryGuidance";
+import { TAXONOMY } from "#shared/taxonomy";
+import { normalizeText } from "@services/video-prompt-analysis/utils/textHelpers";
+import type {
+  GuidanceSpan,
+  EditHistoryEntry,
+  ExistingElements,
+  CategoryRelationships,
+} from "@services/video-prompt-analysis/types";
 
 /**
  * Service responsible for providing context-aware category-specific guidance
  * Transformed from static lists to intelligent, prescriptive recommendations
  */
 export class CategoryGuidanceService {
-  private readonly log = logger.child({ service: 'CategoryGuidanceService' });
+  private readonly log = logger.child({ service: "CategoryGuidanceService" });
 
   /**
    * Get context-aware category-specific focus guidance
@@ -18,13 +26,13 @@ export class CategoryGuidanceService {
   getCategoryFocusGuidance(
     phraseRole: string | null | undefined,
     categoryHint: string | null | undefined,
-    fullContext: string = '',
+    fullContext: string = "",
     allSpans: GuidanceSpan[] = [],
-    editHistory: EditHistoryEntry[] = []
+    editHistory: EditHistoryEntry[] = [],
   ): string[] | null {
-    const operation = 'getCategoryFocusGuidance';
-    
-    this.log.debug('Starting guidance generation', {
+    const operation = "getCategoryFocusGuidance";
+
+    this.log.debug("Starting guidance generation", {
       operation,
       phraseRole: phraseRole || null,
       categoryHint: categoryHint || null,
@@ -34,7 +42,7 @@ export class CategoryGuidanceService {
     });
 
     if (!phraseRole) {
-      this.log.debug('No phrase role provided, returning null', { operation });
+      this.log.debug("No phrase role provided, returning null", { operation });
       return null;
     }
 
@@ -48,11 +56,11 @@ export class CategoryGuidanceService {
         categoryHint,
         fullContext,
         allSpans,
-        editHistory
+        editHistory,
       );
-      
+
       if (contextAwareGuidance && contextAwareGuidance.length > 0) {
-        this.log.info('Context-aware guidance generated', {
+        this.log.info("Context-aware guidance generated", {
           operation,
           guidanceCount: contextAwareGuidance.length,
           category: categoryHint || phraseRole,
@@ -64,9 +72,11 @@ export class CategoryGuidanceService {
     // Fallback to static guidance
     const guidanceKey = this._findGuidanceKey(role, hint);
     if (guidanceKey) {
-      const staticGuidance = CATEGORY_GUIDANCE[guidanceKey as keyof typeof CATEGORY_GUIDANCE] || null;
+      const staticGuidance =
+        CATEGORY_GUIDANCE[guidanceKey as keyof typeof CATEGORY_GUIDANCE] ||
+        null;
       if (staticGuidance) {
-        this.log.info('Static guidance returned', {
+        this.log.info("Static guidance returned", {
           operation,
           guidanceKey,
           guidanceCount: staticGuidance.length,
@@ -75,7 +85,7 @@ export class CategoryGuidanceService {
       return staticGuidance;
     }
 
-    this.log.debug('No guidance found, returning null', { operation });
+    this.log.debug("No guidance found, returning null", { operation });
     return null;
   }
 
@@ -88,14 +98,14 @@ export class CategoryGuidanceService {
     categoryHint: string | null | undefined,
     fullContext: string,
     allSpans: GuidanceSpan[],
-    editHistory: EditHistoryEntry[]
+    editHistory: EditHistoryEntry[],
   ): string[] | null {
-    const operation = 'getContextAwareGuidance';
+    const operation = "getContextAwareGuidance";
     const guidance: string[] = [];
     const normalized = normalizeText(fullContext);
-    const category = (categoryHint || phraseRole || '').toLowerCase();
+    const category = (categoryHint || phraseRole || "").toLowerCase();
 
-    this.log.debug('Analyzing context for guidance', {
+    this.log.debug("Analyzing context for guidance", {
       operation,
       category,
       contextLength: fullContext.length,
@@ -103,15 +113,18 @@ export class CategoryGuidanceService {
     });
 
     // Analyze existing elements
-    const existingElements = this.analyzeExistingElements(fullContext, allSpans);
-    
+    const existingElements = this.analyzeExistingElements(
+      fullContext,
+      allSpans,
+    );
+
     // Identify gaps for this category
     const gaps = this.identifyGaps(category, existingElements);
-    
+
     // Analyze relationships with existing elements
     const relationships = this.analyzeRelationships(category, existingElements);
 
-    this.log.debug('Context analysis complete', {
+    this.log.debug("Context analysis complete", {
       operation,
       category,
       gapsCount: gaps.length,
@@ -120,30 +133,74 @@ export class CategoryGuidanceService {
     });
 
     // Build prescriptive guidance based on analysis (using TAXONOMY)
-    if (category === TAXONOMY.LIGHTING.id || category.includes('lighting')) {
-      guidance.push(...this._buildLightingGuidance(existingElements, gaps, relationships, editHistory));
-    } else if (category === TAXONOMY.CAMERA.id || category.includes('camera')) {
-      guidance.push(...this._buildCameraGuidance(existingElements, gaps, relationships, editHistory));
-    } else if (category === TAXONOMY.SUBJECT.id || category.includes('subject') || category.includes('character')) {
-      guidance.push(...this._buildSubjectGuidance(existingElements, gaps, relationships));
-    } else if (category === TAXONOMY.SUBJECT.attributes?.ACTION || category.includes('action') || category.includes('movement')) {
-      guidance.push(...this._buildActionGuidance(existingElements, gaps, relationships));
-    } else if (category === TAXONOMY.ENVIRONMENT.id || category.includes('location') || category.includes('environment')) {
-      guidance.push(...this._buildLocationGuidance(existingElements, gaps, relationships));
-    } else if (category.includes('style') || category.includes('aesthetic')) {
-      guidance.push(...this._buildStyleGuidance(existingElements, gaps, relationships));
-    } else if (category.includes('mood') || category.includes('atmosphere')) {
-      guidance.push(...this._buildMoodGuidance(existingElements, gaps, relationships, editHistory));
+    if (category === TAXONOMY.LIGHTING.id || category.includes("lighting")) {
+      guidance.push(
+        ...this._buildLightingGuidance(
+          existingElements,
+          gaps,
+          relationships,
+          editHistory,
+        ),
+      );
+    } else if (category === TAXONOMY.CAMERA.id || category.includes("camera")) {
+      guidance.push(
+        ...this._buildCameraGuidance(
+          existingElements,
+          gaps,
+          relationships,
+          editHistory,
+        ),
+      );
+    } else if (
+      category === TAXONOMY.SUBJECT.id ||
+      category.includes("subject") ||
+      category.includes("character")
+    ) {
+      guidance.push(
+        ...this._buildSubjectGuidance(existingElements, gaps, relationships),
+      );
+    } else if (
+      category === TAXONOMY.SUBJECT.attributes?.ACTION ||
+      category.includes("action") ||
+      category.includes("movement")
+    ) {
+      guidance.push(
+        ...this._buildActionGuidance(existingElements, gaps, relationships),
+      );
+    } else if (
+      category === TAXONOMY.ENVIRONMENT.id ||
+      category.includes("location") ||
+      category.includes("environment")
+    ) {
+      guidance.push(
+        ...this._buildLocationGuidance(existingElements, gaps, relationships),
+      );
+    } else if (category.includes("style") || category.includes("aesthetic")) {
+      guidance.push(
+        ...this._buildStyleGuidance(existingElements, gaps, relationships),
+      );
+    } else if (category.includes("mood") || category.includes("atmosphere")) {
+      guidance.push(
+        ...this._buildMoodGuidance(
+          existingElements,
+          gaps,
+          relationships,
+          editHistory,
+        ),
+      );
     }
 
     if (guidance.length > 0) {
-      this.log.info('Context-aware guidance generated', {
+      this.log.info("Context-aware guidance generated", {
         operation,
         category,
         guidanceCount: guidance.length,
       });
     } else {
-      this.log.debug('No guidance generated for category', { operation, category });
+      this.log.debug("No guidance generated for category", {
+        operation,
+        category,
+      });
     }
 
     return guidance.length > 0 ? guidance : null;
@@ -153,7 +210,10 @@ export class CategoryGuidanceService {
    * Analyze existing elements in the context
    * Extracts what's already specified in the prompt
    */
-  analyzeExistingElements(fullContext: string, allSpans: GuidanceSpan[]): ExistingElements {
+  analyzeExistingElements(
+    fullContext: string,
+    allSpans: GuidanceSpan[],
+  ): ExistingElements {
     const elements: ExistingElements = {
       timeOfDay: this._extractTimeOfDay(fullContext),
       location: this._extractLocation(fullContext),
@@ -175,24 +235,24 @@ export class CategoryGuidanceService {
   identifyGaps(category: string, existingElements: ExistingElements): string[] {
     const gaps: string[] = [];
 
-    if (category.includes('lighting')) {
-      if (!existingElements.lighting.direction) gaps.push('direction');
-      if (!existingElements.lighting.quality) gaps.push('quality');
-      if (!existingElements.lighting.temperature) gaps.push('temperature');
-      if (!existingElements.lighting.intensity) gaps.push('intensity');
+    if (category.includes("lighting")) {
+      if (!existingElements.lighting.direction) gaps.push("direction");
+      if (!existingElements.lighting.quality) gaps.push("quality");
+      if (!existingElements.lighting.temperature) gaps.push("temperature");
+      if (!existingElements.lighting.intensity) gaps.push("intensity");
     }
 
-    if (category.includes('camera')) {
-      if (!existingElements.camera.movement) gaps.push('movement');
-      if (!existingElements.camera.lens) gaps.push('lens');
-      if (!existingElements.camera.angle) gaps.push('angle');
-      if (!existingElements.camera.framing) gaps.push('framing');
+    if (category.includes("camera")) {
+      if (!existingElements.camera.movement) gaps.push("movement");
+      if (!existingElements.camera.lens) gaps.push("lens");
+      if (!existingElements.camera.angle) gaps.push("angle");
+      if (!existingElements.camera.framing) gaps.push("framing");
     }
 
-    if (category.includes('subject')) {
-      if (!existingElements.subject.appearance) gaps.push('appearance');
-      if (!existingElements.subject.emotion) gaps.push('emotion');
-      if (!existingElements.subject.details) gaps.push('details');
+    if (category.includes("subject")) {
+      if (!existingElements.subject.appearance) gaps.push("appearance");
+      if (!existingElements.subject.emotion) gaps.push("emotion");
+      if (!existingElements.subject.details) gaps.push("details");
     }
 
     return gaps;
@@ -202,7 +262,10 @@ export class CategoryGuidanceService {
    * Analyze relationships between category and existing elements
    * How do existing elements constrain or guide this category?
    */
-  analyzeRelationships(category: string, existingElements: ExistingElements): CategoryRelationships {
+  analyzeRelationships(
+    category: string,
+    existingElements: ExistingElements,
+  ): CategoryRelationships {
     const relationships: CategoryRelationships = {
       constraints: [],
       opportunities: [],
@@ -210,33 +273,51 @@ export class CategoryGuidanceService {
 
     // Time of day affects lighting — but when the highlighted span IS the timeOfDay,
     // guide toward alternatives rather than reinforcing the existing time period
-    if (category.includes('lighting') && existingElements.timeOfDay) {
+    if (category.includes("lighting") && existingElements.timeOfDay) {
       const time = existingElements.timeOfDay;
-      const isTimeOfDaySpan = category.includes('timeOfDay');
+      const isTimeOfDaySpan = category.includes("timeOfDay");
 
-      if (time.includes('golden hour')) {
+      if (time.includes("golden hour")) {
         if (isTimeOfDaySpan) {
-          relationships.opportunities.push('Explore dramatically different times: blue hour, harsh noon, overcast, deep night');
-          relationships.constraints.push('Avoid variations of the same golden/warm period (sunset, dusk, late afternoon)');
+          relationships.opportunities.push(
+            "Explore dramatically different times: blue hour, harsh noon, overcast, deep night",
+          );
+          relationships.constraints.push(
+            "Avoid variations of the same golden/warm period (sunset, dusk, late afternoon)",
+          );
         } else {
-          relationships.opportunities.push('Warm rim light to complement golden hour');
-          relationships.constraints.push('Avoid cool/blue tones that contradict warm golden light');
+          relationships.opportunities.push(
+            "Warm rim light to complement golden hour",
+          );
+          relationships.constraints.push(
+            "Avoid cool/blue tones that contradict warm golden light",
+          );
         }
-      } else if (time.includes('night')) {
+      } else if (time.includes("night")) {
         if (isTimeOfDaySpan) {
-          relationships.opportunities.push('Explore dramatically different times: golden hour, harsh noon, overcast morning, blue hour');
-          relationships.constraints.push('Avoid variations of the same dark period (midnight, late evening, twilight)');
+          relationships.opportunities.push(
+            "Explore dramatically different times: golden hour, harsh noon, overcast morning, blue hour",
+          );
+          relationships.constraints.push(
+            "Avoid variations of the same dark period (midnight, late evening, twilight)",
+          );
         } else {
-          relationships.opportunities.push('Artificial light sources, practicals');
-          relationships.constraints.push('Low ambient light levels');
+          relationships.opportunities.push(
+            "Artificial light sources, practicals",
+          );
+          relationships.constraints.push("Low ambient light levels");
         }
-      } else if (time.includes('overcast')) {
+      } else if (time.includes("overcast")) {
         if (isTimeOfDaySpan) {
-          relationships.opportunities.push('Explore dramatically different times: golden hour, harsh noon, deep night, blue hour');
-          relationships.constraints.push('Avoid variations of the same diffused-light period (cloudy, grey sky, foggy)');
+          relationships.opportunities.push(
+            "Explore dramatically different times: golden hour, harsh noon, deep night, blue hour",
+          );
+          relationships.constraints.push(
+            "Avoid variations of the same diffused-light period (cloudy, grey sky, foggy)",
+          );
         } else {
-          relationships.opportunities.push('Soft, diffused lighting naturally');
-          relationships.constraints.push('Low contrast, no hard shadows');
+          relationships.opportunities.push("Soft, diffused lighting naturally");
+          relationships.constraints.push("Low contrast, no hard shadows");
         }
       }
     }
@@ -244,19 +325,19 @@ export class CategoryGuidanceService {
     // Location affects multiple categories
     if (existingElements.location) {
       const loc = existingElements.location;
-      if (loc.includes('underwater')) {
-        if (category.includes('lighting')) {
-          relationships.opportunities.push('Caustic light patterns essential');
-          relationships.constraints.push('Blue-green color cast required');
+      if (loc.includes("underwater")) {
+        if (category.includes("lighting")) {
+          relationships.opportunities.push("Caustic light patterns essential");
+          relationships.constraints.push("Blue-green color cast required");
         }
-        if (category.includes('camera')) {
-          relationships.opportunities.push('Slow, fluid movement');
-          relationships.constraints.push('Limited visibility, hazy atmosphere');
+        if (category.includes("camera")) {
+          relationships.opportunities.push("Slow, fluid movement");
+          relationships.constraints.push("Limited visibility, hazy atmosphere");
         }
-      } else if (loc.includes('desert')) {
-        if (category.includes('lighting')) {
-          relationships.opportunities.push('Harsh, high-contrast lighting');
-          relationships.constraints.push('Strong shadows, bright highlights');
+      } else if (loc.includes("desert")) {
+        if (category.includes("lighting")) {
+          relationships.opportunities.push("Harsh, high-contrast lighting");
+          relationships.constraints.push("Strong shadows, bright highlights");
         }
       }
     }
@@ -264,14 +345,18 @@ export class CategoryGuidanceService {
     // Subject affects camera and lighting
     if (existingElements.subject.core) {
       const subj = existingElements.subject.core;
-      if (subj.includes('elderly')) {
-        if (category.includes('lighting')) {
-          relationships.opportunities.push('Soft, flattering light');
-          relationships.constraints.push('Avoid harsh shadows on wrinkled skin (max 3:1 ratio)');
+      if (subj.includes("elderly")) {
+        if (category.includes("lighting")) {
+          relationships.opportunities.push("Soft, flattering light");
+          relationships.constraints.push(
+            "Avoid harsh shadows on wrinkled skin (max 3:1 ratio)",
+          );
         }
-      } else if (subj.includes('child')) {
-        if (category.includes('camera')) {
-          relationships.opportunities.push('Lower camera angles to child\'s eye level');
+      } else if (subj.includes("child")) {
+        if (category.includes("camera")) {
+          relationships.opportunities.push(
+            "Lower camera angles to child's eye level",
+          );
         }
       }
     }
@@ -279,10 +364,16 @@ export class CategoryGuidanceService {
     // Mood affects multiple categories
     if (existingElements.mood) {
       const mood = existingElements.mood;
-      if (mood.includes('moody') || mood.includes('dark') || mood.includes('tense')) {
-        if (category.includes('lighting')) {
-          relationships.opportunities.push('Low key lighting, high contrast ratios (4:1+)');
-          relationships.constraints.push('Avoid bright, even illumination');
+      if (
+        mood.includes("moody") ||
+        mood.includes("dark") ||
+        mood.includes("tense")
+      ) {
+        if (category.includes("lighting")) {
+          relationships.opportunities.push(
+            "Low key lighting, high contrast ratios (4:1+)",
+          );
+          relationships.constraints.push("Avoid bright, even illumination");
         }
       }
     }
@@ -297,21 +388,31 @@ export class CategoryGuidanceService {
     existing: ExistingElements,
     gaps: string[],
     relationships: CategoryRelationships,
-    editHistory: EditHistoryEntry[]
+    editHistory: EditHistoryEntry[],
   ): string[] {
     const guidance: string[] = [];
 
     // Check edit history for lighting changes
-    const lightingEdits = editHistory.filter(e => 
-      e.category && e.category.toLowerCase().includes('lighting')
+    const lightingEdits = editHistory.filter(
+      (e) => e.category && e.category.toLowerCase().includes("lighting"),
     );
-    
+
     const latestLightingEdit = lightingEdits[0];
     if (latestLightingEdit) {
-      if (latestLightingEdit.replacement?.includes('moody') || latestLightingEdit.replacement?.includes('dark')) {
-        guidance.push('MAINTAIN MOODY TONE: Use low key ratios (4:1 or higher), selective pools of light');
-      } else if (latestLightingEdit.replacement?.includes('soft') || latestLightingEdit.replacement?.includes('gentle')) {
-        guidance.push('MAINTAIN SOFT LIGHTING: Diffused sources, low contrast ratios (2:1 to 3:1)');
+      if (
+        latestLightingEdit.replacement?.includes("moody") ||
+        latestLightingEdit.replacement?.includes("dark")
+      ) {
+        guidance.push(
+          "MAINTAIN MOODY TONE: Use low key ratios (4:1 or higher), selective pools of light",
+        );
+      } else if (
+        latestLightingEdit.replacement?.includes("soft") ||
+        latestLightingEdit.replacement?.includes("gentle")
+      ) {
+        guidance.push(
+          "MAINTAIN SOFT LIGHTING: Diffused sources, low contrast ratios (2:1 to 3:1)",
+        );
       }
     }
 
@@ -321,19 +422,25 @@ export class CategoryGuidanceService {
     }
 
     // Add gap-filling guidance
-    if (gaps.includes('direction')) {
-      guidance.push('Specify light DIRECTION: key light from left/right/front, backlight, side light');
+    if (gaps.includes("direction")) {
+      guidance.push(
+        "Specify light DIRECTION: key light from left/right/front, backlight, side light",
+      );
     }
-    if (gaps.includes('quality')) {
-      guidance.push('Define light QUALITY: hard (direct sun, spot) or soft (diffused, overcast)');
+    if (gaps.includes("quality")) {
+      guidance.push(
+        "Define light QUALITY: hard (direct sun, spot) or soft (diffused, overcast)",
+      );
     }
-    if (gaps.includes('temperature')) {
-      guidance.push('Include COLOR TEMPERATURE: 3200K (tungsten/warm), 5600K (daylight/neutral), 7000K+ (cool/blue)');
+    if (gaps.includes("temperature")) {
+      guidance.push(
+        "Include COLOR TEMPERATURE: 3200K (tungsten/warm), 5600K (daylight/neutral), 7000K+ (cool/blue)",
+      );
     }
 
     // Add constraints as warnings
     if (relationships.constraints.length > 0) {
-      guidance.push(`AVOID: ${relationships.constraints.join('; ')}`);
+      guidance.push(`AVOID: ${relationships.constraints.join("; ")}`);
     }
 
     return guidance;
@@ -346,7 +453,7 @@ export class CategoryGuidanceService {
     existing: ExistingElements,
     gaps: string[],
     relationships: CategoryRelationships,
-    editHistory: EditHistoryEntry[]
+    editHistory: EditHistoryEntry[],
   ): string[] {
     const guidance: string[] = [];
 
@@ -356,24 +463,44 @@ export class CategoryGuidanceService {
     }
 
     // Gap-filling guidance
-    if (gaps.includes('movement')) {
-      guidance.push('Specify CAMERA MOVEMENT: dolly in/out, crane up/down, handheld, tracking, static');
+    if (gaps.includes("movement")) {
+      guidance.push(
+        "Specify CAMERA MOVEMENT: dolly in/out, crane up/down, handheld, tracking, static",
+      );
     }
-    if (gaps.includes('lens')) {
-      guidance.push('Define LENS: 35mm (wide), 50mm (standard), 85mm (portrait), 24mm (ultra-wide)');
+    if (gaps.includes("lens")) {
+      guidance.push(
+        "Define LENS: 35mm (wide), 50mm (standard), 85mm (portrait), 24mm (ultra-wide)",
+      );
     }
-    if (gaps.includes('angle')) {
-      guidance.push('Include CAMERA ANGLE: eye level, low angle, high angle, Dutch tilt');
+    if (gaps.includes("angle")) {
+      guidance.push(
+        "Include CAMERA ANGLE: eye level, low angle, high angle, Dutch tilt",
+      );
     }
-    if (gaps.includes('framing')) {
-      guidance.push('Specify FRAMING: close-up, medium, wide, extreme close-up');
+    if (gaps.includes("framing")) {
+      guidance.push(
+        "Specify FRAMING: close-up, medium, wide, extreme close-up",
+      );
     }
 
     // Check for mood-camera alignment
-    if (existing.mood && existing.mood.includes('energetic') && !existing.camera.movement) {
-      guidance.push('ENERGETIC MOOD suggests DYNAMIC camera movement: handheld, tracking, whip pans');
-    } else if (existing.mood && existing.mood.includes('calm') && !existing.camera.movement) {
-      guidance.push('CALM MOOD suggests STABLE camera: slow dolly, crane, or static with smooth movements');
+    if (
+      existing.mood &&
+      existing.mood.includes("energetic") &&
+      !existing.camera.movement
+    ) {
+      guidance.push(
+        "ENERGETIC MOOD suggests DYNAMIC camera movement: handheld, tracking, whip pans",
+      );
+    } else if (
+      existing.mood &&
+      existing.mood.includes("calm") &&
+      !existing.camera.movement
+    ) {
+      guidance.push(
+        "CALM MOOD suggests STABLE camera: slow dolly, crane, or static with smooth movements",
+      );
     }
 
     return guidance;
@@ -386,7 +513,7 @@ export class CategoryGuidanceService {
   private _buildSubjectGuidance(
     existing: ExistingElements,
     gaps: string[],
-    relationships: CategoryRelationships
+    relationships: CategoryRelationships,
   ): string[] {
     const guidance: string[] = [];
 
@@ -395,16 +522,24 @@ export class CategoryGuidanceService {
     }
 
     // Role-level diversity enforcement
-    guidance.push('ROLE-LEVEL DIVERSITY: suggest fundamentally DIFFERENT subjects that fill the same narrative role — different species, occupation, age group, or archetype. Never swap synonyms (child→kid→tot).');
+    guidance.push(
+      "ROLE-LEVEL DIVERSITY: suggest fundamentally DIFFERENT subjects that fill the same narrative role — different species, occupation, age group, or archetype. Never swap synonyms (child→kid→tot).",
+    );
 
-    if (gaps.includes('appearance')) {
-      guidance.push('Add PHYSICAL DETAILS: 2-3 specific characteristics (age, build, distinguishing features)');
+    if (gaps.includes("appearance")) {
+      guidance.push(
+        "Add PHYSICAL DETAILS: 2-3 specific characteristics (age, build, distinguishing features)",
+      );
     }
-    if (gaps.includes('emotion')) {
-      guidance.push('Include EMOTIONAL STATE or EXPRESSION: facial expression, body language');
+    if (gaps.includes("emotion")) {
+      guidance.push(
+        "Include EMOTIONAL STATE or EXPRESSION: facial expression, body language",
+      );
     }
-    if (gaps.includes('details')) {
-      guidance.push('Specify WARDROBE or KEY DETAILS that support the narrative');
+    if (gaps.includes("details")) {
+      guidance.push(
+        "Specify WARDROBE or KEY DETAILS that support the narrative",
+      );
     }
 
     return guidance;
@@ -417,7 +552,7 @@ export class CategoryGuidanceService {
   private _buildStyleGuidance(
     existing: ExistingElements,
     gaps: string[],
-    relationships: CategoryRelationships
+    relationships: CategoryRelationships,
   ): string[] {
     const guidance: string[] = [];
 
@@ -426,12 +561,18 @@ export class CategoryGuidanceService {
     }
 
     // Explicit boundary: style is visual treatment, NOT camera movement
-    guidance.push('STYLE means visual treatment and aesthetic look — film stock, color grade, genre tone, post-processing. NEVER suggest camera movements (dolly, pan, handheld, Steadicam, gimbal, tracking) — those belong to the camera category.');
+    guidance.push(
+      "STYLE means visual treatment and aesthetic look — film stock, color grade, genre tone, post-processing. NEVER suggest camera movements (dolly, pan, handheld, Steadicam, gimbal, tracking) — those belong to the camera category.",
+    );
 
     if (existing.style) {
-      guidance.push(`Current style is "${existing.style}" — suggest contrasting aesthetics (different era, genre, or visual philosophy)`);
+      guidance.push(
+        `Current style is "${existing.style}" — suggest contrasting aesthetics (different era, genre, or visual philosophy)`,
+      );
     } else {
-      guidance.push('Suggest distinct visual AESTHETICS: film era, genre look, color philosophy, grain/texture');
+      guidance.push(
+        "Suggest distinct visual AESTHETICS: film era, genre look, color philosophy, grain/texture",
+      );
     }
 
     return guidance;
@@ -443,7 +584,7 @@ export class CategoryGuidanceService {
   private _buildActionGuidance(
     existing: ExistingElements,
     gaps: string[],
-    relationships: CategoryRelationships
+    relationships: CategoryRelationships,
   ): string[] {
     const guidance: string[] = [];
 
@@ -451,12 +592,18 @@ export class CategoryGuidanceService {
       guidance.push(...relationships.opportunities);
     }
 
-    if (existing.location && existing.location.includes('underwater')) {
-      guidance.push('UNDERWATER ACTIONS: slow, fluid movements; consider buoyancy and resistance');
+    if (existing.location && existing.location.includes("underwater")) {
+      guidance.push(
+        "UNDERWATER ACTIONS: slow, fluid movements; consider buoyancy and resistance",
+      );
     }
 
-    guidance.push('Describe action with SPECIFIC VERBS: not "moving" but "walking/running/gliding"');
-    guidance.push('Include MANNER: how is the action performed? (gracefully, hurriedly, cautiously)');
+    guidance.push(
+      'Describe action with SPECIFIC VERBS: not "moving" but "walking/running/gliding"',
+    );
+    guidance.push(
+      "Include MANNER: how is the action performed? (gracefully, hurriedly, cautiously)",
+    );
 
     return guidance;
   }
@@ -467,7 +614,7 @@ export class CategoryGuidanceService {
   private _buildLocationGuidance(
     existing: ExistingElements,
     gaps: string[],
-    relationships: CategoryRelationships
+    relationships: CategoryRelationships,
   ): string[] {
     const guidance: string[] = [];
 
@@ -475,8 +622,12 @@ export class CategoryGuidanceService {
       guidance.push(...relationships.opportunities);
     }
 
-    guidance.push('Be SPECIFIC: not "outdoors" but "pine forest clearing" or "cobblestone alley"');
-    guidance.push('Include ENVIRONMENTAL DETAILS: weather, atmosphere, time-specific elements');
+    guidance.push(
+      'Be SPECIFIC: not "outdoors" but "pine forest clearing" or "cobblestone alley"',
+    );
+    guidance.push(
+      "Include ENVIRONMENTAL DETAILS: weather, atmosphere, time-specific elements",
+    );
 
     return guidance;
   }
@@ -488,26 +639,30 @@ export class CategoryGuidanceService {
     existing: ExistingElements,
     gaps: string[],
     relationships: CategoryRelationships,
-    editHistory: EditHistoryEntry[]
+    editHistory: EditHistoryEntry[],
   ): string[] {
     const guidance: string[] = [];
 
     // Check for mood changes in edit history
-    const moodEdits = editHistory.filter(e => 
-      e.category && e.category.toLowerCase().includes('mood')
+    const moodEdits = editHistory.filter(
+      (e) => e.category && e.category.toLowerCase().includes("mood"),
     );
-    
+
     const latestMoodEdit = moodEdits[0];
     if (latestMoodEdit?.original && latestMoodEdit.replacement) {
-      guidance.push(`RESPECT mood evolution from "${latestMoodEdit.original}" to "${latestMoodEdit.replacement}"`);
+      guidance.push(
+        `RESPECT mood evolution from "${latestMoodEdit.original}" to "${latestMoodEdit.replacement}"`,
+      );
     }
 
     if (relationships.opportunities.length > 0) {
       guidance.push(...relationships.opportunities);
     }
 
-    guidance.push('Mood should ALIGN with lighting, pacing, and camera choices');
-    guidance.push('Use SENSORY DESCRIPTORS: how does the scene feel?');
+    guidance.push(
+      "Mood should ALIGN with lighting, pacing, and camera choices",
+    );
+    guidance.push("Use SENSORY DESCRIPTORS: how does the scene feel?");
 
     return guidance;
   }
@@ -519,9 +674,23 @@ export class CategoryGuidanceService {
    */
   private _extractTimeOfDay(context: string): string | null {
     const normalized = normalizeText(context);
-    const times = ['golden hour', 'dawn', 'dusk', 'sunrise', 'sunset', 'midday', 'noon', 
-                   'afternoon', 'morning', 'evening', 'night', 'midnight', 'twilight', 'overcast'];
-    
+    const times = [
+      "golden hour",
+      "dawn",
+      "dusk",
+      "sunrise",
+      "sunset",
+      "midday",
+      "noon",
+      "afternoon",
+      "morning",
+      "evening",
+      "night",
+      "midnight",
+      "twilight",
+      "overcast",
+    ];
+
     for (const time of times) {
       if (normalized.includes(time)) {
         return time;
@@ -535,9 +704,23 @@ export class CategoryGuidanceService {
    */
   private _extractLocation(context: string): string | null {
     const normalized = normalizeText(context);
-    const locations = ['underwater', 'desert', 'forest', 'urban', 'city', 'beach', 'mountain',
-                       'indoor', 'outdoor', 'studio', 'street', 'room', 'office', 'park'];
-    
+    const locations = [
+      "underwater",
+      "desert",
+      "forest",
+      "urban",
+      "city",
+      "beach",
+      "mountain",
+      "indoor",
+      "outdoor",
+      "studio",
+      "street",
+      "room",
+      "office",
+      "park",
+    ];
+
     for (const loc of locations) {
       if (normalized.includes(loc)) {
         return loc;
@@ -551,9 +734,21 @@ export class CategoryGuidanceService {
    */
   private _extractMood(context: string): string | null {
     const normalized = normalizeText(context);
-    const moods = ['moody', 'dark', 'bright', 'cheerful', 'somber', 'tense', 'calm', 
-                   'peaceful', 'energetic', 'melancholic', 'joyful', 'suspenseful'];
-    
+    const moods = [
+      "moody",
+      "dark",
+      "bright",
+      "cheerful",
+      "somber",
+      "tense",
+      "calm",
+      "peaceful",
+      "energetic",
+      "melancholic",
+      "joyful",
+      "suspenseful",
+    ];
+
     for (const mood of moods) {
       if (normalized.includes(mood)) {
         return mood;
@@ -565,15 +760,21 @@ export class CategoryGuidanceService {
   /**
    * Extract subject from spans
    */
-  private _extractSubject(spans: GuidanceSpan[]): ExistingElements['subject'] {
-    const subjectSpans = spans.filter(s => 
-      s.category && (s.category.includes('subject') || s.category.includes('character'))
+  private _extractSubject(spans: GuidanceSpan[]): ExistingElements["subject"] {
+    const subjectSpans = spans.filter(
+      (s) =>
+        s.category &&
+        (s.category.includes("subject") || s.category.includes("character")),
     );
-    
+
     return {
-      core: subjectSpans.map(s => s.text || '').join(', '),
-      appearance: subjectSpans.some(s => (s.text || '').match(/elderly|young|tall|short/i) !== null),
-      emotion: subjectSpans.some(s => (s.text || '').match(/happy|sad|angry|peaceful/i) !== null),
+      core: subjectSpans.map((s) => s.text || "").join(", "),
+      appearance: subjectSpans.some(
+        (s) => (s.text || "").match(/elderly|young|tall|short/i) !== null,
+      ),
+      emotion: subjectSpans.some(
+        (s) => (s.text || "").match(/happy|sad|angry|peaceful/i) !== null,
+      ),
       details: subjectSpans.length > 1,
     };
   }
@@ -581,13 +782,17 @@ export class CategoryGuidanceService {
   /**
    * Extract existing lighting from spans
    */
-  private _extractExistingLighting(spans: GuidanceSpan[]): ExistingElements['lighting'] {
-    const lightingSpans = spans.filter(s => 
-      s.category && s.category.toLowerCase().includes('lighting')
+  private _extractExistingLighting(
+    spans: GuidanceSpan[],
+  ): ExistingElements["lighting"] {
+    const lightingSpans = spans.filter(
+      (s) => s.category && s.category.toLowerCase().includes("lighting"),
     );
-    
-    const texts = lightingSpans.map(s => normalizeText(s.text || '')).join(' ');
-    
+
+    const texts = lightingSpans
+      .map((s) => normalizeText(s.text || ""))
+      .join(" ");
+
     return {
       direction: /\b(left|right|front|back|side|top|above|below)\b/.test(texts),
       quality: /\b(soft|hard|diffused|harsh|gentle)\b/.test(texts),
@@ -599,15 +804,19 @@ export class CategoryGuidanceService {
   /**
    * Extract existing camera specs from spans
    */
-  private _extractExistingCamera(spans: GuidanceSpan[]): ExistingElements['camera'] {
-    const cameraSpans = spans.filter(s => 
-      s.category && s.category.toLowerCase().includes('camera')
+  private _extractExistingCamera(
+    spans: GuidanceSpan[],
+  ): ExistingElements["camera"] {
+    const cameraSpans = spans.filter(
+      (s) => s.category && s.category.toLowerCase().includes("camera"),
     );
-    
-    const texts = cameraSpans.map(s => normalizeText(s.text || '')).join(' ');
-    
+
+    const texts = cameraSpans.map((s) => normalizeText(s.text || "")).join(" ");
+
     return {
-      movement: /\b(dolly|crane|handheld|tracking|static|pan|tilt)\b/.test(texts),
+      movement: /\b(dolly|crane|handheld|tracking|static|pan|tilt)\b/.test(
+        texts,
+      ),
       lens: /\b(\d{2,3}mm|wide|telephoto|standard)\b/.test(texts),
       angle: /\b(high|low|eye.level|dutch|overhead)\b/.test(texts),
       framing: /\b(close.?up|medium|wide|extreme)\b/.test(texts),
@@ -618,11 +827,11 @@ export class CategoryGuidanceService {
    * Extract action from spans
    */
   private _extractExistingAction(spans: GuidanceSpan[]): string {
-    const actionSpans = spans.filter(s => 
-      s.category && s.category.toLowerCase().includes('action')
+    const actionSpans = spans.filter(
+      (s) => s.category && s.category.toLowerCase().includes("action"),
     );
-    
-    return actionSpans.map(s => s.text || '').join(', ');
+
+    return actionSpans.map((s) => s.text || "").join(", ");
   }
 
   /**
@@ -630,9 +839,19 @@ export class CategoryGuidanceService {
    */
   private _extractStyle(context: string, spans: GuidanceSpan[]): string | null {
     const normalized = normalizeText(context);
-    const styles = ['documentary', 'cinematic', 'vintage', 'modern', 'noir', 'surreal',
-                    'realistic', 'stylized', 'artistic', 'commercial'];
-    
+    const styles = [
+      "documentary",
+      "cinematic",
+      "vintage",
+      "modern",
+      "noir",
+      "surreal",
+      "realistic",
+      "stylized",
+      "artistic",
+      "commercial",
+    ];
+
     for (const style of styles) {
       if (normalized.includes(style)) {
         return style;
@@ -653,4 +872,3 @@ export class CategoryGuidanceService {
     return null;
   }
 }
-

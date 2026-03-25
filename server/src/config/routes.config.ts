@@ -15,16 +15,16 @@
  * 8. Error handlers
  */
 
-import type { Application, Request, Response } from 'express';
-import type { DIContainer } from '@infrastructure/DIContainer';
-import { errorHandler } from '@middleware/errorHandler';
-import { createFirestoreWriteGateMiddleware } from '@middleware/firestoreWriteGate';
-import { getRuntimeFlags } from './runtime-flags';
-import { registerHealthRoutes } from './routes/health.registration.ts';
-import { registerApiRoutes } from './routes/api.registration.ts';
-import { registerMotionRoutes } from './routes/motion.registration.ts';
-import { registerPreviewRoutes } from './routes/preview.registration.ts';
-import { registerPaymentRoutes } from './routes/payment.registration.ts';
+import type { Application, Request, Response } from "express";
+import type { DIContainer } from "@infrastructure/DIContainer";
+import { errorHandler } from "@middleware/errorHandler";
+import { createFirestoreWriteGateMiddleware } from "@middleware/firestoreWriteGate";
+import { getRuntimeFlags } from "./runtime-flags";
+import { registerHealthRoutes } from "./routes/health.registration.ts";
+import { registerApiRoutes } from "./routes/api.registration.ts";
+import { registerMotionRoutes } from "./routes/motion.registration.ts";
+import { registerPreviewRoutes } from "./routes/preview.registration.ts";
+import { registerPaymentRoutes } from "./routes/payment.registration.ts";
 
 type RequestWithId = Request & {
   id?: string;
@@ -35,13 +35,15 @@ type RequestWithId = Request & {
  */
 export function registerRoutes(app: Application, container: DIContainer): void {
   const runtimeFlags = getRuntimeFlags();
-  const firestoreCircuitExecutor = container.resolve('firestoreCircuitExecutor');
+  const firestoreCircuitExecutor = container.resolve(
+    "firestoreCircuitExecutor",
+  );
 
   // 1. Health routes (no auth)
   registerHealthRoutes(app, container, runtimeFlags);
 
   // 2. Firestore write gate: fail-closed for all mutating /api routes
-  app.use('/api', createFirestoreWriteGateMiddleware(firestoreCircuitExecutor));
+  app.use("/api", createFirestoreWriteGateMiddleware(firestoreCircuitExecutor));
 
   // 3. Motion / convergence media (gated)
   registerMotionRoutes(app, container, runtimeFlags);
@@ -58,7 +60,7 @@ export function registerRoutes(app: Application, container: DIContainer): void {
   // 7. 404 Handler (must be registered AFTER all routes)
   app.use((req: RequestWithId, res: Response): void => {
     res.status(404).json({
-      error: 'Not found',
+      error: "Not found",
       path: req.path,
       requestId: req.id,
     });
@@ -78,7 +80,7 @@ export function registerErrorHandlers(app: Application): void {
     err: Error,
     req: Request,
     res: Response & { sentry?: string },
-    next: (err?: Error) => void
+    next: (err?: Error) => void,
   ): void {
     // Only short-circuit when Sentry has attached an error id.
     if (res.headersSent) {
@@ -101,7 +103,10 @@ export function registerErrorHandlers(app: Application): void {
  * Configure all routes and error handlers
  * This is the main function to call from app setup
  */
-export function configureRoutes(app: Application, container: DIContainer): void {
+export function configureRoutes(
+  app: Application,
+  container: DIContainer,
+): void {
   registerRoutes(app, container);
   registerErrorHandlers(app);
 }

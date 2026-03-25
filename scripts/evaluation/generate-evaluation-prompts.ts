@@ -2,35 +2,41 @@
 
 /**
  * Generate Evaluation Prompts
- * 
+ *
  * Takes real user inputs and regenerates outputs using current optimizer.
  * Creates a clean baseline with consistent output format.
- * 
+ *
  * Usage:
  *   npx tsx scripts/evaluation/generate-evaluation-prompts.ts
  *   npx tsx scripts/evaluation/generate-evaluation-prompts.ts --sample 20
  *   npx tsx scripts/evaluation/generate-evaluation-prompts.ts --input path/to/prompts.json
- * 
+ *
  * Output:
  *   scripts/evaluation/data/evaluation-prompts-{timestamp}.json
  */
 
-import { config as loadEnv } from 'dotenv';
+import { config as loadEnv } from "dotenv";
 
-import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync } from 'fs';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
-import { AIModelService } from '../../server/src/services/ai-model/AIModelService.js';
-import { OpenAICompatibleAdapter } from '../../server/src/clients/adapters/OpenAICompatibleAdapter.js';
-import { PromptOptimizationService } from '../../server/src/services/prompt-optimization/PromptOptimizationService.js';
-import { ImageObservationService } from '../../server/src/services/image-observation/ImageObservationService.js';
+import {
+  existsSync,
+  readFileSync,
+  writeFileSync,
+  mkdirSync,
+  readdirSync,
+} from "fs";
+import { join, dirname } from "path";
+import { fileURLToPath } from "url";
+import { AIModelService } from "../../server/src/services/ai-model/AIModelService.js";
+import { OpenAICompatibleAdapter } from "../../server/src/clients/adapters/OpenAICompatibleAdapter.js";
+import { PromptOptimizationService } from "../../server/src/services/prompt-optimization/PromptOptimizationService.js";
+import { ImageObservationService } from "../../server/src/services/image-observation/ImageObservationService.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-loadEnv({ path: join(__dirname, '../..', '.env') });
+loadEnv({ path: join(__dirname, "../..", ".env") });
 
-const DATA_DIR = join(__dirname, 'data');
+const DATA_DIR = join(__dirname, "data");
 
 // =============================================================================
 // Timestamp Utilities (Local Time)
@@ -43,11 +49,11 @@ const DATA_DIR = join(__dirname, 'data');
 function getLocalTimestamp(): string {
   const now = new Date();
   const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const day = String(now.getDate()).padStart(2, '0');
-  const hours = String(now.getHours()).padStart(2, '0');
-  const minutes = String(now.getMinutes()).padStart(2, '0');
-  const seconds = String(now.getSeconds()).padStart(2, '0');
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  const hours = String(now.getHours()).padStart(2, "0");
+  const minutes = String(now.getMinutes()).padStart(2, "0");
+  const seconds = String(now.getSeconds()).padStart(2, "0");
   return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
 }
 
@@ -56,7 +62,7 @@ function getLocalTimestamp(): string {
  * Returns: "2025-12-23T11-30-45"
  */
 function getLocalTimestampForFilename(): string {
-  return getLocalTimestamp().replace(/:/g, '-');
+  return getLocalTimestamp().replace(/:/g, "-");
 }
 
 interface RawPromptRecord {
@@ -98,10 +104,12 @@ function createAIService(): AIModelService {
   const clients: Record<string, any> = {};
   const groqTimeoutMs = Number(process.env.GROQ_TIMEOUT_MS || 5000);
   const openaiTimeoutMs = Number(process.env.OPENAI_TIMEOUT_MS || 60000);
-  const groqModel = process.env.GROQ_MODEL || 'llama-3.1-8b-instant';
-  const openaiModel = process.env.OPENAI_MODEL || 'gpt-4o-mini';
-  const groqBaseURL = process.env.GROQ_BASE_URL || 'https://api.groq.com/openai/v1';
-  const openaiBaseURL = process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1';
+  const groqModel = process.env.GROQ_MODEL || "llama-3.1-8b-instant";
+  const openaiModel = process.env.OPENAI_MODEL || "gpt-4o-mini";
+  const groqBaseURL =
+    process.env.GROQ_BASE_URL || "https://api.groq.com/openai/v1";
+  const openaiBaseURL =
+    process.env.OPENAI_BASE_URL || "https://api.openai.com/v1";
 
   if (process.env.GROQ_API_KEY) {
     clients.groq = new OpenAICompatibleAdapter({
@@ -109,7 +117,7 @@ function createAIService(): AIModelService {
       baseURL: groqBaseURL,
       defaultModel: groqModel,
       defaultTimeout: groqTimeoutMs,
-      providerName: 'groq',
+      providerName: "groq",
     });
   }
 
@@ -119,16 +127,16 @@ function createAIService(): AIModelService {
       baseURL: openaiBaseURL,
       defaultModel: openaiModel,
       defaultTimeout: openaiTimeoutMs,
-      providerName: 'openai',
+      providerName: "openai",
     });
-    
+
     // Also add as chatgpt for draft generation
     clients.chatgpt = new OpenAICompatibleAdapter({
       apiKey: process.env.OPENAI_API_KEY,
       baseURL: openaiBaseURL,
       defaultModel: openaiModel,
       defaultTimeout: openaiTimeoutMs,
-      providerName: 'chatgpt',
+      providerName: "chatgpt",
     });
   }
 
@@ -137,7 +145,7 @@ function createAIService(): AIModelService {
   }
 
   if (Object.keys(clients).length === 0) {
-    throw new Error('No AI API keys found. Set GROQ_API_KEY or OPENAI_API_KEY');
+    throw new Error("No AI API keys found. Set GROQ_API_KEY or OPENAI_API_KEY");
   }
 
   return new AIModelService({ clients });
@@ -150,21 +158,21 @@ function createAIService(): AIModelService {
 function findLatestPromptsFile(): string | null {
   // First check for input-prompts.json in the evaluation directory
   const evalDir = __dirname;
-  const evalFile = join(evalDir, 'input-prompts.json');
+  const evalFile = join(evalDir, "input-prompts.json");
   if (existsSync(evalFile)) {
     return evalFile;
   }
 
   // Then check project root
-  const projectRoot = join(__dirname, '../..');
-  const rootFile = join(projectRoot, 'input-prompts.json');
+  const projectRoot = join(__dirname, "../..");
+  const rootFile = join(projectRoot, "input-prompts.json");
   if (existsSync(rootFile)) {
     return rootFile;
   }
 
   // Fall back to timestamped versions (input-prompts-*.json) in project root
   const files = readdirSync(projectRoot)
-    .filter(f => f.startsWith('input-prompts-') && f.endsWith('.json'))
+    .filter((f) => f.startsWith("input-prompts-") && f.endsWith(".json"))
     .sort()
     .reverse();
 
@@ -172,23 +180,25 @@ function findLatestPromptsFile(): string | null {
 }
 
 function loadRawPrompts(filePath: string): RawPromptRecord[] {
-  const data = JSON.parse(readFileSync(filePath, 'utf-8'));
+  const data = JSON.parse(readFileSync(filePath, "utf-8"));
   return data as RawPromptRecord[];
 }
 
-function extractUniqueInputs(records: RawPromptRecord[]): Map<string, RawPromptRecord> {
+function extractUniqueInputs(
+  records: RawPromptRecord[],
+): Map<string, RawPromptRecord> {
   const uniqueInputs = new Map<string, RawPromptRecord>();
-  
+
   for (const record of records) {
     const input = record.input?.trim();
     if (!input) continue;
-    
+
     // Use input as key to dedupe, keep first occurrence
     if (!uniqueInputs.has(input)) {
       uniqueInputs.set(input, record);
     }
   }
-  
+
   return uniqueInputs;
 }
 
@@ -199,34 +209,34 @@ function extractUniqueInputs(records: RawPromptRecord[]): Map<string, RawPromptR
 async function optimizePrompt(
   input: string,
   optimizer: PromptOptimizationService,
-  timeoutMs: number = 30000
+  timeoutMs: number = 30000,
 ): Promise<{ output: string; latencyMs: number; error: string | null }> {
   const startTime = Date.now();
-  
+
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
-    
+
     const result = await optimizer.optimize({
       prompt: input,
-      mode: 'video',
+      mode: "video",
       signal: controller.signal,
     });
-    
+
     clearTimeout(timeout);
-    
-    const output = result.prompt || result.optimizedPrompt || '';
-    
+
+    const output = result.prompt || result.optimizedPrompt || "";
+
     return {
       output,
       latencyMs: Date.now() - startTime,
-      error: null
+      error: null,
     };
   } catch (error) {
     return {
-      output: '',
+      output: "",
       latencyMs: Date.now() - startTime,
-      error: (error as Error).message
+      error: (error as Error).message,
     };
   }
 }
@@ -242,15 +252,17 @@ async function main(): Promise<void> {
   let sampleSize: number | null = null;
 
   for (let i = 0; i < args.length; i++) {
-    if (args[i] === '--input' && args[i + 1]) {
+    if (args[i] === "--input" && args[i + 1]) {
       inputFile = args[++i];
-    } else if (args[i] === '--sample' && args[i + 1]) {
+    } else if (args[i] === "--sample" && args[i + 1]) {
       sampleSize = parseInt(args[++i], 10);
     }
   }
 
   if (!inputFile || !existsSync(inputFile)) {
-    console.error('No prompts file found. Specify with --input or place input-prompts-*.json in project root.');
+    console.error(
+      "No prompts file found. Specify with --input or place input-prompts-*.json in project root.",
+    );
     process.exit(1);
   }
 
@@ -268,10 +280,15 @@ async function main(): Promise<void> {
   console.log(`Found ${uniqueInputs.size} unique inputs`);
 
   // Convert to array for processing
-  let inputsToProcess = Array.from(uniqueInputs.entries()).map(([input, record]) => ({
-    id: record.id || record.uuid || `prompt-${Math.random().toString(36).slice(2, 10)}`,
-    input
-  }));
+  let inputsToProcess = Array.from(uniqueInputs.entries()).map(
+    ([input, record]) => ({
+      id:
+        record.id ||
+        record.uuid ||
+        `prompt-${Math.random().toString(36).slice(2, 10)}`,
+      input,
+    }),
+  );
 
   // Sample if requested
   if (sampleSize && sampleSize < inputsToProcess.length) {
@@ -282,12 +299,22 @@ async function main(): Promise<void> {
   }
 
   // Create services
-  console.log('\nInitializing AI services...');
+  console.log("\nInitializing AI services...");
   const aiService = createAIService();
-  const nullCache = { getConfig: () => ({ ttl: 60, namespace: 'eval' }), get: async () => null, set: async () => true, generateKey: () => 'eval' } as never;
+  const nullCache = {
+    getConfig: () => ({ ttl: 60, namespace: "eval" }),
+    get: async () => null,
+    set: async () => true,
+    generateKey: () => "eval",
+  } as never;
   const imageObserver = new ImageObservationService(aiService, nullCache);
-  const optimizer = new PromptOptimizationService(aiService, nullCache, null, imageObserver);
-  console.log('Services ready\n');
+  const optimizer = new PromptOptimizationService(
+    aiService,
+    nullCache,
+    null,
+    imageObserver,
+  );
+  console.log("Services ready\n");
 
   // Process each prompt
   const results: EvaluationPrompt[] = [];
@@ -297,40 +324,42 @@ async function main(): Promise<void> {
 
   for (let i = 0; i < inputsToProcess.length; i++) {
     const { id, input } = inputsToProcess[i];
-    
+
     // Progress indicator
     const progress = `[${(i + 1).toString().padStart(3)}/${inputsToProcess.length}]`;
-    const truncatedInput = input.length > 40 ? input.slice(0, 40) + '...' : input;
+    const truncatedInput =
+      input.length > 40 ? input.slice(0, 40) + "..." : input;
     process.stdout.write(`${progress} "${truncatedInput}"... `);
-    
+
     const result = await optimizePrompt(input, optimizer);
-    
+
     if (result.error) {
       console.log(`❌ Error: ${result.error.slice(0, 50)}`);
     } else {
       console.log(`✅ ${result.latencyMs}ms`);
     }
-    
+
     results.push({
       id,
       input,
       output: result.output,
       generatedAt: getLocalTimestamp(),
-      optimizerVersion: 'v3-run-optimize-flow',
+      optimizerVersion: "v3-run-optimize-flow",
       latencyMs: result.latencyMs,
-      error: result.error
+      error: result.error,
     });
 
     // Rate limiting - wait between requests
     if (i < inputsToProcess.length - 1) {
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
     }
   }
 
   // Calculate stats
-  const successResults = results.filter(r => !r.error);
+  const successResults = results.filter((r) => !r.error);
   const totalLatency = successResults.reduce((sum, r) => sum + r.latencyMs, 0);
-  const avgLatency = successResults.length > 0 ? totalLatency / successResults.length : 0;
+  const avgLatency =
+    successResults.length > 0 ? totalLatency / successResults.length : 0;
 
   // Build dataset
   const dataset: EvaluationDataset = {
@@ -340,10 +369,10 @@ async function main(): Promise<void> {
       promptCount: results.length,
       successCount: successResults.length,
       errorCount: results.length - successResults.length,
-      optimizerVersion: 'v3-run-optimize-flow',
-      avgLatencyMs: Math.round(avgLatency)
+      optimizerVersion: "v3-run-optimize-flow",
+      avgLatencyMs: Math.round(avgLatency),
     },
-    prompts: results
+    prompts: results,
   };
 
   // Save to file
@@ -352,28 +381,30 @@ async function main(): Promise<void> {
   writeFileSync(outputPath, JSON.stringify(dataset, null, 2));
 
   // Also save as "latest" for easy reference
-  const latestPath = join(DATA_DIR, 'evaluation-prompts-latest.json');
+  const latestPath = join(DATA_DIR, "evaluation-prompts-latest.json");
   writeFileSync(latestPath, JSON.stringify(dataset, null, 2));
 
   // Print summary
-  console.log('\n' + '='.repeat(60));
-  console.log('  GENERATION COMPLETE');
-  console.log('='.repeat(60));
+  console.log("\n" + "=".repeat(60));
+  console.log("  GENERATION COMPLETE");
+  console.log("=".repeat(60));
   console.log(`  Total prompts:    ${results.length}`);
   console.log(`  Successful:       ${successResults.length}`);
   console.log(`  Errors:           ${results.length - successResults.length}`);
   console.log(`  Avg latency:      ${Math.round(avgLatency)}ms`);
-  console.log(`  Total time:       ${Math.round((Date.now() - startTime) / 1000)}s`);
+  console.log(
+    `  Total time:       ${Math.round((Date.now() - startTime) / 1000)}s`,
+  );
   console.log();
   console.log(`  Output saved to:`);
   console.log(`    ${outputPath}`);
   console.log(`    ${latestPath}`);
-  console.log('='.repeat(60));
+  console.log("=".repeat(60));
 
   process.exit(0);
 }
 
 main().catch((e) => {
-  console.error('Fatal error:', e);
+  console.error("Fatal error:", e);
   process.exit(1);
 });

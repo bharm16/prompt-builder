@@ -1,4 +1,4 @@
-import { AsyncLocalStorage } from 'node:async_hooks';
+import { AsyncLocalStorage } from "node:async_hooks";
 
 type RequestContext = Record<string, unknown>;
 
@@ -6,7 +6,7 @@ const requestContext = new AsyncLocalStorage<RequestContext>();
 
 export function runWithRequestContext<T>(
   context: RequestContext,
-  fn: () => T
+  fn: () => T,
 ): T {
   return requestContext.run(context, fn);
 }

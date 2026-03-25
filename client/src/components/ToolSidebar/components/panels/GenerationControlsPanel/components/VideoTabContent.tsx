@@ -1,16 +1,16 @@
-import React from 'react';
-import { ChevronDown } from '@promptstudio/system/components/ui';
-import type { KeyframeTile } from '@components/ToolSidebar/types';
+import React from "react";
+import { ChevronDown } from "@promptstudio/system/components/ui";
+import type { KeyframeTile } from "@components/ToolSidebar/types";
 import type {
   ExtendVideoSource,
   VideoReferenceImage,
-} from '@features/generation-controls/context/generationControlsStoreTypes';
-import { StartFrameControl } from '@components/ToolSidebar/components/panels/StartFrameControl';
-import { EndFrameControl } from '@components/ToolSidebar/components/panels/EndFrameControl';
-import { VideoPromptToolbar } from './VideoPromptToolbar';
-import { ReferencesOnboardingCard } from './ReferencesOnboardingCard';
-import { VideoReferenceSlots } from './VideoReferenceSlots';
-import { formatCredits } from '@features/generations/config/generationConfig';
+} from "@features/generation-controls/context/generationControlsStoreTypes";
+import { StartFrameControl } from "@components/ToolSidebar/components/panels/StartFrameControl";
+import { EndFrameControl } from "@components/ToolSidebar/components/panels/EndFrameControl";
+import { VideoPromptToolbar } from "./VideoPromptToolbar";
+import { ReferencesOnboardingCard } from "./ReferencesOnboardingCard";
+import { VideoReferenceSlots } from "./VideoReferenceSlots";
+import { formatCredits } from "@features/generations/config/generationConfig";
 
 interface VideoTabContentProps {
   startFrame: KeyframeTile | null;
@@ -33,10 +33,10 @@ interface VideoTabContentProps {
   onRequestVideoReferenceUpload: () => void;
   onAddVideoReference: (file: File) => void | Promise<void>;
   onRemoveVideoReference: (id: string) => void;
-  onUpdateVideoReferenceType: (id: string, type: 'asset' | 'style') => void;
+  onUpdateVideoReferenceType: (id: string, type: "asset" | "style") => void;
   onClearExtendVideo: () => void;
   promptLength: number;
-  faceSwapMode: 'direct' | 'face-swap';
+  faceSwapMode: "direct" | "face-swap";
   faceSwapCharacterOptions: Array<{ id: string; label: string }>;
   selectedCharacterId: string;
   onFaceSwapCharacterChange: (assetId: string) => void;
@@ -103,7 +103,8 @@ export function VideoTabContent({
 }: VideoTabContentProps): React.ReactElement {
   const showStartFrame = supportsStartFrame || !supportsEndFrame;
   const isVideoReferenceLimitReached =
-    maxReferenceImages <= 0 || videoReferenceImages.length >= maxReferenceImages;
+    maxReferenceImages <= 0 ||
+    videoReferenceImages.length >= maxReferenceImages;
 
   return (
     <div className="flex-1 min-h-0 overflow-y-auto px-[14px] py-3 flex flex-col gap-2.5">
@@ -143,14 +144,18 @@ export function VideoTabContent({
         />
       </div>
 
-      {faceSwapMode === 'face-swap' && (
+      {faceSwapMode === "face-swap" && (
         <div className="rounded-xl border border-tool-nav-active bg-tool-surface-card px-3 py-3 space-y-3">
-          <div className="text-[11px] uppercase tracking-wide text-tool-text-dim">Face Swap</div>
+          <div className="text-[11px] uppercase tracking-wide text-tool-text-dim">
+            Face Swap
+          </div>
           <div className="flex flex-col gap-2">
             <label className="text-xs text-tool-text-dim">Character</label>
             <select
               value={selectedCharacterId}
-              onChange={(event) => onFaceSwapCharacterChange(event.target.value)}
+              onChange={(event) =>
+                onFaceSwapCharacterChange(event.target.value)
+              }
               className="h-9 rounded-md bg-tool-surface-deep border border-tool-nav-active px-2 text-sm text-white"
             >
               <option value="">Select a character</option>
@@ -168,9 +173,9 @@ export function VideoTabContent({
           </div>
 
           <div className="text-xs text-tool-text-dim">
-            Face swap: {formatCredits(faceSwapCredits)} · Video:{' '}
-            {videoCredits !== null ? formatCredits(videoCredits) : '—'} · Total:{' '}
-            {totalCredits !== null ? formatCredits(totalCredits) : '—'}
+            Face swap: {formatCredits(faceSwapCredits)} · Video:{" "}
+            {videoCredits !== null ? formatCredits(videoCredits) : "—"} · Total:{" "}
+            {totalCredits !== null ? formatCredits(totalCredits) : "—"}
           </div>
 
           <button
@@ -179,11 +184,15 @@ export function VideoTabContent({
             onClick={onFaceSwapPreview}
             disabled={isFaceSwapPreviewDisabled}
           >
-            {faceSwapPreviewReady ? 'View Face Swap Preview' : 'Preview Face Swap'}
+            {faceSwapPreviewReady
+              ? "View Face Swap Preview"
+              : "Preview Face Swap"}
           </button>
 
           {faceSwapPreviewLoading && (
-            <div className="text-xs text-tool-text-dim">Composing face swap…</div>
+            <div className="text-xs text-tool-text-dim">
+              Composing face swap…
+            </div>
           )}
           {!faceSwapPreviewLoading && faceSwapPreviewReady && (
             <div className="text-xs text-success-400">Preview ready.</div>
@@ -198,7 +207,9 @@ export function VideoTabContent({
         <div>
           <div className="flex items-center gap-2 px-0.5">
             <ChevronDown className="w-2.5 h-2.5 text-tool-text-subdued" />
-            <span className="text-xs font-semibold text-tool-text-dim">References</span>
+            <span className="text-xs font-semibold text-tool-text-dim">
+              References
+            </span>
             <div className="flex-1 h-px bg-tool-nav-active mx-2" />
             <span className="text-[10px] text-tool-text-label">
               {videoReferenceImages.length} / {maxReferenceImages}

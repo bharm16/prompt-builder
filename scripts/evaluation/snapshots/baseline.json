@@ -21242,11 +21242,7 @@
         "assignedRole": "technical.frameRate",
         "expectedRole": "camera.focus",
         "count": 6,
-        "examples": [
-          "f/2.8",
-          "f/11",
-          "f/11"
-        ]
+        "examples": ["f/2.8", "f/11", "f/11"]
       },
       {
         "assignedRole": "lighting.quality",
@@ -21272,31 +21268,19 @@
         "assignedRole": "lighting.quality",
         "expectedRole": "style",
         "count": 4,
-        "examples": [
-          "Family drama",
-          "Family-friendly",
-          "Modern musical"
-        ]
+        "examples": ["Family drama", "Family-friendly", "Modern musical"]
       },
       {
         "assignedRole": "lighting.quality",
         "expectedRole": "lighting.quality",
         "count": 4,
-        "examples": [
-          "long shadows",
-          "deep shadows",
-          "soft shadows"
-        ]
+        "examples": ["long shadows", "deep shadows", "soft shadows"]
       },
       {
         "assignedRole": "camera.focus",
         "expectedRole": "camera.aperture",
         "count": 3,
-        "examples": [
-          "f/2.8",
-          "f/1.8-f/2.8",
-          "f/4-f/5.6"
-        ]
+        "examples": ["f/2.8", "f/1.8-f/2.8", "f/4-f/5.6"]
       },
       {
         "assignedRole": "audio.ambient",
@@ -21312,30 +21296,19 @@
         "assignedRole": "style.aesthetic",
         "expectedRole": "camera.movement",
         "count": 3,
-        "examples": [
-          "dolly tracking",
-          "dolly tracking",
-          "slow pan"
-        ]
+        "examples": ["dolly tracking", "dolly tracking", "slow pan"]
       },
       {
         "assignedRole": "lighting.colorTemp",
         "expectedRole": "lighting.source",
         "count": 3,
-        "examples": [
-          "warm sunlight",
-          "warm sunlight",
-          "Warm sunrise"
-        ]
+        "examples": ["warm sunlight", "warm sunlight", "Warm sunrise"]
       },
       {
         "assignedRole": "shot.type",
         "expectedRole": "camera.movement",
         "count": 2,
-        "examples": [
-          "handheld tracking",
-          "tracking shot"
-        ]
+        "examples": ["handheld tracking", "tracking shot"]
       }
     ],
     "topGranularityErrors": [],
@@ -21356,10 +21329,7 @@
     "confidenceAnalysis": {
       "buckets": {
         "high": {
-          "range": [
-            0.8,
-            1
-          ],
+          "range": [0.8, 1],
           "total": 1050,
           "errors": 18,
           "errorRate": 0.017142857142857144,
@@ -21370,10 +21340,7 @@
           ]
         },
         "medium": {
-          "range": [
-            0.6,
-            0.8
-          ],
+          "range": [0.6, 0.8],
           "total": 472,
           "errors": 38,
           "errorRate": 0.08050847457627118,
@@ -21384,10 +21351,7 @@
           ]
         },
         "low": {
-          "range": [
-            0,
-            0.6
-          ],
+          "range": [0, 0.6],
           "total": 272,
           "errors": 23,
           "errorRate": 0.08455882352941177,
@@ -21423,9 +21387,7 @@
         "vibrant game colors",
         "wearing red collar"
       ],
-      "instruction_text": [
-        "- **Style:** Family-friendly, live-action"
-      ],
+      "instruction_text": ["- **Style:** Family-friendly, live-action"],
       "duplicate": [
         "Kodak Vision3 250D 5207",
         "warm tones",
@@ -21442,9 +21404,7 @@
       ]
     },
     "missedBySeverity": {
-      "critical": [
-        "gathering fallen leaves (action)"
-      ],
+      "critical": ["gathering fallen leaves (action)"],
       "important": [
         "agility (action)",
         "painted lines (environment)",

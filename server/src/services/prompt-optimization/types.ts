@@ -2,23 +2,23 @@
  * Types for prompt optimization services
  * Shared type definitions used across prompt optimization modules
  */
-import type { VideoPromptStructuredResponse } from './strategies/videoPromptTypes';
-import type { ExecuteParams } from '@services/ai-model/AIModelService';
-import type { AIResponse } from '@interfaces/IAIClient';
-import type { CapabilityValues } from '@shared/capabilities';
-import type { I2VConstraintMode, I2VOptimizationResult } from './types/i2v';
+import type { VideoPromptStructuredResponse } from "./strategies/videoPromptTypes";
+import type { ExecuteParams } from "@services/ai-model/AIModelService";
+import type { AIResponse } from "@interfaces/IAIClient";
+import type { CapabilityValues } from "@shared/capabilities";
+import type { I2VConstraintMode, I2VOptimizationResult } from "./types/i2v";
 
 /**
  * Optimization mode type
  */
-export type OptimizationMode = 'video';
+export type OptimizationMode = "video";
 
 /**
  * Context inferred from prompt
  */
 export interface InferredContext {
   specificAspects: string;
-  backgroundLevel: 'beginner' | 'intermediate' | 'advanced';
+  backgroundLevel: "beginner" | "intermediate" | "advanced";
   intendedUse: string;
 }
 
@@ -89,11 +89,14 @@ export interface StructuredOptimizationArtifact {
 }
 
 export type CompileSource =
-  | { kind: 'artifact'; artifact: StructuredOptimizationArtifact }
-  | { kind: 'artifactKey'; artifactKey: string }
-  | { kind: 'prompt'; prompt: string };
+  | { kind: "artifact"; artifact: StructuredOptimizationArtifact }
+  | { kind: "artifactKey"; artifactKey: string }
+  | { kind: "prompt"; prompt: string };
 
-export type CompilationStatus = 'compiled' | 'generic-fallback' | 'compile-skipped';
+export type CompilationStatus =
+  | "compiled"
+  | "generic-fallback"
+  | "compile-skipped";
 
 export interface CompilationIntentLockState {
   passed: boolean;
@@ -107,7 +110,7 @@ export interface CompilationState {
   status: CompilationStatus;
   usedFallback: boolean;
   reason?: string;
-  sourceKind: CompileSource['kind'];
+  sourceKind: CompileSource["kind"];
   structuredArtifactReused: boolean;
   analyzerBypassed: boolean;
   compiledFor: string | null;
@@ -135,7 +138,7 @@ export interface CompilePromptResponse {
 
 export interface OptimizationResponse {
   prompt: string;
-  inputMode: 't2v' | 'i2v';
+  inputMode: "t2v" | "i2v";
   metadata?: Record<string, unknown>;
   i2v?: I2VOptimizationResult;
   artifactKey?: string;
@@ -147,9 +150,17 @@ export interface OptimizationResponse {
  */
 export interface OptimizationStrategy {
   optimize(request: OptimizationRequest): Promise<string>;
-  optimizeStructured?(request: OptimizationRequest): Promise<StructuredOptimizationArtifact>;
-  renderStructuredPrompt?(structuredPrompt: VideoPromptStructuredResponse): string;
-  generateDomainContent?(prompt: string, context?: InferredContext | null, shotPlan?: ShotPlan | null): Promise<unknown>;
+  optimizeStructured?(
+    request: OptimizationRequest,
+  ): Promise<StructuredOptimizationArtifact>;
+  renderStructuredPrompt?(
+    structuredPrompt: VideoPromptStructuredResponse,
+  ): string;
+  generateDomainContent?(
+    prompt: string,
+    context?: InferredContext | null,
+    shotPlan?: ShotPlan | null,
+  ): Promise<unknown>;
   name: string;
 }
 
@@ -160,7 +171,7 @@ export interface AIService {
   execute(operation: string, options: ExecuteParams): Promise<AIResponse>;
   stream?(
     operation: string,
-    options: ExecuteParams & { onChunk: (chunk: string) => void }
+    options: ExecuteParams & { onChunk: (chunk: string) => void },
   ): Promise<string>;
   supportsStreaming?(operation: string): boolean;
   getAvailableClients?(): string[];
@@ -171,6 +182,12 @@ export interface AIService {
  */
 export interface TemplateService {
   getTemplate?(name: string, version?: string): Promise<string>;
-  load?(templateName: string, variables?: Record<string, string | number | null | undefined>): Promise<string>;
-  loadSection?(sectionName: string, variables?: Record<string, string | number | null | undefined>): Promise<string>;
+  load?(
+    templateName: string,
+    variables?: Record<string, string | number | null | undefined>,
+  ): Promise<string>;
+  loadSection?(
+    sectionName: string,
+    variables?: Record<string, string | number | null | undefined>,
+  ): Promise<string>;
 }

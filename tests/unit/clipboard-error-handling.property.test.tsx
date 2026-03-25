@@ -7,12 +7,18 @@
  * @module ClipboardErrorHandling.property.test
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
-import React from 'react';
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import {
+  render,
+  screen,
+  fireEvent,
+  waitFor,
+  cleanup,
+} from "@testing-library/react";
+import React from "react";
 
-import { SuggestionsList } from '@components/SuggestionsPanel/components/SuggestionsList';
-import type { SuggestionItem } from '@components/SuggestionsPanel/hooks/types';
+import { SuggestionsList } from "@components/SuggestionsPanel/components/SuggestionsList";
+import type { SuggestionItem } from "@components/SuggestionsPanel/hooks/types";
 
 // Mock the useToast hook
 const mockToast = {
@@ -22,12 +28,12 @@ const mockToast = {
   info: vi.fn(),
 };
 
-vi.mock('@components/Toast', () => ({
+vi.mock("@components/Toast", () => ({
   useToast: () => mockToast,
   ToastProvider: ({ children }: { children: React.ReactNode }) => children,
 }));
 
-describe('Clipboard Error Handling Property Tests', () => {
+describe("Clipboard Error Handling Property Tests", () => {
   /**
    * Property 9: Clipboard Errors Don't Crash
    *
@@ -45,7 +51,7 @@ describe('Clipboard Error Handling Property Tests', () => {
       // Store original clipboard
       originalClipboard = navigator.clipboard;
       // Spy on console.warn to verify logging
-      consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
       // Clear mock calls
       mockToast.success.mockClear();
       mockToast.error.mockClear();
@@ -54,7 +60,7 @@ describe('Clipboard Error Handling Property Tests', () => {
     afterEach(() => {
       // Restore original clipboard
       if (originalClipboard) {
-        Object.defineProperty(navigator, 'clipboard', {
+        Object.defineProperty(navigator, "clipboard", {
           value: originalClipboard,
           writable: true,
           configurable: true,
@@ -65,10 +71,12 @@ describe('Clipboard Error Handling Property Tests', () => {
       cleanup();
     });
 
-    it('component continues functioning when clipboard.writeText throws', async () => {
+    it("component continues functioning when clipboard.writeText throws", async () => {
       // Mock clipboard to throw an error
       const mockClipboard = {
-        writeText: vi.fn().mockRejectedValue(new Error('Clipboard access denied')),
+        writeText: vi
+          .fn()
+          .mockRejectedValue(new Error("Clipboard access denied")),
         readText: vi.fn(),
         read: vi.fn(),
         write: vi.fn(),
@@ -77,15 +85,15 @@ describe('Clipboard Error Handling Property Tests', () => {
         dispatchEvent: vi.fn(),
       };
 
-      Object.defineProperty(navigator, 'clipboard', {
+      Object.defineProperty(navigator, "clipboard", {
         value: mockClipboard,
         writable: true,
         configurable: true,
       });
 
       const suggestions: SuggestionItem[] = [
-        { text: 'Test suggestion 1' },
-        { text: 'Test suggestion 2' },
+        { text: "Test suggestion 1" },
+        { text: "Test suggestion 2" },
       ];
 
       const onSuggestionClick = vi.fn();
@@ -96,14 +104,16 @@ describe('Clipboard Error Handling Property Tests', () => {
           suggestions={suggestions}
           onSuggestionClick={onSuggestionClick}
           showCopyAction={true}
-        />
+        />,
       );
 
       // Component should render
       expect(container).toBeTruthy();
 
       // Find and click the copy button
-      const copyButtons = screen.getAllByRole('button', { name: /copy suggestion/i });
+      const copyButtons = screen.getAllByRole("button", {
+        name: /copy suggestion/i,
+      });
       expect(copyButtons.length).toBeGreaterThan(0);
 
       // Click should not throw
@@ -114,15 +124,15 @@ describe('Clipboard Error Handling Property Tests', () => {
       }
       fireEvent.click(firstCopyButton);
 
-      expect(mockClipboard.writeText).toHaveBeenCalledWith('Test suggestion 1');
+      expect(mockClipboard.writeText).toHaveBeenCalledWith("Test suggestion 1");
 
       // Component should still be rendered and functional
       expect(container.querySelector('[role="list"]')).toBeTruthy();
     }, 30000);
 
-    it('component handles Permission denied error without crashing', async () => {
+    it("component handles Permission denied error without crashing", async () => {
       const mockClipboard = {
-        writeText: vi.fn().mockRejectedValue(new Error('Permission denied')),
+        writeText: vi.fn().mockRejectedValue(new Error("Permission denied")),
         readText: vi.fn(),
         read: vi.fn(),
         write: vi.fn(),
@@ -131,23 +141,25 @@ describe('Clipboard Error Handling Property Tests', () => {
         dispatchEvent: vi.fn(),
       };
 
-      Object.defineProperty(navigator, 'clipboard', {
+      Object.defineProperty(navigator, "clipboard", {
         value: mockClipboard,
         writable: true,
         configurable: true,
       });
 
-      const suggestions: SuggestionItem[] = [{ text: 'Test suggestion' }];
+      const suggestions: SuggestionItem[] = [{ text: "Test suggestion" }];
 
       const { container } = render(
         <SuggestionsList
           suggestions={suggestions}
           onSuggestionClick={vi.fn()}
           showCopyAction={true}
-        />
+        />,
       );
 
-      const copyButton = screen.getByRole('button', { name: /copy suggestion/i });
+      const copyButton = screen.getByRole("button", {
+        name: /copy suggestion/i,
+      });
       fireEvent.click(copyButton);
 
       await waitFor(() => {
@@ -158,9 +170,11 @@ describe('Clipboard Error Handling Property Tests', () => {
       expect(container.querySelector('[role="list"]')).toBeTruthy();
     });
 
-    it('component handles DOMException without crashing', async () => {
+    it("component handles DOMException without crashing", async () => {
       const mockClipboard = {
-        writeText: vi.fn().mockRejectedValue(new DOMException('NotAllowedError')),
+        writeText: vi
+          .fn()
+          .mockRejectedValue(new DOMException("NotAllowedError")),
         readText: vi.fn(),
         read: vi.fn(),
         write: vi.fn(),
@@ -169,23 +183,25 @@ describe('Clipboard Error Handling Property Tests', () => {
         dispatchEvent: vi.fn(),
       };
 
-      Object.defineProperty(navigator, 'clipboard', {
+      Object.defineProperty(navigator, "clipboard", {
         value: mockClipboard,
         writable: true,
         configurable: true,
       });
 
-      const suggestions: SuggestionItem[] = [{ text: 'Test suggestion' }];
+      const suggestions: SuggestionItem[] = [{ text: "Test suggestion" }];
 
       const { container } = render(
         <SuggestionsList
           suggestions={suggestions}
           onSuggestionClick={vi.fn()}
           showCopyAction={true}
-        />
+        />,
       );
 
-      const copyButton = screen.getByRole('button', { name: /copy suggestion/i });
+      const copyButton = screen.getByRole("button", {
+        name: /copy suggestion/i,
+      });
       fireEvent.click(copyButton);
 
       await waitFor(() => {
@@ -196,9 +212,11 @@ describe('Clipboard Error Handling Property Tests', () => {
       expect(container.querySelector('[role="list"]')).toBeTruthy();
     });
 
-    it('component handles TypeError without crashing', async () => {
+    it("component handles TypeError without crashing", async () => {
       const mockClipboard = {
-        writeText: vi.fn().mockRejectedValue(new TypeError('Cannot read clipboard')),
+        writeText: vi
+          .fn()
+          .mockRejectedValue(new TypeError("Cannot read clipboard")),
         readText: vi.fn(),
         read: vi.fn(),
         write: vi.fn(),
@@ -207,23 +225,25 @@ describe('Clipboard Error Handling Property Tests', () => {
         dispatchEvent: vi.fn(),
       };
 
-      Object.defineProperty(navigator, 'clipboard', {
+      Object.defineProperty(navigator, "clipboard", {
         value: mockClipboard,
         writable: true,
         configurable: true,
       });
 
-      const suggestions: SuggestionItem[] = [{ text: 'Test suggestion' }];
+      const suggestions: SuggestionItem[] = [{ text: "Test suggestion" }];
 
       const { container } = render(
         <SuggestionsList
           suggestions={suggestions}
           onSuggestionClick={vi.fn()}
           showCopyAction={true}
-        />
+        />,
       );
 
-      const copyButton = screen.getByRole('button', { name: /copy suggestion/i });
+      const copyButton = screen.getByRole("button", {
+        name: /copy suggestion/i,
+      });
       fireEvent.click(copyButton);
 
       await waitFor(() => {
@@ -234,15 +254,15 @@ describe('Clipboard Error Handling Property Tests', () => {
       expect(container.querySelector('[role="list"]')).toBeTruthy();
     });
 
-    it('component handles clipboard API being undefined', () => {
+    it("component handles clipboard API being undefined", () => {
       // Remove clipboard API entirely
-      Object.defineProperty(navigator, 'clipboard', {
+      Object.defineProperty(navigator, "clipboard", {
         value: undefined,
         writable: true,
         configurable: true,
       });
 
-      const suggestions: SuggestionItem[] = [{ text: 'Test suggestion' }];
+      const suggestions: SuggestionItem[] = [{ text: "Test suggestion" }];
 
       // Render should not throw
       const { container } = render(
@@ -250,24 +270,26 @@ describe('Clipboard Error Handling Property Tests', () => {
           suggestions={suggestions}
           onSuggestionClick={vi.fn()}
           showCopyAction={true}
-        />
+        />,
       );
 
       // Component should render
       expect(container).toBeTruthy();
 
       // Find and click the copy button - should not throw
-      const copyButton = screen.getByRole('button', { name: /copy suggestion/i });
+      const copyButton = screen.getByRole("button", {
+        name: /copy suggestion/i,
+      });
       expect(() => fireEvent.click(copyButton)).not.toThrow();
 
       // Component should still be rendered
       expect(container.querySelector('[role="list"]')).toBeTruthy();
     });
 
-    it('suggestion click still works after clipboard error', async () => {
+    it("suggestion click still works after clipboard error", async () => {
       // Mock clipboard to throw an error
       const mockClipboard = {
-        writeText: vi.fn().mockRejectedValue(new Error('Clipboard error')),
+        writeText: vi.fn().mockRejectedValue(new Error("Clipboard error")),
         readText: vi.fn(),
         read: vi.fn(),
         write: vi.fn(),
@@ -276,13 +298,13 @@ describe('Clipboard Error Handling Property Tests', () => {
         dispatchEvent: vi.fn(),
       };
 
-      Object.defineProperty(navigator, 'clipboard', {
+      Object.defineProperty(navigator, "clipboard", {
         value: mockClipboard,
         writable: true,
         configurable: true,
       });
 
-      const suggestions: SuggestionItem[] = [{ text: 'Test suggestion' }];
+      const suggestions: SuggestionItem[] = [{ text: "Test suggestion" }];
 
       const onSuggestionClick = vi.fn();
 
@@ -291,11 +313,13 @@ describe('Clipboard Error Handling Property Tests', () => {
           suggestions={suggestions}
           onSuggestionClick={onSuggestionClick}
           showCopyAction={true}
-        />
+        />,
       );
 
       // Click copy button (which will fail)
-      const copyButton = screen.getByRole('button', { name: /copy suggestion/i });
+      const copyButton = screen.getByRole("button", {
+        name: /copy suggestion/i,
+      });
       fireEvent.click(copyButton);
 
       // Wait for async operation
@@ -304,17 +328,19 @@ describe('Clipboard Error Handling Property Tests', () => {
       });
 
       // Now click the main suggestion button - should still work
-      const suggestionButton = screen.getByRole('button', { name: /apply suggestion/i });
+      const suggestionButton = screen.getByRole("button", {
+        name: /apply suggestion/i,
+      });
       fireEvent.click(suggestionButton);
 
       expect(onSuggestionClick).toHaveBeenCalledWith(
-        expect.objectContaining({ text: 'Test suggestion' })
+        expect.objectContaining({ text: "Test suggestion" }),
       );
     });
 
-    it('shows error toast when clipboard write fails', async () => {
+    it("shows error toast when clipboard write fails", async () => {
       const mockClipboard = {
-        writeText: vi.fn().mockRejectedValue(new Error('Test clipboard error')),
+        writeText: vi.fn().mockRejectedValue(new Error("Test clipboard error")),
         readText: vi.fn(),
         read: vi.fn(),
         write: vi.fn(),
@@ -323,32 +349,34 @@ describe('Clipboard Error Handling Property Tests', () => {
         dispatchEvent: vi.fn(),
       };
 
-      Object.defineProperty(navigator, 'clipboard', {
+      Object.defineProperty(navigator, "clipboard", {
         value: mockClipboard,
         writable: true,
         configurable: true,
       });
 
-      const suggestions: SuggestionItem[] = [{ text: 'Test suggestion' }];
+      const suggestions: SuggestionItem[] = [{ text: "Test suggestion" }];
 
       render(
         <SuggestionsList
           suggestions={suggestions}
           onSuggestionClick={vi.fn()}
           showCopyAction={true}
-        />
+        />,
       );
 
-      const copyButton = screen.getByRole('button', { name: /copy suggestion/i });
+      const copyButton = screen.getByRole("button", {
+        name: /copy suggestion/i,
+      });
       fireEvent.click(copyButton);
 
       // Wait for async operation and error toast
       await waitFor(() => {
-        expect(mockToast.error).toHaveBeenCalledWith('Failed to copy', 1500);
+        expect(mockToast.error).toHaveBeenCalledWith("Failed to copy", 1500);
       });
     });
 
-    it('shows success toast when clipboard write succeeds', async () => {
+    it("shows success toast when clipboard write succeeds", async () => {
       const mockClipboard = {
         writeText: vi.fn().mockResolvedValue(undefined),
         readText: vi.fn(),
@@ -359,28 +387,33 @@ describe('Clipboard Error Handling Property Tests', () => {
         dispatchEvent: vi.fn(),
       };
 
-      Object.defineProperty(navigator, 'clipboard', {
+      Object.defineProperty(navigator, "clipboard", {
         value: mockClipboard,
         writable: true,
         configurable: true,
       });
 
-      const suggestions: SuggestionItem[] = [{ text: 'Test suggestion' }];
+      const suggestions: SuggestionItem[] = [{ text: "Test suggestion" }];
 
       render(
         <SuggestionsList
           suggestions={suggestions}
           onSuggestionClick={vi.fn()}
           showCopyAction={true}
-        />
+        />,
       );
 
-      const copyButton = screen.getByRole('button', { name: /copy suggestion/i });
+      const copyButton = screen.getByRole("button", {
+        name: /copy suggestion/i,
+      });
       fireEvent.click(copyButton);
 
       // Wait for async operation and success toast
       await waitFor(() => {
-        expect(mockToast.success).toHaveBeenCalledWith('Copied to clipboard!', 1500);
+        expect(mockToast.success).toHaveBeenCalledWith(
+          "Copied to clipboard!",
+          1500,
+        );
       });
     });
   });

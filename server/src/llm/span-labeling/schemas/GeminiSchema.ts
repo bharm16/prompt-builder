@@ -4,7 +4,7 @@
  * Matches the test script prompt format exactly for consistency.
  */
 
-import { VALID_CATEGORIES, TAXONOMY } from '#shared/taxonomy.ts';
+import { VALID_CATEGORIES, TAXONOMY } from "#shared/taxonomy.ts";
 
 /**
  * Build simple system prompt for Gemini span labeling
@@ -13,87 +13,119 @@ import { VALID_CATEGORIES, TAXONOMY } from '#shared/taxonomy.ts';
 function buildGeminiSystemPrompt(): string {
   // Build taxonomy categories list matching test script format
   const categories: string[] = [];
-  
+
   // shot.type
   if (TAXONOMY.SHOT.attributes?.TYPE) {
-    categories.push(`- ${TAXONOMY.SHOT.attributes.TYPE} (e.g., "Medium Shot", "Close-up")`);
+    categories.push(
+      `- ${TAXONOMY.SHOT.attributes.TYPE} (e.g., "Medium Shot", "Close-up")`,
+    );
   }
-  
+
   // subject.*
   if (TAXONOMY.SUBJECT.attributes?.IDENTITY) {
-    categories.push(`- ${TAXONOMY.SUBJECT.attributes.IDENTITY} (e.g., "woman", "basketball")`);
+    categories.push(
+      `- ${TAXONOMY.SUBJECT.attributes.IDENTITY} (e.g., "woman", "basketball")`,
+    );
   }
   if (TAXONOMY.SUBJECT.attributes?.APPEARANCE) {
-    categories.push(`- ${TAXONOMY.SUBJECT.attributes.APPEARANCE} (e.g., "black braided hair")`);
+    categories.push(
+      `- ${TAXONOMY.SUBJECT.attributes.APPEARANCE} (e.g., "black braided hair")`,
+    );
   }
   if (TAXONOMY.SUBJECT.attributes?.WARDROBE) {
-    categories.push(`- ${TAXONOMY.SUBJECT.attributes.WARDROBE} (e.g., "bright blue sports jersey", "white high-top sneakers")`);
+    categories.push(
+      `- ${TAXONOMY.SUBJECT.attributes.WARDROBE} (e.g., "bright blue sports jersey", "white high-top sneakers")`,
+    );
   }
-  
+
   // action.movement
   if (TAXONOMY.ACTION.attributes?.MOVEMENT) {
-    categories.push(`- ${TAXONOMY.ACTION.attributes.MOVEMENT} (e.g., "dribbling a basketball")`);
+    categories.push(
+      `- ${TAXONOMY.ACTION.attributes.MOVEMENT} (e.g., "dribbling a basketball")`,
+    );
   }
-  
+
   // environment.*
   if (TAXONOMY.ENVIRONMENT.attributes?.LOCATION) {
-    categories.push(`- ${TAXONOMY.ENVIRONMENT.attributes.LOCATION} (e.g., "outdoor basketball court")`);
+    categories.push(
+      `- ${TAXONOMY.ENVIRONMENT.attributes.LOCATION} (e.g., "outdoor basketball court")`,
+    );
   }
   if (TAXONOMY.ENVIRONMENT.attributes?.CONTEXT) {
-    categories.push(`- ${TAXONOMY.ENVIRONMENT.attributes.CONTEXT} (e.g., "painted lines")`);
+    categories.push(
+      `- ${TAXONOMY.ENVIRONMENT.attributes.CONTEXT} (e.g., "painted lines")`,
+    );
   }
-  
+
   // lighting.*
   if (TAXONOMY.LIGHTING.attributes?.SOURCE) {
-    categories.push(`- ${TAXONOMY.LIGHTING.attributes.SOURCE} (e.g., "natural daylight", "sun")`);
+    categories.push(
+      `- ${TAXONOMY.LIGHTING.attributes.SOURCE} (e.g., "natural daylight", "sun")`,
+    );
   }
   if (TAXONOMY.LIGHTING.attributes?.QUALITY) {
-    categories.push(`- ${TAXONOMY.LIGHTING.attributes.QUALITY} (e.g., "soft shadows", "high CRI")`);
+    categories.push(
+      `- ${TAXONOMY.LIGHTING.attributes.QUALITY} (e.g., "soft shadows", "high CRI")`,
+    );
   }
   if (TAXONOMY.LIGHTING.attributes?.TIME) {
-    categories.push(`- ${TAXONOMY.LIGHTING.attributes.TIME} (e.g., "mid-morning")`);
+    categories.push(
+      `- ${TAXONOMY.LIGHTING.attributes.TIME} (e.g., "mid-morning")`,
+    );
   }
-  
+
   // camera.*
   if (TAXONOMY.CAMERA.attributes?.MOVEMENT) {
-    categories.push(`- ${TAXONOMY.CAMERA.attributes.MOVEMENT} (e.g., "handheld tracking")`);
+    categories.push(
+      `- ${TAXONOMY.CAMERA.attributes.MOVEMENT} (e.g., "handheld tracking")`,
+    );
   }
   if (TAXONOMY.CAMERA.attributes?.ANGLE) {
-    categories.push(`- ${TAXONOMY.CAMERA.attributes.ANGLE} (e.g., "low angle")`);
+    categories.push(
+      `- ${TAXONOMY.CAMERA.attributes.ANGLE} (e.g., "low angle")`,
+    );
   }
   if (TAXONOMY.CAMERA.attributes?.LENS) {
     categories.push(`- ${TAXONOMY.CAMERA.attributes.LENS} (e.g., "50mm lens")`);
   }
   if (TAXONOMY.CAMERA.attributes?.FOCUS) {
-    categories.push(`- ${TAXONOMY.CAMERA.attributes.FOCUS} (e.g., "selective focus", "f/4-f/5.6", "f/2.8")`);
+    categories.push(
+      `- ${TAXONOMY.CAMERA.attributes.FOCUS} (e.g., "selective focus", "f/4-f/5.6", "f/2.8")`,
+    );
   }
-  
+
   // style.aesthetic
   if (TAXONOMY.STYLE.attributes?.AESTHETIC) {
-    categories.push(`- ${TAXONOMY.STYLE.attributes.AESTHETIC} (e.g., "sports photography clarity", "Dynamic sports photography")`);
+    categories.push(
+      `- ${TAXONOMY.STYLE.attributes.AESTHETIC} (e.g., "sports photography clarity", "Dynamic sports photography")`,
+    );
   }
-  
+
   // technical.*
   if (TAXONOMY.TECHNICAL.attributes?.DURATION) {
     categories.push(`- ${TAXONOMY.TECHNICAL.attributes.DURATION} (e.g., "6s")`);
   }
   if (TAXONOMY.TECHNICAL.attributes?.ASPECT_RATIO) {
-    categories.push(`- ${TAXONOMY.TECHNICAL.attributes.ASPECT_RATIO} (e.g., "16:9")`);
+    categories.push(
+      `- ${TAXONOMY.TECHNICAL.attributes.ASPECT_RATIO} (e.g., "16:9")`,
+    );
   }
   if (TAXONOMY.TECHNICAL.attributes?.FPS) {
     categories.push(`- ${TAXONOMY.TECHNICAL.attributes.FPS} (e.g., "60fps")`);
   }
-  
+
   // audio.soundEffect
   if (TAXONOMY.AUDIO.attributes?.SFX) {
-    categories.push(`- ${TAXONOMY.AUDIO.attributes.SFX} (e.g., "Sound of sneakers on court")`);
+    categories.push(
+      `- ${TAXONOMY.AUDIO.attributes.SFX} (e.g., "Sound of sneakers on court")`,
+    );
   }
 
   return `You are an expert video prompt analyzer. 
 Your goal is to extract specific text spans from the user's prompt and categorize them according to the following taxonomy.
 
 Taxonomy Categories:
-${categories.join('\n')}
+${categories.join("\n")}
 
 **CRITICAL EXTRACTION RULES:**
 1.  **Extract EXACT text**: Do NOT paraphrase, summarize, or change a single character.
@@ -152,11 +184,11 @@ function buildGeminiStreamingSystemPrompt(): string {
       const attrs = config.attributes
         ? Object.entries(config.attributes)
             .map(([attrKey, attrId]) => `    - ${attrId}`)
-            .join('\n')
-        : '    (no sub-attributes)';
+            .join("\n")
+        : "    (no sub-attributes)";
       return `  ${config.id} (${config.label}): ${config.description}\n${attrs}`;
     })
-    .join('\n\n');
+    .join("\n\n");
 
   return `You are an expert video prompt analyzer. Your task is to extract "visual control point" spans from video prompts.
 
@@ -169,7 +201,7 @@ Use ONLY these exact role IDs when labeling spans:
 ${categoryDescriptions}
 
 ## Valid Role IDs (for reference)
-${validRoles.join(', ')}
+${validRoles.join(", ")}
 
 ## Extraction Guidelines
 
@@ -229,7 +261,8 @@ Extract ALL visual control points. Do not skip technical specs, alternative appr
 `;
 }
 
-export const GEMINI_STREAMING_SYSTEM_PROMPT = buildGeminiStreamingSystemPrompt();
+export const GEMINI_STREAMING_SYSTEM_PROMPT =
+  buildGeminiStreamingSystemPrompt();
 
 /**
  * JSON Schema for Gemini structured output
@@ -238,9 +271,10 @@ export const GEMINI_STREAMING_SYSTEM_PROMPT = buildGeminiStreamingSystemPrompt()
 export const GEMINI_JSON_SCHEMA = {
   type: "object",
   properties: {
-    analysis_trace: { 
+    analysis_trace: {
       type: "string",
-      description: "Step-by-step reasoning about entities, intent, and span boundaries" 
+      description:
+        "Step-by-step reasoning about entities, intent, and span boundaries",
     },
     spans: {
       type: "array",
@@ -249,26 +283,26 @@ export const GEMINI_JSON_SCHEMA = {
         additionalProperties: false,
         properties: {
           text: { type: "string" },
-          role: { 
-            type: "string", 
-            enum: [...VALID_CATEGORIES].sort() 
+          role: {
+            type: "string",
+            enum: [...VALID_CATEGORIES].sort(),
           },
-          confidence: { type: "number" }
+          confidence: { type: "number" },
         },
-        required: ["text", "role", "confidence"]
-      }
+        required: ["text", "role", "confidence"],
+      },
     },
     meta: {
       type: "object",
       additionalProperties: false,
       properties: {
         version: { type: "string" },
-        notes: { type: "string" }
+        notes: { type: "string" },
       },
-      required: ["version", "notes"]
+      required: ["version", "notes"],
     },
-    isAdversarial: { type: "boolean" }
+    isAdversarial: { type: "boolean" },
   },
   required: ["analysis_trace", "spans", "meta", "isAdversarial"],
-  additionalProperties: false
+  additionalProperties: false,
 };

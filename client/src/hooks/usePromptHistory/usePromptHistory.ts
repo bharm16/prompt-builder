@@ -8,10 +8,10 @@
  * Single Responsibility: Orchestrate the prompt history workflow
  */
 
-import { useEffect, useMemo } from 'react';
-import { useToast } from '../../components/Toast';
-import { useHistoryState, useHistoryPersistence } from './hooks';
-import type { User, Toast } from './types';
+import { useEffect, useMemo } from "react";
+import { useToast } from "../../components/Toast";
+import { useHistoryState, useHistoryPersistence } from "./hooks";
+import type { User, Toast } from "./types";
 
 export const usePromptHistory = (user: User | null) => {
   const toast = useToast() as Toast;
@@ -80,39 +80,47 @@ export const usePromptHistory = (user: User | null) => {
         isActive = false;
       };
     }
-  }, [user, loadHistoryFromFirestore, loadHistoryFromLocalStorage, setIsLoadingHistory]);
-
-  return useMemo(() => ({
-    history: state.history,
-    filteredHistory,
-    isLoadingHistory: state.isLoadingHistory,
-    searchQuery,
-    setSearchQuery,
-    saveToHistory,
-    createDraft,
-    updateEntryLocal,
-    updateEntryPersisted,
-    clearHistory,
-    deleteFromHistory,
+  }, [
+    user,
     loadHistoryFromFirestore,
-    updateEntryHighlight,
-    updateEntryOutput,
-    updateEntryVersions,
-  }), [
-    state.history,
-    filteredHistory,
-    state.isLoadingHistory,
-    searchQuery,
-    setSearchQuery,
-    saveToHistory,
-    createDraft,
-    updateEntryLocal,
-    updateEntryPersisted,
-    clearHistory,
-    deleteFromHistory,
-    loadHistoryFromFirestore,
-    updateEntryHighlight,
-    updateEntryOutput,
-    updateEntryVersions,
+    loadHistoryFromLocalStorage,
+    setIsLoadingHistory,
   ]);
+
+  return useMemo(
+    () => ({
+      history: state.history,
+      filteredHistory,
+      isLoadingHistory: state.isLoadingHistory,
+      searchQuery,
+      setSearchQuery,
+      saveToHistory,
+      createDraft,
+      updateEntryLocal,
+      updateEntryPersisted,
+      clearHistory,
+      deleteFromHistory,
+      loadHistoryFromFirestore,
+      updateEntryHighlight,
+      updateEntryOutput,
+      updateEntryVersions,
+    }),
+    [
+      state.history,
+      filteredHistory,
+      state.isLoadingHistory,
+      searchQuery,
+      setSearchQuery,
+      saveToHistory,
+      createDraft,
+      updateEntryLocal,
+      updateEntryPersisted,
+      clearHistory,
+      deleteFromHistory,
+      loadHistoryFromFirestore,
+      updateEntryHighlight,
+      updateEntryOutput,
+      updateEntryVersions,
+    ],
+  );
 };

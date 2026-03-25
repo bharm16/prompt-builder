@@ -10,24 +10,24 @@
  * labeling pipeline independently testable.
  */
 
-import { useMemo, useRef, useCallback, useEffect } from 'react';
-import type React from 'react';
+import { useMemo, useRef, useCallback, useEffect } from "react";
+import type React from "react";
 import {
   PERFORMANCE_CONFIG,
   DEFAULT_LABELING_POLICY,
   TEMPLATE_VERSIONS,
-} from '@config/performance.config';
-import { sanitizeText, useSpanLabeling } from '@/features/span-highlighting';
-import { useHighlightRendering } from '@/features/span-highlighting';
-import { useHighlightFingerprint } from '@/features/span-highlighting';
-import type { SpanLabelingResult } from '@/features/span-highlighting/hooks/types';
-import type { HighlightSnapshot } from '../types';
-import { useSpanDataConversion } from './useSpanDataConversion';
-import { useParseResult } from './useParseResult';
+} from "@config/performance.config";
+import { sanitizeText, useSpanLabeling } from "@/features/span-highlighting";
+import { useHighlightRendering } from "@/features/span-highlighting";
+import { useHighlightFingerprint } from "@/features/span-highlighting";
+import type { SpanLabelingResult } from "@/features/span-highlighting/hooks/types";
+import type { HighlightSnapshot } from "../types";
+import { useSpanDataConversion } from "./useSpanDataConversion";
+import { useParseResult } from "./useParseResult";
 import {
   escapeHTMLForMLHighlighting,
   formatTextToHTML,
-} from '../../utils/textFormatting';
+} from "../../utils/textFormatting";
 
 export interface SpanLabelingPipelineInput {
   displayedPrompt: string | null;
@@ -41,7 +41,10 @@ export interface SpanLabelingPipelineInput {
   showHighlights: boolean;
   i2vContext?: { isI2VMode?: boolean } | null | undefined;
   onHighlightsPersist?: ((result: SpanLabelingResult) => void) | undefined;
-  syncVersionHighlights: (snapshot: HighlightSnapshot, promptText: string) => void;
+  syncVersionHighlights: (
+    snapshot: HighlightSnapshot,
+    promptText: string,
+  ) => void;
   versioningPromptUuid: string | null;
 }
 
@@ -62,12 +65,12 @@ export function useSpanLabelingPipeline({
   syncVersionHighlights,
   versioningPromptUuid,
 }: SpanLabelingPipelineInput) {
-  const enableMLHighlighting = selectedMode === 'video' && showResults;
+  const enableMLHighlighting = selectedMode === "video" && showResults;
 
   // Normalize to NFC so span offsets and rendered text stay aligned.
   const normalizedDisplayedPrompt = useMemo(
     () => (displayedPrompt == null ? null : sanitizeText(displayedPrompt)),
-    [displayedPrompt]
+    [displayedPrompt],
   );
 
   const labelingPolicy = useMemo(() => DEFAULT_LABELING_POLICY, []);
@@ -82,7 +85,9 @@ export function useSpanLabelingPipeline({
   });
 
   // Detect fresh optimization for immediate labeling
-  const previousOptimizationResultVersionRef = useRef(optimizationResultVersion);
+  const previousOptimizationResultVersionRef = useRef(
+    optimizationResultVersion,
+  );
   const shouldLabelImmediately =
     optimizationResultVersion > 0 &&
     optimizationResultVersion !== previousOptimizationResultVersionRef.current;
@@ -111,7 +116,7 @@ export function useSpanLabelingPipeline({
             (versioningPromptUuid ? String(versioningPromptUuid) : null),
           updatedAt: new Date().toISOString(),
         };
-        syncVersionHighlights(snapshot, normalizedDisplayedPrompt ?? '');
+        syncVersionHighlights(snapshot, normalizedDisplayedPrompt ?? "");
       }
     },
     [
@@ -120,7 +125,7 @@ export function useSpanLabelingPipeline({
       versioningPromptUuid,
       normalizedDisplayedPrompt,
       syncVersionHighlights,
-    ]
+    ],
   );
 
   // Core labeling hook
@@ -131,7 +136,7 @@ export function useSpanLabelingPipeline({
     error: labelingError,
     signature: labelingSignature,
   } = useSpanLabeling({
-    text: enableMLHighlighting ? (normalizedDisplayedPrompt ?? '') : '',
+    text: enableMLHighlighting ? (normalizedDisplayedPrompt ?? "") : "",
     initialData: memoizedInitialHighlights,
     initialDataVersion: initialHighlightsVersion,
     cacheKey: enableMLHighlighting && promptUuid ? String(promptUuid) : null,
@@ -166,12 +171,12 @@ export function useSpanLabelingPipeline({
         return {
           ...rest,
           id: span.id ?? `span_${span.start}_${span.end}`,
-          quote: span.quote ?? span.text ?? '',
-          ...(typeof confidence === 'number' ? { confidence } : {}),
+          quote: span.quote ?? span.text ?? "",
+          ...(typeof confidence === "number" ? { confidence } : {}),
           ...(category !== undefined ? { category } : {}),
         };
       }),
-    [parseResult.spans]
+    [parseResult.spans],
   );
 
   // Highlight fingerprint for change detection
@@ -184,10 +189,10 @@ export function useSpanLabelingPipeline({
   const { html: formattedHTML } = useMemo(() => {
     if (enableMLHighlighting) {
       return {
-        html: escapeHTMLForMLHighlighting(normalizedDisplayedPrompt || ''),
+        html: escapeHTMLForMLHighlighting(normalizedDisplayedPrompt || ""),
       };
     }
-    return formatTextToHTML(normalizedDisplayedPrompt ?? '');
+    return formatTextToHTML(normalizedDisplayedPrompt ?? "");
   }, [normalizedDisplayedPrompt, enableMLHighlighting]);
 
   // DOM highlight rendering
@@ -199,7 +204,7 @@ export function useSpanLabelingPipeline({
     },
     enabled: enableMLHighlighting && showHighlights,
     fingerprint: highlightFingerprint,
-    text: normalizedDisplayedPrompt ?? '',
+    text: normalizedDisplayedPrompt ?? "",
   });
 
   return {

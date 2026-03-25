@@ -19,7 +19,7 @@ export interface SceneChangeRequest {
 
 export interface SceneChangeResponse {
   isSceneChange?: boolean;
-  confidence?: 'low' | 'medium' | 'high';
+  confidence?: "low" | "medium" | "high";
   reasoning?: string;
   suggestedUpdates?: Record<string, string>;
 }

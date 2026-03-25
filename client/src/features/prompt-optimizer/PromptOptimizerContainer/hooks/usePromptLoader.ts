@@ -1,23 +1,23 @@
-import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { getPromptRepositoryForUser } from '@repositories/index';
-import { createHighlightSignature } from '@features/span-highlighting';
-import { PromptContext } from '@utils/PromptContext';
-import type { CapabilityValues } from '@shared/capabilities';
+import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { getPromptRepositoryForUser } from "@repositories/index";
+import { createHighlightSignature } from "@features/span-highlighting";
+import { PromptContext } from "@utils/PromptContext";
+import type { CapabilityValues } from "@shared/capabilities";
 import type {
   PromptHistoryEntry,
   PromptKeyframe,
   PromptVersionEntry,
-} from '@features/prompt-optimizer/types/domain/prompt-session';
-import type { Toast } from '@hooks/types';
-import type { HighlightSnapshot } from '@features/prompt-optimizer/context/types';
-import { logger } from '@/services/LoggingService';
-import { sanitizeError } from '@/utils/logging';
+} from "@features/prompt-optimizer/types/domain/prompt-session";
+import type { Toast } from "@hooks/types";
+import type { HighlightSnapshot } from "@features/prompt-optimizer/context/types";
+import { logger } from "@/services/LoggingService";
+import { sanitizeError } from "@/utils/logging";
 
-const log = logger.child('usePromptLoader');
+const log = logger.child("usePromptLoader");
 const isRemoteSessionId = (value: string): boolean => {
   const normalized = value.trim();
-  return normalized.length > 0 && !normalized.startsWith('draft-');
+  return normalized.length > 0 && !normalized.startsWith("draft-");
 };
 
 interface PromptData {
@@ -73,7 +73,7 @@ interface UsePromptLoaderParams {
   setDisplayedPromptSilently: (prompt: string) => void;
   applyInitialHighlightSnapshot: (
     highlight: HighlightSnapshot | null,
-    options: { bumpVersion: boolean; markPersisted: boolean }
+    options: { bumpVersion: boolean; markPersisted: boolean },
   ) => void;
   resetEditStacks: () => void;
   resetVersionEdits: () => void;
@@ -91,15 +91,17 @@ interface UsePromptLoaderParams {
   skipLoadFromUrlRef: React.MutableRefObject<boolean>;
 }
 
-const parseCapabilityValues = (value: PromptData['generationParams']): CapabilityValues => {
-  if (value && typeof value === 'object') {
+const parseCapabilityValues = (
+  value: PromptData["generationParams"],
+): CapabilityValues => {
+  if (value && typeof value === "object") {
     return value as CapabilityValues;
   }
 
-  if (typeof value === 'string') {
+  if (typeof value === "string") {
     try {
       const parsed = JSON.parse(value) as unknown;
-      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
         return parsed as CapabilityValues;
       }
     } catch {
@@ -183,7 +185,9 @@ export function usePromptLoader({
   // and the prompt-disappears-on-Preview bug.
   const setDisplayedPromptSilentlyRef = useRef(setDisplayedPromptSilently);
   setDisplayedPromptSilentlyRef.current = setDisplayedPromptSilently;
-  const applyInitialHighlightSnapshotRef = useRef(applyInitialHighlightSnapshot);
+  const applyInitialHighlightSnapshotRef = useRef(
+    applyInitialHighlightSnapshot,
+  );
   applyInitialHighlightSnapshotRef.current = applyInitialHighlightSnapshot;
   const resetEditStacksRef = useRef(resetEditStacks);
   resetEditStacksRef.current = resetEditStacks;
@@ -240,20 +244,20 @@ export function usePromptLoader({
         return;
       }
 
-      const normalizedSessionId = sessionId?.trim() ?? '';
+      const normalizedSessionId = sessionId?.trim() ?? "";
       if (!normalizedSessionId) {
         // Clear stale state when entering `/` without a session ID.
         // Without this, the workspace preserves the last-loaded session's
         // prompt, suggestions, and generation state from in-memory history.
         setSuggestionsDataRef.current?.(null);
         setConceptElementsRef.current?.(null);
-        setInputPromptRef.current('');
-        setOptimizedPromptRef.current('');
-        setDisplayedPromptSilentlyRef.current('');
+        setInputPromptRef.current("");
+        setOptimizedPromptRef.current("");
+        setDisplayedPromptSilentlyRef.current("");
         setGenericOptimizedPromptRef.current?.(null);
         setPreviewPromptRef.current?.(null);
         setShowResultsRef.current(false);
-        window.dispatchEvent(new Event('po:workspace-reset'));
+        window.dispatchEvent(new Event("po:workspace-reset"));
         setIsLoading(false);
         return;
       }
@@ -268,7 +272,7 @@ export function usePromptLoader({
         return;
       }
 
-      const sessionKey = `${normalizedSessionId}::${user?.uid ?? 'anonymous'}`;
+      const sessionKey = `${normalizedSessionId}::${user?.uid ?? "anonymous"}`;
 
       if (lastLoadedSessionKeyRef.current === sessionKey) {
         setIsLoading(false);
@@ -282,24 +286,32 @@ export function usePromptLoader({
       const applyHydratedPrompt = (
         promptData: PromptData,
         resolvedSessionId: string,
-        options?: { markPersisted?: boolean }
+        options?: { markPersisted?: boolean },
       ): void => {
-        const parsedGenerationParams = parseCapabilityValues(promptData.generationParams);
+        const parsedGenerationParams = parseCapabilityValues(
+          promptData.generationParams,
+        );
         setSuggestionsDataRef.current?.(null);
         setConceptElementsRef.current?.(null);
-        setInputPromptRef.current(promptData.input || '');
-        setOptimizedPromptRef.current(promptData.output || '');
-        setDisplayedPromptSilentlyRef.current(promptData.output || '');
+        setInputPromptRef.current(promptData.input || "");
+        setOptimizedPromptRef.current(promptData.output || "");
+        setDisplayedPromptSilentlyRef.current(promptData.output || "");
         setGenericOptimizedPromptRef.current?.(null);
         setPreviewPromptRef.current?.(null);
         setPreviewAspectRatioRef.current?.(null);
         setCurrentPromptUuidRef.current(promptData.uuid ?? null);
         setCurrentPromptDocIdRef.current(promptData.id || resolvedSessionId);
-        setShowResultsRef.current(Boolean(promptData.output && promptData.output.trim()));
-        if (typeof promptData.mode === 'string' && promptData.mode.trim()) {
+        setShowResultsRef.current(
+          Boolean(promptData.output && promptData.output.trim()),
+        );
+        if (typeof promptData.mode === "string" && promptData.mode.trim()) {
           setSelectedModeRef.current?.(promptData.mode.trim());
         }
-        setSelectedModelRef.current(typeof promptData.targetModel === 'string' ? promptData.targetModel : '');
+        setSelectedModelRef.current(
+          typeof promptData.targetModel === "string"
+            ? promptData.targetModel
+            : "",
+        );
         setGenerationParamsRef.current?.(parsedGenerationParams);
         upsertHistoryEntryRef.current?.(
           {
@@ -309,18 +321,19 @@ export function usePromptLoader({
                 ? (parsedGenerationParams as Record<string, unknown>)
                 : null,
           },
-          resolvedSessionId
+          resolvedSessionId,
         );
         onLoadKeyframesRef.current?.(promptData.keyframes);
 
-        const preloadHighlight: HighlightSnapshot | null = promptData.highlightCache
-          ? ({
-              ...promptData.highlightCache,
-              signature:
-                promptData.highlightCache.signature ??
-                createHighlightSignature(promptData.output ?? ''),
-            } as HighlightSnapshot)
-          : null;
+        const preloadHighlight: HighlightSnapshot | null =
+          promptData.highlightCache
+            ? ({
+                ...promptData.highlightCache,
+                signature:
+                  promptData.highlightCache.signature ??
+                  createHighlightSignature(promptData.output ?? ""),
+              } as HighlightSnapshot)
+            : null;
         applyInitialHighlightSnapshotRef.current(preloadHighlight, {
           bumpVersion: true,
           markPersisted: options?.markPersisted !== false,
@@ -331,21 +344,24 @@ export function usePromptLoader({
         if (promptData.brainstormContext) {
           try {
             const contextData =
-              typeof promptData.brainstormContext === 'string'
-                ? (JSON.parse(promptData.brainstormContext) as Record<string, unknown>)
+              typeof promptData.brainstormContext === "string"
+                ? (JSON.parse(promptData.brainstormContext) as Record<
+                    string,
+                    unknown
+                  >)
                 : promptData.brainstormContext;
             const restoredContext = PromptContext.fromJSON(contextData);
             setPromptContextRef.current(restoredContext);
           } catch (contextError) {
             const info = sanitizeError(contextError);
-            log.warn('Failed to restore prompt context from session', {
-              operation: 'restorePromptContext',
+            log.warn("Failed to restore prompt context from session", {
+              operation: "restorePromptContext",
               sessionId: normalizedSessionId,
               error: info.message,
               errorName: info.name,
             });
             toastRef.current.warning(
-              'Could not restore video context. The prompt will still load.'
+              "Could not restore video context. The prompt will still load.",
             );
             setPromptContextRef.current(null);
           }
@@ -357,9 +373,9 @@ export function usePromptLoader({
       const bootstrapBlankDraft = (): void => {
         setSuggestionsDataRef.current?.(null);
         setConceptElementsRef.current?.(null);
-        setInputPromptRef.current('');
-        setOptimizedPromptRef.current('');
-        setDisplayedPromptSilentlyRef.current('');
+        setInputPromptRef.current("");
+        setOptimizedPromptRef.current("");
+        setDisplayedPromptSilentlyRef.current("");
         setGenericOptimizedPromptRef.current?.(null);
         setPreviewPromptRef.current?.(null);
         setPreviewAspectRatioRef.current?.(null);
@@ -372,20 +388,26 @@ export function usePromptLoader({
         resetEditStacksRef.current();
         setPromptContextRef.current(null);
         onLoadKeyframesRef.current?.(null);
-        setSelectedModeRef.current?.(selectedModeRef.current ?? 'video');
-        setSelectedModelRef.current(selectedModelValueRef.current ?? '');
-        setGenerationParamsRef.current?.(generationParamsValueRef.current ?? {});
+        setSelectedModeRef.current?.(selectedModeRef.current ?? "video");
+        setSelectedModelRef.current(selectedModelValueRef.current ?? "");
+        setGenerationParamsRef.current?.(
+          generationParamsValueRef.current ?? {},
+        );
 
         if (createDraftEntryRef.current) {
           const draft = createDraftEntryRef.current({
             id: normalizedSessionId,
-            mode: selectedModeRef.current ?? 'video',
+            mode: selectedModeRef.current ?? "video",
             targetModel:
-              typeof selectedModelValueRef.current === 'string' && selectedModelValueRef.current.trim()
+              typeof selectedModelValueRef.current === "string" &&
+              selectedModelValueRef.current.trim()
                 ? selectedModelValueRef.current.trim()
                 : null,
             generationParams:
-              (generationParamsValueRef.current as Record<string, unknown> | null | undefined) ?? null,
+              (generationParamsValueRef.current as
+                | Record<string, unknown>
+                | null
+                | undefined) ?? null,
             persist: false,
           });
           setCurrentPromptUuidRef.current(draft.uuid);
@@ -400,16 +422,18 @@ export function usePromptLoader({
       try {
         if (!isRemoteSessionId(normalizedSessionId)) {
           const inMemoryDraft =
-            historyEntriesRef.current.find((entry) => entry.id === normalizedSessionId) ?? null;
+            historyEntriesRef.current.find(
+              (entry) => entry.id === normalizedSessionId,
+            ) ?? null;
           if (inMemoryDraft) {
             applyHydratedPrompt(inMemoryDraft, normalizedSessionId);
             return;
           }
 
           const localPromptRepository = getPromptRepositoryForUser(false);
-          const localDraft = (await localPromptRepository.getById(normalizedSessionId)) as
-            | PromptData
-            | null;
+          const localDraft = (await localPromptRepository.getById(
+            normalizedSessionId,
+          )) as PromptData | null;
 
           if (cancelled) return;
 
@@ -422,24 +446,33 @@ export function usePromptLoader({
         }
 
         const promptRepository = getPromptRepositoryForUser(isAuthenticated);
-        const promptData = (await promptRepository.getById(normalizedSessionId)) as
-          | PromptData
-          | null;
+        const promptData = (await promptRepository.getById(
+          normalizedSessionId,
+        )) as PromptData | null;
 
         if (cancelled) return;
 
         if (promptData) {
           applyHydratedPrompt(promptData, normalizedSessionId);
         } else {
-          log.warn('Prompt not found for session', { operation: 'loadPromptFromSession', sessionId: normalizedSessionId });
-          navigateRef.current('/', { replace: true });
+          log.warn("Prompt not found for session", {
+            operation: "loadPromptFromSession",
+            sessionId: normalizedSessionId,
+          });
+          navigateRef.current("/", { replace: true });
         }
       } catch (error) {
         if (cancelled) return;
-        const err = error instanceof Error ? error : new Error(sanitizeError(error).message);
-        log.error('Error loading prompt from session', err, { operation: 'loadPromptFromSession', sessionId: normalizedSessionId });
-        toastRef.current.error('Failed to load prompt');
-        navigateRef.current('/', { replace: true });
+        const err =
+          error instanceof Error
+            ? error
+            : new Error(sanitizeError(error).message);
+        log.error("Error loading prompt from session", err, {
+          operation: "loadPromptFromSession",
+          sessionId: normalizedSessionId,
+        });
+        toastRef.current.error("Failed to load prompt");
+        navigateRef.current("/", { replace: true });
       } finally {
         loadCompleted = true;
         if (!cancelled) {

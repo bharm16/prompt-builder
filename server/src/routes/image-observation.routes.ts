@@ -1,7 +1,7 @@
-import express, { type Router, type Request, type Response } from 'express';
-import { z } from 'zod';
-import { asyncHandler } from '@middleware/asyncHandler';
-import type { ImageObservationService } from '@services/image-observation';
+import express, { type Router, type Request, type Response } from "express";
+import { z } from "zod";
+import { asyncHandler } from "@middleware/asyncHandler";
+import type { ImageObservationService } from "@services/image-observation";
 
 const ImageObservationRequestSchema = z
   .object({
@@ -12,18 +12,18 @@ const ImageObservationRequestSchema = z
   .strip();
 
 export function createImageObservationRoutes(
-  imageObservationService: ImageObservationService
+  imageObservationService: ImageObservationService,
 ): Router {
   const router = express.Router();
 
   router.post(
-    '/image/observe',
+    "/image/observe",
     asyncHandler(async (req: Request, res: Response) => {
       const parsed = ImageObservationRequestSchema.safeParse(req.body);
       if (!parsed.success) {
         return res.status(400).json({
           success: false,
-          error: 'Invalid request',
+          error: "Invalid request",
           details: parsed.error.issues,
         });
       }
@@ -41,7 +41,7 @@ export function createImageObservationRoutes(
         data: rest,
         ...rest,
       });
-    })
+    }),
   );
 
   return router;

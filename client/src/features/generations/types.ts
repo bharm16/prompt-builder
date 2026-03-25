@@ -1,15 +1,15 @@
-import type { PromptVersionEntry } from '@features/prompt-optimizer/types/domain/prompt-session';
+import type { PromptVersionEntry } from "@features/prompt-optimizer/types/domain/prompt-session";
 import type {
   DraftModel,
   GenerationOverrides,
   VideoTier,
-} from '@components/ToolSidebar/types';
-import type { Asset } from '@shared/types/asset';
-import type { TimelineItem } from '@features/prompt-optimizer/types/domain/timeline';
+} from "@components/ToolSidebar/types";
+import type { Asset } from "@shared/types/asset";
+import type { TimelineItem } from "@features/prompt-optimizer/types/domain/timeline";
 import type {
   Generation,
   GenerationParams,
-} from '@features/prompt-optimizer/types/domain/generation';
+} from "@features/prompt-optimizer/types/domain/generation";
 
 export type {
   Generation,
@@ -18,7 +18,7 @@ export type {
   GenerationSettingsSnapshot,
   GenerationStatus,
   GenerationTier,
-} from '@features/prompt-optimizer/types/domain/generation';
+} from "@features/prompt-optimizer/types/domain/generation";
 
 export interface GenerationsPanelStateSnapshot {
   generations: Generation[];
@@ -48,7 +48,7 @@ export interface GenerationsPanelRuntime {
   handleDraft: (model: DraftModel, overrides?: GenerationOverrides) => void;
   handleRenderWithFaceSwap: (
     model: string,
-    overrides?: GenerationOverrides
+    overrides?: GenerationOverrides,
   ) => void;
   handleStoryboard: () => void;
   handleApproveKeyframe: (keyframeUrl: string) => void;
@@ -62,7 +62,7 @@ export interface GenerationsPanelRuntime {
   handleSelectFrame: (
     url: string,
     frameIndex: number,
-    generationId: string
+    generationId: string,
   ) => void;
   handleClearSelectedFrame: () => void;
   setActiveGeneration: (generationId: string | null) => void;
@@ -77,8 +77,10 @@ export interface GenerationsPanelProps {
   generationParams?: Record<string, unknown> | undefined;
   initialGenerations?: Generation[] | undefined;
   onGenerationsChange?: (generations: Generation[]) => void;
-  presentation?: 'timeline' | 'hero' | undefined;
-  onStateSnapshot?: ((snapshot: GenerationsPanelStateSnapshot) => void) | undefined;
+  presentation?: "timeline" | "hero" | undefined;
+  onStateSnapshot?:
+    | ((snapshot: GenerationsPanelStateSnapshot) => void)
+    | undefined;
   heroOverrideGenerationId?: string | null | undefined;
   runtime?: GenerationsPanelRuntime | undefined;
   className?: string;

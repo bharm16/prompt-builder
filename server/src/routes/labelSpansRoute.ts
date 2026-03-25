@@ -1,23 +1,26 @@
-import type { Router, Request, Response } from 'express';
-import { Router as ExpressRouter } from 'express';
-import { logger } from '@infrastructure/Logger';
-import { extractUserId } from '@utils/requestHelpers';
-import { requestCoalescing } from '@middleware/requestCoalescing';
-import type { AIModelService } from '@services/ai-model/AIModelService';
-import type { SpanLabelingCacheService } from '@services/cache/SpanLabelingCacheService';
-import { createLabelSpansCoordinator } from './labelSpans/coordinator';
-import { parseLabelSpansRequest } from './labelSpans/requestParser';
-import { handleLabelSpansStreamRequest } from './labelSpans/streamingHandler';
-import { toPublicLabelSpansResult } from './labelSpans/transform';
+import type { Router, Request, Response } from "express";
+import { Router as ExpressRouter } from "express";
+import { logger } from "@infrastructure/Logger";
+import { extractUserId } from "@utils/requestHelpers";
+import { requestCoalescing } from "@middleware/requestCoalescing";
+import type { AIModelService } from "@services/ai-model/AIModelService";
+import type { SpanLabelingCacheService } from "@services/cache/SpanLabelingCacheService";
+import { createLabelSpansCoordinator } from "./labelSpans/coordinator";
+import { parseLabelSpansRequest } from "./labelSpans/requestParser";
+import { handleLabelSpansStreamRequest } from "./labelSpans/streamingHandler";
+import { toPublicLabelSpansResult } from "./labelSpans/transform";
 
 /**
  * Create label spans route with dependency injection
  */
-export function createLabelSpansRoute(aiService: AIModelService, spanLabelingCache: SpanLabelingCacheService | null = null): Router {
+export function createLabelSpansRoute(
+  aiService: AIModelService,
+  spanLabelingCache: SpanLabelingCacheService | null = null,
+): Router {
   const router = ExpressRouter();
   const coordinator = createLabelSpansCoordinator(aiService, spanLabelingCache);
 
-  router.post('/stream', async (req: Request, res: Response) => {
+  router.post("/stream", async (req: Request, res: Response) => {
     const parsed = parseLabelSpansRequest(req.body);
     if (!parsed.ok) {
       return res.status(parsed.status).json({ error: parsed.error });
@@ -26,9 +29,9 @@ export function createLabelSpansRoute(aiService: AIModelService, spanLabelingCac
     const { payload, text, policy, templateVersion } = parsed.data;
     const requestId = (req as Request & { id?: string }).id;
     const userId = extractUserId(req);
-    const operation = 'labelSpansStream';
+    const operation = "labelSpansStream";
 
-    logger.debug('Starting operation.', {
+    logger.debug("Starting operation.", {
       operation,
       requestId,
       userId,
@@ -50,69 +53,79 @@ export function createLabelSpansRoute(aiService: AIModelService, spanLabelingCac
     return;
   });
 
-  router.post('/', requestCoalescing.middleware({ keyScope: '/llm/label-spans' }), async (req: Request, res: Response) => {
-    const parsed = parseLabelSpansRequest(req.body);
-    if (!parsed.ok) {
-      return res.status(parsed.status).json({ error: parsed.error });
-    }
-
-    const { payload, text, maxSpans, minConfidence, policy, templateVersion } =
-      parsed.data;
-
-    const startTime = performance.now();
-    const operation = 'labelSpans';
-    const requestId = (req as Request & { id?: string }).id;
-    const userId = extractUserId(req);
-
-    logger.debug('Starting operation.', {
-      operation,
-      requestId,
-      userId,
-      textLength: text.length,
-      maxSpans,
-      minConfidence,
-      policy,
-      templateVersion,
-    });
-
-    try {
-      const { result, headers } = await coordinator.resolve({
-        payload,
-        text,
-        policy: policy ?? null,
-        templateVersion: templateVersion ?? null,
-        requestId,
-        userId,
-        startTimeMs: startTime,
-      });
-
-      Object.entries(headers).forEach(([key, value]) => {
-        res.setHeader(key, value);
-      });
-
-      if (!result) {
-        return res
-          .status(502)
-          .json({ error: 'Span labeling failed to produce a result' });
+  router.post(
+    "/",
+    requestCoalescing.middleware({ keyScope: "/llm/label-spans" }),
+    async (req: Request, res: Response) => {
+      const parsed = parseLabelSpansRequest(req.body);
+      if (!parsed.ok) {
+        return res.status(parsed.status).json({ error: parsed.error });
       }
 
-      return res.json(toPublicLabelSpansResult(result));
-    } catch (error) {
-      logger.error('Operation failed.', error as Error, {
+      const {
+        payload,
+        text,
+        maxSpans,
+        minConfidence,
+        policy,
+        templateVersion,
+      } = parsed.data;
+
+      const startTime = performance.now();
+      const operation = "labelSpans";
+      const requestId = (req as Request & { id?: string }).id;
+      const userId = extractUserId(req);
+
+      logger.debug("Starting operation.", {
         operation,
         requestId,
         userId,
-        duration: Math.round(performance.now() - startTime),
-        error: (error as { message?: string })?.message,
-        stack: (error as { stack?: string })?.stack,
-        textLength: text?.length,
+        textLength: text.length,
+        maxSpans,
+        minConfidence,
+        policy,
+        templateVersion,
       });
-      return res.status(502).json({
-        error: 'LLM span labeling failed',
-        message: (error as { message?: string })?.message || 'Unknown error',
-      });
-    }
-  });
+
+      try {
+        const { result, headers } = await coordinator.resolve({
+          payload,
+          text,
+          policy: policy ?? null,
+          templateVersion: templateVersion ?? null,
+          requestId,
+          userId,
+          startTimeMs: startTime,
+        });
+
+        Object.entries(headers).forEach(([key, value]) => {
+          res.setHeader(key, value);
+        });
+
+        if (!result) {
+          return res
+            .status(502)
+            .json({ error: "Span labeling failed to produce a result" });
+        }
+
+        return res.json(toPublicLabelSpansResult(result));
+      } catch (error) {
+        logger.error("Operation failed.", error as Error, {
+          operation,
+          requestId,
+          userId,
+          duration: Math.round(performance.now() - startTime),
+          error: (error as { message?: string })?.message,
+          stack: (error as { stack?: string })?.stack,
+          textLength: text?.length,
+        });
+        return res.status(502).json({
+          error: "LLM span labeling failed",
+          message: (error as { message?: string })?.message || "Unknown error",
+        });
+      }
+    },
+  );
 
   return router;
 }

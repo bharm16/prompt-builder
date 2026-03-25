@@ -5,13 +5,13 @@ on:
     branches:
       - main
     tags:
-      - 'v*.*.*'
+      - "v*.*.*"
   workflow_dispatch:
     inputs:
       environment:
-        description: 'Environment to deploy to'
+        description: "Environment to deploy to"
         required: true
-        default: 'staging'
+        default: "staging"
         type: choice
         options:
           - staging
@@ -86,7 +86,7 @@ jobs:
         if: always()
         with:
           status: ${{ job.status }}
-          text: 'Staging deployment ${{ job.status }}'
+          text: "Staging deployment ${{ job.status }}"
           webhook_url: ${{ secrets.SLACK_WEBHOOK }}
 
   deploy-production:
@@ -225,5 +225,5 @@ jobs:
         uses: 8398a7/action-slack@v3
         with:
           status: failure
-          text: 'Production deployment FAILED - version ${{ github.ref_name }}'
+          text: "Production deployment FAILED - version ${{ github.ref_name }}"
           webhook_url: ${{ secrets.SLACK_WEBHOOK }}

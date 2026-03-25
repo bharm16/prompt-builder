@@ -1,5 +1,5 @@
-import { DEFAULT_CONFIDENCE } from '../config/SpanLabelingConfig.js';
-import type { SpanLike } from '../types.js';
+import { DEFAULT_CONFIDENCE } from "../config/SpanLabelingConfig.js";
+import type { SpanLike } from "../types.js";
 
 /**
  * Text utility functions for span labeling
@@ -14,7 +14,7 @@ import type { SpanLike } from '../types.js';
  * @returns {number} Clamped value between 0 and 1, or DEFAULT_CONFIDENCE if invalid
  */
 export function clamp01(value: unknown): number {
-  return typeof value === 'number'
+  return typeof value === "number"
     ? Math.min(1, Math.max(0, value))
     : DEFAULT_CONFIDENCE;
 }
@@ -60,5 +60,5 @@ export function buildSpanKey(span: SpanLike): string {
  * @returns {string} Formatted error list
  */
 export function formatValidationErrors(errors: string[]): string {
-  return errors.map((err, index) => `${index + 1}. ${err}`).join('\n');
+  return errors.map((err, index) => `${index + 1}. ${err}`).join("\n");
 }

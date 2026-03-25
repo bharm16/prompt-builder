@@ -19,11 +19,13 @@ This guide provides step-by-step instructions for manually testing the logging i
 ### Steps:
 
 1. **Set environment variable**:
+
    ```bash
    export LOG_LEVEL=debug
    ```
 
 2. **Start the backend**:
+
    ```bash
    npm run dev
    ```
@@ -34,6 +36,7 @@ This guide provides step-by-step instructions for manually testing the logging i
    - Check for any errors
 
 4. **Make an API request**:
+
    ```bash
    curl -X POST http://localhost:3000/api/enhance \
      -H "Content-Type: application/json" \
@@ -47,6 +50,7 @@ This guide provides step-by-step instructions for manually testing the logging i
    - ✅ Response sent log with status code
 
 ### Expected Output:
+
 ```
 [DEBUG] Starting enhance operation { operation: 'enhance', requestId: 'req-123' }
 [INFO] Enhance operation completed { operation: 'enhance', duration: 234, requestId: 'req-123' }
@@ -60,17 +64,20 @@ This guide provides step-by-step instructions for manually testing the logging i
 ### Steps:
 
 1. **Set environment variables**:
+
    ```bash
    export VITE_DEBUG_LOGGING=true
    export VITE_LOG_LEVEL=debug
    ```
 
 2. **Start the frontend**:
+
    ```bash
    cd client && npm run dev
    ```
 
 3. **Open browser and navigate to app**:
+
    ```
    http://localhost:5173
    ```
@@ -90,6 +97,7 @@ This guide provides step-by-step instructions for manually testing the logging i
    - ✅ Duration measurements
 
 ### Expected Output:
+
 ```
 [trace-abc123][PromptOptimizerContainer] Component mounted { props: {...} }
 [trace-abc123][PromptOptimizerContainer] Fetching suggestions { promptLength: 45 }
@@ -107,8 +115,9 @@ This guide provides step-by-step instructions for manually testing the logging i
 2. **Generate some logs** by using the app
 
 3. **Export logs**:
+
    ```javascript
-   window.__logger.exportLogs()
+   window.__logger.exportLogs();
    ```
 
 4. **Verify output**:
@@ -117,16 +126,18 @@ This guide provides step-by-step instructions for manually testing the logging i
    - ✅ Each entry has: level, message, timestamp, meta
 
 5. **Check stored logs**:
+
    ```javascript
-   window.__logger.getStoredLogs()
+   window.__logger.getStoredLogs();
    ```
 
 6. **Clear logs**:
    ```javascript
-   window.__logger.clearStoredLogs()
+   window.__logger.clearStoredLogs();
    ```
 
 ### Expected Output:
+
 ```json
 [
   {
@@ -150,6 +161,7 @@ This guide provides step-by-step instructions for manually testing the logging i
 ### Steps:
 
 1. **Trigger an error** (e.g., invalid API request):
+
    ```bash
    curl -X POST http://localhost:3000/api/enhance \
      -H "Content-Type: application/json" \
@@ -176,6 +188,7 @@ This guide provides step-by-step instructions for manually testing the logging i
 ### Expected Output:
 
 **Backend**:
+
 ```
 [ERROR] Enhance operation failed {
   operation: 'enhance',
@@ -190,6 +203,7 @@ This guide provides step-by-step instructions for manually testing the logging i
 ```
 
 **Frontend**:
+
 ```
 [ErrorBoundary] Component error {
   errorName: 'TypeError',
@@ -206,6 +220,7 @@ This guide provides step-by-step instructions for manually testing the logging i
 ### Steps:
 
 1. **Make authenticated request**:
+
    ```bash
    curl -X POST http://localhost:3000/api/enhance \
      -H "Content-Type: application/json" \
@@ -219,12 +234,15 @@ This guide provides step-by-step instructions for manually testing the logging i
    - ✅ Request logged with sanitized headers
 
 3. **Check for other sensitive data**:
+
    ```bash
    grep -r "password\|token\|apiKey" server.log
    ```
+
    - ✅ Should only find sanitized/redacted values
 
 ### Expected Output:
+
 ```
 [DEBUG] Request received {
   headers: {
@@ -241,6 +259,7 @@ This guide provides step-by-step instructions for manually testing the logging i
 ### Steps:
 
 1. **Make a request and note the duration**:
+
    ```bash
    time curl -X POST http://localhost:3000/api/enhance \
      -H "Content-Type: application/json" \
@@ -259,9 +278,11 @@ This guide provides step-by-step instructions for manually testing the logging i
    - ✅ Should be reasonable (e.g., API call ~100-2000ms)
 
 ### Expected Output:
+
 ```
 [INFO] Operation completed { duration: 1234 }
 ```
+
 (Where 1234ms ≈ actual time taken)
 
 ---
@@ -273,35 +294,45 @@ This guide provides step-by-step instructions for manually testing the logging i
 1. **Test different log levels**:
 
    **Debug level** (see everything):
+
    ```bash
    LOG_LEVEL=debug npm run dev
    ```
+
    - ✅ See debug, info, warn, error logs
 
    **Info level** (production default):
+
    ```bash
    LOG_LEVEL=info npm run dev
    ```
+
    - ✅ See info, warn, error logs
    - ✅ No debug logs
 
    **Warn level**:
+
    ```bash
    LOG_LEVEL=warn npm run dev
    ```
+
    - ✅ See warn, error logs
    - ✅ No debug or info logs
 
    **Error level**:
+
    ```bash
    LOG_LEVEL=error npm run dev
    ```
+
    - ✅ See only error logs
 
 2. **Verify frontend log levels**:
+
    ```bash
    VITE_LOG_LEVEL=info npm run dev
    ```
+
    - ✅ Check browser console for appropriate logs
 
 ---
@@ -311,6 +342,7 @@ This guide provides step-by-step instructions for manually testing the logging i
 ### Steps:
 
 1. **Build and run in production mode**:
+
    ```bash
    NODE_ENV=production npm run build
    NODE_ENV=production npm start
@@ -323,8 +355,16 @@ This guide provides step-by-step instructions for manually testing the logging i
    - ✅ Structured output
 
 ### Expected Output:
+
 ```json
-{"level":"info","time":"2025-12-05T10:30:00.000Z","service":"EnhancementService","operation":"enhance","duration":1234,"msg":"Operation completed"}
+{
+  "level": "info",
+  "time": "2025-12-05T10:30:00.000Z",
+  "service": "EnhancementService",
+  "operation": "enhance",
+  "duration": 1234,
+  "msg": "Operation completed"
+}
 ```
 
 ---
@@ -334,6 +374,7 @@ This guide provides step-by-step instructions for manually testing the logging i
 ### Steps:
 
 1. **Make a request and note the requestId**:
+
    ```bash
    curl -v -X POST http://localhost:3000/api/enhance \
      -H "Content-Type: application/json" \
@@ -352,6 +393,7 @@ This guide provides step-by-step instructions for manually testing the logging i
    - ✅ Check that related logs share the same traceId
 
 ### Expected Output:
+
 ```
 [INFO] Request received { requestId: 'req-abc123' }
 [DEBUG] Starting operation { requestId: 'req-abc123', operation: 'enhance' }
@@ -366,12 +408,13 @@ This guide provides step-by-step instructions for manually testing the logging i
 ### Steps:
 
 1. **Search for console statements**:
+
    ```bash
    # Backend
    grep -rn "console\.\(log\|warn\|error\|debug\)" server/src \
      --include="*.ts" --include="*.js" | \
      grep -v "node_modules" | grep -v "\.test\."
-   
+
    # Frontend
    grep -rn "console\.\(log\|warn\|error\|debug\)" client/src \
      --include="*.ts" --include="*.tsx" | \
@@ -390,6 +433,7 @@ This guide provides step-by-step instructions for manually testing the logging i
 ### Issue: No logs appearing
 
 **Solution:**
+
 - Check LOG_LEVEL environment variable
 - Verify logger is imported correctly
 - Check that log level allows the message (e.g., debug logs won't show if level is 'info')
@@ -397,6 +441,7 @@ This guide provides step-by-step instructions for manually testing the logging i
 ### Issue: Logs not stored in frontend
 
 **Solution:**
+
 - Check VITE_DEBUG_LOGGING is set to 'true'
 - Verify running in development mode
 - Check browser localStorage is not disabled
@@ -404,6 +449,7 @@ This guide provides step-by-step instructions for manually testing the logging i
 ### Issue: Sensitive data in logs
 
 **Solution:**
+
 - Use sanitizeHeaders() for HTTP headers
 - Use sanitizeUserData() for user objects
 - Use redactSensitiveFields() for request bodies
@@ -411,6 +457,7 @@ This guide provides step-by-step instructions for manually testing the logging i
 ### Issue: Timing measurements seem wrong
 
 **Solution:**
+
 - Verify using performance.now() not Date.now()
 - Check that startTime is captured before operation
 - Ensure duration is calculated after operation completes
@@ -437,6 +484,7 @@ Use this checklist to verify all manual tests:
 ## Success Criteria
 
 All tests should pass with:
+
 - ✅ Logs appear in expected format
 - ✅ All metadata fields present
 - ✅ No sensitive data exposed
@@ -451,6 +499,7 @@ All tests should pass with:
 ## Next Steps
 
 After completing manual testing:
+
 1. Document any issues found
 2. Update validation report
 3. Mark task 10.2 as complete

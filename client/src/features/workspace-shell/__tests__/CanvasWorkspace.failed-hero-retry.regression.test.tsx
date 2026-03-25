@@ -1,9 +1,12 @@
-import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import React from "react";
+import { render, screen, waitFor } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
 
-import { CanvasWorkspace } from '../CanvasWorkspace';
-import type { Generation, GenerationsPanelProps } from '@features/generations/types';
+import { CanvasWorkspace } from "../CanvasWorkspace";
+import type {
+  Generation,
+  GenerationsPanelProps,
+} from "@features/generations/types";
 
 let runtimeState: {
   heroGeneration: Generation | null;
@@ -13,28 +16,31 @@ let runtimeState: {
   generations: [],
 };
 
-vi.mock('@features/generation-controls/context/GenerationControlsStore', () => ({
-  useGenerationControlsStoreActions: () => ({
-    setSelectedModel: vi.fn(),
-    setVideoTier: vi.fn(),
-    setCameraMotion: vi.fn(),
+vi.mock(
+  "@features/generation-controls/context/GenerationControlsStore",
+  () => ({
+    useGenerationControlsStoreActions: () => ({
+      setSelectedModel: vi.fn(),
+      setVideoTier: vi.fn(),
+      setCameraMotion: vi.fn(),
+    }),
+    useGenerationControlsStoreState: () => ({
+      domain: {
+        generationParams: { duration_s: 5 },
+        startFrame: null,
+        selectedModel: "sora-2",
+        videoTier: "render",
+        cameraMotion: null,
+      },
+    }),
   }),
-  useGenerationControlsStoreState: () => ({
-    domain: {
-      generationParams: { duration_s: 5 },
-      startFrame: null,
-      selectedModel: 'sora-2',
-      videoTier: 'render',
-      cameraMotion: null,
-    },
-  }),
-}));
+);
 
-vi.mock('@/features/prompt-optimizer/context/PromptStateContext', () => ({
+vi.mock("@/features/prompt-optimizer/context/PromptStateContext", () => ({
   useOptionalPromptHighlights: () => null,
 }));
 
-vi.mock('@/features/prompt-optimizer/context/WorkspaceSessionContext', () => ({
+vi.mock("@/features/prompt-optimizer/context/WorkspaceSessionContext", () => ({
   useWorkspaceSession: () => ({
     hasActiveContinuityShot: false,
     currentShot: null,
@@ -42,87 +48,89 @@ vi.mock('@/features/prompt-optimizer/context/WorkspaceSessionContext', () => ({
   }),
 }));
 
-vi.mock('@features/generations', () => ({
+vi.mock("@features/generations", () => ({
   useGenerationsRuntime: () => ({
     ...runtimeState,
   }),
 }));
 
-vi.mock('@/components/ToolSidebar/context', () => ({
+vi.mock("@/components/ToolSidebar/context", () => ({
   useSidebarGenerationDomain: () => null,
 }));
 
 vi.mock(
-  '@/components/ToolSidebar/components/panels/GenerationControlsPanel/hooks/useModelSelectionRecommendation',
+  "@/components/ToolSidebar/components/panels/GenerationControlsPanel/hooks/useModelSelectionRecommendation",
   () => ({
     useModelSelectionRecommendation: () => ({
-      recommendationMode: 't2v',
+      recommendationMode: "t2v",
       modelRecommendation: null,
       recommendedModelId: undefined,
       efficientModelId: undefined,
-      renderModelOptions: [{ id: 'sora-2', label: 'Sora' }],
-      renderModelId: 'sora-2',
+      renderModelOptions: [{ id: "sora-2", label: "Sora" }],
+      renderModelId: "sora-2",
       recommendationAgeMs: null,
     }),
-  })
+  }),
 );
 
-vi.mock('../components/CanvasTopBar', () => ({
+vi.mock("../components/CanvasTopBar", () => ({
   CanvasTopBar: () => <div data-testid="canvas-top-bar" />,
 }));
 
-vi.mock('../components/NewSessionView', () => ({
+vi.mock("../components/NewSessionView", () => ({
   NewSessionView: () => <div data-testid="new-session-view" />,
 }));
 
-vi.mock('../components/CanvasPromptBar', () => ({
+vi.mock("../components/CanvasPromptBar", () => ({
   CanvasPromptBar: () => <div data-testid="canvas-prompt-bar" />,
 }));
 
-vi.mock('../components/ModelCornerSelector', () => ({
+vi.mock("../components/ModelCornerSelector", () => ({
   ModelCornerSelector: () => <div data-testid="model-corner-selector" />,
 }));
 
-vi.mock('../components/CanvasHeroViewer', () => ({
+vi.mock("../components/CanvasHeroViewer", () => ({
   CanvasHeroViewer: ({ generation }: { generation: Generation | null }) =>
-    generation ? <div data-testid="canvas-hero-viewer">{generation.id}</div> : null,
+    generation ? (
+      <div data-testid="canvas-hero-viewer">{generation.id}</div>
+    ) : null,
 }));
 
-vi.mock('@/features/prompt-optimizer/components/GalleryPanel', () => ({
+vi.mock("@/features/prompt-optimizer/components/GalleryPanel", () => ({
   GalleryPanel: () => null,
 }));
 
-vi.mock('@/features/prompt-optimizer/components/GenerationPopover', () => ({
+vi.mock("@/features/prompt-optimizer/components/GenerationPopover", () => ({
   GenerationPopover: () => null,
 }));
 
-vi.mock('@/components/modals/CameraMotionModal', () => ({
+vi.mock("@/components/modals/CameraMotionModal", () => ({
   CameraMotionModal: () => null,
 }));
 
 const createGeneration = (overrides: Partial<Generation> = {}): Generation => ({
-  id: 'gen-failed',
-  tier: 'render',
-  status: 'failed',
-  model: 'sora',
-  prompt: 'A cinematic motorcycle ride through a rainy neon street.',
-  promptVersionId: 'version-1',
+  id: "gen-failed",
+  tier: "render",
+  status: "failed",
+  model: "sora",
+  prompt: "A cinematic motorcycle ride through a rainy neon street.",
+  promptVersionId: "version-1",
   createdAt: Date.now(),
   completedAt: Date.now(),
-  mediaType: 'video',
+  mediaType: "video",
   mediaUrls: [],
   thumbnailUrl: null,
-  error: 'Timed out waiting for video generation',
+  error: "Timed out waiting for video generation",
   ...overrides,
 });
 
 const buildProps = (
-  prompt: string
+  prompt: string,
 ): React.ComponentProps<typeof CanvasWorkspace> => ({
   generationsPanelProps: {
     prompt,
     versions: [],
-    promptVersionId: 'version-1',
+    promptVersionId: "version-1",
   } as unknown as GenerationsPanelProps,
   copied: false,
   canUndo: false,
@@ -131,7 +139,8 @@ const buildProps = (
   onShare: vi.fn(),
   onUndo: vi.fn(),
   onRedo: vi.fn(),
-  editorRef: React.createRef<HTMLDivElement>() as React.RefObject<HTMLDivElement>,
+  editorRef:
+    React.createRef<HTMLDivElement>() as React.RefObject<HTMLDivElement>,
   onTextSelection: vi.fn(),
   onHighlightClick: vi.fn(),
   onHighlightMouseDown: vi.fn(),
@@ -151,22 +160,23 @@ const buildProps = (
   onAutocompleteIndexChange: vi.fn(),
   selectedSpanId: null,
   suggestionCount: 0,
-  suggestionsListRef: React.createRef<HTMLDivElement>() as React.RefObject<HTMLDivElement>,
+  suggestionsListRef:
+    React.createRef<HTMLDivElement>() as React.RefObject<HTMLDivElement>,
   inlineSuggestions: [],
   activeSuggestionIndex: 0,
   onActiveSuggestionChange: vi.fn(),
-  interactionSourceRef: { current: 'auto' },
+  interactionSourceRef: { current: "auto" },
   onSuggestionClick: vi.fn(),
   onCloseInlinePopover: vi.fn(),
-  selectionLabel: '',
+  selectionLabel: "",
   onApplyActiveSuggestion: vi.fn(),
   isInlineLoading: false,
   isInlineError: false,
-  inlineErrorMessage: '',
+  inlineErrorMessage: "",
   isInlineEmpty: true,
-  customRequest: '',
+  customRequest: "",
   onCustomRequestChange: vi.fn(),
-  customRequestError: '',
+  customRequestError: "",
   onCustomRequestErrorChange: vi.fn(),
   onCustomRequestSubmit: vi.fn(),
   isCustomRequestDisabled: true,
@@ -180,25 +190,32 @@ const buildProps = (
   onToggleGenerationFavorite: vi.fn(),
 });
 
-describe('regression: failed hero does not linger while composing a retry', () => {
-  it('hides the failed hero once the current prompt no longer matches the failed attempt', async () => {
+describe("regression: failed hero does not linger while composing a retry", () => {
+  it("hides the failed hero once the current prompt no longer matches the failed attempt", async () => {
     runtimeState = {
       heroGeneration: createGeneration(),
       generations: [createGeneration()],
     };
 
-    const originalPrompt = 'A cinematic motorcycle ride through a rainy neon street.';
+    const originalPrompt =
+      "A cinematic motorcycle ride through a rainy neon street.";
     const editedPrompt =
-      'A cinematic tracking shot of a motorcyclist crossing a rainy neon downtown avenue.';
+      "A cinematic tracking shot of a motorcyclist crossing a rainy neon downtown avenue.";
 
-    const { rerender } = render(<CanvasWorkspace {...buildProps(originalPrompt)} />);
+    const { rerender } = render(
+      <CanvasWorkspace {...buildProps(originalPrompt)} />,
+    );
 
-    expect(screen.getByTestId('canvas-hero-viewer')).toHaveTextContent('gen-failed');
+    expect(screen.getByTestId("canvas-hero-viewer")).toHaveTextContent(
+      "gen-failed",
+    );
 
     rerender(<CanvasWorkspace {...buildProps(editedPrompt)} />);
 
     await waitFor(() => {
-      expect(screen.queryByTestId('canvas-hero-viewer')).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId("canvas-hero-viewer"),
+      ).not.toBeInTheDocument();
     });
   });
 });

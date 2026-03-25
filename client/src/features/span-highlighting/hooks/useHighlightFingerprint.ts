@@ -5,9 +5,9 @@
  * Used to determine if highlights need to be re-rendered.
  */
 
-import { useMemo } from 'react';
-import { createHighlightSignature } from './useSpanLabeling';
-import type { Span, ParseResult } from './types';
+import { useMemo } from "react";
+import { createHighlightSignature } from "./useSpanLabeling";
+import type { Span, ParseResult } from "./types";
 
 /**
  * Creates a unique fingerprint for the current highlight state
@@ -15,16 +15,16 @@ import type { Span, ParseResult } from './types';
  */
 export function useHighlightFingerprint(
   enabled: boolean,
-  parseResult: ParseResult | null | undefined
+  parseResult: ParseResult | null | undefined,
 ): string | null {
   return useMemo(() => {
     if (!enabled) {
       return null;
     }
 
-    const text = parseResult?.displayText ?? '';
+    const text = parseResult?.displayText ?? "";
     const spans = Array.isArray(parseResult?.spans) ? parseResult.spans : [];
-    const textSignature = createHighlightSignature(text ?? '');
+    const textSignature = createHighlightSignature(text ?? "");
 
     if (!spans.length) {
       return `empty::${textSignature}`;
@@ -33,15 +33,14 @@ export function useHighlightFingerprint(
     const spanSignature = spans
       .map((span) =>
         [
-          span.id ?? '',
+          span.id ?? "",
           span.displayStart ?? span.start ?? 0,
           span.displayEnd ?? span.end ?? 0,
-          span.category ?? '',
-        ].join(':')
+          span.category ?? "",
+        ].join(":"),
       )
-      .join('|');
+      .join("|");
 
     return `${textSignature}::${spanSignature}`;
   }, [enabled, parseResult?.displayText, parseResult?.spans]);
 }
-

@@ -1,4 +1,4 @@
-export type AssetType = 'character' | 'style' | 'location' | 'object';
+export type AssetType = "character" | "style" | "location" | "object";
 
 export interface AssetReferenceImage {
   id: string;
@@ -8,11 +8,11 @@ export interface AssetReferenceImage {
   storagePath?: string;
   thumbnailPath?: string;
   metadata: {
-    angle?: 'front' | 'profile' | 'three-quarter' | 'back' | null;
-    expression?: 'neutral' | 'smiling' | 'serious' | 'expressive' | null;
-    styleType?: 'color-palette' | 'mood-board' | 'reference-frame' | null;
-    timeOfDay?: 'day' | 'night' | 'golden-hour' | 'blue-hour' | null;
-    lighting?: 'natural' | 'studio' | 'dramatic' | 'backlit' | null;
+    angle?: "front" | "profile" | "three-quarter" | "back" | null;
+    expression?: "neutral" | "smiling" | "serious" | "expressive" | null;
+    styleType?: "color-palette" | "mood-board" | "reference-frame" | null;
+    timeOfDay?: "day" | "night" | "golden-hour" | "blue-hour" | null;
+    lighting?: "natural" | "studio" | "dramatic" | "backlit" | null;
     uploadedAt: string;
     width: number;
     height: number;
@@ -86,13 +86,13 @@ export interface ResolvedPrompt {
 }
 
 export function isCharacterAsset(asset: Asset): boolean {
-  return asset.type === 'character';
+  return asset.type === "character";
 }
 
 export function isStyleAsset(asset: Asset): boolean {
-  return asset.type === 'style';
+  return asset.type === "style";
 }
 
 export function isLocationAsset(asset: Asset): boolean {
-  return asset.type === 'location';
+  return asset.type === "location";
 }

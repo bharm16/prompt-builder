@@ -1,27 +1,29 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { renderHook, waitFor } from '@testing-library/react';
-import type { ReactNode } from 'react';
-import type { GenerationControlsState } from '@features/generation-controls/context/generationControlsStoreTypes';
-import {
-  DEFAULT_GENERATION_CONTROLS_STATE,
-} from '@features/generation-controls/context/generationControlsStoreTypes';
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { renderHook, waitFor } from "@testing-library/react";
+import type { ReactNode } from "react";
+import type { GenerationControlsState } from "@features/generation-controls/context/generationControlsStoreTypes";
+import { DEFAULT_GENERATION_CONTROLS_STATE } from "@features/generation-controls/context/generationControlsStoreTypes";
 import {
   GenerationControlsStoreProvider,
   useGenerationControlsStoreState,
-} from '@features/generation-controls/context/GenerationControlsStore';
-import { useKeyframeUrlRefresh } from '../useKeyframeUrlRefresh';
-import { resolveMediaUrl } from '@/services/media/MediaUrlResolver';
+} from "@features/generation-controls/context/GenerationControlsStore";
+import { useKeyframeUrlRefresh } from "../useKeyframeUrlRefresh";
+import { resolveMediaUrl } from "@/services/media/MediaUrlResolver";
 
-vi.mock('@/services/media/MediaUrlResolver', () => ({
+vi.mock("@/services/media/MediaUrlResolver", () => ({
   resolveMediaUrl: vi.fn(),
 }));
 
-type GenerationControlsStateOverrides = Partial<Omit<GenerationControlsState, 'domain' | 'ui'>> & {
-  domain?: Partial<GenerationControlsState['domain']>;
-  ui?: Partial<GenerationControlsState['ui']>;
+type GenerationControlsStateOverrides = Partial<
+  Omit<GenerationControlsState, "domain" | "ui">
+> & {
+  domain?: Partial<GenerationControlsState["domain"]>;
+  ui?: Partial<GenerationControlsState["ui"]>;
 };
 
-const buildInitialState = (overrides: GenerationControlsStateOverrides = {}): GenerationControlsState => ({
+const buildInitialState = (
+  overrides: GenerationControlsStateOverrides = {},
+): GenerationControlsState => ({
   ...DEFAULT_GENERATION_CONTROLS_STATE,
   ...overrides,
   domain: {
@@ -34,14 +36,15 @@ const buildInitialState = (overrides: GenerationControlsStateOverrides = {}): Ge
   },
 });
 
-const buildWrapper = (initialState: GenerationControlsState) =>
+const buildWrapper =
+  (initialState: GenerationControlsState) =>
   ({ children }: { children: ReactNode }) => (
     <GenerationControlsStoreProvider initialState={initialState}>
       {children}
     </GenerationControlsStoreProvider>
   );
 
-describe('useKeyframeUrlRefresh', () => {
+describe("useKeyframeUrlRefresh", () => {
   beforeEach(() => {
     localStorage.clear();
   });
@@ -50,114 +53,130 @@ describe('useKeyframeUrlRefresh', () => {
     vi.clearAllMocks();
   });
 
-  it('refreshes stale keyframes and updates store', async () => {
+  it("refreshes stale keyframes and updates store", async () => {
     (resolveMediaUrl as ReturnType<typeof vi.fn>).mockResolvedValue({
-      url: 'https://storage.example.com/updated.png',
+      url: "https://storage.example.com/updated.png",
       expiresAt: new Date(Date.now() + 60_000).toISOString(),
-      storagePath: 'uploads/frame1.png',
-      source: 'storage',
+      storagePath: "uploads/frame1.png",
+      source: "storage",
     });
 
     const initialState = buildInitialState({
       domain: {
         keyframes: [
           {
-            id: 'kf-1',
-            url: 'https://storage.example.com/original.png',
-            source: 'upload',
-            storagePath: 'uploads/frame1.png',
+            id: "kf-1",
+            url: "https://storage.example.com/original.png",
+            source: "upload",
+            storagePath: "uploads/frame1.png",
             viewUrlExpiresAt: new Date(Date.now() - 60_000).toISOString(),
           },
         ],
       },
     });
 
-    const { result } = renderHook(() => {
-      useKeyframeUrlRefresh();
-      return useGenerationControlsStoreState();
-    }, { wrapper: buildWrapper(initialState) });
+    const { result } = renderHook(
+      () => {
+        useKeyframeUrlRefresh();
+        return useGenerationControlsStoreState();
+      },
+      { wrapper: buildWrapper(initialState) },
+    );
 
     await waitFor(() => {
       expect(resolveMediaUrl).toHaveBeenCalledWith({
-        kind: 'image',
-        url: 'https://storage.example.com/original.png',
-        storagePath: 'uploads/frame1.png',
+        kind: "image",
+        url: "https://storage.example.com/original.png",
+        storagePath: "uploads/frame1.png",
         preferFresh: true,
       });
     });
 
     await waitFor(() => {
-      expect(result.current.domain.keyframes[0]?.url).toBe('https://storage.example.com/updated.png');
+      expect(result.current.domain.keyframes[0]?.url).toBe(
+        "https://storage.example.com/updated.png",
+      );
     });
-
   });
 
-  it('handles refresh failures gracefully', async () => {
-    (resolveMediaUrl as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('nope'));
+  it("handles refresh failures gracefully", async () => {
+    (resolveMediaUrl as ReturnType<typeof vi.fn>).mockRejectedValue(
+      new Error("nope"),
+    );
 
     const initialState = buildInitialState({
       domain: {
         keyframes: [
           {
-            id: 'kf-1',
-            url: 'https://storage.example.com/original.png',
-            source: 'upload',
-            storagePath: 'uploads/frame1.png',
+            id: "kf-1",
+            url: "https://storage.example.com/original.png",
+            source: "upload",
+            storagePath: "uploads/frame1.png",
             viewUrlExpiresAt: new Date(Date.now() - 60_000).toISOString(),
           },
         ],
       },
     });
 
-    const { result } = renderHook(() => {
-      useKeyframeUrlRefresh();
-      return useGenerationControlsStoreState();
-    }, { wrapper: buildWrapper(initialState) });
+    const { result } = renderHook(
+      () => {
+        useKeyframeUrlRefresh();
+        return useGenerationControlsStoreState();
+      },
+      { wrapper: buildWrapper(initialState) },
+    );
 
     await waitFor(() => {
       expect(resolveMediaUrl).toHaveBeenCalled();
     });
 
-    expect(result.current.domain.keyframes[0]?.url).toBe('https://storage.example.com/original.png');
+    expect(result.current.domain.keyframes[0]?.url).toBe(
+      "https://storage.example.com/original.png",
+    );
   });
 
-  it('refreshes stale start frame URL', async () => {
+  it("refreshes stale start frame URL", async () => {
     (resolveMediaUrl as ReturnType<typeof vi.fn>).mockResolvedValue({
-      url: 'https://storage.example.com/start-updated.png',
+      url: "https://storage.example.com/start-updated.png",
       expiresAt: new Date(Date.now() + 60_000).toISOString(),
-      storagePath: 'uploads/start-frame.png',
-      source: 'storage',
+      storagePath: "uploads/start-frame.png",
+      source: "storage",
     });
 
     const initialState = buildInitialState({
       domain: {
         keyframes: [],
         startFrame: {
-          id: 'start-frame',
-          url: 'https://storage.example.com/start-original.png',
-          source: 'upload',
-          storagePath: 'uploads/start-frame.png',
+          id: "start-frame",
+          url: "https://storage.example.com/start-original.png",
+          source: "upload",
+          storagePath: "uploads/start-frame.png",
           viewUrlExpiresAt: new Date(Date.now() - 60_000).toISOString(),
         },
       },
     });
 
-    const { result } = renderHook(() => {
-      useKeyframeUrlRefresh();
-      return useGenerationControlsStoreState();
-    }, { wrapper: buildWrapper(initialState) });
+    const { result } = renderHook(
+      () => {
+        useKeyframeUrlRefresh();
+        return useGenerationControlsStoreState();
+      },
+      { wrapper: buildWrapper(initialState) },
+    );
 
     await waitFor(() => {
       expect(resolveMediaUrl).toHaveBeenCalledWith({
-        kind: 'image',
-        url: 'https://storage.example.com/start-original.png',
-        storagePath: 'uploads/start-frame.png',
+        kind: "image",
+        url: "https://storage.example.com/start-original.png",
+        storagePath: "uploads/start-frame.png",
         preferFresh: true,
       });
     });
 
     await waitFor(() => {
-      expect(result.current.domain.startFrame?.url).toBe('https://storage.example.com/start-updated.png');
+      expect(result.current.domain.startFrame?.url).toBe(
+        "https://storage.example.com/start-updated.png",
+      );
     });
   });
 });

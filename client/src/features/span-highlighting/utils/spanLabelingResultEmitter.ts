@@ -4,12 +4,12 @@
  * Handles result emission with deduplication to prevent duplicate callbacks.
  */
 
-import { sanitizeText, hashString } from '../utils/index.ts';
+import { sanitizeText, hashString } from "../utils/index.ts";
 import type {
   LabeledSpan,
   SpanMeta,
   SpanLabelingResult,
-} from '../hooks/types.ts';
+} from "../hooks/types.ts";
 
 export interface ResultEmitterParams {
   spans: LabeledSpan[];
@@ -23,16 +23,20 @@ export interface ResultEmitterParams {
  * Create result emitter with deduplication
  */
 export function createResultEmitter(
-  onResult: ((result: SpanLabelingResult) => void) | undefined
-): (params: ResultEmitterParams, source: SpanLabelingResult['source']) => void {
+  onResult: ((result: SpanLabelingResult) => void) | undefined,
+): (params: ResultEmitterParams, source: SpanLabelingResult["source"]) => void {
   let lastEmitKey: string | null = null;
 
-  return (params: ResultEmitterParams, source: SpanLabelingResult['source']): void => {
+  return (
+    params: ResultEmitterParams,
+    source: SpanLabelingResult["source"],
+  ): void => {
     if (!onResult) return;
     if (!Array.isArray(params.spans) || !params.spans.length) return;
 
     const normalizedText = sanitizeText(params.text);
-    const effectiveSignature = params.signature ?? hashString(normalizedText ?? '');
+    const effectiveSignature =
+      params.signature ?? hashString(normalizedText ?? "");
     const key = `${effectiveSignature}::${source}`;
 
     if (lastEmitKey === key) {
@@ -50,4 +54,3 @@ export function createResultEmitter(
     });
   };
 }
-

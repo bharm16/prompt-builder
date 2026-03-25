@@ -1,9 +1,9 @@
-import type { ModelPromptStrategy } from './types';
-import { buildBaseHeader } from './promptStrategyUtils';
+import type { ModelPromptStrategy } from "./types";
+import { buildBaseHeader } from "./promptStrategyUtils";
 
 export const kling26PromptStrategy: ModelPromptStrategy = {
-  modelId: 'kling-2.1',
-  output: { format: 'text' },
+  modelId: "kling-2.1",
+  output: { format: "text" },
   buildPrompt: (context) => `${buildBaseHeader(context)}
 INSTRUCTIONS for Kling 2.1:
 1. Use the structure: [Subject], [Subject Description], [Movement/Action], [Scene/Context], [Camera/Lighting].

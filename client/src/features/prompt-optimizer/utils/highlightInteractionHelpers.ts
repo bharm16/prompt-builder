@@ -3,21 +3,21 @@
  */
 export function findHighlightNode(
   targetElement: HTMLElement | null,
-  rootElement: HTMLElement | null
+  rootElement: HTMLElement | null,
 ): HTMLElement | null {
   if (!targetElement || !rootElement) {
     return null;
   }
 
   let node: HTMLElement | null = targetElement;
-  
+
   while (node && node !== rootElement) {
-    if (node.classList && node.classList.contains('value-word')) {
+    if (node.classList && node.classList.contains("value-word")) {
       return node;
     }
     node = node.parentElement;
   }
-  
+
   return null;
 }
 
@@ -47,10 +47,10 @@ interface SpanIdParts {
 }
 
 function parseOffset(value: string | number | null | undefined): number | null {
-  if (typeof value === 'number' && Number.isFinite(value)) {
+  if (typeof value === "number" && Number.isFinite(value)) {
     return value;
   }
-  if (typeof value === 'string' && value.trim().length > 0) {
+  if (typeof value === "string" && value.trim().length > 0) {
     const parsed = Number(value);
     return Number.isFinite(parsed) ? parsed : null;
   }
@@ -68,10 +68,10 @@ export function resolveHighlightSpanId({
   category,
 }: SpanIdParts): string | null {
   const normalizedSpanId =
-    typeof spanId === 'string' &&
+    typeof spanId === "string" &&
     spanId.trim().length > 0 &&
-    spanId !== 'undefined' &&
-    spanId !== 'null'
+    spanId !== "undefined" &&
+    spanId !== "null"
       ? spanId
       : null;
 
@@ -86,7 +86,9 @@ export function resolveHighlightSpanId({
   }
 
   const categoryPart =
-    typeof category === 'string' && category.trim().length > 0 ? category.trim() : 'span';
+    typeof category === "string" && category.trim().length > 0
+      ? category.trim()
+      : "span";
   return `${startOffset}-${endOffset}-${categoryPart}`;
 }
 
@@ -100,13 +102,13 @@ export interface ParseResult {
  */
 export function extractHighlightMetadata(
   node: HTMLElement | null,
-  parseResult?: ParseResult | null
+  parseResult?: ParseResult | null,
 ): HighlightMetadata | null {
   if (!node || !node.dataset) {
     return null;
   }
 
-  const wordText = node.textContent?.trim() ?? '';
+  const wordText = node.textContent?.trim() ?? "";
   const {
     category,
     source,
@@ -138,17 +140,19 @@ export function extractHighlightMetadata(
     end: end ? Number(end) : -1,
     startGrapheme: startGrapheme ? Number(startGrapheme) : -1,
     endGrapheme: endGrapheme ? Number(endGrapheme) : -1,
-    validatorPass: validatorPass !== 'false',
+    validatorPass: validatorPass !== "false",
     confidence: confidence ? Number(confidence) : null,
     quote: quote || wordText,
-    leftCtx: leftCtx || '',
-    rightCtx: rightCtx || '',
+    leftCtx: leftCtx || "",
+    rightCtx: rightCtx || "",
     idempotencyKey: idempotencyKey || null,
   };
 
   // Enhance with full span details if available
   if (metadata.spanId && Array.isArray(parseResult?.spans)) {
-    const spanDetail = parseResult.spans.find((span) => span.id === metadata.spanId);
+    const spanDetail = parseResult.spans.find(
+      (span) => span.id === metadata.spanId,
+    );
     if (spanDetail) {
       metadata.span = { ...spanDetail };
     }
@@ -169,7 +173,10 @@ export interface HighlightRangeResult {
 export function createHighlightRange(
   node: HTMLElement | null,
   rootElement: HTMLElement | null,
-  getOffsetsFn: (element: HTMLElement, range: Range) => { start: number; end: number } | null
+  getOffsetsFn: (
+    element: HTMLElement,
+    range: Range,
+  ) => { start: number; end: number } | null,
 ): HighlightRangeResult {
   if (!node || !rootElement || !getOffsetsFn) {
     return { range: null, rangeClone: null, offsets: null };

@@ -13,19 +13,21 @@ Implemented a centralized `AIModelService` router that decouples business logic 
 ### Before Refactoring
 
 **Issues:**
+
 1. **Tight Coupling**: Services directly injected `claudeClient` and `groqClient`
 2. **Hard to Switch**: Changing providers required code changes across 26+ files
 3. **No Fallback**: Manual fallback logic scattered throughout codebase
 4. **Provider Lock-in**: Business logic tied to OpenAI/Groq specific implementations
 
 **Example before:**
+
 ```javascript
 class PromptOptimizationService {
   constructor(claudeClient, groqClient) {
     this.claudeClient = claudeClient;
     this.groqClient = groqClient;
   }
-  
+
   async optimize(prompt) {
     // Hardcoded client selection
     if (this.groqClient) {
@@ -39,23 +41,25 @@ class PromptOptimizationService {
 ### After Refactoring
 
 **Benefits:**
+
 1. **Decoupled**: Services specify WHAT they want (operation name), not HOW (which client)
 2. **Configurable**: Switch providers by editing config file or environment variables
 3. **Automatic Fallback**: Centralized fallback logic based on configuration
 4. **Provider Agnostic**: Add new providers without touching service code
 
 **Example after:**
+
 ```javascript
 class PromptOptimizationService {
   constructor(aiService) {
     this.ai = aiService;
   }
-  
+
   async optimize(prompt) {
     // Router handles client selection and fallback
-    return await this.ai.execute('optimize_standard', {
+    return await this.ai.execute("optimize_standard", {
       systemPrompt,
-      ...options
+      ...options,
     });
   }
 }
@@ -85,20 +89,20 @@ Defines routing for all LLM operations:
 ```javascript
 export const ModelConfig = {
   optimize_standard: {
-    client: 'openai',
-    model: 'gpt-4o',
+    client: "openai",
+    model: "gpt-4o",
     temperature: 0.7,
     maxTokens: 4096,
     timeout: 60000,
-    fallbackTo: 'groq', // Automatic fallback
+    fallbackTo: "groq", // Automatic fallback
   },
   optimize_draft: {
-    client: 'groq',
-    model: 'llama-3.1-8b-instant',
+    client: "groq",
+    model: "llama-3.1-8b-instant",
     temperature: 0.7,
     maxTokens: 500,
     timeout: 5000,
-    fallbackTo: 'openai',
+    fallbackTo: "openai",
   },
   // ... 15+ more operations
 };
@@ -107,6 +111,7 @@ export const ModelConfig = {
 ### Router Service (`AIModelService.js`)
 
 Core features:
+
 - **Operation Routing**: Routes by operation name, not client
 - **Automatic Fallback**: Tries alternative provider if primary fails
 - **Streaming Support**: `stream()` method for real-time UI updates
@@ -114,6 +119,7 @@ Core features:
 - **Error Handling**: Clear error messages and logging
 
 Key methods:
+
 - `execute(operation, params)`: Standard completion requests
 - `stream(operation, params)`: Streaming for real-time updates
 - `listOperations()`: Get all configured operations
@@ -124,6 +130,7 @@ Key methods:
 ### For Service Developers
 
 **Before:**
+
 ```javascript
 constructor(claudeClient, groqClient) {
   this.claudeClient = claudeClient;
@@ -139,6 +146,7 @@ async someMethod() {
 ```
 
 **After:**
+
 ```javascript
 constructor(aiService) {
   this.ai = aiService;
@@ -156,18 +164,20 @@ async someMethod() {
 ### For Configuration
 
 **Switch Provider via Config File:**
+
 ```javascript
 // server/src/config/modelConfig.js
 export const ModelConfig = {
   optimize_standard: {
-    client: 'groq', // Changed from 'openai'
-    model: 'llama-3.1-70b-versatile',
+    client: "groq", // Changed from 'openai'
+    model: "llama-3.1-70b-versatile",
     // ... rest of config
-  }
+  },
 };
 ```
 
 **Switch Provider via Environment Variables:**
+
 ```bash
 # .env
 OPTIMIZE_PROVIDER=groq
@@ -177,6 +187,7 @@ OPTIMIZE_MODEL=llama-3.1-70b-versatile
 ### For Testing
 
 **Mock the AI Service:**
+
 ```javascript
 const mockAIService = {
   execute: vi.fn(),
@@ -191,6 +202,7 @@ const service = new YourService(mockAIService);
 ## Files Changed
 
 ### Created (4 files)
+
 - ✅ `server/src/config/modelConfig.js` (317 lines)
 - ✅ `server/src/services/ai-model/AIModelService.js` (339 lines)
 - ✅ `server/src/services/ai-model/index.js` (8 lines)
@@ -199,6 +211,7 @@ const service = new YourService(mockAIService);
 ### Updated Services (32 files)
 
 **Core Services (5):**
+
 - ✅ `PromptOptimizationService.js`
 - ✅ `EnhancementService.js`
 - ✅ `VideoConceptService.js`
@@ -206,6 +219,7 @@ const service = new YourService(mockAIService);
 - ✅ `TextCategorizerService.js`
 
 **Prompt Optimization Sub-Services (10):**
+
 - ✅ `strategies/BaseStrategy.js`
 - ✅ `strategies/DefaultStrategy.js`
 - ✅ `strategies/ReasoningStrategy.js`
@@ -217,10 +231,12 @@ const service = new YourService(mockAIService);
 - ✅ `services/StrategyFactory.js`
 
 **Enhancement Sub-Services (2):**
+
 - ✅ `enhancement/services/StyleTransferService.js`
 - ✅ `enhancement/services/SuggestionDeduplicator.js`
 
 **Video Concept Sub-Services (11):**
+
 - ✅ `video-concept/services/generation/SuggestionGeneratorService.js`
 - ✅ `video-concept/services/generation/TechnicalParameterService.js`
 - ✅ `video-concept/services/analysis/ConceptParsingService.js`
@@ -234,16 +250,19 @@ const service = new YourService(mockAIService);
 - ✅ (SystemPromptBuilder not updated - uses templates only)
 
 **DI Container (1):**
+
 - ✅ `config/services.config.js` - Updated all service registrations
 
 ### Backward Compatibility
 
 **Breaking Changes:**
+
 - Service constructor signatures changed (accept `aiService` instead of `claudeClient`/`groqClient`)
 - DI container registrations updated
 - Tests need updated mocks
 
 **Non-Breaking:**
+
 - Client implementations (`OpenAIAPIClient`, `GroqAPIClient`) unchanged
 - API response formats unchanged
 - Service public APIs unchanged (only internal implementation)
@@ -251,6 +270,7 @@ const service = new YourService(mockAIService);
 ## Metrics
 
 ### Code Changes
+
 - **Lines Added:** ~1,200 (new router + config + tests)
 - **Lines Modified:** ~350 (constructor signatures + method calls)
 - **Files Created:** 4
@@ -258,6 +278,7 @@ const service = new YourService(mockAIService);
 - **Services Refactored:** 32
 
 ### Architecture Compliance
+
 - ✅ `modelConfig.js`: 317 lines (target: ~150-200, acceptable for comprehensive config)
 - ✅ `AIModelService.js`: 339 lines (target: ~250-300, perfect!)
 - ✅ No file exceeds orchestrator limit (500 lines)
@@ -265,6 +286,7 @@ const service = new YourService(mockAIService);
 - ✅ Comprehensive test coverage (31 tests, all passing)
 
 ### Performance Impact
+
 - **Minimal overhead:** Single function call indirection
 - **Improved resilience:** Automatic fallback reduces failures
 - **Better caching:** Centralized routing enables request coalescing
@@ -272,38 +294,42 @@ const service = new YourService(mockAIService);
 ## Usage Examples
 
 ### Basic Usage
+
 ```javascript
 // Execute standard optimization
-const response = await aiService.execute('optimize_standard', {
-  systemPrompt: 'You are a helpful assistant',
-  userMessage: 'Optimize this prompt',
+const response = await aiService.execute("optimize_standard", {
+  systemPrompt: "You are a helpful assistant",
+  userMessage: "Optimize this prompt",
 });
 ```
 
 ### With Streaming
+
 ```javascript
 // Stream draft generation
-const draft = await aiService.stream('optimize_draft', {
-  systemPrompt: 'Generate a quick draft',
-  userMessage: 'Create video prompt',
+const draft = await aiService.stream("optimize_draft", {
+  systemPrompt: "Generate a quick draft",
+  userMessage: "Create video prompt",
   onChunk: (chunk) => console.log(chunk),
 });
 ```
 
 ### Override Config
+
 ```javascript
 // Override default temperature
-const response = await aiService.execute('optimize_standard', {
-  systemPrompt: 'Test',
+const response = await aiService.execute("optimize_standard", {
+  systemPrompt: "Test",
   temperature: 0.5, // Override config default (0.7)
-  maxTokens: 2000,  // Override config default (4096)
+  maxTokens: 2000, // Override config default (4096)
 });
 ```
 
 ### Check Operation Support
+
 ```javascript
 // Check if operation supports streaming
-if (aiService.supportsStreaming('optimize_draft')) {
+if (aiService.supportsStreaming("optimize_draft")) {
   // Use streaming
 } else {
   // Use standard execution
@@ -313,6 +339,7 @@ if (aiService.supportsStreaming('optimize_draft')) {
 ## Testing
 
 ### Test Coverage
+
 - ✅ Constructor validation (5 tests)
 - ✅ Operation routing (4 tests)
 - ✅ Fallback behavior (5 tests)
@@ -324,6 +351,7 @@ if (aiService.supportsStreaming('optimize_draft')) {
 **Total:** 31 tests, 100% passing
 
 ### Running Tests
+
 ```bash
 # Run AIModelService tests
 npm test -- server/src/services/ai-model/__tests__/AIModelService.test.js
@@ -335,6 +363,7 @@ npm test
 ## Future Enhancements
 
 ### Potential Improvements
+
 1. **Request Coalescing**: Deduplicate identical concurrent requests
 2. **Response Caching**: Cache responses by operation + params hash
 3. **Load Balancing**: Distribute requests across multiple providers
@@ -345,13 +374,15 @@ npm test
 8. **Provider Health Monitoring**: Automatic provider selection based on health
 
 ### Adding New Operations
+
 1. Add entry to `modelConfig.js`:
+
 ```javascript
 export const ModelConfig = {
   // ... existing operations
   new_operation: {
-    client: 'openai',
-    model: 'gpt-4o',
+    client: "openai",
+    model: "gpt-4o",
     temperature: 0.7,
     maxTokens: 2048,
     timeout: 30000,
@@ -360,21 +391,24 @@ export const ModelConfig = {
 ```
 
 2. Use in service:
+
 ```javascript
-const response = await this.ai.execute('new_operation', {
-  systemPrompt: '...',
-  ...params
+const response = await this.ai.execute("new_operation", {
+  systemPrompt: "...",
+  ...params,
 });
 ```
 
 ### Adding New Providers
+
 1. Create client class implementing same interface:
+
 ```javascript
 export class AnthropicAPIClient {
   async complete(systemPrompt, options) {
     // Implementation
   }
-  
+
   async streamComplete(systemPrompt, options) {
     // Implementation
   }
@@ -382,24 +416,37 @@ export class AnthropicAPIClient {
 ```
 
 2. Register in DI container:
+
 ```javascript
-container.register('anthropicClient', () => new AnthropicAPIClient(apiKey), ['config']);
+container.register("anthropicClient", () => new AnthropicAPIClient(apiKey), [
+  "config",
+]);
 ```
 
 3. Update AIModelService registration:
+
 ```javascript
-container.register('aiService', (claudeClient, groqClient, anthropicClient) => 
-  new AIModelService({
-    clients: { openai: claudeClient, groq: groqClient, anthropic: anthropicClient }
-  }), ['claudeClient', 'groqClient', 'anthropicClient']);
+container.register(
+  "aiService",
+  (claudeClient, groqClient, anthropicClient) =>
+    new AIModelService({
+      clients: {
+        openai: claudeClient,
+        groq: groqClient,
+        anthropic: anthropicClient,
+      },
+    }),
+  ["claudeClient", "groqClient", "anthropicClient"],
+);
 ```
 
 4. Configure operations to use new provider:
+
 ```javascript
 export const ModelConfig = {
   optimize_standard: {
-    client: 'anthropic', // Use new provider
-    model: 'claude-3-opus',
+    client: "anthropic", // Use new provider
+    model: "claude-3-opus",
     // ...
   },
 };
@@ -417,6 +464,7 @@ export const ModelConfig = {
 This refactoring successfully decoupled the application from specific LLM providers by introducing a thin routing layer. The implementation is "dead simple" - it avoids over-engineering while solving the core problem: enabling zero-code provider switching with automatic fallback support.
 
 **Key Achievements:**
+
 - ✅ 32 services refactored
 - ✅ Zero-code provider switching
 - ✅ Automatic fallback support
@@ -426,12 +474,14 @@ This refactoring successfully decoupled the application from specific LLM provid
 - ✅ File sizes within limits
 
 **Migration Effort:** Medium (2-3 hours)
+
 - Config creation: 30 minutes
 - Router implementation: 1 hour
 - Service refactoring: 1-1.5 hours
 - Testing: 30 minutes
 
 **Maintainability Impact:** Highly Positive
+
 - Centralized provider configuration
 - Easier to add new providers
 - Reduced coupling between layers

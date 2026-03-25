@@ -13,6 +13,7 @@ NODE_ENV=development|production
 ```
 
 **Defaults**:
+
 - Development: `LOG_LEVEL=debug`, pretty-printed output
 - Production: `LOG_LEVEL=info`, JSON output
 
@@ -27,6 +28,7 @@ VITE_LOG_LEVEL=debug|info|warn|error
 ```
 
 **Defaults**:
+
 - Development: Enabled, `VITE_LOG_LEVEL=debug`, stores logs
 - Production: Disabled, `VITE_LOG_LEVEL=warn`, no storage
 
@@ -42,6 +44,7 @@ VITE_LOG_LEVEL=debug
 ```
 
 Or use the convenience script:
+
 ```bash
 ./scripts/enable-debug.sh
 ```
@@ -56,6 +59,7 @@ VITE_LOG_LEVEL=warn
 ```
 
 Or use the convenience script:
+
 ```bash
 ./scripts/disable-debug.sh
 ```
@@ -65,34 +69,34 @@ Or use the convenience script:
 ### Access the Logger
 
 ```javascript
-window.__logger
+window.__logger;
 ```
 
 ### View Stored Logs
 
 ```javascript
-window.__logger.getStoredLogs()
+window.__logger.getStoredLogs();
 ```
 
 ### Export Logs (for bug reports)
 
 ```javascript
-window.__logger.exportLogs()
+window.__logger.exportLogs();
 ```
 
 ### Clear Stored Logs
 
 ```javascript
-window.__logger.clearStoredLogs()
+window.__logger.clearStoredLogs();
 ```
 
 ### Test Logging
 
 ```javascript
-window.__logger.debug('Debug message', { test: true })
-window.__logger.info('Info message', { test: true })
-window.__logger.warn('Warning message', { test: true })
-window.__logger.error('Error message', new Error('Test'), { test: true })
+window.__logger.debug("Debug message", { test: true });
+window.__logger.info("Info message", { test: true });
+window.__logger.warn("Warning message", { test: true });
+window.__logger.error("Error message", new Error("Test"), { test: true });
 ```
 
 ## Common Scenarios
@@ -100,6 +104,7 @@ window.__logger.error('Error message', new Error('Test'), { test: true })
 ### Debugging Production Issues
 
 1. Enable debug logging temporarily:
+
    ```bash
    LOG_LEVEL=debug npm start
    ```
@@ -114,15 +119,16 @@ window.__logger.error('Error message', new Error('Test'), { test: true })
 ### Debugging Frontend Issues
 
 1. Enable debug logging in browser:
+
    ```javascript
-   localStorage.setItem('debug', 'true')
+   localStorage.setItem("debug", "true");
    ```
 
 2. Reload the page
 
 3. Export logs:
    ```javascript
-   console.log(window.__logger.exportLogs())
+   console.log(window.__logger.exportLogs());
    ```
 
 ### Testing Log Levels
@@ -170,11 +176,13 @@ LOG_LEVEL=error npm start    # See error only
 ### Logs Not Appearing
 
 **Backend**:
+
 - Check `LOG_LEVEL` is set correctly
 - Verify `NODE_ENV` is set
 - Check console for errors
 
 **Frontend**:
+
 - Check `VITE_DEBUG_LOGGING` is true
 - Check `VITE_LOG_LEVEL` is appropriate
 - Open browser console (F12)
@@ -183,11 +191,13 @@ LOG_LEVEL=error npm start    # See error only
 ### Too Many Logs
 
 **Backend**:
+
 ```bash
 LOG_LEVEL=warn  # Only warnings and errors
 ```
 
 **Frontend**:
+
 ```bash
 VITE_LOG_LEVEL=warn  # Only warnings and errors
 ```

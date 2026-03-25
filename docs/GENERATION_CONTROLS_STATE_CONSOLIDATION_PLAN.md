@@ -52,15 +52,15 @@ The generation controls state is fragmented across multiple contexts, storage me
 
 ### Identified Issues
 
-| Issue | Impact | Location |
-|-------|--------|----------|
-| **Split-brain state** | videoTier in PromptStateContext, keyframes in GenerationControlsContext - no single source of truth | Multiple contexts |
-| **God hook** | 450+ lines mixing UI, persistence, validation, API calls, file upload | `useGenerationControlsPanel.ts` |
-| **Effect-based business logic** | "Reset camera motion when keyframe changes" runs after render, causing flashes | `GenerationControlsContext.tsx` |
-| **Prop drilling** | 30+ props threaded through 3 component layers | `GenerationControlsPanelProps` |
-| **Re-render churn** | Context value rebuilds on any change, all consumers re-render | Both contexts |
-| **Mixed storage lifetimes** | localStorage + sessionStorage + context state with no clear ownership | Scattered |
-| **Capability clamping in effects** | Invalid values observable for one render cycle | `useGenerationControlsPanel.ts` |
+| Issue                              | Impact                                                                                              | Location                        |
+| ---------------------------------- | --------------------------------------------------------------------------------------------------- | ------------------------------- |
+| **Split-brain state**              | videoTier in PromptStateContext, keyframes in GenerationControlsContext - no single source of truth | Multiple contexts               |
+| **God hook**                       | 450+ lines mixing UI, persistence, validation, API calls, file upload                               | `useGenerationControlsPanel.ts` |
+| **Effect-based business logic**    | "Reset camera motion when keyframe changes" runs after render, causing flashes                      | `GenerationControlsContext.tsx` |
+| **Prop drilling**                  | 30+ props threaded through 3 component layers                                                       | `GenerationControlsPanelProps`  |
+| **Re-render churn**                | Context value rebuilds on any change, all consumers re-render                                       | Both contexts                   |
+| **Mixed storage lifetimes**        | localStorage + sessionStorage + context state with no clear ownership                               | Scattered                       |
+| **Capability clamping in effects** | Invalid values observable for one render cycle                                                      | `useGenerationControlsPanel.ts` |
 
 ### Root Causes
 
@@ -215,6 +215,7 @@ case 'setKeyframes': {
 ### Phase 0: Foundation (Already Done)
 
 Files created:
+
 - `client/src/features/prompt-optimizer/context/generationControlsStoreTypes.ts`
 - `client/src/features/prompt-optimizer/context/generationControlsStoreStorage.ts`
 - `client/src/features/prompt-optimizer/context/GenerationControlsStore.tsx`
@@ -254,17 +255,17 @@ export function GenerationControlsProvider({ children }: { children: ReactNode }
   // ADAPTER: Read from store
   const { domain } = useGenerationControlsStoreState();
   const storeActions = useGenerationControlsStoreActions();
-  
+
   // Keep non-store state
   const [controls, setControls] = useState<GenerationControlsHandlers | null>(null);
-  
+
   // ADAPTER: Forward to store actions
   const setKeyframes = useCallback((tiles: KeyframeTile[] | null | undefined) => {
     storeActions.setKeyframes(tiles);
   }, [storeActions]);
-  
+
   // ... URL refresh logic stays here for now ...
-  
+
   const contextValue = useMemo(() => ({
     controls,
     setControls,
@@ -279,7 +280,7 @@ export function GenerationControlsProvider({ children }: { children: ReactNode }
     setSubjectMotion: storeActions.setSubjectMotion,
     onStoryboard: controls?.onStoryboard ?? null,
   }), [domain, storeActions, controls]);
-  
+
   return (
     <GenerationControlsContext.Provider value={contextValue}>
       {children}
@@ -422,18 +423,18 @@ client/src/features/prompt-optimizer/context/generationControlsStoreStorage.ts
 
 ## Files Changed Summary
 
-| Phase | Files Modified | Files Created | Files Deleted |
-|-------|---------------|---------------|---------------|
-| 0 | 0 | 3 | 0 |
-| 1 | 1 | 0 | 0 |
-| 2 | 1 | 0 | 0 |
-| 3 | 2 | 0 | 0 |
-| 4 | 1 | 1 | 0 |
-| 5 | 1 | 0 | 0 |
-| 6 | 3 | 0 | 0 |
-| 7 | 2 | 0 | 0 |
-| 8 | 1 | 0 | 0 |
-| **Total** | **12** | **4** | **0** |
+| Phase     | Files Modified | Files Created | Files Deleted |
+| --------- | -------------- | ------------- | ------------- |
+| 0         | 0              | 3             | 0             |
+| 1         | 1              | 0             | 0             |
+| 2         | 1              | 0             | 0             |
+| 3         | 2              | 0             | 0             |
+| 4         | 1              | 1             | 0             |
+| 5         | 1              | 0             | 0             |
+| 6         | 3              | 0             | 0             |
+| 7         | 2              | 0             | 0             |
+| 8         | 1              | 0             | 0             |
+| **Total** | **12**         | **4**         | **0**         |
 
 ---
 
@@ -529,12 +530,12 @@ Each phase is independently deployable. If issues arise:
 
 ## Open Questions
 
-| Question | Options | Recommendation |
-|----------|---------|----------------|
-| Should we use Zustand instead of rolling our own? | (A) Zustand, (B) React context | **B** - Store is already built, Zustand adds a dependency for marginal benefit here |
-| Should edit mode move to the store? | (A) Store + localStorage, (B) Keep sessionStorage | **B** - sessionStorage lifecycle is correct (survives refresh, not new tab) |
-| When do we delete legacy storage keys? | (A) Same release, (B) Next release, (C) Never | **B** - One release cycle ensures all users migrate |
-| Should GenerationControlsContext be deleted? | (A) Delete, (B) Keep as thin wrapper | **A** - After Phase 7, it only holds `controls` which can move to the store or a simpler context |
+| Question                                          | Options                                           | Recommendation                                                                                   |
+| ------------------------------------------------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| Should we use Zustand instead of rolling our own? | (A) Zustand, (B) React context                    | **B** - Store is already built, Zustand adds a dependency for marginal benefit here              |
+| Should edit mode move to the store?               | (A) Store + localStorage, (B) Keep sessionStorage | **B** - sessionStorage lifecycle is correct (survives refresh, not new tab)                      |
+| When do we delete legacy storage keys?            | (A) Same release, (B) Next release, (C) Never     | **B** - One release cycle ensures all users migrate                                              |
+| Should GenerationControlsContext be deleted?      | (A) Delete, (B) Keep as thin wrapper              | **A** - After Phase 7, it only holds `controls` which can move to the store or a simpler context |
 
 ---
 

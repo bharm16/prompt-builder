@@ -1,32 +1,32 @@
-import React, { useCallback, useMemo, useState } from 'react';
-import { Copy, Trash2, Wand2, X } from '@promptstudio/system/components/ui';
-import { VIDEO_DRAFT_MODEL } from '@components/ToolSidebar/config/modelConfig';
-import { CameraMotionModal } from '@components/modals/CameraMotionModal';
-import { useToast } from '@components/Toast';
-import { GenerationFooter } from '@components/ToolSidebar/components/panels/GenerationControlsPanel/components/GenerationFooter';
-import { VideoSettingsRow } from '@components/ToolSidebar/components/panels/GenerationControlsPanel/components/VideoSettingsRow';
-import { useCapabilitiesClamping } from '@components/ToolSidebar/components/panels/GenerationControlsPanel/hooks/useCapabilitiesClamping';
-import { useModelSelectionRecommendation } from '@components/ToolSidebar/components/panels/GenerationControlsPanel/hooks/useModelSelectionRecommendation';
-import type { VideoTier } from '@components/ToolSidebar/types';
-import type { CameraPath } from '@/features/convergence/types';
-import type { ContinuityShot } from '@/features/continuity/types';
-import { useAuthUser } from '@/hooks/useAuthUser';
-import { useOptionalPromptHighlights } from '@/features/prompt-optimizer/context/PromptStateContext';
-import { useCreditBalance } from '@/contexts/CreditBalanceContext';
-import { useLowBalanceWarning } from '@/features/billing/hooks/useLowBalanceWarning';
+import React, { useCallback, useMemo, useState } from "react";
+import { Copy, Trash2, Wand2, X } from "@promptstudio/system/components/ui";
+import { VIDEO_DRAFT_MODEL } from "@components/ToolSidebar/config/modelConfig";
+import { CameraMotionModal } from "@components/modals/CameraMotionModal";
+import { useToast } from "@components/Toast";
+import { GenerationFooter } from "@components/ToolSidebar/components/panels/GenerationControlsPanel/components/GenerationFooter";
+import { VideoSettingsRow } from "@components/ToolSidebar/components/panels/GenerationControlsPanel/components/VideoSettingsRow";
+import { useCapabilitiesClamping } from "@components/ToolSidebar/components/panels/GenerationControlsPanel/hooks/useCapabilitiesClamping";
+import { useModelSelectionRecommendation } from "@components/ToolSidebar/components/panels/GenerationControlsPanel/hooks/useModelSelectionRecommendation";
+import type { VideoTier } from "@components/ToolSidebar/types";
+import type { CameraPath } from "@/features/convergence/types";
+import type { ContinuityShot } from "@/features/continuity/types";
+import { useAuthUser } from "@/hooks/useAuthUser";
+import { useOptionalPromptHighlights } from "@/features/prompt-optimizer/context/PromptStateContext";
+import { useCreditBalance } from "@/contexts/CreditBalanceContext";
+import { useLowBalanceWarning } from "@/features/billing/hooks/useLowBalanceWarning";
 import {
   useGenerationControlsStoreActions,
   useGenerationControlsStoreState,
-} from '@features/generation-controls/context/GenerationControlsStore';
-import { useGenerationControlsContext } from '@/features/prompt-optimizer/context/GenerationControlsContext';
-import { useClipboard } from '@/features/prompt-optimizer/hooks/useClipboard';
-import { useWorkspaceSession } from '@/features/prompt-optimizer/context/WorkspaceSessionContext';
-import type { SessionContinuityMode } from '@shared/types/session';
-import { getModelConfig } from '@features/generations/config/generationConfig';
-import { ContinuityIntentPicker } from './components/ContinuityIntentPicker';
-import { PipelineStatus } from './components/PipelineStatus';
-import { PreviousShotContext } from './components/PreviousShotContext';
-import { ShotVisualStrip } from './components/ShotVisualStrip';
+} from "@features/generation-controls/context/GenerationControlsStore";
+import { useGenerationControlsContext } from "@/features/prompt-optimizer/context/GenerationControlsContext";
+import { useClipboard } from "@/features/prompt-optimizer/hooks/useClipboard";
+import { useWorkspaceSession } from "@/features/prompt-optimizer/context/WorkspaceSessionContext";
+import type { SessionContinuityMode } from "@shared/types/session";
+import { getModelConfig } from "@features/generations/config/generationConfig";
+import { ContinuityIntentPicker } from "./components/ContinuityIntentPicker";
+import { PipelineStatus } from "./components/PipelineStatus";
+import { PreviousShotContext } from "./components/PreviousShotContext";
+import { ShotVisualStrip } from "./components/ShotVisualStrip";
 
 interface SequenceWorkspaceProps {
   promptText: string;
@@ -38,8 +38,8 @@ interface SequenceWorkspaceProps {
 }
 
 const parseDuration = (value: unknown): number => {
-  if (typeof value === 'number' && Number.isFinite(value)) return value;
-  if (typeof value === 'string') {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string") {
     const parsed = Number.parseFloat(value);
     if (Number.isFinite(parsed)) return parsed;
   }
@@ -47,31 +47,40 @@ const parseDuration = (value: unknown): number => {
 };
 
 const parseAspectRatio = (value: unknown): string => {
-  if (typeof value === 'string' && value.trim()) return value.trim();
-  return '16:9';
+  if (typeof value === "string" && value.trim()) return value.trim();
+  return "16:9";
 };
 
 const normalizeRef = (value: string | null | undefined): string | null => {
-  if (typeof value !== 'string') return null;
+  if (typeof value !== "string") return null;
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : null;
 };
 
-const buildImageCandidates = (...values: Array<string | null | undefined>): string[] => {
+const buildImageCandidates = (
+  ...values: Array<string | null | undefined>
+): string[] => {
   const normalized = values
     .map((value) => normalizeRef(value))
     .filter((value): value is string => Boolean(value));
   return [...new Set(normalized)];
 };
 
-const resolveShotReferenceImage = (shot: ContinuityShot | null): string | null =>
-  normalizeRef(shot?.frameBridge?.frameUrl ?? shot?.styleReference?.frameUrl ?? shot?.generatedKeyframeUrl ?? null);
+const resolveShotReferenceImage = (
+  shot: ContinuityShot | null,
+): string | null =>
+  normalizeRef(
+    shot?.frameBridge?.frameUrl ??
+      shot?.styleReference?.frameUrl ??
+      shot?.generatedKeyframeUrl ??
+      null,
+  );
 
 const roundCameraValue = (value: number): number =>
   Number.isFinite(value) ? Math.round(value * 1000) / 1000 : 0;
 
 const formatCameraValue = (value: number | undefined): string =>
-  `${Number.isFinite(value) ? Number(value).toFixed(2) : '0.00'}`;
+  `${Number.isFinite(value) ? Number(value).toFixed(2) : "0.00"}`;
 
 type SceneProxyCameraInput = {
   yaw?: number;
@@ -84,35 +93,45 @@ const SCENE_PROXY_PREVIEW_MIN_LATERAL_DELTA = 0.01;
 const SCENE_PROXY_PREVIEW_DEFAULT_YAW = 0.35;
 
 const normalizeCameraInput = (
-  camera: ContinuityShot['camera'] | null | undefined
+  camera: ContinuityShot["camera"] | null | undefined,
 ): SceneProxyCameraInput | undefined => {
   if (!camera) return undefined;
 
   const normalized: SceneProxyCameraInput = {
-    ...(typeof camera.yaw === 'number' ? { yaw: camera.yaw } : {}),
-    ...(typeof camera.pitch === 'number' ? { pitch: camera.pitch } : {}),
-    ...(typeof camera.roll === 'number' ? { roll: camera.roll } : {}),
-    ...(typeof camera.dolly === 'number' ? { dolly: camera.dolly } : {}),
+    ...(typeof camera.yaw === "number" ? { yaw: camera.yaw } : {}),
+    ...(typeof camera.pitch === "number" ? { pitch: camera.pitch } : {}),
+    ...(typeof camera.roll === "number" ? { roll: camera.roll } : {}),
+    ...(typeof camera.dolly === "number" ? { dolly: camera.dolly } : {}),
   };
 
   return Object.keys(normalized).length > 0 ? normalized : undefined;
 };
 
 const cameraPathToShotCamera = (
-  cameraPath: CameraPath
+  cameraPath: CameraPath,
 ): SceneProxyCameraInput => ({
-  yaw: roundCameraValue(cameraPath.end.rotation.yaw - cameraPath.start.rotation.yaw),
-  pitch: roundCameraValue(cameraPath.end.rotation.pitch - cameraPath.start.rotation.pitch),
-  roll: roundCameraValue(cameraPath.end.rotation.roll - cameraPath.start.rotation.roll),
-  dolly: roundCameraValue(cameraPath.end.position.z - cameraPath.start.position.z),
+  yaw: roundCameraValue(
+    cameraPath.end.rotation.yaw - cameraPath.start.rotation.yaw,
+  ),
+  pitch: roundCameraValue(
+    cameraPath.end.rotation.pitch - cameraPath.start.rotation.pitch,
+  ),
+  roll: roundCameraValue(
+    cameraPath.end.rotation.roll - cameraPath.start.rotation.roll,
+  ),
+  dolly: roundCameraValue(
+    cameraPath.end.position.z - cameraPath.start.position.z,
+  ),
 });
 
 const cameraInputValue = (value: number | undefined): number | null =>
-  typeof value === 'number' && Number.isFinite(value) ? roundCameraValue(value) : null;
+  typeof value === "number" && Number.isFinite(value)
+    ? roundCameraValue(value)
+    : null;
 
 const areCameraInputsEqual = (
   left: SceneProxyCameraInput | undefined,
-  right: SceneProxyCameraInput | undefined
+  right: SceneProxyCameraInput | undefined,
 ): boolean => {
   if (!left && !right) return true;
   if (!left || !right) return false;
@@ -126,9 +145,9 @@ const areCameraInputsEqual = (
 
 const withSceneProxyPreviewFallback = (
   camera: SceneProxyCameraInput,
-  continuityMode: SessionContinuityMode
+  continuityMode: SessionContinuityMode,
 ): SceneProxyCameraInput => {
-  if (continuityMode !== 'style-match') return camera;
+  if (continuityMode !== "style-match") return camera;
   const yaw = Math.abs(camera.yaw ?? 0);
   const dolly = Math.abs(camera.dolly ?? 0);
   if (
@@ -175,7 +194,12 @@ export function SequenceWorkspace({
   } = useWorkspaceSession();
 
   const { domain } = useGenerationControlsStoreState();
-  const { setSelectedModel, setVideoTier, mergeGenerationParams, setCameraMotion } = useGenerationControlsStoreActions();
+  const {
+    setSelectedModel,
+    setVideoTier,
+    mergeGenerationParams,
+    setCameraMotion,
+  } = useGenerationControlsStoreActions();
   const promptHighlights = useOptionalPromptHighlights();
 
   const selectedModel = domain.selectedModel;
@@ -186,12 +210,15 @@ export function SequenceWorkspace({
 
   const orderedShots = useMemo(
     () => [...shots].sort((a, b) => a.sequenceIndex - b.sequenceIndex),
-    [shots]
+    [shots],
   );
 
   const previousShot = useMemo(
-    () => (currentShotIndex > 0 ? orderedShots[currentShotIndex - 1] ?? null : null),
-    [currentShotIndex, orderedShots]
+    () =>
+      currentShotIndex > 0
+        ? (orderedShots[currentShotIndex - 1] ?? null)
+        : null,
+    [currentShotIndex, orderedShots],
   );
 
   const motionSource = useMemo(() => {
@@ -213,7 +240,9 @@ export function SequenceWorkspace({
       };
     }
 
-    const primaryStyleFrameUrl = normalizeRef(session?.continuity?.primaryStyleReference?.frameUrl ?? null);
+    const primaryStyleFrameUrl = normalizeRef(
+      session?.continuity?.primaryStyleReference?.frameUrl ?? null,
+    );
     if (primaryStyleFrameUrl) {
       return {
         imageUrl: primaryStyleFrameUrl,
@@ -223,18 +252,28 @@ export function SequenceWorkspace({
     }
 
     return null;
-  }, [previousShot, session?.continuity?.primaryStyleReference?.frameUrl, startFrame]);
+  }, [
+    previousShot,
+    session?.continuity?.primaryStyleReference?.frameUrl,
+    startFrame,
+  ]);
 
   const sceneProxySource = useMemo(
     () => orderedShots.find((shot) => Boolean(shot.videoAssetId)) ?? null,
-    [orderedShots]
+    [orderedShots],
   );
 
-  const sceneProxySourceVideoId = normalizeRef(sceneProxySource?.videoAssetId ?? null);
+  const sceneProxySourceVideoId = normalizeRef(
+    sceneProxySource?.videoAssetId ?? null,
+  );
   const sceneProxyStatus = session?.continuity?.sceneProxy?.status ?? null;
-  const isSceneProxyReady = sceneProxyStatus === 'ready';
-  const canCreateSceneProxy = Boolean(sceneProxySource?.id || sceneProxySourceVideoId);
-  const sceneProxyReferenceFrameUrl = normalizeRef(session?.continuity?.sceneProxy?.referenceFrameUrl ?? null);
+  const isSceneProxyReady = sceneProxyStatus === "ready";
+  const canCreateSceneProxy = Boolean(
+    sceneProxySource?.id || sceneProxySourceVideoId,
+  );
+  const sceneProxyReferenceFrameUrl = normalizeRef(
+    session?.continuity?.sceneProxy?.referenceFrameUrl ?? null,
+  );
 
   const {
     modelRecommendation,
@@ -244,7 +283,7 @@ export function SequenceWorkspace({
     renderModelId,
   } = useModelSelectionRecommendation({
     prompt: promptText,
-    activeTab: 'video',
+    activeTab: "video",
     keyframesCount: startFrame ? 1 : 0,
     durationSeconds: duration,
     selectedModel,
@@ -257,7 +296,7 @@ export function SequenceWorkspace({
       if (domain.generationParams?.aspect_ratio === ratio) return;
       mergeGenerationParams({ aspect_ratio: ratio });
     },
-    [domain.generationParams?.aspect_ratio, mergeGenerationParams]
+    [domain.generationParams?.aspect_ratio, mergeGenerationParams],
   );
 
   const handleDurationChange = useCallback(
@@ -265,27 +304,28 @@ export function SequenceWorkspace({
       if (domain.generationParams?.duration_s === nextDuration) return;
       mergeGenerationParams({ duration_s: nextDuration });
     },
-    [domain.generationParams?.duration_s, mergeGenerationParams]
+    [domain.generationParams?.duration_s, mergeGenerationParams],
   );
 
-  const { aspectRatioInfo, durationInfo, aspectRatioOptions, durationOptions } = useCapabilitiesClamping({
-    activeTab: 'video',
-    selectedModel,
-    videoTier: tier,
-    renderModelId,
-    aspectRatio,
-    duration,
-    setVideoTier,
-    onAspectRatioChange: handleAspectRatioChange,
-    onDurationChange: handleDurationChange,
-  });
+  const { aspectRatioInfo, durationInfo, aspectRatioOptions, durationOptions } =
+    useCapabilitiesClamping({
+      activeTab: "video",
+      selectedModel,
+      videoTier: tier,
+      renderModelId,
+      aspectRatio,
+      duration,
+      setVideoTier,
+      onAspectRatioChange: handleAspectRatioChange,
+      onDurationChange: handleDurationChange,
+    });
 
   const handleModeChange = useCallback(
     (mode: SessionContinuityMode): void => {
       if (!currentShot) return;
       void updateShot(currentShot.id, { continuityMode: mode });
     },
-    [currentShot, updateShot]
+    [currentShot, updateShot],
   );
 
   const handleStrengthChange = useCallback(
@@ -293,12 +333,13 @@ export function SequenceWorkspace({
       if (!currentShot) return;
       void updateShot(currentShot.id, { styleStrength: strength });
     },
-    [currentShot, updateShot]
+    [currentShot, updateShot],
   );
 
   const handleModelChange = useCallback(
     (modelId: string): void => {
-      const nextTier: VideoTier = modelId === VIDEO_DRAFT_MODEL.id ? 'draft' : 'render';
+      const nextTier: VideoTier =
+        modelId === VIDEO_DRAFT_MODEL.id ? "draft" : "render";
       setSelectedModel(modelId);
       if (tier !== nextTier) {
         setVideoTier(nextTier);
@@ -307,7 +348,7 @@ export function SequenceWorkspace({
         void updateShot(currentShot.id, { modelId });
       }
     },
-    [currentShot, setSelectedModel, setVideoTier, tier, updateShot]
+    [currentShot, setSelectedModel, setVideoTier, tier, updateShot],
   );
 
   const handleGenerate = useCallback(async (): Promise<void> => {
@@ -316,7 +357,10 @@ export function SequenceWorkspace({
     const modelConfig = getModelConfig(modelId);
     const requiredCredits = modelConfig?.credits ?? 0;
     if (balance !== null && balance < requiredCredits) {
-      onInsufficientCredits?.(requiredCredits, `${modelConfig?.label ?? 'Video'} render`);
+      onInsufficientCredits?.(
+        requiredCredits,
+        `${modelConfig?.label ?? "Video"} render`,
+      );
       return;
     }
     setIsGenerating(true);
@@ -340,7 +384,7 @@ export function SequenceWorkspace({
   }, [copy, promptText]);
 
   const handleClearPrompt = useCallback((): void => {
-    onPromptChange?.('');
+    onPromptChange?.("");
   }, [onPromptChange]);
 
   const handleOpenCameraMotion = useCallback((): void => {
@@ -360,15 +404,29 @@ export function SequenceWorkspace({
       void (async () => {
         try {
           await updateShot(currentShot.id, { camera });
-          if (currentShot.continuityMode === 'style-match' && isSceneProxyReady) {
+          if (
+            currentShot.continuityMode === "style-match" &&
+            isSceneProxyReady
+          ) {
             await previewSceneProxy(currentShot.id, camera);
           }
         } catch (error) {
-          toast.error(error instanceof Error ? error.message : 'Failed to apply camera motion');
+          toast.error(
+            error instanceof Error
+              ? error.message
+              : "Failed to apply camera motion",
+          );
         }
       })();
     },
-    [currentShot, isSceneProxyReady, previewSceneProxy, setCameraMotion, toast, updateShot]
+    [
+      currentShot,
+      isSceneProxyReady,
+      previewSceneProxy,
+      setCameraMotion,
+      toast,
+      updateShot,
+    ],
   );
 
   const handlePreviewSceneProxy = useCallback(async (): Promise<void> => {
@@ -377,16 +435,18 @@ export function SequenceWorkspace({
     const existingCamera = normalizeCameraInput(currentShot.camera);
     const resolvedCameraInput =
       existingCamera ??
-      (domain.cameraMotion ? cameraPathToShotCamera(domain.cameraMotion) : undefined);
+      (domain.cameraMotion
+        ? cameraPathToShotCamera(domain.cameraMotion)
+        : undefined);
 
     if (!resolvedCameraInput) {
-      toast.warning('Select camera motion before previewing an angle.');
+      toast.warning("Select camera motion before previewing an angle.");
       return;
     }
 
     const resolvedCamera = withSceneProxyPreviewFallback(
       resolvedCameraInput,
-      currentShot.continuityMode
+      currentShot.continuityMode,
     );
 
     try {
@@ -394,41 +454,60 @@ export function SequenceWorkspace({
         await updateShot(currentShot.id, { camera: resolvedCamera });
       }
       await previewSceneProxy(currentShot.id, resolvedCamera);
-      toast.success('Angle preview updated');
+      toast.success("Angle preview updated");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to render scene proxy preview');
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to render scene proxy preview",
+      );
     }
   }, [currentShot, domain.cameraMotion, previewSceneProxy, toast, updateShot]);
 
   const handleCreateSceneProxy = useCallback(async (): Promise<void> => {
     if (!canCreateSceneProxy) {
-      toast.warning('Generate or select a source shot before creating a scene proxy.');
+      toast.warning(
+        "Generate or select a source shot before creating a scene proxy.",
+      );
       return;
     }
 
     try {
       await createSceneProxy({
         ...(sceneProxySource?.id ? { sourceShotId: sceneProxySource.id } : {}),
-        ...(sceneProxySourceVideoId ? { sourceVideoId: sceneProxySourceVideoId } : {}),
+        ...(sceneProxySourceVideoId
+          ? { sourceVideoId: sceneProxySourceVideoId }
+          : {}),
       });
-      toast.success('Scene proxy is ready for continuity generation.');
+      toast.success("Scene proxy is ready for continuity generation.");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to create scene proxy');
+      toast.error(
+        error instanceof Error ? error.message : "Failed to create scene proxy",
+      );
     }
-  }, [canCreateSceneProxy, createSceneProxy, sceneProxySource?.id, sceneProxySourceVideoId, toast]);
+  }, [
+    canCreateSceneProxy,
+    createSceneProxy,
+    sceneProxySource?.id,
+    sceneProxySourceVideoId,
+    toast,
+  ]);
 
   const isGenerateDisabled =
     !currentShot ||
     !promptText.trim() ||
     isGenerating ||
-    currentShot.status === 'generating-keyframe' ||
-    currentShot.status === 'generating-video';
+    currentShot.status === "generating-keyframe" ||
+    currentShot.status === "generating-video";
 
-  const generateLabel = currentShotIndex >= 0 ? `Generate Shot ${currentShotIndex + 1}` : 'Generate';
+  const generateLabel =
+    currentShotIndex >= 0
+      ? `Generate Shot ${currentShotIndex + 1}`
+      : "Generate";
   const selectedShotModelId = currentShot?.modelId || selectedModel;
   const selectedShotModelConfig = getModelConfig(selectedShotModelId);
   const selectedShotCost = selectedShotModelConfig?.credits ?? 0;
-  const selectedShotOperation = `${selectedShotModelConfig?.label ?? 'Video'} render`;
+  const selectedShotOperation = `${selectedShotModelConfig?.label ?? "Video"} render`;
 
   useLowBalanceWarning({
     userId: authUser?.uid ?? null,
@@ -441,30 +520,32 @@ export function SequenceWorkspace({
   const shouldShowSceneProxyPreview =
     Boolean(currentShot) &&
     currentShotIndex > 0 &&
-    currentShot?.continuityMode === 'style-match';
+    currentShot?.continuityMode === "style-match";
   const previewImageCandidates = useMemo(
     () =>
       buildImageCandidates(
         currentShot?.sceneProxyRenderUrl ?? null,
         sceneProxyReferenceFrameUrl,
         resolveShotReferenceImage(currentShot),
-        resolveShotReferenceImage(previousShot)
+        resolveShotReferenceImage(previousShot),
       ),
-    [currentShot, previousShot, sceneProxyReferenceFrameUrl]
+    [currentShot, previousShot, sceneProxyReferenceFrameUrl],
   );
-  const previewImageCandidateKey = previewImageCandidates.join('|');
+  const previewImageCandidateKey = previewImageCandidates.join("|");
   const [previewImageIndex, setPreviewImageIndex] = useState(0);
   React.useEffect(() => {
     setPreviewImageIndex(0);
   }, [previewImageCandidateKey]);
   const previewImageUrl =
     previewImageIndex >= 0 && previewImageIndex < previewImageCandidates.length
-      ? previewImageCandidates[previewImageIndex] ?? null
+      ? (previewImageCandidates[previewImageIndex] ?? null)
       : null;
   const handlePreviewImageError = useCallback((): void => {
     setPreviewImageIndex((current) => {
       const next = current + 1;
-      return next < previewImageCandidates.length ? next : previewImageCandidates.length;
+      return next < previewImageCandidates.length
+        ? next
+        : previewImageCandidates.length;
     });
   }, [previewImageCandidates.length]);
   const previewCamera =
@@ -472,17 +553,22 @@ export function SequenceWorkspace({
     (domain.cameraMotion ? cameraPathToShotCamera(domain.cameraMotion) : null);
 
   return (
-    <main id="main-content" className="flex h-full min-h-0 flex-col bg-tool-panel-inner">
+    <main
+      id="main-content"
+      className="flex h-full min-h-0 flex-col bg-tool-panel-inner"
+    >
       <header className="flex h-12 items-center border-b border-border px-3">
         <span className="rounded-full border border-accent/40 bg-accent/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-accent">
           Sequence
         </span>
-        <span className="ml-2 flex-1 truncate text-sm text-foreground">{session?.name || 'Untitled session'}</span>
+        <span className="ml-2 flex-1 truncate text-sm text-foreground">
+          {session?.name || "Untitled session"}
+        </span>
         <span
           className="mr-2 rounded-md border border-border px-2 py-1 text-[10px] font-medium uppercase tracking-wide text-muted"
           data-testid="scene-proxy-status"
         >
-          {isSceneProxyReady ? 'Scene proxy ready' : 'Scene proxy off'}
+          {isSceneProxyReady ? "Scene proxy ready" : "Scene proxy off"}
         </span>
         <button
           type="button"
@@ -491,7 +577,11 @@ export function SequenceWorkspace({
           className="mr-2 inline-flex h-7 items-center gap-1 rounded-md border border-border px-2 text-[11px] font-medium text-muted transition-colors hover:bg-surface-1 hover:text-foreground disabled:opacity-50"
           aria-label="Create scene proxy"
         >
-          {isCreatingSceneProxy ? 'Building proxy...' : isSceneProxyReady ? 'Rebuild proxy' : 'Build proxy'}
+          {isCreatingSceneProxy
+            ? "Building proxy..."
+            : isSceneProxyReady
+              ? "Rebuild proxy"
+              : "Build proxy"}
         </button>
         {onExitSequence && (
           <button
@@ -516,7 +606,10 @@ export function SequenceWorkspace({
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-3">
         <div className="space-y-3">
           {previousShot && currentShot && currentShotIndex > 0 && (
-            <PreviousShotContext previousShot={previousShot} continuityMode={currentShot.continuityMode} />
+            <PreviousShotContext
+              previousShot={previousShot}
+              continuityMode={currentShot.continuityMode}
+            />
           )}
 
           {currentShot && currentShotIndex > 0 && (
@@ -538,7 +631,7 @@ export function SequenceWorkspace({
                   Scene proxy preview
                 </span>
                 <span className="text-[11px] text-muted">
-                  {isSceneProxyReady ? 'Ready' : 'Build proxy first'}
+                  {isSceneProxyReady ? "Ready" : "Build proxy first"}
                 </span>
               </header>
 
@@ -552,7 +645,9 @@ export function SequenceWorkspace({
                   />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center bg-tool-surface-card">
-                    <span className="text-xs text-muted">No proxy preview yet</span>
+                    <span className="text-xs text-muted">
+                      No proxy preview yet
+                    </span>
                   </div>
                 )}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
@@ -563,7 +658,7 @@ export function SequenceWorkspace({
                   className="absolute bottom-2 right-2 rounded border border-border bg-black/55 px-2 py-1 text-[10px] font-medium text-foreground backdrop-blur-sm disabled:opacity-50"
                   data-testid="preview-scene-proxy-button"
                 >
-                  {isPreviewingSceneProxy ? 'Rendering...' : 'Preview angle'}
+                  {isPreviewingSceneProxy ? "Rendering..." : "Preview angle"}
                 </button>
               </div>
 
@@ -579,9 +674,13 @@ export function SequenceWorkspace({
           <section className="overflow-hidden rounded-xl border border-border bg-surface-2">
             <div className="flex items-center justify-between border-b border-border px-3 py-2">
               <span className="text-[11px] font-semibold uppercase tracking-wide text-muted">
-                {currentShotIndex >= 0 ? `Shot ${currentShotIndex + 1} prompt` : 'Shot prompt'}
+                {currentShotIndex >= 0
+                  ? `Shot ${currentShotIndex + 1} prompt`
+                  : "Shot prompt"}
               </span>
-              <span className="text-[10px] tabular-nums text-muted">{promptText.length} chars</span>
+              <span className="text-[10px] tabular-nums text-muted">
+                {promptText.length} chars
+              </span>
             </div>
 
             <div className="px-3 py-2">

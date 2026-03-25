@@ -1,9 +1,9 @@
-import type { ModelPromptStrategy } from './types';
-import { buildBaseHeader } from './promptStrategyUtils';
+import type { ModelPromptStrategy } from "./types";
+import { buildBaseHeader } from "./promptStrategyUtils";
 
 export const lumaRay3PromptStrategy: ModelPromptStrategy = {
-  modelId: 'luma-ray3',
-  output: { format: 'text' },
+  modelId: "luma-ray3",
+  output: { format: "text" },
   buildPrompt: (context) => `${buildBaseHeader(context)}
 INSTRUCTIONS for Luma Ray-3:
 1. Use the strict structure: [Camera Shot/Angle], [Subject Description], [Action], [Lighting], [Mood/Atmosphere].

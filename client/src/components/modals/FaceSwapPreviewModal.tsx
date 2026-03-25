@@ -2,11 +2,11 @@
  * FaceSwapPreviewModal
  */
 
-import React, { useEffect } from 'react';
-import { Loader2, X } from '@promptstudio/system/components/ui';
-import { cn } from '@/utils/cn';
-import { ImagePreview } from '@/components/MediaViewer/components/ImagePreview';
-import { formatCredits } from '@features/generations/config/generationConfig';
+import React, { useEffect } from "react";
+import { Loader2, X } from "@promptstudio/system/components/ui";
+import { cn } from "@/utils/cn";
+import { ImagePreview } from "@/components/MediaViewer/components/ImagePreview";
+import { formatCredits } from "@features/generations/config/generationConfig";
 
 interface FaceSwapPreviewModalProps {
   isOpen: boolean;
@@ -36,31 +36,41 @@ export function FaceSwapPreviewModal({
   useEffect(() => {
     if (!isOpen) return undefined;
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
+      if (event.key === "Escape") {
         onClose();
       }
     };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
   const proceedDisabled = isLoading || !imageUrl || Boolean(error);
-  const videoCreditsLabel = videoCredits !== null ? formatCredits(videoCredits) : '—';
+  const videoCreditsLabel =
+    videoCredits !== null ? formatCredits(videoCredits) : "—";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center" role="dialog" aria-modal="true">
-      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose} />
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center"
+      role="dialog"
+      aria-modal="true"
+    >
+      <div
+        className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+        onClick={onClose}
+      />
 
       <div
         className={cn(
-          'relative z-10 w-full max-w-4xl max-h-[90vh] overflow-auto',
-          'bg-tool-panel-inner rounded-xl border border-tool-border-dark shadow-2xl mx-4'
+          "relative z-10 w-full max-w-4xl max-h-[90vh] overflow-auto",
+          "bg-tool-panel-inner rounded-xl border border-tool-border-dark shadow-2xl mx-4",
         )}
       >
         <div className="sticky top-0 z-20 flex items-center justify-between px-6 py-4 bg-tool-panel-inner border-b border-tool-border-dark">
-          <h2 className="text-lg font-semibold text-white">Face Composition Result</h2>
+          <h2 className="text-lg font-semibold text-white">
+            Face Composition Result
+          </h2>
           <button
             type="button"
             onClick={onClose}
@@ -89,12 +99,15 @@ export function FaceSwapPreviewModal({
                 <div className="text-sm text-amber-400">{error}</div>
               ) : (
                 <div className="text-sm text-ghost">
-                  Face composition complete ({formatCredits(faceSwapCredits)} used).
+                  Face composition complete ({formatCredits(faceSwapCredits)}{" "}
+                  used).
                 </div>
               )}
               <div className="text-xs text-ghost">
                 Video cost: {videoCreditsLabel}
-                {totalCredits !== null ? ` · Total: ${formatCredits(totalCredits)}` : ''}
+                {totalCredits !== null
+                  ? ` · Total: ${formatCredits(totalCredits)}`
+                  : ""}
               </div>
             </div>
           )}

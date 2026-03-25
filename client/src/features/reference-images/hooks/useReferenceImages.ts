@@ -1,5 +1,8 @@
-import { useCallback, useEffect, useState } from 'react';
-import { referenceImageApi, type ReferenceImage } from '../api/referenceImageApi';
+import { useCallback, useEffect, useState } from "react";
+import {
+  referenceImageApi,
+  type ReferenceImage,
+} from "../api/referenceImageApi";
 
 interface UseReferenceImagesState {
   images: ReferenceImage[];
@@ -9,12 +12,19 @@ interface UseReferenceImagesState {
 
 interface UseReferenceImagesActions {
   refresh: () => Promise<void>;
-  uploadImage: (file: File, options?: { label?: string; source?: string }) => Promise<ReferenceImage>;
-  uploadFromUrl: (sourceUrl: string, options?: { label?: string; source?: string }) => Promise<ReferenceImage>;
+  uploadImage: (
+    file: File,
+    options?: { label?: string; source?: string },
+  ) => Promise<ReferenceImage>;
+  uploadFromUrl: (
+    sourceUrl: string,
+    options?: { label?: string; source?: string },
+  ) => Promise<ReferenceImage>;
   deleteImage: (imageId: string) => Promise<void>;
 }
 
-export function useReferenceImages(): UseReferenceImagesState & UseReferenceImagesActions {
+export function useReferenceImages(): UseReferenceImagesState &
+  UseReferenceImagesActions {
   const [images, setImages] = useState<ReferenceImage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -26,7 +36,9 @@ export function useReferenceImages(): UseReferenceImagesState & UseReferenceImag
       const result = await referenceImageApi.list();
       setImages(result);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load reference images');
+      setError(
+        err instanceof Error ? err.message : "Failed to load reference images",
+      );
     } finally {
       setIsLoading(false);
     }
@@ -42,16 +54,19 @@ export function useReferenceImages(): UseReferenceImagesState & UseReferenceImag
       setImages((prev) => [created, ...prev]);
       return created;
     },
-    []
+    [],
   );
 
   const uploadFromUrl = useCallback(
-    async (sourceUrl: string, options: { label?: string; source?: string } = {}) => {
+    async (
+      sourceUrl: string,
+      options: { label?: string; source?: string } = {},
+    ) => {
       const created = await referenceImageApi.uploadFromUrl(sourceUrl, options);
       setImages((prev) => [created, ...prev]);
       return created;
     },
-    []
+    [],
   );
 
   const deleteImage = useCallback(async (imageId: string) => {

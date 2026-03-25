@@ -1,0 +1,167 @@
+{
+  "runDir": "/Users/bryceharmon/Desktop/prompt-builder/output/playwright/aggressive-generation-rerun-draftpath-20260325T042622",
+  "screenshots": [
+    "/Users/bryceharmon/Desktop/prompt-builder/output/playwright/aggressive-generation-rerun-draftpath-20260325T042622/01-01-workspace.png",
+    "/Users/bryceharmon/Desktop/prompt-builder/output/playwright/aggressive-generation-rerun-draftpath-20260325T042622/02-02-model-overlay.png",
+    "/Users/bryceharmon/Desktop/prompt-builder/output/playwright/aggressive-generation-rerun-draftpath-20260325T042622/03-03-wan-selected.png",
+    "/Users/bryceharmon/Desktop/prompt-builder/output/playwright/aggressive-generation-rerun-draftpath-20260325T042622/04-04-prompt-entered.png",
+    "/Users/bryceharmon/Desktop/prompt-builder/output/playwright/aggressive-generation-rerun-draftpath-20260325T042622/05-05-after-generate-click.png",
+    "/Users/bryceharmon/Desktop/prompt-builder/output/playwright/aggressive-generation-rerun-draftpath-20260325T042622/06-06-after-wait.png"
+  ],
+  "trackedRequests": [
+    {
+      "method": "GET",
+      "url": "http://localhost:5173/api/payment/credits/balance",
+      "postData": "",
+      "ts": 1774430817707
+    },
+    {
+      "method": "POST",
+      "url": "http://localhost:5173/api/preview/video/generate",
+      "postData": "{\"prompt\":\"A fox running through snow at sunrise.\",\"aspectRatio\":\"16:9\",\"model\":\"wan-2.5\",\"generationParams\":{\"duration_s\":5}}",
+      "ts": 1774430826832
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:5173/api/preview/video/jobs/oqD6JvWT3XLHQyjRVTfn",
+      "postData": "",
+      "ts": 1774430827524
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:5173/api/preview/video/jobs/oqD6JvWT3XLHQyjRVTfn",
+      "postData": "",
+      "ts": 1774430829606
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:5173/api/preview/video/jobs/oqD6JvWT3XLHQyjRVTfn",
+      "postData": "",
+      "ts": 1774430831687
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:5173/api/preview/video/jobs/oqD6JvWT3XLHQyjRVTfn",
+      "postData": "",
+      "ts": 1774430833778
+    }
+  ],
+  "trackedResponses": [
+    {
+      "method": "GET",
+      "url": "http://localhost:5173/api/payment/credits/balance",
+      "status": 200,
+      "body": "{\"balance\":25}",
+      "ts": 1774430817817
+    },
+    {
+      "method": "POST",
+      "url": "http://localhost:5173/api/preview/video/generate",
+      "status": 202,
+      "body": "{\"success\":true,\"data\":{\"jobId\":\"oqD6JvWT3XLHQyjRVTfn\",\"status\":\"queued\",\"creditsReserved\":18,\"creditsDeducted\":18,\"remainingCredits\":7,\"keyframeGenerated\":false,\"keyframeUrl\":null,\"faceSwapApplied\":false,\"faceSwapUrl\":null},\"jobId\":\"oqD6JvWT3XLHQyjRVTfn\",\"status\":\"queued\",\"creditsReserved\":18,\"creditsDeducted\":18,\"remainingCredits\":7,\"keyframeGenerated\":false,\"keyframeUrl\":null,\"faceSwapApplied\":false,\"faceSwapUrl\":null}",
+      "ts": 1774430827525
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:5173/api/preview/video/jobs/oqD6JvWT3XLHQyjRVTfn",
+      "status": 200,
+      "body": "{\"success\":true,\"jobId\":\"oqD6JvWT3XLHQyjRVTfn\",\"status\":\"queued\",\"creditsReserved\":18,\"creditsDeducted\":18,\"progress\":5,\"createdAtMs\":1774430827233,\"attempts\":0,\"maxAttempts\":3,\"serverTimeoutMs\":300000}",
+      "ts": 1774430827605
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:5173/api/preview/video/jobs/oqD6JvWT3XLHQyjRVTfn",
+      "status": 200,
+      "body": "{\"success\":true,\"jobId\":\"oqD6JvWT3XLHQyjRVTfn\",\"status\":\"processing\",\"creditsReserved\":18,\"creditsDeducted\":18,\"progress\":11,\"createdAtMs\":1774430827233,\"attempts\":1,\"maxAttempts\":3,\"serverTimeoutMs\":300000,\"lastHeartbeatAtMs\":1774430827720}",
+      "ts": 1774430829693
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:5173/api/preview/video/jobs/oqD6JvWT3XLHQyjRVTfn",
+      "status": 200,
+      "body": "{\"success\":true,\"jobId\":\"oqD6JvWT3XLHQyjRVTfn\",\"status\":\"processing\",\"creditsReserved\":18,\"creditsDeducted\":18,\"progress\":12,\"createdAtMs\":1774430827233,\"attempts\":1,\"maxAttempts\":3,\"serverTimeoutMs\":300000,\"lastHeartbeatAtMs\":1774430827720}",
+      "ts": 1774430831775
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:5173/api/preview/video/jobs/oqD6JvWT3XLHQyjRVTfn",
+      "status": 200,
+      "body": "{\"success\":true,\"jobId\":\"oqD6JvWT3XLHQyjRVTfn\",\"status\":\"processing\",\"creditsReserved\":18,\"creditsDeducted\":18,\"progress\":13,\"createdAtMs\":1774430827233,\"attempts\":1,\"maxAttempts\":3,\"serverTimeoutMs\":300000,\"lastHeartbeatAtMs\":1774430827720}",
+      "ts": 1774430833866
+    }
+  ],
+  "state": {
+    "afterModelSwitchBody": "Vidra Tool Chars Styles Gallery Sessions Home C Codex QA Free Skip to main content Credits power generation You started with 25 credits. You can top up anytime in billing. Untitled session Video Start with a scene, subject, or motion cue. The editor stays live while the workspace grows around it. 25 cr Model Wan 2.5 Start frame Assets 16:9 5s Welcome back, Codex QA!",
+    "generateLabelAfterSwitch": "Draft 18 credits",
+    "generateLabelWithPrompt": "Draft 18 credits",
+    "sentGenerateRequest": false,
+    "bodyAfterClick": "Vidra Tool Chars Styles Gallery Sessions Home C Codex QA Free Skip to main content Credits power generation You started with 25 credits. You can top up anytime in billing. Untitled session Model Wan 2.5 8% Rendering WAN 2.5 · 3s · est. 45s A fox running through snow at sunrise. Start frame Assets 16:9 5s",
+    "generateResponses": [],
+    "bodyAfterWait": "Vidra Tool Chars Styles Gallery Sessions Home C Codex QA Free Skip to main content Credits power generation You started with 25 credits. You can top up anytime in billing. Untitled session Model Wan 2.5 31% Rendering WAN 2.5 · 11s · est. 45s A fox running through snow at sunrise. Start frame Assets 16:9 5s",
+    "jobPolls": [
+      {
+        "status": 200,
+        "body": {
+          "success": true,
+          "jobId": "oqD6JvWT3XLHQyjRVTfn",
+          "status": "queued",
+          "creditsReserved": 18,
+          "creditsDeducted": 18,
+          "progress": 5,
+          "createdAtMs": 1774430827233,
+          "attempts": 0,
+          "maxAttempts": 3,
+          "serverTimeoutMs": 300000
+        }
+      },
+      {
+        "status": 200,
+        "body": {
+          "success": true,
+          "jobId": "oqD6JvWT3XLHQyjRVTfn",
+          "status": "processing",
+          "creditsReserved": 18,
+          "creditsDeducted": 18,
+          "progress": 11,
+          "createdAtMs": 1774430827233,
+          "attempts": 1,
+          "maxAttempts": 3,
+          "serverTimeoutMs": 300000,
+          "lastHeartbeatAtMs": 1774430827720
+        }
+      },
+      {
+        "status": 200,
+        "body": {
+          "success": true,
+          "jobId": "oqD6JvWT3XLHQyjRVTfn",
+          "status": "processing",
+          "creditsReserved": 18,
+          "creditsDeducted": 18,
+          "progress": 12,
+          "createdAtMs": 1774430827233,
+          "attempts": 1,
+          "maxAttempts": 3,
+          "serverTimeoutMs": 300000,
+          "lastHeartbeatAtMs": 1774430827720
+        }
+      },
+      {
+        "status": 200,
+        "body": {
+          "success": true,
+          "jobId": "oqD6JvWT3XLHQyjRVTfn",
+          "status": "processing",
+          "creditsReserved": 18,
+          "creditsDeducted": 18,
+          "progress": 13,
+          "createdAtMs": 1774430827233,
+          "attempts": 1,
+          "maxAttempts": 3,
+          "serverTimeoutMs": 300000,
+          "lastHeartbeatAtMs": 1774430827720
+        }
+      }
+    ]
+  }
+}

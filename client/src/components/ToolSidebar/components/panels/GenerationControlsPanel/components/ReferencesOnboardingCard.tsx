@@ -1,5 +1,5 @@
-import React from 'react';
-import { Folder, Upload } from '@promptstudio/system/components/ui';
+import React from "react";
+import { Folder, Upload } from "@promptstudio/system/components/ui";
 
 interface ReferencesOnboardingCardProps {
   onUpload: () => void;
@@ -19,9 +19,24 @@ export function ReferencesOnboardingCard({
       {/* Stacked preview thumbnails */}
       <div className="flex justify-center mb-3">
         {[
-          { bg: 'linear-gradient(135deg, #2a1a3a, #1a0a2a)', w: 52, h: 40, rot: -8 },
-          { bg: 'linear-gradient(135deg, #1a3a2a, #0a2a1a)', w: 56, h: 42, rot: 0 },
-          { bg: 'linear-gradient(135deg, #3a2a1a, #2a1a0a)', w: 48, h: 38, rot: 8 },
+          {
+            bg: "linear-gradient(135deg, #2a1a3a, #1a0a2a)",
+            w: 52,
+            h: 40,
+            rot: -8,
+          },
+          {
+            bg: "linear-gradient(135deg, #1a3a2a, #0a2a1a)",
+            w: 56,
+            h: 42,
+            rot: 0,
+          },
+          {
+            bg: "linear-gradient(135deg, #3a2a1a, #2a1a0a)",
+            w: 48,
+            h: 38,
+            rot: 8,
+          },
         ].map((card, i) => (
           <div
             key={i}
@@ -37,7 +52,9 @@ export function ReferencesOnboardingCard({
         ))}
       </div>
 
-      <div className="text-xs font-semibold text-foreground mb-1">Create consistent scenes</div>
+      <div className="text-xs font-semibold text-foreground mb-1">
+        Create consistent scenes
+      </div>
       <div className="text-[11px] text-tool-text-subdued leading-snug max-w-[260px] mx-auto mb-3.5">
         Use 1–3 character or location images to build your scene.
       </div>

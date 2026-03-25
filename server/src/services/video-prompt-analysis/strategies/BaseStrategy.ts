@@ -8,11 +8,11 @@
  * @module BaseStrategy
  */
 
-import { TechStripper, techStripper } from '../utils/TechStripper';
-import { SafetySanitizer, safetySanitizer } from '../utils/SafetySanitizer';
-import { VideoPromptAnalyzer } from '../services/analysis/VideoPromptAnalyzer';
-import { VideoPromptLLMRewriter } from '../services/rewriter/VideoPromptLLMRewriter';
-import { countWords } from '../utils/textHelpers';
+import { TechStripper, techStripper } from "../utils/TechStripper";
+import { SafetySanitizer, safetySanitizer } from "../utils/SafetySanitizer";
+import { VideoPromptAnalyzer } from "../services/analysis/VideoPromptAnalyzer";
+import { VideoPromptLLMRewriter } from "../services/rewriter/VideoPromptLLMRewriter";
+import { countWords } from "../utils/textHelpers";
 import type {
   ModelConstraints,
   PromptOptimizationStrategy,
@@ -22,12 +22,12 @@ import type {
   PhaseResult,
   VideoPromptIR,
   RewriteConstraints,
-} from './types';
+} from "./types";
 
 /**
  * Pipeline version for tracking optimization changes
  */
-const PIPELINE_VERSION = '2.0.0';
+const PIPELINE_VERSION = "2.0.0";
 
 export interface BaseStrategyDeps {
   techStripper?: TechStripper;
@@ -63,18 +63,19 @@ export abstract class BaseStrategy implements PromptOptimizationStrategy {
     techStripperInstance?: TechStripper,
     safetySanitizerInstance?: SafetySanitizer,
     analyzerInstance?: VideoPromptAnalyzer,
-    llmRewriterInstance?: VideoPromptLLMRewriter
+    llmRewriterInstance?: VideoPromptLLMRewriter,
   );
   constructor(
     arg1?: BaseStrategyDeps | TechStripper,
     arg2?: SafetySanitizer,
     arg3?: VideoPromptAnalyzer,
-    arg4?: VideoPromptLLMRewriter
+    arg4?: VideoPromptLLMRewriter,
   ) {
     if (arguments.length > 1) {
       const positionalTechStripper = arg1 as TechStripper | undefined;
       this.techStripper =
-        positionalTechStripper && typeof positionalTechStripper.strip === 'function'
+        positionalTechStripper &&
+        typeof positionalTechStripper.strip === "function"
           ? positionalTechStripper
           : techStripper;
       this.safetySanitizer = arg2 ?? safetySanitizer;
@@ -117,7 +118,10 @@ export abstract class BaseStrategy implements PromptOptimizationStrategy {
    * Add a warning to the current metadata
    */
   protected addWarning(warning: string): void {
-    if (this.currentMetadata && !this.currentMetadata.warnings.includes(warning)) {
+    if (
+      this.currentMetadata &&
+      !this.currentMetadata.warnings.includes(warning)
+    ) {
       this.currentMetadata.warnings.push(warning);
     }
   }
@@ -168,12 +172,12 @@ export abstract class BaseStrategy implements PromptOptimizationStrategy {
    */
   async validate(input: string, context?: PromptContext): Promise<void> {
     // Basic validation
-    if (!input || typeof input !== 'string') {
-      throw new Error('Input must be a non-empty string');
+    if (!input || typeof input !== "string") {
+      throw new Error("Input must be a non-empty string");
     }
 
     if (input.trim().length === 0) {
-      throw new Error('Input cannot be empty or whitespace only');
+      throw new Error("Input cannot be empty or whitespace only");
     }
 
     // Model-specific validation
@@ -201,7 +205,9 @@ export abstract class BaseStrategy implements PromptOptimizationStrategy {
     if (sanitizerResult.wasModified) {
       processedText = sanitizerResult.text;
       for (const replacement of sanitizerResult.replacements) {
-        changes.push(`Replaced "${replacement.original}" with "${replacement.replacement}" (${replacement.category})`);
+        changes.push(
+          `Replaced "${replacement.original}" with "${replacement.replacement}" (${replacement.category})`,
+        );
         this.recordStrippedTokens([replacement.original]);
       }
     }
@@ -217,7 +223,7 @@ export abstract class BaseStrategy implements PromptOptimizationStrategy {
     // Record phase result
     const durationMs = performance.now() - startTime;
     this.recordPhaseResult({
-      phase: 'normalize',
+      phase: "normalize",
       durationMs,
       changes,
     });
@@ -228,43 +234,54 @@ export abstract class BaseStrategy implements PromptOptimizationStrategy {
   /**
    * Phase 2: Transform normalized input into model-native structure using LLM
    */
-  async transform(input: string, context?: PromptContext): Promise<PromptOptimizationResult> {
+  async transform(
+    input: string,
+    context?: PromptContext,
+  ): Promise<PromptOptimizationResult> {
     const startTime = performance.now();
 
     // 1. IR Analysis (Now the primary driver for LLM rewrite)
-    const ir =
-      context?.precomputedStructuredPrompt
-        ? this.analyzer.fromStructuredPrompt(
-            context.precomputedStructuredPrompt,
-            context.sourcePrompt ?? input
-          )
-        : await this.analyzer.analyze(input);
+    const ir = context?.precomputedStructuredPrompt
+      ? this.analyzer.fromStructuredPrompt(
+          context.precomputedStructuredPrompt,
+          context.sourcePrompt ?? input,
+        )
+      : await this.analyzer.analyze(input);
 
     // 2. LLM-powered rewrite (Consumes structured IR)
     const rewriteConstraints = this.getRewriteConstraints(ir, context);
     let rewrittenPrompt: string | Record<string, unknown>;
     let rewriteFallbackUsed = false;
     try {
-      rewrittenPrompt = await this.llmRewriter.rewrite(ir, this.modelId, rewriteConstraints);
+      rewrittenPrompt = await this.llmRewriter.rewrite(
+        ir,
+        this.modelId,
+        rewriteConstraints,
+      );
     } catch (error) {
       // Keep the strategy pipeline deterministic even when the LLM provider is unavailable.
       rewrittenPrompt = ir.raw;
       rewriteFallbackUsed = true;
 
       const message = error instanceof Error ? error.message : String(error);
-      this.addWarning(`LLM rewrite unavailable; using fallback prompt (${message})`);
+      this.addWarning(
+        `LLM rewrite unavailable; using fallback prompt (${message})`,
+      );
     }
 
     // 2.5. Post-IR TechStripper (model-aware placebo removal on LLM output)
     let postRewritePrompt = rewrittenPrompt as string | Record<string, unknown>;
     const postStripChanges: string[] = [];
-    if (typeof rewrittenPrompt === 'string') {
-      const stripperResult = this.techStripper.strip(rewrittenPrompt, this.modelId);
+    if (typeof rewrittenPrompt === "string") {
+      const stripperResult = this.techStripper.strip(
+        rewrittenPrompt,
+        this.modelId,
+      );
       if (stripperResult.tokensWereStripped) {
         postRewritePrompt = stripperResult.text;
         this.recordStrippedTokens(stripperResult.strippedTokens);
         postStripChanges.push(
-          `Stripped placebo tokens post-IR: ${stripperResult.strippedTokens.join(', ')}`
+          `Stripped placebo tokens post-IR: ${stripperResult.strippedTokens.join(", ")}`,
         );
       }
     }
@@ -273,13 +290,13 @@ export abstract class BaseStrategy implements PromptOptimizationStrategy {
     const transformResult = this.doTransform(postRewritePrompt, ir, context);
 
     this.recordPhaseResult({
-      phase: 'transform',
+      phase: "transform",
       durationMs: performance.now() - startTime,
       changes: [
         ...transformResult.changes,
         rewriteFallbackUsed
-          ? 'LLM rewrite unavailable; used deterministic fallback from analyzed prompt'
-          : 'LLM-powered model rewrite from IR',
+          ? "LLM rewrite unavailable; used deterministic fallback from analyzed prompt"
+          : "LLM-powered model rewrite from IR",
         ...postStripChanges,
       ],
     });
@@ -301,17 +318,17 @@ export abstract class BaseStrategy implements PromptOptimizationStrategy {
    */
   augment(
     result: PromptOptimizationResult,
-    context?: PromptContext
+    context?: PromptContext,
   ): PromptOptimizationResult {
     const startTime = performance.now();
 
     // Perform model-specific augmentation
     const augmentResult = this.doAugment(result, context);
     const budgetResult = this.enforcePromptBudget(
-      typeof augmentResult.prompt === 'string'
+      typeof augmentResult.prompt === "string"
         ? augmentResult.prompt
         : JSON.stringify(augmentResult.prompt),
-      augmentResult.triggersInjected
+      augmentResult.triggersInjected,
     );
     const changes = [...augmentResult.changes];
     if (budgetResult.changed) {
@@ -324,7 +341,7 @@ export abstract class BaseStrategy implements PromptOptimizationStrategy {
     // Record phase result
     const durationMs = performance.now() - startTime;
     this.recordPhaseResult({
-      phase: 'augment',
+      phase: "augment",
       durationMs,
       changes,
     });
@@ -356,7 +373,7 @@ export abstract class BaseStrategy implements PromptOptimizationStrategy {
    */
   protected abstract doValidate(
     input: string,
-    context?: PromptContext
+    context?: PromptContext,
   ): Promise<void>;
 
   /**
@@ -368,7 +385,7 @@ export abstract class BaseStrategy implements PromptOptimizationStrategy {
    */
   protected abstract doNormalize(
     input: string,
-    context?: PromptContext
+    context?: PromptContext,
   ): NormalizeResult;
 
   /**
@@ -377,7 +394,7 @@ export abstract class BaseStrategy implements PromptOptimizationStrategy {
   protected abstract doTransform(
     llmPrompt: string | Record<string, unknown>,
     ir: VideoPromptIR,
-    context?: PromptContext
+    context?: PromptContext,
   ): TransformResult;
 
   /**
@@ -389,7 +406,7 @@ export abstract class BaseStrategy implements PromptOptimizationStrategy {
    */
   protected abstract doAugment(
     result: PromptOptimizationResult,
-    context?: PromptContext
+    context?: PromptContext,
   ): AugmentResult;
 
   // ============================================================
@@ -401,12 +418,12 @@ export abstract class BaseStrategy implements PromptOptimizationStrategy {
    */
   protected cleanWhitespace(text: string): string {
     return text
-      .replace(/\s+/g, ' ')
-      .replace(/\s*,\s*,/g, ',')
-      .replace(/,\s*$/g, '')
-      .replace(/^\s*,/g, '')
-      .replace(/\s*,/g, ',')
-      .replace(/,\s*/g, ', ')
+      .replace(/\s+/g, " ")
+      .replace(/\s*,\s*,/g, ",")
+      .replace(/,\s*$/g, "")
+      .replace(/^\s*,/g, "")
+      .replace(/\s*,/g, ",")
+      .replace(/,\s*/g, ", ")
       .trim();
   }
 
@@ -424,15 +441,19 @@ export abstract class BaseStrategy implements PromptOptimizationStrategy {
    * Check if text contains a word (case-insensitive, word boundary)
    */
   protected containsWord(text: string, word: string): boolean {
-    const pattern = new RegExp(`\\b${this.escapeRegex(word)}\\b`, 'i');
+    const pattern = new RegExp(`\\b${this.escapeRegex(word)}\\b`, "i");
     return pattern.test(text);
   }
 
   /**
    * Replace a word in text (case-insensitive, word boundary)
    */
-  protected replaceWord(text: string, word: string, replacement: string): string {
-    const pattern = new RegExp(`\\b${this.escapeRegex(word)}\\b`, 'gi');
+  protected replaceWord(
+    text: string,
+    word: string,
+    replacement: string,
+  ): string {
+    const pattern = new RegExp(`\\b${this.escapeRegex(word)}\\b`, "gi");
     return text.replace(pattern, replacement);
   }
 
@@ -440,7 +461,7 @@ export abstract class BaseStrategy implements PromptOptimizationStrategy {
    * Escape special regex characters
    */
   protected escapeRegex(str: string): string {
-    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   }
 
   /**
@@ -449,7 +470,7 @@ export abstract class BaseStrategy implements PromptOptimizationStrategy {
    */
   protected getRewriteConstraints(
     _ir: VideoPromptIR,
-    _context?: PromptContext
+    _context?: PromptContext,
   ): RewriteConstraints {
     return {};
   }
@@ -465,8 +486,11 @@ export abstract class BaseStrategy implements PromptOptimizationStrategy {
    */
   protected hasConceptOverlap(prompt: string, trigger: string): boolean {
     const promptLower = prompt.toLowerCase();
-    const significantWords = trigger.toLowerCase().split(/\s+/).filter(w => w.length >= 4);
-    return significantWords.some(word => promptLower.includes(word));
+    const significantWords = trigger
+      .toLowerCase()
+      .split(/\s+/)
+      .filter((w) => w.length >= 4);
+    return significantWords.some((word) => promptLower.includes(word));
   }
 
   /**
@@ -475,7 +499,7 @@ export abstract class BaseStrategy implements PromptOptimizationStrategy {
    * to avoid artifacts like "...text., trigger".
    */
   protected appendTrigger(prompt: string, trigger: string): string {
-    const trimmed = prompt.replace(/[.!?]+\s*$/, '').trim();
+    const trimmed = prompt.replace(/[.!?]+\s*$/, "").trim();
     return `${trimmed}, ${trigger}`;
   }
 
@@ -484,7 +508,7 @@ export abstract class BaseStrategy implements PromptOptimizationStrategy {
    */
   protected enforceMandatoryConstraints(
     prompt: string,
-    constraints: string[]
+    constraints: string[],
   ): { prompt: string; injected: string[]; changes: string[] } {
     if (constraints.length === 0) {
       return { prompt, injected: [], changes: [] };
@@ -512,38 +536,48 @@ export abstract class BaseStrategy implements PromptOptimizationStrategy {
   protected truncateBodyPreservingTriggers(
     prompt: string,
     triggers: string[],
-    maxWords: number
+    maxWords: number,
   ): string {
     if (triggers.length === 0) {
       return this.trimToWords(prompt, maxWords);
     }
 
     const cleanedPrompt = this.cleanWhitespace(prompt);
-    const trimmedTriggers = triggers.map((trigger) => trigger.trim()).filter(Boolean);
-    const triggerWords = trimmedTriggers.reduce((sum, trigger) => sum + countWords(trigger), 0);
+    const trimmedTriggers = triggers
+      .map((trigger) => trigger.trim())
+      .filter(Boolean);
+    const triggerWords = trimmedTriggers.reduce(
+      (sum, trigger) => sum + countWords(trigger),
+      0,
+    );
     const bodyBudget = maxWords - triggerWords;
 
     if (bodyBudget <= 0) {
-      return trimmedTriggers.join(', ');
+      return trimmedTriggers.join(", ");
     }
 
     const suffixPattern = new RegExp(
-      `(?:,\\s*)?${trimmedTriggers.map((trigger) => this.escapeRegex(trigger)).join('\\s*,\\s*')}(?:[.!?]+)?\\s*$`,
-      'i'
+      `(?:,\\s*)?${trimmedTriggers.map((trigger) => this.escapeRegex(trigger)).join("\\s*,\\s*")}(?:[.!?]+)?\\s*$`,
+      "i",
     );
-    const body = cleanedPrompt.replace(suffixPattern, '').replace(/[,\s]+$/g, '').trim();
+    const body = cleanedPrompt
+      .replace(suffixPattern, "")
+      .replace(/[,\s]+$/g, "")
+      .trim();
     const trimmedBody = this.trimToWords(body, bodyBudget);
 
     if (!trimmedBody) {
-      return trimmedTriggers.join(', ');
+      return trimmedTriggers.join(", ");
     }
 
-    return this.cleanWhitespace(`${trimmedBody}, ${trimmedTriggers.join(', ')}`);
+    return this.cleanWhitespace(
+      `${trimmedBody}, ${trimmedTriggers.join(", ")}`,
+    );
   }
 
   private enforcePromptBudget(
     prompt: string,
-    triggersInjected: string[]
+    triggersInjected: string[],
   ): { prompt: string; changed: boolean; changeDescription: string } {
     const limits = this.getModelConstraints().wordLimits;
     const triggerBudgetWords = this.getModelConstraints().triggerBudgetWords;
@@ -553,18 +587,25 @@ export abstract class BaseStrategy implements PromptOptimizationStrategy {
       return {
         prompt: this.cleanWhitespace(prompt),
         changed: false,
-        changeDescription: '',
+        changeDescription: "",
       };
     }
 
-    const actualTriggerWords = triggersInjected.reduce((sum, trigger) => sum + countWords(trigger), 0);
+    const actualTriggerWords = triggersInjected.reduce(
+      (sum, trigger) => sum + countWords(trigger),
+      0,
+    );
     if (actualTriggerWords > triggerBudgetWords) {
       this.addWarning(
-        `Injected triggers exceeded reserved budget (${actualTriggerWords} > ${triggerBudgetWords} words)`
+        `Injected triggers exceeded reserved budget (${actualTriggerWords} > ${triggerBudgetWords} words)`,
       );
     }
 
-    const trimmedPrompt = this.truncateBodyPreservingTriggers(prompt, triggersInjected, limits.max);
+    const trimmedPrompt = this.truncateBodyPreservingTriggers(
+      prompt,
+      triggersInjected,
+      limits.max,
+    );
     return {
       prompt: this.cleanWhitespace(trimmedPrompt),
       changed: trimmedPrompt.trim() !== prompt.trim(),
@@ -577,7 +618,7 @@ export abstract class BaseStrategy implements PromptOptimizationStrategy {
     if (words.length <= maxWords) {
       return text.trim();
     }
-    return words.slice(0, Math.max(0, maxWords)).join(' ').trim();
+    return words.slice(0, Math.max(0, maxWords)).join(" ").trim();
   }
 }
 

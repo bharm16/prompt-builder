@@ -1,9 +1,14 @@
-import { logger } from '@infrastructure/Logger';
-import { validateAgainstVideoTemplate } from '../config/CategoryConstraints.js';
-import { getParentCategory } from '@shared/taxonomy';
-import { getAllExampleTexts } from '../config/EnhancementExamples';
-import type { Suggestion, SanitizationContext, GroupedSuggestions, VideoService } from './types.js';
-import * as patterns from './ValidationPatterns.js';
+import { logger } from "@infrastructure/Logger";
+import { validateAgainstVideoTemplate } from "../config/CategoryConstraints.js";
+import { getParentCategory } from "@shared/taxonomy";
+import { getAllExampleTexts } from "../config/EnhancementExamples";
+import type {
+  Suggestion,
+  SanitizationContext,
+  GroupedSuggestions,
+  VideoService,
+} from "./types.js";
+import * as patterns from "./ValidationPatterns.js";
 
 type ExtendedSanitizationContext = SanitizationContext & {
   contextBefore?: string;
@@ -13,29 +18,29 @@ type ExtendedSanitizationContext = SanitizationContext & {
 };
 
 type SlotGrammarProfile =
-  | 'adjective_modifier'
-  | 'adverb_modifier'
-  | 'noun_phrase_after_article'
-  | 'noun_phrase_before_object'
-  | 'verb_phrase_before_object'
-  | 'bare_technical_phrase';
+  | "adjective_modifier"
+  | "adverb_modifier"
+  | "noun_phrase_after_article"
+  | "noun_phrase_before_object"
+  | "verb_phrase_before_object"
+  | "bare_technical_phrase";
 
 type SubjectAppearanceSubRole =
-  | 'face_detail'
-  | 'hand_detail'
-  | 'hair_detail'
-  | 'feet_detail'
-  | 'prop_detail'
+  | "face_detail"
+  | "hand_detail"
+  | "hair_detail"
+  | "feet_detail"
+  | "prop_detail"
   | null;
 
 export type SuggestionRejectReason =
-  | 'length_only'
-  | 'slot_form'
-  | 'category_drift'
-  | 'body_part_drift'
-  | 'object_overlap'
-  | 'coherence_conflict'
-  | 'metaphor_or_abstract';
+  | "length_only"
+  | "slot_form"
+  | "category_drift"
+  | "body_part_drift"
+  | "object_overlap"
+  | "coherence_conflict"
+  | "metaphor_or_abstract";
 
 interface SuggestionAnalysis {
   primary: Suggestion[];
@@ -45,20 +50,22 @@ interface SuggestionAnalysis {
 
 /**
  * SuggestionValidationService
- * 
+ *
  * Responsible for validating and sanitizing enhancement suggestions.
  * Ensures suggestions meet requirements and are valid drop-in replacements.
- * 
+ *
  * Single Responsibility: Suggestion validation and sanitization
  */
 export class SuggestionValidationService {
-  private readonly log = logger.child({ service: 'SuggestionValidationService' });
+  private readonly log = logger.child({
+    service: "SuggestionValidationService",
+  });
   private readonly exampleTexts = getAllExampleTexts();
   private readonly compatibleLockedCategories: Record<string, Set<string>> = {
-    camera: new Set(['shot']),
-    shot: new Set(['camera']),
+    camera: new Set(["shot"]),
+    shot: new Set(["camera"]),
   };
-  private readonly deprioritizedMarker = '__deprioritized';
+  private readonly deprioritizedMarker = "__deprioritized";
   private readonly lockedCategoryPatterns = patterns.lockedCategoryPatterns;
 
   constructor(private readonly videoService: VideoService) {}
@@ -71,19 +78,19 @@ export class SuggestionValidationService {
    */
   sanitizeSuggestions(
     suggestions: Suggestion[] | string[],
-    context: SanitizationContext
+    context: SanitizationContext,
   ): Suggestion[] {
     const startTime = performance.now();
-    const operation = 'sanitizeSuggestions';
-    
+    const operation = "sanitizeSuggestions";
+
     if (!Array.isArray(suggestions) || suggestions.length === 0) {
-      this.log.debug('Empty suggestions array, returning empty', {
+      this.log.debug("Empty suggestions array, returning empty", {
         operation,
       });
       return [];
     }
 
-    this.log.debug('Sanitizing suggestions', {
+    this.log.debug("Sanitizing suggestions", {
       operation,
       inputCount: suggestions.length,
       isVideoPrompt: context.isVideoPrompt,
@@ -95,7 +102,7 @@ export class SuggestionValidationService {
 
     const duration = Math.round(performance.now() - startTime);
 
-    this.log.info('Suggestions sanitized', {
+    this.log.info("Suggestions sanitized", {
       operation,
       duration,
       inputCount: suggestions.length,
@@ -106,17 +113,21 @@ export class SuggestionValidationService {
 
     // Apply word count heuristics to primary suggestions only;
     // deprioritized suggestions always sort to the end
-    const primaryRanked = this._applyPreferredWordCountHeuristics(primary, context);
+    const primaryRanked = this._applyPreferredWordCountHeuristics(
+      primary,
+      context,
+    );
     return [...primaryRanked, ...deprioritized];
   }
 
   analyzeSuggestions(
     suggestions: Suggestion[] | string[],
-    context: SanitizationContext
+    context: SanitizationContext,
   ): SuggestionAnalysis {
     const primary: Suggestion[] = [];
     const deprioritized: Suggestion[] = [];
-    const rejected: Array<{ text: string; reason: SuggestionRejectReason }> = [];
+    const rejected: Array<{ text: string; reason: SuggestionRejectReason }> =
+      [];
     const extendedContext = context as ExtendedSanitizationContext;
     const normalizedHighlight = context.highlightedText?.trim().toLowerCase();
     const disallowedTemplatePatterns = [
@@ -125,15 +136,15 @@ export class SuggestionValidationService {
       /\balternative approaches\b/i,
     ];
     const disallowedPrefixes = [
-      'consider',
-      'try',
-      'maybe',
-      'you could',
-      'focus on',
-      'rewrite',
-      'update',
-      'suggest',
-      'recommend',
+      "consider",
+      "try",
+      "maybe",
+      "you could",
+      "focus on",
+      "rewrite",
+      "update",
+      "suggest",
+      "recommend",
     ];
     const oneClipPatterns = [
       /\band then\b/i,
@@ -148,16 +159,16 @@ export class SuggestionValidationService {
       }
 
       const suggestionObj: Suggestion =
-        typeof suggestion === 'string'
-          ? { text: suggestion, explanation: '' }
+        typeof suggestion === "string"
+          ? { text: suggestion, explanation: "" }
           : { ...suggestion };
 
-      if (typeof suggestionObj.text !== 'string') {
+      if (typeof suggestionObj.text !== "string") {
         return;
       }
 
-      let text = suggestionObj.text.replace(/^[0-9]+\.\s*/, '');
-      text = text.replace(/\s+/g, ' ').trim();
+      let text = suggestionObj.text.replace(/^[0-9]+\.\s*/, "");
+      text = text.replace(/\s+/g, " ").trim();
       let lowerText = text.toLowerCase();
 
       if (!text) {
@@ -165,30 +176,32 @@ export class SuggestionValidationService {
       }
 
       if (normalizedHighlight && lowerText === normalizedHighlight) {
-        rejected.push({ text, reason: 'slot_form' });
+        rejected.push({ text, reason: "slot_form" });
         return;
       }
 
       if (this.exampleTexts.has(lowerText)) {
-        rejected.push({ text, reason: 'slot_form' });
+        rejected.push({ text, reason: "slot_form" });
         return;
       }
 
       if (/\r|\n/.test(text)) {
-        rejected.push({ text, reason: 'slot_form' });
+        rejected.push({ text, reason: "slot_form" });
         return;
       }
 
       if (disallowedTemplatePatterns.some((pattern) => pattern.test(text))) {
-        rejected.push({ text, reason: 'slot_form' });
+        rejected.push({ text, reason: "slot_form" });
         return;
       }
 
-      const foundPrefix = disallowedPrefixes.find((prefix) => lowerText.startsWith(prefix));
+      const foundPrefix = disallowedPrefixes.find((prefix) =>
+        lowerText.startsWith(prefix),
+      );
       if (foundPrefix) {
         text = text.substring(foundPrefix.length).trim();
         if (!text) {
-          rejected.push({ text: suggestionObj.text, reason: 'slot_form' });
+          rejected.push({ text: suggestionObj.text, reason: "slot_form" });
           return;
         }
         lowerText = text.toLowerCase();
@@ -196,13 +209,16 @@ export class SuggestionValidationService {
 
       text = this._stripContinuationOverlap(text, extendedContext);
       if (!text) {
-        rejected.push({ text: suggestionObj.text, reason: 'object_overlap' });
+        rejected.push({ text: suggestionObj.text, reason: "object_overlap" });
         return;
       }
       lowerText = text.toLowerCase();
 
-      if (context.isVideoPrompt && oneClipPatterns.some((pattern) => pattern.test(text))) {
-        rejected.push({ text, reason: 'coherence_conflict' });
+      if (
+        context.isVideoPrompt &&
+        oneClipPatterns.some((pattern) => pattern.test(text))
+      ) {
+        rejected.push({ text, reason: "coherence_conflict" });
         return;
       }
 
@@ -212,19 +228,30 @@ export class SuggestionValidationService {
         return;
       }
 
-      if (context.lockedSpanCategories && context.lockedSpanCategories.length > 0) {
-        const targetParent =
-          (getParentCategory(context.highlightedCategory) || context.highlightedCategory || '').toLowerCase();
-        const compatibleSiblings = this.compatibleLockedCategories[targetParent] || new Set<string>();
+      if (
+        context.lockedSpanCategories &&
+        context.lockedSpanCategories.length > 0
+      ) {
+        const targetParent = (
+          getParentCategory(context.highlightedCategory) ||
+          context.highlightedCategory ||
+          ""
+        ).toLowerCase();
+        const compatibleSiblings =
+          this.compatibleLockedCategories[targetParent] || new Set<string>();
         const lockedParents = Array.from(
           new Set(
             context.lockedSpanCategories
-              .map((category) => (getParentCategory(category) || category).toLowerCase())
-              .filter(Boolean)
-          )
+              .map((category) =>
+                (getParentCategory(category) || category).toLowerCase(),
+              )
+              .filter(Boolean),
+          ),
         ).filter(
           (category) =>
-            category && category !== targetParent && !compatibleSiblings.has(category)
+            category &&
+            category !== targetParent &&
+            !compatibleSiblings.has(category),
         );
 
         const hasConflict = lockedParents.some((category) => {
@@ -233,7 +260,7 @@ export class SuggestionValidationService {
         });
 
         if (hasConflict) {
-          rejected.push({ text, reason: 'coherence_conflict' });
+          rejected.push({ text, reason: "coherence_conflict" });
           return;
         }
       }
@@ -244,7 +271,10 @@ export class SuggestionValidationService {
         return;
       }
 
-      const shouldDeprioritize = this._shouldDeprioritize(text, extendedContext);
+      const shouldDeprioritize = this._shouldDeprioritize(
+        text,
+        extendedContext,
+      );
       const target = shouldDeprioritize ? deprioritized : primary;
       target.push(
         shouldDeprioritize
@@ -256,7 +286,7 @@ export class SuggestionValidationService {
           : {
               ...suggestionObj,
               text,
-            }
+            },
       );
     });
 
@@ -270,17 +300,21 @@ export class SuggestionValidationService {
    * @param category - Category to validate against
    * @returns Validated suggestions
    */
-  validateSuggestions(suggestions: Suggestion[], highlightedText: string, category: string): Suggestion[] {
-    const operation = 'validateSuggestions';
-    
+  validateSuggestions(
+    suggestions: Suggestion[],
+    highlightedText: string,
+    category: string,
+  ): Suggestion[] {
+    const operation = "validateSuggestions";
+
     if (!suggestions || !Array.isArray(suggestions)) {
-      this.log.debug('Invalid suggestions input, returning empty', {
+      this.log.debug("Invalid suggestions input, returning empty", {
         operation,
       });
       return [];
     }
-    
-    this.log.debug('Validating suggestions', {
+
+    this.log.debug("Validating suggestions", {
       operation,
       suggestionCount: suggestions.length,
       category,
@@ -294,12 +328,14 @@ export class SuggestionValidationService {
       isVideoPrompt: true,
     };
 
-    const validated = suggestions.filter(suggestion => {
+    const validated = suggestions.filter((suggestion) => {
       // Basic validation
-      if (!suggestion.text || typeof suggestion.text !== 'string') return false;
+      if (!suggestion.text || typeof suggestion.text !== "string") return false;
 
       // Skip audio suggestions for non-audio categories
-      if (['technical', 'framing', 'lighting', 'descriptive'].includes(category)) {
+      if (
+        ["technical", "framing", "lighting", "descriptive"].includes(category)
+      ) {
         if (/audio|sound|music|score|orchestra/i.test(suggestion.text)) {
           return false;
         }
@@ -312,20 +348,20 @@ export class SuggestionValidationService {
       // Validate against video template requirements using taxonomy ID directly
       return validateAgainstVideoTemplate(suggestion, category);
     });
-    
-    this.log.info('Suggestions validated', {
+
+    this.log.info("Suggestions validated", {
       operation,
       inputCount: suggestions.length,
       outputCount: validated.length,
       category,
     });
-    
+
     return validated;
   }
 
   private _getVideoPlaceholderFallbackConstraints(
-    highlightedText: string | undefined
-  ): ReturnType<VideoService['getVideoReplacementConstraints']> | undefined {
+    highlightedText: string | undefined,
+  ): ReturnType<VideoService["getVideoReplacementConstraints"]> | undefined {
     const highlightWordCount = highlightedText
       ? this.videoService.countWords(highlightedText)
       : undefined;
@@ -336,18 +372,25 @@ export class SuggestionValidationService {
         ...(highlightedText ? { highlightedText } : {}),
       });
     } catch (error) {
-      this.log.warn('Failed to derive fallback video constraints for placeholder sanitization', {
-        error: error instanceof Error ? error.message : String(error),
-      });
+      this.log.warn(
+        "Failed to derive fallback video constraints for placeholder sanitization",
+        {
+          error: error instanceof Error ? error.message : String(error),
+        },
+      );
       return undefined;
     }
   }
 
   private _applyPreferredWordCountHeuristics(
     suggestions: Suggestion[],
-    context: SanitizationContext
+    context: SanitizationContext,
   ): Suggestion[] {
-    if (!context.isVideoPrompt || suggestions.length === 0 || !context.highlightedText) {
+    if (
+      !context.isVideoPrompt ||
+      suggestions.length === 0 ||
+      !context.highlightedText
+    ) {
       return suggestions;
     }
 
@@ -361,8 +404,12 @@ export class SuggestionValidationService {
 
     const ranked = suggestions
       .map((suggestion, index) => {
-        const suggestionWordCount = this.videoService.countWords(suggestion.text);
-        const distance = Math.abs(suggestionWordCount - targetWords) / Math.max(targetWords, 1);
+        const suggestionWordCount = this.videoService.countWords(
+          suggestion.text,
+        );
+        const distance =
+          Math.abs(suggestionWordCount - targetWords) /
+          Math.max(targetWords, 1);
         return { suggestion, index, suggestionWordCount, distance };
       })
       .sort((a, b) => a.distance - b.distance || a.index - b.index);
@@ -371,7 +418,7 @@ export class SuggestionValidationService {
       const inPreferredRange = ranked.filter(
         (entry) =>
           entry.suggestionWordCount >= preferredMin &&
-          entry.suggestionWordCount <= preferredMax
+          entry.suggestionWordCount <= preferredMax,
       );
 
       if (inPreferredRange.length >= 3) {
@@ -379,9 +426,11 @@ export class SuggestionValidationService {
         const outOfRange = ranked.filter(
           (entry) =>
             entry.suggestionWordCount < preferredMin ||
-            entry.suggestionWordCount > preferredMax
+            entry.suggestionWordCount > preferredMax,
         );
-        return [...inPreferredRange, ...outOfRange].map((entry) => entry.suggestion);
+        return [...inPreferredRange, ...outOfRange].map(
+          (entry) => entry.suggestion,
+        );
       }
     }
 
@@ -396,8 +445,8 @@ export class SuggestionValidationService {
   groupSuggestionsByCategory(suggestions: Suggestion[]): GroupedSuggestions[] {
     const grouped: Record<string, Suggestion[]> = {};
 
-    suggestions.forEach(suggestion => {
-      const category = suggestion.category || 'Other';
+    suggestions.forEach((suggestion) => {
+      const category = suggestion.category || "Other";
       if (!grouped[category]) {
         grouped[category] = [];
       }
@@ -407,16 +456,16 @@ export class SuggestionValidationService {
     // Convert to array format for easier frontend handling
     return Object.entries(grouped).map(([category, items]) => ({
       category,
-      suggestions: items
+      suggestions: items,
     }));
   }
 
   private _getHardRejectReason(
     text: string,
-    context: ExtendedSanitizationContext
+    context: ExtendedSanitizationContext,
   ): SuggestionRejectReason | null {
     if (this._violatesArticleAgreement(text, context)) {
-      return 'slot_form';
+      return "slot_form";
     }
 
     const slotFitRejectReason = this._getSlotFitRejectReason(text, context);
@@ -425,29 +474,32 @@ export class SuggestionValidationService {
     }
 
     if (this._hasBodyPartSubRoleDrift(text, context)) {
-      return 'body_part_drift';
+      return "body_part_drift";
     }
 
     if (this._hasObjectOverlap(text, context)) {
-      return 'object_overlap';
+      return "object_overlap";
     }
 
     if (this._hasActorDrift(text, context)) {
-      return 'coherence_conflict';
+      return "coherence_conflict";
     }
 
     if (this._hasSubjectClassDrift(text, context)) {
-      return 'category_drift';
+      return "category_drift";
     }
 
     if (this._isMetaphoricalOrAbstract(text, context)) {
-      return 'metaphor_or_abstract';
+      return "metaphor_or_abstract";
     }
 
     return null;
   }
 
-  private _shouldDeprioritize(text: string, context: ExtendedSanitizationContext): boolean {
+  private _shouldDeprioritize(
+    text: string,
+    context: ExtendedSanitizationContext,
+  ): boolean {
     void text;
     void context;
     return false;
@@ -455,19 +507,23 @@ export class SuggestionValidationService {
 
   private _getLengthRejectReason(
     text: string,
-    context: SanitizationContext
+    context: SanitizationContext,
   ): SuggestionRejectReason | null {
-    const category = this._normalizeCategoryKey(context.highlightedCategory || '');
+    const category = this._normalizeCategoryKey(
+      context.highlightedCategory || "",
+    );
     const adverbLightingSlot =
-      category === 'lighting.quality' &&
-      /ly$/i.test((context.highlightedText || '').trim().toLowerCase());
+      category === "lighting.quality" &&
+      /ly$/i.test((context.highlightedText || "").trim().toLowerCase());
     const lowerText = text.toLowerCase();
     const wordCount = this.videoService.countWords(text);
 
     if (context.isPlaceholder) {
       const fallbackVideoConstraints =
         context.isVideoPrompt && !context.videoConstraints
-          ? this._getVideoPlaceholderFallbackConstraints(context.highlightedText)
+          ? this._getVideoPlaceholderFallbackConstraints(
+              context.highlightedText,
+            )
           : undefined;
       const constraints = {
         minWords: 1,
@@ -478,35 +534,41 @@ export class SuggestionValidationService {
         ...(context.videoConstraints || {}),
       };
 
-      const minWords = Number.isFinite(constraints.minWords) ? constraints.minWords! : 1;
-      const maxWords = Number.isFinite(constraints.maxWords) ? constraints.maxWords! : 4;
-      const maxSentences = Number.isFinite(constraints.maxSentences) ? constraints.maxSentences! : 1;
+      const minWords = Number.isFinite(constraints.minWords)
+        ? constraints.minWords!
+        : 1;
+      const maxWords = Number.isFinite(constraints.maxWords)
+        ? constraints.maxWords!
+        : 4;
+      const maxSentences = Number.isFinite(constraints.maxSentences)
+        ? constraints.maxSentences!
+        : 1;
 
       if (wordCount < minWords || wordCount > maxWords) {
-        return 'length_only';
+        return "length_only";
       }
 
       const sentenceCount = (text.match(/[.!?]/g) || []).length;
       if (maxSentences > 0 && sentenceCount > maxSentences) {
-        return 'length_only';
+        return "length_only";
       }
 
       if (constraints.disallowTerminalPunctuation && /[.!?]$/.test(text)) {
-        return 'slot_form';
+        return "slot_form";
       }
 
-      if (constraints.mode === 'micro') {
+      if (constraints.mode === "micro") {
         if (/[.!?]/.test(text)) {
-          return 'slot_form';
+          return "slot_form";
         }
 
         const commaCount = (text.match(/,/g) || []).length;
         if (commaCount > 1 || /[:;]/.test(text)) {
-          return 'slot_form';
+          return "slot_form";
         }
 
         if (/\b(is|are|was|were|be|being|been|am)\b/i.test(lowerText)) {
-          return 'slot_form';
+          return "slot_form";
         }
       }
 
@@ -523,108 +585,125 @@ export class SuggestionValidationService {
       maxSentences: 1,
     };
 
-    const minWords = Number.isFinite(constraints.minWords) ? constraints.minWords! : 2;
-    const maxWords = Number.isFinite(constraints.maxWords) ? constraints.maxWords! : 50;
-    const maxSentences = Number.isFinite(constraints.maxSentences) ? constraints.maxSentences! : 1;
+    const minWords = Number.isFinite(constraints.minWords)
+      ? constraints.minWords!
+      : 2;
+    const maxWords = Number.isFinite(constraints.maxWords)
+      ? constraints.maxWords!
+      : 50;
+    const maxSentences = Number.isFinite(constraints.maxSentences)
+      ? constraints.maxSentences!
+      : 1;
 
     if (wordCount < minWords || wordCount > maxWords) {
-      return 'length_only';
+      return "length_only";
     }
 
     const sentenceCount = (text.match(/[.!?]/g) || []).length;
     if (maxSentences > 0 && sentenceCount > maxSentences) {
-      return 'length_only';
+      return "length_only";
     }
 
     if (constraints.disallowTerminalPunctuation && /[.!?]$/.test(text)) {
-      return 'slot_form';
+      return "slot_form";
     }
 
-    if (constraints.mode === 'micro') {
+    if (constraints.mode === "micro") {
       if (/[.!?]/.test(text)) {
-        return 'slot_form';
+        return "slot_form";
       }
 
       const commaCount = (text.match(/,/g) || []).length;
       if (commaCount > 1 || /[:;]/.test(text)) {
-        return 'slot_form';
+        return "slot_form";
       }
 
       if (/\b(is|are|was|were|be|being|been|am)\b/i.test(lowerText)) {
-        return 'slot_form';
+        return "slot_form";
       }
     }
 
     if (/\b(prompt|section|paragraph|rewrite|entire|overall)\b/i.test(text)) {
-      return 'slot_form';
+      return "slot_form";
     }
 
     return null;
   }
 
-  private _classifySlotGrammarProfile(context: ExtendedSanitizationContext): SlotGrammarProfile {
-    const category = this._normalizeCategoryKey(context.highlightedCategory || '');
-    const before = (context.contextBefore || '').trimEnd().toLowerCase();
-    const after = (context.contextAfter || '').trimStart().toLowerCase();
-    const highlighted = (context.highlightedText || '').trim().toLowerCase();
+  private _classifySlotGrammarProfile(
+    context: ExtendedSanitizationContext,
+  ): SlotGrammarProfile {
+    const category = this._normalizeCategoryKey(
+      context.highlightedCategory || "",
+    );
+    const before = (context.contextBefore || "").trimEnd().toLowerCase();
+    const after = (context.contextAfter || "").trimStart().toLowerCase();
+    const highlighted = (context.highlightedText || "").trim().toLowerCase();
 
     if (/\b(a|an|the)\s*$/.test(before)) {
-      return 'noun_phrase_after_article';
+      return "noun_phrase_after_article";
     }
 
-    if (category.startsWith('action')) {
-      return 'verb_phrase_before_object';
+    if (category.startsWith("action")) {
+      return "verb_phrase_before_object";
     }
 
     if (
-      highlighted.endsWith('ly') ||
+      highlighted.endsWith("ly") ||
       (highlighted.split(/\s+/).filter(Boolean).length === 1 &&
         patterns.technicalVerbLeadTerms.test(before) &&
-        /^(through|across|into|over|around|beneath|onto|inside|outside)\b/.test(after))
+        /^(through|across|into|over|around|beneath|onto|inside|outside)\b/.test(
+          after,
+        ))
     ) {
-      return 'adverb_modifier';
+      return "adverb_modifier";
     }
 
     if (
-      category === 'lighting.quality' ||
+      category === "lighting.quality" ||
       /^[,.;:!?-]/.test(after) ||
       (!before && !!after)
     ) {
-      return 'adjective_modifier';
+      return "adjective_modifier";
     }
 
     if (
-      (category.startsWith('subject.') || category === 'environment.context') &&
-      /^(gripping|holding|resting|visible|pressed|touching|framed|curled|wrapped)\b/.test(after)
+      (category.startsWith("subject.") || category === "environment.context") &&
+      /^(gripping|holding|resting|visible|pressed|touching|framed|curled|wrapped)\b/.test(
+        after,
+      )
     ) {
-      return 'noun_phrase_before_object';
+      return "noun_phrase_before_object";
     }
 
-    return 'bare_technical_phrase';
+    return "bare_technical_phrase";
   }
 
   private _getGrammarProfileRejectReason(
     text: string,
     category: string,
-    slotProfile: SlotGrammarProfile
+    slotProfile: SlotGrammarProfile,
   ): SuggestionRejectReason | null {
-    if (slotProfile === 'adverb_modifier') {
-      return this._looksLikeAdverb(text) ? null : 'slot_form';
+    if (slotProfile === "adverb_modifier") {
+      return this._looksLikeAdverb(text) ? null : "slot_form";
     }
 
-    if (slotProfile === 'adjective_modifier') {
+    if (slotProfile === "adjective_modifier") {
       if (!this._looksLikeAdjectiveLikePhrase(text, category)) {
-        return 'slot_form';
+        return "slot_form";
       }
       return null;
     }
 
-    if (slotProfile === 'noun_phrase_after_article' || slotProfile === 'noun_phrase_before_object') {
-      return this._looksLikeNounPhrase(text) ? null : 'slot_form';
+    if (
+      slotProfile === "noun_phrase_after_article" ||
+      slotProfile === "noun_phrase_before_object"
+    ) {
+      return this._looksLikeNounPhrase(text) ? null : "slot_form";
     }
 
-    if (slotProfile === 'verb_phrase_before_object') {
-      return this._looksLikeVerbPhrase(text) ? null : 'slot_form';
+    if (slotProfile === "verb_phrase_before_object") {
+      return this._looksLikeVerbPhrase(text) ? null : "slot_form";
     }
 
     return null;
@@ -634,15 +713,24 @@ export class SuggestionValidationService {
     const normalized = text.toLowerCase().trim();
     if (!normalized) return false;
     if (normalized.split(/\s+/).length > 3) return false;
-    return /\bly\b/.test(normalized) || /^(soft|gentle|bright|warm|dim|faint|bare|even)\w*ly\b/.test(normalized);
+    return (
+      /\bly\b/.test(normalized) ||
+      /^(soft|gentle|bright|warm|dim|faint|bare|even)\w*ly\b/.test(normalized)
+    );
   }
 
-  private _looksLikeAdjectiveLikePhrase(text: string, category: string): boolean {
+  private _looksLikeAdjectiveLikePhrase(
+    text: string,
+    category: string,
+  ): boolean {
     const normalized = text.toLowerCase().trim();
     if (!normalized) return false;
     if (/^(a|an|the|his|her|their|its)\b/.test(normalized)) return false;
     if (/\b(of|with|while|because|that)\b/.test(normalized)) return false;
-    if (category === 'style.aesthetic' && patterns.styleNounCueTerms.test(normalized)) {
+    if (
+      category === "style.aesthetic" &&
+      patterns.styleNounCueTerms.test(normalized)
+    ) {
       return false;
     }
     if (/\b(is|are|was|were|be|being|been|am)\b/.test(normalized)) return false;
@@ -653,7 +741,11 @@ export class SuggestionValidationService {
     const normalized = text.toLowerCase().trim();
     if (!normalized) return false;
     if (/\b(is|are|was|were|be|being|been|am)\b/.test(normalized)) return false;
-    if (/^(gripping|holding|resting|turning|leaning|looking|reaching|pressing|curling|squeezing)\b/.test(normalized)) {
+    if (
+      /^(gripping|holding|resting|turning|leaning|looking|reaching|pressing|curling|squeezing)\b/.test(
+        normalized,
+      )
+    ) {
       return false;
     }
     return true;
@@ -664,44 +756,53 @@ export class SuggestionValidationService {
     if (!normalized) return false;
     if (/^(a|an|the|his|her|their|its)\b/.test(normalized)) return false;
     return /^(grip(?:ping)?|grasp(?:ing)?|hold(?:ing)?|press(?:ing)?|rest(?:ing)?|steady(?:ing)?|turn(?:ing)?|curl(?:ing)?|clench(?:ing)?|squeez(?:ing)?|tap(?:ping)?|balance(?:ing)?|lean(?:ing)?|reach(?:ing)?|look(?:ing)?|gaze(?:ing)?|track(?:ing)?|tilt(?:ing)?|dolly|pan(?:ning)?|sway(?:ing)?|drift(?:ing)?|rustl(?:e|ing)|(?:branches?|trees?|leaves?|grass|waves?|water|clouds?)\s+\w+ing)\b/.test(
-      normalized
+      normalized,
     );
   }
 
-  private _detectSubjectAppearanceSubRole(context: ExtendedSanitizationContext): SubjectAppearanceSubRole {
-    const category = this._normalizeCategoryKey(context.highlightedCategory || '');
-    if (!category.startsWith('subject.')) {
+  private _detectSubjectAppearanceSubRole(
+    context: ExtendedSanitizationContext,
+  ): SubjectAppearanceSubRole {
+    const category = this._normalizeCategoryKey(
+      context.highlightedCategory || "",
+    );
+    if (!category.startsWith("subject.")) {
       return null;
     }
 
-    const highlighted = (context.highlightedText || '').toLowerCase();
-    if (patterns.faceCueTerms.test(highlighted)) return 'face_detail';
-    if (patterns.handCueTerms.test(highlighted)) return 'hand_detail';
-    if (patterns.hairCueTerms.test(highlighted)) return 'hair_detail';
-    if (patterns.feetCueTerms.test(highlighted)) return 'feet_detail';
-    if (patterns.propCueTerms.test(highlighted)) return 'prop_detail';
+    const highlighted = (context.highlightedText || "").toLowerCase();
+    if (patterns.faceCueTerms.test(highlighted)) return "face_detail";
+    if (patterns.handCueTerms.test(highlighted)) return "hand_detail";
+    if (patterns.hairCueTerms.test(highlighted)) return "hair_detail";
+    if (patterns.feetCueTerms.test(highlighted)) return "feet_detail";
+    if (patterns.propCueTerms.test(highlighted)) return "prop_detail";
     return null;
   }
 
-  private _hasBodyPartSubRoleDrift(text: string, context: ExtendedSanitizationContext): boolean {
+  private _hasBodyPartSubRoleDrift(
+    text: string,
+    context: ExtendedSanitizationContext,
+  ): boolean {
     const subRole = this._detectSubjectAppearanceSubRole(context);
     if (!subRole) {
       return false;
     }
 
     const lowerText = text.toLowerCase();
-    if (subRole === 'face_detail') {
+    if (subRole === "face_detail") {
       return (
         !patterns.faceCueTerms.test(lowerText) ||
         patterns.handCueTerms.test(lowerText) ||
         patterns.hairCueTerms.test(lowerText) ||
         patterns.feetCueTerms.test(lowerText) ||
         patterns.propCueTerms.test(lowerText) ||
-        /\b(gripping|reaching|playing|resting|touching|catching)\b/i.test(lowerText)
+        /\b(gripping|reaching|playing|resting|touching|catching)\b/i.test(
+          lowerText,
+        )
       );
     }
 
-    if (subRole === 'hand_detail') {
+    if (subRole === "hand_detail") {
       return (
         !patterns.handCueTerms.test(lowerText) ||
         patterns.faceCueTerms.test(lowerText) ||
@@ -711,46 +812,69 @@ export class SuggestionValidationService {
       );
     }
 
-    if (subRole === 'hair_detail') {
+    if (subRole === "hair_detail") {
       return !patterns.hairCueTerms.test(lowerText);
     }
 
-    if (subRole === 'feet_detail') {
+    if (subRole === "feet_detail") {
       return !patterns.feetCueTerms.test(lowerText);
     }
 
-    if (subRole === 'prop_detail') {
-      return !patterns.propCueTerms.test(lowerText) || patterns.faceCueTerms.test(lowerText) || patterns.handCueTerms.test(lowerText);
+    if (subRole === "prop_detail") {
+      return (
+        !patterns.propCueTerms.test(lowerText) ||
+        patterns.faceCueTerms.test(lowerText) ||
+        patterns.handCueTerms.test(lowerText)
+      );
     }
 
     return false;
   }
 
-  private _hasObjectOverlap(text: string, context: ExtendedSanitizationContext): boolean {
-    const category = this._normalizeCategoryKey(context.highlightedCategory || '');
-    if (!category.startsWith('action')) {
+  private _hasObjectOverlap(
+    text: string,
+    context: ExtendedSanitizationContext,
+  ): boolean {
+    const category = this._normalizeCategoryKey(
+      context.highlightedCategory || "",
+    );
+    if (!category.startsWith("action")) {
       return false;
     }
 
-    const after = (context.contextAfter || '').toLowerCase();
+    const after = (context.contextAfter || "").toLowerCase();
     const lowerText = text.toLowerCase();
-    const overlappingObjectTerms = ['steering wheel', 'wheel', 'dashboard', 'window', 'glass', 'door', 'toy'];
+    const overlappingObjectTerms = [
+      "steering wheel",
+      "wheel",
+      "dashboard",
+      "window",
+      "glass",
+      "door",
+      "toy",
+    ];
 
-    if (overlappingObjectTerms.some((term) => after.includes(term) && lowerText.includes(term))) {
+    if (
+      overlappingObjectTerms.some(
+        (term) => after.includes(term) && lowerText.includes(term),
+      )
+    ) {
       return true;
     }
 
     const localContext = [
-      context.highlightedText || '',
-      context.contextBefore || '',
-      context.contextAfter || '',
-      context.spanAnchors || '',
-      context.nearbySpanHints || '',
+      context.highlightedText || "",
+      context.contextBefore || "",
+      context.contextAfter || "",
+      context.spanAnchors || "",
+      context.nearbySpanHints || "",
     ]
-      .join(' ')
+      .join(" ")
       .toLowerCase();
 
-    const handBoundAction = patterns.handCueTerms.test(localContext) && overlappingObjectTerms.some((term) => localContext.includes(term));
+    const handBoundAction =
+      patterns.handCueTerms.test(localContext) &&
+      overlappingObjectTerms.some((term) => localContext.includes(term));
     if (!handBoundAction) {
       return false;
     }
@@ -762,9 +886,14 @@ export class SuggestionValidationService {
     return !patterns.handInteractionTerms.test(lowerText);
   }
 
-  private _isMetaphoricalOrAbstract(text: string, context: ExtendedSanitizationContext): boolean {
-    const category = this._normalizeCategoryKey(context.highlightedCategory || '');
-    if (category === 'lighting.timeofday') {
+  private _isMetaphoricalOrAbstract(
+    text: string,
+    context: ExtendedSanitizationContext,
+  ): boolean {
+    const category = this._normalizeCategoryKey(
+      context.highlightedCategory || "",
+    );
+    if (category === "lighting.timeofday") {
       return patterns.abstractVisualTerms.test(text.toLowerCase());
     }
     return false;
@@ -772,116 +901,137 @@ export class SuggestionValidationService {
 
   private _getSlotFitRejectReason(
     text: string,
-    context: ExtendedSanitizationContext
+    context: ExtendedSanitizationContext,
   ): SuggestionRejectReason | null {
-    const category = this._normalizeCategoryKey(context.highlightedCategory || '');
+    const category = this._normalizeCategoryKey(
+      context.highlightedCategory || "",
+    );
     const lowerText = text.toLowerCase();
     const slotProfile = this._classifySlotGrammarProfile(context);
 
-    const slotFormReject = this._getGrammarProfileRejectReason(text, category, slotProfile);
+    const slotFormReject = this._getGrammarProfileRejectReason(
+      text,
+      category,
+      slotProfile,
+    );
     if (slotFormReject) {
       return slotFormReject;
     }
 
-    if (category === 'lighting.quality' && slotProfile === 'adverb_modifier') {
-      if (patterns.cameraTechniqueTerms.test(text) || patterns.cameraFocusTerms.test(text)) {
-        return 'category_drift';
+    if (category === "lighting.quality" && slotProfile === "adverb_modifier") {
+      if (
+        patterns.cameraTechniqueTerms.test(text) ||
+        patterns.cameraFocusTerms.test(text)
+      ) {
+        return "category_drift";
       }
       const looksLikeSourceClause =
         patterns.lightSourceClauseTerms.test(text) &&
-        (this.videoService.countWords(text) >= 4 || patterns.lightingClauseVerbTerms.test(text));
+        (this.videoService.countWords(text) >= 4 ||
+          patterns.lightingClauseVerbTerms.test(text));
       if (looksLikeSourceClause) {
-        return 'slot_form';
+        return "slot_form";
       }
       return null;
     }
 
-    if (category === 'camera.angle') {
+    if (category === "camera.angle") {
       if (
         patterns.cameraMovementTerms.test(text) ||
         patterns.lensApertureTerms.test(text) ||
         patterns.cameraFocusTerms.test(text)
       ) {
-        return 'category_drift';
+        return "category_drift";
       }
-      return patterns.cameraAngleTerms.test(text) ? null : 'category_drift';
+      return patterns.cameraAngleTerms.test(text) ? null : "category_drift";
     }
 
-    if (category === 'camera.movement') {
+    if (category === "camera.movement") {
       if (
         patterns.lensApertureTerms.test(text) ||
         patterns.cameraFocusTerms.test(text) ||
         patterns.shotFramingTerms.test(text)
       ) {
-        return 'category_drift';
+        return "category_drift";
       }
-      return patterns.cameraMovementTerms.test(text) ? null : 'category_drift';
+      return patterns.cameraMovementTerms.test(text) ? null : "category_drift";
     }
 
-    if (category === 'camera.focus') {
+    if (category === "camera.focus") {
       if (
         patterns.cameraMovementTerms.test(text) ||
         patterns.lensApertureTerms.test(text) ||
         patterns.shotFramingTerms.test(text)
       ) {
-        return 'category_drift';
+        return "category_drift";
       }
-      return patterns.cameraFocusTerms.test(text) ? null : 'category_drift';
+      return patterns.cameraFocusTerms.test(text) ? null : "category_drift";
     }
 
-    if (category === 'camera.lens') {
+    if (category === "camera.lens") {
       if (
         patterns.cameraMovementTerms.test(text) ||
         patterns.cameraFocusTerms.test(text) ||
         patterns.shotFramingTerms.test(text)
       ) {
-        return 'category_drift';
+        return "category_drift";
       }
-      return patterns.lensApertureTerms.test(text) ? null : 'category_drift';
+      return patterns.lensApertureTerms.test(text) ? null : "category_drift";
     }
 
-    if (category === 'shot.type') {
+    if (category === "shot.type") {
       const hasShotFraming = patterns.shotFramingTerms.test(text);
       const hasMovementLanguage = patterns.cameraMovementTerms.test(text);
       if (/\b(of|featuring|showing|looking|emphasizing)\b/i.test(text)) {
-        return 'slot_form';
+        return "slot_form";
       }
       if (!hasShotFraming) {
-        return 'category_drift';
+        return "category_drift";
       }
-      return hasMovementLanguage || patterns.lensApertureTerms.test(text) || patterns.cameraFocusTerms.test(text)
-        ? 'category_drift'
+      return hasMovementLanguage ||
+        patterns.lensApertureTerms.test(text) ||
+        patterns.cameraFocusTerms.test(text)
+        ? "category_drift"
         : null;
     }
 
-    const highlightedWordCount = this.videoService.countWords(context.highlightedText || '');
+    const highlightedWordCount = this.videoService.countWords(
+      context.highlightedText || "",
+    );
     const suggestionWordCount = this.videoService.countWords(text);
     const isAdjectiveLikeLightingSlot =
-      category === 'lighting.quality' ||
-      (category.startsWith('lighting.') &&
+      category === "lighting.quality" ||
+      (category.startsWith("lighting.") &&
         highlightedWordCount <= 2 &&
-        typeof context.contextAfter === 'string' &&
-        context.contextAfter.trim().startsWith(','));
+        typeof context.contextAfter === "string" &&
+        context.contextAfter.trim().startsWith(","));
 
-    if (isAdjectiveLikeLightingSlot && slotProfile !== 'adverb_modifier') {
-      if (patterns.cameraTechniqueTerms.test(text) || patterns.cameraFocusTerms.test(text)) {
-        return 'category_drift';
+    if (isAdjectiveLikeLightingSlot && slotProfile !== "adverb_modifier") {
+      if (
+        patterns.cameraTechniqueTerms.test(text) ||
+        patterns.cameraFocusTerms.test(text)
+      ) {
+        return "category_drift";
       }
       const looksLikeSourceClause =
         patterns.lightSourceClauseTerms.test(text) &&
-        (suggestionWordCount >= 4 || patterns.lightingClauseVerbTerms.test(text));
+        (suggestionWordCount >= 4 ||
+          patterns.lightingClauseVerbTerms.test(text));
       if (looksLikeSourceClause) {
-        return 'slot_form';
+        return "slot_form";
       }
       if (!patterns.lightingQualityCueTerms.test(text)) {
-        return 'category_drift';
+        return "category_drift";
       }
-      if (patterns.shadowCueTerms.test(context.highlightedText || '') && !patterns.shadowCueTerms.test(text)) {
-        return 'coherence_conflict';
+      if (
+        patterns.shadowCueTerms.test(context.highlightedText || "") &&
+        !patterns.shadowCueTerms.test(text)
+      ) {
+        return "coherence_conflict";
       }
     }
 
-    if (category === 'lighting.timeofday') {
+    if (category === "lighting.timeofday") {
       if (
         patterns.cameraTechniqueTerms.test(text) ||
         patterns.cameraFocusTerms.test(text) ||
@@ -889,85 +1039,104 @@ export class SuggestionValidationService {
         patterns.lightingClauseVerbTerms.test(text) ||
         patterns.lightingDirectionTerms.test(text)
       ) {
-        return 'category_drift';
+        return "category_drift";
       }
       if (!patterns.timeOfDayTerms.test(text)) {
-        return 'category_drift';
+        return "category_drift";
       }
-      if (!patterns.canonicalTimeTokens.test(lowerText) || patterns.abstractVisualTerms.test(lowerText)) {
-        return 'metaphor_or_abstract';
+      if (
+        !patterns.canonicalTimeTokens.test(lowerText) ||
+        patterns.abstractVisualTerms.test(lowerText)
+      ) {
+        return "metaphor_or_abstract";
       }
       return null;
     }
 
-    if (category === 'lighting.source') {
-      if (patterns.cameraTechniqueTerms.test(text) || patterns.cameraFocusTerms.test(text)) {
-        return 'category_drift';
+    if (category === "lighting.source") {
+      if (
+        patterns.cameraTechniqueTerms.test(text) ||
+        patterns.cameraFocusTerms.test(text)
+      ) {
+        return "category_drift";
       }
       if (!patterns.lightingQualityCueTerms.test(text)) {
-        return 'category_drift';
+        return "category_drift";
       }
       const hasSourceOrDirection =
-        patterns.lightSourceClauseTerms.test(text) || patterns.lightingDirectionTerms.test(text);
+        patterns.lightSourceClauseTerms.test(text) ||
+        patterns.lightingDirectionTerms.test(text);
       if (!hasSourceOrDirection) {
-        return 'category_drift';
+        return "category_drift";
       }
     }
 
-    if (category === 'style.aesthetic') {
+    if (category === "style.aesthetic") {
       if (
         patterns.cameraTechniqueTerms.test(text) ||
         patterns.cameraMovementTerms.test(text) ||
         patterns.lightSourceClauseTerms.test(text) ||
         patterns.lightingDirectionTerms.test(text)
       ) {
-        return 'category_drift';
+        return "category_drift";
       }
       if (!patterns.styleStrongCueTerms.test(text)) {
-        return 'category_drift';
+        return "category_drift";
       }
     }
 
-    if (category === 'environment.location') {
-      if (patterns.environmentContextTerms.test(text) || patterns.vehicleInteriorTerms.test(text)) {
-        return 'category_drift';
+    if (category === "environment.location") {
+      if (
+        patterns.environmentContextTerms.test(text) ||
+        patterns.vehicleInteriorTerms.test(text)
+      ) {
+        return "category_drift";
       }
-      return patterns.externalLocationTerms.test(text) ? null : 'category_drift';
+      return patterns.externalLocationTerms.test(text)
+        ? null
+        : "category_drift";
     }
 
-    if (category === 'environment.context') {
+    if (category === "environment.context") {
       if (patterns.externalLocationTerms.test(text)) {
-        return 'category_drift';
+        return "category_drift";
       }
-      return patterns.environmentContextTerms.test(text) ? null : 'category_drift';
+      return patterns.environmentContextTerms.test(text)
+        ? null
+        : "category_drift";
     }
 
-    if (category === 'environment.weather') {
-      const highlighted = (context.highlightedText || '').toLowerCase();
+    if (category === "environment.weather") {
+      const highlighted = (context.highlightedText || "").toLowerCase();
       if (
         patterns.weatherGentleAirTerms.test(highlighted) &&
         patterns.weatherDisruptiveTerms.test(lowerText)
       ) {
-        return 'coherence_conflict';
+        return "coherence_conflict";
       }
     }
 
     return null;
   }
 
-  private _hasActorDrift(text: string, context: ExtendedSanitizationContext): boolean {
-    const category = this._normalizeCategoryKey(context.highlightedCategory || '');
-    if (!category.startsWith('action')) {
+  private _hasActorDrift(
+    text: string,
+    context: ExtendedSanitizationContext,
+  ): boolean {
+    const category = this._normalizeCategoryKey(
+      context.highlightedCategory || "",
+    );
+    if (!category.startsWith("action")) {
       return false;
     }
 
     const localContext = [
-      context.contextBefore || '',
-      context.contextAfter || '',
-      context.spanAnchors || '',
-      context.nearbySpanHints || '',
+      context.contextBefore || "",
+      context.contextAfter || "",
+      context.spanAnchors || "",
+      context.nearbySpanHints || "",
     ]
-      .join(' ')
+      .join(" ")
       .toLowerCase();
 
     if (!patterns.environmentMotionSubjectTerms.test(localContext)) {
@@ -984,9 +1153,12 @@ export class SuggestionValidationService {
    * Strip trailing tokens from a suggestion that overlap with the start of contextAfter.
    * Only applies to action-category spans where the LLM may absorb the trailing object.
    */
-  _stripContinuationOverlap(text: string, context: ExtendedSanitizationContext): string {
-    const category = (context.highlightedCategory || '').toLowerCase();
-    if (!category.startsWith('action')) return text;
+  _stripContinuationOverlap(
+    text: string,
+    context: ExtendedSanitizationContext,
+  ): string {
+    const category = (context.highlightedCategory || "").toLowerCase();
+    if (!category.startsWith("action")) return text;
 
     const after = context.contextAfter?.trim();
     if (!after) return text;
@@ -998,14 +1170,21 @@ export class SuggestionValidationService {
 
     // Check if the suggestion's tail matches the continuation's head
     // Try match lengths from 5 down to 2
-    const maxMatch = Math.min(5, afterTokens.length, suggestionTokens.length - 1);
+    const maxMatch = Math.min(
+      5,
+      afterTokens.length,
+      suggestionTokens.length - 1,
+    );
     for (let n = maxMatch; n >= 2; n--) {
       const suggestionTail = suggestionTokens.slice(-n);
       const continuationHead = afterTokens.slice(0, n);
       if (suggestionTail.every((t, i) => t === continuationHead[i])) {
         // Strip the overlapping tail, preserving original casing
         const originalTokens = text.split(/\s+/);
-        const stripped = originalTokens.slice(0, originalTokens.length - n).join(' ').trim();
+        const stripped = originalTokens
+          .slice(0, originalTokens.length - n)
+          .join(" ")
+          .trim();
         if (stripped) return stripped;
       }
     }
@@ -1013,23 +1192,29 @@ export class SuggestionValidationService {
     return text;
   }
 
-  private _hasSubjectClassDrift(text: string, context: ExtendedSanitizationContext): boolean {
-    const category = this._normalizeCategoryKey(context.highlightedCategory || '');
-    if (!category.startsWith('subject.')) {
+  private _hasSubjectClassDrift(
+    text: string,
+    context: ExtendedSanitizationContext,
+  ): boolean {
+    const category = this._normalizeCategoryKey(
+      context.highlightedCategory || "",
+    );
+    if (!category.startsWith("subject.")) {
       return false;
     }
 
     const localContext = [
-      context.highlightedText || '',
-      context.contextBefore || '',
-      context.contextAfter || '',
-      context.spanAnchors || '',
-      context.nearbySpanHints || '',
+      context.highlightedText || "",
+      context.contextBefore || "",
+      context.contextAfter || "",
+      context.spanAnchors || "",
+      context.nearbySpanHints || "",
     ]
-      .join(' ')
+      .join(" ")
       .toLowerCase();
 
-    const hasHumanIdentityContext = patterns.humanSubjectTerms.test(localContext);
+    const hasHumanIdentityContext =
+      patterns.humanSubjectTerms.test(localContext);
     if (!hasHumanIdentityContext) {
       return false;
     }
@@ -1041,15 +1226,21 @@ export class SuggestionValidationService {
     );
   }
 
-  private _violatesArticleAgreement(text: string, context: ExtendedSanitizationContext): boolean {
-    const prefix = (context.contextBefore || '').trimEnd();
+  private _violatesArticleAgreement(
+    text: string,
+    context: ExtendedSanitizationContext,
+  ): boolean {
+    const prefix = (context.contextBefore || "").trimEnd();
     const articleMatch = prefix.match(/\b(a|an)\s*$/i);
     if (!articleMatch) {
       return false;
     }
 
     const lowerText = text.toLowerCase();
-    if (/^[a-z]+['’]s\b/i.test(text) || /^(his|her|their|its)\b/i.test(lowerText)) {
+    if (
+      /^[a-z]+['’]s\b/i.test(text) ||
+      /^(his|her|their|its)\b/i.test(lowerText)
+    ) {
       return true;
     }
 
@@ -1062,13 +1253,14 @@ export class SuggestionValidationService {
     const vowelSound =
       /^[aeiou]/.test(firstWord) || /^(honest|hour|heir|honor)/.test(firstWord);
     const consonantSound =
-      /^[^aeiou]/.test(firstWord) || /^(uni([^n]|$)|use|euro|one|ubiq)/.test(firstWord);
+      /^[^aeiou]/.test(firstWord) ||
+      /^(uni([^n]|$)|use|euro|one|ubiq)/.test(firstWord);
 
-    if (article === 'a' && vowelSound) {
+    if (article === "a" && vowelSound) {
       return true;
     }
 
-    if (article === 'an' && consonantSound) {
+    if (article === "an" && consonantSound) {
       return true;
     }
 
@@ -1076,6 +1268,6 @@ export class SuggestionValidationService {
   }
 
   private _normalizeCategoryKey(category: string): string {
-    return category.toLowerCase().replace(/[_-]/g, '');
+    return category.toLowerCase().replace(/[_-]/g, "");
   }
 }

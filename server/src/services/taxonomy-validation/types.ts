@@ -27,13 +27,13 @@ export interface ValidationOptions {
 /**
  * Severity level for validation issues
  */
-export type Severity = 'error' | 'warning' | 'info';
+export type Severity = "error" | "warning" | "info";
 
 /**
  * Raw validation issue from HierarchyValidator
  */
 export interface ValidationIssue {
-  type: 'MISSING_PARENT' | 'DISTANT_RELATIONSHIP';
+  type: "MISSING_PARENT" | "DISTANT_RELATIONSHIP";
   severity: Severity;
   attributeCategory?: string;
   originalCategory?: string;
@@ -60,7 +60,7 @@ export interface OrphanedAttributeGroup {
  * Suggested fix for validation issues
  */
 export interface SuggestedFix {
-  action: 'ADD_PARENT' | 'REORDER' | 'REVIEW';
+  action: "ADD_PARENT" | "REORDER" | "REVIEW";
   parentCategory?: string;
   parentLabel?: string;
   suggestion: string;
@@ -118,4 +118,3 @@ export interface ValidationStats {
   hasOrphans: boolean;
   missingParents: string[];
 }
-

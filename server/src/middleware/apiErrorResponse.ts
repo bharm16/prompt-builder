@@ -1,5 +1,5 @@
-import type { Request, Response } from 'express';
-import type { ApiError, ApiErrorCode } from '@server/types/apiError';
+import type { Request, Response } from "express";
+import type { ApiError, ApiErrorCode } from "@server/types/apiError";
 
 interface SendApiErrorPayload {
   error: string;
@@ -13,7 +13,7 @@ export function sendApiError(
   res: Response,
   req: Request,
   status: number,
-  payload: SendApiErrorPayload
+  payload: SendApiErrorPayload,
 ): Response<ApiError> {
   const requestId = (req as RequestWithId).id;
   const body: ApiError = {

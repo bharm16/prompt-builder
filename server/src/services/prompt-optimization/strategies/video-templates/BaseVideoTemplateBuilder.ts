@@ -10,9 +10,9 @@
  * - Enable provider-specific optimizations via inheritance
  */
 
-import { logger } from '@infrastructure/Logger';
-import { wrapUserData } from '@utils/provider/PromptBuilder';
-import { VIDEO_FEW_SHOT_EXAMPLES } from '../videoPromptOptimizationTemplate';
+import { logger } from "@infrastructure/Logger";
+import { wrapUserData } from "@utils/provider/PromptBuilder";
+import { VIDEO_FEW_SHOT_EXAMPLES } from "../videoPromptOptimizationTemplate";
 
 /**
  * Context for building video templates
@@ -49,7 +49,7 @@ export interface VideoTemplateResult {
   /** User message with XML-wrapped data */
   userMessage: string;
   /** Provider that generated this template */
-  provider: 'openai' | 'groq';
+  provider: "openai" | "groq";
 }
 
 /**
@@ -60,7 +60,9 @@ export interface VideoTemplateResult {
  * - Groq: Keep all instructions in system prompt, use sandwich prompting
  */
 export abstract class BaseVideoTemplateBuilder {
-  protected readonly log = logger.child({ service: 'BaseVideoTemplateBuilder' });
+  protected readonly log = logger.child({
+    service: "BaseVideoTemplateBuilder",
+  });
 
   /**
    * Build complete template for video optimization
@@ -80,14 +82,14 @@ export abstract class BaseVideoTemplateBuilder {
   protected wrapUserConcept(
     userConcept: string,
     interpretedPlan?: Record<string, unknown> | null,
-    originalUserPrompt?: string | null
+    originalUserPrompt?: string | null,
   ): string {
-    this.log.debug('Wrapping user concept in XML', {
-      operation: 'wrapUserConcept',
+    this.log.debug("Wrapping user concept in XML", {
+      operation: "wrapUserConcept",
       hasInterpretedPlan: !!interpretedPlan,
       conceptLength: userConcept.length,
     });
-    
+
     const fields: Record<string, string> = {
       user_concept: userConcept,
     };
@@ -108,21 +110,23 @@ export abstract class BaseVideoTemplateBuilder {
    *
    * @protected
    */
-  protected buildInterpretedPlanText(shotPlan: Record<string, unknown> | null): string {
+  protected buildInterpretedPlanText(
+    shotPlan: Record<string, unknown> | null,
+  ): string {
     if (!shotPlan) {
-      return 'No interpreted shot plan provided. Keep ONE clear action if present, otherwise focus on camera move + visual focus. Do not invent subjects or actions.';
+      return "No interpreted shot plan provided. Keep ONE clear action if present, otherwise focus on camera move + visual focus. Do not invent subjects or actions.";
     }
 
     return `Pre-interpreted shot plan (do NOT hallucinate missing fields):
-- clip_type: ${shotPlan.shot_type || 'unknown'} (bucket classification, not framing)
-- core_intent: ${shotPlan.core_intent || 'n/a'}
-- subject: ${shotPlan.subject || 'null'}
-- action: ${shotPlan.action || 'null'}
-- visual_focus: ${shotPlan.visual_focus || 'null'}
-- setting/time: ${shotPlan.setting || 'null'} / ${shotPlan.time || 'null'}
-- camera: move=${shotPlan.camera_move || 'null'}, angle=${shotPlan.camera_angle || 'null'}
-- lighting/style: ${shotPlan.lighting || 'null'} / ${shotPlan.style || 'null'}
-- mood: ${shotPlan.mood || 'null'}
+- clip_type: ${shotPlan.shot_type || "unknown"} (bucket classification, not framing)
+- core_intent: ${shotPlan.core_intent || "n/a"}
+- subject: ${shotPlan.subject || "null"}
+- action: ${shotPlan.action || "null"}
+- visual_focus: ${shotPlan.visual_focus || "null"}
+- setting/time: ${shotPlan.setting || "null"} / ${shotPlan.time || "null"}
+- camera: move=${shotPlan.camera_move || "null"}, angle=${shotPlan.camera_angle || "null"}
+- lighting/style: ${shotPlan.lighting || "null"} / ${shotPlan.style || "null"}
+- mood: ${shotPlan.mood || "null"}
 If subject or action is null, lean on camera move + visual focus instead of inventing new entities.`;
   }
 

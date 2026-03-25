@@ -1,7 +1,7 @@
-import type { CapabilityValues } from '@shared/capabilities';
-import type { VideoTier } from '@components/ToolSidebar/types';
-import { sanitizeText } from '@/features/span-highlighting';
-import type { Generation } from '@features/generations/types';
+import type { CapabilityValues } from "@shared/capabilities";
+import type { VideoTier } from "@components/ToolSidebar/types";
+import { sanitizeText } from "@/features/span-highlighting";
+import type { Generation } from "@features/generations/types";
 
 interface ApplyGenerationReuseOptions {
   onInputPromptChange: (text: string) => void;
@@ -11,13 +11,13 @@ interface ApplyGenerationReuseOptions {
   setGenerationParams: (params: CapabilityValues) => void;
 }
 
-const REUSABLE_TIERS = new Set<VideoTier>(['draft', 'render']);
+const REUSABLE_TIERS = new Set<VideoTier>(["draft", "render"]);
 
 export function applyGenerationReuse(
   generation: Generation,
-  options: ApplyGenerationReuseOptions
+  options: ApplyGenerationReuseOptions,
 ): boolean {
-  const promptText = sanitizeText(generation.prompt ?? '').trim();
+  const promptText = sanitizeText(generation.prompt ?? "").trim();
   if (!promptText) {
     return false;
   }
@@ -47,12 +47,12 @@ export function applyGenerationReuse(
   }
 
   const duration = generationSettings?.duration ?? generation.duration;
-  if (typeof duration === 'number' && Number.isFinite(duration)) {
+  if (typeof duration === "number" && Number.isFinite(duration)) {
     nextGenerationParams.duration_s = duration;
   }
 
   const fps = generationSettings?.fps ?? generation.fps;
-  if (typeof fps === 'number' && Number.isFinite(fps)) {
+  if (typeof fps === "number" && Number.isFinite(fps)) {
     nextGenerationParams.fps = fps;
   }
 

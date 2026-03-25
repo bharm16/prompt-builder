@@ -1,11 +1,14 @@
-import React, { useEffect, useState } from 'react';
-import { Box, MapPin, Palette, User } from '@promptstudio/system/components/ui';
-import type { Asset } from '@shared/types/asset';
-import { cn } from '@/utils/cn';
-import { getAssetTypeConfig } from '@/features/assets/config/assetConfig';
-import { rewriteGcsUrlToProxy } from '@/services/media/MediaUrlResolver';
+import React, { useEffect, useState } from "react";
+import { Box, MapPin, Palette, User } from "@promptstudio/system/components/ui";
+import type { Asset } from "@shared/types/asset";
+import { cn } from "@/utils/cn";
+import { getAssetTypeConfig } from "@/features/assets/config/assetConfig";
+import { rewriteGcsUrlToProxy } from "@/services/media/MediaUrlResolver";
 
-const TYPE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+const TYPE_ICONS: Record<
+  string,
+  React.ComponentType<{ className?: string }>
+> = {
   character: User,
   style: Palette,
   location: MapPin,
@@ -26,13 +29,14 @@ export function TriggerSuggestion({
   const primaryImage =
     asset.referenceImages?.find((img) => img.isPrimary) ||
     asset.referenceImages?.[0];
-  const thumbnailUrl = rewriteGcsUrlToProxy(primaryImage?.thumbnailUrl?.trim?.() ?? '') ?? '';
-  const fullUrl = rewriteGcsUrlToProxy(primaryImage?.url?.trim?.() ?? '') ?? '';
+  const thumbnailUrl =
+    rewriteGcsUrlToProxy(primaryImage?.thumbnailUrl?.trim?.() ?? "") ?? "";
+  const fullUrl = rewriteGcsUrlToProxy(primaryImage?.url?.trim?.() ?? "") ?? "";
   const [imageUrl, setImageUrl] = useState(thumbnailUrl || fullUrl);
   const [didTryFull, setDidTryFull] = useState(false);
   const config = getAssetTypeConfig(asset.type);
   const Icon = TYPE_ICONS[asset.type] || Box;
-  const triggerLabel = asset.trigger.startsWith('@')
+  const triggerLabel = asset.trigger.startsWith("@")
     ? asset.trigger
     : `@${asset.trigger}`;
 
@@ -47,22 +51,22 @@ export function TriggerSuggestion({
       setImageUrl(fullUrl);
       return;
     }
-    setImageUrl('');
+    setImageUrl("");
   };
 
   return (
     <button
       type="button"
       className={cn(
-        'flex w-full items-center gap-3 px-3 py-2 text-left transition',
-        isSelected ? 'bg-surface-2' : 'hover:bg-surface-2/70'
+        "flex w-full items-center gap-3 px-3 py-2 text-left transition",
+        isSelected ? "bg-surface-2" : "hover:bg-surface-2/70",
       )}
       onClick={onSelect}
     >
       <div
         className={cn(
-          'flex h-10 w-10 flex-shrink-0 items-center justify-center overflow-hidden rounded-md',
-          imageUrl ? 'bg-surface-3' : config.bgClass
+          "flex h-10 w-10 flex-shrink-0 items-center justify-center overflow-hidden rounded-md",
+          imageUrl ? "bg-surface-3" : config.bgClass,
         )}
       >
         {imageUrl ? (
@@ -73,7 +77,7 @@ export function TriggerSuggestion({
             onError={handleImageError}
           />
         ) : (
-          <Icon className={cn('h-5 w-5', config.colorClass)} />
+          <Icon className={cn("h-5 w-5", config.colorClass)} />
         )}
       </div>
       <div className="min-w-0 flex-1">

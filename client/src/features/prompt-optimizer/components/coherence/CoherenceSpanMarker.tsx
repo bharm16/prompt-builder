@@ -1,9 +1,9 @@
-import React from 'react';
-import { cn } from '@/utils/cn';
+import React from "react";
+import { cn } from "@/utils/cn";
 
 interface CoherenceSpanMarkerProps {
   hasIssue: boolean;
-  issueType?: 'conflict' | 'harmonization';
+  issueType?: "conflict" | "harmonization";
   children: React.ReactNode;
 }
 
@@ -12,7 +12,7 @@ interface CoherenceSpanMarkerProps {
  */
 export function CoherenceSpanMarker({
   hasIssue,
-  issueType = 'harmonization',
+  issueType = "harmonization",
   children,
 }: CoherenceSpanMarkerProps) {
   if (!hasIssue) {
@@ -22,17 +22,17 @@ export function CoherenceSpanMarker({
   return (
     <span
       className={cn(
-        'relative',
-        issueType === 'conflict'
-          ? 'underline decoration-error decoration-wavy decoration-2 underline-offset-4'
-          : 'underline decoration-warning decoration-dotted decoration-2 underline-offset-4'
+        "relative",
+        issueType === "conflict"
+          ? "underline decoration-error decoration-wavy decoration-2 underline-offset-4"
+          : "underline decoration-warning decoration-dotted decoration-2 underline-offset-4",
       )}
     >
       {children}
       <span
         className={cn(
-          'absolute -right-1 -top-1 h-2 w-2 rounded-full',
-          issueType === 'conflict' ? 'bg-error' : 'bg-warning'
+          "absolute -right-1 -top-1 h-2 w-2 rounded-full",
+          issueType === "conflict" ? "bg-error" : "bg-warning",
         )}
       />
     </span>

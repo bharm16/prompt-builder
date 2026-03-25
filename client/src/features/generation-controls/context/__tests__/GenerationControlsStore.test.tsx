@@ -1,22 +1,22 @@
-import { beforeEach, describe, expect, it } from 'vitest';
-import { act, renderHook } from '@testing-library/react';
-import type { ReactNode } from 'react';
-import type { KeyframeTile } from '@components/ToolSidebar/types';
-import type { CameraPath } from '@/features/convergence/types';
+import { beforeEach, describe, expect, it } from "vitest";
+import { act, renderHook } from "@testing-library/react";
+import type { ReactNode } from "react";
+import type { KeyframeTile } from "@components/ToolSidebar/types";
+import type { CameraPath } from "@/features/convergence/types";
 import {
   DEFAULT_GENERATION_CONTROLS_STATE,
   type GenerationControlsState,
-} from '../generationControlsStoreTypes';
+} from "../generationControlsStoreTypes";
 import {
   GenerationControlsStoreProvider,
   useGenerationControlsStoreActions,
   useGenerationControlsStoreState,
-} from '../GenerationControlsStore';
+} from "../GenerationControlsStore";
 
 const SAMPLE_CAMERA_MOTION: CameraPath = {
-  id: 'pan_left',
-  label: 'Pan Left',
-  category: 'pan_tilt',
+  id: "pan_left",
+  label: "Pan Left",
+  category: "pan_tilt",
   start: {
     position: { x: 0, y: 0, z: 0 },
     rotation: { pitch: 0, yaw: 0, roll: 0 },
@@ -28,12 +28,16 @@ const SAMPLE_CAMERA_MOTION: CameraPath = {
   duration: 1,
 };
 
-type GenerationControlsStateOverrides = Partial<Omit<GenerationControlsState, 'domain' | 'ui'>> & {
-  domain?: Partial<GenerationControlsState['domain']>;
-  ui?: Partial<GenerationControlsState['ui']>;
+type GenerationControlsStateOverrides = Partial<
+  Omit<GenerationControlsState, "domain" | "ui">
+> & {
+  domain?: Partial<GenerationControlsState["domain"]>;
+  ui?: Partial<GenerationControlsState["ui"]>;
 };
 
-const buildInitialState = (overrides: GenerationControlsStateOverrides = {}): GenerationControlsState => ({
+const buildInitialState = (
+  overrides: GenerationControlsStateOverrides = {},
+): GenerationControlsState => ({
   ...DEFAULT_GENERATION_CONTROLS_STATE,
   ...overrides,
   domain: {
@@ -46,23 +50,26 @@ const buildInitialState = (overrides: GenerationControlsStateOverrides = {}): Ge
   },
 });
 
-const buildWrapper = (initialState?: GenerationControlsState) =>
+const buildWrapper =
+  (initialState?: GenerationControlsState) =>
   ({ children }: { children: ReactNode }) => (
-    <GenerationControlsStoreProvider {...(initialState ? { initialState } : {})}>
+    <GenerationControlsStoreProvider
+      {...(initialState ? { initialState } : {})}
+    >
       {children}
     </GenerationControlsStoreProvider>
   );
 
-describe('GenerationControlsStore', () => {
+describe("GenerationControlsStore", () => {
   beforeEach(() => {
     localStorage.clear();
   });
 
-  it('normalizes keyframes to max 3', () => {
+  it("normalizes keyframes to max 3", () => {
     const keyframes: KeyframeTile[] = Array.from({ length: 4 }, (_, index) => ({
       id: `kf-${index + 1}`,
       url: `https://example.com/${index + 1}.png`,
-      source: 'upload',
+      source: "upload",
     }));
 
     const { result } = renderHook(
@@ -70,7 +77,7 @@ describe('GenerationControlsStore', () => {
         state: useGenerationControlsStoreState(),
         actions: useGenerationControlsStoreActions(),
       }),
-      { wrapper: buildWrapper() }
+      { wrapper: buildWrapper() },
     );
 
     act(() => {
@@ -80,19 +87,19 @@ describe('GenerationControlsStore', () => {
     expect(result.current.state.domain.keyframes).toHaveLength(3);
   });
 
-  it('sets and clears start frame', () => {
+  it("sets and clears start frame", () => {
     const { result } = renderHook(
       () => ({
         state: useGenerationControlsStoreState(),
         actions: useGenerationControlsStoreActions(),
       }),
-      { wrapper: buildWrapper() }
+      { wrapper: buildWrapper() },
     );
 
     const frame: KeyframeTile = {
-      id: 'start-frame-1',
-      url: 'https://example.com/start.png',
-      source: 'upload',
+      id: "start-frame-1",
+      url: "https://example.com/start.png",
+      source: "upload",
     };
 
     act(() => {
@@ -108,13 +115,13 @@ describe('GenerationControlsStore', () => {
     expect(result.current.state.domain.startFrame).toBeNull();
   });
 
-  it('clears extend mode when setting start or end frame', () => {
+  it("clears extend mode when setting start or end frame", () => {
     const initialState = buildInitialState({
       domain: {
         extendVideo: {
-          url: 'https://example.com/video.mp4',
-          source: 'generation',
-          generationId: 'gen-1',
+          url: "https://example.com/video.mp4",
+          source: "generation",
+          generationId: "gen-1",
         },
       },
     });
@@ -124,14 +131,14 @@ describe('GenerationControlsStore', () => {
         state: useGenerationControlsStoreState(),
         actions: useGenerationControlsStoreActions(),
       }),
-      { wrapper: buildWrapper(initialState) }
+      { wrapper: buildWrapper(initialState) },
     );
 
     act(() => {
       result.current.actions.setStartFrame({
-        id: 'start-frame',
-        url: 'https://example.com/start.png',
-        source: 'upload',
+        id: "start-frame",
+        url: "https://example.com/start.png",
+        source: "upload",
       });
     });
 
@@ -139,38 +146,38 @@ describe('GenerationControlsStore', () => {
 
     act(() => {
       result.current.actions.setExtendVideo({
-        url: 'https://example.com/video-2.mp4',
-        source: 'generation',
-        generationId: 'gen-2',
+        url: "https://example.com/video-2.mp4",
+        source: "generation",
+        generationId: "gen-2",
       });
     });
 
     act(() => {
       result.current.actions.setEndFrame({
-        id: 'end-frame',
-        url: 'https://example.com/end.png',
-        source: 'upload',
+        id: "end-frame",
+        url: "https://example.com/end.png",
+        source: "upload",
       });
     });
 
     expect(result.current.state.domain.extendVideo).toBeNull();
   });
 
-  it('clears frame and motion inputs when extend mode is set', () => {
+  it("clears frame and motion inputs when extend mode is set", () => {
     const initialState = buildInitialState({
       domain: {
         startFrame: {
-          id: 'start-frame',
-          url: 'https://example.com/start.png',
-          source: 'upload',
+          id: "start-frame",
+          url: "https://example.com/start.png",
+          source: "upload",
         },
         endFrame: {
-          id: 'end-frame',
-          url: 'https://example.com/end.png',
-          source: 'upload',
+          id: "end-frame",
+          url: "https://example.com/end.png",
+          source: "upload",
         },
         cameraMotion: SAMPLE_CAMERA_MOTION,
-        subjectMotion: 'Walk forward',
+        subjectMotion: "Walk forward",
       },
     });
 
@@ -179,55 +186,55 @@ describe('GenerationControlsStore', () => {
         state: useGenerationControlsStoreState(),
         actions: useGenerationControlsStoreActions(),
       }),
-      { wrapper: buildWrapper(initialState) }
+      { wrapper: buildWrapper(initialState) },
     );
 
     act(() => {
       result.current.actions.setExtendVideo({
-        url: 'https://example.com/video.mp4',
-        source: 'generation',
-        generationId: 'gen-1',
+        url: "https://example.com/video.mp4",
+        source: "generation",
+        generationId: "gen-1",
       });
     });
 
     expect(result.current.state.domain.extendVideo?.url).toBe(
-      'https://example.com/video.mp4'
+      "https://example.com/video.mp4",
     );
     expect(result.current.state.domain.startFrame).toBeNull();
     expect(result.current.state.domain.endFrame).toBeNull();
     expect(result.current.state.domain.cameraMotion).toBeNull();
-    expect(result.current.state.domain.subjectMotion).toBe('');
+    expect(result.current.state.domain.subjectMotion).toBe("");
   });
 
-  it('adds, updates, removes, and clears video references with max limit', () => {
+  it("adds, updates, removes, and clears video references with max limit", () => {
     const { result } = renderHook(
       () => ({
         state: useGenerationControlsStoreState(),
         actions: useGenerationControlsStoreActions(),
       }),
-      { wrapper: buildWrapper() }
+      { wrapper: buildWrapper() },
     );
 
     act(() => {
       result.current.actions.addVideoReference({
-        url: 'https://example.com/reference-1.png',
-        referenceType: 'asset',
-        source: 'upload',
+        url: "https://example.com/reference-1.png",
+        referenceType: "asset",
+        source: "upload",
       });
       result.current.actions.addVideoReference({
-        url: 'https://example.com/reference-2.png',
-        referenceType: 'asset',
-        source: 'upload',
+        url: "https://example.com/reference-2.png",
+        referenceType: "asset",
+        source: "upload",
       });
       result.current.actions.addVideoReference({
-        url: 'https://example.com/reference-3.png',
-        referenceType: 'asset',
-        source: 'upload',
+        url: "https://example.com/reference-3.png",
+        referenceType: "asset",
+        source: "upload",
       });
       result.current.actions.addVideoReference({
-        url: 'https://example.com/reference-4.png',
-        referenceType: 'asset',
-        source: 'upload',
+        url: "https://example.com/reference-4.png",
+        referenceType: "asset",
+        source: "upload",
       });
     });
 
@@ -235,16 +242,17 @@ describe('GenerationControlsStore', () => {
 
     const referenceId = result.current.state.domain.videoReferenceImages[0]?.id;
     if (!referenceId) {
-      throw new Error('Expected a reference id');
+      throw new Error("Expected a reference id");
     }
 
     act(() => {
-      result.current.actions.updateVideoReferenceType(referenceId, 'style');
+      result.current.actions.updateVideoReferenceType(referenceId, "style");
     });
     expect(
-      result.current.state.domain.videoReferenceImages.find((item) => item.id === referenceId)
-        ?.referenceType
-    ).toBe('style');
+      result.current.state.domain.videoReferenceImages.find(
+        (item) => item.id === referenceId,
+      )?.referenceType,
+    ).toBe("style");
 
     act(() => {
       result.current.actions.removeVideoReference(referenceId);
@@ -257,16 +265,16 @@ describe('GenerationControlsStore', () => {
     expect(result.current.state.domain.videoReferenceImages).toHaveLength(0);
   });
 
-  it('resets motion only when start frame identity changes', () => {
+  it("resets motion only when start frame identity changes", () => {
     const initialState = buildInitialState({
       domain: {
         startFrame: {
-          id: 'start-frame-1',
-          url: 'https://storage.example.com/frame.png?X-Goog-Signature=old',
-          source: 'upload',
+          id: "start-frame-1",
+          url: "https://storage.example.com/frame.png?X-Goog-Signature=old",
+          source: "upload",
         },
         cameraMotion: SAMPLE_CAMERA_MOTION,
-        subjectMotion: 'Walk forward',
+        subjectMotion: "Walk forward",
       },
     });
 
@@ -275,43 +283,45 @@ describe('GenerationControlsStore', () => {
         state: useGenerationControlsStoreState(),
         actions: useGenerationControlsStoreActions(),
       }),
-      { wrapper: buildWrapper(initialState) }
+      { wrapper: buildWrapper(initialState) },
     );
 
     act(() => {
       result.current.actions.setStartFrame({
-        id: 'start-frame-2',
-        url: 'https://storage.example.com/frame.png?X-Goog-Signature=new',
-        source: 'upload',
+        id: "start-frame-2",
+        url: "https://storage.example.com/frame.png?X-Goog-Signature=new",
+        source: "upload",
       });
     });
 
-    expect(result.current.state.domain.cameraMotion).toEqual(SAMPLE_CAMERA_MOTION);
-    expect(result.current.state.domain.subjectMotion).toBe('Walk forward');
+    expect(result.current.state.domain.cameraMotion).toEqual(
+      SAMPLE_CAMERA_MOTION,
+    );
+    expect(result.current.state.domain.subjectMotion).toBe("Walk forward");
 
     act(() => {
       result.current.actions.setStartFrame({
-        id: 'start-frame-3',
-        url: 'https://storage.example.com/frame-next.png?X-Goog-Signature=new',
-        source: 'upload',
+        id: "start-frame-3",
+        url: "https://storage.example.com/frame-next.png?X-Goog-Signature=new",
+        source: "upload",
       });
     });
 
     expect(result.current.state.domain.cameraMotion).toBeNull();
-    expect(result.current.state.domain.subjectMotion).toBe('');
+    expect(result.current.state.domain.subjectMotion).toBe("");
   });
 
-  it('does not change start frame when a keyframe is removed', () => {
+  it("does not change start frame when a keyframe is removed", () => {
     const initialState = buildInitialState({
       domain: {
         startFrame: {
-          id: 'start-frame',
-          url: 'https://example.com/start.png',
-          source: 'upload',
+          id: "start-frame",
+          url: "https://example.com/start.png",
+          source: "upload",
         },
         keyframes: [
-          { id: 'kf-1', url: 'https://example.com/1.png', source: 'upload' },
-          { id: 'kf-2', url: 'https://example.com/2.png', source: 'upload' },
+          { id: "kf-1", url: "https://example.com/1.png", source: "upload" },
+          { id: "kf-2", url: "https://example.com/2.png", source: "upload" },
         ],
       },
     });
@@ -321,47 +331,49 @@ describe('GenerationControlsStore', () => {
         state: useGenerationControlsStoreState(),
         actions: useGenerationControlsStoreActions(),
       }),
-      { wrapper: buildWrapper(initialState) }
+      { wrapper: buildWrapper(initialState) },
     );
 
     act(() => {
-      result.current.actions.removeKeyframe('kf-1');
+      result.current.actions.removeKeyframe("kf-1");
     });
 
-    expect(result.current.state.domain.startFrame?.url).toBe('https://example.com/start.png');
+    expect(result.current.state.domain.startFrame?.url).toBe(
+      "https://example.com/start.png",
+    );
   });
 
-  it('returns same state reference on no-op updates', () => {
+  it("returns same state reference on no-op updates", () => {
     const { result } = renderHook(
       () => ({
         state: useGenerationControlsStoreState(),
         actions: useGenerationControlsStoreActions(),
       }),
-      { wrapper: buildWrapper() }
+      { wrapper: buildWrapper() },
     );
 
     const previousState = result.current.state;
     act(() => {
-      result.current.actions.setActiveTab('video');
+      result.current.actions.setActiveTab("video");
     });
 
     expect(result.current.state).toBe(previousState);
   });
 
-  it('hydrates from storage and persists updates', () => {
+  it("hydrates from storage and persists updates", () => {
     const hydratedState = buildInitialState({
       domain: {
-        selectedModel: 'model-x',
-        generationParams: { aspect_ratio: '16:9' },
+        selectedModel: "model-x",
+        generationParams: { aspect_ratio: "16:9" },
       },
       ui: {
-        activeTab: 'image',
+        activeTab: "image",
       },
     });
 
     localStorage.setItem(
-      'prompt-optimizer:generationControlsStore',
-      JSON.stringify(hydratedState)
+      "prompt-optimizer:generationControlsStore",
+      JSON.stringify(hydratedState),
     );
 
     const { result } = renderHook(
@@ -369,49 +381,52 @@ describe('GenerationControlsStore', () => {
         state: useGenerationControlsStoreState(),
         actions: useGenerationControlsStoreActions(),
       }),
-      { wrapper: buildWrapper() }
+      { wrapper: buildWrapper() },
     );
 
-    expect(result.current.state.domain.selectedModel).toBe('model-x');
-    expect(result.current.state.ui.activeTab).toBe('image');
+    expect(result.current.state.domain.selectedModel).toBe("model-x");
+    expect(result.current.state.ui.activeTab).toBe("image");
 
     act(() => {
-      result.current.actions.setSelectedModel('model-y');
+      result.current.actions.setSelectedModel("model-y");
     });
 
     const persisted = JSON.parse(
-      localStorage.getItem('prompt-optimizer:generationControlsStore') ?? '{}'
+      localStorage.getItem("prompt-optimizer:generationControlsStore") ?? "{}",
     ) as GenerationControlsState;
-    expect(persisted.domain.selectedModel).toBe('model-y');
+    expect(persisted.domain.selectedModel).toBe("model-y");
   });
 
-  it('hydrates start frame from keyframes[0] when persisted state is missing startFrame', () => {
+  it("hydrates start frame from keyframes[0] when persisted state is missing startFrame", () => {
     localStorage.setItem(
-      'prompt-optimizer:generationControlsStore',
+      "prompt-optimizer:generationControlsStore",
       JSON.stringify({
         domain: {
-          selectedModel: '',
+          selectedModel: "",
           generationParams: {},
-          videoTier: 'render',
+          videoTier: "render",
           keyframes: [
-            { id: 'legacy-kf', url: 'https://example.com/legacy.png', source: 'upload' },
+            {
+              id: "legacy-kf",
+              url: "https://example.com/legacy.png",
+              source: "upload",
+            },
           ],
           cameraMotion: null,
-          subjectMotion: '',
+          subjectMotion: "",
         },
         ui: {
-          activeTab: 'video',
-          imageSubTab: 'references',
-          constraintMode: 'strict',
+          activeTab: "video",
+          imageSubTab: "references",
+          constraintMode: "strict",
         },
-      })
+      }),
     );
 
-    const { result } = renderHook(
-      () => useGenerationControlsStoreState(),
-      { wrapper: buildWrapper() }
-    );
+    const { result } = renderHook(() => useGenerationControlsStoreState(), {
+      wrapper: buildWrapper(),
+    });
 
-    expect(result.current.domain.startFrame?.id).toBe('legacy-kf');
+    expect(result.current.domain.startFrame?.id).toBe("legacy-kf");
   });
 });

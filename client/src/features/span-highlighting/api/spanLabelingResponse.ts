@@ -1,24 +1,26 @@
-import type { LabelSpansResponse, SpanLabel } from './spanLabelingTypes';
+import type { LabelSpansResponse, SpanLabel } from "./spanLabelingTypes";
 
 type UnknownRecord = Record<string, unknown>;
 
 function isRecord(value: unknown): value is UnknownRecord {
-  return typeof value === 'object' && value !== null;
+  return typeof value === "object" && value !== null;
 }
 
 export function parseSpanLabel(value: unknown): SpanLabel | null {
   if (!isRecord(value)) return null;
 
-  const start = typeof value.start === 'number' ? value.start : null;
-  const end = typeof value.end === 'number' ? value.end : null;
+  const start = typeof value.start === "number" ? value.start : null;
+  const end = typeof value.end === "number" ? value.end : null;
   const category =
-    typeof value.category === 'string'
+    typeof value.category === "string"
       ? value.category
-      : typeof value.role === 'string'
+      : typeof value.role === "string"
         ? value.role
         : null;
-  const confidence = typeof value.confidence === 'number' ? value.confidence : null;
-  if (start === null || end === null || !category || confidence === null) return null;
+  const confidence =
+    typeof value.confidence === "number" ? value.confidence : null;
+  if (start === null || end === null || !category || confidence === null)
+    return null;
 
   const span: SpanLabel = {
     start,
@@ -27,10 +29,10 @@ export function parseSpanLabel(value: unknown): SpanLabel | null {
     confidence,
   };
 
-  if (typeof value.text === 'string') {
+  if (typeof value.text === "string") {
     span.text = value.text;
   }
-  if (typeof value.role === 'string') {
+  if (typeof value.role === "string") {
     span.role = value.role;
   }
 
@@ -43,10 +45,13 @@ export function parseLabelSpansResponse(data: unknown): LabelSpansResponse {
   }
 
   const spans = Array.isArray(data.spans)
-    ? data.spans.map(parseSpanLabel).filter((span): span is SpanLabel => span !== null)
+    ? data.spans
+        .map(parseSpanLabel)
+        .filter((span): span is SpanLabel => span !== null)
     : [];
 
-  const meta = data.meta === null ? null : isRecord(data.meta) ? data.meta : null;
+  const meta =
+    data.meta === null ? null : isRecord(data.meta) ? data.meta : null;
 
   return { spans, meta };
 }

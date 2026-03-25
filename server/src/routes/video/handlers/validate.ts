@@ -1,28 +1,27 @@
-import type { Request, Response } from 'express';
-import { logger } from '@infrastructure/Logger';
-import type { VideoConceptServiceContract } from '../types';
+import type { Request, Response } from "express";
+import { logger } from "@infrastructure/Logger";
+import type { VideoConceptServiceContract } from "../types";
 
-export const createVideoValidateHandler = (
-  videoConceptService: VideoConceptServiceContract
-) =>
+export const createVideoValidateHandler =
+  (videoConceptService: VideoConceptServiceContract) =>
   async (req: Request, res: Response): Promise<Response | void> => {
     const startTime = Date.now();
-    const requestId = req.id || 'unknown';
-    const operation = 'video-validate';
+    const requestId = req.id || "unknown";
+    const operation = "video-validate";
 
     const { elementType, value, elements } = req.body;
 
-    logger.info('Video validate request received', {
+    logger.info("Video validate request received", {
       operation,
       requestId,
       elementType,
-      hasValue: typeof value !== 'undefined',
+      hasValue: typeof value !== "undefined",
       elementCount: elements?.length || 0,
     });
 
     try {
       const compatibilityPromise =
-        elementType && typeof value !== 'undefined'
+        elementType && typeof value !== "undefined"
           ? videoConceptService.checkCompatibility({
               elementType,
               value,
@@ -35,7 +34,7 @@ export const createVideoValidateHandler = (
         videoConceptService.detectConflicts({ elements }),
       ]);
 
-      logger.info('Video validate request completed', {
+      logger.info("Video validate request completed", {
         operation,
         requestId,
         duration: Date.now() - startTime,
@@ -48,8 +47,9 @@ export const createVideoValidateHandler = (
         conflicts: conflictResult?.conflicts || [],
       });
     } catch (error: unknown) {
-      const errorInstance = error instanceof Error ? error : new Error(String(error));
-      logger.error('Video validate request failed', errorInstance, {
+      const errorInstance =
+        error instanceof Error ? error : new Error(String(error));
+      logger.error("Video validate request failed", errorInstance, {
         operation,
         requestId,
         duration: Date.now() - startTime,

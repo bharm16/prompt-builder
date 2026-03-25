@@ -1,16 +1,19 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from "react";
 
-export type AnimatedPresencePhase = 'enter' | 'entered' | 'exit' | 'exited';
+export type AnimatedPresencePhase = "enter" | "entered" | "exit" | "exited";
 
 interface UseAnimatedPresenceOptions {
   exitMs?: number;
 }
 
 const DEFAULT_EXIT_MS = 220;
-const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)';
+const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
 
 const getInitialReducedMotion = (): boolean => {
-  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+  if (
+    typeof window === "undefined" ||
+    typeof window.matchMedia !== "function"
+  ) {
     return false;
   }
 
@@ -19,11 +22,14 @@ const getInitialReducedMotion = (): boolean => {
 
 function usePrefersReducedMotion(): boolean {
   const [prefersReducedMotion, setPrefersReducedMotion] = useState<boolean>(
-    getInitialReducedMotion
+    getInitialReducedMotion,
   );
 
   useEffect(() => {
-    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+    if (
+      typeof window === "undefined" ||
+      typeof window.matchMedia !== "function"
+    ) {
       return undefined;
     }
 
@@ -34,9 +40,9 @@ function usePrefersReducedMotion(): boolean {
 
     setPrefersReducedMotion(mediaQuery.matches);
 
-    if (typeof mediaQuery.addEventListener === 'function') {
-      mediaQuery.addEventListener('change', handleChange);
-      return () => mediaQuery.removeEventListener('change', handleChange);
+    if (typeof mediaQuery.addEventListener === "function") {
+      mediaQuery.addEventListener("change", handleChange);
+      return () => mediaQuery.removeEventListener("change", handleChange);
     }
 
     mediaQuery.addListener(handleChange);
@@ -48,14 +54,14 @@ function usePrefersReducedMotion(): boolean {
 
 export function useAnimatedPresence(
   open: boolean,
-  options: UseAnimatedPresenceOptions = {}
+  options: UseAnimatedPresenceOptions = {},
 ): { shouldRender: boolean; phase: AnimatedPresencePhase } {
   const exitMs = options.exitMs ?? DEFAULT_EXIT_MS;
   const prefersReducedMotion = usePrefersReducedMotion();
   const [shouldRender, setShouldRender] = useState<boolean>(open);
   const [phase, setPhase] = useState<AnimatedPresencePhase>(() => {
-    if (!open) return 'exited';
-    return getInitialReducedMotion() ? 'entered' : 'enter';
+    if (!open) return "exited";
+    return getInitialReducedMotion() ? "entered" : "enter";
   });
   const shouldRenderRef = useRef<boolean>(open);
   const firstRafRef = useRef<number | null>(null);
@@ -96,33 +102,33 @@ export function useAnimatedPresence(
 
     if (prefersReducedMotion) {
       setShouldRender(open);
-      setPhase(open ? 'entered' : 'exited');
+      setPhase(open ? "entered" : "exited");
       return undefined;
     }
 
     if (open) {
       setShouldRender(true);
-      setPhase('enter');
+      setPhase("enter");
       firstRafRef.current = window.requestAnimationFrame(() => {
         firstRafRef.current = null;
         secondRafRef.current = window.requestAnimationFrame(() => {
           secondRafRef.current = null;
-          setPhase('entered');
+          setPhase("entered");
         });
       });
       return undefined;
     }
 
     if (!shouldRenderRef.current) {
-      setPhase('exited');
+      setPhase("exited");
       return undefined;
     }
 
-    setPhase('exit');
+    setPhase("exit");
     exitTimerRef.current = window.setTimeout(() => {
       exitTimerRef.current = null;
       setShouldRender(false);
-      setPhase('exited');
+      setPhase("exited");
     }, exitMs);
 
     return undefined;

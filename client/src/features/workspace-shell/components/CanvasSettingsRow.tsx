@@ -1,52 +1,59 @@
-import React, { useCallback, useMemo } from 'react';
-import { Eye, MagicWand, Images, X } from '@promptstudio/system/components/ui';
-import type { SidebarUploadedImage } from '@components/ToolSidebar/types';
+import React, { useCallback, useMemo } from "react";
+import { Eye, MagicWand, Images, X } from "@promptstudio/system/components/ui";
+import type { SidebarUploadedImage } from "@components/ToolSidebar/types";
 import {
   VIDEO_DRAFT_MODELS,
   VIDEO_RENDER_MODELS,
   STORYBOARD_COST,
-} from '@/components/ToolSidebar/config/modelConfig';
-import { useGenerationControlsContext } from '@/features/prompt-optimizer/context/GenerationControlsContext';
+  getVideoCost,
+} from "@/components/ToolSidebar/config/modelConfig";
+import { getDefaultGenerationDurationSeconds } from "@shared/generationPricing";
+import { useGenerationControlsContext } from "@/features/prompt-optimizer/context/GenerationControlsContext";
 import {
   useGenerationControlsStoreActions,
   useGenerationControlsStoreState,
-} from '@features/generation-controls/context/GenerationControlsStore';
-import { useCapabilitiesClamping } from '@/components/ToolSidebar/components/panels/GenerationControlsPanel/hooks/useCapabilitiesClamping';
-import { useVideoInputCapabilities } from '@/components/ToolSidebar/components/panels/GenerationControlsPanel/hooks/useVideoInputCapabilities';
-import { trackModelRecommendationEvent } from '@/features/model-intelligence/api';
-import { StartFramePopover } from './StartFramePopover';
-import { EndFramePopover } from './EndFramePopover';
-import { VideoReferencesPopover } from './VideoReferencesPopover';
-import { MiniDropdown } from './MiniDropdown';
+} from "@features/generation-controls/context/GenerationControlsStore";
+import { useCapabilitiesClamping } from "@/components/ToolSidebar/components/panels/GenerationControlsPanel/hooks/useCapabilitiesClamping";
+import { useVideoInputCapabilities } from "@/components/ToolSidebar/components/panels/GenerationControlsPanel/hooks/useVideoInputCapabilities";
+import { trackModelRecommendationEvent } from "@/features/model-intelligence/api";
+import { StartFramePopover } from "./StartFramePopover";
+import { EndFramePopover } from "./EndFramePopover";
+import { VideoReferencesPopover } from "./VideoReferencesPopover";
+import { MiniDropdown } from "./MiniDropdown";
 
 interface CanvasSettingsRowProps {
   prompt: string;
   renderModelId: string;
   recommendedModelId?: string | undefined;
   recommendationPromptId?: string | undefined;
-  recommendationMode?: 't2v' | 'i2v' | undefined;
+  recommendationMode?: "t2v" | "i2v" | undefined;
   recommendationAgeMs?: number | null | undefined;
   onOpenMotion: () => void;
   onStartFrameUpload?: ((file: File) => void | Promise<void>) | undefined;
-  onUploadSidebarImage?: ((file: File) => Promise<SidebarUploadedImage | null>) | undefined;
+  onUploadSidebarImage?:
+    | ((file: File) => Promise<SidebarUploadedImage | null>)
+    | undefined;
   onEnhance?: () => void;
   isEnhancing?: boolean;
 }
 
-const parseAspectRatio = (generationParams: Record<string, unknown>): string => {
+const parseAspectRatio = (
+  generationParams: Record<string, unknown>,
+): string => {
   const ratio = generationParams.aspect_ratio;
-  if (typeof ratio === 'string' && ratio.trim()) return ratio.trim();
-  return '16:9';
+  if (typeof ratio === "string" && ratio.trim()) return ratio.trim();
+  return "16:9";
 };
 
 const parseDuration = (generationParams: Record<string, unknown>): number => {
   const durationValue = generationParams.duration_s;
-  if (typeof durationValue === 'number' && Number.isFinite(durationValue)) return durationValue;
-  if (typeof durationValue === 'string') {
+  if (typeof durationValue === "number" && Number.isFinite(durationValue))
+    return durationValue;
+  if (typeof durationValue === "string") {
     const parsed = Number.parseFloat(durationValue);
     if (Number.isFinite(parsed)) return parsed;
   }
-  return 5;
+  return getDefaultGenerationDurationSeconds();
 };
 
 /* Ghost button used across the settings row — matches mockup BarBtn exactly */
@@ -71,11 +78,11 @@ function BarBtn({
       {...buttonProps}
       className={`inline-flex h-[30px] items-center gap-[5px] whitespace-nowrap rounded-full border border-surface-2 px-2.5 text-xs transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
         accent
-          ? 'bg-tool-nav-hover font-semibold text-foreground hover:bg-tool-nav-active'
+          ? "bg-tool-nav-hover font-semibold text-foreground hover:bg-tool-nav-active"
           : active
-            ? 'bg-tool-nav-hover font-semibold text-foreground'
-            : 'bg-tool-nav-hover font-semibold text-foreground hover:bg-tool-nav-active hover:text-foreground'
-      } ${className ?? ''}`}
+            ? "bg-tool-nav-hover font-semibold text-foreground"
+            : "bg-tool-nav-hover font-semibold text-foreground hover:bg-tool-nav-active hover:text-foreground"
+      } ${className ?? ""}`}
     >
       {children}
     </button>
@@ -101,75 +108,94 @@ export function CanvasSettingsRow({
 
   const aspectRatio = useMemo(
     () => parseAspectRatio(domain.generationParams as Record<string, unknown>),
-    [domain.generationParams]
+    [domain.generationParams],
   );
   const duration = useMemo(
     () => parseDuration(domain.generationParams as Record<string, unknown>),
-    [domain.generationParams]
+    [domain.generationParams],
   );
 
   const hasPrompt = Boolean(prompt.trim());
   const hasStartFrame = Boolean(domain.startFrame);
   const isGenerating = controls?.isGenerating ?? false;
+  const isSubmitting = controls?.isSubmitting ?? false;
+  const isGenerationBusy = isGenerating || isSubmitting;
 
   const handleAspectRatioChange = useCallback(
     (value: string) => {
       storeActions.mergeGenerationParams({ aspect_ratio: value });
     },
-    [storeActions]
+    [storeActions],
   );
 
   const handleDurationChange = useCallback(
     (value: number) => {
       storeActions.mergeGenerationParams({ duration_s: value });
     },
-    [storeActions]
+    [storeActions],
   );
 
-  const { aspectRatioOptions, durationOptions, schema } = useCapabilitiesClamping({
-    activeTab: 'video',
-    selectedModel: domain.selectedModel,
-    videoTier: domain.videoTier,
-    renderModelId,
-    aspectRatio,
-    duration,
-    setVideoTier: storeActions.setVideoTier,
-    onAspectRatioChange: handleAspectRatioChange,
-    onDurationChange: handleDurationChange,
-  });
+  const { aspectRatioOptions, durationOptions, schema } =
+    useCapabilitiesClamping({
+      activeTab: "video",
+      selectedModel: domain.selectedModel,
+      videoTier: domain.videoTier,
+      renderModelId,
+      aspectRatio,
+      duration,
+      setVideoTier: storeActions.setVideoTier,
+      onAspectRatioChange: handleAspectRatioChange,
+      onDurationChange: handleDurationChange,
+    });
   const videoInputCapabilities = useVideoInputCapabilities(schema ?? null);
 
-  const renderModelCost =
-    VIDEO_RENDER_MODELS.find((model) => model.id === renderModelId)?.cost ??
-    VIDEO_RENDER_MODELS[0]?.cost ??
-    0;
-
   const selectedDraftModel = useMemo(
-    () => VIDEO_DRAFT_MODELS.find((model) => model.id === domain.selectedModel) ?? null,
-    [domain.selectedModel]
+    () =>
+      VIDEO_DRAFT_MODELS.find((model) => model.id === domain.selectedModel) ??
+      null,
+    [domain.selectedModel],
   );
   const isDraftModelSelected = selectedDraftModel !== null;
 
-  const previewDisabled = !controls?.onStoryboard || isGenerating || (!hasPrompt && !hasStartFrame);
+  const previewDisabled =
+    !controls?.onStoryboard ||
+    isGenerationBusy ||
+    (!hasPrompt && !hasStartFrame);
   const generateDisabled = isDraftModelSelected
-    ? !controls?.onDraft || isGenerating || !hasPrompt
-    : !controls?.onRender || isGenerating || !hasPrompt;
+    ? !controls?.onDraft || isGenerationBusy || !hasPrompt
+    : !controls?.onRender || isGenerationBusy || !hasPrompt;
 
   const trackGenerationStart = useCallback(
     (selectedModelId: string) => {
       void trackModelRecommendationEvent({
-        event: 'generation_started',
-        ...(recommendationPromptId ? { recommendationId: recommendationPromptId, promptId: recommendationPromptId } : {}),
+        event: "generation_started",
+        ...(recommendationPromptId
+          ? {
+              recommendationId: recommendationPromptId,
+              promptId: recommendationPromptId,
+            }
+          : {}),
         ...(recommendedModelId ? { recommendedModelId } : {}),
         selectedModelId,
         ...(recommendationMode ? { mode: recommendationMode } : {}),
         durationSeconds: duration,
-        ...(typeof recommendationAgeMs === 'number'
-          ? { timeSinceRecommendationMs: Math.max(0, Math.round(recommendationAgeMs)) }
+        ...(typeof recommendationAgeMs === "number"
+          ? {
+              timeSinceRecommendationMs: Math.max(
+                0,
+                Math.round(recommendationAgeMs),
+              ),
+            }
           : {}),
       });
     },
-    [duration, recommendationAgeMs, recommendationMode, recommendationPromptId, recommendedModelId]
+    [
+      duration,
+      recommendationAgeMs,
+      recommendationMode,
+      recommendationPromptId,
+      recommendedModelId,
+    ],
   );
 
   const handleGenerate = useCallback(() => {
@@ -184,7 +210,10 @@ export function CanvasSettingsRow({
 
   const formatDurationLabel = useCallback((v: number) => `${v}s`, []);
 
-  const creditCost = selectedDraftModel?.cost ?? renderModelCost;
+  const creditCost = getVideoCost(
+    selectedDraftModel?.id ?? renderModelId,
+    duration,
+  );
 
   return (
     <div
@@ -254,7 +283,9 @@ export function CanvasSettingsRow({
 
         {/* Assets */}
         <BarBtn onClick={(e) => e.stopPropagation()}>
-          <span className="flex"><Images size={13} weight="fill" /></span>
+          <span className="flex">
+            <Images size={13} weight="fill" />
+          </span>
           Assets
         </BarBtn>
 
@@ -263,7 +294,20 @@ export function CanvasSettingsRow({
           value={aspectRatio}
           options={aspectRatioOptions}
           onChange={handleAspectRatioChange}
-          icon={<svg width="11" height="11" viewBox="0 0 11 11" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="2" width="9" height="7" rx="1.5"/></svg>}
+          icon={
+            <svg
+              width="11"
+              height="11"
+              viewBox="0 0 11 11"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <rect x="1" y="2" width="9" height="7" rx="1.5" />
+            </svg>
+          }
         />
 
         {/* Duration dropdown */}
@@ -272,15 +316,28 @@ export function CanvasSettingsRow({
           options={durationOptions}
           onChange={handleDurationChange}
           formatLabel={formatDurationLabel}
-          icon={<svg width="11" height="11" viewBox="0 0 11 11" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"><circle cx="5.5" cy="5.5" r="4.5"/><path d="M5.5 3v3l2 1"/></svg>}
+          icon={
+            <svg
+              width="11"
+              height="11"
+              viewBox="0 0 11 11"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.2"
+              strokeLinecap="round"
+            >
+              <circle cx="5.5" cy="5.5" r="4.5" />
+              <path d="M5.5 3v3l2 1" />
+            </svg>
+          }
         />
 
         {/* AI Enhance */}
         <BarBtn
           accent
           className="w-[68px] justify-center px-0"
-          aria-label={isEnhancing ? 'Enhancing prompt…' : 'Enhance prompt'}
-          title={isEnhancing ? 'Enhancing…' : 'Enhance'}
+          aria-label={isEnhancing ? "Enhancing prompt…" : "Enhance prompt"}
+          title={isEnhancing ? "Enhancing…" : "Enhance"}
           disabled={isEnhancing || !onEnhance}
           {...(onEnhance && !isEnhancing
             ? {
@@ -292,8 +349,23 @@ export function CanvasSettingsRow({
             : {})}
         >
           {isEnhancing ? (
-            <svg className="animate-spin" width={14} height={14} viewBox="0 0 14 14" fill="none" aria-hidden="true">
-              <circle cx="7" cy="7" r="5.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeDasharray="24 10" />
+            <svg
+              className="animate-spin"
+              width={14}
+              height={14}
+              viewBox="0 0 14 14"
+              fill="none"
+              aria-hidden="true"
+            >
+              <circle
+                cx="7"
+                cy="7"
+                r="5.5"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeDasharray="24 10"
+              />
             </svg>
           ) : (
             <MagicWand size={14} />
@@ -309,8 +381,14 @@ export function CanvasSettingsRow({
           className="inline-flex h-[30px] w-[68px] items-center justify-center rounded-full border border-surface-2 bg-tool-nav-hover text-foreground transition-colors hover:bg-tool-nav-active hover:text-foreground disabled:cursor-not-allowed disabled:text-tool-text-label"
           onClick={() => controls?.onStoryboard?.()}
           disabled={previewDisabled}
-          aria-label={`Preview storyboard ${STORYBOARD_COST} credits`}
-          title={`Preview · ${STORYBOARD_COST} cr`}
+          aria-label={
+            isSubmitting
+              ? "Starting storyboard generation"
+              : `Preview storyboard ${STORYBOARD_COST} credits`
+          }
+          title={
+            isSubmitting ? "Starting..." : `Preview · ${STORYBOARD_COST} cr`
+          }
         >
           <Eye size={14} />
         </button>
@@ -322,8 +400,16 @@ export function CanvasSettingsRow({
           className="inline-flex h-10 w-10 items-center justify-center rounded-full border-none bg-muted text-tool-surface-deep transition-opacity hover:opacity-[0.9] disabled:cursor-not-allowed disabled:opacity-60"
           onClick={handleGenerate}
           disabled={generateDisabled}
-          aria-label={`${isDraftModelSelected ? 'Draft' : 'Generate'} ${creditCost} credits`}
-          title={`${isDraftModelSelected ? 'Draft' : 'Generate'} · ${creditCost} cr`}
+          aria-label={
+            isSubmitting
+              ? "Starting generation"
+              : `${isDraftModelSelected ? "Draft" : "Generate"} ${creditCost} credits`
+          }
+          title={
+            isSubmitting
+              ? "Starting..."
+              : `${isDraftModelSelected ? "Draft" : "Generate"} · ${creditCost} cr`
+          }
         >
           <svg
             width="16"

@@ -1,6 +1,9 @@
-import React, { useCallback, useRef, useState } from 'react';
-import { cn } from '@/utils/cn';
-import { uploadPreviewImage, validatePreviewImageFile } from '../api/previewApi';
+import React, { useCallback, useRef, useState } from "react";
+import { cn } from "@/utils/cn";
+import {
+  uploadPreviewImage,
+  validatePreviewImageFile,
+} from "../api/previewApi";
 
 export interface ImageUploadResult {
   imageUrl: string;
@@ -39,11 +42,13 @@ export function ImageUpload({
       try {
         const response = await uploadPreviewImage(file);
         if (!response.success || !response.data) {
-          throw new Error(response.error || response.message || 'Failed to upload image');
+          throw new Error(
+            response.error || response.message || "Failed to upload image",
+          );
         }
         const imageUrl = response.data.viewUrl || response.data.imageUrl;
         if (!imageUrl) {
-          throw new Error('Upload did not return an image URL');
+          throw new Error("Upload did not return an image URL");
         }
 
         onUploadComplete?.({
@@ -54,12 +59,12 @@ export function ImageUpload({
           contentType: response.data.contentType,
         });
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Upload failed');
+        setError(err instanceof Error ? err.message : "Upload failed");
       } finally {
         setIsUploading(false);
       }
     },
-    [onUploadComplete]
+    [onUploadComplete],
   );
 
   const handleInputChange = useCallback(
@@ -67,9 +72,9 @@ export function ImageUpload({
       const file = event.target.files?.[0];
       if (!file || disabled) return;
       void handleFile(file);
-      event.target.value = '';
+      event.target.value = "";
     },
-    [disabled, handleFile]
+    [disabled, handleFile],
   );
 
   const handleDrop = useCallback(
@@ -84,16 +89,18 @@ export function ImageUpload({
         void handleFile(file);
       }
     },
-    [disabled, handleFile]
+    [disabled, handleFile],
   );
 
   return (
     <div
       className={cn(
-        'flex flex-col gap-2 rounded-lg border border-dashed px-3 py-4 text-xs transition-colors',
-        disabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer',
-        isDragging ? 'border-accent bg-accent/10' : 'border-border bg-surface-1',
-        className
+        "flex flex-col gap-2 rounded-lg border border-dashed px-3 py-4 text-xs transition-colors",
+        disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer",
+        isDragging
+          ? "border-accent bg-accent/10"
+          : "border-border bg-surface-1",
+        className,
       )}
       onDragOver={(event) => {
         event.preventDefault();
@@ -116,7 +123,7 @@ export function ImageUpload({
       tabIndex={0}
       onKeyDown={(event) => {
         if (disabled) return;
-        if (event.key === 'Enter' || event.key === ' ') {
+        if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
           inputRef.current?.click();
         }
@@ -132,7 +139,7 @@ export function ImageUpload({
         disabled={disabled || isUploading}
       />
       <div className="text-foreground font-semibold">
-        {isUploading ? 'Uploading image...' : 'Upload a keyframe image'}
+        {isUploading ? "Uploading image..." : "Upload a keyframe image"}
       </div>
       <div className="text-muted">
         Drag and drop or click to select. PNG, JPEG, or WebP up to 10MB.

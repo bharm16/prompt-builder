@@ -5,17 +5,30 @@
  * modifying the existing Groq template content.
  */
 
-import { logger } from '@infrastructure/Logger';
-import { wrapUserData } from '@utils/provider/PromptBuilder';
-import { GroqVideoTemplateBuilder } from './GroqVideoTemplateBuilder';
-import { BaseVideoTemplateBuilder, type VideoTemplateContext, type VideoTemplateResult } from './BaseVideoTemplateBuilder';
+import { logger } from "@infrastructure/Logger";
+import { wrapUserData } from "@utils/provider/PromptBuilder";
+import { GroqVideoTemplateBuilder } from "./GroqVideoTemplateBuilder";
+import {
+  BaseVideoTemplateBuilder,
+  type VideoTemplateContext,
+  type VideoTemplateResult,
+} from "./BaseVideoTemplateBuilder";
 
 export class GroqVideoTemplateBuilderLocked extends BaseVideoTemplateBuilder {
-  protected override readonly log = logger.child({ service: 'GroqVideoTemplateBuilderLocked' });
+  protected override readonly log = logger.child({
+    service: "GroqVideoTemplateBuilderLocked",
+  });
   private readonly baseBuilder = new GroqVideoTemplateBuilder();
 
   override buildTemplate(context: VideoTemplateContext): VideoTemplateResult {
-    const { userConcept, interpretedPlan, includeInstructions = true, lockedSpans = [], generationParams, originalUserPrompt } = context;
+    const {
+      userConcept,
+      interpretedPlan,
+      includeInstructions = true,
+      lockedSpans = [],
+      generationParams,
+      originalUserPrompt,
+    } = context;
 
     const baseTemplate = this.baseBuilder.buildTemplate({
       userConcept,
@@ -25,8 +38,14 @@ export class GroqVideoTemplateBuilderLocked extends BaseVideoTemplateBuilder {
       ...(generationParams ? { generationParams } : {}),
     });
 
-    const systemPrompt = `${baseTemplate.systemPrompt}\n\n${this.buildLockedSpanInstructions()}`.trim();
-    const userMessage = this.buildUserMessage(userConcept, interpretedPlan, lockedSpans, originalUserPrompt ?? null);
+    const systemPrompt =
+      `${baseTemplate.systemPrompt}\n\n${this.buildLockedSpanInstructions()}`.trim();
+    const userMessage = this.buildUserMessage(
+      userConcept,
+      interpretedPlan,
+      lockedSpans,
+      originalUserPrompt ?? null,
+    );
 
     return {
       ...baseTemplate,
@@ -46,8 +65,8 @@ export class GroqVideoTemplateBuilderLocked extends BaseVideoTemplateBuilder {
   private buildUserMessage(
     userConcept: string,
     interpretedPlan?: Record<string, unknown> | null,
-    lockedSpans: VideoTemplateContext['lockedSpans'] = [],
-    originalUserPrompt?: string | null
+    lockedSpans: VideoTemplateContext["lockedSpans"] = [],
+    originalUserPrompt?: string | null,
   ): string {
     const fields: Record<string, string> = {
       user_concept: userConcept,

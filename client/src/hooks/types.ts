@@ -1,4 +1,4 @@
-import type { Generation } from '@features/prompt-optimizer/types/domain/generation';
+import type { Generation } from "@features/prompt-optimizer/types/domain/generation";
 import type {
   PromptHistoryEntry,
   PromptKeyframe,
@@ -8,7 +8,7 @@ import type {
   PromptVersionPreview,
   PromptVersionVideo,
   User,
-} from '@features/prompt-optimizer/types/domain/prompt-session';
+} from "@features/prompt-optimizer/types/domain/prompt-session";
 
 export interface Span {
   text: string;

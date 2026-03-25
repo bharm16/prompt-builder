@@ -1,12 +1,16 @@
-import { admin, getFirestore } from '@infrastructure/firebaseAdmin';
-import { logger } from '@infrastructure/Logger';
+import { admin, getFirestore } from "@infrastructure/firebaseAdmin";
+import { logger } from "@infrastructure/Logger";
 import {
   FirestoreCircuitExecutor,
   getFirestoreCircuitExecutor,
-} from '@services/firestore/FirestoreCircuitExecutor';
+} from "@services/firestore/FirestoreCircuitExecutor";
 
-type UnresolvedPaymentEventStatus = 'open' | 'resolved';
-type BillingProfileRepairStatus = 'pending' | 'processing' | 'resolved' | 'escalated';
+type UnresolvedPaymentEventStatus = "open" | "resolved";
+type BillingProfileRepairStatus =
+  | "pending"
+  | "processing"
+  | "resolved"
+  | "escalated";
 
 interface UnresolvedPaymentEventRecord {
   status: UnresolvedPaymentEventStatus;
@@ -23,7 +27,7 @@ interface UnresolvedPaymentEventRecord {
 
 interface BillingProfileRepairRecord {
   status: BillingProfileRepairStatus;
-  source: 'checkout' | 'invoice';
+  source: "checkout" | "invoice";
   userId: string;
   stripeCustomerId: string;
   stripeLivemode: boolean;
@@ -58,7 +62,7 @@ export interface UnresolvedPaymentSummary {
 
 export interface EnqueueBillingProfileRepairInput {
   repairKey: string;
-  source: 'checkout' | 'invoice';
+  source: "checkout" | "invoice";
   userId: string;
   stripeCustomerId: string;
   stripeLivemode: boolean;
@@ -71,7 +75,7 @@ export interface EnqueueBillingProfileRepairInput {
 
 export interface BillingProfileRepairTask {
   repairKey: string;
-  source: 'checkout' | 'invoice';
+  source: "checkout" | "invoice";
   userId: string;
   stripeCustomerId: string;
   stripeLivemode: boolean;
@@ -85,20 +89,28 @@ export interface BillingProfileRepairTask {
 
 export class PaymentConsistencyStore {
   private readonly db = getFirestore();
-  private readonly unresolvedEventsCollection = this.db.collection('payment_unresolved_events');
-  private readonly billingProfileRepairCollection = this.db.collection('billing_profile_repairs');
+  private readonly unresolvedEventsCollection = this.db.collection(
+    "payment_unresolved_events",
+  );
+  private readonly billingProfileRepairCollection = this.db.collection(
+    "billing_profile_repairs",
+  );
   private readonly firestoreCircuitExecutor: FirestoreCircuitExecutor;
 
-  constructor(firestoreCircuitExecutor: FirestoreCircuitExecutor = getFirestoreCircuitExecutor()) {
+  constructor(
+    firestoreCircuitExecutor: FirestoreCircuitExecutor = getFirestoreCircuitExecutor(),
+  ) {
     this.firestoreCircuitExecutor = firestoreCircuitExecutor;
   }
 
-  async recordUnresolvedEvent(input: RecordUnresolvedPaymentEventInput): Promise<void> {
+  async recordUnresolvedEvent(
+    input: RecordUnresolvedPaymentEventInput,
+  ): Promise<void> {
     const now = Date.now();
     const docRef = this.unresolvedEventsCollection.doc(input.eventId);
 
     await this.firestoreCircuitExecutor.executeWrite(
-      'payment.consistency.recordUnresolvedEvent',
+      "payment.consistency.recordUnresolvedEvent",
       async () =>
         await this.db.runTransaction(async (transaction) => {
           const snapshot = await transaction.get(docRef);
@@ -106,10 +118,12 @@ export class PaymentConsistencyStore {
             eventType: input.eventType,
             reason: input.reason,
             livemode: input.livemode,
-            ...(input.stripeObjectId ? { stripeObjectId: input.stripeObjectId } : {}),
+            ...(input.stripeObjectId
+              ? { stripeObjectId: input.stripeObjectId }
+              : {}),
             ...(input.userId ? { userId: input.userId } : {}),
             ...(input.metadata ? { metadata: input.metadata } : {}),
-            status: 'open' as const,
+            status: "open" as const,
             lastSeenAtMs: now,
             updatedAtMs: now,
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -126,9 +140,12 @@ export class PaymentConsistencyStore {
             return;
           }
 
-          const existing = snapshot.data() as UnresolvedPaymentEventRecord | undefined;
+          const existing = snapshot.data() as
+            | UnresolvedPaymentEventRecord
+            | undefined;
           const nextCount =
-            typeof existing?.occurrenceCount === 'number' && Number.isFinite(existing.occurrenceCount)
+            typeof existing?.occurrenceCount === "number" &&
+            Number.isFinite(existing.occurrenceCount)
               ? existing.occurrenceCount + 1
               : 1;
 
@@ -136,19 +153,23 @@ export class PaymentConsistencyStore {
             ...nextDocument,
             occurrenceCount: nextCount,
             firstSeenAtMs:
-              typeof existing?.firstSeenAtMs === 'number' && Number.isFinite(existing.firstSeenAtMs)
+              typeof existing?.firstSeenAtMs === "number" &&
+              Number.isFinite(existing.firstSeenAtMs)
                 ? existing.firstSeenAtMs
                 : now,
           });
-        })
+        }),
     );
   }
 
   async getUnresolvedSummary(): Promise<UnresolvedPaymentSummary> {
     try {
       const snapshot = await this.firestoreCircuitExecutor.executeRead(
-        'payment.consistency.getUnresolvedSummary',
-        async () => await this.unresolvedEventsCollection.where('status', '==', 'open').get()
+        "payment.consistency.getUnresolvedSummary",
+        async () =>
+          await this.unresolvedEventsCollection
+            .where("status", "==", "open")
+            .get(),
       );
 
       if (snapshot.empty) {
@@ -163,18 +184,26 @@ export class PaymentConsistencyStore {
 
       for (const doc of snapshot.docs) {
         const data = doc.data() as UnresolvedPaymentEventRecord;
-        if (typeof data.firstSeenAtMs === 'number' && Number.isFinite(data.firstSeenAtMs)) {
-          oldestFirstSeenAtMs = Math.min(oldestFirstSeenAtMs, data.firstSeenAtMs);
+        if (
+          typeof data.firstSeenAtMs === "number" &&
+          Number.isFinite(data.firstSeenAtMs)
+        ) {
+          oldestFirstSeenAtMs = Math.min(
+            oldestFirstSeenAtMs,
+            data.firstSeenAtMs,
+          );
         }
       }
 
       return {
         openCount: snapshot.size,
         oldestOpenAgeMs:
-          oldestFirstSeenAtMs === Number.POSITIVE_INFINITY ? null : Math.max(0, now - oldestFirstSeenAtMs),
+          oldestFirstSeenAtMs === Number.POSITIVE_INFINITY
+            ? null
+            : Math.max(0, now - oldestFirstSeenAtMs),
       };
     } catch (error) {
-      logger.warn('Failed to read unresolved payment summary', {
+      logger.warn("Failed to read unresolved payment summary", {
         error: error instanceof Error ? error.message : String(error),
       });
       return {
@@ -184,12 +213,14 @@ export class PaymentConsistencyStore {
     }
   }
 
-  async enqueueBillingProfileRepair(input: EnqueueBillingProfileRepairInput): Promise<void> {
+  async enqueueBillingProfileRepair(
+    input: EnqueueBillingProfileRepairInput,
+  ): Promise<void> {
     const now = Date.now();
     const docRef = this.billingProfileRepairCollection.doc(input.repairKey);
 
     await this.firestoreCircuitExecutor.executeWrite(
-      'payment.consistency.enqueueBillingProfileRepair',
+      "payment.consistency.enqueueBillingProfileRepair",
       async () =>
         await this.db.runTransaction(async (transaction) => {
           const snapshot = await transaction.get(docRef);
@@ -198,12 +229,16 @@ export class PaymentConsistencyStore {
             userId: input.userId,
             stripeCustomerId: input.stripeCustomerId,
             stripeLivemode: input.stripeLivemode,
-            ...(input.stripeSubscriptionId ? { stripeSubscriptionId: input.stripeSubscriptionId } : {}),
+            ...(input.stripeSubscriptionId
+              ? { stripeSubscriptionId: input.stripeSubscriptionId }
+              : {}),
             ...(input.planTier ? { planTier: input.planTier } : {}),
-            ...(input.subscriptionPriceId ? { subscriptionPriceId: input.subscriptionPriceId } : {}),
+            ...(input.subscriptionPriceId
+              ? { subscriptionPriceId: input.subscriptionPriceId }
+              : {}),
             ...(input.eventId ? { eventId: input.eventId } : {}),
             referenceId: input.referenceId,
-            status: 'pending' as const,
+            status: "pending" as const,
             updatedAtMs: now,
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
           };
@@ -218,8 +253,10 @@ export class PaymentConsistencyStore {
             return;
           }
 
-          const existing = snapshot.data() as BillingProfileRepairRecord | undefined;
-          if (existing?.status === 'resolved') {
+          const existing = snapshot.data() as
+            | BillingProfileRepairRecord
+            | undefined;
+          if (existing?.status === "resolved") {
             return;
           }
 
@@ -228,25 +265,32 @@ export class PaymentConsistencyStore {
             lastError: admin.firestore.FieldValue.delete(),
             processingStartedAtMs: admin.firestore.FieldValue.delete(),
           });
-        })
+        }),
     );
   }
 
   async claimNextBillingProfileRepair(
     maxAttempts: number,
-    scanLimit: number
+    scanLimit: number,
   ): Promise<BillingProfileRepairTask | null> {
     try {
       const snapshot = await this.firestoreCircuitExecutor.executeRead(
-        'payment.consistency.claimBillingProfileRepair.queryPending',
-        async () => await this.billingProfileRepairCollection.where('status', '==', 'pending').limit(scanLimit).get()
+        "payment.consistency.claimBillingProfileRepair.queryPending",
+        async () =>
+          await this.billingProfileRepairCollection
+            .where("status", "==", "pending")
+            .limit(scanLimit)
+            .get(),
       );
       if (snapshot.empty) {
         return null;
       }
 
       const docs = snapshot.docs
-        .map((doc) => ({ id: doc.id, data: doc.data() as BillingProfileRepairRecord }))
+        .map((doc) => ({
+          id: doc.id,
+          data: doc.data() as BillingProfileRepairRecord,
+        }))
         .sort((a, b) => {
           const aTs = Number(a.data.updatedAtMs ?? 0);
           const bTs = Number(b.data.updatedAtMs ?? 0);
@@ -255,7 +299,7 @@ export class PaymentConsistencyStore {
 
       for (const doc of docs) {
         const claimed = await this.firestoreCircuitExecutor.executeWrite(
-          'payment.consistency.claimBillingProfileRepair.transaction',
+          "payment.consistency.claimBillingProfileRepair.transaction",
           async () =>
             await this.db.runTransaction(async (transaction) => {
               const docRef = this.billingProfileRepairCollection.doc(doc.id);
@@ -264,16 +308,19 @@ export class PaymentConsistencyStore {
                 return null;
               }
 
-              const data = fresh.data() as BillingProfileRepairRecord | undefined;
-              if (!data || data.status !== 'pending') {
+              const data = fresh.data() as
+                | BillingProfileRepairRecord
+                | undefined;
+              if (!data || data.status !== "pending") {
                 return null;
               }
 
-              const attempts = typeof data.attempts === 'number' ? data.attempts : 0;
+              const attempts =
+                typeof data.attempts === "number" ? data.attempts : 0;
               if (attempts >= maxAttempts) {
                 const now = Date.now();
                 transaction.update(docRef, {
-                  status: 'escalated' as BillingProfileRepairStatus,
+                  status: "escalated" as BillingProfileRepairStatus,
                   escalatedAtMs: now,
                   updatedAtMs: now,
                   updatedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -283,7 +330,7 @@ export class PaymentConsistencyStore {
 
               const now = Date.now();
               transaction.update(docRef, {
-                status: 'processing' as BillingProfileRepairStatus,
+                status: "processing" as BillingProfileRepairStatus,
                 processingStartedAtMs: now,
                 updatedAtMs: now,
                 updatedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -291,11 +338,11 @@ export class PaymentConsistencyStore {
 
               return this.toBillingProfileRepairTask(doc.id, {
                 ...data,
-                status: 'processing',
+                status: "processing",
                 processingStartedAtMs: now,
                 updatedAtMs: now,
               });
-            })
+            }),
         );
 
         if (claimed) {
@@ -305,10 +352,14 @@ export class PaymentConsistencyStore {
 
       return null;
     } catch (error) {
-      logger.error('Failed to claim billing profile repair task', error as Error, {
-        maxAttempts,
-        scanLimit,
-      });
+      logger.error(
+        "Failed to claim billing profile repair task",
+        error as Error,
+        {
+          maxAttempts,
+          scanLimit,
+        },
+      );
       return null;
     }
   }
@@ -316,24 +367,27 @@ export class PaymentConsistencyStore {
   async markBillingProfileRepairResolved(repairKey: string): Promise<void> {
     const now = Date.now();
     await this.firestoreCircuitExecutor.executeWrite(
-      'payment.consistency.markBillingProfileRepairResolved',
+      "payment.consistency.markBillingProfileRepairResolved",
       async () =>
         await this.billingProfileRepairCollection.doc(repairKey).set(
           {
-            status: 'resolved' as BillingProfileRepairStatus,
+            status: "resolved" as BillingProfileRepairStatus,
             resolvedAtMs: now,
             updatedAtMs: now,
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
           },
-          { merge: true }
-        )
+          { merge: true },
+        ),
     );
   }
 
-  async releaseBillingProfileRepairForRetry(repairKey: string, lastError: string): Promise<void> {
+  async releaseBillingProfileRepairForRetry(
+    repairKey: string,
+    lastError: string,
+  ): Promise<void> {
     const now = Date.now();
     await this.firestoreCircuitExecutor.executeWrite(
-      'payment.consistency.releaseBillingProfileRepairForRetry',
+      "payment.consistency.releaseBillingProfileRepairForRetry",
       async () =>
         await this.db.runTransaction(async (transaction) => {
           const docRef = this.billingProfileRepairCollection.doc(repairKey);
@@ -342,27 +396,33 @@ export class PaymentConsistencyStore {
             return;
           }
 
-          const data = snapshot.data() as BillingProfileRepairRecord | undefined;
+          const data = snapshot.data() as
+            | BillingProfileRepairRecord
+            | undefined;
           if (!data) {
             return;
           }
 
-          const attempts = typeof data.attempts === 'number' ? data.attempts : 0;
+          const attempts =
+            typeof data.attempts === "number" ? data.attempts : 0;
           transaction.update(docRef, {
-            status: 'pending' as BillingProfileRepairStatus,
+            status: "pending" as BillingProfileRepairStatus,
             attempts: attempts + 1,
             lastError,
             updatedAtMs: now,
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
           });
-        })
+        }),
     );
   }
 
-  async markBillingProfileRepairEscalated(repairKey: string, lastError: string): Promise<void> {
+  async markBillingProfileRepairEscalated(
+    repairKey: string,
+    lastError: string,
+  ): Promise<void> {
     const now = Date.now();
     await this.firestoreCircuitExecutor.executeWrite(
-      'payment.consistency.markBillingProfileRepairEscalated',
+      "payment.consistency.markBillingProfileRepairEscalated",
       async () =>
         await this.db.runTransaction(async (transaction) => {
           const docRef = this.billingProfileRepairCollection.doc(repairKey);
@@ -371,27 +431,30 @@ export class PaymentConsistencyStore {
             return;
           }
 
-          const data = snapshot.data() as BillingProfileRepairRecord | undefined;
+          const data = snapshot.data() as
+            | BillingProfileRepairRecord
+            | undefined;
           if (!data) {
             return;
           }
 
-          const attempts = typeof data.attempts === 'number' ? data.attempts : 0;
+          const attempts =
+            typeof data.attempts === "number" ? data.attempts : 0;
           transaction.update(docRef, {
-            status: 'escalated' as BillingProfileRepairStatus,
+            status: "escalated" as BillingProfileRepairStatus,
             attempts: attempts + 1,
             lastError,
             escalatedAtMs: now,
             updatedAtMs: now,
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
           });
-        })
+        }),
     );
   }
 
   private toBillingProfileRepairTask(
     repairKey: string,
-    data: BillingProfileRepairRecord
+    data: BillingProfileRepairRecord,
   ): BillingProfileRepairTask {
     return {
       repairKey,
@@ -400,10 +463,14 @@ export class PaymentConsistencyStore {
       stripeCustomerId: data.stripeCustomerId,
       stripeLivemode: data.stripeLivemode,
       referenceId: data.referenceId,
-      attempts: typeof data.attempts === 'number' ? data.attempts : 0,
-      ...(data.stripeSubscriptionId ? { stripeSubscriptionId: data.stripeSubscriptionId } : {}),
+      attempts: typeof data.attempts === "number" ? data.attempts : 0,
+      ...(data.stripeSubscriptionId
+        ? { stripeSubscriptionId: data.stripeSubscriptionId }
+        : {}),
       ...(data.planTier ? { planTier: data.planTier } : {}),
-      ...(data.subscriptionPriceId ? { subscriptionPriceId: data.subscriptionPriceId } : {}),
+      ...(data.subscriptionPriceId
+        ? { subscriptionPriceId: data.subscriptionPriceId }
+        : {}),
       ...(data.eventId ? { eventId: data.eventId } : {}),
     };
   }

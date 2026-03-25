@@ -1,6 +1,6 @@
-import React from 'react';
-import type { ContinuityShot } from '../../types';
-import { ShotCard } from './ShotCard';
+import React from "react";
+import type { ContinuityShot } from "../../types";
+import { ShotCard } from "./ShotCard";
 
 interface SessionTimelineProps {
   shots: ContinuityShot[];

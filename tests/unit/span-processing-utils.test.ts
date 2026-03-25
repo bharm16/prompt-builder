@@ -1,43 +1,43 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from "vitest";
 
 import {
   buildSimplifiedSpans,
   findNearbySpans,
   prepareSpanContext,
-} from '@features/span-highlighting/utils/spanProcessing';
+} from "@features/span-highlighting/utils/spanProcessing";
 
-describe('spanProcessing', () => {
-  it('finds nearby spans around selected metadata', () => {
+describe("spanProcessing", () => {
+  it("finds nearby spans around selected metadata", () => {
     const metadata = { start: 5, end: 7 };
     const spans = [
-      { start: 0, end: 4, text: 'before', category: 'style' },
-      { start: 5, end: 7, text: 'target', category: 'style' },
-      { start: 8, end: 12, text: 'after', category: 'style' },
+      { start: 0, end: 4, text: "before", category: "style" },
+      { start: 5, end: 7, text: "target", category: "style" },
+      { start: 8, end: 12, text: "after", category: "style" },
     ];
 
     const nearby = findNearbySpans(metadata, spans, 5);
 
     expect(nearby).toHaveLength(2);
-    expect(nearby[0]?.position).toBe('before');
-    expect(nearby[1]?.position).toBe('after');
+    expect(nearby[0]?.position).toBe("before");
+    expect(nearby[1]?.position).toBe("after");
   });
 
-  it('builds simplified spans from raw input', () => {
+  it("builds simplified spans from raw input", () => {
     const result = buildSimplifiedSpans([
-      { quote: 'hello', category: 'style', role: 'style' },
-      { text: '' },
+      { quote: "hello", category: "style", role: "style" },
+      { text: "" },
     ]);
 
     expect(result).toEqual([
-      { text: 'hello', role: 'style', category: 'style' },
+      { text: "hello", role: "style", category: "style" },
     ]);
   });
 
-  it('prepares span context with simplified and nearby spans', () => {
+  it("prepares span context with simplified and nearby spans", () => {
     const metadata = { start: 0, end: 2 };
     const spans = [
-      { start: 0, end: 2, text: 'hi', category: 'style' },
-      { start: 3, end: 5, text: 'there', category: 'style' },
+      { start: 0, end: 2, text: "hi", category: "style" },
+      { start: 3, end: 5, text: "there", category: "style" },
     ];
 
     const context = prepareSpanContext(metadata, spans);

@@ -1,22 +1,22 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
-import { Search, X } from '@promptstudio/system/components/ui';
-import { useAuthUser } from '@hooks/useAuthUser';
-import { usePromptHistory } from '@hooks/usePromptHistory';
-import type { PromptHistoryEntry } from '@features/prompt-optimizer/types/domain/prompt-session';
-import { Button } from '@promptstudio/system/components/ui/button';
-import { Input } from '@promptstudio/system/components/ui/input';
-import { AUTH_COLORS } from './auth/auth-styles';
+import React from "react";
+import { Link } from "react-router-dom";
+import { Search, X } from "@promptstudio/system/components/ui";
+import { useAuthUser } from "@hooks/useAuthUser";
+import { usePromptHistory } from "@hooks/usePromptHistory";
+import type { PromptHistoryEntry } from "@features/prompt-optimizer/types/domain/prompt-session";
+import { Button } from "@promptstudio/system/components/ui/button";
+import { Input } from "@promptstudio/system/components/ui/input";
+import { AUTH_COLORS } from "./auth/auth-styles";
 
 function formatRelativeOrDate(iso: string | undefined): string {
-  if (!iso) return '—';
+  if (!iso) return "—";
   const t = new Date(iso);
   const ms = t.getTime();
-  if (Number.isNaN(ms)) return '—';
+  if (Number.isNaN(ms)) return "—";
   const diffMs = Date.now() - ms;
   const diffMinutes = Math.floor(diffMs / 60000);
   if (diffMinutes < 0) return t.toLocaleDateString();
-  if (diffMinutes < 1) return 'Just now';
+  if (diffMinutes < 1) return "Just now";
   if (diffMinutes < 60) return `${diffMinutes}m ago`;
   const diffHours = Math.floor(diffMinutes / 60);
   if (diffHours < 24) return `${diffHours}h ago`;
@@ -26,16 +26,16 @@ function formatRelativeOrDate(iso: string | undefined): string {
 }
 
 function deriveTitle(entry: PromptHistoryEntry): string {
-  const storedTitle = typeof entry.title === 'string' ? entry.title.trim() : '';
+  const storedTitle = typeof entry.title === "string" ? entry.title.trim() : "";
   if (storedTitle) return storedTitle;
-  const source = (entry.output || '').trim().replace(/\s+/g, ' ');
-  if (!source) return 'Untitled prompt';
+  const source = (entry.output || "").trim().replace(/\s+/g, " ");
+  if (!source) return "Untitled prompt";
   return source.length > 96 ? `${source.slice(0, 96).trim()}…` : source;
 }
 
 function deriveSnippet(value: string): string {
   const normalized = value.trim();
-  if (!normalized) return '—';
+  if (!normalized) return "—";
   return normalized;
 }
 
@@ -62,25 +62,36 @@ export function HistoryPage(): React.ReactElement {
   const filteredOutputs = React.useMemo(() => {
     const q = promptHistory.searchQuery.trim().toLowerCase();
     if (!q) return promptHistory.history;
-    return promptHistory.history.filter((entry) => entry.output.toLowerCase().includes(q));
+    return promptHistory.history.filter((entry) =>
+      entry.output.toLowerCase().includes(q),
+    );
   }, [promptHistory.history, promptHistory.searchQuery]);
 
   return (
-    <div className="h-full overflow-y-auto" style={{ background: AUTH_COLORS.bg }}>
+    <div
+      className="h-full overflow-y-auto"
+      style={{ background: AUTH_COLORS.bg }}
+    >
       {/* Toolbar — compact, functional */}
       <div
         className="sticky top-0 z-10 px-4 py-3 sm:px-6"
-        style={{ background: AUTH_COLORS.bg, borderBottom: `1px solid ${AUTH_COLORS.divider}` }}
+        style={{
+          background: AUTH_COLORS.bg,
+          borderBottom: `1px solid ${AUTH_COLORS.divider}`,
+        }}
       >
         <div className="mx-auto max-w-3xl flex flex-col gap-3">
           <div className="flex items-center justify-between gap-4">
-            <h1 className="text-[15px] font-semibold text-white tracking-tight">History</h1>
+            <h1 className="text-[15px] font-semibold text-white tracking-tight">
+              History
+            </h1>
             <div className="flex items-center gap-3">
               <span
                 className="text-[12px] tabular-nums"
                 style={{ color: AUTH_COLORS.textDim }}
               >
-                {filteredOutputs.length}{promptHistory.searchQuery ? ' results' : ' prompts'}
+                {filteredOutputs.length}
+                {promptHistory.searchQuery ? " results" : " prompts"}
               </span>
               {user ? (
                 <span
@@ -139,14 +150,18 @@ export function HistoryPage(): React.ReactElement {
             {promptHistory.searchQuery ? (
               <Button
                 type="button"
-                onClick={() => promptHistory.setSearchQuery('')}
+                onClick={() => promptHistory.setSearchQuery("")}
                 variant="ghost"
                 size="icon"
                 className="absolute right-2 top-1/2 h-7 w-7 -translate-y-1/2 rounded-md p-0 transition-colors"
                 aria-label="Clear search"
                 title="Clear"
               >
-                <X className="h-3.5 w-3.5" style={{ color: AUTH_COLORS.textDim }} aria-hidden="true" />
+                <X
+                  className="h-3.5 w-3.5"
+                  style={{ color: AUTH_COLORS.textDim }}
+                  aria-hidden="true"
+                />
               </Button>
             ) : null}
           </div>
@@ -158,32 +173,48 @@ export function HistoryPage(): React.ReactElement {
         {promptHistory.isLoadingHistory ? (
           <div className="py-12 text-center">
             <div className="ps-spinner-sm mx-auto mb-3" />
-            <p className="text-[13px]" style={{ color: AUTH_COLORS.textSecondary }}>Loading history…</p>
+            <p
+              className="text-[13px]"
+              style={{ color: AUTH_COLORS.textSecondary }}
+            >
+              Loading history…
+            </p>
           </div>
         ) : filteredOutputs.length === 0 ? (
           <div className="py-16 text-center">
-            <p className="text-[13px]" style={{ color: AUTH_COLORS.textSecondary }}>
+            <p
+              className="text-[13px]"
+              style={{ color: AUTH_COLORS.textSecondary }}
+            >
               {promptHistory.searchQuery
                 ? `No results for "${promptHistory.searchQuery}".`
-                : 'No prompts saved yet.'}
+                : "No prompts saved yet."}
             </p>
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-2.5 pt-4">
             {filteredOutputs.map((entry, index) => {
               const title = deriveTitle(entry);
-              const uuid = typeof entry.uuid === 'string' ? entry.uuid : null;
-              const sessionId = typeof entry.id === 'string' ? entry.id : null;
+              const uuid = typeof entry.uuid === "string" ? entry.uuid : null;
+              const sessionId = typeof entry.id === "string" ? entry.id : null;
               const when = formatRelativeOrDate(entry.timestamp);
-              const mode = typeof entry.mode === 'string' && entry.mode.trim() ? entry.mode.trim() : null;
+              const mode =
+                typeof entry.mode === "string" && entry.mode.trim()
+                  ? entry.mode.trim()
+                  : null;
               const model =
-                typeof entry.targetModel === 'string' && entry.targetModel.trim()
+                typeof entry.targetModel === "string" &&
+                entry.targetModel.trim()
                   ? entry.targetModel.trim()
                   : null;
 
               return (
                 <article
-                  key={entry.id ?? entry.uuid ?? `${entry.timestamp ?? 'no-ts'}-${index}`}
+                  key={
+                    entry.id ??
+                    entry.uuid ??
+                    `${entry.timestamp ?? "no-ts"}-${index}`
+                  }
                   className="rounded-[10px] p-4"
                   style={{
                     background: AUTH_COLORS.card,
@@ -192,16 +223,22 @@ export function HistoryPage(): React.ReactElement {
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0">
-                      <h2 className="text-[13px] font-semibold text-white truncate" title={title}>
+                      <h2
+                        className="text-[13px] font-semibold text-white truncate"
+                        title={title}
+                      >
                         {title}
                       </h2>
                       <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                        <span className="text-[11px] tabular-nums" style={{ color: AUTH_COLORS.textDim }}>
+                        <span
+                          className="text-[11px] tabular-nums"
+                          style={{ color: AUTH_COLORS.textDim }}
+                        >
                           {when}
                         </span>
                         {mode ? <Tag>{mode}</Tag> : null}
                         {model ? <Tag>{model}</Tag> : null}
-                        {typeof entry.score === 'number' ? (
+                        {typeof entry.score === "number" ? (
                           <Tag>Score {Math.round(entry.score)}</Tag>
                         ) : null}
                       </div>
@@ -241,7 +278,10 @@ export function HistoryPage(): React.ReactElement {
                   </div>
 
                   {uuid ? (
-                    <p className="mt-2.5 text-[11px] font-mono" style={{ color: AUTH_COLORS.textLabel }}>
+                    <p
+                      className="mt-2.5 text-[11px] font-mono"
+                      style={{ color: AUTH_COLORS.textLabel }}
+                    >
                       {uuid}
                     </p>
                   ) : null}

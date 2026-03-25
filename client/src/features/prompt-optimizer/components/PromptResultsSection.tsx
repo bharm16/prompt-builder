@@ -1,5 +1,5 @@
-import React from 'react';
-import { PromptCanvas } from '../PromptCanvas';
+import React from "react";
+import { PromptCanvas } from "../PromptCanvas";
 import {
   usePromptActions,
   usePromptConfig,
@@ -7,8 +7,8 @@ import {
   usePromptServices,
   usePromptSession,
   usePromptUIStateContext,
-} from '../context/PromptStateContext';
-import { usePromptResultsActionsContext } from '../context/PromptResultsActionsContext';
+} from "../context/PromptStateContext";
+import { usePromptResultsActionsContext } from "../context/PromptResultsActionsContext";
 
 /**
  * PromptResultsSection - Results/Canvas Section
@@ -20,7 +20,8 @@ export const PromptResultsSection = (): React.ReactElement => {
   const { showResults, setShowResults } = usePromptUIStateContext();
   const { currentPromptUuid, suggestionsData } = usePromptSession();
   const { currentMode } = usePromptConfig();
-  const { initialHighlights, initialHighlightsVersion, canUndo, canRedo } = usePromptHighlights();
+  const { initialHighlights, initialHighlightsVersion, canUndo, canRedo } =
+    usePromptHighlights();
   const { handleCreateNew, setDisplayedPromptSilently } = usePromptActions();
   const { promptOptimizer } = usePromptServices();
   const {
@@ -47,7 +48,7 @@ export const PromptResultsSection = (): React.ReactElement => {
   } = usePromptResultsActionsContext();
 
   const handleResetResultsForEditing = React.useCallback((): void => {
-    setDisplayedPromptSilently('');
+    setDisplayedPromptSilently("");
     setShowResults(false);
   }, [setDisplayedPromptSilently, setShowResults]);
 

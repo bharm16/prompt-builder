@@ -1,4 +1,4 @@
-import type { LabeledSpan } from '../schemas/roleClassify';
+import type { LabeledSpan } from "../schemas/roleClassify";
 
 export interface ClientSpan {
   text: string;

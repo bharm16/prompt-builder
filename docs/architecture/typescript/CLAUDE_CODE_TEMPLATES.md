@@ -15,12 +15,14 @@ Copy-paste these templates when working with Claude Code for TypeScript developm
 **If a file has ONE cohesive responsibility → Don't split, even if over threshold.**
 
 ### ❌ Mechanical Splitting (Never Do This)
+
 ```typescript
 // BAD: Split because 210 > 200, but they change together
 UserProfile.tsx (180 lines) + UserProfileHeader.tsx (30 lines)
 ```
 
 ### ✅ Principled Splitting
+
 ```typescript
 // GOOD: Split because different responsibilities, reusable
 UserProfile.tsx (orchestration) + UserAvatar.tsx (reused elsewhere)
@@ -51,7 +53,7 @@ Show me the proposed file structure BEFORE implementing.
 
 ## Template 1: New TypeScript Frontend Component
 
-```
+````
 Add [FEATURE NAME] component
 
 ARCHITECTURE: TypeScript + VideoConceptBuilder pattern
@@ -69,12 +71,13 @@ ComponentName/
 │   ├── index.ts             (typed fetch functions)
 │   └── schemas.ts           (Zod schemas + inferred types)
 └── components/              (UI pieces - split by responsibility, not line count)
-```
+````
 
 NOTE: Only create subdirectories for files with DISTINCT responsibilities.
 A 250-line component with one cohesive flow is better than 3 artificially split files.
 
 TYPE REQUIREMENTS:
+
 - [ ] Props interface exported from types.ts
 - [ ] State interface with all fields typed
 - [ ] Actions as discriminated union: `type Action = { type: 'X'; payload: Y } | ...`
@@ -84,11 +87,13 @@ TYPE REQUIREMENTS:
 
 REFERENCE: client/src/components/VideoConceptBuilder/
 SHOW STRUCTURE FIRST, then show types.ts content
+
 ```
 
 ### Example Usage:
 
 ```
+
 Add VideoWizard component for step-by-step video prompt creation
 
 ARCHITECTURE: TypeScript + VideoConceptBuilder pattern
@@ -96,15 +101,18 @@ ARCHITECTURE: TypeScript + VideoConceptBuilder pattern
 [paste template above]
 
 EXPECTED TYPES:
+
 - VideoWizardProps: { onComplete, initialData? }
 - VideoWizardState: { step, formData, errors, isSubmitting }
 - VideoWizardAction: SET_FIELD | NEXT_STEP | PREV_STEP | SUBMIT | SET_ERROR
 - VideoFormData: { subject, action, location, atmosphere? }
 
 API:
+
 - POST /api/video-concept → VideoConceptResponseSchema
 
 SHOW STRUCTURE AND types.ts FIRST
+
 ```
 
 ---
@@ -112,11 +120,13 @@ SHOW STRUCTURE AND types.ts FIRST
 ## Template 2: New TypeScript Backend Service
 
 ```
+
 Add [SERVICE NAME] service
 
 ARCHITECTURE: TypeScript + PromptOptimizationService pattern
 
 Structure:
+
 ```text
 services/feature-name/
 ├── FeatureService.ts        (orchestrator, typically ~300-500 lines)
@@ -138,6 +148,7 @@ NOTE: Only create specialized services for DISTINCT responsibilities.
 A 400-line service doing one thing well is better than 4 artificially split files.
 
 TYPE REQUIREMENTS:
+
 - [ ] IFeatureService interface in contracts/
 - [ ] All dependencies injected via constructor with interfaces
 - [ ] Request schemas validate incoming data
@@ -147,11 +158,13 @@ TYPE REQUIREMENTS:
 
 REFERENCE: server/src/services/prompt-optimization/PromptOptimizationService.ts
 SHOW STRUCTURE FIRST, then show contracts/IFeatureService.ts
+
 ```
 
 ### Example Usage:
 
 ```
+
 Add VideoAnalysisService for analyzing video prompt quality
 
 ARCHITECTURE: TypeScript + PromptOptimizationService pattern
@@ -159,21 +172,25 @@ ARCHITECTURE: TypeScript + PromptOptimizationService pattern
 [paste template above]
 
 EXPECTED INTERFACES:
+
 - IVideoAnalysisService: { analyze, score, suggest }
 - AnalysisRequest: { prompt, mode }
 - AnalysisResult: { score, suggestions, metadata }
 
 DEPENDENCIES (inject via constructor):
+
 - IClaudeClient
 - ICacheService
 - ILogger
 
 STRATEGIES:
+
 - CinematicStrategy
 - DocumentaryStrategy
 - AbstractStrategy
 
 SHOW STRUCTURE AND IVideoAnalysisService.ts FIRST
+
 ```
 
 ---
@@ -181,14 +198,17 @@ SHOW STRUCTURE AND IVideoAnalysisService.ts FIRST
 ## Template 3: Migrate Existing JS to TypeScript
 
 ```
+
 Migrate [FILE PATH] from JavaScript to TypeScript
 
 CURRENT:
+
 - File: [path]
 - Lines: [count]
 - Dependencies: [list key imports]
 
 MIGRATION STEPS:
+
 1. [ ] Create types.ts with interfaces for all data structures
 2. [ ] Create schemas.ts if file makes API calls
 3. [ ] Rename .js → .ts (or .jsx → .tsx)
@@ -199,6 +219,7 @@ MIGRATION STEPS:
 8. [ ] Handle all null/undefined cases
 
 TYPE REQUIREMENTS:
+
 - [ ] NO `any` - use `unknown` + type guards
 - [ ] NO `as X` type assertions without TODO comment
 - [ ] All imports typed (add .d.ts if needed)
@@ -206,19 +227,23 @@ TYPE REQUIREMENTS:
 
 VALIDATION:
 After migration:
+
 - tsc --noEmit passes
 - grep ": any" returns zero matches
 - All tests pass
 
 SHOW types.ts FIRST, then the migrated file
+
 ```
 
 ### Example Usage:
 
 ```
+
 Migrate client/src/hooks/usePromptOptimizer.js to TypeScript
 
 CURRENT:
+
 - File: client/src/hooks/usePromptOptimizer.js
 - Lines: 145
 - Dependencies: fetch, useState, useCallback
@@ -226,14 +251,17 @@ CURRENT:
 [paste template above]
 
 EXPECTED TYPES:
+
 - UsePromptOptimizerOptions: { mode, onComplete? }
 - UsePromptOptimizerReturn: { optimize, isLoading, error, result }
 - OptimizationResult (from Zod schema)
 
 API CALLS TO WRAP:
+
 - POST /api/optimize → OptimizationResponseSchema
 
 SHOW types.ts AND schemas.ts FIRST
+
 ```
 
 ---
@@ -241,14 +269,17 @@ SHOW types.ts AND schemas.ts FIRST
 ## Template 4: Add Zod Schema for Existing API
 
 ```
+
 Add Zod validation for [API ENDPOINT]
 
 CURRENT STATE:
+
 - Endpoint: [method] [path]
 - Current response handling: [describe - probably `as Type`]
 - Used in: [list files that call this]
 
 CREATE:
+
 1. schemas.ts with:
    - Request schema (if POST/PUT)
    - Response schema
@@ -259,6 +290,7 @@ CREATE:
    - Handle ZodError appropriately
 
 SCHEMA REQUIREMENTS:
+
 - [ ] All fields explicitly typed (no z.any())
 - [ ] Optional fields marked with .optional()
 - [ ] Arrays typed with z.array(ItemSchema)
@@ -266,14 +298,17 @@ SCHEMA REQUIREMENTS:
 - [ ] Error messages for user-facing validations
 
 SHOW schemas.ts FIRST, then updated API function
+
 ```
 
 ### Example Usage:
 
 ```
+
 Add Zod validation for video concept API
 
 CURRENT STATE:
+
 - Endpoint: POST /api/video-concept
 - Current response handling: `as VideoConceptResponse`
 - Used in: VideoBuilder.tsx, useVideoConcept.ts
@@ -282,15 +317,16 @@ CURRENT STATE:
 
 EXPECTED RESPONSE SHAPE:
 {
-  id: string (uuid),
-  concept: string,
-  elements: { subject, action, location, atmosphere? },
-  confidence: number (0-1),
-  suggestions: string[],
-  createdAt: ISO datetime
+id: string (uuid),
+concept: string,
+elements: { subject, action, location, atmosphere? },
+confidence: number (0-1),
+suggestions: string[],
+createdAt: ISO datetime
 }
 
 SHOW VideoConceptResponseSchema FIRST
+
 ```
 
 ---
@@ -298,27 +334,32 @@ SHOW VideoConceptResponseSchema FIRST
 ## Template 5: Add Types to Existing Hook
 
 ```
+
 Add TypeScript types to [HOOK NAME]
 
 CURRENT:
+
 - File: [path]
 - Parameters: [list current params]
 - Return value: [describe return shape]
 - State: [describe internal state]
 
 CREATE types.ts WITH:
+
 - HookOptions interface (input parameters)
 - HookReturn interface (return value)
 - Internal state interfaces
 - Action types (if useReducer)
 
 REQUIREMENTS:
+
 - [ ] Generic parameters if hook is generic
 - [ ] Explicit return type annotation
 - [ ] All callbacks typed: `(params: X) => Y`
 - [ ] Event handlers typed: `React.MouseEvent<HTMLButtonElement>`
 
 SHOW types.ts FIRST, then hook signature
+
 ```
 
 ---
@@ -326,32 +367,36 @@ SHOW types.ts FIRST, then hook signature
 ## Template 6: Full-Stack TypeScript Feature
 
 ```
+
 Add [FEATURE NAME] feature (full-stack TypeScript)
 
 SHARED TYPES (if monorepo):
 Create shared types that backend and frontend both use
 
 BACKEND:
+
 - Location: server/src/services/[name]/
 - Pattern: TypeScript + PromptOptimizationService
 - Interface: IFeatureService with full method signatures
 - Schemas: Request and Response Zod schemas
 
 FRONTEND:
+
 - Location: client/src/features/[name]/
 - Pattern: TypeScript + VideoConceptBuilder
 - Types: Props, State, Actions
 - Schemas: Mirror backend response schemas
 
 API CONTRACT:
+
 ```typescript
 // Define before implementing
 interface ApiContract {
-  'POST /api/feature': {
+  "POST /api/feature": {
     request: CreateFeatureRequest;
     response: FeatureResponse;
   };
-  'GET /api/feature/:id': {
+  "GET /api/feature/:id": {
     params: { id: string };
     response: FeatureResponse;
   };
@@ -359,6 +404,7 @@ interface ApiContract {
 ```
 
 IMPLEMENTATION ORDER:
+
 1. Shared types (if applicable)
 2. Backend schemas (Zod)
 3. Backend service (implements interface)
@@ -368,6 +414,7 @@ IMPLEMENTATION ORDER:
 7. Frontend components (typed props)
 
 SHOW API CONTRACT AND SHARED TYPES FIRST
+
 ```
 
 ---
@@ -375,18 +422,21 @@ SHOW API CONTRACT AND SHARED TYPES FIRST
 ## Template 7: Fix Type Errors
 
 ```
+
 Fix TypeScript errors in [FILE PATH]
 
 ERRORS:
 [Paste the actual TypeScript errors]
 
 CONSTRAINTS:
+
 - NO `any` unless absolutely necessary (with TODO comment)
 - NO `@ts-ignore` or `@ts-expect-error`
 - Prefer type guards over type assertions
 - If type is genuinely unknown, use `unknown` and narrow
 
 APPROACHES (in order of preference):
+
 1. Fix the type definition to match reality
 2. Add type guard function
 3. Use Zod to validate at runtime
@@ -394,7 +444,8 @@ APPROACHES (in order of preference):
 5. LAST RESORT: `as unknown as X` with TODO
 
 SHOW THE FIX with explanation of why it's type-safe
-```
+
+````
 
 ---
 
@@ -406,9 +457,10 @@ type Action =
   | { type: 'SET_VALUE'; value: string }
   | { type: 'SET_ERROR'; error: Error }
   | { type: 'RESET' };
-```
+````
 
 ### Generic Hook Return
+
 ```typescript
 interface UseAsyncReturn<T> {
   data: T | null;
@@ -419,6 +471,7 @@ interface UseAsyncReturn<T> {
 ```
 
 ### Props with Children
+
 ```typescript
 interface CardProps {
   title: string;
@@ -427,6 +480,7 @@ interface CardProps {
 ```
 
 ### Event Handlers
+
 ```typescript
 interface FormProps {
   onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
@@ -436,6 +490,7 @@ interface FormProps {
 ```
 
 ### API Function
+
 ```typescript
 async function fetchUser(id: string): Promise<User> {
   const response = await fetch(`/api/users/${id}`);
@@ -471,6 +526,7 @@ echo "JavaScript: $(find src -name '*.js' -o -name '*.jsx' | wc -l)"
 ## Red Flags (Stop and Fix)
 
 ### Type Safety
+
 - ❌ Using `any` without TODO comment
 - ❌ Using `as Type` without runtime validation
 - ❌ Missing return type on exported function
@@ -480,12 +536,14 @@ echo "JavaScript: $(find src -name '*.js' -o -name '*.jsx' | wc -l)"
 - ❌ JSDoc `@param` or `@returns` with type info
 
 ### Architecture (SRP/SoC)
+
 - ❌ Splitting files solely because they exceed a line threshold
 - ❌ Creating components only used in one place
 - ❌ Extracting code that always changes together
 - ❌ Adding indirection without improving cohesion
 
 ### When to Split (✅ Do This)
+
 - ✅ File has multiple distinct responsibilities
 - ✅ Different parts have different reasons to change
 - ✅ Extracted piece is reusable elsewhere
@@ -493,4 +551,4 @@ echo "JavaScript: $(find src -name '*.js' -o -name '*.jsx' | wc -l)"
 
 ---
 
-*Companion docs: [ARCHITECTURE_STANDARD.md](./ARCHITECTURE_STANDARD.md), [STYLE_RULES.md](./STYLE_RULES.md), [ZOD_PATTERNS.md](./ZOD_PATTERNS.md)*
+_Companion docs: [ARCHITECTURE_STANDARD.md](./ARCHITECTURE_STANDARD.md), [STYLE_RULES.md](./STYLE_RULES.md), [ZOD_PATTERNS.md](./ZOD_PATTERNS.md)_

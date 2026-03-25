@@ -1,63 +1,72 @@
-import { describe, expect, it, beforeEach, vi } from 'vitest';
-import { renderHook, waitFor } from '@testing-library/react';
+import { describe, expect, it, beforeEach, vi } from "vitest";
+import { renderHook, waitFor } from "@testing-library/react";
 
-import { useParseResult } from '@features/prompt-optimizer/PromptCanvas/hooks/useParseResult';
-import type { HighlightSpan } from '@features/span-highlighting/hooks/useHighlightRendering';
-import { convertLabeledSpansToHighlights, createHighlightSignature } from '@features/span-highlighting';
+import { useParseResult } from "@features/prompt-optimizer/PromptCanvas/hooks/useParseResult";
+import type { HighlightSpan } from "@features/span-highlighting/hooks/useHighlightRendering";
+import {
+  convertLabeledSpansToHighlights,
+  createHighlightSignature,
+} from "@features/span-highlighting";
 
 const logSpies = {
   debug: vi.fn(),
 };
 
-vi.mock('@/services/LoggingService', () => ({
+vi.mock("@/services/LoggingService", () => ({
   logger: {
     child: () => logSpies,
   },
 }));
 
-vi.mock('@features/span-highlighting', () => ({
+vi.mock("@features/span-highlighting", () => ({
   convertLabeledSpansToHighlights: vi.fn(),
   createHighlightSignature: vi.fn(),
 }));
 
-const mockConvertLabeledSpansToHighlights = vi.mocked(convertLabeledSpansToHighlights);
+const mockConvertLabeledSpansToHighlights = vi.mocked(
+  convertLabeledSpansToHighlights,
+);
 const mockCreateHighlightSignature = vi.mocked(createHighlightSignature);
 
-describe('useParseResult', () => {
+describe("useParseResult", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockCreateHighlightSignature.mockReturnValue('sig-current');
+    mockCreateHighlightSignature.mockReturnValue("sig-current");
   });
 
-  it('returns empty spans when ML highlighting is disabled', () => {
+  it("returns empty spans when ML highlighting is disabled", () => {
     const { result } = renderHook(() =>
       useParseResult({
-        labeledSpans: [{ start: 0, end: 5, category: 'style', confidence: 0.9 }],
-        labeledMeta: { source: 'test' },
-        labelingSignature: 'sig-current',
-        labelingStatus: 'success',
+        labeledSpans: [
+          { start: 0, end: 5, category: "style", confidence: 0.9 },
+        ],
+        labeledMeta: { source: "test" },
+        labelingSignature: "sig-current",
+        labelingStatus: "success",
         labelingError: null,
         enableMLHighlighting: false,
-        displayedPrompt: 'Hello',
-      })
+        displayedPrompt: "Hello",
+      }),
     );
 
     expect(result.current.spans).toEqual([]);
-    expect(result.current.meta).toEqual({ source: 'test' });
+    expect(result.current.meta).toEqual({ source: "test" });
     expect(mockConvertLabeledSpansToHighlights).not.toHaveBeenCalled();
   });
 
-  it('drops spans and meta on signature mismatch and logs warning', async () => {
+  it("drops spans and meta on signature mismatch and logs warning", async () => {
     const { result } = renderHook(() =>
       useParseResult({
-        labeledSpans: [{ start: 0, end: 5, category: 'style', confidence: 0.9 }],
-        labeledMeta: { source: 'test' },
-        labelingSignature: 'sig-other',
-        labelingStatus: 'success',
+        labeledSpans: [
+          { start: 0, end: 5, category: "style", confidence: 0.9 },
+        ],
+        labeledMeta: { source: "test" },
+        labelingSignature: "sig-other",
+        labelingStatus: "success",
         labelingError: null,
         enableMLHighlighting: true,
-        displayedPrompt: 'Hello',
-      })
+        displayedPrompt: "Hello",
+      }),
     );
 
     expect(result.current.spans).toEqual([]);
@@ -65,35 +74,35 @@ describe('useParseResult', () => {
 
     await waitFor(() => {
       expect(logSpies.debug).toHaveBeenCalledWith(
-        'Span signature mismatch; dropping labeled spans',
+        "Span signature mismatch; dropping labeled spans",
         expect.objectContaining({
           labeledSpanCount: 1,
-          labelingSignature: 'sig-other',
-        })
+          labelingSignature: "sig-other",
+        }),
       );
     });
   });
 
-  it('converts spans when signatures match and logs minimal highlight warning', async () => {
+  it("converts spans when signatures match and logs minimal highlight warning", async () => {
     const highlights = [
       {
-        id: 'span-1',
-        category: 'style',
-        role: 'style',
+        id: "span-1",
+        category: "style",
+        role: "style",
         start: 0,
         end: 5,
         displayStart: 0,
         displayEnd: 5,
-        quote: 'Hello',
-        displayQuote: 'Hello',
-        leftCtx: '',
-        rightCtx: '',
-        displayLeftCtx: '',
-        displayRightCtx: '',
-        source: 'llm',
+        quote: "Hello",
+        displayQuote: "Hello",
+        leftCtx: "",
+        rightCtx: "",
+        displayLeftCtx: "",
+        displayRightCtx: "",
+        source: "llm",
         confidence: 0.9,
         validatorPass: true,
-        version: 'llm-v2-taxonomy',
+        version: "llm-v2-taxonomy",
       },
     ];
 
@@ -102,29 +111,31 @@ describe('useParseResult', () => {
     const { result } = renderHook(() =>
       useParseResult({
         labeledSpans: [
-          { start: 0, end: 5, category: 'style', confidence: 0.9 },
-          { start: 6, end: 11, category: 'tone', confidence: 0.8 },
+          { start: 0, end: 5, category: "style", confidence: 0.9 },
+          { start: 6, end: 11, category: "tone", confidence: 0.8 },
         ],
-        labeledMeta: { source: 'test' },
-        labelingSignature: 'sig-current',
-        labelingStatus: 'success',
+        labeledMeta: { source: "test" },
+        labelingSignature: "sig-current",
+        labelingStatus: "success",
         labelingError: null,
         enableMLHighlighting: true,
-        displayedPrompt: 'Hello world',
-      })
+        displayedPrompt: "Hello world",
+      }),
     );
 
-    expect(result.current.spans).toEqual(highlights as unknown as HighlightSpan[]);
-    expect(result.current.meta).toEqual({ source: 'test' });
+    expect(result.current.spans).toEqual(
+      highlights as unknown as HighlightSpan[],
+    );
+    expect(result.current.meta).toEqual({ source: "test" });
     expect(mockConvertLabeledSpansToHighlights).toHaveBeenCalled();
 
     await waitFor(() => {
       expect(logSpies.debug).toHaveBeenCalledWith(
-        'Span conversion produced minimal highlights',
+        "Span conversion produced minimal highlights",
         expect.objectContaining({
           labeledSpanCount: 2,
           highlightCount: 1,
-        })
+        }),
       );
     });
   });

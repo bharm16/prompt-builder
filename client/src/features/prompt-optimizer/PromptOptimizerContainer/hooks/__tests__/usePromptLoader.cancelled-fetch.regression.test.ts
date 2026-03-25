@@ -1,10 +1,10 @@
-import { renderHook, waitFor } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { usePromptLoader } from '../usePromptLoader';
+import { renderHook, waitFor } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { usePromptLoader } from "../usePromptLoader";
 
 const mockGetById = vi.hoisted(() => vi.fn());
 
-vi.mock('@repositories/index', () => ({
+vi.mock("@repositories/index", () => ({
   getPromptRepositoryForUser: vi.fn(() => ({
     getById: mockGetById,
   })),
@@ -21,12 +21,12 @@ const buildParams = (overrides: Partial<LoaderParams> = {}): LoaderParams => {
   };
 
   return {
-    sessionId: 'session_abc123',
+    sessionId: "session_abc123",
     navigate: vi.fn(),
     toast: baseToast,
-    user: { uid: 'user-1' },
+    user: { uid: "user-1" },
     promptOptimizer: {
-      displayedPrompt: '',
+      displayedPrompt: "",
       setInputPrompt: vi.fn(),
       setOptimizedPrompt: vi.fn(),
       setDisplayedPrompt: vi.fn(),
@@ -52,27 +52,25 @@ const buildParams = (overrides: Partial<LoaderParams> = {}): LoaderParams => {
   };
 };
 
-describe('regression: prompt hydration completes even when effect dependencies change mid-fetch', () => {
+describe("regression: prompt hydration completes even when effect dependencies change mid-fetch", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('retries the load when the initial fetch is cancelled by a dependency change', async () => {
+  it("retries the load when the initial fetch is cancelled by a dependency change", async () => {
     // Simulate a slow fetch that will be in-flight when a dependency change triggers a re-render.
     let resolveFirstFetch!: (value: unknown) => void;
     const firstFetchPromise = new Promise((resolve) => {
       resolveFirstFetch = resolve;
     });
 
-    mockGetById
-      .mockReturnValueOnce(firstFetchPromise)
-      .mockResolvedValue({
-        id: 'session_abc123',
-        uuid: 'uuid-abc',
-        input: 'test input',
-        output: 'test output',
-        keyframes: [],
-      });
+    mockGetById.mockReturnValueOnce(firstFetchPromise).mockResolvedValue({
+      id: "session_abc123",
+      uuid: "uuid-abc",
+      input: "test input",
+      output: "test output",
+      keyframes: [],
+    });
 
     const params = buildParams();
     // Use a fresh function reference for upsertHistoryEntry so we can change it
@@ -82,7 +80,7 @@ describe('regression: prompt hydration completes even when effect dependencies c
     const { rerender } = renderHook(
       ({ hookParams }: { hookParams: LoaderParams }) =>
         usePromptLoader(hookParams),
-      { initialProps: { hookParams: paramsV1 } }
+      { initialProps: { hookParams: paramsV1 } },
     );
 
     // The first effect should have started the fetch
@@ -98,10 +96,10 @@ describe('regression: prompt hydration completes even when effect dependencies c
 
     // Now resolve the first fetch — but it was cancelled, so its data won't be applied
     resolveFirstFetch({
-      id: 'session_abc123',
-      uuid: 'uuid-abc',
-      input: 'test input',
-      output: 'test output',
+      id: "session_abc123",
+      uuid: "uuid-abc",
+      input: "test input",
+      output: "test output",
       keyframes: [],
     });
 
@@ -113,9 +111,13 @@ describe('regression: prompt hydration completes even when effect dependencies c
 
     // The prompt state should have been hydrated from the second fetch
     await waitFor(() => {
-      expect(params.setDisplayedPromptSilently).toHaveBeenCalledWith('test output');
+      expect(params.setDisplayedPromptSilently).toHaveBeenCalledWith(
+        "test output",
+      );
     });
     expect(params.setShowResults).toHaveBeenCalledWith(true);
-    expect(params.promptOptimizer.setInputPrompt).toHaveBeenCalledWith('test input');
+    expect(params.promptOptimizer.setInputPrompt).toHaveBeenCalledWith(
+      "test input",
+    );
   });
 });

@@ -1,8 +1,11 @@
-import React from 'react';
-import { User, Palette, MapPin, Box } from '@promptstudio/system/components/ui';
-import { getAssetTypeConfig } from '../config/assetConfig';
+import React from "react";
+import { User, Palette, MapPin, Box } from "@promptstudio/system/components/ui";
+import { getAssetTypeConfig } from "../config/assetConfig";
 
-const TYPE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+const TYPE_ICONS: Record<
+  string,
+  React.ComponentType<{ className?: string }>
+> = {
   character: User,
   style: Palette,
   location: MapPin,
@@ -14,7 +17,7 @@ interface TriggerChipProps {
   onClick?: () => void;
   onRemove?: () => void;
   showRemove?: boolean;
-  size?: 'small' | 'default';
+  size?: "small" | "default";
 }
 
 export function TriggerChip({
@@ -22,19 +25,19 @@ export function TriggerChip({
   onClick,
   onRemove,
   showRemove = false,
-  size = 'default',
+  size = "default",
 }: TriggerChipProps): React.ReactElement {
   const config = getAssetTypeConfig(asset.type);
   const Icon = TYPE_ICONS[asset.type] || Box;
 
   const sizeClasses = {
-    small: 'text-xs px-1.5 py-0.5 gap-1',
-    default: 'text-sm px-2 py-1 gap-1.5',
+    small: "text-xs px-1.5 py-0.5 gap-1",
+    default: "text-sm px-2 py-1 gap-1.5",
   };
 
   const iconSizes = {
-    small: 'h-3 w-3',
-    default: 'h-3.5 w-3.5',
+    small: "h-3 w-3",
+    default: "h-3.5 w-3.5",
   };
 
   return (
@@ -62,10 +65,18 @@ export function TriggerChip({
   );
 }
 
-export function TriggerChipInline({ trigger, type }: { trigger: string; type: string }) {
+export function TriggerChipInline({
+  trigger,
+  type,
+}: {
+  trigger: string;
+  type: string;
+}) {
   const config = getAssetTypeConfig(type);
   return (
-    <span className={`${config.bgClass} ${config.colorClass} rounded px-1`}>{trigger}</span>
+    <span className={`${config.bgClass} ${config.colorClass} rounded px-1`}>
+      {trigger}
+    </span>
   );
 }
 

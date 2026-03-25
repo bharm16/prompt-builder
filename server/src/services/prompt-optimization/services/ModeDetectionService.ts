@@ -1,4 +1,4 @@
-import type { AIService, OptimizationMode } from '../types';
+import type { AIService, OptimizationMode } from "../types";
 
 /**
  * Service for detecting the optimal optimization mode for a prompt
@@ -13,7 +13,7 @@ export class ModeDetectionService {
    */
   async detectMode(prompt: string): Promise<OptimizationMode> {
     void prompt;
-    return 'video';
+    return "video";
   }
 }
 

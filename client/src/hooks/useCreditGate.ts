@@ -1,5 +1,5 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
-import { useCreditBalance } from '@/contexts/CreditBalanceContext';
+import { useCallback, useMemo, useRef, useState } from "react";
+import { useCreditBalance } from "@/contexts/CreditBalanceContext";
 
 export interface InsufficientCreditsModalState {
   required: number;
@@ -18,7 +18,9 @@ interface CreditGateResult {
 
 export function useCreditGate(): CreditGateResult {
   const { balance, isLoading } = useCreditBalance();
-  const [modal, setModal] = useState<InsufficientCreditsModalState | null>(null);
+  const [modal, setModal] = useState<InsufficientCreditsModalState | null>(
+    null,
+  );
   const balanceRef = useRef(balance);
   balanceRef.current = balance;
 
@@ -30,7 +32,7 @@ export function useCreditGate(): CreditGateResult {
       return false;
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps -- balance accessed via stable ref
-    []
+    [],
   );
 
   const openInsufficientCredits = useCallback(
@@ -38,17 +40,27 @@ export function useCreditGate(): CreditGateResult {
       setModal({ required, available: balanceRef.current ?? 0, operation });
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps -- balance accessed via stable ref
-    []
+    [],
   );
 
   const dismissModal = useCallback(() => setModal(null), []);
 
-  return useMemo(() => ({
-    checkCredits,
-    openInsufficientCredits,
-    insufficientCreditsModal: modal,
-    dismissModal,
-    balance,
-    isLoading,
-  }), [checkCredits, openInsufficientCredits, modal, dismissModal, balance, isLoading]);
+  return useMemo(
+    () => ({
+      checkCredits,
+      openInsufficientCredits,
+      insufficientCreditsModal: modal,
+      dismissModal,
+      balance,
+      isLoading,
+    }),
+    [
+      checkCredits,
+      openInsufficientCredits,
+      modal,
+      dismissModal,
+      balance,
+      isLoading,
+    ],
+  );
 }

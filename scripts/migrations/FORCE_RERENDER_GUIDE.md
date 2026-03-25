@@ -9,6 +9,7 @@ This guide provides common usage patterns for the `force-highlight-rerender.ts` 
 **Scenario**: You've improved the span labeling algorithm and want all existing prompts to use the new version.
 
 **Recommended Approach**:
+
 ```bash
 # Step 1: Test on a small sample
 tsx --tsconfig server/tsconfig.json scripts/migrations/force-highlight-rerender.ts --limit=10 --dry-run
@@ -21,6 +22,7 @@ tsx --tsconfig server/tsconfig.json scripts/migrations/force-highlight-rerender.
 ```
 
 **Why Clear Mode?**
+
 - Fast execution (~0.04s per document)
 - Highlights regenerate automatically when users view prompts
 - Lower API costs (only regenerates when needed)
@@ -31,6 +33,7 @@ tsx --tsconfig server/tsconfig.json scripts/migrations/force-highlight-rerender.
 **Scenario**: Before a major release, you want all prompts to have fresh highlights ready.
 
 **Recommended Approach**:
+
 ```bash
 # Regenerate all highlights immediately
 tsx --tsconfig server/tsconfig.json scripts/migrations/force-highlight-rerender.ts --mode=regenerate
@@ -39,6 +42,7 @@ tsx --tsconfig server/tsconfig.json scripts/migrations/force-highlight-rerender.
 ```
 
 **When to Use Regenerate Mode?**
+
 - Before major product launches
 - After significant algorithm improvements
 - When you want guaranteed consistency across all prompts
@@ -82,22 +86,24 @@ tsx --tsconfig server/tsconfig.json scripts/migrations/force-highlight-rerender.
 
 ## Mode Comparison
 
-| Feature | Clear Mode | Regenerate Mode |
-|---------|-----------|-----------------|
-| **Speed** | Very Fast (~0.04s/doc) | Slower (~2-5s/doc) |
-| **API Calls** | None | Immediate |
-| **Best For** | Regular updates | Pre-deployment |
-| **User Impact** | Minimal | None |
-| **Cost** | Free | API costs |
+| Feature         | Clear Mode             | Regenerate Mode    |
+| --------------- | ---------------------- | ------------------ |
+| **Speed**       | Very Fast (~0.04s/doc) | Slower (~2-5s/doc) |
+| **API Calls**   | None                   | Immediate          |
+| **Best For**    | Regular updates        | Pre-deployment     |
+| **User Impact** | Minimal                | None               |
+| **Cost**        | Free                   | API costs          |
 
 ## Performance Estimates
 
 ### Clear Mode
+
 - **Small deployment** (100 prompts): ~4 seconds
-- **Medium deployment** (1,000 prompts): ~40 seconds  
+- **Medium deployment** (1,000 prompts): ~40 seconds
 - **Large deployment** (10,000 prompts): ~7 minutes
 
 ### Regenerate Mode
+
 - **Small deployment** (100 prompts): ~5-8 minutes
 - **Medium deployment** (1,000 prompts): ~50-80 minutes
 - **Large deployment** (10,000 prompts): ~8-13 hours
@@ -158,6 +164,7 @@ firebase firestore:query prompts \
 **Cause**: Query returned no results.
 
 **Solutions**:
+
 - Remove `--userId` filter to process all users
 - Check that documents have existing `highlightCache` fields
 - Verify Firebase connection and permissions
@@ -167,6 +174,7 @@ firebase firestore:query prompts \
 **Cause**: API failures or invalid prompt data.
 
 **Solutions**:
+
 - Review failed documents in the summary report
 - Check API keys and rate limits
 - Verify prompt text is valid
@@ -177,6 +185,7 @@ firebase firestore:query prompts \
 **Cause**: API rate limiting or network issues.
 
 **Solutions**:
+
 - Reduce `--batch-size` (default: 10)
 - Run during off-peak hours
 - Use `--mode=clear` instead for faster execution
@@ -205,11 +214,9 @@ The script includes built-in safety features:
 ## Related Scripts
 
 - **Backfill missing highlights**: `backfill-highlight-cache.ts`
-- **Verify API keys**: `verify-api-keys.ts`  
+- **Verify API keys**: `verify-api-keys.ts`
 - **Performance monitoring**: `get-highlight-stats.ts`
 
 ## Questions?
 
 See `scripts/migrations/README.md` for detailed documentation and prerequisites.
-
-

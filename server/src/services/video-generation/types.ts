@@ -1,5 +1,5 @@
-import { VIDEO_MODELS } from '@config/modelConfig';
-import type { VideoAssetStore } from './storage';
+import { VIDEO_MODELS } from "@config/modelConfig";
+import type { VideoAssetStore } from "./storage";
 
 export interface ReplicateOptions {
   apiToken?: string;
@@ -18,15 +18,15 @@ export interface VideoGenerationServiceOptions extends ReplicateOptions {
 export type VideoModelKey = keyof typeof VIDEO_MODELS;
 export type VideoModelId = (typeof VIDEO_MODELS)[VideoModelKey];
 
-export type SoraModelId = 'sora-2' | 'sora-2-pro';
-export type LumaModelId = 'luma-ray3';
-export type KlingModelId = 'kling-v2-1-master';
-export type VeoModelId = 'google/veo-3';
-export type KlingAspectRatio = '16:9' | '9:16' | '1:1';
+export type SoraModelId = "sora-2" | "sora-2-pro";
+export type LumaModelId = "luma-ray3";
+export type KlingModelId = "kling-v2-1-master";
+export type VeoModelId = "google/veo-3";
+export type KlingAspectRatio = "16:9" | "9:16" | "1:1";
 
 export interface VideoGenerationOptions {
   model?: VideoModelKey | VideoModelId;
-  aspectRatio?: '16:9' | '9:16' | '21:9' | '1:1';
+  aspectRatio?: "16:9" | "9:16" | "21:9" | "1:1";
   numFrames?: number;
   fps?: number;
   negativePrompt?: string;
@@ -36,11 +36,11 @@ export interface VideoGenerationOptions {
   /** End/last frame image URL for interpolation (Veo, Luma, Kling) */
   endImage?: string;
   /** Reference image URLs for style/character consistency (Veo: up to 3) */
-  referenceImages?: Array<{ url: string; type: 'asset' | 'style' }>;
+  referenceImages?: Array<{ url: string; type: "asset" | "style" }>;
   /** URL of an existing video to extend/continue (Veo scene extension) */
   extendVideoUrl?: string;
   inputReference?: string;
-  seconds?: '4' | '5' | '6' | '8' | '10' | '12';
+  seconds?: "4" | "5" | "6" | "8" | "10" | "12";
   size?: string;
   seed?: number;
   /** Provider-native style reference image (if supported) */
@@ -61,7 +61,7 @@ export interface VideoGenerationResult {
   assetId: string;
   videoUrl: string;
   contentType: string;
-  inputMode?: 't2v' | 'i2v';
+  inputMode?: "t2v" | "i2v";
   startImageUrl?: string;
   storagePath?: string;
   viewUrl?: string;
@@ -85,7 +85,7 @@ export interface VideoProviderAvailability {
 export interface VideoModelAvailability {
   id: string;
   available: boolean;
-  reason?: 'unsupported_model' | 'missing_credentials' | 'unknown_availability';
+  reason?: "unsupported_model" | "missing_credentials" | "unknown_availability";
   requiredKey?: string;
   resolvedModelId?: VideoModelId;
   capabilityModelId?: string;
@@ -108,7 +108,7 @@ export interface VideoAvailabilityReport {
 export interface VideoAvailabilitySnapshotModel {
   id: VideoModelId;
   available: boolean;
-  reason?: VideoModelAvailability['reason'];
+  reason?: VideoModelAvailability["reason"];
   requiredKey?: string;
   supportsI2V?: boolean;
   supportsImageInput?: boolean;

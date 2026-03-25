@@ -1,18 +1,27 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
-import { AUTH_COLORS } from './auth/auth-styles';
+import React from "react";
+import { Link } from "react-router-dom";
+import { AUTH_COLORS } from "./auth/auth-styles";
 
 export function NotFoundPage(): React.ReactElement {
   return (
-    <div className="h-full overflow-y-auto" style={{ background: AUTH_COLORS.bg }}>
+    <div
+      className="h-full overflow-y-auto"
+      style={{ background: AUTH_COLORS.bg }}
+    >
       <div className="mx-auto max-w-md px-4 sm:px-6 pt-24 pb-16 text-center">
-        <p className="text-[10px] font-semibold tracking-[0.2em]" style={{ color: AUTH_COLORS.textLabel }}>
+        <p
+          className="text-[10px] font-semibold tracking-[0.2em]"
+          style={{ color: AUTH_COLORS.textLabel }}
+        >
           404
         </p>
         <h1 className="mt-2 text-[15px] font-semibold text-white tracking-tight">
           Page not found
         </h1>
-        <p className="mt-2 text-[13px]" style={{ color: AUTH_COLORS.textSecondary }}>
+        <p
+          className="mt-2 text-[13px]"
+          style={{ color: AUTH_COLORS.textSecondary }}
+        >
           The page you&apos;re looking for doesn&apos;t exist or has been moved.
         </p>
         <Link

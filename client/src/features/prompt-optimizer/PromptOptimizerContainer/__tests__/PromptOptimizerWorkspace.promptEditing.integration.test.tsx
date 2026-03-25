@@ -1,7 +1,7 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { render } from '@testing-library/react';
-import type { ReactNode } from 'react';
-import PromptOptimizerWorkspace from '../PromptOptimizerWorkspace';
+import { describe, expect, it, vi, beforeEach } from "vitest";
+import { render } from "@testing-library/react";
+import type { ReactNode } from "react";
+import PromptOptimizerWorkspace from "../PromptOptimizerWorkspace";
 
 const capturedViewProps = vi.hoisted(() => ({ current: null as any }));
 const promptStateSetters = vi.hoisted(() => ({
@@ -9,32 +9,35 @@ const promptStateSetters = vi.hoisted(() => ({
   setDisplayedPromptSilently: vi.fn(),
 }));
 const promptOptimizerState = vi.hoisted(() => ({
-  inputPrompt: 'input prompt',
-  displayedPrompt: 'optimized output',
-  optimizedPrompt: 'optimized output',
+  inputPrompt: "input prompt",
+  displayedPrompt: "optimized output",
+  optimizedPrompt: "optimized output",
   genericOptimizedPrompt: null,
   isProcessing: false,
   setInputPrompt: vi.fn(),
 }));
 
-vi.mock('@hooks/useAuthUser', () => ({
+vi.mock("@hooks/useAuthUser", () => ({
   useAuthUser: () => null,
 }));
 
-vi.mock('react-router-dom', async () => {
-  const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom');
+vi.mock("react-router-dom", async () => {
+  const actual =
+    await vi.importActual<typeof import("react-router-dom")>(
+      "react-router-dom",
+    );
   return {
     ...actual,
-    useLocation: () => ({ pathname: '/', search: '', hash: '' }),
+    useLocation: () => ({ pathname: "/", search: "", hash: "" }),
     useParams: () => ({}),
   };
 });
 
-vi.mock('@components/KeyboardShortcuts', () => ({
+vi.mock("@components/KeyboardShortcuts", () => ({
   useKeyboardShortcuts: vi.fn(),
 }));
 
-vi.mock('@components/Toast', () => ({
+vi.mock("@components/Toast", () => ({
   useToast: () => ({
     success: vi.fn(),
     error: vi.fn(),
@@ -43,7 +46,7 @@ vi.mock('@components/Toast', () => ({
   }),
 }));
 
-vi.mock('../../components/AssetsSidebar', () => ({
+vi.mock("../../components/AssetsSidebar", () => ({
   useAssetsSidebar: () => ({
     assets: [],
     byType: { character: [], style: [], location: [], object: [] },
@@ -52,11 +55,13 @@ vi.mock('../../components/AssetsSidebar', () => ({
   }),
 }));
 
-vi.mock('../../context/PromptStateContext', () => ({
-  PromptStateProvider: ({ children }: { children: ReactNode }) => <>{children}</>,
+vi.mock("../../context/PromptStateContext", () => ({
+  PromptStateProvider: ({ children }: { children: ReactNode }) => (
+    <>{children}</>
+  ),
   usePromptState: () => ({
-    selectedMode: 'video',
-    selectedModel: 'wan-2.2',
+    selectedMode: "video",
+    selectedModel: "wan-2.2",
     setSelectedModel: vi.fn(),
     generationParams: {},
     setGenerationParams: vi.fn(),
@@ -76,8 +81,8 @@ vi.mock('../../context/PromptStateContext', () => ({
     setConceptElements: vi.fn(),
     promptContext: null,
     setPromptContext: vi.fn(),
-    currentPromptUuid: 'uuid-1',
-    currentPromptDocId: 'doc-1',
+    currentPromptUuid: "uuid-1",
+    currentPromptDocId: "doc-1",
     setCurrentPromptUuid: vi.fn(),
     setCurrentPromptDocId: vi.fn(),
     setShowResults: promptStateSetters.setShowResults,
@@ -96,7 +101,7 @@ vi.mock('../../context/PromptStateContext', () => ({
       history: [],
       filteredHistory: [],
       isLoadingHistory: false,
-      searchQuery: '',
+      searchQuery: "",
       setSearchQuery: vi.fn(),
       deleteFromHistory: vi.fn(),
       updateEntryOutput: vi.fn(),
@@ -112,27 +117,32 @@ vi.mock('../../context/PromptStateContext', () => ({
   }),
 }));
 
-vi.mock('../@features/generation-controls/context/GenerationControlsStore', () => ({
-  useGenerationControlsStoreState: () => ({
-    domain: {
-      keyframes: [],
-      startFrame: null,
-      cameraMotion: null,
-      subjectMotion: '',
-    },
+vi.mock(
+  "../@features/generation-controls/context/GenerationControlsStore",
+  () => ({
+    useGenerationControlsStoreState: () => ({
+      domain: {
+        keyframes: [],
+        startFrame: null,
+        cameraMotion: null,
+        subjectMotion: "",
+      },
+    }),
+    useGenerationControlsStoreActions: () => ({
+      setKeyframes: vi.fn(),
+      addKeyframe: vi.fn(),
+      setStartFrame: vi.fn(),
+      clearStartFrame: vi.fn(),
+      setCameraMotion: vi.fn(),
+      setSubjectMotion: vi.fn(),
+    }),
   }),
-  useGenerationControlsStoreActions: () => ({
-    setKeyframes: vi.fn(),
-    addKeyframe: vi.fn(),
-    setStartFrame: vi.fn(),
-    clearStartFrame: vi.fn(),
-    setCameraMotion: vi.fn(),
-    setSubjectMotion: vi.fn(),
-  }),
-}));
+);
 
-vi.mock('../../context/WorkspaceSessionContext', () => ({
-  WorkspaceSessionProvider: ({ children }: { children: ReactNode }) => <>{children}</>,
+vi.mock("../../context/WorkspaceSessionContext", () => ({
+  WorkspaceSessionProvider: ({ children }: { children: ReactNode }) => (
+    <>{children}</>
+  ),
   useWorkspaceSession: () => ({
     hasActiveContinuityShot: false,
     currentShotId: null,
@@ -141,16 +151,16 @@ vi.mock('../../context/WorkspaceSessionContext', () => ({
   }),
 }));
 
-vi.mock('../../hooks/useI2VContext', () => ({
+vi.mock("../../hooks/useI2VContext", () => ({
   useI2VContext: () => ({
     startImageUrl: null,
     startImageSourcePrompt: null,
-    constraintMode: 'strict',
+    constraintMode: "strict",
   }),
 }));
 
-vi.mock('../hooks', async () => {
-  const actual = await vi.importActual<typeof import('../hooks')>('../hooks');
+vi.mock("../hooks", async () => {
+  const actual = await vi.importActual<typeof import("../hooks")>("../hooks");
   return {
     ...actual,
     usePromptLoader: () => ({ isLoading: false }),
@@ -186,7 +196,7 @@ vi.mock('../hooks', async () => {
       isPanelExpanded: false,
       setIsPanelExpanded: vi.fn(),
       affectedSpanIds: new Set<string>(),
-      spanIssueMap: new Map<string, 'conflict' | 'harmonization'>(),
+      spanIssueMap: new Map<string, "conflict" | "harmonization">(),
       runCheck: vi.fn(),
       dismissIssue: vi.fn(),
       dismissAll: vi.fn(),
@@ -213,38 +223,44 @@ vi.mock('../hooks', async () => {
   };
 });
 
-vi.mock('../../context/PromptResultsActionsContext', () => ({
-  PromptResultsActionsProvider: ({ children }: { children: ReactNode }) => <>{children}</>,
+vi.mock("../../context/PromptResultsActionsContext", () => ({
+  PromptResultsActionsProvider: ({ children }: { children: ReactNode }) => (
+    <>{children}</>
+  ),
 }));
 
-vi.mock('../providers/sidebar', () => ({
-  SidebarDataProvider: ({ children }: { children: ReactNode }) => <>{children}</>,
+vi.mock("../providers/sidebar", () => ({
+  SidebarDataProvider: ({ children }: { children: ReactNode }) => (
+    <>{children}</>
+  ),
 }));
 
-vi.mock('../components/PromptOptimizerWorkspaceView', () => ({
+vi.mock("../components/PromptOptimizerWorkspaceView", () => ({
   PromptOptimizerWorkspaceView: (props: unknown) => {
     capturedViewProps.current = props;
     return <div data-testid="workspace-view" />;
   },
 }));
 
-describe('PromptOptimizerWorkspace prompt interaction integration', () => {
+describe("PromptOptimizerWorkspace prompt interaction integration", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    promptOptimizerState.inputPrompt = 'input prompt';
-    promptOptimizerState.displayedPrompt = 'optimized output';
+    promptOptimizerState.inputPrompt = "input prompt";
+    promptOptimizerState.displayedPrompt = "optimized output";
   });
 
-  it('does not pass legacy sequence workspace props to the view', () => {
+  it("does not pass legacy sequence workspace props to the view", () => {
     render(<PromptOptimizerWorkspace />);
 
     expect(capturedViewProps.current).toBeTruthy();
     expect(capturedViewProps.current.sequenceWorkspaceProps).toBeUndefined();
   });
 
-  it('uses displayed prompt for detected assets while results are visible', () => {
+  it("uses displayed prompt for detected assets while results are visible", () => {
     render(<PromptOptimizerWorkspace />);
 
-    expect(capturedViewProps.current.detectedAssetsPrompt).toBe('optimized output');
+    expect(capturedViewProps.current.detectedAssetsPrompt).toBe(
+      "optimized output",
+    );
   });
 });

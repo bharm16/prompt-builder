@@ -1,11 +1,11 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { renderHook } from '@testing-library/react';
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { renderHook } from "@testing-library/react";
 
-import { usePromptStatePersistence } from '@features/prompt-optimizer/context/hooks/usePromptStatePersistence';
+import { usePromptStatePersistence } from "@features/prompt-optimizer/context/hooks/usePromptStatePersistence";
 
-const SELECTED_MODE_KEY = 'prompt-optimizer:selectedMode';
+const SELECTED_MODE_KEY = "prompt-optimizer:selectedMode";
 
-describe('usePromptStatePersistence', () => {
+describe("usePromptStatePersistence", () => {
   const originalSetItem = localStorage.setItem;
 
   beforeEach(() => {
@@ -16,53 +16,52 @@ describe('usePromptStatePersistence', () => {
     localStorage.setItem = originalSetItem;
   });
 
-  describe('error handling', () => {
-    it('avoids throwing when storage write fails', () => {
+  describe("error handling", () => {
+    it("avoids throwing when storage write fails", () => {
       localStorage.setItem = vi.fn((key: string) => {
         if (key === SELECTED_MODE_KEY) {
-          throw new Error('Write failure');
+          throw new Error("Write failure");
         }
       }) as typeof localStorage.setItem;
 
       expect(() =>
         renderHook(() =>
           usePromptStatePersistence({
-            selectedMode: 'video',
-          })
-        )
+            selectedMode: "video",
+          }),
+        ),
       ).not.toThrow();
 
       expect(localStorage.getItem(SELECTED_MODE_KEY)).toBeNull();
     });
   });
 
-  describe('edge cases', () => {
-    it('persists an empty mode string safely', () => {
+  describe("edge cases", () => {
+    it("persists an empty mode string safely", () => {
       renderHook(() =>
         usePromptStatePersistence({
-          selectedMode: '',
-        })
+          selectedMode: "",
+        }),
       );
 
-      expect(localStorage.getItem(SELECTED_MODE_KEY)).toBe('');
+      expect(localStorage.getItem(SELECTED_MODE_KEY)).toBe("");
     });
   });
 
-  describe('core behavior', () => {
-    it('updates persisted state when inputs change', () => {
+  describe("core behavior", () => {
+    it("updates persisted state when inputs change", () => {
       const { rerender } = renderHook(
-        ({ selectedMode }) =>
-          usePromptStatePersistence({ selectedMode }),
+        ({ selectedMode }) => usePromptStatePersistence({ selectedMode }),
         {
-          initialProps: { selectedMode: 'video' },
-        }
+          initialProps: { selectedMode: "video" },
+        },
       );
 
-      expect(localStorage.getItem(SELECTED_MODE_KEY)).toBe('video');
+      expect(localStorage.getItem(SELECTED_MODE_KEY)).toBe("video");
 
-      rerender({ selectedMode: 'image' });
+      rerender({ selectedMode: "image" });
 
-      expect(localStorage.getItem(SELECTED_MODE_KEY)).toBe('image');
+      expect(localStorage.getItem(SELECTED_MODE_KEY)).toBe("image");
     });
   });
 });

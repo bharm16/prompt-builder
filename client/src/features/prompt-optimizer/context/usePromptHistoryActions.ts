@@ -1,15 +1,15 @@
-import { useCallback } from 'react';
-import type { NavigateFunction } from 'react-router-dom';
-import { PromptContext } from '@utils/PromptContext/PromptContext';
-import type { CapabilityValues } from '@shared/capabilities';
-import type { useDebugLogger } from '@hooks/useDebugLogger';
-import type { usePromptOptimizer } from '@hooks/usePromptOptimizer';
+import { useCallback } from "react";
+import type { NavigateFunction } from "react-router-dom";
+import { PromptContext } from "@utils/PromptContext/PromptContext";
+import type { CapabilityValues } from "@shared/capabilities";
+import type { useDebugLogger } from "@hooks/useDebugLogger";
+import type { usePromptOptimizer } from "@hooks/usePromptOptimizer";
 import type {
   HighlightSnapshot,
   PromptHistoryEntry,
   PromptKeyframe,
   PromptVersionEntry,
-} from './types';
+} from "./types";
 
 type DebugLogger = ReturnType<typeof useDebugLogger>;
 type PromptOptimizer = ReturnType<typeof usePromptOptimizer>;
@@ -24,7 +24,7 @@ interface PromptHistoryActionsOptions {
       mode: string;
       targetModel: string | null;
       generationParams: Record<string, unknown> | null;
-      keyframes?: PromptHistoryEntry['keyframes'];
+      keyframes?: PromptHistoryEntry["keyframes"];
       uuid?: string;
       input?: string;
       output?: string;
@@ -53,10 +53,12 @@ interface PromptHistoryActionsResult {
   loadFromHistory: (entry: PromptHistoryEntry) => void;
 }
 
-const isRemoteSessionId = (value: string | null | undefined): value is string => {
-  if (typeof value !== 'string') return false;
+const isRemoteSessionId = (
+  value: string | null | undefined,
+): value is string => {
+  if (typeof value !== "string") return false;
   const normalized = value.trim();
-  return normalized.length > 0 && !normalized.startsWith('draft-');
+  return normalized.length > 0 && !normalized.startsWith("draft-");
 };
 
 const hasMeaningfulDraftState = (
@@ -65,7 +67,7 @@ const hasMeaningfulDraftState = (
   optimizedPrompt: string,
   generationParams: CapabilityValues,
   keyframes: PromptKeyframe[] | null,
-  versions: PromptVersionEntry[]
+  versions: PromptVersionEntry[],
 ): boolean => {
   if (inputPrompt.trim().length > 0) return true;
   if (displayedPrompt.trim().length > 0) return true;
@@ -76,10 +78,10 @@ const hasMeaningfulDraftState = (
 };
 
 const serializePromptContext = (
-  promptContext: PromptContext | null
+  promptContext: PromptContext | null,
 ): Record<string, unknown> | null => {
   if (!promptContext) return null;
-  if (typeof promptContext.toJSON === 'function') {
+  if (typeof promptContext.toJSON === "function") {
     return promptContext.toJSON() as unknown as Record<string, unknown>;
   }
   return {
@@ -122,7 +124,7 @@ export const usePromptHistoryActions = ({
         isApplyingHistoryRef.current = false;
       }, 0);
     },
-    [setDisplayedPrompt, isApplyingHistoryRef]
+    [setDisplayedPrompt, isApplyingHistoryRef],
   );
 
   const persistCurrentWorkspaceLocallyIfNeeded = useCallback((): void => {
@@ -138,7 +140,7 @@ export const usePromptHistoryActions = ({
         optimizedPrompt,
         generationParams,
         currentKeyframes,
-        currentVersions
+        currentVersions,
       )
     ) {
       return;
@@ -149,13 +151,17 @@ export const usePromptHistoryActions = ({
       ...(currentPromptDocId ? { id: currentPromptDocId } : {}),
       mode: selectedMode,
       targetModel: selectedModel?.trim() ? selectedModel.trim() : null,
-      generationParams: (generationParams as unknown as Record<string, unknown>) ?? null,
-      keyframes: Array.isArray(currentKeyframes) && currentKeyframes.length > 0 ? currentKeyframes : null,
+      generationParams:
+        (generationParams as unknown as Record<string, unknown>) ?? null,
+      keyframes:
+        Array.isArray(currentKeyframes) && currentKeyframes.length > 0
+          ? currentKeyframes
+          : null,
       input: inputPrompt,
       output: displayedPrompt || optimizedPrompt,
       brainstormContext: serializePromptContext(promptContext),
       highlightCache:
-        currentHighlightSnapshot && typeof currentHighlightSnapshot === 'object'
+        currentHighlightSnapshot && typeof currentHighlightSnapshot === "object"
           ? (currentHighlightSnapshot as Record<string, unknown>)
           : null,
       versions: Array.isArray(currentVersions) ? currentVersions : [],
@@ -178,21 +184,22 @@ export const usePromptHistoryActions = ({
   ]);
 
   const handleCreateNew = useCallback((): void => {
-    debug.logAction('createNew');
+    debug.logAction("createNew");
     persistCurrentWorkspaceLocallyIfNeeded();
     const draft = createDraft({
       mode: selectedMode,
       targetModel: selectedModel?.trim() ? selectedModel.trim() : null,
-      generationParams: (generationParams as unknown as Record<string, unknown>) ?? null,
+      generationParams:
+        (generationParams as unknown as Record<string, unknown>) ?? null,
     });
 
     // Eagerly reset prompt state before navigation to prevent stale UI flash.
     // usePromptLoader will re-apply blank state from the draft entry, but by
     // then the old content would have been visible for one frame.
     isApplyingHistoryRef.current = true;
-    setInputPrompt('');
-    setOptimizedPrompt('');
-    setDisplayedPrompt('');
+    setInputPrompt("");
+    setOptimizedPrompt("");
+    setDisplayedPrompt("");
     setTimeout(() => {
       isApplyingHistoryRef.current = false;
     }, 0);
@@ -200,13 +207,13 @@ export const usePromptHistoryActions = ({
     // Notify workspace to reset generation controls (start frame, keyframes,
     // camera motion, etc.) which live outside the prompt state context.
     // dispatchEvent is synchronous — listeners fire before navigate() below.
-    window.dispatchEvent(new Event('po:workspace-reset'));
+    window.dispatchEvent(new Event("po:workspace-reset"));
 
     navigate(`/session/${draft.id}`, { replace: true });
     window.setTimeout(() => {
-      window.dispatchEvent(new Event('po:focus-editor'));
+      window.dispatchEvent(new Event("po:focus-editor"));
     }, 0);
-    debug.logAction('createNewComplete');
+    debug.logAction("createNewComplete");
   }, [
     createDraft,
     debug,
@@ -223,29 +230,25 @@ export const usePromptHistoryActions = ({
 
   const loadFromHistory = useCallback(
     (entry: PromptHistoryEntry): void => {
-      debug.logAction('loadFromHistory', {
+      debug.logAction("loadFromHistory", {
         uuid: entry.uuid,
         mode: entry.mode,
         hasContext: !!entry.brainstormContext,
         hasHighlightCache: !!entry.highlightCache,
       });
-      debug.startTimer('loadFromHistory');
+      debug.startTimer("loadFromHistory");
 
       persistCurrentWorkspaceLocallyIfNeeded();
 
-      if (typeof entry.id === 'string' && entry.id.trim()) {
+      if (typeof entry.id === "string" && entry.id.trim()) {
         navigate(`/session/${entry.id}`, { replace: true });
       } else {
-        navigate('/', { replace: true });
+        navigate("/", { replace: true });
       }
 
-      debug.endTimer('loadFromHistory', 'Session navigation triggered');
+      debug.endTimer("loadFromHistory", "Session navigation triggered");
     },
-    [
-      debug,
-      navigate,
-      persistCurrentWorkspaceLocallyIfNeeded,
-    ]
+    [debug, navigate, persistCurrentWorkspaceLocallyIfNeeded],
   );
 
   return {

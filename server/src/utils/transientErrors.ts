@@ -11,49 +11,49 @@
  * regardless of the originating service.
  */
 const TRANSIENT_MESSAGE_HINTS = [
-  'timed out',
-  'timeout',
-  'etimedout',
-  'econnreset',
-  'econnrefused',
-  'econnaborted',
-  'epipe',
-  'enetunreach',
-  'service unavailable',
-  'temporarily unavailable',
-  'resource exhausted',
-  'rate limit',
-  '429',
-  'deadline exceeded',
-  'connection reset',
-  'socket hang up',
-  'fetch failed',
+  "timed out",
+  "timeout",
+  "etimedout",
+  "econnreset",
+  "econnrefused",
+  "econnaborted",
+  "epipe",
+  "enetunreach",
+  "service unavailable",
+  "temporarily unavailable",
+  "resource exhausted",
+  "rate limit",
+  "429",
+  "deadline exceeded",
+  "connection reset",
+  "socket hang up",
+  "fetch failed",
 ] as const;
 
 /**
  * Firestore gRPC status codes that represent transient failures.
  */
 const TRANSIENT_FIRESTORE_CODES = new Set([
-  'aborted',
-  'cancelled',
-  'deadline-exceeded',
-  'internal',
-  'resource-exhausted',
-  'unavailable',
-  'unknown',
+  "aborted",
+  "cancelled",
+  "deadline-exceeded",
+  "internal",
+  "resource-exhausted",
+  "unavailable",
+  "unknown",
 ]);
 
 function extractErrorCode(error: unknown): string | null {
-  if (!error || typeof error !== 'object') {
+  if (!error || typeof error !== "object") {
     return null;
   }
 
-  if (!('code' in error)) {
+  if (!("code" in error)) {
     return null;
   }
 
   const candidate = (error as { code?: unknown }).code;
-  if (typeof candidate !== 'string') {
+  if (typeof candidate !== "string") {
     return null;
   }
 

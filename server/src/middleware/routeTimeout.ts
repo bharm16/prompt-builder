@@ -1,4 +1,4 @@
-import type { RequestHandler, Request, Response, NextFunction } from 'express';
+import type { RequestHandler, Request, Response, NextFunction } from "express";
 
 type RequestWithId = Request & { id?: string };
 type RouteTimeoutFilter = (req: Request) => boolean;
@@ -16,7 +16,7 @@ interface RouteTimeoutOptions {
  */
 export function createRouteTimeout(
   timeoutMs: number,
-  options?: RouteTimeoutOptions
+  options?: RouteTimeoutOptions,
 ): RequestHandler {
   return (_req: Request, res: Response, next: NextFunction): void => {
     if (options?.shouldApply && !options.shouldApply(_req)) {
@@ -27,8 +27,8 @@ export function createRouteTimeout(
     const timer = setTimeout(() => {
       if (!res.headersSent) {
         res.status(504).json({
-          error: 'Request timeout',
-          code: 'ROUTE_TIMEOUT',
+          error: "Request timeout",
+          code: "ROUTE_TIMEOUT",
           requestId: (_req as RequestWithId).id,
         });
       }
@@ -37,8 +37,8 @@ export function createRouteTimeout(
     // Unref so the timer doesn't keep the process alive during shutdown
     timer.unref();
 
-    res.on('close', () => clearTimeout(timer));
-    res.on('finish', () => clearTimeout(timer));
+    res.on("close", () => clearTimeout(timer));
+    res.on("finish", () => clearTimeout(timer));
     next();
   };
 }

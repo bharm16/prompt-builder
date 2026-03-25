@@ -1,13 +1,17 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Request, Response, NextFunction } from 'express';
-import { createRouteTimeout } from '../routeTimeout';
-import { EventEmitter } from 'events';
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { Request, Response, NextFunction } from "express";
+import { createRouteTimeout } from "../routeTimeout";
+import { EventEmitter } from "events";
 
-function createMockReq(id = 'req-123'): Request {
+function createMockReq(id = "req-123"): Request {
   return { id } as unknown as Request;
 }
 
-function createMockRes(): Response & { emitter: EventEmitter; statusCode: number; payload: unknown } {
+function createMockRes(): Response & {
+  emitter: EventEmitter;
+  statusCode: number;
+  payload: unknown;
+} {
   const emitter = new EventEmitter();
   const res = {
     emitter,
@@ -18,7 +22,10 @@ function createMockRes(): Response & { emitter: EventEmitter; statusCode: number
       this.statusCode = code;
       return this;
     }),
-    json: vi.fn(function (this: { payload: unknown; headersSent: boolean }, data: unknown) {
+    json: vi.fn(function (
+      this: { payload: unknown; headersSent: boolean },
+      data: unknown,
+    ) {
       this.payload = data;
       this.headersSent = true;
       return this;
@@ -31,10 +38,14 @@ function createMockRes(): Response & { emitter: EventEmitter; statusCode: number
   // Bind status and json to the object
   res.status = res.status.bind(res);
   res.json = res.json.bind(res);
-  return res as unknown as Response & { emitter: EventEmitter; statusCode: number; payload: unknown };
+  return res as unknown as Response & {
+    emitter: EventEmitter;
+    statusCode: number;
+    payload: unknown;
+  };
 }
 
-describe('createRouteTimeout middleware', () => {
+describe("createRouteTimeout middleware", () => {
   beforeEach(() => {
     vi.useFakeTimers();
   });
@@ -43,7 +54,7 @@ describe('createRouteTimeout middleware', () => {
     vi.useRealTimers();
   });
 
-  it('returns 504 after timeout when handler does not respond', () => {
+  it("returns 504 after timeout when handler does not respond", () => {
     const middleware = createRouteTimeout(5_000);
     const req = createMockReq();
     const res = createMockRes();
@@ -59,13 +70,13 @@ describe('createRouteTimeout middleware', () => {
 
     expect(res.statusCode).toBe(504);
     expect(res.payload).toEqual({
-      error: 'Request timeout',
-      code: 'ROUTE_TIMEOUT',
-      requestId: 'req-123',
+      error: "Request timeout",
+      code: "ROUTE_TIMEOUT",
+      requestId: "req-123",
     });
   });
 
-  it('does not return 504 when handler responds within timeout', () => {
+  it("does not return 504 when handler responds within timeout", () => {
     const middleware = createRouteTimeout(5_000);
     const req = createMockReq();
     const res = createMockRes();
@@ -74,7 +85,7 @@ describe('createRouteTimeout middleware', () => {
     middleware(req, res as unknown as Response, next as NextFunction);
 
     // Simulate response finishing before timeout
-    res.emitter.emit('finish');
+    res.emitter.emit("finish");
 
     vi.advanceTimersByTime(10_000);
 
@@ -83,7 +94,7 @@ describe('createRouteTimeout middleware', () => {
     expect(res.payload).toBeNull();
   });
 
-  it('cleans up timer when response closes', () => {
+  it("cleans up timer when response closes", () => {
     const middleware = createRouteTimeout(5_000);
     const req = createMockReq();
     const res = createMockRes();
@@ -92,7 +103,7 @@ describe('createRouteTimeout middleware', () => {
     middleware(req, res as unknown as Response, next as NextFunction);
 
     // Simulate client disconnect
-    res.emitter.emit('close');
+    res.emitter.emit("close");
 
     vi.advanceTimersByTime(10_000);
 
@@ -101,7 +112,7 @@ describe('createRouteTimeout middleware', () => {
     expect(res.payload).toBeNull();
   });
 
-  it('does not send 504 when headers have already been sent (SSE case)', () => {
+  it("does not send 504 when headers have already been sent (SSE case)", () => {
     const middleware = createRouteTimeout(5_000);
     const req = createMockReq();
     const res = createMockRes();

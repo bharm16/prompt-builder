@@ -1,13 +1,17 @@
-import type { LabeledSpan } from './types.js';
+import type { LabeledSpan } from "./types.js";
 
 /**
  * Safely parse JSON from LLM response
  */
-export function safeParseJSON(value: string | null | undefined): { spans?: LabeledSpan[] } | null {
+export function safeParseJSON(
+  value: string | null | undefined,
+): { spans?: LabeledSpan[] } | null {
   if (!value) return null;
 
   const trimmed = value.trim();
-  const withoutFences = trimmed.replace(/^```(?:json)?\s*/i, '').replace(/```$/i, '');
+  const withoutFences = trimmed
+    .replace(/^```(?:json)?\s*/i, "")
+    .replace(/```$/i, "");
 
   try {
     return JSON.parse(withoutFences) as { spans?: LabeledSpan[] };

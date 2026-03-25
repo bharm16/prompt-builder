@@ -12,19 +12,29 @@
 /**
  * High-level creative direction that influences all subsequent options
  */
-export const DIRECTIONS = ['cinematic', 'social', 'artistic', 'documentary'] as const;
+export const DIRECTIONS = [
+  "cinematic",
+  "social",
+  "artistic",
+  "documentary",
+] as const;
 export type Direction = (typeof DIRECTIONS)[number];
 
 /**
  * Visual attribute categories that users select from
  */
-export const DIMENSION_TYPES = ['mood', 'framing', 'lighting', 'camera_motion'] as const;
+export const DIMENSION_TYPES = [
+  "mood",
+  "framing",
+  "lighting",
+  "camera_motion",
+] as const;
 export type DimensionType = (typeof DIMENSION_TYPES)[number];
 
 /**
  * Starting point modes for the convergence flow
  */
-export const STARTING_POINT_MODES = ['upload', 'quick', 'converge'] as const;
+export const STARTING_POINT_MODES = ["upload", "quick", "converge"] as const;
 export type StartingPointMode = (typeof STARTING_POINT_MODES)[number];
 
 export const MAX_FINAL_FRAME_REGENERATIONS = 3;
@@ -33,17 +43,17 @@ export const MAX_FINAL_FRAME_REGENERATIONS = 3;
  * Steps in the convergence flow
  */
 export const CONVERGENCE_STEPS = [
-  'intent',
-  'starting_point',
-  'direction',
-  'mood',
-  'framing',
-  'lighting',
-  'final_frame',
-  'camera_motion',
-  'subject_motion',
-  'preview',
-  'complete',
+  "intent",
+  "starting_point",
+  "direction",
+  "mood",
+  "framing",
+  "lighting",
+  "final_frame",
+  "camera_motion",
+  "subject_motion",
+  "preview",
+  "complete",
 ] as const;
 export type ConvergenceStep = (typeof CONVERGENCE_STEPS)[number];
 
@@ -65,12 +75,12 @@ export interface NetworkStatus {
  * Camera motion categories for grouping and filtering motions
  */
 export const CAMERA_MOTION_CATEGORIES = [
-  'static',
-  'pan_tilt',
-  'dolly',
-  'crane',
-  'orbital',
-  'compound',
+  "static",
+  "pan_tilt",
+  "dolly",
+  "crane",
+  "orbital",
+  "compound",
 ] as const;
 export type CameraMotionCategory = (typeof CAMERA_MOTION_CATEGORIES)[number];
 
@@ -170,7 +180,7 @@ export interface LockedDimension {
 export interface GeneratedImage {
   id: string;
   url: string; // Signed GCS URL
-  dimension: DimensionType | 'direction';
+  dimension: DimensionType | "direction";
   optionId: string;
   prompt: string;
   generatedAt: Date;
@@ -183,7 +193,7 @@ export interface GeneratedImage {
 /**
  * Session status
  */
-export const SESSION_STATUSES = ['active', 'completed', 'abandoned'] as const;
+export const SESSION_STATUSES = ["active", "completed", "abandoned"] as const;
 export type SessionStatus = (typeof SESSION_STATUSES)[number];
 
 /**
@@ -231,7 +241,7 @@ export interface StartSessionRequest {
 export interface StartSessionResponse {
   sessionId: string;
   images: GeneratedImage[];
-  currentDimension: 'starting_point' | 'direction';
+  currentDimension: "starting_point" | "direction";
   options?: Array<{ id: Direction; label: string }>;
   estimatedCost: number;
 }
@@ -241,7 +251,7 @@ export interface StartSessionResponse {
  */
 export interface SelectOptionRequest {
   sessionId: string;
-  dimension: DimensionType | 'direction';
+  dimension: DimensionType | "direction";
   optionId: string;
 }
 
@@ -251,7 +261,11 @@ export interface SelectOptionRequest {
 export interface SelectOptionResponse {
   sessionId: string;
   images: GeneratedImage[];
-  currentDimension: DimensionType | 'camera_motion' | 'subject_motion' | 'final_frame';
+  currentDimension:
+    | DimensionType
+    | "camera_motion"
+    | "subject_motion"
+    | "final_frame";
   lockedDimensions: LockedDimension[];
   options?: Array<{ id: string; label: string }>;
   creditsConsumed: number;
@@ -263,7 +277,7 @@ export interface SelectOptionResponse {
  */
 export interface RegenerateRequest {
   sessionId: string;
-  dimension: DimensionType | 'direction';
+  dimension: DimensionType | "direction";
 }
 
 /**
@@ -318,7 +332,7 @@ export interface GenerateSubjectMotionResponse {
   videoUrl: string;
   prompt: string;
   creditsConsumed: number;
-  inputMode: 'i2v' | 't2v';
+  inputMode: "i2v" | "t2v";
   startImageUrl: string | null;
 }
 
@@ -349,7 +363,7 @@ export interface AbandonSessionRequest {
  */
 export interface AbandonSessionResponse {
   sessionId: string;
-  status: 'abandoned';
+  status: "abandoned";
   imagesDeleted: boolean;
 }
 
@@ -415,33 +429,33 @@ export interface RegenerateFinalFrameRequest {
  * Loading operation types for granular loading state (Requirement 9.7)
  */
 export type LoadingOperation =
-  | 'startSession'
-  | 'setStartingPoint'
-  | 'selectOption'
-  | 'uploadImage'
-  | 'regenerate'
-  | 'depthEstimation'
-  | 'videoPreview'
-  | 'generateFinalFrame'
-  | 'regenerateFinalFrame'
-  | 'finalize'
+  | "startSession"
+  | "setStartingPoint"
+  | "selectOption"
+  | "uploadImage"
+  | "regenerate"
+  | "depthEstimation"
+  | "videoPreview"
+  | "generateFinalFrame"
+  | "regenerateFinalFrame"
+  | "finalize"
   | null;
 
 /**
  * Convergence error codes from the backend
  */
 export const CONVERGENCE_ERROR_CODES = [
-  'SESSION_NOT_FOUND',
-  'SESSION_EXPIRED',
-  'ACTIVE_SESSION_EXISTS',
-  'INSUFFICIENT_CREDITS',
-  'REGENERATION_LIMIT_EXCEEDED',
-  'DEPTH_ESTIMATION_FAILED',
-  'IMAGE_GENERATION_FAILED',
-  'VIDEO_GENERATION_FAILED',
-  'INCOMPLETE_SESSION',
-  'UNAUTHORIZED',
-  'INVALID_REQUEST',
+  "SESSION_NOT_FOUND",
+  "SESSION_EXPIRED",
+  "ACTIVE_SESSION_EXISTS",
+  "INSUFFICIENT_CREDITS",
+  "REGENERATION_LIMIT_EXCEEDED",
+  "DEPTH_ESTIMATION_FAILED",
+  "IMAGE_GENERATION_FAILED",
+  "VIDEO_GENERATION_FAILED",
+  "INCOMPLETE_SESSION",
+  "UNAUTHORIZED",
+  "INVALID_REQUEST",
 ] as const;
 export type ConvergenceErrorCode = (typeof CONVERGENCE_ERROR_CODES)[number];
 
@@ -503,24 +517,24 @@ export interface StartingPointOption {
 
 export const STARTING_POINT_OPTIONS: StartingPointOption[] = [
   {
-    id: 'upload',
-    label: 'Upload Image',
-    description: 'Use your own reference image as the starting frame',
-    icon: 'Upload',
+    id: "upload",
+    label: "Upload Image",
+    description: "Use your own reference image as the starting frame",
+    icon: "Upload",
     creditCost: 0,
   },
   {
-    id: 'quick',
-    label: 'Quick Generate',
-    description: 'AI generates a starting frame from your description',
-    icon: 'Sparkles',
+    id: "quick",
+    label: "Quick Generate",
+    description: "AI generates a starting frame from your description",
+    icon: "Sparkles",
     creditCost: 2,
   },
   {
-    id: 'converge',
-    label: 'Visual Exploration',
-    description: 'Explore style options through guided selection',
-    icon: 'Layers',
+    id: "converge",
+    label: "Visual Exploration",
+    description: "Explore style options through guided selection",
+    icon: "Layers",
     creditCost: 16,
   },
 ];

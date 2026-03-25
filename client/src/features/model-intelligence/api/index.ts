@@ -1,2 +1,2 @@
-export { fetchModelRecommendation } from './modelIntelligenceApi';
-export { trackModelRecommendationEvent } from './telemetryApi';
+export { fetchModelRecommendation } from "./modelIntelligenceApi";
+export { trackModelRecommendationEvent } from "./telemetryApi";

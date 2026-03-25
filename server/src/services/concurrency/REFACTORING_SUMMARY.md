@@ -7,11 +7,13 @@ Successfully relocated ConcurrencyLimiter from utils/ to services/concurrency/ a
 ## Metrics
 
 ### File Movement
+
 - **Before:** `server/src/utils/ConcurrencyLimiter.js` (337 lines)
 - **After:** `server/src/services/concurrency/ConcurrencyService.js` (337 lines)
 - **Classification:** utils/ → services/ (correct classification)
 
 ### Files Updated
+
 - ✅ Created: `services/concurrency/ConcurrencyService.js` (337 lines)
 - ✅ Created: `services/concurrency/index.js` (7 lines - barrel export)
 - ✅ Updated: `infrastructure/ServiceRegistration.refactored.js` (import path)
@@ -22,6 +24,7 @@ Successfully relocated ConcurrencyLimiter from utils/ to services/concurrency/ a
 ## Why This Was Misclassified
 
 ### Not a Utility Because:
+
 - ❌ **Has state:** Tracks activeCount, queue, stats, requestId
 - ❌ **Infrastructure dependencies:** Uses logger, metricsService
 - ❌ **Complex lifecycle:** Queue management, timeout handling, cleanup
@@ -29,6 +32,7 @@ Successfully relocated ConcurrencyLimiter from utils/ to services/concurrency/ a
 - ❌ **Singleton instance:** Exports openAILimiter singleton
 
 ### Correctly Classified as Service:
+
 - ✅ **Stateful:** Maintains queue and active request tracking
 - ✅ **Business logic:** Implements concurrency control algorithm
 - ✅ **Infrastructure integration:** Integrates with logging and metrics
@@ -49,12 +53,15 @@ server/src/services/concurrency/
 ## What Changed
 
 ### 1. File Location
+
 **Before:**
+
 ```
 server/src/utils/ConcurrencyLimiter.js
 ```
 
 **After:**
+
 ```
 server/src/services/concurrency/ConcurrencyService.js
 ```
@@ -62,39 +69,43 @@ server/src/services/concurrency/ConcurrencyService.js
 ### 2. Import Paths Updated
 
 **File: infrastructure/ServiceRegistration.refactored.js**
+
 ```javascript
 // Before
-import { openAILimiter } from '../utils/ConcurrencyLimiter.js';
+import { openAILimiter } from "../utils/ConcurrencyLimiter.js";
 
 // After
-import { openAILimiter } from '../services/concurrency/ConcurrencyService.js';
+import { openAILimiter } from "../services/concurrency/ConcurrencyService.js";
 ```
 
 **File: clients/OpenAIAPIClient.js**
+
 ```javascript
 // Before
-import { openAILimiter } from '../utils/ConcurrencyLimiter.js';
+import { openAILimiter } from "../utils/ConcurrencyLimiter.js";
 
 // After
-import { openAILimiter } from '../services/concurrency/ConcurrencyService.js';
+import { openAILimiter } from "../services/concurrency/ConcurrencyService.js";
 ```
 
 ### 3. Internal Import Paths Updated
 
 **In ConcurrencyService.js:**
+
 ```javascript
 // Before (when in utils/)
-import { logger } from '../infrastructure/Logger.js';
-import { metricsService } from '../infrastructure/MetricsService.js';
+import { logger } from "../infrastructure/Logger.js";
+import { metricsService } from "../infrastructure/MetricsService.js";
 
 // After (now in services/concurrency/)
-import { logger } from '../../infrastructure/Logger.js';
-import { metricsService } from '../../infrastructure/MetricsService.js';
+import { logger } from "../../infrastructure/Logger.js";
+import { metricsService } from "../../infrastructure/MetricsService.js";
 ```
 
 ### 4. Documentation Updated
 
 Added note in file header:
+
 ```javascript
 /**
  * ConcurrencyService - Manages concurrent API request limits with priority queue
@@ -107,6 +118,7 @@ Added note in file header:
 ## Public API Preserved
 
 **Exports remain unchanged:**
+
 ```javascript
 // Class export
 export class ConcurrencyLimiter { ... }
@@ -124,16 +136,19 @@ export const openAILimiter = new ConcurrencyLimiter({
 ## Benefits
 
 ### 1. Correct Classification
+
 - ✅ **Services directory:** Now properly located with other services
 - ✅ **Clear purpose:** Obviously a service, not a utility
 - ✅ **Easier to find:** Developers look in services/ for concurrency control
 
 ### 2. Better Organization
+
 - ✅ **Domain grouping:** Concurrency services can be added to this directory
 - ✅ **Logical structure:** Services with services, utils with utils
 - ✅ **Standard pattern:** Follows service organization conventions
 
 ### 3. Extensibility
+
 - ✅ **Future additions:** Can add other concurrency-related services
 - ✅ **Queue managers:** Can add QueueManager, RequestTracker, etc.
 - ✅ **Clear module:** services/concurrency/ module for all concurrency concerns
@@ -141,12 +156,14 @@ export const openAILimiter = new ConcurrencyLimiter({
 ## Validation
 
 ### Pre-Relocation Checklist
+
 - ✅ Backup created: `utils/ConcurrencyLimiter.js.backup`
 - ✅ All imports identified (2 files)
 - ✅ New directory created: `services/concurrency/`
 - ✅ Import path adjustments calculated
 
 ### Post-Relocation Checklist
+
 - ✅ File moved to correct location
 - ✅ Internal imports updated (../../infrastructure/)
 - ✅ All dependent imports updated (2 files)
@@ -156,12 +173,15 @@ export const openAILimiter = new ConcurrencyLimiter({
 - ✅ Public API preserved
 
 ### Files Importing ConcurrencyService
+
 Run this to verify all imports work:
+
 ```bash
 grep -r "from.*concurrency" server/src/ | grep -v ".backup"
 ```
 
 Should show:
+
 ```
 server/src/infrastructure/ServiceRegistration.refactored.js
 server/src/clients/OpenAIAPIClient.js
@@ -170,7 +190,9 @@ server/src/clients/OpenAIAPIClient.js
 ## Future Improvements (Optional)
 
 ### 1. Extract Queue Management
+
 Consider extracting queue logic to separate service:
+
 ```
 services/concurrency/
 ├── ConcurrencyService.js (orchestrator)
@@ -179,7 +201,9 @@ services/concurrency/
 ```
 
 ### 2. Configuration Extraction
+
 Move configuration to config file:
+
 ```javascript
 // config/concurrency.config.js
 export const CONCURRENCY_CONFIG = {
@@ -192,7 +216,9 @@ export const CONCURRENCY_CONFIG = {
 ```
 
 ### 3. Add Unit Tests
+
 Create comprehensive tests:
+
 ```
 services/concurrency/__tests__/
 ├── ConcurrencyService.test.js
@@ -202,17 +228,18 @@ services/concurrency/__tests__/
 
 ## Comparison with Analysis
 
-| **Aspect** | **Analysis Prediction** | **Actual Result** |
-|------------|------------------------|-------------------|
-| **Complexity** | LOW-MEDIUM | ✅ LOW (simpler than expected) |
-| **Action** | Move to services/concurrency/ | ✅ Done |
-| **Files to Update** | Find and update imports | ✅ 2 files updated |
-| **Breaking Changes** | None | ✅ None |
-| **New Structure** | Service in proper location | ✅ Done |
+| **Aspect**           | **Analysis Prediction**       | **Actual Result**              |
+| -------------------- | ----------------------------- | ------------------------------ |
+| **Complexity**       | LOW-MEDIUM                    | ✅ LOW (simpler than expected) |
+| **Action**           | Move to services/concurrency/ | ✅ Done                        |
+| **Files to Update**  | Find and update imports       | ✅ 2 files updated             |
+| **Breaking Changes** | None                          | ✅ None                        |
+| **New Structure**    | Service in proper location    | ✅ Done                        |
 
 ## Summary
 
 Successfully relocated ConcurrencyLimiter from utils/ to services/concurrency/ as ConcurrencyService. The file is now:
+
 - ✅ **Properly classified** as a service (not a utility)
 - ✅ **Correctly located** in services/concurrency/
 - ✅ **All imports updated** in dependent files (2 files)
@@ -228,4 +255,3 @@ Successfully relocated ConcurrencyLimiter from utils/ to services/concurrency/ a
 **Breaking Changes:** NONE (import paths updated, API unchanged)
 
 **Files Affected:** 2 import statements updated
-

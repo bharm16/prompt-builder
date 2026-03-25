@@ -1,6 +1,7 @@
 # Codex Implementation Plan: Credit System UX
 
 ## Problem
+
 New users see functional Generate/Preview buttons with credit costs displayed ("· 80 cr") but have zero credits, no balance visibility, and no purchase funnel when generation fails. The server returns a 402 with `INSUFFICIENT_CREDITS` error code, but the client treats it as a generic error.
 
 All infrastructure exists but is disconnected. This plan wires it together.
@@ -14,8 +15,8 @@ All infrastructure exists but is disconnected. This plan wires it together.
 **Create:** `client/src/context/CreditBalanceContext.tsx`
 
 ```tsx
-import { createContext, useContext, type ReactNode } from 'react';
-import { useUserCreditBalance } from '@/hooks/useUserCreditBalance';
+import { createContext, useContext, type ReactNode } from "react";
+import { useUserCreditBalance } from "@/hooks/useUserCreditBalance";
 
 interface CreditBalanceContextValue {
   balance: number | null;
@@ -69,7 +70,9 @@ Search for where `<ToolSidebar` is rendered and wrap at that level or one level 
 4. In the bottom `<div>` (the one with `flex flex-col items-center gap-1.5 pb-1`), add the credit display **above** the Home `<Link>`:
 
 ```tsx
-{/* ── Credit balance ── */}
+{
+  /* ── Credit balance ── */
+}
 <Link
   to="/billing"
   className="flex h-8 w-full flex-col items-center justify-center rounded-lg hover:bg-[#151720] transition-colors"
@@ -79,23 +82,26 @@ Search for where `<ToolSidebar` is rendered and wrap at that level or one level 
     <div className="h-2.5 w-6 animate-pulse rounded bg-[#1A1C22]" />
   ) : (
     <>
-      <span className={cn(
-        'text-[10px] font-bold tabular-nums leading-none',
-        balance === 0 || balance === null
-          ? 'text-amber-400'
-          : 'text-[#8B92A5]'
-      )}>
+      <span
+        className={cn(
+          "text-[10px] font-bold tabular-nums leading-none",
+          balance === 0 || balance === null
+            ? "text-amber-400"
+            : "text-[#8B92A5]",
+        )}
+      >
         {balance ?? 0}
       </span>
       <span className="text-[8px] text-[#555B6E] leading-none mt-0.5">cr</span>
     </>
   )}
-</Link>
+</Link>;
 ```
 
 Import `cn` from `@/utils/cn` if not already imported.
 
 **Behavior:**
+
 - Shows credit count with "cr" label
 - Amber/yellow when balance is 0 (visual urgency)
 - Gray otherwise (matches rail aesthetic)
@@ -112,17 +118,19 @@ Import `cn` from `@/utils/cn` if not already imported.
 This replaces the existing `CreditPurchaseModal` (which is a page section, not a dialog) for the error-triggered flow.
 
 **Props interface:**
+
 ```tsx
 interface InsufficientCreditsModalProps {
   open: boolean;
   onClose: () => void;
-  required: number;       // cost of attempted operation
-  available: number;      // user's current balance
-  operation: string;      // e.g. "Sora render", "Wan preview", "Image preview"
+  required: number; // cost of attempted operation
+  available: number; // user's current balance
+  operation: string; // e.g. "Sora render", "Wan preview", "Image preview"
 }
 ```
 
 **Implementation requirements:**
+
 - Use existing `Sheet` or `Dialog` component from `@promptstudio/system/components/ui` (check what's available — `Sheet` is already used in `ToolSidebar.tsx`)
 - Match the dark theme: `bg-[#111318]`, `border-[#1A1C22]`, text colors `#8B92A5` / `#555B6E` / white
 - Content sections:
@@ -135,6 +143,7 @@ interface InsufficientCreditsModalProps {
 **Purchase action:** Reuse `createCheckoutSession` from `@/api/billingApi` (same as `CreditPurchaseModal` does). On click: call `createCheckoutSession(pack.priceId)`, redirect to `url`.
 
 **Import dependencies:**
+
 - `CREDIT_PACKS` from `@/features/billing/creditPacks`
 - `createCheckoutSession` from `@/api/billingApi`
 
@@ -147,9 +156,9 @@ interface InsufficientCreditsModalProps {
 This hook provides the pre-flight check and modal state for any component that triggers generation.
 
 ```tsx
-import { useState, useCallback } from 'react';
-import { useCreditBalance } from '@/context/CreditBalanceContext';
-import type { InsufficientCreditsModalState } from '@/features/convergence/types';
+import { useState, useCallback } from "react";
+import { useCreditBalance } from "@/context/CreditBalanceContext";
+import type { InsufficientCreditsModalState } from "@/features/convergence/types";
 
 interface CreditGateResult {
   /** Returns true if user has enough credits. Returns false and opens modal if not. */
@@ -165,7 +174,9 @@ interface CreditGateResult {
 
 export function useCreditGate(): CreditGateResult {
   const { balance, isLoading } = useCreditBalance();
-  const [modal, setModal] = useState<InsufficientCreditsModalState | null>(null);
+  const [modal, setModal] = useState<InsufficientCreditsModalState | null>(
+    null,
+  );
 
   const checkCredits = useCallback(
     (cost: number, operation: string): boolean => {
@@ -174,7 +185,7 @@ export function useCreditGate(): CreditGateResult {
       setModal({ required: cost, available, operation });
       return false;
     },
-    [balance]
+    [balance],
   );
 
   const dismissModal = useCallback(() => setModal(null), []);
@@ -200,14 +211,17 @@ This is where `handleGenerate` is defined (around line 97). This is the right in
 **Changes:**
 
 1. Import `useCreditGate` and `InsufficientCreditsModal`:
+
 ```tsx
-import { useCreditGate } from '@/hooks/useCreditGate';
-import { InsufficientCreditsModal } from '@/components/modals/InsufficientCreditsModal';
+import { useCreditGate } from "@/hooks/useCreditGate";
+import { InsufficientCreditsModal } from "@/components/modals/InsufficientCreditsModal";
 ```
 
 2. Inside the component, call the hook:
+
 ```tsx
-const { checkCredits, insufficientCreditsModal, dismissModal, balance } = useCreditGate();
+const { checkCredits, insufficientCreditsModal, dismissModal, balance } =
+  useCreditGate();
 ```
 
 3. **Modify `handleGenerate`** (the callback around line 97). Before the existing logic that calls `onDraft` or `onRender`, add the credit check:
@@ -255,7 +269,7 @@ const handleGenerate = useCallback(
   onClose={dismissModal}
   required={insufficientCreditsModal?.required ?? 0}
   available={insufficientCreditsModal?.available ?? 0}
-  operation={insufficientCreditsModal?.operation ?? ''}
+  operation={insufficientCreditsModal?.operation ?? ""}
 />
 ```
 
@@ -268,21 +282,25 @@ const handleGenerate = useCallback(
 **Changes:**
 
 1. Add a new prop to `GenerationFooterProps`:
+
 ```tsx
 creditBalance?: number | null;
 ```
 
 2. Compute disabled state:
+
 ```tsx
-const hasSufficientCredits = creditBalance !== null && creditBalance !== undefined
-  ? creditBalance >= (creditCost ?? 0)
-  : true; // don't block if balance unknown (loading)
+const hasSufficientCredits =
+  creditBalance !== null && creditBalance !== undefined
+    ? creditBalance >= (creditCost ?? 0)
+    : true; // don't block if balance unknown (loading)
 const isDisabled = isGenerateDisabled || !hasSufficientCredits;
 ```
 
 3. Replace `disabled={isGenerateDisabled}` with `disabled={isDisabled}` on the button.
 
 4. Add a tooltip or title attribute when disabled due to credits:
+
 ```tsx
 title={!hasSufficientCredits ? `Need ${creditCost} credits (you have ${creditBalance ?? 0})` : undefined}
 ```
@@ -348,8 +366,12 @@ useEffect(() => {
     // Open the modal using the same state setter from useCreditGate
     // This requires exposing a setModal or similar from the hook
   };
-  window.addEventListener('insufficient-credits', handler as EventListener);
-  return () => window.removeEventListener('insufficient-credits', handler as EventListener);
+  window.addEventListener("insufficient-credits", handler as EventListener);
+  return () =>
+    window.removeEventListener(
+      "insufficient-credits",
+      handler as EventListener,
+    );
 }, [balance]);
 ```
 
@@ -369,12 +391,14 @@ In the credit cost `<span>`, update:
 
 ```tsx
 <span className="whitespace-nowrap text-[11px] tabular-nums text-[#555B6E]">
-  {creditCost !== null ? `· ${creditCost} cr` : ''}
+  {creditCost !== null ? `· ${creditCost} cr` : ""}
   {creditBalance !== null && creditBalance !== undefined && (
-    <span className={cn(
-      'ml-1',
-      creditBalance < (creditCost ?? 0) ? 'text-amber-400' : 'text-[#555B6E]'
-    )}>
+    <span
+      className={cn(
+        "ml-1",
+        creditBalance < (creditCost ?? 0) ? "text-amber-400" : "text-[#555B6E]",
+      )}
+    >
       · {creditBalance} bal
     </span>
   )}
@@ -387,35 +411,35 @@ This turns amber when balance < cost, providing inline visual warning.
 
 ## File Inventory (all changes)
 
-| Action | File Path |
-|--------|-----------|
-| **CREATE** | `client/src/context/CreditBalanceContext.tsx` |
-| **CREATE** | `client/src/hooks/useCreditGate.ts` |
-| **CREATE** | `client/src/components/modals/InsufficientCreditsModal.tsx` |
-| **EDIT** | `client/src/components/ToolSidebar/components/ToolRail.tsx` — add balance display |
-| **EDIT** | `client/src/components/ToolSidebar/components/panels/GenerationControlsPanel/GenerationControlsPanel.tsx` — wire credit gate + modal |
-| **EDIT** | `client/src/components/ToolSidebar/components/panels/GenerationControlsPanel/components/GenerationFooter.tsx` — add `creditBalance` prop, disable button, inline display |
-| **EDIT** | `client/src/features/prompt-optimizer/GenerationsPanel/hooks/useGenerationActions.ts` — 402 error handling in 3 catch blocks |
-| **EDIT** | App shell / layout component (find where `<ToolSidebar` is rendered) — wrap in `<CreditBalanceProvider>` |
+| Action     | File Path                                                                                                                                                                |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **CREATE** | `client/src/context/CreditBalanceContext.tsx`                                                                                                                            |
+| **CREATE** | `client/src/hooks/useCreditGate.ts`                                                                                                                                      |
+| **CREATE** | `client/src/components/modals/InsufficientCreditsModal.tsx`                                                                                                              |
+| **EDIT**   | `client/src/components/ToolSidebar/components/ToolRail.tsx` — add balance display                                                                                        |
+| **EDIT**   | `client/src/components/ToolSidebar/components/panels/GenerationControlsPanel/GenerationControlsPanel.tsx` — wire credit gate + modal                                     |
+| **EDIT**   | `client/src/components/ToolSidebar/components/panels/GenerationControlsPanel/components/GenerationFooter.tsx` — add `creditBalance` prop, disable button, inline display |
+| **EDIT**   | `client/src/features/prompt-optimizer/GenerationsPanel/hooks/useGenerationActions.ts` — 402 error handling in 3 catch blocks                                             |
+| **EDIT**   | App shell / layout component (find where `<ToolSidebar` is rendered) — wrap in `<CreditBalanceProvider>`                                                                 |
 
 ---
 
 ## Existing Code References (do not modify these, just consume them)
 
-| What | Path | Notes |
-|------|------|-------|
-| Credit balance hook | `client/src/hooks/useUserCreditBalance.ts` | Firestore real-time listener, returns `{ balance, isLoading, error }` |
-| Model costs | `client/src/components/ToolSidebar/config/modelConfig.ts` | `VIDEO_DRAFT_MODEL.cost=5`, `VIDEO_RENDER_MODELS[].cost`, `IMAGE_MODEL.cost=1`, `STORYBOARD_COST=4` |
-| Credit packs | `client/src/features/billing/creditPacks.ts` | `CREDIT_PACKS[]` with `priceId`, `credits`, `price` |
-| Subscription tiers | `client/src/features/billing/subscriptionTiers.ts` | `SUBSCRIPTION_TIERS[]` |
-| Checkout API | `client/src/api/billingApi.ts` | `createCheckoutSession(priceId)` → `{ url }` |
-| ApiError class | `client/src/services/http/ApiError.ts` | Has `.status`, `.response` properties |
-| ApiResponseHandler | `client/src/services/http/ApiResponseHandler.ts` | On non-OK response, throws `ApiError` with parsed JSON body as `.response` |
-| Error codes (server) | `server/src/routes/generationErrorCodes.ts` | `INSUFFICIENT_CREDITS` code sent in 402 response body `{ code }` |
-| Error messages config | `client/src/features/convergence/utils/errorMessages.ts` | `INSUFFICIENT_CREDITS` entry exists |
-| InsufficientCreditsModalState type | `client/src/features/convergence/types.ts` lines 460-463 | `{ required: number; available: number; operation: string }` |
-| User type | `client/src/hooks/types.ts` line 63 | `User { uid: string; email?; displayName?; photoURL? }` |
-| cn utility | `client/src/utils/cn.ts` | Tailwind class merger |
+| What                               | Path                                                      | Notes                                                                                               |
+| ---------------------------------- | --------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| Credit balance hook                | `client/src/hooks/useUserCreditBalance.ts`                | Firestore real-time listener, returns `{ balance, isLoading, error }`                               |
+| Model costs                        | `client/src/components/ToolSidebar/config/modelConfig.ts` | `VIDEO_DRAFT_MODEL.cost=5`, `VIDEO_RENDER_MODELS[].cost`, `IMAGE_MODEL.cost=1`, `STORYBOARD_COST=4` |
+| Credit packs                       | `client/src/features/billing/creditPacks.ts`              | `CREDIT_PACKS[]` with `priceId`, `credits`, `price`                                                 |
+| Subscription tiers                 | `client/src/features/billing/subscriptionTiers.ts`        | `SUBSCRIPTION_TIERS[]`                                                                              |
+| Checkout API                       | `client/src/api/billingApi.ts`                            | `createCheckoutSession(priceId)` → `{ url }`                                                        |
+| ApiError class                     | `client/src/services/http/ApiError.ts`                    | Has `.status`, `.response` properties                                                               |
+| ApiResponseHandler                 | `client/src/services/http/ApiResponseHandler.ts`          | On non-OK response, throws `ApiError` with parsed JSON body as `.response`                          |
+| Error codes (server)               | `server/src/routes/generationErrorCodes.ts`               | `INSUFFICIENT_CREDITS` code sent in 402 response body `{ code }`                                    |
+| Error messages config              | `client/src/features/convergence/utils/errorMessages.ts`  | `INSUFFICIENT_CREDITS` entry exists                                                                 |
+| InsufficientCreditsModalState type | `client/src/features/convergence/types.ts` lines 460-463  | `{ required: number; available: number; operation: string }`                                        |
+| User type                          | `client/src/hooks/types.ts` line 63                       | `User { uid: string; email?; displayName?; photoURL? }`                                             |
+| cn utility                         | `client/src/utils/cn.ts`                                  | Tailwind class merger                                                                               |
 
 ---
 

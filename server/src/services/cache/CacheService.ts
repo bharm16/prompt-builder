@@ -1,8 +1,8 @@
-import NodeCache from 'node-cache';
-import crypto from 'crypto';
-import { logger } from '@infrastructure/Logger';
-import type { ILogger } from '@interfaces/ILogger';
-import { SemanticCacheEnhancer } from './SemanticCacheService.js';
+import NodeCache from "node-cache";
+import crypto from "crypto";
+import { logger } from "@infrastructure/Logger";
+import type { ILogger } from "@interfaces/ILogger";
+import { SemanticCacheEnhancer } from "./SemanticCacheService.js";
 
 /** Narrow metrics interface — avoids importing the concrete MetricsService class. */
 interface CacheMetricsCollector {
@@ -75,10 +75,13 @@ export class CacheService {
   private readonly log: ILogger;
   private readonly metrics: CacheMetricsCollector;
 
-  constructor(config: CacheConfig = {}, metricsService?: CacheMetricsCollector) {
+  constructor(
+    config: CacheConfig = {},
+    metricsService?: CacheMetricsCollector,
+  ) {
     this.metrics = metricsService ?? NULL_METRICS;
-    this.log = logger.child({ service: 'CacheService' });
-    
+    this.log = logger.child({ service: "CacheService" });
+
     this.cache = new NodeCache({
       stdTTL: config.defaultTTL || 3600, // Default 1 hour
       checkperiod: 600, // Check for expired keys every 10 minutes
@@ -92,24 +95,24 @@ export class CacheService {
     };
 
     this.config = {
-      promptOptimization: { ttl: 3600, namespace: 'prompt' },
-      questionGeneration: { ttl: 1800, namespace: 'questions' },
-      enhancement: { ttl: 3600, namespace: 'enhancement' },
-      sceneDetection: { ttl: 3600, namespace: 'scene' },
-      creative: { ttl: 7200, namespace: 'creative' },
+      promptOptimization: { ttl: 3600, namespace: "prompt" },
+      questionGeneration: { ttl: 1800, namespace: "questions" },
+      enhancement: { ttl: 3600, namespace: "enhancement" },
+      sceneDetection: { ttl: 3600, namespace: "scene" },
+      creative: { ttl: 7200, namespace: "creative" },
       ...config,
     };
 
     // Log cache events
-    this.cache.on('expired', (key: string) => {
-      this.log.debug('Cache key expired', {
-        operation: 'expired',
+    this.cache.on("expired", (key: string) => {
+      this.log.debug("Cache key expired", {
+        operation: "expired",
         key,
       });
     });
 
-    this.log.info('Cache service initialized', {
-      operation: 'constructor',
+    this.log.info("Cache service initialized", {
+      operation: "constructor",
       defaultTTL: config.defaultTTL || 3600,
     });
   }
@@ -121,23 +124,36 @@ export class CacheService {
    * @param options - Options for semantic caching
    * @returns Cache key
    */
-  generateKey(namespace: string, data: unknown, options: GenerateKeyOptions = {}): string {
-    const { useSemantic = true, normalizeWhitespace = true, ignoreCase = true, sortKeys = true } = options;
+  generateKey(
+    namespace: string,
+    data: unknown,
+    options: GenerateKeyOptions = {},
+  ): string {
+    const {
+      useSemantic = true,
+      normalizeWhitespace = true,
+      ignoreCase = true,
+      sortKeys = true,
+    } = options;
 
     // Use semantic caching by default for better hit rates
     if (useSemantic) {
-      return SemanticCacheEnhancer.generateSemanticKey(namespace, data as Record<string, unknown>, {
-        normalizeWhitespace,
-        ignoreCase,
-        sortKeys,
-      });
+      return SemanticCacheEnhancer.generateSemanticKey(
+        namespace,
+        data as Record<string, unknown>,
+        {
+          normalizeWhitespace,
+          ignoreCase,
+          sortKeys,
+        },
+      );
     }
 
     // Fallback to standard hashing
     const hash = crypto
-      .createHash('sha256')
+      .createHash("sha256")
       .update(JSON.stringify(data))
-      .digest('hex')
+      .digest("hex")
       .substring(0, 16);
 
     return `${namespace}:${hash}`;
@@ -149,7 +165,10 @@ export class CacheService {
    * @param cacheType - Type of cache for metrics
    * @returns Cached value or null
    */
-  async get<T = unknown>(key: string, cacheType: string = 'default'): Promise<T | null> {
+  async get<T = unknown>(
+    key: string,
+    cacheType: string = "default",
+  ): Promise<T | null> {
     const value = this.cache.get<T>(key);
 
     if (value !== undefined) {
@@ -157,7 +176,7 @@ export class CacheService {
       this.metrics.recordCacheHit(cacheType);
       this.updateHitRate(cacheType);
 
-      logger.debug('Cache hit', { key, cacheType });
+      logger.debug("Cache hit", { key, cacheType });
       return value;
     }
 
@@ -165,7 +184,7 @@ export class CacheService {
     this.metrics.recordCacheMiss(cacheType);
     this.updateHitRate(cacheType);
 
-    logger.debug('Cache miss', { key, cacheType });
+    logger.debug("Cache miss", { key, cacheType });
     return null;
   }
 
@@ -176,23 +195,27 @@ export class CacheService {
    * @param options - Cache options
    * @returns Success status
    */
-  async set<T = unknown>(key: string, value: T, options: CacheOptions = {}): Promise<boolean> {
+  async set<T = unknown>(
+    key: string,
+    value: T,
+    options: CacheOptions = {},
+  ): Promise<boolean> {
     const startTime = performance.now();
-    const operation = 'set';
+    const operation = "set";
     const ttl = options.ttl || this.cache.options.stdTTL || 3600;
     const success = this.cache.set(key, value, ttl);
 
     const duration = Math.round(performance.now() - startTime);
     if (success) {
       this.stats.sets++;
-      this.log.debug('Cache set', {
+      this.log.debug("Cache set", {
         operation,
         duration,
         key,
         ttl,
       });
     } else {
-      this.log.warn('Cache set failed', {
+      this.log.warn("Cache set failed", {
         operation,
         duration,
         key,
@@ -209,12 +232,12 @@ export class CacheService {
    */
   async delete(key: string): Promise<number> {
     const startTime = performance.now();
-    const operation = 'delete';
+    const operation = "delete";
     const deleted = this.cache.del(key);
     const duration = Math.round(performance.now() - startTime);
-    
+
     if (deleted > 0) {
-      this.log.debug('Cache key deleted', {
+      this.log.debug("Cache key deleted", {
         operation,
         duration,
         key,
@@ -228,11 +251,11 @@ export class CacheService {
    */
   async flush(): Promise<void> {
     const startTime = performance.now();
-    const operation = 'flush';
+    const operation = "flush";
     this.cache.flushAll();
     const duration = Math.round(performance.now() - startTime);
-    
-    this.log.info('Cache flushed', {
+
+    this.log.info("Cache flushed", {
       operation,
       duration,
     });
@@ -251,7 +274,7 @@ export class CacheService {
       hits: this.stats.hits,
       misses: this.stats.misses,
       sets: this.stats.sets,
-      hitRate: (hitRate * 100).toFixed(2) + '%',
+      hitRate: (hitRate * 100).toFixed(2) + "%",
       keys: this.cache.keys().length,
       size: this.cache.getStats(),
     };
@@ -275,31 +298,35 @@ export class CacheService {
    */
   isHealthy(): HealthCheckResult {
     const startTime = performance.now();
-    const operation = 'isHealthy';
-    
+    const operation = "isHealthy";
+
     try {
-      const testKey = 'health-check';
-      this.cache.set(testKey, 'ok', 1);
+      const testKey = "health-check";
+      this.cache.set(testKey, "ok", 1);
       const value = this.cache.get<string>(testKey);
       this.cache.del(testKey);
 
       const duration = Math.round(performance.now() - startTime);
-      this.log.debug('Cache health check completed', {
+      this.log.debug("Cache health check completed", {
         operation,
         duration,
-        healthy: value === 'ok',
+        healthy: value === "ok",
       });
 
       return {
-        healthy: value === 'ok',
+        healthy: value === "ok",
         stats: this.getCacheStats(),
       };
     } catch (error: unknown) {
       const duration = Math.round(performance.now() - startTime);
-      this.log.error('Cache health check failed', error instanceof Error ? error : new Error(String(error)), {
-        operation,
-        duration,
-      });
+      this.log.error(
+        "Cache health check failed",
+        error instanceof Error ? error : new Error(String(error)),
+        {
+          operation,
+          duration,
+        },
+      );
       return {
         healthy: false,
         error: error instanceof Error ? error.message : String(error),
@@ -311,8 +338,12 @@ export class CacheService {
    * Get cache configuration for a specific type
    */
   getConfig(type: string): { ttl: number; namespace: string } {
-    const config = this.config[type] as { ttl: number; namespace: string } | undefined;
-    return config || { ttl: this.cache.options.stdTTL || 3600, namespace: 'default' };
+    const config = this.config[type] as
+      | { ttl: number; namespace: string }
+      | undefined;
+    return (
+      config || { ttl: this.cache.options.stdTTL || 3600, namespace: "default" }
+    );
   }
 }
 

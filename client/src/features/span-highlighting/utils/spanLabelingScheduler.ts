@@ -4,14 +4,14 @@
  * Handles scheduling, debouncing, and cache checking for span labeling requests.
  */
 
-import { spanLabelingCache } from '../services/index.ts';
-import { calculateSmartDebounce } from '../config/index.ts';
+import { spanLabelingCache } from "../services/index.ts";
+import { calculateSmartDebounce } from "../config/index.ts";
 import type {
   SpanLabelingPayload,
   SpanLabelingState,
   LabeledSpan,
   SpanMeta,
-} from '../hooks/types.ts';
+} from "../hooks/types.ts";
 
 export interface SchedulerOptions {
   enabled: boolean;
@@ -61,7 +61,7 @@ export function checkCache(payload: SpanLabelingPayload): CacheCheckResult {
  */
 export function calculateEffectiveDebounce(
   payload: SpanLabelingPayload,
-  options: SchedulerOptions
+  options: SchedulerOptions,
 ): number {
   if (options.immediate || options.debounceMs === 0) {
     return 0;
@@ -81,7 +81,7 @@ export function createDisabledState(): SpanLabelingState {
   return {
     spans: [],
     meta: null,
-    status: 'idle',
+    status: "idle",
     error: null,
     signature: null,
   };
@@ -95,14 +95,14 @@ export function createLoadingState(
   previousStatus: string,
   previousSpans: unknown[],
   previousMeta: unknown | null,
-  previousSignature: string | null
+  previousSignature: string | null,
 ): SpanLabelingState {
-  const preservingPrevious = immediate && previousStatus === 'success';
+  const preservingPrevious = immediate && previousStatus === "success";
   return {
     spans: preservingPrevious ? (previousSpans as LabeledSpan[]) : [],
     meta: preservingPrevious ? (previousMeta as SpanMeta | null) : null,
     status:
-      previousStatus === 'success' && !immediate ? 'refreshing' : 'loading',
+      previousStatus === "success" && !immediate ? "refreshing" : "loading",
     error: null,
     signature: preservingPrevious ? previousSignature : null,
   };

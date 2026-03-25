@@ -1,6 +1,6 @@
-import { describe, expect, it, vi } from 'vitest';
-import { SuggestionProcessingService } from '../SuggestionProcessingService';
-import { detectPlaceholder } from '../placeholderDetection';
+import { describe, expect, it, vi } from "vitest";
+import { SuggestionProcessingService } from "../SuggestionProcessingService";
+import { detectPlaceholder } from "../placeholderDetection";
 import type {
   Suggestion,
   GroupedSuggestions,
@@ -9,17 +9,21 @@ import type {
   DiversityEnforcer,
   CategoryAligner,
   AIService,
-} from '../types';
-import type { FallbackRegenerationService } from '../FallbackRegenerationService';
+} from "../types";
+import type { FallbackRegenerationService } from "../FallbackRegenerationService";
 
 function createService(validationOverrides: Partial<ValidationService> = {}) {
   const diversityEnforcer: DiversityEnforcer = {
-    ensureDiverseSuggestions: vi.fn(async (suggestions: Suggestion[]) => suggestions),
+    ensureDiverseSuggestions: vi.fn(
+      async (suggestions: Suggestion[]) => suggestions,
+    ),
     filterOriginalEchoes: vi.fn((suggestions: Suggestion[]) => suggestions),
   };
 
   const validationService: ValidationService = {
-    sanitizeSuggestions: vi.fn((suggestions: Suggestion[] | string[]) => suggestions as Suggestion[]),
+    sanitizeSuggestions: vi.fn(
+      (suggestions: Suggestion[] | string[]) => suggestions as Suggestion[],
+    ),
     groupSuggestionsByCategory: vi.fn(() => []),
     ...validationOverrides,
   };
@@ -48,24 +52,26 @@ function createService(validationOverrides: Partial<ValidationService> = {}) {
       validationService,
       categoryAligner,
       fallbackRegeneration,
-      ai
+      ai,
     ),
     validationService,
   };
 }
 
-describe('enhancement refactor regressions', () => {
-  describe('SuggestionProcessingService moved methods', () => {
-    it('groupSuggestions delegates to validation grouping for placeholder suggestions', () => {
+describe("enhancement refactor regressions", () => {
+  describe("SuggestionProcessingService moved methods", () => {
+    it("groupSuggestions delegates to validation grouping for placeholder suggestions", () => {
       const grouped: GroupedSuggestions[] = [
         {
-          category: 'lighting',
-          suggestions: [{ text: 'rim light', category: 'lighting.quality' }],
+          category: "lighting",
+          suggestions: [{ text: "rim light", category: "lighting.quality" }],
         },
       ];
       const groupSuggestionsByCategory = vi.fn(() => grouped);
       const { service } = createService({ groupSuggestionsByCategory });
-      const suggestions: Suggestion[] = [{ text: 'rim light', category: 'lighting.quality' }];
+      const suggestions: Suggestion[] = [
+        { text: "rim light", category: "lighting.quality" },
+      ];
 
       const result = service.groupSuggestions(suggestions, true);
 
@@ -73,20 +79,20 @@ describe('enhancement refactor regressions', () => {
       expect(result).toEqual(grouped);
     });
 
-    it('buildResult preserves fallback and category metadata for grouped placeholders', () => {
+    it("buildResult preserves fallback and category metadata for grouped placeholders", () => {
       const { service } = createService();
       const groupedSuggestions: GroupedSuggestions[] = [
         {
-          category: 'lighting',
-          suggestions: [{ text: 'soft light', category: 'lighting.quality' }],
+          category: "lighting",
+          suggestions: [{ text: "soft light", category: "lighting.quality" }],
         },
       ];
 
       const result: EnhancementResult = service.buildResult({
         groupedSuggestions,
         isPlaceholder: true,
-        phraseRole: 'lighting',
-        activeConstraints: { mode: 'concise' },
+        phraseRole: "lighting",
+        activeConstraints: { mode: "concise" },
         alignmentFallbackApplied: false,
         usedFallback: true,
         hasNoSuggestions: false,
@@ -94,27 +100,39 @@ describe('enhancement refactor regressions', () => {
 
       expect(result.hasCategories).toBe(true);
       expect(result.fallbackApplied).toBe(true);
-      expect(result.appliedConstraintMode).toBe('concise');
-      expect(result.phraseRole).toBe('lighting');
+      expect(result.appliedConstraintMode).toBe("concise");
+      expect(result.phraseRole).toBe("lighting");
     });
   });
 
-  describe('detectPlaceholder function', () => {
-    it('returns true for known placeholder keywords', () => {
-      expect(detectPlaceholder('location', 'Set the scene in', '', 'Set the scene in location')).toBe(
-        true
-      );
+  describe("detectPlaceholder function", () => {
+    it("returns true for known placeholder keywords", () => {
+      expect(
+        detectPlaceholder(
+          "location",
+          "Set the scene in",
+          "",
+          "Set the scene in location",
+        ),
+      ).toBe(true);
     });
 
-    it('avoids false positives for technical spec labels with colon context', () => {
-      expect(detectPlaceholder('dutch angle', '**Camera:** ', '', '**Camera:** dutch angle')).toBe(
-        false
-      );
+    it("avoids false positives for technical spec labels with colon context", () => {
+      expect(
+        detectPlaceholder(
+          "dutch angle",
+          "**Camera:** ",
+          "",
+          "**Camera:** dutch angle",
+        ),
+      ).toBe(false);
     });
 
-    it('returns false for invalid highlighted text', () => {
-      expect(detectPlaceholder('', '', '', '')).toBe(false);
-      expect(detectPlaceholder(42 as unknown as string, '', '', '')).toBe(false);
+    it("returns false for invalid highlighted text", () => {
+      expect(detectPlaceholder("", "", "", "")).toBe(false);
+      expect(detectPlaceholder(42 as unknown as string, "", "", "")).toBe(
+        false,
+      );
     });
   });
 });

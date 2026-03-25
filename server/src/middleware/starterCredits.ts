@@ -1,5 +1,5 @@
-import type { NextFunction, Request, Response } from 'express';
-import { logger } from '@infrastructure/Logger';
+import type { NextFunction, Request, Response } from "express";
+import { logger } from "@infrastructure/Logger";
 
 const DEFAULT_STARTER_CREDITS = 25;
 const STARTER_CACHE_TTL_MS = 5 * 60 * 1000;
@@ -13,7 +13,7 @@ type StarterCreditsRequest = Request & {
 };
 
 const parseStarterCredits = (): number => {
-  const raw = Number.parseInt(process.env.FREE_TIER_STARTER_CREDITS ?? '', 10);
+  const raw = Number.parseInt(process.env.FREE_TIER_STARTER_CREDITS ?? "", 10);
   if (!Number.isFinite(raw) || raw <= 0) {
     return DEFAULT_STARTER_CREDITS;
   }
@@ -21,21 +21,22 @@ const parseStarterCredits = (): number => {
 };
 
 const shouldSkipUser = (userId: string): boolean =>
-  userId.startsWith('api-key:');
+  userId.startsWith("api-key:");
 
 export function __resetStarterCreditsCacheForTests(): void {
   cache.clear();
 }
 
-export function createStarterCreditsMiddleware(
-  userCreditService: {
-    ensureStarterGrant: (userId: string, starterCredits: number) => Promise<unknown>;
-  }
-) {
+export function createStarterCreditsMiddleware(userCreditService: {
+  ensureStarterGrant: (
+    userId: string,
+    starterCredits: number,
+  ) => Promise<unknown>;
+}) {
   return async function starterCreditsMiddleware(
     req: Request,
     _res: Response,
-    next: NextFunction
+    next: NextFunction,
   ): Promise<void> {
     const authReq = req as StarterCreditsRequest;
     const userId = authReq.user?.uid;
@@ -55,7 +56,7 @@ export function createStarterCreditsMiddleware(
     try {
       await userCreditService.ensureStarterGrant(userId, parseStarterCredits());
     } catch (error) {
-      logger.warn('Starter credit bootstrap failed; continuing request', {
+      logger.warn("Starter credit bootstrap failed; continuing request", {
         userId,
         error: error instanceof Error ? error.message : String(error),
       });

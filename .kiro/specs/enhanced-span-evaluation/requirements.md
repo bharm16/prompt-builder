@@ -36,49 +36,55 @@ This specification defines enhancements to the span labeling evaluation system. 
 ```typescript
 interface EnhancedJudgeResult {
   scores: {
-    coverage: number;      // 1-5
-    precision: number;     // 1-5
-    granularity: number;   // 1-5
-    taxonomy: number;      // 1-5
+    coverage: number; // 1-5
+    precision: number; // 1-5
+    granularity: number; // 1-5
+    taxonomy: number; // 1-5
     technicalSpecs: number; // 1-5
   };
   totalScore: number;
-  
+
   // Detailed missed elements (was just string[])
   missedElements: Array<{
     text: string;
-    expectedRole: string;           // e.g., "subject.wardrobe"
-    category: string;               // e.g., "subject"
-    severity: 'critical' | 'important' | 'minor';
+    expectedRole: string; // e.g., "subject.wardrobe"
+    category: string; // e.g., "subject"
+    severity: "critical" | "important" | "minor";
   }>;
-  
+
   // Detailed false positives - uses spanIndex for reliable matching
   falsePositives: Array<{
-    spanIndex: number;              // Index in the spans array (0-based)
-    text: string;                   // For human readability
+    spanIndex: number; // Index in the spans array (0-based)
+    text: string; // For human readability
     assignedRole: string;
-    reason: 'section_header' | 'abstract_concept' | 'non_visual' | 'instruction_text' | 'duplicate' | 'other';
+    reason:
+      | "section_header"
+      | "abstract_concept"
+      | "non_visual"
+      | "instruction_text"
+      | "duplicate"
+      | "other";
   }>;
-  
+
   // Taxonomy misclassifications - uses spanIndex for reliable matching
   taxonomyErrors: Array<{
-    spanIndex: number;              // Index in the spans array (0-based)
-    text: string;                   // For human readability
+    spanIndex: number; // Index in the spans array (0-based)
+    text: string; // For human readability
     assignedRole: string;
     expectedRole: string;
   }>;
-  
+
   // Granularity errors
   granularityErrors: Array<{
-    spanIndex: number;              // Index in the spans array (0-based)
+    spanIndex: number; // Index in the spans array (0-based)
     text: string;
-    issue: 'too_fine' | 'too_coarse';
-    suggestion: string;             // What the span should be
+    issue: "too_fine" | "too_coarse";
+    suggestion: string; // What the span should be
   }>;
-  
+
   // Per-category assessment (all 9 taxonomy categories)
   categoryScores: {
-    shot: { coverage: number; precision: number };       // 1-5 each
+    shot: { coverage: number; precision: number }; // 1-5 each
     subject: { coverage: number; precision: number };
     action: { coverage: number; precision: number };
     environment: { coverage: number; precision: number };
@@ -88,7 +94,7 @@ interface EnhancedJudgeResult {
     technical: { coverage: number; precision: number };
     audio: { coverage: number; precision: number };
   };
-  
+
   notes: string;
 }
 ```
@@ -122,7 +128,7 @@ interface SpanResult {
   confidence: number;
   start: number;
   end: number;
-  section?: 'main' | 'technicalSpecs' | 'alternatives';  // Added for section tagging
+  section?: "main" | "technicalSpecs" | "alternatives"; // Added for section tagging
 }
 
 interface EvaluationMetadata {
@@ -140,7 +146,7 @@ interface EvaluationMetadata {
 
 1. WHEN processing a prompt, THE Evaluation_System SHALL detect section boundaries for main content, technical specs, and alternatives sections
 2. WHEN a prompt contains "**TECHNICAL SPECS**" or "**Technical Specifications**" header, THE Evaluation_System SHALL mark the start of the technical specs section
-3. WHEN a prompt contains "**ALTERNATIVE" or "**VARIATIONS**" header, THE Evaluation_System SHALL mark the start of the alternatives section
+3. WHEN a prompt contains "**ALTERNATIVE" or "**VARIATIONS\*\*" header, THE Evaluation_System SHALL mark the start of the alternatives section
 4. WHEN a span is extracted, THE Evaluation_System SHALL tag it with its section based on the span's start offset
 5. THE Evaluation_System SHALL use simple regex pattern matching for section detection without LLM calls
 6. WHEN evaluation completes, THE Evaluation_System SHALL include EvaluationMetadata with prompt length, section boundaries, and span counts per section
@@ -158,7 +164,7 @@ interface EnhancedSummary {
   avgSpanCount: number;
   scoreDistribution: Record<string, number>;
   errorCount: number;
-  
+
   // Enhanced category scores (all 9 taxonomy categories)
   avgCategoryScores: {
     shot: { coverage: number; precision: number };
@@ -171,7 +177,7 @@ interface EnhancedSummary {
     technical: { coverage: number; precision: number };
     audio: { coverage: number; precision: number };
   };
-  
+
   // Error aggregations
   falsePositiveReasons: {
     section_header: number;
@@ -181,14 +187,14 @@ interface EnhancedSummary {
     duplicate: number;
     other: number;
   };
-  
+
   // Top 10 taxonomy confusions
   topTaxonomyErrors: Array<{
     assignedRole: string;
     expectedRole: string;
     count: number;
   }>;
-  
+
   // Section-level error rates
   errorsBySection: {
     main: { falsePositives: number; missed: number };
@@ -215,9 +221,24 @@ interface EnhancedSummary {
 ```typescript
 interface ConfidenceAnalysis {
   buckets: {
-    high: { range: [0.8, 1.0]; total: number; errors: number; errorRate: number };
-    medium: { range: [0.6, 0.8]; total: number; errors: number; errorRate: number };
-    low: { range: [0.0, 0.6]; total: number; errors: number; errorRate: number };
+    high: {
+      range: [0.8, 1.0];
+      total: number;
+      errors: number;
+      errorRate: number;
+    };
+    medium: {
+      range: [0.6, 0.8];
+      total: number;
+      errors: number;
+      errorRate: number;
+    };
+    low: {
+      range: [0.0, 0.6];
+      total: number;
+      errors: number;
+      errorRate: number;
+    };
   };
   recommendedThreshold: number | null;
   notes: string;

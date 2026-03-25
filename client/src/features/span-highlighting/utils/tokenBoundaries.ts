@@ -15,8 +15,8 @@ export function isWordBoundary(text: string, index: number): boolean {
   if (index <= 0 || index >= text.length) {
     return true;
   }
-  const prev = text[index - 1] ?? '';
-  const current = text[index] ?? '';
+  const prev = text[index - 1] ?? "";
+  const current = text[index] ?? "";
   return !(/\w/.test(prev) && /\w/.test(current));
 }
 
@@ -26,9 +26,14 @@ export function isWordBoundary(text: string, index: number): boolean {
 export function snapSpanToTokenBoundaries(
   text: string,
   start: number,
-  end: number
+  end: number,
 ): Range | null {
-  if (!text || !Number.isFinite(start) || !Number.isFinite(end) || end <= start) {
+  if (
+    !text ||
+    !Number.isFinite(start) ||
+    !Number.isFinite(end) ||
+    end <= start
+  ) {
     return null;
   }
 
@@ -55,7 +60,11 @@ export function snapSpanToTokenBoundaries(
 /**
  * Checks if a range overlaps with any existing ranges
  */
-export function rangeOverlaps(ranges: Range[], start: number, end: number): boolean {
+export function rangeOverlaps(
+  ranges: Range[],
+  start: number,
+  end: number,
+): boolean {
   return ranges.some((range) => {
     if (range.end <= range.start) return false;
     return !(end <= range.start || start >= range.end);

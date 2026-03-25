@@ -1,10 +1,10 @@
-import React from 'react';
+import React from "react";
 
 const PRESETS = [
-  { label: 'Loose', value: 0.4 },
-  { label: 'Balanced', value: 0.6 },
-  { label: 'Strict', value: 0.8 },
-  { label: 'Exact', value: 0.95 },
+  { label: "Loose", value: 0.4 },
+  { label: "Balanced", value: 0.6 },
+  { label: "Strict", value: 0.8 },
+  { label: "Exact", value: 0.95 },
 ];
 
 export interface StrengthSliderProps {
@@ -18,7 +18,7 @@ export function StrengthSlider({
   value,
   onChange,
   disabled = false,
-  label = 'Style strength',
+  label = "Style strength",
 }: StrengthSliderProps): React.ReactElement {
   return (
     <div className="space-y-2">
@@ -45,9 +45,9 @@ export function StrengthSlider({
             onClick={() => onChange(preset.value)}
             className={`rounded-full border px-2 py-1 text-xs transition-colors ${
               Math.abs(value - preset.value) < 0.01
-                ? 'border-accent bg-accent/10 text-accent'
-                : 'border-border text-muted hover:text-foreground'
-            } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                ? "border-accent bg-accent/10 text-accent"
+                : "border-border text-muted hover:text-foreground"
+            } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
           >
             {preset.label}
           </button>

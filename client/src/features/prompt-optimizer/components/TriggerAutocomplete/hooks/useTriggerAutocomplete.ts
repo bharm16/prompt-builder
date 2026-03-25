@@ -1,5 +1,12 @@
-import { useCallback, useEffect, useMemo, useState, type KeyboardEvent, type RefObject } from 'react';
-import type { Asset } from '@shared/types/asset';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type KeyboardEvent,
+  type RefObject,
+} from "react";
+import type { Asset } from "@shared/types/asset";
 
 interface AutocompletePosition {
   top: number;
@@ -24,12 +31,12 @@ const MAX_SUGGESTIONS = 8;
 
 const getCaretPosition = (
   input: HTMLTextAreaElement,
-  position: number
+  position: number,
 ): AutocompletePosition => {
   const rect = input.getBoundingClientRect();
   const style = window.getComputedStyle(input);
-  const canvas = document.createElement('canvas');
-  const context = canvas.getContext('2d');
+  const canvas = document.createElement("canvas");
+  const context = canvas.getContext("2d");
 
   if (!context) {
     return { top: rect.bottom + 6, left: rect.left };
@@ -57,22 +64,25 @@ export function useTriggerAutocomplete({
   const [isOpen, setIsOpen] = useState(false);
   const [suggestions, setSuggestions] = useState<Asset[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const [query, setQuery] = useState('');
-  const [position, setPosition] = useState<AutocompletePosition>({ top: 0, left: 0 });
+  const [query, setQuery] = useState("");
+  const [position, setPosition] = useState<AutocompletePosition>({
+    top: 0,
+    left: 0,
+  });
   const [activeRange, setActiveRange] = useState<ActiveRange | null>(null);
 
   const assetLookup = useMemo(
     () =>
       assets.map((asset) => ({
         asset,
-        normalized: asset.trigger.replace(/^@/, '').toLowerCase(),
+        normalized: asset.trigger.replace(/^@/, "").toLowerCase(),
       })),
-    [assets]
+    [assets],
   );
 
   const close = useCallback(() => {
     setIsOpen(false);
-    setQuery('');
+    setQuery("");
     setSuggestions([]);
     setActiveRange(null);
   }, []);
@@ -98,8 +108,8 @@ export function useTriggerAutocomplete({
       return;
     }
 
-    const matchedQuery = match[1] ?? '';
-    const start = match.index ?? beforeCursor.lastIndexOf('@');
+    const matchedQuery = match[1] ?? "";
+    const start = match.index ?? beforeCursor.lastIndexOf("@");
     if (start < 0) {
       close();
       return;
@@ -131,7 +141,7 @@ export function useTriggerAutocomplete({
       onSelect(asset, activeRange);
       close();
     },
-    [activeRange, close, onSelect, suggestions]
+    [activeRange, close, onSelect, suggestions],
   );
 
   const handleKeyDown = useCallback(
@@ -139,20 +149,22 @@ export function useTriggerAutocomplete({
       if (!isOpen || suggestions.length === 0) return false;
 
       switch (event.key) {
-        case 'ArrowDown':
+        case "ArrowDown":
           event.preventDefault();
-          setSelectedIndex((index) => Math.min(index + 1, suggestions.length - 1));
+          setSelectedIndex((index) =>
+            Math.min(index + 1, suggestions.length - 1),
+          );
           return true;
-        case 'ArrowUp':
+        case "ArrowUp":
           event.preventDefault();
           setSelectedIndex((index) => Math.max(index - 1, 0));
           return true;
-        case 'Enter':
-        case 'Tab':
+        case "Enter":
+        case "Tab":
           event.preventDefault();
           selectSuggestion(selectedIndex);
           return true;
-        case 'Escape':
+        case "Escape":
           event.preventDefault();
           close();
           return true;
@@ -160,7 +172,7 @@ export function useTriggerAutocomplete({
           return false;
       }
     },
-    [close, isOpen, selectSuggestion, selectedIndex, suggestions.length]
+    [close, isOpen, selectSuggestion, selectedIndex, suggestions.length],
   );
 
   return {

@@ -1,8 +1,8 @@
-import React from 'react';
-import { cn } from '@/utils/cn';
-import { useResolvedMediaUrl } from '@/hooks/useResolvedMediaUrl';
-import { ImagePreview } from './components/ImagePreview';
-import { VideoPlayer } from './components/VideoPlayer';
+import React from "react";
+import { cn } from "@/utils/cn";
+import { useResolvedMediaUrl } from "@/hooks/useResolvedMediaUrl";
+import { ImagePreview } from "./components/ImagePreview";
+import { VideoPlayer } from "./components/VideoPlayer";
 
 interface MediaViewerProps {
   storagePath: string | null;
@@ -17,8 +17,11 @@ interface MediaViewerProps {
   poster?: string;
 }
 
-function isVideoSource(storagePath: string | null, contentType?: string | null): boolean {
-  if (contentType && contentType.startsWith('video/')) return true;
+function isVideoSource(
+  storagePath: string | null,
+  contentType?: string | null,
+): boolean {
+  if (contentType && contentType.startsWith("video/")) return true;
   if (!storagePath) return false;
   return /\.(mp4|webm|mov)$/i.test(storagePath);
 }
@@ -36,8 +39,12 @@ export function MediaViewer({
   poster,
 }: MediaViewerProps) {
   const isVideo = isVideoSource(storagePath, contentType);
-  const { url: viewUrl, loading, error } = useResolvedMediaUrl({
-    kind: isVideo ? 'video' : 'image',
+  const {
+    url: viewUrl,
+    loading,
+    error,
+  } = useResolvedMediaUrl({
+    kind: isVideo ? "video" : "image",
     url: initialUrl ?? null,
     storagePath: storagePath ?? null,
     enabled: Boolean(storagePath || initialUrl),
@@ -47,8 +54,8 @@ export function MediaViewer({
     return (
       <div
         className={cn(
-          'flex h-full w-full items-center justify-center rounded-md bg-[rgb(30,34,40)] text-xs text-faint',
-          className
+          "flex h-full w-full items-center justify-center rounded-md bg-[rgb(30,34,40)] text-xs text-faint",
+          className,
         )}
       >
         Loading media...
@@ -60,8 +67,8 @@ export function MediaViewer({
     return (
       <div
         className={cn(
-          'flex h-full w-full items-center justify-center rounded-md bg-[rgb(30,34,40)] text-xs text-faint',
-          className
+          "flex h-full w-full items-center justify-center rounded-md bg-[rgb(30,34,40)] text-xs text-faint",
+          className,
         )}
       >
         {error}

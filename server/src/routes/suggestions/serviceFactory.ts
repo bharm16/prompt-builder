@@ -1,4 +1,4 @@
-import type { LLMJudgeService } from '@services/quality-feedback/services/LLMJudgeService';
+import type { LLMJudgeService } from "@services/quality-feedback/services/LLMJudgeService";
 
 export interface SuggestionsRouteServices {
   llmJudgeService: LLMJudgeService;
@@ -9,7 +9,7 @@ export interface SuggestionsServices {
 }
 
 export function createSuggestionsServices(
-  services: SuggestionsRouteServices
+  services: SuggestionsRouteServices,
 ): SuggestionsServices {
   return {
     llmJudge: services.llmJudgeService,

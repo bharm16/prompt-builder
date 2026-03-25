@@ -2,21 +2,27 @@
  * Types for PromptStateContext
  */
 
-import type { ReactNode, Dispatch, SetStateAction } from 'react';
-import type { NavigateFunction } from 'react-router-dom';
+import type { ReactNode, Dispatch, SetStateAction } from "react";
+import type { NavigateFunction } from "react-router-dom";
 import type {
   PromptHistoryEntry,
   PromptKeyframe,
   PromptVersionEdit,
   PromptVersionEntry,
-} from '@features/prompt-optimizer/types/domain/prompt-session';
-import type { Mode, WorkspaceUser as User } from '@features/prompt-optimizer/types/domain/workspace';
-import type { PromptContext } from '@utils/PromptContext/PromptContext';
-import type { CapabilityValues } from '@shared/capabilities';
-import type { UpdatePromptOptions } from '@repositories/promptRepositoryTypes';
-import type { HighlightSnapshot as CanvasHighlightSnapshot, SuggestionsData } from '../PromptCanvas/types';
-import type { LockedSpan, OptimizationOptions } from '../types';
-import type { VideoTier } from '@components/ToolSidebar/types';
+} from "@features/prompt-optimizer/types/domain/prompt-session";
+import type {
+  Mode,
+  WorkspaceUser as User,
+} from "@features/prompt-optimizer/types/domain/workspace";
+import type { PromptContext } from "@utils/PromptContext/PromptContext";
+import type { CapabilityValues } from "@shared/capabilities";
+import type { UpdatePromptOptions } from "@repositories/promptRepositoryTypes";
+import type {
+  HighlightSnapshot as CanvasHighlightSnapshot,
+  SuggestionsData,
+} from "../PromptCanvas/types";
+import type { LockedSpan, OptimizationOptions } from "../types";
+import type { VideoTier } from "@components/ToolSidebar/types";
 
 export type { PromptHistoryEntry, PromptKeyframe, PromptVersionEntry, User };
 export type HighlightSnapshot = CanvasHighlightSnapshot;
@@ -48,12 +54,12 @@ export interface PromptOptimizer {
     context?: Record<string, unknown> | null,
     brainstormContext?: Record<string, unknown> | null,
     targetModel?: string,
-    options?: OptimizationOptions
+    options?: OptimizationOptions,
   ) => Promise<{ optimized: string; score: number | null } | null>;
   compile: (
     prompt: string,
     targetModel?: string,
-    context?: Record<string, unknown> | null
+    context?: Record<string, unknown> | null,
   ) => Promise<{ optimized: string; score: number | null } | null>;
   resetPrompt: () => void;
   setLockedSpans: (spans: LockedSpan[]) => void;
@@ -75,18 +81,18 @@ export interface PromptHistory {
     selectedMode: string,
     targetModel?: string | null,
     generationParams?: Record<string, unknown> | null,
-    keyframes?: PromptHistoryEntry['keyframes'],
+    keyframes?: PromptHistoryEntry["keyframes"],
     brainstormContext?: Record<string, unknown> | null,
     highlightCache?: Record<string, unknown> | null,
     existingUuid?: string | null,
-    title?: string | null
+    title?: string | null,
   ) => Promise<{ uuid: string; id: string } | null>;
   createDraft: (params: {
     id?: string | null;
     mode: string;
     targetModel: string | null;
     generationParams: Record<string, unknown> | null;
-    keyframes?: PromptHistoryEntry['keyframes'];
+    keyframes?: PromptHistoryEntry["keyframes"];
     uuid?: string;
     input?: string;
     output?: string;
@@ -96,14 +102,32 @@ export interface PromptHistory {
     versions?: PromptVersionEntry[];
     persist?: boolean;
   }) => { uuid: string; id: string };
-  updateEntryLocal: (uuid: string, updates: Partial<PromptHistoryEntry>) => void;
+  updateEntryLocal: (
+    uuid: string,
+    updates: Partial<PromptHistoryEntry>,
+  ) => void;
   clearHistory: () => Promise<void>;
   deleteFromHistory: (entryId: string) => Promise<void>;
   loadHistoryFromFirestore: (userId: string) => Promise<void>;
-  updateEntryHighlight: (uuid: string, highlightCache: Record<string, unknown>) => void;
-  updateEntryOutput: (uuid: string, docId: string | null, output: string) => Promise<void>;
-  updateEntryPersisted: (uuid: string, docId: string | null, updates: UpdatePromptOptions) => void;
-  updateEntryVersions: (uuid: string, docId: string | null, versions: PromptVersionEntry[]) => void;
+  updateEntryHighlight: (
+    uuid: string,
+    highlightCache: Record<string, unknown>,
+  ) => void;
+  updateEntryOutput: (
+    uuid: string,
+    docId: string | null,
+    output: string,
+  ) => Promise<void>;
+  updateEntryPersisted: (
+    uuid: string,
+    docId: string | null,
+    updates: UpdatePromptOptions,
+  ) => void;
+  updateEntryVersions: (
+    uuid: string,
+    docId: string | null,
+    versions: PromptVersionEntry[],
+  ) => void;
 }
 
 export interface StateSnapshot {
@@ -145,8 +169,8 @@ export interface PromptUIState {
   setCurrentAIIndex: (index: number) => void;
 
   // Output persistence (autosave)
-  outputSaveState: 'idle' | 'saving' | 'saved' | 'error';
-  setOutputSaveState: (state: 'idle' | 'saving' | 'saved' | 'error') => void;
+  outputSaveState: "idle" | "saving" | "saved" | "error";
+  setOutputSaveState: (state: "idle" | "saving" | "saved" | "error") => void;
   outputLastSavedAt: number | null;
   setOutputLastSavedAt: (timestampMs: number | null) => void;
 }
@@ -199,10 +223,14 @@ export interface PromptActionsState {
   // Helper functions
   applyInitialHighlightSnapshot: (
     snapshot: HighlightSnapshot | null,
-    options?: { bumpVersion?: boolean; markPersisted?: boolean }
+    options?: { bumpVersion?: boolean; markPersisted?: boolean },
   ) => void;
   resetEditStacks: () => void;
-  registerPromptEdit: (payload: { previousText: string; nextText: string; source?: 'manual' | 'suggestion' | 'unknown' }) => void;
+  registerPromptEdit: (payload: {
+    previousText: string;
+    nextText: string;
+    source?: "manual" | "suggestion" | "unknown";
+  }) => void;
   resetVersionEdits: () => void;
   setDisplayedPromptSilently: (text: string) => void;
   handleCreateNew: () => void;
@@ -215,8 +243,7 @@ export interface PromptNavigationState {
   sessionId: string | undefined;
 }
 
-export type PromptStateContextValue =
-  PromptConfigState &
+export type PromptStateContextValue = PromptConfigState &
   PromptUIState &
   PromptSessionState &
   PromptHighlightState &

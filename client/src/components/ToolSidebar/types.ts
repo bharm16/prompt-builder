@@ -1,18 +1,21 @@
-import type { ReactNode } from 'react';
-import type { User, PromptHistoryEntry } from '@features/prompt-optimizer/types/domain/prompt-session';
-import type { Asset, AssetType } from '@shared/types/asset';
-import type { AppIcon } from '@/types';
+import type { ReactNode } from "react";
+import type {
+  User,
+  PromptHistoryEntry,
+} from "@features/prompt-optimizer/types/domain/prompt-session";
+import type { Asset, AssetType } from "@shared/types/asset";
+import type { AppIcon } from "@/types";
 
-export type ToolPanelType = 'sessions' | 'studio' | 'characters' | 'styles';
+export type ToolPanelType = "sessions" | "studio" | "characters" | "styles";
 
-export type DraftModel = 'flux-kontext' | 'wan-2.2' | 'wan-2.5';
+export type DraftModel = "flux-kontext" | "wan-2.2" | "wan-2.5";
 
-export type VideoTier = 'draft' | 'render';
+export type VideoTier = "draft" | "render";
 
 export interface KeyframeTile {
   id: string;
   url: string;
-  source: 'upload' | 'library' | 'generation' | 'asset';
+  source: "upload" | "library" | "generation" | "asset";
   assetId?: string;
   sourcePrompt?: string;
   storagePath?: string;
@@ -42,7 +45,7 @@ export interface GenerationOverrides {
   } | null;
   referenceImages?: Array<{
     url: string;
-    type: 'asset' | 'style';
+    type: "asset" | "style";
     storagePath?: string;
     viewUrlExpiresAt?: string;
   }>;
@@ -99,11 +102,15 @@ export interface ToolSidebarWorkspaceDomain {
   toggleGallery: () => void;
 }
 
-export type OptionalToolSidebarSessionsDomain = ToolSidebarSessionsDomain | null;
-export type OptionalToolSidebarPromptInteractionDomain = ToolSidebarPromptInteractionDomain | null;
-export type OptionalToolSidebarGenerationDomain = ToolSidebarGenerationDomain | null;
+export type OptionalToolSidebarSessionsDomain =
+  ToolSidebarSessionsDomain | null;
+export type OptionalToolSidebarPromptInteractionDomain =
+  ToolSidebarPromptInteractionDomain | null;
+export type OptionalToolSidebarGenerationDomain =
+  ToolSidebarGenerationDomain | null;
 export type OptionalToolSidebarAssetsDomain = ToolSidebarAssetsDomain | null;
-export type OptionalToolSidebarWorkspaceDomain = ToolSidebarWorkspaceDomain | null;
+export type OptionalToolSidebarWorkspaceDomain =
+  ToolSidebarWorkspaceDomain | null;
 
 export interface ToolSidebarProps {
   user: User | null;
@@ -126,5 +133,5 @@ export interface ToolNavItem {
   id: ToolPanelType;
   icon: AppIcon;
   label: string;
-  variant: 'header' | 'default';
+  variant: "header" | "default";
 }

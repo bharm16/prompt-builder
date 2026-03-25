@@ -1,9 +1,9 @@
-import React, { useMemo, type ReactElement } from 'react';
-import { Highlighter, Plus, Upload } from '@promptstudio/system/components/ui';
-import { cn } from '@utils/cn';
-import type { KeyframeTile } from '@components/ToolSidebar/types';
-import { useResolvedMediaUrl } from '@/hooks/useResolvedMediaUrl';
-import { hasGcsSignedUrlParams } from '@/utils/storageUrl';
+import React, { useMemo, type ReactElement } from "react";
+import { Highlighter, Plus, Upload } from "@promptstudio/system/components/ui";
+import { cn } from "@utils/cn";
+import type { KeyframeTile } from "@components/ToolSidebar/types";
+import { useResolvedMediaUrl } from "@/hooks/useResolvedMediaUrl";
+import { hasGcsSignedUrlParams } from "@/utils/storageUrl";
 
 interface ImageReferenceSlotsRowProps {
   keyframes: KeyframeTile[];
@@ -20,11 +20,13 @@ function ReferenceSlotImage({
   index: number;
 }): ReactElement {
   const shouldResolveUrl = Boolean(
-    tile.storagePath || tile.assetId || (tile.url && hasGcsSignedUrlParams(tile.url))
+    tile.storagePath ||
+      tile.assetId ||
+      (tile.url && hasGcsSignedUrlParams(tile.url)),
   );
 
   const { url: resolvedUrl } = useResolvedMediaUrl({
-    kind: 'image',
+    kind: "image",
     url: tile.url,
     storagePath: tile.storagePath ?? null,
     assetId: tile.assetId ?? null,
@@ -48,7 +50,7 @@ export function ImageReferenceSlotsRow({
 }: ImageReferenceSlotsRowProps): ReactElement {
   const keyframeSlots = useMemo(
     () => Array.from({ length: 3 }, (_, index) => keyframes[index] ?? null),
-    [keyframes]
+    [keyframes],
   );
 
   return (
@@ -64,11 +66,11 @@ export function ImageReferenceSlotsRow({
             <button
               type="button"
               className={cn(
-                'w-full h-full flex items-center justify-center',
-                'bg-surface-1 rounded-lg shadow-[inset_0_0_0_1px_#2C3037]',
-                'overflow-hidden',
-                isEmpty && 'cursor-pointer',
-                isEmpty && !canUpload && 'opacity-60 cursor-not-allowed'
+                "w-full h-full flex items-center justify-center",
+                "bg-surface-1 rounded-lg shadow-[inset_0_0_0_1px_#2C3037]",
+                "overflow-hidden",
+                isEmpty && "cursor-pointer",
+                isEmpty && !canUpload && "opacity-60 cursor-not-allowed",
               )}
               onClick={() => {
                 if (!canUpload) return;

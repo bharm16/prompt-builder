@@ -32,17 +32,20 @@ All files are well within architectural constraints (500 line limit for orchestr
 ## 🎨 Features Implemented
 
 ### Desktop Layout (≥768px)
+
 - **Left sidebar panel** (288px wide)
 - Vertical scrolling bento boxes
 - Full height layout
 
 ### Mobile Layout (<768px)
+
 - **Bottom drawer** (40vh height on mobile, 35vh on very small screens)
 - Drag handle visual indicator
 - Optimized padding and font sizes
 - Elevated with box shadow
 
 ### Functionality
+
 ✅ **All 10 NLP categories** always displayed (lighting, framing, cameraMove, technical, environment, color, timeOfDay, appearance, wardrobe, descriptive)
 ✅ **Collapsible sections** with chevron icons (expanded by default)
 ✅ **Empty state handling** - Shows "No items" for categories with no spans
@@ -59,11 +62,13 @@ All files are well within architectural constraints (500 line limit for orchestr
 ### PromptCanvas.jsx Changes
 
 1. **Import added** (line 24):
+
 ```jsx
-import { SpanBentoGrid } from './SpanBentoGrid/SpanBentoGrid.jsx';
+import { SpanBentoGrid } from "./SpanBentoGrid/SpanBentoGrid.jsx";
 ```
 
 2. **Handler added** (lines 454-486):
+
 ```jsx
 const handleSpanClickFromBento = (span) => {
   // Creates synthetic event matching highlight click behavior
@@ -72,6 +77,7 @@ const handleSpanClickFromBento = (span) => {
 ```
 
 3. **Panel replaced** (lines 598-605):
+
 ```jsx
 <div className="w-72 flex-shrink-0 max-md:w-full max-md:h-auto">
   <SpanBentoGrid
@@ -108,18 +114,18 @@ PromptCanvas
 
 All 10 categories with exact color matching from CategoryLegend.jsx:
 
-| Category | Icon | Order |
-|----------|------|-------|
-| Lighting | 💡 | 1 |
-| Shot Framing | 🎬 | 2 |
-| Camera Movement | 🎥 | 3 |
-| Technical Specs | ⚙️ | 4 |
-| Environment | 🌲 | 5 |
-| Color Palette | 🎨 | 6 |
-| Time of Day | 🌅 | 7 |
-| Appearance | 👤 | 8 |
-| Wardrobe | 👔 | 9 |
-| Descriptive | 📝 | 10 |
+| Category        | Icon | Order |
+| --------------- | ---- | ----- |
+| Lighting        | 💡   | 1     |
+| Shot Framing    | 🎬   | 2     |
+| Camera Movement | 🎥   | 3     |
+| Technical Specs | ⚙️   | 4     |
+| Environment     | 🌲   | 5     |
+| Color Palette   | 🎨   | 6     |
+| Time of Day     | 🌅   | 7     |
+| Appearance      | 👤   | 8     |
+| Wardrobe        | 👔   | 9     |
+| Descriptive     | 📝   | 10    |
 
 ---
 
@@ -137,6 +143,7 @@ All 10 categories with exact color matching from CategoryLegend.jsx:
 ### 🔄 Updates Automatically
 
 When `parseResult.spans` changes:
+
 - Draft spans arrive → Bento grid updates
 - Refined spans arrive → Bento grid updates
 - Spans added/removed → Bento grid updates
@@ -147,6 +154,7 @@ When `parseResult.spans` changes:
 ## 🧪 Testing Checklist
 
 ### Desktop Functionality
+
 - [ ] All 10 categories render with correct colors/icons
 - [ ] Empty categories show "No items"
 - [ ] All boxes expanded by default
@@ -155,6 +163,7 @@ When `parseResult.spans` changes:
 - [ ] Header shows correct counts (highlights, categories)
 
 ### Click Interactions
+
 - [ ] Clicking a span scrolls to highlight in editor
 - [ ] Pulse animation plays on scroll-to-highlight
 - [ ] Suggestions panel opens on span click
@@ -162,6 +171,7 @@ When `parseResult.spans` changes:
 - [ ] Hover effects work on span items
 
 ### Mobile Responsiveness (<768px)
+
 - [ ] Bento grid appears as bottom drawer
 - [ ] Drawer is 40vh height (35vh on very small screens)
 - [ ] Drag handle is visible at top
@@ -169,12 +179,14 @@ When `parseResult.spans` changes:
 - [ ] Doesn't block main editor content
 
 ### Data Synchronization
+
 - [ ] Updates when draft spans arrive
 - [ ] Updates when refined spans arrive
 - [ ] Handles 0 spans gracefully
 - [ ] Handles 30+ spans without performance issues
 
 ### No Regressions
+
 - [ ] Existing highlights still render correctly
 - [ ] Clicking highlights directly still works
 - [ ] CategoryLegend still functions
@@ -186,14 +198,17 @@ When `parseResult.spans` changes:
 ## 🚀 How to Test
 
 ### 1. Start the development server
+
 ```bash
 npm run dev
 ```
 
 ### 2. Navigate to Prompt Optimizer
+
 - Select "Video" mode to enable span labeling
 
 ### 3. Test Desktop Layout
+
 - Type a prompt (e.g., "A cinematic shot of a lone astronaut walking through golden hour lighting")
 - Verify bento grid appears on the left with categorized spans
 - Click the collapse/expand arrows
@@ -202,12 +217,14 @@ npm run dev
   - Suggestions panel opening
 
 ### 4. Test Mobile Layout
+
 - Resize browser to <768px width
 - Verify bento grid becomes a bottom drawer
 - Check that drag handle is visible
 - Verify scrolling works within drawer
 
 ### 5. Test Edge Cases
+
 - Empty prompt (0 spans) → All categories show "No items"
 - Very long prompt (50+ spans) → Check performance
 - Rapid typing → Verify updates are smooth
@@ -217,12 +234,14 @@ npm run dev
 ## 📊 Performance Characteristics
 
 ### Optimizations
+
 - **Memoized components** - SpanBentoGrid, BentoBox, SpanItem all use `memo()`
 - **Memoized grouping** - useSpanGrouping uses `useMemo()`
 - **Efficient sorting** - Only sorts once per span update
 - **No virtualization needed** - <30 spans typical, simple rendering is fine
 
 ### Expected Performance
+
 - Grouping: <5ms for 50 spans
 - Rendering: <20ms for 50 spans
 - Scroll animation: Smooth 60fps
@@ -233,15 +252,18 @@ npm run dev
 ## 🎓 Code Quality
 
 ### Linting
+
 ✅ No linter errors in any file
 
 ### Architectural Compliance
+
 ✅ Follows VideoConceptBuilder pattern
 ✅ All files under size limits
 ✅ Clear separation of concerns
 ✅ Proper use of hooks and components
 
 ### Documentation
+
 ✅ All functions have JSDoc comments
 ✅ Configuration is well-documented
 ✅ CSS is organized with clear sections
@@ -252,6 +274,7 @@ npm run dev
 ## 🔮 Future Enhancements (Optional)
 
 ### Potential Additions
+
 1. **Drag handle interaction** - Make mobile drawer resizable
 2. **Search/filter** - Filter spans by text search
 3. **Keyboard navigation** - Arrow keys to navigate spans
@@ -261,6 +284,7 @@ npm run dev
 7. **Context menu** - Right-click for more options
 
 ### Performance Optimizations (if needed for 50+ spans)
+
 1. **Virtualization** - Use react-window for large span lists
 2. **Lazy loading** - Only render visible categories
 3. **Debouncing** - Debounce grouping computation
@@ -270,16 +294,20 @@ npm run dev
 ## 📝 Notes
 
 ### Why "Bento Grid"?
+
 The term "bento box" refers to the Japanese lunch box with compartments for different foods. Similarly, this component organizes spans into categorized compartments.
 
 ### Design Decisions
+
 1. **Always show all categories** - Provides consistent layout, users know what to expect
 2. **Expanded by default** - Maximizes discoverability of spans
 3. **Bottom drawer on mobile** - Preserves main editor space
 4. **"No items" vs hiding** - Maintains visual consistency
 
 ### Migration from "Your Input"
+
 The previous "Your Input" panel simply displayed the raw input prompt. The new Bento Grid provides much more value:
+
 - Interactive access to all detected elements
 - Organized by semantic category
 - Direct triggering of suggestions
@@ -329,4 +357,3 @@ The implementation successfully achieves:
 
 **Implementation Date:** November 7, 2025
 **Status:** ✅ Ready for Testing
-

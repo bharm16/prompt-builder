@@ -1,9 +1,9 @@
-import React, { useEffect } from 'react';
-import { RefreshCw } from '@promptstudio/system/components/ui';
-import { Button } from '@promptstudio/system/components/ui/button';
-import type { Asset } from '@shared/types/asset';
-import { KeyframeOptionCard } from './KeyframeOptionCard';
-import { useKeyframeGeneration } from './hooks/useKeyframeGeneration';
+import React, { useEffect } from "react";
+import { RefreshCw } from "@promptstudio/system/components/ui";
+import { Button } from "@promptstudio/system/components/ui/button";
+import type { Asset } from "@shared/types/asset";
+import { KeyframeOptionCard } from "./KeyframeOptionCard";
+import { useKeyframeGeneration } from "./hooks/useKeyframeGeneration";
 
 interface KeyframeStepProps {
   prompt: string;
@@ -60,7 +60,12 @@ export function KeyframeStep({
       ) : error ? (
         <div className="py-6 text-center">
           <p className="text-sm text-red-600">{error}</p>
-          <Button variant="outline" size="sm" onClick={regenerate} className="mt-3">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={regenerate}
+            className="mt-3"
+          >
             Try Again
           </Button>
         </div>
@@ -88,7 +93,9 @@ export function KeyframeStep({
             </button>
 
             <Button
-              onClick={() => selectedKeyframe && onApprove(selectedKeyframe.imageUrl)}
+              onClick={() =>
+                selectedKeyframe && onApprove(selectedKeyframe.imageUrl)
+              }
               disabled={!selectedKeyframe}
             >
               Use This Keyframe

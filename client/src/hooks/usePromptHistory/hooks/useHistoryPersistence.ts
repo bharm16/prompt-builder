@@ -4,9 +4,9 @@
  * Handles repository writes, draft promotion, and persistence-related toasts.
  */
 
-import { useCallback, useEffect, useRef } from 'react';
-import { v4 as uuidv4 } from 'uuid';
-import { logger } from '../../../services/LoggingService';
+import { useCallback, useEffect, useRef } from "react";
+import { v4 as uuidv4 } from "uuid";
+import { logger } from "../../../services/LoggingService";
 import {
   loadFromFirestore,
   loadFromLocalStorage,
@@ -18,10 +18,19 @@ import {
   updatePrompt,
   deleteEntry,
   clearAll,
-} from '../api';
-import type { User, PromptHistoryEntry, PromptVersionEntry, Toast, SaveResult } from '../types';
-import { enforceImmutableKeyframes, enforceImmutableVersions } from '../utils/immutableMedia';
-import type { UpdatePromptOptions } from '../../../repositories/promptRepositoryTypes';
+} from "../api";
+import type {
+  User,
+  PromptHistoryEntry,
+  PromptVersionEntry,
+  Toast,
+  SaveResult,
+} from "../types";
+import {
+  enforceImmutableKeyframes,
+  enforceImmutableVersions,
+} from "../utils/immutableMedia";
+import type { UpdatePromptOptions } from "../../../repositories/promptRepositoryTypes";
 
 interface UseHistoryPersistenceOptions {
   user: User | null;
@@ -46,18 +55,18 @@ interface UseHistoryPersistenceReturn {
     selectedMode: string,
     targetModel?: string | null,
     generationParams?: Record<string, unknown> | null,
-    keyframes?: PromptHistoryEntry['keyframes'],
+    keyframes?: PromptHistoryEntry["keyframes"],
     brainstormContext?: Record<string, unknown> | null,
     highlightCache?: Record<string, unknown> | null,
     existingUuid?: string | null,
-    title?: string | null
+    title?: string | null,
   ) => Promise<SaveResult | null>;
   createDraft: (params: {
     id?: string | null;
     mode: string;
     targetModel: string | null;
     generationParams: Record<string, unknown> | null;
-    keyframes?: PromptHistoryEntry['keyframes'];
+    keyframes?: PromptHistoryEntry["keyframes"];
     uuid?: string;
     input?: string;
     output?: string;
@@ -67,36 +76,56 @@ interface UseHistoryPersistenceReturn {
     versions?: PromptVersionEntry[];
     persist?: boolean;
   }) => SaveResult;
-  updateEntryLocal: (uuid: string, updates: Partial<PromptHistoryEntry>) => void;
-  updateEntryPersisted: (uuid: string, docId: string | null, updates: UpdatePromptOptions) => void;
-  updateEntryHighlight: (uuid: string, highlightCache: Record<string, unknown> | null) => void;
-  updateEntryOutput: (uuid: string, docId: string | null, output: string) => Promise<void>;
-  updateEntryVersions: (uuid: string, docId: string | null, versions: PromptVersionEntry[]) => void;
+  updateEntryLocal: (
+    uuid: string,
+    updates: Partial<PromptHistoryEntry>,
+  ) => void;
+  updateEntryPersisted: (
+    uuid: string,
+    docId: string | null,
+    updates: UpdatePromptOptions,
+  ) => void;
+  updateEntryHighlight: (
+    uuid: string,
+    highlightCache: Record<string, unknown> | null,
+  ) => void;
+  updateEntryOutput: (
+    uuid: string,
+    docId: string | null,
+    output: string,
+  ) => Promise<void>;
+  updateEntryVersions: (
+    uuid: string,
+    docId: string | null,
+    versions: PromptVersionEntry[],
+  ) => void;
   clearHistory: () => Promise<void>;
   deleteFromHistory: (entryId: string) => Promise<void>;
 }
 
-const log = logger.child('useHistoryPersistence');
+const log = logger.child("useHistoryPersistence");
 const MAX_HISTORY_ENTRIES = 100;
 
 const normalizeIdentifier = (value: unknown): string | null => {
-  if (typeof value !== 'string') return null;
+  if (typeof value !== "string") return null;
   const normalized = value.trim();
   return normalized.length > 0 ? normalized : null;
 };
 
 const isDraftEntryId = (value: unknown): boolean => {
   const normalized = normalizeIdentifier(value);
-  return normalized !== null && normalized.startsWith('draft-');
+  return normalized !== null && normalized.startsWith("draft-");
 };
 
 const hasNonEmptyText = (value: unknown): value is string =>
-  typeof value === 'string' && value.trim().length > 0;
+  typeof value === "string" && value.trim().length > 0;
 
-const sortByTimestampDesc = (entries: PromptHistoryEntry[]): PromptHistoryEntry[] =>
+const sortByTimestampDesc = (
+  entries: PromptHistoryEntry[],
+): PromptHistoryEntry[] =>
   [...entries].sort((left, right) => {
-    const leftTimestamp = Date.parse(left.timestamp ?? '');
-    const rightTimestamp = Date.parse(right.timestamp ?? '');
+    const leftTimestamp = Date.parse(left.timestamp ?? "");
+    const rightTimestamp = Date.parse(right.timestamp ?? "");
     const safeLeft = Number.isFinite(leftTimestamp) ? leftTimestamp : 0;
     const safeRight = Number.isFinite(rightTimestamp) ? rightTimestamp : 0;
     return safeRight - safeLeft;
@@ -104,14 +133,18 @@ const sortByTimestampDesc = (entries: PromptHistoryEntry[]): PromptHistoryEntry[
 
 const mergeRemoteWithLocalDraft = (
   remote: PromptHistoryEntry,
-  local: PromptHistoryEntry
+  local: PromptHistoryEntry,
 ): PromptHistoryEntry => ({
   ...remote,
   ...(hasNonEmptyText(remote.input) ? {} : { input: local.input }),
-  ...(remote.generationParams ?? null ? {} : { generationParams: local.generationParams ?? null }),
-  ...(remote.keyframes ?? null ? {} : { keyframes: local.keyframes ?? null }),
-  ...(remote.highlightCache ?? null ? {} : { highlightCache: local.highlightCache ?? null }),
-  ...(remote.brainstormContext ?? null
+  ...((remote.generationParams ?? null)
+    ? {}
+    : { generationParams: local.generationParams ?? null }),
+  ...((remote.keyframes ?? null) ? {} : { keyframes: local.keyframes ?? null }),
+  ...((remote.highlightCache ?? null)
+    ? {}
+    : { highlightCache: local.highlightCache ?? null }),
+  ...((remote.brainstormContext ?? null)
     ? {}
     : { brainstormContext: local.brainstormContext ?? null }),
   ...(Array.isArray(remote.versions) && remote.versions.length > 0
@@ -121,7 +154,7 @@ const mergeRemoteWithLocalDraft = (
 
 const upsertEntry = (
   entries: PromptHistoryEntry[],
-  nextEntry: PromptHistoryEntry
+  nextEntry: PromptHistoryEntry,
 ): PromptHistoryEntry[] => {
   const nextUuid = normalizeIdentifier(nextEntry.uuid);
   const nextId = normalizeIdentifier(nextEntry.id);
@@ -129,17 +162,21 @@ const upsertEntry = (
   const filtered = entries.filter((entry) => {
     const entryUuid = normalizeIdentifier(entry.uuid);
     const entryId = normalizeIdentifier(entry.id);
-    const sameUuid = nextUuid !== null && entryUuid !== null && nextUuid === entryUuid;
+    const sameUuid =
+      nextUuid !== null && entryUuid !== null && nextUuid === entryUuid;
     const sameId = nextId !== null && entryId !== null && nextId === entryId;
     return !sameUuid && !sameId;
   });
 
-  return sortByTimestampDesc([nextEntry, ...filtered]).slice(0, MAX_HISTORY_ENTRIES);
+  return sortByTimestampDesc([nextEntry, ...filtered]).slice(
+    0,
+    MAX_HISTORY_ENTRIES,
+  );
 };
 
 const mergeRemoteHistoryWithLocalDrafts = (
   remoteEntries: PromptHistoryEntry[],
-  localEntries: PromptHistoryEntry[]
+  localEntries: PromptHistoryEntry[],
 ): PromptHistoryEntry[] => {
   const merged = [...remoteEntries];
 
@@ -149,20 +186,30 @@ const mergeRemoteHistoryWithLocalDrafts = (
     const uuidMatchIndex =
       localUuid === null
         ? -1
-        : merged.findIndex((entry) => normalizeIdentifier(entry.uuid) === localUuid);
+        : merged.findIndex(
+            (entry) => normalizeIdentifier(entry.uuid) === localUuid,
+          );
 
     if (uuidMatchIndex >= 0) {
-      merged[uuidMatchIndex] = mergeRemoteWithLocalDraft(merged[uuidMatchIndex]!, localEntry);
+      merged[uuidMatchIndex] = mergeRemoteWithLocalDraft(
+        merged[uuidMatchIndex]!,
+        localEntry,
+      );
       continue;
     }
 
     const idMatchIndex =
       localId === null
         ? -1
-        : merged.findIndex((entry) => normalizeIdentifier(entry.id) === localId);
+        : merged.findIndex(
+            (entry) => normalizeIdentifier(entry.id) === localId,
+          );
 
     if (idMatchIndex >= 0) {
-      merged[idMatchIndex] = mergeRemoteWithLocalDraft(merged[idMatchIndex]!, localEntry);
+      merged[idMatchIndex] = mergeRemoteWithLocalDraft(
+        merged[idMatchIndex]!,
+        localEntry,
+      );
       continue;
     }
 
@@ -208,37 +255,48 @@ export function useHistoryPersistence({
   // Bug 17 fix: debounce Firestore version writes to prevent concurrent writes
   // from clobbering each other. Local state (updateEntry) is always immediate;
   // only the Firestore write is debounced so the last data always wins.
-  const versionWriteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const versionWriteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
   const pendingVersionWriteRef = useRef<{
     uuid: string;
     docId: string | null;
     versions: PromptVersionEntry[];
   } | null>(null);
   const userRef = useRef(user);
-  useEffect(() => { userRef.current = user; }, [user]);
+  useEffect(() => {
+    userRef.current = user;
+  }, [user]);
 
-  const syncHistoryToLocalStorage = useCallback((entries: PromptHistoryEntry[]): void => {
-    const syncResult = syncToLocalStorage(entries);
-    if (syncResult.trimmed) {
-      log.warn('Storage limit reached while persisting local history snapshot');
-    } else if (!syncResult.success) {
-      log.warn('Failed to persist local history snapshot');
-    }
-  }, []);
+  const syncHistoryToLocalStorage = useCallback(
+    (entries: PromptHistoryEntry[]): void => {
+      const syncResult = syncToLocalStorage(entries);
+      if (syncResult.trimmed) {
+        log.warn(
+          "Storage limit reached while persisting local history snapshot",
+        );
+      } else if (!syncResult.success) {
+        log.warn("Failed to persist local history snapshot");
+      }
+    },
+    [],
+  );
 
   const persistLocalDraftEntry = useCallback(
     (entry: PromptHistoryEntry): void => {
-      const existedBefore = historyRef.current.some((item) => item.uuid === entry.uuid);
+      const existedBefore = historyRef.current.some(
+        (item) => item.uuid === entry.uuid,
+      );
       const nextHistory = upsertEntry(historyRef.current, entry);
       historyRef.current = nextHistory;
-      if (existedBefore && typeof entry.uuid === 'string') {
+      if (existedBefore && typeof entry.uuid === "string") {
         updateEntry(entry.uuid, entry);
       } else {
         addEntry(entry);
       }
       syncHistoryToLocalStorage(nextHistory);
     },
-    [addEntry, syncHistoryToLocalStorage, updateEntry]
+    [addEntry, syncHistoryToLocalStorage, updateEntry],
   );
 
   // Flush any pending debounced version write on unmount
@@ -252,7 +310,7 @@ export function useHistoryPersistence({
           pendingVersionWriteRef.current = null;
           // Bug 18 fix: don't flush stale data on unmount while loading
           if (isLoadingHistoryRef.current || !initialLoadCompleteRef.current) {
-            log.debug('Skipping unmount flush — history not ready', {
+            log.debug("Skipping unmount flush — history not ready", {
               uuid: pending.uuid,
               versionCount: pending.versions.length,
               isLoading: isLoadingHistoryRef.current,
@@ -260,11 +318,16 @@ export function useHistoryPersistence({
             });
             return;
           }
-          log.debug('Flushing debounced version write on unmount', {
+          log.debug("Flushing debounced version write on unmount", {
             uuid: pending.uuid,
             versionCount: pending.versions.length,
           });
-          updateVersions(userRef.current?.uid, pending.uuid, pending.docId, pending.versions);
+          updateVersions(
+            userRef.current?.uid,
+            pending.uuid,
+            pending.docId,
+            pending.versions,
+          );
         }
       }
     };
@@ -279,7 +342,10 @@ export function useHistoryPersistence({
           loadFromFirestore(userId),
           loadFromLocalStorage().catch(() => [] as PromptHistoryEntry[]),
         ]);
-        const mergedEntries = mergeRemoteHistoryWithLocalDrafts(entries, localEntries);
+        const mergedEntries = mergeRemoteHistoryWithLocalDrafts(
+          entries,
+          localEntries,
+        );
         historyRef.current = mergedEntries;
         setHistory(mergedEntries);
         // Bug 18 safeguard: mark initial load as complete so writes are allowed
@@ -287,12 +353,12 @@ export function useHistoryPersistence({
 
         const syncResult = syncToLocalStorage(mergedEntries);
         if (syncResult.trimmed) {
-          toast.warning('Storage limit reached. Keeping only recent 50 items.');
+          toast.warning("Storage limit reached. Keeping only recent 50 items.");
         } else if (!syncResult.success) {
-          toast.error('Browser storage full. Please clear browser data.');
+          toast.error("Browser storage full. Please clear browser data.");
         }
       } catch (error) {
-        log.error('Error loading history', error as Error, { userId });
+        log.error("Error loading history", error as Error, { userId });
 
         // Fallback to localStorage
         try {
@@ -301,13 +367,16 @@ export function useHistoryPersistence({
           // Even on fallback, mark load complete so writes can proceed
           initialLoadCompleteRef.current = true;
         } catch (localError) {
-          log.error('Error loading from localStorage fallback', localError as Error);
+          log.error(
+            "Error loading from localStorage fallback",
+            localError as Error,
+          );
         }
       } finally {
         setIsLoadingHistory(false);
       }
     },
-    [setHistory, setIsLoadingHistory, toast]
+    [setHistory, setIsLoadingHistory, toast],
   );
 
   const loadHistoryFromLocalStorage = useCallback(async () => {
@@ -317,7 +386,7 @@ export function useHistoryPersistence({
       // Mark load complete for non-authenticated users
       initialLoadCompleteRef.current = true;
     } catch (error) {
-      log.error('Error loading history from localStorage', error as Error);
+      log.error("Error loading history from localStorage", error as Error);
     }
   }, [setHistory]);
 
@@ -329,18 +398,18 @@ export function useHistoryPersistence({
       selectedMode: string,
       targetModel: string | null = null,
       generationParams: Record<string, unknown> | null = null,
-      keyframes: PromptHistoryEntry['keyframes'] = null,
+      keyframes: PromptHistoryEntry["keyframes"] = null,
       brainstormContext: Record<string, unknown> | null = null,
       highlightCache: Record<string, unknown> | null = null,
       existingUuid: string | null = null,
-      title: string | null = null
+      title: string | null = null,
     ): Promise<SaveResult | null> => {
       const normalizedTargetModel =
-        typeof targetModel === 'string' && targetModel.trim()
+        typeof targetModel === "string" && targetModel.trim()
           ? targetModel.trim()
           : null;
 
-      log.debug('Saving to history', {
+      log.debug("Saving to history", {
         mode: selectedMode,
         targetModel: normalizedTargetModel,
         hasUser: !!user,
@@ -355,7 +424,9 @@ export function useHistoryPersistence({
           output,
           score,
           mode: selectedMode,
-          ...(normalizedTargetModel ? { targetModel: normalizedTargetModel } : {}),
+          ...(normalizedTargetModel
+            ? { targetModel: normalizedTargetModel }
+            : {}),
           ...(generationParams ? { generationParams } : {}),
           ...(keyframes ? { keyframes } : {}),
           brainstormContext,
@@ -371,7 +442,9 @@ export function useHistoryPersistence({
           output,
           score,
           mode: selectedMode,
-          ...(normalizedTargetModel ? { targetModel: normalizedTargetModel } : {}),
+          ...(normalizedTargetModel
+            ? { targetModel: normalizedTargetModel }
+            : {}),
           generationParams: generationParams ?? null,
           keyframes: keyframes ?? null,
           brainstormContext: brainstormContext ?? null,
@@ -379,22 +452,27 @@ export function useHistoryPersistence({
         };
 
         // Bug 1 fix: read latest history from ref to avoid stale closure
-        if (existingUuid && historyRef.current.some((entry) => entry.uuid === existingUuid)) {
+        if (
+          existingUuid &&
+          historyRef.current.some((entry) => entry.uuid === existingUuid)
+        ) {
           updateEntry(existingUuid, newEntry);
         } else {
           addEntry(newEntry);
         }
         return result;
       } catch (error) {
-        log.error('Error saving to history', error as Error, {
+        log.error("Error saving to history", error as Error, {
           userId: user?.uid,
           mode: selectedMode,
         });
-        toast.error(user ? 'Failed to save to cloud' : 'Failed to save to history');
+        toast.error(
+          user ? "Failed to save to cloud" : "Failed to save to history",
+        );
         return null;
       }
     },
-    [user, toast, addEntry, updateEntry]
+    [user, toast, addEntry, updateEntry],
   );
 
   const createDraft = useCallback(
@@ -403,7 +481,7 @@ export function useHistoryPersistence({
       mode: string;
       targetModel: string | null;
       generationParams: Record<string, unknown> | null;
-      keyframes?: PromptHistoryEntry['keyframes'];
+      keyframes?: PromptHistoryEntry["keyframes"];
       uuid?: string;
       input?: string;
       output?: string;
@@ -413,9 +491,12 @@ export function useHistoryPersistence({
       versions?: PromptVersionEntry[];
       persist?: boolean;
     }): SaveResult => {
-      const uuid = typeof params.uuid === 'string' && params.uuid.trim() ? params.uuid.trim() : uuidv4();
+      const uuid =
+        typeof params.uuid === "string" && params.uuid.trim()
+          ? params.uuid.trim()
+          : uuidv4();
       const id =
-        typeof params.id === 'string' && params.id.trim()
+        typeof params.id === "string" && params.id.trim()
           ? params.id.trim()
           : `draft-${Date.now()}`;
 
@@ -424,8 +505,8 @@ export function useHistoryPersistence({
         uuid,
         timestamp: new Date().toISOString(),
         title: params.title ?? null,
-        input: params.input ?? '',
-        output: params.output ?? '',
+        input: params.input ?? "",
+        output: params.output ?? "",
         score: null,
         mode: params.mode,
         targetModel: params.targetModel ?? null,
@@ -443,14 +524,14 @@ export function useHistoryPersistence({
       }
       return { uuid, id };
     },
-    [addEntry, syncHistoryToLocalStorage]
+    [addEntry, syncHistoryToLocalStorage],
   );
 
   const updateEntryLocal = useCallback(
     (uuid: string, updates: Partial<PromptHistoryEntry>) => {
       updateEntry(uuid, updates);
     },
-    [updateEntry]
+    [updateEntry],
   );
 
   // Bug 3 fix: add .catch() to fire-and-forget persistence calls
@@ -459,9 +540,12 @@ export function useHistoryPersistence({
       const entry = historyRef.current.find((item) => item.uuid === uuid);
       let effectiveUpdates = updates;
       if (updates.keyframes !== undefined) {
-        const mergedKeyframes = enforceImmutableKeyframes(entry?.keyframes ?? null, updates.keyframes ?? null);
+        const mergedKeyframes = enforceImmutableKeyframes(
+          entry?.keyframes ?? null,
+          updates.keyframes ?? null,
+        );
         if (mergedKeyframes.warnings.length) {
-          log.warn('Preserved immutable keyframe references during persist', {
+          log.warn("Preserved immutable keyframe references during persist", {
             uuid,
             docId,
             warningCount: mergedKeyframes.warnings.length,
@@ -474,14 +558,20 @@ export function useHistoryPersistence({
       }
 
       const localUpdates: Partial<PromptHistoryEntry> = {};
-      if (effectiveUpdates.input !== undefined) localUpdates.input = effectiveUpdates.input;
-      if (effectiveUpdates.title !== undefined) localUpdates.title = effectiveUpdates.title;
-      if (effectiveUpdates.mode !== undefined) localUpdates.mode = effectiveUpdates.mode;
-      if (effectiveUpdates.targetModel !== undefined) localUpdates.targetModel = effectiveUpdates.targetModel;
-      if (effectiveUpdates.generationParams !== undefined) localUpdates.generationParams = effectiveUpdates.generationParams;
-      if (effectiveUpdates.keyframes !== undefined) localUpdates.keyframes = effectiveUpdates.keyframes;
+      if (effectiveUpdates.input !== undefined)
+        localUpdates.input = effectiveUpdates.input;
+      if (effectiveUpdates.title !== undefined)
+        localUpdates.title = effectiveUpdates.title;
+      if (effectiveUpdates.mode !== undefined)
+        localUpdates.mode = effectiveUpdates.mode;
+      if (effectiveUpdates.targetModel !== undefined)
+        localUpdates.targetModel = effectiveUpdates.targetModel;
+      if (effectiveUpdates.generationParams !== undefined)
+        localUpdates.generationParams = effectiveUpdates.generationParams;
+      if (effectiveUpdates.keyframes !== undefined)
+        localUpdates.keyframes = effectiveUpdates.keyframes;
 
-      const isDraftId = typeof docId === 'string' && docId.startsWith('draft-');
+      const isDraftId = typeof docId === "string" && docId.startsWith("draft-");
       if (isDraftId) {
         const nextEntry: PromptHistoryEntry = {
           ...(entry ?? {
@@ -489,10 +579,10 @@ export function useHistoryPersistence({
             uuid,
             timestamp: new Date().toISOString(),
             title: null,
-            input: '',
-            output: '',
+            input: "",
+            output: "",
             score: null,
-            mode: 'video',
+            mode: "video",
             targetModel: null,
             generationParams: null,
             keyframes: null,
@@ -507,17 +597,19 @@ export function useHistoryPersistence({
         return;
       }
 
-      updatePrompt(user?.uid, uuid, docId, effectiveUpdates)?.catch?.((error: unknown) => {
-        log.warn('Failed to persist prompt update', {
-          error: error instanceof Error ? error.message : String(error),
-          uuid,
-          docId,
-        });
-      });
+      updatePrompt(user?.uid, uuid, docId, effectiveUpdates)?.catch?.(
+        (error: unknown) => {
+          log.warn("Failed to persist prompt update", {
+            error: error instanceof Error ? error.message : String(error),
+            uuid,
+            docId,
+          });
+        },
+      );
 
       updateEntry(uuid, localUpdates);
     },
-    [persistLocalDraftEntry, updateEntry, user?.uid]
+    [persistLocalDraftEntry, updateEntry, user?.uid],
   );
 
   const updateEntryHighlight = useCallback(
@@ -531,10 +623,10 @@ export function useHistoryPersistence({
             uuid,
             timestamp: new Date().toISOString(),
             title: null,
-            input: '',
-            output: '',
+            input: "",
+            output: "",
             score: null,
-            mode: 'video',
+            mode: "video",
             targetModel: null,
             generationParams: null,
             keyframes: null,
@@ -547,20 +639,26 @@ export function useHistoryPersistence({
         });
         return;
       }
-      updateHighlights(user?.uid, uuid, docId, highlightCache)?.catch?.((error: unknown) => {
-        log.warn('Failed to persist highlight update', {
-          error: error instanceof Error ? error.message : String(error),
-          uuid,
-          docId,
-        });
-      });
+      updateHighlights(user?.uid, uuid, docId, highlightCache)?.catch?.(
+        (error: unknown) => {
+          log.warn("Failed to persist highlight update", {
+            error: error instanceof Error ? error.message : String(error),
+            uuid,
+            docId,
+          });
+        },
+      );
       updateEntry(uuid, { highlightCache: highlightCache ?? null });
     },
-    [persistLocalDraftEntry, updateEntry, user?.uid]
+    [persistLocalDraftEntry, updateEntry, user?.uid],
   );
 
   const updateEntryOutput = useCallback(
-    async (uuid: string, docId: string | null, output: string): Promise<void> => {
+    async (
+      uuid: string,
+      docId: string | null,
+      output: string,
+    ): Promise<void> => {
       if (isDraftEntryId(docId)) {
         const entry = historyRef.current.find((item) => item.uuid === uuid);
         persistLocalDraftEntry({
@@ -569,10 +667,10 @@ export function useHistoryPersistence({
             uuid,
             timestamp: new Date().toISOString(),
             title: null,
-            input: '',
-            output: '',
+            input: "",
+            output: "",
             score: null,
-            mode: 'video',
+            mode: "video",
             targetModel: null,
             generationParams: null,
             keyframes: null,
@@ -589,7 +687,7 @@ export function useHistoryPersistence({
       updateEntry(uuid, { output });
       await updateOutput(user?.uid, uuid, docId, output);
     },
-    [persistLocalDraftEntry, updateEntry, user?.uid]
+    [persistLocalDraftEntry, updateEntry, user?.uid],
   );
 
   const updateEntryVersions = useCallback(
@@ -597,18 +695,22 @@ export function useHistoryPersistence({
       const entry = historyRef.current.find((item) => item.uuid === uuid);
       const enforced = enforceImmutableVersions(entry ?? null, versions);
       if (enforced.warnings.length) {
-        log.warn('Preserved immutable media references during version persist', {
-          uuid,
-          docId,
-          warningCount: enforced.warnings.length,
-        });
+        log.warn(
+          "Preserved immutable media references during version persist",
+          {
+            uuid,
+            docId,
+            warningCount: enforced.warnings.length,
+          },
+        );
       }
       const nextVersions = enforced.versions;
       const generationCount = nextVersions.reduce(
-        (sum, v) => sum + (Array.isArray(v.generations) ? v.generations.length : 0),
-        0
+        (sum, v) =>
+          sum + (Array.isArray(v.generations) ? v.generations.length : 0),
+        0,
       );
-      log.debug('updateEntryVersions called', {
+      log.debug("updateEntryVersions called", {
         uuid,
         docId,
         versionCount: nextVersions.length,
@@ -616,16 +718,16 @@ export function useHistoryPersistence({
       });
 
       if (isDraftEntryId(docId)) {
-        persistLocalDraftEntry({
+        const draftEntry = {
           ...(entry ?? {
             id: docId ?? `draft-${Date.now()}`,
             uuid,
             timestamp: new Date().toISOString(),
             title: null,
-            input: '',
-            output: '',
+            input: "",
+            output: "",
             score: null,
-            mode: 'video',
+            mode: "video",
             targetModel: null,
             generationParams: null,
             keyframes: null,
@@ -635,7 +737,59 @@ export function useHistoryPersistence({
           }),
           id: docId ?? `draft-${Date.now()}`,
           versions: nextVersions,
-        });
+        };
+        persistLocalDraftEntry(draftEntry);
+
+        // Promote draft to Firestore when a generation completes so the
+        // session survives re-login in a new browser context.
+        const hasCompletedGeneration = nextVersions.some((v) =>
+          v.generations?.some((g) => g.status === "completed"),
+        );
+        const userId = userRef.current?.uid;
+        if (userId && hasCompletedGeneration) {
+          void (async () => {
+            try {
+              const result = await saveEntry(userId, {
+                uuid,
+                input: draftEntry.input ?? "",
+                output: draftEntry.output ?? "",
+                score: draftEntry.score ?? null,
+                mode: draftEntry.mode ?? "video",
+                ...(draftEntry.targetModel
+                  ? { targetModel: draftEntry.targetModel }
+                  : {}),
+                ...(draftEntry.generationParams
+                  ? { generationParams: draftEntry.generationParams }
+                  : {}),
+                ...(draftEntry.keyframes
+                  ? { keyframes: draftEntry.keyframes }
+                  : {}),
+                brainstormContext: draftEntry.brainstormContext ?? null,
+                highlightCache: draftEntry.highlightCache ?? null,
+                versions: nextVersions,
+              });
+              // Replace local draft ID with Firestore doc ID so future writes
+              // go to Firestore instead of localStorage.
+              updateEntry(uuid, { id: result.id });
+              log.info(
+                "Draft promoted to Firestore after generation completed",
+                {
+                  uuid,
+                  oldDocId: docId,
+                  newDocId: result.id,
+                },
+              );
+            } catch (promoteError) {
+              log.warn("Failed to promote draft to Firestore", {
+                uuid,
+                error:
+                  promoteError instanceof Error
+                    ? promoteError.message
+                    : String(promoteError),
+              });
+            }
+          })();
+        }
         return;
       }
 
@@ -664,7 +818,7 @@ export function useHistoryPersistence({
           // Belt-and-suspenders: also check initialLoadCompleteRef. Even if
           // isLoadingHistory gets set incorrectly, we never write before first load.
           if (isLoadingHistoryRef.current || !initialLoadCompleteRef.current) {
-            log.debug('Version write skipped — history not ready', {
+            log.debug("Version write skipped — history not ready", {
               uuid: pending.uuid,
               isLoading: isLoadingHistoryRef.current,
               initialLoadComplete: initialLoadCompleteRef.current,
@@ -674,44 +828,50 @@ export function useHistoryPersistence({
           }
           pendingVersionWriteRef.current = null;
           const debouncedGenerationCount = pending.versions.reduce(
-            (sum, v) => sum + (Array.isArray(v.generations) ? v.generations.length : 0),
-            0
+            (sum, v) =>
+              sum + (Array.isArray(v.generations) ? v.generations.length : 0),
+            0,
           );
-          log.debug('Debounced version write executing', {
+          log.debug("Debounced version write executing", {
             uuid: pending.uuid,
             versionCount: pending.versions.length,
             generationCount: debouncedGenerationCount,
           });
-          updateVersions(userRef.current?.uid, pending.uuid, pending.docId, pending.versions);
+          updateVersions(
+            userRef.current?.uid,
+            pending.uuid,
+            pending.docId,
+            pending.versions,
+          );
         }
       }, 500);
     },
-    [persistLocalDraftEntry, updateEntry]
+    [persistLocalDraftEntry, updateEntry],
   );
 
   // Bug 5 fix: removed history.length from deps (only used for debug log)
   const clearHistory = useCallback(async () => {
-    log.debug('Clearing history', {
+    log.debug("Clearing history", {
       hasUser: !!user,
       currentCount: historyRef.current.length,
     });
 
     await clearAll(user?.uid);
     clearEntries();
-    toast.success('History cleared');
+    toast.success("History cleared");
   }, [user, toast, clearEntries]);
 
   const deleteFromHistory = useCallback(
     async (entryId: string) => {
-      log.debug('Deleting from history', { entryId, hasUser: !!user });
+      log.debug("Deleting from history", { entryId, hasUser: !!user });
 
       removeEntry(entryId);
 
       try {
         await deleteEntry(user?.uid, entryId);
-        toast.success('Prompt deleted');
+        toast.success("Prompt deleted");
       } catch (error) {
-        log.error('Error deleting prompt', error as Error, {
+        log.error("Error deleting prompt", error as Error, {
           entryId,
           userId: user?.uid,
         });
@@ -722,10 +882,16 @@ export function useHistoryPersistence({
           await loadHistoryFromLocalStorage();
         }
 
-        toast.error('Failed to delete prompt');
+        toast.error("Failed to delete prompt");
       }
     },
-    [user, toast, removeEntry, loadHistoryFromFirestore, loadHistoryFromLocalStorage]
+    [
+      user,
+      toast,
+      removeEntry,
+      loadHistoryFromFirestore,
+      loadHistoryFromLocalStorage,
+    ],
   );
 
   return {

@@ -8,8 +8,8 @@ export class InterceptorManager<T> {
   }
 
   use(interceptor: Interceptor<T>): void {
-    if (typeof interceptor !== 'function') {
-      throw new TypeError('Interceptor must be a function');
+    if (typeof interceptor !== "function") {
+      throw new TypeError("Interceptor must be a function");
     }
 
     this.interceptors.push(interceptor);
@@ -30,4 +30,3 @@ export class InterceptorManager<T> {
     return current;
   }
 }
-

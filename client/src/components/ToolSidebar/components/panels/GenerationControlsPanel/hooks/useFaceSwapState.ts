@@ -1,15 +1,15 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { Asset } from '@shared/types/asset';
-import type { VideoTier } from '@components/ToolSidebar/types';
-import { getModelConfig } from '@features/generations/config/generationConfig';
-import { faceSwapPreview as requestFaceSwapPreview } from '@/features/preview/api/previewApi';
-import { logger } from '@/services/LoggingService';
-import type { FaceSwapPreviewState } from '@/features/prompt-optimizer/context/GenerationControlsContext';
+import { useCallback, useEffect, useMemo, useState } from "react";
+import type { Asset } from "@shared/types/asset";
+import type { VideoTier } from "@components/ToolSidebar/types";
+import { getModelConfig } from "@features/generations/config/generationConfig";
+import { faceSwapPreview as requestFaceSwapPreview } from "@/features/preview/api/previewApi";
+import { logger } from "@/services/LoggingService";
+import type { FaceSwapPreviewState } from "@/features/prompt-optimizer/context/GenerationControlsContext";
 
-const log = logger.child('GenerationControlsPanel');
+const log = logger.child("GenerationControlsPanel");
 const FACE_SWAP_CREDIT_COST = 2;
 
-export type FaceSwapMode = 'direct' | 'face-swap';
+export type FaceSwapMode = "direct" | "face-swap";
 
 interface UseFaceSwapStateOptions {
   assets: Asset[];
@@ -62,9 +62,11 @@ export function useFaceSwapState({
   faceSwapPreviewState,
   setFaceSwapPreview,
 }: UseFaceSwapStateOptions): UseFaceSwapStateResult {
-  const [faceSwapMode, setFaceSwapMode] = useState<FaceSwapMode>('direct');
-  const [selectedCharacterId, setSelectedCharacterId] = useState('');
-  const [faceSwapCreditsUsed, setFaceSwapCreditsUsed] = useState<number | null>(null);
+  const [faceSwapMode, setFaceSwapMode] = useState<FaceSwapMode>("direct");
+  const [selectedCharacterId, setSelectedCharacterId] = useState("");
+  const [faceSwapCreditsUsed, setFaceSwapCreditsUsed] = useState<number | null>(
+    null,
+  );
   const [faceSwapError, setFaceSwapError] = useState<string | null>(null);
   const [isFaceSwapLoading, setIsFaceSwapLoading] = useState(false);
   const [isFaceSwapModalOpen, setIsFaceSwapModalOpen] = useState(false);
@@ -72,26 +74,29 @@ export function useFaceSwapState({
   const characterOptions = useMemo(
     () =>
       assets
-        .filter((asset) => asset.type === 'character')
+        .filter((asset) => asset.type === "character")
         .map((asset) => ({
           id: asset.id,
-          label: asset.name || asset.trigger || `Character ${asset.id.slice(0, 6)}`,
+          label:
+            asset.name || asset.trigger || `Character ${asset.id.slice(0, 6)}`,
         })),
-    [assets]
+    [assets],
   );
 
   useEffect(() => {
     if (!selectedCharacterId) return;
-    const stillExists = characterOptions.some((asset) => asset.id === selectedCharacterId);
+    const stillExists = characterOptions.some(
+      (asset) => asset.id === selectedCharacterId,
+    );
     if (!stillExists) {
-      setSelectedCharacterId('');
+      setSelectedCharacterId("");
     }
   }, [characterOptions, selectedCharacterId]);
 
   useEffect(() => {
-    if (faceSwapMode !== 'face-swap') return;
+    if (faceSwapMode !== "face-swap") return;
     if (selectedCharacterId || characterOptions.length !== 1) return;
-    setSelectedCharacterId(characterOptions[0]?.id ?? '');
+    setSelectedCharacterId(characterOptions[0]?.id ?? "");
   }, [characterOptions, faceSwapMode, selectedCharacterId]);
 
   const resetFaceSwapPreview = useCallback(() => {
@@ -104,15 +109,21 @@ export function useFaceSwapState({
 
   useEffect(() => {
     if (!faceSwapPreviewState) return;
-    if (faceSwapMode !== 'face-swap') {
+    if (faceSwapMode !== "face-swap") {
       resetFaceSwapPreview();
       return;
     }
-    if (!selectedCharacterId || faceSwapPreviewState.characterAssetId !== selectedCharacterId) {
+    if (
+      !selectedCharacterId ||
+      faceSwapPreviewState.characterAssetId !== selectedCharacterId
+    ) {
       resetFaceSwapPreview();
       return;
     }
-    if (!startFrameUrl || faceSwapPreviewState.targetImageUrl !== startFrameUrl) {
+    if (
+      !startFrameUrl ||
+      faceSwapPreviewState.targetImageUrl !== startFrameUrl
+    ) {
       resetFaceSwapPreview();
     }
   }, [
@@ -125,11 +136,13 @@ export function useFaceSwapState({
 
   const hasStartFrame = Boolean(startFrameUrl);
   const canPreviewFaceSwap =
-    faceSwapMode === 'face-swap' && hasStartFrame && Boolean(selectedCharacterId);
+    faceSwapMode === "face-swap" &&
+    hasStartFrame &&
+    Boolean(selectedCharacterId);
   const isFaceSwapPreviewDisabled = !canPreviewFaceSwap || isFaceSwapLoading;
 
   const videoCredits = useMemo(() => {
-    const modelId = tier === 'draft' ? draftModelId : renderModelId;
+    const modelId = tier === "draft" ? draftModelId : renderModelId;
     return getModelConfig(modelId)?.credits ?? null;
   }, [draftModelId, renderModelId, tier]);
   const totalCredits =
@@ -149,7 +162,9 @@ export function useFaceSwapState({
         ...(aspectRatio ? { aspectRatio } : {}),
       });
       if (!response.success || !response.data?.faceSwapUrl) {
-        throw new Error(response.error || response.message || 'Failed to preview face swap');
+        throw new Error(
+          response.error || response.message || "Failed to preview face swap",
+        );
       }
       setFaceSwapPreview({
         url: response.data.faceSwapUrl,
@@ -157,15 +172,17 @@ export function useFaceSwapState({
         targetImageUrl: startFrameUrl,
         createdAt: Date.now(),
       });
-      setFaceSwapCreditsUsed(response.data.creditsDeducted ?? FACE_SWAP_CREDIT_COST);
-      log.info('Face swap preview completed', {
+      setFaceSwapCreditsUsed(
+        response.data.creditsDeducted ?? FACE_SWAP_CREDIT_COST,
+      );
+      log.info("Face swap preview completed", {
         characterAssetId: selectedCharacterId,
         targetImageUrlHost: startFrameUrlHost,
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       setFaceSwapError(message);
-      log.error('Face swap preview failed', error as Error, {
+      log.error("Face swap preview failed", error as Error, {
         characterAssetId: selectedCharacterId,
         targetImageUrlHost: startFrameUrlHost,
       });

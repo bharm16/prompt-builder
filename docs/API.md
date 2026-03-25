@@ -23,6 +23,7 @@ Complete API documentation for the Prompt Optimizer platform.
 ## Overview
 
 The Prompt Optimizer API is a RESTful API that provides:
+
 - Video prompt optimization (specialized for AI video generation)
 - Real-time span labeling and text categorization
 - AI-powered enhancement suggestions
@@ -112,12 +113,12 @@ X-RateLimit-Reset: 1640000000
 
 ### Rate Limit Tiers
 
-| Tier | Requests/Minute | Requests/Hour |
-|------|-----------------|---------------|
-| Unauthenticated | 10 | 100 |
-| Authenticated | 60 | 1000 |
-| Premium | 300 | 5000 |
-| Enterprise | Unlimited | Unlimited |
+| Tier            | Requests/Minute | Requests/Hour |
+| --------------- | --------------- | ------------- |
+| Unauthenticated | 10              | 100           |
+| Authenticated   | 60              | 1000          |
+| Premium         | 300             | 5000          |
+| Enterprise      | Unlimited       | Unlimited     |
 
 ### Rate Limit Response
 
@@ -151,21 +152,22 @@ X-RateLimit-Reset: 1640000000
 
 ### HTTP Status Codes
 
-| Code | Meaning | Description |
-|------|---------|-------------|
-| 200 | OK | Request successful |
-| 201 | Created | Resource created successfully |
-| 400 | Bad Request | Invalid request parameters |
-| 401 | Unauthorized | Missing or invalid API key |
-| 403 | Forbidden | Insufficient permissions |
-| 404 | Not Found | Resource not found |
-| 429 | Too Many Requests | Rate limit exceeded |
-| 500 | Internal Server Error | Server error |
-| 503 | Service Unavailable | Service temporarily unavailable |
+| Code | Meaning               | Description                     |
+| ---- | --------------------- | ------------------------------- |
+| 200  | OK                    | Request successful              |
+| 201  | Created               | Resource created successfully   |
+| 400  | Bad Request           | Invalid request parameters      |
+| 401  | Unauthorized          | Missing or invalid API key      |
+| 403  | Forbidden             | Insufficient permissions        |
+| 404  | Not Found             | Resource not found              |
+| 429  | Too Many Requests     | Rate limit exceeded             |
+| 500  | Internal Server Error | Server error                    |
+| 503  | Service Unavailable   | Service temporarily unavailable |
 
 ### Common Error Types
 
 **ValidationError**
+
 ```json
 {
   "error": "ValidationError",
@@ -177,6 +179,7 @@ X-RateLimit-Reset: 1640000000
 ```
 
 **RateLimitError**
+
 ```json
 {
   "error": "RateLimitError",
@@ -186,6 +189,7 @@ X-RateLimit-Reset: 1640000000
 ```
 
 **CircuitBreakerError**
+
 ```json
 {
   "error": "CircuitBreakerError",
@@ -205,6 +209,7 @@ Single-stage prompt optimization (backward compatible).
 **Endpoint:** `POST /api/optimize`
 
 **Request Body:**
+
 ```json
 {
   "prompt": "string (required, 1-10000 chars)",
@@ -215,6 +220,7 @@ Single-stage prompt optimization (backward compatible).
 ```
 
 **Example Request:**
+
 ```bash
 curl -X POST http://localhost:3001/api/optimize \
   -H "Content-Type: application/json" \
@@ -226,6 +232,7 @@ curl -X POST http://localhost:3001/api/optimize \
 ```
 
 **Response:** `200 OK`
+
 ```json
 {
   "optimizedPrompt": "Wide shot: A woman in her early 30s with flowing auburn hair and a white linen dress walks barefoot along a pristine beach at golden hour...",
@@ -261,6 +268,7 @@ Two-stage optimization with Server-Sent Events (SSE) streaming.
 **Endpoint:** `POST /api/optimize-stream`
 
 **Request Body:**
+
 ```json
 {
   "prompt": "string (required)",
@@ -275,6 +283,7 @@ Two-stage optimization with Server-Sent Events (SSE) streaming.
 **Event Types:**
 
 1. **draft** - Fast draft version
+
 ```
 event: draft
 data: {
@@ -288,6 +297,7 @@ data: {
 ```
 
 2. **spans** - Span labels (parallel with draft)
+
 ```
 event: spans
 data: {
@@ -303,6 +313,7 @@ data: {
 ```
 
 3. **refined** - Final optimized version
+
 ```
 event: refined
 data: {
@@ -317,41 +328,43 @@ data: {
 ```
 
 4. **done** - Completion signal
+
 ```
 event: done
 data: {"complete": true}
 ```
 
 **Client-Side Example (JavaScript):**
+
 ```javascript
-const eventSource = new EventSource('/api/optimize-stream', {
-  method: 'POST',
+const eventSource = new EventSource("/api/optimize-stream", {
+  method: "POST",
   headers: {
-    'Content-Type': 'application/json',
-    'Authorization': 'Bearer your_api_key'
+    "Content-Type": "application/json",
+    Authorization: "Bearer your_api_key",
   },
   body: JSON.stringify({
-    prompt: 'A person walking on a beach',
-    mode: 'video'
-  })
+    prompt: "A person walking on a beach",
+    mode: "video",
+  }),
 });
 
-eventSource.addEventListener('draft', (e) => {
+eventSource.addEventListener("draft", (e) => {
   const data = JSON.parse(e.data);
-  console.log('Draft:', data.optimizedPrompt);
+  console.log("Draft:", data.optimizedPrompt);
 });
 
-eventSource.addEventListener('spans', (e) => {
+eventSource.addEventListener("spans", (e) => {
   const data = JSON.parse(e.data);
-  console.log('Spans:', data.spans);
+  console.log("Spans:", data.spans);
 });
 
-eventSource.addEventListener('refined', (e) => {
+eventSource.addEventListener("refined", (e) => {
   const data = JSON.parse(e.data);
-  console.log('Refined:', data.optimizedPrompt);
+  console.log("Refined:", data.optimizedPrompt);
 });
 
-eventSource.addEventListener('done', (e) => {
+eventSource.addEventListener("done", (e) => {
   eventSource.close();
 });
 ```
@@ -367,6 +380,7 @@ Label text spans with semantic categories for highlighting.
 **Endpoint:** `POST /llm/label-spans`
 
 **Request Body:**
+
 ```json
 {
   "text": "string (required, 1-50000 chars)",
@@ -380,6 +394,7 @@ Label text spans with semantic categories for highlighting.
 ```
 
 **Example Request:**
+
 ```bash
 curl -X POST http://localhost:3001/llm/label-spans \
   -H "Content-Type: application/json" \
@@ -394,6 +409,7 @@ curl -X POST http://localhost:3001/llm/label-spans \
 ```
 
 **Response:** `200 OK`
+
 ```json
 {
   "spans": [
@@ -450,16 +466,16 @@ curl -X POST http://localhost:3001/llm/label-spans \
 
 **Span Schema:**
 
-| Field | Type | Description |
-|-------|------|-------------|
-| id | string | Unique span identifier |
-| text | string | The labeled text span |
-| start | number | Start position in text (0-indexed) |
-| end | number | End position in text |
-| role | string | Semantic role (subject, action, location, etc.) |
-| category | string | Hierarchical category (e.g., subject.person) |
-| confidence | number | Confidence score (0-1) |
-| metadata | object | Additional span information |
+| Field      | Type   | Description                                     |
+| ---------- | ------ | ----------------------------------------------- |
+| id         | string | Unique span identifier                          |
+| text       | string | The labeled text span                           |
+| start      | number | Start position in text (0-indexed)              |
+| end        | number | End position in text                            |
+| role       | string | Semantic role (subject, action, location, etc.) |
+| category   | string | Hierarchical category (e.g., subject.person)    |
+| confidence | number | Confidence score (0-1)                          |
+| metadata   | object | Additional span information                     |
 
 **Available Categories:**
 
@@ -488,6 +504,7 @@ Batch endpoint for processing multiple span labeling requests concurrently.
 **Endpoint:** `POST /llm/label-spans-batch`
 
 **Request Body:**
+
 ```json
 {
   "requests": [
@@ -501,6 +518,7 @@ Batch endpoint for processing multiple span labeling requests concurrently.
 ```
 
 **Example Request:**
+
 ```bash
 curl -X POST http://localhost:3001/llm/label-spans-batch \
   -H "Content-Type: application/json" \
@@ -519,6 +537,7 @@ curl -X POST http://localhost:3001/llm/label-spans-batch \
 ```
 
 **Response:** `200 OK`
+
 ```json
 {
   "results": [
@@ -541,6 +560,7 @@ curl -X POST http://localhost:3001/llm/label-spans-batch \
 ```
 
 **Performance:**
+
 - **60% reduction** in API calls under concurrent load
 - Requests processed in parallel
 - Single LLM API call for multiple texts
@@ -557,6 +577,7 @@ Get AI-powered enhancement suggestions for selected text.
 **Endpoint:** `POST /api/get-enhancement-suggestions`
 
 **Request Body:**
+
 ```json
 {
   "highlightedText": "string (required)",
@@ -575,6 +596,7 @@ Get AI-powered enhancement suggestions for selected text.
 ```
 
 **Example Request:**
+
 ```bash
 curl -X POST http://localhost:3001/api/get-enhancement-suggestions \
   -H "Content-Type: application/json" \
@@ -588,6 +610,7 @@ curl -X POST http://localhost:3001/api/get-enhancement-suggestions \
 ```
 
 **Response:** `200 OK`
+
 ```json
 {
   "suggestions": [
@@ -623,12 +646,12 @@ curl -X POST http://localhost:3001/api/get-enhancement-suggestions \
 
 **Suggestion Schema:**
 
-| Field | Type | Description |
-|-------|------|-------------|
-| text | string | The suggested replacement text |
-| category | string | Category alignment |
+| Field       | Type   | Description                           |
+| ----------- | ------ | ------------------------------------- |
+| text        | string | The suggested replacement text        |
+| category    | string | Category alignment                    |
 | explanation | string | Why this suggestion improves the text |
-| confidence | number | Confidence score (0-1) |
+| confidence  | number | Confidence score (0-1)                |
 
 ---
 
@@ -639,6 +662,7 @@ Get custom enhancement suggestions based on user's specific request.
 **Endpoint:** `POST /api/get-custom-suggestions`
 
 **Request Body:**
+
 ```json
 {
   "highlightedText": "string (required)",
@@ -649,6 +673,7 @@ Get custom enhancement suggestions based on user's specific request.
 ```
 
 **Example Request:**
+
 ```bash
 curl -X POST http://localhost:3001/api/get-custom-suggestions \
   -H "Content-Type: application/json" \
@@ -660,6 +685,7 @@ curl -X POST http://localhost:3001/api/get-custom-suggestions \
 ```
 
 **Response:** `200 OK`
+
 ```json
 {
   "suggestions": [
@@ -689,6 +715,7 @@ Detect if a prompt change describes a new scene (video mode).
 **Endpoint:** `POST /api/detect-scene-change`
 
 **Request Body:**
+
 ```json
 {
   "changedField": "string (required)",
@@ -702,6 +729,7 @@ Detect if a prompt change describes a new scene (video mode).
 ```
 
 **Example Request:**
+
 ```bash
 curl -X POST http://localhost:3001/api/detect-scene-change \
   -H "Content-Type: application/json" \
@@ -715,6 +743,7 @@ curl -X POST http://localhost:3001/api/detect-scene-change \
 ```
 
 **Response:** `200 OK`
+
 ```json
 {
   "isSceneChange": true,
@@ -736,6 +765,7 @@ Get creative suggestions for video concept elements.
 **Endpoint:** `POST /api/video/suggestions`
 
 **Request Body:**
+
 ```json
 {
   "elementType": "string (required, subject|action|location|camera|lighting|style|mood)",
@@ -746,6 +776,7 @@ Get creative suggestions for video concept elements.
 ```
 
 **Example Request:**
+
 ```bash
 curl -X POST http://localhost:3001/api/video/suggestions \
   -H "Content-Type: application/json" \
@@ -761,6 +792,7 @@ curl -X POST http://localhost:3001/api/video/suggestions \
 ```
 
 **Response:** `200 OK`
+
 ```json
 {
   "suggestions": [
@@ -790,6 +822,7 @@ curl -X POST http://localhost:3001/api/video/suggestions \
 Generate an image preview from a prompt.
 
 **Request Body:**
+
 ```json
 {
   "prompt": "string (required)",
@@ -798,6 +831,7 @@ Generate an image preview from a prompt.
 ```
 
 **Response:** `200 OK`
+
 ```json
 {
   "success": true,
@@ -818,6 +852,7 @@ Generate an image preview from a prompt.
 Queue a video preview job. Requires API key **and** Firebase ID token (`X-Firebase-Token`).
 
 **Request Body:**
+
 ```json
 {
   "prompt": "string (required)",
@@ -832,11 +867,13 @@ Queue a video preview job. Requires API key **and** Firebase ID token (`X-Fireba
 ```
 
 **Behavior notes:**
+
 - `startImage` only → direct i2v
 - `characterAssetId` only (with `autoKeyframe=true`) → PuLID keyframe → i2v
 - `startImage` + `characterAssetId` → face-swap preprocessing → i2v
 
 **Response:** `202 Accepted`
+
 ```json
 {
   "success": true,
@@ -857,6 +894,7 @@ Check status for a queued video preview job. Returns a fresh URL when complete.
 Signed URLs may expire; call this endpoint again to refresh access.
 
 **Response:** `200 OK`
+
 ```json
 {
   "success": true,
@@ -870,6 +908,7 @@ Signed URLs may expire; call this endpoint again to refresh access.
 ```
 
 If the job failed:
+
 ```json
 {
   "success": true,
@@ -888,6 +927,7 @@ Validate element compatibility and detect conflicts.
 **Endpoint:** `POST /api/video/validate`
 
 **Request Body:**
+
 ```json
 {
   "elementType": "string (required)",
@@ -897,6 +937,7 @@ Validate element compatibility and detect conflicts.
 ```
 
 **Example Request:**
+
 ```bash
 curl -X POST http://localhost:3001/api/video/validate \
   -H "Content-Type: application/json" \
@@ -911,6 +952,7 @@ curl -X POST http://localhost:3001/api/video/validate \
 ```
 
 **Response:** `200 OK`
+
 ```json
 {
   "compatibility": {
@@ -942,6 +984,7 @@ Auto-complete missing elements and get smart defaults.
 **Endpoint:** `POST /api/video/complete`
 
 **Request Body:**
+
 ```json
 {
   "existingElements": "object (required)",
@@ -951,6 +994,7 @@ Auto-complete missing elements and get smart defaults.
 ```
 
 **Example Request:**
+
 ```bash
 curl -X POST http://localhost:3001/api/video/complete \
   -H "Content-Type: application/json" \
@@ -965,6 +1009,7 @@ curl -X POST http://localhost:3001/api/video/complete \
 ```
 
 **Response:** `200 OK`
+
 ```json
 {
   "suggestions": {
@@ -1000,6 +1045,7 @@ Generate alternative takes on the current concept.
 **Endpoint:** `POST /api/video/variations`
 
 **Request Body:**
+
 ```json
 {
   "elements": "object (required)",
@@ -1008,6 +1054,7 @@ Generate alternative takes on the current concept.
 ```
 
 **Example Request:**
+
 ```bash
 curl -X POST http://localhost:3001/api/video/variations \
   -H "Content-Type: application/json" \
@@ -1022,6 +1069,7 @@ curl -X POST http://localhost:3001/api/video/variations \
 ```
 
 **Response:** `200 OK`
+
 ```json
 {
   "variations": [
@@ -1035,7 +1083,11 @@ curl -X POST http://localhost:3001/api/video/variations \
         "lighting": "shaft of dusty light from a high window",
         "mood": "mysterious discovery"
       },
-      "changes": ["Relocates scene to archive", "Cool, desaturated palette", "Adds mystery element"]
+      "changes": [
+        "Relocates scene to archive",
+        "Cool, desaturated palette",
+        "Adds mystery element"
+      ]
     },
     {
       "name": "Golden Hour Memories",
@@ -1047,7 +1099,11 @@ curl -X POST http://localhost:3001/api/video/variations \
         "lighting": "warm golden hour backlight",
         "mood": "bittersweet nostalgia"
       },
-      "changes": ["Adds prop storytelling", "Warmer lighting emphasis", "Deepens emotional tone"]
+      "changes": [
+        "Adds prop storytelling",
+        "Warmer lighting emphasis",
+        "Deepens emotional tone"
+      ]
     }
   ],
   "metadata": {
@@ -1065,6 +1121,7 @@ Convert free-form concept paragraph into structured elements.
 **Endpoint:** `POST /api/video/parse`
 
 **Request Body:**
+
 ```json
 {
   "concept": "string (required)"
@@ -1072,6 +1129,7 @@ Convert free-form concept paragraph into structured elements.
 ```
 
 **Example Request:**
+
 ```bash
 curl -X POST http://localhost:3001/api/video/parse \
   -H "Content-Type: application/json" \
@@ -1081,6 +1139,7 @@ curl -X POST http://localhost:3001/api/video/parse \
 ```
 
 **Response:** `200 OK`
+
 ```json
 {
   "elements": {
@@ -1111,6 +1170,7 @@ Basic health check.
 **Endpoint:** `GET /health`
 
 **Response:** `200 OK`
+
 ```json
 {
   "status": "ok",
@@ -1128,6 +1188,7 @@ Readiness probe - checks all dependencies.
 **Endpoint:** `GET /health/ready`
 
 **Response:** `200 OK`
+
 ```json
 {
   "status": "ready",
@@ -1142,6 +1203,7 @@ Readiness probe - checks all dependencies.
 ```
 
 **Response:** `503 Service Unavailable` (if any check fails)
+
 ```json
 {
   "status": "not_ready",
@@ -1164,6 +1226,7 @@ Liveness probe - checks if process is alive.
 **Endpoint:** `GET /health/live`
 
 **Response:** `200 OK`
+
 ```json
 {
   "status": "alive",
@@ -1180,6 +1243,7 @@ Prometheus metrics endpoint.
 **Endpoint:** `GET /metrics`
 
 **Response:** `200 OK` (Prometheus format)
+
 ```
 # HELP http_requests_total Total HTTP requests
 # TYPE http_requests_total counter
@@ -1211,6 +1275,7 @@ System statistics in JSON format.
 **Endpoint:** `GET /stats`
 
 **Response:** `200 OK`
+
 ```json
 {
   "server": {
@@ -1298,34 +1363,37 @@ System statistics in JSON format.
 ### JavaScript/TypeScript
 
 ```typescript
-import { PromptOptimizer } from '@prompt-builder/sdk';
+import { PromptOptimizer } from "@prompt-builder/sdk";
 
 const client = new PromptOptimizer({
-  apiKey: 'your_api_key',
-  baseUrl: 'https://api.promptbuilder.com'
+  apiKey: "your_api_key",
+  baseUrl: "https://api.promptbuilder.com",
 });
 
 // Single optimization
 const result = await client.optimize({
-  prompt: 'A person walking on a beach',
-  mode: 'video'
+  prompt: "A person walking on a beach",
+  mode: "video",
 });
 
 // Streaming optimization
-await client.optimizeStream({
-  prompt: 'A person walking on a beach',
-  mode: 'video'
-}, {
-  onDraft: (draft) => console.log('Draft:', draft),
-  onSpans: (spans) => console.log('Spans:', spans),
-  onRefined: (refined) => console.log('Refined:', refined),
-  onComplete: () => console.log('Done!')
-});
+await client.optimizeStream(
+  {
+    prompt: "A person walking on a beach",
+    mode: "video",
+  },
+  {
+    onDraft: (draft) => console.log("Draft:", draft),
+    onSpans: (spans) => console.log("Spans:", spans),
+    onRefined: (refined) => console.log("Refined:", refined),
+    onComplete: () => console.log("Done!"),
+  },
+);
 
 // Span labeling
 const spans = await client.labelSpans({
-  text: 'A woman walks on a beach',
-  policy: 'highlighting'
+  text: "A woman walks on a beach",
+  policy: "highlighting",
 });
 ```
 
@@ -1359,6 +1427,7 @@ spans = client.label_spans(
 ### 1. Use Streaming for Better UX
 
 For user-facing applications, use `/api/optimize-stream` for progressive loading:
+
 - Show draft immediately (~300ms)
 - Display span highlights in parallel
 - Update with refined version when ready
@@ -1412,7 +1481,7 @@ Monitor circuit breaker state and provide fallbacks:
 try {
   const result = await client.optimize({ prompt });
 } catch (error) {
-  if (error.error === 'CircuitBreakerError') {
+  if (error.error === "CircuitBreakerError") {
     // Use cached version or simpler fallback
     return getCachedVersion(prompt);
   }
@@ -1430,12 +1499,12 @@ Use batch endpoints when processing multiple items:
 ```javascript
 // Instead of:
 const results = await Promise.all(
-  texts.map(text => client.labelSpans({ text }))
+  texts.map((text) => client.labelSpans({ text })),
 );
 
 // Use:
 const results = await client.labelSpansBatch({
-  requests: texts.map(text => ({ text, policy: 'highlighting' }))
+  requests: texts.map((text) => ({ text, policy: "highlighting" })),
 });
 ```
 
@@ -1446,8 +1515,8 @@ The API automatically coalesces identical concurrent requests:
 ```javascript
 // These two identical requests will only trigger one LLM call
 const [result1, result2] = await Promise.all([
-  client.labelSpans({ text: 'Same text' }),
-  client.labelSpans({ text: 'Same text' })
+  client.labelSpans({ text: "Same text" }),
+  client.labelSpans({ text: "Same text" }),
 ]);
 ```
 

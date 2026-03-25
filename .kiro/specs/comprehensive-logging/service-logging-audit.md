@@ -7,6 +7,7 @@
 ## Executive Summary
 
 This audit reviewed all service files in `server/src/services/` to identify services lacking proper logging coverage. The audit focused on:
+
 - Operation start/completion logging
 - Error logging with proper context
 - Timing measurements for async operations
@@ -29,6 +30,7 @@ This audit reviewed all service files in `server/src/services/` to identify serv
 These services already follow the logging patterns defined in the design document:
 
 ### 1. AIModelService (`ai-model/AIModelService.ts`)
+
 - ✅ Child logger: Uses `logger` directly (singleton pattern)
 - ✅ Operation logging: Logs execute/stream operations
 - ✅ Timing: Implicit through operation flow
@@ -37,6 +39,7 @@ These services already follow the logging patterns defined in the design documen
 - **Status**: GOOD - Minor improvements possible (add explicit timing)
 
 ### 2. CacheService (`cache/CacheService.ts`)
+
 - ✅ Child logger: `this.log = logger.child({ service: 'CacheService' })`
 - ✅ Operation logging: Logs cache operations (get, set, delete, flush)
 - ✅ Error handling: Proper error logging in health check
@@ -44,12 +47,14 @@ These services already follow the logging patterns defined in the design documen
 - **Status**: GOOD - Excellent logging implementation
 
 ### 3. ConcurrencyLimiter (`concurrency/ConcurrencyService.ts`)
+
 - ✅ Operation logging: Logs queue operations, timeouts, cancellations
 - ✅ Metadata: Includes requestId, queueLength, activeCount
 - ✅ Metrics: Integrates with metricsService
 - **Status**: GOOD - Uses logger directly (singleton pattern)
 
 ### 4. ImageGenerationService (`image-generation/ImageGenerationService.ts`)
+
 - ⚠️ No child logger (uses logger directly)
 - ✅ Operation logging: Logs generation start, completion, polling
 - ✅ Timing: Calculates duration for operations
@@ -58,6 +63,7 @@ These services already follow the logging patterns defined in the design documen
 - **Status**: GOOD - Could benefit from child logger
 
 ### 5. PromptOptimizationService (`prompt-optimization/PromptOptimizationService.ts`)
+
 - ✅ Child logger: `this.log = logger.child({ service: 'PromptOptimizationService' })`
 - ✅ Operation logging: Comprehensive logging for optimize, optimizeTwoStage
 - ✅ Timing: Uses `performance.now()` for duration tracking
@@ -66,12 +72,14 @@ These services already follow the logging patterns defined in the design documen
 - **Status**: EXCELLENT - Model implementation
 
 ### 6. QualityFeedbackService (`quality-feedback/QualityFeedbackService.ts`)
+
 - ⚠️ No child logger (uses logger directly)
 - ✅ Operation logging: Logs tracking, prediction operations
 - ✅ Metadata: Includes suggestionId, service, scores
 - **Status**: GOOD - Could benefit from child logger
 
 ### 7. TaxonomyValidationService (`taxonomy-validation/TaxonomyValidationService.ts`)
+
 - ✅ Child logger: `this.log = logger.child({ service: 'TaxonomyValidationService' })`
 - ✅ Operation logging: Logs validation operations
 - ✅ Timing: Uses `performance.now()` for duration tracking
@@ -83,6 +91,7 @@ These services already follow the logging patterns defined in the design documen
 These services have some logging but lack comprehensive coverage:
 
 ### 8. NlpSpanService (`nlp/NlpSpanService.ts`)
+
 - ⚠️ No child logger (uses logger directly)
 - ⚠️ Limited operation logging (mainly warnings and errors)
 - ❌ No timing measurements for extraction operations
@@ -94,6 +103,7 @@ These services have some logging but lack comprehensive coverage:
 - **Status**: NEEDS IMPROVEMENT
 
 ### 9. TextCategorizerService (`text-categorization/TextCategorizerService.ts`)
+
 - ❌ No child logger
 - ⚠️ Minimal logging (only cache hit and final result)
 - ❌ No timing measurements
@@ -105,6 +115,7 @@ These services have some logging but lack comprehensive coverage:
 - **Status**: NEEDS IMPROVEMENT
 
 ### 10. VideoConceptService (`VideoConceptService.ts`)
+
 - **Note**: This is a large orchestrator service - needs separate detailed audit
 - Likely has logging through child services
 - **Status**: REQUIRES DETAILED AUDIT
@@ -114,10 +125,13 @@ These services have some logging but lack comprehensive coverage:
 These services need comprehensive logging added:
 
 ### 11. EnhancementService (`enhancement/EnhancementService.ts`)
+
 - **Status**: REQUIRES DETAILED AUDIT (large orchestrator)
 
 ### 12. Video Concept Sub-Services (`video-concept/services/`)
+
 Multiple specialized services that need individual audit:
+
 - `generation/TechnicalParameterService.ts`
 - `generation/SuggestionGeneratorService.ts`
 - `validation/PromptValidationService.ts`
@@ -131,7 +145,9 @@ Multiple specialized services that need individual audit:
 - **Status**: REQUIRES DETAILED AUDIT FOR EACH
 
 ### 13. Video Prompt Analysis Services (`video-prompt-analysis/services/`)
+
 Multiple specialized services:
+
 - `detection/SectionDetectionService.ts`
 - `detection/ModelDetectionService.ts`
 - `detection/VideoPromptDetectionService.ts`
@@ -142,6 +158,7 @@ Multiple specialized services:
 - **Status**: REQUIRES DETAILED AUDIT FOR EACH
 
 ### 14. Prompt Optimization Sub-Services (`prompt-optimization/services/`)
+
 - `QualityAssessmentService.ts`
 - `ContextInferenceService.ts`
 - `TemplateService.ts`
@@ -150,6 +167,7 @@ Multiple specialized services:
 - **Status**: REQUIRES DETAILED AUDIT FOR EACH
 
 ### 15. Quality Feedback Sub-Services (`quality-feedback/services/`)
+
 - `LLMJudgeService.ts`
 - `FeatureExtractor.ts`
 - `QualityAssessor.ts`
@@ -158,6 +176,7 @@ Multiple specialized services:
 - **Status**: REQUIRES DETAILED AUDIT FOR EACH
 
 ### 16. Cache Services
+
 - `CacheServiceWithStatistics.ts` - Has child logger ✅
 - `NodeCacheAdapter.ts` - Has child logger ✅
 - `SpanLabelingCacheService.ts` - Needs audit
@@ -167,11 +186,11 @@ Multiple specialized services:
 
 ## Summary Statistics
 
-| Category | Count | Percentage |
-|----------|-------|------------|
-| Services with GOOD logging | 7 | ~15% |
-| Services with PARTIAL logging | 3 | ~6% |
-| Services needing audit | 40+ | ~79% |
+| Category                      | Count | Percentage |
+| ----------------------------- | ----- | ---------- |
+| Services with GOOD logging    | 7     | ~15%       |
+| Services with PARTIAL logging | 3     | ~6%        |
+| Services needing audit        | 40+   | ~79%       |
 
 ## Recommended Logging Pattern
 
@@ -180,29 +199,29 @@ Based on the best implementations (PromptOptimizationService, TaxonomyValidation
 ```typescript
 export class ExampleService {
   private readonly log: ILogger;
-  
+
   constructor(dependencies) {
-    this.log = logger.child({ service: 'ExampleService' });
+    this.log = logger.child({ service: "ExampleService" });
   }
-  
+
   async operation(params: Params): Promise<Result> {
     const startTime = performance.now();
-    const operation = 'operation';
-    
+    const operation = "operation";
+
     this.log.debug(`Starting ${operation}`, {
       operation,
       paramSummary: summarize(params),
     });
-    
+
     try {
       const result = await this.doWork(params);
-      
+
       this.log.info(`${operation} completed`, {
         operation,
         duration: Math.round(performance.now() - startTime),
         resultSummary: summarize(result),
       });
-      
+
       return result;
     } catch (error) {
       this.log.error(`${operation} failed`, error as Error, {
@@ -220,17 +239,20 @@ export class ExampleService {
 Based on usage frequency and importance, prioritize these services:
 
 ### High Priority (Core Services)
+
 1. **NlpSpanService** - Critical for span labeling
 2. **TextCategorizerService** - Used in prompt analysis
 3. **EnhancementService** - Main orchestrator for suggestions
 4. **VideoConceptService** - Main orchestrator for video concepts
 
 ### Medium Priority (Frequently Used)
+
 5. Video Concept sub-services (generation, validation, detection)
 6. Video Prompt Analysis services
 7. Prompt Optimization sub-services
 
 ### Lower Priority (Specialized/Less Frequent)
+
 8. Quality Feedback sub-services
 9. Cache utility services
 10. Helper/utility services

@@ -1,10 +1,10 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
-import { X, Image, Plus } from '@promptstudio/system/components/ui';
-import type { CameraPath } from '@/features/convergence/types';
-import type { KeyframeTile } from '@components/ToolSidebar/types';
-import { cn } from '@/utils/cn';
-import { useResolvedMediaUrl } from '@/hooks/useResolvedMediaUrl';
-import { hasGcsSignedUrlParams } from '@/utils/storageUrl';
+import React, { useCallback, useMemo, useRef, useState } from "react";
+import { X, Image, Plus } from "@promptstudio/system/components/ui";
+import type { CameraPath } from "@/features/convergence/types";
+import type { KeyframeTile } from "@components/ToolSidebar/types";
+import { cn } from "@/utils/cn";
+import { useResolvedMediaUrl } from "@/hooks/useResolvedMediaUrl";
+import { hasGcsSignedUrlParams } from "@/utils/storageUrl";
 
 interface StartFramePopoverProps {
   startFrame: KeyframeTile | null;
@@ -31,11 +31,13 @@ export function StartFramePopover({
 
   const shouldResolveUrl = Boolean(
     startFrame &&
-      (startFrame.storagePath || startFrame.assetId || hasGcsSignedUrlParams(startFrame.url))
+      (startFrame.storagePath ||
+        startFrame.assetId ||
+        hasGcsSignedUrlParams(startFrame.url)),
   );
 
   const { url: resolvedPreviewUrl } = useResolvedMediaUrl({
-    kind: 'image',
+    kind: "image",
     url: startFrame?.url ?? null,
     storagePath: startFrame?.storagePath ?? null,
     assetId: startFrame?.assetId ?? null,
@@ -53,7 +55,7 @@ export function StartFramePopover({
 
       if (onStartFrameUpload) {
         const result = onStartFrameUpload(file);
-        if (result && typeof (result as Promise<void>).then === 'function') {
+        if (result && typeof (result as Promise<void>).then === "function") {
           setIsUploading(true);
           try {
             await result;
@@ -74,10 +76,10 @@ export function StartFramePopover({
       onSetStartFrame({
         id: `start-frame-local-${Date.now()}`,
         url: dataUrl,
-        source: 'upload',
+        source: "upload",
       });
     },
-    [disabled, onSetStartFrame, onStartFrameUpload]
+    [disabled, onSetStartFrame, onStartFrameUpload],
   );
 
   return (
@@ -87,9 +89,9 @@ export function StartFramePopover({
         type="button"
         data-testid="start-frame-trigger"
         className={cn(
-          'inline-flex h-[30px] items-center gap-[5px] rounded-full border border-surface-2 px-2.5 text-xs font-semibold transition-colors',
-          'bg-tool-nav-hover text-foreground hover:bg-tool-nav-active hover:text-foreground',
-          disabled && 'cursor-not-allowed opacity-60'
+          "inline-flex h-[30px] items-center gap-[5px] rounded-full border border-surface-2 px-2.5 text-xs font-semibold transition-colors",
+          "bg-tool-nav-hover text-foreground hover:bg-tool-nav-active hover:text-foreground",
+          disabled && "cursor-not-allowed opacity-60",
         )}
         onClick={() => {
           if (disabled) return;
@@ -116,7 +118,10 @@ export function StartFramePopover({
           <>
             <span className="relative flex h-[13px] w-[13px]">
               <Image size={13} />
-              <Plus size={8} className="absolute -bottom-1 -right-1 rounded-full bg-tool-surface-prompt-compact p-[1px]" />
+              <Plus
+                size={8}
+                className="absolute -bottom-1 -right-1 rounded-full bg-tool-surface-prompt-compact p-[1px]"
+              />
             </span>
             Start frame
           </>
@@ -131,7 +136,7 @@ export function StartFramePopover({
         onChange={(event) => {
           const file = event.target.files?.[0];
           if (file) void handleUpload(file);
-          event.target.value = '';
+          event.target.value = "";
         }}
       />
 
@@ -171,14 +176,14 @@ export function StartFramePopover({
                   type="button"
                   data-testid="start-frame-motion-button"
                   className={cn(
-                    'h-[26px] rounded-md border px-2 text-[11px] transition-colors',
+                    "h-[26px] rounded-md border px-2 text-[11px] transition-colors",
                     cameraMotion
-                      ? 'border-tool-accent-selection/40 bg-tool-accent-selection/8 text-tool-accent-selection'
-                      : 'border-tool-nav-active text-tool-text-dim hover:border-tool-text-disabled'
+                      ? "border-tool-accent-selection/40 bg-tool-accent-selection/8 text-tool-accent-selection"
+                      : "border-tool-nav-active text-tool-text-dim hover:border-tool-text-disabled",
                   )}
                   onClick={onOpenMotion}
                 >
-                  {cameraMotion?.label ?? 'Select motion…'}
+                  {cameraMotion?.label ?? "Select motion…"}
                 </button>
               </div>
             </>
@@ -195,7 +200,7 @@ export function StartFramePopover({
                   <Image size={13} />
                 </span>
                 <span className="text-[11px] text-tool-text-subdued">
-                  {isUploading ? 'Uploading…' : 'Drop image or click to upload'}
+                  {isUploading ? "Uploading…" : "Drop image or click to upload"}
                 </span>
               </button>
               <span className="mt-2 block text-[10px] text-tool-text-label">

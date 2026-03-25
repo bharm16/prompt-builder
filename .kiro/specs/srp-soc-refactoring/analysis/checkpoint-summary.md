@@ -3,8 +3,9 @@
 ## Analysis Complete: December 20, 2025
 
 **Directories Analyzed:**
+
 - `client/src/` - 45+ files
-- `server/src/` - 35+ files  
+- `server/src/` - 35+ files
 - `shared/` - 2 files
 
 **Total Violations Found:** 1 confirmed, 4 re-evaluated as NOT violations
@@ -22,6 +23,7 @@ After deeper analysis of the actual code, most initially flagged files have **si
 ### 1. `server/src/routes/api.routes.ts` (731 lines) - HIGH SEVERITY
 
 **Why it IS a violation:**
+
 - **Reason 1:** Adding/modifying optimization endpoints (different team, different API contracts)
 - **Reason 2:** Adding/modifying video concept endpoints (different feature, different stakeholders)
 - **Reason 3:** Adding/modifying enhancement endpoints (different feature)
@@ -29,8 +31,9 @@ After deeper analysis of the actual code, most initially flagged files have **si
 **Justification:** Each domain (optimization, video, enhancement) has different stakeholders and change frequencies. A change to video endpoints doesn't require touching optimization code. Splitting by domain improves maintainability.
 
 **Recommended Split:**
+
 - `routes/optimize.routes.ts` - Optimization endpoints
-- `routes/video.routes.ts` - Video concept endpoints  
+- `routes/video.routes.ts` - Video concept endpoints
 - `routes/enhancement.routes.ts` - Enhancement endpoints
 - `routes/api.routes.ts` - Route aggregator
 
@@ -44,6 +47,7 @@ After deeper analysis of the actual code, most initially flagged files have **si
 The file has ONE responsibility: **NLP-based span extraction**. The "responsibilities" initially listed (Aho-Corasick, regex, action verbs, GLiNER, merging) are all **implementation details of the same concern**.
 
 **Reasons to change analysis:**
+
 - If a linguist changes action verb patterns → they also touch the merge strategy (same concern)
 - If an ML engineer changes GLiNER thresholds → they also touch label mappings (same concern)
 - If NLP algorithm changes → all extraction tiers change together (same concern)
@@ -62,6 +66,7 @@ The file has ONE responsibility: **NLP-based span extraction**. The "responsibil
 The file has ONE responsibility: **Make Groq/Llama 3 API work well**. The "API communication" and "Llama 3 optimization" are inseparable.
 
 **Reasons to change analysis:**
+
 - If Groq API changes → message building changes too (same concern)
 - If Llama 3 best practices update → you change how you call the API (same concern)
 - Would you ever change message building WITHOUT changing API communication? **No.**
@@ -78,6 +83,7 @@ The file has ONE responsibility: **Make Groq/Llama 3 API work well**. The "API c
 Same reasoning as GroqLlamaAdapter. ONE responsibility: **Make OpenAI API work well**.
 
 **Reasons to change analysis:**
+
 - If OpenAI API changes → message building changes too
 - If GPT-4o best practices update → you change how you call the API
 - Developer role, bookending, structured outputs are all part of "how to call GPT-4o correctly"
@@ -92,6 +98,7 @@ Same reasoning as GroqLlamaAdapter. ONE responsibility: **Make OpenAI API work w
 The file has ONE responsibility: **Route AI operations to the right client with the right options**.
 
 **Reasons to change analysis:**
+
 - "Operation routing" and "provider-specific optimization" are the SAME concern
 - The service's job IS to apply the right optimizations when routing
 - `_buildDefaultDeveloperMessage()` is part of routing logic, not a separate concern
@@ -104,19 +111,20 @@ The file has ONE responsibility: **Route AI operations to the right client with 
 
 ## Summary
 
-| File | Initial Assessment | Re-Evaluation | Action |
-|------|-------------------|---------------|--------|
-| `api.routes.ts` | HIGH (3+) | ✅ CONFIRMED | Split by domain |
-| `NlpSpanService.ts` | HIGH (4+) | ❌ NOT VIOLATION | No action - single concern |
-| `GroqLlamaAdapter.ts` | MEDIUM (2) | ❌ NOT VIOLATION | No action - cohesive |
-| `OpenAICompatibleAdapter.ts` | MEDIUM (2) | ❌ NOT VIOLATION | No action - cohesive |
-| `AIModelService.ts` | MEDIUM (2) | ❌ NOT VIOLATION | No action - orchestrator |
+| File                         | Initial Assessment | Re-Evaluation    | Action                     |
+| ---------------------------- | ------------------ | ---------------- | -------------------------- |
+| `api.routes.ts`              | HIGH (3+)          | ✅ CONFIRMED     | Split by domain            |
+| `NlpSpanService.ts`          | HIGH (4+)          | ❌ NOT VIOLATION | No action - single concern |
+| `GroqLlamaAdapter.ts`        | MEDIUM (2)         | ❌ NOT VIOLATION | No action - cohesive       |
+| `OpenAICompatibleAdapter.ts` | MEDIUM (2)         | ❌ NOT VIOLATION | No action - cohesive       |
+| `AIModelService.ts`          | MEDIUM (2)         | ❌ NOT VIOLATION | No action - orchestrator   |
 
 ---
 
 ## Key Insight
 
 **Size ≠ Violation.** Large files with many methods can still have a single responsibility if:
+
 1. All code serves the same concern
 2. Different stakeholders would NOT trigger changes to different parts
 3. Splitting would harm cohesion (tightly coupled code that changes together)

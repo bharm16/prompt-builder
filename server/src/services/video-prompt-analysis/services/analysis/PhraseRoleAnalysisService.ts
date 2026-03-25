@@ -1,6 +1,10 @@
-import { CATEGORY_PATTERNS, CONTEXT_PATTERNS, DEFAULT_ROLE } from '@services/video-prompt-analysis/config/categoryMapping';
-import { normalizeText } from '@services/video-prompt-analysis/utils/textHelpers';
-import { logger } from '@infrastructure/Logger';
+import {
+  CATEGORY_PATTERNS,
+  CONTEXT_PATTERNS,
+  DEFAULT_ROLE,
+} from "@services/video-prompt-analysis/config/categoryMapping";
+import { normalizeText } from "@services/video-prompt-analysis/utils/textHelpers";
+import { logger } from "@infrastructure/Logger";
 
 /**
  * Service responsible for analyzing and detecting phrase roles in video prompts
@@ -13,16 +17,18 @@ export class PhraseRoleAnalysisService {
     highlightedText: string | null | undefined,
     contextBefore: string | null | undefined,
     contextAfter: string | null | undefined,
-    explicitCategory: string | null | undefined
+    explicitCategory: string | null | undefined,
   ): string {
-    const text = highlightedText?.trim() || '';
-    const normalizedCategory = explicitCategory ? normalizeText(explicitCategory) : '';
+    const text = highlightedText?.trim() || "";
+    const normalizedCategory = explicitCategory
+      ? normalizeText(explicitCategory)
+      : "";
 
     // Try to map from explicit category first
     if (normalizedCategory) {
       const categoryRole = this._mapCategory(normalizedCategory);
       if (categoryRole) {
-        logger.debug('Category mapped from explicit category', {
+        logger.debug("Category mapped from explicit category", {
           input: normalizedCategory,
           output: categoryRole,
         });
@@ -36,7 +42,9 @@ export class PhraseRoleAnalysisService {
     }
 
     // Try to map from combined context
-    const combinedContext = normalizeText(`${contextBefore || ''} ${contextAfter || ''}`);
+    const combinedContext = normalizeText(
+      `${contextBefore || ""} ${contextAfter || ""}`,
+    );
     const contextRole = this._mapCategory(combinedContext);
     if (contextRole) {
       return contextRole;
@@ -72,30 +80,29 @@ export class PhraseRoleAnalysisService {
    */
   private _matchContextPatterns(context: string): string | null {
     if (CONTEXT_PATTERNS.location.test(context)) {
-      return 'location or environment detail';
+      return "location or environment detail";
     }
 
     if (CONTEXT_PATTERNS.camera.test(context)) {
-      return 'camera or framing description';
+      return "camera or framing description";
     }
 
     if (CONTEXT_PATTERNS.lighting.test(context)) {
-      return 'lighting description';
+      return "lighting description";
     }
 
     if (CONTEXT_PATTERNS.character.test(context)) {
-      return 'subject or character detail';
+      return "subject or character detail";
     }
 
     if (CONTEXT_PATTERNS.style.test(context)) {
-      return 'style or tone descriptor';
+      return "style or tone descriptor";
     }
 
     if (CONTEXT_PATTERNS.audio.test(context)) {
-      return 'audio or score descriptor';
+      return "audio or score descriptor";
     }
 
     return null;
   }
 }
-

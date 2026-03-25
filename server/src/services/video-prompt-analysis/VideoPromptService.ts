@@ -1,21 +1,35 @@
-import { logger } from '@infrastructure/Logger';
-import { VideoPromptDetectionService } from './services/detection/VideoPromptDetectionService';
-import { PhraseRoleAnalysisService } from './services/analysis/PhraseRoleAnalysisService';
-import { ConstraintGenerationService } from './services/analysis/ConstraintGenerationService';
-import { FallbackStrategyService } from './services/guidance/FallbackStrategyService';
-import { CategoryGuidanceService } from './services/guidance/CategoryGuidanceService';
-import { ModelDetectionService } from './services/detection/ModelDetectionService';
-import { SectionDetectionService } from './services/detection/SectionDetectionService';
-import { TaxonomyValidationService } from '@services/taxonomy-validation/TaxonomyValidationService';
-import { countWords } from './utils/textHelpers';
-import { resolvePromptModelId } from '@services/video-models/ModelRegistry';
-import { createDefaultStrategyRegistry, StrategyRegistry } from './strategies';
-import type { ConstraintConfig, ConstraintDetails, ConstraintOptions, GuidanceSpan, EditHistoryEntry } from './types';
-import type { ValidationOptions, ValidationResult, ValidationStats } from '@services/taxonomy-validation/types';
-import type { ModelCapabilities } from './services/detection/ModelDetectionService';
-import type { SectionConstraints } from './services/detection/SectionDetectionService';
-import type { VideoPromptLlmGateway } from './services/llm/VideoPromptLlmGateway';
-import type { PromptOptimizationResult, PromptContext, PhaseResult } from './strategies/types';
+import { logger } from "@infrastructure/Logger";
+import { VideoPromptDetectionService } from "./services/detection/VideoPromptDetectionService";
+import { PhraseRoleAnalysisService } from "./services/analysis/PhraseRoleAnalysisService";
+import { ConstraintGenerationService } from "./services/analysis/ConstraintGenerationService";
+import { FallbackStrategyService } from "./services/guidance/FallbackStrategyService";
+import { CategoryGuidanceService } from "./services/guidance/CategoryGuidanceService";
+import { ModelDetectionService } from "./services/detection/ModelDetectionService";
+import { SectionDetectionService } from "./services/detection/SectionDetectionService";
+import { TaxonomyValidationService } from "@services/taxonomy-validation/TaxonomyValidationService";
+import { countWords } from "./utils/textHelpers";
+import { resolvePromptModelId } from "@services/video-models/ModelRegistry";
+import { createDefaultStrategyRegistry, StrategyRegistry } from "./strategies";
+import type {
+  ConstraintConfig,
+  ConstraintDetails,
+  ConstraintOptions,
+  GuidanceSpan,
+  EditHistoryEntry,
+} from "./types";
+import type {
+  ValidationOptions,
+  ValidationResult,
+  ValidationStats,
+} from "@services/taxonomy-validation/types";
+import type { ModelCapabilities } from "./services/detection/ModelDetectionService";
+import type { SectionConstraints } from "./services/detection/SectionDetectionService";
+import type { VideoPromptLlmGateway } from "./services/llm/VideoPromptLlmGateway";
+import type {
+  PromptOptimizationResult,
+  PromptContext,
+  PhaseResult,
+} from "./strategies/types";
 
 export interface VideoPromptServiceDeps {
   detector?: VideoPromptDetectionService;
@@ -49,27 +63,35 @@ export class VideoPromptService {
   private readonly sectionDetector: SectionDetectionService;
   private readonly taxonomyValidator: TaxonomyValidationService;
   private readonly strategyRegistry: StrategyRegistry;
-  private readonly log = logger.child({ service: 'VideoPromptService' });
+  private readonly log = logger.child({ service: "VideoPromptService" });
 
   /** Pipeline version for metadata tracking */
-  private static readonly PIPELINE_VERSION = '1.0.0';
+  private static readonly PIPELINE_VERSION = "1.0.0";
   private static readonly MAX_CONCURRENT_MODEL_OPTIMIZATIONS = 3;
 
   constructor(deps: VideoPromptServiceDeps = {}) {
     this.detector = deps.detector ?? new VideoPromptDetectionService();
-    this.phraseRoleAnalyzer = deps.phraseRoleAnalyzer ?? new PhraseRoleAnalysisService();
-    this.constraintGenerator = deps.constraintGenerator ?? new ConstraintGenerationService();
-    this.fallbackStrategy = deps.fallbackStrategy ?? new FallbackStrategyService();
-    this.categoryGuidance = deps.categoryGuidance ?? new CategoryGuidanceService();
+    this.phraseRoleAnalyzer =
+      deps.phraseRoleAnalyzer ?? new PhraseRoleAnalysisService();
+    this.constraintGenerator =
+      deps.constraintGenerator ?? new ConstraintGenerationService();
+    this.fallbackStrategy =
+      deps.fallbackStrategy ?? new FallbackStrategyService();
+    this.categoryGuidance =
+      deps.categoryGuidance ?? new CategoryGuidanceService();
     this.modelDetector = deps.modelDetector ?? new ModelDetectionService();
-    this.sectionDetector = deps.sectionDetector ?? new SectionDetectionService();
-    this.taxonomyValidator = deps.taxonomyValidator ?? new TaxonomyValidationService();
+    this.sectionDetector =
+      deps.sectionDetector ?? new SectionDetectionService();
+    this.taxonomyValidator =
+      deps.taxonomyValidator ?? new TaxonomyValidationService();
 
     this.strategyRegistry =
       deps.strategyRegistry ??
       createDefaultStrategyRegistry({
         videoPromptLlmGateway: deps.videoPromptLlmGateway ?? null,
-        ...(deps.promptOutputOnly != null ? { promptOutputOnly: deps.promptOutputOnly } : {}),
+        ...(deps.promptOutputOnly != null
+          ? { promptOutputOnly: deps.promptOutputOnly }
+          : {}),
       });
   }
 
@@ -84,20 +106,20 @@ export class VideoPromptService {
    * Check if this is a video prompt
    */
   isVideoPrompt(fullPrompt: string | null | undefined): boolean {
-    const operation = 'isVideoPrompt';
-    
-    this.log.debug('Checking if prompt is video prompt', {
+    const operation = "isVideoPrompt";
+
+    this.log.debug("Checking if prompt is video prompt", {
       operation,
       promptLength: fullPrompt?.length || 0,
     });
-    
+
     const result = this.detector.isVideoPrompt(fullPrompt);
-    
-    this.log.debug('Video prompt detection complete', {
+
+    this.log.debug("Video prompt detection complete", {
       operation,
       isVideoPrompt: result,
     });
-    
+
     return result;
   }
 
@@ -108,13 +130,13 @@ export class VideoPromptService {
     highlightedText: string | null | undefined,
     contextBefore: string | null | undefined,
     contextAfter: string | null | undefined,
-    explicitCategory: string | null | undefined
+    explicitCategory: string | null | undefined,
   ): string {
     return this.phraseRoleAnalyzer.detectVideoPhraseRole(
       highlightedText,
       contextBefore,
       contextAfter,
-      explicitCategory
+      explicitCategory,
     );
   }
 
@@ -123,9 +145,12 @@ export class VideoPromptService {
    */
   getVideoReplacementConstraints(
     details: ConstraintDetails = {},
-    options: ConstraintOptions = {}
+    options: ConstraintOptions = {},
   ): ConstraintConfig {
-    return this.constraintGenerator.getVideoReplacementConstraints(details, options);
+    return this.constraintGenerator.getVideoReplacementConstraints(
+      details,
+      options,
+    );
   }
 
   /**
@@ -134,13 +159,13 @@ export class VideoPromptService {
   getVideoFallbackConstraints(
     currentConstraints: ConstraintConfig | null | undefined,
     details: ConstraintDetails = {},
-    attemptedModes: Set<string> = new Set()
+    attemptedModes: Set<string> = new Set(),
   ): ConstraintConfig | null {
     return this.fallbackStrategy.getVideoFallbackConstraints(
       currentConstraints,
       details,
       attemptedModes,
-      (d, o) => this.getVideoReplacementConstraints(d, o)
+      (d, o) => this.getVideoReplacementConstraints(d, o),
     );
   }
 
@@ -151,16 +176,16 @@ export class VideoPromptService {
   getCategoryFocusGuidance(
     phraseRole: string | null | undefined,
     categoryHint: string | null | undefined,
-    fullContext: string = '',
+    fullContext: string = "",
     allSpans: GuidanceSpan[] = [],
-    editHistory: EditHistoryEntry[] = []
+    editHistory: EditHistoryEntry[] = [],
   ): string[] | null {
     return this.categoryGuidance.getCategoryFocusGuidance(
       phraseRole,
       categoryHint,
       fullContext,
       allSpans,
-      editHistory
+      editHistory,
     );
   }
 
@@ -175,14 +200,19 @@ export class VideoPromptService {
   /**
    * Get model capabilities (strengths and weaknesses)
    */
-  getModelCapabilities(model: string | null | undefined): ModelCapabilities | null {
+  getModelCapabilities(
+    model: string | null | undefined,
+  ): ModelCapabilities | null {
     return this.modelDetector.getModelCapabilities(model);
   }
 
   /**
    * Get model-specific guidance for a category
    */
-  getModelSpecificGuidance(model: string | null | undefined, category: string | null | undefined): string[] {
+  getModelSpecificGuidance(
+    model: string | null | undefined,
+    category: string | null | undefined,
+  ): string[] {
     return this.modelDetector.getModelSpecificGuidance(model, category);
   }
 
@@ -199,22 +229,31 @@ export class VideoPromptService {
   detectPromptSection(
     highlightedText: string | null | undefined,
     fullPrompt: string | null | undefined,
-    contextBefore: string = ''
+    contextBefore: string = "",
   ): string {
-    return this.sectionDetector.detectSection(highlightedText, fullPrompt, contextBefore);
+    return this.sectionDetector.detectSection(
+      highlightedText,
+      fullPrompt,
+      contextBefore,
+    );
   }
 
   /**
    * Get section-specific constraints
    */
-  getSectionConstraints(section: string | null | undefined): SectionConstraints | null {
+  getSectionConstraints(
+    section: string | null | undefined,
+  ): SectionConstraints | null {
     return this.sectionDetector.getSectionConstraints(section);
   }
 
   /**
    * Get section-specific guidance for a category
    */
-  getSectionGuidance(section: string | null | undefined, category: string | null | undefined): string[] {
+  getSectionGuidance(
+    section: string | null | undefined,
+    category: string | null | undefined,
+  ): string[] {
     return this.sectionDetector.getSectionGuidance(section, category);
   }
 
@@ -231,7 +270,7 @@ export class VideoPromptService {
    */
   validateSpanHierarchy(
     spans: GuidanceSpan[],
-    options: ValidationOptions = {}
+    options: ValidationOptions = {},
   ): ValidationResult {
     return this.taxonomyValidator.validateSpans(spans, options);
   }
@@ -268,27 +307,30 @@ export class VideoPromptService {
   /**
    * Optimize a prompt for a specific video model
    * Runs the full 3-phase pipeline: normalize → transform → augment
-   * 
+   *
    * @param prompt - The user's input prompt
    * @param modelId - Optional model ID; if not provided, will attempt to detect from prompt
    * @param context - Optional context for optimization
    * @returns Optimized prompt result, or original prompt wrapped in result on failure
-   * 
+   *
    * Requirements: 10.1, 10.2, 10.3, 10.4, 10.5
    */
   async optimizeForModel(
     prompt: string,
     modelId?: string | null,
-    context?: PromptContext
+    context?: PromptContext,
   ): Promise<PromptOptimizationResult> {
-    const operation = 'optimizeForModel';
+    const operation = "optimizeForModel";
     const startTime = Date.now();
 
     // Detect model if not provided
-    let detectedModelId = modelId ?? this.modelDetector.detectTargetModel(prompt);
-    detectedModelId = detectedModelId ? resolvePromptModelId(detectedModelId) : null;
+    let detectedModelId =
+      modelId ?? this.modelDetector.detectTargetModel(prompt);
+    detectedModelId = detectedModelId
+      ? resolvePromptModelId(detectedModelId)
+      : null;
 
-    this.log.info('Starting prompt optimization', {
+    this.log.info("Starting prompt optimization", {
       operation,
       modelId: detectedModelId,
       promptLength: prompt.length,
@@ -297,14 +339,19 @@ export class VideoPromptService {
 
     // If no model detected, return original prompt without optimization (Requirement 10.3)
     if (!detectedModelId) {
-      this.log.info('No model detected, returning original prompt', { operation });
-      return this.createOriginalResult(prompt, 'unknown');
+      this.log.info("No model detected, returning original prompt", {
+        operation,
+      });
+      return this.createOriginalResult(prompt, "unknown");
     }
 
     // Get strategy for the model
     const strategy = this.strategyRegistry.get(detectedModelId);
     if (!strategy) {
-      this.log.warn('No strategy found for model', { operation, modelId: detectedModelId });
+      this.log.warn("No strategy found for model", {
+        operation,
+        modelId: detectedModelId,
+      });
       return this.createOriginalResult(prompt, detectedModelId);
     }
 
@@ -319,34 +366,43 @@ export class VideoPromptService {
       try {
         await strategy.validate(prompt, context);
         phases.push({
-          phase: 'normalize', // Validation is part of normalize phase
+          phase: "normalize", // Validation is part of normalize phase
           durationMs: Date.now() - validateStart,
-          changes: ['Validation passed'],
+          changes: ["Validation passed"],
         });
       } catch (validationError) {
-        const errorMessage = validationError instanceof Error ? validationError.message : String(validationError);
+        const errorMessage =
+          validationError instanceof Error
+            ? validationError.message
+            : String(validationError);
         warnings.push(`Validation warning: ${errorMessage}`);
-        this.log.warn('Validation warning', { operation, modelId: detectedModelId, error: errorMessage });
+        this.log.warn("Validation warning", {
+          operation,
+          modelId: detectedModelId,
+          error: errorMessage,
+        });
       }
 
       // Phase 1: Normalize
       const normalizeStart = Date.now();
       const normalizedText = strategy.normalize(prompt, context);
       const normalizeDuration = Date.now() - normalizeStart;
-      
-      this.log.debug('Normalize phase complete', {
+
+      this.log.debug("Normalize phase complete", {
         operation,
         modelId: detectedModelId,
-        phase: 'normalize',
+        phase: "normalize",
         durationMs: normalizeDuration,
         inputLength: prompt.length,
         outputLength: normalizedText.length,
       });
 
       phases.push({
-        phase: 'normalize',
+        phase: "normalize",
         durationMs: normalizeDuration,
-        changes: [`Normalized text (${prompt.length} → ${normalizedText.length} chars)`],
+        changes: [
+          `Normalized text (${prompt.length} → ${normalizedText.length} chars)`,
+        ],
       });
 
       // Phase 2: Transform
@@ -354,17 +410,19 @@ export class VideoPromptService {
       const transformResult = await strategy.transform(normalizedText, context);
       const transformDuration = Date.now() - transformStart;
 
-      this.log.debug('Transform phase complete', {
+      this.log.debug("Transform phase complete", {
         operation,
         modelId: detectedModelId,
-        phase: 'transform',
+        phase: "transform",
         durationMs: transformDuration,
       });
 
       phases.push({
-        phase: 'transform',
+        phase: "transform",
         durationMs: transformDuration,
-        changes: transformResult.metadata?.phases?.find(p => p.phase === 'transform')?.changes ?? ['Transformed prompt'],
+        changes: transformResult.metadata?.phases?.find(
+          (p) => p.phase === "transform",
+        )?.changes ?? ["Transformed prompt"],
       });
 
       // Collect tokens stripped from transform metadata
@@ -377,17 +435,19 @@ export class VideoPromptService {
       const augmentResult = strategy.augment(transformResult, context);
       const augmentDuration = Date.now() - augmentStart;
 
-      this.log.debug('Augment phase complete', {
+      this.log.debug("Augment phase complete", {
         operation,
         modelId: detectedModelId,
-        phase: 'augment',
+        phase: "augment",
         durationMs: augmentDuration,
       });
 
       phases.push({
-        phase: 'augment',
+        phase: "augment",
         durationMs: augmentDuration,
-        changes: augmentResult.metadata?.phases?.find(p => p.phase === 'augment')?.changes ?? ['Augmented prompt'],
+        changes: augmentResult.metadata?.phases?.find(
+          (p) => p.phase === "augment",
+        )?.changes ?? ["Augmented prompt"],
       });
 
       // Collect triggers injected from augment metadata
@@ -402,7 +462,7 @@ export class VideoPromptService {
 
       const totalDuration = Date.now() - startTime;
 
-      this.log.info('Prompt optimization complete', {
+      this.log.info("Prompt optimization complete", {
         operation,
         modelId: detectedModelId,
         totalDurationMs: totalDuration,
@@ -433,47 +493,54 @@ export class VideoPromptService {
       return result;
     } catch (error) {
       // Log error and return original prompt (Requirement 10.5)
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       const totalDuration = Date.now() - startTime;
       const errorObj = error instanceof Error ? error : new Error(errorMessage);
 
-      this.log.error('Prompt optimization failed, returning original', errorObj, {
-        operation,
-        modelId: detectedModelId,
-        totalDurationMs: totalDuration,
-      });
+      this.log.error(
+        "Prompt optimization failed, returning original",
+        errorObj,
+        {
+          operation,
+          modelId: detectedModelId,
+          totalDurationMs: totalDuration,
+        },
+      );
 
-      return this.createOriginalResult(prompt, detectedModelId, [`Optimization failed: ${errorMessage}`]);
+      return this.createOriginalResult(prompt, detectedModelId, [
+        `Optimization failed: ${errorMessage}`,
+      ]);
     }
   }
 
   /**
    * Translate a prompt to optimized versions for all supported video models
    * Executes strategies in parallel with failure isolation
-   * 
+   *
    * @param prompt - The user's input prompt
    * @param context - Optional context for optimization
    * @returns Map of model IDs to optimization results (includes error indicators on failure)
-   * 
+   *
    * Requirements: 11.1, 11.2, 11.3, 11.4
    */
   async translateToAllModels(
     prompt: string,
-    context?: PromptContext
+    context?: PromptContext,
   ): Promise<Map<string, PromptOptimizationResult>> {
-    const operation = 'translateToAllModels';
+    const operation = "translateToAllModels";
     const startTime = Date.now();
     const results = new Map<string, PromptOptimizationResult>();
 
     const allStrategies = this.strategyRegistry.getAll();
-    const modelIds = allStrategies.map(s => s.modelId);
+    const modelIds = allStrategies.map((s) => s.modelId);
 
     const maxConcurrent = Math.min(
       VideoPromptService.MAX_CONCURRENT_MODEL_OPTIMIZATIONS,
-      Math.max(1, allStrategies.length)
+      Math.max(1, allStrategies.length),
     );
 
-    this.log.info('Starting cross-model translation', {
+    this.log.info("Starting cross-model translation", {
       operation,
       promptLength: prompt.length,
       modelCount: modelIds.length,
@@ -484,9 +551,13 @@ export class VideoPromptService {
     const runStrategy = async (strategy: (typeof allStrategies)[number]) => {
       const modelStartTime = Date.now();
       try {
-        const result = await this.optimizeForModel(prompt, strategy.modelId, context);
-        
-        this.log.debug('Model optimization succeeded', {
+        const result = await this.optimizeForModel(
+          prompt,
+          strategy.modelId,
+          context,
+        );
+
+        this.log.debug("Model optimization succeeded", {
           operation,
           modelId: strategy.modelId,
           durationMs: Date.now() - modelStartTime,
@@ -495,9 +566,10 @@ export class VideoPromptService {
         return { modelId: strategy.modelId, result, success: true };
       } catch (error) {
         // Failure isolation: continue processing other models (Requirement 11.4)
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        
-        this.log.warn('Model optimization failed, continuing with others', {
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+
+        this.log.warn("Model optimization failed, continuing with others", {
           operation,
           modelId: strategy.modelId,
           errorMessage,
@@ -517,7 +589,11 @@ export class VideoPromptService {
           },
         };
 
-        return { modelId: strategy.modelId, result: errorResult, success: false };
+        return {
+          modelId: strategy.modelId,
+          result: errorResult,
+          success: false,
+        };
       }
     };
 
@@ -558,7 +634,7 @@ export class VideoPromptService {
 
     const totalDuration = Date.now() - startTime;
 
-    this.log.info('Cross-model translation complete', {
+    this.log.info("Cross-model translation complete", {
       operation,
       totalDurationMs: totalDuration,
       totalModels: modelIds.length,
@@ -596,7 +672,7 @@ export class VideoPromptService {
   private createOriginalResult(
     prompt: string,
     modelId: string,
-    warnings: string[] = []
+    warnings: string[] = [],
   ): PromptOptimizationResult {
     return {
       prompt,

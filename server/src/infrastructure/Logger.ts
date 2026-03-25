@@ -1,10 +1,10 @@
-import pino from 'pino';
-import pinoPretty from 'pino-pretty';
-import type { Request, Response, NextFunction } from 'express';
-import type { ILogger } from '@interfaces/ILogger';
-import { getRequestContext } from './requestContext';
+import pino from "pino";
+import pinoPretty from "pino-pretty";
+import type { Request, Response, NextFunction } from "express";
+import type { ILogger } from "@interfaces/ILogger";
+import { getRequestContext } from "./requestContext";
 
-type LogLevel = 'debug' | 'info' | 'warn' | 'error';
+type LogLevel = "debug" | "info" | "warn" | "error";
 
 interface LoggerConfig {
   level?: string;
@@ -30,27 +30,33 @@ export class Logger implements ILogger {
   constructor(config: LoggerConfig = {}) {
     // Keep test output quiet by default; development stays verbose.
     const defaultLevel =
-      process.env.NODE_ENV === 'production'
-        ? 'info'
-        : process.env.NODE_ENV === 'test'
-          ? 'warn'
-          : 'debug';
-    const includeLogStack = config.includeLogStack ?? process.env.LOG_STACK === 'true';
+      process.env.NODE_ENV === "production"
+        ? "info"
+        : process.env.NODE_ENV === "test"
+          ? "warn"
+          : "debug";
+    const includeLogStack =
+      config.includeLogStack ?? process.env.LOG_STACK === "true";
     const stackLevels = config.logStackLevels?.length
       ? config.logStackLevels
-      : (process.env.LOG_STACK_LEVELS || 'warn,error')
-          .split(',')
+      : ((process.env.LOG_STACK_LEVELS || "warn,error")
+          .split(",")
           .map((level) => level.trim().toLowerCase())
-          .filter(Boolean) as LogLevel[];
-    const resolvedStackLevels = stackLevels.length > 0 ? stackLevels : (['warn', 'error'] as LogLevel[]);
-    const stackDepthEnv = config.logStackDepth ?? Number.parseInt(process.env.LOG_STACK_DEPTH || '6', 10);
-    const stackLimitEnv = config.logStackLimit ?? Number.parseInt(process.env.LOG_STACK_LIMIT || '', 10);
+          .filter(Boolean) as LogLevel[]);
+    const resolvedStackLevels =
+      stackLevels.length > 0 ? stackLevels : (["warn", "error"] as LogLevel[]);
+    const stackDepthEnv =
+      config.logStackDepth ??
+      Number.parseInt(process.env.LOG_STACK_DEPTH || "6", 10);
+    const stackLimitEnv =
+      config.logStackLimit ??
+      Number.parseInt(process.env.LOG_STACK_LIMIT || "", 10);
 
-    if (process.env.NODE_ENV !== 'production') {
+    if (process.env.NODE_ENV !== "production") {
       const prettyStream = pinoPretty({
         colorize: true,
-        translateTime: 'SYS:standard',
-        ignore: 'pid,hostname',
+        translateTime: "SYS:standard",
+        ignore: "pid,hostname",
         customPrettifiers: {
           logStack: prettifyLogStack,
         },
@@ -59,7 +65,7 @@ export class Logger implements ILogger {
         {
           level: config.level || process.env.LOG_LEVEL || defaultLevel,
         },
-        prettyStream
+        prettyStream,
       );
     } else {
       this.logger = pino({
@@ -67,35 +73,49 @@ export class Logger implements ILogger {
       });
     }
     this.includeLogStack = includeLogStack;
-    this.includeLogCaller = config.includeLogCaller ?? (process.env.LOG_CALLER ? process.env.LOG_CALLER === 'true' : includeLogStack);
+    this.includeLogCaller =
+      config.includeLogCaller ??
+      (process.env.LOG_CALLER
+        ? process.env.LOG_CALLER === "true"
+        : includeLogStack);
     this.logStackLevels = new Set(resolvedStackLevels);
-    this.logStackDepth = Number.isFinite(stackDepthEnv) && stackDepthEnv > 0 ? stackDepthEnv : 6;
+    this.logStackDepth =
+      Number.isFinite(stackDepthEnv) && stackDepthEnv > 0 ? stackDepthEnv : 6;
     this.appRoot = process.cwd();
     this.applyStackTraceLimit(stackLimitEnv);
   }
 
   info(message: string, meta: Record<string, unknown> = {}): void {
-    this.logger.info(this.enrichMeta('info', meta), message);
+    this.logger.info(this.enrichMeta("info", meta), message);
   }
 
-  error(message: string, error?: Error, meta: Record<string, unknown> = {}): void {
-    const errorMeta = error ? {
-      err: {
-        errorMessage: error.message,
-        stack: error.stack,
-        errorName: error.name,
-        ...error,
-      },
-    } : {};
-    this.logger.error({ ...this.enrichMeta('error', meta), ...errorMeta }, message);
+  error(
+    message: string,
+    error?: Error,
+    meta: Record<string, unknown> = {},
+  ): void {
+    const errorMeta = error
+      ? {
+          err: {
+            errorMessage: error.message,
+            stack: error.stack,
+            errorName: error.name,
+            ...error,
+          },
+        }
+      : {};
+    this.logger.error(
+      { ...this.enrichMeta("error", meta), ...errorMeta },
+      message,
+    );
   }
 
   warn(message: string, meta: Record<string, unknown> = {}): void {
-    this.logger.warn(this.enrichMeta('warn', meta), message);
+    this.logger.warn(this.enrichMeta("warn", meta), message);
   }
 
   debug(message: string, meta: Record<string, unknown> = {}): void {
-    this.logger.debug(this.enrichMeta('debug', meta), message);
+    this.logger.debug(this.enrichMeta("debug", meta), message);
   }
 
   /**
@@ -106,7 +126,7 @@ export class Logger implements ILogger {
       const startTime = Date.now();
 
       // Log on response finish
-      res.on('finish', () => {
+      res.on("finish", () => {
         const duration = Date.now() - startTime;
         const logData: Record<string, unknown> = {
           method: req.method,
@@ -114,16 +134,16 @@ export class Logger implements ILogger {
           statusCode: res.statusCode,
           duration,
           requestId: (req as Request & { id?: string }).id,
-          userAgent: req.get('user-agent'),
+          userAgent: req.get("user-agent"),
           ip: req.ip,
         };
 
         if (res.statusCode >= 500) {
-          this.error('HTTP Request Error', undefined, logData);
+          this.error("HTTP Request Error", undefined, logData);
         } else if (res.statusCode >= 400) {
-          this.warn('HTTP Request Warning', logData);
+          this.warn("HTTP Request Warning", logData);
         } else {
-          this.debug('HTTP Request', logData);
+          this.debug("HTTP Request", logData);
         }
       });
 
@@ -140,7 +160,10 @@ export class Logger implements ILogger {
     return childLogger;
   }
 
-  private enrichMeta(level: LogLevel, meta: Record<string, unknown>): Record<string, unknown> {
+  private enrichMeta(
+    level: LogLevel,
+    meta: Record<string, unknown>,
+  ): Record<string, unknown> {
     const enriched = { ...meta };
     const context = getRequestContext();
     if (context?.requestId && enriched.requestId === undefined) {
@@ -175,18 +198,21 @@ export class Logger implements ILogger {
     const stack = new Error().stack;
     if (!stack) return undefined;
     const lines = stack
-      .split('\n')
+      .split("\n")
       .map((line) => line.trim())
       .filter(Boolean);
 
-    if (lines[0] === 'Error') {
+    if (lines[0] === "Error") {
       lines.shift();
     }
 
     return lines;
   }
 
-  private filterStackFrames(frames: string[]): { caller: string | undefined; frames: string[] } {
+  private filterStackFrames(frames: string[]): {
+    caller: string | undefined;
+    frames: string[];
+  } {
     const normalized = frames
       .map((frame) => this.normalizeStackFrame(frame))
       .filter((frame): frame is string => Boolean(frame))
@@ -205,36 +231,36 @@ export class Logger implements ILogger {
   private normalizeStackFrame(frame: string): string | undefined {
     let line = frame.trim();
     if (!line) return undefined;
-    if (line.startsWith('at ')) {
+    if (line.startsWith("at ")) {
       line = line.slice(3);
     }
 
-    line = line.replace('file://', '');
+    line = line.replace("file://", "");
 
     if (this.appRoot) {
-      line = line.replaceAll(this.appRoot, '');
+      line = line.replaceAll(this.appRoot, "");
     }
 
-    line = line.replace(/\(\/+/g, '(');
-    line = line.replace(/^\/+/, '');
+    line = line.replace(/\(\/+/g, "(");
+    line = line.replace(/^\/+/, "");
 
     return line;
   }
 
   private isNoiseFrame(frame: string): boolean {
     return (
-      frame.includes('node:internal') ||
-      frame.includes('internal/modules') ||
-      frame.includes('node_modules') ||
-      frame.includes('processTicksAndRejections') ||
-      frame.includes('server/src/infrastructure/Logger.') ||
-      frame.includes('server/src/infrastructure/Logger.ts') ||
-      frame.includes('server/src/infrastructure/requestContext.')
+      frame.includes("node:internal") ||
+      frame.includes("internal/modules") ||
+      frame.includes("node_modules") ||
+      frame.includes("processTicksAndRejections") ||
+      frame.includes("server/src/infrastructure/Logger.") ||
+      frame.includes("server/src/infrastructure/Logger.ts") ||
+      frame.includes("server/src/infrastructure/requestContext.")
     );
   }
 
   private isAppFrame(frame: string): boolean {
-    return frame.includes('server/src/') || frame.includes('server/index.');
+    return frame.includes("server/src/") || frame.includes("server/index.");
   }
 
   private applyStackTraceLimit(limit: number): void {
@@ -251,10 +277,10 @@ function prettifyLogStack(value: unknown): string {
 
 function formatLogStack(value: unknown): string | undefined {
   if (!value) return undefined;
-  const lines = Array.isArray(value) ? value : String(value).split('\n');
+  const lines = Array.isArray(value) ? value : String(value).split("\n");
   const trimmed = lines.map((line) => line.trim()).filter(Boolean);
   if (trimmed.length === 0) return undefined;
-  return `\n${trimmed.map((line) => `  ${line}`).join('\n')}`;
+  return `\n${trimmed.map((line) => `  ${line}`).join("\n")}`;
 }
 
 // Export singleton instance

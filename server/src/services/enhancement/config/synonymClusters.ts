@@ -3,14 +3,14 @@
  * The first term in each cluster is the canonical representative.
  */
 export const VISUAL_SYNONYM_CLUSTERS: ReadonlyArray<readonly string[]> = [
-  ['whimsical', 'playful', 'mischievous', 'impish', 'elfin'],
-  ['charm', 'energy', 'spirit', 'vibe', 'aura'],
-  ['gentle', 'soft', 'delicate', 'tender', 'subtle'],
-  ['vibrant', 'vivid', 'rich', 'saturated', 'intense'],
-  ['cinematic', 'filmic', 'movie-like'],
-  ['moody', 'atmospheric', 'brooding'],
-  ['glow', 'radiance', 'luminescence'],
-  ['dramatic', 'striking', 'bold'],
+  ["whimsical", "playful", "mischievous", "impish", "elfin"],
+  ["charm", "energy", "spirit", "vibe", "aura"],
+  ["gentle", "soft", "delicate", "tender", "subtle"],
+  ["vibrant", "vivid", "rich", "saturated", "intense"],
+  ["cinematic", "filmic", "movie-like"],
+  ["moody", "atmospheric", "brooding"],
+  ["glow", "radiance", "luminescence"],
+  ["dramatic", "striking", "bold"],
 ];
 
 const synonymLookup = new Map<string, string>();

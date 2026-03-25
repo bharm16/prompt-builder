@@ -1,8 +1,8 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { WarningCircle } from '@promptstudio/system/components/ui';
-import type { KeyframeTile } from '@/components/ToolSidebar/types';
-import type { Generation } from '@features/generations/types';
-import { cn } from '@/utils/cn';
+import React, { useEffect, useMemo, useState } from "react";
+import { WarningCircle } from "@promptstudio/system/components/ui";
+import type { KeyframeTile } from "@/components/ToolSidebar/types";
+import type { Generation } from "@features/generations/types";
+import { cn } from "@/utils/cn";
 
 interface StoryboardHeroViewProps {
   generation: Generation;
@@ -11,20 +11,20 @@ interface StoryboardHeroViewProps {
 
 const resolveFrameAssetMetadata = (
   generation: Generation,
-  frameIndex: number
-): Pick<KeyframeTile, 'assetId' | 'storagePath'> => {
+  frameIndex: number,
+): Pick<KeyframeTile, "assetId" | "storagePath"> => {
   const value = generation.mediaAssetIds?.[frameIndex];
   if (!value) return {};
-  if (value.includes('/')) {
+  if (value.includes("/")) {
     return { storagePath: value };
   }
   return { assetId: value };
 };
 
 const resolveGridColumnsClass = (count: number): string => {
-  if (count <= 1) return 'grid-cols-1';
-  if (count === 2) return 'grid-cols-2';
-  return 'grid-cols-2';
+  if (count <= 1) return "grid-cols-1";
+  if (count === 2) return "grid-cols-2";
+  return "grid-cols-2";
 };
 
 export function StoryboardHeroView({
@@ -32,8 +32,11 @@ export function StoryboardHeroView({
   onUseAsStartFrame,
 }: StoryboardHeroViewProps): React.ReactElement {
   const frames = useMemo(
-    () => generation.mediaUrls.filter((url) => typeof url === 'string' && url.trim().length > 0).slice(0, 4),
-    [generation.mediaUrls]
+    () =>
+      generation.mediaUrls
+        .filter((url) => typeof url === "string" && url.trim().length > 0)
+        .slice(0, 4),
+    [generation.mediaUrls],
   );
 
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -46,10 +49,10 @@ export function StoryboardHeroView({
     selectedIndex >= 0 && selectedIndex < frames.length ? selectedIndex : 0;
   const selectedFrameUrl =
     safeSelectedIndex >= 0 && safeSelectedIndex < frames.length
-      ? frames[safeSelectedIndex] ?? null
+      ? (frames[safeSelectedIndex] ?? null)
       : null;
 
-  if (generation.status === 'pending' || generation.status === 'generating') {
+  if (generation.status === "pending" || generation.status === "generating") {
     return (
       <div className="flex h-full min-h-[280px] flex-col gap-3 rounded-2xl bg-tool-surface-deep p-3">
         <div className="grid grid-cols-2 gap-2">
@@ -70,13 +73,19 @@ export function StoryboardHeroView({
     );
   }
 
-  if (generation.status === 'failed') {
+  if (generation.status === "failed") {
     return (
       <div className="flex h-full min-h-[280px] flex-col items-center justify-center gap-2 rounded-2xl border border-tool-nav-active bg-tool-surface-deep p-6">
-        <WarningCircle size={24} className="text-danger/80" aria-hidden="true" />
-        <span className="text-xs font-semibold text-foreground">Storyboard failed</span>
+        <WarningCircle
+          size={24}
+          className="text-danger/80"
+          aria-hidden="true"
+        />
+        <span className="text-xs font-semibold text-foreground">
+          Storyboard failed
+        </span>
         <span className="text-center text-xs text-tool-text-subdued">
-          {generation.error ?? 'Unable to load storyboard preview.'}
+          {generation.error ?? "Unable to load storyboard preview."}
         </span>
       </div>
     );
@@ -85,24 +94,26 @@ export function StoryboardHeroView({
   if (frames.length === 0) {
     return (
       <div className="flex h-full min-h-[280px] items-center justify-center rounded-2xl border border-tool-nav-active bg-tool-surface-deep">
-        <span className="text-xs text-tool-text-subdued">No storyboard frames available.</span>
+        <span className="text-xs text-tool-text-subdued">
+          No storyboard frames available.
+        </span>
       </div>
     );
   }
 
   return (
     <div className="flex h-full flex-col gap-3 rounded-2xl bg-tool-surface-deep p-3">
-      <div className={cn('grid gap-2', resolveGridColumnsClass(frames.length))}>
+      <div className={cn("grid gap-2", resolveGridColumnsClass(frames.length))}>
         {frames.map((url, index) => (
           <button
             key={`${generation.id}-frame-${index}`}
             type="button"
             onClick={() => setSelectedIndex(index)}
             className={cn(
-              'aspect-video overflow-hidden rounded-lg border-2 transition-all',
+              "aspect-video overflow-hidden rounded-lg border-2 transition-all",
               safeSelectedIndex === index
-                ? 'border-accent-2 shadow-[0_0_16px_var(--ps-accent-2,#b3affd)44]'
-                : 'border-transparent hover:border-tool-nav-active'
+                ? "border-accent-2 shadow-[0_0_16px_var(--ps-accent-2,#b3affd)44]"
+                : "border-transparent hover:border-tool-nav-active",
             )}
             data-testid={`storyboard-hero-frame-${index}`}
           >
@@ -128,7 +139,7 @@ export function StoryboardHeroView({
             onUseAsStartFrame({
               id: `storyboard-${generation.id}-frame-${safeSelectedIndex}`,
               url: selectedFrameUrl,
-              source: 'generation',
+              source: "generation",
               ...(generation.prompt ? { sourcePrompt: generation.prompt } : {}),
               ...resolveFrameAssetMetadata(generation, safeSelectedIndex),
             });

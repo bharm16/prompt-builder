@@ -1,6 +1,6 @@
-import React from 'react';
-import { cn } from '@utils/cn';
-import type { CameraPath } from '@/features/convergence/types';
+import React from "react";
+import { cn } from "@utils/cn";
+import type { CameraPath } from "@/features/convergence/types";
 
 interface CameraMotionSelectorProps {
   hasPrimaryKeyframe: boolean;
@@ -25,13 +25,16 @@ export function CameraMotionSelector({
           disabled={!hasPrimaryKeyframe}
           aria-disabled={!hasPrimaryKeyframe}
           className={cn(
-            'w-full px-3 py-2 rounded-lg text-sm text-left transition-colors',
-            'border',
+            "w-full px-3 py-2 rounded-lg text-sm text-left transition-colors",
+            "border",
             hasPrimaryKeyframe
-              ? 'bg-surface-1 hover:bg-tool-nav-active cursor-pointer'
-              : 'bg-tool-surface-card text-tool-text-dim cursor-not-allowed opacity-80',
-            hasPrimaryKeyframe && (cameraMotion ? 'border-accent-runway/50' : 'border-tool-border-dark'),
-            !hasPrimaryKeyframe && 'border-tool-border-dark'
+              ? "bg-surface-1 hover:bg-tool-nav-active cursor-pointer"
+              : "bg-tool-surface-card text-tool-text-dim cursor-not-allowed opacity-80",
+            hasPrimaryKeyframe &&
+              (cameraMotion
+                ? "border-accent-runway/50"
+                : "border-tool-border-dark"),
+            !hasPrimaryKeyframe && "border-tool-border-dark",
           )}
         >
           {cameraMotion ? (
@@ -40,7 +43,9 @@ export function CameraMotionSelector({
               <span className="text-white">{cameraMotion.label}</span>
             </span>
           ) : (
-            <span className="text-tool-text-placeholder">Set camera motion...</span>
+            <span className="text-tool-text-placeholder">
+              Set camera motion...
+            </span>
           )}
         </button>
         {!hasPrimaryKeyframe && (

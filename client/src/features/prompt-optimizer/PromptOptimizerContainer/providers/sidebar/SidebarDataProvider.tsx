@@ -1,9 +1,18 @@
-import React, { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
-import type { Asset, AssetType } from '@shared/types/asset';
-import type { DraftModel, GenerationOverrides } from '@/components/ToolSidebar/types';
-import { SidebarDataContextProvider } from '@/components/ToolSidebar/context';
-import { useGenerationControlsContext } from '@/features/prompt-optimizer/context/GenerationControlsContext';
-import { usePromptInsertionBus } from '@/features/prompt-optimizer/context/PromptInsertionBusContext';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
+import type { Asset, AssetType } from "@shared/types/asset";
+import type {
+  DraftModel,
+  GenerationOverrides,
+} from "@/components/ToolSidebar/types";
+import { SidebarDataContextProvider } from "@/components/ToolSidebar/context";
+import { useGenerationControlsContext } from "@/features/prompt-optimizer/context/GenerationControlsContext";
+import { usePromptInsertionBus } from "@/features/prompt-optimizer/context/PromptInsertionBusContext";
 import {
   usePromptActions,
   usePromptConfig,
@@ -11,12 +20,12 @@ import {
   usePromptNavigation,
   usePromptServices,
   usePromptSession,
-} from '@/features/prompt-optimizer/context/PromptStateContext';
-import { usePromptHistoryActions } from '@/features/prompt-optimizer/PromptOptimizerContainer/hooks';
+} from "@/features/prompt-optimizer/context/PromptStateContext";
+import { usePromptHistoryActions } from "@/features/prompt-optimizer/PromptOptimizerContainer/hooks";
 import {
   resolveActiveModelLabel,
   resolveActiveStatusLabel,
-} from '@/features/prompt-optimizer/utils/activeStatusLabel';
+} from "@/features/prompt-optimizer/utils/activeStatusLabel";
 
 interface SidebarDataProviderProps {
   children: ReactNode;
@@ -75,29 +84,29 @@ export function SidebarDataProvider({
   });
   const activeModelLabel = resolveActiveModelLabel(selectedModel);
   const sessionScopeId =
-    routeSessionId?.trim() || currentPromptUuid?.trim() || 'draft';
+    routeSessionId?.trim() || currentPromptUuid?.trim() || "draft";
   const galleryStorageKey = useMemo(
     () => `prompt-optimizer:gallery-open:${sessionScopeId}`,
-    [sessionScopeId]
+    [sessionScopeId],
   );
   const [galleryOpen, setGalleryOpen] = useState<boolean>(true);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === "undefined") return;
     try {
       const stored = window.localStorage.getItem(galleryStorageKey);
       if (stored === null) {
         setGalleryOpen(true);
         return;
       }
-      setGalleryOpen(stored !== 'false');
+      setGalleryOpen(stored !== "false");
     } catch {
       setGalleryOpen(true);
     }
   }, [galleryStorageKey]);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === "undefined") return;
     try {
       window.localStorage.setItem(galleryStorageKey, String(galleryOpen));
     } catch {
@@ -141,7 +150,7 @@ export function SidebarDataProvider({
       promptHistory.isLoadingHistory,
       promptHistory.searchQuery,
       promptHistory.setSearchQuery,
-    ]
+    ],
   );
 
   const promptInteraction = useMemo(
@@ -150,11 +159,7 @@ export function SidebarDataProvider({
       ...(onCreateFromTrigger ? { onCreateFromTrigger } : {}),
       onInsertTrigger: insertAtCaret,
     }),
-    [
-      insertAtCaret,
-      onCreateFromTrigger,
-      promptOptimizer.isProcessing,
-    ]
+    [insertAtCaret, onCreateFromTrigger, promptOptimizer.isProcessing],
   );
 
   const generation = useMemo(
@@ -172,7 +177,7 @@ export function SidebarDataProvider({
       ...(onStartFrameUpload ? { onStartFrameUpload } : {}),
       ...(onUploadSidebarImage ? { onUploadSidebarImage } : {}),
     }),
-    [controls, onImageUpload, onStartFrameUpload, onUploadSidebarImage]
+    [controls, onImageUpload, onStartFrameUpload, onUploadSidebarImage],
   );
 
   const assetsDomain = useMemo(
@@ -183,7 +188,7 @@ export function SidebarDataProvider({
       onEditAsset,
       onCreateAsset,
     }),
-    [assets, assetsByType, isLoadingAssets, onCreateAsset, onEditAsset]
+    [assets, assetsByType, isLoadingAssets, onCreateAsset, onEditAsset],
   );
 
   const workspace = useMemo(
@@ -192,7 +197,7 @@ export function SidebarDataProvider({
       setGalleryOpen,
       toggleGallery,
     }),
-    [galleryOpen, toggleGallery]
+    [galleryOpen, toggleGallery],
   );
 
   const value = useMemo(
@@ -203,8 +208,12 @@ export function SidebarDataProvider({
       assets: assetsDomain,
       workspace,
     }),
-    [assetsDomain, generation, promptInteraction, sessions, workspace]
+    [assetsDomain, generation, promptInteraction, sessions, workspace],
   );
 
-  return <SidebarDataContextProvider value={value}>{children}</SidebarDataContextProvider>;
+  return (
+    <SidebarDataContextProvider value={value}>
+      {children}
+    </SidebarDataContextProvider>
+  );
 }

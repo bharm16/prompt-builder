@@ -1,13 +1,13 @@
-import { renderHook } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
-import { usePromptKeyframesSync } from '../usePromptKeyframesSync';
+import { renderHook } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
+import { usePromptKeyframesSync } from "../usePromptKeyframesSync";
 
 type HookParams = Parameters<typeof usePromptKeyframesSync>[0] & {
   isLoadingHistory?: boolean;
 };
 
-describe('regression: session keyframes survive history hydration', () => {
-  it('does not overwrite loaded keyframes from stale history while history is still loading', async () => {
+describe("regression: session keyframes survive history hydration", () => {
+  it("does not overwrite loaded keyframes from stale history while history is still loading", async () => {
     const setKeyframes = vi.fn();
     const setStartFrame = vi.fn();
     const clearEndFrame = vi.fn();
@@ -17,9 +17,9 @@ describe('regression: session keyframes survive history hydration', () => {
 
     const loadedKeyframes = [
       {
-        id: 'kf-1',
-        url: 'https://cdn.example.com/keyframe-1.png',
-        source: 'upload' as const,
+        id: "kf-1",
+        url: "https://cdn.example.com/keyframe-1.png",
+        source: "upload" as const,
       },
     ];
 
@@ -30,15 +30,15 @@ describe('regression: session keyframes survive history hydration', () => {
       clearEndFrame,
       clearVideoReferences,
       clearExtendVideo,
-      currentPromptUuid: 'uuid-1',
-      currentPromptDocId: 'session_123',
+      currentPromptUuid: "uuid-1",
+      currentPromptDocId: "session_123",
       promptHistory: {
         history: [
           {
-            id: 'session_123',
-            uuid: 'uuid-1',
+            id: "session_123",
+            uuid: "uuid-1",
             keyframes: [],
-          } as unknown as HookParams['promptHistory']['history'][number],
+          } as unknown as HookParams["promptHistory"]["history"][number],
         ],
         updateEntryPersisted,
       },
@@ -47,8 +47,8 @@ describe('regression: session keyframes survive history hydration', () => {
 
     renderHook(() =>
       usePromptKeyframesSync(
-        hookParams as unknown as Parameters<typeof usePromptKeyframesSync>[0]
-      )
+        hookParams as unknown as Parameters<typeof usePromptKeyframesSync>[0],
+      ),
     );
 
     expect(setKeyframes).not.toHaveBeenCalledWith([]);

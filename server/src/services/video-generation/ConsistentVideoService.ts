@@ -1,15 +1,20 @@
-import type { VideoGenerationOptions, VideoGenerationResult } from '@services/video-generation/types';
-import { VideoGenerationService } from '@services/video-generation/VideoGenerationService';
-import type { ResolvedPrompt } from '@shared/types/asset';
-import KeyframeGenerationService, { type KeyframeResult } from './KeyframeGenerationService';
-import AssetService from '@services/asset/AssetService';
-import { logger } from '@infrastructure/Logger';
+import type {
+  VideoGenerationOptions,
+  VideoGenerationResult,
+} from "@services/video-generation/types";
+import { VideoGenerationService } from "@services/video-generation/VideoGenerationService";
+import type { ResolvedPrompt } from "@shared/types/asset";
+import KeyframeGenerationService, {
+  type KeyframeResult,
+} from "./KeyframeGenerationService";
+import AssetService from "@services/asset/AssetService";
+import { logger } from "@infrastructure/Logger";
 
 export interface ConsistentVideoRequest {
   userId: string;
   prompt: string;
   videoModel?: string;
-  aspectRatio?: VideoGenerationOptions['aspectRatio'];
+  aspectRatio?: VideoGenerationOptions["aspectRatio"];
   duration?: number;
   onProgress?: (update: { stage: string; message: string }) => void;
 }
@@ -18,19 +23,22 @@ export class ConsistentVideoService {
   private readonly keyframeService: KeyframeGenerationService;
   private readonly assetService: AssetService;
   private readonly videoGenerationService: VideoGenerationService;
-  private readonly log = logger.child({ service: 'ConsistentVideoService' });
+  private readonly log = logger.child({ service: "ConsistentVideoService" });
 
-  constructor(options: {
-    keyframeService?: KeyframeGenerationService;
-    assetService?: AssetService;
-    videoGenerationService?: VideoGenerationService;
-  } = {}) {
-    this.keyframeService = options.keyframeService || new KeyframeGenerationService();
+  constructor(
+    options: {
+      keyframeService?: KeyframeGenerationService;
+      assetService?: AssetService;
+      videoGenerationService?: VideoGenerationService;
+    } = {},
+  ) {
+    this.keyframeService =
+      options.keyframeService || new KeyframeGenerationService();
     if (!options.videoGenerationService) {
-      throw new Error('VideoGenerationService is required');
+      throw new Error("VideoGenerationService is required");
     }
     if (!options.assetService) {
-      throw new Error('AssetService is required');
+      throw new Error("AssetService is required");
     }
     this.assetService = options.assetService;
     this.videoGenerationService = options.videoGenerationService;
@@ -39,8 +47,8 @@ export class ConsistentVideoService {
   async generateConsistentVideo({
     userId,
     prompt,
-    videoModel = 'luma',
-    aspectRatio = '16:9',
+    videoModel = "luma",
+    aspectRatio = "16:9",
     duration = 5,
     onProgress,
   }: ConsistentVideoRequest): Promise<{
@@ -50,9 +58,9 @@ export class ConsistentVideoService {
     validation?: { isValid: boolean; confidence: number | null };
     character?: { id: string; name: string; trigger: string };
   }> {
-    const operation = 'generateConsistentVideo';
+    const operation = "generateConsistentVideo";
     const startTime = performance.now();
-    this.log.debug('Starting operation.', {
+    this.log.debug("Starting operation.", {
       operation,
       userId,
       promptLength: prompt.length,
@@ -62,18 +70,18 @@ export class ConsistentVideoService {
     });
 
     try {
-      onProgress?.({ stage: 'resolve', message: 'Resolving assets...' });
+      onProgress?.({ stage: "resolve", message: "Resolving assets..." });
       const resolved = await this.assetService.resolvePrompt(userId, prompt);
 
       if (!resolved.requiresKeyframe || resolved.characters.length === 0) {
-        onProgress?.({ stage: 'video', message: 'Generating video...' });
+        onProgress?.({ stage: "video", message: "Generating video..." });
         const video = await this.generateVideoFromPrompt({
           prompt: resolved.expandedText,
           model: videoModel,
           aspectRatio,
           duration,
         });
-        this.log.info('Operation completed.', {
+        this.log.info("Operation completed.", {
           operation,
           userId,
           duration: Math.round(performance.now() - startTime),
@@ -86,11 +94,11 @@ export class ConsistentVideoService {
       const primaryCharacter = resolved.characters[0]!;
       const characterData = await this.assetService.getAssetForGeneration(
         userId,
-        primaryCharacter.id
+        primaryCharacter.id,
       );
 
       onProgress?.({
-        stage: 'keyframe',
+        stage: "keyframe",
         message: `Generating keyframe with ${characterData.name}...`,
       });
 
@@ -106,10 +114,10 @@ export class ConsistentVideoService {
 
       const validation = await this.keyframeService.validateKeyframeFace(
         keyframe.imageUrl,
-        primaryCharacter
+        primaryCharacter,
       );
 
-      onProgress?.({ stage: 'video', message: 'Generating video...' });
+      onProgress?.({ stage: "video", message: "Generating video..." });
       const video = await this.generateVideoFromKeyframe({
         keyframeUrl: keyframe.imageUrl,
         prompt: resolved.expandedText,
@@ -118,7 +126,7 @@ export class ConsistentVideoService {
         duration,
       });
 
-      this.log.info('Operation completed.', {
+      this.log.info("Operation completed.", {
         operation,
         userId,
         duration: Math.round(performance.now() - startTime),
@@ -139,8 +147,9 @@ export class ConsistentVideoService {
         },
       };
     } catch (error) {
-      const errorObj = error instanceof Error ? error : new Error(String(error));
-      this.log.error('Operation failed.', errorObj, {
+      const errorObj =
+        error instanceof Error ? error : new Error(String(error));
+      this.log.error("Operation failed.", errorObj, {
         operation,
         userId,
         duration: Math.round(performance.now() - startTime),
@@ -160,10 +169,16 @@ export class ConsistentVideoService {
     keyframeUrl: string;
     prompt: string;
     model: string;
-    aspectRatio?: VideoGenerationOptions['aspectRatio'];
+    aspectRatio?: VideoGenerationOptions["aspectRatio"];
     duration?: number;
   }): Promise<VideoGenerationResult> {
-    return this.buildAndGenerate(prompt, model, aspectRatio, duration, keyframeUrl);
+    return this.buildAndGenerate(
+      prompt,
+      model,
+      aspectRatio,
+      duration,
+      keyframeUrl,
+    );
   }
 
   async generateVideoFromPrompt({
@@ -174,7 +189,7 @@ export class ConsistentVideoService {
   }: {
     prompt: string;
     model: string;
-    aspectRatio?: VideoGenerationOptions['aspectRatio'];
+    aspectRatio?: VideoGenerationOptions["aspectRatio"];
     duration?: number;
   }): Promise<VideoGenerationResult> {
     return this.buildAndGenerate(prompt, model, aspectRatio, duration);
@@ -183,9 +198,9 @@ export class ConsistentVideoService {
   private buildAndGenerate(
     prompt: string,
     model: string,
-    aspectRatio?: VideoGenerationOptions['aspectRatio'],
+    aspectRatio?: VideoGenerationOptions["aspectRatio"],
     duration?: number,
-    startImage?: string
+    startImage?: string,
   ): Promise<VideoGenerationResult> {
     const seconds = this.resolveSeconds(duration);
     const options: VideoGenerationOptions = {
@@ -201,17 +216,20 @@ export class ConsistentVideoService {
     userId,
     characterId,
     prompt,
-    aspectRatio = '16:9',
+    aspectRatio = "16:9",
     count = 1,
   }: {
     userId: string;
     characterId: string;
     prompt: string;
-    aspectRatio?: VideoGenerationOptions['aspectRatio'];
+    aspectRatio?: VideoGenerationOptions["aspectRatio"];
     count?: number;
   }): Promise<KeyframeResult | KeyframeResult[]> {
     const resolved = await this.assetService.resolvePrompt(userId, prompt);
-    const character = await this.assetService.getAssetForGeneration(userId, characterId);
+    const character = await this.assetService.getAssetForGeneration(
+      userId,
+      characterId,
+    );
     const keyframeAspectRatio = this.resolveKeyframeAspectRatio(aspectRatio);
 
     if (count === 1) {
@@ -241,14 +259,14 @@ export class ConsistentVideoService {
   async generateVideoFromApprovedKeyframe({
     keyframeUrl,
     prompt,
-    model = 'luma',
+    model = "luma",
     aspectRatio,
     duration = 5,
   }: {
     keyframeUrl: string;
     prompt: string;
     model?: string;
-    aspectRatio?: VideoGenerationOptions['aspectRatio'];
+    aspectRatio?: VideoGenerationOptions["aspectRatio"];
     duration?: number;
   }): Promise<VideoGenerationResult> {
     return await this.generateVideoFromKeyframe({
@@ -260,23 +278,25 @@ export class ConsistentVideoService {
     });
   }
 
-  private resolveSeconds(duration?: number): VideoGenerationOptions['seconds'] | undefined {
+  private resolveSeconds(
+    duration?: number,
+  ): VideoGenerationOptions["seconds"] | undefined {
     if (!duration) return undefined;
     const normalized = Math.round(duration);
     if (normalized === 4 || normalized === 8 || normalized === 12) {
-      return String(normalized) as VideoGenerationOptions['seconds'];
+      return String(normalized) as VideoGenerationOptions["seconds"];
     }
     return undefined;
   }
 
   private resolveKeyframeAspectRatio(
-    aspectRatio?: VideoGenerationOptions['aspectRatio']
-  ): '16:9' | '9:16' | '1:1' | '4:3' | '3:4' {
-    if (!aspectRatio) return '16:9';
-    const allowed = new Set<string>(['16:9', '9:16', '1:1', '4:3', '3:4']);
+    aspectRatio?: VideoGenerationOptions["aspectRatio"],
+  ): "16:9" | "9:16" | "1:1" | "4:3" | "3:4" {
+    if (!aspectRatio) return "16:9";
+    const allowed = new Set<string>(["16:9", "9:16", "1:1", "4:3", "3:4"]);
     return allowed.has(aspectRatio)
-      ? (aspectRatio as '16:9' | '9:16' | '1:1' | '4:3' | '3:4')
-      : '16:9';
+      ? (aspectRatio as "16:9" | "9:16" | "1:1" | "4:3" | "3:4")
+      : "16:9";
   }
 }
 

@@ -2,9 +2,9 @@
 
 ## What You Can Benchmark Against Publicly
 
-There is **no widely adopted “golden set” of long, cinematic, model-ready prompts** (e.g., 75–125 word paragraphs + explicit technical specs) that is standardized across Sora/Runway/Veo/Kling/Luma. What *does* exist publicly falls into two useful buckets:
+There is **no widely adopted “golden set” of long, cinematic, model-ready prompts** (e.g., 75–125 word paragraphs + explicit technical specs) that is standardized across Sora/Runway/Veo/Kling/Luma. What _does_ exist publicly falls into two useful buckets:
 
-### 1) Prompt Suites for Evaluating Video *Models* (curated, but usually short)
+### 1) Prompt Suites for Evaluating Video _Models_ (curated, but usually short)
 
 - **VBench prompt suite** (CVPR 2024): curated prompts per evaluation dimension and content category.  
   Repo: `https://github.com/Vchitect/VBench` (see `prompts/`)
@@ -30,13 +30,12 @@ VidProM is useful for **distribution realism** (what users actually type), inclu
 
 Given PromptCanvas’ architecture, you likely need **two different prompt corpora**:
 
-1. **Span Labeling Golden Set (Production-Format)**  
-   - Use *your own optimized output format* (main paragraph + `**TECHNICAL SPECS**` + optional variations).  
+1. **Span Labeling Golden Set (Production-Format)**
+   - Use _your own optimized output format_ (main paragraph + `**TECHNICAL SPECS**` + optional variations).
    - Seed it by optimizing prompts sampled from **VidProM**, **VBench**, and **T2V-CompBench**, then **human-annotate spans** using your taxonomy.
 
-2. **Span Labeling Golden Set (Raw User Inputs)**  
-   - Short, messy prompts (including emojis, multiple languages, “-ar 16:9”, etc.).  
+2. **Span Labeling Golden Set (Raw User Inputs)**
+   - Short, messy prompts (including emojis, multiple languages, “-ar 16:9”, etc.).
    - VidProM is a strong source for this distribution.
 
 This avoids mixing domains and lets you track performance where it matters (optimized outputs) without losing robustness coverage (raw inputs).
-

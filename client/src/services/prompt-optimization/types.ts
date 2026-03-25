@@ -1,6 +1,6 @@
-import type { LockedSpan } from '@/features/prompt-optimizer/types';
-import type { CapabilityValues } from '@shared/capabilities';
-import type { I2VOptimizationResult } from '@/features/prompt-optimizer/types/i2v';
+import type { LockedSpan } from "@/features/prompt-optimizer/types";
+import type { CapabilityValues } from "@shared/capabilities";
+import type { I2VOptimizationResult } from "@/features/prompt-optimizer/types/i2v";
 
 // Re-export shared contract types so existing consumer imports keep working.
 export type {
@@ -8,13 +8,13 @@ export type {
   CompilationState,
   OptimizeResponse,
   CompileResponse,
-} from '@shared/schemas/optimization.schemas';
+} from "@shared/schemas/optimization.schemas";
 
 // Import the schemas for runtime validation at the fetch boundary.
 export {
   OptimizeResponseSchema,
   CompileResponseSchema,
-} from '@shared/schemas/optimization.schemas';
+} from "@shared/schemas/optimization.schemas";
 
 // ---------------------------------------------------------------------------
 // Client-only request types (not shared — these are input shapes the client
@@ -32,7 +32,7 @@ export interface OptimizeOptions {
   lockedSpans?: LockedSpan[];
   startImage?: string;
   sourcePrompt?: string;
-  constraintMode?: 'strict' | 'flexible' | 'transform';
+  constraintMode?: "strict" | "flexible" | "transform";
   signal?: AbortSignal;
 }
 
@@ -45,10 +45,10 @@ export interface OptimizeOptions {
 export interface OptimizeResult {
   prompt: string;
   optimizedPrompt?: string;
-  inputMode?: 't2v' | 'i2v';
+  inputMode?: "t2v" | "i2v";
   i2v?: I2VOptimizationResult;
   artifactKey?: string;
-  compilation?: import('@shared/schemas/optimization.schemas').CompilationState;
+  compilation?: import("@shared/schemas/optimization.schemas").CompilationState;
   metadata?: Record<string, unknown>;
 }
 
@@ -63,7 +63,7 @@ export interface CompileOptions {
 export interface CompileResult {
   compiledPrompt: string;
   artifactKey?: string;
-  compilation?: import('@shared/schemas/optimization.schemas').CompilationState;
+  compilation?: import("@shared/schemas/optimization.schemas").CompilationState;
   metadata?: Record<string, unknown>;
   targetModel?: string;
 }

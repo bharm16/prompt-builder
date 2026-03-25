@@ -90,7 +90,7 @@ export {
   Palette,
   SpeakerHigh,
   Circle,
-} from "@phosphor-icons/react"
+} from "@phosphor-icons/react";
 
 // Lucide compatibility aliases (use Phosphor equivalents)
 export {
@@ -132,7 +132,7 @@ export {
   CheckCircle as CheckCircle2,
   Copy as CopyPlus,
   Pencil as Edit,
-} from "@phosphor-icons/react"
+} from "@phosphor-icons/react";
 
 // Additional application icons
 export {
@@ -153,10 +153,10 @@ export {
   Upload,
   User,
   Users,
-} from "@phosphor-icons/react"
+} from "@phosphor-icons/react";
 
-export { Stack as Layers } from "@phosphor-icons/react"
-export { Package as Box } from "@phosphor-icons/react"
+export { Stack as Layers } from "@phosphor-icons/react";
+export { Package as Box } from "@phosphor-icons/react";
 
 // Types
-export type { IconProps, IconWeight } from "@phosphor-icons/react"
+export type { IconProps, IconWeight } from "@phosphor-icons/react";

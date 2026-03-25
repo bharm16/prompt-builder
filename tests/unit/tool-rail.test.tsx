@@ -1,37 +1,38 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 
-import { ToolRail } from '@components/ToolSidebar/components/ToolRail';
-import type { User } from '@features/prompt-optimizer/types/domain/prompt-session';
+import { ToolRail } from "@components/ToolSidebar/components/ToolRail";
+import type { User } from "@features/prompt-optimizer/types/domain/prompt-session";
 
-vi.mock(
-  '@utils/cn',
-  () => ({
-    cn: (...classes: Array<string | false | null | undefined>) =>
-      classes.filter(Boolean).join(' '),
-  })
-);
+vi.mock("@utils/cn", () => ({
+  cn: (...classes: Array<string | false | null | undefined>) =>
+    classes.filter(Boolean).join(" "),
+}));
 
 const useCreditBalanceMock = vi.hoisted(() => vi.fn());
 const useBillingStatusMock = vi.hoisted(() => vi.fn());
 
-vi.mock('@/contexts/CreditBalanceContext', () => ({
+vi.mock("@/contexts/CreditBalanceContext", () => ({
   useCreditBalance: (...args: unknown[]) => useCreditBalanceMock(...args),
 }));
 
-vi.mock('@/features/billing/hooks/useBillingStatus', () => ({
+vi.mock("@/features/billing/hooks/useBillingStatus", () => ({
   useBillingStatus: (...args: unknown[]) => useBillingStatusMock(...args),
 }));
 
-const renderToolRail = (props: { activePanel: Parameters<typeof ToolRail>[0]['activePanel']; user: User | null; onPanelChange: (panel: Parameters<typeof ToolRail>[0]['activePanel']) => void; }) =>
+const renderToolRail = (props: {
+  activePanel: Parameters<typeof ToolRail>[0]["activePanel"];
+  user: User | null;
+  onPanelChange: (panel: Parameters<typeof ToolRail>[0]["activePanel"]) => void;
+}) =>
   render(
-    <MemoryRouter initialEntries={[{ pathname: '/studio', search: '?tab=1' }]}>
+    <MemoryRouter initialEntries={[{ pathname: "/studio", search: "?tab=1" }]}>
       <ToolRail {...props} />
-    </MemoryRouter>
+    </MemoryRouter>,
   );
 
-describe('ToolRail', () => {
+describe("ToolRail", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
@@ -53,85 +54,85 @@ describe('ToolRail', () => {
     });
   });
 
-  describe('error handling', () => {
-    it('renders sign-in link with encoded return path for guests', () => {
+  describe("error handling", () => {
+    it("renders sign-in link with encoded return path for guests", () => {
       renderToolRail({
-        activePanel: 'sessions',
+        activePanel: "sessions",
         user: null,
         onPanelChange: vi.fn(),
       });
 
-      const link = screen.getByRole('link', { name: 'Sign in' });
-      expect(link.getAttribute('href')).toBe(
-        `/signin?redirect=${encodeURIComponent('/studio?tab=1')}`
+      const link = screen.getByRole("link", { name: "Sign in" });
+      expect(link.getAttribute("href")).toBe(
+        `/signin?redirect=${encodeURIComponent("/studio?tab=1")}`,
       );
-      expect(screen.getByText('U')).toBeInTheDocument();
+      expect(screen.getByText("U")).toBeInTheDocument();
     });
 
-    it('uses email initial when displayName is empty', () => {
+    it("uses email initial when displayName is empty", () => {
       const user: User = {
-        uid: 'user-1',
-        email: 'test@example.com',
-        displayName: '   ',
+        uid: "user-1",
+        email: "test@example.com",
+        displayName: "   ",
       };
 
       renderToolRail({
-        activePanel: 'sessions',
+        activePanel: "sessions",
         user,
         onPanelChange: vi.fn(),
       });
 
-      const link = screen.getByRole('link', { name: 'Account' });
-      expect(link.getAttribute('href')).toBe('/account');
-      expect(screen.getByText('T')).toBeInTheDocument();
+      const link = screen.getByRole("link", { name: "Account" });
+      expect(link.getAttribute("href")).toBe("/account");
+      expect(screen.getByText("T")).toBeInTheDocument();
     });
   });
 
-  describe('edge cases', () => {
-    it('marks Tool as active when active panel is studio', () => {
+  describe("edge cases", () => {
+    it("marks Tool as active when active panel is studio", () => {
       renderToolRail({
-        activePanel: 'studio',
+        activePanel: "studio",
         user: null,
         onPanelChange: vi.fn(),
       });
 
-      const toolButton = screen.getByRole('button', { name: 'Tool' });
-      expect(toolButton).toHaveAttribute('aria-pressed', 'true');
+      const toolButton = screen.getByRole("button", { name: "Tool" });
+      expect(toolButton).toHaveAttribute("aria-pressed", "true");
     });
 
-    it('marks Chars as active when active panel is characters', () => {
+    it("marks Chars as active when active panel is characters", () => {
       renderToolRail({
-        activePanel: 'characters',
+        activePanel: "characters",
         user: null,
         onPanelChange: vi.fn(),
       });
 
-      const charsButton = screen.getByRole('button', { name: 'Chars' });
-      expect(charsButton).toHaveAttribute('aria-pressed', 'true');
+      const charsButton = screen.getByRole("button", { name: "Chars" });
+      expect(charsButton).toHaveAttribute("aria-pressed", "true");
     });
   });
 
-  describe('core behavior', () => {
-    it('switches to studio panel when Tool is clicked', () => {
+  describe("core behavior", () => {
+    it("switches to studio panel when Tool is clicked", () => {
       const onPanelChange = vi.fn();
 
       renderToolRail({
-        activePanel: 'sessions',
+        activePanel: "sessions",
         user: null,
         onPanelChange,
       });
 
-      const toolButton = screen.getByRole('button', { name: 'Tool' });
+      const toolButton = screen.getByRole("button", { name: "Tool" });
       toolButton.click();
 
-      expect(onPanelChange).toHaveBeenCalledWith('studio');
+      expect(onPanelChange).toHaveBeenCalledWith("studio");
     });
 
-    it('shows plan tier when billing status is subscribed', () => {
+    it("shows plan tier when billing status is subscribed", () => {
       useBillingStatusMock.mockReturnValue({
         status: {
           isSubscribed: true,
-          planTier: 'explorer',
+          planTier: "explorer",
           starterGrantCredits: 25,
           starterGrantGrantedAtMs: 123,
         },
@@ -141,30 +142,30 @@ describe('ToolRail', () => {
       });
 
       renderToolRail({
-        activePanel: 'studio',
+        activePanel: "studio",
         user: {
-          uid: 'user-1',
-          email: 'user@example.com',
-          displayName: 'User',
+          uid: "user-1",
+          email: "user@example.com",
+          displayName: "User",
         },
         onPanelChange: vi.fn(),
       });
 
-      expect(screen.getByText('Explorer')).toBeInTheDocument();
+      expect(screen.getByText("Explorer")).toBeInTheDocument();
     });
 
-    it('shows free plan label when not subscribed', () => {
+    it("shows free plan label when not subscribed", () => {
       renderToolRail({
-        activePanel: 'studio',
+        activePanel: "studio",
         user: {
-          uid: 'user-1',
-          email: 'user@example.com',
-          displayName: 'User',
+          uid: "user-1",
+          email: "user@example.com",
+          displayName: "User",
         },
         onPanelChange: vi.fn(),
       });
 
-      expect(screen.getByText('Free')).toBeInTheDocument();
+      expect(screen.getByText("Free")).toBeInTheDocument();
     });
   });
 });

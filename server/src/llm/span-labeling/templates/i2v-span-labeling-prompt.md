@@ -26,7 +26,7 @@ Label spans in a prompt that will be used with an existing image.
 ```json
 {
   "spans": [
-    {"text": "slowly turns", "role": "action.movement", "confidence": 0.9}
+    { "text": "slowly turns", "role": "action.movement", "confidence": 0.9 }
   ],
   "skipped": ["golden hour lighting", "young woman"],
   "i2vMode": true

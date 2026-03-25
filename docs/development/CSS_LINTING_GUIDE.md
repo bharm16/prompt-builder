@@ -20,6 +20,7 @@ The project uses two linting tools to detect hardcoded spacing and formatting va
 ## What Gets Detected
 
 ### Stylelint (CSS Files)
+
 - **Spacing properties**: Hardcoded pixel values in `padding`, `margin`, `gap` and their variants
 - **Sizing properties**: Hardcoded pixel values in `width`, `height`, `min-width`, `max-width`, etc.
 - **Position properties**: Hardcoded pixel values in `top`, `bottom`, `left`, `right`, `inset`
@@ -28,6 +29,7 @@ The project uses two linting tools to detect hardcoded spacing and formatting va
 - Note: CSS custom properties (`var(--...)`), `calc()`, percentages, and viewport units are allowed
 
 ### ESLint Plugin (Inline Styles)
+
 - **Spacing properties**: Hardcoded pixel values in `padding`, `margin`, `gap`, etc.
 - **Sizing properties**: Hardcoded pixel values in `width`, `height`, `minWidth`, `maxWidth`, etc.
 - **Position properties**: Hardcoded pixel values in `top`, `bottom`, `left`, `right`, `inset`
@@ -36,6 +38,7 @@ The project uses two linting tools to detect hardcoded spacing and formatting va
 ## Usage
 
 ### Run CSS Linting
+
 ```bash
 # Lint all CSS files
 npm run lint:css
@@ -45,6 +48,7 @@ npm run lint:css:fix
 ```
 
 ### Run ESLint (includes inline style checking)
+
 ```bash
 # Lint all files
 npm run lint
@@ -57,6 +61,7 @@ npm run lint -- "client/src/**/*.tsx"
 ```
 
 ### Run Both
+
 ```bash
 npm run lint:all
 ```
@@ -66,6 +71,7 @@ npm run lint:all
 ### ❌ Bad - Hardcoded Spacing/Formatting Values
 
 **CSS File:**
+
 ```css
 .button {
   padding: 16px;
@@ -78,64 +84,77 @@ npm run lint:all
 ```
 
 **Inline Styles:**
+
 ```tsx
-<div style={{
-  padding: '16px',
-  margin: '24px',
-  gap: '12px',
-  width: '200px',
-  height: '48px',
-}} />
+<div
+  style={{
+    padding: "16px",
+    margin: "24px",
+    gap: "12px",
+    width: "200px",
+    height: "48px",
+  }}
+/>
 ```
 
 ### ✅ Good - Using Design Tokens
 
 **CSS File:**
+
 ```css
 .button {
-  padding: var(--spacing-md);  /* 16px */
-  margin: var(--spacing-lg);    /* 24px */
-  gap: var(--spacing-sm);       /* 12px */
-  width: 200px;                 /* OK if specific size needed */
-  height: var(--spacing-xxxl);  /* 64px */
+  padding: var(--spacing-md); /* 16px */
+  margin: var(--spacing-lg); /* 24px */
+  gap: var(--spacing-sm); /* 12px */
+  width: 200px; /* OK if specific size needed */
+  height: var(--spacing-xxxl); /* 64px */
   border-radius: var(--border-radius-md);
 }
 ```
 
 **Inline Styles:**
-```tsx
-import { spacing, borderRadius } from '@/styles/tokens';
 
-<div style={{
-  padding: spacing.md,        // 16px
-  margin: spacing.lg,          // 24px
-  gap: spacing.sm,             // 12px
-  width: '200px',              // OK if specific size needed
-  height: spacing.xxxl,        // 64px
-  borderRadius: borderRadius.md,
-}} />
+```tsx
+import { spacing, borderRadius } from "@/styles/tokens";
+
+<div
+  style={{
+    padding: spacing.md, // 16px
+    margin: spacing.lg, // 24px
+    gap: spacing.sm, // 12px
+    width: "200px", // OK if specific size needed
+    height: spacing.xxxl, // 64px
+    borderRadius: borderRadius.md,
+  }}
+/>;
 ```
 
 Or using CSS variables:
+
 ```tsx
-<div style={{
-  padding: 'var(--spacing-md)',
-  margin: 'var(--spacing-lg)',
-  gap: 'var(--spacing-sm)',
-}} />
+<div
+  style={{
+    padding: "var(--spacing-md)",
+    margin: "var(--spacing-lg)",
+    gap: "var(--spacing-sm)",
+  }}
+/>
 ```
 
 ### ✅ Allowed - Small Values
 
 Small pixel values are allowed for borders and fine-tuning:
+
 ```tsx
-<div style={{
-  borderWidth: '1px',    // ✅ Allowed
-  borderWidth: '2px',    // ✅ Allowed
-  padding: '0px',        // ✅ Allowed
-  margin: '1px',         // ✅ Allowed
-  padding: '3px',        // ⚠️ Warning (use spacing.xxs = 4px)
-}} />
+<div
+  style={{
+    borderWidth: "1px", // ✅ Allowed
+    borderWidth: "2px", // ✅ Allowed
+    padding: "0px", // ✅ Allowed
+    margin: "1px", // ✅ Allowed
+    padding: "3px", // ⚠️ Warning (use spacing.xxs = 4px)
+  }}
+/>
 ```
 
 ## Design Tokens
@@ -174,7 +193,7 @@ rules: {
     '/^background(-color)?$/': [/^rgba?\((?!.*\/\s*var\(--tw-)/],
     '/^border(-color)?$/': [/^rgba?\((?!.*\/\s*var\(--tw-)/],
   },
-  
+
   // Disallow named colors
   'color-named': 'never',
 }
@@ -201,6 +220,7 @@ If you see errors from generated CSS files, make sure `dist/` and `build/` are i
 ### ESLint plugin not detecting inline styles
 
 Make sure:
+
 1. The plugin is imported in `eslint.config.js`
 2. The rule is enabled in the rules section
 3. Files are included in the `files` pattern (e.g., `**/*.{js,jsx,ts,tsx}`)
@@ -208,6 +228,7 @@ Make sure:
 ### False positives
 
 If you need to use a hardcoded value temporarily:
+
 1. Add a comment explaining why: `// eslint-disable-next-line no-hardcoded-css/no-hardcoded-css`
 2. Or add the property to `allowedProperties` in the ESLint config
 
@@ -226,4 +247,3 @@ If you need to use a hardcoded value temporarily:
 - Design Tokens: `client/src/styles/tokens.ts`
 - Tailwind Config: `config/build/tailwind.config.js`
 - Main CSS: `client/src/index.css`
-

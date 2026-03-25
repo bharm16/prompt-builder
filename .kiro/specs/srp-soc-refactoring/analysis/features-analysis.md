@@ -6,24 +6,24 @@ Analyzed `client/src/features/*/` for files >150 lines not already in a refactor
 
 ### Files Analyzed
 
-| File | Lines | Status |
-|------|-------|--------|
-| `prompt-optimizer/PromptCanvas.tsx` | 524 | ✅ NO VIOLATION |
-| `history/HistorySidebar.tsx` | 486 | ⚠️ VIOLATION |
-| `prompt-optimizer/PromptOptimizerContainer/PromptOptimizerContainer.tsx` | 424 | ✅ NO VIOLATION |
-| `prompt-optimizer/PromptOptimizerContainer/PromptOptimizerWorkspace.tsx` | 341 | ✅ NO VIOLATION |
-| `prompt-optimizer/PromptInput.tsx` | 209 | ✅ NO VIOLATION |
-| `span-highlighting/hooks/useSpanLabeling.ts` | 458 | ✅ NO VIOLATION (already refactored) |
-| `span-highlighting/hooks/useHighlightRendering.ts` | 305 | ✅ NO VIOLATION |
-| `span-highlighting/utils/anchorRanges.ts` | 314 | ✅ NO VIOLATION |
-| `span-highlighting/utils/highlightConversion.ts` | 264 | ✅ NO VIOLATION |
-| `prompt-optimizer/PromptOptimizerContainer/hooks/useUndoRedo.ts` | 325 | ✅ NO VIOLATION |
-| `prompt-optimizer/PromptOptimizerContainer/hooks/useSuggestionFetch.ts` | 209 | ✅ NO VIOLATION |
-| `prompt-optimizer/PromptOptimizerContainer/hooks/useConceptBrainstorm.ts` | 196 | ✅ NO VIOLATION |
-| `prompt-optimizer/PromptOptimizerContainer/hooks/usePromptLoader.ts` | 169 | ✅ NO VIOLATION |
-| `prompt-optimizer/PromptCanvas/hooks/useTextSelection.ts` | 187 | ✅ NO VIOLATION |
-| `prompt-optimizer/SpanBentoGrid/hooks/useSpanGrouping.ts` | 241 | ✅ NO VIOLATION |
-| `span-highlighting/hooks/useDebouncedValidation.ts` | 158 | ✅ NO VIOLATION |
+| File                                                                      | Lines | Status                               |
+| ------------------------------------------------------------------------- | ----- | ------------------------------------ |
+| `prompt-optimizer/PromptCanvas.tsx`                                       | 524   | ✅ NO VIOLATION                      |
+| `history/HistorySidebar.tsx`                                              | 486   | ⚠️ VIOLATION                         |
+| `prompt-optimizer/PromptOptimizerContainer/PromptOptimizerContainer.tsx`  | 424   | ✅ NO VIOLATION                      |
+| `prompt-optimizer/PromptOptimizerContainer/PromptOptimizerWorkspace.tsx`  | 341   | ✅ NO VIOLATION                      |
+| `prompt-optimizer/PromptInput.tsx`                                        | 209   | ✅ NO VIOLATION                      |
+| `span-highlighting/hooks/useSpanLabeling.ts`                              | 458   | ✅ NO VIOLATION (already refactored) |
+| `span-highlighting/hooks/useHighlightRendering.ts`                        | 305   | ✅ NO VIOLATION                      |
+| `span-highlighting/utils/anchorRanges.ts`                                 | 314   | ✅ NO VIOLATION                      |
+| `span-highlighting/utils/highlightConversion.ts`                          | 264   | ✅ NO VIOLATION                      |
+| `prompt-optimizer/PromptOptimizerContainer/hooks/useUndoRedo.ts`          | 325   | ✅ NO VIOLATION                      |
+| `prompt-optimizer/PromptOptimizerContainer/hooks/useSuggestionFetch.ts`   | 209   | ✅ NO VIOLATION                      |
+| `prompt-optimizer/PromptOptimizerContainer/hooks/useConceptBrainstorm.ts` | 196   | ✅ NO VIOLATION                      |
+| `prompt-optimizer/PromptOptimizerContainer/hooks/usePromptLoader.ts`      | 169   | ✅ NO VIOLATION                      |
+| `prompt-optimizer/PromptCanvas/hooks/useTextSelection.ts`                 | 187   | ✅ NO VIOLATION                      |
+| `prompt-optimizer/SpanBentoGrid/hooks/useSpanGrouping.ts`                 | 241   | ✅ NO VIOLATION                      |
+| `span-highlighting/hooks/useDebouncedValidation.ts`                       | 158   | ✅ NO VIOLATION                      |
 
 ---
 
@@ -32,11 +32,13 @@ Analyzed `client/src/features/*/` for files >150 lines not already in a refactor
 ### 1. PromptCanvas.tsx (524 lines) - NO VIOLATION
 
 **Responsibilities Found:**
+
 - UI Rendering (JSX orchestration) - lines 300-524
 - Hook coordination - lines 70-250
 
 **Analysis:**
 This file is an **orchestrator component** that follows the established pattern. It:
+
 - Delegates state management to extracted hooks (`useSpanDataConversion`, `useSuggestionDetection`, `useParseResult`, `useTextSelection`, `useEditorContent`, `useKeyboardShortcuts`)
 - Delegates API calls to `useSpanLabeling`
 - Delegates business logic to utility functions
@@ -50,6 +52,7 @@ The file does ONE thing well: orchestrate the PromptCanvas feature by wiring tog
 ### 2. HistorySidebar.tsx (486 lines) - VIOLATION
 
 **Responsibilities Found:**
+
 1. **UI Rendering** (lines 220-486): Main sidebar JSX, collapsed/expanded states
 2. **State Management** (lines 230-250): Local state for `showAllHistory`, auth menu state
 3. **API/Data Fetching** (lines 255-285): `handleSignIn`, `handleSignOut` with Firebase auth
@@ -57,11 +60,13 @@ The file does ONE thing well: orchestrate the PromptCanvas feature by wiring tog
 5. **Sub-components** (lines 25-130): `HistoryItem` and `AuthMenu` components defined inline
 
 **Reasons to Change:**
+
 - **UI Designer**: Would change layout, styling, collapsed/expanded behavior
 - **Auth Team**: Would change sign-in/sign-out flow, auth provider integration
 - **Product Team**: Would change history display logic, filtering, limits
 
 **Recommended Split:**
+
 ```
 features/history/
 ├── HistorySidebar.tsx           // Main orchestrator (~250 lines)
@@ -73,15 +78,18 @@ features/history/
 ```
 
 **What to extract:**
+
 - `HistoryItem` - Memoized, genuinely reusable, can be tested independently
 - `AuthMenu` - Auth is a distinct concern, could be reused elsewhere
 
 **What to keep in main component:**
+
 - Collapsed/expanded states - These are just two rendering states of the same component
 - Auth handlers (`handleSignIn`, `handleSignOut`) - Too small for a separate hook (~10 lines)
 - Display limit logic - Too small for a utils file (~5 lines)
 
 **Justification:**
+
 - Extract only what has genuine independent reasons to change
 - Don't create files for less than ~50 lines unless genuinely reused elsewhere
 - 4 files instead of 9 - pragmatic split that improves cohesion without over-engineering
@@ -91,11 +99,13 @@ features/history/
 ### 3. PromptOptimizerContainer.tsx (424 lines) - NO VIOLATION
 
 **Responsibilities Found:**
+
 - Hook coordination - lines 40-200
 - UI Rendering (JSX) - lines 220-350
 
 **Analysis:**
 This file is already a well-structured **orchestrator component**. It:
+
 - Delegates ALL business logic to extracted hooks (`usePromptLoader`, `useHighlightsPersistence`, `useUndoRedo`, `usePromptOptimization`, `useImprovementFlow`, `useConceptBrainstorm`, `useEnhancementSuggestions`)
 - Uses context for state management (`usePromptState`)
 - Only contains hook wiring and JSX rendering
@@ -118,11 +128,13 @@ Same reasoning as above - it's an orchestrator that delegates to specialized hoo
 ### 5. PromptInput.tsx (209 lines) - NO VIOLATION
 
 **Responsibilities Found:**
+
 - UI Rendering (JSX) - lines 100-209
 - Sub-component (`ModeDropdown`) - lines 15-95
 
 **Analysis:**
 This file contains:
+
 - A memoized `ModeDropdown` component (80 lines)
 - A `PromptInput` component (110 lines)
 
@@ -135,6 +147,7 @@ Both components serve the same concern: prompt input UI. The `ModeDropdown` is t
 
 **Analysis:**
 This hook is explicitly documented as an **orchestrator hook** that coordinates:
+
 - `SpanLabelingApi` for API calls
 - `spanLabelingCache` for caching
 - `spanLabelingScheduler` for scheduling/debouncing
@@ -149,10 +162,12 @@ The file header explicitly states "Single Responsibility: Orchestrate the span l
 ### 7. useHighlightRendering.ts (305 lines) - NO VIOLATION
 
 **Responsibilities Found:**
+
 - DOM manipulation for highlight rendering - entire file
 
 **Analysis:**
 This hook does ONE thing: manage DOM manipulation for applying highlight spans. It contains:
+
 - Diff-based rendering logic
 - Performance optimization
 - Span tracking
@@ -165,10 +180,12 @@ All code serves the single purpose of rendering highlights efficiently. The comp
 ### 8. anchorRanges.ts (314 lines) - NO VIOLATION
 
 **Responsibilities Found:**
+
 - Text node indexing and range mapping - entire file
 
 **Analysis:**
 This utility file provides pure functions for:
+
 - Building text node indices
 - Mapping global ranges to DOM
 - Wrapping range segments
@@ -181,10 +198,12 @@ All functions serve the single purpose of anchoring text ranges to DOM nodes. Th
 ### 9. highlightConversion.ts (264 lines) - NO VIOLATION
 
 **Responsibilities Found:**
+
 - Converting LLM spans to highlight objects - entire file
 
 **Analysis:**
 This utility file provides:
+
 - Role normalization
 - Category mapping
 - Span merging
@@ -198,10 +217,12 @@ All code serves the single purpose of converting LLM output to highlight data st
 ### 10. useUndoRedo.ts (325 lines) - NO VIOLATION
 
 **Responsibilities Found:**
+
 - Undo/redo state management - entire file
 
 **Analysis:**
 This hook manages:
+
 - Undo/redo stacks
 - Edit grouping logic
 - Snapshot creation
@@ -249,11 +270,11 @@ This hook groups spans by category with hierarchical awareness. All code serves 
 
 ## Summary
 
-| Category | Count |
-|----------|-------|
-| Files Analyzed | 16 |
-| Violations Found | 1 |
-| Already Well-Structured | 15 |
+| Category                | Count |
+| ----------------------- | ----- |
+| Files Analyzed          | 16    |
+| Violations Found        | 1     |
+| Already Well-Structured | 15    |
 
 ### Violations to Refactor
 
@@ -262,6 +283,7 @@ This hook groups spans by category with hierarchical awareness. All code serves 
 ### Files Skipped (Already in Refactored Structure)
 
 The following directories are already well-organized:
+
 - `span-highlighting/` - Full modular structure with hooks/, api/, utils/, services/, config/
 - `prompt-optimizer/PromptCanvas/` - Extracted hooks and utils
 - `prompt-optimizer/PromptOptimizerContainer/` - Extracted hooks

@@ -1,18 +1,22 @@
-import express, { type Request, type Response, type Router } from 'express';
-import { cleanupUploadFile, createDiskUpload, readUploadBuffer } from '@utils/upload';
-import { validateImageBuffer } from '@utils/validateFileType';
-import { asyncHandler } from '@middleware/asyncHandler';
-import type { AssetType } from '@shared/types/asset';
-import type { AssetService } from '@services/asset/AssetService';
+import express, { type Request, type Response, type Router } from "express";
+import {
+  cleanupUploadFile,
+  createDiskUpload,
+  readUploadBuffer,
+} from "@utils/upload";
+import { validateImageBuffer } from "@utils/validateFileType";
+import { asyncHandler } from "@middleware/asyncHandler";
+import type { AssetType } from "@shared/types/asset";
+import type { AssetService } from "@services/asset/AssetService";
 
 const upload = createDiskUpload({
   fileSizeBytes: 5 * 1024 * 1024,
   fileFilter: (_req, file, cb) => {
-    if (file.mimetype.startsWith('image/')) {
+    if (file.mimetype.startsWith("image/")) {
       cb(null, true);
       return;
     }
-    cb(new Error('Only image files allowed'));
+    cb(new Error("Only image files allowed"));
   },
 });
 
@@ -21,15 +25,19 @@ type RequestWithUser = Request & { user?: { uid?: string } };
 function requireUserId(req: RequestWithUser, res: Response): string | null {
   const userId = req.user?.uid;
   if (!userId) {
-    res.status(401).json({ error: 'Authentication required' });
+    res.status(401).json({ error: "Authentication required" });
     return null;
   }
   return userId;
 }
 
-function requireRouteParam(req: Request, res: Response, key: string): string | null {
+function requireRouteParam(
+  req: Request,
+  res: Response,
+  key: string,
+): string | null {
   const value = req.params[key];
-  if (typeof value !== 'string' || value.trim().length === 0) {
+  if (typeof value !== "string" || value.trim().length === 0) {
     res.status(400).json({ error: `Invalid ${key}` });
     return null;
   }
@@ -39,7 +47,7 @@ function requireRouteParam(req: Request, res: Response, key: string): string | n
 function normalizeAssetType(raw?: string | null): AssetType | null {
   if (!raw) return null;
   const normalized = raw.trim().toLowerCase();
-  if (['character', 'style', 'location', 'object'].includes(normalized)) {
+  if (["character", "style", "location", "object"].includes(normalized)) {
     return normalized as AssetType;
   }
   return null;
@@ -49,16 +57,17 @@ export function createAssetRoutes(assetService: AssetService): Router {
   const router = express.Router();
 
   router.get(
-    '/',
+    "/",
     asyncHandler(async (req: Request, res: Response) => {
       const userId = requireUserId(req as RequestWithUser, res);
       if (!userId) return;
 
-      const typeParam = typeof req.query.type === 'string' ? req.query.type : null;
+      const typeParam =
+        typeof req.query.type === "string" ? req.query.type : null;
       const type = normalizeAssetType(typeParam);
 
       if (typeParam && !type) {
-        res.status(400).json({ error: 'Invalid asset type filter' });
+        res.status(400).json({ error: "Invalid asset type filter" });
         return;
       }
 
@@ -72,16 +81,17 @@ export function createAssetRoutes(assetService: AssetService): Router {
 
       const result = await assetService.listAssets(userId);
       res.json(result);
-    })
+    }),
   );
 
   router.post(
-    '/',
+    "/",
     asyncHandler(async (req: Request, res: Response) => {
       const userId = requireUserId(req as RequestWithUser, res);
       if (!userId) return;
 
-      const { type, trigger, name, textDefinition, negativePrompt } = req.body || {};
+      const { type, trigger, name, textDefinition, negativePrompt } =
+        req.body || {};
       const asset = await assetService.createAsset(userId, {
         type,
         trigger,
@@ -91,16 +101,16 @@ export function createAssetRoutes(assetService: AssetService): Router {
       });
 
       res.status(201).json(asset);
-    })
+    }),
   );
 
   router.get(
-    '/suggestions',
+    "/suggestions",
     asyncHandler(async (req: Request, res: Response) => {
       const userId = requireUserId(req as RequestWithUser, res);
       if (!userId) return;
 
-      const query = typeof req.query.q === 'string' ? req.query.q : '';
+      const query = typeof req.query.q === "string" ? req.query.q : "";
       if (!query.trim()) {
         res.json([]);
         return;
@@ -108,63 +118,63 @@ export function createAssetRoutes(assetService: AssetService): Router {
 
       const suggestions = await assetService.getSuggestions(userId, query);
       res.json(suggestions);
-    })
+    }),
   );
 
   router.post(
-    '/resolve',
+    "/resolve",
     asyncHandler(async (req: Request, res: Response) => {
       const userId = requireUserId(req as RequestWithUser, res);
       if (!userId) return;
 
       const { prompt } = req.body || {};
-      if (!prompt || typeof prompt !== 'string') {
-        res.status(400).json({ error: 'prompt is required' });
+      if (!prompt || typeof prompt !== "string") {
+        res.status(400).json({ error: "prompt is required" });
         return;
       }
 
       const resolved = await assetService.resolvePrompt(userId, prompt);
       res.json(resolved);
-    })
+    }),
   );
 
   router.post(
-    '/validate',
+    "/validate",
     asyncHandler(async (req: Request, res: Response) => {
       const userId = requireUserId(req as RequestWithUser, res);
       if (!userId) return;
 
       const { prompt } = req.body || {};
-      if (!prompt || typeof prompt !== 'string') {
-        res.status(400).json({ error: 'prompt is required' });
+      if (!prompt || typeof prompt !== "string") {
+        res.status(400).json({ error: "prompt is required" });
         return;
       }
 
       const validation = await assetService.validateTriggers(userId, prompt);
       res.json(validation);
-    })
+    }),
   );
 
   router.get(
-    '/:id',
+    "/:id",
     asyncHandler(async (req: Request, res: Response) => {
       const userId = requireUserId(req as RequestWithUser, res);
       if (!userId) return;
 
-      const assetId = requireRouteParam(req, res, 'id');
+      const assetId = requireRouteParam(req, res, "id");
       if (!assetId) return;
       const asset = await assetService.getAsset(userId, assetId);
       res.json(asset);
-    })
+    }),
   );
 
   router.patch(
-    '/:id',
+    "/:id",
     asyncHandler(async (req: Request, res: Response) => {
       const userId = requireUserId(req as RequestWithUser, res);
       if (!userId) return;
 
-      const assetId = requireRouteParam(req, res, 'id');
+      const assetId = requireRouteParam(req, res, "id");
       if (!assetId) return;
       const { trigger, name, textDefinition, negativePrompt } = req.body || {};
       const asset = await assetService.updateAsset(userId, assetId, {
@@ -174,33 +184,33 @@ export function createAssetRoutes(assetService: AssetService): Router {
         negativePrompt,
       });
       res.json(asset);
-    })
+    }),
   );
 
   router.delete(
-    '/:id',
+    "/:id",
     asyncHandler(async (req: Request, res: Response) => {
       const userId = requireUserId(req as RequestWithUser, res);
       if (!userId) return;
 
-      const assetId = requireRouteParam(req, res, 'id');
+      const assetId = requireRouteParam(req, res, "id");
       if (!assetId) return;
       await assetService.deleteAsset(userId, assetId);
       res.status(204).send();
-    })
+    }),
   );
 
   router.post(
-    '/:id/images',
-    upload.single('image'),
+    "/:id/images",
+    upload.single("image"),
     asyncHandler(async (req: Request, res: Response) => {
       const userId = requireUserId(req as RequestWithUser, res);
       if (!userId) return;
 
-      const assetId = requireRouteParam(req, res, 'id');
+      const assetId = requireRouteParam(req, res, "id");
       if (!assetId) return;
       if (!req.file) {
-        res.status(400).json({ error: 'No image file provided' });
+        res.status(400).json({ error: "No image file provided" });
         return;
       }
 
@@ -214,62 +224,69 @@ export function createAssetRoutes(assetService: AssetService): Router {
 
       try {
         const buffer = await readUploadBuffer(req.file);
-        await validateImageBuffer(buffer, 'image');
+        await validateImageBuffer(buffer, "image");
         const result = await assetService.addReferenceImage(
           userId,
           assetId,
           buffer,
-          metadata
+          metadata,
         );
 
         res.status(201).json(result);
       } finally {
         await cleanupUploadFile(req.file);
       }
-    })
+    }),
   );
 
   router.delete(
-    '/:id/images/:imageId',
+    "/:id/images/:imageId",
     asyncHandler(async (req: Request, res: Response) => {
       const userId = requireUserId(req as RequestWithUser, res);
       if (!userId) return;
 
-      const assetId = requireRouteParam(req, res, 'id');
+      const assetId = requireRouteParam(req, res, "id");
       if (!assetId) return;
-      const imageId = requireRouteParam(req, res, 'imageId');
+      const imageId = requireRouteParam(req, res, "imageId");
       if (!imageId) return;
       await assetService.deleteReferenceImage(userId, assetId, imageId);
       res.status(204).send();
-    })
+    }),
   );
 
   router.patch(
-    '/:id/images/:imageId/primary',
+    "/:id/images/:imageId/primary",
     asyncHandler(async (req: Request, res: Response) => {
       const userId = requireUserId(req as RequestWithUser, res);
       if (!userId) return;
 
-      const assetId = requireRouteParam(req, res, 'id');
+      const assetId = requireRouteParam(req, res, "id");
       if (!assetId) return;
-      const imageId = requireRouteParam(req, res, 'imageId');
+      const imageId = requireRouteParam(req, res, "imageId");
       if (!imageId) return;
-      const asset = await assetService.setPrimaryImage(userId, assetId, imageId);
+      const asset = await assetService.setPrimaryImage(
+        userId,
+        assetId,
+        imageId,
+      );
       res.json(asset);
-    })
+    }),
   );
 
   router.get(
-    '/:id/for-generation',
+    "/:id/for-generation",
     asyncHandler(async (req: Request, res: Response) => {
       const userId = requireUserId(req as RequestWithUser, res);
       if (!userId) return;
 
-      const assetId = requireRouteParam(req, res, 'id');
+      const assetId = requireRouteParam(req, res, "id");
       if (!assetId) return;
-      const assetData = await assetService.getAssetForGeneration(userId, assetId);
+      const assetData = await assetService.getAssetForGeneration(
+        userId,
+        assetId,
+      );
       res.json(assetData);
-    })
+    }),
   );
 
   return router;

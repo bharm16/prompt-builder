@@ -12,18 +12,18 @@
  * Placebo tokens that may degrade performance on certain models
  */
 const PLACEBO_TOKENS = [
-  '4k',
-  '8k',
-  'trending on artstation',
-  'award winning',
-  'award-winning',
-  'highly detailed',
-  'ultra hd',
-  'ultra-hd',
-  'uhd',
-  'hdr',
-  'masterpiece',
-  'best quality',
+  "4k",
+  "8k",
+  "trending on artstation",
+  "award winning",
+  "award-winning",
+  "highly detailed",
+  "ultra hd",
+  "ultra-hd",
+  "uhd",
+  "hdr",
+  "masterpiece",
+  "best quality",
 ] as const;
 
 /**
@@ -31,31 +31,33 @@ const PLACEBO_TOKENS = [
  * No diffusion or transformer video model uses aperture, ISO, or sensor-size values.
  * Each entry creates a fresh RegExp per call to avoid global-regex lastIndex issues.
  */
-const CAMERA_SPEC_PATTERNS: readonly { label: string; source: string; flags: string }[] = [
+const CAMERA_SPEC_PATTERNS: readonly {
+  label: string;
+  source: string;
+  flags: string;
+}[] = [
   // f-stop values: f/1.8, f/2.8, (f/1.8-f/2.8), f / 2.8
-  { label: 'f-stop', source: '\\(?\\s*f\\s*\\/\\s*\\d+(?:\\.\\d+)?(?:\\s*[-\\u2013]\\s*f\\s*\\/\\s*\\d+(?:\\.\\d+)?)?\\s*\\)?', flags: 'gi' },
+  {
+    label: "f-stop",
+    source:
+      "\\(?\\s*f\\s*\\/\\s*\\d+(?:\\.\\d+)?(?:\\s*[-\\u2013]\\s*f\\s*\\/\\s*\\d+(?:\\.\\d+)?)?\\s*\\)?",
+    flags: "gi",
+  },
   // ISO values: ISO 800, ISO3200
-  { label: 'ISO', source: '\\bISO\\s*\\d+', flags: 'gi' },
+  { label: "ISO", source: "\\bISO\\s*\\d+", flags: "gi" },
 ];
 
 /**
  * Models where placebo tokens should be REMOVED
  * These models perform better without resolution/quality boosters
  */
-const STRIP_MODELS = new Set([
-  'runway-gen45',
-  'luma-ray3',
-]);
+const STRIP_MODELS = new Set(["runway-gen45", "luma-ray3"]);
 
 /**
  * Models where placebo tokens should be KEPT as boosters
  * These models may benefit from quality descriptors
  */
-const KEEP_MODELS = new Set([
-  'kling-26',
-  'veo-4',
-  'sora-2',
-]);
+const KEEP_MODELS = new Set(["kling-26", "veo-4", "sora-2"]);
 
 /**
  * Result of TechStripper processing
@@ -92,7 +94,7 @@ export class TechStripper {
     for (const { label, source, flags } of CAMERA_SPEC_PATTERNS) {
       const pattern = new RegExp(source, flags);
       const before = processedText;
-      processedText = processedText.replace(pattern, '');
+      processedText = processedText.replace(pattern, "");
       if (processedText !== before) {
         strippedTokens.push(label);
       }
@@ -102,12 +104,12 @@ export class TechStripper {
     const shouldStrip = this.shouldStripTokens(modelId);
     if (shouldStrip) {
       for (const token of PLACEBO_TOKENS) {
-        const regex = new RegExp(`\\b${this.escapeRegex(token)}\\b`, 'gi');
+        const regex = new RegExp(`\\b${this.escapeRegex(token)}\\b`, "gi");
         const matches = processedText.match(regex);
 
         if (matches) {
           strippedTokens.push(...matches.map((m) => m.toLowerCase()));
-          processedText = processedText.replace(regex, '');
+          processedText = processedText.replace(regex, "");
         }
       }
     }
@@ -135,7 +137,7 @@ export class TechStripper {
   isPlaceboToken(token: string): boolean {
     const normalized = token.toLowerCase().trim();
     return PLACEBO_TOKENS.some(
-      (placebo) => placebo.toLowerCase() === normalized
+      (placebo) => placebo.toLowerCase() === normalized,
     );
   }
 
@@ -173,7 +175,7 @@ export class TechStripper {
    * Escape special regex characters in a string
    */
   private escapeRegex(str: string): string {
-    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   }
 
   /**
@@ -181,12 +183,12 @@ export class TechStripper {
    */
   private cleanWhitespace(text: string): string {
     return text
-      .replace(/\s+/g, ' ') // Collapse multiple spaces
-      .replace(/\s*,\s*,/g, ',') // Fix double commas
-      .replace(/,\s*$/g, '') // Remove trailing comma
-      .replace(/^\s*,/g, '') // Remove leading comma
-      .replace(/\s*,/g, ',') // Fix space before comma
-      .replace(/,\s*/g, ', ') // Normalize comma spacing
+      .replace(/\s+/g, " ") // Collapse multiple spaces
+      .replace(/\s*,\s*,/g, ",") // Fix double commas
+      .replace(/,\s*$/g, "") // Remove trailing comma
+      .replace(/^\s*,/g, "") // Remove leading comma
+      .replace(/\s*,/g, ",") // Fix space before comma
+      .replace(/,\s*/g, ", ") // Normalize comma spacing
       .trim();
   }
 }

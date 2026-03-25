@@ -1,8 +1,8 @@
-import * as React from "react"
-import { Slot } from "@radix-ui/react-slot"
-import { cva, type VariantProps } from "class-variance-authority"
+import * as React from "react";
+import { Slot } from "@radix-ui/react-slot";
+import { cva, type VariantProps } from "class-variance-authority";
 
-import { cn } from "@promptstudio/system/lib/utils"
+import { cn } from "@promptstudio/system/lib/utils";
 
 const panelVariants = cva("border border-border text-foreground", {
   variants: {
@@ -37,26 +37,32 @@ const panelVariants = cva("border border-border text-foreground", {
     radius: "xl",
     padding: "card",
   },
-})
+});
 
 export interface PanelProps
   extends React.HTMLAttributes<HTMLDivElement>,
     VariantProps<typeof panelVariants> {
-  asChild?: boolean
+  asChild?: boolean;
 }
 
 const Panel = React.forwardRef<HTMLDivElement, PanelProps>(
-  ({ className, surface, shadow, radius, padding, asChild = false, ...props }, ref) => {
-    const Comp = asChild ? Slot : "div"
+  (
+    { className, surface, shadow, radius, padding, asChild = false, ...props },
+    ref,
+  ) => {
+    const Comp = asChild ? Slot : "div";
     return (
       <Comp
         ref={ref}
-        className={cn(panelVariants({ surface, shadow, radius, padding }), className)}
+        className={cn(
+          panelVariants({ surface, shadow, radius, padding }),
+          className,
+        )}
         {...props}
       />
-    )
-  }
-)
-Panel.displayName = "Panel"
+    );
+  },
+);
+Panel.displayName = "Panel";
 
-export { Panel, panelVariants }
+export { Panel, panelVariants };

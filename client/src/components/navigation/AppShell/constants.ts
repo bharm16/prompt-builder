@@ -4,8 +4,17 @@
  * @see STYLE_RULES.md Section 3 - No Magic Strings
  */
 
-import { Clock, CreditCard, FileText, Home, MessageCircle, Package, Layers, Video } from '@promptstudio/system/components/ui';
-import type { NavItem } from './types';
+import {
+  Clock,
+  CreditCard,
+  FileText,
+  Home,
+  MessageCircle,
+  Package,
+  Layers,
+  Video,
+} from "@promptstudio/system/components/ui";
+import type { NavItem } from "./types";
 
 // -----------------------------------------------------------------------------
 // Route Configuration
@@ -13,23 +22,23 @@ import type { NavItem } from './types';
 
 /** Routes that should show no shell (auth pages) */
 export const AUTH_ROUTES = [
-  '/signin',
-  '/signup',
-  '/forgot-password',
-  '/email-verification',
-  '/reset-password',
-  '/account',
-  '/login',
-  '/register',
-  '/settings/billing',
-  '/settings/billing/invoices',
+  "/signin",
+  "/signup",
+  "/forgot-password",
+  "/email-verification",
+  "/reset-password",
+  "/account",
+  "/login",
+  "/register",
+  "/settings/billing",
+  "/settings/billing/invoices",
 ] as const;
 
 /** Route prefixes that trigger sidebar variant */
-export const WORKSPACE_ROUTE_PREFIXES = ['/prompt/', '/session/'] as const;
+export const WORKSPACE_ROUTE_PREFIXES = ["/prompt/", "/session/"] as const;
 
 /** Exact routes that trigger sidebar variant */
-export const WORKSPACE_ROUTES_EXACT = ['/', '/assets', '/consistent'] as const;
+export const WORKSPACE_ROUTES_EXACT = ["/", "/assets", "/consistent"] as const;
 
 // -----------------------------------------------------------------------------
 // Navigation Items
@@ -42,14 +51,62 @@ export const WORKSPACE_ROUTES_EXACT = ['/', '/assets', '/consistent'] as const;
  * - showInSidebar: Visible in vertical workspace sidebar
  */
 export const NAV_ITEMS: readonly NavItem[] = [
-  { to: '/home', label: 'Home', icon: Home, showInTopNav: false, showInSidebar: true },
-  { to: '/assets', label: 'Assets', icon: Layers, showInTopNav: false, showInSidebar: true },
-  { to: '/consistent', label: 'Consistency', icon: Video, showInTopNav: false, showInSidebar: true },
-  { to: '/products', label: 'Products', icon: Package, showInTopNav: true, showInSidebar: true },
-  { to: '/pricing', label: 'Pricing', icon: CreditCard, showInTopNav: true, showInSidebar: true },
-  { to: '/docs', label: 'Docs', icon: FileText, showInTopNav: true, showInSidebar: true },
-  { to: '/contact', label: 'Support', icon: MessageCircle, showInTopNav: true, showInSidebar: true },
-  { to: '/history', label: 'History', icon: Clock, showInTopNav: true, showInSidebar: false },
+  {
+    to: "/home",
+    label: "Home",
+    icon: Home,
+    showInTopNav: false,
+    showInSidebar: true,
+  },
+  {
+    to: "/assets",
+    label: "Assets",
+    icon: Layers,
+    showInTopNav: false,
+    showInSidebar: true,
+  },
+  {
+    to: "/consistent",
+    label: "Consistency",
+    icon: Video,
+    showInTopNav: false,
+    showInSidebar: true,
+  },
+  {
+    to: "/products",
+    label: "Products",
+    icon: Package,
+    showInTopNav: true,
+    showInSidebar: true,
+  },
+  {
+    to: "/pricing",
+    label: "Pricing",
+    icon: CreditCard,
+    showInTopNav: true,
+    showInSidebar: true,
+  },
+  {
+    to: "/docs",
+    label: "Docs",
+    icon: FileText,
+    showInTopNav: true,
+    showInSidebar: true,
+  },
+  {
+    to: "/contact",
+    label: "Support",
+    icon: MessageCircle,
+    showInTopNav: true,
+    showInSidebar: true,
+  },
+  {
+    to: "/history",
+    label: "History",
+    icon: Clock,
+    showInTopNav: true,
+    showInSidebar: false,
+  },
 ] as const;
 
 // -----------------------------------------------------------------------------

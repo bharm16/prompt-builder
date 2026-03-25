@@ -1,33 +1,29 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { VideoJobRecord } from '../types';
-import { VideoJobSweeper, createVideoJobSweeper } from '../VideoJobSweeper';
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { VideoJobRecord } from "../types";
+import { VideoJobSweeper, createVideoJobSweeper } from "../VideoJobSweeper";
 
 const mocks = vi.hoisted(() => ({
   loggerInfo: vi.fn(),
   loggerWarn: vi.fn(),
-  buildRefundKey: vi.fn((parts: Array<string | number>) => `refund-${parts.join('-')}`),
+  buildRefundKey: vi.fn(
+    (parts: Array<string | number>) => `refund-${parts.join("-")}`,
+  ),
   refundWithGuard: vi.fn().mockResolvedValue(true),
 }));
 
-vi.mock(
-  '@infrastructure/Logger',
-  () => ({
-    logger: {
-      child: () => ({
-        info: mocks.loggerInfo,
-        warn: mocks.loggerWarn,
-      }),
-    },
-  })
-);
+vi.mock("@infrastructure/Logger", () => ({
+  logger: {
+    child: () => ({
+      info: mocks.loggerInfo,
+      warn: mocks.loggerWarn,
+    }),
+  },
+}));
 
-vi.mock(
-  '@services/credits/refundGuard',
-  () => ({
-    buildRefundKey: mocks.buildRefundKey,
-    refundWithGuard: mocks.refundWithGuard,
-  })
-);
+vi.mock("@services/credits/refundGuard", () => ({
+  buildRefundKey: mocks.buildRefundKey,
+  refundWithGuard: mocks.refundWithGuard,
+}));
 
 type MinimalJobStore = {
   failNextQueuedStaleJob: ReturnType<typeof vi.fn>;
@@ -37,10 +33,10 @@ type MinimalJobStore = {
 
 const createJob = (id: string, creditsReserved: number): VideoJobRecord => ({
   id,
-  status: 'queued',
-  userId: 'user-1',
+  status: "queued",
+  userId: "user-1",
   request: {
-    prompt: 'prompt',
+    prompt: "prompt",
     options: {},
   },
   creditsReserved,
@@ -51,9 +47,11 @@ const createJob = (id: string, creditsReserved: number): VideoJobRecord => ({
 });
 
 const getRunOnce = (sweeper: VideoJobSweeper) =>
-  (sweeper as unknown as { runOnce: () => Promise<boolean> }).runOnce.bind(sweeper);
+  (sweeper as unknown as { runOnce: () => Promise<boolean> }).runOnce.bind(
+    sweeper,
+  );
 
-describe('VideoJobSweeper', () => {
+describe("VideoJobSweeper", () => {
   const originalEnv = { ...process.env };
 
   beforeEach(() => {
@@ -67,104 +65,138 @@ describe('VideoJobSweeper', () => {
     process.env = { ...originalEnv };
   });
 
-  it('fails stale queued and processing jobs and refunds reserved credits', async () => {
+  it("fails stale queued and processing jobs and refunds reserved credits", async () => {
     const jobStore: MinimalJobStore = {
       failNextQueuedStaleJob: vi
         .fn()
-        .mockResolvedValueOnce(createJob('queued-1', 6))
+        .mockResolvedValueOnce(createJob("queued-1", 6))
         .mockResolvedValueOnce(null),
       failNextProcessingStaleJob: vi
         .fn()
-        .mockResolvedValueOnce(createJob('processing-1', 3))
+        .mockResolvedValueOnce(createJob("processing-1", 3))
         .mockResolvedValueOnce(null),
       enqueueDeadLetter: vi.fn().mockResolvedValue(undefined),
     };
     const userCreditService = { refundCredits: vi.fn() };
-    const sweeper = new VideoJobSweeper(jobStore as never, userCreditService as never, {
-      queueTimeoutMs: 10_000,
-      processingGraceMs: 20_000,
-      sweepIntervalMs: 1_000,
-      maxJobsPerRun: 5,
-    });
+    const sweeper = new VideoJobSweeper(
+      jobStore as never,
+      userCreditService as never,
+      {
+        queueTimeoutMs: 10_000,
+        processingGraceMs: 20_000,
+        sweepIntervalMs: 1_000,
+        maxJobsPerRun: 5,
+      },
+    );
 
     await getRunOnce(sweeper)();
 
     expect(jobStore.failNextQueuedStaleJob).toHaveBeenCalled();
     expect(jobStore.failNextProcessingStaleJob).toHaveBeenCalled();
     expect(jobStore.enqueueDeadLetter).toHaveBeenCalledTimes(2);
-    expect(mocks.buildRefundKey).toHaveBeenNthCalledWith(1, ['video-job', 'queued-1', 'video']);
-    expect(mocks.buildRefundKey).toHaveBeenNthCalledWith(2, ['video-job', 'processing-1', 'video']);
+    expect(mocks.buildRefundKey).toHaveBeenNthCalledWith(1, [
+      "video-job",
+      "queued-1",
+      "video",
+    ]);
+    expect(mocks.buildRefundKey).toHaveBeenNthCalledWith(2, [
+      "video-job",
+      "processing-1",
+      "video",
+    ]);
     expect(mocks.refundWithGuard).toHaveBeenNthCalledWith(
       1,
       expect.objectContaining({
-        userId: 'user-1',
+        userId: "user-1",
         amount: 6,
-        refundKey: 'refund-video-job-queued-1-video',
-        reason: 'video job sweeper stale timeout',
-      })
+        refundKey: "refund-video-job-queued-1-video",
+        reason: "video job sweeper stale timeout",
+      }),
     );
     expect(mocks.refundWithGuard).toHaveBeenNthCalledWith(
       2,
       expect.objectContaining({
-        userId: 'user-1',
+        userId: "user-1",
         amount: 3,
-        refundKey: 'refund-video-job-processing-1-video',
-        reason: 'video job sweeper stale timeout',
-      })
+        refundKey: "refund-video-job-processing-1-video",
+        reason: "video job sweeper stale timeout",
+      }),
     );
   });
 
-  it('skips refund calls for stale jobs with zero reserved credits', async () => {
+  it("skips refund calls for stale jobs with zero reserved credits", async () => {
     const jobStore: MinimalJobStore = {
-      failNextQueuedStaleJob: vi.fn().mockResolvedValueOnce(createJob('queued-1', 0)).mockResolvedValueOnce(null),
+      failNextQueuedStaleJob: vi
+        .fn()
+        .mockResolvedValueOnce(createJob("queued-1", 0))
+        .mockResolvedValueOnce(null),
       failNextProcessingStaleJob: vi.fn().mockResolvedValueOnce(null),
       enqueueDeadLetter: vi.fn().mockResolvedValue(undefined),
     };
-    const sweeper = new VideoJobSweeper(jobStore as never, { refundCredits: vi.fn() } as never, {
-      queueTimeoutMs: 10_000,
-      processingGraceMs: 20_000,
-      sweepIntervalMs: 1_000,
-      maxJobsPerRun: 5,
-    });
+    const sweeper = new VideoJobSweeper(
+      jobStore as never,
+      { refundCredits: vi.fn() } as never,
+      {
+        queueTimeoutMs: 10_000,
+        processingGraceMs: 20_000,
+        sweepIntervalMs: 1_000,
+        maxJobsPerRun: 5,
+      },
+    );
 
     await getRunOnce(sweeper)();
 
     expect(mocks.refundWithGuard).not.toHaveBeenCalled();
   });
 
-  it('swallows sweep errors and logs warning', async () => {
+  it("swallows sweep errors and logs warning", async () => {
     const jobStore: MinimalJobStore = {
-      failNextQueuedStaleJob: vi.fn().mockRejectedValue(new Error('query failed')),
+      failNextQueuedStaleJob: vi
+        .fn()
+        .mockRejectedValue(new Error("query failed")),
       failNextProcessingStaleJob: vi.fn().mockResolvedValue(null),
       enqueueDeadLetter: vi.fn().mockResolvedValue(undefined),
     };
-    const sweeper = new VideoJobSweeper(jobStore as never, { refundCredits: vi.fn() } as never, {
-      queueTimeoutMs: 10_000,
-      processingGraceMs: 20_000,
-      sweepIntervalMs: 1_000,
-      maxJobsPerRun: 5,
-    });
+    const sweeper = new VideoJobSweeper(
+      jobStore as never,
+      { refundCredits: vi.fn() } as never,
+      {
+        queueTimeoutMs: 10_000,
+        processingGraceMs: 20_000,
+        sweepIntervalMs: 1_000,
+        maxJobsPerRun: 5,
+      },
+    );
 
     await expect(getRunOnce(sweeper)()).resolves.toBe(false);
-    expect(mocks.loggerWarn).toHaveBeenCalledWith('Failed to sweep stale video jobs', {
-      error: 'query failed',
-    });
+    expect(mocks.loggerWarn).toHaveBeenCalledWith(
+      "Failed to sweep stale video jobs",
+      {
+        error: "query failed",
+      },
+    );
   });
 
-  it('start schedules immediate and interval sweeps and stop cancels scheduling', async () => {
+  it("start schedules immediate and interval sweeps and stop cancels scheduling", async () => {
     vi.useFakeTimers();
     const jobStore: MinimalJobStore = {
       failNextQueuedStaleJob: vi.fn().mockResolvedValue(null),
       failNextProcessingStaleJob: vi.fn().mockResolvedValue(null),
       enqueueDeadLetter: vi.fn().mockResolvedValue(undefined),
     };
-    const sweeper = new VideoJobSweeper(jobStore as never, { refundCredits: vi.fn() } as never, {
-      queueTimeoutMs: 10_000,
-      processingGraceMs: 20_000,
-      sweepIntervalMs: 1_000,
-      maxJobsPerRun: 5,
-    });
-    const runOnceSpy = vi.spyOn(sweeper as never, 'runOnce').mockResolvedValue(true);
+    const sweeper = new VideoJobSweeper(
+      jobStore as never,
+      { refundCredits: vi.fn() } as never,
+      {
+        queueTimeoutMs: 10_000,
+        processingGraceMs: 20_000,
+        sweepIntervalMs: 1_000,
+        maxJobsPerRun: 5,
+      },
+    );
+    const runOnceSpy = vi
+      .spyOn(sweeper as never, "runOnce")
+      .mockResolvedValue(true);
 
     sweeper.start();
     sweeper.start();
@@ -180,7 +212,7 @@ describe('VideoJobSweeper', () => {
     expect(runOnceSpy).toHaveBeenCalledTimes(3);
   });
 
-  it('factory returns null when disabled or invalid config and returns instance for valid config', () => {
+  it("factory returns null when disabled or invalid config and returns instance for valid config", () => {
     const jobStore = {
       failNextQueuedStaleJob: vi.fn(),
       failNextProcessingStaleJob: vi.fn(),
@@ -189,33 +221,48 @@ describe('VideoJobSweeper', () => {
     const userCreditService = { refundCredits: vi.fn() };
 
     expect(
-      createVideoJobSweeper(jobStore as never, userCreditService as never, undefined, {
-        disabled: true,
-        staleQueueSeconds: 300,
-        staleProcessingSeconds: 90,
-        sweepIntervalSeconds: 20,
-        sweepMax: 10,
-      })
+      createVideoJobSweeper(
+        jobStore as never,
+        userCreditService as never,
+        undefined,
+        {
+          disabled: true,
+          staleQueueSeconds: 300,
+          staleProcessingSeconds: 90,
+          sweepIntervalSeconds: 20,
+          sweepMax: 10,
+        },
+      ),
     ).toBeNull();
 
     expect(
-      createVideoJobSweeper(jobStore as never, userCreditService as never, undefined, {
-        disabled: false,
-        staleQueueSeconds: 300,
-        staleProcessingSeconds: 90,
-        sweepIntervalSeconds: 0,
-        sweepMax: 10,
-      })
+      createVideoJobSweeper(
+        jobStore as never,
+        userCreditService as never,
+        undefined,
+        {
+          disabled: false,
+          staleQueueSeconds: 300,
+          staleProcessingSeconds: 90,
+          sweepIntervalSeconds: 0,
+          sweepMax: 10,
+        },
+      ),
     ).toBeNull();
 
     expect(
-      createVideoJobSweeper(jobStore as never, userCreditService as never, undefined, {
-        disabled: false,
-        staleQueueSeconds: 300,
-        staleProcessingSeconds: 90,
-        sweepIntervalSeconds: 20,
-        sweepMax: 10,
-      })
+      createVideoJobSweeper(
+        jobStore as never,
+        userCreditService as never,
+        undefined,
+        {
+          disabled: false,
+          staleQueueSeconds: 300,
+          staleProcessingSeconds: 90,
+          sweepIntervalSeconds: 20,
+          sweepMax: 10,
+        },
+      ),
     ).toBeInstanceOf(VideoJobSweeper);
   });
 });

@@ -1,13 +1,13 @@
-import type { AIModelService } from '@services/ai-model/AIModelService';
-import type { LLMSpan } from '@llm/span-labeling/types';
-import { evaluateIntentPreservation } from './dimensions/intentPreservation';
-import { evaluateModelCompliance } from './dimensions/modelCompliance';
-import { evaluateStructuralCompleteness } from './dimensions/structuralCompleteness';
-import { evaluateTechnicalDensity } from './dimensions/technicalDensity';
-import { evaluateWordCountCompliance } from './dimensions/wordCountCompliance';
-import { labelOptimizedSpans } from './integrations/spanLabeling';
-import { normalizeText } from './utils/text';
-import { PromptLintGateService } from '../services/PromptLintGateService';
+import type { AIModelService } from "@services/ai-model/AIModelService";
+import type { LLMSpan } from "@llm/span-labeling/types";
+import { evaluateIntentPreservation } from "./dimensions/intentPreservation";
+import { evaluateModelCompliance } from "./dimensions/modelCompliance";
+import { evaluateStructuralCompleteness } from "./dimensions/structuralCompleteness";
+import { evaluateTechnicalDensity } from "./dimensions/technicalDensity";
+import { evaluateWordCountCompliance } from "./dimensions/wordCountCompliance";
+import { labelOptimizedSpans } from "./integrations/spanLabeling";
+import { normalizeText } from "./utils/text";
+import { PromptLintGateService } from "../services/PromptLintGateService";
 
 export interface OptimizationTestCase {
   id: string;
@@ -15,15 +15,17 @@ export interface OptimizationTestCase {
   requiredElements: string[];
   forbiddenPatterns?: string[];
   targetModel?: string;
-  expectedQualities?: Partial<Record<OptimizationQualityDimension, { min?: number; max?: number }>>;
+  expectedQualities?: Partial<
+    Record<OptimizationQualityDimension, { min?: number; max?: number }>
+  >;
 }
 
 export type OptimizationQualityDimension =
-  | 'intentPreservation'
-  | 'structuralCompleteness'
-  | 'wordCountCompliance'
-  | 'technicalDensity'
-  | 'modelCompliance';
+  | "intentPreservation"
+  | "structuralCompleteness"
+  | "wordCountCompliance"
+  | "technicalDensity"
+  | "modelCompliance";
 
 export interface OptimizationQualityScores {
   intentPreservation: number;
@@ -47,7 +49,10 @@ export class OptimizationQualityEvaluator {
 
   constructor(private readonly ai: AIModelService) {}
 
-  async evaluateCase(testCase: OptimizationTestCase, optimized: string): Promise<OptimizationQualityResult> {
+  async evaluateCase(
+    testCase: OptimizationTestCase,
+    optimized: string,
+  ): Promise<OptimizationQualityResult> {
     const failures: string[] = [];
 
     const intent = await evaluateIntentPreservation(
@@ -55,21 +60,27 @@ export class OptimizationQualityEvaluator {
       testCase.input,
       optimized,
       testCase.requiredElements || [],
-      { strict: true }
+      { strict: true },
     );
 
     if (intent.score < 1.0) {
       failures.push(
-        `Intent preservation failed: missing required elements (${intent.missing.join(', ')})`
+        `Intent preservation failed: missing required elements (${intent.missing.join(", ")})`,
       );
     }
 
     const wordCountCompliance = evaluateWordCountCompliance(optimized);
     const technicalDensity = evaluateTechnicalDensity(optimized);
-    const modelCompliance = evaluateModelCompliance(optimized, testCase.targetModel);
-    const lintResult = this.promptLint.evaluate(optimized, testCase.targetModel);
+    const modelCompliance = evaluateModelCompliance(
+      optimized,
+      testCase.targetModel,
+    );
+    const lintResult = this.promptLint.evaluate(
+      optimized,
+      testCase.targetModel,
+    );
     if (!lintResult.ok) {
-      failures.push(`Prompt lint failed: ${lintResult.errors.join(' | ')}`);
+      failures.push(`Prompt lint failed: ${lintResult.errors.join(" | ")}`);
     }
 
     // Forbidden patterns

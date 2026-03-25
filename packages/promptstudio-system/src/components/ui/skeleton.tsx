@@ -1,31 +1,28 @@
-import * as React from "react"
-import { cva, type VariantProps } from "class-variance-authority"
+import * as React from "react";
+import { cva, type VariantProps } from "class-variance-authority";
 
-import { cn } from "@promptstudio/system/lib/utils"
+import { cn } from "@promptstudio/system/lib/utils";
 
-const skeletonVariants = cva(
-  "animate-pulse rounded-md bg-surface-2",
-  {
-    variants: {
-      variant: {
-        default: "bg-surface-2",
-        subtle: "bg-surface-1",
-        strong: "bg-surface-3",
-      },
-      rounded: {
-        default: "rounded-md",
-        sm: "rounded-sm",
-        lg: "rounded-lg",
-        xl: "rounded-xl",
-        full: "rounded-full",
-      },
+const skeletonVariants = cva("animate-pulse rounded-md bg-surface-2", {
+  variants: {
+    variant: {
+      default: "bg-surface-2",
+      subtle: "bg-surface-1",
+      strong: "bg-surface-3",
     },
-    defaultVariants: {
-      variant: "default",
-      rounded: "default",
+    rounded: {
+      default: "rounded-md",
+      sm: "rounded-sm",
+      lg: "rounded-lg",
+      xl: "rounded-xl",
+      full: "rounded-full",
     },
-  }
-)
+  },
+  defaultVariants: {
+    variant: "default",
+    rounded: "default",
+  },
+});
 
 export interface SkeletonProps
   extends React.HTMLAttributes<HTMLDivElement>,
@@ -39,8 +36,8 @@ const Skeleton = React.forwardRef<HTMLDivElement, SkeletonProps>(
       aria-hidden="true"
       {...props}
     />
-  )
-)
-Skeleton.displayName = "Skeleton"
+  ),
+);
+Skeleton.displayName = "Skeleton";
 
-export { Skeleton, skeletonVariants }
+export { Skeleton, skeletonVariants };

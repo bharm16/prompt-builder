@@ -1,6 +1,6 @@
 /**
  * Utilities Module
- * 
+ *
  * Barrel export for all utility functions.
  * Pure functions with no side effects.
  */
@@ -11,7 +11,7 @@ export {
   mapGlobalRangeToDom,
   surroundRange,
   wrapRangeSegments,
-} from './anchorRanges';
+} from "./anchorRanges";
 
 // DOM utilities - Highlight wrapper management
 export {
@@ -19,73 +19,57 @@ export {
   enhanceWrapperWithMetadata,
   unwrapHighlight,
   logEmptyWrappers,
-} from './domManipulation';
+} from "./domManipulation";
 
 // DOM utilities - Coverage tracking
-export {
-  hasOverlap,
-  addToCoverage,
-} from './coverageTracking';
+export { hasOverlap, addToCoverage } from "./coverageTracking";
 
 // Validation - Category and taxonomy validation
 export {
   validateSpan,
   CATEGORY_CAPS,
   LEGACY_MAPPINGS,
-} from './categoryValidators';
+} from "./categoryValidators";
 
 // Validation - Span structure validation
-export {
-  sanitizeSpans,
-  normalizeSpan,
-} from './spanValidation';
+export { sanitizeSpans, normalizeSpan } from "./spanValidation";
 
 // Validation - Token boundaries
 export {
   isWordBoundary,
   snapSpanToTokenBoundaries,
   rangeOverlaps,
-} from './tokenBoundaries';
+} from "./tokenBoundaries";
 
 // Processing - Business logic for spans
 export {
   findNearbySpans,
   buildSimplifiedSpans,
   prepareSpanContext,
-} from './spanProcessing';
+} from "./spanProcessing";
 
 // Processing - Rendering preparation
 export {
   hasValidOffsets,
   snapSpan,
   processAndSortSpans,
-} from './spanRenderingUtils';
+} from "./spanRenderingUtils";
 
 // Processing - Text matching
 export {
   normalizeText,
   isSubstringMatch,
   validateHighlightText,
-} from './textMatching';
+} from "./textMatching";
 
 // Processing - Highlight format conversion
-export {
-  convertLabeledSpansToHighlights,
-} from './highlightConversion';
+export { convertLabeledSpansToHighlights } from "./highlightConversion";
 
 // Cache utilities - Hashing
-export {
-  hashString,
-} from './hashing';
+export { hashString } from "./hashing";
 
 // Cache utilities - Cache key generation
-export {
-  buildCacheKey,
-} from './cacheKey';
+export { buildCacheKey } from "./cacheKey";
 
 // Cache utilities - Text processing
-export {
-  sanitizeText,
-  serializePolicy,
-} from './textUtils';
-
+export { sanitizeText, serializePolicy } from "./textUtils";

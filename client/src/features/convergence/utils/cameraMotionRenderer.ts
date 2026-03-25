@@ -13,18 +13,18 @@
  * - 6.6: Animate frames directly with requestAnimationFrame (Safari compatibility)
  */
 
-import * as THREE from 'three';
-import { API_CONFIG } from '@/config/api.config';
-import { logger } from '@/services/LoggingService';
-import { sanitizeError } from '@/utils/logging';
-import { safeUrlHost } from '@/utils/url';
+import * as THREE from "three";
+import { API_CONFIG } from "@/config/api.config";
+import { logger } from "@/services/LoggingService";
+import { sanitizeError } from "@/utils/logging";
+import { safeUrlHost } from "@/utils/url";
 import type {
   CameraMotionCategory,
   CameraPath,
   CameraTransform,
   Position3D,
   Rotation3D,
-} from '../types';
+} from "../types";
 
 // ============================================================================
 // Types
@@ -91,8 +91,8 @@ const DEFAULT_WIDTH = 320;
 const DEFAULT_HEIGHT = 180;
 const DEFAULT_FPS = 15;
 const DEFAULT_DISPLACEMENT_SCALE = 0.3;
-const log = logger.child('cameraMotionRenderer');
-const OPERATION = 'renderCameraMotionFrames';
+const log = logger.child("cameraMotionRenderer");
+const OPERATION = "renderCameraMotionFrames";
 const proxiedHostsLogged = new Set<string>();
 
 // ============================================================================
@@ -150,8 +150,12 @@ const fragmentShader = `
  */
 function createScene(
   width: number,
-  height: number
-): { scene: THREE.Scene; camera: THREE.PerspectiveCamera; renderer: THREE.WebGLRenderer } {
+  height: number,
+): {
+  scene: THREE.Scene;
+  camera: THREE.PerspectiveCamera;
+  renderer: THREE.WebGLRenderer;
+} {
   // Create scene
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x000000);
@@ -176,7 +180,6 @@ function createScene(
   return { scene, camera, renderer };
 }
 
-
 // ============================================================================
 // Mesh Creation (Task 22.2)
 // ============================================================================
@@ -196,8 +199,12 @@ function createScene(
 function createDepthDisplacedMesh(
   imageTexture: THREE.Texture,
   depthTexture: THREE.Texture,
-  displacementScale: number
-): { mesh: THREE.Mesh; geometry: THREE.PlaneGeometry; material: THREE.ShaderMaterial } {
+  displacementScale: number,
+): {
+  mesh: THREE.Mesh;
+  geometry: THREE.PlaneGeometry;
+  material: THREE.ShaderMaterial;
+} {
   // Create high-resolution plane geometry for smooth displacement
   // 128x72 segments provides good detail while maintaining performance
   // Cast image to HTMLImageElement to access width/height
@@ -241,7 +248,7 @@ function loadTexture(url: string): Promise<THREE.Texture> {
     const loader = new THREE.TextureLoader();
 
     // Handle CORS for cross-origin images
-    loader.setCrossOrigin('anonymous');
+    loader.setCrossOrigin("anonymous");
 
     loader.load(
       url,
@@ -256,19 +263,19 @@ function loadTexture(url: string): Promise<THREE.Texture> {
       undefined, // Progress callback (not used)
       (error) => {
         reject(new Error(`Failed to load texture from ${url}: ${error}`));
-      }
+      },
     );
   });
 }
 
-const CONVERGENCE_MEDIA_PROXY_PATH = '/motion/media/proxy';
+const CONVERGENCE_MEDIA_PROXY_PATH = "/motion/media/proxy";
 
 const shouldProxyUrl = (url: string): boolean => {
   try {
     const parsed = new URL(url);
     return (
-      parsed.hostname === 'storage.googleapis.com' ||
-      parsed.hostname.endsWith('.storage.googleapis.com')
+      parsed.hostname === "storage.googleapis.com" ||
+      parsed.hostname.endsWith(".storage.googleapis.com")
     );
   } catch {
     return false;
@@ -280,7 +287,7 @@ export const buildProxyUrl = (url: string): string => {
     return url;
   }
 
-  const base = API_CONFIG.baseURL.endsWith('/')
+  const base = API_CONFIG.baseURL.endsWith("/")
     ? API_CONFIG.baseURL.slice(0, -1)
     : API_CONFIG.baseURL;
 
@@ -292,8 +299,8 @@ export const buildProxyUrl = (url: string): string => {
   const host = safeUrlHost(url);
   if (host && !proxiedHostsLogged.has(host)) {
     proxiedHostsLogged.add(host);
-    log.info('Proxying camera motion media URL', {
-      operation: 'buildProxyUrl',
+    log.info("Proxying camera motion media URL", {
+      operation: "buildProxyUrl",
       host,
       proxyPath: CONVERGENCE_MEDIA_PROXY_PATH,
     });
@@ -311,14 +318,14 @@ export const buildProxyUrl = (url: string): string => {
  */
 async function loadTextures(
   imageUrl: string,
-  depthMapUrl: string
+  depthMapUrl: string,
 ): Promise<{ imageTexture: THREE.Texture; depthTexture: THREE.Texture }> {
   const startedAt = Date.now();
   const imageUrlHost = safeUrlHost(imageUrl);
   const depthMapUrlHost = safeUrlHost(depthMapUrl);
 
-  log.debug('Loading camera motion textures', {
-    operation: 'loadTextures',
+  log.debug("Loading camera motion textures", {
+    operation: "loadTextures",
     imageUrlHost,
     depthMapUrlHost,
   });
@@ -329,8 +336,8 @@ async function loadTextures(
       loadTexture(buildProxyUrl(depthMapUrl)),
     ]);
 
-    log.debug('Loaded camera motion textures', {
-      operation: 'loadTextures',
+    log.debug("Loaded camera motion textures", {
+      operation: "loadTextures",
       durationMs: Date.now() - startedAt,
       imageUrlHost,
       depthMapUrlHost,
@@ -340,8 +347,8 @@ async function loadTextures(
   } catch (error) {
     const info = sanitizeError(error);
     const errObj = error instanceof Error ? error : new Error(info.message);
-    log.error('Failed to load camera motion textures', errObj, {
-      operation: 'loadTextures',
+    log.error("Failed to load camera motion textures", errObj, {
+      operation: "loadTextures",
       durationMs: Date.now() - startedAt,
       imageUrlHost,
       depthMapUrlHost,
@@ -351,7 +358,6 @@ async function loadTextures(
     throw errObj;
   }
 }
-
 
 // ============================================================================
 // Interpolation (Task 22.5)
@@ -378,7 +384,11 @@ export function easeInOutCubic(t: number): number {
  * @param t - Progress value from 0 to 1 (will be eased)
  * @returns Interpolated position
  */
-function interpolatePosition(start: Position3D, end: Position3D, t: number): Position3D {
+function interpolatePosition(
+  start: Position3D,
+  end: Position3D,
+  t: number,
+): Position3D {
   const easedT = easeInOutCubic(t);
   return {
     x: start.x + (end.x - start.x) * easedT,
@@ -391,13 +401,15 @@ function interpolatePosition(start: Position3D, end: Position3D, t: number): Pos
  * Default rotation (no rotation) for legacy path compatibility
  */
 const DEFAULT_ROTATION: Rotation3D = { pitch: 0, yaw: 0, roll: 0 };
-const DEFAULT_CATEGORY: CameraMotionCategory = 'static';
+const DEFAULT_CATEGORY: CameraMotionCategory = "static";
 
 /**
  * Checks if a camera path uses the legacy format (position only)
  */
-function isLegacyCameraPath(path: CameraPath | LegacyCameraPath): path is LegacyCameraPath {
-  return !('position' in path.start);
+function isLegacyCameraPath(
+  path: CameraPath | LegacyCameraPath,
+): path is LegacyCameraPath {
+  return !("position" in path.start);
 }
 
 /**
@@ -428,13 +440,18 @@ function normalizeCameraPath(path: CameraPath | LegacyCameraPath): CameraPath {
  */
 function rotationToQuaternion(rotation: Rotation3D): THREE.Quaternion {
   // YXZ order is standard for FPS-style camera controls
-  const euler = new THREE.Euler(rotation.pitch, rotation.yaw, rotation.roll, 'YXZ');
+  const euler = new THREE.Euler(
+    rotation.pitch,
+    rotation.yaw,
+    rotation.roll,
+    "YXZ",
+  );
   return new THREE.Quaternion().setFromEuler(euler);
 }
 
 /**
  * Interpolates between two rotations using quaternion SLERP
- * 
+ *
  * SLERP (Spherical Linear Interpolation) is used instead of linear
  * interpolation of Euler angles to avoid gimbal lock and ensure
  * smooth rotation along the shortest arc.
@@ -444,17 +461,21 @@ function rotationToQuaternion(rotation: Rotation3D): THREE.Quaternion {
  * @param t - Progress value from 0 to 1 (will be eased)
  * @returns THREE.Quaternion representing the interpolated rotation
  */
-function interpolateRotation(start: Rotation3D, end: Rotation3D, t: number): THREE.Quaternion {
+function interpolateRotation(
+  start: Rotation3D,
+  end: Rotation3D,
+  t: number,
+): THREE.Quaternion {
   const easedT = easeInOutCubic(t);
-  
+
   const startQ = rotationToQuaternion(start);
   const endQ = rotationToQuaternion(end);
-  
+
   // Use slerpQuaternions for smooth rotation interpolation
   // This is the modern API - the static THREE.Quaternion.slerp() is deprecated
   const result = new THREE.Quaternion();
   result.slerpQuaternions(startQ, endQ, easedT);
-  
+
   return result;
 }
 
@@ -469,7 +490,7 @@ function interpolateRotation(start: Rotation3D, end: Rotation3D, t: number): THR
 function interpolateTransform(
   start: CameraTransform,
   end: CameraTransform,
-  t: number
+  t: number,
 ): { position: Position3D; quaternion: THREE.Quaternion } {
   return {
     position: interpolatePosition(start.position, end.position, t),
@@ -503,13 +524,14 @@ export async function renderCameraMotionFrames(
   imageUrl: string,
   depthMapUrl: string,
   cameraPath: CameraPath | LegacyCameraPath,
-  options?: RenderOptions
+  options?: RenderOptions,
 ): Promise<string[]> {
   const startedAt = Date.now();
   const width = options?.width ?? DEFAULT_WIDTH;
   const height = options?.height ?? DEFAULT_HEIGHT;
   const fps = options?.fps ?? DEFAULT_FPS;
-  const displacementScale = options?.displacementScale ?? DEFAULT_DISPLACEMENT_SCALE;
+  const displacementScale =
+    options?.displacementScale ?? DEFAULT_DISPLACEMENT_SCALE;
   const imageUrlHost = safeUrlHost(imageUrl);
   const depthMapUrlHost = safeUrlHost(depthMapUrl);
 
@@ -519,11 +541,11 @@ export async function renderCameraMotionFrames(
   // Calculate total frames based on duration and fps
   const totalFrames = Math.ceil(normalizedPath.duration * fps);
   const renderId =
-    typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+    typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
       ? crypto.randomUUID()
       : `${normalizedPath.id}-${startedAt}`;
 
-  log.debug('Starting camera motion frame render', {
+  log.debug("Starting camera motion frame render", {
     operation: OPERATION,
     renderId,
     cameraMotionId: normalizedPath.id,
@@ -542,7 +564,10 @@ export async function renderCameraMotionFrames(
 
   try {
     // Load textures
-    const { imageTexture, depthTexture } = await loadTextures(imageUrl, depthMapUrl);
+    const { imageTexture, depthTexture } = await loadTextures(
+      imageUrl,
+      depthMapUrl,
+    );
 
     // Create scene
     const { scene, camera, renderer } = createScene(width, height);
@@ -551,7 +576,7 @@ export async function renderCameraMotionFrames(
     const { mesh, geometry, material } = createDepthDisplacedMesh(
       imageTexture,
       depthTexture,
-      displacementScale
+      displacementScale,
     );
 
     scene.add(mesh);
@@ -579,7 +604,7 @@ export async function renderCameraMotionFrames(
       const transform = interpolateTransform(
         normalizedPath.start,
         normalizedPath.end,
-        progress
+        progress,
       );
 
       // Update camera position
@@ -587,7 +612,7 @@ export async function renderCameraMotionFrames(
       camera.position.set(
         transform.position.x,
         transform.position.y,
-        1.5 + transform.position.z
+        1.5 + transform.position.z,
       );
 
       // Apply rotation via quaternion (avoids gimbal lock)
@@ -597,11 +622,11 @@ export async function renderCameraMotionFrames(
       renderer.render(scene, camera);
 
       // Capture frame as data URL
-      const frameDataUrl = renderer.domElement.toDataURL('image/jpeg', 0.85);
+      const frameDataUrl = renderer.domElement.toDataURL("image/jpeg", 0.85);
       frames.push(frameDataUrl);
     }
 
-    log.info('Completed camera motion frame render', {
+    log.info("Completed camera motion frame render", {
       operation: OPERATION,
       renderId,
       cameraMotionId: normalizedPath.id,
@@ -616,7 +641,7 @@ export async function renderCameraMotionFrames(
   } catch (error) {
     const info = sanitizeError(error);
     const errObj = error instanceof Error ? error : new Error(info.message);
-    log.error('Camera motion frame render failed', errObj, {
+    log.error("Camera motion frame render failed", errObj, {
       operation: OPERATION,
       renderId,
       cameraMotionId: normalizedPath.id,
@@ -636,7 +661,6 @@ export async function renderCameraMotionFrames(
     }
   }
 }
-
 
 // ============================================================================
 // Frame Animation (Task 22.6)
@@ -658,7 +682,7 @@ export async function renderCameraMotionFrames(
 export function createFrameAnimator(
   frames: string[],
   fps: number,
-  onFrame: (frameDataUrl: string, frameIndex: number) => void
+  onFrame: (frameDataUrl: string, frameIndex: number) => void,
 ): FrameAnimatorControls {
   let animationFrameId: number | null = null;
   let isAnimating = false;

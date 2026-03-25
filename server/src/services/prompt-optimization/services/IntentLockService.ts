@@ -1,102 +1,113 @@
-import type { ShotPlan } from '../types';
+import type { ShotPlan } from "../types";
 
 const STOPWORDS = new Set([
-  'a',
-  'an',
-  'the',
-  'and',
-  'or',
-  'to',
-  'of',
-  'in',
-  'on',
-  'at',
-  'with',
-  'for',
-  'from',
-  'into',
-  'onto',
-  'by',
-  'as',
-  'is',
-  'are',
-  'was',
-  'were',
-  'be',
-  'being',
-  'been',
-  'this',
-  'that',
-  'these',
-  'those',
+  "a",
+  "an",
+  "the",
+  "and",
+  "or",
+  "to",
+  "of",
+  "in",
+  "on",
+  "at",
+  "with",
+  "for",
+  "from",
+  "into",
+  "onto",
+  "by",
+  "as",
+  "is",
+  "are",
+  "was",
+  "were",
+  "be",
+  "being",
+  "been",
+  "this",
+  "that",
+  "these",
+  "those",
 ]);
 
 const VERB_HINTS = new Set([
-  'drive',
-  'drives',
-  'driving',
-  'run',
-  'runs',
-  'running',
-  'walk',
-  'walks',
-  'walking',
-  'jump',
-  'jumps',
-  'jumping',
-  'dance',
-  'dances',
-  'dancing',
-  'sit',
-  'sits',
-  'sitting',
-  'stand',
-  'stands',
-  'standing',
-  'fly',
-  'flies',
-  'flying',
-  'swim',
-  'swims',
-  'swimming',
-  'talk',
-  'talks',
-  'talking',
-  'look',
-  'looks',
-  'looking',
-  'hold',
-  'holds',
-  'holding',
-  'chase',
-  'chases',
-  'chasing',
+  "drive",
+  "drives",
+  "driving",
+  "run",
+  "runs",
+  "running",
+  "walk",
+  "walks",
+  "walking",
+  "jump",
+  "jumps",
+  "jumping",
+  "dance",
+  "dances",
+  "dancing",
+  "sit",
+  "sits",
+  "sitting",
+  "stand",
+  "stands",
+  "standing",
+  "fly",
+  "flies",
+  "flying",
+  "swim",
+  "swims",
+  "swimming",
+  "talk",
+  "talks",
+  "talking",
+  "look",
+  "looks",
+  "looking",
+  "hold",
+  "holds",
+  "holding",
+  "chase",
+  "chases",
+  "chasing",
 ]);
 
 const PREPOSITIONS = new Set([
-  'in',
-  'on',
-  'at',
-  'with',
-  'through',
-  'across',
-  'toward',
-  'towards',
-  'into',
-  'onto',
-  'near',
-  'beside',
-  'around',
-  'behind',
-  'before',
-  'after',
-  'under',
-  'over',
-  'past',
+  "in",
+  "on",
+  "at",
+  "with",
+  "through",
+  "across",
+  "toward",
+  "towards",
+  "into",
+  "onto",
+  "near",
+  "beside",
+  "around",
+  "behind",
+  "before",
+  "after",
+  "under",
+  "over",
+  "past",
 ]);
 
-const DOWNGRADE_OBJECT_MODIFIERS = new Set(['toy', 'fake', 'miniature', 'model', 'pretend']);
-const ACTION_QUALIFIER_ROOTS = new Set(['pretend', 'simulate', 'mimic', 'imagine']);
+const DOWNGRADE_OBJECT_MODIFIERS = new Set([
+  "toy",
+  "fake",
+  "miniature",
+  "model",
+  "pretend",
+]);
+const ACTION_QUALIFIER_ROOTS = new Set([
+  "pretend",
+  "simulate",
+  "mimic",
+  "imagine",
+]);
 
 export interface RequiredIntent {
   subject: string | null;
@@ -111,55 +122,57 @@ export interface IntentLockResult {
 }
 
 function tokenize(text: string): string[] {
-  return text
-    .toLowerCase()
-    .match(/[a-z0-9']+/g)
-    ?.filter(Boolean) ?? [];
+  return (
+    text
+      .toLowerCase()
+      .match(/[a-z0-9']+/g)
+      ?.filter(Boolean) ?? []
+  );
 }
 
 function normalizeWord(word: string): string {
   const w = word.toLowerCase();
-  if (w.length > 4 && w.endsWith('ing')) {
+  if (w.length > 4 && w.endsWith("ing")) {
     const stem = w.slice(0, -3);
-    return stem.endsWith('v') ? `${stem}e` : stem;
+    return stem.endsWith("v") ? `${stem}e` : stem;
   }
-  if (w.length > 3 && w.endsWith('ed')) {
+  if (w.length > 3 && w.endsWith("ed")) {
     const stem = w.slice(0, -2);
-    return stem.endsWith('v') ? `${stem}e` : stem;
+    return stem.endsWith("v") ? `${stem}e` : stem;
   }
-  if (w.length > 3 && w.endsWith('es')) return w.slice(0, -2);
-  if (w.length > 2 && w.endsWith('s')) return w.slice(0, -1);
+  if (w.length > 3 && w.endsWith("es")) return w.slice(0, -2);
+  if (w.length > 2 && w.endsWith("s")) return w.slice(0, -1);
   return w;
 }
 
 function splitSentences(text: string): string[] {
   const sentences: string[] = [];
-  let current = '';
+  let current = "";
 
   for (let i = 0; i < text.length; i += 1) {
     const char = text[i];
     current += char;
 
-    if (char !== '.' && char !== '!' && char !== '?') {
+    if (char !== "." && char !== "!" && char !== "?") {
       continue;
     }
 
     let j = i + 1;
-    while (j < text.length && text[j] === ' ') {
+    while (j < text.length && text[j] === " ") {
       j += 1;
     }
     const nextChar = text[j];
-    const isBoundary = !nextChar || (nextChar >= 'A' && nextChar <= 'Z');
+    const isBoundary = !nextChar || (nextChar >= "A" && nextChar <= "Z");
     if (!isBoundary) {
       continue;
     }
 
-    if (char === '.' || char === '!' || char === '?') {
+    if (char === "." || char === "!" || char === "?") {
       const trimmed = current.trim();
       if (trimmed.length > 0) {
         sentences.push(trimmed);
       }
-      current = '';
+      current = "";
     }
   }
 
@@ -177,14 +190,14 @@ function looksLikeVerb(token: string): boolean {
   }
 
   return (
-    (token.endsWith('ing') && token.length > 4) ||
-    (token.endsWith('ed') && token.length > 3) ||
-    (token.endsWith('es') && token.length > 3)
+    (token.endsWith("ing") && token.length > 4) ||
+    (token.endsWith("ed") && token.length > 3) ||
+    (token.endsWith("es") && token.length > 3)
   );
 }
 
 function cleanPhrase(value: string | null | undefined): string | null {
-  if (typeof value !== 'string') {
+  if (typeof value !== "string") {
     return null;
   }
 
@@ -192,8 +205,8 @@ function cleanPhrase(value: string | null | undefined): string | null {
     .trim()
     .split(/\s+/)
     .filter(Boolean)
-    .join(' ')
-    .replace(/^[,.\s]+|[,.\s]+$/g, '');
+    .join(" ")
+    .replace(/^[,.\s]+|[,.\s]+$/g, "");
 
   return cleaned.length > 0 ? cleaned : null;
 }
@@ -224,7 +237,7 @@ function extractSubjectFromPrompt(prompt: string): string | null {
     return null;
   }
 
-  return candidateTokens.slice(0, 3).join(' ');
+  return candidateTokens.slice(0, 3).join(" ");
 }
 
 function extractActionFromPrompt(prompt: string): string | null {
@@ -252,11 +265,11 @@ function extractActionFromPrompt(prompt: string): string | null {
   }
 
   const cleaned = trimTrailingConnectors(actionTokens);
-  return cleaned.length > 0 ? cleaned.join(' ') : null;
+  return cleaned.length > 0 ? cleaned.join(" ") : null;
 }
 
 function trimTrailingConnectors(tokens: string[]): string[] {
-  const trailing = new Set([...PREPOSITIONS, 'a', 'an', 'the']);
+  const trailing = new Set([...PREPOSITIONS, "a", "an", "the"]);
   const output = [...tokens];
 
   while (output.length > 1) {
@@ -311,20 +324,23 @@ function extractActionObjectTokens(requiredAction: string): string[] {
 
   return trimTrailingConnectors(tokens.slice(verbIndex + 1))
     .map(normalizeWord)
-    .filter((token) => token.length > 0 && !STOPWORDS.has(token) && !looksLikeVerb(token));
+    .filter(
+      (token) =>
+        token.length > 0 && !STOPWORDS.has(token) && !looksLikeVerb(token),
+    );
 }
 
 function hasQualifiedAction(tokens: string[], actionRoot: string): boolean {
   for (let i = 0; i < tokens.length - 2; i += 1) {
-    const t0 = normalizeWord(tokens[i] ?? '');
-    const t1 = normalizeWord(tokens[i + 1] ?? '');
-    const t2 = normalizeWord(tokens[i + 2] ?? '');
+    const t0 = normalizeWord(tokens[i] ?? "");
+    const t1 = normalizeWord(tokens[i + 1] ?? "");
+    const t2 = normalizeWord(tokens[i + 2] ?? "");
 
     if (!ACTION_QUALIFIER_ROOTS.has(t0)) {
       continue;
     }
 
-    if (t1 === 'to' && t2 === actionRoot) {
+    if (t1 === "to" && t2 === actionRoot) {
       return true;
     }
   }
@@ -344,7 +360,10 @@ function hasModifierNearObject(tokens: string[], objectToken: string): boolean {
     const lookbackStart = Math.max(0, i - 2);
     for (let j = lookbackStart; j < i; j += 1) {
       const candidateModifier = normalizedTokens[j];
-      if (candidateModifier && DOWNGRADE_OBJECT_MODIFIERS.has(candidateModifier)) {
+      if (
+        candidateModifier &&
+        DOWNGRADE_OBJECT_MODIFIERS.has(candidateModifier)
+      ) {
         return true;
       }
     }
@@ -353,19 +372,26 @@ function hasModifierNearObject(tokens: string[], objectToken: string): boolean {
   return false;
 }
 
-function preservesActionSemantics(requiredAction: string | null, originalPrompt: string, candidatePrompt: string): boolean {
+function preservesActionSemantics(
+  requiredAction: string | null,
+  originalPrompt: string,
+  candidatePrompt: string,
+): boolean {
   if (!requiredAction) {
     return true;
   }
 
   const requiredTokens = requiredActionTokens(requiredAction);
-  const actionRoot = requiredTokens[0] ?? '';
+  const actionRoot = requiredTokens[0] ?? "";
   const originalTokens = tokenize(originalPrompt);
   const candidateTokens = tokenize(candidatePrompt);
 
   if (actionRoot.length > 0) {
     const originalHasQualified = hasQualifiedAction(originalTokens, actionRoot);
-    const candidateHasQualified = hasQualifiedAction(candidateTokens, actionRoot);
+    const candidateHasQualified = hasQualifiedAction(
+      candidateTokens,
+      actionRoot,
+    );
     if (!originalHasQualified && candidateHasQualified) {
       return false;
     }
@@ -373,8 +399,14 @@ function preservesActionSemantics(requiredAction: string | null, originalPrompt:
 
   const objectTokens = extractActionObjectTokens(requiredAction);
   for (const objectToken of objectTokens) {
-    const originalHasDowngrade = hasModifierNearObject(originalTokens, objectToken);
-    const candidateHasDowngrade = hasModifierNearObject(candidateTokens, objectToken);
+    const originalHasDowngrade = hasModifierNearObject(
+      originalTokens,
+      objectToken,
+    );
+    const candidateHasDowngrade = hasModifierNearObject(
+      candidateTokens,
+      objectToken,
+    );
 
     if (!originalHasDowngrade && candidateHasDowngrade) {
       return false;
@@ -400,7 +432,7 @@ function isUsableContextSentence(sentence: string): boolean {
     return false;
   }
 
-  const firstToken = tokens[0] ?? '';
+  const firstToken = tokens[0] ?? "";
   if (!/[a-z]/.test(firstToken)) {
     return false;
   }
@@ -416,7 +448,9 @@ function applyUniversalRepair(params: {
   shotPlan: ShotPlan | null;
 }): string {
   const requiredClause = cleanPhrase(
-    [params.requiredSubject ?? '', params.requiredAction ?? ''].join(' ').trim()
+    [params.requiredSubject ?? "", params.requiredAction ?? ""]
+      .join(" ")
+      .trim(),
   );
 
   const candidateSentences = splitSentences(params.candidatePrompt);
@@ -437,7 +471,13 @@ function applyUniversalRepair(params: {
       continue;
     }
 
-    if (!preservesActionSemantics(params.requiredAction, params.originalPrompt, normalizedSentence)) {
+    if (
+      !preservesActionSemantics(
+        params.requiredAction,
+        params.originalPrompt,
+        normalizedSentence,
+      )
+    ) {
       continue;
     }
 
@@ -455,7 +495,11 @@ function applyUniversalRepair(params: {
 
   for (const sentence of keptContext) {
     const withPunctuation = /[.!?]$/.test(sentence) ? sentence : `${sentence}.`;
-    if (rebuilt.some((existing) => existing.toLowerCase() === withPunctuation.toLowerCase())) {
+    if (
+      rebuilt.some(
+        (existing) => existing.toLowerCase() === withPunctuation.toLowerCase(),
+      )
+    ) {
       continue;
     }
     rebuilt.push(withPunctuation);
@@ -471,8 +515,15 @@ function applyUniversalRepair(params: {
       if (!normalized) {
         continue;
       }
-      const withPunctuation = /[.!?]$/.test(normalized) ? normalized : `${normalized}.`;
-      if (rebuilt.some((existing) => existing.toLowerCase() === withPunctuation.toLowerCase())) {
+      const withPunctuation = /[.!?]$/.test(normalized)
+        ? normalized
+        : `${normalized}.`;
+      if (
+        rebuilt.some(
+          (existing) =>
+            existing.toLowerCase() === withPunctuation.toLowerCase(),
+        )
+      ) {
         continue;
       }
       rebuilt.push(withPunctuation);
@@ -482,7 +533,7 @@ function applyUniversalRepair(params: {
     }
   }
 
-  const output = rebuilt.join(' ').replace(/\s+/g, ' ').trim();
+  const output = rebuilt.join(" ").replace(/\s+/g, " ").trim();
   return output.length > 0 ? output : params.candidatePrompt.trim();
 }
 
@@ -502,7 +553,7 @@ function buildShotPlanContextSentences(shotPlan: ShotPlan): string[] {
     if (shotType) cameraParts.push(shotType);
     if (cameraMove) cameraParts.push(`with ${cameraMove}`);
     if (cameraAngle) cameraParts.push(`at ${cameraAngle}`);
-    sentences.push(`Camera uses ${cameraParts.join(' ')}`);
+    sentences.push(`Camera uses ${cameraParts.join(" ")}`);
   }
 
   const lighting = cleanPhrase(shotPlan.lighting);
@@ -519,7 +570,10 @@ function buildShotPlanContextSentences(shotPlan: ShotPlan): string[] {
 }
 
 export class IntentLockService {
-  extractRequiredIntent(prompt: string, shotPlan: ShotPlan | null): RequiredIntent {
+  extractRequiredIntent(
+    prompt: string,
+    shotPlan: ShotPlan | null,
+  ): RequiredIntent {
     const parsedSubject = extractSubjectFromPrompt(prompt);
     const parsedAction = extractActionFromPrompt(prompt);
 
@@ -534,12 +588,23 @@ export class IntentLockService {
     optimizedPrompt: string;
     shotPlan: ShotPlan | null;
   }): IntentLockResult {
-    const required = this.extractRequiredIntent(params.originalPrompt, params.shotPlan);
+    const required = this.extractRequiredIntent(
+      params.originalPrompt,
+      params.shotPlan,
+    );
     const currentPrompt = params.optimizedPrompt.trim();
 
-    const subjectOk = required.subject ? hasSubject(required.subject, currentPrompt) : true;
-    const actionOk = required.action ? hasAction(required.action, currentPrompt) : true;
-    const semanticsOk = preservesActionSemantics(required.action, params.originalPrompt, currentPrompt);
+    const subjectOk = required.subject
+      ? hasSubject(required.subject, currentPrompt)
+      : true;
+    const actionOk = required.action
+      ? hasAction(required.action, currentPrompt)
+      : true;
+    const semanticsOk = preservesActionSemantics(
+      required.action,
+      params.originalPrompt,
+      currentPrompt,
+    );
 
     if (subjectOk && actionOk && semanticsOk) {
       return {
@@ -558,12 +623,16 @@ export class IntentLockService {
       shotPlan: params.shotPlan,
     });
 
-    const repairedSubjectOk = required.subject ? hasSubject(required.subject, repairedPrompt) : true;
-    const repairedActionOk = required.action ? hasAction(required.action, repairedPrompt) : true;
+    const repairedSubjectOk = required.subject
+      ? hasSubject(required.subject, repairedPrompt)
+      : true;
+    const repairedActionOk = required.action
+      ? hasAction(required.action, repairedPrompt)
+      : true;
     const repairedSemanticsOk = preservesActionSemantics(
       required.action,
       params.originalPrompt,
-      repairedPrompt
+      repairedPrompt,
     );
 
     if (repairedSubjectOk && repairedActionOk && repairedSemanticsOk) {
@@ -575,7 +644,9 @@ export class IntentLockService {
       };
     }
 
-    throw new Error('Intent lock failed: optimized prompt does not preserve required subject/action semantics');
+    throw new Error(
+      "Intent lock failed: optimized prompt does not preserve required subject/action semantics",
+    );
   }
 
   /**
@@ -588,12 +659,23 @@ export class IntentLockService {
     optimizedPrompt: string;
     shotPlan: ShotPlan | null;
   }): { passed: boolean; required: RequiredIntent } {
-    const required = this.extractRequiredIntent(params.originalPrompt, params.shotPlan);
+    const required = this.extractRequiredIntent(
+      params.originalPrompt,
+      params.shotPlan,
+    );
     const currentPrompt = params.optimizedPrompt.trim();
 
-    const subjectOk = required.subject ? hasSubject(required.subject, currentPrompt) : true;
-    const actionOk = required.action ? hasAction(required.action, currentPrompt) : true;
-    const semanticsOk = preservesActionSemantics(required.action, params.originalPrompt, currentPrompt);
+    const subjectOk = required.subject
+      ? hasSubject(required.subject, currentPrompt)
+      : true;
+    const actionOk = required.action
+      ? hasAction(required.action, currentPrompt)
+      : true;
+    const semanticsOk = preservesActionSemantics(
+      required.action,
+      params.originalPrompt,
+      currentPrompt,
+    );
 
     return {
       passed: subjectOk && actionOk && semanticsOk,

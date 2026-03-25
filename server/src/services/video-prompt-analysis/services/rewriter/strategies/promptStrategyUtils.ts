@@ -1,5 +1,5 @@
-import type { RewriteConstraints } from '../../../strategies/types';
-import type { PromptBuildContext } from './types';
+import type { RewriteConstraints } from "../../../strategies/types";
+import type { PromptBuildContext } from "./types";
 
 const formatConstraintBlock = (constraints: RewriteConstraints): string => {
   const sections: string[] = [];
@@ -7,26 +7,34 @@ const formatConstraintBlock = (constraints: RewriteConstraints): string => {
 
   if (mandatory && mandatory.length > 0) {
     sections.push(
-      `MANDATORY CONSTRAINTS (must appear, paraphrased if needed):\n- ${mandatory.join('\n- ')}`
+      `MANDATORY CONSTRAINTS (must appear, paraphrased if needed):\n- ${mandatory.join("\n- ")}`,
     );
   }
 
   if (suggested && suggested.length > 0) {
-    sections.push(`SUGGESTED CONSTRAINTS (include when natural):\n- ${suggested.join('\n- ')}`);
+    sections.push(
+      `SUGGESTED CONSTRAINTS (include when natural):\n- ${suggested.join("\n- ")}`,
+    );
   }
 
   if (avoid && avoid.length > 0) {
-    sections.push(`AVOID (do not include these words/phrases):\n- ${avoid.join('\n- ')}`);
+    sections.push(
+      `AVOID (do not include these words/phrases):\n- ${avoid.join("\n- ")}`,
+    );
   }
 
   if (sections.length === 0) {
-    return '';
+    return "";
   }
 
-  return `\nCONSTRAINTS:\n${sections.join('\n')}\n`;
+  return `\nCONSTRAINTS:\n${sections.join("\n")}\n`;
 };
 
-export const buildBaseHeader = ({ ir, modelId, constraints }: PromptBuildContext): string => {
+export const buildBaseHeader = ({
+  ir,
+  modelId,
+  constraints,
+}: PromptBuildContext): string => {
   const irJson = JSON.stringify(ir, null, 2);
   const constraintBlock = formatConstraintBlock(constraints);
 

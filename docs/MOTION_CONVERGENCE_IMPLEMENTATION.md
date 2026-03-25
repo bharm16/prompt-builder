@@ -7,6 +7,7 @@
 The `/create` route remains but now shows the same workspace as Studio with motion controls enabled.
 
 **User flow (Create mode only):**
+
 1. User navigates to `/create`
 2. Upload keyframe in sidebar
 3. "Set Camera Motion" button appears
@@ -59,52 +60,54 @@ The `/create` route remains but now shows the same workspace as Studio with moti
 ```typescript
 /**
  * Motion API Routes
- * 
+ *
  * Lightweight endpoints for camera motion workflow.
  * Reuses existing depth estimation service.
  */
 
-import { Router, Request, Response, NextFunction } from 'express';
-import { z } from 'zod';
-import { logger } from '@infrastructure/Logger';
-import { createDepthEstimationService } from '../services/convergence/depth';
-import { createStorageService } from '../services/convergence/storage';
-import { CAMERA_PATHS } from '../services/convergence/constants';
+import { Router, Request, Response, NextFunction } from "express";
+import { z } from "zod";
+import { logger } from "@infrastructure/Logger";
+import { createDepthEstimationService } from "../services/convergence/depth";
+import { createStorageService } from "../services/convergence/storage";
+import { CAMERA_PATHS } from "../services/convergence/constants";
 
 const router = Router();
-const log = logger.child('motion-routes');
+const log = logger.child("motion-routes");
 
 const DepthEstimationRequestSchema = z.object({
-  imageUrl: z.string().url('Invalid image URL'),
+  imageUrl: z.string().url("Invalid image URL"),
 });
 
 /**
  * POST /api/motion/depth
- * 
+ *
  * Estimates depth from an image and returns camera path options.
  */
 router.post(
-  '/depth',
+  "/depth",
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const parsed = DepthEstimationRequestSchema.safeParse(req.body);
       if (!parsed.success) {
         res.status(400).json({
           success: false,
-          error: 'Invalid request',
+          error: "Invalid request",
           details: parsed.error.errors,
         });
         return;
       }
 
       const { imageUrl } = parsed.data;
-      log.info('Depth estimation requested', { imageUrl: imageUrl.slice(0, 100) });
+      log.info("Depth estimation requested", {
+        imageUrl: imageUrl.slice(0, 100),
+      });
 
       const storageService = createStorageService();
       const depthService = createDepthEstimationService({ storageService });
 
       if (!depthService.isAvailable()) {
-        log.warn('Depth estimation service not available');
+        log.warn("Depth estimation service not available");
         res.json({
           success: true,
           data: {
@@ -127,8 +130,8 @@ router.post(
           },
         });
       } catch (depthError) {
-        log.warn('Depth estimation failed, returning fallback mode', {
-          error: depthError instanceof Error ? depthError.message : 'Unknown',
+        log.warn("Depth estimation failed, returning fallback mode", {
+          error: depthError instanceof Error ? depthError.message : "Unknown",
         });
         res.json({
           success: true,
@@ -142,7 +145,7 @@ router.post(
     } catch (error) {
       next(error);
     }
-  }
+  },
 );
 
 export default router;
@@ -151,13 +154,15 @@ export default router;
 ### MODIFY: `server/src/routes/index.ts`
 
 Add near other route imports:
+
 ```typescript
-import motionRoutes from './motion.routes';
+import motionRoutes from "./motion.routes";
 ```
 
 Add near other route registrations:
+
 ```typescript
-router.use('/motion', motionRoutes);
+router.use("/motion", motionRoutes);
 ```
 
 ---
@@ -171,7 +176,7 @@ router.use('/motion', motionRoutes);
  * Motion API Client
  */
 
-import type { CameraPath } from '@/features/convergence/types';
+import type { CameraPath } from "@/features/convergence/types";
 
 export interface DepthEstimationResponse {
   depthMapUrl: string | null;
@@ -185,10 +190,12 @@ interface ApiResponse<T> {
   error?: string;
 }
 
-export async function estimateDepth(imageUrl: string): Promise<DepthEstimationResponse> {
-  const response = await fetch('/api/motion/depth', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+export async function estimateDepth(
+  imageUrl: string,
+): Promise<DepthEstimationResponse> {
+  const response = await fetch("/api/motion/depth", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ imageUrl }),
   });
 
@@ -198,7 +205,7 @@ export async function estimateDepth(imageUrl: string): Promise<DepthEstimationRe
 
   const result: ApiResponse<DepthEstimationResponse> = await response.json();
   if (!result.success || !result.data) {
-    throw new Error(result.error || 'Depth estimation failed');
+    throw new Error(result.error || "Depth estimation failed");
   }
 
   return result.data;
@@ -216,9 +223,9 @@ export async function estimateDepth(imageUrl: string): Promise<DepthEstimationRe
  * useCameraMotion Hook
  */
 
-import { useCallback, useReducer } from 'react';
-import type { CameraPath } from '@/features/convergence/types';
-import { estimateDepth } from '@/api/motionApi';
+import { useCallback, useReducer } from "react";
+import type { CameraPath } from "@/features/convergence/types";
+import { estimateDepth } from "@/api/motionApi";
 
 interface State {
   isEstimatingDepth: boolean;
@@ -239,23 +246,28 @@ const initialState: State = {
   fallbackMode: false,
   hasEstimated: false,
   selectedCameraMotion: null,
-  subjectMotion: '',
+  subjectMotion: "",
 };
 
 type Action =
-  | { type: 'ESTIMATE_START' }
-  | { type: 'ESTIMATE_SUCCESS'; depthMapUrl: string | null; cameraPaths: CameraPath[]; fallbackMode: boolean }
-  | { type: 'ESTIMATE_ERROR'; error: string }
-  | { type: 'SELECT'; cameraPath: CameraPath }
-  | { type: 'CLEAR' }
-  | { type: 'SET_SUBJECT_MOTION'; motion: string }
-  | { type: 'RESET' };
+  | { type: "ESTIMATE_START" }
+  | {
+      type: "ESTIMATE_SUCCESS";
+      depthMapUrl: string | null;
+      cameraPaths: CameraPath[];
+      fallbackMode: boolean;
+    }
+  | { type: "ESTIMATE_ERROR"; error: string }
+  | { type: "SELECT"; cameraPath: CameraPath }
+  | { type: "CLEAR" }
+  | { type: "SET_SUBJECT_MOTION"; motion: string }
+  | { type: "RESET" };
 
 function reducer(state: State, action: Action): State {
   switch (action.type) {
-    case 'ESTIMATE_START':
+    case "ESTIMATE_START":
       return { ...state, isEstimatingDepth: true, error: null };
-    case 'ESTIMATE_SUCCESS':
+    case "ESTIMATE_SUCCESS":
       return {
         ...state,
         isEstimatingDepth: false,
@@ -265,15 +277,21 @@ function reducer(state: State, action: Action): State {
         hasEstimated: true,
         error: null,
       };
-    case 'ESTIMATE_ERROR':
-      return { ...state, isEstimatingDepth: false, error: action.error, fallbackMode: true, hasEstimated: true };
-    case 'SELECT':
+    case "ESTIMATE_ERROR":
+      return {
+        ...state,
+        isEstimatingDepth: false,
+        error: action.error,
+        fallbackMode: true,
+        hasEstimated: true,
+      };
+    case "SELECT":
       return { ...state, selectedCameraMotion: action.cameraPath };
-    case 'CLEAR':
+    case "CLEAR":
       return { ...state, selectedCameraMotion: null };
-    case 'SET_SUBJECT_MOTION':
+    case "SET_SUBJECT_MOTION":
       return { ...state, subjectMotion: action.motion };
-    case 'RESET':
+    case "RESET":
       return initialState;
     default:
       return state;
@@ -284,19 +302,20 @@ export function useCameraMotion() {
   const [state, dispatch] = useReducer(reducer, initialState);
 
   const handleEstimateDepth = useCallback(async (imageUrl: string) => {
-    dispatch({ type: 'ESTIMATE_START' });
+    dispatch({ type: "ESTIMATE_START" });
     try {
       const result = await estimateDepth(imageUrl);
       dispatch({
-        type: 'ESTIMATE_SUCCESS',
+        type: "ESTIMATE_SUCCESS",
         depthMapUrl: result.depthMapUrl,
         cameraPaths: result.cameraPaths,
         fallbackMode: result.fallbackMode,
       });
     } catch (error) {
       dispatch({
-        type: 'ESTIMATE_ERROR',
-        error: error instanceof Error ? error.message : 'Depth estimation failed',
+        type: "ESTIMATE_ERROR",
+        error:
+          error instanceof Error ? error.message : "Depth estimation failed",
       });
     }
   }, []);
@@ -305,10 +324,16 @@ export function useCameraMotion() {
     state,
     actions: {
       estimateDepth: handleEstimateDepth,
-      selectCameraMotion: useCallback((cameraPath: CameraPath) => dispatch({ type: 'SELECT', cameraPath }), []),
-      clearSelection: useCallback(() => dispatch({ type: 'CLEAR' }), []),
-      setSubjectMotion: useCallback((motion: string) => dispatch({ type: 'SET_SUBJECT_MOTION', motion }), []),
-      reset: useCallback(() => dispatch({ type: 'RESET' }), []),
+      selectCameraMotion: useCallback(
+        (cameraPath: CameraPath) => dispatch({ type: "SELECT", cameraPath }),
+        [],
+      ),
+      clearSelection: useCallback(() => dispatch({ type: "CLEAR" }), []),
+      setSubjectMotion: useCallback(
+        (motion: string) => dispatch({ type: "SET_SUBJECT_MOTION", motion }),
+        [],
+      ),
+      reset: useCallback(() => dispatch({ type: "RESET" }), []),
     },
   };
 }
@@ -432,11 +457,13 @@ export function CameraMotionModal({
 ### MODIFY: `client/src/features/prompt-optimizer/context/GenerationControlsContext.tsx`
 
 Add imports at top:
+
 ```typescript
-import type { CameraPath } from '@/features/convergence/types';
+import type { CameraPath } from "@/features/convergence/types";
 ```
 
 Add to `GenerationControlsContextValue` interface:
+
 ```typescript
   cameraMotion: CameraPath | null;
   subjectMotion: string;
@@ -445,12 +472,14 @@ Add to `GenerationControlsContextValue` interface:
 ```
 
 Add state in provider:
+
 ```typescript
 const [cameraMotion, setCameraMotion] = useState<CameraPath | null>(null);
-const [subjectMotion, setSubjectMotion] = useState('');
+const [subjectMotion, setSubjectMotion] = useState("");
 ```
 
 Add to provider value:
+
 ```typescript
 cameraMotion,
 subjectMotion,
@@ -465,13 +494,15 @@ setSubjectMotion,
 ### MODIFY: `client/src/components/ToolSidebar/components/panels/GenerationControlsPanel.tsx`
 
 **Add imports:**
+
 ```typescript
-import { useState } from 'react'; // ensure useState is imported
-import { CameraMotionModal } from '@/components/modals/CameraMotionModal';
-import type { CameraPath } from '@/features/convergence/types';
+import { useState } from "react"; // ensure useState is imported
+import { CameraMotionModal } from "@/components/modals/CameraMotionModal";
+import type { CameraPath } from "@/features/convergence/types";
 ```
 
 **Add props to interface (around line 25):**
+
 ```typescript
   showMotionControls?: boolean;
   cameraMotion?: CameraPath | null;
@@ -481,6 +512,7 @@ import type { CameraPath } from '@/features/convergence/types';
 ```
 
 **Add to destructured props:**
+
 ```typescript
   showMotionControls = false,
   cameraMotion = null,
@@ -490,74 +522,83 @@ import type { CameraPath } from '@/features/convergence/types';
 ```
 
 **Add state (inside component, near other useState):**
+
 ```typescript
 const [showCameraMotionModal, setShowCameraMotionModal] = useState(false);
 ```
 
 **Add motion controls section after keyframe slots (around line 270, after the keyframe slot mapping in the video tab):**
-```tsx
-{/* Motion Controls - Create mode only */}
-{showMotionControls && keyframes.length > 0 && (
-  <div className="px-3 pt-3 space-y-3">
-    <div>
-      <label className="block text-xs font-medium text-[#7C839C] mb-1.5">
-        Camera Motion
-      </label>
-      <button
-        type="button"
-        onClick={() => setShowCameraMotionModal(true)}
-        className={cn(
-          'w-full px-3 py-2 rounded-lg text-sm text-left transition-colors',
-          'border bg-[#1B1E23] hover:bg-[#1E1F25]',
-          cameraMotion ? 'border-[#2C22FA]/50' : 'border-[#29292D]'
-        )}
-      >
-        {cameraMotion ? (
-          <span className="flex items-center gap-2">
-            <span className="text-[#2C22FA]">✓</span>
-            <span className="text-white">{cameraMotion.label}</span>
-          </span>
-        ) : (
-          <span className="text-[#7C839C]">Set camera motion...</span>
-        )}
-      </button>
-    </div>
 
-    <div>
-      <label className="block text-xs font-medium text-[#7C839C] mb-1.5">
-        Subject Motion <span className="text-[#7C839C]/60">(optional)</span>
-      </label>
-      <textarea
-        value={subjectMotion}
-        onChange={(e) => onSubjectMotionChange?.(e.target.value)}
-        placeholder="Describe how your subject moves..."
-        rows={2}
-        className={cn(
-          'w-full px-3 py-2 rounded-lg text-sm resize-none',
-          'bg-[#1B1E23] border border-[#29292D]',
-          'placeholder:text-[#7C839C]/60 text-white',
-          'focus:outline-none focus:ring-2 focus:ring-[#2C22FA]/50 focus:border-[#2C22FA]'
-        )}
-      />
+```tsx
+{
+  /* Motion Controls - Create mode only */
+}
+{
+  showMotionControls && keyframes.length > 0 && (
+    <div className="px-3 pt-3 space-y-3">
+      <div>
+        <label className="block text-xs font-medium text-[#7C839C] mb-1.5">
+          Camera Motion
+        </label>
+        <button
+          type="button"
+          onClick={() => setShowCameraMotionModal(true)}
+          className={cn(
+            "w-full px-3 py-2 rounded-lg text-sm text-left transition-colors",
+            "border bg-[#1B1E23] hover:bg-[#1E1F25]",
+            cameraMotion ? "border-[#2C22FA]/50" : "border-[#29292D]",
+          )}
+        >
+          {cameraMotion ? (
+            <span className="flex items-center gap-2">
+              <span className="text-[#2C22FA]">✓</span>
+              <span className="text-white">{cameraMotion.label}</span>
+            </span>
+          ) : (
+            <span className="text-[#7C839C]">Set camera motion...</span>
+          )}
+        </button>
+      </div>
+
+      <div>
+        <label className="block text-xs font-medium text-[#7C839C] mb-1.5">
+          Subject Motion <span className="text-[#7C839C]/60">(optional)</span>
+        </label>
+        <textarea
+          value={subjectMotion}
+          onChange={(e) => onSubjectMotionChange?.(e.target.value)}
+          placeholder="Describe how your subject moves..."
+          rows={2}
+          className={cn(
+            "w-full px-3 py-2 rounded-lg text-sm resize-none",
+            "bg-[#1B1E23] border border-[#29292D]",
+            "placeholder:text-[#7C839C]/60 text-white",
+            "focus:outline-none focus:ring-2 focus:ring-[#2C22FA]/50 focus:border-[#2C22FA]",
+          )}
+        />
+      </div>
     </div>
-  </div>
-)}
+  );
+}
 ```
 
 **Add modal at end of component (before final `</div>`):**
+
 ```tsx
-{showMotionControls && keyframes[0] && (
-  <CameraMotionModal
-    isOpen={showCameraMotionModal}
-    onClose={() => setShowCameraMotionModal(false)}
-    imageUrl={keyframes[0].url}
-    onSelect={(path) => {
-      onCameraMotionChange?.(path);
-      setShowCameraMotionModal(false);
-    }}
-    initialSelection={cameraMotion}
-  />
-)}
+{
+  showMotionControls && keyframes[0] && (
+    <CameraMotionModal
+      isOpen={showCameraMotionModal}
+      onClose={() => setShowCameraMotionModal(false)}
+      imageUrl={keyframes[0].url}
+      onSelect={(path) => {
+        onCameraMotionChange?.(path);
+        setShowCameraMotionModal(false);
+      }}
+      initialSelection={cameraMotion}
+    />
+  );
+}
 ```
 
 ---
@@ -567,6 +608,7 @@ const [showCameraMotionModal, setShowCameraMotionModal] = useState(false);
 ### MODIFY: `client/src/components/ToolSidebar/types.ts`
 
 Add to `ToolSidebarProps`:
+
 ```typescript
 import type { CameraPath } from '@/features/convergence/types';
 
@@ -581,20 +623,20 @@ onSubjectMotionChange?: (motion: string) => void;
 ### MODIFY: `client/src/components/ToolSidebar/ToolSidebar.tsx`
 
 Destructure new props and pass to GenerationControlsPanel:
+
 ```typescript
 // Destructure:
-showMotionControls,
-cameraMotion,
-onCameraMotionChange,
-subjectMotion,
-onSubjectMotionChange,
-
-// Pass to GenerationControlsPanel:
-showMotionControls={showMotionControls}
-cameraMotion={cameraMotion}
-onCameraMotionChange={onCameraMotionChange}
-subjectMotion={subjectMotion}
-onSubjectMotionChange={onSubjectMotionChange}
+(showMotionControls,
+  cameraMotion,
+  onCameraMotionChange,
+  subjectMotion,
+  onSubjectMotionChange,
+  // Pass to GenerationControlsPanel:
+  (showMotionControls = { showMotionControls }));
+cameraMotion = { cameraMotion };
+onCameraMotionChange = { onCameraMotionChange };
+subjectMotion = { subjectMotion };
+onSubjectMotionChange = { onSubjectMotionChange };
 ```
 
 ### MODIFY: `client/src/components/navigation/AppShell/types.ts`
@@ -608,19 +650,22 @@ Destructure and pass to ToolSidebar.
 ### MODIFY: `client/src/features/prompt-optimizer/PromptOptimizerContainer/PromptOptimizerWorkspace.tsx`
 
 **Add mode prop to interface:**
+
 ```typescript
 interface PromptOptimizerWorkspaceProps {
   convergenceHandoff?: ConvergenceHandoff | null;
-  mode?: 'studio' | 'create';
+  mode?: "studio" | "create";
 }
 ```
 
 **Accept mode in component:**
+
 ```typescript
 function PromptOptimizerWorkspace({ convergenceHandoff, mode = 'studio' }: PromptOptimizerWorkspaceProps): React.ReactElement {
 ```
 
 **In PromptOptimizerContent, get motion state from context:**
+
 ```typescript
 const {
   controls: generationControls,
@@ -636,6 +681,7 @@ const {
 ```
 
 **Pass to AppShell:**
+
 ```typescript
 showMotionControls={mode === 'create'}
 cameraMotion={cameraMotion}
@@ -647,6 +693,7 @@ onSubjectMotionChange={setSubjectMotion}
 ### MODIFY: `client/src/components/layout/MainWorkspace.tsx`
 
 Pass mode to PromptOptimizerWorkspace:
+
 ```typescript
 <PromptOptimizerWorkspace
   convergenceHandoff={activeTool === 'studio' ? convergenceHandoff : null}
@@ -655,6 +702,7 @@ Pass mode to PromptOptimizerWorkspace:
 ```
 
 Remove CreateWorkspaceShell and ConvergenceFlow - both routes now use PromptOptimizerWorkspace:
+
 ```typescript
 export function MainWorkspace(): React.ReactElement {
   const { activeTool, convergenceHandoff } = useAppShell();
@@ -675,6 +723,7 @@ export function MainWorkspace(): React.ReactElement {
 ## Phase 8: Delete Convergence Wizard
 
 ### DELETE directories:
+
 ```
 client/src/features/convergence/components/ConvergenceFlow/
 client/src/features/convergence/components/ConvergencePreview/
@@ -691,12 +740,14 @@ server/src/services/convergence/prompt-builder/
 ```
 
 ### DELETE files:
+
 ```
 server/src/routes/convergence.routes.ts
 server/src/services/convergence/ConvergenceService.ts
 ```
 
 ### KEEP (reused):
+
 ```
 client/src/features/convergence/components/CameraMotionPicker/
 client/src/features/convergence/components/SubjectMotionInput/
@@ -715,54 +766,59 @@ server/src/services/convergence/credits/
 ### MODIFY: `server/src/routes/index.ts`
 
 Remove:
+
 ```typescript
-import convergenceRoutes from './convergence.routes';
-router.use('/convergence', convergenceRoutes);
+import convergenceRoutes from "./convergence.routes";
+router.use("/convergence", convergenceRoutes);
 ```
 
 ### MODIFY: `client/src/features/convergence/components/index.ts`
 
 Update to only export kept components:
+
 ```typescript
-export { CameraMotionPicker, CameraMotionPickerWithErrorBoundary } from './CameraMotionPicker';
-export { SubjectMotionInput } from './SubjectMotionInput';
-export * from './shared';
+export {
+  CameraMotionPicker,
+  CameraMotionPickerWithErrorBoundary,
+} from "./CameraMotionPicker";
+export { SubjectMotionInput } from "./SubjectMotionInput";
+export * from "./shared";
 ```
 
 ---
 
 ## File Summary
 
-| Action | File |
-|--------|------|
-| CREATE | `server/src/routes/motion.routes.ts` |
-| CREATE | `client/src/api/motionApi.ts` |
-| CREATE | `client/src/hooks/useCameraMotion.ts` |
-| CREATE | `client/src/components/modals/CameraMotionModal.tsx` |
-| MODIFY | `server/src/routes/index.ts` |
-| MODIFY | `client/src/features/prompt-optimizer/context/GenerationControlsContext.tsx` |
-| MODIFY | `client/src/components/ToolSidebar/types.ts` |
-| MODIFY | `client/src/components/ToolSidebar/ToolSidebar.tsx` |
-| MODIFY | `client/src/components/ToolSidebar/components/panels/GenerationControlsPanel.tsx` |
-| MODIFY | `client/src/components/navigation/AppShell/types.ts` |
-| MODIFY | `client/src/components/navigation/AppShell/AppShell.tsx` |
+| Action | File                                                                                         |
+| ------ | -------------------------------------------------------------------------------------------- |
+| CREATE | `server/src/routes/motion.routes.ts`                                                         |
+| CREATE | `client/src/api/motionApi.ts`                                                                |
+| CREATE | `client/src/hooks/useCameraMotion.ts`                                                        |
+| CREATE | `client/src/components/modals/CameraMotionModal.tsx`                                         |
+| MODIFY | `server/src/routes/index.ts`                                                                 |
+| MODIFY | `client/src/features/prompt-optimizer/context/GenerationControlsContext.tsx`                 |
+| MODIFY | `client/src/components/ToolSidebar/types.ts`                                                 |
+| MODIFY | `client/src/components/ToolSidebar/ToolSidebar.tsx`                                          |
+| MODIFY | `client/src/components/ToolSidebar/components/panels/GenerationControlsPanel.tsx`            |
+| MODIFY | `client/src/components/navigation/AppShell/types.ts`                                         |
+| MODIFY | `client/src/components/navigation/AppShell/AppShell.tsx`                                     |
 | MODIFY | `client/src/features/prompt-optimizer/PromptOptimizerContainer/PromptOptimizerWorkspace.tsx` |
-| MODIFY | `client/src/components/layout/MainWorkspace.tsx` |
-| MODIFY | `client/src/features/convergence/components/index.ts` |
-| DELETE | `client/src/features/convergence/components/ConvergenceFlow/` |
-| DELETE | `client/src/features/convergence/components/ConvergencePreview/` |
-| DELETE | `client/src/features/convergence/components/DimensionSelector/` |
-| DELETE | `client/src/features/convergence/components/DirectionFork/` |
-| DELETE | `client/src/features/convergence/components/FinalFrameConfirmation/` |
-| DELETE | `client/src/features/convergence/components/IntentInput/` |
-| DELETE | `client/src/features/convergence/components/ProgressIndicator/` |
-| DELETE | `client/src/features/convergence/components/StartingPointSelector/` |
-| DELETE | `client/src/features/convergence/components/modals/` |
-| DELETE | `client/src/features/convergence/api/` |
-| DELETE | `server/src/routes/convergence.routes.ts` |
-| DELETE | `server/src/services/convergence/ConvergenceService.ts` |
-| DELETE | `server/src/services/convergence/session/` |
-| DELETE | `server/src/services/convergence/prompt-builder/` |
+| MODIFY | `client/src/components/layout/MainWorkspace.tsx`                                             |
+| MODIFY | `client/src/features/convergence/components/index.ts`                                        |
+| DELETE | `client/src/features/convergence/components/ConvergenceFlow/`                                |
+| DELETE | `client/src/features/convergence/components/ConvergencePreview/`                             |
+| DELETE | `client/src/features/convergence/components/DimensionSelector/`                              |
+| DELETE | `client/src/features/convergence/components/DirectionFork/`                                  |
+| DELETE | `client/src/features/convergence/components/FinalFrameConfirmation/`                         |
+| DELETE | `client/src/features/convergence/components/IntentInput/`                                    |
+| DELETE | `client/src/features/convergence/components/ProgressIndicator/`                              |
+| DELETE | `client/src/features/convergence/components/StartingPointSelector/`                          |
+| DELETE | `client/src/features/convergence/components/modals/`                                         |
+| DELETE | `client/src/features/convergence/api/`                                                       |
+| DELETE | `server/src/routes/convergence.routes.ts`                                                    |
+| DELETE | `server/src/services/convergence/ConvergenceService.ts`                                      |
+| DELETE | `server/src/services/convergence/session/`                                                   |
+| DELETE | `server/src/services/convergence/prompt-builder/`                                            |
 
 ---
 

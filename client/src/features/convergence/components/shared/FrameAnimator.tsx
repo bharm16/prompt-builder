@@ -9,8 +9,11 @@
  * - 6.6: Animate frames directly with requestAnimationFrame (Safari compatibility)
  */
 
-import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { createFrameAnimator, type FrameAnimatorControls } from '@/features/convergence/utils/cameraMotionRenderer';
+import React, { useEffect, useRef, useState, useCallback } from "react";
+import {
+  createFrameAnimator,
+  type FrameAnimatorControls,
+} from "@/features/convergence/utils/cameraMotionRenderer";
 
 // ============================================================================
 // Types
@@ -53,14 +56,16 @@ export const FrameAnimator: React.FC<FrameAnimatorProps> = ({
   fps = 15,
   autoPlay = true,
   loop = true,
-  className = '',
-  alt = 'Camera motion preview',
+  className = "",
+  alt = "Camera motion preview",
   onStart,
   onStop,
   onLoopComplete,
 }) => {
   // Current frame being displayed
-  const [currentFrame, setCurrentFrame] = useState<string | null>(frames[0] || null);
+  const [currentFrame, setCurrentFrame] = useState<string | null>(
+    frames[0] || null,
+  );
 
   // Track if animation is playing
   const [isPlaying, setIsPlaying] = useState(false);
@@ -93,7 +98,7 @@ export const FrameAnimator: React.FC<FrameAnimatorProps> = ({
 
       frameIndexRef.current = frameIndex;
     },
-    [totalFrames, loop, onLoopComplete, onStop]
+    [totalFrames, loop, onLoopComplete, onStop],
   );
 
   /**
@@ -185,7 +190,7 @@ export const FrameAnimator: React.FC<FrameAnimatorProps> = ({
  */
 export function useFrameAnimator(
   frames: string[],
-  fps: number = 15
+  fps: number = 15,
 ): {
   currentFrame: string | null;
   isPlaying: boolean;
@@ -193,7 +198,9 @@ export function useFrameAnimator(
   stop: () => void;
   toggle: () => void;
 } {
-  const [currentFrame, setCurrentFrame] = useState<string | null>(frames[0] || null);
+  const [currentFrame, setCurrentFrame] = useState<string | null>(
+    frames[0] || null,
+  );
   const [isPlaying, setIsPlaying] = useState(false);
   const animatorRef = useRef<FrameAnimatorControls | null>(null);
 

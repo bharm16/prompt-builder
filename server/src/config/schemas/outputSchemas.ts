@@ -1,12 +1,12 @@
 /**
  * LLM Output Schemas
- * 
+ *
  * Zod schemas for LLM response expectations.
  * These are referenced by services when enforcing structured outputs and in
  * unit tests to keep fixtures in sync with production payloads.
  */
 
-import { z } from 'zod';
+import { z } from "zod";
 
 export const compatibilityOutputSchema = z.looseObject({
   score: z.number(),
@@ -20,7 +20,7 @@ export const variationsOutputSchema = z.array(
     name: z.string(),
     description: z.string(),
     elements: z.record(z.string(), z.unknown()),
-  })
+  }),
 );
 
 export const parseConceptOutputSchema = z.looseObject({
@@ -40,7 +40,7 @@ export const conflictsOutputSchema = z.array(
     elements: z.record(z.string(), z.unknown()),
     severity: z.string(),
     message: z.string(),
-  })
+  }),
 );
 
 export const technicalParamsOutputSchema = z.looseObject({
@@ -66,13 +66,13 @@ export const alternativePhrasingsOutputSchema = z.array(
   z.looseObject({
     text: z.string(),
     tone: z.string(),
-  })
+  }),
 );
 
 export const coherenceCheckOutputSchema = z.object({
   conflicts: z.array(
     z.object({
-      severity: z.enum(['low', 'medium', 'high', 'suggestion']).optional(),
+      severity: z.enum(["low", "medium", "high", "suggestion"]).optional(),
       message: z.string(),
       reasoning: z.string(),
       involvedSpanIds: z.array(z.string()).optional(),
@@ -80,22 +80,24 @@ export const coherenceCheckOutputSchema = z.object({
         z.object({
           title: z.string(),
           rationale: z.string(),
-          edits: z.array(
-            z.object({
-              type: z.enum(['replaceSpanText', 'removeSpan']),
-              spanId: z.string().optional(),
-              replacementText: z.string().optional(),
-              anchorQuote: z.string().optional(),
-            })
-          ).min(1),
+          edits: z
+            .array(
+              z.object({
+                type: z.enum(["replaceSpanText", "removeSpan"]),
+                spanId: z.string().optional(),
+                replacementText: z.string().optional(),
+                anchorQuote: z.string().optional(),
+              }),
+            )
+            .min(1),
           confidence: z.number().min(0).max(1).optional(),
-        })
+        }),
       ),
-    })
+    }),
   ),
   harmonizations: z.array(
     z.object({
-      severity: z.enum(['low', 'medium', 'high', 'suggestion']).optional(),
+      severity: z.enum(["low", "medium", "high", "suggestion"]).optional(),
       message: z.string(),
       reasoning: z.string(),
       involvedSpanIds: z.array(z.string()).optional(),
@@ -103,17 +105,19 @@ export const coherenceCheckOutputSchema = z.object({
         z.object({
           title: z.string(),
           rationale: z.string(),
-          edits: z.array(
-            z.object({
-              type: z.enum(['replaceSpanText', 'removeSpan']),
-              spanId: z.string().optional(),
-              replacementText: z.string().optional(),
-              anchorQuote: z.string().optional(),
-            })
-          ).min(1),
+          edits: z
+            .array(
+              z.object({
+                type: z.enum(["replaceSpanText", "removeSpan"]),
+                spanId: z.string().optional(),
+                replacementText: z.string().optional(),
+                anchorQuote: z.string().optional(),
+              }),
+            )
+            .min(1),
           confidence: z.number().min(0).max(1).optional(),
-        })
+        }),
       ),
-    })
+    }),
   ),
 });

@@ -7,44 +7,44 @@ import type {
   Suggestion,
   VideoConstraints,
   VideoService,
-} from '../services/types.js';
+} from "../services/types.js";
 
-export type GenerationMode = 'enumerated' | 'templated' | 'guided_llm';
+export type GenerationMode = "enumerated" | "templated" | "guided_llm";
 
 export type GrammarKind =
-  | 'adjective_phrase'
-  | 'adverb_phrase'
-  | 'noun_phrase'
-  | 'technical_phrase'
-  | 'time_phrase'
-  | 'verb_phrase'
-  | 'freeform';
+  | "adjective_phrase"
+  | "adverb_phrase"
+  | "noun_phrase"
+  | "technical_phrase"
+  | "time_phrase"
+  | "verb_phrase"
+  | "freeform";
 
 export type SemanticFamily =
-  | 'action'
-  | 'audio'
-  | 'camera_angle'
-  | 'camera_focus'
-  | 'camera_lens'
-  | 'camera_movement'
-  | 'environment_context'
-  | 'environment_location'
-  | 'environment_weather'
-  | 'lighting_direction'
-  | 'lighting_quality'
-  | 'lighting_source'
-  | 'lighting_time_of_day'
-  | 'shot_type'
-  | 'style_aesthetic'
-  | 'style_color_grade'
-  | 'style_film_stock'
-  | 'subject_appearance'
-  | 'subject_identity'
-  | 'technical_aspect_ratio'
-  | 'technical_duration'
-  | 'technical_frame_rate'
-  | 'technical_resolution'
-  | 'visual_abstract';
+  | "action"
+  | "audio"
+  | "camera_angle"
+  | "camera_focus"
+  | "camera_lens"
+  | "camera_movement"
+  | "environment_context"
+  | "environment_location"
+  | "environment_weather"
+  | "lighting_direction"
+  | "lighting_quality"
+  | "lighting_source"
+  | "lighting_time_of_day"
+  | "shot_type"
+  | "style_aesthetic"
+  | "style_color_grade"
+  | "style_film_stock"
+  | "subject_appearance"
+  | "subject_identity"
+  | "technical_aspect_ratio"
+  | "technical_duration"
+  | "technical_frame_rate"
+  | "technical_resolution"
+  | "visual_abstract";
 
 export interface SlotGrammar {
   kind: GrammarKind;
@@ -150,7 +150,7 @@ export interface CandidateEvaluation {
 }
 
 export interface EnhancementV2DebugPayload {
-  engineVersion: 'v2';
+  engineVersion: "v2";
   policyVersion: string;
   categoryId: string;
   mode: GenerationMode;

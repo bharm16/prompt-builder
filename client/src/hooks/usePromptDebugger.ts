@@ -1,12 +1,14 @@
-import { useState, useCallback } from 'react';
-import { promptDebugger } from '../utils/promptDebugger';
-import { logger } from '../services/LoggingService';
-import { fetchHighlightSuggestions } from './usePromptDebuggerApi';
-import { buildHighlightSuggestionPayload } from './usePromptDebuggerUtils';
-import type { PromptDebuggerState, Highlight } from './types';
+import { useState, useCallback } from "react";
+import { promptDebugger } from "../utils/promptDebugger";
+import { logger } from "../services/LoggingService";
+import { fetchHighlightSuggestions } from "./usePromptDebuggerApi";
+import { buildHighlightSuggestionPayload } from "./usePromptDebuggerUtils";
+import type { PromptDebuggerState, Highlight } from "./types";
 
 interface UsePromptDebuggerResult {
-  capturePromptData: () => ReturnType<typeof promptDebugger.captureFullPromptData>;
+  capturePromptData: () => ReturnType<
+    typeof promptDebugger.captureFullPromptData
+  >;
   exportToFile: () => void;
   exportAllCaptures: () => void;
   isCapturing: boolean;
@@ -14,7 +16,9 @@ interface UsePromptDebuggerResult {
   debugger: typeof promptDebugger;
 }
 
-export function usePromptDebugger(state: PromptDebuggerState): UsePromptDebuggerResult {
+export function usePromptDebugger(
+  state: PromptDebuggerState,
+): UsePromptDebuggerResult {
   const [isCapturing, setIsCapturing] = useState(false);
 
   /**
@@ -24,38 +28,42 @@ export function usePromptDebugger(state: PromptDebuggerState): UsePromptDebugger
     async (highlight: Highlight): Promise<string[]> => {
       const startTime = performance.now();
 
-      logger.debug('Fetching suggestions for highlight', {
-        operation: 'fetchSuggestionsForHighlight',
+      logger.debug("Fetching suggestions for highlight", {
+        operation: "fetchSuggestionsForHighlight",
         highlightText: highlight.text.substring(0, 50),
         highlightCategory: highlight.category,
       });
-      logger.startTimer('fetchSuggestionsForHighlight');
+      logger.startTimer("fetchSuggestionsForHighlight");
 
       try {
         const payload = buildHighlightSuggestionPayload(state, highlight);
         const suggestions = await fetchHighlightSuggestions(payload);
-        const duration = logger.endTimer('fetchSuggestionsForHighlight');
+        const duration = logger.endTimer("fetchSuggestionsForHighlight");
 
-        logger.info('Suggestions fetched successfully', {
-          operation: 'fetchSuggestionsForHighlight',
+        logger.info("Suggestions fetched successfully", {
+          operation: "fetchSuggestionsForHighlight",
           suggestionCount: suggestions.length,
           duration,
         });
-        
+
         return suggestions;
       } catch (error) {
-        logger.endTimer('fetchSuggestionsForHighlight');
-        logger.error('Error fetching suggestions for highlight', error as Error, {
-          hook: 'usePromptDebugger',
-          operation: 'fetchSuggestionsForHighlight',
-          highlightText: highlight.text,
-          highlightCategory: highlight.category,
-          duration: Math.round(performance.now() - startTime),
-        });
+        logger.endTimer("fetchSuggestionsForHighlight");
+        logger.error(
+          "Error fetching suggestions for highlight",
+          error as Error,
+          {
+            hook: "usePromptDebugger",
+            operation: "fetchSuggestionsForHighlight",
+            highlightText: highlight.text,
+            highlightCategory: highlight.category,
+            duration: Math.round(performance.now() - startTime),
+          },
+        );
         throw error;
       }
     },
-    [state]
+    [state],
   );
 
   /**
@@ -65,31 +73,34 @@ export function usePromptDebugger(state: PromptDebuggerState): UsePromptDebugger
     const startTime = performance.now();
     setIsCapturing(true);
 
-    logger.debug('Starting prompt data capture', {
-      operation: 'capturePromptData',
+    logger.debug("Starting prompt data capture", {
+      operation: "capturePromptData",
       highlightCount: state.highlights?.length || 0,
     });
-    logger.startTimer('capturePromptData');
+    logger.startTimer("capturePromptData");
 
     try {
-      const capture = await promptDebugger.captureFullPromptData(state, fetchSuggestionsForHighlight);
+      const capture = await promptDebugger.captureFullPromptData(
+        state,
+        fetchSuggestionsForHighlight,
+      );
 
       // Automatically print report to console
       promptDebugger.printReport(capture);
 
-      const duration = logger.endTimer('capturePromptData');
-      logger.info('Prompt data captured successfully', {
-        operation: 'capturePromptData',
+      const duration = logger.endTimer("capturePromptData");
+      logger.info("Prompt data captured successfully", {
+        operation: "capturePromptData",
         duration,
         captureSize: JSON.stringify(capture).length,
       });
 
       return capture;
     } catch (error) {
-      logger.endTimer('capturePromptData');
-      logger.error('Error capturing prompt data', error as Error, {
-        hook: 'usePromptDebugger',
-        operation: 'capturePromptData',
+      logger.endTimer("capturePromptData");
+      logger.error("Error capturing prompt data", error as Error, {
+        hook: "usePromptDebugger",
+        operation: "capturePromptData",
         duration: Math.round(performance.now() - startTime),
       });
       throw error;

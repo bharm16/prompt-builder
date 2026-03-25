@@ -129,7 +129,7 @@ Central lint gate:
   - `kling-26`: 40-80
   - `wan-2.2`: 30-60
   - no entries for `runway-gen45`, `luma-ray3`, or `veo-3`
-  (`server/src/services/prompt-optimization/services/PromptLintGateService.ts:8-13`).
+    (`server/src/services/prompt-optimization/services/PromptLintGateService.ts:8-13`).
 
 Model `doValidate()` warnings:
 
@@ -182,13 +182,13 @@ Concrete Runway example:
   - `fluid motion` = 2 words
   - `consistent geometry` = 2 words
   - total mandatory trigger load = 7 words
-  (`server/src/services/video-prompt-analysis/strategies/RunwayStrategy.ts:127-133`, `server/src/services/video-prompt-analysis/strategies/RunwayStrategy.ts:254-258`).
+    (`server/src/services/video-prompt-analysis/strategies/RunwayStrategy.ts:127-133`, `server/src/services/video-prompt-analysis/strategies/RunwayStrategy.ts:254-258`).
 - It can then add up to 3 cinematographic triggers. A common “person outdoors / daylight / filmic” case adds:
   - `shallow depth of field` = 4 words
   - `anamorphic lens flare` = 3 words
   - `film grain` = 2 words
   - extra suggested load = 9 words
-  (`server/src/services/video-prompt-analysis/strategies/RunwayStrategy.ts:260-287`, `server/src/services/video-prompt-analysis/strategies/RunwayStrategy.ts:546-589`).
+    (`server/src/services/video-prompt-analysis/strategies/RunwayStrategy.ts:260-287`, `server/src/services/video-prompt-analysis/strategies/RunwayStrategy.ts:546-589`).
 - That means Runway can append about 16 words after Stage 2 rewrite.
 - But `PromptLintGateService` has no `runway-gen45` entry, so Runway outputs are not clamped at the final lint gate (`server/src/services/prompt-optimization/services/PromptLintGateService.ts:8-13`, `server/src/services/prompt-optimization/services/PromptLintGateService.ts:100-104`).
 

@@ -1,32 +1,38 @@
-import React from 'react';
-import { describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import type { Generation, GenerationsPanelProps } from '@features/generations/types';
-import { CanvasWorkspace } from '../CanvasWorkspace';
+import React from "react";
+import { describe, expect, it, vi } from "vitest";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import type {
+  Generation,
+  GenerationsPanelProps,
+} from "@features/generations/types";
+import { CanvasWorkspace } from "../CanvasWorkspace";
 
-vi.mock('@features/generation-controls/context/GenerationControlsStore', () => ({
-  useGenerationControlsStoreActions: () => ({
-    setSelectedModel: vi.fn(),
-    setVideoTier: vi.fn(),
-    setCameraMotion: vi.fn(),
+vi.mock(
+  "@features/generation-controls/context/GenerationControlsStore",
+  () => ({
+    useGenerationControlsStoreActions: () => ({
+      setSelectedModel: vi.fn(),
+      setVideoTier: vi.fn(),
+      setCameraMotion: vi.fn(),
+    }),
+    useGenerationControlsStoreState: () => ({
+      domain: {
+        generationParams: { duration_s: 5 },
+        startFrame: null,
+        selectedModel: "sora-2",
+        videoTier: "render",
+        cameraMotion: null,
+      },
+    }),
   }),
-  useGenerationControlsStoreState: () => ({
-    domain: {
-      generationParams: { duration_s: 5 },
-      startFrame: null,
-      selectedModel: 'sora-2',
-      videoTier: 'render',
-      cameraMotion: null,
-    },
-  }),
-}));
+);
 
-vi.mock('@/features/prompt-optimizer/context/PromptStateContext', () => ({
+vi.mock("@/features/prompt-optimizer/context/PromptStateContext", () => ({
   useOptionalPromptHighlights: () => null,
 }));
 
-vi.mock('@/features/prompt-optimizer/context/WorkspaceSessionContext', () => ({
+vi.mock("@/features/prompt-optimizer/context/WorkspaceSessionContext", () => ({
   useWorkspaceSession: () => ({
     hasActiveContinuityShot: false,
     currentShot: null,
@@ -34,50 +40,54 @@ vi.mock('@/features/prompt-optimizer/context/WorkspaceSessionContext', () => ({
   }),
 }));
 
-vi.mock('@features/generations', () => ({
+vi.mock("@features/generations", () => ({
   useGenerationsRuntime: () => ({
     heroGeneration: null,
     generations: [],
   }),
 }));
 
-vi.mock('@/components/ToolSidebar/context', () => ({
+vi.mock("@/components/ToolSidebar/context", () => ({
   useSidebarGenerationDomain: () => null,
 }));
 
 vi.mock(
-  '@/components/ToolSidebar/components/panels/GenerationControlsPanel/hooks/useModelSelectionRecommendation',
+  "@/components/ToolSidebar/components/panels/GenerationControlsPanel/hooks/useModelSelectionRecommendation",
   () => ({
     useModelSelectionRecommendation: () => ({
-      recommendationMode: 't2v',
+      recommendationMode: "t2v",
       modelRecommendation: null,
       recommendedModelId: undefined,
       efficientModelId: undefined,
-      renderModelOptions: [{ id: 'sora-2', label: 'Sora' }],
-      renderModelId: 'sora-2',
+      renderModelOptions: [{ id: "sora-2", label: "Sora" }],
+      renderModelId: "sora-2",
       recommendationAgeMs: null,
     }),
-  })
+  }),
 );
 
-vi.mock('../components/CanvasTopBar', () => ({
+vi.mock("../components/CanvasTopBar", () => ({
   CanvasTopBar: () => <div data-testid="canvas-top-bar" />,
 }));
 
-vi.mock('../components/NewSessionView', () => ({
+vi.mock("../components/NewSessionView", () => ({
   NewSessionView: () => <div data-testid="new-session-view" />,
 }));
 
-vi.mock('../components/CanvasPromptBar', () => ({
+vi.mock("../components/CanvasPromptBar", () => ({
   CanvasPromptBar: ({
     onEnhance,
     layoutMode,
   }: {
     onEnhance?: () => void;
-    layoutMode?: 'empty' | 'active';
+    layoutMode?: "empty" | "active";
   }) => (
     <div data-testid="canvas-prompt-bar" data-layout-mode={layoutMode}>
-      <button type="button" data-testid="canvas-prompt-bar-enhance" onClick={() => onEnhance?.()}>
+      <button
+        type="button"
+        data-testid="canvas-prompt-bar-enhance"
+        onClick={() => onEnhance?.()}
+      >
         Enhance
       </button>
       <div role="textbox" aria-label="Optimized prompt" />
@@ -85,31 +95,31 @@ vi.mock('../components/CanvasPromptBar', () => ({
   ),
 }));
 
-vi.mock('../components/ModelCornerSelector', () => ({
+vi.mock("../components/ModelCornerSelector", () => ({
   ModelCornerSelector: () => <div data-testid="model-corner-selector" />,
 }));
 
-vi.mock('../components/CanvasHeroViewer', () => ({
+vi.mock("../components/CanvasHeroViewer", () => ({
   CanvasHeroViewer: () => null,
 }));
 
-vi.mock('@/features/prompt-optimizer/components/GalleryPanel', () => ({
+vi.mock("@/features/prompt-optimizer/components/GalleryPanel", () => ({
   GalleryPanel: () => null,
 }));
 
-vi.mock('@/features/prompt-optimizer/components/GenerationPopover', () => ({
+vi.mock("@/features/prompt-optimizer/components/GenerationPopover", () => ({
   GenerationPopover: () => null,
 }));
 
-vi.mock('@/components/modals/CameraMotionModal', () => ({
+vi.mock("@/components/modals/CameraMotionModal", () => ({
   CameraMotionModal: () => null,
 }));
 
 const buildProps = (): React.ComponentProps<typeof CanvasWorkspace> => ({
   generationsPanelProps: {
-    prompt: 'baby driving a car',
+    prompt: "baby driving a car",
     versions: [],
-    promptVersionId: '',
+    promptVersionId: "",
   } as unknown as GenerationsPanelProps,
   copied: false,
   canUndo: false,
@@ -118,7 +128,8 @@ const buildProps = (): React.ComponentProps<typeof CanvasWorkspace> => ({
   onShare: vi.fn(),
   onUndo: vi.fn(),
   onRedo: vi.fn(),
-  editorRef: React.createRef<HTMLDivElement>() as React.RefObject<HTMLDivElement>,
+  editorRef:
+    React.createRef<HTMLDivElement>() as React.RefObject<HTMLDivElement>,
   onTextSelection: vi.fn(),
   onHighlightClick: vi.fn(),
   onHighlightMouseDown: vi.fn(),
@@ -138,22 +149,23 @@ const buildProps = (): React.ComponentProps<typeof CanvasWorkspace> => ({
   onAutocompleteIndexChange: vi.fn(),
   selectedSpanId: null,
   suggestionCount: 0,
-  suggestionsListRef: React.createRef<HTMLDivElement>() as React.RefObject<HTMLDivElement>,
+  suggestionsListRef:
+    React.createRef<HTMLDivElement>() as React.RefObject<HTMLDivElement>,
   inlineSuggestions: [],
   activeSuggestionIndex: 0,
   onActiveSuggestionChange: vi.fn(),
-  interactionSourceRef: { current: 'auto' },
+  interactionSourceRef: { current: "auto" },
   onSuggestionClick: vi.fn(),
   onCloseInlinePopover: vi.fn(),
-  selectionLabel: '',
+  selectionLabel: "",
   onApplyActiveSuggestion: vi.fn(),
   isInlineLoading: false,
   isInlineError: false,
-  inlineErrorMessage: '',
+  inlineErrorMessage: "",
   isInlineEmpty: true,
-  customRequest: '',
+  customRequest: "",
   onCustomRequestChange: vi.fn(),
-  customRequestError: '',
+  customRequestError: "",
   onCustomRequestErrorChange: vi.fn(),
   onCustomRequestSubmit: vi.fn(),
   isCustomRequestDisabled: true,
@@ -167,27 +179,32 @@ const buildProps = (): React.ComponentProps<typeof CanvasWorkspace> => ({
   onToggleGenerationFavorite: vi.fn(),
 });
 
-describe('regression: canvas enhance callback wiring', () => {
-  it('clicking enhance in empty-session view invokes provided callback', async () => {
+describe("regression: canvas enhance callback wiring", () => {
+  it("clicking enhance in empty-session view invokes provided callback", async () => {
     const onEnhance = vi.fn();
     const user = userEvent.setup();
     render(<CanvasWorkspace {...buildProps()} onEnhance={onEnhance} />);
 
-    await user.click(screen.getByTestId('canvas-prompt-bar-enhance'));
+    await user.click(screen.getByTestId("canvas-prompt-bar-enhance"));
 
     expect(onEnhance).toHaveBeenCalledTimes(1);
   });
 
-  it('keeps a single prompt textbox and model selector in the empty-session shell', () => {
+  it("keeps a single prompt textbox and model selector in the empty-session shell", () => {
     render(<CanvasWorkspace {...buildProps()} />);
 
-    expect(screen.getByTestId('new-session-view')).toBeInTheDocument();
-    expect(screen.getAllByRole('textbox', { name: 'Optimized prompt' })).toHaveLength(1);
-    expect(screen.getAllByTestId('model-corner-selector')).toHaveLength(1);
-    expect(screen.getByTestId('canvas-prompt-bar')).toHaveAttribute('data-layout-mode', 'empty');
+    expect(screen.getByTestId("new-session-view")).toBeInTheDocument();
+    expect(
+      screen.getAllByRole("textbox", { name: "Optimized prompt" }),
+    ).toHaveLength(1);
+    expect(screen.getAllByTestId("model-corner-selector")).toHaveLength(1);
+    expect(screen.getByTestId("canvas-prompt-bar")).toHaveAttribute(
+      "data-layout-mode",
+      "empty",
+    );
   });
 
-  it('renders interactive canvas when hydrated output is present even without prompt version id', () => {
+  it("renders interactive canvas when hydrated output is present even without prompt version id", () => {
     const props = buildProps();
     render(
       <CanvasWorkspace
@@ -195,13 +212,13 @@ describe('regression: canvas enhance callback wiring', () => {
         enableMLHighlighting
         generationsPanelProps={{
           ...(props.generationsPanelProps as GenerationsPanelProps),
-          prompt: 'The camera tracks a subject through warm golden light.',
-          promptVersionId: '',
+          prompt: "The camera tracks a subject through warm golden light.",
+          promptVersionId: "",
         }}
-      />
+      />,
     );
 
-    expect(screen.queryByTestId('new-session-enhance')).not.toBeInTheDocument();
-    expect(screen.getByTestId('canvas-prompt-bar')).toBeInTheDocument();
+    expect(screen.queryByTestId("new-session-enhance")).not.toBeInTheDocument();
+    expect(screen.getByTestId("canvas-prompt-bar")).toBeInTheDocument();
   });
 });

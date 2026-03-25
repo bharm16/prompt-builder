@@ -19,10 +19,10 @@ if (characterAssetId && autoKeyframe && !startImage) {
 }
 ```
 
-| Input Combination | Current Behavior |
-|-------------------|------------------|
-| `startImage` only | ✅ Direct i2v |
-| `characterAssetId` only | ✅ PuLID generates keyframe → i2v |
+| Input Combination                 | Current Behavior                       |
+| --------------------------------- | -------------------------------------- |
+| `startImage` only                 | ✅ Direct i2v                          |
+| `characterAssetId` only           | ✅ PuLID generates keyframe → i2v      |
 | `startImage` + `characterAssetId` | ❌ `characterAssetId` silently ignored |
 
 ### Original Intent
@@ -62,12 +62,12 @@ startImage + characterAssetId
 
 ### Why Face-Swap vs Other Approaches
 
-| Approach | Pros | Cons |
-|----------|------|------|
-| **Face-Swap (chosen)** | Clean separation, uses existing composition exactly | Extra API call, ~2 credits |
-| Chain PuLID → ControlNet | Could match pose | Complex, slower, loses exact composition |
-| Provider-native (Runway/Kling) | No preprocessing | Only works on 2 providers |
-| Make it an error | Simple | Blocks valid use case |
+| Approach                       | Pros                                                | Cons                                     |
+| ------------------------------ | --------------------------------------------------- | ---------------------------------------- |
+| **Face-Swap (chosen)**         | Clean separation, uses existing composition exactly | Extra API call, ~2 credits               |
+| Chain PuLID → ControlNet       | Could match pose                                    | Complex, slower, loses exact composition |
+| Provider-native (Runway/Kling) | No preprocessing                                    | Only works on 2 providers                |
+| Make it an error               | Simple                                              | Blocks valid use case                    |
 
 ---
 
@@ -78,12 +78,14 @@ startImage + characterAssetId
 **Model:** `easel-ai/advanced-face-swap`
 
 **Why Easel over basic InsightFace:**
+
 - Preserves full body likeness (skin tone, racial features), not just face
 - Maintains target image's outfits, lighting, and style
 - Better handling of occlusion, angles, lighting edge cases
 - Commercial license compatible
 
 **Why fal.ai over Replicate:**
+
 - Already have `FAL_KEY` configured for PuLID
 - Same auth mechanism, consistent error handling
 - Single provider dependency for face-related preprocessing
@@ -122,16 +124,16 @@ startImage + characterAssetId
 ```typescript
 /**
  * FalFaceSwapProvider
- * 
+ *
  * Face-swap preprocessing using Easel AI on fal.ai.
  * Composites a character's face onto a target composition image.
  */
 
 export interface FaceSwapOptions {
-  faceImageUrl: string;      // Source face (character reference)
-  targetImageUrl: string;    // Target composition (pose/environment)
-  preserveHair?: 'user' | 'target';  // Whose hair to keep (default: 'user')
-  upscale?: boolean;         // Apply 2x upscale (default: true)
+  faceImageUrl: string; // Source face (character reference)
+  targetImageUrl: string; // Target composition (pose/environment)
+  preserveHair?: "user" | "target"; // Whose hair to keep (default: 'user')
+  upscale?: boolean; // Apply 2x upscale (default: true)
 }
 
 export interface FaceSwapResult {
@@ -143,11 +145,11 @@ export interface FaceSwapResult {
 
 export class FalFaceSwapProvider {
   private readonly apiKey: string | null;
-  
+
   constructor(options?: { apiKey?: string });
-  
+
   public isAvailable(): boolean;
-  
+
   public async swapFace(options: FaceSwapOptions): Promise<FaceSwapResult>;
 }
 ```
@@ -157,7 +159,7 @@ export class FalFaceSwapProvider {
 ```typescript
 /**
  * FaceSwapService
- * 
+ *
  * Orchestrates face-swap preprocessing for character-consistent i2v.
  * Used when both startImage and characterAssetId are provided.
  */
@@ -170,15 +172,15 @@ export interface FaceSwapRequest {
 
 export interface FaceSwapResponse {
   swappedImageUrl: string;
-  provider: 'easel';
+  provider: "easel";
   durationMs: number;
 }
 
 export class FaceSwapService {
   constructor(options?: { faceSwapProvider?: FalFaceSwapProvider });
-  
+
   public isAvailable(): boolean;
-  
+
   public async swap(request: FaceSwapRequest): Promise<FaceSwapResponse>;
 }
 ```
@@ -201,37 +203,45 @@ let faceSwapCost = 0;
 if (startImage && characterAssetId) {
   // CASE 1: Both provided → Face-swap preprocessing
   if (!faceSwapService) {
-    log.warn('Face-swap service unavailable', { requestId, characterAssetId });
+    log.warn("Face-swap service unavailable", { requestId, characterAssetId });
     return res.status(400).json({
       success: false,
-      error: 'Face-swap not available',
-      message: 'Character + composition reference requires face-swap service. Use startImage alone for direct i2v, or characterAssetId alone for auto-keyframe.',
+      error: "Face-swap not available",
+      message:
+        "Character + composition reference requires face-swap service. Use startImage alone for direct i2v, or characterAssetId alone for auto-keyframe.",
     });
   }
 
   const FACE_SWAP_CREDIT_COST = 2;
-  const hasFaceSwapCredits = await userCreditService.reserveCredits(userId, FACE_SWAP_CREDIT_COST);
+  const hasFaceSwapCredits = await userCreditService.reserveCredits(
+    userId,
+    FACE_SWAP_CREDIT_COST,
+  );
   if (!hasFaceSwapCredits) {
     return res.status(402).json({
       success: false,
-      error: 'Insufficient credits',
+      error: "Insufficient credits",
       message: `Character-composition face-swap requires ${FACE_SWAP_CREDIT_COST} credits plus video credits.`,
     });
   }
   faceSwapCost = FACE_SWAP_CREDIT_COST;
 
   try {
-    const characterData = await assetService.getAssetForGeneration(userId, characterAssetId);
+    const characterData = await assetService.getAssetForGeneration(
+      userId,
+      characterAssetId,
+    );
     if (!characterData.primaryImageUrl) {
       await userCreditService.refundCredits(userId, faceSwapCost);
       return res.status(400).json({
         success: false,
-        error: 'Character has no reference image',
-        message: 'The character asset must have a reference image for face-swap.',
+        error: "Character has no reference image",
+        message:
+          "The character asset must have a reference image for face-swap.",
       });
     }
 
-    log.info('Performing face-swap preprocessing', {
+    log.info("Performing face-swap preprocessing", {
       requestId,
       characterAssetId,
       hasStartImage: true,
@@ -245,30 +255,31 @@ if (startImage && characterAssetId) {
     resolvedStartImage = swapResult.swappedImageUrl;
     swappedImageUrl = swapResult.swappedImageUrl;
 
-    log.info('Face-swap completed', {
+    log.info("Face-swap completed", {
       requestId,
       characterAssetId,
       durationMs: swapResult.durationMs,
     });
-
   } catch (error) {
     await userCreditService.refundCredits(userId, faceSwapCost);
     const errorMessage = error instanceof Error ? error.message : String(error);
-    log.error('Face-swap failed', error instanceof Error ? error : new Error(errorMessage), {
-      requestId,
-      characterAssetId,
-    });
+    log.error(
+      "Face-swap failed",
+      error instanceof Error ? error : new Error(errorMessage),
+      {
+        requestId,
+        characterAssetId,
+      },
+    );
     return res.status(500).json({
       success: false,
-      error: 'Face-swap failed',
+      error: "Face-swap failed",
       message: `Failed to composite character face: ${errorMessage}`,
     });
   }
-
 } else if (characterAssetId && autoKeyframe && !startImage) {
   // CASE 2: Character only → PuLID keyframe (existing logic)
   // ... existing PuLID code unchanged ...
-
 } else if (startImage) {
   // CASE 3: startImage only → Direct i2v (existing logic)
   resolvedStartImage = startImage;
@@ -284,12 +295,12 @@ No changes needed—already parses both fields.
 Add FaceSwapService to dependency injection:
 
 ```typescript
-import { FalFaceSwapProvider } from './generation/providers/FalFaceSwapProvider';
-import { FaceSwapService } from './generation/FaceSwapService';
+import { FalFaceSwapProvider } from "./generation/providers/FalFaceSwapProvider";
+import { FaceSwapService } from "./generation/FaceSwapService";
 
 // In service factory:
 const faceSwapProvider = new FalFaceSwapProvider();
-const faceSwapService = faceSwapProvider.isAvailable() 
+const faceSwapService = faceSwapProvider.isAvailable()
   ? new FaceSwapService({ faceSwapProvider })
   : null;
 ```
@@ -309,11 +320,11 @@ export interface PreviewRoutesServices {
 
 ## Credit Costs
 
-| Operation | Credits | When |
-|-----------|---------|------|
-| Face-swap preprocessing | 2 | `startImage + characterAssetId` |
-| PuLID keyframe | 2 | `characterAssetId` only |
-| Video generation | 15-80 | Always (varies by model/duration) |
+| Operation               | Credits | When                              |
+| ----------------------- | ------- | --------------------------------- |
+| Face-swap preprocessing | 2       | `startImage + characterAssetId`   |
+| PuLID keyframe          | 2       | `characterAssetId` only           |
+| Video generation        | 15-80   | Always (varies by model/duration) |
 
 **Example user flows:**
 
@@ -335,11 +346,11 @@ Add new fields to video generation response:
     status: string;
     creditsReserved: number;
     creditsDeducted: number;
-    
+
     // Existing
     keyframeGenerated: boolean;
     keyframeUrl: string | null;
-    
+
     // NEW
     faceSwapApplied: boolean;
     faceSwapUrl: string | null;
@@ -391,22 +402,26 @@ Add new fields to video generation response:
 ## Rollout Plan
 
 ### Phase 1: Implementation (1-2 days)
+
 - [ ] Implement `FalFaceSwapProvider`
 - [ ] Implement `FaceSwapService`
 - [ ] Update `videoGenerate.ts` handler
 - [ ] Add to service factory / DI
 
 ### Phase 2: Testing (1 day)
+
 - [ ] Unit tests for new services
 - [ ] Integration test with real fal.ai
 - [ ] Manual QA with various face/composition combos
 
 ### Phase 3: Documentation (0.5 day)
+
 - [ ] Update API.md with new behavior
 - [ ] Add face-swap to capabilities docs
 - [ ] Update client-side types if needed
 
 ### Phase 4: Deploy (0.5 day)
+
 - [ ] Deploy to staging
 - [ ] Verify FAL_KEY available in environment
 - [ ] Smoke test face-swap flow

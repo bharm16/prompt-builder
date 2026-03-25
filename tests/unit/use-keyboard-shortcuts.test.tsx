@@ -1,7 +1,7 @@
-import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
-import { renderHook } from '@testing-library/react';
+import { describe, expect, it, beforeEach, afterEach, vi } from "vitest";
+import { renderHook } from "@testing-library/react";
 
-import { useKeyboardShortcuts } from '@features/prompt-optimizer/PromptCanvas/hooks/useKeyboardShortcuts';
+import { useKeyboardShortcuts } from "@features/prompt-optimizer/PromptCanvas/hooks/useKeyboardShortcuts";
 
 const createToast = () => ({
   success: vi.fn(),
@@ -10,24 +10,24 @@ const createToast = () => ({
   info: vi.fn(),
 });
 
-describe('useKeyboardShortcuts', () => {
+describe("useKeyboardShortcuts", () => {
   const originalPlatform = navigator.platform;
 
   beforeEach(() => {
-    Object.defineProperty(navigator, 'platform', {
-      value: 'MacIntel',
+    Object.defineProperty(navigator, "platform", {
+      value: "MacIntel",
       configurable: true,
     });
   });
 
   afterEach(() => {
-    Object.defineProperty(navigator, 'platform', {
+    Object.defineProperty(navigator, "platform", {
       value: originalPlatform,
       configurable: true,
     });
   });
 
-  it('handles undo shortcut', () => {
+  it("handles undo shortcut", () => {
     const onUndo = vi.fn();
     const onRedo = vi.fn();
     const toast = createToast();
@@ -39,21 +39,21 @@ describe('useKeyboardShortcuts', () => {
         onUndo,
         onRedo,
         toast,
-      })
+      }),
     );
 
-    const event = new KeyboardEvent('keydown', {
-      key: 'z',
+    const event = new KeyboardEvent("keydown", {
+      key: "z",
       metaKey: true,
     });
 
     document.dispatchEvent(event);
 
     expect(onUndo).toHaveBeenCalled();
-    expect(toast.info).toHaveBeenCalledWith('Undone');
+    expect(toast.info).toHaveBeenCalledWith("Undone");
   });
 
-  it('handles redo shortcut', () => {
+  it("handles redo shortcut", () => {
     const onUndo = vi.fn();
     const onRedo = vi.fn();
     const toast = createToast();
@@ -65,11 +65,11 @@ describe('useKeyboardShortcuts', () => {
         onUndo,
         onRedo,
         toast,
-      })
+      }),
     );
 
-    const event = new KeyboardEvent('keydown', {
-      key: 'z',
+    const event = new KeyboardEvent("keydown", {
+      key: "z",
       metaKey: true,
       shiftKey: true,
     });
@@ -77,10 +77,10 @@ describe('useKeyboardShortcuts', () => {
     document.dispatchEvent(event);
 
     expect(onRedo).toHaveBeenCalled();
-    expect(toast.info).toHaveBeenCalledWith('Redone');
+    expect(toast.info).toHaveBeenCalledWith("Redone");
   });
 
-  it('ignores shortcuts when actions are unavailable', () => {
+  it("ignores shortcuts when actions are unavailable", () => {
     const onUndo = vi.fn();
     const onRedo = vi.fn();
     const toast = createToast();
@@ -92,15 +92,15 @@ describe('useKeyboardShortcuts', () => {
         onUndo,
         onRedo,
         toast,
-      })
+      }),
     );
 
-    const undoEvent = new KeyboardEvent('keydown', {
-      key: 'z',
+    const undoEvent = new KeyboardEvent("keydown", {
+      key: "z",
       metaKey: true,
     });
-    const redoEvent = new KeyboardEvent('keydown', {
-      key: 'y',
+    const redoEvent = new KeyboardEvent("keydown", {
+      key: "y",
       metaKey: true,
     });
 

@@ -8,19 +8,19 @@
  * @module MultimodalAssetManager
  */
 
-import * as crypto from 'crypto';
-import { sleep } from '@utils/sleep';
-import { generateId } from '@utils/uid';
+import * as crypto from "crypto";
+import { sleep } from "@utils/sleep";
+import { generateId } from "@utils/uid";
 
 /**
  * Supported asset types
  */
-export type AssetType = 'image' | 'video' | 'cameo';
+export type AssetType = "image" | "video" | "cameo";
 
 /**
  * Supported video model providers
  */
-export type ProviderType = 'runway' | 'luma' | 'kling' | 'sora' | 'veo';
+export type ProviderType = "runway" | "luma" | "kling" | "sora" | "veo";
 
 /**
  * Asset upload request
@@ -127,11 +127,11 @@ interface TokenCacheEntry {
  * In production, these would be actual API endpoints
  */
 const MOCK_PROVIDER_ENDPOINTS: Record<ProviderType, string> = {
-  runway: 'https://api.runwayml.com/v1/assets',
-  luma: 'https://api.lumalabs.ai/v1/assets',
-  kling: 'https://api.kling.ai/v1/assets',
-  sora: 'https://api.openai.com/v1/video/assets',
-  veo: 'https://generativelanguage.googleapis.com/v1/assets',
+  runway: "https://api.runwayml.com/v1/assets",
+  luma: "https://api.lumalabs.ai/v1/assets",
+  kling: "https://api.kling.ai/v1/assets",
+  sora: "https://api.openai.com/v1/video/assets",
+  veo: "https://generativelanguage.googleapis.com/v1/assets",
 };
 
 /**
@@ -173,7 +173,7 @@ export class MultimodalAssetManager {
    */
   async stageAsset(request: AssetUploadRequest): Promise<StagedAsset> {
     // Determine source and compute content hash
-    const source = request.localPath || request.url || 'buffer';
+    const source = request.localPath || request.url || "buffer";
     const contentHash = await this.computeContentHash(request);
     const mimeType = request.mimeType || this.inferMimeType(source);
 
@@ -213,7 +213,7 @@ export class MultimodalAssetManager {
    */
   async uploadToProvider(
     assetId: string,
-    provider: ProviderType
+    provider: ProviderType,
   ): Promise<ProviderUploadResult> {
     const stagedAsset = this.stagingArea.get(assetId);
     if (!stagedAsset) {
@@ -268,7 +268,10 @@ export class MultimodalAssetManager {
    *
    * Implements Requirement 12.5
    */
-  getCachedToken(contentHash: string, provider: ProviderType): string | undefined {
+  getCachedToken(
+    contentHash: string,
+    provider: ProviderType,
+  ): string | undefined {
     const cacheKey = this.getCacheKey(contentHash, provider);
     const entry = this.tokenCache.get(cacheKey);
 
@@ -307,7 +310,7 @@ export class MultimodalAssetManager {
     if (!match) {
       return {
         isValid: false,
-        error: 'Invalid Cameo token format. Expected @Cameo(uuid)',
+        error: "Invalid Cameo token format. Expected @Cameo(uuid)",
       };
     }
 
@@ -317,7 +320,7 @@ export class MultimodalAssetManager {
     if (!tokenId || !this.isValidUUID(tokenId)) {
       return {
         isValid: false,
-        error: 'Invalid UUID in Cameo token',
+        error: "Invalid UUID in Cameo token",
       };
     }
 
@@ -325,7 +328,7 @@ export class MultimodalAssetManager {
     return {
       isValid: true,
       tokenId,
-      provider: 'sora',
+      provider: "sora",
     };
   }
 
@@ -415,11 +418,13 @@ export class MultimodalAssetManager {
   /**
    * Compute content hash for deduplication
    */
-  private async computeContentHash(request: AssetUploadRequest): Promise<string> {
+  private async computeContentHash(
+    request: AssetUploadRequest,
+  ): Promise<string> {
     let data: string;
 
     if (request.buffer) {
-      data = request.buffer.toString('base64');
+      data = request.buffer.toString("base64");
     } else if (request.url) {
       // For URLs, hash the URL itself (content would require fetching)
       data = request.url;
@@ -430,7 +435,7 @@ export class MultimodalAssetManager {
       data = Date.now().toString();
     }
 
-    return crypto.createHash('sha256').update(data).digest('hex');
+    return crypto.createHash("sha256").update(data).digest("hex");
   }
 
   /**
@@ -449,25 +454,25 @@ export class MultimodalAssetManager {
    * Generate a unique asset ID
    */
   private generateAssetId(): string {
-    return generateId('asset');
+    return generateId("asset");
   }
 
   /**
    * Infer MIME type from source
    */
   private inferMimeType(source: string): string {
-    const ext = source.split('.').pop()?.toLowerCase();
+    const ext = source.split(".").pop()?.toLowerCase();
     const mimeTypes: Record<string, string> = {
-      jpg: 'image/jpeg',
-      jpeg: 'image/jpeg',
-      png: 'image/png',
-      gif: 'image/gif',
-      webp: 'image/webp',
-      mp4: 'video/mp4',
-      webm: 'video/webm',
-      mov: 'video/quicktime',
+      jpg: "image/jpeg",
+      jpeg: "image/jpeg",
+      png: "image/png",
+      gif: "image/gif",
+      webp: "image/webp",
+      mp4: "video/mp4",
+      webm: "video/webm",
+      mov: "video/quicktime",
     };
-    return mimeTypes[ext || ''] || 'application/octet-stream';
+    return mimeTypes[ext || ""] || "application/octet-stream";
   }
 
   /**
@@ -491,7 +496,8 @@ export class MultimodalAssetManager {
    * Validate UUID format
    */
   private isValidUUID(uuid: string): boolean {
-    const uuidPattern = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
+    const uuidPattern =
+      /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
     return uuidPattern.test(uuid);
   }
 
@@ -500,7 +506,7 @@ export class MultimodalAssetManager {
    */
   private async mockProviderUpload(
     asset: StagedAsset,
-    provider: ProviderType
+    provider: ProviderType,
   ): Promise<string> {
     // Simulate network delay
     await sleep(10);
@@ -520,11 +526,13 @@ export class MultimodalAssetManager {
   /**
    * Generate placeholder description when VLM is not available
    */
-  private generatePlaceholderDescription(asset: StagedAsset): AssetDescriptionResult {
+  private generatePlaceholderDescription(
+    asset: StagedAsset,
+  ): AssetDescriptionResult {
     const typeDescriptions: Record<AssetType, string> = {
-      image: 'An image asset',
-      video: 'A video asset',
-      cameo: 'A cameo identity reference',
+      image: "An image asset",
+      video: "A video asset",
+      cameo: "A cameo identity reference",
     };
 
     return {
@@ -538,21 +546,23 @@ export class MultimodalAssetManager {
   /**
    * Mock VLM description (placeholder for actual VLM integration)
    */
-  private async mockVLMDescription(asset: StagedAsset): Promise<AssetDescriptionResult> {
+  private async mockVLMDescription(
+    asset: StagedAsset,
+  ): Promise<AssetDescriptionResult> {
     // Simulate VLM processing delay
     await sleep(50);
 
     // Generate mock description based on asset type
     const descriptions: Record<AssetType, string> = {
-      image: 'A detailed image showing visual elements with clear composition',
-      video: 'A video clip with motion and temporal progression',
-      cameo: 'A reference identity for consistent character appearance',
+      image: "A detailed image showing visual elements with clear composition",
+      video: "A video clip with motion and temporal progression",
+      cameo: "A reference identity for consistent character appearance",
     };
 
     return {
       description: descriptions[asset.type],
       confidence: 0.85,
-      detectedElements: ['subject', 'background', 'lighting'],
+      detectedElements: ["subject", "background", "lighting"],
       isPlaceholder: false,
     };
   }

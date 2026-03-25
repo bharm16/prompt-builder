@@ -1,4 +1,4 @@
-import type { SpanLabelingPolicy } from '../hooks/types';
+import type { SpanLabelingPolicy } from "../hooks/types";
 
 export interface SpanLabel {
   start: number;

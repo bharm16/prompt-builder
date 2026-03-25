@@ -1,8 +1,8 @@
-import type { BillingProfileStore } from '@services/payment/BillingProfileStore';
-import type { FirestoreCircuitExecutor } from '@services/firestore/FirestoreCircuitExecutor';
-import type { PaymentConsistencyStore } from '@services/payment/PaymentConsistencyStore';
-import type { PaymentService } from '@services/payment/PaymentService';
-import type { StripeWebhookEventStore } from '@services/payment/StripeWebhookEventStore';
+import type { BillingProfileStore } from "@services/payment/BillingProfileStore";
+import type { FirestoreCircuitExecutor } from "@services/firestore/FirestoreCircuitExecutor";
+import type { PaymentConsistencyStore } from "@services/payment/PaymentConsistencyStore";
+import type { PaymentService } from "@services/payment/PaymentService";
+import type { StripeWebhookEventStore } from "@services/payment/StripeWebhookEventStore";
 
 interface StarterGrantInfo {
   starterGrantCredits: number | null;
@@ -22,9 +22,17 @@ interface PaymentMetricsService {
 }
 
 export interface PaymentUserCreditService {
+  getBalance(userId: string): Promise<number>;
   getStarterGrantInfo(userId: string): Promise<StarterGrantInfo>;
-  listCreditTransactions(userId: string, limit: number): Promise<CreditTransaction[]>;
-  addCredits(userId: string, amount: number, metadata: CreditGrantMetadata): Promise<void>;
+  listCreditTransactions(
+    userId: string,
+    limit: number,
+  ): Promise<CreditTransaction[]>;
+  addCredits(
+    userId: string,
+    amount: number,
+    metadata: CreditGrantMetadata,
+  ): Promise<void>;
 }
 
 export interface PaymentRouteServices {
@@ -34,7 +42,10 @@ export interface PaymentRouteServices {
   userCreditService: PaymentUserCreditService;
   paymentConsistencyStore?: PaymentConsistencyStore;
   metricsService?: PaymentMetricsService;
-  firestoreCircuitExecutor?: Pick<FirestoreCircuitExecutor, 'isWriteAllowed' | 'getRetryAfterSeconds'>;
+  firestoreCircuitExecutor?: Pick<
+    FirestoreCircuitExecutor,
+    "isWriteAllowed" | "getRetryAfterSeconds"
+  >;
 }
 
 export interface PaymentRouteDeps {

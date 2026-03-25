@@ -12,7 +12,13 @@ export interface NlpSpan {
   confidence: number;
   start: number;
   end: number;
-  source?: 'aho-corasick' | 'gliner' | 'pattern' | 'heuristic' | 'compromise' | 'lighting';
+  source?:
+    | "aho-corasick"
+    | "gliner"
+    | "pattern"
+    | "heuristic"
+    | "compromise"
+    | "lighting";
   [key: string]: unknown;
 }
 
@@ -68,10 +74,13 @@ export interface ExtractionResult {
 export interface VocabStats {
   totalCategories: number;
   totalTerms: number;
-  categories: Record<string, {
-    termCount: number;
-    sampleTerms: string[];
-  }>;
+  categories: Record<
+    string,
+    {
+      termCount: number;
+      sampleTerms: string[];
+    }
+  >;
   glinerLabels: number;
   glinerReady: boolean;
 }

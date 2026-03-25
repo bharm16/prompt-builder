@@ -11,6 +11,7 @@ Successfully modernized both bento grid implementations (StepQuickFill and SpanB
 **Before:** 8 bright accent colors (red, purple, green, yellow, pink, violet, blue, rose)
 
 **After:** Sophisticated neutral system
+
 - **Surface colors**: `#FAFAFA` (base), `#FFFFFF` (elevated)
 - **Borders**: `#E8E8E8` (subtle), `#D0D0D0` (hover)
 - **Required fields accent**: `#5B5BD6` (indigo)
@@ -22,6 +23,7 @@ Successfully modernized both bento grid implementations (StepQuickFill and SpanB
 **Before:** Uniform 6-column grid with mostly equal-sized boxes
 
 **After:** Asymmetric 12-column grid with clear visual hierarchy
+
 - **Hero** (8 cols × 2 rows) - Subject field (67% width, DOMINANT)
 - **Large** (4 cols × 2 rows) - Action field (33% width, secondary)
 - **Medium** (3 cols × 1 row) - Location, Time, Mood, Style (25% width each)
@@ -29,6 +31,7 @@ Successfully modernized both bento grid implementations (StepQuickFill and SpanB
 - **Small** (4 cols × 1 row) - Event (33% width)
 
 **Grid Math Verification:**
+
 - Row 1: Hero (8) + Large (4) = 12 cols ✓
 - Row 2: Medium × 4 (3+3+3+3) = 12 cols ✓
 - Row 3: Wide (8) + Small (4) = 12 cols ✓
@@ -39,16 +42,19 @@ Successfully modernized both bento grid implementations (StepQuickFill and SpanB
 
 ```css
 /* Resting state - subtle elevation */
-box-shadow: 0 1px 3px rgba(0,0,0,0.06),
-            0 1px 2px rgba(0,0,0,0.04);
+box-shadow:
+  0 1px 3px rgba(0, 0, 0, 0.06),
+  0 1px 2px rgba(0, 0, 0, 0.04);
 
 /* Hover state - pronounced lift */
-box-shadow: 0 8px 24px rgba(0,0,0,0.08),
-            0 4px 8px rgba(0,0,0,0.04);
+box-shadow:
+  0 8px 24px rgba(0, 0, 0, 0.08),
+  0 4px 8px rgba(0, 0, 0, 0.04);
 
 /* Filled state - green-tinted elevation (NOT recessed) */
-box-shadow: 0 1px 3px rgba(16,185,129,0.15),
-            0 1px 2px rgba(0,0,0,0.04);
+box-shadow:
+  0 1px 3px rgba(16, 185, 129, 0.15),
+  0 1px 2px rgba(0, 0, 0, 0.04);
 ```
 
 ### Varied Corner Radii ✅
@@ -56,6 +62,7 @@ box-shadow: 0 1px 3px rgba(16,185,129,0.15),
 **Before:** Uniform 8px on everything
 
 **After:** Size-appropriate radii create visual rhythm
+
 - Hero/Large boxes: **14px**
 - Medium/Wide boxes: **12px**
 - Small boxes: **8px**
@@ -64,10 +71,12 @@ box-shadow: 0 1px 3px rgba(16,185,129,0.15),
 ### Refined Typography ✅
 
 **Before:**
+
 - Labels: 17px, weight 600
 - Preview: 15px
 
 **After:**
+
 - Labels: **14px, weight 500** (medium, not bold)
 - Preview: **13px, weight 400** (regular)
 - Placeholder: **13px, weight 400, italic**
@@ -79,6 +88,7 @@ Better hierarchy contrast and readability.
 **Before:** 40px icons, 2px stroke, inconsistent
 
 **After:**
+
 - Size: **28px** (desktop), **24px** (mobile)
 - Stroke width: **1.5px** (consistent)
 - No background circles (cleaner)
@@ -87,14 +97,17 @@ Better hierarchy contrast and readability.
 ### Spacing Improvements ✅
 
 **Desktop:**
+
 - Grid gap: **36px** (increased from 28px)
 - Row gap: **24px** (tighter vertical spacing)
 - Padding: **40px** (hero/large), **32px** (medium/small)
 
 **Tablet:**
+
 - Grid gap: **24px**
 
 **Mobile:**
+
 - Grid gap: **12px**
 - Padding: **20px**
 
@@ -103,6 +116,7 @@ Better hierarchy contrast and readability.
 **Before:** `translateY(-2px)`
 
 **After:**
+
 - Transform: `scale(1.02)` (subtle, no jarring vertical movement)
 - Border: Changes to `#D0D0D0` (darker)
 - Timing: **200ms ease-out** (snappier)
@@ -110,6 +124,7 @@ Better hierarchy contrast and readability.
 ### Filled State (NEW) ✅
 
 Fields with values now have distinct visual treatment:
+
 - Border: Green `#10B981`
 - Background: Very subtle green tint `rgba(16,185,129,0.03)`
 - Shadow: Green-tinted elevation (maintains lift, not recessed)
@@ -120,12 +135,14 @@ Fields with values now have distinct visual treatment:
 ### StepQuickFill (Wizard Form) - 4 Files
 
 #### 1. `bentoLayout.js` ✅
+
 - Replaced 8 bright colors with monochromatic system
 - Updated size names: `tall` → `hero`, `large` → `large`, added `medium`, `wide`, `small`
 - Implemented 12-column grid spans (8, 4, 3, 8, 4)
 - Updated GRID_CONFIG for desktop/tablet/mobile
 
 #### 2. `BentoGrid.css` ✅
+
 - Changed from 6-column to **12-column explicit grid**
 - Increased desktop gap: **36px** (column), **24px** (row)
 - Tablet: **2-column grid** (stack required fields full width)
@@ -133,6 +150,7 @@ Fields with values now have distinct visual treatment:
 - Added visual grouping with extra margin after action field
 
 #### 3. `BentoField.css` ✅
+
 - Updated size variants for 12-column grid
 - **Borders**: Reduced from 2px to **1px**
 - **Corner radii**: Varied by size (14px/12px/8px)
@@ -145,6 +163,7 @@ Fields with values now have distinct visual treatment:
 - **Responsive**: Proper sizing for tablet and mobile
 
 #### 4. `BentoField.jsx` ✅
+
 - Added `bento-field--filled` class when field has value
 - Updated icon sizes: **28px** (down from 40px)
 - Updated icon stroke width: **1.5px** (down from 2px)
@@ -153,6 +172,7 @@ Fields with values now have distinct visual treatment:
 ### SpanBentoGrid (NLP Categories) - 3 Files
 
 #### 5. `bentoConfig.js` ✅
+
 - Replaced 11 category colors with monochromatic system
 - All categories: White background `#FFFFFF`
 - All borders: Neutral gray `#E8E8E8`
@@ -160,6 +180,7 @@ Fields with values now have distinct visual treatment:
 - Removed color-based category identification
 
 #### 6. `SpanBentoGrid.css` ✅
+
 - **Container gap**: Increased to **20px** (from 12px)
 - **Corner radii**: Increased to **10px** (from 8px)
 - **Header padding**: Increased to **16px** (from 12px)
@@ -169,18 +190,21 @@ Fields with values now have distinct visual treatment:
 - **Transitions**: Updated to **200ms ease-out**
 
 #### 7. `BentoBox.jsx` ✅
+
 - No code changes required (uses inline styles from config)
 - Monochromatic colors automatically applied via bentoConfig
 
 ## Responsive Strategy
 
 ### Desktop (≥1024px) ✅
+
 - 12-column explicit grid
 - Asymmetric layout with clear hierarchy
 - Subject field dominates at 67% width
 - Generous 36px spacing
 
 ### Tablet (768-1023px) ✅
+
 - 2-column grid (not 3-column or 4-column squeeze)
 - Hero and Large fields: Full width, stacked
 - Medium fields: 50% width, paired up
@@ -188,12 +212,14 @@ Fields with values now have distinct visual treatment:
 - 24px spacing
 
 ### Mobile (481-767px) ✅
+
 - Strategic 2-column for related pairs
 - Hero/Large/Wide: Full width
 - Medium/Small: Side by side (50% each)
 - 12px spacing
 
 ### Small Phones (<480px) ✅
+
 - Pure 1-column stack
 - All fields full width
 - Prevents cramming on tiny screens
@@ -202,6 +228,7 @@ Fields with values now have distinct visual treatment:
 ## Testing Performed
 
 ### Visual Verification ✅
+
 - Monochromatic color system applied consistently
 - Subject field is visibly larger than Action (8 cols vs 4 cols)
 - Filled fields show green accent with elevation
@@ -211,6 +238,7 @@ Fields with values now have distinct visual treatment:
 - Icons are 28px with 1.5px stroke
 
 ### Interaction Testing ✅
+
 - Hover states show clear elevation change
 - Scale transform is smooth (no jarring movement)
 - Filled vs empty states are visually distinct
@@ -218,6 +246,7 @@ Fields with values now have distinct visual treatment:
 - Application builds successfully
 
 ### Grid Math Verification ✅
+
 - All rows divide evenly into 12 columns
 - No layout breakage on desktop/tablet/mobile
 - Responsive breakpoints work correctly
@@ -234,53 +263,59 @@ Fields with values now have distinct visual treatment:
 ## Key Design Decisions
 
 ### 1. Subject 2× Larger Than Action ✅
+
 - Subject: 8 cols (67%) - DOMINANT hero field
 - Action: 4 cols (33%) - Secondary importance
 - Creates clear visual hierarchy (not equal twins)
 
 ### 2. No Icon Background Circles ✅
+
 - Cleaner for monochromatic approach
 - Less visual noise
 - Icons stand on their own
 
 ### 3. Filled State Maintains Elevation ✅
+
 - Green border + subtle tint + green-tinted shadow
 - **NOT** recessed with inset shadow
 - Filled items feel accomplished, not depressed
 
 ### 4. Tablet Stacks Required Fields ✅
+
 - Avoids squeezing Action into 25% width
 - Better usability on medium screens
 - Medium fields pair up at 50% each
 
 ### 5. Mobile Breakpoint at 480px ✅
+
 - Pure stack on very small screens
 - Strategic 2-column on medium phones
 - Maintains field relationships visually
 
 ### 6. Visual Grouping via Row Gaps ✅
+
 - Extra margin after Action field (end of hero row)
 - Location+Time grouped, Mood+Style grouped
 - Spacing creates implicit relationships
 
 ## Before vs After Comparison
 
-| Aspect | Before | After |
-|--------|--------|-------|
-| **Colors** | 8 bright colors | Monochromatic (grays + indigo + green) |
-| **Grid** | 6-column uniform | 12-column asymmetric |
-| **Subject size** | 2 cols (33%) | 8 cols (67%) - DOMINANT |
-| **Action size** | 2 cols (33%) | 4 cols (33%) |
-| **Borders** | 2px thick | 1px refined |
-| **Corners** | 8px uniform | 14px/12px/8px varied |
-| **Shadows** | Minimal | Multi-layer elevation |
-| **Gaps** | 28px | 36px desktop, 24px tablet, 12px mobile |
-| **Icons** | 40px, 2px stroke | 28px, 1.5px stroke |
-| **Typography** | 17px bold labels | 14px medium labels, 13px preview |
-| **Hover** | translateY(-2px) | scale(1.02) |
-| **Filled state** | None | Green accent with elevation |
-| **Tablet** | 3-column | 2-column, stack required |
-| **Mobile** | 1-column only | Strategic 2-column for pairs |
+| Aspect           | Before           | After                                  |
+| ---------------- | ---------------- | -------------------------------------- |
+| **Colors**       | 8 bright colors  | Monochromatic (grays + indigo + green) |
+| **Grid**         | 6-column uniform | 12-column asymmetric                   |
+| **Subject size** | 2 cols (33%)     | 8 cols (67%) - DOMINANT                |
+| **Action size**  | 2 cols (33%)     | 4 cols (33%)                           |
+| **Borders**      | 2px thick        | 1px refined                            |
+| **Corners**      | 8px uniform      | 14px/12px/8px varied                   |
+| **Shadows**      | Minimal          | Multi-layer elevation                  |
+| **Gaps**         | 28px             | 36px desktop, 24px tablet, 12px mobile |
+| **Icons**        | 40px, 2px stroke | 28px, 1.5px stroke                     |
+| **Typography**   | 17px bold labels | 14px medium labels, 13px preview       |
+| **Hover**        | translateY(-2px) | scale(1.02)                            |
+| **Filled state** | None             | Green accent with elevation            |
+| **Tablet**       | 3-column         | 2-column, stack required               |
+| **Mobile**       | 1-column only    | Strategic 2-column for pairs           |
 
 ## Performance Impact
 
@@ -349,4 +384,3 @@ Math: 8+4=12 ✓  3+3+3+3=12 ✓  8+4=12 ✓
 ---
 
 **The bento grid modernization is complete and ready for production.**
-

@@ -1,9 +1,9 @@
-import { useCallback } from 'react';
-import type { PromptHistoryEntry } from '@features/prompt-optimizer/types/domain/prompt-session';
-import type { PromptHistory } from '../../context/types';
+import { useCallback } from "react";
+import type { PromptHistoryEntry } from "@features/prompt-optimizer/types/domain/prompt-session";
+import type { PromptHistory } from "../../context/types";
 
 type UsePromptHistoryActionsParams = {
-  promptHistory: Pick<PromptHistory, 'saveToHistory' | 'updateEntryPersisted'>;
+  promptHistory: Pick<PromptHistory, "saveToHistory" | "updateEntryPersisted">;
   loadFromHistory: (entry: PromptHistoryEntry) => void;
   handleCreateNew: () => void;
 };
@@ -25,7 +25,7 @@ export function usePromptHistoryActions({
     (entry: PromptHistoryEntry): void => {
       loadFromHistory(entry);
     },
-    [loadFromHistory]
+    [loadFromHistory],
   );
 
   const handleCreateNewWithKeyframes = useCallback((): void => {
@@ -35,9 +35,9 @@ export function usePromptHistoryActions({
   const handleDuplicate = useCallback(
     async (entry: PromptHistoryEntry): Promise<void> => {
       const mode =
-        typeof entry.mode === 'string' && entry.mode.trim()
+        typeof entry.mode === "string" && entry.mode.trim()
           ? entry.mode.trim()
-          : 'video';
+          : "video";
       const result = await saveToHistory(
         entry.input,
         entry.output,
@@ -49,7 +49,7 @@ export function usePromptHistoryActions({
         entry.brainstormContext ?? null,
         entry.highlightCache ?? null,
         null,
-        entry.title ?? null
+        entry.title ?? null,
       );
 
       if (result?.uuid) {
@@ -71,7 +71,7 @@ export function usePromptHistoryActions({
         });
       }
     },
-    [handleLoadFromHistory, saveToHistory]
+    [handleLoadFromHistory, saveToHistory],
   );
 
   const handleRename = useCallback(
@@ -79,7 +79,7 @@ export function usePromptHistoryActions({
       if (!entry.uuid) return;
       updateEntryPersisted(entry.uuid, entry.id ?? null, { title });
     },
-    [updateEntryPersisted]
+    [updateEntryPersisted],
   );
 
   return {

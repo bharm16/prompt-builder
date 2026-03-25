@@ -62,7 +62,7 @@ To use tools, the model must be provided with tool definitions. These tool defin
     },
     {
       "role": "user",
-      "content": "What's the weather in San Francisco?" 
+      "content": "What's the weather in San Francisco?"
     }
   ]
 }
@@ -81,14 +81,16 @@ When the model decides to use a tool, it returns structured tool calls in the re
 ```json
 {
   "role": "assistant",
-  "tool_calls": [{
-    "id": "call_abc123",
-    "type": "function",
-    "function": {
-      "name": "get_weather",
-      "arguments": "{\"location\": \"San Francisco, CA\", \"unit\": \"fahrenheit\"}"
+  "tool_calls": [
+    {
+      "id": "call_abc123",
+      "type": "function",
+      "function": {
+        "name": "get_weather",
+        "arguments": "{\"location\": \"San Francisco, CA\", \"unit\": \"fahrenheit\"}"
+      }
     }
-  }]
+  ]
 }
 ```
 
@@ -120,24 +122,25 @@ Application code executes the tool and creates a new message with the results:
 ### 4. Model Evaluates Results and Decides Next Steps
 
 The model analyzes the tool results and either:
+
 - Returns a final answer (no more `tool_calls`)
 - Returns more tool call requests (loop continues)
 
 ## Supported Models for Tool Use
 
-| Model ID | Local & Remote Tool Use | Parallel Tool Use | JSON Mode | Built-In Tools |
-|----------|------------------------|-------------------|-----------|----------------|
-| moonshotai/kimi-k2-instruct-0905 | Yes ✅ | Yes ✅ | Yes ✅ | No ❌ |
-| openai/gpt-oss-20b | Yes ✅ | No ❌ | Yes ✅ | Yes ✅ |
-| openai/gpt-oss-120b | Yes ✅ | No ❌ | Yes ✅ | Yes ✅ |
-| openai/gpt-oss-safeguard-20b | Yes ✅ | No ❌ | Yes ✅ | No ❌ |
-| qwen/qwen3-32b | Yes ✅ | Yes ✅ | Yes ✅ | No ❌ |
-| meta-llama/llama-4-scout-17b-16e-instruct | Yes ✅ | Yes ✅ | Yes ✅ | No ❌ |
-| meta-llama/llama-4-maverick-17b-128e-instruct | Yes ✅ | Yes ✅ | Yes ✅ | No ❌ |
-| llama-3.3-70b-versatile | Yes ✅ | Yes ✅ | Yes ✅ | No ❌ |
-| llama-3.1-8b-instant | Yes ✅ | Yes ✅ | Yes ✅ | No ❌ |
-| groq/compound | No ❌ | N/A | Yes ✅ | Yes ✅ |
-| groq/compound-mini | No ❌ | N/A | Yes ✅ | Yes ✅ |
+| Model ID                                      | Local & Remote Tool Use | Parallel Tool Use | JSON Mode | Built-In Tools |
+| --------------------------------------------- | ----------------------- | ----------------- | --------- | -------------- |
+| moonshotai/kimi-k2-instruct-0905              | Yes ✅                  | Yes ✅            | Yes ✅    | No ❌          |
+| openai/gpt-oss-20b                            | Yes ✅                  | No ❌             | Yes ✅    | Yes ✅         |
+| openai/gpt-oss-120b                           | Yes ✅                  | No ❌             | Yes ✅    | Yes ✅         |
+| openai/gpt-oss-safeguard-20b                  | Yes ✅                  | No ❌             | Yes ✅    | No ❌          |
+| qwen/qwen3-32b                                | Yes ✅                  | Yes ✅            | Yes ✅    | No ❌          |
+| meta-llama/llama-4-scout-17b-16e-instruct     | Yes ✅                  | Yes ✅            | Yes ✅    | No ❌          |
+| meta-llama/llama-4-maverick-17b-128e-instruct | Yes ✅                  | Yes ✅            | Yes ✅    | No ❌          |
+| llama-3.3-70b-versatile                       | Yes ✅                  | Yes ✅            | Yes ✅    | No ❌          |
+| llama-3.1-8b-instant                          | Yes ✅                  | Yes ✅            | Yes ✅    | No ❌          |
+| groq/compound                                 | No ❌                   | N/A               | Yes ✅    | Yes ✅         |
+| groq/compound-mini                            | No ❌                   | N/A               | Yes ✅    | Yes ✅         |
 
 ## Tool Use Patterns on Groq API
 
@@ -146,6 +149,7 @@ The model analyzes the tool results and either:
 Groq maintains pre-built tools like web search, code execution, and browser automation that execute entirely on Groq's infrastructure. All tool calls happen in a single API call.
 
 **Ideal for:**
+
 - Drop-in developer experience with zero setup
 - Applications requiring the lowest possible latency
 - Web search and browsing capabilities
@@ -159,6 +163,7 @@ Groq maintains pre-built tools like web search, code execution, and browser auto
 The Model Context Protocol (MCP) is an open standard that allows models to connect to and execute external tools. Groq supports MCP tool discovery and execution server-side.
 
 **Ideal for:**
+
 - Standardized integrations (GitHub, databases, external APIs)
 - Tools maintained by third parties
 - Sharing tools across multiple applications
@@ -169,6 +174,7 @@ The Model Context Protocol (MCP) is an open standard that allows models to conne
 Manually write functions and corresponding tool definitions. The tool definitions are provided to the model at inference time, and the model returns structured tool call requests.
 
 **Ideal for:**
+
 - Custom business logic
 - Internal APIs and databases
 - Proprietary workflows
@@ -176,17 +182,18 @@ Manually write functions and corresponding tool definitions. The tool definition
 
 ### Comparison
 
-| Pattern | You Provide | Execution Location | Orchestration | API Calls |
-|---------|-------------|-------------------|---------------|-----------|
-| **Built-In** | List of enabled built-in tools | Groq servers | Groq manages | Single call |
-| **Remote MCP** | MCP server URL + auth | MCP server | Groq manages | Single call |
-| **Local** | Tool definitions + implementation | Your code | You manage loop | Multiple (2+ per iteration) |
+| Pattern        | You Provide                       | Execution Location | Orchestration   | API Calls                   |
+| -------------- | --------------------------------- | ------------------ | --------------- | --------------------------- |
+| **Built-In**   | List of enabled built-in tools    | Groq servers       | Groq manages    | Single call                 |
+| **Remote MCP** | MCP server URL + auth             | MCP server         | Groq manages    | Single call                 |
+| **Local**      | Tool definitions + implementation | Your code          | You manage loop | Multiple (2+ per iteration) |
 
 ## Parallel Tool Use
 
 Many models support parallel tool use, where multiple tools can be called simultaneously:
 
 **Without parallel tool use:**
+
 ```
 Query: "What's the weather in NYC and LA?"
 Call 1: get_weather(location="NYC")      → Wait for result
@@ -195,6 +202,7 @@ Final response
 ```
 
 **With parallel tool use:**
+
 ```
 Query: "What's the weather in NYC and LA?"
 Call 1: [get_weather(location="NYC"), get_weather(location="LA")]
@@ -275,21 +283,21 @@ With `strict: false` (default), the model attempts to match your schema without 
 
 ### Models with Strict Mode (strict: true)
 
-| Model ID | Model |
-|----------|-------|
-| openai/gpt-oss-20b | GPT-OSS 20B |
+| Model ID            | Model        |
+| ------------------- | ------------ |
+| openai/gpt-oss-20b  | GPT-OSS 20B  |
 | openai/gpt-oss-120b | GPT-OSS 120B |
 
 ### Models with Best-effort Mode (strict: false)
 
-| Model ID | Model |
-|----------|-------|
-| openai/gpt-oss-20b | GPT-OSS 20B |
-| openai/gpt-oss-120b | GPT-OSS 120B |
-| openai/gpt-oss-safeguard-20b | Safety GPT OSS 20B |
-| moonshotai/kimi-k2-instruct-0905 | Kimi K2 Instruct |
-| meta-llama/llama-4-maverick-17b-128e-instruct | Llama 4 Maverick |
-| meta-llama/llama-4-scout-17b-16e-instruct | Llama 4 Scout |
+| Model ID                                      | Model              |
+| --------------------------------------------- | ------------------ |
+| openai/gpt-oss-20b                            | GPT-OSS 20B        |
+| openai/gpt-oss-120b                           | GPT-OSS 120B       |
+| openai/gpt-oss-safeguard-20b                  | Safety GPT OSS 20B |
+| moonshotai/kimi-k2-instruct-0905              | Kimi K2 Instruct   |
+| meta-llama/llama-4-maverick-17b-128e-instruct | Llama 4 Maverick   |
+| meta-llama/llama-4-scout-17b-16e-instruct     | Llama 4 Scout      |
 
 > **Note:** Streaming and tool use are not currently supported with Structured Outputs.
 
@@ -352,10 +360,14 @@ const groq = new Groq();
 const response = await groq.chat.completions.create({
   model: "openai/gpt-oss-20b",
   messages: [
-    { role: "system", content: "Extract product review information from the text." },
+    {
+      role: "system",
+      content: "Extract product review information from the text.",
+    },
     {
       role: "user",
-      content: "I bought the UltraSound Headphones last week and I'm really impressed! The noise cancellation is amazing and the battery lasts all day. Sound quality is crisp and clear. I'd give it 4.5 out of 5 stars.",
+      content:
+        "I bought the UltraSound Headphones last week and I'm really impressed! The noise cancellation is amazing and the battery lasts all day. Sound quality is crisp and clear. I'd give it 4.5 out of 5 stars.",
     },
   ],
   response_format: {
@@ -368,20 +380,20 @@ const response = await groq.chat.completions.create({
         properties: {
           product_name: { type: "string" },
           rating: { type: "number" },
-          sentiment: { 
+          sentiment: {
             type: "string",
-            enum: ["positive", "negative", "neutral"]
+            enum: ["positive", "negative", "neutral"],
           },
-          key_features: { 
+          key_features: {
             type: "array",
-            items: { type: "string" }
-          }
+            items: { type: "string" },
+          },
         },
         required: ["product_name", "rating", "sentiment", "key_features"],
-        additionalProperties: false
-      }
-    }
-  }
+        additionalProperties: false,
+      },
+    },
+  },
 });
 
 const result = JSON.parse(response.choices[0].message.content || "{}");
@@ -405,13 +417,13 @@ console.log(result);
 
 ## Choosing Between Strict and Best-effort Mode
 
-| Aspect | Strict Mode (strict: true) | Best-effort Mode (strict: false) |
-|--------|---------------------------|----------------------------------|
-| **Schema adherence** | Guaranteed - uses constrained decoding | Best-effort - generally compliant |
-| **Error handling** | Never produces invalid JSON | May occasionally 400 errors |
-| **Requirements** | All fields required, additionalProperties: false | More flexible constraints |
-| **Model support** | Limited (GPT-OSS 20B, 120B) | All Structured Outputs models |
-| **When to use** | Production apps requiring 100% reliability | Development, prototyping |
+| Aspect               | Strict Mode (strict: true)                       | Best-effort Mode (strict: false)  |
+| -------------------- | ------------------------------------------------ | --------------------------------- |
+| **Schema adherence** | Guaranteed - uses constrained decoding           | Best-effort - generally compliant |
+| **Error handling**   | Never produces invalid JSON                      | May occasionally 400 errors       |
+| **Requirements**     | All fields required, additionalProperties: false | More flexible constraints         |
+| **Model support**    | Limited (GPT-OSS 20B, 120B)                      | All Structured Outputs models     |
+| **When to use**      | Production apps requiring 100% reliability       | Development, prototyping          |
 
 **Recommendation:** Use Strict Mode when available for production. Fall back to Best-effort Mode for broader model support or during development.
 
@@ -549,7 +561,7 @@ print(json.dumps(email_classification.model_dump(), indent=2))
   "type": "object",
   "properties": {
     "name": { "type": "string" },
-    "nickname": { 
+    "nickname": {
       "type": ["string", "null"]
     }
   },
@@ -631,13 +643,13 @@ Define reusable components with `$defs` and reference them using `$ref`:
 
 JSON Object Mode provides basic JSON output validation without schema enforcement.
 
-| Aspect | Strict Mode | Best-effort Mode | JSON Object Mode |
-|--------|-------------|------------------|------------------|
-| **Valid JSON** | Always ✓ | Usually ✓ | Usually ✓ |
-| **Schema adherence** | Guaranteed ✓ | Best-effort | No |
-| **Can error** | No | Occasionally | Occasionally |
-| **Requires schema** | Yes | Yes | No |
-| **Model support** | Limited | Multiple models | All models |
+| Aspect               | Strict Mode  | Best-effort Mode | JSON Object Mode |
+| -------------------- | ------------ | ---------------- | ---------------- |
+| **Valid JSON**       | Always ✓     | Usually ✓        | Usually ✓        |
+| **Schema adherence** | Guaranteed ✓ | Best-effort      | No               |
+| **Can error**        | No           | Occasionally     | Occasionally     |
+| **Requires schema**  | Yes          | Yes              | No               |
+| **Model support**    | Limited      | Multiple models  | All models       |
 
 Enable by setting `response_format` to `{ "type": "json_object" }`.
 
@@ -725,22 +737,22 @@ Reasoning models produce explicit reasoning chains as part of the token output. 
 
 ## Supported Models
 
-| Model ID | Model |
-|----------|-------|
-| openai/gpt-oss-20b | OpenAI GPT-OSS 20B |
-| openai/gpt-oss-120b | OpenAI GPT-OSS 120B |
+| Model ID                     | Model                        |
+| ---------------------------- | ---------------------------- |
+| openai/gpt-oss-20b           | OpenAI GPT-OSS 20B           |
+| openai/gpt-oss-120b          | OpenAI GPT-OSS 120B          |
 | openai/gpt-oss-safeguard-20b | OpenAI GPT-OSS-Safeguard 20B |
-| qwen/qwen3-32b | Qwen 3 32B |
+| qwen/qwen3-32b               | Qwen 3 32B                   |
 
 ## Reasoning Format
 
 Groq API supports explicit reasoning formats through the `reasoning_format` parameter:
 
-| Option | Description |
-|--------|-------------|
-| `parsed` | Separates reasoning into dedicated `message.reasoning` field |
-| `raw` | Includes reasoning within `<think>` tags in main text content |
-| `hidden` | Returns only the final answer |
+| Option   | Description                                                   |
+| -------- | ------------------------------------------------------------- |
+| `parsed` | Separates reasoning into dedicated `message.reasoning` field  |
+| `raw`    | Includes reasoning within `<think>` tags in main text content |
+| `hidden` | Returns only the final answer                                 |
 
 > **Note:** Format defaults to `raw` or `parsed` when JSON mode or tool use are enabled. Setting `raw` with JSON mode or tool use returns a 400 error.
 
@@ -748,10 +760,10 @@ Groq API supports explicit reasoning formats through the `reasoning_format` para
 
 Control with `include_reasoning` parameter:
 
-| Option | Description |
-|--------|-------------|
-| `true` | Includes reasoning in dedicated `message.reasoning` field (default) |
-| `false` | Excludes reasoning from response |
+| Option  | Description                                                         |
+| ------- | ------------------------------------------------------------------- |
+| `true`  | Includes reasoning in dedicated `message.reasoning` field (default) |
+| `false` | Excludes reasoning from response                                    |
 
 > **Note:** `include_reasoning` cannot be used together with `reasoning_format`.
 
@@ -759,18 +771,18 @@ Control with `include_reasoning` parameter:
 
 ### For Qwen 3 32B
 
-| Option | Description |
-|--------|-------------|
-| `none` | Disable reasoning |
-| `default` | Enable reasoning |
+| Option    | Description       |
+| --------- | ----------------- |
+| `none`    | Disable reasoning |
+| `default` | Enable reasoning  |
 
 ### For GPT-OSS Models
 
-| Option | Description |
-|--------|-------------|
-| `low` | Small number of reasoning tokens |
+| Option   | Description                         |
+| -------- | ----------------------------------- |
+| `low`    | Small number of reasoning tokens    |
 | `medium` | Moderate number of reasoning tokens |
-| `high` | Large number of reasoning tokens |
+| `high`   | Large number of reasoning tokens    |
 
 ## Quick Start
 
@@ -801,25 +813,25 @@ for chunk in completion:
 ### TypeScript
 
 ```typescript
-import Groq from 'groq-sdk';
+import Groq from "groq-sdk";
 
 const client = new Groq();
 const completion = await client.chat.completions.create({
-    model: "openai/gpt-oss-20b",
-    messages: [
-        {
-            role: "user",
-            content: "How many r's are in the word strawberry?"
-        }
-    ],
-    temperature: 0.6,
-    max_completion_tokens: 1024,
-    top_p: 0.95,
-    stream: true
+  model: "openai/gpt-oss-20b",
+  messages: [
+    {
+      role: "user",
+      content: "How many r's are in the word strawberry?",
+    },
+  ],
+  temperature: 0.6,
+  max_completion_tokens: 1024,
+  top_p: 0.95,
+  stream: true,
 });
 
 for await (const chunk of completion) {
-    process.stdout.write(chunk.choices[0].delta.content || "");
+  process.stdout.write(chunk.choices[0].delta.content || "");
 }
 ```
 
@@ -883,18 +895,18 @@ curl https://api.groq.com/openai/v1/chat/completions -s \
 
 ## Configuration Parameters
 
-| Parameter | Default | Range | Description |
-|-----------|---------|-------|-------------|
-| `messages` | - | - | Array of message objects. Avoid system prompts - include all instructions in user message |
-| `temperature` | 0.6 | 0.0 - 2.0 | Controls randomness. Recommended: 0.5-0.7 |
-| `max_completion_tokens` | 1024 | - | Maximum response length. Increase for complex reasoning |
-| `top_p` | 0.95 | 0.0 - 1.0 | Controls diversity of token selection |
-| `stream` | false | boolean | Enables response streaming |
-| `stop` | null | string/array | Custom stop sequences |
-| `seed` | null | integer | Set for reproducible results |
-| `response_format` | {type: "text"} | text/json_object | Output format |
-| `reasoning_format` | raw | parsed/raw/hidden | How reasoning is presented |
-| `reasoning_effort` | default | none/default/low/medium/high | Level of reasoning effort |
+| Parameter               | Default        | Range                        | Description                                                                               |
+| ----------------------- | -------------- | ---------------------------- | ----------------------------------------------------------------------------------------- |
+| `messages`              | -              | -                            | Array of message objects. Avoid system prompts - include all instructions in user message |
+| `temperature`           | 0.6            | 0.0 - 2.0                    | Controls randomness. Recommended: 0.5-0.7                                                 |
+| `max_completion_tokens` | 1024           | -                            | Maximum response length. Increase for complex reasoning                                   |
+| `top_p`                 | 0.95           | 0.0 - 1.0                    | Controls diversity of token selection                                                     |
+| `stream`                | false          | boolean                      | Enables response streaming                                                                |
+| `stop`                  | null           | string/array                 | Custom stop sequences                                                                     |
+| `seed`                  | null           | integer                      | Set for reproducible results                                                              |
+| `response_format`       | {type: "text"} | text/json_object             | Output format                                                                             |
+| `reasoning_format`      | raw            | parsed/raw/hidden            | How reasoning is presented                                                                |
+| `reasoning_effort`      | default        | none/default/low/medium/high | Level of reasoning effort                                                                 |
 
 ## Accessing Reasoning Content
 
@@ -1011,16 +1023,16 @@ Qwen3 is the latest generation of large language models in the Qwen series, offe
 
 ## Qwen3-32B Overview
 
-| Attribute | Value |
-|-----------|-------|
-| Type | Causal Language Models |
-| Training Stage | Pretraining & Post-training |
-| Total Parameters | 32.8B |
-| Non-Embedding Parameters | 31.2B |
-| Number of Layers | 64 |
-| Attention Heads (GQA) | 64 Q, 8 KV |
-| Native Context Length | 32,768 tokens |
-| Extended Context (YaRN) | 131,072 tokens |
+| Attribute                | Value                       |
+| ------------------------ | --------------------------- |
+| Type                     | Causal Language Models      |
+| Training Stage           | Pretraining & Post-training |
+| Total Parameters         | 32.8B                       |
+| Non-Embedding Parameters | 31.2B                       |
+| Number of Layers         | 64                          |
+| Attention Heads (GQA)    | 64 Q, 8 KV                  |
+| Native Context Length    | 32,768 tokens               |
+| Extended Context (YaRN)  | 131,072 tokens              |
 
 ## Quickstart
 
@@ -1136,7 +1148,7 @@ class QwenChatbot:
         inputs = self.tokenizer(text, return_tensors="pt")
         response_ids = self.model.generate(**inputs, max_new_tokens=32768)[0][len(inputs.input_ids[0]):].tolist()
         response = self.tokenizer.decode(response_ids, skip_special_tokens=True)
-        
+
         self.history.append({"role": "user", "content": user_input})
         self.history.append({"role": "assistant", "content": response})
         return response
@@ -1197,27 +1209,30 @@ For context beyond 32,768 tokens, use YaRN rope scaling:
 
 ```json
 {
-    "rope_scaling": {
-        "rope_type": "yarn",
-        "factor": 4.0,
-        "original_max_position_embeddings": 32768
-    }
+  "rope_scaling": {
+    "rope_type": "yarn",
+    "factor": 4.0,
+    "original_max_position_embeddings": 32768
+  }
 }
 ```
 
 ### Method 2: Command Line Arguments
 
 **vLLM:**
+
 ```bash
 vllm serve ... --rope-scaling '{"rope_type":"yarn","factor":4.0,"original_max_position_embeddings":32768}' --max-model-len 131072
 ```
 
 **SGLang:**
+
 ```bash
 python -m sglang.launch_server ... --json-model-override-args '{"rope_scaling":{"rope_type":"yarn","factor":4.0,"original_max_position_embeddings":32768}}'
 ```
 
 **llama.cpp:**
+
 ```bash
 llama-server ... --rope-scaling yarn --rope-scale 4 --yarn-orig-ctx 32768
 ```
@@ -1229,13 +1244,16 @@ llama-server ... --rope-scaling yarn --rope-scale 4 --yarn-orig-ctx 32768
 ### Sampling Parameters
 
 **Thinking mode (enable_thinking=True):**
+
 - Temperature=0.6, TopP=0.95, TopK=20, MinP=0
 - DO NOT use greedy decoding
 
 **Non-thinking mode (enable_thinking=False):**
+
 - Temperature=0.7, TopP=0.8, TopK=20, MinP=0
 
 **To reduce repetitions:**
+
 - Adjust `presence_penalty` between 0 and 2
 
 ### Output Length
@@ -1246,9 +1264,11 @@ llama-server ... --rope-scaling yarn --rope-scale 4 --yarn-orig-ctx 32768
 ### Standardize Output Format
 
 **Math Problems:**
+
 > "Please reason step by step, and put your final answer within \boxed{}."
 
 **Multiple-Choice Questions:**
+
 > "Please show your choice in the answer field with only the choice letter, e.g., \"answer\": \"C\"."
 
 ### Multi-turn Conversations
@@ -1261,12 +1281,12 @@ Historical model output should only include the final output, not thinking conte
 
 ```bibtex
 @misc{qwen3technicalreport,
-      title={Qwen3 Technical Report}, 
+      title={Qwen3 Technical Report},
       author={Qwen Team},
       year={2025},
       eprint={2505.09388},
       archivePrefix={arXiv},
       primaryClass={cs.CL},
-      url={https://arxiv.org/abs/2505.09388}, 
+      url={https://arxiv.org/abs/2505.09388},
 }
 ```

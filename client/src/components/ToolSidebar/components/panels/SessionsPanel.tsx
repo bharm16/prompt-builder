@@ -5,12 +5,12 @@ import React, {
   useRef,
   useState,
   type ReactElement,
-} from 'react';
-import { ArrowLeft, Search } from '@promptstudio/system/components/ui';
-import { HistoryEmptyState } from '@components/EmptyState';
-import { useToast } from '@components/Toast';
-import { modKey } from '@components/KeyboardShortcuts/shortcuts.config';
-import { Button } from '@promptstudio/system/components/ui/button';
+} from "react";
+import { ArrowLeft, Search } from "@promptstudio/system/components/ui";
+import { HistoryEmptyState } from "@components/EmptyState";
+import { useToast } from "@components/Toast";
+import { modKey } from "@components/KeyboardShortcuts/shortcuts.config";
+import { Button } from "@promptstudio/system/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -18,34 +18,34 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@promptstudio/system/components/ui/dialog';
-import { Input } from '@promptstudio/system/components/ui/input';
+} from "@promptstudio/system/components/ui/dialog";
+import { Input } from "@promptstudio/system/components/ui/input";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from '@promptstudio/system/components/ui/tooltip';
-import type { PromptHistoryEntry } from '@features/prompt-optimizer/types/domain/prompt-session';
-import { cn } from '@utils/cn';
-import { HistoryItem } from '@features/history/components/HistoryItem';
-import { useSidebarSessionsDomain } from '@/components/ToolSidebar/context';
-import { formatRelativeOrDate } from '@features/history/utils/historyDates';
+} from "@promptstudio/system/components/ui/tooltip";
+import type { PromptHistoryEntry } from "@features/prompt-optimizer/types/domain/prompt-session";
+import { cn } from "@utils/cn";
+import { HistoryItem } from "@features/history/components/HistoryItem";
+import { useSidebarSessionsDomain } from "@/components/ToolSidebar/context";
+import { formatRelativeOrDate } from "@features/history/utils/historyDates";
 import {
   extractDisambiguator,
   normalizeTitle,
   resolveEntryTitle,
-} from '@features/history/utils/historyTitles';
+} from "@features/history/utils/historyTitles";
 import {
   formatModelLabel,
   normalizeProcessingLabel,
   resolveEntryStage,
-} from '@features/history/utils/historyStages';
+} from "@features/history/utils/historyStages";
 import {
   hasVideoArtifact,
   isRecentEntry,
   resolveHistoryThumbnail,
-} from '@features/history/utils/historyMedia';
+} from "@features/history/utils/historyMedia";
 
 const INITIAL_HISTORY_LIMIT = 5;
 const EMPTY_HISTORY: PromptHistoryEntry[] = [];
@@ -78,24 +78,31 @@ export function SessionsPanel(props: SessionsPanelProps): ReactElement {
   const filteredHistory =
     props.filteredHistory ?? domain?.filteredHistory ?? EMPTY_HISTORY;
   const isLoading = props.isLoading ?? domain?.isLoadingHistory ?? false;
-  const searchQuery = props.searchQuery ?? domain?.searchQuery ?? '';
-  const onSearchChange = props.onSearchChange ?? domain?.onSearchChange ?? noopSearch;
+  const searchQuery = props.searchQuery ?? domain?.searchQuery ?? "";
+  const onSearchChange =
+    props.onSearchChange ?? domain?.onSearchChange ?? noopSearch;
   const onBack = props.onBack;
-  const onLoadFromHistory = props.onLoadFromHistory ?? domain?.onLoadFromHistory ?? noopLoad;
+  const onLoadFromHistory =
+    props.onLoadFromHistory ?? domain?.onLoadFromHistory ?? noopLoad;
   const onCreateNew = props.onCreateNew ?? domain?.onCreateNew ?? noop;
   const onDelete = props.onDelete ?? domain?.onDelete ?? noopDelete;
   const onDuplicate = props.onDuplicate ?? domain?.onDuplicate;
   const onRename = props.onRename ?? domain?.onRename;
-  const currentPromptUuid = props.currentPromptUuid ?? domain?.currentPromptUuid;
-  const currentPromptDocId = props.currentPromptDocId ?? domain?.currentPromptDocId;
-  const activeStatusLabel = props.activeStatusLabel ?? domain?.activeStatusLabel;
+  const currentPromptUuid =
+    props.currentPromptUuid ?? domain?.currentPromptUuid;
+  const currentPromptDocId =
+    props.currentPromptDocId ?? domain?.currentPromptDocId;
+  const activeStatusLabel =
+    props.activeStatusLabel ?? domain?.activeStatusLabel;
   const activeModelLabel = props.activeModelLabel ?? domain?.activeModelLabel;
 
   const toast = useToast();
   const [showAllHistory, setShowAllHistory] = useState<boolean>(false);
   const [focusedEntryKey, setFocusedEntryKey] = useState<string | null>(null);
-  const [renameEntry, setRenameEntry] = useState<PromptHistoryEntry | null>(null);
-  const [renameValue, setRenameValue] = useState<string>('');
+  const [renameEntry, setRenameEntry] = useState<PromptHistoryEntry | null>(
+    null,
+  );
+  const [renameValue, setRenameValue] = useState<string>("");
   const [filterState, setFilterState] = useState<{
     videosOnly: boolean;
     recentOnly: boolean;
@@ -115,7 +122,7 @@ export function SessionsPanel(props: SessionsPanelProps): ReactElement {
     (event: React.ChangeEvent<HTMLInputElement>): void => {
       onSearchChange(event.target.value);
     },
-    [onSearchChange]
+    [onSearchChange],
   );
 
   const filteredByChips = useMemo(() => {
@@ -140,9 +147,13 @@ export function SessionsPanel(props: SessionsPanelProps): ReactElement {
 
     return displayedHistory.filter((entry) => {
       const normalizedId =
-        typeof entry.id === 'string' && entry.id.trim() ? entry.id.trim() : null;
+        typeof entry.id === "string" && entry.id.trim()
+          ? entry.id.trim()
+          : null;
       const normalizedUuid =
-        typeof entry.uuid === 'string' && entry.uuid.trim() ? entry.uuid.trim() : null;
+        typeof entry.uuid === "string" && entry.uuid.trim()
+          ? entry.uuid.trim()
+          : null;
 
       if (
         (normalizedId && seenIds.has(normalizedId)) ||
@@ -165,32 +176,32 @@ export function SessionsPanel(props: SessionsPanelProps): ReactElement {
     async (entry: PromptHistoryEntry): Promise<void> => {
       const payload = entry.output?.trim() ? entry.output : entry.input;
       if (!payload.trim()) {
-        toast.warning('Nothing to copy yet.');
+        toast.warning("Nothing to copy yet.");
         return;
       }
-      if (typeof navigator === 'undefined' || !navigator.clipboard) {
-        toast.error('Clipboard unavailable.');
+      if (typeof navigator === "undefined" || !navigator.clipboard) {
+        toast.error("Clipboard unavailable.");
         return;
       }
       try {
         await navigator.clipboard.writeText(payload);
-        toast.success('Prompt copied to clipboard');
+        toast.success("Prompt copied to clipboard");
       } catch {
-        toast.error('Failed to copy prompt');
+        toast.error("Failed to copy prompt");
       }
     },
-    [toast]
+    [toast],
   );
 
   const handleOpenInNewTab = useCallback(
     (entry: PromptHistoryEntry): void => {
       if (!entry.id) {
-        toast.warning('This session is not available in a new tab yet.');
+        toast.warning("This session is not available in a new tab yet.");
         return;
       }
-      window.open(`/session/${entry.id}`, '_blank', 'noopener,noreferrer');
+      window.open(`/session/${entry.id}`, "_blank", "noopener,noreferrer");
     },
-    [toast]
+    [toast],
   );
 
   const handleRenameRequest = useCallback((entry: PromptHistoryEntry): void => {
@@ -201,7 +212,7 @@ export function SessionsPanel(props: SessionsPanelProps): ReactElement {
     if (!renameEntry) return;
     const trimmed = renameValue.trim();
     if (!trimmed) {
-      toast.warning('Title cannot be empty.');
+      toast.warning("Title cannot be empty.");
       return;
     }
     onRename?.(renameEntry, trimmed);
@@ -210,46 +221,52 @@ export function SessionsPanel(props: SessionsPanelProps): ReactElement {
 
   const promptRows = useMemo(() => {
     const baseTitles = uniqueDisplayedHistory.map((entry) =>
-      normalizeTitle(resolveEntryTitle(entry))
+      normalizeTitle(resolveEntryTitle(entry)),
     );
     const counts = new Map<string, number>();
-    baseTitles.forEach((title) => counts.set(title, (counts.get(title) ?? 0) + 1));
+    baseTitles.forEach((title) =>
+      counts.set(title, (counts.get(title) ?? 0) + 1),
+    );
     const seen = new Map<string, number>();
 
     return uniqueDisplayedHistory.map((entry, index) => {
       const stage = resolveEntryStage(entry);
-      const baseTitle = baseTitles[index] ?? 'Untitled';
+      const baseTitle = baseTitles[index] ?? "Untitled";
       const hasDupes = (counts.get(baseTitle) ?? 0) > 1;
       const nextSeen = (seen.get(baseTitle) ?? 0) + 1;
       seen.set(baseTitle, nextSeen);
 
       const isSelected = Boolean(
         (currentPromptUuid && entry.uuid === currentPromptUuid) ||
-          (currentPromptDocId && entry.id === currentPromptDocId)
+          (currentPromptDocId && entry.id === currentPromptDocId),
       );
 
       const dateLabel = formatRelativeOrDate(entry.timestamp);
       const fallbackModelLabel =
-        isSelected && typeof activeModelLabel === 'string'
+        isSelected && typeof activeModelLabel === "string"
           ? formatModelLabel(activeModelLabel)
           : null;
       const modelLabel =
-        formatModelLabel(typeof entry.targetModel === 'string' ? entry.targetModel : null) ??
-        fallbackModelLabel;
+        formatModelLabel(
+          typeof entry.targetModel === "string" ? entry.targetModel : null,
+        ) ?? fallbackModelLabel;
 
       const normalizedActiveStatus =
-        typeof activeStatusLabel === 'string' && activeStatusLabel.trim()
+        typeof activeStatusLabel === "string" && activeStatusLabel.trim()
           ? activeStatusLabel
-          : '';
+          : "";
       const normalizedProcessingStatus =
-        normalizedActiveStatus === 'Optimizing' ? 'Refining' : normalizedActiveStatus;
+        normalizedActiveStatus === "Optimizing"
+          ? "Refining"
+          : normalizedActiveStatus;
       const processingLabel =
         isSelected && normalizedProcessingStatus
           ? normalizeProcessingLabel(normalizedProcessingStatus)
           : null;
       const effectiveProcessingLabel =
         isSelected &&
-        (normalizedActiveStatus === 'Refining' || normalizedActiveStatus === 'Optimizing')
+        (normalizedActiveStatus === "Refining" ||
+          normalizedActiveStatus === "Optimizing")
           ? processingLabel
           : null;
 
@@ -259,15 +276,16 @@ export function SessionsPanel(props: SessionsPanelProps): ReactElement {
         extractDisambiguator(entry.input) ??
         (() => {
           const model =
-            formatModelLabel(typeof entry.targetModel === 'string' ? entry.targetModel : null) ??
-            modelLabel;
+            formatModelLabel(
+              typeof entry.targetModel === "string" ? entry.targetModel : null,
+            ) ?? modelLabel;
           if (!model) return null;
           return nextSeen === 1 ? model : `alt ${nextSeen}`;
         })() ??
         `alt ${nextSeen}`;
 
       const title = hasDupes ? `${baseTitle} - ${disambiguator}` : baseTitle;
-      const key = entry.id ?? entry.uuid ?? `${entry.timestamp ?? ''}-${title}`;
+      const key = entry.id ?? entry.uuid ?? `${entry.timestamp ?? ""}-${title}`;
 
       const thumbnail = resolveHistoryThumbnail(entry);
 
@@ -309,11 +327,11 @@ export function SessionsPanel(props: SessionsPanelProps): ReactElement {
       const target = event.target as HTMLElement | null;
       const isTypingTarget =
         target &&
-        (target.tagName === 'INPUT' ||
-          target.tagName === 'TEXTAREA' ||
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
           target.isContentEditable);
 
-      if (event.key === '/') {
+      if (event.key === "/") {
         if (isTypingTarget) return;
         event.preventDefault();
         searchInputRef.current?.focus();
@@ -322,18 +340,20 @@ export function SessionsPanel(props: SessionsPanelProps): ReactElement {
 
       if (isTypingTarget) return;
 
-      if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      if (event.key === "ArrowDown" || event.key === "ArrowUp") {
         event.preventDefault();
         if (promptRows.length === 0) return;
 
-        const selectedKey = promptRows.find((row) => row.isSelected)?.key ?? null;
-        const currentKey = focusedEntryKey ?? selectedKey ?? promptRows[0]?.key ?? null;
+        const selectedKey =
+          promptRows.find((row) => row.isSelected)?.key ?? null;
+        const currentKey =
+          focusedEntryKey ?? selectedKey ?? promptRows[0]?.key ?? null;
         const currentIndex = currentKey
           ? promptRows.findIndex((row) => row.key === currentKey)
           : 0;
         const safeIndex = currentIndex >= 0 ? currentIndex : 0;
         const nextIndex =
-          event.key === 'ArrowDown'
+          event.key === "ArrowDown"
             ? Math.min(promptRows.length - 1, safeIndex + 1)
             : Math.max(0, safeIndex - 1);
         const nextKey = promptRows[nextIndex]?.key ?? null;
@@ -341,17 +361,19 @@ export function SessionsPanel(props: SessionsPanelProps): ReactElement {
         if (nextKey) {
           setFocusedEntryKey(nextKey);
           const targetNode = document.querySelector(
-            `[data-history-index="${nextIndex}"]`
+            `[data-history-index="${nextIndex}"]`,
           );
           if (targetNode instanceof HTMLElement) {
-            targetNode.scrollIntoView({ block: 'nearest' });
+            targetNode.scrollIntoView({ block: "nearest" });
           }
         }
       }
 
-      if (event.key === 'Enter') {
+      if (event.key === "Enter") {
         const selectedKey =
-          focusedEntryKey ?? promptRows.find((row) => row.isSelected)?.key ?? null;
+          focusedEntryKey ??
+          promptRows.find((row) => row.isSelected)?.key ??
+          null;
         if (!selectedKey) return;
         const row = rowByKey.get(selectedKey);
         if (row) {
@@ -360,13 +382,14 @@ export function SessionsPanel(props: SessionsPanelProps): ReactElement {
       }
     };
 
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
   }, [renameEntry, promptRows, focusedEntryKey, rowByKey, onLoadFromHistory]);
 
-  const duplicateProps = typeof onDuplicate === 'function' ? { onDuplicate } : {};
+  const duplicateProps =
+    typeof onDuplicate === "function" ? { onDuplicate } : {};
   const renameProps =
-    typeof onRename === 'function' ? { onRename: handleRenameRequest } : {};
+    typeof onRename === "function" ? { onRename: handleRenameRequest } : {};
 
   return (
     <>
@@ -397,12 +420,12 @@ export function SessionsPanel(props: SessionsPanelProps): ReactElement {
               </TooltipTrigger>
               <TooltipContent
                 className={cn(
-                  'text-body-sm text-foreground',
-                  'rounded-lg border border-[rgb(67,70,81)] bg-[rgb(24,25,28)]',
-                  'shadow-[0_4px_12px_rgba(0,0,0,0.4)]'
+                  "text-body-sm text-foreground",
+                  "rounded-lg border border-[rgb(67,70,81)] bg-[rgb(24,25,28)]",
+                  "shadow-[0_4px_12px_rgba(0,0,0,0.4)]",
                 )}
               >
-                New prompt ({modKey === 'Cmd' ? 'Cmd+N' : 'Ctrl+N'})
+                New prompt ({modKey === "Cmd" ? "Cmd+N" : "Ctrl+N"})
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
@@ -419,10 +442,10 @@ export function SessionsPanel(props: SessionsPanelProps): ReactElement {
               placeholder="Search..."
               aria-label="Search sessions"
               className={cn(
-                'w-full h-9 pl-9 pr-3 rounded-lg',
-                'bg-tool-nav-active border border-tool-border-dark',
-                'text-sm text-white placeholder:text-tool-text-placeholder',
-                'focus-visible:border-blue-500 focus-visible:ring-0'
+                "w-full h-9 pl-9 pr-3 rounded-lg",
+                "bg-tool-nav-active border border-tool-border-dark",
+                "text-sm text-white placeholder:text-tool-text-placeholder",
+                "focus-visible:border-blue-500 focus-visible:ring-0",
               )}
             />
           </div>
@@ -432,9 +455,9 @@ export function SessionsPanel(props: SessionsPanelProps): ReactElement {
           <button
             type="button"
             className={cn(
-              'h-7 px-2.5 rounded-md border border-tool-border-primary bg-tool-nav-active text-xs font-medium text-ghost',
-              'transition-colors hover:bg-surface-2 hover:text-white',
-              filterState.videosOnly && 'bg-surface-2 text-white'
+              "h-7 px-2.5 rounded-md border border-tool-border-primary bg-tool-nav-active text-xs font-medium text-ghost",
+              "transition-colors hover:bg-surface-2 hover:text-white",
+              filterState.videosOnly && "bg-surface-2 text-white",
             )}
             onClick={() =>
               setFilterState((prev) => ({
@@ -448,9 +471,9 @@ export function SessionsPanel(props: SessionsPanelProps): ReactElement {
           <button
             type="button"
             className={cn(
-              'h-7 px-2.5 rounded-md border border-tool-border-primary bg-tool-nav-active text-xs font-medium text-ghost',
-              'transition-colors hover:bg-surface-2 hover:text-white',
-              filterState.recentOnly && 'bg-surface-2 text-white'
+              "h-7 px-2.5 rounded-md border border-tool-border-primary bg-tool-nav-active text-xs font-medium text-ghost",
+              "transition-colors hover:bg-surface-2 hover:text-white",
+              filterState.recentOnly && "bg-surface-2 text-white",
             )}
             onClick={() =>
               setFilterState((prev) => ({
@@ -502,7 +525,7 @@ export function SessionsPanel(props: SessionsPanelProps): ReactElement {
                         thumbnailStoragePath,
                         thumbnailAssetId,
                       },
-                      index
+                      index,
                     ) => {
                       const externalHover =
                         focusedEntryKey !== null &&
@@ -531,7 +554,7 @@ export function SessionsPanel(props: SessionsPanelProps): ReactElement {
                           {...renameProps}
                         />
                       );
-                    }
+                    },
                   )}
                 </ul>
               </nav>
@@ -542,7 +565,7 @@ export function SessionsPanel(props: SessionsPanelProps): ReactElement {
                   size="sm"
                   className="text-label-sm text-tool-text-placeholder w-full justify-start"
                 >
-                  {showAllHistory ? 'See less' : 'See more...'}
+                  {showAllHistory ? "See less" : "See more..."}
                 </Button>
               )}
             </>
@@ -575,7 +598,7 @@ export function SessionsPanel(props: SessionsPanelProps): ReactElement {
             placeholder="Prompt title"
             className="mt-ps-2"
             onKeyDown={(event: React.KeyboardEvent<HTMLInputElement>) => {
-              if (event.key === 'Enter') {
+              if (event.key === "Enter") {
                 event.preventDefault();
                 handleRenameSubmit();
               }

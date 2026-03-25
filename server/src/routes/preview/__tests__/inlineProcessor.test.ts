@@ -1,16 +1,18 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { VideoJobRecord } from '@services/video-generation/jobs/types';
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { VideoJobRecord } from "@services/video-generation/jobs/types";
 
 const mocks = vi.hoisted(() => ({
   loggerDebug: vi.fn(),
   loggerInfo: vi.fn(),
   loggerWarn: vi.fn(),
   loggerError: vi.fn(),
-  buildRefundKey: vi.fn((parts: Array<string | number>) => `refund-${parts.join('-')}`),
+  buildRefundKey: vi.fn(
+    (parts: Array<string | number>) => `refund-${parts.join("-")}`,
+  ),
   refundWithGuard: vi.fn().mockResolvedValue(true),
 }));
 
-vi.mock('@infrastructure/Logger', () => {
+vi.mock("@infrastructure/Logger", () => {
   const childLogger = {
     debug: mocks.loggerDebug,
     info: mocks.loggerInfo,
@@ -29,23 +31,25 @@ vi.mock('@infrastructure/Logger', () => {
   };
 });
 
-vi.mock('@services/credits/refundGuard', () => ({
+vi.mock("@services/credits/refundGuard", () => ({
   buildRefundKey: mocks.buildRefundKey,
   refundWithGuard: mocks.refundWithGuard,
 }));
 
 // Passthrough mocks: resolve aliased paths so Vitest can load the real modules
-vi.mock('@services/video-generation/jobs/classifyError', async () => {
-  return await import('../../../services/video-generation/jobs/classifyError');
+vi.mock("@services/video-generation/jobs/classifyError", async () => {
+  return await import("../../../services/video-generation/jobs/classifyError");
 });
-vi.mock('@services/video-generation/jobs/processVideoJob', async () => {
-  return await import('../../../services/video-generation/jobs/processVideoJob');
+vi.mock("@services/video-generation/jobs/processVideoJob", async () => {
+  return await import(
+    "../../../services/video-generation/jobs/processVideoJob"
+  );
 });
-vi.mock('@server/utils/RetryPolicy', async () => {
-  return await import('../../../utils/RetryPolicy');
+vi.mock("@server/utils/RetryPolicy", async () => {
+  return await import("../../../utils/RetryPolicy");
 });
-vi.mock('@server/utils/sleep', async () => {
-  return await import('../../../utils/sleep');
+vi.mock("@server/utils/sleep", async () => {
+  return await import("../../../utils/sleep");
 });
 
 interface MockJobStore {
@@ -68,13 +72,15 @@ const createMockJobStore = (): MockJobStore => ({
   setProviderResult: vi.fn().mockResolvedValue(true),
 });
 
-const createClaimedJob = (overrides?: Partial<VideoJobRecord>): VideoJobRecord => ({
-  id: 'job-1',
-  status: 'processing',
-  userId: 'user-1',
+const createClaimedJob = (
+  overrides?: Partial<VideoJobRecord>,
+): VideoJobRecord => ({
+  id: "job-1",
+  status: "processing",
+  userId: "user-1",
   request: {
-    prompt: 'a cinematic sunset',
-    options: { model: 'sora-2' },
+    prompt: "a cinematic sunset",
+    options: { model: "sora-2" },
   },
   creditsReserved: 5,
   attempts: 1,
@@ -85,15 +91,15 @@ const createClaimedJob = (overrides?: Partial<VideoJobRecord>): VideoJobRecord =
 });
 
 const FAKE_RESULT = {
-  videoUrl: 'https://cdn.example.com/video.mp4',
-  assetId: 'asset-123',
-  status: 'completed' as const,
+  videoUrl: "https://cdn.example.com/video.mp4",
+  assetId: "asset-123",
+  status: "completed" as const,
 };
 
 const FAKE_STORAGE_RESULT = {
-  storagePath: 'generation/user-1/abc.mp4',
-  viewUrl: 'https://storage.example.com/signed/abc.mp4',
-  expiresAt: '2099-01-01T00:00:00.000Z',
+  storagePath: "generation/user-1/abc.mp4",
+  viewUrl: "https://storage.example.com/signed/abc.mp4",
+  expiresAt: "2099-01-01T00:00:00.000Z",
   sizeBytes: 1024000,
 };
 
@@ -107,7 +113,7 @@ async function flushMicrotasks(rounds = 10): Promise<void> {
   }
 }
 
-describe('scheduleInlineVideoPreviewProcessing', () => {
+describe("scheduleInlineVideoPreviewProcessing", () => {
   let jobStore: MockJobStore;
   let generateVideo: ReturnType<typeof vi.fn>;
   let storageService: { saveFromUrl: ReturnType<typeof vi.fn> };
@@ -119,7 +125,9 @@ describe('scheduleInlineVideoPreviewProcessing', () => {
 
     jobStore = createMockJobStore();
     generateVideo = vi.fn().mockResolvedValue(FAKE_RESULT);
-    storageService = { saveFromUrl: vi.fn().mockResolvedValue(FAKE_STORAGE_RESULT) };
+    storageService = {
+      saveFromUrl: vi.fn().mockResolvedValue(FAKE_STORAGE_RESULT),
+    };
     userCreditService = { refundCredits: vi.fn() };
 
     // Default claim succeeds
@@ -140,14 +148,19 @@ describe('scheduleInlineVideoPreviewProcessing', () => {
       jobStore.claimJob.mockResolvedValue(overrides.claimResult);
     }
 
-    const { scheduleInlineVideoPreviewProcessing } = await import('../inlineProcessor');
+    const { scheduleInlineVideoPreviewProcessing } = await import(
+      "../inlineProcessor"
+    );
     scheduleInlineVideoPreviewProcessing({
-      jobId: overrides?.jobId ?? 'job-1',
-      requestId: overrides?.requestId ?? 'req-1',
+      jobId: overrides?.jobId ?? "job-1",
+      requestId: overrides?.requestId ?? "req-1",
       videoJobStore: jobStore as never,
       videoGenerationService: { generateVideo } as never,
       userCreditService: userCreditService as never,
-      storageService: overrides?.storage !== undefined ? (overrides.storage as never) : (storageService as never),
+      storageService:
+        overrides?.storage !== undefined
+          ? (overrides.storage as never)
+          : (storageService as never),
     });
 
     // Advance past the 300ms setTimeout
@@ -161,19 +174,30 @@ describe('scheduleInlineVideoPreviewProcessing', () => {
     }
   }
 
-  it('claims job and completes successfully', async () => {
+  it("claims job and completes successfully", async () => {
     await invokeProcessor();
 
-    expect(jobStore.claimJob).toHaveBeenCalledWith('job-1', 'inline-preview-req-1', 60000);
-    expect(generateVideo).toHaveBeenCalledWith('a cinematic sunset', { model: 'sora-2' }, undefined);
+    expect(jobStore.claimJob).toHaveBeenCalledWith(
+      "job-1",
+      "inline-preview-req-1",
+      60000,
+    );
+    expect(generateVideo).toHaveBeenCalledWith(
+      "a cinematic sunset",
+      { model: "sora-2" },
+      undefined,
+    );
     expect(storageService.saveFromUrl).toHaveBeenCalled();
-    expect(jobStore.markCompleted).toHaveBeenCalledWith('job-1', expect.objectContaining({
-      storagePath: FAKE_STORAGE_RESULT.storagePath,
-      viewUrl: FAKE_STORAGE_RESULT.viewUrl,
-    }));
+    expect(jobStore.markCompleted).toHaveBeenCalledWith(
+      "job-1",
+      expect.objectContaining({
+        storagePath: FAKE_STORAGE_RESULT.storagePath,
+        viewUrl: FAKE_STORAGE_RESULT.viewUrl,
+      }),
+    );
   });
 
-  it('skips processing when claim returns null', async () => {
+  it("skips processing when claim returns null", async () => {
     await invokeProcessor({ claimResult: null });
 
     expect(generateVideo).not.toHaveBeenCalled();
@@ -182,15 +206,21 @@ describe('scheduleInlineVideoPreviewProcessing', () => {
 
   // ── Heartbeat Tests ──────────────────────────────────────────────
 
-  it('regression: inline-processor heartbeat prevents sweeper race', async () => {
+  it("regression: inline-processor heartbeat prevents sweeper race", async () => {
     // Make generateVideo take a long time so we can observe heartbeat calls
     let resolveGeneration!: (value: typeof FAKE_RESULT) => void;
-    generateVideo.mockReturnValue(new Promise((resolve) => { resolveGeneration = resolve; }));
+    generateVideo.mockReturnValue(
+      new Promise((resolve) => {
+        resolveGeneration = resolve;
+      }),
+    );
 
-    const { scheduleInlineVideoPreviewProcessing } = await import('../inlineProcessor');
+    const { scheduleInlineVideoPreviewProcessing } = await import(
+      "../inlineProcessor"
+    );
     scheduleInlineVideoPreviewProcessing({
-      jobId: 'job-1',
-      requestId: 'req-1',
+      jobId: "job-1",
+      requestId: "req-1",
       videoJobStore: jobStore as never,
       videoGenerationService: { generateVideo } as never,
       userCreditService: userCreditService as never,
@@ -208,7 +238,11 @@ describe('scheduleInlineVideoPreviewProcessing', () => {
     vi.advanceTimersByTime(20000);
     await flushMicrotasks();
     expect(jobStore.renewLease).toHaveBeenCalledTimes(1);
-    expect(jobStore.renewLease).toHaveBeenCalledWith('job-1', 'inline-preview-req-1', 60000);
+    expect(jobStore.renewLease).toHaveBeenCalledWith(
+      "job-1",
+      "inline-preview-req-1",
+      60000,
+    );
 
     // Advance another 20s — second heartbeat
     vi.advanceTimersByTime(20000);
@@ -222,7 +256,7 @@ describe('scheduleInlineVideoPreviewProcessing', () => {
     expect(jobStore.markCompleted).toHaveBeenCalled();
   });
 
-  it('heartbeat timer cleared on success', async () => {
+  it("heartbeat timer cleared on success", async () => {
     await invokeProcessor();
 
     // After success, advancing time should NOT produce more renewLease calls
@@ -232,8 +266,8 @@ describe('scheduleInlineVideoPreviewProcessing', () => {
     expect(jobStore.renewLease.mock.calls.length).toBe(callsBefore);
   });
 
-  it('heartbeat timer cleared on failure', async () => {
-    generateVideo.mockRejectedValue(new Error('Provider exploded'));
+  it("heartbeat timer cleared on failure", async () => {
+    generateVideo.mockRejectedValue(new Error("Provider exploded"));
 
     await invokeProcessor();
 
@@ -244,16 +278,22 @@ describe('scheduleInlineVideoPreviewProcessing', () => {
     expect(jobStore.renewLease.mock.calls.length).toBe(callsBefore);
   });
 
-  it('logs warning when heartbeat renewal returns false', async () => {
+  it("logs warning when heartbeat renewal returns false", async () => {
     jobStore.renewLease.mockResolvedValue(false);
 
     let resolveGeneration!: (value: typeof FAKE_RESULT) => void;
-    generateVideo.mockReturnValue(new Promise((resolve) => { resolveGeneration = resolve; }));
+    generateVideo.mockReturnValue(
+      new Promise((resolve) => {
+        resolveGeneration = resolve;
+      }),
+    );
 
-    const { scheduleInlineVideoPreviewProcessing } = await import('../inlineProcessor');
+    const { scheduleInlineVideoPreviewProcessing } = await import(
+      "../inlineProcessor"
+    );
     scheduleInlineVideoPreviewProcessing({
-      jobId: 'job-1',
-      requestId: 'req-1',
+      jobId: "job-1",
+      requestId: "req-1",
       videoJobStore: jobStore as never,
       videoGenerationService: { generateVideo } as never,
       userCreditService: userCreditService as never,
@@ -268,8 +308,8 @@ describe('scheduleInlineVideoPreviewProcessing', () => {
     await flushMicrotasks();
 
     expect(mocks.loggerWarn).toHaveBeenCalledWith(
-      'Inline preview job heartbeat skipped (lease lost)',
-      expect.objectContaining({ jobId: 'job-1' })
+      "Inline preview job heartbeat skipped (lease lost)",
+      expect.objectContaining({ jobId: "job-1" }),
     );
 
     resolveGeneration(FAKE_RESULT);
@@ -278,105 +318,113 @@ describe('scheduleInlineVideoPreviewProcessing', () => {
 
   // ── Error Classification Tests ────────────────────────────────────
 
-  it('regression: inline-processor timeout errors are retryable', async () => {
-    generateVideo.mockRejectedValue(new Error('Request timed out after 300s'));
+  it("regression: inline-processor timeout errors are retryable", async () => {
+    generateVideo.mockRejectedValue(new Error("Request timed out after 300s"));
 
     await invokeProcessor();
 
     expect(jobStore.requeueForRetry).toHaveBeenCalledWith(
-      'job-1',
-      'inline-preview-req-1',
+      "job-1",
+      "inline-preview-req-1",
       expect.objectContaining({
-        category: 'timeout',
+        category: "timeout",
         retryable: true,
-      })
+      }),
     );
     expect(jobStore.markFailed).not.toHaveBeenCalled();
     expect(mocks.refundWithGuard).not.toHaveBeenCalled();
   });
 
-  it('validation errors classified as non-retryable trigger DLQ + refund', async () => {
-    generateVideo.mockRejectedValue(new Error('Input invalid: bad aspect ratio'));
+  it("validation errors classified as non-retryable trigger DLQ + refund", async () => {
+    generateVideo.mockRejectedValue(
+      new Error("Input invalid: bad aspect ratio"),
+    );
 
     await invokeProcessor();
 
     expect(jobStore.requeueForRetry).not.toHaveBeenCalled();
     expect(jobStore.markFailed).toHaveBeenCalledWith(
-      'job-1',
+      "job-1",
       expect.objectContaining({
-        category: 'validation',
+        category: "validation",
         retryable: false,
-      })
+      }),
     );
     expect(jobStore.enqueueDeadLetter).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 'job-1' }),
-      expect.objectContaining({ category: 'validation' }),
-      'inline-terminal',
-      expect.objectContaining({ creditsRefunded: true })
+      expect.objectContaining({ id: "job-1" }),
+      expect.objectContaining({ category: "validation" }),
+      "inline-terminal",
+      expect.objectContaining({ creditsRefunded: true }),
     );
     expect(mocks.refundWithGuard).toHaveBeenCalledWith(
       expect.objectContaining({
-        userId: 'user-1',
+        userId: "user-1",
         amount: 5,
-        reason: 'inline video preview failed',
-      })
+        reason: "inline video preview failed",
+      }),
     );
   });
 
-  it('retryable error triggers requeue when attempts remain', async () => {
-    jobStore.claimJob.mockResolvedValue(createClaimedJob({ attempts: 1, maxAttempts: 3 }));
-    generateVideo.mockRejectedValue(new Error('Provider returned 429'));
+  it("retryable error triggers requeue when attempts remain", async () => {
+    jobStore.claimJob.mockResolvedValue(
+      createClaimedJob({ attempts: 1, maxAttempts: 3 }),
+    );
+    generateVideo.mockRejectedValue(new Error("Provider returned 429"));
 
     await invokeProcessor();
 
     expect(jobStore.requeueForRetry).toHaveBeenCalledWith(
-      'job-1',
-      'inline-preview-req-1',
+      "job-1",
+      "inline-preview-req-1",
       expect.objectContaining({
-        category: 'provider',
+        category: "provider",
         retryable: true,
-      })
+      }),
     );
     expect(jobStore.markFailed).not.toHaveBeenCalled();
     expect(mocks.refundWithGuard).not.toHaveBeenCalled();
   });
 
-  it('retryable error becomes terminal when max attempts reached', async () => {
-    jobStore.claimJob.mockResolvedValue(createClaimedJob({ attempts: 3, maxAttempts: 3 }));
-    generateVideo.mockRejectedValue(new Error('Provider returned 429'));
+  it("retryable error becomes terminal when max attempts reached", async () => {
+    jobStore.claimJob.mockResolvedValue(
+      createClaimedJob({ attempts: 3, maxAttempts: 3 }),
+    );
+    generateVideo.mockRejectedValue(new Error("Provider returned 429"));
 
     await invokeProcessor();
 
     expect(jobStore.requeueForRetry).not.toHaveBeenCalled();
     expect(jobStore.markFailed).toHaveBeenCalledWith(
-      'job-1',
-      expect.objectContaining({ retryable: false })
+      "job-1",
+      expect.objectContaining({ retryable: false }),
     );
     expect(jobStore.enqueueDeadLetter).toHaveBeenCalled();
     expect(mocks.refundWithGuard).toHaveBeenCalled();
   });
 
-  it('storage service unavailable with retries remaining triggers requeue', async () => {
+  it("storage service unavailable with retries remaining triggers requeue", async () => {
     // With attempts=1, maxAttempts=3, the "Storage service unavailable" error
     // is classified as provider/retryable (generic generation-stage error),
     // so it goes through the requeue path
     await invokeProcessor({ storage: null });
 
     expect(jobStore.requeueForRetry).toHaveBeenCalledWith(
-      'job-1',
-      'inline-preview-req-1',
+      "job-1",
+      "inline-preview-req-1",
       expect.objectContaining({
-        category: 'provider',
+        category: "provider",
         retryable: true,
-        stage: 'generation',
-      })
+        stage: "generation",
+      }),
     );
     expect(jobStore.markFailed).not.toHaveBeenCalled();
   });
 
-  it('does not refund when markFailed returns false (status already changed)', async () => {
-    jobStore.claimJob.mockResolvedValue(createClaimedJob({ attempts: 3, maxAttempts: 3 }));
-    generateVideo.mockRejectedValue(new Error('Input invalid: bad request'));
+  it("does not refund when markFailed returns false (status already changed)", async () => {
+    jobStore.claimJob.mockResolvedValue(
+      createClaimedJob({ attempts: 3, maxAttempts: 3 }),
+    );
+    generateVideo.mockRejectedValue(new Error("Input invalid: bad request"));
     jobStore.markFailed.mockResolvedValue(false);
 
     await invokeProcessor();
@@ -387,26 +435,33 @@ describe('scheduleInlineVideoPreviewProcessing', () => {
 
   // ── markCompleted Retry + Refund Tests (Step 4) ───────────────────
 
-  it('regression: inline markCompleted failure refunds credits', async () => {
+  it("regression: inline markCompleted failure refunds credits", async () => {
     // markCompleted throws on all attempts (simulates Firestore errors)
-    jobStore.markCompleted.mockRejectedValue(new Error('Firestore write failed'));
+    jobStore.markCompleted.mockRejectedValue(
+      new Error("Firestore write failed"),
+    );
 
     await invokeProcessor();
 
     // RetryPolicy calls markCompleted 3 times (1 initial + 2 retries)
     expect(jobStore.markCompleted.mock.calls.length).toBeGreaterThanOrEqual(2);
-    expect(mocks.buildRefundKey).toHaveBeenCalledWith(['video-job', 'job-1', 'video']);
+    expect(mocks.buildRefundKey).toHaveBeenCalledWith([
+      "video-job",
+      "job-1",
+      "video",
+    ]);
     // Credits refunded because the video exists in GCS but job was not marked
     expect(mocks.refundWithGuard).toHaveBeenCalledWith(
       expect.objectContaining({
-        userId: 'user-1',
+        userId: "user-1",
         amount: 5,
-        reason: 'inline video preview failed markCompleted failed after retries',
-      })
+        reason:
+          "inline video preview failed markCompleted failed after retries",
+      }),
     );
   });
 
-  it('markCompleted returns false on all attempts triggers refund', async () => {
+  it("markCompleted returns false on all attempts triggers refund", async () => {
     // markCompleted returns false (status was changed by another worker)
     jobStore.markCompleted.mockResolvedValue(false);
 
@@ -414,24 +469,24 @@ describe('scheduleInlineVideoPreviewProcessing', () => {
 
     expect(mocks.refundWithGuard).toHaveBeenCalledWith(
       expect.objectContaining({
-        userId: 'user-1',
+        userId: "user-1",
         amount: 5,
-      })
+      }),
     );
     expect(mocks.loggerError).toHaveBeenCalledWith(
-      'Inline preview job completion failed — refunding credits',
+      "Inline preview job completion failed — refunding credits",
       undefined,
       expect.objectContaining({
         storagePath: FAKE_STORAGE_RESULT.storagePath,
-        recovery: 'manual — asset exists at storagePath',
-      })
+        recovery: "manual — asset exists at storagePath",
+      }),
     );
   });
 
-  it('markCompleted succeeds on retry after initial failure', async () => {
+  it("markCompleted succeeds on retry after initial failure", async () => {
     // Fail first call, succeed on retry
     jobStore.markCompleted
-      .mockRejectedValueOnce(new Error('Firestore temporary error'))
+      .mockRejectedValueOnce(new Error("Firestore temporary error"))
       .mockResolvedValueOnce(true);
 
     await invokeProcessor();
@@ -440,8 +495,8 @@ describe('scheduleInlineVideoPreviewProcessing', () => {
     // No refund needed — second attempt succeeded
     expect(mocks.refundWithGuard).not.toHaveBeenCalled();
     expect(mocks.loggerInfo).toHaveBeenCalledWith(
-      'Inline preview job completed',
-      expect.objectContaining({ jobId: 'job-1' })
+      "Inline preview job completed",
+      expect.objectContaining({ jobId: "job-1" }),
     );
   });
 });

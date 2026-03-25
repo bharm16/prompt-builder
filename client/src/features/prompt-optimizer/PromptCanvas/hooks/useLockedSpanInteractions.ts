@@ -1,18 +1,25 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import type { RefObject } from 'react';
-import { findHighlightNode } from '@features/prompt-optimizer/utils/highlightInteractionHelpers';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import type { RefObject } from "react";
+import { findHighlightNode } from "@features/prompt-optimizer/utils/highlightInteractionHelpers";
 import {
   buildLockedSpan,
   findLockedSpanIndex,
   getSpanId,
   isSpanLocked,
-} from '@features/prompt-optimizer/utils/lockedSpans';
-import type { LockedSpan } from '@features/prompt-optimizer/types';
-import type { HighlightSpan } from '@features/span-highlighting/hooks/useHighlightRendering';
-import { logger } from '@/services/LoggingService';
-import { sanitizeError } from '@/utils/logging';
+} from "@features/prompt-optimizer/utils/lockedSpans";
+import type { LockedSpan } from "@features/prompt-optimizer/types";
+import type { HighlightSpan } from "@features/span-highlighting/hooks/useHighlightRendering";
+import { logger } from "@/services/LoggingService";
+import { sanitizeError } from "@/utils/logging";
 
-const log = logger.child('useLockedSpanInteractions');
+const log = logger.child("useLockedSpanInteractions");
 
 interface UseLockedSpanInteractionsOptions {
   editorRef: RefObject<HTMLElement>;
@@ -64,13 +71,15 @@ export const useLockedSpanInteractions = ({
   const hoveredSpan = useMemo(() => {
     if (!hoveredSpanId) return null;
     return (
-      parseResultSpans.find((candidate) => getSpanId(candidate) === hoveredSpanId) ?? null
+      parseResultSpans.find(
+        (candidate) => getSpanId(candidate) === hoveredSpanId,
+      ) ?? null
     );
   }, [hoveredSpanId, parseResultSpans]);
 
   const hoveredLockedIndex = useMemo(
     () => findLockedSpanIndex(lockedSpans, hoveredSpan),
-    [lockedSpans, hoveredSpan]
+    [lockedSpans, hoveredSpan],
   );
 
   const isHoveredLocked = hoveredLockedIndex >= 0;
@@ -102,7 +111,7 @@ export const useLockedSpanInteractions = ({
         setHoveredSpanId(null);
       }, delayMs);
     },
-    [cancelHideLockButton, setHoveredSpanId]
+    [cancelHideLockButton, setHoveredSpanId],
   );
 
   const handleHighlightMouseEnter = useCallback(
@@ -124,7 +133,10 @@ export const useLockedSpanInteractions = ({
       } catch (error) {
         if (import.meta.env.DEV) {
           const info = sanitizeError(error);
-          log.debug('Hover detection error', { error: info.message, errorName: info.name });
+          log.debug("Hover detection error", {
+            error: info.message,
+            errorName: info.name,
+          });
         }
       }
     },
@@ -135,7 +147,7 @@ export const useLockedSpanInteractions = ({
       setHoveredSpanId,
       cancelHideLockButton,
       scheduleHideLockButton,
-    ]
+    ],
   );
 
   const handleHighlightMouseLeave = useCallback(
@@ -146,7 +158,7 @@ export const useLockedSpanInteractions = ({
       }
       scheduleHideLockButton();
     },
-    [lockButtonRef, scheduleHideLockButton]
+    [lockButtonRef, scheduleHideLockButton],
   );
 
   const handleLockButtonMouseLeave = useCallback(
@@ -157,7 +169,7 @@ export const useLockedSpanInteractions = ({
       }
       scheduleHideLockButton();
     },
-    [editorRef, scheduleHideLockButton]
+    [editorRef, scheduleHideLockButton],
   );
 
   useEffect(() => {
@@ -174,17 +186,23 @@ export const useLockedSpanInteractions = ({
       return;
     }
     const editor = editorRef.current;
-    const allHighlights = editor.querySelectorAll('.value-word');
+    const allHighlights = editor.querySelectorAll(".value-word");
     allHighlights.forEach((highlight) => {
       const element = highlight as HTMLElement;
       const spanId = element.dataset?.spanId;
       if (spanId && lockedSpanIds.has(spanId)) {
-        element.classList.add('border-dashed');
+        element.classList.add("border-dashed");
       } else {
-        element.classList.remove('border-dashed');
+        element.classList.remove("border-dashed");
       }
     });
-  }, [lockedSpanIds, enableMLHighlighting, showHighlights, editorRef, highlightFingerprint]);
+  }, [
+    lockedSpanIds,
+    enableMLHighlighting,
+    showHighlights,
+    editorRef,
+    highlightFingerprint,
+  ]);
 
   useLayoutEffect(() => {
     if (
@@ -199,7 +217,7 @@ export const useLockedSpanInteractions = ({
     }
 
     const spanElement = editorRef.current.querySelector(
-      `[data-span-id="${hoveredSpanId}"]`
+      `[data-span-id="${hoveredSpanId}"]`,
     ) as HTMLElement | null;
 
     if (!spanElement) {
@@ -215,7 +233,7 @@ export const useLockedSpanInteractions = ({
     const centerX = spanRect.left - wrapperRect.left + spanRect.width / 2;
     const left = Math.min(
       Math.max(buttonSize / 2 + padding, centerX),
-      wrapperRect.width - buttonSize / 2 - padding
+      wrapperRect.width - buttonSize / 2 - padding,
     );
 
     setLockButtonPosition({ top, left });
@@ -244,7 +262,13 @@ export const useLockedSpanInteractions = ({
     if (nextLockedSpan) {
       addLockedSpan(nextLockedSpan);
     }
-  }, [hoveredSpan, hoveredLockedIndex, lockedSpans, addLockedSpan, removeLockedSpan]);
+  }, [
+    hoveredSpan,
+    hoveredLockedIndex,
+    lockedSpans,
+    addLockedSpan,
+    removeLockedSpan,
+  ]);
 
   return {
     lockButtonPosition,

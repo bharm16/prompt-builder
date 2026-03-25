@@ -1,8 +1,8 @@
-import React from 'react';
-import { Check } from '@promptstudio/system/components/ui';
-import type { Asset } from '@shared/types/asset';
-import { useDetectedAssets } from './hooks/useDetectedAssets';
-import { AssetChip } from './AssetChip';
+import React from "react";
+import { Check } from "@promptstudio/system/components/ui";
+import type { Asset } from "@shared/types/asset";
+import { useDetectedAssets } from "./hooks/useDetectedAssets";
+import { AssetChip } from "./AssetChip";
 
 interface DetectedAssetsProps {
   prompt: string;
@@ -17,17 +17,18 @@ export function DetectedAssets({
   onEditAsset,
   onCreateFromTrigger,
 }: DetectedAssetsProps): React.ReactElement | null {
-  const { detectedAssets, unresolvedTriggers, hasCharacter } = useDetectedAssets(
-    prompt,
-    assets
-  );
+  const { detectedAssets, unresolvedTriggers, hasCharacter } =
+    useDetectedAssets(prompt, assets);
 
   if (detectedAssets.length === 0 && unresolvedTriggers.length === 0) {
     return null;
   }
 
   return (
-    <div className="motion-presence-panel border-b border-border bg-surface-1 px-ps-4 py-2" data-motion-state="entered">
+    <div
+      className="motion-presence-panel border-b border-border bg-surface-1 px-ps-4 py-2"
+      data-motion-state="entered"
+    >
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-xs text-muted">Using:</span>
 

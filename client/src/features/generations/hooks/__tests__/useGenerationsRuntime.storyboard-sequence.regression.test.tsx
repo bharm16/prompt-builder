@@ -1,15 +1,15 @@
-import { act, renderHook, waitFor } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { VIDEO_DRAFT_MODEL } from '@/components/ToolSidebar/config/modelConfig';
-import { useGenerationsRuntime } from '../useGenerationsRuntime';
-import type { CapabilitiesSchema } from '@shared/capabilities';
-import type { ExtendVideoSource } from '@features/generation-controls/context/generationControlsStoreTypes';
+import { act, renderHook, waitFor } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { VIDEO_DRAFT_MODEL } from "@/components/ToolSidebar/config/modelConfig";
+import { useGenerationsRuntime } from "../useGenerationsRuntime";
+import type { CapabilitiesSchema } from "@shared/capabilities";
+import type { ExtendVideoSource } from "@features/generation-controls/context/generationControlsStoreTypes";
 
 const setControlsMock = vi.fn();
 const updateShotMock = vi.fn().mockResolvedValue(undefined);
 const generateShotMock = vi.fn().mockResolvedValue(undefined);
 const generateStoryboardMock = vi.fn();
-const onCreateVersionIfNeededMock = vi.fn(() => 'version-1');
+const onCreateVersionIfNeededMock = vi.fn(() => "version-1");
 const dispatchMock = vi.fn();
 const removeGenerationMock = vi.fn();
 const setActiveGenerationMock = vi.fn();
@@ -22,26 +22,38 @@ const toastWarningMock = vi.fn();
 const toastSuccessMock = vi.fn();
 const toastErrorMock = vi.fn();
 const clearExtendVideoMock = vi.fn();
-let mockSelectedModel = 'sora-2';
+const onInsufficientCreditsHandlerMock = vi.fn();
+let mockSelectedModel = "sora-2";
 let mockExtendVideo: ExtendVideoSource | null = null;
+let mockBalance: number | null = null;
+let mockHasActiveContinuityShot = true;
+let mockSessionId: string | undefined = undefined;
+let mockCurrentPromptDocId: string | null = null;
+let mockOnInsufficientCredits:
+  | ((required: number, operation: string) => void)
+  | null = null;
 let mockCapabilitiesSchema: CapabilitiesSchema = {
-  provider: 'generic',
-  model: 'sora-2',
-  version: '1',
+  provider: "generic",
+  model: "sora-2",
+  version: "1",
   fields: {
-    extend_video: { type: 'bool', default: true },
+    extend_video: { type: "bool", default: true },
   },
 };
 
-vi.mock('@/contexts/CreditBalanceContext', () => ({
-  useCreditBalance: () => ({ balance: null }),
+vi.mock("@/contexts/CreditBalanceContext", () => ({
+  useCreditBalance: () => ({
+    balance: mockBalance,
+    isLoading: false,
+    error: null,
+  }),
 }));
 
-vi.mock('@hooks/useAuthUser', () => ({
-  useAuthUser: () => ({ uid: 'user-1' }),
+vi.mock("@hooks/useAuthUser", () => ({
+  useAuthUser: () => ({ uid: "user-1" }),
 }));
 
-vi.mock('@/services/LoggingService', () => ({
+vi.mock("@/services/LoggingService", () => ({
   logger: {
     child: () => ({
       info: vi.fn(),
@@ -52,7 +64,7 @@ vi.mock('@/services/LoggingService', () => ({
   },
 }));
 
-vi.mock('@components/Toast', () => ({
+vi.mock("@components/Toast", () => ({
   useToast: () => ({
     warning: toastWarningMock,
     success: toastSuccessMock,
@@ -60,30 +72,50 @@ vi.mock('@components/Toast', () => ({
   }),
 }));
 
-vi.mock('@/features/prompt-optimizer/context/PromptStateContext', () => ({
-  usePromptNavigation: () => ({ navigate: navigateMock, sessionId: null }),
-  usePromptSession: () => ({ currentPromptDocId: null }),
+vi.mock("@/features/prompt-optimizer/context/PromptStateContext", () => ({
+  usePromptNavigation: () => ({
+    navigate: navigateMock,
+    sessionId: mockSessionId,
+  }),
+  usePromptSession: () => ({
+    currentPromptDocId: mockCurrentPromptDocId,
+    currentPromptUuid: "prompt-uuid-1",
+    setCurrentPromptDocId: vi.fn(),
+    setCurrentPromptUuid: vi.fn(),
+  }),
+  usePromptServices: () => ({
+    promptHistory: {
+      history: [],
+      saveToHistory: vi.fn(),
+    },
+    promptOptimizer: {
+      inputPrompt: "",
+      displayedPrompt: "",
+      optimizedPrompt: "",
+      qualityScore: null,
+    },
+  }),
 }));
 
-vi.mock('@/features/prompt-optimizer/context/WorkspaceSessionContext', () => ({
+vi.mock("@/features/prompt-optimizer/context/WorkspaceSessionContext", () => ({
   useWorkspaceSession: () => ({
-    session: { id: 'session-1' },
+    session: { id: "session-1" },
     isSequenceMode: false,
-    hasActiveContinuityShot: true,
+    hasActiveContinuityShot: mockHasActiveContinuityShot,
     isStartingSequence: false,
     startSequence: vi.fn(),
     currentShot: {
-      id: 'shot-1',
-      modelId: 'sora-2',
-      status: 'draft',
+      id: "shot-1",
+      modelId: "sora-2",
+      status: "draft",
       videoAssetId: null,
       generatedKeyframeUrl: null,
       generatedAt: null,
-      userPrompt: 'Shot prompt',
-      createdAt: '2026-02-20T00:00:00.000Z',
+      userPrompt: "Shot prompt",
+      createdAt: "2026-02-20T00:00:00.000Z",
       sequenceIndex: 0,
-      sessionId: 'session-1',
-      continuityMode: 'none',
+      sessionId: "session-1",
+      continuityMode: "none",
       styleStrength: 0.6,
       styleReferenceId: null,
     },
@@ -92,45 +124,51 @@ vi.mock('@/features/prompt-optimizer/context/WorkspaceSessionContext', () => ({
   }),
 }));
 
-vi.mock('@/features/prompt-optimizer/context/GenerationControlsContext', () => ({
-  useGenerationControlsContext: () => ({
-    setControls: setControlsMock,
-    faceSwapPreview: null,
-    onInsufficientCredits: null,
+vi.mock(
+  "@/features/prompt-optimizer/context/GenerationControlsContext",
+  () => ({
+    useGenerationControlsContext: () => ({
+      setControls: setControlsMock,
+      faceSwapPreview: null,
+      onInsufficientCredits: mockOnInsufficientCredits,
+    }),
   }),
-}));
+);
 
-vi.mock('@features/generation-controls/context/GenerationControlsStore', () => ({
-  useGenerationControlsStoreState: () => ({
-    domain: {
-      selectedModel: mockSelectedModel,
-      keyframes: [],
-      startFrame: null,
-      endFrame: null,
-      videoReferenceImages: [],
-      extendVideo: mockExtendVideo,
-      cameraMotion: null,
-      subjectMotion: '',
-    },
+vi.mock(
+  "@features/generation-controls/context/GenerationControlsStore",
+  () => ({
+    useGenerationControlsStoreState: () => ({
+      domain: {
+        selectedModel: mockSelectedModel,
+        keyframes: [],
+        startFrame: null,
+        endFrame: null,
+        videoReferenceImages: [],
+        extendVideo: mockExtendVideo,
+        cameraMotion: null,
+        subjectMotion: "",
+      },
+    }),
+    useGenerationControlsStoreActions: () => ({
+      setStartFrame: vi.fn(),
+      clearStartFrame: vi.fn(),
+      setExtendVideo: vi.fn(),
+      clearExtendVideo: clearExtendVideoMock,
+    }),
   }),
-  useGenerationControlsStoreActions: () => ({
-    setStartFrame: vi.fn(),
-    clearStartFrame: vi.fn(),
-    setExtendVideo: vi.fn(),
-    clearExtendVideo: clearExtendVideoMock,
-  }),
-}));
+);
 
-vi.mock('@/features/prompt-optimizer/hooks/useCapabilities', () => ({
+vi.mock("@/features/prompt-optimizer/hooks/useCapabilities", () => ({
   useCapabilities: () => ({
     schema: mockCapabilitiesSchema,
     isLoading: false,
     error: null,
-    target: { provider: 'generic', model: mockSelectedModel, label: 'Model' },
+    target: { provider: "generic", model: mockSelectedModel, label: "Model" },
   }),
 }));
 
-vi.mock('@features/generations/hooks/useGenerationsState', () => ({
+vi.mock("@features/generations/hooks/useGenerationsState", () => ({
   useGenerationsState: () => ({
     generations: [],
     activeGenerationId: null,
@@ -142,25 +180,26 @@ vi.mock('@features/generations/hooks/useGenerationsState', () => ({
   }),
 }));
 
-vi.mock('@features/generations/hooks/useGenerationActions', () => ({
+vi.mock("@features/generations/hooks/useGenerationActions", () => ({
   useGenerationActions: () => ({
     generateDraft: generateDraftMock,
     generateRender: generateRenderMock,
     generateStoryboard: generateStoryboardMock,
     retryGeneration: retryGenerationMock,
     cancelGeneration: cancelGenerationMock,
+    isSubmitting: false,
   }),
 }));
 
-vi.mock('@features/generations/hooks/useAssetReferenceImages', () => ({
+vi.mock("@features/generations/hooks/useAssetReferenceImages", () => ({
   useAssetReferenceImages: () => ({ resolvedPrompt: null }),
 }));
 
-vi.mock('@features/generations/hooks/useGenerationMediaRefresh', () => ({
+vi.mock("@features/generations/hooks/useGenerationMediaRefresh", () => ({
   useGenerationMediaRefresh: vi.fn(),
 }));
 
-vi.mock('@features/generations/hooks/useKeyframeWorkflow', () => ({
+vi.mock("@features/generations/hooks/useKeyframeWorkflow", () => ({
   useKeyframeWorkflow: () => ({
     keyframeStep: {
       isActive: false,
@@ -176,35 +215,40 @@ vi.mock('@features/generations/hooks/useKeyframeWorkflow', () => ({
   }),
 }));
 
-vi.mock('@features/generations/hooks/useGenerationsTimeline', () => ({
+vi.mock("@features/generations/hooks/useGenerationsTimeline", () => ({
   useGenerationsTimeline: () => [],
 }));
 
-describe('regression: preview action in continuity mode', () => {
+describe("regression: preview action in continuity mode", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockSelectedModel = 'sora-2';
+    mockSelectedModel = "sora-2";
     mockExtendVideo = null;
+    mockBalance = null;
+    mockHasActiveContinuityShot = true;
+    mockSessionId = undefined;
+    mockCurrentPromptDocId = null;
+    mockOnInsufficientCredits = null;
     mockCapabilitiesSchema = {
-      provider: 'generic',
-      model: 'sora-2',
-      version: '1',
+      provider: "generic",
+      model: "sora-2",
+      version: "1",
       fields: {
-        extend_video: { type: 'bool', default: true },
+        extend_video: { type: "bool", default: true },
       },
     };
   });
 
-  it('starts continuity shot generation when preview action is triggered', async () => {
+  it("starts continuity shot generation when preview action is triggered", async () => {
     renderHook(() =>
       useGenerationsRuntime({
-        prompt: 'Create a preview shot',
-        promptVersionId: 'version-1',
-        aspectRatio: '16:9',
+        prompt: "Create a preview shot",
+        promptVersionId: "version-1",
+        aspectRatio: "16:9",
         versions: [],
         onCreateVersionIfNeeded: onCreateVersionIfNeededMock,
-        presentation: 'hero',
-      })
+        presentation: "hero",
+      }),
     );
 
     await waitFor(() => {
@@ -213,9 +257,11 @@ describe('regression: preview action in continuity mode', () => {
 
     const controlsPayload = setControlsMock.mock.calls
       .map((call) => call[0] as { onStoryboard?: () => void } | null)
-      .find((value) => Boolean(value && typeof value.onStoryboard === 'function'));
+      .find((value) =>
+        Boolean(value && typeof value.onStoryboard === "function"),
+      );
 
-    expect(controlsPayload?.onStoryboard).toBeTypeOf('function');
+    expect(controlsPayload?.onStoryboard).toBeTypeOf("function");
 
     act(() => {
       controlsPayload?.onStoryboard?.();
@@ -223,40 +269,126 @@ describe('regression: preview action in continuity mode', () => {
 
     await waitFor(() => {
       expect(onCreateVersionIfNeededMock).toHaveBeenCalledTimes(1);
-      expect(updateShotMock).toHaveBeenCalledWith('shot-1', {
+      expect(updateShotMock).toHaveBeenCalledWith("shot-1", {
         modelId: VIDEO_DRAFT_MODEL.id,
       });
-      expect(generateShotMock).toHaveBeenCalledWith('shot-1');
+      expect(generateShotMock).toHaveBeenCalledWith("shot-1");
     });
 
     expect(generateStoryboardMock).not.toHaveBeenCalled();
   });
 
-  it('clears extend mode when selected model does not support extend_video', async () => {
-    mockSelectedModel = 'wan-2.2';
+  it("falls back to a warning toast when storyboard generation is blocked on credits without a registered modal handler", async () => {
+    mockHasActiveContinuityShot = false;
+    mockBalance = 1;
+    mockSessionId = "session-1";
+    mockCurrentPromptDocId = "session-1";
+
+    renderHook(() =>
+      useGenerationsRuntime({
+        prompt: "Render a dramatic city skyline",
+        promptVersionId: "version-1",
+        aspectRatio: "16:9",
+        versions: [],
+        onCreateVersionIfNeeded: onCreateVersionIfNeededMock,
+        presentation: "hero",
+      }),
+    );
+
+    await waitFor(() => {
+      expect(setControlsMock).toHaveBeenCalled();
+    });
+
+    const controlsPayload = setControlsMock.mock.calls
+      .map(
+        (call) =>
+          call[0] as {
+            onStoryboard?: () => void;
+          } | null,
+      )
+      .find((value) =>
+        Boolean(value && typeof value.onStoryboard === "function"),
+      );
+
+    act(() => {
+      controlsPayload?.onStoryboard?.();
+    });
+
+    expect(generateStoryboardMock).not.toHaveBeenCalled();
+    expect(toastErrorMock).toHaveBeenCalledWith(
+      "Storyboard needs 4 credits. You currently have 1.",
+    );
+  });
+
+  it("still delegates insufficient-credit handling to the registered modal when one exists", async () => {
+    mockHasActiveContinuityShot = false;
+    mockBalance = 1;
+    mockSessionId = "session-1";
+    mockCurrentPromptDocId = "session-1";
+    mockOnInsufficientCredits = onInsufficientCreditsHandlerMock;
+
+    renderHook(() =>
+      useGenerationsRuntime({
+        prompt: "Render a dramatic city skyline",
+        promptVersionId: "version-1",
+        aspectRatio: "16:9",
+        versions: [],
+        onCreateVersionIfNeeded: onCreateVersionIfNeededMock,
+        presentation: "hero",
+      }),
+    );
+
+    await waitFor(() => {
+      expect(setControlsMock).toHaveBeenCalled();
+    });
+
+    const controlsPayload = setControlsMock.mock.calls
+      .map(
+        (call) =>
+          call[0] as {
+            onStoryboard?: () => void;
+          } | null,
+      )
+      .find((value) =>
+        Boolean(value && typeof value.onStoryboard === "function"),
+      );
+
+    act(() => {
+      controlsPayload?.onStoryboard?.();
+    });
+
+    expect(onInsufficientCreditsHandlerMock).toHaveBeenCalledWith(
+      4,
+      "Storyboard",
+    );
+    expect(toastWarningMock).not.toHaveBeenCalled();
+  });
+
+  it("clears extend mode when selected model does not support extend_video", async () => {
+    mockSelectedModel = "wan-2.2";
     mockExtendVideo = {
-      url: 'https://example.com/video.mp4',
-      source: 'generation',
-      generationId: 'gen-1',
+      url: "https://example.com/video.mp4",
+      source: "generation",
+      generationId: "gen-1",
     };
     mockCapabilitiesSchema = {
-      provider: 'generic',
-      model: 'wan-2.2',
-      version: '1',
+      provider: "generic",
+      model: "wan-2.2",
+      version: "1",
       fields: {
-        extend_video: { type: 'bool', default: false },
+        extend_video: { type: "bool", default: false },
       },
     };
 
     renderHook(() =>
       useGenerationsRuntime({
-        prompt: 'Extend this clip',
-        promptVersionId: 'version-1',
-        aspectRatio: '16:9',
+        prompt: "Extend this clip",
+        promptVersionId: "version-1",
+        aspectRatio: "16:9",
         versions: [],
         onCreateVersionIfNeeded: onCreateVersionIfNeededMock,
-        presentation: 'hero',
-      })
+        presentation: "hero",
+      }),
     );
 
     await waitFor(() => {

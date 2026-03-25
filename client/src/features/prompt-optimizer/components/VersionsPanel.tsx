@@ -1,20 +1,20 @@
-import React, { memo } from 'react';
+import React, { memo } from "react";
 import {
   CaretDown,
   CaretLeft,
   Icon,
   List,
   Plus,
-} from '@promptstudio/system/components/ui';
-import { Button } from '@promptstudio/system/components/ui/button';
+} from "@promptstudio/system/components/ui";
+import { Button } from "@promptstudio/system/components/ui/button";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from '@promptstudio/system/components/ui/tooltip';
-import { cn } from '@/utils/cn';
-import { VersionRow, type VersionEntry } from './VersionRow';
+} from "@promptstudio/system/components/ui/tooltip";
+import { cn } from "@/utils/cn";
+import { VersionRow, type VersionEntry } from "./VersionRow";
 
 interface VersionsPanelProps {
   versions: VersionEntry[];
@@ -25,14 +25,14 @@ interface VersionsPanelProps {
   onExpandDrawer?: () => void;
   onCollapseDrawer?: () => void;
   /** Layout direction - 'vertical' for left drawer, 'horizontal' for bottom drawer */
-  layout?: 'vertical' | 'horizontal';
+  layout?: "vertical" | "horizontal";
 }
 
 const resolveEntryId = (entry: VersionEntry): string | null => {
-  if (typeof entry.versionId === 'string' && entry.versionId.trim()) {
+  if (typeof entry.versionId === "string" && entry.versionId.trim()) {
     return entry.versionId.trim();
   }
-  if (typeof entry.id === 'string' && entry.id.trim()) {
+  if (typeof entry.id === "string" && entry.id.trim()) {
     return entry.id.trim();
   }
   return null;
@@ -46,13 +46,13 @@ export const VersionsPanel = memo(function VersionsPanel({
   isCompact = false,
   onExpandDrawer,
   onCollapseDrawer,
-  layout = 'vertical',
+  layout = "vertical",
 }: VersionsPanelProps): React.ReactElement {
   const orderedVersions = versions ?? [];
   const fallbackId = orderedVersions[0]
     ? resolveEntryId(orderedVersions[0])
     : null;
-  const resolvedSelectedId = selectedVersionId || fallbackId || '';
+  const resolvedSelectedId = selectedVersionId || fallbackId || "";
   const currentVersion =
     orderedVersions.find((entry) => {
       const entryId = resolveEntryId(entry);
@@ -69,7 +69,7 @@ export const VersionsPanel = memo(function VersionsPanel({
   }>({ showLeft: false, showRight: false, isScrollable: false });
 
   React.useEffect(() => {
-    if (layout !== 'horizontal' || isCompact) return;
+    if (layout !== "horizontal" || isCompact) return;
     const scroller = horizontalScrollerRef.current;
     if (!scroller) return;
 
@@ -82,25 +82,25 @@ export const VersionsPanel = memo(function VersionsPanel({
     };
 
     updateFadeState();
-    scroller.addEventListener('scroll', updateFadeState, { passive: true });
-    window.addEventListener('resize', updateFadeState);
+    scroller.addEventListener("scroll", updateFadeState, { passive: true });
+    window.addEventListener("resize", updateFadeState);
 
     const resizeObserver =
-      typeof ResizeObserver !== 'undefined'
+      typeof ResizeObserver !== "undefined"
         ? new ResizeObserver(() => updateFadeState())
         : null;
     resizeObserver?.observe(scroller);
 
     return () => {
-      scroller.removeEventListener('scroll', updateFadeState);
-      window.removeEventListener('resize', updateFadeState);
+      scroller.removeEventListener("scroll", updateFadeState);
+      window.removeEventListener("resize", updateFadeState);
       resizeObserver?.disconnect();
     };
   }, [isCompact, layout, orderedVersions.length]);
 
   // Horizontal layout (bottom drawer)
-  if (layout === 'horizontal') {
-    const compactLabel = `${versionCount} version${versionCount === 1 ? '' : 's'}`;
+  if (layout === "horizontal") {
+    const compactLabel = `${versionCount} version${versionCount === 1 ? "" : "s"}`;
 
     // ── Compact: 36px bar with mini preview pills ──
     if (isCompact) {
@@ -108,19 +108,17 @@ export const VersionsPanel = memo(function VersionsPanel({
         <button
           type="button"
           className={cn(
-            'flex h-9 w-full items-center gap-1.5',
-            'rounded-lg border border-border bg-surface-1',
-            'px-3 text-left',
-            'transition-colors hover:bg-surface-2',
-            'cursor-pointer'
+            "flex h-9 w-full items-center gap-1.5",
+            "rounded-lg border border-border bg-surface-1",
+            "px-3 text-left",
+            "transition-colors hover:bg-surface-2",
+            "cursor-pointer",
           )}
           onClick={onExpandDrawer}
           aria-label={`Expand ${compactLabel}`}
           title={`Expand ${compactLabel}`}
         >
-          <span className="text-[11px] font-semibold text-muted">
-            Versions
-          </span>
+          <span className="text-[11px] font-semibold text-muted">Versions</span>
           <span className="text-[10px] font-medium text-faint">
             {versionCount}
           </span>
@@ -136,10 +134,10 @@ export const VersionsPanel = memo(function VersionsPanel({
                 <div
                   key={entryId ?? entry.label}
                   className={cn(
-                    'h-4 w-7 overflow-hidden rounded-[3px] bg-surface-2 transition-all duration-150',
+                    "h-4 w-7 overflow-hidden rounded-[3px] bg-surface-2 transition-all duration-150",
                     isEntrySelected
-                      ? 'ring-1 ring-accent/50'
-                      : 'border border-border'
+                      ? "ring-1 ring-accent/50"
+                      : "border border-border",
                   )}
                 />
               );
@@ -168,9 +166,7 @@ export const VersionsPanel = memo(function VersionsPanel({
       <div className="flex h-full w-full flex-col overflow-hidden">
         {/* 36px header — no hamburger, no badge pill */}
         <div className="flex h-9 flex-shrink-0 items-center px-3">
-          <span className="text-[11px] font-semibold text-muted">
-            Versions
-          </span>
+          <span className="text-[11px] font-semibold text-muted">Versions</span>
           <span className="ml-1.5 text-[10px] font-medium text-faint">
             {versionCount}
           </span>
@@ -191,7 +187,12 @@ export const VersionsPanel = memo(function VersionsPanel({
                   }}
                   aria-label="Create snapshot"
                 >
-                  <Icon icon={Plus} size="xs" weight="bold" aria-hidden="true" />
+                  <Icon
+                    icon={Plus}
+                    size="xs"
+                    weight="bold"
+                    aria-hidden="true"
+                  />
                 </Button>
               </TooltipTrigger>
               <TooltipContent
@@ -242,9 +243,9 @@ export const VersionsPanel = memo(function VersionsPanel({
             {/* Left fade */}
             <div
               className={cn(
-                'pointer-events-none absolute left-0 top-0 z-10 h-full w-5',
-                'bg-gradient-to-r from-surface-2 to-transparent transition-opacity',
-                horizontalFadeState.showLeft ? 'opacity-100' : 'opacity-0'
+                "pointer-events-none absolute left-0 top-0 z-10 h-full w-5",
+                "bg-gradient-to-r from-surface-2 to-transparent transition-opacity",
+                horizontalFadeState.showLeft ? "opacity-100" : "opacity-0",
               )}
               aria-hidden="true"
             />
@@ -252,10 +253,10 @@ export const VersionsPanel = memo(function VersionsPanel({
             <div
               ref={horizontalScrollerRef}
               className={cn(
-                'ps-scrollbar-thin',
-                'flex h-full items-start overflow-x-auto',
-                'gap-3 px-3 pb-3',
-                'snap-x snap-mandatory scroll-px-3'
+                "ps-scrollbar-thin",
+                "flex h-full items-start overflow-x-auto",
+                "gap-3 px-3 pb-3",
+                "snap-x snap-mandatory scroll-px-3",
               )}
             >
               {orderedVersions.map((entry, index) => {
@@ -263,7 +264,7 @@ export const VersionsPanel = memo(function VersionsPanel({
                 const isSelected = versionId
                   ? versionId === resolvedSelectedId
                   : index === 0;
-                const key = versionId ?? `${entry.label ?? 'v'}-${index}`;
+                const key = versionId ?? `${entry.label ?? "v"}-${index}`;
 
                 return (
                   <VersionRow
@@ -285,9 +286,9 @@ export const VersionsPanel = memo(function VersionsPanel({
             {/* Right fade */}
             <div
               className={cn(
-                'pointer-events-none absolute right-0 top-0 z-10 h-full w-5',
-                'bg-gradient-to-l from-surface-2 to-transparent transition-opacity',
-                horizontalFadeState.showRight ? 'opacity-100' : 'opacity-0'
+                "pointer-events-none absolute right-0 top-0 z-10 h-full w-5",
+                "bg-gradient-to-l from-surface-2 to-transparent transition-opacity",
+                horizontalFadeState.showRight ? "opacity-100" : "opacity-0",
               )}
               aria-hidden="true"
             />
@@ -298,7 +299,7 @@ export const VersionsPanel = memo(function VersionsPanel({
   }
 
   // Original vertical layout (left drawer)
-  const compactLabel = `${versionCount} version${versionCount === 1 ? '' : 's'} - Click to expand`;
+  const compactLabel = `${versionCount} version${versionCount === 1 ? "" : "s"} - Click to expand`;
 
   if (isCompact) {
     return (
@@ -336,7 +337,7 @@ export const VersionsPanel = memo(function VersionsPanel({
         {currentVersion ? (
           <span
             className="bg-accent ring-accent/30 h-2 w-2 rounded-full ring-2"
-            title={currentVersion.label ?? 'Current version'}
+            title={currentVersion.label ?? "Current version"}
           />
         ) : null}
       </button>
@@ -366,7 +367,12 @@ export const VersionsPanel = memo(function VersionsPanel({
                     onClick={onCreateVersion}
                     aria-label="Create snapshot"
                   >
-                    <Icon icon={Plus} size="sm" weight="bold" aria-hidden="true" />
+                    <Icon
+                      icon={Plus}
+                      size="sm"
+                      weight="bold"
+                      aria-hidden="true"
+                    />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent
@@ -417,7 +423,7 @@ export const VersionsPanel = memo(function VersionsPanel({
             const isSelected = versionId
               ? versionId === resolvedSelectedId
               : index === 0;
-            const key = versionId ?? `${entry.label ?? 'v'}-${index}`;
+            const key = versionId ?? `${entry.label ?? "v"}-${index}`;
 
             return (
               <VersionRow
@@ -439,4 +445,4 @@ export const VersionsPanel = memo(function VersionsPanel({
   );
 });
 
-VersionsPanel.displayName = 'VersionsPanel';
+VersionsPanel.displayName = "VersionsPanel";

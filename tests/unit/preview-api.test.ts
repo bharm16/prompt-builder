@@ -1,6 +1,6 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
-import { API_CONFIG } from '@/config/api.config';
+import { API_CONFIG } from "@/config/api.config";
 import {
   generatePreview,
   generateStoryboardPreview,
@@ -9,7 +9,7 @@ import {
   uploadPreviewImage,
   generateVideoPreview,
   getVideoPreviewStatus,
-} from '@features/preview/api/previewApi';
+} from "@features/preview/api/previewApi";
 
 const apiClientMocks = vi.hoisted(() => ({
   post: vi.fn(),
@@ -20,215 +20,225 @@ const authMocks = vi.hoisted(() => ({
   buildFirebaseAuthHeaders: vi.fn(),
 }));
 
-vi.mock('@/services/ApiClient', () => ({
+vi.mock("@/services/ApiClient", () => ({
   apiClient: apiClientMocks,
 }));
 
-vi.mock('@/services/http/firebaseAuth', () => authMocks);
+vi.mock("@/services/http/firebaseAuth", () => authMocks);
 
-describe('previewApi', () => {
+describe("previewApi", () => {
   const originalFetch = global.fetch;
 
   beforeEach(() => {
     vi.clearAllMocks();
     apiClientMocks.post.mockResolvedValue({ success: true });
     apiClientMocks.get.mockResolvedValue({ success: true });
-    authMocks.buildFirebaseAuthHeaders.mockResolvedValue({ 'X-Test-Auth': 'token' });
+    authMocks.buildFirebaseAuthHeaders.mockResolvedValue({
+      "X-Test-Auth": "token",
+    });
   });
 
   afterEach(() => {
     global.fetch = originalFetch;
   });
 
-  describe('error handling', () => {
-    it('rejects when generatePreview receives an empty prompt', async () => {
-      await expect(generatePreview('  ')).rejects.toThrow(
-        'Prompt is required and must be a non-empty string'
+  describe("error handling", () => {
+    it("rejects when generatePreview receives an empty prompt", async () => {
+      await expect(generatePreview("  ")).rejects.toThrow(
+        "Prompt is required and must be a non-empty string",
       );
     });
 
-    it('rejects when generateStoryboardPreview receives an empty prompt', async () => {
-      await expect(generateStoryboardPreview('')).rejects.toThrow(
-        'Prompt is required and must be a non-empty string'
+    it("rejects when generateStoryboardPreview receives an empty prompt", async () => {
+      await expect(generateStoryboardPreview("")).rejects.toThrow(
+        "Prompt is required and must be a non-empty string",
       );
     });
 
-    it('rejects when getImageAssetViewUrl receives an empty assetId', async () => {
-      await expect(getImageAssetViewUrl('')).rejects.toThrow(
-        'assetId is required and must be a non-empty string'
+    it("rejects when getImageAssetViewUrl receives an empty assetId", async () => {
+      await expect(getImageAssetViewUrl("")).rejects.toThrow(
+        "assetId is required and must be a non-empty string",
       );
     });
 
-    it('rejects when getVideoPreviewStatus receives a missing jobId', async () => {
-      await expect(getVideoPreviewStatus('')).rejects.toThrow('jobId is required');
+    it("rejects when getVideoPreviewStatus receives a missing jobId", async () => {
+      await expect(getVideoPreviewStatus("")).rejects.toThrow(
+        "jobId is required",
+      );
     });
 
-    it('throws the API error when uploadPreviewImage fails', async () => {
+    it("throws the API error when uploadPreviewImage fails", async () => {
       const fetchMock = vi.fn().mockResolvedValue({
         ok: false,
-        json: async () => ({ error: 'Not authorized' }),
+        json: async () => ({ error: "Not authorized" }),
       } as unknown as Response);
       global.fetch = fetchMock as typeof fetch;
 
-      const file = new File(['data'], 'preview.png', { type: 'image/png' });
+      const file = new File(["data"], "preview.png", { type: "image/png" });
 
-      await expect(uploadPreviewImage(file)).rejects.toThrow('Not authorized');
+      await expect(uploadPreviewImage(file)).rejects.toThrow("Not authorized");
     });
   });
 
-  describe('edge cases', () => {
-    it('accepts a string options argument for generatePreview', async () => {
-      await generatePreview('A prompt', '16:9');
+  describe("edge cases", () => {
+    it("accepts a string options argument for generatePreview", async () => {
+      await generatePreview("A prompt", "16:9");
 
       expect(apiClientMocks.post).toHaveBeenCalledWith(
-        '/preview/generate',
+        "/preview/generate",
         expect.objectContaining({
-          prompt: 'A prompt',
-          aspectRatio: '16:9',
+          prompt: "A prompt",
+          aspectRatio: "16:9",
         }),
         expect.objectContaining({
           headers: expect.objectContaining({
-            'Idempotency-Key': expect.any(String),
+            "Idempotency-Key": expect.any(String),
           }),
-        })
+        }),
       );
     });
 
-    it('returns a fallback payload when uploadPreviewImage JSON parsing fails', async () => {
+    it("returns a fallback payload when uploadPreviewImage JSON parsing fails", async () => {
       const fetchMock = vi.fn().mockResolvedValue({
         ok: true,
         json: async () => {
-          throw new Error('bad json');
+          throw new Error("bad json");
         },
       } as unknown as Response);
       global.fetch = fetchMock as typeof fetch;
 
-      const file = new File(['data'], 'preview.png', { type: 'image/png' });
+      const file = new File(["data"], "preview.png", { type: "image/png" });
       const result = await uploadPreviewImage(file);
 
-      expect(result).toEqual({ success: false, error: 'Failed to upload image' });
+      expect(result).toEqual({
+        success: false,
+        error: "Failed to upload image",
+      });
     });
   });
 
-  describe('core behavior', () => {
-    it('trims the prompt and applies Kontext timeout when inputImageUrl is provided', async () => {
-      await generatePreview('  Hello world  ', {
-        aspectRatio: '4:3',
-        provider: 'replicate-flux-schnell',
-        inputImageUrl: '  https://images.example.com/input.png  ',
+  describe("core behavior", () => {
+    it("trims the prompt and applies Kontext timeout when inputImageUrl is provided", async () => {
+      await generatePreview("  Hello world  ", {
+        aspectRatio: "4:3",
+        provider: "replicate-flux-schnell",
+        inputImageUrl: "  https://images.example.com/input.png  ",
         seed: 42,
-        speedMode: 'Juiced',
+        speedMode: "Juiced",
         outputQuality: 80,
       });
 
       expect(apiClientMocks.post).toHaveBeenCalledWith(
-        '/preview/generate',
+        "/preview/generate",
         expect.objectContaining({
-          prompt: 'Hello world',
-          aspectRatio: '4:3',
-          provider: 'replicate-flux-schnell',
-          inputImageUrl: 'https://images.example.com/input.png',
+          prompt: "Hello world",
+          aspectRatio: "4:3",
+          provider: "replicate-flux-schnell",
+          inputImageUrl: "https://images.example.com/input.png",
           seed: 42,
-          speedMode: 'Juiced',
+          speedMode: "Juiced",
           outputQuality: 80,
         }),
         expect.objectContaining({
           timeout: 60000,
           headers: expect.objectContaining({
-            'Idempotency-Key': expect.any(String),
+            "Idempotency-Key": expect.any(String),
           }),
-        })
+        }),
       );
     });
 
-    it('uses the storyboard timeout and trims the seed image URL', async () => {
-      await generateStoryboardPreview('Storyboard prompt', {
-        seedImageUrl: '  https://images.example.com/seed.png ',
-        aspectRatio: '16:9',
-        speedMode: 'Real Time',
+    it("uses the storyboard timeout and trims the seed image URL", async () => {
+      await generateStoryboardPreview("Storyboard prompt", {
+        seedImageUrl: "  https://images.example.com/seed.png ",
+        aspectRatio: "16:9",
+        speedMode: "Real Time",
         seed: 7,
       });
 
       expect(apiClientMocks.post).toHaveBeenCalledWith(
-        '/preview/generate/storyboard',
+        "/preview/generate/storyboard",
         expect.objectContaining({
-          prompt: 'Storyboard prompt',
-          seedImageUrl: 'https://images.example.com/seed.png',
-          aspectRatio: '16:9',
-          speedMode: 'Real Time',
+          prompt: "Storyboard prompt",
+          seedImageUrl: "https://images.example.com/seed.png",
+          aspectRatio: "16:9",
+          speedMode: "Real Time",
           seed: 7,
         }),
         expect.objectContaining({
           timeout: API_CONFIG.timeout.storyboard,
           headers: expect.objectContaining({
-            'Idempotency-Key': expect.any(String),
+            "Idempotency-Key": expect.any(String),
           }),
-        })
+        }),
       );
     });
 
-    it('builds encoded asset view URLs for preview images and videos', async () => {
-      await getImageAssetViewUrl(' asset/123 ');
-      await getVideoAssetViewUrl('video asset');
+    it("builds encoded asset view URLs for preview images and videos", async () => {
+      await getImageAssetViewUrl(" asset/123 ");
+      await getVideoAssetViewUrl("video asset");
 
       expect(apiClientMocks.get).toHaveBeenCalledWith(
-        `/preview/image/view?assetId=${encodeURIComponent('asset/123')}`
+        `/preview/image/view?assetId=${encodeURIComponent("asset/123")}`,
       );
       expect(apiClientMocks.get).toHaveBeenCalledWith(
-        `/preview/video/view?assetId=${encodeURIComponent('video asset')}`
+        `/preview/video/view?assetId=${encodeURIComponent("video asset")}`,
       );
     });
 
-    it('posts a video preview request with timeout and options', async () => {
-      await generateVideoPreview('  Video prompt  ', '16:9', 'model-x', {
-        startImage: 'https://images.example.com/start.png',
-        inputReference: 'ref-1',
-        generationParams: { quality: 'high' },
-        characterAssetId: 'asset-1',
+    it("posts a video preview request with timeout and options", async () => {
+      await generateVideoPreview("  Video prompt  ", "16:9", "model-x", {
+        startImage: "https://images.example.com/start.png",
+        inputReference: "ref-1",
+        generationParams: { quality: "high" },
+        characterAssetId: "asset-1",
         autoKeyframe: true,
       });
 
       expect(apiClientMocks.post).toHaveBeenCalledWith(
-        '/preview/video/generate',
+        "/preview/video/generate",
         expect.objectContaining({
-          prompt: 'Video prompt',
-          aspectRatio: '16:9',
-          model: 'model-x',
-          startImage: 'https://images.example.com/start.png',
-          inputReference: 'ref-1',
-          generationParams: { quality: 'high' },
-          characterAssetId: 'asset-1',
+          prompt: "Video prompt",
+          aspectRatio: "16:9",
+          model: "model-x",
+          startImage: "https://images.example.com/start.png",
+          inputReference: "ref-1",
+          generationParams: { quality: "high" },
+          characterAssetId: "asset-1",
           autoKeyframe: true,
         }),
         expect.objectContaining({
           timeout: API_CONFIG.timeout.video,
           headers: expect.objectContaining({
-            'Idempotency-Key': expect.any(String),
+            "Idempotency-Key": expect.any(String),
           }),
-        })
+        }),
       );
     });
 
-    it('requests the video preview status without caching', async () => {
+    it("requests the video preview status without caching", async () => {
       apiClientMocks.get.mockResolvedValueOnce({
         success: true,
-        jobId: 'job-123',
-        status: 'processing',
+        jobId: "job-123",
+        status: "processing",
       });
 
-      await getVideoPreviewStatus('job-123');
+      await getVideoPreviewStatus("job-123");
 
-      expect(apiClientMocks.get).toHaveBeenCalledWith('/preview/video/jobs/job-123', {
-        fetchOptions: { cache: 'no-store' },
-      });
+      expect(apiClientMocks.get).toHaveBeenCalledWith(
+        "/preview/video/jobs/job-123",
+        {
+          fetchOptions: { cache: "no-store" },
+        },
+      );
     });
 
-    it('uploads preview images with auth headers and metadata', async () => {
+    it("uploads preview images with auth headers and metadata", async () => {
       const payload = {
         success: true,
         data: {
-          imageUrl: 'https://cdn.example.com/preview.png',
-          contentType: 'image/png',
+          imageUrl: "https://cdn.example.com/preview.png",
+          contentType: "image/png",
         },
       };
       const fetchMock = vi.fn().mockResolvedValue({
@@ -237,23 +247,29 @@ describe('previewApi', () => {
       } as unknown as Response);
       global.fetch = fetchMock as typeof fetch;
 
-      const file = new File(['data'], 'preview.png', { type: 'image/png' });
-      const result = await uploadPreviewImage(file, { mood: 'bright' }, {
-        source: 'gallery',
-        label: 'hero',
-      });
+      const file = new File(["data"], "preview.png", { type: "image/png" });
+      const result = await uploadPreviewImage(
+        file,
+        { mood: "bright" },
+        {
+          source: "gallery",
+          label: "hero",
+        },
+      );
 
       const request = fetchMock.mock.calls[0]?.[1];
       const body = request?.body as FormData | undefined;
 
       expect(result).toEqual(payload);
       expect(authMocks.buildFirebaseAuthHeaders).toHaveBeenCalled();
-      expect(request?.headers).toEqual(expect.objectContaining({ 'X-Test-Auth': 'token' }));
+      expect(request?.headers).toEqual(
+        expect.objectContaining({ "X-Test-Auth": "token" }),
+      );
       expect(body).toBeInstanceOf(FormData);
-      expect(body?.get('file')).toBe(file);
-      expect(body?.get('metadata')).toBe(JSON.stringify({ mood: 'bright' }));
-      expect(body?.get('source')).toBe('gallery');
-      expect(body?.get('label')).toBe('hero');
+      expect(body?.get("file")).toBe(file);
+      expect(body?.get("metadata")).toBe(JSON.stringify({ mood: "bright" }));
+      expect(body?.get("source")).toBe("gallery");
+      expect(body?.get("label")).toBe("hero");
     });
   });
 });

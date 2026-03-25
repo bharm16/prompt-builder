@@ -1,24 +1,24 @@
-import { describe, expect, it } from 'vitest';
-import { FalFaceSwapProvider } from '../FalFaceSwapProvider';
+import { describe, expect, it } from "vitest";
+import { FalFaceSwapProvider } from "../FalFaceSwapProvider";
 
-describe('FalFaceSwapProvider (integration)', () => {
+describe("FalFaceSwapProvider (integration)", () => {
   const hasFalKey = Boolean(
     process.env.FAL_KEY ||
-    process.env.FAL_API_KEY ||
-    (process.env.FAL_KEY_ID && process.env.FAL_KEY_SECRET)
+      process.env.FAL_API_KEY ||
+      (process.env.FAL_KEY_ID && process.env.FAL_KEY_SECRET),
   );
-  const shouldRun = process.env.RUN_FAL_INTEGRATION === 'true' && hasFalKey;
+  const shouldRun = process.env.RUN_FAL_INTEGRATION === "true" && hasFalKey;
   const faceUrl = process.env.FACE_SWAP_TEST_FACE_URL;
   const targetUrl = process.env.FACE_SWAP_TEST_TARGET_URL;
 
   if (!shouldRun || !faceUrl || !targetUrl) {
-    it.skip('requires RUN_FAL_INTEGRATION=true, FAL_KEY, FACE_SWAP_TEST_FACE_URL, FACE_SWAP_TEST_TARGET_URL', () => {
+    it.skip("requires RUN_FAL_INTEGRATION=true, FAL_KEY, FACE_SWAP_TEST_FACE_URL, FACE_SWAP_TEST_TARGET_URL", () => {
       expect(true).toBe(true);
     });
     return;
   }
 
-  it('swaps a face using fal.ai', async () => {
+  it("swaps a face using fal.ai", async () => {
     const provider = new FalFaceSwapProvider();
     const result = await provider.swapFace({
       faceImageUrl: faceUrl,

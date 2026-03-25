@@ -1,5 +1,5 @@
-import React from 'react';
-import { ChevronDown } from '@promptstudio/system/components/ui';
+import React from "react";
+import { ChevronDown } from "@promptstudio/system/components/ui";
 
 interface CanvasTopBarProps {
   title?: string;
@@ -8,7 +8,7 @@ interface CanvasTopBarProps {
 }
 
 export function CanvasTopBar({
-  sessionName = 'Untitled session',
+  sessionName = "Untitled session",
   credits,
 }: CanvasTopBarProps): React.ReactElement {
   return (
@@ -25,7 +25,7 @@ export function CanvasTopBar({
 
       <div className="mx-1 h-4 w-px bg-tool-rail-border" />
 
-      {typeof credits === 'number' ? (
+      {typeof credits === "number" ? (
         <span className="inline-flex items-center gap-1.5 text-xs text-tool-text-dim">
           <span className="h-[5px] w-[5px] rounded-full bg-success-400" />
           {credits} credits

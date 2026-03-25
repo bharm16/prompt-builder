@@ -9,6 +9,7 @@ Copy-paste these templates when working with Claude Code to maintain architectur
 **Split by responsibility, not by size.**
 
 Before creating or modifying any file, answer:
+
 1. "Can I describe this in one sentence without 'and'?"
 2. "Can I test this with ≤2 mocks?"
 3. "Does this have exactly one reason to change?"
@@ -200,14 +201,14 @@ SHOW REFACTORING PLAN FIRST
 
 ## Quick Reference: Where Things Go
 
-| Concern | Frontend Location | Backend Location |
-|---------|-------------------|------------------|
-| Coordination | ComponentName.jsx | MainService.js |
-| State/Logic | hooks/ | services/[name]/ |
-| Data fetching | api/ | repositories/ |
-| Pure transforms | utils/ | utils/ |
-| Configuration | config/ | config/ or templates/ |
-| Display | components/ | N/A |
+| Concern         | Frontend Location | Backend Location      |
+| --------------- | ----------------- | --------------------- |
+| Coordination    | ComponentName.jsx | MainService.js        |
+| State/Logic     | hooks/            | services/[name]/      |
+| Data fetching   | api/              | repositories/         |
+| Pure transforms | utils/            | utils/                |
+| Configuration   | config/           | config/ or templates/ |
+| Display         | components/       | N/A                   |
 
 **The test:** If you're importing across these boundaries to make a single change, the responsibility is in the wrong place.
 
@@ -217,13 +218,13 @@ SHOW REFACTORING PLAN FIRST
 
 When reviewing Claude's output, watch for:
 
-| Smell | Symptom | Fix |
-|-------|---------|-----|
-| **Feature Envy** | Function uses another module's data more than its own | Move the function |
-| **Shotgun Surgery** | One change requires editing 5+ files | Consolidate responsibility |
-| **God Object** | Everything depends on one file | Split by responsibility |
-| **Orchestrator with Logic** | `if`/`switch` business logic in main file | Extract to hook/service |
-| **Artificial Split** | Two files that always change together | Merge them |
+| Smell                       | Symptom                                               | Fix                        |
+| --------------------------- | ----------------------------------------------------- | -------------------------- |
+| **Feature Envy**            | Function uses another module's data more than its own | Move the function          |
+| **Shotgun Surgery**         | One change requires editing 5+ files                  | Consolidate responsibility |
+| **God Object**              | Everything depends on one file                        | Split by responsibility    |
+| **Orchestrator with Logic** | `if`/`switch` business logic in main file             | Extract to hook/service    |
+| **Artificial Split**        | Two files that always change together                 | Merge them                 |
 
 ---
 
@@ -243,7 +244,9 @@ If any answer is "no," you have a cohesion problem.
 ## Reference Implementations
 
 **Frontend:** `client/src/components/VideoConceptBuilder/`
-- Read `REFACTORING_SUMMARY.md` for the *why*
+
+- Read `REFACTORING_SUMMARY.md` for the _why_
 
 **Backend:** `server/src/services/PromptOptimizationService.js`
+
 - Thin orchestrator delegating to specialized services

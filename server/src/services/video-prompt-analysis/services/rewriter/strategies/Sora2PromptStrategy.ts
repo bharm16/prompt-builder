@@ -1,9 +1,9 @@
-import type { ModelPromptStrategy } from './types';
-import { buildBaseHeader } from './promptStrategyUtils';
+import type { ModelPromptStrategy } from "./types";
+import { buildBaseHeader } from "./promptStrategyUtils";
 
 export const sora2PromptStrategy: ModelPromptStrategy = {
-  modelId: 'sora-2',
-  output: { format: 'text' },
+  modelId: "sora-2",
+  output: { format: "text" },
   buildPrompt: (context) => `${buildBaseHeader(context)}
 INSTRUCTIONS for Sora:
 1. Use a descriptive "World-building" style, drawing heavily from the 'environment' and 'meta' fields in the IR.

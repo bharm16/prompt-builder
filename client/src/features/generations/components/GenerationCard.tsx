@@ -1,24 +1,24 @@
-import React, { memo } from 'react';
+import React, { memo } from "react";
 import {
   ArrowClockwise,
   Check,
   Download,
   WarningCircle,
   X,
-} from '@promptstudio/system/components/ui';
-import { Button } from '@promptstudio/system/components/ui/button';
+} from "@promptstudio/system/components/ui";
+import { Button } from "@promptstudio/system/components/ui/button";
 
-import { cn } from '@/utils/cn';
-import { ContinueSceneButton } from '@/features/continuity/components/ContinueSceneButton';
-import { extractStorageObjectPath } from '@/utils/storageUrl';
-import { ImagePreview } from '@/components/MediaViewer/components/ImagePreview';
+import { cn } from "@/utils/cn";
+import { ContinueSceneButton } from "@/features/continuity/components/ContinueSceneButton";
+import { extractStorageObjectPath } from "@/utils/storageUrl";
+import { ImagePreview } from "@/components/MediaViewer/components/ImagePreview";
 
-import type { Generation } from '../types';
-import { getModelConfig } from '../config/generationConfig';
-import { useGenerationProgress } from '../hooks/useGenerationProgress';
-import { resolvePrimaryVideoSource } from '../utils/videoSource';
-import { KontextFrameStrip } from './KontextFrameStrip';
-import { VideoThumbnail } from './VideoThumbnail';
+import type { Generation } from "../types";
+import { getModelConfig } from "../config/generationConfig";
+import { useGenerationProgress } from "../hooks/useGenerationProgress";
+import { resolvePrimaryVideoSource } from "../utils/videoSource";
+import { KontextFrameStrip } from "./KontextFrameStrip";
+import { VideoThumbnail } from "./VideoThumbnail";
 
 interface GenerationCardProps {
   generation: Generation;
@@ -31,7 +31,9 @@ interface GenerationCardProps {
   onContinueSequence?: ((generation: Generation) => void) | undefined;
   isSequenceMode?: boolean | undefined;
   isStartingSequence?: boolean | undefined;
-  onSelectFrame?: ((url: string, index: number, generationId: string) => void) | undefined;
+  onSelectFrame?:
+    | ((url: string, index: number, generationId: string) => void)
+    | undefined;
   onClearSelectedFrame?: (() => void) | undefined;
   selectedFrameUrl?: string | null | undefined;
   isActive?: boolean | undefined;
@@ -61,10 +63,8 @@ export const GenerationCard = memo(function GenerationCard({
     useGenerationProgress(generation);
   const mediaUrl = generation.mediaUrls[0] ?? null;
   const primaryMediaRef = generation.mediaAssetIds?.[0] ?? null;
-  const { storagePath: mediaStoragePath, assetId: primaryVideoAssetId } = resolvePrimaryVideoSource(
-    mediaUrl,
-    primaryMediaRef
-  );
+  const { storagePath: mediaStoragePath, assetId: primaryVideoAssetId } =
+    resolvePrimaryVideoSource(mediaUrl, primaryMediaRef);
   const continuitySourceId = primaryVideoAssetId ?? mediaStoragePath;
   const thumbnailStoragePath = generation.thumbnailUrl
     ? extractStorageObjectPath(generation.thumbnailUrl)
@@ -72,23 +72,23 @@ export const GenerationCard = memo(function GenerationCard({
   const showContinueScene =
     Boolean(onContinueSequence) &&
     !isSequenceMode &&
-    generation.mediaType === 'video' &&
-    generation.status === 'completed';
-  const showRetry = generation.status === 'failed' && Boolean(onRetry);
+    generation.mediaType === "video" &&
+    generation.status === "completed";
+  const showRetry = generation.status === "failed" && Boolean(onRetry);
   const showDownload =
-    generation.tier === 'render' &&
-    generation.status === 'completed' &&
+    generation.tier === "render" &&
+    generation.status === "completed" &&
     Boolean(mediaUrl) &&
     Boolean(onDownload);
   const showExtend =
     canExtend &&
-    generation.status === 'completed' &&
-    generation.mediaType === 'video' &&
+    generation.status === "completed" &&
+    generation.mediaType === "video" &&
     Boolean(mediaUrl) &&
     Boolean(onExtend);
   const canSelectFrames =
-    generation.mediaType === 'image-sequence' &&
-    generation.status === 'completed' &&
+    generation.mediaType === "image-sequence" &&
+    generation.status === "completed" &&
     generation.mediaUrls.length > 0 &&
     Boolean(onSelectFrame);
   const hasSelectedFrame =
@@ -98,7 +98,7 @@ export const GenerationCard = memo(function GenerationCard({
   const handleClick = (event: React.MouseEvent<HTMLDivElement>) => {
     if (!onClick) return;
     const target = event.target as Element;
-    if (target.closest('button, a, input, textarea, select, video')) {
+    if (target.closest("button, a, input, textarea, select, video")) {
       return;
     }
     onClick();
@@ -106,14 +106,14 @@ export const GenerationCard = memo(function GenerationCard({
 
   return (
     <div
-      className={cn('group cursor-pointer', className)}
+      className={cn("group cursor-pointer", className)}
       onClick={onClick ? handleClick : undefined}
-      role={onClick ? 'button' : undefined}
+      role={onClick ? "button" : undefined}
       tabIndex={onClick ? 0 : undefined}
       onKeyDown={
         onClick
           ? (e) => {
-              if (e.key === 'Enter') {
+              if (e.key === "Enter") {
                 e.preventDefault();
                 onClick();
               }
@@ -121,14 +121,21 @@ export const GenerationCard = memo(function GenerationCard({
           : undefined
       }
     >
-      {generation.mediaType === 'image-sequence' ? (
+      {generation.mediaType === "image-sequence" ? (
         (() => {
-          if (import.meta.env.DEV && generation.status === 'completed' && generation.mediaUrls.length === 0) {
-            console.warn('[GenerationCard] Image-sequence generation completed but no mediaUrls:', {
-              id: generation.id,
-              model: generation.model,
-              mediaType: generation.mediaType,
-            });
+          if (
+            import.meta.env.DEV &&
+            generation.status === "completed" &&
+            generation.mediaUrls.length === 0
+          ) {
+            console.warn(
+              "[GenerationCard] Image-sequence generation completed but no mediaUrls:",
+              {
+                id: generation.id,
+                model: generation.model,
+                mediaType: generation.mediaType,
+              },
+            );
           }
           return (
             <KontextFrameStrip
@@ -168,16 +175,25 @@ export const GenerationCard = memo(function GenerationCard({
           tier={generation.tier}
           modelLabel={config?.label ?? generation.model}
           isFailed={isFailed}
-          {...(generation.error !== undefined ? { failedMessage: generation.error } : {})}
+          {...(generation.error !== undefined
+            ? { failedMessage: generation.error }
+            : {})}
           onRetry={showRetry && onRetry ? () => onRetry(generation) : undefined}
-          onCancel={isGenerating && onCancel ? () => onCancel(generation) : undefined}
+          onCancel={
+            isGenerating && onCancel ? () => onCancel(generation) : undefined
+          }
           onDelete={onDelete ? () => onDelete(generation) : undefined}
         />
       )}
 
       {hasSelectedFrame && (
         <div className="mt-3 flex items-center gap-2 rounded-lg border border-tool-nav-active bg-tool-surface-card px-3 py-2">
-          <Check size={14} weight="bold" className="text-tool-accent-selection" aria-hidden="true" />
+          <Check
+            size={14}
+            weight="bold"
+            className="text-tool-accent-selection"
+            aria-hidden="true"
+          />
           <span className="flex-1 text-xs font-medium text-tool-text-dim">
             Frame selected as start frame
           </span>
@@ -200,17 +216,22 @@ export const GenerationCard = memo(function GenerationCard({
       {generation.faceSwapUrl && (
         <div className="mt-3 flex items-center gap-2 rounded-lg border border-tool-nav-active bg-tool-surface-card px-3 py-2">
           <div className="h-10 w-10 overflow-hidden rounded-md border border-tool-nav-active">
-            <ImagePreview src={generation.faceSwapUrl} alt="Face swap preview" />
+            <ImagePreview
+              src={generation.faceSwapUrl}
+              alt="Face swap preview"
+            />
           </div>
-          <span className="flex-1 text-xs font-medium text-tool-text-dim">Face swap applied</span>
+          <span className="flex-1 text-xs font-medium text-tool-text-dim">
+            Face swap applied
+          </span>
         </div>
       )}
 
       <div className="flex items-center justify-end gap-2 pt-1.5">
-        {generation.status === 'failed' && (
+        {generation.status === "failed" && (
           <span className="mr-auto inline-flex items-center gap-1 text-label-sm font-medium text-red-500/40">
             <WarningCircle size={14} aria-hidden="true" />
-            {generation.error ?? 'Generation failed'}
+            {generation.error ?? "Generation failed"}
           </span>
         )}
 
@@ -262,8 +283,8 @@ export const GenerationCard = memo(function GenerationCard({
             isLoading={isStartingSequence}
             label="Continue as Sequence"
             className={cn(
-              showRetry || showDownload ? '' : 'ml-auto',
-              '[&>button]:h-6 [&>button]:rounded-[5px] [&>button]:border [&>button]:border-tool-nav-active [&>button]:bg-transparent [&>button]:px-2 [&>button]:text-[11px] [&>button]:font-medium [&>button]:text-tool-text-subdued [&>button]:transition-colors [&>button]:hover:border-tool-text-disabled [&>button]:hover:text-tool-text-dim [&>button]:disabled:border-tool-nav-active [&>button]:disabled:text-tool-text-label'
+              showRetry || showDownload ? "" : "ml-auto",
+              "[&>button]:h-6 [&>button]:rounded-[5px] [&>button]:border [&>button]:border-tool-nav-active [&>button]:bg-transparent [&>button]:px-2 [&>button]:text-[11px] [&>button]:font-medium [&>button]:text-tool-text-subdued [&>button]:transition-colors [&>button]:hover:border-tool-text-disabled [&>button]:hover:text-tool-text-dim [&>button]:disabled:border-tool-nav-active [&>button]:disabled:text-tool-text-label",
             )}
           />
         )}
@@ -272,4 +293,4 @@ export const GenerationCard = memo(function GenerationCard({
   );
 });
 
-GenerationCard.displayName = 'GenerationCard';
+GenerationCard.displayName = "GenerationCard";

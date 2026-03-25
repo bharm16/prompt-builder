@@ -1,8 +1,8 @@
-import { act, renderHook } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { useAnimatedPresence } from '../useAnimatedPresence';
+import { act, renderHook } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { useAnimatedPresence } from "../useAnimatedPresence";
 
-describe('useAnimatedPresence', () => {
+describe("useAnimatedPresence", () => {
   const originalMatchMedia = window.matchMedia;
   const originalRequestAnimationFrame = window.requestAnimationFrame;
   const originalCancelAnimationFrame = window.cancelAnimationFrame;
@@ -32,11 +32,8 @@ describe('useAnimatedPresence', () => {
         rafQueue[id - 1] = null;
       }
     });
-    vi.stubGlobal(
-      'requestAnimationFrame',
-      requestAnimationFrame
-    );
-    vi.stubGlobal('cancelAnimationFrame', cancelAnimationFrame);
+    vi.stubGlobal("requestAnimationFrame", requestAnimationFrame);
+    vi.stubGlobal("cancelAnimationFrame", cancelAnimationFrame);
     window.requestAnimationFrame = requestAnimationFrame;
     window.cancelAnimationFrame = cancelAnimationFrame;
     window.matchMedia = vi.fn().mockImplementation((query: string) => ({
@@ -59,46 +56,48 @@ describe('useAnimatedPresence', () => {
     window.cancelAnimationFrame = originalCancelAnimationFrame;
   });
 
-  it('stages the initial enter transition before settling to entered', async () => {
-    const { result } = renderHook(() => useAnimatedPresence(true, { exitMs: 220 }));
+  it("stages the initial enter transition before settling to entered", async () => {
+    const { result } = renderHook(() =>
+      useAnimatedPresence(true, { exitMs: 220 }),
+    );
 
     expect(result.current.shouldRender).toBe(true);
-    expect(result.current.phase).toBe('enter');
+    expect(result.current.phase).toBe("enter");
 
     await flushAnimationFrames();
 
     expect(result.current.shouldRender).toBe(true);
-    expect(result.current.phase).toBe('entered');
+    expect(result.current.phase).toBe("entered");
   });
 
-  it('starts an exit immediately when closed during enter', async () => {
+  it("starts an exit immediately when closed during enter", async () => {
     const { result, rerender } = renderHook(
       ({ open }) => useAnimatedPresence(open, { exitMs: 220 }),
-      { initialProps: { open: true } }
+      { initialProps: { open: true } },
     );
 
     rerender({ open: false });
 
     expect(result.current.shouldRender).toBe(true);
-    expect(result.current.phase).toBe('exit');
+    expect(result.current.phase).toBe("exit");
 
     await act(async () => {
       vi.advanceTimersByTime(220);
     });
 
     expect(result.current.shouldRender).toBe(false);
-    expect(result.current.phase).toBe('exited');
+    expect(result.current.phase).toBe("exited");
   });
 
-  it('reopens during exit without leaking the old unmount timer', async () => {
+  it("reopens during exit without leaking the old unmount timer", async () => {
     const { result, rerender } = renderHook(
       ({ open }) => useAnimatedPresence(open, { exitMs: 220 }),
-      { initialProps: { open: true } }
+      { initialProps: { open: true } },
     );
 
     await flushAnimationFrames();
     rerender({ open: false });
-    expect(result.current.phase).toBe('exit');
+    expect(result.current.phase).toBe("exit");
 
     await act(async () => {
       vi.advanceTimersByTime(100);
@@ -106,42 +105,42 @@ describe('useAnimatedPresence', () => {
 
     rerender({ open: true });
     expect(result.current.shouldRender).toBe(true);
-    expect(result.current.phase).toBe('enter');
+    expect(result.current.phase).toBe("enter");
 
     await flushAnimationFrames();
-    expect(result.current.phase).toBe('entered');
+    expect(result.current.phase).toBe("entered");
 
     await act(async () => {
       vi.advanceTimersByTime(220);
     });
 
     expect(result.current.shouldRender).toBe(true);
-    expect(result.current.phase).toBe('entered');
+    expect(result.current.phase).toBe("entered");
   });
 
-  it('honors the latest rapid toggle state instead of queueing timers', async () => {
+  it("honors the latest rapid toggle state instead of queueing timers", async () => {
     const { result, rerender } = renderHook(
       ({ open }) => useAnimatedPresence(open, { exitMs: 220 }),
-      { initialProps: { open: false } }
+      { initialProps: { open: false } },
     );
 
     rerender({ open: true });
-    expect(result.current.phase).toBe('enter');
+    expect(result.current.phase).toBe("enter");
 
     rerender({ open: false });
-    expect(result.current.phase).toBe('exit');
+    expect(result.current.phase).toBe("exit");
 
     rerender({ open: true });
-    expect(result.current.phase).toBe('enter');
+    expect(result.current.phase).toBe("enter");
 
     await flushAnimationFrames();
     expect(result.current.shouldRender).toBe(true);
-    expect(result.current.phase).toBe('entered');
+    expect(result.current.phase).toBe("entered");
   });
 
-  it('bypasses staged transitions when reduced motion is enabled', () => {
+  it("bypasses staged transitions when reduced motion is enabled", () => {
     window.matchMedia = vi.fn().mockImplementation((query: string) => ({
-      matches: query === '(prefers-reduced-motion: reduce)',
+      matches: query === "(prefers-reduced-motion: reduce)",
       media: query,
       onchange: null,
       addEventListener: vi.fn(),
@@ -153,15 +152,15 @@ describe('useAnimatedPresence', () => {
 
     const { result, rerender } = renderHook(
       ({ open }) => useAnimatedPresence(open, { exitMs: 220 }),
-      { initialProps: { open: true } }
+      { initialProps: { open: true } },
     );
 
     expect(result.current.shouldRender).toBe(true);
-    expect(result.current.phase).toBe('entered');
+    expect(result.current.phase).toBe("entered");
 
     rerender({ open: false });
 
     expect(result.current.shouldRender).toBe(false);
-    expect(result.current.phase).toBe('exited');
+    expect(result.current.phase).toBe("exited");
   });
 });

@@ -13,8 +13,8 @@
 import {
   postEnhancementSuggestions,
   type EnhancementSuggestionsResponse,
-} from '@/api/enhancementSuggestionsApi';
-import { CancellationError, combineSignals } from '../utils/signalUtils';
+} from "@/api/enhancementSuggestionsApi";
+import { CancellationError, combineSignals } from "../utils/signalUtils";
 
 /** Timeout for suggestion requests in milliseconds */
 const SUGGESTION_TIMEOUT_MS = 8000;
@@ -29,7 +29,7 @@ interface FetchEnhancementSuggestionsParams {
   i2vContext?: {
     observation: Record<string, unknown>;
     lockMap: Record<string, string>;
-    constraintMode?: 'strict' | 'flexible' | 'transform';
+    constraintMode?: "strict" | "flexible" | "transform";
   } | null;
   metadata?: {
     startIndex?: number;
@@ -69,7 +69,7 @@ export async function fetchEnhancementSuggestions({
   // Create timeout controller for suggestion request timeout
   const timeoutController = new AbortController();
   const timeoutId = setTimeout(() => {
-    timeoutController.abort(new Error('Request timeout'));
+    timeoutController.abort(new Error("Request timeout"));
   }, SUGGESTION_TIMEOUT_MS);
 
   // Combine external signal (user cancellation) with timeout signal
@@ -88,10 +88,10 @@ export async function fetchEnhancementSuggestions({
         originalUserPrompt: inputPrompt,
         brainstormContext:
           brainstormContext &&
-          typeof brainstormContext === 'object' &&
-          'toJSON' in brainstormContext &&
+          typeof brainstormContext === "object" &&
+          "toJSON" in brainstormContext &&
           typeof (brainstormContext as { toJSON?: () => unknown }).toJSON ===
-            'function'
+            "function"
             ? (brainstormContext as { toJSON: () => unknown }).toJSON()
             : brainstormContext,
         highlightedCategory: metadata?.category || null,
@@ -102,7 +102,7 @@ export async function fetchEnhancementSuggestions({
         editHistory,
         ...(i2vContext ? { i2vContext } : {}),
       },
-      { signal }
+      { signal },
     );
 
     clearTimeout(timeoutId);
@@ -117,7 +117,7 @@ export async function fetchEnhancementSuggestions({
     clearTimeout(timeoutId);
 
     // Handle AbortError - distinguish between timeout and user cancellation
-    if (error instanceof Error && error.name === 'AbortError') {
+    if (error instanceof Error && error.name === "AbortError") {
       // Check if this was a timeout (our internal abort) vs user cancellation (external signal)
       const isTimeout =
         timeoutController.signal.aborted &&
@@ -125,11 +125,13 @@ export async function fetchEnhancementSuggestions({
 
       if (isTimeout) {
         // Timeout should be treated as an error, not silent cancellation
-        throw new Error(`Request timed out after ${Math.round(SUGGESTION_TIMEOUT_MS / 1000)} seconds`);
+        throw new Error(
+          `Request timed out after ${Math.round(SUGGESTION_TIMEOUT_MS / 1000)} seconds`,
+        );
       }
 
       // User cancellation (new selection) - throw CancellationError for silent handling
-      throw new CancellationError('Request cancelled by user');
+      throw new CancellationError("Request cancelled by user");
     }
 
     // Re-throw other errors as-is

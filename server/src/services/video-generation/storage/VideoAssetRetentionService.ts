@@ -1,5 +1,5 @@
-import { logger } from '@infrastructure/Logger';
-import type { VideoAssetStore } from './types';
+import { logger } from "@infrastructure/Logger";
+import type { VideoAssetStore } from "./types";
 
 const DEFAULT_RETENTION_HOURS = 24;
 const DEFAULT_CLEANUP_INTERVAL_MINUTES = 15;
@@ -16,11 +16,16 @@ export class VideoAssetRetentionService {
   private readonly maxAgeMs: number;
   private readonly cleanupIntervalMs: number;
   private readonly batchSize: number;
-  private readonly log = logger.child({ service: 'VideoAssetRetentionService' });
+  private readonly log = logger.child({
+    service: "VideoAssetRetentionService",
+  });
   private timer: NodeJS.Timeout | null = null;
   private running = false;
 
-  constructor(assetStore: VideoAssetStore, options: VideoAssetRetentionOptions) {
+  constructor(
+    assetStore: VideoAssetStore,
+    options: VideoAssetRetentionOptions,
+  ) {
     this.assetStore = assetStore;
     this.maxAgeMs = options.maxAgeMs;
     this.cleanupIntervalMs = options.cleanupIntervalMs;
@@ -33,7 +38,7 @@ export class VideoAssetRetentionService {
     }
 
     if (this.maxAgeMs <= 0) {
-      this.log.warn('Video asset retention disabled (maxAgeMs <= 0)');
+      this.log.warn("Video asset retention disabled (maxAgeMs <= 0)");
       return;
     }
 
@@ -59,16 +64,20 @@ export class VideoAssetRetentionService {
     this.running = true;
     try {
       const cutoffMs = Date.now() - this.maxAgeMs;
-      const deleted = await this.assetStore.cleanupExpired(cutoffMs, this.batchSize);
+      const deleted = await this.assetStore.cleanupExpired(
+        cutoffMs,
+        this.batchSize,
+      );
       if (deleted > 0) {
-        this.log.info('Expired video assets cleaned up', {
+        this.log.info("Expired video assets cleaned up", {
           deleted,
           cutoffMs,
         });
       }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      this.log.warn('Failed to cleanup expired video assets', {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      this.log.warn("Failed to cleanup expired video assets", {
         error: errorMessage,
       });
     } finally {
@@ -86,7 +95,7 @@ interface RetentionConfig {
 
 export function createVideoAssetRetentionService(
   assetStore: VideoAssetStore,
-  config: RetentionConfig
+  config: RetentionConfig,
 ): VideoAssetRetentionService | null {
   if (config.disabled) {
     return null;

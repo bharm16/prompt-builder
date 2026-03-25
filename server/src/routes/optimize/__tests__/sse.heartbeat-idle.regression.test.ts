@@ -1,9 +1,12 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Response } from 'express';
-import { createSseChannel } from '../sse';
-import { createMockSseRequest, createMockSseResponse } from '../../../../../tests/unit/test-helpers/sse';
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { Response } from "express";
+import { createSseChannel } from "../sse";
+import {
+  createMockSseRequest,
+  createMockSseResponse,
+} from "../../../../../tests/unit/test-helpers/sse";
 
-describe('regression: SSE heartbeat keeps idle watchdog alive', () => {
+describe("regression: SSE heartbeat keeps idle watchdog alive", () => {
   beforeEach(() => {
     vi.useFakeTimers();
   });
@@ -12,7 +15,7 @@ describe('regression: SSE heartbeat keeps idle watchdog alive', () => {
     vi.useRealTimers();
   });
 
-  it('for any active heartbeat stream, idle timeout must not abort without sendEvent', () => {
+  it("for any active heartbeat stream, idle timeout must not abort without sendEvent", () => {
     const res = createMockSseResponse();
     const req = createMockSseRequest({});
 

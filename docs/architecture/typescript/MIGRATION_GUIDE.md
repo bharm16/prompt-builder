@@ -21,14 +21,15 @@ npm install -D typescript @types/react @types/node zod
 See [TSCONFIG_GUIDE.md](./TSCONFIG_GUIDE.md) for the full configuration.
 
 Key settings for migration:
+
 ```json
 {
   "compilerOptions": {
-    "allowJs": true,           // Allow JS files during migration
-    "checkJs": false,          // Don't type-check JS files (too noisy)
-    "strict": true,            // Full strictness for TS files
-    "noEmit": true,            // Vite handles compilation
-    "skipLibCheck": true       // Faster builds
+    "allowJs": true, // Allow JS files during migration
+    "checkJs": false, // Don't type-check JS files (too noisy)
+    "strict": true, // Full strictness for TS files
+    "noEmit": true, // Vite handles compilation
+    "skipLibCheck": true // Faster builds
   }
 }
 ```
@@ -52,13 +53,13 @@ Key settings for migration:
 
 ```typescript
 // vite.config.ts
-import { defineConfig } from 'vite';
-import path from 'path';
+import { defineConfig } from "vite";
+import path from "path";
 
 export default defineConfig({
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
+      "@": path.resolve(__dirname, "./src"),
     },
   },
 });
@@ -78,8 +79,8 @@ Create foundational type files:
 
 ```typescript
 // src/types/index.ts
-export * from './api';
-export * from './common';
+export * from "./api";
+export * from "./common";
 
 // src/types/api.ts
 export interface ApiResponse<T> {
@@ -111,10 +112,10 @@ mkdir -p src/schemas
 
 ```typescript
 // src/schemas/index.ts
-export * from './common';
+export * from "./common";
 
 // src/schemas/common.ts
-import { z } from 'zod';
+import { z } from "zod";
 
 // Reusable schema fragments
 export const IdSchema = z.string().uuid();
@@ -126,10 +127,12 @@ export const ApiResponseSchema = <T extends z.ZodTypeAny>(dataSchema: T) =>
   z.object({
     data: dataSchema,
     success: z.boolean(),
-    error: z.object({
-      code: z.string(),
-      message: z.string(),
-    }).optional(),
+    error: z
+      .object({
+        code: z.string(),
+        message: z.string(),
+      })
+      .optional(),
   });
 ```
 
@@ -140,6 +143,7 @@ export const ApiResponseSchema = <T extends z.ZodTypeAny>(dataSchema: T) =>
 Migrate files in this order (lowest risk to highest):
 
 ### Priority 1: Types & Schemas (No Runtime Impact)
+
 ```
 src/types/           → Define interfaces
 src/schemas/         → Define Zod schemas
@@ -148,30 +152,35 @@ src/schemas/         → Define Zod schemas
 ```
 
 ### Priority 2: Utilities (Pure Functions)
+
 ```
 src/utils/           → Stateless helpers
 */utils/             → Feature-specific utils
 ```
 
 ### Priority 3: API Layer (Critical Path)
+
 ```
 src/api/             → Global API functions
 */api/               → Feature-specific API
 ```
 
 ### Priority 4: Hooks (Complex but Isolated)
+
 ```
 src/hooks/           → Global hooks
 */hooks/             → Feature-specific hooks
 ```
 
 ### Priority 5: Components (Highest Risk)
+
 ```
 components/          → Shared UI components
 features/            → Feature components
 ```
 
 ### Priority 6: Backend Services
+
 ```
 services/            → Business logic
 routes/              → API endpoints
@@ -187,12 +196,14 @@ middleware/          → Express middleware
 Use this checklist for every file you migrate:
 
 #### Before Renaming
+
 - [ ] **Identify all inputs/outputs** of the module
 - [ ] **Create types.ts** (if needed) with interfaces
 - [ ] **Create schemas.ts** (if API calls) with Zod schemas
 - [ ] **Identify dependencies** that need `.d.ts` files
 
 #### Rename & Convert
+
 - [ ] **Rename file**: `.js` → `.ts` or `.jsx` → `.tsx`
 - [ ] **Fix immediate errors**: Missing types, incorrect imports
 - [ ] **Add type annotations**: Function parameters, return types
@@ -200,11 +211,13 @@ Use this checklist for every file you migrate:
 - [ ] **Handle `any` violations**: Replace with proper types or `unknown`
 
 #### Harden
+
 - [ ] **Add Zod parsing**: Wrap fetch responses with `.parse()`
 - [ ] **Handle null/undefined**: Address all `?.` chain warnings
 - [ ] **Test runtime behavior**: Ensure Zod errors are caught
 
 #### Verify
+
 - [ ] **No `any` remaining**: Search for `: any`
 - [ ] **No `@ts-ignore`**: Fix underlying issues
 - [ ] **Build passes**: Run `tsc --noEmit`
@@ -217,6 +230,7 @@ Use this checklist for every file you migrate:
 ### Pattern A: React Component
 
 **Before (JavaScript):**
+
 ```javascript
 // VideoBuilder.jsx
 import { useState, useEffect } from 'react';
@@ -230,7 +244,7 @@ import { fetchConcept } from './api';
 export function VideoBuilder({ initialPrompt, onComplete }) {
   const [concept, setConcept] = useState(null);
   const [loading, setLoading] = useState(false);
-  
+
   useEffect(() => {
     if (initialPrompt) {
       setLoading(true);
@@ -239,12 +253,13 @@ export function VideoBuilder({ initialPrompt, onComplete }) {
         .finally(() => setLoading(false));
     }
   }, [initialPrompt]);
-  
+
   return (/* JSX */);
 }
 ```
 
 **After (TypeScript):**
+
 ```typescript
 // types.ts
 export interface VideoBuilderProps {
@@ -288,7 +303,7 @@ import { fetchConcept } from './api';
 export function VideoBuilder({ initialPrompt, onComplete }: VideoBuilderProps) {
   const [concept, setConcept] = useState<VideoConcept | null>(null);
   const [loading, setLoading] = useState(false);
-  
+
   useEffect(() => {
     if (initialPrompt) {
       setLoading(true);
@@ -298,7 +313,7 @@ export function VideoBuilder({ initialPrompt, onComplete }: VideoBuilderProps) {
         .finally(() => setLoading(false));
     }
   }, [initialPrompt]);
-  
+
   return (/* JSX */);
 }
 ```
@@ -306,9 +321,10 @@ export function VideoBuilder({ initialPrompt, onComplete }: VideoBuilderProps) {
 ### Pattern B: Custom Hook with useReducer
 
 **Before (JavaScript):**
+
 ```javascript
 // useVideoState.js
-import { useReducer, useCallback } from 'react';
+import { useReducer, useCallback } from "react";
 
 const initialState = {
   step: 0,
@@ -318,9 +334,12 @@ const initialState = {
 
 function reducer(state, action) {
   switch (action.type) {
-    case 'SET_FIELD':
-      return { ...state, formData: { ...state.formData, [action.field]: action.value } };
-    case 'NEXT_STEP':
+    case "SET_FIELD":
+      return {
+        ...state,
+        formData: { ...state.formData, [action.field]: action.value },
+      };
+    case "NEXT_STEP":
       return { ...state, step: state.step + 1 };
     default:
       return state;
@@ -329,16 +348,17 @@ function reducer(state, action) {
 
 export function useVideoState() {
   const [state, dispatch] = useReducer(reducer, initialState);
-  
+
   const setField = useCallback((field, value) => {
-    dispatch({ type: 'SET_FIELD', field, value });
+    dispatch({ type: "SET_FIELD", field, value });
   }, []);
-  
+
   return { state, setField };
 }
 ```
 
 **After (TypeScript):**
+
 ```typescript
 // types.ts
 export interface VideoState {
@@ -360,56 +380,56 @@ export interface ValidationError {
 
 // Discriminated union - TypeScript knows exactly what each action looks like
 export type VideoAction =
-  | { type: 'SET_FIELD'; field: keyof VideoFormData; value: string }
-  | { type: 'NEXT_STEP' }
-  | { type: 'PREV_STEP' }
-  | { type: 'SET_ERRORS'; errors: ValidationError[] }
-  | { type: 'RESET' };
+  | { type: "SET_FIELD"; field: keyof VideoFormData; value: string }
+  | { type: "NEXT_STEP" }
+  | { type: "PREV_STEP" }
+  | { type: "SET_ERRORS"; errors: ValidationError[] }
+  | { type: "RESET" };
 
 // useVideoState.ts
-import { useReducer, useCallback } from 'react';
-import type { VideoState, VideoAction, VideoFormData } from './types';
+import { useReducer, useCallback } from "react";
+import type { VideoState, VideoAction, VideoFormData } from "./types";
 
 const initialState: VideoState = {
   step: 0,
   formData: {
-    subject: '',
-    action: '',
-    location: '',
+    subject: "",
+    action: "",
+    location: "",
   },
   errors: [],
 };
 
 function reducer(state: VideoState, action: VideoAction): VideoState {
   switch (action.type) {
-    case 'SET_FIELD':
-      return { 
-        ...state, 
+    case "SET_FIELD":
+      return {
+        ...state,
         formData: { ...state.formData, [action.field]: action.value },
-        errors: state.errors.filter(e => e.field !== action.field),
+        errors: state.errors.filter((e) => e.field !== action.field),
       };
-    case 'NEXT_STEP':
+    case "NEXT_STEP":
       return { ...state, step: state.step + 1 };
-    case 'PREV_STEP':
+    case "PREV_STEP":
       return { ...state, step: Math.max(0, state.step - 1) };
-    case 'SET_ERRORS':
+    case "SET_ERRORS":
       return { ...state, errors: action.errors };
-    case 'RESET':
+    case "RESET":
       return initialState;
   }
 }
 
 export function useVideoState() {
   const [state, dispatch] = useReducer(reducer, initialState);
-  
+
   const setField = useCallback((field: keyof VideoFormData, value: string) => {
-    dispatch({ type: 'SET_FIELD', field, value });
+    dispatch({ type: "SET_FIELD", field, value });
   }, []);
-  
+
   const nextStep = useCallback(() => {
-    dispatch({ type: 'NEXT_STEP' });
+    dispatch({ type: "NEXT_STEP" });
   }, []);
-  
+
   return { state, setField, nextStep, dispatch };
 }
 ```
@@ -417,6 +437,7 @@ export function useVideoState() {
 ### Pattern C: Backend Service
 
 **Before (JavaScript):**
+
 ```javascript
 // OptimizationService.js
 class OptimizationService {
@@ -425,11 +446,11 @@ class OptimizationService {
     this.cacheService = cacheService;
     this.logger = logger;
   }
-  
+
   async optimize(prompt, context) {
     const cached = await this.cacheService.get(prompt);
     if (cached) return cached;
-    
+
     const result = await this.claudeClient.complete(prompt);
     await this.cacheService.set(prompt, result);
     return result;
@@ -438,17 +459,24 @@ class OptimizationService {
 ```
 
 **After (TypeScript):**
+
 ```typescript
 // contracts/IOptimizationService.ts
-import type { OptimizationResult, OptimizationContext } from '../types';
+import type { OptimizationResult, OptimizationContext } from "../types";
 
 export interface IOptimizationService {
-  optimize(prompt: string, context?: OptimizationContext): Promise<OptimizationResult>;
+  optimize(
+    prompt: string,
+    context?: OptimizationContext,
+  ): Promise<OptimizationResult>;
 }
 
 // contracts/dependencies.ts
 export interface IClaudeClient {
-  complete(prompt: string, options?: CompletionOptions): Promise<CompletionResult>;
+  complete(
+    prompt: string,
+    options?: CompletionOptions,
+  ): Promise<CompletionResult>;
 }
 
 export interface ICacheService {
@@ -469,14 +497,18 @@ export interface OptimizationResult {
 }
 
 export interface OptimizationContext {
-  mode: 'video' | 'research' | 'creative';
+  mode: "video" | "research" | "creative";
   temperature?: number;
 }
 
 // OptimizationService.ts
-import type { IOptimizationService } from './contracts/IOptimizationService';
-import type { IClaudeClient, ICacheService, ILogger } from './contracts/dependencies';
-import type { OptimizationResult, OptimizationContext } from './types';
+import type { IOptimizationService } from "./contracts/IOptimizationService";
+import type {
+  IClaudeClient,
+  ICacheService,
+  ILogger,
+} from "./contracts/dependencies";
+import type { OptimizationResult, OptimizationContext } from "./types";
 
 export class OptimizationService implements IOptimizationService {
   constructor(
@@ -484,25 +516,28 @@ export class OptimizationService implements IOptimizationService {
     private readonly cacheService: ICacheService,
     private readonly logger: ILogger,
   ) {}
-  
-  async optimize(prompt: string, context?: OptimizationContext): Promise<OptimizationResult> {
+
+  async optimize(
+    prompt: string,
+    context?: OptimizationContext,
+  ): Promise<OptimizationResult> {
     const cached = await this.cacheService.get<OptimizationResult>(prompt);
     if (cached) {
-      this.logger.info('Cache hit', { prompt: prompt.slice(0, 50) });
+      this.logger.info("Cache hit", { prompt: prompt.slice(0, 50) });
       return cached;
     }
-    
+
     const result = await this.claudeClient.complete(prompt);
     const optimizationResult: OptimizationResult = {
       optimized: result.content,
       score: this.calculateScore(result),
       metadata: { timestamp: new Date().toISOString() },
     };
-    
+
     await this.cacheService.set(prompt, optimizationResult);
     return optimizationResult;
   }
-  
+
   private calculateScore(result: CompletionResult): number {
     // Implementation
     return 0.85;
@@ -517,6 +552,7 @@ export class OptimizationService implements IOptimizationService {
 During migration, JS and TS files will coexist. Follow these rules:
 
 ### Rule 1: New Files Must Be TypeScript
+
 ```
 ✅ NewFeature.tsx
 ❌ NewFeature.jsx
@@ -528,7 +564,7 @@ If a TS file imports from a JS file that can't be migrated yet:
 
 ```typescript
 // src/types/legacy.d.ts
-declare module '@/legacy/oldService' {
+declare module "@/legacy/oldService" {
   export function doSomething(input: string): Promise<unknown>;
 }
 ```
@@ -536,6 +572,7 @@ declare module '@/legacy/oldService' {
 ### Rule 3: Don't Mix TS and JS in Same Directory
 
 If migrating a directory, migrate ALL files in it:
+
 ```
 ✅ hooks/useAuth.ts + hooks/useVideo.ts
 ❌ hooks/useAuth.ts + hooks/useVideo.js
@@ -544,6 +581,7 @@ If migrating a directory, migrate ALL files in it:
 ### Rule 4: API Layer First
 
 Always migrate the API layer before components that use it:
+
 ```
 1. api/schemas.ts  (define response types)
 2. api/index.ts    (typed fetch functions)
@@ -555,6 +593,7 @@ Always migrate the API layer before components that use it:
 ## Phase 6: Verification
 
 ### Daily Check
+
 ```bash
 # Should show zero errors
 npx tsc --noEmit
@@ -565,6 +604,7 @@ grep -r "@ts-ignore" src/ --include="*.ts" --include="*.tsx"
 ```
 
 ### Pre-Commit Hook
+
 ```bash
 #!/bin/bash
 # .git/hooks/pre-commit
@@ -580,6 +620,7 @@ fi
 ```
 
 ### Migration Progress Tracking
+
 ```bash
 # Count migrated vs unmigrated
 echo "TypeScript files: $(find src -name '*.ts' -o -name '*.tsx' | wc -l)"
@@ -591,11 +632,13 @@ echo "JavaScript files: $(find src -name '*.js' -o -name '*.jsx' | wc -l)"
 ## Common Migration Errors & Fixes
 
 ### Error: "Cannot find module"
+
 ```
 Fix: Add path alias to tsconfig.json OR create .d.ts declaration
 ```
 
 ### Error: "Object is possibly undefined"
+
 ```typescript
 // Bad
 const value = obj.prop.nested;
@@ -607,12 +650,14 @@ const value = obj.prop.nested; // Fix the type to not be optional
 ```
 
 ### Error: "Type 'X' is not assignable to type 'Y'"
+
 ```typescript
 // Check if it's a Zod inference issue
 type Correct = z.infer<typeof Schema>; // Use infer, not manual type
 ```
 
 ### Error: "Property does not exist on type"
+
 ```typescript
 // Usually means your type is incomplete
 // Fix by adding the property to the interface
@@ -629,4 +674,4 @@ type Correct = z.infer<typeof Schema>; // Use infer, not manual type
 
 ---
 
-*Companion docs: [ARCHITECTURE_STANDARD.md](./ARCHITECTURE_STANDARD.md), [ZOD_PATTERNS.md](./ZOD_PATTERNS.md)*
+_Companion docs: [ARCHITECTURE_STANDARD.md](./ARCHITECTURE_STANDARD.md), [ZOD_PATTERNS.md](./ZOD_PATTERNS.md)_

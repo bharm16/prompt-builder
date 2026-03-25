@@ -1,9 +1,10 @@
-import type { SemanticFamily } from '../types.js';
+import type { SemanticFamily } from "../types.js";
 
 export const SEMANTIC_FAMILY_PATTERNS: Record<SemanticFamily, RegExp> = {
   action:
     /\b(grip(?:ping)?|grasp(?:ing)?|hold(?:ing)?|press(?:ing)?|rest(?:ing)?|steady(?:ing)?|turn(?:ing)?|curl(?:ing)?|clench(?:ing)?|squeez(?:ing)?|tap(?:ping)?|balance(?:ing)?|lean(?:ing)?|reach(?:ing)?|look(?:ing)?|gaze(?:ing)?|walk(?:ing)?|run(?:ning)?|jump(?:ing)?|smil(?:e|ing)|nod(?:ding)?|wav(?:e|ing))\b/i,
-  audio: /\b(score|music|orchestra|ambient|sound|sfx|soundscape|chime|drone|percussion|choir)\b/i,
+  audio:
+    /\b(score|music|orchestra|ambient|sound|sfx|soundscape|chime|drone|percussion|choir)\b/i,
   camera_angle:
     /\b(eye[-\s]?level|low[-\s]?angle|high[-\s]?angle|overhead|bird'?s[-\s]?eye|worm'?s[-\s]?eye|dutch tilt|profile|point[-\s]?of[-\s]?view|pov)\b/i,
   camera_focus:
@@ -38,18 +39,25 @@ export const SEMANTIC_FAMILY_PATTERNS: Record<SemanticFamily, RegExp> = {
     /\b(face|cheeks?|eyes?|nose|lips?|mouth|brow|forehead|chin|jaw|expression|hands?|fingers?|palms?|knuckles?|nails?|hair|curls?|braids?|locks?|fringe|feet|foot|toes?|ankles?|heels?|socks?|shoes?|skin|freckles|build|frame|stature)\b/i,
   subject_identity:
     /\b(baby|infant|toddler|child|kid|boy|girl|person|man|woman|human|driver|runner|boxer|cowboy|alien|creature|performer|soldier|scientist)\b/i,
-  technical_aspect_ratio: /\b(\d+:\d+|16:9|9:16|4:3|1:1|2\.39:1|aspect ratio)\b/i,
-  technical_duration: /\b(\d+\s?(?:s|sec|secs|second|seconds)|duration|loop length)\b/i,
-  technical_frame_rate: /\b(\d+fps|frames per second|24fps|30fps|60fps|120fps)\b/i,
+  technical_aspect_ratio:
+    /\b(\d+:\d+|16:9|9:16|4:3|1:1|2\.39:1|aspect ratio)\b/i,
+  technical_duration:
+    /\b(\d+\s?(?:s|sec|secs|second|seconds)|duration|loop length)\b/i,
+  technical_frame_rate:
+    /\b(\d+fps|frames per second|24fps|30fps|60fps|120fps)\b/i,
   technical_resolution: /\b(720p|1080p|1440p|4k|6k|8k|resolution|uhd)\b/i,
-  visual_abstract: /\b(hush|cascade|whisper|dream|memory|sentiment|essence|timeless|poetic|ethereal|mood|spirit)\b/i,
+  visual_abstract:
+    /\b(hush|cascade|whisper|dream|memory|sentiment|essence|timeless|poetic|ethereal|mood|spirit)\b/i,
 };
 
 export const CATEGORY_LOCK_PATTERNS: Record<string, RegExp> = {
-  camera: /\b(dolly|track(?:ing)?|pan|tilt|crane|zoom|handheld|static|lens|mm|wide shot|close[-\s]?up|angle|framing|focus|bokeh)\b/i,
+  camera:
+    /\b(dolly|track(?:ing)?|pan|tilt|crane|zoom|handheld|static|lens|mm|wide shot|close[-\s]?up|angle|framing|focus|bokeh)\b/i,
   shot: /\b(wide shot|medium shot|close[-\s]?up|extreme close[-\s]?up|over[-\s]?the[-\s]?shoulder|shot|angle|framing)\b/i,
-  lighting: /\b(light(?:ing)?|shadow|glow|illumina|backlight|rim light|key light|fill light|high[-\s]?key|low[-\s]?key|sunlight|moonlight)\b/i,
-  technical: /\b(\d+fps|frame rate|aspect ratio|\d+:\d+|4k|8k|resolution|duration|mm film|film format)\b/i,
+  lighting:
+    /\b(light(?:ing)?|shadow|glow|illumina|backlight|rim light|key light|fill light|high[-\s]?key|low[-\s]?key|sunlight|moonlight)\b/i,
+  technical:
+    /\b(\d+fps|frame rate|aspect ratio|\d+:\d+|4k|8k|resolution|duration|mm film|film format)\b/i,
 };
 
 export const BODY_PART_PATTERNS = {
@@ -61,11 +69,11 @@ export const BODY_PART_PATTERNS = {
 };
 
 export const ACTION_OBJECT_TERMS = [
-  'steering wheel',
-  'wheel',
-  'dashboard',
-  'window',
-  'glass',
-  'door',
-  'toy',
+  "steering wheel",
+  "wheel",
+  "dashboard",
+  "window",
+  "glass",
+  "door",
+  "toy",
 ];

@@ -11,12 +11,13 @@ Replaced flat string-based category system with a hierarchical taxonomy that str
 ```javascript
 // Old system - allowed orphaned attributes
 const spans = [
-  { category: 'wardrobe', text: 'leather jacket' },  // Orphaned! No subject
-  { category: 'camera_move', text: 'dolly in' }       // Orphaned! No camera
+  { category: "wardrobe", text: "leather jacket" }, // Orphaned! No subject
+  { category: "camera_move", text: "dolly in" }, // Orphaned! No camera
 ];
 ```
 
 **Problems**:
+
 - Wardrobe without subject: "Who is wearing the leather jacket?"
 - Action without subject: "Who is performing this action?"
 - No structural enforcement - purely string-based matching
@@ -31,20 +32,20 @@ const spans = [
 // shared/taxonomy.js - The single source of truth
 export const TAXONOMY = {
   SUBJECT: {
-    id: 'subject',
+    id: "subject",
     attributes: {
-      WARDROBE: 'wardrobe',
-      ACTION: 'action',
-      APPEARANCE: 'appearance'
-    }
+      WARDROBE: "wardrobe",
+      ACTION: "action",
+      APPEARANCE: "appearance",
+    },
   },
   CAMERA: {
-    id: 'camera',
+    id: "camera",
     attributes: {
-      FRAMING: 'framing',
-      MOVEMENT: 'camera_move'
-    }
-  }
+      FRAMING: "framing",
+      MOVEMENT: "camera_move",
+    },
+  },
 };
 ```
 
@@ -74,6 +75,7 @@ const result = validator.validateSpans(spans);
 Following established patterns:
 
 **Backend** (PromptOptimizationService pattern):
+
 ```
 server/src/services/taxonomy-validation/
 ├── TaxonomyValidationService.js     (Orchestrator ~200 lines)
@@ -84,6 +86,7 @@ server/src/services/taxonomy-validation/
 ```
 
 **Frontend** (VideoConceptBuilder pattern):
+
 ```
 client/src/
 ├── hooks/
@@ -95,6 +98,7 @@ client/src/
 ## Files Changed
 
 ### Core Infrastructure (Created)
+
 - ✅ `shared/taxonomy.js` - Single source of truth (240 lines)
 - ✅ `server/src/services/taxonomy-validation/TaxonomyValidationService.js` - Main orchestrator
 - ✅ `server/src/services/taxonomy-validation/services/HierarchyValidator.js`
@@ -103,15 +107,18 @@ client/src/
 - ✅ `client/src/hooks/useHierarchyValidation.js` - Real-time validation hook
 
 ### Configuration (Updated to use TAXONOMY)
+
 - ✅ `server/src/services/video-prompt-analysis/config/categoryMapping.js`
 - ✅ `server/src/services/enhancement/config/CategoryConstraints.js`
 - ✅ `server/src/services/video-concept/config/descriptorCategories.js`
 
 ### Services (Integrated validation)
+
 - ✅ `server/src/services/video-prompt-analysis/VideoPromptService.js` - Added validation methods
 - ✅ `server/src/services/video-prompt-analysis/services/guidance/CategoryGuidanceService.js` - Uses TAXONOMY
 
 ### Client (Hierarchy-aware)
+
 - ✅ `client/src/utils/PromptContext/categoryStyles.js` - Hierarchical colors
 - ✅ `client/src/features/prompt-optimizer/SpanBentoGrid/hooks/useSpanGrouping.js` - Groups by parent
 
@@ -132,8 +139,8 @@ if (!validation.isValid) {
     spans,
     validation: {
       issues: validation.issues,
-      hasOrphans: validation.hasOrphans
-    }
+      hasOrphans: validation.hasOrphans,
+    },
   };
 }
 ```
@@ -142,14 +149,15 @@ if (!validation.isValid) {
 
 ```javascript
 // In a React component
-import { useHierarchyValidation } from '@/hooks/useHierarchyValidation';
+import { useHierarchyValidation } from "@/hooks/useHierarchyValidation";
 
 function PromptEditor({ spans }) {
-  const { warnings, errors, suggestions, isValid } = useHierarchyValidation(spans);
-  
+  const { warnings, errors, suggestions, isValid } =
+    useHierarchyValidation(spans);
+
   return (
     <div>
-      {warnings.map(warning => (
+      {warnings.map((warning) => (
         <Alert severity="warning">
           {warning.message}
           <Button onClick={() => addParent(warning.missingParent)}>
@@ -165,15 +173,17 @@ function PromptEditor({ spans }) {
 ### Using TAXONOMY Constants
 
 **Before** (hardcoded strings):
+
 ```javascript
-if (category === 'subject') {
+if (category === "subject") {
   // ...
 }
 ```
 
 **After** (TAXONOMY constants):
+
 ```javascript
-import { TAXONOMY } from '@/shared/taxonomy';
+import { TAXONOMY } from "@/shared/taxonomy";
 
 if (category === TAXONOMY.SUBJECT.id) {
   // Type-safe, consistent, refactorable
@@ -188,19 +198,20 @@ if (category === TAXONOMY.SUBJECT.attributes.WARDROBE) {
 ### Helper Functions
 
 ```javascript
-import { getParentCategory, isAttribute } from '@/shared/taxonomy';
+import { getParentCategory, isAttribute } from "@/shared/taxonomy";
 
 // Find parent of any category
-const parent = getParentCategory('wardrobe'); // returns 'subject'
+const parent = getParentCategory("wardrobe"); // returns 'subject'
 
 // Check if it's an attribute
-const isAttr = isAttribute('wardrobe'); // returns true
-const isParent = isAttribute('subject'); // returns false
+const isAttr = isAttribute("wardrobe"); // returns true
+const isParent = isAttribute("subject"); // returns false
 ```
 
 ## Benefits Unlocked
 
 ### 1. Contextual Awareness
+
 System now understands that `wardrobe` requires `subject`:
 
 ```javascript
@@ -213,6 +224,7 @@ Suggestion: "a weathered cowboy" // ✅ Helpful
 ```
 
 ### 2. Smarter AI Suggestions
+
 Prompt builders can now provide context-aware guidance:
 
 ```javascript
@@ -225,27 +237,31 @@ if (hasOrphanedWardrobe && !hasSubject) {
 ```
 
 ### 3. Structural Enforcement
+
 Prevents invalid category combinations at the source:
 
 ```javascript
 // The taxonomy structure itself prevents mistakes
-TAXONOMY.SUBJECT.attributes.WARDROBE  // ✅ Valid path
-TAXONOMY.WARDROBE.id                  // ❌ Doesn't exist - wardrobe is an attribute!
+TAXONOMY.SUBJECT.attributes.WARDROBE; // ✅ Valid path
+TAXONOMY.WARDROBE.id; // ❌ Doesn't exist - wardrobe is an attribute!
 ```
 
 ### 4. Consistent Colors
+
 All attributes of a parent share the same color family:
 
 ```javascript
 // All SUBJECT attributes get orange
-getCategoryColor('subject')     // Orange
-getCategoryColor('wardrobe')    // Orange (same family)
-getCategoryColor('action')      // Orange (same family)
-getCategoryColor('appearance')  // Orange (same family)
+getCategoryColor("subject"); // Orange
+getCategoryColor("wardrobe"); // Orange (same family)
+getCategoryColor("action"); // Orange (same family)
+getCategoryColor("appearance"); // Orange (same family)
 ```
 
 ### 5. Type Safety & Maintainability
+
 Single source of truth means:
+
 - No typos (import from TAXONOMY)
 - Easy refactoring (rename in one place)
 - Auto-complete in IDEs
@@ -256,6 +272,7 @@ Single source of truth means:
 ### For Developers
 
 **1. Import TAXONOMY instead of using strings**:
+
 ```javascript
 // Before
 import { TAXONOMY } from '@/shared/taxonomy';
@@ -266,8 +283,9 @@ if (category === TAXONOMY.SUBJECT.id) { ... }
 ```
 
 **2. Use helper functions for hierarchy checks**:
+
 ```javascript
-import { getParentCategory, isAttribute } from '@/shared/taxonomy';
+import { getParentCategory, isAttribute } from "@/shared/taxonomy";
 
 const parent = getParentCategory(categoryId);
 if (parent) {
@@ -276,6 +294,7 @@ if (parent) {
 ```
 
 **3. Leverage validation in services**:
+
 ```javascript
 // In any service that processes spans
 const validation = this.taxonomyValidator.validateSpans(spans);
@@ -287,6 +306,7 @@ if (!validation.isValid) {
 ### Backward Compatibility
 
 The refactor maintains backward compatibility:
+
 - Legacy category strings still work (mapped to TAXONOMY)
 - Brainstorm categories unchanged
 - Existing APIs continue to function
@@ -295,17 +315,16 @@ The refactor maintains backward compatibility:
 ## Testing
 
 ### Validation Service Tests
+
 ```javascript
-describe('TaxonomyValidationService', () => {
-  it('detects orphaned subject attributes', () => {
-    const spans = [
-      { category: 'wardrobe', text: 'leather jacket' }
-    ];
-    
+describe("TaxonomyValidationService", () => {
+  it("detects orphaned subject attributes", () => {
+    const spans = [{ category: "wardrobe", text: "leather jacket" }];
+
     const result = validator.validateSpans(spans);
     expect(result.isValid).toBe(false);
-    expect(result.issues[0].type).toBe('ORPHANED_ATTRIBUTE');
-    expect(result.issues[0].missingParent).toBe('subject');
+    expect(result.issues[0].type).toBe("ORPHANED_ATTRIBUTE");
+    expect(result.issues[0].missingParent).toBe("subject");
   });
 });
 ```
@@ -327,6 +346,7 @@ describe('TaxonomyValidationService', () => {
 ## Rollback Plan
 
 If issues arise:
+
 1. Disable validation in VideoPromptService (comment out validator calls)
 2. Revert to string-based categories in specific files
 3. Full taxonomy can be disabled by removing imports
@@ -334,8 +354,8 @@ If issues arise:
 ## Questions?
 
 See:
+
 - `shared/taxonomy.js` - Taxonomy structure and helpers
 - `server/src/services/taxonomy-validation/` - Validation implementation
 - `client/src/hooks/useHierarchyValidation.js` - Client-side usage
 - This document for examples and patterns
-

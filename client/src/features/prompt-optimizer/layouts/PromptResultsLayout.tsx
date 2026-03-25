@@ -1,22 +1,22 @@
-import React from 'react';
-import { useToast } from '@components/Toast';
-import { useAuthUser } from '@/hooks/useAuthUser';
-import { useBillingStatus } from '@/features/billing/hooks/useBillingStatus';
-import { CreditOnboardingBanner } from '@/features/billing/components/CreditOnboardingBanner';
-import type { ContinuityShot } from '@/features/continuity/types';
-import { PromptResultsSection } from '../components/PromptResultsSection';
-import { useWorkspaceSession } from '../context/WorkspaceSessionContext';
+import React from "react";
+import { useToast } from "@components/Toast";
+import { useAuthUser } from "@/hooks/useAuthUser";
+import { useBillingStatus } from "@/features/billing/hooks/useBillingStatus";
+import { CreditOnboardingBanner } from "@/features/billing/components/CreditOnboardingBanner";
+import type { ContinuityShot } from "@/features/continuity/types";
+import { PromptResultsSection } from "../components/PromptResultsSection";
+import { useWorkspaceSession } from "../context/WorkspaceSessionContext";
 import {
   ContinuityIntentPicker,
   PipelineStatus,
   PreviousShotContext,
   SceneProxyPreviewPanel,
   ShotVisualStrip,
-} from '@features/sequence-editor/components';
+} from "@features/sequence-editor/components";
 
 /**
  * PromptResultsLayout - Results/Canvas View Layout
- * 
+ *
  * Main content layout for the results/canvas view (PromptCanvas via PromptResultsSection).
  *
  * App shell (history sidebar + top bar) lives in PromptOptimizerWorkspace.
@@ -41,29 +41,34 @@ export const PromptResultsLayout = (): React.ReactElement => {
 
   const orderedShots = React.useMemo(
     () => [...shots].sort((a, b) => a.sequenceIndex - b.sequenceIndex),
-    [shots]
+    [shots],
   );
 
   const previousShot = React.useMemo(
-    () => (currentShotIndex > 0 ? orderedShots[currentShotIndex - 1] ?? null : null),
-    [currentShotIndex, orderedShots]
+    () =>
+      currentShotIndex > 0
+        ? (orderedShots[currentShotIndex - 1] ?? null)
+        : null,
+    [currentShotIndex, orderedShots],
   );
 
   const handleAddShot = React.useCallback(async (): Promise<void> => {
     try {
-      const shot = await addShot({ prompt: ' ' });
+      const shot = await addShot({ prompt: " " });
       setCurrentShotId(shot.id);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to add shot');
+      toast.error(
+        error instanceof Error ? error.message : "Failed to add shot",
+      );
     }
   }, [addShot, setCurrentShotId, toast]);
 
   const handleModeChange = React.useCallback(
-    (mode: ContinuityShot['continuityMode']): void => {
+    (mode: ContinuityShot["continuityMode"]): void => {
       if (!currentShot) return;
       void updateShot(currentShot.id, { continuityMode: mode });
     },
-    [currentShot, updateShot]
+    [currentShot, updateShot],
   );
 
   const handleStrengthChange = React.useCallback(
@@ -71,32 +76,40 @@ export const PromptResultsLayout = (): React.ReactElement => {
       if (!currentShot) return;
       void updateShot(currentShot.id, { styleStrength: strength });
     },
-    [currentShot, updateShot]
+    [currentShot, updateShot],
   );
 
   const shouldShowSceneProxyPreview =
     isSequenceMode &&
     Boolean(currentShot) &&
     currentShotIndex > 0 &&
-    currentShot?.continuityMode === 'style-match';
+    currentShot?.continuityMode === "style-match";
 
   const sceneProxyReferenceFrameUrl =
-    typeof session?.continuity?.sceneProxy?.referenceFrameUrl === 'string'
+    typeof session?.continuity?.sceneProxy?.referenceFrameUrl === "string"
       ? session.continuity.sceneProxy.referenceFrameUrl
       : null;
   const sceneProxyStatus = session?.continuity?.sceneProxy?.status ?? null;
-  const isSceneProxyReady = sceneProxyStatus === 'ready';
+  const isSceneProxyReady = sceneProxyStatus === "ready";
 
-  const normalizeRef = React.useCallback((value: string | null | undefined): string | null => {
-    if (typeof value !== 'string') return null;
-    const trimmed = value.trim();
-    return trimmed.length > 0 ? trimmed : null;
-  }, []);
+  const normalizeRef = React.useCallback(
+    (value: string | null | undefined): string | null => {
+      if (typeof value !== "string") return null;
+      const trimmed = value.trim();
+      return trimmed.length > 0 ? trimmed : null;
+    },
+    [],
+  );
 
   const resolveShotReferenceImage = React.useCallback(
     (shot: ContinuityShot | null): string | null =>
-      normalizeRef(shot?.frameBridge?.frameUrl ?? shot?.styleReference?.frameUrl ?? shot?.generatedKeyframeUrl ?? null),
-    [normalizeRef]
+      normalizeRef(
+        shot?.frameBridge?.frameUrl ??
+          shot?.styleReference?.frameUrl ??
+          shot?.generatedKeyframeUrl ??
+          null,
+      ),
+    [normalizeRef],
   );
 
   const buildImageCandidates = React.useCallback(
@@ -106,7 +119,7 @@ export const PromptResultsLayout = (): React.ReactElement => {
         .filter((value): value is string => Boolean(value));
       return [...new Set(normalized)];
     },
-    [normalizeRef]
+    [normalizeRef],
   );
 
   const previewImageCandidates = React.useMemo(
@@ -115,28 +128,38 @@ export const PromptResultsLayout = (): React.ReactElement => {
         currentShot?.sceneProxyRenderUrl ?? null,
         sceneProxyReferenceFrameUrl,
         resolveShotReferenceImage(currentShot),
-        resolveShotReferenceImage(previousShot)
+        resolveShotReferenceImage(previousShot),
       ),
-    [buildImageCandidates, currentShot, previousShot, resolveShotReferenceImage, sceneProxyReferenceFrameUrl]
+    [
+      buildImageCandidates,
+      currentShot,
+      previousShot,
+      resolveShotReferenceImage,
+      sceneProxyReferenceFrameUrl,
+    ],
   );
-  const previewImageCandidateKey = previewImageCandidates.join('|');
+  const previewImageCandidateKey = previewImageCandidates.join("|");
   const [previewImageIndex, setPreviewImageIndex] = React.useState(0);
   React.useEffect(() => {
     setPreviewImageIndex(0);
   }, [previewImageCandidateKey]);
   const previewImageUrl =
     previewImageIndex >= 0 && previewImageIndex < previewImageCandidates.length
-      ? previewImageCandidates[previewImageIndex] ?? null
+      ? (previewImageCandidates[previewImageIndex] ?? null)
       : null;
   const handlePreviewImageError = React.useCallback((): void => {
     setPreviewImageIndex((current) => {
       const next = current + 1;
-      return next < previewImageCandidates.length ? next : previewImageCandidates.length;
+      return next < previewImageCandidates.length
+        ? next
+        : previewImageCandidates.length;
     });
   }, [previewImageCandidates.length]);
 
   const normalizeCameraInput = React.useCallback(
-    (camera: ContinuityShot['camera'] | null | undefined): {
+    (
+      camera: ContinuityShot["camera"] | null | undefined,
+    ): {
       yaw?: number;
       pitch?: number;
       roll?: number;
@@ -144,35 +167,40 @@ export const PromptResultsLayout = (): React.ReactElement => {
     } | null => {
       if (!camera) return null;
       const normalized = {
-        ...(typeof camera.yaw === 'number' ? { yaw: camera.yaw } : {}),
-        ...(typeof camera.pitch === 'number' ? { pitch: camera.pitch } : {}),
-        ...(typeof camera.roll === 'number' ? { roll: camera.roll } : {}),
-        ...(typeof camera.dolly === 'number' ? { dolly: camera.dolly } : {}),
+        ...(typeof camera.yaw === "number" ? { yaw: camera.yaw } : {}),
+        ...(typeof camera.pitch === "number" ? { pitch: camera.pitch } : {}),
+        ...(typeof camera.roll === "number" ? { roll: camera.roll } : {}),
+        ...(typeof camera.dolly === "number" ? { dolly: camera.dolly } : {}),
       };
       return Object.keys(normalized).length > 0 ? normalized : null;
     },
-    []
+    [],
   );
   const previewCamera = normalizeCameraInput(currentShot?.camera ?? null);
 
   const handlePreviewSceneProxy = React.useCallback(async (): Promise<void> => {
     if (!currentShot) return;
     if (!previewCamera) {
-      toast.warning('Select camera motion before previewing an angle.');
+      toast.warning("Select camera motion before previewing an angle.");
       return;
     }
 
     try {
       await previewSceneProxy(currentShot.id, previewCamera);
-      toast.success('Angle preview updated');
+      toast.success("Angle preview updated");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to render scene proxy preview');
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to render scene proxy preview",
+      );
     }
   }, [currentShot, previewCamera, previewSceneProxy, toast]);
 
   const isGeneratingShot = Boolean(
     currentShot &&
-      (currentShot.status === 'generating-keyframe' || currentShot.status === 'generating-video')
+      (currentShot.status === "generating-keyframe" ||
+        currentShot.status === "generating-video"),
   );
 
   return (

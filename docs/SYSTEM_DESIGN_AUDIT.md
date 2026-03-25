@@ -48,6 +48,7 @@ At least 15 services can resolve to `null` at runtime (videoGenerationService, s
 The pattern is intentional and enables graceful degradation when credentials are missing. But the null surface area has grown beyond what manual discipline can reliably cover.
 
 **Recommendation:** Two options (not mutually exclusive):
+
 1. **Narrow the null graph.** Several services return null only because a transitive dependency is null. Consider a `NullVideoGenerationService` that returns structured "unavailable" responses instead of `null` — this pushes error handling to the service contract rather than every consumer.
 2. **Runtime exhaustive null audit.** Add a post-initialization step that logs every service that resolved to null, so operators know the degraded surface at a glance.
 
@@ -139,6 +140,7 @@ Additionally, `AIModelService` has its own fallback-retry logic (primary → fal
 **Impact:** When someone needs to add retry logic to a new service, there's no clear "right way" — they'll pick whichever pattern they find first, or write a fourth one. Transient error detection is hardcoded in multiple places rather than shared.
 
 **Recommendation:**
+
 1. Consolidate to a single `ResiliencePolicy` abstraction that composes retry + circuit breaker + timeout. `RetryPolicy` is the closest starting point.
 2. Extract transient error detection into a shared utility (`isTransientError(error): boolean`) that all retry/circuit-breaker consumers use.
 3. Wire the consolidated policy through DI so it's configurable per service domain.
@@ -173,8 +175,8 @@ Both `api` and `worker` roles execute the same `configureServices()` → `initia
 // services.initialize.ts
 export async function initializeServices(container, role) {
   await initializeCommon(container);
-  if (role === 'api') await initializeApiServices(container);
-  if (role === 'worker') await initializeWorkerServices(container);
+  if (role === "api") await initializeApiServices(container);
+  if (role === "worker") await initializeWorkerServices(container);
 }
 ```
 
@@ -210,22 +212,22 @@ Request IDs exist but aren't propagated across service boundaries (e.g., from AP
 
 ## Trade-off Summary
 
-| Finding | Severity | Effort to Fix | Risk of Deferral |
-|---------|----------|---------------|------------------|
-| 4.1 Fragmented resilience primitives | High | Medium (2-3 days) | New services add a 4th pattern; inconsistent retry behavior in prod |
-| 1.1 No typed service registry | Medium | Low (1 day for interface, incremental migration) | Grows linearly with service count |
-| 1.2 Nullable service proliferation | Medium | Medium (null object pattern requires per-service work) | Runtime NPEs in degraded deployments |
-| 2.1 Route factory god function | Medium | Low (mechanical split) | Merge conflicts, harder onboarding |
-| 5.1 Shared initialization path | Medium | Medium (requires testing both role paths) | Startup failures leak across roles |
-| 6.1 No distributed tracing | Medium | Medium (OpenTelemetry integration) | Debugging cross-process flows is manual |
-| 1.3 Static module mutations | Low | Low | Test isolation issues |
-| 2.2 Webhook ordering dependency | Low | Low (add integration test) | Silent breakage on refactor |
-| 2.3 Inconsistent timeouts | Low | Low (configuration + documentation) | Unbounded request durations on some routes |
-| 3.1 Schema duplication | Low | Low | Drift between shared and feature schemas |
-| 3.2 No streaming schemas | Low | Low | Client parser drift on stream format changes |
-| 4.2 Error hierarchy inconsistency | Low | Low | Some errors bypass structured error handling |
-| 5.2 No request scoping | Low | N/A (escape hatch exists) | Only matters if services become stateful |
-| 5.3 Dev defaults to worker | Low | Trivial | Accidental resource consumption in dev |
+| Finding                              | Severity | Effort to Fix                                          | Risk of Deferral                                                    |
+| ------------------------------------ | -------- | ------------------------------------------------------ | ------------------------------------------------------------------- |
+| 4.1 Fragmented resilience primitives | High     | Medium (2-3 days)                                      | New services add a 4th pattern; inconsistent retry behavior in prod |
+| 1.1 No typed service registry        | Medium   | Low (1 day for interface, incremental migration)       | Grows linearly with service count                                   |
+| 1.2 Nullable service proliferation   | Medium   | Medium (null object pattern requires per-service work) | Runtime NPEs in degraded deployments                                |
+| 2.1 Route factory god function       | Medium   | Low (mechanical split)                                 | Merge conflicts, harder onboarding                                  |
+| 5.1 Shared initialization path       | Medium   | Medium (requires testing both role paths)              | Startup failures leak across roles                                  |
+| 6.1 No distributed tracing           | Medium   | Medium (OpenTelemetry integration)                     | Debugging cross-process flows is manual                             |
+| 1.3 Static module mutations          | Low      | Low                                                    | Test isolation issues                                               |
+| 2.2 Webhook ordering dependency      | Low      | Low (add integration test)                             | Silent breakage on refactor                                         |
+| 2.3 Inconsistent timeouts            | Low      | Low (configuration + documentation)                    | Unbounded request durations on some routes                          |
+| 3.1 Schema duplication               | Low      | Low                                                    | Drift between shared and feature schemas                            |
+| 3.2 No streaming schemas             | Low      | Low                                                    | Client parser drift on stream format changes                        |
+| 4.2 Error hierarchy inconsistency    | Low      | Low                                                    | Some errors bypass structured error handling                        |
+| 5.2 No request scoping               | Low      | N/A (escape hatch exists)                              | Only matters if services become stateful                            |
+| 5.3 Dev defaults to worker           | Low      | Trivial                                                | Accidental resource consumption in dev                              |
 
 ---
 

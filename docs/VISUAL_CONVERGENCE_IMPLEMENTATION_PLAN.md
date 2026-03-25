@@ -51,16 +51,16 @@
 
 ### Cost Breakdown Per Session
 
-| Step | Images/Videos | Model | Cost |
-|------|---------------|-------|------|
-| Direction Fork | 4 images | Flux Schnell | $0.012 |
-| Mood | 4 images | Flux Schnell | $0.012 |
-| Framing | 4 images | Flux Schnell | $0.012 |
-| Lighting | 4 images | Flux Schnell | $0.012 |
-| Camera Motion | 4 videos | Depth + Three.js | ~$0.01 (depth only) |
-| Subject Motion | 1 video | Wan 2.2 | $0.15-0.30 |
-| **Total Preview** | | | **$0.21-0.36** |
-| Final Generation | 1 video | Sora/Veo/Kling | $2-10 |
+| Step              | Images/Videos | Model            | Cost                |
+| ----------------- | ------------- | ---------------- | ------------------- |
+| Direction Fork    | 4 images      | Flux Schnell     | $0.012              |
+| Mood              | 4 images      | Flux Schnell     | $0.012              |
+| Framing           | 4 images      | Flux Schnell     | $0.012              |
+| Lighting          | 4 images      | Flux Schnell     | $0.012              |
+| Camera Motion     | 4 videos      | Depth + Three.js | ~$0.01 (depth only) |
+| Subject Motion    | 1 video       | Wan 2.2          | $0.15-0.30          |
+| **Total Preview** |               |                  | **$0.21-0.36**      |
+| Final Generation  | 1 video       | Sora/Veo/Kling   | $2-10               |
 
 ---
 
@@ -157,9 +157,9 @@ server/src/routes/convergence/
  * Convergence Service Types
  */
 
-export type Direction = 'cinematic' | 'social' | 'artistic' | 'documentary';
+export type Direction = "cinematic" | "social" | "artistic" | "documentary";
 
-export type DimensionType = 'mood' | 'framing' | 'lighting' | 'camera_motion';
+export type DimensionType = "mood" | "framing" | "lighting" | "camera_motion";
 
 export interface DimensionOption {
   id: string;
@@ -185,7 +185,7 @@ export interface ConvergenceSession {
   intent: string;
   direction: Direction | null;
   lockedDimensions: LockedDimension[];
-  currentDimension: DimensionType | 'direction' | 'subject_motion' | 'complete';
+  currentDimension: DimensionType | "direction" | "subject_motion" | "complete";
   generatedImages: GeneratedImage[];
   depthMapUrl: string | null;
   cameraMotion: string | null;
@@ -193,13 +193,13 @@ export interface ConvergenceSession {
   finalPrompt: string | null;
   createdAt: Date;
   updatedAt: Date;
-  status: 'active' | 'completed' | 'abandoned';
+  status: "active" | "completed" | "abandoned";
 }
 
 export interface GeneratedImage {
   id: string;
   url: string;
-  dimension: DimensionType | 'direction';
+  dimension: DimensionType | "direction";
   optionId: string;
   prompt: string;
   generatedAt: Date;
@@ -213,20 +213,20 @@ export interface StartSessionRequest {
 export interface StartSessionResponse {
   sessionId: string;
   images: GeneratedImage[];
-  currentDimension: 'direction';
+  currentDimension: "direction";
   options: Array<{ id: Direction; label: string }>;
 }
 
 export interface SelectOptionRequest {
   sessionId: string;
-  dimension: DimensionType | 'direction';
+  dimension: DimensionType | "direction";
   optionId: string;
 }
 
 export interface SelectOptionResponse {
   sessionId: string;
   images: GeneratedImage[];
-  currentDimension: DimensionType | 'camera_motion' | 'subject_motion';
+  currentDimension: DimensionType | "camera_motion" | "subject_motion";
   lockedDimensions: LockedDimension[];
   options?: Array<{ id: string; label: string }>;
 }
@@ -297,22 +297,22 @@ export interface FinalizeSessionResponse {
 ```typescript
 /**
  * Session Store - Firestore persistence for convergence sessions
- * 
+ *
  * PATTERN: Repository pattern
  * MAX LINES: 200
  */
 
-import { getFirestore } from '@infrastructure/firebaseAdmin';
-import { logger } from '@infrastructure/Logger';
-import type { ConvergenceSession } from '../types';
+import { getFirestore } from "@infrastructure/firebaseAdmin";
+import { logger } from "@infrastructure/Logger";
+import type { ConvergenceSession } from "../types";
 
-const COLLECTION = 'convergence_sessions';
+const COLLECTION = "convergence_sessions";
 const SESSION_TTL_HOURS = 24;
 
 export class SessionStore {
   private db = getFirestore();
   private collection = this.db.collection(COLLECTION);
-  private log = logger.child({ service: 'SessionStore' });
+  private log = logger.child({ service: "SessionStore" });
 
   async create(session: ConvergenceSession): Promise<void> {
     await this.collection.doc(session.id).set({
@@ -328,7 +328,10 @@ export class SessionStore {
     return doc.data() as ConvergenceSession;
   }
 
-  async update(sessionId: string, updates: Partial<ConvergenceSession>): Promise<void> {
+  async update(
+    sessionId: string,
+    updates: Partial<ConvergenceSession>,
+  ): Promise<void> {
     await this.collection.doc(sessionId).update({
       ...updates,
       updatedAt: new Date(),
@@ -341,30 +344,30 @@ export class SessionStore {
 
   async getByUserId(userId: string, limit = 10): Promise<ConvergenceSession[]> {
     const snapshot = await this.collection
-      .where('userId', '==', userId)
-      .where('status', '==', 'active')
-      .orderBy('updatedAt', 'desc')
+      .where("userId", "==", userId)
+      .where("status", "==", "active")
+      .orderBy("updatedAt", "desc")
       .limit(limit)
       .get();
-    
-    return snapshot.docs.map(doc => doc.data() as ConvergenceSession);
+
+    return snapshot.docs.map((doc) => doc.data() as ConvergenceSession);
   }
 
   async cleanupExpired(): Promise<number> {
     const cutoff = new Date(Date.now() - SESSION_TTL_HOURS * 60 * 60 * 1000);
     const snapshot = await this.collection
-      .where('updatedAt', '<', cutoff)
-      .where('status', '==', 'active')
+      .where("updatedAt", "<", cutoff)
+      .where("status", "==", "active")
       .limit(100)
       .get();
 
     const batch = this.db.batch();
-    snapshot.docs.forEach(doc => {
-      batch.update(doc.ref, { status: 'abandoned' });
+    snapshot.docs.forEach((doc) => {
+      batch.update(doc.ref, { status: "abandoned" });
     });
     await batch.commit();
 
-    this.log.info('Cleaned up expired sessions', { count: snapshot.size });
+    this.log.info("Cleaned up expired sessions", { count: snapshot.size });
     return snapshot.size;
   }
 }
@@ -377,42 +380,42 @@ export class SessionStore {
 ```typescript
 /**
  * Dimension Fragments - Prompt fragments for each dimension option
- * 
+ *
  * These fragments are appended to the base prompt when a dimension is locked.
  * Each option has multiple fragments to add variety and specificity.
- * 
+ *
  * PATTERN: Data file (no logic)
  */
 
-import type { DimensionConfig, Direction } from '../types';
+import type { DimensionConfig, Direction } from "../types";
 
 /**
  * Direction-specific base modifiers
  */
 export const DIRECTION_FRAGMENTS: Record<Direction, string[]> = {
   cinematic: [
-    'cinematic composition',
-    'film-like quality',
-    'dramatic framing',
-    'movie production value',
+    "cinematic composition",
+    "film-like quality",
+    "dramatic framing",
+    "movie production value",
   ],
   social: [
-    'social media ready',
-    'vibrant and engaging',
-    'eye-catching composition',
-    'scroll-stopping visual',
+    "social media ready",
+    "vibrant and engaging",
+    "eye-catching composition",
+    "scroll-stopping visual",
   ],
   artistic: [
-    'artistic interpretation',
-    'creative visual style',
-    'expressive composition',
-    'aesthetic focus',
+    "artistic interpretation",
+    "creative visual style",
+    "expressive composition",
+    "aesthetic focus",
   ],
   documentary: [
-    'documentary style',
-    'naturalistic look',
-    'authentic atmosphere',
-    'observational framing',
+    "documentary style",
+    "naturalistic look",
+    "authentic atmosphere",
+    "observational framing",
   ],
 };
 
@@ -420,50 +423,50 @@ export const DIRECTION_FRAGMENTS: Record<Direction, string[]> = {
  * Mood dimension options
  */
 export const MOOD_DIMENSION: DimensionConfig = {
-  type: 'mood',
+  type: "mood",
   options: [
     {
-      id: 'dramatic',
-      label: 'Dramatic',
+      id: "dramatic",
+      label: "Dramatic",
       promptFragments: [
-        'high contrast lighting',
-        'deep shadows',
-        'intense atmosphere',
-        'dramatic tension',
-        'bold visual statement',
+        "high contrast lighting",
+        "deep shadows",
+        "intense atmosphere",
+        "dramatic tension",
+        "bold visual statement",
       ],
     },
     {
-      id: 'peaceful',
-      label: 'Peaceful',
+      id: "peaceful",
+      label: "Peaceful",
       promptFragments: [
-        'soft diffused light',
-        'gentle color palette',
-        'serene atmosphere',
-        'tranquil mood',
-        'calming visual tone',
+        "soft diffused light",
+        "gentle color palette",
+        "serene atmosphere",
+        "tranquil mood",
+        "calming visual tone",
       ],
     },
     {
-      id: 'mysterious',
-      label: 'Mysterious',
+      id: "mysterious",
+      label: "Mysterious",
       promptFragments: [
-        'atmospheric haze',
-        'obscured details',
-        'enigmatic mood',
-        'subtle shadows',
-        'intriguing composition',
+        "atmospheric haze",
+        "obscured details",
+        "enigmatic mood",
+        "subtle shadows",
+        "intriguing composition",
       ],
     },
     {
-      id: 'nostalgic',
-      label: 'Nostalgic',
+      id: "nostalgic",
+      label: "Nostalgic",
       promptFragments: [
-        'warm vintage tones',
-        'soft focus edges',
-        'memory-like quality',
-        'wistful atmosphere',
-        'timeless feel',
+        "warm vintage tones",
+        "soft focus edges",
+        "memory-like quality",
+        "wistful atmosphere",
+        "timeless feel",
       ],
     },
   ],
@@ -473,50 +476,50 @@ export const MOOD_DIMENSION: DimensionConfig = {
  * Framing dimension options
  */
 export const FRAMING_DIMENSION: DimensionConfig = {
-  type: 'framing',
+  type: "framing",
   options: [
     {
-      id: 'wide',
-      label: 'Wide Shot',
+      id: "wide",
+      label: "Wide Shot",
       promptFragments: [
-        'wide establishing shot',
-        'environment visible',
-        'subject in context',
-        'expansive framing',
-        'full scene coverage',
+        "wide establishing shot",
+        "environment visible",
+        "subject in context",
+        "expansive framing",
+        "full scene coverage",
       ],
     },
     {
-      id: 'medium',
-      label: 'Medium Shot',
+      id: "medium",
+      label: "Medium Shot",
       promptFragments: [
-        'medium shot framing',
-        'waist-up framing',
-        'balanced composition',
-        'conversational distance',
-        'natural perspective',
+        "medium shot framing",
+        "waist-up framing",
+        "balanced composition",
+        "conversational distance",
+        "natural perspective",
       ],
     },
     {
-      id: 'closeup',
-      label: 'Close-up',
+      id: "closeup",
+      label: "Close-up",
       promptFragments: [
-        'intimate close-up shot',
-        'shallow depth of field',
-        'face fills frame',
-        'detailed features visible',
-        'emotional proximity',
+        "intimate close-up shot",
+        "shallow depth of field",
+        "face fills frame",
+        "detailed features visible",
+        "emotional proximity",
       ],
     },
     {
-      id: 'extreme_closeup',
-      label: 'Extreme Close-up',
+      id: "extreme_closeup",
+      label: "Extreme Close-up",
       promptFragments: [
-        'extreme close-up detail',
-        'macro-like framing',
-        'texture emphasis',
-        'ultra shallow focus',
-        'abstract detail shot',
+        "extreme close-up detail",
+        "macro-like framing",
+        "texture emphasis",
+        "ultra shallow focus",
+        "abstract detail shot",
       ],
     },
   ],
@@ -526,50 +529,50 @@ export const FRAMING_DIMENSION: DimensionConfig = {
  * Lighting dimension options
  */
 export const LIGHTING_DIMENSION: DimensionConfig = {
-  type: 'lighting',
+  type: "lighting",
   options: [
     {
-      id: 'golden_hour',
-      label: 'Golden Hour',
+      id: "golden_hour",
+      label: "Golden Hour",
       promptFragments: [
-        'warm golden hour sunlight',
-        'long shadows',
-        'orange and amber tones',
-        'soft directional light',
-        'magic hour glow',
+        "warm golden hour sunlight",
+        "long shadows",
+        "orange and amber tones",
+        "soft directional light",
+        "magic hour glow",
       ],
     },
     {
-      id: 'blue_hour',
-      label: 'Blue Hour',
+      id: "blue_hour",
+      label: "Blue Hour",
       promptFragments: [
-        'cool blue hour light',
-        'twilight atmosphere',
-        'soft ambient illumination',
-        'blue and purple tones',
-        'ethereal dusk lighting',
+        "cool blue hour light",
+        "twilight atmosphere",
+        "soft ambient illumination",
+        "blue and purple tones",
+        "ethereal dusk lighting",
       ],
     },
     {
-      id: 'high_key',
-      label: 'High Key',
+      id: "high_key",
+      label: "High Key",
       promptFragments: [
-        'bright high-key lighting',
-        'minimal shadows',
-        'clean bright aesthetic',
-        'even illumination',
-        'airy light quality',
+        "bright high-key lighting",
+        "minimal shadows",
+        "clean bright aesthetic",
+        "even illumination",
+        "airy light quality",
       ],
     },
     {
-      id: 'low_key',
-      label: 'Low Key',
+      id: "low_key",
+      label: "Low Key",
       promptFragments: [
-        'dramatic low-key lighting',
-        'deep blacks',
-        'selective illumination',
-        'chiaroscuro effect',
-        'moody shadow play',
+        "dramatic low-key lighting",
+        "deep blacks",
+        "selective illumination",
+        "chiaroscuro effect",
+        "moody shadow play",
       ],
     },
   ],
@@ -579,60 +582,60 @@ export const LIGHTING_DIMENSION: DimensionConfig = {
  * Camera motion options (used for labeling, actual motion is depth-based)
  */
 export const CAMERA_MOTION_DIMENSION: DimensionConfig = {
-  type: 'camera_motion',
+  type: "camera_motion",
   options: [
     {
-      id: 'static',
-      label: 'Static',
+      id: "static",
+      label: "Static",
       promptFragments: [
-        'locked off camera',
-        'stable tripod shot',
-        'no camera movement',
+        "locked off camera",
+        "stable tripod shot",
+        "no camera movement",
       ],
     },
     {
-      id: 'pan_left',
-      label: 'Pan Left',
+      id: "pan_left",
+      label: "Pan Left",
       promptFragments: [
-        'camera pans left',
-        'horizontal pan movement',
-        'smooth lateral tracking',
+        "camera pans left",
+        "horizontal pan movement",
+        "smooth lateral tracking",
       ],
     },
     {
-      id: 'pan_right',
-      label: 'Pan Right',
+      id: "pan_right",
+      label: "Pan Right",
       promptFragments: [
-        'camera pans right',
-        'horizontal pan movement',
-        'smooth lateral tracking',
+        "camera pans right",
+        "horizontal pan movement",
+        "smooth lateral tracking",
       ],
     },
     {
-      id: 'push_in',
-      label: 'Push In',
+      id: "push_in",
+      label: "Push In",
       promptFragments: [
-        'camera pushes in slowly',
-        'dolly forward movement',
-        'increasing intimacy',
+        "camera pushes in slowly",
+        "dolly forward movement",
+        "increasing intimacy",
       ],
     },
     {
-      id: 'pull_back',
-      label: 'Pull Back',
+      id: "pull_back",
+      label: "Pull Back",
       promptFragments: [
-        'camera pulls back',
-        'dolly backward movement',
-        'revealing wider context',
+        "camera pulls back",
+        "dolly backward movement",
+        "revealing wider context",
       ],
     },
     {
-      id: 'crane_up',
-      label: 'Crane Up',
+      id: "crane_up",
+      label: "Crane Up",
       promptFragments: [
-        'camera cranes upward',
-        'vertical ascending movement',
-        'elevated perspective reveal',
+        "camera cranes upward",
+        "vertical ascending movement",
+        "elevated perspective reveal",
       ],
     },
   ],
@@ -652,14 +655,14 @@ export const DIMENSION_ORDER: DimensionConfig[] = [
  * Get dimension config by type
  */
 export function getDimensionConfig(type: string): DimensionConfig | undefined {
-  return DIMENSION_ORDER.find(d => d.type === type);
+  return DIMENSION_ORDER.find((d) => d.type === type);
 }
 
 /**
  * Get next dimension after the given one
  */
 export function getNextDimension(currentType: string): DimensionConfig | null {
-  const currentIndex = DIMENSION_ORDER.findIndex(d => d.type === currentType);
+  const currentIndex = DIMENSION_ORDER.findIndex((d) => d.type === currentType);
   if (currentIndex === -1 || currentIndex >= DIMENSION_ORDER.length - 1) {
     return null;
   }
@@ -674,20 +677,17 @@ export function getNextDimension(currentType: string): DimensionConfig | null {
 ```typescript
 /**
  * Prompt Builder Service
- * 
+ *
  * Builds optimized prompts from locked dimensions.
  * Uses fragment library to construct cinematically-aware prompts.
- * 
+ *
  * PATTERN: PromptOptimizationService (orchestrator)
  * MAX LINES: 300
  */
 
-import { logger } from '@infrastructure/Logger';
-import type { Direction, LockedDimension } from '../types';
-import {
-  DIRECTION_FRAGMENTS,
-  getDimensionConfig,
-} from './DimensionFragments';
+import { logger } from "@infrastructure/Logger";
+import type { Direction, LockedDimension } from "../types";
+import { DIRECTION_FRAGMENTS, getDimensionConfig } from "./DimensionFragments";
 
 interface PromptBuildOptions {
   intent: string;
@@ -697,7 +697,7 @@ interface PromptBuildOptions {
 }
 
 export class PromptBuilderService {
-  private log = logger.child({ service: 'PromptBuilderService' });
+  private log = logger.child({ service: "PromptBuilderService" });
 
   /**
    * Build a full prompt from intent and locked dimensions
@@ -715,8 +715,8 @@ export class PromptBuilderService {
     // Add locked dimension fragments (pick 2-3 per dimension)
     for (const locked of lockedDimensions) {
       // Skip camera_motion - it's handled by video generation
-      if (locked.type === 'camera_motion') continue;
-      
+      if (locked.type === "camera_motion") continue;
+
       parts.push(...this.pickFragments(locked.promptFragments, 2));
     }
 
@@ -726,14 +726,14 @@ export class PromptBuilderService {
     }
 
     // Add camera motion as text hint (for video gen models)
-    const cameraLock = lockedDimensions.find(d => d.type === 'camera_motion');
+    const cameraLock = lockedDimensions.find((d) => d.type === "camera_motion");
     if (cameraLock) {
       parts.push(...this.pickFragments(cameraLock.promptFragments, 1));
     }
 
-    const prompt = parts.join(', ');
-    
-    this.log.debug('Built prompt from dimensions', {
+    const prompt = parts.join(", ");
+
+    this.log.debug("Built prompt from dimensions", {
       intent,
       direction,
       dimensionCount: lockedDimensions.length,
@@ -751,7 +751,7 @@ export class PromptBuilderService {
     intent: string,
     direction: Direction,
     lockedDimensions: LockedDimension[],
-    previewDimension: { type: string; optionId: string; fragments: string[] }
+    previewDimension: { type: string; optionId: string; fragments: string[] },
   ): string {
     const parts: string[] = [intent.trim()];
 
@@ -761,25 +761,32 @@ export class PromptBuilderService {
 
     // Add already-locked dimension fragments (pick 1 per dimension)
     for (const locked of lockedDimensions) {
-      if (locked.type === 'camera_motion') continue;
+      if (locked.type === "camera_motion") continue;
       parts.push(...this.pickFragments(locked.promptFragments, 1));
     }
 
     // Add preview dimension fragments (pick 2 to emphasize)
     parts.push(...this.pickFragments(previewDimension.fragments, 2));
 
-    return parts.join(', ');
+    return parts.join(", ");
   }
 
   /**
    * Build prompts for direction fork (4 directions)
    */
-  buildDirectionPrompts(intent: string): Array<{ direction: Direction; prompt: string }> {
-    const directions: Direction[] = ['cinematic', 'social', 'artistic', 'documentary'];
-    
-    return directions.map(direction => ({
+  buildDirectionPrompts(
+    intent: string,
+  ): Array<{ direction: Direction; prompt: string }> {
+    const directions: Direction[] = [
+      "cinematic",
+      "social",
+      "artistic",
+      "documentary",
+    ];
+
+    return directions.map((direction) => ({
       direction,
-      prompt: `${intent.trim()}, ${this.pickFragments(DIRECTION_FRAGMENTS[direction], 2).join(', ')}`,
+      prompt: `${intent.trim()}, ${this.pickFragments(DIRECTION_FRAGMENTS[direction], 2).join(", ")}`,
     }));
   }
 
@@ -788,7 +795,7 @@ export class PromptBuilderService {
    */
   private pickFragments(fragments: string[], count: number): string[] {
     if (fragments.length <= count) return [...fragments];
-    
+
     const shuffled = [...fragments].sort(() => Math.random() - 0.5);
     return shuffled.slice(0, count);
   }
@@ -802,7 +809,7 @@ export class PromptBuilderService {
 ```typescript
 /**
  * Convergence Service - Main Orchestrator
- * 
+ *
  * Orchestrates the visual convergence flow:
  * 1. Start session with intent
  * 2. Generate direction options (4 images)
@@ -813,14 +820,14 @@ export class PromptBuilderService {
  * 7. User selects camera motion (client-side rendered)
  * 8. User enters subject motion, generate Wan preview
  * 9. Finalize and return complete prompt
- * 
+ *
  * PATTERN: VideoConceptService (orchestrator)
  * MAX LINES: 500
  */
 
-import { v4 as uuidv4 } from 'uuid';
-import { logger } from '@infrastructure/Logger';
-import type { ImageGenerationService } from '@services/image-generation';
+import { v4 as uuidv4 } from "uuid";
+import { logger } from "@infrastructure/Logger";
+import type { ImageGenerationService } from "@services/image-generation";
 import type {
   ConvergenceSession,
   Direction,
@@ -838,17 +845,17 @@ import type {
   GenerateSubjectMotionResponse,
   FinalizeSessionResponse,
   CameraPath,
-} from './types';
-import { SessionStore } from './session/SessionStore';
-import { PromptBuilderService } from './prompt-builder/PromptBuilderService';
-import { DepthEstimationService } from './depth/DepthEstimationService';
+} from "./types";
+import { SessionStore } from "./session/SessionStore";
+import { PromptBuilderService } from "./prompt-builder/PromptBuilderService";
+import { DepthEstimationService } from "./depth/DepthEstimationService";
 import {
   DIRECTION_FRAGMENTS,
   DIMENSION_ORDER,
   getDimensionConfig,
   getNextDimension,
-} from './prompt-builder/DimensionFragments';
-import { CAMERA_PATHS } from './camera-motion/CameraPaths';
+} from "./prompt-builder/DimensionFragments";
+import { CAMERA_PATHS } from "./camera-motion/CameraPaths";
 
 interface ConvergenceServiceDeps {
   imageGenerationService: ImageGenerationService;
@@ -856,7 +863,10 @@ interface ConvergenceServiceDeps {
   sessionStore: SessionStore;
   promptBuilder: PromptBuilderService;
   videoPreviewService?: {
-    generatePreview(prompt: string, options?: { duration?: number }): Promise<{ videoUrl: string }>;
+    generatePreview(
+      prompt: string,
+      options?: { duration?: number },
+    ): Promise<{ videoUrl: string }>;
   };
 }
 
@@ -865,8 +875,8 @@ export class ConvergenceService {
   private readonly depth: DepthEstimationService;
   private readonly sessions: SessionStore;
   private readonly promptBuilder: PromptBuilderService;
-  private readonly videoPreview?: ConvergenceServiceDeps['videoPreviewService'];
-  private readonly log = logger.child({ service: 'ConvergenceService' });
+  private readonly videoPreview?: ConvergenceServiceDeps["videoPreviewService"];
+  private readonly log = logger.child({ service: "ConvergenceService" });
 
   constructor(deps: ConvergenceServiceDeps) {
     this.imageGen = deps.imageGenerationService;
@@ -880,11 +890,17 @@ export class ConvergenceService {
    * Start a new convergence session
    * Generates 4 direction options
    */
-  async startSession(request: StartSessionRequest): Promise<StartSessionResponse> {
+  async startSession(
+    request: StartSessionRequest,
+  ): Promise<StartSessionResponse> {
     const { intent, userId } = request;
     const sessionId = uuidv4();
 
-    this.log.info('Starting convergence session', { sessionId, userId, intent });
+    this.log.info("Starting convergence session", {
+      sessionId,
+      userId,
+      intent,
+    });
 
     // Create session
     const session: ConvergenceSession = {
@@ -893,7 +909,7 @@ export class ConvergenceService {
       intent,
       direction: null,
       lockedDimensions: [],
-      currentDimension: 'direction',
+      currentDimension: "direction",
       generatedImages: [],
       depthMapUrl: null,
       cameraMotion: null,
@@ -901,7 +917,7 @@ export class ConvergenceService {
       finalPrompt: null,
       createdAt: new Date(),
       updatedAt: new Date(),
-      status: 'active',
+      status: "active",
     };
 
     await this.sessions.create(session);
@@ -909,12 +925,12 @@ export class ConvergenceService {
     // Generate direction options
     const directionPrompts = this.promptBuilder.buildDirectionPrompts(intent);
     const images = await this.generateImagesParallel(
-      directionPrompts.map(d => ({
+      directionPrompts.map((d) => ({
         prompt: d.prompt,
-        dimension: 'direction' as const,
+        dimension: "direction" as const,
         optionId: d.direction,
       })),
-      userId
+      userId,
     );
 
     // Update session with generated images
@@ -923,12 +939,12 @@ export class ConvergenceService {
     return {
       sessionId,
       images,
-      currentDimension: 'direction',
+      currentDimension: "direction",
       options: [
-        { id: 'cinematic', label: 'Cinematic' },
-        { id: 'social', label: 'Social / Ad' },
-        { id: 'artistic', label: 'Artistic' },
-        { id: 'documentary', label: 'Documentary' },
+        { id: "cinematic", label: "Cinematic" },
+        { id: "social", label: "Social / Ad" },
+        { id: "artistic", label: "Artistic" },
+        { id: "documentary", label: "Documentary" },
       ],
     };
   }
@@ -937,44 +953,53 @@ export class ConvergenceService {
    * Select an option for the current dimension
    * Generates options for the next dimension
    */
-  async selectOption(request: SelectOptionRequest): Promise<SelectOptionResponse> {
+  async selectOption(
+    request: SelectOptionRequest,
+  ): Promise<SelectOptionResponse> {
     const { sessionId, dimension, optionId } = request;
-    
+
     const session = await this.sessions.get(sessionId);
     if (!session) {
-      throw new Error('Session not found');
+      throw new Error("Session not found");
     }
 
-    this.log.info('Selecting option', { sessionId, dimension, optionId });
+    this.log.info("Selecting option", { sessionId, dimension, optionId });
 
     // Handle direction selection
-    if (dimension === 'direction') {
+    if (dimension === "direction") {
       return this.handleDirectionSelection(session, optionId as Direction);
     }
 
     // Handle dimension selection
-    return this.handleDimensionSelection(session, dimension as DimensionType, optionId);
+    return this.handleDimensionSelection(
+      session,
+      dimension as DimensionType,
+      optionId,
+    );
   }
 
   /**
    * Generate depth map and camera motion paths
    * Called after lighting is locked
    */
-  async generateCameraMotion(request: GenerateCameraMotionRequest): Promise<GenerateCameraMotionResponse> {
+  async generateCameraMotion(
+    request: GenerateCameraMotionRequest,
+  ): Promise<GenerateCameraMotionResponse> {
     const { sessionId } = request;
-    
+
     const session = await this.sessions.get(sessionId);
     if (!session) {
-      throw new Error('Session not found');
+      throw new Error("Session not found");
     }
 
     // Get the last generated image (with all dimensions locked)
-    const lastImage = session.generatedImages[session.generatedImages.length - 1];
+    const lastImage =
+      session.generatedImages[session.generatedImages.length - 1];
     if (!lastImage) {
-      throw new Error('No image available for depth estimation');
+      throw new Error("No image available for depth estimation");
     }
 
-    this.log.info('Generating depth map for camera motion', { sessionId });
+    this.log.info("Generating depth map for camera motion", { sessionId });
 
     // Generate depth map
     const depthMapUrl = await this.depth.estimateDepth(lastImage.url);
@@ -982,7 +1007,7 @@ export class ConvergenceService {
     // Update session
     await this.sessions.update(sessionId, {
       depthMapUrl,
-      currentDimension: 'camera_motion',
+      currentDimension: "camera_motion",
     });
 
     return {
@@ -997,20 +1022,20 @@ export class ConvergenceService {
    */
   async selectCameraMotion(request: SelectCameraMotionRequest): Promise<void> {
     const { sessionId, cameraMotionId } = request;
-    
+
     const session = await this.sessions.get(sessionId);
     if (!session) {
-      throw new Error('Session not found');
+      throw new Error("Session not found");
     }
 
-    const cameraConfig = getDimensionConfig('camera_motion');
-    const option = cameraConfig?.options.find(o => o.id === cameraMotionId);
+    const cameraConfig = getDimensionConfig("camera_motion");
+    const option = cameraConfig?.options.find((o) => o.id === cameraMotionId);
     if (!option) {
-      throw new Error('Invalid camera motion option');
+      throw new Error("Invalid camera motion option");
     }
 
     const locked: LockedDimension = {
-      type: 'camera_motion',
+      type: "camera_motion",
       optionId: cameraMotionId,
       label: option.label,
       promptFragments: option.promptFragments,
@@ -1019,30 +1044,35 @@ export class ConvergenceService {
     await this.sessions.update(sessionId, {
       cameraMotion: cameraMotionId,
       lockedDimensions: [...session.lockedDimensions, locked],
-      currentDimension: 'subject_motion',
+      currentDimension: "subject_motion",
     });
   }
 
   /**
    * Generate subject motion preview with Wan
    */
-  async generateSubjectMotion(request: GenerateSubjectMotionRequest): Promise<GenerateSubjectMotionResponse> {
+  async generateSubjectMotion(
+    request: GenerateSubjectMotionRequest,
+  ): Promise<GenerateSubjectMotionResponse> {
     const { sessionId, subjectMotion } = request;
-    
+
     const session = await this.sessions.get(sessionId);
     if (!session) {
-      throw new Error('Session not found');
+      throw new Error("Session not found");
     }
 
     if (!session.direction) {
-      throw new Error('Direction not set');
+      throw new Error("Direction not set");
     }
 
     if (!this.videoPreview) {
-      throw new Error('Video preview service not configured');
+      throw new Error("Video preview service not configured");
     }
 
-    this.log.info('Generating subject motion preview', { sessionId, subjectMotion });
+    this.log.info("Generating subject motion preview", {
+      sessionId,
+      subjectMotion,
+    });
 
     // Build full prompt with subject motion
     const prompt = this.promptBuilder.buildPrompt({
@@ -1053,7 +1083,9 @@ export class ConvergenceService {
     });
 
     // Generate Wan preview
-    const { videoUrl } = await this.videoPreview.generatePreview(prompt, { duration: 4 });
+    const { videoUrl } = await this.videoPreview.generatePreview(prompt, {
+      duration: 4,
+    });
 
     // Update session
     await this.sessions.update(sessionId, {
@@ -1074,26 +1106,27 @@ export class ConvergenceService {
   async finalizeSession(sessionId: string): Promise<FinalizeSessionResponse> {
     const session = await this.sessions.get(sessionId);
     if (!session) {
-      throw new Error('Session not found');
+      throw new Error("Session not found");
     }
 
     if (!session.direction || !session.finalPrompt) {
-      throw new Error('Session not complete');
+      throw new Error("Session not complete");
     }
 
     // Mark session as completed
-    await this.sessions.update(sessionId, { status: 'completed' });
+    await this.sessions.update(sessionId, { status: "completed" });
 
     // Get the preview image URL
-    const lastImage = session.generatedImages[session.generatedImages.length - 1];
+    const lastImage =
+      session.generatedImages[session.generatedImages.length - 1];
 
     return {
       sessionId,
       finalPrompt: session.finalPrompt,
       lockedDimensions: session.lockedDimensions,
-      previewImageUrl: lastImage?.url ?? '',
-      cameraMotion: session.cameraMotion ?? 'static',
-      subjectMotion: session.subjectMotion ?? '',
+      previewImageUrl: lastImage?.url ?? "",
+      cameraMotion: session.cameraMotion ?? "static",
+      subjectMotion: session.subjectMotion ?? "",
     };
   }
 
@@ -1110,7 +1143,7 @@ export class ConvergenceService {
 
   private async handleDirectionSelection(
     session: ConvergenceSession,
-    direction: Direction
+    direction: Direction,
   ): Promise<SelectOptionResponse> {
     // Lock direction
     await this.sessions.update(session.id, { direction });
@@ -1123,7 +1156,7 @@ export class ConvergenceService {
       session.intent,
       direction,
       [],
-      firstDimension
+      firstDimension,
     );
 
     await this.sessions.update(session.id, {
@@ -1136,21 +1169,24 @@ export class ConvergenceService {
       images,
       currentDimension: firstDimension.type,
       lockedDimensions: [],
-      options: firstDimension.options.map(o => ({ id: o.id, label: o.label })),
+      options: firstDimension.options.map((o) => ({
+        id: o.id,
+        label: o.label,
+      })),
     };
   }
 
   private async handleDimensionSelection(
     session: ConvergenceSession,
     dimension: DimensionType,
-    optionId: string
+    optionId: string,
   ): Promise<SelectOptionResponse> {
     const dimensionConfig = getDimensionConfig(dimension);
     if (!dimensionConfig) {
       throw new Error(`Invalid dimension: ${dimension}`);
     }
 
-    const option = dimensionConfig.options.find(o => o.id === optionId);
+    const option = dimensionConfig.options.find((o) => o.id === optionId);
     if (!option) {
       throw new Error(`Invalid option: ${optionId}`);
     }
@@ -1168,16 +1204,16 @@ export class ConvergenceService {
     const nextDimension = getNextDimension(dimension);
 
     // If next is camera_motion, we're done with image generation
-    if (!nextDimension || nextDimension.type === 'camera_motion') {
+    if (!nextDimension || nextDimension.type === "camera_motion") {
       await this.sessions.update(session.id, {
         lockedDimensions: newLockedDimensions,
-        currentDimension: 'camera_motion',
+        currentDimension: "camera_motion",
       });
 
       return {
         sessionId: session.id,
         images: [],
-        currentDimension: 'camera_motion',
+        currentDimension: "camera_motion",
         lockedDimensions: newLockedDimensions,
       };
     }
@@ -1187,7 +1223,7 @@ export class ConvergenceService {
       session.intent,
       session.direction!,
       newLockedDimensions,
-      nextDimension
+      nextDimension,
     );
 
     await this.sessions.update(session.id, {
@@ -1201,7 +1237,7 @@ export class ConvergenceService {
       images,
       currentDimension: nextDimension.type,
       lockedDimensions: newLockedDimensions,
-      options: nextDimension.options.map(o => ({ id: o.id, label: o.label })),
+      options: nextDimension.options.map((o) => ({ id: o.id, label: o.label })),
     };
   }
 
@@ -1209,30 +1245,43 @@ export class ConvergenceService {
     intent: string,
     direction: Direction,
     lockedDimensions: LockedDimension[],
-    dimension: { type: string; options: Array<{ id: string; label: string; promptFragments: string[] }> }
+    dimension: {
+      type: string;
+      options: Array<{ id: string; label: string; promptFragments: string[] }>;
+    },
   ): Promise<GeneratedImage[]> {
-    const prompts = dimension.options.map(option => ({
+    const prompts = dimension.options.map((option) => ({
       prompt: this.promptBuilder.buildDimensionPreviewPrompt(
         intent,
         direction,
         lockedDimensions,
-        { type: dimension.type, optionId: option.id, fragments: option.promptFragments }
+        {
+          type: dimension.type,
+          optionId: option.id,
+          fragments: option.promptFragments,
+        },
       ),
       dimension: dimension.type as DimensionType,
       optionId: option.id,
     }));
 
-    return this.generateImagesParallel(prompts, 'system');
+    return this.generateImagesParallel(prompts, "system");
   }
 
   private async generateImagesParallel(
-    prompts: Array<{ prompt: string; dimension: DimensionType | 'direction'; optionId: string }>,
-    userId: string
+    prompts: Array<{
+      prompt: string;
+      dimension: DimensionType | "direction";
+      optionId: string;
+    }>,
+    userId: string,
   ): Promise<GeneratedImage[]> {
     const results = await Promise.all(
       prompts.map(async ({ prompt, dimension, optionId }) => {
         try {
-          const result = await this.imageGen.generatePreview(prompt, { userId });
+          const result = await this.imageGen.generatePreview(prompt, {
+            userId,
+          });
           return {
             id: uuidv4(),
             url: result.imageUrl,
@@ -1242,10 +1291,13 @@ export class ConvergenceService {
             generatedAt: new Date(),
           };
         } catch (error) {
-          this.log.error('Failed to generate image', error as Error, { prompt, optionId });
+          this.log.error("Failed to generate image", error as Error, {
+            prompt,
+            optionId,
+          });
           throw error;
         }
-      })
+      }),
     );
 
     return results;
@@ -1264,15 +1316,15 @@ export class ConvergenceService {
 ```typescript
 /**
  * Depth Estimation Service
- * 
+ *
  * Uses Depth Anything v2 via Replicate to generate depth maps.
- * 
+ *
  * PATTERN: Single responsibility service
  * MAX LINES: 200
  */
 
-import Replicate from 'replicate';
-import { logger } from '@infrastructure/Logger';
+import Replicate from "replicate";
+import { logger } from "@infrastructure/Logger";
 
 interface DepthEstimationResult {
   depthMapUrl: string;
@@ -1282,14 +1334,16 @@ interface DepthEstimationResult {
 
 export class DepthEstimationService {
   private replicate: Replicate | null = null;
-  private log = logger.child({ service: 'DepthEstimationService' });
+  private log = logger.child({ service: "DepthEstimationService" });
 
   constructor() {
     const apiToken = process.env.REPLICATE_API_TOKEN;
     if (apiToken) {
       this.replicate = new Replicate({ auth: apiToken });
     } else {
-      this.log.warn('REPLICATE_API_TOKEN not configured, depth estimation disabled');
+      this.log.warn(
+        "REPLICATE_API_TOKEN not configured, depth estimation disabled",
+      );
     }
   }
 
@@ -1298,24 +1352,24 @@ export class DepthEstimationService {
    */
   async estimateDepth(imageUrl: string): Promise<string> {
     if (!this.replicate) {
-      throw new Error('Depth estimation not configured');
+      throw new Error("Depth estimation not configured");
     }
 
-    this.log.info('Estimating depth', { imageUrl });
+    this.log.info("Estimating depth", { imageUrl });
 
     const output = await this.replicate.run(
-      'cjwbw/depth-anything-v2:8a4ed4c4db6b05c8a3e9c8468a8e32c6eda832ce96c37ce787d6b65daf51d19c',
+      "cjwbw/depth-anything-v2:8a4ed4c4db6b05c8a3e9c8468a8e32c6eda832ce96c37ce787d6b65daf51d19c",
       {
         input: {
           image: imageUrl,
         },
-      }
+      },
     );
 
     // Output is a URL to the depth map image
     const depthMapUrl = output as string;
-    
-    this.log.info('Depth estimation complete', { depthMapUrl });
+
+    this.log.info("Depth estimation complete", { depthMapUrl });
 
     return depthMapUrl;
   }
@@ -1336,73 +1390,73 @@ export class DepthEstimationService {
 ```typescript
 /**
  * Camera Paths - Predefined camera motion paths for Three.js rendering
- * 
+ *
  * These paths are used client-side to animate the camera through
  * the depth-displaced mesh.
- * 
+ *
  * Coordinate system:
  * - x: horizontal (negative = left, positive = right)
  * - y: vertical (negative = down, positive = up)
  * - z: depth (negative = away, positive = toward viewer)
- * 
+ *
  * PATTERN: Data file (no logic)
  */
 
-import type { CameraPath } from '../types';
+import type { CameraPath } from "../types";
 
 export const CAMERA_PATHS: CameraPath[] = [
   {
-    id: 'static',
-    label: 'Static',
+    id: "static",
+    label: "Static",
     start: { x: 0, y: 0, z: 0 },
     end: { x: 0, y: 0, z: 0 },
     duration: 3,
   },
   {
-    id: 'pan_left',
-    label: 'Pan Left',
+    id: "pan_left",
+    label: "Pan Left",
     start: { x: 0.15, y: 0, z: 0 },
     end: { x: -0.15, y: 0, z: 0 },
     duration: 3,
   },
   {
-    id: 'pan_right',
-    label: 'Pan Right',
+    id: "pan_right",
+    label: "Pan Right",
     start: { x: -0.15, y: 0, z: 0 },
     end: { x: 0.15, y: 0, z: 0 },
     duration: 3,
   },
   {
-    id: 'push_in',
-    label: 'Push In',
+    id: "push_in",
+    label: "Push In",
     start: { x: 0, y: 0, z: -0.1 },
     end: { x: 0, y: 0, z: 0.25 },
     duration: 3,
   },
   {
-    id: 'pull_back',
-    label: 'Pull Back',
+    id: "pull_back",
+    label: "Pull Back",
     start: { x: 0, y: 0, z: 0.2 },
     end: { x: 0, y: 0, z: -0.15 },
     duration: 3,
   },
   {
-    id: 'crane_up',
-    label: 'Crane Up',
+    id: "crane_up",
+    label: "Crane Up",
     start: { x: 0, y: -0.1, z: 0 },
     end: { x: 0, y: 0.15, z: 0.05 },
     duration: 3,
   },
   {
-    id: 'crane_down',
-    label: 'Crane Down',
+    id: "crane_down",
+    label: "Crane Down",
     start: { x: 0, y: 0.15, z: 0 },
     end: { x: 0, y: -0.1, z: 0.05 },
     duration: 3,
   },
   {
-    id: 'orbit_left',
-    label: 'Orbit Left',
+    id: "orbit_left",
+    label: "Orbit Left",
     start: { x: 0.1, y: 0, z: 0 },
     end: { x: -0.1, y: 0, z: 0.1 },
     duration: 3,
@@ -1423,25 +1477,25 @@ export const CAMERA_PATHS: CameraPath[] = [
  * Convergence Feature Types
  */
 
-export type Direction = 'cinematic' | 'social' | 'artistic' | 'documentary';
+export type Direction = "cinematic" | "social" | "artistic" | "documentary";
 
-export type DimensionType = 'mood' | 'framing' | 'lighting' | 'camera_motion';
+export type DimensionType = "mood" | "framing" | "lighting" | "camera_motion";
 
-export type ConvergenceStep = 
-  | 'intent'
-  | 'direction'
-  | 'mood'
-  | 'framing'
-  | 'lighting'
-  | 'camera_motion'
-  | 'subject_motion'
-  | 'preview'
-  | 'complete';
+export type ConvergenceStep =
+  | "intent"
+  | "direction"
+  | "mood"
+  | "framing"
+  | "lighting"
+  | "camera_motion"
+  | "subject_motion"
+  | "preview"
+  | "complete";
 
 export interface GeneratedImage {
   id: string;
   url: string;
-  dimension: DimensionType | 'direction';
+  dimension: DimensionType | "direction";
   optionId: string;
   prompt: string;
 }
@@ -1479,24 +1533,45 @@ export interface ConvergenceState {
 }
 
 export type ConvergenceAction =
-  | { type: 'SET_INTENT'; payload: string }
-  | { type: 'START_SESSION_REQUEST' }
-  | { type: 'START_SESSION_SUCCESS'; payload: { sessionId: string; images: GeneratedImage[]; options: Array<{ id: string; label: string }> } }
-  | { type: 'START_SESSION_FAILURE'; payload: string }
-  | { type: 'SELECT_OPTION_REQUEST' }
-  | { type: 'SELECT_OPTION_SUCCESS'; payload: { step: ConvergenceStep; images: GeneratedImage[]; options: Array<{ id: string; label: string }>; lockedDimensions: LockedDimension[] } }
-  | { type: 'SELECT_OPTION_FAILURE'; payload: string }
-  | { type: 'SET_DIRECTION'; payload: Direction }
-  | { type: 'CAMERA_MOTION_READY'; payload: { depthMapUrl: string; cameraPaths: CameraPath[] } }
-  | { type: 'SELECT_CAMERA_MOTION'; payload: string }
-  | { type: 'SET_SUBJECT_MOTION'; payload: string }
-  | { type: 'SUBJECT_MOTION_PREVIEW_REQUEST' }
-  | { type: 'SUBJECT_MOTION_PREVIEW_SUCCESS'; payload: { videoUrl: string; prompt: string } }
-  | { type: 'SUBJECT_MOTION_PREVIEW_FAILURE'; payload: string }
-  | { type: 'FINALIZE_REQUEST' }
-  | { type: 'FINALIZE_SUCCESS'; payload: { finalPrompt: string } }
-  | { type: 'FINALIZE_FAILURE'; payload: string }
-  | { type: 'RESET' };
+  | { type: "SET_INTENT"; payload: string }
+  | { type: "START_SESSION_REQUEST" }
+  | {
+      type: "START_SESSION_SUCCESS";
+      payload: {
+        sessionId: string;
+        images: GeneratedImage[];
+        options: Array<{ id: string; label: string }>;
+      };
+    }
+  | { type: "START_SESSION_FAILURE"; payload: string }
+  | { type: "SELECT_OPTION_REQUEST" }
+  | {
+      type: "SELECT_OPTION_SUCCESS";
+      payload: {
+        step: ConvergenceStep;
+        images: GeneratedImage[];
+        options: Array<{ id: string; label: string }>;
+        lockedDimensions: LockedDimension[];
+      };
+    }
+  | { type: "SELECT_OPTION_FAILURE"; payload: string }
+  | { type: "SET_DIRECTION"; payload: Direction }
+  | {
+      type: "CAMERA_MOTION_READY";
+      payload: { depthMapUrl: string; cameraPaths: CameraPath[] };
+    }
+  | { type: "SELECT_CAMERA_MOTION"; payload: string }
+  | { type: "SET_SUBJECT_MOTION"; payload: string }
+  | { type: "SUBJECT_MOTION_PREVIEW_REQUEST" }
+  | {
+      type: "SUBJECT_MOTION_PREVIEW_SUCCESS";
+      payload: { videoUrl: string; prompt: string };
+    }
+  | { type: "SUBJECT_MOTION_PREVIEW_FAILURE"; payload: string }
+  | { type: "FINALIZE_REQUEST" }
+  | { type: "FINALIZE_SUCCESS"; payload: { finalPrompt: string } }
+  | { type: "FINALIZE_FAILURE"; payload: string }
+  | { type: "RESET" };
 ```
 
 ### 3.2 API Layer
@@ -1506,9 +1581,9 @@ export type ConvergenceAction =
 ```typescript
 /**
  * Convergence API
- * 
+ *
  * Centralized API calls for convergence feature.
- * 
+ *
  * PATTERN: VideoConceptBuilder api pattern
  * MAX LINES: 150
  */
@@ -1519,9 +1594,9 @@ import type {
   GeneratedImage,
   LockedDimension,
   CameraPath,
-} from '../types';
+} from "../types";
 
-const API_BASE = '/api/convergence';
+const API_BASE = "/api/convergence";
 
 interface StartSessionResponse {
   sessionId: string;
@@ -1560,8 +1635,10 @@ interface FinalizeResponse {
 
 async function handleResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: 'Request failed' }));
-    throw new Error(error.message || 'Request failed');
+    const error = await response
+      .json()
+      .catch(() => ({ message: "Request failed" }));
+    throw new Error(error.message || "Request failed");
   }
   return response.json();
 }
@@ -1569,8 +1646,8 @@ async function handleResponse<T>(response: Response): Promise<T> {
 export const convergenceApi = {
   async startSession(intent: string): Promise<StartSessionResponse> {
     const response = await fetch(`${API_BASE}/start`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ intent }),
     });
     return handleResponse(response);
@@ -1578,12 +1655,12 @@ export const convergenceApi = {
 
   async selectOption(
     sessionId: string,
-    dimension: DimensionType | 'direction',
-    optionId: string
+    dimension: DimensionType | "direction",
+    optionId: string,
   ): Promise<SelectOptionResponse> {
     const response = await fetch(`${API_BASE}/select`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ sessionId, dimension, optionId }),
     });
     return handleResponse(response);
@@ -1591,17 +1668,20 @@ export const convergenceApi = {
 
   async generateCameraMotion(sessionId: string): Promise<CameraMotionResponse> {
     const response = await fetch(`${API_BASE}/camera-motion`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ sessionId }),
     });
     return handleResponse(response);
   },
 
-  async selectCameraMotion(sessionId: string, cameraMotionId: string): Promise<void> {
+  async selectCameraMotion(
+    sessionId: string,
+    cameraMotionId: string,
+  ): Promise<void> {
     const response = await fetch(`${API_BASE}/camera-motion/select`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ sessionId, cameraMotionId }),
     });
     return handleResponse(response);
@@ -1609,11 +1689,11 @@ export const convergenceApi = {
 
   async generateSubjectMotion(
     sessionId: string,
-    subjectMotion: string
+    subjectMotion: string,
   ): Promise<SubjectMotionResponse> {
     const response = await fetch(`${API_BASE}/subject-motion`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ sessionId, subjectMotion }),
     });
     return handleResponse(response);
@@ -1621,8 +1701,8 @@ export const convergenceApi = {
 
   async finalize(sessionId: string): Promise<FinalizeResponse> {
     const response = await fetch(`${API_BASE}/finalize`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ sessionId }),
     });
     return handleResponse(response);
@@ -1637,25 +1717,25 @@ export const convergenceApi = {
 ```typescript
 /**
  * useConvergenceSession - State management for convergence flow
- * 
+ *
  * PATTERN: useVideoConceptState pattern (useReducer)
  * MAX LINES: 200
  */
 
-import { useReducer, useCallback } from 'react';
+import { useReducer, useCallback } from "react";
 import type {
   ConvergenceState,
   ConvergenceAction,
   ConvergenceStep,
   Direction,
   DimensionType,
-} from '../types';
-import { convergenceApi } from '../api/convergenceApi';
+} from "../types";
+import { convergenceApi } from "../api/convergenceApi";
 
 const initialState: ConvergenceState = {
   sessionId: null,
-  step: 'intent',
-  intent: '',
+  step: "intent",
+  intent: "",
   direction: null,
   lockedDimensions: [],
   currentImages: [],
@@ -1663,7 +1743,7 @@ const initialState: ConvergenceState = {
   depthMapUrl: null,
   cameraPaths: [],
   selectedCameraMotion: null,
-  subjectMotion: '',
+  subjectMotion: "",
   subjectMotionVideoUrl: null,
   finalPrompt: null,
   isLoading: false,
@@ -1672,42 +1752,45 @@ const initialState: ConvergenceState = {
 
 function getNextStep(currentDimension: string): ConvergenceStep {
   const stepMap: Record<string, ConvergenceStep> = {
-    direction: 'direction',
-    mood: 'mood',
-    framing: 'framing',
-    lighting: 'lighting',
-    camera_motion: 'camera_motion',
-    subject_motion: 'subject_motion',
-    complete: 'preview',
+    direction: "direction",
+    mood: "mood",
+    framing: "framing",
+    lighting: "lighting",
+    camera_motion: "camera_motion",
+    subject_motion: "subject_motion",
+    complete: "preview",
   };
-  return stepMap[currentDimension] || 'intent';
+  return stepMap[currentDimension] || "intent";
 }
 
-function reducer(state: ConvergenceState, action: ConvergenceAction): ConvergenceState {
+function reducer(
+  state: ConvergenceState,
+  action: ConvergenceAction,
+): ConvergenceState {
   switch (action.type) {
-    case 'SET_INTENT':
+    case "SET_INTENT":
       return { ...state, intent: action.payload };
 
-    case 'START_SESSION_REQUEST':
+    case "START_SESSION_REQUEST":
       return { ...state, isLoading: true, error: null };
 
-    case 'START_SESSION_SUCCESS':
+    case "START_SESSION_SUCCESS":
       return {
         ...state,
         isLoading: false,
         sessionId: action.payload.sessionId,
         currentImages: action.payload.images,
         currentOptions: action.payload.options,
-        step: 'direction',
+        step: "direction",
       };
 
-    case 'START_SESSION_FAILURE':
+    case "START_SESSION_FAILURE":
       return { ...state, isLoading: false, error: action.payload };
 
-    case 'SELECT_OPTION_REQUEST':
+    case "SELECT_OPTION_REQUEST":
       return { ...state, isLoading: true, error: null };
 
-    case 'SELECT_OPTION_SUCCESS':
+    case "SELECT_OPTION_SUCCESS":
       return {
         ...state,
         isLoading: false,
@@ -1717,61 +1800,61 @@ function reducer(state: ConvergenceState, action: ConvergenceAction): Convergenc
         lockedDimensions: action.payload.lockedDimensions,
       };
 
-    case 'SELECT_OPTION_FAILURE':
+    case "SELECT_OPTION_FAILURE":
       return { ...state, isLoading: false, error: action.payload };
 
-    case 'SET_DIRECTION':
+    case "SET_DIRECTION":
       return { ...state, direction: action.payload };
 
-    case 'CAMERA_MOTION_READY':
+    case "CAMERA_MOTION_READY":
       return {
         ...state,
         isLoading: false,
         depthMapUrl: action.payload.depthMapUrl,
         cameraPaths: action.payload.cameraPaths,
-        step: 'camera_motion',
+        step: "camera_motion",
       };
 
-    case 'SELECT_CAMERA_MOTION':
+    case "SELECT_CAMERA_MOTION":
       return {
         ...state,
         selectedCameraMotion: action.payload,
-        step: 'subject_motion',
+        step: "subject_motion",
       };
 
-    case 'SET_SUBJECT_MOTION':
+    case "SET_SUBJECT_MOTION":
       return { ...state, subjectMotion: action.payload };
 
-    case 'SUBJECT_MOTION_PREVIEW_REQUEST':
+    case "SUBJECT_MOTION_PREVIEW_REQUEST":
       return { ...state, isLoading: true, error: null };
 
-    case 'SUBJECT_MOTION_PREVIEW_SUCCESS':
+    case "SUBJECT_MOTION_PREVIEW_SUCCESS":
       return {
         ...state,
         isLoading: false,
         subjectMotionVideoUrl: action.payload.videoUrl,
         finalPrompt: action.payload.prompt,
-        step: 'preview',
+        step: "preview",
       };
 
-    case 'SUBJECT_MOTION_PREVIEW_FAILURE':
+    case "SUBJECT_MOTION_PREVIEW_FAILURE":
       return { ...state, isLoading: false, error: action.payload };
 
-    case 'FINALIZE_REQUEST':
+    case "FINALIZE_REQUEST":
       return { ...state, isLoading: true, error: null };
 
-    case 'FINALIZE_SUCCESS':
+    case "FINALIZE_SUCCESS":
       return {
         ...state,
         isLoading: false,
         finalPrompt: action.payload.finalPrompt,
-        step: 'complete',
+        step: "complete",
       };
 
-    case 'FINALIZE_FAILURE':
+    case "FINALIZE_FAILURE":
       return { ...state, isLoading: false, error: action.payload };
 
-    case 'RESET':
+    case "RESET":
       return initialState;
 
     default:
@@ -1783,96 +1866,114 @@ export function useConvergenceSession() {
   const [state, dispatch] = useReducer(reducer, initialState);
 
   const setIntent = useCallback((intent: string) => {
-    dispatch({ type: 'SET_INTENT', payload: intent });
+    dispatch({ type: "SET_INTENT", payload: intent });
   }, []);
 
   const startSession = useCallback(async (intent: string) => {
-    dispatch({ type: 'START_SESSION_REQUEST' });
+    dispatch({ type: "START_SESSION_REQUEST" });
     try {
       const result = await convergenceApi.startSession(intent);
-      dispatch({ type: 'START_SESSION_SUCCESS', payload: result });
+      dispatch({ type: "START_SESSION_SUCCESS", payload: result });
     } catch (error) {
-      dispatch({ type: 'START_SESSION_FAILURE', payload: (error as Error).message });
+      dispatch({
+        type: "START_SESSION_FAILURE",
+        payload: (error as Error).message,
+      });
     }
   }, []);
 
-  const selectOption = useCallback(async (
-    dimension: DimensionType | 'direction',
-    optionId: string
-  ) => {
-    if (!state.sessionId) return;
-    
-    dispatch({ type: 'SELECT_OPTION_REQUEST' });
-    
-    if (dimension === 'direction') {
-      dispatch({ type: 'SET_DIRECTION', payload: optionId as Direction });
-    }
-    
-    try {
-      const result = await convergenceApi.selectOption(state.sessionId, dimension, optionId);
-      
-      // If we're moving to camera motion, generate depth map
-      if (result.currentDimension === 'camera_motion') {
-        const cameraResult = await convergenceApi.generateCameraMotion(state.sessionId);
-        dispatch({ type: 'CAMERA_MOTION_READY', payload: cameraResult });
-      } else {
+  const selectOption = useCallback(
+    async (dimension: DimensionType | "direction", optionId: string) => {
+      if (!state.sessionId) return;
+
+      dispatch({ type: "SELECT_OPTION_REQUEST" });
+
+      if (dimension === "direction") {
+        dispatch({ type: "SET_DIRECTION", payload: optionId as Direction });
+      }
+
+      try {
+        const result = await convergenceApi.selectOption(
+          state.sessionId,
+          dimension,
+          optionId,
+        );
+
+        // If we're moving to camera motion, generate depth map
+        if (result.currentDimension === "camera_motion") {
+          const cameraResult = await convergenceApi.generateCameraMotion(
+            state.sessionId,
+          );
+          dispatch({ type: "CAMERA_MOTION_READY", payload: cameraResult });
+        } else {
+          dispatch({
+            type: "SELECT_OPTION_SUCCESS",
+            payload: {
+              step: getNextStep(result.currentDimension),
+              images: result.images,
+              options: result.options || [],
+              lockedDimensions: result.lockedDimensions,
+            },
+          });
+        }
+      } catch (error) {
         dispatch({
-          type: 'SELECT_OPTION_SUCCESS',
-          payload: {
-            step: getNextStep(result.currentDimension),
-            images: result.images,
-            options: result.options || [],
-            lockedDimensions: result.lockedDimensions,
-          },
+          type: "SELECT_OPTION_FAILURE",
+          payload: (error as Error).message,
         });
       }
-    } catch (error) {
-      dispatch({ type: 'SELECT_OPTION_FAILURE', payload: (error as Error).message });
-    }
-  }, [state.sessionId]);
+    },
+    [state.sessionId],
+  );
 
-  const selectCameraMotion = useCallback(async (cameraMotionId: string) => {
-    if (!state.sessionId) return;
-    
-    await convergenceApi.selectCameraMotion(state.sessionId, cameraMotionId);
-    dispatch({ type: 'SELECT_CAMERA_MOTION', payload: cameraMotionId });
-  }, [state.sessionId]);
+  const selectCameraMotion = useCallback(
+    async (cameraMotionId: string) => {
+      if (!state.sessionId) return;
+
+      await convergenceApi.selectCameraMotion(state.sessionId, cameraMotionId);
+      dispatch({ type: "SELECT_CAMERA_MOTION", payload: cameraMotionId });
+    },
+    [state.sessionId],
+  );
 
   const setSubjectMotion = useCallback((motion: string) => {
-    dispatch({ type: 'SET_SUBJECT_MOTION', payload: motion });
+    dispatch({ type: "SET_SUBJECT_MOTION", payload: motion });
   }, []);
 
   const generateSubjectMotionPreview = useCallback(async () => {
     if (!state.sessionId || !state.subjectMotion) return;
-    
-    dispatch({ type: 'SUBJECT_MOTION_PREVIEW_REQUEST' });
+
+    dispatch({ type: "SUBJECT_MOTION_PREVIEW_REQUEST" });
     try {
       const result = await convergenceApi.generateSubjectMotion(
         state.sessionId,
-        state.subjectMotion
+        state.subjectMotion,
       );
-      dispatch({ type: 'SUBJECT_MOTION_PREVIEW_SUCCESS', payload: result });
+      dispatch({ type: "SUBJECT_MOTION_PREVIEW_SUCCESS", payload: result });
     } catch (error) {
-      dispatch({ type: 'SUBJECT_MOTION_PREVIEW_FAILURE', payload: (error as Error).message });
+      dispatch({
+        type: "SUBJECT_MOTION_PREVIEW_FAILURE",
+        payload: (error as Error).message,
+      });
     }
   }, [state.sessionId, state.subjectMotion]);
 
   const finalize = useCallback(async () => {
     if (!state.sessionId) return;
-    
-    dispatch({ type: 'FINALIZE_REQUEST' });
+
+    dispatch({ type: "FINALIZE_REQUEST" });
     try {
       const result = await convergenceApi.finalize(state.sessionId);
-      dispatch({ type: 'FINALIZE_SUCCESS', payload: result });
+      dispatch({ type: "FINALIZE_SUCCESS", payload: result });
       return result;
     } catch (error) {
-      dispatch({ type: 'FINALIZE_FAILURE', payload: (error as Error).message });
+      dispatch({ type: "FINALIZE_FAILURE", payload: (error as Error).message });
       return null;
     }
   }, [state.sessionId]);
 
   const reset = useCallback(() => {
-    dispatch({ type: 'RESET' });
+    dispatch({ type: "RESET" });
   }, []);
 
   return {
@@ -1898,7 +1999,7 @@ export function useConvergenceSession() {
 ```typescript
 /**
  * ConvergenceFlow - Main orchestrator for visual convergence
- * 
+ *
  * PATTERN: VideoConceptBuilder (orchestrator)
  * MAX LINES: 500
  */
@@ -1964,7 +2065,7 @@ export function ConvergenceFlow(): React.ReactElement {
   return (
     <div className="flex flex-col h-full bg-app">
       {/* Progress indicator */}
-      <ProgressIndicator 
+      <ProgressIndicator
         steps={STEP_ORDER}
         currentStep={currentStepIndex}
         lockedDimensions={state.lockedDimensions}
@@ -2065,13 +2166,13 @@ export default ConvergenceFlow;
 ```typescript
 /**
  * Camera Motion Renderer
- * 
+ *
  * Uses Three.js to create depth-based parallax videos from a single image.
- * 
+ *
  * PATTERN: Utility module
  */
 
-import * as THREE from 'three';
+import * as THREE from "three";
 
 export interface CameraPath {
   id: string;
@@ -2119,7 +2220,7 @@ const FRAGMENT_SHADER = `
 async function loadTexture(url: string): Promise<THREE.Texture> {
   return new Promise((resolve, reject) => {
     const loader = new THREE.TextureLoader();
-    loader.crossOrigin = 'anonymous';
+    loader.crossOrigin = "anonymous";
     loader.load(url, resolve, undefined, reject);
   });
 }
@@ -2130,17 +2231,15 @@ async function loadTexture(url: string): Promise<THREE.Texture> {
 function interpolatePosition(
   start: { x: number; y: number; z: number },
   end: { x: number; y: number; z: number },
-  t: number
+  t: number,
 ): THREE.Vector3 {
   // Use ease-in-out for smoother motion
-  const eased = t < 0.5
-    ? 2 * t * t
-    : 1 - Math.pow(-2 * t + 2, 2) / 2;
-  
+  const eased = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+
   return new THREE.Vector3(
     start.x + (end.x - start.x) * eased,
     start.y + (end.y - start.y) * eased,
-    start.z + (end.z - start.z) * eased
+    start.z + (end.z - start.z) * eased,
   );
 }
 
@@ -2151,7 +2250,7 @@ export async function renderCameraMotion(
   imageUrl: string,
   depthMapUrl: string,
   cameraPath: CameraPath,
-  options: RenderOptions = {}
+  options: RenderOptions = {},
 ): Promise<string[]> {
   const {
     width = 512,
@@ -2203,7 +2302,7 @@ export async function renderCameraMotion(
 
   for (let i = 0; i < totalFrames; i++) {
     const t = i / (totalFrames - 1);
-    
+
     // Update camera position
     const pos = interpolatePosition(cameraPath.start, cameraPath.end, t);
     camera.position.set(pos.x, pos.y, 2 + pos.z);
@@ -2211,9 +2310,9 @@ export async function renderCameraMotion(
 
     // Render frame
     renderer.render(scene, camera);
-    
+
     // Capture as data URL
-    const dataUrl = renderer.domElement.toDataURL('image/jpeg', 0.85);
+    const dataUrl = renderer.domElement.toDataURL("image/jpeg", 0.85);
     frames.push(dataUrl);
   }
 
@@ -2234,19 +2333,27 @@ export async function renderCameraMotionVideo(
   imageUrl: string,
   depthMapUrl: string,
   cameraPath: CameraPath,
-  options: RenderOptions = {}
+  options: RenderOptions = {},
 ): Promise<Blob> {
-  const frames = await renderCameraMotion(imageUrl, depthMapUrl, cameraPath, options);
+  const frames = await renderCameraMotion(
+    imageUrl,
+    depthMapUrl,
+    cameraPath,
+    options,
+  );
   return encodeFramesToVideo(frames, options.fps ?? 24);
 }
 
 /**
  * Encode frames to video using MediaRecorder
  */
-async function encodeFramesToVideo(frames: string[], fps: number): Promise<Blob> {
-  const canvas = document.createElement('canvas');
-  const ctx = canvas.getContext('2d')!;
-  
+async function encodeFramesToVideo(
+  frames: string[],
+  fps: number,
+): Promise<Blob> {
+  const canvas = document.createElement("canvas");
+  const ctx = canvas.getContext("2d")!;
+
   // Get dimensions from first frame
   const firstImg = await loadImage(frames[0]);
   canvas.width = firstImg.width;
@@ -2255,7 +2362,7 @@ async function encodeFramesToVideo(frames: string[], fps: number): Promise<Blob>
   // Create video stream
   const stream = canvas.captureStream(fps);
   const recorder = new MediaRecorder(stream, {
-    mimeType: 'video/webm;codecs=vp9',
+    mimeType: "video/webm;codecs=vp9",
     videoBitsPerSecond: 2500000,
   });
 
@@ -2278,7 +2385,7 @@ async function encodeFramesToVideo(frames: string[], fps: number): Promise<Blob>
   // Stop recording and return blob
   return new Promise((resolve) => {
     recorder.onstop = () => {
-      resolve(new Blob(chunks, { type: 'video/webm' }));
+      resolve(new Blob(chunks, { type: "video/webm" }));
     };
     recorder.stop();
   });
@@ -2294,7 +2401,7 @@ function loadImage(dataUrl: string): Promise<HTMLImageElement> {
 }
 
 function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 ```
 
@@ -2305,9 +2412,9 @@ function sleep(ms: number): Promise<void> {
 ```typescript
 /**
  * CameraMotionPicker - Select camera motion with live previews
- * 
+ *
  * Renders depth-based parallax previews for each camera motion option.
- * 
+ *
  * PATTERN: UI Component
  * MAX LINES: 200
  */
@@ -2352,7 +2459,7 @@ export function CameraMotionPicker({
     async function renderPreviews() {
       for (const path of cameraPaths) {
         if (cancelled) break;
-        
+
         setPreviews(prev => new Map(prev).set(path.id, {
           id: path.id,
           frames: [],
@@ -2365,7 +2472,7 @@ export function CameraMotionPicker({
             height: 180,
             fps: 15,
           });
-          
+
           if (!cancelled) {
             setPreviews(prev => new Map(prev).set(path.id, {
               id: path.id,
@@ -2457,8 +2564,8 @@ export function CameraMotionPicker({
               disabled={isLoading || preview?.isRendering}
               className={`
                 relative aspect-video rounded-lg overflow-hidden border-2 transition-all
-                ${isSelected 
-                  ? 'border-violet-500 ring-2 ring-violet-500/30' 
+                ${isSelected
+                  ? 'border-violet-500 ring-2 ring-violet-500/30'
                   : 'border-border hover:border-violet-500/50'
                 }
                 ${isLoading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
@@ -2525,9 +2632,9 @@ export function CameraMotionPicker({
  * Convergence Routes
  */
 
-import { Router } from 'express';
-import { asyncHandler } from '@middleware/asyncHandler';
-import type { ConvergenceService } from '@services/convergence';
+import { Router } from "express";
+import { asyncHandler } from "@middleware/asyncHandler";
+import type { ConvergenceService } from "@services/convergence";
 import {
   createStartSessionHandler,
   createSelectOptionHandler,
@@ -2535,7 +2642,7 @@ import {
   createSelectCameraMotionHandler,
   createGenerateSubjectMotionHandler,
   createFinalizeHandler,
-} from './handlers';
+} from "./handlers";
 
 interface ConvergenceRouteDeps {
   convergenceService: ConvergenceService;
@@ -2545,12 +2652,30 @@ export function createConvergenceRoutes(deps: ConvergenceRouteDeps): Router {
   const router = Router();
   const { convergenceService } = deps;
 
-  router.post('/start', asyncHandler(createStartSessionHandler(convergenceService)));
-  router.post('/select', asyncHandler(createSelectOptionHandler(convergenceService)));
-  router.post('/camera-motion', asyncHandler(createGenerateCameraMotionHandler(convergenceService)));
-  router.post('/camera-motion/select', asyncHandler(createSelectCameraMotionHandler(convergenceService)));
-  router.post('/subject-motion', asyncHandler(createGenerateSubjectMotionHandler(convergenceService)));
-  router.post('/finalize', asyncHandler(createFinalizeHandler(convergenceService)));
+  router.post(
+    "/start",
+    asyncHandler(createStartSessionHandler(convergenceService)),
+  );
+  router.post(
+    "/select",
+    asyncHandler(createSelectOptionHandler(convergenceService)),
+  );
+  router.post(
+    "/camera-motion",
+    asyncHandler(createGenerateCameraMotionHandler(convergenceService)),
+  );
+  router.post(
+    "/camera-motion/select",
+    asyncHandler(createSelectCameraMotionHandler(convergenceService)),
+  );
+  router.post(
+    "/subject-motion",
+    asyncHandler(createGenerateSubjectMotionHandler(convergenceService)),
+  );
+  router.post(
+    "/finalize",
+    asyncHandler(createFinalizeHandler(convergenceService)),
+  );
 
   return router;
 }
@@ -2562,11 +2687,11 @@ export function createConvergenceRoutes(deps: ConvergenceRouteDeps): Router {
 
 ```typescript
 // Add to imports
-import { createConvergenceRoutes } from '@routes/convergence/convergence.routes';
-import { ConvergenceService } from '@services/convergence';
-import { SessionStore } from '@services/convergence/session/SessionStore';
-import { PromptBuilderService } from '@services/convergence/prompt-builder/PromptBuilderService';
-import { DepthEstimationService } from '@services/convergence/depth/DepthEstimationService';
+import { createConvergenceRoutes } from "@routes/convergence/convergence.routes";
+import { ConvergenceService } from "@services/convergence";
+import { SessionStore } from "@services/convergence/session/SessionStore";
+import { PromptBuilderService } from "@services/convergence/prompt-builder/PromptBuilderService";
+import { DepthEstimationService } from "@services/convergence/depth/DepthEstimationService";
 
 // Add to service initialization
 const sessionStore = new SessionStore();
@@ -2582,7 +2707,7 @@ const convergenceService = new ConvergenceService({
 });
 
 // Add to routes
-app.use('/api/convergence', createConvergenceRoutes({ convergenceService }));
+app.use("/api/convergence", createConvergenceRoutes({ convergenceService }));
 ```
 
 ### 5.3 Frontend Route
@@ -2605,18 +2730,18 @@ import { ConvergenceFlow } from '@features/convergence';
 
 ```typescript
 interface ConvergenceSessionDocument {
-  id: string;                      // UUID
-  userId: string;                  // Firebase Auth UID
-  intent: string;                  // Original user input
-  direction: Direction | null;     // Selected direction
+  id: string; // UUID
+  userId: string; // Firebase Auth UID
+  intent: string; // Original user input
+  direction: Direction | null; // Selected direction
   lockedDimensions: LockedDimension[];
-  currentDimension: string;        // Current step
+  currentDimension: string; // Current step
   generatedImages: GeneratedImage[];
-  depthMapUrl: string | null;      // GCS URL to depth map
-  cameraMotion: string | null;     // Selected camera motion ID
-  subjectMotion: string | null;    // User's subject motion text
-  finalPrompt: string | null;      // Complete generated prompt
-  status: 'active' | 'completed' | 'abandoned';
+  depthMapUrl: string | null; // GCS URL to depth map
+  cameraMotion: string | null; // Selected camera motion ID
+  subjectMotion: string | null; // User's subject motion text
+  finalPrompt: string | null; // Complete generated prompt
+  status: "active" | "completed" | "abandoned";
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }
@@ -2636,14 +2761,14 @@ convergence_sessions:
 
 ### Endpoints
 
-| Method | Path | Description |
-|--------|------|-------------|
-| POST | `/api/convergence/start` | Start new session with intent |
-| POST | `/api/convergence/select` | Select option for current dimension |
-| POST | `/api/convergence/camera-motion` | Generate depth map and camera paths |
-| POST | `/api/convergence/camera-motion/select` | Lock camera motion selection |
-| POST | `/api/convergence/subject-motion` | Generate Wan preview with subject motion |
-| POST | `/api/convergence/finalize` | Finalize session and return prompt |
+| Method | Path                                    | Description                              |
+| ------ | --------------------------------------- | ---------------------------------------- |
+| POST   | `/api/convergence/start`                | Start new session with intent            |
+| POST   | `/api/convergence/select`               | Select option for current dimension      |
+| POST   | `/api/convergence/camera-motion`        | Generate depth map and camera paths      |
+| POST   | `/api/convergence/camera-motion/select` | Lock camera motion selection             |
+| POST   | `/api/convergence/subject-motion`       | Generate Wan preview with subject motion |
+| POST   | `/api/convergence/finalize`             | Finalize session and return prompt       |
 
 ### Request/Response Examples
 
@@ -2681,19 +2806,20 @@ tests/integration/
 
 ### Test Coverage Targets
 
-| Component | Target |
-|-----------|--------|
-| ConvergenceService | 80% |
-| PromptBuilderService | 90% |
-| SessionStore | 80% |
-| useConvergenceSession | 85% |
-| cameraMotionRenderer | 70% |
+| Component             | Target |
+| --------------------- | ------ |
+| ConvergenceService    | 80%    |
+| PromptBuilderService  | 90%    |
+| SessionStore          | 80%    |
+| useConvergenceSession | 85%    |
+| cameraMotionRenderer  | 70%    |
 
 ---
 
 ## Implementation Order
 
 ### Week 1: Backend Core
+
 1. [ ] Create `server/src/services/convergence/` directory structure
 2. [ ] Implement types (`types.ts`)
 3. [ ] Implement SessionStore
@@ -2704,6 +2830,7 @@ tests/integration/
 8. [ ] Test with Postman/curl
 
 ### Week 2: Depth & Camera Motion
+
 1. [ ] Implement DepthEstimationService
 2. [ ] Add CameraPaths data
 3. [ ] Test depth estimation endpoint
@@ -2712,6 +2839,7 @@ tests/integration/
 6. [ ] Test Three.js rendering in isolation
 
 ### Week 3: Frontend Flow
+
 1. [ ] Implement types
 2. [ ] Implement convergenceApi
 3. [ ] Implement useConvergenceSession
@@ -2724,6 +2852,7 @@ tests/integration/
 10. [ ] Implement ConvergenceFlow orchestrator
 
 ### Week 4: Integration & Polish
+
 1. [ ] Connect to existing ImageGenerationService
 2. [ ] Connect to existing Wan preview service
 3. [ ] Add credits/billing integration
@@ -2734,6 +2863,7 @@ tests/integration/
 8. [ ] Mobile responsiveness
 
 ### Week 5: Launch Prep
+
 1. [ ] Landing page with `/create` CTA
 2. [ ] User onboarding flow
 3. [ ] Documentation

@@ -1,9 +1,13 @@
-import React from 'react';
-import { Sparkles } from '@promptstudio/system/components/ui';
-import { VIDEO_DRAFT_MODEL, VIDEO_RENDER_MODELS } from '@components/ToolSidebar/config/modelConfig';
-import { ModelRecommendationDropdown } from './ModelRecommendationDropdown';
-import type { ModelRecommendation } from '@/features/model-intelligence/types';
-import { cn } from '@/utils/cn';
+import React from "react";
+import { Sparkles } from "@promptstudio/system/components/ui";
+import {
+  VIDEO_DRAFT_MODEL,
+  VIDEO_RENDER_MODELS,
+  getVideoCost,
+} from "@components/ToolSidebar/config/modelConfig";
+import { ModelRecommendationDropdown } from "./ModelRecommendationDropdown";
+import type { ModelRecommendation } from "@/features/model-intelligence/types";
+import { cn } from "@/utils/cn";
 
 interface ModelOption {
   id: string;
@@ -17,6 +21,7 @@ interface GenerationFooterProps {
   onGenerate: () => void;
   isGenerateDisabled: boolean;
   creditBalance?: number | null | undefined;
+  duration?: number | undefined;
   generateLabel?: string | undefined;
   /** Model recommendation data — enables the rich dropdown with match %, capabilities, etc. */
   modelRecommendation?: ModelRecommendation | null | undefined;
@@ -38,7 +43,8 @@ export function GenerationFooter({
   onGenerate,
   isGenerateDisabled,
   creditBalance,
-  generateLabel = 'Generate',
+  duration,
+  generateLabel = "Generate",
   modelRecommendation,
   recommendedModelId,
   efficientModelId,
@@ -46,9 +52,12 @@ export function GenerationFooter({
   const isDraft = renderModelId === VIDEO_DRAFT_MODEL.id;
   const currentModel = isDraft
     ? VIDEO_DRAFT_MODEL
-    : VIDEO_RENDER_MODELS.find((m) => m.id === renderModelId) ?? VIDEO_RENDER_MODELS[0];
+    : (VIDEO_RENDER_MODELS.find((m) => m.id === renderModelId) ??
+      VIDEO_RENDER_MODELS[0]);
 
-  const creditCost = currentModel?.cost ?? null;
+  const creditCost = currentModel
+    ? getVideoCost(currentModel.id, duration)
+    : null;
   const hasSufficientCredits =
     creditBalance !== null && creditBalance !== undefined
       ? creditBalance >= (creditCost ?? 0)
@@ -71,12 +80,14 @@ export function GenerationFooter({
 
       {/* ── Credit cost ── */}
       <span className="whitespace-nowrap text-[11px] tabular-nums text-tool-text-subdued">
-        {creditCost !== null ? `· ${creditCost} cr` : ''}
+        {creditCost !== null ? `· ${creditCost} cr` : ""}
         {creditBalance !== null && creditBalance !== undefined ? (
           <span
             className={cn(
-              'ml-1',
-              creditBalance < (creditCost ?? 0) ? 'text-amber-400' : 'text-tool-text-subdued'
+              "ml-1",
+              creditBalance < (creditCost ?? 0)
+                ? "text-amber-400"
+                : "text-tool-text-subdued",
             )}
           >
             · {creditBalance} bal

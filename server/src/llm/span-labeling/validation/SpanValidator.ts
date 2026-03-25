@@ -1,18 +1,18 @@
-import { mergeAdjacentSpans } from '../processing/AdjacentSpanMerger.js';
-import { deduplicateSpans } from '../processing/SpanDeduplicator.js';
-import { resolveOverlaps } from '../processing/OverlapResolver.js';
-import { filterHeaders } from '../processing/HeaderFilter.js';
-import { filterNonVisualSpans } from '../processing/VisualOnlyFilter.js';
-import { filterByConfidence } from '../processing/ConfidenceFilter.js';
-import { truncateToMaxSpans } from '../processing/SpanTruncator.js';
-import { normalizeAndCorrectSpans } from './normalizeAndCorrectSpans.js';
+import { mergeAdjacentSpans } from "../processing/AdjacentSpanMerger.js";
+import { deduplicateSpans } from "../processing/SpanDeduplicator.js";
+import { resolveOverlaps } from "../processing/OverlapResolver.js";
+import { filterHeaders } from "../processing/HeaderFilter.js";
+import { filterNonVisualSpans } from "../processing/VisualOnlyFilter.js";
+import { filterByConfidence } from "../processing/ConfidenceFilter.js";
+import { truncateToMaxSpans } from "../processing/SpanTruncator.js";
+import { normalizeAndCorrectSpans } from "./normalizeAndCorrectSpans.js";
 import type {
   ProcessingOptions,
   ValidationPolicy,
   ValidationResult,
   LLMSpan,
-} from '../types.js';
-import type { SubstringPositionCache } from '../cache/SubstringPositionCache.js';
+} from "../types.js";
+import type { SubstringPositionCache } from "../cache/SubstringPositionCache.js";
 
 /**
  * Comprehensive span validation and processing
@@ -79,7 +79,13 @@ export function validateSpans({
   const lenient = attempt > 1;
 
   // Phase 1: Normalize and correct individual spans
-  const phase1Result = normalizeAndCorrectSpans(spans, text, policy, cache, lenient);
+  const phase1Result = normalizeAndCorrectSpans(
+    spans,
+    text,
+    policy,
+    cache,
+    lenient,
+  );
   const sanitized = phase1Result.sanitized;
   const errors = phase1Result.errors;
   const phase1Notes = phase1Result.notes;
@@ -97,13 +103,16 @@ export function validateSpans({
   // Phase 2.5: Merge adjacent spans with compatible categories
   // Fixes LLM fragmentation like "Action" + "Shot" → "Action Shot"
   // Cast to SpanLike[] since we've validated start/end exist
-  const spansForMerge = sanitized.map(s => ({
+  const spansForMerge = sanitized.map((s) => ({
     ...s,
     start: s.start ?? 0,
     end: s.end ?? 0,
     confidence: s.confidence ?? 0,
   }));
-  const { spans: merged, notes: mergeNotes } = mergeAdjacentSpans(spansForMerge, text);
+  const { spans: merged, notes: mergeNotes } = mergeAdjacentSpans(
+    spansForMerge,
+    text,
+  );
 
   // Phase 3: Deduplicate
   const { spans: deduplicated, notes: dedupeNotes } = deduplicateSpans(merged);
@@ -111,44 +120,41 @@ export function validateSpans({
   // Phase 4: Resolve overlaps
   const { spans: resolved, notes: overlapNotes } = resolveOverlaps(
     deduplicated,
-    policy.allowOverlap === true
+    policy.allowOverlap === true,
   );
 
   // Phase 4.5: Filter out section headers and labels
-  const { spans: headersFiltered, notes: headerNotes } = filterHeaders(resolved);
+  const { spans: headersFiltered, notes: headerNotes } =
+    filterHeaders(resolved);
 
   // Phase 4.75: Filter out non-visual spans and alternative sections
-  const { spans: nonVisualFiltered, notes: nonVisualNotes } = filterNonVisualSpans(
-    headersFiltered,
-    text
-  );
+  const { spans: nonVisualFiltered, notes: nonVisualNotes } =
+    filterNonVisualSpans(headersFiltered, text);
 
   // Phase 5: Filter by confidence
-  const { spans: confidenceFiltered, notes: confidenceNotes } = filterByConfidence(
-    nonVisualFiltered,
-    options.minConfidence ?? 0
-  );
+  const { spans: confidenceFiltered, notes: confidenceNotes } =
+    filterByConfidence(nonVisualFiltered, options.minConfidence ?? 0);
 
   // Phase 6: Truncate to max spans
   const { spans: finalSpansRaw, notes: truncationNotes } = truncateToMaxSpans(
     confidenceFiltered,
-    options.maxSpans ?? 10
+    options.maxSpans ?? 10,
   );
 
   // Convert back to LLMSpan[]
   const finalSpans: LLMSpan[] = finalSpansRaw.map((s) => ({
     text: s.text,
-    role: typeof s.role === 'string' ? s.role : 'subject',
+    role: typeof s.role === "string" ? s.role : "subject",
     start: s.start,
     end: s.end,
-    ...(typeof s.confidence === 'number' ? { confidence: s.confidence } : {}),
+    ...(typeof s.confidence === "number" ? { confidence: s.confidence } : {}),
   }));
 
   // Combine all notes
   const combinedNotes = [
     ...(Array.isArray(meta?.notes) ? meta.notes : []),
-    ...(typeof meta?.notes === 'string' && meta.notes ? [meta.notes] : []),
-    ...(isAdversarial ? ['input flagged as adversarial'] : []),
+    ...(typeof meta?.notes === "string" && meta.notes ? [meta.notes] : []),
+    ...(isAdversarial ? ["input flagged as adversarial"] : []),
     ...phase1Notes,
     ...mergeNotes,
     ...dedupeNotes,
@@ -166,17 +172,25 @@ export function validateSpans({
       spans: finalSpans,
       meta: {
         version:
-          typeof meta?.version === 'string' && meta.version.trim()
+          typeof meta?.version === "string" && meta.version.trim()
             ? meta.version.trim()
             : (options.templateVersion as string),
-        notes: combinedNotes.join(' | '),
+        notes: combinedNotes.join(" | "),
         // Preserve NLP pipeline stats for evaluation/telemetry
-        ...(typeof meta?.closedVocab === 'number' && { closedVocab: meta.closedVocab }),
-        ...(typeof meta?.openVocab === 'number' && { openVocab: meta.openVocab }),
-        ...(typeof meta?.tier1Latency === 'number' && { tier1Latency: meta.tier1Latency }),
-        ...(typeof meta?.tier2Latency === 'number' && { tier2Latency: meta.tier2Latency }),
-        ...(typeof meta?.latency === 'number' && { latency: meta.latency }),
-        ...(typeof meta?.source === 'string' && { source: meta.source }),
+        ...(typeof meta?.closedVocab === "number" && {
+          closedVocab: meta.closedVocab,
+        }),
+        ...(typeof meta?.openVocab === "number" && {
+          openVocab: meta.openVocab,
+        }),
+        ...(typeof meta?.tier1Latency === "number" && {
+          tier1Latency: meta.tier1Latency,
+        }),
+        ...(typeof meta?.tier2Latency === "number" && {
+          tier2Latency: meta.tier2Latency,
+        }),
+        ...(typeof meta?.latency === "number" && { latency: meta.latency }),
+        ...(typeof meta?.source === "string" && { source: meta.source }),
       },
       isAdversarial: Boolean(isAdversarial),
       analysisTrace: analysisTrace || null,

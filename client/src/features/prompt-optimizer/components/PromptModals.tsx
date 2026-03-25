@@ -1,11 +1,17 @@
-import React from 'react';
-import Settings, { useSettings } from '@components/Settings';
-import KeyboardShortcuts from '@components/KeyboardShortcuts';
-import { Dialog, DialogContent } from '@promptstudio/system/components/ui/dialog';
-import PromptImprovementForm from '@/PromptImprovementForm';
-import { usePromptServices, usePromptUIStateContext } from '../context/PromptStateContext';
-import type { PromptModalsProps } from '../types';
-import type { FormData } from '@/PromptImprovementForm';
+import React from "react";
+import Settings, { useSettings } from "@components/Settings";
+import KeyboardShortcuts from "@components/KeyboardShortcuts";
+import {
+  Dialog,
+  DialogContent,
+} from "@promptstudio/system/components/ui/dialog";
+import PromptImprovementForm from "@/PromptImprovementForm";
+import {
+  usePromptServices,
+  usePromptUIStateContext,
+} from "../context/PromptStateContext";
+import type { PromptModalsProps } from "../types";
+import type { FormData } from "@/PromptImprovementForm";
 
 /**
  * PromptModals - Modal Management
@@ -30,8 +36,7 @@ export const PromptModals = ({
 
   const { settings, updateSetting, resetSettings } = useSettings();
   const handleImprovementComplete =
-    onImprovementComplete ??
-    ((_: string, __: FormData): void => {});
+    onImprovementComplete ?? ((_: string, __: FormData): void => {});
 
   return (
     <>

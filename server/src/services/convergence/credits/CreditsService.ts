@@ -11,11 +11,11 @@
  * - 15.8: When user goes back and selects same option (restoring cached images), do NOT charge credits
  */
 
-import { v4 as uuidv4 } from 'uuid';
-import { admin, getFirestore } from '@infrastructure/firebaseAdmin';
-import { logger } from '@infrastructure/Logger';
-import { ConvergenceError } from '../errors';
-import type { CreditReservation, CreditReservationStatus } from '../types';
+import { v4 as uuidv4 } from "uuid";
+import { admin, getFirestore } from "@infrastructure/firebaseAdmin";
+import { logger } from "@infrastructure/Logger";
+import { ConvergenceError } from "../errors";
+import type { CreditReservation, CreditReservationStatus } from "../types";
 
 // ============================================================================
 // Interface Definition
@@ -85,8 +85,8 @@ export interface CreditsService {
  */
 export class FirestoreCreditsService implements CreditsService {
   private db = getFirestore();
-  private usersCollection = this.db.collection('users');
-  private reservationsCollection = this.db.collection('credit_reservations');
+  private usersCollection = this.db.collection("users");
+  private reservationsCollection = this.db.collection("credit_reservations");
 
   /**
    * Get current credit balance for user
@@ -116,7 +116,7 @@ export class FirestoreCreditsService implements CreditsService {
         const snapshot = await transaction.get(userRef);
 
         if (!snapshot.exists) {
-          throw new ConvergenceError('INSUFFICIENT_CREDITS', {
+          throw new ConvergenceError("INSUFFICIENT_CREDITS", {
             required: amount,
             available: 0,
           });
@@ -126,7 +126,7 @@ export class FirestoreCreditsService implements CreditsService {
         const currentCredits = data?.credits ?? 0;
 
         if (currentCredits < amount) {
-          throw new ConvergenceError('INSUFFICIENT_CREDITS', {
+          throw new ConvergenceError("INSUFFICIENT_CREDITS", {
             required: amount,
             available: currentCredits,
           });
@@ -144,27 +144,30 @@ export class FirestoreCreditsService implements CreditsService {
           id: reservationId,
           userId,
           amount,
-          status: 'pending' as CreditReservationStatus,
+          status: "pending" as CreditReservationStatus,
           createdAt: admin.firestore.Timestamp.fromDate(createdAt),
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
       });
 
-      logger.info('Credits reserved', { userId, amount, reservationId });
+      logger.info("Credits reserved", { userId, amount, reservationId });
 
       return {
         id: reservationId,
         userId,
         amount,
         createdAt,
-        status: 'pending',
+        status: "pending",
       };
     } catch (error) {
       if (error instanceof ConvergenceError) {
         throw error;
       }
-      logger.error('Credit reservation failed', error as Error, { userId, amount });
-      throw new Error('Failed to reserve credits');
+      logger.error("Credit reservation failed", error as Error, {
+        userId,
+        amount,
+      });
+      throw new Error("Failed to reserve credits");
     }
   }
 
@@ -180,13 +183,15 @@ export class FirestoreCreditsService implements CreditsService {
       const snapshot = await reservationRef.get();
 
       if (!snapshot.exists) {
-        logger.warn('Attempted to commit non-existent reservation', { reservationId });
+        logger.warn("Attempted to commit non-existent reservation", {
+          reservationId,
+        });
         return;
       }
 
       const data = snapshot.data();
-      if (data?.status !== 'pending') {
-        logger.warn('Attempted to commit non-pending reservation', {
+      if (data?.status !== "pending") {
+        logger.warn("Attempted to commit non-pending reservation", {
           reservationId,
           currentStatus: data?.status,
         });
@@ -194,14 +199,16 @@ export class FirestoreCreditsService implements CreditsService {
       }
 
       await reservationRef.update({
-        status: 'committed' as CreditReservationStatus,
+        status: "committed" as CreditReservationStatus,
         committedAt: admin.firestore.FieldValue.serverTimestamp(),
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
 
-      logger.info('Credit reservation committed', { reservationId });
+      logger.info("Credit reservation committed", { reservationId });
     } catch (error) {
-      logger.error('Failed to commit credit reservation', error as Error, { reservationId });
+      logger.error("Failed to commit credit reservation", error as Error, {
+        reservationId,
+      });
       // Don't throw - credits are already deducted, this is just bookkeeping
     }
   }
@@ -219,13 +226,15 @@ export class FirestoreCreditsService implements CreditsService {
         const snapshot = await transaction.get(reservationRef);
 
         if (!snapshot.exists) {
-          logger.warn('Attempted to refund non-existent reservation', { reservationId });
+          logger.warn("Attempted to refund non-existent reservation", {
+            reservationId,
+          });
           return;
         }
 
         const data = snapshot.data();
-        if (data?.status !== 'pending') {
-          logger.warn('Attempted to refund non-pending reservation', {
+        if (data?.status !== "pending") {
+          logger.warn("Attempted to refund non-pending reservation", {
             reservationId,
             currentStatus: data?.status,
           });
@@ -243,17 +252,19 @@ export class FirestoreCreditsService implements CreditsService {
 
         // Mark reservation as refunded
         transaction.update(reservationRef, {
-          status: 'refunded' as CreditReservationStatus,
+          status: "refunded" as CreditReservationStatus,
           refundedAt: admin.firestore.FieldValue.serverTimestamp(),
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
       });
 
-      logger.info('Credit reservation refunded', { reservationId });
+      logger.info("Credit reservation refunded", { reservationId });
     } catch (error) {
-      logger.error('Failed to refund credit reservation', error as Error, { reservationId });
+      logger.error("Failed to refund credit reservation", error as Error, {
+        reservationId,
+      });
       // This is critical - we should retry or alert
-      throw new Error('Failed to refund credits');
+      throw new Error("Failed to refund credits");
     }
   }
 
@@ -270,7 +281,7 @@ export class FirestoreCreditsService implements CreditsService {
         const snapshot = await transaction.get(userRef);
 
         if (!snapshot.exists) {
-          throw new ConvergenceError('INSUFFICIENT_CREDITS', {
+          throw new ConvergenceError("INSUFFICIENT_CREDITS", {
             required: amount,
             available: 0,
           });
@@ -280,7 +291,7 @@ export class FirestoreCreditsService implements CreditsService {
         const currentCredits = data?.credits ?? 0;
 
         if (currentCredits < amount) {
-          throw new ConvergenceError('INSUFFICIENT_CREDITS', {
+          throw new ConvergenceError("INSUFFICIENT_CREDITS", {
             required: amount,
             available: currentCredits,
           });
@@ -292,7 +303,7 @@ export class FirestoreCreditsService implements CreditsService {
         });
 
         // Log the debit for audit purposes
-        const debitRef = this.db.collection('credit_debits').doc();
+        const debitRef = this.db.collection("credit_debits").doc();
         transaction.set(debitRef, {
           userId,
           amount,
@@ -301,13 +312,17 @@ export class FirestoreCreditsService implements CreditsService {
         });
       });
 
-      logger.info('Credits debited', { userId, amount, reason });
+      logger.info("Credits debited", { userId, amount, reason });
     } catch (error) {
       if (error instanceof ConvergenceError) {
         throw error;
       }
-      logger.error('Credit debit failed', error as Error, { userId, amount, reason });
-      throw new Error('Failed to debit credits');
+      logger.error("Credit debit failed", error as Error, {
+        userId,
+        amount,
+        reason,
+      });
+      throw new Error("Failed to debit credits");
     }
   }
 }

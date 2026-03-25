@@ -1,4 +1,4 @@
-import type { VideoModelId, VideoModelKey } from './types';
+import type { VideoModelId, VideoModelKey } from "./types";
 import {
   isKlingModelId,
   isLumaModelId,
@@ -8,22 +8,24 @@ import {
   resolveGenerationModelSelection,
   type ModelResolution,
   type ModelResolutionSource,
-} from '@services/video-models/ModelRegistry';
+} from "@services/video-models/ModelRegistry";
 
-type LogSink = { warn: (message: string, meta?: Record<string, unknown>) => void };
+type LogSink = {
+  warn: (message: string, meta?: Record<string, unknown>) => void;
+};
 
 export type { ModelResolutionSource, ModelResolution };
 
 export function resolveModelSelection(
   model?: VideoModelKey | VideoModelId | string,
-  log?: LogSink
+  log?: LogSink,
 ): ModelResolution {
   return resolveGenerationModelSelection(model, log);
 }
 
 export function resolveModelId(
   model?: VideoModelKey | VideoModelId | string,
-  log?: LogSink
+  log?: LogSink,
 ): VideoModelId {
   return resolveGenerationModelId(model, log);
 }

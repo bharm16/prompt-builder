@@ -8,10 +8,10 @@
  * @module convergence/storage
  */
 
-import { Bucket, type File } from '@google-cloud/storage';
-import { v4 as uuidv4 } from 'uuid';
-import { logger } from '@infrastructure/Logger';
-import { SESSION_TTL_MS } from '../constants';
+import { Bucket, type File } from "@google-cloud/storage";
+import { v4 as uuidv4 } from "uuid";
+import { logger } from "@infrastructure/Logger";
+import { SESSION_TTL_MS } from "../constants";
 
 // ============================================================================
 // Interface
@@ -53,7 +53,11 @@ export interface StorageService {
    * @param contentType MIME type for the file
    * @returns Signed GCS URL
    */
-  uploadBuffer(buffer: Buffer, destination: string, contentType: string): Promise<string>;
+  uploadBuffer(
+    buffer: Buffer,
+    destination: string,
+    contentType: string,
+  ): Promise<string>;
 
   /**
    * Delete images (for cleanup on session abandonment)
@@ -81,12 +85,14 @@ export function setConvergenceStorageSignedUrlTtl(ttlSeconds: number): void {
 
 const CONVERGENCE_STORAGE_CONFIG = {
   /** Default content type for uploaded images */
-  defaultContentType: 'image/png',
+  defaultContentType: "image/png",
   /** Timeout for fetching from temporary URLs (5 minutes) */
   fetchTimeoutMs: 5 * 60 * 1000,
   /** Maximum concurrent uploads in a batch */
   maxConcurrentUploads: 10,
-  get signedUrlTtlMs() { return convergenceSignedUrlTtlMs; },
+  get signedUrlTtlMs() {
+    return convergenceSignedUrlTtlMs;
+  },
 } as const;
 
 // ============================================================================
@@ -103,7 +109,7 @@ const CONVERGENCE_STORAGE_CONFIG = {
  * - Cleanup of abandoned session images
  */
 export class GCSStorageService implements StorageService {
-  private readonly log = logger.child({ service: 'GCSStorageService' });
+  private readonly log = logger.child({ service: "GCSStorageService" });
 
   constructor(private readonly bucket: Bucket) {}
 
@@ -121,28 +127,33 @@ export class GCSStorageService implements StorageService {
    */
   async upload(tempUrl: string, destination: string): Promise<string> {
     const startTime = Date.now();
-    this.log.debug('Starting image upload', { destination, tempUrlHost: this.getUrlHost(tempUrl) });
+    this.log.debug("Starting image upload", {
+      destination,
+      tempUrlHost: this.getUrlHost(tempUrl),
+    });
 
     try {
       // Fetch image from temporary URL with timeout
       const controller = new AbortController();
       const timeout = setTimeout(
         () => controller.abort(),
-        CONVERGENCE_STORAGE_CONFIG.fetchTimeoutMs
+        CONVERGENCE_STORAGE_CONFIG.fetchTimeoutMs,
       );
 
       let response: Response;
       try {
         response = await fetch(tempUrl, {
           signal: controller.signal,
-          redirect: 'follow',
+          redirect: "follow",
         });
       } finally {
         clearTimeout(timeout);
       }
 
       if (!response.ok) {
-        throw new Error(`Failed to fetch image: ${response.status} ${response.statusText}`);
+        throw new Error(
+          `Failed to fetch image: ${response.status} ${response.statusText}`,
+        );
       }
 
       // Get the image data as buffer
@@ -151,7 +162,8 @@ export class GCSStorageService implements StorageService {
 
       // Determine content type from response or use default
       const contentType = this.normalizeContentType(
-        response.headers.get('content-type') || CONVERGENCE_STORAGE_CONFIG.defaultContentType
+        response.headers.get("content-type") ||
+          CONVERGENCE_STORAGE_CONFIG.defaultContentType,
       );
 
       // Upload to GCS
@@ -159,7 +171,7 @@ export class GCSStorageService implements StorageService {
       const saveOptions: Parameters<typeof file.save>[1] = {
         contentType,
         metadata: {
-          cacheControl: 'public, max-age=31536000', // 1 year cache
+          cacheControl: "public, max-age=31536000", // 1 year cache
           metadata: {
             sourceUrl: tempUrl.slice(0, 200), // Truncate for metadata limits
             uploadedAt: new Date().toISOString(),
@@ -172,7 +184,7 @@ export class GCSStorageService implements StorageService {
       const signedUrl = await this.getSignedUrl(file);
       const duration = Date.now() - startTime;
 
-      this.log.info('Image upload completed', {
+      this.log.info("Image upload completed", {
         destination,
         sizeBytes: buffer.length,
         contentType,
@@ -182,7 +194,7 @@ export class GCSStorageService implements StorageService {
       return signedUrl;
     } catch (error) {
       const duration = Date.now() - startTime;
-      this.log.error('Image upload failed', error as Error, {
+      this.log.error("Image upload failed", error as Error, {
         destination,
         tempUrlHost: this.getUrlHost(tempUrl),
         duration,
@@ -199,13 +211,16 @@ export class GCSStorageService implements StorageService {
    * @returns Array of signed GCS URLs in same order as input
    * @throws Error if any upload fails
    */
-  async uploadBatch(tempUrls: string[], destinationPrefix: string): Promise<string[]> {
+  async uploadBatch(
+    tempUrls: string[],
+    destinationPrefix: string,
+  ): Promise<string[]> {
     if (tempUrls.length === 0) {
       return [];
     }
 
     const startTime = Date.now();
-    this.log.debug('Starting batch upload', {
+    this.log.debug("Starting batch upload", {
       count: tempUrls.length,
       destinationPrefix,
     });
@@ -222,7 +237,7 @@ export class GCSStorageService implements StorageService {
       const results = await Promise.all(uploadPromises);
 
       const duration = Date.now() - startTime;
-      this.log.info('Batch upload completed', {
+      this.log.info("Batch upload completed", {
         count: tempUrls.length,
         destinationPrefix,
         duration,
@@ -231,7 +246,7 @@ export class GCSStorageService implements StorageService {
       return results;
     } catch (error) {
       const duration = Date.now() - startTime;
-      this.log.error('Batch upload failed', error as Error, {
+      this.log.error("Batch upload failed", error as Error, {
         count: tempUrls.length,
         destinationPrefix,
         duration,
@@ -243,8 +258,11 @@ export class GCSStorageService implements StorageService {
   /**
    * Upload a remote image URL to GCS with a generated filename.
    */
-  async uploadFromUrl(sourceUrl: string, destinationPrefix: string): Promise<string> {
-    const sanitizedPrefix = destinationPrefix.replace(/\/+$/, '');
+  async uploadFromUrl(
+    sourceUrl: string,
+    destinationPrefix: string,
+  ): Promise<string> {
+    const sanitizedPrefix = destinationPrefix.replace(/\/+$/, "");
     const destination = `${sanitizedPrefix}/${uuidv4()}.png`;
     return this.upload(sourceUrl, destination);
   }
@@ -252,13 +270,17 @@ export class GCSStorageService implements StorageService {
   /**
    * Upload a buffer directly to GCS.
    */
-  async uploadBuffer(buffer: Buffer, destination: string, contentType: string): Promise<string> {
+  async uploadBuffer(
+    buffer: Buffer,
+    destination: string,
+    contentType: string,
+  ): Promise<string> {
     const startTime = Date.now();
     const normalizedContentType = this.normalizeContentType(
-      contentType || CONVERGENCE_STORAGE_CONFIG.defaultContentType
+      contentType || CONVERGENCE_STORAGE_CONFIG.defaultContentType,
     );
 
-    this.log.debug('Starting buffer upload', {
+    this.log.debug("Starting buffer upload", {
       destination,
       sizeBytes: buffer.length,
       contentType: normalizedContentType,
@@ -270,7 +292,7 @@ export class GCSStorageService implements StorageService {
         contentType: normalizedContentType,
         resumable: false,
         metadata: {
-          cacheControl: 'public, max-age=31536000',
+          cacheControl: "public, max-age=31536000",
           metadata: {
             uploadedAt: new Date().toISOString(),
           },
@@ -282,7 +304,7 @@ export class GCSStorageService implements StorageService {
       const signedUrl = await this.getSignedUrl(file);
       const duration = Date.now() - startTime;
 
-      this.log.info('Buffer upload completed', {
+      this.log.info("Buffer upload completed", {
         destination,
         sizeBytes: buffer.length,
         contentType: normalizedContentType,
@@ -292,7 +314,7 @@ export class GCSStorageService implements StorageService {
       return signedUrl;
     } catch (error) {
       const duration = Date.now() - startTime;
-      this.log.error('Buffer upload failed', error as Error, {
+      this.log.error("Buffer upload failed", error as Error, {
         destination,
         sizeBytes: buffer.length,
         duration,
@@ -316,22 +338,22 @@ export class GCSStorageService implements StorageService {
     }
 
     const startTime = Date.now();
-    this.log.debug('Starting batch delete', { count: gcsUrls.length });
+    this.log.debug("Starting batch delete", { count: gcsUrls.length });
 
     const deletePromises = gcsUrls.map(async (url) => {
       try {
         const path = this.extractObjectPath(url);
         if (!path) {
-          this.log.warn('Skipping non-matching URL in delete', { url });
+          this.log.warn("Skipping non-matching URL in delete", { url });
           return;
         }
 
         await this.bucket.file(path).delete();
 
-        this.log.debug('File deleted', { path });
+        this.log.debug("File deleted", { path });
       } catch (error) {
         // Ignore errors (file may already be deleted)
-        this.log.debug('Delete failed (may already be deleted)', {
+        this.log.debug("Delete failed (may already be deleted)", {
           url,
           error: (error as Error).message,
         });
@@ -341,7 +363,7 @@ export class GCSStorageService implements StorageService {
     await Promise.all(deletePromises);
 
     const duration = Date.now() - startTime;
-    this.log.info('Batch delete completed', {
+    this.log.info("Batch delete completed", {
       count: gcsUrls.length,
       duration,
     });
@@ -361,7 +383,7 @@ export class GCSStorageService implements StorageService {
     const file = this.bucket.file(objectPath);
     const signedUrl = await this.getSignedUrl(file);
 
-    this.log.debug('Refreshed signed URL for convergence media asset', {
+    this.log.debug("Refreshed signed URL for convergence media asset", {
       objectPath,
       sourceHost: this.getUrlHost(url),
     });
@@ -377,7 +399,7 @@ export class GCSStorageService implements StorageService {
    * Normalize content type by removing charset and other parameters
    */
   private normalizeContentType(contentType: string): string {
-    return contentType.split(';')[0]?.trim().toLowerCase() || 'image/png';
+    return contentType.split(";")[0]?.trim().toLowerCase() || "image/png";
   }
 
   /**
@@ -386,7 +408,7 @@ export class GCSStorageService implements StorageService {
   private async getSignedUrl(file: File): Promise<string> {
     const expiresAt = Date.now() + CONVERGENCE_STORAGE_CONFIG.signedUrlTtlMs;
     const [url] = await file.getSignedUrl({
-      action: 'read',
+      action: "read",
       expires: expiresAt,
     });
     return url;
@@ -411,22 +433,22 @@ export class GCSStorageService implements StorageService {
       return null;
     }
 
-    if (!url.includes('://')) {
-      const path = url.replace(/^\/+/, '');
+    if (!url.includes("://")) {
+      const path = url.replace(/^\/+/, "");
       return path || null;
     }
 
     try {
       const urlObj = new URL(url);
       const host = urlObj.hostname;
-      const path = urlObj.pathname.replace(/^\/+/, '');
+      const path = urlObj.pathname.replace(/^\/+/, "");
 
-      if (host === 'storage.googleapis.com') {
-        const parts = path.split('/').filter(Boolean);
+      if (host === "storage.googleapis.com") {
+        const parts = path.split("/").filter(Boolean);
         if (parts[0] !== this.bucket.name) {
           return null;
         }
-        const objectPath = parts.slice(1).join('/');
+        const objectPath = parts.slice(1).join("/");
         return objectPath || null;
       }
 
@@ -434,8 +456,8 @@ export class GCSStorageService implements StorageService {
         return path || null;
       }
 
-      if (host.endsWith('.storage.googleapis.com')) {
-        const bucketFromHost = host.slice(0, -'.storage.googleapis.com'.length);
+      if (host.endsWith(".storage.googleapis.com")) {
+        const bucketFromHost = host.slice(0, -".storage.googleapis.com".length);
         if (bucketFromHost !== this.bucket.name) {
           return null;
         }

@@ -4,10 +4,10 @@
  */
 
 export const PROMPT_MODES = {
-  ENHANCEMENT: 'enhancement',
+  ENHANCEMENT: "enhancement",
 } as const;
 
-export type PromptMode = typeof PROMPT_MODES[keyof typeof PROMPT_MODES];
+export type PromptMode = (typeof PROMPT_MODES)[keyof typeof PROMPT_MODES];
 
 /**
  * Patterns that indicate low-quality suggestions (from training data contamination)
@@ -15,14 +15,14 @@ export type PromptMode = typeof PROMPT_MODES[keyof typeof PROMPT_MODES];
  * generating novel suggestions.
  */
 export const POISONOUS_PATTERNS = [
-  'specific element detail',
-  'alternative aspect feature',
-  'varied choice showcasing',
-  'different variant featuring',
-  'alternative option with specific',
-  'distinctive',
-  'remarkable',
-  'notable',
+  "specific element detail",
+  "alternative aspect feature",
+  "varied choice showcasing",
+  "different variant featuring",
+  "alternative option with specific",
+  "distinctive",
+  "remarkable",
+  "notable",
 ] as const;
 
 export const PROMPT_PREVIEW_LIMIT = 6000;

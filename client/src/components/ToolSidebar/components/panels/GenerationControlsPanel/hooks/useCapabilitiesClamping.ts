@@ -1,19 +1,22 @@
-import { useEffect, useMemo } from 'react';
-import type { CapabilityValues, CapabilitiesSchema } from '@shared/capabilities';
-import { useCapabilities } from '@features/prompt-optimizer/hooks/useCapabilities';
-import { logger } from '@/services/LoggingService';
-import { VIDEO_DRAFT_MODEL } from '@components/ToolSidebar/config/modelConfig';
-import { DEFAULT_ASPECT_RATIOS, DEFAULT_DURATIONS } from '../constants';
+import { useEffect, useMemo } from "react";
+import type {
+  CapabilityValues,
+  CapabilitiesSchema,
+} from "@shared/capabilities";
+import { useCapabilities } from "@features/prompt-optimizer/hooks/useCapabilities";
+import { logger } from "@/services/LoggingService";
+import { VIDEO_DRAFT_MODEL } from "@components/ToolSidebar/config/modelConfig";
+import { DEFAULT_ASPECT_RATIOS, DEFAULT_DURATIONS } from "../constants";
 import {
   getFieldInfo,
   resolveNumberOptions,
   resolveStringOptions,
   type FieldInfo,
-} from '../utils/capabilities';
-import type { GenerationControlsTab } from '../types';
-import type { VideoTier } from '@components/ToolSidebar/types';
+} from "../utils/capabilities";
+import type { GenerationControlsTab } from "../types";
+import type { VideoTier } from "@components/ToolSidebar/types";
 
-const log = logger.child('GenerationControlsPanel');
+const log = logger.child("GenerationControlsPanel");
 
 interface UseCapabilitiesClampingOptions {
   activeTab: GenerationControlsTab;
@@ -49,14 +52,14 @@ export function useCapabilitiesClamping({
   useEffect(() => {
     if (!selectedModel.trim()) return;
     const expectedTier: VideoTier =
-      selectedModel === VIDEO_DRAFT_MODEL.id ? 'draft' : 'render';
+      selectedModel === VIDEO_DRAFT_MODEL.id ? "draft" : "render";
     if (videoTier === expectedTier) return;
     setVideoTier(expectedTier);
   }, [selectedModel, setVideoTier, videoTier]);
 
   const capabilitiesModelId = useMemo(() => {
-    if (activeTab === 'video') {
-      return videoTier === 'draft' ? VIDEO_DRAFT_MODEL.id : renderModelId;
+    if (activeTab === "video") {
+      return videoTier === "draft" ? VIDEO_DRAFT_MODEL.id : renderModelId;
     }
     return renderModelId;
   }, [activeTab, renderModelId, videoTier]);
@@ -68,31 +71,31 @@ export function useCapabilitiesClamping({
       aspect_ratio: aspectRatio,
       duration_s: duration,
     }),
-    [aspectRatio, duration]
+    [aspectRatio, duration],
   );
 
   const aspectRatioInfo = useMemo(
-    () => getFieldInfo(schema, currentParams, 'aspect_ratio'),
-    [schema, currentParams]
+    () => getFieldInfo(schema, currentParams, "aspect_ratio"),
+    [schema, currentParams],
   );
 
   const durationInfo = useMemo(
-    () => getFieldInfo(schema, currentParams, 'duration_s'),
-    [schema, currentParams]
+    () => getFieldInfo(schema, currentParams, "duration_s"),
+    [schema, currentParams],
   );
 
   const aspectRatioOptions = useMemo(
     () =>
       resolveStringOptions(
         aspectRatioInfo?.allowedValues,
-        DEFAULT_ASPECT_RATIOS
+        DEFAULT_ASPECT_RATIOS,
       ),
-    [aspectRatioInfo?.allowedValues]
+    [aspectRatioInfo?.allowedValues],
   );
 
   const durationOptions = useMemo(
     () => resolveNumberOptions(durationInfo?.allowedValues, DEFAULT_DURATIONS),
-    [durationInfo?.allowedValues]
+    [durationInfo?.allowedValues],
   );
 
   useEffect(() => {
@@ -100,7 +103,7 @@ export function useCapabilitiesClamping({
     if (aspectRatioOptions.includes(aspectRatio)) return;
     const nextRatio = aspectRatioOptions[0];
     if (!nextRatio) return;
-    log.info('Clamping aspect ratio to supported option', {
+    log.info("Clamping aspect ratio to supported option", {
       previousAspectRatio: aspectRatio,
       nextAspectRatio: nextRatio,
       allowedAspectRatios: aspectRatioOptions,
@@ -112,9 +115,9 @@ export function useCapabilitiesClamping({
     if (!durationOptions.length) return;
     if (durationOptions.includes(duration)) return;
     const closest = durationOptions.reduce((best, value) =>
-      Math.abs(value - duration) < Math.abs(best - duration) ? value : best
+      Math.abs(value - duration) < Math.abs(best - duration) ? value : best,
     );
-    log.info('Clamping duration to supported option', {
+    log.info("Clamping duration to supported option", {
       previousDuration: duration,
       nextDuration: closest,
       allowedDurations: durationOptions,

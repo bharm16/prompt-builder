@@ -15,6 +15,7 @@ import {
 import {
   VIDEO_DRAFT_MODEL,
   VIDEO_RENDER_MODELS,
+  getVideoCost,
 } from "@components/ToolSidebar/config/modelConfig";
 import { cn } from "@/utils/cn";
 import { resolveModelMeta } from "@/config/videoModels";
@@ -28,7 +29,7 @@ import { normalizeModelIdForSelection } from "@/features/model-intelligence/util
 interface ModelEntry {
   id: string;
   label: string;
-  cost: number;
+  creditsPerSecond: number;
   badge: "draft" | "render";
   badgeColor: string;
 }
@@ -113,7 +114,11 @@ function buildRecMap(
   }
   if (map.size === 0 && recId) {
     if (models.find((m) => m.id === recId)) {
-      map.set(recId, { matchPct: 85, isTop: true, isEfficient: recId === effId });
+      map.set(recId, {
+        matchPct: 85,
+        isTop: true,
+        isEfficient: recId === effId,
+      });
     }
   }
   if (filtered?.length) {
@@ -152,11 +157,11 @@ function sortModels(
    Shared visual components
    ─────────────────────────────────────────────────────── */
 
-/** Quality/speed 1-3 from model traits */
+/** Quality/speed 1-3 from model traits (thresholds based on per-second rates) */
 function getRatings(m: ModelEntry) {
   return {
-    quality: m.cost >= 60 ? 3 : m.cost >= 30 ? 2 : 1,
-    speed: m.badge === "draft" ? 3 : m.cost >= 60 ? 1 : 2,
+    quality: m.creditsPerSecond >= 10 ? 3 : m.creditsPerSecond >= 5 ? 2 : 1,
+    speed: m.badge === "draft" ? 3 : m.creditsPerSecond >= 10 ? 1 : 2,
   };
 }
 
@@ -182,23 +187,29 @@ function Radio({ on }: { on: boolean }) {
       className={cn(
         "h-[18px] w-[18px] flex-none rounded-full border-2 transition-colors",
         "flex items-center justify-center",
-        on ? "border-white bg-white" : "border-tool-text-disabled bg-transparent",
+        on
+          ? "border-white bg-white"
+          : "border-tool-text-disabled bg-transparent",
       )}
     >
-      {on && <div className="h-[7px] w-[7px] rounded-full bg-tool-surface-card" />}
+      {on && (
+        <div className="h-[7px] w-[7px] rounded-full bg-tool-surface-card" />
+      )}
     </div>
   );
 }
 
 /** Card gradient placeholder (in lieu of preview thumbnails) */
 const GRADIENTS: Record<string, string> = {
-  "sora-2":             "linear-gradient(135deg, #0F2027 0%, #203A43 50%, #2C5364 100%)",
-  "google/veo-3":       "linear-gradient(135deg, #141E30 0%, #243B55 100%)",
-  "kling-v2-1-master":  "linear-gradient(135deg, #2C1810 0%, #5D3A1A 50%, #3E2712 100%)",
-  "luma-ray3":          "linear-gradient(135deg, #1A0530 0%, #3D1560 50%, #250940 100%)",
-  "runway-gen45":       "linear-gradient(135deg, #1F1013 0%, #4A1D28 50%, #2B1018 100%)",
-  "wan-2.5":            "linear-gradient(135deg, #0A1F0A 0%, #1A4A1A 50%, #0D2B0D 100%)",
-  "wan-2.2":            "linear-gradient(135deg, #0D1F15 0%, #1A3A28 50%, #0F2B1C 100%)",
+  "sora-2": "linear-gradient(135deg, #0F2027 0%, #203A43 50%, #2C5364 100%)",
+  "google/veo-3": "linear-gradient(135deg, #141E30 0%, #243B55 100%)",
+  "kling-v2-1-master":
+    "linear-gradient(135deg, #2C1810 0%, #5D3A1A 50%, #3E2712 100%)",
+  "luma-ray3": "linear-gradient(135deg, #1A0530 0%, #3D1560 50%, #250940 100%)",
+  "runway-gen45":
+    "linear-gradient(135deg, #1F1013 0%, #4A1D28 50%, #2B1018 100%)",
+  "wan-2.5": "linear-gradient(135deg, #0A1F0A 0%, #1A4A1A 50%, #0D2B0D 100%)",
+  "wan-2.2": "linear-gradient(135deg, #0D1F15 0%, #1A3A28 50%, #0F2B1C 100%)",
 };
 
 /* ───────────────────────────────────────────────────────
@@ -251,7 +262,7 @@ function ListRow({
           <Pips filled={r.speed} color="#FBBF24" />
           <div className="flex-1" />
           <span className="tabular-nums text-[12px] text-tool-text-dim">
-            ~{model.cost}{" "}
+            ~{getVideoCost(model.id)}{" "}
             <span className="text-[10px] opacity-60">cr</span>
           </span>
         </div>
@@ -277,7 +288,8 @@ function ModelCard({
 }) {
   const meta = resolveModelMeta(model.id);
   const r = getRatings(model);
-  const gradient = GRADIENTS[model.id] ?? "linear-gradient(135deg, #1E2030, #2A2D3E)";
+  const gradient =
+    GRADIENTS[model.id] ?? "linear-gradient(135deg, #1E2030, #2A2D3E)";
 
   return (
     <button
@@ -322,7 +334,7 @@ function ModelCard({
           <Pips filled={r.speed} color="#FBBF24" />
           <div className="flex-1" />
           <span className="tabular-nums text-[13px] text-tool-text-dim">
-            ~{model.cost}{" "}
+            ~{getVideoCost(model.id)}{" "}
             <span className="text-[11px] opacity-60">cr</span>
           </span>
         </div>
@@ -350,8 +362,12 @@ export function ModelRecommendationDropdown({
   const [mode, setMode] = useState<ViewMode>("closed");
   const buttonRef = useRef<HTMLButtonElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
-  const hoverTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  const leaveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const hoverTimer = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined,
+  );
+  const leaveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined,
+  );
 
   // Position state for the list popover
   const [listStyle, setListStyle] = useState<React.CSSProperties>({
@@ -383,13 +399,31 @@ export function ModelRecommendationDropdown({
         efficientModelId,
         filteredOut ?? modelRecommendation?.filteredOut,
       ),
-    [models, modelRecommendation, recommendedModelId, efficientModelId, filteredOut],
+    [
+      models,
+      modelRecommendation,
+      recommendedModelId,
+      efficientModelId,
+      filteredOut,
+    ],
   );
 
-  const unavailIds = useMemo(() => new Set(unavail.map((u) => u.id)), [unavail]);
-  const sorted = useMemo(() => sortModels(models, recMap, unavailIds), [models, recMap, unavailIds]);
-  const drafts = useMemo(() => sorted.filter((m) => m.badge === "draft"), [sorted]);
-  const renders = useMemo(() => sorted.filter((m) => m.badge === "render"), [sorted]);
+  const unavailIds = useMemo(
+    () => new Set(unavail.map((u) => u.id)),
+    [unavail],
+  );
+  const sorted = useMemo(
+    () => sortModels(models, recMap, unavailIds),
+    [models, recMap, unavailIds],
+  );
+  const drafts = useMemo(
+    () => sorted.filter((m) => m.badge === "draft"),
+    [sorted],
+  );
+  const renders = useMemo(
+    () => sorted.filter((m) => m.badge === "render"),
+    [sorted],
+  );
 
   /* ── Select handler ── */
 
@@ -500,7 +534,8 @@ export function ModelRecommendationDropdown({
   /* ── Reset list style when closing ── */
 
   useEffect(() => {
-    if (mode !== "list") setListStyle({ position: "fixed", visibility: "hidden" });
+    if (mode !== "list")
+      setListStyle({ position: "fixed", visibility: "hidden" });
   }, [mode]);
 
   return (
@@ -584,7 +619,9 @@ export function ModelRecommendationDropdown({
                     className="flex items-center gap-2 px-4 py-2 opacity-40"
                   >
                     <WarningCircle className="h-4 w-4 flex-none text-amber-400" />
-                    <span className="text-[13px] text-tool-text-dim">{e.label}</span>
+                    <span className="text-[13px] text-tool-text-dim">
+                      {e.label}
+                    </span>
                     <div className="flex-1" />
                     <span className="text-[10px] italic text-tool-text-label">
                       {e.reason}
@@ -613,7 +650,10 @@ export function ModelRecommendationDropdown({
             {/* Scrollable card panel */}
             <div className="fixed inset-0 z-[9999] overflow-y-auto">
               <div className="flex min-h-full items-start justify-center px-6 py-16">
-                <div className="motion-presence-panel relative w-full max-w-[900px] rounded-2xl border border-tool-nav-active bg-tool-surface-card p-8 shadow-[0_24px_80px_rgba(0,0,0,0.7)] ps-animate-scale-in" data-motion-state="entered">
+                <div
+                  className="motion-presence-panel relative w-full max-w-[900px] rounded-2xl border border-tool-nav-active bg-tool-surface-card p-8 shadow-[0_24px_80px_rgba(0,0,0,0.7)] ps-animate-scale-in"
+                  data-motion-state="entered"
+                >
                   {/* Close */}
                   <button
                     type="button"

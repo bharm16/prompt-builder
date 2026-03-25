@@ -6,8 +6,8 @@
  * when individual services attempt to read them.
  */
 
-import { z } from 'zod';
-import { logger } from '@infrastructure/Logger';
+import { z } from "zod";
+import { logger } from "@infrastructure/Logger";
 
 // ─── Reusable coercion helpers ─────────────────────────────────
 
@@ -18,31 +18,41 @@ const coercePositiveInt = (fallback: number) =>
 const coerceNonNegativeNumber = (fallback: number) =>
   z.coerce.number().min(0).default(fallback);
 const coerceBooleanString = (fallback: boolean) =>
-  z.string().default(String(fallback)).transform(v => v === 'true');
+  z
+    .string()
+    .default(String(fallback))
+    .transform((v) => v === "true");
 
 // ─── Domain schemas ────────────────────────────────────────────
 
 const serverSchema = z.object({
   PORT: z.coerce.number().int().min(0).max(65535).default(3001),
-  NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
-  PROCESS_ROLE: z.enum(['api', 'worker']).optional(),
-  LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).optional(),
+  NODE_ENV: z
+    .enum(["development", "production", "test"])
+    .default("development"),
+  PROCESS_ROLE: z.enum(["api", "worker"]).optional(),
+  LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).optional(),
 });
 
 const featureFlagSchema = z.object({
   PROMPT_OUTPUT_ONLY: coerceBooleanString(false),
   PROMPT_PIPELINE_V2: coerceBooleanString(true),
-  ENABLE_CONVERGENCE: z.string().default('true').transform(v => v !== 'false'),
-  VIDEO_JOB_INLINE_ENABLED: coerceBooleanString(false),
+  ENABLE_CONVERGENCE: z
+    .string()
+    .default("true")
+    .transform((v) => v !== "false"),
+  VIDEO_JOB_INLINE_ENABLED: coerceBooleanString(true),
   VIDEO_JOB_WORKER_DISABLED: coerceBooleanString(false),
   ALLOW_UNHEALTHY_GEMINI: coerceBooleanString(false),
   GEMINI_ALLOW_UNHEALTHY: coerceBooleanString(false),
-  UNHANDLED_REJECTION_MODE: z.enum(['classified', 'strict']).default('classified'),
+  UNHANDLED_REJECTION_MODE: z
+    .enum(["classified", "strict"])
+    .default("classified"),
 });
 
 const openaiSchema = z.object({
   OPENAI_API_KEY: optionalApiKey(),
-  OPENAI_MODEL: z.string().default('gpt-4o-mini'),
+  OPENAI_MODEL: z.string().default("gpt-4o-mini"),
   OPENAI_TIMEOUT_MS: coercePositiveInt(60000),
   OPENAI_MAX_CONCURRENT: coercePositiveInt(5),
   OPENAI_QUEUE_TIMEOUT_MS: coercePositiveInt(30000),
@@ -50,7 +60,7 @@ const openaiSchema = z.object({
 
 const groqSchema = z.object({
   GROQ_API_KEY: optionalApiKey(),
-  GROQ_MODEL: z.string().default('llama-3.1-8b-instant'),
+  GROQ_MODEL: z.string().default("llama-3.1-8b-instant"),
   GROQ_TIMEOUT_MS: coercePositiveInt(5000),
   GROQ_MAX_CONCURRENT: coercePositiveInt(5),
   GROQ_QUEUE_TIMEOUT_MS: coercePositiveInt(30000),
@@ -59,21 +69,25 @@ const groqSchema = z.object({
 const geminiSchema = z.object({
   GEMINI_API_KEY: optionalApiKey(),
   GOOGLE_API_KEY: optionalApiKey(),
-  GEMINI_MODEL: z.string().default('gemini-2.5-flash'),
+  GEMINI_MODEL: z.string().default("gemini-2.5-flash"),
   GEMINI_TIMEOUT_MS: coercePositiveInt(30000),
   GEMINI_MAX_CONCURRENT: coercePositiveInt(5),
   GEMINI_QUEUE_TIMEOUT_MS: coercePositiveInt(30000),
-  GEMINI_BASE_URL: z.string().default('https://generativelanguage.googleapis.com/v1beta'),
+  GEMINI_BASE_URL: z
+    .string()
+    .default("https://generativelanguage.googleapis.com/v1beta"),
 });
 
 const qwenSchema = z.object({
-  QWEN_MODEL: z.string().default('qwen/qwen3-32b'),
+  QWEN_MODEL: z.string().default("qwen/qwen3-32b"),
   QWEN_TIMEOUT_MS: coercePositiveInt(10000),
 });
 
 const firebaseSchema = z.object({
-  VITE_FIREBASE_API_KEY: z.string().min(1, 'VITE_FIREBASE_API_KEY is required'),
-  VITE_FIREBASE_PROJECT_ID: z.string().min(1, 'VITE_FIREBASE_PROJECT_ID is required'),
+  VITE_FIREBASE_API_KEY: z.string().min(1, "VITE_FIREBASE_API_KEY is required"),
+  VITE_FIREBASE_PROJECT_ID: z
+    .string()
+    .min(1, "VITE_FIREBASE_PROJECT_ID is required"),
   VITE_FIREBASE_AUTH_DOMAIN: optionalString(),
   VITE_FIREBASE_STORAGE_BUCKET: optionalString(),
   VITE_FIREBASE_MESSAGING_SENDER_ID: optionalString(),
@@ -89,12 +103,12 @@ const storageSchema = z.object({
   VIDEO_STORAGE_BUCKET: optionalString(),
   ASSET_STORAGE_BUCKET: optionalString(),
   SPAN_LABELING_MODELS_GCS_URI: optionalString(),
-  VIDEO_STORAGE_BASE_PATH: z.string().default('video-previews'),
-  IMAGE_STORAGE_BASE_PATH: z.string().default('image-previews'),
+  VIDEO_STORAGE_BASE_PATH: z.string().default("video-previews"),
+  IMAGE_STORAGE_BASE_PATH: z.string().default("image-previews"),
   VIDEO_STORAGE_SIGNED_URL_TTL_SECONDS: z.coerce.number().positive().optional(),
   IMAGE_STORAGE_SIGNED_URL_TTL_SECONDS: z.coerce.number().positive().optional(),
-  VIDEO_STORAGE_CACHE_CONTROL: z.string().default('public, max-age=86400'),
-  IMAGE_STORAGE_CACHE_CONTROL: z.string().default('public, max-age=86400'),
+  VIDEO_STORAGE_CACHE_CONTROL: z.string().default("public, max-age=86400"),
+  IMAGE_STORAGE_CACHE_CONTROL: z.string().default("public, max-age=86400"),
 });
 
 const videoGenerationSchema = z.object({
@@ -122,7 +136,11 @@ const videoJobSchema = z.object({
   VIDEO_WORKFLOW_TIMEOUT_MS: coercePositiveInt(300000),
   VIDEO_JOB_POLL_INTERVAL_MS: coercePositiveInt(2000),
   VIDEO_JOB_MAX_CONCURRENT: coercePositiveInt(2),
-  VIDEO_JOB_PER_PROVIDER_MAX_CONCURRENT: z.coerce.number().int().positive().optional(),
+  VIDEO_JOB_PER_PROVIDER_MAX_CONCURRENT: z.coerce
+    .number()
+    .int()
+    .positive()
+    .optional(),
   VIDEO_PROVIDER_CIRCUIT_FAILURE_RATE: coerceNonNegativeNumber(0.6),
   VIDEO_PROVIDER_CIRCUIT_MIN_VOLUME: coercePositiveInt(20),
   VIDEO_PROVIDER_CIRCUIT_COOLDOWN_MS: coercePositiveInt(60000),
@@ -161,7 +179,7 @@ const billingSchema = z.object({
 
 const redisSchema = z.object({
   REDIS_URL: optionalString(),
-  REDIS_HOST: z.string().default('localhost'),
+  REDIS_HOST: z.string().default("localhost"),
   REDIS_PORT: z.coerce.number().int().min(1).max(65535).default(6379),
   REDIS_PASSWORD: optionalString(),
   REDIS_DB: z.coerce.number().int().min(0).default(0),
@@ -187,7 +205,11 @@ const startupSchema = z.object({
   SERVICE_STARTUP_HEALTHCHECKS: coerceBooleanString(false),
   SERVICE_STARTUP_PRE_RESOLVE: coerceBooleanString(false),
   DEPTH_ESTIMATION_TIMEOUT_MS: z.coerce.number().int().positive().optional(),
-  DEPTH_ESTIMATION_COLD_START_TIMEOUT_MS: z.coerce.number().int().positive().optional(),
+  DEPTH_ESTIMATION_COLD_START_TIMEOUT_MS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .optional(),
 });
 
 // ─── Composite schema ──────────────────────────────────────────
@@ -214,18 +236,34 @@ const envSchema = serverSchema
 // ─── Production refinements ────────────────────────────────────
 
 const envSchemaWithRefinements = envSchema.superRefine((data, ctx) => {
-  if (data.NODE_ENV === 'production') {
+  if (data.NODE_ENV === "production") {
     if (!data.ALLOWED_ORIGINS) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'ALLOWED_ORIGINS is required in production', path: ['ALLOWED_ORIGINS'] });
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "ALLOWED_ORIGINS is required in production",
+        path: ["ALLOWED_ORIGINS"],
+      });
     }
     if (!data.METRICS_TOKEN) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'METRICS_TOKEN is required in production', path: ['METRICS_TOKEN'] });
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "METRICS_TOKEN is required in production",
+        path: ["METRICS_TOKEN"],
+      });
     }
     if (!data.FRONTEND_URL) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'FRONTEND_URL is required in production', path: ['FRONTEND_URL'] });
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "FRONTEND_URL is required in production",
+        path: ["FRONTEND_URL"],
+      });
     }
     if (!data.GCS_BUCKET_NAME) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'GCS_BUCKET_NAME is required in production', path: ['GCS_BUCKET_NAME'] });
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "GCS_BUCKET_NAME is required in production",
+        path: ["GCS_BUCKET_NAME"],
+      });
     }
   }
 });
@@ -243,10 +281,10 @@ export function parseEnv(env: NodeJS.ProcessEnv = process.env): ValidatedEnv {
 
   if (!result.success) {
     const formatted = result.error.issues
-      .map(issue => `  - ${issue.path.join('.')}: ${issue.message}`)
-      .join('\n');
+      .map((issue) => `  - ${issue.path.join(".")}: ${issue.message}`)
+      .join("\n");
     throw new Error(
-      `Environment validation failed:\n${formatted}\n\nCheck .env.example for required variables.`
+      `Environment validation failed:\n${formatted}\n\nCheck .env.example for required variables.`,
     );
   }
 
@@ -259,45 +297,80 @@ export function parseEnv(env: NodeJS.ProcessEnv = process.env): ValidatedEnv {
  * Called after parseEnv succeeds.
  */
 export function emitEnvWarnings(env: ValidatedEnv): void {
-  const log = logger.child({ service: 'validateEnv' });
+  const log = logger.child({ service: "validateEnv" });
 
-  const hasLlmProvider = Boolean(env.OPENAI_API_KEY || env.GROQ_API_KEY || env.GEMINI_API_KEY || env.GOOGLE_API_KEY);
+  const hasLlmProvider = Boolean(
+    env.OPENAI_API_KEY ||
+      env.GROQ_API_KEY ||
+      env.GEMINI_API_KEY ||
+      env.GOOGLE_API_KEY,
+  );
 
   if (!hasLlmProvider) {
-    log.warn('No LLM provider API keys configured; AI features will be disabled', {
-      operation: 'validateEnv',
-      hasOpenAi: Boolean(env.OPENAI_API_KEY),
-      hasGroq: Boolean(env.GROQ_API_KEY),
-      hasGemini: Boolean(env.GEMINI_API_KEY),
-      hasGoogle: Boolean(env.GOOGLE_API_KEY),
-    });
+    log.warn(
+      "No LLM provider API keys configured; AI features will be disabled",
+      {
+        operation: "validateEnv",
+        hasOpenAi: Boolean(env.OPENAI_API_KEY),
+        hasGroq: Boolean(env.GROQ_API_KEY),
+        hasGemini: Boolean(env.GEMINI_API_KEY),
+        hasGoogle: Boolean(env.GOOGLE_API_KEY),
+      },
+    );
   } else {
     const openaiKey = env.OPENAI_API_KEY;
-    if (openaiKey && !openaiKey.startsWith('sk-')) {
-      log.warn('OPENAI_API_KEY may not be in the expected format', {
-        operation: 'validateEnv',
+    if (openaiKey && !openaiKey.startsWith("sk-")) {
+      log.warn("OPENAI_API_KEY may not be in the expected format", {
+        operation: "validateEnv",
         environment: env.NODE_ENV,
       });
     }
   }
 
-  if (env.NODE_ENV === 'production') {
+  if (env.NODE_ENV === "production") {
     const hasApiKeys =
-      Boolean(env.ALLOWED_API_KEYS?.trim()) ||
-      Boolean(env.API_KEY?.trim());
+      Boolean(env.ALLOWED_API_KEYS?.trim()) || Boolean(env.API_KEY?.trim());
     if (!hasApiKeys) {
-      log.warn('No API keys configured; relying on Firebase auth or public access', {
-        operation: 'validateEnv',
-        environment: 'production',
-      });
+      log.warn(
+        "No API keys configured; relying on Firebase auth or public access",
+        {
+          operation: "validateEnv",
+          environment: "production",
+        },
+      );
     }
-    if (env.ALLOWED_API_KEYS && !env.ALLOWED_API_KEYS.includes(',')) {
-      log.warn('Consider configuring multiple API keys in ALLOWED_API_KEYS for rotation', {
-        operation: 'validateEnv',
-        environment: 'production',
-      });
+    if (env.ALLOWED_API_KEYS && !env.ALLOWED_API_KEYS.includes(",")) {
+      log.warn(
+        "Consider configuring multiple API keys in ALLOWED_API_KEYS for rotation",
+        {
+          operation: "validateEnv",
+          environment: "production",
+        },
+      );
     }
   }
 
-  log.info('Environment variables validated successfully', { operation: 'validateEnv' });
+  // Warn when inline video processing is explicitly disabled in a non-production
+  // environment. This usually means a stale .env copied from .env.example before
+  // the default was flipped to true. Video jobs will queue but never be processed
+  // unless a separate PROCESS_ROLE=worker process is running.
+  if (
+    env.NODE_ENV !== "production" &&
+    !env.VIDEO_JOB_INLINE_ENABLED &&
+    (env.PROCESS_ROLE === "api" || env.PROCESS_ROLE === undefined)
+  ) {
+    log.warn(
+      "VIDEO_JOB_INLINE_ENABLED is false — video jobs will be queued but not processed without a separate worker. " +
+        "Remove VIDEO_JOB_INLINE_ENABLED=false from .env to use the default (enabled).",
+      {
+        operation: "validateEnv",
+        processRole: env.PROCESS_ROLE ?? "api",
+        videoJobInlineEnabled: false,
+      },
+    );
+  }
+
+  log.info("Environment variables validated successfully", {
+    operation: "validateEnv",
+  });
 }

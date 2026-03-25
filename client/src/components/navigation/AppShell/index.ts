@@ -2,11 +2,11 @@
  * AppShell public API.
  */
 
-export { AppShell } from './AppShell';
-export { useNavigationConfig } from './hooks/useNavigationConfig';
+export { AppShell } from "./AppShell";
+export { useNavigationConfig } from "./hooks/useNavigationConfig";
 export type {
   AppShellProps,
   NavItem,
   ShellVariant,
   NavigationConfig,
-} from './types';
+} from "./types";

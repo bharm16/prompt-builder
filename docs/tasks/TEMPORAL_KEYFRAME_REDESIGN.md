@@ -52,18 +52,21 @@ NEW (star):
 Add temporal configuration constants. Keep all existing exports.
 
 ```ts
-import type { ImagePreviewProviderId } from '@services/image-generation/providers/types';
+import type { ImagePreviewProviderId } from "@services/image-generation/providers/types";
 
 export const STORYBOARD_FRAME_COUNT = 4;
 
-export const BASE_PROVIDER: ImagePreviewProviderId = 'replicate-flux-schnell';
-export const EDIT_PROVIDER: ImagePreviewProviderId = 'replicate-flux-kontext-fast';
+export const BASE_PROVIDER: ImagePreviewProviderId = "replicate-flux-schnell";
+export const EDIT_PROVIDER: ImagePreviewProviderId =
+  "replicate-flux-kontext-fast";
 
 /** Total duration of the storyboard sequence in seconds. */
 export const STORYBOARD_DURATION_SECONDS = 4;
 
 /** Timestamp for each frame position (including frame 0). Length must equal STORYBOARD_FRAME_COUNT. */
-export const STORYBOARD_FRAME_TIMESTAMPS: readonly number[] = [0.0, 1.3, 2.7, 4.0];
+export const STORYBOARD_FRAME_TIMESTAMPS: readonly number[] = [
+  0.0, 1.3, 2.7, 4.0,
+];
 
 /** Maximum number of Kontext edit frames to generate in parallel. */
 export const STORYBOARD_MAX_PARALLEL = 3;
@@ -76,23 +79,27 @@ export const STORYBOARD_MAX_PARALLEL = 3;
 **Complete rewrite.** Replace the entire file contents. Every function signature changes or its body changes substantially.
 
 ```ts
-import { STORYBOARD_FRAME_TIMESTAMPS, STORYBOARD_DURATION_SECONDS } from './constants';
+import {
+  STORYBOARD_FRAME_TIMESTAMPS,
+  STORYBOARD_DURATION_SECONDS,
+} from "./constants";
 
 const FALLBACK_TEMPORAL_KEYFRAMES = [
-  'Mid-shot of the same subject, slightly further from camera, action progressed one beat forward, same lighting and environment visible at wider framing.',
-  'Wide shot of the same subject at moderate distance, action at midpoint, environment now visible in full context, lighting consistent with base frame.',
-  'Establishing wide shot, subject at far distance completing the action, full environment and sky visible, same lighting direction and atmosphere.',
+  "Mid-shot of the same subject, slightly further from camera, action progressed one beat forward, same lighting and environment visible at wider framing.",
+  "Wide shot of the same subject at moderate distance, action at midpoint, environment now visible in full context, lighting consistent with base frame.",
+  "Establishing wide shot, subject at far distance completing the action, full environment and sky visible, same lighting direction and atmosphere.",
 ];
 
 export const buildSystemPrompt = (
   keyframeCount: number,
-  timestamps: readonly number[] = STORYBOARD_FRAME_TIMESTAMPS
+  timestamps: readonly number[] = STORYBOARD_FRAME_TIMESTAMPS,
 ): string => {
-  const duration = timestamps[timestamps.length - 1] ?? STORYBOARD_DURATION_SECONDS;
+  const duration =
+    timestamps[timestamps.length - 1] ?? STORYBOARD_DURATION_SECONDS;
   const frameList = timestamps
     .slice(1, keyframeCount + 1)
     .map((t, i) => `  Frame ${i + 1} (${t.toFixed(1)}s)`)
-    .join('\n');
+    .join("\n");
 
   return `You are a cinematic storyboard planner.
 
@@ -131,7 +138,7 @@ BAD KEYFRAME (edit command):
 
 export const buildRepairSystemPrompt = (
   keyframeCount: number,
-  timestamps: readonly number[] = STORYBOARD_FRAME_TIMESTAMPS
+  timestamps: readonly number[] = STORYBOARD_FRAME_TIMESTAMPS,
 ): string =>
   `${buildSystemPrompt(keyframeCount, timestamps)}
 
@@ -145,7 +152,10 @@ REPAIR MODE:
  * In the temporal keyframe paradigm, the description IS the prompt.
  * The base image provides identity/style via Kontext's img_cond_path.
  */
-export const buildEditPrompt = (basePrompt: string, temporalDescription: string): string => {
+export const buildEditPrompt = (
+  basePrompt: string,
+  temporalDescription: string,
+): string => {
   const description = temporalDescription.trim();
   return description || basePrompt.trim();
 };
@@ -158,7 +168,7 @@ export const buildFallbackDeltas = (expectedCount: number): string[] => {
   for (let index = 0; index < expectedCount; index += 1) {
     deltas.push(
       FALLBACK_TEMPORAL_KEYFRAMES[index % FALLBACK_TEMPORAL_KEYFRAMES.length] ??
-        FALLBACK_TEMPORAL_KEYFRAMES[0]!
+        FALLBACK_TEMPORAL_KEYFRAMES[0]!,
     );
   }
   return deltas;
@@ -198,35 +208,45 @@ Pass `STORYBOARD_FRAME_TIMESTAMPS` to all prompt builder calls. The changes are 
 ### Changes required:
 
 1. Add import:
+
 ```ts
-import { STORYBOARD_FRAME_TIMESTAMPS } from './constants';
+import { STORYBOARD_FRAME_TIMESTAMPS } from "./constants";
 ```
 
 2. In `requestTextPlan`, change:
+
 ```ts
-buildSystemPrompt(expectedCount)
+buildSystemPrompt(expectedCount);
 ```
+
 to:
+
 ```ts
-buildSystemPrompt(expectedCount, STORYBOARD_FRAME_TIMESTAMPS)
+buildSystemPrompt(expectedCount, STORYBOARD_FRAME_TIMESTAMPS);
 ```
 
 3. In `requestVisionPlan`, change both occurrences of:
+
 ```ts
-buildSystemPrompt(expectedCount)
+buildSystemPrompt(expectedCount);
 ```
+
 to:
+
 ```ts
-buildSystemPrompt(expectedCount, STORYBOARD_FRAME_TIMESTAMPS)
+buildSystemPrompt(expectedCount, STORYBOARD_FRAME_TIMESTAMPS);
 ```
 
 4. In `requestRepair`, change:
+
 ```ts
-buildRepairSystemPrompt(expectedCount)
+buildRepairSystemPrompt(expectedCount);
 ```
+
 to (both occurrences):
+
 ```ts
-buildRepairSystemPrompt(expectedCount, STORYBOARD_FRAME_TIMESTAMPS)
+buildRepairSystemPrompt(expectedCount, STORYBOARD_FRAME_TIMESTAMPS);
 ```
 
 No other changes to this file. The class structure, vision path, repair flow, and fallback logic all remain identical.
@@ -339,10 +359,14 @@ Remove `resolveChainingUrl` from the imports — it's no longer used (star topol
 
 ```ts
 // REMOVE from imports:
-import { resolveChainingUrl } from './storyboardUtils';
+import { resolveChainingUrl } from "./storyboardUtils";
 
 // KEEP:
-import { computeEditSeed, computeSeedBase, normalizeSeedImageUrl } from './storyboardUtils';
+import {
+  computeEditSeed,
+  computeSeedBase,
+  normalizeSeedImageUrl,
+} from "./storyboardUtils";
 ```
 
 NOTE: `resolveChainingUrl` is still used in `resolveBaseImage` for the base image itself. Check before removing — if it IS still used there, keep the import.
@@ -358,6 +382,7 @@ Several tests assert chain-topology behavior that must be updated for star topol
 #### Test: `'generates a base image then chains edit frames with correct prompts'`
 
 This test currently asserts:
+
 - `editCall?.[0]` equals `'Edit this image: delta 1 The scene depicts: base prompt'`
 - `editCall?.[1]?.inputImageUrl` equals `'https://images.example.com/base-provider.webp'`
 
@@ -365,10 +390,12 @@ With temporal keyframes and the new `buildEditPrompt`, the prompt is just the te
 
 ```ts
 // OLD:
-expect(editCall?.[0]).toBe('Edit this image: delta 1 The scene depicts: base prompt');
+expect(editCall?.[0]).toBe(
+  "Edit this image: delta 1 The scene depicts: base prompt",
+);
 
 // NEW:
-expect(editCall?.[0]).toBe('delta 1');
+expect(editCall?.[0]).toBe("delta 1");
 ```
 
 The `inputImageUrl` assertion stays correct — star topology means ALL edit frames use `base-provider.webp`.
@@ -376,22 +403,24 @@ The `inputImageUrl` assertion stays correct — star topology means ALL edit fra
 #### Test: `'throws on partial edit failure and chains input images up to the failing frame'`
 
 This test asserts chaining behavior:
+
 ```ts
 expect(generatePreview.mock.calls[1]?.[1]?.inputImageUrl).toBe(
-  'https://images.example.com/base-provider.webp'
+  "https://images.example.com/base-provider.webp",
 );
 expect(generatePreview.mock.calls[2]?.[1]?.inputImageUrl).toBe(
-  'https://images.example.com/edit-1-provider.webp'  // THIS CHANGES
+  "https://images.example.com/edit-1-provider.webp", // THIS CHANGES
 );
 ```
 
 With star topology, ALL frames use the base image:
+
 ```ts
 expect(generatePreview.mock.calls[1]?.[1]?.inputImageUrl).toBe(
-  'https://images.example.com/base-provider.webp'
+  "https://images.example.com/base-provider.webp",
 );
 expect(generatePreview.mock.calls[2]?.[1]?.inputImageUrl).toBe(
-  'https://images.example.com/base-provider.webp'  // Star topology: always base
+  "https://images.example.com/base-provider.webp", // Star topology: always base
 );
 ```
 
@@ -401,22 +430,37 @@ IMPORTANT: With `Promise.all`, when frame 2 fails, ALL parallel promises may hav
 generatePreview
   .mockResolvedValueOnce({
     // base image generation
-    imageUrl: 'https://images.example.com/base.webp',
-    providerUrl: 'https://images.example.com/base-provider.webp',
-    metadata: { aspectRatio: '16:9', model: 'flux-schnell', duration: 1200, generatedAt: new Date().toISOString() },
+    imageUrl: "https://images.example.com/base.webp",
+    providerUrl: "https://images.example.com/base-provider.webp",
+    metadata: {
+      aspectRatio: "16:9",
+      model: "flux-schnell",
+      duration: 1200,
+      generatedAt: new Date().toISOString(),
+    },
   })
   .mockResolvedValueOnce({
     // frame 1 (succeeds)
-    imageUrl: 'https://images.example.com/edit-1.webp',
-    providerUrl: 'https://images.example.com/edit-1-provider.webp',
-    metadata: { aspectRatio: '16:9', model: 'kontext-fast', duration: 1200, generatedAt: new Date().toISOString() },
+    imageUrl: "https://images.example.com/edit-1.webp",
+    providerUrl: "https://images.example.com/edit-1-provider.webp",
+    metadata: {
+      aspectRatio: "16:9",
+      model: "kontext-fast",
+      duration: 1200,
+      generatedAt: new Date().toISOString(),
+    },
   })
-  .mockRejectedValueOnce(new Error('edit frame 2 failed'))
+  .mockRejectedValueOnce(new Error("edit frame 2 failed"))
   .mockResolvedValueOnce({
     // frame 3 (may or may not be reached, but mock it for safety)
-    imageUrl: 'https://images.example.com/edit-3.webp',
-    providerUrl: 'https://images.example.com/edit-3-provider.webp',
-    metadata: { aspectRatio: '16:9', model: 'kontext-fast', duration: 1200, generatedAt: new Date().toISOString() },
+    imageUrl: "https://images.example.com/edit-3.webp",
+    providerUrl: "https://images.example.com/edit-3-provider.webp",
+    metadata: {
+      aspectRatio: "16:9",
+      model: "kontext-fast",
+      duration: 1200,
+      generatedAt: new Date().toISOString(),
+    },
   });
 ```
 
@@ -434,11 +478,12 @@ expect(generatePreview).toHaveBeenCalledTimes(4);
 ```
 
 And update the inputImageUrl assertions — with star topology all frames use base:
+
 ```ts
 // All edit frames use the base provider URL (star topology)
 for (let i = 1; i < generatePreview.mock.calls.length; i++) {
   expect(generatePreview.mock.calls[i]?.[1]?.inputImageUrl).toBe(
-    'https://images.example.com/base-provider.webp'
+    "https://images.example.com/base-provider.webp",
   );
 }
 ```
@@ -446,24 +491,30 @@ for (let i = 1; i < generatePreview.mock.calls.length; i++) {
 #### Test: `'sanitizes prompt sections before composing storyboard edit prompts'`
 
 This test asserts the old `buildEditPrompt` format:
+
 ```ts
 expect(firstEditCallPrompt).toBe(
-  'Edit this image: The runner advances one stride. The scene depicts: A cinematic tracking shot of a runner crossing dunes at golden hour.'
+  "Edit this image: The runner advances one stride. The scene depicts: A cinematic tracking shot of a runner crossing dunes at golden hour.",
 );
 ```
 
 With the new `buildEditPrompt`, the temporal description IS the prompt:
+
 ```ts
-expect(firstEditCallPrompt).toBe('The runner advances one stride.');
+expect(firstEditCallPrompt).toBe("The runner advances one stride.");
 ```
 
 #### Test: `'uses the provided seed image URL and skips base generation'`
 
 This test checks that with a seed image, the first `generatePreview` call uses the seed URL as `inputImageUrl`. With star topology, this is still correct — all frames use the base (which IS the seed image URL). The assertion:
+
 ```ts
 const firstEditCall = generatePreview.mock.calls[0]?.[1];
-expect(firstEditCall?.inputImageUrl).toBe('https://images.example.com/base.webp');
+expect(firstEditCall?.inputImageUrl).toBe(
+  "https://images.example.com/base.webp",
+);
 ```
+
 stays correct because with a seed image, there's no Schnell generation call — the first `generatePreview` call IS the first keyframe edit, and it should use the seed image URL.
 
 ### `StoryboardFramePlanner.test.ts` and `StoryboardFramePlanner.vision.test.ts`
@@ -471,9 +522,11 @@ stays correct because with a seed image, there's no Schnell generation call — 
 The planner's behavior is minimally changed — only the system prompt content changes. The existing tests mock the LLM response and assert on the parsed deltas array, NOT on the system prompt content. These tests should pass without modification.
 
 However, if any test explicitly asserts on the system prompt string content (e.g., checking that the prompt contains specific text), those assertions need updating. Check for assertions like:
+
 ```ts
-expect(completeMock.mock.calls[0]?.[0]).toContain('edit instructions');
+expect(completeMock.mock.calls[0]?.[0]).toContain("edit instructions");
 ```
+
 These would need to change to match the new temporal keyframe language.
 
 ### `prompts.ts` unit tests
@@ -481,21 +534,22 @@ These would need to change to match the new temporal keyframe language.
 If there is a `prompts.test.ts` file (check `__tests__/` directory), its assertions on `buildSystemPrompt`, `buildEditPrompt`, `buildFallbackDeltas`, and `buildVisionDeltaUserPrompt` output will all need updating to match the new content.
 
 Specifically for `buildEditPrompt`:
+
 ```ts
 // OLD behavior:
-buildEditPrompt('base prompt', 'delta text')
+buildEditPrompt("base prompt", "delta text");
 // → 'Edit this image: delta text The scene depicts: base prompt'
 
 // NEW behavior:
-buildEditPrompt('base prompt', 'delta text')
+buildEditPrompt("base prompt", "delta text");
 // → 'delta text'
 
 // NEW behavior with empty delta:
-buildEditPrompt('base prompt', '')
+buildEditPrompt("base prompt", "");
 // → 'base prompt'
 
 // NEW behavior with whitespace-only delta:
-buildEditPrompt('base prompt', '   ')
+buildEditPrompt("base prompt", "   ");
 // → 'base prompt'
 ```
 
@@ -523,28 +577,28 @@ grep -r "resolveChainingUrl" server/src/ --include="*.ts"
 
 ## Summary of Changes
 
-| # | File | Change | Key Detail |
-|---|------|--------|------------|
-| 1 | `constants.ts` | ADD | `STORYBOARD_FRAME_TIMESTAMPS`, `STORYBOARD_DURATION_SECONDS`, `STORYBOARD_MAX_PARALLEL` |
-| 2 | `prompts.ts` | REWRITE | New temporal system prompt, simplified `buildEditPrompt`, new fallbacks, updated vision prompt |
-| 3 | `StoryboardFramePlanner.ts` | MODIFY | Pass `STORYBOARD_FRAME_TIMESTAMPS` to all `buildSystemPrompt`/`buildRepairSystemPrompt` calls |
-| 4 | `StoryboardPreviewService.ts` | MODIFY | Replace `generateEditFrames` (chain) with `generateKeyframes` (star + parallel) |
-| 5 | `StoryboardPreviewService.test.ts` | MODIFY | Update assertions for star topology and new `buildEditPrompt` output |
-| 6 | Other test files | CHECK | Verify planner tests still pass; update prompt content assertions if any exist |
+| #   | File                               | Change  | Key Detail                                                                                     |
+| --- | ---------------------------------- | ------- | ---------------------------------------------------------------------------------------------- |
+| 1   | `constants.ts`                     | ADD     | `STORYBOARD_FRAME_TIMESTAMPS`, `STORYBOARD_DURATION_SECONDS`, `STORYBOARD_MAX_PARALLEL`        |
+| 2   | `prompts.ts`                       | REWRITE | New temporal system prompt, simplified `buildEditPrompt`, new fallbacks, updated vision prompt |
+| 3   | `StoryboardFramePlanner.ts`        | MODIFY  | Pass `STORYBOARD_FRAME_TIMESTAMPS` to all `buildSystemPrompt`/`buildRepairSystemPrompt` calls  |
+| 4   | `StoryboardPreviewService.ts`      | MODIFY  | Replace `generateEditFrames` (chain) with `generateKeyframes` (star + parallel)                |
+| 5   | `StoryboardPreviewService.test.ts` | MODIFY  | Update assertions for star topology and new `buildEditPrompt` output                           |
+| 6   | Other test files                   | CHECK   | Verify planner tests still pass; update prompt content assertions if any exist                 |
 
 ## What is NOT changing
 
-| Item | Status |
-|------|--------|
-| API response shape (`imageUrls`, `storagePaths`, `deltas`, `baseImageUrl`) | Identical |
-| Route handler | Untouched |
-| DI registration | Untouched |
-| Client code | Untouched |
-| `planParser.ts` (still parses `{"deltas": [...]}`) | Untouched |
-| `storyboardUtils.ts` | Untouched |
-| `fetchImageAsDataUrl.ts` | Untouched |
-| `ImageGenerationService` | Untouched |
-| All image providers | Untouched |
-| All LLM adapters | Untouched |
-| Vision planning path (structure) | Untouched (only prompt content changes) |
-| Repair/fallback flow (structure) | Untouched (only prompt content changes) |
+| Item                                                                       | Status                                  |
+| -------------------------------------------------------------------------- | --------------------------------------- |
+| API response shape (`imageUrls`, `storagePaths`, `deltas`, `baseImageUrl`) | Identical                               |
+| Route handler                                                              | Untouched                               |
+| DI registration                                                            | Untouched                               |
+| Client code                                                                | Untouched                               |
+| `planParser.ts` (still parses `{"deltas": [...]}`)                         | Untouched                               |
+| `storyboardUtils.ts`                                                       | Untouched                               |
+| `fetchImageAsDataUrl.ts`                                                   | Untouched                               |
+| `ImageGenerationService`                                                   | Untouched                               |
+| All image providers                                                        | Untouched                               |
+| All LLM adapters                                                           | Untouched                               |
+| Vision planning path (structure)                                           | Untouched (only prompt content changes) |
+| Repair/fallback flow (structure)                                           | Untouched (only prompt content changes) |

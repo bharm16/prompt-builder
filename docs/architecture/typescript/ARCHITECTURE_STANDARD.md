@@ -23,7 +23,7 @@ ComponentName/
 │   ├── index.ts              // Exported fetch functions
 │   └── schemas.ts            // Zod schemas for API responses
 ├── components/               // Display only—props in, JSX out (only if reused)
-│   ├── SubComponent.tsx      
+│   ├── SubComponent.tsx
 │   └── types.ts              // Props for sub-components (optional)
 └── utils/                    // Pure transforms—no dependencies
     └── helpers.ts
@@ -32,6 +32,7 @@ ComponentName/
 ### Key Files Explained
 
 #### `types.ts` - Compile-Time Contracts
+
 ```typescript
 // Component props
 export interface VideoBuilderProps {
@@ -57,15 +58,16 @@ export interface VideoFormData {
 
 // Discriminated union for reducer actions
 export type VideoBuilderAction =
-  | { type: 'SET_FIELD'; field: keyof VideoFormData; value: string }
-  | { type: 'NEXT_STEP' }
-  | { type: 'PREV_STEP' }
-  | { type: 'RESET' };
+  | { type: "SET_FIELD"; field: keyof VideoFormData; value: string }
+  | { type: "NEXT_STEP" }
+  | { type: "PREV_STEP" }
+  | { type: "RESET" };
 ```
 
 #### `schemas.ts` - Runtime Validation
+
 ```typescript
-import { z } from 'zod';
+import { z } from "zod";
 
 // API response schema
 export const VideoConceptResponseSchema = z.object({
@@ -80,24 +82,30 @@ export type VideoConceptResponse = z.infer<typeof VideoConceptResponseSchema>;
 
 // Form validation schema
 export const VideoFormSchema = z.object({
-  subject: z.string().min(3, 'Subject must be at least 3 characters'),
-  action: z.string().min(3, 'Action must be at least 3 characters'),
-  location: z.string().min(3, 'Location must be at least 3 characters'),
+  subject: z.string().min(3, "Subject must be at least 3 characters"),
+  action: z.string().min(3, "Action must be at least 3 characters"),
+  location: z.string().min(3, "Location must be at least 3 characters"),
 });
 ```
 
 #### `constants.ts` - Static Values
+
 ```typescript
 // Union types for string literals
-export const OPTIMIZATION_MODES = ['video', 'research', 'creative', 'standard'] as const;
-export type OptimizationMode = typeof OPTIMIZATION_MODES[number];
+export const OPTIMIZATION_MODES = [
+  "video",
+  "research",
+  "creative",
+  "standard",
+] as const;
+export type OptimizationMode = (typeof OPTIMIZATION_MODES)[number];
 
 // Step configuration
 export const WIZARD_STEPS = [
-  { id: 'concept', label: 'Core Concept', required: true },
-  { id: 'atmosphere', label: 'Atmosphere', required: false },
-  { id: 'technical', label: 'Technical', required: false },
-  { id: 'review', label: 'Review', required: true },
+  { id: "concept", label: "Core Concept", required: true },
+  { id: "atmosphere", label: "Atmosphere", required: false },
+  { id: "technical", label: "Technical", required: false },
+  { id: "review", label: "Review", required: true },
 ] as const;
 
 // Feature flags
@@ -125,12 +133,12 @@ services/feature-name/
 ├── contracts/                // Interface definitions for DI
 │   └── IFeatureService.ts    // Public contract
 ├── services/                 // One responsibility per service
-│   ├── ProcessingService.ts  
-│   └── ValidationService.ts  
+│   ├── ProcessingService.ts
+│   └── ValidationService.ts
 ├── strategies/               // Strategy pattern implementations
 │   ├── IStrategy.ts          // Strategy interface
-│   ├── VideoStrategy.ts      
-│   └── ResearchStrategy.ts   
+│   ├── VideoStrategy.ts
+│   └── ResearchStrategy.ts
 ├── schemas/                  // Zod schemas
 │   ├── requests.ts           // Input validation
 │   └── responses.ts          // Output validation
@@ -140,21 +148,26 @@ services/feature-name/
 ### Key Files Explained
 
 #### `contracts/IFeatureService.ts` - Public Interface
+
 ```typescript
-import type { OptimizationResult, OptimizationContext } from '../types';
+import type { OptimizationResult, OptimizationContext } from "../types";
 
 export interface IFeatureService {
-  optimize(prompt: string, context?: OptimizationContext): Promise<OptimizationResult>;
+  optimize(
+    prompt: string,
+    context?: OptimizationContext,
+  ): Promise<OptimizationResult>;
   validate(prompt: string): Promise<ValidationResult>;
   getStrategies(): string[];
 }
 ```
 
 #### `FeatureService.ts` - Orchestrator
+
 ```typescript
-import type { IFeatureService } from './contracts/IFeatureService';
-import type { IProcessingService, IValidationService } from './contracts';
-import type { OptimizationResult, OptimizationContext } from './types';
+import type { IFeatureService } from "./contracts/IFeatureService";
+import type { IProcessingService, IValidationService } from "./contracts";
+import type { OptimizationResult, OptimizationContext } from "./types";
 
 export class FeatureService implements IFeatureService {
   constructor(
@@ -164,19 +177,24 @@ export class FeatureService implements IFeatureService {
     private readonly logger: ILogger,
   ) {}
 
-  async optimize(prompt: string, context?: OptimizationContext): Promise<OptimizationResult> {
+  async optimize(
+    prompt: string,
+    context?: OptimizationContext,
+  ): Promise<OptimizationResult> {
     // Orchestration only - delegate actual work
     const validated = await this.validationService.validate(prompt);
-    const cached = await this.cacheService.get(this.getCacheKey(prompt, context));
-    
+    const cached = await this.cacheService.get(
+      this.getCacheKey(prompt, context),
+    );
+
     if (cached) {
-      this.logger.debug('Cache hit');
+      this.logger.debug("Cache hit");
       return cached;
     }
-    
+
     const result = await this.processingService.process(validated, context);
     await this.cacheService.set(this.getCacheKey(prompt, context), result);
-    
+
     return result;
   }
 }
@@ -201,6 +219,7 @@ src/
 ```
 
 ### Global Types Example
+
 ```typescript
 // types/api.ts
 export interface ApiResponse<T> {
@@ -233,12 +252,14 @@ export interface PaginatedResponse<T> extends ApiResponse<T[]> {
 **The only question:** How many reasons does this have to change?
 
 ### Split when:
+
 - File has multiple distinct responsibilities
 - Different parts have different reasons to change
 - You want to test parts independently
 - Parts could be reused elsewhere
 
 ### Don't split when:
+
 - File has one responsibility (even if it's long)
 - Pieces always change together
 - Pieces only make sense together
@@ -248,7 +269,7 @@ export interface PaginatedResponse<T> extends ApiResponse<T[]> {
 
 ```typescript
 // BAD: Split because "it was too long", but these change together
-UserProfile.tsx + UserProfileHeader.tsx
+UserProfile.tsx + UserProfileHeader.tsx;
 ```
 
 If `UserProfileHeader` is only used by `UserProfile` and they always change together, this split adds indirection without improving cohesion.
@@ -257,7 +278,7 @@ If `UserProfileHeader` is only used by `UserProfile` and they always change toge
 
 ```typescript
 // GOOD: Split because different responsibilities
-UserProfile.tsx (orchestration) + UserAvatar.tsx (reusable, independent)
+UserProfile.tsx(orchestration) + UserAvatar.tsx(reusable, independent);
 ```
 
 `UserAvatar` is reused elsewhere and has its own reason to change.
@@ -270,47 +291,47 @@ Enforce consistent import ordering:
 
 ```typescript
 // 1. External libraries
-import React, { useState, useCallback } from 'react';
-import { z } from 'zod';
+import React, { useState, useCallback } from "react";
+import { z } from "zod";
 
 // 2. Internal absolute imports (aliases)
-import { Button, Input } from '@/components/ui';
-import { useAuth } from '@/hooks/useAuth';
+import { Button, Input } from "@/components/ui";
+import { useAuth } from "@/hooks/useAuth";
 
 // 3. Relative imports - types first
-import type { VideoBuilderProps, VideoBuilderState } from './types';
-import type { VideoConceptResponse } from './api/schemas';
+import type { VideoBuilderProps, VideoBuilderState } from "./types";
+import type { VideoConceptResponse } from "./api/schemas";
 
 // 4. Relative imports - implementations
-import { useVideoBuilderState } from './hooks/useVideoBuilderState';
-import { fetchVideoConcept } from './api';
-import { WIZARD_STEPS } from './constants';
+import { useVideoBuilderState } from "./hooks/useVideoBuilderState";
+import { fetchVideoConcept } from "./api";
+import { WIZARD_STEPS } from "./constants";
 
 // 5. Relative imports - components
-import { StepIndicator } from './components/StepIndicator';
-import { FormFields } from './components/FormFields';
+import { StepIndicator } from "./components/StepIndicator";
+import { FormFields } from "./components/FormFields";
 
 // 6. Styles (if any)
-import styles from './VideoBuilder.module.css';
+import styles from "./VideoBuilder.module.css";
 ```
 
 ---
 
 ## 6. Naming Conventions
 
-| Item | Convention | Example |
-|------|------------|---------|
-| Interfaces | PascalCase, prefix with `I` for contracts | `IFeatureService`, `VideoBuilderProps` |
-| Types | PascalCase | `OptimizationMode`, `VideoFormData` |
-| Zod Schemas | PascalCase + `Schema` suffix | `VideoConceptResponseSchema` |
-| Type from Schema | Same name without `Schema` | `VideoConceptResponse` |
-| Enums | PascalCase, singular | `OptimizationMode` |
-| Constants | SCREAMING_SNAKE_CASE | `WIZARD_STEPS`, `API_ENDPOINTS` |
-| Functions | camelCase | `fetchVideoConcept`, `validatePrompt` |
-| React Components | PascalCase | `VideoBuilder`, `StepIndicator` |
-| Hooks | camelCase, `use` prefix | `useVideoBuilderState` |
-| Files - Types | `types.ts` or `*.types.ts` | `types.ts`, `domain.types.ts` |
-| Files - Schemas | `schemas.ts` or `*.schemas.ts` | `schemas.ts`, `api.schemas.ts` |
+| Item             | Convention                                | Example                                |
+| ---------------- | ----------------------------------------- | -------------------------------------- |
+| Interfaces       | PascalCase, prefix with `I` for contracts | `IFeatureService`, `VideoBuilderProps` |
+| Types            | PascalCase                                | `OptimizationMode`, `VideoFormData`    |
+| Zod Schemas      | PascalCase + `Schema` suffix              | `VideoConceptResponseSchema`           |
+| Type from Schema | Same name without `Schema`                | `VideoConceptResponse`                 |
+| Enums            | PascalCase, singular                      | `OptimizationMode`                     |
+| Constants        | SCREAMING_SNAKE_CASE                      | `WIZARD_STEPS`, `API_ENDPOINTS`        |
+| Functions        | camelCase                                 | `fetchVideoConcept`, `validatePrompt`  |
+| React Components | PascalCase                                | `VideoBuilder`, `StepIndicator`        |
+| Hooks            | camelCase, `use` prefix                   | `useVideoBuilderState`                 |
+| Files - Types    | `types.ts` or `*.types.ts`                | `types.ts`, `domain.types.ts`          |
+| Files - Schemas  | `schemas.ts` or `*.schemas.ts`            | `schemas.ts`, `api.schemas.ts`         |
 
 ---
 
@@ -320,14 +341,18 @@ Use `index.ts` files for clean imports:
 
 ```typescript
 // components/VideoBuilder/index.ts
-export { VideoBuilder } from './VideoBuilder';
-export type { VideoBuilderProps } from './types';
+export { VideoBuilder } from "./VideoBuilder";
+export type { VideoBuilderProps } from "./types";
 
 // Usage elsewhere
-import { VideoBuilder, type VideoBuilderProps } from '@/components/VideoBuilder';
+import {
+  VideoBuilder,
+  type VideoBuilderProps,
+} from "@/components/VideoBuilder";
 ```
 
 **Rules:**
+
 - Export only public API
 - Use `export type` for type-only exports
 - Don't re-export internal implementation details
@@ -336,15 +361,15 @@ import { VideoBuilder, type VideoBuilderProps } from '@/components/VideoBuilder'
 
 ## Quick Reference: When to Create What
 
-| Scenario | Create |
-|----------|--------|
-| New component with complex state | `types.ts` + `hooks/useXState.ts` |
-| Component fetches data | `api/schemas.ts` + `api/index.ts` |
-| Multiple related constants | `constants.ts` |
-| Reusable UI piece | `components/SubComponent.tsx` |
-| Complex business logic | `services/SpecializedService.ts` |
-| Multiple strategies | `strategies/IStrategy.ts` + implementations |
-| Shared across features | `src/types/` or `src/schemas/` |
+| Scenario                         | Create                                      |
+| -------------------------------- | ------------------------------------------- |
+| New component with complex state | `types.ts` + `hooks/useXState.ts`           |
+| Component fetches data           | `api/schemas.ts` + `api/index.ts`           |
+| Multiple related constants       | `constants.ts`                              |
+| Reusable UI piece                | `components/SubComponent.tsx`               |
+| Complex business logic           | `services/SpecializedService.ts`            |
+| Multiple strategies              | `strategies/IStrategy.ts` + implementations |
+| Shared across features           | `src/types/` or `src/schemas/`              |
 
 ---
 
@@ -367,7 +392,7 @@ class PromptService {
     private readonly validationService: ValidationService,
     private readonly metricsService: MetricsService,
     private readonly loggingService: LoggingService,
-    private readonly configService: ConfigService,  // 8 deps = definite smell
+    private readonly configService: ConfigService, // 8 deps = definite smell
   ) {}
 }
 
@@ -378,7 +403,7 @@ function usePromptEditor() {
   const validation = useValidation();
   const analytics = useAnalytics();
   const storage = useStorage();
-  const notifications = useNotifications();  // 6 hooks = smell
+  const notifications = useNotifications(); // 6 hooks = smell
   // ...
 }
 ```
@@ -391,14 +416,15 @@ function usePromptEditor() {
 // ✅ BETTER: Grouped dependencies behind focused interfaces
 class PromptService {
   constructor(
-    private readonly generation: IGenerationPipeline,  // groups AI + prompts
+    private readonly generation: IGenerationPipeline, // groups AI + prompts
     private readonly persistence: IPersistencePipeline, // groups cache + storage
-    private readonly observability: IObservability,     // groups metrics + logging
+    private readonly observability: IObservability, // groups metrics + logging
   ) {}
 }
 ```
 
 **Detection Command:**
+
 ```bash
 # Find classes/functions with many constructor params or hook calls
 grep -r "constructor(" server/src --include="*.ts" -A 10 | grep -c "private readonly"
@@ -417,12 +443,12 @@ class PromptService {
   generatePrompt() {}
   generateVariations() {}
   generateFromTemplate() {}
-  
+
   // Cluster 2: Validation concern (different reason to change!)
   validatePromptLength() {}
   validatePromptSafety() {}
   validatePromptStructure() {}
-  
+
   // Cluster 3: Persistence concern (different reason to change!)
   savePrompt() {}
   loadPrompt() {}
@@ -435,12 +461,12 @@ function PromptEditor() {
   const handleInputChange = () => {};
   const handleFormSubmit = () => {};
   const resetForm = () => {};
-  
+
   // Cluster 2: API operations (different concern!)
   const fetchSuggestions = () => {};
   const saveDraft = () => {};
   const publishPrompt = () => {};
-  
+
   // Cluster 3: UI state (different concern!)
   const toggleSidebar = () => {};
   const openModal = () => {};
@@ -451,16 +477,29 @@ function PromptEditor() {
 **The Test:** Can you group methods by prefix? Do those groups have different reasons to change? If yes, split.
 
 **The Fix:**
+
 ```typescript
 // ✅ BETTER: Separate services for separate concerns
-class PromptGenerationService { /* generate* methods */ }
-class PromptValidationService { /* validate* methods */ }
-class PromptRepository { /* save/load/delete methods */ }
+class PromptGenerationService {
+  /* generate* methods */
+}
+class PromptValidationService {
+  /* validate* methods */
+}
+class PromptRepository {
+  /* save/load/delete methods */
+}
 
 // ✅ BETTER: Separate hooks for separate concerns
-function usePromptForm() { /* form state */ }
-function usePromptApi() { /* API operations */ }
-function useEditorUI() { /* UI state */ }
+function usePromptForm() {
+  /* form state */
+}
+function usePromptApi() {
+  /* API operations */
+}
+function useEditorUI() {
+  /* UI state */
+}
 ```
 
 ---
@@ -471,19 +510,19 @@ function useEditorUI() { /* UI state */ }
 
 ```typescript
 // 🚨 RED FLAG: Service importing from unrelated domains
-import { UserService } from '@services/user';
-import { BillingService } from '@services/billing';
-import { AnalyticsService } from '@services/analytics';
-import { NotificationService } from '@services/notification';
-import { VideoService } from '@services/video';
-import { TemplateService } from '@services/templates';
+import { UserService } from "@services/user";
+import { BillingService } from "@services/billing";
+import { AnalyticsService } from "@services/analytics";
+import { NotificationService } from "@services/notification";
+import { VideoService } from "@services/video";
+import { TemplateService } from "@services/templates";
 
 // 🚨 RED FLAG: Component importing from unrelated features
-import { useAuth } from '@features/auth';
-import { useSubscription } from '@features/billing';
-import { usePromptHistory } from '@features/history';
-import { useTeamMembers } from '@features/teams';
-import { useAnalytics } from '@features/analytics';
+import { useAuth } from "@features/auth";
+import { useSubscription } from "@features/billing";
+import { usePromptHistory } from "@features/history";
+import { useTeamMembers } from "@features/teams";
+import { useAnalytics } from "@features/analytics";
 ```
 
 **Why It Matters:** A unit touching auth, billing, video, AND notifications is doing too much. It will break when any of those domains change.
@@ -491,6 +530,7 @@ import { useAnalytics } from '@features/analytics';
 **The Fix:** Create a focused orchestrator at a higher level, or split into domain-specific handlers.
 
 **Detection Command:**
+
 ```bash
 # Find files with imports from many different service directories
 grep -l "@services/" server/src/**/*.ts | xargs -I {} sh -c 'echo "{}:"; grep -c "@services/" {}' | sort -t: -k2 -rn
@@ -548,7 +588,7 @@ class AudioStrategy implements IProcessingStrategy { /* audio logic */ }
 
 class PromptProcessor {
   constructor(private strategies: Map<string, IProcessingStrategy>) {}
-  
+
   async process(input: Input): Promise<Output> {
     const strategy = this.strategies.get(input.type);
     if (!strategy) throw new Error(`Unknown type: ${input.type}`);
@@ -579,19 +619,21 @@ function Editor({ mode }: { mode: keyof typeof EDITOR_COMPONENTS }) {
 // 🚨 RED FLAG: Method doing 3 different things
 async function processEnhancement(prompt: string) {
   // 1. Data transformation (should be in utils/)
-  const normalized = prompt.toLowerCase().trim().replace(/\s+/g, ' ');
-  const tokens = normalized.split(' ').filter(t => t.length > 2);
+  const normalized = prompt.toLowerCase().trim().replace(/\s+/g, " ");
+  const tokens = normalized.split(" ").filter((t) => t.length > 2);
   const wordCount = tokens.length;
-  
+
   // 2. Business logic (core responsibility - OK here)
   const suggestions = await this.ai.generate(tokens);
-  const filtered = suggestions.filter(s => s.confidence > 0.5);
-  
+  const filtered = suggestions.filter((s) => s.confidence > 0.5);
+
   // 3. I/O side effects (should be separate)
   await this.db.save({ prompt, suggestions: filtered, timestamp: Date.now() });
-  await this.analytics.track('enhancement_generated', { count: filtered.length });
+  await this.analytics.track("enhancement_generated", {
+    count: filtered.length,
+  });
   await this.cache.set(prompt, filtered);
-  
+
   return filtered;
 }
 
@@ -599,20 +641,20 @@ async function processEnhancement(prompt: string) {
 const handleSubmit = async () => {
   // 1. Validation (could be in schema)
   if (!form.title || form.title.length < 3) {
-    setError('Title too short');
+    setError("Title too short");
     return;
   }
-  
+
   // 2. Transformation (could be in utils)
-  const slug = form.title.toLowerCase().replace(/\s+/g, '-');
+  const slug = form.title.toLowerCase().replace(/\s+/g, "-");
   const normalized = { ...form, slug, createdAt: new Date().toISOString() };
-  
+
   // 3. API call
   const result = await api.create(normalized);
-  
+
   // 4. Side effects
-  analytics.track('created');
-  toast.success('Created!');
+  analytics.track("created");
+  toast.success("Created!");
   router.push(`/prompts/${result.id}`);
 };
 ```
@@ -623,29 +665,29 @@ const handleSubmit = async () => {
 // ✅ BETTER: Separated concerns
 // utils/normalize.ts
 export function normalizePrompt(prompt: string): NormalizedPrompt {
-  const text = prompt.toLowerCase().trim().replace(/\s+/g, ' ');
-  const tokens = text.split(' ').filter(t => t.length > 2);
+  const text = prompt.toLowerCase().trim().replace(/\s+/g, " ");
+  const tokens = text.split(" ").filter((t) => t.length > 2);
   return { text, tokens, wordCount: tokens.length };
 }
 
 // services/EnhancementService.ts
 async function processEnhancement(prompt: string) {
-  const normalized = normalizePrompt(prompt);  // Pure transformation
-  const suggestions = await this.generateSuggestions(normalized);  // Business logic
-  await this.persistResults(prompt, suggestions);  // I/O (could be event-driven)
+  const normalized = normalizePrompt(prompt); // Pure transformation
+  const suggestions = await this.generateSuggestions(normalized); // Business logic
+  await this.persistResults(prompt, suggestions); // I/O (could be event-driven)
   return suggestions;
 }
 
 // ✅ BETTER: React with separated concerns
 const handleSubmit = async () => {
-  const validation = validateForm(form);  // Pure function
+  const validation = validateForm(form); // Pure function
   if (!validation.ok) {
     setError(validation.error);
     return;
   }
-  
-  const normalized = prepareForSubmit(form);  // Pure function
-  await submitAndNavigate(normalized);  // Async handler
+
+  const normalized = prepareForSubmit(form); // Pure function
+  await submitAndNavigate(normalized); // Async handler
 };
 ```
 
@@ -662,17 +704,20 @@ class SuggestionService {
     // This is a generic text algorithm, nothing suggestion-specific
     const set1 = new Set(a.toLowerCase().split(/\s+/));
     const set2 = new Set(b.toLowerCase().split(/\s+/));
-    const intersection = new Set([...set1].filter(x => set2.has(x)));
+    const intersection = new Set([...set1].filter((x) => set2.has(x)));
     const union = new Set([...set1, ...set2]);
     return intersection.size / union.size;
   }
-  
+
   private formatAsMarkdown(text: string): string {
     // Generic formatting, could be in @utils/format
-    return text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    return text.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
   }
-  
-  private debounce<T extends (...args: unknown[]) => unknown>(fn: T, ms: number) {
+
+  private debounce<T extends (...args: unknown[]) => unknown>(
+    fn: T,
+    ms: number,
+  ) {
     // Generic utility, definitely should be in @utils/
     let timeout: NodeJS.Timeout;
     return (...args: Parameters<T>) => {
@@ -685,11 +730,11 @@ class SuggestionService {
 // 🚨 RED FLAG: Component with generic helpers
 function PromptEditor() {
   // Generic deep equality check
-  const isEqual = (a: unknown, b: unknown) => 
+  const isEqual = (a: unknown, b: unknown) =>
     JSON.stringify(a) === JSON.stringify(b);
-  
+
   // Generic array shuffle
-  const shuffle = <T>(arr: T[]): T[] => 
+  const shuffle = <T>(arr: T[]): T[] =>
     [...arr].sort(() => Math.random() - 0.5);
 }
 ```
@@ -697,19 +742,29 @@ function PromptEditor() {
 **The Test:** Could this function work in a completely different feature without modification? If yes, extract it.
 
 **The Fix:**
+
 ```typescript
 // ✅ BETTER: Extracted to utils
 // utils/text/similarity.ts
-export function jaccardSimilarity(a: string, b: string): number { /* ... */ }
+export function jaccardSimilarity(a: string, b: string): number {
+  /* ... */
+}
 
-// utils/format/markdown.ts  
-export function markdownToHtml(text: string): string { /* ... */ }
+// utils/format/markdown.ts
+export function markdownToHtml(text: string): string {
+  /* ... */
+}
 
 // utils/async/debounce.ts
-export function debounce<T extends (...args: unknown[]) => unknown>(fn: T, ms: number) { /* ... */ }
+export function debounce<T extends (...args: unknown[]) => unknown>(
+  fn: T,
+  ms: number,
+) {
+  /* ... */
+}
 
 // Now SuggestionService just imports them
-import { jaccardSimilarity } from '@utils/text/similarity';
+import { jaccardSimilarity } from "@utils/text/similarity";
 ```
 
 ---
@@ -723,40 +778,41 @@ import { jaccardSimilarity } from '@utils/text/similarity';
 async function generateSuggestions(prompt: string) {
   const startTime = Date.now();
   const requestId = crypto.randomUUID();
-  
-  this.logger.info('Starting suggestion generation', {
+
+  this.logger.info("Starting suggestion generation", {
     requestId,
     promptLength: prompt.length,
     timestamp: new Date().toISOString(),
   });
-  this.metrics.increment('suggestions.generation.started');
-  this.metrics.gauge('suggestions.generation.prompt_length', prompt.length);
-  
+  this.metrics.increment("suggestions.generation.started");
+  this.metrics.gauge("suggestions.generation.prompt_length", prompt.length);
+
   try {
-    const result = await this.ai.complete(prompt);  // <- Actual work: 1 line
-    
+    const result = await this.ai.complete(prompt); // <- Actual work: 1 line
+
     const duration = Date.now() - startTime;
-    this.logger.info('Suggestion generation complete', {
+    this.logger.info("Suggestion generation complete", {
       requestId,
       duration,
       resultCount: result.length,
-      avgConfidence: result.reduce((a, b) => a + b.confidence, 0) / result.length,
+      avgConfidence:
+        result.reduce((a, b) => a + b.confidence, 0) / result.length,
     });
-    this.metrics.histogram('suggestions.generation.duration', duration);
-    this.metrics.increment('suggestions.generation.success');
-    this.metrics.gauge('suggestions.generation.result_count', result.length);
-    
+    this.metrics.histogram("suggestions.generation.duration", duration);
+    this.metrics.increment("suggestions.generation.success");
+    this.metrics.gauge("suggestions.generation.result_count", result.length);
+
     return result;
   } catch (error) {
     const duration = Date.now() - startTime;
-    this.logger.error('Suggestion generation failed', {
+    this.logger.error("Suggestion generation failed", {
       requestId,
       duration,
       error: error instanceof Error ? error.message : String(error),
       stack: error instanceof Error ? error.stack : undefined,
     });
-    this.metrics.increment('suggestions.generation.error');
-    this.metrics.histogram('suggestions.generation.error_duration', duration);
+    this.metrics.increment("suggestions.generation.error");
+    this.metrics.histogram("suggestions.generation.error_duration", duration);
     throw error;
   }
 }
@@ -795,7 +851,7 @@ async function generateSuggestions(prompt: string) {
 
 ```typescript
 // 🚨 RED FLAG: Description requires multiple "and"s
-// "PromptManager validates prompts AND generates suggestions AND 
+// "PromptManager validates prompts AND generates suggestions AND
 //  saves to database AND sends notifications AND tracks analytics"
 
 class PromptManager {
@@ -803,40 +859,50 @@ class PromptManager {
     // Validation
     const isValid = await this.validate(prompt);
     if (!isValid) throw new ValidationError();
-    
+
     // Generation
     const suggestions = await this.generateSuggestions(prompt);
-    
+
     // Persistence
     await this.db.savePrompt({ prompt, suggestions });
-    
+
     // Notifications
-    await this.notificationService.notify(user, 'prompt_processed');
-    
+    await this.notificationService.notify(user, "prompt_processed");
+
     // Analytics
-    await this.analytics.track('prompt_processed', { suggestionCount: suggestions.length });
-    
+    await this.analytics.track("prompt_processed", {
+      suggestionCount: suggestions.length,
+    });
+
     return suggestions;
   }
 }
 ```
 
 **The Test:** Describe your class/function/component in one sentence. Count the "and"s.
+
 - 0 "and"s: Good single responsibility
 - 1 "and": Possibly OK if tightly coupled
 - 2+ "and"s: Needs splitting
 
 **The Fix:**
+
 ```typescript
 // ✅ BETTER: Each service has one "and"-free description
 // "PromptValidationService validates prompts"
-class PromptValidationService { /* ... */ }
+class PromptValidationService {
+  /* ... */
+}
 
 // "SuggestionGenerationService generates suggestions"
-class SuggestionGenerationService { /* ... */ }
+class SuggestionGenerationService {
+  /* ... */
+}
 
 // "PromptRepository persists prompts"
-class PromptRepository { /* ... */ }
+class PromptRepository {
+  /* ... */
+}
 
 // "PromptOrchestrator coordinates the prompt processing workflow"
 class PromptOrchestrator {
@@ -844,7 +910,7 @@ class PromptOrchestrator {
     const validated = await this.validation.validate(prompt);
     const suggestions = await this.generation.generate(validated);
     await this.repository.save({ prompt, suggestions });
-    this.events.emit('prompt:processed', { prompt, suggestions });  // Let listeners handle notifications/analytics
+    this.events.emit("prompt:processed", { prompt, suggestions }); // Let listeners handle notifications/analytics
     return suggestions;
   }
 }
@@ -860,9 +926,9 @@ class PromptOrchestrator {
 // 🚨 RED FLAG: Props passed through multiple layers
 function PageLayout({ user, theme, onLogout, notifications, ...props }) {
   return (
-    <MainContent 
-      user={user} 
-      theme={theme} 
+    <MainContent
+      user={user}
+      theme={theme}
       onLogout={onLogout}
       notifications={notifications}  // Just passing through
     >
@@ -873,8 +939,8 @@ function PageLayout({ user, theme, onLogout, notifications, ...props }) {
 
 function MainContent({ user, theme, onLogout, notifications, children }) {
   return (
-    <Sidebar 
-      user={user} 
+    <Sidebar
+      user={user}
       onLogout={onLogout}
       notifications={notifications}  // Still just passing through
     />
@@ -928,28 +994,29 @@ function PageLayout({ sidebar, children }) {
 ```typescript
 // 🚨 RED FLAG: Interdependent useState calls
 function PromptEditor() {
-  const [prompt, setPrompt] = useState('');
+  const [prompt, setPrompt] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
-  const [selectedSuggestion, setSelectedSuggestion] = useState<Suggestion | null>(null);
+  const [selectedSuggestion, setSelectedSuggestion] =
+    useState<Suggestion | null>(null);
   const [isApplying, setIsApplying] = useState(false);
   const [history, setHistory] = useState<string[]>([]);
-  const [canUndo, setCanUndo] = useState(false);  // Derived from history!
-  
+  const [canUndo, setCanUndo] = useState(false); // Derived from history!
+
   // Now you have to manually keep these in sync...
   const handleSelectSuggestion = (s: Suggestion) => {
     setSelectedSuggestion(s);
-    setError(null);  // Clear error when selecting
+    setError(null); // Clear error when selecting
   };
-  
+
   const handleApply = async () => {
     setIsApplying(true);
     setError(null);
     try {
       // ...
       setHistory([...history, prompt]);
-      setCanUndo(true);  // Must remember to sync this!
+      setCanUndo(true); // Must remember to sync this!
       setPrompt(selectedSuggestion.text);
       setSelectedSuggestion(null);
       setSuggestions([]);
@@ -971,29 +1038,29 @@ type State = {
   suggestions: Suggestion[];
   selectedIndex: number | null;
   history: string[];
-  status: 'idle' | 'loading' | 'applying' | 'error';
+  status: "idle" | "loading" | "applying" | "error";
   error: string | null;
 };
 
 type Action =
-  | { type: 'FETCH_START' }
-  | { type: 'FETCH_SUCCESS'; suggestions: Suggestion[] }
-  | { type: 'FETCH_ERROR'; error: string }
-  | { type: 'SELECT'; index: number }
-  | { type: 'APPLY_START' }
-  | { type: 'APPLY_SUCCESS'; newPrompt: string }
-  | { type: 'UNDO' };
+  | { type: "FETCH_START" }
+  | { type: "FETCH_SUCCESS"; suggestions: Suggestion[] }
+  | { type: "FETCH_ERROR"; error: string }
+  | { type: "SELECT"; index: number }
+  | { type: "APPLY_START" }
+  | { type: "APPLY_SUCCESS"; newPrompt: string }
+  | { type: "UNDO" };
 
 function reducer(state: State, action: Action): State {
   switch (action.type) {
-    case 'APPLY_SUCCESS':
+    case "APPLY_SUCCESS":
       return {
         ...state,
         prompt: action.newPrompt,
         history: [...state.history, state.prompt],
         suggestions: [],
         selectedIndex: null,
-        status: 'idle',
+        status: "idle",
       };
     // ... other cases
   }
@@ -1001,13 +1068,14 @@ function reducer(state: State, action: Action): State {
 
 function PromptEditor() {
   const [state, dispatch] = useReducer(reducer, initialState);
-  
+
   // Derived state - no useState needed!
   const canUndo = state.history.length > 0;
-  const selectedSuggestion = state.selectedIndex !== null 
-    ? state.suggestions[state.selectedIndex] 
-    : null;
-  const isLoading = state.status === 'loading';
+  const selectedSuggestion =
+    state.selectedIndex !== null
+      ? state.suggestions[state.selectedIndex]
+      : null;
+  const isLoading = state.status === "loading";
 }
 ```
 
@@ -1017,18 +1085,18 @@ function PromptEditor() {
 
 Use this checklist when reviewing code or running architectural audits:
 
-| Smell | Detection Method | Threshold |
-|-------|------------------|----------|
-| Dependency explosion | Count constructor params / hook imports | >5 dependencies |
-| Method clustering | Group methods by prefix | 3+ distinct clusters |
-| Cross-domain imports | Count unique `@services/` or `@features/` imports | >4 domains |
-| Type switching | Search for `if.*type ===` or `switch.*type` | >3 branches with 20+ lines each |
-| Mixed concerns | Count distinct operations in one method | Transform + Logic + I/O |
-| Trapped utilities | Private methods usable elsewhere unchanged | Any generic algorithm |
-| Observability bloat | Ratio of logging lines to logic lines | >2:1 ratio |
-| The "And" test | Describe unit in one sentence | >1 "and" |
-| Props drilling | Props passed through without use | >2 layers |
-| Async spaghetti | Count interdependent `useState` calls | >5 related states |
+| Smell                | Detection Method                                  | Threshold                       |
+| -------------------- | ------------------------------------------------- | ------------------------------- |
+| Dependency explosion | Count constructor params / hook imports           | >5 dependencies                 |
+| Method clustering    | Group methods by prefix                           | 3+ distinct clusters            |
+| Cross-domain imports | Count unique `@services/` or `@features/` imports | >4 domains                      |
+| Type switching       | Search for `if.*type ===` or `switch.*type`       | >3 branches with 20+ lines each |
+| Mixed concerns       | Count distinct operations in one method           | Transform + Logic + I/O         |
+| Trapped utilities    | Private methods usable elsewhere unchanged        | Any generic algorithm           |
+| Observability bloat  | Ratio of logging lines to logic lines             | >2:1 ratio                      |
+| The "And" test       | Describe unit in one sentence                     | >1 "and"                        |
+| Props drilling       | Props passed through without use                  | >2 layers                       |
+| Async spaghetti      | Count interdependent `useState` calls             | >5 related states               |
 
 ### Quick Detection Commands
 
@@ -1054,6 +1122,7 @@ done
 ## When to Refactor vs. Leave Alone
 
 ### ✅ Refactor When:
+
 - Adding a feature would require touching 3+ unrelated methods
 - A bug fix in one area keeps breaking another area
 - New team members consistently misunderstand the code's purpose
@@ -1061,6 +1130,7 @@ done
 - Tests require mocking 5+ dependencies
 
 ### ❌ Leave Alone When:
+
 - Code is stable and rarely changes
 - "Smell" is just line count, not actual coupling
 - Splitting would create files with <50 lines that always change together
@@ -1069,4 +1139,4 @@ done
 
 ---
 
-*Companion docs: [MIGRATION_GUIDE.md](./MIGRATION_GUIDE.md), [STYLE_RULES.md](./STYLE_RULES.md)*
+_Companion docs: [MIGRATION_GUIDE.md](./MIGRATION_GUIDE.md), [STYLE_RULES.md](./STYLE_RULES.md)_

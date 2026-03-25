@@ -23,11 +23,13 @@ That's it! The system will now use algorithmic analysis for placeholder suggesti
 ### Example 1: Simple Technical Term
 
 **Input**:
+
 - Highlighted text: `"wooden"`
 - Context: "A wooden table in the corner"
 - Existing spans: 3 objects, 2 locations (low diversity)
 
 **Algorithmic Analysis**:
+
 ```javascript
 {
   complexity: 0.2,           // Simple word
@@ -38,6 +40,7 @@ That's it! The system will now use algorithmic analysis for placeholder suggesti
 ```
 
 **Translation Layer Output**:
+
 ```javascript
 {
   persona: "Creative Novelist",
@@ -53,6 +56,7 @@ That's it! The system will now use algorithmic analysis for placeholder suggesti
 ```
 
 **Generated Prompt** (excerpt):
+
 ```
 You are a Creative Novelist specializing in placeholder value suggestion...
 
@@ -73,27 +77,62 @@ Generate 12-15 suggestions organized into 4-5 CATEGORIES...
 ```
 
 **Expected Output** (more diverse than baseline):
+
 ```json
 [
-  {"text": "weathered oak", "category": "Materials", "explanation": "Adds texture"},
-  {"text": "reclaimed pine", "category": "Materials", "explanation": "Eco-friendly"},
-  {"text": "industrial metal", "category": "Materials", "explanation": "Modern contrast"},
-  {"text": "vintage marble", "category": "Materials", "explanation": "Elegant feel"},
-  {"text": "minimalist glass", "category": "Styles", "explanation": "Contemporary"},
-  {"text": "rustic farmhouse", "category": "Styles", "explanation": "Cozy aesthetic"},
-  {"text": "smooth polished", "category": "Textures", "explanation": "Tactile quality"},
-  {"text": "rough hewn", "category": "Textures", "explanation": "Artisanal feel"}
+  {
+    "text": "weathered oak",
+    "category": "Materials",
+    "explanation": "Adds texture"
+  },
+  {
+    "text": "reclaimed pine",
+    "category": "Materials",
+    "explanation": "Eco-friendly"
+  },
+  {
+    "text": "industrial metal",
+    "category": "Materials",
+    "explanation": "Modern contrast"
+  },
+  {
+    "text": "vintage marble",
+    "category": "Materials",
+    "explanation": "Elegant feel"
+  },
+  {
+    "text": "minimalist glass",
+    "category": "Styles",
+    "explanation": "Contemporary"
+  },
+  {
+    "text": "rustic farmhouse",
+    "category": "Styles",
+    "explanation": "Cozy aesthetic"
+  },
+  {
+    "text": "smooth polished",
+    "category": "Textures",
+    "explanation": "Tactile quality"
+  },
+  {
+    "text": "rough hewn",
+    "category": "Textures",
+    "explanation": "Artisanal feel"
+  }
 ]
 ```
 
 ### Example 2: Complex Technical Phrase
 
 **Input**:
+
 - Highlighted text: `"utilizing advanced machine learning algorithms"`
 - Context: Technical documentation
 - Existing spans: 8 technical terms (high repetition)
 
 **Algorithmic Analysis**:
+
 ```javascript
 {
   complexity: 0.8,           // Complex phrase
@@ -105,6 +144,7 @@ Generate 12-15 suggestions organized into 4-5 CATEGORIES...
 ```
 
 **Translation Layer Output**:
+
 ```javascript
 {
   persona: "Clarity Expert",
@@ -120,6 +160,7 @@ Generate 12-15 suggestions organized into 4-5 CATEGORIES...
 ```
 
 **Generated Prompt** (excerpt):
+
 ```
 You are a Clarity Expert specializing in placeholder value suggestion...
 
@@ -144,12 +185,29 @@ Generate 12-15 suggestions organized into 4-5 CATEGORIES...
 ```
 
 **Expected Output** (simpler, more varied):
+
 ```json
 [
-  {"text": "applying AI models", "category": "Simplified Technical", "explanation": "Clearer phrasing"},
-  {"text": "leveraging neural networks", "category": "Specific Methods", "explanation": "More specific"},
-  {"text": "deploying classification systems", "category": "Functional Focus", "explanation": "Action-oriented"},
-  {"text": "implementing deep learning", "category": "Specific Methods", "explanation": "Technical but clear"}
+  {
+    "text": "applying AI models",
+    "category": "Simplified Technical",
+    "explanation": "Clearer phrasing"
+  },
+  {
+    "text": "leveraging neural networks",
+    "category": "Specific Methods",
+    "explanation": "More specific"
+  },
+  {
+    "text": "deploying classification systems",
+    "category": "Functional Focus",
+    "explanation": "Action-oriented"
+  },
+  {
+    "text": "implementing deep learning",
+    "category": "Specific Methods",
+    "explanation": "Technical but clear"
+  }
 ]
 ```
 
@@ -158,27 +216,30 @@ Generate 12-15 suggestions organized into 4-5 CATEGORIES...
 ### Scenario: Replace "car" in "driving a car"
 
 **Baseline PromptBuilderService**:
+
 - Uses generic prompt
 - May suggest: sedan, SUV, coupe, hatchback, wagon (all same category)
 - Limited diversity
 
 **AlgorithmicPromptBuilder**:
+
 1. **Analyzes context**: Low complexity (0.1), low diversity
 2. **Computes directives**: "Maximize categorical diversity"
 3. **Generates varied suggestions**:
    ```json
    [
-     {"text": "electric vehicle", "category": "Technology"},
-     {"text": "vintage convertible", "category": "Style"},
-     {"text": "luxury sedan", "category": "Class"},
-     {"text": "compact hatchback", "category": "Size"},
-     {"text": "rugged off-roader", "category": "Capability"}
+     { "text": "electric vehicle", "category": "Technology" },
+     { "text": "vintage convertible", "category": "Style" },
+     { "text": "luxury sedan", "category": "Class" },
+     { "text": "compact hatchback", "category": "Size" },
+     { "text": "rugged off-roader", "category": "Capability" }
    ]
    ```
 
 ## Testing Different Content Types
 
 ### Test 1: Video Prompt (Cinematic)
+
 ```javascript
 {
   highlightedText: "camera dollies in",
@@ -191,6 +252,7 @@ Generate 12-15 suggestions organized into 4-5 CATEGORIES...
 **Expected**: Suggestions for camera movements with variety
 
 ### Test 2: Narrative Prompt (Creative)
+
 ```javascript
 {
   highlightedText: "ancient forest",
@@ -203,6 +265,7 @@ Generate 12-15 suggestions organized into 4-5 CATEGORIES...
 **Expected**: Sensory, descriptive alternatives
 
 ### Test 3: Repetitive Context
+
 ```javascript
 {
   highlightedText: "modern",
@@ -248,9 +311,9 @@ const testCases = [
 for (const testCase of testCases) {
   const baselineResult = await getEnhancementWithBaseline(testCase);
   const algorithmicResult = await getEnhancementWithAlgorithmic(testCase);
-  
-  console.log('Baseline categories:', countCategories(baselineResult));
-  console.log('Algorithmic categories:', countCategories(algorithmicResult));
+
+  console.log("Baseline categories:", countCategories(baselineResult));
+  console.log("Algorithmic categories:", countCategories(algorithmicResult));
 }
 ```
 
@@ -264,6 +327,7 @@ for (const testCase of testCases) {
 ### Issue: Not enough diversity
 
 **Check**:
+
 1. Verify `USE_ALGORITHMIC_PROMPT_BUILDER=true` is set
 2. Check logs for which builder is being used
 3. Inspect the generated prompt to see directives
@@ -271,9 +335,10 @@ for (const testCase of testCases) {
 ### Issue: Unexpected persona/directives
 
 **Debug**: Add logging in `translateToNaturalLanguage()`:
+
 ```javascript
-console.log('Analysis:', analysis);
-console.log('Translation:', { persona, directives, negativeConstraints });
+console.log("Analysis:", analysis);
+console.log("Translation:", { persona, directives, negativeConstraints });
 ```
 
 ## Advanced Configuration (Future)
@@ -302,6 +367,7 @@ If issues arise:
 ## Summary
 
 The AlgorithmicPromptBuilder provides:
+
 - ✅ Automatic adaptation to content characteristics
 - ✅ Increased categorical diversity
 - ✅ Reduced repetition through negative constraints
@@ -310,4 +376,3 @@ The AlgorithmicPromptBuilder provides:
 - ✅ Full backward compatibility
 
 Enable it with one environment variable and compare results!
-

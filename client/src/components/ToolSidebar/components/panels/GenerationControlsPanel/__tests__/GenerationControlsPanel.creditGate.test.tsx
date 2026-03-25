@@ -1,36 +1,37 @@
-import React from 'react';
-import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import React from "react";
+import { describe, expect, it, vi, beforeEach } from "vitest";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import {
   GenerationControlsProvider,
   useGenerationControlsContext,
-} from '@/features/prompt-optimizer/context/GenerationControlsContext';
-import { GenerationControlsStoreProvider } from '@features/generation-controls/context/GenerationControlsStore';
-import { GenerationControlsPanel } from '../GenerationControlsPanel';
-import * as creditGateHook from '@/hooks/useCreditGate';
+} from "@/features/prompt-optimizer/context/GenerationControlsContext";
+import { GenerationControlsStoreProvider } from "@features/generation-controls/context/GenerationControlsStore";
+import { GenerationControlsPanel } from "../GenerationControlsPanel";
+import * as creditGateHook from "@/hooks/useCreditGate";
 
 const useCreditBalanceMock = vi.fn();
 const useGenerationControlsPanelMock = vi.fn();
 
-vi.mock('@/contexts/CreditBalanceContext', () => ({
+vi.mock("@/contexts/CreditBalanceContext", () => ({
   useCreditBalance: () => useCreditBalanceMock(),
 }));
 
-vi.mock('@/features/model-intelligence/api', () => ({
+vi.mock("@/features/model-intelligence/api", () => ({
   trackModelRecommendationEvent: vi.fn(),
 }));
 
-vi.mock('@/components/modals/CameraMotionModal', () => ({
+vi.mock("@/components/modals/CameraMotionModal", () => ({
   CameraMotionModal: () => null,
 }));
 
-vi.mock('@/components/modals/FaceSwapPreviewModal', () => ({
+vi.mock("@/components/modals/FaceSwapPreviewModal", () => ({
   FaceSwapPreviewModal: () => null,
 }));
 
-vi.mock('../hooks/useGenerationControlsPanel', () => ({
-  useGenerationControlsPanel: (...args: unknown[]) => useGenerationControlsPanelMock(...args),
+vi.mock("../hooks/useGenerationControlsPanel", () => ({
+  useGenerationControlsPanel: (...args: unknown[]) =>
+    useGenerationControlsPanelMock(...args),
 }));
 
 const buildHookResult = () => ({
@@ -41,15 +42,15 @@ const buildHookResult = () => ({
     videoReferenceFileInputRef: { current: null },
   },
   state: {
-    activeTab: 'video',
-    imageSubTab: 'references',
+    activeTab: "video",
+    imageSubTab: "references",
     showCameraMotionModal: false,
   },
   store: {
-    aspectRatio: '16:9',
+    aspectRatio: "16:9",
     duration: 5,
-    selectedModel: 'sora-2',
-    tier: 'render',
+    selectedModel: "sora-2",
+    tier: "render",
     keyframes: [],
     startFrame: null,
     endFrame: null,
@@ -80,8 +81,8 @@ const buildHookResult = () => ({
     isFaceSwapPreviewDisabled: true,
   },
   faceSwap: {
-    mode: 'direct',
-    selectedCharacterId: '',
+    mode: "direct",
+    selectedCharacterId: "",
     characterOptions: [],
     previewUrl: null,
     isPreviewReady: false,
@@ -93,20 +94,20 @@ const buildHookResult = () => ({
     totalCredits: null,
   },
   recommendation: {
-    recommendationMode: 't2v',
+    recommendationMode: "t2v",
     modelRecommendation: null,
     isRecommendationLoading: false,
     recommendationError: null,
     recommendedModelId: undefined,
     efficientModelId: undefined,
-    renderModelOptions: [{ id: 'sora-2', label: 'Sora' }],
-    renderModelId: 'sora-2',
+    renderModelOptions: [{ id: "sora-2", label: "Sora" }],
+    renderModelId: "sora-2",
     recommendationAgeMs: null,
   },
   capabilities: {
     aspectRatioInfo: null,
     durationInfo: null,
-    aspectRatioOptions: ['16:9'],
+    aspectRatioOptions: ["16:9"],
     durationOptions: [5],
     videoInputCapabilities: {
       supportsStartFrame: true,
@@ -154,7 +155,9 @@ const buildHookResult = () => ({
 function OnInsufficientCreditsObserver({
   onChange,
 }: {
-  onChange: (handler: ((required: number, operation: string) => void) | null) => void;
+  onChange: (
+    handler: ((required: number, operation: string) => void) | null,
+  ) => void;
 }): React.ReactElement {
   const { onInsufficientCredits } = useGenerationControlsContext();
 
@@ -185,13 +188,13 @@ const renderPanel = (props: {
           />
         </GenerationControlsProvider>
       </GenerationControlsStoreProvider>
-    </MemoryRouter>
+    </MemoryRouter>,
   );
 
   return { onDraft, onRender, onStoryboard };
 };
 
-describe('GenerationControlsPanel credit gating', () => {
+describe("GenerationControlsPanel credit gating", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     useCreditBalanceMock.mockReturnValue({
@@ -202,34 +205,34 @@ describe('GenerationControlsPanel credit gating', () => {
     useGenerationControlsPanelMock.mockReturnValue(buildHookResult());
   });
 
-  it('disables generate when balance is insufficient and blocks generation', () => {
+  it("disables generate when balance is insufficient and blocks generation", () => {
     const { onDraft, onRender } = renderPanel({});
-    const generateButton = screen.getByRole('button', { name: /^Generate$/i });
+    const generateButton = screen.getByRole("button", { name: /^Generate$/i });
 
     expect(generateButton).toBeDisabled();
     expect(generateButton).toHaveAttribute(
-      'title',
-      expect.stringContaining('you have 0')
+      "title",
+      expect.stringContaining("you have 0"),
     );
 
     fireEvent.click(generateButton);
 
     expect(onDraft).not.toHaveBeenCalled();
     expect(onRender).not.toHaveBeenCalled();
-    expect(screen.queryByText('Insufficient Credits')).not.toBeInTheDocument();
+    expect(screen.queryByText("Insufficient Credits")).not.toBeInTheDocument();
   });
 
-  it('blocks storyboard preview action when balance is insufficient', () => {
+  it("blocks storyboard preview action when balance is insufficient", () => {
     const { onStoryboard } = renderPanel({});
 
-    fireEvent.click(screen.getByLabelText('Generate 1 preview · 1 cr'));
+    fireEvent.click(screen.getByLabelText("Generate 1 preview · 1 cr"));
 
     expect(onStoryboard).not.toHaveBeenCalled();
     expect(screen.getByText(/This Storyboard costs/i)).toBeInTheDocument();
   });
 
-  it('does not churn insufficient-credit registration when open callback identity changes', async () => {
-    const useCreditGateSpy = vi.spyOn(creditGateHook, 'useCreditGate');
+  it("does not churn insufficient-credit registration when open callback identity changes", async () => {
+    const useCreditGateSpy = vi.spyOn(creditGateHook, "useCreditGate");
     const onInsufficientCreditsChange = vi.fn();
     const onDraft = vi.fn();
     const onRender = vi.fn();
@@ -248,7 +251,9 @@ describe('GenerationControlsPanel credit gating', () => {
       <MemoryRouter>
         <GenerationControlsStoreProvider>
           <GenerationControlsProvider>
-            <OnInsufficientCreditsObserver onChange={onInsufficientCreditsChange} />
+            <OnInsufficientCreditsObserver
+              onChange={onInsufficientCreditsChange}
+            />
             <GenerationControlsPanel
               onDraft={onDraft}
               onRender={onRender}
@@ -269,13 +274,21 @@ describe('GenerationControlsPanel credit gating', () => {
 
     await waitFor(() => {
       const nonNullHandlers = onInsufficientCreditsChange.mock.calls
-        .map((call) => call[0] as ((required: number, operation: string) => void) | null)
-        .filter((handler): handler is (required: number, operation: string) => void => Boolean(handler));
+        .map(
+          (call) =>
+            call[0] as ((required: number, operation: string) => void) | null,
+        )
+        .filter(
+          (handler): handler is (required: number, operation: string) => void =>
+            Boolean(handler),
+        );
 
       expect(nonNullHandlers.length).toBeGreaterThanOrEqual(1);
 
       const firstHandler = nonNullHandlers[0];
-      const hasIdentityChurn = nonNullHandlers.some((handler) => handler !== firstHandler);
+      const hasIdentityChurn = nonNullHandlers.some(
+        (handler) => handler !== firstHandler,
+      );
       expect(hasIdentityChurn).toBe(false);
     });
 

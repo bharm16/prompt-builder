@@ -1,9 +1,9 @@
-import * as React from "react"
+import * as React from "react";
 
 interface PageHeaderProps {
-  title: string
-  description?: string
-  actions?: React.ReactNode
+  title: string;
+  description?: string;
+  actions?: React.ReactNode;
 }
 
 const PageHeader = ({ title, description, actions }: PageHeaderProps) => {
@@ -19,8 +19,8 @@ const PageHeader = ({ title, description, actions }: PageHeaderProps) => {
         <div className="flex shrink-0 items-center gap-2">{actions}</div>
       ) : null}
     </header>
-  )
-}
+  );
+};
 
-export { PageHeader }
-export type { PageHeaderProps }
+export { PageHeader };
+export type { PageHeaderProps };

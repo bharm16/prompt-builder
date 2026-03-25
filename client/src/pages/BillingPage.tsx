@@ -1,61 +1,76 @@
-import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { Check, CreditCard, FileText } from '@promptstudio/system/components/ui';
-import { createBillingPortalSession, createCheckoutSession } from '@/features/billing/api/billingApi';
-import { logger } from '@/services/LoggingService';
-import { sanitizeError } from '@/utils/logging';
-import { cn } from '@/utils/cn';
-import { useToast } from '@components/Toast';
-import { Button } from '@promptstudio/system/components/ui/button';
-import { useAuthUser } from '@hooks/useAuthUser';
-import { useUserCreditBalance } from '@hooks/useUserCreditBalance';
-import { SUBSCRIPTION_TIERS, type SubscriptionTier } from '@/features/billing/subscriptionTiers';
-import { CREDIT_PACKS } from '@/features/billing/creditPacks';
-import { useBillingStatus } from '@/features/billing/hooks/useBillingStatus';
-import { useCreditHistory } from '@/features/billing/hooks/useCreditHistory';
-import { AuthShell } from './auth/AuthShell';
+import React from "react";
+import { Link, useLocation } from "react-router-dom";
+import {
+  Check,
+  CreditCard,
+  FileText,
+} from "@promptstudio/system/components/ui";
+import {
+  createBillingPortalSession,
+  createCheckoutSession,
+} from "@/features/billing/api/billingApi";
+import { logger } from "@/services/LoggingService";
+import { sanitizeError } from "@/utils/logging";
+import { cn } from "@/utils/cn";
+import { useToast } from "@components/Toast";
+import { Button } from "@promptstudio/system/components/ui/button";
+import { useAuthUser } from "@hooks/useAuthUser";
+import { useUserCreditBalance } from "@hooks/useUserCreditBalance";
+import {
+  SUBSCRIPTION_TIERS,
+  type SubscriptionTier,
+} from "@/features/billing/subscriptionTiers";
+import { CREDIT_PACKS } from "@/features/billing/creditPacks";
+import { useBillingStatus } from "@/features/billing/hooks/useBillingStatus";
+import { useCreditHistory } from "@/features/billing/hooks/useCreditHistory";
+import { AuthShell } from "./auth/AuthShell";
 import {
   AUTH_COLORS,
   AUTH_CTA_CLASS,
   AUTH_CTA_STYLE,
   AUTH_CARD_STYLE,
   AUTH_SUCCESS_STYLE,
-} from './auth/auth-styles';
+} from "./auth/auth-styles";
 
 function formatInteger(value: number): string {
-  return new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 }).format(value);
+  return new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 }).format(
+    value,
+  );
 }
 
 function formatSignedCredits(value: number): string {
-  const sign = value >= 0 ? '+' : '-';
+  const sign = value >= 0 ? "+" : "-";
   return `${sign}${formatInteger(Math.abs(value))}`;
 }
 
 function formatActivityTime(createdAtMs: number): string {
-  if (!Number.isFinite(createdAtMs) || createdAtMs <= 0) return 'Unknown time';
+  if (!Number.isFinite(createdAtMs) || createdAtMs <= 0) return "Unknown time";
   return new Date(createdAtMs).toLocaleString();
 }
 
 function toActivityLabel(type: string): string {
   switch (type) {
-    case 'starter_grant':
-      return 'Starter grant';
-    case 'reserve':
-      return 'Generation debit';
-    case 'refund':
-      return 'Refund';
-    case 'add':
-      return 'Credit add';
+    case "starter_grant":
+      return "Starter grant";
+    case "reserve":
+      return "Generation debit";
+    case "refund":
+      return "Refund";
+    case "add":
+      return "Credit add";
     default:
       return type;
   }
 }
 
-function deriveCheckoutStatus(search: string): { sessionId: string | null; canceled: boolean } {
+function deriveCheckoutStatus(search: string): {
+  sessionId: string | null;
+  canceled: boolean;
+} {
   const params = new URLSearchParams(search);
   return {
-    sessionId: params.get('session_id'),
-    canceled: params.get('canceled') === 'true',
+    sessionId: params.get("session_id"),
+    canceled: params.get("canceled") === "true",
   };
 }
 
@@ -75,33 +90,43 @@ const BTN_MUTED: React.CSSProperties = {
 export function BillingPage(): React.ReactElement {
   const toast = useToast();
   const location = useLocation();
-  const log = React.useMemo(() => logger.child('BillingPage'), []);
+  const log = React.useMemo(() => logger.child("BillingPage"), []);
 
   const [isBusy, setIsBusy] = React.useState<string | null>(null);
   const user = useAuthUser();
-  const { status: billingStatus, isLoading: isLoadingBillingStatus } = useBillingStatus();
+  const { status: billingStatus, isLoading: isLoadingBillingStatus } =
+    useBillingStatus();
   const {
     history: creditHistory,
     isLoading: isLoadingCreditHistory,
     error: creditHistoryError,
   } = useCreditHistory({ limit: 50 });
 
-  const { balance, isLoading: isLoadingBalance, error: balanceError } = useUserCreditBalance(user?.uid ?? null);
-  const checkout = React.useMemo(() => deriveCheckoutStatus(location.search), [location.search]);
+  const {
+    balance,
+    isLoading: isLoadingBalance,
+    error: balanceError,
+  } = useUserCreditBalance(user?.uid ?? null);
+  const checkout = React.useMemo(
+    () => deriveCheckoutStatus(location.search),
+    [location.search],
+  );
   const selectedPlan = React.useMemo(() => {
     const params = new URLSearchParams(location.search);
-    const raw = params.get('plan');
-    return typeof raw === 'string' && raw.trim() ? raw.trim() : null;
+    const raw = params.get("plan");
+    return typeof raw === "string" && raw.trim() ? raw.trim() : null;
   }, [location.search]);
 
   const signInLink = React.useMemo(() => {
-    const redirect = encodeURIComponent(`${location.pathname}${location.search}`);
+    const redirect = encodeURIComponent(
+      `${location.pathname}${location.search}`,
+    );
     return `/signin?redirect=${redirect}`;
   }, [location.pathname, location.search]);
 
   const handleCheckout = async (priceId: string): Promise<void> => {
     if (!user) {
-      toast.error('Sign in to manage billing.');
+      toast.error("Sign in to manage billing.");
       return;
     }
 
@@ -110,17 +135,21 @@ export function BillingPage(): React.ReactElement {
       const { url: redirectUrl } = await createCheckoutSession(priceId);
 
       if (!redirectUrl) {
-        throw new Error('Missing checkout URL');
+        throw new Error("Missing checkout URL");
       }
 
       window.location.href = redirectUrl;
     } catch (error) {
       const info = sanitizeError(error);
-      log.error('Checkout failed', error instanceof Error ? error : new Error(info.message), {
-        operation: 'checkout',
-        priceId,
-      });
-      toast.error('Checkout failed. Billing may not be configured.');
+      log.error(
+        "Checkout failed",
+        error instanceof Error ? error : new Error(info.message),
+        {
+          operation: "checkout",
+          priceId,
+        },
+      );
+      toast.error("Checkout failed. Billing may not be configured.");
     } finally {
       setIsBusy(null);
     }
@@ -132,25 +161,31 @@ export function BillingPage(): React.ReactElement {
 
   const handleOpenPortal = async (): Promise<void> => {
     if (!user) {
-      toast.error('Sign in to manage billing.');
+      toast.error("Sign in to manage billing.");
       return;
     }
 
-    setIsBusy('portal');
+    setIsBusy("portal");
     try {
       const { url: redirectUrl } = await createBillingPortalSession();
 
       if (!redirectUrl) {
-        throw new Error('Missing billing portal URL');
+        throw new Error("Missing billing portal URL");
       }
 
       window.location.href = redirectUrl;
     } catch (error) {
       const info = sanitizeError(error);
-      log.error('Billing portal failed', error instanceof Error ? error : new Error(info.message), {
-        operation: 'portal',
-      });
-      toast.error('Billing portal unavailable. Subscribe first or contact support.');
+      log.error(
+        "Billing portal failed",
+        error instanceof Error ? error : new Error(info.message),
+        {
+          operation: "portal",
+        },
+      );
+      toast.error(
+        "Billing portal unavailable. Subscribe first or contact support.",
+      );
     } finally {
       setIsBusy(null);
     }
@@ -162,7 +197,7 @@ export function BillingPage(): React.ReactElement {
       title="Billing"
       footer={
         <>
-          Need help?{' '}
+          Need help?{" "}
           <Link to="/contact" className="text-white hover:underline">
             Contact support
           </Link>
@@ -173,17 +208,31 @@ export function BillingPage(): React.ReactElement {
       <div className="flex flex-col gap-4">
         {checkout.sessionId ? (
           <div className="px-3.5 py-2.5" style={AUTH_SUCCESS_STYLE}>
-            <p className="text-[13px] font-semibold" style={{ color: AUTH_COLORS.success }}>Checkout complete</p>
-            <p className="mt-1 text-[13px] leading-snug" style={{ color: AUTH_COLORS.success, opacity: 0.8 }}>
-              Your subscription is being confirmed. Credits land when the invoice is paid.
+            <p
+              className="text-[13px] font-semibold"
+              style={{ color: AUTH_COLORS.success }}
+            >
+              Checkout complete
+            </p>
+            <p
+              className="mt-1 text-[13px] leading-snug"
+              style={{ color: AUTH_COLORS.success, opacity: 0.8 }}
+            >
+              Your subscription is being confirmed. Credits land when the
+              invoice is paid.
             </p>
           </div>
         ) : null}
 
         {checkout.canceled ? (
           <div className="px-3.5 py-2.5" style={AUTH_CARD_STYLE}>
-            <p className="text-[13px] font-semibold text-white">Checkout canceled</p>
-            <p className="mt-1 text-[13px] leading-snug" style={{ color: AUTH_COLORS.textSecondary }}>
+            <p className="text-[13px] font-semibold text-white">
+              Checkout canceled
+            </p>
+            <p
+              className="mt-1 text-[13px] leading-snug"
+              style={{ color: AUTH_COLORS.textSecondary }}
+            >
               No changes were made. You can pick a plan anytime.
             </p>
           </div>
@@ -191,11 +240,22 @@ export function BillingPage(): React.ReactElement {
 
         {!user ? (
           <div className="p-4" style={AUTH_CARD_STYLE}>
-            <p className="text-[13px] font-semibold text-white">Sign in to manage billing</p>
-            <p className="mt-1 text-[13px] leading-snug" style={{ color: AUTH_COLORS.textSecondary }}>
-              Billing is tied to your account so credits sync everywhere you work.
+            <p className="text-[13px] font-semibold text-white">
+              Sign in to manage billing
             </p>
-            <Button asChild variant="ghost" className={`mt-4 ${AUTH_CTA_CLASS}`} style={AUTH_CTA_STYLE}>
+            <p
+              className="mt-1 text-[13px] leading-snug"
+              style={{ color: AUTH_COLORS.textSecondary }}
+            >
+              Billing is tied to your account so credits sync everywhere you
+              work.
+            </p>
+            <Button
+              asChild
+              variant="ghost"
+              className={`mt-4 ${AUTH_CTA_CLASS}`}
+              style={AUTH_CTA_STYLE}
+            >
               <Link to={signInLink}>Sign in</Link>
             </Button>
           </div>
@@ -204,34 +264,56 @@ export function BillingPage(): React.ReactElement {
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
-                  <p className="text-[13px] font-semibold text-white">Credit balance</p>
+                  <p className="text-[13px] font-semibold text-white">
+                    Credit balance
+                  </p>
                   <span
                     className="rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
-                    style={billingStatus?.isSubscribed
-                      ? { borderColor: `${AUTH_COLORS.success}30`, background: `${AUTH_COLORS.success}15`, color: AUTH_COLORS.success }
-                      : { borderColor: AUTH_COLORS.cardBorder, background: AUTH_COLORS.card, color: AUTH_COLORS.textDim }
+                    style={
+                      billingStatus?.isSubscribed
+                        ? {
+                            borderColor: `${AUTH_COLORS.success}30`,
+                            background: `${AUTH_COLORS.success}15`,
+                            color: AUTH_COLORS.success,
+                          }
+                        : {
+                            borderColor: AUTH_COLORS.cardBorder,
+                            background: AUTH_COLORS.card,
+                            color: AUTH_COLORS.textDim,
+                          }
                     }
                   >
                     {isLoadingBillingStatus
-                      ? '...'
+                      ? "..."
                       : billingStatus?.isSubscribed
-                        ? `Subscribed${billingStatus.planTier ? ` · ${billingStatus.planTier}` : ''}`
-                        : 'Free'}
+                        ? `Subscribed${billingStatus.planTier ? ` · ${billingStatus.planTier}` : ""}`
+                        : "Free"}
                   </span>
                 </div>
-                <p className="mt-1 text-[13px] leading-snug" style={{ color: AUTH_COLORS.textSecondary }}>
+                <p
+                  className="mt-1 text-[13px] leading-snug"
+                  style={{ color: AUTH_COLORS.textSecondary }}
+                >
                   Used for generation and previews.
                 </p>
               </div>
               <div className="text-right">
-                <p className="text-[11px] font-semibold tracking-[0.22em]" style={{ color: AUTH_COLORS.textLabel }}>CREDITS</p>
+                <p
+                  className="text-[11px] font-semibold tracking-[0.22em]"
+                  style={{ color: AUTH_COLORS.textLabel }}
+                >
+                  CREDITS
+                </p>
                 <p className="mt-1 text-2xl font-semibold tabular-nums text-white">
-                  {isLoadingBalance ? '—' : formatInteger(balance ?? 0)}
+                  {isLoadingBalance ? "—" : formatInteger(balance ?? 0)}
                 </p>
               </div>
             </div>
             {balanceError ? (
-              <p className="mt-3 text-[13px]" style={{ color: AUTH_COLORS.danger }}>
+              <p
+                className="mt-3 text-[13px]"
+                style={{ color: AUTH_COLORS.danger }}
+              >
                 {balanceError}
               </p>
             ) : null}
@@ -268,8 +350,15 @@ export function BillingPage(): React.ReactElement {
 
         <div>
           <div className="flex items-center justify-between gap-3">
-            <h2 className="text-[15px] font-semibold tracking-tight text-white">Plans</h2>
-            <p className="text-[11px] font-semibold tracking-[0.22em]" style={{ color: AUTH_COLORS.textLabel }}>MONTHLY</p>
+            <h2 className="text-[15px] font-semibold tracking-tight text-white">
+              Plans
+            </h2>
+            <p
+              className="text-[11px] font-semibold tracking-[0.22em]"
+              style={{ color: AUTH_COLORS.textLabel }}
+            >
+              MONTHLY
+            </p>
           </div>
 
           <div className="mt-3 grid gap-2.5">
@@ -283,17 +372,24 @@ export function BillingPage(): React.ReactElement {
                   style={{
                     background: AUTH_COLORS.card,
                     border: `1px solid ${isHighlighted ? AUTH_COLORS.accent : AUTH_COLORS.cardBorder}`,
-                    boxShadow: isHighlighted ? `0 0 0 1px ${AUTH_COLORS.accent}40` : undefined,
+                    boxShadow: isHighlighted
+                      ? `0 0 0 1px ${AUTH_COLORS.accent}40`
+                      : undefined,
                   }}
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <p className="text-[14px] font-semibold text-white">{tier.name}</p>
+                        <p className="text-[14px] font-semibold text-white">
+                          {tier.name}
+                        </p>
                         {tier.highlight ? (
                           <span
                             className="rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide"
-                            style={{ background: `${AUTH_COLORS.accent}20`, color: AUTH_COLORS.accent }}
+                            style={{
+                              background: `${AUTH_COLORS.accent}20`,
+                              color: AUTH_COLORS.accent,
+                            }}
                           >
                             POPULAR
                           </span>
@@ -301,30 +397,53 @@ export function BillingPage(): React.ReactElement {
                         {isSelected && !tier.highlight ? (
                           <span
                             className="rounded-full px-2 py-0.5 text-[10px] font-semibold tracking-wide"
-                            style={{ background: AUTH_COLORS.activeBg, color: AUTH_COLORS.textDim }}
+                            style={{
+                              background: AUTH_COLORS.activeBg,
+                              color: AUTH_COLORS.textDim,
+                            }}
                           >
                             SELECTED
                           </span>
                         ) : null}
                       </div>
-                      <p className="mt-1 text-[13px] leading-snug" style={{ color: AUTH_COLORS.textSecondary }}>{tier.description}</p>
+                      <p
+                        className="mt-1 text-[13px] leading-snug"
+                        style={{ color: AUTH_COLORS.textSecondary }}
+                      >
+                        {tier.description}
+                      </p>
                     </div>
 
                     <div className="text-right">
                       <p className="text-xl font-semibold text-white tabular-nums">
                         {tier.priceMonthly}
-                        <span className="ml-1 text-[12px] font-medium" style={{ color: AUTH_COLORS.textLabel }}>/mo</span>
+                        <span
+                          className="ml-1 text-[12px] font-medium"
+                          style={{ color: AUTH_COLORS.textLabel }}
+                        >
+                          /mo
+                        </span>
                       </p>
-                      <p className="mt-1 text-[12px] tabular-nums" style={{ color: AUTH_COLORS.textSecondary }}>
+                      <p
+                        className="mt-1 text-[12px] tabular-nums"
+                        style={{ color: AUTH_COLORS.textSecondary }}
+                      >
                         {formatInteger(tier.creditsPerMonth)} credits
                       </p>
                     </div>
                   </div>
 
-                  <ul className="mt-3 space-y-1.5 text-[13px]" style={{ color: AUTH_COLORS.textSecondary }}>
+                  <ul
+                    className="mt-3 space-y-1.5 text-[13px]"
+                    style={{ color: AUTH_COLORS.textSecondary }}
+                  >
                     {tier.bullets.map((bullet) => (
                       <li key={bullet} className="flex items-start gap-2">
-                        <Check className="mt-0.5 h-3.5 w-3.5 shrink-0" style={{ color: AUTH_COLORS.textDim }} aria-hidden="true" />
+                        <Check
+                          className="mt-0.5 h-3.5 w-3.5 shrink-0"
+                          style={{ color: AUTH_COLORS.textDim }}
+                          aria-hidden="true"
+                        />
                         <span className="min-w-0">{bullet}</span>
                       </li>
                     ))}
@@ -337,13 +456,13 @@ export function BillingPage(): React.ReactElement {
                       disabled={!user || isBusy !== null}
                       variant="ghost"
                       className={cn(
-                        'h-9 w-full gap-2 rounded-lg text-[13px] font-semibold transition',
-                        'disabled:cursor-not-allowed disabled:opacity-60'
+                        "h-9 w-full gap-2 rounded-lg text-[13px] font-semibold transition",
+                        "disabled:cursor-not-allowed disabled:opacity-60",
                       )}
                       style={isHighlighted ? AUTH_CTA_STYLE : BTN_SECONDARY}
                     >
                       <CreditCard className="h-3.5 w-3.5" aria-hidden="true" />
-                      {isBusy === tier.priceId ? 'Redirecting…' : 'Subscribe'}
+                      {isBusy === tier.priceId ? "Redirecting…" : "Subscribe"}
                     </Button>
                   </div>
                 </div>
@@ -351,16 +470,27 @@ export function BillingPage(): React.ReactElement {
             })}
           </div>
 
-          <p className="mt-3 text-[12px] leading-relaxed" style={{ color: AUTH_COLORS.textLabel }}>
-            Subscriptions are processed by Stripe. Credits are granted on successful invoice payment. Image previews cost 1 credit per
-            image. For changes or cancellations, contact support.
+          <p
+            className="mt-3 text-[12px] leading-relaxed"
+            style={{ color: AUTH_COLORS.textLabel }}
+          >
+            Subscriptions are processed by Stripe. Credits are granted on
+            successful invoice payment. Image previews cost 1 credit per image.
+            For changes or cancellations, contact support.
           </p>
         </div>
 
         <div>
           <div className="flex items-center justify-between gap-3">
-            <h2 className="text-[15px] font-semibold tracking-tight text-white">Credit packs</h2>
-            <p className="text-[11px] font-semibold tracking-[0.22em]" style={{ color: AUTH_COLORS.textLabel }}>ONE-TIME</p>
+            <h2 className="text-[15px] font-semibold tracking-tight text-white">
+              Credit packs
+            </h2>
+            <p
+              className="text-[11px] font-semibold tracking-[0.22em]"
+              style={{ color: AUTH_COLORS.textLabel }}
+            >
+              ONE-TIME
+            </p>
           </div>
 
           <div className="mt-3 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
@@ -368,18 +498,31 @@ export function BillingPage(): React.ReactElement {
               <div
                 key={pack.priceId}
                 className="rounded-[10px] p-3.5"
-                style={{ background: AUTH_COLORS.card, border: `1px solid ${AUTH_COLORS.cardBorder}` }}
+                style={{
+                  background: AUTH_COLORS.card,
+                  border: `1px solid ${AUTH_COLORS.cardBorder}`,
+                }}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="text-[14px] font-semibold text-white">{pack.name}</p>
-                    <p className="mt-1 text-[13px] leading-snug" style={{ color: AUTH_COLORS.textSecondary }}>
+                    <p className="text-[14px] font-semibold text-white">
+                      {pack.name}
+                    </p>
+                    <p
+                      className="mt-1 text-[13px] leading-snug"
+                      style={{ color: AUTH_COLORS.textSecondary }}
+                    >
                       {pack.description}
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="text-lg font-semibold text-white tabular-nums">{pack.price}</p>
-                    <p className="mt-1 text-[12px] tabular-nums" style={{ color: AUTH_COLORS.textSecondary }}>
+                    <p className="text-lg font-semibold text-white tabular-nums">
+                      {pack.price}
+                    </p>
+                    <p
+                      className="mt-1 text-[12px] tabular-nums"
+                      style={{ color: AUTH_COLORS.textSecondary }}
+                    >
                       {formatInteger(pack.credits)} credits
                     </p>
                   </div>
@@ -394,57 +537,107 @@ export function BillingPage(): React.ReactElement {
                     className="h-8 w-full rounded-lg text-[12px] font-semibold transition disabled:cursor-not-allowed disabled:opacity-60"
                     style={BTN_MUTED}
                   >
-                    {isBusy === pack.priceId ? 'Redirecting…' : 'Buy credits'}
+                    {isBusy === pack.priceId ? "Redirecting…" : "Buy credits"}
                   </Button>
                 </div>
               </div>
             ))}
           </div>
 
-          <p className="mt-3 text-[12px] leading-relaxed" style={{ color: AUTH_COLORS.textLabel }}>
-            Credit packs are one-time purchases and add credits immediately after checkout confirmation.
+          <p
+            className="mt-3 text-[12px] leading-relaxed"
+            style={{ color: AUTH_COLORS.textLabel }}
+          >
+            Credit packs are one-time purchases and add credits immediately
+            after checkout confirmation.
           </p>
         </div>
 
         <div>
           <div className="flex items-center justify-between gap-3">
-            <h2 className="text-[15px] font-semibold tracking-tight text-white">Credit activity</h2>
-            <p className="text-[11px] font-semibold tracking-[0.22em]" style={{ color: AUTH_COLORS.textLabel }}>HISTORY</p>
+            <h2 className="text-[15px] font-semibold tracking-tight text-white">
+              Credit activity
+            </h2>
+            <p
+              className="text-[11px] font-semibold tracking-[0.22em]"
+              style={{ color: AUTH_COLORS.textLabel }}
+            >
+              HISTORY
+            </p>
           </div>
 
           <div
             className="mt-3 overflow-hidden rounded-[10px]"
-            style={{ background: AUTH_COLORS.card, border: `1px solid ${AUTH_COLORS.cardBorder}` }}
+            style={{
+              background: AUTH_COLORS.card,
+              border: `1px solid ${AUTH_COLORS.cardBorder}`,
+            }}
           >
             {isLoadingCreditHistory ? (
-              <div className="px-3.5 py-3 text-[13px]" style={{ color: AUTH_COLORS.textSecondary }}>Loading credit activity…</div>
+              <div
+                className="px-3.5 py-3 text-[13px]"
+                style={{ color: AUTH_COLORS.textSecondary }}
+              >
+                Loading credit activity…
+              </div>
             ) : null}
 
             {!isLoadingCreditHistory && creditHistoryError ? (
-              <div className="px-3.5 py-3 text-[13px]" style={{ color: AUTH_COLORS.danger }}>{creditHistoryError}</div>
+              <div
+                className="px-3.5 py-3 text-[13px]"
+                style={{ color: AUTH_COLORS.danger }}
+              >
+                {creditHistoryError}
+              </div>
             ) : null}
 
-            {!isLoadingCreditHistory && !creditHistoryError && creditHistory.length === 0 ? (
-              <div className="px-3.5 py-3 text-[13px]" style={{ color: AUTH_COLORS.textSecondary }}>No credit activity yet.</div>
+            {!isLoadingCreditHistory &&
+            !creditHistoryError &&
+            creditHistory.length === 0 ? (
+              <div
+                className="px-3.5 py-3 text-[13px]"
+                style={{ color: AUTH_COLORS.textSecondary }}
+              >
+                No credit activity yet.
+              </div>
             ) : null}
 
-            {!isLoadingCreditHistory && !creditHistoryError && creditHistory.length > 0 ? (
-              <ul style={{ borderColor: AUTH_COLORS.divider }} className="divide-y">
+            {!isLoadingCreditHistory &&
+            !creditHistoryError &&
+            creditHistory.length > 0 ? (
+              <ul
+                style={{ borderColor: AUTH_COLORS.divider }}
+                className="divide-y"
+              >
                 {creditHistory.map((entry) => (
-                  <li key={entry.id} className="flex items-center justify-between gap-3 px-3.5 py-2.5" style={{ borderColor: AUTH_COLORS.divider }}>
+                  <li
+                    key={entry.id}
+                    className="flex items-center justify-between gap-3 px-3.5 py-2.5"
+                    style={{ borderColor: AUTH_COLORS.divider }}
+                  >
                     <div className="min-w-0">
                       <p className="truncate text-[13px] font-medium text-white">
                         {toActivityLabel(entry.type)}
                       </p>
-                      <p className="mt-0.5 truncate text-[11px]" style={{ color: AUTH_COLORS.textLabel }}>
-                        {[entry.source, entry.reason, formatActivityTime(entry.createdAtMs)]
+                      <p
+                        className="mt-0.5 truncate text-[11px]"
+                        style={{ color: AUTH_COLORS.textLabel }}
+                      >
+                        {[
+                          entry.source,
+                          entry.reason,
+                          formatActivityTime(entry.createdAtMs),
+                        ]
                           .filter((value): value is string => Boolean(value))
-                          .join(' · ')}
+                          .join(" · ")}
                       </p>
                     </div>
                     <p
                       className="text-[13px] font-semibold tabular-nums"
-                      style={{ color: entry.amount >= 0 ? AUTH_COLORS.success : '#f5c05c' }}
+                      style={{
+                        color:
+                          entry.amount >= 0 ? AUTH_COLORS.success : "#f5c05c",
+                      }}
                     >
                       {formatSignedCredits(entry.amount)}
                     </p>

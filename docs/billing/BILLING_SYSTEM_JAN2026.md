@@ -18,11 +18,11 @@ PromptCanvas uses a credit-based billing system with per-second video pricing. T
 
 ### Margin Targets
 
-| Tier | Target Margin | Rationale |
-|------|---------------|-----------|
-| WAN Draft | 165% | Most used, must be profitable per-use |
-| Mid-tier (Kling, Minimax) | 170-240% | Solid workhorses, good margins |
-| Premium (Sora, Veo) | 50-130% | Competitive draw, acceptable lower margin |
+| Tier                      | Target Margin | Rationale                                 |
+| ------------------------- | ------------- | ----------------------------------------- |
+| WAN Draft                 | 165%          | Most used, must be profitable per-use     |
+| Mid-tier (Kling, Minimax) | 170-240%      | Solid workhorses, good margins            |
+| Premium (Sora, Veo)       | 50-130%       | Competitive draw, acceptable lower margin |
 
 ---
 
@@ -30,17 +30,17 @@ PromptCanvas uses a credit-based billing system with per-second video pricing. T
 
 ### Current Rates
 
-| Model | Credits/sec | 8-sec Cost | API Cost | Margin |
-|-------|-------------|------------|----------|--------|
-| **WAN Draft** | 3.5 | 28 | $0.40 | 165% |
-| WAN Pro | 5 | 40 | $0.72 | 110% |
-| Minimax (Tier 1) | 4 | 32 | $0.36 | 238% |
-| Kling v2.1 | 5 | 40 | $0.56 | 170% |
-| Luma Ray3 | 7 | 56 | $1.12 | 90% |
-| Sora 2 | 6 | 48 | $0.80 | 128% |
-| **Sora 2 Pro** | 14 | 112 | $2.80 | 52% |
-| **Veo 3** | 24 | 192 | $4.80 | 52% |
-| Artistic (Mochi) | 6 | 48 | $0.80 | 128% |
+| Model            | Credits/sec | 8-sec Cost | API Cost | Margin |
+| ---------------- | ----------- | ---------- | -------- | ------ |
+| **WAN Draft**    | 3.5         | 28         | $0.40    | 165%   |
+| WAN Pro          | 5           | 40         | $0.72    | 110%   |
+| Minimax (Tier 1) | 4           | 32         | $0.36    | 238%   |
+| Kling v2.1       | 5           | 40         | $0.56    | 170%   |
+| Luma Ray3        | 7           | 56         | $1.12    | 90%    |
+| Sora 2           | 6           | 48         | $0.80    | 128%   |
+| **Sora 2 Pro**   | 14          | 112        | $2.80    | 52%    |
+| **Veo 3**        | 24          | 192        | $4.80    | 52%    |
+| Artistic (Mochi) | 6           | 48         | $0.80    | 128%   |
 
 ### API Cost Sources (January 2026)
 
@@ -55,55 +55,55 @@ PromptCanvas uses a credit-based billing system with per-second video pricing. T
 
 ## Subscription Tiers
 
-| Tier | Price | Credits | $/Credit |
-|------|-------|---------|----------|
-| Explorer | $19/mo | 500 | $0.038 |
-| Creator | $59/mo | 1,800 | $0.033 |
-| Agency | $179/mo | 6,000 | $0.030 |
+| Tier     | Price   | Credits | $/Credit |
+| -------- | ------- | ------- | -------- |
+| Explorer | $19/mo  | 500     | $0.038   |
+| Creator  | $59/mo  | 1,800   | $0.033   |
+| Agency   | $179/mo | 6,000   | $0.030   |
 
 ### What Users Get
 
 #### Explorer ($19/month)
 
-| Model | Cost | Videos/Month |
-|-------|------|--------------|
-| WAN Draft | 28 | **17** |
-| Sora 2 | 48 | **10** |
-| Sora 2 Pro | 112 | **4** |
-| Veo 3 | 192 | **2** |
-| Kling | 40 | **12** |
-| Luma | 56 | **8** |
+| Model      | Cost | Videos/Month |
+| ---------- | ---- | ------------ |
+| WAN Draft  | 28   | **17**       |
+| Sora 2     | 48   | **10**       |
+| Sora 2 Pro | 112  | **4**        |
+| Veo 3      | 192  | **2**        |
+| Kling      | 40   | **12**       |
+| Luma       | 56   | **8**        |
 
 #### Creator ($59/month)
 
-| Model | Cost | Videos/Month |
-|-------|------|--------------|
-| WAN Draft | 28 | **64** |
-| Sora 2 | 48 | **37** |
-| Sora 2 Pro | 112 | **16** |
-| Veo 3 | 192 | **9** |
-| Kling | 40 | **45** |
+| Model      | Cost | Videos/Month |
+| ---------- | ---- | ------------ |
+| WAN Draft  | 28   | **64**       |
+| Sora 2     | 48   | **37**       |
+| Sora 2 Pro | 112  | **16**       |
+| Veo 3      | 192  | **9**        |
+| Kling      | 40   | **45**       |
 
 #### Agency ($179/month)
 
-| Model | Cost | Videos/Month |
-|-------|------|--------------|
-| WAN Draft | 28 | **214** |
-| Sora 2 | 48 | **125** |
-| Sora 2 Pro | 112 | **53** |
-| Veo 3 | 192 | **31** |
-| Kling | 40 | **150** |
+| Model      | Cost | Videos/Month |
+| ---------- | ---- | ------------ |
+| WAN Draft  | 28   | **214**      |
+| Sora 2     | 48   | **125**      |
+| Sora 2 Pro | 112  | **53**       |
+| Veo 3      | 192  | **31**       |
+| Kling      | 40   | **150**      |
 
 ---
 
 ## Credit Packs (One-Time)
 
-| Pack | Price | Credits | $/Credit |
-|------|-------|---------|----------|
-| Starter | $15 | 300 | $0.050 |
-| Booster | $28 | 600 | $0.047 |
-| Pro | $52 | 1,200 | $0.043 |
-| Studio | $120 | 3,000 | $0.040 |
+| Pack    | Price | Credits | $/Credit |
+| ------- | ----- | ------- | -------- |
+| Starter | $15   | 300     | $0.050   |
+| Booster | $28   | 600     | $0.047   |
+| Pro     | $52   | 1,200   | $0.043   |
+| Studio  | $120  | 3,000   | $0.040   |
 
 Credit packs are priced ~10-30% higher per-credit than subscriptions to encourage recurring revenue.
 
@@ -115,19 +115,19 @@ Credit packs are priced ~10-30% higher per-credit than subscriptions to encourag
 
 Typical workflow: 10 WAN previews → 1 premium render
 
-| Component | Videos | Profit Each | Total |
-|-----------|--------|-------------|-------|
-| WAN Draft | 10 | $0.66 | $6.60 |
-| Sora 2 Pro | 1 | $1.46 | $1.46 |
-| **Session Total** | | | **$8.06** |
+| Component         | Videos | Profit Each | Total     |
+| ----------------- | ------ | ----------- | --------- |
+| WAN Draft         | 10     | $0.66       | $6.60     |
+| Sora 2 Pro        | 1      | $1.46       | $1.46     |
+| **Session Total** |        |             | **$8.06** |
 
 ### Blended Tier Margins
 
-| Tier | Sessions/Month | Profit | Revenue | Margin |
-|------|----------------|--------|---------|--------|
-| Explorer | ~1.5 | $12.09 | $19 | 64% |
-| Creator | ~5.5 | $44.33 | $59 | 75% |
-| Agency | ~18 | $145.08 | $179 | 81% |
+| Tier     | Sessions/Month | Profit  | Revenue | Margin |
+| -------- | -------------- | ------- | ------- | ------ |
+| Explorer | ~1.5           | $12.09  | $19     | 64%    |
+| Creator  | ~5.5           | $44.33  | $59     | 75%    |
+| Agency   | ~18            | $145.08 | $179    | 81%    |
 
 These are healthy SaaS margins (industry standard: 70-85%).
 
@@ -137,13 +137,13 @@ These are healthy SaaS margins (industry standard: 70-85%).
 
 ### vs. Direct Competitors (January 2026)
 
-| Platform | Entry Price | Premium Videos |
-|----------|-------------|----------------|
-| Runway Standard | $12/mo | ~5 Gen-4 videos |
-| Pika Standard | $8/mo | ~15 videos |
-| Luma Lite | $10/mo | 50 generations |
-| Kling Standard | $10/mo | 33 videos |
-| **PromptCanvas Explorer** | **$19/mo** | **4 Sora Pro + 17 previews** |
+| Platform                  | Entry Price | Premium Videos               |
+| ------------------------- | ----------- | ---------------------------- |
+| Runway Standard           | $12/mo      | ~5 Gen-4 videos              |
+| Pika Standard             | $8/mo       | ~15 videos                   |
+| Luma Lite                 | $10/mo      | 50 generations               |
+| Kling Standard            | $10/mo      | 33 videos                    |
+| **PromptCanvas Explorer** | **$19/mo**  | **4 Sora Pro + 17 previews** |
 
 ### Our Differentiators
 
@@ -173,17 +173,20 @@ These are healthy SaaS margins (industry standard: 70-85%).
 ### Stripe Integration
 
 Subscription `priceId` values must match Stripe dashboard:
+
 - `price_explorer_monthly`
 - `price_creator_monthly`
 - `price_agency_monthly`
 
 Credit pack `priceId` values (kept original names, updated credit amounts via env var):
+
 - `price_credits_250` → grants 300 credits
 - `price_credits_500` → grants 600 credits
 - `price_credits_1000` → grants 1,200 credits
 - `price_credits_2500` → grants 3,000 credits
 
 **Environment Variable:**
+
 ```
 STRIPE_PRICE_CREDITS=price_explorer_monthly=500,price_creator_monthly=1800,price_agency_monthly=6000,price_credits_250=300,price_credits_500=600,price_credits_1000=1200,price_credits_2500=3000
 ```
@@ -195,22 +198,24 @@ STRIPE_PRICE_CREDITS=price_explorer_monthly=500,price_creator_monthly=1800,price
 ### January 2026 Rebalance
 
 **Problem:** Previous flat-rate pricing created broken economics:
+
 - Explorer couldn't afford a single Veo 3 video (480 > 400 credits)
 - Starter pack couldn't buy one Sora 2 Pro (280 > 250 credits)
 - $19 for 1 premium video was terrible value proposition
 
 **Solution:** Rebalanced per-second rates and credit allocations:
 
-| Change | Before | After |
-|--------|--------|-------|
-| WAN Draft | 2 credits/sec | 3.5 credits/sec |
-| Sora 2 Pro | 35 credits/sec | 14 credits/sec |
-| Veo 3 | 60 credits/sec | 24 credits/sec |
-| Explorer credits | 400 | 500 |
-| Creator credits | 1,500 | 1,800 |
-| Agency credits | 5,000 | 6,000 |
+| Change           | Before         | After           |
+| ---------------- | -------------- | --------------- |
+| WAN Draft        | 2 credits/sec  | 3.5 credits/sec |
+| Sora 2 Pro       | 35 credits/sec | 14 credits/sec  |
+| Veo 3            | 60 credits/sec | 24 credits/sec  |
+| Explorer credits | 400            | 500             |
+| Creator credits  | 1,500          | 1,800           |
+| Agency credits   | 5,000          | 6,000           |
 
 **Result:**
+
 - Explorer: 1 Sora Pro → 4 Sora Pro (+300%)
 - Explorer: 0 Veo 3 → 2 Veo 3 (now accessible)
 - WAN margin: 90% → 165% (sustainable)
@@ -223,6 +228,7 @@ STRIPE_PRICE_CREDITS=price_explorer_monthly=500,price_creator_monthly=1800,price
 ### Price Adjustments
 
 Monitor these metrics quarterly:
+
 - Credit utilization rate per tier
 - Model popularity distribution
 - Churn rate by tier

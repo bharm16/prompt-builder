@@ -1,4 +1,4 @@
-import type { Request, Response } from 'express';
+import type { Request, Response } from "express";
 
 interface SseChannel {
   signal: AbortSignal;
@@ -15,7 +15,7 @@ export interface SseChannelOptions {
 export const createSseChannel = (
   req: Request,
   res: Response,
-  options: SseChannelOptions = {}
+  options: SseChannelOptions = {},
 ): SseChannel => {
   const { heartbeatIntervalMs = 15_000, idleTimeoutMs = 20_000 } = options;
   const internalAbortController = new AbortController();
@@ -29,18 +29,18 @@ export const createSseChannel = (
     }
   };
 
-  res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache');
-  res.setHeader('Connection', 'keep-alive');
-  res.setHeader('X-Accel-Buffering', 'no');
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  res.setHeader("X-Accel-Buffering", "no");
 
-  res.write(': connected\n\n');
-  if (typeof res.flushHeaders === 'function') {
+  res.write(": connected\n\n");
+  if (typeof res.flushHeaders === "function") {
     res.flushHeaders();
   }
 
-  res.on('close', onClientDisconnect);
-  req.on('aborted', onClientDisconnect);
+  res.on("close", onClientDisconnect);
+  req.on("aborted", onClientDisconnect);
 
   let idleTimer: NodeJS.Timeout | null = null;
 
@@ -62,10 +62,14 @@ export const createSseChannel = (
   const heartbeatTimer =
     heartbeatIntervalMs > 0
       ? setInterval(() => {
-          if (!internalAbortController.signal.aborted && !res.writableEnded && clientConnected) {
+          if (
+            !internalAbortController.signal.aborted &&
+            !res.writableEnded &&
+            clientConnected
+          ) {
             try {
               resetIdleTimer();
-              res.write(': heartbeat\n\n');
+              res.write(": heartbeat\n\n");
             } catch {
               // Ignore write errors on dead connections.
             }
@@ -74,7 +78,11 @@ export const createSseChannel = (
       : null;
 
   const sendEvent = (eventType: string, data: unknown): void => {
-    if (internalAbortController.signal.aborted || res.writableEnded || !clientConnected) {
+    if (
+      internalAbortController.signal.aborted ||
+      res.writableEnded ||
+      !clientConnected
+    ) {
       return;
     }
     resetIdleTimer();
@@ -96,8 +104,8 @@ export const createSseChannel = (
     if (idleTimer) {
       clearTimeout(idleTimer);
     }
-    res.removeListener('close', onClientDisconnect);
-    req.removeListener('aborted', onClientDisconnect);
+    res.removeListener("close", onClientDisconnect);
+    req.removeListener("aborted", onClientDisconnect);
     if (!res.writableEnded) {
       res.end();
     }

@@ -16,15 +16,18 @@
  * @requirement 12.5-12.6 - Keyboard navigation with visible focus indicators
  */
 
-import React, { useReducer, useCallback, useRef, useEffect } from 'react';
-import { Check, Loader2 } from '@promptstudio/system/components/ui';
-import { logger } from '@/services/LoggingService';
-import { cn } from '@/utils/cn';
-import { buildProxyUrl, renderCameraMotionFrames } from '@/features/convergence/utils/cameraMotionRenderer';
-import type { CameraPath } from '@/features/convergence/types';
-import { sanitizeError } from '@/utils/logging';
-import { safeUrlHost } from '@/utils/url';
-import { FrameAnimator } from '../shared/FrameAnimator';
+import React, { useReducer, useCallback, useRef, useEffect } from "react";
+import { Check, Loader2 } from "@promptstudio/system/components/ui";
+import { logger } from "@/services/LoggingService";
+import { cn } from "@/utils/cn";
+import {
+  buildProxyUrl,
+  renderCameraMotionFrames,
+} from "@/features/convergence/utils/cameraMotionRenderer";
+import type { CameraPath } from "@/features/convergence/types";
+import { sanitizeError } from "@/utils/logging";
+import { safeUrlHost } from "@/utils/url";
+import { FrameAnimator } from "../shared/FrameAnimator";
 
 // ============================================================================
 // Constants
@@ -35,24 +38,27 @@ import { FrameAnimator } from '../shared/FrameAnimator';
  * When depth estimation fails, these descriptions help users understand each motion
  */
 export const CAMERA_MOTION_DESCRIPTIONS: Record<string, string> = {
-  static: 'Camera remains fixed. Best for dialogue or contemplative scenes.',
-  pan_left: 'Camera rotates left while staying in place. Reveals new elements.',
-  pan_right: 'Camera rotates right while staying in place. Reveals new elements.',
-  tilt_up: 'Camera tilts upward. Reveals height or creates awe.',
-  tilt_down: 'Camera tilts downward. Creates introspection or reveals ground.',
-  dutch_left: 'Camera rolls left for tilted horizon. Adds tension or unease.',
-  dutch_right: 'Camera rolls right for tilted horizon. Adds tension or unease.',
-  push_in: 'Camera moves toward subject. Creates intimacy or tension.',
-  pull_back: 'Camera moves away from subject. Reveals context or creates distance.',
-  track_left: 'Camera slides left. Follows action or reveals scene laterally.',
-  track_right: 'Camera slides right. Follows action or reveals scene laterally.',
-  pedestal_up: 'Camera rises vertically. Reveals overhead perspective.',
-  pedestal_down: 'Camera lowers vertically. Grounds the viewer.',
-  crane_up: 'Camera rises with subtle tilt. Creates grandeur.',
-  crane_down: 'Camera descends with subtle tilt. Creates intimacy.',
-  arc_left: 'Camera orbits left around subject. Dynamic perspective shift.',
-  arc_right: 'Camera orbits right around subject. Dynamic perspective shift.',
-  reveal: 'Combined push and pan. Builds anticipation for dramatic reveal.',
+  static: "Camera remains fixed. Best for dialogue or contemplative scenes.",
+  pan_left: "Camera rotates left while staying in place. Reveals new elements.",
+  pan_right:
+    "Camera rotates right while staying in place. Reveals new elements.",
+  tilt_up: "Camera tilts upward. Reveals height or creates awe.",
+  tilt_down: "Camera tilts downward. Creates introspection or reveals ground.",
+  dutch_left: "Camera rolls left for tilted horizon. Adds tension or unease.",
+  dutch_right: "Camera rolls right for tilted horizon. Adds tension or unease.",
+  push_in: "Camera moves toward subject. Creates intimacy or tension.",
+  pull_back:
+    "Camera moves away from subject. Reveals context or creates distance.",
+  track_left: "Camera slides left. Follows action or reveals scene laterally.",
+  track_right:
+    "Camera slides right. Follows action or reveals scene laterally.",
+  pedestal_up: "Camera rises vertically. Reveals overhead perspective.",
+  pedestal_down: "Camera lowers vertically. Grounds the viewer.",
+  crane_up: "Camera rises with subtle tilt. Creates grandeur.",
+  crane_down: "Camera descends with subtle tilt. Creates intimacy.",
+  arc_left: "Camera orbits left around subject. Dynamic perspective shift.",
+  arc_right: "Camera orbits right around subject. Dynamic perspective shift.",
+  reveal: "Combined push and pan. Builds anticipation for dramatic reveal.",
 };
 
 // ============================================================================
@@ -84,8 +90,8 @@ export interface CameraMotionOptionProps {
   optionId?: string;
 }
 
-type RenderStatus = 'idle' | 'rendering' | 'ready' | 'error';
-type PreviewInteraction = 'idle' | 'hovering' | 'press-previewing';
+type RenderStatus = "idle" | "rendering" | "ready" | "error";
+type PreviewInteraction = "idle" | "hovering" | "press-previewing";
 
 interface CameraMotionOptionState {
   frames: string[];
@@ -96,56 +102,56 @@ interface CameraMotionOptionState {
 }
 
 type CameraMotionOptionAction =
-  | { type: 'SET_PREFERS_REDUCED_MOTION'; prefersReducedMotion: boolean }
-  | { type: 'SET_TOUCH_DEVICE'; isTouchDevice: boolean }
-  | { type: 'SET_INTERACTION'; interaction: PreviewInteraction }
-  | { type: 'RENDER_START' }
-  | { type: 'RENDER_SUCCESS'; frames: string[] }
-  | { type: 'RENDER_ERROR' };
+  | { type: "SET_PREFERS_REDUCED_MOTION"; prefersReducedMotion: boolean }
+  | { type: "SET_TOUCH_DEVICE"; isTouchDevice: boolean }
+  | { type: "SET_INTERACTION"; interaction: PreviewInteraction }
+  | { type: "RENDER_START" }
+  | { type: "RENDER_SUCCESS"; frames: string[] }
+  | { type: "RENDER_ERROR" };
 
 const createInitialState = (): CameraMotionOptionState => ({
   frames: [],
-  renderStatus: 'idle',
-  interaction: 'idle',
+  renderStatus: "idle",
+  interaction: "idle",
   prefersReducedMotion: false,
   isTouchDevice: false,
 });
 
 function cameraMotionOptionReducer(
   state: CameraMotionOptionState,
-  action: CameraMotionOptionAction
+  action: CameraMotionOptionAction,
 ): CameraMotionOptionState {
   switch (action.type) {
-    case 'SET_PREFERS_REDUCED_MOTION':
+    case "SET_PREFERS_REDUCED_MOTION":
       return {
         ...state,
         prefersReducedMotion: action.prefersReducedMotion,
       };
-    case 'SET_TOUCH_DEVICE':
+    case "SET_TOUCH_DEVICE":
       return {
         ...state,
         isTouchDevice: action.isTouchDevice,
       };
-    case 'SET_INTERACTION':
+    case "SET_INTERACTION":
       return {
         ...state,
         interaction: action.interaction,
       };
-    case 'RENDER_START':
+    case "RENDER_START":
       return {
         ...state,
-        renderStatus: 'rendering',
+        renderStatus: "rendering",
       };
-    case 'RENDER_SUCCESS':
+    case "RENDER_SUCCESS":
       return {
         ...state,
         frames: action.frames,
-        renderStatus: 'ready',
+        renderStatus: "ready",
       };
-    case 'RENDER_ERROR':
+    case "RENDER_ERROR":
       return {
         ...state,
-        renderStatus: 'error',
+        renderStatus: "error",
       };
     default:
       return state;
@@ -162,8 +168,8 @@ function cameraMotionOptionReducer(
  * In normal mode, renders Three.js preview on hover.
  * In fallback mode, shows text description.
  */
-const log = logger.child('CameraMotionOption');
-const OPERATION = 'renderPreviewFrames';
+const log = logger.child("CameraMotionOption");
+const OPERATION = "renderPreviewFrames";
 
 export const CameraMotionOption: React.FC<CameraMotionOptionProps> = ({
   cameraPath,
@@ -178,7 +184,11 @@ export const CameraMotionOption: React.FC<CameraMotionOptionProps> = ({
   tabIndex = 0,
   optionId,
 }) => {
-  const [state, dispatch] = useReducer(cameraMotionOptionReducer, undefined, createInitialState);
+  const [state, dispatch] = useReducer(
+    cameraMotionOptionReducer,
+    undefined,
+    createInitialState,
+  );
 
   // Ref to track if component is mounted
   const isMountedRef = useRef(true);
@@ -188,12 +198,18 @@ export const CameraMotionOption: React.FC<CameraMotionOptionProps> = ({
   const suppressClickRef = useRef(false);
   const imageUrlHost = safeUrlHost(imageUrl);
   const depthMapUrlHost = safeUrlHost(depthMapUrl);
-  const { frames, renderStatus, interaction, prefersReducedMotion, isTouchDevice } = state;
-  const isRendering = renderStatus === 'rendering';
-  const hasRendered = renderStatus === 'ready';
-  const renderError = renderStatus === 'error';
-  const isHovering = interaction === 'hovering';
-  const isPressPreviewing = interaction === 'press-previewing';
+  const {
+    frames,
+    renderStatus,
+    interaction,
+    prefersReducedMotion,
+    isTouchDevice,
+  } = state;
+  const isRendering = renderStatus === "rendering";
+  const hasRendered = renderStatus === "ready";
+  const renderError = renderStatus === "error";
+  const isHovering = interaction === "hovering";
+  const isPressPreviewing = interaction === "press-previewing";
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -203,49 +219,50 @@ export const CameraMotionOption: React.FC<CameraMotionOptionProps> = ({
   }, []);
 
   useEffect(() => {
-    if (typeof window === 'undefined') {
+    if (typeof window === "undefined") {
       return;
     }
 
-    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
     const updateMotionPreference = () =>
       dispatch({
-        type: 'SET_PREFERS_REDUCED_MOTION',
+        type: "SET_PREFERS_REDUCED_MOTION",
         prefersReducedMotion: mediaQuery.matches,
       });
     updateMotionPreference();
 
-    mediaQuery.addEventListener('change', updateMotionPreference);
+    mediaQuery.addEventListener("change", updateMotionPreference);
 
     return () => {
-      mediaQuery.removeEventListener('change', updateMotionPreference);
+      mediaQuery.removeEventListener("change", updateMotionPreference);
     };
   }, []);
 
   useEffect(() => {
-    if (typeof window === 'undefined') {
+    if (typeof window === "undefined") {
       return;
     }
 
-    const hoverQuery = window.matchMedia('(hover: hover)');
-    const coarseQuery = window.matchMedia('(pointer: coarse)');
+    const hoverQuery = window.matchMedia("(hover: hover)");
+    const coarseQuery = window.matchMedia("(pointer: coarse)");
     const updateTouchCapability = () => {
       const canHover = hoverQuery.matches;
       const coarsePointer = coarseQuery.matches;
-      const hasTouchPoints = typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0;
+      const hasTouchPoints =
+        typeof navigator !== "undefined" && navigator.maxTouchPoints > 0;
       dispatch({
-        type: 'SET_TOUCH_DEVICE',
+        type: "SET_TOUCH_DEVICE",
         isTouchDevice: !canHover && (coarsePointer || hasTouchPoints),
       });
     };
     updateTouchCapability();
 
-    hoverQuery.addEventListener('change', updateTouchCapability);
-    coarseQuery.addEventListener('change', updateTouchCapability);
+    hoverQuery.addEventListener("change", updateTouchCapability);
+    coarseQuery.addEventListener("change", updateTouchCapability);
 
     return () => {
-      hoverQuery.removeEventListener('change', updateTouchCapability);
-      coarseQuery.removeEventListener('change', updateTouchCapability);
+      hoverQuery.removeEventListener("change", updateTouchCapability);
+      coarseQuery.removeEventListener("change", updateTouchCapability);
     };
   }, []);
 
@@ -264,19 +281,19 @@ export const CameraMotionOption: React.FC<CameraMotionOptionProps> = ({
   const renderFrames = useCallback(async () => {
     let skipReason: string | null = null;
     if (hasRendered) {
-      skipReason = 'already-rendered';
+      skipReason = "already-rendered";
     } else if (isRendering) {
-      skipReason = 'render-in-progress';
+      skipReason = "render-in-progress";
     } else if (fallbackMode) {
-      skipReason = 'fallback-mode';
+      skipReason = "fallback-mode";
     } else if (!depthMapUrl) {
-      skipReason = 'no-depth-map';
+      skipReason = "no-depth-map";
     }
 
     if (skipReason) {
       if (lastSkipReasonRef.current !== skipReason) {
         lastSkipReasonRef.current = skipReason;
-        log.debug('Skipping camera motion preview render', {
+        log.debug("Skipping camera motion preview render", {
           operation: OPERATION,
           cameraMotionId: cameraPath.id,
           label: cameraPath.label,
@@ -301,7 +318,7 @@ export const CameraMotionOption: React.FC<CameraMotionOptionProps> = ({
     renderAttemptRef.current += 1;
     const renderAttempt = renderAttemptRef.current;
 
-    log.info('Rendering camera motion preview frames', {
+    log.info("Rendering camera motion preview frames", {
       operation: OPERATION,
       renderAttempt,
       cameraMotionId: cameraPath.id,
@@ -312,7 +329,7 @@ export const CameraMotionOption: React.FC<CameraMotionOptionProps> = ({
       durationSec: cameraPath.duration,
     });
 
-    dispatch({ type: 'RENDER_START' });
+    dispatch({ type: "RENDER_START" });
 
     try {
       const renderedFrames = await renderCameraMotionFrames(
@@ -323,13 +340,13 @@ export const CameraMotionOption: React.FC<CameraMotionOptionProps> = ({
           width: 320,
           height: 180,
           fps: 15,
-        }
+        },
       );
 
       if (isMountedRef.current) {
-        dispatch({ type: 'RENDER_SUCCESS', frames: renderedFrames });
+        dispatch({ type: "RENDER_SUCCESS", frames: renderedFrames });
       }
-      log.info('Camera motion preview frames rendered', {
+      log.info("Camera motion preview frames rendered", {
         operation: OPERATION,
         renderAttempt,
         cameraMotionId: cameraPath.id,
@@ -342,7 +359,7 @@ export const CameraMotionOption: React.FC<CameraMotionOptionProps> = ({
     } catch (error) {
       const info = sanitizeError(error);
       const errObj = error instanceof Error ? error : new Error(info.message);
-      log.error('Camera motion preview render failed', errObj, {
+      log.error("Camera motion preview render failed", errObj, {
         operation: OPERATION,
         renderAttempt,
         cameraMotionId: cameraPath.id,
@@ -354,7 +371,7 @@ export const CameraMotionOption: React.FC<CameraMotionOptionProps> = ({
         errorName: info.name,
       });
       if (isMountedRef.current) {
-        dispatch({ type: 'RENDER_ERROR' });
+        dispatch({ type: "RENDER_ERROR" });
       }
     } finally {
       // render status is already finalized by success or error reducers
@@ -377,9 +394,9 @@ export const CameraMotionOption: React.FC<CameraMotionOptionProps> = ({
     if (prefersReducedMotion || isTouchDevice) {
       return;
     }
-    dispatch({ type: 'SET_INTERACTION', interaction: 'hovering' });
+    dispatch({ type: "SET_INTERACTION", interaction: "hovering" });
     if (!fallbackMode && !hasRendered && !isRendering) {
-      log.debug('Triggering camera motion preview render on hover', {
+      log.debug("Triggering camera motion preview render on hover", {
         cameraMotionId: cameraPath.id,
         hasRendered,
         isRendering,
@@ -387,13 +404,21 @@ export const CameraMotionOption: React.FC<CameraMotionOptionProps> = ({
       });
       renderFrames();
     }
-  }, [cameraPath.id, fallbackMode, hasRendered, isRendering, prefersReducedMotion, isTouchDevice, renderFrames]);
+  }, [
+    cameraPath.id,
+    fallbackMode,
+    hasRendered,
+    isRendering,
+    prefersReducedMotion,
+    isTouchDevice,
+    renderFrames,
+  ]);
 
   /**
    * Handle mouse leave
    */
   const handleMouseLeave = useCallback(() => {
-    dispatch({ type: 'SET_INTERACTION', interaction: 'idle' });
+    dispatch({ type: "SET_INTERACTION", interaction: "idle" });
   }, []);
 
   /**
@@ -401,7 +426,7 @@ export const CameraMotionOption: React.FC<CameraMotionOptionProps> = ({
    */
   const handleFocus = useCallback(() => {
     if (!fallbackMode && !hasRendered && !isRendering) {
-      log.debug('Triggering camera motion preview render on focus', {
+      log.debug("Triggering camera motion preview render on focus", {
         cameraMotionId: cameraPath.id,
         hasRendered,
         isRendering,
@@ -418,7 +443,7 @@ export const CameraMotionOption: React.FC<CameraMotionOptionProps> = ({
       }
 
       const pointerType = event.pointerType;
-      const allowLongPress = pointerType === 'touch' || prefersReducedMotion;
+      const allowLongPress = pointerType === "touch" || prefersReducedMotion;
       if (!allowLongPress) {
         return;
       }
@@ -430,13 +455,20 @@ export const CameraMotionOption: React.FC<CameraMotionOptionProps> = ({
 
       longPressTimerRef.current = window.setTimeout(() => {
         suppressClickRef.current = true;
-        dispatch({ type: 'SET_INTERACTION', interaction: 'press-previewing' });
+        dispatch({ type: "SET_INTERACTION", interaction: "press-previewing" });
         if (!hasRendered && !isRendering) {
           renderFrames();
         }
       }, 300);
     },
-    [disabled, fallbackMode, hasRendered, isRendering, prefersReducedMotion, renderFrames]
+    [
+      disabled,
+      fallbackMode,
+      hasRendered,
+      isRendering,
+      prefersReducedMotion,
+      renderFrames,
+    ],
   );
 
   const stopPressPreview = useCallback(() => {
@@ -445,47 +477,50 @@ export const CameraMotionOption: React.FC<CameraMotionOptionProps> = ({
       longPressTimerRef.current = null;
     }
     if (isPressPreviewing) {
-      dispatch({ type: 'SET_INTERACTION', interaction: 'idle' });
+      dispatch({ type: "SET_INTERACTION", interaction: "idle" });
     }
   }, [isPressPreviewing]);
 
   /**
    * Handle click selection
    */
-  const handleClick = useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
-    if (suppressClickRef.current) {
-      suppressClickRef.current = false;
-      event.preventDefault();
-      event.stopPropagation();
-      return;
-    }
-    if (disabled) {
-      log.warn('Camera motion option click blocked', {
+  const handleClick = useCallback(
+    (event: React.MouseEvent<HTMLButtonElement>) => {
+      if (suppressClickRef.current) {
+        suppressClickRef.current = false;
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+      }
+      if (disabled) {
+        log.warn("Camera motion option click blocked", {
+          cameraMotionId: cameraPath.id,
+          label: cameraPath.label,
+          category: cameraPath.category,
+          disabled,
+        });
+        return;
+      }
+      log.info("Camera motion option clicked", {
         cameraMotionId: cameraPath.id,
         label: cameraPath.label,
         category: cameraPath.category,
-        disabled,
       });
-      return;
-    }
-    log.info('Camera motion option clicked', {
-      cameraMotionId: cameraPath.id,
-      label: cameraPath.label,
-      category: cameraPath.category,
-    });
-    onSelect?.(cameraPath.id);
-  }, [cameraPath.category, cameraPath.id, cameraPath.label, disabled, onSelect]);
+      onSelect?.(cameraPath.id);
+    },
+    [cameraPath.category, cameraPath.id, cameraPath.label, disabled, onSelect],
+  );
 
   /**
    * Handle keyboard selection
    */
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
-      if (e.key !== 'Enter' && e.key !== ' ') {
+      if (e.key !== "Enter" && e.key !== " ") {
         return;
       }
       if (disabled) {
-        log.warn('Camera motion option keyboard selection blocked', {
+        log.warn("Camera motion option keyboard selection blocked", {
           cameraMotionId: cameraPath.id,
           label: cameraPath.label,
           category: cameraPath.category,
@@ -495,7 +530,7 @@ export const CameraMotionOption: React.FC<CameraMotionOptionProps> = ({
         return;
       }
       e.preventDefault();
-      log.info('Camera motion option selected via keyboard', {
+      log.info("Camera motion option selected via keyboard", {
         cameraMotionId: cameraPath.id,
         label: cameraPath.label,
         category: cameraPath.category,
@@ -503,7 +538,7 @@ export const CameraMotionOption: React.FC<CameraMotionOptionProps> = ({
       });
       onSelect?.(cameraPath.id);
     },
-    [cameraPath.category, cameraPath.id, cameraPath.label, disabled, onSelect]
+    [cameraPath.category, cameraPath.id, cameraPath.label, disabled, onSelect],
   );
 
   // Determine if we should show the animation
@@ -521,12 +556,12 @@ export const CameraMotionOption: React.FC<CameraMotionOptionProps> = ({
     (prefersReducedMotion || isTouchDevice);
   const staticImageSrc = buildProxyUrl(staticPreviewFrame ?? imageUrl);
   const previewHintText = isTouchDevice
-    ? 'Tap and hold to play'
-    : 'Press and hold to play';
+    ? "Tap and hold to play"
+    : "Press and hold to play";
 
   // Touch-friendly tap targets: min 44px (Task 35.4)
   // Camera motion options are naturally larger than 44px due to aspect-video
-  const minTouchTarget = 'min-h-[44px] min-w-[44px]';
+  const minTouchTarget = "min-h-[44px] min-w-[44px]";
 
   return (
     <button
@@ -534,7 +569,7 @@ export const CameraMotionOption: React.FC<CameraMotionOptionProps> = ({
       role="option"
       id={optionId}
       aria-selected={isSelected}
-      aria-label={`${cameraPath.label}${isSelected ? ' (selected)' : ''}`}
+      aria-label={`${cameraPath.label}${isSelected ? " (selected)" : ""}`}
       tabIndex={tabIndex}
       disabled={disabled}
       onClick={handleClick}
@@ -547,22 +582,23 @@ export const CameraMotionOption: React.FC<CameraMotionOptionProps> = ({
       onPointerLeave={stopPressPreview}
       onPointerCancel={stopPressPreview}
       className={cn(
-        'group relative overflow-hidden rounded-lg border-2 transition-all duration-200',
-        'aspect-video',
+        "group relative overflow-hidden rounded-lg border-2 transition-all duration-200",
+        "aspect-video",
         minTouchTarget,
         // Base state
-        'bg-surface-2 border-border',
+        "bg-surface-2 border-border",
         // Hover state
-        !disabled && !isSelected && 'hover:border-primary/50 hover:shadow-md',
+        !disabled && !isSelected && "hover:border-primary/50 hover:shadow-md",
         // Focus state (keyboard navigation) - Requirement 36.2
-        isFocused && 'ring-2 ring-blue-500 ring-offset-2 ring-offset-background',
+        isFocused &&
+          "ring-2 ring-blue-500 ring-offset-2 ring-offset-background",
         // Selected state (Task 23.4)
-        isSelected && 'border-primary ring-2 ring-primary/30',
+        isSelected && "border-primary ring-2 ring-primary/30",
         // Disabled state
-        disabled && 'opacity-50 cursor-not-allowed',
+        disabled && "opacity-50 cursor-not-allowed",
         // Cursor
-        !disabled && 'cursor-pointer',
-        className
+        !disabled && "cursor-pointer",
+        className,
       )}
     >
       {/* Preview Content */}
@@ -616,8 +652,8 @@ export const CameraMotionOption: React.FC<CameraMotionOptionProps> = ({
           <div className="relative flex h-full w-full flex-col items-center justify-center p-4 text-center overflow-hidden">
             <div
               className={cn(
-                'absolute inset-0',
-                'bg-gradient-to-br from-surface-2 via-surface-1/70 to-surface-3/80'
+                "absolute inset-0",
+                "bg-gradient-to-br from-surface-2 via-surface-1/70 to-surface-3/80",
               )}
               aria-hidden="true"
             />
@@ -625,7 +661,7 @@ export const CameraMotionOption: React.FC<CameraMotionOptionProps> = ({
               className="absolute inset-0 opacity-40"
               style={{
                 backgroundImage:
-                  'linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0) 60%)',
+                  "linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0) 60%)",
               }}
               aria-hidden="true"
             />
@@ -634,7 +670,8 @@ export const CameraMotionOption: React.FC<CameraMotionOptionProps> = ({
                 {cameraPath.label}
               </div>
               <div className="text-sm text-muted line-clamp-3">
-                {CAMERA_MOTION_DESCRIPTIONS[cameraPath.id] || 'Camera motion preview'}
+                {CAMERA_MOTION_DESCRIPTIONS[cameraPath.id] ||
+                  "Camera motion preview"}
               </div>
             </div>
           </div>
@@ -645,8 +682,8 @@ export const CameraMotionOption: React.FC<CameraMotionOptionProps> = ({
       {!showFallbackText && (
         <div
           className={cn(
-            'absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent p-3 pt-8',
-            'transition-opacity duration-200'
+            "absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent p-3 pt-8",
+            "transition-opacity duration-200",
           )}
         >
           <span className="text-sm font-medium text-white drop-shadow-sm">
@@ -676,6 +713,6 @@ export const CameraMotionOption: React.FC<CameraMotionOptionProps> = ({
   );
 };
 
-CameraMotionOption.displayName = 'CameraMotionOption';
+CameraMotionOption.displayName = "CameraMotionOption";
 
 export default CameraMotionOption;

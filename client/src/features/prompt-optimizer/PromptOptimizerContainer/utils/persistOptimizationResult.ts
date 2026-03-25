@@ -1,5 +1,5 @@
-import type { MutableRefObject } from 'react';
-import type { HighlightSnapshot } from '@/features/prompt-optimizer/context/types';
+import type { MutableRefObject } from "react";
+import type { HighlightSnapshot } from "@/features/prompt-optimizer/context/types";
 
 interface SaveResult {
   uuid: string;
@@ -15,7 +15,7 @@ interface PersistOptimizationResultOptions {
   setShowResults: (show: boolean) => void;
   applyInitialHighlightSnapshot: (
     snapshot: HighlightSnapshot | null,
-    options: { bumpVersion: boolean; markPersisted: boolean }
+    options: { bumpVersion: boolean; markPersisted: boolean },
   ) => void;
   resetEditStacks: () => void;
   persistedSignatureRef: MutableRefObject<string | null>;
@@ -44,14 +44,17 @@ export function applyOptimizationResult({
   setDisplayedPromptSilently(optimizedPrompt);
   setShowResults(true);
 
-  applyInitialHighlightSnapshot(null, { bumpVersion: true, markPersisted: false });
+  applyInitialHighlightSnapshot(null, {
+    bumpVersion: true,
+    markPersisted: false,
+  });
   resetEditStacks();
   persistedSignatureRef.current = null;
 
   if (saveResult.id) {
     navigate(`/session/${saveResult.id}`, { replace: true });
   } else {
-    navigate('/', { replace: true });
+    navigate("/", { replace: true });
   }
 
   return true;

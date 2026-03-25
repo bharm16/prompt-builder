@@ -1,8 +1,8 @@
-import { useState, useCallback, useEffect, useMemo } from 'react';
-import type { KeyboardEvent } from 'react';
-import debounce from 'lodash/debounce';
-import { logger } from '@/services/LoggingService';
-import { assetApi } from '../api/assetApi';
+import { useState, useCallback, useEffect, useMemo } from "react";
+import type { KeyboardEvent } from "react";
+import debounce from "lodash/debounce";
+import { logger } from "@/services/LoggingService";
+import { assetApi } from "../api/assetApi";
 
 export interface AssetSuggestion {
   id: string;
@@ -28,14 +28,19 @@ interface TriggerAutocompleteOptions {
   debounceMs?: number;
 }
 
-export function useTriggerAutocomplete(options: TriggerAutocompleteOptions = {}) {
+export function useTriggerAutocomplete(
+  options: TriggerAutocompleteOptions = {},
+) {
   const { debounceMs = 150 } = options;
 
   const [isOpen, setIsOpen] = useState(false);
   const [suggestions, setSuggestions] = useState<AssetSuggestion[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const [query, setQuery] = useState('');
-  const [position, setPosition] = useState<AutocompletePosition>({ top: 0, left: 0 });
+  const [query, setQuery] = useState("");
+  const [position, setPosition] = useState<AutocompletePosition>({
+    top: 0,
+    left: 0,
+  });
   const [isLoading, setIsLoading] = useState(false);
 
   const fetchSuggestions = useMemo(
@@ -52,13 +57,15 @@ export function useTriggerAutocomplete(options: TriggerAutocompleteOptions = {})
           setSuggestions(results);
           setSelectedIndex(0);
         } catch (error) {
-          logger.warn('Failed to fetch asset suggestions', { error: error instanceof Error ? error.message : String(error) });
+          logger.warn("Failed to fetch asset suggestions", {
+            error: error instanceof Error ? error.message : String(error),
+          });
           setSuggestions([]);
         } finally {
           setIsLoading(false);
         }
       }, debounceMs),
-    [debounceMs]
+    [debounceMs],
   );
 
   useEffect(() => {
@@ -67,35 +74,38 @@ export function useTriggerAutocomplete(options: TriggerAutocompleteOptions = {})
     };
   }, [fetchSuggestions]);
 
-  const detectTrigger = useCallback((text: string, cursorPosition: number): TriggerDetection => {
-    const beforeCursor = text.slice(0, cursorPosition);
-    const match = beforeCursor.match(/@([a-zA-Z0-9_]*)$/);
+  const detectTrigger = useCallback(
+    (text: string, cursorPosition: number): TriggerDetection => {
+      const beforeCursor = text.slice(0, cursorPosition);
+      const match = beforeCursor.match(/@([a-zA-Z0-9_]*)$/);
 
-    if (match) {
-      return {
-        triggered: true,
-        query: match[1],
-        startIndex: match.index,
-        endIndex: cursorPosition,
-      };
-    }
+      if (match) {
+        return {
+          triggered: true,
+          query: match[1],
+          startIndex: match.index,
+          endIndex: cursorPosition,
+        };
+      }
 
-    return { triggered: false };
-  }, []);
+      return { triggered: false };
+    },
+    [],
+  );
 
   const handleInputChange = useCallback(
     (
       text: string,
       cursorPosition: number,
       inputElement?: HTMLElement | null,
-      caretRect?: DOMRect | null
+      caretRect?: DOMRect | null,
     ): TriggerDetection => {
       const detection = detectTrigger(text, cursorPosition);
 
       if (detection.triggered) {
-        setQuery(detection.query || '');
+        setQuery(detection.query || "");
         setIsOpen(true);
-        fetchSuggestions(detection.query || '');
+        fetchSuggestions(detection.query || "");
 
         if (caretRect) {
           setPosition({
@@ -111,13 +121,13 @@ export function useTriggerAutocomplete(options: TriggerAutocompleteOptions = {})
         }
       } else {
         setIsOpen(false);
-        setQuery('');
+        setQuery("");
         setSuggestions([]);
       }
 
       return detection;
     },
-    [detectTrigger, fetchSuggestions]
+    [detectTrigger, fetchSuggestions],
   );
 
   const handleKeyDown = useCallback(
@@ -125,22 +135,24 @@ export function useTriggerAutocomplete(options: TriggerAutocompleteOptions = {})
       if (!isOpen || suggestions.length === 0) return false;
 
       switch (e.key) {
-        case 'ArrowDown':
+        case "ArrowDown":
           e.preventDefault();
-          setSelectedIndex((index) => Math.min(index + 1, suggestions.length - 1));
+          setSelectedIndex((index) =>
+            Math.min(index + 1, suggestions.length - 1),
+          );
           return true;
-        case 'ArrowUp':
+        case "ArrowUp":
           e.preventDefault();
           setSelectedIndex((index) => Math.max(index - 1, 0));
           return true;
-        case 'Enter':
-        case 'Tab':
+        case "Enter":
+        case "Tab":
           if (suggestions[selectedIndex]) {
             e.preventDefault();
             return { selected: suggestions[selectedIndex] };
           }
           return false;
-        case 'Escape':
+        case "Escape":
           e.preventDefault();
           setIsOpen(false);
           return true;
@@ -148,19 +160,19 @@ export function useTriggerAutocomplete(options: TriggerAutocompleteOptions = {})
           return false;
       }
     },
-    [isOpen, suggestions, selectedIndex]
+    [isOpen, suggestions, selectedIndex],
   );
 
   const selectSuggestion = useCallback((suggestion: AssetSuggestion) => {
     setIsOpen(false);
-    setQuery('');
+    setQuery("");
     setSuggestions([]);
     return suggestion;
   }, []);
 
   const close = useCallback(() => {
     setIsOpen(false);
-    setQuery('');
+    setQuery("");
     setSuggestions([]);
   }, []);
 

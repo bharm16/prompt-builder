@@ -1,17 +1,17 @@
-import * as React from "react"
-import { CaretRight } from "@promptstudio/system/components/ui/icons"
+import * as React from "react";
+import { CaretRight } from "@promptstudio/system/components/ui/icons";
 
-import { cn } from "@promptstudio/system/lib/utils"
+import { cn } from "@promptstudio/system/lib/utils";
 
 interface SectionProps {
-  title: string
-  action?: React.ReactNode
-  children: React.ReactNode
+  title: string;
+  action?: React.ReactNode;
+  children: React.ReactNode;
 }
 
 const Section = ({ title, action, children }: SectionProps) => {
-  const [isOpen, setIsOpen] = React.useState(true)
-  const contentId = React.useId()
+  const [isOpen, setIsOpen] = React.useState(true);
+  const contentId = React.useId();
 
   return (
     <section className="rounded-lg border border-border bg-surface-1 shadow-elevated">
@@ -27,19 +27,21 @@ const Section = ({ title, action, children }: SectionProps) => {
             size={16}
             className={cn(
               "text-muted transition-transform duration-fast ease-out",
-              isOpen ? "rotate-90" : "rotate-0"
+              isOpen ? "rotate-90" : "rotate-0",
             )}
           />
           <span className="ps-h5 text-foreground">{title}</span>
         </button>
-        {action ? <div className="flex items-center gap-2">{action}</div> : null}
+        {action ? (
+          <div className="flex items-center gap-2">{action}</div>
+        ) : null}
       </div>
       <div id={contentId} className="px-6 pb-6" hidden={!isOpen}>
         {children}
       </div>
     </section>
-  )
-}
+  );
+};
 
-export { Section }
-export type { SectionProps }
+export { Section };
+export type { SectionProps };

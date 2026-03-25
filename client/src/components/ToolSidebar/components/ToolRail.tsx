@@ -1,10 +1,10 @@
-import { useMemo, type ReactElement } from 'react';
-import { GridFour, Home } from '@promptstudio/system/components/ui';
-import { Link, useLocation } from 'react-router-dom';
-import { useBillingStatus } from '@/features/billing/hooks/useBillingStatus';
-import { ToolNavButton } from './ToolNavButton';
-import { toolNavItems } from '../config/toolNavConfig';
-import type { ToolRailProps } from '../types';
+import { useMemo, type ReactElement } from "react";
+import { GridFour, Home } from "@promptstudio/system/components/ui";
+import { Link, useLocation } from "react-router-dom";
+import { useBillingStatus } from "@/features/billing/hooks/useBillingStatus";
+import { ToolNavButton } from "./ToolNavButton";
+import { toolNavItems } from "../config/toolNavConfig";
+import type { ToolRailProps } from "../types";
 
 export function ToolRail({
   activePanel,
@@ -14,28 +14,29 @@ export function ToolRail({
 }: ToolRailProps): ReactElement {
   const location = useLocation();
   const { status, isLoading: isLoadingStatus } = useBillingStatus();
-  const sessionsItem = toolNavItems.find((item) => item.variant === 'header');
-  const navItems = toolNavItems.filter((item) => item.variant === 'default');
-  const photoURL = typeof user?.photoURL === 'string' ? user.photoURL : null;
-  const displayName = typeof user?.displayName === 'string' ? user.displayName.trim() : '';
-  const email = typeof user?.email === 'string' ? user.email.trim() : '';
-  const initial = (displayName || email || 'U').slice(0, 1).toUpperCase();
+  const sessionsItem = toolNavItems.find((item) => item.variant === "header");
+  const navItems = toolNavItems.filter((item) => item.variant === "default");
+  const photoURL = typeof user?.photoURL === "string" ? user.photoURL : null;
+  const displayName =
+    typeof user?.displayName === "string" ? user.displayName.trim() : "";
+  const email = typeof user?.email === "string" ? user.email.trim() : "";
+  const initial = (displayName || email || "U").slice(0, 1).toUpperCase();
   const returnTo = encodeURIComponent(`${location.pathname}${location.search}`);
-  const userActionLink = user ? '/account' : `/signin?redirect=${returnTo}`;
-  const userActionLabel = user ? 'Account' : 'Sign in';
+  const userActionLink = user ? "/account" : `/signin?redirect=${returnTo}`;
+  const userActionLabel = user ? "Account" : "Sign in";
   const planLabel = useMemo((): string => {
-    if (isLoadingStatus) return '…';
-    if (!user) return 'Sign in';
-    if (!status?.isSubscribed) return 'Free';
+    if (isLoadingStatus) return "…";
+    if (!user) return "Sign in";
+    if (!status?.isSubscribed) return "Free";
     const tier = status.planTier;
-    if (!tier) return 'Free';
+    if (!tier) return "Free";
     return tier.charAt(0).toUpperCase() + tier.slice(1);
   }, [user, status, isLoadingStatus]);
 
   const handlePanelChange = (panelId: typeof activePanel): void => {
-    if (panelId === 'sessions') {
+    if (panelId === "sessions") {
       // Toggle sessions — if already viewing sessions, go back to studio
-      onPanelChange(activePanel === 'sessions' ? 'studio' : 'sessions');
+      onPanelChange(activePanel === "sessions" ? "studio" : "sessions");
       return;
     }
     onPanelChange(panelId);
@@ -47,13 +48,21 @@ export function ToolRail({
       aria-label="Tool navigation"
     >
       <div className="px-3.5 py-3">
-        <span className="text-[19px] font-bold tracking-tight text-foreground">Vidra</span>
+        <span className="text-[19px] font-bold tracking-tight text-foreground">
+          Vidra
+        </span>
       </div>
 
-      <div className="mx-1 my-1.5 h-px bg-tool-rail-border" aria-hidden="true" />
+      <div
+        className="mx-1 my-1.5 h-px bg-tool-rail-border"
+        aria-hidden="true"
+      />
 
       {/* ── Nav items: Tool, Apps, Chars, Styles ── */}
-      <nav className="flex flex-col items-stretch gap-0.5" aria-label="Tool panels">
+      <nav
+        className="flex flex-col items-stretch gap-0.5"
+        aria-label="Tool panels"
+      >
         {navItems.map((item) => (
           <ToolNavButton
             key={item.id}
@@ -68,17 +77,20 @@ export function ToolRail({
           label="Gallery"
           isActive={false}
           onClick={() => {
-            onPanelChange('studio');
+            onPanelChange("studio");
             onGalleryToggle?.();
           }}
         />
-        <div className="mx-1 my-1.5 h-px bg-tool-rail-border" aria-hidden="true" />
+        <div
+          className="mx-1 my-1.5 h-px bg-tool-rail-border"
+          aria-hidden="true"
+        />
         {sessionsItem ? (
           <ToolNavButton
             icon={sessionsItem.icon}
             label={sessionsItem.label}
-            isActive={activePanel === 'sessions'}
-            onClick={() => handlePanelChange('sessions')}
+            isActive={activePanel === "sessions"}
+            onClick={() => handlePanelChange("sessions")}
             variant="header"
           />
         ) : null}
@@ -94,10 +106,15 @@ export function ToolRail({
           aria-label="Home"
         >
           <Home className="h-5 w-5 shrink-0" weight="bold" />
-          <span className="text-body-sm font-semibold leading-none tracking-[0.02em]">Home</span>
+          <span className="text-body-sm font-semibold leading-none tracking-[0.02em]">
+            Home
+          </span>
         </Link>
 
-        <div className="mx-1 my-1 h-px bg-tool-rail-border" aria-hidden="true" />
+        <div
+          className="mx-1 my-1 h-px bg-tool-rail-border"
+          aria-hidden="true"
+        />
 
         {/* ── Profile row ── */}
         <Link
@@ -114,12 +131,14 @@ export function ToolRail({
             />
           ) : (
             <div className="flex h-8 w-8 flex-none items-center justify-center rounded-lg bg-surface-2">
-              <span className="text-body-sm font-bold text-white">{initial}</span>
+              <span className="text-body-sm font-bold text-white">
+                {initial}
+              </span>
             </div>
           )}
           <div className="flex min-w-0 flex-col gap-0.5">
             <span className="truncate text-body-sm font-medium leading-none text-foreground">
-              {displayName || email || 'Account'}
+              {displayName || email || "Account"}
             </span>
             <span className="text-[11px] leading-none text-tool-text-subdued">
               {planLabel}

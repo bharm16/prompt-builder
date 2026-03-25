@@ -11,13 +11,13 @@
 
 ## Why PuLID over IP-Adapter?
 
-| Feature | IP-Adapter FaceID | Flux PuLID |
-|---------|-------------------|------------|
-| Base Model | SDXL (legacy) | Flux (current) |
-| Face Identity | Good | Excellent |
-| Lighting Handling | Basic | Advanced |
-| Inference Speed | Moderate | Fast on fal.ai |
-| Style Integration | Limited | Native Flux quality |
+| Feature           | IP-Adapter FaceID | Flux PuLID          |
+| ----------------- | ----------------- | ------------------- |
+| Base Model        | SDXL (legacy)     | Flux (current)      |
+| Face Identity     | Good              | Excellent           |
+| Lighting Handling | Basic             | Advanced            |
+| Inference Speed   | Moderate          | Fast on fal.ai      |
+| Style Integration | Limited           | Native Flux quality |
 
 ## API Information
 
@@ -70,12 +70,13 @@ curl --request POST \
 ### JavaScript (Node.js)
 
 ```javascript
-import { FalPulidKeyframeProvider } from '@services/generation/providers';
+import { FalPulidKeyframeProvider } from "@services/generation/providers";
 
 const provider = new FalPulidKeyframeProvider();
 
 const result = await provider.generateKeyframe({
-  prompt: "A professional headshot of a person in a modern office, cinematic lighting",
+  prompt:
+    "A professional headshot of a person in a modern office, cinematic lighting",
   faceImageUrl: "https://example.com/face-reference.jpg",
   aspectRatio: "16:9",
   idWeight: 0.8,
@@ -99,7 +100,7 @@ Get your API key at: https://fal.ai/dashboard/keys
 The `KeyframeGenerationService` automatically uses PuLID when `FAL_KEY` is configured:
 
 ```typescript
-import KeyframeGenerationService from '@services/generation/KeyframeGenerationService';
+import KeyframeGenerationService from "@services/generation/KeyframeGenerationService";
 
 const service = new KeyframeGenerationService();
 

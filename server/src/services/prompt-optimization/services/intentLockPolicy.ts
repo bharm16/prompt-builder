@@ -1,4 +1,8 @@
-import type { CompilationIntentLockState, CompilationState, ShotPlan } from '../types';
+import type {
+  CompilationIntentLockState,
+  CompilationState,
+  ShotPlan,
+} from "../types";
 
 interface IntentLockLike {
   enforceIntentLock(params: {
@@ -30,7 +34,7 @@ export function applyIntentLockPolicy(params: {
   shotPlan: ShotPlan | null;
   compilation?: CompilationState | null;
 }): IntentLockPolicyResult {
-  const validateOnly = params.compilation?.status === 'compiled';
+  const validateOnly = params.compilation?.status === "compiled";
   const originalCompiledPrompt = params.optimizedPrompt.trim();
 
   try {
@@ -42,7 +46,7 @@ export function applyIntentLockPolicy(params: {
 
     if (validateOnly && result.repaired) {
       const warning =
-        'Intent lock requested a repair, but repair was skipped to preserve model-specific output structure.';
+        "Intent lock requested a repair, but repair was skipped to preserve model-specific output structure.";
       return {
         prompt: originalCompiledPrompt,
         legacyMetadata: {

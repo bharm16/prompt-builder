@@ -14,7 +14,7 @@ In addition to supporting JSON Schema in the REST API, the Google GenAI SDKs for
 
 Recipe ExtractorContent ModerationRecursive Structures
 
-This example demonstrates how to extract structured data from text using basic JSON Schema types like`object`,`array`,`string`, and`integer`.  
+This example demonstrates how to extract structured data from text using basic JSON Schema types like`object`,`array`,`string`, and`integer`.
 
 ## Python
 
@@ -76,7 +76,10 @@ const ingredientSchema = z.object({
 
 const recipeSchema = z.object({
   recipe_name: z.string().describe("The name of the recipe."),
-  prep_time_minutes: z.number().optional().describe("Optional time in minutes to prepare the recipe."),
+  prep_time_minutes: z
+    .number()
+    .optional()
+    .describe("Optional time in minutes to prepare the recipe."),
   ingredients: z.array(ingredientSchema),
   instructions: z.array(z.string()),
 });
@@ -243,7 +246,7 @@ curl "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:g
     }'
 ```
 
-**Example Response:**  
+**Example Response:**
 
 ```json
 {
@@ -302,7 +305,7 @@ curl "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:g
 
 You can stream structured outputs, which allows you to start processing the response as it's being generated, without having to wait for the entire output to be complete. This can improve the perceived performance of your application.
 
-The streamed chunks will be valid partial JSON strings, which can be concatenated to form the final, complete JSON object.  
+The streamed chunks will be valid partial JSON strings, which can be concatenated to form the final, complete JSON object.
 
 ### Python
 
@@ -339,7 +342,8 @@ import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
 const ai = new GoogleGenAI({});
-const prompt = "The new UI is incredibly intuitive and visually appealing. Great job! Add a very long summary to test streaming!";
+const prompt =
+  "The new UI is incredibly intuitive and visually appealing. Great job! Add a very long summary to test streaming!";
 
 const feedbackSchema = z.object({
   sentiment: z.enum(["positive", "neutral", "negative"]),
@@ -356,7 +360,7 @@ const stream = await ai.models.generateContentStream({
 });
 
 for await (const chunk of stream) {
-  console.log(chunk.candidates[0].content.parts[0].text)
+  console.log(chunk.candidates[0].content.parts[0].text);
 }
 ```
 
@@ -364,7 +368,7 @@ for await (const chunk of stream) {
 
 | **Preview:** This is a feature available only for the Gemini 3 series models,`gemini-3-pro-preview`and`gemini-3-flash-preview`.
 
-Gemini 3 lets you combine Structured Outputs with built-in tools, including[Grounding with Google Search](https://ai.google.dev/gemini-api/docs/google-search),[URL Context](https://ai.google.dev/gemini-api/docs/url-context), and[Code Execution](https://ai.google.dev/gemini-api/docs/code-execution).  
+Gemini 3 lets you combine Structured Outputs with built-in tools, including[Grounding with Google Search](https://ai.google.dev/gemini-api/docs/google-search),[URL Context](https://ai.google.dev/gemini-api/docs/url-context), and[Code Execution](https://ai.google.dev/gemini-api/docs/code-execution).
 
 ### Python
 
@@ -390,7 +394,7 @@ response = client.models.generate_content(
         ],
         "response_mime_type": "application/json",
         "response_json_schema": MatchResult.model_json_schema(),
-    },  
+    },
 )
 
 result = MatchResult.model_validate_json(response.text)
@@ -409,7 +413,7 @@ const ai = new GoogleGenAI({});
 const matchSchema = z.object({
   winner: z.string().describe("The name of the winner."),
   final_match_score: z.string().describe("The final score."),
-  scorers: z.array(z.string()).describe("The name of the scorer.")
+  scorers: z.array(z.string()).describe("The name of the scorer."),
 });
 
 async function run() {
@@ -417,10 +421,7 @@ async function run() {
     model: "gemini-3-pro-preview",
     contents: "Search for all details for the latest Euro.",
     config: {
-      tools: [
-        { googleSearch: {} },
-        { urlContext: {} }
-      ],
+      tools: [{ googleSearch: {} }, { urlContext: {} }],
       responseMimeType: "application/json",
       responseJsonSchema: zodToJsonSchema(matchSchema),
     },
@@ -520,8 +521,8 @@ These descriptive properties help guide the model:
 
 The following models support structured output:
 
-|         Model          | Structured Outputs |
-|------------------------|--------------------|
+| Model                  | Structured Outputs |
+| ---------------------- | ------------------ |
 | Gemini 3 Pro Preview   | ✅                 |
 | Gemini 3 Flash Preview | ✅                 |
 | Gemini 2.5 Pro         | ✅                 |
@@ -530,14 +531,14 @@ The following models support structured output:
 | Gemini 2.0 Flash       | ✅\*               |
 | Gemini 2.0 Flash-Lite  | ✅\*               |
 
-*\* Note that Gemini 2.0 requires an explicit`propertyOrdering`list within the JSON input to define the preferred structure. You can find an example in this[cookbook](https://github.com/google-gemini/cookbook/blob/main/examples/Pdf_structured_outputs_on_invoices_and_forms.ipynb).*
+_\* Note that Gemini 2.0 requires an explicit`propertyOrdering`list within the JSON input to define the preferred structure. You can find an example in this[cookbook](https://github.com/google-gemini/cookbook/blob/main/examples/Pdf_structured_outputs_on_invoices_and_forms.ipynb)._
 
 ## Structured outputs vs. function calling
 
 Both structured outputs and function calling use JSON schemas, but they serve different purposes:
 
-|        Feature         |                                                                                  Primary Use Case                                                                                  |
-|------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Feature                | Primary Use Case                                                                                                                                                                   |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Structured Outputs** | **Formatting the final response to the user.** Use this when you want the model's*answer*to be in a specific format (e.g., extracting data from a document to save to a database). |
 | **Function Calling**   | **Taking action during the conversation.** Use this when the model needs to*ask you*to perform a task (e.g., "get current weather") before it can provide a final answer.          |
 
@@ -553,4 +554,3 @@ Both structured outputs and function calling use JSON schemas, but they serve di
 
 - **Schema subset:**Not all features of the JSON Schema specification are supported. The model ignores unsupported properties.
 - **Schema complexity:**The API may reject very large or deeply nested schemas. If you encounter errors, try simplifying your schema by shortening property names, reducing nesting, or limiting the number of constraints.
-

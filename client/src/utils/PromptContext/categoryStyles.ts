@@ -1,15 +1,23 @@
-import { TAXONOMY, parseCategoryId, getAttributesForParent, resolveCategory } from '@shared/taxonomy';
-import { logger } from '@/services/LoggingService';
-import { categoryColors, DEFAULT_CATEGORY_COLOR } from '@/features/prompt-optimizer/config/categoryColors';
+import {
+  TAXONOMY,
+  parseCategoryId,
+  getAttributesForParent,
+  resolveCategory,
+} from "@shared/taxonomy";
+import { logger } from "@/services/LoggingService";
+import {
+  categoryColors,
+  DEFAULT_CATEGORY_COLOR,
+} from "@/features/prompt-optimizer/config/categoryColors";
 
-const log = logger.child('CategoryStyles');
+const log = logger.child("CategoryStyles");
 
 /**
  * Category Styling Configuration
- * 
+ *
  * UI styling rules for different highlight categories
  * Uses hierarchical taxonomy with unique colors per category
- * 
+ *
  * Color Strategy:
  * - Each parent category gets a unique, visually distinct color
  * - Higher saturation backgrounds (level 3) for better differentiation
@@ -25,7 +33,7 @@ interface ColorScheme {
 
 /**
  * High-Contrast Color Palette
- * 
+ *
  * Each category gets a unique, easily distinguishable color.
  * Using more saturated shades (level 3 bg, level 6 border) than before.
  * Colors chosen for maximum visual separation when viewed together.
@@ -67,7 +75,10 @@ export function getCategoryColor(category: string): ColorScheme {
   if (!parsed) {
     // Fallback for invalid categories
     if (import.meta.env?.DEV) {
-      log.warn('Invalid category; using fallback color', { operation: 'getCategoryColor', category });
+      log.warn("Invalid category; using fallback color", {
+        operation: "getCategoryColor",
+        category,
+      });
     }
     return FALLBACK_COLOR;
   }
@@ -78,7 +89,11 @@ export function getCategoryColor(category: string): ColorScheme {
   const color = CATEGORY_PALETTE[parentId as keyof typeof CATEGORY_PALETTE];
   if (!color) {
     if (import.meta.env?.DEV) {
-      log.warn('Unknown parent category; using fallback color', { operation: 'getCategoryColor', parentId, category });
+      log.warn("Unknown parent category; using fallback color", {
+        operation: "getCategoryColor",
+        parentId,
+        category,
+      });
     }
     return FALLBACK_COLOR;
   }

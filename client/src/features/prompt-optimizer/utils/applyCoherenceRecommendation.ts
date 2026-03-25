@@ -1,17 +1,18 @@
-import type { HighlightSnapshot } from '@features/prompt-optimizer/PromptCanvas/types';
+import type { HighlightSnapshot } from "@features/prompt-optimizer/PromptCanvas/types";
 import type {
   CoherenceRecommendation,
   CoherenceSpan,
-} from '@features/prompt-optimizer/types/coherence';
-import type { HighlightSpan } from '@features/span-highlighting/hooks/useHighlightRendering';
-import { applySpanEditToPrompt } from './applySpanEdit';
+} from "@features/prompt-optimizer/types/coherence";
+import type { HighlightSpan } from "@features/span-highlighting/hooks/useHighlightRendering";
+import { applySpanEditToPrompt } from "./applySpanEdit";
 import {
   updateHighlightSnapshotForSuggestion,
   updateHighlightSnapshotForRemoval,
-} from './updateHighlightSnapshot';
-import { updateSpanListForSuggestion } from './updateSpanListForSuggestion';
+} from "./updateHighlightSnapshot";
+import { updateSpanListForSuggestion } from "./updateSpanListForSuggestion";
 
-const isFiniteNumber = (value: unknown): value is number => Number.isFinite(value);
+const isFiniteNumber = (value: unknown): value is number =>
+  Number.isFinite(value);
 
 const normalizeCoherenceSpans = (spans: CoherenceSpan[]): HighlightSpan[] =>
   spans
@@ -19,7 +20,7 @@ const normalizeCoherenceSpans = (spans: CoherenceSpan[]): HighlightSpan[] =>
       (span) =>
         isFiniteNumber(span.start) &&
         isFiniteNumber(span.end) &&
-        span.end > span.start
+        span.end > span.start,
     )
     .map((span) => ({
       ...span,
@@ -55,7 +56,7 @@ export function applyCoherenceRecommendation({
 
   recommendation.edits.forEach((edit) => {
     const span = edit.spanId
-      ? workingSpans.find((candidate) => candidate.id === edit.spanId) ?? null
+      ? (workingSpans.find((candidate) => candidate.id === edit.spanId) ?? null)
       : null;
 
     const result = applySpanEditToPrompt({
@@ -64,18 +65,22 @@ export function applyCoherenceRecommendation({
       span: span as unknown as CoherenceSpan | null,
     });
 
-    if (!result.updatedPrompt || !isFiniteNumber(result.matchStart) || !isFiniteNumber(result.matchEnd)) {
+    if (
+      !result.updatedPrompt ||
+      !isFiniteNumber(result.matchStart) ||
+      !isFiniteNumber(result.matchEnd)
+    ) {
       return;
     }
 
     const matchStart = result.matchStart as number;
     const matchEnd = result.matchEnd as number;
     const replacementText =
-      edit.type === 'replaceSpanText' ? edit.replacementText ?? '' : '';
+      edit.type === "replaceSpanText" ? (edit.replacementText ?? "") : "";
 
     if (workingSnapshot) {
       const nextSnapshot =
-        edit.type === 'replaceSpanText'
+        edit.type === "replaceSpanText"
           ? updateHighlightSnapshotForSuggestion({
               snapshot: workingSnapshot,
               matchStart,
@@ -112,7 +117,7 @@ export function applyCoherenceRecommendation({
       targetStart: span?.start ?? null,
       targetEnd: span?.end ?? null,
       targetCategory: span?.category ?? null,
-      removeTarget: edit.type === 'removeSpan',
+      removeTarget: edit.type === "removeSpan",
     });
 
     workingPrompt = result.updatedPrompt;

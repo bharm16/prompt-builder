@@ -1,10 +1,20 @@
-import React, { memo, useEffect, useMemo, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
-import { Button } from '@promptstudio/system/components/ui/button';
-import { CaretDown, Check, Icon, VideoCamera } from '@promptstudio/system/components/ui';
-import { cn } from '@/utils/cn';
-import { AI_MODEL_IDS, AI_MODEL_LABELS, AI_MODEL_PROVIDERS, resolveModelMeta } from '@/config/videoModels';
-import { useModelRegistry } from '@/hooks/useModelRegistry';
+import React, { memo, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { Button } from "@promptstudio/system/components/ui/button";
+import {
+  CaretDown,
+  Check,
+  Icon,
+  VideoCamera,
+} from "@promptstudio/system/components/ui";
+import { cn } from "@/utils/cn";
+import {
+  AI_MODEL_IDS,
+  AI_MODEL_LABELS,
+  AI_MODEL_PROVIDERS,
+  resolveModelMeta,
+} from "@/config/videoModels";
+import { useModelRegistry } from "@/hooks/useModelRegistry";
 
 /**
  * Model selector dropdown for selecting specific video models.
@@ -13,7 +23,7 @@ export const ModelSelectorDropdown = memo<{
   selectedModel: string | undefined;
   onModelChange: (modelId: string) => void;
   disabled?: boolean;
-  variant?: 'default' | 'pill' | 'pillDark';
+  variant?: "default" | "pill" | "pillDark";
   prefixLabel?: string;
   buttonClassName?: string;
 }>(
@@ -21,7 +31,7 @@ export const ModelSelectorDropdown = memo<{
     selectedModel,
     onModelChange,
     disabled = false,
-    variant = 'default',
+    variant = "default",
     prefixLabel,
     buttonClassName,
   }): React.ReactElement => {
@@ -33,14 +43,14 @@ export const ModelSelectorDropdown = memo<{
     const [menuPosition, setMenuPosition] = useState<{
       top: number;
       left: number;
-      placement: 'bottom' | 'top';
+      placement: "bottom" | "top";
     } | null>(null);
 
     // Use Prompt Studio system badges (keeps menu consistent with the rest of PromptCanvas).
     const badgeClass =
-      'inline-flex items-center rounded-full border border-border bg-surface-3 px-2 py-0.5 text-label-sm text-muted';
+      "inline-flex items-center rounded-full border border-border bg-surface-3 px-2 py-0.5 text-label-sm text-muted";
     const accentBadgeClass =
-      'inline-flex items-center rounded-full border border-accent/30 bg-accent/10 px-2 py-0.5 text-label-sm text-accent';
+      "inline-flex items-center rounded-full border border-accent/30 bg-accent/10 px-2 py-0.5 text-label-sm text-accent";
 
     // Find label for current selection
     const fallbackModelOptions = useMemo(() => {
@@ -48,22 +58,31 @@ export const ModelSelectorDropdown = memo<{
         .map((id) => ({
           id,
           label: AI_MODEL_LABELS[id as keyof typeof AI_MODEL_LABELS] ?? id,
-          provider: AI_MODEL_PROVIDERS[id as keyof typeof AI_MODEL_PROVIDERS] ?? 'unknown',
+          provider:
+            AI_MODEL_PROVIDERS[id as keyof typeof AI_MODEL_PROVIDERS] ??
+            "unknown",
         }))
         .sort((a, b) => a.label.localeCompare(b.label));
     }, []);
 
-    const effectiveModels = availableModels.length ? availableModels : fallbackModelOptions;
+    const effectiveModels = availableModels.length
+      ? availableModels
+      : fallbackModelOptions;
 
-    const selectedOption = effectiveModels.find((model) => model.id === selectedModel);
+    const selectedOption = effectiveModels.find(
+      (model) => model.id === selectedModel,
+    );
     const currentLabel =
       selectedOption?.label ??
       (selectedModel
-        ? AI_MODEL_LABELS[selectedModel as keyof typeof AI_MODEL_LABELS] || selectedModel
-        : 'Auto (Recommended)');
+        ? AI_MODEL_LABELS[selectedModel as keyof typeof AI_MODEL_LABELS] ||
+          selectedModel
+        : "Auto (Recommended)");
 
     // UI polish: keep labels compact in tight control bars
-    const displayLabel = currentLabel.replace(/\s*\(recommended\)\s*/i, '').trim();
+    const displayLabel = currentLabel
+      .replace(/\s*\(recommended\)\s*/i, "")
+      .trim();
 
     // Handle clicks outside dropdown
     useEffect(() => {
@@ -77,23 +96,31 @@ export const ModelSelectorDropdown = memo<{
       };
 
       if (isOpen) {
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
+        document.addEventListener("mousedown", handleClickOutside);
+        return () =>
+          document.removeEventListener("mousedown", handleClickOutside);
       }
       return undefined;
     }, [isOpen]);
 
     const computeMenuPosition = useMemo(() => {
-      return (): { top: number; left: number; placement: 'bottom' | 'top' } | null => {
+      return (): {
+        top: number;
+        left: number;
+        placement: "bottom" | "top";
+      } | null => {
         const button = buttonRef.current;
         if (!button) return null;
         const rect = button.getBoundingClientRect();
         const viewportMargin = 8;
         const preferredLeft = rect.left;
-        const maxLeft = Math.max(viewportMargin, window.innerWidth - 260 - viewportMargin);
+        const maxLeft = Math.max(
+          viewportMargin,
+          window.innerWidth - 260 - viewportMargin,
+        );
         const left = Math.max(viewportMargin, Math.min(preferredLeft, maxLeft));
         const top = rect.bottom + 8;
-        return { top, left, placement: 'bottom' };
+        return { top, left, placement: "bottom" };
       };
     }, []);
 
@@ -108,11 +135,11 @@ export const ModelSelectorDropdown = memo<{
       const handleReposition = (): void => {
         setMenuPosition(computeMenuPosition());
       };
-      window.addEventListener('scroll', handleReposition, true);
-      window.addEventListener('resize', handleReposition);
+      window.addEventListener("scroll", handleReposition, true);
+      window.addEventListener("resize", handleReposition);
       return () => {
-        window.removeEventListener('scroll', handleReposition, true);
-        window.removeEventListener('resize', handleReposition);
+        window.removeEventListener("scroll", handleReposition, true);
+        window.removeEventListener("resize", handleReposition);
       };
     }, [isOpen, computeMenuPosition]);
 
@@ -134,11 +161,16 @@ export const ModelSelectorDropdown = memo<{
       const rect = button.getBoundingClientRect();
       const viewportMargin = 8;
       const menuHeight = el.getBoundingClientRect().height;
-      const wouldOverflowBottom = menuPosition.top + menuHeight + viewportMargin > window.innerHeight;
+      const wouldOverflowBottom =
+        menuPosition.top + menuHeight + viewportMargin > window.innerHeight;
       if (!wouldOverflowBottom) return;
       const nextTop = Math.max(viewportMargin, rect.top - menuHeight - 8);
       hasFlippedRef.current = true;
-      setMenuPosition({ top: nextTop, left: menuPosition.left, placement: 'top' });
+      setMenuPosition({
+        top: nextTop,
+        left: menuPosition.left,
+        placement: "top",
+      });
     }, [isOpen, menuPosition]);
 
     useEffect(() => {
@@ -164,16 +196,16 @@ export const ModelSelectorDropdown = memo<{
           ref={buttonRef}
           disabled={disabled}
           className={cn(
-            'inline-flex h-8 items-center gap-2 rounded-full border border-border bg-surface-2 px-3 text-label-12 font-semibold text-foreground transition-colors',
-            'hover:bg-surface-3 hover:border-border-strong',
-            'data-[open=true]:border-accent/70 data-[open=true]:ring-2 data-[open=true]:ring-accent/10',
-            'disabled:cursor-not-allowed disabled:opacity-60',
-            buttonClassName
+            "inline-flex h-8 items-center gap-2 rounded-full border border-border bg-surface-2 px-3 text-label-12 font-semibold text-foreground transition-colors",
+            "hover:bg-surface-3 hover:border-border-strong",
+            "data-[open=true]:border-accent/70 data-[open=true]:ring-2 data-[open=true]:ring-accent/10",
+            "disabled:cursor-not-allowed disabled:opacity-60",
+            buttonClassName,
           )}
-          data-open={isOpen ? 'true' : 'false'}
+          data-open={isOpen ? "true" : "false"}
           aria-haspopup="listbox"
           aria-expanded={isOpen}
-          aria-label={`${prefixLabel ? `${prefixLabel}. ` : ''}Current model: ${currentLabel}`}
+          aria-label={`${prefixLabel ? `${prefixLabel}. ` : ""}Current model: ${currentLabel}`}
           aria-disabled={disabled}
           aria-busy={isLoading}
           variant="ghost"
@@ -183,19 +215,30 @@ export const ModelSelectorDropdown = memo<{
               {prefixLabel}
             </span>
           )}
-          <Icon icon={VideoCamera} size="sm" weight="bold" className="text-muted" aria-hidden="true" />
-          <span className="max-w-56 truncate">{isLoading ? 'Loading…' : displayLabel}</span>
+          <Icon
+            icon={VideoCamera}
+            size="sm"
+            weight="bold"
+            className="text-muted"
+            aria-hidden="true"
+          />
+          <span className="max-w-56 truncate">
+            {isLoading ? "Loading…" : displayLabel}
+          </span>
           <Icon
             icon={CaretDown}
             size="sm"
             weight="bold"
-            className={cn('text-muted transition-transform', isOpen && 'rotate-180')}
+            className={cn(
+              "text-muted transition-transform",
+              isOpen && "rotate-180",
+            )}
             aria-hidden="true"
           />
         </Button>
 
         {isOpen &&
-          typeof document !== 'undefined' &&
+          typeof document !== "undefined" &&
           createPortal(
             <div
               ref={menuRef}
@@ -203,31 +246,42 @@ export const ModelSelectorDropdown = memo<{
               style={{
                 top: `${menuPosition?.top ?? 0}px`,
                 left: `${menuPosition?.left ?? 0}px`,
-                visibility: menuPosition ? 'visible' : 'hidden',
+                visibility: menuPosition ? "visible" : "hidden",
               }}
               role="listbox"
               aria-label="Available video models"
-              data-placement={menuPosition?.placement ?? 'bottom'}
+              data-placement={menuPosition?.placement ?? "bottom"}
             >
               {/* Auto-detect Option */}
               <Button
                 type="button"
-                onClick={() => handleModelSelect('')}
+                onClick={() => handleModelSelect("")}
                 className="flex w-full items-start justify-between gap-2 border-b border-border px-3 py-3 text-left text-foreground transition-colors hover:bg-surface-3 data-[selected=true]:bg-accent/10 last:border-b-0"
-                data-selected={!selectedModel ? 'true' : 'false'}
+                data-selected={!selectedModel ? "true" : "false"}
                 role="option"
                 aria-selected={!selectedModel}
                 variant="ghost"
               >
                 <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                  <div className="text-body-sm font-semibold text-foreground">Auto (Recommended)</div>
-                  <div className="text-label-sm text-muted">Picks the best model for the prompt</div>
+                  <div className="text-body-sm font-semibold text-foreground">
+                    Auto (Recommended)
+                  </div>
+                  <div className="text-label-sm text-muted">
+                    Picks the best model for the prompt
+                  </div>
                   <div className="mt-1.5 flex flex-wrap gap-1.5">
                     <span className={accentBadgeClass}>Recommended</span>
                     <span className={badgeClass}>Balanced</span>
                   </div>
                 </div>
-                {!selectedModel && <Icon icon={Check} size="sm" weight="bold" aria-hidden="true" />}
+                {!selectedModel && (
+                  <Icon
+                    icon={Check}
+                    size="sm"
+                    weight="bold"
+                    aria-hidden="true"
+                  />
+                )}
               </Button>
 
               {/* Model Options */}
@@ -241,17 +295,21 @@ export const ModelSelectorDropdown = memo<{
                     type="button"
                     onClick={() => handleModelSelect(option.id)}
                     className="flex w-full items-start justify-between gap-2 border-b border-border px-3 py-3 text-left text-foreground transition-colors hover:bg-surface-3 data-[selected=true]:bg-accent/10 last:border-b-0"
-                    data-selected={isSelected ? 'true' : 'false'}
+                    data-selected={isSelected ? "true" : "false"}
                     role="option"
                     aria-selected={isSelected}
                     variant="ghost"
                   >
                     <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                      <div className="text-body-sm font-semibold text-foreground">{option.label}</div>
+                      <div className="text-body-sm font-semibold text-foreground">
+                        {option.label}
+                      </div>
                       <div className="text-label-sm uppercase tracking-widest text-faint">
                         {option.provider}
                       </div>
-                      <div className="text-label-sm text-muted">{meta.strength}</div>
+                      <div className="text-label-sm text-muted">
+                        {meta.strength}
+                      </div>
                       <div className="mt-1.5 flex flex-wrap gap-1.5">
                         {meta.badges.map((badge) => (
                           <span key={badge} className={badgeClass}>
@@ -260,16 +318,23 @@ export const ModelSelectorDropdown = memo<{
                         ))}
                       </div>
                     </div>
-                    {isSelected && <Icon icon={Check} size="sm" weight="bold" aria-hidden="true" />}
+                    {isSelected && (
+                      <Icon
+                        icon={Check}
+                        size="sm"
+                        weight="bold"
+                        aria-hidden="true"
+                      />
+                    )}
                   </Button>
                 );
               })}
             </div>,
-            document.body
+            document.body,
           )}
       </div>
     );
-  }
+  },
 );
 
-ModelSelectorDropdown.displayName = 'ModelSelectorDropdown';
+ModelSelectorDropdown.displayName = "ModelSelectorDropdown";

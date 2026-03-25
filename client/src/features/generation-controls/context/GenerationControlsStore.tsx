@@ -1,7 +1,13 @@
-import React, { createContext, useContext, useEffect, useMemo, useReducer } from 'react';
-import type { CapabilityValues } from '@shared/capabilities';
-import type { CameraPath } from '@/features/convergence/types';
-import type { KeyframeTile, VideoTier } from '@components/ToolSidebar/types';
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useReducer,
+} from "react";
+import type { CapabilityValues } from "@shared/capabilities";
+import type { CameraPath } from "@/features/convergence/types";
+import type { KeyframeTile, VideoTier } from "@components/ToolSidebar/types";
 import {
   DEFAULT_GENERATION_CONTROLS_STATE,
   type ConstraintMode,
@@ -10,40 +16,43 @@ import {
   type GenerationControlsTab,
   type ImageSubTab,
   type VideoReferenceImage,
-} from './generationControlsStoreTypes';
+} from "./generationControlsStoreTypes";
 import {
   loadGenerationControlsStoreState,
   persistGenerationControlsStoreState,
-} from './generationControlsStoreStorage';
+} from "./generationControlsStoreStorage";
 
 const MAX_KEYFRAMES = 3;
 const MAX_VIDEO_REFERENCES = 3;
 
 type GenerationControlsAction =
-  | { type: 'setSelectedModel'; value: string }
-  | { type: 'setGenerationParams'; value: CapabilityValues }
-  | { type: 'mergeGenerationParams'; value: CapabilityValues }
-  | { type: 'setVideoTier'; value: VideoTier }
-  | { type: 'setStartFrame'; value: KeyframeTile | null }
-  | { type: 'setEndFrame'; value: KeyframeTile | null }
-  | { type: 'clearStartFrame' }
-  | { type: 'clearEndFrame' }
-  | { type: 'addVideoReference'; value: Omit<VideoReferenceImage, 'id'> }
-  | { type: 'removeVideoReference'; value: string }
-  | { type: 'updateVideoReferenceType'; value: { id: string; referenceType: 'asset' | 'style' } }
-  | { type: 'clearVideoReferences' }
-  | { type: 'setExtendVideo'; value: ExtendVideoSource | null }
-  | { type: 'clearExtendVideo' }
-  | { type: 'setKeyframes'; value: KeyframeTile[] | null | undefined }
-  | { type: 'addKeyframe'; value: Omit<KeyframeTile, 'id'> }
-  | { type: 'removeKeyframe'; value: string }
-  | { type: 'clearKeyframes' }
-  | { type: 'setCameraMotion'; value: CameraPath | null }
-  | { type: 'setSubjectMotion'; value: string }
-  | { type: 'setActiveTab'; value: GenerationControlsTab }
-  | { type: 'setImageSubTab'; value: ImageSubTab }
-  | { type: 'setConstraintMode'; value: ConstraintMode }
-  | { type: 'resetState'; value: GenerationControlsState };
+  | { type: "setSelectedModel"; value: string }
+  | { type: "setGenerationParams"; value: CapabilityValues }
+  | { type: "mergeGenerationParams"; value: CapabilityValues }
+  | { type: "setVideoTier"; value: VideoTier }
+  | { type: "setStartFrame"; value: KeyframeTile | null }
+  | { type: "setEndFrame"; value: KeyframeTile | null }
+  | { type: "clearStartFrame" }
+  | { type: "clearEndFrame" }
+  | { type: "addVideoReference"; value: Omit<VideoReferenceImage, "id"> }
+  | { type: "removeVideoReference"; value: string }
+  | {
+      type: "updateVideoReferenceType";
+      value: { id: string; referenceType: "asset" | "style" };
+    }
+  | { type: "clearVideoReferences" }
+  | { type: "setExtendVideo"; value: ExtendVideoSource | null }
+  | { type: "clearExtendVideo" }
+  | { type: "setKeyframes"; value: KeyframeTile[] | null | undefined }
+  | { type: "addKeyframe"; value: Omit<KeyframeTile, "id"> }
+  | { type: "removeKeyframe"; value: string }
+  | { type: "clearKeyframes" }
+  | { type: "setCameraMotion"; value: CameraPath | null }
+  | { type: "setSubjectMotion"; value: string }
+  | { type: "setActiveTab"; value: GenerationControlsTab }
+  | { type: "setImageSubTab"; value: ImageSubTab }
+  | { type: "setConstraintMode"; value: ConstraintMode }
+  | { type: "resetState"; value: GenerationControlsState };
 
 export interface GenerationControlsActions {
   setSelectedModel: (model: string) => void;
@@ -54,14 +63,17 @@ export interface GenerationControlsActions {
   setEndFrame: (tile: KeyframeTile | null) => void;
   clearStartFrame: () => void;
   clearEndFrame: () => void;
-  addVideoReference: (ref: Omit<VideoReferenceImage, 'id'>) => void;
+  addVideoReference: (ref: Omit<VideoReferenceImage, "id">) => void;
   removeVideoReference: (id: string) => void;
-  updateVideoReferenceType: (id: string, referenceType: 'asset' | 'style') => void;
+  updateVideoReferenceType: (
+    id: string,
+    referenceType: "asset" | "style",
+  ) => void;
   clearVideoReferences: () => void;
   setExtendVideo: (source: ExtendVideoSource | null) => void;
   clearExtendVideo: () => void;
   setKeyframes: (tiles: KeyframeTile[] | null | undefined) => void;
-  addKeyframe: (tile: Omit<KeyframeTile, 'id'>) => void;
+  addKeyframe: (tile: Omit<KeyframeTile, "id">) => void;
   removeKeyframe: (id: string) => void;
   clearKeyframes: () => void;
   setCameraMotion: (cameraPath: CameraPath | null) => void;
@@ -72,22 +84,29 @@ export interface GenerationControlsActions {
   resetState: (state: GenerationControlsState) => void;
 }
 
-const GenerationControlsStateContext = createContext<GenerationControlsState | null>(null);
-const GenerationControlsActionsContext = createContext<GenerationControlsActions | null>(null);
+const GenerationControlsStateContext =
+  createContext<GenerationControlsState | null>(null);
+const GenerationControlsActionsContext =
+  createContext<GenerationControlsActions | null>(null);
 
-const normalizeKeyframes = (tiles: KeyframeTile[] | null | undefined): KeyframeTile[] => {
+const normalizeKeyframes = (
+  tiles: KeyframeTile[] | null | undefined,
+): KeyframeTile[] => {
   if (!Array.isArray(tiles)) return [];
   return tiles.slice(0, MAX_KEYFRAMES);
 };
 
 const createKeyframeId = (): string => {
-  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
     return crypto.randomUUID();
   }
   return `keyframe-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 };
 
-const areGenerationParamsEqual = (left: CapabilityValues, right: CapabilityValues): boolean => {
+const areGenerationParamsEqual = (
+  left: CapabilityValues,
+  right: CapabilityValues,
+): boolean => {
   if (left === right) return true;
   const leftKeys = Object.keys(left);
   const rightKeys = Object.keys(right);
@@ -100,7 +119,7 @@ const areGenerationParamsEqual = (left: CapabilityValues, right: CapabilityValue
 
 const areKeyframeTilesEqual = (
   left: KeyframeTile | null | undefined,
-  right: KeyframeTile | null | undefined
+  right: KeyframeTile | null | undefined,
 ): boolean => {
   if (left === right) return true;
   if (!left && !right) return true;
@@ -115,7 +134,10 @@ const areKeyframeTilesEqual = (
   return true;
 };
 
-const areKeyframesEqual = (left: KeyframeTile[], right: KeyframeTile[]): boolean => {
+const areKeyframesEqual = (
+  left: KeyframeTile[],
+  right: KeyframeTile[],
+): boolean => {
   if (left === right) return true;
   if (left.length !== right.length) return false;
   for (let index = 0; index < left.length; index += 1) {
@@ -126,8 +148,10 @@ const areKeyframesEqual = (left: KeyframeTile[], right: KeyframeTile[]): boolean
   return true;
 };
 
-const normalizeStartFrameIdentityUrl = (url: string | null | undefined): string | null => {
-  if (typeof url !== 'string') return null;
+const normalizeStartFrameIdentityUrl = (
+  url: string | null | undefined,
+): string | null => {
+  if (typeof url !== "string") return null;
   const trimmed = url.trim();
   if (!trimmed) return null;
 
@@ -135,12 +159,14 @@ const normalizeStartFrameIdentityUrl = (url: string | null | undefined): string 
     const parsed = new URL(trimmed);
     return `${parsed.origin}${parsed.pathname}`;
   } catch {
-    const hashStripped = trimmed.split('#')[0] ?? trimmed;
-    return hashStripped.split('?')[0] ?? hashStripped;
+    const hashStripped = trimmed.split("#")[0] ?? trimmed;
+    return hashStripped.split("?")[0] ?? hashStripped;
   }
 };
 
-const resolveStartFrameIdentity = (frame: KeyframeTile | null): string | null => {
+const resolveStartFrameIdentity = (
+  frame: KeyframeTile | null,
+): string | null => {
   if (!frame) return null;
   const normalizedUrl = normalizeStartFrameIdentityUrl(frame.url);
   if (normalizedUrl) return normalizedUrl;
@@ -154,8 +180,11 @@ const resolveStartFrameIdentity = (frame: KeyframeTile | null): string | null =>
 
 const reconcileMotionAfterStartFrame = (
   state: GenerationControlsState,
-  nextStartFrame: KeyframeTile | null
-): Pick<GenerationControlsState['domain'], 'cameraMotion' | 'subjectMotion'> => {
+  nextStartFrame: KeyframeTile | null,
+): Pick<
+  GenerationControlsState["domain"],
+  "cameraMotion" | "subjectMotion"
+> => {
   const previousIdentity = resolveStartFrameIdentity(state.domain.startFrame);
   const nextIdentity = resolveStartFrameIdentity(nextStartFrame);
 
@@ -166,7 +195,7 @@ const reconcileMotionAfterStartFrame = (
         subjectMotion: state.domain.subjectMotion,
       };
     }
-    return { cameraMotion: null, subjectMotion: '' };
+    return { cameraMotion: null, subjectMotion: "" };
   }
 
   if (!previousIdentity) {
@@ -177,7 +206,7 @@ const reconcileMotionAfterStartFrame = (
   }
 
   if (previousIdentity !== nextIdentity) {
-    return { cameraMotion: null, subjectMotion: '' };
+    return { cameraMotion: null, subjectMotion: "" };
   }
 
   return {
@@ -188,43 +217,49 @@ const reconcileMotionAfterStartFrame = (
 
 const reducer = (
   state: GenerationControlsState,
-  action: GenerationControlsAction
+  action: GenerationControlsAction,
 ): GenerationControlsState => {
   switch (action.type) {
-    case 'setSelectedModel':
+    case "setSelectedModel":
       if (state.domain.selectedModel === action.value) return state;
       return {
         ...state,
         domain: { ...state.domain, selectedModel: action.value },
       };
-    case 'setGenerationParams':
-      if (areGenerationParamsEqual(state.domain.generationParams, action.value)) return state;
+    case "setGenerationParams":
+      if (areGenerationParamsEqual(state.domain.generationParams, action.value))
+        return state;
       return {
         ...state,
         domain: { ...state.domain, generationParams: action.value },
       };
-    case 'mergeGenerationParams': {
+    case "mergeGenerationParams": {
       const hasChanges = Object.keys(action.value).some(
-        (key) => !Object.is(state.domain.generationParams[key], action.value[key])
+        (key) =>
+          !Object.is(state.domain.generationParams[key], action.value[key]),
       );
       if (!hasChanges) return state;
       return {
         ...state,
         domain: {
           ...state.domain,
-          generationParams: { ...state.domain.generationParams, ...action.value },
+          generationParams: {
+            ...state.domain.generationParams,
+            ...action.value,
+          },
         },
       };
     }
-    case 'setVideoTier':
+    case "setVideoTier":
       if (state.domain.videoTier === action.value) return state;
       return {
         ...state,
         domain: { ...state.domain, videoTier: action.value },
       };
-    case 'setStartFrame': {
+    case "setStartFrame": {
       const nextStartFrame = action.value;
-      if (areKeyframeTilesEqual(state.domain.startFrame, nextStartFrame)) return state;
+      if (areKeyframeTilesEqual(state.domain.startFrame, nextStartFrame))
+        return state;
       const motion = reconcileMotionAfterStartFrame(state, nextStartFrame);
       return {
         ...state,
@@ -236,9 +271,10 @@ const reducer = (
         },
       };
     }
-    case 'setEndFrame': {
+    case "setEndFrame": {
       const nextEndFrame = action.value;
-      if (areKeyframeTilesEqual(state.domain.endFrame, nextEndFrame)) return state;
+      if (areKeyframeTilesEqual(state.domain.endFrame, nextEndFrame))
+        return state;
       return {
         ...state,
         domain: {
@@ -248,7 +284,7 @@ const reducer = (
         },
       };
     }
-    case 'clearStartFrame': {
+    case "clearStartFrame": {
       if (!state.domain.startFrame) return state;
       const motion = reconcileMotionAfterStartFrame(state, null);
       return {
@@ -260,7 +296,7 @@ const reducer = (
         },
       };
     }
-    case 'clearEndFrame': {
+    case "clearEndFrame": {
       if (!state.domain.endFrame) return state;
       return {
         ...state,
@@ -270,8 +306,9 @@ const reducer = (
         },
       };
     }
-    case 'addVideoReference': {
-      if (state.domain.videoReferenceImages.length >= MAX_VIDEO_REFERENCES) return state;
+    case "addVideoReference": {
+      if (state.domain.videoReferenceImages.length >= MAX_VIDEO_REFERENCES)
+        return state;
       return {
         ...state,
         domain: {
@@ -283,9 +320,12 @@ const reducer = (
         },
       };
     }
-    case 'removeVideoReference': {
-      const next = state.domain.videoReferenceImages.filter((reference) => reference.id !== action.value);
-      if (next.length === state.domain.videoReferenceImages.length) return state;
+    case "removeVideoReference": {
+      const next = state.domain.videoReferenceImages.filter(
+        (reference) => reference.id !== action.value,
+      );
+      if (next.length === state.domain.videoReferenceImages.length)
+        return state;
       return {
         ...state,
         domain: {
@@ -294,7 +334,7 @@ const reducer = (
         },
       };
     }
-    case 'updateVideoReferenceType': {
+    case "updateVideoReferenceType": {
       const { id, referenceType } = action.value;
       let hasChanges = false;
       const next = state.domain.videoReferenceImages.map((reference) => {
@@ -312,7 +352,7 @@ const reducer = (
         },
       };
     }
-    case 'clearVideoReferences': {
+    case "clearVideoReferences": {
       if (state.domain.videoReferenceImages.length === 0) return state;
       return {
         ...state,
@@ -322,7 +362,7 @@ const reducer = (
         },
       };
     }
-    case 'setExtendVideo': {
+    case "setExtendVideo": {
       const next = action.value;
       const current = state.domain.extendVideo;
       const isSame =
@@ -344,13 +384,13 @@ const reducer = (
                 startFrame: null,
                 endFrame: null,
                 cameraMotion: null,
-                subjectMotion: '',
+                subjectMotion: "",
               }
             : {}),
         },
       };
     }
-    case 'clearExtendVideo': {
+    case "clearExtendVideo": {
       if (!state.domain.extendVideo) return state;
       return {
         ...state,
@@ -360,9 +400,10 @@ const reducer = (
         },
       };
     }
-    case 'setKeyframes': {
+    case "setKeyframes": {
       const nextKeyframes = normalizeKeyframes(action.value);
-      if (areKeyframesEqual(state.domain.keyframes, nextKeyframes)) return state;
+      if (areKeyframesEqual(state.domain.keyframes, nextKeyframes))
+        return state;
       return {
         ...state,
         domain: {
@@ -371,7 +412,7 @@ const reducer = (
         },
       };
     }
-    case 'addKeyframe': {
+    case "addKeyframe": {
       if (state.domain.keyframes.length >= MAX_KEYFRAMES) return state;
       const nextKeyframes = [
         ...state.domain.keyframes,
@@ -385,8 +426,10 @@ const reducer = (
         },
       };
     }
-    case 'removeKeyframe': {
-      const nextKeyframes = state.domain.keyframes.filter((tile) => tile.id !== action.value);
+    case "removeKeyframe": {
+      const nextKeyframes = state.domain.keyframes.filter(
+        (tile) => tile.id !== action.value,
+      );
       if (nextKeyframes.length === state.domain.keyframes.length) return state;
       return {
         ...state,
@@ -396,7 +439,7 @@ const reducer = (
         },
       };
     }
-    case 'clearKeyframes': {
+    case "clearKeyframes": {
       if (state.domain.keyframes.length === 0) return state;
       return {
         ...state,
@@ -406,37 +449,37 @@ const reducer = (
         },
       };
     }
-    case 'setCameraMotion':
+    case "setCameraMotion":
       if (state.domain.cameraMotion?.id === action.value?.id) return state;
       return {
         ...state,
         domain: { ...state.domain, cameraMotion: action.value },
       };
-    case 'setSubjectMotion':
+    case "setSubjectMotion":
       if (state.domain.subjectMotion === action.value) return state;
       return {
         ...state,
         domain: { ...state.domain, subjectMotion: action.value },
       };
-    case 'setActiveTab':
+    case "setActiveTab":
       if (state.ui.activeTab === action.value) return state;
       return {
         ...state,
         ui: { ...state.ui, activeTab: action.value },
       };
-    case 'setImageSubTab':
+    case "setImageSubTab":
       if (state.ui.imageSubTab === action.value) return state;
       return {
         ...state,
         ui: { ...state.ui, imageSubTab: action.value },
       };
-    case 'setConstraintMode':
+    case "setConstraintMode":
       if (state.ui.constraintMode === action.value) return state;
       return {
         ...state,
         ui: { ...state.ui, constraintMode: action.value },
       };
-    case 'resetState':
+    case "resetState":
       return action.value;
     default:
       return state;
@@ -453,7 +496,7 @@ export function GenerationControlsStoreProvider({
   const [state, dispatch] = useReducer(
     reducer,
     initialState ?? DEFAULT_GENERATION_CONTROLS_STATE,
-    (seed) => (initialState ? seed : loadGenerationControlsStoreState())
+    (seed) => (initialState ? seed : loadGenerationControlsStoreState()),
   );
 
   useEffect(() => {
@@ -462,33 +505,43 @@ export function GenerationControlsStoreProvider({
 
   const actions = useMemo<GenerationControlsActions>(
     () => ({
-      setSelectedModel: (value) => dispatch({ type: 'setSelectedModel', value }),
-      setGenerationParams: (value) => dispatch({ type: 'setGenerationParams', value }),
-      mergeGenerationParams: (value) => dispatch({ type: 'mergeGenerationParams', value }),
-      setVideoTier: (value) => dispatch({ type: 'setVideoTier', value }),
-      setStartFrame: (value) => dispatch({ type: 'setStartFrame', value }),
-      setEndFrame: (value) => dispatch({ type: 'setEndFrame', value }),
-      clearStartFrame: () => dispatch({ type: 'clearStartFrame' }),
-      clearEndFrame: () => dispatch({ type: 'clearEndFrame' }),
-      addVideoReference: (value) => dispatch({ type: 'addVideoReference', value }),
-      removeVideoReference: (value) => dispatch({ type: 'removeVideoReference', value }),
+      setSelectedModel: (value) =>
+        dispatch({ type: "setSelectedModel", value }),
+      setGenerationParams: (value) =>
+        dispatch({ type: "setGenerationParams", value }),
+      mergeGenerationParams: (value) =>
+        dispatch({ type: "mergeGenerationParams", value }),
+      setVideoTier: (value) => dispatch({ type: "setVideoTier", value }),
+      setStartFrame: (value) => dispatch({ type: "setStartFrame", value }),
+      setEndFrame: (value) => dispatch({ type: "setEndFrame", value }),
+      clearStartFrame: () => dispatch({ type: "clearStartFrame" }),
+      clearEndFrame: () => dispatch({ type: "clearEndFrame" }),
+      addVideoReference: (value) =>
+        dispatch({ type: "addVideoReference", value }),
+      removeVideoReference: (value) =>
+        dispatch({ type: "removeVideoReference", value }),
       updateVideoReferenceType: (id, referenceType) =>
-        dispatch({ type: 'updateVideoReferenceType', value: { id, referenceType } }),
-      clearVideoReferences: () => dispatch({ type: 'clearVideoReferences' }),
-      setExtendVideo: (value) => dispatch({ type: 'setExtendVideo', value }),
-      clearExtendVideo: () => dispatch({ type: 'clearExtendVideo' }),
-      setKeyframes: (value) => dispatch({ type: 'setKeyframes', value }),
-      addKeyframe: (value) => dispatch({ type: 'addKeyframe', value }),
-      removeKeyframe: (value) => dispatch({ type: 'removeKeyframe', value }),
-      clearKeyframes: () => dispatch({ type: 'clearKeyframes' }),
-      setCameraMotion: (value) => dispatch({ type: 'setCameraMotion', value }),
-      setSubjectMotion: (value) => dispatch({ type: 'setSubjectMotion', value }),
-      setActiveTab: (value) => dispatch({ type: 'setActiveTab', value }),
-      setImageSubTab: (value) => dispatch({ type: 'setImageSubTab', value }),
-      setConstraintMode: (value) => dispatch({ type: 'setConstraintMode', value }),
-      resetState: (value) => dispatch({ type: 'resetState', value }),
+        dispatch({
+          type: "updateVideoReferenceType",
+          value: { id, referenceType },
+        }),
+      clearVideoReferences: () => dispatch({ type: "clearVideoReferences" }),
+      setExtendVideo: (value) => dispatch({ type: "setExtendVideo", value }),
+      clearExtendVideo: () => dispatch({ type: "clearExtendVideo" }),
+      setKeyframes: (value) => dispatch({ type: "setKeyframes", value }),
+      addKeyframe: (value) => dispatch({ type: "addKeyframe", value }),
+      removeKeyframe: (value) => dispatch({ type: "removeKeyframe", value }),
+      clearKeyframes: () => dispatch({ type: "clearKeyframes" }),
+      setCameraMotion: (value) => dispatch({ type: "setCameraMotion", value }),
+      setSubjectMotion: (value) =>
+        dispatch({ type: "setSubjectMotion", value }),
+      setActiveTab: (value) => dispatch({ type: "setActiveTab", value }),
+      setImageSubTab: (value) => dispatch({ type: "setImageSubTab", value }),
+      setConstraintMode: (value) =>
+        dispatch({ type: "setConstraintMode", value }),
+      resetState: (value) => dispatch({ type: "resetState", value }),
     }),
-    []
+    [],
   );
 
   return (
@@ -503,7 +556,9 @@ export function GenerationControlsStoreProvider({
 export function useGenerationControlsStoreState(): GenerationControlsState {
   const context = useContext(GenerationControlsStateContext);
   if (!context) {
-    throw new Error('useGenerationControlsStoreState must be used within GenerationControlsStoreProvider');
+    throw new Error(
+      "useGenerationControlsStoreState must be used within GenerationControlsStoreProvider",
+    );
   }
   return context;
 }
@@ -511,7 +566,9 @@ export function useGenerationControlsStoreState(): GenerationControlsState {
 export function useGenerationControlsStoreActions(): GenerationControlsActions {
   const context = useContext(GenerationControlsActionsContext);
   if (!context) {
-    throw new Error('useGenerationControlsStoreActions must be used within GenerationControlsStoreProvider');
+    throw new Error(
+      "useGenerationControlsStoreActions must be used within GenerationControlsStoreProvider",
+    );
   }
   return context;
 }

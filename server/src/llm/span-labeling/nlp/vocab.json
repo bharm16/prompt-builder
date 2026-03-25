@@ -194,13 +194,7 @@
     "Hazy Atmosphere",
     "Smoky Atmosphere"
   ],
-  "lighting.colorTemp": [
-    "5600K",
-    "3200K",
-    "6500K",
-    "Warm",
-    "Cool"
-  ],
+  "lighting.colorTemp": ["5600K", "3200K", "6500K", "Warm", "Cool"],
   "lighting.source": [
     "Sunlight",
     "Moonlight",
@@ -346,13 +340,7 @@
     "60fps",
     "120fps"
   ],
-  "technical.duration": [
-    "4-8s",
-    "4s",
-    "8s",
-    "10s",
-    "15s"
-  ],
+  "technical.duration": ["4-8s", "4s", "8s", "10s", "15s"],
   "technical.resolution": [
     "SD 480p",
     "SD 576p",

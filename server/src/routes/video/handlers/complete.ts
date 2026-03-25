@@ -1,18 +1,17 @@
-import type { Request, Response } from 'express';
-import { logger } from '@infrastructure/Logger';
-import type { VideoConceptServiceContract } from '../types';
+import type { Request, Response } from "express";
+import { logger } from "@infrastructure/Logger";
+import type { VideoConceptServiceContract } from "../types";
 
-export const createVideoCompleteHandler = (
-  videoConceptService: VideoConceptServiceContract
-) =>
+export const createVideoCompleteHandler =
+  (videoConceptService: VideoConceptServiceContract) =>
   async (req: Request, res: Response): Promise<Response | void> => {
     const startTime = Date.now();
-    const requestId = req.id || 'unknown';
-    const operation = 'video-complete';
+    const requestId = req.id || "unknown";
+    const operation = "video-complete";
 
     const { existingElements, concept, smartDefaultsFor } = req.body;
 
-    logger.info('Video complete request received', {
+    logger.info("Video complete request received", {
       operation,
       requestId,
       elementCount: existingElements?.length || 0,
@@ -34,7 +33,7 @@ export const createVideoCompleteHandler = (
         });
       }
 
-      logger.info('Video complete request completed', {
+      logger.info("Video complete request completed", {
         operation,
         requestId,
         duration: Date.now() - startTime,
@@ -47,8 +46,9 @@ export const createVideoCompleteHandler = (
         smartDefaults,
       });
     } catch (error: unknown) {
-      const errorInstance = error instanceof Error ? error : new Error(String(error));
-      logger.error('Video complete request failed', errorInstance, {
+      const errorInstance =
+        error instanceof Error ? error : new Error(String(error));
+      logger.error("Video complete request failed", errorInstance, {
         operation,
         requestId,
         duration: Date.now() - startTime,

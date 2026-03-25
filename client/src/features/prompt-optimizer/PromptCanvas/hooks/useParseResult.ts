@@ -1,17 +1,20 @@
 /**
  * useParseResult Hook
- * 
+ *
  * Manages parse result state and conversion logic.
  * Extracted from PromptCanvas component to improve separation of concerns.
  */
 
-import { useEffect, useMemo } from 'react';
-import { logger } from '@/services/LoggingService';
-import { createCanonicalText } from '@utils/canonicalText';
-import { convertLabeledSpansToHighlights, createHighlightSignature } from '@features/span-highlighting';
-import type { CanonicalText } from '@utils/canonicalText';
-import type { HighlightSpan } from '@features/span-highlighting/hooks/useHighlightRendering';
-import type { ParseResult, ParseResultStatus } from '../types';
+import { useEffect, useMemo } from "react";
+import { logger } from "@/services/LoggingService";
+import { createCanonicalText } from "@utils/canonicalText";
+import {
+  convertLabeledSpansToHighlights,
+  createHighlightSignature,
+} from "@features/span-highlighting";
+import type { CanonicalText } from "@utils/canonicalText";
+import type { HighlightSpan } from "@features/span-highlighting/hooks/useHighlightRendering";
+import type { ParseResult, ParseResultStatus } from "../types";
 
 const EMPTY_SPANS: HighlightSpan[] = [];
 
@@ -39,15 +42,15 @@ export function useParseResult({
   enableMLHighlighting,
   displayedPrompt,
 }: UseParseResultOptions): ParseResult {
-  const log = useMemo(() => logger.child('ParseResult'), []);
-  const currentText = displayedPrompt ?? '';
+  const log = useMemo(() => logger.child("ParseResult"), []);
+  const currentText = displayedPrompt ?? "";
   const canonical = useMemo(
     () => createCanonicalText(currentText) as CanonicalText,
-    [currentText]
+    [currentText],
   );
   const currentSignature = useMemo(
     () => createHighlightSignature(currentText),
-    [currentText]
+    [currentText],
   );
   const signatureMatches =
     !labelingSignature || labelingSignature === currentSignature;
@@ -64,7 +67,13 @@ export function useParseResult({
       text: currentText,
       canonical,
     }) as HighlightSpan[];
-  }, [enableMLHighlighting, currentText, signatureMatches, labeledSpans, canonical]);
+  }, [
+    enableMLHighlighting,
+    currentText,
+    signatureMatches,
+    labeledSpans,
+    canonical,
+  ]);
 
   const meta =
     enableMLHighlighting && currentText.trim() && !signatureMatches
@@ -74,14 +83,22 @@ export function useParseResult({
   // Map upstream SpanLabelingStatus to ParseResultStatus, keeping recognized
   // values and falling back to 'idle' for unexpected strings.
   const VALID_STATUSES = new Set<ParseResultStatus>([
-    'idle', 'loading', 'refreshing', 'success', 'stale', 'error',
+    "idle",
+    "loading",
+    "refreshing",
+    "success",
+    "stale",
+    "error",
   ]);
-  const status: ParseResultStatus = VALID_STATUSES.has(labelingStatus as ParseResultStatus)
+  const status: ParseResultStatus = VALID_STATUSES.has(
+    labelingStatus as ParseResultStatus,
+  )
     ? (labelingStatus as ParseResultStatus)
-    : 'idle';
+    : "idle";
 
   // Degraded = pipeline had an error but is serving cached/fallback data.
-  const degraded = status === 'stale' || (status === 'error' && spans.length > 0);
+  const degraded =
+    status === "stale" || (status === "error" && spans.length > 0);
 
   const parseResult = useMemo<ParseResult>(
     () => ({
@@ -93,19 +110,25 @@ export function useParseResult({
       displayText: currentText,
       degraded,
     }),
-    [canonical, spans, meta, status, labelingError, currentText, degraded]
+    [canonical, spans, meta, status, labelingError, currentText, degraded],
   );
 
   useEffect(() => {
-    if (!enableMLHighlighting || signatureMatches || labeledSpans.length === 0) {
+    if (
+      !enableMLHighlighting ||
+      signatureMatches ||
+      labeledSpans.length === 0
+    ) {
       return;
     }
 
-    log.debug('Span signature mismatch; dropping labeled spans', {
+    log.debug("Span signature mismatch; dropping labeled spans", {
       labeledSpanCount: labeledSpans.length,
       labelingStatus,
       textLength: currentText.length,
-      labelingSignature: labelingSignature ? labelingSignature.slice(0, 12) : null,
+      labelingSignature: labelingSignature
+        ? labelingSignature.slice(0, 12)
+        : null,
       currentSignature: currentSignature.slice(0, 12),
     });
   }, [
@@ -126,7 +149,7 @@ export function useParseResult({
 
     const highlightCount = spans.length;
     if (labeledSpans.length > 1 && highlightCount <= 1) {
-      log.debug('Span conversion produced minimal highlights', {
+      log.debug("Span conversion produced minimal highlights", {
         labeledSpanCount: labeledSpans.length,
         highlightCount,
         labelingStatus,

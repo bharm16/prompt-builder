@@ -1,6 +1,6 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
-import { cn } from '@/utils/cn';
+import React from "react";
+import { Link } from "react-router-dom";
+import { cn } from "@/utils/cn";
 
 type AuthShellProps = {
   title: string;
@@ -10,7 +10,7 @@ type AuthShellProps = {
    * 'auth' — narrow centered card for sign-in / sign-up / password flows (default)
    * 'page' — wider container for account/billing pages that need more room
    */
-  variant?: 'auth' | 'page';
+  variant?: "auth" | "page";
   /** Legacy props — accepted for backward compatibility, ignored in rendering */
   eyebrow?: string;
   subtitle?: string;
@@ -34,19 +34,19 @@ export function AuthShell({
   title,
   children,
   footer,
-  variant = 'auth',
+  variant = "auth",
 }: AuthShellProps): React.ReactElement {
-  const isAuth = variant === 'auth';
+  const isAuth = variant === "auth";
 
   return (
     <div
       className="flex min-h-full flex-col text-white"
-      style={{ background: '#131416' }}
+      style={{ background: "#131416" }}
     >
       {/* Header — mimics the rail's top area */}
       <header
         className="flex items-center justify-between px-5 py-4"
-        style={{ borderBottom: '1px solid #1B1E23' }}
+        style={{ borderBottom: "1px solid #1B1E23" }}
       >
         <Link
           to="/home"
@@ -60,15 +60,15 @@ export function AuthShell({
       {/* Content */}
       <main
         className={cn(
-          'flex flex-1 flex-col items-center px-5 pb-10',
-          isAuth ? 'justify-center' : 'pt-8'
+          "flex flex-1 flex-col items-center px-5 pb-10",
+          isAuth ? "justify-center" : "pt-8",
         )}
       >
-        <div className={cn('w-full', isAuth ? 'max-w-[400px]' : 'max-w-3xl')}>
+        <div className={cn("w-full", isAuth ? "max-w-[400px]" : "max-w-3xl")}>
           <h1
             className={cn(
-              'mb-5 text-[15px] font-semibold tracking-tight text-white',
-              isAuth && 'text-center'
+              "mb-5 text-[15px] font-semibold tracking-tight text-white",
+              isAuth && "text-center",
             )}
           >
             {title}
@@ -78,9 +78,10 @@ export function AuthShell({
             <div
               className="rounded-[10px] p-5"
               style={{
-                background: '#16181E',
-                border: '1px solid #22252C',
-                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.02), 0 4px 12px rgba(0,0,0,0.4)',
+                background: "#16181E",
+                border: "1px solid #22252C",
+                boxShadow:
+                  "inset 0 1px 0 rgba(255,255,255,0.02), 0 4px 12px rgba(0,0,0,0.4)",
               }}
             >
               {children}
@@ -91,11 +92,8 @@ export function AuthShell({
 
           {footer ? (
             <div
-              className={cn(
-                'mt-4 text-[13px]',
-                isAuth && 'text-center'
-              )}
-              style={{ color: '#8B92A5' }}
+              className={cn("mt-4 text-[13px]", isAuth && "text-center")}
+              style={{ color: "#8B92A5" }}
             >
               {footer}
             </div>

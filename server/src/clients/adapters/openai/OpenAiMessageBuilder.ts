@@ -5,11 +5,14 @@
  * like developer-role injection and bookending.
  */
 
-import type { CompletionOptions, OpenAiMessage } from './types.ts';
-import type { MessageContent } from '@interfaces/IAIClient';
+import type { CompletionOptions, OpenAiMessage } from "./types.ts";
+import type { MessageContent } from "@interfaces/IAIClient";
 
 export class OpenAiMessageBuilder {
-  buildMessages(systemPrompt: string, options: CompletionOptions): OpenAiMessage[] {
+  buildMessages(
+    systemPrompt: string,
+    options: CompletionOptions,
+  ): OpenAiMessage[] {
     if (options.messages && Array.isArray(options.messages)) {
       return this.buildFromMessageHistory(options);
     }
@@ -21,21 +24,26 @@ export class OpenAiMessageBuilder {
     const messages: OpenAiMessage[] = [];
 
     if (options.developerMessage) {
-      messages.push({ role: 'developer', content: options.developerMessage });
+      messages.push({ role: "developer", content: options.developerMessage });
     }
 
     messages.push(...options.messages!);
 
     if (options.enableBookending) {
-      const totalTokens = messages.reduce((sum, msg) => sum + this.estimateTokens(msg.content), 0);
+      const totalTokens = messages.reduce(
+        (sum, msg) => sum + this.estimateTokens(msg.content),
+        0,
+      );
       if (totalTokens > 30000) {
-        const systemMsg = messages.find((m) => m.role === 'system');
-        const systemText = systemMsg ? this.stringifyContent(systemMsg.content) : '';
+        const systemMsg = messages.find((m) => m.role === "system");
+        const systemText = systemMsg
+          ? this.stringifyContent(systemMsg.content)
+          : "";
         const criticalInstructions = systemText
           ? this.extractCriticalInstructions(systemText)
-          : 'Remember to follow the format constraints defined in the system message.';
+          : "Remember to follow the format constraints defined in the system message.";
         messages.push({
-          role: 'user',
+          role: "user",
           content: `Based on the context above, perform the requested task. ${criticalInstructions}`,
         });
       }
@@ -44,24 +52,28 @@ export class OpenAiMessageBuilder {
     return messages;
   }
 
-  private buildSimpleMessage(systemPrompt: string, options: CompletionOptions): OpenAiMessage[] {
+  private buildSimpleMessage(
+    systemPrompt: string,
+    options: CompletionOptions,
+  ): OpenAiMessage[] {
     const messages: OpenAiMessage[] = [];
 
     if (options.developerMessage) {
-      messages.push({ role: 'developer', content: options.developerMessage });
+      messages.push({ role: "developer", content: options.developerMessage });
     }
 
-    messages.push({ role: 'system', content: systemPrompt });
+    messages.push({ role: "system", content: systemPrompt });
 
-    const userMessage = options.userMessage || 'Please proceed.';
-    messages.push({ role: 'user', content: userMessage });
+    const userMessage = options.userMessage || "Please proceed.";
+    messages.push({ role: "user", content: userMessage });
 
     if (options.enableBookending) {
       const totalTokens = this.estimateTokens(systemPrompt + userMessage);
       if (totalTokens > 30000) {
-        const criticalInstructions = this.extractCriticalInstructions(systemPrompt);
+        const criticalInstructions =
+          this.extractCriticalInstructions(systemPrompt);
         messages.push({
-          role: 'user',
+          role: "user",
           content: `Based on the context above, perform the requested task. ${criticalInstructions}`,
         });
       }
@@ -76,36 +88,40 @@ export class OpenAiMessageBuilder {
   }
 
   private stringifyContent(content: MessageContent): string {
-    if (typeof content === 'string') {
+    if (typeof content === "string") {
       return content;
     }
 
     if (Array.isArray(content)) {
       return content
         .map((part) => {
-          if (typeof part === 'string') {
+          if (typeof part === "string") {
             return part;
           }
-          if (part && typeof part === 'object') {
-            if ('text' in part && typeof part.text === 'string') {
+          if (part && typeof part === "object") {
+            if ("text" in part && typeof part.text === "string") {
               return part.text;
             }
-            if ('type' in part && part.type === 'text' && typeof part.text === 'string') {
+            if (
+              "type" in part &&
+              part.type === "text" &&
+              typeof part.text === "string"
+            ) {
               return part.text;
             }
           }
-          return '';
+          return "";
         })
-        .join('');
+        .join("");
     }
 
-    if (content && typeof content === 'object') {
-      if ('text' in content && typeof content.text === 'string') {
+    if (content && typeof content === "object") {
+      if ("text" in content && typeof content.text === "string") {
         return content.text;
       }
     }
 
-    return '';
+    return "";
   }
 
   private extractCriticalInstructions(systemPrompt: string): string {
@@ -136,6 +152,6 @@ export class OpenAiMessageBuilder {
       }
     }
 
-    return 'Remember to follow the format constraints defined in the system message.';
+    return "Remember to follow the format constraints defined in the system message.";
   }
 }

@@ -1,6 +1,6 @@
-import { useCallback, useRef } from 'react';
-import { calculateEffectiveDebounce } from '../utils/spanLabelingScheduler.ts';
-import type { SpanLabelingPayload } from './types.ts';
+import { useCallback, useRef } from "react";
+import { calculateEffectiveDebounce } from "../utils/spanLabelingScheduler.ts";
+import type { SpanLabelingPayload } from "./types.ts";
 
 export interface AsyncSchedulerOptions {
   enabled: boolean;
@@ -10,7 +10,10 @@ export interface AsyncSchedulerOptions {
 }
 
 export interface AsyncSchedulerCallbacks {
-  onExecute: (payload: SpanLabelingPayload, signal: AbortSignal) => Promise<unknown>;
+  onExecute: (
+    payload: SpanLabelingPayload,
+    signal: AbortSignal,
+  ) => Promise<unknown>;
   onSuccess?: (result: unknown, payload: SpanLabelingPayload) => void;
   onError?: (error: Error, payload: SpanLabelingPayload) => void;
   onLoadingState?: (immediate: boolean) => void;
@@ -24,7 +27,7 @@ export interface AsyncSchedulerCallbacks {
  */
 export function useAsyncScheduler(
   options: AsyncSchedulerOptions,
-  callbacks: AsyncSchedulerCallbacks
+  callbacks: AsyncSchedulerCallbacks,
 ) {
   const abortRef = useRef<AbortController | null>(null);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
@@ -45,7 +48,7 @@ export function useAsyncScheduler(
 
   const schedule = useCallback(
     (payload: SpanLabelingPayload, immediate = false): void => {
-      performance.mark('span-labeling-start');
+      performance.mark("span-labeling-start");
 
       cancelPending();
 
@@ -67,20 +70,20 @@ export function useAsyncScheduler(
 
       const run = async (controller: AbortController): Promise<void> => {
         try {
-          performance.mark('span-api-start');
+          performance.mark("span-api-start");
 
           const result = await callbacks.onExecute(payload, controller.signal);
 
-          performance.mark('span-api-complete');
+          performance.mark("span-api-complete");
           performance.measure(
-            'span-api-duration',
-            'span-api-start',
-            'span-api-complete'
+            "span-api-duration",
+            "span-api-start",
+            "span-api-complete",
           );
           performance.measure(
-            'span-labeling-total',
-            'span-labeling-start',
-            'span-api-complete'
+            "span-labeling-total",
+            "span-labeling-start",
+            "span-api-complete",
           );
 
           // Check for stale requests
@@ -95,7 +98,8 @@ export function useAsyncScheduler(
             callbacks.onSuccess(result, payload);
           }
         } catch (error) {
-          const errorObj = error instanceof Error ? error : new Error(String(error));
+          const errorObj =
+            error instanceof Error ? error : new Error(String(error));
 
           // Check for stale requests
           if (
@@ -131,7 +135,13 @@ export function useAsyncScheduler(
         }, effectiveDebounce);
       }
     },
-    [options.enabled, options.debounceMs, options.useSmartDebounce, cancelPending, callbacks]
+    [
+      options.enabled,
+      options.debounceMs,
+      options.useSmartDebounce,
+      cancelPending,
+      callbacks,
+    ],
   );
 
   return {
@@ -139,4 +149,3 @@ export function useAsyncScheduler(
     cancelPending,
   };
 }
-

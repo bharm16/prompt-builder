@@ -1,18 +1,18 @@
-import { admin, getFirestore } from '@infrastructure/firebaseAdmin';
-import { logger } from '@infrastructure/Logger';
-import type { UserCreditService } from './UserCreditService';
+import { admin, getFirestore } from "@infrastructure/firebaseAdmin";
+import { logger } from "@infrastructure/Logger";
+import type { UserCreditService } from "./UserCreditService";
 import {
   FirestoreCircuitExecutor,
   getFirestoreCircuitExecutor,
-} from '@services/firestore/FirestoreCircuitExecutor';
+} from "@services/firestore/FirestoreCircuitExecutor";
 
-const CHECKPOINT_COLLECTION = 'credit_reconciliation_state';
-const CHECKPOINT_DOC_ID = 'incremental_checkpoint';
-const ADJUSTMENT_COLLECTION = 'credit_reconciliation_adjustments';
+const CHECKPOINT_COLLECTION = "credit_reconciliation_state";
+const CHECKPOINT_DOC_ID = "incremental_checkpoint";
+const ADJUSTMENT_COLLECTION = "credit_reconciliation_adjustments";
 const DEFAULT_INCREMENTAL_SCAN_LIMIT = 500;
 const DEFAULT_FULL_PASS_PAGE_SIZE = 200;
 
-type ReconciliationScope = 'incremental' | 'full';
+type ReconciliationScope = "incremental" | "full";
 
 interface ReconciliationCheckpoint {
   lastCreatedAtMs: number;
@@ -25,7 +25,7 @@ interface ReconciliationAdjustmentRecord {
   currentBalance: number;
   ledgerBalance: number;
   diff: number;
-  status: 'auto_applied' | 'pending_approval';
+  status: "auto_applied" | "pending_approval";
   requiresManualApproval: boolean;
   createdAtMs: number;
   updatedAtMs: number;
@@ -42,16 +42,25 @@ export interface ReconciliationRunResult {
 
 export class CreditReconciliationService {
   private readonly db = getFirestore();
-  private readonly usersCollection = this.db.collection('users');
-  private readonly checkpointRef = this.db.collection(CHECKPOINT_COLLECTION).doc(CHECKPOINT_DOC_ID);
-  private readonly adjustmentsCollection = this.db.collection(ADJUSTMENT_COLLECTION);
-  private readonly log = logger.child({ service: 'CreditReconciliationService' });
+  private readonly usersCollection = this.db.collection("users");
+  private readonly checkpointRef = this.db
+    .collection(CHECKPOINT_COLLECTION)
+    .doc(CHECKPOINT_DOC_ID);
+  private readonly adjustmentsCollection = this.db.collection(
+    ADJUSTMENT_COLLECTION,
+  );
+  private readonly log = logger.child({
+    service: "CreditReconciliationService",
+  });
   private readonly incrementalScanLimit: number;
   private readonly fullPassPageSize: number;
   private readonly firestoreCircuitExecutor: FirestoreCircuitExecutor;
   private readonly metrics:
     | {
-        recordAlert?: (alertName: string, metadata?: Record<string, unknown>) => void;
+        recordAlert?: (
+          alertName: string,
+          metadata?: Record<string, unknown>,
+        ) => void;
       }
     | undefined;
 
@@ -62,9 +71,12 @@ export class CreditReconciliationService {
       incrementalScanLimit?: number;
       fullPassPageSize?: number;
       metrics?: {
-        recordAlert?: (alertName: string, metadata?: Record<string, unknown>) => void;
+        recordAlert?: (
+          alertName: string,
+          metadata?: Record<string, unknown>,
+        ) => void;
       };
-    }
+    },
   ) {
     this.userCreditService = userCreditService;
     this.firestoreCircuitExecutor = firestoreCircuitExecutor;
@@ -82,23 +94,26 @@ export class CreditReconciliationService {
   async runIncrementalPass(): Promise<ReconciliationRunResult> {
     const checkpoint = await this.loadCheckpoint();
     let query = this.db
-      .collectionGroup('credit_transactions')
-      .orderBy('createdAtMs', 'asc')
-      .orderBy(admin.firestore.FieldPath.documentId(), 'asc')
+      .collectionGroup("credit_transactions")
+      .orderBy("createdAtMs", "asc")
+      .orderBy(admin.firestore.FieldPath.documentId(), "asc")
       .limit(this.incrementalScanLimit);
 
     if (checkpoint) {
-      query = query.startAfter(checkpoint.lastCreatedAtMs, checkpoint.lastDocName);
+      query = query.startAfter(
+        checkpoint.lastCreatedAtMs,
+        checkpoint.lastDocName,
+      );
     }
 
     const transactionSnapshot = await this.firestoreCircuitExecutor.executeRead(
-      'credits.reconciliation.scanIncremental',
-      async () => await query.get()
+      "credits.reconciliation.scanIncremental",
+      async () => await query.get(),
     );
 
     if (transactionSnapshot.empty) {
       return {
-        scope: 'incremental',
+        scope: "incremental",
         scannedItems: 0,
         processedUsers: 0,
         positiveCorrections: 0,
@@ -111,7 +126,7 @@ export class CreditReconciliationService {
     for (const doc of transactionSnapshot.docs) {
       const userId = this.extractUserIdFromTransactionPath(doc.ref.path);
       if (!userId) {
-        this.log.warn('Skipping credit transaction with unexpected path', {
+        this.log.warn("Skipping credit transaction with unexpected path", {
           path: doc.ref.path,
         });
         continue;
@@ -122,7 +137,7 @@ export class CreditReconciliationService {
     let positiveCorrections = 0;
     let queuedNegativeCorrections = 0;
     for (const userId of impactedUserIds) {
-      const reconciliation = await this.reconcileUser(userId, 'incremental');
+      const reconciliation = await this.reconcileUser(userId, "incremental");
       if (!reconciliation) {
         continue;
       }
@@ -133,12 +148,14 @@ export class CreditReconciliationService {
       }
     }
 
-    const lastDoc = transactionSnapshot.docs[transactionSnapshot.docs.length - 1];
+    const lastDoc =
+      transactionSnapshot.docs[transactionSnapshot.docs.length - 1];
     let checkpointUpdated = false;
     if (lastDoc) {
       const lastCreatedAtMsRaw = lastDoc.data().createdAtMs;
       const lastCreatedAtMs =
-        typeof lastCreatedAtMsRaw === 'number' && Number.isFinite(lastCreatedAtMsRaw)
+        typeof lastCreatedAtMsRaw === "number" &&
+        Number.isFinite(lastCreatedAtMsRaw)
           ? Math.trunc(lastCreatedAtMsRaw)
           : Date.now();
       await this.storeCheckpoint({
@@ -149,7 +166,7 @@ export class CreditReconciliationService {
     }
 
     return {
-      scope: 'incremental',
+      scope: "incremental",
       scannedItems: transactionSnapshot.docs.length,
       processedUsers: impactedUserIds.size,
       positiveCorrections,
@@ -167,7 +184,7 @@ export class CreditReconciliationService {
 
     while (true) {
       let query = this.usersCollection
-        .orderBy(admin.firestore.FieldPath.documentId(), 'asc')
+        .orderBy(admin.firestore.FieldPath.documentId(), "asc")
         .limit(this.fullPassPageSize);
 
       if (cursor) {
@@ -175,8 +192,8 @@ export class CreditReconciliationService {
       }
 
       const usersSnapshot = await this.firestoreCircuitExecutor.executeRead(
-        'credits.reconciliation.scanUsers',
-        async () => await query.get()
+        "credits.reconciliation.scanUsers",
+        async () => await query.get(),
       );
 
       if (usersSnapshot.empty) {
@@ -185,7 +202,7 @@ export class CreditReconciliationService {
 
       for (const doc of usersSnapshot.docs) {
         scannedItems += 1;
-        const reconciliation = await this.reconcileUser(doc.id, 'full');
+        const reconciliation = await this.reconcileUser(doc.id, "full");
         processedUsers += 1;
         if (!reconciliation) {
           continue;
@@ -205,7 +222,7 @@ export class CreditReconciliationService {
     }
 
     return {
-      scope: 'full',
+      scope: "full",
       scannedItems,
       processedUsers,
       positiveCorrections,
@@ -216,12 +233,12 @@ export class CreditReconciliationService {
 
   private async reconcileUser(
     userId: string,
-    scope: ReconciliationScope
+    scope: ReconciliationScope,
   ): Promise<{ userId: string; diff: number } | null> {
     const userRef = this.usersCollection.doc(userId);
     const userSnapshot = await this.firestoreCircuitExecutor.executeRead(
-      'credits.reconciliation.readUser',
-      async () => await userRef.get()
+      "credits.reconciliation.readUser",
+      async () => await userRef.get(),
     );
 
     if (!userSnapshot.exists) {
@@ -231,23 +248,24 @@ export class CreditReconciliationService {
     const userData = userSnapshot.data() as Record<string, unknown> | undefined;
     const currentBalanceRaw = userData?.credits;
     const currentBalance =
-      typeof currentBalanceRaw === 'number' && Number.isFinite(currentBalanceRaw)
+      typeof currentBalanceRaw === "number" &&
+      Number.isFinite(currentBalanceRaw)
         ? Math.trunc(currentBalanceRaw)
         : 0;
 
     const transactionSnapshot = await this.firestoreCircuitExecutor.executeRead(
-      'credits.reconciliation.readUserTransactions',
+      "credits.reconciliation.readUserTransactions",
       async () =>
         await userRef
-          .collection('credit_transactions')
-          .orderBy('createdAtMs', 'asc')
-          .get()
+          .collection("credit_transactions")
+          .orderBy("createdAtMs", "asc")
+          .get(),
     );
 
     let ledgerBalance = 0;
     for (const transactionDoc of transactionSnapshot.docs) {
       const amountRaw = transactionDoc.data().amount;
-      if (typeof amountRaw === 'number' && Number.isFinite(amountRaw)) {
+      if (typeof amountRaw === "number" && Number.isFinite(amountRaw)) {
         ledgerBalance += Math.trunc(amountRaw);
       }
     }
@@ -259,8 +277,8 @@ export class CreditReconciliationService {
 
     if (diff > 0) {
       await this.userCreditService.addCredits(userId, diff, {
-        source: 'reconciliation',
-        reason: 'ledger_positive_correction',
+        source: "reconciliation",
+        reason: "ledger_positive_correction",
         referenceId: `credit-reconciliation:${scope}:${Date.now()}`,
       });
 
@@ -270,17 +288,17 @@ export class CreditReconciliationService {
         currentBalance,
         ledgerBalance,
         diff,
-        status: 'auto_applied',
+        status: "auto_applied",
         requiresManualApproval: false,
       });
 
-      this.log.warn('Applied positive credit reconciliation correction', {
+      this.log.warn("Applied positive credit reconciliation correction", {
         userId,
         currentBalance,
         ledgerBalance,
         diff,
       });
-      this.metrics?.recordAlert?.('credit_reconciliation_positive_correction', {
+      this.metrics?.recordAlert?.("credit_reconciliation_positive_correction", {
         userId,
         diff,
         scope,
@@ -294,39 +312,47 @@ export class CreditReconciliationService {
       currentBalance,
       ledgerBalance,
       diff,
-      status: 'pending_approval',
+      status: "pending_approval",
       requiresManualApproval: true,
     });
 
-    this.log.warn('Queued negative credit reconciliation correction for manual approval', {
-      userId,
-      currentBalance,
-      ledgerBalance,
-      diff,
-    });
-    this.metrics?.recordAlert?.('credit_reconciliation_negative_correction_queued', {
-      userId,
-      diff,
-      scope,
-    });
+    this.log.warn(
+      "Queued negative credit reconciliation correction for manual approval",
+      {
+        userId,
+        currentBalance,
+        ledgerBalance,
+        diff,
+      },
+    );
+    this.metrics?.recordAlert?.(
+      "credit_reconciliation_negative_correction_queued",
+      {
+        userId,
+        diff,
+        scope,
+      },
+    );
 
     return { userId, diff };
   }
 
   private async loadCheckpoint(): Promise<ReconciliationCheckpoint | null> {
     const snapshot = await this.firestoreCircuitExecutor.executeRead(
-      'credits.reconciliation.loadCheckpoint',
-      async () => await this.checkpointRef.get()
+      "credits.reconciliation.loadCheckpoint",
+      async () => await this.checkpointRef.get(),
     );
     if (!snapshot.exists) {
       return null;
     }
-    const data = snapshot.data() as Partial<ReconciliationCheckpoint> | undefined;
+    const data = snapshot.data() as
+      | Partial<ReconciliationCheckpoint>
+      | undefined;
     if (
       !data ||
-      typeof data.lastCreatedAtMs !== 'number' ||
+      typeof data.lastCreatedAtMs !== "number" ||
       !Number.isFinite(data.lastCreatedAtMs) ||
-      typeof data.lastDocName !== 'string' ||
+      typeof data.lastDocName !== "string" ||
       data.lastDocName.length === 0
     ) {
       return null;
@@ -338,10 +364,12 @@ export class CreditReconciliationService {
     };
   }
 
-  private async storeCheckpoint(checkpoint: ReconciliationCheckpoint): Promise<void> {
+  private async storeCheckpoint(
+    checkpoint: ReconciliationCheckpoint,
+  ): Promise<void> {
     const now = Date.now();
     await this.firestoreCircuitExecutor.executeWrite(
-      'credits.reconciliation.storeCheckpoint',
+      "credits.reconciliation.storeCheckpoint",
       async () =>
         await this.checkpointRef.set(
           {
@@ -349,13 +377,13 @@ export class CreditReconciliationService {
             updatedAtMs: now,
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
           },
-          { merge: true }
-        )
+          { merge: true },
+        ),
     );
   }
 
   private async recordAdjustment(
-    input: Omit<ReconciliationAdjustmentRecord, 'createdAtMs' | 'updatedAtMs'>
+    input: Omit<ReconciliationAdjustmentRecord, "createdAtMs" | "updatedAtMs">,
   ): Promise<void> {
     const now = Date.now();
     const record: ReconciliationAdjustmentRecord = {
@@ -365,26 +393,26 @@ export class CreditReconciliationService {
     };
 
     await this.firestoreCircuitExecutor.executeWrite(
-      'credits.reconciliation.recordAdjustment',
+      "credits.reconciliation.recordAdjustment",
       async () =>
         await this.adjustmentsCollection.doc().set({
           ...record,
           createdAt: admin.firestore.FieldValue.serverTimestamp(),
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        })
+        }),
     );
   }
 
   private extractUserIdFromTransactionPath(path: string): string | null {
-    const segments = path.split('/').filter(Boolean);
+    const segments = path.split("/").filter(Boolean);
     if (segments.length < 4) {
       return null;
     }
 
     for (let index = 0; index < segments.length - 1; index += 1) {
-      if (segments[index] === 'users') {
+      if (segments[index] === "users") {
         const next = segments[index + 1];
-        return typeof next === 'string' && next.length > 0 ? next : null;
+        return typeof next === "string" && next.length > 0 ? next : null;
       }
     }
 

@@ -1,23 +1,25 @@
-import type { Asset } from '@shared/types/asset';
-import type AssetRepository from '../AssetRepository';
-import type { ReferenceImageMetadataInput } from '../AssetRepository';
-import ReferenceImageService from '../ReferenceImageService';
-import { logger } from '@infrastructure/Logger';
-import type { AssetCrudService } from './AssetCrudService';
-import type { AssetEmbeddingService } from './AssetEmbeddingService';
+import type { Asset } from "@shared/types/asset";
+import type AssetRepository from "../AssetRepository";
+import type { ReferenceImageMetadataInput } from "../AssetRepository";
+import ReferenceImageService from "../ReferenceImageService";
+import { logger } from "@infrastructure/Logger";
+import type { AssetCrudService } from "./AssetCrudService";
+import type { AssetEmbeddingService } from "./AssetEmbeddingService";
 
 export class AssetReferenceImageService {
   private readonly repository: AssetRepository;
   private readonly imageService: ReferenceImageService;
   private readonly assetCrud: AssetCrudService;
   private readonly embeddingService: AssetEmbeddingService | null;
-  private readonly log = logger.child({ service: 'AssetReferenceImageService' });
+  private readonly log = logger.child({
+    service: "AssetReferenceImageService",
+  });
 
   constructor(
     repository: AssetRepository,
     imageService: ReferenceImageService,
     assetCrud: AssetCrudService,
-    embeddingService: AssetEmbeddingService | null
+    embeddingService: AssetEmbeddingService | null,
   ) {
     this.repository = repository;
     this.imageService = imageService;
@@ -29,11 +31,11 @@ export class AssetReferenceImageService {
     userId: string,
     assetId: string,
     imageBuffer: Buffer,
-    metadata: ReferenceImageMetadataInput = {}
-  ): Promise<{ image: Asset['referenceImages'][number]; warnings: string[] }> {
-    const operation = 'addReferenceImage';
+    metadata: ReferenceImageMetadataInput = {},
+  ): Promise<{ image: Asset["referenceImages"][number]; warnings: string[] }> {
+    const operation = "addReferenceImage";
     const startTime = performance.now();
-    this.log.debug('Starting operation.', {
+    this.log.debug("Starting operation.", {
       operation,
       userId,
       assetId,
@@ -43,18 +45,25 @@ export class AssetReferenceImageService {
     try {
       const asset = await this.assetCrud.getAsset(userId, assetId);
 
-      const maxImages = asset.type === 'character' ? 10 : 5;
+      const maxImages = asset.type === "character" ? 10 : 5;
       if ((asset.referenceImages || []).length >= maxImages) {
-        throw new Error(`Maximum ${maxImages} reference images per ${asset.type}`);
+        throw new Error(
+          `Maximum ${maxImages} reference images per ${asset.type}`,
+        );
       }
 
-      const validation = await this.imageService.validateForAssetType(imageBuffer, asset.type);
+      const validation = await this.imageService.validateForAssetType(
+        imageBuffer,
+        asset.type,
+      );
       if (!validation.isValid) {
-        throw new Error(validation.errors.join(', '));
+        throw new Error(validation.errors.join(", "));
       }
 
       const processedImage = await this.imageService.processImage(imageBuffer);
-      const thumbnail = await this.imageService.generateThumbnail(processedImage.buffer);
+      const thumbnail = await this.imageService.generateThumbnail(
+        processedImage.buffer,
+      );
 
       const referenceImage = await this.repository.addReferenceImage(
         userId,
@@ -77,20 +86,24 @@ export class AssetReferenceImageService {
           ...metadata,
           width: processedImage.width,
           height: processedImage.height,
-        }
+        },
       );
 
-      if (asset.type === 'character' && this.embeddingService) {
+      if (asset.type === "character" && this.embeddingService) {
         const updatedAsset = await this.assetCrud.getAsset(userId, assetId);
         const isPrimary =
           referenceImage.isPrimary ||
           (updatedAsset.referenceImages || []).length === 1;
         if (isPrimary) {
           try {
-            await this.embeddingService.extractAndStoreFaceEmbedding(userId, assetId);
+            await this.embeddingService.extractAndStoreFaceEmbedding(
+              userId,
+              assetId,
+            );
           } catch (error) {
-            const message = error instanceof Error ? error.message : String(error);
-            this.log.warn('Face embedding extraction failed', {
+            const message =
+              error instanceof Error ? error.message : String(error);
+            this.log.warn("Face embedding extraction failed", {
               operation,
               userId,
               assetId,
@@ -100,7 +113,7 @@ export class AssetReferenceImageService {
         }
       }
 
-      this.log.info('Operation completed.', {
+      this.log.info("Operation completed.", {
         operation,
         userId,
         assetId,
@@ -114,8 +127,9 @@ export class AssetReferenceImageService {
         warnings: validation.warnings,
       };
     } catch (error) {
-      const errorObj = error instanceof Error ? error : new Error(String(error));
-      this.log.error('Operation failed.', errorObj, {
+      const errorObj =
+        error instanceof Error ? error : new Error(String(error));
+      this.log.error("Operation failed.", errorObj, {
         operation,
         userId,
         assetId,
@@ -125,15 +139,28 @@ export class AssetReferenceImageService {
     }
   }
 
-  async deleteReferenceImage(userId: string, assetId: string, imageId: string): Promise<boolean> {
-    const operation = 'deleteReferenceImage';
+  async deleteReferenceImage(
+    userId: string,
+    assetId: string,
+    imageId: string,
+  ): Promise<boolean> {
+    const operation = "deleteReferenceImage";
     const startTime = performance.now();
-    this.log.debug('Starting operation.', { operation, userId, assetId, imageId });
+    this.log.debug("Starting operation.", {
+      operation,
+      userId,
+      assetId,
+      imageId,
+    });
 
     try {
       await this.assetCrud.getAsset(userId, assetId);
-      const deleted = await this.repository.deleteReferenceImage(userId, assetId, imageId);
-      this.log.info('Operation completed.', {
+      const deleted = await this.repository.deleteReferenceImage(
+        userId,
+        assetId,
+        imageId,
+      );
+      this.log.info("Operation completed.", {
         operation,
         userId,
         assetId,
@@ -143,8 +170,9 @@ export class AssetReferenceImageService {
       });
       return deleted;
     } catch (error) {
-      const errorObj = error instanceof Error ? error : new Error(String(error));
-      this.log.error('Operation failed.', errorObj, {
+      const errorObj =
+        error instanceof Error ? error : new Error(String(error));
+      this.log.error("Operation failed.", errorObj, {
         operation,
         userId,
         assetId,
@@ -155,19 +183,34 @@ export class AssetReferenceImageService {
     }
   }
 
-  async setPrimaryImage(userId: string, assetId: string, imageId: string): Promise<Asset | null> {
-    const operation = 'setPrimaryImage';
+  async setPrimaryImage(
+    userId: string,
+    assetId: string,
+    imageId: string,
+  ): Promise<Asset | null> {
+    const operation = "setPrimaryImage";
     const startTime = performance.now();
-    this.log.debug('Starting operation.', { operation, userId, assetId, imageId });
+    this.log.debug("Starting operation.", {
+      operation,
+      userId,
+      assetId,
+      imageId,
+    });
 
     try {
       const asset = await this.assetCrud.getAsset(userId, assetId);
-      const imageExists = asset.referenceImages?.some((img) => img.id === imageId);
+      const imageExists = asset.referenceImages?.some(
+        (img) => img.id === imageId,
+      );
       if (!imageExists) {
         throw new Error(`Image not found: ${imageId}`);
       }
-      const updated = await this.repository.setPrimaryImage(userId, assetId, imageId);
-      this.log.info('Operation completed.', {
+      const updated = await this.repository.setPrimaryImage(
+        userId,
+        assetId,
+        imageId,
+      );
+      this.log.info("Operation completed.", {
         operation,
         userId,
         assetId,
@@ -176,8 +219,9 @@ export class AssetReferenceImageService {
       });
       return updated;
     } catch (error) {
-      const errorObj = error instanceof Error ? error : new Error(String(error));
-      this.log.error('Operation failed.', errorObj, {
+      const errorObj =
+        error instanceof Error ? error : new Error(String(error));
+      this.log.error("Operation failed.", errorObj, {
         operation,
         userId,
         assetId,

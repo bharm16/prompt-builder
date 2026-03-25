@@ -1,6 +1,6 @@
-import { logger } from '@infrastructure/Logger';
-import type { ILogger } from '@interfaces/ILogger';
-import { resolvePromptModelId } from '@services/video-models/ModelRegistry';
+import { logger } from "@infrastructure/Logger";
+import type { ILogger } from "@interfaces/ILogger";
+import { resolvePromptModelId } from "@services/video-models/ModelRegistry";
 import type {
   CompilationState,
   CompileContext,
@@ -8,12 +8,14 @@ import type {
   CompileSource,
   OptimizationMode,
   StructuredOptimizationArtifact,
-} from '../types';
-import type { VideoPromptService } from '../../video-prompt-analysis/VideoPromptService';
-import type { PromptContext } from '../../video-prompt-analysis/strategies/types';
+} from "../types";
+import type { VideoPromptService } from "../../video-prompt-analysis/VideoPromptService";
+import type { PromptContext } from "../../video-prompt-analysis/strategies/types";
 
 interface StructuredArtifactCacheLike {
-  getStructuredArtifact(key: string): Promise<StructuredOptimizationArtifact | null>;
+  getStructuredArtifact(
+    key: string,
+  ): Promise<StructuredOptimizationArtifact | null>;
 }
 
 interface CompileParams {
@@ -34,7 +36,7 @@ interface CompileResult {
 }
 
 interface ResolvedCompileSource {
-  sourceKind: CompileSource['kind'];
+  sourceKind: CompileSource["kind"];
   compileInput: string;
   trustedArtifact: StructuredOptimizationArtifact | null;
   artifactKey?: string;
@@ -50,11 +52,11 @@ export class VideoPromptCompilationService {
 
   constructor(
     videoPromptService: VideoPromptService,
-    structuredArtifactCache: StructuredArtifactCacheLike | null = null
+    structuredArtifactCache: StructuredArtifactCacheLike | null = null,
   ) {
     this.videoPromptService = videoPromptService;
     this.structuredArtifactCache = structuredArtifactCache;
-    this.log = logger.child({ service: 'VideoPromptCompilationService' });
+    this.log = logger.child({ service: "VideoPromptCompilationService" });
   }
 
   async compile({
@@ -70,21 +72,25 @@ export class VideoPromptCompilationService {
     const resolvedTargetModel = this.resolveTargetModel(targetModel);
     const artifactRef =
       artifactKey ??
-      (source.kind === 'artifactKey' ? source.artifactKey : resolvedSource.artifactKey);
+      (source.kind === "artifactKey"
+        ? source.artifactKey
+        : resolvedSource.artifactKey);
 
-    if (mode !== 'video') {
+    if (mode !== "video") {
       return this.buildResult({
         prompt: resolvedSource.compileInput,
         compilation: {
-          status: 'compile-skipped',
+          status: "compile-skipped",
           usedFallback: resolvedSource.usedFallback,
-          reason: 'Compilation skipped for non-video mode.',
+          reason: "Compilation skipped for non-video mode.",
           sourceKind: resolvedSource.sourceKind,
           structuredArtifactReused: false,
           analyzerBypassed: false,
           compiledFor: null,
         },
-        ...(resolvedSource.genericPrompt ? { genericPrompt: resolvedSource.genericPrompt } : {}),
+        ...(resolvedSource.genericPrompt
+          ? { genericPrompt: resolvedSource.genericPrompt }
+          : {}),
         ...(artifactRef ? { artifactKey: artifactRef } : {}),
       });
     }
@@ -93,28 +99,30 @@ export class VideoPromptCompilationService {
       return this.buildResult({
         prompt: resolvedSource.compileInput,
         compilation: {
-          status: 'compile-skipped',
+          status: "compile-skipped",
           usedFallback: resolvedSource.usedFallback,
-          reason: 'No target model provided for compilation.',
+          reason: "No target model provided for compilation.",
           sourceKind: resolvedSource.sourceKind,
           structuredArtifactReused: false,
           analyzerBypassed: false,
           compiledFor: null,
         },
-        ...(resolvedSource.genericPrompt ? { genericPrompt: resolvedSource.genericPrompt } : {}),
+        ...(resolvedSource.genericPrompt
+          ? { genericPrompt: resolvedSource.genericPrompt }
+          : {}),
         ...(artifactRef ? { artifactKey: artifactRef } : {}),
       });
     }
 
     if (!resolvedSource.compileInput.trim()) {
       return this.buildResult({
-        prompt: '',
+        prompt: "",
         compilation: {
-          status: 'compile-skipped',
+          status: "compile-skipped",
           usedFallback: true,
           reason:
             resolvedSource.reason ??
-            'Structured artifact was unavailable and no raw prompt fallback was provided.',
+            "Structured artifact was unavailable and no raw prompt fallback was provided.",
           sourceKind: resolvedSource.sourceKind,
           structuredArtifactReused: false,
           analyzerBypassed: false,
@@ -124,7 +132,7 @@ export class VideoPromptCompilationService {
       });
     }
 
-    this.log.info('Compiling prompt for target model', {
+    this.log.info("Compiling prompt for target model", {
       operation,
       targetModel: resolvedTargetModel,
       sourceKind: resolvedSource.sourceKind,
@@ -138,54 +146,65 @@ export class VideoPromptCompilationService {
         this.buildPromptContext(
           resolvedSource.compileInput,
           context,
-          resolvedSource.trustedArtifact
-        )
+          resolvedSource.trustedArtifact,
+        ),
       );
 
       const compiledPrompt = this.serializePrompt(compilationResult.prompt);
       const phaseCount = compilationResult.metadata?.phases?.length ?? 0;
       const warnings = compilationResult.metadata?.warnings ?? [];
-      const failureWarning = warnings.find((warning) => warning.startsWith('Optimization failed:'));
-      const status: CompilationState['status'] =
-        failureWarning
-          ? 'generic-fallback'
-          : phaseCount > 0
-            ? 'compiled'
-            : 'compile-skipped';
+      const failureWarning = warnings.find((warning) =>
+        warning.startsWith("Optimization failed:"),
+      );
+      const status: CompilationState["status"] = failureWarning
+        ? "generic-fallback"
+        : phaseCount > 0
+          ? "compiled"
+          : "compile-skipped";
       const reason =
         failureWarning ??
         resolvedSource.reason ??
-        (status === 'compile-skipped'
-          ? 'Model-specific compilation was skipped; original prompt returned.'
+        (status === "compile-skipped"
+          ? "Model-specific compilation was skipped; original prompt returned."
           : undefined);
 
       return this.buildResult({
         prompt: compiledPrompt,
         compilation: {
           status,
-          usedFallback: resolvedSource.usedFallback || status !== 'compiled',
+          usedFallback: resolvedSource.usedFallback || status !== "compiled",
           ...(reason ? { reason } : {}),
           sourceKind: resolvedSource.sourceKind,
           structuredArtifactReused: Boolean(resolvedSource.trustedArtifact),
           analyzerBypassed: Boolean(resolvedSource.trustedArtifact),
           compiledFor: resolvedTargetModel,
         },
-        compilationMeta: compilationResult.metadata as unknown as Record<string, unknown>,
-        ...(resolvedSource.genericPrompt ? { genericPrompt: resolvedSource.genericPrompt } : {}),
+        compilationMeta: compilationResult.metadata as unknown as Record<
+          string,
+          unknown
+        >,
+        ...(resolvedSource.genericPrompt
+          ? { genericPrompt: resolvedSource.genericPrompt }
+          : {}),
         ...(artifactRef ? { artifactKey: artifactRef } : {}),
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      this.log.error('Model compilation failed, reverting to generic optimization', error as Error, {
-        operation,
-        targetModel: resolvedTargetModel,
-      });
+      this.log.error(
+        "Model compilation failed, reverting to generic optimization",
+        error as Error,
+        {
+          operation,
+          targetModel: resolvedTargetModel,
+        },
+      );
 
-      const fallbackPrompt = resolvedSource.genericPrompt ?? resolvedSource.compileInput;
+      const fallbackPrompt =
+        resolvedSource.genericPrompt ?? resolvedSource.compileInput;
       return this.buildResult({
         prompt: fallbackPrompt,
         compilation: {
-          status: 'generic-fallback',
+          status: "generic-fallback",
           usedFallback: true,
           reason: `Compilation threw before completion: ${message}`,
           sourceKind: resolvedSource.sourceKind,
@@ -218,11 +237,10 @@ export class VideoPromptCompilationService {
       operation,
       mode,
       ...(targetModel ? { targetModel } : {}),
-      source:
-        structuredArtifact
-          ? { kind: 'artifact', artifact: structuredArtifact }
-          : { kind: 'prompt', prompt: optimizedPrompt ?? sourcePrompt ?? '' },
-      fallbackPrompt: optimizedPrompt ?? sourcePrompt ?? '',
+      source: structuredArtifact
+        ? { kind: "artifact", artifact: structuredArtifact }
+        : { kind: "prompt", prompt: optimizedPrompt ?? sourcePrompt ?? "" },
+      fallbackPrompt: optimizedPrompt ?? sourcePrompt ?? "",
     });
   }
 
@@ -232,21 +250,22 @@ export class VideoPromptCompilationService {
     options: {
       artifactKey?: string;
       context?: CompileContext | null;
-    } = {}
+    } = {},
   ): Promise<CompilePromptResponse> {
     const result = await this.compile({
-      operation: 'compilePrompt',
-      mode: 'video',
+      operation: "compilePrompt",
+      mode: "video",
       targetModel,
       source: options.artifactKey
-        ? { kind: 'artifactKey', artifactKey: options.artifactKey }
-        : { kind: 'prompt', prompt },
+        ? { kind: "artifactKey", artifactKey: options.artifactKey }
+        : { kind: "prompt", prompt },
       context: options.context ?? null,
       fallbackPrompt: prompt,
       ...(options.artifactKey ? { artifactKey: options.artifactKey } : {}),
     });
 
-    const resolvedTargetModel = this.resolveTargetModel(targetModel) ?? targetModel.trim();
+    const resolvedTargetModel =
+      this.resolveTargetModel(targetModel) ?? targetModel.trim();
     return {
       compiledPrompt: result.prompt,
       metadata: result.metadata,
@@ -258,14 +277,16 @@ export class VideoPromptCompilationService {
 
   private async resolveSource(
     source: CompileSource,
-    fallbackPrompt?: string
+    fallbackPrompt?: string,
   ): Promise<ResolvedCompileSource> {
     switch (source.kind) {
-      case 'artifact': {
-        const trustedArtifact = this.isTrustedArtifact(source.artifact) ? source.artifact : null;
+      case "artifact": {
+        const trustedArtifact = this.isTrustedArtifact(source.artifact)
+          ? source.artifact
+          : null;
         if (trustedArtifact) {
           return {
-            sourceKind: 'artifact',
+            sourceKind: "artifact",
             compileInput: trustedArtifact.sourcePrompt,
             trustedArtifact,
             usedFallback: false,
@@ -273,19 +294,21 @@ export class VideoPromptCompilationService {
         }
 
         return {
-          sourceKind: 'prompt',
+          sourceKind: "prompt",
           compileInput: source.artifact.sourcePrompt,
           trustedArtifact: null,
           usedFallback: true,
-          reason: 'Structured artifact failed trust checks; compiling from raw source prompt.',
+          reason:
+            "Structured artifact failed trust checks; compiling from raw source prompt.",
           genericPrompt: source.artifact.sourcePrompt,
         };
       }
-      case 'artifactKey': {
-        const structuredArtifact =
-          this.structuredArtifactCache
-            ? await this.structuredArtifactCache.getStructuredArtifact(source.artifactKey)
-            : null;
+      case "artifactKey": {
+        const structuredArtifact = this.structuredArtifactCache
+          ? await this.structuredArtifactCache.getStructuredArtifact(
+              source.artifactKey,
+            )
+          : null;
         const trustedArtifact =
           structuredArtifact && this.isTrustedArtifact(structuredArtifact)
             ? structuredArtifact
@@ -293,7 +316,7 @@ export class VideoPromptCompilationService {
 
         if (trustedArtifact) {
           return {
-            sourceKind: 'artifactKey',
+            sourceKind: "artifactKey",
             compileInput: trustedArtifact.sourcePrompt,
             trustedArtifact,
             artifactKey: source.artifactKey,
@@ -303,41 +326,44 @@ export class VideoPromptCompilationService {
 
         if (structuredArtifact?.sourcePrompt) {
           return {
-            sourceKind: 'prompt',
+            sourceKind: "prompt",
             compileInput: structuredArtifact.sourcePrompt,
             trustedArtifact: null,
             artifactKey: source.artifactKey,
             usedFallback: true,
-            reason: 'Structured artifact failed trust checks; compiling from raw source prompt.',
+            reason:
+              "Structured artifact failed trust checks; compiling from raw source prompt.",
             genericPrompt: fallbackPrompt ?? structuredArtifact.sourcePrompt,
           };
         }
 
         if (fallbackPrompt && fallbackPrompt.trim()) {
           return {
-            sourceKind: 'prompt',
+            sourceKind: "prompt",
             compileInput: fallbackPrompt.trim(),
             trustedArtifact: null,
             artifactKey: source.artifactKey,
             usedFallback: true,
-            reason: 'Structured artifact not found; falling back to raw prompt compile.',
+            reason:
+              "Structured artifact not found; falling back to raw prompt compile.",
             genericPrompt: fallbackPrompt.trim(),
           };
         }
 
         return {
-          sourceKind: 'artifactKey',
-          compileInput: '',
+          sourceKind: "artifactKey",
+          compileInput: "",
           trustedArtifact: null,
           artifactKey: source.artifactKey,
           usedFallback: true,
-          reason: 'Structured artifact not found and no raw prompt fallback was provided.',
+          reason:
+            "Structured artifact not found and no raw prompt fallback was provided.",
         };
       }
-      case 'prompt':
+      case "prompt":
       default:
         return {
-          sourceKind: 'prompt',
+          sourceKind: "prompt",
           compileInput: source.prompt.trim(),
           trustedArtifact: null,
           usedFallback: false,
@@ -349,7 +375,7 @@ export class VideoPromptCompilationService {
   private buildPromptContext(
     prompt: string,
     context: CompileContext | null,
-    trustedArtifact: StructuredOptimizationArtifact | null
+    trustedArtifact: StructuredOptimizationArtifact | null,
   ): PromptContext {
     return {
       userIntent:
@@ -361,7 +387,9 @@ export class VideoPromptCompilationService {
         context?.originalPrompt?.trim() ||
         context?.originalUserPrompt?.trim() ||
         prompt,
-      ...(context?.constraints ? { constraints: context.constraints as never } : {}),
+      ...(context?.constraints
+        ? { constraints: context.constraints as never }
+        : {}),
       ...(context?.apiParams ? { apiParams: context.apiParams } : {}),
       ...(context?.assets ? { assets: context.assets as never } : {}),
       ...(trustedArtifact
@@ -378,11 +406,15 @@ export class VideoPromptCompilationService {
     artifactKey?: string;
   }): CompileResult {
     const metadata: Record<string, unknown> = {
-      ...(params.compilation.compiledFor ? {
-        compiledFor: params.compilation.compiledFor,
-        normalizedModelId: params.compilation.compiledFor,
-      } : {}),
-      ...(params.compilationMeta ? { compilationMeta: params.compilationMeta } : {}),
+      ...(params.compilation.compiledFor
+        ? {
+            compiledFor: params.compilation.compiledFor,
+            normalizedModelId: params.compilation.compiledFor,
+          }
+        : {}),
+      ...(params.compilationMeta
+        ? { compilationMeta: params.compilationMeta }
+        : {}),
       ...(params.genericPrompt ? { genericPrompt: params.genericPrompt } : {}),
       ...(params.artifactKey ? { artifactKey: params.artifactKey } : {}),
       structuredArtifactReused: params.compilation.structuredArtifactReused,
@@ -398,7 +430,8 @@ export class VideoPromptCompilationService {
   }
 
   private resolveTargetModel(targetModel: string | undefined): string | null {
-    const explicitModel = targetModel && targetModel.trim() !== '' ? targetModel : undefined;
+    const explicitModel =
+      targetModel && targetModel.trim() !== "" ? targetModel : undefined;
     if (!explicitModel) {
       return null;
     }
@@ -406,13 +439,13 @@ export class VideoPromptCompilationService {
   }
 
   private isTrustedArtifact(
-    artifact: StructuredOptimizationArtifact | null | undefined
+    artifact: StructuredOptimizationArtifact | null | undefined,
   ): artifact is StructuredOptimizationArtifact {
     return Boolean(artifact && !artifact.fallbackUsed && artifact.lintPassed);
   }
 
   private serializePrompt(prompt: string | Record<string, unknown>): string {
-    return typeof prompt === 'string'
+    return typeof prompt === "string"
       ? prompt
       : JSON.stringify(prompt, null, 2);
   }

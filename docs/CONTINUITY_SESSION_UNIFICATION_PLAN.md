@@ -1,19 +1,23 @@
 # Continuity Session Unification Plan
 
 ## Goal
+
 Make Continuity part of the **single core Session model** so all creative workflows live inside one session lifecycle and one workspace shell.
 
 ## Why
+
 - Users should not have to understand two different session types.
 - The ToolRail is the only workspace nav; all creative tools must live inside it.
 - Today, Continuity is a separate session type + route; this creates fragmentation in routing, state, and discoverability.
 
 ## Current State (Summary)
+
 - Continuity has its own routes: `/continuity` and `/continuity/:sessionId`.
 - Continuity uses its own data model and context provider.
 - Consistency is not a separate page; it is a workflow inside the GenerationControls panel.
 
 ## Target State
+
 - **One Session model** that includes continuity data.
 - Continuity becomes a **mode/tab inside a session**, not a separate session root.
 - ToolRail switches modes within the same session: Create / Studio / Continuity.
@@ -22,6 +26,7 @@ Make Continuity part of the **single core Session model** so all creative workfl
 ---
 
 ## Phase 1 — Unify the Session Contract
+
 **Objective:** Define a single session schema that includes continuity data.
 
 - Decide the canonical Session type (likely the existing prompt/generation session).
@@ -33,12 +38,14 @@ Make Continuity part of the **single core Session model** so all creative workfl
 - Update API schemas accordingly.
 
 **Deliverables:**
+
 - Unified Session schema + API contract
 - Field mapping document (old ContinuitySession → unified Session)
 
 ---
 
 ## Phase 2 — Routing Unification
+
 **Objective:** Make Continuity a mode inside a session route.
 
 - Replace `/continuity/:sessionId` with a session-scoped route:
@@ -47,12 +54,14 @@ Make Continuity part of the **single core Session model** so all creative workfl
 - Ensure the workspace shell (ToolRail) is always visible.
 
 **Deliverables:**
+
 - New session-scoped continuity routes
 - Redirects for legacy continuity routes
 
 ---
 
 ## Phase 3 — State and Context Merge
+
 **Objective:** Remove the separate ContinuitySessionProvider.
 
 - Move continuity state/actions into the unified session store/context.
@@ -60,12 +69,14 @@ Make Continuity part of the **single core Session model** so all creative workfl
 - Make the Continuity UI consume the unified session context.
 
 **Deliverables:**
+
 - Single session provider
 - Continuity components updated to use unified session state
 
 ---
 
 ## Phase 4 — Data Migration + Compatibility
+
 **Objective:** Preserve existing continuity sessions.
 
 - Add migration logic to translate legacy continuity sessions into unified sessions.
@@ -73,12 +84,14 @@ Make Continuity part of the **single core Session model** so all creative workfl
 - Keep the legacy continuity endpoint temporarily to support old deep links.
 
 **Deliverables:**
+
 - Migration script or server-side migration path
 - Backwards-compatible route redirects
 
 ---
 
 ## Phase 5 — UI & Navigation Alignment
+
 **Objective:** Make Continuity discoverable in the ToolRail.
 
 - Add Continuity as a ToolRail item under the workspace sidebar.
@@ -86,12 +99,14 @@ Make Continuity part of the **single core Session model** so all creative workfl
 - If “Consistency” is just Studio, rename or clarify within Studio rather than as a separate route.
 
 **Deliverables:**
+
 - ToolRail: Continuity entry
 - Workspace mode switch within a session
 
 ---
 
 ## Risks / Considerations
+
 - Requires server and client API changes.
 - Migration must preserve existing continuity data.
 - Must avoid breaking existing deep links and workflows.
@@ -100,6 +115,7 @@ Make Continuity part of the **single core Session model** so all creative workfl
 ---
 
 ## Recommendation
+
 Proceed with unification in phases. Keep Continuity as its own session type only as a temporary compatibility layer while migrating data and routing.
 
 ---
@@ -107,14 +123,17 @@ Proceed with unification in phases. Keep Continuity as its own session type only
 ## Assessment & Gaps (From Codebase Review)
 
 ### Overall Assessment
+
 Reasonable direction, but incomplete. The plan identifies the right fragmentation problem, yet it lacks concrete definitions and operational details required to execute safely.
 
 ### What’s Correct
+
 1. The current Continuity route and session model are fragmented from the ToolRail experience.
 2. The phased breakdown (schema → routing → state → migration → UI) is appropriate.
 3. Keeping legacy routes as redirects is the right compatibility move.
 
 ### Critical Gaps to Address
+
 1. **No concrete unified schema**
    The plan must specify the actual unified session type (fields, optionality, defaults), not just “extend the canonical session.”
    Today you have structurally different models (single‑prompt vs multi‑shot).
@@ -136,6 +155,7 @@ Reasonable direction, but incomplete. The plan identifies the right fragmentatio
    Data migration without rollback is risky.
 
 ### Architectural Risks
+
 - **Single‑prompt vs multi‑shot collision**
   These are different workflows. If you unify too literally, the resulting session can become bloated or confusing.
 - **Schema bloat**
@@ -146,6 +166,7 @@ Reasonable direction, but incomplete. The plan identifies the right fragmentatio
 ## Unified Session Schema (Concrete Proposal)
 
 ### Design Choice
+
 - **Session supports multi‑shot as an optional capability**.
   Single‑prompt workflows remain valid with `shots` undefined/empty.
 
@@ -159,7 +180,7 @@ type Session = {
   name?: string;
   createdAt: string;
   updatedAt: string;
-  status: 'active' | 'completed' | 'archived';
+  status: "active" | "completed" | "archived";
 
   // Core prompt workflow (existing)
   prompt?: {
@@ -185,8 +206,8 @@ type Session = {
     primaryStyleReference?: StyleReference | null;
     sceneProxy?: SceneProxy | null;
     settings: {
-      generationMode: 'continuity' | 'standard';
-      defaultContinuityMode: 'frame-bridge' | 'style-match' | 'native' | 'none';
+      generationMode: "continuity" | "standard";
+      defaultContinuityMode: "frame-bridge" | "style-match" | "native" | "none";
       defaultStyleStrength: number;
     };
   };
@@ -225,6 +246,7 @@ PromptData.highlightCache           → Session.prompt.highlightCache
 ## Storage Decision (Required)
 
 ### Options
+
 1. **Server‑only Session store**
    All sessions live server‑side; localStorage becomes a cache only.
    Pros: single source of truth, easier migration.
@@ -235,6 +257,7 @@ PromptData.highlightCache           → Session.prompt.highlightCache
    Cons: more complexity.
 
 ### Recommendation
+
 Adopt **server‑canonical** for unified sessions, with localStorage only as a transient draft cache (not authoritative).
 
 ---
@@ -242,6 +265,7 @@ Adopt **server‑canonical** for unified sessions, with localStorage only as a t
 ## API Strategy (Required)
 
 ### Versioning / Migration
+
 - Introduce a unified session API (v2).
 - Keep Continuity endpoints as a compatibility layer during Phase 4.
 - Add redirect/translation layer for `/continuity/:id` to `/session/:id/continuity`.
@@ -252,6 +276,7 @@ Adopt **server‑canonical** for unified sessions, with localStorage only as a t
 ## Testing & Validation (Required)
 
 ### Minimum Checklist
+
 1. Migration correctness (shots, settings, style refs preserved).
 2. Legacy continuity deep links redirect and load successfully.
 3. Single‑prompt sessions still load without continuity fields.
@@ -261,6 +286,7 @@ Adopt **server‑canonical** for unified sessions, with localStorage only as a t
 ---
 
 ## Rollback Plan (Required)
+
 - Take a full backup of continuity session data before migration.
 - Keep legacy endpoints read‑only for a fixed window.
 - Provide a reversible mapping script to restore legacy sessions if needed.
@@ -270,15 +296,18 @@ Adopt **server‑canonical** for unified sessions, with localStorage only as a t
 ## Update: Phase Deliverables (Expanded)
 
 ### Phase 1 — Unify the Session Contract (Expanded)
+
 - Finalize the unified Session schema (above).
 - Publish mapping tables and optionality rules.
 - Decide server‑canonical vs hybrid storage.
 
 ### Phase 2 — Routing Unification (Expanded)
+
 - Introduce session‑scoped continuity route.
 - Ensure ToolRail remains visible for continuity routes.
 
 ### Phase 3 — State and Context Merge (Expanded)
+
 - Extend ActiveTool type to include `'continuity'`.
 - Persist and restore active tool selection.
 - Replace ContinuitySessionProvider with unified Session provider.
@@ -286,20 +315,24 @@ Adopt **server‑canonical** for unified sessions, with localStorage only as a t
 - Evaluate merging GenerationControlsStore into the unified provider after session unification stabilizes.
 
 **Concrete change (example):**
+
 ```ts
 // client/src/contexts/AppShellContext.tsx
-export type ActiveTool = 'create' | 'studio' | 'continuity';
+export type ActiveTool = "create" | "studio" | "continuity";
 ```
 
 ### Phase 4 — Data Migration + Compatibility (Expanded)
+
 - Implement migration scripts and dry runs.
 - Add fallbacks for partially migrated data.
 
 ### Phase 5 — UI & Navigation Alignment (Expanded)
+
 - Add Continuity to ToolRail.
 - Clarify “Consistency” as a Studio workflow (no separate route).
 
 **Concrete change (example):**
+
 ```ts
 // client/src/components/ToolSidebar/config/toolNavConfig.ts
 {
@@ -312,18 +345,19 @@ export type ActiveTool = 'create' | 'studio' | 'continuity';
 
 #### Component Migration Table
 
-| Component | Action |
-|-----------|--------|
-| `client/src/pages/ContinuityPage.tsx` | Remove (replaced by unified session route) |
+| Component                                                             | Action                                       |
+| --------------------------------------------------------------------- | -------------------------------------------- |
+| `client/src/pages/ContinuityPage.tsx`                                 | Remove (replaced by unified session route)   |
 | `client/src/features/continuity/context/ContinuitySessionContext.tsx` | Remove (merge into unified session provider) |
-| `client/src/features/continuity/context/ContinuitySessionProvider` | Remove |
-| `client/src/components/layout/MainWorkspace.tsx` | Extend to handle `continuity` mode |
-| `client/src/components/ToolSidebar/components/ToolRail.tsx` | Add continuity nav handling |
-| `client/src/contexts/AppShellContext.tsx` | Expand `ActiveTool` type |
+| `client/src/features/continuity/context/ContinuitySessionProvider`    | Remove                                       |
+| `client/src/components/layout/MainWorkspace.tsx`                      | Extend to handle `continuity` mode           |
+| `client/src/components/ToolSidebar/components/ToolRail.tsx`           | Add continuity nav handling                  |
+| `client/src/contexts/AppShellContext.tsx`                             | Expand `ActiveTool` type                     |
 
 ---
 
 ## Decisions Required (Blockers)
+
 1. **Session identity**: Is `Session.id` the Firestore doc ID or the prompt UUID?
 2. **Route prefix**: Use `/session/:id/*` or reuse `/prompt/:uuid/*`?
 3. **Session creation trigger**: When is a Session created (explicit vs implicit)?
@@ -333,9 +367,11 @@ export type ActiveTool = 'create' | 'studio' | 'continuity';
 ## Session Identity (id vs uuid)
 
 ### Problem
+
 `PromptData` currently has both a `uuid` and an implicit Firestore doc ID, which can differ.
 
 ### Required Decision
+
 - If **Session.id = Firestore doc ID**:
   - Map `PromptData.uuid` to a `prompt.uuid` field.
   - Use doc ID for all routing and lookups.
@@ -343,6 +379,7 @@ export type ActiveTool = 'create' | 'studio' | 'continuity';
   - Migrate Firestore to use uuid as document ID or maintain an index from uuid → doc ID.
 
 ### Recommendation
+
 Use **Firestore doc ID** as the canonical `Session.id` and store UUID as a secondary field for backward compatibility and share links.
 
 ---
@@ -350,26 +387,29 @@ Use **Firestore doc ID** as the canonical `Session.id` and store UUID as a secon
 ## userId Backfill
 
 ### Problem
+
 `PromptData` does not explicitly store `userId`, but continuity sessions do.
 
 ### Options
+
 - Backfill `userId` from Firestore path (`users/{userId}/prompts/{docId}`).
 - Add a migration pass that injects `userId` into the unified session record.
 
 ### Recommendation
+
 Backfill from Firestore path during migration; do not rely on client inference.
 
 ---
 
 ## Unified Routes (Before → After)
 
-| Before | After | Notes |
-|--------|-------|-------|
-| `/continuity/:id` | `/session/:id/continuity` | Redirect legacy to unified |
-| `/prompt/:uuid` | `/session/:id/studio` | Redirect legacy to unified |
-| `/` | `/session/:id/studio` | Default to last session or create new |
-| `/create` | `/session/:id/create` or `/session/new/create` | Decision required |
-| `/share/:uuid` | `/share/:uuid` | Keep as-is; map internally to session id via uuid index |
+| Before            | After                                          | Notes                                                   |
+| ----------------- | ---------------------------------------------- | ------------------------------------------------------- |
+| `/continuity/:id` | `/session/:id/continuity`                      | Redirect legacy to unified                              |
+| `/prompt/:uuid`   | `/session/:id/studio`                          | Redirect legacy to unified                              |
+| `/`               | `/session/:id/studio`                          | Default to last session or create new                   |
+| `/create`         | `/session/:id/create` or `/session/new/create` | Decision required                                       |
+| `/share/:uuid`    | `/share/:uuid`                                 | Keep as-is; map internally to session id via uuid index |
 
 **Decision required:** Choose `/session/:id/*` or keep `/prompt/:uuid/*` as the canonical base.
 
@@ -378,6 +418,7 @@ Backfill from Firestore path during migration; do not rely on client inference.
 ## API v2 Endpoint Spec (Proposed)
 
 ### Sessions
+
 - `GET /api/v2/sessions`
 - `GET /api/v2/sessions/:id`
 - `POST /api/v2/sessions`
@@ -385,6 +426,7 @@ Backfill from Firestore path during migration; do not rely on client inference.
 - `DELETE /api/v2/sessions/:id`
 
 ### Continuity (session-scoped)
+
 - `POST /api/v2/sessions/:id/shots`
 - `POST /api/v2/sessions/:id/shots/:shotId/generate`
 - `PUT /api/v2/sessions/:id/style-reference`
@@ -392,6 +434,7 @@ Backfill from Firestore path during migration; do not rely on client inference.
 - `POST /api/v2/sessions/:id/scene-proxy`
 
 ### Deprecation Timeline (Proposed)
+
 - **Week 0**: Ship v2 endpoints + adapters
 - **Week 4**: Mark v1 continuity endpoints deprecated (warnings)
 - **Week 8**: Remove v1 endpoints
@@ -401,18 +444,23 @@ Backfill from Firestore path during migration; do not rely on client inference.
 ## Session Creation UX (Required)
 
 ### Current Behavior
+
 - Prompt sessions are created implicitly (e.g., on optimize).
 - Continuity sessions are created explicitly via a button.
 
 ### Decision Required
+
 Choose one:
+
 1. **Implicit creation**: auto-create session on first meaningful action.
 2. **Explicit creation**: require a "New Session" step for all workflows.
 
 ### Recommendation
+
 Use **implicit creation for prompt workflows**, explicit for continuity flows, but unify the session object under the hood.
 
 ### /create Route Decision (Explicit)
+
 - **Decision**: Keep `/create` session-less.
 - **Behavior**: Create a new session implicitly on first optimize/generate, then redirect to `/session/:id/create` (or stay and attach session silently).
 
@@ -429,6 +477,7 @@ Use **implicit creation for prompt workflows**, explicit for continuity flows, b
 ## Migration Script Detail (Required)
 
 ### Minimum Requirements
+
 - Server-side migration for Firestore prompt docs and continuity sessions.
 - One-time `userId` backfill for legacy prompt data.
 - Dry-run mode that validates without writes.
@@ -447,11 +496,11 @@ Use **implicit creation for prompt workflows**, explicit for continuity flows, b
 
 ## Effort Estimate (Single Engineer)
 
-| Phase | Estimate |
-|-------|----------|
-| Phase 1: Schema | 1 week |
-| Phase 2: Routing | 1 week |
-| Phase 3: State merge | 1.5 weeks |
-| Phase 4: Migration | 1-2 weeks |
-| Phase 5: UI alignment | 1 week |
-| **Total** | **5-7 weeks** |
+| Phase                 | Estimate      |
+| --------------------- | ------------- |
+| Phase 1: Schema       | 1 week        |
+| Phase 2: Routing      | 1 week        |
+| Phase 3: State merge  | 1.5 weeks     |
+| Phase 4: Migration    | 1-2 weeks     |
+| Phase 5: UI alignment | 1 week        |
+| **Total**             | **5-7 weeks** |

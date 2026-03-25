@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   extractFirebaseToken: vi.fn(),
@@ -6,58 +6,58 @@ const mocks = vi.hoisted(() => ({
   loggerWarn: vi.fn(),
 }));
 
-vi.mock('@utils/auth', () => ({
+vi.mock("@utils/auth", () => ({
   extractFirebaseToken: mocks.extractFirebaseToken,
 }));
 
-vi.mock('@infrastructure/Logger', () => ({
+vi.mock("@infrastructure/Logger", () => ({
   logger: {
     warn: mocks.loggerWarn,
   },
 }));
 
-vi.mock('@infrastructure/firebaseAdmin', () => ({
+vi.mock("@infrastructure/firebaseAdmin", () => ({
   getAuth: () => ({
     verifyIdToken: mocks.verifyIdToken,
   }),
 }));
 
-import { resolveUserId } from '@routes/payment/auth';
+import { resolveUserId } from "@routes/payment/auth";
 
-describe('resolveUserId', () => {
+describe("resolveUserId", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('prefers authenticated req.user uid when present', async () => {
+  it("prefers authenticated req.user uid when present", async () => {
     const req = {
-      path: '/api/payment/checkout',
-      user: { uid: 'user-from-req' },
+      path: "/api/payment/checkout",
+      user: { uid: "user-from-req" },
       body: {},
     };
 
-    await expect(resolveUserId(req as any)).resolves.toBe('user-from-req');
+    await expect(resolveUserId(req as any)).resolves.toBe("user-from-req");
     expect(mocks.extractFirebaseToken).not.toHaveBeenCalled();
   });
 
-  it('verifies Firebase token and populates req.user when token is valid', async () => {
+  it("verifies Firebase token and populates req.user when token is valid", async () => {
     const req: Record<string, unknown> = {
-      path: '/api/payment/checkout',
+      path: "/api/payment/checkout",
       body: {},
     };
-    mocks.extractFirebaseToken.mockReturnValue('token-123');
-    mocks.verifyIdToken.mockResolvedValue({ uid: 'user-from-token' });
+    mocks.extractFirebaseToken.mockReturnValue("token-123");
+    mocks.verifyIdToken.mockResolvedValue({ uid: "user-from-token" });
 
     const result = await resolveUserId(req as any);
 
-    expect(result).toBe('user-from-token');
-    expect(req.user).toEqual({ uid: 'user-from-token' });
+    expect(result).toBe("user-from-token");
+    expect(req.user).toEqual({ uid: "user-from-token" });
   });
 
-  it('does not trust body.userId — prevents IDOR via request body', async () => {
+  it("does not trust body.userId — prevents IDOR via request body", async () => {
     const req = {
-      path: '/api/payment/checkout',
-      body: { userId: 'victim-uid' },
+      path: "/api/payment/checkout",
+      body: { userId: "victim-uid" },
     };
     mocks.extractFirebaseToken.mockReturnValue(null);
 
@@ -66,40 +66,40 @@ describe('resolveUserId', () => {
     expect(result).toBeNull();
   });
 
-  it('does not fall back to body.userId when token verification fails', async () => {
+  it("does not fall back to body.userId when token verification fails", async () => {
     const req = {
-      path: '/api/payment/checkout',
-      body: { userId: 'victim-uid' },
+      path: "/api/payment/checkout",
+      body: { userId: "victim-uid" },
     };
-    mocks.extractFirebaseToken.mockReturnValue('token-123');
-    mocks.verifyIdToken.mockRejectedValue(new Error('bad token'));
+    mocks.extractFirebaseToken.mockReturnValue("token-123");
+    mocks.verifyIdToken.mockRejectedValue(new Error("bad token"));
 
     const result = await resolveUserId(req as any);
 
     expect(result).toBeNull();
     expect(mocks.loggerWarn).toHaveBeenCalledWith(
-      'Failed to verify auth token for payment request',
+      "Failed to verify auth token for payment request",
       expect.objectContaining({
-        path: '/api/payment/checkout',
-        error: 'bad token',
-      })
+        path: "/api/payment/checkout",
+        error: "bad token",
+      }),
     );
   });
 
-  it('falls back to apiKey when no auth user or token exists', async () => {
+  it("falls back to apiKey when no auth user or token exists", async () => {
     const req = {
-      path: '/api/payment/checkout',
+      path: "/api/payment/checkout",
       body: {},
-      apiKey: 'api-user-1',
+      apiKey: "api-user-1",
     };
     mocks.extractFirebaseToken.mockReturnValue(null);
 
-    await expect(resolveUserId(req as any)).resolves.toBe('api-user-1');
+    await expect(resolveUserId(req as any)).resolves.toBe("api-user-1");
   });
 
-  it('returns null when no user identifier can be resolved', async () => {
+  it("returns null when no user identifier can be resolved", async () => {
     const req = {
-      path: '/api/payment/checkout',
+      path: "/api/payment/checkout",
       body: {},
     };
     mocks.extractFirebaseToken.mockReturnValue(null);

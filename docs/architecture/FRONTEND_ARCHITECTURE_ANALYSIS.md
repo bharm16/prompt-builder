@@ -6,16 +6,16 @@
 
 ## Implementation Log (2026-03-19)
 
-| Phase | Action | Status | Files Changed |
-|-------|--------|--------|---------------|
-| 1 | Delete dead code (VideoConceptBuilder, PromptEnhancementEditor, orphaned services) | **Done** | -65 files deleted |
-| 2 | Extract GenerationsPanel → `features/generations/` | **Done** | 44 files moved, ~36 import paths updated |
-| 3 | Extract GenerationControlsStore → `features/generation-controls/` | **Done** | 4 core files + 3 tests moved, ~24 import paths updated |
-| 4 | Remove ToolSidebar domain override pattern | **Done** | 5 legacy providers deleted, props override removed, ToolSidebar simplified |
-| 5 | Split PromptStateContext | **Skipped** — already split into 7 focused sub-contexts |
-| 6 | Extract CanvasWorkspace → `features/workspace-shell/` | **Done** | 26 files moved; accepts 4 cross-feature component imports from prompt-optimizer (GalleryPanel, GenerationPopover, PromptEditor, LockedSpanIndicator) |
-| 7 | Extract SequenceWorkspace → `features/sequence-editor/` | **Done** | 11 files moved (SequenceWorkspace + sequence components); WorkspaceSessionContext stays in prompt-optimizer as shared state |
-| 8 | Finish root services/hooks/api migration | **Partial** — moved `useCameraMotion` + `motionApi` to convergence; remaining root files are legitimate shared infrastructure |
+| Phase | Action                                                                             | Status                                                                                                                        | Files Changed                                                                                                                                        |
+| ----- | ---------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1     | Delete dead code (VideoConceptBuilder, PromptEnhancementEditor, orphaned services) | **Done**                                                                                                                      | -65 files deleted                                                                                                                                    |
+| 2     | Extract GenerationsPanel → `features/generations/`                                 | **Done**                                                                                                                      | 44 files moved, ~36 import paths updated                                                                                                             |
+| 3     | Extract GenerationControlsStore → `features/generation-controls/`                  | **Done**                                                                                                                      | 4 core files + 3 tests moved, ~24 import paths updated                                                                                               |
+| 4     | Remove ToolSidebar domain override pattern                                         | **Done**                                                                                                                      | 5 legacy providers deleted, props override removed, ToolSidebar simplified                                                                           |
+| 5     | Split PromptStateContext                                                           | **Skipped** — already split into 7 focused sub-contexts                                                                       |
+| 6     | Extract CanvasWorkspace → `features/workspace-shell/`                              | **Done**                                                                                                                      | 26 files moved; accepts 4 cross-feature component imports from prompt-optimizer (GalleryPanel, GenerationPopover, PromptEditor, LockedSpanIndicator) |
+| 7     | Extract SequenceWorkspace → `features/sequence-editor/`                            | **Done**                                                                                                                      | 11 files moved (SequenceWorkspace + sequence components); WorkspaceSessionContext stays in prompt-optimizer as shared state                          |
+| 8     | Finish root services/hooks/api migration                                           | **Partial** — moved `useCameraMotion` + `motionApi` to convergence; remaining root files are legitimate shared infrastructure |
 
 ---
 
@@ -23,12 +23,12 @@
 
 Three systems warrant radical restructuring. Everything else is well-architected or needs only incremental cleanup.
 
-| System | Verdict | Impact |
-|--------|---------|--------|
-| `prompt-optimizer` | **Decompose** — god feature masquerading as one module | High |
-| `ToolSidebar` + domain override pattern | **Simplify** — unnecessary adapter layer | Medium |
-| `services/` + `hooks/` + `api/` root directories | **Consolidate** — migration stalled at 95% | Low |
-| Everything else | Healthy boundaries, no radical changes needed | — |
+| System                                           | Verdict                                                | Impact |
+| ------------------------------------------------ | ------------------------------------------------------ | ------ |
+| `prompt-optimizer`                               | **Decompose** — god feature masquerading as one module | High   |
+| `ToolSidebar` + domain override pattern          | **Simplify** — unnecessary adapter layer               | Medium |
+| `services/` + `hooks/` + `api/` root directories | **Consolidate** — migration stalled at 95%             | Low    |
+| Everything else                                  | Healthy boundaries, no radical changes needed          | —      |
 
 ---
 
@@ -38,13 +38,13 @@ Three systems warrant radical restructuring. Everything else is well-architected
 
 `prompt-optimizer` contains at least **five independent domains** forced into one directory:
 
-| Domain | Files | What It Actually Does |
-|--------|-------|-----------------------|
-| **PromptCanvas** | 49 | Text editing, span labeling, inline suggestions |
-| **GenerationsPanel** | 50 | Generation lifecycle, keyframes, progress, timelines |
-| **CanvasWorkspace** | 26 | Hero viewer, gallery layout, visual composition |
-| **Generation Controls** | 28 (context/) | Model selection, aspect ratio, camera motion, video refs |
-| **Sequence Editing** | ~15 | Multi-shot sessions, shot timeline, continuity coordination |
+| Domain                  | Files         | What It Actually Does                                       |
+| ----------------------- | ------------- | ----------------------------------------------------------- |
+| **PromptCanvas**        | 49            | Text editing, span labeling, inline suggestions             |
+| **GenerationsPanel**    | 50            | Generation lifecycle, keyframes, progress, timelines        |
+| **CanvasWorkspace**     | 26            | Hero viewer, gallery layout, visual composition             |
+| **Generation Controls** | 28 (context/) | Model selection, aspect ratio, camera motion, video refs    |
+| **Sequence Editing**    | ~15           | Multi-shot sessions, shot timeline, continuity coordination |
 
 These domains have **different reasons to change**, different stakeholders, and different rates of evolution. A camera motion refactor shouldn't touch the text editor. A generation timeline redesign shouldn't risk breaking prompt suggestions.
 
@@ -160,16 +160,16 @@ Remove the three-tier fallback (props → individual context → aggregated cont
 
 The migration from monolithic `services/` to feature-scoped `features/*/api/` is ~95% complete but stalled. What remains:
 
-| Root File | Status | Action |
-|-----------|--------|--------|
-| `services/PromptOptimizationApi.ts` | **Active** — used in GenerationsPanel | Move to `features/generations/api/` |
-| `services/EnhancementApi.ts` | **Orphaned** — superseded by feature APIs | Delete |
-| `services/VideoConceptApi.ts` | **Orphaned** — only in legacy VideoConceptBuilder | Delete with VideoConceptBuilder |
-| `services/ApiClient.ts` | **Active** — HTTP infrastructure | Keep (correct location) |
-| `services/PredictiveCacheService.ts` | **Active** — caching layer | Keep (correct location) |
-| `hooks/usePromptOptimizer*.ts` (3 files) | **Unclear** — may duplicate feature hooks | Audit and remove if duplicated |
-| `hooks/useCameraMotion.ts` | **Active** — used across features | Move to `features/convergence/hooks/` |
-| `api/enhancementSuggestionsApi.ts` | **Active** — transport layer | Move to `features/prompt-editor/api/` |
+| Root File                                | Status                                            | Action                                |
+| ---------------------------------------- | ------------------------------------------------- | ------------------------------------- |
+| `services/PromptOptimizationApi.ts`      | **Active** — used in GenerationsPanel             | Move to `features/generations/api/`   |
+| `services/EnhancementApi.ts`             | **Orphaned** — superseded by feature APIs         | Delete                                |
+| `services/VideoConceptApi.ts`            | **Orphaned** — only in legacy VideoConceptBuilder | Delete with VideoConceptBuilder       |
+| `services/ApiClient.ts`                  | **Active** — HTTP infrastructure                  | Keep (correct location)               |
+| `services/PredictiveCacheService.ts`     | **Active** — caching layer                        | Keep (correct location)               |
+| `hooks/usePromptOptimizer*.ts` (3 files) | **Unclear** — may duplicate feature hooks         | Audit and remove if duplicated        |
+| `hooks/useCameraMotion.ts`               | **Active** — used across features                 | Move to `features/convergence/hooks/` |
+| `api/enhancementSuggestionsApi.ts`       | **Active** — transport layer                      | Move to `features/prompt-editor/api/` |
 
 ### Recommended Action
 
@@ -183,18 +183,18 @@ Also delete the clearly dead code: `VideoConceptBuilder` (51 files, only in test
 
 ### Well-Architected Features (No Changes Needed)
 
-| Feature | Files | Assessment |
-|---------|-------|------------|
-| `span-highlighting` | 49 | Fully isolated. Clean cache + utility architecture. IndexedDB storage adapter is solid. |
-| `preview` | 14 | Minimal, focused. Zod schemas at boundary. No cross-feature coupling. |
-| `continuity` | 23 | Clean domain boundary. Only exports `ContinueSceneButton` for composition. |
-| `convergence` | 30 | Self-contained motion controls. Only exports types to consumers. |
-| `assets` | 26 | Proper feature module. Consumed by prompt-optimizer only (correct dependency direction). |
-| `reference-images` | 7 | Minimal standalone feature. Nothing to improve. |
-| `model-intelligence` | 27 | Clean advisory layer. Consumed, not coupled. |
-| `billing` | 9 | Isolated account concern. Correctly minimal. |
-| `history` | 11 | View-only feature. Clean separation. |
-| `AppShell` | — | Correct app-shell pattern for route-level navigation. |
+| Feature              | Files | Assessment                                                                               |
+| -------------------- | ----- | ---------------------------------------------------------------------------------------- |
+| `span-highlighting`  | 49    | Fully isolated. Clean cache + utility architecture. IndexedDB storage adapter is solid.  |
+| `preview`            | 14    | Minimal, focused. Zod schemas at boundary. No cross-feature coupling.                    |
+| `continuity`         | 23    | Clean domain boundary. Only exports `ContinueSceneButton` for composition.               |
+| `convergence`        | 30    | Self-contained motion controls. Only exports types to consumers.                         |
+| `assets`             | 26    | Proper feature module. Consumed by prompt-optimizer only (correct dependency direction). |
+| `reference-images`   | 7     | Minimal standalone feature. Nothing to improve.                                          |
+| `model-intelligence` | 27    | Clean advisory layer. Consumed, not coupled.                                             |
+| `billing`            | 9     | Isolated account concern. Correctly minimal.                                             |
+| `history`            | 11    | View-only feature. Clean separation.                                                     |
+| `AppShell`           | —     | Correct app-shell pattern for route-level navigation.                                    |
 
 ### SuggestionsPanel: Finish the Migration
 
@@ -229,16 +229,16 @@ If you later need cross-feature coordination (e.g., "generation started" should 
 
 ## Priority Order
 
-| Priority | Action | Risk | Effort | Payoff |
-|----------|--------|------|--------|--------|
-| 1 | Extract GenerationsPanel → `features/generations/` | Low | 2-3 days | Unblocks independent generation UI iteration |
-| 2 | Extract GenerationControlsStore → `features/generation-controls/` | Low | 1-2 days | Clarifies state ownership |
-| 3 | Delete dead code (VideoConceptBuilder, PromptEnhancementEditor, orphaned services) | None | 0.5 day | Reduces 60+ files of noise |
-| 4 | Remove ToolSidebar domain override pattern | Low | 1-2 days | Eliminates adapter complexity |
-| 5 | Split PromptStateContext into focused contexts | Medium | 2-3 days | Fixes render performance, reduces cognitive load |
-| 6 | Extract CanvasWorkspace → `features/workspace-shell/` | Medium | 1-2 days | Completes workspace decomposition |
-| 7 | Extract sequence editing → `features/sequence-editor/` | Medium | 2-3 days | Isolates multi-shot concerns |
-| 8 | Finish root services/hooks/api migration | Low | 1 day | Removes stalled migration artifacts |
+| Priority | Action                                                                             | Risk   | Effort   | Payoff                                           |
+| -------- | ---------------------------------------------------------------------------------- | ------ | -------- | ------------------------------------------------ |
+| 1        | Extract GenerationsPanel → `features/generations/`                                 | Low    | 2-3 days | Unblocks independent generation UI iteration     |
+| 2        | Extract GenerationControlsStore → `features/generation-controls/`                  | Low    | 1-2 days | Clarifies state ownership                        |
+| 3        | Delete dead code (VideoConceptBuilder, PromptEnhancementEditor, orphaned services) | None   | 0.5 day  | Reduces 60+ files of noise                       |
+| 4        | Remove ToolSidebar domain override pattern                                         | Low    | 1-2 days | Eliminates adapter complexity                    |
+| 5        | Split PromptStateContext into focused contexts                                     | Medium | 2-3 days | Fixes render performance, reduces cognitive load |
+| 6        | Extract CanvasWorkspace → `features/workspace-shell/`                              | Medium | 1-2 days | Completes workspace decomposition                |
+| 7        | Extract sequence editing → `features/sequence-editor/`                             | Medium | 2-3 days | Isolates multi-shot concerns                     |
+| 8        | Finish root services/hooks/api migration                                           | Low    | 1 day    | Removes stalled migration artifacts              |
 
 ---
 

@@ -1,27 +1,39 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from "react";
 
-import type { Generation, GenerationParams } from '../types';
-import type { DraftModel } from '@components/ToolSidebar/types';
-import type { GenerationsAction } from './useGenerationsState';
-import { compileWanPrompt, generateStoryboardPreview, generateVideoPreview, waitForVideoJob } from '../api';
-import { buildGeneration, resolveGenerationOptions } from '../utils/generationUtils';
-import { logger } from '@/services/LoggingService';
-import { sanitizeError } from '@/utils/logging';
-import { resolveMediaUrl } from '@/services/media/MediaUrlResolver';
-import { assetApi } from '@/features/assets/api/assetApi';
-import { safeUrlHost } from '@/utils/url';
-import { ApiError } from '@/services/http/ApiError';
+import type { Generation, GenerationParams } from "../types";
+import type { DraftModel } from "@components/ToolSidebar/types";
+import type { GenerationsAction } from "./useGenerationsState";
+import {
+  compileWanPrompt,
+  generateStoryboardPreview,
+  generateVideoPreview,
+  waitForVideoJob,
+} from "../api";
+import {
+  buildGeneration,
+  resolveGenerationOptions,
+} from "../utils/generationUtils";
+import { logger } from "@/services/LoggingService";
+import { sanitizeError } from "@/utils/logging";
+import { resolveMediaUrl } from "@/services/media/MediaUrlResolver";
+import { assetApi } from "@/features/assets/api/assetApi";
+import { safeUrlHost } from "@/utils/url";
+import { ApiError } from "@/services/http/ApiError";
 import {
   extractStorageObjectPath,
   hasGcsSignedUrlParams,
   parseGcsSignedUrlExpiryMs,
-} from '@/utils/storageUrl';
-import { getModelConfig } from '../config/generationConfig';
-import { getVideoInputSupport } from '../utils/videoInputSupport';
+} from "@/utils/storageUrl";
+import {
+  publishCreditBalanceSync,
+  requestCreditBalanceRefresh,
+} from "@/hooks/useUserCreditBalance";
+import { getModelConfig, getModelCreditCost } from "../config/generationConfig";
+import { getVideoInputSupport } from "../utils/videoInputSupport";
 
 /** Extract the asset ID (last path segment) from a storage path or return the value as-is. */
 const extractAssetId = (pathOrId: string): string => {
-  const segments = pathOrId.split('/').filter(Boolean);
+  const segments = pathOrId.split("/").filter(Boolean);
   return segments.length > 0 ? segments[segments.length - 1]! : pathOrId;
 };
 
@@ -34,18 +46,20 @@ interface UseGenerationActionsOptions {
   generationParams?: Record<string, unknown> | undefined;
   promptVersionId?: string | null | undefined;
   generations?: Generation[] | undefined;
-  onInsufficientCredits?: ((required: number, operation: string) => void) | undefined;
+  onInsufficientCredits?:
+    | ((required: number, operation: string) => void)
+    | undefined;
 }
 
 interface StoryboardParams extends GenerationParams {
   seedImageUrl?: string | null | undefined;
 }
 
-const log = logger.child('useGenerationActions');
+const log = logger.child("useGenerationActions");
 const TRIGGER_REGEX = /@([a-zA-Z][a-zA-Z0-9_-]*)/g;
 
 const normalizeMotionString = (value: unknown): string | null => {
-  if (typeof value !== 'string') {
+  if (typeof value !== "string") {
     return null;
   }
   const trimmed = value.trim();
@@ -57,7 +71,9 @@ const extractMotionMeta = (generationParams?: Record<string, unknown>) => {
   const generationParamKeys = Object.keys(params);
   const cameraMotionId = normalizeMotionString(params.camera_motion_id);
   const subjectMotion = normalizeMotionString(params.subject_motion);
-  const keyframesCount = Array.isArray(params.keyframes) ? params.keyframes.length : 0;
+  const keyframesCount = Array.isArray(params.keyframes)
+    ? params.keyframes.length
+    : 0;
 
   return {
     hasGenerationParams: generationParamKeys.length > 0,
@@ -73,7 +89,8 @@ const extractMotionMeta = (generationParams?: Record<string, unknown>) => {
 
 const extractFaceSwapMeta = (params?: GenerationParams) => {
   const resolvedFaceSwapUrl =
-    params?.faceSwapUrl ?? (params?.faceSwapAlreadyApplied ? params.startImage?.url ?? null : null);
+    params?.faceSwapUrl ??
+    (params?.faceSwapAlreadyApplied ? (params.startImage?.url ?? null) : null);
   return {
     faceSwapUrl: resolvedFaceSwapUrl,
     faceSwapApplied: Boolean(resolvedFaceSwapUrl),
@@ -87,13 +104,16 @@ const hasPromptTriggers = (prompt: string): boolean =>
 const START_IMAGE_REFRESH_BUFFER_MS = 2 * 60 * 1000;
 
 const parseExpiresAtMs = (value?: string | null): number | null => {
-  if (!value || typeof value !== 'string') return null;
+  if (!value || typeof value !== "string") return null;
   const parsed = Date.parse(value);
   return Number.isFinite(parsed) ? parsed : null;
 };
 
-const shouldRefreshStartImage = (url: string | null, expiresAtMs: number | null): boolean => {
-  if (!url || typeof url !== 'string') return true;
+const shouldRefreshStartImage = (
+  url: string | null,
+  expiresAtMs: number | null,
+): boolean => {
+  if (!url || typeof url !== "string") return true;
   if (expiresAtMs !== null) {
     return Date.now() >= expiresAtMs - START_IMAGE_REFRESH_BUFFER_MS;
   }
@@ -104,13 +124,13 @@ const isInsufficientCreditsError = (error: unknown): error is ApiError => {
   if (!(error instanceof ApiError) || error.status !== 402) {
     return false;
   }
-  if (!error.response || typeof error.response !== 'object') {
+  if (!error.response || typeof error.response !== "object") {
     return false;
   }
-  if (!('code' in error.response)) {
+  if (!("code" in error.response)) {
     return false;
   }
-  return (error.response as { code?: unknown }).code === 'INSUFFICIENT_CREDITS';
+  return (error.response as { code?: unknown }).code === "INSUFFICIENT_CREDITS";
 };
 
 type RefreshableImageInput = {
@@ -120,11 +140,11 @@ type RefreshableImageInput = {
 };
 
 const resolveRefreshableImageUrl = async <
-  T extends RefreshableImageInput | null | undefined
+  T extends RefreshableImageInput | null | undefined,
 >(
-  input: T
+  input: T,
 ): Promise<T> => {
-  if (!input || typeof input.url !== 'string') {
+  if (!input || typeof input.url !== "string") {
     return input;
   }
 
@@ -134,7 +154,8 @@ const resolveRefreshableImageUrl = async <
   }
 
   const expiresAtMs =
-    parseExpiresAtMs(input.viewUrlExpiresAt) ?? parseGcsSignedUrlExpiryMs(input.url);
+    parseExpiresAtMs(input.viewUrlExpiresAt) ??
+    parseGcsSignedUrlExpiryMs(input.url);
   const needsRefresh = shouldRefreshStartImage(input.url, expiresAtMs);
   if (!needsRefresh) {
     return {
@@ -144,7 +165,7 @@ const resolveRefreshableImageUrl = async <
   }
 
   const resolved = await resolveMediaUrl({
-    kind: 'image',
+    kind: "image",
     url: input.url,
     storagePath,
     preferFresh: true,
@@ -165,32 +186,35 @@ const resolveRefreshableImageUrl = async <
 };
 
 const resolveStartImageUrl = async (
-  startImage: GenerationParams['startImage']
-): Promise<GenerationParams['startImage']> => {
+  startImage: GenerationParams["startImage"],
+): Promise<GenerationParams["startImage"]> => {
   return await resolveRefreshableImageUrl(startImage);
 };
 
 const resolveEndImageUrl = async (
-  endImage: GenerationParams['endImage']
-): Promise<GenerationParams['endImage']> => {
+  endImage: GenerationParams["endImage"],
+): Promise<GenerationParams["endImage"]> => {
   return await resolveRefreshableImageUrl(endImage);
 };
 
 const resolveReferenceImageUrl = async (
-  referenceImage: NonNullable<GenerationParams['referenceImages']>[number]
-): Promise<NonNullable<GenerationParams['referenceImages']>[number]> => {
+  referenceImage: NonNullable<GenerationParams["referenceImages"]>[number],
+): Promise<NonNullable<GenerationParams["referenceImages"]>[number]> => {
   return await resolveRefreshableImageUrl(referenceImage);
 };
 
-const resolveSeedImageUrl = async (seedImageUrl: string | null | undefined): Promise<string | null> => {
-  if (!seedImageUrl || typeof seedImageUrl !== 'string') return seedImageUrl ?? null;
+const resolveSeedImageUrl = async (
+  seedImageUrl: string | null | undefined,
+): Promise<string | null> => {
+  if (!seedImageUrl || typeof seedImageUrl !== "string")
+    return seedImageUrl ?? null;
   const storagePath = extractStorageObjectPath(seedImageUrl);
   if (!storagePath) return seedImageUrl;
   const expiresAtMs = parseGcsSignedUrlExpiryMs(seedImageUrl);
   const needsRefresh = shouldRefreshStartImage(seedImageUrl, expiresAtMs);
   if (!needsRefresh) return seedImageUrl;
   const resolved = await resolveMediaUrl({
-    kind: 'image',
+    kind: "image",
     url: seedImageUrl,
     storagePath,
     preferFresh: true,
@@ -199,14 +223,14 @@ const resolveSeedImageUrl = async (seedImageUrl: string | null | undefined): Pro
 };
 
 const resolveExtendVideoUrl = async (
-  extendVideoUrl: string | null | undefined
+  extendVideoUrl: string | null | undefined,
 ): Promise<string | null> => {
-  if (!extendVideoUrl || typeof extendVideoUrl !== 'string') {
+  if (!extendVideoUrl || typeof extendVideoUrl !== "string") {
     return extendVideoUrl ?? null;
   }
 
   const resolved = await resolveMediaUrl({
-    kind: 'video',
+    kind: "video",
     url: extendVideoUrl,
     preferFresh: true,
   });
@@ -214,16 +238,53 @@ const resolveExtendVideoUrl = async (
   return resolved.url ?? extendVideoUrl;
 };
 
+const syncCreditBalanceFromResponse = (
+  remainingCredits?: number | null,
+): void => {
+  if (
+    typeof remainingCredits !== "number" ||
+    !Number.isFinite(remainingCredits)
+  ) {
+    requestCreditBalanceRefresh();
+    return;
+  }
+
+  publishCreditBalanceSync(remainingCredits);
+};
+
+const resolveAcceptedGenerationStatus = (
+  status?: string | null,
+): Generation["status"] =>
+  status === "processing" ? "generating" : "pending";
+
 export function useGenerationActions(
   dispatch: React.Dispatch<GenerationsAction>,
-  options: UseGenerationActionsOptions = {}
+  options: UseGenerationActionsOptions = {},
 ) {
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const inFlightRef = useRef<Map<string, AbortController>>(new Map());
+  const isSubmittingRef = useRef(false);
   const generationsRef = useRef<Generation[]>(options.generations ?? []);
-  const promptVersionRef = useRef<string | null>(options.promptVersionId ?? null);
+  const promptVersionRef = useRef<string | null>(
+    options.promptVersionId ?? null,
+  );
   // Bug 9 fix: ref for options to avoid callback churn
   const optionsRef = useRef(options);
   optionsRef.current = options;
+
+  const setSubmissionPending = useCallback((pending: boolean) => {
+    isSubmittingRef.current = pending;
+    setIsSubmitting(pending);
+  }, []);
+
+  const clearSubmissionPendingIfNeeded = useCallback(
+    (generationAccepted: boolean): void => {
+      if (!generationAccepted) {
+        setSubmissionPending(false);
+      }
+    },
+    [setSubmissionPending],
+  );
 
   useEffect(() => {
     generationsRef.current = options.generations ?? [];
@@ -231,18 +292,21 @@ export function useGenerationActions(
 
   const markGenerationCancelled = useCallback(
     (id: string, reason: string) => {
-      log.info('Generation marked as cancelled', {
+      log.info("Generation marked as cancelled", {
         generationId: id,
         reason,
         inFlightCount: inFlightRef.current.size,
       });
       dispatch({
-        type: 'UPDATE_GENERATION',
-        payload: { id, updates: { status: 'failed', error: reason, completedAt: Date.now() } },
+        type: "UPDATE_GENERATION",
+        payload: {
+          id,
+          updates: { status: "failed", error: reason, completedAt: Date.now() },
+        },
       });
       inFlightRef.current.delete(id);
     },
-    [dispatch]
+    [dispatch],
   );
 
   const abortAll = useCallback(() => {
@@ -254,19 +318,25 @@ export function useGenerationActions(
     (nextPromptVersionId: string | null) => {
       const entries = Array.from(inFlightRef.current.entries());
       for (const [id, controller] of entries) {
-        const generation = generationsRef.current.find((item) => item.id === id);
+        const generation = generationsRef.current.find(
+          (item) => item.id === id,
+        );
         const generationVersionId = generation?.promptVersionId ?? null;
         if (!generation || generationVersionId !== nextPromptVersionId) {
           controller.abort();
-          if (generation && (generation.status === 'generating' || generation.status === 'pending')) {
-            markGenerationCancelled(id, 'Prompt version changed');
+          if (
+            generation &&
+            (generation.status === "generating" ||
+              generation.status === "pending")
+          ) {
+            markGenerationCancelled(id, "Prompt version changed");
           } else {
             inFlightRef.current.delete(id);
           }
         }
       }
     },
-    [markGenerationCancelled]
+    [markGenerationCancelled],
   );
 
   useEffect(() => {
@@ -280,40 +350,59 @@ export function useGenerationActions(
 
   const finalizeGeneration = useCallback(
     (id: string, updates: Partial<Generation>) => {
-      dispatch({ type: 'UPDATE_GENERATION', payload: { id, updates } });
+      dispatch({ type: "UPDATE_GENERATION", payload: { id, updates } });
       inFlightRef.current.delete(id);
     },
-    [dispatch]
+    [dispatch],
+  );
+
+  const acceptGeneration = useCallback(
+    (generation: Generation, updates: Partial<Generation> = {}) => {
+      dispatch({
+        type: "ADD_GENERATION",
+        payload: {
+          ...generation,
+          ...updates,
+        },
+      });
+    },
+    [dispatch],
   );
 
   // Bug 9 fix: read options from ref to avoid callback recreation on every options change
   const generateDraft = useCallback(
     async (model: DraftModel, prompt: string, params: GenerationParams) => {
+      if (isSubmittingRef.current) return;
+      setSubmissionPending(true);
       const resolved = resolveGenerationOptions(optionsRef.current, params);
-      const generation = buildGeneration('draft', model, prompt, resolved);
+      const generation = buildGeneration("draft", model, prompt, resolved);
       const modelConfig = getModelConfig(model);
-      const requiredCredits = modelConfig?.credits ?? 0;
-      const operationLabel = `${modelConfig?.label ?? 'Video'} preview`;
-      dispatch({ type: 'ADD_GENERATION', payload: generation });
-      dispatch({ type: 'UPDATE_GENERATION', payload: { id: generation.id, updates: { status: 'generating' } } });
+      const requiredCredits = getModelCreditCost(model, resolved.duration);
+      const operationLabel = `${modelConfig?.label ?? "Video"} preview`;
+      let generationAccepted = false;
       const startedAt = Date.now();
       const motionMeta = extractMotionMeta(resolved.generationParams);
       const faceSwapMeta = extractFaceSwapMeta(resolved);
-      const startImageUrlHost = resolved.startImage?.url ? safeUrlHost(resolved.startImage.url) : null;
+      const startImageUrlHost = resolved.startImage?.url
+        ? safeUrlHost(resolved.startImage.url)
+        : null;
       const requestedEndImage = Boolean(resolved.endImage?.url);
-      const requestedReferenceImageCount = resolved.referenceImages?.length ?? 0;
+      const requestedReferenceImageCount =
+        resolved.referenceImages?.length ?? 0;
       const requestedExtendMode = Boolean(resolved.extendVideoUrl);
 
-      log.info('Draft generation started', {
+      log.info("Draft generation started", {
         generationId: generation.id,
-        tier: 'draft',
+        tier: "draft",
         model,
         promptLength: prompt.trim().length,
         aspectRatio: resolved.aspectRatio ?? null,
         hasStartImage: Boolean(resolved.startImage),
         startImageUrlHost,
         faceSwapApplied: faceSwapMeta.faceSwapApplied,
-        faceSwapUrlHost: faceSwapMeta.faceSwapUrl ? safeUrlHost(faceSwapMeta.faceSwapUrl) : null,
+        faceSwapUrlHost: faceSwapMeta.faceSwapUrl
+          ? safeUrlHost(faceSwapMeta.faceSwapUrl)
+          : null,
         characterAssetId: faceSwapMeta.characterAssetId,
         requestedEndImage,
         requestedReferenceImageCount,
@@ -325,43 +414,59 @@ export function useGenerationActions(
       inFlightRef.current.set(generation.id, controller);
 
       try {
-        if (model === 'flux-kontext') {
+        if (model === "flux-kontext") {
           const response = await generateStoryboardPreview(prompt, {
-            ...(resolved.aspectRatio ? { aspectRatio: resolved.aspectRatio } : {}),
+            ...(resolved.aspectRatio
+              ? { aspectRatio: resolved.aspectRatio }
+              : {}),
           });
-          if (controller.signal.aborted) return;
+          if (controller.signal.aborted) {
+            clearSubmissionPendingIfNeeded(generationAccepted);
+            return;
+          }
           if (!response.success || !response.data?.imageUrls?.length) {
-            log.warn('Storyboard draft response invalid', {
+            log.warn("Storyboard draft response invalid", {
               generationId: generation.id,
               success: response.success,
               hasImageUrls: Boolean(response.data?.imageUrls?.length),
-              error: response.message || response.error || 'Failed to generate frames',
+              error:
+                response.message ||
+                response.error ||
+                "Failed to generate frames",
               ...motionMeta,
             });
-            throw new Error(response.message || response.error || 'Failed to generate frames');
+            throw new Error(
+              response.message || response.error || "Failed to generate frames",
+            );
           }
           const urls = response.data.imageUrls;
           const storagePaths = response.data.storagePaths;
           const durationMs = Date.now() - startedAt;
 
-          log.info('Storyboard draft generation succeeded', {
+          log.info("Storyboard draft generation succeeded", {
             generationId: generation.id,
             durationMs,
             framesCount: urls.length,
             ...motionMeta,
           });
-          finalizeGeneration(generation.id, {
-            status: 'completed',
+          generationAccepted = true;
+          acceptGeneration(generation, {
+            status: "completed",
             completedAt: Date.now(),
             mediaUrls: urls,
-            ...(storagePaths?.length ? { mediaAssetIds: toAssetIds(storagePaths) } : {}),
+            ...(storagePaths?.length
+              ? { mediaAssetIds: toAssetIds(storagePaths) }
+              : {}),
             thumbnailUrl: response.data.baseImageUrl || urls[0] || null,
           });
+          inFlightRef.current.delete(generation.id);
+          setSubmissionPending(false);
           return;
         }
 
         let promptForCompilation = prompt.trim();
-        let resolvedCharacterAssetId = resolved.characterAssetId?.trim() || null;
+        let resolvedCharacterAssetId =
+          resolved.characterAssetId?.trim() || null;
 
         if (hasPromptTriggers(promptForCompilation)) {
           try {
@@ -371,36 +476,52 @@ export function useGenerationActions(
               promptForCompilation = expandedPrompt;
             }
             if (!resolvedCharacterAssetId) {
-              resolvedCharacterAssetId = resolvedPrompt.characters[0]?.id ?? null;
+              resolvedCharacterAssetId =
+                resolvedPrompt.characters[0]?.id ?? null;
             }
           } catch (error) {
             const info = sanitizeError(error);
-            log.warn('Prompt trigger resolution failed; falling back to raw prompt', {
-              generationId: generation.id,
-              error: info.message,
-              errorName: info.name,
-            });
+            log.warn(
+              "Prompt trigger resolution failed; falling back to raw prompt",
+              {
+                generationId: generation.id,
+                error: info.message,
+                errorName: info.name,
+              },
+            );
           }
         }
-        if (controller.signal.aborted) return;
+        if (controller.signal.aborted) {
+          clearSubmissionPendingIfNeeded(generationAccepted);
+          return;
+        }
 
         let wanPrompt = promptForCompilation;
         try {
-          wanPrompt = await compileWanPrompt(promptForCompilation, controller.signal);
+          wanPrompt = await compileWanPrompt(
+            promptForCompilation,
+            controller.signal,
+          );
         } catch (error) {
           const info = sanitizeError(error);
-          log.warn('WAN prompt compilation failed; using raw prompt', {
+          log.warn("WAN prompt compilation failed; using raw prompt", {
             generationId: generation.id,
             error: info.message,
             errorName: info.name,
           });
           wanPrompt = promptForCompilation;
         }
-        if (controller.signal.aborted) return;
+        if (controller.signal.aborted) {
+          clearSubmissionPendingIfNeeded(generationAccepted);
+          return;
+        }
         const motionPromptInjected = false;
 
         const videoInputSupport = await getVideoInputSupport(model);
-        if (controller.signal.aborted) return;
+        if (controller.signal.aborted) {
+          clearSubmissionPendingIfNeeded(generationAccepted);
+          return;
+        }
 
         const requestedEndImageInput = resolved.endImage ?? null;
         const requestedReferenceInputs = resolved.referenceImages ?? [];
@@ -425,14 +546,17 @@ export function useGenerationActions(
         const resolvedReferenceImages = allowedReferenceInputs.length
           ? await Promise.all(
               allowedReferenceInputs.map((referenceImage) =>
-                resolveReferenceImageUrl(referenceImage)
-              )
+                resolveReferenceImageUrl(referenceImage),
+              ),
             )
           : [];
         const resolvedExtendVideoUrl = allowedExtendVideoUrl
           ? await resolveExtendVideoUrl(allowedExtendVideoUrl)
           : null;
-        if (controller.signal.aborted) return;
+        if (controller.signal.aborted) {
+          clearSubmissionPendingIfNeeded(generationAccepted);
+          return;
+        }
         const requestStartImageUrlHost = resolvedStartImage?.url
           ? safeUrlHost(resolvedStartImage.url)
           : startImageUrlHost;
@@ -443,7 +567,7 @@ export function useGenerationActions(
           ? safeUrlHost(resolvedExtendVideoUrl)
           : null;
 
-        log.info('Video draft request dispatched', {
+        log.info("Video draft request dispatched", {
           generationId: generation.id,
           model,
           promptLength: wanPrompt.length,
@@ -452,7 +576,9 @@ export function useGenerationActions(
           startImageUrlHost: requestStartImageUrlHost,
           motionPromptInjected,
           faceSwapApplied: faceSwapMeta.faceSwapApplied,
-          faceSwapUrlHost: faceSwapMeta.faceSwapUrl ? safeUrlHost(faceSwapMeta.faceSwapUrl) : null,
+          faceSwapUrlHost: faceSwapMeta.faceSwapUrl
+            ? safeUrlHost(faceSwapMeta.faceSwapUrl)
+            : null,
           characterAssetId: resolvedCharacterAssetId,
           requestedEndImage,
           requestedReferenceImageCount,
@@ -464,145 +590,245 @@ export function useGenerationActions(
           extendVideoUrlHost: requestExtendVideoUrlHost,
           ...motionMeta,
         });
-        const response = await generateVideoPreview(wanPrompt, resolved.aspectRatio ?? undefined, model, {
-          ...(resolvedStartImage?.url ? { startImage: resolvedStartImage.url } : {}),
-          ...(resolvedEndImage?.url ? { endImage: resolvedEndImage.url } : {}),
-          ...(resolvedReferenceImages.length
-            ? {
-                referenceImages: resolvedReferenceImages.map((referenceImage) => ({
-                  url: referenceImage.url,
-                  type: referenceImage.type,
-                })),
-              }
-            : {}),
-          ...(resolvedExtendVideoUrl ? { extendVideoUrl: resolvedExtendVideoUrl } : {}),
-          ...(resolved.generationParams ? { generationParams: resolved.generationParams } : {}),
-          ...(resolvedCharacterAssetId ? { characterAssetId: resolvedCharacterAssetId } : {}),
-          ...(resolved.faceSwapAlreadyApplied ? { faceSwapAlreadyApplied: true } : {}),
-        });
-        if (controller.signal.aborted) return;
+        const response = await generateVideoPreview(
+          wanPrompt,
+          resolved.aspectRatio ?? undefined,
+          model,
+          {
+            ...(resolvedStartImage?.url
+              ? { startImage: resolvedStartImage.url }
+              : {}),
+            ...(resolvedEndImage?.url
+              ? { endImage: resolvedEndImage.url }
+              : {}),
+            ...(resolvedReferenceImages.length
+              ? {
+                  referenceImages: resolvedReferenceImages.map(
+                    (referenceImage) => ({
+                      url: referenceImage.url,
+                      type: referenceImage.type,
+                    }),
+                  ),
+                }
+              : {}),
+            ...(resolvedExtendVideoUrl
+              ? { extendVideoUrl: resolvedExtendVideoUrl }
+              : {}),
+            ...(resolved.generationParams
+              ? { generationParams: resolved.generationParams }
+              : {}),
+            ...(resolvedCharacterAssetId
+              ? { characterAssetId: resolvedCharacterAssetId }
+              : {}),
+            ...(resolved.faceSwapAlreadyApplied
+              ? { faceSwapAlreadyApplied: true }
+              : {}),
+          },
+        );
+        if (controller.signal.aborted) {
+          clearSubmissionPendingIfNeeded(generationAccepted);
+          return;
+        }
 
-        log.info('Video draft response received', {
+        log.info("Video draft response received", {
           generationId: generation.id,
           success: response.success,
           hasVideoUrl: Boolean(response.videoUrl),
           hasJobId: Boolean(response.jobId),
           jobId: response.jobId ?? null,
           faceSwapApplied: response.faceSwapApplied ?? false,
-          faceSwapUrlHost: response.faceSwapUrl ? safeUrlHost(response.faceSwapUrl) : null,
+          faceSwapUrlHost: response.faceSwapUrl
+            ? safeUrlHost(response.faceSwapUrl)
+            : null,
           ...motionMeta,
         });
-        if (response.faceSwapApplied || response.faceSwapUrl) {
-          dispatch({
-            type: 'UPDATE_GENERATION',
-            payload: {
-              id: generation.id,
-              updates: {
-                faceSwapApplied: response.faceSwapApplied ?? true,
-                faceSwapUrl: response.faceSwapUrl ?? generation.faceSwapUrl ?? null,
-              },
-            },
-          });
-        }
+        syncCreditBalanceFromResponse(response.remainingCredits);
         let videoUrl: string | null = null;
         let videoStoragePath: string | null = response.storagePath ?? null;
         let videoAssetId: string | null = response.assetId ?? null;
         if (response.success && response.videoUrl) {
+          generationAccepted = true;
+          acceptGeneration(generation, {
+            status: "completed",
+            completedAt: Date.now(),
+            mediaUrls: [response.videoUrl],
+            ...(response.faceSwapApplied || response.faceSwapUrl
+              ? {
+                  faceSwapApplied: response.faceSwapApplied ?? true,
+                  faceSwapUrl:
+                    response.faceSwapUrl ?? generation.faceSwapUrl ?? null,
+                }
+              : {}),
+            ...(videoAssetId
+              ? { mediaAssetIds: [extractAssetId(videoAssetId)] }
+              : videoStoragePath
+                ? { mediaAssetIds: [extractAssetId(videoStoragePath)] }
+                : {}),
+          });
+          inFlightRef.current.delete(generation.id);
+          setSubmissionPending(false);
           videoUrl = response.videoUrl;
         } else if (response.success && response.jobId) {
-          log.debug('Waiting for video draft job to complete', {
+          generationAccepted = true;
+          acceptGeneration(generation, {
+            status: resolveAcceptedGenerationStatus(response.status),
+            ...(response.status ? { serverJobStatus: response.status } : {}),
+            ...(response.faceSwapApplied || response.faceSwapUrl
+              ? {
+                  faceSwapApplied: response.faceSwapApplied ?? true,
+                  faceSwapUrl:
+                    response.faceSwapUrl ?? generation.faceSwapUrl ?? null,
+                }
+              : {}),
+          });
+          setSubmissionPending(false);
+          log.debug("Waiting for video draft job to complete", {
             generationId: generation.id,
             jobId: response.jobId,
           });
-          const jobResult = await waitForVideoJob(response.jobId, controller.signal, (update) => {
-            dispatch({
-              type: 'UPDATE_GENERATION',
-              payload: { id: generation.id, updates: { serverProgress: update.progress } },
-            });
-          });
+          const jobResult = await waitForVideoJob(
+            response.jobId,
+            controller.signal,
+            (update) => {
+              dispatch({
+                type: "UPDATE_GENERATION",
+                payload: {
+                  id: generation.id,
+                  updates: {
+                    status: resolveAcceptedGenerationStatus(update.status),
+                    serverProgress: update.progress,
+                    serverJobStatus: update.status,
+                  },
+                },
+              });
+            },
+          );
           videoUrl = jobResult?.videoUrl ?? null;
           videoStoragePath = jobResult?.storagePath ?? videoStoragePath;
           videoAssetId = jobResult?.assetId ?? videoAssetId;
-          log.debug('Video draft job completed', {
+          log.debug("Video draft job completed", {
             generationId: generation.id,
             jobId: response.jobId,
             hasVideoUrl: Boolean(videoUrl),
           });
         }
 
-        if (controller.signal.aborted) return;
+        if (controller.signal.aborted) {
+          clearSubmissionPendingIfNeeded(generationAccepted);
+          return;
+        }
+        if (!generationAccepted) {
+          setSubmissionPending(false);
+        }
         if (!videoUrl) {
-          log.warn('Video draft completed without a video URL', {
+          log.warn("Video draft completed without a video URL", {
             generationId: generation.id,
             jobId: response.jobId ?? null,
-            error: response.error || response.message || 'Failed to generate video',
+            error:
+              response.error || response.message || "Failed to generate video",
             ...motionMeta,
           });
-          throw new Error(response.error || response.message || 'Failed to generate video');
+          throw new Error(
+            response.error || response.message || "Failed to generate video",
+          );
         }
         const durationMs = Date.now() - startedAt;
-        log.info('Video draft generation succeeded', {
+        log.info("Video draft generation succeeded", {
           generationId: generation.id,
           durationMs,
-          faceSwapApplied: response?.faceSwapApplied ?? faceSwapMeta.faceSwapApplied,
+          faceSwapApplied:
+            response?.faceSwapApplied ?? faceSwapMeta.faceSwapApplied,
           ...motionMeta,
         });
-        finalizeGeneration(generation.id, {
-          status: 'completed',
-          completedAt: Date.now(),
-          mediaUrls: [videoUrl],
-          ...(videoAssetId
-            ? { mediaAssetIds: [extractAssetId(videoAssetId)] }
-            : videoStoragePath
-              ? { mediaAssetIds: [extractAssetId(videoStoragePath)] }
-              : {}),
-        });
+        if (response.jobId) {
+          finalizeGeneration(generation.id, {
+            status: "completed",
+            completedAt: Date.now(),
+            mediaUrls: [videoUrl],
+            ...(videoAssetId
+              ? { mediaAssetIds: [extractAssetId(videoAssetId)] }
+              : videoStoragePath
+                ? { mediaAssetIds: [extractAssetId(videoStoragePath)] }
+                : {}),
+          });
+        }
       } catch (error) {
-        if (controller.signal.aborted) return;
+        if (controller.signal.aborted) {
+          clearSubmissionPendingIfNeeded(generationAccepted);
+          return;
+        }
         if (isInsufficientCreditsError(error)) {
-          dispatch({ type: 'REMOVE_GENERATION', payload: { id: generation.id } });
           inFlightRef.current.delete(generation.id);
-          optionsRef.current.onInsufficientCredits?.(requiredCredits, operationLabel);
+          if (generationAccepted) {
+            finalizeGeneration(generation.id, {
+              status: "failed",
+              completedAt: Date.now(),
+              error: `Insufficient credits — ${operationLabel} requires ${requiredCredits} credits`,
+            });
+          } else {
+            setSubmissionPending(false);
+          }
+          optionsRef.current.onInsufficientCredits?.(
+            requiredCredits,
+            operationLabel,
+          );
           return;
         }
         const durationMs = Date.now() - startedAt;
         const info = sanitizeError(error);
         const errObj = error instanceof Error ? error : new Error(info.message);
 
-        log.error('Draft generation failed', errObj, {
+        log.error("Draft generation failed", errObj, {
           generationId: generation.id,
           model,
           durationMs,
           errorName: info.name,
           ...motionMeta,
         });
-        finalizeGeneration(generation.id, {
-          status: 'failed',
-          completedAt: Date.now(),
-          error: errObj.message,
-        });
+        if (generationAccepted) {
+          finalizeGeneration(generation.id, {
+            status: "failed",
+            completedAt: Date.now(),
+            error: errObj.message,
+          });
+        } else {
+          inFlightRef.current.delete(generation.id);
+          setSubmissionPending(false);
+        }
       }
     },
-    [dispatch, finalizeGeneration]
+    [
+      acceptGeneration,
+      clearSubmissionPendingIfNeeded,
+      dispatch,
+      finalizeGeneration,
+      setSubmissionPending,
+    ],
   );
 
   const generateStoryboard = useCallback(
     async (prompt: string, params: StoryboardParams) => {
+      if (isSubmittingRef.current) return;
+      setSubmissionPending(true);
       const { seedImageUrl, ...baseParams } = params;
       const resolved = resolveGenerationOptions(optionsRef.current, baseParams);
-      const generation = buildGeneration('draft', 'flux-kontext', prompt, resolved);
-      const modelConfig = getModelConfig('flux-kontext');
+      const generation = buildGeneration(
+        "draft",
+        "flux-kontext",
+        prompt,
+        resolved,
+      );
+      const modelConfig = getModelConfig("flux-kontext");
       const requiredCredits = modelConfig?.credits ?? 4;
-      const operationLabel = 'Storyboard';
-      dispatch({ type: 'ADD_GENERATION', payload: generation });
-      dispatch({ type: 'UPDATE_GENERATION', payload: { id: generation.id, updates: { status: 'generating' } } });
+      const operationLabel = "Storyboard";
+      let generationAccepted = false;
       const startedAt = Date.now();
       const motionMeta = extractMotionMeta(resolved.generationParams);
 
-      log.info('Storyboard generation started', {
+      log.info("Storyboard generation started", {
         generationId: generation.id,
-        tier: 'draft',
-        model: 'flux-kontext',
+        tier: "draft",
+        model: "flux-kontext",
         promptLength: prompt.trim().length,
         aspectRatio: resolved.aspectRatio ?? null,
         hasSeedImageUrl: Boolean(seedImageUrl),
@@ -613,101 +839,152 @@ export function useGenerationActions(
       inFlightRef.current.set(generation.id, controller);
 
       try {
-        const resolvedSeedImageUrl = await resolveSeedImageUrl(seedImageUrl ?? null);
+        const resolvedSeedImageUrl = await resolveSeedImageUrl(
+          seedImageUrl ?? null,
+        );
         const response = await generateStoryboardPreview(prompt, {
-          ...(resolved.aspectRatio ? { aspectRatio: resolved.aspectRatio } : {}),
-          ...(resolvedSeedImageUrl ? { seedImageUrl: resolvedSeedImageUrl } : {}),
+          ...(resolved.aspectRatio
+            ? { aspectRatio: resolved.aspectRatio }
+            : {}),
+          ...(resolvedSeedImageUrl
+            ? { seedImageUrl: resolvedSeedImageUrl }
+            : {}),
         });
-        if (controller.signal.aborted) return;
+        if (controller.signal.aborted) {
+          clearSubmissionPendingIfNeeded(generationAccepted);
+          return;
+        }
         if (!response.success || !response.data?.imageUrls?.length) {
-          log.warn('Storyboard generation response invalid', {
+          log.warn("Storyboard generation response invalid", {
             generationId: generation.id,
             success: response.success,
             hasImageUrls: Boolean(response.data?.imageUrls?.length),
-            error: response.message || response.error || 'Failed to generate storyboard',
+            error:
+              response.message ||
+              response.error ||
+              "Failed to generate storyboard",
             ...motionMeta,
           });
-          throw new Error(response.message || response.error || 'Failed to generate storyboard');
+          throw new Error(
+            response.message ||
+              response.error ||
+              "Failed to generate storyboard",
+          );
         }
         const urls = response.data.imageUrls;
         const storagePaths = response.data.storagePaths;
         const durationMs = Date.now() - startedAt;
-        log.info('Storyboard generation succeeded', {
+        log.info("Storyboard generation succeeded", {
           generationId: generation.id,
           durationMs,
           framesCount: urls.length,
           ...motionMeta,
         });
-        const finalizationPayload = {
-          status: 'completed' as const,
+        generationAccepted = true;
+        acceptGeneration(generation, {
+          status: "completed" as const,
           completedAt: Date.now(),
           mediaUrls: urls,
-          ...(storagePaths?.length ? { mediaAssetIds: toAssetIds(storagePaths) } : {}),
+          ...(storagePaths?.length
+            ? { mediaAssetIds: toAssetIds(storagePaths) }
+            : {}),
           thumbnailUrl: response.data.baseImageUrl || urls[0] || null,
-        };
-        finalizeGeneration(generation.id, finalizationPayload);
+        });
+        inFlightRef.current.delete(generation.id);
+        setSubmissionPending(false);
       } catch (error) {
-        if (controller.signal.aborted) return;
+        if (controller.signal.aborted) {
+          clearSubmissionPendingIfNeeded(generationAccepted);
+          return;
+        }
         if (isInsufficientCreditsError(error)) {
-          dispatch({ type: 'REMOVE_GENERATION', payload: { id: generation.id } });
           inFlightRef.current.delete(generation.id);
-          optionsRef.current.onInsufficientCredits?.(requiredCredits, operationLabel);
+          if (generationAccepted) {
+            finalizeGeneration(generation.id, {
+              status: "failed",
+              completedAt: Date.now(),
+              error: `Insufficient credits — ${operationLabel} requires ${requiredCredits} credits`,
+            });
+          } else {
+            setSubmissionPending(false);
+          }
+          optionsRef.current.onInsufficientCredits?.(
+            requiredCredits,
+            operationLabel,
+          );
           return;
         }
         const durationMs = Date.now() - startedAt;
         const info = sanitizeError(error);
         const errObj = error instanceof Error ? error : new Error(info.message);
 
-        log.error('Storyboard generation failed', errObj, {
+        log.error("Storyboard generation failed", errObj, {
           generationId: generation.id,
           durationMs,
           errorName: info.name,
           ...motionMeta,
         });
-        finalizeGeneration(generation.id, {
-          status: 'failed',
-          completedAt: Date.now(),
-          error: errObj.message,
-        });
+        if (generationAccepted) {
+          finalizeGeneration(generation.id, {
+            status: "failed",
+            completedAt: Date.now(),
+            error: errObj.message,
+          });
+        } else {
+          inFlightRef.current.delete(generation.id);
+          setSubmissionPending(false);
+        }
       }
     },
-    [dispatch, finalizeGeneration]
+    [
+      acceptGeneration,
+      clearSubmissionPendingIfNeeded,
+      finalizeGeneration,
+      setSubmissionPending,
+    ],
   );
 
   const generateRender = useCallback(
     async (model: string, prompt: string, params: GenerationParams) => {
+      if (isSubmittingRef.current) return;
+      setSubmissionPending(true);
       const resolved = resolveGenerationOptions(optionsRef.current, params);
-      const generation = buildGeneration('render', model, prompt, resolved);
+      const generation = buildGeneration("render", model, prompt, resolved);
       const modelConfig = getModelConfig(model);
-      const requiredCredits = modelConfig?.credits ?? 0;
-      const operationLabel = `${modelConfig?.label ?? 'Video'} render`;
-      dispatch({ type: 'ADD_GENERATION', payload: generation });
-      dispatch({ type: 'UPDATE_GENERATION', payload: { id: generation.id, updates: { status: 'generating' } } });
+      const requiredCredits = getModelCreditCost(model, resolved.duration);
+      const operationLabel = `${modelConfig?.label ?? "Video"} render`;
+      let generationAccepted = false;
       const startedAt = Date.now();
       const motionMeta = extractMotionMeta(resolved.generationParams);
       const faceSwapMeta = extractFaceSwapMeta(resolved);
       const isCharacterAsset =
-        resolved.startImage?.source === 'asset' && Boolean(resolved.startImage?.assetId);
+        resolved.startImage?.source === "asset" &&
+        Boolean(resolved.startImage?.assetId);
       const startImageUrlHost =
         !isCharacterAsset && resolved.startImage?.url
           ? safeUrlHost(resolved.startImage.url)
           : null;
       const requestedEndImage = Boolean(resolved.endImage?.url);
-      const requestedReferenceImageCount = resolved.referenceImages?.length ?? 0;
+      const requestedReferenceImageCount =
+        resolved.referenceImages?.length ?? 0;
       const requestedExtendMode = Boolean(resolved.extendVideoUrl);
 
-      log.info('Render generation started', {
+      log.info("Render generation started", {
         generationId: generation.id,
-        tier: 'render',
+        tier: "render",
         model,
         promptLength: prompt.trim().length,
         aspectRatio: resolved.aspectRatio ?? null,
         hasStartImage: Boolean(resolved.startImage),
         isCharacterAsset,
         startImageUrlHost,
-        characterAssetId: isCharacterAsset ? resolved.startImage?.assetId ?? null : null,
+        characterAssetId: isCharacterAsset
+          ? (resolved.startImage?.assetId ?? null)
+          : null,
         faceSwapApplied: faceSwapMeta.faceSwapApplied,
-        faceSwapUrlHost: faceSwapMeta.faceSwapUrl ? safeUrlHost(faceSwapMeta.faceSwapUrl) : null,
+        faceSwapUrlHost: faceSwapMeta.faceSwapUrl
+          ? safeUrlHost(faceSwapMeta.faceSwapUrl)
+          : null,
         characterAssetIdOverride: faceSwapMeta.characterAssetId,
         requestedEndImage,
         requestedReferenceImageCount,
@@ -720,7 +997,10 @@ export function useGenerationActions(
 
       try {
         const videoInputSupport = await getVideoInputSupport(model);
-        if (controller.signal.aborted) return;
+        if (controller.signal.aborted) {
+          clearSubmissionPendingIfNeeded(generationAccepted);
+          return;
+        }
 
         const requestedEndImageInput = resolved.endImage ?? null;
         const requestedReferenceInputs = resolved.referenceImages ?? [];
@@ -738,21 +1018,24 @@ export function useGenerationActions(
 
         const resolvedStartImage = !isCharacterAsset
           ? await resolveStartImageUrl(resolved.startImage ?? null)
-          : resolved.startImage ?? null;
+          : (resolved.startImage ?? null);
         const resolvedEndImage = allowedEndImageInput
           ? await resolveEndImageUrl(allowedEndImageInput)
           : null;
         const resolvedReferenceImages = allowedReferenceInputs.length
           ? await Promise.all(
               allowedReferenceInputs.map((referenceImage) =>
-                resolveReferenceImageUrl(referenceImage)
-              )
+                resolveReferenceImageUrl(referenceImage),
+              ),
             )
           : [];
         const resolvedExtendVideoUrl = allowedExtendVideoUrl
           ? await resolveExtendVideoUrl(allowedExtendVideoUrl)
           : null;
-        if (controller.signal.aborted) return;
+        if (controller.signal.aborted) {
+          clearSubmissionPendingIfNeeded(generationAccepted);
+          return;
+        }
         const requestStartImageUrlHost =
           !isCharacterAsset && resolvedStartImage?.url
             ? safeUrlHost(resolvedStartImage.url)
@@ -764,14 +1047,16 @@ export function useGenerationActions(
           ? safeUrlHost(resolvedExtendVideoUrl)
           : null;
 
-        log.info('Render request dispatched', {
+        log.info("Render request dispatched", {
           generationId: generation.id,
           model,
           aspectRatio: resolved.aspectRatio ?? null,
           isCharacterAsset,
           startImageUrlHost: requestStartImageUrlHost,
           faceSwapApplied: faceSwapMeta.faceSwapApplied,
-          faceSwapUrlHost: faceSwapMeta.faceSwapUrl ? safeUrlHost(faceSwapMeta.faceSwapUrl) : null,
+          faceSwapUrlHost: faceSwapMeta.faceSwapUrl
+            ? safeUrlHost(faceSwapMeta.faceSwapUrl)
+            : null,
           characterAssetId: faceSwapMeta.characterAssetId,
           requestedEndImage,
           requestedReferenceImageCount,
@@ -783,143 +1068,235 @@ export function useGenerationActions(
           extendVideoUrlHost: requestExtendVideoUrlHost,
           ...motionMeta,
         });
-        const response = await generateVideoPreview(prompt, resolved.aspectRatio ?? undefined, model, {
-          ...(!isCharacterAsset && resolvedStartImage?.url
-            ? { startImage: resolvedStartImage.url }
-            : {}),
-          ...(resolvedEndImage?.url ? { endImage: resolvedEndImage.url } : {}),
-          ...(resolvedReferenceImages.length
-            ? {
-                referenceImages: resolvedReferenceImages.map((referenceImage) => ({
-                  url: referenceImage.url,
-                  type: referenceImage.type,
-                })),
-              }
-            : {}),
-          ...(resolvedExtendVideoUrl ? { extendVideoUrl: resolvedExtendVideoUrl } : {}),
-          ...(isCharacterAsset ? { characterAssetId: resolved.startImage?.assetId } : {}),
-          ...(!isCharacterAsset && resolved.characterAssetId
-            ? { characterAssetId: resolved.characterAssetId }
-            : {}),
-          ...(resolved.generationParams ? { generationParams: resolved.generationParams } : {}),
-          ...(resolved.faceSwapAlreadyApplied ? { faceSwapAlreadyApplied: true } : {}),
-        });
-        if (controller.signal.aborted) return;
+        const response = await generateVideoPreview(
+          prompt,
+          resolved.aspectRatio ?? undefined,
+          model,
+          {
+            ...(!isCharacterAsset && resolvedStartImage?.url
+              ? { startImage: resolvedStartImage.url }
+              : {}),
+            ...(resolvedEndImage?.url
+              ? { endImage: resolvedEndImage.url }
+              : {}),
+            ...(resolvedReferenceImages.length
+              ? {
+                  referenceImages: resolvedReferenceImages.map(
+                    (referenceImage) => ({
+                      url: referenceImage.url,
+                      type: referenceImage.type,
+                    }),
+                  ),
+                }
+              : {}),
+            ...(resolvedExtendVideoUrl
+              ? { extendVideoUrl: resolvedExtendVideoUrl }
+              : {}),
+            ...(isCharacterAsset
+              ? { characterAssetId: resolved.startImage?.assetId }
+              : {}),
+            ...(!isCharacterAsset && resolved.characterAssetId
+              ? { characterAssetId: resolved.characterAssetId }
+              : {}),
+            ...(resolved.generationParams
+              ? { generationParams: resolved.generationParams }
+              : {}),
+            ...(resolved.faceSwapAlreadyApplied
+              ? { faceSwapAlreadyApplied: true }
+              : {}),
+          },
+        );
+        if (controller.signal.aborted) {
+          clearSubmissionPendingIfNeeded(generationAccepted);
+          return;
+        }
 
-        log.info('Render response received', {
+        log.info("Render response received", {
           generationId: generation.id,
           success: response.success,
           hasVideoUrl: Boolean(response.videoUrl),
           hasJobId: Boolean(response.jobId),
           jobId: response.jobId ?? null,
           faceSwapApplied: response.faceSwapApplied ?? false,
-          faceSwapUrlHost: response.faceSwapUrl ? safeUrlHost(response.faceSwapUrl) : null,
+          faceSwapUrlHost: response.faceSwapUrl
+            ? safeUrlHost(response.faceSwapUrl)
+            : null,
           ...motionMeta,
         });
-        if (response.faceSwapApplied || response.faceSwapUrl) {
-          dispatch({
-            type: 'UPDATE_GENERATION',
-            payload: {
-              id: generation.id,
-              updates: {
-                faceSwapApplied: response.faceSwapApplied ?? true,
-                faceSwapUrl: response.faceSwapUrl ?? generation.faceSwapUrl ?? null,
-              },
-            },
-          });
-        }
+        syncCreditBalanceFromResponse(response.remainingCredits);
         let videoUrl: string | null = null;
         let videoStoragePath: string | null = response.storagePath ?? null;
         let videoAssetId: string | null = response.assetId ?? null;
         if (response.success && response.videoUrl) {
+          generationAccepted = true;
+          acceptGeneration(generation, {
+            status: "completed",
+            completedAt: Date.now(),
+            mediaUrls: [response.videoUrl],
+            ...(response.faceSwapApplied || response.faceSwapUrl
+              ? {
+                  faceSwapApplied: response.faceSwapApplied ?? true,
+                  faceSwapUrl:
+                    response.faceSwapUrl ?? generation.faceSwapUrl ?? null,
+                }
+              : {}),
+            ...(videoAssetId
+              ? { mediaAssetIds: [extractAssetId(videoAssetId)] }
+              : videoStoragePath
+                ? { mediaAssetIds: [extractAssetId(videoStoragePath)] }
+                : {}),
+          });
+          inFlightRef.current.delete(generation.id);
+          setSubmissionPending(false);
           videoUrl = response.videoUrl;
         } else if (response.success && response.jobId) {
-          log.debug('Waiting for render job to complete', {
+          generationAccepted = true;
+          acceptGeneration(generation, {
+            status: resolveAcceptedGenerationStatus(response.status),
+            ...(response.status ? { serverJobStatus: response.status } : {}),
+            ...(response.faceSwapApplied || response.faceSwapUrl
+              ? {
+                  faceSwapApplied: response.faceSwapApplied ?? true,
+                  faceSwapUrl:
+                    response.faceSwapUrl ?? generation.faceSwapUrl ?? null,
+                }
+              : {}),
+          });
+          setSubmissionPending(false);
+          log.debug("Waiting for render job to complete", {
             generationId: generation.id,
             jobId: response.jobId,
           });
-          const jobResult = await waitForVideoJob(response.jobId, controller.signal, (update) => {
-            dispatch({
-              type: 'UPDATE_GENERATION',
-              payload: { id: generation.id, updates: { serverProgress: update.progress } },
-            });
-          });
+          const jobResult = await waitForVideoJob(
+            response.jobId,
+            controller.signal,
+            (update) => {
+              dispatch({
+                type: "UPDATE_GENERATION",
+                payload: {
+                  id: generation.id,
+                  updates: {
+                    status: resolveAcceptedGenerationStatus(update.status),
+                    serverProgress: update.progress,
+                    serverJobStatus: update.status,
+                  },
+                },
+              });
+            },
+          );
           videoUrl = jobResult?.videoUrl ?? null;
           videoStoragePath = jobResult?.storagePath ?? videoStoragePath;
           videoAssetId = jobResult?.assetId ?? videoAssetId;
-          log.debug('Render job completed', {
+          log.debug("Render job completed", {
             generationId: generation.id,
             jobId: response.jobId,
             hasVideoUrl: Boolean(videoUrl),
           });
         }
 
-        if (controller.signal.aborted) return;
+        if (controller.signal.aborted) {
+          clearSubmissionPendingIfNeeded(generationAccepted);
+          return;
+        }
+        if (!generationAccepted) {
+          setSubmissionPending(false);
+        }
         if (!videoUrl) {
-          log.warn('Render completed without a video URL', {
+          log.warn("Render completed without a video URL", {
             generationId: generation.id,
             jobId: response.jobId ?? null,
-            error: response.error || response.message || 'Failed to render video',
+            error:
+              response.error || response.message || "Failed to render video",
             ...motionMeta,
           });
-          throw new Error(response.error || response.message || 'Failed to render video');
+          throw new Error(
+            response.error || response.message || "Failed to render video",
+          );
         }
         const durationMs = Date.now() - startedAt;
-        log.info('Render generation succeeded', {
+        log.info("Render generation succeeded", {
           generationId: generation.id,
           durationMs,
-          faceSwapApplied: response?.faceSwapApplied ?? faceSwapMeta.faceSwapApplied,
+          faceSwapApplied:
+            response?.faceSwapApplied ?? faceSwapMeta.faceSwapApplied,
           ...motionMeta,
         });
-        finalizeGeneration(generation.id, {
-          status: 'completed',
-          completedAt: Date.now(),
-          mediaUrls: [videoUrl],
-          ...(videoAssetId
-            ? { mediaAssetIds: [extractAssetId(videoAssetId)] }
-            : videoStoragePath
-              ? { mediaAssetIds: [extractAssetId(videoStoragePath)] }
-              : {}),
-        });
+        if (response.jobId) {
+          finalizeGeneration(generation.id, {
+            status: "completed",
+            completedAt: Date.now(),
+            mediaUrls: [videoUrl],
+            ...(videoAssetId
+              ? { mediaAssetIds: [extractAssetId(videoAssetId)] }
+              : videoStoragePath
+                ? { mediaAssetIds: [extractAssetId(videoStoragePath)] }
+                : {}),
+          });
+        }
       } catch (error) {
-        if (controller.signal.aborted) return;
+        if (controller.signal.aborted) {
+          clearSubmissionPendingIfNeeded(generationAccepted);
+          return;
+        }
         if (isInsufficientCreditsError(error)) {
-          dispatch({ type: 'REMOVE_GENERATION', payload: { id: generation.id } });
           inFlightRef.current.delete(generation.id);
-          optionsRef.current.onInsufficientCredits?.(requiredCredits, operationLabel);
+          if (generationAccepted) {
+            finalizeGeneration(generation.id, {
+              status: "failed",
+              completedAt: Date.now(),
+              error: `Insufficient credits — ${operationLabel} requires ${requiredCredits} credits`,
+            });
+          } else {
+            setSubmissionPending(false);
+          }
+          optionsRef.current.onInsufficientCredits?.(
+            requiredCredits,
+            operationLabel,
+          );
           return;
         }
         const durationMs = Date.now() - startedAt;
         const info = sanitizeError(error);
         const errObj = error instanceof Error ? error : new Error(info.message);
 
-        log.error('Render generation failed', errObj, {
+        log.error("Render generation failed", errObj, {
           generationId: generation.id,
           durationMs,
           errorName: info.name,
           ...motionMeta,
         });
-        finalizeGeneration(generation.id, {
-          status: 'failed',
-          completedAt: Date.now(),
-          error: errObj.message,
-        });
+        if (generationAccepted) {
+          finalizeGeneration(generation.id, {
+            status: "failed",
+            completedAt: Date.now(),
+            error: errObj.message,
+          });
+        } else {
+          inFlightRef.current.delete(generation.id);
+          setSubmissionPending(false);
+        }
       }
     },
-    [dispatch, finalizeGeneration]
+    [
+      acceptGeneration,
+      clearSubmissionPendingIfNeeded,
+      dispatch,
+      finalizeGeneration,
+      setSubmissionPending,
+    ],
   );
 
   const cancelGeneration = useCallback(
     (id: string) => {
       const controller = inFlightRef.current.get(id);
-      log.info('Cancel generation requested', {
+      log.info("Cancel generation requested", {
         generationId: id,
         hasController: Boolean(controller),
       });
       if (controller) controller.abort();
-      markGenerationCancelled(id, 'Cancelled');
+      markGenerationCancelled(id, "Cancelled");
     },
-    [markGenerationCancelled]
+    [markGenerationCancelled],
   );
 
   const retryGeneration = useCallback(
@@ -928,7 +1305,7 @@ export function useGenerationActions(
       if (!generation) return;
       const opts = optionsRef.current;
       const motionMeta = extractMotionMeta(opts.generationParams);
-      log.info('Retry generation requested', {
+      log.info("Retry generation requested", {
         generationId: id,
         tier: generation.tier,
         model: generation.model,
@@ -936,20 +1313,32 @@ export function useGenerationActions(
         ...motionMeta,
       });
       const params: GenerationParams = {
-        promptVersionId: generation.promptVersionId ?? opts.promptVersionId ?? null,
+        promptVersionId:
+          generation.promptVersionId ?? opts.promptVersionId ?? null,
         aspectRatio: generation.aspectRatio ?? opts.aspectRatio ?? null,
         duration: generation.duration ?? opts.duration ?? null,
         fps: generation.fps ?? opts.fps ?? null,
         generationParams: opts.generationParams,
       };
-      if (generation.tier === 'draft') {
-        generateDraft(generation.model as DraftModel, generation.prompt, params);
+      if (generation.tier === "draft") {
+        generateDraft(
+          generation.model as DraftModel,
+          generation.prompt,
+          params,
+        );
         return;
       }
       generateRender(generation.model, generation.prompt, params);
     },
-    [generateDraft, generateRender]
+    [generateDraft, generateRender],
   );
 
-  return { generateDraft, generateRender, generateStoryboard, cancelGeneration, retryGeneration };
+  return {
+    generateDraft,
+    generateRender,
+    generateStoryboard,
+    isSubmitting,
+    cancelGeneration,
+    retryGeneration,
+  };
 }

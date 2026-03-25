@@ -1,18 +1,21 @@
-import type { Request, Response } from 'express';
-import { isIP } from 'node:net';
-import type { PreviewRoutesServices } from '@routes/types';
-import { buildVideoContentUrl } from '../content';
-import { getWorkflowWatchdogTimeoutMs } from '@services/video-generation/providers/timeoutPolicy';
+import type { Request, Response } from "express";
+import { isIP } from "node:net";
+import type { PreviewRoutesServices } from "@routes/types";
+import { buildVideoContentUrl } from "../content";
+import { getWorkflowWatchdogTimeoutMs } from "@services/video-generation/providers/timeoutPolicy";
 
 type VideoJobsServices = Pick<
   PreviewRoutesServices,
-  'videoGenerationService' | 'videoJobStore' | 'videoContentAccessService' | 'storageService'
+  | "videoGenerationService"
+  | "videoJobStore"
+  | "videoContentAccessService"
+  | "storageService"
 >;
 
 function estimateProgress(status: string, createdAtMs: number): number | null {
-  if (status === 'completed') return 100;
-  if (status === 'failed') return null;
-  if (status === 'queued') return 5;
+  if (status === "completed") return 100;
+  if (status === "failed") return null;
+  if (status === "queued") return 5;
   // 'processing': estimate 10–95 based on elapsed time (assume ~3 min typical)
   const elapsedMs = Date.now() - createdAtMs;
   const typicalMs = 180_000; // 3 minutes
@@ -20,31 +23,36 @@ function estimateProgress(status: string, createdAtMs: number): number | null {
   return Math.max(10, Math.min(95, raw));
 }
 
-export const createVideoJobsHandler = ({
-  videoGenerationService,
-  videoJobStore,
-  videoContentAccessService,
-  storageService,
-}: VideoJobsServices) =>
+export const createVideoJobsHandler =
+  ({
+    videoGenerationService,
+    videoJobStore,
+    videoContentAccessService,
+    storageService,
+  }: VideoJobsServices) =>
   async (req: Request, res: Response): Promise<Response | void> => {
-    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-    res.setHeader('Pragma', 'no-cache');
-    res.setHeader('Expires', '0');
-    res.setHeader('Surrogate-Control', 'no-store');
+    res.setHeader(
+      "Cache-Control",
+      "no-store, no-cache, must-revalidate, proxy-revalidate",
+    );
+    res.setHeader("Pragma", "no-cache");
+    res.setHeader("Expires", "0");
+    res.setHeader("Surrogate-Control", "no-store");
 
     if (!videoGenerationService || !videoJobStore) {
       return res.status(503).json({
         success: false,
-        error: 'Video generation service is not available',
+        error: "Video generation service is not available",
       });
     }
 
-    const userId = (req as Request & { user?: { uid?: string } }).user?.uid ?? null;
-    if (!userId || userId === 'anonymous' || isIP(userId) !== 0) {
+    const userId =
+      (req as Request & { user?: { uid?: string } }).user?.uid ?? null;
+    if (!userId || userId === "anonymous" || isIP(userId) !== 0) {
       return res.status(401).json({
         success: false,
-        error: 'Authentication required',
-        message: 'You must be logged in to view video jobs.',
+        error: "Authentication required",
+        message: "You must be logged in to view video jobs.",
       });
     }
 
@@ -52,7 +60,7 @@ export const createVideoJobsHandler = ({
     if (!jobId) {
       return res.status(400).json({
         success: false,
-        error: 'jobId is required',
+        error: "jobId is required",
       });
     }
 
@@ -60,15 +68,15 @@ export const createVideoJobsHandler = ({
     if (!job) {
       return res.status(404).json({
         success: false,
-        error: 'Video job not found',
+        error: "Video job not found",
       });
     }
 
     if (job.userId !== userId) {
       return res.status(403).json({
         success: false,
-        error: 'Access denied',
-        message: 'This job does not belong to the authenticated user.',
+        error: "Access denied",
+        message: "This job does not belong to the authenticated user.",
       });
     }
 
@@ -81,7 +89,7 @@ export const createVideoJobsHandler = ({
       ...(job.requestId ? { requestId: job.requestId } : {}),
     };
 
-    if (job.status === 'completed' && job.result) {
+    if (job.status === "completed" && job.result) {
       let rawUrl: string | null | undefined = null;
       let viewUrl: string | undefined;
 
@@ -91,7 +99,7 @@ export const createVideoJobsHandler = ({
             ? await storageService.getViewUrl(userId, job.result.storagePath)
             : null;
           if (!signed) {
-            throw new Error('storage unavailable');
+            throw new Error("storage unavailable");
           }
           viewUrl = signed.viewUrl;
           rawUrl = signed.viewUrl;
@@ -103,7 +111,9 @@ export const createVideoJobsHandler = ({
       }
 
       if (!rawUrl) {
-        const freshUrl = await videoGenerationService.getVideoUrl(job.result.assetId);
+        const freshUrl = await videoGenerationService.getVideoUrl(
+          job.result.assetId,
+        );
         rawUrl = freshUrl || job.result.videoUrl;
       }
 
@@ -111,7 +121,7 @@ export const createVideoJobsHandler = ({
         videoContentAccessService,
         rawUrl,
         job.result.assetId,
-        userId
+        userId,
       );
       if (secureUrl) {
         response.videoUrl = secureUrl;
@@ -121,7 +131,7 @@ export const createVideoJobsHandler = ({
       if (job.result.viewUrl) {
         response.viewUrl = job.result.viewUrl;
       }
-      if (typeof job.result.sizeBytes === 'number') {
+      if (typeof job.result.sizeBytes === "number") {
         response.sizeBytes = job.result.sizeBytes;
       }
       if (job.result.inputMode) {
@@ -135,15 +145,15 @@ export const createVideoJobsHandler = ({
       }
     }
 
-    if (job.status === 'failed') {
-      response.error = job.error?.message || 'Video generation failed';
+    if (job.status === "failed") {
+      response.error = job.error?.message || "Video generation failed";
       if (job.error?.code) {
         response.errorCode = job.error.code;
       }
       if (job.error?.category) {
         response.errorCategory = job.error.category;
       }
-      if (typeof job.error?.retryable === 'boolean') {
+      if (typeof job.error?.retryable === "boolean") {
         response.errorRetryable = job.error.retryable;
       }
       if (job.error?.stage) {
@@ -152,7 +162,7 @@ export const createVideoJobsHandler = ({
       if (job.error?.provider) {
         response.errorProvider = job.error.provider;
       }
-      if (typeof job.error?.attempt === 'number') {
+      if (typeof job.error?.attempt === "number") {
         response.errorAttempt = job.error.attempt;
       }
     }
@@ -162,10 +172,10 @@ export const createVideoJobsHandler = ({
     response.attempts = job.attempts;
     response.maxAttempts = job.maxAttempts;
     response.serverTimeoutMs = getWorkflowWatchdogTimeoutMs();
-    if (typeof job.lastHeartbeatAtMs === 'number') {
+    if (typeof job.lastHeartbeatAtMs === "number") {
       response.lastHeartbeatAtMs = job.lastHeartbeatAtMs;
     }
-    if (typeof job.releasedAtMs === 'number') {
+    if (typeof job.releasedAtMs === "number") {
       response.releasedAtMs = job.releasedAtMs;
     }
     if (job.releaseReason) {

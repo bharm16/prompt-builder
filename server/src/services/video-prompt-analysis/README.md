@@ -51,26 +51,32 @@ video-prompt-analysis/
 ### Detection Services
 
 #### 1. VideoPromptDetectionService
+
 **Purpose**: Detects whether a prompt is for video generation
 
 **Methods**:
+
 - `isVideoPrompt(fullPrompt)` - Returns `true` if prompt contains video-specific markers
 
 **Detection Criteria**:
+
 - Legacy template markers (`**main prompt:**`, `**technical parameters:**`)
 - Modern template markers (`**prompt:**`, `**technical specs`, `**alternative approaches`)
 - Technical field patterns (`duration:`, `aspect ratio:`, `frame rate:`)
 
 #### 2. ModelDetectionService
+
 **Purpose**: Identifies the target AI video model (Sora, Veo3, Runway, Kling, Luma)
 
 **Methods**:
+
 - `detectTargetModel(fullPrompt)` - Returns model identifier or `null`
 - `getModelCapabilities(model)` - Returns strengths and weaknesses
 - `getModelSpecificGuidance(model, category)` - Returns model-specific suggestions
 - `formatModelContext(model)` - Formats context for prompt inclusion
 
 **Supported Models**:
+
 - **Sora**: Realistic motion, physics simulation, long takes
 - **Veo3**: Cinematic lighting, atmospheric effects, mood
 - **Runway**: Stylized visuals, artistic filters, creative effects
@@ -78,15 +84,18 @@ video-prompt-analysis/
 - **Luma**: Surreal visuals, abstract concepts, morphing effects
 
 #### 3. SectionDetectionService
+
 **Purpose**: Identifies which section of a prompt template is being edited
 
 **Methods**:
+
 - `detectSection(highlightedText, fullPrompt, contextBefore)` - Returns section identifier
 - `getSectionConstraints(section)` - Returns section-specific constraints
 - `getSectionGuidance(section, category)` - Returns guidance for that section
 - `formatSectionContext(section)` - Formats section context
 
 **Sections**:
+
 - `main_prompt`: Descriptive narrative content
 - `technical_specs`: Technical parameters and specifications
 - `alternatives`: Creative variations and alternatives
@@ -95,12 +104,15 @@ video-prompt-analysis/
 ### Analysis Services
 
 #### 4. PhraseRoleAnalysisService
+
 **Purpose**: Analyzes the role of a highlighted phrase in a video prompt
 
 **Methods**:
+
 - `detectVideoPhraseRole(highlightedText, contextBefore, contextAfter, explicitCategory)` - Returns phrase role
 
 **Detected Roles**:
+
 - Subject or character detail
 - Lighting description
 - Camera or framing description
@@ -113,12 +125,15 @@ video-prompt-analysis/
 - General visual detail (default)
 
 #### 5. ConstraintGenerationService
+
 **Purpose**: Generates replacement constraints based on phrase context
 
 **Methods**:
+
 - `getVideoReplacementConstraints(details, options)` - Returns constraint configuration
 
 **Constraint Modes**:
+
 - **Micro**: 2-6 word noun phrase (subjects, character details)
 - **Lighting**: 6-14 word lighting clause (light source, direction, temperature)
 - **Camera**: 6-12 word camera clause (movement, lens, framing)
@@ -130,29 +145,36 @@ video-prompt-analysis/
 ### Guidance Services
 
 #### 6. FallbackStrategyService
+
 **Purpose**: Determines fallback constraints when suggestion generation fails
 
 **Methods**:
+
 - `getVideoFallbackConstraints(currentConstraints, details, attemptedModes, getConstraintsFn)` - Returns next fallback constraints or `null`
 
 **Fallback Order**:
+
 - `sentence` → `phrase` → `micro`
 - `phrase` → `micro`
 - Specialized modes (`lighting`, `camera`, `location`, `style`) → `micro`
 
 #### 7. CategoryGuidanceService
+
 **Purpose**: Provides context-aware category-specific guidance
 
 **Methods**:
+
 - `getCategoryFocusGuidance(phraseRole, categoryHint, fullContext, allSpans, editHistory)` - Returns guidance array
 
 **Guidance Features**:
+
 - **Context-aware**: Analyzes existing prompt elements
 - **Gap identification**: Detects missing aspects
 - **Relationship analysis**: Considers constraints between elements
 - **Edit history awareness**: Maintains consistency with recent edits
 
 **Categories**:
+
 - Lighting, Camera, Subject, Wardrobe, Location, Color, Style, Action, Technical
 
 ## Usage
@@ -160,7 +182,7 @@ video-prompt-analysis/
 ### Basic Usage
 
 ```javascript
-import { VideoPromptService } from './services/video-prompt-analysis/index.js';
+import { VideoPromptService } from "./services/video-prompt-analysis/index.js";
 
 const videoService = new VideoPromptService();
 
@@ -173,7 +195,7 @@ if (isVideo) {
     highlightedText,
     contextBefore,
     contextAfter,
-    category
+    category,
   );
 
   // Get constraints
@@ -195,7 +217,7 @@ if (isVideo) {
   const section = videoService.detectPromptSection(
     highlightedText,
     fullPrompt,
-    contextBefore
+    contextBefore,
   );
   const sectionGuidance = videoService.getSectionGuidance(section, category);
 }
@@ -208,7 +230,7 @@ import {
   VideoPromptDetectionService,
   ModelDetectionService,
   ConstraintGenerationService,
-} from './services/video-prompt-analysis/index.js';
+} from "./services/video-prompt-analysis/index.js";
 
 // Use detection service directly
 const detector = new VideoPromptDetectionService();
@@ -221,7 +243,10 @@ const capabilities = modelDetector.getModelCapabilities(model);
 
 // Use constraint generator directly
 const constraintGen = new ConstraintGenerationService();
-const constraints = constraintGen.getVideoReplacementConstraints(details, options);
+const constraints = constraintGen.getVideoReplacementConstraints(
+  details,
+  options,
+);
 ```
 
 ### Configuration Access
@@ -231,11 +256,11 @@ import {
   DETECTION_MARKERS,
   CONSTRAINT_MODES,
   CATEGORY_GUIDANCE,
-} from './services/video-prompt-analysis/index.js';
+} from "./services/video-prompt-analysis/index.js";
 
 // Access configuration for testing or debugging
 console.log(DETECTION_MARKERS.MODERN);
-console.log(CONSTRAINT_MODES.micro(5, 'subject detail'));
+console.log(CONSTRAINT_MODES.micro(5, "subject detail"));
 console.log(CATEGORY_GUIDANCE.lighting);
 ```
 
@@ -268,6 +293,7 @@ All configuration is externalized to `config/` directory:
 Integration tests are located in `__tests__/VideoPromptService.integration.test.js`
 
 Run tests:
+
 ```bash
 npm test -- video-prompt
 ```
@@ -295,6 +321,7 @@ The main export `VideoPromptService` maintains the same API as before the refact
 ## Future Enhancements
 
 Potential areas for improvement:
+
 - Machine learning-based phrase role detection
 - Dynamic constraint generation based on model feedback
 - Multi-model support in single prompt
@@ -306,4 +333,3 @@ Potential areas for improvement:
 **Maintainer**: AI Services Team  
 **Last Updated**: November 2024  
 **Version**: 2.0.0
-

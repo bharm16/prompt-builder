@@ -1,6 +1,6 @@
 export type CapabilityValue = string | number | boolean;
 
-export type CapabilityFieldType = 'enum' | 'int' | 'bool' | 'string';
+export type CapabilityFieldType = "enum" | "int" | "bool" | "string";
 
 export interface CapabilityCondition {
   field: string;
@@ -26,7 +26,7 @@ export interface CapabilityFieldConstraints {
 
 export interface CapabilityFieldUI {
   label?: string;
-  control?: 'select' | 'segmented' | 'toggle' | 'input';
+  control?: "select" | "segmented" | "toggle" | "input";
   group?: string;
   order?: number;
   description?: string;
@@ -71,22 +71,23 @@ const hasOwn = (obj: object, key: string): boolean =>
 
 export const isConditionMatch = (
   condition: CapabilityCondition,
-  values: CapabilityValues
+  values: CapabilityValues,
 ): boolean => {
   const current = values[condition.field];
   let match = true;
 
-  if (hasOwn(condition, 'eq')) {
+  if (hasOwn(condition, "eq")) {
     match = match && Object.is(current, condition.eq);
   }
-  if (hasOwn(condition, 'neq')) {
+  if (hasOwn(condition, "neq")) {
     match = match && !Object.is(current, condition.neq);
   }
   if (condition.in) {
     match = match && condition.in.some((value) => Object.is(current, value));
   }
   if (condition.not_in) {
-    match = match && condition.not_in.every((value) => !Object.is(current, value));
+    match =
+      match && condition.not_in.every((value) => !Object.is(current, value));
   }
 
   return match;
@@ -94,7 +95,7 @@ export const isConditionMatch = (
 
 export const areAllConditionsMet = (
   conditions: CapabilityCondition[] | undefined,
-  values: CapabilityValues
+  values: CapabilityValues,
 ): boolean => {
   if (!conditions || conditions.length === 0) {
     return true;
@@ -104,7 +105,7 @@ export const areAllConditionsMet = (
 
 export const resolveAllowedValues = (
   field: CapabilityField,
-  values: CapabilityValues
+  values: CapabilityValues,
 ): CapabilityValue[] => {
   const baseValues = Array.isArray(field.values) ? field.values : [];
   const rules = field.constraints?.available_values_if ?? [];
@@ -120,13 +121,16 @@ export const resolveAllowedValues = (
 
 export const resolveFieldState = (
   field: CapabilityField,
-  values: CapabilityValues
+  values: CapabilityValues,
 ): CapabilityFieldState => {
-  const available = areAllConditionsMet(field.constraints?.available_if, values);
-  const disabled = (field.constraints?.disabled_if ?? []).some((condition) =>
-    isConditionMatch(condition, values)
+  const available = areAllConditionsMet(
+    field.constraints?.available_if,
+    values,
   );
-  if (field.type === 'enum') {
+  const disabled = (field.constraints?.disabled_if ?? []).some((condition) =>
+    isConditionMatch(condition, values),
+  );
+  if (field.type === "enum") {
     const allowedValues = resolveAllowedValues(field, values);
     return { available, disabled, allowedValues };
   }
@@ -134,17 +138,23 @@ export const resolveFieldState = (
   return { available, disabled };
 };
 
-export const getDefaultValue = (field: CapabilityField): CapabilityValue | undefined => {
-  if (hasOwn(field, 'default')) {
+export const getDefaultValue = (
+  field: CapabilityField,
+): CapabilityValue | undefined => {
+  if (hasOwn(field, "default")) {
     return field.default;
   }
-  if (field.type === 'enum' && Array.isArray(field.values) && field.values.length > 0) {
+  if (
+    field.type === "enum" &&
+    Array.isArray(field.values) &&
+    field.values.length > 0
+  ) {
     return field.values[0];
   }
-  if (field.type === 'bool') {
+  if (field.type === "bool") {
     return false;
   }
-  if (field.type === 'int' && typeof field.constraints?.min === 'number') {
+  if (field.type === "int" && typeof field.constraints?.min === "number") {
     return field.constraints.min;
   }
   return undefined;

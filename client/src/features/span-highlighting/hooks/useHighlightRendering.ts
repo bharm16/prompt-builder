@@ -1,9 +1,9 @@
 /**
  * useHighlightRendering Hook
- * 
+ *
  * Manages DOM manipulation for applying highlight spans in the editor.
  * Uses DIFF-BASED RENDERING to eliminate DOM thrashing.
- * 
+ *
  * PERFORMANCE OPTIMIZATION:
  * Instead of clearing all highlights and rebuilding on every change,
  * this implementation:
@@ -11,13 +11,19 @@
  * 2. Only removes deleted spans
  * 3. Only adds new spans
  * 4. Only updates changed spans (position/text changes)
- * 
+ *
  * This eliminates flickering and improves performance with 50+ highlights.
  */
 
-import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { logger } from '@/services/LoggingService';
-import { PromptContext } from '@utils/PromptContext';
+import React, {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
+import { logger } from "@/services/LoggingService";
+import { PromptContext } from "@utils/PromptContext";
 import {
   buildTextNodeIndex,
   wrapRangeSegments,
@@ -29,8 +35,12 @@ import {
   logEmptyWrappers,
   hasOverlap,
   addToCoverage,
-} from '../utils/index.ts';
-import { PERFORMANCE_MARKS, PERFORMANCE_MEASURES, DEBUG_HIGHLIGHTS } from '../config/index.ts';
+} from "../utils/index.ts";
+import {
+  PERFORMANCE_MARKS,
+  PERFORMANCE_MEASURES,
+  DEBUG_HIGHLIGHTS,
+} from "../config/index.ts";
 import type {
   HighlightSpan,
   ParseResult,
@@ -38,16 +48,16 @@ import type {
   SpanEntry,
   HighlightState,
   UseHighlightRenderingOptions,
-} from './types';
+} from "./types";
 
 // Re-export types for backward compatibility
 export type {
   HighlightSpan,
   ParseResult,
   UseHighlightRenderingOptions,
-} from './types';
+} from "./types";
 
-const log = logger.child('HighlightRendering');
+const log = logger.child("HighlightRendering");
 
 /**
  * Custom hook for rendering highlights in the editor
@@ -91,7 +101,10 @@ export function useHighlightRendering({
   /**
    * Helper: Check if a span has changed (position or text)
    */
-  const hasSpanChanged = (existingSpan: HighlightSpan, newSpan: HighlightSpan): boolean => {
+  const hasSpanChanged = (
+    existingSpan: HighlightSpan,
+    newSpan: HighlightSpan,
+  ): boolean => {
     return (
       existingSpan.start !== newSpan.start ||
       existingSpan.end !== newSpan.end ||
@@ -111,10 +124,10 @@ export function useHighlightRendering({
         wrappers.forEach((wrapper) => unwrapHighlight(wrapper));
       }
     }
-    highlightStateRef.current = { 
-      spanMap: new Map(), 
-      nodeIndex: null, 
-      fingerprint: null 
+    highlightStateRef.current = {
+      spanMap: new Map(),
+      nodeIndex: null,
+      fingerprint: null,
     };
   };
 
@@ -126,7 +139,7 @@ export function useHighlightRendering({
         cancelAnimationFrame(retryFrameRef.current);
       }
     },
-    []
+    [],
   );
 
   // Main highlighting effect - DIFF-BASED RENDERING
@@ -166,7 +179,7 @@ export function useHighlightRendering({
       }
 
       // Validate display text - use passed text prop to avoid DOM reads
-      const displayText = parseResult?.displayText ?? text ?? '';
+      const displayText = parseResult?.displayText ?? text ?? "";
       if (!displayText) {
         if (highlightStateRef.current.spanMap.size > 0) {
           clearAllHighlights();
@@ -181,7 +194,7 @@ export function useHighlightRendering({
         return;
       }
 
-      const rootText = root.textContent ?? '';
+      const rootText = root.textContent ?? "";
       if (rootText !== displayText) {
         if (highlightStateRef.current.spanMap.size > 0) {
           clearAllHighlights();
@@ -195,20 +208,25 @@ export function useHighlightRendering({
 
       // Get current state
       const { spanMap } = highlightStateRef.current;
-      
+
       // Process and sort incoming spans
-      const sortedSpans = processAndSortSpans<HighlightSpan>(spans, displayText);
+      const sortedSpans = processAndSortSpans<HighlightSpan>(
+        spans,
+        displayText,
+      );
       let skippedOverlap = 0;
       let skippedMismatch = 0;
       let skippedEmptyWrapper = 0;
-      
+
       // Create a set of new span IDs
       const newSpanIds = new Set<string>();
       const newSpansBySpanId = new Map<string, HighlightSpan>();
-      
+
       sortedSpans.forEach(({ span }) => {
         // Use span.id if available (from backend), or fall back to composite key
-        const spanId = span.id || `${span.start}-${span.end}-${span.category || span.role || ''}`;
+        const spanId =
+          span.id ||
+          `${span.start}-${span.end}-${span.category || span.role || ""}`;
         newSpanIds.add(spanId);
         newSpansBySpanId.set(spanId, span);
       });
@@ -235,7 +253,9 @@ export function useHighlightRendering({
       }
 
       sortedSpans.forEach(({ span, highlightStart, highlightEnd }) => {
-        const spanId = span.id || `${span.start}-${span.end}-${span.category || span.role || ''}`;
+        const spanId =
+          span.id ||
+          `${span.start}-${span.end}-${span.category || span.role || ""}`;
         const existingEntry = spanMap.get(spanId);
 
         // Skip overlapping spans
@@ -245,10 +265,18 @@ export function useHighlightRendering({
         }
 
         // Extract and validate text
-        const expectedText = span.displayQuote ?? span.quote ?? '';
+        const expectedText = span.displayQuote ?? span.quote ?? "";
         const actualSlice = displayText.slice(highlightStart, highlightEnd);
 
-        if (!validateHighlightText(expectedText, actualSlice, span, highlightStart, highlightEnd)) {
+        if (
+          !validateHighlightText(
+            expectedText,
+            actualSlice,
+            span,
+            highlightStart,
+            highlightEnd,
+          )
+        ) {
           skippedMismatch += 1;
           return;
         }
@@ -261,15 +289,19 @@ export function useHighlightRendering({
 
         if (!existingEntry) {
           shouldRender = true;
-        } else if (hasSpanChanged(existingEntry.span, span) || wrappersMissing) {
+        } else if (
+          hasSpanChanged(existingEntry.span, span) ||
+          wrappersMissing
+        ) {
           if (existingEntry.wrappers?.length) {
-            existingEntry.wrappers.forEach((wrapper) => unwrapHighlight(wrapper));
+            existingEntry.wrappers.forEach((wrapper) =>
+              unwrapHighlight(wrapper),
+            );
           }
           shouldRender = true;
         }
 
         if (shouldRender) {
-
           // Create wrapper elements
           const segmentWrappers = wrapRangeSegments({
             root,
@@ -282,13 +314,22 @@ export function useHighlightRendering({
                 span,
                 highlightStart,
                 highlightEnd,
-                (category?: string) => (category ? PromptContext.getCategoryColor(category) : undefined)
+                (category?: string) =>
+                  category
+                    ? PromptContext.getCategoryColor(category)
+                    : undefined,
               ),
           });
 
           // Handle empty wrappers
           if (!segmentWrappers.length) {
-            logEmptyWrappers(span, highlightStart, highlightEnd, nodeIndex, root);
+            logEmptyWrappers(
+              span,
+              highlightStart,
+              highlightEnd,
+              nodeIndex,
+              root,
+            );
             skippedEmptyWrapper += 1;
             spanMap.delete(spanId);
             return;
@@ -311,10 +352,14 @@ export function useHighlightRendering({
       });
 
       if (DEBUG_HIGHLIGHTS) {
-        const skippedTotal = skippedOverlap + skippedMismatch + skippedEmptyWrapper;
+        const skippedTotal =
+          skippedOverlap + skippedMismatch + skippedEmptyWrapper;
         const renderedSpanCount = spanMap.size;
-        if (sortedSpans.length > 1 && (renderedSpanCount <= 1 || skippedTotal > 0)) {
-          log.debug('Highlight rendering summary', {
+        if (
+          sortedSpans.length > 1 &&
+          (renderedSpanCount <= 1 || skippedTotal > 0)
+        ) {
+          log.debug("Highlight rendering summary", {
             attemptedSpanCount: sortedSpans.length,
             renderedSpanCount,
             skippedOverlap,
@@ -339,21 +384,30 @@ export function useHighlightRendering({
         performance.measure(
           PERFORMANCE_MEASURES.PROMPT_TO_HIGHLIGHTS,
           PERFORMANCE_MARKS.PROMPT_DISPLAYED,
-          PERFORMANCE_MARKS.HIGHLIGHTS_VISIBLE
+          PERFORMANCE_MARKS.HIGHLIGHTS_VISIBLE,
         );
       } catch (err) {
         // Mark may not exist if prompt wasn't displayed yet
       }
     } catch (error) {
-      log.error('Highlight rendering failed', error as Error, {
+      log.error("Highlight rendering failed", error as Error, {
         fingerprint: fingerprint ?? null,
-        textLength: (parseResult?.displayText ?? text ?? '').length,
+        textLength: (parseResult?.displayText ?? text ?? "").length,
       });
       clearAllHighlights();
       highlightStateRef.current.fingerprint = fingerprint ?? null;
-      errorKeyRef.current = fingerprint ?? parseResult?.displayText ?? text ?? null;
+      errorKeyRef.current =
+        fingerprint ?? parseResult?.displayText ?? text ?? null;
     }
-  }, [parseResult, enabled, fingerprint, editorRef, text, renderRetryTick, scheduleRetry]);
+  }, [
+    parseResult,
+    enabled,
+    fingerprint,
+    editorRef,
+    text,
+    renderRetryTick,
+    scheduleRetry,
+  ]);
 
   return highlightStateRef;
 }

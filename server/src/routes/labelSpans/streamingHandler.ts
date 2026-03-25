@@ -1,11 +1,15 @@
-import type { Response } from 'express';
-import { logger } from '@infrastructure/Logger';
-import { labelSpansStream } from '@llm/span-labeling/SpanLabelingService';
-import { getCurrentSpanProvider } from '@llm/span-labeling/services/LlmClientFactory';
-import type { AIModelService } from '@services/ai-model/AIModelService';
-import type { SpanLabelingCacheService } from '@services/cache/SpanLabelingCacheService';
-import type { LabelSpansParams, SpanLike, ValidationPolicy } from '@llm/span-labeling/types';
-import { toPublicSpan } from './transform';
+import type { Response } from "express";
+import { logger } from "@infrastructure/Logger";
+import { labelSpansStream } from "@llm/span-labeling/SpanLabelingService";
+import { getCurrentSpanProvider } from "@llm/span-labeling/services/LlmClientFactory";
+import type { AIModelService } from "@services/ai-model/AIModelService";
+import type { SpanLabelingCacheService } from "@services/cache/SpanLabelingCacheService";
+import type {
+  LabelSpansParams,
+  SpanLike,
+  ValidationPolicy,
+} from "@llm/span-labeling/types";
+import { toPublicSpan } from "./transform";
 
 interface StreamHandlerInput {
   res: Response;
@@ -32,20 +36,20 @@ export async function handleLabelSpansStreamRequest({
   requestId,
   userId,
   spanLabelingCache = null,
-  text = '',
+  text = "",
   policy = null,
   templateVersion = null,
 }: StreamHandlerInput): Promise<void> {
-  const operation = 'labelSpansStream';
+  const operation = "labelSpansStream";
   let clientClosed = false;
 
-  res.on('close', () => {
+  res.on("close", () => {
     clientClosed = true;
   });
 
-  res.setHeader('Content-Type', 'application/x-ndjson');
-  res.setHeader('Cache-Control', 'no-cache');
-  res.setHeader('Connection', 'keep-alive');
+  res.setHeader("Content-Type", "application/x-ndjson");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
   res.flushHeaders?.();
 
   // Collect spans for cache backfill when stream completes successfully.
@@ -59,7 +63,7 @@ export async function handleLabelSpansStreamRequest({
         break;
       }
       collectedSpans.push(span);
-      res.write(JSON.stringify(toPublicSpan(span)) + '\n');
+      res.write(JSON.stringify(toPublicSpan(span)) + "\n");
     }
 
     // Stream exhausted normally — mark as completed for cache backfill.
@@ -71,7 +75,7 @@ export async function handleLabelSpansStreamRequest({
       res.end();
     }
   } catch (error) {
-    logger.error('Operation failed.', error as Error, {
+    logger.error("Operation failed.", error as Error, {
       operation,
       requestId,
       userId,
@@ -79,9 +83,10 @@ export async function handleLabelSpansStreamRequest({
     if (clientClosed || res.writableEnded || res.destroyed) {
       return;
     }
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error";
     const errorPayload = {
-      error: 'Streaming failed',
+      error: "Streaming failed",
       message: errorMessage,
       degraded: collectedSpans.length > 0,
       partialCount: collectedSpans.length,
@@ -91,7 +96,7 @@ export async function handleLabelSpansStreamRequest({
       return;
     }
     try {
-      res.write(JSON.stringify(errorPayload) + '\n');
+      res.write(JSON.stringify(errorPayload) + "\n");
     } finally {
       if (!res.writableEnded && !res.destroyed) {
         res.end();
@@ -101,7 +106,12 @@ export async function handleLabelSpansStreamRequest({
 
   // Cache backfill: write the completed result so subsequent identical
   // requests (streaming or blocking) get a cache hit.
-  if (streamCompleted && spanLabelingCache && collectedSpans.length > 0 && text) {
+  if (
+    streamCompleted &&
+    spanLabelingCache &&
+    collectedSpans.length > 0 &&
+    text
+  ) {
     try {
       const ttl = text.length > 2000 ? 300 : 3600;
       const provider = getCurrentSpanProvider();
@@ -111,11 +121,11 @@ export async function handleLabelSpansStreamRequest({
         templateVersion ?? null,
         {
           spans: collectedSpans,
-          meta: { version: 'stream-backfill', notes: '' },
+          meta: { version: "stream-backfill", notes: "" },
         },
-        { ttl, provider }
+        { ttl, provider },
       );
-      logger.debug('Stream cache backfill completed', {
+      logger.debug("Stream cache backfill completed", {
         operation,
         requestId,
         spanCount: collectedSpans.length,
@@ -124,7 +134,7 @@ export async function handleLabelSpansStreamRequest({
       });
     } catch (cacheError) {
       // Non-fatal — log and move on.
-      logger.warn('Stream cache backfill failed', {
+      logger.warn("Stream cache backfill failed", {
         operation,
         requestId,
         error: (cacheError as Error).message,

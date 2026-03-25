@@ -1,6 +1,15 @@
-import React, { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
-import type { DraftModel, GenerationOverrides } from '@components/ToolSidebar/types';
-import { useKeyframeUrlRefresh } from '../hooks/useKeyframeUrlRefresh';
+import React, {
+  createContext,
+  useContext,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
+import type {
+  DraftModel,
+  GenerationOverrides,
+} from "@components/ToolSidebar/types";
+import { useKeyframeUrlRefresh } from "../hooks/useKeyframeUrlRefresh";
 
 export interface FaceSwapPreviewState {
   url: string;
@@ -14,6 +23,7 @@ export interface GenerationControlsHandlers {
   onRender: (model: string, overrides?: GenerationOverrides) => void;
   onStoryboard: () => void;
   isGenerating: boolean;
+  isSubmitting?: boolean | undefined;
   activeDraftModel: string | null;
 }
 
@@ -23,34 +33,48 @@ interface GenerationControlsContextValue {
   onStoryboard: (() => void) | null;
   onInsufficientCredits: ((required: number, operation: string) => void) | null;
   setOnInsufficientCredits: (
-    handler: ((required: number, operation: string) => void) | null
+    handler: ((required: number, operation: string) => void) | null,
   ) => void;
   faceSwapPreview: FaceSwapPreviewState | null;
   setFaceSwapPreview: (preview: FaceSwapPreviewState | null) => void;
 }
 
-const GenerationControlsContext = createContext<GenerationControlsContextValue | null>(null);
+const GenerationControlsContext =
+  createContext<GenerationControlsContextValue | null>(null);
 
-export function GenerationControlsProvider({ children }: { children: ReactNode }): React.ReactElement {
-  const [controls, setControls] = useState<GenerationControlsHandlers | null>(null);
-  const [onInsufficientCredits, setOnInsufficientCredits] = useState<(
-    (required: number, operation: string) => void
-  ) | null>(null);
-  const [faceSwapPreview, setFaceSwapPreview] = useState<FaceSwapPreviewState | null>(null);
+export function GenerationControlsProvider({
+  children,
+}: {
+  children: ReactNode;
+}): React.ReactElement {
+  const [controls, setControls] = useState<GenerationControlsHandlers | null>(
+    null,
+  );
+  const [onInsufficientCredits, setOnInsufficientCredits] = useState<
+    ((required: number, operation: string) => void) | null
+  >(null);
+  const [faceSwapPreview, setFaceSwapPreview] =
+    useState<FaceSwapPreviewState | null>(null);
 
   useKeyframeUrlRefresh();
 
-  const onStoryboard = useMemo(() => controls?.onStoryboard ?? null, [controls]);
+  const onStoryboard = useMemo(
+    () => controls?.onStoryboard ?? null,
+    [controls],
+  );
 
-  const contextValue = useMemo<GenerationControlsContextValue>(() => ({
-    controls,
-    setControls,
-    onStoryboard,
-    onInsufficientCredits,
-    setOnInsufficientCredits,
-    faceSwapPreview,
-    setFaceSwapPreview,
-  }), [controls, faceSwapPreview, onInsufficientCredits, onStoryboard]);
+  const contextValue = useMemo<GenerationControlsContextValue>(
+    () => ({
+      controls,
+      setControls,
+      onStoryboard,
+      onInsufficientCredits,
+      setOnInsufficientCredits,
+      faceSwapPreview,
+      setFaceSwapPreview,
+    }),
+    [controls, faceSwapPreview, onInsufficientCredits, onStoryboard],
+  );
 
   return (
     <GenerationControlsContext.Provider value={contextValue}>
@@ -62,7 +86,9 @@ export function GenerationControlsProvider({ children }: { children: ReactNode }
 export function useGenerationControlsContext(): GenerationControlsContextValue {
   const context = useContext(GenerationControlsContext);
   if (!context) {
-    throw new Error('useGenerationControlsContext must be used within GenerationControlsProvider');
+    throw new Error(
+      "useGenerationControlsContext must be used within GenerationControlsProvider",
+    );
   }
   return context;
 }

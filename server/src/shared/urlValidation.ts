@@ -3,16 +3,16 @@
  * Validates that URLs use safe schemes and don't target internal/private resources.
  */
 
-const ALLOWED_SCHEMES = new Set(['http:', 'https:']);
+const ALLOWED_SCHEMES = new Set(["http:", "https:"]);
 
 const BLOCKED_HOSTNAMES = new Set([
-  'localhost',
-  '127.0.0.1',
-  '0.0.0.0',
-  '169.254.169.254', // AWS metadata
-  '169.254.170.2',   // ECS metadata
-  'metadata.google.internal', // GCP metadata
-  '[::1]',
+  "localhost",
+  "127.0.0.1",
+  "0.0.0.0",
+  "169.254.169.254", // AWS metadata
+  "169.254.170.2", // ECS metadata
+  "metadata.google.internal", // GCP metadata
+  "[::1]",
 ]);
 
 const PRIVATE_IP_PATTERNS = [
@@ -48,6 +48,8 @@ export function isUrlSafe(urlString: string): boolean {
 
 export function assertUrlSafe(urlString: string, fieldName: string): void {
   if (!isUrlSafe(urlString)) {
-    throw new Error(`Invalid URL for ${fieldName}: URL must use https and target a public host`);
+    throw new Error(
+      `Invalid URL for ${fieldName}: URL must use https and target a public host`,
+    );
   }
 }

@@ -1,6 +1,6 @@
-import { useCallback, useRef } from 'react';
-import type { MutableRefObject } from 'react';
-import type { PromptVersionEdit } from '@features/prompt-optimizer/types/domain/prompt-session';
+import { useCallback, useRef } from "react";
+import type { MutableRefObject } from "react";
+import type { PromptVersionEdit } from "@features/prompt-optimizer/types/domain/prompt-session";
 
 export function useVersionEditTracking(): {
   versionEditCountRef: MutableRefObject<number>;
@@ -8,7 +8,7 @@ export function useVersionEditTracking(): {
   registerPromptEdit: (payload: {
     previousText: string;
     nextText: string;
-    source?: PromptVersionEdit['source'];
+    source?: PromptVersionEdit["source"];
   }) => void;
   resetVersionEdits: () => void;
 } {
@@ -19,11 +19,11 @@ export function useVersionEditTracking(): {
     ({
       previousText,
       nextText,
-      source = 'unknown',
+      source = "unknown",
     }: {
       previousText: string;
       nextText: string;
-      source?: PromptVersionEdit['source'];
+      source?: PromptVersionEdit["source"];
     }): void => {
       if (previousText === nextText) return;
       versionEditCountRef.current += 1;
@@ -36,7 +36,7 @@ export function useVersionEditTracking(): {
         versionEditsRef.current.shift();
       }
     },
-    []
+    [],
   );
 
   const resetVersionEdits = useCallback((): void => {

@@ -1,26 +1,31 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const callModelMock = vi.fn();
-vi.mock('@llm/span-labeling/services/robust-llm-client/modelInvocation.js', () => ({
-  callModel: (...args: unknown[]) => callModelMock(...args),
-}));
+vi.mock(
+  "@llm/span-labeling/services/robust-llm-client/modelInvocation.js",
+  () => ({
+    callModel: (...args: unknown[]) => callModelMock(...args),
+  }),
+);
 
 const validateSchemaOrThrowMock = vi.fn();
-vi.mock('@llm/span-labeling/validation/SchemaValidator.js', () => ({
-  validateSchemaOrThrow: (...args: unknown[]) => validateSchemaOrThrowMock(...args),
+vi.mock("@llm/span-labeling/validation/SchemaValidator.js", () => ({
+  validateSchemaOrThrow: (...args: unknown[]) =>
+    validateSchemaOrThrowMock(...args),
 }));
 
 const validateSpansMock = vi.fn();
-vi.mock('@llm/span-labeling/validation/SpanValidator.js', () => ({
+vi.mock("@llm/span-labeling/validation/SpanValidator.js", () => ({
   validateSpans: (...args: unknown[]) => validateSpansMock(...args),
 }));
 
 const detectAndGetCapabilitiesMock = vi.fn();
-vi.mock('@utils/provider/ProviderDetector', () => ({
-  detectAndGetCapabilities: (...args: unknown[]) => detectAndGetCapabilitiesMock(...args),
+vi.mock("@utils/provider/ProviderDetector", () => ({
+  detectAndGetCapabilities: (...args: unknown[]) =>
+    detectAndGetCapabilitiesMock(...args),
 }));
 
-vi.mock('@infrastructure/Logger', () => ({
+vi.mock("@infrastructure/Logger", () => ({
   logger: {
     info: vi.fn(),
     debug: vi.fn(),
@@ -29,45 +34,48 @@ vi.mock('@infrastructure/Logger', () => ({
   },
 }));
 
-import { attemptRepair } from '@llm/span-labeling/services/robust-llm-client/repair.js';
-import { twoPassExtraction } from '@llm/span-labeling/services/robust-llm-client/twoPassExtraction.js';
+import { attemptRepair } from "@llm/span-labeling/services/robust-llm-client/repair.js";
+import { twoPassExtraction } from "@llm/span-labeling/services/robust-llm-client/twoPassExtraction.js";
 
 const basePayload = {
-  task: 'label',
+  task: "label",
   policy: { allowOverlap: false },
-  text: 'hello',
-  templateVersion: 'v2',
+  text: "hello",
+  templateVersion: "v2",
 };
 
-const baseOptions = { templateVersion: 'v2', minConfidence: 0.5 };
+const baseOptions = { templateVersion: "v2", minConfidence: 0.5 };
 
-describe('attemptRepair', () => {
+describe("attemptRepair", () => {
   beforeEach(() => {
     callModelMock.mockReset();
     validateSchemaOrThrowMock.mockReset();
     validateSpansMock.mockReset();
   });
 
-  describe('error handling', () => {
-    it('throws when repaired spans still fail validation', async () => {
-      callModelMock.mockResolvedValue({ text: '{"spans":[]}', metadata: { provider: 'mock' } });
+  describe("error handling", () => {
+    it("throws when repaired spans still fail validation", async () => {
+      callModelMock.mockResolvedValue({
+        text: '{"spans":[]}',
+        metadata: { provider: "mock" },
+      });
       validateSpansMock.mockReturnValue({
         ok: false,
-        errors: ['bad indices'],
-        result: { spans: [], meta: { version: 'v1', notes: '' } },
+        errors: ["bad indices"],
+        result: { spans: [], meta: { version: "v1", notes: "" } },
       });
 
       const parseResponseText = (_text: string) => ({
         ok: true as const,
-        value: { spans: [], meta: { version: 'v1', notes: '' } },
+        value: { spans: [], meta: { version: "v1", notes: "" } },
       });
 
       await expect(
         attemptRepair({
           basePayload,
-          validationErrors: ['bad indices'],
+          validationErrors: ["bad indices"],
           originalResponse: { spans: [] },
-          text: 'hello',
+          text: "hello",
           policy: { allowOverlap: false },
           options: baseOptions,
           aiService: {} as never,
@@ -79,35 +87,38 @@ describe('attemptRepair', () => {
             useSeedFromConfig: true,
             enableLogprobs: false,
           },
-          providerName: 'groq',
+          providerName: "groq",
           parseResponseText,
           normalizeParsedResponse: (value) => value,
           injectDefensiveMeta: vi.fn(),
-        })
-      ).rejects.toThrow('Repair attempt failed validation');
+        }),
+      ).rejects.toThrow("Repair attempt failed validation");
     });
   });
 
-  describe('edge cases', () => {
-    it('injects defensive meta for gemini responses', async () => {
-      callModelMock.mockResolvedValue({ text: '{"spans":[]}', metadata: { provider: 'mock' } });
+  describe("edge cases", () => {
+    it("injects defensive meta for gemini responses", async () => {
+      callModelMock.mockResolvedValue({
+        text: '{"spans":[]}',
+        metadata: { provider: "mock" },
+      });
       validateSpansMock.mockReturnValue({
         ok: true,
         errors: [],
-        result: { spans: [], meta: { version: 'v1', notes: '' } },
+        result: { spans: [], meta: { version: "v1", notes: "" } },
       });
 
       const parseResponseText = (_text: string) => ({
         ok: true as const,
-        value: { spans: [], meta: { version: 'v1', notes: '' } },
+        value: { spans: [], meta: { version: "v1", notes: "" } },
       });
       const injectDefensiveMeta = vi.fn();
 
       const result = await attemptRepair({
         basePayload,
-        validationErrors: ['bad indices'],
+        validationErrors: ["bad indices"],
         originalResponse: { spans: [] },
-        text: 'hello',
+        text: "hello",
         policy: { allowOverlap: false },
         options: baseOptions,
         aiService: {} as never,
@@ -119,7 +130,7 @@ describe('attemptRepair', () => {
           useSeedFromConfig: true,
           enableLogprobs: false,
         },
-        providerName: 'gemini',
+        providerName: "gemini",
         parseResponseText,
         normalizeParsedResponse: (value) => value,
         injectDefensiveMeta,
@@ -130,25 +141,34 @@ describe('attemptRepair', () => {
     });
   });
 
-  describe('core behavior', () => {
-    it('returns validated spans and metadata from the repair call', async () => {
-      callModelMock.mockResolvedValue({ text: '{"spans":[]}', metadata: { provider: 'mock', retry: true } });
+  describe("core behavior", () => {
+    it("returns validated spans and metadata from the repair call", async () => {
+      callModelMock.mockResolvedValue({
+        text: '{"spans":[]}',
+        metadata: { provider: "mock", retry: true },
+      });
       validateSpansMock.mockReturnValue({
         ok: true,
         errors: [],
-        result: { spans: [{ text: 'Hero', role: 'subject' }], meta: { version: 'v1', notes: '' } },
+        result: {
+          spans: [{ text: "Hero", role: "subject" }],
+          meta: { version: "v1", notes: "" },
+        },
       });
 
       const parseResponseText = (_text: string) => ({
         ok: true as const,
-        value: { spans: [{ text: 'Hero', role: 'subject' }], meta: { version: 'v1', notes: '' } },
+        value: {
+          spans: [{ text: "Hero", role: "subject" }],
+          meta: { version: "v1", notes: "" },
+        },
       });
 
       const result = await attemptRepair({
         basePayload,
-        validationErrors: ['bad indices'],
+        validationErrors: ["bad indices"],
         originalResponse: { spans: [] },
-        text: 'hello',
+        text: "hello",
         policy: { allowOverlap: false },
         options: baseOptions,
         aiService: {} as never,
@@ -160,35 +180,44 @@ describe('attemptRepair', () => {
           useSeedFromConfig: true,
           enableLogprobs: false,
         },
-        providerName: 'groq',
+        providerName: "groq",
         parseResponseText,
         normalizeParsedResponse: (value) => value,
         injectDefensiveMeta: vi.fn(),
       });
 
-      const payload = JSON.parse(callModelMock.mock.calls[0]?.[0]?.userPayload as string) as { validation?: { errors?: string[] } };
-      expect(payload.validation?.errors).toEqual(['bad indices']);
+      const payload = JSON.parse(
+        callModelMock.mock.calls[0]?.[0]?.userPayload as string,
+      ) as { validation?: { errors?: string[] } };
+      expect(payload.validation?.errors).toEqual(["bad indices"]);
       expect(result.metadata?.retry).toBe(true);
-      expect(result.result.spans[0]?.text).toBe('Hero');
+      expect(result.result.spans[0]?.text).toBe("Hero");
     });
   });
 });
 
-describe('twoPassExtraction', () => {
+describe("twoPassExtraction", () => {
   beforeEach(() => {
     callModelMock.mockReset();
     detectAndGetCapabilitiesMock.mockReset();
   });
 
-  describe('error handling', () => {
-    it('propagates model errors from the first pass', async () => {
-      detectAndGetCapabilitiesMock.mockReturnValue({ capabilities: { developerRole: false } });
-      callModelMock.mockRejectedValue(new Error('boom'));
+  describe("error handling", () => {
+    it("propagates model errors from the first pass", async () => {
+      detectAndGetCapabilitiesMock.mockReturnValue({
+        capabilities: { developerRole: false },
+      });
+      callModelMock.mockRejectedValue(new Error("boom"));
 
       await expect(
         twoPassExtraction({
-          systemPrompt: 'SYS',
-          userPayload: JSON.stringify({ task: 't', policy: {}, text: 't', templateVersion: 'v1' }),
+          systemPrompt: "SYS",
+          userPayload: JSON.stringify({
+            task: "t",
+            policy: {},
+            text: "t",
+            templateVersion: "v1",
+          }),
           aiService: {} as never,
           maxTokens: 100,
           providerOptions: {
@@ -197,22 +226,29 @@ describe('twoPassExtraction', () => {
             useSeedFromConfig: true,
             enableLogprobs: false,
           },
-          providerName: 'openai',
-        })
-      ).rejects.toThrow('boom');
+          providerName: "openai",
+        }),
+      ).rejects.toThrow("boom");
     });
   });
 
-  describe('edge cases', () => {
-    it('omits developer message when the provider lacks developer role support', async () => {
-      detectAndGetCapabilitiesMock.mockReturnValue({ capabilities: { developerRole: false } });
+  describe("edge cases", () => {
+    it("omits developer message when the provider lacks developer role support", async () => {
+      detectAndGetCapabilitiesMock.mockReturnValue({
+        capabilities: { developerRole: false },
+      });
       callModelMock
-        .mockResolvedValueOnce({ text: 'analysis', metadata: {} })
-        .mockResolvedValueOnce({ text: 'structured', metadata: { pass: 2 } });
+        .mockResolvedValueOnce({ text: "analysis", metadata: {} })
+        .mockResolvedValueOnce({ text: "structured", metadata: { pass: 2 } });
 
       const result = await twoPassExtraction({
-        systemPrompt: 'SYS',
-        userPayload: JSON.stringify({ task: 't', policy: {}, text: 't', templateVersion: 'v1' }),
+        systemPrompt: "SYS",
+        userPayload: JSON.stringify({
+          task: "t",
+          policy: {},
+          text: "t",
+          templateVersion: "v1",
+        }),
         aiService: {} as never,
         maxTokens: 100,
         providerOptions: {
@@ -221,25 +257,34 @@ describe('twoPassExtraction', () => {
           useSeedFromConfig: true,
           enableLogprobs: false,
         },
-        providerName: 'openai',
+        providerName: "openai",
       });
 
-      const secondCall = callModelMock.mock.calls[1]?.[0] as { providerOptions?: { developerMessage?: string } };
+      const secondCall = callModelMock.mock.calls[1]?.[0] as {
+        providerOptions?: { developerMessage?: string };
+      };
       expect(secondCall.providerOptions?.developerMessage).toBeUndefined();
-      expect(result.text).toBe('structured');
+      expect(result.text).toBe("structured");
     });
   });
 
-  describe('core behavior', () => {
-    it('adds developer message when supported and returns second pass output', async () => {
-      detectAndGetCapabilitiesMock.mockReturnValue({ capabilities: { developerRole: true } });
+  describe("core behavior", () => {
+    it("adds developer message when supported and returns second pass output", async () => {
+      detectAndGetCapabilitiesMock.mockReturnValue({
+        capabilities: { developerRole: true },
+      });
       callModelMock
-        .mockResolvedValueOnce({ text: 'analysis', metadata: {} })
-        .mockResolvedValueOnce({ text: 'structured', metadata: { pass: 2 } });
+        .mockResolvedValueOnce({ text: "analysis", metadata: {} })
+        .mockResolvedValueOnce({ text: "structured", metadata: { pass: 2 } });
 
       const result = await twoPassExtraction({
-        systemPrompt: 'SYS',
-        userPayload: JSON.stringify({ task: 't', policy: {}, text: 't', templateVersion: 'v1' }),
+        systemPrompt: "SYS",
+        userPayload: JSON.stringify({
+          task: "t",
+          policy: {},
+          text: "t",
+          templateVersion: "v1",
+        }),
         aiService: {} as never,
         maxTokens: 100,
         providerOptions: {
@@ -248,12 +293,16 @@ describe('twoPassExtraction', () => {
           useSeedFromConfig: true,
           enableLogprobs: false,
         },
-        providerName: 'openai',
+        providerName: "openai",
       });
 
-      const secondCall = callModelMock.mock.calls[1]?.[0] as { providerOptions?: { developerMessage?: string } };
-      expect(secondCall.providerOptions?.developerMessage).toContain('STRUCTURING MODE');
-      expect(result.text).toBe('structured');
+      const secondCall = callModelMock.mock.calls[1]?.[0] as {
+        providerOptions?: { developerMessage?: string };
+      };
+      expect(secondCall.providerOptions?.developerMessage).toContain(
+        "STRUCTURING MODE",
+      );
+      expect(result.text).toBe("structured");
     });
   });
 });

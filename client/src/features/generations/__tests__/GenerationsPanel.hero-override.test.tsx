@@ -1,8 +1,8 @@
-import React from 'react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
-import { GenerationsPanel } from '../GenerationsPanel';
-import type { Generation } from '../types';
+import React from "react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { render, screen } from "@testing-library/react";
+import { GenerationsPanel } from "../GenerationsPanel";
+import type { Generation } from "../types";
 
 const setControlsSpy = vi.hoisted(() => vi.fn());
 const removeGenerationSpy = vi.hoisted(() => vi.fn());
@@ -12,10 +12,10 @@ const mockedGenerationsState = vi.hoisted(() => ({
   generations: [] as Generation[],
   activeGenerationId: null as string | null,
   isGenerating: false,
-  latestModel: 'wan-2.5',
+  latestModel: "wan-2.5",
 }));
 
-vi.mock('../hooks/useGenerationsState', () => ({
+vi.mock("../hooks/useGenerationsState", () => ({
   useGenerationsState: () => ({
     generations: mockedGenerationsState.generations,
     activeGenerationId: mockedGenerationsState.activeGenerationId,
@@ -27,7 +27,7 @@ vi.mock('../hooks/useGenerationsState', () => ({
   }),
 }));
 
-vi.mock('../hooks/useGenerationActions', () => ({
+vi.mock("../hooks/useGenerationActions", () => ({
   useGenerationActions: () => ({
     generateDraft: vi.fn(),
     generateRender: vi.fn(),
@@ -37,19 +37,19 @@ vi.mock('../hooks/useGenerationActions', () => ({
   }),
 }));
 
-vi.mock('../hooks/useGenerationsTimeline', () => ({
+vi.mock("../hooks/useGenerationsTimeline", () => ({
   useGenerationsTimeline: () => [],
 }));
 
-vi.mock('../hooks/useAssetReferenceImages', () => ({
+vi.mock("../hooks/useAssetReferenceImages", () => ({
   useAssetReferenceImages: () => ({ resolvedPrompt: null }),
 }));
 
-vi.mock('../hooks/useGenerationMediaRefresh', () => ({
+vi.mock("../hooks/useGenerationMediaRefresh", () => ({
   useGenerationMediaRefresh: () => undefined,
 }));
 
-vi.mock('../hooks/useKeyframeWorkflow', () => ({
+vi.mock("../hooks/useKeyframeWorkflow", () => ({
   useKeyframeWorkflow: () => ({
     keyframeStep: { isActive: false, character: null },
     selectedFrameUrl: null,
@@ -61,7 +61,7 @@ vi.mock('../hooks/useKeyframeWorkflow', () => ({
   }),
 }));
 
-vi.mock('@features/prompt-optimizer/context/GenerationControlsContext', () => ({
+vi.mock("@features/prompt-optimizer/context/GenerationControlsContext", () => ({
   useGenerationControlsContext: () => ({
     setControls: setControlsSpy,
     faceSwapPreview: null,
@@ -69,27 +69,47 @@ vi.mock('@features/prompt-optimizer/context/GenerationControlsContext', () => ({
   }),
 }));
 
-vi.mock('@features/generation-controls/context/GenerationControlsStore', () => ({
-  useGenerationControlsStoreState: () => ({
-    domain: {
-      keyframes: [],
-      startFrame: null,
-      cameraMotion: null,
-      subjectMotion: '',
+vi.mock(
+  "@features/generation-controls/context/GenerationControlsStore",
+  () => ({
+    useGenerationControlsStoreState: () => ({
+      domain: {
+        keyframes: [],
+        startFrame: null,
+        cameraMotion: null,
+        subjectMotion: "",
+      },
+    }),
+    useGenerationControlsStoreActions: () => ({
+      setStartFrame: vi.fn(),
+      clearStartFrame: vi.fn(),
+    }),
+  }),
+);
+
+vi.mock("@features/prompt-optimizer/context/PromptStateContext", () => ({
+  usePromptNavigation: () => ({ navigate: vi.fn(), sessionId: "session-1" }),
+  usePromptSession: () => ({
+    currentPromptDocId: "prompt-doc-1",
+    currentPromptUuid: "prompt-uuid-1",
+    setCurrentPromptDocId: vi.fn(),
+    setCurrentPromptUuid: vi.fn(),
+  }),
+  usePromptServices: () => ({
+    promptHistory: {
+      history: [],
+      saveToHistory: vi.fn(),
+    },
+    promptOptimizer: {
+      inputPrompt: "",
+      displayedPrompt: "",
+      optimizedPrompt: "",
+      qualityScore: null,
     },
   }),
-  useGenerationControlsStoreActions: () => ({
-    setStartFrame: vi.fn(),
-    clearStartFrame: vi.fn(),
-  }),
 }));
 
-vi.mock('@features/prompt-optimizer/context/PromptStateContext', () => ({
-  usePromptNavigation: () => ({ navigate: vi.fn(), sessionId: 'session-1' }),
-  usePromptSession: () => ({ currentPromptDocId: 'prompt-doc-1' }),
-}));
-
-vi.mock('@features/prompt-optimizer/context/WorkspaceSessionContext', () => ({
+vi.mock("@features/prompt-optimizer/context/WorkspaceSessionContext", () => ({
   useWorkspaceSession: () => ({
     session: null,
     isSequenceMode: false,
@@ -102,7 +122,7 @@ vi.mock('@features/prompt-optimizer/context/WorkspaceSessionContext', () => ({
   }),
 }));
 
-vi.mock('@components/Toast', () => ({
+vi.mock("@components/Toast", () => ({
   useToast: () => ({
     warning: vi.fn(),
     success: vi.fn(),
@@ -111,10 +131,12 @@ vi.mock('@components/Toast', () => ({
   }),
 }));
 
-vi.mock('../components/GenerationCard', () => ({
-  GenerationCard: ({ generation: cardGeneration }: { generation: Generation }) => (
-    <div data-testid="hero-generation-card">{cardGeneration.id}</div>
-  ),
+vi.mock("../components/GenerationCard", () => ({
+  GenerationCard: ({
+    generation: cardGeneration,
+  }: {
+    generation: Generation;
+  }) => <div data-testid="hero-generation-card">{cardGeneration.id}</div>,
 }));
 
 const createGeneration = ({
@@ -122,44 +144,44 @@ const createGeneration = ({
   mediaType,
 }: {
   id: string;
-  mediaType: Generation['mediaType'];
+  mediaType: Generation["mediaType"];
 }): Generation => ({
   id,
-  tier: 'draft',
-  status: 'completed',
-  model: mediaType === 'image-sequence' ? 'flux-kontext' : 'wan-2.5',
+  tier: "draft",
+  status: "completed",
+  model: mediaType === "image-sequence" ? "flux-kontext" : "wan-2.5",
   prompt: `Prompt for ${id}`,
-  promptVersionId: 'version-1',
+  promptVersionId: "version-1",
   createdAt: 123,
   completedAt: 456,
   mediaType,
   mediaUrls:
-    mediaType === 'image-sequence'
+    mediaType === "image-sequence"
       ? [
-          'https://example.com/frame-1.png',
-          'https://example.com/frame-2.png',
-          'https://example.com/frame-3.png',
-          'https://example.com/frame-4.png',
+          "https://example.com/frame-1.png",
+          "https://example.com/frame-2.png",
+          "https://example.com/frame-3.png",
+          "https://example.com/frame-4.png",
         ]
-      : ['https://example.com/video.mp4'],
+      : ["https://example.com/video.mp4"],
 });
 
-describe('GenerationsPanel hero override', () => {
+describe("GenerationsPanel hero override", () => {
   beforeEach(() => {
     setControlsSpy.mockClear();
     setActiveGenerationSpy.mockClear();
     mockedGenerationsState.generations = [];
     mockedGenerationsState.activeGenerationId = null;
     mockedGenerationsState.isGenerating = false;
-    mockedGenerationsState.latestModel = 'wan-2.5';
+    mockedGenerationsState.latestModel = "wan-2.5";
   });
 
-  it('honors heroOverrideGenerationId for non-storyboard generations', () => {
-    const videoA = createGeneration({ id: 'video-a', mediaType: 'video' });
-    const videoB = createGeneration({ id: 'video-b', mediaType: 'video' });
+  it("honors heroOverrideGenerationId for non-storyboard generations", () => {
+    const videoA = createGeneration({ id: "video-a", mediaType: "video" });
+    const videoB = createGeneration({ id: "video-b", mediaType: "video" });
     const storyboard = createGeneration({
-      id: 'storyboard-a',
-      mediaType: 'image-sequence',
+      id: "storyboard-a",
+      mediaType: "image-sequence",
     });
 
     mockedGenerationsState.generations = [videoA, videoB, storyboard];
@@ -172,20 +194,22 @@ describe('GenerationsPanel hero override', () => {
         aspectRatio="16:9"
         versions={[]}
         onRestoreVersion={vi.fn()}
-        onCreateVersionIfNeeded={() => 'version-1'}
+        onCreateVersionIfNeeded={() => "version-1"}
         presentation="hero"
         heroOverrideGenerationId={videoB.id}
-      />
+      />,
     );
 
-    expect(screen.getByTestId('hero-generation-card')).toHaveTextContent(videoB.id);
+    expect(screen.getByTestId("hero-generation-card")).toHaveTextContent(
+      videoB.id,
+    );
   });
 
-  it('ignores heroOverrideGenerationId when it points to image-sequence', () => {
-    const videoA = createGeneration({ id: 'video-a', mediaType: 'video' });
+  it("ignores heroOverrideGenerationId when it points to image-sequence", () => {
+    const videoA = createGeneration({ id: "video-a", mediaType: "video" });
     const storyboard = createGeneration({
-      id: 'storyboard-a',
-      mediaType: 'image-sequence',
+      id: "storyboard-a",
+      mediaType: "image-sequence",
     });
 
     mockedGenerationsState.generations = [videoA, storyboard];
@@ -198,18 +222,20 @@ describe('GenerationsPanel hero override', () => {
         aspectRatio="16:9"
         versions={[]}
         onRestoreVersion={vi.fn()}
-        onCreateVersionIfNeeded={() => 'version-1'}
+        onCreateVersionIfNeeded={() => "version-1"}
         presentation="hero"
         heroOverrideGenerationId={storyboard.id}
-      />
+      />,
     );
 
-    expect(screen.getByTestId('hero-generation-card')).toHaveTextContent(videoA.id);
+    expect(screen.getByTestId("hero-generation-card")).toHaveTextContent(
+      videoA.id,
+    );
   });
 
-  it('falls back to existing hero selection when override is not found', () => {
-    const videoA = createGeneration({ id: 'video-a', mediaType: 'video' });
-    const videoB = createGeneration({ id: 'video-b', mediaType: 'video' });
+  it("falls back to existing hero selection when override is not found", () => {
+    const videoA = createGeneration({ id: "video-a", mediaType: "video" });
+    const videoB = createGeneration({ id: "video-b", mediaType: "video" });
 
     mockedGenerationsState.generations = [videoA, videoB];
     mockedGenerationsState.activeGenerationId = videoA.id;
@@ -221,12 +247,14 @@ describe('GenerationsPanel hero override', () => {
         aspectRatio="16:9"
         versions={[]}
         onRestoreVersion={vi.fn()}
-        onCreateVersionIfNeeded={() => 'version-1'}
+        onCreateVersionIfNeeded={() => "version-1"}
         presentation="hero"
         heroOverrideGenerationId="missing-id"
-      />
+      />,
     );
 
-    expect(screen.getByTestId('hero-generation-card')).toHaveTextContent(videoA.id);
+    expect(screen.getByTestId("hero-generation-card")).toHaveTextContent(
+      videoA.id,
+    );
   });
 });

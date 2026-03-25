@@ -8,8 +8,8 @@
  * - GeminiResponseParser: Response normalization (response format changes)
  */
 
-export { GeminiMessageBuilder } from './GeminiMessageBuilder.ts';
-export { GeminiResponseParser } from './GeminiResponseParser.ts';
+export { GeminiMessageBuilder } from "./GeminiMessageBuilder.ts";
+export { GeminiResponseParser } from "./GeminiResponseParser.ts";
 
 export type {
   CompletionOptions,
@@ -24,4 +24,4 @@ export type {
   GeminiCandidate,
   GeminiMessagesResult,
   AIResponse,
-} from './types.ts';
+} from "./types.ts";

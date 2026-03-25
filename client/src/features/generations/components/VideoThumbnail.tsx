@@ -1,13 +1,18 @@
-import React from 'react';
-import { DotsThree, Play, WarningCircle } from '@promptstudio/system/components/ui';
-import { cn } from '@/utils/cn';
-import { useResolvedMediaUrl } from '@/hooks/useResolvedMediaUrl';
+import React from "react";
+import {
+  DotsThree,
+  Play,
+  WarningCircle,
+} from "@promptstudio/system/components/ui";
+import { cn } from "@/utils/cn";
+import { useResolvedMediaUrl } from "@/hooks/useResolvedMediaUrl";
 
 const formatDuration = (seconds: number): string => {
-  const normalized = Number.isFinite(seconds) && seconds > 0 ? Math.floor(seconds) : 4;
+  const normalized =
+    Number.isFinite(seconds) && seconds > 0 ? Math.floor(seconds) : 4;
   const minutes = Math.floor(normalized / 60);
   const remainderSeconds = normalized % 60;
-  return `${minutes}:${String(remainderSeconds).padStart(2, '0')}`;
+  return `${minutes}:${String(remainderSeconds).padStart(2, "0")}`;
 };
 
 interface VideoThumbnailProps {
@@ -19,7 +24,7 @@ interface VideoThumbnailProps {
   thumbnailAssetId?: string | null;
   isGenerating: boolean;
   progressPercent?: number | null;
-  tier?: 'draft' | 'render';
+  tier?: "draft" | "render";
   modelLabel?: string;
   isFailed?: boolean;
   failedMessage?: string | null;
@@ -53,22 +58,30 @@ export function VideoThumbnail({
   const [videoDuration, setVideoDuration] = React.useState(0);
   const [playbackProgress, setPlaybackProgress] = React.useState(0);
   const { url: resolvedVideoUrl, refresh: refreshVideo } = useResolvedMediaUrl({
-    kind: 'video',
+    kind: "video",
     url: videoUrl,
     storagePath: videoStoragePath ?? null,
     assetId: videoAssetId ?? null,
   });
-  const { url: resolvedThumbnailUrl, refresh: refreshThumbnail } = useResolvedMediaUrl({
-    kind: 'image',
-    url: thumbnailUrl ?? null,
-    storagePath: thumbnailStoragePath ?? null,
-    assetId: thumbnailAssetId ?? null,
-  });
+  const { url: resolvedThumbnailUrl, refresh: refreshThumbnail } =
+    useResolvedMediaUrl({
+      kind: "image",
+      url: thumbnailUrl ?? null,
+      storagePath: thumbnailStoragePath ?? null,
+      assetId: thumbnailAssetId ?? null,
+    });
 
   React.useEffect(() => {
     videoRefreshAttemptedRef.current = false;
     thumbnailRefreshAttemptedRef.current = false;
-  }, [thumbnailUrl, videoUrl, videoStoragePath, videoAssetId, thumbnailStoragePath, thumbnailAssetId]);
+  }, [
+    thumbnailUrl,
+    videoUrl,
+    videoStoragePath,
+    videoAssetId,
+    thumbnailStoragePath,
+    thumbnailAssetId,
+  ]);
 
   React.useEffect(() => {
     setIsVideoPlaying(false);
@@ -77,7 +90,9 @@ export function VideoThumbnail({
     setPlaybackProgress(0);
   }, [resolvedVideoUrl]);
 
-  const handlePlayToggle = async (event: React.MouseEvent<HTMLButtonElement>): Promise<void> => {
+  const handlePlayToggle = async (
+    event: React.MouseEvent<HTMLButtonElement>,
+  ): Promise<void> => {
     event.stopPropagation();
 
     if (!resolvedVideoUrl || !videoRef.current) {
@@ -110,12 +125,17 @@ export function VideoThumbnail({
     const rect = event.currentTarget.getBoundingClientRect();
     if (!rect.width) return;
 
-    const ratio = Math.min(Math.max((event.clientX - rect.left) / rect.width, 0), 1);
+    const ratio = Math.min(
+      Math.max((event.clientX - rect.left) / rect.width, 0),
+      1,
+    );
     video.currentTime = ratio * videoDuration;
     setPlaybackProgress(ratio);
   };
 
-  const handleVideoClick = async (event: React.MouseEvent<HTMLVideoElement>): Promise<void> => {
+  const handleVideoClick = async (
+    event: React.MouseEvent<HTMLVideoElement>,
+  ): Promise<void> => {
     event.stopPropagation();
 
     const video = videoRef.current;
@@ -149,7 +169,9 @@ export function VideoThumbnail({
 
         <div className="absolute inset-0 flex items-center justify-center">
           <span className="text-[11px] font-medium text-white/30">
-            {typeof progressPercent === 'number' ? `${progressPercent}%` : 'Starting...'}
+            {typeof progressPercent === "number"
+              ? `${progressPercent}%`
+              : "Starting..."}
           </span>
         </div>
 
@@ -169,7 +191,9 @@ export function VideoThumbnail({
         <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-white/[0.06]">
           <div
             className="h-full bg-success-400 transition-[width] duration-300 ease-out"
-            style={{ width: `${typeof progressPercent === 'number' ? progressPercent : 0}%` }}
+            style={{
+              width: `${typeof progressPercent === "number" ? progressPercent : 0}%`,
+            }}
           />
         </div>
       </div>
@@ -180,7 +204,11 @@ export function VideoThumbnail({
     return (
       <div className="relative aspect-video w-full overflow-hidden rounded-[10px] border border-tool-nav-active bg-tool-surface-deep">
         <div className="flex h-full w-full flex-col items-center justify-center gap-1.5">
-          <WarningCircle size={14} className="text-red-500/40" aria-hidden="true" />
+          <WarningCircle
+            size={14}
+            className="text-red-500/40"
+            aria-hidden="true"
+          />
           <span className="text-[11px] text-red-500/40">Failed</span>
         </div>
       </div>
@@ -232,7 +260,7 @@ export function VideoThumbnail({
               return;
             }
             videoRefreshAttemptedRef.current = true;
-            await refreshVideo('error');
+            await refreshVideo("error");
           }}
         />
       ) : resolvedThumbnailUrl ? (
@@ -245,7 +273,7 @@ export function VideoThumbnail({
               return;
             }
             thumbnailRefreshAttemptedRef.current = true;
-            await refreshThumbnail('error');
+            await refreshThumbnail("error");
           }}
         />
       ) : (
@@ -279,11 +307,13 @@ export function VideoThumbnail({
         {tier && (
           <span
             className={cn(
-              'rounded bg-black/40 px-1.5 py-0.5 text-[10px] font-semibold backdrop-blur-md',
-              tier === 'draft' ? 'text-success-400/80' : 'text-tool-accent-selection/80'
+              "rounded bg-black/40 px-1.5 py-0.5 text-[10px] font-semibold backdrop-blur-md",
+              tier === "draft"
+                ? "text-success-400/80"
+                : "text-tool-accent-selection/80",
             )}
           >
-            {tier === 'draft' ? 'Draft' : 'Render'}
+            {tier === "draft" ? "Draft" : "Render"}
           </span>
         )}
         {modelLabel && (

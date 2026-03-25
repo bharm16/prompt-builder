@@ -1,17 +1,20 @@
-import { useCallback, useRef } from 'react';
-import type { EnhancementSuggestionsResponse as BaseEnhancementSuggestionsResponse } from '@/api/enhancementSuggestionsApi';
-import type { SuggestionItem } from '@features/prompt-optimizer/PromptCanvas/types';
-import type { SuggestionContextResult } from '@features/prompt-optimizer/utils/enhancementSuggestionContext';
-import { SuggestionCache, simpleHash } from '@features/prompt-optimizer/utils/SuggestionCache';
+import { useCallback, useRef } from "react";
+import type { EnhancementSuggestionsResponse as BaseEnhancementSuggestionsResponse } from "@/api/enhancementSuggestionsApi";
+import type { SuggestionItem } from "@features/prompt-optimizer/PromptCanvas/types";
+import type { SuggestionContextResult } from "@features/prompt-optimizer/utils/enhancementSuggestionContext";
+import {
+  SuggestionCache,
+  simpleHash,
+} from "@features/prompt-optimizer/utils/SuggestionCache";
 import {
   normalizeSuggestionList,
   type EnhancementSuggestionEntry,
-} from '../utils/normalizeSuggestionList';
+} from "../utils/normalizeSuggestionList";
 
 export {
   normalizeSuggestionList,
   type EnhancementSuggestionEntry,
-} from '../utils/normalizeSuggestionList';
+} from "../utils/normalizeSuggestionList";
 
 export type RawEnhancementSuggestionsResponse =
   BaseEnhancementSuggestionsResponse<EnhancementSuggestionEntry>;
@@ -37,7 +40,7 @@ const CACHE_CONFIG = {
 const DEFAULT_CACHE_CONTEXT_WINDOW = 100;
 
 const normalizeResponse = (
-  response: RawEnhancementSuggestionsResponse
+  response: RawEnhancementSuggestionsResponse,
 ): NormalizedEnhancementSuggestionsResponse => ({
   ...response,
   suggestions: normalizeSuggestionList(response.suggestions ?? []),
@@ -45,15 +48,17 @@ const normalizeResponse = (
 
 export function useSuggestionCache(): {
   buildCacheKey: (input: CacheKeyInput) => string;
-  getCachedSuggestions: (cacheKey: string) => NormalizedEnhancementSuggestionsResponse | null;
+  getCachedSuggestions: (
+    cacheKey: string,
+  ) => NormalizedEnhancementSuggestionsResponse | null;
   setCachedSuggestions: (
     cacheKey: string,
-    response: RawEnhancementSuggestionsResponse
+    response: RawEnhancementSuggestionsResponse,
   ) => NormalizedEnhancementSuggestionsResponse;
 } {
-  const cacheRef = useRef<SuggestionCache<NormalizedEnhancementSuggestionsResponse>>(
-    new SuggestionCache(CACHE_CONFIG)
-  );
+  const cacheRef = useRef<
+    SuggestionCache<NormalizedEnhancementSuggestionsResponse>
+  >(new SuggestionCache(CACHE_CONFIG));
 
   const buildCacheKey = useCallback(
     ({
@@ -67,47 +72,49 @@ export function useSuggestionCache(): {
     }: CacheKeyInput): string => {
       const contextBefore = normalizedPrompt.slice(
         Math.max(0, suggestionContext.startIndex - contextWindow),
-        suggestionContext.startIndex
+        suggestionContext.startIndex,
       );
       const contextAfter = normalizedPrompt.slice(
         suggestionContext.startIndex + suggestionContext.matchLength,
-        suggestionContext.startIndex + suggestionContext.matchLength + contextWindow
+        suggestionContext.startIndex +
+          suggestionContext.matchLength +
+          contextWindow,
       );
 
       const categoryKey =
-        typeof category === 'string' ? category.trim().toLowerCase() : '';
+        typeof category === "string" ? category.trim().toLowerCase() : "";
       const spanKey =
-        typeof spanFingerprint === 'string' ? spanFingerprint : '';
+        typeof spanFingerprint === "string" ? spanFingerprint : "";
       const promptHash = simpleHash(
-        `${normalizedPrompt}|${categoryKey}|${spanKey}|${i2vKey ?? ''}`
+        `${normalizedPrompt}|${categoryKey}|${spanKey}|${i2vKey ?? ""}`,
       );
 
       return SuggestionCache.generateKey(
         normalizedHighlight,
         contextBefore,
         contextAfter,
-        promptHash
+        promptHash,
       );
     },
-    []
+    [],
   );
 
   const getCachedSuggestions = useCallback(
     (cacheKey: string): NormalizedEnhancementSuggestionsResponse | null =>
       cacheRef.current.get(cacheKey),
-    []
+    [],
   );
 
   const setCachedSuggestions = useCallback(
     (
       cacheKey: string,
-      response: RawEnhancementSuggestionsResponse
+      response: RawEnhancementSuggestionsResponse,
     ): NormalizedEnhancementSuggestionsResponse => {
       const normalized = normalizeResponse(response);
       cacheRef.current.set(cacheKey, normalized);
       return normalized;
     },
-    []
+    [],
   );
 
   return {

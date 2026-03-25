@@ -1,7 +1,7 @@
-import { useMemo, useState } from 'react';
-import type { PromptCanvasProps, SuggestionItem } from '../types';
+import { useMemo, useState } from "react";
+import type { PromptCanvasProps, SuggestionItem } from "../types";
 
-interface CanvasI2VParams extends Pick<PromptCanvasProps, 'i2vContext'> {
+interface CanvasI2VParams extends Pick<PromptCanvasProps, "i2vContext"> {
   showI2VLockIndicator: boolean;
   resolvedI2VReason: string | null;
   i2vMotionAlternatives: SuggestionItem[];
@@ -16,14 +16,16 @@ export function useCanvasI2V({
   handleLockedAlternativeClick,
 }: CanvasI2VParams) {
   const isI2VMode = Boolean(i2vContext?.isI2VMode);
-  const [constraintMode, setConstraintMode] = useState<'none' | 'locked'>('none');
+  const [constraintMode, setConstraintMode] = useState<"none" | "locked">(
+    "none",
+  );
 
   const effectiveConstraintMode = useMemo(() => {
     if (!isI2VMode) {
-      return 'none' as const;
+      return "none" as const;
     }
     if (showI2VLockIndicator) {
-      return 'locked' as const;
+      return "locked" as const;
     }
     return constraintMode;
   }, [constraintMode, isI2VMode, showI2VLockIndicator]);
@@ -33,7 +35,7 @@ export function useCanvasI2V({
       showI2VLockIndicator,
       reason: resolvedI2VReason,
     }),
-    [resolvedI2VReason, showI2VLockIndicator]
+    [resolvedI2VReason, showI2VLockIndicator],
   );
 
   return {

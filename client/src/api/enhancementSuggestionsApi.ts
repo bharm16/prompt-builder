@@ -1,6 +1,6 @@
-import { z } from 'zod';
+import { z } from "zod";
 
-import { buildFirebaseAuthHeaders } from '@/services/http/firebaseAuth';
+import { buildFirebaseAuthHeaders } from "@/services/http/firebaseAuth";
 
 export interface EnhancementSuggestionsRequest {
   highlightedText: string;
@@ -18,17 +18,19 @@ export interface EnhancementSuggestionsRequest {
   i2vContext?: {
     observation: Record<string, unknown>;
     lockMap: Record<string, string>;
-    constraintMode?: 'strict' | 'flexible' | 'transform';
+    constraintMode?: "strict" | "flexible" | "transform";
   } | null;
 }
 
-const EnhancementSuggestionsResponseSchema = z.object({
-  suggestions: z.array(z.unknown()).default([]),
-  isPlaceholder: z.boolean().default(false),
-  spanFingerprint: z.string().nullish(),
-  metadata: z.record(z.string(), z.unknown()).nullish(),
-  _debug: z.record(z.string(), z.unknown()).nullish(),
-}).passthrough();
+const EnhancementSuggestionsResponseSchema = z
+  .object({
+    suggestions: z.array(z.unknown()).default([]),
+    isPlaceholder: z.boolean().default(false),
+    spanFingerprint: z.string().nullish(),
+    metadata: z.record(z.string(), z.unknown()).nullish(),
+    _debug: z.record(z.string(), z.unknown()).nullish(),
+  })
+  .passthrough();
 
 export type EnhancementSuggestionsResponse<TSuggestion = string> = {
   suggestions: TSuggestion[];
@@ -45,19 +47,20 @@ export interface EnhancementSuggestionsFetchOptions {
 
 export async function requestEnhancementSuggestions(
   payload: EnhancementSuggestionsRequest,
-  options: EnhancementSuggestionsFetchOptions = {}
+  options: EnhancementSuggestionsFetchOptions = {},
 ): Promise<Response> {
-  const fetchFn = options.fetchImpl || (typeof fetch !== 'undefined' ? fetch : undefined);
+  const fetchFn =
+    options.fetchImpl || (typeof fetch !== "undefined" ? fetch : undefined);
   if (!fetchFn) {
-    throw new Error('Fetch is not available in this environment.');
+    throw new Error("Fetch is not available in this environment.");
   }
 
   const authHeaders = await buildFirebaseAuthHeaders();
-  const debugHeaders = import.meta.env.DEV ? { 'x-debug': 'true' } : {};
-  const response = await fetchFn('/api/get-enhancement-suggestions', {
-    method: 'POST',
+  const debugHeaders = import.meta.env.DEV ? { "x-debug": "true" } : {};
+  const response = await fetchFn("/api/get-enhancement-suggestions", {
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
       ...authHeaders,
       ...debugHeaders,
     },
@@ -69,7 +72,7 @@ export async function requestEnhancementSuggestions(
 }
 
 export async function parseEnhancementSuggestionsResponse<TSuggestion = string>(
-  response: Response
+  response: Response,
 ): Promise<EnhancementSuggestionsResponse<TSuggestion>> {
   const data = await response.json();
   const parsed = EnhancementSuggestionsResponseSchema.parse(data);
@@ -77,7 +80,9 @@ export async function parseEnhancementSuggestionsResponse<TSuggestion = string>(
   return {
     suggestions: parsed.suggestions as TSuggestion[],
     isPlaceholder: parsed.isPlaceholder,
-    ...(typeof parsed.spanFingerprint === 'string' ? { spanFingerprint: parsed.spanFingerprint } : {}),
+    ...(typeof parsed.spanFingerprint === "string"
+      ? { spanFingerprint: parsed.spanFingerprint }
+      : {}),
     ...(parsed.metadata ? { metadata: parsed.metadata } : {}),
     ...(parsed._debug ? { _debug: parsed._debug } : {}),
   };
@@ -85,7 +90,7 @@ export async function parseEnhancementSuggestionsResponse<TSuggestion = string>(
 
 export async function postEnhancementSuggestions<TSuggestion = string>(
   payload: EnhancementSuggestionsRequest,
-  options: EnhancementSuggestionsFetchOptions = {}
+  options: EnhancementSuggestionsFetchOptions = {},
 ): Promise<EnhancementSuggestionsResponse<TSuggestion>> {
   const response = await requestEnhancementSuggestions(payload, options);
 

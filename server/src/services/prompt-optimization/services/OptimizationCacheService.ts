@@ -1,32 +1,46 @@
-import type { CacheService } from '@services/cache/CacheService';
-import OptimizationConfig from '@config/OptimizationConfig';
-import type { LockedSpan, ShotPlan, StructuredOptimizationArtifact } from '../types';
-import { OptimizationMode, InferredContext } from '../types';
-import crypto from 'crypto';
-import { logger } from '@infrastructure/Logger';
+import type { CacheService } from "@services/cache/CacheService";
+import OptimizationConfig from "@config/OptimizationConfig";
+import type {
+  LockedSpan,
+  ShotPlan,
+  StructuredOptimizationArtifact,
+} from "../types";
+import { OptimizationMode, InferredContext } from "../types";
+import crypto from "crypto";
+import { logger } from "@infrastructure/Logger";
 
 export class OptimizationCacheService {
   private readonly cacheConfig: { ttl: number; namespace: string };
-  private readonly log = logger.child({ service: 'OptimizationCacheService' });
+  private readonly log = logger.child({ service: "OptimizationCacheService" });
 
   constructor(private readonly cacheService: CacheService) {
-    this.cacheConfig = this.cacheService.getConfig(OptimizationConfig.cache.promptOptimization);
+    this.cacheConfig = this.cacheService.getConfig(
+      OptimizationConfig.cache.promptOptimization,
+    );
   }
 
   async getCachedResult(key: string): Promise<string | null> {
     return this.cacheService.get<string>(key);
   }
 
-  async getCachedMetadata(key: string): Promise<Record<string, unknown> | null> {
+  async getCachedMetadata(
+    key: string,
+  ): Promise<Record<string, unknown> | null> {
     const metaKey = this.buildMetadataCacheKey(key);
     return this.cacheService.get<Record<string, unknown>>(metaKey);
   }
 
-  async getStructuredArtifact(key: string): Promise<StructuredOptimizationArtifact | null> {
+  async getStructuredArtifact(
+    key: string,
+  ): Promise<StructuredOptimizationArtifact | null> {
     return this.cacheService.get<StructuredOptimizationArtifact>(key);
   }
 
-  async cacheResult(key: string, result: string, metadata?: Record<string, unknown> | null): Promise<void> {
+  async cacheResult(
+    key: string,
+    result: string,
+    metadata?: Record<string, unknown> | null,
+  ): Promise<void> {
     await this.cacheService.set(key, result, this.cacheConfig);
     if (metadata) {
       const metaKey = this.buildMetadataCacheKey(key);
@@ -36,7 +50,7 @@ export class OptimizationCacheService {
 
   async cacheStructuredArtifact(
     key: string,
-    artifact: StructuredOptimizationArtifact
+    artifact: StructuredOptimizationArtifact,
   ): Promise<void> {
     await this.cacheService.set(key, artifact, this.cacheConfig);
   }
@@ -48,23 +62,28 @@ export class OptimizationCacheService {
     brainstormContext: Record<string, unknown> | null,
     targetModel?: string,
     generationParams?: Record<string, unknown> | null,
-    lockedSpans?: Array<{ text: string; leftCtx?: string | null; rightCtx?: string | null }>
+    lockedSpans?: Array<{
+      text: string;
+      leftCtx?: string | null;
+      rightCtx?: string | null;
+    }>,
   ): string {
     const lockedSpanSignature = this.buildLockedSpanSignature(lockedSpans);
-    const generationSignature = this.buildGenerationParamsSignature(generationParams);
+    const generationSignature =
+      this.buildGenerationParamsSignature(generationParams);
     const parts = [
-      'prompt-opt-v4',
+      "prompt-opt-v4",
       mode,
-      targetModel || 'generic',
+      targetModel || "generic",
       prompt.substring(0, 100),
-      context ? JSON.stringify(context) : '',
-      brainstormContext ? JSON.stringify(brainstormContext) : '',
+      context ? JSON.stringify(context) : "",
+      brainstormContext ? JSON.stringify(brainstormContext) : "",
       generationSignature,
     ];
     if (lockedSpanSignature) {
       parts.push(`locked:${lockedSpanSignature}`);
     }
-    return parts.join('::');
+    return parts.join("::");
   }
 
   buildStructuredArtifactKey(genericPrompt: string): string {
@@ -83,18 +102,20 @@ export class OptimizationCacheService {
   }): string {
     const normalizedPayload = {
       prompt: params.prompt.trim(),
-      sourcePrompt: params.sourcePrompt?.trim() ?? '',
-      shotPlan: params.shotPlan ? this.normalizeShotPlan(params.shotPlan) : null,
+      sourcePrompt: params.sourcePrompt?.trim() ?? "",
+      shotPlan: params.shotPlan
+        ? this.normalizeShotPlan(params.shotPlan)
+        : null,
       generationParams: this.normalizeGenerationParams(params.generationParams),
       lockedSpans: this.normalizeLockedSpans(params.lockedSpans),
     };
     const promptHash = crypto
-      .createHash('sha256')
+      .createHash("sha256")
       .update(JSON.stringify(normalizedPayload))
-      .digest('hex')
+      .digest("hex")
       .substring(0, 24);
 
-    return ['prompt-opt-v5', 'structured-artifact', promptHash].join('::');
+    return ["prompt-opt-v5", "structured-artifact", promptHash].join("::");
   }
 
   private buildMetadataCacheKey(baseKey: string): string {
@@ -102,10 +123,14 @@ export class OptimizationCacheService {
   }
 
   private buildLockedSpanSignature(
-    lockedSpans?: Array<{ text: string; leftCtx?: string | null; rightCtx?: string | null }>
+    lockedSpans?: Array<{
+      text: string;
+      leftCtx?: string | null;
+      rightCtx?: string | null;
+    }>,
   ): string {
     if (!lockedSpans || lockedSpans.length === 0) {
-      return '';
+      return "";
     }
     const payload = lockedSpans.map((span) => ({
       text: span.text,
@@ -113,15 +138,17 @@ export class OptimizationCacheService {
       rightCtx: span.rightCtx ?? null,
     }));
     return crypto
-      .createHash('sha256')
+      .createHash("sha256")
       .update(JSON.stringify(payload))
-      .digest('hex')
+      .digest("hex")
       .substring(0, 16);
   }
 
-  private buildGenerationParamsSignature(params?: Record<string, unknown> | null): string {
-    if (!params || typeof params !== 'object') {
-      return '';
+  private buildGenerationParamsSignature(
+    params?: Record<string, unknown> | null,
+  ): string {
+    if (!params || typeof params !== "object") {
+      return "";
     }
     const sortedEntries = Object.keys(params)
       .sort()
@@ -139,9 +166,9 @@ export class OptimizationCacheService {
   }
 
   private normalizeGenerationParams(
-    params?: Record<string, unknown> | null
+    params?: Record<string, unknown> | null,
   ): Array<[string, unknown]> {
-    if (!params || typeof params !== 'object') {
+    if (!params || typeof params !== "object") {
       return [];
     }
 
@@ -150,7 +177,9 @@ export class OptimizationCacheService {
       .map((key) => [key, params[key]]);
   }
 
-  private normalizeLockedSpans(lockedSpans?: LockedSpan[]): Array<Record<string, unknown>> {
+  private normalizeLockedSpans(
+    lockedSpans?: LockedSpan[],
+  ): Array<Record<string, unknown>> {
     if (!lockedSpans || lockedSpans.length === 0) {
       return [];
     }

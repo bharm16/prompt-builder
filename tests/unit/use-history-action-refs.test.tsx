@@ -1,23 +1,23 @@
-import { describe, it, expect } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
+import { describe, it, expect } from "vitest";
+import { renderHook, act } from "@testing-library/react";
 
-import { useHistoryActionRefs } from '@features/prompt-optimizer/context/hooks/useHistoryActionRefs';
+import { useHistoryActionRefs } from "@features/prompt-optimizer/context/hooks/useHistoryActionRefs";
 
-describe('useHistoryActionRefs', () => {
-  describe('error handling', () => {
-    it('initializes isApplyingHistoryRef to false', () => {
+describe("useHistoryActionRefs", () => {
+  describe("error handling", () => {
+    it("initializes isApplyingHistoryRef to false", () => {
       const { result } = renderHook(() => useHistoryActionRefs());
 
       expect(result.current.isApplyingHistoryRef.current).toBe(false);
     });
 
-    it('initializes skipLoadFromUrlRef to false', () => {
+    it("initializes skipLoadFromUrlRef to false", () => {
       const { result } = renderHook(() => useHistoryActionRefs());
 
       expect(result.current.skipLoadFromUrlRef.current).toBe(false);
     });
 
-    it('keeps flags isolated from each other', () => {
+    it("keeps flags isolated from each other", () => {
       const { result } = renderHook(() => useHistoryActionRefs());
 
       act(() => {
@@ -29,8 +29,8 @@ describe('useHistoryActionRefs', () => {
     });
   });
 
-  describe('edge cases', () => {
-    it('preserves manual flag updates across rerenders', () => {
+  describe("edge cases", () => {
+    it("preserves manual flag updates across rerenders", () => {
       const { result, rerender } = renderHook(() => useHistoryActionRefs());
 
       act(() => {
@@ -43,8 +43,8 @@ describe('useHistoryActionRefs', () => {
     });
   });
 
-  describe('core behavior', () => {
-    it('returns stable ref instances across renders', () => {
+  describe("core behavior", () => {
+    it("returns stable ref instances across renders", () => {
       const { result, rerender } = renderHook(() => useHistoryActionRefs());
       const firstIsApplyingRef = result.current.isApplyingHistoryRef;
       const firstSkipLoadRef = result.current.skipLoadFromUrlRef;

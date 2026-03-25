@@ -1,16 +1,16 @@
-import React from 'react';
-import { Button } from '@promptstudio/system/components/ui/button';
+import React from "react";
+import { Button } from "@promptstudio/system/components/ui/button";
 import {
   Icon,
   WarningCircle,
   Sparkle,
   CaretDown,
   X,
-} from '@promptstudio/system/components/ui';
-import { CoherenceIssueCard } from './CoherenceIssueCard';
-import type { CoherenceIssue } from './useCoherenceAnnotations';
-import type { CoherenceRecommendation } from '@features/prompt-optimizer/types/coherence';
-import { cn } from '@/utils/cn';
+} from "@promptstudio/system/components/ui";
+import { CoherenceIssueCard } from "./CoherenceIssueCard";
+import type { CoherenceIssue } from "./useCoherenceAnnotations";
+import type { CoherenceRecommendation } from "@features/prompt-optimizer/types/coherence";
+import { cn } from "@/utils/cn";
 
 interface CoherencePanelProps {
   issues: CoherenceIssue[];
@@ -19,7 +19,10 @@ interface CoherencePanelProps {
   onToggleExpanded: () => void;
   onDismissIssue: (issueId: string) => void;
   onDismissAll: () => void;
-  onApplyFix: (issueId: string, recommendation: CoherenceRecommendation) => void;
+  onApplyFix: (
+    issueId: string,
+    recommendation: CoherenceRecommendation,
+  ) => void;
   onScrollToSpan?: ((spanId: string) => void) | undefined;
 }
 
@@ -33,8 +36,10 @@ export function CoherencePanel({
   onApplyFix,
   onScrollToSpan,
 }: CoherencePanelProps) {
-  const conflicts = issues.filter((issue) => issue.type === 'conflict');
-  const harmonizations = issues.filter((issue) => issue.type === 'harmonization');
+  const conflicts = issues.filter((issue) => issue.type === "conflict");
+  const harmonizations = issues.filter(
+    (issue) => issue.type === "harmonization",
+  );
   const hasIssues = issues.length > 0;
 
   if (!hasIssues && !isChecking) {
@@ -61,22 +66,26 @@ export function CoherencePanel({
 
             <div className="flex min-w-0 items-center gap-2">
               {isChecking ? (
-                <span className="text-body-sm text-muted">Checking coherence...</span>
+                <span className="text-body-sm text-muted">
+                  Checking coherence...
+                </span>
               ) : (
                 <>
                   {conflicts.length > 0 && (
                     <span
                       className={cn(
-                        'inline-flex items-center rounded-md px-3 py-1 text-xs font-medium',
-                        'bg-[rgba(239,68,68,0.1)] text-[rgb(239,68,68)]'
+                        "inline-flex items-center rounded-md px-3 py-1 text-xs font-medium",
+                        "bg-[rgba(239,68,68,0.1)] text-[rgb(239,68,68)]",
                       )}
                     >
-                      {conflicts.length} conflict{conflicts.length > 1 ? 's' : ''}
+                      {conflicts.length} conflict
+                      {conflicts.length > 1 ? "s" : ""}
                     </span>
                   )}
                   {harmonizations.length > 0 && (
                     <span className="border-[rgb(67,70,81)] bg-surface-2 text-muted inline-flex items-center rounded-md border px-3 py-1 text-xs font-medium">
-                      {harmonizations.length} suggestion{harmonizations.length > 1 ? 's' : ''}
+                      {harmonizations.length} suggestion
+                      {harmonizations.length > 1 ? "s" : ""}
                     </span>
                   )}
                 </>
@@ -88,8 +97,8 @@ export function CoherencePanel({
             icon={CaretDown}
             size="sm"
             className={cn(
-              'text-[rgb(170,174,187)] transition-transform duration-200',
-              isExpanded ? 'rotate-180' : 'rotate-0'
+              "text-[rgb(170,174,187)] transition-transform duration-200",
+              isExpanded ? "rotate-180" : "rotate-0",
             )}
           />
         </button>

@@ -14,7 +14,7 @@
  * - Documents dependencies explicitly
  */
 
-import type { ServiceRegistry } from './ServiceRegistry';
+import type { ServiceRegistry } from "./ServiceRegistry";
 
 interface ServiceDefinition {
   factory: (...dependencies: unknown[]) => unknown;
@@ -58,11 +58,11 @@ export class DIContainer {
     name: string,
     factory: (...dependencies: TDependencies) => TResult,
     dependencies: string[] = [],
-    options: RegistrationOptions = {}
+    options: RegistrationOptions = {},
   ): void {
     const { singleton = true } = options;
 
-    if (typeof factory !== 'function') {
+    if (typeof factory !== "function") {
       throw new Error(`Factory for service '${name}' must be a function`);
     }
 
@@ -114,10 +114,8 @@ export class DIContainer {
   resolve(name: string): unknown {
     // Check for circular dependencies
     if (this.resolving.has(name)) {
-      const chain = Array.from(this.resolving).join(' -> ');
-      throw new Error(
-        `Circular dependency detected: ${chain} -> ${name}`
-      );
+      const chain = Array.from(this.resolving).join(" -> ");
+      throw new Error(`Circular dependency detected: ${chain} -> ${name}`);
     }
 
     // Return cached instance if singleton
@@ -130,8 +128,8 @@ export class DIContainer {
     if (!service) {
       throw new Error(
         `Service '${name}' not found. Available services: ${Array.from(
-          this.services.keys()
-        ).join(', ')}`
+          this.services.keys(),
+        ).join(", ")}`,
       );
     }
 
@@ -144,9 +142,10 @@ export class DIContainer {
         try {
           return this.resolve(depName);
         } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : String(error);
+          const errorMessage =
+            error instanceof Error ? error.message : String(error);
           throw new Error(
-            `Failed to resolve dependency '${depName}' for service '${name}': ${errorMessage}`
+            `Failed to resolve dependency '${depName}' for service '${name}': ${errorMessage}`,
           );
         }
       });

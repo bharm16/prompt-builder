@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState } from "react";
 
 export function usePromptUiState(): {
   showHistory: boolean;
@@ -15,8 +15,8 @@ export function usePromptUiState(): {
   setShowBrainstorm: (show: boolean) => void;
   currentAIIndex: number;
   setCurrentAIIndex: (index: number) => void;
-  outputSaveState: 'idle' | 'saving' | 'saved' | 'error';
-  setOutputSaveState: (state: 'idle' | 'saving' | 'saved' | 'error') => void;
+  outputSaveState: "idle" | "saving" | "saved" | "error";
+  setOutputSaveState: (state: "idle" | "saving" | "saved" | "error") => void;
   outputLastSavedAt: number | null;
   setOutputLastSavedAt: (timestampMs: number | null) => void;
 } {
@@ -28,9 +28,11 @@ export function usePromptUiState(): {
   const [showBrainstorm, setShowBrainstorm] = useState<boolean>(false);
   const [currentAIIndex, setCurrentAIIndex] = useState<number>(0);
   const [outputSaveState, setOutputSaveState] = useState<
-    'idle' | 'saving' | 'saved' | 'error'
-  >('idle');
-  const [outputLastSavedAt, setOutputLastSavedAt] = useState<number | null>(null);
+    "idle" | "saving" | "saved" | "error"
+  >("idle");
+  const [outputLastSavedAt, setOutputLastSavedAt] = useState<number | null>(
+    null,
+  );
 
   return {
     showHistory,

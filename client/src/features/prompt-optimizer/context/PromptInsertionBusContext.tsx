@@ -5,7 +5,7 @@ import React, {
   useMemo,
   useRef,
   type ReactNode,
-} from 'react';
+} from "react";
 
 type PromptInsertHandler = (text: string) => boolean;
 
@@ -21,18 +21,22 @@ interface PromptInsertionBusProviderProps {
   clearResultsView?: () => void;
 }
 
-const PromptInsertionBusContext = createContext<PromptInsertionBusContextValue | null>(null);
+const PromptInsertionBusContext =
+  createContext<PromptInsertionBusContextValue | null>(null);
 
 const normalizeTriggerText = (value: string): string => {
   const trimmed = value.trim();
-  if (!trimmed) return '';
-  return trimmed.startsWith('@') ? trimmed : `@${trimmed}`;
+  if (!trimmed) return "";
+  return trimmed.startsWith("@") ? trimmed : `@${trimmed}`;
 };
 
-const appendTriggerWithDelimiter = (currentText: string, trigger: string): string => {
-  const trimmedEnd = currentText.replace(/\s+$/, '');
+const appendTriggerWithDelimiter = (
+  currentText: string,
+  trigger: string,
+): string => {
+  const trimmedEnd = currentText.replace(/\s+$/, "");
   if (!trimmedEnd) return trigger;
-  if (trimmedEnd.endsWith(',')) return `${trimmedEnd} ${trigger}`;
+  if (trimmedEnd.endsWith(",")) return `${trimmedEnd} ${trigger}`;
   return `${trimmedEnd}, ${trigger}`;
 };
 
@@ -50,27 +54,34 @@ export function PromptInsertionBusProvider({
   const clearResultsViewRef = useRef(clearResultsView);
   clearResultsViewRef.current = clearResultsView;
 
-  const registerInsertHandler = useCallback((handler: PromptInsertHandler | null): void => {
-    insertHandlerRef.current = handler;
-  }, []);
+  const registerInsertHandler = useCallback(
+    (handler: PromptInsertHandler | null): void => {
+      insertHandlerRef.current = handler;
+    },
+    [],
+  );
 
   const insertAtCaret = useCallback(
     (rawText: string): boolean => {
       const normalizedTrigger = normalizeTriggerText(rawText);
       if (!normalizedTrigger) return false;
 
-      const insertedAtCaret = insertHandlerRef.current?.(normalizedTrigger) ?? false;
+      const insertedAtCaret =
+        insertHandlerRef.current?.(normalizedTrigger) ?? false;
       if (insertedAtCaret) {
         return true;
       }
 
-      const nextPrompt = appendTriggerWithDelimiter(inputPromptRef.current, normalizedTrigger);
+      const nextPrompt = appendTriggerWithDelimiter(
+        inputPromptRef.current,
+        normalizedTrigger,
+      );
       setInputPromptRef.current(nextPrompt);
       clearResultsViewRef.current?.();
       return false;
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps -- all values accessed via stable refs
-    []
+    [],
   );
 
   const value = useMemo<PromptInsertionBusContextValue>(
@@ -78,7 +89,7 @@ export function PromptInsertionBusProvider({
       registerInsertHandler,
       insertAtCaret,
     }),
-    [insertAtCaret, registerInsertHandler]
+    [insertAtCaret, registerInsertHandler],
   );
 
   return (
@@ -91,8 +102,9 @@ export function PromptInsertionBusProvider({
 export function usePromptInsertionBus(): PromptInsertionBusContextValue {
   const context = useContext(PromptInsertionBusContext);
   if (!context) {
-    throw new Error('usePromptInsertionBus must be used within PromptInsertionBusProvider');
+    throw new Error(
+      "usePromptInsertionBus must be used within PromptInsertionBusProvider",
+    );
   }
   return context;
 }
-

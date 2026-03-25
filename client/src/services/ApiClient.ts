@@ -6,15 +6,15 @@
  * and error handling.
  */
 
-import { API_CONFIG } from '../config/api.config';
-import { HttpClientConfig } from './http/HttpClientConfig';
-import { ApiRequestBuilder } from './http/ApiRequestBuilder';
-import { InterceptorManager } from './http/InterceptorManager';
-import { FetchHttpTransport } from './http/FetchHttpTransport';
-import { ApiError } from './http/ApiError';
-import { ApiErrorFactory } from './http/ApiErrorFactory';
-import { ApiResponseHandler } from './http/ApiResponseHandler';
-import { setupApiAuth } from './http/AuthInterceptors';
+import { API_CONFIG } from "../config/api.config";
+import { HttpClientConfig } from "./http/HttpClientConfig";
+import { ApiRequestBuilder } from "./http/ApiRequestBuilder";
+import { InterceptorManager } from "./http/InterceptorManager";
+import { FetchHttpTransport } from "./http/FetchHttpTransport";
+import { ApiError } from "./http/ApiError";
+import { ApiErrorFactory } from "./http/ApiErrorFactory";
+import { ApiResponseHandler } from "./http/ApiResponseHandler";
+import { setupApiAuth } from "./http/AuthInterceptors";
 
 interface BuiltRequest {
   url: string;
@@ -63,11 +63,19 @@ export class ApiClient {
     this.responseInterceptors = responseInterceptors;
   }
 
-  addRequestInterceptor(interceptor: (payload: BuiltRequest) => BuiltRequest | Promise<BuiltRequest> | undefined): void {
+  addRequestInterceptor(
+    interceptor: (
+      payload: BuiltRequest,
+    ) => BuiltRequest | Promise<BuiltRequest> | undefined,
+  ): void {
     this.requestInterceptors.use(interceptor);
   }
 
-  addResponseInterceptor(interceptor: (payload: Response) => Response | Promise<Response> | undefined): void {
+  addResponseInterceptor(
+    interceptor: (
+      payload: Response,
+    ) => Response | Promise<Response> | undefined,
+  ): void {
     this.responseInterceptors.use(interceptor);
   }
 
@@ -78,7 +86,10 @@ export class ApiClient {
    * {@link ApiResponseHandler}.  Use {@link rawRequest} instead when you
    * need the raw `Response` (e.g. for streaming or custom Zod validation).
    */
-  async request(endpoint: string, options: RequestOptions = {}): Promise<unknown> {
+  async request(
+    endpoint: string,
+    options: RequestOptions = {},
+  ): Promise<unknown> {
     const builtRequest = this.requestBuilder.build(endpoint, options);
     const interceptedRequest = await this.requestInterceptors.run(builtRequest);
     const { url, init } = interceptedRequest;
@@ -100,7 +111,10 @@ export class ApiClient {
    * Use this for streaming responses, custom Zod validation, or any case
    * where the caller needs full control over response processing.
    */
-  async rawRequest(endpoint: string, options: RequestOptions = {}): Promise<Response> {
+  async rawRequest(
+    endpoint: string,
+    options: RequestOptions = {},
+  ): Promise<Response> {
     const builtRequest = this.requestBuilder.build(endpoint, options);
     const interceptedRequest = await this.requestInterceptors.run(builtRequest);
     const { url, init } = interceptedRequest;
@@ -114,35 +128,50 @@ export class ApiClient {
   }
 
   async get(endpoint: string, options: RequestOptions = {}): Promise<unknown> {
-    return this.request(endpoint, { ...options, method: 'GET' });
+    return this.request(endpoint, { ...options, method: "GET" });
   }
 
-  async post(endpoint: string, body: unknown, options: RequestOptions = {}): Promise<unknown> {
-    return this.request(endpoint, { ...options, method: 'POST', body });
+  async post(
+    endpoint: string,
+    body: unknown,
+    options: RequestOptions = {},
+  ): Promise<unknown> {
+    return this.request(endpoint, { ...options, method: "POST", body });
   }
 
-  async put(endpoint: string, body: unknown, options: RequestOptions = {}): Promise<unknown> {
-    return this.request(endpoint, { ...options, method: 'PUT', body });
+  async put(
+    endpoint: string,
+    body: unknown,
+    options: RequestOptions = {},
+  ): Promise<unknown> {
+    return this.request(endpoint, { ...options, method: "PUT", body });
   }
 
-  async delete(endpoint: string, options: RequestOptions = {}): Promise<unknown> {
-    return this.request(endpoint, { ...options, method: 'DELETE' });
+  async delete(
+    endpoint: string,
+    options: RequestOptions = {},
+  ): Promise<unknown> {
+    return this.request(endpoint, { ...options, method: "DELETE" });
   }
 
-  async patch(endpoint: string, body: unknown, options: RequestOptions = {}): Promise<unknown> {
-    return this.request(endpoint, { ...options, method: 'PATCH', body });
+  async patch(
+    endpoint: string,
+    body: unknown,
+    options: RequestOptions = {},
+  ): Promise<unknown> {
+    return this.request(endpoint, { ...options, method: "PATCH", body });
   }
 }
 
-export { ApiError } from './http/ApiError';
+export { ApiError } from "./http/ApiError";
 
 export const apiClient = new ApiClient();
 
 setupApiAuth(apiClient);
 
 // Enable logging in development
-if ((import.meta as { env?: { MODE?: string } }).env?.MODE === 'development') {
-  import('./http/LoggingInterceptors').then(({ setupApiLogging }) => {
+if ((import.meta as { env?: { MODE?: string } }).env?.MODE === "development") {
+  import("./http/LoggingInterceptors").then(({ setupApiLogging }) => {
     setupApiLogging(apiClient);
   });
 }

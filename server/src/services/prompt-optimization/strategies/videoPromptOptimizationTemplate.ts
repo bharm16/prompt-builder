@@ -1,6 +1,6 @@
 // Import vocabulary from centralized vocab.json
-import vocab from '../../../llm/span-labeling/nlp/vocab.json' with { type: "json" };
-import { SECURITY_REMINDER } from '@utils/SecurityPrompts.js';
+import vocab from "../../../llm/span-labeling/nlp/vocab.json" with { type: "json" };
+import { SECURITY_REMINDER } from "@utils/SecurityPrompts.js";
 
 interface ShotPlan {
   shot_type?: string;
@@ -32,132 +32,161 @@ interface LockedSpan {
 export const VIDEO_FEW_SHOT_EXAMPLES = [
   {
     role: "user",
-    content: 'User Concept: "A cybernetic cat in a neon city"'
+    content: 'User Concept: "A cybernetic cat in a neon city"',
   },
   {
     role: "assistant",
     content: JSON.stringify({
-      _creative_strategy: "Wide framing establishes the neon alley while a low angle adds dominance. Deep focus keeps the environment readable, and 24fps preserves a filmic cadence.",
+      _creative_strategy:
+        "Wide framing establishes the neon alley while a low angle adds dominance. Deep focus keeps the environment readable, and 24fps preserves a filmic cadence.",
       shot_framing: "Wide Shot",
       camera_angle: "Low-Angle Shot",
       camera_move: "slow tracking shot",
       subject: "a cybernetic cat",
-      subject_details: ["brushed metal fur panels", "one glowing red mechanical eye", "scratched titanium collar tag"],
+      subject_details: [
+        "brushed metal fur panels",
+        "one glowing red mechanical eye",
+        "scratched titanium collar tag",
+      ],
       action: "prowling forward along the wet alleyway",
-      setting: "a rain-slicked neon alleyway with holographic storefront ads and steam vents",
+      setting:
+        "a rain-slicked neon alleyway with holographic storefront ads and steam vents",
       time: "night",
-      lighting: "neon signage as the key light from above and behind, soft bloom through mist, cool rim light on the metal fur",
+      lighting:
+        "neon signage as the key light from above and behind, soft bloom through mist, cool rim light on the metal fur",
       style: "Cyberpunk noir, color graded to emulate Kodak Ektachrome 100D",
       technical_specs: {
-        lighting: "Neon signs overhead as key light, soft fill from wet pavement, cool cyan highlights with magenta accents",
+        lighting:
+          "Neon signs overhead as key light, soft fill from wet pavement, cool cyan highlights with magenta accents",
         camera: "Wide tracking shot, low angle, 28mm lens at f/11",
         style: "Shot on Kodak Ektachrome 100D, cyberpunk noir",
         duration: "5s",
         aspect_ratio: "16:9",
         frame_rate: "24fps",
-        audio: "Distant city hum and rain"
+        audio: "Distant city hum and rain",
       },
-      variations: []
-    })
+      variations: [],
+    }),
   },
   {
     role: "user",
-    content: 'User Concept: "An abandoned greenhouse flooded with morning mist and broken glass"'
+    content:
+      'User Concept: "An abandoned greenhouse flooded with morning mist and broken glass"',
   },
   {
     role: "assistant",
     content: JSON.stringify({
-      _creative_strategy: "A wide, high-angle view emphasizes emptiness and scale. Deep focus holds detail in the broken glass, with 24fps for calm realism.",
+      _creative_strategy:
+        "A wide, high-angle view emphasizes emptiness and scale. Deep focus holds detail in the broken glass, with 24fps for calm realism.",
       shot_framing: "Wide Shot",
       camera_angle: "High-Angle Shot",
       camera_move: "slow dolly in",
       subject: null,
       subject_details: null,
       action: null,
-      setting: "an abandoned greenhouse with shattered panes and overgrown vines",
+      setting:
+        "an abandoned greenhouse with shattered panes and overgrown vines",
       time: "early morning",
-      lighting: "low sun slanting through cracked glass, soft volumetric rays, cool ambient fill in the shadows",
+      lighting:
+        "low sun slanting through cracked glass, soft volumetric rays, cool ambient fill in the shadows",
       style: "Moody naturalism, shot to emulate Fujifilm Pro 400H",
       technical_specs: {
-        lighting: "Sunbeams as key light through broken panes, soft haze diffusion, cool ambient fill from the fog",
+        lighting:
+          "Sunbeams as key light through broken panes, soft haze diffusion, cool ambient fill from the fog",
         camera: "Wide dolly-in, high angle, 24mm lens at f/11",
         style: "Fujifilm Pro 400H, naturalistic palette",
         duration: "6s",
         aspect_ratio: "16:9",
         frame_rate: "24fps",
-        audio: "Soft wind through glass and distant birds"
+        audio: "Soft wind through glass and distant birds",
       },
-      variations: []
-    })
+      variations: [],
+    }),
   },
   {
     role: "user",
-    content: 'User Concept: "A street drummer starts playing, then the crowd claps and dances"'
+    content:
+      'User Concept: "A street drummer starts playing, then the crowd claps and dances"',
   },
   {
     role: "assistant",
     content: JSON.stringify({
-      _creative_strategy: "A medium, eye-level handheld shot keeps the performance grounded and kinetic. Selective focus highlights the drummer, and 60fps captures the rhythmic motion cleanly.",
+      _creative_strategy:
+        "A medium, eye-level handheld shot keeps the performance grounded and kinetic. Selective focus highlights the drummer, and 60fps captures the rhythmic motion cleanly.",
       shot_framing: "Medium Shot",
       camera_angle: "Eye-Level Shot",
       camera_move: "handheld tracking shot",
       subject: "a street drummer",
-      subject_details: ["worn leather jacket", "silver snare drum", "fingerless gloves"],
+      subject_details: [
+        "worn leather jacket",
+        "silver snare drum",
+        "fingerless gloves",
+      ],
       action: "beating a steady rhythm on a snare",
       setting: "a crowded downtown plaza with passersby and food carts",
       time: "late afternoon",
-      lighting: "warm sun as key light from the side, soft fill from storefronts, gentle rim on the drum",
+      lighting:
+        "warm sun as key light from the side, soft fill from storefronts, gentle rim on the drum",
       style: "gritty urban documentary, Kodak Tri-X 400",
       technical_specs: {
-        lighting: "Warm side key from late sun, soft fill from storefront signs, mild rim light on chrome hardware",
+        lighting:
+          "Warm side key from late sun, soft fill from storefront signs, mild rim light on chrome hardware",
         camera: "Handheld tracking, eye-level, 35mm lens at f/4",
         style: "Kodak Tri-X 400, urban documentary",
         duration: "5s",
         aspect_ratio: "16:9",
         frame_rate: "60fps",
-        audio: "Snare hits with street ambience"
+        audio: "Snare hits with street ambience",
       },
-      variations: []
-    })
+      variations: [],
+    }),
   },
   {
     role: "user",
-    content: 'User Concept: "A paper boat dissolving into ripples in stop-motion as day shifts from noon to dusk"'
+    content:
+      'User Concept: "A paper boat dissolving into ripples in stop-motion as day shifts from noon to dusk"',
   },
   {
     role: "assistant",
     content: JSON.stringify({
-      _creative_strategy: "A close-up eye-level frame emphasizes texture, with shallow focus to isolate the boat. 24fps supports stop-motion cadence while the light shift shows time passing.",
+      _creative_strategy:
+        "A close-up eye-level frame emphasizes texture, with shallow focus to isolate the boat. 24fps supports stop-motion cadence while the light shift shows time passing.",
       shot_framing: "Close-Up",
       camera_angle: "Eye-Level Shot",
       camera_move: "static tripod",
       subject: "a paper boat",
-      subject_details: ["creased white paper", "ink-stamped number 7", "edges soaked dark"],
+      subject_details: [
+        "creased white paper",
+        "ink-stamped number 7",
+        "edges soaked dark",
+      ],
       action: "dissolving into ripples over the puddle",
       setting: "a rain puddle on rough asphalt",
       time: "noon shifting toward dusk",
-      lighting: "soft overcast daylight with cool ambient fill, warm rim light as the sun lowers",
+      lighting:
+        "soft overcast daylight with cool ambient fill, warm rim light as the sun lowers",
       style: "stop-motion animation on textured paper, Laika-inspired",
       technical_specs: {
-        lighting: "Soft overhead diffusion, cool ambient fill, warm rim as sunlight drops lower",
+        lighting:
+          "Soft overhead diffusion, cool ambient fill, warm rim as sunlight drops lower",
         camera: "Static tripod, eye-level, 85mm lens at f/2.2",
         style: "Stop-motion animation on textured paper, Laika-inspired",
         duration: "6s",
         aspect_ratio: "4:3",
         frame_rate: "24fps",
-        audio: "Light rain ambience"
+        audio: "Light rain ambience",
       },
-      variations: []
-    })
-  }
+      variations: [],
+    }),
+  },
 ];
 
 /**
  * Generate an optimized, production-ready video prompt for AI video generation models.
- * This template combines the "Director's Treatment" reasoning approach with the 
+ * This template combines the "Director's Treatment" reasoning approach with the
  * "Universal Prompt Framework" structure to ensure both intelligent shot selection
  * and strict compliance with research-backed syntax.
- * 
+ *
  * Designed for models like Sora, Veo, RunwayML, Kling, and Luma.
  *
  * @param {string} userConcept - The user's core creative idea for the video clip.
@@ -166,33 +195,38 @@ export const VIDEO_FEW_SHOT_EXAMPLES = [
  * @param {string|null} originalUserPrompt - Optional original user prompt for draft refinement.
  * @returns {string} A formatted system prompt that requests structured JSON output.
  */
-export function generateUniversalVideoPrompt(userConcept: string, shotPlan: ShotPlan | null = null, instructionsOnly = false, originalUserPrompt: string | null = null): string {
+export function generateUniversalVideoPrompt(
+  userConcept: string,
+  shotPlan: ShotPlan | null = null,
+  instructionsOnly = false,
+  originalUserPrompt: string | null = null,
+): string {
   const escapeXml = (value: unknown): string =>
-    String(value || '')
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;');
+    String(value || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
 
   // Extract vocabulary arrays from vocab.json
   const VOCAB = {
     movements: vocab["camera.movement"].join(", "),
     shots: vocab["shot.type"].join(", "),
-    styles: vocab["style.filmStock"].slice(0, 20).join(", ") // Limit to top 20 to save tokens
+    styles: vocab["style.filmStock"].slice(0, 20).join(", "), // Limit to top 20 to save tokens
   };
 
   const interpretedPlan = shotPlan
     ? `Pre-interpreted shot plan (do NOT hallucinate missing fields):
-- shot_type: ${shotPlan.shot_type || 'unknown'}
-- core_intent: ${shotPlan.core_intent || 'n/a'}
-- subject: ${shotPlan.subject || 'null'}
-- action: ${shotPlan.action || 'null'}
-- visual_focus: ${shotPlan.visual_focus || 'null'}
-- setting/time: ${shotPlan.setting || 'null'} / ${shotPlan.time || 'null'}
-- camera: move=${shotPlan.camera_move || 'null'}, angle=${shotPlan.camera_angle || 'null'}
-- lighting/style: ${shotPlan.lighting || 'null'} / ${shotPlan.style || 'null'}
-- mood: ${shotPlan.mood || 'null'}
+- shot_type: ${shotPlan.shot_type || "unknown"}
+- core_intent: ${shotPlan.core_intent || "n/a"}
+- subject: ${shotPlan.subject || "null"}
+- action: ${shotPlan.action || "null"}
+- visual_focus: ${shotPlan.visual_focus || "null"}
+- setting/time: ${shotPlan.setting || "null"} / ${shotPlan.time || "null"}
+- camera: move=${shotPlan.camera_move || "null"}, angle=${shotPlan.camera_angle || "null"}
+- lighting/style: ${shotPlan.lighting || "null"} / ${shotPlan.style || "null"}
+- mood: ${shotPlan.mood || "null"}
 If subject or action is null, lean on camera move + visual focus instead of inventing new entities.`
-    : 'No interpreted shot plan provided. Keep ONE clear action if present, otherwise focus on camera move + visual focus. Do not invent subjects or actions.';
+    : "No interpreted shot plan provided. Keep ONE clear action if present, otherwise focus on camera move + visual focus. Do not invent subjects or actions.";
 
   // GPT-4o Best Practices (Section 2.1): Security hardening with lightweight reminder
   const instructions = `${SECURITY_REMINDER}
@@ -278,7 +312,7 @@ Required fields:
 
   return `${instructions}
 
-${originalUserPrompt ? `<original_user_prompt>\n${escapedOriginal}\n</original_user_prompt>\n\n` : ''}<user_concept>
+${originalUserPrompt ? `<original_user_prompt>\n${escapedOriginal}\n</original_user_prompt>\n\n` : ""}<user_concept>
 ${escapedConcept}
 </user_concept>
 
@@ -312,7 +346,7 @@ Return ONLY JSON (no markdown, no prose):
     "audio": "Short audio note if relevant (otherwise 'mute' or 'natural ambience')"
   },
   "variations": [],
-  "shot_plan": ${shotPlan ? JSON.stringify(shotPlan, null, 2) : 'null'}
+  "shot_plan": ${shotPlan ? JSON.stringify(shotPlan, null, 2) : "null"}
 }
 `;
 }
@@ -330,34 +364,34 @@ export function generateUniversalVideoPromptWithLockedSpans(
   shotPlan: ShotPlan | null = null,
   lockedSpans: LockedSpan[] = [],
   instructionsOnly = false,
-  originalUserPrompt: string | null = null
+  originalUserPrompt: string | null = null,
 ): string {
   const escapeXml = (value: unknown): string =>
-    String(value || '')
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;');
+    String(value || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
 
   // Extract vocabulary arrays from vocab.json
   const VOCAB = {
     movements: vocab["camera.movement"].join(", "),
     shots: vocab["shot.type"].join(", "),
-    styles: vocab["style.filmStock"].slice(0, 20).join(", ")
+    styles: vocab["style.filmStock"].slice(0, 20).join(", "),
   };
 
   const interpretedPlan = shotPlan
     ? `Pre-interpreted shot plan (do NOT hallucinate missing fields):
-- shot_type: ${shotPlan.shot_type || 'unknown'}
-- core_intent: ${shotPlan.core_intent || 'n/a'}
-- subject: ${shotPlan.subject || 'null'}
-- action: ${shotPlan.action || 'null'}
-- visual_focus: ${shotPlan.visual_focus || 'null'}
-- setting/time: ${shotPlan.setting || 'null'} / ${shotPlan.time || 'null'}
-- camera: move=${shotPlan.camera_move || 'null'}, angle=${shotPlan.camera_angle || 'null'}
-- lighting/style: ${shotPlan.lighting || 'null'} / ${shotPlan.style || 'null'}
-- mood: ${shotPlan.mood || 'null'}
+- shot_type: ${shotPlan.shot_type || "unknown"}
+- core_intent: ${shotPlan.core_intent || "n/a"}
+- subject: ${shotPlan.subject || "null"}
+- action: ${shotPlan.action || "null"}
+- visual_focus: ${shotPlan.visual_focus || "null"}
+- setting/time: ${shotPlan.setting || "null"} / ${shotPlan.time || "null"}
+- camera: move=${shotPlan.camera_move || "null"}, angle=${shotPlan.camera_angle || "null"}
+- lighting/style: ${shotPlan.lighting || "null"} / ${shotPlan.style || "null"}
+- mood: ${shotPlan.mood || "null"}
 If subject or action is null, lean on camera move + visual focus instead of inventing new entities.`
-    : 'No interpreted shot plan provided. Keep ONE clear action if present, otherwise focus on camera move + visual focus. Do not invent subjects or actions.';
+    : "No interpreted shot plan provided. Keep ONE clear action if present, otherwise focus on camera move + visual focus. Do not invent subjects or actions.";
 
   const lockedSpanInstructions = `\n\n## LOCKED SPANS (HARD CONSTRAINTS)
 - Include EVERY locked span text verbatim in the final prompt.
@@ -432,7 +466,7 @@ Required fields:
 - **setting**: Location details or null.
 - **time**: Time-of-day/era or null.
 - **lighting**: Lighting description (source, direction, quality, color temp if possible) or null.
-- **style**: Specific aesthetic reference (film stock/genre/director) or null.${lockedSpans && lockedSpans.length > 0 ? lockedSpanInstructions : ''}`;
+- **style**: Specific aesthetic reference (film stock/genre/director) or null.${lockedSpans && lockedSpans.length > 0 ? lockedSpanInstructions : ""}`;
 
   if (instructionsOnly) {
     return instructions;
@@ -451,7 +485,7 @@ Required fields:
 
   return `${instructions}
 
-${originalUserPrompt ? `<original_user_prompt>\n${escapedOriginal}\n</original_user_prompt>\n\n` : ''}<user_concept>
+${originalUserPrompt ? `<original_user_prompt>\n${escapedOriginal}\n</original_user_prompt>\n\n` : ""}<user_concept>
 ${escapedConcept}
 </user_concept>
 
@@ -489,7 +523,7 @@ Return ONLY JSON (no markdown, no prose):
     "audio": "Short audio note if relevant (otherwise 'mute' or 'natural ambience')"
   },
   "variations": [],
-  "shot_plan": ${shotPlan ? JSON.stringify(shotPlan, null, 2) : 'null'}
+  "shot_plan": ${shotPlan ? JSON.stringify(shotPlan, null, 2) : "null"}
 }
 `;
 }

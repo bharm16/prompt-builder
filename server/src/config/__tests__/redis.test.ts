@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   redisCtorMock,
@@ -21,11 +21,11 @@ const {
   },
 }));
 
-vi.mock('@infrastructure/Logger', () => ({
+vi.mock("@infrastructure/Logger", () => ({
   logger: loggerMock,
 }));
 
-vi.mock('ioredis', () => {
+vi.mock("ioredis", () => {
   class FakeRedis {
     options: Record<string, unknown>;
     constructor(arg1: unknown, arg2?: unknown) {
@@ -50,9 +50,9 @@ vi.mock('ioredis', () => {
   return { default: FakeRedis };
 });
 
-import { closeRedisClient, createRedisClient } from '../redis';
+import { closeRedisClient, createRedisClient } from "../redis";
 
-describe('redis config', () => {
+describe("redis config", () => {
   const originalEnv = process.env;
 
   beforeEach(() => {
@@ -66,11 +66,11 @@ describe('redis config', () => {
     delete process.env.REDIS_DB;
 
     connectMock.mockResolvedValue(undefined);
-    quitMock.mockResolvedValue('OK');
+    quitMock.mockResolvedValue("OK");
   });
 
-  it('returns null when REDIS_DISABLED=true', () => {
-    process.env.REDIS_DISABLED = 'true';
+  it("returns null when REDIS_DISABLED=true", () => {
+    process.env.REDIS_DISABLED = "true";
 
     const redis = createRedisClient();
 
@@ -78,15 +78,15 @@ describe('redis config', () => {
     expect(redisCtorMock).not.toHaveBeenCalled();
   });
 
-  it('returns null when no REDIS_URL or REDIS_HOST is set', () => {
+  it("returns null when no REDIS_URL or REDIS_HOST is set", () => {
     const redis = createRedisClient();
 
     expect(redis).toBeNull();
     expect(redisCtorMock).not.toHaveBeenCalled();
   });
 
-  it('creates redis client and connects with URL override', async () => {
-    process.env.REDIS_URL = 'redis://localhost:6379';
+  it("creates redis client and connects with URL override", async () => {
+    process.env.REDIS_URL = "redis://localhost:6379";
 
     const redis = createRedisClient();
 
@@ -94,12 +94,19 @@ describe('redis config', () => {
     expect(redisCtorMock).toHaveBeenCalledTimes(1);
     expect(connectMock).toHaveBeenCalledTimes(1);
     expect(onMock.mock.calls.map((c) => c[0])).toEqual(
-      expect.arrayContaining(['connect', 'ready', 'error', 'close', 'reconnecting', 'end'])
+      expect.arrayContaining([
+        "connect",
+        "ready",
+        "error",
+        "close",
+        "reconnecting",
+        "end",
+      ]),
     );
   });
 
-  it('creates redis client when REDIS_HOST is set', () => {
-    process.env.REDIS_HOST = '10.0.0.5';
+  it("creates redis client when REDIS_HOST is set", () => {
+    process.env.REDIS_HOST = "10.0.0.5";
 
     const redis = createRedisClient();
 
@@ -107,8 +114,8 @@ describe('redis config', () => {
     expect(redisCtorMock).toHaveBeenCalledTimes(1);
   });
 
-  it('closes redis client gracefully via quit', async () => {
-    process.env.REDIS_URL = 'redis://localhost:6379';
+  it("closes redis client gracefully via quit", async () => {
+    process.env.REDIS_URL = "redis://localhost:6379";
     const redis = createRedisClient();
 
     await closeRedisClient(redis);
@@ -117,10 +124,10 @@ describe('redis config', () => {
     expect(disconnectMock).not.toHaveBeenCalled();
   });
 
-  it('forces disconnect when quit fails', async () => {
-    process.env.REDIS_URL = 'redis://localhost:6379';
+  it("forces disconnect when quit fails", async () => {
+    process.env.REDIS_URL = "redis://localhost:6379";
     const redis = createRedisClient();
-    quitMock.mockRejectedValueOnce(new Error('quit failed'));
+    quitMock.mockRejectedValueOnce(new Error("quit failed"));
 
     await closeRedisClient(redis);
 

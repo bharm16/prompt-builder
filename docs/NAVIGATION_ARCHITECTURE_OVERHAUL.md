@@ -10,6 +10,7 @@
 This plan addresses the navigation fragmentation, prop drilling, duplicate implementations, and discoverability issues in PromptCanvas. The goal is a unified workspace experience where authenticated users never lose context while navigating.
 
 **Key Problems Solved:**
+
 - Dual navigation shells causing context loss
 - 34-prop drilling through ToolSidebar
 - Duplicate History implementations (SessionsPanel vs HistoryPage)
@@ -42,29 +43,29 @@ This plan addresses the navigation fragmentation, prop drilling, duplicate imple
 
 The app currently renders two entirely different shells depending on the route:
 
-| Shell | Routes | Navigation | Key Files |
-|-------|--------|------------|-----------|
-| Marketing Shell (TopNavbar) | `/home`, `/pricing`, `/history`, `/account`, `/share/:uuid` | Horizontal top nav | `AppShell`, `TopNavbar` |
-| Workspace Shell (ToolSidebar) | `/`, `/session/:id`, `/assets` | 60px icon rail | `toolNavConfig.ts`, `ToolRail.tsx` |
+| Shell                         | Routes                                                      | Navigation         | Key Files                          |
+| ----------------------------- | ----------------------------------------------------------- | ------------------ | ---------------------------------- |
+| Marketing Shell (TopNavbar)   | `/home`, `/pricing`, `/history`, `/account`, `/share/:uuid` | Horizontal top nav | `AppShell`, `TopNavbar`            |
+| Workspace Shell (ToolSidebar) | `/`, `/session/:id`, `/assets`                              | 60px icon rail     | `toolNavConfig.ts`, `ToolRail.tsx` |
 
 **Problem:** Zero shared navigation between them. Users in the workspace can't reach History, Pricing, or Docs. Users on marketing pages can't access Sessions, Characters, or Styles.
 
 ### Duplicate History Implementations
 
-| Component | Location | Features |
-|-----------|----------|----------|
+| Component       | Location              | Features                                               |
+| --------------- | --------------------- | ------------------------------------------------------ |
 | `SessionsPanel` | Sidebar (400px panel) | 5-item limit, chip filters, keyboard nav, rename modal |
-| `HistoryPage` | Full page `/history` | Card layout, different search, no filters, full-width |
+| `HistoryPage`   | Full page `/history`  | Card layout, different search, no filters, full-width  |
 
 These are separate implementations with different filters, different state, and no shared hooks.
 
 ### Asset Fragmentation
 
-| Surface | Scope | Capabilities |
-|---------|-------|--------------|
-| `CharactersPanel` | Characters only | Insert trigger, edit, create |
-| `AssetLibrary` (`/assets`) | All types | Full CRUD, image management, filtering |
-| `AssetsSidebar` | Inline in workspace | Detection via @-triggers |
+| Surface                    | Scope               | Capabilities                           |
+| -------------------------- | ------------------- | -------------------------------------- |
+| `CharactersPanel`          | Characters only     | Insert trigger, edit, create           |
+| `AssetLibrary` (`/assets`) | All types           | Full CRUD, image management, filtering |
+| `AssetsSidebar`            | Inline in workspace | Detection via @-triggers               |
 
 ### Prop Drilling
 
@@ -110,11 +111,11 @@ import React, {
   useReducer,
   useCallback,
   type ReactNode,
-} from 'react';
-import type { PromptHistoryEntry } from '@hooks/types';
-import type { Asset, AssetType } from '@shared/types/asset';
-import type { User } from '@features/prompt-optimizer/context/types';
-import type { ToolPanelType } from '@components/ToolSidebar/types';
+} from "react";
+import type { PromptHistoryEntry } from "@hooks/types";
+import type { Asset, AssetType } from "@shared/types/asset";
+import type { User } from "@features/prompt-optimizer/context/types";
+import type { ToolPanelType } from "@components/ToolSidebar/types";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // State Interface
@@ -158,7 +159,10 @@ interface WorkspaceActions {
 
   // Asset actions
   refreshAssets: () => Promise<void>;
-  insertTrigger: (trigger: string, range?: { start: number; end: number }) => void;
+  insertTrigger: (
+    trigger: string,
+    range?: { start: number; end: number },
+  ) => void;
   editAsset: (assetId: string) => void;
   createAsset: (type: AssetType) => void;
   createFromTrigger: (trigger: string) => void;
@@ -185,7 +189,7 @@ const WorkspaceContext = createContext<WorkspaceContextValue | null>(null);
 export function useWorkspace() {
   const context = useContext(WorkspaceContext);
   if (!context) {
-    throw new Error('useWorkspace must be used within WorkspaceProvider');
+    throw new Error("useWorkspace must be used within WorkspaceProvider");
   }
   // Destructure for convenience - consumers get flat access
   return { ...context.state, ...context.actions };
@@ -195,7 +199,7 @@ export function useWorkspace() {
 export function useWorkspaceState(): WorkspaceState {
   const context = useContext(WorkspaceContext);
   if (!context) {
-    throw new Error('useWorkspaceState must be used within WorkspaceProvider');
+    throw new Error("useWorkspaceState must be used within WorkspaceProvider");
   }
   return context.state;
 }
@@ -203,7 +207,9 @@ export function useWorkspaceState(): WorkspaceState {
 export function useWorkspaceActions(): WorkspaceActions {
   const context = useContext(WorkspaceContext);
   if (!context) {
-    throw new Error('useWorkspaceActions must be used within WorkspaceProvider');
+    throw new Error(
+      "useWorkspaceActions must be used within WorkspaceProvider",
+    );
   }
   return context.actions;
 }
@@ -223,20 +229,20 @@ interface WorkspaceProviderProps {
 export function WorkspaceProvider({ children }: WorkspaceProviderProps): React.ReactElement {
   const user = useAuthUser();
   const { sessionId } = useParams<{ sessionId?: string }>();
-  
+
   // ─────────────────────────────────────────────────────────────────────────
   // IMPORTANT: History must be initialized at provider level, not lazily
   // This ensures WorkspaceHome has access to history even with no session
   // ─────────────────────────────────────────────────────────────────────────
   const promptHistory = usePromptHistory(user);
   const assetsSidebar = useAssetsSidebar();
-  
+
   const [activePanel, setActivePanel] = useState<ToolPanelType>('studio');
   const [currentPromptUuid, setCurrentPromptUuid] = useState<string | null>(null);
   const [currentPromptDocId, setCurrentPromptDocId] = useState<string | null>(null);
-  
+
   // ... additional state as needed
-  
+
   // ─────────────────────────────────────────────────────────────────────────
   // Memoized state object
   // ─────────────────────────────────────────────────────────────────────────
@@ -318,6 +324,7 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps): React.R
 ### 1.3 Refactor ToolSidebar Props
 
 **Before (34 props):**
+
 ```typescript
 interface ToolSidebarProps {
   user: User | null;
@@ -331,12 +338,16 @@ interface ToolSidebarProps {
 ```
 
 **After (~12 props, generation-specific only):**
+
 ```typescript
 interface ToolSidebarProps {
   // Only props specific to generation controls
   prompt: string;
   onPromptChange?: (prompt: string) => void;
-  onOptimize?: (prompt?: string, options?: OptimizationOptions) => Promise<void>;
+  onOptimize?: (
+    prompt?: string,
+    options?: OptimizationOptions,
+  ) => Promise<void>;
   showResults?: boolean;
   isProcessing?: boolean;
   isRefining?: boolean;
@@ -366,7 +377,7 @@ App.tsx
 **File:** `components/ToolSidebar/ToolSidebar.tsx`
 
 ```typescript
-import { useWorkspace } from '@/contexts/WorkspaceContext';
+import { useWorkspace } from "@/contexts/WorkspaceContext";
 
 export function ToolSidebar(props: ToolSidebarProps): ReactElement {
   const {
@@ -408,16 +419,16 @@ export function ToolSidebar(props: ToolSidebarProps): ReactElement {
 
 ### 1.6 Files to Modify
 
-| File | Change |
-|------|--------|
-| `contexts/WorkspaceContext.tsx` | **Create** |
-| `contexts/index.ts` | Export new context |
-| `App.tsx` | Wrap workspace routes with `WorkspaceProvider` |
-| `PromptOptimizerWorkspace.tsx` | Remove state that moves to context |
-| `ToolSidebar/ToolSidebar.tsx` | Use `useWorkspace()` hook |
-| `ToolSidebar/components/panels/SessionsPanel.tsx` | Use `useWorkspace()` hook |
-| `ToolSidebar/components/panels/CharactersPanel.tsx` | Use `useWorkspace()` hook |
-| `ToolSidebar/types.ts` | Slim down `ToolSidebarProps` |
+| File                                                | Change                                         |
+| --------------------------------------------------- | ---------------------------------------------- |
+| `contexts/WorkspaceContext.tsx`                     | **Create**                                     |
+| `contexts/index.ts`                                 | Export new context                             |
+| `App.tsx`                                           | Wrap workspace routes with `WorkspaceProvider` |
+| `PromptOptimizerWorkspace.tsx`                      | Remove state that moves to context             |
+| `ToolSidebar/ToolSidebar.tsx`                       | Use `useWorkspace()` hook                      |
+| `ToolSidebar/components/panels/SessionsPanel.tsx`   | Use `useWorkspace()` hook                      |
+| `ToolSidebar/components/panels/CharactersPanel.tsx` | Use `useWorkspace()` hook                      |
+| `ToolSidebar/types.ts`                              | Slim down `ToolSidebarProps`                   |
 
 ### 1.7 Performance Considerations
 
@@ -435,7 +446,7 @@ const WorkspaceActionsContext = createContext<WorkspaceActions | null>(null);
 
 export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
   // ... same setup
-  
+
   return (
     <WorkspaceActionsContext.Provider value={actions}>
       <WorkspaceStateContext.Provider value={state}>
@@ -447,6 +458,7 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
 ```
 
 **Measurement approach:**
+
 1. Use React DevTools Profiler during development
 2. Look for "cascading renders" when typing in search or switching panels
 3. If >50ms re-renders occur in unrelated components, implement the split
@@ -512,8 +524,18 @@ Eliminate the dual-shell problem. Authenticated users stay in workspace shell wi
 **File:** `components/navigation/AppShell/constants.ts`
 
 ```typescript
-import { Clock, CreditCard, FileText, Home, MessageCircle, Package, Layers, History, User } from '@promptstudio/system/components/ui';
-import type { NavItem } from './types';
+import {
+  Clock,
+  CreditCard,
+  FileText,
+  Home,
+  MessageCircle,
+  Package,
+  Layers,
+  History,
+  User,
+} from "@promptstudio/system/components/ui";
+import type { NavItem } from "./types";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Route Configuration
@@ -521,46 +543,40 @@ import type { NavItem } from './types';
 
 /** Routes that show NO shell (auth flow) */
 export const AUTH_ROUTES = [
-  '/signin',
-  '/signup',
-  '/forgot-password',
-  '/email-verification',
-  '/reset-password',
-  '/login',
-  '/register',
+  "/signin",
+  "/signup",
+  "/forgot-password",
+  "/email-verification",
+  "/reset-password",
+  "/login",
+  "/register",
 ] as const;
 
-/** 
+/**
  * Routes that show WORKSPACE shell for authenticated users
- * but MARKETING shell for unauthenticated users 
+ * but MARKETING shell for unauthenticated users
  */
 export const HYBRID_ROUTES = [
-  '/pricing',
-  '/history',
-  '/account',
-  '/settings/billing',
-  '/settings/billing/invoices',
+  "/pricing",
+  "/history",
+  "/account",
+  "/settings/billing",
+  "/settings/billing/invoices",
 ] as const;
 
 /** Routes that ALWAYS show workspace shell (require auth context) */
-export const WORKSPACE_ROUTES_EXACT = [
-  '/',
-  '/assets',
-] as const;
+export const WORKSPACE_ROUTES_EXACT = ["/", "/assets"] as const;
 
-export const WORKSPACE_ROUTE_PREFIXES = [
-  '/prompt/',
-  '/session/',
-] as const;
+export const WORKSPACE_ROUTE_PREFIXES = ["/prompt/", "/session/"] as const;
 
 /** Routes that ALWAYS show marketing shell */
 export const MARKETING_ROUTES = [
-  '/home',
-  '/products',
-  '/docs',
-  '/contact',
-  '/privacy-policy',
-  '/terms-of-service',
+  "/home",
+  "/products",
+  "/docs",
+  "/contact",
+  "/privacy-policy",
+  "/terms-of-service",
 ] as const;
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -571,11 +587,11 @@ export const MARKETING_ROUTES = [
  * Navigation items for TopNavbar (unauthenticated users)
  */
 export const TOP_NAV_ITEMS: readonly NavItem[] = [
-  { to: '/products', label: 'Products', icon: Package },
-  { to: '/pricing', label: 'Pricing', icon: CreditCard },
-  { to: '/docs', label: 'Docs', icon: FileText },
-  { to: '/history', label: 'History', icon: History },
-  { to: '/contact', label: 'Support', icon: MessageCircle },
+  { to: "/products", label: "Products", icon: Package },
+  { to: "/pricing", label: "Pricing", icon: CreditCard },
+  { to: "/docs", label: "Docs", icon: FileText },
+  { to: "/history", label: "History", icon: History },
+  { to: "/contact", label: "Support", icon: MessageCircle },
 ] as const;
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -594,42 +610,45 @@ export type MarketingRoute = (typeof MARKETING_ROUTES)[number];
 **File:** `components/navigation/AppShell/hooks/useNavigationConfig.ts`
 
 ```typescript
-import { useMemo } from 'react';
-import { useLocation } from 'react-router-dom';
-import { useAuthUser } from '@hooks/useAuthUser';
+import { useMemo } from "react";
+import { useLocation } from "react-router-dom";
+import { useAuthUser } from "@hooks/useAuthUser";
 import {
   AUTH_ROUTES,
   HYBRID_ROUTES,
   TOP_NAV_ITEMS,
   WORKSPACE_ROUTE_PREFIXES,
   WORKSPACE_ROUTES_EXACT,
-} from '../constants';
-import type { NavigationConfig, ShellVariant } from '../types';
+} from "../constants";
+import type { NavigationConfig, ShellVariant } from "../types";
 
 /**
  * Determines shell variant based on current pathname and auth state.
  */
-function resolveVariant(pathname: string, isAuthenticated: boolean): ShellVariant {
+function resolveVariant(
+  pathname: string,
+  isAuthenticated: boolean,
+): ShellVariant {
   // Auth pages: no shell
   if ((AUTH_ROUTES as readonly string[]).includes(pathname)) {
-    return 'none';
+    return "none";
   }
 
   // Workspace routes: always sidebar
   if ((WORKSPACE_ROUTES_EXACT as readonly string[]).includes(pathname)) {
-    return 'sidebar';
+    return "sidebar";
   }
   if (WORKSPACE_ROUTE_PREFIXES.some((prefix) => pathname.startsWith(prefix))) {
-    return 'sidebar';
+    return "sidebar";
   }
 
   // Hybrid routes: sidebar if authenticated, topnav if not
   if ((HYBRID_ROUTES as readonly string[]).includes(pathname)) {
-    return isAuthenticated ? 'sidebar' : 'topnav';
+    return isAuthenticated ? "sidebar" : "topnav";
   }
 
   // Everything else: marketing shell
-  return 'topnav';
+  return "topnav";
 }
 
 /**
@@ -642,12 +661,15 @@ export function useNavigationConfig(): NavigationConfig {
 
   const variant = useMemo(
     () => resolveVariant(location.pathname, isAuthenticated),
-    [location.pathname, isAuthenticated]
+    [location.pathname, isAuthenticated],
   );
 
-  const navItems = useMemo(() => ({
-    topNav: TOP_NAV_ITEMS,
-  }), []);
+  const navItems = useMemo(
+    () => ({
+      topNav: TOP_NAV_ITEMS,
+    }),
+    [],
+  );
 
   return {
     variant,
@@ -663,8 +685,17 @@ export function useNavigationConfig(): NavigationConfig {
 **File:** `components/ToolSidebar/config/toolNavConfig.ts`
 
 ```typescript
-import { Plus, Wand2, Clock, Layers, History, CreditCard, User, Settings } from '@promptstudio/system/components/ui';
-import type { ToolNavItem } from '../types';
+import {
+  Plus,
+  Wand2,
+  Clock,
+  Layers,
+  History,
+  CreditCard,
+  User,
+  Settings,
+} from "@promptstudio/system/components/ui";
+import type { ToolNavItem } from "../types";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Primary Tool Navigation
@@ -672,15 +703,27 @@ import type { ToolNavItem } from '../types';
 
 export const TOOL_NAV_ITEMS: readonly ToolNavItem[] = [
   // Header action
-  { id: 'new', icon: Plus, label: 'New', variant: 'header' },
-  
+  { id: "new", icon: Plus, label: "New", variant: "header" },
+
   // Primary tools (panels)
-  { id: 'studio', icon: Wand2, label: 'Studio', variant: 'default' },
-  { id: 'sessions', icon: Clock, label: 'Sessions', variant: 'default' },
-  
+  { id: "studio", icon: Wand2, label: "Studio", variant: "default" },
+  { id: "sessions", icon: Clock, label: "Sessions", variant: "default" },
+
   // Route-based navigation
-  { id: 'assets', icon: Layers, label: 'Assets', variant: 'default', route: '/assets' },
-  { id: 'history', icon: History, label: 'History', variant: 'default', route: '/history' },
+  {
+    id: "assets",
+    icon: Layers,
+    label: "Assets",
+    variant: "default",
+    route: "/assets",
+  },
+  {
+    id: "history",
+    icon: History,
+    label: "History",
+    variant: "default",
+    route: "/history",
+  },
 ] as const;
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -688,8 +731,20 @@ export const TOOL_NAV_ITEMS: readonly ToolNavItem[] = [
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const TOOL_FOOTER_ITEMS: readonly ToolNavItem[] = [
-  { id: 'pricing', icon: CreditCard, label: 'Pricing', variant: 'footer', route: '/pricing' },
-  { id: 'account', icon: User, label: 'Account', variant: 'footer', route: '/account' },
+  {
+    id: "pricing",
+    icon: CreditCard,
+    label: "Pricing",
+    variant: "footer",
+    route: "/pricing",
+  },
+  {
+    id: "account",
+    icon: User,
+    label: "Account",
+    variant: "footer",
+    route: "/account",
+  },
 ] as const;
 ```
 
@@ -702,7 +757,7 @@ export interface ToolNavItem {
   id: ToolPanelType | string;
   icon: AppIcon;
   label: string;
-  variant: 'header' | 'default' | 'footer';
+  variant: "header" | "default" | "footer";
   /** If set, clicking navigates to this route instead of switching panels */
   route?: string;
 }
@@ -724,7 +779,7 @@ interface ToolNavButtonProps {
 
 function ToolNavButton({ item, isActive, onClick }: ToolNavButtonProps): ReactElement {
   const Icon = item.icon;
-  
+
   return (
     <Tooltip>
       <TooltipTrigger asChild>
@@ -761,12 +816,12 @@ export function ToolRail({
       onCreateNew();
       return;
     }
-    
+
     if (item.route) {
       navigate(item.route);
       return;
     }
-    
+
     // Panel-based navigation
     onPanelChange(item.id as ToolPanelType);
   };
@@ -805,7 +860,7 @@ export function ToolRail({
             onClick={() => handleItemClick(item)}
           />
         ))}
-        
+
         {/* User menu */}
         {user && (
           <UserMenuButton user={user} />
@@ -931,19 +986,19 @@ function AppRoutes(): React.ReactElement {
 
 ### 2.9 Files to Modify
 
-| File | Change |
-|------|--------|
-| `navigation/AppShell/constants.ts` | Add `HYBRID_ROUTES`, restructure route lists |
-| `navigation/AppShell/hooks/useNavigationConfig.ts` | Add auth-aware resolution |
-| `navigation/WorkspaceShell.tsx` | **Create** |
-| `ToolSidebar/config/toolNavConfig.ts` | Add route-based nav items, footer items |
-| `ToolSidebar/types.ts` | Add `route` to `ToolNavItem` |
-| `ToolSidebar/components/ToolRail.tsx` | Support route navigation |
-| `App.tsx` | Restructure routes with WorkspaceShell |
-| `pages/HistoryPage.tsx` | Adapt for embedded display (remove redundant headers) |
-| `pages/PricingPage.tsx` | Adapt for embedded display |
-| `pages/AccountPage.tsx` | Adapt for embedded display |
-| `pages/BillingPage.tsx` | Adapt for embedded display |
+| File                                               | Change                                                |
+| -------------------------------------------------- | ----------------------------------------------------- |
+| `navigation/AppShell/constants.ts`                 | Add `HYBRID_ROUTES`, restructure route lists          |
+| `navigation/AppShell/hooks/useNavigationConfig.ts` | Add auth-aware resolution                             |
+| `navigation/WorkspaceShell.tsx`                    | **Create**                                            |
+| `ToolSidebar/config/toolNavConfig.ts`              | Add route-based nav items, footer items               |
+| `ToolSidebar/types.ts`                             | Add `route` to `ToolNavItem`                          |
+| `ToolSidebar/components/ToolRail.tsx`              | Support route navigation                              |
+| `App.tsx`                                          | Restructure routes with WorkspaceShell                |
+| `pages/HistoryPage.tsx`                            | Adapt for embedded display (remove redundant headers) |
+| `pages/PricingPage.tsx`                            | Adapt for embedded display                            |
+| `pages/AccountPage.tsx`                            | Adapt for embedded display                            |
+| `pages/BillingPage.tsx`                            | Adapt for embedded display                            |
 
 ### 2.10 Validation Criteria
 
@@ -972,25 +1027,25 @@ Make `SessionsPanel` and `HistoryPage` share underlying functionality while keep
 **New file:** `features/history/hooks/useHistoryView.ts`
 
 ```typescript
-import { useMemo, useState, useEffect, useCallback } from 'react';
-import { useWorkspace } from '@/contexts/WorkspaceContext';
-import type { PromptHistoryEntry } from '@hooks/types';
+import { useMemo, useState, useEffect, useCallback } from "react";
+import { useWorkspace } from "@/contexts/WorkspaceContext";
+import type { PromptHistoryEntry } from "@hooks/types";
 import {
   hasVideoArtifact,
   isRecentEntry,
   resolveHistoryThumbnail,
-} from '../utils/historyMedia';
+} from "../utils/historyMedia";
 import {
   extractDisambiguator,
   normalizeTitle,
   resolveEntryTitle,
-} from '../utils/historyTitles';
+} from "../utils/historyTitles";
 import {
   formatModelLabel,
   normalizeProcessingLabel,
   resolveEntryStage,
-} from '../utils/historyStages';
-import { formatRelativeOrDate } from '../utils/historyDates';
+} from "../utils/historyStages";
+import { formatRelativeOrDate } from "../utils/historyDates";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -1024,23 +1079,23 @@ interface UseHistoryViewReturn {
   displayedHistory: PromptHistoryEntry[];
   totalCount: number;
   promptRows: HistoryRow[];
-  
+
   // Filters
   searchQuery: string;
   setSearchQuery: (q: string) => void;
   filterState: FilterState;
   setFilterState: React.Dispatch<React.SetStateAction<FilterState>>;
   hasActiveFilters: boolean;
-  
+
   // Pagination
   showAll: boolean;
   setShowAll: (show: boolean) => void;
   hasMore: boolean;
-  
+
   // Keyboard navigation
   focusedKey: string | null;
   setFocusedKey: (key: string | null) => void;
-  
+
   // Row lookup
   rowByKey: Map<string, HistoryRow>;
 }
@@ -1049,9 +1104,11 @@ interface UseHistoryViewReturn {
 // Hook Implementation
 // ─────────────────────────────────────────────────────────────────────────────
 
-export function useHistoryView(options: UseHistoryViewOptions = {}): UseHistoryViewReturn {
+export function useHistoryView(
+  options: UseHistoryViewOptions = {},
+): UseHistoryViewReturn {
   const { initialLimit = 5, enableFilters = true } = options;
-  
+
   const {
     history,
     filteredHistory,
@@ -1078,7 +1135,7 @@ export function useHistoryView(options: UseHistoryViewOptions = {}): UseHistoryV
   // Apply chip filters
   const filteredByChips = useMemo(() => {
     if (!enableFilters) return filteredHistory;
-    
+
     return filteredHistory.filter((entry) => {
       if (filterState.videosOnly && !hasVideoArtifact(entry)) {
         return false;
@@ -1101,46 +1158,52 @@ export function useHistoryView(options: UseHistoryViewOptions = {}): UseHistoryV
   // Compute row data
   const promptRows = useMemo((): HistoryRow[] => {
     const baseTitles = displayedHistory.map((entry) =>
-      normalizeTitle(resolveEntryTitle(entry))
+      normalizeTitle(resolveEntryTitle(entry)),
     );
     const counts = new Map<string, number>();
-    baseTitles.forEach((title) => counts.set(title, (counts.get(title) ?? 0) + 1));
+    baseTitles.forEach((title) =>
+      counts.set(title, (counts.get(title) ?? 0) + 1),
+    );
     const seen = new Map<string, number>();
 
     return displayedHistory.map((entry, index) => {
       const stage = resolveEntryStage(entry);
-      const baseTitle = baseTitles[index] ?? 'Untitled';
+      const baseTitle = baseTitles[index] ?? "Untitled";
       const hasDupes = (counts.get(baseTitle) ?? 0) > 1;
       const nextSeen = (seen.get(baseTitle) ?? 0) + 1;
       seen.set(baseTitle, nextSeen);
 
       const isSelected = Boolean(
         (currentPromptUuid && entry.uuid === currentPromptUuid) ||
-          (currentPromptDocId && entry.id === currentPromptDocId)
+          (currentPromptDocId && entry.id === currentPromptDocId),
       );
 
       const dateLabel = formatRelativeOrDate(entry.timestamp);
       const fallbackModelLabel =
-        isSelected && typeof activeModelLabel === 'string'
+        isSelected && typeof activeModelLabel === "string"
           ? formatModelLabel(activeModelLabel)
           : null;
       const modelLabel =
-        formatModelLabel(typeof entry.targetModel === 'string' ? entry.targetModel : null) ??
-        fallbackModelLabel;
+        formatModelLabel(
+          typeof entry.targetModel === "string" ? entry.targetModel : null,
+        ) ?? fallbackModelLabel;
 
       const normalizedActiveStatus =
-        typeof activeStatusLabel === 'string' && activeStatusLabel.trim()
+        typeof activeStatusLabel === "string" && activeStatusLabel.trim()
           ? activeStatusLabel
-          : '';
+          : "";
       const normalizedProcessingStatus =
-        normalizedActiveStatus === 'Optimizing' ? 'Refining' : normalizedActiveStatus;
+        normalizedActiveStatus === "Optimizing"
+          ? "Refining"
+          : normalizedActiveStatus;
       const processingLabel =
         isSelected && normalizedProcessingStatus
           ? normalizeProcessingLabel(normalizedProcessingStatus)
           : null;
       const effectiveProcessingLabel =
         isSelected &&
-        (normalizedActiveStatus === 'Refining' || normalizedActiveStatus === 'Optimizing')
+        (normalizedActiveStatus === "Refining" ||
+          normalizedActiveStatus === "Optimizing")
           ? processingLabel
           : null;
 
@@ -1150,15 +1213,16 @@ export function useHistoryView(options: UseHistoryViewOptions = {}): UseHistoryV
         extractDisambiguator(entry.input) ??
         (() => {
           const model =
-            formatModelLabel(typeof entry.targetModel === 'string' ? entry.targetModel : null) ??
-            modelLabel;
+            formatModelLabel(
+              typeof entry.targetModel === "string" ? entry.targetModel : null,
+            ) ?? modelLabel;
           if (!model) return null;
           return nextSeen === 1 ? model : `alt ${nextSeen}`;
         })() ??
         `alt ${nextSeen}`;
 
       const title = hasDupes ? `${baseTitle} - ${disambiguator}` : baseTitle;
-      const key = entry.id ?? entry.uuid ?? `${entry.timestamp ?? ''}-${title}`;
+      const key = entry.id ?? entry.uuid ?? `${entry.timestamp ?? ""}-${title}`;
 
       return {
         entry,
@@ -1242,7 +1306,7 @@ export function SessionsPanel({ onBack }: { onBack?: () => void }): ReactElement
 
   // ... keyboard navigation logic (same as before)
   // ... rename modal state (same as before)
-  
+
   return (
     <>
       <div className="flex flex-col h-full">
@@ -1419,12 +1483,12 @@ export function HistoryPage(): React.ReactElement {
 
 ### 3.4 Files to Modify
 
-| File | Change |
-|------|--------|
-| `features/history/hooks/useHistoryView.ts` | **Create** |
-| `features/history/index.ts` | Export new hook |
-| `ToolSidebar/components/panels/SessionsPanel.tsx` | Use shared hook |
-| `pages/HistoryPage.tsx` | Use shared hook, add filter chips |
+| File                                              | Change                            |
+| ------------------------------------------------- | --------------------------------- |
+| `features/history/hooks/useHistoryView.ts`        | **Create**                        |
+| `features/history/index.ts`                       | Export new hook                   |
+| `ToolSidebar/components/panels/SessionsPanel.tsx` | Use shared hook                   |
+| `pages/HistoryPage.tsx`                           | Use shared hook, add filter chips |
 
 ### 3.5 Validation Criteria
 
@@ -1467,7 +1531,7 @@ export function AssetLibrary(): React.ReactElement {
   const navigate = useNavigate();
   const toast = useToast();
   const { insertTrigger } = useWorkspace();
-  
+
   // ... existing state and handlers ...
 
   const handleInsertIntoPrompt = useCallback(
@@ -1517,7 +1581,7 @@ export function AssetLibrary(): React.ReactElement {
       </div>
 
       {/* ... rest of component with handleInsertIntoPrompt added to AssetGrid */}
-      
+
       {filteredAssets.length > 0 && (
         <AssetGrid
           assets={filteredAssets}
@@ -1561,12 +1625,12 @@ interface AssetGridProps {
 
 ### 4.4 Files to Modify
 
-| File | Change |
-|------|--------|
-| `features/assets/AssetLibrary.tsx` | Add insert action, back navigation |
-| `features/assets/components/AssetGrid.tsx` | Add insert button |
-| `features/assets/components/AssetCard.tsx` | Show insert button on hover |
-| `pages/AssetsPage.tsx` | Ensure proper layout for embedded display |
+| File                                       | Change                                    |
+| ------------------------------------------ | ----------------------------------------- |
+| `features/assets/AssetLibrary.tsx`         | Add insert action, back navigation        |
+| `features/assets/components/AssetGrid.tsx` | Add insert button                         |
+| `features/assets/components/AssetCard.tsx` | Show insert button on hover               |
+| `pages/AssetsPage.tsx`                     | Ensure proper layout for embedded display |
 
 ### 4.5 Validation Criteria
 
@@ -1634,7 +1698,7 @@ function RecentSessionCard({ entry, onClick }: RecentSessionCardProps): React.Re
       <div className="h-12 w-12 rounded-md bg-[#2C3037] flex items-center justify-center">
         <Sparkles className="h-5 w-5 text-[#A1AFC5]" />
       </div>
-      
+
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium text-white truncate">{title}</p>
         <p className="text-xs text-[#A1AFC5]">{timestamp}</p>
@@ -1828,12 +1892,12 @@ function PromptOptimizerContent({
 
 ### 5.3 Files to Modify
 
-| File | Change |
-|------|--------|
-| `features/prompt-optimizer/components/WorkspaceHome.tsx` | **Create** |
-| `features/prompt-optimizer/components/RecentSessionCard.tsx` | **Create** (or inline) |
-| `PromptOptimizerContainer/PromptOptimizerWorkspace.tsx` | Conditionally render home |
-| `features/prompt-optimizer/index.ts` | Export WorkspaceHome |
+| File                                                         | Change                    |
+| ------------------------------------------------------------ | ------------------------- |
+| `features/prompt-optimizer/components/WorkspaceHome.tsx`     | **Create**                |
+| `features/prompt-optimizer/components/RecentSessionCard.tsx` | **Create** (or inline)    |
+| `PromptOptimizerContainer/PromptOptimizerWorkspace.tsx`      | Conditionally render home |
+| `features/prompt-optimizer/index.ts`                         | Export WorkspaceHome      |
 
 ### 5.4 Validation Criteria
 
@@ -1879,7 +1943,7 @@ Remove `/consistent` from **THREE** places:
 
 ```typescript
 // 1. WORKSPACE_ROUTES_EXACT - REMOVE '/consistent'
-export const WORKSPACE_ROUTES_EXACT = ['/', '/assets'] as const;
+export const WORKSPACE_ROUTES_EXACT = ["/", "/assets"] as const;
 
 // 2. NAV_ITEMS - DELETE the consistency entry entirely
 // REMOVE: { to: '/consistent', label: 'Consistency', icon: Video, showInTopNav: false, showInSidebar: true },
@@ -1949,14 +2013,14 @@ If styles functionality is not planned:
 
 ### 6.6 Files to Modify
 
-| File | Change |
-|------|--------|
-| `App.tsx` | Remove ghost routes |
-| `navigation/AppShell/constants.ts` | Remove `/consistent` from all locations |
-| `ToolSidebar/config/toolNavConfig.ts` | Remove styles (optional) |
-| `ToolSidebar/ToolSidebar.tsx` | Remove StylesPanel rendering (optional) |
-| `pages/ProductsPage.tsx` | Add coming-soon or improve |
-| `pages/DocsPage.tsx` | Add coming-soon or improve |
+| File                                  | Change                                  |
+| ------------------------------------- | --------------------------------------- |
+| `App.tsx`                             | Remove ghost routes                     |
+| `navigation/AppShell/constants.ts`    | Remove `/consistent` from all locations |
+| `ToolSidebar/config/toolNavConfig.ts` | Remove styles (optional)                |
+| `ToolSidebar/ToolSidebar.tsx`         | Remove StylesPanel rendering (optional) |
+| `pages/ProductsPage.tsx`              | Add coming-soon or improve              |
+| `pages/DocsPage.tsx`                  | Add coming-soon or improve              |
 
 ### 6.7 Validation Criteria
 
@@ -1976,9 +2040,13 @@ If routing changes feel risky, gate behind a feature flag:
 
 ```typescript
 // In useNavigationConfig.ts
-const useNewNav = new URLSearchParams(window.location.search).get('newNav') === 'true';
+const useNewNav =
+  new URLSearchParams(window.location.search).get("newNav") === "true";
 
-function resolveVariant(pathname: string, isAuthenticated: boolean): ShellVariant {
+function resolveVariant(
+  pathname: string,
+  isAuthenticated: boolean,
+): ShellVariant {
   if (!useNewNav) {
     // Return legacy behavior
     return legacyResolveVariant(pathname);
@@ -1992,14 +2060,14 @@ function resolveVariant(pathname: string, isAuthenticated: boolean): ShellVarian
 
 Each phase is independently deployable:
 
-| Phase | Rollback Strategy |
-|-------|-------------------|
-| 1 | Revert context, restore prop drilling |
-| 2 | Revert routing, restore dual shells |
-| 3 | Revert hook extraction, restore duplicate implementations |
-| 4 | Minimal - additive changes only |
-| 5 | Minimal - additive changes only |
-| 6 | Restore routes if needed (unlikely) |
+| Phase | Rollback Strategy                                         |
+| ----- | --------------------------------------------------------- |
+| 1     | Revert context, restore prop drilling                     |
+| 2     | Revert routing, restore dual shells                       |
+| 3     | Revert hook extraction, restore duplicate implementations |
+| 4     | Minimal - additive changes only                           |
+| 5     | Minimal - additive changes only                           |
+| 6     | Restore routes if needed (unlikely)                       |
 
 ### Testing Strategy
 
@@ -2029,6 +2097,7 @@ After completion:
 ## Implementation Checklist
 
 ### Phase 1: Context Architecture Foundation
+
 - [ ] Create `WorkspaceContext.tsx`
 - [ ] Create `WorkspaceProvider`
 - [ ] Update `App.tsx` to wrap with provider
@@ -2040,6 +2109,7 @@ After completion:
 - [ ] Performance profiling
 
 ### Phase 2: Navigation Unification
+
 - [ ] Update `constants.ts` with new route categories
 - [ ] Update `useNavigationConfig.ts` with auth-aware resolution
 - [ ] Create `WorkspaceShell.tsx`
@@ -2051,6 +2121,7 @@ After completion:
 - [ ] Manual navigation testing
 
 ### Phase 3: History Consolidation
+
 - [ ] Create `useHistoryView.ts` hook
 - [ ] Refactor `SessionsPanel` to use hook
 - [ ] Refactor `HistoryPage` to use hook
@@ -2059,12 +2130,14 @@ After completion:
 - [ ] Run test suite
 
 ### Phase 4: Asset Library Integration
+
 - [ ] Update `AssetLibrary.tsx` with insert action
 - [ ] Add "Back to Studio" navigation
 - [ ] Update `AssetGrid` with insert button
 - [ ] Run test suite
 
 ### Phase 5: Workspace Home State
+
 - [ ] Create `WorkspaceHome.tsx`
 - [ ] Create `RecentSessionCard` component
 - [ ] Integrate into `PromptOptimizerWorkspace`
@@ -2072,6 +2145,7 @@ After completion:
 - [ ] Run test suite
 
 ### Phase 6: Cleanup
+
 - [ ] Remove ghost routes from `App.tsx`
 - [ ] Remove `/consistent` from constants
 - [ ] Run `grep` verification
@@ -2086,23 +2160,23 @@ After completion:
 
 ### New Files Created
 
-| File | Phase | Purpose |
-|------|-------|---------|
-| `contexts/WorkspaceContext.tsx` | 1 | Shared workspace state |
-| `navigation/WorkspaceShell.tsx` | 2 | Authenticated user shell |
-| `features/history/hooks/useHistoryView.ts` | 3 | Shared history logic |
-| `features/prompt-optimizer/components/WorkspaceHome.tsx` | 5 | Landing state |
+| File                                                     | Phase | Purpose                  |
+| -------------------------------------------------------- | ----- | ------------------------ |
+| `contexts/WorkspaceContext.tsx`                          | 1     | Shared workspace state   |
+| `navigation/WorkspaceShell.tsx`                          | 2     | Authenticated user shell |
+| `features/history/hooks/useHistoryView.ts`               | 3     | Shared history logic     |
+| `features/prompt-optimizer/components/WorkspaceHome.tsx` | 5     | Landing state            |
 
 ### Major Files Modified
 
-| File | Phases | Changes |
-|------|--------|---------|
-| `App.tsx` | 1, 2, 6 | Provider wrapping, route restructuring, cleanup |
-| `ToolSidebar/ToolSidebar.tsx` | 1, 2 | Context usage, simplified props |
-| `ToolSidebar/components/ToolRail.tsx` | 2 | Route-based navigation |
-| `navigation/AppShell/constants.ts` | 2, 6 | Route categories, cleanup |
-| `navigation/AppShell/hooks/useNavigationConfig.ts` | 2 | Auth-aware resolution |
-| `ToolSidebar/components/panels/SessionsPanel.tsx` | 1, 3 | Context usage, shared hook |
-| `pages/HistoryPage.tsx` | 3 | Shared hook, filters |
-| `features/assets/AssetLibrary.tsx` | 4 | Insert action, navigation |
-| `PromptOptimizerContainer/PromptOptimizerWorkspace.tsx` | 1, 5 | State extraction, home rendering |
+| File                                                    | Phases  | Changes                                         |
+| ------------------------------------------------------- | ------- | ----------------------------------------------- |
+| `App.tsx`                                               | 1, 2, 6 | Provider wrapping, route restructuring, cleanup |
+| `ToolSidebar/ToolSidebar.tsx`                           | 1, 2    | Context usage, simplified props                 |
+| `ToolSidebar/components/ToolRail.tsx`                   | 2       | Route-based navigation                          |
+| `navigation/AppShell/constants.ts`                      | 2, 6    | Route categories, cleanup                       |
+| `navigation/AppShell/hooks/useNavigationConfig.ts`      | 2       | Auth-aware resolution                           |
+| `ToolSidebar/components/panels/SessionsPanel.tsx`       | 1, 3    | Context usage, shared hook                      |
+| `pages/HistoryPage.tsx`                                 | 3       | Shared hook, filters                            |
+| `features/assets/AssetLibrary.tsx`                      | 4       | Insert action, navigation                       |
+| `PromptOptimizerContainer/PromptOptimizerWorkspace.tsx` | 1, 5    | State extraction, home rendering                |

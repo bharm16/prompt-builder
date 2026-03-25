@@ -1,16 +1,22 @@
-import { useCallback, useState } from 'react';
-import type { ToolPanelType } from '../types';
+import { useCallback, useState } from "react";
+import type { ToolPanelType } from "../types";
 
-const PANEL_STORAGE_KEY = 'tool-sidebar:activePanel';
-const COLLAPSED_STORAGE_KEY = 'tool-sidebar:isPanelCollapsed';
+const PANEL_STORAGE_KEY = "tool-sidebar:activePanel";
+const COLLAPSED_STORAGE_KEY = "tool-sidebar:isPanelCollapsed";
 
-const VALID_PANELS = new Set<string>(['sessions', 'studio', 'characters', 'styles']);
+const VALID_PANELS = new Set<string>([
+  "sessions",
+  "studio",
+  "characters",
+  "styles",
+]);
 
 const loadActivePanel = (fallback: ToolPanelType): ToolPanelType => {
-  if (typeof window === 'undefined') return fallback;
+  if (typeof window === "undefined") return fallback;
   try {
     const value = window.localStorage.getItem(PANEL_STORAGE_KEY);
-    if (value === 'create' || value === 'continuity' || value === 'apps') return 'studio';
+    if (value === "create" || value === "continuity" || value === "apps")
+      return "studio";
     if (value && VALID_PANELS.has(value)) return value as ToolPanelType;
     return fallback;
   } catch {
@@ -19,9 +25,9 @@ const loadActivePanel = (fallback: ToolPanelType): ToolPanelType => {
 };
 
 const loadIsPanelCollapsed = (): boolean => {
-  if (typeof window === 'undefined') return false;
+  if (typeof window === "undefined") return false;
   try {
-    return window.sessionStorage.getItem(COLLAPSED_STORAGE_KEY) === 'true';
+    return window.sessionStorage.getItem(COLLAPSED_STORAGE_KEY) === "true";
   } catch {
     return false;
   }
@@ -35,20 +41,26 @@ interface UseToolSidebarStateReturn {
 }
 
 export function useToolSidebarState(
-  defaultPanel: ToolPanelType = 'studio',
-  { forceDefault = false }: { forceDefault?: boolean | undefined } = {}
+  defaultPanel: ToolPanelType = "studio",
+  { forceDefault = false }: { forceDefault?: boolean | undefined } = {},
 ): UseToolSidebarStateReturn {
   const [activePanel, setActivePanelState] = useState<ToolPanelType>(() =>
-    forceDefault ? defaultPanel : loadActivePanel(defaultPanel)
+    forceDefault ? defaultPanel : loadActivePanel(defaultPanel),
   );
-  const [isPanelCollapsed, setIsPanelCollapsedState] = useState(() => loadIsPanelCollapsed());
+  const [isPanelCollapsed, setIsPanelCollapsedState] = useState(() =>
+    loadIsPanelCollapsed(),
+  );
 
   const setActivePanel = useCallback((panel: ToolPanelType) => {
     setActivePanelState((previousPanel) => {
       if (previousPanel === panel) {
         return previousPanel;
       }
-      try { window.localStorage.setItem(PANEL_STORAGE_KEY, panel); } catch { /* ignore */ }
+      try {
+        window.localStorage.setItem(PANEL_STORAGE_KEY, panel);
+      } catch {
+        /* ignore */
+      }
       return panel;
     });
   }, []);
@@ -58,7 +70,11 @@ export function useToolSidebarState(
       if (previous === collapsed) {
         return previous;
       }
-      try { window.sessionStorage.setItem(COLLAPSED_STORAGE_KEY, String(collapsed)); } catch { /* ignore */ }
+      try {
+        window.sessionStorage.setItem(COLLAPSED_STORAGE_KEY, String(collapsed));
+      } catch {
+        /* ignore */
+      }
       return collapsed;
     });
   }, []);

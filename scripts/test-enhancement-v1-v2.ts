@@ -1,20 +1,20 @@
 #!/usr/bin/env tsx
 
-import { config as loadEnv } from 'dotenv';
-import { existsSync, readFileSync } from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import { config as loadEnv } from "dotenv";
+import { existsSync, readFileSync } from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
 
-import type { EnhancementService } from '../server/src/services/enhancement/EnhancementService.ts';
-import { hardCaseBenchmarks } from '../server/src/services/enhancement/evaluation/__fixtures__/suggestionQualityHardCases.ts';
-import { PolicyAwareSuggestionQualityEvaluator } from '../server/src/services/enhancement/evaluation/PolicyAwareSuggestionQualityEvaluator.ts';
+import type { EnhancementService } from "../server/src/services/enhancement/EnhancementService.ts";
+import { hardCaseBenchmarks } from "../server/src/services/enhancement/evaluation/__fixtures__/suggestionQualityHardCases.ts";
+import { PolicyAwareSuggestionQualityEvaluator } from "../server/src/services/enhancement/evaluation/PolicyAwareSuggestionQualityEvaluator.ts";
 import type {
   EnhancementRequestParams,
   EnhancementResult,
   Suggestion,
-} from '../server/src/services/enhancement/services/types.ts';
-import type { SuggestionTestCase } from '../server/src/services/enhancement/evaluation/SuggestionQualityEvaluator.ts';
-import type { VideoPromptService } from '../server/src/services/video-prompt-analysis/VideoPromptService.ts';
+} from "../server/src/services/enhancement/services/types.ts";
+import type { SuggestionTestCase } from "../server/src/services/enhancement/evaluation/SuggestionQualityEvaluator.ts";
+import type { VideoPromptService } from "../server/src/services/video-prompt-analysis/VideoPromptService.ts";
 
 interface CliOptions {
   singleCase?: Partial<ComparisonCase>;
@@ -36,40 +36,42 @@ interface ComparisonCase {
   contextBefore: string;
   contextAfter: string;
   originalUserPrompt: string;
-  brainstormContext?: EnhancementRequestParams['brainstormContext'];
-  allLabeledSpans?: EnhancementRequestParams['allLabeledSpans'];
-  nearbySpans?: EnhancementRequestParams['nearbySpans'];
-  editHistory?: EnhancementRequestParams['editHistory'];
-  i2vContext?: EnhancementRequestParams['i2vContext'];
+  brainstormContext?: EnhancementRequestParams["brainstormContext"];
+  allLabeledSpans?: EnhancementRequestParams["allLabeledSpans"];
+  nearbySpans?: EnhancementRequestParams["nearbySpans"];
+  editHistory?: EnhancementRequestParams["editHistory"];
+  i2vContext?: EnhancementRequestParams["i2vContext"];
 }
 
 interface EngineRun {
-  engine: 'v1' | 'v2';
+  engine: "v1" | "v2";
   durationMs: number;
   suggestions: Suggestion[];
   result?: EnhancementResult;
-  quality?: Awaited<ReturnType<PolicyAwareSuggestionQualityEvaluator['evaluateCase']>>;
+  quality?: Awaited<
+    ReturnType<PolicyAwareSuggestionQualityEvaluator["evaluateCase"]>
+  >;
   error?: string;
 }
 
 type ScoreKey =
-  | 'contextualFit'
-  | 'categoryAlignment'
-  | 'diversity'
-  | 'videoSpecificity'
-  | 'sceneCoherence';
+  | "contextualFit"
+  | "categoryAlignment"
+  | "diversity"
+  | "videoSpecificity"
+  | "sceneCoherence";
 
 const SCORE_KEYS: ScoreKey[] = [
-  'contextualFit',
-  'categoryAlignment',
-  'diversity',
-  'videoSpecificity',
-  'sceneCoherence',
+  "contextualFit",
+  "categoryAlignment",
+  "diversity",
+  "videoSpecificity",
+  "sceneCoherence",
 ];
 
 const DEFAULT_TIMEOUT_MS = 120_000;
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
-const REPO_ROOT = path.resolve(SCRIPT_DIR, '..');
+const REPO_ROOT = path.resolve(SCRIPT_DIR, "..");
 
 function printUsage(): void {
   console.log(`\nEnhancement Engine Comparison Test\n
@@ -103,7 +105,7 @@ Notes:
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
+  return typeof value === "object" && value !== null;
 }
 
 function normalizeText(text: string): string {
@@ -112,10 +114,10 @@ function normalizeText(text: string): string {
 
 function loadEnvFiles(repoRoot: string): void {
   const candidates = [
-    path.join(repoRoot, '.env.development.local'),
-    path.join(repoRoot, '.env.local'),
-    path.join(repoRoot, '.env.development'),
-    path.join(repoRoot, '.env'),
+    path.join(repoRoot, ".env.development.local"),
+    path.join(repoRoot, ".env.local"),
+    path.join(repoRoot, ".env.development"),
+    path.join(repoRoot, ".env"),
   ];
 
   for (const file of candidates) {
@@ -126,8 +128,12 @@ function loadEnvFiles(repoRoot: string): void {
 }
 
 function applyEnvFallbacks(): void {
-  if (!process.env.FIREBASE_STORAGE_BUCKET && process.env.VITE_FIREBASE_STORAGE_BUCKET) {
-    process.env.FIREBASE_STORAGE_BUCKET = process.env.VITE_FIREBASE_STORAGE_BUCKET;
+  if (
+    !process.env.FIREBASE_STORAGE_BUCKET &&
+    process.env.VITE_FIREBASE_STORAGE_BUCKET
+  ) {
+    process.env.FIREBASE_STORAGE_BUCKET =
+      process.env.VITE_FIREBASE_STORAGE_BUCKET;
   }
 
   if (!process.env.GCS_BUCKET_NAME && process.env.FIREBASE_STORAGE_BUCKET) {
@@ -160,45 +166,45 @@ function parseCliArgs(argv: string[]): CliOptions {
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
 
-    if (arg === '--help' || arg === '-h') {
+    if (arg === "--help" || arg === "-h") {
       printUsage();
       process.exit(0);
     }
 
-    if (arg === '--prompt') {
+    if (arg === "--prompt") {
       const value = argv[i + 1];
       if (!value) {
-        throw new Error('Missing value for --prompt');
+        throw new Error("Missing value for --prompt");
       }
       singleCase.prompt = normalizeText(value);
       i += 1;
       continue;
     }
 
-    if (arg === '--highlighted-text') {
+    if (arg === "--highlighted-text") {
       const value = argv[i + 1];
       if (!value) {
-        throw new Error('Missing value for --highlighted-text');
+        throw new Error("Missing value for --highlighted-text");
       }
       singleCase.highlightedText = normalizeText(value);
       i += 1;
       continue;
     }
 
-    if (arg === '--category') {
+    if (arg === "--category") {
       const value = argv[i + 1];
       if (!value) {
-        throw new Error('Missing value for --category');
+        throw new Error("Missing value for --category");
       }
       singleCase.highlightedCategory = normalizeText(value);
       i += 1;
       continue;
     }
 
-    if (arg === '--confidence') {
+    if (arg === "--confidence") {
       const value = argv[i + 1];
       if (!value) {
-        throw new Error('Missing value for --confidence');
+        throw new Error("Missing value for --confidence");
       }
       const parsed = Number.parseFloat(value);
       if (!Number.isFinite(parsed) || parsed < 0 || parsed > 1) {
@@ -209,50 +215,50 @@ function parseCliArgs(argv: string[]): CliOptions {
       continue;
     }
 
-    if (arg === '--context-before') {
+    if (arg === "--context-before") {
       const value = argv[i + 1];
       if (value === undefined) {
-        throw new Error('Missing value for --context-before');
+        throw new Error("Missing value for --context-before");
       }
       singleCase.contextBefore = value;
       i += 1;
       continue;
     }
 
-    if (arg === '--context-after') {
+    if (arg === "--context-after") {
       const value = argv[i + 1];
       if (value === undefined) {
-        throw new Error('Missing value for --context-after');
+        throw new Error("Missing value for --context-after");
       }
       singleCase.contextAfter = value;
       i += 1;
       continue;
     }
 
-    if (arg === '--name') {
+    if (arg === "--name") {
       const value = argv[i + 1];
       if (!value) {
-        throw new Error('Missing value for --name');
+        throw new Error("Missing value for --name");
       }
       singleCase.name = normalizeText(value);
       i += 1;
       continue;
     }
 
-    if (arg === '--file') {
+    if (arg === "--file") {
       const value = argv[i + 1];
       if (!value) {
-        throw new Error('Missing value for --file');
+        throw new Error("Missing value for --file");
       }
       filePath = value;
       i += 1;
       continue;
     }
 
-    if (arg === '--timeout-ms') {
+    if (arg === "--timeout-ms") {
       const value = argv[i + 1];
       if (!value) {
-        throw new Error('Missing value for --timeout-ms');
+        throw new Error("Missing value for --timeout-ms");
       }
       const parsed = Number.parseInt(value, 10);
       if (!Number.isFinite(parsed) || parsed <= 0) {
@@ -263,27 +269,27 @@ function parseCliArgs(argv: string[]): CliOptions {
       continue;
     }
 
-    if (arg === '--skip-initialize') {
+    if (arg === "--skip-initialize") {
       skipInitialize = true;
       continue;
     }
 
-    if (arg === '--verbose') {
+    if (arg === "--verbose") {
       verbose = true;
       continue;
     }
 
-    if (arg === '--show-debug') {
+    if (arg === "--show-debug") {
       showDebug = true;
       continue;
     }
 
-    if (arg === '--use-cache') {
+    if (arg === "--use-cache") {
       useCache = true;
       continue;
     }
 
-    if (arg === '--hard-cases') {
+    if (arg === "--hard-cases") {
       useHardCases = true;
       continue;
     }
@@ -303,11 +309,14 @@ function parseCliArgs(argv: string[]): CliOptions {
   };
 }
 
-function deriveContext(prompt: string, highlightedText: string): { contextBefore: string; contextAfter: string } {
+function deriveContext(
+  prompt: string,
+  highlightedText: string,
+): { contextBefore: string; contextAfter: string } {
   const index = prompt.indexOf(highlightedText);
   if (index < 0) {
     throw new Error(
-      `Highlighted text "${highlightedText}" was not found in the provided prompt. Pass --context-before/--context-after explicitly if the visible span differs.`
+      `Highlighted text "${highlightedText}" was not found in the provided prompt. Pass --context-before/--context-after explicitly if the visible span differs.`,
     );
   }
 
@@ -325,23 +334,23 @@ function normalizeCaseInput(input: unknown, index: number): ComparisonCase {
   const source = isRecord(input.testCase) ? input.testCase : input;
   const span = isRecord(source.span) ? source.span : null;
   const prompt =
-    typeof source.prompt === 'string'
+    typeof source.prompt === "string"
       ? source.prompt
-      : typeof source.fullPrompt === 'string'
+      : typeof source.fullPrompt === "string"
         ? source.fullPrompt
         : null;
   const highlightedText =
-    typeof source.highlightedText === 'string'
+    typeof source.highlightedText === "string"
       ? source.highlightedText
-      : span && typeof span.text === 'string'
+      : span && typeof span.text === "string"
         ? span.text
         : null;
   const highlightedCategory =
-    typeof source.highlightedCategory === 'string'
+    typeof source.highlightedCategory === "string"
       ? source.highlightedCategory
-      : typeof source.category === 'string'
+      : typeof source.category === "string"
         ? source.category
-        : span && typeof span.category === 'string'
+        : span && typeof span.category === "string"
           ? span.category
           : null;
 
@@ -352,11 +361,14 @@ function normalizeCaseInput(input: unknown, index: number): ComparisonCase {
     throw new Error(`Case ${index + 1} is missing "highlightedText"`);
   }
   if (!highlightedCategory) {
-    throw new Error(`Case ${index + 1} is missing "highlightedCategory" / "category"`);
+    throw new Error(
+      `Case ${index + 1} is missing "highlightedCategory" / "category"`,
+    );
   }
 
   const derivedContext =
-    typeof source.contextBefore === 'string' && typeof source.contextAfter === 'string'
+    typeof source.contextBefore === "string" &&
+    typeof source.contextAfter === "string"
       ? {
           contextBefore: source.contextBefore,
           contextAfter: source.contextAfter,
@@ -364,17 +376,17 @@ function normalizeCaseInput(input: unknown, index: number): ComparisonCase {
       : deriveContext(prompt, highlightedText);
 
   const highlightedCategoryConfidence =
-    typeof source.highlightedCategoryConfidence === 'number'
+    typeof source.highlightedCategoryConfidence === "number"
       ? source.highlightedCategoryConfidence
-      : typeof source.categoryConfidence === 'number'
+      : typeof source.categoryConfidence === "number"
         ? source.categoryConfidence
         : 0.95;
 
   return {
     name:
-      typeof input.name === 'string'
+      typeof input.name === "string"
         ? input.name
-        : typeof source.id === 'string'
+        : typeof source.id === "string"
           ? source.id
           : `case-${index + 1}`,
     prompt,
@@ -384,21 +396,38 @@ function normalizeCaseInput(input: unknown, index: number): ComparisonCase {
     contextBefore: derivedContext.contextBefore,
     contextAfter: derivedContext.contextAfter,
     originalUserPrompt:
-      typeof source.originalUserPrompt === 'string' ? source.originalUserPrompt : prompt,
+      typeof source.originalUserPrompt === "string"
+        ? source.originalUserPrompt
+        : prompt,
     ...(isRecord(source.brainstormContext)
-      ? { brainstormContext: source.brainstormContext as EnhancementRequestParams['brainstormContext'] }
+      ? {
+          brainstormContext:
+            source.brainstormContext as EnhancementRequestParams["brainstormContext"],
+        }
       : {}),
     ...(Array.isArray(source.allLabeledSpans)
-      ? { allLabeledSpans: source.allLabeledSpans as EnhancementRequestParams['allLabeledSpans'] }
+      ? {
+          allLabeledSpans:
+            source.allLabeledSpans as EnhancementRequestParams["allLabeledSpans"],
+        }
       : {}),
     ...(Array.isArray(source.nearbySpans)
-      ? { nearbySpans: source.nearbySpans as EnhancementRequestParams['nearbySpans'] }
+      ? {
+          nearbySpans:
+            source.nearbySpans as EnhancementRequestParams["nearbySpans"],
+        }
       : {}),
     ...(Array.isArray(source.editHistory)
-      ? { editHistory: source.editHistory as EnhancementRequestParams['editHistory'] }
+      ? {
+          editHistory:
+            source.editHistory as EnhancementRequestParams["editHistory"],
+        }
       : {}),
     ...(isRecord(source.i2vContext)
-      ? { i2vContext: source.i2vContext as EnhancementRequestParams['i2vContext'] }
+      ? {
+          i2vContext:
+            source.i2vContext as EnhancementRequestParams["i2vContext"],
+        }
       : {}),
   };
 }
@@ -412,7 +441,7 @@ function loadCasesFromFile(filePath: string): ComparisonCase[] {
     throw new Error(`Case file not found: ${absolutePath}`);
   }
 
-  const raw = readFileSync(absolutePath, 'utf8').trim();
+  const raw = readFileSync(absolutePath, "utf8").trim();
   if (!raw) {
     throw new Error(`Case file is empty: ${absolutePath}`);
   }
@@ -425,10 +454,14 @@ function loadCasesFromFile(filePath: string): ComparisonCase[] {
 
     if (isRecord(parsed)) {
       if (Array.isArray(parsed.cases)) {
-        return parsed.cases.map((item, index) => normalizeCaseInput(item, index));
+        return parsed.cases.map((item, index) =>
+          normalizeCaseInput(item, index),
+        );
       }
       if (Array.isArray(parsed.prompts)) {
-        return parsed.prompts.map((item, index) => normalizeCaseInput(item, index));
+        return parsed.prompts.map((item, index) =>
+          normalizeCaseInput(item, index),
+        );
       }
       return [normalizeCaseInput(parsed, 0)];
     }
@@ -444,7 +477,7 @@ function loadCasesFromFile(filePath: string): ComparisonCase[] {
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         throw new Error(
-          `Failed to parse line ${index + 1} as JSON. Non-JSON prompt lists are not supported for enhancement comparison. ${message}`
+          `Failed to parse line ${index + 1} as JSON. Non-JSON prompt lists are not supported for enhancement comparison. ${message}`,
         );
       }
     });
@@ -464,61 +497,77 @@ function buildHardCases(): ComparisonCase[] {
         name: fixture.name,
         testCase: fixture.testCase,
       },
-      index
-    )
+      index,
+    ),
   );
 }
 
 function buildSingleCase(singleCase: Partial<ComparisonCase>): ComparisonCase {
   if (!singleCase.prompt) {
-    throw new Error('Single-case mode requires --prompt');
+    throw new Error("Single-case mode requires --prompt");
   }
   if (!singleCase.highlightedText) {
-    throw new Error('Single-case mode requires --highlighted-text');
+    throw new Error("Single-case mode requires --highlighted-text");
   }
   if (!singleCase.highlightedCategory) {
-    throw new Error('Single-case mode requires --category');
+    throw new Error("Single-case mode requires --category");
   }
 
   return normalizeCaseInput(
     {
-      name: singleCase.name || 'ad-hoc-case',
+      name: singleCase.name || "ad-hoc-case",
       prompt: singleCase.prompt,
       highlightedText: singleCase.highlightedText,
       highlightedCategory: singleCase.highlightedCategory,
-      highlightedCategoryConfidence: singleCase.highlightedCategoryConfidence ?? 0.95,
-      ...(singleCase.contextBefore !== undefined ? { contextBefore: singleCase.contextBefore } : {}),
-      ...(singleCase.contextAfter !== undefined ? { contextAfter: singleCase.contextAfter } : {}),
+      highlightedCategoryConfidence:
+        singleCase.highlightedCategoryConfidence ?? 0.95,
+      ...(singleCase.contextBefore !== undefined
+        ? { contextBefore: singleCase.contextBefore }
+        : {}),
+      ...(singleCase.contextAfter !== undefined
+        ? { contextAfter: singleCase.contextAfter }
+        : {}),
     },
-    0
+    0,
   );
 }
 
-function flattenSuggestions(resultSuggestions: EnhancementResult['suggestions']): Suggestion[] {
+function flattenSuggestions(
+  resultSuggestions: EnhancementResult["suggestions"],
+): Suggestion[] {
   if (!Array.isArray(resultSuggestions)) {
     return [];
   }
 
   const flattened: Suggestion[] = [];
   for (const entry of resultSuggestions) {
-    if (!entry || typeof entry !== 'object') {
+    if (!entry || typeof entry !== "object") {
       continue;
     }
 
-    if ('text' in entry && typeof entry.text === 'string') {
+    if ("text" in entry && typeof entry.text === "string") {
       flattened.push(entry as Suggestion);
       continue;
     }
 
-    if ('suggestions' in entry && Array.isArray(entry.suggestions)) {
-      const groupCategory = typeof entry.category === 'string' ? entry.category : undefined;
+    if ("suggestions" in entry && Array.isArray(entry.suggestions)) {
+      const groupCategory =
+        typeof entry.category === "string" ? entry.category : undefined;
       for (const suggestion of entry.suggestions) {
-        if (suggestion && typeof suggestion === 'object' && 'text' in suggestion && typeof suggestion.text === 'string') {
+        if (
+          suggestion &&
+          typeof suggestion === "object" &&
+          "text" in suggestion &&
+          typeof suggestion.text === "string"
+        ) {
           const normalizedSuggestion = suggestion as Suggestion;
           flattened.push(
             normalizedSuggestion.category
               ? normalizedSuggestion
-              : { ...normalizedSuggestion, ...(groupCategory ? { category: groupCategory } : {}) }
+              : {
+                  ...normalizedSuggestion,
+                  ...(groupCategory ? { category: groupCategory } : {}),
+                },
           );
         }
       }
@@ -542,31 +591,41 @@ function toEvaluationCase(testCase: ComparisonCase): SuggestionTestCase {
 }
 
 function averageScore(
-  scores: Awaited<ReturnType<PolicyAwareSuggestionQualityEvaluator['evaluateCase']>>['scores'] | undefined
+  scores:
+    | Awaited<
+        ReturnType<PolicyAwareSuggestionQualityEvaluator["evaluateCase"]>
+      >["scores"]
+    | undefined,
 ): number {
   if (!scores) {
     return 0;
   }
 
-  return SCORE_KEYS.reduce((sum, key) => sum + scores[key], 0) / SCORE_KEYS.length;
+  return (
+    SCORE_KEYS.reduce((sum, key) => sum + scores[key], 0) / SCORE_KEYS.length
+  );
 }
 
 function formatSuggestionList(suggestions: Suggestion[]): string[] {
   return suggestions.map((suggestion, index) => {
-    const suffix = suggestion.category ? ` [${suggestion.category}]` : '';
+    const suffix = suggestion.category ? ` [${suggestion.category}]` : "";
     return `${index + 1}. ${suggestion.text}${suffix}`;
   });
 }
 
 function formatScoreLine(
-  quality: Awaited<ReturnType<PolicyAwareSuggestionQualityEvaluator['evaluateCase']>> | undefined
+  quality:
+    | Awaited<ReturnType<PolicyAwareSuggestionQualityEvaluator["evaluateCase"]>>
+    | undefined,
 ): string {
   if (!quality) {
-    return 'n/a';
+    return "n/a";
   }
 
-  const parts = SCORE_KEYS.map((key) => `${key}=${quality.scores[key].toFixed(1)}`);
-  return `${parts.join(' | ')} | avg=${averageScore(quality.scores).toFixed(2)}`;
+  const parts = SCORE_KEYS.map(
+    (key) => `${key}=${quality.scores[key].toFixed(1)}`,
+  );
+  return `${parts.join(" | ")} | avg=${averageScore(quality.scores).toFixed(2)}`;
 }
 
 function normalizedSet(suggestions: Suggestion[]): Set<string> {
@@ -574,10 +633,10 @@ function normalizedSet(suggestions: Suggestion[]): Set<string> {
     suggestions.map((suggestion) =>
       suggestion.text
         .toLowerCase()
-        .normalize('NFKC')
-        .replace(/\s+/g, ' ')
-        .trim()
-    )
+        .normalize("NFKC")
+        .replace(/\s+/g, " ")
+        .trim(),
+    ),
   );
 }
 
@@ -585,14 +644,23 @@ function sharedTexts(a: Suggestion[], b: Suggestion[]): string[] {
   const bSet = normalizedSet(b);
   return a
     .map((suggestion) => suggestion.text)
-    .filter((text) => bSet.has(text.toLowerCase().normalize('NFKC').replace(/\s+/g, ' ').trim()));
+    .filter((text) =>
+      bSet.has(
+        text.toLowerCase().normalize("NFKC").replace(/\s+/g, " ").trim(),
+      ),
+    );
 }
 
 function onlyTexts(source: Suggestion[], other: Suggestion[]): string[] {
   const otherSet = normalizedSet(other);
   return source
     .map((suggestion) => suggestion.text)
-    .filter((text) => !otherSet.has(text.toLowerCase().normalize('NFKC').replace(/\s+/g, ' ').trim()));
+    .filter(
+      (text) =>
+        !otherSet.has(
+          text.toLowerCase().normalize("NFKC").replace(/\s+/g, " ").trim(),
+        ),
+    );
 }
 
 function formatDebugBlock(run: EngineRun): string[] {
@@ -603,28 +671,32 @@ function formatDebugBlock(run: EngineRun): string[] {
 
   const lines: string[] = [
     `engineVersion=${debug.engineVersion || run.engine}`,
-    `policyVersion=${debug.policyVersion || 'n/a'}`,
-    `modelCallCount=${debug.modelCallCount ?? 'n/a'}`,
+    `policyVersion=${debug.policyVersion || "n/a"}`,
+    `modelCallCount=${debug.modelCallCount ?? "n/a"}`,
   ];
 
   if (debug.stageCounts) {
     const stageCounts = Object.entries(debug.stageCounts)
       .map(([key, value]) => `${key}=${value}`)
-      .join(', ');
+      .join(", ");
     lines.push(`stageCounts=${stageCounts}`);
   }
 
   if (debug.rejectionSummary) {
     const rejectionSummary = Object.entries(debug.rejectionSummary)
       .map(([key, value]) => `${key}=${value}`)
-      .join(', ');
+      .join(", ");
     lines.push(`rejections=${rejectionSummary}`);
   }
 
   return lines;
 }
 
-async function withSoftTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> {
+async function withSoftTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  label: string,
+): Promise<T> {
   return await new Promise<T>((resolve, reject) => {
     const timeout = setTimeout(() => {
       reject(new Error(`${label} exceeded ${timeoutMs}ms`));
@@ -646,9 +718,9 @@ async function runEngine(
   enhancementService: EnhancementService,
   evaluator: PolicyAwareSuggestionQualityEvaluator,
   testCase: ComparisonCase,
-  engine: 'v1' | 'v2',
+  engine: "v1" | "v2",
   timeoutMs: number,
-  useCache: boolean
+  useCache: boolean,
 ): Promise<EngineRun> {
   const startTime = Date.now();
 
@@ -662,20 +734,33 @@ async function runEngine(
         originalUserPrompt: testCase.originalUserPrompt,
         highlightedCategory: testCase.highlightedCategory,
         highlightedCategoryConfidence: testCase.highlightedCategoryConfidence,
-        ...(testCase.brainstormContext !== undefined ? { brainstormContext: testCase.brainstormContext } : {}),
-        ...(testCase.allLabeledSpans !== undefined ? { allLabeledSpans: testCase.allLabeledSpans } : {}),
-        ...(testCase.nearbySpans !== undefined ? { nearbySpans: testCase.nearbySpans } : {}),
-        ...(testCase.editHistory !== undefined ? { editHistory: testCase.editHistory } : {}),
-        ...(testCase.i2vContext !== undefined ? { i2vContext: testCase.i2vContext } : {}),
+        ...(testCase.brainstormContext !== undefined
+          ? { brainstormContext: testCase.brainstormContext }
+          : {}),
+        ...(testCase.allLabeledSpans !== undefined
+          ? { allLabeledSpans: testCase.allLabeledSpans }
+          : {}),
+        ...(testCase.nearbySpans !== undefined
+          ? { nearbySpans: testCase.nearbySpans }
+          : {}),
+        ...(testCase.editHistory !== undefined
+          ? { editHistory: testCase.editHistory }
+          : {}),
+        ...(testCase.i2vContext !== undefined
+          ? { i2vContext: testCase.i2vContext }
+          : {}),
         requestedEngineVersion: engine,
         debug: !useCache,
       }),
       timeoutMs,
-      `${engine.toUpperCase()} run`
+      `${engine.toUpperCase()} run`,
     );
 
     const suggestions = flattenSuggestions(result.suggestions);
-    const quality = await evaluator.evaluateCase(toEvaluationCase(testCase), suggestions);
+    const quality = await evaluator.evaluateCase(
+      toEvaluationCase(testCase),
+      suggestions,
+    );
 
     return {
       engine,
@@ -700,22 +785,26 @@ function printCaseComparison(
   v2Run: EngineRun,
   index: number,
   total: number,
-  showDebug: boolean
+  showDebug: boolean,
 ): void {
-  console.log('-'.repeat(100));
+  console.log("-".repeat(100));
   console.log(`Case ${index + 1}/${total}: ${testCase.name}`);
-  console.log('-'.repeat(100));
+  console.log("-".repeat(100));
   console.log(`Prompt: ${testCase.prompt}`);
   console.log(`Highlight: "${testCase.highlightedText}"`);
-  console.log(`Category: ${testCase.highlightedCategory} (${testCase.highlightedCategoryConfidence.toFixed(2)})`);
-  console.log('');
+  console.log(
+    `Category: ${testCase.highlightedCategory} (${testCase.highlightedCategoryConfidence.toFixed(2)})`,
+  );
+  console.log("");
 
   for (const run of [v1Run, v2Run]) {
-    console.log(`[${run.engine.toUpperCase()}] ${run.durationMs}ms${run.result ? ` | ${run.suggestions.length} suggestions` : ''}`);
+    console.log(
+      `[${run.engine.toUpperCase()}] ${run.durationMs}ms${run.result ? ` | ${run.suggestions.length} suggestions` : ""}`,
+    );
 
     if (run.error) {
       console.log(`ERROR: ${run.error}`);
-      console.log('');
+      console.log("");
       continue;
     }
 
@@ -723,7 +812,7 @@ function printCaseComparison(
 
     const suggestionLines = formatSuggestionList(run.suggestions);
     if (suggestionLines.length === 0) {
-      console.log('Suggestions: none');
+      console.log("Suggestions: none");
     } else {
       for (const line of suggestionLines) {
         console.log(line);
@@ -733,14 +822,14 @@ function printCaseComparison(
     if (showDebug) {
       const debugLines = formatDebugBlock(run);
       if (debugLines.length > 0) {
-        console.log('Debug:');
+        console.log("Debug:");
         for (const line of debugLines) {
           console.log(`- ${line}`);
         }
       }
     }
 
-    console.log('');
+    console.log("");
   }
 
   if (!v1Run.error && !v2Run.error) {
@@ -750,44 +839,60 @@ function printCaseComparison(
     const v1Average = averageScore(v1Run.quality?.scores);
     const v2Average = averageScore(v2Run.quality?.scores);
 
-    console.log('[DELTA]');
-    console.log(`Average quality delta (V2-V1): ${(v2Average - v1Average).toFixed(2)}`);
-    console.log(`Latency delta (V2-V1): ${v2Run.durationMs - v1Run.durationMs}ms`);
-    console.log(`Shared suggestions: ${overlap.length > 0 ? overlap.join(' | ') : 'none'}`);
-    console.log(`Only V1: ${onlyV1.length > 0 ? onlyV1.join(' | ') : 'none'}`);
-    console.log(`Only V2: ${onlyV2.length > 0 ? onlyV2.join(' | ') : 'none'}`);
-    console.log('');
+    console.log("[DELTA]");
+    console.log(
+      `Average quality delta (V2-V1): ${(v2Average - v1Average).toFixed(2)}`,
+    );
+    console.log(
+      `Latency delta (V2-V1): ${v2Run.durationMs - v1Run.durationMs}ms`,
+    );
+    console.log(
+      `Shared suggestions: ${overlap.length > 0 ? overlap.join(" | ") : "none"}`,
+    );
+    console.log(`Only V1: ${onlyV1.length > 0 ? onlyV1.join(" | ") : "none"}`);
+    console.log(`Only V2: ${onlyV2.length > 0 ? onlyV2.join(" | ") : "none"}`);
+    console.log("");
   }
 }
 
-function printSummary(cases: ComparisonCase[], runs: Array<{ v1: EngineRun; v2: EngineRun }>): void {
+function printSummary(
+  cases: ComparisonCase[],
+  runs: Array<{ v1: EngineRun; v2: EngineRun }>,
+): void {
   const successfulV1 = runs.filter((item) => !item.v1.error);
   const successfulV2 = runs.filter((item) => !item.v2.error);
 
-  const v1Duration = successfulV1.length > 0
-    ? successfulV1.reduce((sum, item) => sum + item.v1.durationMs, 0) / successfulV1.length
-    : 0;
-  const v2Duration = successfulV2.length > 0
-    ? successfulV2.reduce((sum, item) => sum + item.v2.durationMs, 0) / successfulV2.length
-    : 0;
+  const v1Duration =
+    successfulV1.length > 0
+      ? successfulV1.reduce((sum, item) => sum + item.v1.durationMs, 0) /
+        successfulV1.length
+      : 0;
+  const v2Duration =
+    successfulV2.length > 0
+      ? successfulV2.reduce((sum, item) => sum + item.v2.durationMs, 0) /
+        successfulV2.length
+      : 0;
 
   const summarizeScores = (engineRuns: EngineRun[]): Record<ScoreKey, number> =>
-    SCORE_KEYS.reduce<Record<ScoreKey, number>>((accumulator, key) => {
-      const values = engineRuns
-        .map((run) => run.quality?.scores[key])
-        .filter((value): value is number => typeof value === 'number');
-      accumulator[key] =
-        values.length > 0
-          ? values.reduce((sum, value) => sum + value, 0) / values.length
-          : 0;
-      return accumulator;
-    }, {
-      contextualFit: 0,
-      categoryAlignment: 0,
-      diversity: 0,
-      videoSpecificity: 0,
-      sceneCoherence: 0,
-    });
+    SCORE_KEYS.reduce<Record<ScoreKey, number>>(
+      (accumulator, key) => {
+        const values = engineRuns
+          .map((run) => run.quality?.scores[key])
+          .filter((value): value is number => typeof value === "number");
+        accumulator[key] =
+          values.length > 0
+            ? values.reduce((sum, value) => sum + value, 0) / values.length
+            : 0;
+        return accumulator;
+      },
+      {
+        contextualFit: 0,
+        categoryAlignment: 0,
+        diversity: 0,
+        videoSpecificity: 0,
+        sceneCoherence: 0,
+      },
+    );
 
   const v1ScoreSummary = summarizeScores(successfulV1.map((item) => item.v1));
   const v2ScoreSummary = summarizeScores(successfulV2.map((item) => item.v2));
@@ -812,16 +917,24 @@ function printSummary(cases: ComparisonCase[], runs: Array<{ v1: EngineRun; v2: 
     }
   }
 
-  console.log('='.repeat(100));
-  console.log('Summary');
-  console.log('='.repeat(100));
+  console.log("=".repeat(100));
+  console.log("Summary");
+  console.log("=".repeat(100));
   console.log(`Cases: ${cases.length}`);
   console.log(`V1 success: ${successfulV1.length}/${cases.length}`);
   console.log(`V2 success: ${successfulV2.length}/${cases.length}`);
-  console.log(`Average latency: V1=${v1Duration.toFixed(0)}ms | V2=${v2Duration.toFixed(0)}ms`);
-  console.log(`Average quality wins: V2=${v2Wins} | V1=${v1Wins} | ties=${ties}`);
-  console.log(`V1 scores: ${formatScoreLine({ id: 'summary', scores: v1ScoreSummary, passed: true, failures: [], suggestions: [] })}`);
-  console.log(`V2 scores: ${formatScoreLine({ id: 'summary', scores: v2ScoreSummary, passed: true, failures: [], suggestions: [] })}`);
+  console.log(
+    `Average latency: V1=${v1Duration.toFixed(0)}ms | V2=${v2Duration.toFixed(0)}ms`,
+  );
+  console.log(
+    `Average quality wins: V2=${v2Wins} | V1=${v1Wins} | ties=${ties}`,
+  );
+  console.log(
+    `V1 scores: ${formatScoreLine({ id: "summary", scores: v1ScoreSummary, passed: true, failures: [], suggestions: [] })}`,
+  );
+  console.log(
+    `V2 scores: ${formatScoreLine({ id: "summary", scores: v2ScoreSummary, passed: true, failures: [], suggestions: [] })}`,
+  );
 }
 
 async function main(): Promise<void> {
@@ -831,11 +944,11 @@ async function main(): Promise<void> {
   const cli = parseCliArgs(process.argv.slice(2));
 
   if (!cli.verbose) {
-    process.env.LOG_LEVEL = 'fatal';
+    process.env.LOG_LEVEL = "fatal";
   }
 
   if (!process.env.GCS_BUCKET_NAME && !process.env.FIREBASE_STORAGE_BUCKET) {
-    process.env.GCS_BUCKET_NAME = 'local-script-placeholder.appspot.com';
+    process.env.GCS_BUCKET_NAME = "local-script-placeholder.appspot.com";
   }
 
   const allCases: ComparisonCase[] = [];
@@ -851,11 +964,13 @@ async function main(): Promise<void> {
 
   if (allCases.length === 0) {
     printUsage();
-    throw new Error('No enhancement cases provided. Use --prompt with span/category, --file, or --hard-cases.');
+    throw new Error(
+      "No enhancement cases provided. Use --prompt with span/category, --file, or --hard-cases.",
+    );
   }
 
   const { configureServices, initializeServices } = await import(
-    '../server/src/config/services.config.ts'
+    "../server/src/config/services.config.ts"
   );
   const container = await configureServices();
 
@@ -864,21 +979,22 @@ async function main(): Promise<void> {
       await initializeServices(container);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      console.warn('initializeServices() failed, continuing anyway:', message);
+      console.warn("initializeServices() failed, continuing anyway:", message);
     }
   }
 
-  const enhancementService = container.resolve<EnhancementService>('enhancementService');
-  const videoService = container.resolve<VideoPromptService>('videoService');
+  const enhancementService =
+    container.resolve<EnhancementService>("enhancementService");
+  const videoService = container.resolve<VideoPromptService>("videoService");
   const evaluator = new PolicyAwareSuggestionQualityEvaluator(videoService);
 
-  console.log('='.repeat(100));
-  console.log('Enhancement Engine Comparison');
-  console.log('='.repeat(100));
+  console.log("=".repeat(100));
+  console.log("Enhancement Engine Comparison");
+  console.log("=".repeat(100));
   console.log(`Cases: ${allCases.length}`);
-  console.log(`Cache mode: ${cli.useCache ? 'enabled' : 'bypass'}`);
+  console.log(`Cache mode: ${cli.useCache ? "enabled" : "bypass"}`);
   console.log(`Timeout per engine run: ${cli.timeoutMs}ms`);
-  console.log('');
+  console.log("");
 
   const runs: Array<{ v1: EngineRun; v2: EngineRun }> = [];
 
@@ -888,21 +1004,28 @@ async function main(): Promise<void> {
       enhancementService,
       evaluator,
       testCase,
-      'v1',
+      "v1",
       cli.timeoutMs,
-      cli.useCache
+      cli.useCache,
     );
     const v2Run = await runEngine(
       enhancementService,
       evaluator,
       testCase,
-      'v2',
+      "v2",
       cli.timeoutMs,
-      cli.useCache
+      cli.useCache,
     );
 
     runs.push({ v1: v1Run, v2: v2Run });
-    printCaseComparison(testCase, v1Run, v2Run, index, allCases.length, cli.showDebug);
+    printCaseComparison(
+      testCase,
+      v1Run,
+      v2Run,
+      index,
+      allCases.length,
+      cli.showDebug,
+    );
   }
 
   printSummary(allCases, runs);

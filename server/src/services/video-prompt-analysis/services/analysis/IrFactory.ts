@@ -1,4 +1,4 @@
-import type { VideoPromptIR } from '../../types';
+import type { VideoPromptIR } from "../../types";
 
 export function createEmptyIR(raw: string): VideoPromptIR {
   return {
@@ -8,7 +8,7 @@ export function createEmptyIR(raw: string): VideoPromptIR {
       movements: [],
     },
     environment: {
-      setting: '',
+      setting: "",
       lighting: [],
     },
     audio: {},

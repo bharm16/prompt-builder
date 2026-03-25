@@ -1,7 +1,12 @@
-import type { VideoGenerationOptions, VideoGenerationResult } from '../types';
+import type { VideoGenerationOptions, VideoGenerationResult } from "../types";
 
-export const VIDEO_JOB_STATUSES = ['queued', 'processing', 'completed', 'failed'] as const;
-export type VideoJobStatus = typeof VIDEO_JOB_STATUSES[number];
+export const VIDEO_JOB_STATUSES = [
+  "queued",
+  "processing",
+  "completed",
+  "failed",
+] as const;
+export type VideoJobStatus = (typeof VIDEO_JOB_STATUSES)[number];
 
 export interface VideoJobRequest {
   prompt: string;
@@ -9,24 +14,24 @@ export interface VideoJobRequest {
 }
 
 export const VIDEO_JOB_ERROR_CATEGORIES = [
-  'provider',
-  'storage',
-  'timeout',
-  'infrastructure',
-  'validation',
-  'unknown',
+  "provider",
+  "storage",
+  "timeout",
+  "infrastructure",
+  "validation",
+  "unknown",
 ] as const;
-export type VideoJobErrorCategory = typeof VIDEO_JOB_ERROR_CATEGORIES[number];
+export type VideoJobErrorCategory = (typeof VIDEO_JOB_ERROR_CATEGORIES)[number];
 
 export const VIDEO_JOB_ERROR_STAGES = [
-  'generation',
-  'persistence',
-  'queue',
-  'shutdown',
-  'sweeper',
-  'unknown',
+  "generation",
+  "persistence",
+  "queue",
+  "shutdown",
+  "sweeper",
+  "unknown",
 ] as const;
-export type VideoJobErrorStage = typeof VIDEO_JOB_ERROR_STAGES[number];
+export type VideoJobErrorStage = (typeof VIDEO_JOB_ERROR_STAGES)[number];
 
 export interface VideoJobError {
   message: string;
@@ -60,8 +65,13 @@ export interface VideoJobRecord {
   releaseReason?: string;
 }
 
-export const DLQ_STATUSES = ['pending', 'processing', 'reprocessed', 'escalated'] as const;
-export type DlqStatus = typeof DLQ_STATUSES[number];
+export const DLQ_STATUSES = [
+  "pending",
+  "processing",
+  "reprocessed",
+  "escalated",
+] as const;
+export type DlqStatus = (typeof DLQ_STATUSES)[number];
 
 export interface DlqEntry {
   id: string;

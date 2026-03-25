@@ -6,13 +6,13 @@ A practical guide to tweaking the enhancement suggestion system for better resul
 
 ## Quick Reference: Key Files
 
-| File | What It Controls |
-|------|------------------|
-| `server/src/config/modelConfig.ts` | Model, temperature, timeout |
-| `server/src/services/enhancement/services/CleanPromptBuilder.ts` | Prompt templates |
+| File                                                                       | What It Controls              |
+| -------------------------------------------------------------------------- | ----------------------------- |
+| `server/src/config/modelConfig.ts`                                         | Model, temperature, timeout   |
+| `server/src/services/enhancement/services/CleanPromptBuilder.ts`           | Prompt templates              |
 | `server/src/services/enhancement/services/ContrastiveDiversityEnforcer.ts` | Batch temperatures, diversity |
-| `server/src/services/enhancement/config/EnhancementExamples.ts` | Few-shot examples |
-| `server/src/utils/StructuredOutputEnforcer.ts` | JSON parsing instructions |
+| `server/src/services/enhancement/config/EnhancementExamples.ts`            | Few-shot examples             |
+| `server/src/utils/StructuredOutputEnforcer.ts`                             | JSON parsing instructions     |
 
 ---
 
@@ -31,12 +31,12 @@ enhance_suggestions: {
 
 ### Temperature Guide
 
-| Value | Effect | Use When |
-|-------|--------|----------|
-| 0.2-0.3 | Very consistent, less creative | JSON parsing fails often |
-| 0.4-0.5 | Balanced (current) | Default starting point |
-| 0.6-0.7 | More creative, less reliable | Suggestions feel too similar |
-| 0.8+ | High creativity, may break JSON | Not recommended for 8B models |
+| Value   | Effect                          | Use When                      |
+| ------- | ------------------------------- | ----------------------------- |
+| 0.2-0.3 | Very consistent, less creative  | JSON parsing fails often      |
+| 0.4-0.5 | Balanced (current)              | Default starting point        |
+| 0.6-0.7 | More creative, less reliable    | Suggestions feel too similar  |
+| 0.8+    | High creativity, may break JSON | Not recommended for 8B models |
 
 ### Testing Temperature
 
@@ -59,18 +59,20 @@ ENHANCE_TEMPERATURE=0.3 npm run dev
 
 ```typescript
 // Current: 600 chars for full prompt, 150 for surrounding text
-const promptPreview = this._trim(fullPrompt, 600);  // Try 400-800
+const promptPreview = this._trim(fullPrompt, 600); // Try 400-800
 const prefix = this._trim(contextBefore, 150, true); // Try 100-200
-const suffix = this._trim(contextAfter, 150);        // Try 100-200
+const suffix = this._trim(contextAfter, 150); // Try 100-200
 ```
 
 **Trade-offs:**
+
 - Longer context → More relevant suggestions, but slower + more tokens
 - Shorter context → Faster, but may miss important details
 
 #### B. Number of Rules
 
 Each design has 4 rules. You can:
+
 - Add a 5th rule for specific guidance
 - Remove rules if model seems confused
 - Make rules more/less specific
@@ -116,8 +118,8 @@ This is critical for preventing wild suggestions:
 
 ```typescript
 this.config = {
-  batchSizes: [4, 4, 4],           // 12 total suggestions
-  temperatures: [0.4, 0.5, 0.6],   // <-- TUNE THESE
+  batchSizes: [4, 4, 4], // 12 total suggestions
+  temperatures: [0.4, 0.5, 0.6], // <-- TUNE THESE
   enabled: true,
 };
 ```
@@ -140,7 +142,7 @@ temperatures: [0.5, 0.5, 0.5],
 ```typescript
 this.config = {
   // ...
-  enabled: false,  // Uses single-shot generation instead
+  enabled: false, // Uses single-shot generation instead
 };
 ```
 
@@ -162,9 +164,9 @@ Or in code, temporarily add:
 
 ```typescript
 // In CleanPromptBuilder._buildVisualPrompt():
-console.log('=== GENERATED PROMPT ===');
+console.log("=== GENERATED PROMPT ===");
 console.log(prompt);
-console.log('========================');
+console.log("========================");
 ```
 
 ### Step 2: Test Specific Inputs
@@ -173,19 +175,20 @@ Create a test script:
 
 ```javascript
 // scripts/test-enhancement.js
-const { EnhancementService } = require('../server/src/services/enhancement');
+const { EnhancementService } = require("../server/src/services/enhancement");
 
 async function test() {
   const service = new EnhancementService(/* deps */);
-  
+
   const result = await service.getEnhancementSuggestions({
-    highlightedText: 'log',
-    contextBefore: 'A ',
-    contextAfter: ' with detailed bark texture rolls down a steep forest hill',
-    fullPrompt: 'Action Shot: A log with detailed bark texture and natural imperfections rolls down a steep forest hill...',
+    highlightedText: "log",
+    contextBefore: "A ",
+    contextAfter: " with detailed bark texture rolls down a steep forest hill",
+    fullPrompt:
+      "Action Shot: A log with detailed bark texture and natural imperfections rolls down a steep forest hill...",
   });
-  
-  console.log('Suggestions:', result.suggestions);
+
+  console.log("Suggestions:", result.suggestions);
 }
 
 test();
@@ -197,22 +200,22 @@ Add logging in `SuggestionGenerationService.ts`:
 
 ```typescript
 // Before the AI call:
-console.log('=== SYSTEM PROMPT ===');
+console.log("=== SYSTEM PROMPT ===");
 console.log(params.systemPrompt);
-console.log('=====================');
+console.log("=====================");
 ```
 
 ### Step 4: Evaluate Results
 
 For each test, check:
 
-| Check | Pass | Fail |
-|-------|------|------|
-| JSON parsed successfully? | ✅ | Retry needed |
-| All 12 suggestions returned? | ✅ | Some filtered |
-| Suggestions are on-topic? | ✅ | Wild tangents |
-| Suggestions are diverse? | ✅ | Too similar |
-| Grammar fits context? | ✅ | Doesn't flow |
+| Check                        | Pass | Fail          |
+| ---------------------------- | ---- | ------------- |
+| JSON parsed successfully?    | ✅   | Retry needed  |
+| All 12 suggestions returned? | ✅   | Some filtered |
+| Suggestions are on-topic?    | ✅   | Wild tangents |
+| Suggestions are diverse?     | ✅   | Too similar   |
+| Grammar fits context?        | ✅   | Doesn't flow  |
 
 ---
 
@@ -223,6 +226,7 @@ For each test, check:
 **Symptom:** "log" → "obsidian monolith"
 
 **Fixes:**
+
 1. Increase `promptPreview` length (try 800)
 2. Add stronger "stay on topic" instruction
 3. Remove few-shot examples (they can mislead)
@@ -232,9 +236,11 @@ For each test, check:
 **Symptom:** "Missing required field 'explanation'"
 
 **Fixes:**
+
 1. Lower temperature to 0.3-0.4
 2. Simplify the output format instruction
 3. Add explicit example in prompt:
+
 ```typescript
 'Example output: [{"text":"phrase here","category":"subject","explanation":"why"}]',
 ```
@@ -244,11 +250,14 @@ For each test, check:
 **Symptom:** "oak log", "pine log", "birch log" (synonym collapse)
 
 **Fixes:**
+
 1. Increase temperature slightly (0.6)
 2. Add diversity instruction:
+
 ```typescript
 'Each suggestion must differ in MORE than just the wood type - vary texture, condition, lighting, etc.',
 ```
+
 3. Enable contrastive decoding if disabled
 
 ### Issue: Suggestions are too long/short
@@ -256,10 +265,13 @@ For each test, check:
 **Symptom:** Single words or full sentences
 
 **Fixes:**
+
 1. Be explicit about length:
+
 ```typescript
 'Return phrases of 3-8 words (not single words, not full sentences)',
 ```
+
 2. Check `videoConstraints.minWords` / `maxWords` values
 
 ### Issue: Wrong category assigned
@@ -267,6 +279,7 @@ For each test, check:
 **Symptom:** Camera suggestions labeled as "subject"
 
 **Fixes:**
+
 1. Check `_resolveSlot()` logic
 2. Verify `highlightedCategory` is passed correctly from frontend
 3. Check taxonomy mapping in `@shared/taxonomy`
@@ -282,7 +295,7 @@ For each test, check:
 
 private _buildVisualPrompt(ctx: SharedPromptContext): string {
   const variant = process.env.PROMPT_VARIANT || 'A';
-  
+
   if (variant === 'B') {
     return this._buildVisualPromptVariantB(ctx);
   }
@@ -296,18 +309,18 @@ private _buildVisualPrompt(ctx: SharedPromptContext): string {
 # Test variant A
 PROMPT_VARIANT=A npm run dev
 
-# Test variant B  
+# Test variant B
 PROMPT_VARIANT=B npm run dev
 ```
 
 ### Log Results for Comparison
 
 ```typescript
-logger.info('Enhancement result', {
+logger.info("Enhancement result", {
   variant: process.env.PROMPT_VARIANT,
   highlightedText: params.highlightedText,
   suggestionsCount: result.suggestions.length,
-  sampleSuggestions: result.suggestions.slice(0, 3).map(s => s.text),
+  sampleSuggestions: result.suggestions.slice(0, 3).map((s) => s.text),
 });
 ```
 
@@ -350,8 +363,10 @@ Use 8B for simple replacements, fall back to 70B for complex ones:
 
 ```typescript
 // In EnhancementService
-const isComplexReplacement = highlightedText.split(' ').length > 3;
-const operation = isComplexReplacement ? 'enhance_suggestions_complex' : 'enhance_suggestions_simple';
+const isComplexReplacement = highlightedText.split(" ").length > 3;
+const operation = isComplexReplacement
+  ? "enhance_suggestions_complex"
+  : "enhance_suggestions_simple";
 ```
 
 ---
@@ -368,24 +383,24 @@ const metrics = {
   // Timing
   totalTime: endTime - startTime,
   llmCallTime: groqCallTime,
-  
+
   // Quality
   suggestionsRequested: 12,
   suggestionsReturned: result.suggestions.length,
   jsonRetries: retryCount,
-  
+
   // Context
   highlightedText,
   highlightedCategory,
   promptLength: fullPrompt.length,
-  
+
   // Model
-  model: 'llama-3.1-8b-instant',
+  model: "llama-3.1-8b-instant",
   temperature: 0.5,
   usedContrastiveDecoding: true,
 };
 
-logger.info('Enhancement metrics', metrics);
+logger.info("Enhancement metrics", metrics);
 ```
 
 ### Dashboard Queries (if using Prometheus/Grafana)

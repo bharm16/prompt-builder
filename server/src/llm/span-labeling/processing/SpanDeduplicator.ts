@@ -1,5 +1,5 @@
-import { buildSpanKey } from '../utils/textUtils.js';
-import type { SpanLike } from '../types.js';
+import { buildSpanKey } from "../utils/textUtils.js";
+import type { SpanLike } from "../types.js";
 
 /**
  * Span deduplication module

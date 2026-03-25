@@ -5,4 +5,4 @@ This file tracks all major tracks for the project. Each track has its own detail
 ---
 
 - [ ] **Track: Implement Image-to-Video continuity workflow (Lock & Seed)**
-  *Link: [./tracks/lock_seed_20260204/](./tracks/lock_seed_20260204/)*
+      _Link: [./tracks/lock_seed_20260204/](./tracks/lock_seed_20260204/)_

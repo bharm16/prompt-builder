@@ -2,7 +2,7 @@
  * Hashing utilities with memoization for span labeling
  */
 
-import { PERFORMANCE_CONFIG } from '@config/performance.config';
+import { PERFORMANCE_CONFIG } from "@config/performance.config";
 
 // Hash cache for memoization (LRU eviction)
 const hashCache = new Map<string, string>();
@@ -13,8 +13,8 @@ const HASH_CACHE_MAX_SIZE = PERFORMANCE_CONFIG.HASH_CACHE_MAX_SIZE;
  * Uses FNV-1a hash algorithm (faster than original implementation)
  * Caches results to avoid re-computing hashes for the same strings
  */
-export const hashString = (input = ''): string => {
-  if (!input) return '0';
+export const hashString = (input = ""): string => {
+  if (!input) return "0";
 
   // Check cache first
   const cached = hashCache.get(input);
@@ -27,7 +27,8 @@ export const hashString = (input = ''): string => {
   for (let i = 0; i < input.length; i++) {
     hash ^= input.charCodeAt(i);
     // FNV prime: 16777619
-    hash += (hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24);
+    hash +=
+      (hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24);
   }
 
   const result = (hash >>> 0).toString(36);

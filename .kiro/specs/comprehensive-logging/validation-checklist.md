@@ -11,11 +11,12 @@ This document tracks the manual validation of the comprehensive logging implemen
 **Objective**: Verify no console.log/warn/error/debug statements remain in production code
 
 **Commands**:
+
 ```bash
 # Backend console statements
 grep -rn "console\.\(log\|warn\|error\|debug\)" server/src --include="*.ts" --include="*.js" | grep -v "node_modules" | grep -v "\.test\." | grep -v "\.spec\."
 
-# Frontend console statements  
+# Frontend console statements
 grep -rn "console\.\(log\|warn\|error\|debug\)" client/src --include="*.ts" --include="*.tsx" | grep -v "node_modules" | grep -v "\.test\." | grep -v "\.spec\."
 ```
 
@@ -28,11 +29,13 @@ grep -rn "console\.\(log\|warn\|error\|debug\)" client/src --include="*.ts" --in
 **Objective**: Ensure LOG_LEVEL environment variable is properly configured
 
 **Test**:
+
 - Check that Logger.ts respects LOG_LEVEL environment variable
 - Verify default log level is 'info' in production
 - Verify default log level is 'debug' in development
 
 **Files to Check**:
+
 - `server/src/infrastructure/Logger.ts`
 - `.env` file
 
@@ -43,11 +46,13 @@ grep -rn "console\.\(log\|warn\|error\|debug\)" client/src --include="*.ts" --in
 **Objective**: Ensure VITE_DEBUG_LOGGING and VITE_LOG_LEVEL are properly configured
 
 **Test**:
+
 - Check that LoggingService.ts respects environment variables
 - Verify log storage in development
 - Verify browser console access to logs
 
 **Files to Check**:
+
 - `client/src/services/LoggingService.ts`
 - `.env` file
 
@@ -58,11 +63,13 @@ grep -rn "console\.\(log\|warn\|error\|debug\)" client/src --include="*.ts" --in
 **Objective**: Ensure sensitive data is properly sanitized
 
 **Test**:
+
 - Check that sanitizeHeaders is used for HTTP headers
 - Verify no passwords, tokens, or API keys in logs
 - Verify PII is excluded or derived (email domain only)
 
 **Files to Check**:
+
 - All files using logger with request/response data
 - `server/src/utils/logging/sanitize.ts`
 - `client/src/utils/logging/sanitize.ts`
@@ -74,16 +81,18 @@ grep -rn "console\.\(log\|warn\|error\|debug\)" client/src --include="*.ts" --in
 **Objective**: Ensure duration measurements are accurate and consistent
 
 **Test**:
+
 - Check that performance.now() is used for timing
 - Verify duration is logged in milliseconds
 - Verify timing is included in operation completion logs
 
 **Pattern to Verify**:
+
 ```typescript
 const startTime = performance.now();
 // ... operation ...
 const duration = Math.round(performance.now() - startTime);
-log.info('Operation completed', { operation, duration });
+log.info("Operation completed", { operation, duration });
 ```
 
 ---
@@ -93,6 +102,7 @@ log.info('Operation completed', { operation, duration });
 **Objective**: Ensure logs are properly structured with consistent metadata
 
 **Test**:
+
 - Run application with LOG_LEVEL=debug
 - Check that logs include standard metadata fields:
   - `service` or `component`
@@ -107,6 +117,7 @@ log.info('Operation completed', { operation, duration });
 **Objective**: Verify frontend log export works correctly
 
 **Test**:
+
 1. Open browser console
 2. Run: `window.__logger.exportLogs()`
 3. Verify logs are returned in JSON format
@@ -121,6 +132,7 @@ log.info('Operation completed', { operation, duration });
 **Status**: ✅ PASSED
 
 **Results**:
+
 ```
 Backend: 13 console statements found (all acceptable)
 - server/src/config/sentry.ts (4) - Sentry initialization/fallback
@@ -146,6 +158,7 @@ components. Production-ready.
 **Status**: ✅ PASSED
 
 **Results**:
+
 ```
 ✅ LOG_LEVEL environment variable supported
 ✅ Default 'info' in production
@@ -165,6 +178,7 @@ All requirements 8.1-8.5 satisfied.
 **Status**: ✅ PASSED
 
 **Results**:
+
 ```
 ✅ VITE_DEBUG_LOGGING environment variable supported
 ✅ VITE_LOG_LEVEL environment variable supported
@@ -185,6 +199,7 @@ All requirements 8.1-8.3, 8.6 satisfied.
 **Status**: ✅ PASSED
 
 **Results**:
+
 ```
 Sanitization utilities verified:
 ✅ sanitizeHeaders() - Redacts authorization, x-api-key, cookie, etc.
@@ -210,6 +225,7 @@ All requirements 5.1-5.7 satisfied.
 **Status**: ✅ PASSED
 
 **Results**:
+
 ```
 ✅ performance.now() used for high-precision timing
 ✅ Duration calculated as Math.round(performance.now() - startTime)
@@ -234,6 +250,7 @@ All requirements 6.1-6.7 satisfied.
 **Status**: ✅ PASSED
 
 **Results**:
+
 ```
 Standard metadata fields verified:
 ✅ service/component - Via child logger
@@ -257,6 +274,7 @@ All requirements 9.1-9.7 satisfied.
 **Status**: ✅ PASSED
 
 **Results**:
+
 ```
 Frontend log export verified:
 ✅ window.__logger.exportLogs() - Returns JSON string

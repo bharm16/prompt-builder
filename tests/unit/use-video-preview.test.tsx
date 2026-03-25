@@ -1,17 +1,20 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { renderHook, act, waitFor } from '@testing-library/react';
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import { renderHook, act, waitFor } from "@testing-library/react";
 
-import { useVideoPreview } from '@features/preview/hooks/useVideoPreview';
-import { promptOptimizationApiV2 } from '@/services';
-import { generateVideoPreview, getVideoPreviewStatus } from '@features/preview/api/previewApi';
+import { useVideoPreview } from "@features/preview/hooks/useVideoPreview";
+import { promptOptimizationApiV2 } from "@/services";
+import {
+  generateVideoPreview,
+  getVideoPreviewStatus,
+} from "@features/preview/api/previewApi";
 
-vi.mock('@/services', () => ({
+vi.mock("@/services", () => ({
   promptOptimizationApiV2: {
     compilePrompt: vi.fn(),
   },
 }));
 
-vi.mock('@features/preview/api/previewApi', () => ({
+vi.mock("@features/preview/api/previewApi", () => ({
   generateVideoPreview: vi.fn(),
   getVideoPreviewStatus: vi.fn(),
 }));
@@ -20,24 +23,24 @@ const mockCompilePrompt = vi.mocked(promptOptimizationApiV2.compilePrompt);
 const mockGenerateVideoPreview = vi.mocked(generateVideoPreview);
 const mockGetVideoPreviewStatus = vi.mocked(getVideoPreviewStatus);
 
-describe('useVideoPreview', () => {
+describe("useVideoPreview", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  describe('error handling', () => {
-    it('surfaces API errors when preview generation fails', async () => {
+  describe("error handling", () => {
+    it("surfaces API errors when preview generation fails", async () => {
       mockGenerateVideoPreview.mockResolvedValue({
         success: false,
-        error: 'Generation failed',
+        error: "Generation failed",
       });
 
       const { result } = renderHook(() =>
         useVideoPreview({
-          prompt: 'Test prompt',
+          prompt: "Test prompt",
           isVisible: true,
-          model: 'wan-2.2',
-        })
+          model: "wan-2.2",
+        }),
       );
 
       await act(async () => {
@@ -45,30 +48,30 @@ describe('useVideoPreview', () => {
       });
 
       await waitFor(() => {
-        expect(result.current.error).toBe('Generation failed');
+        expect(result.current.error).toBe("Generation failed");
         expect(result.current.videoUrl).toBeNull();
         expect(result.current.loading).toBe(false);
       });
     });
 
-    it('surfaces job failure errors from polling', async () => {
+    it("surfaces job failure errors from polling", async () => {
       mockGenerateVideoPreview.mockResolvedValue({
         success: true,
-        jobId: 'job-1',
+        jobId: "job-1",
       });
       mockGetVideoPreviewStatus.mockResolvedValue({
         success: true,
-        jobId: 'job-1',
-        status: 'failed',
-        error: 'Job failed',
+        jobId: "job-1",
+        status: "failed",
+        error: "Job failed",
       });
 
       const { result } = renderHook(() =>
         useVideoPreview({
-          prompt: 'Another prompt',
+          prompt: "Another prompt",
           isVisible: true,
-          model: 'wan-2.2',
-        })
+          model: "wan-2.2",
+        }),
       );
 
       await act(async () => {
@@ -76,16 +79,16 @@ describe('useVideoPreview', () => {
       });
 
       await waitFor(() => {
-        expect(result.current.error).toBe('Job failed');
+        expect(result.current.error).toBe("Job failed");
         expect(result.current.videoUrl).toBeNull();
       });
     });
   });
 
-  describe('edge cases', () => {
-    it('does nothing when prompt is empty', async () => {
+  describe("edge cases", () => {
+    it("does nothing when prompt is empty", async () => {
       const { result } = renderHook(() =>
-        useVideoPreview({ prompt: '   ', isVisible: true })
+        useVideoPreview({ prompt: "   ", isVisible: true }),
       );
 
       await act(async () => {
@@ -97,19 +100,19 @@ describe('useVideoPreview', () => {
       expect(result.current.loading).toBe(false);
     });
 
-    it('uses the start image as input reference for sora models', async () => {
+    it("uses the start image as input reference for sora models", async () => {
       mockGenerateVideoPreview.mockResolvedValue({
         success: true,
-        videoUrl: 'https://cdn/video.mp4',
+        videoUrl: "https://cdn/video.mp4",
       });
 
       const { result } = renderHook(() =>
         useVideoPreview({
-          prompt: 'Prompt',
+          prompt: "Prompt",
           isVisible: true,
-          model: 'sora-2',
-          startImage: 'https://cdn/start.png',
-        })
+          model: "sora-2",
+          startImage: "https://cdn/start.png",
+        }),
       );
 
       await act(async () => {
@@ -118,33 +121,35 @@ describe('useVideoPreview', () => {
 
       await waitFor(() => {
         expect(mockGenerateVideoPreview).toHaveBeenCalledWith(
-          'Prompt',
+          "Prompt",
           undefined,
-          'sora-2',
+          "sora-2",
           expect.objectContaining({
-            startImage: 'https://cdn/start.png',
-            inputReference: 'https://cdn/start.png',
-          })
+            startImage: "https://cdn/start.png",
+            inputReference: "https://cdn/start.png",
+          }),
         );
       });
     });
   });
 
-  describe('core behavior', () => {
-    it('compiles WAN prompts before sending to preview generation', async () => {
-      mockCompilePrompt.mockResolvedValue({ compiledPrompt: 'Compiled prompt' });
+  describe("core behavior", () => {
+    it("compiles WAN prompts before sending to preview generation", async () => {
+      mockCompilePrompt.mockResolvedValue({
+        compiledPrompt: "Compiled prompt",
+      });
       mockGenerateVideoPreview.mockResolvedValue({
         success: true,
-        videoUrl: 'https://cdn/compiled.mp4',
+        videoUrl: "https://cdn/compiled.mp4",
       });
-      const prompt = 'This is a longer prompt\n**Technical specs**\nfoo';
+      const prompt = "This is a longer prompt\n**Technical specs**\nfoo";
 
       const { result } = renderHook(() =>
         useVideoPreview({
           prompt,
           isVisible: true,
-          model: 'wan-2.2',
-        })
+          model: "wan-2.2",
+        }),
       );
 
       await act(async () => {
@@ -153,15 +158,15 @@ describe('useVideoPreview', () => {
 
       await waitFor(() => {
         expect(mockCompilePrompt).toHaveBeenCalledWith(
-          expect.objectContaining({ prompt: 'This is a longer prompt' })
+          expect.objectContaining({ prompt: "This is a longer prompt" }),
         );
         expect(mockGenerateVideoPreview).toHaveBeenCalledWith(
-          'Compiled prompt',
+          "Compiled prompt",
           undefined,
-          'wan-2.2',
-          undefined
+          "wan-2.2",
+          undefined,
         );
-        expect(result.current.videoUrl).toBe('https://cdn/compiled.mp4');
+        expect(result.current.videoUrl).toBe("https://cdn/compiled.mp4");
       });
     });
   });

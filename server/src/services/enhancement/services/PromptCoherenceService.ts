@@ -1,9 +1,9 @@
-import { logger } from '@infrastructure/Logger';
-import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer';
-import type { StructuredOutputSchema } from '@utils/structured-output/types';
-import { TemperatureOptimizer } from '@utils/TemperatureOptimizer';
-import { getParentCategory } from '@shared/taxonomy';
-import type { AIService } from '@services/prompt-optimization/types';
+import { logger } from "@infrastructure/Logger";
+import { StructuredOutputEnforcer } from "@utils/StructuredOutputEnforcer";
+import type { StructuredOutputSchema } from "@utils/structured-output/types";
+import { TemperatureOptimizer } from "@utils/TemperatureOptimizer";
+import { getParentCategory } from "@shared/taxonomy";
+import type { AIService } from "@services/prompt-optimization/types";
 import {
   cleanText,
   collapseDuplicateWords,
@@ -11,7 +11,7 @@ import {
   normalizeText,
   replaceTerms,
   tokenize,
-} from '@services/enhancement/utils/text';
+} from "@services/enhancement/utils/text";
 
 export interface CoherenceSpan {
   id?: string;
@@ -21,7 +21,7 @@ export interface CoherenceSpan {
   start?: number;
   end?: number;
   confidence?: number;
-  source?: 'labeled' | 'context';
+  source?: "labeled" | "context";
 }
 
 export interface AppliedChange {
@@ -33,13 +33,13 @@ export interface AppliedChange {
 
 export type CoherenceEdit =
   | {
-      type: 'replaceSpanText';
+      type: "replaceSpanText";
       spanId?: string;
       replacementText?: string;
       anchorQuote?: string;
     }
   | {
-      type: 'removeSpan';
+      type: "removeSpan";
       spanId?: string;
       anchorQuote?: string;
     };
@@ -52,7 +52,7 @@ export interface CoherenceRecommendation {
 }
 
 export interface CoherenceFinding {
-  severity?: 'low' | 'medium' | 'high' | 'suggestion';
+  severity?: "low" | "medium" | "high" | "suggestion";
   message: string;
   reasoning: string;
   involvedSpanIds?: string[];
@@ -71,21 +71,21 @@ export interface CoherenceCheckParams {
   spans?: CoherenceSpan[];
 }
 
-const log = logger.child({ service: 'PromptCoherenceService' });
+const log = logger.child({ service: "PromptCoherenceService" });
 
 const TECHNICAL_PATTERNS: Array<{ id: string; pattern: RegExp }> = [
   {
-    id: 'camera',
+    id: "camera",
     pattern:
       /\b(dolly|track(ing)?|pan|tilt|crane|zoom|handheld|static|lens|mm|wide shot|close[-\s]?up|over[-\s]?the[-\s]?shoulder|angle|framing|depth of field|bokeh)\b/gi,
   },
   {
-    id: 'lighting',
+    id: "lighting",
     pattern:
       /\b(lighting|shadow|glow|illuminat\w*|backlight|rim light|key light|fill light|high[-\s]?key|low[-\s]?key|sunlight|moonlight)\b/gi,
   },
   {
-    id: 'technical',
+    id: "technical",
     pattern:
       /\b(\d+fps|frame rate|aspect ratio|\d+:\d+|4k|8k|resolution|duration|mm film|film format|iso|shutter|aperture|f\/\d+(?:\.\d+)?)\b/gi,
   },
@@ -93,73 +93,89 @@ const TECHNICAL_PATTERNS: Array<{ id: string; pattern: RegExp }> = [
 
 const CONTRADICTION_SETS = [
   {
-    id: 'day-night',
-    severity: 'medium' as const,
+    id: "day-night",
+    severity: "medium" as const,
     a: {
-      label: 'daylight',
-      terms: ['day', 'daytime', 'sunny', 'sunlight', 'midday', 'noon', 'bright sun'],
-      replaceWith: 'daytime',
-      strategy: 'replace' as const,
+      label: "daylight",
+      terms: [
+        "day",
+        "daytime",
+        "sunny",
+        "sunlight",
+        "midday",
+        "noon",
+        "bright sun",
+      ],
+      replaceWith: "daytime",
+      strategy: "replace" as const,
     },
     b: {
-      label: 'night',
-      terms: ['night', 'midnight', 'moonlight', 'dark', 'starlit', 'stars'],
-      replaceWith: 'night',
-      strategy: 'replace' as const,
+      label: "night",
+      terms: ["night", "midnight", "moonlight", "dark", "starlit", "stars"],
+      replaceWith: "night",
+      strategy: "replace" as const,
     },
   },
   {
-    id: 'indoor-outdoor',
-    severity: 'medium' as const,
+    id: "indoor-outdoor",
+    severity: "medium" as const,
     a: {
-      label: 'indoors',
-      terms: ['indoor', 'indoors', 'interior', 'inside', 'room', 'studio'],
-      replaceWith: 'indoors',
-      strategy: 'replace' as const,
+      label: "indoors",
+      terms: ["indoor", "indoors", "interior", "inside", "room", "studio"],
+      replaceWith: "indoors",
+      strategy: "replace" as const,
     },
     b: {
-      label: 'outdoors',
-      terms: ['outdoor', 'outdoors', 'exterior', 'outside', 'street', 'forest', 'field'],
-      replaceWith: 'outdoors',
-      strategy: 'replace' as const,
+      label: "outdoors",
+      terms: [
+        "outdoor",
+        "outdoors",
+        "exterior",
+        "outside",
+        "street",
+        "forest",
+        "field",
+      ],
+      replaceWith: "outdoors",
+      strategy: "replace" as const,
     },
   },
   {
-    id: 'underwater-fire',
-    severity: 'high' as const,
+    id: "underwater-fire",
+    severity: "high" as const,
     a: {
-      label: 'underwater',
-      terms: ['underwater', 'submerged', 'beneath the sea', 'ocean floor'],
-      replaceWith: '',
-      strategy: 'remove' as const,
+      label: "underwater",
+      terms: ["underwater", "submerged", "beneath the sea", "ocean floor"],
+      replaceWith: "",
+      strategy: "remove" as const,
     },
     b: {
-      label: 'fire',
-      terms: ['fire', 'flames', 'campfire', 'bonfire', 'burning'],
-      replaceWith: '',
-      strategy: 'remove' as const,
+      label: "fire",
+      terms: ["fire", "flames", "campfire", "bonfire", "burning"],
+      replaceWith: "",
+      strategy: "remove" as const,
     },
   },
   {
-    id: 'desert-arctic',
-    severity: 'medium' as const,
+    id: "desert-arctic",
+    severity: "medium" as const,
     a: {
-      label: 'desert',
-      terms: ['desert', 'sand dunes', 'arid', 'sandy'],
-      replaceWith: '',
-      strategy: 'remove' as const,
+      label: "desert",
+      terms: ["desert", "sand dunes", "arid", "sandy"],
+      replaceWith: "",
+      strategy: "remove" as const,
     },
     b: {
-      label: 'arctic',
-      terms: ['arctic', 'snow', 'blizzard', 'ice', 'glacier', 'frozen'],
-      replaceWith: '',
-      strategy: 'remove' as const,
+      label: "arctic",
+      terms: ["arctic", "snow", "blizzard", "ice", "glacier", "frozen"],
+      replaceWith: "",
+      strategy: "remove" as const,
     },
   },
 ];
 
-const HIGH_IMPACT_PARENTS = new Set(['environment', 'lighting', 'style']);
-const HIGH_IMPACT_KEYWORDS = ['time', 'mood', 'era', 'emotion'];
+const HIGH_IMPACT_PARENTS = new Set(["environment", "lighting", "style"]);
+const HIGH_IMPACT_KEYWORDS = ["time", "mood", "era", "emotion"];
 const MAX_CONTEXT_SPANS = 12;
 const MIN_CONTEXT_CHARS = 3;
 const SENTENCE_REGEX = /[^.!?\n]+[.!?]+|[^.!?\n]+$/g;
@@ -169,18 +185,18 @@ const isTechnicalCategory = (category?: string): boolean => {
   if (!category) return false;
   const normalized = category.toLowerCase();
   return (
-    normalized.startsWith('camera') ||
-    normalized.startsWith('shot') ||
-    normalized.startsWith('lighting') ||
-    normalized.startsWith('technical')
+    normalized.startsWith("camera") ||
+    normalized.startsWith("shot") ||
+    normalized.startsWith("lighting") ||
+    normalized.startsWith("technical")
   );
 };
 
 const removePatternMatches = (text: string, pattern: RegExp): string =>
-  cleanText(text.replace(pattern, ' '));
+  cleanText(text.replace(pattern, " "));
 
 const summarizeSpan = (span: CoherenceSpan): string =>
-  (span.quote || span.text || '').trim();
+  (span.quote || span.text || "").trim();
 
 const sanitizeSpans = (spans: CoherenceSpan[] | undefined): CoherenceSpan[] => {
   if (!Array.isArray(spans)) return [];
@@ -202,7 +218,10 @@ interface SpanRange {
   end: number;
 }
 
-const buildCoverageRanges = (prompt: string, spans: CoherenceSpan[]): SpanRange[] => {
+const buildCoverageRanges = (
+  prompt: string,
+  spans: CoherenceSpan[],
+): SpanRange[] => {
   const ranges = spans
     .map((span) => {
       const start = Number.isFinite(span.start) ? Number(span.start) : null;
@@ -236,7 +255,7 @@ const buildCoverageRanges = (prompt: string, spans: CoherenceSpan[]): SpanRange[
 };
 
 const splitPromptSentences = (
-  prompt: string
+  prompt: string,
 ): Array<{ start: number; end: number; text: string }> => {
   const sentences: Array<{ start: number; end: number; text: string }> = [];
   SENTENCE_REGEX.lastIndex = 0;
@@ -268,7 +287,7 @@ const sentenceHasUncoveredText = (
   prompt: string,
   sentenceStart: number,
   sentenceEnd: number,
-  coverage: SpanRange[]
+  coverage: SpanRange[],
 ): boolean => {
   if (sentenceEnd <= sentenceStart) return false;
 
@@ -302,16 +321,17 @@ const sentenceHasUncoveredText = (
   return false;
 };
 
-const buildContextSpans = (prompt: string, spans: CoherenceSpan[]): CoherenceSpan[] => {
+const buildContextSpans = (
+  prompt: string,
+  spans: CoherenceSpan[],
+): CoherenceSpan[] => {
   if (!prompt) return [];
   const sentences = splitPromptSentences(prompt);
   if (sentences.length === 0) return [];
 
   const coverage = buildCoverageRanges(prompt, spans);
   const seen = new Set(
-    spans
-      .map((span) => normalizeText(summarizeSpan(span)))
-      .filter(Boolean)
+    spans.map((span) => normalizeText(summarizeSpan(span))).filter(Boolean),
   );
   const contextSpans: CoherenceSpan[] = [];
 
@@ -322,7 +342,9 @@ const buildContextSpans = (prompt: string, spans: CoherenceSpan[]): CoherenceSpa
     if (sentence.text.length < MIN_CONTEXT_CHARS) {
       continue;
     }
-    if (!sentenceHasUncoveredText(prompt, sentence.start, sentence.end, coverage)) {
+    if (
+      !sentenceHasUncoveredText(prompt, sentence.start, sentence.end, coverage)
+    ) {
       continue;
     }
     const normalized = normalizeText(sentence.text);
@@ -334,7 +356,7 @@ const buildContextSpans = (prompt: string, spans: CoherenceSpan[]): CoherenceSpa
       quote: sentence.text,
       start: sentence.start,
       end: sentence.end,
-      source: 'context',
+      source: "context",
     });
     seen.add(normalized);
   }
@@ -344,7 +366,7 @@ const buildContextSpans = (prompt: string, spans: CoherenceSpan[]): CoherenceSpa
 
 const buildAppliedSpan = (
   spans: CoherenceSpan[],
-  appliedChange?: AppliedChange
+  appliedChange?: AppliedChange,
 ): CoherenceSpan | null => {
   if (!appliedChange) return null;
   if (appliedChange.spanId) {
@@ -352,17 +374,17 @@ const buildAppliedSpan = (
     if (match) return match;
   }
 
-  const normalizedNew = normalizeText(appliedChange.newText ?? '');
-  const normalizedOld = normalizeText(appliedChange.oldText ?? '');
+  const normalizedNew = normalizeText(appliedChange.newText ?? "");
+  const normalizedOld = normalizeText(appliedChange.oldText ?? "");
   if (normalizedNew) {
     const match = spans.find(
-      (span) => normalizeText(summarizeSpan(span)) === normalizedNew
+      (span) => normalizeText(summarizeSpan(span)) === normalizedNew,
     );
     if (match) return match;
   }
   if (normalizedOld) {
     const match = spans.find(
-      (span) => normalizeText(summarizeSpan(span)) === normalizedOld
+      (span) => normalizeText(summarizeSpan(span)) === normalizedOld,
     );
     if (match) return match;
   }
@@ -388,7 +410,7 @@ export class PromptCoherenceService {
     appliedChange,
     spans,
   }: CoherenceCheckParams): Promise<CoherenceResult> {
-    const operation = 'prompt-coherence-check';
+    const operation = "prompt-coherence-check";
     const cleanSpans = sanitizeSpans(spans);
     const contextSpans = buildContextSpans(afterPrompt, cleanSpans);
     const spansForCheck = [...cleanSpans, ...contextSpans];
@@ -403,7 +425,7 @@ export class PromptCoherenceService {
 
       return llmResult;
     } catch (error) {
-      log.warn('LLM coherence check failed; returning empty results', {
+      log.warn("LLM coherence check failed; returning empty results", {
         operation,
         error: error instanceof Error ? error.message : String(error),
       });
@@ -418,7 +440,9 @@ export class PromptCoherenceService {
     const oldTokens = tokenize(appliedChange.oldText);
     const newTokens = tokenize(appliedChange.newText);
     const similarity = jaccardSimilarity(oldTokens, newTokens);
-    const lengthDelta = Math.abs(appliedChange.newText.length - appliedChange.oldText.length);
+    const lengthDelta = Math.abs(
+      appliedChange.newText.length - appliedChange.oldText.length,
+    );
     const lengthRatio = appliedChange.oldText.length
       ? lengthDelta / appliedChange.oldText.length
       : 0;
@@ -427,19 +451,19 @@ export class PromptCoherenceService {
 
   private runDeterministicChecks(
     spans: CoherenceSpan[],
-    appliedSpan: CoherenceSpan | null
+    appliedSpan: CoherenceSpan | null,
   ): CoherenceResult {
     const conflicts: CoherenceFinding[] = [];
     const harmonizations: CoherenceFinding[] = [];
 
-    const appliedText = appliedSpan ? summarizeSpan(appliedSpan) : '';
+    const appliedText = appliedSpan ? summarizeSpan(appliedSpan) : "";
     const appliedLower = appliedText.toLowerCase();
 
     spans.forEach((span) => {
       const spanText = summarizeSpan(span);
       if (!spanText) return;
 
-      const isContextSpan = span.source === 'context';
+      const isContextSpan = span.source === "context";
 
       if (!isContextSpan && !isTechnicalCategory(span.category)) {
         const matchedTerms = new Set<string>();
@@ -456,18 +480,21 @@ export class PromptCoherenceService {
         if (matchedTerms.size > 0 && cleaned !== spanText) {
           const involvedSpanIds = span.id ? [span.id] : null;
           conflicts.push({
-            severity: 'low',
-            message: 'Technical terms appear in a non-technical span.',
-            reasoning: `Found technical terms (${Array.from(matchedTerms).join(', ')}) in a ${span.category || 'misc'} span.`,
+            severity: "low",
+            message: "Technical terms appear in a non-technical span.",
+            reasoning: `Found technical terms (${Array.from(matchedTerms).join(", ")}) in a ${span.category || "misc"} span.`,
             ...(involvedSpanIds ? { involvedSpanIds } : {}),
             recommendations: [
               {
-                title: 'Remove technical terms from this span',
-                rationale: 'Keeps camera/lighting specs grouped with their proper categories.',
+                title: "Remove technical terms from this span",
+                rationale:
+                  "Keeps camera/lighting specs grouped with their proper categories.",
                 edits: [
                   {
-                    type: 'replaceSpanText',
-                    ...(span.id ? { spanId: span.id } : { anchorQuote: spanText }),
+                    type: "replaceSpanText",
+                    ...(span.id
+                      ? { spanId: span.id }
+                      : { anchorQuote: spanText }),
                     replacementText: cleaned,
                   },
                 ],
@@ -483,17 +510,21 @@ export class PromptCoherenceService {
         if (deduped !== spanText) {
           const involvedSpanIds = span.id ? [span.id] : null;
           harmonizations.push({
-            message: 'Redundant phrasing detected.',
-            reasoning: 'This span repeats descriptors; tightening improves readability.',
+            message: "Redundant phrasing detected.",
+            reasoning:
+              "This span repeats descriptors; tightening improves readability.",
             ...(involvedSpanIds ? { involvedSpanIds } : {}),
             recommendations: [
               {
-                title: 'Collapse repeated words',
-                rationale: 'Removes duplicate descriptors without changing meaning.',
+                title: "Collapse repeated words",
+                rationale:
+                  "Removes duplicate descriptors without changing meaning.",
                 edits: [
                   {
-                    type: 'replaceSpanText',
-                    ...(span.id ? { spanId: span.id } : { anchorQuote: spanText }),
+                    type: "replaceSpanText",
+                    ...(span.id
+                      ? { spanId: span.id }
+                      : { anchorQuote: spanText }),
                     replacementText: deduped,
                   },
                 ],
@@ -512,8 +543,12 @@ export class PromptCoherenceService {
         if (!spanText) return;
 
         CONTRADICTION_SETS.forEach((pair) => {
-          const appliedMatchesA = pair.a.terms.some((term) => appliedLower.includes(term));
-          const appliedMatchesB = pair.b.terms.some((term) => appliedLower.includes(term));
+          const appliedMatchesA = pair.a.terms.some((term) =>
+            appliedLower.includes(term),
+          );
+          const appliedMatchesB = pair.b.terms.some((term) =>
+            appliedLower.includes(term),
+          );
 
           if (!appliedMatchesA && !appliedMatchesB) {
             return;
@@ -522,36 +557,49 @@ export class PromptCoherenceService {
           const spanLower = spanText.toLowerCase();
           const conflictSide = appliedMatchesA ? pair.b : pair.a;
           const appliedSide = appliedMatchesA ? pair.a : pair.b;
-          const conflictingTerms = conflictSide.terms.filter((term) => spanLower.includes(term));
+          const conflictingTerms = conflictSide.terms.filter((term) =>
+            spanLower.includes(term),
+          );
 
           if (!conflictingTerms.length) {
             return;
           }
 
           const replacementText =
-            conflictSide.strategy === 'replace'
-              ? replaceTerms(spanText, conflictingTerms, appliedSide.replaceWith)
-              : replaceTerms(spanText, conflictingTerms, '');
+            conflictSide.strategy === "replace"
+              ? replaceTerms(
+                  spanText,
+                  conflictingTerms,
+                  appliedSide.replaceWith,
+                )
+              : replaceTerms(spanText, conflictingTerms, "");
 
           conflicts.push({
             severity: pair.severity,
-            message: `Potential ${pair.id.replace('-', ' ')} conflict.`,
+            message: `Potential ${pair.id.replace("-", " ")} conflict.`,
             reasoning: `Applied change suggests ${appliedSide.label}, but another span references ${conflictSide.label}.`,
-            involvedSpanIds: [appliedSpan.id, span.id].filter(Boolean) as string[],
+            involvedSpanIds: [appliedSpan.id, span.id].filter(
+              Boolean,
+            ) as string[],
             recommendations: [
               {
                 title: `Align ${conflictSide.label} reference to ${appliedSide.label}`,
-                rationale: 'Keeps the scene consistent with the newly applied change.',
+                rationale:
+                  "Keeps the scene consistent with the newly applied change.",
                 edits: [
                   replacementText && replacementText !== spanText
                     ? {
-                        type: 'replaceSpanText',
-                        ...(span.id ? { spanId: span.id } : { anchorQuote: spanText }),
+                        type: "replaceSpanText",
+                        ...(span.id
+                          ? { spanId: span.id }
+                          : { anchorQuote: spanText }),
                         replacementText,
                       }
                     : {
-                        type: 'removeSpan',
-                        ...(span.id ? { spanId: span.id } : { anchorQuote: spanText }),
+                        type: "removeSpan",
+                        ...(span.id
+                          ? { spanId: span.id }
+                          : { anchorQuote: spanText }),
                       },
                 ],
                 confidence: 0.66,
@@ -564,7 +612,7 @@ export class PromptCoherenceService {
 
     const seenDuplicates = new Set<string>();
     spans.forEach((span) => {
-      if (span.source === 'context') {
+      if (span.source === "context") {
         return;
       }
       const spanText = summarizeSpan(span);
@@ -574,17 +622,19 @@ export class PromptCoherenceService {
       if (seenDuplicates.has(normalized)) {
         const involvedSpanIds = span.id ? [span.id] : null;
         harmonizations.push({
-          message: 'Duplicate span detected.',
-          reasoning: 'This descriptor already appears elsewhere in the prompt.',
+          message: "Duplicate span detected.",
+          reasoning: "This descriptor already appears elsewhere in the prompt.",
           ...(involvedSpanIds ? { involvedSpanIds } : {}),
           recommendations: [
             {
-              title: 'Remove duplicate span',
-              rationale: 'Avoids repetition and keeps the prompt concise.',
+              title: "Remove duplicate span",
+              rationale: "Avoids repetition and keeps the prompt concise.",
               edits: [
                 {
-                  type: 'removeSpan',
-                  ...(span.id ? { spanId: span.id } : { anchorQuote: spanText }),
+                  type: "removeSpan",
+                  ...(span.id
+                    ? { spanId: span.id }
+                    : { anchorQuote: spanText }),
                 },
               ],
               confidence: 0.6,
@@ -599,25 +649,31 @@ export class PromptCoherenceService {
     return { conflicts, harmonizations };
   }
 
-  private async runLlmCheck(params: CoherenceCheckParams & { spans: CoherenceSpan[] }): Promise<CoherenceResult> {
+  private async runLlmCheck(
+    params: CoherenceCheckParams & { spans: CoherenceSpan[] },
+  ): Promise<CoherenceResult> {
     const prompt = this.buildSystemPrompt(params);
-    const temperature = TemperatureOptimizer.getOptimalTemperature('analysis', {
-      diversity: 'low',
-      precision: 'high',
+    const temperature = TemperatureOptimizer.getOptimalTemperature("analysis", {
+      diversity: "low",
+      precision: "high",
     });
     const schema: StructuredOutputSchema = {
-      type: 'object',
-      required: ['conflicts', 'harmonizations'],
+      type: "object",
+      required: ["conflicts", "harmonizations"],
     };
 
-    const result = (await StructuredOutputEnforcer.enforceJSON(this.ai, prompt, {
-      operation: 'prompt_coherence_check',
-      schema,
-      isArray: false,
-      maxTokens: 2048,
-      maxRetries: 2,
-      temperature,
-    })) as CoherenceResult;
+    const result = (await StructuredOutputEnforcer.enforceJSON(
+      this.ai,
+      prompt,
+      {
+        operation: "prompt_coherence_check",
+        schema,
+        isArray: false,
+        maxTokens: 2048,
+        maxRetries: 2,
+        temperature,
+      },
+    )) as CoherenceResult;
 
     return this.sanitizeResult(result, params.spans);
   }
@@ -706,9 +762,16 @@ Applied change: ${JSON.stringify(appliedChange ?? {}, null, 2)}
 Span hints (incomplete): ${JSON.stringify(trimmedSpans, null, 2)}`;
   }
 
-  private sanitizeResult(result: CoherenceResult, spans: CoherenceSpan[]): CoherenceResult {
-    const spanIds = new Set(spans.map((span) => span.id).filter(Boolean) as string[]);
-    const normalizeFindings = (findings: CoherenceFinding[]): CoherenceFinding[] =>
+  private sanitizeResult(
+    result: CoherenceResult,
+    spans: CoherenceSpan[],
+  ): CoherenceResult {
+    const spanIds = new Set(
+      spans.map((span) => span.id).filter(Boolean) as string[],
+    );
+    const normalizeFindings = (
+      findings: CoherenceFinding[],
+    ): CoherenceFinding[] =>
       findings
         .filter((finding) => Array.isArray(finding.recommendations))
         .map((finding) => {
@@ -732,7 +795,7 @@ Span hints (incomplete): ${JSON.stringify(trimmedSpans, null, 2)}`;
                     })
                     .filter((edit): edit is CoherenceEdit => Boolean(edit))
                     .filter((edit) => {
-                      if (edit.type === 'replaceSpanText') {
+                      if (edit.type === "replaceSpanText") {
                         if (!edit.replacementText) return false;
                       }
                       return Boolean(edit.spanId || edit.anchorQuote);

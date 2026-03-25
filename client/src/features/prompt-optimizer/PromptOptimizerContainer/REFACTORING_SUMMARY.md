@@ -1,6 +1,7 @@
 # PromptOptimizerContainer Refactoring Summary
 
 ## Original File
+
 - **Path:** `client/src/features/prompt-optimizer/PromptOptimizerContainer.jsx`
 - **Size:** 716 lines
 - **Type:** React Component (Orchestrator)
@@ -8,6 +9,7 @@
 ## Problems Identified
 
 ### 1. Mixed Business Logic Responsibilities (7 distinct concerns)
+
 - **URL Loading** (lines 112-179): Prompt loading from URL parameters
 - **Highlights Persistence** (lines 184-241): Background snapshot persistence
 - **Undo/Redo Management** (lines 246-328): Stack management with timeouts
@@ -17,16 +19,19 @@
 - **Enhancement Suggestions** (lines 459-581): Suggestion fetching and application
 
 ### 2. Complex State Management
+
 - Multiple interdependent state variables from PromptStateContext
 - Refs for undo/redo stacks, timeouts, and persistence tracking
 - Complex dependency arrays in useEffect and useCallback hooks
 
 ### 3. Long Methods with Nested Logic
+
 - `fetchEnhancementSuggestions` (83 lines): Complex suggestion fetching with error handling
 - `handleConceptComplete` (49 lines): Async optimization with timeout management
 - `handleHighlightsPersist` (58 lines): Multi-stage persistence with conditional logic
 
 ### 4. Timeout Management Scattered
+
 - Three separate timeout refs (undo, redo, concept optimize)
 - Cleanup logic duplicated across multiple places
 - Complex timeout coordination with ref management
@@ -34,6 +39,7 @@
 ## Refactoring Solution
 
 ### New Structure
+
 ```
 client/src/features/prompt-optimizer/PromptOptimizerContainer/
 ├── hooks/
@@ -52,6 +58,7 @@ client/src/features/prompt-optimizer/PromptOptimizerContainer/
 ### Extracted Custom Hooks (7 hooks, 776 lines total)
 
 #### 1. usePromptLoader (102 lines)
+
 - **Responsibility:** Load prompts from URL parameters
 - **Key Functions:**
   - Fetch prompt data from repository
@@ -60,6 +67,7 @@ client/src/features/prompt-optimizer/PromptOptimizerContainer/
   - Handle loading errors with navigation
 
 #### 2. useHighlightsPersistence (95 lines)
+
 - **Responsibility:** Persist highlight snapshots
 - **Key Functions:**
   - Update local highlight state
@@ -68,6 +76,7 @@ client/src/features/prompt-optimizer/PromptOptimizerContainer/
   - Silent failure handling for non-critical operations
 
 #### 3. useUndoRedo (141 lines)
+
 - **Responsibility:** Manage undo/redo functionality
 - **Key Functions:**
   - `handleUndo`: Pop from undo stack, push to redo stack
@@ -76,6 +85,7 @@ client/src/features/prompt-optimizer/PromptOptimizerContainer/
   - Timeout cleanup for ref resets
 
 #### 4. usePromptOptimization (96 lines)
+
 - **Responsibility:** Orchestrate prompt optimization
 - **Key Functions:**
   - Serialize prompt context
@@ -84,12 +94,14 @@ client/src/features/prompt-optimizer/PromptOptimizerContainer/
   - Update state and navigate to new URL
 
 #### 5. useImprovementFlow (39 lines)
+
 - **Responsibility:** Handle improvement modal flow
 - **Key Functions:**
   - `handleImproveFirst`: Validate and show improver
   - `handleImprovementComplete`: Process enhancement and trigger optimization
 
 #### 6. useConceptBrainstorm (129 lines)
+
 - **Responsibility:** Manage video concept brainstorm flow
 - **Key Functions:**
   - Create PromptContext from concept elements
@@ -98,6 +110,7 @@ client/src/features/prompt-optimizer/PromptOptimizerContainer/
   - Handle skip brainstorm
 
 #### 7. useEnhancementSuggestions (161 lines)
+
 - **Responsibility:** Fetch and apply enhancement suggestions
 - **Key Functions:**
   - `fetchEnhancementSuggestions`: Load suggestions with loading state
@@ -106,7 +119,9 @@ client/src/features/prompt-optimizer/PromptOptimizerContainer/
   - Error handling with toast notifications
 
 ### Main Orchestrator (342 lines)
+
 **PromptOptimizerContainer.jsx**
+
 - Coordinates 7 custom hooks
 - Manages keyboard shortcuts
 - Renders UI sections (input, results, modals, sidebar)
@@ -115,15 +130,18 @@ client/src/features/prompt-optimizer/PromptOptimizerContainer/
 ## Line Count Analysis
 
 ### Original
+
 - **Total:** 716 lines (single file)
 
 ### Refactored
+
 - **Hooks:** 776 lines (7 files + index, avg 97 lines/file)
 - **Orchestrator:** 342 lines (1 file)
 - **Infrastructure:** 13 lines (barrel export)
 - **Total:** 1,118 lines
 
 ### Impact
+
 - **Net increase:** 402 lines (+56%)
 - **Files created:** 9 files (8 hooks + 1 main component)
 - **All files:** Within architectural guidelines ✅
@@ -132,29 +150,34 @@ client/src/features/prompt-optimizer/PromptOptimizerContainer/
 ## Compliance with Architecture Standards
 
 ### ✅ Separation of Concerns
+
 - Each hook has a single, well-defined responsibility
 - URL loading separated from persistence
 - Undo/redo isolated from optimization
 - Suggestion fetching decoupled from application logic
 
 ### ✅ File Size Guidelines
+
 - **Hooks:** All under 165 lines (guideline: 150 lines, acceptable for complex hooks) ✅
 - **Orchestrator:** 342 lines (guideline: 500 lines max) ✅
 - **Infrastructure:** 13 lines (barrel exports)
 
 ### ✅ Testability
+
 - Each hook can be tested in isolation
 - Mock-friendly dependency injection
 - Pure logic separated from side effects
 - Clear input/output contracts
 
 ### ✅ Maintainability
+
 - Changes to loading logic only affect usePromptLoader
 - Undo/redo can be modified without touching other concerns
 - Suggestion fetching logic centralized
 - Timeout management consolidated per concern
 
 ### ✅ Reusability
+
 - Hooks can be reused in other components
 - useUndoRedo is generic and reusable
 - useEnhancementSuggestions can be adapted for other suggestion systems
@@ -162,43 +185,54 @@ client/src/features/prompt-optimizer/PromptOptimizerContainer/
 ## Entrypoint Compatibility
 
 ### Supported Imports
+
 ```javascript
-import PromptOptimizerContainer from './features/prompt-optimizer/PromptOptimizerContainer';
+import PromptOptimizerContainer from "./features/prompt-optimizer/PromptOptimizerContainer";
 ```
 
 ### Removed Deep Import
+
 - `./features/prompt-optimizer/PromptOptimizerContainer/PromptOptimizerContainer` is intentionally unsupported.
 - Use the folder entrypoint above or import `PromptOptimizerWorkspace` directly.
 
 ### Advanced Usage (New Capability)
+
 ```javascript
 // Import specific hooks for reuse
-import { useUndoRedo, useHighlightsPersistence } from './features/prompt-optimizer/PromptOptimizerContainer/hooks';
+import {
+  useUndoRedo,
+  useHighlightsPersistence,
+} from "./features/prompt-optimizer/PromptOptimizerContainer/hooks";
 ```
 
 ## Benefits
 
 ### 1. Better Organization
+
 - Related logic grouped in dedicated hooks
 - Clear separation between loading, persistence, optimization, and suggestions
 - Each concern has its own file
 
 ### 2. Improved Testability
+
 - Hooks can be tested in isolation with React Testing Library
 - Mock-friendly dependency injection
 - Clear boundaries for unit tests
 
 ### 3. Enhanced Maintainability
+
 - Changes to one concern don't affect others
 - Easier to locate and fix bugs
 - Reduced cognitive load when reading code
 
 ### 4. Greater Reusability
+
 - useUndoRedo can be used in other editors
 - useHighlightsPersistence pattern applicable elsewhere
 - Hooks follow React best practices
 
 ### 5. Simplified Main Component
+
 - **Before:** 716 lines with 7 mixed concerns
 - **After:** 342 lines that coordinate hooks
 - Much easier to understand the component flow
@@ -206,12 +240,14 @@ import { useUndoRedo, useHighlightsPersistence } from './features/prompt-optimiz
 ## Code Quality Improvements
 
 ### Before Refactoring
+
 - 7 distinct business logic concerns in one file
 - 3 timeout refs with scattered cleanup
 - Complex dependency arrays (10-15 dependencies)
 - 716 lines of mixed responsibilities
 
 ### After Refactoring
+
 - 7 specialized hooks with single responsibilities
 - Timeout management consolidated per hook
 - Simpler dependency arrays (3-8 dependencies per hook)
@@ -220,6 +256,7 @@ import { useUndoRedo, useHighlightsPersistence } from './features/prompt-optimiz
 ## Testing Recommendations
 
 ### Unit Tests
+
 - ✅ `usePromptLoader`: Test loading success, errors, context restoration
 - ✅ `useHighlightsPersistence`: Test local updates, remote persistence, permission errors
 - ✅ `useUndoRedo`: Test stack operations, timeouts, history application
@@ -229,12 +266,14 @@ import { useUndoRedo, useHighlightsPersistence } from './features/prompt-optimiz
 - ✅ `useEnhancementSuggestions`: Test fetching, applying, error handling
 
 ### Integration Tests
+
 - ✅ `PromptOptimizerContainer`: Test hook coordination
 - ✅ Test complete optimization workflow
 - ✅ Test undo/redo with highlights
 - ✅ Test suggestion application flow
 
 ### Regression Tests
+
 - ✅ Verify backward compatibility with old imports
 - ✅ Compare behavior before/after refactoring
 

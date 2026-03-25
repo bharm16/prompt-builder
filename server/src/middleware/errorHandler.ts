@@ -1,7 +1,7 @@
-import { logger } from '@infrastructure/Logger';
-import type { NextFunction, Request, Response } from 'express';
-import { isDomainError } from '@server/errors/DomainError';
-import type { ApiError, ApiErrorCode } from '@server/types/apiError';
+import { logger } from "@infrastructure/Logger";
+import type { NextFunction, Request, Response } from "express";
+import { isDomainError } from "@server/errors/DomainError";
+import type { ApiError, ApiErrorCode } from "@server/types/apiError";
 
 const EMAIL_RE = /[\w.-]+@[\w.-]+\.\w+/g;
 const SSN_RE = /\b\d{3}-\d{2}-\d{4}\b/g;
@@ -14,64 +14,67 @@ const KEY_RE = /\b[A-Za-z0-9]{32,}\b/g;
  * Removes PII like emails, SSNs, credit cards, phone numbers
  */
 function redactSensitiveData(obj: unknown): unknown {
-  if (typeof obj === 'string') {
-    return obj
-      // Redact email addresses
-      .replace(EMAIL_RE, '[EMAIL_REDACTED]')
-      // Redact SSN patterns (XXX-XX-XXXX)
-      .replace(SSN_RE, '[SSN_REDACTED]')
-      // Redact credit card numbers (16 digits)
-      .replace(CARD_RE, '[CARD_REDACTED]')
-      // Redact phone numbers (various formats)
-      .replace(PHONE_RE, '[PHONE_REDACTED]')
-      // Redact API keys (common patterns)
-      .replace(KEY_RE, '[KEY_REDACTED]');
+  if (typeof obj === "string") {
+    return (
+      obj
+        // Redact email addresses
+        .replace(EMAIL_RE, "[EMAIL_REDACTED]")
+        // Redact SSN patterns (XXX-XX-XXXX)
+        .replace(SSN_RE, "[SSN_REDACTED]")
+        // Redact credit card numbers (16 digits)
+        .replace(CARD_RE, "[CARD_REDACTED]")
+        // Redact phone numbers (various formats)
+        .replace(PHONE_RE, "[PHONE_REDACTED]")
+        // Redact API keys (common patterns)
+        .replace(KEY_RE, "[KEY_REDACTED]")
+    );
   }
-  
-  if (typeof obj !== 'object' || obj === null) {
+
+  if (typeof obj !== "object" || obj === null) {
     return obj;
   }
-  
-  const redacted: Record<string, unknown> | unknown[] = Array.isArray(obj) ? [] : {};
+
+  const redacted: Record<string, unknown> | unknown[] = Array.isArray(obj)
+    ? []
+    : {};
   const sensitiveKeys = [
-    'email',
-    'password',
-    'token',
-    'apikey',
-    'api_key',
-    'secret',
-    'ssn',
-    'creditcard',
-    'credit_card',
-    'phone',
-    'address',
+    "email",
+    "password",
+    "token",
+    "apikey",
+    "api_key",
+    "secret",
+    "ssn",
+    "creditcard",
+    "credit_card",
+    "phone",
+    "address",
   ];
-  
+
   for (const [key, value] of Object.entries(obj)) {
     // Redact entire value if key is sensitive
     if (sensitiveKeys.some((s) => key.toLowerCase().includes(s))) {
-      (redacted as Record<string, unknown>)[key] = '[REDACTED]';
+      (redacted as Record<string, unknown>)[key] = "[REDACTED]";
     }
     // Recursively redact nested objects
-    else if (typeof value === 'object' && value !== null) {
+    else if (typeof value === "object" && value !== null) {
       (redacted as Record<string, unknown>)[key] = redactSensitiveData(value);
     }
     // Redact long strings (likely to be prompts with PII)
-    else if (typeof value === 'string' && value.length > 1000) {
+    else if (typeof value === "string" && value.length > 1000) {
       const redactedValue = redactSensitiveData(value);
       (redacted as Record<string, unknown>)[key] =
         (redactedValue as string).substring(0, 200) +
         `... [${value.length - 200} chars truncated]`;
     }
     // Redact patterns in short strings
-    else if (typeof value === 'string') {
+    else if (typeof value === "string") {
       (redacted as Record<string, unknown>)[key] = redactSensitiveData(value);
-    }
-    else {
+    } else {
       (redacted as Record<string, unknown>)[key] = value;
     }
   }
-  
+
   return redacted;
 }
 
@@ -85,7 +88,7 @@ function toDetailsString(value: unknown): string | undefined {
   if (value === undefined || value === null) {
     return undefined;
   }
-  if (typeof value === 'string') {
+  if (typeof value === "string") {
     return value;
   }
 
@@ -101,7 +104,7 @@ export function errorHandler(
   err: unknown,
   req: RequestWithId,
   res: Response,
-  _next: NextFunction
+  _next: NextFunction,
 ): void {
   const meta: Record<string, unknown> = {
     requestId: req.id,
@@ -145,24 +148,26 @@ export function errorHandler(
   }
 
   const errorObj = err instanceof Error ? err : new Error(String(err));
-  logger.error('Request error', errorObj, meta);
+  logger.error("Request error", errorObj, meta);
 
   const httpErr = err as Record<string, unknown>;
   const statusCode =
-    (typeof httpErr === 'object' && httpErr !== null
-      ? (httpErr.statusCode as number) ?? (httpErr.status as number)
+    (typeof httpErr === "object" && httpErr !== null
+      ? ((httpErr.statusCode as number) ?? (httpErr.status as number))
       : undefined) ?? 500;
   const details =
-    typeof httpErr === 'object' && httpErr !== null && 'details' in httpErr
+    typeof httpErr === "object" && httpErr !== null && "details" in httpErr
       ? toDetailsString(httpErr.details)
       : undefined;
   const code =
-    typeof httpErr === 'object' && httpErr !== null && typeof httpErr.code === 'string'
+    typeof httpErr === "object" &&
+    httpErr !== null &&
+    typeof httpErr.code === "string"
       ? (httpErr.code as ApiErrorCode)
       : undefined;
 
   const errorResponse: ApiError = {
-    error: errorObj.message || 'Internal server error',
+    error: errorObj.message || "Internal server error",
     ...(code ? { code } : {}),
     ...(details ? { details } : {}),
     ...(req.id ? { requestId: req.id } : {}),

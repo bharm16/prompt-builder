@@ -1,5 +1,5 @@
-import type { AIModelService } from '@services/ai-model/AIModelService';
-import { normalizeText } from '../utils/text';
+import type { AIModelService } from "@services/ai-model/AIModelService";
+import { normalizeText } from "../utils/text";
 
 export type IntentPreservationResult = {
   score: number;
@@ -12,10 +12,12 @@ export async function evaluateIntentPreservation(
   input: string,
   optimized: string,
   requiredElements: string[],
-  options: { strict?: boolean } = {}
+  options: { strict?: boolean } = {},
 ): Promise<IntentPreservationResult> {
   const opt = normalizeText(optimized);
-  const missing = (requiredElements || []).filter((el) => !opt.includes(normalizeText(el)));
+  const missing = (requiredElements || []).filter(
+    (el) => !opt.includes(normalizeText(el)),
+  );
   if (missing.length === 0) {
     return { score: 1.0, missing: [] };
   }
@@ -26,29 +28,29 @@ export async function evaluateIntentPreservation(
 
   try {
     const systemPrompt = [
-      'You are a strict intent-preservation evaluator for video prompts.',
-      'Task: Decide whether the OPTIMIZED prompt preserves each required element from the ORIGINAL prompt.',
-      '',
-      'Rules:',
-      '- Treat synonyms/paraphrases as preserved if the concept is clearly present.',
-      '- Be conservative: if it is not clearly present, mark it as NOT preserved.',
-      '- Provide a short evidence snippet (a phrase from the optimized prompt) when preserved.',
-      '- Output ONLY valid JSON with the exact schema below.',
-      '',
-      'JSON schema:',
-      '{',
+      "You are a strict intent-preservation evaluator for video prompts.",
+      "Task: Decide whether the OPTIMIZED prompt preserves each required element from the ORIGINAL prompt.",
+      "",
+      "Rules:",
+      "- Treat synonyms/paraphrases as preserved if the concept is clearly present.",
+      "- Be conservative: if it is not clearly present, mark it as NOT preserved.",
+      "- Provide a short evidence snippet (a phrase from the optimized prompt) when preserved.",
+      "- Output ONLY valid JSON with the exact schema below.",
+      "",
+      "JSON schema:",
+      "{",
       '  "items": [',
       '    { "element": string, "present": boolean, "evidence": string }',
-      '  ],',
+      "  ],",
       '  "allPresent": boolean',
-      '}',
-      '',
+      "}",
+      "",
       `ORIGINAL: ${input}`,
       `OPTIMIZED: ${optimized}`,
       `REQUIRED_ELEMENTS: ${JSON.stringify(requiredElements || [])}`,
-    ].join('\n');
+    ].join("\n");
 
-    const resp = await ai.execute('optimize_intent_check', {
+    const resp = await ai.execute("optimize_intent_check", {
       systemPrompt,
       maxTokens: 600,
       temperature: 0,
@@ -56,14 +58,16 @@ export async function evaluateIntentPreservation(
     });
 
     const rawText =
-      (resp && typeof resp.text === 'string' && resp.text) ||
+      (resp && typeof resp.text === "string" && resp.text) ||
       (Array.isArray(resp?.content) && resp.content[0]?.text) ||
-      '';
+      "";
 
     const parsed = JSON.parse(rawText);
-    const items: Array<{ element: string; present: boolean; evidence?: string }> = Array.isArray(parsed?.items)
-      ? parsed.items
-      : [];
+    const items: Array<{
+      element: string;
+      present: boolean;
+      evidence?: string;
+    }> = Array.isArray(parsed?.items) ? parsed.items : [];
     const allPresent = parsed?.allPresent === true;
 
     return { score: allPresent ? 1.0 : 0.0, missing: missing, evidence: items };

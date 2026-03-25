@@ -1,10 +1,18 @@
-import type { VideoJobError, VideoJobErrorCategory, VideoJobErrorStage, VideoJobRequest } from './types';
+import type {
+  VideoJobError,
+  VideoJobErrorCategory,
+  VideoJobErrorStage,
+  VideoJobRequest,
+} from "./types";
 
 export interface StageAwareError extends Error {
   stage: VideoJobErrorStage;
 }
 
-export function withStage(error: unknown, stage: VideoJobErrorStage): StageAwareError {
+export function withStage(
+  error: unknown,
+  stage: VideoJobErrorStage,
+): StageAwareError {
   if (error instanceof Error) {
     const stageError = error as StageAwareError;
     stageError.stage = stage;
@@ -24,53 +32,59 @@ export interface ClassifyErrorInput {
   attempts: number;
 }
 
-export function classifyError(error: StageAwareError, job: ClassifyErrorInput): VideoJobError {
+export function classifyError(
+  error: StageAwareError,
+  job: ClassifyErrorInput,
+): VideoJobError {
   const message = normalizeErrorMessage(error);
   const lowered = message.toLowerCase();
-  const stage = error.stage || 'unknown';
-  const provider = typeof job.request.options?.model === 'string' ? job.request.options.model : undefined;
+  const stage = error.stage || "unknown";
+  const provider =
+    typeof job.request.options?.model === "string"
+      ? job.request.options.model
+      : undefined;
 
-  let category: VideoJobErrorCategory = 'unknown';
-  let code = 'VIDEO_JOB_FAILED';
+  let category: VideoJobErrorCategory = "unknown";
+  let code = "VIDEO_JOB_FAILED";
   let retryable = true;
 
-  if (stage === 'persistence') {
-    category = 'storage';
-    code = 'VIDEO_JOB_STORAGE_FAILED';
+  if (stage === "persistence") {
+    category = "storage";
+    code = "VIDEO_JOB_STORAGE_FAILED";
     retryable = true;
   } else if (
-    lowered.includes('timeout') ||
-    lowered.includes('timed out') ||
-    lowered.includes('etimedout')
+    lowered.includes("timeout") ||
+    lowered.includes("timed out") ||
+    lowered.includes("etimedout")
   ) {
-    category = 'timeout';
-    code = 'VIDEO_JOB_TIMEOUT';
+    category = "timeout";
+    code = "VIDEO_JOB_TIMEOUT";
     retryable = true;
   } else if (
-    lowered.includes('rate limit') ||
-    lowered.includes('429') ||
-    lowered.includes('unavailable') ||
-    lowered.includes('temporar')
+    lowered.includes("rate limit") ||
+    lowered.includes("429") ||
+    lowered.includes("unavailable") ||
+    lowered.includes("temporar")
   ) {
-    category = 'provider';
-    code = 'VIDEO_JOB_PROVIDER_RETRYABLE';
+    category = "provider";
+    code = "VIDEO_JOB_PROVIDER_RETRYABLE";
     retryable = true;
   } else if (
-    lowered.includes('invalid') ||
-    lowered.includes('unsupported') ||
-    lowered.includes('validation') ||
-    lowered.includes('bad request')
+    lowered.includes("invalid") ||
+    lowered.includes("unsupported") ||
+    lowered.includes("validation") ||
+    lowered.includes("bad request")
   ) {
-    category = 'validation';
-    code = 'VIDEO_JOB_VALIDATION_FAILED';
+    category = "validation";
+    code = "VIDEO_JOB_VALIDATION_FAILED";
     retryable = false;
-  } else if (stage === 'generation') {
-    category = 'provider';
-    code = 'VIDEO_JOB_PROVIDER_FAILED';
+  } else if (stage === "generation") {
+    category = "provider";
+    code = "VIDEO_JOB_PROVIDER_FAILED";
     retryable = true;
   } else {
-    category = 'infrastructure';
-    code = 'VIDEO_JOB_INFRA_FAILED';
+    category = "infrastructure";
+    code = "VIDEO_JOB_INFRA_FAILED";
     retryable = true;
   }
 

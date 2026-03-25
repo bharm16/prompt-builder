@@ -1,6 +1,6 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock('@infrastructure/Logger', () => ({
+vi.mock("@infrastructure/Logger", () => ({
   logger: {
     child: vi.fn(() => ({
       info: vi.fn(),
@@ -11,7 +11,7 @@ vi.mock('@infrastructure/Logger', () => ({
   },
 }));
 
-import { CreditRefundSweeper } from '@services/credits/CreditRefundSweeper';
+import { CreditRefundSweeper } from "@services/credits/CreditRefundSweeper";
 
 function createMockDeps() {
   return {
@@ -30,7 +30,7 @@ function createMockDeps() {
   };
 }
 
-describe('Worker crash recovery (runLoop supervision)', () => {
+describe("Worker crash recovery (runLoop supervision)", () => {
   beforeEach(() => {
     vi.useFakeTimers();
   });
@@ -40,7 +40,7 @@ describe('Worker crash recovery (runLoop supervision)', () => {
     vi.restoreAllMocks();
   });
 
-  it('reschedules the worker after runOnce throws an uncaught error', async () => {
+  it("reschedules the worker after runOnce throws an uncaught error", async () => {
     const deps = createMockDeps();
 
     const sweeper = new CreditRefundSweeper(
@@ -57,10 +57,10 @@ describe('Worker crash recovery (runLoop supervision)', () => {
     // Make runOnce throw an error that escapes its internal try/catch.
     // We spy on the private method and force it to reject.
     let callCount = 0;
-    vi.spyOn(sweeper as never, 'runOnce').mockImplementation(async () => {
+    vi.spyOn(sweeper as never, "runOnce").mockImplementation(async () => {
       callCount += 1;
       if (callCount === 1) {
-        throw new Error('Catastrophic failure in finally block');
+        throw new Error("Catastrophic failure in finally block");
       }
       // Second call succeeds normally
       return true;
@@ -84,7 +84,7 @@ describe('Worker crash recovery (runLoop supervision)', () => {
     sweeper.stop();
   });
 
-  it('fires worker_loop_crash alert when runOnce throws unexpectedly', async () => {
+  it("fires worker_loop_crash alert when runOnce throws unexpectedly", async () => {
     const deps = createMockDeps();
 
     const sweeper = new CreditRefundSweeper(
@@ -98,8 +98,8 @@ describe('Worker crash recovery (runLoop supervision)', () => {
       deps.metrics,
     );
 
-    vi.spyOn(sweeper as never, 'runOnce').mockRejectedValueOnce(
-      new Error('Unexpected throw from runOnce')
+    vi.spyOn(sweeper as never, "runOnce").mockRejectedValueOnce(
+      new Error("Unexpected throw from runOnce"),
     );
 
     sweeper.start();
@@ -107,12 +107,12 @@ describe('Worker crash recovery (runLoop supervision)', () => {
     sweeper.stop();
 
     expect(deps.metrics.recordAlert).toHaveBeenCalledWith(
-      'worker_loop_crash',
-      expect.objectContaining({ worker: 'CreditRefundSweeper' })
+      "worker_loop_crash",
+      expect.objectContaining({ worker: "CreditRefundSweeper" }),
     );
   });
 
-  it('increments consecutiveFailures on loop crash', async () => {
+  it("increments consecutiveFailures on loop crash", async () => {
     const deps = createMockDeps();
 
     const sweeper = new CreditRefundSweeper(
@@ -127,9 +127,9 @@ describe('Worker crash recovery (runLoop supervision)', () => {
     );
 
     // Both calls throw
-    vi.spyOn(sweeper as never, 'runOnce')
-      .mockRejectedValueOnce(new Error('crash 1'))
-      .mockRejectedValueOnce(new Error('crash 2'));
+    vi.spyOn(sweeper as never, "runOnce")
+      .mockRejectedValueOnce(new Error("crash 1"))
+      .mockRejectedValueOnce(new Error("crash 2"));
 
     sweeper.start();
 
@@ -144,7 +144,7 @@ describe('Worker crash recovery (runLoop supervision)', () => {
     sweeper.stop();
   });
 
-  it('applies backoff after loop crash', async () => {
+  it("applies backoff after loop crash", async () => {
     const deps = createMockDeps();
 
     const sweeper = new CreditRefundSweeper(
@@ -161,7 +161,7 @@ describe('Worker crash recovery (runLoop supervision)', () => {
     );
 
     let runOnceCallCount = 0;
-    vi.spyOn(sweeper as never, 'runOnce').mockImplementation(async () => {
+    vi.spyOn(sweeper as never, "runOnce").mockImplementation(async () => {
       runOnceCallCount += 1;
       throw new Error(`crash ${runOnceCallCount}`);
     });

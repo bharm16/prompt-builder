@@ -1,8 +1,12 @@
-import type { PromptHistoryEntry, PromptKeyframe, PromptVersionEntry } from '../types';
-import type { Generation } from '@features/generations/types';
+import type {
+  PromptHistoryEntry,
+  PromptKeyframe,
+  PromptVersionEntry,
+} from "../types";
+import type { Generation } from "@features/generations/types";
 
 export type ImmutableMediaWarning = {
-  scope: 'version' | 'generation' | 'keyframe';
+  scope: "version" | "generation" | "keyframe";
   field: string;
   versionId?: string;
   generationId?: string;
@@ -12,19 +16,20 @@ export type ImmutableMediaWarning = {
 };
 
 const isNonEmptyString = (value: unknown): value is string =>
-  typeof value === 'string' && value.trim().length > 0;
+  typeof value === "string" && value.trim().length > 0;
 
 const normalizeStringList = (value?: string[] | null): string[] =>
   Array.isArray(value) ? value.filter(isNonEmptyString) : [];
 
 const listsEqual = (left: string[], right: string[]): boolean =>
-  left.length === right.length && left.every((value, index) => value === right[index]);
+  left.length === right.length &&
+  left.every((value, index) => value === right[index]);
 
 const preserveImmutableString = (
   existing: string | null | undefined,
   incoming: string | null | undefined,
   warnings: ImmutableMediaWarning[],
-  context: Omit<ImmutableMediaWarning, 'previous' | 'incoming'>
+  context: Omit<ImmutableMediaWarning, "previous" | "incoming">,
 ): string | null | undefined => {
   if (isNonEmptyString(existing)) {
     if (isNonEmptyString(incoming) && existing !== incoming) {
@@ -36,29 +41,39 @@ const preserveImmutableString = (
     }
     return existing;
   }
-  return isNonEmptyString(incoming) ? incoming : incoming ?? existing;
+  return isNonEmptyString(incoming) ? incoming : (incoming ?? existing);
 };
 
 const mergePreview = (
-  existing: PromptVersionEntry['preview'] | null | undefined,
-  incoming: PromptVersionEntry['preview'] | null | undefined,
+  existing: PromptVersionEntry["preview"] | null | undefined,
+  incoming: PromptVersionEntry["preview"] | null | undefined,
   versionId: string,
-  warnings: ImmutableMediaWarning[]
-): PromptVersionEntry['preview'] | null | undefined => {
+  warnings: ImmutableMediaWarning[],
+): PromptVersionEntry["preview"] | null | undefined => {
   if (!existing) return incoming;
   if (!incoming) return existing;
 
   const next = { ...incoming };
-  const storagePath = preserveImmutableString(existing.storagePath, incoming.storagePath, warnings, {
-    scope: 'version',
-    field: 'preview.storagePath',
-    versionId,
-  });
-  const assetId = preserveImmutableString(existing.assetId, incoming.assetId, warnings, {
-    scope: 'version',
-    field: 'preview.assetId',
-    versionId,
-  });
+  const storagePath = preserveImmutableString(
+    existing.storagePath,
+    incoming.storagePath,
+    warnings,
+    {
+      scope: "version",
+      field: "preview.storagePath",
+      versionId,
+    },
+  );
+  const assetId = preserveImmutableString(
+    existing.assetId,
+    incoming.assetId,
+    warnings,
+    {
+      scope: "version",
+      field: "preview.assetId",
+      versionId,
+    },
+  );
 
   if (storagePath && storagePath !== incoming.storagePath) {
     next.storagePath = storagePath;
@@ -88,25 +103,35 @@ const mergePreview = (
 };
 
 const mergeVideo = (
-  existing: PromptVersionEntry['video'] | null | undefined,
-  incoming: PromptVersionEntry['video'] | null | undefined,
+  existing: PromptVersionEntry["video"] | null | undefined,
+  incoming: PromptVersionEntry["video"] | null | undefined,
   versionId: string,
-  warnings: ImmutableMediaWarning[]
-): PromptVersionEntry['video'] | null | undefined => {
+  warnings: ImmutableMediaWarning[],
+): PromptVersionEntry["video"] | null | undefined => {
   if (!existing) return incoming;
   if (!incoming) return existing;
 
   const next = { ...incoming };
-  const storagePath = preserveImmutableString(existing.storagePath, incoming.storagePath, warnings, {
-    scope: 'version',
-    field: 'video.storagePath',
-    versionId,
-  });
-  const assetId = preserveImmutableString(existing.assetId, incoming.assetId, warnings, {
-    scope: 'version',
-    field: 'video.assetId',
-    versionId,
-  });
+  const storagePath = preserveImmutableString(
+    existing.storagePath,
+    incoming.storagePath,
+    warnings,
+    {
+      scope: "version",
+      field: "video.storagePath",
+      versionId,
+    },
+  );
+  const assetId = preserveImmutableString(
+    existing.assetId,
+    incoming.assetId,
+    warnings,
+    {
+      scope: "version",
+      field: "video.assetId",
+      versionId,
+    },
+  );
 
   if (storagePath && storagePath !== incoming.storagePath) {
     next.storagePath = storagePath;
@@ -139,7 +164,7 @@ const mergeGeneration = (
   existing: Generation | undefined,
   incoming: Generation,
   versionId: string,
-  warnings: ImmutableMediaWarning[]
+  warnings: ImmutableMediaWarning[],
 ): Generation => {
   if (!existing) return incoming;
 
@@ -151,8 +176,8 @@ const mergeGeneration = (
     next.thumbnailUrl = existing.thumbnailUrl;
   }
   if (
-    typeof incoming.isFavorite !== 'boolean' &&
-    typeof existing.isFavorite === 'boolean'
+    typeof incoming.isFavorite !== "boolean" &&
+    typeof existing.isFavorite === "boolean"
   ) {
     next.isFavorite = existing.isFavorite;
   }
@@ -165,8 +190,8 @@ const mergeGeneration = (
   if (existingIds.length) {
     if (!incomingIds.length || !listsEqual(existingIds, incomingIds)) {
       warnings.push({
-        scope: 'generation',
-        field: 'mediaAssetIds',
+        scope: "generation",
+        field: "mediaAssetIds",
         versionId,
         generationId: incoming.id,
         previous: existingIds,
@@ -183,7 +208,7 @@ const mergeGenerations = (
   existing: Generation[] | null | undefined,
   incoming: Generation[] | null | undefined,
   versionId: string,
-  warnings: ImmutableMediaWarning[]
+  warnings: ImmutableMediaWarning[],
 ): Generation[] | null | undefined => {
   const incomingList = Array.isArray(incoming) ? incoming : [];
   const existingList = Array.isArray(existing) ? existing : [];
@@ -195,11 +220,18 @@ const mergeGenerations = (
     return incomingList;
   }
 
-  const existingMap = new Map(existingList.map((generation) => [generation.id, generation]));
+  const existingMap = new Map(
+    existingList.map((generation) => [generation.id, generation]),
+  );
   const incomingIds = new Set<string>();
   const merged = incomingList.map((generation) => {
     incomingIds.add(generation.id);
-    return mergeGeneration(existingMap.get(generation.id), generation, versionId, warnings);
+    return mergeGeneration(
+      existingMap.get(generation.id),
+      generation,
+      versionId,
+      warnings,
+    );
   });
 
   for (const generation of existingList) {
@@ -213,29 +245,43 @@ const mergeGenerations = (
 
 export function enforceImmutableVersions(
   entry: PromptHistoryEntry | null | undefined,
-  versions: PromptVersionEntry[]
+  versions: PromptVersionEntry[],
 ): { versions: PromptVersionEntry[]; warnings: ImmutableMediaWarning[] } {
   const warnings: ImmutableMediaWarning[] = [];
   if (!Array.isArray(versions) || versions.length === 0) {
     return { versions, warnings };
   }
 
-  const existingVersions = Array.isArray(entry?.versions) ? entry?.versions : [];
+  const existingVersions = Array.isArray(entry?.versions)
+    ? entry?.versions
+    : [];
   if (!existingVersions.length) {
     return { versions, warnings };
   }
 
-  const existingMap = new Map(existingVersions.map((version) => [version.versionId, version]));
+  const existingMap = new Map(
+    existingVersions.map((version) => [version.versionId, version]),
+  );
   const merged = versions.map((version) => {
     const existing = existingMap.get(version.versionId);
     if (!existing) return version;
-    const preview = mergePreview(existing.preview, version.preview, version.versionId, warnings);
-    const video = mergeVideo(existing.video, version.video, version.versionId, warnings);
+    const preview = mergePreview(
+      existing.preview,
+      version.preview,
+      version.versionId,
+      warnings,
+    );
+    const video = mergeVideo(
+      existing.video,
+      version.video,
+      version.versionId,
+      warnings,
+    );
     const generations = mergeGenerations(
       existing.generations,
       version.generations,
       version.versionId,
-      warnings
+      warnings,
     );
     return {
       ...version,
@@ -264,8 +310,11 @@ const resolveKeyframeKey = (keyframe: PromptKeyframe): string | null => {
 
 export function enforceImmutableKeyframes(
   existing: PromptKeyframe[] | null | undefined,
-  incoming: PromptKeyframe[] | null | undefined
-): { keyframes: PromptKeyframe[] | null | undefined; warnings: ImmutableMediaWarning[] } {
+  incoming: PromptKeyframe[] | null | undefined,
+): {
+  keyframes: PromptKeyframe[] | null | undefined;
+  warnings: ImmutableMediaWarning[];
+} {
   const warnings: ImmutableMediaWarning[] = [];
   if (!Array.isArray(incoming)) {
     return { keyframes: incoming, warnings };
@@ -295,13 +344,21 @@ export function enforceImmutableKeyframes(
       existingFrame.storagePath,
       frame.storagePath,
       warnings,
-      { scope: 'keyframe', field: 'storagePath', keyframeId: existingFrame.id ?? key }
+      {
+        scope: "keyframe",
+        field: "storagePath",
+        keyframeId: existingFrame.id ?? key,
+      },
     );
     const assetId = preserveImmutableString(
       existingFrame.assetId,
       frame.assetId,
       warnings,
-      { scope: 'keyframe', field: 'assetId', keyframeId: existingFrame.id ?? key }
+      {
+        scope: "keyframe",
+        field: "assetId",
+        keyframeId: existingFrame.id ?? key,
+      },
     );
 
     if (storagePath && storagePath !== frame.storagePath) {

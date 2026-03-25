@@ -1,8 +1,8 @@
-import * as React from "react"
+import * as React from "react";
 
 interface AppShellProps {
-  sidebar?: React.ReactNode
-  children: React.ReactNode
+  sidebar?: React.ReactNode;
+  children: React.ReactNode;
 }
 
 const AppShell = ({ sidebar, children }: AppShellProps) => {
@@ -23,8 +23,8 @@ const AppShell = ({ sidebar, children }: AppShellProps) => {
         </main>
       )}
     </div>
-  )
-}
+  );
+};
 
-export { AppShell }
-export type { AppShellProps }
+export { AppShell };
+export type { AppShellProps };

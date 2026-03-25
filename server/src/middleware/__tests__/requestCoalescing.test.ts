@@ -1,8 +1,8 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { NextFunction, Request, Response } from 'express';
-import { RequestCoalescingMiddleware } from '../requestCoalescing';
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { NextFunction, Request, Response } from "express";
+import { RequestCoalescingMiddleware } from "../requestCoalescing";
 
-vi.mock('@infrastructure/Logger', () => ({
+vi.mock("@infrastructure/Logger", () => ({
   logger: {
     debug: vi.fn(),
   },
@@ -22,18 +22,18 @@ type TestResponse = Response & {
 
 function createRequest(overrides: Partial<TestRequest> = {}): TestRequest {
   const headers: Record<string, string> = {
-    authorization: 'Bearer token',
-    'x-api-key': 'api-key-token',
+    authorization: "Bearer token",
+    "x-api-key": "api-key-token",
     ...((overrides.headers ?? {}) as Record<string, string>),
   };
 
   return {
-    method: 'POST',
-    path: '/api/test',
-    baseUrl: '',
-    body: { prompt: 'hello' },
+    method: "POST",
+    path: "/api/test",
+    baseUrl: "",
+    body: { prompt: "hello" },
     headers,
-    id: 'req-1',
+    id: "req-1",
     get: vi.fn((name: string) => headers[name.toLowerCase()]),
     ...overrides,
   } as unknown as TestRequest;
@@ -79,7 +79,7 @@ function createResponse(): TestResponse {
   return res as unknown as TestResponse;
 }
 
-describe('RequestCoalescingMiddleware', () => {
+describe("RequestCoalescingMiddleware", () => {
   let service: RequestCoalescingMiddleware;
 
   beforeEach(() => {
@@ -92,9 +92,9 @@ describe('RequestCoalescingMiddleware', () => {
     vi.clearAllMocks();
   });
 
-  it('bypasses non-POST requests', async () => {
-    const middleware = service.middleware({ keyScope: '/api/optimize' });
-    const req = createRequest({ method: 'GET' });
+  it("bypasses non-POST requests", async () => {
+    const middleware = service.middleware({ keyScope: "/api/optimize" });
+    const req = createRequest({ method: "GET" });
     const res = createResponse();
     const next = vi.fn() as NextFunction;
 
@@ -104,13 +104,13 @@ describe('RequestCoalescingMiddleware', () => {
     expect(service.getStats().total).toBe(0);
   });
 
-  it('skips streaming requests', async () => {
-    const middleware = service.middleware({ keyScope: '/llm/label-spans' });
+  it("skips streaming requests", async () => {
+    const middleware = service.middleware({ keyScope: "/llm/label-spans" });
     const req = createRequest({
-      path: '/stream',
-      baseUrl: '/llm/label-spans',
+      path: "/stream",
+      baseUrl: "/llm/label-spans",
       headers: {
-        accept: 'text/event-stream',
+        accept: "text/event-stream",
       },
     });
     const res = createResponse();
@@ -122,11 +122,11 @@ describe('RequestCoalescingMiddleware', () => {
     expect(service.getStats().total).toBe(0);
   });
 
-  it('deduplicates concurrent identical requests', async () => {
+  it("deduplicates concurrent identical requests", async () => {
     vi.useFakeTimers();
-    const middleware = service.middleware({ keyScope: '/api/optimize' });
-    const req1 = createRequest({ id: 'req-1' });
-    const req2 = createRequest({ id: 'req-2' });
+    const middleware = service.middleware({ keyScope: "/api/optimize" });
+    const req1 = createRequest({ id: "req-1" });
+    const req2 = createRequest({ id: "req-2" });
     const res1 = createResponse();
     const res2 = createResponse();
 
@@ -158,19 +158,19 @@ describe('RequestCoalescingMiddleware', () => {
     expect(service.getStats().activePending).toBe(0);
   });
 
-  it('does not coalesce when credentials differ', async () => {
+  it("does not coalesce when credentials differ", async () => {
     vi.useFakeTimers();
-    const middleware = service.middleware({ keyScope: '/api/optimize' });
+    const middleware = service.middleware({ keyScope: "/api/optimize" });
     const req1 = createRequest({
-      id: 'req-1',
+      id: "req-1",
       headers: {
-        authorization: 'Bearer token-a',
+        authorization: "Bearer token-a",
       },
     });
     const req2 = createRequest({
-      id: 'req-2',
+      id: "req-2",
       headers: {
-        authorization: 'Bearer token-b',
+        authorization: "Bearer token-b",
       },
     });
     const res1 = createResponse();
@@ -178,12 +178,12 @@ describe('RequestCoalescingMiddleware', () => {
 
     const next1 = vi.fn(() => {
       setTimeout(() => {
-        res1.json({ ok: true, id: 'a' });
+        res1.json({ ok: true, id: "a" });
       }, 5);
     }) as NextFunction;
     const next2 = vi.fn(() => {
       setTimeout(() => {
-        res2.json({ ok: true, id: 'b' });
+        res2.json({ ok: true, id: "b" });
       }, 5);
     }) as NextFunction;
 
@@ -201,18 +201,18 @@ describe('RequestCoalescingMiddleware', () => {
     expect(stats.coalesced).toBe(0);
   });
 
-  it('replays res.send responses to coalesced waiters', async () => {
+  it("replays res.send responses to coalesced waiters", async () => {
     vi.useFakeTimers();
-    const middleware = service.middleware({ keyScope: '/api/optimize' });
-    const req1 = createRequest({ id: 'req-1' });
-    const req2 = createRequest({ id: 'req-2' });
+    const middleware = service.middleware({ keyScope: "/api/optimize" });
+    const req1 = createRequest({ id: "req-1" });
+    const req2 = createRequest({ id: "req-2" });
     const res1 = createResponse();
     const res2 = createResponse();
 
     const next1 = vi.fn(() => {
       setTimeout(() => {
         res1.status(202);
-        res1.send('accepted');
+        res1.send("accepted");
       }, 5);
     }) as NextFunction;
     const next2 = vi.fn() as NextFunction;
@@ -225,14 +225,14 @@ describe('RequestCoalescingMiddleware', () => {
 
     expect(next2).not.toHaveBeenCalled();
     expect(res2.status).toHaveBeenCalledWith(202);
-    expect(res2.send).toHaveBeenCalledWith('accepted');
+    expect(res2.send).toHaveBeenCalledWith("accepted");
   });
 
-  it('replays res.end responses to coalesced waiters', async () => {
+  it("replays res.end responses to coalesced waiters", async () => {
     vi.useFakeTimers();
-    const middleware = service.middleware({ keyScope: '/api/optimize' });
-    const req1 = createRequest({ id: 'req-1' });
-    const req2 = createRequest({ id: 'req-2' });
+    const middleware = service.middleware({ keyScope: "/api/optimize" });
+    const req1 = createRequest({ id: "req-1" });
+    const req2 = createRequest({ id: "req-2" });
     const res1 = createResponse();
     const res2 = createResponse();
 
@@ -255,27 +255,27 @@ describe('RequestCoalescingMiddleware', () => {
     expect(res2.end).toHaveBeenCalled();
   });
 
-  it('generates deterministic keys using hashed credentials and canonical body', () => {
+  it("generates deterministic keys using hashed credentials and canonical body", () => {
     const reqA = createRequest({
-      headers: { authorization: 'Bearer secret-token-abcdef' },
-      body: { foo: 'bar', nested: { a: 1, b: 2 } },
+      headers: { authorization: "Bearer secret-token-abcdef" },
+      body: { foo: "bar", nested: { a: 1, b: 2 } },
     });
     const reqB = createRequest({
-      headers: { authorization: 'Bearer secret-token-abcdef' },
-      body: { nested: { b: 2, a: 1 }, foo: 'bar' },
+      headers: { authorization: "Bearer secret-token-abcdef" },
+      body: { nested: { b: 2, a: 1 }, foo: "bar" },
     });
     const reqC = createRequest({
-      headers: { authorization: 'Bearer different-token' },
-      body: { foo: 'bar', nested: { a: 1, b: 2 } },
+      headers: { authorization: "Bearer different-token" },
+      body: { foo: "bar", nested: { a: 1, b: 2 } },
     });
 
-    const keyA = service.generateKey(reqA, { keyScope: '/api/optimize' });
-    const keyB = service.generateKey(reqB, { keyScope: '/api/optimize' });
-    const keyC = service.generateKey(reqC, { keyScope: '/api/optimize' });
+    const keyA = service.generateKey(reqA, { keyScope: "/api/optimize" });
+    const keyB = service.generateKey(reqB, { keyScope: "/api/optimize" });
+    const keyC = service.generateKey(reqC, { keyScope: "/api/optimize" });
 
     expect(keyA).toBe(keyB);
     expect(keyA).not.toBe(keyC);
     expect(keyA).toMatch(/^POST:\/api\/optimize:[a-f0-9]{32}:[a-f0-9]{32}$/);
-    expect(keyA).not.toContain('secret-token-abcdef');
+    expect(keyA).not.toContain("secret-token-abcdef");
   });
 });

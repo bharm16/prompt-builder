@@ -1,7 +1,7 @@
-import { render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { render, screen } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
 
-import { PromptResultsSection } from '@features/prompt-optimizer/components/PromptResultsSection';
+import { PromptResultsSection } from "@features/prompt-optimizer/components/PromptResultsSection";
 import {
   usePromptActions,
   usePromptConfig,
@@ -9,10 +9,10 @@ import {
   usePromptServices,
   usePromptSession,
   usePromptUIStateContext,
-} from '@features/prompt-optimizer/context/PromptStateContext';
-import { usePromptResultsActionsContext } from '@features/prompt-optimizer/context/PromptResultsActionsContext';
+} from "@features/prompt-optimizer/context/PromptStateContext";
+import { usePromptResultsActionsContext } from "@features/prompt-optimizer/context/PromptResultsActionsContext";
 
-vi.mock('@features/prompt-optimizer/context/PromptStateContext', () => ({
+vi.mock("@features/prompt-optimizer/context/PromptStateContext", () => ({
   usePromptActions: vi.fn(),
   usePromptConfig: vi.fn(),
   usePromptHighlights: vi.fn(),
@@ -21,11 +21,14 @@ vi.mock('@features/prompt-optimizer/context/PromptStateContext', () => ({
   usePromptUIStateContext: vi.fn(),
 }));
 
-vi.mock('@features/prompt-optimizer/context/PromptResultsActionsContext', () => ({
-  usePromptResultsActionsContext: vi.fn(),
-}));
+vi.mock(
+  "@features/prompt-optimizer/context/PromptResultsActionsContext",
+  () => ({
+    usePromptResultsActionsContext: vi.fn(),
+  }),
+);
 
-vi.mock('@features/prompt-optimizer/PromptCanvas', () => ({
+vi.mock("@features/prompt-optimizer/PromptCanvas", () => ({
   PromptCanvas: (props: { inputPrompt: string; displayedPrompt: string }) => (
     <div>
       <span>Input: {props.inputPrompt}</span>
@@ -40,12 +43,14 @@ const mockUsePromptHighlights = vi.mocked(usePromptHighlights);
 const mockUsePromptServices = vi.mocked(usePromptServices);
 const mockUsePromptSession = vi.mocked(usePromptSession);
 const mockUsePromptUIStateContext = vi.mocked(usePromptUIStateContext);
-const mockUsePromptResultsActionsContext = vi.mocked(usePromptResultsActionsContext);
+const mockUsePromptResultsActionsContext = vi.mocked(
+  usePromptResultsActionsContext,
+);
 
 const buildPromptOptimizer = () => ({
-  inputPrompt: 'input prompt',
-  displayedPrompt: 'displayed prompt',
-  optimizedPrompt: 'displayed prompt',
+  inputPrompt: "input prompt",
+  displayedPrompt: "displayed prompt",
+  optimizedPrompt: "displayed prompt",
   previewPrompt: null,
   previewAspectRatio: null,
   qualityScore: null,
@@ -54,20 +59,20 @@ const buildPromptOptimizer = () => ({
   setInputPrompt: vi.fn(),
 });
 
-describe('PromptResultsSection', () => {
-  it('passes prompt data into PromptCanvas', () => {
+describe("PromptResultsSection", () => {
+  it("passes prompt data into PromptCanvas", () => {
     mockUsePromptUIStateContext.mockReturnValue({
       showResults: true,
       setShowResults: vi.fn(),
     } as never);
 
     mockUsePromptSession.mockReturnValue({
-      currentPromptUuid: 'uuid-1',
+      currentPromptUuid: "uuid-1",
       suggestionsData: null,
     } as never);
 
     mockUsePromptConfig.mockReturnValue({
-      currentMode: { id: 'video' },
+      currentMode: { id: "video" },
     } as never);
 
     mockUsePromptHighlights.mockReturnValue({
@@ -100,8 +105,8 @@ describe('PromptResultsSection', () => {
 
     render(<PromptResultsSection />);
 
-    expect(screen.getByText('Input: input prompt')).toBeInTheDocument();
-    expect(screen.getByText('Output: displayed prompt')).toBeInTheDocument();
-    expect(screen.queryByText('Optimizing prompt...')).not.toBeInTheDocument();
+    expect(screen.getByText("Input: input prompt")).toBeInTheDocument();
+    expect(screen.getByText("Output: displayed prompt")).toBeInTheDocument();
+    expect(screen.queryByText("Optimizing prompt...")).not.toBeInTheDocument();
   });
 });

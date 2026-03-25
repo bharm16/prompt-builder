@@ -9,8 +9,8 @@
  * - 15.6: Reserve credits at request time and refund automatically on failure
  */
 
-import { ConvergenceError } from '../errors';
-import type { CreditsService } from './CreditsService';
+import { ConvergenceError } from "../errors";
+import type { CreditsService } from "./CreditsService";
 
 /**
  * Wrapper function that implements the credit reservation pattern.
@@ -44,7 +44,7 @@ export async function withCreditReservation<T>(
   creditsService: CreditsService,
   userId: string,
   creditAmount: number,
-  operation: () => Promise<T>
+  operation: () => Promise<T>,
 ): Promise<T> {
   // Reserve credits before the operation
   const reservation = await creditsService.reserve(userId, creditAmount);
@@ -82,12 +82,12 @@ export async function withCreditReservation<T>(
 export async function checkCredits(
   creditsService: CreditsService,
   userId: string,
-  required: number
+  required: number,
 ): Promise<void> {
   const balance = await creditsService.getBalance(userId);
 
   if (balance < required) {
-    throw new ConvergenceError('INSUFFICIENT_CREDITS', {
+    throw new ConvergenceError("INSUFFICIENT_CREDITS", {
       required,
       available: balance,
     });
@@ -106,7 +106,7 @@ export async function checkCredits(
  */
 export async function getCreditBalance(
   creditsService: CreditsService,
-  userId: string
+  userId: string,
 ): Promise<number> {
   return creditsService.getBalance(userId);
 }

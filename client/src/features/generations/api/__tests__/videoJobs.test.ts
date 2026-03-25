@@ -1,22 +1,22 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { waitForVideoJob } from '../videoJobs';
-import { getVideoPreviewStatus } from '@/features/preview/api/previewApi';
-import type { VideoJobStatusResponse } from '@/features/preview/api/previewApi';
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { waitForVideoJob } from "../videoJobs";
+import { getVideoPreviewStatus } from "@/features/preview/api/previewApi";
+import type { VideoJobStatusResponse } from "@/features/preview/api/previewApi";
 
-vi.mock('@/features/preview/api/previewApi', () => ({
+vi.mock("@/features/preview/api/previewApi", () => ({
   getVideoPreviewStatus: vi.fn(),
 }));
 
 const mockStatusResponse = (
-  overrides: Partial<VideoJobStatusResponse> = {}
+  overrides: Partial<VideoJobStatusResponse> = {},
 ): VideoJobStatusResponse => ({
   success: true,
-  jobId: 'job-123',
-  status: 'processing',
+  jobId: "job-123",
+  status: "processing",
   ...overrides,
 });
 
-describe('waitForVideoJob', () => {
+describe("waitForVideoJob", () => {
   let abortController: AbortController;
 
   beforeEach(() => {
@@ -29,88 +29,91 @@ describe('waitForVideoJob', () => {
     vi.useRealTimers();
   });
 
-  describe('error handling', () => {
-    it('throws when status response indicates failure', async () => {
+  describe("error handling", () => {
+    it("throws when status response indicates failure", async () => {
       vi.mocked(getVideoPreviewStatus).mockResolvedValue(
-        mockStatusResponse({ success: false, error: 'Invalid job ID' })
+        mockStatusResponse({ success: false, error: "Invalid job ID" }),
       );
 
       // Use Promise.all to advance timers and catch rejection simultaneously
       await expect(
         Promise.all([
-          waitForVideoJob('job-123', abortController.signal),
+          waitForVideoJob("job-123", abortController.signal),
           vi.advanceTimersByTimeAsync(0),
-        ])
-      ).rejects.toThrow('Invalid job ID');
+        ]),
+      ).rejects.toThrow("Invalid job ID");
     });
 
-    it('uses message field when error field is missing', async () => {
+    it("uses message field when error field is missing", async () => {
       vi.mocked(getVideoPreviewStatus).mockResolvedValue({
         ...mockStatusResponse({ success: false }),
-        message: 'Job not found',
+        message: "Job not found",
       } as VideoJobStatusResponse);
 
       await expect(
         Promise.all([
-          waitForVideoJob('job-123', abortController.signal),
+          waitForVideoJob("job-123", abortController.signal),
           vi.advanceTimersByTimeAsync(0),
-        ])
-      ).rejects.toThrow('Job not found');
+        ]),
+      ).rejects.toThrow("Job not found");
     });
 
-    it('throws fallback message when no error details provided', async () => {
+    it("throws fallback message when no error details provided", async () => {
       vi.mocked(getVideoPreviewStatus).mockResolvedValue(
-        mockStatusResponse({ success: false })
+        mockStatusResponse({ success: false }),
       );
 
       await expect(
         Promise.all([
-          waitForVideoJob('job-123', abortController.signal),
+          waitForVideoJob("job-123", abortController.signal),
           vi.advanceTimersByTimeAsync(0),
-        ])
-      ).rejects.toThrow('Failed to fetch video job status');
+        ]),
+      ).rejects.toThrow("Failed to fetch video job status");
     });
 
-    it('throws when video generation failed', async () => {
+    it("throws when video generation failed", async () => {
       vi.mocked(getVideoPreviewStatus).mockResolvedValue(
-        mockStatusResponse({ status: 'failed', error: 'GPU allocation failed' })
+        mockStatusResponse({
+          status: "failed",
+          error: "GPU allocation failed",
+        }),
       );
 
       await expect(
         Promise.all([
-          waitForVideoJob('job-123', abortController.signal),
+          waitForVideoJob("job-123", abortController.signal),
           vi.advanceTimersByTimeAsync(0),
-        ])
-      ).rejects.toThrow('GPU allocation failed');
+        ]),
+      ).rejects.toThrow("GPU allocation failed");
     });
 
-    it('throws fallback message when generation failed without error details', async () => {
+    it("throws fallback message when generation failed without error details", async () => {
       vi.mocked(getVideoPreviewStatus).mockResolvedValue(
-        mockStatusResponse({ status: 'failed' })
+        mockStatusResponse({ status: "failed" }),
       );
 
       await expect(
         Promise.all([
-          waitForVideoJob('job-123', abortController.signal),
+          waitForVideoJob("job-123", abortController.signal),
           vi.advanceTimersByTimeAsync(0),
-        ])
-      ).rejects.toThrow('Video generation failed');
+        ]),
+      ).rejects.toThrow("Video generation failed");
     });
 
-    it('throws when completed but no URL returned', async () => {
+    it("throws when completed but no URL returned", async () => {
       vi.mocked(getVideoPreviewStatus).mockResolvedValue(
-        mockStatusResponse({ status: 'completed' })
+        mockStatusResponse({ status: "completed" }),
       );
 
       await expect(
         Promise.all([
-          waitForVideoJob('job-123', abortController.signal),
+          waitForVideoJob("job-123", abortController.signal),
           vi.advanceTimersByTimeAsync(0),
-        ])
-      ).rejects.toThrow('Video generation completed but no URL was returned');
+        ]),
+      ).rejects.toThrow("Video generation completed but no URL was returned");
     });
 
-    it('throws timeout error after MAX_WAIT_MS (20 minutes)', async () => {
+    it("throws timeout error after MAX_WAIT_MS (20 minutes)", async () => {
       const MAX_WAIT_MS = 20 * 60 * 1000;
       // Active phase: 6 min at 2s intervals = 180 polls
       // Extended phase: 14 min at 8s intervals = 105 polls
@@ -119,15 +122,15 @@ describe('waitForVideoJob', () => {
       const chunks = Math.ceil(MAX_WAIT_MS / CHUNK_MS) + 1;
 
       vi.mocked(getVideoPreviewStatus).mockResolvedValue(
-        mockStatusResponse({ status: 'processing' })
+        mockStatusResponse({ status: "processing" }),
       );
 
-      const promise = waitForVideoJob('job-123', abortController.signal);
+      const promise = waitForVideoJob("job-123", abortController.signal);
 
       let caught = false;
       const catchPromise = promise.catch((error: Error) => {
         caught = true;
-        expect(error.message).toBe('Timed out waiting for video generation');
+        expect(error.message).toBe("Timed out waiting for video generation");
       });
 
       for (let i = 0; i < chunks && !caught; i++) {
@@ -139,27 +142,27 @@ describe('waitForVideoJob', () => {
     }, 30000); // Increase test timeout for 20-min simulation
   });
 
-  describe('edge cases', () => {
-    it('returns null immediately when signal is already aborted', async () => {
+  describe("edge cases", () => {
+    it("returns null immediately when signal is already aborted", async () => {
       abortController.abort();
 
-      const result = await waitForVideoJob('job-123', abortController.signal);
+      const result = await waitForVideoJob("job-123", abortController.signal);
 
       expect(result).toBeNull();
       expect(getVideoPreviewStatus).not.toHaveBeenCalled();
     });
 
-    it('returns null when aborted during polling', async () => {
+    it("returns null when aborted during polling", async () => {
       let callCount = 0;
       vi.mocked(getVideoPreviewStatus).mockImplementation(async () => {
         callCount++;
         if (callCount === 2) {
           abortController.abort();
         }
-        return mockStatusResponse({ status: 'processing' });
+        return mockStatusResponse({ status: "processing" });
       });
 
-      const promise = waitForVideoJob('job-123', abortController.signal);
+      const promise = waitForVideoJob("job-123", abortController.signal);
 
       // First poll
       await vi.advanceTimersByTimeAsync(0);
@@ -170,20 +173,20 @@ describe('waitForVideoJob', () => {
       expect(result).toBeNull();
     });
 
-    it('polls every 2 seconds until completion', async () => {
+    it("polls every 2 seconds until completion", async () => {
       let callCount = 0;
       vi.mocked(getVideoPreviewStatus).mockImplementation(async () => {
         callCount++;
         if (callCount < 3) {
-          return mockStatusResponse({ status: 'processing' });
+          return mockStatusResponse({ status: "processing" });
         }
         return mockStatusResponse({
-          status: 'completed',
-          videoUrl: 'https://example.com/video.mp4',
+          status: "completed",
+          videoUrl: "https://example.com/video.mp4",
         });
       });
 
-      const promise = waitForVideoJob('job-123', abortController.signal);
+      const promise = waitForVideoJob("job-123", abortController.signal);
 
       // Initial call
       await vi.advanceTimersByTimeAsync(0);
@@ -198,17 +201,19 @@ describe('waitForVideoJob', () => {
       expect(getVideoPreviewStatus).toHaveBeenCalledTimes(3);
 
       const result = await promise;
-      expect(result).toMatchObject({ videoUrl: 'https://example.com/video.mp4' });
+      expect(result).toMatchObject({
+        videoUrl: "https://example.com/video.mp4",
+      });
     });
   });
 
-  describe('adaptive polling', () => {
-    it('widens interval to 8s after 6 minutes', async () => {
+  describe("adaptive polling", () => {
+    it("widens interval to 8s after 6 minutes", async () => {
       vi.mocked(getVideoPreviewStatus).mockResolvedValue(
-        mockStatusResponse({ status: 'processing' })
+        mockStatusResponse({ status: "processing" }),
       );
 
-      const promise = waitForVideoJob('job-123', abortController.signal);
+      const promise = waitForVideoJob("job-123", abortController.signal);
 
       // Advance past the active phase (6 minutes).
       // At exactly 360s, elapsedMs === ACTIVE_PHASE_MS (strict >), so one more
@@ -224,36 +229,50 @@ describe('waitForVideoJob', () => {
       // and then the transition poll at 362s (elapsedMs>360s → sets 8s timer)
       await vi.advanceTimersByTimeAsync(CHUNK_MS);
 
-      const callsAfterTransition = vi.mocked(getVideoPreviewStatus).mock.calls.length;
+      const callsAfterTransition = vi.mocked(getVideoPreviewStatus).mock.calls
+        .length;
 
       // In extended phase: advance 2s — should NOT trigger a poll (interval is 8s)
       await vi.advanceTimersByTimeAsync(2_000);
-      expect(vi.mocked(getVideoPreviewStatus).mock.calls.length - callsAfterTransition).toBe(0);
+      expect(
+        vi.mocked(getVideoPreviewStatus).mock.calls.length -
+          callsAfterTransition,
+      ).toBe(0);
 
       // Advance 6s more (total 8s since transition poll) — should trigger exactly 1 poll
       await vi.advanceTimersByTimeAsync(6_000);
-      expect(vi.mocked(getVideoPreviewStatus).mock.calls.length - callsAfterTransition).toBe(1);
+      expect(
+        vi.mocked(getVideoPreviewStatus).mock.calls.length -
+          callsAfterTransition,
+      ).toBe(1);
 
       abortController.abort();
       await promise;
     }, 30000);
 
-    it('invokes onProgress callback with server progress', async () => {
+    it("invokes onProgress callback with server progress", async () => {
       let callCount = 0;
       vi.mocked(getVideoPreviewStatus).mockImplementation(async () => {
         callCount++;
         if (callCount < 3) {
-          return mockStatusResponse({ status: 'processing', progress: callCount * 30 });
+          return mockStatusResponse({
+            status: "processing",
+            progress: callCount * 30,
+          });
         }
         return mockStatusResponse({
-          status: 'completed',
-          videoUrl: 'https://example.com/video.mp4',
+          status: "completed",
+          videoUrl: "https://example.com/video.mp4",
           progress: 100,
         });
       });
 
       const onProgress = vi.fn();
-      const promise = waitForVideoJob('job-123', abortController.signal, onProgress);
+      const promise = waitForVideoJob(
+        "job-123",
+        abortController.signal,
+        onProgress,
+      );
 
       await vi.advanceTimersByTimeAsync(0); // First poll
       await vi.advanceTimersByTimeAsync(2000); // Second poll
@@ -262,12 +281,21 @@ describe('waitForVideoJob', () => {
       await promise;
 
       expect(onProgress).toHaveBeenCalledTimes(3);
-      expect(onProgress).toHaveBeenCalledWith({ status: 'processing', progress: 30 });
-      expect(onProgress).toHaveBeenCalledWith({ status: 'processing', progress: 60 });
-      expect(onProgress).toHaveBeenCalledWith({ status: 'completed', progress: 100 });
+      expect(onProgress).toHaveBeenCalledWith({
+        status: "processing",
+        progress: 30,
+      });
+      expect(onProgress).toHaveBeenCalledWith({
+        status: "processing",
+        progress: 60,
+      });
+      expect(onProgress).toHaveBeenCalledWith({
+        status: "completed",
+        progress: 100,
+      });
     });
 
-    it('does not throw at 6 minutes — continues polling in extended phase', async () => {
+    it("does not throw at 6 minutes — continues polling in extended phase", async () => {
       // Active phase: 181 polls over 362s (2s interval).
       // Extended phase: 8s interval. After 182 polls, completing on poll 190
       // would be at roughly 362 + (8 * 8) = 426s ≈ 7.1 min.
@@ -276,14 +304,14 @@ describe('waitForVideoJob', () => {
         callCount++;
         if (callCount > 185) {
           return mockStatusResponse({
-            status: 'completed',
-            videoUrl: 'https://example.com/video.mp4',
+            status: "completed",
+            videoUrl: "https://example.com/video.mp4",
           });
         }
-        return mockStatusResponse({ status: 'processing' });
+        return mockStatusResponse({ status: "processing" });
       });
 
-      const promise = waitForVideoJob('job-123', abortController.signal);
+      const promise = waitForVideoJob("job-123", abortController.signal);
 
       // Advance through active phase in 30s chunks (faster than 2s chunks)
       const ACTIVE_MS = 6 * 60 * 1_000 + 4_000; // 364s — past transition
@@ -300,48 +328,55 @@ describe('waitForVideoJob', () => {
       }
 
       const result = await promise;
-      expect(result).toMatchObject({ videoUrl: 'https://example.com/video.mp4' });
+      expect(result).toMatchObject({
+        videoUrl: "https://example.com/video.mp4",
+      });
     }, 30000);
   });
 
-  describe('core behavior', () => {
-    it('returns video URL when generation completes', async () => {
+  describe("core behavior", () => {
+    it("returns video URL when generation completes", async () => {
       vi.mocked(getVideoPreviewStatus).mockResolvedValue(
         mockStatusResponse({
-          status: 'completed',
-          videoUrl: 'https://storage.example.com/videos/output.mp4',
-        })
+          status: "completed",
+          videoUrl: "https://storage.example.com/videos/output.mp4",
+        }),
       );
 
-      const promise = waitForVideoJob('job-456', abortController.signal);
+      const promise = waitForVideoJob("job-456", abortController.signal);
       await vi.runAllTimersAsync();
       const result = await promise;
 
       expect(result).toMatchObject({
-        videoUrl: 'https://storage.example.com/videos/output.mp4',
+        videoUrl: "https://storage.example.com/videos/output.mp4",
       });
-      expect(getVideoPreviewStatus).toHaveBeenCalledWith('job-456');
+      expect(getVideoPreviewStatus).toHaveBeenCalledWith("job-456");
     });
 
-    it('continues polling while status is queued or processing', async () => {
+    it("continues polling while status is queued or processing", async () => {
       let callIndex = 0;
       vi.mocked(getVideoPreviewStatus).mockImplementation(async () => {
         const responses: VideoJobStatusResponse[] = [
-          mockStatusResponse({ status: 'queued' }),
-          mockStatusResponse({ status: 'processing' }),
-          mockStatusResponse({ status: 'completed', videoUrl: 'https://example.com/done.mp4' }),
+          mockStatusResponse({ status: "queued" }),
+          mockStatusResponse({ status: "processing" }),
+          mockStatusResponse({
+            status: "completed",
+            videoUrl: "https://example.com/done.mp4",
+          }),
         ];
         return responses[Math.min(callIndex++, responses.length - 1)]!;
       });
 
-      const promise = waitForVideoJob('job-789', abortController.signal);
+      const promise = waitForVideoJob("job-789", abortController.signal);
 
       await vi.advanceTimersByTimeAsync(0); // First call
       await vi.advanceTimersByTimeAsync(2000); // Second call
       await vi.advanceTimersByTimeAsync(2000); // Third call
 
       const result = await promise;
-      expect(result).toMatchObject({ videoUrl: 'https://example.com/done.mp4' });
+      expect(result).toMatchObject({
+        videoUrl: "https://example.com/done.mp4",
+      });
       expect(callIndex).toBe(3);
     });
   });

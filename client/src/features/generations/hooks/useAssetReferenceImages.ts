@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { assetApi } from '@/features/assets/api/assetApi';
-import type { ResolvedPrompt } from '@shared/types/asset';
-import type { AssetType } from '@shared/types/asset';
+import { useCallback, useEffect, useRef, useState } from "react";
+import { assetApi } from "@/features/assets/api/assetApi";
+import type { ResolvedPrompt } from "@shared/types/asset";
+import type { AssetType } from "@shared/types/asset";
 
 interface ReferenceImage {
   assetId: string;
@@ -19,10 +19,12 @@ interface UseAssetReferenceImagesReturn {
 }
 
 export function useAssetReferenceImages(
-  prompt: string
+  prompt: string,
 ): UseAssetReferenceImagesReturn {
   const [referenceImages, setReferenceImages] = useState<ReferenceImage[]>([]);
-  const [resolvedPrompt, setResolvedPrompt] = useState<ResolvedPrompt | null>(null);
+  const [resolvedPrompt, setResolvedPrompt] = useState<ResolvedPrompt | null>(
+    null,
+  );
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const requestIdRef = useRef(0);
@@ -46,17 +48,21 @@ export function useAssetReferenceImages(
     try {
       const result = await assetApi.resolve(prompt);
       if (requestIdRef.current !== currentRequestId) return;
-      const nextReferenceImages: ReferenceImage[] = (result.referenceImages ?? []).map((image) => ({
+      const nextReferenceImages: ReferenceImage[] = (
+        result.referenceImages ?? []
+      ).map((image) => ({
         assetId: image.assetId,
         assetType: image.assetType,
         imageUrl: image.imageUrl,
-        ...(typeof image.assetName === 'string' ? { assetName: image.assetName } : {}),
+        ...(typeof image.assetName === "string"
+          ? { assetName: image.assetName }
+          : {}),
       }));
       setReferenceImages(nextReferenceImages);
       setResolvedPrompt(result as unknown as ResolvedPrompt);
     } catch (err) {
       if (requestIdRef.current !== currentRequestId) return;
-      setError(err instanceof Error ? err.message : 'Failed to resolve assets');
+      setError(err instanceof Error ? err.message : "Failed to resolve assets");
       setReferenceImages([]);
       setResolvedPrompt(null);
     } finally {

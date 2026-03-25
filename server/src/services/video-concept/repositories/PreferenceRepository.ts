@@ -1,5 +1,5 @@
-import { logger } from '@infrastructure/Logger';
-import type { StorageAdapter, UserPreferences } from '../types';
+import { logger } from "@infrastructure/Logger";
+import type { StorageAdapter, UserPreferences } from "../types";
 
 /**
  * In-memory storage adapter
@@ -12,7 +12,10 @@ class InMemoryStorage implements StorageAdapter {
     return `user:${userId}`;
   }
 
-  async get(userId: string, elementType: string): Promise<UserPreferences | null> {
+  async get(
+    userId: string,
+    elementType: string,
+  ): Promise<UserPreferences | null> {
     const userKey = this.getUserKey(userId);
     if (!this.data.has(userKey)) {
       return null;
@@ -21,7 +24,11 @@ class InMemoryStorage implements StorageAdapter {
     return userData[elementType] || null;
   }
 
-  async set(userId: string, elementType: string, preferences: UserPreferences): Promise<void> {
+  async set(
+    userId: string,
+    elementType: string,
+    preferences: UserPreferences,
+  ): Promise<void> {
     const userKey = this.getUserKey(userId);
     if (!this.data.has(userKey)) {
       this.data.set(userKey, {});
@@ -47,7 +54,9 @@ class InMemoryStorage implements StorageAdapter {
     this.data.delete(userKey);
   }
 
-  async getAllForUser(userId: string): Promise<Record<string, UserPreferences>> {
+  async getAllForUser(
+    userId: string,
+  ): Promise<Record<string, UserPreferences>> {
     const userKey = this.getUserKey(userId);
     return this.data.get(userKey) || {};
   }
@@ -68,11 +77,13 @@ export class PreferenceRepository {
   private readonly maxChosenHistory: number;
   private readonly maxRejectedHistory: number;
 
-  constructor(options: {
-    storage?: StorageAdapter | undefined;
-    maxChosenHistory?: number | undefined;
-    maxRejectedHistory?: number | undefined;
-  } = {}) {
+  constructor(
+    options: {
+      storage?: StorageAdapter | undefined;
+      maxChosenHistory?: number | undefined;
+      maxRejectedHistory?: number | undefined;
+    } = {},
+  ) {
     // Storage adapter - currently in-memory, easily swappable
     this.storage = options.storage || new InMemoryStorage();
     this.maxChosenHistory = options.maxChosenHistory || 20;
@@ -82,12 +93,18 @@ export class PreferenceRepository {
   /**
    * Get user preferences for a specific element type
    */
-  async getPreferences(userId: string, elementType: string): Promise<UserPreferences> {
+  async getPreferences(
+    userId: string,
+    elementType: string,
+  ): Promise<UserPreferences> {
     try {
       const preferences = await this.storage.get(userId, elementType);
       return preferences || { chosen: [], rejected: [] };
     } catch (error) {
-      logger.error('Failed to get preferences', error as Error, { userId, elementType });
+      logger.error("Failed to get preferences", error as Error, {
+        userId,
+        elementType,
+      });
       return { chosen: [], rejected: [] };
     }
   }
@@ -99,7 +116,7 @@ export class PreferenceRepository {
     userId: string,
     elementType: string,
     chosen: string,
-    rejected: string[] = []
+    rejected: string[] = [],
   ): Promise<{ success: boolean; error?: string }> {
     try {
       const preferences = await this.getPreferences(userId, elementType);
@@ -113,12 +130,14 @@ export class PreferenceRepository {
       // Add to rejected (limit history)
       preferences.rejected.push(...rejected);
       if (preferences.rejected.length > this.maxRejectedHistory) {
-        preferences.rejected = preferences.rejected.slice(-this.maxRejectedHistory);
+        preferences.rejected = preferences.rejected.slice(
+          -this.maxRejectedHistory,
+        );
       }
 
       await this.storage.set(userId, elementType, preferences);
 
-      logger.info('Recorded user preference', {
+      logger.info("Recorded user preference", {
         userId,
         elementType,
         rejectedCount: rejected.length,
@@ -126,7 +145,10 @@ export class PreferenceRepository {
 
       return { success: true };
     } catch (error) {
-      logger.error('Failed to record preference', error as Error, { userId, elementType });
+      logger.error("Failed to record preference", error as Error, {
+        userId,
+        elementType,
+      });
       return { success: false, error: (error as Error).message };
     }
   }
@@ -134,17 +156,23 @@ export class PreferenceRepository {
   /**
    * Clear preferences for a user
    */
-  async clearPreferences(userId: string, elementType?: string | null): Promise<{ success: boolean; error?: string }> {
+  async clearPreferences(
+    userId: string,
+    elementType?: string | null,
+  ): Promise<{ success: boolean; error?: string }> {
     try {
       if (elementType) {
         await this.storage.delete(userId, elementType);
       } else {
         await (this.storage as InMemoryStorage).deleteAll(userId);
       }
-      logger.info('Cleared preferences', { userId, elementType });
+      logger.info("Cleared preferences", { userId, elementType });
       return { success: true };
     } catch (error) {
-      logger.error('Failed to clear preferences', error as Error, { userId, elementType });
+      logger.error("Failed to clear preferences", error as Error, {
+        userId,
+        elementType,
+      });
       return { success: false, error: (error as Error).message };
     }
   }
@@ -152,13 +180,14 @@ export class PreferenceRepository {
   /**
    * Get all preferences for a user (useful for analytics)
    */
-  async getAllPreferences(userId: string): Promise<Record<string, UserPreferences>> {
+  async getAllPreferences(
+    userId: string,
+  ): Promise<Record<string, UserPreferences>> {
     try {
       return await (this.storage as InMemoryStorage).getAllForUser(userId);
     } catch (error) {
-      logger.error('Failed to get all preferences', error as Error, { userId });
+      logger.error("Failed to get all preferences", error as Error, { userId });
       return {};
     }
   }
 }
-

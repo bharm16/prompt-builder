@@ -1,8 +1,8 @@
-import express from 'express';
-import request from 'supertest';
-import { afterEach, describe, expect, it } from 'vitest';
+import express from "express";
+import request from "supertest";
+import { afterEach, describe, expect, it } from "vitest";
 
-import { applyRateLimitingMiddleware } from '../middleware.config';
+import { applyRateLimitingMiddleware } from "../middleware.config";
 
 /**
  * Regression: general limiter must not double-count routes with dedicated limiters.
@@ -17,7 +17,7 @@ import { applyRateLimitingMiddleware } from '../middleware.config';
  * must be skipped. These routes are protected by their own dedicated limiters.
  */
 
-describe('regression: general limiter skips routes with dedicated limiters', () => {
+describe("regression: general limiter skips routes with dedicated limiters", () => {
   const originalNodeEnv = process.env.NODE_ENV;
   const originalVitestWorkerId = process.env.VITEST_WORKER_ID;
   const originalVitest = process.env.VITEST;
@@ -42,61 +42,61 @@ describe('regression: general limiter skips routes with dedicated limiters', () 
     }
   });
 
-  it('API requests do not exhaust the general limiter budget', async () => {
-    process.env.NODE_ENV = 'development';
+  it("API requests do not exhaust the general limiter budget", async () => {
+    process.env.NODE_ENV = "development";
     delete process.env.VITEST_WORKER_ID;
     delete process.env.VITEST;
 
     const app = express();
     applyRateLimitingMiddleware(app);
 
-    app.get('/api/sessions/list', (_req, res) => {
+    app.get("/api/sessions/list", (_req, res) => {
       res.status(200).json({ sessions: [] });
     });
-    app.get('/api/payment/status', (_req, res) => {
-      res.status(200).json({ status: 'active' });
+    app.get("/api/payment/status", (_req, res) => {
+      res.status(200).json({ status: "active" });
     });
-    app.get('/static/page', (_req, res) => {
-      res.status(200).send('OK');
+    app.get("/static/page", (_req, res) => {
+      res.status(200).send("OK");
     });
 
     // Fire enough API requests to exhaust the old general budget (dev: 500).
     // Under the old regime, the next non-API request would get 429.
     const apiRequests = Array.from({ length: 250 }, (_, i) =>
       i % 2 === 0
-        ? request(app).get('/api/sessions/list')
-        : request(app).get('/api/payment/status')
+        ? request(app).get("/api/sessions/list")
+        : request(app).get("/api/payment/status"),
     );
     await Promise.all(apiRequests);
 
     // A non-API request must still succeed because the general budget
     // was NOT consumed by the /api/ traffic above.
-    const staticResponse = await request(app).get('/static/page');
+    const staticResponse = await request(app).get("/static/page");
     expect(staticResponse.status).toBe(200);
   });
 
-  it('/llm/ requests do not count against the general limiter', async () => {
-    process.env.NODE_ENV = 'development';
+  it("/llm/ requests do not count against the general limiter", async () => {
+    process.env.NODE_ENV = "development";
     delete process.env.VITEST_WORKER_ID;
     delete process.env.VITEST;
 
     const app = express();
     applyRateLimitingMiddleware(app);
 
-    app.post('/llm/label-spans', (_req, res) => {
+    app.post("/llm/label-spans", (_req, res) => {
       res.status(200).json({ spans: [] });
     });
-    app.get('/static/page', (_req, res) => {
-      res.status(200).send('OK');
+    app.get("/static/page", (_req, res) => {
+      res.status(200).send("OK");
     });
 
     // Fire LLM requests
     await Promise.all(
-      Array.from({ length: 100 }, () => request(app).post('/llm/label-spans'))
+      Array.from({ length: 100 }, () => request(app).post("/llm/label-spans")),
     );
 
     // Non-API request must still work
-    const staticResponse = await request(app).get('/static/page');
+    const staticResponse = await request(app).get("/static/page");
     expect(staticResponse.status).toBe(200);
   });
 });

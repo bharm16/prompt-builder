@@ -1,10 +1,18 @@
-import type { Application } from 'express';
-import request from 'supertest';
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { configureServices, initializeServices } from '@config/services.config';
-import { createApp } from '@server/app';
+import type { Application } from "express";
+import request from "supertest";
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
+import { configureServices, initializeServices } from "@config/services.config";
+import { createApp } from "@server/app";
 
-const TEST_API_KEY = 'phase2-label-spans-key';
+const TEST_API_KEY = "phase2-label-spans-key";
 
 interface MockAIService {
   execute: ReturnType<typeof vi.fn>;
@@ -14,7 +22,7 @@ interface MockAIService {
   getOperationConfig: ReturnType<typeof vi.fn>;
 }
 
-describe('Label Spans Routes (full-stack integration)', () => {
+describe("Label Spans Routes (full-stack integration)", () => {
   let app: Application;
   let aiServiceMock: MockAIService;
   let forceAiFailure = false;
@@ -29,27 +37,27 @@ describe('Label Spans Routes (full-stack integration)', () => {
     previousPromptOutputOnly = process.env.PROMPT_OUTPUT_ONLY;
 
     process.env.ALLOWED_API_KEYS = TEST_API_KEY;
-    process.env.PORT = '0';
-    process.env.PROMPT_OUTPUT_ONLY = 'true';
+    process.env.PORT = "0";
+    process.env.PROMPT_OUTPUT_ONLY = "true";
 
     aiServiceMock = {
       execute: vi.fn(async () => {
         if (forceAiFailure) {
-          throw new Error('Synthetic LLM outage');
+          throw new Error("Synthetic LLM outage");
         }
 
         const validLabelingResult = {
-          analysis_trace: 'identified subject entity and mapped to taxonomy',
+          analysis_trace: "identified subject entity and mapped to taxonomy",
           spans: [
             {
-              text: 'runner',
-              role: 'subject.identity',
+              text: "runner",
+              role: "subject.identity",
               confidence: 0.91,
             },
           ],
           meta: {
-            version: 'v2.2',
-            notes: 'integration mock response',
+            version: "v2.2",
+            notes: "integration mock response",
           },
           isAdversarial: false,
         };
@@ -61,27 +69,32 @@ describe('Label Spans Routes (full-stack integration)', () => {
               text: JSON.stringify(validLabelingResult),
             },
           ],
-          metadata: { provider: 'mock' },
+          metadata: { provider: "mock" },
         };
       }),
-      stream: vi.fn(async (_operation: string, params: { onChunk?: (chunk: string) => void }) => {
-        if (forceAiFailure) {
-          throw new Error('Synthetic streaming outage');
-        }
+      stream: vi.fn(
+        async (
+          _operation: string,
+          params: { onChunk?: (chunk: string) => void },
+        ) => {
+          if (forceAiFailure) {
+            throw new Error("Synthetic streaming outage");
+          }
 
-        params.onChunk?.(
-          '{"text":"runner","role":"subject.identity","category":"subject.identity","start":2,"end":8,"confidence":0.91}\n'
-        );
+          params.onChunk?.(
+            '{"text":"runner","role":"subject.identity","category":"subject.identity","start":2,"end":8,"confidence":0.91}\n',
+          );
 
-        return '{"spans":[{"text":"runner","role":"subject.identity","category":"subject.identity","start":2,"end":8,"confidence":0.91}]}';
-      }),
+          return '{"spans":[{"text":"runner","role":"subject.identity","category":"subject.identity","start":2,"end":8,"confidence":0.91}]}';
+        },
+      ),
       supportsStreaming: vi.fn(() => true),
-      getAvailableClients: vi.fn(() => ['mock-provider']),
-      getOperationConfig: vi.fn(() => ({ model: 'mock-model' })),
+      getAvailableClients: vi.fn(() => ["mock-provider"]),
+      getOperationConfig: vi.fn(() => ({ model: "mock-model" })),
     };
 
     const container = await configureServices();
-    container.registerValue('aiService', aiServiceMock);
+    container.registerValue("aiService", aiServiceMock);
 
     await initializeServices(container);
     app = createApp(container);
@@ -112,83 +125,93 @@ describe('Label Spans Routes (full-stack integration)', () => {
     vi.clearAllMocks();
 
     aiServiceMock.supportsStreaming.mockReturnValue(true);
-    aiServiceMock.getAvailableClients.mockReturnValue(['mock-provider']);
-    aiServiceMock.getOperationConfig.mockReturnValue({ model: 'mock-model' });
+    aiServiceMock.getAvailableClients.mockReturnValue(["mock-provider"]);
+    aiServiceMock.getOperationConfig.mockReturnValue({ model: "mock-model" });
   });
 
-  it('POST /llm/label-spans rejects unauthenticated requests', async () => {
-    const response = await request(app).post('/llm/label-spans').send({ text: 'A runner in frame' });
+  it("POST /llm/label-spans rejects unauthenticated requests", async () => {
+    const response = await request(app)
+      .post("/llm/label-spans")
+      .send({ text: "A runner in frame" });
 
     expect(response.status).toBe(401);
-    expect(response.body.error).toBe('Authentication required');
+    expect(response.body.error).toBe("Authentication required");
   });
 
-  it('POST /llm/label-spans validates request payload', async () => {
+  it("POST /llm/label-spans validates request payload", async () => {
     const response = await request(app)
-      .post('/llm/label-spans')
-      .set('x-api-key', TEST_API_KEY)
-      .send({ text: '' });
+      .post("/llm/label-spans")
+      .set("x-api-key", TEST_API_KEY)
+      .send({ text: "" });
 
     expect(response.status).toBe(400);
-    expect(response.body.error).toBeTypeOf('string');
+    expect(response.body.error).toBeTypeOf("string");
   });
 
-  it('POST /llm/label-spans returns labeled spans for a valid request', async () => {
+  it("POST /llm/label-spans returns labeled spans for a valid request", async () => {
     const response = await request(app)
-      .post('/llm/label-spans')
-      .set('x-api-key', TEST_API_KEY)
-      .send({ text: 'A runner turns toward camera', maxSpans: 5, minConfidence: 0.4 });
+      .post("/llm/label-spans")
+      .set("x-api-key", TEST_API_KEY)
+      .send({
+        text: "A runner turns toward camera",
+        maxSpans: 5,
+        minConfidence: 0.4,
+      });
 
     expect(response.status).toBe(200);
     expect(Array.isArray(response.body.spans)).toBe(true);
     expect(response.body.spans.length).toBeGreaterThan(0);
     expect(response.body.spans[0]).toMatchObject({
-      category: 'subject.identity',
+      category: "subject.identity",
       confidence: expect.any(Number),
     });
   });
 
-  it('POST /llm/label-spans returns 502 when span labeling fails', async () => {
+  it("POST /llm/label-spans returns 502 when span labeling fails", async () => {
     forceAiFailure = true;
 
     const response = await request(app)
-      .post('/llm/label-spans')
-      .set('x-api-key', TEST_API_KEY)
-      .send({ text: 'zxqv ptnr blorf' });
+      .post("/llm/label-spans")
+      .set("x-api-key", TEST_API_KEY)
+      .send({ text: "zxqv ptnr blorf" });
 
     expect(response.status).toBe(502);
-    expect(response.body.error).toBe('LLM span labeling failed');
+    expect(response.body.error).toBe("LLM span labeling failed");
   });
 
-  it('POST /llm/label-spans/stream rejects unauthenticated requests', async () => {
+  it("POST /llm/label-spans/stream rejects unauthenticated requests", async () => {
     const response = await request(app)
-      .post('/llm/label-spans/stream')
-      .send({ text: 'A runner in frame' });
+      .post("/llm/label-spans/stream")
+      .send({ text: "A runner in frame" });
 
     expect(response.status).toBe(401);
-    expect(response.body.error).toBe('Authentication required');
+    expect(response.body.error).toBe("Authentication required");
   });
 
-  it('POST /llm/label-spans/stream validates request payload', async () => {
+  it("POST /llm/label-spans/stream validates request payload", async () => {
     const response = await request(app)
-      .post('/llm/label-spans/stream')
-      .set('x-api-key', TEST_API_KEY)
-      .send({ text: '' });
+      .post("/llm/label-spans/stream")
+      .set("x-api-key", TEST_API_KEY)
+      .send({ text: "" });
 
     expect(response.status).toBe(400);
-    expect(response.body.error).toBeTypeOf('string');
+    expect(response.body.error).toBeTypeOf("string");
   });
 
-  it('POST /llm/label-spans/stream streams span entries for valid requests', async () => {
+  it("POST /llm/label-spans/stream streams span entries for valid requests", async () => {
     const response = await request(app)
-      .post('/llm/label-spans/stream')
-      .set('x-api-key', TEST_API_KEY)
-      .send({ text: 'A runner turns toward camera', maxSpans: 5, minConfidence: 0.4 });
+      .post("/llm/label-spans/stream")
+      .set("x-api-key", TEST_API_KEY)
+      .send({
+        text: "A runner turns toward camera",
+        maxSpans: 5,
+        minConfidence: 0.4,
+      });
 
     expect(response.status).toBe(200);
 
     const lines = response.text
-      .split('\n')
+      .split("\n")
       .map((line) => line.trim())
       .filter((line) => line.length > 0);
 
@@ -211,18 +234,18 @@ describe('Label Spans Routes (full-stack integration)', () => {
     });
   });
 
-  it('POST /llm/label-spans/stream reports stream errors as JSON payloads', async () => {
+  it("POST /llm/label-spans/stream reports stream errors as JSON payloads", async () => {
     forceAiFailure = true;
 
     const response = await request(app)
-      .post('/llm/label-spans/stream')
-      .set('x-api-key', TEST_API_KEY)
-      .send({ text: 'zxqv ptnr blorf' });
+      .post("/llm/label-spans/stream")
+      .set("x-api-key", TEST_API_KEY)
+      .send({ text: "zxqv ptnr blorf" });
 
     expect(response.status).toBe(200);
 
     const lines = response.text
-      .split('\n')
+      .split("\n")
       .map((line) => line.trim())
       .filter((line) => line.length > 0);
 
@@ -236,6 +259,6 @@ describe('Label Spans Routes (full-stack integration)', () => {
       })
       .filter((value): value is Record<string, unknown> => value !== null);
 
-    expect(parsed.some((entry) => typeof entry.error === 'string')).toBe(true);
+    expect(parsed.some((entry) => typeof entry.error === "string")).toBe(true);
   });
 });

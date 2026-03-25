@@ -7,4 +7,4 @@ export {
   ReferenceImageRepository as default,
   type ReferenceImageMetadata,
   type ReferenceImageRecord,
-} from '@services/asset/reference-images/ReferenceImageRepository';
+} from "@services/asset/reference-images/ReferenceImageRepository";

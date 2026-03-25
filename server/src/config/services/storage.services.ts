@@ -1,37 +1,46 @@
-import type { DIContainer } from '@infrastructure/DIContainer';
-import { Storage, type Bucket } from '@google-cloud/storage';
-import { resolveBucketName } from '@config/storageBucket';
-import { StorageService } from '@services/storage/StorageService';
-import { createImageAssetStore } from '@services/image-generation/storage';
-import { createVideoContentAccessService } from '@services/video-generation/access/VideoContentAccessService';
-import { createVideoAssetStore, type VideoAssetStore } from '@services/video-generation/storage';
-import { createVideoAssetRetentionService } from '@services/video-generation/storage/VideoAssetRetentionService';
-import { createGCSStorageService, setConvergenceStorageSignedUrlTtl } from '@services/convergence/storage';
-import type { ServiceConfig } from './service-config.types.ts';
+import type { DIContainer } from "@infrastructure/DIContainer";
+import { Storage, type Bucket } from "@google-cloud/storage";
+import { resolveBucketName } from "@config/storageBucket";
+import { StorageService } from "@services/storage/StorageService";
+import { createImageAssetStore } from "@services/image-generation/storage";
+import { createVideoContentAccessService } from "@services/video-generation/access/VideoContentAccessService";
+import {
+  createVideoAssetStore,
+  type VideoAssetStore,
+} from "@services/video-generation/storage";
+import { createVideoAssetRetentionService } from "@services/video-generation/storage/VideoAssetRetentionService";
+import {
+  createGCSStorageService,
+  setConvergenceStorageSignedUrlTtl,
+} from "@services/convergence/storage";
+import type { ServiceConfig } from "./service-config.types.ts";
 
 export function registerStorageServices(container: DIContainer): void {
-  container.register('gcsStorage', () => new Storage(), [], { singleton: true });
-  container.registerValue('gcsBucketName', resolveBucketName());
+  container.register("gcsStorage", () => new Storage(), [], {
+    singleton: true,
+  });
+  container.registerValue("gcsBucketName", resolveBucketName());
   container.register(
-    'gcsBucket',
-    (gcsStorage: Storage, gcsBucketName: string) => gcsStorage.bucket(gcsBucketName),
-    ['gcsStorage', 'gcsBucketName'],
-    { singleton: true }
+    "gcsBucket",
+    (gcsStorage: Storage, gcsBucketName: string) =>
+      gcsStorage.bucket(gcsBucketName),
+    ["gcsStorage", "gcsBucketName"],
+    { singleton: true },
   );
 
   container.register(
-    'storageService',
+    "storageService",
     (gcsStorage: Storage, gcsBucketName: string) =>
       new StorageService({
         storage: gcsStorage,
         bucketName: gcsBucketName,
       }),
-    ['gcsStorage', 'gcsBucketName'],
-    { singleton: true }
+    ["gcsStorage", "gcsBucketName"],
+    { singleton: true },
   );
 
   container.register(
-    'videoAssetStore',
+    "videoAssetStore",
     (gcsBucket: Bucket, config: ServiceConfig) =>
       createVideoAssetStore({
         bucket: gcsBucket,
@@ -39,11 +48,11 @@ export function registerStorageServices(container: DIContainer): void {
         signedUrlTtlMs: config.videoAssets.storage.signedUrlTtlMs,
         cacheControl: config.videoAssets.storage.cacheControl,
       }),
-    ['gcsBucket', 'config'],
-    { singleton: true }
+    ["gcsBucket", "config"],
+    { singleton: true },
   );
   container.register(
-    'imageAssetStore',
+    "imageAssetStore",
     (gcsBucket: Bucket, config: ServiceConfig) =>
       createImageAssetStore({
         bucket: gcsBucket,
@@ -51,31 +60,37 @@ export function registerStorageServices(container: DIContainer): void {
         signedUrlTtlMs: config.imageAssets.storage.signedUrlTtlMs,
         cacheControl: config.imageAssets.storage.cacheControl,
       }),
-    ['gcsBucket', 'config'],
-    { singleton: true }
+    ["gcsBucket", "config"],
+    { singleton: true },
   );
   container.register(
-    'convergenceStorageService',
+    "convergenceStorageService",
     (gcsBucket: Bucket, config: ServiceConfig) => {
-      setConvergenceStorageSignedUrlTtl(config.convergence.storage.signedUrlTtlSeconds);
+      setConvergenceStorageSignedUrlTtl(
+        config.convergence.storage.signedUrlTtlSeconds,
+      );
       return createGCSStorageService(gcsBucket);
     },
-    ['gcsBucket', 'config'],
-    { singleton: true }
+    ["gcsBucket", "config"],
+    { singleton: true },
   );
 
   container.register(
-    'videoAssetRetentionService',
+    "videoAssetRetentionService",
     (videoAssetStore: VideoAssetStore, config: ServiceConfig) =>
-      createVideoAssetRetentionService(videoAssetStore, config.videoAssets.retention),
-    ['videoAssetStore', 'config'],
-    { singleton: true }
+      createVideoAssetRetentionService(
+        videoAssetStore,
+        config.videoAssets.retention,
+      ),
+    ["videoAssetStore", "config"],
+    { singleton: true },
   );
 
   container.register(
-    'videoContentAccessService',
-    (config: ServiceConfig) => createVideoContentAccessService(config.videoAssets.access),
-    ['config'],
-    { singleton: true }
+    "videoContentAccessService",
+    (config: ServiceConfig) =>
+      createVideoContentAccessService(config.videoAssets.access),
+    ["config"],
+    { singleton: true },
   );
 }

@@ -10,11 +10,11 @@
  * Stage (the parent) owns framing, empty states, and loading UI.
  */
 
-import React from 'react';
-import { Check } from '@promptstudio/system/components/ui';
-import { useImagePreview } from '../hooks/useImagePreview';
-import type { PreviewProvider } from '../api/previewApi';
-import { cn } from '@/utils/cn';
+import React from "react";
+import { Check } from "@promptstudio/system/components/ui";
+import { useImagePreview } from "../hooks/useImagePreview";
+import type { PreviewProvider } from "../api/previewApi";
+import { cn } from "@/utils/cn";
 
 interface VisualPreviewProps {
   prompt: string;
@@ -25,44 +25,50 @@ interface VisualPreviewProps {
   lastGeneratedAt?: number | null;
   onImageSelected?: (imageUrl: string, index: number) => void;
   selectedImageIndex?: number | null;
-  onPreviewGenerated?: ((payload: {
-    prompt: string;
-    generatedAt: number;
-    imageUrl?: string | null;
-    aspectRatio?: string | null;
-  }) => void) | undefined;
+  onPreviewGenerated?:
+    | ((payload: {
+        prompt: string;
+        generatedAt: number;
+        imageUrl?: string | null;
+        aspectRatio?: string | null;
+      }) => void)
+    | undefined;
   onLoadingChange?: ((loading: boolean) => void) | undefined;
   onKeepRefining?: (() => void) | undefined;
   onRefinePrompt?: (() => void) | undefined;
   provider?: PreviewProvider;
   onProviderChange?: ((provider: PreviewProvider) => void) | undefined;
   useReferenceImage?: boolean;
-  onUseReferenceImageChange?: ((useReferenceImage: boolean) => void) | undefined;
+  onUseReferenceImageChange?:
+    | ((useReferenceImage: boolean) => void)
+    | undefined;
   onErrorChange?: ((error: string | null) => void) | undefined;
-  onPreviewStateChange?: ((payload: {
-    provider: PreviewProvider;
-    useReferenceImage: boolean;
-    loading: boolean;
-    error: string | null;
-    imageUrl: string | null;
-    imageUrls: Array<string | null>;
-  }) => void) | undefined;
+  onPreviewStateChange?:
+    | ((payload: {
+        provider: PreviewProvider;
+        useReferenceImage: boolean;
+        loading: boolean;
+        error: string | null;
+        imageUrl: string | null;
+        imageUrls: Array<string | null>;
+      }) => void)
+    | undefined;
 }
 
 const SUPPORTED_ASPECT_RATIOS = new Set([
-  '1:1',
-  '16:9',
-  '21:9',
-  '2:3',
-  '3:2',
-  '4:5',
-  '5:4',
-  '9:16',
-  '9:21',
+  "1:1",
+  "16:9",
+  "21:9",
+  "2:3",
+  "3:2",
+  "4:5",
+  "5:4",
+  "9:16",
+  "9:21",
 ]);
 
 const normalizeAspectRatio = (value?: string | null): string | null => {
-  if (!value || typeof value !== 'string') {
+  if (!value || typeof value !== "string") {
     return null;
   }
 
@@ -71,41 +77,49 @@ const normalizeAspectRatio = (value?: string | null): string | null => {
     return null;
   }
 
-  const normalized = trimmed.replace(/\s+/g, '').replace(/x/i, ':');
+  const normalized = trimmed.replace(/\s+/g, "").replace(/x/i, ":");
 
   if (SUPPORTED_ASPECT_RATIOS.has(normalized)) {
     return normalized;
   }
 
   if (
-    normalized === '2.39:1' ||
-    normalized === '2.4:1' ||
-    normalized === '2.35:1' ||
-    normalized === '2.37:1'
+    normalized === "2.39:1" ||
+    normalized === "2.4:1" ||
+    normalized === "2.35:1" ||
+    normalized === "2.37:1"
   ) {
-    return '21:9';
+    return "21:9";
   }
 
-  if (normalized === '1.85:1' || normalized === '1.78:1' || normalized === '1.77:1') {
-    return '16:9';
+  if (
+    normalized === "1.85:1" ||
+    normalized === "1.78:1" ||
+    normalized === "1.77:1"
+  ) {
+    return "16:9";
   }
 
   const match = normalized.match(/(\d+(?:\.\d+)?[:x]\d+(?:\.\d+)?)/i);
   if (match?.[1]) {
-    const extracted = match[1].replace(/x/i, ':');
+    const extracted = match[1].replace(/x/i, ":");
     if (SUPPORTED_ASPECT_RATIOS.has(extracted)) {
       return extracted;
     }
     if (
-      extracted === '2.39:1' ||
-      extracted === '2.4:1' ||
-      extracted === '2.35:1' ||
-      extracted === '2.37:1'
+      extracted === "2.39:1" ||
+      extracted === "2.4:1" ||
+      extracted === "2.35:1" ||
+      extracted === "2.37:1"
     ) {
-      return '21:9';
+      return "21:9";
     }
-    if (extracted === '1.85:1' || extracted === '1.78:1' || extracted === '1.77:1') {
-      return '16:9';
+    if (
+      extracted === "1.85:1" ||
+      extracted === "1.78:1" ||
+      extracted === "1.77:1"
+    ) {
+      return "16:9";
     }
   }
 
@@ -129,15 +143,17 @@ export const VisualPreview: React.FC<VisualPreviewProps> = ({
 }) => {
   const normalizedAspectRatio = React.useMemo(
     () => normalizeAspectRatio(aspectRatio),
-    [aspectRatio]
+    [aspectRatio],
   );
 
-  const [internalProvider] =
-    React.useState<PreviewProvider>('replicate-flux-schnell');
+  const [internalProvider] = React.useState<PreviewProvider>(
+    "replicate-flux-schnell",
+  );
   const provider = controlledProvider ?? internalProvider;
 
   const [internalUseReferenceImage] = React.useState(true);
-  const useReferenceImage = controlledUseReferenceImage ?? internalUseReferenceImage;
+  const useReferenceImage =
+    controlledUseReferenceImage ?? internalUseReferenceImage;
 
   const { imageUrl, imageUrls, loading, error, regenerate } = useImagePreview({
     prompt,
@@ -147,10 +163,11 @@ export const VisualPreview: React.FC<VisualPreviewProps> = ({
     seedImageUrl,
     useReferenceImage,
   });
-  const isKontext = provider === 'replicate-flux-kontext-fast';
+  const isKontext = provider === "replicate-flux-kontext-fast";
   const shouldShowGrid = isKontext && imageUrls.length > 0;
-  const displayUrl = shouldShowGrid ? null : imageUrl ?? seedImageUrl;
-  const [lastRequestedPrompt, setLastRequestedPrompt] = React.useState<string>('');
+  const displayUrl = shouldShowGrid ? null : (imageUrl ?? seedImageUrl);
+  const [lastRequestedPrompt, setLastRequestedPrompt] =
+    React.useState<string>("");
   const lastReportedUrlRef = React.useRef<string | null>(null);
   const copyTimeoutRef = React.useRef<number | null>(null);
   const prevGenerateRequestIdRef = React.useRef<number | null>(null);
@@ -176,7 +193,13 @@ export const VisualPreview: React.FC<VisualPreviewProps> = ({
         aspectRatio: normalizedAspectRatio ?? null,
       });
     }
-  }, [imageUrl, lastRequestedPrompt, normalizedAspectRatio, onPreviewGenerated, prompt]);
+  }, [
+    imageUrl,
+    lastRequestedPrompt,
+    normalizedAspectRatio,
+    onPreviewGenerated,
+    prompt,
+  ]);
 
   React.useEffect(() => {
     onLoadingChange?.(loading);
@@ -195,7 +218,15 @@ export const VisualPreview: React.FC<VisualPreviewProps> = ({
       imageUrl: imageUrl ?? null,
       imageUrls,
     });
-  }, [error, imageUrl, imageUrls, loading, onPreviewStateChange, provider, useReferenceImage]);
+  }, [
+    error,
+    imageUrl,
+    imageUrls,
+    loading,
+    onPreviewStateChange,
+    provider,
+    useReferenceImage,
+  ]);
 
   const handleGenerate = React.useCallback(() => {
     setLastRequestedPrompt(prompt);
@@ -218,10 +249,13 @@ export const VisualPreview: React.FC<VisualPreviewProps> = ({
   // Stage owns the CTA button and any empty/loading visuals.
   if (shouldShowGrid) {
     return (
-      <div className="grid grid-cols-2 gap-2 bg-surface-2 p-2" aria-label="Preview frames">
+      <div
+        className="grid grid-cols-2 gap-2 bg-surface-2 p-2"
+        aria-label="Preview frames"
+      >
         {imageUrls.map((url, index) => (
           <button
-            key={`${index}-${url ?? 'empty'}`}
+            key={`${index}-${url ?? "empty"}`}
             type="button"
             disabled={!url}
             onClick={() => {
@@ -230,11 +264,11 @@ export const VisualPreview: React.FC<VisualPreviewProps> = ({
               }
             }}
             className={cn(
-              'relative overflow-hidden rounded-md bg-surface-3 transition-all',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent',
-              'hover:ring-2 hover:ring-accent/50',
-              selectedImageIndex === index && 'ring-2 ring-accent',
-              !url && 'cursor-default'
+              "relative overflow-hidden rounded-md bg-surface-3 transition-all",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent",
+              "hover:ring-2 hover:ring-accent/50",
+              selectedImageIndex === index && "ring-2 ring-accent",
+              !url && "cursor-default",
             )}
           >
             {url ? (
@@ -260,7 +294,13 @@ export const VisualPreview: React.FC<VisualPreviewProps> = ({
   }
 
   if (displayUrl) {
-    return <img src={displayUrl} alt="Preview" className="h-full w-full object-cover" />;
+    return (
+      <img
+        src={displayUrl}
+        alt="Preview"
+        className="h-full w-full object-cover"
+      />
+    );
   }
 
   return null;

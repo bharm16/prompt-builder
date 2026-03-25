@@ -1,10 +1,14 @@
-import { logger } from '@infrastructure/Logger';
-import type { UserCreditService } from '@services/credits/UserCreditService';
-import { buildRefundKey, refundWithGuard } from '@services/credits/refundGuard';
-import { classifyError, withStage, type StageAwareError } from './classifyError';
-import { RetryPolicy } from '@server/utils/RetryPolicy';
-import type { VideoJobError, VideoJobRecord } from './types';
-import type { VideoGenerationResult } from '../types';
+import { logger } from "@infrastructure/Logger";
+import type { UserCreditService } from "@services/credits/UserCreditService";
+import { buildRefundKey, refundWithGuard } from "@services/credits/refundGuard";
+import {
+  classifyError,
+  withStage,
+  type StageAwareError,
+} from "./classifyError";
+import { RetryPolicy } from "@server/utils/RetryPolicy";
+import type { VideoJobError, VideoJobRecord } from "./types";
+import type { VideoGenerationResult } from "../types";
 
 // ────────────────────────────────────────────────────────────────
 // Dependency interfaces — kept minimal so both worker and inline
@@ -12,10 +16,21 @@ import type { VideoGenerationResult } from '../types';
 // ────────────────────────────────────────────────────────────────
 
 export interface JobProcessingStore {
-  renewLease(jobId: string, workerId: string, leaseMs: number): Promise<boolean>;
-  markCompleted(jobId: string, result: VideoGenerationResult | undefined): Promise<boolean>;
+  renewLease(
+    jobId: string,
+    workerId: string,
+    leaseMs: number,
+  ): Promise<boolean>;
+  markCompleted(
+    jobId: string,
+    result: VideoGenerationResult | undefined,
+  ): Promise<boolean>;
   markFailed(jobId: string, error: VideoJobError): Promise<boolean>;
-  requeueForRetry(jobId: string, workerId: string, error: VideoJobError): Promise<boolean>;
+  requeueForRetry(
+    jobId: string,
+    workerId: string,
+    error: VideoJobError,
+  ): Promise<boolean>;
   enqueueDeadLetter(
     job: VideoJobRecord,
     error: VideoJobError,
@@ -74,9 +89,14 @@ export interface ProcessVideoJobDeps {
   /** Callback on provider-level failure (circuit breaker). */
   onProviderFailure?: ((provider: string) => void) | undefined;
   /** Metrics recorder for alerts. */
-  metrics?: {
-    recordAlert: (alertName: string, metadata?: Record<string, unknown>) => void;
-  } | undefined;
+  metrics?:
+    | {
+        recordAlert: (
+          alertName: string,
+          metadata?: Record<string, unknown>,
+        ) => void;
+      }
+    | undefined;
   /** DLQ source tag — differs between inline ("inline-terminal") and worker ("worker-terminal"). */
   dlqSource?: string | undefined;
   /** Reason string used when refunding credits on failure. */
@@ -109,14 +129,15 @@ export async function processVideoJob(
     onProviderSuccess,
     onProviderFailure,
     metrics,
-    dlqSource = 'worker-terminal',
-    refundReason = 'video job failed',
-    logPrefix = 'Video job',
+    dlqSource = "worker-terminal",
+    refundReason = "video job failed",
+    logPrefix = "Video job",
   } = deps;
 
-  const heartbeatIntervalMs = deps.heartbeatIntervalMs ?? Math.floor(leaseMs / 3);
+  const heartbeatIntervalMs =
+    deps.heartbeatIntervalMs ?? Math.floor(leaseMs / 3);
 
-  const log = logger.child({ service: 'processVideoJob', workerId });
+  const log = logger.child({ service: "processVideoJob", workerId });
 
   log.info(`${logPrefix} processing started`, {
     jobId: job.id,
@@ -161,7 +182,7 @@ export async function processVideoJob(
 
     // ── Generate ────────────────────────────────────────────────
     if (!storageService) {
-      throw new Error('Storage service unavailable for required durable write');
+      throw new Error("Storage service unavailable for required durable write");
     }
 
     let result: VideoGenerationResult;
@@ -174,11 +195,11 @@ export async function processVideoJob(
     } catch (error) {
       if (signal?.aborted) {
         throw withStage(
-          new Error('Job aborted: lease heartbeat lost during generation'),
-          'generation',
+          new Error("Job aborted: lease heartbeat lost during generation"),
+          "generation",
         );
       }
-      throw withStage(error, 'generation');
+      throw withStage(error, "generation");
     }
 
     // ── Persist provider result (crash-recovery checkpoint) ────
@@ -207,24 +228,29 @@ export async function processVideoJob(
       sizeBytes: number;
     };
     try {
-      storageResult = await storageService.saveFromUrl(job.userId, result.videoUrl, 'generation', {
-        model: job.request.options?.model,
-        creditsUsed: job.creditsReserved,
-      });
+      storageResult = await storageService.saveFromUrl(
+        job.userId,
+        result.videoUrl,
+        "generation",
+        {
+          model: job.request.options?.model,
+          creditsUsed: job.creditsReserved,
+        },
+      );
     } catch (error) {
       if (signal?.aborted) {
         throw withStage(
-          new Error('Job aborted: lease heartbeat lost during storage'),
-          'persistence',
+          new Error("Job aborted: lease heartbeat lost during storage"),
+          "persistence",
         );
       }
-      throw withStage(error, 'persistence');
+      throw withStage(error, "persistence");
     }
 
-    log.info('Required storage copy completed', {
-      persistence_type: 'durable-storage',
+    log.info("Required storage copy completed", {
+      persistence_type: "durable-storage",
       required: true,
-      outcome: 'success',
+      outcome: "success",
       job_id: job.id,
       user_id: job.userId,
       storage_path: storageResult.storagePath,
@@ -264,15 +290,19 @@ export async function processVideoJob(
     }
 
     if (!marked) {
-      log.error(`${logPrefix} completion failed — refunding credits`, undefined, {
-        jobId: job.id,
-        workerId,
-        userId: job.userId,
-        storagePath: storageResult.storagePath,
-        assetId: result.assetId,
-        recovery: 'manual — asset exists at storagePath',
-      });
-      const refundKey = buildRefundKey(['video-job', job.id, 'video']);
+      log.error(
+        `${logPrefix} completion failed — refunding credits`,
+        undefined,
+        {
+          jobId: job.id,
+          workerId,
+          userId: job.userId,
+          storagePath: storageResult.storagePath,
+          assetId: result.assetId,
+          recovery: "manual — asset exists at storagePath",
+        },
+      );
+      const refundKey = buildRefundKey(["video-job", job.id, "video"]);
       await refundWithGuard({
         userCreditService,
         userId: job.userId,
@@ -294,17 +324,21 @@ export async function processVideoJob(
       assetId: result.assetId,
     });
 
-    if (onProviderSuccess && job.provider && job.provider !== 'unknown') {
+    if (onProviderSuccess && job.provider && job.provider !== "unknown") {
       onProviderSuccess(job.provider);
     }
   } catch (error) {
-    const stageAware = withStage(error, (error as StageAwareError)?.stage || 'generation');
+    const stageAware = withStage(
+      error,
+      (error as StageAwareError)?.stage || "generation",
+    );
     const classifiedError = classifyError(stageAware, {
       request: job.request,
       attempts: job.attempts,
     });
 
-    const errorInstance = error instanceof Error ? error : new Error(classifiedError.message);
+    const errorInstance =
+      error instanceof Error ? error : new Error(classifiedError.message);
     log.error(`${logPrefix} attempt failed`, errorInstance, {
       jobId: job.id,
       workerId,
@@ -318,16 +352,16 @@ export async function processVideoJob(
     if (
       onProviderFailure &&
       job.provider &&
-      job.provider !== 'unknown' &&
-      (classifiedError.stage === 'generation' ||
-        classifiedError.category === 'provider' ||
-        classifiedError.category === 'timeout')
+      job.provider !== "unknown" &&
+      (classifiedError.stage === "generation" ||
+        classifiedError.category === "provider" ||
+        classifiedError.category === "timeout")
     ) {
       onProviderFailure(job.provider);
     }
 
-    if (classifiedError.stage === 'persistence') {
-      metrics?.recordAlert('video_job_persistence_failure', {
+    if (classifiedError.stage === "persistence") {
+      metrics?.recordAlert("video_job_persistence_failure", {
         jobId: job.id,
         attempt: job.attempts,
         code: classifiedError.code,
@@ -336,7 +370,11 @@ export async function processVideoJob(
 
     const hasAttemptsRemaining = job.attempts < job.maxAttempts;
     if (classifiedError.retryable && hasAttemptsRemaining) {
-      const requeued = await jobStore.requeueForRetry(job.id, workerId, classifiedError);
+      const requeued = await jobStore.requeueForRetry(
+        job.id,
+        workerId,
+        classifiedError,
+      );
       if (requeued) {
         log.info(`${logPrefix} requeued for retry`, {
           jobId: job.id,
@@ -345,7 +383,7 @@ export async function processVideoJob(
           attempt: job.attempts,
           maxAttempts: job.maxAttempts,
         });
-        metrics?.recordAlert('video_job_requeued', {
+        metrics?.recordAlert("video_job_requeued", {
           jobId: job.id,
           attempt: job.attempts,
           maxAttempts: job.maxAttempts,
@@ -369,7 +407,7 @@ export async function processVideoJob(
 
     const markedFailed = await jobStore.markFailed(job.id, terminalError);
     if (markedFailed) {
-      const refundKey = buildRefundKey(['video-job', job.id, 'video']);
+      const refundKey = buildRefundKey(["video-job", job.id, "video"]);
       const refunded = await refundWithGuard({
         userCreditService,
         userId: job.userId,
@@ -387,7 +425,7 @@ export async function processVideoJob(
       await jobStore.enqueueDeadLetter(job, terminalError, dlqSource, {
         creditsRefunded: refunded,
       });
-      metrics?.recordAlert('video_job_terminal_failure', {
+      metrics?.recordAlert("video_job_terminal_failure", {
         jobId: job.id,
         attempt: job.attempts,
         maxAttempts: job.maxAttempts,

@@ -1,8 +1,8 @@
-import { createHash } from 'node:crypto';
-import { logger } from '@infrastructure/Logger';
-import type { UserCreditService } from './UserCreditService';
-import type { RefundFailureStore } from './RefundFailureStore';
-import { getRefundFailureStore } from './RefundFailureStore';
+import { createHash } from "node:crypto";
+import { logger } from "@infrastructure/Logger";
+import type { UserCreditService } from "./UserCreditService";
+import type { RefundFailureStore } from "./RefundFailureStore";
+import { getRefundFailureStore } from "./RefundFailureStore";
 
 export interface RefundGuardParams {
   userCreditService: UserCreditService;
@@ -19,12 +19,14 @@ export interface RefundGuardParams {
 const DEFAULT_REQUEST_RETRIES = 3;
 const DEFAULT_BASE_DELAY_MS = 75;
 
-export function buildRefundKey(parts: Array<string | number | null | undefined>): string {
+export function buildRefundKey(
+  parts: Array<string | number | null | undefined>,
+): string {
   const raw = parts
     .filter((part) => part !== null && part !== undefined)
     .map((part) => String(part))
-    .join('|');
-  return createHash('sha256').update(raw).digest('hex');
+    .join("|");
+  return createHash("sha256").update(raw).digest("hex");
 }
 
 async function sleep(delayMs: number): Promise<void> {
@@ -33,7 +35,9 @@ async function sleep(delayMs: number): Promise<void> {
   });
 }
 
-export async function refundWithGuard(params: RefundGuardParams): Promise<boolean> {
+export async function refundWithGuard(
+  params: RefundGuardParams,
+): Promise<boolean> {
   const {
     userCreditService,
     userId,
@@ -52,12 +56,14 @@ export async function refundWithGuard(params: RefundGuardParams): Promise<boolea
 
   const attempts = Math.max(1, requestRetries);
   const refundOptions =
-    reason === undefined
-      ? { refundKey }
-      : { refundKey, reason };
+    reason === undefined ? { refundKey } : { refundKey, reason };
 
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
-    const ok = await userCreditService.refundCredits(userId, amount, refundOptions);
+    const ok = await userCreditService.refundCredits(
+      userId,
+      amount,
+      refundOptions,
+    );
     if (ok) {
       return true;
     }
@@ -79,26 +85,34 @@ export async function refundWithGuard(params: RefundGuardParams): Promise<boolea
       ...(metadata ? { metadata } : {}),
     });
   } catch (enqueueError) {
-    logger.error('Failed to enqueue credit refund failure', enqueueError as Error, {
+    logger.error(
+      "Failed to enqueue credit refund failure",
+      enqueueError as Error,
+      {
+        refundKey,
+        userId,
+        amount,
+        attempts,
+        reason,
+        ...(metadata ? { metadata } : {}),
+        severity: "critical",
+      },
+    );
+    return false;
+  }
+
+  logger.error(
+    "Credit refund retries exhausted; enqueued for background recovery",
+    undefined,
+    {
       refundKey,
       userId,
       amount,
       attempts,
       reason,
       ...(metadata ? { metadata } : {}),
-      severity: 'critical',
-    });
-    return false;
-  }
-
-  logger.error('Credit refund retries exhausted; enqueued for background recovery', undefined, {
-    refundKey,
-    userId,
-    amount,
-    attempts,
-    reason,
-    ...(metadata ? { metadata } : {}),
-    severity: 'critical',
-  });
+      severity: "critical",
+    },
+  );
   return false;
 }

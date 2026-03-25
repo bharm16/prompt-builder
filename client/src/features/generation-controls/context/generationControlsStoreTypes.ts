@@ -1,16 +1,16 @@
-import type { CapabilityValues } from '@shared/capabilities';
-import type { CameraPath } from '@/features/convergence/types';
-import type { KeyframeTile, VideoTier } from '@components/ToolSidebar/types';
+import type { CapabilityValues } from "@shared/capabilities";
+import type { CameraPath } from "@/features/convergence/types";
+import type { KeyframeTile, VideoTier } from "@components/ToolSidebar/types";
 
-export type GenerationControlsTab = 'video' | 'image';
-export type ImageSubTab = 'references' | 'styles';
-export type ConstraintMode = 'strict' | 'flexible' | 'transform';
+export type GenerationControlsTab = "video" | "image";
+export type ImageSubTab = "references" | "styles";
+export type ConstraintMode = "strict" | "flexible" | "transform";
 
 export interface VideoReferenceImage {
   id: string;
   url: string;
-  referenceType: 'asset' | 'style';
-  source: 'upload' | 'library' | 'asset';
+  referenceType: "asset" | "style";
+  source: "upload" | "library" | "asset";
   storagePath?: string;
   assetId?: string;
   viewUrlExpiresAt?: string;
@@ -18,7 +18,7 @@ export interface VideoReferenceImage {
 
 export interface ExtendVideoSource {
   url: string;
-  source: 'generation' | 'upload';
+  source: "generation" | "upload";
   generationId?: string;
   storagePath?: string;
   assetId?: string;
@@ -50,20 +50,20 @@ export interface GenerationControlsState {
 
 export const DEFAULT_GENERATION_CONTROLS_STATE: GenerationControlsState = {
   domain: {
-    selectedModel: '',
+    selectedModel: "",
     generationParams: {},
-    videoTier: 'render',
+    videoTier: "render",
     keyframes: [],
     startFrame: null,
     endFrame: null,
     videoReferenceImages: [],
     extendVideo: null,
     cameraMotion: null,
-    subjectMotion: '',
+    subjectMotion: "",
   },
   ui: {
-    activeTab: 'video',
-    imageSubTab: 'references',
-    constraintMode: 'strict',
+    activeTab: "video",
+    imageSubTab: "references",
+    constraintMode: "strict",
   },
 };

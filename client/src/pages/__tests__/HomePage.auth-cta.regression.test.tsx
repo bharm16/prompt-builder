@@ -5,30 +5,30 @@
  * when the user was already signed in. The hero now conditionally hides the
  * signup CTA when useAuthUser returns a user object.
  */
-import React from 'react';
-import { render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
-import { MemoryRouter } from 'react-router-dom';
-import { HomePage } from '../HomePage';
+import React from "react";
+import { render, screen } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
+import { MemoryRouter } from "react-router-dom";
+import { HomePage } from "../HomePage";
 
 const mockUseAuthUser = vi.hoisted(() => vi.fn());
 
-vi.mock('@hooks/useAuthUser', () => ({
+vi.mock("@hooks/useAuthUser", () => ({
   useAuthUser: mockUseAuthUser,
 }));
 
-describe('regression: HomePage auth-conditional CTA', () => {
+describe("regression: HomePage auth-conditional CTA", () => {
   it('hides "Create account" when user is authenticated', () => {
-    mockUseAuthUser.mockReturnValue({ uid: 'user-1', email: 'test@test.com' });
+    mockUseAuthUser.mockReturnValue({ uid: "user-1", email: "test@test.com" });
 
     render(
       <MemoryRouter>
         <HomePage />
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
-    expect(screen.getByText('Open workspace')).toBeTruthy();
-    expect(screen.queryByText('Create account')).toBeNull();
+    expect(screen.getByText("Open workspace")).toBeTruthy();
+    expect(screen.queryByText("Create account")).toBeNull();
   });
 
   it('shows "Create account" when user is not authenticated', () => {
@@ -37,10 +37,10 @@ describe('regression: HomePage auth-conditional CTA', () => {
     render(
       <MemoryRouter>
         <HomePage />
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
-    expect(screen.getByText('Open workspace')).toBeTruthy();
-    expect(screen.getByText('Create account')).toBeTruthy();
+    expect(screen.getByText("Open workspace")).toBeTruthy();
+    expect(screen.getByText("Create account")).toBeTruthy();
   });
 });

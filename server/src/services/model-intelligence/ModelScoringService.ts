@@ -1,1 +1,1 @@
-export { ModelScoringService } from './services/ModelScoringService';
+export { ModelScoringService } from "./services/ModelScoringService";

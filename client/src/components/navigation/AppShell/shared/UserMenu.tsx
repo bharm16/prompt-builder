@@ -3,8 +3,14 @@
  * Merges SignedInControl (TopNavbar) and AuthMenu (HistorySidebar).
  */
 
-import { useCallback, useEffect, useRef, useState, type ReactElement } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ReactElement,
+} from "react";
+import { Link, useLocation } from "react-router-dom";
 import {
   ChevronDown,
   CreditCard,
@@ -12,38 +18,43 @@ import {
   LogOut,
   Settings,
   User as UserIcon,
-} from '@promptstudio/system/components/ui';
-import { Button } from '@promptstudio/system/components/ui/button';
-import { getAuthRepository } from '@repositories/index';
-import { useToast } from '@components/Toast';
-import { cn } from '@utils/cn';
-import type { UserMenuProps } from '../types';
+} from "@promptstudio/system/components/ui";
+import { Button } from "@promptstudio/system/components/ui/button";
+import { getAuthRepository } from "@repositories/index";
+import { useToast } from "@components/Toast";
+import { cn } from "@utils/cn";
+import type { UserMenuProps } from "../types";
 
 /**
  * Extract display info from user object with fallbacks.
  */
-function getUserDisplayInfo(user: NonNullable<UserMenuProps['user']>): {
+function getUserDisplayInfo(user: NonNullable<UserMenuProps["user"]>): {
   photoURL: string | null;
   displayName: string;
   email: string;
   firstName: string;
   initial: string;
 } {
-  const photoURL = typeof user.photoURL === 'string' ? user.photoURL : null;
-  const displayName = typeof user.displayName === 'string' ? user.displayName.trim() : '';
-  const email = typeof user.email === 'string' ? user.email.trim() : '';
+  const photoURL = typeof user.photoURL === "string" ? user.photoURL : null;
+  const displayName =
+    typeof user.displayName === "string" ? user.displayName.trim() : "";
+  const email = typeof user.email === "string" ? user.email.trim() : "";
   const rawFirstName = displayName
-    ? displayName.split(/\s+/)[0] ?? ''
+    ? (displayName.split(/\s+/)[0] ?? "")
     : email
-      ? email.split('@')[0] ?? ''
-      : '';
-  const firstName = rawFirstName || 'User';
+      ? (email.split("@")[0] ?? "")
+      : "";
+  const firstName = rawFirstName || "User";
   const initial = firstName.slice(0, 1).toUpperCase();
 
   return { photoURL, displayName, email, firstName, initial };
 }
 
-export function UserMenu({ user, variant, className }: UserMenuProps): ReactElement {
+export function UserMenu({
+  user,
+  variant,
+  className,
+}: UserMenuProps): ReactElement {
   const toast = useToast();
   const location = useLocation();
   const [open, setOpen] = useState(false);
@@ -58,20 +69,23 @@ export function UserMenu({ user, variant, className }: UserMenuProps): ReactElem
     if (!open) return;
 
     const handleClickOutside = (event: MouseEvent): void => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(event.target as Node)
+      ) {
         setOpen(false);
       }
     };
 
     const handleKeyDown = (event: KeyboardEvent): void => {
-      if (event.key === 'Escape') setOpen(false);
+      if (event.key === "Escape") setOpen(false);
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleKeyDown);
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
     };
   }, [open]);
 
@@ -79,29 +93,29 @@ export function UserMenu({ user, variant, className }: UserMenuProps): ReactElem
     try {
       await getAuthRepository().signInWithGoogle();
     } catch {
-      toast.error('Failed to sign in');
+      toast.error("Failed to sign in");
     }
   }, [toast]);
 
   const handleSignOut = useCallback(async (): Promise<void> => {
     try {
       await getAuthRepository().signOut();
-      toast.success('Signed out successfully');
+      toast.success("Signed out successfully");
     } catch {
-      toast.error('Failed to sign out');
+      toast.error("Failed to sign out");
     } finally {
       setOpen(false);
     }
   }, [toast]);
 
   if (!user) {
-    if (variant === 'sidebar') {
+    if (variant === "sidebar") {
       return (
         <Button
           onClick={handleSignIn}
           size="sm"
           variant="default"
-          className={cn('w-full', className)}
+          className={cn("w-full", className)}
           aria-label="Sign in with Google"
         >
           <LogIn className="h-3.5 w-3.5" />
@@ -111,12 +125,12 @@ export function UserMenu({ user, variant, className }: UserMenuProps): ReactElem
     }
 
     return (
-      <div className={cn('flex items-center gap-2', className)}>
+      <div className={cn("flex items-center gap-2", className)}>
         <Button
           asChild
           variant="ghost"
           className="h-auto rounded-lg px-3 py-1.5 text-[13px] font-semibold text-white transition-colors"
-          style={{ background: '#22252C', border: '1px solid #2C3037' }}
+          style={{ background: "#22252C", border: "1px solid #2C3037" }}
         >
           <Link to={`/signin?redirect=${returnTo}`}>Log in</Link>
         </Button>
@@ -124,7 +138,7 @@ export function UserMenu({ user, variant, className }: UserMenuProps): ReactElem
           asChild
           variant="ghost"
           className="h-auto gap-2 rounded-lg px-4 py-1.5 text-[13px] font-semibold transition"
-          style={{ background: '#B3AFFD', color: '#131416' }}
+          style={{ background: "#B3AFFD", color: "#131416" }}
         >
           <Link to="/">Try Vidra</Link>
         </Button>
@@ -132,11 +146,12 @@ export function UserMenu({ user, variant, className }: UserMenuProps): ReactElem
     );
   }
 
-  const { photoURL, displayName, email, firstName, initial } = getUserDisplayInfo(user);
+  const { photoURL, displayName, email, firstName, initial } =
+    getUserDisplayInfo(user);
 
-  if (variant === 'sidebar') {
+  if (variant === "sidebar") {
     return (
-      <div className={cn('relative', className)} ref={containerRef}>
+      <div className={cn("relative", className)} ref={containerRef}>
         <Button
           type="button"
           onClick={() => setOpen((prev) => !prev)}
@@ -146,7 +161,11 @@ export function UserMenu({ user, variant, className }: UserMenuProps): ReactElem
           aria-label="User menu"
         >
           {photoURL ? (
-            <img src={photoURL} alt="" className="h-9 w-9 flex-shrink-0 rounded-full" />
+            <img
+              src={photoURL}
+              alt=""
+              className="h-9 w-9 flex-shrink-0 rounded-full"
+            />
           ) : (
             <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-violet-600 to-blue-500 text-[13px] font-semibold text-white">
               {initial}
@@ -156,18 +175,30 @@ export function UserMenu({ user, variant, className }: UserMenuProps): ReactElem
             <p className="truncate text-[13px] font-semibold text-foreground">
               {displayName || firstName}
             </p>
-            <p className="truncate text-[12px] font-normal text-muted">{email}</p>
+            <p className="truncate text-[12px] font-normal text-muted">
+              {email}
+            </p>
           </div>
         </Button>
 
         {open && (
           <div className="absolute bottom-full left-0 mb-2 w-full rounded-lg border border-border bg-app py-1 shadow-md">
-            <Button asChild variant="ghost" size="sm" className="w-full justify-start">
+            <Button
+              asChild
+              variant="ghost"
+              size="sm"
+              className="w-full justify-start"
+            >
               <Link to="/account" onClick={() => setOpen(false)}>
                 <UserIcon className="h-3.5 w-3.5" /> Account
               </Link>
             </Button>
-            <Button asChild variant="ghost" size="sm" className="w-full justify-start">
+            <Button
+              asChild
+              variant="ghost"
+              size="sm"
+              className="w-full justify-start"
+            >
               <Link to="/settings/billing" onClick={() => setOpen(false)}>
                 <CreditCard className="h-3.5 w-3.5" /> Billing
               </Link>
@@ -188,12 +219,15 @@ export function UserMenu({ user, variant, className }: UserMenuProps): ReactElem
   }
 
   return (
-    <div className={cn('flex items-center gap-2', className)} ref={containerRef}>
+    <div
+      className={cn("flex items-center gap-2", className)}
+      ref={containerRef}
+    >
       <Button
         asChild
         variant="ghost"
         className="h-auto gap-2 rounded-lg px-4 py-1.5 text-[13px] font-semibold transition"
-        style={{ background: '#B3AFFD', color: '#131416' }}
+        style={{ background: "#B3AFFD", color: "#131416" }}
       >
         <Link to="/">Try Vidra</Link>
       </Button>
@@ -208,8 +242,8 @@ export function UserMenu({ user, variant, className }: UserMenuProps): ReactElem
         variant="ghost"
         className="relative top-[-1px] inline-flex h-8 items-center rounded-full pl-1.5 pr-2 transition"
         style={{
-          background: '#22252C',
-          border: '1px solid #2C3037',
+          background: "#22252C",
+          border: "1px solid #2C3037",
         }}
       >
         <span className="relative ml-1 grid h-5 w-5 shrink-0 place-items-center overflow-hidden rounded-full bg-gradient-to-br from-violet-600 to-blue-500 text-[11px] font-semibold leading-5 text-white">
@@ -221,32 +255,32 @@ export function UserMenu({ user, variant, className }: UserMenuProps): ReactElem
               className="absolute inset-0 h-5 w-5 rounded-full object-cover"
               referrerPolicy="no-referrer"
               onError={(event) => {
-                event.currentTarget.style.display = 'none';
+                event.currentTarget.style.display = "none";
               }}
             />
           )}
         </span>
         <ChevronDown
           className={cn(
-            'ml-1 mr-1 h-3 w-3 transition-transform',
-            open && 'rotate-180'
+            "ml-1 mr-1 h-3 w-3 transition-transform",
+            open && "rotate-180",
           )}
-          style={{ color: '#8B92A5' }}
+          style={{ color: "#8B92A5" }}
         />
       </Button>
 
       <div
         role="menu"
         aria-hidden={!open}
-        data-state={open ? 'open' : 'closed'}
+        data-state={open ? "open" : "closed"}
         className={cn(
-          'absolute right-0 top-[calc(100%+8px)] z-dropdown w-[220px] rounded-xl p-2 origin-top-right transition',
-          !open && 'pointer-events-none -translate-y-1 opacity-0'
+          "absolute right-0 top-[calc(100%+8px)] z-dropdown w-[220px] rounded-xl p-2 origin-top-right transition",
+          !open && "pointer-events-none -translate-y-1 opacity-0",
         )}
         style={{
-          background: '#16181E',
-          border: '1px solid #22252C',
-          boxShadow: '0 16px 48px rgba(0,0,0,0.5)',
+          background: "#16181E",
+          border: "1px solid #22252C",
+          boxShadow: "0 16px 48px rgba(0,0,0,0.5)",
         }}
       >
         <Button
@@ -255,7 +289,8 @@ export function UserMenu({ user, variant, className }: UserMenuProps): ReactElem
           className="h-8 w-full items-center gap-2.5 rounded-[10px] px-2.5 text-[13px] font-medium text-white hover:bg-white/[0.06]"
         >
           <Link to="/account" role="menuitem" onClick={() => setOpen(false)}>
-            <UserIcon className="h-3.5 w-3.5" style={{ color: '#8B92A5' }} /> Account
+            <UserIcon className="h-3.5 w-3.5" style={{ color: "#8B92A5" }} />{" "}
+            Account
           </Link>
         </Button>
         <Button
@@ -263,8 +298,13 @@ export function UserMenu({ user, variant, className }: UserMenuProps): ReactElem
           variant="ghost"
           className="h-8 w-full items-center gap-2.5 rounded-[10px] px-2.5 text-[13px] font-medium text-white hover:bg-white/[0.06]"
         >
-          <Link to="/settings/billing" role="menuitem" onClick={() => setOpen(false)}>
-            <CreditCard className="h-3.5 w-3.5" style={{ color: '#8B92A5' }} /> Billing
+          <Link
+            to="/settings/billing"
+            role="menuitem"
+            onClick={() => setOpen(false)}
+          >
+            <CreditCard className="h-3.5 w-3.5" style={{ color: "#8B92A5" }} />{" "}
+            Billing
           </Link>
         </Button>
         <Button
@@ -272,18 +312,27 @@ export function UserMenu({ user, variant, className }: UserMenuProps): ReactElem
           variant="ghost"
           className="h-8 w-full items-center gap-2.5 rounded-[10px] px-2.5 text-[13px] font-medium text-white hover:bg-white/[0.06]"
         >
-          <Link to="/?settings=1" role="menuitem" onClick={() => setOpen(false)}>
-            <Settings className="h-3.5 w-3.5" style={{ color: '#8B92A5' }} /> Settings
+          <Link
+            to="/?settings=1"
+            role="menuitem"
+            onClick={() => setOpen(false)}
+          >
+            <Settings className="h-3.5 w-3.5" style={{ color: "#8B92A5" }} />{" "}
+            Settings
           </Link>
         </Button>
-        <div className="my-2.5 h-px w-full" style={{ background: '#22252C' }} />
+        <div className="my-2.5 h-px w-full" style={{ background: "#22252C" }} />
         <Button
           variant="ghost"
           onClick={handleSignOut}
           className="h-8 w-full items-center gap-2.5 rounded-[10px] px-2.5 text-[13px] font-medium hover:bg-white/[0.06]"
-          style={{ color: '#fa6e7c' }}
+          style={{ color: "#fa6e7c" }}
         >
-          <LogOut className="h-3.5 w-3.5" style={{ color: '#fa6e7c', opacity: 0.8 }} /> Sign out
+          <LogOut
+            className="h-3.5 w-3.5"
+            style={{ color: "#fa6e7c", opacity: 0.8 }}
+          />{" "}
+          Sign out
         </Button>
       </div>
     </div>

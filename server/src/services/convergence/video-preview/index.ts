@@ -11,10 +11,10 @@ export type {
   VideoPreviewService,
   VideoPreviewOptions,
   VideoPreviewServiceOptions,
-} from './VideoPreviewService';
+} from "./VideoPreviewService";
 
 export {
   ReplicateVideoPreviewService,
   createVideoPreviewService,
   createVideoPreviewServiceForUser,
-} from './VideoPreviewService';
+} from "./VideoPreviewService";

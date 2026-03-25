@@ -1,10 +1,10 @@
-import * as React from "react"
+import * as React from "react";
 
-import { cn } from "@promptstudio/system/lib/utils"
+import { cn } from "@promptstudio/system/lib/utils";
 
 export interface InputProps extends React.ComponentProps<"input"> {
-  error?: boolean
-  errorMessage?: string
+  error?: boolean;
+  errorMessage?: string;
 }
 
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
@@ -16,11 +16,15 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           className={cn(
             "flex h-ps-8 w-full rounded-sm border border-border bg-surface-1 shadow-[inset_0_1px_2px_rgba(0,0,0,0.2)] px-ps-3 py-ps-2 text-body text-foreground file:border-0 file:bg-transparent file:text-body-sm file:font-medium file:text-foreground placeholder:text-faint placeholder:text-label-sm placeholder:font-medium focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg disabled:cursor-not-allowed disabled:opacity-50",
             error && "border-danger focus-visible:ring-danger/30",
-            className
+            className,
           )}
           ref={ref}
           aria-invalid={error || undefined}
-          aria-describedby={error && errorMessage ? `${props.id ?? props.name}-error` : undefined}
+          aria-describedby={
+            error && errorMessage
+              ? `${props.id ?? props.name}-error`
+              : undefined
+          }
           {...props}
         />
         {error && errorMessage ? (
@@ -33,9 +37,9 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           </p>
         ) : null}
       </div>
-    )
-  }
-)
-Input.displayName = "Input"
+    );
+  },
+);
+Input.displayName = "Input";
 
-export { Input }
+export { Input };

@@ -26,54 +26,63 @@
     /* ToolSidebar Colors */
     --tool-rail-bg: #131416;
     --tool-panel-bg: #131416;
-    --tool-panel-inner-bg: #12131A;
-    --tool-rail-border: #1B1E23;
-    --tool-nav-active-bg: #22252C;
-    --tool-tab-active-bg: #2F3237;
-    --tool-border-primary: #2C3037;
-    --tool-border-dark: #29292D;
-    --tool-border-dashed: #2F3237;
-    --tool-text-primary: #FFFFFF;
-    --tool-text-secondary: #A1AFC5;
-    --tool-text-muted: #A0AEC0;
-    --tool-text-placeholder: #7C839C;
-    --tool-accent-purple: #B3AFFD;
+    --tool-panel-inner-bg: #12131a;
+    --tool-rail-border: #1b1e23;
+    --tool-nav-active-bg: #22252c;
+    --tool-tab-active-bg: #2f3237;
+    --tool-border-primary: #2c3037;
+    --tool-border-dark: #29292d;
+    --tool-border-dashed: #2f3237;
+    --tool-text-primary: #ffffff;
+    --tool-text-secondary: #a1afc5;
+    --tool-text-muted: #a0aec0;
+    --tool-text-placeholder: #7c839c;
+    --tool-accent-purple: #b3affd;
 
     /* Nav active indicator pill (blue-500 accent) */
-    --tool-nav-indicator: #3B82F6;
+    --tool-nav-indicator: #3b82f6;
     /* Nav hover state (between panel-inner and nav-active) */
-    --tool-nav-hover-bg: #1C1E26;
+    --tool-nav-hover-bg: #1c1e26;
     /* Subdued text for labels like plan tier */
-    --tool-text-subdued: #555B6E;
+    --tool-text-subdued: #555b6e;
     /* Deep inset surface for nested containers */
-    --tool-surface-inset: #0F1118;
+    --tool-surface-inset: #0f1118;
     /* Deepest background for modal/card insets */
-    --tool-surface-deep: #0D0E12;
+    --tool-surface-deep: #0d0e12;
 
     /* ── Phase-0 additions (exact-match tokens for high-frequency hex values) ── */
     /* Dim text — between ghost (#A1AFC5) and faint (#aaaebb) */
-    --tool-text-dim: #8B92A5;
+    --tool-text-dim: #8b92a5;
     /* Very faint label text (PREVIEW, GENERATING, etc.) */
-    --tool-text-label: #3A3E4C;
+    --tool-text-label: #3a3e4c;
     /* Disabled / inactive text */
-    --tool-text-disabled: #3A3D46;
+    --tool-text-disabled: #3a3d46;
     /* Card / container background (lighter variant) */
-    --tool-surface-card: #16181E;
+    --tool-surface-card: #16181e;
     /* Prompt bar bg (empty layout) */
-    --tool-surface-prompt: #15161B;
+    --tool-surface-prompt: #15161b;
     /* Prompt bar bg (compact layout) */
     --tool-surface-prompt-compact: #141519;
     /* Selection accent purple (storyboard frames, badges) */
-    --tool-accent-selection: #6C5CE7;
+    --tool-accent-selection: #6c5ce7;
   }
 
-  html, body, #root {
+  html,
+  body,
+  #root {
     height: 100%;
   }
 
   body {
     background-color: #131416;
-    font-family: "Normal", Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-family:
+      "Normal",
+      Inter,
+      ui-sans-serif,
+      system-ui,
+      -apple-system,
+      "Segoe UI",
+      sans-serif;
   }
 
   :root {
@@ -128,19 +137,19 @@
     will-change: opacity, transform;
   }
 
-  .motion-presence-panel[data-motion-state='enter'] {
+  .motion-presence-panel[data-motion-state="enter"] {
     opacity: 0;
     transform: translateY(12px) scale(0.985);
     filter: saturate(0.94);
   }
 
-  .motion-presence-panel[data-motion-state='entered'] {
+  .motion-presence-panel[data-motion-state="entered"] {
     opacity: 1;
     transform: translateY(0) scale(1);
     filter: saturate(1);
   }
 
-  .motion-presence-panel[data-motion-state='exit'] {
+  .motion-presence-panel[data-motion-state="exit"] {
     opacity: 0;
     transform: translateY(10px) scale(0.985);
     filter: saturate(0.96);
@@ -152,24 +161,26 @@
     transition-timing-function: var(--motion-ease-emphasized);
   }
 
-  .motion-presence-overlay[data-motion-state='enter'] {
+  .motion-presence-overlay[data-motion-state="enter"] {
     opacity: 0;
   }
 
-  .motion-presence-overlay[data-motion-state='entered'] {
+  .motion-presence-overlay[data-motion-state="entered"] {
     opacity: 1;
   }
 
-  .motion-presence-overlay[data-motion-state='exit'] {
+  .motion-presence-overlay[data-motion-state="exit"] {
     opacity: 0;
   }
 
   .motion-count-bump {
-    animation: motion-count-bump var(--motion-dur-focus) var(--motion-ease-standard);
+    animation: motion-count-bump var(--motion-dur-focus)
+      var(--motion-ease-standard);
   }
 
   .motion-pulse-once {
-    animation: motion-pulse-once var(--motion-dur-emphasis) var(--motion-ease-emphasized);
+    animation: motion-pulse-once var(--motion-dur-emphasis)
+      var(--motion-ease-emphasized);
   }
 
   .motion-shake-x {
@@ -239,17 +250,17 @@
     transition-duration: 1ms !important;
   }
 
-  .motion-presence-panel[data-motion-state='enter'],
-  .motion-presence-panel[data-motion-state='exit'],
-  .motion-presence-panel[data-motion-state='entered'] {
+  .motion-presence-panel[data-motion-state="enter"],
+  .motion-presence-panel[data-motion-state="exit"],
+  .motion-presence-panel[data-motion-state="entered"] {
     opacity: 1;
     transform: none;
     filter: none;
   }
 
-  .motion-presence-overlay[data-motion-state='enter'],
-  .motion-presence-overlay[data-motion-state='exit'],
-  .motion-presence-overlay[data-motion-state='entered'] {
+  .motion-presence-overlay[data-motion-state="enter"],
+  .motion-presence-overlay[data-motion-state="exit"],
+  .motion-presence-overlay[data-motion-state="entered"] {
     opacity: 1;
   }
 

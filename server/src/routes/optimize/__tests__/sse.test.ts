@@ -1,9 +1,12 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createSseChannel } from '../sse';
-import { createMockSseResponse, createMockSseRequest } from '../../../../../tests/unit/test-helpers/sse';
-import type { Response } from 'express';
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { createSseChannel } from "../sse";
+import {
+  createMockSseResponse,
+  createMockSseRequest,
+} from "../../../../../tests/unit/test-helpers/sse";
+import type { Response } from "express";
 
-describe('SSE channel heartbeat and idle timeout', () => {
+describe("SSE channel heartbeat and idle timeout", () => {
   beforeEach(() => {
     vi.useFakeTimers();
   });
@@ -12,7 +15,7 @@ describe('SSE channel heartbeat and idle timeout', () => {
     vi.useRealTimers();
   });
 
-  it('writes a heartbeat comment after the configured interval', () => {
+  it("writes a heartbeat comment after the configured interval", () => {
     const res = createMockSseResponse();
     const req = createMockSseRequest({});
 
@@ -27,17 +30,21 @@ describe('SSE channel heartbeat and idle timeout', () => {
     vi.advanceTimersByTime(5_000);
 
     // Should have written a heartbeat comment
-    const heartbeats = res.chunks.slice(initialChunkCount).filter(c => c.includes(': heartbeat'));
+    const heartbeats = res.chunks
+      .slice(initialChunkCount)
+      .filter((c) => c.includes(": heartbeat"));
     expect(heartbeats.length).toBe(1);
 
     vi.advanceTimersByTime(5_000);
-    const heartbeats2 = res.chunks.slice(initialChunkCount).filter(c => c.includes(': heartbeat'));
+    const heartbeats2 = res.chunks
+      .slice(initialChunkCount)
+      .filter((c) => c.includes(": heartbeat"));
     expect(heartbeats2.length).toBe(2);
 
     channel.close();
   });
 
-  it('does not write heartbeat when heartbeatIntervalMs is 0', () => {
+  it("does not write heartbeat when heartbeatIntervalMs is 0", () => {
     const res = createMockSseResponse();
     const req = createMockSseRequest({});
 
@@ -50,13 +57,15 @@ describe('SSE channel heartbeat and idle timeout', () => {
 
     vi.advanceTimersByTime(60_000);
 
-    const heartbeats = res.chunks.slice(initialChunkCount).filter(c => c.includes(': heartbeat'));
+    const heartbeats = res.chunks
+      .slice(initialChunkCount)
+      .filter((c) => c.includes(": heartbeat"));
     expect(heartbeats.length).toBe(0);
 
     channel.close();
   });
 
-  it('aborts the signal after idleTimeoutMs with no sendEvent calls', () => {
+  it("aborts the signal after idleTimeoutMs with no sendEvent calls", () => {
     const res = createMockSseResponse();
     const req = createMockSseRequest({});
 
@@ -74,7 +83,7 @@ describe('SSE channel heartbeat and idle timeout', () => {
     channel.close();
   });
 
-  it('resets the idle timer when sendEvent is called', () => {
+  it("resets the idle timer when sendEvent is called", () => {
     const res = createMockSseResponse();
     const req = createMockSseRequest({});
 
@@ -88,7 +97,7 @@ describe('SSE channel heartbeat and idle timeout', () => {
     expect(channel.signal.aborted).toBe(false);
 
     // Send an event — resets the idle timer
-    channel.sendEvent('progress', { step: 1 });
+    channel.sendEvent("progress", { step: 1 });
 
     // Advance another 8s (total 16s since start, but only 8s since last event)
     vi.advanceTimersByTime(8_000);
@@ -101,7 +110,7 @@ describe('SSE channel heartbeat and idle timeout', () => {
     channel.close();
   });
 
-  it('does not abort when idleTimeoutMs is 0', () => {
+  it("does not abort when idleTimeoutMs is 0", () => {
     const res = createMockSseResponse();
     const req = createMockSseRequest({});
 
@@ -117,7 +126,7 @@ describe('SSE channel heartbeat and idle timeout', () => {
     channel.close();
   });
 
-  it('clears all timers on close()', () => {
+  it("clears all timers on close()", () => {
     const res = createMockSseResponse();
     const req = createMockSseRequest({});
 
@@ -133,13 +142,15 @@ describe('SSE channel heartbeat and idle timeout', () => {
     // After close, advancing timers should NOT produce heartbeats or abort
     vi.advanceTimersByTime(30_000);
 
-    const heartbeats = res.chunks.slice(initialChunkCount).filter(c => c.includes(': heartbeat'));
+    const heartbeats = res.chunks
+      .slice(initialChunkCount)
+      .filter((c) => c.includes(": heartbeat"));
     expect(heartbeats.length).toBe(0);
     // Signal should not have been aborted by the idle timeout after close
     expect(channel.signal.aborted).toBe(false);
   });
 
-  it('uses default intervals when no options are provided', () => {
+  it("uses default intervals when no options are provided", () => {
     const res = createMockSseResponse();
     const req = createMockSseRequest({});
 
@@ -149,7 +160,9 @@ describe('SSE channel heartbeat and idle timeout', () => {
 
     // Default heartbeat is 15s
     vi.advanceTimersByTime(15_000);
-    const heartbeats = res.chunks.slice(initialChunkCount).filter(c => c.includes(': heartbeat'));
+    const heartbeats = res.chunks
+      .slice(initialChunkCount)
+      .filter((c) => c.includes(": heartbeat"));
     expect(heartbeats.length).toBe(1);
 
     channel.close();

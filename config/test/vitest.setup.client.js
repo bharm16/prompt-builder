@@ -1,11 +1,13 @@
-import React from 'react';
-import { expect, afterEach, vi } from 'vitest';
+import React from "react";
+import { expect, afterEach, vi } from "vitest";
 // Ensure all tests run with test environment semantics
-process.env.NODE_ENV = 'test';
-process.env.GCS_BUCKET_NAME = process.env.GCS_BUCKET_NAME || 'prompt-builder-test-bucket';
-process.env.VIDEO_GENERATE_IDEMPOTENCY_MODE = process.env.VIDEO_GENERATE_IDEMPOTENCY_MODE || 'soft';
-import { cleanup } from '@testing-library/react';
-import * as matchers from '@testing-library/jest-dom/matchers';
+process.env.NODE_ENV = "test";
+process.env.GCS_BUCKET_NAME =
+  process.env.GCS_BUCKET_NAME || "prompt-builder-test-bucket";
+process.env.VIDEO_GENERATE_IDEMPOTENCY_MODE =
+  process.env.VIDEO_GENERATE_IDEMPOTENCY_MODE || "soft";
+import { cleanup } from "@testing-library/react";
+import * as matchers from "@testing-library/jest-dom/matchers";
 
 // Extend Vitest's expect with jest-dom matchers
 expect.extend(matchers);
@@ -18,7 +20,7 @@ afterEach(() => {
 });
 
 // Mock window.matchMedia
-Object.defineProperty(window, 'matchMedia', {
+Object.defineProperty(window, "matchMedia", {
   writable: true,
   value: vi.fn().mockImplementation((query) => ({
     matches: false,
@@ -64,15 +66,18 @@ global.localStorage = localStorageMock;
 global.fetch = vi.fn().mockResolvedValue({
   ok: true,
   status: 200,
-  statusText: 'OK',
+  statusText: "OK",
   json: async () => ({
-    candidates: [{ content: { parts: [{ text: 'stub' }] } }],
+    candidates: [{ content: { parts: [{ text: "stub" }] } }],
   }),
-  text: async () => JSON.stringify({ candidates: [{ content: { parts: [{ text: 'stub' }] } }] }),
+  text: async () =>
+    JSON.stringify({
+      candidates: [{ content: { parts: [{ text: "stub" }] } }],
+    }),
 });
 
 // Mock Firebase
-vi.mock('./src/firebase.js', () => ({
+vi.mock("./src/firebase.js", () => ({
   db: {
     collection: vi.fn(() => ({
       doc: vi.fn(() => ({
@@ -93,7 +98,7 @@ vi.mock('./src/firebase.js', () => ({
 }));
 
 // Mock Toast context for components
-vi.mock('./src/components/Toast.jsx', () => ({
+vi.mock("./src/components/Toast.jsx", () => ({
   useToast: vi.fn(() => ({
     // Generic API
     showToast: vi.fn(),
@@ -110,14 +115,15 @@ vi.mock('./src/components/Toast.jsx', () => ({
 }));
 
 // Mock PromptStudio UI primitives used in components
-vi.mock('@promptstudio/system/components/ui/button', () => ({
-  Button: ({ children, ...props }) => React.createElement('button', props, children),
+vi.mock("@promptstudio/system/components/ui/button", () => ({
+  Button: ({ children, ...props }) =>
+    React.createElement("button", props, children),
 }));
 
-vi.mock('@promptstudio/system/components/ui/input', () => ({
-  Input: (props) => React.createElement('input', props),
+vi.mock("@promptstudio/system/components/ui/input", () => ({
+  Input: (props) => React.createElement("input", props),
 }));
 
-vi.mock('@promptstudio/system/components/ui/textarea', () => ({
-  Textarea: (props) => React.createElement('textarea', props),
+vi.mock("@promptstudio/system/components/ui/textarea", () => ({
+  Textarea: (props) => React.createElement("textarea", props),
 }));

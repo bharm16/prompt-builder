@@ -101,11 +101,11 @@ export interface VideoPromptIR {
     count?: number;
     attributes: string[]; // e.g., "sad", "cyberpunk"
   }>;
-  actions: string[];      // e.g., "running", "exploding"
+  actions: string[]; // e.g., "running", "exploding"
   camera: {
-    movements: string[];  // e.g., "dolly in", "pan left"
-    angle?: string;       // e.g., "low angle"
-    shotType?: string;    // e.g., "wide shot"
+    movements: string[]; // e.g., "dolly in", "pan left"
+    angle?: string; // e.g., "low angle"
+    shotType?: string; // e.g., "wide shot"
   };
   environment: {
     setting: string;
@@ -125,4 +125,3 @@ export interface VideoPromptIR {
   technical: Record<string, string>; // Key-value pairs from technical specifications (duration, aspect ratio, etc.)
   raw: string; // Original input text
 }
-

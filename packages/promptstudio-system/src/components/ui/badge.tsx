@@ -1,7 +1,7 @@
-import * as React from "react"
-import { cva, type VariantProps } from "class-variance-authority"
+import * as React from "react";
+import { cva, type VariantProps } from "class-variance-authority";
 
-import { cn } from "@promptstudio/system/lib/utils"
+import { cn } from "@promptstudio/system/lib/utils";
 
 const badgeVariants = cva(
   "inline-flex items-center rounded-full border border-border font-semibold",
@@ -29,8 +29,8 @@ const badgeVariants = cva(
       size: "default",
       casing: "none",
     },
-  }
-)
+  },
+);
 
 export interface BadgeProps
   extends React.HTMLAttributes<HTMLSpanElement>,
@@ -43,8 +43,8 @@ const Badge = React.forwardRef<HTMLSpanElement, BadgeProps>(
       className={cn(badgeVariants({ variant, size, casing }), className)}
       {...props}
     />
-  )
-)
-Badge.displayName = "Badge"
+  ),
+);
+Badge.displayName = "Badge";
 
-export { Badge, badgeVariants }
+export { Badge, badgeVariants };

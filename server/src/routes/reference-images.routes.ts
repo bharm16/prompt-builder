@@ -1,17 +1,21 @@
-import express, { type Request, type Response, type Router } from 'express';
-import { cleanupUploadFile, createDiskUpload, readUploadBuffer } from '@utils/upload';
-import { validateImageBuffer } from '@utils/validateFileType';
-import { asyncHandler } from '@middleware/asyncHandler';
-import type { ReferenceImageRepository } from '@services/asset/reference-images/ReferenceImageRepository';
+import express, { type Request, type Response, type Router } from "express";
+import {
+  cleanupUploadFile,
+  createDiskUpload,
+  readUploadBuffer,
+} from "@utils/upload";
+import { validateImageBuffer } from "@utils/validateFileType";
+import { asyncHandler } from "@middleware/asyncHandler";
+import type { ReferenceImageRepository } from "@services/asset/reference-images/ReferenceImageRepository";
 
 const upload = createDiskUpload({
   fileSizeBytes: 10 * 1024 * 1024,
   fileFilter: (_req, file, cb) => {
-    if (file.mimetype.startsWith('image/')) {
+    if (file.mimetype.startsWith("image/")) {
       cb(null, true);
       return;
     }
-    cb(new Error('Only image files allowed'));
+    cb(new Error("Only image files allowed"));
   },
 });
 
@@ -20,15 +24,19 @@ type RequestWithUser = Request & { user?: { uid?: string } };
 function requireUserId(req: RequestWithUser, res: Response): string | null {
   const userId = req.user?.uid;
   if (!userId) {
-    res.status(401).json({ error: 'Authentication required' });
+    res.status(401).json({ error: "Authentication required" });
     return null;
   }
   return userId;
 }
 
-function requireRouteParam(req: Request, res: Response, key: string): string | null {
+function requireRouteParam(
+  req: Request,
+  res: Response,
+  key: string,
+): string | null {
   const value = req.params[key];
-  if (typeof value !== 'string' || value.trim().length === 0) {
+  if (typeof value !== "string" || value.trim().length === 0) {
     res.status(400).json({ error: `Invalid ${key}` });
     return null;
   }
@@ -36,46 +44,56 @@ function requireRouteParam(req: Request, res: Response, key: string): string | n
 }
 
 function normalizeOptionalString(value: unknown): string | undefined {
-  if (typeof value !== 'string') return undefined;
+  if (typeof value !== "string") return undefined;
   const trimmed = value.trim();
   return trimmed ? trimmed : undefined;
 }
 
 export function createReferenceImagesRoutes(
-  referenceImageService: ReferenceImageRepository
+  referenceImageService: ReferenceImageRepository,
 ): Router {
   const router = express.Router();
 
   router.get(
-    '/',
+    "/",
     asyncHandler(async (req: Request, res: Response) => {
       const userId = requireUserId(req as RequestWithUser, res);
       if (!userId) return;
 
-      const limitValue = typeof req.query.limit === 'string' ? Number.parseInt(req.query.limit, 10) : NaN;
+      const limitValue =
+        typeof req.query.limit === "string"
+          ? Number.parseInt(req.query.limit, 10)
+          : NaN;
       const limit = Number.isFinite(limitValue) ? limitValue : undefined;
       const listOptions = limit !== undefined ? { limit } : {};
 
-      const images = await referenceImageService.listImages(userId, listOptions);
+      const images = await referenceImageService.listImages(
+        userId,
+        listOptions,
+      );
       res.json({ images });
-    })
+    }),
   );
 
   router.post(
-    '/',
-    upload.single('file'),
+    "/",
+    upload.single("file"),
     asyncHandler(async (req: Request, res: Response) => {
       const userId = requireUserId(req as RequestWithUser, res);
       if (!userId) return;
 
       const file = (req as Request & { file?: Express.Multer.File }).file;
       if (!file) {
-        res.status(400).json({ error: 'No file provided' });
+        res.status(400).json({ error: "No file provided" });
         return;
       }
 
-      const label = normalizeOptionalString((req as Request & { body?: { label?: unknown } }).body?.label);
-      const source = normalizeOptionalString((req as Request & { body?: { source?: unknown } }).body?.source);
+      const label = normalizeOptionalString(
+        (req as Request & { body?: { label?: unknown } }).body?.label,
+      );
+      const source = normalizeOptionalString(
+        (req as Request & { body?: { source?: unknown } }).body?.source,
+      );
       const createInput = {
         ...(label !== undefined ? { label } : {}),
         ...(source !== undefined ? { source } : {}),
@@ -84,18 +102,22 @@ export function createReferenceImagesRoutes(
 
       try {
         const buffer = await readUploadBuffer(file);
-        await validateImageBuffer(buffer, 'file');
-        const image = await referenceImageService.createFromBuffer(userId, buffer, createInput);
+        await validateImageBuffer(buffer, "file");
+        const image = await referenceImageService.createFromBuffer(
+          userId,
+          buffer,
+          createInput,
+        );
 
         res.status(201).json(image);
       } finally {
         await cleanupUploadFile(file);
       }
-    })
+    }),
   );
 
   router.post(
-    '/from-url',
+    "/from-url",
     asyncHandler(async (req: Request, res: Response) => {
       const userId = requireUserId(req as RequestWithUser, res);
       if (!userId) return;
@@ -106,8 +128,8 @@ export function createReferenceImagesRoutes(
         source?: unknown;
       };
 
-      if (!sourceUrl || typeof sourceUrl !== 'string') {
-        res.status(400).json({ error: 'sourceUrl is required' });
+      if (!sourceUrl || typeof sourceUrl !== "string") {
+        res.status(400).json({ error: "sourceUrl is required" });
         return;
       }
 
@@ -117,28 +139,32 @@ export function createReferenceImagesRoutes(
         ...(normalizedLabel !== undefined ? { label: normalizedLabel } : {}),
         ...(normalizedSource !== undefined ? { source: normalizedSource } : {}),
       };
-      const image = await referenceImageService.createFromUrl(userId, sourceUrl.trim(), createInput);
+      const image = await referenceImageService.createFromUrl(
+        userId,
+        sourceUrl.trim(),
+        createInput,
+      );
 
       res.status(201).json(image);
-    })
+    }),
   );
 
   router.delete(
-    '/:id',
+    "/:id",
     asyncHandler(async (req: Request, res: Response) => {
       const userId = requireUserId(req as RequestWithUser, res);
       if (!userId) return;
 
-      const imageId = requireRouteParam(req, res, 'id');
+      const imageId = requireRouteParam(req, res, "id");
       if (!imageId) return;
       const deleted = await referenceImageService.deleteImage(userId, imageId);
       if (!deleted) {
-        res.status(404).json({ error: 'Reference image not found' });
+        res.status(404).json({ error: "Reference image not found" });
         return;
       }
 
       res.status(204).send();
-    })
+    }),
   );
 
   return router;

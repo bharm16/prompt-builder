@@ -1,6 +1,6 @@
-import { useCallback } from 'react';
-import type { Toast } from '@hooks/types';
-import type { OptimizationOptions } from '../../types';
+import { useCallback } from "react";
+import type { Toast } from "@hooks/types";
+import type { OptimizationOptions } from "../../types";
 
 interface PromptOptimizer {
   inputPrompt: string;
@@ -12,7 +12,11 @@ interface UseImprovementFlowParams {
   promptOptimizer: PromptOptimizer;
   toast: Toast;
   setShowImprover: (show: boolean) => void;
-  handleOptimize: (prompt: string, context: Record<string, unknown> | null, options?: OptimizationOptions) => void;
+  handleOptimize: (
+    prompt: string,
+    context: Record<string, unknown> | null,
+    options?: OptimizationOptions,
+  ) => void;
 }
 
 /**
@@ -28,20 +32,17 @@ export function useImprovementFlow({
   handleImproveFirst: () => void;
   handleImprovementComplete: (
     enhancedPrompt: string,
-    context: unknown
+    context: unknown,
   ) => Promise<void>;
 } {
-  const {
-    inputPrompt,
-    setInputPrompt,
-    setImprovementContext,
-  } = promptOptimizer;
+  const { inputPrompt, setInputPrompt, setImprovementContext } =
+    promptOptimizer;
   /**
    * Initiate improvement flow
    */
   const handleImproveFirst = useCallback(() => {
     if (!inputPrompt.trim()) {
-      toast.warning('Please enter a prompt first');
+      toast.warning("Please enter a prompt first");
       return;
     }
     setShowImprover(true);
@@ -58,7 +59,7 @@ export function useImprovementFlow({
       setInputPrompt(enhancedPrompt);
       handleOptimize(enhancedPrompt, ctx);
     },
-    [setShowImprover, setImprovementContext, setInputPrompt, handleOptimize]
+    [setShowImprover, setImprovementContext, setInputPrompt, handleOptimize],
   );
 
   return {

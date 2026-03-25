@@ -13,10 +13,10 @@ Items scored using: **Priority = (Impact + Risk) × (6 − Effort)**
 ### 1. `ShotEditor.tsx` with 17 `useState` calls
 
 | Dimension | Score |
-|-----------|-------|
-| Impact | 4 |
-| Risk | 4 |
-| Effort | 2 |
+| --------- | ----- |
+| Impact    | 4     |
+| Risk      | 4     |
+| Effort    | 2     |
 
 **Priority: 32**
 
@@ -29,16 +29,17 @@ Items scored using: **Priority = (Impact + Risk) × (6 − Effort)**
 ### 2. Unvalidated API responses (type assertions instead of Zod)
 
 | Dimension | Score |
-|-----------|-------|
-| Impact | 3 |
-| Risk | 4 |
-| Effort | 2 |
+| --------- | ----- |
+| Impact    | 3     |
+| Risk      | 4     |
+| Effort    | 2     |
 
 **Priority: 28**
 
 Several API files use `as CoherenceCheckResult` or raw `.json()` without Zod validation, violating the codebase convention. This means a server-side response shape change silently breaks the client at runtime instead of failing at the boundary.
 
 **Key files:**
+
 - `features/prompt-optimizer/api/coherenceCheckApi.ts` — type assertion only, no Zod
 - `features/continuity/api/continuityApi.ts` — uses `z.any()` for `primaryStyleReference` and `sceneProxy`
 - `features/assets/api/assetApi.ts` — 10+ unvalidated `.json()` calls
@@ -52,10 +53,10 @@ Several API files use `as CoherenceCheckResult` or raw `.json()` without Zod val
 ### 3. `any` types in PromptCanvas hooks (13 instances)
 
 | Dimension | Score |
-|-----------|-------|
-| Impact | 3 |
-| Risk | 3 |
-| Effort | 2 |
+| --------- | ----- |
+| Impact    | 3     |
+| Risk      | 3     |
+| Effort    | 2     |
 
 **Priority: 24**
 
@@ -73,10 +74,10 @@ Three PromptCanvas hooks use `any` for props that should have proper types:
 ### 4. `CameraMotionOption.tsx` with 9 `useState` calls
 
 | Dimension | Score |
-|-----------|-------|
-| Impact | 3 |
-| Risk | 3 |
-| Effort | 2 |
+| --------- | ----- |
+| Impact    | 3     |
+| Risk      | 3     |
+| Effort    | 2     |
 
 **Priority: 24**
 
@@ -89,10 +90,10 @@ Three PromptCanvas hooks use `any` for props that should have proper types:
 ### 5. Features missing `api/` directories
 
 | Dimension | Score |
-|-----------|-------|
-| Impact | 2 |
-| Risk | 3 |
-| Effort | 1 |
+| --------- | ----- |
+| Impact    | 2     |
+| Risk      | 3     |
+| Effort    | 1     |
 
 **Priority: 25**
 
@@ -111,10 +112,10 @@ Five feature directories lack the required `api/` subdirectory:
 ### 6. Untested shared hooks (9 hooks)
 
 | Dimension | Score |
-|-----------|-------|
-| Impact | 3 |
-| Risk | 3 |
-| Effort | 3 |
+| --------- | ----- |
+| Impact    | 3     |
+| Risk      | 3     |
+| Effort    | 3     |
 
 **Priority: 18**
 
@@ -135,10 +136,10 @@ Nine top-level hooks under `client/src/hooks/` have no test coverage:
 ### 7. Untested shared components (13 components)
 
 | Dimension | Score |
-|-----------|-------|
-| Impact | 2 |
-| Risk | 2 |
-| Effort | 3 |
+| --------- | ----- |
+| Impact    | 2     |
+| Risk      | 2     |
+| Effort    | 3     |
 
 **Priority: 12**
 
@@ -153,10 +154,10 @@ Settings, LoadingDots, ContextPreviewBadge, DebugButton, ModelSelectorDropdown, 
 ### 8. `console.log` in auth pages
 
 | Dimension | Score |
-|-----------|-------|
-| Impact | 1 |
-| Risk | 2 |
-| Effort | 1 |
+| --------- | ----- |
+| Impact    | 1     |
+| Risk      | 2     |
+| Effort    | 1     |
 
 **Priority: 15**
 

@@ -1,14 +1,18 @@
 /**
  * Span Processing Utilities
- * 
+ *
  * Business logic for processing labeled spans.
  * Extracted from useEnhancementSuggestions.js.
- * 
+ *
  * Architecture: Pure utility functions
  * Pattern: Single responsibility - span processing logic
  */
 
-import { sanitizeSpans, normalizeSpan, type NormalizedSpan } from './spanValidation';
+import {
+  sanitizeSpans,
+  normalizeSpan,
+  type NormalizedSpan,
+} from "./spanValidation";
 
 export interface SpanMetadata {
   start?: number;
@@ -33,7 +37,7 @@ export interface NearbySpan {
   category: string;
   confidence?: number;
   distance: number;
-  position: 'before' | 'after';
+  position: "before" | "after";
   start: number;
   end: number;
 }
@@ -55,7 +59,7 @@ interface SpanFingerprintOptions {
 export function findNearbySpans(
   metadata: SpanMetadata | null | undefined,
   allSpans: SpanWithText[],
-  threshold = 100
+  threshold = 100,
 ): NearbySpan[] {
   if (!metadata || !Array.isArray(allSpans) || allSpans.length === 0) {
     return [];
@@ -72,7 +76,7 @@ export function findNearbySpans(
 
   return allSpans
     .filter((span): span is SpanWithRange => {
-      if (typeof span.start !== 'number' || typeof span.end !== 'number') {
+      if (typeof span.start !== "number" || typeof span.end !== "number") {
         return false;
       }
       // Don't include the selected span itself
@@ -85,25 +89,30 @@ export function findNearbySpans(
       const distanceAfter = span.start - selectedEnd;
 
       // Include if within threshold (before or after)
-      return (distanceBefore >= 0 && distanceBefore <= threshold) ||
-             (distanceAfter >= 0 && distanceAfter <= threshold);
+      return (
+        (distanceBefore >= 0 && distanceBefore <= threshold) ||
+        (distanceAfter >= 0 && distanceAfter <= threshold)
+      );
     })
     .map((span) => {
       // Calculate exact distance
       const distanceBefore = selectedStart - span.end;
       const distanceAfter = span.start - selectedEnd;
       const distance = distanceBefore >= 0 ? distanceBefore : distanceAfter;
-      const position: 'before' | 'after' = distanceBefore >= 0 ? 'before' : 'after';
+      const position: "before" | "after" =
+        distanceBefore >= 0 ? "before" : "after";
 
       return {
-        text: (span.quote || span.text || '').trim(),
-        role: span.role || span.category || 'unknown',
-        category: span.category || span.role || 'unknown',
+        text: (span.quote || span.text || "").trim(),
+        role: span.role || span.category || "unknown",
+        category: span.category || span.role || "unknown",
         distance,
         position,
         start: span.start,
         end: span.end,
-        ...(typeof span.confidence === 'number' ? { confidence: span.confidence } : {}),
+        ...(typeof span.confidence === "number"
+          ? { confidence: span.confidence }
+          : {}),
       };
     })
     .filter((span) => span.text) // Filter out spans with empty text
@@ -116,10 +125,13 @@ export function findNearbySpans(
  */
 export function buildSimplifiedSpans(spans: unknown[]): NormalizedSpan[] {
   const sanitized = sanitizeSpans(spans);
-  
+
   return sanitized
     .map(normalizeSpan)
-    .filter((span): span is NormalizedSpan => span !== null && typeof span.text === 'string' && span.text.length > 0);
+    .filter(
+      (span): span is NormalizedSpan =>
+        span !== null && typeof span.text === "string" && span.text.length > 0,
+    );
 }
 
 /**
@@ -127,18 +139,19 @@ export function buildSimplifiedSpans(spans: unknown[]): NormalizedSpan[] {
  */
 export function prepareSpanContext(
   metadata: SpanMetadata | null | undefined,
-  allLabeledSpans: unknown[]
+  allLabeledSpans: unknown[],
 ): SpanContext {
   // Sanitize input spans
   const sanitizedSpans = sanitizeSpans(allLabeledSpans);
-  
+
   // Build simplified spans
   const simplifiedSpans = buildSimplifiedSpans(sanitizedSpans);
-  
+
   // Find nearby spans
-  const nearbySpans = findNearbySpans(metadata, sanitizedSpans, 100)
-    .filter(span => span.text && span.text.length > 0);
-  
+  const nearbySpans = findNearbySpans(metadata, sanitizedSpans, 100).filter(
+    (span) => span.text && span.text.length > 0,
+  );
+
   return {
     simplifiedSpans,
     nearbySpans,
@@ -151,13 +164,9 @@ export function prepareSpanContext(
 export function buildSpanFingerprint(
   simplifiedSpans: NormalizedSpan[],
   nearbySpans: NearbySpan[],
-  options: SpanFingerprintOptions = {}
+  options: SpanFingerprintOptions = {},
 ): string {
-  const {
-    maxSpans = 6,
-    maxNearby = 4,
-    maxTextLength = 40,
-  } = options;
+  const { maxSpans = 6, maxNearby = 4, maxTextLength = 40 } = options;
 
   const normalize = (value: string): string =>
     value.trim().toLowerCase().slice(0, maxTextLength);
@@ -165,13 +174,13 @@ export function buildSpanFingerprint(
   const spanPart = simplifiedSpans
     .slice(0, maxSpans)
     .map((span) => `${span.category || span.role}:${normalize(span.text)}`)
-    .join('|');
+    .join("|");
 
   const nearbyPart = nearbySpans
     .slice(0, maxNearby)
     .map((span) => `${span.category || span.role}:${normalize(span.text)}`)
-    .join('|');
+    .join("|");
 
-  const combined = [spanPart, nearbyPart].filter(Boolean).join('||');
+  const combined = [spanPart, nearbyPart].filter(Boolean).join("||");
   return combined;
 }

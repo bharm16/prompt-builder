@@ -1,9 +1,17 @@
-import { getVideoCost } from '@config/modelCosts';
-import { normalizeGenerationParams } from '@routes/optimize/normalizeGenerationParams';
-import { GENERATION_ERROR_CODES } from '@routes/generationErrorCodes';
-import type { VideoGenerationOptions } from '@services/video-generation/types';
-import { appendMotionGuidance, extractMotionMeta, resolveMotionContext } from './motion';
-import type { VideoErrorResult, VideoRequestPlan, VideoRequestPlanArgs } from './types';
+import { getVideoCost } from "@config/modelCosts";
+import { normalizeGenerationParams } from "@routes/optimize/normalizeGenerationParams";
+import { GENERATION_ERROR_CODES } from "@routes/generationErrorCodes";
+import type { VideoGenerationOptions } from "@services/video-generation/types";
+import {
+  appendMotionGuidance,
+  extractMotionMeta,
+  resolveMotionContext,
+} from "./motion";
+import type {
+  VideoErrorResult,
+  VideoRequestPlan,
+  VideoRequestPlanArgs,
+} from "./types";
 
 interface ModelUnavailableInput {
   availability: {
@@ -24,20 +32,26 @@ export const createModelUnavailableError = ({
 }: ModelUnavailableInput): VideoErrorResult => {
   const statusCode = availability.statusCode || 503;
   const availabilityDetails = [
-    availability.message || 'Requested video model is not available',
+    availability.message || "Requested video model is not available",
     ...(availability.reason ? [`Reason: ${availability.reason}`] : []),
-    ...(availability.requiredKey ? [`Missing key: ${availability.requiredKey}`] : []),
-    ...(availability.resolvedModelId ? [`Resolved model: ${availability.resolvedModelId}`] : []),
-    ...(availableModelIds.length > 0 ? [`Available models: ${availableModelIds.join(', ')}`] : []),
-    ...(availableCapabilityModels.length > 0
-      ? [`Available capability models: ${availableCapabilityModels.join(', ')}`]
+    ...(availability.requiredKey
+      ? [`Missing key: ${availability.requiredKey}`]
       : []),
-  ].join(' | ');
+    ...(availability.resolvedModelId
+      ? [`Resolved model: ${availability.resolvedModelId}`]
+      : []),
+    ...(availableModelIds.length > 0
+      ? [`Available models: ${availableModelIds.join(", ")}`]
+      : []),
+    ...(availableCapabilityModels.length > 0
+      ? [`Available capability models: ${availableCapabilityModels.join(", ")}`]
+      : []),
+  ].join(" | ");
 
   return {
     status: statusCode,
     payload: {
-      error: 'Video model not available',
+      error: "Video model not available",
       code: GENERATION_ERROR_CODES.SERVICE_UNAVAILABLE,
       details: availabilityDetails,
     },
@@ -45,8 +59,10 @@ export const createModelUnavailableError = ({
 };
 
 export const buildVideoRequestPlan = (
-  args: VideoRequestPlanArgs
-): { ok: true; value: VideoRequestPlan } | { ok: false; error: VideoErrorResult } => {
+  args: VideoRequestPlanArgs,
+):
+  | { ok: true; value: VideoRequestPlan }
+  | { ok: false; error: VideoErrorResult } => {
   const {
     generationParams,
     model,
@@ -67,10 +83,10 @@ export const buildVideoRequestPlan = (
   } = args;
 
   const asFiniteNumber = (value: unknown): number | undefined => {
-    if (typeof value === 'number' && Number.isFinite(value)) {
+    if (typeof value === "number" && Number.isFinite(value)) {
       return value;
     }
-    if (typeof value === 'string' && value.trim().length > 0) {
+    if (typeof value === "string" && value.trim().length > 0) {
       const parsed = Number(value);
       if (Number.isFinite(parsed)) {
         return parsed;
@@ -102,60 +118,75 @@ export const buildVideoRequestPlan = (
         payload: {
           error: normalized.error.error,
           code,
-          ...(normalized.error.details ? { details: normalized.error.details } : {}),
+          ...(normalized.error.details
+            ? { details: normalized.error.details }
+            : {}),
         },
       },
     };
   }
 
-  const normalizedParams = normalized.normalizedGenerationParams as Record<string, unknown> | null;
+  const normalizedParams = normalized.normalizedGenerationParams as Record<
+    string,
+    unknown
+  > | null;
   const paramAspectRatio =
-    normalizedParams && typeof normalizedParams.aspect_ratio === 'string'
-      ? (normalizedParams.aspect_ratio as VideoGenerationOptions['aspectRatio'])
+    normalizedParams && typeof normalizedParams.aspect_ratio === "string"
+      ? (normalizedParams.aspect_ratio as VideoGenerationOptions["aspectRatio"])
       : undefined;
   const paramFps = asFiniteNumber(normalizedParams?.fps);
   const paramDurationS = asFiniteNumber(normalizedParams?.duration_s);
   const paramSeed = asFiniteNumber(normalizedParams?.seed);
   const paramResolution =
-    normalizedParams && typeof normalizedParams.resolution === 'string'
+    normalizedParams && typeof normalizedParams.resolution === "string"
       ? normalizedParams.resolution
       : undefined;
 
   const seconds =
-    paramDurationS != null && ['4', '5', '6', '8', '10', '12'].includes(String(paramDurationS))
-      ? (String(paramDurationS) as VideoGenerationOptions['seconds'])
+    paramDurationS != null &&
+    ["4", "5", "6", "8", "10", "12"].includes(String(paramDurationS))
+      ? (String(paramDurationS) as VideoGenerationOptions["seconds"])
       : undefined;
 
   const durationForCost = paramDurationS ?? 8;
   const videoCost = getVideoCost(costModel, durationForCost);
 
   const size =
-    typeof paramResolution === 'string' &&
-    (/\d+x\d+/i.test(paramResolution) || /p$/i.test(paramResolution) || /k$/i.test(paramResolution))
+    typeof paramResolution === "string" &&
+    (/\d+x\d+/i.test(paramResolution) ||
+      /p$/i.test(paramResolution) ||
+      /k$/i.test(paramResolution))
       ? paramResolution
       : undefined;
 
   const numFrames =
-    typeof paramDurationS === 'number' && typeof paramFps === 'number'
+    typeof paramDurationS === "number" && typeof paramFps === "number"
       ? Math.max(1, Math.min(300, Math.round(paramDurationS * paramFps)))
       : undefined;
 
-  const motionContext = resolveMotionContext(normalizedParams, generationParams);
+  const motionContext = resolveMotionContext(
+    normalizedParams,
+    generationParams,
+  );
   const isI2VRequest = Boolean(resolvedStartImage || inputReference);
-  const disablePromptExtend = isI2VRequest && Boolean(motionContext.cameraMotionId);
+  const disablePromptExtend =
+    isI2VRequest && Boolean(motionContext.cameraMotionId);
   const promptWithMotion = appendMotionGuidance(cleanedPrompt, motionContext);
   const normalizedMotionMeta = extractMotionMeta(normalizedParams);
   const promptLengthBeforeMotion = cleanedPrompt.trim().length;
   const promptLengthAfterMotion = promptWithMotion.trim().length;
-  const motionGuidanceAppended = promptLengthAfterMotion > promptLengthBeforeMotion;
+  const motionGuidanceAppended =
+    promptLengthAfterMotion > promptLengthBeforeMotion;
 
   const options: VideoGenerationOptions = {};
   const resolvedAspectRatio = paramAspectRatio || aspectRatio;
   if (resolvedAspectRatio) {
-    options.aspectRatio = resolvedAspectRatio as NonNullable<VideoGenerationOptions['aspectRatio']>;
+    options.aspectRatio = resolvedAspectRatio as NonNullable<
+      VideoGenerationOptions["aspectRatio"]
+    >;
   }
   if (model) {
-    options.model = model as NonNullable<VideoGenerationOptions['model']>;
+    options.model = model as NonNullable<VideoGenerationOptions["model"]>;
   }
   if (resolvedStartImage) {
     options.startImage = resolvedStartImage;
@@ -181,10 +212,10 @@ export const buildVideoRequestPlan = (
   if (swappedImageUrl) {
     options.faceSwapUrl = swappedImageUrl;
   }
-  if (typeof paramFps === 'number') {
+  if (typeof paramFps === "number") {
     options.fps = paramFps;
   }
-  if (typeof paramSeed === 'number') {
+  if (typeof paramSeed === "number") {
     options.seed = Math.round(paramSeed);
   }
   if (seconds) {
@@ -193,7 +224,7 @@ export const buildVideoRequestPlan = (
   if (size) {
     options.size = size;
   }
-  if (typeof numFrames === 'number') {
+  if (typeof numFrames === "number") {
     options.numFrames = numFrames;
   }
   if (disablePromptExtend) {

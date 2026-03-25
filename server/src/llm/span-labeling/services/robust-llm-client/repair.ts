@@ -1,13 +1,26 @@
-import { buildUserPayload, parseJson } from '../../utils/jsonUtils';
-import { formatValidationErrors } from '../../utils/textUtils';
-import { buildSystemPrompt, BASE_SYSTEM_PROMPT } from '../../utils/promptBuilder';
-import { validateSchemaOrThrow } from '../../validation/SchemaValidator';
-import { validateSpans } from '../../validation/SpanValidator';
-import type { UserPayloadParams } from '../../utils/jsonUtils';
-import type { LabelSpansResult, ValidationPolicy, ProcessingOptions, LLMSpan, LLMMeta } from '../../types';
-import type { AIService as BaseAIService } from '@services/enhancement/services/types';
-import type { SubstringPositionCache } from '../../cache/SubstringPositionCache';
-import { callModel, type ModelResponse, type ProviderRequestOptions } from './modelInvocation';
+import { buildUserPayload, parseJson } from "../../utils/jsonUtils";
+import { formatValidationErrors } from "../../utils/textUtils";
+import {
+  buildSystemPrompt,
+  BASE_SYSTEM_PROMPT,
+} from "../../utils/promptBuilder";
+import { validateSchemaOrThrow } from "../../validation/SchemaValidator";
+import { validateSpans } from "../../validation/SpanValidator";
+import type { UserPayloadParams } from "../../utils/jsonUtils";
+import type {
+  LabelSpansResult,
+  ValidationPolicy,
+  ProcessingOptions,
+  LLMSpan,
+  LLMMeta,
+} from "../../types";
+import type { AIService as BaseAIService } from "@services/enhancement/services/types";
+import type { SubstringPositionCache } from "../../cache/SubstringPositionCache";
+import {
+  callModel,
+  type ModelResponse,
+  type ProviderRequestOptions,
+} from "./modelInvocation";
 
 interface ParsedLLMResponse {
   spans?: LLMSpan[];
@@ -52,22 +65,26 @@ export async function attemptRepair({
   injectDefensiveMeta: (
     value: Record<string, unknown>,
     options: ProcessingOptions,
-    nlpSpansAttempted?: number
+    nlpSpansAttempted?: number,
   ) => void;
-}): Promise<{ result: LabelSpansResult; metadata?: ModelResponse['metadata'] }> {
+}): Promise<{
+  result: LabelSpansResult;
+  metadata?: ModelResponse["metadata"];
+}> {
   const repairPayload: UserPayloadParams = {
     ...basePayload,
     validation: {
       errors: validationErrors,
       originalResponse,
       instructions:
-        'Fix the indices and roles described above without changing span text. Do not invent new spans.',
+        "Fix the indices and roles described above without changing span text. Do not invent new spans.",
     },
   };
 
-  const repairSystemPrompt = providerName === 'gemini'
-    ? buildSystemPrompt('', false, providerName, Boolean(schema))
-    : BASE_SYSTEM_PROMPT;
+  const repairSystemPrompt =
+    providerName === "gemini"
+      ? buildSystemPrompt("", false, providerName, Boolean(schema))
+      : BASE_SYSTEM_PROMPT;
 
   const repairResponse = await callModel({
     systemPrompt: `${repairSystemPrompt}
@@ -89,7 +106,7 @@ If validation feedback is provided, correct the issues without altering span tex
 
   repairValue = normalizeParsedResponse(repairValue) as ParsedLLMResponse;
 
-  if (providerName === 'gemini') {
+  if (providerName === "gemini") {
     injectDefensiveMeta(repairValue, options);
   }
 
@@ -97,7 +114,7 @@ If validation feedback is provided, correct the issues without altering span tex
 
   const validation = validateSpans({
     spans: repairValue.spans || [],
-    meta: repairValue.meta ?? { version: 'v1', notes: '' },
+    meta: repairValue.meta ?? { version: "v1", notes: "" },
     text,
     policy,
     options,

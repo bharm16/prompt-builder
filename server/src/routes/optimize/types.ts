@@ -1,8 +1,8 @@
-import type { PromptOptimizationService } from '@services/prompt-optimization/PromptOptimizationService';
+import type { PromptOptimizationService } from "@services/prompt-optimization/PromptOptimizationService";
 
 export type PromptOptimizationServiceContract = Pick<
   PromptOptimizationService,
-  'optimize' | 'compilePrompt'
+  "optimize" | "compilePrompt"
 >;
 
 export interface OptimizeServices {

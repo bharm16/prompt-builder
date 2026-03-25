@@ -6,7 +6,7 @@
  * detects `window.__E2E_AUTH_USER__` and swaps in `MockAuthRepository`.
  */
 
-import type { Page } from '@playwright/test';
+import type { Page } from "@playwright/test";
 
 export type E2EUser = {
   uid: string;
@@ -15,9 +15,9 @@ export type E2EUser = {
 };
 
 export const TEST_USER: E2EUser = {
-  uid: 'e2e-user-1',
-  email: 'e2e@example.com',
-  displayName: 'E2E Test User',
+  uid: "e2e-user-1",
+  email: "e2e@example.com",
+  displayName: "E2E Test User",
 };
 
 /**

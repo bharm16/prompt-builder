@@ -1,20 +1,20 @@
-import { logger } from '@infrastructure/Logger';
-import type { ILogger } from '@interfaces/ILogger';
-import OptimizationConfig from '@config/OptimizationConfig';
+import { logger } from "@infrastructure/Logger";
+import type { ILogger } from "@interfaces/ILogger";
+import OptimizationConfig from "@config/OptimizationConfig";
 
-import { VideoStrategy } from './strategies/VideoStrategy';
-import { ShotInterpreterService } from './services/ShotInterpreterService';
-import { OptimizationCacheService } from './services/OptimizationCacheService';
-import { VideoPromptCompilationService } from './services/VideoPromptCompilationService';
-import { TemplateService } from './services/TemplateService';
-import { IntentLockService } from './services/IntentLockService';
-import { PromptLintGateService } from './services/PromptLintGateService';
-import { applyIntentLockPolicy } from './services/intentLockPolicy';
-import { I2VMotionStrategy } from './strategies/I2VMotionStrategy';
-import type { ImageObservationService } from '@services/image-observation';
-import type { VideoPromptService } from '../video-prompt-analysis/VideoPromptService';
-import type { CapabilityValues } from '@shared/capabilities';
-import type { CacheService } from '@services/cache/CacheService';
+import { VideoStrategy } from "./strategies/VideoStrategy";
+import { ShotInterpreterService } from "./services/ShotInterpreterService";
+import { OptimizationCacheService } from "./services/OptimizationCacheService";
+import { VideoPromptCompilationService } from "./services/VideoPromptCompilationService";
+import { TemplateService } from "./services/TemplateService";
+import { IntentLockService } from "./services/IntentLockService";
+import { PromptLintGateService } from "./services/PromptLintGateService";
+import { applyIntentLockPolicy } from "./services/intentLockPolicy";
+import { I2VMotionStrategy } from "./strategies/I2VMotionStrategy";
+import type { ImageObservationService } from "@services/image-observation";
+import type { VideoPromptService } from "../video-prompt-analysis/VideoPromptService";
+import type { CapabilityValues } from "@shared/capabilities";
+import type { CacheService } from "@services/cache/CacheService";
 import type {
   AIService,
   CompileContext,
@@ -22,11 +22,11 @@ import type {
   OptimizationMode,
   OptimizationRequest,
   OptimizationResponse,
-} from './types';
-import type { I2VConstraintMode } from './types/i2v';
-import { runI2vFlow } from './workflows/i2vFlow';
-import { runOptimizeFlow } from './workflows/optimizeFlow';
-import { runConstitutionalReviewFlow } from './workflows/constitutionalReview';
+} from "./types";
+import type { I2VConstraintMode } from "./types/i2v";
+import { runI2vFlow } from "./workflows/i2vFlow";
+import { runOptimizeFlow } from "./workflows/optimizeFlow";
+import { runConstitutionalReviewFlow } from "./workflows/constitutionalReview";
 
 /**
  * Refactored Prompt Optimization Service - Orchestrator Pattern
@@ -51,17 +51,23 @@ export class PromptOptimizationService {
     videoPromptService: VideoPromptService | null = null,
     imageObservationService: ImageObservationService,
     templateService?: TemplateService,
-    shotPlanCacheConfig?: { cacheTtlMs: number; cacheMax: number }
+    shotPlanCacheConfig?: { cacheTtlMs: number; cacheMax: number },
   ) {
     this.ai = aiService;
-    this.log = logger.child({ service: 'PromptOptimizationService' });
+    this.log = logger.child({ service: "PromptOptimizationService" });
 
     const resolvedTemplateService = templateService ?? new TemplateService();
     this.videoStrategy = new VideoStrategy(aiService, resolvedTemplateService);
-    this.shotInterpreter = new ShotInterpreterService(aiService, shotPlanCacheConfig);
+    this.shotInterpreter = new ShotInterpreterService(
+      aiService,
+      shotPlanCacheConfig,
+    );
     this.optimizationCache = new OptimizationCacheService(cacheService);
     this.compilationService = videoPromptService
-      ? new VideoPromptCompilationService(videoPromptService, this.optimizationCache)
+      ? new VideoPromptCompilationService(
+          videoPromptService,
+          this.optimizationCache,
+        )
       : null;
     this.imageObservation = imageObservationService;
     this.i2vStrategy = new I2VMotionStrategy(aiService);
@@ -69,20 +75,24 @@ export class PromptOptimizationService {
     this.promptLint = new PromptLintGateService(
       videoPromptService
         ? {
-            getModelConstraints: (modelId) => videoPromptService.getModelConstraints(modelId),
+            getModelConstraints: (modelId) =>
+              videoPromptService.getModelConstraints(modelId),
           }
-        : undefined
+        : undefined,
     );
-    this.pipelineV2Enabled = process.env.PROMPT_PIPELINE_V2 !== 'false';
+    this.pipelineV2Enabled = process.env.PROMPT_PIPELINE_V2 !== "false";
 
     this.templateVersions = OptimizationConfig.templateVersions;
 
-    this.log.info('PromptOptimizationService initialized with refactored architecture', {
-      operation: 'constructor',
-      availableClients: this.ai.getAvailableClients?.(),
-      strategy: this.videoStrategy.name,
-      pipelineV2Enabled: this.pipelineV2Enabled,
-    });
+    this.log.info(
+      "PromptOptimizationService initialized with refactored architecture",
+      {
+        operation: "constructor",
+        availableClients: this.ai.getAvailableClients?.(),
+        strategy: this.videoStrategy.name,
+        pipelineV2Enabled: this.pipelineV2Enabled,
+      },
+    );
   }
 
   async optimize(request: OptimizationRequest): Promise<OptimizationResponse> {
@@ -120,7 +130,11 @@ export class PromptOptimizationService {
       intentLock: this.pipelineV2Enabled
         ? this.intentLock
         : {
-            enforceIntentLock: ({ optimizedPrompt, originalPrompt, shotPlan }) => {
+            enforceIntentLock: ({
+              optimizedPrompt,
+              originalPrompt,
+              shotPlan,
+            }) => {
               void originalPrompt;
               void shotPlan;
               return {
@@ -136,7 +150,12 @@ export class PromptOptimizationService {
         : {
             enforce: ({ prompt }) => ({
               prompt,
-              lint: { ok: true, errors: [], warnings: [], wordCount: prompt.split(/\s+/).length },
+              lint: {
+                ok: true,
+                errors: [],
+                warnings: [],
+                wordCount: prompt.split(/\s+/).length,
+              },
               repaired: false,
             }),
           },
@@ -173,17 +192,17 @@ export class PromptOptimizationService {
     context?: CompileContext | null;
   }): Promise<CompilePromptResponse> {
     if (!this.compilationService) {
-      throw new Error('Video prompt service unavailable');
+      throw new Error("Video prompt service unavailable");
     }
 
-    const normalizedPrompt = typeof prompt === 'string' ? prompt : '';
+    const normalizedPrompt = typeof prompt === "string" ? prompt : "";
     const compilation = await this.compilationService.compile({
-      operation: 'compilePrompt',
-      mode: 'video',
+      operation: "compilePrompt",
+      mode: "video",
       targetModel,
       source: artifactKey
-        ? { kind: 'artifactKey', artifactKey }
-        : { kind: 'prompt', prompt: normalizedPrompt },
+        ? { kind: "artifactKey", artifactKey }
+        : { kind: "prompt", prompt: normalizedPrompt },
       context: context ?? null,
       fallbackPrompt: normalizedPrompt,
       ...(artifactKey ? { artifactKey } : {}),
@@ -193,7 +212,10 @@ export class PromptOptimizationService {
     let compilationState = compilation.compilation;
 
     if (this.pipelineV2Enabled) {
-      const originalPrompt = this.resolveOriginalPromptForCompile(context, normalizedPrompt);
+      const originalPrompt = this.resolveOriginalPromptForCompile(
+        context,
+        normalizedPrompt,
+      );
       const intent = applyIntentLockPolicy({
         intentLock: this.intentLock,
         originalPrompt,
@@ -204,7 +226,9 @@ export class PromptOptimizationService {
       compiledPrompt = intent.prompt;
       compilationState = {
         ...compilationState,
-        ...(intent.compilationIntentLock ? { intentLock: intent.compilationIntentLock } : {}),
+        ...(intent.compilationIntentLock
+          ? { intentLock: intent.compilationIntentLock }
+          : {}),
       };
 
       const lint = this.promptLint.enforce({
@@ -226,7 +250,9 @@ export class PromptOptimizationService {
       compiledPrompt,
       metadata,
       targetModel: compilationState.compiledFor ?? targetModel,
-      ...(compilation.artifactKey ? { artifactKey: compilation.artifactKey } : {}),
+      ...(compilation.artifactKey
+        ? { artifactKey: compilation.artifactKey }
+        : {}),
       compilation: compilationState,
     };
   }
@@ -237,7 +263,7 @@ export class PromptOptimizationService {
   private async applyConstitutionalAI(
     prompt: string,
     mode: OptimizationMode,
-    signal?: AbortSignal
+    signal?: AbortSignal,
   ): Promise<string> {
     return runConstitutionalReviewFlow({
       prompt,
@@ -254,34 +280,40 @@ export class PromptOptimizationService {
   private logOptimizationMetrics(
     originalPrompt: string,
     optimizedPrompt: string,
-    mode: OptimizationMode
+    mode: OptimizationMode,
   ): void {
-    logger.info('Optimization metrics', {
+    logger.info("Optimization metrics", {
       mode,
       originalLength: originalPrompt.length,
       optimizedLength: optimizedPrompt.length,
       lengthChange: optimizedPrompt.length - originalPrompt.length,
-      lengthChangePercent: ((optimizedPrompt.length / originalPrompt.length - 1) * 100).toFixed(1),
+      lengthChangePercent: (
+        (optimizedPrompt.length / originalPrompt.length - 1) *
+        100
+      ).toFixed(1),
     });
   }
 
   private resolveOriginalPromptForCompile(
     context: CompileContext | null | undefined,
-    fallbackPrompt: string
+    fallbackPrompt: string,
   ): string {
-    if (!context || typeof context !== 'object') {
+    if (!context || typeof context !== "object") {
       return fallbackPrompt;
     }
 
     const contextRecord = context as Record<string, unknown>;
     const originalPromptCandidate = contextRecord.originalPrompt;
-    if (typeof originalPromptCandidate === 'string' && originalPromptCandidate.trim().length > 0) {
+    if (
+      typeof originalPromptCandidate === "string" &&
+      originalPromptCandidate.trim().length > 0
+    ) {
       return originalPromptCandidate.trim();
     }
 
     const originalUserPromptCandidate = contextRecord.originalUserPrompt;
     if (
-      typeof originalUserPromptCandidate === 'string' &&
+      typeof originalUserPromptCandidate === "string" &&
       originalUserPromptCandidate.trim().length > 0
     ) {
       return originalUserPromptCandidate.trim();

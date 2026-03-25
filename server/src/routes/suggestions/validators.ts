@@ -19,13 +19,14 @@ export interface SuggestionsContext {
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null;
+  typeof value === "object" && value !== null;
 
 const isSuggestion = (value: unknown): value is { text: string } =>
-  isRecord(value) && typeof value.text === 'string';
+  isRecord(value) && typeof value.text === "string";
 
-const isSuggestionArray = (value: unknown[]): value is Array<{ text: string }> =>
-  value.every(isSuggestion);
+const isSuggestionArray = (
+  value: unknown[],
+): value is Array<{ text: string }> => value.every(isSuggestion);
 
 const MIN_SUGGESTION_LENGTH = 3;
 const MAX_SUGGESTION_LENGTH = 300;
@@ -38,14 +39,14 @@ const PLACEHOLDER_TEXT_PATTERNS: RegExp[] = [
 ];
 
 function validationError(message: string): ValidationFailure {
-  return { ok: false, status: 400, error: 'Invalid request', message };
+  return { ok: false, status: 400, error: "Invalid request", message };
 }
 
 function normalizeSuggestionText(
   text: string,
-  fieldPath: string
+  fieldPath: string,
 ): ValidationResult<string> {
-  const normalized = text.trim().replace(/\s+/g, ' ');
+  const normalized = text.trim().replace(/\s+/g, " ");
   const lower = normalized.toLowerCase();
 
   if (!normalized) {
@@ -54,13 +55,13 @@ function normalizeSuggestionText(
 
   if (normalized.length < MIN_SUGGESTION_LENGTH) {
     return validationError(
-      `${fieldPath} must be at least ${MIN_SUGGESTION_LENGTH} characters`
+      `${fieldPath} must be at least ${MIN_SUGGESTION_LENGTH} characters`,
     );
   }
 
   if (normalized.length > MAX_SUGGESTION_LENGTH) {
     return validationError(
-      `${fieldPath} must be at most ${MAX_SUGGESTION_LENGTH} characters`
+      `${fieldPath} must be at most ${MAX_SUGGESTION_LENGTH} characters`,
     );
   }
 
@@ -72,18 +73,21 @@ function normalizeSuggestionText(
 }
 
 function extractContext(
-  context: unknown
+  context: unknown,
 ): ValidationResult<SuggestionsContext> {
   if (!isRecord(context)) {
-    return validationError('context.highlightedText is required');
+    return validationError("context.highlightedText is required");
   }
   const highlightedText = context.highlightedText;
-  if (typeof highlightedText !== 'string' || highlightedText.length === 0) {
-    return validationError('context.highlightedText is required');
+  if (typeof highlightedText !== "string" || highlightedText.length === 0) {
+    return validationError("context.highlightedText is required");
   }
-  const fullPrompt = typeof context.fullPrompt === 'string' ? context.fullPrompt : undefined;
+  const fullPrompt =
+    typeof context.fullPrompt === "string" ? context.fullPrompt : undefined;
   const isVideoPrompt =
-    typeof context.isVideoPrompt === 'boolean' ? context.isVideoPrompt : undefined;
+    typeof context.isVideoPrompt === "boolean"
+      ? context.isVideoPrompt
+      : undefined;
   return {
     ok: true,
     data: {
@@ -96,16 +100,16 @@ function extractContext(
 
 function withOptionalRubric<T extends Record<string, unknown>>(
   data: T,
-  rubric: unknown
+  rubric: unknown,
 ): T & { rubric?: string } {
-  if (typeof rubric === 'string') {
+  if (typeof rubric === "string") {
     return { ...data, rubric };
   }
   return data;
 }
 
 export function validateEvaluateRequest(
-  body: Record<string, unknown>
+  body: Record<string, unknown>,
 ): ValidationResult<{
   suggestions: Array<{ text: string }>;
   context: SuggestionsContext;
@@ -114,10 +118,10 @@ export function validateEvaluateRequest(
   const { suggestions, context, rubric } = body;
 
   if (!suggestions || !Array.isArray(suggestions) || suggestions.length === 0) {
-    return validationError('suggestions must be a non-empty array');
+    return validationError("suggestions must be a non-empty array");
   }
   if (!isSuggestionArray(suggestions)) {
-    return validationError('suggestions must be an array of { text: string }');
+    return validationError("suggestions must be an array of { text: string }");
   }
 
   const normalizedSuggestions: Array<{ text: string }> = [];
@@ -128,7 +132,7 @@ export function validateEvaluateRequest(
     }
     const normalizedText = normalizeSuggestionText(
       suggestion.text,
-      `suggestions[${i}].text`
+      `suggestions[${i}].text`,
     );
     if (!normalizedText.ok) {
       return normalizedText;
@@ -146,13 +150,13 @@ export function validateEvaluateRequest(
     ok: true,
     data: withOptionalRubric(
       { suggestions: normalizedSuggestions, context: ctxResult.data },
-      rubric
+      rubric,
     ),
   };
 }
 
 export function validateSingleEvaluationRequest(
-  body: Record<string, unknown>
+  body: Record<string, unknown>,
 ): ValidationResult<{
   suggestion: string;
   context: SuggestionsContext;
@@ -160,11 +164,14 @@ export function validateSingleEvaluationRequest(
 }> {
   const { suggestion, context, rubric } = body;
 
-  if (!suggestion || typeof suggestion !== 'string') {
-    return validationError('suggestion must be a string');
+  if (!suggestion || typeof suggestion !== "string") {
+    return validationError("suggestion must be a string");
   }
 
-  const normalizedSuggestion = normalizeSuggestionText(suggestion, 'suggestion');
+  const normalizedSuggestion = normalizeSuggestionText(
+    suggestion,
+    "suggestion",
+  );
   if (!normalizedSuggestion.ok) {
     return normalizedSuggestion;
   }
@@ -176,13 +183,13 @@ export function validateSingleEvaluationRequest(
     ok: true,
     data: withOptionalRubric(
       { suggestion: normalizedSuggestion.data, context: ctxResult.data },
-      rubric
+      rubric,
     ),
   };
 }
 
 export function validateCompareRequest(
-  body: Record<string, unknown>
+  body: Record<string, unknown>,
 ): ValidationResult<{
   setA: Array<{ text: string }>;
   setB: Array<{ text: string }>;
@@ -192,10 +199,12 @@ export function validateCompareRequest(
   const { setA, setB, context, rubric } = body;
 
   if (!Array.isArray(setA) || !Array.isArray(setB)) {
-    return validationError('setA and setB must be arrays');
+    return validationError("setA and setB must be arrays");
   }
   if (!isSuggestionArray(setA) || !isSuggestionArray(setB)) {
-    return validationError('setA and setB must contain { text: string } entries');
+    return validationError(
+      "setA and setB must contain { text: string } entries",
+    );
   }
 
   const normalizedSetA: Array<{ text: string }> = [];
@@ -206,7 +215,7 @@ export function validateCompareRequest(
     }
     const normalizedText = normalizeSuggestionText(
       suggestion.text,
-      `setA[${i}].text`
+      `setA[${i}].text`,
     );
     if (!normalizedText.ok) {
       return normalizedText;
@@ -225,7 +234,7 @@ export function validateCompareRequest(
     }
     const normalizedText = normalizeSuggestionText(
       suggestion.text,
-      `setB[${i}].text`
+      `setB[${i}].text`,
     );
     if (!normalizedText.ok) {
       return normalizedText;
@@ -247,7 +256,7 @@ export function validateCompareRequest(
         setB: normalizedSetB,
         context: ctxResult.data,
       },
-      rubric
+      rubric,
     ),
   };
 }

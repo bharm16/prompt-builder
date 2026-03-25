@@ -1,1 +1,1 @@
-export { sleep } from '@utils/sleep';
+export { sleep } from "@utils/sleep";

@@ -8,7 +8,10 @@ export function sleep(ms: number): Promise<void> {
  * @param baseMs Base delay in milliseconds
  * @param jitterFraction Fraction of baseMs to vary (default 0.25 = ±25%)
  */
-export function sleepWithJitter(baseMs: number, jitterFraction = 0.25): Promise<void> {
+export function sleepWithJitter(
+  baseMs: number,
+  jitterFraction = 0.25,
+): Promise<void> {
   const jitter = baseMs * jitterFraction * (2 * Math.random() - 1);
   const ms = Math.max(100, Math.round(baseMs + jitter));
   return sleep(ms);
@@ -27,11 +30,14 @@ export function pollingDelay(
   elapsedMs: number,
   backoffAfterMs = 30_000,
   maxMultiplier = 2,
-  jitterFraction = 0.25
+  jitterFraction = 0.25,
 ): number {
   let delay = baseMs;
   if (elapsedMs > backoffAfterMs) {
-    const multiplier = Math.min(maxMultiplier, 1 + (elapsedMs - backoffAfterMs) / backoffAfterMs);
+    const multiplier = Math.min(
+      maxMultiplier,
+      1 + (elapsedMs - backoffAfterMs) / backoffAfterMs,
+    );
     delay = Math.round(baseMs * multiplier);
   }
   const jitter = delay * jitterFraction * (2 * Math.random() - 1);

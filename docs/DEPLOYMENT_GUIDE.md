@@ -1,6 +1,7 @@
 # Deployment Engineering Guide
 
 ## Table of Contents
+
 1. [Overview](#overview)
 2. [Architecture](#architecture)
 3. [Prerequisites](#prerequisites)
@@ -17,6 +18,7 @@
 ## Overview
 
 This guide covers the complete deployment engineering approach for the Prompt Builder application, including:
+
 - Automated CI/CD pipelines
 - Zero-downtime deployments
 - Progressive delivery strategies
@@ -76,6 +78,7 @@ This guide covers the complete deployment engineering approach for the Prompt Bu
 ## Prerequisites
 
 ### Required Tools
+
 - Docker (20.10+)
 - kubectl (1.25+)
 - kustomize (4.5+)
@@ -84,6 +87,7 @@ This guide covers the complete deployment engineering approach for the Prompt Bu
 - k6 (for load testing)
 
 ### Required Accounts/Services
+
 - GitHub account with Actions enabled
 - Container registry (GitHub Container Registry)
 - Kubernetes cluster (EKS, GKE, or AKS)
@@ -126,7 +130,9 @@ SLACK_WEBHOOK                   # Slack notifications
 ### Workflows
 
 #### 1. Test Pipeline (`test.yml`)
+
 Runs on every push and PR:
+
 - Unit tests with coverage
 - Linting (ESLint)
 - Code formatting check (Prettier)
@@ -134,7 +140,9 @@ Runs on every push and PR:
 - Coverage reporting to Codecov
 
 #### 2. Security Scanning (`security-scan.yml`)
+
 Runs on push/PR and daily schedule:
+
 - Dependency scanning (npm audit, Snyk)
 - Secret scanning (TruffleHog, Gitleaks)
 - Container scanning (Trivy, Grype)
@@ -142,27 +150,35 @@ Runs on push/PR and daily schedule:
 - License compliance (FOSSA)
 
 #### 3. Build & Push (`build-and-push.yml`)
+
 Runs on main branch push:
+
 - Multi-platform Docker build (amd64, arm64)
 - Image signing with Cosign
 - SBOM generation
 - Push to GitHub Container Registry
 
 #### 4. E2E Testing (`e2e.yml`)
+
 Runs on push/PR:
+
 - Playwright E2E tests
 - Visual regression tests
 - Accessibility tests (Pa11y, Lighthouse)
 
 #### 5. Performance Testing (`performance.yml`)
+
 Runs on main push and daily schedule:
+
 - k6 load testing
 - Bundle size analysis
 - Lighthouse performance audit
 - Memory profiling
 
 #### 6. Deployment (`deploy.yml`)
+
 Runs on main push and tags:
+
 - Deploy to staging (automatic)
 - Deploy to production (manual approval)
 - Blue-green deployment with traffic shifting
@@ -172,12 +188,14 @@ Runs on main push and tags:
 ### Triggering Deployments
 
 #### Staging Deployment
+
 ```bash
 # Automatic on main branch push
 git push origin main
 ```
 
 #### Production Deployment
+
 ```bash
 # Create and push a version tag
 git tag -a v1.2.3 -m "Release v1.2.3"
@@ -190,6 +208,7 @@ gh workflow run deploy.yml -f environment=production
 ## Deployment Strategies
 
 ### 1. Staging: Rolling Update
+
 - Automatic deployment on main branch
 - Rolling update strategy
 - 2 replicas minimum
@@ -198,12 +217,14 @@ gh workflow run deploy.yml -f environment=production
 ### 2. Production: Blue-Green with Canary
 
 #### Phase 1: Blue-Green Setup
+
 ```
 Blue (Current)         Green (New)
     100% traffic  →      0% traffic
 ```
 
 #### Phase 2: Canary Testing
+
 ```
 Blue                    Green
     90% traffic  →      10% traffic (5 minutes)
@@ -213,7 +234,9 @@ Blue                    Green
 ```
 
 #### Phase 3: Analysis
+
 At each canary step:
+
 - Success rate >= 95%
 - P95 latency <= 1000ms
 - P99 latency <= 2000ms
@@ -225,6 +248,7 @@ Auto-rollback if any metric fails.
 ### 3. Progressive Delivery with Argo Rollouts
 
 For Kubernetes deployments:
+
 ```bash
 # Deploy canary
 kubectl apply -f k8s/rollouts/canary-rollout.yaml
@@ -274,6 +298,7 @@ kubectl argo rollouts abort prompt-builder-api
 ### Deploying to Kubernetes
 
 #### Using kubectl + Kustomize
+
 ```bash
 # Staging
 kubectl apply -k k8s/overlays/staging
@@ -283,6 +308,7 @@ kubectl apply -k k8s/overlays/production
 ```
 
 #### Using ArgoCD (GitOps)
+
 ```bash
 # Install ArgoCD applications
 kubectl apply -f argocd/application-staging.yaml
@@ -299,6 +325,7 @@ argocd app get prompt-builder-production
 ## Security
 
 ### Image Signing Verification
+
 ```bash
 # Verify image signature
 cosign verify \
@@ -308,6 +335,7 @@ cosign verify \
 ```
 
 ### SBOM Generation
+
 ```bash
 # View SBOM
 cosign download sbom ghcr.io/bharm16/prompt-builder:latest
@@ -316,6 +344,7 @@ cosign download sbom ghcr.io/bharm16/prompt-builder:latest
 ### Secrets Management
 
 #### Option 1: External Secrets Operator
+
 ```yaml
 # Create SecretStore
 apiVersion: external-secrets.io/v1beta1
@@ -330,6 +359,7 @@ spec:
 ```
 
 #### Option 2: Sealed Secrets
+
 ```bash
 # Seal a secret
 kubectl create secret generic my-secret --dry-run=client -o yaml | \
@@ -337,6 +367,7 @@ kubectl create secret generic my-secret --dry-run=client -o yaml | \
 ```
 
 ### Network Policies
+
 ```bash
 # Apply network policies
 kubectl apply -f k8s/security/network-policies.yaml
@@ -347,6 +378,7 @@ kubectl apply -f k8s/security/network-policies.yaml
 ### Metrics
 
 **Application Metrics** (via `/metrics` endpoint):
+
 - HTTP request rate
 - Response times (P50, P95, P99)
 - Error rates by endpoint
@@ -354,6 +386,7 @@ kubectl apply -f k8s/security/network-policies.yaml
 - Circuit breaker states
 
 **Infrastructure Metrics** (via Prometheus):
+
 - Pod CPU/Memory usage
 - Network I/O
 - Disk usage
@@ -362,6 +395,7 @@ kubectl apply -f k8s/security/network-policies.yaml
 ### Logs
 
 **Structured Logging** (Pino):
+
 ```json
 {
   "level": "info",
@@ -375,12 +409,14 @@ kubectl apply -f k8s/security/network-policies.yaml
 ```
 
 **Log Aggregation**:
+
 - Stdout/stderr → Fluentd/Fluent Bit → Elasticsearch/CloudWatch
 - Query via Kibana/CloudWatch Insights
 
 ### Alerts
 
 Critical alerts configured in Prometheus:
+
 - API down (2+ minutes)
 - High error rate (>5%)
 - High latency (P95 >1s)
@@ -390,6 +426,7 @@ Critical alerts configured in Prometheus:
 ### Dashboards
 
 **Grafana Dashboards**:
+
 1. Application Overview
    - Request rate
    - Success rate
@@ -424,6 +461,7 @@ open http://localhost:9090  # Prometheus
 ### Automatic Rollback
 
 Automatic rollback triggers:
+
 - Health check failures
 - High error rate (>5%)
 - High latency (P95 >1s)
@@ -432,6 +470,7 @@ Automatic rollback triggers:
 ### Manual Rollback
 
 #### Kubernetes Deployment
+
 ```bash
 # View rollout history
 kubectl rollout history deployment/prompt-builder-api -n production
@@ -444,6 +483,7 @@ kubectl rollout undo deployment/prompt-builder-api -n production --to-revision=3
 ```
 
 #### ArgoCD
+
 ```bash
 # View application history
 argocd app history prompt-builder-production
@@ -456,6 +496,7 @@ argocd app rollback prompt-builder-production 5
 ```
 
 #### Argo Rollouts
+
 ```bash
 # Abort canary rollout
 kubectl argo rollouts abort prompt-builder-api
@@ -465,6 +506,7 @@ kubectl argo rollouts undo prompt-builder-api
 ```
 
 #### AWS ECS
+
 ```bash
 # Revert to previous task definition
 aws ecs update-service \
@@ -477,6 +519,7 @@ aws ecs update-service \
 ### Database Rollback
 
 If database migrations were applied:
+
 ```bash
 # Run down migration
 npm run migrate:down
@@ -490,6 +533,7 @@ pg_restore -d prompt_builder backup.dump
 ### Deployment Failures
 
 #### Pod CrashLoopBackOff
+
 ```bash
 # Check pod logs
 kubectl logs -n production pod/prompt-builder-api-xyz --previous
@@ -505,6 +549,7 @@ kubectl describe pod -n production prompt-builder-api-xyz
 ```
 
 #### ImagePullBackOff
+
 ```bash
 # Check image pull secrets
 kubectl get secret ghcr-pull-secret -n production -o yaml
@@ -520,6 +565,7 @@ kubectl create secret docker-registry ghcr-pull-secret \
 ```
 
 #### Deployment Timeout
+
 ```bash
 # Check deployment status
 kubectl rollout status deployment/prompt-builder-api -n production
@@ -537,6 +583,7 @@ kubectl get events -n production --sort-by='.lastTimestamp'
 ### Performance Issues
 
 #### High Latency
+
 ```bash
 # Check pod metrics
 kubectl top pods -n production -l app=prompt-builder
@@ -549,6 +596,7 @@ kubectl scale deployment/prompt-builder-api --replicas=10 -n production
 ```
 
 #### Memory Leaks
+
 ```bash
 # Get memory usage
 kubectl top pod -n production -l app=prompt-builder
@@ -563,6 +611,7 @@ kubectl exec -it pod-name -- node --heap-prof server.js
 ### Security Issues
 
 #### Certificate Expired
+
 ```bash
 # Check certificate
 kubectl get certificate -n production
@@ -573,6 +622,7 @@ kubectl apply -f k8s/base/ingress.yaml
 ```
 
 #### Secrets Not Loading
+
 ```bash
 # Check secret exists
 kubectl get secret prompt-builder-secrets -n production
@@ -585,6 +635,7 @@ kubectl describe externalsecret prompt-builder-secrets -n production
 ### Monitoring Issues
 
 #### Missing Metrics
+
 ```bash
 # Check ServiceMonitor
 kubectl get servicemonitor -n production
@@ -595,6 +646,7 @@ kubectl port-forward -n monitoring svc/prometheus 9090:9090
 ```
 
 #### Alerts Not Firing
+
 ```bash
 # Check PrometheusRule
 kubectl get prometheusrule -n production
@@ -646,6 +698,7 @@ kubectl logs -n monitoring alertmanager-0
 ## Support
 
 For deployment issues:
+
 1. Check this guide first
 2. Review application logs
 3. Check monitoring dashboards

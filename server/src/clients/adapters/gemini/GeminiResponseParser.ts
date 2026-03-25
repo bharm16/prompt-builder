@@ -5,14 +5,16 @@
  * standard AIResponse format. Changes when Gemini's response schema changes.
  */
 
-import type { GeminiResponse, GeminiPart, AIResponse } from './types.ts';
+import type { GeminiResponse, GeminiPart, AIResponse } from "./types.ts";
 
 export class GeminiResponseParser {
   /**
    * Parse Gemini API response into normalized AIResponse format
    */
   parseResponse(data: GeminiResponse): AIResponse {
-    const text = this.extractTextFromParts(data.candidates?.[0]?.content?.parts);
+    const text = this.extractTextFromParts(
+      data.candidates?.[0]?.content?.parts,
+    );
 
     return {
       text,
@@ -30,11 +32,11 @@ export class GeminiResponseParser {
    */
   extractTextFromParts(parts?: GeminiPart[]): string {
     if (!Array.isArray(parts)) {
-      return '';
+      return "";
     }
 
     return parts
-      .map((part) => (typeof part.text === 'string' ? part.text : ''))
-      .join('');
+      .map((part) => (typeof part.text === "string" ? part.text : ""))
+      .join("");
   }
 }

@@ -12,17 +12,18 @@ Items scored using: **Priority = (Impact + Risk) × (6 − Effort)**
 
 ### 1. Zero test coverage on `video-concept/` (15 files)
 
-| Dimension | Score |
-|-----------|-------|
-| Impact | 5 |
-| Risk | 5 |
-| Effort | 4 (high — many files) |
+| Dimension | Score                 |
+| --------- | --------------------- |
+| Impact    | 5                     |
+| Risk      | 5                     |
+| Effort    | 4 (high — many files) |
 
 **Priority: 20**
 
 The entire `video-concept/` service directory has no tests. This includes the orchestrator (`VideoConceptService.ts`), scene completion, scene variation, conflict detection, prompt validation, compatibility checking, and more. This is your largest untested surface area and the guided wizard is a core user-facing flow.
 
 **Files:**
+
 - `server/src/services/video-concept/VideoConceptService.ts`
 - `server/src/services/video-concept/services/SceneCompletionService.ts`
 - `server/src/services/video-concept/services/SceneVariationService.ts`
@@ -45,10 +46,10 @@ The entire `video-concept/` service directory has no tests. This includes the or
 ### 2. ESM violation: `require()` in production code
 
 | Dimension | Score |
-|-----------|-------|
-| Impact | 3 |
-| Risk | 4 |
-| Effort | 2 |
+| --------- | ----- |
+| Impact    | 3     |
+| Risk      | 4     |
+| Effort    | 2     |
 
 **Priority: 28**
 
@@ -57,6 +58,7 @@ The entire `video-concept/` service directory has no tests. This includes the or
 **Root cause:** `server/src/services/quality-feedback/config/judgeRubrics.js` is CommonJS.
 
 **Related:** 5 `.js` files exist in the TypeScript server codebase that should be converted:
+
 - `server/src/llm/span-labeling/nlp/glinerWorker.js` (worker_threads — may need to stay .js)
 - `server/src/services/prompt-optimization/strategies/videoPromptOptimizationTemplate.js`
 - `server/src/services/quality-feedback/config/judgeRubrics.js`
@@ -70,10 +72,10 @@ The entire `video-concept/` service directory has no tests. This includes the or
 ### 3. Dead validation dependencies (`joi`, `express-validator`)
 
 | Dimension | Score |
-|-----------|-------|
-| Impact | 2 |
-| Risk | 3 |
-| Effort | 1 |
+| --------- | ----- |
+| Impact    | 2     |
+| Risk      | 3     |
+| Effort    | 1     |
 
 **Priority: 25**
 
@@ -86,16 +88,17 @@ The entire `video-concept/` service directory has no tests. This includes the or
 ### 4. `Math.random()` for session/request IDs
 
 | Dimension | Score |
-|-----------|-------|
-| Impact | 2 |
-| Risk | 4 |
-| Effort | 1 |
+| --------- | ----- |
+| Impact    | 2     |
+| Risk      | 4     |
+| Effort    | 1     |
 
 **Priority: 24**
 
 27 instances of `Math.random()` across routes and services, including session ID generation in `ContinuitySessionService.ts`. `Math.random()` is not cryptographically secure and produces predictable values that could lead to session collisions or enumeration.
 
 **Key files:**
+
 - `server/src/services/continuity/ContinuitySessionService.ts`
 - `server/src/routes/continuity/continuityRouteShared.ts`
 - `server/src/routes/preview/handlers/imageGenerate.ts`
@@ -108,23 +111,23 @@ The entire `video-concept/` service directory has no tests. This includes the or
 ### 5. Large files exceeding SRP guidelines
 
 | Dimension | Score |
-|-----------|-------|
-| Impact | 3 |
-| Risk | 2 |
-| Effort | 3 |
+| --------- | ----- |
+| Impact    | 3     |
+| Risk      | 2     |
+| Effort    | 3     |
 
 **Priority: 15**
 
 Several files exceed the 500-line guideline for non-orchestrators:
 
-| File | Lines | Assessment |
-|------|-------|------------|
-| `enhancement/services/SuggestionValidationService.ts` | 1,152 | Should split — validation has distinct concerns |
-| `enhancement/EnhancementService.ts` | 924 | Orchestrator with 9 sub-services — acceptable but at limit |
-| `clients/adapters/GroqLlamaAdapter.ts` | 922 | Adapter complexity — review for extraction |
-| `enhancement/services/CleanPromptBuilder.ts` | 834 | Builder pattern — review if separable |
-| `video-prompt-analysis/strategies/KlingStrategy.ts` | 826 | Strategy-specific — likely fine |
-| `continuity/ContinuityShotGenerator.ts` | 784 | No refactoring summary — needs audit |
+| File                                                  | Lines | Assessment                                                 |
+| ----------------------------------------------------- | ----- | ---------------------------------------------------------- |
+| `enhancement/services/SuggestionValidationService.ts` | 1,152 | Should split — validation has distinct concerns            |
+| `enhancement/EnhancementService.ts`                   | 924   | Orchestrator with 9 sub-services — acceptable but at limit |
+| `clients/adapters/GroqLlamaAdapter.ts`                | 922   | Adapter complexity — review for extraction                 |
+| `enhancement/services/CleanPromptBuilder.ts`          | 834   | Builder pattern — review if separable                      |
+| `video-prompt-analysis/strategies/KlingStrategy.ts`   | 826   | Strategy-specific — likely fine                            |
+| `continuity/ContinuityShotGenerator.ts`               | 784   | No refactoring summary — needs audit                       |
 
 **Remediation:** Prioritize `SuggestionValidationService.ts` (1,152 lines) and `ContinuityShotGenerator.ts` (784 lines, no refactoring docs). The others are borderline and can wait.
 
@@ -133,20 +136,20 @@ Several files exceed the 500-line guideline for non-orchestrators:
 ### 6. Zero test coverage on 5 other service domains
 
 | Dimension | Score |
-|-----------|-------|
-| Impact | 3 |
-| Risk | 3 |
-| Effort | 3 |
+| --------- | ----- |
+| Impact    | 3     |
+| Risk      | 3     |
+| Effort    | 3     |
 
 **Priority: 18**
 
-| Service | Files | Risk Level |
-|---------|-------|------------|
-| `firestore/FirestoreCircuitExecutor.ts` | 1 | High — circuit breaker is critical for resilience |
-| `idempotency/` | 1 | High — protects against duplicate video generation |
-| `quality-feedback/` | 2 | Medium — LLM judge rubrics |
-| `reference-images/` | 1 | Low |
-| `taxonomy-validation/` | 5 | Medium — validation logic |
+| Service                                 | Files | Risk Level                                         |
+| --------------------------------------- | ----- | -------------------------------------------------- |
+| `firestore/FirestoreCircuitExecutor.ts` | 1     | High — circuit breaker is critical for resilience  |
+| `idempotency/`                          | 1     | High — protects against duplicate video generation |
+| `quality-feedback/`                     | 2     | Medium — LLM judge rubrics                         |
+| `reference-images/`                     | 1     | Low                                                |
+| `taxonomy-validation/`                  | 5     | Medium — validation logic                          |
 
 **Remediation:** `FirestoreCircuitExecutor` and `idempotency/` should be tested first — both protect against costly failure modes (cascading Firestore failures, duplicate generation charges).
 
@@ -155,10 +158,10 @@ Several files exceed the 500-line guideline for non-orchestrators:
 ### 7. 125 `any` types and 15 `@ts-ignore` directives
 
 | Dimension | Score |
-|-----------|-------|
-| Impact | 2 |
-| Risk | 2 |
-| Effort | 3 |
+| --------- | ----- |
+| Impact    | 2     |
+| Risk      | 2     |
+| Effort    | 3     |
 
 **Priority: 12**
 
@@ -171,10 +174,10 @@ Most `any` usage is at DI boundaries and adapter layers where it's somewhat just
 ### 8. Dependency overrides masking version conflicts
 
 | Dimension | Score |
-|-----------|-------|
-| Impact | 1 |
-| Risk | 3 |
-| Effort | 2 |
+| --------- | ----- |
+| Impact    | 1     |
+| Risk      | 3     |
+| Effort    | 2     |
 
 **Priority: 16**
 

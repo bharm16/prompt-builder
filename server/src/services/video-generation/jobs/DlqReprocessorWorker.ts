@@ -1,8 +1,8 @@
-import { logger } from '@infrastructure/Logger';
-import type { WorkerStatus } from '@services/credits/CreditRefundSweeper';
-import type { VideoJobStore } from './VideoJobStore';
-import type { ProviderCircuitManager } from './ProviderCircuitManager';
-import type { DlqEntry } from './types';
+import { logger } from "@infrastructure/Logger";
+import type { WorkerStatus } from "@services/credits/CreditRefundSweeper";
+import type { VideoJobStore } from "./VideoJobStore";
+import type { ProviderCircuitManager } from "./ProviderCircuitManager";
+import type { DlqEntry } from "./types";
 
 const DEFAULT_POLL_INTERVAL_MS = 30_000;
 const DEFAULT_MAX_POLL_INTERVAL_MS = 300_000;
@@ -16,7 +16,10 @@ interface DlqReprocessorOptions {
   maxEntriesPerRun?: number;
   providerCircuitManager?: ProviderCircuitManager;
   metrics?: {
-    recordAlert: (alertName: string, metadata?: Record<string, unknown>) => void;
+    recordAlert: (
+      alertName: string,
+      metadata?: Record<string, unknown>,
+    ) => void;
   };
 }
 
@@ -27,8 +30,8 @@ export class DlqReprocessorWorker {
   private readonly backoffFactor: number;
   private readonly maxEntriesPerRun: number;
   private readonly providerCircuitManager: ProviderCircuitManager | undefined;
-  private readonly metrics?: DlqReprocessorOptions['metrics'];
-  private readonly log = logger.child({ service: 'DlqReprocessorWorker' });
+  private readonly metrics?: DlqReprocessorOptions["metrics"];
+  private readonly log = logger.child({ service: "DlqReprocessorWorker" });
   private timer: NodeJS.Timeout | null = null;
   private currentPollIntervalMs: number;
   private started = false;
@@ -38,10 +41,13 @@ export class DlqReprocessorWorker {
 
   constructor(jobStore: VideoJobStore, options: DlqReprocessorOptions = {}) {
     this.jobStore = jobStore;
-    this.basePollIntervalMs = options.pollIntervalMs ?? DEFAULT_POLL_INTERVAL_MS;
-    this.maxPollIntervalMs = options.maxPollIntervalMs ?? DEFAULT_MAX_POLL_INTERVAL_MS;
+    this.basePollIntervalMs =
+      options.pollIntervalMs ?? DEFAULT_POLL_INTERVAL_MS;
+    this.maxPollIntervalMs =
+      options.maxPollIntervalMs ?? DEFAULT_MAX_POLL_INTERVAL_MS;
     this.backoffFactor = options.backoffFactor ?? DEFAULT_BACKOFF_FACTOR;
-    this.maxEntriesPerRun = options.maxEntriesPerRun ?? DEFAULT_MAX_ENTRIES_PER_RUN;
+    this.maxEntriesPerRun =
+      options.maxEntriesPerRun ?? DEFAULT_MAX_ENTRIES_PER_RUN;
     this.providerCircuitManager = options.providerCircuitManager;
     this.metrics = options.metrics;
     this.currentPollIntervalMs = this.basePollIntervalMs;
@@ -53,7 +59,7 @@ export class DlqReprocessorWorker {
     }
     this.started = true;
     this.currentPollIntervalMs = this.basePollIntervalMs;
-    this.log.info('DLQ reprocessor started', {
+    this.log.info("DLQ reprocessor started", {
       pollIntervalMs: this.basePollIntervalMs,
       maxEntriesPerRun: this.maxEntriesPerRun,
     });
@@ -85,7 +91,9 @@ export class DlqReprocessorWorker {
       this.timer = null;
     }
     this.scheduleNext(this.basePollIntervalMs);
-    this.log.info('Poll interval reset by circuit recovery', { pollIntervalMs: this.basePollIntervalMs });
+    this.log.info("Poll interval reset by circuit recovery", {
+      pollIntervalMs: this.basePollIntervalMs,
+    });
   }
 
   private scheduleNext(delayMs: number): void {
@@ -107,7 +115,7 @@ export class DlqReprocessorWorker {
     } else {
       this.currentPollIntervalMs = Math.min(
         this.maxPollIntervalMs,
-        Math.round(this.currentPollIntervalMs * this.backoffFactor)
+        Math.round(this.currentPollIntervalMs * this.backoffFactor),
       );
     }
     this.scheduleNext(this.currentPollIntervalMs);
@@ -132,7 +140,7 @@ export class DlqReprocessorWorker {
         }
 
         if (this.isProviderBlocked(entry)) {
-          await this.deferEntry(entry, 'provider circuit open');
+          await this.deferEntry(entry, "provider circuit open");
           deferred += 1;
           continue;
         }
@@ -142,8 +150,10 @@ export class DlqReprocessorWorker {
       }
 
       if (processed > 0 || deferred > 0) {
-        this.log.info('DLQ reprocessor run completed', { processed, deferred });
-        this.metrics?.recordAlert('video_job_dlq_reprocessed_total', { count: processed });
+        this.log.info("DLQ reprocessor run completed", { processed, deferred });
+        this.metrics?.recordAlert("video_job_dlq_reprocessed_total", {
+          count: processed,
+        });
       }
 
       this.lastRunAt = new Date();
@@ -152,8 +162,9 @@ export class DlqReprocessorWorker {
     } catch (error) {
       this.lastRunAt = new Date();
       this.consecutiveFailures += 1;
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      this.log.warn('DLQ reprocessor run failed', { error: errorMessage });
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      this.log.warn("DLQ reprocessor run failed", { error: errorMessage });
       return false;
     } finally {
       this.running = false;
@@ -161,14 +172,18 @@ export class DlqReprocessorWorker {
   }
 
   private isProviderBlocked(entry: DlqEntry): boolean {
-    if (!this.providerCircuitManager || !entry.provider || entry.provider === 'unknown') {
+    if (
+      !this.providerCircuitManager ||
+      !entry.provider ||
+      entry.provider === "unknown"
+    ) {
       return false;
     }
     return !this.providerCircuitManager.canDispatch(entry.provider);
   }
 
   private async deferEntry(entry: DlqEntry, reason: string): Promise<void> {
-    this.log.debug('Deferring DLQ entry due to blocked provider', {
+    this.log.debug("Deferring DLQ entry due to blocked provider", {
       dlqId: entry.id,
       jobId: entry.jobId,
       provider: entry.provider,
@@ -180,7 +195,7 @@ export class DlqReprocessorWorker {
       entry.id,
       Math.max(0, entry.dlqAttempt - 1), // keep attempt unchanged
       entry.maxDlqAttempts,
-      `Deferred: ${reason}`
+      `Deferred: ${reason}`,
     );
   }
 
@@ -192,12 +207,15 @@ export class DlqReprocessorWorker {
       const creditsForReprocessedJob = 0;
 
       if (entry.creditsReserved > 0) {
-        this.log.info('DLQ reprocessing: reprocessed job carries zero credits', {
-          dlqId: entry.id,
-          jobId: entry.jobId,
-          originalCredits: entry.creditsReserved,
-          creditsRefunded: entry.creditsRefunded,
-        });
+        this.log.info(
+          "DLQ reprocessing: reprocessed job carries zero credits",
+          {
+            dlqId: entry.id,
+            jobId: entry.jobId,
+            originalCredits: entry.creditsReserved,
+            creditsRefunded: entry.creditsRefunded,
+          },
+        );
       }
 
       // Re-enqueue the job into the main queue for the worker to pick up
@@ -210,15 +228,16 @@ export class DlqReprocessorWorker {
 
       await this.jobStore.markDlqReprocessed(entry.id);
 
-      this.log.info('DLQ entry reprocessed successfully', {
+      this.log.info("DLQ entry reprocessed successfully", {
         dlqId: entry.id,
         jobId: entry.jobId,
         provider: entry.provider,
         attempt: entry.dlqAttempt,
       });
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      this.log.warn('DLQ reprocess attempt failed', {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      this.log.warn("DLQ reprocess attempt failed", {
         dlqId: entry.id,
         jobId: entry.jobId,
         provider: entry.provider,
@@ -230,11 +249,11 @@ export class DlqReprocessorWorker {
         entry.id,
         entry.dlqAttempt,
         entry.maxDlqAttempts,
-        errorMessage
+        errorMessage,
       );
 
       if (entry.dlqAttempt + 1 >= entry.maxDlqAttempts) {
-        this.metrics?.recordAlert('video_job_dlq_escalated_total', {
+        this.metrics?.recordAlert("video_job_dlq_escalated_total", {
           dlqId: entry.id,
           jobId: entry.jobId,
           provider: entry.provider,

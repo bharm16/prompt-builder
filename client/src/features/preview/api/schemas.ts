@@ -13,4 +13,4 @@ export {
   FaceSwapPreviewResponseSchema,
   GenerateVideoResponseSchema,
   VideoJobStatusResponseSchema,
-} from '@shared/schemas/preview.schemas';
+} from "@shared/schemas/preview.schemas";

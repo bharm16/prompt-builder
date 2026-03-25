@@ -10,6 +10,7 @@ PromptStudio System is the **single source of truth** for design tokens and typo
 - **Tailwind preset** exposes token-backed utilities (unprefixed)
 
 The system lives in the workspace package:
+
 - `packages/promptstudio-system/src/tokens.css`
 - `packages/promptstudio-system/src/type.css`
 - `packages/promptstudio-system/tailwind.preset.js`
@@ -48,6 +49,7 @@ The system defines a 4px grid spacing scale via CSS vars and exposes it to Tailw
 - `top-ps-6`, `left-ps-4` (inset utilities)
 
 Token keys:
+
 - `ps-0` .. `ps-10`
 - `ps-page` (default page padding / section rhythm)
 - `ps-card` (default card padding)
@@ -55,18 +57,20 @@ Token keys:
 ### Typography
 
 Semantic sizes:
+
 - `text-h1` … `text-h5`
 - `text-body`, `text-body-sm`, `text-body-lg`
 - `text-label`, `text-label-sm`
 - `text-meta`, `text-code`
 
 Compatibility sizes (still token-backed, but numeric):
+
 - `text-heading-40`, `text-heading-32`, `text-heading-24`, `text-heading-20`, `text-heading-18`, `text-heading-16`, `text-heading-14`
 - `text-copy-16`, `text-copy-14`, `text-copy-13`
 - `text-label-16`, `text-label-14`, `text-label-13`, `text-label-12`
 - `text-button-16`, `text-button-14`, `text-button-12`
 
-## Layout spacing tokens (ps-*)
+## Layout spacing tokens (ps-\*)
 
 Layout components in `client/src/components/layout` support `ps-*` tokens, mapped directly to CSS vars:
 
@@ -80,4 +84,3 @@ Example:
 ## Editing the system
 
 Make changes in the package and keep apps consuming the preset + CSS import. Avoid reintroducing app-local token sources.
-

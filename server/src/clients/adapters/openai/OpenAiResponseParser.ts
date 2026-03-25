@@ -2,13 +2,21 @@
  * OpenAiResponseParser - Normalizes OpenAI-compatible responses
  */
 
-import type { AIResponse, CompletionOptions, LogprobInfo, OpenAIResponseData } from './types.ts';
+import type {
+  AIResponse,
+  CompletionOptions,
+  LogprobInfo,
+  OpenAIResponseData,
+} from "./types.ts";
 
 export class OpenAiResponseParser {
   constructor(private readonly providerName: string) {}
 
-  parseResponse(data: OpenAIResponseData, options: CompletionOptions): AIResponse {
-    const text = data.choices?.[0]?.message?.content || '';
+  parseResponse(
+    data: OpenAIResponseData,
+    options: CompletionOptions,
+  ): AIResponse {
+    const text = data.choices?.[0]?.message?.content || "";
 
     let logprobsInfo: LogprobInfo[] | undefined;
     let averageConfidence: number | undefined;
@@ -21,18 +29,21 @@ export class OpenAiResponseParser {
       }));
 
       if (logprobsInfo.length > 0) {
-        const sum = logprobsInfo.reduce((acc, item) => acc + item.probability, 0);
+        const sum = logprobsInfo.reduce(
+          (acc, item) => acc + item.probability,
+          0,
+        );
         averageConfidence = sum / logprobsInfo.length;
       }
     }
 
     const optimizations: string[] = [];
-    if (options.schema) optimizations.push('structured-outputs-strict');
-    if (options.developerMessage) optimizations.push('developer-role');
-    if (options.enableBookending) optimizations.push('bookending');
-    if (options.seed !== undefined) optimizations.push('seed-deterministic');
-    if (options.logprobs) optimizations.push('logprobs-confidence');
-    if (options.prediction) optimizations.push('predicted-outputs');
+    if (options.schema) optimizations.push("structured-outputs-strict");
+    if (options.developerMessage) optimizations.push("developer-role");
+    if (options.enableBookending) optimizations.push("bookending");
+    if (options.seed !== undefined) optimizations.push("seed-deterministic");
+    if (options.logprobs) optimizations.push("logprobs-confidence");
+    if (options.prediction) optimizations.push("predicted-outputs");
 
     const metadata = {
       usage: data.usage,
@@ -41,11 +52,15 @@ export class OpenAiResponseParser {
       provider: this.providerName,
       optimizations,
       ...(data.model ? { model: data.model } : {}),
-      ...(data.choices?.[0]?.finish_reason ? { finishReason: data.choices[0].finish_reason } : {}),
-      ...(data.system_fingerprint ? { systemFingerprint: data.system_fingerprint } : {}),
+      ...(data.choices?.[0]?.finish_reason
+        ? { finishReason: data.choices[0].finish_reason }
+        : {}),
+      ...(data.system_fingerprint
+        ? { systemFingerprint: data.system_fingerprint }
+        : {}),
       ...(data.id ? { requestId: data.id } : {}),
       ...(logprobsInfo ? { logprobs: logprobsInfo } : {}),
-      ...(typeof averageConfidence === 'number' ? { averageConfidence } : {}),
+      ...(typeof averageConfidence === "number" ? { averageConfidence } : {}),
     };
 
     return {

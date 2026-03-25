@@ -1,11 +1,20 @@
-import React, { useEffect, useRef } from 'react';
-import { User, Palette, MapPin, Box, Loader2 } from '@promptstudio/system/components/ui';
-import { rewriteGcsUrlToProxy } from '@/services/media/MediaUrlResolver';
-import { getAssetTypeConfig } from '../config/assetConfig';
-import type { AssetSuggestion } from '../hooks/useTriggerAutocomplete';
-import type { AnimatedPresencePhase } from '@/hooks/useAnimatedPresence';
+import React, { useEffect, useRef } from "react";
+import {
+  User,
+  Palette,
+  MapPin,
+  Box,
+  Loader2,
+} from "@promptstudio/system/components/ui";
+import { rewriteGcsUrlToProxy } from "@/services/media/MediaUrlResolver";
+import { getAssetTypeConfig } from "../config/assetConfig";
+import type { AssetSuggestion } from "../hooks/useTriggerAutocomplete";
+import type { AnimatedPresencePhase } from "@/hooks/useAnimatedPresence";
 
-const TYPE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+const TYPE_ICONS: Record<
+  string,
+  React.ComponentType<{ className?: string }>
+> = {
   character: User,
   style: Palette,
   location: MapPin,
@@ -33,30 +42,36 @@ export function TriggerAutocomplete({
   onSelect,
   onClose,
   setSelectedIndex,
-  motionPhase = 'entered',
+  motionPhase = "entered",
 }: TriggerAutocompleteProps): React.ReactElement | null {
   const containerRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (listRef.current && suggestions.length > 0) {
-      const selectedItem = listRef.current.children[selectedIndex] as HTMLElement | undefined;
-      if (selectedItem && typeof selectedItem.scrollIntoView === 'function') {
-        selectedItem.scrollIntoView({ block: 'nearest' });
+      const selectedItem = listRef.current.children[selectedIndex] as
+        | HTMLElement
+        | undefined;
+      if (selectedItem && typeof selectedItem.scrollIntoView === "function") {
+        selectedItem.scrollIntoView({ block: "nearest" });
       }
     }
   }, [selectedIndex, suggestions.length]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(event.target as Node)
+      ) {
         onClose();
       }
     };
 
     if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
+      document.addEventListener("mousedown", handleClickOutside);
+      return () =>
+        document.removeEventListener("mousedown", handleClickOutside);
     }
     return undefined;
   }, [isOpen, onClose]);
@@ -85,7 +100,9 @@ export function TriggerAutocomplete({
       {!isLoading && suggestions.length === 0 && (
         <div className="p-3 text-center">
           <p className="text-sm text-muted">No assets found</p>
-          <p className="mt-1 text-xs text-muted">Create one in the Asset Library</p>
+          <p className="mt-1 text-xs text-muted">
+            Create one in the Asset Library
+          </p>
         </div>
       )}
 
@@ -102,14 +119,17 @@ export function TriggerAutocomplete({
                 onMouseEnter={() => setSelectedIndex(index)}
                 className={`flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors ${
                   index === selectedIndex
-                    ? 'bg-surface-2'
-                    : 'hover:bg-surface-2/70'
+                    ? "bg-surface-2"
+                    : "hover:bg-surface-2/70"
                 }`}
                 type="button"
               >
                 {asset.thumbnailUrl ? (
                   <img
-                    src={rewriteGcsUrlToProxy(asset.thumbnailUrl ?? null) ?? undefined}
+                    src={
+                      rewriteGcsUrlToProxy(asset.thumbnailUrl ?? null) ??
+                      undefined
+                    }
                     alt=""
                     className="h-10 w-10 flex-shrink-0 rounded-md object-cover"
                   />
@@ -132,7 +152,9 @@ export function TriggerAutocomplete({
                       {config.label}
                     </span>
                   </div>
-                  <p className="mt-0.5 truncate text-xs text-muted">{asset.trigger}</p>
+                  <p className="mt-0.5 truncate text-xs text-muted">
+                    {asset.trigger}
+                  </p>
                 </div>
               </button>
             );
@@ -142,11 +164,17 @@ export function TriggerAutocomplete({
 
       <div className="border-t border-border bg-surface-2/70 px-3 py-2">
         <p className="text-xs text-muted">
-          <kbd className="rounded bg-surface-3 px-1 py-0.5 text-xs text-muted">up/down</kbd>{' '}
-          navigate{' '}
-          <kbd className="rounded bg-surface-3 px-1 py-0.5 text-xs text-muted">enter</kbd>{' '}
-          select{' '}
-          <kbd className="rounded bg-surface-3 px-1 py-0.5 text-xs text-muted">esc</kbd>{' '}
+          <kbd className="rounded bg-surface-3 px-1 py-0.5 text-xs text-muted">
+            up/down
+          </kbd>{" "}
+          navigate{" "}
+          <kbd className="rounded bg-surface-3 px-1 py-0.5 text-xs text-muted">
+            enter
+          </kbd>{" "}
+          select{" "}
+          <kbd className="rounded bg-surface-3 px-1 py-0.5 text-xs text-muted">
+            esc
+          </kbd>{" "}
           close
         </p>
       </div>

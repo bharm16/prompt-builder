@@ -1,5 +1,5 @@
-import React from 'react';
-import { cn } from '@/utils/cn';
+import React from "react";
+import { cn } from "@/utils/cn";
 
 interface VersionDividerProps {
   versionLabel: string;
@@ -14,9 +14,9 @@ export function VersionDivider({
 }: VersionDividerProps): React.ReactElement {
   return (
     <div
-      className={cn('flex items-center gap-1.5 px-1 py-0.5', className)}
+      className={cn("flex items-center gap-1.5 px-1 py-0.5", className)}
       role="separator"
-      aria-label={`Version ${versionLabel}${promptChanged ? ', prompt edited' : ''}`}
+      aria-label={`Version ${versionLabel}${promptChanged ? ", prompt edited" : ""}`}
     >
       <span className="text-[10px] font-medium text-tool-text-label">
         {versionLabel}

@@ -1,5 +1,5 @@
-import React from 'react';
-import { Copy, Trash2, Wand2 } from '@promptstudio/system/components/ui';
+import React from "react";
+import { Copy, Trash2, Wand2 } from "@promptstudio/system/components/ui";
 
 interface VideoPromptToolbarProps {
   canCopy: boolean;
@@ -56,7 +56,9 @@ export function VideoPromptToolbar({
       <div className="flex-1" />
 
       {/* ── Character count ── */}
-      <span className="text-[10px] tabular-nums text-tool-text-label mr-2">{promptLength}</span>
+      <span className="text-[10px] tabular-nums text-tool-text-label mr-2">
+        {promptLength}
+      </span>
 
       {/* ── Split-action preview button [□ | □□□□] ── */}
       <div className="h-[26px] flex rounded-md overflow-hidden border border-tool-nav-active bg-tool-surface-deep">
@@ -68,7 +70,16 @@ export function VideoPromptToolbar({
           onClick={onGenerateSinglePreview}
           disabled={!canGeneratePreviews}
         >
-          <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+          <svg
+            width="13"
+            height="13"
+            viewBox="0 0 14 14"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.4"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
             <rect x="3" y="3" width="8" height="8" rx="1.5" />
           </svg>
           <div className="absolute bottom-[1px] left-1/2 -translate-x-1/2 w-[3px] h-[3px] rounded-full bg-tool-accent-selection" />
@@ -82,7 +93,16 @@ export function VideoPromptToolbar({
           onClick={onGenerateFourPreviews}
           disabled={!canGeneratePreviews}
         >
-          <svg width="22" height="13" viewBox="0 0 22 14" fill="none" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round">
+          <svg
+            width="22"
+            height="13"
+            viewBox="0 0 22 14"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.1"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
             <rect x="1" y="3.5" width="4" height="7" rx="0.8" />
             <rect x="6" y="3.5" width="4" height="7" rx="0.8" />
             <rect x="11" y="3.5" width="4" height="7" rx="0.8" />

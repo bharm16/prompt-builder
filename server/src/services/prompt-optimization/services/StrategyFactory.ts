@@ -1,6 +1,11 @@
-import { VideoStrategy } from '../strategies/VideoStrategy';
-import { logger } from '@infrastructure/Logger';
-import type { AIService, TemplateService, OptimizationStrategy, OptimizationMode } from '../types';
+import { VideoStrategy } from "../strategies/VideoStrategy";
+import { logger } from "@infrastructure/Logger";
+import type {
+  AIService,
+  TemplateService,
+  OptimizationStrategy,
+  OptimizationMode,
+} from "../types";
 
 /**
  * Factory for creating optimization strategy instances
@@ -25,8 +30,8 @@ export class StrategyFactory {
       video: new VideoStrategy(this.ai, this.templateService),
     };
 
-    logger.info('Strategy factory initialized', {
-      strategies: Object.keys(strategies)
+    logger.info("Strategy factory initialized", {
+      strategies: Object.keys(strategies),
     });
 
     return strategies;
@@ -39,10 +44,13 @@ export class StrategyFactory {
     // Always return video strategy (only mode supported)
     const strategy = this.strategies.video;
     if (!strategy) {
-      throw new Error('Video optimization strategy not configured');
+      throw new Error("Video optimization strategy not configured");
     }
 
-    logger.debug('Strategy selected', { mode: mode || 'video', strategyName: strategy.name });
+    logger.debug("Strategy selected", {
+      mode: mode || "video",
+      strategyName: strategy.name,
+    });
     return strategy;
   }
 

@@ -1,7 +1,7 @@
 /**
  * AI Client Interface
  * Defines the contract for AI service clients
- * 
+ *
  * SOLID Principles Applied:
  * - ISP: Minimal interface with only essential methods
  * - DIP: Abstraction that high-level modules depend on
@@ -25,7 +25,7 @@ export interface CompletionOptions {
   seed?: number;
   logprobs?: boolean;
   topLogprobs?: number;
-  prediction?: { type: 'content'; content: string };
+  prediction?: { type: "content"; content: string };
   retryOnValidationFailure?: boolean;
   maxRetries?: number;
   [key: string]: unknown;
@@ -95,9 +95,13 @@ export class AIClientError extends Error {
   statusCode: number;
   originalError: unknown;
 
-  constructor(message: string, statusCode: number, originalError: unknown = null) {
+  constructor(
+    message: string,
+    statusCode: number,
+    originalError: unknown = null,
+  ) {
     super(message);
-    this.name = 'AIClientError';
+    this.name = "AIClientError";
     this.statusCode = statusCode;
     this.originalError = originalError;
   }
@@ -107,20 +111,27 @@ export interface IAIClient {
   /**
    * Complete a prompt with the AI model
    */
-  complete(systemPrompt: string, options?: CompletionOptions): Promise<AIResponse>;
+  complete(
+    systemPrompt: string,
+    options?: CompletionOptions,
+  ): Promise<AIResponse>;
 
   /**
    * Stream completion (optional - not all clients support this)
    */
   streamComplete?(
-    systemPrompt: string, 
-    options: CompletionOptions & { onChunk: (chunk: string) => void }
+    systemPrompt: string,
+    options: CompletionOptions & { onChunk: (chunk: string) => void },
   ): Promise<string>;
 
   /**
    * Health check (optional)
    */
-  healthCheck?(): Promise<{ healthy: boolean; provider: string; error?: string | undefined }>;
+  healthCheck?(): Promise<{
+    healthy: boolean;
+    provider: string;
+    error?: string | undefined;
+  }>;
 
   /**
    * Capabilities declaration (optional)

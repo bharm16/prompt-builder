@@ -1,8 +1,8 @@
-import React, { useMemo } from 'react';
-import { FullscreenDialog } from '@/components/ui/FullscreenDialog';
-import { PopoverDetail } from './PopoverDetail';
-import { PopoverPreview } from './PopoverPreview';
-import type { GenerationPopoverProps } from './types';
+import React, { useMemo } from "react";
+import { FullscreenDialog } from "@/components/ui/FullscreenDialog";
+import { PopoverDetail } from "./PopoverDetail";
+import { PopoverPreview } from "./PopoverPreview";
+import type { GenerationPopoverProps } from "./types";
 
 export function GenerationPopover({
   generations,
@@ -17,7 +17,7 @@ export function GenerationPopover({
       generations.find((generation) => generation.id === activeId) ??
       generations[0] ??
       null,
-    [activeId, generations]
+    [activeId, generations],
   );
 
   if (!activeGeneration) return null;

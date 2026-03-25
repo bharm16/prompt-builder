@@ -2,8 +2,8 @@
  * Type definitions for OpenAI-compatible API integration
  */
 
-import type { AIResponse, MessageContent } from '@interfaces/IAIClient';
-export type { AbortControllerResult } from '@clients/utils/abortController';
+import type { AIResponse, MessageContent } from "@interfaces/IAIClient";
+export type { AbortControllerResult } from "@clients/utils/abortController";
 
 export interface CompletionOptions {
   userMessage?: string;
@@ -24,7 +24,7 @@ export interface CompletionOptions {
   logprobs?: boolean;
   topLogprobs?: number;
   prediction?: {
-    type: 'content';
+    type: "content";
     content: string;
   };
   retryOnValidationFailure?: boolean;

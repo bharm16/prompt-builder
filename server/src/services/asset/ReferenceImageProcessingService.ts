@@ -1,6 +1,6 @@
-import sharp from 'sharp';
-import { logger } from '@infrastructure/Logger';
-import type { AssetType } from '@shared/types/asset';
+import sharp from "sharp";
+import { logger } from "@infrastructure/Logger";
+import type { AssetType } from "@shared/types/asset";
 
 export interface ProcessedImageResult {
   buffer: Buffer;
@@ -22,15 +22,19 @@ export class ReferenceImageProcessingService {
   private readonly quality: number;
   private readonly maxFileSizeBytes: number;
   private readonly thumbnailSize: number;
-  private readonly log = logger.child({ service: 'AssetReferenceImageService' });
+  private readonly log = logger.child({
+    service: "AssetReferenceImageService",
+  });
 
-  constructor(options: {
-    maxWidth?: number;
-    maxHeight?: number;
-    quality?: number;
-    maxFileSizeBytes?: number;
-    thumbnailSize?: number;
-  } = {}) {
+  constructor(
+    options: {
+      maxWidth?: number;
+      maxHeight?: number;
+      quality?: number;
+      maxFileSizeBytes?: number;
+      thumbnailSize?: number;
+    } = {},
+  ) {
     this.maxWidth = options.maxWidth || 1024;
     this.maxHeight = options.maxHeight || 1024;
     this.quality = options.quality || 85;
@@ -39,9 +43,9 @@ export class ReferenceImageProcessingService {
   }
 
   async processImage(imageBuffer: Buffer): Promise<ProcessedImageResult> {
-    const operation = 'processImage';
+    const operation = "processImage";
     const startTime = performance.now();
-    this.log.debug('Starting operation.', {
+    this.log.debug("Starting operation.", {
       operation,
       bufferSize: imageBuffer.length,
       maxSizeBytes: this.maxFileSizeBytes,
@@ -50,16 +54,16 @@ export class ReferenceImageProcessingService {
     try {
       if (imageBuffer.length > this.maxFileSizeBytes) {
         throw new Error(
-          `Image exceeds maximum size of ${this.maxFileSizeBytes / 1024 / 1024}MB`
+          `Image exceeds maximum size of ${this.maxFileSizeBytes / 1024 / 1024}MB`,
         );
       }
 
       const metadata = await sharp(imageBuffer).metadata();
-      const allowedFormats = ['jpeg', 'jpg', 'png', 'webp'];
+      const allowedFormats = ["jpeg", "jpg", "png", "webp"];
 
       if (!metadata.format || !allowedFormats.includes(metadata.format)) {
         throw new Error(
-          `Invalid image format: ${metadata.format || 'unknown'}. Allowed: ${allowedFormats.join(', ')}`
+          `Invalid image format: ${metadata.format || "unknown"}. Allowed: ${allowedFormats.join(", ")}`,
         );
       }
 
@@ -69,7 +73,7 @@ export class ReferenceImageProcessingService {
 
       if (width > this.maxWidth || height > this.maxHeight) {
         processed = processed.resize(this.maxWidth, this.maxHeight, {
-          fit: 'inside',
+          fit: "inside",
           withoutEnlargement: true,
         });
       }
@@ -83,11 +87,11 @@ export class ReferenceImageProcessingService {
         buffer: outputBuffer,
         width: outputMetadata.width || 0,
         height: outputMetadata.height || 0,
-        format: 'jpeg',
+        format: "jpeg",
         sizeBytes: outputBuffer.length,
       };
 
-      this.log.info('Operation completed.', {
+      this.log.info("Operation completed.", {
         operation,
         duration: Math.round(performance.now() - startTime),
         width: result.width,
@@ -97,8 +101,9 @@ export class ReferenceImageProcessingService {
 
       return result;
     } catch (error) {
-      const errorObj = error instanceof Error ? error : new Error(String(error));
-      this.log.error('Operation failed.', errorObj, {
+      const errorObj =
+        error instanceof Error ? error : new Error(String(error));
+      this.log.error("Operation failed.", errorObj, {
         operation,
         duration: Math.round(performance.now() - startTime),
       });
@@ -107,9 +112,9 @@ export class ReferenceImageProcessingService {
   }
 
   async generateThumbnail(imageBuffer: Buffer): Promise<ProcessedImageResult> {
-    const operation = 'generateThumbnail';
+    const operation = "generateThumbnail";
     const startTime = performance.now();
-    this.log.debug('Starting operation.', {
+    this.log.debug("Starting operation.", {
       operation,
       bufferSize: imageBuffer.length,
       thumbnailSize: this.thumbnailSize,
@@ -118,8 +123,8 @@ export class ReferenceImageProcessingService {
     try {
       const thumbnail = await sharp(imageBuffer)
         .resize(this.thumbnailSize, this.thumbnailSize, {
-          fit: 'cover',
-          position: 'center',
+          fit: "cover",
+          position: "center",
         })
         .jpeg({ quality: 70 })
         .toBuffer();
@@ -130,11 +135,11 @@ export class ReferenceImageProcessingService {
         buffer: thumbnail,
         width: metadata.width || this.thumbnailSize,
         height: metadata.height || this.thumbnailSize,
-        format: 'jpeg',
+        format: "jpeg",
         sizeBytes: thumbnail.length,
       };
 
-      this.log.info('Operation completed.', {
+      this.log.info("Operation completed.", {
         operation,
         duration: Math.round(performance.now() - startTime),
         width: result.width,
@@ -144,8 +149,9 @@ export class ReferenceImageProcessingService {
 
       return result;
     } catch (error) {
-      const errorObj = error instanceof Error ? error : new Error(String(error));
-      this.log.error('Operation failed.', errorObj, {
+      const errorObj =
+        error instanceof Error ? error : new Error(String(error));
+      this.log.error("Operation failed.", errorObj, {
         operation,
         duration: Math.round(performance.now() - startTime),
       });
@@ -155,11 +161,11 @@ export class ReferenceImageProcessingService {
 
   async validateForAssetType(
     imageBuffer: Buffer,
-    assetType: AssetType
+    assetType: AssetType,
   ): Promise<ImageValidationResult> {
-    const operation = 'validateForAssetType';
+    const operation = "validateForAssetType";
     const startTime = performance.now();
-    this.log.debug('Starting operation.', {
+    this.log.debug("Starting operation.", {
       operation,
       assetType,
       bufferSize: imageBuffer.length,
@@ -178,24 +184,26 @@ export class ReferenceImageProcessingService {
       const height = metadata.height || 0;
       const aspectRatio = height > 0 ? width / height : 0;
 
-      if (assetType === 'character' && aspectRatio > 1.5) {
+      if (assetType === "character" && aspectRatio > 1.5) {
         validations.warnings.push(
-          'Character reference images work best in portrait or square format'
+          "Character reference images work best in portrait or square format",
         );
       }
 
-      if (assetType === 'location' && aspectRatio > 0 && aspectRatio < 1) {
+      if (assetType === "location" && aspectRatio > 0 && aspectRatio < 1) {
         validations.warnings.push(
-          'Location reference images work best in landscape format'
+          "Location reference images work best in landscape format",
         );
       }
 
       if (width < 256 || height < 256) {
-        validations.errors.push('Image resolution too low. Minimum 256x256 pixels required.');
+        validations.errors.push(
+          "Image resolution too low. Minimum 256x256 pixels required.",
+        );
         validations.isValid = false;
       }
 
-      this.log.info('Operation completed.', {
+      this.log.info("Operation completed.", {
         operation,
         assetType,
         duration: Math.round(performance.now() - startTime),
@@ -206,8 +214,9 @@ export class ReferenceImageProcessingService {
 
       return validations;
     } catch (error) {
-      const errorObj = error instanceof Error ? error : new Error(String(error));
-      this.log.error('Operation failed.', errorObj, {
+      const errorObj =
+        error instanceof Error ? error : new Error(String(error));
+      this.log.error("Operation failed.", errorObj, {
         operation,
         assetType,
         duration: Math.round(performance.now() - startTime),

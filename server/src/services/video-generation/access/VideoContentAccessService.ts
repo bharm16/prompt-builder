@@ -1,8 +1,8 @@
-import crypto from 'node:crypto';
-import { logger } from '@infrastructure/Logger';
+import crypto from "node:crypto";
+import { logger } from "@infrastructure/Logger";
 
 const DEFAULT_TOKEN_TTL_SECONDS = 60 * 60;
-const CONTENT_PATH_PREFIX = '/api/preview/video/content';
+const CONTENT_PATH_PREFIX = "/api/preview/video/content";
 
 export interface VideoContentTokenPayload {
   assetId: string;
@@ -37,13 +37,13 @@ export class VideoContentAccessService {
       expiresAtMs: Date.now() + (ttlMs ?? this.ttlMs),
       version: 1,
     };
-    const encoded = Buffer.from(JSON.stringify(payload)).toString('base64url');
+    const encoded = Buffer.from(JSON.stringify(payload)).toString("base64url");
     const signature = this.sign(encoded);
     return `${encoded}.${signature}`;
   }
 
   verifyToken(token: string, assetId: string): VideoContentTokenPayload | null {
-    const parts = token.split('.');
+    const parts = token.split(".");
     if (parts.length !== 2) {
       return null;
     }
@@ -59,7 +59,9 @@ export class VideoContentAccessService {
 
     let parsed: VideoContentTokenPayload & { version?: number };
     try {
-      parsed = JSON.parse(Buffer.from(encoded, 'base64url').toString('utf8')) as VideoContentTokenPayload & {
+      parsed = JSON.parse(
+        Buffer.from(encoded, "base64url").toString("utf8"),
+      ) as VideoContentTokenPayload & {
         version?: number;
       };
     } catch {
@@ -70,7 +72,10 @@ export class VideoContentAccessService {
       return null;
     }
 
-    if (!Number.isFinite(parsed.expiresAtMs) || parsed.expiresAtMs <= Date.now()) {
+    if (
+      !Number.isFinite(parsed.expiresAtMs) ||
+      parsed.expiresAtMs <= Date.now()
+    ) {
       return null;
     }
 
@@ -90,12 +95,12 @@ export class VideoContentAccessService {
       assetId,
       ...(userId ? { userId } : {}),
     });
-    const separator = url.includes('?') ? '&' : '?';
+    const separator = url.includes("?") ? "&" : "?";
     return `${url}${separator}token=${encodeURIComponent(token)}`;
   }
 
   private isLocalContentUrl(url: string): boolean {
-    if (url.startsWith('http://') || url.startsWith('https://')) {
+    if (url.startsWith("http://") || url.startsWith("https://")) {
       try {
         const parsed = new URL(url);
         return parsed.pathname.startsWith(CONTENT_PATH_PREFIX);
@@ -108,7 +113,10 @@ export class VideoContentAccessService {
   }
 
   private sign(value: string): string {
-    return crypto.createHmac('sha256', this.secret).update(value).digest('base64url');
+    return crypto
+      .createHmac("sha256", this.secret)
+      .update(value)
+      .digest("base64url");
   }
 
   private timingSafeEqual(a: string, b: string): boolean {
@@ -126,19 +134,25 @@ interface AccessConfig {
   tokenTtlSeconds: number;
 }
 
-export function createVideoContentAccessService(config: AccessConfig): VideoContentAccessService | null {
+export function createVideoContentAccessService(
+  config: AccessConfig,
+): VideoContentAccessService | null {
   const ttlMs = config.tokenTtlSeconds * 1000;
 
   if (config.tokenSecret && config.tokenSecret.trim().length > 0) {
     return new VideoContentAccessService({ secret: config.tokenSecret, ttlMs });
   }
 
-  if (process.env.NODE_ENV === 'production') {
-    logger.error('VIDEO_CONTENT_TOKEN_SECRET is required in production for secure video access');
+  if (process.env.NODE_ENV === "production") {
+    logger.error(
+      "VIDEO_CONTENT_TOKEN_SECRET is required in production for secure video access",
+    );
     return null;
   }
 
-  const ephemeralSecret = crypto.randomBytes(32).toString('hex');
-  logger.warn('VIDEO_CONTENT_TOKEN_SECRET not set; using ephemeral key for development');
+  const ephemeralSecret = crypto.randomBytes(32).toString("hex");
+  logger.warn(
+    "VIDEO_CONTENT_TOKEN_SECRET not set; using ephemeral key for development",
+  );
   return new VideoContentAccessService({ secret: ephemeralSecret, ttlMs });
 }

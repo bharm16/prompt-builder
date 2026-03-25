@@ -1,16 +1,22 @@
 /**
  * Provider Detection Utility
- * 
+ *
  * Centralizes logic for determining which LLM provider is being used
  * and what capabilities it supports.
- * 
+ *
  * This enables provider-specific optimizations without polluting
  * business logic with provider detection code.
  */
 
-import { ModelConfig } from '@config/modelConfig';
+import { ModelConfig } from "@config/modelConfig";
 
-export type ProviderType = 'openai' | 'groq' | 'qwen' | 'anthropic' | 'gemini' | 'unknown';
+export type ProviderType =
+  | "openai"
+  | "groq"
+  | "qwen"
+  | "anthropic"
+  | "gemini"
+  | "unknown";
 
 export interface ProviderCapabilities {
   /** Supports strict JSON schema mode (grammar-constrained decoding) */
@@ -37,20 +43,20 @@ export interface ProviderCapabilities {
 
 /**
  * Provider capability definitions
- * 
+ *
  * OpenAI GPT-4o:
  * - Strict JSON schema with grammar-constrained decoding
  * - Developer role for hard constraints
  * - Temperature 0.0 for deterministic structured output
  * - No need for prompt format instructions when using strict schema
- * 
+ *
  * Groq/Llama 3:
  * - Validation-based JSON schema (not grammar-constrained)
  * - No developer role
  * - Temperature 0.1 (0.0 causes repetition loops)
  * - Sandwich prompting and prefill for format adherence
  * - Still needs prompt format instructions
- * 
+ *
  * Qwen (Groq-hosted):
  * - Similar capabilities to Groq for JSON mode
  * - No developer role
@@ -144,46 +150,50 @@ export function detectProvider(options: {
 
   // Check explicit client specification
   if (client) {
-    if (client.toLowerCase().includes('openai')) return 'openai';
-    if (client.toLowerCase().includes('groq')) return 'groq';
-    if (client.toLowerCase().includes('qwen')) return 'qwen';
-    if (client.toLowerCase().includes('anthropic')) return 'anthropic';
-    if (client.toLowerCase().includes('gemini')) return 'gemini';
+    if (client.toLowerCase().includes("openai")) return "openai";
+    if (client.toLowerCase().includes("groq")) return "groq";
+    if (client.toLowerCase().includes("qwen")) return "qwen";
+    if (client.toLowerCase().includes("anthropic")) return "anthropic";
+    if (client.toLowerCase().includes("gemini")) return "gemini";
   }
 
   // Check environment variable override
   if (providerEnvVar) {
     const envValue = process.env[providerEnvVar]?.toLowerCase();
-    if (envValue === 'openai') return 'openai';
-    if (envValue === 'groq') return 'groq';
-    if (envValue === 'qwen') return 'qwen';
-    if (envValue === 'anthropic') return 'anthropic';
-    if (envValue === 'gemini') return 'gemini';
+    if (envValue === "openai") return "openai";
+    if (envValue === "groq") return "groq";
+    if (envValue === "qwen") return "qwen";
+    if (envValue === "anthropic") return "anthropic";
+    if (envValue === "gemini") return "gemini";
   }
 
   // Detect from model name
   if (model) {
     const modelLower = model.toLowerCase();
-    if (modelLower.includes('gpt') || modelLower.includes('o1') || modelLower.includes('o3')) {
-      return 'openai';
+    if (
+      modelLower.includes("gpt") ||
+      modelLower.includes("o1") ||
+      modelLower.includes("o3")
+    ) {
+      return "openai";
     }
-    if (modelLower.includes('qwen')) {
-      return 'qwen';
+    if (modelLower.includes("qwen")) {
+      return "qwen";
     }
-    if (modelLower.includes('llama') || modelLower.includes('mixtral')) {
-      return 'groq';
+    if (modelLower.includes("llama") || modelLower.includes("mixtral")) {
+      return "groq";
     }
-    if (modelLower.includes('claude')) {
-      return 'anthropic';
+    if (modelLower.includes("claude")) {
+      return "anthropic";
     }
-    if (modelLower.includes('gemini')) {
-      return 'gemini';
+    if (modelLower.includes("gemini")) {
+      return "gemini";
     }
   }
 
   // Detect from operation-specific environment variables
   if (operation) {
-    const operationUpper = operation.toUpperCase().replace(/-/g, '_');
+    const operationUpper = operation.toUpperCase().replace(/-/g, "_");
     const providerEnv = process.env[`${operationUpper}_PROVIDER`];
     if (providerEnv) {
       return detectProvider({ client: providerEnv });
@@ -195,13 +205,15 @@ export function detectProvider(options: {
     }
   }
 
-  return 'unknown';
+  return "unknown";
 }
 
 /**
  * Get capabilities for a provider
  */
-export function getProviderCapabilities(provider: ProviderType): ProviderCapabilities {
+export function getProviderCapabilities(
+  provider: ProviderType,
+): ProviderCapabilities {
   return PROVIDER_CAPABILITIES[provider] || PROVIDER_CAPABILITIES.unknown;
 }
 
@@ -231,7 +243,7 @@ export function shouldUseStrictSchema(options: {
   hasSchema?: boolean | undefined;
 }): boolean {
   if (!options.hasSchema) return false;
-  
+
   const { capabilities } = detectAndGetCapabilities(options);
   return capabilities.strictJsonSchema;
 }

@@ -1,9 +1,9 @@
-import { auth } from '@/config/firebase';
-import { onAuthStateChanged } from 'firebase/auth';
+import { auth } from "@/config/firebase";
+import { onAuthStateChanged } from "firebase/auth";
 
-const FIREBASE_TOKEN_HEADER = 'X-Firebase-Token';
-const API_KEY_HEADER = 'X-API-Key';
-const DEV_FALLBACK_API_KEY = 'dev-key-12345';
+const FIREBASE_TOKEN_HEADER = "X-Firebase-Token";
+const API_KEY_HEADER = "X-API-Key";
+const DEV_FALLBACK_API_KEY = "dev-key-12345";
 const AUTH_READY_TIMEOUT_MS = 3000;
 
 let authReadyPromise: Promise<void> | null = null;
@@ -23,7 +23,7 @@ export const waitForAuthReady = async (): Promise<void> => {
           clearTimeout(timeoutId);
           resolve();
           unsubscribe();
-        }
+        },
       );
     });
   }
@@ -45,10 +45,15 @@ export async function getFirebaseToken(): Promise<string | null> {
   }
 }
 
-export async function buildFirebaseAuthHeaders(): Promise<Record<string, string>> {
+export async function buildFirebaseAuthHeaders(): Promise<
+  Record<string, string>
+> {
   await waitForAuthReady();
-  const isProduction = (import.meta as { env?: { MODE?: string } }).env?.MODE === 'production';
-  const devFallbackHeaders = isProduction ? {} : { [API_KEY_HEADER]: DEV_FALLBACK_API_KEY };
+  const isProduction =
+    (import.meta as { env?: { MODE?: string } }).env?.MODE === "production";
+  const devFallbackHeaders = isProduction
+    ? {}
+    : { [API_KEY_HEADER]: DEV_FALLBACK_API_KEY };
   const user = auth.currentUser;
   if (!user) {
     return devFallbackHeaders;

@@ -5,8 +5,8 @@
  * It now tracks the canonical CacheOptions type and keeps legacy hooks.
  */
 
-import type { CacheOptions } from '@interfaces/ICacheService';
-import type { CacheStats } from '@server/types/services';
+import type { CacheOptions } from "@interfaces/ICacheService";
+import type { CacheStats } from "@server/types/services";
 
 export type { CacheOptions };
 
@@ -27,7 +27,11 @@ export interface ICacheService {
   /**
    * Set a value in cache (canonical options signature)
    */
-  set<T>(key: string, value: T, options?: CacheOptions): Promise<boolean | void>;
+  set<T>(
+    key: string,
+    value: T,
+    options?: CacheOptions,
+  ): Promise<boolean | void>;
 
   /**
    * Delete a value from cache

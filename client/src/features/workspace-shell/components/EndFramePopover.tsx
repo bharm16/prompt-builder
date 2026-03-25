@@ -1,15 +1,20 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
-import { X, Image } from '@promptstudio/system/components/ui';
-import type { KeyframeTile, SidebarUploadedImage } from '@components/ToolSidebar/types';
-import { cn } from '@/utils/cn';
-import { useResolvedMediaUrl } from '@/hooks/useResolvedMediaUrl';
-import { hasGcsSignedUrlParams } from '@/utils/storageUrl';
+import React, { useCallback, useMemo, useRef, useState } from "react";
+import { X, Image } from "@promptstudio/system/components/ui";
+import type {
+  KeyframeTile,
+  SidebarUploadedImage,
+} from "@components/ToolSidebar/types";
+import { cn } from "@/utils/cn";
+import { useResolvedMediaUrl } from "@/hooks/useResolvedMediaUrl";
+import { hasGcsSignedUrlParams } from "@/utils/storageUrl";
 
 interface EndFramePopoverProps {
   endFrame: KeyframeTile | null;
   onSetEndFrame: (tile: KeyframeTile) => void;
   onClearEndFrame: () => void;
-  onUploadSidebarImage?: ((file: File) => Promise<SidebarUploadedImage | null>) | undefined;
+  onUploadSidebarImage?:
+    | ((file: File) => Promise<SidebarUploadedImage | null>)
+    | undefined;
   disabled?: boolean | undefined;
 }
 
@@ -26,11 +31,13 @@ export function EndFramePopover({
 
   const shouldResolveUrl = Boolean(
     endFrame &&
-      (endFrame.storagePath || endFrame.assetId || hasGcsSignedUrlParams(endFrame.url))
+      (endFrame.storagePath ||
+        endFrame.assetId ||
+        hasGcsSignedUrlParams(endFrame.url)),
   );
 
   const { url: resolvedPreviewUrl } = useResolvedMediaUrl({
-    kind: 'image',
+    kind: "image",
     url: endFrame?.url ?? null,
     storagePath: endFrame?.storagePath ?? null,
     assetId: endFrame?.assetId ?? null,
@@ -47,12 +54,14 @@ export function EndFramePopover({
       onSetEndFrame({
         id: `end-frame-upload-${Date.now()}`,
         url: uploaded.url,
-        source: 'upload',
+        source: "upload",
         ...(uploaded.storagePath ? { storagePath: uploaded.storagePath } : {}),
-        ...(uploaded.viewUrlExpiresAt ? { viewUrlExpiresAt: uploaded.viewUrlExpiresAt } : {}),
+        ...(uploaded.viewUrlExpiresAt
+          ? { viewUrlExpiresAt: uploaded.viewUrlExpiresAt }
+          : {}),
       });
     },
-    [onSetEndFrame]
+    [onSetEndFrame],
   );
 
   const handleUpload = useCallback(
@@ -81,10 +90,10 @@ export function EndFramePopover({
       onSetEndFrame({
         id: `end-frame-local-${Date.now()}`,
         url: dataUrl,
-        source: 'upload',
+        source: "upload",
       });
     },
-    [disabled, onSetEndFrame, onUploadSidebarImage, setFrameFromUpload]
+    [disabled, onSetEndFrame, onUploadSidebarImage, setFrameFromUpload],
   );
 
   return (
@@ -93,9 +102,9 @@ export function EndFramePopover({
         type="button"
         data-testid="end-frame-trigger"
         className={cn(
-          'inline-flex h-[30px] items-center gap-[5px] rounded-full border border-surface-2 px-2.5 text-xs font-semibold transition-colors',
-          'bg-tool-nav-hover text-foreground hover:bg-tool-nav-active hover:text-foreground',
-          disabled && 'cursor-not-allowed opacity-60'
+          "inline-flex h-[30px] items-center gap-[5px] rounded-full border border-surface-2 px-2.5 text-xs font-semibold transition-colors",
+          "bg-tool-nav-hover text-foreground hover:bg-tool-nav-active hover:text-foreground",
+          disabled && "cursor-not-allowed opacity-60",
         )}
         onClick={() => {
           if (disabled) return;
@@ -131,7 +140,7 @@ export function EndFramePopover({
         onChange={(event) => {
           const file = event.target.files?.[0];
           if (file) void handleUpload(file);
-          event.target.value = '';
+          event.target.value = "";
         }}
       />
 
@@ -145,7 +154,11 @@ export function EndFramePopover({
           {previewUrl ? (
             <>
               <div className="relative aspect-video bg-tool-surface-deep">
-                <img src={previewUrl} alt="End frame" className="h-full w-full object-cover" />
+                <img
+                  src={previewUrl}
+                  alt="End frame"
+                  className="h-full w-full object-cover"
+                />
                 <button
                   type="button"
                   data-testid="end-frame-clear-button"
@@ -171,7 +184,7 @@ export function EndFramePopover({
                   <Image size={13} />
                 </span>
                 <span className="text-[11px] text-tool-text-subdued">
-                  {isUploading ? 'Uploading…' : 'Drop image or click to upload'}
+                  {isUploading ? "Uploading…" : "Drop image or click to upload"}
                 </span>
               </button>
             </div>

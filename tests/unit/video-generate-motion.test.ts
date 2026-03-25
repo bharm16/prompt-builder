@@ -1,27 +1,27 @@
-import express from 'express';
-import request from 'supertest';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import express from "express";
+import request from "supertest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { scheduleInlineMock } = vi.hoisted(() => ({
   scheduleInlineMock: vi.fn(),
 }));
 
-vi.mock('@routes/preview/inlineProcessor', () => ({
+vi.mock("@routes/preview/inlineProcessor", () => ({
   scheduleInlineVideoPreviewProcessing: scheduleInlineMock,
 }));
 
-import { createVideoGenerateHandler } from '@routes/preview/handlers/videoGenerate';
-import { runSupertestOrSkip } from './test-helpers/supertestSafeRequest';
+import { createVideoGenerateHandler } from "@routes/preview/handlers/videoGenerate";
+import { runSupertestOrSkip } from "./test-helpers/supertestSafeRequest";
 
-describe('videoGenerate motion guidance', () => {
+describe("videoGenerate motion guidance", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('appends camera and subject motion guidance to the queued prompt', async () => {
+  it("appends camera and subject motion guidance to the queued prompt", async () => {
     const createJobMock = vi.fn(async (payload: Record<string, unknown>) => ({
-      id: 'job-1',
-      status: 'queued',
+      id: "job-1",
+      status: "queued",
       ...payload,
     }));
 
@@ -29,7 +29,7 @@ describe('videoGenerate motion guidance', () => {
       videoGenerationService: {
         getModelAvailability: () => ({
           available: true,
-          resolvedModelId: 'sora-2',
+          resolvedModelId: "sora-2",
         }),
         getAvailabilityReport: () => ({ availableModels: [] }),
       } as never,
@@ -47,23 +47,25 @@ describe('videoGenerate motion guidance', () => {
 
     const app = express();
     app.use((req, _res, next) => {
-      (req as express.Request & { user?: { uid?: string } }).user = { uid: 'user-123' };
+      (req as express.Request & { user?: { uid?: string } }).user = {
+        uid: "user-123",
+      };
       next();
     });
     app.use(express.json());
-    app.post('/preview/video/generate', handler);
+    app.post("/preview/video/generate", handler);
 
     const response = await runSupertestOrSkip(() =>
       request(app)
-        .post('/preview/video/generate')
+        .post("/preview/video/generate")
         .send({
-          prompt: 'A cinematic shot of a runner at dawn.',
-          model: 'sora-2',
+          prompt: "A cinematic shot of a runner at dawn.",
+          model: "sora-2",
           generationParams: {
-            camera_motion_id: 'pan_left',
-            subject_motion: 'running steadily toward the horizon',
+            camera_motion_id: "pan_left",
+            subject_motion: "running steadily toward the horizon",
           },
-        })
+        }),
     );
     if (!response) return;
 
@@ -73,10 +75,12 @@ describe('videoGenerate motion guidance', () => {
     const jobPayload = createJobMock.mock.calls[0]?.[0] as
       | { request?: { prompt?: string } }
       | undefined;
-    const prompt = jobPayload?.request?.prompt ?? '';
+    const prompt = jobPayload?.request?.prompt ?? "";
 
-    expect(prompt).toContain('Camera motion:');
-    expect(prompt).toContain('Camera rotates left while staying in place');
-    expect(prompt).toContain('Subject motion: running steadily toward the horizon');
+    expect(prompt).toContain("Camera motion:");
+    expect(prompt).toContain("Camera rotates left while staying in place");
+    expect(prompt).toContain(
+      "Subject motion: running steadily toward the horizon",
+    );
   });
 });

@@ -1,40 +1,38 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { CameraMotionModal } from '@/components/modals/CameraMotionModal';
-import { VIDEO_DRAFT_MODEL } from '@/components/ToolSidebar/config/modelConfig';
-import type { AssetSuggestion } from '@/features/assets/hooks/useTriggerAutocomplete';
-import type { CameraPath } from '@/features/convergence/types';
-import { sanitizeText } from '@/features/span-highlighting';
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { CameraMotionModal } from "@/components/modals/CameraMotionModal";
+import { VIDEO_DRAFT_MODEL } from "@/components/ToolSidebar/config/modelConfig";
+import type { AssetSuggestion } from "@/features/assets/hooks/useTriggerAutocomplete";
+import type { CameraPath } from "@/features/convergence/types";
+import { sanitizeText } from "@/features/span-highlighting";
 import {
   useGenerationControlsStoreActions,
   useGenerationControlsStoreState,
-} from '@features/generation-controls/context/GenerationControlsStore';
-import { useOptionalPromptHighlights } from '@/features/prompt-optimizer/context/PromptStateContext';
-import { useWorkspaceSession } from '@/features/prompt-optimizer/context/WorkspaceSessionContext';
-import { useGenerationsRuntime } from '@features/generations';
+} from "@features/generation-controls/context/GenerationControlsStore";
+import { useOptionalPromptHighlights } from "@/features/prompt-optimizer/context/PromptStateContext";
+import { useWorkspaceSession } from "@/features/prompt-optimizer/context/WorkspaceSessionContext";
+import { useGenerationsRuntime } from "@features/generations";
 import type {
   Generation,
   GenerationsPanelProps,
   GenerationsPanelStateSnapshot,
-} from '@features/generations/types';
+} from "@features/generations/types";
 import type {
   InlineSuggestion,
   SuggestionItem,
-} from '@/features/prompt-optimizer/PromptCanvas/types';
-import { trackModelRecommendationEvent } from '@/features/model-intelligence/api';
-import { useModelSelectionRecommendation } from '@/components/ToolSidebar/components/panels/GenerationControlsPanel/hooks/useModelSelectionRecommendation';
-import {
-  useSidebarGenerationDomain,
-} from '@/components/ToolSidebar/context';
-import { GalleryPanel } from '@/features/prompt-optimizer/components/GalleryPanel';
-import { GenerationPopover } from '@/features/prompt-optimizer/components/GenerationPopover';
-import { useAnimatedPresence } from '@/hooks/useAnimatedPresence';
-import { cn } from '@/utils/cn';
-import { buildGalleryGenerationEntries } from './utils/galleryGeneration';
-import { CanvasTopBar } from './components/CanvasTopBar';
-import { CanvasPromptBar } from './components/CanvasPromptBar';
-import { ModelCornerSelector } from './components/ModelCornerSelector';
-import { CanvasHeroViewer } from './components/CanvasHeroViewer';
-import { NewSessionView } from './components/NewSessionView';
+} from "@/features/prompt-optimizer/PromptCanvas/types";
+import { trackModelRecommendationEvent } from "@/features/model-intelligence/api";
+import { useModelSelectionRecommendation } from "@/components/ToolSidebar/components/panels/GenerationControlsPanel/hooks/useModelSelectionRecommendation";
+import { useSidebarGenerationDomain } from "@/components/ToolSidebar/context";
+import { GalleryPanel } from "@/features/prompt-optimizer/components/GalleryPanel";
+import { GenerationPopover } from "@/features/prompt-optimizer/components/GenerationPopover";
+import { useAnimatedPresence } from "@/hooks/useAnimatedPresence";
+import { cn } from "@/utils/cn";
+import { buildGalleryGenerationEntries } from "./utils/galleryGeneration";
+import { CanvasTopBar } from "./components/CanvasTopBar";
+import { CanvasPromptBar } from "./components/CanvasPromptBar";
+import { ModelCornerSelector } from "./components/ModelCornerSelector";
+import { CanvasHeroViewer } from "./components/CanvasHeroViewer";
+import { NewSessionView } from "./components/NewSessionView";
 
 interface CanvasWorkspaceProps {
   generationsPanelProps: GenerationsPanelProps;
@@ -70,7 +68,7 @@ interface CanvasWorkspaceProps {
   inlineSuggestions: InlineSuggestion[];
   activeSuggestionIndex: number;
   onActiveSuggestionChange: (index: number) => void;
-  interactionSourceRef: React.MutableRefObject<'keyboard' | 'mouse' | 'auto'>;
+  interactionSourceRef: React.MutableRefObject<"keyboard" | "mouse" | "auto">;
   onSuggestionClick: (suggestion: SuggestionItem | string) => void;
   onCloseInlinePopover: () => void;
   selectionLabel: string;
@@ -94,23 +92,29 @@ interface CanvasWorkspaceProps {
   i2vMotionAlternatives: SuggestionItem[];
   onLockedAlternativeClick: (suggestion: SuggestionItem) => void;
   onReuseGeneration: (generation: Generation) => void;
-  onToggleGenerationFavorite: (generationId: string, isFavorite: boolean) => void;
+  onToggleGenerationFavorite: (
+    generationId: string,
+    isFavorite: boolean,
+  ) => void;
   onEnhance?: () => void;
   isEnhancing?: boolean;
 }
 
-const parseDurationSeconds = (generationParams: Record<string, unknown>): number => {
+const parseDurationSeconds = (
+  generationParams: Record<string, unknown>,
+): number => {
   const value = generationParams.duration_s;
-  if (typeof value === 'number' && Number.isFinite(value)) return value;
-  if (typeof value === 'string') {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string") {
     const parsed = Number.parseFloat(value);
     if (Number.isFinite(parsed)) return parsed;
   }
   return 5;
 };
 
-const normalizePromptForComparison = (value: string | null | undefined): string =>
-  sanitizeText(typeof value === 'string' ? value : '').trim();
+const normalizePromptForComparison = (
+  value: string | null | undefined,
+): string => sanitizeText(typeof value === "string" ? value : "").trim();
 
 export function CanvasWorkspace({
   generationsPanelProps,
@@ -177,14 +181,15 @@ export function CanvasWorkspace({
   const storeActions = useGenerationControlsStoreActions();
   const { domain } = useGenerationControlsStoreState();
   const promptHighlights = useOptionalPromptHighlights();
-  const { hasActiveContinuityShot, currentShot, updateShot } = useWorkspaceSession();
+  const { hasActiveContinuityShot, currentShot, updateShot } =
+    useWorkspaceSession();
   const generationDomain = useSidebarGenerationDomain();
   const [showCameraMotionModal, setShowCameraMotionModal] = useState(false);
   const [viewingId, setViewingId] = useState<string | null>(null);
 
   const prompt = generationsPanelProps.prompt;
   const durationSeconds = parseDurationSeconds(
-    domain.generationParams as Record<string, unknown>
+    domain.generationParams as Record<string, unknown>,
   );
 
   const {
@@ -197,7 +202,7 @@ export function CanvasWorkspace({
     recommendationAgeMs,
   } = useModelSelectionRecommendation({
     prompt,
-    activeTab: 'video',
+    activeTab: "video",
     keyframesCount: domain.startFrame ? 1 : 0,
     durationSeconds,
     selectedModel: domain.selectedModel,
@@ -207,26 +212,35 @@ export function CanvasWorkspace({
 
   const handleModelChange = useCallback(
     (modelId: string): void => {
-      const nextTier = modelId === VIDEO_DRAFT_MODEL.id ? 'draft' : 'render';
+      const nextTier = modelId === VIDEO_DRAFT_MODEL.id ? "draft" : "render";
       if (modelId === domain.selectedModel) return;
 
       void trackModelRecommendationEvent({
-        event: 'model_selected',
+        event: "model_selected",
         recommendationId: modelRecommendation?.promptId,
         promptId: modelRecommendation?.promptId,
         recommendedModelId,
         selectedModelId: modelId,
         mode: recommendationMode,
         durationSeconds,
-        ...(typeof recommendationAgeMs === 'number'
-          ? { timeSinceRecommendationMs: Math.max(0, Math.round(recommendationAgeMs)) }
+        ...(typeof recommendationAgeMs === "number"
+          ? {
+              timeSinceRecommendationMs: Math.max(
+                0,
+                Math.round(recommendationAgeMs),
+              ),
+            }
           : {}),
       });
 
       storeActions.setSelectedModel(modelId);
       if (nextTier !== domain.videoTier) storeActions.setVideoTier(nextTier);
 
-      if (hasActiveContinuityShot && currentShot && currentShot.modelId !== modelId) {
+      if (
+        hasActiveContinuityShot &&
+        currentShot &&
+        currentShot.modelId !== modelId
+      ) {
         void updateShot(currentShot.id, { modelId });
       }
     },
@@ -242,7 +256,7 @@ export function CanvasWorkspace({
       recommendedModelId,
       storeActions,
       updateShot,
-    ]
+    ],
   );
 
   const onStateSnapshotProp = generationsPanelProps.onStateSnapshot;
@@ -250,12 +264,12 @@ export function CanvasWorkspace({
     (nextSnapshot: GenerationsPanelStateSnapshot) => {
       onStateSnapshotProp?.(nextSnapshot);
     },
-    [onStateSnapshotProp]
+    [onStateSnapshotProp],
   );
 
   const generationsRuntime = useGenerationsRuntime({
     ...generationsPanelProps,
-    presentation: 'hero',
+    presentation: "hero",
     onStateSnapshot: handleSnapshot,
   });
 
@@ -265,33 +279,34 @@ export function CanvasWorkspace({
 
   const heroGeneration = generationsRuntime.heroGeneration;
   const displayHeroGeneration = useMemo(() => {
-    if (heroGeneration?.status !== 'failed') {
+    if (heroGeneration?.status !== "failed") {
       return heroGeneration;
     }
 
-    const currentPrompt = normalizePromptForComparison(generationsPanelProps.prompt);
+    const currentPrompt = normalizePromptForComparison(
+      generationsPanelProps.prompt,
+    );
     const failedPrompt = normalizePromptForComparison(heroGeneration.prompt);
     return currentPrompt === failedPrompt ? heroGeneration : null;
   }, [generationsPanelProps.prompt, heroGeneration]);
 
-  const galleryEntries = useMemo(
-    () => {
-      // When runtimeGenerations is empty (e.g., after po:workspace-reset), skip
-      // version-based entries to prevent stale gallery items from a prior session
-      // remaining visible during the transition to a new draft.
-      const versions =
-        generationsRuntime.generations.length === 0 ? [] : generationsPanelProps.versions;
-      return buildGalleryGenerationEntries({
-        versions,
-        runtimeGenerations: generationsRuntime.generations,
-      });
-    },
-    [generationsPanelProps.versions, generationsRuntime.generations]
-  );
+  const galleryEntries = useMemo(() => {
+    // When runtimeGenerations is empty (e.g., after po:workspace-reset), skip
+    // version-based entries to prevent stale gallery items from a prior session
+    // remaining visible during the transition to a new draft.
+    const versions =
+      generationsRuntime.generations.length === 0
+        ? []
+        : generationsPanelProps.versions;
+    return buildGalleryGenerationEntries({
+      versions,
+      runtimeGenerations: generationsRuntime.generations,
+    });
+  }, [generationsPanelProps.versions, generationsRuntime.generations]);
 
   const galleryGenerations = useMemo(
     () => galleryEntries.map((entry) => entry.gallery),
-    [galleryEntries]
+    [galleryEntries],
   );
 
   const generationLookup = useMemo(() => {
@@ -309,11 +324,11 @@ export function CanvasWorkspace({
   }, [generationLookup, viewingId]);
 
   const isEmptySession = useMemo(() => {
-    const hasGenerations = galleryEntries.length > 0 || displayHeroGeneration !== null;
+    const hasGenerations =
+      galleryEntries.length > 0 || displayHeroGeneration !== null;
     const hasStartFrame = Boolean(domain.startFrame);
     const hasHydratedSessionPrompt =
-      enableMLHighlighting &&
-      prompt.trim().length > 0;
+      enableMLHighlighting && prompt.trim().length > 0;
     return !hasGenerations && !hasStartFrame && !hasHydratedSessionPrompt;
   }, [
     enableMLHighlighting,
@@ -324,18 +339,14 @@ export function CanvasWorkspace({
   ]);
 
   const galleryOpen = true;
-  const {
-    shouldRender: shouldRenderEmptyChrome,
-    phase: emptyChromePhase,
-  } = useAnimatedPresence(isEmptySession, { exitMs: 220 });
-  const {
-    shouldRender: shouldRenderGallery,
-    phase: galleryPhase,
-  } = useAnimatedPresence(!isEmptySession && galleryOpen, { exitMs: 220 });
-  const {
-    shouldRender: shouldRenderHero,
-    phase: heroPhase,
-  } = useAnimatedPresence(!isEmptySession && Boolean(displayHeroGeneration), { exitMs: 240 });
+  const { shouldRender: shouldRenderEmptyChrome, phase: emptyChromePhase } =
+    useAnimatedPresence(isEmptySession, { exitMs: 220 });
+  const { shouldRender: shouldRenderGallery, phase: galleryPhase } =
+    useAnimatedPresence(!isEmptySession && galleryOpen, { exitMs: 220 });
+  const { shouldRender: shouldRenderHero, phase: heroPhase } =
+    useAnimatedPresence(!isEmptySession && Boolean(displayHeroGeneration), {
+      exitMs: 240,
+    });
 
   const handleSelectGeneration = useCallback((generationId: string): void => {
     setViewingId(generationId);
@@ -352,7 +363,7 @@ export function CanvasWorkspace({
       onReuseGeneration(generation);
       setViewingId(null);
     },
-    [generationLookup, onReuseGeneration]
+    [generationLookup, onReuseGeneration],
   );
   const handleOpenMotion = useCallback((): void => {
     if (!domain.startFrame) return;
@@ -363,7 +374,7 @@ export function CanvasWorkspace({
       storeActions.setCameraMotion(cameraPath);
       setShowCameraMotionModal(false);
     },
-    [storeActions]
+    [storeActions],
   );
   const promptBarProps = {
     editorRef,
@@ -420,7 +431,7 @@ export function CanvasWorkspace({
       ? { recommendationPromptId: modelRecommendation.promptId }
       : {}),
     ...(recommendationMode ? { recommendationMode } : {}),
-    ...(typeof recommendationAgeMs === 'number' ? { recommendationAgeMs } : {}),
+    ...(typeof recommendationAgeMs === "number" ? { recommendationAgeMs } : {}),
     onOpenMotion: handleOpenMotion,
     ...(generationDomain?.onStartFrameUpload
       ? { onStartFrameUpload: generationDomain.onStartFrameUpload }
@@ -455,20 +466,23 @@ export function CanvasWorkspace({
             efficientModelId={efficientModelId}
             onModelChange={handleModelChange}
             className={cn(
-              'left-5 transition-[bottom,transform] duration-[220ms] [transition-timing-function:var(--motion-ease-emphasized)]',
-              isEmptySession ? 'bottom-4' : 'bottom-0'
+              "left-5 transition-[bottom,transform] duration-[220ms] [transition-timing-function:var(--motion-ease-emphasized)]",
+              isEmptySession ? "bottom-4" : "bottom-0",
             )}
           />
 
           <div
             className={cn(
-              'relative flex min-h-0 flex-1 flex-col overflow-hidden transition-[padding] duration-[240ms] [transition-timing-function:var(--motion-ease-emphasized)]',
-              isEmptySession ? 'justify-center' : 'pt-8',
-              !isEmptySession && !displayHeroGeneration ? 'justify-center' : ''
+              "relative flex min-h-0 flex-1 flex-col overflow-hidden transition-[padding] duration-[240ms] [transition-timing-function:var(--motion-ease-emphasized)]",
+              isEmptySession ? "justify-center" : "pt-8",
+              !isEmptySession && !displayHeroGeneration ? "justify-center" : "",
             )}
           >
             {shouldRenderHero ? (
-              <div className="motion-presence-panel mb-5" data-motion-state={heroPhase}>
+              <div
+                className="motion-presence-panel mb-5"
+                data-motion-state={heroPhase}
+              >
                 <CanvasHeroViewer generation={displayHeroGeneration} />
               </div>
             ) : null}
@@ -476,14 +490,17 @@ export function CanvasWorkspace({
             <div className="relative z-10 flex w-full justify-center">
               <CanvasPromptBar
                 {...promptBarProps}
-                layoutMode={isEmptySession ? 'empty' : 'active'}
+                layoutMode={isEmptySession ? "empty" : "active"}
               />
             </div>
           </div>
         </div>
 
         {shouldRenderGallery ? (
-          <div className="motion-presence-panel" data-motion-state={galleryPhase}>
+          <div
+            className="motion-presence-panel"
+            data-motion-state={galleryPhase}
+          >
             <GalleryPanel
               generations={galleryGenerations}
               activeGenerationId={viewingId}

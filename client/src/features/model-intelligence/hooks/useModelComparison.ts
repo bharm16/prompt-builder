@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { ModelScore } from '../types';
+import { useCallback, useEffect, useMemo, useState } from "react";
+import type { ModelScore } from "../types";
 
 interface UseModelComparisonOptions {
   recommendations?: ModelScore[];
@@ -20,7 +20,7 @@ interface UseModelComparisonResult {
 
 const resolvePair = (
   recommendations: ModelScore[] | undefined,
-  models: [string, string] | undefined
+  models: [string, string] | undefined,
 ): ComparisonPair | null => {
   if (!recommendations || recommendations.length < 2) return null;
   if (!models) return null;
@@ -37,7 +37,7 @@ export const useModelComparison = ({
   comparisonModels,
 }: UseModelComparisonOptions = {}): UseModelComparisonResult => {
   const [activeModels, setActiveModels] = useState<[string, string] | null>(
-    comparisonModels ?? null
+    comparisonModels ?? null,
   );
   const [isOpen, setIsOpen] = useState(false);
 
@@ -49,7 +49,7 @@ export const useModelComparison = ({
 
   const comparison = useMemo(
     () => resolvePair(recommendations, activeModels ?? undefined),
-    [activeModels, recommendations]
+    [activeModels, recommendations],
   );
 
   useEffect(() => {
@@ -66,7 +66,7 @@ export const useModelComparison = ({
         setIsOpen(true);
       }
     },
-    [comparisonModels]
+    [comparisonModels],
   );
 
   const closeComparison = useCallback(() => {

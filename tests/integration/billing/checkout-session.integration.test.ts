@@ -1,11 +1,11 @@
-import express from 'express';
-import request from 'supertest';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { apiAuthMiddleware } from '@middleware/apiAuth';
-import { createPaymentHandlers } from '@routes/payment/handlers';
+import express from "express";
+import request from "supertest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { apiAuthMiddleware } from "@middleware/apiAuth";
+import { createPaymentHandlers } from "@routes/payment/handlers";
 
-const TEST_API_KEY = 'integration-payment-key';
-const TEST_ORIGIN = 'https://promptcanvas.test';
+const TEST_API_KEY = "integration-payment-key";
+const TEST_ORIGIN = "https://promptcanvas.test";
 
 type PaymentServiceMock = {
   isPriceIdConfigured: ReturnType<typeof vi.fn>;
@@ -26,7 +26,7 @@ type UserCreditServiceMock = {
 function createCheckoutApp(
   paymentService: PaymentServiceMock,
   billingProfileStore: BillingProfileStoreMock,
-  userCreditService: UserCreditServiceMock
+  userCreditService: UserCreditServiceMock,
 ) {
   const app = express();
   app.use(express.json());
@@ -38,13 +38,13 @@ function createCheckoutApp(
     userCreditService: userCreditService as never,
   });
 
-  router.post('/checkout', handlers.createCheckoutSession);
-  app.use('/api/payment', apiAuthMiddleware, router);
+  router.post("/checkout", handlers.createCheckoutSession);
+  app.use("/api/payment", apiAuthMiddleware, router);
 
   return app;
 }
 
-describe('Checkout Session Creation (integration)', () => {
+describe("Checkout Session Creation (integration)", () => {
   let previousAllowedApiKeys: string | undefined;
 
   beforeEach(() => {
@@ -60,14 +60,14 @@ describe('Checkout Session Creation (integration)', () => {
     process.env.ALLOWED_API_KEYS = previousAllowedApiKeys;
   });
 
-  it('POST /api/payment/checkout returns checkout URL for valid priceId', async () => {
+  it("POST /api/payment/checkout returns checkout URL for valid priceId", async () => {
     const paymentService = {
       isPriceIdConfigured: vi.fn().mockReturnValue(true),
       createCheckoutSession: vi.fn().mockResolvedValue({
-        url: 'https://checkout.stripe.com/pay/cs_test_123',
+        url: "https://checkout.stripe.com/pay/cs_test_123",
       }),
       createCustomer: vi.fn().mockResolvedValue({
-        id: 'cus_test_123',
+        id: "cus_test_123",
         livemode: false,
       }),
     };
@@ -83,10 +83,10 @@ describe('Checkout Session Creation (integration)', () => {
     });
 
     const response = await request(app)
-      .post('/api/payment/checkout')
-      .set('x-api-key', TEST_API_KEY)
-      .set('Origin', TEST_ORIGIN)
-      .send({ priceId: 'price_explorer_monthly' });
+      .post("/api/payment/checkout")
+      .set("x-api-key", TEST_API_KEY)
+      .set("Origin", TEST_ORIGIN)
+      .send({ priceId: "price_explorer_monthly" });
 
     expect(response.status).toBe(200);
     expect(response.body.url).toMatch(/^https:\/\/checkout\.stripe\.com/);
@@ -94,19 +94,19 @@ describe('Checkout Session Creation (integration)', () => {
     expect(billingProfileStore.upsertProfile).toHaveBeenCalledWith(
       `api-key:${TEST_API_KEY}`,
       expect.objectContaining({
-        stripeCustomerId: 'cus_test_123',
+        stripeCustomerId: "cus_test_123",
         stripeLivemode: false,
-      })
+      }),
     );
     expect(paymentService.createCheckoutSession).toHaveBeenCalledWith(
       `api-key:${TEST_API_KEY}`,
-      'price_explorer_monthly',
+      "price_explorer_monthly",
       `${TEST_ORIGIN}/settings/billing`,
-      'cus_test_123'
+      "cus_test_123",
     );
   });
 
-  it('POST /api/payment/checkout rejects unknown priceId', async () => {
+  it("POST /api/payment/checkout rejects unknown priceId", async () => {
     const paymentService = {
       isPriceIdConfigured: vi.fn().mockReturnValue(false),
       createCheckoutSession: vi.fn(),
@@ -124,17 +124,17 @@ describe('Checkout Session Creation (integration)', () => {
     });
 
     const response = await request(app)
-      .post('/api/payment/checkout')
-      .set('x-api-key', TEST_API_KEY)
-      .set('Origin', TEST_ORIGIN)
-      .send({ priceId: 'price_nonexistent' });
+      .post("/api/payment/checkout")
+      .set("x-api-key", TEST_API_KEY)
+      .set("Origin", TEST_ORIGIN)
+      .send({ priceId: "price_nonexistent" });
 
     expect(response.status).toBe(400);
-    expect(response.body.error).toBe('Unknown priceId');
+    expect(response.body.error).toBe("Unknown priceId");
     expect(paymentService.createCheckoutSession).not.toHaveBeenCalled();
   });
 
-  it('POST /api/payment/checkout rejects unauthenticated requests', async () => {
+  it("POST /api/payment/checkout rejects unauthenticated requests", async () => {
     const paymentService = {
       isPriceIdConfigured: vi.fn().mockReturnValue(true),
       createCheckoutSession: vi.fn(),
@@ -152,26 +152,26 @@ describe('Checkout Session Creation (integration)', () => {
     });
 
     const response = await request(app)
-      .post('/api/payment/checkout')
-      .set('Origin', TEST_ORIGIN)
-      .send({ priceId: 'price_explorer_monthly' });
+      .post("/api/payment/checkout")
+      .set("Origin", TEST_ORIGIN)
+      .send({ priceId: "price_explorer_monthly" });
 
     expect(response.status).toBe(401);
-    expect(response.body.error).toBe('Authentication required');
+    expect(response.body.error).toBe("Authentication required");
   });
 
-  it('reuses an existing Stripe customer when billing profile already exists', async () => {
+  it("reuses an existing Stripe customer when billing profile already exists", async () => {
     const paymentService = {
       isPriceIdConfigured: vi.fn().mockReturnValue(true),
       createCheckoutSession: vi.fn().mockResolvedValue({
-        url: 'https://checkout.stripe.com/pay/cs_test_existing',
+        url: "https://checkout.stripe.com/pay/cs_test_existing",
       }),
       createCustomer: vi.fn(),
     };
 
     const billingProfileStore = {
       getProfile: vi.fn().mockResolvedValue({
-        stripeCustomerId: 'cus_existing_123',
+        stripeCustomerId: "cus_existing_123",
       }),
       upsertProfile: vi.fn(),
     };
@@ -182,18 +182,18 @@ describe('Checkout Session Creation (integration)', () => {
     });
 
     const response = await request(app)
-      .post('/api/payment/checkout')
-      .set('x-api-key', TEST_API_KEY)
-      .set('Origin', TEST_ORIGIN)
-      .send({ priceId: 'price_creator_monthly' });
+      .post("/api/payment/checkout")
+      .set("x-api-key", TEST_API_KEY)
+      .set("Origin", TEST_ORIGIN)
+      .send({ priceId: "price_creator_monthly" });
 
     expect(response.status).toBe(200);
     expect(paymentService.createCustomer).not.toHaveBeenCalled();
     expect(paymentService.createCheckoutSession).toHaveBeenCalledWith(
       `api-key:${TEST_API_KEY}`,
-      'price_creator_monthly',
+      "price_creator_monthly",
       `${TEST_ORIGIN}/settings/billing`,
-      'cus_existing_123'
+      "cus_existing_123",
     );
     expect(billingProfileStore.upsertProfile).not.toHaveBeenCalled();
   });

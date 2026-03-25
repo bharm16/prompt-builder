@@ -39,4 +39,3 @@ Open `http://localhost:5173`.
   - `FAL_KEY` / `FAL_API_KEY` (PuLID face-consistent keyframes)
 
 For the full list, see `.env.example`.
-

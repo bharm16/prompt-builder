@@ -10,32 +10,39 @@ import type {
   GeminiPayload,
   GeminiContent,
   GeminiMessagesResult,
-} from './types.ts';
-import { normalizeGeminiSchema } from './normalizeGeminiSchema.ts';
+} from "./types.ts";
+import { normalizeGeminiSchema } from "./normalizeGeminiSchema.ts";
 
 export class GeminiMessageBuilder {
   /**
    * Build complete payload for Gemini API request
    */
-  buildPayload(systemPrompt: string, options: CompletionOptions): GeminiPayload {
-    const { systemInstruction, contents } = this.buildMessages(systemPrompt, options);
+  buildPayload(
+    systemPrompt: string,
+    options: CompletionOptions,
+  ): GeminiPayload {
+    const { systemInstruction, contents } = this.buildMessages(
+      systemPrompt,
+      options,
+    );
 
-    const generationConfig: GeminiPayload['generationConfig'] = {
-      temperature: options.temperature !== undefined ? options.temperature : 0.7,
+    const generationConfig: GeminiPayload["generationConfig"] = {
+      temperature:
+        options.temperature !== undefined ? options.temperature : 0.7,
       maxOutputTokens: options.maxTokens || 8192,
     };
 
     // Only set JSON mode for non-array responses (Gemini limitation)
     if (options.jsonMode && !options.isArray) {
-      generationConfig.responseMimeType = 'application/json';
+      generationConfig.responseMimeType = "application/json";
     }
 
     if (options.responseSchema) {
       generationConfig.responseSchema = normalizeGeminiSchema(
-        options.responseSchema as Record<string, unknown>
+        options.responseSchema as Record<string, unknown>,
       );
       // When schema is provided, responseMimeType must be application/json
-      generationConfig.responseMimeType = 'application/json';
+      generationConfig.responseMimeType = "application/json";
     }
 
     const payload: GeminiPayload = {
@@ -60,7 +67,10 @@ export class GeminiMessageBuilder {
    * - 'assistant' role becomes 'model'
    * - Content is wrapped in parts array with {text: string} objects
    */
-  buildMessages(systemPrompt: string, options: CompletionOptions): GeminiMessagesResult {
+  buildMessages(
+    systemPrompt: string,
+    options: CompletionOptions,
+  ): GeminiMessagesResult {
     if (options.messages && Array.isArray(options.messages)) {
       return this.buildFromMessageHistory(options);
     }
@@ -71,12 +81,14 @@ export class GeminiMessageBuilder {
   /**
    * Build messages from a conversation history
    */
-  private buildFromMessageHistory(options: CompletionOptions): GeminiMessagesResult {
+  private buildFromMessageHistory(
+    options: CompletionOptions,
+  ): GeminiMessagesResult {
     const systemParts: string[] = [];
     const contents: GeminiContent[] = [];
 
     for (const message of options.messages!) {
-      if (message.role === 'system') {
+      if (message.role === "system") {
         if (message.content) {
           systemParts.push(this.stringifyContent(message.content));
         }
@@ -84,7 +96,7 @@ export class GeminiMessageBuilder {
       }
 
       // Map OpenAI-style roles to Gemini roles
-      const role = message.role === 'assistant' ? 'model' : 'user';
+      const role = message.role === "assistant" ? "model" : "user";
       const text = this.stringifyContent(message.content);
 
       contents.push({
@@ -94,23 +106,31 @@ export class GeminiMessageBuilder {
     }
 
     return {
-      systemInstruction: systemParts.join('\n').trim(),
+      systemInstruction: systemParts.join("\n").trim(),
       contents: contents.length
         ? contents
-        : [{ role: 'user', parts: [{ text: options.userMessage || 'Please proceed.' }] }],
+        : [
+            {
+              role: "user",
+              parts: [{ text: options.userMessage || "Please proceed." }],
+            },
+          ],
     };
   }
 
   /**
    * Build a simple single-message payload
    */
-  private buildSimpleMessage(systemPrompt: string, options: CompletionOptions): GeminiMessagesResult {
+  private buildSimpleMessage(
+    systemPrompt: string,
+    options: CompletionOptions,
+  ): GeminiMessagesResult {
     return {
       systemInstruction: systemPrompt,
       contents: [
         {
-          role: 'user',
-          parts: [{ text: options.userMessage || 'Please proceed.' }],
+          role: "user",
+          parts: [{ text: options.userMessage || "Please proceed." }],
         },
       ],
     };
@@ -126,20 +146,22 @@ export class GeminiMessageBuilder {
    * - Falls back to JSON.stringify for unknown formats
    */
   stringifyContent(content: unknown): string {
-    if (typeof content === 'string') {
+    if (typeof content === "string") {
       return content;
     }
 
     if (Array.isArray(content)) {
       return content
-        .map((c) => (typeof c === 'string' ? c : (c as { text?: string })?.text || ''))
-        .join('');
+        .map((c) =>
+          typeof c === "string" ? c : (c as { text?: string })?.text || "",
+        )
+        .join("");
     }
 
-    if (typeof content === 'object' && content !== null) {
+    if (typeof content === "object" && content !== null) {
       return (content as { text?: string }).text || JSON.stringify(content);
     }
 
-    return '';
+    return "";
   }
 }

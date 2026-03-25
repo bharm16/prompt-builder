@@ -1,13 +1,13 @@
-import Replicate from 'replicate';
-import { logger } from '@infrastructure/Logger';
-import { generateId } from '@utils/uid';
-import { StorageService } from '@services/storage/StorageService';
-import { STORAGE_TYPES } from '@services/storage/config/storageConfig';
-import { assertUrlSafe } from '@server/shared/urlValidation';
-import type { FrameBridge, StyleMatchOptions, StyleReference } from './types';
+import Replicate from "replicate";
+import { logger } from "@infrastructure/Logger";
+import { generateId } from "@utils/uid";
+import { StorageService } from "@services/storage/StorageService";
+import { STORAGE_TYPES } from "@services/storage/config/storageConfig";
+import { assertUrlSafe } from "@server/shared/urlValidation";
+import type { FrameBridge, StyleMatchOptions, StyleReference } from "./types";
 
 const DEFAULT_IP_ADAPTER_MODEL =
-  'lucataco/ip-adapter-sdxl:cbe488c8df305a99d155b038abdf003a0bba4e82352e561fbaab2c8c9b70a96e';
+  "lucataco/ip-adapter-sdxl:cbe488c8df305a99d155b038abdf003a0bba4e82352e561fbaab2c8c9b70a96e";
 
 export const STYLE_STRENGTH_PRESETS = {
   loose: 0.4,
@@ -19,18 +19,23 @@ export const STYLE_STRENGTH_PRESETS = {
 export class StyleReferenceService {
   private readonly replicate: Replicate;
   private readonly ipAdapterModel: string;
-  private readonly log = logger.child({ service: 'StyleReferenceService' });
+  private readonly log = logger.child({ service: "StyleReferenceService" });
 
   constructor(
     private storage: StorageService,
     replicateApiToken?: string,
-    ipAdapterModel?: string
+    ipAdapterModel?: string,
   ) {
-    this.replicate = new Replicate(replicateApiToken ? { auth: replicateApiToken } : {});
+    this.replicate = new Replicate(
+      replicateApiToken ? { auth: replicateApiToken } : {},
+    );
     this.ipAdapterModel = ipAdapterModel || DEFAULT_IP_ADAPTER_MODEL;
   }
 
-  async createFromVideo(videoId: string, frame: FrameBridge): Promise<StyleReference> {
+  async createFromVideo(
+    videoId: string,
+    frame: FrameBridge,
+  ): Promise<StyleReference> {
     return {
       id: this.generateId(),
       sourceVideoId: videoId,
@@ -43,34 +48,43 @@ export class StyleReferenceService {
     };
   }
 
-  async createFromImage(imageUrl: string, resolution: { width: number; height: number }): Promise<StyleReference> {
+  async createFromImage(
+    imageUrl: string,
+    resolution: { width: number; height: number },
+  ): Promise<StyleReference> {
     return {
       id: this.generateId(),
-      sourceVideoId: 'image-upload',
+      sourceVideoId: "image-upload",
       sourceFrameIndex: 0,
       frameUrl: imageUrl,
       frameTimestamp: 0,
       resolution,
-      aspectRatio: this.calculateAspectRatio(resolution.width, resolution.height),
+      aspectRatio: this.calculateAspectRatio(
+        resolution.width,
+        resolution.height,
+      ),
       extractedAt: new Date(),
     };
   }
 
   async generateStyledKeyframe(options: StyleMatchOptions): Promise<string> {
-    this.log.info('Generating style-matched keyframe', {
+    this.log.info("Generating style-matched keyframe", {
       strength: options.strength,
       hasNegativePrompt: Boolean(options.negativePrompt),
     });
 
     const startTime = Date.now();
 
-    const modelId = this.ipAdapterModel as `${string}/${string}` | `${string}/${string}:${string}`;
+    const modelId = this.ipAdapterModel as
+      | `${string}/${string}`
+      | `${string}/${string}:${string}`;
     const output = (await this.replicate.run(modelId, {
       input: {
         prompt: options.prompt,
         ip_adapter_image: options.styleReferenceUrl,
         ip_adapter_scale: options.strength,
-        negative_prompt: options.negativePrompt || 'blurry, low quality, distorted',
+        negative_prompt:
+          options.negativePrompt || "blurry, low quality, distorted",
         num_inference_steps: 30,
         guidance_scale: 7.5,
         width: this.getWidthForAspectRatio(options.aspectRatio),
@@ -79,20 +93,28 @@ export class StyleReferenceService {
     })) as string[];
 
     if (!output || !output[0]) {
-      throw new Error('IP-Adapter returned no output');
+      throw new Error("IP-Adapter returned no output");
     }
 
-    const storedUrl = await this.storeKeyframe(options.userId, output[0], options);
+    const storedUrl = await this.storeKeyframe(
+      options.userId,
+      output[0],
+      options,
+    );
 
-    this.log.info('Style-matched keyframe generated', {
+    this.log.info("Style-matched keyframe generated", {
       durationMs: Date.now() - startTime,
     });
 
     return storedUrl;
   }
 
-  private async storeKeyframe(userId: string, sourceUrl: string, options: StyleMatchOptions): Promise<string> {
-    assertUrlSafe(sourceUrl, 'styleReferenceUrl');
+  private async storeKeyframe(
+    userId: string,
+    sourceUrl: string,
+    options: StyleMatchOptions,
+  ): Promise<string> {
+    assertUrlSafe(sourceUrl, "styleReferenceUrl");
     const response = await fetch(sourceUrl);
     if (!response.ok) {
       throw new Error(`Failed to download keyframe (${response.status})`);
@@ -103,12 +125,12 @@ export class StyleReferenceService {
       userId,
       buffer,
       STORAGE_TYPES.PREVIEW_IMAGE,
-      'image/png',
+      "image/png",
       {
         prompt: options.prompt.slice(0, 200),
         strength: options.strength.toString(),
-        source: 'ip-adapter',
-      }
+        source: "ip-adapter",
+      },
     );
 
     return stored.viewUrl;
@@ -116,15 +138,15 @@ export class StyleReferenceService {
 
   private getWidthForAspectRatio(ratio?: string): number {
     switch (ratio) {
-      case '9:16':
+      case "9:16":
         return 768;
-      case '1:1':
+      case "1:1":
         return 1024;
-      case '4:3':
+      case "4:3":
         return 1152;
-      case '3:4':
+      case "3:4":
         return 896;
-      case '16:9':
+      case "16:9":
       default:
         return 1024;
     }
@@ -132,15 +154,15 @@ export class StyleReferenceService {
 
   private getHeightForAspectRatio(ratio?: string): number {
     switch (ratio) {
-      case '9:16':
+      case "9:16":
         return 1344;
-      case '1:1':
+      case "1:1":
         return 1024;
-      case '4:3':
+      case "4:3":
         return 896;
-      case '3:4':
+      case "3:4":
         return 1152;
-      case '16:9':
+      case "16:9":
       default:
         return 576;
     }
@@ -153,6 +175,6 @@ export class StyleReferenceService {
   }
 
   private generateId(): string {
-    return generateId('styleref');
+    return generateId("styleref");
   }
 }

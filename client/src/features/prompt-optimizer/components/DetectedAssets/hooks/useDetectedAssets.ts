@@ -1,5 +1,5 @@
-import { useMemo } from 'react';
-import type { Asset } from '@shared/types/asset';
+import { useMemo } from "react";
+import type { Asset } from "@shared/types/asset";
 
 const TRIGGER_REGEX = /@([a-zA-Z][a-zA-Z0-9_-]*)/g;
 
@@ -9,19 +9,32 @@ export function useDetectedAssets(prompt: string, userAssets: Asset[]) {
     const unresolvedTriggers: string[] = [];
 
     if (!prompt.trim()) {
-      return { detectedAssets, unresolvedTriggers, hasCharacter: false, characterCount: 0 };
+      return {
+        detectedAssets,
+        unresolvedTriggers,
+        hasCharacter: false,
+        characterCount: 0,
+      };
     }
 
     const triggers = Array.from(prompt.matchAll(TRIGGER_REGEX))
-      .map((match) => match[1]?.toLowerCase() ?? '')
+      .map((match) => match[1]?.toLowerCase() ?? "")
       .filter((trigger) => trigger.length > 0);
 
     if (triggers.length === 0) {
-      return { detectedAssets, unresolvedTriggers, hasCharacter: false, characterCount: 0 };
+      return {
+        detectedAssets,
+        unresolvedTriggers,
+        hasCharacter: false,
+        characterCount: 0,
+      };
     }
 
     const assetMap = new Map(
-      userAssets.map((asset) => [asset.trigger.replace(/^@/, '').toLowerCase(), asset])
+      userAssets.map((asset) => [
+        asset.trigger.replace(/^@/, "").toLowerCase(),
+        asset,
+      ]),
     );
 
     for (const trigger of new Set(triggers)) {
@@ -33,7 +46,9 @@ export function useDetectedAssets(prompt: string, userAssets: Asset[]) {
       }
     }
 
-    const characterAssets = detectedAssets.filter((asset) => asset.type === 'character');
+    const characterAssets = detectedAssets.filter(
+      (asset) => asset.type === "character",
+    );
 
     return {
       detectedAssets,

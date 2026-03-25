@@ -1,5 +1,5 @@
-import React, { useMemo } from 'react';
-import type { ModelScore } from '../../types';
+import React, { useMemo } from "react";
+import type { ModelScore } from "../../types";
 
 interface RecommendationReasonsProps {
   score: ModelScore;
@@ -8,8 +8,13 @@ interface RecommendationReasonsProps {
   showWeaknesses?: boolean;
 }
 
-const buildFallbackReasons = (score: ModelScore, maxItems: number): string[] => {
-  const sorted = [...score.factorScores].sort((a, b) => b.contribution - a.contribution);
+const buildFallbackReasons = (
+  score: ModelScore,
+  maxItems: number,
+): string[] => {
+  const sorted = [...score.factorScores].sort(
+    (a, b) => b.contribution - a.contribution,
+  );
   return sorted.slice(0, maxItems).map((factor) => factor.label);
 };
 

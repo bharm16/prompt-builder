@@ -2,19 +2,19 @@
  * PromptOptimizationApi - JSON-based prompt optimization service.
  */
 
-import { ApiClient } from './ApiClient';
-import { trackPromptOptimize } from './analytics';
-import { calculateQualityScore as scorePromptQuality } from './prompt-optimization/qualityScore';
+import { ApiClient } from "./ApiClient";
+import { trackPromptOptimize } from "./analytics";
+import { calculateQualityScore as scorePromptQuality } from "./prompt-optimization/qualityScore";
 import {
   buildOfflineResult,
   shouldUseOfflineFallback,
-} from './prompt-optimization/offlineFallback';
+} from "./prompt-optimization/offlineFallback";
 import type {
   CompileOptions,
   CompileResult,
   OptimizeOptions,
   OptimizeResult,
-} from './prompt-optimization/types';
+} from "./prompt-optimization/types";
 
 export class PromptOptimizationApi {
   constructor(private readonly client: ApiClient) {}
@@ -37,7 +37,7 @@ export class PromptOptimizationApi {
       const requestOptions = signal ? { signal } : {};
       trackPromptOptimize(mode);
       return (await this.client.post(
-        '/optimize',
+        "/optimize",
         {
           prompt,
           mode,
@@ -51,11 +51,14 @@ export class PromptOptimizationApi {
           ...(sourcePrompt ? { sourcePrompt } : {}),
           ...(constraintMode ? { constraintMode } : {}),
         },
-        requestOptions
+        requestOptions,
       )) as OptimizeResult;
     } catch (error) {
       if (shouldUseOfflineFallback(error)) {
-        return buildOfflineResult({ prompt, mode, context, brainstormContext }, error);
+        return buildOfflineResult(
+          { prompt, mode, context, brainstormContext },
+          error,
+        );
       }
 
       throw error;
@@ -71,14 +74,14 @@ export class PromptOptimizationApi {
   }: CompileOptions): Promise<CompileResult> {
     const requestOptions = signal ? { signal } : {};
     return (await this.client.post(
-      '/optimize-compile',
+      "/optimize-compile",
       {
         ...(prompt ? { prompt } : {}),
         ...(artifactKey ? { artifactKey } : {}),
         targetModel,
         ...(context ? { context } : {}),
       },
-      requestOptions
+      requestOptions,
     )) as CompileResult;
   }
 
@@ -87,5 +90,5 @@ export class PromptOptimizationApi {
   }
 }
 
-import { apiClient } from './ApiClient';
+import { apiClient } from "./ApiClient";
 export const promptOptimizationApiV2 = new PromptOptimizationApi(apiClient);

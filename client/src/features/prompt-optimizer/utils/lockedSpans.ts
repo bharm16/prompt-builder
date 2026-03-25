@@ -1,10 +1,10 @@
-import type { HighlightSpan } from '@features/span-highlighting/hooks/useHighlightRendering';
-import type { LockedSpan } from '../types';
+import type { HighlightSpan } from "@features/span-highlighting/hooks/useHighlightRendering";
+import type { LockedSpan } from "../types";
 
-const normalize = (value?: string | null): string => (value ?? '').trim();
+const normalize = (value?: string | null): string => (value ?? "").trim();
 
 export const getSpanId = (span: HighlightSpan): string =>
-  typeof span.id === 'string' && span.id.length > 0
+  typeof span.id === "string" && span.id.length > 0
     ? span.id
     : `span_${span.start}_${span.end}`;
 
@@ -19,15 +19,17 @@ export const buildLockedSpan = (span: HighlightSpan): LockedSpan | null => {
     text,
     leftCtx: normalize(span.displayLeftCtx ?? span.leftCtx),
     rightCtx: normalize(span.displayRightCtx ?? span.rightCtx),
-    ...(typeof span.category === 'string' ? { category: span.category } : {}),
-    ...(typeof span.source === 'string' ? { source: span.source } : {}),
-    ...(typeof span.confidence === 'number' ? { confidence: span.confidence } : {}),
+    ...(typeof span.category === "string" ? { category: span.category } : {}),
+    ...(typeof span.source === "string" ? { source: span.source } : {}),
+    ...(typeof span.confidence === "number"
+      ? { confidence: span.confidence }
+      : {}),
   };
 };
 
 export const findLockedSpanIndex = (
   lockedSpans: LockedSpan[],
-  span: HighlightSpan | null
+  span: HighlightSpan | null,
 ): number => {
   if (!span) {
     return -1;
@@ -48,5 +50,5 @@ export const findLockedSpanIndex = (
 
 export const isSpanLocked = (
   lockedSpans: LockedSpan[],
-  span: HighlightSpan | null
+  span: HighlightSpan | null,
 ): boolean => findLockedSpanIndex(lockedSpans, span) >= 0;

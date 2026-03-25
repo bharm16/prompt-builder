@@ -13,7 +13,7 @@ commonLabels:
 
 replicas:
   - name: prompt-builder-api
-    count: 2  # Fewer replicas in staging
+    count: 2 # Fewer replicas in staging
   - name: prompt-builder-worker
     count: 1
 

@@ -3,13 +3,16 @@
  * Shared type definitions used across enhancement service modules
  */
 
-import type { AIModelService } from '@services/ai-model/AIModelService';
-import type { VideoPromptService } from '@services/video-prompt-analysis/index';
-import type { PromptMode } from '../constants.js';
-import type { ImageObservation } from '@services/image-observation/types';
-import type { I2VConstraintMode, LockMap } from '@services/prompt-optimization/types/i2v';
+import type { AIModelService } from "@services/ai-model/AIModelService";
+import type { VideoPromptService } from "@services/video-prompt-analysis/index";
+import type { PromptMode } from "../constants.js";
+import type { ImageObservation } from "@services/image-observation/types";
+import type {
+  I2VConstraintMode,
+  LockMap,
+} from "@services/prompt-optimization/types/i2v";
 
-export type EnhancementEngineVersion = 'v1' | 'v2';
+export type EnhancementEngineVersion = "v1" | "v2";
 
 /**
  * Suggestion object structure
@@ -37,7 +40,7 @@ export interface NearbySpan {
   category?: string;
   confidence?: number;
   distance: number;
-  position: 'before' | 'after';
+  position: "before" | "after";
   start?: number;
   end?: number;
 }
@@ -176,7 +179,7 @@ export interface PromptBuildParams {
   promptSection?: string | null;
   videoConstraints?: VideoConstraints | null;
   highlightWordCount?: number | null;
-  mode?: 'rewrite' | 'placeholder';
+  mode?: "rewrite" | "placeholder";
   isPlaceholder?: boolean;
   customRequest?: string;
   spanAnchors?: string;
@@ -205,8 +208,8 @@ export interface PromptBuildResult {
   developerMessage?: string;
   userMessage?: string;
   useStrictSchema?: boolean;
-  provider: 'openai' | 'groq' | 'qwen';
-  reasoningEffort?: 'none' | 'default';
+  provider: "openai" | "groq" | "qwen";
+  reasoningEffort?: "none" | "default";
 }
 
 /**
@@ -214,24 +217,24 @@ export interface PromptBuildResult {
  * SIMPLIFIED for 8B models - only essential fields
  */
 export interface SharedPromptContext {
-  highlightedText: string;          // The text being replaced
+  highlightedText: string; // The text being replaced
   highlightedCategory: string | null; // Full category (e.g. subject.appearance)
-  slotLabel: string;                // Category/slot (subject, action, camera, etc.)
-  inlineContext: string;            // Short context around highlight
-  prefix: string;                   // Text before highlight (trimmed)
-  suffix: string;                   // Text after highlight (trimmed)
-  promptPreview: string;            // Full prompt (trimmed)
-  constraintLine: string;           // Simplified constraints
-  constraintNotes?: string;         // Additional constraint notes
-  modelLine: string;                // Target model (optional)
-  sectionLine: string;              // Prompt section (optional)
-  guidance: string;                 // Creative guidance (optional)
-  focusGuidance?: string;           // Context-aware guidance (optional)
-  spanAnchors?: string;             // Anchors from labeled spans
-  nearbySpanHints?: string;         // Nearby spans to avoid conflicting with
-  replacementInstruction: string;   // Deprecated - kept for compatibility
+  slotLabel: string; // Category/slot (subject, action, camera, etc.)
+  inlineContext: string; // Short context around highlight
+  prefix: string; // Text before highlight (trimmed)
+  suffix: string; // Text after highlight (trimmed)
+  promptPreview: string; // Full prompt (trimmed)
+  constraintLine: string; // Simplified constraints
+  constraintNotes?: string; // Additional constraint notes
+  modelLine: string; // Target model (optional)
+  sectionLine: string; // Prompt section (optional)
+  guidance: string; // Creative guidance (optional)
+  focusGuidance?: string; // Context-aware guidance (optional)
+  spanAnchors?: string; // Anchors from labeled spans
+  nearbySpanHints?: string; // Nearby spans to avoid conflicting with
+  replacementInstruction: string; // Deprecated - kept for compatibility
   highlightWordCount?: number | null;
-  mode: 'rewrite' | 'placeholder';
+  mode: "rewrite" | "placeholder";
 }
 
 /**
@@ -260,7 +263,7 @@ export interface DiversityMetrics {
  * Compatible with StructuredOutputEnforcer's expected schema format
  */
 export interface OutputSchema {
-  type: 'object' | 'array';
+  type: "object" | "array";
   name?: string;
   strict?: boolean;
   required?: string[];
@@ -385,7 +388,7 @@ export interface VideoService {
     highlightedText: string,
     contextBefore: string,
     contextAfter: string,
-    highlightedCategory?: string | null | undefined
+    highlightedCategory?: string | null | undefined,
   ): string | null;
   getVideoReplacementConstraints(
     details?: {
@@ -395,25 +398,25 @@ export interface VideoService {
       highlightedCategory?: string | null | undefined;
       highlightedCategoryConfidence?: number | null | undefined;
     },
-    options?: { forceMode?: string | undefined }
+    options?: { forceMode?: string | undefined },
   ): VideoConstraints;
   detectTargetModel(fullPrompt: string): string | null;
   detectPromptSection(
     highlightedText: string,
     fullPrompt: string,
-    contextBefore: string
+    contextBefore: string,
   ): string | null;
   getCategoryFocusGuidance(
     phraseRole: string | null | undefined,
     categoryHint: string | null | undefined,
     fullContext: string,
     allSpans: Array<{ category?: string; text?: string }>,
-    editHistory: EditHistoryEntry[]
+    editHistory: EditHistoryEntry[],
   ): string[] | null;
   getVideoFallbackConstraints(
     currentConstraints: VideoConstraints | null | undefined,
     details?: Record<string, unknown>,
-    attemptedModes?: Set<string>
+    attemptedModes?: Set<string>,
   ): VideoConstraints | null;
 }
 
@@ -423,7 +426,9 @@ export type AIService = AIModelService;
  * Brainstorm builder interface
  */
 export interface BrainstormBuilder {
-  buildBrainstormSignature(brainstormContext: BrainstormContext | null): BrainstormSignature | null;
+  buildBrainstormSignature(
+    brainstormContext: BrainstormContext | null,
+  ): BrainstormSignature | null;
 }
 
 /**
@@ -441,7 +446,7 @@ export interface PromptBuilder {
 export interface ValidationService {
   sanitizeSuggestions(
     suggestions: Suggestion[] | string[],
-    context: SanitizationContext
+    context: SanitizationContext,
   ): Suggestion[];
   groupSuggestionsByCategory(suggestions: Suggestion[]): GroupedSuggestions[];
 }
@@ -451,7 +456,10 @@ export interface ValidationService {
  */
 export interface DiversityEnforcer {
   ensureDiverseSuggestions(suggestions: Suggestion[]): Promise<Suggestion[]>;
-  filterOriginalEchoes(suggestions: Suggestion[], originalText: string): Suggestion[];
+  filterOriginalEchoes(
+    suggestions: Suggestion[],
+    originalText: string,
+  ): Suggestion[];
 }
 
 /**
@@ -460,7 +468,7 @@ export interface DiversityEnforcer {
 export interface CategoryAligner {
   enforceCategoryAlignment(
     suggestions: Suggestion[],
-    params: ValidationParams
+    params: ValidationParams,
   ): CategoryAlignmentResult;
 }
 
@@ -470,7 +478,7 @@ export interface CategoryAligner {
 export interface MetricsService {
   recordEnhancementTiming(
     metrics: Record<string, unknown>,
-    params: Record<string, unknown>
+    params: Record<string, unknown>,
   ): void;
   recordAlert(type: string, data: Record<string, unknown>): void;
 }

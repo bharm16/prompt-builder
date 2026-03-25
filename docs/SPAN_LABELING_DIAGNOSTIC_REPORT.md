@@ -12,6 +12,7 @@
 The span labeling system is **functionally working** but shows **40% error rate** in category assignment and fragmentation. The system correctly extracts text spans but struggles with semantic categorization, particularly distinguishing between subject identity and action attributes.
 
 **Key Findings:**
+
 - ✅ **Text extraction:** 100% accurate (no paraphrasing/hallucination)
 - ✅ **JSON parsing:** 100% success rate (no schema errors)
 - ⚠️ **Category accuracy:** 60% (2/5 tests had wrong categories)
@@ -27,6 +28,7 @@ The span labeling system is **functionally working** but shows **40% error rate*
 **Status:** No issues detected
 
 **Evidence:**
+
 - 0% fuzzy match rate across all tests
 - All spans matched exact substrings from input text
 - No hallucinated text detected
@@ -42,27 +44,33 @@ The model successfully follows the "exact substring" instruction despite the 400
 **Status:** 2 out of 5 tests had incorrect category assignments
 
 #### Test Case 1: Camera vs Action Disambiguation
+
 **Input:** "The camera slowly pans right as the actor walks across the stage"
 
 **Expected vs Actual:**
+
 - ❌ Expected: "actor walks across the stage" → `action.movement`
 - ✅ Actual: "actor" → `subject.identity` (CORRECT)
 - ✅ Actual: "walks across" → `action.movement` (CORRECT)
 
 **Verdict:** Test expectation was **incorrect**. The model correctly separated:
+
 - Subject (WHO): "actor" → `subject.identity` ✓
 - Action (WHAT): "walks across" → `action.movement` ✓
 - Environment (WHERE): "the stage" → `environment.location` ✓
 
 #### Test Case 2: Shot Type Detection
+
 **Input:** "Close-up shot of a detective's weathered hands holding a vintage camera"
 
 **Expected vs Actual:**
+
 - ❌ Expected: "detective's weathered hands" → `subject.appearance`
 - ✅ Actual: "detective's weathered hands" → `subject.identity`
 
 **Analysis:**
 The model labeled the entire phrase "detective's weathered hands" as `subject.identity` instead of splitting it into:
+
 - "detective" → `subject.identity`
 - "weathered hands" → `subject.appearance`
 
@@ -78,6 +86,7 @@ The 400+ line prompt may be overwhelming the model's ability to make fine-graine
 **Status:** No missing spans detected
 
 **Evidence:**
+
 - All expected spans were found across all test cases
 - Technical specs extraction worked perfectly (4/4 spans found)
 - Complex multi-section prompt processed correctly (15 spans found)
@@ -89,6 +98,7 @@ The 400+ line prompt may be overwhelming the model's ability to make fine-graine
 **Status:** No hallucinated text detected
 
 **Evidence:**
+
 - 0 spans with mismatched text
 - All returned spans matched exact substrings from input
 - No fuzzy matching fallbacks required
@@ -100,6 +110,7 @@ The 400+ line prompt may be overwhelming the model's ability to make fine-graine
 **Status:** No JSON parsing or schema errors
 
 **Evidence:**
+
 - 100% JSON validity rate
 - No repair loop triggered
 - All responses passed schema validation on first attempt
@@ -115,6 +126,7 @@ The structured output enforcement is working correctly. The model consistently r
 **Status:** 2 out of 5 tests showed fragmentation issues
 
 #### Test Case 4: Fragmentation Test
+
 **Input:** "Action shot of a dog running through a park"
 
 **Expected:** "Action shot" as ONE span
@@ -122,15 +134,18 @@ The structured output enforcement is working correctly. The model consistently r
 **Actual:** Correctly kept as one span ✓
 
 **However:** Found 6 spans total, including:
+
 - "a" → `environment.context` (should not be a span)
 - "through" → `environment.context` (should not be a span)
 
 **Analysis:** The model is creating spans for function words ("a", "through") that shouldn't be labeled.
 
 #### Test Case 5: Complex Multi-Section
+
 **Input:** Long prompt with multiple sections
 
 **Fragmentation Issues Found:**
+
 1. "fallen leaves swirl around him" + "in the brisk wind" → Should be merged (both `environment.weather`)
 2. "The camera slowly pans in" + "from a distance" → Should be merged (both camera-related)
 
@@ -144,6 +159,7 @@ The model is splitting semantically related phrases into separate spans when the
 **Status:** No repair loops triggered
 
 **Evidence:**
+
 - 0% repair loop rate
 - All validations passed on first attempt
 - No lenient mode fallbacks required
@@ -156,11 +172,13 @@ The validation pipeline is working correctly. When spans are valid, they pass im
 ### 8. Performance: ✅ ACCEPTABLE
 
 **Metrics:**
+
 - **Average:** 1,029ms (1.0 seconds)
 - **P95:** 2,199ms (2.2 seconds)
 - **P99:** 2,199ms (2.2 seconds)
 
 **Breakdown by Test:**
+
 1. Camera vs Action: 584ms
 2. Shot Type Detection: 1,341ms
 3. Technical Specs: 485ms
@@ -177,12 +195,14 @@ Performance is acceptable for LLM-based extraction. The complex multi-section pr
 ### Primary Issue: Category Confusion
 
 The model struggles with fine-grained category distinctions, particularly:
+
 1. **Subject identity vs appearance:** Treats "detective's weathered hands" as identity instead of splitting into identity + appearance
 2. **Function word labeling:** Creates spans for articles/prepositions ("a", "through") that shouldn't be labeled
 
 ### Secondary Issue: Fragmentation
 
 The model splits semantically related phrases unnecessarily:
+
 - Camera movements split across multiple spans
 - Weather descriptions split unnecessarily
 - Adjacent spans with same parent category not merged
@@ -202,12 +222,14 @@ The model splits semantically related phrases unnecessarily:
 **Action:** Reduce prompt from 400+ lines to ~100-150 lines
 
 **Changes:**
+
 - Remove verbose disambiguation rules (move to post-processing)
 - Keep only essential taxonomy structure
 - Reduce examples (3-5 targeted examples instead of 10+)
 - Strengthen exact substring instruction (repeat 3x at top)
 
 **Expected Impact:**
+
 - Better category accuracy (target: >85%)
 - Reduced fragmentation
 - Faster processing
@@ -217,6 +239,7 @@ The model splits semantically related phrases unnecessarily:
 **Action:** Move disambiguation logic to post-processing
 
 **Changes:**
+
 - Remove complex disambiguation rules from prompt
 - Add post-processing rules:
   - If span contains possessive + body part → split into identity + appearance
@@ -224,6 +247,7 @@ The model splits semantically related phrases unnecessarily:
   - If adjacent spans share parent category → merge them
 
 **Expected Impact:**
+
 - More consistent category assignment
 - Better handling of edge cases
 
@@ -232,11 +256,13 @@ The model splits semantically related phrases unnecessarily:
 **Action:** Add explicit instructions about span boundaries
 
 **Changes:**
+
 - Add rule: "Do not create spans for single function words (a, an, the, in, on, through)"
 - Add rule: "Keep semantically related phrases together (e.g., 'camera slowly pans in from a distance' should be ONE span)"
 - Add examples showing correct vs incorrect fragmentation
 
 **Expected Impact:**
+
 - Reduced fragmentation rate (target: <20%)
 
 ### Priority 4: Consider Model Upgrade for Complex Cases
@@ -244,10 +270,12 @@ The model splits semantically related phrases unnecessarily:
 **Action:** Use larger model (70B) for complex prompts
 
 **Changes:**
+
 - Route prompts >500 words to 70B model
 - Keep 8B for simple prompts (<500 words)
 
 **Expected Impact:**
+
 - Better accuracy on complex prompts
 - Cost optimization (8B for simple, 70B only when needed)
 
@@ -258,19 +286,21 @@ The model splits semantically related phrases unnecessarily:
 ### Test Case 1: Camera vs Action Disambiguation
 
 **Current (WRONG):**
+
 ```javascript
 expectedSpans: [
-  { text: "actor walks across the stage", role: "action.movement" }
-]
+  { text: "actor walks across the stage", role: "action.movement" },
+];
 ```
 
 **Should Be (CORRECT):**
+
 ```javascript
 expectedSpans: [
   { text: "actor", role: "subject.identity" },
   { text: "walks across", role: "action.movement" },
-  { text: "the stage", role: "environment.location" }
-]
+  { text: "the stage", role: "environment.location" },
+];
 ```
 
 **Reason:** The model correctly separated subject, action, and environment. The test expectation was incorrect.
@@ -279,17 +309,17 @@ expectedSpans: [
 
 ## Metrics Summary
 
-| Metric | Target | Actual | Status |
-|--------|--------|--------|--------|
-| Text Mismatch Rate | <5% | 0% | ✅ PASS |
-| Wrong Categories | <10% | 40% | ❌ FAIL |
-| Missing Spans | <5% | 0% | ✅ PASS |
-| Hallucinated Text | 0% | 0% | ✅ PASS |
-| JSON Parse Failures | <1% | 0% | ✅ PASS |
-| Fragmentation Rate | <20% | 40% | ❌ FAIL |
-| Repair Loop Rate | <5% | 0% | ✅ PASS |
-| Avg Latency | <1.5s | 1.0s | ✅ PASS |
-| P95 Latency | <2.5s | 2.2s | ✅ PASS |
+| Metric              | Target | Actual | Status  |
+| ------------------- | ------ | ------ | ------- |
+| Text Mismatch Rate  | <5%    | 0%     | ✅ PASS |
+| Wrong Categories    | <10%   | 40%    | ❌ FAIL |
+| Missing Spans       | <5%    | 0%     | ✅ PASS |
+| Hallucinated Text   | 0%     | 0%     | ✅ PASS |
+| JSON Parse Failures | <1%    | 0%     | ✅ PASS |
+| Fragmentation Rate  | <20%   | 40%    | ❌ FAIL |
+| Repair Loop Rate    | <5%    | 0%     | ✅ PASS |
+| Avg Latency         | <1.5s  | 1.0s   | ✅ PASS |
+| P95 Latency         | <2.5s  | 2.2s   | ✅ PASS |
 
 ---
 
@@ -298,16 +328,19 @@ expectedSpans: [
 The span labeling system is **fundamentally sound** but needs prompt simplification to improve category accuracy and reduce fragmentation. The core functionality (text extraction, JSON parsing, performance) is working well.
 
 **Key Strengths:**
+
 - Accurate text extraction (no paraphrasing)
 - Reliable JSON output
 - Good performance
 
 **Key Weaknesses:**
+
 - Category confusion (40% error rate)
 - Unnecessary fragmentation (40% rate)
 - Test case expectations need correction
 
 **Next Steps:**
+
 1. Simplify prompt (Priority 1)
 2. Fix test case expectations
 3. Add post-processing disambiguation rules
@@ -318,4 +351,3 @@ The span labeling system is **fundamentally sound** but needs prompt simplificat
 **Report Generated:** November 28, 2025  
 **Diagnostic Script:** `scripts/diagnose-span-labeling.js`  
 **Detailed Results:** `diagnostic-results.json`
-

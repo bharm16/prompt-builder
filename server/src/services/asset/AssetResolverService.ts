@@ -1,10 +1,10 @@
-import { logger } from '@infrastructure/Logger';
-import type { Asset, AssetType, ResolvedPrompt } from '@shared/types/asset';
-import AssetRepository from './AssetRepository';
+import { logger } from "@infrastructure/Logger";
+import type { Asset, AssetType, ResolvedPrompt } from "@shared/types/asset";
+import AssetRepository from "./AssetRepository";
 
 export class AssetResolverService {
   private readonly repository: AssetRepository;
-  private readonly log = logger.child({ service: 'AssetResolverService' });
+  private readonly log = logger.child({ service: "AssetResolverService" });
 
   constructor(assetRepository: AssetRepository) {
     this.repository = assetRepository;
@@ -15,11 +15,14 @@ export class AssetResolverService {
     return [...new Set(matches.map((trigger) => trigger.toLowerCase()))];
   }
 
-  async resolvePrompt(userId: string, rawPrompt: string): Promise<ResolvedPrompt> {
-    const operation = 'resolvePrompt';
+  async resolvePrompt(
+    userId: string,
+    rawPrompt: string,
+  ): Promise<ResolvedPrompt> {
+    const operation = "resolvePrompt";
     const startTime = performance.now();
     const triggers = this.extractTriggers(rawPrompt);
-    this.log.debug('Starting operation.', {
+    this.log.debug("Starting operation.", {
       operation,
       userId,
       promptLength: rawPrompt.length,
@@ -40,7 +43,7 @@ export class AssetResolverService {
           negativePrompts: [],
           referenceImages: [],
         };
-        this.log.info('Operation completed.', {
+        this.log.info("Operation completed.", {
           operation,
           userId,
           assetCount: 0,
@@ -52,33 +55,39 @@ export class AssetResolverService {
 
       const assets = await this.repository.getByTriggers(userId, triggers);
 
-      const characters = assets.filter((asset) => asset.type === 'character');
-      const styles = assets.filter((asset) => asset.type === 'style');
-      const locations = assets.filter((asset) => asset.type === 'location');
-      const objects = assets.filter((asset) => asset.type === 'object');
+      const characters = assets.filter((asset) => asset.type === "character");
+      const styles = assets.filter((asset) => asset.type === "style");
+      const locations = assets.filter((asset) => asset.type === "location");
+      const objects = assets.filter((asset) => asset.type === "object");
 
       let expandedText = rawPrompt;
       const expansionTracker = new Map<string, boolean>();
 
       for (const asset of assets) {
-        expandedText = this.expandTrigger(expandedText, asset, expansionTracker);
+        expandedText = this.expandTrigger(
+          expandedText,
+          asset,
+          expansionTracker,
+        );
       }
 
       const styleModifiers = styles
         .map((style) => style.textDefinition)
         .filter(Boolean)
-        .join(', ');
+        .join(", ");
 
       if (styleModifiers) {
         expandedText = `${expandedText}, ${styleModifiers}`;
       }
 
       const negativePrompts = assets
-        .map((asset) => asset.negativePrompt || '')
+        .map((asset) => asset.negativePrompt || "")
         .filter((value) => Boolean(value));
 
       const requiresKeyframe = characters.some(
-        (character) => Boolean(character.faceEmbedding) || Boolean(character.referenceImages?.length)
+        (character) =>
+          Boolean(character.faceEmbedding) ||
+          Boolean(character.referenceImages?.length),
       );
 
       await Promise.allSettled(
@@ -92,15 +101,16 @@ export class AssetResolverService {
               expandedText,
             });
           } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : String(error);
-            this.log.warn('Failed to record asset usage', {
+            const errorMessage =
+              error instanceof Error ? error.message : String(error);
+            this.log.warn("Failed to record asset usage", {
               operation,
               userId,
               assetId: asset.id,
               error: errorMessage,
             });
           }
-        })
+        }),
       );
 
       const result = {
@@ -116,7 +126,7 @@ export class AssetResolverService {
         referenceImages: this.collectReferenceImages(assets),
       };
 
-      this.log.info('Operation completed.', {
+      this.log.info("Operation completed.", {
         operation,
         userId,
         assetCount: assets.length,
@@ -126,8 +136,9 @@ export class AssetResolverService {
 
       return result;
     } catch (error) {
-      const errorObj = error instanceof Error ? error : new Error(String(error));
-      this.log.error('Operation failed.', errorObj, {
+      const errorObj =
+        error instanceof Error ? error : new Error(String(error));
+      this.log.error("Operation failed.", errorObj, {
         operation,
         userId,
         duration: Math.round(performance.now() - startTime),
@@ -136,9 +147,13 @@ export class AssetResolverService {
     }
   }
 
-  expandTrigger(text: string, asset: Asset, expansionTracker: Map<string, boolean>): string {
-    const escapedTrigger = asset.trigger.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const triggerRegex = new RegExp(escapedTrigger, 'gi');
+  expandTrigger(
+    text: string,
+    asset: Asset,
+    expansionTracker: Map<string, boolean>,
+  ): string {
+    const escapedTrigger = asset.trigger.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const triggerRegex = new RegExp(escapedTrigger, "gi");
     const trackingKey = asset.trigger.toLowerCase();
 
     return text.replace(triggerRegex, () => {
@@ -163,24 +178,25 @@ export class AssetResolverService {
       if ((asset.referenceImages || []).length === 0) {
         return [];
       }
-        const primary =
-          asset.referenceImages.find((image) => image.isPrimary) || asset.referenceImages[0];
-        if (!primary) {
-          return [];
-        }
-        return {
-          assetId: asset.id,
-          assetType: asset.type,
-          ...(asset.name ? { assetName: asset.name } : {}),
-          imageUrl: primary.url,
-        } as const;
-      });
+      const primary =
+        asset.referenceImages.find((image) => image.isPrimary) ||
+        asset.referenceImages[0];
+      if (!primary) {
+        return [];
+      }
+      return {
+        assetId: asset.id,
+        assetType: asset.type,
+        ...(asset.name ? { assetName: asset.name } : {}),
+        imageUrl: primary.url,
+      } as const;
+    });
   }
 
   async getSuggestions(
     userId: string,
     partialTrigger: string,
-    limit = 10
+    limit = 10,
   ): Promise<
     Array<{
       id: string;
@@ -190,9 +206,9 @@ export class AssetResolverService {
       thumbnailUrl?: string;
     }>
   > {
-    const operation = 'getSuggestions';
+    const operation = "getSuggestions";
     const startTime = performance.now();
-    this.log.debug('Starting operation.', {
+    this.log.debug("Starting operation.", {
       operation,
       userId,
       queryLength: partialTrigger.length,
@@ -201,13 +217,13 @@ export class AssetResolverService {
 
     try {
       const allAssets = await this.repository.getAll(userId, { limit: 100 });
-      const normalized = partialTrigger.toLowerCase().replace('@', '');
+      const normalized = partialTrigger.toLowerCase().replace("@", "");
 
       const results = allAssets
         .filter(
           (asset) =>
             asset.trigger.toLowerCase().includes(normalized) ||
-            asset.name.toLowerCase().includes(normalized)
+            asset.name.toLowerCase().includes(normalized),
         )
         .slice(0, limit)
         .map((asset) => ({
@@ -220,7 +236,7 @@ export class AssetResolverService {
             : {}),
         }));
 
-      this.log.info('Operation completed.', {
+      this.log.info("Operation completed.", {
         operation,
         userId,
         suggestionCount: results.length,
@@ -229,8 +245,9 @@ export class AssetResolverService {
 
       return results;
     } catch (error) {
-      const errorObj = error instanceof Error ? error : new Error(String(error));
-      this.log.error('Operation failed.', errorObj, {
+      const errorObj =
+        error instanceof Error ? error : new Error(String(error));
+      this.log.error("Operation failed.", errorObj, {
         operation,
         userId,
         duration: Math.round(performance.now() - startTime),
@@ -239,15 +256,18 @@ export class AssetResolverService {
     }
   }
 
-  async validateTriggers(userId: string, rawPrompt: string): Promise<{
+  async validateTriggers(
+    userId: string,
+    rawPrompt: string,
+  ): Promise<{
     isValid: boolean;
     missingTriggers: string[];
     foundAssets: Asset[];
   }> {
-    const operation = 'validateTriggers';
+    const operation = "validateTriggers";
     const startTime = performance.now();
     const triggers = this.extractTriggers(rawPrompt);
-    this.log.debug('Starting operation.', {
+    this.log.debug("Starting operation.", {
       operation,
       userId,
       triggerCount: triggers.length,
@@ -255,8 +275,12 @@ export class AssetResolverService {
 
     try {
       const assets = await this.repository.getByTriggers(userId, triggers);
-      const foundTriggers = new Set(assets.map((asset) => asset.trigger.toLowerCase()));
-      const missingTriggers = triggers.filter((trigger) => !foundTriggers.has(trigger.toLowerCase()));
+      const foundTriggers = new Set(
+        assets.map((asset) => asset.trigger.toLowerCase()),
+      );
+      const missingTriggers = triggers.filter(
+        (trigger) => !foundTriggers.has(trigger.toLowerCase()),
+      );
 
       const result = {
         isValid: missingTriggers.length === 0,
@@ -264,7 +288,7 @@ export class AssetResolverService {
         foundAssets: assets,
       };
 
-      this.log.info('Operation completed.', {
+      this.log.info("Operation completed.", {
         operation,
         userId,
         foundCount: assets.length,
@@ -274,8 +298,9 @@ export class AssetResolverService {
 
       return result;
     } catch (error) {
-      const errorObj = error instanceof Error ? error : new Error(String(error));
-      this.log.error('Operation failed.', errorObj, {
+      const errorObj =
+        error instanceof Error ? error : new Error(String(error));
+      this.log.error("Operation failed.", errorObj, {
         operation,
         userId,
         duration: Math.round(performance.now() - startTime),

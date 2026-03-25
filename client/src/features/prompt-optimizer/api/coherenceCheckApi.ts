@@ -1,6 +1,9 @@
-import { buildFirebaseAuthHeaders } from '@/services/http/firebaseAuth';
-import { z } from 'zod';
-import type { CoherenceCheckRequest, CoherenceCheckResult } from '../types/coherence';
+import { buildFirebaseAuthHeaders } from "@/services/http/firebaseAuth";
+import { z } from "zod";
+import type {
+  CoherenceCheckRequest,
+  CoherenceCheckResult,
+} from "../types/coherence";
 
 export interface CoherenceCheckFetchOptions {
   signal?: AbortSignal;
@@ -9,13 +12,13 @@ export interface CoherenceCheckFetchOptions {
 
 const CoherenceEditSchema = z.union([
   z.object({
-    type: z.literal('replaceSpanText'),
+    type: z.literal("replaceSpanText"),
     spanId: z.string().optional(),
     replacementText: z.string().optional(),
     anchorQuote: z.string().optional(),
   }),
   z.object({
-    type: z.literal('removeSpan'),
+    type: z.literal("removeSpan"),
     spanId: z.string().optional(),
     anchorQuote: z.string().optional(),
   }),
@@ -31,7 +34,7 @@ const CoherenceRecommendationSchema = z.object({
 
 const CoherenceFindingSchema = z.object({
   id: z.string().optional(),
-  severity: z.enum(['low', 'medium', 'high', 'suggestion']).optional(),
+  severity: z.enum(["low", "medium", "high", "suggestion"]).optional(),
   message: z.string(),
   reasoning: z.string(),
   involvedSpanIds: z.array(z.string()).optional(),
@@ -45,18 +48,19 @@ const CoherenceCheckResultSchema = z.object({
 
 export async function checkPromptCoherence(
   payload: CoherenceCheckRequest,
-  options: CoherenceCheckFetchOptions = {}
+  options: CoherenceCheckFetchOptions = {},
 ): Promise<CoherenceCheckResult> {
-  const fetchFn = options.fetchImpl || (typeof fetch !== 'undefined' ? fetch : undefined);
+  const fetchFn =
+    options.fetchImpl || (typeof fetch !== "undefined" ? fetch : undefined);
   if (!fetchFn) {
-    throw new Error('Fetch is not available in this environment.');
+    throw new Error("Fetch is not available in this environment.");
   }
 
   const authHeaders = await buildFirebaseAuthHeaders();
-  const response = await fetchFn('/api/check-prompt-coherence', {
-    method: 'POST',
+  const response = await fetchFn("/api/check-prompt-coherence", {
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
       ...authHeaders,
     },
     body: JSON.stringify(payload),

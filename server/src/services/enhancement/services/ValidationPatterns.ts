@@ -75,7 +75,8 @@ export const faceCueTerms =
 export const handCueTerms =
   /\b(hands?|fingers?|palms?|knuckles?|nails?|fists?|thumb|thumbs)\b/i;
 export const hairCueTerms = /\b(hair|curls?|braids?|locks?|fringe)\b/i;
-export const feetCueTerms = /\b(feet|foot|toes?|ankles?|heels?|socks?|shoes?)\b/i;
+export const feetCueTerms =
+  /\b(feet|foot|toes?|ankles?|heels?|socks?|shoes?)\b/i;
 export const propCueTerms =
   /\b(steering wheel|wheel|dashboard|window|glass|mirror|seat|console|toy|ring|stroller)\b/i;
 
@@ -91,8 +92,11 @@ export const technicalVerbLeadTerms =
 
 // ── Locked category patterns ────────────────────────────
 export const lockedCategoryPatterns: Record<string, RegExp> = {
-  camera: /\b(dolly|track(ing)?|pan|tilt|crane|zoom|handheld|static|lens|mm|wide shot|close[-\s]?up|over[-\s]?the[-\s]?shoulder|angle|framing)\b/i,
+  camera:
+    /\b(dolly|track(ing)?|pan|tilt|crane|zoom|handheld|static|lens|mm|wide shot|close[-\s]?up|over[-\s]?the[-\s]?shoulder|angle|framing)\b/i,
   shot: /\b(wide shot|medium shot|close[-\s]?up|extreme close[-\s]?up|over[-\s]?the[-\s]?shoulder|shot|angle)\b/i,
-  lighting: /\b(lighting|shadow|glow|illuminat|backlight|rim light|key light|fill light|high[-\s]?key|low[-\s]?key|sunlight|moonlight)\b/i,
-  technical: /\b(\d+fps|frame rate|aspect ratio|\d+:\d+|4k|8k|resolution|duration|mm film|film format)\b/i,
+  lighting:
+    /\b(lighting|shadow|glow|illuminat|backlight|rim light|key light|fill light|high[-\s]?key|low[-\s]?key|sunlight|moonlight)\b/i,
+  technical:
+    /\b(\d+fps|frame rate|aspect ratio|\d+:\d+|4k|8k|resolution|duration|mm film|film format)\b/i,
 };

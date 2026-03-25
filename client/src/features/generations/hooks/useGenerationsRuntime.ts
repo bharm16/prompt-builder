@@ -1,35 +1,55 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react';
-import type { DraftModel, GenerationOverrides } from '@components/ToolSidebar/types';
-import { useCreditBalance } from '@/contexts/CreditBalanceContext';
-import { useAuthUser } from '@hooks/useAuthUser';
-import { useToast } from '@components/Toast';
-import { logger } from '@/services/LoggingService';
-import { resolveMediaUrl } from '@/services/media/MediaUrlResolver';
-import { usePromptNavigation, usePromptSession } from '@features/prompt-optimizer/context/PromptStateContext';
-import { useWorkspaceSession } from '@features/prompt-optimizer/context/WorkspaceSessionContext';
-import { useGenerationControlsContext } from '@features/prompt-optimizer/context/GenerationControlsContext';
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type {
+  DraftModel,
+  GenerationOverrides,
+} from "@components/ToolSidebar/types";
+import { useCreditBalance } from "@/contexts/CreditBalanceContext";
+import { useAuthUser } from "@hooks/useAuthUser";
+import { useToast } from "@components/Toast";
+import { logger } from "@/services/LoggingService";
+import { resolveMediaUrl } from "@/services/media/MediaUrlResolver";
+import {
+  usePromptNavigation,
+  usePromptSession,
+  usePromptServices,
+} from "@features/prompt-optimizer/context/PromptStateContext";
+import { useWorkspaceSession } from "@features/prompt-optimizer/context/WorkspaceSessionContext";
+import { useGenerationControlsContext } from "@features/prompt-optimizer/context/GenerationControlsContext";
 import {
   useGenerationControlsStoreActions,
   useGenerationControlsStoreState,
-} from '@features/generation-controls/context/GenerationControlsStore';
-import { resolvePrimaryVideoSource } from '../utils/videoSource';
-import { getModelConfig } from '../config/generationConfig';
-import { useGenerationsState } from './useGenerationsState';
-import { useGenerationActions } from './useGenerationActions';
-import { useAssetReferenceImages } from './useAssetReferenceImages';
-import { useGenerationMediaRefresh } from './useGenerationMediaRefresh';
-import { useKeyframeWorkflow } from './useKeyframeWorkflow';
-import { useGenerationsTimeline } from './useGenerationsTimeline';
-import { VIDEO_DRAFT_MODEL } from '@/components/ToolSidebar/config/modelConfig';
-import { useCapabilities } from '@/features/prompt-optimizer/hooks/useCapabilities';
+} from "@features/generation-controls/context/GenerationControlsStore";
+import { resolvePrimaryVideoSource } from "../utils/videoSource";
+import { getModelConfig, getModelCreditCost } from "../config/generationConfig";
+import { useGenerationsState } from "./useGenerationsState";
+import { useGenerationActions } from "./useGenerationActions";
+import { useAssetReferenceImages } from "./useAssetReferenceImages";
+import { useGenerationMediaRefresh } from "./useGenerationMediaRefresh";
+import { useKeyframeWorkflow } from "./useKeyframeWorkflow";
+import { useGenerationsTimeline } from "./useGenerationsTimeline";
+import { VIDEO_DRAFT_MODEL } from "@/components/ToolSidebar/config/modelConfig";
+import { useCapabilities } from "@/features/prompt-optimizer/hooks/useCapabilities";
 import type {
   Generation,
   GenerationsPanelProps,
   GenerationsPanelRuntime,
   GenerationsPanelStateSnapshot,
-} from '../types';
+} from "../types";
+import {
+  consumePendingGenerationIntent,
+  peekPendingGenerationIntent,
+  setPendingGenerationIntent,
+} from "../utils/pendingGenerationIntent";
 
-const log = logger.child('useGenerationsRuntime');
+const log = logger.child("useGenerationsRuntime");
+
+const isRemoteSessionId = (
+  value: string | null | undefined,
+): value is string => {
+  if (typeof value !== "string") return false;
+  const normalized = value.trim();
+  return normalized.length > 0 && !normalized.startsWith("draft-");
+};
 
 interface UseGenerationsRuntimeOptions {
   prompt: string;
@@ -40,12 +60,32 @@ interface UseGenerationsRuntimeOptions {
   generationParams?: Record<string, unknown> | undefined;
   initialGenerations?: Generation[] | undefined;
   onGenerationsChange?: ((generations: Generation[]) => void) | undefined;
-  presentation?: 'timeline' | 'hero' | undefined;
-  onStateSnapshot?: ((snapshot: GenerationsPanelStateSnapshot) => void) | undefined;
-  versions: GenerationsPanelProps['versions'];
+  presentation?: "timeline" | "hero" | undefined;
+  onStateSnapshot?:
+    | ((snapshot: GenerationsPanelStateSnapshot) => void)
+    | undefined;
+  versions: GenerationsPanelProps["versions"];
   onCreateVersionIfNeeded: () => string;
   heroOverrideGenerationId?: string | null | undefined;
 }
+
+type PendingGenerationIntentInput =
+  | {
+      kind: "draft";
+      model: DraftModel;
+      prompt: string;
+      overrides?: GenerationOverrides | undefined;
+    }
+  | {
+      kind: "render";
+      model: string;
+      prompt: string;
+      overrides?: GenerationOverrides | undefined;
+    }
+  | {
+      kind: "storyboard";
+      prompt: string;
+    };
 
 export function useGenerationsRuntime({
   prompt,
@@ -56,7 +96,7 @@ export function useGenerationsRuntime({
   generationParams,
   initialGenerations,
   onGenerationsChange,
-  presentation = 'timeline',
+  presentation = "timeline",
   onStateSnapshot,
   versions,
   onCreateVersionIfNeeded,
@@ -64,9 +104,16 @@ export function useGenerationsRuntime({
 }: UseGenerationsRuntimeOptions): GenerationsPanelRuntime {
   const toast = useToast();
   const authUser = useAuthUser();
-  const { balance } = useCreditBalance();
+  const { balance, isLoading: isLoadingBalance } = useCreditBalance();
   const { navigate, sessionId: currentSessionId } = usePromptNavigation();
-  const { currentPromptDocId } = usePromptSession();
+  const {
+    currentPromptDocId,
+    currentPromptUuid,
+    setCurrentPromptDocId,
+    setCurrentPromptUuid,
+  } = usePromptSession();
+  const { promptHistory, promptOptimizer } = usePromptServices();
+  const { saveToHistory } = promptHistory;
   const {
     session: workspaceSession,
     isSequenceMode,
@@ -77,10 +124,28 @@ export function useGenerationsRuntime({
     generateShot,
     updateShot,
   } = useWorkspaceSession();
-  const currentRouteSessionIdRef = useRef<string | null>(currentSessionId ?? null);
+  const currentRouteSessionIdRef = useRef<string | null>(
+    currentSessionId ?? null,
+  );
   useEffect(() => {
     currentRouteSessionIdRef.current = currentSessionId ?? null;
   }, [currentSessionId]);
+  const [isPreparingGeneration, setIsPreparingGeneration] = useState(false);
+  const isPreparingGenerationRef = useRef(false);
+  const setPreparingGenerationPending = useCallback((pending: boolean) => {
+    isPreparingGenerationRef.current = pending;
+    setIsPreparingGeneration(pending);
+  }, []);
+  const currentHistoryEntry = useMemo(
+    () =>
+      promptHistory.history.find((entry) => {
+        if (currentPromptUuid && entry.uuid === currentPromptUuid) {
+          return true;
+        }
+        return Boolean(currentPromptDocId && entry.id === currentPromptDocId);
+      }) ?? null,
+    [currentPromptDocId, currentPromptUuid, promptHistory.history],
+  );
 
   const {
     generations,
@@ -103,8 +168,9 @@ export function useGenerationsRuntime({
     const handleWorkspaceReset = (): void => {
       clearGenerations();
     };
-    window.addEventListener('po:workspace-reset', handleWorkspaceReset);
-    return () => window.removeEventListener('po:workspace-reset', handleWorkspaceReset);
+    window.addEventListener("po:workspace-reset", handleWorkspaceReset);
+    return () =>
+      window.removeEventListener("po:workspace-reset", handleWorkspaceReset);
   }, [clearGenerations]);
 
   useGenerationMediaRefresh(generations, dispatch);
@@ -113,46 +179,68 @@ export function useGenerationsRuntime({
     useGenerationControlsContext();
   const onInsufficientCreditsRef = useRef(onInsufficientCredits);
   onInsufficientCreditsRef.current = onInsufficientCredits;
-  const notifyInsufficientCredits = useCallback(
-    (required: number, operation: string) => {
-      onInsufficientCreditsRef.current?.(required, operation);
-    },
-    []
-  );
   const balanceRef = useRef(balance);
   balanceRef.current = balance;
+  const isLoadingBalanceRef = useRef(isLoadingBalance);
+  isLoadingBalanceRef.current = isLoadingBalance;
+  const notifyInsufficientCredits = useCallback(
+    (required: number, operation: string) => {
+      if (onInsufficientCreditsRef.current) {
+        onInsufficientCreditsRef.current(required, operation);
+        return;
+      }
+
+      // Fallback: use error toast (more prominent than warning) when modal bridge is unavailable
+      if (typeof balanceRef.current === "number") {
+        toast.error(
+          `${operation} needs ${required} credits. You currently have ${balanceRef.current}.`,
+        );
+        return;
+      }
+
+      if (isLoadingBalanceRef.current) {
+        toast.error(
+          `Credit balance is still loading for ${operation}. Try again in a moment.`,
+        );
+        return;
+      }
+
+      toast.error(`${operation} needs ${required} credits.`);
+    },
+    [toast],
+  );
   const authUidRef = useRef(authUser?.uid);
   authUidRef.current = authUser?.uid;
   const { domain } = useGenerationControlsStoreState();
-  const {
-    setStartFrame,
-    clearStartFrame,
-    setExtendVideo,
-    clearExtendVideo,
-  } = useGenerationControlsStoreActions();
+  const { setStartFrame, clearStartFrame, setExtendVideo, clearExtendVideo } =
+    useGenerationControlsStoreActions();
   const selectedModelId =
-    typeof domain.selectedModel === 'string' ? domain.selectedModel.trim() : '';
+    typeof domain.selectedModel === "string" ? domain.selectedModel.trim() : "";
   const keyframes = useMemo(() => domain.keyframes ?? [], [domain.keyframes]);
   const startFrame = domain.startFrame ?? null;
   const endFrame = domain.endFrame ?? null;
   const videoReferenceImages = useMemo(
     () => domain.videoReferenceImages ?? [],
-    [domain.videoReferenceImages]
+    [domain.videoReferenceImages],
   );
   const extendVideo = domain.extendVideo ?? null;
   const cameraMotion = domain.cameraMotion ?? null;
-  const subjectMotion = typeof domain.subjectMotion === 'string' ? domain.subjectMotion : '';
+  const subjectMotion =
+    typeof domain.subjectMotion === "string" ? domain.subjectMotion : "";
 
   const { schema: selectedModelSchema } = useCapabilities(
     selectedModelId || undefined,
-    { enabled: Boolean(selectedModelId) }
+    { enabled: Boolean(selectedModelId) },
   );
 
   const selectedModelSupportsExtend =
     selectedModelSchema?.fields?.extend_video?.default === true;
 
   const mergedGenerationParams = useMemo(() => {
-    const baseParams = { ...(generationParams ?? {}) } as Record<string, unknown>;
+    const baseParams = { ...(generationParams ?? {}) } as Record<
+      string,
+      unknown
+    >;
 
     if (keyframes.length > 0) {
       baseParams.keyframes = keyframes;
@@ -176,16 +264,17 @@ export function useGenerationsRuntime({
 
   const motionMergeMeta = useMemo(() => {
     const mergedKeys =
-      mergedGenerationParams && typeof mergedGenerationParams === 'object'
+      mergedGenerationParams && typeof mergedGenerationParams === "object"
         ? Object.keys(mergedGenerationParams as Record<string, unknown>)
         : [];
     const cameraMotionId =
       mergedGenerationParams &&
-      typeof mergedGenerationParams === 'object' &&
-      typeof (mergedGenerationParams as Record<string, unknown>).camera_motion_id ===
-        'string'
+      typeof mergedGenerationParams === "object" &&
+      typeof (mergedGenerationParams as Record<string, unknown>)
+        .camera_motion_id === "string"
         ? String(
-            (mergedGenerationParams as Record<string, unknown>).camera_motion_id
+            (mergedGenerationParams as Record<string, unknown>)
+              .camera_motion_id,
           )
         : null;
     const subjectMotionLength = subjectMotion.trim().length;
@@ -210,14 +299,14 @@ export function useGenerationsRuntime({
       return;
     }
 
-    log.info('Merged generation params include motion/keyframe context', {
+    log.info("Merged generation params include motion/keyframe context", {
       ...motionMergeMeta,
       hasCameraMotionFieldInMergedParams:
-        motionMergeMeta.mergedKeys.includes('camera_motion_id'),
+        motionMergeMeta.mergedKeys.includes("camera_motion_id"),
       hasSubjectMotionFieldInMergedParams:
-        motionMergeMeta.mergedKeys.includes('subject_motion'),
+        motionMergeMeta.mergedKeys.includes("subject_motion"),
       hasKeyframesFieldInMergedParams:
-        motionMergeMeta.mergedKeys.includes('keyframes'),
+        motionMergeMeta.mergedKeys.includes("keyframes"),
     });
   }, [motionMergeMeta]);
 
@@ -252,13 +341,14 @@ export function useGenerationsRuntime({
       mergedGenerationParams,
       notifyInsufficientCredits,
       promptVersionId,
-    ]
+    ],
   );
 
   const {
     generateDraft,
     generateRender,
     generateStoryboard,
+    isSubmitting,
     retryGeneration,
     cancelGeneration,
   } = useGenerationActions(dispatch, generationActionsOptions);
@@ -266,12 +356,12 @@ export function useGenerationsRuntime({
   const { resolvedPrompt } = useAssetReferenceImages(prompt);
   const detectedCharacter = useMemo(
     () => resolvedPrompt?.characters?.[0] ?? null,
-    [resolvedPrompt]
+    [resolvedPrompt],
   );
 
   const activeDraftModel = useMemo(
-    () => getLatestByTier('draft')?.model ?? null,
-    [getLatestByTier]
+    () => getLatestByTier("draft")?.model ?? null,
+    [getLatestByTier],
   );
 
   const faceSwapOverride = useMemo<GenerationOverrides | null>(() => {
@@ -279,7 +369,7 @@ export function useGenerationsRuntime({
     return {
       startImage: {
         url: faceSwapPreview.url,
-        source: 'face-swap',
+        source: "face-swap",
       },
       characterAssetId: faceSwapPreview.characterAssetId,
       faceSwapAlreadyApplied: true,
@@ -295,7 +385,9 @@ export function useGenerationsRuntime({
         url: startFrame.url,
         source: startFrame.source,
         ...(startFrame.assetId ? { assetId: startFrame.assetId } : {}),
-        ...(startFrame.storagePath ? { storagePath: startFrame.storagePath } : {}),
+        ...(startFrame.storagePath
+          ? { storagePath: startFrame.storagePath }
+          : {}),
         ...(startFrame.viewUrlExpiresAt
           ? { viewUrlExpiresAt: startFrame.viewUrlExpiresAt }
           : {}),
@@ -316,7 +408,9 @@ export function useGenerationsRuntime({
       overrides.referenceImages = videoReferenceImages.map((reference) => ({
         url: reference.url,
         type: reference.referenceType,
-        ...(reference.storagePath ? { storagePath: reference.storagePath } : {}),
+        ...(reference.storagePath
+          ? { storagePath: reference.storagePath }
+          : {}),
         ...(reference.viewUrlExpiresAt
           ? { viewUrlExpiresAt: reference.viewUrlExpiresAt }
           : {}),
@@ -339,32 +433,32 @@ export function useGenerationsRuntime({
 
       return Object.keys(merged).length > 0 ? merged : undefined;
     },
-    [storeDrivenOverrides]
+    [storeDrivenOverrides],
   );
 
   const hasCreditsFor = useCallback(
     (required: number, operation: string): boolean => {
       if (!authUidRef.current) return true;
-      if (balanceRef.current === null || balanceRef.current === undefined) return true;
+      if (balanceRef.current === null || balanceRef.current === undefined)
+        return true;
       if (balanceRef.current >= required) return true;
-      onInsufficientCreditsRef.current?.(required, operation);
+      notifyInsufficientCredits(required, operation);
       return false;
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- balance/authUid accessed via stable refs
-    []
+    [notifyInsufficientCredits],
   );
 
   const generateSequenceShot = useCallback(
     async (modelId?: string) => {
       if (!currentShot) {
-        toast.warning('No active continuity shot available.');
+        toast.warning("No active continuity shot available.");
         return;
       }
       if (
-        currentShot.status === 'generating-keyframe' ||
-        currentShot.status === 'generating-video'
+        currentShot.status === "generating-keyframe" ||
+        currentShot.status === "generating-video"
       ) {
-        toast.warning('A shot is already generating.');
+        toast.warning("A shot is already generating.");
         return;
       }
       if (modelId && currentShot.modelId !== modelId) {
@@ -372,10 +466,87 @@ export function useGenerationsRuntime({
       }
       await generateShot(currentShot.id);
     },
-    [currentShot, generateShot, toast, updateShot]
+    [currentShot, generateShot, toast, updateShot],
   );
 
-  const handleDraft = useCallback(
+  const ensurePersistedSessionFromDraft = useCallback(
+    async (intent: PendingGenerationIntentInput) => {
+      if (!authUidRef.current) {
+        return false;
+      }
+
+      const currentSessionKey = currentPromptDocId ?? currentSessionId ?? null;
+      if (isRemoteSessionId(currentSessionKey)) {
+        return false;
+      }
+
+      if (isPreparingGenerationRef.current) {
+        return true;
+      }
+
+      setPreparingGenerationPending(true);
+
+      const inputPrompt = promptOptimizer.inputPrompt.trim();
+      const displayedPrompt = promptOptimizer.displayedPrompt.trim();
+      const optimizedPrompt = promptOptimizer.optimizedPrompt.trim();
+      const persistedInput = inputPrompt || intent.prompt.trim();
+      const persistedOutput =
+        displayedPrompt || optimizedPrompt || intent.prompt.trim();
+
+      const saveResult = await saveToHistory(
+        persistedInput,
+        persistedOutput,
+        promptOptimizer.qualityScore ?? null,
+        "video",
+        selectedModelId || null,
+        mergedGenerationParams ?? null,
+        currentHistoryEntry?.keyframes ?? null,
+        currentHistoryEntry?.brainstormContext ?? null,
+        currentHistoryEntry?.highlightCache ?? null,
+        currentPromptUuid ?? currentHistoryEntry?.uuid ?? null,
+        currentHistoryEntry?.title ?? null,
+      );
+
+      if (!saveResult?.id) {
+        setPreparingGenerationPending(false);
+        return true;
+      }
+
+      setCurrentPromptUuid(saveResult.uuid);
+      setCurrentPromptDocId(saveResult.id);
+      setPendingGenerationIntent({
+        ...intent,
+        sessionId: saveResult.id,
+      });
+      navigate(`/session/${encodeURIComponent(saveResult.id)}`, {
+        replace: true,
+      });
+      return true;
+    },
+    [
+      currentHistoryEntry?.brainstormContext,
+      currentHistoryEntry?.highlightCache,
+      currentHistoryEntry?.keyframes,
+      currentHistoryEntry?.title,
+      currentHistoryEntry?.uuid,
+      currentPromptDocId,
+      currentPromptUuid,
+      currentSessionId,
+      mergedGenerationParams,
+      navigate,
+      saveToHistory,
+      promptOptimizer.displayedPrompt,
+      promptOptimizer.inputPrompt,
+      promptOptimizer.optimizedPrompt,
+      promptOptimizer.qualityScore,
+      selectedModelId,
+      setCurrentPromptDocId,
+      setCurrentPromptUuid,
+      setPreparingGenerationPending,
+    ],
+  );
+
+  const executeDraftAction = useCallback(
     (model: DraftModel, overrides?: GenerationOverrides) => {
       if (!prompt.trim()) return;
       if (hasActiveContinuityShot) {
@@ -384,12 +555,14 @@ export function useGenerationsRuntime({
         return;
       }
       const modelConfig = getModelConfig(model);
-      const requiredCredits = modelConfig?.credits ?? 0;
-      const operationLabel = `${modelConfig?.label ?? 'Video'} preview`;
+      const requiredCredits = getModelCreditCost(model, duration);
+      const operationLabel = `${modelConfig?.label ?? "Video"} preview`;
       if (!hasCreditsFor(requiredCredits, operationLabel)) {
         return;
       }
-      const resolvedOverrides = mergeRuntimeOverrides(overrides ?? faceSwapOverride ?? undefined);
+      const resolvedOverrides = mergeRuntimeOverrides(
+        overrides ?? faceSwapOverride ?? undefined,
+      );
       const versionId = onCreateVersionIfNeeded();
       const resolvedStartImage = resolvedOverrides?.startImage ?? null;
       const autoCharacterAssetId =
@@ -399,7 +572,9 @@ export function useGenerationsRuntime({
       generateDraft(model, prompt, {
         promptVersionId: versionId,
         ...(resolvedStartImage ? { startImage: resolvedStartImage } : {}),
-        ...(resolvedOverrides?.endImage ? { endImage: resolvedOverrides.endImage } : {}),
+        ...(resolvedOverrides?.endImage
+          ? { endImage: resolvedOverrides.endImage }
+          : {}),
         ...(resolvedOverrides?.referenceImages?.length
           ? { referenceImages: resolvedOverrides.referenceImages }
           : {}),
@@ -425,6 +600,7 @@ export function useGenerationsRuntime({
     },
     [
       detectedCharacter?.id,
+      duration,
       faceSwapOverride,
       generateDraft,
       generateSequenceShot,
@@ -434,7 +610,44 @@ export function useGenerationsRuntime({
       mergedGenerationParams,
       onCreateVersionIfNeeded,
       prompt,
-    ]
+    ],
+  );
+
+  const handleDraft = useCallback(
+    (model: DraftModel, overrides?: GenerationOverrides) => {
+      if (isPreparingGenerationRef.current || isSubmitting) {
+        return;
+      }
+      if (!prompt.trim()) return;
+      if (hasActiveContinuityShot) {
+        executeDraftAction(model, overrides);
+        return;
+      }
+      const currentSessionKey = currentPromptDocId ?? currentSessionId ?? null;
+      if (!authUidRef.current || isRemoteSessionId(currentSessionKey)) {
+        executeDraftAction(model, overrides);
+        return;
+      }
+      void ensurePersistedSessionFromDraft({
+        kind: "draft",
+        model,
+        prompt,
+        ...(overrides ? { overrides } : {}),
+      }).then((handled) => {
+        if (!handled) {
+          executeDraftAction(model, overrides);
+        }
+      });
+    },
+    [
+      ensurePersistedSessionFromDraft,
+      executeDraftAction,
+      currentPromptDocId,
+      currentSessionId,
+      hasActiveContinuityShot,
+      isSubmitting,
+      prompt,
+    ],
   );
 
   const {
@@ -460,12 +673,12 @@ export function useGenerationsRuntime({
       setStartFrame({
         id: `keyframe-step-${Date.now()}`,
         url: keyframeUrl,
-        source: 'generation',
+        source: "generation",
         ...(prompt.trim() ? { sourcePrompt: prompt.trim() } : {}),
       });
       approveKeyframeFromWorkflow(keyframeUrl);
     },
-    [approveKeyframeFromWorkflow, prompt, setStartFrame]
+    [approveKeyframeFromWorkflow, prompt, setStartFrame],
   );
 
   const handleSelectFrame = useCallback(
@@ -477,17 +690,17 @@ export function useGenerationsRuntime({
         frameIndex,
         generationId,
         storagePath,
-        generation?.prompt ?? prompt
+        generation?.prompt ?? prompt,
       );
     },
-    [generations, prompt, selectFrameInWorkflow]
+    [generations, prompt, selectFrameInWorkflow],
   );
 
   const handleClearSelectedFrame = useCallback(() => {
     clearSelectedFrameInWorkflow();
   }, [clearSelectedFrameInWorkflow]);
 
-  const handleRenderWithFaceSwap = useCallback(
+  const executeRenderAction = useCallback(
     (model: string, overrides?: GenerationOverrides) => {
       if (hasActiveContinuityShot) {
         onCreateVersionIfNeeded();
@@ -495,15 +708,18 @@ export function useGenerationsRuntime({
         return;
       }
       const modelConfig = getModelConfig(model);
-      const requiredCredits = modelConfig?.credits ?? 0;
-      const operationLabel = `${modelConfig?.label ?? 'Video'} render`;
+      const requiredCredits = getModelCreditCost(model, duration);
+      const operationLabel = `${modelConfig?.label ?? "Video"} render`;
       if (!hasCreditsFor(requiredCredits, operationLabel)) {
         return;
       }
-      const resolvedOverrides = mergeRuntimeOverrides(overrides ?? faceSwapOverride ?? undefined);
+      const resolvedOverrides = mergeRuntimeOverrides(
+        overrides ?? faceSwapOverride ?? undefined,
+      );
       handleRender(model, resolvedOverrides);
     },
     [
+      duration,
       faceSwapOverride,
       generateSequenceShot,
       handleRender,
@@ -511,25 +727,65 @@ export function useGenerationsRuntime({
       hasCreditsFor,
       mergeRuntimeOverrides,
       onCreateVersionIfNeeded,
-    ]
+    ],
   );
 
-  const handleStoryboard = useCallback(() => {
+  const handleRenderWithFaceSwap = useCallback(
+    (model: string, overrides?: GenerationOverrides) => {
+      if (isPreparingGenerationRef.current || isSubmitting) {
+        return;
+      }
+      if (!prompt.trim()) return;
+      if (hasActiveContinuityShot) {
+        executeRenderAction(model, overrides);
+        return;
+      }
+      const currentSessionKey = currentPromptDocId ?? currentSessionId ?? null;
+      if (!authUidRef.current || isRemoteSessionId(currentSessionKey)) {
+        executeRenderAction(model, overrides);
+        return;
+      }
+      void ensurePersistedSessionFromDraft({
+        kind: "render",
+        model,
+        prompt,
+        ...(overrides ? { overrides } : {}),
+      }).then((handled) => {
+        if (!handled) {
+          executeRenderAction(model, overrides);
+        }
+      });
+    },
+    [
+      ensurePersistedSessionFromDraft,
+      executeRenderAction,
+      currentPromptDocId,
+      currentSessionId,
+      hasActiveContinuityShot,
+      isSubmitting,
+      prompt,
+    ],
+  );
+
+  const executeStoryboardAction = useCallback(() => {
     if (hasActiveContinuityShot) {
       onCreateVersionIfNeeded();
       void generateSequenceShot(VIDEO_DRAFT_MODEL.id);
       return;
     }
-    const storyboardConfig = getModelConfig('flux-kontext');
+    const storyboardConfig = getModelConfig("flux-kontext");
     const requiredCredits = storyboardConfig?.credits ?? 4;
-    if (!hasCreditsFor(requiredCredits, 'Storyboard')) {
+    if (!hasCreditsFor(requiredCredits, "Storyboard")) {
       return;
     }
     const resolvedPrompt =
-      prompt.trim() || 'Generate a storyboard based on the reference image.';
+      prompt.trim() || "Generate a storyboard based on the reference image.";
     const versionId = onCreateVersionIfNeeded();
     const seedImageUrl = startFrame?.url ?? null;
-    generateStoryboard(resolvedPrompt, { promptVersionId: versionId, seedImageUrl });
+    generateStoryboard(resolvedPrompt, {
+      promptVersionId: versionId,
+      seedImageUrl,
+    });
   }, [
     generateStoryboard,
     generateSequenceShot,
@@ -540,37 +796,120 @@ export function useGenerationsRuntime({
     startFrame?.url,
   ]);
 
-  const handleDraftRef = useRef(handleDraft);
-  handleDraftRef.current = handleDraft;
-  const handleRenderWithFaceSwapRef = useRef(handleRenderWithFaceSwap);
-  handleRenderWithFaceSwapRef.current = handleRenderWithFaceSwap;
-  const handleStoryboardRef = useRef(handleStoryboard);
-  handleStoryboardRef.current = handleStoryboard;
+  const handleStoryboard = useCallback(() => {
+    if (isPreparingGenerationRef.current || isSubmitting) {
+      return;
+    }
+    if (hasActiveContinuityShot) {
+      executeStoryboardAction();
+      return;
+    }
+    const currentSessionKey = currentPromptDocId ?? currentSessionId ?? null;
+    if (!authUidRef.current || isRemoteSessionId(currentSessionKey)) {
+      executeStoryboardAction();
+      return;
+    }
+    void ensurePersistedSessionFromDraft({
+      kind: "storyboard",
+      prompt,
+    }).then((handled) => {
+      if (!handled) {
+        executeStoryboardAction();
+      }
+    });
+  }, [
+    ensurePersistedSessionFromDraft,
+    executeStoryboardAction,
+    currentPromptDocId,
+    currentSessionId,
+    hasActiveContinuityShot,
+    isSubmitting,
+    prompt,
+  ]);
+
+  const executeDraftActionRef = useRef(executeDraftAction);
+  executeDraftActionRef.current = executeDraftAction;
+  const executeRenderActionRef = useRef(executeRenderAction);
+  executeRenderActionRef.current = executeRenderAction;
+  const executeStoryboardActionRef = useRef(executeStoryboardAction);
+  executeStoryboardActionRef.current = executeStoryboardAction;
+
+  useEffect(() => {
+    const pendingIntent = currentSessionId
+      ? peekPendingGenerationIntent()
+      : null;
+    const hasPendingForRoute = Boolean(
+      currentSessionId &&
+        pendingIntent &&
+        pendingIntent.sessionId === currentSessionId,
+    );
+
+    if (hasPendingForRoute) {
+      setPreparingGenerationPending(true);
+    } else if (!isSubmitting) {
+      setPreparingGenerationPending(false);
+    }
+
+    if (!currentSessionId || !pendingIntent) {
+      return;
+    }
+    if (pendingIntent.sessionId !== currentSessionId) {
+      return;
+    }
+    if (prompt.trim() !== pendingIntent.prompt.trim()) {
+      return;
+    }
+
+    const nextIntent = consumePendingGenerationIntent(currentSessionId);
+    if (!nextIntent) {
+      return;
+    }
+
+    if (
+      nextIntent.kind === "draft" &&
+      typeof nextIntent.model === "string" &&
+      nextIntent.prompt.trim()
+    ) {
+      executeDraftActionRef.current(nextIntent.model, nextIntent.overrides);
+      return;
+    }
+
+    if (
+      nextIntent.kind === "render" &&
+      typeof nextIntent.model === "string" &&
+      nextIntent.prompt.trim()
+    ) {
+      executeRenderActionRef.current(nextIntent.model, nextIntent.overrides);
+      return;
+    }
+
+    executeStoryboardActionRef.current();
+  }, [currentSessionId, isSubmitting, prompt, setPreparingGenerationPending]);
 
   const handleDraftForControls = useCallback(
     (model: DraftModel, overrides?: GenerationOverrides) => {
-      handleDraftRef.current(model, overrides);
+      handleDraft(model, overrides);
     },
-    []
+    [handleDraft],
   );
 
   const handleRenderForControls = useCallback(
     (model: string, overrides?: GenerationOverrides) => {
-      handleRenderWithFaceSwapRef.current(model, overrides);
+      handleRenderWithFaceSwap(model, overrides);
     },
-    []
+    [handleRenderWithFaceSwap],
   );
 
   const handleStoryboardForControls = useCallback(() => {
-    handleStoryboardRef.current();
-  }, []);
+    handleStoryboard();
+  }, [handleStoryboard]);
 
   const handleDelete = useCallback(
     (generation: Generation) => {
       if (hasActiveContinuityShot) return;
       removeGeneration(generation.id);
     },
-    [hasActiveContinuityShot, removeGeneration]
+    [hasActiveContinuityShot, removeGeneration],
   );
 
   const handleRetry = useCallback(
@@ -587,7 +926,7 @@ export function useGenerationsRuntime({
       hasActiveContinuityShot,
       onCreateVersionIfNeeded,
       retryGeneration,
-    ]
+    ],
   );
 
   const handleCancel = useCallback(
@@ -595,34 +934,37 @@ export function useGenerationsRuntime({
       if (hasActiveContinuityShot) return;
       cancelGeneration(generation.id);
     },
-    [cancelGeneration, hasActiveContinuityShot]
+    [cancelGeneration, hasActiveContinuityShot],
   );
 
   const handleDownload = useCallback((generation: Generation) => {
     const url = generation.mediaUrls[0];
     if (url) {
-      window.open(url, '_blank', 'noopener,noreferrer');
+      window.open(url, "_blank", "noopener,noreferrer");
     }
   }, []);
 
   const handleExtendGeneration = useCallback(
     (generation: Generation) => {
       if (!selectedModelSupportsExtend) return;
-      if (generation.status !== 'completed' || generation.mediaType !== 'video') return;
+      if (generation.status !== "completed" || generation.mediaType !== "video")
+        return;
       const mediaUrl = generation.mediaUrls[0] ?? null;
       if (!mediaUrl) {
-        toast.warning('This generation is missing a video source for extension.');
+        toast.warning(
+          "This generation is missing a video source for extension.",
+        );
         return;
       }
 
       const { storagePath, assetId } = resolvePrimaryVideoSource(
         mediaUrl,
-        generation.mediaAssetIds?.[0] ?? null
+        generation.mediaAssetIds?.[0] ?? null,
       );
 
       void (async () => {
         const resolved = await resolveMediaUrl({
-          kind: 'video',
+          kind: "video",
           url: mediaUrl,
           storagePath,
           assetId,
@@ -633,14 +975,14 @@ export function useGenerationsRuntime({
 
         setExtendVideo({
           url: resolved.url ?? mediaUrl,
-          source: 'generation',
+          source: "generation",
           generationId: generation.id,
           ...(resolvedStoragePath ? { storagePath: resolvedStoragePath } : {}),
           ...(resolvedAssetId ? { assetId: resolvedAssetId } : {}),
         });
       })();
     },
-    [selectedModelSupportsExtend, setExtendVideo, toast]
+    [selectedModelSupportsExtend, setExtendVideo, toast],
   );
 
   const handleContinueSequence = useCallback(
@@ -649,31 +991,34 @@ export function useGenerationsRuntime({
       const mediaUrl = generation.mediaUrls[0] ?? null;
       const { assetId, storagePath } = resolvePrimaryVideoSource(
         mediaUrl,
-        generation.mediaAssetIds?.[0] ?? null
+        generation.mediaAssetIds?.[0] ?? null,
       );
       const sourceVideoId = assetId ?? storagePath;
       const sourceImageUrl =
-        typeof generation.thumbnailUrl === 'string' &&
+        typeof generation.thumbnailUrl === "string" &&
         generation.thumbnailUrl.trim()
           ? generation.thumbnailUrl.trim()
           : null;
 
       if (!sourceVideoId) {
-        log.warn('Cannot start sequence: missing source video ref', {
+        log.warn("Cannot start sequence: missing source video ref", {
           generationId: generation.id,
           mediaUrl,
           mediaAssetId: generation.mediaAssetIds?.[0] ?? null,
           routeSessionId: currentSessionId ?? null,
           currentPromptDocId,
         });
-        toast.warning('Unable to start a sequence from this generation.');
+        toast.warning("Unable to start a sequence from this generation.");
         return;
       }
 
       const routeSessionIdAtStart = currentSessionId ?? null;
       const originSessionId =
-        routeSessionIdAtStart ?? currentPromptDocId ?? workspaceSession?.id ?? null;
-      log.info('Starting sequence', {
+        routeSessionIdAtStart ??
+        currentPromptDocId ??
+        workspaceSession?.id ??
+        null;
+      log.info("Starting sequence", {
         generationId: generation.id,
         sourceVideoId,
         routeSessionId: routeSessionIdAtStart,
@@ -690,33 +1035,36 @@ export function useGenerationsRuntime({
         });
 
         if (currentRouteSessionIdRef.current !== routeSessionIdAtStart) {
-          log.info('Skipping sequence navigation after route changed during startup', {
-            generationId: generation.id,
-            routeSessionIdAtStart,
-            routeSessionIdCurrent: currentRouteSessionIdRef.current ?? null,
-            sequenceSessionId,
-          });
+          log.info(
+            "Skipping sequence navigation after route changed during startup",
+            {
+              generationId: generation.id,
+              routeSessionIdAtStart,
+              routeSessionIdCurrent: currentRouteSessionIdRef.current ?? null,
+              sequenceSessionId,
+            },
+          );
           return;
         }
 
         if (sequenceSessionId && sequenceSessionId !== originSessionId) {
           const originParam = originSessionId
             ? `?originSessionId=${encodeURIComponent(originSessionId)}`
-            : '';
+            : "";
           navigate(
-            `/session/${encodeURIComponent(sequenceSessionId)}${originParam}`
+            `/session/${encodeURIComponent(sequenceSessionId)}${originParam}`,
           );
         }
 
-        log.info('Sequence started from generation', {
+        log.info("Sequence started from generation", {
           generationId: generation.id,
           sequenceSessionId,
           originSessionId,
         });
-        toast.success('Sequence mode enabled.');
+        toast.success("Sequence mode enabled.");
       } catch (error) {
         const err = error instanceof Error ? error : new Error(String(error));
-        log.error('Failed to start sequence from generation', err, {
+        log.error("Failed to start sequence from generation", err, {
           generationId: generation.id,
           sourceVideoId,
           routeSessionId: currentSessionId ?? null,
@@ -724,7 +1072,7 @@ export function useGenerationsRuntime({
           originSessionId,
         });
         toast.error(
-          error instanceof Error ? error.message : 'Failed to start sequence'
+          error instanceof Error ? error.message : "Failed to start sequence",
         );
       }
     },
@@ -737,13 +1085,13 @@ export function useGenerationsRuntime({
       startSequence,
       toast,
       workspaceSession?.id,
-    ]
+    ],
   );
 
   const versionsForTimeline = useMemo(() => {
     if (!versions.length || !promptVersionId) return versions;
     const index = versions.findIndex(
-      (version) => version.versionId === promptVersionId
+      (version) => version.versionId === promptVersionId,
     );
     if (index < 0) return versions;
     const target = versions[index];
@@ -755,8 +1103,8 @@ export function useGenerationsRuntime({
 
   const timeline = useGenerationsTimeline({ versions: versionsForTimeline });
   const totalVisibleGenerations = useMemo(
-    () => timeline.filter((item) => item.type === 'generation').length,
-    [timeline]
+    () => timeline.filter((item) => item.type === "generation").length,
+    [timeline],
   );
   const canExtendGenerations = Boolean(selectedModelSupportsExtend);
 
@@ -764,14 +1112,16 @@ export function useGenerationsRuntime({
     () =>
       generations.some(
         (generation) =>
-          generation.mediaType !== 'image-sequence' &&
-          (generation.status === 'pending' || generation.status === 'generating')
+          generation.mediaType !== "image-sequence" &&
+          (generation.status === "pending" ||
+            generation.status === "generating"),
       ),
-    [generations]
+    [generations],
   );
 
   const controlsIsGenerating =
-    presentation === 'hero' ? isNonStoryboardGenerating : isGenerating;
+    presentation === "hero" ? isNonStoryboardGenerating : isGenerating;
+  const controlsIsSubmitting = isSubmitting || isPreparingGeneration;
 
   const controlsPayload = useMemo(
     () => ({
@@ -779,15 +1129,17 @@ export function useGenerationsRuntime({
       onRender: handleRenderForControls,
       onStoryboard: handleStoryboardForControls,
       isGenerating: controlsIsGenerating,
+      isSubmitting: controlsIsSubmitting,
       activeDraftModel,
     }),
     [
       activeDraftModel,
       controlsIsGenerating,
+      controlsIsSubmitting,
       handleDraftForControls,
       handleRenderForControls,
       handleStoryboardForControls,
-    ]
+    ],
   );
 
   useEffect(() => {
@@ -799,7 +1151,7 @@ export function useGenerationsRuntime({
     if (generations.length === 0) return null;
     if (activeGenerationId) {
       const matched = generations.find(
-        (generation) => generation.id === activeGenerationId
+        (generation) => generation.id === activeGenerationId,
       );
       if (matched) return matched;
     }
@@ -810,19 +1162,21 @@ export function useGenerationsRuntime({
     const overrideId = heroOverrideGenerationId ?? null;
     if (overrideId) {
       const overrideMatch = generations.find(
-        (generation) => generation.id === overrideId
+        (generation) => generation.id === overrideId,
       );
-      if (overrideMatch && overrideMatch.mediaType !== 'image-sequence') {
+      if (overrideMatch && overrideMatch.mediaType !== "image-sequence") {
         return overrideMatch;
       }
     }
-    if (activeGeneration && activeGeneration.mediaType !== 'image-sequence') {
+    if (activeGeneration && activeGeneration.mediaType !== "image-sequence") {
       return activeGeneration;
     }
     const nonStoryboardGenerations = generations.filter(
-      (generation) => generation.mediaType !== 'image-sequence'
+      (generation) => generation.mediaType !== "image-sequence",
     );
-    return nonStoryboardGenerations[nonStoryboardGenerations.length - 1] ?? null;
+    return (
+      nonStoryboardGenerations[nonStoryboardGenerations.length - 1] ?? null
+    );
   }, [activeGeneration, generations, heroOverrideGenerationId]);
 
   const onStateSnapshotRef = useRef(onStateSnapshot);

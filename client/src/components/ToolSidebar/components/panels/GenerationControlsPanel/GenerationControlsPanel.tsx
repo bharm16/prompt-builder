@@ -1,4 +1,9 @@
-import React, { type ReactElement, useCallback, useEffect, useRef } from "react";
+import React, {
+  type ReactElement,
+  useCallback,
+  useEffect,
+  useRef,
+} from "react";
 import { CameraMotionModal } from "@/components/modals/CameraMotionModal";
 import { FaceSwapPreviewModal } from "@/components/modals/FaceSwapPreviewModal";
 import { InsufficientCreditsModal } from "@/components/modals/InsufficientCreditsModal";
@@ -7,6 +12,7 @@ import {
   STORYBOARD_COST,
   VIDEO_DRAFT_MODEL,
   VIDEO_RENDER_MODELS,
+  getVideoCost,
 } from "@components/ToolSidebar/config/modelConfig";
 import { GenerationFooter } from "./components/GenerationFooter";
 import { PanelHeader } from "./components/PanelHeader";
@@ -14,8 +20,14 @@ import { VideoSettingsRow } from "./components/VideoSettingsRow";
 import { ImageTabContent } from "./components/ImageTabContent";
 import { VideoTabContent } from "./components/VideoTabContent";
 import { useGenerationControlsPanel } from "./hooks/useGenerationControlsPanel";
-import type { GenerationControlsPanelInputProps, GenerationControlsPanelProps } from "./types";
-import type { DraftModel, GenerationOverrides } from "@components/ToolSidebar/types";
+import type {
+  GenerationControlsPanelInputProps,
+  GenerationControlsPanelProps,
+} from "./types";
+import type {
+  DraftModel,
+  GenerationOverrides,
+} from "@components/ToolSidebar/types";
 import {
   useSidebarAssetsDomain,
   useSidebarGenerationDomain,
@@ -26,8 +38,14 @@ import { useCreditGate } from "@/hooks/useCreditGate";
 import { useAuthUser } from "@/hooks/useAuthUser";
 import { useGenerationControlsContext } from "@/features/prompt-optimizer/context/GenerationControlsContext";
 
-const noopDraft = (_model: DraftModel, _overrides?: GenerationOverrides): void => {};
-const noopRender = (_model: string, _overrides?: GenerationOverrides): void => {};
+const noopDraft = (
+  _model: DraftModel,
+  _overrides?: GenerationOverrides,
+): void => {};
+const noopRender = (
+  _model: string,
+  _overrides?: GenerationOverrides,
+): void => {};
 const noopStoryboard = (): void => {};
 
 export function GenerationControlsPanel(
@@ -36,7 +54,7 @@ export function GenerationControlsPanel(
   const promptInteractionDomain = useSidebarPromptInteractionDomain();
   const generationDomain = useSidebarGenerationDomain();
   const assetsDomain = useSidebarAssetsDomain();
-  const { setOnInsufficientCredits } = useGenerationControlsContext();
+  const { controls, setOnInsufficientCredits } = useGenerationControlsContext();
   const {
     checkCredits,
     openInsufficientCredits,
@@ -57,11 +75,15 @@ export function GenerationControlsPanel(
     onUploadSidebarImage: onUploadSidebarImageFromProps,
   } = props;
   const onDraft = onDraftFromProps ?? generationDomain?.onDraft ?? noopDraft;
-  const onRender = onRenderFromProps ?? generationDomain?.onRender ?? noopRender;
-  const onStoryboard = onStoryboardFromProps ?? generationDomain?.onStoryboard ?? noopStoryboard;
-  const isProcessing = isProcessingFromProps ?? promptInteractionDomain?.isProcessing;
+  const onRender =
+    onRenderFromProps ?? generationDomain?.onRender ?? noopRender;
+  const onStoryboard =
+    onStoryboardFromProps ?? generationDomain?.onStoryboard ?? noopStoryboard;
+  const isProcessing =
+    isProcessingFromProps ?? promptInteractionDomain?.isProcessing;
   const assets = assetsFromProps ?? assetsDomain?.assets ?? [];
-  const onImageUpload = onImageUploadFromProps ?? generationDomain?.onImageUpload;
+  const onImageUpload =
+    onImageUploadFromProps ?? generationDomain?.onImageUpload;
   const onStartFrameUpload =
     onStartFrameUploadFromProps ?? generationDomain?.onStartFrameUpload;
   const onUploadSidebarImage =
@@ -104,16 +126,22 @@ export function GenerationControlsPanel(
   const showMotionControls = true;
   const isFaceSwapMode = faceSwap.mode === "face-swap";
   const isFaceSwapFlow = isFaceSwapMode && state.activeTab === "video";
-  const fallbackRenderModelId = VIDEO_RENDER_MODELS[0]?.id ?? selectedModel ?? "";
+  const fallbackRenderModelId =
+    VIDEO_RENDER_MODELS[0]?.id ?? selectedModel ?? "";
   const selectedModelIdForGeneration =
     tier === "draft"
       ? VIDEO_DRAFT_MODEL.id
       : recommendation.renderModelId || selectedModel || fallbackRenderModelId;
   const selectedRenderModel =
-    VIDEO_RENDER_MODELS.find((model) => model.id === selectedModelIdForGeneration) ??
-    VIDEO_RENDER_MODELS[0];
-  const selectedOperationCost =
-    tier === "draft" ? VIDEO_DRAFT_MODEL.cost : selectedRenderModel?.cost ?? 0;
+    VIDEO_RENDER_MODELS.find(
+      (model) => model.id === selectedModelIdForGeneration,
+    ) ?? VIDEO_RENDER_MODELS[0];
+  const selectedOperationCost = getVideoCost(
+    tier === "draft"
+      ? VIDEO_DRAFT_MODEL.id
+      : (selectedRenderModel?.id ?? selectedModelIdForGeneration),
+    duration,
+  );
   const selectedOperationLabel =
     tier === "draft"
       ? `${VIDEO_DRAFT_MODEL.label} preview`
@@ -246,13 +274,16 @@ export function GenerationControlsPanel(
           : derived.isGenerateDisabled
       }
       generateLabel={
-        isFaceSwapFlow
+        controls?.isSubmitting
+          ? "Starting..."
+          : isFaceSwapFlow
           ? faceSwap.previewUrl
             ? "Proceed to Video"
             : "Preview Face Swap"
           : "Generate"
       }
       creditBalance={balance}
+      duration={duration}
     />
   );
 
@@ -330,11 +361,21 @@ export function GenerationControlsPanel(
           endFrame={endFrame}
           videoReferenceImages={videoReferenceImages}
           extendVideo={extendVideo}
-          supportsStartFrame={capabilities.videoInputCapabilities.supportsStartFrame}
-          supportsEndFrame={capabilities.videoInputCapabilities.supportsEndFrame}
-          supportsReferenceImages={capabilities.videoInputCapabilities.supportsReferenceImages}
-          supportsExtendVideo={capabilities.videoInputCapabilities.supportsExtendVideo}
-          maxReferenceImages={capabilities.videoInputCapabilities.maxReferenceImages}
+          supportsStartFrame={
+            capabilities.videoInputCapabilities.supportsStartFrame
+          }
+          supportsEndFrame={
+            capabilities.videoInputCapabilities.supportsEndFrame
+          }
+          supportsReferenceImages={
+            capabilities.videoInputCapabilities.supportsReferenceImages
+          }
+          supportsExtendVideo={
+            capabilities.videoInputCapabilities.supportsExtendVideo
+          }
+          maxReferenceImages={
+            capabilities.videoInputCapabilities.maxReferenceImages
+          }
           isUploadDisabled={derived.isStartFrameUploadDisabled}
           isEndFrameUploadDisabled={derived.isEndFrameUploadDisabled}
           onRequestUpload={actions.handleStartFrameUploadRequest}
@@ -343,7 +384,9 @@ export function GenerationControlsPanel(
           onRequestEndFrameUpload={actions.handleEndFrameUploadRequest}
           onEndFrameUpload={actions.handleEndFrameFile}
           onClearEndFrame={actions.handleClearEndFrame}
-          onRequestVideoReferenceUpload={actions.handleVideoReferenceUploadRequest}
+          onRequestVideoReferenceUpload={
+            actions.handleVideoReferenceUploadRequest
+          }
           onAddVideoReference={actions.handleVideoReferenceFile}
           onRemoveVideoReference={actions.handleRemoveVideoReference}
           onUpdateVideoReferenceType={actions.handleUpdateVideoReferenceType}
@@ -406,9 +449,7 @@ export function GenerationControlsPanel(
             isAspectRatioDisabled={capabilities.aspectRatioInfo?.state.disabled}
             isDurationDisabled={capabilities.durationInfo?.state.disabled}
             onOpenMotion={actions.handleCameraMotionButtonClick}
-            isMotionDisabled={
-              !showMotionControls || !derived.hasStartFrame
-            }
+            isMotionDisabled={!showMotionControls || !derived.hasStartFrame}
           />
 
           {generationFooter}

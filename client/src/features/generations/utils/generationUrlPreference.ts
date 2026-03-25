@@ -1,17 +1,20 @@
-import { hasGcsSignedUrlParams, parseGcsSignedUrlExpiryMs } from '@/utils/storageUrl';
-import type { Generation } from '../types';
+import {
+  hasGcsSignedUrlParams,
+  parseGcsSignedUrlExpiryMs,
+} from "@/utils/storageUrl";
+import type { Generation } from "../types";
 
 export const SIGNED_URL_PREFERENCE_BUFFER_MS = 2 * 60 * 1000;
 
 export const isV4SignedUrl = (url: string): boolean =>
-  url.includes('X-Goog-Algorithm=') ||
-  url.includes('X-Goog-Signature=') ||
-  url.includes('X-Goog-Credential=');
+  url.includes("X-Goog-Algorithm=") ||
+  url.includes("X-Goog-Signature=") ||
+  url.includes("X-Goog-Credential=");
 
 export const pickPreferredUrl = (
   incoming?: string | null,
   local?: string | null,
-  nowMs: number = Date.now()
+  nowMs: number = Date.now(),
 ): string | null | undefined => {
   if (!incoming) return local ?? incoming;
   if (!local) return incoming;
@@ -33,9 +36,11 @@ export const pickPreferredUrl = (
   const incomingExpiry = parseGcsSignedUrlExpiryMs(incoming);
   const localExpiry = parseGcsSignedUrlExpiryMs(local);
   const incomingExpired =
-    incomingExpiry !== null && nowMs >= incomingExpiry - SIGNED_URL_PREFERENCE_BUFFER_MS;
+    incomingExpiry !== null &&
+    nowMs >= incomingExpiry - SIGNED_URL_PREFERENCE_BUFFER_MS;
   const localExpired =
-    localExpiry !== null && nowMs >= localExpiry - SIGNED_URL_PREFERENCE_BUFFER_MS;
+    localExpiry !== null &&
+    nowMs >= localExpiry - SIGNED_URL_PREFERENCE_BUFFER_MS;
 
   if (incomingExpired && !localExpired) return local;
   if (!incomingExpired && localExpired) return incoming;
@@ -56,20 +61,20 @@ export const pickPreferredUrl = (
 export const mergeMediaUrls = (
   incoming: string[] | undefined,
   local: string[] | undefined,
-  nowMs: number
+  nowMs: number,
 ): string[] => {
   if (!incoming || incoming.length === 0) {
     return local ? [...local] : [];
   }
 
-  return incoming.map((url, index) =>
-    (pickPreferredUrl(url, local?.[index], nowMs) ?? url)
+  return incoming.map(
+    (url, index) => pickPreferredUrl(url, local?.[index], nowMs) ?? url,
   );
 };
 
 export const mergeGenerations = (
   incoming: Generation[] | undefined,
-  local: Generation[]
+  local: Generation[],
 ): Generation[] | undefined => {
   if (!incoming) return incoming;
   if (!local.length) return incoming;
@@ -81,9 +86,17 @@ export const mergeGenerations = (
     const existing = localById.get(gen.id);
     if (!existing) return gen;
 
-    const mergedMediaUrls = mergeMediaUrls(gen.mediaUrls, existing.mediaUrls, nowMs);
+    const mergedMediaUrls = mergeMediaUrls(
+      gen.mediaUrls,
+      existing.mediaUrls,
+      nowMs,
+    );
     const mergedThumbnail =
-      pickPreferredUrl(gen.thumbnailUrl ?? null, existing.thumbnailUrl ?? null, nowMs) ??
+      pickPreferredUrl(
+        gen.thumbnailUrl ?? null,
+        existing.thumbnailUrl ?? null,
+        nowMs,
+      ) ??
       gen.thumbnailUrl ??
       existing.thumbnailUrl ??
       null;

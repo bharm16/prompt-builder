@@ -1,16 +1,14 @@
 /**
  * useSpanDataConversion Hook
- * 
+ *
  * Handles conversion of span data formats and memoization.
  * Extracted from PromptCanvas component to improve separation of concerns.
  */
 
-import { useMemo } from 'react';
-import { useHighlightSourceSelection } from '@features/span-highlighting/hooks/useHighlightSourceSelection';
-import type { HighlightSnapshot } from '../types';
-import {
-  convertHighlightSnapshotToSourceSelectionOptions,
-} from '../utils/spanDataConversion';
+import { useMemo } from "react";
+import { useHighlightSourceSelection } from "@features/span-highlighting/hooks/useHighlightSourceSelection";
+import type { HighlightSnapshot } from "../types";
+import { convertHighlightSnapshotToSourceSelectionOptions } from "../utils/spanDataConversion";
 
 export interface UseSpanDataConversionOptions {
   initialHighlights: HighlightSnapshot | null;
@@ -44,7 +42,7 @@ export function useSpanDataConversion({
 }: UseSpanDataConversionOptions): UseSpanDataConversionReturn {
   const convertedInitialHighlights = useMemo(
     () => convertHighlightSnapshotToSourceSelectionOptions(initialHighlights),
-    [initialHighlights]
+    [initialHighlights],
   );
 
   const memoizedInitialHighlights = useHighlightSourceSelection({

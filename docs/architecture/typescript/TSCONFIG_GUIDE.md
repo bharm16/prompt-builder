@@ -77,15 +77,15 @@ This document defines the TypeScript compiler configuration for the Prompt Build
 
 ### Module System
 
-| Setting | Value | Why |
-|---------|-------|-----|
-| `target` | `ES2022` | Modern JS features (Node 18+, modern browsers) |
-| `module` | `ESNext` | ES modules with dynamic import |
-| `moduleResolution` | `bundler` | Works with Vite/webpack bundlers |
-| `esModuleInterop` | `true` | Better CJS/ESM interop |
-| `allowSyntheticDefaultImports` | `true` | `import React from 'react'` works |
-| `resolveJsonModule` | `true` | `import data from './data.json'` works |
-| `isolatedModules` | `true` | Each file is a module (required for Vite) |
+| Setting                        | Value     | Why                                            |
+| ------------------------------ | --------- | ---------------------------------------------- |
+| `target`                       | `ES2022`  | Modern JS features (Node 18+, modern browsers) |
+| `module`                       | `ESNext`  | ES modules with dynamic import                 |
+| `moduleResolution`             | `bundler` | Works with Vite/webpack bundlers               |
+| `esModuleInterop`              | `true`    | Better CJS/ESM interop                         |
+| `allowSyntheticDefaultImports` | `true`    | `import React from 'react'` works              |
+| `resolveJsonModule`            | `true`    | `import data from './data.json'` works         |
+| `isolatedModules`              | `true`    | Each file is a module (required for Vite)      |
 
 ### Strictness Settings
 
@@ -93,43 +93,43 @@ This document defines the TypeScript compiler configuration for the Prompt Build
 
 Enables all of these:
 
-| Setting | Effect |
-|---------|--------|
-| `noImplicitAny` | Error on implicit `any` type |
-| `strictNullChecks` | `null` and `undefined` are distinct types |
-| `strictFunctionTypes` | Stricter function type checking |
-| `strictBindCallApply` | Strict `bind`, `call`, `apply` checking |
-| `strictPropertyInitialization` | Class properties must be initialized |
-| `noImplicitThis` | Error on `this` with implicit `any` type |
-| `alwaysStrict` | Emit `"use strict"` in all files |
-| `useUnknownInCatchVariables` | `catch (e)` is `unknown`, not `any` |
+| Setting                        | Effect                                    |
+| ------------------------------ | ----------------------------------------- |
+| `noImplicitAny`                | Error on implicit `any` type              |
+| `strictNullChecks`             | `null` and `undefined` are distinct types |
+| `strictFunctionTypes`          | Stricter function type checking           |
+| `strictBindCallApply`          | Strict `bind`, `call`, `apply` checking   |
+| `strictPropertyInitialization` | Class properties must be initialized      |
+| `noImplicitThis`               | Error on `this` with implicit `any` type  |
+| `alwaysStrict`                 | Emit `"use strict"` in all files          |
+| `useUnknownInCatchVariables`   | `catch (e)` is `unknown`, not `any`       |
 
 #### Additional Strictness (Beyond `strict`)
 
-| Setting | Effect | Why Enable |
-|---------|--------|------------|
-| `noUncheckedIndexedAccess` | `obj[key]` returns `T \| undefined` | Catches missing key bugs |
-| `noImplicitReturns` | All code paths must return | Catches forgotten returns |
-| `noFallthroughCasesInSwitch` | Must `break` or `return` in switch | Catches fallthrough bugs |
-| `noImplicitOverride` | Require `override` keyword | Clearer inheritance intent |
+| Setting                      | Effect                                                          | Why Enable                 |
+| ---------------------------- | --------------------------------------------------------------- | -------------------------- |
+| `noUncheckedIndexedAccess`   | `obj[key]` returns `T \| undefined`                             | Catches missing key bugs   |
+| `noImplicitReturns`          | All code paths must return                                      | Catches forgotten returns  |
+| `noFallthroughCasesInSwitch` | Must `break` or `return` in switch                              | Catches fallthrough bugs   |
+| `noImplicitOverride`         | Require `override` keyword                                      | Clearer inheritance intent |
 | `exactOptionalPropertyTypes` | `prop?: T` means `T \| undefined`, not `T \| undefined \| null` | Stricter optional handling |
 
 ### Migration Support
 
-| Setting | Value | Why |
-|---------|-------|-----|
-| `allowJs` | `true` | JS files can coexist during migration |
+| Setting   | Value   | Why                                   |
+| --------- | ------- | ------------------------------------- |
+| `allowJs` | `true`  | JS files can coexist during migration |
 | `checkJs` | `false` | Don't type-check JS files (too noisy) |
 
 **After Migration Complete:** Set `allowJs: false`
 
 ### Output Settings
 
-| Setting | Value | Why |
-|---------|-------|-----|
-| `noEmit` | `true` | Vite handles compilation |
-| `skipLibCheck` | `true` | Faster builds (skip node_modules types) |
-| `declaration` | `false` | Don't generate .d.ts files (not a library) |
+| Setting        | Value   | Why                                        |
+| -------------- | ------- | ------------------------------------------ |
+| `noEmit`       | `true`  | Vite handles compilation                   |
+| `skipLibCheck` | `true`  | Faster builds (skip node_modules types)    |
+| `declaration`  | `false` | Don't generate .d.ts files (not a library) |
 
 ---
 
@@ -215,13 +215,13 @@ Enables all of these:
 
 ```typescript
 // vite.config.ts
-import { defineConfig } from 'vite';
-import path from 'path';
+import { defineConfig } from "vite";
+import path from "path";
 
 export default defineConfig({
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
+      "@": path.resolve(__dirname, "./src"),
     },
   },
 });
@@ -231,12 +231,12 @@ export default defineConfig({
 
 ```typescript
 // Instead of:
-import { Button } from '../../../components/ui/Button';
-import type { User } from '../../../types/user';
+import { Button } from "../../../components/ui/Button";
+import type { User } from "../../../types/user";
 
 // Use:
-import { Button } from '@/components/ui/Button';
-import type { User } from '@/types/user';
+import { Button } from "@/components/ui/Button";
+import type { User } from "@/types/user";
 ```
 
 ---
@@ -251,10 +251,10 @@ import type { User } from '@/types/user';
 const users: Record<string, User> = {};
 
 // Without noUncheckedIndexedAccess:
-const user = users['alice']; // Type: User (WRONG - could be undefined)
+const user = users["alice"]; // Type: User (WRONG - could be undefined)
 
 // With noUncheckedIndexedAccess:
-const user = users['alice']; // Type: User | undefined (CORRECT)
+const user = users["alice"]; // Type: User | undefined (CORRECT)
 
 // Must handle undefined:
 if (user) {
@@ -275,10 +275,10 @@ interface User {
 }
 
 // Without exactOptionalPropertyTypes:
-const user: User = { name: 'Alice', nickname: null }; // Allowed ❌
+const user: User = { name: "Alice", nickname: null }; // Allowed ❌
 
 // With exactOptionalPropertyTypes:
-const user: User = { name: 'Alice', nickname: null }; // Error ✅
+const user: User = { name: "Alice", nickname: null }; // Error ✅
 ```
 
 **Why enable:** Enforces consistent use of `undefined` for optional values.
@@ -327,10 +327,10 @@ try { ... } catch (e) {
 ```json
 {
   "compilerOptions": {
-    "allowJs": false,  // No more JS files
-    "checkJs": false,  // Not applicable
+    "allowJs": false, // No more JS files
+    "checkJs": false, // Not applicable
     "strict": true,
-    
+
     // Additional strictness (enable gradually):
     "noPropertyAccessFromIndexSignature": true,
     "noUncheckedIndexedAccess": true,
@@ -346,6 +346,7 @@ try { ... } catch (e) {
 If full strictness is too much at once, enable incrementally:
 
 ### Phase 1: Basic Strictness
+
 ```json
 {
   "strict": true
@@ -353,6 +354,7 @@ If full strictness is too much at once, enable incrementally:
 ```
 
 ### Phase 2: Additional Null Safety
+
 ```json
 {
   "strict": true,
@@ -361,6 +363,7 @@ If full strictness is too much at once, enable incrementally:
 ```
 
 ### Phase 3: Full Strictness
+
 ```json
 {
   "strict": true,
@@ -381,6 +384,7 @@ If full strictness is too much at once, enable incrementally:
 ### "Type 'X' is not assignable to type 'Y'"
 
 **Possible causes:**
+
 1. Zod inference issue - use `z.infer<typeof Schema>`
 2. Missing `as const` on literal array
 3. Optional vs required property mismatch
@@ -396,6 +400,7 @@ If full strictness is too much at once, enable incrementally:
 **Cause:** `useUnknownInCatchVariables` is enabled
 
 **Fix:** Narrow the error type:
+
 ```typescript
 catch (e) {
   if (e instanceof Error) {
@@ -424,4 +429,4 @@ For optimal TypeScript experience:
 
 ---
 
-*Companion docs: [ARCHITECTURE_STANDARD.md](./ARCHITECTURE_STANDARD.md), [MIGRATION_GUIDE.md](./MIGRATION_GUIDE.md)*
+_Companion docs: [ARCHITECTURE_STANDARD.md](./ARCHITECTURE_STANDARD.md), [MIGRATION_GUIDE.md](./MIGRATION_GUIDE.md)_

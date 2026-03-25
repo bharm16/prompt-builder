@@ -1,13 +1,13 @@
-import { admin, getFirestore } from '@infrastructure/firebaseAdmin';
-import { logger } from '@infrastructure/Logger';
+import { admin, getFirestore } from "@infrastructure/firebaseAdmin";
+import { logger } from "@infrastructure/Logger";
 import {
   FirestoreCircuitExecutor,
   getFirestoreCircuitExecutor,
-} from '@services/firestore/FirestoreCircuitExecutor';
+} from "@services/firestore/FirestoreCircuitExecutor";
 
 interface VideoWorkerHeartbeatRecord {
   workerId: string;
-  status: 'active' | 'stopped';
+  status: "active" | "stopped";
   lastHeartbeatAtMs: number;
   stoppedAtMs?: number;
   hostname?: string;
@@ -26,56 +26,65 @@ interface WorkerHeartbeatMetadata {
 
 export class VideoWorkerHeartbeatStore {
   private readonly db = getFirestore();
-  private readonly collection = this.db.collection('video_worker_heartbeats');
+  private readonly collection = this.db.collection("video_worker_heartbeats");
   private readonly firestoreCircuitExecutor: FirestoreCircuitExecutor;
 
-  constructor(firestoreCircuitExecutor: FirestoreCircuitExecutor = getFirestoreCircuitExecutor()) {
+  constructor(
+    firestoreCircuitExecutor: FirestoreCircuitExecutor = getFirestoreCircuitExecutor(),
+  ) {
     this.firestoreCircuitExecutor = firestoreCircuitExecutor;
   }
 
-  async reportHeartbeat(workerId: string, metadata?: WorkerHeartbeatMetadata): Promise<void> {
+  async reportHeartbeat(
+    workerId: string,
+    metadata?: WorkerHeartbeatMetadata,
+  ): Promise<void> {
     const now = Date.now();
     await this.firestoreCircuitExecutor.executeWrite(
-      'videoWorkerHeartbeatStore.reportHeartbeat',
+      "videoWorkerHeartbeatStore.reportHeartbeat",
       async () =>
         await this.collection.doc(workerId).set(
           {
             workerId,
-            status: 'active' as const,
+            status: "active" as const,
             lastHeartbeatAtMs: now,
             ...(metadata?.hostname ? { hostname: metadata.hostname } : {}),
-            ...(metadata?.processRole ? { processRole: metadata.processRole } : {}),
+            ...(metadata?.processRole
+              ? { processRole: metadata.processRole }
+              : {}),
             updatedAtMs: now,
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
           },
-          { merge: true }
-        )
+          { merge: true },
+        ),
     );
   }
 
   async markStopped(workerId: string): Promise<void> {
     const now = Date.now();
     await this.firestoreCircuitExecutor.executeWrite(
-      'videoWorkerHeartbeatStore.markStopped',
+      "videoWorkerHeartbeatStore.markStopped",
       async () =>
         await this.collection.doc(workerId).set(
           {
             workerId,
-            status: 'stopped' as const,
+            status: "stopped" as const,
             stoppedAtMs: now,
             updatedAtMs: now,
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
           },
-          { merge: true }
-        )
+          { merge: true },
+        ),
     );
   }
 
-  async getActiveWorkerSummary(maxHeartbeatAgeMs: number): Promise<VideoWorkerHeartbeatSummary> {
+  async getActiveWorkerSummary(
+    maxHeartbeatAgeMs: number,
+  ): Promise<VideoWorkerHeartbeatSummary> {
     try {
       const snapshot = await this.firestoreCircuitExecutor.executeRead(
-        'videoWorkerHeartbeatStore.getActiveWorkerSummary',
-        async () => await this.collection.where('status', '==', 'active').get()
+        "videoWorkerHeartbeatStore.getActiveWorkerSummary",
+        async () => await this.collection.where("status", "==", "active").get(),
       );
 
       if (snapshot.empty) {
@@ -89,7 +98,7 @@ export class VideoWorkerHeartbeatStore {
       for (const doc of snapshot.docs) {
         const data = doc.data() as VideoWorkerHeartbeatRecord;
         if (
-          typeof data.lastHeartbeatAtMs !== 'number' ||
+          typeof data.lastHeartbeatAtMs !== "number" ||
           !Number.isFinite(data.lastHeartbeatAtMs)
         ) {
           continue;
@@ -98,7 +107,10 @@ export class VideoWorkerHeartbeatStore {
           continue;
         }
         activeWorkerCount += 1;
-        oldestHeartbeatAtMs = Math.min(oldestHeartbeatAtMs, data.lastHeartbeatAtMs);
+        oldestHeartbeatAtMs = Math.min(
+          oldestHeartbeatAtMs,
+          data.lastHeartbeatAtMs,
+        );
       }
 
       if (activeWorkerCount === 0) {
@@ -108,10 +120,12 @@ export class VideoWorkerHeartbeatStore {
       return {
         activeWorkerCount,
         oldestHeartbeatAgeMs:
-          oldestHeartbeatAtMs === Number.POSITIVE_INFINITY ? null : Math.max(0, now - oldestHeartbeatAtMs),
+          oldestHeartbeatAtMs === Number.POSITIVE_INFINITY
+            ? null
+            : Math.max(0, now - oldestHeartbeatAtMs),
       };
     } catch (error) {
-      logger.warn('Failed to read video worker heartbeat summary', {
+      logger.warn("Failed to read video worker heartbeat summary", {
         error: error instanceof Error ? error.message : String(error),
       });
       return { activeWorkerCount: 0, oldestHeartbeatAgeMs: null };

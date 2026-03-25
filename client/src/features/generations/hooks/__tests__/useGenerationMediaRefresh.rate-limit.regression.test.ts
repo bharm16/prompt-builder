@@ -1,10 +1,10 @@
-import { act, renderHook } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Generation } from '@features/generations/types';
-import { useGenerationMediaRefresh } from '@features/generations/hooks/useGenerationMediaRefresh';
-import { resolveMediaUrl } from '@/services/media/MediaUrlResolver';
+import { act, renderHook } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { Generation } from "@features/generations/types";
+import { useGenerationMediaRefresh } from "@features/generations/hooks/useGenerationMediaRefresh";
+import { resolveMediaUrl } from "@/services/media/MediaUrlResolver";
 
-vi.mock('@/services/media/MediaUrlResolver', () => ({
+vi.mock("@/services/media/MediaUrlResolver", () => ({
   resolveMediaUrl: vi.fn(),
   resolveImageAssetBatch: vi.fn().mockResolvedValue(new Map()),
   isMediaCircuitOpen: vi.fn().mockReturnValue(false),
@@ -13,21 +13,21 @@ vi.mock('@/services/media/MediaUrlResolver', () => ({
 const mockResolveMediaUrl = vi.mocked(resolveMediaUrl);
 
 const buildGeneration = (): Generation => ({
-  id: 'gen-1',
-  tier: 'draft',
-  status: 'completed',
-  model: 'flux',
-  prompt: 'prompt',
-  promptVersionId: 'version-1',
+  id: "gen-1",
+  tier: "draft",
+  status: "completed",
+  model: "flux",
+  prompt: "prompt",
+  promptVersionId: "version-1",
   createdAt: Date.now(),
   completedAt: Date.now(),
-  mediaType: 'image',
-  mediaUrls: ['/api/preview/image/view?assetId=asset-1'],
-  mediaAssetIds: ['asset-1'],
+  mediaType: "image",
+  mediaUrls: ["/api/preview/image/view?assetId=asset-1"],
+  mediaAssetIds: ["asset-1"],
   thumbnailUrl: null,
 });
 
-describe('regression: generation media refresh retries after transient 429 errors', () => {
+describe("regression: generation media refresh retries after transient 429 errors", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.clearAllMocks();
@@ -37,14 +37,16 @@ describe('regression: generation media refresh retries after transient 429 error
     vi.useRealTimers();
   });
 
-  it('backs off on 429 and retries after cooldown instead of marking media as processed', async () => {
-    const rateLimitedError = Object.assign(new Error('Too many requests'), { status: 429 });
+  it("backs off on 429 and retries after cooldown instead of marking media as processed", async () => {
+    const rateLimitedError = Object.assign(new Error("Too many requests"), {
+      status: 429,
+    });
 
     mockResolveMediaUrl
       .mockRejectedValueOnce(rateLimitedError)
       .mockResolvedValueOnce({
-        url: 'https://storage.example.com/image-previews/asset-1',
-        source: 'preview',
+        url: "https://storage.example.com/image-previews/asset-1",
+        source: "preview",
       });
 
     const dispatch = vi.fn();
@@ -60,7 +62,7 @@ describe('regression: generation media refresh retries after transient 429 error
 
     expect(mockResolveMediaUrl).toHaveBeenNthCalledWith(
       1,
-      expect.objectContaining({ preferFresh: false })
+      expect.objectContaining({ preferFresh: false }),
     );
     expect(dispatch).not.toHaveBeenCalled();
 
@@ -76,11 +78,11 @@ describe('regression: generation media refresh retries after transient 429 error
     expect(mockResolveMediaUrl).toHaveBeenCalledTimes(2);
 
     expect(dispatch).toHaveBeenCalledWith({
-      type: 'UPDATE_GENERATION',
+      type: "UPDATE_GENERATION",
       payload: {
-        id: 'gen-1',
+        id: "gen-1",
         updates: {
-          mediaUrls: ['https://storage.example.com/image-previews/asset-1'],
+          mediaUrls: ["https://storage.example.com/image-previews/asset-1"],
         },
       },
     });

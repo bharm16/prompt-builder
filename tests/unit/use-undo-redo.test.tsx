@@ -1,11 +1,22 @@
-import { describe, expect, it, beforeEach, afterEach, vi, type MockedFunction } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
-import type { MutableRefObject } from 'react';
+import {
+  describe,
+  expect,
+  it,
+  beforeEach,
+  afterEach,
+  vi,
+  type MockedFunction,
+} from "vitest";
+import { renderHook, act } from "@testing-library/react";
+import type { MutableRefObject } from "react";
 
-import { useUndoRedo } from '@features/prompt-optimizer/PromptOptimizerContainer/hooks/useUndoRedo';
-import type { HighlightSnapshot, StateSnapshot } from '@features/prompt-optimizer/context/types';
+import { useUndoRedo } from "@features/prompt-optimizer/PromptOptimizerContainer/hooks/useUndoRedo";
+import type {
+  HighlightSnapshot,
+  StateSnapshot,
+} from "@features/prompt-optimizer/context/types";
 
-vi.mock('@config/performance.config', () => ({
+vi.mock("@config/performance.config", () => ({
   PERFORMANCE_CONFIG: {
     UNDO_STACK_SIZE: 3,
     REF_RESET_DELAY_MS: 0,
@@ -18,16 +29,18 @@ vi.mock('@config/performance.config', () => ({
 
 type UseUndoRedoParams = Parameters<typeof useUndoRedo>[0];
 
-type PromptOptimizer = UseUndoRedoParams['promptOptimizer'];
+type PromptOptimizer = UseUndoRedoParams["promptOptimizer"];
 
-type ApplyInitialHighlightSnapshot = UseUndoRedoParams['applyInitialHighlightSnapshot'];
+type ApplyInitialHighlightSnapshot =
+  UseUndoRedoParams["applyInitialHighlightSnapshot"];
 
-type SetCanUndo = UseUndoRedoParams['setCanUndo'];
-type SetCanRedo = UseUndoRedoParams['setCanRedo'];
+type SetCanUndo = UseUndoRedoParams["setCanUndo"];
+type SetCanRedo = UseUndoRedoParams["setCanRedo"];
 
-type OnEdit = NonNullable<UseUndoRedoParams['onEdit']>;
+type OnEdit = NonNullable<UseUndoRedoParams["onEdit"]>;
 
-type SetDisplayedPromptSilently = UseUndoRedoParams['setDisplayedPromptSilently'];
+type SetDisplayedPromptSilently =
+  UseUndoRedoParams["setDisplayedPromptSilently"];
 
 const createPromptOptimizer = (initialPrompt: string): PromptOptimizer => {
   const optimizer = {
@@ -45,19 +58,25 @@ const createPromptOptimizer = (initialPrompt: string): PromptOptimizer => {
   return optimizer;
 };
 
-const createDefaults = (overrides: Partial<UseUndoRedoParams> = {}): UseUndoRedoParams => {
-  const setDisplayedPromptSilently: MockedFunction<SetDisplayedPromptSilently> = vi.fn();
-  const applyInitialHighlightSnapshot: MockedFunction<ApplyInitialHighlightSnapshot> = vi.fn();
+const createDefaults = (
+  overrides: Partial<UseUndoRedoParams> = {},
+): UseUndoRedoParams => {
+  const setDisplayedPromptSilently: MockedFunction<SetDisplayedPromptSilently> =
+    vi.fn();
+  const applyInitialHighlightSnapshot: MockedFunction<ApplyInitialHighlightSnapshot> =
+    vi.fn();
   const setCanUndo: MockedFunction<SetCanUndo> = vi.fn();
   const setCanRedo: MockedFunction<SetCanRedo> = vi.fn();
 
   const undoStackRef: MutableRefObject<StateSnapshot[]> = { current: [] };
   const redoStackRef: MutableRefObject<StateSnapshot[]> = { current: [] };
-  const latestHighlightRef: MutableRefObject<HighlightSnapshot | null> = { current: null };
+  const latestHighlightRef: MutableRefObject<HighlightSnapshot | null> = {
+    current: null,
+  };
   const isApplyingHistoryRef: MutableRefObject<boolean> = { current: false };
 
   return {
-    promptOptimizer: createPromptOptimizer(''),
+    promptOptimizer: createPromptOptimizer(""),
     setDisplayedPromptSilently,
     applyInitialHighlightSnapshot,
     undoStackRef,
@@ -70,7 +89,7 @@ const createDefaults = (overrides: Partial<UseUndoRedoParams> = {}): UseUndoRedo
   };
 };
 
-describe('useUndoRedo', () => {
+describe("useUndoRedo", () => {
   beforeEach(() => {
     vi.useFakeTimers();
   });
@@ -79,9 +98,10 @@ describe('useUndoRedo', () => {
     vi.useRealTimers();
   });
 
-  it('creates undo points when the prompt changes', () => {
-    const promptOptimizer = createPromptOptimizer('Hello');
-    const setDisplayedPromptSilently: MockedFunction<SetDisplayedPromptSilently> = vi.fn();
+  it("creates undo points when the prompt changes", () => {
+    const promptOptimizer = createPromptOptimizer("Hello");
+    const setDisplayedPromptSilently: MockedFunction<SetDisplayedPromptSilently> =
+      vi.fn();
     const onEdit: MockedFunction<OnEdit> = vi.fn();
 
     const params = createDefaults({
@@ -93,36 +113,40 @@ describe('useUndoRedo', () => {
     const { result } = renderHook(() => useUndoRedo(params));
 
     act(() => {
-      result.current.handleDisplayedPromptChange('Hello world', 5);
+      result.current.handleDisplayedPromptChange("Hello world", 5);
     });
 
     expect(params.undoStackRef.current).toHaveLength(1);
-    expect(params.undoStackRef.current[0]?.text).toBe('Hello');
+    expect(params.undoStackRef.current[0]?.text).toBe("Hello");
     expect(params.redoStackRef.current).toHaveLength(0);
-    expect(promptOptimizer.setDisplayedPrompt).toHaveBeenCalledWith('Hello world');
+    expect(promptOptimizer.setDisplayedPrompt).toHaveBeenCalledWith(
+      "Hello world",
+    );
     expect(params.setCanUndo).toHaveBeenCalledWith(true);
     expect(params.setCanRedo).toHaveBeenCalledWith(false);
     expect(onEdit).toHaveBeenCalled();
   });
 
-  it('undoes and redoes with highlight snapshots', () => {
-    const promptOptimizer = createPromptOptimizer('second');
+  it("undoes and redoes with highlight snapshots", () => {
+    const promptOptimizer = createPromptOptimizer("second");
 
-    const setDisplayedPromptSilently: MockedFunction<SetDisplayedPromptSilently> = vi.fn((text: string) => {
-      promptOptimizer.displayedPrompt = text;
-    });
-    const applyInitialHighlightSnapshot: MockedFunction<ApplyInitialHighlightSnapshot> = vi.fn();
+    const setDisplayedPromptSilently: MockedFunction<SetDisplayedPromptSilently> =
+      vi.fn((text: string) => {
+        promptOptimizer.displayedPrompt = text;
+      });
+    const applyInitialHighlightSnapshot: MockedFunction<ApplyInitialHighlightSnapshot> =
+      vi.fn();
 
     const undoSnapshot: StateSnapshot = {
-      text: 'first',
-      highlight: { spans: [], signature: 'sig-undo' },
+      text: "first",
+      highlight: { spans: [], signature: "sig-undo" },
       timestamp: 1,
       version: 0,
     };
 
     const latestHighlight: HighlightSnapshot = {
       spans: [],
-      signature: 'sig-current',
+      signature: "sig-current",
     };
 
     const params = createDefaults({
@@ -143,13 +167,13 @@ describe('useUndoRedo', () => {
 
     vi.runAllTimers();
 
-    expect(setDisplayedPromptSilently).toHaveBeenCalledWith('first');
-    expect(promptOptimizer.setOptimizedPrompt).toHaveBeenCalledWith('first');
+    expect(setDisplayedPromptSilently).toHaveBeenCalledWith("first");
+    expect(promptOptimizer.setOptimizedPrompt).toHaveBeenCalledWith("first");
     expect(applyInitialHighlightSnapshot).toHaveBeenCalledWith(
-      expect.objectContaining({ signature: 'sig-undo' }),
-      { bumpVersion: true, markPersisted: false }
+      expect.objectContaining({ signature: "sig-undo" }),
+      { bumpVersion: true, markPersisted: false },
     );
-    expect(params.redoStackRef.current[0]?.text).toBe('second');
+    expect(params.redoStackRef.current[0]?.text).toBe("second");
 
     act(() => {
       result.current.handleRedo();
@@ -157,22 +181,22 @@ describe('useUndoRedo', () => {
 
     vi.runAllTimers();
 
-    expect(setDisplayedPromptSilently).toHaveBeenCalledWith('second');
-    expect(promptOptimizer.setOptimizedPrompt).toHaveBeenCalledWith('second');
+    expect(setDisplayedPromptSilently).toHaveBeenCalledWith("second");
+    expect(promptOptimizer.setOptimizedPrompt).toHaveBeenCalledWith("second");
     expect(applyInitialHighlightSnapshot).toHaveBeenCalledWith(
-      expect.objectContaining({ signature: 'sig-current' }),
-      { bumpVersion: true, markPersisted: false }
+      expect.objectContaining({ signature: "sig-current" }),
+      { bumpVersion: true, markPersisted: false },
     );
   });
 
-  it('clears history stacks', () => {
+  it("clears history stacks", () => {
     const params = createDefaults();
 
     params.undoStackRef.current = [
-      { text: 'a', highlight: null, timestamp: 1, version: 0 },
+      { text: "a", highlight: null, timestamp: 1, version: 0 },
     ];
     params.redoStackRef.current = [
-      { text: 'b', highlight: null, timestamp: 2, version: 1 },
+      { text: "b", highlight: null, timestamp: 2, version: 1 },
     ];
 
     const { result } = renderHook(() => useUndoRedo(params));

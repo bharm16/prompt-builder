@@ -1,152 +1,166 @@
-import type { CapabilitiesSchema, CapabilityField, ModelFeatures } from '@shared/capabilities';
+import type {
+  CapabilitiesSchema,
+  CapabilityField,
+  ModelFeatures,
+} from "@shared/capabilities";
 
-export const CAPABILITIES_VERSION = '2026-01-03';
-export const DEFAULT_GENERATED_AT = '2026-01-03T00:00:00Z';
+export const CAPABILITIES_VERSION = "2026-01-03";
+export const DEFAULT_GENERATED_AT = "2026-01-03T00:00:00Z";
 
 export const aspectRatioField = (
-  values: string[] = ['16:9', '9:16', '1:1']
+  values: string[] = ["16:9", "9:16", "1:1"],
 ): CapabilityField => ({
-  type: 'enum',
+  type: "enum",
   values,
   ...(values[0] !== undefined ? { default: values[0] } : {}),
   ui: {
-    label: 'Aspect ratio',
-    control: 'segmented',
-    group: 'Format',
+    label: "Aspect ratio",
+    control: "segmented",
+    group: "Format",
     order: 10,
   },
 });
 
-export const durationField = (values: number[] = [4, 8, 12]): CapabilityField => ({
-  type: 'enum',
+export const durationField = (
+  values: number[] = [4, 8, 12],
+): CapabilityField => ({
+  type: "enum",
   values,
   ...(values[0] !== undefined ? { default: values[0] } : {}),
   ui: {
-    label: 'Duration',
-    control: 'select',
-    group: 'Timing',
+    label: "Duration",
+    control: "select",
+    group: "Timing",
     order: 20,
   },
 });
 
 export const fpsField = (values: number[] = [24, 30]): CapabilityField => ({
-  type: 'enum',
+  type: "enum",
   values,
   ...(values[0] !== undefined ? { default: values[0] } : {}),
   ui: {
-    label: 'Frame rate',
-    control: 'select',
-    group: 'Timing',
+    label: "Frame rate",
+    control: "select",
+    group: "Timing",
     order: 25,
   },
 });
 
-export const resolutionField = (values: string[] = ['720p', '1080p']): CapabilityField => ({
-  type: 'enum',
+export const resolutionField = (
+  values: string[] = ["720p", "1080p"],
+): CapabilityField => ({
+  type: "enum",
   values,
   ...(values[0] !== undefined ? { default: values[0] } : {}),
   ui: {
-    label: 'Resolution',
-    control: 'select',
-    group: 'Quality',
+    label: "Resolution",
+    control: "select",
+    group: "Quality",
     order: 30,
   },
   constraints: {
     available_values_if: [
-      { if: { field: 'aspect_ratio', eq: '9:16' }, values: ['720p'] },
-      { if: { field: 'aspect_ratio', eq: '1:1' }, values: ['720p'] },
+      { if: { field: "aspect_ratio", eq: "9:16" }, values: ["720p"] },
+      { if: { field: "aspect_ratio", eq: "1:1" }, values: ["720p"] },
     ],
   },
 });
 
 export const audioField = (defaultValue = false): CapabilityField => ({
-  type: 'bool',
+  type: "bool",
   default: defaultValue,
   ui: {
-    label: 'Audio',
-    control: 'toggle',
-    group: 'Audio',
+    label: "Audio",
+    control: "toggle",
+    group: "Audio",
     order: 40,
   },
   constraints: {
-    available_if: [{ field: 'resolution', in: ['720p'] }],
+    available_if: [{ field: "resolution", in: ["720p"] }],
   },
 });
 
 export const imageInputField = (supported = false): CapabilityField => ({
-  type: 'bool',
+  type: "bool",
   default: supported,
   ui: {
-    label: 'Image Input',
-    description: 'Supports image-to-video generation',
-    control: 'toggle',
-    group: 'Capabilities',
+    label: "Image Input",
+    description: "Supports image-to-video generation",
+    control: "toggle",
+    group: "Capabilities",
     order: 5,
   },
 });
 
 export const styleReferenceField = (supported = false): CapabilityField => ({
-  type: 'bool',
+  type: "bool",
   default: supported,
   ui: {
-    label: 'Style Reference',
-    description: 'Supports native style reference inputs',
-    control: 'toggle',
-    group: 'Capabilities',
+    label: "Style Reference",
+    description: "Supports native style reference inputs",
+    control: "toggle",
+    group: "Capabilities",
     order: 6,
   },
 });
 
-export const characterReferenceField = (supported = false): CapabilityField => ({
-  type: 'bool',
+export const characterReferenceField = (
+  supported = false,
+): CapabilityField => ({
+  type: "bool",
   default: supported,
   ui: {
-    label: 'Character Reference',
-    description: 'Supports native character/identity reference inputs',
-    control: 'toggle',
-    group: 'Capabilities',
+    label: "Character Reference",
+    description: "Supports native character/identity reference inputs",
+    control: "toggle",
+    group: "Capabilities",
     order: 7,
   },
 });
 
 export const extendVideoField = (supported = false): CapabilityField => ({
-  type: 'bool',
+  type: "bool",
   default: supported,
   ui: {
-    label: 'Extend Video',
-    description: 'Supports extending an existing video asset',
-    control: 'toggle',
-    group: 'Capabilities',
+    label: "Extend Video",
+    description: "Supports extending an existing video asset",
+    control: "toggle",
+    group: "Capabilities",
     order: 8,
   },
 });
 
 export const lastFrameField = (supported = false): CapabilityField => ({
-  type: 'bool',
+  type: "bool",
   default: supported,
   ui: {
-    label: 'Last Frame',
-    description: 'Supports end-frame interpolation (first + last frame control)',
-    control: 'toggle',
-    group: 'Capabilities',
+    label: "Last Frame",
+    description:
+      "Supports end-frame interpolation (first + last frame control)",
+    control: "toggle",
+    group: "Capabilities",
     order: 5.5,
   },
 });
 
-export const referenceImagesField = (supported = false, maxCount = 3): CapabilityField => ({
-  type: 'bool',
+export const referenceImagesField = (
+  supported = false,
+  maxCount = 3,
+): CapabilityField => ({
+  type: "bool",
   default: supported,
   ui: {
-    label: 'Reference Images',
+    label: "Reference Images",
     description: `Supports up to ${maxCount} reference images for style/character consistency`,
-    control: 'toggle',
-    group: 'Capabilities',
+    control: "toggle",
+    group: "Capabilities",
     order: 6.5,
   },
 });
 
 export const seedField = (): CapabilityField => ({
-  type: 'int',
+  type: "int",
   default: 0,
   constraints: {
     min: 0,
@@ -154,16 +168,16 @@ export const seedField = (): CapabilityField => ({
     step: 1,
   },
   ui: {
-    label: 'Seed',
-    control: 'input',
-    group: 'Advanced',
+    label: "Seed",
+    control: "input",
+    group: "Advanced",
     order: 90,
-    description: 'Use 0 for random seed.',
+    description: "Use 0 for random seed.",
   },
 });
 
 export const guidanceField = (defaultValue = 7): CapabilityField => ({
-  type: 'int',
+  type: "int",
   default: defaultValue,
   constraints: {
     min: 1,
@@ -171,9 +185,9 @@ export const guidanceField = (defaultValue = 7): CapabilityField => ({
     step: 1,
   },
   ui: {
-    label: 'Guidance',
-    control: 'input',
-    group: 'Advanced',
+    label: "Guidance",
+    control: "input",
+    group: "Advanced",
     order: 95,
   },
 });
@@ -182,12 +196,12 @@ export const buildSchema = (
   provider: string,
   model: string,
   fields: Record<string, CapabilityField>,
-  options?: { source?: string; generatedAt?: string; features?: ModelFeatures }
+  options?: { source?: string; generatedAt?: string; features?: ModelFeatures },
 ): CapabilitiesSchema => ({
   provider,
   model,
   version: CAPABILITIES_VERSION,
-  source: options?.source ?? 'manual',
+  source: options?.source ?? "manual",
   generated_at: options?.generatedAt ?? DEFAULT_GENERATED_AT,
   ...(options?.features ? { features: options.features } : {}),
   fields,

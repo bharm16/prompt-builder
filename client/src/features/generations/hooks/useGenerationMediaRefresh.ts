@@ -1,27 +1,27 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from "react";
 import {
   resolveMediaUrl,
   resolveImageAssetBatch,
   isMediaCircuitOpen,
   type MediaUrlRequest,
-} from '@/services/media/MediaUrlResolver';
-import { extractStorageObjectPath } from '@/utils/storageUrl';
-import { logger } from '@/services/LoggingService';
-import type { Generation } from '../types';
-import type { GenerationsAction } from './useGenerationsState';
+} from "@/services/media/MediaUrlResolver";
+import { extractStorageObjectPath } from "@/utils/storageUrl";
+import { logger } from "@/services/LoggingService";
+import type { Generation } from "../types";
+import type { GenerationsAction } from "./useGenerationsState";
 
-const log = logger.child('MediaRefresh');
+const log = logger.child("MediaRefresh");
 const MEDIA_REFRESH_RETRY_COOLDOWN_MS = 15_000;
 /** Minimum hidden duration (ms) before a visibility wake triggers re-resolution. */
 const VISIBILITY_WAKE_THRESHOLD_MS = 60_000;
 
 const buildSignature = (generation: Generation): string =>
-  JSON.stringify([generation.mediaUrls, generation.thumbnailUrl ?? '']);
+  JSON.stringify([generation.mediaUrls, generation.thumbnailUrl ?? ""]);
 
 const getErrorStatus = (error: unknown): number | null => {
-  if (!error || typeof error !== 'object') return null;
+  if (!error || typeof error !== "object") return null;
   const status = (error as { status?: unknown }).status;
-  return typeof status === 'number' && Number.isFinite(status) ? status : null;
+  return typeof status === "number" && Number.isFinite(status) ? status : null;
 };
 
 const isRetryableError = (error: unknown): boolean => {
@@ -33,22 +33,22 @@ const isRetryableError = (error: unknown): boolean => {
 
 const resolveAssetHints = (
   url: string | null | undefined,
-  ref: string | null | undefined
+  ref: string | null | undefined,
 ): { storagePath: string | null; assetId: string | null } => {
-  const normalizedRef = typeof ref === 'string' ? ref.trim() : '';
+  const normalizedRef = typeof ref === "string" ? ref.trim() : "";
   const storagePath =
-    normalizedRef && normalizedRef.startsWith('users/')
+    normalizedRef && normalizedRef.startsWith("users/")
       ? normalizedRef
-      : (url ? extractStorageObjectPath(url) : null);
+      : url
+        ? extractStorageObjectPath(url)
+        : null;
   const assetId =
-    normalizedRef && !normalizedRef.startsWith('users/')
-      ? normalizedRef
-      : null;
+    normalizedRef && !normalizedRef.startsWith("users/") ? normalizedRef : null;
   return { storagePath, assetId };
 };
 
 const resolveGenerationMedia = async (
-  generation: Generation
+  generation: Generation,
 ): Promise<{ updates: Partial<Generation>; signature: string } | null> => {
   const hasMedia = generation.mediaUrls.length > 0;
   const hasThumb = Boolean(generation.thumbnailUrl);
@@ -57,15 +57,18 @@ const resolveGenerationMedia = async (
     return null;
   }
 
-  const mediaKind = generation.mediaType === 'video' ? 'video' : 'image';
+  const mediaKind = generation.mediaType === "video" ? "video" : "image";
   const assetRefs = generation.mediaAssetIds;
 
   const resolvedMediaUrls = [...generation.mediaUrls];
 
   if (hasMedia) {
     for (let index = 0; index < generation.mediaUrls.length; index += 1) {
-      const url = generation.mediaUrls[index] ?? '';
-      const { storagePath, assetId } = resolveAssetHints(url, assetRefs?.[index] || null);
+      const url = generation.mediaUrls[index] ?? "";
+      const { storagePath, assetId } = resolveAssetHints(
+        url,
+        assetRefs?.[index] || null,
+      );
       const request: MediaUrlRequest = {
         kind: mediaKind,
         url,
@@ -79,18 +82,19 @@ const resolveGenerationMedia = async (
   }
 
   const resolvedThumbnail = generation.thumbnailUrl
-    ? (
+    ? ((
         await resolveMediaUrl({
-          kind: 'image',
+          kind: "image",
           url: generation.thumbnailUrl,
-          storagePath: extractStorageObjectPath(generation.thumbnailUrl) ?? null,
+          storagePath:
+            extractStorageObjectPath(generation.thumbnailUrl) ?? null,
           preferFresh: false,
         })
-      ).url ?? generation.thumbnailUrl
+      ).url ?? generation.thumbnailUrl)
     : generation.thumbnailUrl;
 
   const mediaChanged = resolvedMediaUrls.some(
-    (url, index) => url !== generation.mediaUrls[index]
+    (url, index) => url !== generation.mediaUrls[index],
   );
   const thumbChanged = resolvedThumbnail !== generation.thumbnailUrl;
 
@@ -109,7 +113,7 @@ const resolveGenerationMedia = async (
   // Bug 16 fix: use JSON for consistent signature format
   const signature = JSON.stringify([
     updates.mediaUrls ?? generation.mediaUrls,
-    updates.thumbnailUrl ?? generation.thumbnailUrl ?? '',
+    updates.thumbnailUrl ?? generation.thumbnailUrl ?? "",
   ]);
 
   return { updates, signature };
@@ -117,7 +121,7 @@ const resolveGenerationMedia = async (
 
 export function useGenerationMediaRefresh(
   generations: Generation[],
-  dispatch: React.Dispatch<GenerationsAction>
+  dispatch: React.Dispatch<GenerationsAction>,
 ): void {
   const inFlightRef = useRef<Set<string>>(new Set());
   const processedRef = useRef<Map<string, string>>(new Map());
@@ -143,7 +147,7 @@ export function useGenerationMediaRefresh(
   const hiddenAtRef = useRef<number | null>(null);
   useEffect(() => {
     const handleVisibilityChange = (): void => {
-      if (document.visibilityState === 'hidden') {
+      if (document.visibilityState === "hidden") {
         hiddenAtRef.current = Date.now();
         return;
       }
@@ -154,16 +158,19 @@ export function useGenerationMediaRefresh(
       const hiddenDuration = Date.now() - hiddenAt;
       if (hiddenDuration < VISIBILITY_WAKE_THRESHOLD_MS) return;
 
-      log.debug('Page woke after extended sleep, invalidating processed media', {
-        hiddenDurationMs: hiddenDuration,
-      });
+      log.debug(
+        "Page woke after extended sleep, invalidating processed media",
+        {
+          hiddenDurationMs: hiddenDuration,
+        },
+      );
       processedRef.current.clear();
       setRetryToken((value) => value + 1);
     };
 
-    document.addEventListener('visibilitychange', handleVisibilityChange);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
     return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, []);
 
@@ -190,7 +197,7 @@ export function useGenerationMediaRefresh(
     const runRefresh = async (): Promise<void> => {
       // Skip entirely if the circuit breaker is open (too many 404s)
       if (isMediaCircuitOpen()) {
-        log.debug('Skipping media refresh — circuit breaker open');
+        log.debug("Skipping media refresh — circuit breaker open");
         return;
       }
 
@@ -199,7 +206,7 @@ export function useGenerationMediaRefresh(
       const allImageAssetIds: string[] = [];
 
       for (const generation of generations) {
-        if (generation.status !== 'completed') continue;
+        if (generation.status !== "completed") continue;
         if (!generation.mediaUrls.length && !generation.thumbnailUrl) continue;
 
         const signature = buildSignature(generation);
@@ -207,16 +214,20 @@ export function useGenerationMediaRefresh(
         if (inFlightRef.current.has(generation.id)) continue;
 
         const retryAfter = retryAfterRef.current.get(generation.id);
-        if (typeof retryAfter === 'number' && Date.now() < retryAfter) continue;
+        if (typeof retryAfter === "number" && Date.now() < retryAfter) continue;
 
         pendingGenerations.push(generation);
 
         // Collect asset IDs for batch pre-resolution
-        if (generation.mediaType !== 'video') {
+        if (generation.mediaType !== "video") {
           const refs = generation.mediaAssetIds ?? [];
           for (let i = 0; i < generation.mediaUrls.length; i++) {
             const ref = refs[i];
-            if (typeof ref === 'string' && ref.trim() && !ref.startsWith('users/')) {
+            if (
+              typeof ref === "string" &&
+              ref.trim() &&
+              !ref.startsWith("users/")
+            ) {
               allImageAssetIds.push(ref.trim());
             }
           }
@@ -241,7 +252,9 @@ export function useGenerationMediaRefresh(
       }
 
       if (batchRateLimited) {
-        log.warn('Batch pre-resolution rate-limited, deferring all pending generations');
+        log.warn(
+          "Batch pre-resolution rate-limited, deferring all pending generations",
+        );
         for (const generation of pendingGenerations) {
           const retryAt = Date.now() + MEDIA_REFRESH_RETRY_COOLDOWN_MS;
           retryAfterRef.current.set(generation.id, retryAt);
@@ -276,13 +289,13 @@ export function useGenerationMediaRefresh(
           }
 
           if (result) {
-            log.debug('Refreshed generation media', {
+            log.debug("Refreshed generation media", {
               id: generation.id,
               mediaUrlsChanged: result.updates.mediaUrls !== undefined,
               thumbnailChanged: result.updates.thumbnailUrl !== undefined,
             });
             dispatch({
-              type: 'UPDATE_GENERATION',
+              type: "UPDATE_GENERATION",
               payload: { id: generation.id, updates: result.updates },
             });
             processedRef.current.set(generation.id, result.signature);
@@ -308,10 +321,14 @@ export function useGenerationMediaRefresh(
             processedRef.current.set(generation.id, signature);
           }
 
-          log.error('Error refreshing generation media', error instanceof Error ? error : undefined, {
-            id: generation.id,
-            retryScheduled: shouldRetry,
-          });
+          log.error(
+            "Error refreshing generation media",
+            error instanceof Error ? error : undefined,
+            {
+              id: generation.id,
+              retryScheduled: shouldRetry,
+            },
+          );
         } finally {
           inFlightRef.current.delete(generation.id);
         }

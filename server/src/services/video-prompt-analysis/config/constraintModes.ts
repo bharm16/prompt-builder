@@ -2,15 +2,24 @@
  * Constraint mode configurations for video prompt replacements
  * Each mode defines bounds, requirements, and guidance for suggestion generation
  */
-import type { ConstraintConfig } from '@services/video-prompt-analysis/types';
+import type { ConstraintConfig } from "@services/video-prompt-analysis/types";
 
-type ConstraintMode = 'micro' | 'lighting' | 'camera' | 'location' | 'style' | 'phrase' | 'sentence' | 'adjective' | 'verb';
+type ConstraintMode =
+  | "micro"
+  | "lighting"
+  | "camera"
+  | "location"
+  | "style"
+  | "phrase"
+  | "sentence"
+  | "adjective"
+  | "verb";
 
-type ConstraintTemplate = Omit<ConstraintConfig, 'slotDescriptor'>;
+type ConstraintTemplate = Omit<ConstraintConfig, "slotDescriptor">;
 
 type ConstraintModeGenerator = (
   highlightWordCount: number,
-  slotDescriptor: string
+  slotDescriptor: string,
 ) => ConstraintConfig;
 
 /**
@@ -18,16 +27,19 @@ type ConstraintModeGenerator = (
  */
 function createConstraint(
   config: ConstraintTemplate,
-  slotDescriptor: string
+  slotDescriptor: string,
 ): ConstraintConfig {
-  const ensureBounds = (min: number, max: number): { min: number; max: number } => {
+  const ensureBounds = (
+    min: number,
+    max: number,
+  ): { min: number; max: number } => {
     const lower = Math.max(1, Math.round(min));
     const upper = Math.max(lower, Math.round(max));
     return { min: lower, max: upper };
   };
 
   const bounds = ensureBounds(config.minWords, config.maxWords);
-  
+
   return {
     ...config,
     minWords: bounds.min,
@@ -40,154 +52,206 @@ function createConstraint(
 /**
  * Constraint mode generators
  */
-export const CONSTRAINT_MODES: Record<ConstraintMode, ConstraintModeGenerator> = {
-  /**
-   * Micro mode: 2-8 word noun phrase (expanded for camera/shot descriptions)
-   */
-  micro: (highlightWordCount, slotDescriptor) => createConstraint({
-    mode: 'micro',
-    minWords: Math.max(2, Math.min(4, highlightWordCount + 1)),
-    maxWords: Math.min(8, Math.max(6, highlightWordCount + 3)),
-    maxSentences: 1,
-    disallowTerminalPunctuation: true,
-    formRequirement: '2-8 word cinematic noun phrase describing the same subject',
-    focusGuidance: [
-      'Use precise visual modifiers (wardrobe, era, material)',
-      'Avoid verbs; keep the replacement as a noun phrase',
-    ],
-    extraRequirements: ['Keep it a noun phrase (no verbs)'],
-  }, slotDescriptor),
+export const CONSTRAINT_MODES: Record<ConstraintMode, ConstraintModeGenerator> =
+  {
+    /**
+     * Micro mode: 2-8 word noun phrase (expanded for camera/shot descriptions)
+     */
+    micro: (highlightWordCount, slotDescriptor) =>
+      createConstraint(
+        {
+          mode: "micro",
+          minWords: Math.max(2, Math.min(4, highlightWordCount + 1)),
+          maxWords: Math.min(8, Math.max(6, highlightWordCount + 3)),
+          maxSentences: 1,
+          disallowTerminalPunctuation: true,
+          formRequirement:
+            "2-8 word cinematic noun phrase describing the same subject",
+          focusGuidance: [
+            "Use precise visual modifiers (wardrobe, era, material)",
+            "Avoid verbs; keep the replacement as a noun phrase",
+          ],
+          extraRequirements: ["Keep it a noun phrase (no verbs)"],
+        },
+        slotDescriptor,
+      ),
 
-  /**
-   * Lighting mode: 6-14 word lighting clause
-   */
-  lighting: (highlightWordCount, slotDescriptor) => createConstraint({
-    mode: 'lighting',
-    minWords: Math.max(4, Math.min(8, highlightWordCount + 1)),
-    maxWords: Math.min(14, Math.max(9, highlightWordCount + 4)),
-    maxSentences: 1,
-    formRequirement: 'Single lighting clause covering source, direction, and color temperature',
-    focusGuidance: [
-      'Name the light source and direction',
-      'Include color temperature or mood language',
-    ],
-    extraRequirements: ['Mention light source + direction', 'Reference color temperature or mood'],
-  }, slotDescriptor),
+    /**
+     * Lighting mode: 6-14 word lighting clause
+     */
+    lighting: (highlightWordCount, slotDescriptor) =>
+      createConstraint(
+        {
+          mode: "lighting",
+          minWords: Math.max(4, Math.min(8, highlightWordCount + 1)),
+          maxWords: Math.min(14, Math.max(9, highlightWordCount + 4)),
+          maxSentences: 1,
+          formRequirement:
+            "Single lighting clause covering source, direction, and color temperature",
+          focusGuidance: [
+            "Name the light source and direction",
+            "Include color temperature or mood language",
+          ],
+          extraRequirements: [
+            "Mention light source + direction",
+            "Reference color temperature or mood",
+          ],
+        },
+        slotDescriptor,
+      ),
 
-  /**
-   * Camera mode: 6-12 word camera clause
-   */
-  camera: (highlightWordCount, slotDescriptor) => createConstraint({
-    mode: 'camera',
-    minWords: Math.max(6, Math.min(8, highlightWordCount + 1)),
-    maxWords: Math.min(12, Math.max(10, highlightWordCount + 4)),
-    maxSentences: 1,
-    formRequirement: 'Single movement clause combining camera move, lens, and framing',
-    focusGuidance: [
-      'Pair a camera move with a lens choice and framing detail',
-      'Stay in the same tense and perspective as the template',
-    ],
-    extraRequirements: ['Include a lens or focal length', 'Reference camera movement'],
-  }, slotDescriptor),
+    /**
+     * Camera mode: 6-12 word camera clause
+     */
+    camera: (highlightWordCount, slotDescriptor) =>
+      createConstraint(
+        {
+          mode: "camera",
+          minWords: Math.max(6, Math.min(8, highlightWordCount + 1)),
+          maxWords: Math.min(12, Math.max(10, highlightWordCount + 4)),
+          maxSentences: 1,
+          formRequirement:
+            "Single movement clause combining camera move, lens, and framing",
+          focusGuidance: [
+            "Pair a camera move with a lens choice and framing detail",
+            "Stay in the same tense and perspective as the template",
+          ],
+          extraRequirements: [
+            "Include a lens or focal length",
+            "Reference camera movement",
+          ],
+        },
+        slotDescriptor,
+      ),
 
-  /**
-   * Location mode: 6-14 word location beat
-   */
-  location: (highlightWordCount, slotDescriptor) => createConstraint({
-    mode: 'location',
-    minWords: Math.max(6, Math.min(8, highlightWordCount + 1)),
-    maxWords: Math.min(14, Math.max(9, highlightWordCount + 4)),
-    maxSentences: 1,
-    formRequirement: 'Concise location beat with time-of-day or atmosphere',
-    focusGuidance: [
-      'Anchor the setting with sensory specifics',
-      'Mention time of day or atmospheric detail',
-    ],
-    extraRequirements: ['Include a sensory or atmospheric hook'],
-  }, slotDescriptor),
+    /**
+     * Location mode: 6-14 word location beat
+     */
+    location: (highlightWordCount, slotDescriptor) =>
+      createConstraint(
+        {
+          mode: "location",
+          minWords: Math.max(6, Math.min(8, highlightWordCount + 1)),
+          maxWords: Math.min(14, Math.max(9, highlightWordCount + 4)),
+          maxSentences: 1,
+          formRequirement:
+            "Concise location beat with time-of-day or atmosphere",
+          focusGuidance: [
+            "Anchor the setting with sensory specifics",
+            "Mention time of day or atmospheric detail",
+          ],
+          extraRequirements: ["Include a sensory or atmospheric hook"],
+        },
+        slotDescriptor,
+      ),
 
-  /**
-   * Style mode: 5-12 word stylistic phrase
-   */
-  style: (highlightWordCount, slotDescriptor) => createConstraint({
-    mode: 'style',
-    minWords: Math.max(5, Math.min(7, highlightWordCount + 1)),
-    maxWords: Math.min(12, Math.max(8, highlightWordCount + 3)),
-    maxSentences: 1,
-    formRequirement: 'Compact stylistic phrase referencing medium, era, or tone',
-    focusGuidance: [
-      'Reference a medium, era, or artistic influence',
-      'Keep it tightly scoped to the highlighted span',
-    ],
-    extraRequirements: [],
-  }, slotDescriptor),
+    /**
+     * Style mode: 5-12 word stylistic phrase
+     */
+    style: (highlightWordCount, slotDescriptor) =>
+      createConstraint(
+        {
+          mode: "style",
+          minWords: Math.max(5, Math.min(7, highlightWordCount + 1)),
+          maxWords: Math.min(12, Math.max(8, highlightWordCount + 3)),
+          maxSentences: 1,
+          formRequirement:
+            "Compact stylistic phrase referencing medium, era, or tone",
+          focusGuidance: [
+            "Reference a medium, era, or artistic influence",
+            "Keep it tightly scoped to the highlighted span",
+          ],
+          extraRequirements: [],
+        },
+        slotDescriptor,
+      ),
 
-  /**
-   * Phrase mode: 5-12 word cinematic clause
-   */
-  phrase: (highlightWordCount, slotDescriptor) => createConstraint({
-    mode: 'phrase',
-    minWords: Math.max(5, Math.min(7, highlightWordCount + 1)),
-    maxWords: Math.min(12, Math.max(8, highlightWordCount + 3)),
-    maxSentences: 1,
-    formRequirement: 'Single cinematic clause focused on one production choice',
-    focusGuidance: [
-      'Emphasize one production detail (camera, lighting, subject, or location)',
-      'Avoid expanding beyond the surrounding sentence',
-    ],
-    extraRequirements: [],
-  }, slotDescriptor),
+    /**
+     * Phrase mode: 5-12 word cinematic clause
+     */
+    phrase: (highlightWordCount, slotDescriptor) =>
+      createConstraint(
+        {
+          mode: "phrase",
+          minWords: Math.max(5, Math.min(7, highlightWordCount + 1)),
+          maxWords: Math.min(12, Math.max(8, highlightWordCount + 3)),
+          maxSentences: 1,
+          formRequirement:
+            "Single cinematic clause focused on one production choice",
+          focusGuidance: [
+            "Emphasize one production detail (camera, lighting, subject, or location)",
+            "Avoid expanding beyond the surrounding sentence",
+          ],
+          extraRequirements: [],
+        },
+        slotDescriptor,
+      ),
 
-  /**
-   * Sentence mode: 10-25 word cinematic sentence
-   */
-  sentence: (highlightWordCount, slotDescriptor) => createConstraint({
-    mode: 'sentence',
-    minWords: Math.max(10, Math.min(12, highlightWordCount + 2)),
-    maxWords: Math.min(25, Math.max(14, highlightWordCount + 6)),
-    maxSentences: 1,
-    formRequirement: 'Single cinematic sentence that flows with the template',
-    focusGuidance: [
-      'Lead with the most important cinematic detail',
-      'Keep it punchy—no compound sentences',
-    ],
-    extraRequirements: [],
-  }, slotDescriptor),
+    /**
+     * Sentence mode: 10-25 word cinematic sentence
+     */
+    sentence: (highlightWordCount, slotDescriptor) =>
+      createConstraint(
+        {
+          mode: "sentence",
+          minWords: Math.max(10, Math.min(12, highlightWordCount + 2)),
+          maxWords: Math.min(25, Math.max(14, highlightWordCount + 6)),
+          maxSentences: 1,
+          formRequirement:
+            "Single cinematic sentence that flows with the template",
+          focusGuidance: [
+            "Lead with the most important cinematic detail",
+            "Keep it punchy—no compound sentences",
+          ],
+          extraRequirements: [],
+        },
+        slotDescriptor,
+      ),
 
-  /**
-   * Adjective mode: 1-6 word adjective or participial phrase
-   */
-  adjective: (highlightWordCount, slotDescriptor) => createConstraint({
-    mode: 'adjective',
-    minWords: 1,
-    maxWords: Math.min(6, Math.max(5, highlightWordCount + 2)),
-    maxSentences: 1,
-    disallowTerminalPunctuation: true,
-    formRequirement: '1-6 word adjective or participial phrase',
-    focusGuidance: [
-      'Use descriptive modifiers that set visual tone',
-      'Avoid full clauses or noun phrases',
-    ],
-    extraRequirements: ['Output an adjective or participial phrase, not a noun phrase'],
-  }, slotDescriptor),
+    /**
+     * Adjective mode: 1-6 word adjective or participial phrase
+     */
+    adjective: (highlightWordCount, slotDescriptor) =>
+      createConstraint(
+        {
+          mode: "adjective",
+          minWords: 1,
+          maxWords: Math.min(6, Math.max(5, highlightWordCount + 2)),
+          maxSentences: 1,
+          disallowTerminalPunctuation: true,
+          formRequirement: "1-6 word adjective or participial phrase",
+          focusGuidance: [
+            "Use descriptive modifiers that set visual tone",
+            "Avoid full clauses or noun phrases",
+          ],
+          extraRequirements: [
+            "Output an adjective or participial phrase, not a noun phrase",
+          ],
+        },
+        slotDescriptor,
+      ),
 
-  /**
-   * Verb mode: 1-8 word verb phrase describing a visible action
-   */
-  verb: (highlightWordCount, slotDescriptor) => createConstraint({
-    mode: 'verb',
-    minWords: 1,
-    maxWords: Math.min(8, Math.max(4, highlightWordCount + 2)),
-    maxSentences: 1,
-    disallowTerminalPunctuation: true,
-    formRequirement: '1-8 word verb phrase describing a visible action',
-    focusGuidance: [
-      'Use active, camera-visible verbs',
-      'Vary the physical staging, not just intensity',
-    ],
-    extraRequirements: ['Output a verb phrase, not a noun phrase'],
-  }, slotDescriptor),
-};
+    /**
+     * Verb mode: 1-8 word verb phrase describing a visible action
+     */
+    verb: (highlightWordCount, slotDescriptor) =>
+      createConstraint(
+        {
+          mode: "verb",
+          minWords: 1,
+          maxWords: Math.min(8, Math.max(4, highlightWordCount + 2)),
+          maxSentences: 1,
+          disallowTerminalPunctuation: true,
+          formRequirement: "1-8 word verb phrase describing a visible action",
+          focusGuidance: [
+            "Use active, camera-visible verbs",
+            "Vary the physical staging, not just intensity",
+          ],
+          extraRequirements: ["Output a verb phrase, not a noun phrase"],
+        },
+        slotDescriptor,
+      ),
+  };
 
 /**
  * Constraint thresholds

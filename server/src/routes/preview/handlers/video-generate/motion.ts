@@ -1,5 +1,8 @@
-import { CAMERA_MOTION_DESCRIPTIONS, CAMERA_PATHS } from '@services/convergence/constants';
-import { CAMERA_MOTION_KEY, SUBJECT_MOTION_KEY } from './constants';
+import {
+  CAMERA_MOTION_DESCRIPTIONS,
+  CAMERA_PATHS,
+} from "@services/convergence/constants";
+import { CAMERA_MOTION_KEY, SUBJECT_MOTION_KEY } from "./constants";
 
 export interface MotionContext {
   cameraMotionId: string | null;
@@ -8,7 +11,7 @@ export interface MotionContext {
 }
 
 const normalizeMotionString = (value: unknown): string | null => {
-  if (typeof value !== 'string') {
+  if (typeof value !== "string") {
     return null;
   }
   const trimmed = value.trim();
@@ -16,9 +19,7 @@ const normalizeMotionString = (value: unknown): string | null => {
 };
 
 const toTitleCaseFromId = (value: string): string =>
-  value
-    .replace(/[_-]+/g, ' ')
-    .replace(/\b\w/g, (char) => char.toUpperCase());
+  value.replace(/[_-]+/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
 
 const resolveCameraMotionText = (cameraMotionId: string): string => {
   const description = CAMERA_MOTION_DESCRIPTIONS[cameraMotionId];
@@ -34,25 +35,39 @@ const resolveCameraMotionText = (cameraMotionId: string): string => {
 
 export const resolveMotionContext = (
   normalizedParams: Record<string, unknown> | null,
-  rawParams: unknown
+  rawParams: unknown,
 ): MotionContext => {
-  const normalizedCameraMotion = normalizeMotionString(normalizedParams?.[CAMERA_MOTION_KEY]);
-  const normalizedSubjectMotion = normalizeMotionString(normalizedParams?.[SUBJECT_MOTION_KEY]);
+  const normalizedCameraMotion = normalizeMotionString(
+    normalizedParams?.[CAMERA_MOTION_KEY],
+  );
+  const normalizedSubjectMotion = normalizeMotionString(
+    normalizedParams?.[SUBJECT_MOTION_KEY],
+  );
 
   const rawRecord =
-    rawParams && typeof rawParams === 'object' ? (rawParams as Record<string, unknown>) : null;
-  const rawCameraMotion = normalizedCameraMotion ?? normalizeMotionString(rawRecord?.[CAMERA_MOTION_KEY]);
+    rawParams && typeof rawParams === "object"
+      ? (rawParams as Record<string, unknown>)
+      : null;
+  const rawCameraMotion =
+    normalizedCameraMotion ??
+    normalizeMotionString(rawRecord?.[CAMERA_MOTION_KEY]);
   const rawSubjectMotion =
-    normalizedSubjectMotion ?? normalizeMotionString(rawRecord?.[SUBJECT_MOTION_KEY]);
+    normalizedSubjectMotion ??
+    normalizeMotionString(rawRecord?.[SUBJECT_MOTION_KEY]);
 
   return {
     cameraMotionId: rawCameraMotion,
-    cameraMotionText: rawCameraMotion ? resolveCameraMotionText(rawCameraMotion) : null,
+    cameraMotionText: rawCameraMotion
+      ? resolveCameraMotionText(rawCameraMotion)
+      : null,
     subjectMotion: rawSubjectMotion,
   };
 };
 
-export const appendMotionGuidance = (basePrompt: string, motion: MotionContext): string => {
+export const appendMotionGuidance = (
+  basePrompt: string,
+  motion: MotionContext,
+): string => {
   const guidanceLines: string[] = [];
 
   if (motion.cameraMotionText) {
@@ -67,11 +82,14 @@ export const appendMotionGuidance = (basePrompt: string, motion: MotionContext):
   }
 
   const trimmedPrompt = basePrompt.trim();
-  return `${trimmedPrompt}\n\n${guidanceLines.join('\n')}`;
+  return `${trimmedPrompt}\n\n${guidanceLines.join("\n")}`;
 };
 
 export const extractMotionMeta = (params: unknown) => {
-  const record = params && typeof params === 'object' ? (params as Record<string, unknown>) : null;
+  const record =
+    params && typeof params === "object"
+      ? (params as Record<string, unknown>)
+      : null;
   const cameraMotionId = normalizeMotionString(record?.[CAMERA_MOTION_KEY]);
   const subjectMotion = normalizeMotionString(record?.[SUBJECT_MOTION_KEY]);
   return {

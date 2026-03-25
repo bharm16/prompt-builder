@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   loggerDebug: vi.fn(),
@@ -8,7 +8,7 @@ const mocks = vi.hoisted(() => ({
   readFile: vi.fn(),
 }));
 
-vi.mock('@infrastructure/Logger', () => ({
+vi.mock("@infrastructure/Logger", () => ({
   logger: {
     child: () => ({
       debug: mocks.loggerDebug,
@@ -19,12 +19,12 @@ vi.mock('@infrastructure/Logger', () => ({
   },
 }));
 
-vi.mock('../dynamicRegistry', () => ({
+vi.mock("../dynamicRegistry", () => ({
   setDynamicCapabilitiesRegistry: mocks.setDynamicCapabilitiesRegistry,
 }));
 
-vi.mock('node:fs/promises', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('node:fs/promises')>();
+vi.mock("node:fs/promises", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("node:fs/promises")>();
   return {
     ...actual,
     readFile: mocks.readFile,
@@ -35,9 +35,9 @@ vi.mock('node:fs/promises', async (importOriginal) => {
   };
 });
 
-import { CapabilitiesProbeService } from '../CapabilitiesProbeService';
+import { CapabilitiesProbeService } from "../CapabilitiesProbeService";
 
-describe('CapabilitiesProbeService', () => {
+describe("CapabilitiesProbeService", () => {
   const originalFetch = global.fetch;
 
   beforeEach(() => {
@@ -50,29 +50,34 @@ describe('CapabilitiesProbeService', () => {
     vi.useRealTimers();
   });
 
-  it('does nothing when no URL or path is configured', () => {
+  it("does nothing when no URL or path is configured", () => {
     const service = new CapabilitiesProbeService();
     service.start();
 
     expect(mocks.loggerDebug).toHaveBeenCalledWith(
-      'Capabilities probe disabled (no URL or path configured)'
+      "Capabilities probe disabled (no URL or path configured)",
     );
     expect(mocks.setDynamicCapabilitiesRegistry).not.toHaveBeenCalled();
     expect(vi.getTimerCount()).toBe(0);
   });
 
-  it('loads registry from URL and updates dynamic registry', async () => {
+  it("loads registry from URL and updates dynamic registry", async () => {
     global.fetch = vi.fn(async () => ({
       ok: true,
       json: async () => ({
         openai: {
-          'sora-2': { provider: 'openai', model: 'sora-2', version: '1.0', fields: {} },
+          "sora-2": {
+            provider: "openai",
+            model: "sora-2",
+            version: "1.0",
+            fields: {},
+          },
         },
       }),
     })) as unknown as typeof fetch;
 
     const service = new CapabilitiesProbeService({
-      probeUrl: 'https://capabilities.example.com/registry.json',
+      probeUrl: "https://capabilities.example.com/registry.json",
       probePath: undefined,
       probeRefreshMs: 1000,
     });
@@ -82,56 +87,64 @@ describe('CapabilitiesProbeService', () => {
     expect(mocks.setDynamicCapabilitiesRegistry).toHaveBeenCalledWith(
       expect.objectContaining({
         openai: expect.objectContaining({
-          'sora-2': expect.objectContaining({ model: 'sora-2' }),
+          "sora-2": expect.objectContaining({ model: "sora-2" }),
         }),
-      })
+      }),
     );
     expect(mocks.loggerInfo).toHaveBeenCalledWith(
-      'Capabilities registry updated',
-      expect.objectContaining({ source: 'url' })
+      "Capabilities registry updated",
+      expect.objectContaining({ source: "url" }),
     );
 
     service.stop();
   });
 
-  it('loads registry from file and updates dynamic registry', async () => {
+  it("loads registry from file and updates dynamic registry", async () => {
     mocks.readFile.mockResolvedValue(
       JSON.stringify({
         wan: {
-          'wan-2.2': { provider: 'wan', model: 'wan-2.2', version: '1.0', fields: {} },
+          "wan-2.2": {
+            provider: "wan",
+            model: "wan-2.2",
+            version: "1.0",
+            fields: {},
+          },
         },
-      })
+      }),
     );
 
     const service = new CapabilitiesProbeService({
       probeUrl: undefined,
-      probePath: '/tmp/registry.json',
+      probePath: "/tmp/registry.json",
       probeRefreshMs: 1000,
     });
     service.start();
     await vi.runOnlyPendingTimersAsync();
 
-    expect(mocks.readFile).toHaveBeenCalledWith('/tmp/registry.json', 'utf-8');
+    expect(mocks.readFile).toHaveBeenCalledWith("/tmp/registry.json", "utf-8");
     expect(mocks.setDynamicCapabilitiesRegistry).toHaveBeenCalledWith(
       expect.objectContaining({
         wan: expect.objectContaining({
-          'wan-2.2': expect.objectContaining({ model: 'wan-2.2' }),
+          "wan-2.2": expect.objectContaining({ model: "wan-2.2" }),
         }),
-      })
+      }),
     );
     expect(mocks.loggerInfo).toHaveBeenCalledWith(
-      'Capabilities registry updated',
-      expect.objectContaining({ source: 'file' })
+      "Capabilities registry updated",
+      expect.objectContaining({ source: "file" }),
     );
 
     service.stop();
   });
 
-  it('handles refresh failures without throwing', async () => {
-    global.fetch = vi.fn(async () => ({ ok: false, status: 500 })) as unknown as typeof fetch;
+  it("handles refresh failures without throwing", async () => {
+    global.fetch = vi.fn(async () => ({
+      ok: false,
+      status: 500,
+    })) as unknown as typeof fetch;
 
     const service = new CapabilitiesProbeService({
-      probeUrl: 'https://capabilities.example.com/registry.json',
+      probeUrl: "https://capabilities.example.com/registry.json",
       probePath: undefined,
       probeRefreshMs: 60_000,
     });
@@ -139,19 +152,22 @@ describe('CapabilitiesProbeService', () => {
     await vi.runOnlyPendingTimersAsync();
 
     expect(mocks.loggerWarn).toHaveBeenCalledWith(
-      'Failed to refresh capabilities registry',
-      expect.objectContaining({ error: 'Capabilities probe failed (500)' })
+      "Failed to refresh capabilities registry",
+      expect.objectContaining({ error: "Capabilities probe failed (500)" }),
     );
     expect(mocks.setDynamicCapabilitiesRegistry).not.toHaveBeenCalled();
 
     service.stop();
   });
 
-  it('stops refresh interval when stop is called', async () => {
-    global.fetch = vi.fn(async () => ({ ok: true, json: async () => ({}) })) as unknown as typeof fetch;
+  it("stops refresh interval when stop is called", async () => {
+    global.fetch = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({}),
+    })) as unknown as typeof fetch;
 
     const service = new CapabilitiesProbeService({
-      probeUrl: 'https://capabilities.example.com/registry.json',
+      probeUrl: "https://capabilities.example.com/registry.json",
       probePath: undefined,
       probeRefreshMs: 1000,
     });

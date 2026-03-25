@@ -6,9 +6,9 @@
  * @module convergence/storage
  */
 
-export type { StorageService } from './StorageService';
+export type { StorageService } from "./StorageService";
 export {
   GCSStorageService,
   createGCSStorageService,
   setConvergenceStorageSignedUrlTtl,
-} from './StorageService';
+} from "./StorageService";

@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { logger } from '@/services/LoggingService';
-import { sanitizeError } from '@/utils/logging';
+import { useState, useEffect, useRef, useCallback } from "react";
+import { logger } from "@/services/LoggingService";
+import { sanitizeError } from "@/utils/logging";
 
-const log = logger.child('useClipboard');
+const log = logger.child("useClipboard");
 
 /**
  * Custom hook for clipboard operations
@@ -36,7 +36,11 @@ export function useClipboard(): {
       timeoutRef.current = window.setTimeout(() => setCopied(false), 2000);
     } catch (err) {
       const info = sanitizeError(err);
-      log.warn('Clipboard write failed', { operation: 'copy', error: info.message, errorName: info.name });
+      log.warn("Clipboard write failed", {
+        operation: "copy",
+        error: info.message,
+        errorName: info.name,
+      });
     }
   }, []);
 

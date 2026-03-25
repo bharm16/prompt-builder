@@ -25,6 +25,7 @@ The Vidra codebase has **strong architectural foundations**. The documented rule
 The initialization file has grown into a single `initializeServices()` function that sequentially validates LLM clients, runs infrastructure checks, starts 8+ background workers, warms up GLiNER, warms up depth estimation, and starts capabilities probes. This is a textbook SRP violation — it has at least 4 reasons to change (LLM provider additions, worker lifecycle changes, warmup config changes, health check changes).
 
 **Recommendation:** Extract into focused initializers:
+
 - `llm.initializer.ts` — LLM client validation and pre-warming
 - `infrastructure.initializer.ts` — Firebase/GCS startup checks
 - `worker.initializer.ts` — Background worker lifecycle
@@ -47,6 +48,7 @@ The DI token is `'claudeClient'` but every log message references "OpenAI": `'Va
 #### M2. 10 components with 5+ useState calls
 
 **Key offenders:**
+
 - `WorkspaceSessionContext.tsx` — 8 useState (675 lines)
 - `AssetEditor.tsx` — 8 useState (228 lines)
 - `PasswordResetPage.tsx` — 7 useState
@@ -61,17 +63,17 @@ The documented convention says to use `useReducer` for complex state. These comp
 
 **Status by feature:**
 
-| Feature | api/ | hooks/ | components/ | Conformant? |
-|---------|------|--------|-------------|-------------|
-| assets | ✅ | ✅ | ✅ | Yes |
-| span-highlighting | ✅ | ✅ | ✅ | Yes |
-| prompt-optimizer | ✅ | ✅ | ✅ | Yes |
-| continuity | ✅ | ✅ | ✅ | Yes |
-| convergence | ❌ | ✅ | ✅ | **No — uses root api/** |
-| generation | ❌ | ❌ | ❌ | **Empty directory** |
-| history | ❌ | ✅ | ✅ | No api/ layer |
-| video-template | ❌ | ✅ | ❌ | Minimal |
-| reference-images | ✅ | ✅ | ❌ | Missing components/ |
+| Feature           | api/ | hooks/ | components/ | Conformant?             |
+| ----------------- | ---- | ------ | ----------- | ----------------------- |
+| assets            | ✅   | ✅     | ✅          | Yes                     |
+| span-highlighting | ✅   | ✅     | ✅          | Yes                     |
+| prompt-optimizer  | ✅   | ✅     | ✅          | Yes                     |
+| continuity        | ✅   | ✅     | ✅          | Yes                     |
+| convergence       | ❌   | ✅     | ✅          | **No — uses root api/** |
+| generation        | ❌   | ❌     | ❌          | **Empty directory**     |
+| history           | ❌   | ✅     | ✅          | No api/ layer           |
+| video-template    | ❌   | ✅     | ❌          | Minimal                 |
+| reference-images  | ✅   | ✅     | ❌          | Missing components/     |
 
 `convergence` is notable — it bypasses the feature-scoped `api/` pattern and uses root-level `client/src/api/motionApi.ts` instead. `generation/` is an empty directory that should be removed or populated.
 

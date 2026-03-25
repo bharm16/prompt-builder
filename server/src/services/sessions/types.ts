@@ -1,5 +1,10 @@
-import type { SessionPrompt, SessionStatus, SessionDto, SessionContinuity } from '@shared/types/session';
-import type { ContinuitySession } from '@services/continuity/types';
+import type {
+  SessionPrompt,
+  SessionStatus,
+  SessionDto,
+  SessionContinuity,
+} from "@shared/types/session";
+import type { ContinuitySession } from "@services/continuity/types";
 
 export interface SessionRecord {
   id: string;
@@ -39,7 +44,7 @@ export interface SessionPromptUpdate {
   output?: string;
   targetModel?: string | null;
   generationParams?: Record<string, unknown> | null;
-  keyframes?: SessionPrompt['keyframes'];
+  keyframes?: SessionPrompt["keyframes"];
   mode?: string;
 }
 
@@ -55,7 +60,7 @@ export interface SessionOutputUpdate {
 }
 
 export interface SessionVersionsUpdate {
-  versions?: SessionPrompt['versions'];
+  versions?: SessionPrompt["versions"];
 }
 
 export interface SessionDtoResult {

@@ -5,30 +5,30 @@
  * `.passthrough()` allows forward-compatible additions without breaking
  * existing consumers.
  */
-import { z } from 'zod';
+import { z } from "zod";
 
 // ---------------------------------------------------------------------------
 // Shared enums / atoms
 // ---------------------------------------------------------------------------
 
 export const CompilationStatusSchema = z.enum([
-  'compiled',
-  'generic-fallback',
-  'compile-skipped',
+  "compiled",
+  "generic-fallback",
+  "compile-skipped",
 ]);
 
 export const CompileSourceKindSchema = z.enum([
-  'artifact',
-  'artifactKey',
-  'prompt',
+  "artifact",
+  "artifactKey",
+  "prompt",
 ]);
 
-export const InputModeSchema = z.enum(['t2v', 'i2v']);
+export const InputModeSchema = z.enum(["t2v", "i2v"]);
 
 export const I2VConstraintModeSchema = z.enum([
-  'strict',
-  'flexible',
-  'transform',
+  "strict",
+  "flexible",
+  "transform",
 ]);
 
 // ---------------------------------------------------------------------------

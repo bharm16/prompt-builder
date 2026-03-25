@@ -10,8 +10,8 @@
  * System spacing tokens: ps-0..ps-11 (mapped to CSS vars: --ps-space-0..--ps-space-11)
  */
 
-import React from 'react';
-import type { HTMLAttributes } from 'react';
+import React from "react";
+import type { HTMLAttributes } from "react";
 
 export interface BoxProps extends HTMLAttributes<HTMLDivElement> {
   /**
@@ -54,7 +54,13 @@ export interface BoxProps extends HTMLAttributes<HTMLDivElement> {
   /**
    * Positioning
    */
-  position?: 'static' | 'relative' | 'absolute' | 'fixed' | 'sticky' | { [key: string]: string };
+  position?:
+    | "static"
+    | "relative"
+    | "absolute"
+    | "fixed"
+    | "sticky"
+    | { [key: string]: string };
   inset?: string | { [key: string]: string };
   top?: string | { [key: string]: string };
   right?: string | { [key: string]: string };
@@ -64,7 +70,15 @@ export interface BoxProps extends HTMLAttributes<HTMLDivElement> {
   /**
    * Display - responsive display control
    */
-  display?: 'block' | 'inline-block' | 'inline' | 'flex' | 'inline-flex' | 'grid' | 'none' | { [key: string]: string };
+  display?:
+    | "block"
+    | "inline-block"
+    | "inline"
+    | "flex"
+    | "inline-flex"
+    | "grid"
+    | "none"
+    | { [key: string]: string };
 
   /**
    * Background color
@@ -90,39 +104,39 @@ export interface BoxProps extends HTMLAttributes<HTMLDivElement> {
  * Converts system tokens to CSS values (CSS vars)
  */
 const psSpacingMap: Record<string, string> = {
-  'ps-0': 'var(--ps-space-0)',
-  'ps-1': 'var(--ps-space-1)',
-  'ps-2': 'var(--ps-space-2)',
-  'ps-3': 'var(--ps-space-3)',
-  'ps-4': 'var(--ps-space-4)',
-  'ps-5': 'var(--ps-space-5)',
-  'ps-6': 'var(--ps-space-6)',
-  'ps-7': 'var(--ps-space-7)',
-  'ps-8': 'var(--ps-space-8)',
-  'ps-9': 'var(--ps-space-9)',
-  'ps-10': 'var(--ps-space-10)',
-  'ps-11': 'var(--ps-space-11)',
-  'ps-page': 'var(--ps-space-page)',
-  'ps-card': 'var(--ps-space-card)',
+  "ps-0": "var(--ps-space-0)",
+  "ps-1": "var(--ps-space-1)",
+  "ps-2": "var(--ps-space-2)",
+  "ps-3": "var(--ps-space-3)",
+  "ps-4": "var(--ps-space-4)",
+  "ps-5": "var(--ps-space-5)",
+  "ps-6": "var(--ps-space-6)",
+  "ps-7": "var(--ps-space-7)",
+  "ps-8": "var(--ps-space-8)",
+  "ps-9": "var(--ps-space-9)",
+  "ps-10": "var(--ps-space-10)",
+  "ps-11": "var(--ps-space-11)",
+  "ps-page": "var(--ps-space-page)",
+  "ps-card": "var(--ps-space-card)",
 };
 
 function getResponsiveClasses(
   prop: string | { [key: string]: string } | undefined,
-  prefix: string
+  prefix: string,
 ): string {
-  if (!prop) return '';
-  
-  if (typeof prop === 'string') {
+  if (!prop) return "";
+
+  if (typeof prop === "string") {
     // Handle system spacing tokens
-    if (prop.startsWith('ps-')) {
+    if (prop.startsWith("ps-")) {
       const tokenValue = psSpacingMap[prop];
       if (tokenValue) {
         // Return empty string - we'll handle system tokens via inline styles
-        return '';
+        return "";
       }
     }
     // Handle Polaris spacing tokens
-    if (prop.startsWith('polaris-')) {
+    if (prop.startsWith("polaris-")) {
       return `${prefix}-${prop}`;
     }
     // Handle regular spacing
@@ -132,32 +146,34 @@ function getResponsiveClasses(
   // Handle responsive object
   const classes: string[] = [];
   Object.entries(prop).forEach(([breakpoint, value]) => {
-    if (breakpoint === 'initial' || breakpoint === 'base') {
-      if (typeof value === 'string' && value.startsWith('ps-')) {
+    if (breakpoint === "initial" || breakpoint === "base") {
+      if (typeof value === "string" && value.startsWith("ps-")) {
         // Skip system tokens in classes, handle via inline styles
         return;
       }
       classes.push(`${prefix}-${value}`);
     } else {
-      if (typeof value === 'string' && value.startsWith('ps-')) {
+      if (typeof value === "string" && value.startsWith("ps-")) {
         return;
       }
       classes.push(`${breakpoint}:${prefix}-${value}`);
     }
   });
-  return classes.join(' ');
+  return classes.join(" ");
 }
 
 /**
  * Get system spacing value for inline styles
  */
-function getSystemSpacingValue(prop: string | { [key: string]: string } | undefined): string | undefined {
+function getSystemSpacingValue(
+  prop: string | { [key: string]: string } | undefined,
+): string | undefined {
   if (!prop) return undefined;
-  
-  if (typeof prop === 'string' && prop.startsWith('ps-')) {
+
+  if (typeof prop === "string" && prop.startsWith("ps-")) {
     return psSpacingMap[prop];
   }
-  
+
   return undefined;
 }
 
@@ -194,53 +210,69 @@ export const Box = React.forwardRef<HTMLDivElement, BoxProps>(
       backgroundColor,
       borderRadius,
       boxShadow,
-      className = '',
+      className = "",
       style = {},
       children,
       ...props
     },
-    ref
+    ref,
   ): React.ReactElement => {
     // Build Tailwind classes
-    const positionClass = typeof position === 'string' 
-      ? (position === 'relative' ? 'relative' :
-         position === 'absolute' ? 'absolute' :
-         position === 'fixed' ? 'fixed' :
-         position === 'sticky' ? 'sticky' :
-         position === 'static' ? 'static' : '')
-      : '';
-    
-    const displayClass = typeof display === 'string' 
-      ? (display === 'none' ? 'hidden' : 
-         display === 'block' ? 'block' : 
-         display === 'inline-block' ? 'inline-block' : 
-         display === 'inline' ? 'inline' : 
-         display === 'flex' ? 'flex' : 
-         display === 'inline-flex' ? 'inline-flex' : 
-         display === 'grid' ? 'grid' : '')
-      : '';
-    
+    const positionClass =
+      typeof position === "string"
+        ? position === "relative"
+          ? "relative"
+          : position === "absolute"
+            ? "absolute"
+            : position === "fixed"
+              ? "fixed"
+              : position === "sticky"
+                ? "sticky"
+                : position === "static"
+                  ? "static"
+                  : ""
+        : "";
+
+    const displayClass =
+      typeof display === "string"
+        ? display === "none"
+          ? "hidden"
+          : display === "block"
+            ? "block"
+            : display === "inline-block"
+              ? "inline-block"
+              : display === "inline"
+                ? "inline"
+                : display === "flex"
+                  ? "flex"
+                  : display === "inline-flex"
+                    ? "inline-flex"
+                    : display === "grid"
+                      ? "grid"
+                      : ""
+        : "";
+
     const classes = [
-      getResponsiveClasses(p, 'p'),
-      getResponsiveClasses(px, 'px'),
-      getResponsiveClasses(py, 'py'),
-      getResponsiveClasses(pt, 'pt'),
-      getResponsiveClasses(pr, 'pr'),
-      getResponsiveClasses(pb, 'pb'),
-      getResponsiveClasses(pl, 'pl'),
-      getResponsiveClasses(m, 'm'),
-      getResponsiveClasses(mx, 'mx'),
-      getResponsiveClasses(my, 'my'),
-      getResponsiveClasses(mt, 'mt'),
-      getResponsiveClasses(mr, 'mr'),
-      getResponsiveClasses(mb, 'mb'),
-      getResponsiveClasses(ml, 'ml'),
+      getResponsiveClasses(p, "p"),
+      getResponsiveClasses(px, "px"),
+      getResponsiveClasses(py, "py"),
+      getResponsiveClasses(pt, "pt"),
+      getResponsiveClasses(pr, "pr"),
+      getResponsiveClasses(pb, "pb"),
+      getResponsiveClasses(pl, "pl"),
+      getResponsiveClasses(m, "m"),
+      getResponsiveClasses(mx, "mx"),
+      getResponsiveClasses(my, "my"),
+      getResponsiveClasses(mt, "mt"),
+      getResponsiveClasses(mr, "mr"),
+      getResponsiveClasses(mb, "mb"),
+      getResponsiveClasses(ml, "ml"),
       positionClass,
       displayClass,
       className,
     ]
       .filter(Boolean)
-      .join(' ');
+      .join(" ");
 
     // Handle system spacing tokens via inline styles
     const systemPadding = getSystemSpacingValue(p);
@@ -262,30 +294,38 @@ export const Box = React.forwardRef<HTMLDivElement, BoxProps>(
     const inlineStyles: React.CSSProperties = {
       ...style,
       ...(systemPadding ? { padding: systemPadding } : {}),
-      ...(systemPaddingX ? { paddingLeft: systemPaddingX, paddingRight: systemPaddingX } : {}),
-      ...(systemPaddingY ? { paddingTop: systemPaddingY, paddingBottom: systemPaddingY } : {}),
+      ...(systemPaddingX
+        ? { paddingLeft: systemPaddingX, paddingRight: systemPaddingX }
+        : {}),
+      ...(systemPaddingY
+        ? { paddingTop: systemPaddingY, paddingBottom: systemPaddingY }
+        : {}),
       ...(systemPaddingTop ? { paddingTop: systemPaddingTop } : {}),
       ...(systemPaddingRight ? { paddingRight: systemPaddingRight } : {}),
       ...(systemPaddingBottom ? { paddingBottom: systemPaddingBottom } : {}),
       ...(systemPaddingLeft ? { paddingLeft: systemPaddingLeft } : {}),
       ...(systemMargin ? { margin: systemMargin } : {}),
-      ...(systemMarginX ? { marginLeft: systemMarginX, marginRight: systemMarginX } : {}),
-      ...(systemMarginY ? { marginTop: systemMarginY, marginBottom: systemMarginY } : {}),
+      ...(systemMarginX
+        ? { marginLeft: systemMarginX, marginRight: systemMarginX }
+        : {}),
+      ...(systemMarginY
+        ? { marginTop: systemMarginY, marginBottom: systemMarginY }
+        : {}),
       ...(systemMarginTop ? { marginTop: systemMarginTop } : {}),
       ...(systemMarginRight ? { marginRight: systemMarginRight } : {}),
       ...(systemMarginBottom ? { marginBottom: systemMarginBottom } : {}),
       ...(systemMarginLeft ? { marginLeft: systemMarginLeft } : {}),
-      ...(width && typeof width === 'string' ? { width } : {}),
-      ...(minWidth && typeof minWidth === 'string' ? { minWidth } : {}),
-      ...(maxWidth && typeof maxWidth === 'string' ? { maxWidth } : {}),
-      ...(height && typeof height === 'string' ? { height } : {}),
-      ...(minHeight && typeof minHeight === 'string' ? { minHeight } : {}),
-      ...(maxHeight && typeof maxHeight === 'string' ? { maxHeight } : {}),
-      ...(inset && typeof inset === 'string' ? { inset } : {}),
-      ...(top && typeof top === 'string' ? { top } : {}),
-      ...(right && typeof right === 'string' ? { right } : {}),
-      ...(bottom && typeof bottom === 'string' ? { bottom } : {}),
-      ...(left && typeof left === 'string' ? { left } : {}),
+      ...(width && typeof width === "string" ? { width } : {}),
+      ...(minWidth && typeof minWidth === "string" ? { minWidth } : {}),
+      ...(maxWidth && typeof maxWidth === "string" ? { maxWidth } : {}),
+      ...(height && typeof height === "string" ? { height } : {}),
+      ...(minHeight && typeof minHeight === "string" ? { minHeight } : {}),
+      ...(maxHeight && typeof maxHeight === "string" ? { maxHeight } : {}),
+      ...(inset && typeof inset === "string" ? { inset } : {}),
+      ...(top && typeof top === "string" ? { top } : {}),
+      ...(right && typeof right === "string" ? { right } : {}),
+      ...(bottom && typeof bottom === "string" ? { bottom } : {}),
+      ...(left && typeof left === "string" ? { left } : {}),
       ...(backgroundColor ? { backgroundColor } : {}),
       ...(borderRadius ? { borderRadius } : {}),
       ...(boxShadow ? { boxShadow } : {}),
@@ -296,9 +336,9 @@ export const Box = React.forwardRef<HTMLDivElement, BoxProps>(
         {children}
       </div>
     );
-  }
+  },
 );
 
-Box.displayName = 'Box';
+Box.displayName = "Box";
 
 export default Box;

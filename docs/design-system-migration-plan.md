@@ -16,16 +16,17 @@ Several high-frequency hex values have no existing token. Add them before touchi
 
 ```css
 /* Additional tool-level surface/text tokens */
---tool-text-dim: #8B92A5;        /* 57 uses — between ghost and faint */
---tool-text-label: #3A3E4C;      /* 24 uses — very faint label text */
---tool-text-disabled: #3A3D46;   /* 19 uses — disabled/inactive text */
---tool-text-caption: #7C839C;    /* 10 uses — caption/placeholder */
---tool-surface-card: #16181E;    /* 22 uses — card/container bg */
+--tool-text-dim: #8b92a5; /* 57 uses — between ghost and faint */
+--tool-text-label: #3a3e4c; /* 24 uses — very faint label text */
+--tool-text-disabled: #3a3d46; /* 19 uses — disabled/inactive text */
+--tool-text-caption: #7c839c; /* 10 uses — caption/placeholder */
+--tool-surface-card: #16181e; /* 22 uses — card/container bg */
 ```
 
 ### New Tailwind color mappings in `config/build/tailwind.config.js`
 
 Add to the `tool` object:
+
 ```js
 'text-dim': 'var(--tool-text-dim)',
 'text-label': 'var(--tool-text-label)',
@@ -44,23 +45,23 @@ These 15 hex values account for ~550 of 725 violations (~76%). Each replacement 
 
 ### Migration Table
 
-| Hex | Frequency | Replacement Class | Token Source |
-|-----|-----------|-------------------|-------------|
-| `#22252C` | 77 | `tool-nav-active` | `--tool-nav-active-bg` (exact) |
-| `#8B92A5` | 57 | `tool-text-dim` | New: `--tool-text-dim` (exact) |
-| `#6C5CE7` | 44 | `accent-2` | `--ps-accent-2` (#b3affd — close, brighter purple) |
-| `#555B6E` | 43 | `tool-text-subdued` | `--tool-text-subdued` (exact) |
-| `#E2E6EF` | 42 | `foreground` | `--ps-text` (#ebecef — near-identical) |
-| `#0D0E12` | 32 | `tool-surface-deep` | `--tool-surface-deep` (exact) |
-| `#A1AFC5` | 30 | `ghost` | `--ps-text-ghost` (exact) |
-| `#1A1C22` | 30 | `tool-rail-border` | `--tool-rail-border` (#1B1E23 — 1 shade off) |
-| `#2C3037` | 26 | `surface-2` | `--ps-surface-2` (exact) |
-| `#3A3E4C` | 24 | `tool-text-label` | New: `--tool-text-label` (exact) |
-| `#16181E` | 22 | `tool-surface-card` | New: `--tool-surface-card` (exact) |
-| `#3A3D46` | 19 | `tool-text-disabled` | New: `--tool-text-disabled` (exact) |
-| `#1B1E23` | 13 | `surface-1` | `--ps-surface-1` (exact) |
-| `#FBBF24` | 10 | `amber-400` | Tailwind default (keep as-is or map to `warning-400`) |
-| `#7C839C` | 10 | `tool-text-caption` | New: `--tool-text-caption` (exact) |
+| Hex       | Frequency | Replacement Class    | Token Source                                          |
+| --------- | --------- | -------------------- | ----------------------------------------------------- |
+| `#22252C` | 77        | `tool-nav-active`    | `--tool-nav-active-bg` (exact)                        |
+| `#8B92A5` | 57        | `tool-text-dim`      | New: `--tool-text-dim` (exact)                        |
+| `#6C5CE7` | 44        | `accent-2`           | `--ps-accent-2` (#b3affd — close, brighter purple)    |
+| `#555B6E` | 43        | `tool-text-subdued`  | `--tool-text-subdued` (exact)                         |
+| `#E2E6EF` | 42        | `foreground`         | `--ps-text` (#ebecef — near-identical)                |
+| `#0D0E12` | 32        | `tool-surface-deep`  | `--tool-surface-deep` (exact)                         |
+| `#A1AFC5` | 30        | `ghost`              | `--ps-text-ghost` (exact)                             |
+| `#1A1C22` | 30        | `tool-rail-border`   | `--tool-rail-border` (#1B1E23 — 1 shade off)          |
+| `#2C3037` | 26        | `surface-2`          | `--ps-surface-2` (exact)                              |
+| `#3A3E4C` | 24        | `tool-text-label`    | New: `--tool-text-label` (exact)                      |
+| `#16181E` | 22        | `tool-surface-card`  | New: `--tool-surface-card` (exact)                    |
+| `#3A3D46` | 19        | `tool-text-disabled` | New: `--tool-text-disabled` (exact)                   |
+| `#1B1E23` | 13        | `surface-1`          | `--ps-surface-1` (exact)                              |
+| `#FBBF24` | 10        | `amber-400`          | Tailwind default (keep as-is or map to `warning-400`) |
+| `#7C839C` | 10        | `tool-text-caption`  | New: `--tool-text-caption` (exact)                    |
 
 ### ⚠️ Color Shift Warning: `#6C5CE7` → `accent-2`
 
@@ -73,29 +74,29 @@ These 15 hex values account for ~550 of 725 violations (~76%). Each replacement 
 
 Several hex values appear with alpha suffixes (e.g., `#6C5CE744`, `#22252C80`). These map to Tailwind's opacity modifier syntax:
 
-| Pattern | Replacement |
-|---------|-------------|
-| `text-[#6C5CE7]` | `text-tool-accent-selection` (if Option A) |
-| `bg-[#6C5CE744]` | `bg-tool-accent-selection/25` |
-| `bg-[#6C5CE711]` | `bg-tool-accent-selection/5` |
-| `bg-[#6C5CE71A]` | `bg-tool-accent-selection/10` |
-| `border-[#22252C]` | `border-tool-nav-active` |
-| `text-[#8B92A580]` | `text-tool-text-dim/50` |
+| Pattern            | Replacement                                |
+| ------------------ | ------------------------------------------ |
+| `text-[#6C5CE7]`   | `text-tool-accent-selection` (if Option A) |
+| `bg-[#6C5CE744]`   | `bg-tool-accent-selection/25`              |
+| `bg-[#6C5CE711]`   | `bg-tool-accent-selection/5`               |
+| `bg-[#6C5CE71A]`   | `bg-tool-accent-selection/10`              |
+| `border-[#22252C]` | `border-tool-nav-active`                   |
+| `text-[#8B92A580]` | `text-tool-text-dim/50`                    |
 
 ### Execution Order (by directory)
 
 Process one directory at a time. After each directory, reload in Chrome and visually compare.
 
-| Batch | Directory | Files | Est. Violations |
-|-------|-----------|-------|----------------|
-| 1a | `components/ToolSidebar/components/panels/GenerationControlsPanel/` | 5 | ~164 |
-| 1b | `components/ToolSidebar/components/panels/SessionsPanel.tsx` | 1 | ~23 |
-| 2a | `features/prompt-optimizer/CanvasWorkspace/components/` | 5 | ~151 |
-| 2b | `features/prompt-optimizer/GenerationsPanel/components/` | 3 | ~60 |
-| 2c | `features/prompt-optimizer/components/` | 1 | ~25 |
-| 3 | `features/model-intelligence/` | 2 | ~40 |
-| 4 | `features/convergence/` | 2 | ~20 |
-| 5 | Remaining scattered files | ~10 | ~50 |
+| Batch | Directory                                                           | Files | Est. Violations |
+| ----- | ------------------------------------------------------------------- | ----- | --------------- |
+| 1a    | `components/ToolSidebar/components/panels/GenerationControlsPanel/` | 5     | ~164            |
+| 1b    | `components/ToolSidebar/components/panels/SessionsPanel.tsx`        | 1     | ~23             |
+| 2a    | `features/prompt-optimizer/CanvasWorkspace/components/`             | 5     | ~151            |
+| 2b    | `features/prompt-optimizer/GenerationsPanel/components/`            | 3     | ~60             |
+| 2c    | `features/prompt-optimizer/components/`                             | 1     | ~25             |
+| 3     | `features/model-intelligence/`                                      | 2     | ~40             |
+| 4     | `features/convergence/`                                             | 2     | ~20             |
+| 5     | Remaining scattered files                                           | ~10   | ~50             |
 
 ### Per-Batch Verification
 
@@ -171,13 +172,13 @@ Add a reference section to `client/CLAUDE.md` or a new `docs/DESIGN_TOKENS.md`:
 
 ## Summary
 
-| Phase | Scope | Files Changed | Violations Fixed | Risk |
-|-------|-------|---------------|-----------------|------|
-| 0 | Add tokens + mappings | 2 | 0 (infrastructure) | None |
-| 1 | Mechanical class replacement | ~35 component files | ~550 | Low — className-only changes |
-| 2 | Update tests | ~15 test files | N/A | None — string assertions only |
-| 3 | ESLint rule | 1 config file | Prevention | None |
-| 4 | Documentation | 1-2 doc files | Prevention | None |
+| Phase | Scope                        | Files Changed       | Violations Fixed   | Risk                          |
+| ----- | ---------------------------- | ------------------- | ------------------ | ----------------------------- |
+| 0     | Add tokens + mappings        | 2                   | 0 (infrastructure) | None                          |
+| 1     | Mechanical class replacement | ~35 component files | ~550               | Low — className-only changes  |
+| 2     | Update tests                 | ~15 test files      | N/A                | None — string assertions only |
+| 3     | ESLint rule                  | 1 config file       | Prevention         | None                          |
+| 4     | Documentation                | 1-2 doc files       | Prevention         | None                          |
 
 **Total estimated effort:** ~4 focused sessions.
 **Risk level:** Low — all changes are className string swaps. No prop changes, no logic changes, no new components. Visual verification at each batch.

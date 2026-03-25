@@ -1,11 +1,11 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
-import { VisualPreview } from '../components/VisualPreview';
-import { useImagePreview } from '../hooks/useImagePreview';
+import { VisualPreview } from "../components/VisualPreview";
+import { useImagePreview } from "../hooks/useImagePreview";
 
-vi.mock('../hooks/useImagePreview', () => ({
+vi.mock("../hooks/useImagePreview", () => ({
   useImagePreview: vi.fn(),
 }));
 
@@ -15,15 +15,15 @@ const mockUseImagePreview = vi.mocked(useImagePreview);
 // VisualPreview
 // ============================================================================
 
-describe('VisualPreview', () => {
+describe("VisualPreview", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  describe('error handling', () => {
-    it('renders nothing when not visible', () => {
+  describe("error handling", () => {
+    it("renders nothing when not visible", () => {
       mockUseImagePreview.mockReturnValue({
-        imageUrl: 'https://example.com/preview.png',
+        imageUrl: "https://example.com/preview.png",
         imageUrls: [],
         loading: false,
         error: null,
@@ -31,18 +31,15 @@ describe('VisualPreview', () => {
       });
 
       const { container } = render(
-        <VisualPreview
-          prompt="Test"
-          isVisible={false}
-        />
+        <VisualPreview prompt="Test" isVisible={false} />,
       );
 
       expect(container.firstChild).toBeNull();
     });
   });
 
-  describe('edge cases', () => {
-    it('normalizes cinematic ratios to 21:9', () => {
+  describe("edge cases", () => {
+    it("normalizes cinematic ratios to 21:9", () => {
       mockUseImagePreview.mockReturnValue({
         imageUrl: null,
         imageUrls: [],
@@ -51,26 +48,24 @@ describe('VisualPreview', () => {
         regenerate: vi.fn(),
       });
 
-      render(
-        <VisualPreview
-          prompt="Test"
-          aspectRatio="2.39:1"
-          isVisible
-        />
-      );
+      render(<VisualPreview prompt="Test" aspectRatio="2.39:1" isVisible />);
 
       expect(mockUseImagePreview).toHaveBeenCalledWith(
-        expect.objectContaining({ aspectRatio: '21:9' })
+        expect.objectContaining({ aspectRatio: "21:9" }),
       );
     });
 
-    it('renders a grid for kontext providers and selects frames', async () => {
+    it("renders a grid for kontext providers and selects frames", async () => {
       const onImageSelected = vi.fn();
       const user = userEvent.setup();
 
       mockUseImagePreview.mockReturnValue({
-        imageUrl: 'https://example.com/base.png',
-        imageUrls: ['https://example.com/1.png', null, 'https://example.com/3.png'],
+        imageUrl: "https://example.com/base.png",
+        imageUrls: [
+          "https://example.com/1.png",
+          null,
+          "https://example.com/3.png",
+        ],
         loading: false,
         error: null,
         regenerate: vi.fn(),
@@ -82,10 +77,10 @@ describe('VisualPreview', () => {
           provider="replicate-flux-kontext-fast"
           isVisible
           onImageSelected={onImageSelected}
-        />
+        />,
       );
 
-      const buttons = screen.getAllByRole('button');
+      const buttons = screen.getAllByRole("button");
       const firstButton = buttons[0];
       const secondButton = buttons[1];
       expect(firstButton).toBeDefined();
@@ -94,12 +89,15 @@ describe('VisualPreview', () => {
 
       await user.click(firstButton!);
 
-      expect(onImageSelected).toHaveBeenCalledWith('https://example.com/1.png', 0);
+      expect(onImageSelected).toHaveBeenCalledWith(
+        "https://example.com/1.png",
+        0,
+      );
     });
   });
 
-  describe('core behavior', () => {
-    it('uses the seed image when no preview image exists', () => {
+  describe("core behavior", () => {
+    it("uses the seed image when no preview image exists", () => {
       mockUseImagePreview.mockReturnValue({
         imageUrl: null,
         imageUrls: [],
@@ -113,16 +111,16 @@ describe('VisualPreview', () => {
           prompt="Test"
           seedImageUrl="https://example.com/seed.png"
           isVisible
-        />
+        />,
       );
 
-      expect(screen.getByRole('img', { name: 'Preview' })).toHaveAttribute(
-        'src',
-        'https://example.com/seed.png'
+      expect(screen.getByRole("img", { name: "Preview" })).toHaveAttribute(
+        "src",
+        "https://example.com/seed.png",
       );
     });
 
-    it('reports generated previews using the last requested prompt', async () => {
+    it("reports generated previews using the last requested prompt", async () => {
       const regenerate = vi.fn();
       const onPreviewGenerated = vi.fn();
 
@@ -140,7 +138,7 @@ describe('VisualPreview', () => {
           isVisible
           generateRequestId={1}
           onPreviewGenerated={onPreviewGenerated}
-        />
+        />,
       );
 
       await waitFor(() => {
@@ -148,7 +146,7 @@ describe('VisualPreview', () => {
       });
 
       mockUseImagePreview.mockReturnValue({
-        imageUrl: 'https://example.com/preview.png',
+        imageUrl: "https://example.com/preview.png",
         imageUrls: [],
         loading: false,
         error: null,
@@ -161,14 +159,14 @@ describe('VisualPreview', () => {
           isVisible
           generateRequestId={1}
           onPreviewGenerated={onPreviewGenerated}
-        />
+        />,
       );
 
       await waitFor(() => {
         expect(onPreviewGenerated).toHaveBeenCalledWith({
-          prompt: 'First prompt',
+          prompt: "First prompt",
           generatedAt: expect.any(Number),
-          imageUrl: 'https://example.com/preview.png',
+          imageUrl: "https://example.com/preview.png",
           aspectRatio: null,
         });
       });

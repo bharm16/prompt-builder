@@ -1,18 +1,20 @@
-import React, { useCallback, useRef, useState } from 'react';
-import { Image, X } from '@promptstudio/system/components/ui';
-import type { SidebarUploadedImage } from '@components/ToolSidebar/types';
-import type { VideoReferenceImage } from '@features/generation-controls/context/generationControlsStoreTypes';
-import { useResolvedMediaUrl } from '@/hooks/useResolvedMediaUrl';
-import { hasGcsSignedUrlParams } from '@/utils/storageUrl';
-import { cn } from '@/utils/cn';
+import React, { useCallback, useRef, useState } from "react";
+import { Image, X } from "@promptstudio/system/components/ui";
+import type { SidebarUploadedImage } from "@components/ToolSidebar/types";
+import type { VideoReferenceImage } from "@features/generation-controls/context/generationControlsStoreTypes";
+import { useResolvedMediaUrl } from "@/hooks/useResolvedMediaUrl";
+import { hasGcsSignedUrlParams } from "@/utils/storageUrl";
+import { cn } from "@/utils/cn";
 
 interface VideoReferencesPopoverProps {
   references: VideoReferenceImage[];
   maxSlots?: number | undefined;
-  onAddReference: (reference: Omit<VideoReferenceImage, 'id'>) => void;
+  onAddReference: (reference: Omit<VideoReferenceImage, "id">) => void;
   onRemoveReference: (id: string) => void;
-  onUpdateReferenceType: (id: string, type: 'asset' | 'style') => void;
-  onUploadSidebarImage?: ((file: File) => Promise<SidebarUploadedImage | null>) | undefined;
+  onUpdateReferenceType: (id: string, type: "asset" | "style") => void;
+  onUploadSidebarImage?:
+    | ((file: File) => Promise<SidebarUploadedImage | null>)
+    | undefined;
   disabled?: boolean | undefined;
 }
 
@@ -20,7 +22,7 @@ interface VideoReferenceRowProps {
   reference: VideoReferenceImage;
   index: number;
   onRemove: (id: string) => void;
-  onUpdateType: (id: string, type: 'asset' | 'style') => void;
+  onUpdateType: (id: string, type: "asset" | "style") => void;
 }
 
 function VideoReferenceRow({
@@ -30,11 +32,13 @@ function VideoReferenceRow({
   onUpdateType,
 }: VideoReferenceRowProps): React.ReactElement {
   const shouldResolveUrl = Boolean(
-    reference.storagePath || reference.assetId || hasGcsSignedUrlParams(reference.url)
+    reference.storagePath ||
+      reference.assetId ||
+      hasGcsSignedUrlParams(reference.url),
   );
 
   const { url: resolvedUrl } = useResolvedMediaUrl({
-    kind: 'image',
+    kind: "image",
     url: reference.url,
     storagePath: reference.storagePath ?? null,
     assetId: reference.assetId ?? null,
@@ -53,7 +57,7 @@ function VideoReferenceRow({
       <select
         value={reference.referenceType}
         onChange={(event) =>
-          onUpdateType(reference.id, event.target.value as 'asset' | 'style')
+          onUpdateType(reference.id, event.target.value as "asset" | "style")
         }
         className="h-6 rounded border border-tool-border-primary bg-tool-surface-card px-1.5 text-[10px] text-ghost"
         aria-label={`Reference type ${index + 1}`}
@@ -87,7 +91,11 @@ export function VideoReferencesPopover({
   const [isUploading, setIsUploading] = useState(false);
 
   const isLimitReached = references.length >= maxSlots;
-  const canUpload = Boolean(onUploadSidebarImage) && !disabled && !isUploading && !isLimitReached;
+  const canUpload =
+    Boolean(onUploadSidebarImage) &&
+    !disabled &&
+    !isUploading &&
+    !isLimitReached;
 
   const handleUpload = useCallback(
     async (file: File): Promise<void> => {
@@ -98,16 +106,20 @@ export function VideoReferencesPopover({
         if (!uploaded) return;
         onAddReference({
           url: uploaded.url,
-          referenceType: 'asset',
-          source: 'upload',
-          ...(uploaded.storagePath ? { storagePath: uploaded.storagePath } : {}),
-          ...(uploaded.viewUrlExpiresAt ? { viewUrlExpiresAt: uploaded.viewUrlExpiresAt } : {}),
+          referenceType: "asset",
+          source: "upload",
+          ...(uploaded.storagePath
+            ? { storagePath: uploaded.storagePath }
+            : {}),
+          ...(uploaded.viewUrlExpiresAt
+            ? { viewUrlExpiresAt: uploaded.viewUrlExpiresAt }
+            : {}),
         });
       } finally {
         setIsUploading(false);
       }
     },
-    [disabled, isLimitReached, onAddReference, onUploadSidebarImage]
+    [disabled, isLimitReached, onAddReference, onUploadSidebarImage],
   );
 
   return (
@@ -116,9 +128,9 @@ export function VideoReferencesPopover({
         type="button"
         data-testid="video-references-trigger"
         className={cn(
-          'inline-flex h-[30px] items-center gap-[5px] rounded-full border border-surface-2 px-2.5 text-xs font-semibold transition-colors',
-          'bg-tool-nav-hover text-foreground hover:bg-tool-nav-active hover:text-foreground',
-          disabled && 'cursor-not-allowed opacity-60'
+          "inline-flex h-[30px] items-center gap-[5px] rounded-full border border-surface-2 px-2.5 text-xs font-semibold transition-colors",
+          "bg-tool-nav-hover text-foreground hover:bg-tool-nav-active hover:text-foreground",
+          disabled && "cursor-not-allowed opacity-60",
         )}
         onClick={() => {
           if (disabled) return;
@@ -145,7 +157,7 @@ export function VideoReferencesPopover({
         onChange={(event) => {
           const file = event.target.files?.[0];
           if (file) void handleUpload(file);
-          event.target.value = '';
+          event.target.value = "";
         }}
       />
 
@@ -157,7 +169,9 @@ export function VideoReferencesPopover({
           onClick={(event) => event.stopPropagation()}
         >
           <div className="mb-1.5 flex items-center justify-between px-1">
-            <span className="text-[10px] font-semibold tracking-[0.05em] text-tool-text-dim">REFERENCES</span>
+            <span className="text-[10px] font-semibold tracking-[0.05em] text-tool-text-dim">
+              REFERENCES
+            </span>
             <span className="text-[10px] text-tool-text-subdued">
               {references.length}/{maxSlots}
             </span>
@@ -184,10 +198,10 @@ export function VideoReferencesPopover({
           <button
             type="button"
             className={cn(
-              'mt-2 h-8 w-full rounded-lg border px-2 text-xs font-medium transition-colors',
+              "mt-2 h-8 w-full rounded-lg border px-2 text-xs font-medium transition-colors",
               canUpload
-                ? 'border-tool-border-primary text-tool-text-dim hover:border-tool-text-disabled hover:text-foreground'
-                : 'border-tool-nav-active text-tool-text-label'
+                ? "border-tool-border-primary text-tool-text-dim hover:border-tool-text-disabled hover:text-foreground"
+                : "border-tool-nav-active text-tool-text-label",
             )}
             onClick={() => {
               if (!canUpload) return;
@@ -196,10 +210,10 @@ export function VideoReferencesPopover({
             disabled={!canUpload}
           >
             {isUploading
-              ? 'Uploading…'
+              ? "Uploading…"
               : isLimitReached
-                ? 'Reference limit reached'
-                : 'Upload reference'}
+                ? "Reference limit reached"
+                : "Upload reference"}
           </button>
         </div>
       ) : null}

@@ -1,17 +1,20 @@
-import React from 'react';
+import React from "react";
 import {
   Sheet,
   SheetContent,
   SheetDescription,
   SheetTitle,
-} from '@promptstudio/system/components/ui/sheet';
-import { GenerationsPanel } from '@features/generations';
-import type { PromptCanvasViewProps } from './PromptCanvasView.types';
-import { CanvasButton } from './PromptCanvasView.shared';
+} from "@promptstudio/system/components/ui/sheet";
+import { GenerationsPanel } from "@features/generations";
+import type { PromptCanvasViewProps } from "./PromptCanvasView.types";
+import { CanvasButton } from "./PromptCanvasView.shared";
 
 type PromptCanvasMobileGenerationsProps = Pick<
   PromptCanvasViewProps,
-  'hasCanvasContent' | 'generationsSheetOpen' | 'onGenerationsSheetOpenChange' | 'generationsPanelProps'
+  | "hasCanvasContent"
+  | "generationsSheetOpen"
+  | "onGenerationsSheetOpenChange"
+  | "generationsPanelProps"
 >;
 
 export function PromptCanvasMobileGenerations({
@@ -39,7 +42,10 @@ export function PromptCanvasMobileGenerations({
         </div>
       </div>
 
-      <Sheet open={generationsSheetOpen} onOpenChange={onGenerationsSheetOpenChange}>
+      <Sheet
+        open={generationsSheetOpen}
+        onOpenChange={onGenerationsSheetOpenChange}
+      >
         <SheetContent
           side="bottom"
           className="p-ps-3 h-[85vh] overflow-auto border-0 bg-transparent shadow-none [&>button]:hidden"

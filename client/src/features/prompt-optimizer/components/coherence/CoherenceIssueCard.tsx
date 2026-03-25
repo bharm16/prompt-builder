@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
-import { Button } from '@promptstudio/system/components/ui/button';
-import { Icon, X, ArrowRight } from '@promptstudio/system/components/ui';
-import type { CoherenceIssue } from './useCoherenceAnnotations';
-import type { CoherenceRecommendation } from '@features/prompt-optimizer/types/coherence';
-import { cn } from '@/utils/cn';
+import React, { useState } from "react";
+import { Button } from "@promptstudio/system/components/ui/button";
+import { Icon, X, ArrowRight } from "@promptstudio/system/components/ui";
+import type { CoherenceIssue } from "./useCoherenceAnnotations";
+import type { CoherenceRecommendation } from "@features/prompt-optimizer/types/coherence";
+import { cn } from "@/utils/cn";
 
 interface CoherenceIssueCardProps {
   issue: CoherenceIssue;
@@ -23,7 +23,7 @@ export function CoherenceIssueCard({
   return (
     <div
       className={cn(
-        'relative rounded-xl border border-[rgb(41,44,50)] bg-[rgb(30,31,37)] p-4'
+        "relative rounded-xl border border-[rgb(41,44,50)] bg-[rgb(30,31,37)] p-4",
       )}
     >
       <Button
@@ -71,7 +71,7 @@ export function CoherenceIssueCard({
                 <p className="truncate text-xs font-medium text-[rgb(235,236,239)]">
                   {rec.title}
                 </p>
-                {showDiff && rec.edits?.[0]?.type === 'replaceSpanText' && (
+                {showDiff && rec.edits?.[0]?.type === "replaceSpanText" && (
                   <div className="mt-2 flex items-center gap-2 text-xs">
                     <span className="text-[rgb(170,174,187)] line-through">
                       {rec.edits[0].anchorQuote?.slice(0, 30)}...
@@ -90,7 +90,7 @@ export function CoherenceIssueCard({
                   onClick={() => setShowDiff(!showDiff)}
                   className="text-muted h-8 rounded-md border border-[rgb(67,70,81)] bg-transparent px-3 text-xs hover:text-foreground"
                 >
-                  {showDiff ? 'Hide' : 'Diff'}
+                  {showDiff ? "Hide" : "Diff"}
                 </Button>
                 <Button
                   variant="default"

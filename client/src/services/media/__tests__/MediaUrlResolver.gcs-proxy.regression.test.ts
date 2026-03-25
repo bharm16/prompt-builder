@@ -6,54 +6,58 @@
  * from the app origin, avoiding ORB (Opaque Response Blocking) failures
  * caused by missing CORS headers on GCS responses.
  */
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { resolveMediaUrl } from '../MediaUrlResolver';
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { resolveMediaUrl } from "../MediaUrlResolver";
 
-vi.mock('@/api/storageApi', () => ({
+vi.mock("@/api/storageApi", () => ({
   storageApi: {
     getViewUrl: vi.fn(),
   },
 }));
 
-vi.mock('@/features/preview/api/previewApi', () => ({
+vi.mock("@/features/preview/api/previewApi", () => ({
   getImageAssetViewUrl: vi.fn(),
   getVideoAssetViewUrl: vi.fn(),
   getImageAssetViewUrlBatch: vi.fn(),
 }));
 
-const futureExpiry = new Date(Date.now() + 10 * 60 * 1000).toISOString().replace(/[-:]/g, '').slice(0, 15) + 'Z';
+const futureExpiry =
+  new Date(Date.now() + 10 * 60 * 1000)
+    .toISOString()
+    .replace(/[-:]/g, "")
+    .slice(0, 15) + "Z";
 
-describe('regression: GCS signed URLs are rewritten to media proxy', () => {
+describe("regression: GCS signed URLs are rewritten to media proxy", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('rewrites a valid GCS signed URL through the proxy', async () => {
+  it("rewrites a valid GCS signed URL through the proxy", async () => {
     const gcsUrl = `https://storage.googleapis.com/my-bucket/users/u1/img.webp?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Expires=900&X-Goog-Date=${futureExpiry}&X-Goog-Signature=abc123`;
 
     const result = await resolveMediaUrl({
-      kind: 'image',
+      kind: "image",
       url: gcsUrl,
       preferFresh: false,
     });
 
-    expect(result.url).toContain('/api/storage/proxy?url=');
-    expect(result.url).toContain(encodeURIComponent('storage.googleapis.com'));
+    expect(result.url).toContain("/api/storage/proxy?url=");
+    expect(result.url).toContain(encodeURIComponent("storage.googleapis.com"));
     expect(result.url).not.toBe(gcsUrl);
   });
 
-  it('does not rewrite non-GCS URLs', async () => {
-    const appUrl = '/api/preview/video/content/abc?token=xyz';
+  it("does not rewrite non-GCS URLs", async () => {
+    const appUrl = "/api/preview/video/content/abc?token=xyz";
 
     const result = await resolveMediaUrl({
-      kind: 'video',
+      kind: "video",
       url: appUrl,
       preferFresh: false,
     });
 
     // Should not contain proxy path
     if (result.url) {
-      expect(result.url).not.toContain('/api/storage/proxy');
+      expect(result.url).not.toContain("/api/storage/proxy");
     }
   });
 });

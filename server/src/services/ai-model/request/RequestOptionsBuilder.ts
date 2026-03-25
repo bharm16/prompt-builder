@@ -1,8 +1,8 @@
-import { shouldUseSeed } from '@config/modelConfig';
-import { hashString } from '@utils/hash';
-import type { ProviderCapabilities } from '@utils/provider/ProviderDetector';
-import { resolveDeveloperMessage } from '../policy/DeveloperMessagePolicy';
-import type { ExecuteParams, ModelConfigEntry, RequestOptions } from '../types';
+import { shouldUseSeed } from "@config/modelConfig";
+import { hashString } from "@utils/hash";
+import type { ProviderCapabilities } from "@utils/provider/ProviderDetector";
+import { resolveDeveloperMessage } from "../policy/DeveloperMessagePolicy";
+import type { ExecuteParams, ModelConfigEntry, RequestOptions } from "../types";
 
 interface BuildRequestOptionsInput {
   operation: string;
@@ -13,23 +13,34 @@ interface BuildRequestOptionsInput {
   jsonMode: boolean;
 }
 
-export function buildRequestOptions(input: BuildRequestOptionsInput): RequestOptions {
-  const { operation, params, config, capabilities, responseFormat, jsonMode } = input;
-  const { schema: schemaOverride, responseFormat: responseFormatOverride, ...restParams } = params;
+export function buildRequestOptions(
+  input: BuildRequestOptionsInput,
+): RequestOptions {
+  const { operation, params, config, capabilities, responseFormat, jsonMode } =
+    input;
+  const {
+    schema: schemaOverride,
+    responseFormat: responseFormatOverride,
+    ...restParams
+  } = params;
   void responseFormatOverride;
 
   const requestOptions: RequestOptions = {
     ...restParams,
     model: (params.model as string | undefined) || config.model,
-    temperature: params.temperature !== undefined ? params.temperature : config.temperature,
+    temperature:
+      params.temperature !== undefined
+        ? params.temperature
+        : config.temperature,
     maxTokens: params.maxTokens || config.maxTokens,
     timeout: params.timeout || config.timeout,
     jsonMode,
     ...(responseFormat ? { responseFormat } : {}),
     ...(schemaOverride ? { schema: schemaOverride } : {}),
-    enableBookending: params.enableBookending !== undefined
-      ? params.enableBookending
-      : capabilities.bookending,
+    enableBookending:
+      params.enableBookending !== undefined
+        ? params.enableBookending
+        : capabilities.bookending,
   };
 
   if (capabilities.developerRole) {

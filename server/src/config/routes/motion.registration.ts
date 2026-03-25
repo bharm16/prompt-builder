@@ -5,17 +5,21 @@
  * Gated by PROMPT_OUTPUT_ONLY flag. Auth required.
  */
 
-import type { Application } from 'express';
-import type { DIContainer } from '@infrastructure/DIContainer';
-import { logger } from '@infrastructure/Logger';
-import { apiAuthMiddleware } from '@middleware/apiAuth';
-import { createConvergenceMediaRoutes } from '@routes/convergence/convergenceMedia.routes';
-import { createMotionRoutes } from '@routes/motion.routes';
-import { CAMERA_PATHS } from '@services/convergence/constants';
-import { createDepthEstimationServiceForUser, getDepthWarmupStatus, getStartupWarmupPromise } from '@services/convergence/depth';
-import type { GCSStorageService } from '@services/convergence/storage';
-import { resolveOptionalService } from './resolve-utils.ts';
-import type { RuntimeFlags } from '../runtime-flags';
+import type { Application } from "express";
+import type { DIContainer } from "@infrastructure/DIContainer";
+import { logger } from "@infrastructure/Logger";
+import { apiAuthMiddleware } from "@middleware/apiAuth";
+import { createConvergenceMediaRoutes } from "@routes/convergence/convergenceMedia.routes";
+import { createMotionRoutes } from "@routes/motion.routes";
+import { CAMERA_PATHS } from "@services/convergence/constants";
+import {
+  createDepthEstimationServiceForUser,
+  getDepthWarmupStatus,
+  getStartupWarmupPromise,
+} from "@services/convergence/depth";
+import type { GCSStorageService } from "@services/convergence/storage";
+import { resolveOptionalService } from "./resolve-utils.ts";
+import type { RuntimeFlags } from "../runtime-flags";
 
 export function registerMotionRoutes(
   app: Application,
@@ -24,17 +28,22 @@ export function registerMotionRoutes(
 ): void {
   if (runtimeFlags.promptOutputOnly) return;
 
-  const convergenceStorageService = resolveOptionalService<GCSStorageService | null>(
-    container,
-    'convergenceStorageService',
-    'convergence-storage'
-  );
+  const convergenceStorageService =
+    resolveOptionalService<GCSStorageService | null>(
+      container,
+      "convergenceStorageService",
+      "convergence-storage",
+    );
 
   if (convergenceStorageService) {
-    const motionMediaRoutes = createConvergenceMediaRoutes(() => convergenceStorageService);
-    app.use('/api/motion/media', motionMediaRoutes);
+    const motionMediaRoutes = createConvergenceMediaRoutes(
+      () => convergenceStorageService,
+    );
+    app.use("/api/motion/media", motionMediaRoutes);
   } else {
-    logger.warn('Convergence media routes disabled: storage service unavailable');
+    logger.warn(
+      "Convergence media routes disabled: storage service unavailable",
+    );
   }
 
   const motionRoutes = createMotionRoutes({
@@ -44,10 +53,10 @@ export function registerMotionRoutes(
     getStartupWarmupPromise,
     getStorageService: () => {
       if (!convergenceStorageService) {
-        throw new Error('Convergence storage service is not available');
+        throw new Error("Convergence storage service is not available");
       }
       return convergenceStorageService;
     },
   });
-  app.use('/api/motion', apiAuthMiddleware, motionRoutes);
+  app.use("/api/motion", apiAuthMiddleware, motionRoutes);
 }

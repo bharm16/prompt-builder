@@ -14,18 +14,21 @@
  * 7. Metrics
  */
 
-import express, { type Application } from 'express';
-import cors from 'cors';
-import helmet from 'helmet';
-import rateLimit, { type RateLimitRequestHandler, type Store } from 'express-rate-limit';
-import { RedisStore } from 'rate-limit-redis';
-import type Redis from 'ioredis';
-import compression from 'compression';
+import express, { type Application } from "express";
+import cors from "cors";
+import helmet from "helmet";
+import rateLimit, {
+  type RateLimitRequestHandler,
+  type Store,
+} from "express-rate-limit";
+import { RedisStore } from "rate-limit-redis";
+import type Redis from "ioredis";
+import compression from "compression";
 
-import { requestIdMiddleware } from '@middleware/requestId';
-import { logger } from '@infrastructure/Logger';
-import type { ILogger } from '@interfaces/ILogger';
-import type { IMetricsCollector } from '@interfaces/IMetricsCollector';
+import { requestIdMiddleware } from "@middleware/requestId";
+import { logger } from "@infrastructure/Logger";
+import type { ILogger } from "@interfaces/ILogger";
+import type { IMetricsCollector } from "@interfaces/IMetricsCollector";
 
 interface RateLimitConfig {
   general: {
@@ -100,14 +103,19 @@ const RATE_LIMIT_CONFIG: RateLimitConfig = {
  * CORS configuration
  * Manages allowed origins based on environment
  */
-const DEFAULT_DEV_ORIGINS = ['http://localhost:5173', 'http://localhost:5174'] as const;
+const DEFAULT_DEV_ORIGINS = [
+  "http://localhost:5173",
+  "http://localhost:5174",
+] as const;
 
-const parseConfiguredOrigins = (...values: Array<string | undefined>): string[] => {
+const parseConfiguredOrigins = (
+  ...values: Array<string | undefined>
+): string[] => {
   const deduped = new Set<string>();
 
   for (const value of values) {
     if (!value) continue;
-    for (const origin of value.split(',')) {
+    for (const origin of value.split(",")) {
       const normalized = origin.trim();
       if (!normalized) continue;
       deduped.add(normalized);
@@ -118,14 +126,17 @@ const parseConfiguredOrigins = (...values: Array<string | undefined>): string[] 
 };
 
 const resolveAllowedOrigins = (): string[] => {
-  if (process.env.NODE_ENV === 'production') {
-    return parseConfiguredOrigins(process.env.ALLOWED_ORIGINS, process.env.FRONTEND_URL);
+  if (process.env.NODE_ENV === "production") {
+    return parseConfiguredOrigins(
+      process.env.ALLOWED_ORIGINS,
+      process.env.FRONTEND_URL,
+    );
   }
 
   return parseConfiguredOrigins(
     ...DEFAULT_DEV_ORIGINS,
     process.env.FRONTEND_URL,
-    process.env.ALLOWED_ORIGINS
+    process.env.ALLOWED_ORIGINS,
   );
 };
 
@@ -137,16 +148,16 @@ const SECURITY_CONFIG = {
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", "'unsafe-inline'", 'https://cdn.jsdelivr.net'],
-        styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
-        fontSrc: ["'self'", 'https://fonts.gstatic.com'],
-        imgSrc: ["'self'", 'data:', 'https:'],
+        scriptSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net"],
+        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+        fontSrc: ["'self'", "https://fonts.gstatic.com"],
+        imgSrc: ["'self'", "data:", "https:"],
         connectSrc: [
           "'self'",
-          'https://api.openai.com',
-          'https://*.firebaseapp.com',
-          'https://*.googleapis.com',
-          'https://*.google.com',
+          "https://api.openai.com",
+          "https://*.firebaseapp.com",
+          "https://*.googleapis.com",
+          "https://*.google.com",
         ],
         frameSrc: ["'none'"],
         objectSrc: ["'none'"],
@@ -159,23 +170,23 @@ const SECURITY_CONFIG = {
       preload: true,
     },
     referrerPolicy: {
-      policy: 'strict-origin-when-cross-origin',
+      policy: "strict-origin-when-cross-origin",
     },
     permittedCrossDomainPolicies: {
-      permittedPolicies: 'none',
+      permittedPolicies: "none",
     },
   },
   additionalHeaders: {
-    'X-Permitted-Cross-Domain-Policies': 'none',
-    'Cross-Origin-Resource-Policy': 'cross-origin',
+    "X-Permitted-Cross-Domain-Policies": "none",
+    "Cross-Origin-Resource-Policy": "cross-origin",
   },
   productionHeaders: {
     // `credentialless` allows cross-origin resources (like signed GCS URLs for
     // preview media) that don't carry credentials to load without requiring
     // Cross-Origin-Resource-Policy headers. The stricter `require-corp` was
     // blocking preview images because GCS doesn't set CORP headers on signed URLs.
-    'Cross-Origin-Embedder-Policy': 'credentialless',
-    'Cross-Origin-Opener-Policy': 'same-origin',
+    "Cross-Origin-Embedder-Policy": "credentialless",
+    "Cross-Origin-Opener-Policy": "same-origin",
   },
 } as const;
 
@@ -184,12 +195,12 @@ const SECURITY_CONFIG = {
  */
 const COMPRESSION_CONFIG: compression.CompressionOptions = {
   filter: (req: express.Request, res: express.Response): boolean => {
-    if (req.headers['x-no-compression']) return false;
-    const accept = String(req.headers.accept ?? '');
-    const url = String(req.originalUrl ?? req.url ?? '');
+    if (req.headers["x-no-compression"]) return false;
+    const accept = String(req.headers.accept ?? "");
+    const url = String(req.originalUrl ?? req.url ?? "");
     const isStreamingEndpoint =
-      accept.includes('text/event-stream') ||
-      url.includes('/label-spans/stream');
+      accept.includes("text/event-stream") ||
+      url.includes("/label-spans/stream");
 
     if (isStreamingEndpoint) return false;
     return compression.filter(req, res);
@@ -213,21 +224,31 @@ export function applySecurityMiddleware(app: Application): void {
   app.use(helmet(SECURITY_CONFIG.helmet));
 
   // Additional security headers
-  app.use((req: express.Request, res: express.Response, next: express.NextFunction): void => {
-    // Set additional headers
-    Object.entries(SECURITY_CONFIG.additionalHeaders).forEach(([key, value]) => {
-      res.setHeader(key, value);
-    });
+  app.use(
+    (
+      req: express.Request,
+      res: express.Response,
+      next: express.NextFunction,
+    ): void => {
+      // Set additional headers
+      Object.entries(SECURITY_CONFIG.additionalHeaders).forEach(
+        ([key, value]) => {
+          res.setHeader(key, value);
+        },
+      );
 
-    // Production-only headers
-    if (process.env.NODE_ENV === 'production') {
-      Object.entries(SECURITY_CONFIG.productionHeaders).forEach(([key, value]) => {
-        res.setHeader(key, value);
-      });
-    }
+      // Production-only headers
+      if (process.env.NODE_ENV === "production") {
+        Object.entries(SECURITY_CONFIG.productionHeaders).forEach(
+          ([key, value]) => {
+            res.setHeader(key, value);
+          },
+        );
+      }
 
-    next();
-  });
+      next();
+    },
+  );
 }
 
 /**
@@ -257,15 +278,15 @@ export const FALLBACK_LIMIT_DIVISOR = 4;
 export function applyRateLimitingMiddleware(
   app: Application,
   redisClient?: Redis | null,
-  metricsService?: RateLimitMetrics | null
+  metricsService?: RateLimitMetrics | null,
 ): void {
   const isTestEnv =
-    process.env.NODE_ENV === 'test' ||
+    process.env.NODE_ENV === "test" ||
     !!process.env.VITEST_WORKER_ID ||
     !!process.env.VITEST;
 
   if (isTestEnv) {
-    logger.info('Rate limiting disabled in test environment');
+    logger.info("Rate limiting disabled in test environment");
     return;
   }
 
@@ -273,42 +294,48 @@ export function applyRateLimitingMiddleware(
   // With lazyConnect, the client may exist but not yet be connected — sending
   // commands in that state (with enableOfflineQueue: false) causes unhandled
   // promise rejections from the RedisStore constructor.
-  const redisReady = redisClient && redisClient.status === 'ready';
+  const redisReady = redisClient && redisClient.status === "ready";
 
   const storeFactory = redisReady
-    ? (prefix: string): Store => new RedisStore({
-        sendCommand: (...args: string[]) => {
-          const [cmd = '', ...rest] = args;
-          return redisClient.call(cmd, ...rest) as never;
-        },
-        prefix: `rl:${prefix}:`,
-      })
+    ? (prefix: string): Store =>
+        new RedisStore({
+          sendCommand: (...args: string[]) => {
+            const [cmd = "", ...rest] = args;
+            return redisClient.call(cmd, ...rest) as never;
+          },
+          prefix: `rl:${prefix}:`,
+        })
     : undefined;
 
   const usingFallback = !storeFactory;
 
   if (storeFactory) {
-    logger.info('Rate limiting using Redis store (distributed)');
+    logger.info("Rate limiting using Redis store (distributed)");
   } else {
-    logger.warn('Rate limiting using in-memory store (single-instance) — limits reduced', {
-      divisor: FALLBACK_LIMIT_DIVISOR,
-    });
-    metricsService?.recordAlert('rate_limit_redis_fallback');
+    logger.warn(
+      "Rate limiting using in-memory store (single-instance) — limits reduced",
+      {
+        divisor: FALLBACK_LIMIT_DIVISOR,
+      },
+    );
+    metricsService?.recordAlert("rate_limit_redis_fallback");
   }
 
-  const isDevEnv = process.env.NODE_ENV !== 'production' && !isTestEnv;
+  const isDevEnv = process.env.NODE_ENV !== "production" && !isTestEnv;
 
   const applyFallback = (limit: number): number =>
-    usingFallback ? Math.max(1, Math.floor(limit / FALLBACK_LIMIT_DIVISOR)) : limit;
+    usingFallback
+      ? Math.max(1, Math.floor(limit / FALLBACK_LIMIT_DIVISOR))
+      : limit;
 
   const generalMax = applyFallback(
-    isDevEnv ? RATE_LIMIT_CONFIG.general.dev : RATE_LIMIT_CONFIG.general.prod
+    isDevEnv ? RATE_LIMIT_CONFIG.general.dev : RATE_LIMIT_CONFIG.general.prod,
   );
   const apiMax = applyFallback(
-    isDevEnv ? RATE_LIMIT_CONFIG.api.dev : RATE_LIMIT_CONFIG.api.prod
+    isDevEnv ? RATE_LIMIT_CONFIG.api.dev : RATE_LIMIT_CONFIG.api.prod,
   );
   const llmMax = applyFallback(
-    isDevEnv ? RATE_LIMIT_CONFIG.llm.dev : RATE_LIMIT_CONFIG.llm.prod
+    isDevEnv ? RATE_LIMIT_CONFIG.llm.dev : RATE_LIMIT_CONFIG.llm.prod,
   );
 
   // JSON handler for rate limit responses — conforms to ApiErrorResponse shape
@@ -316,12 +343,12 @@ export function applyRateLimitingMiddleware(
     req: express.Request,
     res: express.Response,
     _next: express.NextFunction,
-    options: { statusCode: number; message: string }
+    options: { statusCode: number; message: string },
   ): void => {
-    const retryAfter = res.getHeader('Retry-After');
+    const retryAfter = res.getHeader("Retry-After");
     res.status(options.statusCode).json({
       error: options.message,
-      code: 'RATE_LIMITED',
+      code: "RATE_LIMITED",
       details: retryAfter ? `Retry after ${String(retryAfter)}s` : undefined,
       requestId: (req as express.Request & { id?: string }).id,
     });
@@ -331,10 +358,10 @@ export function applyRateLimitingMiddleware(
     req: express.Request,
     res: express.Response,
     next: express.NextFunction,
-    options: { statusCode: number; message: string }
+    options: { statusCode: number; message: string },
   ): void => {
     const requestPath = req.originalUrl || req.path;
-    if (requestPath.startsWith('/api/') || requestPath.startsWith('/llm/')) {
+    if (requestPath.startsWith("/api/") || requestPath.startsWith("/llm/")) {
       rateLimitJSONHandler(req, res, next, options);
       return;
     }
@@ -350,10 +377,10 @@ export function applyRateLimitingMiddleware(
   const isGeneralSkipped = (req: express.Request): boolean => {
     const p = req.path;
     return (
-      p === '/metrics' ||
-      p.startsWith('/api/') ||
-      p.startsWith('/llm/') ||
-      p.startsWith('/health')
+      p === "/metrics" ||
+      p.startsWith("/api/") ||
+      p.startsWith("/llm/") ||
+      p.startsWith("/health")
     );
   };
 
@@ -361,12 +388,12 @@ export function applyRateLimitingMiddleware(
   const generalLimiter = rateLimit({
     windowMs: RATE_LIMIT_CONFIG.general.windowMs,
     max: generalMax,
-    message: 'Too many requests from this IP',
+    message: "Too many requests from this IP",
     standardHeaders: true,
     legacyHeaders: false,
     handler: generalRateLimitHandler,
     skip: isGeneralSkipped,
-    ...(storeFactory ? { store: storeFactory('general') } : {}),
+    ...(storeFactory ? { store: storeFactory("general") } : {}),
   });
   app.use(generalLimiter);
 
@@ -376,10 +403,10 @@ export function applyRateLimitingMiddleware(
   const isAssetViewRoute = (req: express.Request): boolean => {
     const p = req.path;
     return (
-      p === '/preview/image/view' ||
-      p === '/preview/image/view-batch' ||
-      p === '/preview/video/view' ||
-      p === '/storage/view-url'
+      p === "/preview/image/view" ||
+      p === "/preview/image/view-batch" ||
+      p === "/preview/video/view" ||
+      p === "/storage/view-url"
     );
   };
 
@@ -388,58 +415,59 @@ export function applyRateLimitingMiddleware(
   // endpoints are exempt from the main API limiter to prevent 429s during
   // normal workspace transitions.
   const isSessionHydrationRoute = (req: express.Request): boolean => {
-    if (req.method !== 'GET') return false;
+    if (req.method !== "GET") return false;
     const p = req.path;
     return (
-      p === '/payment/status' ||
+      p === "/payment/status" ||
       /^\/v2\/sessions\/[^/]+$/.test(p) ||
       /^\/v2\/sessions\/[^/]+\/versions$/.test(p)
     );
   };
 
   app.use(
-    '/api/',
+    "/api/",
     rateLimit({
       windowMs: RATE_LIMIT_CONFIG.api.windowMs,
       max: apiMax,
-      message: 'Global rate limit exceeded',
+      message: "Global rate limit exceeded",
       standardHeaders: true,
       legacyHeaders: false,
       handler: rateLimitJSONHandler,
-      skip: (req: express.Request) => isAssetViewRoute(req) || isSessionHydrationRoute(req),
-      ...(storeFactory ? { store: storeFactory('api') } : {}),
-    })
+      skip: (req: express.Request) =>
+        isAssetViewRoute(req) || isSessionHydrationRoute(req),
+      ...(storeFactory ? { store: storeFactory("api") } : {}),
+    }),
   );
 
   // Dedicated limiter for asset view endpoints (read-only, idempotent).
   // Much higher limit since pages with many generations fire dozens of these.
   const assetViewMax = applyFallback(isDevEnv ? 1000 : 300);
   app.use(
-    '/api/',
+    "/api/",
     rateLimit({
       windowMs: 60 * 1000,
       max: assetViewMax,
-      message: 'Asset view rate limit exceeded',
+      message: "Asset view rate limit exceeded",
       standardHeaders: true,
       legacyHeaders: false,
       handler: rateLimitJSONHandler,
       skip: (req: express.Request) => !isAssetViewRoute(req),
-      ...(storeFactory ? { store: storeFactory('asset-view') } : {}),
-    })
+      ...(storeFactory ? { store: storeFactory("asset-view") } : {}),
+    }),
   );
 
   // LLM endpoints limiter (higher limits for span labeling)
   app.use(
-    '/llm/',
+    "/llm/",
     rateLimit({
       windowMs: RATE_LIMIT_CONFIG.llm.windowMs,
       max: llmMax,
-      message: 'Too many LLM requests',
+      message: "Too many LLM requests",
       standardHeaders: true,
       legacyHeaders: false,
       handler: rateLimitJSONHandler,
-      ...(storeFactory ? { store: storeFactory('llm') } : {}),
-    })
+      ...(storeFactory ? { store: storeFactory("llm") } : {}),
+    }),
   );
 
   // Route-specific burst limiters
@@ -447,7 +475,7 @@ export function applyRateLimitingMiddleware(
   const makeBurstLimiter = (
     windowMs: number,
     max: number,
-    message: string
+    message: string,
   ): RateLimitRequestHandler =>
     rateLimit({
       windowMs,
@@ -456,53 +484,55 @@ export function applyRateLimitingMiddleware(
       standardHeaders: true,
       legacyHeaders: false,
       handler: rateLimitJSONHandler,
-      ...(storeFactory ? { store: storeFactory(`burst${burstLimiterIndex++}`) } : {}),
+      ...(storeFactory
+        ? { store: storeFactory(`burst${burstLimiterIndex++}`) }
+        : {}),
     });
 
   // Video validation endpoint burst limits
   app.use(
-    '/api/video/validate',
+    "/api/video/validate",
     makeBurstLimiter(
       RATE_LIMIT_CONFIG.videoValidate.burst.windowMs,
       RATE_LIMIT_CONFIG.videoValidate.burst.max,
-      'Too many compatibility checks in a short time'
+      "Too many compatibility checks in a short time",
     ),
     makeBurstLimiter(
       RATE_LIMIT_CONFIG.videoValidate.minute.windowMs,
       RATE_LIMIT_CONFIG.videoValidate.minute.max,
-      'Too many compatibility checks per minute'
-    )
+      "Too many compatibility checks per minute",
+    ),
   );
 
   // Video suggestions endpoint burst limits
   app.use(
-    '/api/video/suggestions',
+    "/api/video/suggestions",
     makeBurstLimiter(
       RATE_LIMIT_CONFIG.videoSuggestions.burst.windowMs,
       RATE_LIMIT_CONFIG.videoSuggestions.burst.max,
-      'Too many suggestion requests in a short time'
+      "Too many suggestion requests in a short time",
     ),
     makeBurstLimiter(
       RATE_LIMIT_CONFIG.videoSuggestions.minute.windowMs,
       RATE_LIMIT_CONFIG.videoSuggestions.minute.max,
-      'Too many suggestion requests per minute'
-    )
+      "Too many suggestion requests per minute",
+    ),
   );
 
   // Health check limiter
   app.use(
-    ['/health', '/health/ready', '/health/live'],
+    ["/health", "/health/ready", "/health/live"],
     rateLimit({
       windowMs: RATE_LIMIT_CONFIG.health.windowMs,
       max: RATE_LIMIT_CONFIG.health.max,
-      message: 'Too many health check requests, please slow down',
+      message: "Too many health check requests, please slow down",
       standardHeaders: true,
       legacyHeaders: false,
-    })
+    }),
   );
 
-  logger.info('Rate limiting enabled', {
-    environment: isDevEnv ? 'development' : 'production',
+  logger.info("Rate limiting enabled", {
+    environment: isDevEnv ? "development" : "production",
     generalMax,
     apiMax,
     llmMax,
@@ -515,33 +545,41 @@ export function applyRateLimitingMiddleware(
 export function applyCorsMiddleware(app: Application): void {
   app.use(
     cors({
-      origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void): void => {
+      origin: (
+        origin: string | undefined,
+        callback: (err: Error | null, allow?: boolean) => void,
+      ): void => {
         // Allow requests with no origin in development (testing tools)
-        if (!origin && process.env.NODE_ENV !== 'production') {
+        if (!origin && process.env.NODE_ENV !== "production") {
           return callback(null, true);
         }
 
         // Require origin header in production
-        if (!origin && process.env.NODE_ENV === 'production') {
-          logger.warn('CORS blocked request with no origin in production');
-          return callback(new Error('Origin header required'));
+        if (!origin && process.env.NODE_ENV === "production") {
+          logger.warn("CORS blocked request with no origin in production");
+          return callback(new Error("Origin header required"));
         }
 
         // Get allowed origins based on environment
         const allowedOrigins = resolveAllowedOrigins();
 
         // Validate CORS configuration in production
-        if (process.env.NODE_ENV === 'production' && allowedOrigins.length === 0) {
+        if (
+          process.env.NODE_ENV === "production" &&
+          allowedOrigins.length === 0
+        ) {
           logger.error(
-            'ALLOWED_ORIGINS not configured for production',
+            "ALLOWED_ORIGINS not configured for production",
             undefined,
             {
               ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS,
               FRONTEND_URL: process.env.FRONTEND_URL,
-            }
+            },
           );
           return callback(
-            new Error('CORS configuration error: No allowed origins configured for production')
+            new Error(
+              "CORS configuration error: No allowed origins configured for production",
+            ),
           );
         }
 
@@ -549,21 +587,26 @@ export function applyCorsMiddleware(app: Application): void {
         if (origin && (allowedOrigins as readonly string[]).includes(origin)) {
           callback(null, true);
         } else {
-          logger.warn('CORS blocked request from unauthorized origin', {
+          logger.warn("CORS blocked request from unauthorized origin", {
             origin,
             allowedOrigins,
           });
-          callback(new Error('Not allowed by CORS'));
+          callback(new Error("Not allowed by CORS"));
         }
       },
       credentials: true,
-      methods: ['GET', 'POST', 'OPTIONS'],
-      allowedHeaders: ['Content-Type', 'Authorization', 'X-API-Key', 'X-Firebase-Token'],
-      exposedHeaders: ['X-Request-Id'],
+      methods: ["GET", "POST", "OPTIONS"],
+      allowedHeaders: [
+        "Content-Type",
+        "Authorization",
+        "X-API-Key",
+        "X-Firebase-Token",
+      ],
+      exposedHeaders: ["X-Request-Id"],
       maxAge: 86400, // 24 hours
       preflightContinue: false,
       optionsSuccessStatus: 204,
-    })
+    }),
   );
 }
 
@@ -571,10 +614,10 @@ export function applyCorsMiddleware(app: Application): void {
  * Apply body parser middleware
  */
 export function applyBodyParserMiddleware(app: Application): void {
-  app.use(express.json({ limit: '2mb' }));
-  app.use(express.urlencoded({ limit: '2mb', extended: true }));
-  app.use(express.raw({ limit: '2mb' }));
-  app.use(express.text({ limit: '2mb' }));
+  app.use(express.json({ limit: "2mb" }));
+  app.use(express.urlencoded({ limit: "2mb", extended: true }));
+  app.use(express.raw({ limit: "2mb" }));
+  app.use(express.text({ limit: "2mb" }));
 }
 
 interface MiddlewareServices {
@@ -587,16 +630,34 @@ interface MiddlewareServices {
  * Apply logging and metrics middleware
  * Requires services to be passed in
  */
-export function applyLoggingAndMetricsMiddleware(app: Application, services: MiddlewareServices): void {
-  app.use((services.logger as unknown as { requestLogger: () => express.RequestHandler }).requestLogger());
-  app.use((services.metricsService as unknown as { middleware: () => express.RequestHandler }).middleware());
+export function applyLoggingAndMetricsMiddleware(
+  app: Application,
+  services: MiddlewareServices,
+): void {
+  app.use(
+    (
+      services.logger as unknown as {
+        requestLogger: () => express.RequestHandler;
+      }
+    ).requestLogger(),
+  );
+  app.use(
+    (
+      services.metricsService as unknown as {
+        middleware: () => express.RequestHandler;
+      }
+    ).middleware(),
+  );
 }
 
 /**
  * Configure all middleware in the correct order
  * This is the main function to call from app setup
  */
-export function configureMiddleware(app: Application, services: MiddlewareServices): void {
+export function configureMiddleware(
+  app: Application,
+  services: MiddlewareServices,
+): void {
   // 1. Request ID (must be first)
   applyRequestIdMiddleware(app);
 
@@ -607,9 +668,10 @@ export function configureMiddleware(app: Application, services: MiddlewareServic
   applyCompressionMiddleware(app);
 
   // 4. Rate limiting (uses Redis store when available for distributed enforcement)
-  const metricsForRateLimit = 'recordAlert' in services.metricsService
-    ? (services.metricsService as unknown as RateLimitMetrics)
-    : null;
+  const metricsForRateLimit =
+    "recordAlert" in services.metricsService
+      ? (services.metricsService as unknown as RateLimitMetrics)
+      : null;
   applyRateLimitingMiddleware(app, services.redisClient, metricsForRateLimit);
 
   // 5. CORS
@@ -621,5 +683,5 @@ export function configureMiddleware(app: Application, services: MiddlewareServic
   // 7. Logging and metrics
   applyLoggingAndMetricsMiddleware(app, services);
 
-  logger.info('All middleware configured successfully');
+  logger.info("All middleware configured successfully");
 }

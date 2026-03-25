@@ -1,7 +1,7 @@
-import React from 'react';
-import type { AssetReferenceImage } from '@shared/types/asset';
-import { Button } from '@promptstudio/system/components/ui/button';
-import { rewriteGcsUrlToProxy } from '@/services/media/MediaUrlResolver';
+import React from "react";
+import type { AssetReferenceImage } from "@shared/types/asset";
+import { Button } from "@promptstudio/system/components/ui/button";
+import { rewriteGcsUrlToProxy } from "@/services/media/MediaUrlResolver";
 
 interface ReferenceImageGridProps {
   images: AssetReferenceImage[];
@@ -16,7 +16,10 @@ export function ReferenceImageGrid({
 }: ReferenceImageGridProps): React.ReactElement {
   if (!images.length) {
     return (
-      <div className="motion-presence-panel rounded-lg border border-dashed border-border bg-surface-2 p-4 text-center text-sm text-muted" data-motion-state="entered">
+      <div
+        className="motion-presence-panel rounded-lg border border-dashed border-border bg-surface-2 p-4 text-center text-sm text-muted"
+        data-motion-state="entered"
+      >
         No reference images yet.
       </div>
     );
@@ -25,8 +28,17 @@ export function ReferenceImageGrid({
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
       {images.map((image) => (
-        <div key={image.id} className="group relative overflow-hidden rounded-lg border border-border">
-          <img src={rewriteGcsUrlToProxy(image.thumbnailUrl || image.url) ?? undefined} alt="" className="h-32 w-full object-cover transition-transform duration-[180ms] [transition-timing-function:var(--motion-ease-emphasized)] group-hover:scale-[1.03]" />
+        <div
+          key={image.id}
+          className="group relative overflow-hidden rounded-lg border border-border"
+        >
+          <img
+            src={
+              rewriteGcsUrlToProxy(image.thumbnailUrl || image.url) ?? undefined
+            }
+            alt=""
+            className="h-32 w-full object-cover transition-transform duration-[180ms] [transition-timing-function:var(--motion-ease-emphasized)] group-hover:scale-[1.03]"
+          />
           {image.isPrimary && (
             <span className="absolute left-2 top-2 rounded-full bg-surface-1/90 px-2 py-0.5 text-xs text-foreground">
               Primary

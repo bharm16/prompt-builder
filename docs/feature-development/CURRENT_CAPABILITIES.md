@@ -19,19 +19,20 @@ PromptCanvas is a video prompt optimization platform with semantic span labeling
 
 **9 Categories, 23 Attributes:**
 
-| Category | Attributes | Color |
-|----------|------------|-------|
-| **SHOT** | `shot.type` | cyan |
-| **SUBJECT** | `subject.identity`, `subject.appearance`, `subject.wardrobe`, `action.movement`, `subject.emotion` | orange |
-| **ACTION** | `action.movement`, `action.state`, `action.gesture` | rose |
-| **ENVIRONMENT** | `environment.location`, `environment.weather`, `environment.context` | emerald |
-| **LIGHTING** | `lighting.source`, `lighting.quality`, `lighting.timeOfDay`, `lighting.colorTemp` | yellow |
-| **CAMERA** | `shot.type`, `camera.movement`, `camera.lens`, `camera.angle`, `camera.focus` | sky |
-| **STYLE** | `style.aesthetic`, `style.filmStock`, `style.colorGrade` | violet |
-| **TECHNICAL** | `technical.aspectRatio`, `technical.frameRate`, `technical.resolution`, `technical.duration` | slate |
-| **AUDIO** | `audio.score`, `audio.soundEffect`, `audio.ambient` | fuchsia |
+| Category        | Attributes                                                                                         | Color   |
+| --------------- | -------------------------------------------------------------------------------------------------- | ------- |
+| **SHOT**        | `shot.type`                                                                                        | cyan    |
+| **SUBJECT**     | `subject.identity`, `subject.appearance`, `subject.wardrobe`, `action.movement`, `subject.emotion` | orange  |
+| **ACTION**      | `action.movement`, `action.state`, `action.gesture`                                                | rose    |
+| **ENVIRONMENT** | `environment.location`, `environment.weather`, `environment.context`                               | emerald |
+| **LIGHTING**    | `lighting.source`, `lighting.quality`, `lighting.timeOfDay`, `lighting.colorTemp`                  | yellow  |
+| **CAMERA**      | `shot.type`, `camera.movement`, `camera.lens`, `camera.angle`, `camera.focus`                      | sky     |
+| **STYLE**       | `style.aesthetic`, `style.filmStock`, `style.colorGrade`                                           | violet  |
+| **TECHNICAL**   | `technical.aspectRatio`, `technical.frameRate`, `technical.resolution`, `technical.duration`       | slate   |
+| **AUDIO**       | `audio.score`, `audio.soundEffect`, `audio.ambient`                                                | fuchsia |
 
 **Helper Functions:**
+
 - `isValidCategory(id)` - O(1) validation
 - `parseCategoryId(id)` - Parse parent/attribute
 - `getParentCategory(id)` - Get parent from attribute
@@ -44,6 +45,7 @@ PromptCanvas is a video prompt optimization platform with semantic span labeling
 **Location:** `server/src/services/video-prompt-analysis/services/detection/ModelDetectionService.ts`
 
 **Supported Models:**
+
 - Sora (OpenAI)
 - Veo3 (Google)
 - Runway (Gen-3)
@@ -51,15 +53,17 @@ PromptCanvas is a video prompt optimization platform with semantic span labeling
 - Luma (Dream Machine)
 
 **Capabilities per model:**
+
 ```typescript
-getModelCapabilities(model)     // { primary, secondary, weaknesses }
-getModelOptimalParams(model)    // { duration, motion, camera, lighting, style }
-getModelSpecificGuidance(model, category)  // Category-specific tips
-formatModelContext(model)       // Formatted context for prompts
-detectTargetModel(prompt)       // Auto-detect from prompt text
+getModelCapabilities(model); // { primary, secondary, weaknesses }
+getModelOptimalParams(model); // { duration, motion, camera, lighting, style }
+getModelSpecificGuidance(model, category); // Category-specific tips
+formatModelContext(model); // Formatted context for prompts
+detectTargetModel(prompt); // Auto-detect from prompt text
 ```
 
 **Example - Sora capabilities:**
+
 - Primary: Realistic motion, Physics simulation, Long takes (up to 60s)
 - Weaknesses: Stylized content, Text rendering, Fast cuts
 
@@ -70,6 +74,7 @@ detectTargetModel(prompt)       // Auto-detect from prompt text
 **Location:** `server/src/services/prompt-optimization/strategies/videoPromptLinter.ts`
 
 **Validates:**
+
 - ✅ `shot_framing` - Required, must not contain angle/view terms
 - ✅ `camera_angle` - Required
 - ✅ `camera_move` - Cinematographic vocabulary (dolly, pan, crane, tracking, handheld, steadicam, rack focus, etc.)
@@ -79,6 +84,7 @@ detectTargetModel(prompt)       // Auto-detect from prompt text
 - ✅ All fields - Blocks viewer/audience language
 
 **Key constraints enforced:**
+
 - One clip, one action principle
 - Camera-visible details only
 - Specific over generic language
@@ -90,6 +96,7 @@ detectTargetModel(prompt)       // Auto-detect from prompt text
 **Location:** `server/src/services/quality-feedback/services/LLMJudgeService.ts`
 
 **Capabilities:**
+
 - Rubric-based evaluation (video vs general)
 - Multi-criteria scoring (1-5 per criterion)
 - Batch evaluation for A/B testing
@@ -104,6 +111,7 @@ detectTargetModel(prompt)       // Auto-detect from prompt text
 **Location:** `server/src/llm/span-labeling/`
 
 **Architecture:**
+
 - `SpanLabelingService.ts` - Main orchestrator
 - Multi-provider routing (Groq for speed, OpenAI for quality)
 - Aho-Corasick pattern matching for technical terms
@@ -118,6 +126,7 @@ detectTargetModel(prompt)       // Auto-detect from prompt text
 **Location:** `client/src/hooks/usePromptHistory/`
 
 **Features:**
+
 - ✅ Firestore persistence for authenticated users
 - ✅ LocalStorage fallback for anonymous users
 - ✅ Search/filter history
@@ -133,8 +142,9 @@ detectTargetModel(prompt)       // Auto-detect from prompt text
 **Location:** `client/src/components/VideoConceptBuilder/config/templates.ts`
 
 **Current Templates (3 total):**
+
 1. Product Demo
-2. Nature Doc  
+2. Nature Doc
 3. Urban Action
 
 **Backend:** `VideoTemplateRepository.ts` exists for storage
@@ -175,6 +185,7 @@ Collects span labeling requests within 50ms window for parallel processing. **In
 ### 10. Caching Infrastructure
 
 **Locations:**
+
 - `server/src/services/cache/CacheService.ts` - Main cache
 - `server/src/services/cache/SemanticCacheService.ts` - Semantic similarity caching
 - `server/src/services/cache/SpanLabelingCacheService.ts` - Span-specific caching
@@ -186,11 +197,13 @@ Collects span labeling requests within 50ms window for parallel processing. **In
 ### 11. Face-Swap Preprocessing (Character + Composition)
 
 **Locations:**
+
 - `server/src/services/generation/FaceSwapService.ts`
 - `server/src/services/generation/providers/FalFaceSwapProvider.ts`
 - `server/src/routes/preview/handlers/videoGenerate.ts`
 
 **Capabilities:**
+
 - ✅ When both `startImage` and `characterAssetId` are provided, the system performs a face-swap before i2v.
 - ✅ Uses Easel AI (fal.ai `easel-ai/advanced-face-swap`) to composite the character's face onto the composition.
 - ✅ Preserves the original composition while applying the character identity.
@@ -201,25 +214,31 @@ Collects span labeling requests within 50ms window for parallel processing. **In
 ## Frontend Components
 
 ### VideoConceptBuilder
+
 **Location:** `client/src/components/VideoConceptBuilder/`
 
 Wizard-style prompt builder with:
+
 - Element-by-element input
 - Template selector (3 templates)
 - Real-time preview via Replicate/Flux
 
 ### PromptCanvas (Span Highlighting)
+
 **Location:** `client/src/features/prompt-optimizer/PromptCanvas.tsx`
 
 Interactive span highlighting with:
+
 - Click-to-enhance interface
 - Category color coding
 - Suggestion panel integration
 
 ### SuggestionsPanel
+
 **Location:** `client/src/components/SuggestionsPanel/`
 
 Context-aware suggestions for selected spans with:
+
 - Multiple alternatives per category
 - One-click application
 
@@ -229,29 +248,29 @@ Context-aware suggestions for selected spans with:
 
 To prevent confusion, these are explicitly **not implemented**:
 
-| Feature | Status |
-|---------|--------|
-| Negative prompt support | ❌ Not in schema or UI |
+| Feature                          | Status                            |
+| -------------------------------- | --------------------------------- |
+| Negative prompt support          | ❌ Not in schema or UI            |
 | Batch optimization (user-facing) | ❌ Only internal request batching |
-| Version diff view | ❌ Storage exists, no UI |
-| Span keyboard navigation | ❌ Only global shortcuts |
-| Community templates | ❌ No submission system |
-| A/B variation generator | ❌ Not implemented |
-| Model-specific export UI | ❌ Backend exists, no UI |
-| LLM quality scoring in UI | ❌ Service exists, not wired |
+| Version diff view                | ❌ Storage exists, no UI          |
+| Span keyboard navigation         | ❌ Only global shortcuts          |
+| Community templates              | ❌ No submission system           |
+| A/B variation generator          | ❌ Not implemented                |
+| Model-specific export UI         | ❌ Backend exists, no UI          |
+| LLM quality scoring in UI        | ❌ Service exists, not wired      |
 
 ---
 
 ## File Quick Reference
 
-| System | Primary Location |
-|--------|------------------|
-| Taxonomy | `shared/taxonomy.ts` |
-| Model Detection | `server/src/services/video-prompt-analysis/services/detection/ModelDetectionService.ts` |
-| Video Linter | `server/src/services/prompt-optimization/strategies/videoPromptLinter.ts` |
-| LLM Judge | `server/src/services/quality-feedback/services/LLMJudgeService.ts` |
-| Span Labeling | `server/src/llm/span-labeling/SpanLabelingService.ts` |
-| Prompt History | `client/src/hooks/usePromptHistory/` |
-| Templates | `client/src/components/VideoConceptBuilder/config/templates.ts` |
-| Keyboard Shortcuts | `client/src/components/KeyboardShortcuts/shortcuts.config.ts` |
-| Quality Score UI | `client/src/components/QualityScore.tsx` |
+| System             | Primary Location                                                                        |
+| ------------------ | --------------------------------------------------------------------------------------- |
+| Taxonomy           | `shared/taxonomy.ts`                                                                    |
+| Model Detection    | `server/src/services/video-prompt-analysis/services/detection/ModelDetectionService.ts` |
+| Video Linter       | `server/src/services/prompt-optimization/strategies/videoPromptLinter.ts`               |
+| LLM Judge          | `server/src/services/quality-feedback/services/LLMJudgeService.ts`                      |
+| Span Labeling      | `server/src/llm/span-labeling/SpanLabelingService.ts`                                   |
+| Prompt History     | `client/src/hooks/usePromptHistory/`                                                    |
+| Templates          | `client/src/components/VideoConceptBuilder/config/templates.ts`                         |
+| Keyboard Shortcuts | `client/src/components/KeyboardShortcuts/shortcuts.config.ts`                           |
+| Quality Score UI   | `client/src/components/QualityScore.tsx`                                                |

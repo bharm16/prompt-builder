@@ -7,8 +7,8 @@
  * @requirement 5.5 - Offer text-only camera motion selection as fallback
  */
 
-import React, { Component, ErrorInfo, ReactNode } from 'react';
-import { logger } from '@/services/LoggingService';
+import React, { Component, ErrorInfo, ReactNode } from "react";
+import { logger } from "@/services/LoggingService";
 
 // ============================================================================
 // Types
@@ -23,7 +23,7 @@ export interface CameraMotionErrorBoundaryProps {
   fallback?: ReactNode;
 }
 
-const log = logger.child('CameraMotionErrorBoundary');
+const log = logger.child("CameraMotionErrorBoundary");
 
 interface CameraMotionErrorBoundaryState {
   hasError: boolean;
@@ -52,7 +52,9 @@ export class CameraMotionErrorBoundary extends Component<
     };
   }
 
-  static getDerivedStateFromError(error: Error): CameraMotionErrorBoundaryState {
+  static getDerivedStateFromError(
+    error: Error,
+  ): CameraMotionErrorBoundaryState {
     return {
       hasError: true,
       error,
@@ -61,7 +63,7 @@ export class CameraMotionErrorBoundary extends Component<
 
   override componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
     // Log the error for debugging
-    log.error('CameraMotionErrorBoundary caught an error', error, {
+    log.error("CameraMotionErrorBoundary caught an error", error, {
       componentStack: errorInfo.componentStack,
     });
 
@@ -95,7 +97,8 @@ export class CameraMotionErrorBoundary extends Component<
             Preview Unavailable
           </div>
           <p className="text-sm text-muted mb-4">
-            Camera motion previews couldn't be loaded. You can still select a camera motion below.
+            Camera motion previews couldn't be loaded. You can still select a
+            camera motion below.
           </p>
           <button
             type="button"

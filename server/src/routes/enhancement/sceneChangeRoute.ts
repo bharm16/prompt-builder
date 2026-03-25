@@ -1,8 +1,8 @@
-import type { Router } from 'express';
-import { logger } from '@infrastructure/Logger';
-import { asyncHandler } from '@middleware/asyncHandler';
-import { validateRequest } from '@middleware/validateRequest';
-import { sceneChangeSchema } from '@utils/validation';
+import type { Router } from "express";
+import { logger } from "@infrastructure/Logger";
+import { asyncHandler } from "@middleware/asyncHandler";
+import { validateRequest } from "@middleware/validateRequest";
+import { sceneChangeSchema } from "@utils/validation";
 
 interface SceneChangeResult {
   isSceneChange?: boolean;
@@ -11,21 +11,23 @@ interface SceneChangeResult {
 
 interface SceneChangeDeps {
   sceneDetectionService: {
-    detectSceneChange: (payload: Record<string, unknown>) => Promise<SceneChangeResult>;
+    detectSceneChange: (
+      payload: Record<string, unknown>,
+    ) => Promise<SceneChangeResult>;
   };
 }
 
 export function registerSceneChangeRoute(
   router: Router,
-  { sceneDetectionService }: SceneChangeDeps
+  { sceneDetectionService }: SceneChangeDeps,
 ): void {
   router.post(
-    '/detect-scene-change',
+    "/detect-scene-change",
     validateRequest(sceneChangeSchema),
     asyncHandler(async (req, res) => {
       const startTime = Date.now();
-      const requestId = req.id || 'unknown';
-      const operation = 'detect-scene-change';
+      const requestId = req.id || "unknown";
+      const operation = "detect-scene-change";
 
       const {
         changedField,
@@ -37,7 +39,7 @@ export function registerSceneChangeRoute(
         sectionContext,
       } = req.body;
 
-      logger.info('Scene change detection request received', {
+      logger.info("Scene change detection request received", {
         operation,
         requestId,
         changedField,
@@ -57,7 +59,7 @@ export function registerSceneChangeRoute(
           sectionContext,
         });
 
-        logger.info('Scene change detection request completed', {
+        logger.info("Scene change detection request completed", {
           operation,
           requestId,
           duration: Date.now() - startTime,
@@ -66,14 +68,18 @@ export function registerSceneChangeRoute(
 
         res.json(result);
       } catch (error) {
-        logger.error('Scene change detection request failed', error instanceof Error ? error : new Error(String(error)), {
-          operation,
-          requestId,
-          duration: Date.now() - startTime,
-          changedField,
-        });
+        logger.error(
+          "Scene change detection request failed",
+          error instanceof Error ? error : new Error(String(error)),
+          {
+            operation,
+            requestId,
+            duration: Date.now() - startTime,
+            changedField,
+          },
+        );
         throw error;
       }
-    })
+    }),
   );
 }

@@ -1,5 +1,5 @@
-import { z } from 'zod';
-import { CAMERA_MOTION_CATEGORIES } from '@/features/convergence/types';
+import { z } from "zod";
+import { CAMERA_MOTION_CATEGORIES } from "@/features/convergence/types";
 import {
   loadActiveTab,
   loadCameraMotion,
@@ -7,26 +7,26 @@ import {
   loadImageSubTab,
   loadKeyframes,
   loadSubjectMotion,
-} from './generationControlsStorage';
+} from "./generationControlsStorage";
 import {
   loadGenerationParams,
   loadSelectedModel,
   loadVideoTier,
-} from '@features/prompt-optimizer/context/promptStateStorage';
+} from "@features/prompt-optimizer/context/promptStateStorage";
 import {
   DEFAULT_GENERATION_CONTROLS_STATE,
   type GenerationControlsState,
-} from './generationControlsStoreTypes';
+} from "./generationControlsStoreTypes";
 
-const STORAGE_KEY = 'prompt-optimizer:generationControlsStore';
+const STORAGE_KEY = "prompt-optimizer:generationControlsStore";
 
 const CapabilityValueSchema = z.union([z.string(), z.number(), z.boolean()]);
 const CapabilityValuesSchema = z.record(z.string(), CapabilityValueSchema);
 
-const ActiveTabSchema = z.enum(['video', 'image']);
-const ImageSubTabSchema = z.enum(['references', 'styles']);
-const ConstraintModeSchema = z.enum(['strict', 'flexible', 'transform']);
-const VideoTierSchema = z.enum(['draft', 'render']);
+const ActiveTabSchema = z.enum(["video", "image"]);
+const ImageSubTabSchema = z.enum(["references", "styles"]);
+const ConstraintModeSchema = z.enum(["strict", "flexible", "transform"]);
+const VideoTierSchema = z.enum(["draft", "render"]);
 
 const Position3DSchema = z.object({
   x: z.number(),
@@ -59,7 +59,7 @@ const CameraPathSchema = z
 const KeyframeTileSchema = z.object({
   id: z.string(),
   url: z.string(),
-  source: z.enum(['upload', 'library', 'generation', 'asset']),
+  source: z.enum(["upload", "library", "generation", "asset"]),
   assetId: z.string().optional(),
   sourcePrompt: z.string().optional(),
   storagePath: z.string().optional(),
@@ -71,8 +71,8 @@ const KeyframesArraySchema = z.array(KeyframeTileSchema).max(3);
 const VideoReferenceImageSchema = z.object({
   id: z.string(),
   url: z.string(),
-  referenceType: z.enum(['asset', 'style']),
-  source: z.enum(['upload', 'library', 'asset']),
+  referenceType: z.enum(["asset", "style"]),
+  source: z.enum(["upload", "library", "asset"]),
   storagePath: z.string().optional(),
   assetId: z.string().optional(),
   viewUrlExpiresAt: z.string().optional(),
@@ -80,7 +80,7 @@ const VideoReferenceImageSchema = z.object({
 
 const ExtendVideoSourceSchema = z.object({
   url: z.string(),
-  source: z.enum(['generation', 'upload']),
+  source: z.enum(["generation", "upload"]),
   generationId: z.string().optional(),
   storagePath: z.string().optional(),
   assetId: z.string().optional(),
@@ -94,7 +94,10 @@ const GenerationControlsStoreSchema = z.object({
     keyframes: KeyframesArraySchema,
     startFrame: KeyframeTileSchema.nullable().optional().default(null),
     endFrame: KeyframeTileSchema.nullable().optional().default(null),
-    videoReferenceImages: z.array(VideoReferenceImageSchema).optional().default([]),
+    videoReferenceImages: z
+      .array(VideoReferenceImageSchema)
+      .optional()
+      .default([]),
     extendVideo: ExtendVideoSourceSchema.nullable().optional().default(null),
     cameraMotion: CameraPathSchema.nullable(),
     subjectMotion: z.string(),
@@ -137,7 +140,9 @@ const buildLegacyState = (): GenerationControlsState => ({
   },
 });
 
-const migrateStartFrame = (state: GenerationControlsState): GenerationControlsState => {
+const migrateStartFrame = (
+  state: GenerationControlsState,
+): GenerationControlsState => {
   if (state.domain.startFrame) return state;
   if (!state.domain.keyframes[0]) return state;
   return {
@@ -150,14 +155,16 @@ const migrateStartFrame = (state: GenerationControlsState): GenerationControlsSt
 };
 
 export const loadGenerationControlsStoreState = (): GenerationControlsState => {
-  if (typeof window === 'undefined') {
+  if (typeof window === "undefined") {
     return DEFAULT_GENERATION_CONTROLS_STATE;
   }
 
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (raw) {
-      const parsed = GenerationControlsStoreSchema.safeParse(safeParseJson(raw));
+      const parsed = GenerationControlsStoreSchema.safeParse(
+        safeParseJson(raw),
+      );
       if (parsed.success) {
         return migrateStartFrame(parsed.data as GenerationControlsState);
       }
@@ -170,9 +177,9 @@ export const loadGenerationControlsStoreState = (): GenerationControlsState => {
 };
 
 export const persistGenerationControlsStoreState = (
-  state: GenerationControlsState
+  state: GenerationControlsState,
 ): void => {
-  if (typeof window === 'undefined') return;
+  if (typeof window === "undefined") return;
 
   try {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));

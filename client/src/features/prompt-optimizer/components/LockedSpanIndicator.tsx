@@ -1,7 +1,7 @@
-import React from 'react';
-import { Icon, Lock } from '@promptstudio/system/components/ui';
-import { cn } from '@/utils/cn';
-import type { SuggestionItem } from '../PromptCanvas/types';
+import React from "react";
+import { Icon, Lock } from "@promptstudio/system/components/ui";
+import { cn } from "@/utils/cn";
+import type { SuggestionItem } from "../PromptCanvas/types";
 
 interface LockedSpanIndicatorProps {
   reason?: string | null;
@@ -20,13 +20,15 @@ export function LockedSpanIndicator({
     return null;
   }
 
-  const alternatives = Array.isArray(motionAlternatives) ? motionAlternatives : [];
+  const alternatives = Array.isArray(motionAlternatives)
+    ? motionAlternatives
+    : [];
 
   return (
     <div
       className={cn(
-        'border-border bg-surface-3 text-body-sm text-foreground rounded-lg border px-3 py-2',
-        className
+        "border-border bg-surface-3 text-body-sm text-foreground rounded-lg border px-3 py-2",
+        className,
       )}
     >
       <div className="flex items-start gap-2">
@@ -42,12 +44,12 @@ export function LockedSpanIndicator({
         <div className="mt-2 flex flex-wrap gap-2">
           {alternatives.map((alt, index) => (
             <button
-              key={`${alt.text ?? 'alt'}-${index}`}
+              key={`${alt.text ?? "alt"}-${index}`}
               type="button"
               className="border-border bg-surface-2 text-label-sm text-muted hover:bg-surface-1 hover:text-foreground rounded-md border px-2 py-1 transition-colors"
               onClick={() => onSelectAlternative?.(alt)}
             >
-              {alt.text ?? 'Motion option'}
+              {alt.text ?? "Motion option"}
             </button>
           ))}
         </div>

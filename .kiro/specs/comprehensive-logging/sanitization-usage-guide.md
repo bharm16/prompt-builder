@@ -11,20 +11,22 @@ This guide provides practical examples of when and how to use the sanitization u
 **Use:** `sanitizeHeaders()`
 
 **When:**
+
 - Debugging HTTP requests/responses
 - Logging API call details
 - Troubleshooting authentication issues
 
 **Example:**
+
 ```typescript
-import { sanitizeHeaders } from '@utils/logging';
+import { sanitizeHeaders } from "@utils/logging";
 
 // ❌ NEVER do this - exposes credentials
-logger.debug('Request headers', { headers: req.headers });
+logger.debug("Request headers", { headers: req.headers });
 
 // ✅ ALWAYS do this - redacts sensitive headers
-logger.debug('Request headers', { 
-  headers: sanitizeHeaders(req.headers) 
+logger.debug("Request headers", {
+  headers: sanitizeHeaders(req.headers),
 });
 
 // Result: authorization, x-api-key, cookie are [REDACTED]
@@ -35,20 +37,22 @@ logger.debug('Request headers', {
 **Use:** `summarize()`
 
 **When:**
+
 - Logging request/response bodies
 - Debugging data processing
 - Logging arrays or objects with many items
 
 **Example:**
+
 ```typescript
-import { summarize } from '@utils/logging';
+import { summarize } from "@utils/logging";
 
 // ❌ BAD - logs entire 10KB payload
-logger.debug('Processing data', { data: largePayload });
+logger.debug("Processing data", { data: largePayload });
 
 // ✅ GOOD - logs summary only
-logger.debug('Processing data', { 
-  data: summarize(largePayload) 
+logger.debug("Processing data", {
+  data: summarize(largePayload),
 });
 
 // Results:
@@ -62,27 +66,29 @@ logger.debug('Processing data', {
 **Use:** `redactSensitiveFields()`
 
 **When:**
+
 - Logging form submissions
 - Debugging user input
 - Logging API request bodies
 
 **Example:**
+
 ```typescript
-import { redactSensitiveFields } from '@utils/logging';
+import { redactSensitiveFields } from "@utils/logging";
 
 const formData = {
-  username: 'john',
-  email: 'john@example.com',
-  password: 'secret123',
-  apiKey: 'key-abc',
+  username: "john",
+  email: "john@example.com",
+  password: "secret123",
+  apiKey: "key-abc",
 };
 
 // ❌ NEVER do this - exposes password and API key
-logger.debug('Form submitted', { formData });
+logger.debug("Form submitted", { formData });
 
 // ✅ ALWAYS do this - redacts sensitive fields
-logger.debug('Form submitted', { 
-  formData: redactSensitiveFields(formData) 
+logger.debug("Form submitted", {
+  formData: redactSensitiveFields(formData),
 });
 
 // Result: { username: 'john', email: '[REDACTED]', password: '[REDACTED]', apiKey: '[REDACTED]' }
@@ -93,29 +99,31 @@ logger.debug('Form submitted', {
 **Use:** `sanitizeUserData()`
 
 **When:**
+
 - Logging user actions
 - Debugging authentication
 - Tracking user events
 
 **Example:**
+
 ```typescript
-import { sanitizeUserData } from '@utils/logging';
+import { sanitizeUserData } from "@utils/logging";
 
 const user = {
-  id: 'user-123',
-  email: 'john@example.com',
-  password: 'hashed-password',
-  name: 'John Doe',
-  phone: '+1-555-0123',
-  createdAt: '2025-01-01',
+  id: "user-123",
+  email: "john@example.com",
+  password: "hashed-password",
+  name: "John Doe",
+  phone: "+1-555-0123",
+  createdAt: "2025-01-01",
 };
 
 // ❌ NEVER do this - exposes PII
-logger.info('User logged in', { user });
+logger.info("User logged in", { user });
 
 // ✅ ALWAYS do this - includes only safe metadata
-logger.info('User logged in', { 
-  user: sanitizeUserData(user) 
+logger.info("User logged in", {
+  user: sanitizeUserData(user),
 });
 
 // Result: { userId: 'user-123', emailDomain: 'example.com', createdAt: '2025-01-01' }
@@ -126,20 +134,22 @@ logger.info('User logged in', {
 **Use:** `getEmailDomain()`
 
 **When:**
+
 - Analytics and metrics
 - User segmentation
 - Debugging email-related features
 
 **Example:**
+
 ```typescript
-import { getEmailDomain } from '@utils/logging';
+import { getEmailDomain } from "@utils/logging";
 
 // ❌ BAD - exposes full email
-logger.info('User registered', { email: user.email });
+logger.info("User registered", { email: user.email });
 
 // ✅ GOOD - logs only domain
-logger.info('User registered', { 
-  emailDomain: getEmailDomain(user.email) 
+logger.info("User registered", {
+  emailDomain: getEmailDomain(user.email),
 });
 
 // Result: 'example.com' instead of 'john@example.com'
@@ -150,30 +160,30 @@ logger.info('User registered', {
 ### Scenario 1: Debugging API Requests
 
 ```typescript
-import { sanitizeHeaders, summarize } from '@utils/logging';
+import { sanitizeHeaders, summarize } from "@utils/logging";
 
 async function makeApiCall(url: string, options: RequestInit) {
-  logger.debug('Making API call', {
+  logger.debug("Making API call", {
     url,
     method: options.method,
     headers: sanitizeHeaders(options.headers as Record<string, string>),
     body: summarize(options.body),
   });
-  
+
   try {
     const response = await fetch(url, options);
     const data = await response.json();
-    
-    logger.info('API call successful', {
+
+    logger.info("API call successful", {
       url,
       status: response.status,
       responseSize: JSON.stringify(data).length,
       // Don't log the actual response data - could be large or sensitive
     });
-    
+
     return data;
   } catch (error) {
-    logger.error('API call failed', error as Error, { url });
+    logger.error("API call failed", error as Error, { url });
     throw error;
   }
 }
@@ -182,27 +192,27 @@ async function makeApiCall(url: string, options: RequestInit) {
 ### Scenario 2: Logging Form Submissions
 
 ```typescript
-import { redactSensitiveFields, summarize } from '@utils/logging';
+import { redactSensitiveFields, summarize } from "@utils/logging";
 
 async function handleFormSubmit(formData: FormData) {
   const data = Object.fromEntries(formData);
-  
-  logger.info('Form submitted', {
-    formType: 'registration',
+
+  logger.info("Form submitted", {
+    formType: "registration",
     fieldCount: Object.keys(data).length,
     // Redact sensitive fields before logging
     data: redactSensitiveFields(data),
   });
-  
+
   try {
     const result = await submitToApi(data);
-    logger.info('Form submission successful', {
+    logger.info("Form submission successful", {
       resultId: result.id,
     });
     return result;
   } catch (error) {
-    logger.error('Form submission failed', error as Error, {
-      formType: 'registration',
+    logger.error("Form submission failed", error as Error, {
+      formType: "registration",
       // Don't log the actual form data in error case
     });
     throw error;
@@ -213,24 +223,27 @@ async function handleFormSubmit(formData: FormData) {
 ### Scenario 3: Logging User Authentication
 
 ```typescript
-import { sanitizeUserData } from '@utils/logging';
+import { sanitizeUserData } from "@utils/logging";
 
-async function authenticateUser(credentials: { email: string; password: string }) {
-  logger.debug('Authentication attempt', {
+async function authenticateUser(credentials: {
+  email: string;
+  password: string;
+}) {
+  logger.debug("Authentication attempt", {
     email: getEmailDomain(credentials.email), // Only log domain
     // NEVER log password
   });
-  
+
   try {
     const user = await authService.authenticate(credentials);
-    
-    logger.info('Authentication successful', {
+
+    logger.info("Authentication successful", {
       user: sanitizeUserData(user), // Safe user metadata only
     });
-    
+
     return user;
   } catch (error) {
-    logger.warn('Authentication failed', {
+    logger.warn("Authentication failed", {
       error: (error as Error).message,
       emailDomain: getEmailDomain(credentials.email),
       // Don't log credentials
@@ -243,31 +256,31 @@ async function authenticateUser(credentials: { email: string; password: string }
 ### Scenario 4: Logging Database Queries
 
 ```typescript
-import { summarize } from '@utils/logging';
+import { summarize } from "@utils/logging";
 
 async function queryDatabase(query: string, params: unknown[]) {
-  logger.debug('Executing database query', {
+  logger.debug("Executing database query", {
     query: summarize(query, 100), // Truncate long queries
     paramCount: params.length,
     // Don't log actual param values - might contain PII
   });
-  
+
   const startTime = performance.now();
-  
+
   try {
     const result = await db.query(query, params);
     const duration = Math.round(performance.now() - startTime);
-    
-    logger.info('Database query completed', {
+
+    logger.info("Database query completed", {
       duration,
       rowCount: result.rows.length,
       // Don't log actual result data
     });
-    
+
     return result;
   } catch (error) {
     const duration = Math.round(performance.now() - startTime);
-    logger.error('Database query failed', error as Error, {
+    logger.error("Database query failed", error as Error, {
       duration,
       query: summarize(query, 100),
     });
@@ -281,36 +294,38 @@ async function queryDatabase(query: string, params: unknown[]) {
 ### Backend (Server)
 
 ```typescript
-import { 
-  sanitizeHeaders, 
-  summarize, 
+import {
+  sanitizeHeaders,
+  summarize,
   redactSensitiveFields,
   sanitizeUserData,
   getEmailDomain,
-} from '@utils/logging';
+} from "@utils/logging";
 ```
 
 Or import from the full path:
+
 ```typescript
-import { sanitizeHeaders } from '../utils/logging/sanitize';
+import { sanitizeHeaders } from "../utils/logging/sanitize";
 ```
 
 ### Frontend (Client)
 
 ```typescript
-import { 
-  sanitizeHeaders, 
-  summarize, 
+import {
+  sanitizeHeaders,
+  summarize,
   redactSensitiveFields,
   sanitizeUserData,
   getEmailDomain,
   sanitizeError,
-} from '@/utils/logging';
+} from "@/utils/logging";
 ```
 
 Or import from the full path:
+
 ```typescript
-import { sanitizeHeaders } from '@/utils/logging/sanitize';
+import { sanitizeHeaders } from "@/utils/logging/sanitize";
 ```
 
 ## Best Practices
@@ -349,13 +364,13 @@ To verify sanitization is working:
 ```typescript
 // Test in development
 const testData = {
-  username: 'test',
-  password: 'secret',
-  apiKey: 'key-123',
+  username: "test",
+  password: "secret",
+  apiKey: "key-123",
 };
 
-console.log('Original:', testData);
-console.log('Sanitized:', redactSensitiveFields(testData));
+console.log("Original:", testData);
+console.log("Sanitized:", redactSensitiveFields(testData));
 // Should show: { username: 'test', password: '[REDACTED]', apiKey: '[REDACTED]' }
 ```
 
@@ -363,13 +378,14 @@ console.log('Sanitized:', redactSensitiveFields(testData));
 
 - **LOGGING_PATTERNS.md Section 6**: Complete documentation with examples
 - **Task 7.1 Audit Report**: Verification that no sensitive data is currently logged
-- **Sanitization utility source code**: 
+- **Sanitization utility source code**:
   - Backend: `server/src/utils/logging/sanitize.ts`
   - Frontend: `client/src/utils/logging/sanitize.ts`
 
 ## Summary
 
 The sanitization utilities are:
+
 - ✅ Fully implemented and tested
 - ✅ Properly exported and accessible
 - ✅ Documented with examples

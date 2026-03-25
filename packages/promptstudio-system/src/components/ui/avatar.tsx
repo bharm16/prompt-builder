@@ -1,7 +1,7 @@
-import * as React from "react"
-import { cva, type VariantProps } from "class-variance-authority"
+import * as React from "react";
+import { cva, type VariantProps } from "class-variance-authority";
 
-import { cn } from "@promptstudio/system/lib/utils"
+import { cn } from "@promptstudio/system/lib/utils";
 
 const avatarVariants = cva(
   "relative flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-surface-2",
@@ -18,21 +18,21 @@ const avatarVariants = cva(
     defaultVariants: {
       size: "default",
     },
-  }
-)
+  },
+);
 
 export interface AvatarProps
   extends React.HTMLAttributes<HTMLSpanElement>,
     VariantProps<typeof avatarVariants> {
-  src?: string | null
-  alt?: string
-  fallback?: string
+  src?: string | null;
+  alt?: string;
+  fallback?: string;
 }
 
 const Avatar = React.forwardRef<HTMLSpanElement, AvatarProps>(
   ({ className, size, src, alt = "", fallback, ...props }, ref) => {
-    const [imgError, setImgError] = React.useState(false)
-    const showImage = src && !imgError
+    const [imgError, setImgError] = React.useState(false);
+    const showImage = src && !imgError;
 
     return (
       <span
@@ -49,14 +49,17 @@ const Avatar = React.forwardRef<HTMLSpanElement, AvatarProps>(
             onError={() => setImgError(true)}
           />
         ) : (
-          <span className="font-semibold text-foreground" aria-hidden={Boolean(alt)}>
+          <span
+            className="font-semibold text-foreground"
+            aria-hidden={Boolean(alt)}
+          >
             {fallback || alt?.charAt(0).toUpperCase() || "?"}
           </span>
         )}
       </span>
-    )
-  }
-)
-Avatar.displayName = "Avatar"
+    );
+  },
+);
+Avatar.displayName = "Avatar";
 
-export { Avatar, avatarVariants }
+export { Avatar, avatarVariants };

@@ -2,10 +2,10 @@
  * Text Selection Manager
  * Handles text selection and cursor position management in contentEditable elements
  */
-import { logger } from '@/services/LoggingService';
-import { sanitizeError } from '@/utils/logging';
+import { logger } from "@/services/LoggingService";
+import { sanitizeError } from "@/utils/logging";
 
-const log = logger.child('textSelection');
+const log = logger.child("textSelection");
 
 export interface SelectionOffsets {
   start: number;
@@ -22,7 +22,7 @@ interface NodePosition {
  */
 export const getSelectionOffsets = (
   editorElement: HTMLElement | null,
-  range: Range | null
+  range: Range | null,
 ): SelectionOffsets | null => {
   if (!editorElement || !range) {
     return null;
@@ -42,8 +42,11 @@ export const getSelectionOffsets = (
 
     return { start, end };
   } catch (error) {
-    const errObj = error instanceof Error ? error : new Error(sanitizeError(error).message);
-    log.error('Error computing selection offsets', errObj, { operation: 'getSelectionOffsets' });
+    const errObj =
+      error instanceof Error ? error : new Error(sanitizeError(error).message);
+    log.error("Error computing selection offsets", errObj, {
+      operation: "getSelectionOffsets",
+    });
     return null;
   }
 };
@@ -56,13 +59,18 @@ export const selectRange = (range: Range | null): void => {
     return;
   }
 
-  const getSelectionFn = typeof window !== 'undefined' ? window.getSelection : null;
-  if (typeof getSelectionFn !== 'function') {
+  const getSelectionFn =
+    typeof window !== "undefined" ? window.getSelection : null;
+  if (typeof getSelectionFn !== "function") {
     return;
   }
 
   const selection = getSelectionFn.call(window);
-  if (!selection || typeof selection.removeAllRanges !== 'function' || typeof selection.addRange !== 'function') {
+  if (
+    !selection ||
+    typeof selection.removeAllRanges !== "function" ||
+    typeof selection.addRange !== "function"
+  ) {
     return;
   }
 
@@ -70,8 +78,9 @@ export const selectRange = (range: Range | null): void => {
     selection.removeAllRanges();
     selection.addRange(range);
   } catch (error) {
-    const errObj = error instanceof Error ? error : new Error(sanitizeError(error).message);
-    log.error('Error selecting range', errObj, { operation: 'selectRange' });
+    const errObj =
+      error instanceof Error ? error : new Error(sanitizeError(error).message);
+    log.error("Error selecting range", errObj, { operation: "selectRange" });
   }
 };
 
@@ -81,19 +90,24 @@ export const selectRange = (range: Range | null): void => {
 export const restoreSelectionFromOffsets = (
   element: HTMLElement | null,
   startOffset: number | null | undefined,
-  endOffset: number | null | undefined
+  endOffset: number | null | undefined,
 ): void => {
   if (!element || startOffset == null || endOffset == null) {
     return;
   }
 
-  const getSelectionFn = typeof window !== 'undefined' ? window.getSelection : null;
-  if (typeof getSelectionFn !== 'function') {
+  const getSelectionFn =
+    typeof window !== "undefined" ? window.getSelection : null;
+  if (typeof getSelectionFn !== "function") {
     return;
   }
 
   const selection = getSelectionFn.call(window);
-  if (!selection || typeof selection.removeAllRanges !== 'function' || typeof selection.addRange !== 'function') {
+  if (
+    !selection ||
+    typeof selection.removeAllRanges !== "function" ||
+    typeof selection.addRange !== "function"
+  ) {
     return;
   }
 
@@ -104,7 +118,7 @@ export const restoreSelectionFromOffsets = (
     const walker = document.createTreeWalker(
       element,
       NodeFilter.SHOW_TEXT,
-      null
+      null,
     );
 
     let currentNode = walker.nextNode();
@@ -145,8 +159,11 @@ export const restoreSelectionFromOffsets = (
     range.setStart(startPosition.node, startPosition.offset);
     range.setEnd(endPosition.node, endPosition.offset);
   } catch (error) {
-    const errObj = error instanceof Error ? error : new Error(sanitizeError(error).message);
-    log.error('Error restoring selection offsets', errObj, { operation: 'restoreSelectionFromOffsets' });
+    const errObj =
+      error instanceof Error ? error : new Error(sanitizeError(error).message);
+    log.error("Error restoring selection offsets", errObj, {
+      operation: "restoreSelectionFromOffsets",
+    });
     return;
   }
 
@@ -154,8 +171,11 @@ export const restoreSelectionFromOffsets = (
     selection.removeAllRanges();
     selection.addRange(range);
   } catch (error) {
-    const errObj = error instanceof Error ? error : new Error(sanitizeError(error).message);
-    log.error('Error applying selection range', errObj, { operation: 'restoreSelectionFromOffsets' });
+    const errObj =
+      error instanceof Error ? error : new Error(sanitizeError(error).message);
+    log.error("Error applying selection range", errObj, {
+      operation: "restoreSelectionFromOffsets",
+    });
   }
 };
 
@@ -194,8 +214,9 @@ export class TextSelectionManager {
    * Gets the current selection range
    */
   getCurrentRange(): Range | null {
-    const getSelectionFn = typeof window !== 'undefined' ? window.getSelection : null;
-    if (typeof getSelectionFn !== 'function') return null;
+    const getSelectionFn =
+      typeof window !== "undefined" ? window.getSelection : null;
+    if (typeof getSelectionFn !== "function") return null;
     const selection = getSelectionFn.call(window);
     if (!selection || selection.rangeCount === 0) {
       return null;
@@ -207,20 +228,22 @@ export class TextSelectionManager {
    * Gets the currently selected text
    */
   getSelectedText(): string {
-    const getSelectionFn = typeof window !== 'undefined' ? window.getSelection : null;
-    if (typeof getSelectionFn !== 'function') return '';
+    const getSelectionFn =
+      typeof window !== "undefined" ? window.getSelection : null;
+    if (typeof getSelectionFn !== "function") return "";
     const selection = getSelectionFn.call(window);
-    return selection ? selection.toString() : '';
+    return selection ? selection.toString() : "";
   }
 
   /**
    * Clears the current selection
    */
   clearSelection(): void {
-    const getSelectionFn = typeof window !== 'undefined' ? window.getSelection : null;
-    if (typeof getSelectionFn !== 'function') return;
+    const getSelectionFn =
+      typeof window !== "undefined" ? window.getSelection : null;
+    if (typeof getSelectionFn !== "function") return;
     const selection = getSelectionFn.call(window);
-    if (!selection || typeof selection.removeAllRanges !== 'function') return;
+    if (!selection || typeof selection.removeAllRanges !== "function") return;
     selection.removeAllRanges();
   }
 
@@ -228,10 +251,16 @@ export class TextSelectionManager {
    * Selects the contents of a specific node
    */
   selectNode(node: Node): void {
-    const getSelectionFn = typeof window !== 'undefined' ? window.getSelection : null;
-    if (typeof getSelectionFn !== 'function') return;
+    const getSelectionFn =
+      typeof window !== "undefined" ? window.getSelection : null;
+    if (typeof getSelectionFn !== "function") return;
     const selection = getSelectionFn.call(window);
-    if (!selection || typeof selection.removeAllRanges !== 'function' || typeof selection.addRange !== 'function') return;
+    if (
+      !selection ||
+      typeof selection.removeAllRanges !== "function" ||
+      typeof selection.addRange !== "function"
+    )
+      return;
 
     const range = document.createRange();
     range.selectNodeContents(node);

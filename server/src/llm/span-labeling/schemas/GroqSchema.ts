@@ -1,6 +1,6 @@
 /**
  * Groq/Llama 3 Optimized Schema
- * 
+ *
  * Llama 3 PDF Best Practices Applied:
  * - Section 1.2: GAtt mechanism maintains attention to system prompt
  * - Section 3.1: ALL constraints MUST be in system role (not schema descriptions)
@@ -10,7 +10,7 @@
  * - Section 5.1: XML tagging reduces context blending by 23%
  * - Section 8.2: Output-oriented verbs ("Return/Output" not "Generate/Analyze")
  * - Section 5.2: Anti-hallucination instructions for missing context
- * 
+ *
  * Key Difference from OpenAI:
  * - Groq uses validation-based schema (NOT grammar-constrained)
  * - Llama 3 does NOT process descriptions during generation like GPT-4o
@@ -18,71 +18,71 @@
  * - Schema is for POST-HOC validation only (enum checking, type checking)
  */
 
-import { VALID_TAXONOMY_IDS, TaxonomyId } from './SpanLabelingSchema.js';
+import { VALID_TAXONOMY_IDS, TaxonomyId } from "./SpanLabelingSchema.js";
 
 /**
  * Groq Basic Schema - Minimal descriptions, validation only
- * 
+ *
  * Descriptions here are for API documentation, NOT model guidance.
  * All semantic guidance must be in the system prompt.
  */
 export const GROQ_VALIDATION_SCHEMA = {
-  name: 'span_labeling_response',
+  name: "span_labeling_response",
   // No strict flag - Groq ignores it anyway
   schema: {
-    type: 'object',
-    required: ['analysis_trace', 'spans', 'meta', 'isAdversarial'],
+    type: "object",
+    required: ["analysis_trace", "spans", "meta", "isAdversarial"],
     additionalProperties: false,
     properties: {
       analysis_trace: {
-        type: 'string',
-        description: 'Step-by-step reasoning before listing spans'
+        type: "string",
+        description: "Step-by-step reasoning before listing spans",
       },
       spans: {
-        type: 'array',
+        type: "array",
         items: {
-          type: 'object',
-          required: ['text', 'role', 'confidence'],
+          type: "object",
+          required: ["text", "role", "confidence"],
           additionalProperties: false,
           properties: {
             text: {
-              type: 'string',
-              description: 'Exact substring from input'
+              type: "string",
+              description: "Exact substring from input",
             },
             role: {
-              type: 'string',
+              type: "string",
               // Enum constraint DOES work for validation
               enum: [...VALID_TAXONOMY_IDS],
-              description: 'Taxonomy ID'
+              description: "Taxonomy ID",
             },
             confidence: {
-              type: 'number',
+              type: "number",
               minimum: 0,
               maximum: 1,
-              description: 'Confidence 0-1'
-            }
-          }
-        }
+              description: "Confidence 0-1",
+            },
+          },
+        },
       },
       meta: {
-        type: 'object',
-        required: ['version', 'notes'],
+        type: "object",
+        required: ["version", "notes"],
         additionalProperties: false,
         properties: {
-          version: { type: 'string' },
-          notes: { type: 'string' }
-        }
+          version: { type: "string" },
+          notes: { type: "string" },
+        },
       },
       isAdversarial: {
-        type: 'boolean'
-      }
-    }
-  }
+        type: "boolean",
+      },
+    },
+  },
 };
 
 /**
  * TypeScript Interface for Llama 3 (token-efficient format)
- * 
+ *
  * Llama 3 PDF Section 3.3: "Llama 3 models exhibit a code bias and understand
  * interface User { name: string; } more robustly than verbose JSON schemas"
  */
@@ -179,7 +179,7 @@ export const LLAMA3_DISAMBIGUATION_RULES = `
 
 /**
  * Full Groq/Llama 3 System Prompt
- * 
+ *
  * All rules in system prompt where GAtt attention mechanism applies.
  * This is ~1000 tokens but necessary for Llama 3 accuracy.
  */
@@ -194,7 +194,7 @@ ${LLAMA3_TYPESCRIPT_INTERFACE}
 
 ## Valid Taxonomy IDs
 
-${VALID_TAXONOMY_IDS.map(id => `\`${id}\``).join(', ')}
+${VALID_TAXONOMY_IDS.map((id) => `\`${id}\``).join(", ")}
 
 ## What IS a Visual Control Point?
 
@@ -348,105 +348,179 @@ Set \`isAdversarial: true\`, return empty \`spans\`, note "adversarial input fla
 export const GROQ_FEW_SHOT_EXAMPLES = [
   // Example 1: Basic split pattern
   {
-    role: 'user' as const,
-    content: '<user_input>Close-up shot of weathered hands</user_input>'
+    role: "user" as const,
+    content: "<user_input>Close-up shot of weathered hands</user_input>",
   },
   {
-    role: 'assistant' as const,
-    content: JSON.stringify({
-      analysis_trace: "Identified shot type and physical appearance. 'Close-up shot' is shot framing. 'weathered hands' describes physical traits.",
-      spans: [
-        { text: "Close-up shot", role: "shot.type", confidence: 0.95 },
-        { text: "weathered hands", role: "subject.appearance", confidence: 0.9 }
-      ],
-      meta: { version: "v4-groq", notes: "Split shot type from appearance" },
-      isAdversarial: false
-    }, null, 2)
+    role: "assistant" as const,
+    content: JSON.stringify(
+      {
+        analysis_trace:
+          "Identified shot type and physical appearance. 'Close-up shot' is shot framing. 'weathered hands' describes physical traits.",
+        spans: [
+          { text: "Close-up shot", role: "shot.type", confidence: 0.95 },
+          {
+            text: "weathered hands",
+            role: "subject.appearance",
+            confidence: 0.9,
+          },
+        ],
+        meta: { version: "v4-groq", notes: "Split shot type from appearance" },
+        isAdversarial: false,
+      },
+      null,
+      2,
+    ),
   },
-  
+
   // Example 2: Camera movement disambiguation
   {
-    role: 'user' as const,
-    content: '<user_input>camera slowly pans left</user_input>'
+    role: "user" as const,
+    content: "<user_input>camera slowly pans left</user_input>",
   },
   {
-    role: 'assistant' as const,
-    content: JSON.stringify({
-      analysis_trace: "Camera verb 'pans' with modifiers indicates camera.movement. Keep entire phrase together.",
-      spans: [
-        { text: "camera slowly pans left", role: "camera.movement", confidence: 0.95 }
-      ],
-      meta: { version: "v4-groq", notes: "Kept camera movement as single span with modifiers" },
-      isAdversarial: false
-    }, null, 2)
+    role: "assistant" as const,
+    content: JSON.stringify(
+      {
+        analysis_trace:
+          "Camera verb 'pans' with modifiers indicates camera.movement. Keep entire phrase together.",
+        spans: [
+          {
+            text: "camera slowly pans left",
+            role: "camera.movement",
+            confidence: 0.95,
+          },
+        ],
+        meta: {
+          version: "v4-groq",
+          notes: "Kept camera movement as single span with modifiers",
+        },
+        isAdversarial: false,
+      },
+      null,
+      2,
+    ),
   },
-  
+
   // Example 3: Technical specs
   {
-    role: 'user' as const,
-    content: '<user_input>**TECHNICAL SPECS**\n- **Duration:** 4-8s\n- **Frame Rate:** 24fps</user_input>'
+    role: "user" as const,
+    content:
+      "<user_input>**TECHNICAL SPECS**\n- **Duration:** 4-8s\n- **Frame Rate:** 24fps</user_input>",
   },
   {
-    role: 'assistant' as const,
-    content: JSON.stringify({
-      analysis_trace: "Technical metadata section. Extract values: duration and frame rate.",
-      spans: [
-        { text: "4-8s", role: "technical.duration", confidence: 0.95 },
-        { text: "24fps", role: "technical.frameRate", confidence: 0.95 }
-      ],
-      meta: { version: "v4-groq", notes: "Extracted technical values only, not labels" },
-      isAdversarial: false
-    }, null, 2)
+    role: "assistant" as const,
+    content: JSON.stringify(
+      {
+        analysis_trace:
+          "Technical metadata section. Extract values: duration and frame rate.",
+        spans: [
+          { text: "4-8s", role: "technical.duration", confidence: 0.95 },
+          { text: "24fps", role: "technical.frameRate", confidence: 0.95 },
+        ],
+        meta: {
+          version: "v4-groq",
+          notes: "Extracted technical values only, not labels",
+        },
+        isAdversarial: false,
+      },
+      null,
+      2,
+    ),
   },
 
   // Example 4: Visual control points extraction (shows what TO extract and what to SKIP)
   // Key: "determination" = abstract (SKIP), "focused demeanor" = visible expression (EXTRACT)
   {
-    role: 'user' as const,
-    content: '<user_input>A detective walks through a foggy alley with determination, his focused demeanor clear on his face. Soft moonlight casts long shadows on his weathered face as he grips a vintage camera.</user_input>'
+    role: "user" as const,
+    content:
+      "<user_input>A detective walks through a foggy alley with determination, his focused demeanor clear on his face. Soft moonlight casts long shadows on his weathered face as he grips a vintage camera.</user_input>",
   },
   {
-    role: 'assistant' as const,
-    content: JSON.stringify({
-      analysis_trace: "Identifying visual control points. 'determination' is abstract internal state (skip). 'focused demeanor' describes visible facial expression that the model CAN render (include). Extract only elements that would change the video if modified.",
-      spans: [
-        { text: "detective", role: "subject.identity", confidence: 0.95 },
-        { text: "walks through", role: "action.movement", confidence: 0.9 },
-        { text: "foggy alley", role: "environment.location", confidence: 0.9 },
-        { text: "focused demeanor", role: "subject.emotion", confidence: 0.85 },
-        { text: "Soft moonlight", role: "lighting.source", confidence: 0.9 },
-        { text: "long shadows", role: "lighting.quality", confidence: 0.85 },
-        { text: "weathered face", role: "subject.appearance", confidence: 0.9 },
-        { text: "grips a vintage camera", role: "action.movement", confidence: 0.88 }
-      ],
-      meta: { version: "v4-groq", notes: "Skipped 'determination' (abstract internal state). Extracted 'focused demeanor' (visible facial expression)." },
-      isAdversarial: false
-    }, null, 2)
+    role: "assistant" as const,
+    content: JSON.stringify(
+      {
+        analysis_trace:
+          "Identifying visual control points. 'determination' is abstract internal state (skip). 'focused demeanor' describes visible facial expression that the model CAN render (include). Extract only elements that would change the video if modified.",
+        spans: [
+          { text: "detective", role: "subject.identity", confidence: 0.95 },
+          { text: "walks through", role: "action.movement", confidence: 0.9 },
+          {
+            text: "foggy alley",
+            role: "environment.location",
+            confidence: 0.9,
+          },
+          {
+            text: "focused demeanor",
+            role: "subject.emotion",
+            confidence: 0.85,
+          },
+          { text: "Soft moonlight", role: "lighting.source", confidence: 0.9 },
+          { text: "long shadows", role: "lighting.quality", confidence: 0.85 },
+          {
+            text: "weathered face",
+            role: "subject.appearance",
+            confidence: 0.9,
+          },
+          {
+            text: "grips a vintage camera",
+            role: "action.movement",
+            confidence: 0.88,
+          },
+        ],
+        meta: {
+          version: "v4-groq",
+          notes:
+            "Skipped 'determination' (abstract internal state). Extracted 'focused demeanor' (visible facial expression).",
+        },
+        isAdversarial: false,
+      },
+      null,
+      2,
+    ),
   },
 
   // Example 5: What NOT to extract (negative example - abstract/narrative content)
   {
-    role: 'user' as const,
-    content: '<user_input>A man drives with determination, inviting the viewer into his journey. The scene exudes authenticity as he navigates the winding road.</user_input>'
+    role: "user" as const,
+    content:
+      "<user_input>A man drives with determination, inviting the viewer into his journey. The scene exudes authenticity as he navigates the winding road.</user_input>",
   },
   {
-    role: 'assistant' as const,
-    content: JSON.stringify({
-      analysis_trace: "Applying visual control point test. 'determination' is abstract internal state (skip). 'inviting the viewer' is narrative intent (skip). 'exudes authenticity' is meta-commentary (skip). Only extracting renderable elements that would change the video.",
-      spans: [
-        { text: "man", role: "subject.identity", confidence: 0.95 },
-        { text: "drives", role: "action.movement", confidence: 0.9 },
-        { text: "navigates the winding road", role: "action.movement", confidence: 0.85 },
-        { text: "winding road", role: "environment.location", confidence: 0.85 }
-      ],
-      meta: { version: "v4-groq", notes: "Skipped abstract concepts: 'determination' (internal state), 'inviting the viewer' (narrative), 'exudes authenticity' (meta-commentary). These are not visual control points." },
-      isAdversarial: false
-    }, null, 2)
+    role: "assistant" as const,
+    content: JSON.stringify(
+      {
+        analysis_trace:
+          "Applying visual control point test. 'determination' is abstract internal state (skip). 'inviting the viewer' is narrative intent (skip). 'exudes authenticity' is meta-commentary (skip). Only extracting renderable elements that would change the video.",
+        spans: [
+          { text: "man", role: "subject.identity", confidence: 0.95 },
+          { text: "drives", role: "action.movement", confidence: 0.9 },
+          {
+            text: "navigates the winding road",
+            role: "action.movement",
+            confidence: 0.85,
+          },
+          {
+            text: "winding road",
+            role: "environment.location",
+            confidence: 0.85,
+          },
+        ],
+        meta: {
+          version: "v4-groq",
+          notes:
+            "Skipped abstract concepts: 'determination' (internal state), 'inviting the viewer' (narrative), 'exudes authenticity' (meta-commentary). These are not visual control points.",
+        },
+        isAdversarial: false,
+      },
+      null,
+      2,
+    ),
   },
 
   // Example 6: COMPREHENSIVE - Rich prompt with technical specs (shows expected 15+ span extraction)
   {
-    role: 'user' as const,
+    role: "user" as const,
     content: `<user_input>A Low-Angle Shot captures a dog running energetically across a vibrant grassy field, emphasizing its movement and agility. The tracking camera move keeps pace with the dog, allowing the sunlight to catch its fur and create a lively atmosphere. The swaying grass enhances the feeling of openness and joy, while bright, natural lighting fills the scene with vitality and warmth.
 
 **TECHNICAL SPECS**
@@ -457,54 +531,108 @@ export const GROQ_FEW_SHOT_EXAMPLES = [
 
 - **Camera:** Tracking move, low-angle on 24mm lens with deep focus f/11
 - **Lighting:** Bright, natural sunlight from above, casting soft shadows with warm color temperature around 5500K
-- **Style:** Shot on Kodak Portra 400 to capture warm tones and vibrant colors</user_input>`
+- **Style:** Shot on Kodak Portra 400 to capture warm tones and vibrant colors</user_input>`,
   },
   {
-    role: 'assistant' as const,
-    content: JSON.stringify({
-      analysis_trace: "Rich prompt with multiple sections. Extracting ALL visual control points: shot type, subject, actions, environment, technical specs, camera settings, lighting details, and style. Skip 'feeling of openness and joy' (abstract), 'lively atmosphere' (abstract), 'vitality and warmth' (abstract).",
-      spans: [
-        { text: "Low-Angle Shot", role: "shot.type", confidence: 0.95 },
-        { text: "dog", role: "subject.identity", confidence: 0.95 },
-        { text: "running energetically", role: "action.movement", confidence: 0.9 },
-        { text: "vibrant grassy field", role: "environment.location", confidence: 0.9 },
-        { text: "movement and agility", role: "action.state", confidence: 0.85 },
-        { text: "tracking camera move", role: "camera.movement", confidence: 0.95 },
-        { text: "sunlight", role: "lighting.source", confidence: 0.9 },
-        { text: "swaying grass", role: "environment.context", confidence: 0.85 },
-        { text: "bright, natural lighting", role: "lighting.quality", confidence: 0.9 },
-        { text: "4-8s", role: "technical.duration", confidence: 0.95 },
-        { text: "16:9", role: "technical.aspectRatio", confidence: 0.95 },
-        { text: "60fps", role: "technical.frameRate", confidence: 0.95 },
-        { text: "Natural ambience of the field", role: "audio.ambient", confidence: 0.85 },
-        { text: "low-angle", role: "camera.angle", confidence: 0.9 },
-        { text: "24mm lens", role: "camera.lens", confidence: 0.95 },
-        { text: "deep focus f/11", role: "camera.focus", confidence: 0.9 },
-        { text: "Bright, natural sunlight from above", role: "lighting.source", confidence: 0.9 },
-        { text: "soft shadows", role: "lighting.quality", confidence: 0.85 },
-        { text: "warm color temperature", role: "lighting.colorTemp", confidence: 0.85 },
-        { text: "5500K", role: "lighting.colorTemp", confidence: 0.95 },
-        { text: "Kodak Portra 400", role: "style.filmStock", confidence: 0.95 },
-        { text: "warm tones and vibrant colors", role: "style.colorGrade", confidence: 0.85 }
-      ],
-      meta: { version: "v4-groq", notes: "Comprehensive extraction: 22 spans from rich prompt. Skipped abstract phrases: 'lively atmosphere', 'feeling of openness and joy', 'vitality and warmth'. Extracted ALL technical specs and camera settings." },
-      isAdversarial: false
-    }, null, 2)
-  }
+    role: "assistant" as const,
+    content: JSON.stringify(
+      {
+        analysis_trace:
+          "Rich prompt with multiple sections. Extracting ALL visual control points: shot type, subject, actions, environment, technical specs, camera settings, lighting details, and style. Skip 'feeling of openness and joy' (abstract), 'lively atmosphere' (abstract), 'vitality and warmth' (abstract).",
+        spans: [
+          { text: "Low-Angle Shot", role: "shot.type", confidence: 0.95 },
+          { text: "dog", role: "subject.identity", confidence: 0.95 },
+          {
+            text: "running energetically",
+            role: "action.movement",
+            confidence: 0.9,
+          },
+          {
+            text: "vibrant grassy field",
+            role: "environment.location",
+            confidence: 0.9,
+          },
+          {
+            text: "movement and agility",
+            role: "action.state",
+            confidence: 0.85,
+          },
+          {
+            text: "tracking camera move",
+            role: "camera.movement",
+            confidence: 0.95,
+          },
+          { text: "sunlight", role: "lighting.source", confidence: 0.9 },
+          {
+            text: "swaying grass",
+            role: "environment.context",
+            confidence: 0.85,
+          },
+          {
+            text: "bright, natural lighting",
+            role: "lighting.quality",
+            confidence: 0.9,
+          },
+          { text: "4-8s", role: "technical.duration", confidence: 0.95 },
+          { text: "16:9", role: "technical.aspectRatio", confidence: 0.95 },
+          { text: "60fps", role: "technical.frameRate", confidence: 0.95 },
+          {
+            text: "Natural ambience of the field",
+            role: "audio.ambient",
+            confidence: 0.85,
+          },
+          { text: "low-angle", role: "camera.angle", confidence: 0.9 },
+          { text: "24mm lens", role: "camera.lens", confidence: 0.95 },
+          { text: "deep focus f/11", role: "camera.focus", confidence: 0.9 },
+          {
+            text: "Bright, natural sunlight from above",
+            role: "lighting.source",
+            confidence: 0.9,
+          },
+          { text: "soft shadows", role: "lighting.quality", confidence: 0.85 },
+          {
+            text: "warm color temperature",
+            role: "lighting.colorTemp",
+            confidence: 0.85,
+          },
+          { text: "5500K", role: "lighting.colorTemp", confidence: 0.95 },
+          {
+            text: "Kodak Portra 400",
+            role: "style.filmStock",
+            confidence: 0.95,
+          },
+          {
+            text: "warm tones and vibrant colors",
+            role: "style.colorGrade",
+            confidence: 0.85,
+          },
+        ],
+        meta: {
+          version: "v4-groq",
+          notes:
+            "Comprehensive extraction: 22 spans from rich prompt. Skipped abstract phrases: 'lively atmosphere', 'feeling of openness and joy', 'vitality and warmth'. Extracted ALL technical specs and camera settings.",
+        },
+        isAdversarial: false,
+      },
+      null,
+      2,
+    ),
+  },
 ];
 
 /**
  * Sandwich reminder for Llama 3 (Section 3.2)
  */
-export const GROQ_SANDWICH_REMINDER = 'Output ONLY valid JSON. No markdown code blocks, no explanatory text, just pure JSON.';
+export const GROQ_SANDWICH_REMINDER =
+  "Output ONLY valid JSON. No markdown code blocks, no explanatory text, just pure JSON.";
 
 /**
  * Get Groq system prompt with conditional format instructions
- * 
+ *
  * When json_schema mode is active, Groq validates output server-side,
  * making prompt-based format enforcement redundant. Removing these
  * instructions saves ~50-100 tokens and reduces potential conflicts.
- * 
+ *
  * @param useJsonSchema - Whether json_schema response_format is enabled
  * @returns System prompt optimized for the given mode
  */
@@ -513,38 +641,40 @@ export function getGroqSystemPrompt(useJsonSchema: boolean): string {
     // No schema validation - keep all format instructions
     return GROQ_FULL_SYSTEM_PROMPT;
   }
-  
+
   // json_schema mode active - remove redundant format enforcement
   // The schema validates output server-side, so these are unnecessary:
   // 1. "Output ONLY valid JSON" in opening line
   // 2. "**Remember:** Output ONLY valid JSON..." at the end
-  return GROQ_FULL_SYSTEM_PROMPT
-    // Remove "Output ONLY valid JSON" from opening line, keep the rest
-    .replace(
-      /^Return labeled video prompt elements using the taxonomy\. Output ONLY valid JSON matching the SpanLabelingResponse interface\./,
-      'Return labeled video prompt elements using the taxonomy. Match the SpanLabelingResponse interface.'
-    )
-    // Remove the "Remember" reminder at the end
-    .replace(
-      /\n\n\*\*Remember:\*\* Output ONLY valid JSON\. No markdown, no explanatory text\.$/,
-      ''
-    )
-    .trim();
+  return (
+    GROQ_FULL_SYSTEM_PROMPT
+      // Remove "Output ONLY valid JSON" from opening line, keep the rest
+      .replace(
+        /^Return labeled video prompt elements using the taxonomy\. Output ONLY valid JSON matching the SpanLabelingResponse interface\./,
+        "Return labeled video prompt elements using the taxonomy. Match the SpanLabelingResponse interface.",
+      )
+      // Remove the "Remember" reminder at the end
+      .replace(
+        /\n\n\*\*Remember:\*\* Output ONLY valid JSON\. No markdown, no explanatory text\.$/,
+        "",
+      )
+      .trim()
+  );
 }
 
 /**
  * Get sandwich reminder conditionally
- * 
+ *
  * When json_schema mode is active, sandwich prompting for format
  * is less critical since the API validates the response.
- * 
+ *
  * @param useJsonSchema - Whether json_schema response_format is enabled
  * @returns Sandwich reminder or empty string
  */
 export function getGroqSandwichReminder(useJsonSchema: boolean): string {
   if (useJsonSchema) {
     // Schema handles validation - minimal reminder only
-    return 'Respond with the JSON object now.';
+    return "Respond with the JSON object now.";
   }
   return GROQ_SANDWICH_REMINDER;
 }

@@ -82,6 +82,8 @@ describe("ModelRecommendationDropdown", () => {
 
     expect(screen.getByText("Render Models")).toBeInTheDocument();
     expect(screen.getByText("Draft Models")).toBeInTheDocument();
-    expect(screen.getByText("High-quality models for final production output.")).toBeInTheDocument();
+    expect(
+      screen.getByText("High-quality models for final production output."),
+    ).toBeInTheDocument();
   });
 });

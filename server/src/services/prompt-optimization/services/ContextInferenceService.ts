@@ -1,6 +1,6 @@
-import { logger } from '@infrastructure/Logger';
-import OptimizationConfig from '@config/OptimizationConfig';
-import type { AIService, InferredContext } from '../types';
+import { logger } from "@infrastructure/Logger";
+import OptimizationConfig from "@config/OptimizationConfig";
+import type { AIService, InferredContext } from "../types";
 
 /**
  * Service for inferring context from user prompts
@@ -8,13 +8,13 @@ import type { AIService, InferredContext } from '../types';
  */
 export class ContextInferenceService {
   private readonly ai: AIService;
-  private readonly log = logger.child({ service: 'ContextInferenceService' });
+  private readonly log = logger.child({ service: "ContextInferenceService" });
 
   constructor(aiService: AIService) {
     this.ai = aiService;
-    
-    this.log.debug('ContextInferenceService initialized', {
-      operation: 'constructor',
+
+    this.log.debug("ContextInferenceService initialized", {
+      operation: "constructor",
     });
   }
 
@@ -22,10 +22,10 @@ export class ContextInferenceService {
    * Automatically infer context from prompt using Claude
    */
   async inferContext(prompt: string): Promise<InferredContext> {
-    const operation = 'inferContext';
+    const operation = "inferContext";
     const startTime = performance.now();
-    
-    this.log.debug('Starting operation.', {
+
+    this.log.debug("Starting operation.", {
       operation,
       promptLength: prompt.length,
     });
@@ -33,15 +33,19 @@ export class ContextInferenceService {
     try {
       const inferencePrompt = this.buildInferencePrompt(prompt);
 
-      const response = await this.ai.execute('optimize_context_inference', {
+      const response = await this.ai.execute("optimize_context_inference", {
         systemPrompt: inferencePrompt,
         maxTokens: OptimizationConfig.tokens.contextInference,
         temperature: OptimizationConfig.temperatures.contextInference,
         timeout: OptimizationConfig.timeouts.contextInference,
       });
 
-      const rawOutput = (response.text || response.content?.[0]?.text || '').trim();
-      this.log.debug('Received LLM response.', {
+      const rawOutput = (
+        response.text ||
+        response.content?.[0]?.text ||
+        ""
+      ).trim();
+      this.log.debug("Received LLM response.", {
         operation,
         outputLength: rawOutput.length,
         outputPreview: rawOutput.substring(0, 200),
@@ -51,7 +55,7 @@ export class ContextInferenceService {
       const context = this.parseContextFromResponse(rawOutput);
 
       const duration = Math.round(performance.now() - startTime);
-      this.log.info('Operation completed.', {
+      this.log.info("Operation completed.", {
         operation,
         duration,
         backgroundLevel: context.backgroundLevel,
@@ -62,16 +66,16 @@ export class ContextInferenceService {
       return context;
     } catch (error) {
       const duration = Math.round(performance.now() - startTime);
-      this.log.error('Operation failed.', error as Error, {
+      this.log.error("Operation failed.", error as Error, {
         operation,
         duration,
         promptLength: prompt.length,
       });
       // Return sensible defaults on failure
       return {
-        specificAspects: '',
-        backgroundLevel: 'intermediate',
-        intendedUse: 'general purpose',
+        specificAspects: "",
+        backgroundLevel: "intermediate",
+        intendedUse: "general purpose",
       };
     }
   }
@@ -154,12 +158,18 @@ Output only the JSON, nothing else:`;
       const context = JSON.parse(jsonText);
 
       // Validate required fields
-      if (!context.specificAspects || !context.backgroundLevel || !context.intendedUse) {
-        throw new Error('Invalid context structure: missing required fields');
+      if (
+        !context.specificAspects ||
+        !context.backgroundLevel ||
+        !context.intendedUse
+      ) {
+        throw new Error("Invalid context structure: missing required fields");
       }
 
       // Normalize background level
-      const normalizedLevel = this.normalizeBackgroundLevel(context.backgroundLevel);
+      const normalizedLevel = this.normalizeBackgroundLevel(
+        context.backgroundLevel,
+      );
 
       return {
         specificAspects: context.specificAspects,
@@ -167,15 +177,15 @@ Output only the JSON, nothing else:`;
         intendedUse: context.intendedUse,
       };
     } catch (error) {
-      this.log.warn('Failed to parse context JSON', {
+      this.log.warn("Failed to parse context JSON", {
         error: (error as Error).message,
         errorName: (error as Error).name,
       });
       // Return defaults on parse failure
       return {
-        specificAspects: '',
-        backgroundLevel: 'intermediate',
-        intendedUse: 'general purpose',
+        specificAspects: "",
+        backgroundLevel: "intermediate",
+        intendedUse: "general purpose",
       };
     }
   }
@@ -183,15 +193,21 @@ Output only the JSON, nothing else:`;
   /**
    * Normalize background level from various formats
    */
-  private normalizeBackgroundLevel(level: string | undefined): 'beginner' | 'intermediate' | 'advanced' {
-    if (!level) return 'intermediate';
+  private normalizeBackgroundLevel(
+    level: string | undefined,
+  ): "beginner" | "intermediate" | "advanced" {
+    if (!level) return "intermediate";
     const normalized = level.toLowerCase();
-    if (normalized.includes('novice') || normalized.includes('beginner') || normalized.includes('basic')) {
-      return 'beginner';
+    if (
+      normalized.includes("novice") ||
+      normalized.includes("beginner") ||
+      normalized.includes("basic")
+    ) {
+      return "beginner";
     }
-    if (normalized.includes('advanced') || normalized.includes('expert')) {
-      return 'advanced';
+    if (normalized.includes("advanced") || normalized.includes("expert")) {
+      return "advanced";
     }
-    return 'intermediate';
+    return "intermediate";
   }
 }

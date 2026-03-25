@@ -1,16 +1,16 @@
-import { getParentCategory } from '@shared/taxonomy';
-import { SLOT_POLICIES } from './policies/slotPolicies.js';
-import type { SlotPolicy } from './types.js';
+import { getParentCategory } from "@shared/taxonomy";
+import { SLOT_POLICIES } from "./policies/slotPolicies.js";
+import type { SlotPolicy } from "./types.js";
 
 const fallbackPolicy: SlotPolicy = {
-  categoryId: 'subject',
-  mode: 'guided_llm',
-  grammar: { kind: 'freeform', minWords: 1, maxWords: 8 },
+  categoryId: "subject",
+  mode: "guided_llm",
+  grammar: { kind: "freeform", minWords: 1, maxWords: 8 },
   targetCount: 6,
   minAcceptableCount: 3,
-  requiredFamilies: ['subject_identity', 'subject_appearance'],
-  forbiddenFamilies: ['camera_movement', 'camera_lens', 'lighting_direction'],
-  promptGuidance: 'Suggest literal, camera-visible alternatives.',
+  requiredFamilies: ["subject_identity", "subject_appearance"],
+  forbiddenFamilies: ["camera_movement", "camera_lens", "lighting_direction"],
+  promptGuidance: "Suggest literal, camera-visible alternatives.",
   rescueStrategy: { enabled: true, maxCalls: 1 },
   scorerWeights: {
     familyFit: 0.45,

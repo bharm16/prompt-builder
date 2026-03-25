@@ -1,27 +1,31 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { SuggestionGenerationService } from '../SuggestionGenerationService';
-import { PROMPT_MODES } from '@services/enhancement/constants';
-import type { AIService } from '../types';
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { SuggestionGenerationService } from "../SuggestionGenerationService";
+import { PROMPT_MODES } from "@services/enhancement/constants";
+import type { AIService } from "../types";
 
 const mockEnforceJSON = vi.hoisted(() => vi.fn());
 
-vi.mock('@utils/StructuredOutputEnforcer', () => ({
+vi.mock("@utils/StructuredOutputEnforcer", () => ({
   StructuredOutputEnforcer: {
     enforceJSON: mockEnforceJSON,
   },
 }));
 
-describe('SuggestionGenerationService regression', () => {
+describe("SuggestionGenerationService regression", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('retries with Groq when qwen returns json_validate_failed', async () => {
+  it("retries with Groq when qwen returns json_validate_failed", async () => {
     mockEnforceJSON
       .mockRejectedValueOnce(
-        new Error('Groq API error: 400 - {"error":{"code":"json_validate_failed"}}')
+        new Error(
+          'Groq API error: 400 - {"error":{"code":"json_validate_failed"}}',
+        ),
       )
-      .mockResolvedValueOnce([{ text: 'gentle tracking shot', category: 'camera.movement' }]);
+      .mockResolvedValueOnce([
+        { text: "gentle tracking shot", category: "camera.movement" },
+      ]);
 
     const contrastiveDiversity = {
       calculateDiversityMetrics: vi.fn(() => ({
@@ -36,15 +40,15 @@ describe('SuggestionGenerationService regression', () => {
 
     const service = new SuggestionGenerationService(
       {} as AIService,
-      contrastiveDiversity as never
+      contrastiveDiversity as never,
     );
 
     const result = await service.generateSuggestions({
-      systemPrompt: 'rewrite prompt',
-      schema: { type: 'array', items: { required: ['text'] } },
+      systemPrompt: "rewrite prompt",
+      schema: { type: "array", items: { required: ["text"] } },
       isVideoPrompt: true,
       isPlaceholder: false,
-      highlightedText: 'driver seat',
+      highlightedText: "driver seat",
       temperature: 0.6,
       metrics: {
         total: 0,
@@ -57,11 +61,11 @@ describe('SuggestionGenerationService regression', () => {
         postProcessing: 0,
         promptMode: PROMPT_MODES.ENHANCEMENT,
       },
-      provider: 'qwen',
+      provider: "qwen",
     });
 
     expect(Array.isArray(result.suggestions)).toBe(true);
-    expect(result.suggestions?.[0]?.text).toBe('gentle tracking shot');
+    expect(result.suggestions?.[0]?.text).toBe("gentle tracking shot");
     expect(mockEnforceJSON).toHaveBeenCalledTimes(2);
     const firstCallOptions = mockEnforceJSON.mock.calls.at(0)?.[2] as
       | { provider?: string }
@@ -69,7 +73,7 @@ describe('SuggestionGenerationService regression', () => {
     const secondCallOptions = mockEnforceJSON.mock.calls.at(1)?.[2] as
       | { provider?: string }
       | undefined;
-    expect(firstCallOptions?.provider).toBe('qwen');
-    expect(secondCallOptions?.provider).toBe('groq');
+    expect(firstCallOptions?.provider).toBe("qwen");
+    expect(secondCallOptions?.provider).toBe("groq");
   });
 });

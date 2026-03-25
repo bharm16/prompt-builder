@@ -5,7 +5,11 @@
  * Following VideoConceptBuilder pattern: config/constants.js
  */
 
-import { AlertTriangle, Sparkles, CheckCircle } from '@promptstudio/system/components/ui';
+import {
+  AlertTriangle,
+  Sparkles,
+  CheckCircle,
+} from "@promptstudio/system/components/ui";
 
 // ===========================
 // DEFAULT STATES
@@ -13,24 +17,26 @@ import { AlertTriangle, Sparkles, CheckCircle } from '@promptstudio/system/compo
 
 export const DEFAULT_INACTIVE_STATE = {
   icon: Sparkles,
-  title: 'Click a highlighted token',
-  description: 'Click a highlighted token in the output to explore alternatives.',
+  title: "Click a highlighted token",
+  description:
+    "Click a highlighted token in the output to explore alternatives.",
   example: {
-    from: 'baby',
-    to: ['toddler', 'infant', 'young child'],
+    from: "baby",
+    to: ["toddler", "infant", "young child"],
   },
 } as const;
 
 export const DEFAULT_EMPTY_STATE = {
   icon: Sparkles,
-  title: 'No suggestions available',
-  description: 'Try selecting a different section or use a custom request above.',
+  title: "No suggestions available",
+  description:
+    "Try selecting a different section or use a custom request above.",
 } as const;
 
 export const DEFAULT_ERROR_STATE = {
   icon: AlertTriangle,
-  title: 'Unable to load suggestions',
-  description: 'Please try again in a moment.',
+  title: "Unable to load suggestions",
+  description: "Please try again in a moment.",
 } as const;
 
 // ===========================
@@ -38,15 +44,16 @@ export const DEFAULT_ERROR_STATE = {
 // ===========================
 
 export const DEFAULT_PANEL_CONFIG = {
-  panelTitle: '',
-  panelClassName: 'flex flex-col overflow-hidden',
+  panelTitle: "",
+  panelClassName: "flex flex-col overflow-hidden",
   enableCustomRequest: true,
-  customRequestPlaceholder: 'Make it more cinematic, brighter, tense, etc.',
-  customRequestHelperText: 'Describe the tone, detail, or direction you want to see.',
-  customRequestCtaLabel: 'Get Suggestions',
-  contextLabel: 'For',
+  customRequestPlaceholder: "Make it more cinematic, brighter, tense, etc.",
+  customRequestHelperText:
+    "Describe the tone, detail, or direction you want to see.",
+  customRequestCtaLabel: "Get Suggestions",
+  contextLabel: "For",
   showContextBadge: false,
-  contextBadgeText: 'Context-aware',
+  contextBadgeText: "Context-aware",
   contextBadgeIcon: CheckCircle,
   showCategoryTabs: true,
   showCopyAction: true,
@@ -69,5 +76,5 @@ export const MAX_REQUEST_LENGTH = 500 as const;
 // ===========================
 
 export const API_ENDPOINTS = {
-  CUSTOM_SUGGESTIONS: '/api/get-custom-suggestions',
+  CUSTOM_SUGGESTIONS: "/api/get-custom-suggestions",
 } as const;

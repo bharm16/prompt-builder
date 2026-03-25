@@ -1,6 +1,6 @@
 /**
  * Category Matching Logic
- * 
+ *
  * Determines which category a phrase belongs to based on keyword maps
  * and semantic groups
  */
@@ -23,7 +23,7 @@ interface Elements {
 interface CategoryMatch {
   category: string;
   confidence: number;
-  source: 'user-input' | 'semantic-match';
+  source: "user-input" | "semantic-match";
   originalValue: string | null;
 }
 
@@ -35,7 +35,7 @@ export function findCategoryForPhrase(
   phraseText: string,
   keywordMaps: KeywordMaps,
   semanticGroups: SemanticGroups,
-  elements: Elements
+  elements: Elements,
 ): CategoryMatch | null {
   const lowerPhrase = phraseText.toLowerCase().trim();
 
@@ -46,7 +46,7 @@ export function findCategoryForPhrase(
         return {
           category,
           confidence: 1.0,
-          source: 'user-input',
+          source: "user-input",
           originalValue: elements[category] ?? null,
         };
       }
@@ -66,7 +66,7 @@ export function findCategoryForPhrase(
           return {
             category,
             confidence: 0.8,
-            source: 'semantic-match',
+            source: "semantic-match",
             originalValue: elements[category] ?? null,
           };
         }
@@ -77,17 +77,21 @@ export function findCategoryForPhrase(
   return null;
 }
 
-type GroupName = 'cameraMovements' | 'lightingQuality' | 'aesthetics' | 'audioElements';
+type GroupName =
+  | "cameraMovements"
+  | "lightingQuality"
+  | "aesthetics"
+  | "audioElements";
 
 /**
  * Map semantic group names to element categories
  */
 export function mapGroupToCategory(groupName: string): string | null {
   const mappings: Record<GroupName, string> = {
-    cameraMovements: 'cameraMove',
-    lightingQuality: 'lighting',
-    aesthetics: 'style',
-    audioElements: 'technical',
+    cameraMovements: "cameraMove",
+    lightingQuality: "lighting",
+    aesthetics: "style",
+    audioElements: "technical",
   };
   return mappings[groupName as GroupName] || null;
 }

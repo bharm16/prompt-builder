@@ -5,10 +5,10 @@
  * Uses @google-cloud/storage directly with GOOGLE_APPLICATION_CREDENTIALS.
  */
 
-import { v4 as uuidv4 } from 'uuid';
-import type { Bucket, File } from '@google-cloud/storage';
-import { logger } from '@infrastructure/Logger';
-import type { ImageAssetStore, StoredImageAsset } from './types';
+import { v4 as uuidv4 } from "uuid";
+import type { Bucket, File } from "@google-cloud/storage";
+import { logger } from "@infrastructure/Logger";
+import type { ImageAssetStore, StoredImageAsset } from "./types";
 
 interface GcsImageAssetStoreOptions {
   bucket: Bucket;
@@ -22,11 +22,11 @@ export class GcsImageAssetStore implements ImageAssetStore {
   private readonly basePath: string;
   private readonly signedUrlTtlMs: number;
   private readonly cacheControl: string;
-  private readonly log = logger.child({ service: 'GcsImageAssetStore' });
+  private readonly log = logger.child({ service: "GcsImageAssetStore" });
 
   constructor(options: GcsImageAssetStoreOptions) {
     this.bucket = options.bucket;
-    this.basePath = options.basePath.replace(/^\/+|\/+$/g, '');
+    this.basePath = options.basePath.replace(/^\/+|\/+$/g, "");
     this.signedUrlTtlMs = options.signedUrlTtlMs;
     this.cacheControl = options.cacheControl;
   }
@@ -34,31 +34,43 @@ export class GcsImageAssetStore implements ImageAssetStore {
   async storeFromUrl(
     sourceUrl: string,
     userId: string,
-    contentType?: string
+    contentType?: string,
   ): Promise<StoredImageAsset> {
     const id = uuidv4();
     const objectPath = this.objectPath(userId, id);
 
-    this.log.debug('Fetching image from source URL', { sourceUrl: sourceUrl.slice(0, 100) });
+    this.log.debug("Fetching image from source URL", {
+      sourceUrl: sourceUrl.slice(0, 100),
+    });
 
     const response = await fetch(sourceUrl);
     if (!response.ok) {
-      throw new Error(`Failed to fetch image: ${response.status} ${response.statusText}`);
+      throw new Error(
+        `Failed to fetch image: ${response.status} ${response.statusText}`,
+      );
     }
 
     const buffer = Buffer.from(await response.arrayBuffer());
     const resolvedContentType =
-      contentType || response.headers.get('content-type') || 'image/webp';
+      contentType || response.headers.get("content-type") || "image/webp";
 
-    await this.uploadBuffer(objectPath, buffer, resolvedContentType, sourceUrl.slice(0, 500));
+    await this.uploadBuffer(
+      objectPath,
+      buffer,
+      resolvedContentType,
+      sourceUrl.slice(0, 500),
+    );
 
     const file = this.bucket.file(objectPath);
     const [metadata] = await file.getMetadata();
     const { url, expiresAt } = await this.getSignedUrl(file);
     const resolvedSize = Number(metadata.size || 0);
-    const sizeBytes = Number.isFinite(resolvedSize) && resolvedSize > 0 ? resolvedSize : undefined;
+    const sizeBytes =
+      Number.isFinite(resolvedSize) && resolvedSize > 0
+        ? resolvedSize
+        : undefined;
 
-    this.log.info('Stored image to GCS', {
+    this.log.info("Stored image to GCS", {
       id,
       sizeBytes,
       contentType: resolvedContentType,
@@ -78,7 +90,7 @@ export class GcsImageAssetStore implements ImageAssetStore {
   async storeFromBuffer(
     buffer: Buffer,
     contentType: string,
-    userId: string
+    userId: string,
   ): Promise<StoredImageAsset> {
     const id = uuidv4();
     const objectPath = this.objectPath(userId, id);
@@ -89,7 +101,10 @@ export class GcsImageAssetStore implements ImageAssetStore {
     const [metadata] = await file.getMetadata();
     const { url, expiresAt } = await this.getSignedUrl(file);
     const resolvedSize = Number(metadata.size || 0);
-    const sizeBytes = Number.isFinite(resolvedSize) && resolvedSize > 0 ? resolvedSize : undefined;
+    const sizeBytes =
+      Number.isFinite(resolvedSize) && resolvedSize > 0
+        ? resolvedSize
+        : undefined;
 
     return {
       id,
@@ -117,15 +132,19 @@ export class GcsImageAssetStore implements ImageAssetStore {
       const legacyFile = this.bucket.file(this.legacyObjectPath(assetId));
       const [legacyExists] = await legacyFile.exists();
       if (legacyExists) {
-        this.log.info('Resolved image from legacy path (no userId prefix)', { assetId, userId });
+        this.log.info("Resolved image from legacy path (no userId prefix)", {
+          assetId,
+          userId,
+        });
         const { url } = await this.getSignedUrl(legacyFile);
         return url;
       }
 
       return null;
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      this.log.warn('Failed to generate image signed URL', {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      this.log.warn("Failed to generate image signed URL", {
         assetId,
         userId,
         error: errorMessage,
@@ -145,7 +164,10 @@ export class GcsImageAssetStore implements ImageAssetStore {
     return legacyExists;
   }
 
-  async cleanupExpired(olderThanMs: number, maxItems?: number): Promise<number> {
+  async cleanupExpired(
+    olderThanMs: number,
+    maxItems?: number,
+  ): Promise<number> {
     if (!Number.isFinite(olderThanMs) || olderThanMs <= 0) {
       return 0;
     }
@@ -161,7 +183,9 @@ export class GcsImageAssetStore implements ImageAssetStore {
 
       try {
         const [metadata] = await file.getMetadata();
-        const createdAt = metadata.timeCreated ? Date.parse(metadata.timeCreated) : NaN;
+        const createdAt = metadata.timeCreated
+          ? Date.parse(metadata.timeCreated)
+          : NaN;
         if (!Number.isFinite(createdAt) || createdAt > olderThanMs) {
           continue;
         }
@@ -169,8 +193,9 @@ export class GcsImageAssetStore implements ImageAssetStore {
         await file.delete();
         deleted += 1;
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        this.log.warn('Failed to delete expired image asset', {
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        this.log.warn("Failed to delete expired image asset", {
           fileName: file.name,
           error: errorMessage,
         });
@@ -192,16 +217,16 @@ export class GcsImageAssetStore implements ImageAssetStore {
   private sanitizeUserId(userId: string): string {
     const trimmed = userId.trim();
     if (trimmed.length === 0) {
-      return 'anonymous';
+      return "anonymous";
     }
-    return trimmed.replace(/[^a-zA-Z0-9._:@-]/g, '_');
+    return trimmed.replace(/[^a-zA-Z0-9._:@-]/g, "_");
   }
 
   private async uploadBuffer(
     objectPath: string,
     buffer: Buffer,
     contentType: string,
-    sourceUrl?: string
+    sourceUrl?: string,
   ): Promise<void> {
     const maxRetries = 3;
     let lastError: Error | null = null;
@@ -223,8 +248,14 @@ export class GcsImageAssetStore implements ImageAssetStore {
         return;
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error));
-        if (attempt < maxRetries && lastError.message.includes('stream was destroyed')) {
-          this.log.warn('GCS upload stream error, retrying', { attempt, maxRetries });
+        if (
+          attempt < maxRetries &&
+          lastError.message.includes("stream was destroyed")
+        ) {
+          this.log.warn("GCS upload stream error, retrying", {
+            attempt,
+            maxRetries,
+          });
           await new Promise((r) => setTimeout(r, 100 * attempt));
         } else {
           throw lastError;
@@ -235,11 +266,13 @@ export class GcsImageAssetStore implements ImageAssetStore {
     throw lastError;
   }
 
-  private async getSignedUrl(file: File): Promise<{ url: string; expiresAt: number }> {
+  private async getSignedUrl(
+    file: File,
+  ): Promise<{ url: string; expiresAt: number }> {
     const expiresAt = Date.now() + this.signedUrlTtlMs;
     const [url] = await file.getSignedUrl({
-      version: 'v4',
-      action: 'read',
+      version: "v4",
+      action: "read",
       expires: expiresAt,
     });
     return { url, expiresAt };

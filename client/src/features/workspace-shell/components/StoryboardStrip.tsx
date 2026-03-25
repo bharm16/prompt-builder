@@ -1,11 +1,11 @@
-import React, { useMemo, useState } from 'react';
-import { X } from '@promptstudio/system/components/ui';
-import type { KeyframeTile } from '@components/ToolSidebar/types';
+import React, { useMemo, useState } from "react";
+import { X } from "@promptstudio/system/components/ui";
+import type { KeyframeTile } from "@components/ToolSidebar/types";
 import type {
   Generation,
   GenerationsPanelStateSnapshot,
-} from '@features/generations/types';
-import { cn } from '@/utils/cn';
+} from "@features/generations/types";
+import { cn } from "@/utils/cn";
 
 interface StoryboardStripProps {
   snapshot: GenerationsPanelStateSnapshot | null;
@@ -22,11 +22,12 @@ interface StoryboardFrame {
 }
 
 const resolveLatestStoryboardGeneration = (
-  generations: Generation[]
+  generations: Generation[],
 ): Generation | null => {
   const imageSequences = generations.filter(
     (generation) =>
-      generation.status === 'completed' && generation.mediaType === 'image-sequence'
+      generation.status === "completed" &&
+      generation.mediaType === "image-sequence",
   );
   if (imageSequences.length === 0) return null;
   return [...imageSequences].sort((left, right) => {
@@ -38,11 +39,11 @@ const resolveLatestStoryboardGeneration = (
 
 const resolveFrameAssetMetadata = (
   generation: Generation,
-  frameIndex: number
-): Pick<StoryboardFrame, 'assetId' | 'storagePath'> => {
+  frameIndex: number,
+): Pick<StoryboardFrame, "assetId" | "storagePath"> => {
   const value = generation.mediaAssetIds?.[frameIndex];
   if (!value) return {};
-  if (value.includes('/')) {
+  if (value.includes("/")) {
     return { storagePath: value };
   }
   return { assetId: value };
@@ -59,7 +60,7 @@ export function StoryboardStrip({
 }: StoryboardStripProps): React.ReactElement | null {
   const latestStoryboard = useMemo(
     () => resolveLatestStoryboardGeneration(snapshot?.generations ?? []),
-    [snapshot?.generations]
+    [snapshot?.generations],
   );
 
   const frames = useMemo<StoryboardFrame[]>(() => {
@@ -76,7 +77,7 @@ export function StoryboardStrip({
   const selectedFrame =
     selectedIndex >= 0 && selectedIndex < frames.length
       ? frames[selectedIndex]
-      : frames[0] ?? null;
+      : (frames[0] ?? null);
 
   if (!latestStoryboard || frames.length === 0) {
     return null;
@@ -100,10 +101,10 @@ export function StoryboardStrip({
             type="button"
             onClick={() => setSelectedIndex(index)}
             className={cn(
-              'h-11 w-[72px] flex-shrink-0 overflow-hidden rounded-lg border-2 outline-none transition-all',
+              "h-11 w-[72px] flex-shrink-0 overflow-hidden rounded-lg border-2 outline-none transition-all",
               selectedIndex === index
-                ? 'border-tool-accent-selection opacity-100 shadow-[0_0_12px_#6C5CE744]'
-                : 'border-transparent opacity-70 hover:opacity-100'
+                ? "border-tool-accent-selection opacity-100 shadow-[0_0_12px_#6C5CE744]"
+                : "border-transparent opacity-70 hover:opacity-100",
             )}
             data-testid={`storyboard-frame-${index}`}
           >
@@ -128,11 +129,13 @@ export function StoryboardStrip({
           onUseAsStartFrame({
             id: `storyboard-${selectedFrame.id}`,
             url: selectedFrame.url,
-            source: 'generation',
+            source: "generation",
             ...(selectedFrame.sourcePrompt
               ? { sourcePrompt: selectedFrame.sourcePrompt }
               : {}),
-            ...(selectedFrame.assetId ? { assetId: selectedFrame.assetId } : {}),
+            ...(selectedFrame.assetId
+              ? { assetId: selectedFrame.assetId }
+              : {}),
             ...(selectedFrame.storagePath
               ? { storagePath: selectedFrame.storagePath }
               : {}),

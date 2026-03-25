@@ -1,4 +1,4 @@
-import { parseEnv, emitEnvWarnings } from '@config/env';
+import { parseEnv, emitEnvWarnings } from "@config/env";
 
 /**
  * @deprecated Use `parseEnv` from `@config/env` instead.

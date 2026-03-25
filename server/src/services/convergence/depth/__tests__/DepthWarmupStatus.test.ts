@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockFalConfig = vi.fn();
 const mockFalSubscribe = vi.fn();
@@ -17,53 +17,56 @@ const restoreEnvVar = (name: string, value: string | undefined): void => {
   process.env[name] = value;
 };
 
-vi.mock('@fal-ai/client', () => ({
+vi.mock("@fal-ai/client", () => ({
   fal: {
     config: mockFalConfig,
     subscribe: mockFalSubscribe,
   },
 }));
 
-describe('Depth warmup status', () => {
+describe("Depth warmup status", () => {
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
 
-    process.env.NODE_ENV = 'development';
+    process.env.NODE_ENV = "development";
     delete process.env.VITEST;
-    process.env.DEPTH_WARMUP_ON_STARTUP = 'true';
-    process.env.FAL_KEY = 'test-fal-key';
+    process.env.DEPTH_WARMUP_ON_STARTUP = "true";
+    process.env.FAL_KEY = "test-fal-key";
     delete process.env.FAL_API_KEY;
   });
 
   afterEach(() => {
-    restoreEnvVar('NODE_ENV', originalNodeEnv);
-    restoreEnvVar('VITEST', originalVitest);
-    restoreEnvVar('DEPTH_WARMUP_ON_STARTUP', originalDepthWarmupOnStartup);
-    restoreEnvVar('FAL_KEY', originalFalKey);
-    restoreEnvVar('FAL_API_KEY', originalFalApiKey);
+    restoreEnvVar("NODE_ENV", originalNodeEnv);
+    restoreEnvVar("VITEST", originalVitest);
+    restoreEnvVar("DEPTH_WARMUP_ON_STARTUP", originalDepthWarmupOnStartup);
+    restoreEnvVar("FAL_KEY", originalFalKey);
+    restoreEnvVar("FAL_API_KEY", originalFalApiKey);
   });
 
-  it('marks startup warmup as complete when fal warmup succeeds', async () => {
+  it("marks startup warmup as complete when fal warmup succeeds", async () => {
     mockFalSubscribe.mockResolvedValue({
       data: {
         image: {
-          url: 'https://fal.media/files/depth-warmup.png',
-          content_type: 'image/png',
+          url: "https://fal.media/files/depth-warmup.png",
+          content_type: "image/png",
         },
       },
     });
 
-    const { getDepthWarmupStatus, warmupDepthEstimationOnStartup, setDepthEstimationModuleConfig } = await import(
-      '../DepthEstimationService'
-    );
+    const {
+      getDepthWarmupStatus,
+      warmupDepthEstimationOnStartup,
+      setDepthEstimationModuleConfig,
+    } = await import("../DepthEstimationService");
 
     // Enable warmup via module config (no longer reads process.env)
     setDepthEstimationModuleConfig({
       warmupRetryTimeoutMs: 20_000,
       falWarmupEnabled: true,
       falWarmupIntervalMs: 120_000,
-      falWarmupImageUrl: 'https://storage.googleapis.com/generativeai-downloads/images/cat.jpg',
+      falWarmupImageUrl:
+        "https://storage.googleapis.com/generativeai-downloads/images/cat.jpg",
       warmupOnStartup: true,
       warmupTimeoutMs: 60_000,
       promptOutputOnly: false,
@@ -75,7 +78,7 @@ describe('Depth warmup status', () => {
 
     expect(warmup).toMatchObject({
       success: true,
-      provider: 'fal.ai',
+      provider: "fal.ai",
     });
     expect(getDepthWarmupStatus()).toMatchObject({
       warmupInFlight: false,

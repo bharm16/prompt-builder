@@ -1,11 +1,11 @@
 /**
  * useSuggestionDetection Hook
- * 
+ *
  * Detects when suggestions are applied and triggers immediate relabeling.
  * Extracted from PromptCanvas component to improve separation of concerns.
  */
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef } from "react";
 
 export interface UseSuggestionDetectionOptions {
   displayedPrompt: string | null;
@@ -23,13 +23,13 @@ export function useSuggestionDetection({
   refreshLabeling,
 }: UseSuggestionDetectionOptions): void {
   const suggestionAppliedRef = useRef<boolean>(false);
-  const previousDisplayedPromptRef = useRef<string>(displayedPrompt ?? '');
+  const previousDisplayedPromptRef = useRef<string>(displayedPrompt ?? "");
   const previousSuggestionsOpenRef = useRef<boolean>(isSuggestionsOpen);
   const promptAtOpenRef = useRef<string | null>(null);
 
   // Detect when a suggestion is applied (suggestions panel closes + prompt changes)
   useEffect(() => {
-    const currentPrompt = displayedPrompt ?? '';
+    const currentPrompt = displayedPrompt ?? "";
     const previousPrompt = previousDisplayedPromptRef.current;
     const wasSuggestionsOpen = previousSuggestionsOpenRef.current;
     const isNowSuggestionsClosed = !isSuggestionsOpen;

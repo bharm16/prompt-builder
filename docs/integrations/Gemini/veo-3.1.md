@@ -18,7 +18,7 @@ For more information about writing effective text prompts for video generation, 
 
 Choose an example to see how to generate a video with dialogue, cinematic realism, or creative animation:
 
-Dialogue \& Sound EffectsCinematic RealismCreative Animation  
+Dialogue \& Sound EffectsCinematic RealismCreative Animation
 
 ### Python
 
@@ -165,7 +165,7 @@ Dialogue \& Sound EffectsCinematic RealismCreative Animation
 
 ## Image to video generation
 
-The following code demonstrates generating an image using[Gemini 2.5 Flash Image aka Nano Banana](https://ai.google.dev/gemini-api/docs/image-generation), then using that image as the starting frame for generating a video with Veo 3.1.  
+The following code demonstrates generating an image using[Gemini 2.5 Flash Image aka Nano Banana](https://ai.google.dev/gemini-api/docs/image-generation), then using that image as the starting frame for generating a video with Veo 3.1.
 
 ### Python
 
@@ -310,8 +310,8 @@ Veo 3.1 now accepts up to 3 reference images to guide your generated video's con
 
 For example, using these three images generated with[Nano Banana](https://ai.google.dev/gemini-api/docs/image-generation)as references with a[well-written prompt](https://ai.google.dev/gemini-api/docs/video#use-reference-images)creates the following video:
 
-|                                                                 ```dress_image```                                                                  |                                                           ```woman_image```                                                            |                                                      ```glasses_image```                                                      |
-|----------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------|
+| `dress_image`                                                                                                                                      | `woman_image`                                                                                                                          | `glasses_image`                                                                                                               |
+| -------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
 | ![High-fashion flamingo dress with layers of pink and fuchsia feathers](https://storage.googleapis.com/generativeai-downloads/images/flamingo.png) | ![Beautiful woman with dark hair and warm brown eyes](https://storage.googleapis.com/generativeai-downloads/images/flamingo_woman.png) | ![Whimsical pink, heart-shaped sunglasses](https://storage.googleapis.com/generativeai-downloads/images/flamingo_glasses.png) |
 
 ### Python
@@ -362,7 +362,7 @@ For example, using these three images generated with[Nano Banana](https://ai.goo
 
 | **Note:** This feature is available for Veo 3.1 models only
 
-Veo 3.1 lets you create videos using interpolation, or specifying the first and last frames of the video. For information about writing effective text prompts for video generation, see the[Veo prompt guide](https://ai.google.dev/gemini-api/docs/video#use-reference-images).  
+Veo 3.1 lets you create videos using interpolation, or specifying the first and last frames of the video. For information about writing effective text prompts for video generation, see the[Veo prompt guide](https://ai.google.dev/gemini-api/docs/video#use-reference-images).
 
 ### Python
 
@@ -394,8 +394,8 @@ Veo 3.1 lets you create videos using interpolation, or specifying the first and 
     video.video.save("veo3.1_with_interpolation.mp4")
     print("Generated video saved to veo3.1_with_interpolation.mp4")
 
-|                                                                           ```first_image```                                                                            |                                                     ```last_image```                                                      |                                                                    *veo3.1_with_interpolation.mp4*                                                                    |
-|------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `first_image`                                                                                                                                                          | `last_image`                                                                                                              | _veo3.1_with_interpolation.mp4_                                                                                                                                       |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | ![A ghostly woman with long white hair and a flowing dress swings gently on a rope swing](https://storage.googleapis.com/generativeai-downloads/images/ghost_girl.png) | ![The ghostly woman vanishes from the swing](https://storage.googleapis.com/generativeai-downloads/images/empty_tree.png) | ![A cinematic, haunting video of an eerie woman disappearing from a swing in the mist](https://storage.googleapis.com/generativeai-downloads/images/creepy_swing.gif) |
 
 ## Extending Veo videos
@@ -418,8 +418,8 @@ The output of the extension is a single video combining the user input video and
 
 This example takes the a Veo-generated video, shown here with its original prompt, and extends it using the`video`parameter and a new prompt:
 
-|                                         Prompt                                          |                                                                           Output:`butterfly_video`                                                                           |
-|-----------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Prompt                                                                                  | Output:`butterfly_video`                                                                                                                                                     |
+| --------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | An origami butterfly flaps its wings and flies out of the french doors into the garden. | ![Origami butterfly flaps its wings and flies out of the french doors into the garden.](https://storage.googleapis.com/generativeai-downloads/images/Butterfly_original.gif) |
 
 ### Python
@@ -459,7 +459,7 @@ For information about writing effective text prompts for video generation, see t
 
 Video generation is a computationally intensive task. When you send a request to the API, it starts a long-running job and immediately returns an`operation`object. You must then poll until the video is ready, which is indicated by the`done`status being true.
 
-The core of this process is a polling loop, which periodically checks the job's status.  
+The core of this process is a polling loop, which periodically checks the job's status.
 
 ### Python
 
@@ -516,8 +516,8 @@ The core of this process is a polling loop, which periodically checks the job's 
 
 These are the parameters you can set in your API request to control the video generation process.
 
-|     Parameter      |                                                              Description                                                              |                                                                 Veo 3.1 \& Veo 3.1 Fast                                                                 |                         Veo 3 \& Veo 3 Fast                          |                                                     Veo 2                                                      |
-|--------------------|---------------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------|
+| Parameter          | Description                                                                                                                           | Veo 3.1 \& Veo 3.1 Fast                                                                                                                                 | Veo 3 \& Veo 3 Fast                                                  | Veo 2                                                                                                          |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
 | `prompt`           | The text description for the video. Supports audio cues.                                                                              | `string`                                                                                                                                                | `string`                                                             | `string`                                                                                                       |
 | `negativePrompt`   | Text describing what not to include in the video.                                                                                     | `string`                                                                                                                                                | `string`                                                             | `string`                                                                                                       |
 | `image`            | An initial image to animate.                                                                                                          | `Image`object                                                                                                                                           | `Image`object                                                        | `Image`object                                                                                                  |
@@ -531,7 +531,7 @@ These are the parameters you can set in your API request to control the video ge
 
 Note that the`seed`parameter is also available for Veo 3 models. It doesn't guarantee determinism, but slightly improves it.
 
-You can customize your video generation by setting parameters in your request. For example you can specify`negativePrompt`to guide the model.  
+You can customize your video generation by setting parameters in your request. For example you can specify`negativePrompt`to guide the model.
 
 ### Python
 
@@ -695,20 +695,20 @@ Good prompts are descriptive and clear. To get the most out of Veo, start with i
 
 The following elements should be included in your prompt:
 
-- **Subject** : The object, person, animal, or scenery that you want in your video, such as*cityscape* ,*nature* ,*vehicles* , or*puppies*.
-- **Action** : What the subject is doing (for example,*walking* ,*running* , or*turning their head*).
-- **Style** : Specify creative direction using specific film style keywords, such as*sci-fi* ,*horror film* ,*film noir* , or animated styles like*cartoon*.
-- **Camera positioning and motion** : \[Optional\] Control the camera's location and movement using terms like*aerial view* ,*eye-level* ,*top-down shot* ,*dolly shot* , or*worms eye*.
-- **Composition** : \[Optional\] How the shot is framed, such as*wide shot* ,*close-up* ,*single-shot* or*two-shot*.
-- **Focus and lens effects** : \[Optional\] Use terms like*shallow focus* ,*deep focus* ,*soft focus* ,*macro lens* , and*wide-angle lens*to achieve specific visual effects.
-- **Ambiance** : \[Optional\] How the color and light contribute to the scene, such as*blue tones* ,*night* , or*warm tones*.
+- **Subject** : The object, person, animal, or scenery that you want in your video, such as*cityscape* ,_nature_ ,_vehicles_ , or*puppies*.
+- **Action** : What the subject is doing (for example,_walking_ ,_running_ , or*turning their head*).
+- **Style** : Specify creative direction using specific film style keywords, such as*sci-fi* ,_horror film_ ,_film noir_ , or animated styles like*cartoon*.
+- **Camera positioning and motion** : \[Optional\] Control the camera's location and movement using terms like*aerial view* ,_eye-level_ ,_top-down shot_ ,_dolly shot_ , or*worms eye*.
+- **Composition** : \[Optional\] How the shot is framed, such as*wide shot* ,_close-up_ ,_single-shot_ or*two-shot*.
+- **Focus and lens effects** : \[Optional\] Use terms like*shallow focus* ,_deep focus_ ,_soft focus_ ,_macro lens_ , and*wide-angle lens*to achieve specific visual effects.
+- **Ambiance** : \[Optional\] How the color and light contribute to the scene, such as*blue tones* ,_night_ , or*warm tones*.
 
 #### More tips for writing prompts
 
 - **Use descriptive language**: Use adjectives and adverbs to paint a clear picture for Veo.
 - **Enhance the facial details** : Specify facial details as a focus of the photo like using the word*portrait*in the prompt.
 
-*For more comprehensive prompting strategies, visit[Introduction to prompt design](https://ai.google.dev/gemini-api/docs/prompting-intro).*
+_For more comprehensive prompting strategies, visit[Introduction to prompt design](https://ai.google.dev/gemini-api/docs/prompting-intro)._
 
 ### Prompting for audio
 
@@ -720,8 +720,8 @@ With Veo 3, you can provide cues for sound effects, ambient noise, and dialogue.
 
 These videos demonstrate prompting Veo 3's audio generation with increasing levels of detail.
 
-|                                                                                                                                                                                                                                       **Prompt**                                                                                                                                                                                                                                        |                                                        **Generated output**                                                        |
-|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------|
+| **Prompt**                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | **Generated output**                                                                                                               |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
 | **More detail (Dialogue and ambience)** A wide shot of a misty Pacific Northwest forest. Two exhausted hikers, a man and a woman, push through ferns when the man stops abruptly, staring at a tree. Close-up: Fresh, deep claw marks are gouged into the tree's bark. Man: (Hand on his hunting knife) "That's no ordinary bear." Woman: (Voice tight with fear, scanning the woods) "Then what is it?" A rough bark, snapping twigs, footsteps on the damp earth. A lone bird chirps. | ![Two people in the woods encounter signs of a bear.](https://storage.googleapis.com/generativeai-downloads/images/Scary_Bear.gif) |
 | **Less detail (Dialogue)** Paper Cut-Out Animation. New Librarian: "Where do you keep the forbidden books?" Old Curator: "We don't. They keep us."                                                                                                                                                                                                                                                                                                                                      | ![Animated librarians discussing forbidden books](https://storage.googleapis.com/generativeai-downloads/images/Library.gif)        |
 
@@ -731,23 +731,23 @@ Try out these prompts yourself to hear the audio![Try Veo 3](https://deepmind.go
 
 You can use one or more images as inputs to guide your generated videos, using Veo's[image-to-video](https://ai.google.dev/gemini-api/docs/video#generate-from-images)capabilities. Veo uses the input image as the initial frame. Select an image closest to what you envision as the first scene of your video to animate everyday objects, bring drawings and paintings to life, and add movement and sound to nature scenes.
 
-|                                                                                                                                                              **Prompt**                                                                                                                                                              |                                                                       **Generated output**                                                                        |
-|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Prompt**                                                                                                                                                                                                                                                                                                                           | **Generated output**                                                                                                                                              |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Input image (Generated by Nano Banana)** A hyperrealistic macro photo of tiny, miniature surfers riding ocean waves inside a rustic stone bathroom sink. A vintage brass faucet is running, creating the perpetual surf. Surreal, whimsical, bright natural lighting.                                                              | ![Tiny, miniature surfers riding ocean waves inside a rustic stone bathroom sink.](https://storage.googleapis.com/generativeai-downloads/images/Sink_Surfers.png) |
 | **Output Video (Generated by Veo 3.1)** A surreal, cinematic macro video. Tiny surfers ride perpetual, rolling waves inside a stone bathroom sink. A running vintage brass faucet generates the endless surf. The camera slowly pans across the whimsical, sunlit scene as the miniature figures expertly carve the turquoise water. | ![Tiny surfers circling the waves in a bathroom sink.](https://storage.googleapis.com/generativeai-downloads/images/sink_surfers.gif)                             |
 
 Veo 3.1 lets you reference images or ingredients to direct your generated video's content. Provide up to three asset images of a single person, character, or product. Veo preserves the subject's appearance in the output video.
 
-|                                                                  **Prompt**                                                                   |                                                      **Generated output**                                                      |
-|-----------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------|
+| **Prompt**                                                                                                                                    | **Generated output**                                                                                                           |
+| --------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
 | **Reference image (Generated by Nano Banana)** A deep sea angler fish lurks in the deep dark water, teeth bared and bait glowing.             | ![A dark and glowing angler fish](https://storage.googleapis.com/generativeai-downloads/images/angler_fish.png)                |
 | **Reference image (Generated by Nano Banana)** A pink child's princess costume complete with a wand and tiara, on a plain product background. | ![A childs pink princess constume](https://storage.googleapis.com/generativeai-downloads/images/princess_dress.png)            |
 | **Output Video (Generated by Veo 3.1)** Create a silly cartoon version of the fish wearing the costume, swimming and waving the wand around.  | ![An angler fish wearing a princess costume](https://storage.googleapis.com/generativeai-downloads/images/angler_princess.gif) |
 
 Using Veo 3.1, you can also generate videos by specifying the first and last frames of the video.
 
-|                                                                               **Prompt**                                                                               |                                                             **Generated output**                                                             |
-|------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------|
+| **Prompt**                                                                                                                                                             | **Generated output**                                                                                                                         |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
 | **First image (Generated by Nano Banana)** A high quality photorealistic front image of a ginger cat driving a red convertible racing car on the French riviera coast. | ![A ginger cat driving a red convertible racing car](https://storage.googleapis.com/generativeai-downloads/images/ginger_race_cat.jpeg)      |
 | **Last image (Generated by Nano Banana)** Show what happens when the car takes off from a cliff.                                                                       | ![A ginger cat driving a red convertible goes off a cliff](https://storage.googleapis.com/generativeai-downloads/images/race_cat_cliff.jpeg) |
 | **Output Video (Generated by Veo 3.1)** Optional                                                                                                                       | ![A cat drives of a cliff and takes off](https://storage.googleapis.com/generativeai-downloads/images/race_cat_cliff.gif)                    |
@@ -760,8 +760,8 @@ To extend your Veo-generated video with Veo 3.1, use the video as an input along
 
 Note that voice is not able to be effectively extended if it's not present in the last 1 second of video.
 
-|                                                                                    **Prompt**                                                                                    |                                                                      **Generated output**                                                                      |
-|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Prompt**                                                                                                                                                                       | **Generated output**                                                                                                                                           |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Input video (Generated by Veo 3.1)** The paraglider takes off from the top of the mountain and starts gliding down the mountains overlooking the flower covered valleys below. | ![A paraglider takes off from the top of a mountain](https://storage.googleapis.com/generativeai-downloads/images/Paraglider.gif)                              |
 | **Output Video (Generated by Veo 3.1)** Extend this video with the paraglider slowly descending.                                                                                 | ![A paraglider takes off from the top of a mountain, then slowly descends](https://storage.googleapis.com/generativeai-downloads/images/Paraglider_Extend.gif) |
 
@@ -773,23 +773,23 @@ This section presents several prompts, highlighting how descriptive details can 
 
 This video demonstrates how you can use the elements of[prompt writing basics](https://ai.google.dev/gemini-api/docs/video#basics)in your prompt.
 
-|                                                                                                **Prompt**                                                                                                |                                                 **Generated output**                                                  |
-|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------|
+| **Prompt**                                                                                                                                                                                               | **Generated output**                                                                                                  |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
 | Close up shot (composition) of melting icicles (subject) on a frozen rock wall (context) with cool blue tones (ambiance), zoomed in (camera motion) maintaining close-up detail of water drips (action). | ![Dripping icicles with a blue background.](https://storage.googleapis.com/generativeai-downloads/images/Icicles.gif) |
 
 #### Man on the phone
 
 These videos demonstrate how you can revise your prompt with increasingly specific details to get Veo to refine the output to your liking.
 
-|                                                                                                                                                                                                                                                                       **Prompt**                                                                                                                                                                                                                                                                       |                                             **Generated output**                                             |
-|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------|
+| **Prompt**                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | **Generated output**                                                                                         |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------ |
 | **Less detail** The camera dollies to show a close up of a desperate man in a green trench coat. He's making a call on a rotary-style wall phone with a green neon light. It looks like a movie scene.                                                                                                                                                                                                                                                                                                                                                 | ![Man talking on the phone.](https://storage.googleapis.com/generativeai-downloads/images/Desperate_Man.gif) |
 | **More detail** A close-up cinematic shot follows a desperate man in a weathered green trench coat as he dials a rotary phone mounted on a gritty brick wall, bathed in the eerie glow of a green neon sign. The camera dollies in, revealing the tension in his jaw and the desperation etched on his face as he struggles to make the call. The shallow depth of field focuses on his furrowed brow and the black rotary phone, blurring the background into a sea of neon colors and indistinct shadows, creating a sense of urgency and isolation. | ![Man talking on the phone](https://storage.googleapis.com/generativeai-downloads/images/detail_call.gif)    |
 
 #### Snow leopard
 
-|                                                                                                                                                                                                                                                                 **Prompt**                                                                                                                                                                                                                                                                 |                                             **Generated output**                                              |
-|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------|
+| **Prompt**                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | **Generated output**                                                                                          |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------- |
 | **Simple prompt:** A cute creature with snow leopard-like fur is walking in winter forest, 3D cartoon style render.                                                                                                                                                                                                                                                                                                                                                                                                                        | ![Snow leopard is lethargic.](https://storage.googleapis.com/generativeai-downloads/images/snowleopard.gif)   |
 | **Detailed prompt:** Create a short 3D animated scene in a joyful cartoon style. A cute creature with snow leopard-like fur, large expressive eyes, and a friendly, rounded form happily prances through a whimsical winter forest. The scene should feature rounded, snow-covered trees, gentle falling snowflakes, and warm sunlight filtering through the branches. The creature's bouncy movements and wide smile should convey pure delight. Aim for an upbeat, heartwarming tone with bright, cheerful colors and playful animation. | ![Snow leopard is running faster.](https://storage.googleapis.com/generativeai-downloads/images/snow-run.gif) |
 
@@ -801,8 +801,8 @@ These examples show you how to refine your prompts by each basic element.
 
 Specify the main focus (subject) and the background or environment (context).
 
-|                                                                          **Prompt**                                                                           |                                                 **Generated output**                                                 |
-|---------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------|
+| **Prompt**                                                                                                                                                    | **Generated output**                                                                                                 |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
 | An architectural rendering of a white concrete apartment building with flowing organic shapes, seamlessly blending with lush greenery and futuristic elements | ![Placeholder.](https://storage.googleapis.com/generativeai-downloads/images/architecture.gif)                       |
 | A satellite floating through outer space with the moon and some stars in the background.                                                                      | ![Satellite floating in the atmosphere.](https://storage.googleapis.com/generativeai-downloads/images/satellite.gif) |
 
@@ -810,24 +810,24 @@ Specify the main focus (subject) and the background or environment (context).
 
 Specify what the subject is doing (e.g., walking, running, or turning their head).
 
-|                                                 **Prompt**                                                 |                                            **Generated output**                                             |
-|------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------|
+| **Prompt**                                                                                                 | **Generated output**                                                                                        |
+| ---------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
 | A wide shot of a woman walking along the beach, looking content and relaxed towards the horizon at sunset. | ![Sunset is absolutely beautiful.](https://storage.googleapis.com/generativeai-downloads/images/sunset.gif) |
 
 #### Style
 
 Add keywords to steer the generation toward a specific aesthetic (e.g., surreal, vintage, futuristic, film noir).
 
-|                                       **Prompt**                                        |                                                **Generated output**                                                |
-|-----------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------|
+| **Prompt**                                                                              | **Generated output**                                                                                               |
+| --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
 | Film noir style, man and woman walk on the street, mystery, cinematic, black and white. | ![Film noir style is absolutely beautiful.](https://storage.googleapis.com/generativeai-downloads/images/noir.gif) |
 
 #### Camera motion and composition
 
 Specify how the camera moves (POV shot, aerial view, tracking drone view) and how the shot is framed (wide shot, close-up, low angle).
 
-|                                   **Prompt**                                   |                                             **Generated output**                                             |
-|--------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------|
+| **Prompt**                                                                     | **Generated output**                                                                                         |
+| ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------ |
 | A POV shot from a vintage car driving in the rain, Canada at night, cinematic. | ![Sunset is absolutely beautiful.](https://storage.googleapis.com/generativeai-downloads/images/car-pov.gif) |
 | Extreme close-up of a an eye with city reflected in it.                        | ![Sunset is absolutely beautiful.](https://storage.googleapis.com/generativeai-downloads/images/eye.gif)     |
 
@@ -835,8 +835,8 @@ Specify how the camera moves (POV shot, aerial view, tracking drone view) and ho
 
 Color palettes and lighting influence the mood. Try terms like "muted orange warm tones," "natural light," "sunrise," or "cool blue tones."
 
-|                                         **Prompt**                                          |                                                  **Generated output**                                                  |
-|---------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------|
+| **Prompt**                                                                                  | **Generated output**                                                                                                   |
+| ------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
 | A close-up of a girl holding adorable golden retriever puppy in the park, sunlight.         | ![A puppy in a young girl's arms.](https://ai.google.dev/static/gemini-api/docs/video/images/ambiance_puppy.gif)       |
 | Cinematic close-up shot of a sad woman riding a bus in the rain, cool blue tones, sad mood. | ![A woman riding on a bus that feels sad.](https://ai.google.dev/static/gemini-api/docs/video/images/ambiance_sad.gif) |
 
@@ -847,8 +847,8 @@ Negative prompts specify elements you*don't*want in the video.
 - ❌ Don't use instructive language like*no* or*don't*. (e.g., "No walls").
 - ✅ Do describe what you don't want to see. (e.g., "wall, frame").
 
-|                                                                            **Prompt**                                                                            |                                               **Generated output**                                                |
-|------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------|
+| **Prompt**                                                                                                                                                       | **Generated output**                                                                                              |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
 | **Without Negative Prompt:** Generate a short, stylized animation of a large, solitary oak tree with leaves blowing vigorously in a strong wind... \[truncated\] | ![Tree with using words.](https://ai.google.dev/static/gemini-api/docs/video/images/tree_with_no_negative.gif)    |
 | **With Negative Prompt:** \[Same prompt\] Negative prompt: urban background, man-made structures, dark, stormy, or threatening atmosphere.                       | ![Tree with no negative words.](https://ai.google.dev/static/gemini-api/docs/video/images/tree_with_negative.gif) |
 
@@ -856,8 +856,8 @@ Negative prompts specify elements you*don't*want in the video.
 
 Veo lets you specify the aspect ratio for your video.
 
-|                                                                                                                                                                                                                                                             **Prompt**                                                                                                                                                                                                                                                              |                                                                    **Generated output**                                                                     |
-|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Prompt**                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | **Generated output**                                                                                                                                        |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Widescreen (16:9)** Create a video with a tracking drone view of a man driving a red convertible car in Palm Springs, 1970s, warm sunlight, long shadows.                                                                                                                                                                                                                                                                                                                                                                         | ![A man driving a red convertible car in Palm Springs, 1970s style.](https://ai.google.dev/static/gemini-api/docs/video/images/widescreen_palm_springs.gif) |
 | **Portrait (9:16)** Create a video highlighting the smooth motion of a majestic Hawaiian waterfall within a lush rainforest. Focus on realistic water flow, detailed foliage, and natural lighting to convey tranquility. Capture the rushing water, misty atmosphere, and dappled sunlight filtering through the dense canopy. Use smooth, cinematic camera movements to showcase the waterfall and its surroundings. Aim for a peaceful, realistic tone, transporting the viewer to the serene beauty of the Hawaiian rainforest. | ![A majestic Hawaiian waterfall in a lush rainforest.](https://ai.google.dev/static/gemini-api/docs/video/images/waterfall.gif)                             |
 
@@ -874,9 +874,9 @@ Veo lets you specify the aspect ratio for your video.
 
 ## Model features
 
-|        Feature         |               Description               |                          Veo 3.1 \& Veo 3.1 Fast                           |                     Veo 3 \& Veo 3 Fast                      |                                Veo 2                                 |
-|------------------------|-----------------------------------------|----------------------------------------------------------------------------|--------------------------------------------------------------|----------------------------------------------------------------------|
-| **Audio**              | Natively generates audio with video.    | Natively generates audio with video.                                       | ✔️ Always on                                                 | ❌ Silent only                                                        |
+| Feature                | Description                             | Veo 3.1 \& Veo 3.1 Fast                                                    | Veo 3 \& Veo 3 Fast                                          | Veo 2                                                                |
+| ---------------------- | --------------------------------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------ | -------------------------------------------------------------------- |
+| **Audio**              | Natively generates audio with video.    | Natively generates audio with video.                                       | ✔️ Always on                                                 | ❌ Silent only                                                       |
 | **Input Modalities**   | The type of input used for generation.  | Text-to-Video, Image-to-Video, Video-to-Video                              | Text-to-Video, Image-to-Video                                | Text-to-Video, Image-to-Video                                        |
 | **Resolution**         | The output resolution of the video.     | 720p \& 1080p (8s length only) 720p only when using video extension.       | 720p \& 1080p (16:9 only)                                    | 720p                                                                 |
 | **Frame Rate**         | The output frame rate of the video.     | 24fps                                                                      | 24fps                                                        | 24fps                                                                |
@@ -888,12 +888,12 @@ Veo lets you specify the aspect ratio for your video.
 
 Check out the[Pricing](https://ai.google.dev/gemini-api/docs/pricing#veo-3.1)and[Rate limits](https://ai.google.dev/gemini-api/docs/rate-limits)pages for more Veo model-specific usage details.
 
-Veo Fast versions allow developers to create videos with sound while maintaining high quality and optimizing for speed and business use cases. They're ideal for backend services that programmatically generate ads, tools for rapid A/B testing of creative concepts, or apps that need to quickly produce social media content.  
+Veo Fast versions allow developers to create videos with sound while maintaining high quality and optimizing for speed and business use cases. They're ideal for backend services that programmatically generate ads, tools for rapid A/B testing of creative concepts, or apps that need to quickly produce social media content.
 
 ### Veo 3.1 Preview
 
-|          Property           |                    Description                    |
-|-----------------------------|---------------------------------------------------|
+| Property                    | Description                                       |
+| --------------------------- | ------------------------------------------------- |
 | id_cardModel code           | **Gemini API** `veo-3.1-generate-preview`         |
 | saveSupported data types    | **Input** Text, Image **Output** Video with audio |
 | token_autoLimits            | **Text input** 1,024 tokens **Output video** 1    |
@@ -901,8 +901,8 @@ Veo Fast versions allow developers to create videos with sound while maintaining
 
 ### Veo 3.1 Fast Preview
 
-|          Property           |                    Description                    |
-|-----------------------------|---------------------------------------------------|
+| Property                    | Description                                       |
+| --------------------------- | ------------------------------------------------- |
 | id_cardModel code           | **Gemini API** `veo-3.1-fast-generate-preview`    |
 | saveSupported data types    | **Input** Text, Image **Output** Video with audio |
 | token_autoLimits            | **Text input** 1,024 tokens **Output video** 1    |
@@ -910,8 +910,8 @@ Veo Fast versions allow developers to create videos with sound while maintaining
 
 ### Veo 3
 
-|          Property           |                    Description                    |
-|-----------------------------|---------------------------------------------------|
+| Property                    | Description                                       |
+| --------------------------- | ------------------------------------------------- |
 | id_cardModel code           | **Gemini API** `veo-3.0-generate-001`             |
 | saveSupported data types    | **Input** Text, Image **Output** Video with audio |
 | token_autoLimits            | **Text input** 1,024 tokens **Output video** 1    |
@@ -919,8 +919,8 @@ Veo Fast versions allow developers to create videos with sound while maintaining
 
 ### Veo 3 Fast
 
-|          Property           |                    Description                    |
-|-----------------------------|---------------------------------------------------|
+| Property                    | Description                                       |
+| --------------------------- | ------------------------------------------------- |
 | id_cardModel code           | **Gemini API** `veo-3.0-fast-generate-001`        |
 | saveSupported data types    | **Input** Text, Image **Output** Video with audio |
 | token_autoLimits            | **Text input** 1,024 tokens **Output video** 1    |
@@ -928,8 +928,8 @@ Veo Fast versions allow developers to create videos with sound while maintaining
 
 ### Veo 2
 
-|          Property           |                                                      Description                                                       |
-|-----------------------------|------------------------------------------------------------------------------------------------------------------------|
+| Property                    | Description                                                                                                            |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
 | id_cardModel code           | **Gemini API** `veo-2.0-generate-001`                                                                                  |
 | saveSupported data types    | **Input** Text, image **Output** Video                                                                                 |
 | token_autoLimits            | **Text input** N/A **Image input** Any image resolution and aspect ratio up to 20MB file size **Output video** Up to 2 |
@@ -939,4 +939,3 @@ Veo Fast versions allow developers to create videos with sound while maintaining
 
 - Get started with the Veo 3.1 API by experimenting in the[Veo Quickstart Colab](https://colab.research.google.com/github/google-gemini/cookbook/blob/main/quickstarts/Get_started_Veo.ipynb)and the[Veo 3.1 applet](https://aistudio.google.com/apps/bundled/veo_studio).
 - Learn how to write even better prompts with our[Introduction to prompt design](https://ai.google.dev/gemini-api/docs/prompting-intro).
-

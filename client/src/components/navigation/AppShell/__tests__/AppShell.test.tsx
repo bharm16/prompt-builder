@@ -1,8 +1,8 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
-import { AppShell } from '../AppShell';
-import { useCreditBalance } from '@/contexts/CreditBalanceContext';
-import type { NavItemsByVariant } from '../types';
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { render, screen } from "@testing-library/react";
+import { AppShell } from "../AppShell";
+import { useCreditBalance } from "@/contexts/CreditBalanceContext";
+import type { NavItemsByVariant } from "../types";
 
 const unsubscribeMock = vi.fn();
 const onAuthStateChangedMock = vi.fn(() => unsubscribeMock);
@@ -10,37 +10,54 @@ const useNavigationConfigMock = vi.fn();
 const useUserCreditBalanceMock = vi.hoisted(() => vi.fn());
 let lastToolSidebarProps: any;
 
-vi.mock('@repositories/index', () => ({
+vi.mock("@repositories/index", () => ({
   getAuthRepository: () => ({
     onAuthStateChanged: onAuthStateChangedMock,
   }),
 }));
 
-vi.mock('../hooks/useNavigationConfig', () => ({
+vi.mock("../hooks/useNavigationConfig", () => ({
   useNavigationConfig: () => useNavigationConfigMock(),
 }));
 
-vi.mock('@/hooks/useUserCreditBalance', () => ({
-  useUserCreditBalance: (...args: unknown[]) => useUserCreditBalanceMock(...args),
+vi.mock("@/hooks/useUserCreditBalance", () => ({
+  useUserCreditBalance: (...args: unknown[]) =>
+    useUserCreditBalanceMock(...args),
 }));
 
-vi.mock('@components/ToolSidebar', () => ({
+vi.mock("@components/ToolSidebar", () => ({
   ToolSidebar: (props: any) => {
     lastToolSidebarProps = props;
     return <div data-testid="tool-sidebar" />;
   },
 }));
 
-vi.mock('../variants/TopNavbar', () => ({
+vi.mock("../variants/TopNavbar", () => ({
   TopNavbar: (props: any) => (
     <div data-testid="top-navbar" data-items={props.navItems.length} />
   ),
 }));
 
-describe('AppShell', () => {
+describe("AppShell", () => {
   const navItems: NavItemsByVariant = {
-    topNav: [{ to: '/pricing', label: 'Pricing', icon: () => null, showInTopNav: true, showInSidebar: true }],
-    sidebar: [{ to: '/assets', label: 'Assets', icon: () => null, showInTopNav: false, showInSidebar: true }],
+    topNav: [
+      {
+        to: "/pricing",
+        label: "Pricing",
+        icon: () => null,
+        showInTopNav: true,
+        showInSidebar: true,
+      },
+    ],
+    sidebar: [
+      {
+        to: "/assets",
+        label: "Assets",
+        icon: () => null,
+        showInTopNav: false,
+        showInSidebar: true,
+      },
+    ],
   };
 
   beforeEach(() => {
@@ -51,19 +68,19 @@ describe('AppShell', () => {
       error: null,
     });
     useNavigationConfigMock.mockReturnValue({
-      variant: 'sidebar',
+      variant: "sidebar",
       navItems,
-      currentPath: '/assets',
+      currentPath: "/assets",
     });
   });
 
   const CreditProbe = () => {
     const { balance } = useCreditBalance();
-    return <span data-testid="credit-probe">{balance ?? 'none'}</span>;
+    return <span data-testid="credit-probe">{balance ?? "none"}</span>;
   };
 
-  describe('error handling', () => {
-    it('cleans up auth subscription on unmount', () => {
+  describe("error handling", () => {
+    it("cleans up auth subscription on unmount", () => {
       const { unmount } = render(<AppShell>Content</AppShell>);
 
       unmount();
@@ -73,81 +90,77 @@ describe('AppShell', () => {
     });
   });
 
-  describe('edge cases', () => {
-    it('renders children without shell for auth routes', () => {
+  describe("edge cases", () => {
+    it("renders children without shell for auth routes", () => {
       useNavigationConfigMock.mockReturnValue({
-        variant: 'none',
+        variant: "none",
         navItems,
-        currentPath: '/signin',
+        currentPath: "/signin",
       });
 
       render(<AppShell>Auth Content</AppShell>);
 
-      expect(screen.getByText('Auth Content')).toBeInTheDocument();
-      expect(screen.queryByTestId('top-navbar')).toBeNull();
-      expect(screen.queryByTestId('tool-sidebar')).toBeNull();
+      expect(screen.getByText("Auth Content")).toBeInTheDocument();
+      expect(screen.queryByTestId("top-navbar")).toBeNull();
+      expect(screen.queryByTestId("tool-sidebar")).toBeNull();
     });
 
-    it('renders ToolSidebar in sidebar variant', () => {
+    it("renders ToolSidebar in sidebar variant", () => {
       useNavigationConfigMock.mockReturnValue({
-        variant: 'sidebar',
+        variant: "sidebar",
         navItems,
-        currentPath: '/assets',
+        currentPath: "/assets",
       });
 
-      render(
-        <AppShell>
-          Content
-        </AppShell>
-      );
+      render(<AppShell>Content</AppShell>);
 
-      expect(screen.getByTestId('tool-sidebar')).toBeInTheDocument();
+      expect(screen.getByTestId("tool-sidebar")).toBeInTheDocument();
       expect(lastToolSidebarProps.user).toBeNull();
     });
   });
 
-  describe('core behavior', () => {
-    it('renders top navigation variant with nav items', () => {
+  describe("core behavior", () => {
+    it("renders top navigation variant with nav items", () => {
       useNavigationConfigMock.mockReturnValue({
-        variant: 'topnav',
+        variant: "topnav",
         navItems,
-        currentPath: '/pricing',
+        currentPath: "/pricing",
       });
 
       render(<AppShell>Marketing</AppShell>);
 
-      expect(screen.getByTestId('top-navbar')).toBeInTheDocument();
-      expect(screen.getByText('Marketing')).toBeInTheDocument();
+      expect(screen.getByTestId("top-navbar")).toBeInTheDocument();
+      expect(screen.getByText("Marketing")).toBeInTheDocument();
     });
 
-    it('renders sidebar variant with ToolSidebar and workspace content', () => {
+    it("renders sidebar variant with ToolSidebar and workspace content", () => {
       useNavigationConfigMock.mockReturnValue({
-        variant: 'sidebar',
+        variant: "sidebar",
         navItems,
-        currentPath: '/assets',
+        currentPath: "/assets",
       });
 
       render(<AppShell>Workspace</AppShell>);
 
-      expect(screen.getByTestId('tool-sidebar')).toBeInTheDocument();
-      expect(screen.getByText('Workspace')).toBeInTheDocument();
+      expect(screen.getByTestId("tool-sidebar")).toBeInTheDocument();
+      expect(screen.getByText("Workspace")).toBeInTheDocument();
     });
 
-    it('provides credit context to both sidebar and workspace children in sidebar variant', () => {
+    it("provides credit context to both sidebar and workspace children in sidebar variant", () => {
       useNavigationConfigMock.mockReturnValue({
-        variant: 'sidebar',
+        variant: "sidebar",
         navItems,
-        currentPath: '/assets',
+        currentPath: "/assets",
       });
 
       render(
         <AppShell>
           <CreditProbe />
-        </AppShell>
+        </AppShell>,
       );
 
-      expect(screen.getByTestId('tool-sidebar')).toBeInTheDocument();
-      expect(screen.getByTestId('credit-probe')).toHaveTextContent('42');
+      expect(screen.getByTestId("tool-sidebar")).toBeInTheDocument();
+      expect(screen.getByTestId("credit-probe")).toHaveTextContent("42");
     });
   });
 });

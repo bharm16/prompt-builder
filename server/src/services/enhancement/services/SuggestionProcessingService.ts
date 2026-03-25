@@ -5,7 +5,7 @@
  * Coordinates multiple processing steps to ensure high-quality suggestions.
  */
 
-import { logger } from '@infrastructure/Logger';
+import { logger } from "@infrastructure/Logger";
 import type {
   Suggestion,
   GroupedSuggestions,
@@ -21,8 +21,8 @@ import type {
   AIService,
   OutputSchema,
   EditHistoryEntry,
-} from './types';
-import type { FallbackRegenerationService } from './FallbackRegenerationService';
+} from "./types";
+import type { FallbackRegenerationService } from "./FallbackRegenerationService";
 
 export interface SuggestionProcessingParams {
   suggestions: Suggestion[];
@@ -59,14 +59,16 @@ export interface SuggestionProcessingResult {
   fallbackSourceCount: number;
 }
 
-type ExtendedSanitizationContext = Parameters<ValidationService['sanitizeSuggestions']>[1] & {
+type ExtendedSanitizationContext = Parameters<
+  ValidationService["sanitizeSuggestions"]
+>[1] & {
   contextBefore?: string;
   contextAfter?: string;
   spanAnchors?: string;
   nearbySpanHints?: string;
 };
 
-const DEPRIORITIZED_MARKER = '__deprioritized';
+const DEPRIORITIZED_MARKER = "__deprioritized";
 
 /**
  * Service for processing enhancement suggestions
@@ -77,35 +79,37 @@ export class SuggestionProcessingService {
     private readonly validationService: ValidationService,
     private readonly categoryAligner: CategoryAligner,
     private readonly fallbackRegeneration: FallbackRegenerationService,
-    private readonly ai: AIService
+    private readonly ai: AIService,
   ) {}
 
   /**
    * Process suggestions through diversity, alignment, sanitization, and fallback
    */
   async processSuggestions(
-    params: SuggestionProcessingParams
+    params: SuggestionProcessingParams,
   ): Promise<SuggestionProcessingResult> {
     const sanitizationContext = this._buildSanitizationContext(params);
     const diverseSuggestions = params.skipDiversityCheck
       ? params.suggestions
-      : await this.diversityEnforcer.ensureDiverseSuggestions(params.suggestions);
+      : await this.diversityEnforcer.ensureDiverseSuggestions(
+          params.suggestions,
+        );
 
     const echoFiltered = this.diversityEnforcer.filterOriginalEchoes(
       diverseSuggestions,
-      params.highlightedText
+      params.highlightedText,
     );
 
     const alignmentResult = this.applyCategoryAlignment(
       echoFiltered,
       params.highlightedCategory,
       params.highlightedText,
-      params.highlightedCategoryConfidence ?? null
+      params.highlightedCategoryConfidence ?? null,
     );
 
     const sanitizedSuggestions = this.validationService.sanitizeSuggestions(
       alignmentResult.suggestions,
-      sanitizationContext
+      sanitizationContext,
     );
     const primarySanitizedSuggestions =
       this._extractPrimarySuggestions(sanitizedSuggestions);
@@ -115,7 +119,9 @@ export class SuggestionProcessingService {
       sanitizedSuggestions: primarySanitizedSuggestions,
       isVideoPrompt: params.isVideoPrompt,
       isPlaceholder: params.isPlaceholder,
-      ...(params.lockedSpanCategories ? { lockedSpanCategories: params.lockedSpanCategories } : {}),
+      ...(params.lockedSpanCategories
+        ? { lockedSpanCategories: params.lockedSpanCategories }
+        : {}),
       regenerationDetails: {
         highlightWordCount: params.highlightWordCount,
       },
@@ -131,24 +137,35 @@ export class SuggestionProcessingService {
         phraseRole: params.phraseRole,
         highlightWordCount: params.highlightWordCount,
         highlightedCategory: params.highlightedCategory,
-        highlightedCategoryConfidence: params.highlightedCategoryConfidence ?? null,
+        highlightedCategoryConfidence:
+          params.highlightedCategoryConfidence ?? null,
         editHistory: params.editHistory,
         modelTarget: params.modelTarget,
         promptSection: params.promptSection,
-        ...(params.spanAnchors !== undefined ? { spanAnchors: params.spanAnchors } : {}),
-        ...(params.nearbySpanHints !== undefined ? { nearbySpanHints: params.nearbySpanHints } : {}),
-        ...(params.focusGuidance !== undefined ? { focusGuidance: params.focusGuidance } : {}),
+        ...(params.spanAnchors !== undefined
+          ? { spanAnchors: params.spanAnchors }
+          : {}),
+        ...(params.nearbySpanHints !== undefined
+          ? { nearbySpanHints: params.nearbySpanHints }
+          : {}),
+        ...(params.focusGuidance !== undefined
+          ? { focusGuidance: params.focusGuidance }
+          : {}),
       },
       aiService: this.ai,
       schema: params.schema,
       temperature: params.temperature,
     };
-    if (params.videoConstraints) fallbackParams.videoConstraints = params.videoConstraints;
-    if (params.phraseRole) fallbackParams.regenerationDetails.phraseRole = params.phraseRole;
+    if (params.videoConstraints)
+      fallbackParams.videoConstraints = params.videoConstraints;
+    if (params.phraseRole)
+      fallbackParams.regenerationDetails.phraseRole = params.phraseRole;
     if (params.highlightedText)
-      fallbackParams.regenerationDetails.highlightedText = params.highlightedText;
+      fallbackParams.regenerationDetails.highlightedText =
+        params.highlightedText;
     if (params.highlightedCategory)
-      fallbackParams.regenerationDetails.highlightedCategory = params.highlightedCategory;
+      fallbackParams.regenerationDetails.highlightedCategory =
+        params.highlightedCategory;
     if (
       params.highlightedCategoryConfidence !== null &&
       params.highlightedCategoryConfidence !== undefined
@@ -158,22 +175,31 @@ export class SuggestionProcessingService {
     }
 
     const fallbackResult =
-      await this.fallbackRegeneration.attemptFallbackRegeneration(fallbackParams);
+      await this.fallbackRegeneration.attemptFallbackRegeneration(
+        fallbackParams,
+      );
 
     let suggestionsToUse = this.validationService.sanitizeSuggestions(
       fallbackResult.suggestions,
-      sanitizationContext
+      sanitizationContext,
     );
     suggestionsToUse = this._extractPrimarySuggestions(suggestionsToUse);
     let activeConstraints = fallbackResult.constraints;
     let usedFallback = fallbackResult.usedFallback;
     let fallbackSourceCount = fallbackResult.sourceCount;
 
-    if (minSuggestionTarget > 0 && suggestionsToUse.length < minSuggestionTarget) {
+    if (
+      minSuggestionTarget > 0 &&
+      suggestionsToUse.length < minSuggestionTarget
+    ) {
       let topUpAttempts = 0;
-      let topUpConstraints = activeConstraints || params.videoConstraints || undefined;
+      let topUpConstraints =
+        activeConstraints || params.videoConstraints || undefined;
 
-      while (suggestionsToUse.length < minSuggestionTarget && topUpAttempts < 3) {
+      while (
+        suggestionsToUse.length < minSuggestionTarget &&
+        topUpAttempts < 3
+      ) {
         topUpAttempts += 1;
         const beforeCount = suggestionsToUse.length;
 
@@ -186,12 +212,14 @@ export class SuggestionProcessingService {
         }
 
         const topUpResult =
-          await this.fallbackRegeneration.attemptFallbackRegeneration(topUpFallbackParams);
+          await this.fallbackRegeneration.attemptFallbackRegeneration(
+            topUpFallbackParams,
+          );
 
         suggestionsToUse = this._mergeAndResanitizeSuggestions(
           suggestionsToUse,
           topUpResult.suggestions,
-          sanitizationContext
+          sanitizationContext,
         );
         if (topUpResult.constraints) {
           activeConstraints = topUpResult.constraints;
@@ -212,7 +240,7 @@ export class SuggestionProcessingService {
       }
     }
 
-    logger.info('Processing suggestions for categorization', {
+    logger.info("Processing suggestions for categorization", {
       isPlaceholder: params.isPlaceholder,
       hasCategoryField: suggestionsToUse[0]?.category !== undefined,
       totalSuggestions: suggestionsToUse.length,
@@ -233,7 +261,10 @@ export class SuggestionProcessingService {
   /**
    * Group suggestions by category if applicable
    */
-  groupSuggestions(suggestions: Suggestion[], isPlaceholder: boolean): Suggestion[] | GroupedSuggestions[] {
+  groupSuggestions(
+    suggestions: Suggestion[],
+    isPlaceholder: boolean,
+  ): Suggestion[] | GroupedSuggestions[] {
     if (isPlaceholder && suggestions[0]?.category) {
       return this.validationService.groupSuggestionsByCategory(suggestions);
     }
@@ -267,7 +298,7 @@ export class SuggestionProcessingService {
         isPlaceholder &&
         Array.isArray(groupedSuggestions) &&
         groupedSuggestions[0] &&
-        'suggestions' in groupedSuggestions[0]
+        "suggestions" in groupedSuggestions[0]
           ? true
           : false,
       phraseRole: phraseRole || null,
@@ -284,7 +315,7 @@ export class SuggestionProcessingService {
 
     if (hasNoSuggestions) {
       result.noSuggestionsReason =
-        'No template-compliant drop-in replacements were generated for this highlight.';
+        "No template-compliant drop-in replacements were generated for this highlight.";
     }
 
     return result;
@@ -298,19 +329,19 @@ export class SuggestionProcessingService {
     sanitizedSuggestions: Suggestion[],
     usedFallback: boolean,
     fallbackSourceCount: number,
-    baseSuggestions: Suggestion[]
+    baseSuggestions: Suggestion[],
   ): void {
     const groupedSuggestions = result.suggestions;
 
-    logger.info('Final result structure', {
+    logger.info("Final result structure", {
       isGrouped:
         Array.isArray(groupedSuggestions) &&
         groupedSuggestions[0] &&
-        'suggestions' in groupedSuggestions[0],
+        "suggestions" in groupedSuggestions[0],
       categoriesCount:
         Array.isArray(groupedSuggestions) &&
         groupedSuggestions[0] &&
-        'suggestions' in groupedSuggestions[0]
+        "suggestions" in groupedSuggestions[0]
           ? groupedSuggestions.length
           : 0,
       hasCategories: result.hasCategories,
@@ -326,9 +357,9 @@ export class SuggestionProcessingService {
       baseSuggestionCount = 0;
     }
 
-    logger.info('Enhancement suggestions generated', {
+    logger.info("Enhancement suggestions generated", {
       count: sanitizedSuggestions.length,
-      type: result.isPlaceholder ? 'placeholder' : 'rewrite',
+      type: result.isPlaceholder ? "placeholder" : "rewrite",
       diversityEnforced: sanitizedSuggestions.length !== baseSuggestionCount,
       appliedConstraintMode: result.appliedConstraintMode || null,
       usedFallback,
@@ -343,22 +374,25 @@ export class SuggestionProcessingService {
     suggestions: Suggestion[],
     highlightedCategory: string | null,
     highlightedText: string,
-    confidence: number | null
+    confidence: number | null,
   ): CategoryAlignmentResult {
     if (!highlightedCategory) {
       return { suggestions, fallbackApplied: false, context: {} };
     }
 
-    const alignmentResult = this.categoryAligner.enforceCategoryAlignment(suggestions, {
-      highlightedText,
-      highlightedCategory,
-      ...(confidence !== null && confidence !== undefined
-        ? { highlightedCategoryConfidence: confidence }
-        : {}),
-    });
+    const alignmentResult = this.categoryAligner.enforceCategoryAlignment(
+      suggestions,
+      {
+        highlightedText,
+        highlightedCategory,
+        ...(confidence !== null && confidence !== undefined
+          ? { highlightedCategoryConfidence: confidence }
+          : {}),
+      },
+    );
 
     if (alignmentResult.fallbackApplied) {
-      logger.info('Applied category fallbacks', {
+      logger.info("Applied category fallbacks", {
         highlightedText,
         category: highlightedCategory,
         reason: alignmentResult.context.reason,
@@ -369,7 +403,7 @@ export class SuggestionProcessingService {
   }
 
   private _buildSanitizationContext(
-    params: SuggestionProcessingParams
+    params: SuggestionProcessingParams,
   ): ExtendedSanitizationContext {
     const sanitizationContext: ExtendedSanitizationContext = {
       highlightedText: params.highlightedText,
@@ -379,10 +413,14 @@ export class SuggestionProcessingService {
       ...(params.lockedSpanCategories
         ? { lockedSpanCategories: params.lockedSpanCategories }
         : {}),
-      ...(params.videoConstraints ? { videoConstraints: params.videoConstraints } : {}),
+      ...(params.videoConstraints
+        ? { videoConstraints: params.videoConstraints }
+        : {}),
       contextBefore: params.contextBefore,
       contextAfter: params.contextAfter,
-      ...(params.spanAnchors !== undefined ? { spanAnchors: params.spanAnchors } : {}),
+      ...(params.spanAnchors !== undefined
+        ? { spanAnchors: params.spanAnchors }
+        : {}),
       ...(params.nearbySpanHints !== undefined
         ? { nearbySpanHints: params.nearbySpanHints }
         : {}),
@@ -394,12 +432,12 @@ export class SuggestionProcessingService {
   private _mergeAndResanitizeSuggestions(
     baseSuggestions: Suggestion[],
     additionalSuggestions: Suggestion[],
-    context: ExtendedSanitizationContext
+    context: ExtendedSanitizationContext,
   ): Suggestion[] {
     const merged = [...baseSuggestions, ...additionalSuggestions];
     const deduped = this._dedupeSuggestions(merged);
     return this._extractPrimarySuggestions(
-      this.validationService.sanitizeSuggestions(deduped, context)
+      this.validationService.sanitizeSuggestions(deduped, context),
     );
   }
 
@@ -420,7 +458,7 @@ export class SuggestionProcessingService {
   }
 
   private _normalizeSuggestionText(text: string): string {
-    return text.toLowerCase().replace(/\s+/g, ' ').trim();
+    return text.toLowerCase().replace(/\s+/g, " ").trim();
   }
 
   private _extractPrimarySuggestions(suggestions: Suggestion[]): Suggestion[] {

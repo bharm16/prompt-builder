@@ -1,14 +1,17 @@
-import { randomUUID } from 'node:crypto';
-import type { Request, Response } from 'express';
-import { z } from 'zod';
-import { sendApiError } from '@middleware/apiErrorResponse';
-import type { UserCreditService } from '@services/credits/UserCreditService';
-import type { ContinuitySessionService } from '@services/continuity/ContinuitySessionService';
-import type { ContinuitySession, ContinuityShot } from '@services/continuity/types';
-import { CreditCostCalculator } from '@services/continuity/CreditCostCalculator';
-import { GENERATION_ERROR_CODES } from '@routes/generationErrorCodes';
-import { buildRefundKey, refundWithGuard } from '@services/credits/refundGuard';
-import { requireUserId, type RequestWithUser } from '@middleware/requireUserId';
+import { randomUUID } from "node:crypto";
+import type { Request, Response } from "express";
+import { z } from "zod";
+import { sendApiError } from "@middleware/apiErrorResponse";
+import type { UserCreditService } from "@services/credits/UserCreditService";
+import type { ContinuitySessionService } from "@services/continuity/ContinuitySessionService";
+import type {
+  ContinuitySession,
+  ContinuityShot,
+} from "@services/continuity/types";
+import { CreditCostCalculator } from "@services/continuity/CreditCostCalculator";
+import { GENERATION_ERROR_CODES } from "@routes/generationErrorCodes";
+import { buildRefundKey, refundWithGuard } from "@services/credits/refundGuard";
+import { requireUserId, type RequestWithUser } from "@middleware/requireUserId";
 import {
   CreateSceneProxySchema,
   CreateShotSchema,
@@ -17,7 +20,7 @@ import {
   UpdateSessionSettingsSchema,
   UpdateShotSchema,
   UpdateStyleReferenceSchema,
-} from '@server/schemas/continuity.schemas';
+} from "@server/schemas/continuity.schemas";
 
 export { requireUserId, type RequestWithUser };
 export {
@@ -44,14 +47,14 @@ export async function requireSessionForUser(
   service: ContinuitySessionService,
   req: Request,
   res: Response,
-  options?: { canonicalErrors?: boolean }
+  options?: { canonicalErrors?: boolean },
 ): Promise<ContinuitySession | null> {
   const userId = options?.canonicalErrors
-    ? (req as RequestWithUser).user?.uid ?? null
+    ? ((req as RequestWithUser).user?.uid ?? null)
     : requireUserId(req as RequestWithUser, res);
   if (!userId && options?.canonicalErrors) {
     sendApiError(res, req, 401, {
-      error: 'Authentication required',
+      error: "Authentication required",
       code: GENERATION_ERROR_CODES.AUTH_REQUIRED,
     });
   }
@@ -61,11 +64,11 @@ export async function requireSessionForUser(
   if (!sessionId || Array.isArray(sessionId)) {
     if (options?.canonicalErrors) {
       sendApiError(res, req, 400, {
-        error: 'Invalid sessionId',
+        error: "Invalid sessionId",
         code: GENERATION_ERROR_CODES.INVALID_REQUEST,
       });
     } else {
-      res.status(400).json({ success: false, error: 'Invalid sessionId' });
+      res.status(400).json({ success: false, error: "Invalid sessionId" });
     }
     return null;
   }
@@ -74,22 +77,22 @@ export async function requireSessionForUser(
   if (!session) {
     if (options?.canonicalErrors) {
       sendApiError(res, req, 404, {
-        error: 'Session not found',
+        error: "Session not found",
         code: GENERATION_ERROR_CODES.INVALID_REQUEST,
       });
     } else {
-      res.status(404).json({ success: false, error: 'Session not found' });
+      res.status(404).json({ success: false, error: "Session not found" });
     }
     return null;
   }
   if (session.userId !== userId) {
     if (options?.canonicalErrors) {
       sendApiError(res, req, 403, {
-        error: 'Access denied',
+        error: "Access denied",
         code: GENERATION_ERROR_CODES.AUTH_REQUIRED,
       });
     } else {
-      res.status(403).json({ success: false, error: 'Access denied' });
+      res.status(403).json({ success: false, error: "Access denied" });
     }
     return null;
   }
@@ -99,14 +102,16 @@ export async function requireSessionForUser(
 const sendValidationError = (res: Response, error: z.ZodError) => {
   res.status(400).json({
     success: false,
-    error: 'Invalid request',
+    error: "Invalid request",
     details: error.issues,
   });
 };
 
 const buildCameraInput = (
-  camera?: z.infer<typeof CreateShotSchema>['camera']
-): { camera?: { yaw?: number; pitch?: number; roll?: number; dolly?: number } } => {
+  camera?: z.infer<typeof CreateShotSchema>["camera"],
+): {
+  camera?: { yaw?: number; pitch?: number; roll?: number; dolly?: number };
+} => {
   if (!camera) return {};
   return {
     camera: {
@@ -122,18 +127,28 @@ const buildCreateShotInput = (input: z.infer<typeof CreateShotSchema>) => ({
   prompt: input.prompt,
   ...(input.continuityMode ? { continuityMode: input.continuityMode } : {}),
   ...(input.generationMode ? { generationMode: input.generationMode } : {}),
-  ...(input.styleReferenceId !== undefined ? { styleReferenceId: input.styleReferenceId } : {}),
-  ...(input.styleStrength !== undefined ? { styleStrength: input.styleStrength } : {}),
+  ...(input.styleReferenceId !== undefined
+    ? { styleReferenceId: input.styleReferenceId }
+    : {}),
+  ...(input.styleStrength !== undefined
+    ? { styleStrength: input.styleStrength }
+    : {}),
   ...(input.sourceVideoId ? { sourceVideoId: input.sourceVideoId } : {}),
   ...(input.modelId ? { modelId: input.modelId } : {}),
-  ...(input.characterAssetId ? { characterAssetId: input.characterAssetId } : {}),
-  ...(input.faceStrength !== undefined ? { faceStrength: input.faceStrength } : {}),
+  ...(input.characterAssetId
+    ? { characterAssetId: input.characterAssetId }
+    : {}),
+  ...(input.faceStrength !== undefined
+    ? { faceStrength: input.faceStrength }
+    : {}),
   ...buildCameraInput(input.camera),
 });
 
 const buildUpdateShotCameraInput = (
-  camera?: z.infer<typeof UpdateShotSchema>['camera']
-): { camera?: { yaw?: number; pitch?: number; roll?: number; dolly?: number } } => {
+  camera?: z.infer<typeof UpdateShotSchema>["camera"],
+): {
+  camera?: { yaw?: number; pitch?: number; roll?: number; dolly?: number };
+} => {
   if (!camera) return {};
   return {
     camera: {
@@ -159,11 +174,11 @@ export async function reserveShotGenerationCredits(
   session: ContinuitySession,
   req: Request,
   res: Response,
-  userCreditService?: UserCreditService | null
+  userCreditService?: UserCreditService | null,
 ): Promise<ShotGenerationReservation | null> {
   if (!userCreditService) {
     sendApiError(res, req, 503, {
-      error: 'Credit service unavailable',
+      error: "Credit service unavailable",
       code: GENERATION_ERROR_CODES.SERVICE_UNAVAILABLE,
     });
     return null;
@@ -172,7 +187,7 @@ export async function reserveShotGenerationCredits(
   const shotId = req.params.shotId;
   if (!shotId || Array.isArray(shotId)) {
     sendApiError(res, req, 400, {
-      error: 'Invalid shotId',
+      error: "Invalid shotId",
       code: GENERATION_ERROR_CODES.INVALID_REQUEST,
     });
     return null;
@@ -181,7 +196,7 @@ export async function reserveShotGenerationCredits(
   const shot = session.shots.find((s) => s.id === shotId);
   if (!shot) {
     sendApiError(res, req, 404, {
-      error: 'Shot not found',
+      error: "Shot not found",
       code: GENERATION_ERROR_CODES.INVALID_REQUEST,
     });
     return null;
@@ -192,7 +207,7 @@ export async function reserveShotGenerationCredits(
   const operationToken =
     requestId ??
     buildRefundKey([
-      'continuity-shot',
+      "continuity-shot",
       session.id,
       shotId,
       session.userId,
@@ -200,21 +215,28 @@ export async function reserveShotGenerationCredits(
       randomUUID().slice(0, 8),
     ]);
   const unusedRetriesRefundKey = buildRefundKey([
-    'continuity-shot',
+    "continuity-shot",
     operationToken,
-    'unusedRetries',
+    "unusedRetries",
   ]);
   const failedActualCostRefundKey = buildRefundKey([
-    'continuity-shot',
+    "continuity-shot",
     operationToken,
-    'failedActualCost',
+    "failedActualCost",
   ]);
-  const catchAllRefundKey = buildRefundKey(['continuity-shot', operationToken, 'catchAll']);
+  const catchAllRefundKey = buildRefundKey([
+    "continuity-shot",
+    operationToken,
+    "catchAll",
+  ]);
 
-  const reserved = await userCreditService.reserveCredits(session.userId, cost.totalCost);
+  const reserved = await userCreditService.reserveCredits(
+    session.userId,
+    cost.totalCost,
+  );
   if (!reserved) {
     sendApiError(res, req, 402, {
-      error: 'Insufficient credits',
+      error: "Insufficient credits",
       code: GENERATION_ERROR_CODES.INSUFFICIENT_CREDITS,
       details: `This generation requires up to ${cost.totalCost} credits (including possible retries).`,
     });
@@ -236,7 +258,7 @@ export async function settleSuccessfulShotGeneration(
   session: ContinuitySession,
   userCreditService: UserCreditService,
   reservation: ShotGenerationReservation,
-  result: ContinuityShot
+  result: ContinuityShot,
 ): Promise<void> {
   const actualRetries = result.retryCount ?? 0;
   const actualCost = reservation.cost.perAttemptCost * (actualRetries + 1);
@@ -247,7 +269,7 @@ export async function settleSuccessfulShotGeneration(
       userId: session.userId,
       amount: refundAmount,
       refundKey: reservation.unusedRetriesRefundKey,
-      reason: 'continuity shot unused retry budget',
+      reason: "continuity shot unused retry budget",
       metadata: {
         ...(reservation.requestId ? { requestId: reservation.requestId } : {}),
         sessionId: session.id,
@@ -255,13 +277,13 @@ export async function settleSuccessfulShotGeneration(
       },
     });
   }
-  if (result.status === 'failed') {
+  if (result.status === "failed") {
     await refundWithGuard({
       userCreditService,
       userId: session.userId,
       amount: actualCost,
       refundKey: reservation.failedActualCostRefundKey,
-      reason: 'continuity shot failed actual cost',
+      reason: "continuity shot failed actual cost",
       metadata: {
         ...(reservation.requestId ? { requestId: reservation.requestId } : {}),
         sessionId: session.id,
@@ -274,14 +296,14 @@ export async function settleSuccessfulShotGeneration(
 export async function settleExceptionalShotGeneration(
   session: ContinuitySession,
   userCreditService: UserCreditService,
-  reservation: ShotGenerationReservation
+  reservation: ShotGenerationReservation,
 ): Promise<void> {
   await refundWithGuard({
     userCreditService,
     userId: session.userId,
     amount: reservation.cost.totalCost,
     refundKey: reservation.catchAllRefundKey,
-    reason: 'continuity shot generation exception',
+    reason: "continuity shot generation exception",
     metadata: {
       ...(reservation.requestId ? { requestId: reservation.requestId } : {}),
       sessionId: session.id,
@@ -294,7 +316,7 @@ export async function handleCreateShot(
   service: ContinuitySessionService,
   req: Request,
   res: Response,
-  options: { sessionId: string; status?: number }
+  options: { sessionId: string; status?: number },
 ): Promise<void> {
   const parsed = CreateShotSchema.safeParse(req.body);
   if (!parsed.success) {
@@ -314,7 +336,7 @@ export async function handleUpdateShot(
   service: ContinuitySessionService,
   req: Request,
   res: Response,
-  options: { sessionId: string; shotId: string }
+  options: { sessionId: string; shotId: string },
 ): Promise<void> {
   const parsed = UpdateShotSchema.safeParse(req.body);
   if (!parsed.success) {
@@ -327,22 +349,37 @@ export async function handleUpdateShot(
     ...(parsed.data.continuityMode !== undefined
       ? { continuityMode: parsed.data.continuityMode }
       : {}),
-    ...(parsed.data.generationMode !== undefined ? { generationMode: parsed.data.generationMode } : {}),
+    ...(parsed.data.generationMode !== undefined
+      ? { generationMode: parsed.data.generationMode }
+      : {}),
     ...(parsed.data.styleReferenceId !== undefined
       ? { styleReferenceId: parsed.data.styleReferenceId }
       : {}),
-    ...(parsed.data.styleStrength !== undefined ? { styleStrength: parsed.data.styleStrength } : {}),
-    ...(parsed.data.modelId !== undefined ? { modelId: parsed.data.modelId } : {}),
+    ...(parsed.data.styleStrength !== undefined
+      ? { styleStrength: parsed.data.styleStrength }
+      : {}),
+    ...(parsed.data.modelId !== undefined
+      ? { modelId: parsed.data.modelId }
+      : {}),
     ...(parsed.data.characterAssetId !== undefined
       ? { characterAssetId: parsed.data.characterAssetId }
       : {}),
-    ...(parsed.data.faceStrength !== undefined ? { faceStrength: parsed.data.faceStrength } : {}),
+    ...(parsed.data.faceStrength !== undefined
+      ? { faceStrength: parsed.data.faceStrength }
+      : {}),
     ...buildUpdateShotCameraInput(parsed.data.camera),
     ...(parsed.data.versions !== undefined
-      ? { versions: parsed.data.versions as unknown as ContinuityShot['versions'] }
+      ? {
+          versions: parsed.data
+            .versions as unknown as ContinuityShot["versions"],
+        }
       : {}),
   };
-  const shot = await service.updateShot(options.sessionId, options.shotId, updates);
+  const shot = await service.updateShot(
+    options.sessionId,
+    options.shotId,
+    updates,
+  );
   res.json({ success: true, data: shot });
 }
 
@@ -351,25 +388,39 @@ export async function handleGenerateShot(
   session: ContinuitySession,
   req: Request,
   res: Response,
-  userCreditService?: UserCreditService | null
+  userCreditService?: UserCreditService | null,
 ): Promise<void> {
-  const reservation = await reserveShotGenerationCredits(session, req, res, userCreditService);
+  const reservation = await reserveShotGenerationCredits(
+    session,
+    req,
+    res,
+    userCreditService,
+  );
   if (!reservation || !userCreditService) return;
 
   try {
     const result = await service.generateShot(session.id, reservation.shotId);
-    await settleSuccessfulShotGeneration(session, userCreditService, reservation, result);
+    await settleSuccessfulShotGeneration(
+      session,
+      userCreditService,
+      reservation,
+      result,
+    );
     res.json({ success: true, data: result });
   } catch (error) {
-    await settleExceptionalShotGeneration(session, userCreditService, reservation);
+    await settleExceptionalShotGeneration(
+      session,
+      userCreditService,
+      reservation,
+    );
 
     const statusCode =
-      typeof (error as { statusCode?: unknown })?.statusCode === 'number'
+      typeof (error as { statusCode?: unknown })?.statusCode === "number"
         ? ((error as { statusCode?: number }).statusCode as number)
         : 500;
 
     sendApiError(res, req, statusCode, {
-      error: 'Shot generation failed',
+      error: "Shot generation failed",
       code:
         statusCode === 503
           ? GENERATION_ERROR_CODES.SERVICE_UNAVAILABLE
@@ -383,7 +434,7 @@ export async function handleUpdateStyleReference(
   service: ContinuitySessionService,
   req: Request,
   res: Response,
-  options: { sessionId: string; shotId: string }
+  options: { sessionId: string; shotId: string },
 ): Promise<void> {
   const parsed = UpdateStyleReferenceSchema.safeParse(req.body);
   if (!parsed.success) {
@@ -393,14 +444,14 @@ export async function handleUpdateStyleReference(
 
   const { styleReferenceId } = parsed.data;
   const normalizedStyleReferenceId =
-    styleReferenceId === null || styleReferenceId === 'primary'
+    styleReferenceId === null || styleReferenceId === "primary"
       ? null
       : styleReferenceId;
 
   const shot = await service.updateShotStyleReference(
     options.sessionId,
     options.shotId,
-    normalizedStyleReferenceId
+    normalizedStyleReferenceId,
   );
   res.json({ success: true, data: shot });
 }
@@ -409,7 +460,7 @@ export async function handleUpdateSessionSettings(
   service: ContinuitySessionService,
   req: Request,
   res: Response,
-  options: { sessionId: string }
+  options: { sessionId: string },
 ): Promise<void> {
   const parsed = UpdateSessionSettingsSchema.safeParse(req.body);
   if (!parsed.success) {
@@ -417,7 +468,10 @@ export async function handleUpdateSessionSettings(
     return;
   }
 
-  const updatedSession = await service.updateSessionSettings(options.sessionId, parsed.data.settings);
+  const updatedSession = await service.updateSessionSettings(
+    options.sessionId,
+    parsed.data.settings,
+  );
   res.json({ success: true, data: updatedSession });
 }
 
@@ -425,7 +479,7 @@ export async function handleUpdatePrimaryStyleReference(
   service: ContinuitySessionService,
   req: Request,
   res: Response,
-  options: { sessionId: string }
+  options: { sessionId: string },
 ): Promise<void> {
   const parsed = UpdatePrimaryStyleReferenceSchema.safeParse(req.body);
   if (!parsed.success) {
@@ -436,7 +490,7 @@ export async function handleUpdatePrimaryStyleReference(
   const updatedSession = await service.updatePrimaryStyleReference(
     options.sessionId,
     parsed.data.sourceVideoId,
-    parsed.data.sourceImageUrl
+    parsed.data.sourceImageUrl,
   );
   res.json({ success: true, data: updatedSession });
 }
@@ -445,7 +499,7 @@ export async function handleCreateSceneProxy(
   service: ContinuitySessionService,
   req: Request,
   res: Response,
-  options: { sessionId: string; status?: number }
+  options: { sessionId: string; status?: number },
 ): Promise<void> {
   const parsed = CreateSceneProxySchema.safeParse(req.body);
   if (!parsed.success) {
@@ -456,16 +510,18 @@ export async function handleCreateSceneProxy(
   const updatedSession = await service.createSceneProxy(
     options.sessionId,
     parsed.data.sourceShotId,
-    parsed.data.sourceVideoId
+    parsed.data.sourceVideoId,
   );
-  res.status(options.status ?? 201).json({ success: true, data: updatedSession });
+  res
+    .status(options.status ?? 201)
+    .json({ success: true, data: updatedSession });
 }
 
 export async function handlePreviewSceneProxy(
   service: ContinuitySessionService,
   req: Request,
   res: Response,
-  options: { sessionId: string; shotId: string }
+  options: { sessionId: string; shotId: string },
 ): Promise<void> {
   const parsed = PreviewSceneProxySchema.safeParse(req.body);
   if (!parsed.success) {
@@ -473,6 +529,10 @@ export async function handlePreviewSceneProxy(
     return;
   }
 
-  const shot = await service.previewSceneProxy(options.sessionId, options.shotId, parsed.data.camera);
+  const shot = await service.previewSceneProxy(
+    options.sessionId,
+    options.shotId,
+    parsed.data.camera,
+  );
   res.json({ success: true, data: shot });
 }

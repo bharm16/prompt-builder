@@ -1,9 +1,9 @@
-import { v4 as uuidv4 } from 'uuid';
-import type { Bucket } from '@google-cloud/storage';
-import { getFirestore } from '@infrastructure/firebaseAdmin';
-import { logger } from '@infrastructure/Logger';
-import { ReferenceImageProcessingService } from '@services/asset/ReferenceImageProcessingService';
-import { assertUrlSafe } from '@server/shared/urlValidation';
+import { v4 as uuidv4 } from "uuid";
+import type { Bucket } from "@google-cloud/storage";
+import { getFirestore } from "@infrastructure/firebaseAdmin";
+import { logger } from "@infrastructure/Logger";
+import { ReferenceImageProcessingService } from "@services/asset/ReferenceImageProcessingService";
+import { assertUrlSafe } from "@server/shared/urlValidation";
 
 interface ReferenceImageRepositoryOptions {
   db?: FirebaseFirestore.Firestore;
@@ -40,7 +40,11 @@ interface CreateReferenceImageInput {
   originalName?: string | null;
 }
 
-function buildDownloadUrl(bucketName: string, storagePath: string, token: string): string {
+function buildDownloadUrl(
+  bucketName: string,
+  storagePath: string,
+  token: string,
+): string {
   const encodedPath = encodeURIComponent(storagePath);
   return `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${encodedPath}?alt=media&token=${token}`;
 }
@@ -58,11 +62,13 @@ export class ReferenceImageRepository {
   private readonly bucket: Bucket;
   private readonly bucketName: string;
   private readonly processor: ReferenceImageProcessingService;
-  private readonly log = logger.child({ service: 'ReferenceImageRepository' });
+  private readonly log = logger.child({ service: "ReferenceImageRepository" });
 
   constructor(options: ReferenceImageRepositoryOptions) {
     if (!options.bucket) {
-      throw new Error('ReferenceImageRepository requires an injected storage bucket');
+      throw new Error(
+        "ReferenceImageRepository requires an injected storage bucket",
+      );
     }
     this.db = options.db || getFirestore();
     this.bucket = options.bucket;
@@ -71,19 +77,22 @@ export class ReferenceImageRepository {
   }
 
   private collection(userId: string): FirebaseFirestore.CollectionReference {
-    return this.db.collection('users').doc(userId).collection('referenceImages');
+    return this.db
+      .collection("users")
+      .doc(userId)
+      .collection("referenceImages");
   }
 
   async listImages(
     userId: string,
-    options: { limit?: number } = {}
+    options: { limit?: number } = {},
   ): Promise<ReferenceImageRecord[]> {
     const limit =
-      typeof options.limit === 'number' && Number.isFinite(options.limit)
+      typeof options.limit === "number" && Number.isFinite(options.limit)
         ? Math.max(1, Math.min(options.limit, 200))
         : 50;
     const snapshot = await this.collection(userId)
-      .orderBy('updatedAt', 'desc')
+      .orderBy("updatedAt", "desc")
       .limit(limit)
       .get();
 
@@ -96,11 +105,11 @@ export class ReferenceImageRepository {
   async createFromBuffer(
     userId: string,
     buffer: Buffer,
-    input: CreateReferenceImageInput = {}
+    input: CreateReferenceImageInput = {},
   ): Promise<ReferenceImageRecord> {
-    const operation = 'createFromBuffer';
+    const operation = "createFromBuffer";
     const startTime = performance.now();
-    this.log.debug('Starting operation.', {
+    this.log.debug("Starting operation.", {
       operation,
       userId,
       bufferSize: buffer.length,
@@ -109,22 +118,24 @@ export class ReferenceImageRepository {
       hasOriginalName: Boolean(input.originalName),
     });
 
-    const imageId = `ref_${uuidv4().replace(/-/g, '').slice(0, 12)}`;
+    const imageId = `ref_${uuidv4().replace(/-/g, "").slice(0, 12)}`;
     const storagePath = `users/${userId}/reference-images/${imageId}.jpg`;
     const thumbnailPath = `users/${userId}/reference-images/${imageId}_thumb.jpg`;
 
     try {
       const processedImage = await this.processor.processImage(buffer);
-      const thumbnail = await this.processor.generateThumbnail(processedImage.buffer);
+      const thumbnail = await this.processor.generateThumbnail(
+        processedImage.buffer,
+      );
 
       const imageToken = uuidv4();
       const thumbnailToken = uuidv4();
 
       await this.bucket.file(storagePath).save(processedImage.buffer, {
         resumable: false,
-        contentType: 'image/jpeg',
+        contentType: "image/jpeg",
         metadata: {
-          cacheControl: 'public, max-age=31536000',
+          cacheControl: "public, max-age=31536000",
           metadata: {
             firebaseStorageDownloadTokens: imageToken,
           },
@@ -134,9 +145,9 @@ export class ReferenceImageRepository {
 
       await this.bucket.file(thumbnailPath).save(thumbnail.buffer, {
         resumable: false,
-        contentType: 'image/jpeg',
+        contentType: "image/jpeg",
         metadata: {
-          cacheControl: 'public, max-age=31536000',
+          cacheControl: "public, max-age=31536000",
           metadata: {
             firebaseStorageDownloadTokens: thumbnailToken,
           },
@@ -149,7 +160,11 @@ export class ReferenceImageRepository {
         id: imageId,
         userId,
         imageUrl: buildDownloadUrl(this.bucketName, storagePath, imageToken),
-        thumbnailUrl: buildDownloadUrl(this.bucketName, thumbnailPath, thumbnailToken),
+        thumbnailUrl: buildDownloadUrl(
+          this.bucketName,
+          thumbnailPath,
+          thumbnailToken,
+        ),
         storagePath,
         thumbnailPath,
         label: input.label ?? null,
@@ -157,7 +172,7 @@ export class ReferenceImageRepository {
           width: processedImage.width,
           height: processedImage.height,
           sizeBytes: processedImage.sizeBytes,
-          contentType: 'image/jpeg',
+          contentType: "image/jpeg",
           source: input.source ?? null,
           originalName: input.originalName ?? null,
         },
@@ -167,7 +182,7 @@ export class ReferenceImageRepository {
 
       await this.collection(userId).doc(imageId).set(record);
 
-      this.log.info('Operation completed.', {
+      this.log.info("Operation completed.", {
         operation,
         userId,
         duration: Math.round(performance.now() - startTime),
@@ -181,8 +196,9 @@ export class ReferenceImageRepository {
 
       return record;
     } catch (error) {
-      const errorObj = error instanceof Error ? error : new Error(String(error));
-      this.log.error('Operation failed.', errorObj, {
+      const errorObj =
+        error instanceof Error ? error : new Error(String(error));
+      this.log.error("Operation failed.", errorObj, {
         operation,
         userId,
         duration: Math.round(performance.now() - startTime),
@@ -194,59 +210,61 @@ export class ReferenceImageRepository {
   async createFromUrl(
     userId: string,
     sourceUrl: string,
-    input: CreateReferenceImageInput = {}
+    input: CreateReferenceImageInput = {},
   ): Promise<ReferenceImageRecord> {
-    const operation = 'createFromUrl';
+    const operation = "createFromUrl";
     const sourceHost = getUrlHost(sourceUrl);
-    this.log.debug('Fetching reference image.', {
+    this.log.debug("Fetching reference image.", {
       operation,
       userId,
       ...(sourceHost ? { sourceHost } : {}),
     });
 
-    assertUrlSafe(sourceUrl, 'sourceUrl');
+    assertUrlSafe(sourceUrl, "sourceUrl");
 
     const response = await fetch(sourceUrl);
     if (!response.ok) {
-      this.log.warn('Failed to fetch reference image.', {
+      this.log.warn("Failed to fetch reference image.", {
         operation,
         userId,
         status: response.status,
         statusText: response.statusText,
         ...(sourceHost ? { sourceHost } : {}),
       });
-      throw new Error(`Failed to fetch reference image: ${response.status} ${response.statusText}`);
+      throw new Error(
+        `Failed to fetch reference image: ${response.status} ${response.statusText}`,
+      );
     }
 
     const buffer = Buffer.from(await response.arrayBuffer());
     return await this.createFromBuffer(userId, buffer, {
       ...input,
-      source: input.source ?? 'url',
+      source: input.source ?? "url",
     });
   }
 
   async deleteImage(userId: string, imageId: string): Promise<boolean> {
-    const operation = 'deleteImage';
+    const operation = "deleteImage";
     const startTime = performance.now();
-    this.log.debug('Starting operation.', { operation, userId, imageId });
+    this.log.debug("Starting operation.", { operation, userId, imageId });
 
     const docRef = this.collection(userId).doc(imageId);
     const snapshot = await docRef.get();
     if (!snapshot.exists) {
-      this.log.info('Operation completed.', {
+      this.log.info("Operation completed.", {
         operation,
         userId,
         imageId,
         duration: Math.round(performance.now() - startTime),
         deleted: false,
-        reason: 'not_found',
+        reason: "not_found",
       });
       return false;
     }
 
     const data = snapshot.data() as ReferenceImageRecord | undefined;
     const paths = [data?.storagePath, data?.thumbnailPath].filter(
-      (path): path is string => typeof path === 'string' && path.length > 0
+      (path): path is string => typeof path === "string" && path.length > 0,
     );
 
     let failedDeletes = 0;
@@ -255,8 +273,9 @@ export class ReferenceImageRepository {
         await this.bucket.file(path).delete();
       } catch (error) {
         failedDeletes += 1;
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        this.log.warn('Failed to delete reference image from storage', {
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        this.log.warn("Failed to delete reference image from storage", {
           operation,
           userId,
           imageId,
@@ -267,7 +286,7 @@ export class ReferenceImageRepository {
     }
 
     await docRef.delete();
-    this.log.info('Operation completed.', {
+    this.log.info("Operation completed.", {
       operation,
       userId,
       imageId,

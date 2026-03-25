@@ -1,30 +1,40 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
-import { usePromptConfig, usePromptServices, usePromptUIStateContext } from '../context/PromptStateContext';
-import { Button } from '@promptstudio/system/components/ui/button';
-import { Textarea } from '@promptstudio/system/components/ui/textarea';
+import React, { useCallback, useMemo, useRef, useState } from "react";
+import {
+  usePromptConfig,
+  usePromptServices,
+  usePromptUIStateContext,
+} from "../context/PromptStateContext";
+import { Button } from "@promptstudio/system/components/ui/button";
+import { Textarea } from "@promptstudio/system/components/ui/textarea";
 import {
   Check,
   Icon,
   Pencil,
   SidebarSimple,
   X,
-} from '@promptstudio/system/components/ui';
-import { useDebugLogger } from '@hooks/useDebugLogger';
-import type { OptimizationOptions } from '../types';
-import { PromptControlsRow } from './PromptControlsRow';
-import { sanitizeText } from '@/features/span-highlighting';
-import { cn } from '@/utils/cn';
-import type { Asset } from '@shared/types/asset';
-import { TriggerAutocomplete, useTriggerAutocomplete } from './TriggerAutocomplete';
+} from "@promptstudio/system/components/ui";
+import { useDebugLogger } from "@hooks/useDebugLogger";
+import type { OptimizationOptions } from "../types";
+import { PromptControlsRow } from "./PromptControlsRow";
+import { sanitizeText } from "@/features/span-highlighting";
+import { cn } from "@/utils/cn";
+import type { Asset } from "@shared/types/asset";
+import {
+  TriggerAutocomplete,
+  useTriggerAutocomplete,
+} from "./TriggerAutocomplete";
 
 type PromptTopBarProps = {
   onOptimize: (
     promptToOptimize?: string,
-    options?: OptimizationOptions
+    options?: OptimizationOptions,
   ) => Promise<void>;
   inputRef?: React.RefObject<HTMLTextAreaElement | null>;
   assets?: Asset[];
-  onInsertTrigger?: (trigger: string, range?: { start: number; end: number }) => void;
+  onInsertTrigger?: (
+    trigger: string,
+    range?: { start: number; end: number },
+  ) => void;
   onCreateFromTrigger?: (trigger: string) => void;
 };
 
@@ -53,11 +63,11 @@ export const PromptTopBar = ({
   const { selectedModel, setSelectedModel } = usePromptConfig();
   const { promptOptimizer } = usePromptServices();
 
-  const debug = useDebugLogger('PromptTopBar');
+  const debug = useDebugLogger("PromptTopBar");
   const localTextareaRef = useRef<HTMLTextAreaElement>(null);
   const textareaRef = inputRef ?? localTextareaRef;
   const [isEditing, setIsEditing] = useState(false);
-  const [originalInputPrompt, setOriginalInputPrompt] = useState('');
+  const [originalInputPrompt, setOriginalInputPrompt] = useState("");
   const [originalSelectedModel, setOriginalSelectedModel] = useState<
     string | undefined
   >(undefined);
@@ -80,27 +90,27 @@ export const PromptTopBar = ({
 
   const timeLabel = useMemo(
     () =>
-      typeof outputLastSavedAt === 'number'
+      typeof outputLastSavedAt === "number"
         ? new Date(outputLastSavedAt).toLocaleTimeString([], {
-            hour: '2-digit',
-            minute: '2-digit',
+            hour: "2-digit",
+            minute: "2-digit",
           })
         : null,
-    [outputLastSavedAt]
+    [outputLastSavedAt],
   );
 
   const saveLabel = useMemo(
     () =>
-      outputSaveState === 'saving'
-        ? 'Saving...'
-        : outputSaveState === 'error'
-          ? 'Save failed'
-          : outputSaveState === 'saved'
+      outputSaveState === "saving"
+        ? "Saving..."
+        : outputSaveState === "error"
+          ? "Save failed"
+          : outputSaveState === "saved"
             ? timeLabel
               ? `Saved · ${timeLabel}`
-              : 'Saved'
-            : '',
-    [outputSaveState, timeLabel]
+              : "Saved"
+            : "",
+    [outputSaveState, timeLabel],
   );
 
   const isOptimizing = Boolean(isProcessing);
@@ -134,12 +144,12 @@ export const PromptTopBar = ({
   const handleInputPromptChange = useCallback(
     (event: React.ChangeEvent<HTMLTextAreaElement>): void => {
       const updatedPrompt = sanitizeText(event.target.value);
-      debug.logAction('inputPromptEdit', {
+      debug.logAction("inputPromptEdit", {
         promptLength: updatedPrompt.length,
       });
       setInputPrompt(updatedPrompt);
     },
-    [debug, setInputPrompt]
+    [debug, setInputPrompt],
   );
 
   const handleEditClick = useCallback((): void => {
@@ -166,7 +176,7 @@ export const PromptTopBar = ({
         textareaRef.current?.focus();
       }, 0);
     },
-    [inputPrompt, isEditing, isOptimizing, showResults, textareaRef]
+    [inputPrompt, isEditing, isOptimizing, showResults, textareaRef],
   );
 
   const handleCancel = useCallback((): void => {
@@ -175,7 +185,7 @@ export const PromptTopBar = ({
       setSelectedModel(originalSelectedModel);
     }
     setIsEditing(false);
-    setOriginalInputPrompt('');
+    setOriginalInputPrompt("");
     setOriginalSelectedModel(undefined);
   }, [
     originalInputPrompt,
@@ -188,20 +198,20 @@ export const PromptTopBar = ({
     if (isProcessing) {
       return;
     }
-    debug.logAction('reoptimize', { promptLength: inputPrompt.length });
+    debug.logAction("reoptimize", { promptLength: inputPrompt.length });
     const promptChanged = inputPrompt !== originalInputPrompt;
     const modelChanged =
-      typeof originalSelectedModel === 'string' &&
+      typeof originalSelectedModel === "string" &&
       originalSelectedModel !== selectedModel;
     const genericPrompt =
-      typeof genericOptimizedPrompt === 'string' &&
+      typeof genericOptimizedPrompt === "string" &&
       genericOptimizedPrompt.trim()
         ? genericOptimizedPrompt
         : null;
 
     if (modelChanged && !promptChanged && genericPrompt) {
       const explicitTargetModel =
-        typeof selectedModel === 'string' && selectedModel.trim()
+        typeof selectedModel === "string" && selectedModel.trim()
           ? selectedModel.trim()
           : undefined;
       void onOptimize(inputPrompt, {
@@ -214,7 +224,7 @@ export const PromptTopBar = ({
       void onOptimize(inputPrompt);
     }
     setIsEditing(false);
-    setOriginalInputPrompt('');
+    setOriginalInputPrompt("");
     setOriginalSelectedModel(undefined);
   }, [
     debug,
@@ -231,7 +241,7 @@ export const PromptTopBar = ({
     if (isProcessing) {
       return;
     }
-    debug.logAction('reoptimize', { promptLength: inputPrompt.length });
+    debug.logAction("reoptimize", { promptLength: inputPrompt.length });
     void onOptimize(inputPrompt);
   }, [debug, inputPrompt, isProcessing, onOptimize]);
 
@@ -243,7 +253,7 @@ export const PromptTopBar = ({
       if (isProcessing) {
         return;
       }
-      if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+      if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
         event.preventDefault();
         if (!showResults) {
           // Initial optimization
@@ -266,7 +276,7 @@ export const PromptTopBar = ({
       isProcessing,
       onOptimize,
       showResults,
-    ]
+    ],
   );
 
   // Hide when brainstorm modal is open.
@@ -281,14 +291,14 @@ export const PromptTopBar = ({
     >
       <div
         className={cn(
-          'px-ps-4 mx-auto flex w-full max-w-7xl flex-nowrap items-center justify-center gap-2',
-          isOptimizing && 'opacity-70'
+          "px-ps-4 mx-auto flex w-full max-w-7xl flex-nowrap items-center justify-center gap-2",
+          isOptimizing && "opacity-70",
         )}
       >
         <div className="gap-ps-2 ps-glass flex h-14 w-full max-w-4xl flex-1 items-center rounded-xl shadow-sm">
           <Button
             type="button"
-            aria-label={showHistory ? 'Hide history' : 'Show history'}
+            aria-label={showHistory ? "Hide history" : "Show history"}
             aria-pressed={showHistory}
             onClick={() => setShowHistory(!showHistory)}
             variant="canvas"
@@ -311,13 +321,13 @@ export const PromptTopBar = ({
             >
               <span
                 className={cn(
-                  'h-ps-2 w-ps-2 rounded-full',
-                  outputSaveState === 'saving' &&
-                    'bg-accent ring-accent/10 ring-2',
-                  outputSaveState === 'error' &&
-                    'bg-error ring-error/10 ring-2',
-                  outputSaveState === 'saved' &&
-                    'bg-success ring-success/10 ring-2'
+                  "h-ps-2 w-ps-2 rounded-full",
+                  outputSaveState === "saving" &&
+                    "bg-accent ring-accent/10 ring-2",
+                  outputSaveState === "error" &&
+                    "bg-error ring-error/10 ring-2",
+                  outputSaveState === "saved" &&
+                    "bg-success ring-success/10 ring-2",
                 )}
                 aria-hidden="true"
               />
@@ -353,7 +363,9 @@ export const PromptTopBar = ({
               position={autocompletePosition}
               query={autocompleteQuery}
               onSelect={(asset) => {
-                const index = autocompleteSuggestions.findIndex((item) => item.id === asset.id);
+                const index = autocompleteSuggestions.findIndex(
+                  (item) => item.id === asset.id,
+                );
                 if (index >= 0) {
                   selectAutocompleteSuggestion(index);
                 }
@@ -374,7 +386,7 @@ export const PromptTopBar = ({
               type="button"
               onClick={() => {
                 if (!isReoptimizeDisabled) {
-                  debug.logAction('optimize', {
+                  debug.logAction("optimize", {
                     promptLength: inputPrompt.length,
                   });
                   void onOptimize(inputPrompt);

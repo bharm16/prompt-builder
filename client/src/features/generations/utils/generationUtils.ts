@@ -1,12 +1,12 @@
-import type { Generation, GenerationParams } from '../types';
-import { getModelConfig } from '../config/generationConfig';
+import type { Generation, GenerationParams } from "../types";
+import { getModelConfig, getModelCreditCost } from "../config/generationConfig";
 
 export const createGenerationId = (): string =>
   `gen-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
 export const resolveGenerationOptions = (
   base?: GenerationParams,
-  overrides?: GenerationParams
+  overrides?: GenerationParams,
 ): GenerationParams => ({
   promptVersionId: overrides?.promptVersionId ?? base?.promptVersionId ?? null,
   aspectRatio: overrides?.aspectRatio ?? base?.aspectRatio ?? null,
@@ -17,35 +17,38 @@ export const resolveGenerationOptions = (
   endImage: overrides?.endImage ?? base?.endImage ?? null,
   referenceImages: overrides?.referenceImages ?? base?.referenceImages,
   extendVideoUrl: overrides?.extendVideoUrl ?? base?.extendVideoUrl ?? null,
-  characterAssetId: overrides?.characterAssetId ?? base?.characterAssetId ?? null,
-  faceSwapAlreadyApplied: overrides?.faceSwapAlreadyApplied ?? base?.faceSwapAlreadyApplied,
+  characterAssetId:
+    overrides?.characterAssetId ?? base?.characterAssetId ?? null,
+  faceSwapAlreadyApplied:
+    overrides?.faceSwapAlreadyApplied ?? base?.faceSwapAlreadyApplied,
   faceSwapUrl: overrides?.faceSwapUrl ?? base?.faceSwapUrl ?? null,
 });
 
 export const buildGeneration = (
-  tier: Generation['tier'],
+  tier: Generation["tier"],
   model: string,
   prompt: string,
-  params: GenerationParams
+  params: GenerationParams,
 ): Generation => {
   const config = getModelConfig(model);
   const resolvedFaceSwapUrl =
-    params.faceSwapUrl ?? (params.faceSwapAlreadyApplied ? params.startImage?.url ?? null : null);
+    params.faceSwapUrl ??
+    (params.faceSwapAlreadyApplied ? (params.startImage?.url ?? null) : null);
   return {
     id: createGenerationId(),
     tier,
-    status: 'pending',
+    status: "pending",
     model,
     prompt,
     promptVersionId: params.promptVersionId ?? null,
     createdAt: Date.now(),
     completedAt: null,
-    estimatedCost: config?.credits ?? null,
+    estimatedCost: getModelCreditCost(model, params.duration) || null,
     actualCost: null,
     aspectRatio: params.aspectRatio ?? null,
     duration: params.duration ?? null,
     fps: params.fps ?? null,
-    mediaType: config?.mediaType ?? 'video',
+    mediaType: config?.mediaType ?? "video",
     mediaUrls: [],
     thumbnailUrl: null,
     characterAssetId: params.characterAssetId ?? null,

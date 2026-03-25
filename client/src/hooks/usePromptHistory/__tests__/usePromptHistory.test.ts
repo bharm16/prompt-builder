@@ -1,6 +1,6 @@
-import { renderHook, act } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { PromptHistoryEntry, Toast, User } from '../types';
+import { renderHook, act } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { PromptHistoryEntry, Toast, User } from "../types";
 
 const {
   mockUseToast,
@@ -20,7 +20,7 @@ const {
     state: {
       history: [] as PromptHistoryEntry[],
       isLoadingHistory: false,
-      searchQuery: '',
+      searchQuery: "",
     },
     setHistory: vi.fn(),
     addEntry: vi.fn(),
@@ -28,7 +28,7 @@ const {
     removeEntry: vi.fn(),
     clearEntries: vi.fn(),
     setIsLoadingHistory: vi.fn(),
-    searchQuery: '',
+    searchQuery: "",
     setSearchQuery: vi.fn(),
     filteredHistory: [] as PromptHistoryEntry[],
   };
@@ -56,37 +56,37 @@ const {
   };
 });
 
-vi.mock('../../../components/Toast', () => ({
+vi.mock("../../../components/Toast", () => ({
   useToast: mockUseToast,
 }));
 
-vi.mock('../hooks', () => ({
+vi.mock("../hooks", () => ({
   useHistoryState: mockUseHistoryState,
   useHistoryPersistence: mockUseHistoryPersistence,
 }));
 
-import { usePromptHistory } from '../usePromptHistory';
+import { usePromptHistory } from "../usePromptHistory";
 
-describe('usePromptHistory', () => {
+describe("usePromptHistory", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.useRealTimers();
 
     stateFns.state = {
-      history: [{ id: '1', uuid: 'uuid-1', input: 'input', output: 'output' }],
+      history: [{ id: "1", uuid: "uuid-1", input: "input", output: "output" }],
       isLoadingHistory: false,
-      searchQuery: '',
+      searchQuery: "",
     };
-    stateFns.searchQuery = '';
+    stateFns.searchQuery = "";
     stateFns.filteredHistory = stateFns.state.history;
 
     mockUseHistoryState.mockReturnValue(stateFns);
     mockUseHistoryPersistence.mockReturnValue(persistenceFns);
   });
 
-  it('loads firestore after delay when user is provided and sets loading immediately', async () => {
+  it("loads firestore after delay when user is provided and sets loading immediately", async () => {
     vi.useFakeTimers();
-    const user: User = { uid: 'user-1' };
+    const user: User = { uid: "user-1" };
 
     renderHook(() => usePromptHistory(user));
 
@@ -97,12 +97,14 @@ describe('usePromptHistory', () => {
       await vi.advanceTimersByTimeAsync(500);
     });
 
-    expect(persistenceFns.loadHistoryFromFirestore).toHaveBeenCalledWith('user-1');
+    expect(persistenceFns.loadHistoryFromFirestore).toHaveBeenCalledWith(
+      "user-1",
+    );
   });
 
-  it('cancels delayed firestore load on unmount', async () => {
+  it("cancels delayed firestore load on unmount", async () => {
     vi.useFakeTimers();
-    const user: User = { uid: 'user-2' };
+    const user: User = { uid: "user-2" };
 
     const { unmount } = renderHook(() => usePromptHistory(user));
     unmount();
@@ -114,35 +116,51 @@ describe('usePromptHistory', () => {
     expect(persistenceFns.loadHistoryFromFirestore).not.toHaveBeenCalled();
   });
 
-  it('loads from localStorage immediately when user is null', () => {
+  it("loads from localStorage immediately when user is null", () => {
     renderHook(() => usePromptHistory(null));
 
     expect(persistenceFns.loadHistoryFromLocalStorage).toHaveBeenCalledTimes(1);
     expect(stateFns.setIsLoadingHistory).not.toHaveBeenCalled();
   });
 
-  it('passes state and persistence actions through return contract', () => {
+  it("passes state and persistence actions through return contract", () => {
     const { result } = renderHook(() => usePromptHistory(null));
 
     expect(result.current.history).toBe(stateFns.state.history);
     expect(result.current.filteredHistory).toBe(stateFns.filteredHistory);
-    expect(result.current.isLoadingHistory).toBe(stateFns.state.isLoadingHistory);
+    expect(result.current.isLoadingHistory).toBe(
+      stateFns.state.isLoadingHistory,
+    );
     expect(result.current.searchQuery).toBe(stateFns.searchQuery);
     expect(result.current.setSearchQuery).toBe(stateFns.setSearchQuery);
     expect(result.current.saveToHistory).toBe(persistenceFns.saveToHistory);
     expect(result.current.createDraft).toBe(persistenceFns.createDraft);
-    expect(result.current.updateEntryLocal).toBe(persistenceFns.updateEntryLocal);
-    expect(result.current.updateEntryPersisted).toBe(persistenceFns.updateEntryPersisted);
+    expect(result.current.updateEntryLocal).toBe(
+      persistenceFns.updateEntryLocal,
+    );
+    expect(result.current.updateEntryPersisted).toBe(
+      persistenceFns.updateEntryPersisted,
+    );
     expect(result.current.clearHistory).toBe(persistenceFns.clearHistory);
-    expect(result.current.deleteFromHistory).toBe(persistenceFns.deleteFromHistory);
-    expect(result.current.loadHistoryFromFirestore).toBe(persistenceFns.loadHistoryFromFirestore);
-    expect(result.current.updateEntryHighlight).toBe(persistenceFns.updateEntryHighlight);
-    expect(result.current.updateEntryOutput).toBe(persistenceFns.updateEntryOutput);
-    expect(result.current.updateEntryVersions).toBe(persistenceFns.updateEntryVersions);
+    expect(result.current.deleteFromHistory).toBe(
+      persistenceFns.deleteFromHistory,
+    );
+    expect(result.current.loadHistoryFromFirestore).toBe(
+      persistenceFns.loadHistoryFromFirestore,
+    );
+    expect(result.current.updateEntryHighlight).toBe(
+      persistenceFns.updateEntryHighlight,
+    );
+    expect(result.current.updateEntryOutput).toBe(
+      persistenceFns.updateEntryOutput,
+    );
+    expect(result.current.updateEntryVersions).toBe(
+      persistenceFns.updateEntryVersions,
+    );
   });
 
-  it('wires toast into useHistoryPersistence options', () => {
-    const user: User = { uid: 'user-toast' };
+  it("wires toast into useHistoryPersistence options", () => {
+    const user: User = { uid: "user-toast" };
     renderHook(() => usePromptHistory(user));
 
     expect(mockUseHistoryPersistence).toHaveBeenCalledWith(
@@ -156,7 +174,7 @@ describe('usePromptHistory', () => {
           warning: expect.any(Function),
           info: expect.any(Function),
         }),
-      })
+      }),
     );
   });
 });

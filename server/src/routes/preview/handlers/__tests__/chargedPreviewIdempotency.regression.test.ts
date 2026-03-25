@@ -1,9 +1,9 @@
-import express from 'express';
-import request from 'supertest';
-import { describe, expect, it, vi } from 'vitest';
-import { createImageGenerateHandler } from '../imageGenerate';
-import { createImageStoryboardGenerateHandler } from '../imageStoryboardGenerate';
-import { createFaceSwapPreviewHandler } from '../faceSwap';
+import express from "express";
+import request from "supertest";
+import { describe, expect, it, vi } from "vitest";
+import { createImageGenerateHandler } from "../imageGenerate";
+import { createImageStoryboardGenerateHandler } from "../imageStoryboardGenerate";
+import { createFaceSwapPreviewHandler } from "../faceSwap";
 
 interface ErrorWithCode {
   code?: string;
@@ -11,23 +11,26 @@ interface ErrorWithCode {
 }
 
 const isSocketPermissionError = (error: unknown): boolean => {
-  if (!error || typeof error !== 'object') return false;
+  if (!error || typeof error !== "object") return false;
 
   const candidate = error as ErrorWithCode;
-  const code = typeof candidate.code === 'string' ? candidate.code : '';
-  const message = typeof candidate.message === 'string' ? candidate.message : '';
-  if (code === 'EPERM' || code === 'EACCES') return true;
+  const code = typeof candidate.code === "string" ? candidate.code : "";
+  const message =
+    typeof candidate.message === "string" ? candidate.message : "";
+  if (code === "EPERM" || code === "EACCES") return true;
 
   return (
-    message.includes('listen EPERM') ||
-    message.includes('listen EACCES') ||
-    message.includes('operation not permitted') ||
+    message.includes("listen EPERM") ||
+    message.includes("listen EACCES") ||
+    message.includes("operation not permitted") ||
     message.includes("Cannot read properties of null (reading 'port')")
   );
 };
 
-const runSupertestOrSkip = async <T>(execute: () => Promise<T>): Promise<T | null> => {
-  if (process.env.CODEX_SANDBOX === 'seatbelt') {
+const runSupertestOrSkip = async <T>(
+  execute: () => Promise<T>,
+): Promise<T | null> => {
+  if (process.env.CODEX_SANDBOX === "seatbelt") {
     return null;
   }
 
@@ -43,23 +46,25 @@ const runSupertestOrSkip = async <T>(execute: () => Promise<T>): Promise<T | nul
 
 const withAuth = (app: express.Express): void => {
   app.use((req, _res, next) => {
-    (req as express.Request & { user?: { uid?: string }; id?: string }).user = { uid: 'user-1' };
-    (req as express.Request & { id?: string }).id = 'req-1';
+    (req as express.Request & { user?: { uid?: string }; id?: string }).user = {
+      uid: "user-1",
+    };
+    (req as express.Request & { id?: string }).id = "req-1";
     next();
   });
 };
 
-describe('charged preview route idempotency regression', () => {
-  it('image generate returns replayed response without re-charging credits', async () => {
+describe("charged preview route idempotency regression", () => {
+  it("image generate returns replayed response without re-charging credits", async () => {
     const claimRequest = vi.fn().mockResolvedValue({
-      state: 'replay',
-      recordId: 'record-1',
+      state: "replay",
+      recordId: "record-1",
       snapshot: {
         statusCode: 200,
         body: {
           success: true,
           data: {
-            imageUrl: 'https://cached.example/image.png',
+            imageUrl: "https://cached.example/image.png",
           },
         },
       },
@@ -84,13 +89,13 @@ describe('charged preview route idempotency regression', () => {
     const app = express();
     app.use(express.json());
     withAuth(app);
-    app.post('/preview/generate', handler);
+    app.post("/preview/generate", handler);
 
     const response = await runSupertestOrSkip(() =>
       request(app)
-        .post('/preview/generate')
-        .set('Idempotency-Key', 'idem-image-1')
-        .send({ prompt: 'A calm beach sunrise.' })
+        .post("/preview/generate")
+        .set("Idempotency-Key", "idem-image-1")
+        .send({ prompt: "A calm beach sunrise." }),
     );
     if (!response) return;
 
@@ -98,17 +103,17 @@ describe('charged preview route idempotency regression', () => {
     expect(response.body).toEqual({
       success: true,
       data: {
-        imageUrl: 'https://cached.example/image.png',
+        imageUrl: "https://cached.example/image.png",
       },
     });
     expect(generatePreview).not.toHaveBeenCalled();
     expect(reserveCredits).not.toHaveBeenCalled();
   });
 
-  it('storyboard generate returns idempotency conflict when payload mismatches existing key', async () => {
+  it("storyboard generate returns idempotency conflict when payload mismatches existing key", async () => {
     const claimRequest = vi.fn().mockResolvedValue({
-      state: 'conflict',
-      recordId: 'record-2',
+      state: "conflict",
+      recordId: "record-2",
     });
 
     const handler = createImageStoryboardGenerateHandler({
@@ -127,32 +132,32 @@ describe('charged preview route idempotency regression', () => {
     const app = express();
     app.use(express.json());
     withAuth(app);
-    app.post('/preview/generate/storyboard', handler);
+    app.post("/preview/generate/storyboard", handler);
 
     const response = await runSupertestOrSkip(() =>
       request(app)
-        .post('/preview/generate/storyboard')
-        .set('Idempotency-Key', 'idem-story-1')
-        .send({ prompt: 'A fox crossing a forest trail.' })
+        .post("/preview/generate/storyboard")
+        .set("Idempotency-Key", "idem-story-1")
+        .send({ prompt: "A fox crossing a forest trail." }),
     );
     if (!response) return;
 
     expect(response.status).toBe(409);
-    expect(response.body.code).toBe('IDEMPOTENCY_CONFLICT');
+    expect(response.body.code).toBe("IDEMPOTENCY_CONFLICT");
   });
 
-  it('face-swap marks idempotent completion snapshot on success', async () => {
+  it("face-swap marks idempotent completion snapshot on success", async () => {
     const claimRequest = vi.fn().mockResolvedValue({
-      state: 'claimed',
-      recordId: 'record-3',
+      state: "claimed",
+      recordId: "record-3",
     });
     const markCompleted = vi.fn().mockResolvedValue(undefined);
     const reserveCredits = vi.fn().mockResolvedValue(true);
     const getAssetForGeneration = vi.fn().mockResolvedValue({
-      primaryImageUrl: 'https://assets.example/character.jpg',
+      primaryImageUrl: "https://assets.example/character.jpg",
     });
     const swap = vi.fn().mockResolvedValue({
-      swappedImageUrl: 'https://images.example/swapped.jpg',
+      swappedImageUrl: "https://images.example/swapped.jpg",
     });
 
     const handler = createFaceSwapPreviewHandler({
@@ -174,32 +179,34 @@ describe('charged preview route idempotency regression', () => {
     const app = express();
     app.use(express.json());
     withAuth(app);
-    app.post('/preview/face-swap', handler);
+    app.post("/preview/face-swap", handler);
 
     const response = await runSupertestOrSkip(() =>
       request(app)
-        .post('/preview/face-swap')
-        .set('Idempotency-Key', 'idem-face-1')
+        .post("/preview/face-swap")
+        .set("Idempotency-Key", "idem-face-1")
         .send({
-          characterAssetId: 'char-1',
-          targetImageUrl: 'https://example.com/target.jpg',
-        })
+          characterAssetId: "char-1",
+          targetImageUrl: "https://example.com/target.jpg",
+        }),
     );
     if (!response) return;
 
     expect(response.status).toBe(200);
     expect(response.body.success).toBe(true);
-    expect(response.body.faceSwapUrl).toBe('https://images.example/swapped.jpg');
+    expect(response.body.faceSwapUrl).toBe(
+      "https://images.example/swapped.jpg",
+    );
     expect(markCompleted).toHaveBeenCalledWith(
       expect.objectContaining({
-        recordId: 'record-3',
+        recordId: "record-3",
         snapshot: expect.objectContaining({
           statusCode: 200,
           body: expect.objectContaining({
             success: true,
           }),
         }),
-      })
+      }),
     );
   });
 });

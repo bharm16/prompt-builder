@@ -1,8 +1,8 @@
-import express from 'express';
-import request from 'supertest';
-import { describe, expect, it, afterEach } from 'vitest';
+import express from "express";
+import request from "supertest";
+import { describe, expect, it, afterEach } from "vitest";
 
-import { applySecurityMiddleware } from '../middleware.config';
+import { applySecurityMiddleware } from "../middleware.config";
 
 /**
  * Regression: COEP must be set to 'credentialless', not 'require-corp'.
@@ -20,7 +20,7 @@ import { applySecurityMiddleware } from '../middleware.config';
  * cross-origin media from GCS signed URLs can render in the browser.
  */
 
-describe('regression: COEP header allows GCS signed URL media', () => {
+describe("regression: COEP header allows GCS signed URL media", () => {
   const originalEnv = process.env.NODE_ENV;
 
   afterEach(() => {
@@ -31,19 +31,23 @@ describe('regression: COEP header allows GCS signed URL media', () => {
     }
   });
 
-  it('sets Cross-Origin-Embedder-Policy to credentialless in production', async () => {
-    process.env.NODE_ENV = 'production';
+  it("sets Cross-Origin-Embedder-Policy to credentialless in production", async () => {
+    process.env.NODE_ENV = "production";
 
     const app = express();
     applySecurityMiddleware(app);
-    app.get('/test', (_req, res) => {
-      res.status(200).send('ok');
+    app.get("/test", (_req, res) => {
+      res.status(200).send("ok");
     });
 
-    const response = await request(app).get('/test');
+    const response = await request(app).get("/test");
 
-    expect(response.headers['cross-origin-embedder-policy']).toBe('credentialless');
-    expect(response.headers['cross-origin-opener-policy']).toBe('same-origin');
-    expect(response.headers['cross-origin-resource-policy']).toBe('cross-origin');
+    expect(response.headers["cross-origin-embedder-policy"]).toBe(
+      "credentialless",
+    );
+    expect(response.headers["cross-origin-opener-policy"]).toBe("same-origin");
+    expect(response.headers["cross-origin-resource-policy"]).toBe(
+      "cross-origin",
+    );
   });
 });

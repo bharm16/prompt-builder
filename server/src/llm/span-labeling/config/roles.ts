@@ -1,12 +1,12 @@
 /**
  * Role definitions for span labeling
  * Unified with taxonomy system - single source of truth
- * 
+ *
  * This file now derives all roles from shared/taxonomy.js
  * ensuring client-server consistency
  */
 
-import { VALID_CATEGORIES, TAXONOMY } from '@shared/taxonomy';
+import { VALID_CATEGORIES, TAXONOMY } from "@shared/taxonomy";
 
 /**
  * Complete set of valid roles for span labeling
@@ -24,7 +24,7 @@ export const ROLE_CATEGORIES: Record<string, string[]> = {
     TAXONOMY.SUBJECT.id,
     ...Object.values(TAXONOMY.SUBJECT.attributes || {}),
   ],
-  
+
   // Setting-related: Environmental and lighting context
   setting: [
     TAXONOMY.ENVIRONMENT.id,
@@ -32,7 +32,7 @@ export const ROLE_CATEGORIES: Record<string, string[]> = {
     TAXONOMY.LIGHTING.id,
     ...Object.values(TAXONOMY.LIGHTING.attributes || {}),
   ],
-  
+
   // Cinematic/Technical: Camera, style, and technical specs
   cinematic: [
     TAXONOMY.CAMERA.id,
@@ -42,19 +42,16 @@ export const ROLE_CATEGORIES: Record<string, string[]> = {
     TAXONOMY.TECHNICAL.id,
     ...Object.values(TAXONOMY.TECHNICAL.attributes || {}),
   ],
-  
+
   // Audio: Sound design elements
-  audio: [
-    TAXONOMY.AUDIO.id,
-    ...Object.values(TAXONOMY.AUDIO.attributes || {}),
-  ],
+  audio: [TAXONOMY.AUDIO.id, ...Object.values(TAXONOMY.AUDIO.attributes || {})],
 };
 
 /**
  * Check if a role is valid
  */
 export function isValidRole(role: string | null | undefined): boolean {
-  return typeof role === 'string' && ROLE_SET.has(role);
+  return typeof role === "string" && ROLE_SET.has(role);
 }
 
 /**
@@ -83,4 +80,3 @@ export function getCategoryGroup(roleId: string): string | null {
   }
   return null;
 }
-

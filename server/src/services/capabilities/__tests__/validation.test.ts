@@ -1,6 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from "vitest";
 
-vi.mock('@infrastructure/Logger', () => ({
+vi.mock("@infrastructure/Logger", () => ({
   logger: {
     child: () => ({
       debug: vi.fn(),
@@ -15,7 +15,7 @@ vi.mock('@infrastructure/Logger', () => ({
   },
 }));
 
-vi.mock('@shared/capabilities', () => ({
+vi.mock("@shared/capabilities", () => ({
   getDefaultValue: vi.fn((field: { default?: unknown }) => field.default),
   resolveFieldState: vi.fn((field: { values?: unknown[] }) => ({
     available: true,
@@ -24,224 +24,237 @@ vi.mock('@shared/capabilities', () => ({
   })),
 }));
 
-import { validateCapabilityValues } from '../validation';
-import { resolveFieldState } from '@shared/capabilities';
-import type { CapabilitiesSchema, CapabilityField } from '@shared/capabilities';
+import { validateCapabilityValues } from "../validation";
+import { resolveFieldState } from "@shared/capabilities";
+import type { CapabilitiesSchema, CapabilityField } from "@shared/capabilities";
 
 type SchemaFields = Record<string, CapabilityField>;
 
-const makeSchema = (fields: SchemaFields, unknownFields?: string[]): CapabilitiesSchema => ({
-  provider: 'test',
-  model: 'test-model',
-  version: '1.0',
+const makeSchema = (
+  fields: SchemaFields,
+  unknownFields?: string[],
+): CapabilitiesSchema => ({
+  provider: "test",
+  model: "test-model",
+  version: "1.0",
   fields,
   ...(unknownFields ? { unknown_fields: unknownFields } : {}),
 });
 
-describe('validateCapabilityValues', () => {
+describe("validateCapabilityValues", () => {
   beforeEach(() => {
-    vi.mocked(resolveFieldState).mockImplementation((field: CapabilityField) => ({
-      available: true,
-      disabled: false,
-      ...(field.values ? { allowedValues: field.values } : {}),
-    }));
+    vi.mocked(resolveFieldState).mockImplementation(
+      (field: CapabilityField) => ({
+        available: true,
+        disabled: false,
+        ...(field.values ? { allowedValues: field.values } : {}),
+      }),
+    );
   });
 
-  describe('error handling — invalid field values', () => {
-    it('reports error for invalid enum value', () => {
+  describe("error handling — invalid field values", () => {
+    it("reports error for invalid enum value", () => {
       const schema = makeSchema({
-        model: { type: 'enum', values: ['sora', 'veo3', 'kling'] },
+        model: { type: "enum", values: ["sora", "veo3", "kling"] },
       });
-      const result = validateCapabilityValues(schema, { model: 'invalid-model' });
+      const result = validateCapabilityValues(schema, {
+        model: "invalid-model",
+      });
       expect(result.ok).toBe(false);
       expect(result.errors).toHaveLength(1);
-      expect(result.errors[0]).toContain('Invalid value for model');
+      expect(result.errors[0]).toContain("Invalid value for model");
     });
 
-    it('reports error for non-boolean bool field', () => {
+    it("reports error for non-boolean bool field", () => {
       const schema = makeSchema({
-        enabled: { type: 'bool' },
+        enabled: { type: "bool" },
       });
-      const result = validateCapabilityValues(schema, { enabled: 'yes' });
+      const result = validateCapabilityValues(schema, { enabled: "yes" });
       expect(result.ok).toBe(false);
-      expect(result.errors[0]).toContain('must be a boolean');
+      expect(result.errors[0]).toContain("must be a boolean");
     });
 
-    it('reports error for non-string string field', () => {
+    it("reports error for non-string string field", () => {
       const schema = makeSchema({
-        label: { type: 'string' },
+        label: { type: "string" },
       });
       const result = validateCapabilityValues(schema, { label: 42 });
       expect(result.ok).toBe(false);
-      expect(result.errors[0]).toContain('must be a string');
+      expect(result.errors[0]).toContain("must be a string");
     });
 
-    it('reports error for non-integer int field', () => {
+    it("reports error for non-integer int field", () => {
       const schema = makeSchema({
-        width: { type: 'int', constraints: { min: 0, max: 1920 } },
+        width: { type: "int", constraints: { min: 0, max: 1920 } },
       });
       const result = validateCapabilityValues(schema, { width: 3.14 });
       expect(result.ok).toBe(false);
-      expect(result.errors[0]).toContain('must be an integer');
+      expect(result.errors[0]).toContain("must be an integer");
     });
 
-    it('reports error for int below min', () => {
+    it("reports error for int below min", () => {
       const schema = makeSchema({
-        width: { type: 'int', constraints: { min: 100, max: 1920 } },
+        width: { type: "int", constraints: { min: 100, max: 1920 } },
       });
       const result = validateCapabilityValues(schema, { width: 50 });
       expect(result.ok).toBe(false);
-      expect(result.errors[0]).toContain('must be >= 100');
+      expect(result.errors[0]).toContain("must be >= 100");
     });
 
-    it('reports error for int above max', () => {
+    it("reports error for int above max", () => {
       const schema = makeSchema({
-        width: { type: 'int', constraints: { min: 100, max: 1920 } },
+        width: { type: "int", constraints: { min: 100, max: 1920 } },
       });
       const result = validateCapabilityValues(schema, { width: 2000 });
       expect(result.ok).toBe(false);
-      expect(result.errors[0]).toContain('must be <= 1920');
+      expect(result.errors[0]).toContain("must be <= 1920");
     });
 
-    it('reports error for int not aligned to step', () => {
+    it("reports error for int not aligned to step", () => {
       const schema = makeSchema({
-        width: { type: 'int', constraints: { min: 0, max: 1920, step: 16 } },
+        width: { type: "int", constraints: { min: 0, max: 1920, step: 16 } },
       });
       const result = validateCapabilityValues(schema, { width: 17 });
       expect(result.ok).toBe(false);
-      expect(result.errors[0]).toContain('must align to step 16');
+      expect(result.errors[0]).toContain("must align to step 16");
     });
   });
 
-  describe('edge cases', () => {
-    it('returns ok with empty values for null input', () => {
+  describe("edge cases", () => {
+    it("returns ok with empty values for null input", () => {
       const schema = makeSchema({});
       const result = validateCapabilityValues(schema, null);
       expect(result.ok).toBe(true);
       expect(result.errors).toHaveLength(0);
     });
 
-    it('returns ok with empty values for undefined input', () => {
+    it("returns ok with empty values for undefined input", () => {
       const schema = makeSchema({});
       const result = validateCapabilityValues(schema, undefined);
       expect(result.ok).toBe(true);
     });
 
-    it('populates default values for missing fields', () => {
+    it("populates default values for missing fields", () => {
       const schema = makeSchema({
-        model: { type: 'enum', values: ['sora', 'veo3'], default: 'sora' },
+        model: { type: "enum", values: ["sora", "veo3"], default: "sora" },
       });
       const result = validateCapabilityValues(schema, {});
       expect(result.ok).toBe(true);
-      expect(result.values.model).toBe('sora');
+      expect(result.values.model).toBe("sora");
     });
 
-    it('preserves user-provided values over defaults', () => {
+    it("preserves user-provided values over defaults", () => {
       const schema = makeSchema({
-        model: { type: 'enum', values: ['sora', 'veo3'], default: 'sora' },
+        model: { type: "enum", values: ["sora", "veo3"], default: "sora" },
       });
-      const result = validateCapabilityValues(schema, { model: 'veo3' });
+      const result = validateCapabilityValues(schema, { model: "veo3" });
       expect(result.ok).toBe(true);
-      expect(result.values.model).toBe('veo3');
+      expect(result.values.model).toBe("veo3");
     });
 
-    it('removes field when state is not available', () => {
+    it("removes field when state is not available", () => {
       vi.mocked(resolveFieldState).mockReturnValue({
         available: false,
         disabled: false,
       } as never);
 
       const schema = makeSchema({
-        model: { type: 'enum', values: ['sora'] },
+        model: { type: "enum", values: ["sora"] },
       });
-      const result = validateCapabilityValues(schema, { model: 'sora' });
+      const result = validateCapabilityValues(schema, { model: "sora" });
       expect(result.ok).toBe(false);
-      expect(result.errors[0]).toContain('not available');
+      expect(result.errors[0]).toContain("not available");
       expect(result.values.model).toBeUndefined();
     });
 
-    it('removes field when state is disabled', () => {
+    it("removes field when state is disabled", () => {
       vi.mocked(resolveFieldState).mockReturnValue({
         available: true,
         disabled: true,
       } as never);
 
       const schema = makeSchema({
-        model: { type: 'enum', values: ['sora'] },
+        model: { type: "enum", values: ["sora"] },
       });
-      const result = validateCapabilityValues(schema, { model: 'sora' });
+      const result = validateCapabilityValues(schema, { model: "sora" });
       expect(result.ok).toBe(false);
-      expect(result.errors[0]).toContain('disabled');
+      expect(result.errors[0]).toContain("disabled");
     });
   });
 
-  describe('unknown fields handling', () => {
-    it('preserves camera_motion_id as allowed unknown field', () => {
-      const schema = makeSchema({ model: { type: 'enum', values: ['sora'], default: 'sora' } });
+  describe("unknown fields handling", () => {
+    it("preserves camera_motion_id as allowed unknown field", () => {
+      const schema = makeSchema({
+        model: { type: "enum", values: ["sora"], default: "sora" },
+      });
       const result = validateCapabilityValues(schema, {
-        model: 'sora',
-        camera_motion_id: 'pan-left',
+        model: "sora",
+        camera_motion_id: "pan-left",
       });
       expect(result.ok).toBe(true);
-      expect(result.values.camera_motion_id).toBe('pan-left');
+      expect(result.values.camera_motion_id).toBe("pan-left");
     });
 
-    it('preserves subject_motion as allowed unknown field', () => {
-      const schema = makeSchema({ model: { type: 'enum', values: ['sora'], default: 'sora' } });
+    it("preserves subject_motion as allowed unknown field", () => {
+      const schema = makeSchema({
+        model: { type: "enum", values: ["sora"], default: "sora" },
+      });
       const result = validateCapabilityValues(schema, {
-        model: 'sora',
-        subject_motion: 'walking forward',
+        model: "sora",
+        subject_motion: "walking forward",
       });
       expect(result.ok).toBe(true);
-      expect(result.values.subject_motion).toBe('walking forward');
+      expect(result.values.subject_motion).toBe("walking forward");
     });
 
-    it('preserves schema-declared unknown fields', () => {
+    it("preserves schema-declared unknown fields", () => {
       const schema = makeSchema(
-        { model: { type: 'enum', values: ['sora'], default: 'sora' } },
-        ['custom_field']
+        { model: { type: "enum", values: ["sora"], default: "sora" } },
+        ["custom_field"],
       );
       const result = validateCapabilityValues(schema, {
-        model: 'sora',
-        custom_field: 'custom-value',
+        model: "sora",
+        custom_field: "custom-value",
       });
       expect(result.ok).toBe(true);
-      expect(result.values.custom_field).toBe('custom-value');
+      expect(result.values.custom_field).toBe("custom-value");
     });
 
-    it('ignores undeclared unknown fields', () => {
-      const schema = makeSchema({ model: { type: 'enum', values: ['sora'], default: 'sora' } });
+    it("ignores undeclared unknown fields", () => {
+      const schema = makeSchema({
+        model: { type: "enum", values: ["sora"], default: "sora" },
+      });
       const result = validateCapabilityValues(schema, {
-        model: 'sora',
-        random_field: 'should-be-ignored',
+        model: "sora",
+        random_field: "should-be-ignored",
       });
       expect(result.ok).toBe(true);
       expect(result.values.random_field).toBeUndefined();
     });
   });
 
-  describe('core behavior — valid inputs', () => {
-    it('validates valid enum value', () => {
+  describe("core behavior — valid inputs", () => {
+    it("validates valid enum value", () => {
       const schema = makeSchema({
-        model: { type: 'enum', values: ['sora', 'veo3'] },
+        model: { type: "enum", values: ["sora", "veo3"] },
       });
-      const result = validateCapabilityValues(schema, { model: 'sora' });
+      const result = validateCapabilityValues(schema, { model: "sora" });
       expect(result.ok).toBe(true);
-      expect(result.values.model).toBe('sora');
+      expect(result.values.model).toBe("sora");
     });
 
-    it('validates valid int with constraints', () => {
+    it("validates valid int with constraints", () => {
       const schema = makeSchema({
-        width: { type: 'int', constraints: { min: 0, max: 1920, step: 16 } },
+        width: { type: "int", constraints: { min: 0, max: 1920, step: 16 } },
       });
       const result = validateCapabilityValues(schema, { width: 1024 });
       expect(result.ok).toBe(true);
       expect(result.values.width).toBe(1024);
     });
 
-    it('validates int aligned to step with min offset', () => {
+    it("validates int aligned to step with min offset", () => {
       const schema = makeSchema({
-        frames: { type: 'int', constraints: { min: 1, max: 100, step: 5 } },
+        frames: { type: "int", constraints: { min: 1, max: 100, step: 5 } },
       });
       // 1 + 5*3 = 16 → aligned
       const result = validateCapabilityValues(schema, { frames: 16 });

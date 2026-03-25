@@ -1,10 +1,10 @@
-import type OpenAI from 'openai';
-import type { ReadableStream } from 'node:stream/web';
-import type { VideoGenerationOptions, SoraModelId } from '../types';
-import { sleep, pollingDelay } from '@utils/sleep';
-import type { VideoAssetStore, StoredVideoAsset } from '../storage';
-import { toNodeReadableStream } from '../storage/utils';
-import { getProviderPollTimeoutMs } from './timeoutPolicy';
+import type OpenAI from "openai";
+import type { ReadableStream } from "node:stream/web";
+import type { VideoGenerationOptions, SoraModelId } from "../types";
+import { sleep, pollingDelay } from "@utils/sleep";
+import type { VideoAssetStore, StoredVideoAsset } from "../storage";
+import { toNodeReadableStream } from "../storage/utils";
+import { getProviderPollTimeoutMs } from "./timeoutPolicy";
 
 type LogSink = {
   debug: (message: string, meta?: Record<string, unknown>) => void;
@@ -13,45 +13,59 @@ type LogSink = {
 };
 
 const SORA_STATUS_POLL_INTERVAL_MS = 2000;
-type SoraVideoSize = '720x1280' | '1280x720' | '1024x1792' | '1792x1024';
-const SORA_SIZES_BY_ASPECT_RATIO: Record<'16:9' | '9:16', SoraVideoSize> = {
-  '16:9': '1280x720',
-  '9:16': '720x1280',
+type SoraVideoSize = "720x1280" | "1280x720" | "1024x1792" | "1792x1024";
+const SORA_SIZES_BY_ASPECT_RATIO: Record<"16:9" | "9:16", SoraVideoSize> = {
+  "16:9": "1280x720",
+  "9:16": "720x1280",
 };
-const SORA_SIZES: SoraVideoSize[] = ['720x1280', '1280x720', '1024x1792', '1792x1024'];
+const SORA_SIZES: SoraVideoSize[] = [
+  "720x1280",
+  "1280x720",
+  "1024x1792",
+  "1792x1024",
+];
 
-function resolveSoraSeconds(seconds?: VideoGenerationOptions['seconds']): '4' | '8' | '12' {
-  if (seconds === '4' || seconds === '8' || seconds === '12') {
+function resolveSoraSeconds(
+  seconds?: VideoGenerationOptions["seconds"],
+): "4" | "8" | "12" {
+  if (seconds === "4" || seconds === "8" || seconds === "12") {
     return seconds;
   }
-  return '8';
+  return "8";
 }
 
 function resolveSoraSize(
-  aspectRatio?: VideoGenerationOptions['aspectRatio'],
+  aspectRatio?: VideoGenerationOptions["aspectRatio"],
   sizeOverride?: string,
-  log?: LogSink
+  log?: LogSink,
 ): SoraVideoSize {
   if (sizeOverride) {
     if (SORA_SIZES.includes(sizeOverride as SoraVideoSize)) {
       return sizeOverride as SoraVideoSize;
     }
-    log?.warn('Unsupported Sora size override; defaulting to 1280x720', { sizeOverride });
+    log?.warn("Unsupported Sora size override; defaulting to 1280x720", {
+      sizeOverride,
+    });
   }
-  if (aspectRatio === '9:16') {
-    return SORA_SIZES_BY_ASPECT_RATIO['9:16'];
+  if (aspectRatio === "9:16") {
+    return SORA_SIZES_BY_ASPECT_RATIO["9:16"];
   }
-  if (aspectRatio === '1:1') {
-    log?.warn('Sora does not support 1:1; defaulting to 1280x720', { aspectRatio });
+  if (aspectRatio === "1:1") {
+    log?.warn("Sora does not support 1:1; defaulting to 1280x720", {
+      aspectRatio,
+    });
   }
-  return SORA_SIZES_BY_ASPECT_RATIO['16:9'];
+  return SORA_SIZES_BY_ASPECT_RATIO["16:9"];
 }
 
-async function resolveSoraInputReference(inputReference: string, log: LogSink): Promise<Response> {
-  log.debug('Fetching Sora input reference', { inputReference });
+async function resolveSoraInputReference(
+  inputReference: string,
+  log: LogSink,
+): Promise<Response> {
+  log.debug("Fetching Sora input reference", { inputReference });
   const response = await fetch(inputReference);
   if (!response.ok) {
-    log.warn('Failed to fetch Sora input reference', {
+    log.warn("Failed to fetch Sora input reference", {
       inputReference,
       status: response.status,
       statusText: response.statusText,
@@ -62,8 +76,8 @@ async function resolveSoraInputReference(inputReference: string, log: LogSink): 
 }
 
 function deriveAspectRatioFromSize(size: SoraVideoSize): string {
-  if (size === '720x1280' || size === '1024x1792') return '9:16';
-  return '16:9';
+  if (size === "720x1280" || size === "1024x1792") return "9:16";
+  return "16:9";
 }
 
 export async function generateSoraVideo(
@@ -72,7 +86,7 @@ export async function generateSoraVideo(
   modelId: SoraModelId,
   options: VideoGenerationOptions,
   assetStore: VideoAssetStore,
-  log: LogSink
+  log: LogSink,
 ): Promise<{ asset: StoredVideoAsset; resolvedAspectRatio?: string }> {
   const timeoutMs = getProviderPollTimeoutMs();
   const resolvedInputReference = options.inputReference || options.startImage;
@@ -93,7 +107,7 @@ export async function generateSoraVideo(
 
   let video = job;
   const start = Date.now();
-  while (video.status === 'queued' || video.status === 'in_progress') {
+  while (video.status === "queued" || video.status === "in_progress") {
     const elapsed = Date.now() - start;
     if (elapsed > timeoutMs) {
       throw new Error(`Timed out waiting for Sora video ${video.id}`);
@@ -102,13 +116,17 @@ export async function generateSoraVideo(
     video = await openai.videos.retrieve(video.id);
   }
 
-  if (video.status !== 'completed') {
-    throw new Error(`Sora video failed: ${JSON.stringify(video.error ?? video)}`);
+  if (video.status !== "completed") {
+    throw new Error(
+      `Sora video failed: ${JSON.stringify(video.error ?? video)}`,
+    );
   }
 
   const response = await openai.videos.downloadContent(video.id);
-  const contentType = response.headers.get('content-type') || 'video/mp4';
-  const stream = toNodeReadableStream(response.body as ReadableStream<Uint8Array> | null);
+  const contentType = response.headers.get("content-type") || "video/mp4";
+  const stream = toNodeReadableStream(
+    response.body as ReadableStream<Uint8Array> | null,
+  );
   const asset = await assetStore.storeFromStream(stream, contentType);
   const resolvedAspectRatio = deriveAspectRatioFromSize(size);
   return { asset, resolvedAspectRatio };

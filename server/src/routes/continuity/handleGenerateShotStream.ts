@@ -1,14 +1,17 @@
-import type { Request, Response } from 'express';
-import { createSseChannel } from '@routes/optimize/sse';
-import type { ContinuitySessionService } from '@services/continuity/ContinuitySessionService';
-import type { ContinuitySession, ContinuityShot } from '@services/continuity/types';
-import type { UserCreditService } from '@services/credits/UserCreditService';
-import type { ShotGenerationObserver } from '@services/continuity/ShotGenerationProgress';
+import type { Request, Response } from "express";
+import { createSseChannel } from "@routes/optimize/sse";
+import type { ContinuitySessionService } from "@services/continuity/ContinuitySessionService";
+import type {
+  ContinuitySession,
+  ContinuityShot,
+} from "@services/continuity/types";
+import type { UserCreditService } from "@services/credits/UserCreditService";
+import type { ShotGenerationObserver } from "@services/continuity/ShotGenerationProgress";
 import {
   reserveShotGenerationCredits,
   settleExceptionalShotGeneration,
   settleSuccessfulShotGeneration,
-} from './continuityRouteShared';
+} from "./continuityRouteShared";
 
 interface StreamErrorPayload {
   success: false;
@@ -20,7 +23,11 @@ const toErrorPayload = (error: unknown): StreamErrorPayload => ({
   error: error instanceof Error ? error.message : String(error),
 });
 
-const safeSend = (sendEvent: (eventType: string, data: unknown) => void, event: string, data: unknown): void => {
+const safeSend = (
+  sendEvent: (eventType: string, data: unknown) => void,
+  event: string,
+  data: unknown,
+): void => {
   try {
     sendEvent(event, data);
   } catch {
@@ -33,21 +40,26 @@ export async function handleGenerateShotStream(
   session: ContinuitySession,
   req: Request,
   res: Response,
-  userCreditService?: UserCreditService | null
+  userCreditService?: UserCreditService | null,
 ): Promise<void> {
-  const reservation = await reserveShotGenerationCredits(session, req, res, userCreditService);
+  const reservation = await reserveShotGenerationCredits(
+    session,
+    req,
+    res,
+    userCreditService,
+  );
   if (!reservation || !userCreditService) return;
 
   const sse = createSseChannel(req, res);
   sse.markProcessingStarted();
 
   const keepalive = setInterval(() => {
-    safeSend(sse.sendEvent, 'ping', { timestamp: Date.now() });
+    safeSend(sse.sendEvent, "ping", { timestamp: Date.now() });
   }, 15_000);
 
   const observer: ShotGenerationObserver = {
     onStage: (event) => {
-      safeSend(sse.sendEvent, 'stage', event);
+      safeSend(sse.sendEvent, "stage", event);
     },
   };
 
@@ -55,20 +67,33 @@ export async function handleGenerateShotStream(
   let thrown: unknown = null;
 
   try {
-    result = await service.generateShot(session.id, reservation.shotId, observer);
+    result = await service.generateShot(
+      session.id,
+      reservation.shotId,
+      observer,
+    );
   } catch (error) {
     thrown = error;
   } finally {
     try {
       if (result) {
-        await settleSuccessfulShotGeneration(session, userCreditService, reservation, result);
-        safeSend(sse.sendEvent, 'result', {
+        await settleSuccessfulShotGeneration(
+          session,
+          userCreditService,
+          reservation,
+          result,
+        );
+        safeSend(sse.sendEvent, "result", {
           success: true,
           data: result,
         });
       } else if (thrown) {
-        await settleExceptionalShotGeneration(session, userCreditService, reservation);
-        safeSend(sse.sendEvent, 'error', toErrorPayload(thrown));
+        await settleExceptionalShotGeneration(
+          session,
+          userCreditService,
+          reservation,
+        );
+        safeSend(sse.sendEvent, "error", toErrorPayload(thrown));
       }
     } finally {
       clearInterval(keepalive);

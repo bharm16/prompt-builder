@@ -1,14 +1,19 @@
-import type { Suggestion, VideoService } from '../services/types.js';
-import type { SuggestionTestCase, SuggestionQualityDimension, SuggestionQualityResult, SuggestionQualityScores } from './SuggestionQualityEvaluator.js';
-import { SlotPolicyRegistry } from '../v2/SlotPolicyRegistry.js';
-import { V2CandidateScorer } from '../v2/V2CandidateScorer.js';
+import type { Suggestion, VideoService } from "../services/types.js";
+import type {
+  SuggestionTestCase,
+  SuggestionQualityDimension,
+  SuggestionQualityResult,
+  SuggestionQualityScores,
+} from "./SuggestionQualityEvaluator.js";
+import { SlotPolicyRegistry } from "../v2/SlotPolicyRegistry.js";
+import { V2CandidateScorer } from "../v2/V2CandidateScorer.js";
 
 function normalizeText(text: string): string {
   return text
     .toLowerCase()
-    .normalize('NFKC')
-    .replace(/[^\p{L}\p{N}\s]+/gu, ' ')
-    .replace(/\s+/g, ' ')
+    .normalize("NFKC")
+    .replace(/[^\p{L}\p{N}\s]+/gu, " ")
+    .replace(/\s+/g, " ")
     .trim();
 }
 
@@ -44,7 +49,7 @@ export class PolicyAwareSuggestionQualityEvaluator {
 
   constructor(
     private readonly videoService: VideoService,
-    policyVersion = '2026-03-v2a'
+    policyVersion = "2026-03-v2a",
   ) {
     this.registry = new SlotPolicyRegistry(policyVersion);
     this.scorer = new V2CandidateScorer(videoService);
@@ -52,38 +57,49 @@ export class PolicyAwareSuggestionQualityEvaluator {
 
   async evaluateCase(
     testCase: SuggestionTestCase,
-    suggestions: Suggestion[]
+    suggestions: Suggestion[],
   ): Promise<SuggestionQualityResult> {
     const failures: string[] = [];
-    const validSuggestions = suggestions.filter((suggestion) => typeof suggestion?.text === 'string' && suggestion.text.trim());
+    const validSuggestions = suggestions.filter(
+      (suggestion) =>
+        typeof suggestion?.text === "string" && suggestion.text.trim(),
+    );
     const texts = validSuggestions.map((suggestion) => suggestion.text.trim());
     const isVideoPrompt = this.videoService.isVideoPrompt(testCase.prompt);
     const policy = this.registry.resolve(testCase.span.category);
-    const evaluations = this.scorer.scoreCandidates(validSuggestions, {
-      highlightedText: testCase.span.text,
-      contextBefore: testCase.contextBefore || '',
-      contextAfter: testCase.contextAfter || '',
-      fullPrompt: testCase.prompt,
-      originalUserPrompt: testCase.prompt,
-      brainstormContext: null,
-      highlightedCategory: testCase.span.category,
-      highlightedCategoryConfidence: null,
-      isPlaceholder: false,
-      isVideoPrompt,
-      phraseRole: testCase.span.category,
-      highlightWordCount: this.videoService.countWords(testCase.span.text),
-      videoConstraints: null,
-      modelTarget: null,
-      promptSection: null,
-      spanAnchors: testCase.spanAnchors || '',
-      nearbySpanHints: testCase.nearbySpanHints || '',
-      lockedSpanCategories: testCase.lockedSpanCategories || [],
-      debug: false,
-    }, policy);
+    const evaluations = this.scorer.scoreCandidates(
+      validSuggestions,
+      {
+        highlightedText: testCase.span.text,
+        contextBefore: testCase.contextBefore || "",
+        contextAfter: testCase.contextAfter || "",
+        fullPrompt: testCase.prompt,
+        originalUserPrompt: testCase.prompt,
+        brainstormContext: null,
+        highlightedCategory: testCase.span.category,
+        highlightedCategoryConfidence: null,
+        isPlaceholder: false,
+        isVideoPrompt,
+        phraseRole: testCase.span.category,
+        highlightWordCount: this.videoService.countWords(testCase.span.text),
+        videoConstraints: null,
+        modelTarget: null,
+        promptSection: null,
+        spanAnchors: testCase.spanAnchors || "",
+        nearbySpanHints: testCase.nearbySpanHints || "",
+        lockedSpanCategories: testCase.lockedSpanCategories || [],
+        debug: false,
+      },
+      policy,
+    );
 
     const accepted = evaluations.filter((item) => item.accepted);
-    const contextualFit = toFiveScale(texts.length > 0 ? accepted.length / texts.length : 0);
-    const categoryAlignment = toFiveScale(average(evaluations.map((item) => item.score.familyFit)));
+    const contextualFit = toFiveScale(
+      texts.length > 0 ? accepted.length / texts.length : 0,
+    );
+    const categoryAlignment = toFiveScale(
+      average(evaluations.map((item) => item.score.familyFit)),
+    );
 
     let diversityRatio = 1;
     if (texts.length >= 2) {
@@ -99,9 +115,13 @@ export class PolicyAwareSuggestionQualityEvaluator {
     }
 
     const diversity = toFiveScale(diversityRatio);
-    const videoSpecificity = toFiveScale(average(evaluations.map((item) => item.score.literalness)));
+    const videoSpecificity = toFiveScale(
+      average(evaluations.map((item) => item.score.literalness)),
+    );
     const sceneCoherence = toFiveScale(
-      average(evaluations.map((item) => Math.max(0, 1 - item.score.overlapPenalty)))
+      average(
+        evaluations.map((item) => Math.max(0, 1 - item.score.overlapPenalty)),
+      ),
     );
 
     const scores: SuggestionQualityScores = {
@@ -113,13 +133,19 @@ export class PolicyAwareSuggestionQualityEvaluator {
     };
 
     if (testCase.expectedQualities) {
-      for (const [dimension, range] of Object.entries(testCase.expectedQualities)) {
+      for (const [dimension, range] of Object.entries(
+        testCase.expectedQualities,
+      )) {
         const value = scores[dimension as SuggestionQualityDimension];
         if (range?.min !== undefined && value < range.min) {
-          failures.push(`${dimension} (${value.toFixed(1)}) below min ${range.min}`);
+          failures.push(
+            `${dimension} (${value.toFixed(1)}) below min ${range.min}`,
+          );
         }
         if (range?.max !== undefined && value > range.max) {
-          failures.push(`${dimension} (${value.toFixed(1)}) above max ${range.max}`);
+          failures.push(
+            `${dimension} (${value.toFixed(1)}) above max ${range.max}`,
+          );
         }
       }
     }

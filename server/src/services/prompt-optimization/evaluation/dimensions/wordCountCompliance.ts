@@ -1,4 +1,4 @@
-import { countWords, extractMainVideoPrompt } from '../utils/text';
+import { countWords, extractMainVideoPrompt } from "../utils/text";
 
 export function evaluateWordCountCompliance(optimized: string): number {
   const words = countWords(extractMainVideoPrompt(optimized));

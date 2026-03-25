@@ -1,12 +1,12 @@
 /**
  * Groq-specific LLM Client
- * 
+ *
  * Extends RobustLlmClient with Groq/Llama 3 optimizations:
  * - Logprobs-based confidence adjustment (Section 4.1)
  * - Few-shot examples as message array (Section 3.3)
  * - Seed passthrough for reproducibility
  * - Min-P and stop sequences (handled by GroqLlamaAdapter)
- * 
+ *
  * Llama 3 PDF References:
  * - Section 4.1: Logprobs more reliable than self-reported confidence
  * - Section 3.3: Few-shot examples improve instruction following
@@ -14,14 +14,18 @@
  * - Section 4.3: Stop sequences prevent runaway generation
  */
 
-import { RobustLlmClient, ProviderRequestOptions, ModelResponse } from './RobustLlmClient.js';
-import type { LlmSpanParams, ILlmClient } from './ILlmClient.js';
-import type { LabelSpansResult, LLMSpan } from '../types.js';
-import { logger } from '@infrastructure/Logger';
+import {
+  RobustLlmClient,
+  ProviderRequestOptions,
+  ModelResponse,
+} from "./RobustLlmClient.js";
+import type { LlmSpanParams, ILlmClient } from "./ILlmClient.js";
+import type { LabelSpansResult, LLMSpan } from "../types.js";
+import { logger } from "@infrastructure/Logger";
 
 /**
  * Groq/Llama 3 optimized LLM client
- * 
+ *
  * Key Groq-specific optimizations:
  * 1. Logprobs confidence adjustment: Uses token-level probabilities to validate
  *    and cap self-reported confidence scores
@@ -30,10 +34,9 @@ import { logger } from '@infrastructure/Logger';
  * 4. Provider-specific options forwarded to GroqLlamaAdapter (min_p, stop sequences)
  */
 export class GroqLlmClient extends RobustLlmClient implements ILlmClient {
-  
   /**
    * HOOK: Configure Groq-specific request options
-   * 
+   *
    * Llama 3 PDF Best Practices:
    * - useFewShot: Section 3.3 - Few-shot examples as message array
    * - enableLogprobs: Section 4.1 - Token-level confidence
@@ -53,35 +56,40 @@ export class GroqLlmClient extends RobustLlmClient implements ILlmClient {
    * HOOK: Provider name for logging and prompt building
    */
   protected override _getProviderName(): string {
-    return 'groq';
+    return "groq";
   }
 
   /**
    * HOOK: Post-process result with logprobs confidence adjustment
-   * 
+   *
    * Llama 3 PDF Section 4.1: Logprobs Confidence
    * "Token-level probabilities are more reliable than asking the model
    * to self-report confidence. The model's actual certainty is revealed
    * in the logprobs, not in generated confidence scores."
-   * 
+   *
    * Strategy: Use Math.min(selfReported, logprobsAverage) to prevent
    * overconfident predictions. This caps confidence at what the model
    * actually believes based on token probabilities.
    */
-  protected override _postProcessResult(result: LabelSpansResult): LabelSpansResult {
+  protected override _postProcessResult(
+    result: LabelSpansResult,
+  ): LabelSpansResult {
     const metadata = this._lastResponseMetadata;
-    
+
     // Skip if no logprobs data available
     if (!metadata?.averageConfidence) {
-      logger.debug('GroqLlmClient: No logprobs data for confidence adjustment', {
-        hasMetadata: !!metadata,
-        spanCount: result.spans?.length || 0,
-      });
+      logger.debug(
+        "GroqLlmClient: No logprobs data for confidence adjustment",
+        {
+          hasMetadata: !!metadata,
+          spanCount: result.spans?.length || 0,
+        },
+      );
       return this._addProviderMetadata(result, false);
     }
 
     const averageConfidence = metadata.averageConfidence;
-    
+
     // Skip if no spans to adjust
     if (!result.spans?.length) {
       return this._addProviderMetadata(result, false);
@@ -90,22 +98,25 @@ export class GroqLlmClient extends RobustLlmClient implements ILlmClient {
     // Adjust confidence for each span
     const adjustedSpans = result.spans.map((span: LLMSpan) => {
       const originalConfidence = span.confidence ?? 1.0;
-      
+
       // Use minimum of self-reported and logprobs-derived confidence
       // This prevents overconfident predictions where the model claims
       // high confidence but token probabilities suggest uncertainty
-      const adjustedConfidence = Math.min(originalConfidence, averageConfidence);
-      
+      const adjustedConfidence = Math.min(
+        originalConfidence,
+        averageConfidence,
+      );
+
       // Log significant adjustments for debugging
       if (originalConfidence - adjustedConfidence > 0.1) {
-        logger.debug('GroqLlmClient: Significant confidence adjustment', {
+        logger.debug("GroqLlmClient: Significant confidence adjustment", {
           spanText: span.text?.substring(0, 30),
           original: originalConfidence,
           adjusted: adjustedConfidence,
           logprobsAvg: averageConfidence,
         });
       }
-      
+
       return {
         ...span,
         confidence: adjustedConfidence,
@@ -114,12 +125,12 @@ export class GroqLlmClient extends RobustLlmClient implements ILlmClient {
       };
     });
 
-    logger.info('GroqLlmClient: Applied logprobs confidence adjustment', {
+    logger.info("GroqLlmClient: Applied logprobs confidence adjustment", {
       spanCount: adjustedSpans.length,
       averageLogprobsConfidence: averageConfidence,
       adjustedCount: adjustedSpans.filter(
-        (s: LLMSpan & { _originalConfidence?: number }) => 
-          s._originalConfidence && (s.confidence ?? 0) < s._originalConfidence
+        (s: LLMSpan & { _originalConfidence?: number }) =>
+          s._originalConfidence && (s.confidence ?? 0) < s._originalConfidence,
       ).length,
     });
 
@@ -129,7 +140,7 @@ export class GroqLlmClient extends RobustLlmClient implements ILlmClient {
         spans: adjustedSpans,
       },
       true,
-      averageConfidence
+      averageConfidence,
     );
   }
 
@@ -139,17 +150,17 @@ export class GroqLlmClient extends RobustLlmClient implements ILlmClient {
   private _addProviderMetadata(
     result: LabelSpansResult,
     logprobsApplied: boolean,
-    averageConfidence?: number
+    averageConfidence?: number,
   ): LabelSpansResult {
     const metadata = this._lastResponseMetadata;
-    
+
     return {
       ...result,
       meta: {
         ...result.meta,
-        _clientType: 'GroqLlmClient',
+        _clientType: "GroqLlmClient",
         _providerOptimizations: {
-          provider: 'groq',
+          provider: "groq",
           logprobsAdjustment: logprobsApplied,
           averageLogprobsConfidence: averageConfidence,
           optimizations: metadata?.optimizations || [],

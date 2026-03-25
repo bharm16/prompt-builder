@@ -1,10 +1,13 @@
-import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import React from "react";
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { CanvasWorkspace } from '../CanvasWorkspace';
-import type { Generation, GenerationsPanelProps } from '@features/generations/types';
+import { CanvasWorkspace } from "../CanvasWorkspace";
+import type {
+  Generation,
+  GenerationsPanelProps,
+} from "@features/generations/types";
 
 let runtimeState: {
   heroGeneration: Generation | null;
@@ -14,28 +17,31 @@ let runtimeState: {
   generations: [],
 };
 
-vi.mock('@features/generation-controls/context/GenerationControlsStore', () => ({
-  useGenerationControlsStoreActions: () => ({
-    setSelectedModel: vi.fn(),
-    setVideoTier: vi.fn(),
-    setCameraMotion: vi.fn(),
+vi.mock(
+  "@features/generation-controls/context/GenerationControlsStore",
+  () => ({
+    useGenerationControlsStoreActions: () => ({
+      setSelectedModel: vi.fn(),
+      setVideoTier: vi.fn(),
+      setCameraMotion: vi.fn(),
+    }),
+    useGenerationControlsStoreState: () => ({
+      domain: {
+        generationParams: { duration_s: 5 },
+        startFrame: null,
+        selectedModel: "sora-2",
+        videoTier: "render",
+        cameraMotion: null,
+      },
+    }),
   }),
-  useGenerationControlsStoreState: () => ({
-    domain: {
-      generationParams: { duration_s: 5 },
-      startFrame: null,
-      selectedModel: 'sora-2',
-      videoTier: 'render',
-      cameraMotion: null,
-    },
-  }),
-}));
+);
 
-vi.mock('@/features/prompt-optimizer/context/PromptStateContext', () => ({
+vi.mock("@/features/prompt-optimizer/context/PromptStateContext", () => ({
   useOptionalPromptHighlights: () => null,
 }));
 
-vi.mock('@/features/prompt-optimizer/context/WorkspaceSessionContext', () => ({
+vi.mock("@/features/prompt-optimizer/context/WorkspaceSessionContext", () => ({
   useWorkspaceSession: () => ({
     hasActiveContinuityShot: false,
     currentShot: null,
@@ -43,52 +49,52 @@ vi.mock('@/features/prompt-optimizer/context/WorkspaceSessionContext', () => ({
   }),
 }));
 
-vi.mock('@features/generations', () => ({
+vi.mock("@features/generations", () => ({
   useGenerationsRuntime: () => ({
     ...runtimeState,
   }),
 }));
 
-vi.mock('@/components/ToolSidebar/context', () => ({
+vi.mock("@/components/ToolSidebar/context", () => ({
   useSidebarGenerationDomain: () => null,
 }));
 
 vi.mock(
-  '@/components/ToolSidebar/components/panels/GenerationControlsPanel/hooks/useModelSelectionRecommendation',
+  "@/components/ToolSidebar/components/panels/GenerationControlsPanel/hooks/useModelSelectionRecommendation",
   () => ({
     useModelSelectionRecommendation: () => ({
-      recommendationMode: 't2v',
+      recommendationMode: "t2v",
       modelRecommendation: null,
       recommendedModelId: undefined,
       efficientModelId: undefined,
-      renderModelOptions: [{ id: 'sora-2', label: 'Sora' }],
-      renderModelId: 'sora-2',
+      renderModelOptions: [{ id: "sora-2", label: "Sora" }],
+      renderModelId: "sora-2",
       recommendationAgeMs: null,
     }),
-  })
+  }),
 );
 
-vi.mock('../components/CanvasTopBar', () => ({
+vi.mock("../components/CanvasTopBar", () => ({
   CanvasTopBar: () => <div data-testid="canvas-top-bar" />,
 }));
 
-vi.mock('../components/NewSessionView', () => ({
+vi.mock("../components/NewSessionView", () => ({
   NewSessionView: () => <div data-testid="new-session-view" />,
 }));
 
-vi.mock('../components/CanvasPromptBar', () => ({
+vi.mock("../components/CanvasPromptBar", () => ({
   CanvasPromptBar: () => <div data-testid="canvas-prompt-bar" />,
 }));
 
-vi.mock('../components/ModelCornerSelector', () => ({
+vi.mock("../components/ModelCornerSelector", () => ({
   ModelCornerSelector: () => <div data-testid="model-corner-selector" />,
 }));
 
-vi.mock('../components/CanvasHeroViewer', () => ({
+vi.mock("../components/CanvasHeroViewer", () => ({
   CanvasHeroViewer: () => <div data-testid="canvas-hero-viewer" />,
 }));
 
-vi.mock('@/features/prompt-optimizer/components/GalleryPanel', () => ({
+vi.mock("@/features/prompt-optimizer/components/GalleryPanel", () => ({
   GalleryPanel: ({
     generations,
     onSelectGeneration,
@@ -111,36 +117,37 @@ vi.mock('@/features/prompt-optimizer/components/GalleryPanel', () => ({
   ),
 }));
 
-vi.mock('@/features/prompt-optimizer/components/GenerationPopover', () => ({
+vi.mock("@/features/prompt-optimizer/components/GenerationPopover", () => ({
   GenerationPopover: ({ activeId }: { activeId: string }) => (
     <div data-testid="generation-popover">{activeId}</div>
   ),
 }));
 
-vi.mock('@/components/modals/CameraMotionModal', () => ({
+vi.mock("@/components/modals/CameraMotionModal", () => ({
   CameraMotionModal: () => null,
 }));
 
 const createGeneration = (overrides: Partial<Generation> = {}): Generation => ({
-  id: 'gen-1',
-  tier: 'render',
-  status: 'completed',
-  model: 'sora',
-  prompt: 'Prompt',
-  promptVersionId: 'version-1',
+  id: "gen-1",
+  tier: "render",
+  status: "completed",
+  model: "sora",
+  prompt: "Prompt",
+  promptVersionId: "version-1",
   createdAt: Date.now(),
   completedAt: Date.now(),
-  mediaType: 'video',
-  mediaUrls: ['https://storage.example.com/users/u1/generations/video.mp4'],
-  thumbnailUrl: 'https://storage.example.com/users/u1/previews/images/thumb.webp',
+  mediaType: "video",
+  mediaUrls: ["https://storage.example.com/users/u1/generations/video.mp4"],
+  thumbnailUrl:
+    "https://storage.example.com/users/u1/previews/images/thumb.webp",
   ...overrides,
 });
 
 const buildProps = (): React.ComponentProps<typeof CanvasWorkspace> => ({
   generationsPanelProps: {
-    prompt: 'baby driving a car',
+    prompt: "baby driving a car",
     versions: [],
-    promptVersionId: 'version-1',
+    promptVersionId: "version-1",
   } as unknown as GenerationsPanelProps,
   copied: false,
   canUndo: false,
@@ -149,7 +156,8 @@ const buildProps = (): React.ComponentProps<typeof CanvasWorkspace> => ({
   onShare: vi.fn(),
   onUndo: vi.fn(),
   onRedo: vi.fn(),
-  editorRef: React.createRef<HTMLDivElement>() as React.RefObject<HTMLDivElement>,
+  editorRef:
+    React.createRef<HTMLDivElement>() as React.RefObject<HTMLDivElement>,
   onTextSelection: vi.fn(),
   onHighlightClick: vi.fn(),
   onHighlightMouseDown: vi.fn(),
@@ -169,22 +177,23 @@ const buildProps = (): React.ComponentProps<typeof CanvasWorkspace> => ({
   onAutocompleteIndexChange: vi.fn(),
   selectedSpanId: null,
   suggestionCount: 0,
-  suggestionsListRef: React.createRef<HTMLDivElement>() as React.RefObject<HTMLDivElement>,
+  suggestionsListRef:
+    React.createRef<HTMLDivElement>() as React.RefObject<HTMLDivElement>,
   inlineSuggestions: [],
   activeSuggestionIndex: 0,
   onActiveSuggestionChange: vi.fn(),
-  interactionSourceRef: { current: 'auto' },
+  interactionSourceRef: { current: "auto" },
   onSuggestionClick: vi.fn(),
   onCloseInlinePopover: vi.fn(),
-  selectionLabel: '',
+  selectionLabel: "",
   onApplyActiveSuggestion: vi.fn(),
   isInlineLoading: false,
   isInlineError: false,
-  inlineErrorMessage: '',
+  inlineErrorMessage: "",
   isInlineEmpty: true,
-  customRequest: '',
+  customRequest: "",
   onCustomRequestChange: vi.fn(),
-  customRequestError: '',
+  customRequestError: "",
   onCustomRequestErrorChange: vi.fn(),
   onCustomRequestSubmit: vi.fn(),
   isCustomRequestDisabled: true,
@@ -198,7 +207,7 @@ const buildProps = (): React.ComponentProps<typeof CanvasWorkspace> => ({
   onToggleGenerationFavorite: vi.fn(),
 });
 
-describe('regression: canvas closes stale generation popovers when gallery items disappear', () => {
+describe("regression: canvas closes stale generation popovers when gallery items disappear", () => {
   beforeEach(() => {
     runtimeState = {
       heroGeneration: null,
@@ -206,7 +215,7 @@ describe('regression: canvas closes stale generation popovers when gallery items
     };
   });
 
-  it('clears the active popover when the selected gallery item is no longer browseable', async () => {
+  it("clears the active popover when the selected gallery item is no longer browseable", async () => {
     const generation = createGeneration();
     runtimeState = {
       heroGeneration: generation,
@@ -217,24 +226,24 @@ describe('regression: canvas closes stale generation popovers when gallery items
     const props = buildProps();
     const { rerender } = render(<CanvasWorkspace {...props} />);
 
-    await user.click(screen.getByTestId('gallery-select-gen-1'));
-    expect(screen.getByTestId('generation-popover')).toHaveTextContent('gen-1');
+    await user.click(screen.getByTestId("gallery-select-gen-1"));
+    expect(screen.getByTestId("generation-popover")).toHaveTextContent("gen-1");
 
     runtimeState = {
       heroGeneration: {
         ...generation,
-        status: 'failed',
+        status: "failed",
         mediaUrls: [],
         thumbnailUrl: null,
-        error: 'Not allowed by CORS',
+        error: "Not allowed by CORS",
       },
       generations: [
         {
           ...generation,
-          status: 'failed',
+          status: "failed",
           mediaUrls: [],
           thumbnailUrl: null,
-          error: 'Not allowed by CORS',
+          error: "Not allowed by CORS",
         },
       ],
     };
@@ -242,7 +251,9 @@ describe('regression: canvas closes stale generation popovers when gallery items
     rerender(<CanvasWorkspace {...props} />);
 
     await waitFor(() => {
-      expect(screen.queryByTestId('generation-popover')).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId("generation-popover"),
+      ).not.toBeInTheDocument();
     });
   });
 });

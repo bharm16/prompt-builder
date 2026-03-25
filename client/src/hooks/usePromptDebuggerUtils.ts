@@ -1,5 +1,5 @@
-import type { EnhancementSuggestionsRequest } from '@/api/enhancementSuggestionsApi';
-import type { Highlight, PromptDebuggerState } from './types';
+import type { EnhancementSuggestionsRequest } from "@/api/enhancementSuggestionsApi";
+import type { Highlight, PromptDebuggerState } from "./types";
 
 export type HighlightSuggestionPayload = EnhancementSuggestionsRequest & {
   originalUserPrompt: string;
@@ -7,10 +7,10 @@ export type HighlightSuggestionPayload = EnhancementSuggestionsRequest & {
 
 export function buildHighlightSuggestionPayload(
   state: PromptDebuggerState,
-  highlight: Highlight
+  highlight: Highlight,
 ): HighlightSuggestionPayload {
   const fullPrompt =
-    state.displayedPrompt || state.optimizedPrompt || state.inputPrompt || '';
+    state.displayedPrompt || state.optimizedPrompt || state.inputPrompt || "";
   const highlightIndex = fullPrompt.indexOf(highlight.text);
 
   const contextBefore = fullPrompt
@@ -19,12 +19,14 @@ export function buildHighlightSuggestionPayload(
   const contextAfter = fullPrompt
     .substring(
       highlightIndex + highlight.text.length,
-      Math.min(fullPrompt.length, highlightIndex + highlight.text.length + 300)
+      Math.min(fullPrompt.length, highlightIndex + highlight.text.length + 300),
     )
     .trim();
 
   const resolvedBrainstormContext =
-    state.promptContext && typeof state.promptContext === 'object' && 'toJSON' in state.promptContext
+    state.promptContext &&
+    typeof state.promptContext === "object" &&
+    "toJSON" in state.promptContext
       ? (state.promptContext.toJSON as () => unknown)()
       : state.promptContext;
   const brainstormContext =

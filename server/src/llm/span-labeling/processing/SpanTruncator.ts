@@ -1,5 +1,5 @@
-import { buildSpanKey } from '../utils/textUtils.js';
-import type { SpanLike } from '../types.js';
+import { buildSpanKey } from "../utils/textUtils.js";
+import type { SpanLike } from "../types.js";
 
 interface TruncateResult {
   spans: SpanLike[];
@@ -27,7 +27,7 @@ interface TruncateResult {
  */
 export function truncateToMaxSpans(
   spans: SpanLike[],
-  maxSpans: number
+  maxSpans: number,
 ): TruncateResult {
   if (spans.length <= maxSpans) {
     return { spans, notes: [] };
@@ -35,8 +35,8 @@ export function truncateToMaxSpans(
 
   // Rank by confidence, break ties by position
   const ranked = [...spans].sort((a, b) => {
-    const confidenceA = typeof a.confidence === 'number' ? a.confidence : 0;
-    const confidenceB = typeof b.confidence === 'number' ? b.confidence : 0;
+    const confidenceA = typeof a.confidence === "number" ? a.confidence : 0;
+    const confidenceB = typeof b.confidence === "number" ? b.confidence : 0;
     if (confidenceB === confidenceA) return a.start - b.start;
     return confidenceB - confidenceA;
   });

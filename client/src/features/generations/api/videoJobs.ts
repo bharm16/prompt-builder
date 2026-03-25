@@ -1,6 +1,6 @@
-import { pollJobStatus } from '@/features/preview/api/pollJobStatus';
-import type { PollJobResult } from '@/features/preview/api/pollJobStatus';
-import type { VideoJobStatus } from '@/features/preview/api/previewApi';
+import { pollJobStatus } from "@/features/preview/api/pollJobStatus";
+import type { PollJobResult } from "@/features/preview/api/pollJobStatus";
+import type { VideoJobStatus } from "@/features/preview/api/previewApi";
 
 export type VideoJobResult = PollJobResult;
 

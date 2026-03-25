@@ -5,30 +5,40 @@
  * Handles Firestore and localStorage fallback logic.
  */
 
-import { getLocalPromptRepository, getPromptRepositoryForUser } from '../../../repositories';
-import { logger } from '../../../services/LoggingService';
-import type { PromptHistoryEntry, PromptVersionEntry, SaveEntryParams, SaveResult } from '../types';
-import type { UpdatePromptOptions } from '../../../repositories/promptRepositoryTypes';
+import {
+  getLocalPromptRepository,
+  getPromptRepositoryForUser,
+} from "../../../repositories";
+import { logger } from "../../../services/LoggingService";
+import type {
+  PromptHistoryEntry,
+  PromptVersionEntry,
+  SaveEntryParams,
+  SaveResult,
+} from "../types";
+import type { UpdatePromptOptions } from "../../../repositories/promptRepositoryTypes";
 
-const log = logger.child('historyRepository');
+const log = logger.child("historyRepository");
 
-const isValidSessionId = (docId: string | null | undefined): docId is string => {
+const isValidSessionId = (
+  docId: string | null | undefined,
+): docId is string => {
   if (!docId) {
     return false;
   }
   const normalized = docId.trim();
-  return normalized.length > 0 && !normalized.startsWith('draft-');
+  return normalized.length > 0 && !normalized.startsWith("draft-");
 };
 
 const isDraftDocId = (docId: string | null | undefined): boolean => {
   if (!docId) {
     return false;
   }
-  return docId.trim().startsWith('draft-');
+  return docId.trim().startsWith("draft-");
 };
 
 const normalizeRecord = (value: unknown): Record<string, unknown> | null => {
-  if (value && typeof value === 'object' && !Array.isArray(value)) {
+  if (value && typeof value === "object" && !Array.isArray(value)) {
     return value as Record<string, unknown>;
   }
   return null;
@@ -37,7 +47,9 @@ const normalizeRecord = (value: unknown): Record<string, unknown> | null => {
 /**
  * Normalize prompt entries to ensure consistent shape
  */
-export function normalizeEntries(entries: PromptHistoryEntry[]): PromptHistoryEntry[] {
+export function normalizeEntries(
+  entries: PromptHistoryEntry[],
+): PromptHistoryEntry[] {
   return entries.map((entry) => ({
     ...entry,
     title: entry.title ?? null,
@@ -52,26 +64,28 @@ export function normalizeEntries(entries: PromptHistoryEntry[]): PromptHistoryEn
 /**
  * Load history from Firestore for authenticated user
  */
-export async function loadFromFirestore(userId: string): Promise<PromptHistoryEntry[]> {
-  log.debug('Loading from Firestore', { userId });
-  logger.startTimer('loadFromFirestore');
+export async function loadFromFirestore(
+  userId: string,
+): Promise<PromptHistoryEntry[]> {
+  log.debug("Loading from Firestore", { userId });
+  logger.startTimer("loadFromFirestore");
 
   try {
     const repository = getPromptRepositoryForUser(true);
     const prompts = await repository.getUserPrompts(userId, 100);
     const normalized = normalizeEntries(prompts);
 
-    const duration = logger.endTimer('loadFromFirestore');
+    const duration = logger.endTimer("loadFromFirestore");
 
-    log.info('Loaded from Firestore', {
+    log.info("Loaded from Firestore", {
       entryCount: normalized.length,
       duration,
     });
 
     return normalized;
   } catch (error) {
-    logger.endTimer('loadFromFirestore');
-    log.error('Failed to load from Firestore', error as Error, { userId });
+    logger.endTimer("loadFromFirestore");
+    log.error("Failed to load from Firestore", error as Error, { userId });
     throw error;
   }
 }
@@ -80,14 +94,14 @@ export async function loadFromFirestore(userId: string): Promise<PromptHistoryEn
  * Load history from localStorage for unauthenticated user
  */
 export async function loadFromLocalStorage(): Promise<PromptHistoryEntry[]> {
-  log.debug('Loading from localStorage');
+  log.debug("Loading from localStorage");
 
   try {
     const repository = getPromptRepositoryForUser(false);
-    const prompts = await repository.getUserPrompts('', 100);
+    const prompts = await repository.getUserPrompts("", 100);
     return normalizeEntries(prompts);
   } catch (error) {
-    log.error('Failed to load from localStorage', error as Error);
+    log.error("Failed to load from localStorage", error as Error);
     throw error;
   }
 }
@@ -95,7 +109,10 @@ export async function loadFromLocalStorage(): Promise<PromptHistoryEntry[]> {
 /**
  * Save history to localStorage (for syncing Firestore data)
  */
-export function syncToLocalStorage(entries: PromptHistoryEntry[]): { success: boolean; trimmed: boolean } {
+export function syncToLocalStorage(entries: PromptHistoryEntry[]): {
+  success: boolean;
+  trimmed: boolean;
+} {
   const repository = getLocalPromptRepository();
   return repository.syncEntries(entries);
 }
@@ -105,18 +122,18 @@ export function syncToLocalStorage(entries: PromptHistoryEntry[]): { success: bo
  */
 export async function saveEntry(
   userId: string | undefined,
-  params: SaveEntryParams
+  params: SaveEntryParams,
 ): Promise<SaveResult> {
-  log.debug('Saving entry', {
+  log.debug("Saving entry", {
     hasUser: !!userId,
     inputLength: params.input.length,
   });
-  logger.startTimer('saveEntry');
+  logger.startTimer("saveEntry");
 
   const repository = getPromptRepositoryForUser(!!userId);
 
   try {
-    const result = await repository.save(userId ?? '', {
+    const result = await repository.save(userId ?? "", {
       ...(params.uuid ? { uuid: params.uuid } : {}),
       ...(params.title !== undefined ? { title: params.title } : {}),
       input: params.input,
@@ -124,20 +141,22 @@ export async function saveEntry(
       score: params.score,
       mode: params.mode,
       ...(params.targetModel ? { targetModel: params.targetModel } : {}),
-      ...(params.generationParams ? { generationParams: params.generationParams } : {}),
+      ...(params.generationParams
+        ? { generationParams: params.generationParams }
+        : {}),
       ...(params.keyframes ? { keyframes: params.keyframes } : {}),
       brainstormContext: params.brainstormContext ?? null,
       highlightCache: params.highlightCache ?? null,
       ...(Array.isArray(params.versions) ? { versions: params.versions } : {}),
     });
 
-    const duration = logger.endTimer('saveEntry');
-    log.info('Entry saved', { uuid: result.uuid, duration });
+    const duration = logger.endTimer("saveEntry");
+    log.info("Entry saved", { uuid: result.uuid, duration });
 
     return { uuid: result.uuid, id: result.id };
   } catch (error) {
-    logger.endTimer('saveEntry');
-    log.error('Failed to save entry', error as Error);
+    logger.endTimer("saveEntry");
+    log.error("Failed to save entry", error as Error);
     throw error;
   }
 }
@@ -149,7 +168,7 @@ export async function updatePrompt(
   userId: string | undefined,
   uuid: string,
   docId: string | null,
-  updates: UpdatePromptOptions
+  updates: UpdatePromptOptions,
 ): Promise<void> {
   const repository = getPromptRepositoryForUser(!!userId);
 
@@ -157,7 +176,10 @@ export async function updatePrompt(
     return;
   }
 
-  if ('updatePrompt' in repository && typeof repository.updatePrompt === 'function') {
+  if (
+    "updatePrompt" in repository &&
+    typeof repository.updatePrompt === "function"
+  ) {
     const canUseDocId = Boolean(userId) && isValidSessionId(docId);
     let attemptedUuid = false;
     try {
@@ -168,20 +190,29 @@ export async function updatePrompt(
       attemptedUuid = true;
       await repository.updatePrompt(uuid, updates);
     } catch (error) {
-      if (userId && isValidSessionId(docId) && !attemptedUuid && uuid && uuid !== docId) {
+      if (
+        userId &&
+        isValidSessionId(docId) &&
+        !attemptedUuid &&
+        uuid &&
+        uuid !== docId
+      ) {
         try {
           await repository.updatePrompt(uuid, updates);
           return;
         } catch (fallbackError) {
-          log.warn('Unable to persist updated prompt (fallback)', {
+          log.warn("Unable to persist updated prompt (fallback)", {
             uuid,
             docId,
-            error: fallbackError instanceof Error ? fallbackError.message : String(fallbackError),
+            error:
+              fallbackError instanceof Error
+                ? fallbackError.message
+                : String(fallbackError),
           });
           return;
         }
       }
-      log.warn('Unable to persist updated prompt', {
+      log.warn("Unable to persist updated prompt", {
         uuid,
         docId,
         error: error instanceof Error ? error.message : String(error),
@@ -197,7 +228,7 @@ export async function updateHighlights(
   userId: string | undefined,
   uuid: string,
   docId: string | null,
-  highlightCache: Record<string, unknown> | null
+  highlightCache: Record<string, unknown> | null,
 ): Promise<void> {
   const repository = getPromptRepositoryForUser(!!userId);
 
@@ -205,32 +236,50 @@ export async function updateHighlights(
     return;
   }
 
-  if ('updateHighlights' in repository && typeof repository.updateHighlights === 'function') {
+  if (
+    "updateHighlights" in repository &&
+    typeof repository.updateHighlights === "function"
+  ) {
     const canUseDocId = Boolean(userId) && isValidSessionId(docId);
     const normalizedHighlightCache = normalizeRecord(highlightCache);
     let attemptedUuid = false;
     try {
       if (canUseDocId) {
-        await repository.updateHighlights(docId, { highlightCache: normalizedHighlightCache });
+        await repository.updateHighlights(docId, {
+          highlightCache: normalizedHighlightCache,
+        });
         return;
       }
       attemptedUuid = true;
-      await repository.updateHighlights(uuid, { highlightCache: normalizedHighlightCache });
+      await repository.updateHighlights(uuid, {
+        highlightCache: normalizedHighlightCache,
+      });
     } catch (error) {
-      if (userId && isValidSessionId(docId) && !attemptedUuid && uuid && uuid !== docId) {
+      if (
+        userId &&
+        isValidSessionId(docId) &&
+        !attemptedUuid &&
+        uuid &&
+        uuid !== docId
+      ) {
         try {
-          await repository.updateHighlights(uuid, { highlightCache: normalizedHighlightCache });
+          await repository.updateHighlights(uuid, {
+            highlightCache: normalizedHighlightCache,
+          });
           return;
         } catch (fallbackError) {
-          log.warn('Unable to persist updated highlights (fallback)', {
+          log.warn("Unable to persist updated highlights (fallback)", {
             uuid,
             docId,
-            error: fallbackError instanceof Error ? fallbackError.message : String(fallbackError),
+            error:
+              fallbackError instanceof Error
+                ? fallbackError.message
+                : String(fallbackError),
           });
           return;
         }
       }
-      log.warn('Unable to persist updated highlights', {
+      log.warn("Unable to persist updated highlights", {
         uuid,
         docId,
         error: error instanceof Error ? error.message : String(error),
@@ -246,7 +295,7 @@ export async function updateOutput(
   userId: string | undefined,
   uuid: string,
   docId: string | null,
-  output: string
+  output: string,
 ): Promise<void> {
   const repository = getPromptRepositoryForUser(!!userId);
 
@@ -254,7 +303,10 @@ export async function updateOutput(
     return;
   }
 
-  if ('updateOutput' in repository && typeof repository.updateOutput === 'function') {
+  if (
+    "updateOutput" in repository &&
+    typeof repository.updateOutput === "function"
+  ) {
     const canUseDocId = Boolean(userId) && isValidSessionId(docId);
     let attemptedUuid = false;
     try {
@@ -265,20 +317,29 @@ export async function updateOutput(
       attemptedUuid = true;
       await repository.updateOutput(uuid, output);
     } catch (error) {
-      if (userId && isValidSessionId(docId) && !attemptedUuid && uuid && uuid !== docId) {
+      if (
+        userId &&
+        isValidSessionId(docId) &&
+        !attemptedUuid &&
+        uuid &&
+        uuid !== docId
+      ) {
         try {
           await repository.updateOutput(uuid, output);
           return;
         } catch (fallbackError) {
-          log.warn('Unable to persist updated output (fallback)', {
+          log.warn("Unable to persist updated output (fallback)", {
             uuid,
             docId,
-            error: fallbackError instanceof Error ? fallbackError.message : String(fallbackError),
+            error:
+              fallbackError instanceof Error
+                ? fallbackError.message
+                : String(fallbackError),
           });
           return;
         }
       }
-      log.warn('Unable to persist updated output', {
+      log.warn("Unable to persist updated output", {
         uuid,
         docId,
         error: error instanceof Error ? error.message : String(error),
@@ -294,32 +355,43 @@ export async function updateVersions(
   userId: string | undefined,
   uuid: string,
   docId: string | null,
-  versions: PromptVersionEntry[]
+  versions: PromptVersionEntry[],
 ): Promise<void> {
   const repository = getPromptRepositoryForUser(!!userId);
 
-  if ('updateVersions' in repository && typeof repository.updateVersions === 'function') {
+  if (
+    "updateVersions" in repository &&
+    typeof repository.updateVersions === "function"
+  ) {
     const generationCount = versions.reduce(
-      (sum, v) => sum + (Array.isArray(v.generations) ? v.generations.length : 0),
-      0
+      (sum, v) =>
+        sum + (Array.isArray(v.generations) ? v.generations.length : 0),
+      0,
     );
 
     try {
       if (userId && isValidSessionId(docId)) {
         await repository.updateVersions(docId, versions);
-        log.debug('Versions persisted to session store', { uuid, docId, versionCount: versions.length, generationCount });
+        log.debug("Versions persisted to session store", {
+          uuid,
+          docId,
+          versionCount: versions.length,
+          generationCount,
+        });
         return;
       }
       await repository.updateVersions(uuid, versions);
       log.debug(
-        userId ? 'Versions persisted to session store via uuid' : 'Versions persisted to localStorage',
-        { uuid, versionCount: versions.length }
+        userId
+          ? "Versions persisted to session store via uuid"
+          : "Versions persisted to localStorage",
+        { uuid, versionCount: versions.length },
       );
     } catch (error) {
       if (userId && isValidSessionId(docId) && uuid && uuid !== docId) {
         try {
           await repository.updateVersions(uuid, versions);
-          log.debug('Versions persisted to session store via uuid fallback', {
+          log.debug("Versions persisted to session store via uuid fallback", {
             uuid,
             docId,
             versionCount: versions.length,
@@ -327,11 +399,15 @@ export async function updateVersions(
           });
           return;
         } catch (fallbackError) {
-          log.error('Failed to persist versions (fallback)', fallbackError as Error, { uuid, docId });
+          log.error(
+            "Failed to persist versions (fallback)",
+            fallbackError as Error,
+            { uuid, docId },
+          );
           return;
         }
       }
-      log.error('Failed to persist versions', error as Error, { uuid, docId });
+      log.error("Failed to persist versions", error as Error, { uuid, docId });
     }
   }
 }
@@ -339,19 +415,22 @@ export async function updateVersions(
 /**
  * Delete an entry by ID
  */
-export async function deleteEntry(userId: string | undefined, entryId: string): Promise<void> {
-  log.debug('Deleting entry', { entryId, hasUser: !!userId });
-  logger.startTimer('deleteEntry');
+export async function deleteEntry(
+  userId: string | undefined,
+  entryId: string,
+): Promise<void> {
+  log.debug("Deleting entry", { entryId, hasUser: !!userId });
+  logger.startTimer("deleteEntry");
 
   const repository = getPromptRepositoryForUser(!!userId);
 
   try {
     await repository.deleteById(entryId);
-    const duration = logger.endTimer('deleteEntry');
-    log.info('Entry deleted', { entryId, duration });
+    const duration = logger.endTimer("deleteEntry");
+    log.info("Entry deleted", { entryId, duration });
   } catch (error) {
-    logger.endTimer('deleteEntry');
-    log.error('Failed to delete entry', error as Error, { entryId });
+    logger.endTimer("deleteEntry");
+    log.error("Failed to delete entry", error as Error, { entryId });
     throw error;
   }
 }
@@ -360,15 +439,15 @@ export async function deleteEntry(userId: string | undefined, entryId: string): 
  * Clear all history
  */
 export async function clearAll(userId: string | undefined): Promise<void> {
-  log.debug('Clearing all history', { hasUser: !!userId });
-  logger.startTimer('clearAll');
+  log.debug("Clearing all history", { hasUser: !!userId });
+  logger.startTimer("clearAll");
 
   const repository = getPromptRepositoryForUser(!!userId);
 
-  if ('clear' in repository && typeof repository.clear === 'function') {
+  if ("clear" in repository && typeof repository.clear === "function") {
     await repository.clear();
   }
 
-  const duration = logger.endTimer('clearAll');
-  log.info('History cleared', { duration });
+  const duration = logger.endTimer("clearAll");
+  log.info("History cleared", { duration });
 }

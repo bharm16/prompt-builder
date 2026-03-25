@@ -1,8 +1,8 @@
-import React from 'react';
-import { ChevronDown } from '@promptstudio/system/components/ui';
-import { cn } from '@utils/cn';
-import type { ImageSubTab } from '../types';
-import { ImageSubTabSelector } from './ImageSubTabSelector';
+import React from "react";
+import { ChevronDown } from "@promptstudio/system/components/ui";
+import { cn } from "@utils/cn";
+import type { ImageSubTab } from "../types";
+import { ImageSubTabSelector } from "./ImageSubTabSelector";
 
 interface ImageSubTabToolbarProps {
   activeTab: ImageSubTab;
@@ -17,10 +17,16 @@ export function ImageSubTabToolbar({
   onClose,
   className,
 }: ImageSubTabToolbarProps): React.ReactElement {
-  const showCloseButton = typeof onClose === 'function';
+  const showCloseButton = typeof onClose === "function";
 
   return (
-    <div className={cn('flex items-center', showCloseButton ? 'justify-between' : 'justify-start', className)}>
+    <div
+      className={cn(
+        "flex items-center",
+        showCloseButton ? "justify-between" : "justify-start",
+        className,
+      )}
+    >
       <ImageSubTabSelector activeTab={activeTab} onSelect={onSelect} />
 
       {showCloseButton && (

@@ -1,22 +1,22 @@
-import { act, renderHook, waitFor } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { ReactNode } from 'react';
-import type { SessionDto } from '@shared/types/session';
+import { act, renderHook, waitFor } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { ReactNode } from "react";
+import type { SessionDto } from "@shared/types/session";
 import {
   WorkspaceSessionProvider,
   useWorkspaceSession,
   __resetWorkspaceSessionFetchStateForTests,
-} from '../WorkspaceSessionContext';
+} from "../WorkspaceSessionContext";
 
 const mockApiGet = vi.hoisted(() => vi.fn());
 
-vi.mock('@/services/ApiClient', () => ({
+vi.mock("@/services/ApiClient", () => ({
   apiClient: {
     get: mockApiGet,
   },
 }));
 
-vi.mock('@/features/continuity/api/continuityApi', () => ({
+vi.mock("@/features/continuity/api/continuityApi", () => ({
   continuityApi: {
     createSession: vi.fn(),
     createSceneProxy: vi.fn(),
@@ -29,32 +29,37 @@ vi.mock('@/features/continuity/api/continuityApi', () => ({
 }));
 
 const buildSession = (): SessionDto => ({
-  id: 'session-429',
-  userId: 'user-1',
-  name: 'Session',
-  status: 'active',
-  createdAt: '2026-02-12T00:00:00.000Z',
-  updatedAt: '2026-02-12T00:00:00.000Z',
+  id: "session-429",
+  userId: "user-1",
+  name: "Session",
+  status: "active",
+  createdAt: "2026-02-12T00:00:00.000Z",
+  updatedAt: "2026-02-12T00:00:00.000Z",
   prompt: {
-    input: 'Input prompt',
-    output: 'Optimized prompt',
+    input: "Input prompt",
+    output: "Optimized prompt",
   },
 });
 
-const wrapper =
-  ({ children }: { children: ReactNode }) => (
-    <WorkspaceSessionProvider sessionId="session-429">{children}</WorkspaceSessionProvider>
-  );
+const wrapper = ({ children }: { children: ReactNode }) => (
+  <WorkspaceSessionProvider sessionId="session-429">
+    {children}
+  </WorkspaceSessionProvider>
+);
 
-describe('regression: workspace session loader backs off on 429', () => {
+describe("regression: workspace session loader backs off on 429", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     __resetWorkspaceSessionFetchStateForTests();
   });
 
-  it('does not immediately retry session fetches after a 429 response', async () => {
-    const rateLimitedError = Object.assign(new Error('Too many requests'), { status: 429 });
-    mockApiGet.mockRejectedValueOnce(rateLimitedError).mockResolvedValueOnce({ data: buildSession() });
+  it("does not immediately retry session fetches after a 429 response", async () => {
+    const rateLimitedError = Object.assign(new Error("Too many requests"), {
+      status: 429,
+    });
+    mockApiGet
+      .mockRejectedValueOnce(rateLimitedError)
+      .mockResolvedValueOnce({ data: buildSession() });
 
     const { result } = renderHook(() => useWorkspaceSession(), { wrapper });
 

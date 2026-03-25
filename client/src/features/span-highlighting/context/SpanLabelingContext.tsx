@@ -1,8 +1,10 @@
-import React, { createContext, useContext, type ReactNode } from 'react';
-import { spanLabelingCache } from '../services/SpanLabelingCache.ts';
-import type { SpanLabelingCacheService } from '../hooks/useSpanLabelingCache.ts';
+import React, { createContext, useContext, type ReactNode } from "react";
+import { spanLabelingCache } from "../services/SpanLabelingCache.ts";
+import type { SpanLabelingCacheService } from "../hooks/useSpanLabelingCache.ts";
 
-const SpanLabelingContext = createContext<SpanLabelingCacheService | null>(spanLabelingCache);
+const SpanLabelingContext = createContext<SpanLabelingCacheService | null>(
+  spanLabelingCache,
+);
 
 interface SpanLabelingProviderProps {
   children: ReactNode;
@@ -32,15 +34,3 @@ export function SpanLabelingProvider({
 export function useSpanLabelingCacheService(): SpanLabelingCacheService | null {
   return useContext(SpanLabelingContext);
 }
-
-
-
-
-
-
-
-
-
-
-
-

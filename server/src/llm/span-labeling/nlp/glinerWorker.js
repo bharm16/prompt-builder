@@ -1,12 +1,12 @@
 // This file intentionally stays as .js — worker_threads Workers are spawned via
 // a file path string and bypass the tsx/TypeScript loader pipeline. Converting
 // to .ts would require a separate compilation step or a custom worker loader.
-import { parentPort, workerData } from 'worker_threads';
-import { existsSync } from 'fs';
-import { performance } from 'perf_hooks';
+import { parentPort, workerData } from "worker_threads";
+import { existsSync } from "fs";
+import { performance } from "perf_hooks";
 
 if (!parentPort) {
-  throw new Error('GLiNER worker requires a parent port');
+  throw new Error("GLiNER worker requires a parent port");
 }
 
 const {
@@ -27,9 +27,9 @@ let glinerInitFailed = false;
 let glinerInitPromise = null;
 
 function mapLabelToTaxonomy(label) {
-  if (typeof label !== 'string') return 'subject.identity';
+  if (typeof label !== "string") return "subject.identity";
   const normalized = label.toLowerCase();
-  return labelToTaxonomy?.[normalized] || 'subject.identity';
+  return labelToTaxonomy?.[normalized] || "subject.identity";
 }
 
 function calibrateGlinerConfidence(score, threshold) {
@@ -42,13 +42,17 @@ function calibrateGlinerConfidence(score, threshold) {
 }
 
 function getLabelThreshold(label, taxonomyId, fallbackThreshold, overrides) {
-  if (!overrides || typeof overrides !== 'object') return fallbackThreshold;
-  const normalizedLabel = typeof label === 'string' ? label.toLowerCase() : '';
+  if (!overrides || typeof overrides !== "object") return fallbackThreshold;
+  const normalizedLabel = typeof label === "string" ? label.toLowerCase() : "";
   const override =
-    (typeof overrides[normalizedLabel] === 'number' ? overrides[normalizedLabel] : undefined) ??
-    (typeof overrides[taxonomyId] === 'number' ? overrides[taxonomyId] : undefined);
+    (typeof overrides[normalizedLabel] === "number"
+      ? overrides[normalizedLabel]
+      : undefined) ??
+    (typeof overrides[taxonomyId] === "number"
+      ? overrides[taxonomyId]
+      : undefined);
 
-  if (typeof override === 'number' && Number.isFinite(override)) {
+  if (typeof override === "number" && Number.isFinite(override)) {
     return Math.max(0, Math.min(0.99, override));
   }
 
@@ -73,7 +77,7 @@ function withTimeout(promise, timeoutMs) {
       (err) => {
         clearTimeout(timer);
         reject(err);
-      }
+      },
     );
   });
 }
@@ -92,7 +96,7 @@ async function initializeGliner() {
         return false;
       }
 
-      const { Gliner } = await import('gliner/node');
+      const { Gliner } = await import("gliner/node");
 
       gliner = new Gliner({
         tokenizerPath,
@@ -104,7 +108,7 @@ async function initializeGliner() {
           useBrowserCache: false,
         },
         maxWidth: maxWidth || 12,
-        modelType: 'span-level',
+        modelType: "span-level",
       });
 
       await gliner.initialize();
@@ -112,9 +116,9 @@ async function initializeGliner() {
 
       const duration = Math.round(performance.now() - startTime);
       parentPort.postMessage({
-        type: 'log',
-        level: 'info',
-        message: 'GLiNER worker initialized',
+        type: "log",
+        level: "info",
+        message: "GLiNER worker initialized",
         duration,
       });
 
@@ -123,9 +127,9 @@ async function initializeGliner() {
       glinerInitFailed = true;
       const duration = Math.round(performance.now() - startTime);
       parentPort.postMessage({
-        type: 'log',
-        level: 'error',
-        message: 'GLiNER worker initialization failed',
+        type: "log",
+        level: "error",
+        message: "GLiNER worker initialization failed",
         duration,
         error: error instanceof Error ? error.message : String(error),
       });
@@ -136,18 +140,33 @@ async function initializeGliner() {
   return glinerInitPromise;
 }
 
-async function runInference(text, thresholdOverride, timeoutOverride, options = {}) {
-  if (!text || typeof text !== 'string') return [];
+async function runInference(
+  text,
+  thresholdOverride,
+  timeoutOverride,
+  options = {},
+) {
+  if (!text || typeof text !== "string") return [];
 
   const ready = await initializeGliner();
   if (!ready || !gliner) {
-    throw new Error('GLiNER not initialized');
+    throw new Error("GLiNER not initialized");
   }
 
-  const threshold = typeof thresholdOverride === 'number' ? thresholdOverride : defaultThreshold || 0.3;
-  const timeoutMs = typeof timeoutOverride === 'number' ? timeoutOverride : defaultTimeoutMs || 0;
-  const labelThresholds = options?.labelThresholds || defaultLabelThresholds || {};
-  const multiLabel = typeof options?.multiLabel === 'boolean' ? options.multiLabel : defaultMultiLabel;
+  const threshold =
+    typeof thresholdOverride === "number"
+      ? thresholdOverride
+      : defaultThreshold || 0.3;
+  const timeoutMs =
+    typeof timeoutOverride === "number"
+      ? timeoutOverride
+      : defaultTimeoutMs || 0;
+  const labelThresholds =
+    options?.labelThresholds || defaultLabelThresholds || {};
+  const multiLabel =
+    typeof options?.multiLabel === "boolean"
+      ? options.multiLabel
+      : defaultMultiLabel;
 
   const results = await withTimeout(
     gliner.inference({
@@ -155,16 +174,21 @@ async function runInference(text, thresholdOverride, timeoutOverride, options = 
       entities: Array.isArray(labels) ? labels : [],
       flatNer: false,
       threshold,
-      multiLabel: typeof multiLabel === 'boolean' ? multiLabel : false,
+      multiLabel: typeof multiLabel === "boolean" ? multiLabel : false,
     }),
-    timeoutMs
+    timeoutMs,
   );
 
   const entities = results?.[0] || [];
   return entities
     .map((entity) => {
       const taxonomyId = mapLabelToTaxonomy(entity.label);
-      const labelThreshold = getLabelThreshold(entity.label, taxonomyId, threshold, labelThresholds);
+      const labelThreshold = getLabelThreshold(
+        entity.label,
+        taxonomyId,
+        threshold,
+        labelThresholds,
+      );
       if (entity.score < labelThreshold) {
         return null;
       }
@@ -174,7 +198,7 @@ async function runInference(text, thresholdOverride, timeoutOverride, options = 
         confidence: calibrateGlinerConfidence(entity.score, labelThreshold),
         start: entity.start,
         end: entity.end,
-        source: 'gliner',
+        source: "gliner",
       };
     })
     .filter(Boolean);
@@ -182,34 +206,48 @@ async function runInference(text, thresholdOverride, timeoutOverride, options = 
 
 async function handleMessage(message) {
   const { id, type, payload } = message || {};
-  if (typeof id !== 'number') return;
+  if (typeof id !== "number") return;
 
   try {
-    if (type === 'initialize') {
+    if (type === "initialize") {
       const ready = await initializeGliner();
       if (!ready) {
-        parentPort.postMessage({ id, ok: false, error: 'GLiNER initialization failed' });
+        parentPort.postMessage({
+          id,
+          ok: false,
+          error: "GLiNER initialization failed",
+        });
         return;
       }
       parentPort.postMessage({ id, ok: true, result: true });
       return;
     }
 
-    if (type === 'warmup') {
+    if (type === "warmup") {
       const ready = await initializeGliner();
       if (!ready) {
-        parentPort.postMessage({ id, ok: false, error: 'GLiNER initialization failed' });
+        parentPort.postMessage({
+          id,
+          ok: false,
+          error: "GLiNER initialization failed",
+        });
         return;
       }
 
-      const warmupText = payload?.text || 'Low-Angle Shot, 24fps, 16:9, golden hour';
+      const warmupText =
+        payload?.text || "Low-Angle Shot, 24fps, 16:9, golden hour";
       try {
-        await runInference(warmupText, payload?.threshold, payload?.timeoutMs, payload);
+        await runInference(
+          warmupText,
+          payload?.threshold,
+          payload?.timeoutMs,
+          payload,
+        );
       } catch (error) {
         parentPort.postMessage({
-          type: 'log',
-          level: 'warn',
-          message: 'GLiNER worker warmup inference failed',
+          type: "log",
+          level: "warn",
+          message: "GLiNER worker warmup inference failed",
           error: error instanceof Error ? error.message : String(error),
         });
       }
@@ -218,13 +256,22 @@ async function handleMessage(message) {
       return;
     }
 
-    if (type === 'inference') {
-      const spans = await runInference(payload?.text, payload?.threshold, payload?.timeoutMs, payload);
+    if (type === "inference") {
+      const spans = await runInference(
+        payload?.text,
+        payload?.threshold,
+        payload?.timeoutMs,
+        payload,
+      );
       parentPort.postMessage({ id, ok: true, result: spans });
       return;
     }
 
-    parentPort.postMessage({ id, ok: false, error: `Unknown message type: ${type}` });
+    parentPort.postMessage({
+      id,
+      ok: false,
+      error: `Unknown message type: ${type}`,
+    });
   } catch (error) {
     parentPort.postMessage({
       id,
@@ -235,15 +282,17 @@ async function handleMessage(message) {
 }
 
 let queue = Promise.resolve();
-parentPort.on('message', (message) => {
-  queue = queue.then(() => handleMessage(message)).catch((error) => {
-    const id = message?.id;
-    if (typeof id === 'number') {
-      parentPort.postMessage({
-        id,
-        ok: false,
-        error: error instanceof Error ? error.message : String(error),
-      });
-    }
-  });
+parentPort.on("message", (message) => {
+  queue = queue
+    .then(() => handleMessage(message))
+    .catch((error) => {
+      const id = message?.id;
+      if (typeof id === "number") {
+        parentPort.postMessage({
+          id,
+          ok: false,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    });
 });

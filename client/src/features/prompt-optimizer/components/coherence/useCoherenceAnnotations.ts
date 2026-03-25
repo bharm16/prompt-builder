@@ -1,20 +1,20 @@
-import { useCallback, useMemo, useState } from 'react';
-import { checkPromptCoherence } from '@features/prompt-optimizer/api/coherenceCheckApi';
+import { useCallback, useMemo, useState } from "react";
+import { checkPromptCoherence } from "@features/prompt-optimizer/api/coherenceCheckApi";
 import type {
   CoherenceCheckRequest,
   CoherenceFinding,
   CoherenceRecommendation,
   CoherenceSpan,
-} from '@features/prompt-optimizer/types/coherence';
-import { logger } from '@/services/LoggingService';
-import { sanitizeError } from '@/utils/logging';
+} from "@features/prompt-optimizer/types/coherence";
+import { logger } from "@/services/LoggingService";
+import { sanitizeError } from "@/utils/logging";
 
-const log = logger.child('useCoherenceAnnotations');
+const log = logger.child("useCoherenceAnnotations");
 
 export interface CoherenceIssue {
   id: string;
-  type: 'conflict' | 'harmonization';
-  severity: 'low' | 'medium' | 'high';
+  type: "conflict" | "harmonization";
+  severity: "low" | "medium" | "high";
   message: string;
   reasoning: string;
   involvedSpanIds: string[];
@@ -24,27 +24,33 @@ export interface CoherenceIssue {
 }
 
 interface UseCoherenceAnnotationsParams {
-  onApplyFix: (recommendation: CoherenceRecommendation, issue: CoherenceIssue) => boolean | Promise<boolean>;
+  onApplyFix: (
+    recommendation: CoherenceRecommendation,
+    issue: CoherenceIssue,
+  ) => boolean | Promise<boolean>;
   toast: { info: (msg: string) => void; success: (msg: string) => void };
 }
 
 const resolveConflictSeverity = (
-  severity: CoherenceFinding['severity'] | undefined
-): 'low' | 'medium' | 'high' => {
-  if (severity === 'low' || severity === 'medium' || severity === 'high') {
+  severity: CoherenceFinding["severity"] | undefined,
+): "low" | "medium" | "high" => {
+  if (severity === "low" || severity === "medium" || severity === "high") {
     return severity;
   }
-  return 'medium';
+  return "medium";
 };
 
-export function useCoherenceAnnotations({ onApplyFix, toast }: UseCoherenceAnnotationsParams) {
+export function useCoherenceAnnotations({
+  onApplyFix,
+  toast,
+}: UseCoherenceAnnotationsParams) {
   const [issues, setIssues] = useState<CoherenceIssue[]>([]);
   const [isChecking, setIsChecking] = useState(false);
   const [isPanelExpanded, setIsPanelExpanded] = useState(false);
 
   const activeIssues = useMemo(
     () => issues.filter((issue) => !issue.dismissed),
-    [issues]
+    [issues],
   );
 
   const affectedSpanIds = useMemo(() => {
@@ -60,11 +66,11 @@ export function useCoherenceAnnotations({ onApplyFix, toast }: UseCoherenceAnnot
   }, [activeIssues]);
 
   const spanIssueMap = useMemo(() => {
-    const map = new Map<string, 'conflict' | 'harmonization'>();
+    const map = new Map<string, "conflict" | "harmonization">();
     activeIssues.forEach((issue) => {
       issue.involvedSpanIds.forEach((spanId) => {
         if (!spanId) return;
-        if (issue.type === 'conflict' || !map.has(spanId)) {
+        if (issue.type === "conflict" || !map.has(spanId)) {
           map.set(spanId, issue.type);
         }
       });
@@ -74,8 +80,8 @@ export function useCoherenceAnnotations({ onApplyFix, toast }: UseCoherenceAnnot
 
   const activeIssueCount = activeIssues.length;
   const conflictCount = useMemo(
-    () => activeIssues.filter((issue) => issue.type === 'conflict').length,
-    [activeIssues]
+    () => activeIssues.filter((issue) => issue.type === "conflict").length,
+    [activeIssues],
   );
 
   const runCheck = useCallback(
@@ -89,7 +95,9 @@ export function useCoherenceAnnotations({ onApplyFix, toast }: UseCoherenceAnnot
 
       try {
         const result = await checkPromptCoherence(payload);
-        const conflicts = Array.isArray(result.conflicts) ? result.conflicts : [];
+        const conflicts = Array.isArray(result.conflicts)
+          ? result.conflicts
+          : [];
         const harmonizations = Array.isArray(result.harmonizations)
           ? result.harmonizations
           : [];
@@ -98,12 +106,12 @@ export function useCoherenceAnnotations({ onApplyFix, toast }: UseCoherenceAnnot
         const newIssues: CoherenceIssue[] = [
           ...conflicts.map((finding, index) => ({
             id: finding.id ?? `conflict_${timestamp}_${index}`,
-            type: 'conflict' as const,
+            type: "conflict" as const,
             severity: resolveConflictSeverity(finding.severity),
             message: finding.message,
             reasoning: finding.reasoning,
             involvedSpanIds: (finding.involvedSpanIds ?? []).filter(
-              (spanId): spanId is string => Boolean(spanId)
+              (spanId): spanId is string => Boolean(spanId),
             ),
             recommendations: finding.recommendations ?? [],
             spans,
@@ -111,12 +119,12 @@ export function useCoherenceAnnotations({ onApplyFix, toast }: UseCoherenceAnnot
           })),
           ...harmonizations.map((finding, index) => ({
             id: finding.id ?? `harmonization_${timestamp}_${index}`,
-            type: 'harmonization' as const,
-            severity: 'low' as const,
+            type: "harmonization" as const,
+            severity: "low" as const,
             message: finding.message,
             reasoning: finding.reasoning,
             involvedSpanIds: (finding.involvedSpanIds ?? []).filter(
-              (spanId): spanId is string => Boolean(spanId)
+              (spanId): spanId is string => Boolean(spanId),
             ),
             recommendations: finding.recommendations ?? [],
             spans,
@@ -126,17 +134,17 @@ export function useCoherenceAnnotations({ onApplyFix, toast }: UseCoherenceAnnot
 
         if (newIssues.length > 0) {
           setIssues((prev) => [...prev, ...newIssues]);
-          if (newIssues.some((issue) => issue.type === 'conflict')) {
+          if (newIssues.some((issue) => issue.type === "conflict")) {
             setIsPanelExpanded(true);
           }
           toast.info(
-            `${newIssues.length} coherence issue${newIssues.length > 1 ? 's' : ''} detected`
+            `${newIssues.length} coherence issue${newIssues.length > 1 ? "s" : ""} detected`,
           );
         }
       } catch (err) {
         const info = sanitizeError(err);
-        log.warn('Coherence check failed', {
-          operation: 'runCheck',
+        log.warn("Coherence check failed", {
+          operation: "runCheck",
           error: info.message,
           errorName: info.name,
         });
@@ -144,13 +152,15 @@ export function useCoherenceAnnotations({ onApplyFix, toast }: UseCoherenceAnnot
         setIsChecking(false);
       }
     },
-    [toast]
+    [toast],
   );
 
   const dismissIssue = useCallback((issueId: string) => {
-    setIssues((prev) => prev.map((issue) => (
-      issue.id === issueId ? { ...issue, dismissed: true } : issue
-    )));
+    setIssues((prev) =>
+      prev.map((issue) =>
+        issue.id === issueId ? { ...issue, dismissed: true } : issue,
+      ),
+    );
   }, []);
 
   const dismissAll = useCallback(() => {
@@ -168,21 +178,21 @@ export function useCoherenceAnnotations({ onApplyFix, toast }: UseCoherenceAnnot
         applied = await onApplyFix(recommendation, issue);
       } catch (error) {
         const info = sanitizeError(error);
-        log.warn('Failed to apply coherence fix', {
-          operation: 'applyFix',
+        log.warn("Failed to apply coherence fix", {
+          operation: "applyFix",
           error: info.message,
           errorName: info.name,
         });
       }
       if (!applied) {
-        toast.info('Fix could not be applied');
+        toast.info("Fix could not be applied");
         return;
       }
 
       dismissIssue(issueId);
-      toast.success('Fix applied');
+      toast.success("Fix applied");
     },
-    [dismissIssue, issues, onApplyFix, toast]
+    [dismissIssue, issues, onApplyFix, toast],
   );
 
   const clearResolved = useCallback(() => {

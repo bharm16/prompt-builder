@@ -18,10 +18,17 @@
  * @requirement 7.7 - Allow skipping subject motion
  */
 
-import React, { useState, useCallback } from 'react';
-import { cn } from '@/utils/cn';
-import { Play, SkipForward, Loader2, Coins, Sparkles, Image as ImageIcon } from '@promptstudio/system/components/ui';
-import { BackButton, StepCreditBadge } from '../shared';
+import React, { useState, useCallback } from "react";
+import { cn } from "@/utils/cn";
+import {
+  Play,
+  SkipForward,
+  Loader2,
+  Coins,
+  Sparkles,
+  Image as ImageIcon,
+} from "@promptstudio/system/components/ui";
+import { BackButton, StepCreditBadge } from "../shared";
 
 // ============================================================================
 // Constants
@@ -35,16 +42,17 @@ const PREVIEW_CREDIT_COST = 5;
 /**
  * Placeholder text for the motion input
  */
-const PLACEHOLDER_TEXT = 'Describe how your subject moves... (e.g., "The cat slowly walks forward, then turns its head to look at the camera")';
+const PLACEHOLDER_TEXT =
+  'Describe how your subject moves... (e.g., "The cat slowly walks forward, then turns its head to look at the camera")';
 
 /**
  * Example motion descriptions to help users
  */
 const EXAMPLE_MOTIONS = [
-  'The subject slowly walks forward',
-  'Camera follows as they turn around',
-  'Gentle swaying motion in the wind',
-  'Quick movement from left to right',
+  "The subject slowly walks forward",
+  "Camera follows as they turn around",
+  "Gentle swaying motion in the wind",
+  "Quick movement from left to right",
 ];
 
 // ============================================================================
@@ -57,7 +65,7 @@ export interface SubjectMotionInputProps {
   /** Generated preview video URL (if available) */
   previewVideoUrl?: string | null;
   /** Mode used for preview generation (i2v or t2v) */
-  inputMode?: 'i2v' | 't2v' | null;
+  inputMode?: "i2v" | "t2v" | null;
   /** Starting frame URL used for i2v previews */
   startImageUrl?: string | null;
   /** Whether the component is in loading state (generating preview) */
@@ -114,7 +122,7 @@ export const SubjectMotionInput: React.FC<SubjectMotionInputProps> = ({
 }) => {
   // Local state for textarea focus
   const [isFocused, setIsFocused] = useState(false);
-  const resolvedInputMode = inputMode ?? (startImageUrl ? 'i2v' : null);
+  const resolvedInputMode = inputMode ?? (startImageUrl ? "i2v" : null);
 
   /**
    * Handle text input change
@@ -125,7 +133,7 @@ export const SubjectMotionInput: React.FC<SubjectMotionInputProps> = ({
         onMotionChange(e.target.value);
       }
     },
-    [onMotionChange]
+    [onMotionChange],
   );
 
   /**
@@ -137,7 +145,7 @@ export const SubjectMotionInput: React.FC<SubjectMotionInputProps> = ({
         onMotionChange(example);
       }
     },
-    [onMotionChange, disabled, isLoading]
+    [onMotionChange, disabled, isLoading],
   );
 
   /**
@@ -164,12 +172,16 @@ export const SubjectMotionInput: React.FC<SubjectMotionInputProps> = ({
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
       // Ctrl/Cmd + Enter to generate preview
-      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter' && subjectMotion.trim()) {
+      if (
+        (e.ctrlKey || e.metaKey) &&
+        e.key === "Enter" &&
+        subjectMotion.trim()
+      ) {
         e.preventDefault();
         handleGeneratePreview();
       }
     },
-    [handleGeneratePreview, subjectMotion]
+    [handleGeneratePreview, subjectMotion],
   );
 
   const isDisabled = disabled || isLoading;
@@ -177,10 +189,7 @@ export const SubjectMotionInput: React.FC<SubjectMotionInputProps> = ({
 
   return (
     <div
-      className={cn(
-        'flex flex-col w-full max-w-4xl mx-auto px-4',
-        className
-      )}
+      className={cn("flex flex-col w-full max-w-4xl mx-auto px-4", className)}
     >
       {/* Header Section */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
@@ -203,11 +212,7 @@ export const SubjectMotionInput: React.FC<SubjectMotionInputProps> = ({
         </div>
 
         {/* Step Credit Badge (Task 24.6) */}
-        <StepCreditBadge
-          step="subject_motion"
-          size="md"
-          showLabel={true}
-        />
+        <StepCreditBadge step="subject_motion" size="md" showLabel={true} />
       </div>
 
       {resolvedInputMode && (
@@ -215,20 +220,25 @@ export const SubjectMotionInput: React.FC<SubjectMotionInputProps> = ({
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex items-start gap-3">
               <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-surface-1 border border-border">
-                <ImageIcon className="w-5 h-5 text-primary" aria-hidden="true" />
+                <ImageIcon
+                  className="w-5 h-5 text-primary"
+                  aria-hidden="true"
+                />
               </div>
               <div>
                 <p className="text-sm font-semibold text-foreground">
-                  {resolvedInputMode === 'i2v' ? 'Using your starting frame' : 'Text-only preview'}
+                  {resolvedInputMode === "i2v"
+                    ? "Using your starting frame"
+                    : "Text-only preview"}
                 </p>
                 <p className="text-xs text-muted">
-                  {resolvedInputMode === 'i2v'
-                    ? 'The preview keeps your visual style locked to the frame.'
-                    : 'The preview is generated from the prompt alone.'}
+                  {resolvedInputMode === "i2v"
+                    ? "The preview keeps your visual style locked to the frame."
+                    : "The preview is generated from the prompt alone."}
                 </p>
               </div>
             </div>
-            {resolvedInputMode === 'i2v' && startImageUrl && (
+            {resolvedInputMode === "i2v" && startImageUrl && (
               <div className="flex items-center gap-3">
                 <div className="w-24 h-16 rounded-md overflow-hidden border border-border bg-surface-1">
                   <img
@@ -248,11 +258,11 @@ export const SubjectMotionInput: React.FC<SubjectMotionInputProps> = ({
       <div className="mb-6">
         <div
           className={cn(
-            'relative rounded-lg border transition-all duration-200',
+            "relative rounded-lg border transition-all duration-200",
             isFocused
-              ? 'border-ghost ring-2 ring-ghost/20'
-              : 'border-tool-border-dark hover:border-ghost/40',
-            isDisabled && 'opacity-50 cursor-not-allowed'
+              ? "border-ghost ring-2 ring-ghost/20"
+              : "border-tool-border-dark hover:border-ghost/40",
+            isDisabled && "opacity-50 cursor-not-allowed",
           )}
         >
           <textarea
@@ -265,10 +275,10 @@ export const SubjectMotionInput: React.FC<SubjectMotionInputProps> = ({
             disabled={isDisabled}
             rows={4}
             className={cn(
-              'w-full px-4 py-3 bg-transparent text-foreground placeholder:text-muted',
-              'resize-none focus:outline-none',
-              'text-base leading-relaxed',
-              isDisabled && 'cursor-not-allowed'
+              "w-full px-4 py-3 bg-transparent text-foreground placeholder:text-muted",
+              "resize-none focus:outline-none",
+              "text-base leading-relaxed",
+              isDisabled && "cursor-not-allowed",
             )}
             aria-label="Subject motion description"
             aria-describedby="motion-hint"
@@ -278,10 +288,10 @@ export const SubjectMotionInput: React.FC<SubjectMotionInputProps> = ({
         {/* Character count and hint */}
         <div className="flex items-center justify-between mt-2 text-xs text-muted">
           <span id="motion-hint">
-            Press{' '}
+            Press{" "}
             <kbd className="px-1 py-0.5 bg-surface-2 rounded font-mono">
               Ctrl+Enter
-            </kbd>{' '}
+            </kbd>{" "}
             to generate preview
           </span>
           <span>{subjectMotion.length} characters</span>
@@ -301,11 +311,11 @@ export const SubjectMotionInput: React.FC<SubjectMotionInputProps> = ({
                 disabled={isDisabled}
                 className={cn(
                   // Touch-friendly tap targets: min 44px height (Task 35.4)
-                  'px-4 py-2.5 min-h-[44px] text-sm rounded-full',
-                  'bg-surface-1 border border-border text-foreground',
-                  'transition-all duration-200',
-                  !isDisabled && 'hover:bg-surface-2 hover:border-primary/30',
-                  isDisabled && 'opacity-50 cursor-not-allowed'
+                  "px-4 py-2.5 min-h-[44px] text-sm rounded-full",
+                  "bg-surface-1 border border-border text-foreground",
+                  "transition-all duration-200",
+                  !isDisabled && "hover:bg-surface-2 hover:border-primary/30",
+                  isDisabled && "opacity-50 cursor-not-allowed",
                 )}
               >
                 {example}
@@ -318,9 +328,7 @@ export const SubjectMotionInput: React.FC<SubjectMotionInputProps> = ({
       {/* Video Preview Section (Task 24.4) */}
       {previewVideoUrl && (
         <div className="mb-6">
-          <h3 className="text-sm font-medium text-foreground mb-3">
-            Preview
-          </h3>
+          <h3 className="text-sm font-medium text-foreground mb-3">Preview</h3>
           <div className="relative rounded-lg overflow-hidden bg-black aspect-video">
             <video
               src={previewVideoUrl}
@@ -336,7 +344,8 @@ export const SubjectMotionInput: React.FC<SubjectMotionInputProps> = ({
             </video>
           </div>
           <p className="text-xs text-muted mt-2 text-center">
-            Preview generated successfully. Click "Continue" to proceed or modify your description.
+            Preview generated successfully. Click "Continue" to proceed or
+            modify your description.
           </p>
         </div>
       )}
@@ -369,13 +378,13 @@ export const SubjectMotionInput: React.FC<SubjectMotionInputProps> = ({
           onClick={handleSkip}
           disabled={isDisabled}
           className={cn(
-            'inline-flex items-center justify-center gap-2 px-4 py-2.5 min-h-[44px]',
-            'rounded-lg font-medium text-sm',
-            'border border-border bg-surface-1 text-foreground',
-            'transition-all duration-200',
-            !isDisabled && 'hover:bg-surface-2 hover:border-primary/30',
-            'focus:outline-none focus:ring-2 focus:ring-primary/50 focus:ring-offset-2',
-            isDisabled && 'opacity-50 cursor-not-allowed'
+            "inline-flex items-center justify-center gap-2 px-4 py-2.5 min-h-[44px]",
+            "rounded-lg font-medium text-sm",
+            "border border-border bg-surface-1 text-foreground",
+            "transition-all duration-200",
+            !isDisabled && "hover:bg-surface-2 hover:border-primary/30",
+            "focus:outline-none focus:ring-2 focus:ring-primary/50 focus:ring-offset-2",
+            isDisabled && "opacity-50 cursor-not-allowed",
           )}
           aria-label="Skip subject motion and proceed to preview"
         >
@@ -389,13 +398,13 @@ export const SubjectMotionInput: React.FC<SubjectMotionInputProps> = ({
           onClick={handleGeneratePreview}
           disabled={!canGeneratePreview}
           className={cn(
-            'inline-flex items-center justify-center gap-2 px-5 py-2.5 min-h-[44px]',
-            'rounded-lg font-medium text-sm',
-            'bg-primary text-primary-foreground',
-            'transition-all duration-200',
-            canGeneratePreview && 'hover:bg-primary/90',
-            'focus:outline-none focus:ring-2 focus:ring-primary/50 focus:ring-offset-2',
-            !canGeneratePreview && 'opacity-50 cursor-not-allowed'
+            "inline-flex items-center justify-center gap-2 px-5 py-2.5 min-h-[44px]",
+            "rounded-lg font-medium text-sm",
+            "bg-primary text-primary-foreground",
+            "transition-all duration-200",
+            canGeneratePreview && "hover:bg-primary/90",
+            "focus:outline-none focus:ring-2 focus:ring-primary/50 focus:ring-offset-2",
+            !canGeneratePreview && "opacity-50 cursor-not-allowed",
           )}
           aria-label={`Generate preview for ${PREVIEW_CREDIT_COST} credits`}
         >
@@ -429,13 +438,13 @@ export const SubjectMotionInput: React.FC<SubjectMotionInputProps> = ({
             onClick={handleSkip}
             disabled={isDisabled}
             className={cn(
-              'inline-flex items-center justify-center gap-2 px-6 py-2.5 min-h-[44px]',
-              'rounded-lg font-medium text-sm',
-              'bg-success text-success-foreground',
-              'transition-all duration-200',
-              !isDisabled && 'hover:bg-success/90',
-              'focus:outline-none focus:ring-2 focus:ring-success/50 focus:ring-offset-2',
-              isDisabled && 'opacity-50 cursor-not-allowed'
+              "inline-flex items-center justify-center gap-2 px-6 py-2.5 min-h-[44px]",
+              "rounded-lg font-medium text-sm",
+              "bg-success text-success-foreground",
+              "transition-all duration-200",
+              !isDisabled && "hover:bg-success/90",
+              "focus:outline-none focus:ring-2 focus:ring-success/50 focus:ring-offset-2",
+              isDisabled && "opacity-50 cursor-not-allowed",
             )}
             aria-label="Continue to preview"
           >
@@ -447,10 +456,10 @@ export const SubjectMotionInput: React.FC<SubjectMotionInputProps> = ({
       {/* Keyboard Navigation Hint */}
       {!isLoading && (
         <p className="text-xs text-muted text-center mt-6">
-          Press{' '}
+          Press{" "}
           <kbd className="px-1.5 py-0.5 bg-surface-2 rounded text-xs font-mono">
             Escape
-          </kbd>{' '}
+          </kbd>{" "}
           to go back
         </p>
       )}
@@ -458,6 +467,6 @@ export const SubjectMotionInput: React.FC<SubjectMotionInputProps> = ({
   );
 };
 
-SubjectMotionInput.displayName = 'SubjectMotionInput';
+SubjectMotionInput.displayName = "SubjectMotionInput";
 
 export default SubjectMotionInput;

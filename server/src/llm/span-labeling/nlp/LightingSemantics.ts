@@ -15,11 +15,11 @@
  * - "gentle shadows" matches "soft diffused shadows" prototype
  */
 
-import type { FeatureExtractionPipeline } from '@huggingface/transformers';
-import { logger } from '@infrastructure/Logger';
-import { loadEmbeddingPipeline } from './embeddingPipeline';
+import type { FeatureExtractionPipeline } from "@huggingface/transformers";
+import { logger } from "@infrastructure/Logger";
+import { loadEmbeddingPipeline } from "./embeddingPipeline";
 
-const log = logger.child({ service: 'LightingSemantics' });
+const log = logger.child({ service: "LightingSemantics" });
 
 /**
  * Prototype phrases for each lighting class (small, representative set)
@@ -30,50 +30,50 @@ const log = logger.child({ service: 'LightingSemantics' });
 const PROTOTYPES = {
   // lighting.quality - describes HOW light behaves (soft/hard, diffused/direct)
   quality: [
-    'soft diffused lighting',
-    'harsh dramatic shadows',
-    'gentle ambient glow',
-    'hard directional light',
-    'dappled filtered sunlight',
-    'subtle rim lighting',
-    'deep dark shadows',
-    'bright even illumination',
+    "soft diffused lighting",
+    "harsh dramatic shadows",
+    "gentle ambient glow",
+    "hard directional light",
+    "dappled filtered sunlight",
+    "subtle rim lighting",
+    "deep dark shadows",
+    "bright even illumination",
   ],
 
   // lighting.source - describes WHERE light comes from
   source: [
-    'neon signs glowing',
-    'candlelight flickering',
-    'sunlight streaming through',
-    'moonlight shining',
-    'streetlight overhead',
-    'firelight dancing',
-    'window light coming in',
-    'spotlight shining down',
+    "neon signs glowing",
+    "candlelight flickering",
+    "sunlight streaming through",
+    "moonlight shining",
+    "streetlight overhead",
+    "firelight dancing",
+    "window light coming in",
+    "spotlight shining down",
   ],
 
   // lighting.timeOfDay - describes WHEN (temporal lighting conditions)
   timeOfDay: [
-    'golden hour sunset light',
-    'blue hour twilight',
-    'dawn morning light',
-    'dusk evening glow',
-    'midday harsh sun',
-    'magic hour warm tones',
-    'midnight darkness',
-    'overcast daylight',
+    "golden hour sunset light",
+    "blue hour twilight",
+    "dawn morning light",
+    "dusk evening glow",
+    "midday harsh sun",
+    "magic hour warm tones",
+    "midnight darkness",
+    "overcast daylight",
   ],
 
   // lighting.colorTemp - describes color temperature (warm/cool)
   colorTemp: [
-    'warm tungsten orange',
-    'cool blue tones',
-    'neutral daylight balanced',
-    'warm golden hues',
-    'cold clinical white',
-    'warm amber glow',
-    'cool moonlit blue',
-    'mixed warm cool contrast',
+    "warm tungsten orange",
+    "cool blue tones",
+    "neutral daylight balanced",
+    "warm golden hues",
+    "cold clinical white",
+    "warm amber glow",
+    "cool moonlit blue",
+    "mixed warm cool contrast",
   ],
 } as const;
 
@@ -95,7 +95,7 @@ async function initialize(): Promise<void> {
   isInitializing = true;
   initPromise = (async () => {
     try {
-      log.info('Initializing lighting semantic classifier');
+      log.info("Initializing lighting semantic classifier");
       const startTime = performance.now();
 
       embeddingModel = await loadEmbeddingPipeline();
@@ -113,12 +113,15 @@ async function initialize(): Promise<void> {
       }
 
       const latency = Math.round(performance.now() - startTime);
-      log.info('Lighting semantic classifier initialized', {
+      log.info("Lighting semantic classifier initialized", {
         latencyMs: latency,
         prototypeCount: Object.values(PROTOTYPES).flat().length,
       });
     } catch (error) {
-      log.error('Failed to initialize lighting semantic classifier', error as Error);
+      log.error(
+        "Failed to initialize lighting semantic classifier",
+        error as Error,
+      );
       throw error;
     } finally {
       isInitializing = false;
@@ -135,11 +138,14 @@ async function getEmbedding(text: string): Promise<number[] | null> {
   if (!embeddingModel) return null;
 
   try {
-    const output = await embeddingModel(text, { pooling: 'mean', normalize: true });
+    const output = await embeddingModel(text, {
+      pooling: "mean",
+      normalize: true,
+    });
     const data = output.data as Float32Array;
     return Array.from(data);
   } catch (error) {
-    log.error('Embedding extraction failed', error as Error, { text });
+    log.error("Embedding extraction failed", error as Error, { text });
     return null;
   }
 }
@@ -184,31 +190,37 @@ function classScore(embedding: number[], classEmbeddings: number[][]): number {
  * @returns The lighting class and confidence score
  */
 export async function classifyLightingSemantically(
-  phrase: string
+  phrase: string,
 ): Promise<{ lightingClass: LightingClass; confidence: number }> {
   // Ensure model is initialized
   await initialize();
 
   if (!embeddingModel || !prototypeEmbeddings) {
     // Fallback to quality if model not available
-    return { lightingClass: 'quality', confidence: 0.5 };
+    return { lightingClass: "quality", confidence: 0.5 };
   }
 
   const embedding = await getEmbedding(phrase);
   if (!embedding) {
-    return { lightingClass: 'quality', confidence: 0.5 };
+    return { lightingClass: "quality", confidence: 0.5 };
   }
 
   // Score against each class
   const scores: Record<LightingClass, number> = {
-    quality: classScore(embedding, prototypeEmbeddings.get('quality') || []),
-    source: classScore(embedding, prototypeEmbeddings.get('source') || []),
-    timeOfDay: classScore(embedding, prototypeEmbeddings.get('timeOfDay') || []),
-    colorTemp: classScore(embedding, prototypeEmbeddings.get('colorTemp') || []),
+    quality: classScore(embedding, prototypeEmbeddings.get("quality") || []),
+    source: classScore(embedding, prototypeEmbeddings.get("source") || []),
+    timeOfDay: classScore(
+      embedding,
+      prototypeEmbeddings.get("timeOfDay") || [],
+    ),
+    colorTemp: classScore(
+      embedding,
+      prototypeEmbeddings.get("colorTemp") || [],
+    ),
   };
 
   // Find highest scoring class
-  let bestClass: LightingClass = 'quality';
+  let bestClass: LightingClass = "quality";
   let bestScore = scores.quality;
 
   for (const [className, score] of Object.entries(scores)) {
@@ -218,12 +230,12 @@ export async function classifyLightingSemantically(
     }
   }
 
-  log.debug('Lighting classification result', {
+  log.debug("Lighting classification result", {
     phrase,
     bestClass,
     bestScore: Math.round(bestScore * 100) / 100,
     scores: Object.fromEntries(
-      Object.entries(scores).map(([k, v]) => [k, Math.round(v * 100) / 100])
+      Object.entries(scores).map(([k, v]) => [k, Math.round(v * 100) / 100]),
     ),
   });
 
@@ -235,10 +247,10 @@ export async function classifyLightingSemantically(
  */
 export function lightingClassToTaxonomy(lightingClass: LightingClass): string {
   const mapping: Record<LightingClass, string> = {
-    quality: 'lighting.quality',
-    source: 'lighting.source',
-    timeOfDay: 'lighting.timeOfDay',
-    colorTemp: 'lighting.colorTemp',
+    quality: "lighting.quality",
+    source: "lighting.source",
+    timeOfDay: "lighting.timeOfDay",
+    colorTemp: "lighting.colorTemp",
   };
   return mapping[lightingClass];
 }
@@ -256,17 +268,17 @@ export async function warmupLightingSemantics(): Promise<{
     await initialize();
 
     // Test classification
-    const result = await classifyLightingSemantically('soft gentle shadows');
+    const result = await classifyLightingSemantically("soft gentle shadows");
     const latencyMs = Math.round(performance.now() - startTime);
 
-    log.info('Lighting semantics warmup completed', {
+    log.info("Lighting semantics warmup completed", {
       testResult: result,
       latencyMs,
     });
 
     return { success: true, latencyMs };
   } catch (error) {
-    log.error('Lighting semantics warmup failed', error as Error);
+    log.error("Lighting semantics warmup failed", error as Error);
     return { success: false, latencyMs: 0 };
   }
 }

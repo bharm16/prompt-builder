@@ -1,11 +1,11 @@
-import type { ReactElement } from 'react';
-import { Palette, Plus } from '@promptstudio/system/components/ui';
-import type { Asset, AssetType } from '@shared/types/asset';
-import { AssetThumbnail } from '@features/prompt-optimizer/components/AssetsSidebar/AssetThumbnail';
+import type { ReactElement } from "react";
+import { Palette, Plus } from "@promptstudio/system/components/ui";
+import type { Asset, AssetType } from "@shared/types/asset";
+import { AssetThumbnail } from "@features/prompt-optimizer/components/AssetsSidebar/AssetThumbnail";
 import {
   useSidebarAssetsDomain,
   useSidebarPromptInteractionDomain,
-} from '@/components/ToolSidebar/context';
+} from "@/components/ToolSidebar/context";
 
 interface StylesPanelProps {
   assets?: Asset[];
@@ -24,16 +24,21 @@ export function StylesPanel(props: StylesPanelProps): ReactElement {
   const promptInteractionDomain = useSidebarPromptInteractionDomain();
 
   const assets = props.assets ?? assetsDomain?.assets ?? [];
-  const styleAssets = props.styleAssets ?? assetsDomain?.assetsByType.style ?? [];
+  const styleAssets =
+    props.styleAssets ?? assetsDomain?.assetsByType.style ?? [];
   const isLoading = props.isLoading ?? assetsDomain?.isLoadingAssets ?? false;
   const onInsertTrigger =
-    props.onInsertTrigger ?? promptInteractionDomain?.onInsertTrigger ?? noopWithString;
-  const onEditAsset = props.onEditAsset ?? assetsDomain?.onEditAsset ?? noopWithString;
-  const onCreateAsset = props.onCreateAsset ?? assetsDomain?.onCreateAsset ?? noopCreate;
+    props.onInsertTrigger ??
+    promptInteractionDomain?.onInsertTrigger ??
+    noopWithString;
+  const onEditAsset =
+    props.onEditAsset ?? assetsDomain?.onEditAsset ?? noopWithString;
+  const onCreateAsset =
+    props.onCreateAsset ?? assetsDomain?.onCreateAsset ?? noopCreate;
 
   const items = styleAssets.length
     ? styleAssets
-    : assets.filter((asset) => asset.type === 'style');
+    : assets.filter((asset) => asset.type === "style");
 
   return (
     <div className="flex h-full flex-col">
@@ -44,7 +49,7 @@ export function StylesPanel(props: StylesPanelProps): ReactElement {
         </div>
         <button
           type="button"
-          onClick={() => onCreateAsset('style')}
+          onClick={() => onCreateAsset("style")}
           className="h-7 rounded-md bg-surface-2 px-2.5 text-xs font-medium text-ghost"
         >
           <span className="inline-flex items-center gap-1">
@@ -63,7 +68,7 @@ export function StylesPanel(props: StylesPanelProps): ReactElement {
           <div className="text-sm text-ghost">No styles yet</div>
           <button
             type="button"
-            onClick={() => onCreateAsset('style')}
+            onClick={() => onCreateAsset("style")}
             className="h-8 rounded-md border border-tool-border-primary px-3 text-sm text-ghost"
           >
             Create style

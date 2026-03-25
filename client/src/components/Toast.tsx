@@ -1,6 +1,6 @@
-import React from 'react';
-import { Toaster } from '@promptstudio/system/components/ui/toaster';
-import { useToast as useShadcnToast } from '@promptstudio/system/hooks/use-toast';
+import React from "react";
+import { Toaster } from "@promptstudio/system/components/ui/toaster";
+import { useToast as useShadcnToast } from "@promptstudio/system/hooks/use-toast";
 
 export interface ToastProviderProps {
   children: React.ReactNode;
@@ -14,7 +14,7 @@ type ToastContextValue = {
 };
 
 const withDuration = (duration?: number): { duration?: number } =>
-  typeof duration === 'number' ? { duration } : {};
+  typeof duration === "number" ? { duration } : {};
 
 export const useToast = (): ToastContextValue => {
   const { toast } = useShadcnToast();
@@ -24,17 +24,23 @@ export const useToast = (): ToastContextValue => {
       success: (message: string, duration?: number) =>
         toast({ description: message, ...withDuration(duration) }),
       error: (message: string, duration?: number) =>
-        toast({ description: message, variant: 'destructive', ...withDuration(duration) }),
+        toast({
+          description: message,
+          variant: "destructive",
+          ...withDuration(duration),
+        }),
       warning: (message: string, duration?: number) =>
         toast({ description: message, ...withDuration(duration) }),
       info: (message: string, duration?: number) =>
         toast({ description: message, ...withDuration(duration) }),
     }),
-    [toast]
+    [toast],
   );
 };
 
-export function ToastProvider({ children }: ToastProviderProps): React.ReactElement {
+export function ToastProvider({
+  children,
+}: ToastProviderProps): React.ReactElement {
   return (
     <>
       {children}

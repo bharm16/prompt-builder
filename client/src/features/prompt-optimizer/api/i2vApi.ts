@@ -1,6 +1,6 @@
-import { buildFirebaseAuthHeaders } from '@/services/http/firebaseAuth';
-import type { ImageObservation } from '../types/i2v';
-import { z } from 'zod';
+import { buildFirebaseAuthHeaders } from "@/services/http/firebaseAuth";
+import type { ImageObservation } from "../types/i2v";
+import { z } from "zod";
 
 export interface ImageObservationRequest {
   image: string;
@@ -44,7 +44,7 @@ const ImageObservationSchema = z
           z.object({
             movement: z.string(),
             reason: z.string(),
-          })
+          }),
         )
         .optional(),
     }),
@@ -70,18 +70,19 @@ export interface ImageObservationFetchOptions {
 
 export async function observeImage(
   payload: ImageObservationRequest,
-  options: ImageObservationFetchOptions = {}
+  options: ImageObservationFetchOptions = {},
 ): Promise<ImageObservationResponse> {
-  const fetchFn = options.fetchImpl || (typeof fetch !== 'undefined' ? fetch : undefined);
+  const fetchFn =
+    options.fetchImpl || (typeof fetch !== "undefined" ? fetch : undefined);
   if (!fetchFn) {
-    throw new Error('Fetch is not available in this environment.');
+    throw new Error("Fetch is not available in this environment.");
   }
 
   const authHeaders = await buildFirebaseAuthHeaders();
-  const response = await fetchFn('/api/image/observe', {
-    method: 'POST',
+  const response = await fetchFn("/api/image/observe", {
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
       ...authHeaders,
     },
     body: JSON.stringify(payload),
@@ -93,7 +94,9 @@ export async function observeImage(
   }
 
   const responsePayload = (await response.json()) as unknown;
-  return ImageObservationResponseSchema.parse(responsePayload) as ImageObservationResponse;
+  return ImageObservationResponseSchema.parse(
+    responsePayload,
+  ) as ImageObservationResponse;
 }
 
 export const i2vApi = {

@@ -13,14 +13,14 @@
  *   --threshold=N        Abort dry-run when planned changes exceed N (default: 100)
  */
 
-import { Storage } from '@google-cloud/storage';
-import { initializeFirebaseAdmin, admin } from './firebase-admin-init.js';
-import { resolveBucketName } from '../../server/src/config/storageBucket.js';
+import { Storage } from "@google-cloud/storage";
+import { initializeFirebaseAdmin, admin } from "./firebase-admin-init.js";
+import { resolveBucketName } from "../../server/src/config/storageBucket.js";
 
-const DEV_PREFIX = 'dev-api-key:';
-const API_PREFIX = 'api-key:';
+const DEV_PREFIX = "dev-api-key:";
+const API_PREFIX = "api-key:";
 
-type Mode = 'dry-run' | 'apply';
+type Mode = "dry-run" | "apply";
 
 interface MigrationOptions {
   mode: Mode;
@@ -47,18 +47,20 @@ interface RewriteResult<T> {
 }
 
 function parseOptions(argv: string[]): MigrationOptions {
-  const hasApply = argv.includes('--apply');
-  const hasDryRun = argv.includes('--dry-run');
+  const hasApply = argv.includes("--apply");
+  const hasDryRun = argv.includes("--dry-run");
 
   if (hasApply && hasDryRun) {
-    throw new Error('Use exactly one of --dry-run or --apply');
+    throw new Error("Use exactly one of --dry-run or --apply");
   }
 
-  const thresholdRaw = argv.find((arg) => arg.startsWith('--threshold='))?.split('=')[1];
-  const threshold = Number.parseInt(thresholdRaw || '100', 10);
+  const thresholdRaw = argv
+    .find((arg) => arg.startsWith("--threshold="))
+    ?.split("=")[1];
+  const threshold = Number.parseInt(thresholdRaw || "100", 10);
 
   return {
-    mode: hasApply ? 'apply' : 'dry-run',
+    mode: hasApply ? "apply" : "dry-run",
     threshold: Number.isFinite(threshold) && threshold > 0 ? threshold : 100,
   };
 }
@@ -70,7 +72,11 @@ function toTargetUserId(sourceUserId: string): string {
   return `${API_PREFIX}${sourceUserId.slice(DEV_PREFIX.length)}`;
 }
 
-function rewriteString(value: string, sourceUserId: string, targetUserId: string): RewriteResult<string> {
+function rewriteString(
+  value: string,
+  sourceUserId: string,
+  targetUserId: string,
+): RewriteResult<string> {
   const rawSourcePathPrefix = `users/${sourceUserId}/`;
   const rawTargetPathPrefix = `users/${targetUserId}/`;
   const encodedSourcePathPrefix = encodeURIComponent(rawSourcePathPrefix);
@@ -87,15 +93,19 @@ function rewriteString(value: string, sourceUserId: string, targetUserId: string
 }
 
 function isPlainRecord(value: unknown): value is Record<string, unknown> {
-  if (!value || typeof value !== 'object') {
+  if (!value || typeof value !== "object") {
     return false;
   }
   const proto = Object.getPrototypeOf(value);
   return proto === Object.prototype || proto === null;
 }
 
-function rewriteValue<T>(value: T, sourceUserId: string, targetUserId: string): RewriteResult<T> {
-  if (typeof value === 'string') {
+function rewriteValue<T>(
+  value: T,
+  sourceUserId: string,
+  targetUserId: string,
+): RewriteResult<T> {
+  if (typeof value === "string") {
     const rewritten = rewriteString(value, sourceUserId, targetUserId);
     return { value: rewritten.value as T, changed: rewritten.changed };
   }
@@ -139,7 +149,7 @@ async function copySubcollections(
   sourceUserId: string,
   targetUserId: string,
   mode: Mode,
-  stats: MigrationStats
+  stats: MigrationStats,
 ): Promise<void> {
   const subcollections = await sourceDoc.listCollections();
 
@@ -154,13 +164,20 @@ async function copySubcollections(
         stats.userSubDocsSkippedExisting += 1;
       } else {
         const rewritten = rewriteValue(doc.data(), sourceUserId, targetUserId);
-        if (mode === 'apply') {
+        if (mode === "apply") {
           await targetRef.set(rewritten.value);
         }
         stats.userSubDocsCopied += 1;
       }
 
-      await copySubcollections(doc.ref, targetRef, sourceUserId, targetUserId, mode, stats);
+      await copySubcollections(
+        doc.ref,
+        targetRef,
+        sourceUserId,
+        targetUserId,
+        mode,
+        stats,
+      );
     }
   }
 }
@@ -168,12 +185,12 @@ async function copySubcollections(
 async function migrateUsersCollection(
   db: FirebaseFirestore.Firestore,
   mode: Mode,
-  stats: MigrationStats
+  stats: MigrationStats,
 ): Promise<void> {
-  const users = db.collection('users');
+  const users = db.collection("users");
   const sourceUsers = await users
-    .where(admin.firestore.FieldPath.documentId(), '>=', DEV_PREFIX)
-    .where(admin.firestore.FieldPath.documentId(), '<=', `${DEV_PREFIX}\uf8ff`)
+    .where(admin.firestore.FieldPath.documentId(), ">=", DEV_PREFIX)
+    .where(admin.firestore.FieldPath.documentId(), "<=", `${DEV_PREFIX}\uf8ff`)
     .get();
 
   stats.usersFound = sourceUsers.size;
@@ -188,34 +205,45 @@ async function migrateUsersCollection(
     if (targetSnapshot.exists) {
       stats.userRootSkippedExisting += 1;
     } else {
-      const rewritten = rewriteValue(sourceUserDoc.data(), sourceUserId, targetUserId);
-      if (mode === 'apply') {
+      const rewritten = rewriteValue(
+        sourceUserDoc.data(),
+        sourceUserId,
+        targetUserId,
+      );
+      if (mode === "apply") {
         await targetUserDoc.set(rewritten.value);
       }
       stats.userRootCopied += 1;
     }
 
-    await copySubcollections(sourceUserDoc.ref, targetUserDoc, sourceUserId, targetUserId, mode, stats);
+    await copySubcollections(
+      sourceUserDoc.ref,
+      targetUserDoc,
+      sourceUserId,
+      targetUserId,
+      mode,
+      stats,
+    );
   }
 }
 
 async function migrateTopLevelUserIdCollections(
   db: FirebaseFirestore.Firestore,
   mode: Mode,
-  stats: MigrationStats
+  stats: MigrationStats,
 ): Promise<void> {
   const collections = await db.listCollections();
 
   for (const collection of collections) {
-    if (collection.id === 'users') {
+    if (collection.id === "users") {
       continue;
     }
 
     let snapshot: FirebaseFirestore.QuerySnapshot;
     try {
       snapshot = await collection
-        .where('userId', '>=', DEV_PREFIX)
-        .where('userId', '<=', `${DEV_PREFIX}\uf8ff`)
+        .where("userId", ">=", DEV_PREFIX)
+        .where("userId", "<=", `${DEV_PREFIX}\uf8ff`)
         .get();
     } catch {
       continue;
@@ -223,7 +251,7 @@ async function migrateTopLevelUserIdCollections(
 
     for (const doc of snapshot.docs) {
       const data = doc.data();
-      const sourceUserId = typeof data.userId === 'string' ? data.userId : null;
+      const sourceUserId = typeof data.userId === "string" ? data.userId : null;
       if (!sourceUserId || !sourceUserId.startsWith(DEV_PREFIX)) {
         stats.collectionDocsUnchanged += 1;
         continue;
@@ -237,7 +265,7 @@ async function migrateTopLevelUserIdCollections(
         continue;
       }
 
-      if (mode === 'apply') {
+      if (mode === "apply") {
         await doc.ref.set(rewritten.value, { merge: false });
       }
       stats.collectionDocsRewritten += 1;
@@ -245,7 +273,10 @@ async function migrateTopLevelUserIdCollections(
   }
 }
 
-async function copyGcsObjects(mode: Mode, stats: MigrationStats): Promise<void> {
+async function copyGcsObjects(
+  mode: Mode,
+  stats: MigrationStats,
+): Promise<void> {
   const bucketName = resolveBucketName();
   const storage = new Storage();
   const bucket = storage.bucket(bucketName);
@@ -254,7 +285,10 @@ async function copyGcsObjects(mode: Mode, stats: MigrationStats): Promise<void> 
   stats.objectsFound = files.length;
 
   for (const sourceFile of files) {
-    const targetPath = sourceFile.name.replace(/^users\/dev-api-key:/, 'users/api-key:');
+    const targetPath = sourceFile.name.replace(
+      /^users\/dev-api-key:/,
+      "users/api-key:",
+    );
     const targetFile = bucket.file(targetPath);
     const [targetExists] = await targetFile.exists();
 
@@ -263,7 +297,7 @@ async function copyGcsObjects(mode: Mode, stats: MigrationStats): Promise<void> 
       continue;
     }
 
-    if (mode === 'apply') {
+    if (mode === "apply") {
       await sourceFile.copy(targetFile);
     }
     stats.objectsCopied += 1;
@@ -308,21 +342,21 @@ async function run(): Promise<void> {
   } catch (error) {
     stats.errors += 1;
     const errorMessage = error instanceof Error ? error.message : String(error);
-    console.error('Migration failed:', errorMessage);
+    console.error("Migration failed:", errorMessage);
     throw error;
   }
 
   const impacted = summarizeImpacted(stats);
 
-  if (options.mode === 'dry-run' && impacted > options.threshold) {
+  if (options.mode === "dry-run" && impacted > options.threshold) {
     console.error(
-      `Dry-run planned changes (${impacted}) exceed threshold (${options.threshold}). Manual review required.`
+      `Dry-run planned changes (${impacted}) exceed threshold (${options.threshold}). Manual review required.`,
     );
     console.log(JSON.stringify({ options, impacted, stats }, null, 2));
     process.exit(2);
   }
 
-  console.log('\nMigration summary');
+  console.log("\nMigration summary");
   console.log(
     JSON.stringify(
       {
@@ -332,12 +366,12 @@ async function run(): Promise<void> {
         stats,
       },
       null,
-      2
-    )
+      2,
+    ),
   );
 }
 
 run().catch((error) => {
-  console.error('Migration aborted', error);
+  console.error("Migration aborted", error);
   process.exit(1);
 });

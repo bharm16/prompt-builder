@@ -1,6 +1,6 @@
-import CircuitBreaker from 'opossum';
-import type { ILogger } from '@interfaces/ILogger';
-import type { IMetricsCollector } from '@interfaces/IMetricsCollector';
+import CircuitBreaker from "opossum";
+import type { ILogger } from "@interfaces/ILogger";
+import type { IMetricsCollector } from "@interfaces/IMetricsCollector";
 
 interface CircuitBreakerConfig {
   name: string;
@@ -11,12 +11,12 @@ interface CircuitBreakerConfig {
   metricsCollector?: IMetricsCollector;
 }
 
-type CircuitState = 'open' | 'closed' | 'half-open';
+type CircuitState = "open" | "closed" | "half-open";
 
 /**
  * Circuit Breaker Adapter
  * Wraps opossum circuit breaker to match our interface needs
- * 
+ *
  * SOLID Principles Applied:
  * - SRP: Focused on circuit breaker functionality
  * - DIP: Adapts external library to our needs
@@ -39,7 +39,7 @@ export class CircuitBreakerAdapter {
     this.name = name;
     this.logger = logger;
     this.metricsCollector = metricsCollector;
-    
+
     const breakerOptions = {
       timeout,
       errorThresholdPercentage,
@@ -52,43 +52,43 @@ export class CircuitBreakerAdapter {
     // Create breaker with a pass-through function
     this.breaker = new CircuitBreaker(
       async (fn: () => Promise<unknown>) => await fn(),
-      breakerOptions
+      breakerOptions,
     );
 
     // Setup event handlers
-    this.breaker.on('open', () => {
+    this.breaker.on("open", () => {
       this.logger?.error(`Circuit breaker OPEN - ${name}`, undefined, { name });
-      this.metricsCollector?.updateCircuitBreakerState?.(name, 'open');
+      this.metricsCollector?.updateCircuitBreakerState?.(name, "open");
     });
 
-    this.breaker.on('halfOpen', () => {
+    this.breaker.on("halfOpen", () => {
       this.logger?.warn(`Circuit breaker HALF-OPEN - ${name}`, { name });
-      this.metricsCollector?.updateCircuitBreakerState?.(name, 'half-open');
+      this.metricsCollector?.updateCircuitBreakerState?.(name, "half-open");
     });
 
-    this.breaker.on('close', () => {
+    this.breaker.on("close", () => {
       this.logger?.info(`Circuit breaker CLOSED - ${name}`, { name });
-      this.metricsCollector?.updateCircuitBreakerState?.(name, 'closed');
+      this.metricsCollector?.updateCircuitBreakerState?.(name, "closed");
     });
 
     // Initialize state
-    this.metricsCollector?.updateCircuitBreakerState?.(name, 'closed');
+    this.metricsCollector?.updateCircuitBreakerState?.(name, "closed");
   }
 
   /**
    * Execute a function with circuit breaker protection
    */
   async execute<T>(fn: () => Promise<T>): Promise<T> {
-    return await this.breaker.fire(fn) as T;
+    return (await this.breaker.fire(fn)) as T;
   }
 
   /**
    * Get current circuit state
    */
   getState(): CircuitState {
-    if (this.breaker.opened) return 'open';
-    if (this.breaker.halfOpen) return 'half-open';
-    return 'closed';
+    if (this.breaker.opened) return "open";
+    if (this.breaker.halfOpen) return "half-open";
+    return "closed";
   }
 
   /**
@@ -102,7 +102,9 @@ export class CircuitBreakerAdapter {
 interface CircuitBreakerFactoryConfig {
   logger?: ILogger;
   metricsCollector?: IMetricsCollector;
-  defaultConfig?: Partial<Omit<CircuitBreakerConfig, 'name' | 'logger' | 'metricsCollector'>>;
+  defaultConfig?: Partial<
+    Omit<CircuitBreakerConfig, "name" | "logger" | "metricsCollector">
+  >;
 }
 
 /**
@@ -112,10 +114,16 @@ interface CircuitBreakerFactoryConfig {
 export class CircuitBreakerFactory {
   private logger: ILogger | undefined;
   private metricsCollector: IMetricsCollector | undefined;
-  private defaultConfig: Partial<Omit<CircuitBreakerConfig, 'name' | 'logger' | 'metricsCollector'>>;
+  private defaultConfig: Partial<
+    Omit<CircuitBreakerConfig, "name" | "logger" | "metricsCollector">
+  >;
   private breakers: Map<string, CircuitBreakerAdapter>;
 
-  constructor({ logger, metricsCollector, defaultConfig = {} }: CircuitBreakerFactoryConfig) {
+  constructor({
+    logger,
+    metricsCollector,
+    defaultConfig = {},
+  }: CircuitBreakerFactoryConfig) {
     this.logger = logger;
     this.metricsCollector = metricsCollector;
     this.defaultConfig = defaultConfig;
@@ -125,7 +133,12 @@ export class CircuitBreakerFactory {
   /**
    * Create or get a circuit breaker
    */
-  create(name: string, config: Partial<Omit<CircuitBreakerConfig, 'name' | 'logger' | 'metricsCollector'>> = {}): CircuitBreakerAdapter {
+  create(
+    name: string,
+    config: Partial<
+      Omit<CircuitBreakerConfig, "name" | "logger" | "metricsCollector">
+    > = {},
+  ): CircuitBreakerAdapter {
     if (this.breakers.has(name)) {
       return this.breakers.get(name)!;
     }

@@ -1,8 +1,8 @@
-import React, { useMemo } from 'react';
-import { Check, Plus } from '@promptstudio/system/components/ui';
-import type { ContinuityShot } from '@/features/continuity/types';
-import { cn } from '@/utils/cn';
-import { useResolvedMediaUrl } from '@/hooks/useResolvedMediaUrl';
+import React, { useMemo } from "react";
+import { Check, Plus } from "@promptstudio/system/components/ui";
+import type { ContinuityShot } from "@/features/continuity/types";
+import { cn } from "@/utils/cn";
+import { useResolvedMediaUrl } from "@/hooks/useResolvedMediaUrl";
 
 interface ShotVisualStripProps {
   shots: ContinuityShot[];
@@ -12,10 +12,10 @@ interface ShotVisualStripProps {
 }
 
 const PLACEHOLDER_GRADIENTS = [
-  'linear-gradient(135deg, #1B2434 0%, #151924 100%)',
-  'linear-gradient(135deg, #223022 0%, #182018 100%)',
-  'linear-gradient(135deg, #2A2235 0%, #1C1825 100%)',
-  'linear-gradient(135deg, #2F2422 0%, #201816 100%)',
+  "linear-gradient(135deg, #1B2434 0%, #151924 100%)",
+  "linear-gradient(135deg, #223022 0%, #182018 100%)",
+  "linear-gradient(135deg, #2A2235 0%, #1C1825 100%)",
+  "linear-gradient(135deg, #2F2422 0%, #201816 100%)",
 ];
 
 function BridgeIcon({ className }: { className?: string }): React.ReactElement {
@@ -35,7 +35,11 @@ function BridgeIcon({ className }: { className?: string }): React.ReactElement {
   );
 }
 
-function PaintbrushIcon({ className }: { className?: string }): React.ReactElement {
+function PaintbrushIcon({
+  className,
+}: {
+  className?: string;
+}): React.ReactElement {
   return (
     <svg
       viewBox="0 0 12 12"
@@ -53,15 +57,17 @@ function PaintbrushIcon({ className }: { className?: string }): React.ReactEleme
   );
 }
 
-const normalizeCandidateUrl = (value: string | null | undefined): string | null => {
-  if (typeof value !== 'string') return null;
+const normalizeCandidateUrl = (
+  value: string | null | undefined,
+): string | null => {
+  if (typeof value !== "string") return null;
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : null;
 };
 
 const resolveThumbnailCandidates = (
   shot: ContinuityShot,
-  referencedShot: ContinuityShot | null
+  referencedShot: ContinuityShot | null,
 ): string[] => {
   const candidates = [
     shot.sceneProxyRenderUrl,
@@ -79,25 +85,30 @@ const resolveThumbnailCandidates = (
 };
 
 const resolveVideoReference = (
-  shot: ContinuityShot
+  shot: ContinuityShot,
 ): { storagePath?: string; assetId?: string } => {
   const videoAssetId = shot.videoAssetId?.trim();
   if (!videoAssetId) return {};
-  if (videoAssetId.startsWith('users/')) {
+  if (videoAssetId.startsWith("users/")) {
     return { storagePath: videoAssetId };
   }
   return { assetId: videoAssetId };
 };
 
 const resolvePlaceholderGradient = (sequenceIndex: number): string =>
-  PLACEHOLDER_GRADIENTS[Math.abs(sequenceIndex) % PLACEHOLDER_GRADIENTS.length] ?? PLACEHOLDER_GRADIENTS[0]!;
+  PLACEHOLDER_GRADIENTS[
+    Math.abs(sequenceIndex) % PLACEHOLDER_GRADIENTS.length
+  ] ?? PLACEHOLDER_GRADIENTS[0]!;
 
-const isGeneratingStatus = (status: ContinuityShot['status']): boolean =>
-  status === 'generating-keyframe' || status === 'generating-video';
+const isGeneratingStatus = (status: ContinuityShot["status"]): boolean =>
+  status === "generating-keyframe" || status === "generating-video";
 
 const showConnector = (shot: ContinuityShot, index: number): boolean => {
   if (index === 0) return false;
-  return shot.continuityMode === 'frame-bridge' || shot.continuityMode === 'style-match';
+  return (
+    shot.continuityMode === "frame-bridge" ||
+    shot.continuityMode === "style-match"
+  );
 };
 
 interface ShotVisualCardProps {
@@ -117,13 +128,13 @@ function ShotVisualCard({
 }: ShotVisualCardProps): React.ReactElement {
   const thumbnailCandidates = React.useMemo(
     () => resolveThumbnailCandidates(shot, referencedShot),
-    [referencedShot, shot]
+    [referencedShot, shot],
   );
-  const thumbnailCandidateKey = thumbnailCandidates.join('|');
+  const thumbnailCandidateKey = thumbnailCandidates.join("|");
   const [thumbnailIndex, setThumbnailIndex] = React.useState(0);
   const thumbnailUrl =
     thumbnailIndex >= 0 && thumbnailIndex < thumbnailCandidates.length
-      ? thumbnailCandidates[thumbnailIndex] ?? null
+      ? (thumbnailCandidates[thumbnailIndex] ?? null)
       : null;
   React.useEffect(() => {
     setThumbnailIndex(0);
@@ -131,13 +142,15 @@ function ShotVisualCard({
   const handleThumbnailError = React.useCallback((): void => {
     setThumbnailIndex((current) => {
       const next = current + 1;
-      return next < thumbnailCandidates.length ? next : thumbnailCandidates.length;
+      return next < thumbnailCandidates.length
+        ? next
+        : thumbnailCandidates.length;
     });
   }, [thumbnailCandidates.length]);
 
   const { storagePath, assetId } = resolveVideoReference(shot);
   const { url: resolvedVideoUrl } = useResolvedMediaUrl({
-    kind: 'video',
+    kind: "video",
     storagePath: storagePath ?? null,
     assetId: assetId ?? null,
     enabled: !thumbnailUrl && Boolean(storagePath || assetId),
@@ -150,12 +163,16 @@ function ShotVisualCard({
       type="button"
       onClick={() => onShotSelect(shot.id)}
       className={cn(
-        'relative h-[52px] w-20 shrink-0 overflow-hidden rounded-lg border-2 transition-all',
-        isActive && 'border-accent',
-        !isActive && !isGenerating && 'border-border hover:border-border-strong',
-        isGenerating && 'animate-pulse border-amber-400'
+        "relative h-[52px] w-20 shrink-0 overflow-hidden rounded-lg border-2 transition-all",
+        isActive && "border-accent",
+        !isActive &&
+          !isGenerating &&
+          "border-border hover:border-border-strong",
+        isGenerating && "animate-pulse border-amber-400",
       )}
-      style={isActive ? { boxShadow: '0 0 12px rgba(108, 92, 231, 0.2)' } : undefined}
+      style={
+        isActive ? { boxShadow: "0 0 12px rgba(108, 92, 231, 0.2)" } : undefined
+      }
       aria-label={shotLabel}
       data-testid={`shot-thumb-${shot.id}`}
     >
@@ -179,10 +196,14 @@ function ShotVisualCard({
       ) : (
         <div
           className="flex h-full w-full items-center justify-center"
-          style={{ backgroundImage: resolvePlaceholderGradient(shot.sequenceIndex) }}
+          style={{
+            backgroundImage: resolvePlaceholderGradient(shot.sequenceIndex),
+          }}
           data-testid={`shot-placeholder-${shot.id}`}
         >
-          <span className="text-xs font-semibold text-white/70">{shot.sequenceIndex + 1}</span>
+          <span className="text-xs font-semibold text-white/70">
+            {shot.sequenceIndex + 1}
+          </span>
         </div>
       )}
 
@@ -190,7 +211,7 @@ function ShotVisualCard({
         {shot.sequenceIndex + 1}
       </span>
 
-      {shot.status === 'completed' && (
+      {shot.status === "completed" && (
         <span
           className="absolute bottom-1 right-1 inline-flex h-4 w-4 items-center justify-center rounded-full border border-success/40 bg-success/15 text-success"
           aria-label={`${shotLabel} completed`}
@@ -211,11 +232,11 @@ export function ShotVisualStrip({
 }: ShotVisualStripProps): React.ReactElement | null {
   const orderedShots = useMemo(
     () => [...shots].sort((a, b) => a.sequenceIndex - b.sequenceIndex),
-    [shots]
+    [shots],
   );
   const shotsById = useMemo(
     () => new Map(orderedShots.map((shot) => [shot.id, shot])),
-    [orderedShots]
+    [orderedShots],
   );
 
   if (!orderedShots.length) return null;
@@ -232,15 +253,15 @@ export function ShotVisualStrip({
               {showConnector(shot, index) && (
                 <div
                   className={cn(
-                    'inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border',
-                    shot.continuityMode === 'frame-bridge'
-                      ? 'border-cyan-400/40 bg-cyan-400/10 text-cyan-400'
-                      : 'border-accent/40 bg-accent/10 text-accent'
+                    "inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border",
+                    shot.continuityMode === "frame-bridge"
+                      ? "border-cyan-400/40 bg-cyan-400/10 text-cyan-400"
+                      : "border-accent/40 bg-accent/10 text-accent",
                   )}
                   data-testid={`shot-connector-${shot.id}`}
                   aria-hidden="true"
                 >
-                  {shot.continuityMode === 'frame-bridge' ? (
+                  {shot.continuityMode === "frame-bridge" ? (
                     <BridgeIcon className="h-3 w-3" />
                   ) : (
                     <PaintbrushIcon className="h-3 w-3" />

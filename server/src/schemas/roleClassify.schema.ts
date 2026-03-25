@@ -1,13 +1,13 @@
-import { z } from 'zod';
+import { z } from "zod";
 
 export const RoleClassifyRequestSchema = z.object({
-  templateVersion: z.string().default('v1'),
+  templateVersion: z.string().default("v1"),
   spans: z.array(z.unknown()).transform((spans) => {
     return spans
       .map((span) => {
         const s = span as Record<string, unknown>;
         return {
-          text: String(s?.text ?? ''),
+          text: String(s?.text ?? ""),
           start: Number.isInteger(s?.start) ? (s.start as number) : -1,
           end: Number.isInteger(s?.end) ? (s.end as number) : -1,
         };

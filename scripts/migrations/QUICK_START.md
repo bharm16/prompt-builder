@@ -28,21 +28,27 @@ npm run migrate:backfill
 ## 📋 When to Use Each Script
 
 ### Force Rerender (`force-highlight-rerender.ts`)
+
 **Use when:**
+
 - ✅ You've updated the highlighting algorithm
 - ✅ You want to apply new changes to existing prompts
 - ✅ Similar to updating cache model/templateVersion
 
 **Don't use when:**
+
 - ❌ Prompts don't have highlights yet (use backfill instead)
 
 ### Backfill (`backfill-highlight-cache.ts`)
+
 **Use when:**
+
 - ✅ Prompts are missing highlights entirely
 - ✅ New users with old prompts
 - ✅ After data migration
 
 **Don't use when:**
+
 - ❌ You just want to update existing highlights (use force rerender)
 
 ## 🎯 Quick Decision Guide
@@ -58,11 +64,11 @@ Do prompts have highlights already?
 
 ## ⚡ Performance at a Glance
 
-| Script | Mode | Speed (per doc) | When to Use |
-|--------|------|-----------------|-------------|
-| Force Rerender | clear | ~0.04s | Regular updates |
-| Force Rerender | regenerate | ~3-5s | Pre-deployment |
-| Backfill | - | ~3-5s | Missing highlights |
+| Script         | Mode       | Speed (per doc) | When to Use        |
+| -------------- | ---------- | --------------- | ------------------ |
+| Force Rerender | clear      | ~0.04s          | Regular updates    |
+| Force Rerender | regenerate | ~3-5s           | Pre-deployment     |
+| Backfill       | -          | ~3-5s           | Missing highlights |
 
 ## 🔧 Advanced Options
 
@@ -88,6 +94,7 @@ tsx --tsconfig server/tsconfig.json scripts/migrations/force-highlight-rerender.
 ## 📊 Expected Results
 
 ### Clear Mode (1000 prompts)
+
 ```
 ⏱️  Time: ~40 seconds
 💰 API Calls: 0
@@ -95,6 +102,7 @@ tsx --tsconfig server/tsconfig.json scripts/migrations/force-highlight-rerender.
 ```
 
 ### Regenerate Mode (1000 prompts)
+
 ```
 ⏱️  Time: ~50-80 minutes
 💰 API Calls: 1000+
@@ -115,6 +123,7 @@ Before running migrations:
 ## 🆘 Quick Troubleshooting
 
 **"Unable to detect Project Id"**
+
 ```bash
 # Set up Firebase auth
 export FIREBASE_SERVICE_ACCOUNT_PATH=/path/to/service-account.json
@@ -123,6 +132,7 @@ gcloud auth application-default login
 ```
 
 **"No documents found"**
+
 ```bash
 # Remove filters
 tsx --tsconfig server/tsconfig.json scripts/migrations/force-highlight-rerender.ts --mode=clear
@@ -130,6 +140,7 @@ tsx --tsconfig server/tsconfig.json scripts/migrations/force-highlight-rerender.
 ```
 
 **Too slow?**
+
 ```bash
 # Use clear mode instead of regenerate
 npm run migrate:rerender
@@ -169,5 +180,3 @@ cat scripts/migrations/FORCE_RERENDER_GUIDE.md
 ---
 
 **Need help?** Check the full documentation or run with `--dry-run` to safely test.
-
-

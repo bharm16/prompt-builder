@@ -6,16 +6,16 @@
  */
 
 // Interface and implementation
-export type { CreditsService } from './CreditsService';
+export type { CreditsService } from "./CreditsService";
 export {
   FirestoreCreditsService,
   getCreditsService,
   setCreditsService,
-} from './CreditsService';
+} from "./CreditsService";
 
 // Helper functions
 export {
   withCreditReservation,
   checkCredits,
   getCreditBalance,
-} from './creditHelpers';
+} from "./creditHelpers";

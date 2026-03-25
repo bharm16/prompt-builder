@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import type { Asset } from '@shared/types/asset';
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { Asset } from "@shared/types/asset";
 
 export interface KeyframeOption {
   imageUrl: string;
@@ -20,7 +20,8 @@ export function useKeyframeGeneration({
   aspectRatio,
 }: UseKeyframeGenerationArgs) {
   const [keyframes, setKeyframes] = useState<KeyframeOption[]>([]);
-  const [selectedKeyframe, setSelectedKeyframe] = useState<KeyframeOption | null>(null);
+  const [selectedKeyframe, setSelectedKeyframe] =
+    useState<KeyframeOption | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -60,10 +61,10 @@ export function useKeyframeGeneration({
     setSelectedKeyframe(null);
 
     try {
-      const response = await fetch('/api/generate/consistent/keyframe', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+      const response = await fetch("/api/generate/consistent/keyframe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
         signal: controller.signal,
         body: JSON.stringify({
           characterId: characterAsset.id,
@@ -76,7 +77,7 @@ export function useKeyframeGeneration({
       if (requestId !== requestIdRef.current) return;
 
       if (!response.ok) {
-        throw new Error('Failed to generate keyframes');
+        throw new Error("Failed to generate keyframes");
       }
 
       const result = await response.json();
@@ -88,7 +89,9 @@ export function useKeyframeGeneration({
       if (controller.signal.aborted || requestId !== requestIdRef.current) {
         return;
       }
-      setError(err instanceof Error ? err.message : 'Failed to generate keyframes');
+      setError(
+        err instanceof Error ? err.message : "Failed to generate keyframes",
+      );
     } finally {
       if (requestId === requestIdRef.current) {
         setIsGenerating(false);

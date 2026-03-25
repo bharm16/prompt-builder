@@ -1,13 +1,13 @@
-import { extractSemanticSpans } from '../../../../llm/span-labeling/nlp/NlpSpanService';
-import SpanLabelingConfig from '../../../../llm/span-labeling/config/SpanLabelingConfig';
-import type { VideoPromptStructuredResponse } from '@services/prompt-optimization/strategies/videoPromptTypes';
-import type { VideoPromptIR } from '../../types';
-import { createEmptyIR } from './IrFactory';
-import { LlmIrExtractor } from './LlmIrExtractor';
-import { parseInputStructure } from './InputStructureParser';
-import { mapSpansToIR } from './SpanToIrMapper';
-import { extractBasicHeuristics } from './HeuristicIrExtractor';
-import { enrichFromTechnicalSpecs, enrichIR } from './IrEnricher';
+import { extractSemanticSpans } from "../../../../llm/span-labeling/nlp/NlpSpanService";
+import SpanLabelingConfig from "../../../../llm/span-labeling/config/SpanLabelingConfig";
+import type { VideoPromptStructuredResponse } from "@services/prompt-optimization/strategies/videoPromptTypes";
+import type { VideoPromptIR } from "../../types";
+import { createEmptyIR } from "./IrFactory";
+import { LlmIrExtractor } from "./LlmIrExtractor";
+import { parseInputStructure } from "./InputStructureParser";
+import { mapSpansToIR } from "./SpanToIrMapper";
+import { extractBasicHeuristics } from "./HeuristicIrExtractor";
+import { enrichFromTechnicalSpecs, enrichIR } from "./IrEnricher";
 
 interface VideoPromptAnalyzerDeps {
   llmExtractor?: LlmIrExtractor;
@@ -37,16 +37,23 @@ export class VideoPromptAnalyzer {
    */
   async analyze(text: string): Promise<VideoPromptIR> {
     const promptOutputOnly = this.promptOutputOnly;
-    const useGliner = !promptOutputOnly &&
+    const useGliner =
+      !promptOutputOnly &&
       (SpanLabelingConfig.NEURO_SYMBOLIC?.ENABLED ?? false) &&
       (SpanLabelingConfig.NEURO_SYMBOLIC?.GLINER?.ENABLED ?? false);
-    const llmParsed = promptOutputOnly ? null : await this.llmExtractor.tryAnalyze(text);
+    const llmParsed = promptOutputOnly
+      ? null
+      : await this.llmExtractor.tryAnalyze(text);
 
     if (llmParsed) {
       const cleanNarrative = this.cleanText(llmParsed.raw);
       try {
-        const extractionResult = await extractSemanticSpans(cleanNarrative, { useGliner });
-        const spans = Array.isArray(extractionResult.spans) ? extractionResult.spans : [];
+        const extractionResult = await extractSemanticSpans(cleanNarrative, {
+          useGliner,
+        });
+        const spans = Array.isArray(extractionResult.spans)
+          ? extractionResult.spans
+          : [];
         mapSpansToIR(spans, llmParsed);
       } catch {
         if (this.isIrSparse(llmParsed)) {
@@ -71,8 +78,12 @@ export class VideoPromptAnalyzer {
     // We use the existing high-fidelity NLP service to detect roles semantically
     try {
       // Use the project's established ML pipeline for open-vocabulary extraction
-      const extractionResult = await extractSemanticSpans(cleanNarrative, { useGliner });
-      const spans = Array.isArray(extractionResult.spans) ? extractionResult.spans : [];
+      const extractionResult = await extractSemanticSpans(cleanNarrative, {
+        useGliner,
+      });
+      const spans = Array.isArray(extractionResult.spans)
+        ? extractionResult.spans
+        : [];
       mapSpansToIR(spans, ir);
     } catch {
       // Fallback to basic heuristics if the ML service is unavailable
@@ -93,7 +104,7 @@ export class VideoPromptAnalyzer {
 
   fromStructuredPrompt(
     structuredPrompt: VideoPromptStructuredResponse,
-    sourcePrompt: string
+    sourcePrompt: string,
   ): VideoPromptIR {
     const ir = createEmptyIR(sourcePrompt);
     const normalizedSource = this.cleanText(sourcePrompt);
@@ -101,7 +112,9 @@ export class VideoPromptAnalyzer {
     if (structuredPrompt.subject) {
       ir.subjects.push({
         text: structuredPrompt.subject.trim(),
-        attributes: (structuredPrompt.subject_details ?? []).map((detail) => detail.trim()).filter(Boolean),
+        attributes: (structuredPrompt.subject_details ?? [])
+          .map((detail) => detail.trim())
+          .filter(Boolean),
       });
     }
 
@@ -138,8 +151,10 @@ export class VideoPromptAnalyzer {
     }
 
     if (structuredPrompt.technical_specs) {
-      for (const [key, value] of Object.entries(structuredPrompt.technical_specs)) {
-        if (typeof value === 'string' && value.trim().length > 0) {
+      for (const [key, value] of Object.entries(
+        structuredPrompt.technical_specs,
+      )) {
+        if (typeof value === "string" && value.trim().length > 0) {
           ir.technical[key] = value.trim();
         }
       }
@@ -150,12 +165,16 @@ export class VideoPromptAnalyzer {
       ir.audio.dialogue = dialogueMatch[1].trim();
     }
 
-    const musicMatch = normalizedSource.match(/\b(?:music|score|soundtrack|melody)\b[^.!?]*/i);
+    const musicMatch = normalizedSource.match(
+      /\b(?:music|score|soundtrack|melody)\b[^.!?]*/i,
+    );
     if (musicMatch?.[0]) {
       ir.audio.music = musicMatch[0].trim();
     }
 
-    const sfxMatch = normalizedSource.match(/\b(?:sfx|sound effect|thunder|rain|footsteps|explosion|voiceover)\b[^.!?]*/i);
+    const sfxMatch = normalizedSource.match(
+      /\b(?:sfx|sound effect|thunder|rain|footsteps|explosion|voiceover)\b[^.!?]*/i,
+    );
     if (sfxMatch?.[0]) {
       ir.audio.sfx = sfxMatch[0].trim();
     }
@@ -167,7 +186,7 @@ export class VideoPromptAnalyzer {
   }
 
   private cleanText(text: string): string {
-    return text.trim().replace(/\s+/g, ' ');
+    return text.trim().replace(/\s+/g, " ");
   }
 
   private isIrSparse(ir: VideoPromptIR): boolean {

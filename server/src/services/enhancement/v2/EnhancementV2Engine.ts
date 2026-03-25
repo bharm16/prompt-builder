@@ -1,20 +1,20 @@
-import { logger } from '@infrastructure/Logger';
-import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer';
-import { getEnhancementSchema } from '../config/schemas.js';
-import { SlotPolicyRegistry } from './SlotPolicyRegistry.js';
-import { EnhancementV2PromptBuilder } from './EnhancementV2PromptBuilder.js';
-import { V2CandidateScorer } from './V2CandidateScorer.js';
-import type { Suggestion } from '../services/types.js';
+import { logger } from "@infrastructure/Logger";
+import { StructuredOutputEnforcer } from "@utils/StructuredOutputEnforcer";
+import { getEnhancementSchema } from "../config/schemas.js";
+import { SlotPolicyRegistry } from "./SlotPolicyRegistry.js";
+import { EnhancementV2PromptBuilder } from "./EnhancementV2PromptBuilder.js";
+import { V2CandidateScorer } from "./V2CandidateScorer.js";
+import type { Suggestion } from "../services/types.js";
 import type {
   EnhancementV2Dependencies,
   EnhancementV2Execution,
   EnhancementV2RequestContext,
   SlotPolicy,
   TemplatedPolicyConfig,
-} from './types.js';
+} from "./types.js";
 
 export class EnhancementV2Engine {
-  private readonly log = logger.child({ service: 'EnhancementV2Engine' });
+  private readonly log = logger.child({ service: "EnhancementV2Engine" });
   private readonly registry: SlotPolicyRegistry;
   private readonly promptBuilder = new EnhancementV2PromptBuilder();
   private readonly scorer: V2CandidateScorer;
@@ -24,43 +24,65 @@ export class EnhancementV2Engine {
     this.scorer = new V2CandidateScorer(dependencies.videoService);
   }
 
-  async execute(context: EnhancementV2RequestContext): Promise<EnhancementV2Execution> {
-    const policy = this.registry.resolve(context.highlightedCategory || context.phraseRole);
+  async execute(
+    context: EnhancementV2RequestContext,
+  ): Promise<EnhancementV2Execution> {
+    const policy = this.registry.resolve(
+      context.highlightedCategory || context.phraseRole,
+    );
     const stageCounts: Record<string, number> = {};
     let modelCallCount = 0;
 
-    this.log.debug('Executing V2 enhancement policy', {
+    this.log.debug("Executing V2 enhancement policy", {
       categoryId: policy.categoryId,
       mode: policy.mode,
       highlightedCategory: context.highlightedCategory,
     });
 
-    const primaryCandidates = await this._generatePrimaryCandidates(policy, context);
+    const primaryCandidates = await this._generatePrimaryCandidates(
+      policy,
+      context,
+    );
     stageCounts.generatedPrimary = primaryCandidates.length;
-    if (policy.mode === 'guided_llm') {
+    if (policy.mode === "guided_llm") {
       modelCallCount += 1;
     }
 
-    let evaluations = this.scorer.scoreCandidates(primaryCandidates, context, policy);
+    let evaluations = this.scorer.scoreCandidates(
+      primaryCandidates,
+      context,
+      policy,
+    );
     stageCounts.evaluatedPrimary = evaluations.length;
     let rejectionSummary = this.scorer.summarizeRejections(evaluations);
-    let finalSuggestions = this._rankAndFilter(evaluations, context.highlightedText, policy.targetCount);
+    let finalSuggestions = this._rankAndFilter(
+      evaluations,
+      context.highlightedText,
+      policy.targetCount,
+    );
     stageCounts.acceptedPrimary = finalSuggestions.length;
 
     if (this._shouldRescue(policy, finalSuggestions.length)) {
       const rescueCandidates = await this._generateRescueCandidates(
         policy,
         context,
-        finalSuggestions
+        finalSuggestions,
       );
       if (rescueCandidates.length > 0) {
         modelCallCount += 1;
         stageCounts.generatedRescue = rescueCandidates.length;
-        const merged = this._dedupeByText([...primaryCandidates, ...rescueCandidates]);
+        const merged = this._dedupeByText([
+          ...primaryCandidates,
+          ...rescueCandidates,
+        ]);
         evaluations = this.scorer.scoreCandidates(merged, context, policy);
         stageCounts.evaluatedRescue = evaluations.length;
         rejectionSummary = this.scorer.summarizeRejections(evaluations);
-        finalSuggestions = this._rankAndFilter(evaluations, context.highlightedText, policy.targetCount);
+        finalSuggestions = this._rankAndFilter(
+          evaluations,
+          context.highlightedText,
+          policy.targetCount,
+        );
       }
     }
 
@@ -74,25 +96,33 @@ export class EnhancementV2Engine {
       result: {
         suggestions: resultSuggestions,
         isPlaceholder: context.isPlaceholder,
-        hasCategories: context.isPlaceholder && finalSuggestions.some((suggestion) => Boolean(suggestion.category)),
+        hasCategories:
+          context.isPlaceholder &&
+          finalSuggestions.some((suggestion) => Boolean(suggestion.category)),
         phraseRole: context.phraseRole,
         appliedConstraintMode: context.videoConstraints?.mode || null,
         fallbackApplied: modelCallCount > 1,
-        ...(context.videoConstraints ? { appliedVideoConstraints: context.videoConstraints } : {}),
-        ...(finalSuggestions.length === 0 ? { noSuggestionsReason: 'No V2 suggestions satisfied slot policy.' } : {}),
+        ...(context.videoConstraints
+          ? { appliedVideoConstraints: context.videoConstraints }
+          : {}),
+        ...(finalSuggestions.length === 0
+          ? { noSuggestionsReason: "No V2 suggestions satisfied slot policy." }
+          : {}),
       },
       rawSuggestions: primaryCandidates,
       finalSuggestions,
       debug: {
-        engineVersion: 'v2',
+        engineVersion: "v2",
         policyVersion: this.registry.getVersion(),
         categoryId: policy.categoryId,
         mode: policy.mode,
         stageCounts,
         rejectionSummary,
         modelCallCount,
-        ...(policy.mode === 'guided_llm'
-          ? { systemPromptSent: this.promptBuilder.buildPrompt(context, policy) }
+        ...(policy.mode === "guided_llm"
+          ? {
+              systemPromptSent: this.promptBuilder.buildPrompt(context, policy),
+            }
           : {}),
       },
     };
@@ -100,42 +130,45 @@ export class EnhancementV2Engine {
 
   private async _generatePrimaryCandidates(
     policy: SlotPolicy,
-    context: EnhancementV2RequestContext
+    context: EnhancementV2RequestContext,
   ): Promise<Suggestion[]> {
-    if (policy.mode === 'enumerated') {
+    if (policy.mode === "enumerated") {
       return this._generateEnumeratedCandidates(policy, context);
     }
 
-    if (policy.mode === 'templated') {
+    if (policy.mode === "templated") {
       return this._generateTemplatedCandidates(policy, context);
     }
 
     return this._generateGuidedCandidates(
       this.promptBuilder.buildPrompt(context, policy),
       context,
-      policy
+      policy,
     );
   }
 
   private async _generateRescueCandidates(
     policy: SlotPolicy,
     context: EnhancementV2RequestContext,
-    existingSuggestions: Suggestion[]
+    existingSuggestions: Suggestion[],
   ): Promise<Suggestion[]> {
     if (!policy.rescueStrategy?.enabled || policy.rescueStrategy.maxCalls < 1) {
       return [];
     }
 
-    if (policy.mode === 'enumerated') {
+    if (policy.mode === "enumerated") {
       return [];
     }
 
-    const missingCount = Math.max(policy.minAcceptableCount - existingSuggestions.length, 1);
+    const missingCount = Math.max(
+      policy.minAcceptableCount - existingSuggestions.length,
+      1,
+    );
     const prompt = this.promptBuilder.buildRescuePrompt(
       context,
       policy,
       existingSuggestions.map((item) => item.text),
-      missingCount
+      missingCount,
     );
 
     return this._generateGuidedCandidates(prompt, context, policy);
@@ -143,7 +176,7 @@ export class EnhancementV2Engine {
 
   private _generateEnumeratedCandidates(
     policy: SlotPolicy,
-    context: EnhancementV2RequestContext
+    context: EnhancementV2RequestContext,
   ): Suggestion[] {
     const highlight = context.highlightedText.trim().toLowerCase();
     return (policy.enumeratedOptions || [])
@@ -157,7 +190,7 @@ export class EnhancementV2Engine {
 
   private _generateTemplatedCandidates(
     policy: SlotPolicy,
-    context: EnhancementV2RequestContext
+    context: EnhancementV2RequestContext,
   ): Suggestion[] {
     const config = policy.templated;
     if (!config) {
@@ -172,7 +205,11 @@ export class EnhancementV2Engine {
           continue;
         }
         const text = this._renderTemplate(combination, config);
-        if (!text || text.trim().toLowerCase() === context.highlightedText.trim().toLowerCase()) {
+        if (
+          !text ||
+          text.trim().toLowerCase() ===
+            context.highlightedText.trim().toLowerCase()
+        ) {
           continue;
         }
         rendered.push({
@@ -189,31 +226,39 @@ export class EnhancementV2Engine {
   private async _generateGuidedCandidates(
     prompt: string,
     context: EnhancementV2RequestContext,
-    policy: SlotPolicy
+    policy: SlotPolicy,
   ): Promise<Suggestion[]> {
-    const operationConfig = this.dependencies.aiService.getOperationConfig('enhance_suggestions');
+    const operationConfig = this.dependencies.aiService.getOperationConfig(
+      "enhance_suggestions",
+    );
     const temperature =
-      typeof operationConfig?.temperature === 'number' ? operationConfig.temperature : 0.7;
+      typeof operationConfig?.temperature === "number"
+        ? operationConfig.temperature
+        : 0.7;
     const schema = operationConfig?.client
       ? getEnhancementSchema(context.isPlaceholder, {
-          provider: operationConfig.client as 'openai' | 'groq' | 'qwen',
+          provider: operationConfig.client as "openai" | "groq" | "qwen",
         })
       : getEnhancementSchema(context.isPlaceholder);
 
-    const suggestions = await StructuredOutputEnforcer.enforceJSON<Suggestion[]>(
-      this.dependencies.aiService,
-      prompt,
-      {
-        operation: 'enhance_suggestions',
-        schema: schema as { type: 'object' | 'array'; required?: string[]; items?: { required?: string[] } } | null,
-        isArray: true,
-        maxRetries: 1,
-        temperature,
-        ...(operationConfig?.client === 'openai' || operationConfig?.client === 'groq' || operationConfig?.client === 'qwen'
-          ? { provider: operationConfig.client }
-          : {}),
-      }
-    );
+    const suggestions = await StructuredOutputEnforcer.enforceJSON<
+      Suggestion[]
+    >(this.dependencies.aiService, prompt, {
+      operation: "enhance_suggestions",
+      schema: schema as {
+        type: "object" | "array";
+        required?: string[];
+        items?: { required?: string[] };
+      } | null,
+      isArray: true,
+      maxRetries: 1,
+      temperature,
+      ...(operationConfig?.client === "openai" ||
+      operationConfig?.client === "groq" ||
+      operationConfig?.client === "qwen"
+        ? { provider: operationConfig.client }
+        : {}),
+    });
 
     return Array.isArray(suggestions)
       ? suggestions.map((suggestion) => ({
@@ -224,15 +269,16 @@ export class EnhancementV2Engine {
   }
 
   private _rankAndFilter(
-    evaluations: ReturnType<V2CandidateScorer['scoreCandidates']>,
+    evaluations: ReturnType<V2CandidateScorer["scoreCandidates"]>,
     highlightedText: string,
-    targetCount: number
+    targetCount: number,
   ): Suggestion[] {
     const ranked = this.scorer.rankAcceptedCandidates(evaluations, targetCount);
-    const echoFiltered = this.dependencies.diversityEnforcer.filterOriginalEchoes(
-      ranked,
-      highlightedText
-    );
+    const echoFiltered =
+      this.dependencies.diversityEnforcer.filterOriginalEchoes(
+        ranked,
+        highlightedText,
+      );
     return this._dedupeByText(echoFiltered);
   }
 
@@ -240,13 +286,13 @@ export class EnhancementV2Engine {
     return Boolean(
       policy.rescueStrategy?.enabled &&
         policy.rescueStrategy.maxCalls > 0 &&
-        acceptedCount < policy.minAcceptableCount
+        acceptedCount < policy.minAcceptableCount,
     );
   }
 
   private _expandTemplate(
     orderedSlots: string[],
-    config: TemplatedPolicyConfig
+    config: TemplatedPolicyConfig,
   ): Array<Record<string, string>> {
     const results: Array<Record<string, string>> = [];
 
@@ -275,28 +321,31 @@ export class EnhancementV2Engine {
 
   private _matchesInvalidCombination(
     combination: Record<string, string>,
-    config: TemplatedPolicyConfig
+    config: TemplatedPolicyConfig,
   ): boolean {
     return (config.invalidCombinations || []).some((rule) =>
       Object.entries(rule).every(([slot, values]) => {
         const candidate = combination[slot];
         return candidate ? values.includes(candidate) : false;
-      })
+      }),
     );
   }
 
   private _renderTemplate(
     combination: Record<string, string>,
-    config: TemplatedPolicyConfig
+    config: TemplatedPolicyConfig,
   ): string {
-    const joinWith = config.renderRules?.joinWith || ' ';
-    return Object.values(combination).join(joinWith).replace(/\s+/g, ' ').trim();
+    const joinWith = config.renderRules?.joinWith || " ";
+    return Object.values(combination)
+      .join(joinWith)
+      .replace(/\s+/g, " ")
+      .trim();
   }
 
   private _dedupeByText(suggestions: Suggestion[]): Suggestion[] {
     const seen = new Set<string>();
     return suggestions.filter((suggestion) => {
-      const key = suggestion.text.trim().toLowerCase().replace(/\s+/g, ' ');
+      const key = suggestion.text.trim().toLowerCase().replace(/\s+/g, " ");
       if (!key || seen.has(key)) {
         return false;
       }
@@ -306,11 +355,11 @@ export class EnhancementV2Engine {
   }
 
   private _groupSuggestionsByCategory(
-    suggestions: Suggestion[]
+    suggestions: Suggestion[],
   ): Array<{ category: string; suggestions: Suggestion[] }> {
     const grouped = new Map<string, Suggestion[]>();
     for (const suggestion of suggestions) {
-      const category = suggestion.category || 'Other';
+      const category = suggestion.category || "Other";
       const existing = grouped.get(category) || [];
       existing.push(suggestion);
       grouped.set(category, existing);

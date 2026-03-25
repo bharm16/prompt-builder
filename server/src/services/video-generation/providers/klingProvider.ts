@@ -1,8 +1,12 @@
-import { z } from 'zod';
-import CircuitBreaker from 'opossum';
-import type { KlingAspectRatio, KlingModelId, VideoGenerationOptions } from '../types';
-import { sleep, pollingDelay } from '@utils/sleep';
-import { getProviderPollTimeoutMs } from './timeoutPolicy';
+import { z } from "zod";
+import CircuitBreaker from "opossum";
+import type {
+  KlingAspectRatio,
+  KlingModelId,
+  VideoGenerationOptions,
+} from "../types";
+import { sleep, pollingDelay } from "@utils/sleep";
+import { getProviderPollTimeoutMs } from "./timeoutPolicy";
 
 type LogSink = {
   info: (message: string, meta?: Record<string, unknown>) => void;
@@ -23,15 +27,20 @@ interface KlingImageToVideoInput {
   image_tail?: string;
   negative_prompt?: string;
   aspect_ratio?: KlingAspectRatio;
-  duration?: '5' | '10';
-  mode?: 'std' | 'pro';
+  duration?: "5" | "10";
+  mode?: "std" | "pro";
 }
 
-export const DEFAULT_KLING_BASE_URL = 'https://api.klingai.com';
+export const DEFAULT_KLING_BASE_URL = "https://api.klingai.com";
 
 const KLING_STATUS_POLL_INTERVAL_MS = 2000;
 
-const KLING_TASK_STATUS_SCHEMA = z.enum(['submitted', 'processing', 'succeed', 'failed']);
+const KLING_TASK_STATUS_SCHEMA = z.enum([
+  "submitted",
+  "processing",
+  "succeed",
+  "failed",
+]);
 
 const KLING_CREATE_TASK_RESPONSE_SCHEMA = z.object({
   code: z.number(),
@@ -72,7 +81,7 @@ const KLING_TASK_RESULT_RESPONSE_SCHEMA = z.object({
               id: z.string(),
               url: z.string(),
               duration: z.string().optional(),
-            })
+            }),
           )
           .optional(),
       })
@@ -81,25 +90,35 @@ const KLING_TASK_RESULT_RESPONSE_SCHEMA = z.object({
 });
 
 function resolveKlingAspectRatio(
-  aspectRatio: VideoGenerationOptions['aspectRatio'],
-  log: LogSink
+  aspectRatio: VideoGenerationOptions["aspectRatio"],
+  log: LogSink,
 ): KlingAspectRatio | undefined {
   if (!aspectRatio) {
     return undefined;
   }
-  if (aspectRatio === '21:9') {
-    log.warn('Kling does not support 21:9; using 16:9 instead', { aspectRatio });
-    return '16:9';
+  if (aspectRatio === "21:9") {
+    log.warn("Kling does not support 21:9; using 16:9 instead", {
+      aspectRatio,
+    });
+    return "16:9";
   }
-  if (aspectRatio !== '16:9' && aspectRatio !== '9:16' && aspectRatio !== '1:1') {
-    log.warn('Unsupported Kling aspect ratio; defaulting to 16:9', { aspectRatio });
-    return '16:9';
+  if (
+    aspectRatio !== "16:9" &&
+    aspectRatio !== "9:16" &&
+    aspectRatio !== "1:1"
+  ) {
+    log.warn("Unsupported Kling aspect ratio; defaulting to 16:9", {
+      aspectRatio,
+    });
+    return "16:9";
   }
   return aspectRatio;
 }
 
-function resolveKlingDuration(seconds?: VideoGenerationOptions['seconds']): '5' | '10' | undefined {
-  if (seconds === '5' || seconds === '10') {
+function resolveKlingDuration(
+  seconds?: VideoGenerationOptions["seconds"],
+): "5" | "10" | undefined {
+  if (seconds === "5" || seconds === "10") {
     return seconds;
   }
   return undefined;
@@ -109,12 +128,12 @@ async function _rawKlingFetch(
   baseUrl: string,
   apiKey: string,
   path: string,
-  init: RequestInit
+  init: RequestInit,
 ): Promise<unknown> {
   const response = await fetch(`${baseUrl}${path}`, {
     ...init,
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
       Authorization: `Bearer ${apiKey}`,
       ...(init.headers ?? {}),
     },
@@ -125,14 +144,18 @@ async function _rawKlingFetch(
   try {
     json = text ? JSON.parse(text) : {};
   } catch {
-    throw new Error(`Non-JSON response (${response.status}): ${text.slice(0, 400)}`);
+    throw new Error(
+      `Non-JSON response (${response.status}): ${text.slice(0, 400)}`,
+    );
   }
 
   if (!response.ok) {
     // If it's a client error (4xx), we generally don't want to trip the breaker,
     // but throwing here will trip it by default unless we filter it in the breaker options.
     // For now, we allow it to bubble.
-    throw new Error(`HTTP ${response.status}: ${JSON.stringify(json).slice(0, 800)}`);
+    throw new Error(
+      `HTTP ${response.status}: ${JSON.stringify(json).slice(0, 800)}`,
+    );
   }
 
   return json;
@@ -142,49 +165,61 @@ const breaker = new CircuitBreaker(_rawKlingFetch, {
   timeout: 30000, // 30 seconds
   errorThresholdPercentage: 50,
   resetTimeout: 10000,
-  name: 'KlingAPI',
+  name: "KlingAPI",
 });
 
 // Don't trip on 4xx errors
 breaker.fallback((error) => {
-    // Re-throw if it's just the breaker mechanism
-    if (error && error.message === 'Breaker is open') {
-        throw new Error('Kling API Circuit Breaker Open');
-    }
-    throw error;
+  // Re-throw if it's just the breaker mechanism
+  if (error && error.message === "Breaker is open") {
+    throw new Error("Kling API Circuit Breaker Open");
+  }
+  throw error;
 });
 
 async function klingFetch(
   baseUrl: string,
   apiKey: string,
   path: string,
-  init: RequestInit
+  init: RequestInit,
 ): Promise<unknown> {
   return breaker.fire(baseUrl, apiKey, path, init);
 }
 
-function parseKlingResponse<T>(schema: z.ZodType<T>, json: unknown, endpoint: string): T {
+function parseKlingResponse<T>(
+  schema: z.ZodType<T>,
+  json: unknown,
+  endpoint: string,
+): T {
   try {
     return schema.parse(json);
   } catch (error) {
     const detail = error instanceof Error ? error.message : String(error);
-    throw new Error(`Kling API response validation failed for ${endpoint}: ${detail}`);
+    throw new Error(
+      `Kling API response validation failed for ${endpoint}: ${detail}`,
+    );
   }
 }
 
 async function createKlingTask(
   baseUrl: string,
   apiKey: string,
-  input: KlingTextToVideoInput
+  input: KlingTextToVideoInput,
 ): Promise<string> {
-  const json = await klingFetch(baseUrl, apiKey, '/v1/videos/text2video', {
-    method: 'POST',
+  const json = await klingFetch(baseUrl, apiKey, "/v1/videos/text2video", {
+    method: "POST",
     body: JSON.stringify(input),
   });
-  const parsed = parseKlingResponse(KLING_CREATE_TASK_RESPONSE_SCHEMA, json, 'text2video/create');
+  const parsed = parseKlingResponse(
+    KLING_CREATE_TASK_RESPONSE_SCHEMA,
+    json,
+    "text2video/create",
+  );
 
   if (parsed.code !== 0) {
-    throw new Error(`Kling error code=${parsed.code}: ${parsed.message ?? 'unknown error'}`);
+    throw new Error(
+      `Kling error code=${parsed.code}: ${parsed.message ?? "unknown error"}`,
+    );
   }
 
   return parsed.data.task_id;
@@ -193,34 +228,50 @@ async function createKlingTask(
 async function createKlingImageToVideoTask(
   baseUrl: string,
   apiKey: string,
-  input: KlingImageToVideoInput
+  input: KlingImageToVideoInput,
 ): Promise<string> {
-  const json = await klingFetch(baseUrl, apiKey, '/v1/videos/image2video', {
-    method: 'POST',
+  const json = await klingFetch(baseUrl, apiKey, "/v1/videos/image2video", {
+    method: "POST",
     body: JSON.stringify(input),
   });
-  const parsed = parseKlingResponse(KLING_I2V_CREATE_TASK_RESPONSE_SCHEMA, json, 'image2video/create');
+  const parsed = parseKlingResponse(
+    KLING_I2V_CREATE_TASK_RESPONSE_SCHEMA,
+    json,
+    "image2video/create",
+  );
 
   if (parsed.code !== 0) {
-    throw new Error(`Kling i2v error code=${parsed.code}: ${parsed.message ?? 'unknown error'}`);
+    throw new Error(
+      `Kling i2v error code=${parsed.code}: ${parsed.message ?? "unknown error"}`,
+    );
   }
 
   return parsed.data.task_id;
 }
 
-async function getKlingTask(baseUrl: string, apiKey: string, taskIdOrExternalId: string) {
+async function getKlingTask(
+  baseUrl: string,
+  apiKey: string,
+  taskIdOrExternalId: string,
+) {
   const json = await klingFetch(
     baseUrl,
     apiKey,
     `/v1/videos/text2video/${encodeURIComponent(taskIdOrExternalId)}`,
     {
-      method: 'GET',
-    }
+      method: "GET",
+    },
   );
-  const parsed = parseKlingResponse(KLING_TASK_RESULT_RESPONSE_SCHEMA, json, 'text2video/status');
+  const parsed = parseKlingResponse(
+    KLING_TASK_RESULT_RESPONSE_SCHEMA,
+    json,
+    "text2video/status",
+  );
 
   if (parsed.code !== 0) {
-    throw new Error(`Kling error code=${parsed.code}: ${parsed.message ?? 'unknown error'}`);
+    throw new Error(
+      `Kling error code=${parsed.code}: ${parsed.message ?? "unknown error"}`,
+    );
   }
 
   return parsed.data;
@@ -229,7 +280,7 @@ async function getKlingTask(baseUrl: string, apiKey: string, taskIdOrExternalId:
 async function waitForKlingVideo(
   baseUrl: string,
   apiKey: string,
-  taskId: string
+  taskId: string,
 ): Promise<string> {
   const timeoutMs = getProviderPollTimeoutMs();
   const start = Date.now();
@@ -237,16 +288,18 @@ async function waitForKlingVideo(
   while (true) {
     const task = await getKlingTask(baseUrl, apiKey, taskId);
 
-    if (task.task_status === 'succeed') {
+    if (task.task_status === "succeed") {
       const url = task.task_result?.videos?.[0]?.url;
       if (!url) {
-        throw new Error('Kling task succeeded but no video URL was returned.');
+        throw new Error("Kling task succeeded but no video URL was returned.");
       }
       return url;
     }
 
-    if (task.task_status === 'failed') {
-      throw new Error(`Kling task failed: ${task.task_status_msg ?? 'no reason provided'}`);
+    if (task.task_status === "failed") {
+      throw new Error(
+        `Kling task failed: ${task.task_status_msg ?? "no reason provided"}`,
+      );
     }
 
     const elapsed = Date.now() - start;
@@ -261,7 +314,7 @@ async function waitForKlingVideo(
 async function waitForKlingImageToVideo(
   baseUrl: string,
   apiKey: string,
-  taskId: string
+  taskId: string,
 ): Promise<string> {
   const timeoutMs = getProviderPollTimeoutMs();
   const start = Date.now();
@@ -271,26 +324,36 @@ async function waitForKlingImageToVideo(
       baseUrl,
       apiKey,
       `/v1/videos/image2video/${encodeURIComponent(taskId)}`,
-      { method: 'GET' }
+      { method: "GET" },
     );
-    const parsed = parseKlingResponse(KLING_TASK_RESULT_RESPONSE_SCHEMA, json, 'image2video/status');
+    const parsed = parseKlingResponse(
+      KLING_TASK_RESULT_RESPONSE_SCHEMA,
+      json,
+      "image2video/status",
+    );
 
     if (parsed.code !== 0) {
-      throw new Error(`Kling error code=${parsed.code}: ${parsed.message ?? 'unknown error'}`);
+      throw new Error(
+        `Kling error code=${parsed.code}: ${parsed.message ?? "unknown error"}`,
+      );
     }
 
     const task = parsed.data;
 
-    if (task.task_status === 'succeed') {
+    if (task.task_status === "succeed") {
       const url = task.task_result?.videos?.[0]?.url;
       if (!url) {
-        throw new Error('Kling i2v task succeeded but no video URL was returned.');
+        throw new Error(
+          "Kling i2v task succeeded but no video URL was returned.",
+        );
       }
       return url;
     }
 
-    if (task.task_status === 'failed') {
-      throw new Error(`Kling i2v task failed: ${task.task_status_msg ?? 'no reason provided'}`);
+    if (task.task_status === "failed") {
+      throw new Error(
+        `Kling i2v task failed: ${task.task_status_msg ?? "no reason provided"}`,
+      );
     }
 
     const elapsed = Date.now() - start;
@@ -308,22 +371,31 @@ export async function generateKlingVideo(
   prompt: string,
   modelId: KlingModelId,
   options: VideoGenerationOptions,
-  log: LogSink
+  log: LogSink,
 ): Promise<{ url: string; resolvedAspectRatio?: string }> {
   if (options.startImage) {
-    return generateKlingImageToVideo(apiKey, baseUrl, prompt, modelId, options, log);
+    return generateKlingImageToVideo(
+      apiKey,
+      baseUrl,
+      prompt,
+      modelId,
+      options,
+      log,
+    );
   }
 
   const aspectRatio = resolveKlingAspectRatio(options.aspectRatio, log);
   const input: KlingTextToVideoInput = {
     model_name: modelId,
     prompt,
-    ...(options.negativePrompt ? { negative_prompt: options.negativePrompt } : {}),
+    ...(options.negativePrompt
+      ? { negative_prompt: options.negativePrompt }
+      : {}),
     ...(aspectRatio ? { aspect_ratio: aspectRatio } : {}),
   };
 
   const taskId = await createKlingTask(baseUrl, apiKey, input);
-  log.info('Kling t2v generation started', { modelId, taskId });
+  log.info("Kling t2v generation started", { modelId, taskId });
 
   const url = await waitForKlingVideo(baseUrl, apiKey, taskId);
   return { url, ...(aspectRatio ? { resolvedAspectRatio: aspectRatio } : {}) };
@@ -335,7 +407,7 @@ async function generateKlingImageToVideo(
   prompt: string,
   modelId: KlingModelId,
   options: VideoGenerationOptions,
-  log: LogSink
+  log: LogSink,
 ): Promise<{ url: string; resolvedAspectRatio?: string }> {
   const aspectRatio = resolveKlingAspectRatio(options.aspectRatio, log);
   const duration = resolveKlingDuration(options.seconds);
@@ -344,13 +416,15 @@ async function generateKlingImageToVideo(
     prompt,
     image: options.startImage!,
     ...(options.endImage ? { image_tail: options.endImage } : {}),
-    ...(options.negativePrompt ? { negative_prompt: options.negativePrompt } : {}),
+    ...(options.negativePrompt
+      ? { negative_prompt: options.negativePrompt }
+      : {}),
     ...(aspectRatio ? { aspect_ratio: aspectRatio } : {}),
     ...(duration ? { duration } : {}),
   };
 
   const taskId = await createKlingImageToVideoTask(baseUrl, apiKey, input);
-  log.info('Kling i2v generation started', {
+  log.info("Kling i2v generation started", {
     modelId,
     taskId,
     imageUrl: options.startImage,

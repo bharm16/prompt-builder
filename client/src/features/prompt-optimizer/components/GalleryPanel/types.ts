@@ -1,7 +1,10 @@
-import type { GenerationMediaType, GenerationSettingsSnapshot } from '@features/generations/types';
+import type {
+  GenerationMediaType,
+  GenerationSettingsSnapshot,
+} from "@features/generations/types";
 
-export type GalleryTier = 'preview' | 'draft' | 'final';
-export type GalleryFilter = 'all' | 'preview' | 'draft' | 'favorites';
+export type GalleryTier = "preview" | "draft" | "final";
+export type GalleryFilter = "all" | "preview" | "draft" | "favorites";
 
 export interface GalleryPromptSpan {
   start: number;
@@ -36,4 +39,3 @@ export interface GalleryPanelProps {
   onSelectGeneration: (generationId: string) => void;
   onClose: () => void;
 }
-

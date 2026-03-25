@@ -1,8 +1,11 @@
-import { NEURO_SYMBOLIC } from '@llm/span-labeling/config/SpanLabelingConfig';
-import { getParentCategory } from '#shared/taxonomy.ts';
-import type { NlpSpan } from './types';
+import { NEURO_SYMBOLIC } from "@llm/span-labeling/config/SpanLabelingConfig";
+import { getParentCategory } from "#shared/taxonomy.ts";
+import type { NlpSpan } from "./types";
 
-export function mergeSpans(closedSpans: NlpSpan[], openSpans: NlpSpan[]): NlpSpan[] {
+export function mergeSpans(
+  closedSpans: NlpSpan[],
+  openSpans: NlpSpan[],
+): NlpSpan[] {
   return deduplicateSpans([...closedSpans, ...openSpans]);
 }
 
@@ -51,17 +54,17 @@ export function deduplicateSpans(spans: NlpSpan[]): NlpSpan[] {
     const preferClosed = NEURO_SYMBOLIC.MERGE.CLOSED_VOCAB_PRIORITY;
     const strategy = NEURO_SYMBOLIC.MERGE.OVERLAP_STRATEGY;
 
-    const getSourcePriority = (source?: NlpSpan['source']): number => {
+    const getSourcePriority = (source?: NlpSpan["source"]): number => {
       if (!preferClosed) return 0;
-      if (source === 'aho-corasick' || source === 'pattern') return 4;
-      if (source === 'compromise') return 3;
-      if (source === 'lighting') return 2;
-      if (source === 'gliner') return 1;
-      if (source === 'heuristic') return 0;
+      if (source === "aho-corasick" || source === "pattern") return 4;
+      if (source === "compromise") return 3;
+      if (source === "lighting") return 2;
+      if (source === "gliner") return 1;
+      if (source === "heuristic") return 0;
       return 0;
     };
 
-    const getSpecificity = (role: string): number => role.split('.').length;
+    const getSpecificity = (role: string): number => role.split(".").length;
 
     const isPreferred = (candidate: NlpSpan, current: NlpSpan): boolean => {
       const candidateSource = getSourcePriority(candidate.source);
@@ -79,12 +82,16 @@ export function deduplicateSpans(spans: NlpSpan[]): NlpSpan[] {
       const candidateLength = candidate.end - candidate.start;
       const currentLength = current.end - current.start;
 
-      if (strategy === 'longest-match') {
-        if (candidateLength !== currentLength) return candidateLength > currentLength;
-        if (candidate.confidence !== current.confidence) return candidate.confidence > current.confidence;
+      if (strategy === "longest-match") {
+        if (candidateLength !== currentLength)
+          return candidateLength > currentLength;
+        if (candidate.confidence !== current.confidence)
+          return candidate.confidence > current.confidence;
       } else {
-        if (candidate.confidence !== current.confidence) return candidate.confidence > current.confidence;
-        if (candidateLength !== currentLength) return candidateLength > currentLength;
+        if (candidate.confidence !== current.confidence)
+          return candidate.confidence > current.confidence;
+        if (candidateLength !== currentLength)
+          return candidateLength > currentLength;
       }
 
       return candidate.start <= current.start;

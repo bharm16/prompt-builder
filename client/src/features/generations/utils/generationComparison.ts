@@ -1,4 +1,4 @@
-import type { Generation } from '../types';
+import type { Generation } from "../types";
 
 /**
  * Serializes a Generation into a stable JSON string for equality comparison.
@@ -24,6 +24,8 @@ export function serializeGeneration(gen: Generation): string {
     characterAssetId: gen.characterAssetId ?? null,
     faceSwapApplied: gen.faceSwapApplied ?? null,
     faceSwapUrl: gen.faceSwapUrl ?? null,
+    serverProgress: gen.serverProgress ?? null,
+    serverJobStatus: gen.serverJobStatus ?? null,
     isFavorite: gen.isFavorite ?? false,
     generationSettings: gen.generationSettings ?? null,
     error: gen.error ?? null,
@@ -38,7 +40,7 @@ export function serializeGeneration(gen: Generation): string {
  */
 export function areGenerationsEqual(
   left?: Generation[] | null,
-  right?: Generation[] | null
+  right?: Generation[] | null,
 ): boolean {
   if (!left && !right) return true;
   if (!left || !right) return false;

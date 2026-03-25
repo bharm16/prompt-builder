@@ -1,11 +1,10 @@
-
-import { VideoPromptAnalyzer } from '../server/src/services/video-prompt-analysis/services/analysis/VideoPromptAnalyzer';
-import { runwayStrategy } from '../server/src/services/video-prompt-analysis/strategies/RunwayStrategy';
-import { lumaStrategy } from '../server/src/services/video-prompt-analysis/strategies/LumaStrategy';
-import { klingStrategy } from '../server/src/services/video-prompt-analysis/strategies/KlingStrategy';
-import { soraStrategy } from '../server/src/services/video-prompt-analysis/strategies/SoraStrategy';
-import { veoStrategy } from '../server/src/services/video-prompt-analysis/strategies/VeoStrategy';
-import dotenv from 'dotenv';
+import { VideoPromptAnalyzer } from "../server/src/services/video-prompt-analysis/services/analysis/VideoPromptAnalyzer";
+import { runwayStrategy } from "../server/src/services/video-prompt-analysis/strategies/RunwayStrategy";
+import { lumaStrategy } from "../server/src/services/video-prompt-analysis/strategies/LumaStrategy";
+import { klingStrategy } from "../server/src/services/video-prompt-analysis/strategies/KlingStrategy";
+import { soraStrategy } from "../server/src/services/video-prompt-analysis/strategies/SoraStrategy";
+import { veoStrategy } from "../server/src/services/video-prompt-analysis/strategies/VeoStrategy";
+import dotenv from "dotenv";
 
 dotenv.config();
 
@@ -23,10 +22,10 @@ A cinematic shot of a futuristic cyberpunk city at night. A lone cybernetic trav
 - **Audio**: Ambient rain, distant synth music, electronic hum
 `;
 
-  console.log('--- ORIGINAL INPUT ---');
+  console.log("--- ORIGINAL INPUT ---");
   console.log(input);
 
-  console.log('\n--- ANALYZING IR ---');
+  console.log("\n--- ANALYZING IR ---");
   const ir = await analyzer.analyze(input);
   console.log(JSON.stringify(ir, null, 2));
 
@@ -35,22 +34,22 @@ A cinematic shot of a futuristic cyberpunk city at night. A lone cybernetic trav
     lumaStrategy,
     klingStrategy,
     soraStrategy,
-    veoStrategy
+    veoStrategy,
   ];
 
   for (const strategy of strategies) {
     console.log(`\n=== OPTIMIZING FOR: ${strategy.modelName} ===`);
     try {
       const result = await strategy.transform(input);
-      console.log('PROMPT:');
-      if (typeof result.prompt === 'object') {
+      console.log("PROMPT:");
+      if (typeof result.prompt === "object") {
         console.log(JSON.stringify(result.prompt, null, 2));
       } else {
         console.log(result.prompt);
       }
-      console.log('\nMETADATA PHASES:');
-      result.metadata.phases.forEach(p => {
-        console.log(`- ${p.phase}: ${p.changes.join(', ')}`);
+      console.log("\nMETADATA PHASES:");
+      result.metadata.phases.forEach((p) => {
+        console.log(`- ${p.phase}: ${p.changes.join(", ")}`);
       });
     } catch (error) {
       console.error(`Error optimizing for ${strategy.modelName}:`, error);
@@ -60,11 +59,10 @@ A cinematic shot of a futuristic cyberpunk city at night. A lone cybernetic trav
 
 testPipeline()
   .then(() => {
-    console.log('\n--- TEST COMPLETE ---');
+    console.log("\n--- TEST COMPLETE ---");
     process.exit(0);
   })
   .catch((error) => {
-    console.error('Test failed:', error);
+    console.error("Test failed:", error);
     process.exit(1);
   });
-

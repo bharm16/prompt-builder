@@ -84,11 +84,13 @@ PromptOptimizerContainer
 ### 1. User Interaction
 
 **Entry Points:**
+
 - Text selection in `PromptCanvas` (video mode only)
 - Click on highlighted spans
 - Keyboard shortcuts
 
 **Files:**
+
 - `client/src/features/prompt-optimizer/PromptCanvas/hooks/useTextSelection.ts`
 - `client/src/features/prompt-optimizer/PromptCanvas.tsx`
 
@@ -97,6 +99,7 @@ PromptOptimizerContainer
 **Hook:** `useSuggestionFetch`
 
 **Steps:**
+
 1. **Input Validation**: Trim, normalize NFC
 2. **Deduplication**: Check `SuggestionRequestManager.isRequestInFlight()`
 3. **Cancellation**: Cancel previous request
@@ -109,6 +112,7 @@ PromptOptimizerContainer
 10. **API Call**: `fetchEnhancementSuggestions()`
 
 **Key Files:**
+
 - `client/src/features/prompt-optimizer/PromptOptimizerContainer/hooks/useSuggestionFetch.ts`
 - `client/src/features/prompt-optimizer/utils/SuggestionRequestManager.ts`
 - `client/src/features/prompt-optimizer/utils/SuggestionCache.ts`
@@ -118,6 +122,7 @@ PromptOptimizerContainer
 **File:** `client/src/features/prompt-optimizer/api/enhancementSuggestionsApi.ts`
 
 **Steps:**
+
 1. **Timeout Setup**: 3-second timeout with AbortController
 2. **Signal Combination**: Combine user cancellation + timeout signals
 3. **Text Relocation**: `relocateQuote()` for robust matching
@@ -136,6 +141,7 @@ PromptOptimizerContainer
 **File:** `server/src/routes/enhancement.routes.ts`
 
 **Steps:**
+
 1. Request validation (`suggestionSchema`)
 2. Performance monitoring
 3. Logging
@@ -147,6 +153,7 @@ PromptOptimizerContainer
 **File:** `server/src/services/enhancement/EnhancementService.ts`
 
 **Steps:**
+
 1. **Metrics Initialization**: Track timing for each phase
 2. **Video Context Detection**: Detect video prompts, model targets, sections
 3. **Brainstorm Signature**: Create signature for cache key
@@ -167,6 +174,7 @@ PromptOptimizerContainer
 **File:** `server/src/services/enhancement/services/SuggestionGenerationService.ts`
 
 **Process:**
+
 1. **Provider Detection**: Detect OpenAI/Groq/Qwen capabilities
 2. **Contrastive Decoding**: Attempt batch generation (3 batches, increasing temp)
 3. **Standard Fallback**: If contrastive fails, use standard generation
@@ -174,6 +182,7 @@ PromptOptimizerContainer
 5. **Return**: `{ suggestions, groqCallTime, usedContrastiveDecoding }`
 
 **Contrastive Decoding Algorithm:**
+
 - Batch 1: 4 suggestions, temp 0.4, no constraints
 - Batch 2: 4 suggestions, temp 0.5, negative constraint vs Batch 1
 - Batch 3: 4 suggestions, temp 0.6, negative constraint vs Batches 1+2
@@ -184,6 +193,7 @@ PromptOptimizerContainer
 **File:** `server/src/services/enhancement/services/SuggestionProcessingService.ts`
 
 **Pipeline:**
+
 1. **Diversity Enforcement**: Remove similar suggestions (Jaccard similarity >0.7)
 2. **Category Alignment**: Validate category match, apply fallbacks if needed
 3. **Sanitization**: Filter invalid suggestions (word count, punctuation, etc.)
@@ -191,6 +201,7 @@ PromptOptimizerContainer
 5. **Descriptor Fallbacks**: If still empty, use descriptor category fallbacks
 
 **Key Services:**
+
 - `SuggestionDeduplicator`: Ensures diversity
 - `CategoryAlignmentService`: Validates categories
 - `SuggestionValidationService`: Sanitizes suggestions
@@ -203,11 +214,13 @@ PromptOptimizerContainer
 ### Frontend (16 files)
 
 **Core Hooks:**
+
 - `useEnhancementSuggestions.ts` - Orchestrator
 - `useSuggestionFetch.ts` - Request management
 - `useSuggestionApply.ts` - Application logic
 
 **Utilities:**
+
 - `SuggestionRequestManager.ts` - Debounce/cancellation
 - `SuggestionCache.ts` - Client cache
 - `applySuggestion.ts` - Text replacement
@@ -216,9 +229,11 @@ PromptOptimizerContainer
 - `textQuoteRelocator.ts` - Robust text matching
 
 **API:**
+
 - `enhancementSuggestionsApi.ts` - API calls
 
 **Components:**
+
 - `SuggestionsPanel.tsx` - UI component
 - `PromptCanvas.tsx` - Canvas with selection
 - `PromptResultsSection.tsx` - Results wrapper
@@ -226,11 +241,13 @@ PromptOptimizerContainer
 ### Backend (13 files)
 
 **Core Services:**
+
 - `EnhancementService.ts` - Main orchestrator
 - `SuggestionGenerationService.ts` - Generation
 - `SuggestionProcessingService.ts` - Processing pipeline
 
 **Specialized Services:**
+
 - `ContrastiveDiversityEnforcer.ts` - Batch generation
 - `SuggestionDeduplicator.ts` - Diversity enforcement
 - `SuggestionValidationService.ts` - Validation/sanitization
@@ -240,10 +257,12 @@ PromptOptimizerContainer
 - `SuggestionProcessor.ts` - Result building
 
 **Configuration:**
+
 - `schemas.ts` - JSON schemas
 - `CacheKeyFactory.ts` - Cache key generation
 
 **Routes:**
+
 - `enhancement.routes.ts` - Express routes
 
 ---
@@ -257,6 +276,7 @@ PromptOptimizerContainer
 **Purpose:** Find text matches despite whitespace differences
 
 **Algorithm:**
+
 1. Tokenize text (split on whitespace, lowercase)
 2. Find all candidate matches (exact + fuzzy regex)
 3. Score each candidate:
@@ -274,12 +294,14 @@ PromptOptimizerContainer
 **Purpose:** Prevent "visual collapse" in suggestions
 
 **Algorithm:**
+
 1. Generate Batch 1 (4 suggestions, temp 0.4, no constraints)
 2. Generate Batch 2 (4 suggestions, temp 0.5, negative constraint vs Batch 1)
 3. Generate Batch 3 (4 suggestions, temp 0.6, negative constraint vs Batches 1+2)
 4. Combine all batches (12 total)
 
 **Negative Constraint Format:**
+
 ```
 "Do not use concepts, phrases, or visual approaches similar to: [previous suggestions]"
 ```
@@ -291,6 +313,7 @@ PromptOptimizerContainer
 **Purpose:** Measure similarity between suggestions
 
 **Formula:**
+
 ```
 similarity = |intersection(words1, words2)| / |union(words1, words2)|
 ```
@@ -302,6 +325,7 @@ similarity = |intersection(words1, words2)| / |union(words1, words2)|
 **File:** `server/src/services/enhancement/utils/CacheKeyFactory.ts`
 
 **Components:**
+
 - Highlighted text
 - Context before/after (100 chars)
 - Full prompt hash (first 500 chars)
@@ -344,28 +368,34 @@ similarity = |intersection(words1, words2)| / |union(words1, words2)|
 ### Frontend
 
 **CancellationError:**
+
 - Silent return (no state update)
 - User selected new text
 
 **Timeout:**
+
 - Shows error state with retry button
 - 3-second timeout
 
 **Network Errors:**
+
 - Shows error state
 - Provides retry callback
 
 ### Backend
 
 **Validation Errors:**
+
 - Returns 400 with error message
 - Logged with request ID
 
 **Generation Errors:**
+
 - Falls back to standard generation
 - Logs error but continues
 
 **Processing Errors:**
+
 - Applies fallback strategies
 - Returns empty suggestions if all fail
 
@@ -390,6 +420,7 @@ similarity = |intersection(words1, words2)| / |union(words1, words2)|
 - Post-processing time
 
 **Logging:**
+
 - Request/response logging
 - Performance metrics
 - Error tracking
@@ -412,4 +443,3 @@ similarity = |intersection(words1, words2)| / |union(words1, words2)|
 - [Workflow Documentation](../workflow_documentation.md)
 - [Architecture Guide](../architecture/README.md)
 - [Refactoring Patterns](../architecture/REFACTORING_PATTERN.md)
-

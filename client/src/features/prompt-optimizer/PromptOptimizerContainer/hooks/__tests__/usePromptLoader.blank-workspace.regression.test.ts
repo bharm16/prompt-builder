@@ -5,12 +5,12 @@
  * session's prompt and generation state because usePromptLoader early-returned
  * without resetting anything when sessionId was undefined.
  */
-import { renderHook, waitFor } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { usePromptLoader } from '../usePromptLoader';
+import { renderHook, waitFor } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { usePromptLoader } from "../usePromptLoader";
 
 const mockGetById = vi.hoisted(() => vi.fn());
-vi.mock('@repositories/index', () => ({
+vi.mock("@repositories/index", () => ({
   getPromptRepositoryForUser: vi.fn(() => ({ getById: mockGetById })),
 }));
 
@@ -20,14 +20,14 @@ const buildParams = (overrides: LoaderOverrides = {}) => ({
   sessionId: null,
   navigate: vi.fn(),
   toast: { success: vi.fn(), info: vi.fn(), warning: vi.fn(), error: vi.fn() },
-  user: { uid: 'user-1' },
+  user: { uid: "user-1" },
   historyEntries: [],
-  createDraftEntry: vi.fn(() => ({ uuid: 'draft-uuid', id: 'draft-123' })),
-  selectedMode: 'video',
-  selectedModelValue: 'model-a',
+  createDraftEntry: vi.fn(() => ({ uuid: "draft-uuid", id: "draft-123" })),
+  selectedMode: "video",
+  selectedModelValue: "model-a",
   generationParamsValue: {},
   promptOptimizer: {
-    displayedPrompt: '',
+    displayedPrompt: "",
     setInputPrompt: vi.fn(),
     setOptimizedPrompt: vi.fn(),
     setDisplayedPrompt: vi.fn(),
@@ -54,36 +54,42 @@ const buildParams = (overrides: LoaderOverrides = {}) => ({
   ...overrides,
 });
 
-describe('regression: blank workspace when sessionId is null', () => {
+describe("regression: blank workspace when sessionId is null", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('clears prompt state when entering / without a session', async () => {
+  it("clears prompt state when entering / without a session", async () => {
     const params = buildParams({ sessionId: null });
 
-    renderHook(() => usePromptLoader(params as Parameters<typeof usePromptLoader>[0]));
+    renderHook(() =>
+      usePromptLoader(params as Parameters<typeof usePromptLoader>[0]),
+    );
 
     await waitFor(() => {
-      expect(params.promptOptimizer.setInputPrompt).toHaveBeenCalledWith('');
-      expect(params.promptOptimizer.setOptimizedPrompt).toHaveBeenCalledWith('');
-      expect(params.setDisplayedPromptSilently).toHaveBeenCalledWith('');
+      expect(params.promptOptimizer.setInputPrompt).toHaveBeenCalledWith("");
+      expect(params.promptOptimizer.setOptimizedPrompt).toHaveBeenCalledWith(
+        "",
+      );
+      expect(params.setDisplayedPromptSilently).toHaveBeenCalledWith("");
       expect(params.setSuggestionsData).toHaveBeenCalledWith(null);
       expect(params.setShowResults).toHaveBeenCalledWith(false);
     });
   });
 
-  it('dispatches po:workspace-reset to clear generation state', async () => {
+  it("dispatches po:workspace-reset to clear generation state", async () => {
     const params = buildParams({ sessionId: null });
     const handler = vi.fn();
-    window.addEventListener('po:workspace-reset', handler);
+    window.addEventListener("po:workspace-reset", handler);
 
-    renderHook(() => usePromptLoader(params as Parameters<typeof usePromptLoader>[0]));
+    renderHook(() =>
+      usePromptLoader(params as Parameters<typeof usePromptLoader>[0]),
+    );
 
     await waitFor(() => {
       expect(handler).toHaveBeenCalled();
     });
 
-    window.removeEventListener('po:workspace-reset', handler);
+    window.removeEventListener("po:workspace-reset", handler);
   });
 });

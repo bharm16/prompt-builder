@@ -28,6 +28,7 @@ OUTPUT: [path]/__tests__/[name].test.js"
 ## Current Test Quality Assessment
 
 ### ✅ Good Examples (Use as Reference)
+
 - **Backend:** `server/src/services/prompt-optimization/strategies/__tests__/VideoStrategy.test.js`
   - Proper mocking with vitest
   - Comprehensive edge cases
@@ -35,6 +36,7 @@ OUTPUT: [path]/__tests__/[name].test.js"
   - Tests public interface only
 
 ### ⚠️ Needs Improvement (Don't Reference)
+
 - **Frontend:** `client/src/components/__tests__/VideoConceptBuilder.test.jsx`
   - Direct fetch mocking (anti-pattern)
   - Should use dependency injection
@@ -45,9 +47,11 @@ OUTPUT: [path]/__tests__/[name].test.js"
 ## 🏆 Gold Standard Test Examples
 
 ### Frontend Component Test Pattern
+
 **File:** `EXAMPLE_FRONTEND_TEST.test.jsx` (Add to your project)
 
 This exemplary test demonstrates:
+
 - Service boundary mocking (NOT fetch)
 - Comprehensive user flow testing
 - Proper AAA pattern
@@ -57,16 +61,19 @@ This exemplary test demonstrates:
 - Complete keyboard navigation
 
 Key patterns from this test:
+
 ```javascript
 // ✅ GOOD - Dependency injection
 const mockAiWizardService = {
   getSuggestions: vi.fn(),
-  generatePrompt: vi.fn()
+  generatePrompt: vi.fn(),
 };
 
 // ✅ GOOD - Test user behavior
-await user.click(screen.getByRole('button', { name: /next/i }));
-expect(screen.getByRole('heading', { name: /atmosphere/i })).toBeInTheDocument();
+await user.click(screen.getByRole("button", { name: /next/i }));
+expect(
+  screen.getByRole("heading", { name: /atmosphere/i }),
+).toBeInTheDocument();
 
 // ✅ GOOD - Accessibility testing
 const results = await axe(container);
@@ -74,9 +81,11 @@ expect(results).toHaveNoViolations();
 ```
 
 ### Backend Service Test Pattern
+
 **File:** `EXAMPLE_BACKEND_TEST.test.js` (Add to your project)
 
 This exemplary test demonstrates:
+
 - Constructor dependency injection
 - No module-level mocks
 - Comprehensive error handling
@@ -85,12 +94,13 @@ This exemplary test demonstrates:
 - Resource cleanup
 
 Key patterns from this test:
+
 ```javascript
 // ✅ GOOD - Constructor injection
 service = new PromptOptimizationService({
   claudeClient: mockClaudeClient,
   groqClient: mockGroqClient,
-  cacheService: mockCacheService
+  cacheService: mockCacheService,
 });
 
 // ✅ GOOD - Test cache behavior
@@ -100,8 +110,8 @@ expect(mockClaudeClient.complete).not.toHaveBeenCalled();
 
 // ✅ GOOD - Test error recovery
 mockClaudeClient.complete
-  .mockRejectedValueOnce(new Error('Network timeout'))
-  .mockResolvedValueOnce({ content: [{ text: 'Success after retry' }] });
+  .mockRejectedValueOnce(new Error("Network timeout"))
+  .mockResolvedValueOnce({ content: [{ text: "Success after retry" }] });
 ```
 
 ---
@@ -130,37 +140,37 @@ COVERAGE TARGETS:
 TEST STRUCTURE:
 describe('[ComponentName]', () => {
   let mockServices;
-  
+
   beforeEach(() => {
     // Mock injected services, not fetch
     mockServices = {
       apiMethod: vi.fn()
     };
   });
-  
+
   describe('Rendering', () => {
     it('should render with required props', () => {});
     it('should handle optional props', () => {});
   });
-  
+
   describe('User Interactions', () => {
     it('should [behavior] when user [action]', async () => {
       // Arrange
       const user = userEvent.setup();
-      
+
       // Act
       await user.click(element);
-      
+
       // Assert
       expect(result).toBe(expected);
     });
   });
-  
+
   describe('Edge Cases', () => {
     it('should handle empty data gracefully', () => {});
     it('should show error state when API fails', () => {});
   });
-  
+
   describe('Accessibility', () => {
     it('should be keyboard navigable', () => {});
     it('should have proper ARIA labels', () => {});
@@ -239,26 +249,26 @@ describe('[useHookName]', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
-  
+
   describe('Initial State', () => {
     it('should initialize with default values', () => {
       const { result } = renderHook(() => useHookName());
       expect(result.current.value).toBe(defaultValue);
     });
   });
-  
+
   describe('State Updates', () => {
     it('should update state when action called', async () => {
       const { result } = renderHook(() => useHookName());
-      
+
       await act(async () => {
         result.current.updateValue('new');
       });
-      
+
       expect(result.current.value).toBe('new');
     });
   });
-  
+
   describe('Side Effects', () => {
     it('should trigger effect on dependency change', () => {});
     it('should cleanup on unmount', () => {});
@@ -316,10 +326,10 @@ describe('[ServiceName]', () => {
   let service;
   let mockDependency1;
   let mockDependency2;
-  
+
   beforeEach(() => {
     vi.clearAllMocks();
-    
+
     // Create mocks for injected dependencies
     mockDependency1 = {
       method: vi.fn()
@@ -327,37 +337,37 @@ describe('[ServiceName]', () => {
     mockDependency2 = {
       method: vi.fn()
     };
-    
+
     // Inject mocks via constructor
     service = new ServiceName(mockDependency1, mockDependency2);
   });
-  
+
   describe('constructor', () => {
     it('should initialize with dependencies', () => {});
   });
-  
+
   describe('[methodName]', () => {
     it('should [expected behavior] when [condition]', async () => {
       // Arrange
       const input = { data: 'test' };
       mockDependency1.method.mockResolvedValue({ result: 'mocked' });
-      
+
       // Act
       const result = await service.methodName(input);
-      
+
       // Assert
       expect(result).toEqual({ expected: 'output' });
       expect(mockDependency1.method).toHaveBeenCalledWith(input);
     });
-    
+
     it('should handle errors when [error condition]', async () => {
       mockDependency1.method.mockRejectedValue(new Error('API failed'));
-      
+
       await expect(service.methodName(input))
         .rejects.toThrow('API failed');
     });
   });
-  
+
   describe('Edge Cases', () => {
     it('should handle null input gracefully', () => {});
     it('should handle empty arrays', () => {});
@@ -428,13 +438,13 @@ describe('[utilName]', () => {
     ])('should return %s when given %s (%s)', (input, expected, description) => {
       expect(functionName(input)).toBe(expected);
     });
-    
+
     describe('Edge Cases', () => {
       it('should handle special characters', () => {});
       it('should handle unicode', () => {});
       it('should handle very long inputs', () => {});
     });
-    
+
     describe('Type Handling', () => {
       it('should coerce types appropriately', () => {});
       it('should throw on invalid types', () => {});
@@ -473,11 +483,11 @@ describe('[Feature] Integration Tests', () => {
     // Setup test environment
     // Initialize test database if needed
   });
-  
+
   afterAll(async () => {
     // Cleanup
   });
-  
+
   describe('Complete User Flow', () => {
     it('should complete [workflow] end-to-end', async () => {
       // Step 1: Initial setup
@@ -487,7 +497,7 @@ describe('[Feature] Integration Tests', () => {
       // Step 5: Verify final outcome
     });
   });
-  
+
   describe('Error Recovery', () => {
     it('should recover gracefully from [error]', async () => {
       // Trigger error condition
@@ -496,7 +506,7 @@ describe('[Feature] Integration Tests', () => {
       // Verify system recovered
     });
   });
-  
+
   describe('Cross-Component Communication', () => {
     it('should update related components when [action]', async () => {});
   });
@@ -568,16 +578,16 @@ Show before/after coverage metrics
 ### AAA Pattern
 
 ```javascript
-it('should do something when condition', async () => {
+it("should do something when condition", async () => {
   // Arrange - Set up test data and mocks
-  const input = { value: 'test' };
-  mockService.method.mockResolvedValue('result');
-  
+  const input = { value: "test" };
+  mockService.method.mockResolvedValue("result");
+
   // Act - Execute the behavior
   const result = await functionUnderTest(input);
-  
+
   // Assert - Verify the outcome
-  expect(result).toBe('expected');
+  expect(result).toBe("expected");
   expect(mockService.method).toHaveBeenCalledWith(input);
 });
 ```
@@ -588,7 +598,7 @@ it('should do something when condition', async () => {
 // ✅ GOOD - Mock at service boundary
 const mockUserService = {
   getUser: vi.fn(),
-  updateUser: vi.fn()
+  updateUser: vi.fn(),
 };
 
 // ❌ BAD - Mock fetch directly
@@ -648,26 +658,26 @@ npm test -- --coverage --coverageThreshold='{"global":{"statements":80,"branches
 
 ```javascript
 // Testing implementation details
-it('should call useState', () => {
-  const useStateSpy = vi.spyOn(React, 'useState');
+it("should call useState", () => {
+  const useStateSpy = vi.spyOn(React, "useState");
   render(<Component />);
   expect(useStateSpy).toHaveBeenCalled();
 });
 
 // Testing styles
-it('should have correct className', () => {
+it("should have correct className", () => {
   const { container } = render(<Component />);
-  expect(container.firstChild).toHaveClass('flex-col');
+  expect(container.firstChild).toHaveClass("flex-col");
 });
 
 // Mocking everything
-it('should work', () => {
-  vi.mock('entire-module');
+it("should work", () => {
+  vi.mock("entire-module");
   // Now you're testing mocks, not code
 });
 
 // Not cleaning up
-it('should do something', () => {
+it("should do something", () => {
   // Missing cleanup in afterEach
 });
 ```
@@ -676,17 +686,17 @@ it('should do something', () => {
 
 ```javascript
 // Test behavior
-it('should show error message when validation fails', async () => {
+it("should show error message when validation fails", async () => {
   const user = userEvent.setup();
   render(<Form />);
-  
-  await user.click(screen.getByRole('button', { name: /submit/i }));
-  
+
+  await user.click(screen.getByRole("button", { name: /submit/i }));
+
   expect(screen.getByText(/required field/i)).toBeInTheDocument();
 });
 
 // Test user perspective
-it('should navigate to next step when form is complete', async () => {
+it("should navigate to next step when form is complete", async () => {
   // Test what user experiences, not how it works
 });
 
@@ -777,13 +787,13 @@ Add these comments to your test files for clarity:
 /**
  * @test {ComponentName}
  * @description Comprehensive test suite for ComponentName
- * 
+ *
  * Test Coverage:
  * - User interactions and workflows
  * - Props variations and edge cases
  * - Error handling and recovery
  * - Accessibility requirements
- * 
+ *
  * Mocking Strategy:
  * - Services mocked at injection points
  * - External APIs mocked at service boundary
@@ -820,17 +830,18 @@ This template includes two exemplary test files:
    - All best practices demonstrated
    - Use as template for frontend tests
 
-2. **EXAMPLE_BACKEND_TEST.test.js** - Gold standard backend service test  
+2. **EXAMPLE_BACKEND_TEST.test.js** - Gold standard backend service test
    - 500+ lines of thorough testing
    - Proper dependency injection
    - Use as template for service tests
 
 Add these to your project at:
+
 - `docs/examples/tests/EXAMPLE_FRONTEND_TEST.test.jsx`
 - `docs/examples/tests/EXAMPLE_BACKEND_TEST.test.js`
 
 ---
 
-*Last Updated: Current Session*
-*Follows patterns from: CLAUDE_CODE_TEMPLATES.md, REFACTORING_STANDARD.md*
-*Gold standard examples: EXAMPLE_FRONTEND_TEST.test.jsx, EXAMPLE_BACKEND_TEST.test.js*
+_Last Updated: Current Session_
+_Follows patterns from: CLAUDE_CODE_TEMPLATES.md, REFACTORING_STANDARD.md_
+_Gold standard examples: EXAMPLE_FRONTEND_TEST.test.jsx, EXAMPLE_BACKEND_TEST.test.js_

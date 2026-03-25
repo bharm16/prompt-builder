@@ -1,4 +1,4 @@
-export { ImageObservationService } from './ImageObservationService';
+export { ImageObservationService } from "./ImageObservationService";
 export type {
   ImageObservation,
   ImageObservationRequest,
@@ -7,4 +7,4 @@ export type {
   SubjectObservation,
   FramingObservation,
   LightingObservation,
-} from './types';
+} from "./types";

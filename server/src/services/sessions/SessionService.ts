@@ -1,6 +1,6 @@
-import { v4 as uuidv4 } from 'uuid';
-import { logger } from '@infrastructure/Logger';
-import { generateId } from '@utils/uid';
+import { v4 as uuidv4 } from "uuid";
+import { logger } from "@infrastructure/Logger";
+import { generateId } from "@utils/uid";
 import type {
   SessionDto,
   SessionContinuity,
@@ -11,8 +11,15 @@ import type {
   SessionSceneProxy,
   SessionPrompt,
   SessionPromptVersionEntry,
-} from '@shared/types/session';
-import type { ContinuitySession, ContinuityShot, StyleReference, FrameBridge, SeedInfo, SceneProxy } from '@services/continuity/types';
+} from "@shared/types/session";
+import type {
+  ContinuitySession,
+  ContinuityShot,
+  StyleReference,
+  FrameBridge,
+  SeedInfo,
+  SceneProxy,
+} from "@services/continuity/types";
 import type {
   SessionCreateRequest,
   SessionRecord,
@@ -22,15 +29,21 @@ import type {
   SessionHighlightUpdate,
   SessionOutputUpdate,
   SessionVersionsUpdate,
-} from './types';
-import { SessionStore } from './SessionStore';
-import { enforceImmutableKeyframes, enforceImmutableVersions } from './utils/immutableMedia';
+} from "./types";
+import { SessionStore } from "./SessionStore";
+import {
+  enforceImmutableKeyframes,
+  enforceImmutableVersions,
+} from "./utils/immutableMedia";
 
 export class SessionService {
-  private readonly log = logger.child({ service: 'SessionService' });
+  private readonly log = logger.child({ service: "SessionService" });
   constructor(private sessionStore: SessionStore) {}
 
-  private async requireOwnedSession(userId: string, sessionId: string): Promise<SessionRecord> {
+  private async requireOwnedSession(
+    userId: string,
+    sessionId: string,
+  ): Promise<SessionRecord> {
     const current = await this.sessionStore.get(sessionId);
     if (!current) {
       throw new SessionNotFoundError(sessionId);
@@ -41,7 +54,10 @@ export class SessionService {
     return current;
   }
 
-  async createPromptSession(userId: string, request: SessionCreateRequest): Promise<SessionRecord> {
+  async createPromptSession(
+    userId: string,
+    request: SessionCreateRequest,
+  ): Promise<SessionRecord> {
     const now = new Date();
     const prompt = request.prompt ? { ...request.prompt } : undefined;
     if (prompt) {
@@ -49,9 +65,12 @@ export class SessionService {
         prompt.uuid = uuidv4();
       }
 
-      const existingSession = await this.sessionStore.findByPromptUuid(userId, prompt.uuid);
+      const existingSession = await this.sessionStore.findByPromptUuid(
+        userId,
+        prompt.uuid,
+      );
       if (existingSession) {
-        this.log.debug('Updating existing prompt session by prompt UUID', {
+        this.log.debug("Updating existing prompt session by prompt UUID", {
           userId,
           sessionId: existingSession.id,
           promptUuid: prompt.uuid,
@@ -66,7 +85,7 @@ export class SessionService {
     const session: SessionRecord = {
       id: this.generateSessionId(),
       userId,
-      status: 'active',
+      status: "active",
       createdAt: now,
       updatedAt: now,
       ...(request.name !== undefined ? { name: request.name } : {}),
@@ -83,11 +102,17 @@ export class SessionService {
     return this.sessionStore.get(sessionId);
   }
 
-  async getSessionByPromptUuid(userId: string, promptUuid: string): Promise<SessionRecord | null> {
+  async getSessionByPromptUuid(
+    userId: string,
+    promptUuid: string,
+  ): Promise<SessionRecord | null> {
     return this.sessionStore.findByPromptUuid(userId, promptUuid);
   }
 
-  async listSessions(userId: string, options: SessionListOptions = {}): Promise<SessionRecord[]> {
+  async listSessions(
+    userId: string,
+    options: SessionListOptions = {},
+  ): Promise<SessionRecord[]> {
     const sessions = await this.sessionStore.findByUser(userId, options.limit);
     const includePrompt = options.includePrompt ?? true;
     const includeContinuity = options.includeContinuity ?? true;
@@ -105,7 +130,10 @@ export class SessionService {
     return sessions;
   }
 
-  async updateSession(sessionId: string, updates: SessionUpdateRequest): Promise<SessionRecord> {
+  async updateSession(
+    sessionId: string,
+    updates: SessionUpdateRequest,
+  ): Promise<SessionRecord> {
     const current = await this.sessionStore.get(sessionId);
     if (!current) {
       throw new Error(`Session not found: ${sessionId}`);
@@ -113,7 +141,7 @@ export class SessionService {
 
     let mergedPrompt = updates.prompt
       ? {
-          ...(current.prompt ?? { input: '', output: '' }),
+          ...(current.prompt ?? { input: "", output: "" }),
           ...updates.prompt,
         }
       : current.prompt;
@@ -122,13 +150,16 @@ export class SessionService {
       if (updates.prompt.keyframes !== undefined) {
         const enforcedKeyframes = enforceImmutableKeyframes(
           current.prompt?.keyframes ?? null,
-          mergedPrompt.keyframes ?? null
+          mergedPrompt.keyframes ?? null,
         );
         if (enforcedKeyframes.warnings.length) {
-          this.log.warn('Preserved immutable keyframe references during session update', {
-            sessionId,
-            warningCount: enforcedKeyframes.warnings.length,
-          });
+          this.log.warn(
+            "Preserved immutable keyframe references during session update",
+            {
+              sessionId,
+              warningCount: enforcedKeyframes.warnings.length,
+            },
+          );
         }
         mergedPrompt = {
           ...mergedPrompt,
@@ -138,13 +169,16 @@ export class SessionService {
       if (updates.prompt.versions !== undefined) {
         const enforcedVersions = enforceImmutableVersions(
           current.prompt?.versions ?? null,
-          mergedPrompt.versions ?? null
+          mergedPrompt.versions ?? null,
         );
         if (enforcedVersions.warnings.length) {
-          this.log.warn('Preserved immutable media references during session update', {
-            sessionId,
-            warningCount: enforcedVersions.warnings.length,
-          });
+          this.log.warn(
+            "Preserved immutable media references during session update",
+            {
+              sessionId,
+              warningCount: enforcedVersions.warnings.length,
+            },
+          );
         }
         const nextVersions = enforcedVersions.versions ?? undefined;
         mergedPrompt = {
@@ -157,7 +191,9 @@ export class SessionService {
     const next: SessionRecord = {
       ...current,
       ...(updates.name !== undefined ? { name: updates.name } : {}),
-      ...(updates.description !== undefined ? { description: updates.description } : {}),
+      ...(updates.description !== undefined
+        ? { description: updates.description }
+        : {}),
       ...(updates.status ? { status: updates.status } : {}),
       ...(mergedPrompt ? { prompt: mergedPrompt } : {}),
       ...(mergedPrompt?.uuid ? { promptUuid: mergedPrompt.uuid } : {}),
@@ -171,20 +207,29 @@ export class SessionService {
   async updateSessionForUser(
     userId: string,
     sessionId: string,
-    updates: SessionUpdateRequest
+    updates: SessionUpdateRequest,
   ): Promise<SessionRecord> {
     await this.requireOwnedSession(userId, sessionId);
     return this.updateSession(sessionId, updates);
   }
 
-  async updatePrompt(sessionId: string, updates: SessionPromptUpdate): Promise<SessionRecord> {
+  async updatePrompt(
+    sessionId: string,
+    updates: SessionPromptUpdate,
+  ): Promise<SessionRecord> {
     const promptUpdates: Partial<SessionPrompt> = {
       ...(updates.title !== undefined ? { title: updates.title } : {}),
       ...(updates.input !== undefined ? { input: updates.input } : {}),
       ...(updates.output !== undefined ? { output: updates.output } : {}),
-      ...(updates.targetModel !== undefined ? { targetModel: updates.targetModel } : {}),
-      ...(updates.generationParams !== undefined ? { generationParams: updates.generationParams } : {}),
-      ...(updates.keyframes !== undefined ? { keyframes: updates.keyframes } : {}),
+      ...(updates.targetModel !== undefined
+        ? { targetModel: updates.targetModel }
+        : {}),
+      ...(updates.generationParams !== undefined
+        ? { generationParams: updates.generationParams }
+        : {}),
+      ...(updates.keyframes !== undefined
+        ? { keyframes: updates.keyframes }
+        : {}),
       ...(updates.mode !== undefined ? { mode: updates.mode } : {}),
     };
     return this.updateSession(sessionId, { prompt: promptUpdates });
@@ -193,26 +238,32 @@ export class SessionService {
   async updatePromptForUser(
     userId: string,
     sessionId: string,
-    updates: SessionPromptUpdate
+    updates: SessionPromptUpdate,
   ): Promise<SessionRecord> {
     await this.requireOwnedSession(userId, sessionId);
     return this.updatePrompt(sessionId, updates);
   }
 
-  async updateHighlights(sessionId: string, updates: SessionHighlightUpdate): Promise<SessionRecord> {
+  async updateHighlights(
+    sessionId: string,
+    updates: SessionHighlightUpdate,
+  ): Promise<SessionRecord> {
     const current = await this.sessionStore.get(sessionId);
     if (!current) throw new Error(`Session not found: ${sessionId}`);
-    const prompt = current.prompt ?? { input: '', output: '' };
-    const nextVersions = Array.isArray(prompt.versions) ? [...prompt.versions] : [];
+    const prompt = current.prompt ?? { input: "", output: "" };
+    const nextVersions = Array.isArray(prompt.versions)
+      ? [...prompt.versions]
+      : [];
     if (updates.versionEntry) {
-      const timestamp = updates.versionEntry.timestamp ?? new Date().toISOString();
+      const timestamp =
+        updates.versionEntry.timestamp ?? new Date().toISOString();
       const basePromptText =
-        (typeof prompt.output === 'string' && prompt.output.trim().length > 0
+        (typeof prompt.output === "string" && prompt.output.trim().length > 0
           ? prompt.output
-          : prompt.input) || '';
+          : prompt.input) || "";
       const nextEntry: SessionPromptVersionEntry = {
-        versionId: generateId('highlight'),
-        signature: 'highlight-update',
+        versionId: generateId("highlight"),
+        signature: "highlight-update",
         prompt: basePromptText,
         timestamp,
       };
@@ -224,7 +275,9 @@ export class SessionService {
       ...current,
       prompt: {
         ...prompt,
-        ...(updates.highlightCache !== undefined ? { highlightCache: updates.highlightCache } : {}),
+        ...(updates.highlightCache !== undefined
+          ? { highlightCache: updates.highlightCache }
+          : {}),
         ...(updates.versionEntry ? { versions: nextVersions } : {}),
       },
       updatedAt: new Date(),
@@ -236,13 +289,16 @@ export class SessionService {
   async updateHighlightsForUser(
     userId: string,
     sessionId: string,
-    updates: SessionHighlightUpdate
+    updates: SessionHighlightUpdate,
   ): Promise<SessionRecord> {
     await this.requireOwnedSession(userId, sessionId);
     return this.updateHighlights(sessionId, updates);
   }
 
-  async updateOutput(sessionId: string, updates: SessionOutputUpdate): Promise<SessionRecord> {
+  async updateOutput(
+    sessionId: string,
+    updates: SessionOutputUpdate,
+  ): Promise<SessionRecord> {
     const promptUpdates: Partial<SessionPrompt> = {
       ...(updates.output !== undefined ? { output: updates.output } : {}),
     };
@@ -252,24 +308,33 @@ export class SessionService {
   async updateOutputForUser(
     userId: string,
     sessionId: string,
-    updates: SessionOutputUpdate
+    updates: SessionOutputUpdate,
   ): Promise<SessionRecord> {
     return this.updateSessionForUser(userId, sessionId, { prompt: updates });
   }
 
-  async updateVersions(sessionId: string, updates: SessionVersionsUpdate): Promise<SessionRecord> {
+  async updateVersions(
+    sessionId: string,
+    updates: SessionVersionsUpdate,
+  ): Promise<SessionRecord> {
     const current = await this.sessionStore.get(sessionId);
     if (!current) throw new Error(`Session not found: ${sessionId}`);
-    const prompt = current.prompt ?? { input: '', output: '' };
+    const prompt = current.prompt ?? { input: "", output: "" };
     let nextVersions = updates.versions;
     if (updates.versions !== undefined) {
-      const enforced = enforceImmutableVersions(prompt.versions ?? null, updates.versions ?? null);
+      const enforced = enforceImmutableVersions(
+        prompt.versions ?? null,
+        updates.versions ?? null,
+      );
       nextVersions = enforced.versions ?? undefined;
       if (enforced.warnings.length) {
-        this.log.warn('Preserved immutable media references during session version update', {
-          sessionId,
-          warningCount: enforced.warnings.length,
-        });
+        this.log.warn(
+          "Preserved immutable media references during session version update",
+          {
+            sessionId,
+            warningCount: enforced.warnings.length,
+          },
+        );
       }
     }
     const next = {
@@ -287,7 +352,7 @@ export class SessionService {
   async updateVersionsForUser(
     userId: string,
     sessionId: string,
-    updates: SessionVersionsUpdate
+    updates: SessionVersionsUpdate,
   ): Promise<SessionRecord> {
     await this.requireOwnedSession(userId, sessionId);
     return this.updateVersions(sessionId, updates);
@@ -312,7 +377,9 @@ export class SessionService {
       createdAt: session.createdAt.toISOString(),
       updatedAt: session.updatedAt.toISOString(),
       ...(session.prompt ? { prompt: session.prompt } : {}),
-      ...(session.continuity ? { continuity: this.mapContinuity(session.continuity) } : {}),
+      ...(session.continuity
+        ? { continuity: this.mapContinuity(session.continuity) }
+        : {}),
     };
   }
 
@@ -322,7 +389,9 @@ export class SessionService {
       primaryStyleReference: session.primaryStyleReference
         ? this.mapStyleReference(session.primaryStyleReference)
         : null,
-      sceneProxy: session.sceneProxy ? this.mapSceneProxy(session.sceneProxy) : null,
+      sceneProxy: session.sceneProxy
+        ? this.mapSceneProxy(session.sceneProxy)
+        : null,
       settings: session.defaultSettings,
     };
   }
@@ -331,9 +400,13 @@ export class SessionService {
     const mappedCamera = shot.camera
       ? {
           ...(shot.camera.yaw !== undefined ? { yaw: shot.camera.yaw } : {}),
-          ...(shot.camera.pitch !== undefined ? { pitch: shot.camera.pitch } : {}),
+          ...(shot.camera.pitch !== undefined
+            ? { pitch: shot.camera.pitch }
+            : {}),
           ...(shot.camera.roll !== undefined ? { roll: shot.camera.roll } : {}),
-          ...(shot.camera.dolly !== undefined ? { dolly: shot.camera.dolly } : {}),
+          ...(shot.camera.dolly !== undefined
+            ? { dolly: shot.camera.dolly }
+            : {}),
         }
       : null;
 
@@ -349,30 +422,58 @@ export class SessionService {
       status: shot.status,
       createdAt: shot.createdAt.toISOString(),
       ...(shot.generationMode ? { generationMode: shot.generationMode } : {}),
-      ...(shot.generatedAt ? { generatedAt: shot.generatedAt.toISOString() } : {}),
-      ...(shot.characterAssetId ? { characterAssetId: shot.characterAssetId } : {}),
-      ...(shot.faceStrength !== undefined ? { faceStrength: shot.faceStrength } : {}),
-      ...(mappedCamera && Object.keys(mappedCamera).length > 0 ? { camera: mappedCamera } : {}),
+      ...(shot.generatedAt
+        ? { generatedAt: shot.generatedAt.toISOString() }
+        : {}),
+      ...(shot.characterAssetId
+        ? { characterAssetId: shot.characterAssetId }
+        : {}),
+      ...(shot.faceStrength !== undefined
+        ? { faceStrength: shot.faceStrength }
+        : {}),
+      ...(mappedCamera && Object.keys(mappedCamera).length > 0
+        ? { camera: mappedCamera }
+        : {}),
       ...(shot.seedInfo ? { seedInfo: this.mapSeedInfo(shot.seedInfo) } : {}),
-      ...(shot.inheritedSeed !== undefined ? { inheritedSeed: shot.inheritedSeed } : {}),
+      ...(shot.inheritedSeed !== undefined
+        ? { inheritedSeed: shot.inheritedSeed }
+        : {}),
       ...(shot.videoAssetId ? { videoAssetId: shot.videoAssetId } : {}),
       ...(shot.previewAssetId ? { previewAssetId: shot.previewAssetId } : {}),
-      ...(shot.generatedKeyframeUrl ? { generatedKeyframeUrl: shot.generatedKeyframeUrl } : {}),
+      ...(shot.generatedKeyframeUrl
+        ? { generatedKeyframeUrl: shot.generatedKeyframeUrl }
+        : {}),
       ...(shot.styleTransferApplied !== undefined
         ? { styleTransferApplied: shot.styleTransferApplied }
         : {}),
-      ...(shot.styleDegraded !== undefined ? { styleDegraded: shot.styleDegraded } : {}),
-      ...(shot.styleDegradedReason ? { styleDegradedReason: shot.styleDegradedReason } : {}),
-      ...(shot.sceneProxyRenderUrl ? { sceneProxyRenderUrl: shot.sceneProxyRenderUrl } : {}),
-      ...(shot.continuityMechanismUsed ? { continuityMechanismUsed: shot.continuityMechanismUsed } : {}),
+      ...(shot.styleDegraded !== undefined
+        ? { styleDegraded: shot.styleDegraded }
+        : {}),
+      ...(shot.styleDegradedReason
+        ? { styleDegradedReason: shot.styleDegradedReason }
+        : {}),
+      ...(shot.sceneProxyRenderUrl
+        ? { sceneProxyRenderUrl: shot.sceneProxyRenderUrl }
+        : {}),
+      ...(shot.continuityMechanismUsed
+        ? { continuityMechanismUsed: shot.continuityMechanismUsed }
+        : {}),
       ...(shot.styleScore !== undefined ? { styleScore: shot.styleScore } : {}),
-      ...(shot.identityScore !== undefined ? { identityScore: shot.identityScore } : {}),
-      ...(shot.qualityScore !== undefined ? { qualityScore: shot.qualityScore } : {}),
+      ...(shot.identityScore !== undefined
+        ? { identityScore: shot.identityScore }
+        : {}),
+      ...(shot.qualityScore !== undefined
+        ? { qualityScore: shot.qualityScore }
+        : {}),
       ...(shot.retryCount !== undefined ? { retryCount: shot.retryCount } : {}),
       ...(shot.error ? { error: shot.error } : {}),
       ...(shot.versions !== undefined ? { versions: shot.versions } : {}),
-      ...(shot.frameBridge ? { frameBridge: this.mapFrameBridge(shot.frameBridge) } : {}),
-      ...(shot.styleReference ? { styleReference: this.mapStyleReference(shot.styleReference) } : {}),
+      ...(shot.frameBridge
+        ? { frameBridge: this.mapFrameBridge(shot.frameBridge) }
+        : {}),
+      ...(shot.styleReference
+        ? { styleReference: this.mapStyleReference(shot.styleReference) }
+        : {}),
     };
   }
 
@@ -405,7 +506,7 @@ export class SessionService {
   }
 
   private generateSessionId(): string {
-    return generateId('session');
+    return generateId("session");
   }
 }
 
@@ -413,16 +514,16 @@ export class SessionAccessDeniedError extends Error {
   constructor(
     readonly sessionId: string,
     readonly requestUserId: string,
-    readonly ownerUserId: string
+    readonly ownerUserId: string,
   ) {
     super(`Access denied for session ${sessionId}`);
-    this.name = 'SessionAccessDeniedError';
+    this.name = "SessionAccessDeniedError";
   }
 }
 
 export class SessionNotFoundError extends Error {
   constructor(readonly sessionId: string) {
     super(`Session not found: ${sessionId}`);
-    this.name = 'SessionNotFoundError';
+    this.name = "SessionNotFoundError";
   }
 }

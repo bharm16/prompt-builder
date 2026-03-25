@@ -5,14 +5,14 @@
  * Following VideoConceptBuilder pattern: components/ProgressHeader.tsx
  */
 
-import { X, RefreshCw } from '@promptstudio/system/components/ui';
-import { Button } from '@promptstudio/system/components/ui/button';
-import type { PanelIcon } from './types';
+import { X, RefreshCw } from "@promptstudio/system/components/ui";
+import { Button } from "@promptstudio/system/components/ui/button";
+import type { PanelIcon } from "./types";
 
 interface PanelHeaderProps {
   panelTitle?: string;
-  onRefresh?: (() => void);
-  onClose?: (() => void);
+  onRefresh?: () => void;
+  onClose?: () => void;
   hasActiveSuggestions?: boolean;
   contextValue?: string;
   contextLabel?: string;
@@ -25,16 +25,16 @@ interface PanelHeaderProps {
 }
 
 export function PanelHeader({
-  panelTitle = '',
+  panelTitle = "",
   onRefresh,
   onClose,
   hasActiveSuggestions = false,
-  contextValue = '',
-  contextLabel = 'For',
+  contextValue = "",
+  contextLabel = "For",
   contextSecondaryValue,
   contextIcon: ContextIcon,
   showContextBadge = false,
-  contextBadgeText = 'Context-aware',
+  contextBadgeText = "Context-aware",
   contextBadgeIcon: ContextBadgeIcon,
   isPlaceholder = false,
 }: PanelHeaderProps): React.ReactElement {
@@ -74,7 +74,9 @@ export function PanelHeader({
           {showContextBadge && (
             <div className="flex items-center gap-2">
               <span className="inline-flex items-center gap-1 px-2 py-1 text-label-12 rounded-md bg-surface-1 text-foreground border border-border">
-                {ContextBadgeIcon ? <ContextBadgeIcon className="h-3 w-3" aria-hidden="true" /> : null}
+                {ContextBadgeIcon ? (
+                  <ContextBadgeIcon className="h-3 w-3" aria-hidden="true" />
+                ) : null}
                 {contextBadgeText}
               </span>
             </div>
@@ -83,7 +85,10 @@ export function PanelHeader({
             <div className="flex items-start gap-2">
               {ContextIcon ? (
                 <div className="p-1 bg-surface-1 rounded-md border border-border flex-shrink-0">
-                  <ContextIcon className="h-3 w-3 text-muted" aria-hidden="true" />
+                  <ContextIcon
+                    className="h-3 w-3 text-muted"
+                    aria-hidden="true"
+                  />
                 </div>
               ) : null}
               <div className="flex-1 min-w-0">

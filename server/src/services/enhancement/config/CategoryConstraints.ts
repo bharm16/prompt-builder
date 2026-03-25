@@ -1,4 +1,4 @@
-import { TAXONOMY, isAttribute } from '#shared/taxonomy.js';
+import { TAXONOMY, isAttribute } from "#shared/taxonomy.js";
 
 interface CategoryConstraint {
   pattern?: RegExp;
@@ -13,9 +13,11 @@ interface TechnicalSubcategory extends CategoryConstraint {
 }
 
 interface CategoryConstraintsConfig {
-  [key: string]: CategoryConstraint | {
-    [subcategory: string]: TechnicalSubcategory;
-  };
+  [key: string]:
+    | CategoryConstraint
+    | {
+        [subcategory: string]: TechnicalSubcategory;
+      };
 }
 
 /**
@@ -45,33 +47,39 @@ export const CATEGORY_CONSTRAINTS: CategoryConstraintsConfig = {
   [TAXONOMY.TECHNICAL.id]: {
     frameRate: {
       pattern: /\d+fps|frames per second/i,
-      instruction: "Generate ONLY frame rate values following video template: 24fps (Filmic) or 30fps (Standard Video) are primary. Can include 60fps, 120fps for special effects.",
-      forbidden: "Do NOT suggest audio, lighting, colors, or any non-framerate options",
+      instruction:
+        "Generate ONLY frame rate values following video template: 24fps (Filmic) or 30fps (Standard Video) are primary. Can include 60fps, 120fps for special effects.",
+      forbidden:
+        "Do NOT suggest audio, lighting, colors, or any non-framerate options",
     },
     aspectRatio: {
       pattern: /\d+:\d+|aspect ratio/i,
-      instruction: "Generate ONLY aspect ratios from video template: 16:9 (Landscape), 9:16 (Vertical), 2.39:1 (Cinematic)",
+      instruction:
+        "Generate ONLY aspect ratios from video template: 16:9 (Landscape), 9:16 (Vertical), 2.39:1 (Cinematic)",
       forbidden: "Do NOT suggest frame rates, audio, or non-ratio options",
     },
     filmFormat: {
       pattern: /\d+mm|film|digital/i,
-      instruction: "Generate film formats using cinematic language: 35mm film, 16mm, 70mm, digital cinema",
+      instruction:
+        "Generate film formats using cinematic language: 35mm film, 16mm, 70mm, digital cinema",
       forbidden: "Do NOT suggest non-format specifications",
-    }
+    },
   },
 
   // ============================================================================
   // CAMERA ATTRIBUTES
   // ============================================================================
 
-  [TAXONOMY.CAMERA.attributes?.FRAMING || '']: {
+  [TAXONOMY.CAMERA.attributes?.FRAMING || ""]: {
     pattern: /shot|close-up|wide|medium|angle/i,
-    instruction: "Generate shot types: wide shot, medium shot, close-up, extreme close-up using professional language",
+    instruction:
+      "Generate shot types: wide shot, medium shot, close-up, extreme close-up using professional language",
   },
 
-  [TAXONOMY.CAMERA.attributes?.MOVEMENT || '']: {
+  [TAXONOMY.CAMERA.attributes?.MOVEMENT || ""]: {
     pattern: /dolly|track|pan|tilt|crane|zoom|static/i,
-    instruction: "Generate camera movements: static, slow dolly, handheld tracking, crane, pan using professional terms",
+    instruction:
+      "Generate camera movements: static, slow dolly, handheld tracking, crane, pan using professional terms",
   },
 
   // ============================================================================
@@ -80,7 +88,8 @@ export const CATEGORY_CONSTRAINTS: CategoryConstraintsConfig = {
 
   [TAXONOMY.LIGHTING.id]: {
     pattern: /light|shadow|illuminat|glow|bright|dark/i,
-    instruction: "Generate lighting with source, direction, quality: 'soft window light from the left creating shadows'",
+    instruction:
+      "Generate lighting with source, direction, quality: 'soft window light from the left creating shadows'",
   },
 
   // ============================================================================
@@ -97,23 +106,26 @@ export const CATEGORY_CONSTRAINTS: CategoryConstraintsConfig = {
   // SUBJECT ATTRIBUTES
   // ============================================================================
 
-  [TAXONOMY.SUBJECT.attributes?.WARDROBE || '']: {
+  [TAXONOMY.SUBJECT.attributes?.WARDROBE || ""]: {
     pattern: /wearing|dressed|outfit|clothing|costume|attire|garment/i,
-    instruction: "Generate wardrobe details: material, era, condition, fit. Example: 'wearing weathered leather jacket with brass buttons'",
+    instruction:
+      "Generate wardrobe details: material, era, condition, fit. Example: 'wearing weathered leather jacket with brass buttons'",
     forbidden: "Do NOT suggest actions, emotions, or physical traits",
   },
 
-  [TAXONOMY.SUBJECT.attributes?.ACTION || '']: {
+  [TAXONOMY.SUBJECT.attributes?.ACTION || ""]: {
     pattern: /standing|sitting|leaning|walking|running|gesture|pose/i,
-    instruction: "Generate subject actions or poses: what they're doing with their body. Example: 'leaning against weathered brick wall'",
+    instruction:
+      "Generate subject actions or poses: what they're doing with their body. Example: 'leaning against weathered brick wall'",
     forbidden: "Do NOT suggest props or emotional states",
   },
 
-  [TAXONOMY.SUBJECT.attributes?.APPEARANCE || '']: {
+  [TAXONOMY.SUBJECT.attributes?.APPEARANCE || ""]: {
     pattern: /face|body|build|hair|eyes|skin|features|appearance/i,
-    instruction: "Generate physical appearance details: facial features, body type, distinctive marks. Example: 'with weathered hands and sun-worn face'",
+    instruction:
+      "Generate physical appearance details: facial features, body type, distinctive marks. Example: 'with weathered hands and sun-worn face'",
     forbidden: "Do NOT suggest clothing or emotional states",
-  }
+  },
 };
 
 interface Suggestion {
@@ -146,7 +158,7 @@ const STYLE_FILM_PATTERN =
 const ACTION_PATTERN = /\b\w+(ing|s)\b/i;
 
 function normalizeCategory(category: string): string {
-  return category.toLowerCase().replace(/[_-]/g, '');
+  return category.toLowerCase().replace(/[_-]/g, "");
 }
 
 /**
@@ -156,7 +168,7 @@ function normalizeCategory(category: string): string {
  */
 export function validateAgainstVideoTemplate(
   suggestion: Suggestion,
-  category: string
+  category: string,
 ): boolean {
   const normalizedCategory = normalizeCategory(category);
   if (category === TAXONOMY.TECHNICAL.attributes.FPS) {
@@ -165,40 +177,43 @@ export function validateAgainstVideoTemplate(
   if (category === TAXONOMY.TECHNICAL.attributes.ASPECT_RATIO) {
     return /\d+:\d+|aspect ratio/i.test(suggestion.text);
   }
-  if (normalizedCategory === 'camera.angle') {
+  if (normalizedCategory === "camera.angle") {
     return CAMERA_ANGLE_PATTERN.test(suggestion.text);
   }
-  if (normalizedCategory === 'camera.movement') {
+  if (normalizedCategory === "camera.movement") {
     return CAMERA_MOVEMENT_PATTERN.test(suggestion.text);
   }
-  if (normalizedCategory === 'camera.focus') {
+  if (normalizedCategory === "camera.focus") {
     return CAMERA_FOCUS_PATTERN.test(suggestion.text);
   }
-  if (normalizedCategory === 'camera.lens') {
+  if (normalizedCategory === "camera.lens") {
     return CAMERA_LENS_PATTERN.test(suggestion.text);
   }
-  if (normalizedCategory === 'shot.type' || normalizedCategory === 'shot.framing') {
+  if (
+    normalizedCategory === "shot.type" ||
+    normalizedCategory === "shot.framing"
+  ) {
     return SHOT_PATTERN.test(suggestion.text);
   }
-  if (normalizedCategory === 'lighting.quality') {
+  if (normalizedCategory === "lighting.quality") {
     return LIGHTING_QUALITY_PATTERN.test(suggestion.text);
   }
-  if (normalizedCategory === 'lighting.timeofday') {
+  if (normalizedCategory === "lighting.timeofday") {
     return LIGHTING_TIME_PATTERN.test(suggestion.text);
   }
-  if (normalizedCategory === 'environment.location') {
+  if (normalizedCategory === "environment.location") {
     return EXTERNAL_LOCATION_PATTERN.test(suggestion.text);
   }
-  if (normalizedCategory === 'environment.context') {
+  if (normalizedCategory === "environment.context") {
     return ENVIRONMENT_CONTEXT_PATTERN.test(suggestion.text);
   }
-  if (normalizedCategory === 'style.aesthetic') {
+  if (normalizedCategory === "style.aesthetic") {
     return STYLE_PATTERN.test(suggestion.text);
   }
-  if (normalizedCategory === 'style.filmstock') {
+  if (normalizedCategory === "style.filmstock") {
     return STYLE_FILM_PATTERN.test(suggestion.text);
   }
-  if (normalizedCategory.startsWith('action.')) {
+  if (normalizedCategory.startsWith("action.")) {
     return ACTION_PATTERN.test(suggestion.text);
   }
   return true;

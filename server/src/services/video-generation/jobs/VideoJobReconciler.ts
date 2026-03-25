@@ -1,6 +1,6 @@
-import type { Bucket } from '@google-cloud/storage';
-import { logger } from '@infrastructure/Logger';
-import { VideoJobStore } from './VideoJobStore';
+import type { Bucket } from "@google-cloud/storage";
+import { logger } from "@infrastructure/Logger";
+import { VideoJobStore } from "./VideoJobStore";
 
 const DEFAULT_ORPHAN_THRESHOLD_MS = 60 * 60 * 1000; // 1 hour
 const DEFAULT_RECONCILE_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
@@ -13,7 +13,10 @@ interface VideoJobReconcilerOptions {
   backoffFactor?: number;
   maxObjectsPerRun?: number;
   metrics?: {
-    recordAlert: (alertName: string, metadata?: Record<string, unknown>) => void;
+    recordAlert: (
+      alertName: string,
+      metadata?: Record<string, unknown>,
+    ) => void;
   };
 }
 
@@ -26,8 +29,8 @@ export class VideoJobReconciler {
   private readonly maxSweepIntervalMs: number;
   private readonly backoffFactor: number;
   private readonly maxObjectsPerRun: number;
-  private readonly metrics?: VideoJobReconcilerOptions['metrics'];
-  private readonly log = logger.child({ service: 'VideoJobReconciler' });
+  private readonly metrics?: VideoJobReconcilerOptions["metrics"];
+  private readonly log = logger.child({ service: "VideoJobReconciler" });
   private timer: NodeJS.Timeout | null = null;
   private currentIntervalMs = 0;
   private started = false;
@@ -37,16 +40,21 @@ export class VideoJobReconciler {
     bucket: Bucket,
     basePath: string,
     jobStore: VideoJobStore,
-    options: VideoJobReconcilerOptions = {}
+    options: VideoJobReconcilerOptions = {},
   ) {
     this.bucket = bucket;
-    this.basePath = basePath.replace(/^\/+|\/+$/g, '');
+    this.basePath = basePath.replace(/^\/+|\/+$/g, "");
     this.jobStore = jobStore;
-    this.orphanThresholdMs = options.orphanThresholdMs ?? DEFAULT_ORPHAN_THRESHOLD_MS;
-    this.baseReconcileIntervalMs = options.reconcileIntervalMs ?? DEFAULT_RECONCILE_INTERVAL_MS;
-    this.maxSweepIntervalMs = options.maxSweepIntervalMs ?? Math.max(this.baseReconcileIntervalMs * 8, 600_000);
+    this.orphanThresholdMs =
+      options.orphanThresholdMs ?? DEFAULT_ORPHAN_THRESHOLD_MS;
+    this.baseReconcileIntervalMs =
+      options.reconcileIntervalMs ?? DEFAULT_RECONCILE_INTERVAL_MS;
+    this.maxSweepIntervalMs =
+      options.maxSweepIntervalMs ??
+      Math.max(this.baseReconcileIntervalMs * 8, 600_000);
     this.backoffFactor = options.backoffFactor ?? 2;
-    this.maxObjectsPerRun = options.maxObjectsPerRun ?? DEFAULT_MAX_OBJECTS_PER_RUN;
+    this.maxObjectsPerRun =
+      options.maxObjectsPerRun ?? DEFAULT_MAX_OBJECTS_PER_RUN;
     this.metrics = options.metrics;
     this.currentIntervalMs = this.baseReconcileIntervalMs;
   }
@@ -87,7 +95,7 @@ export class VideoJobReconciler {
     } else {
       this.currentIntervalMs = Math.min(
         this.maxSweepIntervalMs,
-        Math.round(this.currentIntervalMs * this.backoffFactor)
+        Math.round(this.currentIntervalMs * this.backoffFactor),
       );
     }
     this.scheduleNext(this.currentIntervalMs);
@@ -115,7 +123,9 @@ export class VideoJobReconciler {
         }
 
         const [metadata] = await file.getMetadata();
-        const createdAt = metadata.timeCreated ? Date.parse(metadata.timeCreated) : NaN;
+        const createdAt = metadata.timeCreated
+          ? Date.parse(metadata.timeCreated)
+          : NaN;
 
         if (!Number.isFinite(createdAt) || createdAt > cutoff) {
           continue;
@@ -125,7 +135,7 @@ export class VideoJobReconciler {
 
         const assetId = this.extractAssetId(file.name);
         if (!assetId) {
-          this.log.warn('Reconciler: could not extract assetId from GCS path', {
+          this.log.warn("Reconciler: could not extract assetId from GCS path", {
             fileName: file.name,
           });
           continue;
@@ -133,7 +143,7 @@ export class VideoJobReconciler {
 
         const job = await this.jobStore.findJobByAssetId(assetId);
 
-        if (job && job.status === 'completed') {
+        if (job && job.status === "completed") {
           continue;
         }
 
@@ -148,22 +158,34 @@ export class VideoJobReconciler {
         };
 
         if (job) {
-          this.log.warn('Reconciler: GCS asset exists but job is not completed (possible markCompleted failure)', context);
-          this.metrics?.recordAlert('video_reconciler_orphan_incomplete_job', context);
+          this.log.warn(
+            "Reconciler: GCS asset exists but job is not completed (possible markCompleted failure)",
+            context,
+          );
+          this.metrics?.recordAlert(
+            "video_reconciler_orphan_incomplete_job",
+            context,
+          );
         } else {
-          this.log.warn('Reconciler: GCS asset has no matching job record', context);
-          this.metrics?.recordAlert('video_reconciler_orphan_no_job', context);
+          this.log.warn(
+            "Reconciler: GCS asset has no matching job record",
+            context,
+          );
+          this.metrics?.recordAlert("video_reconciler_orphan_no_job", context);
         }
       }
 
       if (orphans > 0 || processed > 0) {
-        this.log.info('Reconciliation run complete', { processed, orphans });
+        this.log.info("Reconciliation run complete", { processed, orphans });
       }
 
       return true;
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      this.log.warn('Failed to reconcile video assets', { error: errorMessage });
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      this.log.warn("Failed to reconcile video assets", {
+        error: errorMessage,
+      });
       return false;
     } finally {
       this.running = false;
@@ -176,7 +198,7 @@ export class VideoJobReconciler {
       return null;
     }
     const assetId = gcsPath.slice(prefix.length);
-    if (!assetId || assetId.includes('/')) {
+    if (!assetId || assetId.includes("/")) {
       return null;
     }
     return assetId;
@@ -194,16 +216,25 @@ export function createVideoJobReconciler(
   bucket: Bucket,
   basePath: string,
   jobStore: VideoJobStore,
-  metrics: {
-    recordAlert: (alertName: string, metadata?: Record<string, unknown>) => void;
-  } | undefined,
-  config: ReconcilerConfig
+  metrics:
+    | {
+        recordAlert: (
+          alertName: string,
+          metadata?: Record<string, unknown>,
+        ) => void;
+      }
+    | undefined,
+  config: ReconcilerConfig,
 ): VideoJobReconciler | null {
   if (config.disabled) {
     return null;
   }
 
-  if (config.orphanThresholdMs <= 0 || config.reconcileIntervalMs <= 0 || config.maxObjectsPerRun <= 0) {
+  if (
+    config.orphanThresholdMs <= 0 ||
+    config.reconcileIntervalMs <= 0 ||
+    config.maxObjectsPerRun <= 0
+  ) {
     return null;
   }
 

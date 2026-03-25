@@ -9,6 +9,7 @@
 ## Executive Summary
 
 This report documents:
+
 1. **Files with no unit test coverage** (based on static import analysis)
 2. **Tests that violate TypeScript testing guidelines** (definitive violations)
 3. **Test failures observed during coverage run** (definitive)
@@ -22,6 +23,7 @@ This report documents:
 No current violations found after updates on 2026-01-14.
 
 Resolved:
+
 - `tests/unit/enhancement-suggestions-api.test.ts` now imports the production `fetchEnhancementSuggestions`
 - `tests/unit/veo-json-schema.property.test.ts` uses a schema guard helper instead of unsafe casts
 - `tests/unit/span-labeling-legacy-migration.test.ts` and `tests/unit/cross-model-translation-isolation.property.test.ts` avoid `as unknown as` / `as any`
@@ -36,6 +38,7 @@ A file is considered "covered" if it is **directly imported** by a `*.test.*` fi
 ### 2.1 Client: `client/src/features/prompt-optimizer/`
 
 **Currently Tested (directly imported):**
+
 - `utils/signalUtils.ts` ✅
 - `utils/SuggestionCache.ts` ✅
 - `utils/SuggestionRequestManager.ts` ✅
@@ -46,6 +49,7 @@ A file is considered "covered" if it is **directly imported** by a `*.test.*` fi
 **Untested (high priority):**
 
 #### Core Hooks
+
 - `PromptOptimizerContainer/hooks/usePromptOptimization.ts`
 - `PromptOptimizerContainer/hooks/usePromptLoader.ts`
 - `PromptOptimizerContainer/hooks/useSuggestionApply.ts`
@@ -56,6 +60,7 @@ A file is considered "covered" if it is **directly imported** by a `*.test.*` fi
 - `PromptOptimizerContainer/hooks/useEnhancementSuggestions.ts`
 
 #### PromptCanvas Hooks
+
 - `PromptCanvas/hooks/useLockedSpanInteractions.ts`
 - `PromptCanvas/hooks/usePromptVersioning.ts`
 - `PromptCanvas/hooks/useSpanSelectionEffects.ts`
@@ -71,11 +76,13 @@ A file is considered "covered" if it is **directly imported** by a `*.test.*` fi
 - `PromptCanvas/hooks/useKeyboardShortcuts.ts`
 
 #### PromptCanvas Utils
+
 - `PromptCanvas/utils/promptCanvasFormatters.ts`
 - `PromptCanvas/utils/spanDataConversion.ts`
 - `PromptCanvas/utils/exportFormatConversion.ts`
 
 #### Top-Level Hooks
+
 - `hooks/useClipboard.ts`
 - `hooks/useModelRegistry.ts`
 - `hooks/useCapabilities.ts`
@@ -84,6 +91,7 @@ A file is considered "covered" if it is **directly imported** by a `*.test.*` fi
 - `hooks/useEditHistory.ts`
 
 #### Utils
+
 - `utils/textSelection.ts`
 - `utils/applySuggestion.ts`
 - `utils/debounce.ts`
@@ -99,6 +107,7 @@ A file is considered "covered" if it is **directly imported** by a `*.test.*` fi
 ### 2.2 Client: `client/src/features/span-highlighting/`
 
 **Currently Tested:**
+
 - `hooks/useSpanLabeling.ts` ✅
 - `utils/cacheKey.ts` ✅
 - `utils/hashing.ts` ✅
@@ -106,6 +115,7 @@ A file is considered "covered" if it is **directly imported** by a `*.test.*` fi
 **Untested (high priority):**
 
 #### API Layer
+
 - `api/spanLabelingApi.ts`
 - `api/spanLabelingStream.ts`
 - `api/spanLabelingRequest.ts`
@@ -113,10 +123,12 @@ A file is considered "covered" if it is **directly imported** by a `*.test.*` fi
 - `api/spanLabelingErrors.ts`
 
 #### Services
+
 - `services/SpanLabelingCache.ts`
 - `services/storageAdapter.ts`
 
 #### Hooks
+
 - `hooks/useHighlightRendering.ts`
 - `hooks/useHighlightSourceSelection.ts`
 - `hooks/useSpanLabelingCache.ts`
@@ -126,6 +138,7 @@ A file is considered "covered" if it is **directly imported** by a `*.test.*` fi
 - `hooks/useAsyncScheduler.ts`
 
 #### Utils
+
 - `utils/domManipulation.ts`
 - `utils/categoryValidators.ts`
 - `utils/highlightConversion.ts`
@@ -146,10 +159,12 @@ A file is considered "covered" if it is **directly imported** by a `*.test.*` fi
 ### 2.3 Client: `client/src/components/SuggestionsPanel/`
 
 **Currently Tested:**
+
 - `components/SuggestionsList.tsx` ✅
 - `hooks/useSuggestionsState.ts` ✅
 
 **Untested:**
+
 - `api/customSuggestionsApi.ts`
 - `api/schemas.ts`
 - `hooks/useCustomRequest.ts`
@@ -160,6 +175,7 @@ A file is considered "covered" if it is **directly imported** by a `*.test.*` fi
 ### 2.4 Server: `server/src/services/video-prompt-analysis/`
 
 **Currently Tested:**
+
 - Strategies: `KlingStrategy.ts`, `LumaStrategy.ts`, `RunwayStrategy.ts`, `SoraStrategy.ts`, `VeoStrategy.ts` ✅
 - `services/analysis/VideoPromptAnalyzer.ts` ⚠️ (imported via stub subclass; core logic not exercised)
 - `services/detection/ModelDetectionService.ts` ✅
@@ -172,6 +188,7 @@ A file is considered "covered" if it is **directly imported** by a `*.test.*` fi
 **Untested (high priority):**
 
 #### Analysis Services
+
 - `services/analysis/IrEnricher.ts`
 - `services/analysis/HeuristicIrExtractor.ts`
 - `services/analysis/SpanToIrMapper.ts`
@@ -182,19 +199,23 @@ A file is considered "covered" if it is **directly imported** by a `*.test.*` fi
 - `services/analysis/PhraseRoleAnalysisService.ts`
 
 #### Detection Services
+
 - `services/detection/VideoPromptDetectionService.ts`
 - `services/detection/SectionDetectionService.ts`
 
 #### Guidance Services
+
 - `services/guidance/CategoryGuidanceService.ts`
 - `services/guidance/FallbackStrategyService.ts`
 
 #### Strategy Infrastructure
+
 - `strategies/StrategyRegistry.ts`
 - `strategies/WanStrategy.ts`
 - `strategies/BaseStrategy.ts` (partially tested via subclasses)
 
 #### Utils
+
 - `utils/textHelpers.ts`
 
 ---
@@ -202,12 +223,14 @@ A file is considered "covered" if it is **directly imported** by a `*.test.*` fi
 ### 2.5 Server: `server/src/middleware/`
 
 **Currently Tested:**
+
 - `requestId.ts` ✅
 - `asyncHandler.ts` ✅
 - `errorHandler.ts` ✅
 - `performanceMonitor.ts` ✅
 
 **Untested:**
+
 - `enforceVideoMode.ts`
 - `normalizeOptimizationRequest.ts`
 - `validateRequest.ts`
@@ -221,10 +244,12 @@ A file is considered "covered" if it is **directly imported** by a `*.test.*` fi
 ### 2.6 Server: `server/src/infrastructure/`
 
 **Currently Tested:**
+
 - `Logger.ts` ✅
 - `requestContext.ts` ✅
 
 **Untested:**
+
 - `firebaseAdmin.ts`
 - `CircuitBreakerAdapter.ts`
 - `DIContainer.ts`
@@ -237,6 +262,7 @@ A file is considered "covered" if it is **directly imported** by a `*.test.*` fi
 ### 2.7 Server: `server/src/routes/`
 
 **Currently Tested:**
+
 - `health.routes.ts` ✅
 - `api.routes.ts` ✅
 - `suggestions.ts` ✅
@@ -248,6 +274,7 @@ A file is considered "covered" if it is **directly imported** by a `*.test.*` fi
 ### 2.8 Server: `server/src/llm/span-labeling/`
 
 **Currently Tested (subset):**
+
 - `cache/SubstringPositionCache.ts` ✅
 - `processing/AdjacentSpanMerger.ts` ✅
 - `processing/ConfidenceFilter.ts` ✅
@@ -265,6 +292,7 @@ A file is considered "covered" if it is **directly imported** by a `*.test.*` fi
 - `config/SpanLabelingConfig.ts` ✅
 
 **Untested (high priority):**
+
 - `SpanLabelingService.ts` (main orchestrator)
 - `services/RobustLlmClient.ts`
 - `services/GeminiLlmClient.ts`
@@ -347,6 +375,7 @@ No current failures observed in the checks run on 2026-01-14.
 ## 5. Coverage Thresholds
 
 According to `config/test/vitest.config.js`, the project aims for:
+
 - **Lines:** 85%
 - **Functions:** 80%
 - **Branches:** 75%
@@ -356,5 +385,5 @@ According to `config/test/vitest.config.js`, the project aims for:
 
 ---
 
-*Last Updated: 2026-01-14*  
-*Report Method: Static import analysis + test guideline audit + tsc checks + targeted test run*
+_Last Updated: 2026-01-14_  
+_Report Method: Static import analysis + test guideline audit + tsc checks + targeted test run_

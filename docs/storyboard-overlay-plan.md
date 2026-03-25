@@ -27,12 +27,12 @@ Add a derived `heroGeneration` that excludes image-sequence types:
 // NEW
 const heroGeneration = useMemo(() => {
   // If current active generation is a video, use it
-  if (activeGeneration && activeGeneration.mediaType !== 'image-sequence') {
+  if (activeGeneration && activeGeneration.mediaType !== "image-sequence") {
     return activeGeneration;
   }
   // Otherwise, fall back to the latest non-image-sequence generation
   const videoGenerations = generations.filter(
-    (gen) => gen.mediaType !== 'image-sequence'
+    (gen) => gen.mediaType !== "image-sequence",
   );
   return videoGenerations.length > 0
     ? videoGenerations[videoGenerations.length - 1]!
@@ -71,11 +71,13 @@ Then in the hero JSX, replace `activeGeneration` with `heroGeneration`:
 Restyle the strip as an absolute-positioned overlay with frosted glass backdrop. The outer wrapper changes from a static flex row to a floating overlay.
 
 Current outer div:
+
 ```tsx
 <div className="flex items-center gap-2 px-4 py-2" data-testid="storyboard-strip">
 ```
 
 Replace with:
+
 ```tsx
 <div
   className="absolute bottom-4 left-1/2 z-30 flex -translate-x-1/2 items-center gap-2 rounded-xl border border-[#22252C] bg-[#16181E]/85 px-4 py-2.5 shadow-[0_8px_32px_rgba(0,0,0,0.5)] backdrop-blur-xl"
@@ -84,6 +86,7 @@ Replace with:
 ```
 
 Design properties (matching model selector treatment from the mockup):
+
 - `position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%)` — centered at bottom of canvas
 - `background: #16181E` at 85% opacity (`bg-[#16181E]/85`) — matches `C.cardBg` from mockup token `cardBg: "#16181E"`
 - `backdrop-filter: blur(24px)` (`backdrop-blur-xl`) — frosted glass, consistent with `ModelCornerSelector`
@@ -94,22 +97,39 @@ Design properties (matching model selector treatment from the mockup):
 - `padding: 10px 16px` (`px-4 py-2.5`)
 
 Add an entrance animation. Either use a Tailwind `animate-` class if the project has `fadeUp` defined, or add inline:
+
 ```tsx
 style={{ animation: 'fadeUp 0.2s ease' }}
 ```
 
 Check if `@keyframes fadeUp` exists in the project's global CSS or tailwind config. If not, add it to the component file or use `animate-fade-in` if available. The mockup defines `fadeUp` as:
+
 ```css
 @keyframes fadeUp {
-  from { opacity: 0; transform: translateY(6px) translateX(-50%); }
-  to { opacity: 1; transform: translateY(0) translateX(-50%); }
+  from {
+    opacity: 0;
+    transform: translateY(6px) translateX(-50%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) translateX(-50%);
+  }
 }
 ```
 
 Note: since the element uses `translate-x-1/2` via Tailwind, the animation keyframes must preserve that translateX so the strip doesn't jump. Safest approach: use `opacity` animation only and let Tailwind handle positioning:
+
 ```css
-@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
 ```
+
 Or use `animate-in fade-in` from shadcn/ui if available.
 
 ### File: `/Users/bryceharmon/Desktop/prompt-builder/client/src/features/prompt-optimizer/CanvasWorkspace/CanvasWorkspace.tsx`
@@ -117,6 +137,7 @@ Or use `animate-in fade-in` from shadcn/ui if available.
 Move the `StoryboardStrip` render from its current position (between action row and prompt bar) into the canvas container — the `<div className="relative overflow-hidden rounded-2xl">` that wraps `GenerationsPanel`.
 
 Current layout structure (simplified):
+
 ```tsx
 {/* Video canvas */}
 <div className="relative overflow-hidden rounded-2xl">
@@ -140,6 +161,7 @@ Current layout structure (simplified):
 ```
 
 Move to:
+
 ```tsx
 {/* Video canvas */}
 <div className="relative overflow-hidden rounded-2xl">
@@ -173,12 +195,14 @@ The canvas container already has `position: relative`, so the strip's `position:
 ### File: `/Users/bryceharmon/Desktop/prompt-builder/client/src/features/prompt-optimizer/CanvasWorkspace/components/__tests__/StoryboardStrip.test.tsx`
 
 Add or update tests:
+
 1. **Renders with overlay positioning classes** — assert `backdrop-blur-xl`, `absolute`, `bottom-4` classes present on root element.
 2. **Does not affect parent layout** — the strip should not change the rendered height of its parent container (it's absolutely positioned).
 
 ### File: `/Users/bryceharmon/Desktop/prompt-builder/client/src/features/prompt-optimizer/GenerationsPanel/__tests__/GenerationsPanel.hero.test.tsx`
 
 Add tests:
+
 1. **Hero mode shows video generation when image-sequence is active.** Set up generations array with one completed video and one completed image-sequence. Set `activeGenerationId` to the image-sequence. Assert that the rendered `GenerationCard` receives the video generation, not the image-sequence.
 2. **Hero mode shows empty state when only image-sequences exist.** Set up generations with only image-sequence types. Assert empty state renders.
 3. **Hero mode shows video generation normally when no image-sequences present.** Baseline test — active video generation renders as hero.
@@ -192,13 +216,13 @@ Add tests:
 
 ## Files Modified
 
-| File | Change |
-|------|--------|
-| `.../GenerationsPanel/GenerationsPanel.tsx` | Add `heroGeneration` memo, use in hero branch, add `EmptyState` fallback |
-| `.../CanvasWorkspace/components/StoryboardStrip.tsx` | Restyle outer div as absolute overlay with frosted glass |
-| `.../CanvasWorkspace/CanvasWorkspace.tsx` | Move `StoryboardStrip` render inside canvas container div |
-| `.../GenerationsPanel/__tests__/GenerationsPanel.hero.test.tsx` | Add hero filtering tests |
-| `.../CanvasWorkspace/components/__tests__/StoryboardStrip.test.tsx` | Add overlay positioning assertions |
+| File                                                                | Change                                                                   |
+| ------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| `.../GenerationsPanel/GenerationsPanel.tsx`                         | Add `heroGeneration` memo, use in hero branch, add `EmptyState` fallback |
+| `.../CanvasWorkspace/components/StoryboardStrip.tsx`                | Restyle outer div as absolute overlay with frosted glass                 |
+| `.../CanvasWorkspace/CanvasWorkspace.tsx`                           | Move `StoryboardStrip` render inside canvas container div                |
+| `.../GenerationsPanel/__tests__/GenerationsPanel.hero.test.tsx`     | Add hero filtering tests                                                 |
+| `.../CanvasWorkspace/components/__tests__/StoryboardStrip.test.tsx` | Add overlay positioning assertions                                       |
 
 ## What NOT to Change
 

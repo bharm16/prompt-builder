@@ -6,7 +6,7 @@ export type HttpError = Error & {
 export function createHttpError(
   message: string,
   statusCode: number,
-  details?: Record<string, unknown>
+  details?: Record<string, unknown>,
 ): HttpError {
   const error = new Error(message) as HttpError;
   error.statusCode = statusCode;
@@ -18,7 +18,7 @@ export function createHttpError(
 
 export function createForbiddenError(
   message: string,
-  details?: Record<string, unknown>
+  details?: Record<string, unknown>,
 ): HttpError {
   return createHttpError(message, 403, details);
 }

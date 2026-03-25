@@ -1,7 +1,7 @@
-import React, { useCallback } from 'react';
-import { Plus, Star, X } from '@promptstudio/system/components/ui';
-import { cn } from '@/utils/cn';
-import type { UploadImageItem } from './hooks/useQuickCharacterCreate';
+import React, { useCallback } from "react";
+import { Plus, Star, X } from "@promptstudio/system/components/ui";
+import { cn } from "@/utils/cn";
+import type { UploadImageItem } from "./hooks/useQuickCharacterCreate";
 
 interface ImageUploadGridProps {
   images: UploadImageItem[];
@@ -22,13 +22,13 @@ export function ImageUploadGrid({
     (event: React.DragEvent<HTMLDivElement>) => {
       event.preventDefault();
       const files = Array.from(event.dataTransfer.files || []).filter((file) =>
-        file.type.startsWith('image/')
+        file.type.startsWith("image/"),
       );
       if (files.length > 0) {
         onAdd(files.slice(0, maxImages - images.length));
       }
     },
-    [images.length, maxImages, onAdd]
+    [images.length, maxImages, onAdd],
   );
 
   return (
@@ -52,14 +52,14 @@ export function ImageUploadGrid({
               type="button"
               onClick={() => onSetPrimary(index)}
               className={cn(
-                'absolute left-1 top-1 rounded bg-black/50 p-1 text-white/60 transition',
-                image.isPrimary && 'text-amber-400'
+                "absolute left-1 top-1 rounded bg-black/50 p-1 text-white/60 transition",
+                image.isPrimary && "text-amber-400",
               )}
-              title={image.isPrimary ? 'Primary image' : 'Set as primary'}
+              title={image.isPrimary ? "Primary image" : "Set as primary"}
             >
               <Star
                 className="h-4 w-4"
-                fill={image.isPrimary ? 'currentColor' : 'none'}
+                fill={image.isPrimary ? "currentColor" : "none"}
               />
             </button>
             <button
@@ -80,7 +80,12 @@ export function ImageUploadGrid({
               accept="image/*"
               multiple
               onChange={(event) =>
-                onAdd(Array.from(event.target.files || []).slice(0, maxImages - images.length))
+                onAdd(
+                  Array.from(event.target.files || []).slice(
+                    0,
+                    maxImages - images.length,
+                  ),
+                )
               }
               className="hidden"
             />

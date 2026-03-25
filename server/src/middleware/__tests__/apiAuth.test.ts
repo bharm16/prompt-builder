@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { NextFunction, Request, Response } from 'express';
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { NextFunction, Request, Response } from "express";
 
 const { verifyIdTokenMock, loggerMock } = vi.hoisted(() => ({
   verifyIdTokenMock: vi.fn(),
@@ -9,32 +9,34 @@ const { verifyIdTokenMock, loggerMock } = vi.hoisted(() => ({
   },
 }));
 
-vi.mock('@infrastructure/firebaseAdmin', () => ({
+vi.mock("@infrastructure/firebaseAdmin", () => ({
   getAuth: () => ({
     verifyIdToken: verifyIdTokenMock,
   }),
 }));
 
-vi.mock('@infrastructure/Logger', () => ({
+vi.mock("@infrastructure/Logger", () => ({
   logger: loggerMock,
 }));
 
-import { apiAuthMiddleware } from '../apiAuth';
+import { apiAuthMiddleware } from "../apiAuth";
 
 type ApiAuthRequest = Request & {
   id?: string;
   apiKey?: string;
   user?: { uid: string };
-  query: Request['query'] & { apiKey?: string };
+  query: Request["query"] & { apiKey?: string };
 };
 
-function createRequest(overrides: Partial<ApiAuthRequest> = {}): ApiAuthRequest {
+function createRequest(
+  overrides: Partial<ApiAuthRequest> = {},
+): ApiAuthRequest {
   const req = {
     headers: {},
-    ip: '127.0.0.1',
-    path: '/api/test',
-    method: 'POST',
-    id: 'req-1',
+    ip: "127.0.0.1",
+    path: "/api/test",
+    method: "POST",
+    id: "req-1",
     query: {},
     get: vi.fn((name: string) => {
       const key = name.toLowerCase();
@@ -54,7 +56,7 @@ function createResponse() {
   return res;
 }
 
-describe('apiAuthMiddleware', () => {
+describe("apiAuthMiddleware", () => {
   const originalEnv = process.env;
 
   beforeEach(() => {
@@ -65,7 +67,7 @@ describe('apiAuthMiddleware', () => {
     delete process.env.NODE_ENV;
   });
 
-  it('returns 401 when no authentication is provided', async () => {
+  it("returns 401 when no authentication is provided", async () => {
     const req = createRequest();
     const res = createResponse();
     const next = vi.fn() as NextFunction;
@@ -75,17 +77,17 @@ describe('apiAuthMiddleware', () => {
     expect(res.status).toHaveBeenCalledWith(401);
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({
-        error: 'Authentication required',
-      })
+        error: "Authentication required",
+      }),
     );
     expect(next).not.toHaveBeenCalled();
   });
 
-  it('returns 403 when invalid credentials are provided', async () => {
-    process.env.ALLOWED_API_KEYS = 'good-key';
+  it("returns 403 when invalid credentials are provided", async () => {
+    process.env.ALLOWED_API_KEYS = "good-key";
 
     const req = createRequest({
-      headers: { 'x-api-key': 'bad-key' } as Request['headers'],
+      headers: { "x-api-key": "bad-key" } as Request["headers"],
     });
     const res = createResponse();
     const next = vi.fn() as NextFunction;
@@ -95,32 +97,32 @@ describe('apiAuthMiddleware', () => {
     expect(res.status).toHaveBeenCalledWith(403);
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({
-        error: 'Unauthorized',
-      })
+        error: "Unauthorized",
+      }),
     );
     expect(next).not.toHaveBeenCalled();
   });
 
-  it('authenticates with x-api-key header', async () => {
-    process.env.ALLOWED_API_KEYS = 'k1,k2';
+  it("authenticates with x-api-key header", async () => {
+    process.env.ALLOWED_API_KEYS = "k1,k2";
     const req = createRequest({
-      headers: { 'x-api-key': 'k2' } as Request['headers'],
+      headers: { "x-api-key": "k2" } as Request["headers"],
     });
     const res = createResponse();
     const next = vi.fn() as NextFunction;
 
     await apiAuthMiddleware(req, res, next);
 
-    expect(req.apiKey).toBe('k2');
-    expect(req.user).toEqual({ uid: 'api-key:k2' });
+    expect(req.apiKey).toBe("k2");
+    expect(req.user).toEqual({ uid: "api-key:k2" });
     expect(next).toHaveBeenCalledTimes(1);
     expect(res.status).not.toHaveBeenCalled();
   });
 
-  it('rejects API key passed via query parameter', async () => {
-    process.env.API_KEY = 'query-key';
+  it("rejects API key passed via query parameter", async () => {
+    process.env.API_KEY = "query-key";
     const req = createRequest({
-      query: { apiKey: 'query-key' },
+      query: { apiKey: "query-key" },
     });
     const res = createResponse();
     const next = vi.fn() as NextFunction;
@@ -132,62 +134,62 @@ describe('apiAuthMiddleware', () => {
     expect(res.status).toHaveBeenCalledWith(401);
   });
 
-  it('authenticates with bearer API key when Firebase token validation fails', async () => {
-    process.env.ALLOWED_API_KEYS = 'bearer-key';
-    verifyIdTokenMock.mockRejectedValue(new Error('invalid token'));
+  it("authenticates with bearer API key when Firebase token validation fails", async () => {
+    process.env.ALLOWED_API_KEYS = "bearer-key";
+    verifyIdTokenMock.mockRejectedValue(new Error("invalid token"));
 
     const req = createRequest({
-      headers: { authorization: 'Bearer bearer-key' } as Request['headers'],
+      headers: { authorization: "Bearer bearer-key" } as Request["headers"],
     });
     const res = createResponse();
     const next = vi.fn() as NextFunction;
 
     await apiAuthMiddleware(req, res, next);
 
-    expect(verifyIdTokenMock).toHaveBeenCalledWith('bearer-key');
-    expect(req.apiKey).toBe('bearer-key');
-    expect(req.user).toEqual({ uid: 'api-key:bearer-key' });
+    expect(verifyIdTokenMock).toHaveBeenCalledWith("bearer-key");
+    expect(req.apiKey).toBe("bearer-key");
+    expect(req.user).toEqual({ uid: "api-key:bearer-key" });
     expect(next).toHaveBeenCalledTimes(1);
   });
 
-  it('authenticates with Firebase token', async () => {
-    verifyIdTokenMock.mockResolvedValue({ uid: 'firebase-user' });
+  it("authenticates with Firebase token", async () => {
+    verifyIdTokenMock.mockResolvedValue({ uid: "firebase-user" });
     const req = createRequest({
-      headers: { 'x-firebase-token': 'firebase-token' } as Request['headers'],
+      headers: { "x-firebase-token": "firebase-token" } as Request["headers"],
     });
     const res = createResponse();
     const next = vi.fn() as NextFunction;
 
     await apiAuthMiddleware(req, res, next);
 
-    expect(verifyIdTokenMock).toHaveBeenCalledWith('firebase-token');
-    expect(req.user).toEqual({ uid: 'firebase-user' });
+    expect(verifyIdTokenMock).toHaveBeenCalledWith("firebase-token");
+    expect(req.user).toEqual({ uid: "firebase-user" });
     expect(req.apiKey).toBeUndefined();
     expect(next).toHaveBeenCalledTimes(1);
   });
 
-  it('falls back to API key when Firebase verification fails', async () => {
-    process.env.ALLOWED_API_KEYS = 'fallback-key';
-    verifyIdTokenMock.mockRejectedValue(new Error('bad firebase token'));
+  it("falls back to API key when Firebase verification fails", async () => {
+    process.env.ALLOWED_API_KEYS = "fallback-key";
+    verifyIdTokenMock.mockRejectedValue(new Error("bad firebase token"));
     const req = createRequest({
       headers: {
-        'x-firebase-token': 'bad-token',
-        'x-api-key': 'fallback-key',
-      } as Request['headers'],
+        "x-firebase-token": "bad-token",
+        "x-api-key": "fallback-key",
+      } as Request["headers"],
     });
     const res = createResponse();
     const next = vi.fn() as NextFunction;
 
     await apiAuthMiddleware(req, res, next);
 
-    expect(req.user).toEqual({ uid: 'api-key:fallback-key' });
+    expect(req.user).toEqual({ uid: "api-key:fallback-key" });
     expect(next).toHaveBeenCalledTimes(1);
   });
 
-  it('does not allow the dev fallback key in production', async () => {
-    process.env.NODE_ENV = 'production';
+  it("does not allow the dev fallback key in production", async () => {
+    process.env.NODE_ENV = "production";
     const req = createRequest({
-      headers: { 'x-api-key': 'dev-key-12345' } as Request['headers'],
+      headers: { "x-api-key": "dev-key-12345" } as Request["headers"],
     });
     const res = createResponse();
     const next = vi.fn() as NextFunction;

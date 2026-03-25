@@ -14,12 +14,15 @@
  *   debug.logEffect('fetchData triggered');
  */
 
-import { useEffect, useRef, useCallback, useMemo } from 'react';
-import { logger } from '../services/LoggingService';
+import { useEffect, useRef, useCallback, useMemo } from "react";
+import { logger } from "../services/LoggingService";
 
 interface DebugLogger {
   logState: (name: string, value: unknown) => void;
-  logEffect: (description: string, deps?: unknown[] | Record<string, unknown>) => void;
+  logEffect: (
+    description: string,
+    deps?: unknown[] | Record<string, unknown>,
+  ) => void;
   logAction: (action: string, payload?: unknown) => void;
   logError: (message: string, error?: Error) => void;
   startTimer: (operationId: string) => void;
@@ -44,7 +47,7 @@ const defaultOptions: UseDebugLoggerOptions = {
 export function useDebugLogger(
   componentName: string,
   componentProps?: Record<string, unknown>,
-  options: UseDebugLoggerOptions = defaultOptions
+  options: UseDebugLoggerOptions = defaultOptions,
 ): DebugLogger {
   const renderCount = useRef(0);
   const prevPropsRef = useRef<Record<string, unknown> | undefined>(undefined);
@@ -55,7 +58,7 @@ export function useDebugLogger(
 
   // Log renders
   if (options.logRenders) {
-    log.debug('Render', { renderCount: renderCount.current });
+    log.debug("Render", { renderCount: renderCount.current });
   }
 
   // Log props changes
@@ -65,7 +68,7 @@ export function useDebugLogger(
     if (prevPropsRef.current) {
       const changes = findChangedProps(prevPropsRef.current, componentProps);
       if (changes.length > 0) {
-        log.debug('Props changed', {
+        log.debug("Props changed", {
           changes,
           renderCount: renderCount.current,
         });
@@ -78,53 +81,59 @@ export function useDebugLogger(
   useEffect(() => {
     if (!options.logMountUnmount) return;
 
-    log.info('Mounted', { renderCount: 1 });
+    log.info("Mounted", { renderCount: 1 });
 
     return () => {
-      log.info('Unmounting', { totalRenders: renderCount.current });
+      log.info("Unmounting", { totalRenders: renderCount.current });
     };
   }, [log, options.logMountUnmount]);
 
   // Memoized logging functions
   const logState = useCallback(
     (name: string, value: unknown) => {
-      log.debug('State change', { name, value: summarize(value) });
+      log.debug("State change", { name, value: summarize(value) });
     },
-    [log]
+    [log],
   );
 
   const logEffect = useCallback(
     (description: string, deps?: unknown[] | Record<string, unknown>) => {
       if (!deps) {
-        log.debug('Effect triggered', { description });
+        log.debug("Effect triggered", { description });
       } else if (Array.isArray(deps)) {
-        log.debug('Effect triggered', { description, deps: deps.map(summarize) });
+        log.debug("Effect triggered", {
+          description,
+          deps: deps.map(summarize),
+        });
       } else {
-        log.debug('Effect triggered', { description, deps });
+        log.debug("Effect triggered", { description, deps });
       }
     },
-    [log]
+    [log],
   );
 
   const logAction = useCallback(
     (action: string, payload?: unknown) => {
-      log.info('Action dispatched', payload ? { action, payload: summarize(payload) } : { action });
+      log.info(
+        "Action dispatched",
+        payload ? { action, payload: summarize(payload) } : { action },
+      );
     },
-    [log]
+    [log],
   );
 
   const logError = useCallback(
     (message: string, error?: Error) => {
       log.error(message, error);
     },
-    [log]
+    [log],
   );
 
   const startTimer = useCallback(
     (operationId: string) => {
       logger.startTimer(`${componentName}:${operationId}`);
     },
-    [componentName]
+    [componentName],
   );
 
   const endTimer = useCallback(
@@ -138,10 +147,10 @@ export function useDebugLogger(
         if (description) {
           meta.description = description;
         }
-        log.debug('Operation completed', meta);
+        log.debug("Operation completed", meta);
       }
     },
-    [componentName, log]
+    [componentName, log],
   );
 
   return {
@@ -159,7 +168,7 @@ export function useDebugLogger(
  */
 function findChangedProps(
   prev: Record<string, unknown>,
-  next: Record<string, unknown>
+  next: Record<string, unknown>,
 ): Array<{ key: string; prev: unknown; next: unknown }> {
   const changes: Array<{ key: string; prev: unknown; next: unknown }> = [];
   const allKeys = new Set([...Object.keys(prev), ...Object.keys(next)]);
@@ -183,11 +192,11 @@ function findChangedProps(
 function summarize(value: unknown): unknown {
   if (value === null || value === undefined) return value;
 
-  if (typeof value === 'function') {
-    return `[Function: ${value.name || 'anonymous'}]`;
+  if (typeof value === "function") {
+    return `[Function: ${value.name || "anonymous"}]`;
   }
 
-  if (typeof value === 'string' && value.length > 100) {
+  if (typeof value === "string" && value.length > 100) {
     return `${value.slice(0, 100)}... (${value.length} chars)`;
   }
 
@@ -195,12 +204,12 @@ function summarize(value: unknown): unknown {
     return `[Array(${value.length})]`;
   }
 
-  if (typeof value === 'object') {
+  if (typeof value === "object") {
     const keys = Object.keys(value);
     if (keys.length > 5) {
-      return `{${keys.slice(0, 5).join(', ')}, ... +${keys.length - 5}}`;
+      return `{${keys.slice(0, 5).join(", ")}, ... +${keys.length - 5}}`;
     }
-    return `{${keys.join(', ')}}`;
+    return `{${keys.join(", ")}}`;
   }
 
   return value;
@@ -211,9 +220,10 @@ function summarize(value: unknown): unknown {
  */
 export function withDebugLogging<P extends object>(
   Component: React.ComponentType<P>,
-  componentName?: string
+  componentName?: string,
 ): React.FC<P> {
-  const displayName = componentName || Component.displayName || Component.name || 'Component';
+  const displayName =
+    componentName || Component.displayName || Component.name || "Component";
 
   const WrappedComponent: React.FC<P> = (props) => {
     useDebugLogger(displayName, props as Record<string, unknown>);

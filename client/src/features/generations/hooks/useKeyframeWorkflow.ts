@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { Asset } from '@shared/types/asset';
-import type { KeyframeTile } from '@components/ToolSidebar/types';
-import type { GenerationParams } from '../types';
-import type { GenerationOverrides } from '@components/ToolSidebar/types';
+import { useCallback, useEffect, useMemo, useState } from "react";
+import type { Asset } from "@shared/types/asset";
+import type { KeyframeTile } from "@components/ToolSidebar/types";
+import type { GenerationParams } from "../types";
+import type { GenerationOverrides } from "@components/ToolSidebar/types";
 
 interface KeyframeStepState {
   isActive: boolean;
@@ -17,18 +17,28 @@ interface UseKeyframeWorkflowOptions {
   clearStartFrame: () => void;
   detectedCharacter: Asset | null;
   onCreateVersionIfNeeded: () => string;
-  generateRender: (model: string, prompt: string, params: GenerationParams) => void;
+  generateRender: (
+    model: string,
+    prompt: string,
+    params: GenerationParams,
+  ) => void;
 }
 
-const createFrameSelectionId = (generationId: string, frameIndex: number): string =>
-  `frame-${generationId}-${frameIndex}`;
+const createFrameSelectionId = (
+  generationId: string,
+  frameIndex: number,
+): string => `frame-${generationId}-${frameIndex}`;
 
-const toStartImage = (frame: KeyframeTile): NonNullable<GenerationOverrides['startImage']> => ({
+const toStartImage = (
+  frame: KeyframeTile,
+): NonNullable<GenerationOverrides["startImage"]> => ({
   url: frame.url,
   source: frame.source,
   ...(frame.assetId ? { assetId: frame.assetId } : {}),
   ...(frame.storagePath ? { storagePath: frame.storagePath } : {}),
-  ...(frame.viewUrlExpiresAt ? { viewUrlExpiresAt: frame.viewUrlExpiresAt } : {}),
+  ...(frame.viewUrlExpiresAt
+    ? { viewUrlExpiresAt: frame.viewUrlExpiresAt }
+    : {}),
 });
 
 const hasExplicitRenderInputs = (overrides?: GenerationOverrides): boolean =>
@@ -38,7 +48,7 @@ const hasExplicitRenderInputs = (overrides?: GenerationOverrides): boolean =>
       overrides?.faceSwapAlreadyApplied ||
       overrides?.endImage?.url ||
       (overrides?.referenceImages && overrides.referenceImages.length > 0) ||
-      overrides?.extendVideoUrl
+      overrides?.extendVideoUrl,
   );
 
 export function useKeyframeWorkflow({
@@ -68,10 +78,13 @@ export function useKeyframeWorkflow({
     (model: string, overrides?: GenerationOverrides) => {
       if (!prompt.trim()) return;
       const versionId = onCreateVersionIfNeeded();
-      const startImage = overrides?.startImage ?? (startFrame ? toStartImage(startFrame) : null);
+      const startImage =
+        overrides?.startImage ?? (startFrame ? toStartImage(startFrame) : null);
       const resolvedCharacterAssetId =
         overrides?.characterAssetId ??
-        (startImage?.source === 'asset' ? startImage.assetId : detectedCharacter?.id);
+        (startImage?.source === "asset"
+          ? startImage.assetId
+          : detectedCharacter?.id);
 
       generateRender(model, prompt, {
         promptVersionId: versionId,
@@ -83,10 +96,18 @@ export function useKeyframeWorkflow({
         ...(overrides?.extendVideoUrl
           ? { extendVideoUrl: overrides.extendVideoUrl }
           : {}),
-        ...(resolvedCharacterAssetId ? { characterAssetId: resolvedCharacterAssetId } : {}),
-        ...(overrides?.faceSwapAlreadyApplied ? { faceSwapAlreadyApplied: true } : {}),
-        ...(overrides?.faceSwapUrl ? { faceSwapUrl: overrides.faceSwapUrl } : {}),
-        ...(overrides?.generationParams ? { generationParams: overrides.generationParams } : {}),
+        ...(resolvedCharacterAssetId
+          ? { characterAssetId: resolvedCharacterAssetId }
+          : {}),
+        ...(overrides?.faceSwapAlreadyApplied
+          ? { faceSwapAlreadyApplied: true }
+          : {}),
+        ...(overrides?.faceSwapUrl
+          ? { faceSwapUrl: overrides.faceSwapUrl }
+          : {}),
+        ...(overrides?.generationParams
+          ? { generationParams: overrides.generationParams }
+          : {}),
       });
       setKeyframeStep({
         isActive: false,
@@ -100,7 +121,7 @@ export function useKeyframeWorkflow({
       onCreateVersionIfNeeded,
       prompt,
       startFrame,
-    ]
+    ],
   );
 
   const handleRender = useCallback(
@@ -129,19 +150,21 @@ export function useKeyframeWorkflow({
 
       runRender(model, undefined);
     },
-    [detectedCharacter, keyframeStep.isActive, prompt, runRender, startFrame]
+    [detectedCharacter, keyframeStep.isActive, prompt, runRender, startFrame],
   );
 
   const handleApproveKeyframe = useCallback(
     (keyframeUrl: string) => {
-      const modelToUse = keyframeStep.pendingModel ?? 'sora-2';
-      runRender(modelToUse, { startImage: { url: keyframeUrl, source: 'keyframe' } });
+      const modelToUse = keyframeStep.pendingModel ?? "sora-2";
+      runRender(modelToUse, {
+        startImage: { url: keyframeUrl, source: "keyframe" },
+      });
     },
-    [keyframeStep.pendingModel, runRender]
+    [keyframeStep.pendingModel, runRender],
   );
 
   const handleSkipKeyframe = useCallback(() => {
-    const modelToUse = keyframeStep.pendingModel ?? 'sora-2';
+    const modelToUse = keyframeStep.pendingModel ?? "sora-2";
     runRender(modelToUse, undefined);
   }, [keyframeStep.pendingModel, runRender]);
 
@@ -151,17 +174,17 @@ export function useKeyframeWorkflow({
       frameIndex: number,
       generationId: string,
       storagePath?: string,
-      sourcePrompt?: string
+      sourcePrompt?: string,
     ) => {
       setStartFrame({
         id: createFrameSelectionId(generationId, frameIndex),
         url,
-        source: 'generation',
+        source: "generation",
         ...(sourcePrompt ? { sourcePrompt } : {}),
         ...(storagePath ? { storagePath } : {}),
       });
     },
-    [setStartFrame]
+    [setStartFrame],
   );
 
   const handleClearSelectedFrame = useCallback(() => {
@@ -170,7 +193,7 @@ export function useKeyframeWorkflow({
 
   const selectedFrameUrl = useMemo(() => {
     if (!startFrame) return null;
-    return startFrame.source === 'generation' ? startFrame.url : null;
+    return startFrame.source === "generation" ? startFrame.url : null;
   }, [startFrame]);
 
   return {

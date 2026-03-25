@@ -31,7 +31,7 @@ The API accepts the following input parameters:
   - Options: `"5"`, `"10"`
 
 - **`negative_prompt`** (`string`, _optional_):
-   Default value: `"blur, distort, and low quality"`
+  Default value: `"blur, distort, and low quality"`
   - Default: `"blur, distort, and low quality"`
 
 - **`cfg_scale`** (`float`, _optional_):
@@ -140,18 +140,23 @@ Then use the API client to make requests:
 ```javascript
 import { fal } from "@fal-ai/client";
 
-const result = await fal.subscribe("fal-ai/kling-video/v2.1/pro/image-to-video", {
-  input: {
-    prompt: "Warm, incandescent streetlights paint the rain-slicked cobblestones in pools of amber light as a couple walks hand-in-hand, their silhouettes stark against the blurry backdrop of a city shrouded in a gentle downpour; the camera lingers on the subtle textures of their rain-soaked coats and the glistening reflections dancing on the wet pavement, creating a sense of intimate vulnerability and shared quietude.",
-    image_url: "https://v3.fal.media/files/lion/_I_io6Gtk83c72d-afXf8_image.webp"
+const result = await fal.subscribe(
+  "fal-ai/kling-video/v2.1/pro/image-to-video",
+  {
+    input: {
+      prompt:
+        "Warm, incandescent streetlights paint the rain-slicked cobblestones in pools of amber light as a couple walks hand-in-hand, their silhouettes stark against the blurry backdrop of a city shrouded in a gentle downpour; the camera lingers on the subtle textures of their rain-soaked coats and the glistening reflections dancing on the wet pavement, creating a sense of intimate vulnerability and shared quietude.",
+      image_url:
+        "https://v3.fal.media/files/lion/_I_io6Gtk83c72d-afXf8_image.webp",
+    },
+    logs: true,
+    onQueueUpdate: (update) => {
+      if (update.status === "IN_PROGRESS") {
+        update.logs.map((log) => log.message).forEach(console.log);
+      }
+    },
   },
-  logs: true,
-  onQueueUpdate: (update) => {
-    if (update.status === "IN_PROGRESS") {
-      update.logs.map((log) => log.message).forEach(console.log);
-    }
-  },
-});
+);
 console.log(result.data);
 console.log(result.requestId);
 ```
@@ -169,8 +174,3 @@ console.log(result.requestId);
 - [Platform Documentation](https://docs.fal.ai)
 - [Python Client](https://docs.fal.ai/clients/python)
 - [JavaScript Client](https://docs.fal.ai/clients/javascript)
-
-
-
-
-

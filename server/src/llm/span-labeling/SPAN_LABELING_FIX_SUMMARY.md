@@ -5,6 +5,7 @@
 ## Round 1 Fixes
 
 Initial fixes addressed:
+
 - Function words being labeled ("a", "through")
 - Composite phrases not split ("detective's weathered hands")
 - Camera movements fragmented
@@ -21,12 +22,14 @@ Initial fixes addressed:
 ## Round 2 Fixes (This Session)
 
 ### Remaining Issues After Round 1
+
 1. **Parent category usage:** Model using `camera` instead of `camera.movement`
 2. **Adverb fragmentation:** "slowly" labeled as `action.movement` separately from camera verb
 3. **Direction word fragmentation:** "across" labeled as `environment.location` instead of part of action
 4. **Weather fragmentation:** Still splitting weather descriptions
 
 ### Root Cause
+
 The prompt said "use parent category if unsure" but never explicitly stated that camera verbs should ALWAYS use `camera.movement`. The model was technically following instructions but producing suboptimal results.
 
 ### Fix Applied
@@ -60,19 +63,20 @@ Added new section "CRITICAL: Always Use Specific Attributes (Read Fourth)" immed
 ```
 
 Also updated RULE 1 in Disambiguation Rules:
+
 ```markdown
 - **Critical: Camera verbs ALWAYS take precedence AND always use `camera.movement`, never just `camera`**
 ```
 
 ## Expected Results After Round 2
 
-| Metric | Round 1 | Expected Round 2 |
-|--------|---------|------------------|
-| Wrong Categories | 20% | ~5% |
-| Fragmentation | 20% | ~5% |
-| Function Words | 0% | 0% |
-| Composite Splitting | 0% | 0% |
-| JSON Parse Failures | 20% | ~0% |
+| Metric              | Round 1 | Expected Round 2 |
+| ------------------- | ------- | ---------------- |
+| Wrong Categories    | 20%     | ~5%              |
+| Fragmentation       | 20%     | ~5%              |
+| Function Words      | 0%      | 0%               |
+| Composite Splitting | 0%      | 0%               |
+| JSON Parse Failures | 20%     | ~0%              |
 
 ## Testing Recommendations
 
@@ -96,23 +100,28 @@ Run same 5 test cases and check specifically:
 ## Files Modified
 
 ### Round 1
+
 - `utils/promptBuilder.ts` - Disabled example injection in prompt building
 - `templates/span-labeling-prompt.md` - Added CRITICAL sections for function words, phrase boundaries, composite splitting
 
 ### Round 2
+
 - `templates/span-labeling-prompt.md` - Added "CRITICAL: Always Use Specific Attributes" section
 - `templates/span-labeling-prompt.md` - Updated RULE 1 disambiguation guidance
 
 ## Rollback Plan
 
 If issues occur:
+
 1. Revert `templates/span-labeling-prompt.md` to previous version
 2. Revert `utils/promptBuilder.ts` to previous version
 
 ## Future Work
 
 ### Priority 1: Validation-Side Improvements
+
 Consider adding:
+
 - Auto-upgrade parent categories to attributes when context is clear (e.g., `camera` → `camera.movement` if camera verb detected)
 - Pre-merge check for function words (auto-remove "a", "the", etc.)
 - More aggressive merge heuristics for weather/camera phrases

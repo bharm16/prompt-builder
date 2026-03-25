@@ -10,7 +10,9 @@ interface CanonicalTextOptions {
 }
 
 const DEFAULT_SEGMENTER: Intl.Segmenter | null =
-  typeof Intl !== 'undefined' ? new Intl.Segmenter('en', { granularity: 'grapheme' }) : null;
+  typeof Intl !== "undefined"
+    ? new Intl.Segmenter("en", { granularity: "grapheme" })
+    : null;
 
 export class CanonicalText {
   private readonly original: string;
@@ -19,9 +21,12 @@ export class CanonicalText {
   private _graphemes: GraphemeSegment[] | null = null;
   private _graphemeStarts: number[] | null = null;
 
-  constructor(input: string = '', { segmenter = DEFAULT_SEGMENTER }: CanonicalTextOptions = {}) {
-    this.original = input ?? '';
-    this.normalized = typeof input === 'string' ? input.normalize('NFC') : '';
+  constructor(
+    input: string = "",
+    { segmenter = DEFAULT_SEGMENTER }: CanonicalTextOptions = {},
+  ) {
+    this.original = input ?? "";
+    this.normalized = typeof input === "string" ? input.normalize("NFC") : "";
     this.segmenter = segmenter;
   }
 
@@ -33,12 +38,14 @@ export class CanonicalText {
     if (this._graphemes) return this._graphemes;
     if (!this.segmenter) {
       // Fallback: treat each code unit as a grapheme (not ideal but keeps pipeline alive)
-      const graphemes: GraphemeSegment[] = [...this.normalized].map((char, index) => ({
-        segment: char,
-        index,
-        start: index,
-        end: index + char.length,
-      }));
+      const graphemes: GraphemeSegment[] = [...this.normalized].map(
+        (char, index) => ({
+          segment: char,
+          index,
+          start: index,
+          end: index + char.length,
+        }),
+      );
       this._graphemes = graphemes;
       this._graphemeStarts = graphemes.map((g) => g.start);
       this._graphemeStarts.push(this.normalized.length);
@@ -110,6 +117,7 @@ export class CanonicalText {
   }
 }
 
-export const createCanonicalText = (input: string, options?: CanonicalTextOptions): CanonicalText =>
-  new CanonicalText(input, options);
-
+export const createCanonicalText = (
+  input: string,
+  options?: CanonicalTextOptions,
+): CanonicalText => new CanonicalText(input, options);

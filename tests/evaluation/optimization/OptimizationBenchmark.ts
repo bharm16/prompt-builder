@@ -1,15 +1,19 @@
 #!/usr/bin/env tsx
 
-import { spawnSync } from 'node:child_process';
+import { spawnSync } from "node:child_process";
 
 const args = process.argv.slice(2);
 
-const result = spawnSync('tsx', ['scripts/evaluation/generate-evaluation-prompts.ts', ...args], {
-  stdio: 'inherit',
-  env: process.env,
-});
+const result = spawnSync(
+  "tsx",
+  ["scripts/evaluation/generate-evaluation-prompts.ts", ...args],
+  {
+    stdio: "inherit",
+    env: process.env,
+  },
+);
 
-if (typeof result.status === 'number') {
+if (typeof result.status === "number") {
   process.exit(result.status);
 }
 

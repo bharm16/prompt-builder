@@ -1,9 +1,9 @@
 import {
   DEFAULT_POLICY,
   DEFAULT_OPTIONS,
-  PERFORMANCE
-} from '../config/SpanLabelingConfig.js';
-import type { ValidationPolicy, ProcessingOptions } from '../types.js';
+  PERFORMANCE,
+} from "../config/SpanLabelingConfig.js";
+import type { ValidationPolicy, ProcessingOptions } from "../types.js";
 
 const toNumberSafely = (value: unknown): number => {
   try {
@@ -17,7 +17,7 @@ const toStringSafely = (value: unknown): string => {
   try {
     return String(value);
   } catch {
-    return '';
+    return "";
   }
 };
 
@@ -37,10 +37,12 @@ const toStringSafely = (value: unknown): string => {
  * @param {Object} [policy] - Raw policy configuration
  * @returns {Object} Validated policy with defaults
  */
-export function sanitizePolicy(policy: ValidationPolicy | null = {}): ValidationPolicy {
+export function sanitizePolicy(
+  policy: ValidationPolicy | null = {},
+): ValidationPolicy {
   const merged: ValidationPolicy = {
     ...DEFAULT_POLICY,
-    ...(policy && typeof policy === 'object' ? policy : {}),
+    ...(policy && typeof policy === "object" ? policy : {}),
   };
 
   // Validate nonTechnicalWordLimit
@@ -65,10 +67,12 @@ export function sanitizePolicy(policy: ValidationPolicy | null = {}): Validation
  * @param {Object} [options] - Raw options configuration
  * @returns {Object} Validated options with defaults
  */
-export function sanitizeOptions(options: ProcessingOptions | null = {}): ProcessingOptions {
+export function sanitizeOptions(
+  options: ProcessingOptions | null = {},
+): ProcessingOptions {
   const merged: ProcessingOptions = {
     ...DEFAULT_OPTIONS,
-    ...(options && typeof options === 'object' ? options : {}),
+    ...(options && typeof options === "object" ? options : {}),
   };
 
   // Validate maxSpans - must be positive integer, capped at absolute limit
@@ -81,9 +85,7 @@ export function sanitizeOptions(options: ProcessingOptions | null = {}): Process
   // Validate minConfidence - must be between 0 and 1
   const minConfidence = toNumberSafely(merged.minConfidence);
   merged.minConfidence =
-    Number.isFinite(minConfidence) &&
-    minConfidence >= 0 &&
-    minConfidence <= 1
+    Number.isFinite(minConfidence) && minConfidence >= 0 && minConfidence <= 1
       ? minConfidence
       : DEFAULT_OPTIONS.minConfidence;
 
@@ -102,15 +104,15 @@ export function sanitizeOptions(options: ProcessingOptions | null = {}): Process
  */
 export function buildTaskDescription(
   maxSpans: number,
-  policy: ValidationPolicy | null = DEFAULT_POLICY
+  policy: ValidationPolicy | null = DEFAULT_POLICY,
 ): string {
   const parts = [`Identify up to ${maxSpans} spans and assign roles.`];
 
   if (policy) {
     parts.push(
       policy.allowOverlap === true
-        ? 'Overlapping spans are permitted.'
-        : 'Do not return overlapping spans.'
+        ? "Overlapping spans are permitted."
+        : "Do not return overlapping spans.",
     );
 
     const limit = toNumberSafely(policy.nonTechnicalWordLimit);
@@ -119,5 +121,5 @@ export function buildTaskDescription(
     }
   }
 
-  return parts.join(' ');
+  return parts.join(" ");
 }

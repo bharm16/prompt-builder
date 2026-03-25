@@ -1,19 +1,19 @@
-import type { ILogger } from '@interfaces/ILogger';
-import type { PreviewRoutesServices } from '@routes/types';
-import type { VideoGenerationOptions } from '@services/video-generation/types';
-import type { ApiErrorCode } from '@server/types/apiError';
-import type { MotionContext } from './motion';
+import type { ILogger } from "@interfaces/ILogger";
+import type { PreviewRoutesServices } from "@routes/types";
+import type { VideoGenerationOptions } from "@services/video-generation/types";
+import type { ApiErrorCode } from "@server/types/apiError";
+import type { MotionContext } from "./motion";
 
 export type VideoGenerateServices = Pick<
   PreviewRoutesServices,
-  | 'videoGenerationService'
-  | 'videoJobStore'
-  | 'userCreditService'
-  | 'storageService'
-  | 'keyframeService'
-  | 'faceSwapService'
-  | 'assetService'
-  | 'requestIdempotencyService'
+  | "videoGenerationService"
+  | "videoJobStore"
+  | "userCreditService"
+  | "storageService"
+  | "keyframeService"
+  | "faceSwapService"
+  | "assetService"
+  | "requestIdempotencyService"
 >;
 
 export interface VideoErrorPayload {
@@ -58,7 +58,7 @@ export interface TriggerResolutionArgs {
   userId: string;
   requestId?: string | undefined;
   characterAssetId?: string | undefined;
-  assetService: VideoGenerateServices['assetService'];
+  assetService: VideoGenerateServices["assetService"];
   log: ILogger;
 }
 
@@ -72,10 +72,10 @@ export interface PreprocessingArgs {
   aspectRatio?: string | undefined;
   cleanedPrompt: string;
   services: {
-    userCreditService: NonNullable<VideoGenerateServices['userCreditService']>;
-    keyframeService: VideoGenerateServices['keyframeService'];
-    faceSwapService: VideoGenerateServices['faceSwapService'];
-    assetService: VideoGenerateServices['assetService'];
+    userCreditService: NonNullable<VideoGenerateServices["userCreditService"]>;
+    keyframeService: VideoGenerateServices["keyframeService"];
+    faceSwapService: VideoGenerateServices["faceSwapService"];
+    assetService: VideoGenerateServices["assetService"];
   };
   refunds: RefundManager;
   log: ILogger;
@@ -118,7 +118,7 @@ export interface VideoRequestPlanArgs {
   resolvedStartImage?: string | undefined;
   inputReference?: string | undefined;
   endImage?: string | undefined;
-  referenceImages?: Array<{ url: string; type: 'asset' | 'style' }> | undefined;
+  referenceImages?: Array<{ url: string; type: "asset" | "style" }> | undefined;
   extendVideoUrl?: string | undefined;
   aspectRatio?: string | undefined;
   characterAssetId?: string | undefined;

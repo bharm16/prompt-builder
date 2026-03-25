@@ -11,4 +11,4 @@ spec:
         name: cpu
         target:
           type: Utilization
-          averageUtilization: 60  # More conservative in production
+          averageUtilization: 60 # More conservative in production

@@ -2,7 +2,7 @@
  * Type definitions for SuggestionsPanel components
  */
 
-import type React from 'react';
+import type React from "react";
 
 export type PanelIcon = React.ComponentType<{ className?: string }>;
 

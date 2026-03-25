@@ -1,12 +1,12 @@
 export type CoherenceEdit =
   | {
-      type: 'replaceSpanText';
+      type: "replaceSpanText";
       spanId?: string | undefined;
       replacementText?: string | undefined;
       anchorQuote?: string | undefined;
     }
   | {
-      type: 'removeSpan';
+      type: "removeSpan";
       spanId?: string | undefined;
       anchorQuote?: string | undefined;
     };
@@ -21,7 +21,7 @@ export interface CoherenceRecommendation {
 
 export interface CoherenceFinding {
   id?: string | undefined;
-  severity?: 'low' | 'medium' | 'high' | 'suggestion' | undefined;
+  severity?: "low" | "medium" | "high" | "suggestion" | undefined;
   message: string;
   reasoning: string;
   involvedSpanIds?: string[] | undefined;

@@ -11,6 +11,7 @@ Successfully implemented all 4 core fixes and 2 performance optimizations to eli
 **File:** `client/src/features/span-highlighting/utils/categoryValidators.js`
 
 **Changes:**
+
 - Removed all semantic regex patterns (CAMERA_MOTION_TERMS, LIGHT_SOURCE_TERMS, etc.)
 - Removed category-specific validators (cameraValidator, lightingValidator, etc.)
 - Replaced with structural-only validation:
@@ -20,6 +21,7 @@ Successfully implemented all 4 core fixes and 2 performance optimizations to eli
 - Frontend now trusts backend's AI-driven semantic categorization
 
 **Impact:**
+
 - Spans like "the view drifts slowly" (camera movement) are no longer rejected by regex patterns
 - AI's semantic understanding is respected
 - Reduced false negatives in span detection
@@ -31,6 +33,7 @@ Successfully implemented all 4 core fixes and 2 performance optimizations to eli
 **File:** `client/src/features/span-highlighting/hooks/useHighlightRendering.js`
 
 **Changes:**
+
 - Changed `highlightStateRef` from `wrappers: []` to `spanMap: new Map()`
 - Implemented 3-phase incremental update system:
   1. **Remove deleted spans:** Only unwrap spans that no longer exist
@@ -40,6 +43,7 @@ Successfully implemented all 4 core fixes and 2 performance optimizations to eli
 - Added `hasSpanChanged()` helper for detecting span mutations
 
 **Impact:**
+
 - With 50+ highlights: ~60% reduction in DOM mutations
 - No visible flickering on re-render
 - Improved typing performance with highlights enabled
@@ -52,6 +56,7 @@ Successfully implemented all 4 core fixes and 2 performance optimizations to eli
 **File:** `server/src/llm/span-labeling/SpanLabelingService.js`
 
 **Changes:**
+
 - Added import: `import { TAXONOMY } from '#shared/taxonomy.js'`
 - Created `buildSystemPrompt()` function that:
   - Generates taxonomy structure from TAXONOMY object at runtime
@@ -61,6 +66,7 @@ Successfully implemented all 4 core fixes and 2 performance optimizations to eli
 - Added helper functions `extractDetectionPatterns()` and `extractRulesSection()`
 
 **Impact:**
+
 - Changes to `shared/taxonomy.js` now automatically propagate to LLM
 - Eliminates risk of taxonomy drift between code and prompts
 - Single source of truth for category definitions
@@ -70,10 +76,12 @@ Successfully implemented all 4 core fixes and 2 performance optimizations to eli
 ### ✅ Fix 4: Add Span IDs (Enable Diff Tracking)
 
 **Files:**
+
 - `server/src/llm/span-labeling/processing/SpanNormalizer.js`
 - `server/src/llm/span-labeling/validation/SpanValidator.js`
 
 **Changes:**
+
 - Added `generateSpanId()` function using SHA-256 hash
 - ID format: `${hash(sourceText).slice(0,8)}-${start}-${end}-${role}`
 - Updated `normalizeSpan()` to accept `sourceText` parameter
@@ -81,6 +89,7 @@ Successfully implemented all 4 core fixes and 2 performance optimizations to eli
 - IDs persist through deduplication and overlap resolution
 
 **Impact:**
+
 - Enables stable span tracking across renders
 - Prerequisite for diff-based rendering
 - Predictable span identification for debugging
@@ -92,6 +101,7 @@ Successfully implemented all 4 core fixes and 2 performance optimizations to eli
 **File:** `client/src/features/prompt-optimizer/SpanBentoGrid/SpanBentoGrid.jsx`
 
 **Changes:**
+
 - Added `useCallback` for click handler to prevent unnecessary re-renders
 - Added documentation about existing optimizations:
   - All components (BentoBox, SpanItem) already memoized
@@ -100,6 +110,7 @@ Successfully implemented all 4 core fixes and 2 performance optimizations to eli
 - Virtual scrolling NOT implemented (unnecessary with only 7 categories)
 
 **Impact:**
+
 - Optimized for current scale (7 categories)
 - No wasted renders from handler recreation
 - Already performant with existing memoization
@@ -111,6 +122,7 @@ Successfully implemented all 4 core fixes and 2 performance optimizations to eli
 **File:** `client/src/features/span-highlighting/hooks/useDebouncedValidation.js` (NEW)
 
 **Changes:**
+
 - Created reusable hook for debounced validation
 - Implements validation caching by span ID
 - Configurable debounce delay (default: 1000ms)
@@ -118,6 +130,7 @@ Successfully implemented all 4 core fixes and 2 performance optimizations to eli
 - Includes cache clearing functionality
 
 **Impact:**
+
 - Decouples validation frequency from render frequency
 - Reduces CPU pressure during typing
 - Available for future heavy validation operations
@@ -127,10 +140,12 @@ Successfully implemented all 4 core fixes and 2 performance optimizations to eli
 ### ✅ Optimization 3: Performance Testing Infrastructure
 
 **Files:**
+
 - `client/src/features/span-highlighting/utils/performanceTesting.js` (NEW)
 - `client/src/features/span-highlighting/PERFORMANCE_TESTING.md` (NEW)
 
 **Changes:**
+
 - Created utilities for generating test spans
 - Added performance measurement functions:
   - `generateTestSpans()` - Generate test data
@@ -142,6 +157,7 @@ Successfully implemented all 4 core fixes and 2 performance optimizations to eli
 - Browser DevTools testing guide
 
 **Impact:**
+
 - Reproducible performance testing
 - Clear success criteria (metrics)
 - Verification framework for improvements
@@ -151,18 +167,21 @@ Successfully implemented all 4 core fixes and 2 performance optimizations to eli
 ## Performance Improvements (Expected)
 
 ### Before Optimizations
+
 - **50 spans:** ~150-200ms render time
 - **DOM operations:** Clear all + rebuild all = 100+ mutations
 - **Typing lag:** Noticeable delay
 - **Flickering:** Visible on re-render
 
 ### After Optimizations
+
 - **50 spans:** ~50-80ms render time (**60%+ improvement**)
 - **DOM operations:** Only changed spans = 1-10 mutations per update
 - **Typing lag:** No perceptible delay
 - **Flickering:** None (diff-based updates)
 
 ### Incremental Updates
+
 - **Add 1 span to 50:** < 10ms (only 1 DOM insertion)
 - **Remove 1 span from 50:** < 5ms (only 1 DOM removal)
 - **Update 1 span in 50:** < 15ms (unwrap + rewrap 1 span)
@@ -172,6 +191,7 @@ Successfully implemented all 4 core fixes and 2 performance optimizations to eli
 ## Testing & Verification
 
 ### Manual Testing Checklist
+
 - [ ] Load prompt with 60+ detectable elements
 - [ ] Verify smooth rendering (< 100ms)
 - [ ] Check for flickering (should be none)
@@ -180,9 +200,14 @@ Successfully implemented all 4 core fixes and 2 performance optimizations to eli
 - [ ] Check DevTools for layout thrashing (should be minimal)
 
 ### Automated Testing
+
 Use `performanceTesting.js` utilities:
+
 ```javascript
-import { generateTestSpans, measureRenderPerformance } from './utils/performanceTesting.js';
+import {
+  generateTestSpans,
+  measureRenderPerformance,
+} from "./utils/performanceTesting.js";
 
 const spans = generateTestSpans(60);
 const metrics = await measureRenderPerformance(spans, editorRef);
@@ -190,6 +215,7 @@ const metrics = await measureRenderPerformance(spans, editorRef);
 ```
 
 ### Browser DevTools
+
 1. **Performance Tab:** Check for long tasks (should be < 50ms)
 2. **React Profiler:** Verify memoization effectiveness
 3. **Paint Flashing:** Minimal repaints (only changed areas)
@@ -199,6 +225,7 @@ const metrics = await measureRenderPerformance(spans, editorRef);
 ## Architecture Improvements
 
 ### Before: Fractured Workflow
+
 ```
 Backend (AI) → Frontend (Regex) → Render
                     ↓
@@ -207,6 +234,7 @@ Backend (AI) → Frontend (Regex) → Render
 ```
 
 ### After: Unified Trust Model
+
 ```
 Backend (AI + Validation) → Frontend (Structural Check) → Render
                                         ↓
@@ -214,6 +242,7 @@ Backend (AI + Validation) → Frontend (Structural Check) → Render
 ```
 
 ### Before: Full Re-render
+
 ```
 Change detected → Clear ALL highlights → Rebuild ALL
                        ↓
@@ -221,6 +250,7 @@ Change detected → Clear ALL highlights → Rebuild ALL
 ```
 
 ### After: Diff-Based Updates
+
 ```
 Change detected → Compare by ID → Update only changed spans
                        ↓
@@ -232,16 +262,19 @@ Change detected → Compare by ID → Update only changed spans
 ## Files Modified
 
 ### Backend
+
 1. `server/src/llm/span-labeling/SpanLabelingService.js` - Dynamic taxonomy
 2. `server/src/llm/span-labeling/processing/SpanNormalizer.js` - Span IDs
 3. `server/src/llm/span-labeling/validation/SpanValidator.js` - Pass sourceText
 
 ### Frontend
+
 1. `client/src/features/span-highlighting/utils/categoryValidators.js` - Trust backend
 2. `client/src/features/span-highlighting/hooks/useHighlightRendering.js` - Diff rendering
 3. `client/src/features/prompt-optimizer/SpanBentoGrid/SpanBentoGrid.jsx` - Memoization
 
 ### New Files
+
 1. `client/src/features/span-highlighting/hooks/useDebouncedValidation.js` - Debouncing
 2. `client/src/features/span-highlighting/utils/performanceTesting.js` - Testing utils
 3. `client/src/features/span-highlighting/PERFORMANCE_TESTING.md` - Testing guide
@@ -252,13 +285,16 @@ Change detected → Compare by ID → Update only changed spans
 ## Migration Notes
 
 ### Breaking Changes
+
 None. All changes are backward compatible.
 
 ### Deprecations
+
 - Semantic regex validation patterns (removed but legacy mappings preserved)
 - Full clear-and-rebuild rendering (replaced with diff-based)
 
 ### New Requirements
+
 - Backend must generate span IDs (implemented in SpanNormalizer)
 - Spans should have stable IDs for optimal diff performance
 
@@ -267,16 +303,19 @@ None. All changes are backward compatible.
 ## Success Criteria
 
 ✅ **All 4 Core Fixes Implemented**
+
 - Trust backend AI
 - Diff-based rendering
 - Dynamic taxonomy
 - Span IDs
 
 ✅ **All 2 Performance Optimizations Implemented**
+
 - BentoGrid memoization
 - Debounced validation
 
 ✅ **Testing Infrastructure Created**
+
 - Performance testing utilities
 - Comprehensive documentation
 - Clear success metrics

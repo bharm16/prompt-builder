@@ -1,45 +1,49 @@
-import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
-import type { RefObject, MouseEvent as ReactMouseEvent } from 'react';
+import { describe, expect, it, beforeEach, afterEach, vi } from "vitest";
+import { renderHook, act } from "@testing-library/react";
+import type { RefObject, MouseEvent as ReactMouseEvent } from "react";
 
-import { useLockedSpanInteractions } from '@features/prompt-optimizer/PromptCanvas/hooks/useLockedSpanInteractions';
-import type { HighlightSpan } from '@features/span-highlighting/hooks/useHighlightRendering';
-import type { LockedSpan } from '@features/prompt-optimizer/types';
+import { useLockedSpanInteractions } from "@features/prompt-optimizer/PromptCanvas/hooks/useLockedSpanInteractions";
+import type { HighlightSpan } from "@features/span-highlighting/hooks/useHighlightRendering";
+import type { LockedSpan } from "@features/prompt-optimizer/types";
 
 const createEditorElements = () => {
-  const editor = document.createElement('div');
-  const wrapper = document.createElement('div');
-  const lockButton = document.createElement('button');
+  const editor = document.createElement("div");
+  const wrapper = document.createElement("div");
+  const lockButton = document.createElement("button");
 
-  const span = document.createElement('span');
-  span.className = 'value-word';
-  span.dataset.spanId = 'span-1';
-  span.textContent = 'hello';
+  const span = document.createElement("span");
+  span.className = "value-word";
+  span.dataset.spanId = "span-1";
+  span.textContent = "hello";
   editor.appendChild(span);
 
   return { editor, wrapper, lockButton, span };
 };
 
-describe('useLockedSpanInteractions', () => {
+describe("useLockedSpanInteractions", () => {
   beforeEach(() => {
     vi.useFakeTimers();
   });
 
   afterEach(() => {
     vi.useRealTimers();
-    document.body.innerHTML = '';
+    document.body.innerHTML = "";
   });
 
-  it('tracks hover state and schedules hide on mouse leave', () => {
+  it("tracks hover state and schedules hide on mouse leave", () => {
     const { editor, wrapper, lockButton, span } = createEditorElements();
     const setHoveredSpanId = vi.fn();
 
     const editorRef = { current: editor } as RefObject<HTMLElement>;
-    const editorWrapperRef = { current: wrapper } as RefObject<HTMLDivElement | null>;
-    const lockButtonRef = { current: lockButton } as RefObject<HTMLButtonElement | null>;
+    const editorWrapperRef = {
+      current: wrapper,
+    } as RefObject<HTMLDivElement | null>;
+    const lockButtonRef = {
+      current: lockButton,
+    } as RefObject<HTMLButtonElement | null>;
 
     const parseResultSpans: HighlightSpan[] = [
-      { id: 'span-1', start: 0, end: 5, quote: 'hello' },
+      { id: "span-1", start: 0, end: 5, quote: "hello" },
     ];
 
     const { result } = renderHook(() =>
@@ -55,9 +59,9 @@ describe('useLockedSpanInteractions', () => {
         lockedSpans: [],
         addLockedSpan: vi.fn(),
         removeLockedSpan: vi.fn(),
-        highlightFingerprint: 'fingerprint',
-        displayedPrompt: 'Prompt',
-      })
+        highlightFingerprint: "fingerprint",
+        displayedPrompt: "Prompt",
+      }),
     );
 
     act(() => {
@@ -65,7 +69,7 @@ describe('useLockedSpanInteractions', () => {
       result.current.handleHighlightMouseEnter(event);
     });
 
-    expect(setHoveredSpanId).toHaveBeenCalledWith('span-1');
+    expect(setHoveredSpanId).toHaveBeenCalledWith("span-1");
 
     act(() => {
       const event = { relatedTarget: null } as unknown as ReactMouseEvent;
@@ -76,21 +80,25 @@ describe('useLockedSpanInteractions', () => {
     expect(setHoveredSpanId).toHaveBeenCalledWith(null);
   });
 
-  it('adds locked class and toggles lock state', () => {
+  it("adds locked class and toggles lock state", () => {
     const { editor, wrapper, lockButton, span } = createEditorElements();
     const addLockedSpan = vi.fn();
     const removeLockedSpan = vi.fn();
 
     const editorRef = { current: editor } as RefObject<HTMLElement>;
-    const editorWrapperRef = { current: wrapper } as RefObject<HTMLDivElement | null>;
-    const lockButtonRef = { current: lockButton } as RefObject<HTMLButtonElement | null>;
+    const editorWrapperRef = {
+      current: wrapper,
+    } as RefObject<HTMLDivElement | null>;
+    const lockButtonRef = {
+      current: lockButton,
+    } as RefObject<HTMLButtonElement | null>;
 
     const parseResultSpans: HighlightSpan[] = [
-      { id: 'span-1', start: 0, end: 5, quote: 'hello' },
+      { id: "span-1", start: 0, end: 5, quote: "hello" },
     ];
 
     const lockedSpans: LockedSpan[] = [
-      { id: 'span-1', text: 'hello', leftCtx: '', rightCtx: '' },
+      { id: "span-1", text: "hello", leftCtx: "", rightCtx: "" },
     ];
 
     const { result } = renderHook(() =>
@@ -100,33 +108,37 @@ describe('useLockedSpanInteractions', () => {
         lockButtonRef,
         enableMLHighlighting: true,
         showHighlights: true,
-        hoveredSpanId: 'span-1',
+        hoveredSpanId: "span-1",
         setHoveredSpanId: vi.fn(),
         parseResultSpans,
         lockedSpans,
         addLockedSpan,
         removeLockedSpan,
-        highlightFingerprint: 'fingerprint',
-        displayedPrompt: 'Prompt',
-      })
+        highlightFingerprint: "fingerprint",
+        displayedPrompt: "Prompt",
+      }),
     );
 
-    expect(span.classList.contains('border-dashed')).toBe(true);
+    expect(span.classList.contains("border-dashed")).toBe(true);
 
     act(() => {
       result.current.handleToggleLock();
     });
 
-    expect(removeLockedSpan).toHaveBeenCalledWith('span-1');
+    expect(removeLockedSpan).toHaveBeenCalledWith("span-1");
   });
 
-  it('adds a locked span when toggling an unlocked highlight', () => {
+  it("adds a locked span when toggling an unlocked highlight", () => {
     const { editor, wrapper, lockButton } = createEditorElements();
     const addLockedSpan = vi.fn();
 
     const editorRef = { current: editor } as RefObject<HTMLElement>;
-    const editorWrapperRef = { current: wrapper } as RefObject<HTMLDivElement | null>;
-    const lockButtonRef = { current: lockButton } as RefObject<HTMLButtonElement | null>;
+    const editorWrapperRef = {
+      current: wrapper,
+    } as RefObject<HTMLDivElement | null>;
+    const lockButtonRef = {
+      current: lockButton,
+    } as RefObject<HTMLButtonElement | null>;
 
     const { result } = renderHook(() =>
       useLockedSpanInteractions({
@@ -135,15 +147,15 @@ describe('useLockedSpanInteractions', () => {
         lockButtonRef,
         enableMLHighlighting: true,
         showHighlights: true,
-        hoveredSpanId: 'span-1',
+        hoveredSpanId: "span-1",
         setHoveredSpanId: vi.fn(),
-        parseResultSpans: [{ id: 'span-1', start: 0, end: 5, quote: 'hello' }],
+        parseResultSpans: [{ id: "span-1", start: 0, end: 5, quote: "hello" }],
         lockedSpans: [],
         addLockedSpan,
         removeLockedSpan: vi.fn(),
-        highlightFingerprint: 'fingerprint',
-        displayedPrompt: 'Prompt',
-      })
+        highlightFingerprint: "fingerprint",
+        displayedPrompt: "Prompt",
+      }),
     );
 
     act(() => {
@@ -151,15 +163,19 @@ describe('useLockedSpanInteractions', () => {
     });
 
     expect(addLockedSpan).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 'span-1', text: 'hello' })
+      expect.objectContaining({ id: "span-1", text: "hello" }),
     );
   });
 
-  it('computes lock button position based on span bounds', () => {
+  it("computes lock button position based on span bounds", () => {
     const { editor, wrapper, lockButton, span } = createEditorElements();
     const editorRef = { current: editor } as RefObject<HTMLElement>;
-    const editorWrapperRef = { current: wrapper } as RefObject<HTMLDivElement | null>;
-    const lockButtonRef = { current: lockButton } as RefObject<HTMLButtonElement | null>;
+    const editorWrapperRef = {
+      current: wrapper,
+    } as RefObject<HTMLDivElement | null>;
+    const lockButtonRef = {
+      current: lockButton,
+    } as RefObject<HTMLButtonElement | null>;
 
     wrapper.getBoundingClientRect = vi.fn(() => ({
       top: 0,
@@ -170,7 +186,7 @@ describe('useLockedSpanInteractions', () => {
       bottom: 100,
       x: 0,
       y: 0,
-      toJSON: () => '',
+      toJSON: () => "",
     }));
 
     span.getBoundingClientRect = vi.fn(() => ({
@@ -182,7 +198,7 @@ describe('useLockedSpanInteractions', () => {
       bottom: 20,
       x: 50,
       y: 10,
-      toJSON: () => '',
+      toJSON: () => "",
     }));
 
     const { result } = renderHook(() =>
@@ -192,15 +208,15 @@ describe('useLockedSpanInteractions', () => {
         lockButtonRef,
         enableMLHighlighting: true,
         showHighlights: true,
-        hoveredSpanId: 'span-1',
+        hoveredSpanId: "span-1",
         setHoveredSpanId: vi.fn(),
-        parseResultSpans: [{ id: 'span-1', start: 0, end: 5, quote: 'hello' }],
+        parseResultSpans: [{ id: "span-1", start: 0, end: 5, quote: "hello" }],
         lockedSpans: [],
         addLockedSpan: vi.fn(),
         removeLockedSpan: vi.fn(),
-        highlightFingerprint: 'fingerprint',
-        displayedPrompt: 'Prompt',
-      })
+        highlightFingerprint: "fingerprint",
+        displayedPrompt: "Prompt",
+      }),
     );
 
     expect(result.current.lockButtonPosition).toEqual({ top: 10, left: 60 });

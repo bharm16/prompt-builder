@@ -30,17 +30,17 @@ These constraints are absolute. No task justifies violating them.
 
 These terms have specific meanings in this codebase. Do not conflate them.
 
-| Term | Meaning | Server Path | Route |
-|------|---------|-------------|-------|
-| **Span labeling** | ML categorization of prompt phrases into taxonomy categories (subject, camera, lighting…) for UI highlights | `server/src/llm/span-labeling/` | `/llm/label-spans` |
-| **Enhancement / Suggestions** | AI-generated alternative phrases for a user-selected span (click-to-enhance) | `server/src/services/enhancement/` | `/api/suggestions`, `/api/enhance` |
-| **Optimization** | Two-stage prompt rewriting pipeline (Groq fast draft → OpenAI refinement) | `server/src/services/prompt-optimization/` | `/api/optimize-stream` (SSE) |
-| **Continuity** | Shot-to-shot visual consistency in multi-shot sequences (frame-bridge, style-match) | `server/src/services/continuity/` | `/api/continuity` |
-| **Convergence** | Motion and visual convergence pipeline (iterative refinement toward target) | `server/src/services/convergence/` | `/api/motion` |
-| **Video Concept** | Guided wizard flow: subject → action → location → camera → lighting → style | `server/src/services/video-concept/` | via `/api` routes |
-| **Model Intelligence** | AI-powered model recommendation based on prompt analysis | `server/src/services/model-intelligence/` | `/api/model-intelligence` |
-| **Preview** | Image (Flux Schnell) and video (Wan 2.2) draft generation before final render | `server/src/services/image-generation/`, `server/src/services/video-generation/` | `/api/preview` |
-| **Generation** | Final video render via Sora, Veo, Kling, Luma, Runway | `server/src/services/video-generation/` | `/api/preview` (shared routes) |
+| Term                          | Meaning                                                                                                     | Server Path                                                                      | Route                              |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- | ---------------------------------- |
+| **Span labeling**             | ML categorization of prompt phrases into taxonomy categories (subject, camera, lighting…) for UI highlights | `server/src/llm/span-labeling/`                                                  | `/llm/label-spans`                 |
+| **Enhancement / Suggestions** | AI-generated alternative phrases for a user-selected span (click-to-enhance)                                | `server/src/services/enhancement/`                                               | `/api/suggestions`, `/api/enhance` |
+| **Optimization**              | Two-stage prompt rewriting pipeline (Groq fast draft → OpenAI refinement)                                   | `server/src/services/prompt-optimization/`                                       | `/api/optimize-stream` (SSE)       |
+| **Continuity**                | Shot-to-shot visual consistency in multi-shot sequences (frame-bridge, style-match)                         | `server/src/services/continuity/`                                                | `/api/continuity`                  |
+| **Convergence**               | Motion and visual convergence pipeline (iterative refinement toward target)                                 | `server/src/services/convergence/`                                               | `/api/motion`                      |
+| **Video Concept**             | Guided wizard flow: subject → action → location → camera → lighting → style                                 | `server/src/services/video-concept/`                                             | via `/api` routes                  |
+| **Model Intelligence**        | AI-powered model recommendation based on prompt analysis                                                    | `server/src/services/model-intelligence/`                                        | `/api/model-intelligence`          |
+| **Preview**                   | Image (Flux Schnell) and video (Wan 2.2) draft generation before final render                               | `server/src/services/image-generation/`, `server/src/services/video-generation/` | `/api/preview`                     |
+| **Generation**                | Final video render via Sora, Veo, Kling, Luma, Runway                                                       | `server/src/services/video-generation/`                                          | `/api/preview` (shared routes)     |
 
 See also: `docs/architecture/SERVICE_BOUNDARIES.md` for span-labeling vs. video-prompt-analysis boundary rules.
 
@@ -50,14 +50,14 @@ See also: `docs/architecture/SERVICE_BOUNDARIES.md` for span-labeling vs. video-
 
 Services are registered via domain-scoped files in `server/src/config/services/`:
 
-| Registration File | Registers |
-|---|---|
-| `infrastructure.services.ts` | cache, metrics, Firebase clients, storage, assets, credits |
-| `llm.services.ts` | aiService, claudeClient, groqClient, geminiClient |
-| `enhancement.services.ts` | enhancementService, sceneDetection, coherence, videoPromptAnalysis |
-| `generation.services.ts` | imageGeneration, videoGeneration, storyboardPreview, keyframe, faceSwap |
-| `continuity.services.ts` | continuitySessionService (gated — see Feature Flags below) |
-| `session.services.ts` | sessionService, modelIntelligence |
+| Registration File            | Registers                                                               |
+| ---------------------------- | ----------------------------------------------------------------------- |
+| `infrastructure.services.ts` | cache, metrics, Firebase clients, storage, assets, credits              |
+| `llm.services.ts`            | aiService, claudeClient, groqClient, geminiClient                       |
+| `enhancement.services.ts`    | enhancementService, sceneDetection, coherence, videoPromptAnalysis      |
+| `generation.services.ts`     | imageGeneration, videoGeneration, storyboardPreview, keyframe, faceSwap |
+| `continuity.services.ts`     | continuitySessionService (gated — see Feature Flags below)              |
+| `session.services.ts`        | sessionService, modelIntelligence                                       |
 
 The container is created in `server/src/config/services.config.ts` and initialized in `services.initialize.ts`. Routes consume services via factory functions in `server/src/config/routes.config.ts`.
 
@@ -92,16 +92,17 @@ Server DTO → feature/api/schemas.ts (Zod) → feature/api/*.ts (transform) →
 
 ## Feature Flags
 
-| Flag | Default | Effect When Set |
-|------|---------|----------------|
-| `PROMPT_OUTPUT_ONLY=true` | `false` | Disables ALL preview, video generation, motion, and convergence routes. Video-related DI registrations still happen but routes are never mounted. |
-| `ENABLE_CONVERGENCE=false` | `true` | Disables continuity service registration. `continuitySessionService` resolves to **`null`** from the DI container. |
+| Flag                       | Default | Effect When Set                                                                                                                                   |
+| -------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `PROMPT_OUTPUT_ONLY=true`  | `false` | Disables ALL preview, video generation, motion, and convergence routes. Video-related DI registrations still happen but routes are never mounted. |
+| `ENABLE_CONVERGENCE=false` | `true`  | Disables continuity service registration. `continuitySessionService` resolves to **`null`** from the DI container.                                |
 
 **Rule:** Generation-related routes must be inside the `if (!promptOutputOnly)` block in `routes.config.ts`.
 
 ## Primary Workflows
 
 ### 1) Feature Workflow
+
 1. Read relevant scope docs and impacted modules first (`client/`, `server/`, `shared/`).
 2. Implement using established patterns:
    - Frontend: `client/src/components/VideoConceptBuilder/` style (orchestrator + hooks + api + components).
@@ -116,12 +117,14 @@ Read `.agents/skills/bugfix/SKILL.md` before every bugfix.
 Key principle: invariant-first regression tests at the failure boundary. Never mock the service being fixed. The pre-commit hook rejects `fix:` commits without new test blocks.
 
 ### 3) Performance Workflow
+
 1. Start app and verify baseline behavior.
 2. Use highlight/perf scripts to measure before/after.
 3. Change one variable at a time and keep a short measurement note.
 4. Validate no regression in unit/e2e smoke tests.
 
 ### 4) Data Migration / Backfill Workflow
+
 1. Run dry-run modes first where available.
 2. Validate expected record count/sample output.
 3. Execute real migration only after dry-run is clean.
@@ -136,6 +139,7 @@ Key principle: write tests from contracts, not implementations. Default to fixin
 ## Command Reference
 
 ### Setup / Dev
+
 ```bash
 npm install
 npm start           # Dev orchestrator (client + server)
@@ -145,6 +149,7 @@ npm run restart     # Kill ports 3001/5173 and restart dev
 ```
 
 ### Build / Lint / Format
+
 ```bash
 npm run build
 npm run lint
@@ -155,6 +160,7 @@ npm run format:check
 ```
 
 ### Test
+
 ```bash
 npm run test:unit
 npm run test:coverage
@@ -166,6 +172,7 @@ npm run test:all
 ```
 
 ### Evaluations / Quality Gates
+
 ```bash
 npm run eval:span
 npm run eval:suggestions
@@ -175,6 +182,7 @@ npm run quality:gate
 ```
 
 ### Architecture Gates
+
 ```bash
 npm run arch:check
 npm run arch:cycles:client
@@ -183,6 +191,7 @@ npm run arch:forbidden-imports
 ```
 
 ### Performance / Diagnostics
+
 ```bash
 npm run verify-keys
 npm run highlight-stats
@@ -193,6 +202,7 @@ npm run perf:metrics
 ```
 
 ### Migrations
+
 ```bash
 npm run migrate:rerender:dry
 npm run migrate:rerender
@@ -242,12 +252,12 @@ If these fail, the change broke application startup or DI wiring. Fix the source
 
 Before modifying code, ask: how many distinct responsibilities does this file have? How many reasons to change?
 
-| Type | Split When |
-|------|-----------|
+| Type       | Split When                          |
+| ---------- | ----------------------------------- |
 | Components | Mixed presentation + business logic |
-| Hooks | Managing unrelated state domains |
-| Services | Multiple reasons to change |
-| Utils | Functions with different concerns |
+| Hooks      | Managing unrelated state domains    |
+| Services   | Multiple reasons to change          |
+| Utils      | Functions with different concerns   |
 
 Do NOT split files solely because they exceed a line threshold.
 
@@ -289,17 +299,18 @@ These are architectural constraints, not styling opinions.
 
 ### Services Overview
 
-| Service | Port | Command | Notes |
-|---------|------|---------|-------|
-| Vite client | 5173 | `npm run dev` | React frontend; works independently of the server |
-| Express API | 3001 | `npm run server` | Requires Firebase Admin credentials (see below) |
-| Both | 5173+3001 | `npm start` | Concurrently runs both via `scripts/dev/start.ts` |
+| Service     | Port      | Command          | Notes                                             |
+| ----------- | --------- | ---------------- | ------------------------------------------------- |
+| Vite client | 5173      | `npm run dev`    | React frontend; works independently of the server |
+| Express API | 3001      | `npm run server` | Requires Firebase Admin credentials (see below)   |
+| Both        | 5173+3001 | `npm start`      | Concurrently runs both via `scripts/dev/start.ts` |
 
 ### Firebase Credentials (Server Startup Blocker)
 
 The Express server runs `admin.auth().listUsers()` and `firestore.listCollections()` on every startup (in `server/src/config/services.initialize.ts`). Without a valid Firebase service account, the server exits with `FATAL: Application failed to start`. This check is **only** skipped when `NODE_ENV=test`.
 
 To start the server, you need **one** of:
+
 - `FIREBASE_SERVICE_ACCOUNT_JSON` env var containing the full service account JSON
 - `FIREBASE_SERVICE_ACCOUNT_PATH` env var pointing to an existing JSON file on disk
 - `GOOGLE_APPLICATION_CREDENTIALS` env var pointing to an existing JSON file on disk
@@ -319,6 +330,7 @@ The Vite client (`npm run dev`) runs independently and renders the full UI. API 
 ### Commands Reference
 
 Standard commands are documented in root `CLAUDE.md` under **Commands**. Key ones:
+
 - Lint: `npm run lint` (ESLint), `npm run lint:css` (Stylelint), `npm run lint:all` (both)
 - Type check: `npx tsc --noEmit`
 - Unit tests: `npm run test:unit` (Vitest, ~5700+ tests)

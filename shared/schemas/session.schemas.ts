@@ -5,11 +5,16 @@
  * payloads match the TypeScript interface declarations.  The `.passthrough()`
  * call allows forward-compatible additions without breaking the contract.
  */
-import { z } from 'zod';
+import { z } from "zod";
 
-export const SessionStatusSchema = z.enum(['active', 'completed', 'archived']);
+export const SessionStatusSchema = z.enum(["active", "completed", "archived"]);
 
-export const SessionPromptKeyframeSourceSchema = z.enum(['upload', 'library', 'generation', 'asset']);
+export const SessionPromptKeyframeSourceSchema = z.enum([
+  "upload",
+  "library",
+  "generation",
+  "asset",
+]);
 
 export const SessionPromptKeyframeSchema = z
   .object({
@@ -26,7 +31,7 @@ export const SessionPromptVersionEditSchema = z
   .object({
     timestamp: z.string(),
     delta: z.number().optional(),
-    source: z.enum(['manual', 'suggestion', 'unknown']).optional(),
+    source: z.enum(["manual", "suggestion", "unknown"]).optional(),
   })
   .passthrough();
 
@@ -86,8 +91,13 @@ export const SessionPromptSchema = z
   })
   .passthrough();
 
-export const SessionGenerationModeSchema = z.enum(['continuity', 'standard']);
-export const SessionContinuityModeSchema = z.enum(['frame-bridge', 'style-match', 'native', 'none']);
+export const SessionGenerationModeSchema = z.enum(["continuity", "standard"]);
+export const SessionContinuityModeSchema = z.enum([
+  "frame-bridge",
+  "style-match",
+  "native",
+  "none",
+]);
 
 export const SessionStyleReferenceSchema = z
   .object({
@@ -116,7 +126,7 @@ export const SessionFrameBridgeSchema = z
     sourceVideoId: z.string(),
     sourceShotId: z.string(),
     frameUrl: z.string(),
-    framePosition: z.enum(['first', 'last', 'representative']),
+    framePosition: z.enum(["first", "last", "representative"]),
     frameTimestamp: z.number(),
     resolution: z.object({ width: z.number(), height: z.number() }),
     aspectRatio: z.string(),
@@ -170,7 +180,13 @@ export const SessionContinuityShotSchema = z
     identityScore: z.number().optional(),
     qualityScore: z.number().optional(),
     retryCount: z.number().optional(),
-    status: z.enum(['draft', 'generating-keyframe', 'generating-video', 'completed', 'failed']),
+    status: z.enum([
+      "draft",
+      "generating-keyframe",
+      "generating-video",
+      "completed",
+      "failed",
+    ]),
     error: z.string().optional(),
     createdAt: z.string(),
     generatedAt: z.string().optional(),
@@ -204,7 +220,7 @@ export const SessionSceneProxySchema = z
     proxyType: z.string(),
     referenceFrameUrl: z.string(),
     depthMapUrl: z.string().optional(),
-    status: z.enum(['ready', 'failed', 'building']),
+    status: z.enum(["ready", "failed", "building"]),
     createdAt: z.string().optional(),
     error: z.string().optional(),
   })

@@ -1,11 +1,11 @@
-import { useMemo } from 'react';
-import type { PromptVersionEntry } from '@features/prompt-optimizer/types/domain/prompt-session';
+import { useMemo } from "react";
+import type { PromptVersionEntry } from "@features/prompt-optimizer/types/domain/prompt-session";
 import type {
   TimelineDivider,
   TimelineGeneration,
   TimelineGenerationItem,
   TimelineItem,
-} from '@features/prompt-optimizer/types/domain/timeline';
+} from "@features/prompt-optimizer/types/domain/timeline";
 
 interface UseGenerationsTimelineOptions {
   versions: PromptVersionEntry[];
@@ -23,7 +23,9 @@ export function useGenerationsTimeline({
     let duplicateCount = 0;
 
     for (const version of versions) {
-      const gens = Array.isArray(version.generations) ? version.generations : [];
+      const gens = Array.isArray(version.generations)
+        ? version.generations
+        : [];
       for (const gen of gens) {
         if (gen.promptVersionId && gen.promptVersionId !== version.versionId) {
           mismatchCount += 1;
@@ -52,7 +54,7 @@ export function useGenerationsTimeline({
     for (const gen of allGenerations) {
       if (gen._versionId !== lastVersionId) {
         items.push({
-          type: 'divider',
+          type: "divider",
           versionId: gen._versionId,
           versionLabel: gen._versionLabel,
           promptChanged: !isFirstDivider,
@@ -63,7 +65,7 @@ export function useGenerationsTimeline({
       }
 
       items.push({
-        type: 'generation',
+        type: "generation",
         generation: gen,
         timestamp: gen.createdAt,
       });

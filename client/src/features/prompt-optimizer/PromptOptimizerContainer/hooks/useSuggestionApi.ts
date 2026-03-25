@@ -1,17 +1,17 @@
-import { useCallback, useEffect, useRef } from 'react';
-import type { PromptContext } from '@utils/PromptContext/PromptContext';
-import type { PromptOptimizer } from '@features/prompt-optimizer/context/types';
-import type { SuggestionsData } from '@features/prompt-optimizer/PromptCanvas/types';
-import type { SuggestionContextResult } from '@features/prompt-optimizer/utils/enhancementSuggestionContext';
-import { fetchEnhancementSuggestions } from '@features/prompt-optimizer/api/enhancementSuggestionsApi';
-import { useEditHistory } from '@features/prompt-optimizer/hooks/useEditHistory';
-import { SuggestionRequestManager } from '@features/prompt-optimizer/utils/SuggestionRequestManager';
-import { prepareSpanContext } from '@features/span-highlighting/utils/spanProcessing';
-import type { RawEnhancementSuggestionsResponse } from './useSuggestionCache';
-import type { I2VContext } from '@features/prompt-optimizer/types/i2v';
+import { useCallback, useEffect, useRef } from "react";
+import type { PromptContext } from "@utils/PromptContext/PromptContext";
+import type { PromptOptimizer } from "@features/prompt-optimizer/context/types";
+import type { SuggestionsData } from "@features/prompt-optimizer/PromptCanvas/types";
+import type { SuggestionContextResult } from "@features/prompt-optimizer/utils/enhancementSuggestionContext";
+import { fetchEnhancementSuggestions } from "@features/prompt-optimizer/api/enhancementSuggestionsApi";
+import { useEditHistory } from "@features/prompt-optimizer/hooks/useEditHistory";
+import { SuggestionRequestManager } from "@features/prompt-optimizer/utils/SuggestionRequestManager";
+import { prepareSpanContext } from "@features/span-highlighting/utils/spanProcessing";
+import type { RawEnhancementSuggestionsResponse } from "./useSuggestionCache";
+import type { I2VContext } from "@features/prompt-optimizer/types/i2v";
 
 interface UseSuggestionApiParams {
-  promptOptimizer: Pick<PromptOptimizer, 'inputPrompt'>;
+  promptOptimizer: Pick<PromptOptimizer, "inputPrompt">;
   stablePromptContext: PromptContext | null;
   i2vContext?: I2VContext | null | undefined;
 }
@@ -21,7 +21,7 @@ interface FetchSuggestionsParams {
   normalizedHighlight: string;
   normalizedPrompt: string;
   suggestionContext: SuggestionContextResult;
-  metadata: SuggestionsData['metadata'] | null;
+  metadata: SuggestionsData["metadata"] | null;
   allLabeledSpans: unknown[];
   onRequestStart?: () => void;
 }
@@ -36,13 +36,15 @@ export function useSuggestionApi({
   stablePromptContext,
   i2vContext,
 }: UseSuggestionApiParams): {
-  fetchSuggestions: (params: FetchSuggestionsParams) => Promise<RawEnhancementSuggestionsResponse>;
+  fetchSuggestions: (
+    params: FetchSuggestionsParams,
+  ) => Promise<RawEnhancementSuggestionsResponse>;
   cancelCurrentRequest: () => void;
   isRequestInFlight: (dedupKey: string) => boolean;
 } {
   const { getEditSummary } = useEditHistory();
   const requestManagerRef = useRef<SuggestionRequestManager>(
-    new SuggestionRequestManager(REQUEST_CONFIG)
+    new SuggestionRequestManager(REQUEST_CONFIG),
   );
 
   useEffect(() => {
@@ -72,8 +74,14 @@ export function useSuggestionApi({
         const i2vPayload =
           i2vContext?.isI2VMode && i2vContext.observation && i2vContext.lockMap
             ? {
-                observation: i2vContext.observation as unknown as Record<string, unknown>,
-                lockMap: i2vContext.lockMap as unknown as Record<string, string>,
+                observation: i2vContext.observation as unknown as Record<
+                  string,
+                  unknown
+                >,
+                lockMap: i2vContext.lockMap as unknown as Record<
+                  string,
+                  string
+                >,
                 constraintMode: i2vContext.constraintMode,
               }
             : null;
@@ -93,7 +101,12 @@ export function useSuggestionApi({
           signal,
         });
       }),
-    [getEditSummary, i2vContext, promptOptimizer.inputPrompt, stablePromptContext]
+    [
+      getEditSummary,
+      i2vContext,
+      promptOptimizer.inputPrompt,
+      stablePromptContext,
+    ],
   );
 
   const cancelCurrentRequest = useCallback(() => {
@@ -102,7 +115,7 @@ export function useSuggestionApi({
 
   const isRequestInFlight = useCallback(
     (dedupKey: string) => requestManagerRef.current.isRequestInFlight(dedupKey),
-    []
+    [],
   );
 
   return {

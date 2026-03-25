@@ -18,31 +18,31 @@
  * that requires a client migration.
  */
 export type ApiErrorCode =
-  | 'AUTH_REQUIRED'
-  | 'INVALID_REQUEST'
-  | 'INSUFFICIENT_CREDITS'
-  | 'RATE_LIMITED'
-  | 'SERVICE_UNAVAILABLE'
-  | 'LLM_UNAVAILABLE'
-  | 'GENERATION_FAILED'
-  | 'IDEMPOTENCY_KEY_REQUIRED'
-  | 'IDEMPOTENCY_CONFLICT'
-  | 'REQUEST_IN_PROGRESS'
-  | 'SESSION_VERSION_CONFLICT';
+  | "AUTH_REQUIRED"
+  | "INVALID_REQUEST"
+  | "INSUFFICIENT_CREDITS"
+  | "RATE_LIMITED"
+  | "SERVICE_UNAVAILABLE"
+  | "LLM_UNAVAILABLE"
+  | "GENERATION_FAILED"
+  | "IDEMPOTENCY_KEY_REQUIRED"
+  | "IDEMPOTENCY_CONFLICT"
+  | "REQUEST_IN_PROGRESS"
+  | "SESSION_VERSION_CONFLICT";
 
 /** All valid error code values, usable at runtime for validation. */
 export const API_ERROR_CODES = [
-  'AUTH_REQUIRED',
-  'INVALID_REQUEST',
-  'INSUFFICIENT_CREDITS',
-  'RATE_LIMITED',
-  'SERVICE_UNAVAILABLE',
-  'LLM_UNAVAILABLE',
-  'GENERATION_FAILED',
-  'IDEMPOTENCY_KEY_REQUIRED',
-  'IDEMPOTENCY_CONFLICT',
-  'REQUEST_IN_PROGRESS',
-  'SESSION_VERSION_CONFLICT',
+  "AUTH_REQUIRED",
+  "INVALID_REQUEST",
+  "INSUFFICIENT_CREDITS",
+  "RATE_LIMITED",
+  "SERVICE_UNAVAILABLE",
+  "LLM_UNAVAILABLE",
+  "GENERATION_FAILED",
+  "IDEMPOTENCY_KEY_REQUIRED",
+  "IDEMPOTENCY_CONFLICT",
+  "REQUEST_IN_PROGRESS",
+  "SESSION_VERSION_CONFLICT",
 ] as const satisfies readonly ApiErrorCode[];
 
 // ---------------------------------------------------------------------------
@@ -79,4 +79,10 @@ export interface ApiSuccessResponse<T> {
  */
 export type ApiResponse<T> =
   | ApiSuccessResponse<T>
-  | { success: false; error: string; code?: ApiErrorCode; details?: string; requestId?: string };
+  | {
+      success: false;
+      error: string;
+      code?: ApiErrorCode;
+      details?: string;
+      requestId?: string;
+    };

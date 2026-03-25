@@ -10,12 +10,12 @@ To help reduce iteration costs, the platform supplies a cheap image preview (Flu
 
 The front‑end defines three paid plans plus a free tier. Each plan has a Stripe `priceId`, a monthly fee and a credit allowance per month:
 
-| Tier | Stripe price ID | Price/month | Credits/month | Notes |
-|------|------------------|-------------|---------------|-------|
-| Explorer | `price_explorer_monthly` | US$15 | 400 credits | intended for hobbyists and students [1] |
-| Creator | `price_creator_monthly` | US$49 | 1,600 credits | highlighted as the most popular plan [2] |
-| Agency | `price_agency_monthly` | US$149 | 6,000 credits | targeted at high‑volume teams [3] |
-| Free | – | US$0 | n/a | only local history, core prompt optimisation and an “upgrade anytime” upsell [4] |
+| Tier     | Stripe price ID          | Price/month | Credits/month | Notes                                                                            |
+| -------- | ------------------------ | ----------- | ------------- | -------------------------------------------------------------------------------- |
+| Explorer | `price_explorer_monthly` | US$15       | 400 credits   | intended for hobbyists and students [1]                                          |
+| Creator  | `price_creator_monthly`  | US$49       | 1,600 credits | highlighted as the most popular plan [2]                                         |
+| Agency   | `price_agency_monthly`   | US$149      | 6,000 credits | targeted at high‑volume teams [3]                                                |
+| Free     | –                        | US$0        | n/a           | only local history, core prompt optimisation and an “upgrade anytime” upsell [4] |
 
 These plans are displayed on the pricing page and convert to Stripe checkout sessions for the corresponding `priceId`.
 
@@ -41,18 +41,18 @@ Image preview generation does not deduct credits; it simply calls the image gene
 
 Credit costs for video generation are defined centrally in `modelCosts.ts`. Each entry maps an internal model alias from `VIDEO_MODELS` to a credit cost [10]:
 
-| Model alias | Provider / description (from `modelConfig.ts`) | Credit cost |
-|------------|-----------------------------------------------|------------|
-| DRAFT | `wan-video/wan-2.2-t2v-fast` (cheap, fast; used for drafts) | 5 |
-| PRO | `wan-video/wan-2.2-t2v-fast` (same underlying model) | 5 |
-| SORA 2 | OpenAI Sora 2 (flagship) [11] | 50 |
-| SORA 2 Pro | OpenAI Sora 2 Pro (higher quality) [12] | 50 |
-| LUMA RAY‑3 | Luma Ray‑3 (Dream Machine) [13] | 25 |
-| KLING v2.1 | Kling v2.1 (official API) [14] | 25 |
-| VEO 3 | Google Veo 3.1 (text→video with audio) [15] | 20 |
-| TIER 1 | Minimax “Hailuo‑02” model [16] | 10 |
-| ARTISTIC | Genmo Mochi 1 (artistic) [17] | 25 (default) |
-| Unknown | any unspecified model | 25 (default) |
+| Model alias | Provider / description (from `modelConfig.ts`)              | Credit cost  |
+| ----------- | ----------------------------------------------------------- | ------------ |
+| DRAFT       | `wan-video/wan-2.2-t2v-fast` (cheap, fast; used for drafts) | 5            |
+| PRO         | `wan-video/wan-2.2-t2v-fast` (same underlying model)        | 5            |
+| SORA 2      | OpenAI Sora 2 (flagship) [11]                               | 50           |
+| SORA 2 Pro  | OpenAI Sora 2 Pro (higher quality) [12]                     | 50           |
+| LUMA RAY‑3  | Luma Ray‑3 (Dream Machine) [13]                             | 25           |
+| KLING v2.1  | Kling v2.1 (official API) [14]                              | 25           |
+| VEO 3       | Google Veo 3.1 (text→video with audio) [15]                 | 20           |
+| TIER 1      | Minimax “Hailuo‑02” model [16]                              | 10           |
+| ARTISTIC    | Genmo Mochi 1 (artistic) [17]                               | 25 (default) |
+| Unknown     | any unspecified model                                       | 25 (default) |
 
 The cost mapping implies that a Sora 2 or Sora 2 Pro generation currently consumes 50 credits, Luma and Kling cost 25 credits, Veo costs 20 credits, Minimax costs 10 credits, and Wan costs 5 credits per generation. Models such as Genmo Mochi default to 25 credits.
 
@@ -78,27 +78,27 @@ Given the above, and under the constraint that we cannot query live vendor prici
 
 ### 7.1 Adjust subscription pricing and credit bundles
 
-| Proposed tier | Price/month | Credits/month | Rationale |
-|--------------|-------------|---------------|-----------|
-| Explorer | US$19 | 400 credits | Raises effective price per credit to ~$0.0475, providing margin. Credits remain unchanged so hobbyists still get a modest allowance. |
-| Creator | US$59 | 1,500 credits | Reduces credits slightly (−100) while raising price; effective cost per credit ~$0.039. |
-| Agency | US$179 | 5,000 credits | Decreases credits (−1,000) and raises price; effective cost per credit ~$0.0358. |
-| Add‑on packs | e.g. US$49 per 1,000 credits | – | Introduces one‑off credit bundles for pay‑as‑you‑go or overage; price per credit ~$0.049. |
+| Proposed tier | Price/month                  | Credits/month | Rationale                                                                                                                            |
+| ------------- | ---------------------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| Explorer      | US$19                        | 400 credits   | Raises effective price per credit to ~$0.0475, providing margin. Credits remain unchanged so hobbyists still get a modest allowance. |
+| Creator       | US$59                        | 1,500 credits | Reduces credits slightly (−100) while raising price; effective cost per credit ~$0.039.                                              |
+| Agency        | US$179                       | 5,000 credits | Decreases credits (−1,000) and raises price; effective cost per credit ~$0.0358.                                                     |
+| Add‑on packs  | e.g. US$49 per 1,000 credits | –             | Introduces one‑off credit bundles for pay‑as‑you‑go or overage; price per credit ~$0.049.                                            |
 
 These adjustments slightly increase revenue and narrow the per‑credit gap between tiers while preserving a discount for larger plans.
 
 ### 7.2 Revise credit costs per video model
 
-| Model | Current credits | Proposed credits | Reasoning |
-|------|------------------|------------------|----------|
-| SORA 2 / SORA 2 Pro | 50 | 80 | High‑resolution video with audio is expensive; raising to 80 credits (~US$2.40–$3.20) better covers costs. |
-| LUMA RAY‑3 | 25 | 40 | HDR Dream Machine output warrants a higher cost; 40 credits yields ~$1.20–$1.60. |
-| KLING v2.1 | 25 | 35 | Less expensive than Luma but costlier than Veo; 35 credits (~$1.05–$1.40) balances usage. |
-| VEO 3 | 20 | 30 | Audio output and high fidelity justify 30 credits (~$0.90–$1.20). |
-| ARTISTIC (Mochi 1) | 25 | 30 | Aligns with Veo; style adherence may increase compute. |
-| TIER 1 (Minimax) | 10 | 15 | Ensures margin even at lower compute cost; still the cheapest option. |
-| DRAFT / PRO (Wan) | 5 | 5 | Keep cheap previews at 5 credits (~US$0.15–$0.20) to encourage experimentation. |
-| Unknown models | 25 | 40 | Higher default cost hedges against unforeseen API fees. |
+| Model               | Current credits | Proposed credits | Reasoning                                                                                                  |
+| ------------------- | --------------- | ---------------- | ---------------------------------------------------------------------------------------------------------- |
+| SORA 2 / SORA 2 Pro | 50              | 80               | High‑resolution video with audio is expensive; raising to 80 credits (~US$2.40–$3.20) better covers costs. |
+| LUMA RAY‑3          | 25              | 40               | HDR Dream Machine output warrants a higher cost; 40 credits yields ~$1.20–$1.60.                           |
+| KLING v2.1          | 25              | 35               | Less expensive than Luma but costlier than Veo; 35 credits (~$1.05–$1.40) balances usage.                  |
+| VEO 3               | 20              | 30               | Audio output and high fidelity justify 30 credits (~$0.90–$1.20).                                          |
+| ARTISTIC (Mochi 1)  | 25              | 30               | Aligns with Veo; style adherence may increase compute.                                                     |
+| TIER 1 (Minimax)    | 10              | 15               | Ensures margin even at lower compute cost; still the cheapest option.                                      |
+| DRAFT / PRO (Wan)   | 5               | 5                | Keep cheap previews at 5 credits (~US$0.15–$0.20) to encourage experimentation.                            |
+| Unknown models      | 25              | 40               | Higher default cost hedges against unforeseen API fees.                                                    |
 
 ### 7.3 Introduce image preview credits or quotas
 
@@ -111,12 +111,12 @@ Because each Flux Schnell preview costs $0.003, unlimited free previews can beco
 
 Offering one‑time credit purchases would serve occasional users and generate incremental revenue. Suggested pricing (per 1,000 credits) should be slightly higher than subscription rates to encourage subscriptions but still accessible. For example:
 
-| Credits | Price | Effective cost/credit |
-|--------|-------|------------------------|
-| 250 | US$15 | $0.06 |
-| 500 | US$28 | $0.056 |
-| 1,000 | US$52 | $0.052 |
-| 2,500 | US$120 | $0.048 |
+| Credits | Price  | Effective cost/credit |
+| ------- | ------ | --------------------- |
+| 250     | US$15  | $0.06                 |
+| 500     | US$28  | $0.056                |
+| 1,000   | US$52  | $0.052                |
+| 2,500   | US$120 | $0.048                |
 
 ## 8. Next steps and cautions
 
@@ -144,5 +144,4 @@ Offering one‑time credit purchases would serve occasional users and generate i
 [15] Model config: [`server/src/config/modelConfig.ts`](../../server/src/config/modelConfig.ts)  
 [16] Model config: [`server/src/config/modelConfig.ts`](../../server/src/config/modelConfig.ts)  
 [17] Model config: [`server/src/config/modelConfig.ts`](../../server/src/config/modelConfig.ts)  
-[18] Flux Schnell pricing notes: [`docs/integrations/Replicate/flux-schnell.md`](../integrations/Replicate/flux-schnell.md)  
-
+[18] Flux Schnell pricing notes: [`docs/integrations/Replicate/flux-schnell.md`](../integrations/Replicate/flux-schnell.md)

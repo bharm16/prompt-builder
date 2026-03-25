@@ -4,7 +4,7 @@
  * Barrel exports for the GenerationsPanel feature.
  */
 
-export { GenerationsPanel } from './GenerationsPanel';
+export { GenerationsPanel } from "./GenerationsPanel";
 export type {
   Generation,
   GenerationMediaType,
@@ -13,12 +13,12 @@ export type {
   GenerationTier,
   GenerationsPanelProps,
   GenerationsPanelRuntime,
-} from './types';
-export { useGenerationsTimeline } from './hooks/useGenerationsTimeline';
-export { useGenerationsRuntime } from './hooks/useGenerationsRuntime';
+} from "./types";
+export { useGenerationsTimeline } from "./hooks/useGenerationsTimeline";
+export { useGenerationsRuntime } from "./hooks/useGenerationsRuntime";
 export type {
   TimelineDivider,
   TimelineGenerationItem,
   TimelineItem,
-} from './hooks/useGenerationsTimeline';
-export { VersionDivider } from './components/VersionDivider';
+} from "./hooks/useGenerationsTimeline";
+export { VersionDivider } from "./components/VersionDivider";

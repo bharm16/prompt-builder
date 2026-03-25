@@ -8,7 +8,7 @@
  * with SSR-safe detection and fallback mechanisms
  */
 export const getCacheStorage = (): Storage | null => {
-  if (typeof window === 'undefined') {
+  if (typeof window === "undefined") {
     return null;
   }
 
@@ -30,4 +30,3 @@ export const getCacheStorage = (): Storage | null => {
 
   return null;
 };
-

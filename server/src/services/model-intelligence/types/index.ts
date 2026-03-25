@@ -13,7 +13,7 @@ export type {
   SpeedTier,
   SubjectComplexity,
   FactorScore,
-} from './domain';
+} from "./domain";
 export {
   COMPLEXITY_LEVELS,
   CAMERA_COMPLEXITY,
@@ -24,5 +24,8 @@ export {
   QUALITY_TIERS,
   SPEED_TIERS,
   SUBJECT_COMPLEXITY,
-} from './domain';
-export type { ModelRecommendationRequest, ModelRecommendationResponse } from './requests';
+} from "./domain";
+export type {
+  ModelRecommendationRequest,
+  ModelRecommendationResponse,
+} from "./requests";

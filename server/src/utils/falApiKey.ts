@@ -10,9 +10,9 @@ export const isFalKeyPlaceholder = (value?: string | null): boolean => {
   if (!normalized) return false;
   return (
     TEMPLATE_PATTERN.test(normalized) ||
-    normalized.startsWith('$') ||
-    normalized === 'undefined' ||
-    normalized === 'null'
+    normalized.startsWith("$") ||
+    normalized === "undefined" ||
+    normalized === "null"
   );
 };
 

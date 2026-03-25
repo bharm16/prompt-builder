@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useState } from 'react';
-import { logger } from '@/services/LoggingService';
-import type { CameraPath } from '@/features/convergence/types';
-import type { KeyframeTile } from '@components/ToolSidebar/types';
+import { useCallback, useEffect, useState } from "react";
+import { logger } from "@/services/LoggingService";
+import type { CameraPath } from "@/features/convergence/types";
+import type { KeyframeTile } from "@components/ToolSidebar/types";
 
-const log = logger.child('GenerationControlsPanel');
+const log = logger.child("GenerationControlsPanel");
 
 interface UseCameraMotionModalFlowOptions {
   showMotionControls: boolean;
@@ -36,7 +36,7 @@ export function useCameraMotionModalFlow({
   useEffect(() => {
     if (startFrame) return;
     if (!showCameraMotionModal) return;
-    log.info('Closing camera motion modal because start frame is missing', {
+    log.info("Closing camera motion modal because start frame is missing", {
       keyframesCount,
     });
     setShowCameraMotionModal(false);
@@ -44,14 +44,14 @@ export function useCameraMotionModalFlow({
 
   const handleCameraMotionButtonClick = useCallback(() => {
     if (!hasStartFrame) {
-      log.warn('Camera motion modal requested without a start frame', {
+      log.warn("Camera motion modal requested without a start frame", {
         showMotionControls,
         keyframesCount,
       });
       return;
     }
 
-    log.info('Opening camera motion modal from generation controls panel', {
+    log.info("Opening camera motion modal from generation controls panel", {
       keyframesCount,
       startFrameUrlHost,
       currentCameraMotionId: cameraMotion?.id ?? null,
@@ -66,7 +66,7 @@ export function useCameraMotionModalFlow({
   ]);
 
   const handleCloseCameraMotionModal = useCallback(() => {
-    log.info('Camera motion modal closed from generation controls panel', {
+    log.info("Camera motion modal closed from generation controls panel", {
       startFrameUrlHost,
       currentCameraMotionId: cameraMotion?.id ?? null,
     });
@@ -75,15 +75,18 @@ export function useCameraMotionModalFlow({
 
   const handleSelectCameraMotion = useCallback(
     (path: CameraPath) => {
-      log.info('Camera motion selected from modal in generation controls panel', {
-        cameraMotionId: path.id,
-        cameraMotionLabel: path.label,
-        startFrameUrlHost,
-      });
+      log.info(
+        "Camera motion selected from modal in generation controls panel",
+        {
+          cameraMotionId: path.id,
+          cameraMotionLabel: path.label,
+          startFrameUrlHost,
+        },
+      );
       onSelectCameraMotion(path);
       setShowCameraMotionModal(false);
     },
-    [onSelectCameraMotion, startFrameUrlHost]
+    [onSelectCameraMotion, startFrameUrlHost],
   );
 
   return {

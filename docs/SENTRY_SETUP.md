@@ -5,6 +5,7 @@ This guide walks you through setting up Sentry error tracking for the Prompt Bui
 ## Why Sentry?
 
 Sentry provides:
+
 - **Real-time error tracking** with detailed stack traces
 - **Performance monitoring** to identify bottlenecks
 - **User context** to understand which users are affected
@@ -68,7 +69,7 @@ That's it! Sentry is now tracking errors.
 1. Open browser console
 2. Throw a test error:
    ```javascript
-   throw new Error('Test Sentry frontend error');
+   throw new Error("Test Sentry frontend error");
    ```
 3. Check Sentry dashboard - error should appear within seconds
 
@@ -87,23 +88,28 @@ Check Sentry dashboard for the backend error.
 ### Frontend Features
 
 ✅ **Error Boundaries**
+
 - React component errors are automatically caught and sent to Sentry
 - Users see a friendly error page with option to report feedback
 
 ✅ **Performance Monitoring**
+
 - Page load times
 - Component render performance
 - API request timing
 
 ✅ **Session Replay**
+
 - See user interactions leading up to errors
 - Replay the last 60 seconds before an error occurred
 
 ✅ **User Context**
+
 - Firebase user ID and email automatically attached to errors
 - See which users are affected by specific errors
 
 ✅ **Breadcrumbs**
+
 - Authentication events (sign in/out)
 - Navigation events
 - User interactions
@@ -112,20 +118,24 @@ Check Sentry dashboard for the backend error.
 ### Backend Features
 
 ✅ **Request Tracking**
+
 - All HTTP requests are tracked
 - Response times and status codes
 
 ✅ **Error Context**
+
 - Stack traces with source maps
 - Request headers (sanitized)
 - User information (when authenticated)
 
 ✅ **Performance Monitoring**
+
 - API endpoint performance
 - Database query timing
 - External API calls (OpenAI, Firebase)
 
 ✅ **Circuit Breaker Integration**
+
 - OpenAI API failures tracked
 - Circuit breaker state changes logged
 
@@ -141,16 +151,18 @@ For detailed stack traces in production, set up source map upload:
    - Add to `.env`: `SENTRY_AUTH_TOKEN=your_token`
 
 2. **Configure Organization & Project**
+
    ```env
    SENTRY_ORG=your-org-slug
    SENTRY_PROJECT=prompt-builder-client
    ```
 
 3. **Build with Source Maps**
+
    ```bash
    NODE_ENV=production npm run build
    ```
-   
+
    Source maps are automatically uploaded during production builds.
 
 ### Environment-Based Sampling
@@ -158,12 +170,14 @@ For detailed stack traces in production, set up source map upload:
 Adjust sampling rates in production to control costs:
 
 **Frontend** (`client/src/config/sentry.js`):
+
 ```javascript
 tracesSampleRate: ENVIRONMENT === 'production' ? 0.1 : 1.0,
 replaysSessionSampleRate: ENVIRONMENT === 'production' ? 0.1 : 1.0,
 ```
 
 **Backend** (`server/src/config/sentry.js`):
+
 ```javascript
 tracesSampleRate: ENVIRONMENT === 'production' ? 0.1 : 1.0,
 profilesSampleRate: ENVIRONMENT === 'production' ? 0.1 : 1.0,
@@ -174,38 +188,48 @@ profilesSampleRate: ENVIRONMENT === 'production' ? 0.1 : 1.0,
 Use the helper functions in your code:
 
 **Frontend:**
+
 ```javascript
-import { captureException, captureMessage, addSentryBreadcrumb } from './config/sentry';
+import {
+  captureException,
+  captureMessage,
+  addSentryBreadcrumb,
+} from "./config/sentry";
 
 // Track an error
 try {
   riskyOperation();
 } catch (error) {
-  captureException(error, { context: 'user_action', action: 'save_prompt' });
+  captureException(error, { context: "user_action", action: "save_prompt" });
 }
 
 // Track a message
-captureMessage('User reached premium limit', 'warning', { userId: user.id });
+captureMessage("User reached premium limit", "warning", { userId: user.id });
 
 // Add breadcrumb for debugging
-addSentryBreadcrumb('user_action', 'Clicked optimize button', {
-  mode: 'video',
+addSentryBreadcrumb("user_action", "Clicked optimize button", {
+  mode: "video",
   promptLength: 150,
 });
 ```
 
 **Backend:**
+
 ```javascript
-import { captureException, captureMessage, startTransaction } from './src/config/sentry.js';
+import {
+  captureException,
+  captureMessage,
+  startTransaction,
+} from "./src/config/sentry.js";
 
 // Track performance
-const transaction = startTransaction('optimize_prompt', 'function');
+const transaction = startTransaction("optimize_prompt", "function");
 try {
   const result = await optimizePrompt(input);
-  transaction?.setStatus('ok');
+  transaction?.setStatus("ok");
   return result;
 } catch (error) {
-  transaction?.setStatus('error');
+  transaction?.setStatus("error");
   captureException(error, { input, mode });
   throw error;
 } finally {
@@ -237,6 +261,7 @@ try {
 ## Monitoring Dashboard
 
 View your errors in Sentry:
+
 - **Issues**: All errors grouped by type
 - **Performance**: API endpoint and page load performance
 - **Releases**: Track errors by deployment version
@@ -245,6 +270,7 @@ View your errors in Sentry:
 ## Cost Management
 
 ### Free Tier Limits
+
 - 5,000 errors/month
 - 10,000 performance transactions/month
 - 50 replays/month
@@ -269,6 +295,7 @@ View your errors in Sentry:
 ### Errors Not Appearing
 
 1. **Check DSN is configured**
+
    ```bash
    echo $SENTRY_DSN
    echo $VITE_SENTRY_DSN
@@ -285,10 +312,11 @@ View your errors in Sentry:
 ### Source Maps Not Working
 
 1. **Ensure sourcemaps are enabled**
+
    ```javascript
    // vite.config.js
    build: {
-     sourcemap: true
+     sourcemap: true;
    }
    ```
 
@@ -312,15 +340,18 @@ If you're hitting rate limits:
 ## Security Best Practices
 
 ✅ **Sensitive Data Filtering**
+
 - Authorization headers automatically removed
 - API keys redacted from query strings
 - Cookie headers stripped
 
 ✅ **PII Protection**
+
 - User emails only sent if user is authenticated
 - No passwords or tokens in error context
 
 ✅ **Environment Separation**
+
 - Use different projects for dev/staging/prod
 - Tag releases with environment
 
@@ -334,6 +365,7 @@ If you're hitting rate limits:
 ## Support
 
 For issues with Sentry setup:
+
 1. Check [Sentry Status Page](https://status.sentry.io/)
 2. Review [Sentry Documentation](https://docs.sentry.io/)
 3. Open issue in this repository with `[Sentry]` prefix

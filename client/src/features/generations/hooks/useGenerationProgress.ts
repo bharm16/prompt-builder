@@ -1,15 +1,15 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from "react";
 
-import type { Generation } from '../types';
-import { getGenerationProgressPercent } from '../utils/generationProgress';
+import type { Generation } from "../types";
+import { getGenerationProgressPercent } from "../utils/generationProgress";
 
 const PROGRESS_TICK_MS = 400;
 
 export function useGenerationProgress(generation: Generation) {
   const isGenerating =
-    generation.status === 'pending' || generation.status === 'generating';
-  const isCompleted = generation.status === 'completed';
-  const isFailed = generation.status === 'failed';
+    generation.status === "pending" || generation.status === "generating";
+  const isCompleted = generation.status === "completed";
+  const isFailed = generation.status === "failed";
   const [now, setNow] = useState<number>(() => Date.now());
 
   useEffect(() => {
@@ -20,7 +20,7 @@ export function useGenerationProgress(generation: Generation) {
 
   const progressPercent = useMemo(
     () => getGenerationProgressPercent(generation, now),
-    [generation, now]
+    [generation, now],
   );
 
   return { progressPercent, isGenerating, isCompleted, isFailed };

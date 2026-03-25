@@ -9,7 +9,7 @@
  * - "Aspect Ratio" extracted when it's a label, not a value
  * - "## Technical Specs" markdown headers being labeled
  */
-import type { SpanLike } from '../types.js';
+import type { SpanLike } from "../types.js";
 
 interface FilterResult {
   spans: SpanLike[];
@@ -22,20 +22,20 @@ interface FilterResult {
 const HEADER_PATTERNS: RegExp[] = [
   // Markdown headers
   /^#{1,6}\s+/,
-  
+
   // Standalone category names (case-insensitive)
   /^(camera|lighting|style|technical|audio|subject|action|environment|shot|composition)\s*:?$/i,
-  
+
   // Common spec labels
   /^(aspect ratio|frame rate|resolution|duration|fps|format)\s*:?$/i,
-  
+
   // Bold section titles like **Camera** or **TECHNICAL SPECS**
   /^\*\*[^*]+\*\*$/,
-  
+
   // Numbered/bulleted list markers alone
   /^[-•*]\s*$/,
   /^\d+[.)]\s*$/,
-  
+
   // All-caps section headers (CAMERA, LIGHTING, etc.)
   /^[A-Z][A-Z\s]{2,}$/,
 ];
@@ -46,39 +46,39 @@ const HEADER_PATTERNS: RegExp[] = [
  */
 const STANDALONE_LABELS = new Set([
   // Main categories
-  'camera',
-  'lighting', 
-  'style',
-  'technical',
-  'audio',
-  'subject',
-  'action',
-  'environment',
-  'shot',
-  'composition',
-  
+  "camera",
+  "lighting",
+  "style",
+  "technical",
+  "audio",
+  "subject",
+  "action",
+  "environment",
+  "shot",
+  "composition",
+
   // Technical spec labels
-  'aspect ratio',
-  'frame rate',
-  'resolution',
-  'duration',
-  'fps',
-  'format',
-  
+  "aspect ratio",
+  "frame rate",
+  "resolution",
+  "duration",
+  "fps",
+  "format",
+
   // Common headers
-  'technical specs',
-  'technical specifications',
-  'alternative approaches',
-  'alternatives',
-  'variations',
-  'style reference',
-  'film stock',
-  
+  "technical specs",
+  "technical specifications",
+  "alternative approaches",
+  "alternatives",
+  "variations",
+  "style reference",
+  "film stock",
+
   // Angle/movement labels (when standalone)
-  'eye-level',
-  'eye level',
-  'high angle',
-  'low angle',
+  "eye-level",
+  "eye level",
+  "high angle",
+  "low angle",
 ]);
 
 /**
@@ -86,30 +86,33 @@ const STANDALONE_LABELS = new Set([
  */
 function isHeaderOrLabel(text: string): boolean {
   const trimmed = text.trim();
-  
+
   // Empty or very short spans are suspicious
   if (trimmed.length < 2) {
     return true;
   }
-  
+
   // Check against regex patterns
   for (const pattern of HEADER_PATTERNS) {
     if (pattern.test(trimmed)) {
       return true;
     }
   }
-  
+
   // Check against known standalone labels
-  const normalized = trimmed.toLowerCase().replace(/[:\-_*#]/g, '').trim();
+  const normalized = trimmed
+    .toLowerCase()
+    .replace(/[:\-_*#]/g, "")
+    .trim();
   if (STANDALONE_LABELS.has(normalized)) {
     return true;
   }
-  
+
   // Check for colon-terminated labels (e.g., "Duration:", "Camera:")
   if (/^[A-Za-z\s]+:\s*$/.test(trimmed)) {
     return true;
   }
-  
+
   return false;
 }
 
@@ -121,20 +124,20 @@ function isHeaderOrLabel(text: string): boolean {
  */
 export function filterHeaders(spans: SpanLike[]): FilterResult {
   const notes: string[] = [];
-  
+
   const filtered = spans.filter((span) => {
-    const text = typeof span.text === 'string' ? span.text : '';
-    
+    const text = typeof span.text === "string" ? span.text : "";
+
     if (isHeaderOrLabel(text)) {
       notes.push(
-        `Dropped header/label "${text}" at ${span.start ?? '?'}-${span.end ?? '?'} (role: ${span.role ?? 'unknown'})`
+        `Dropped header/label "${text}" at ${span.start ?? "?"}-${span.end ?? "?"} (role: ${span.role ?? "unknown"})`,
       );
       return false;
     }
-    
+
     return true;
   });
-  
+
   return { spans: filtered, notes };
 }
 

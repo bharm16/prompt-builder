@@ -1,6 +1,10 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from "react";
 
-import type { PromptCanvasState, SuggestionsData, SuggestionItem } from '../types';
+import type {
+  PromptCanvasState,
+  SuggestionsData,
+  SuggestionItem,
+} from "../types";
 
 export interface UseSuggestionFeedbackOptions {
   suggestionsData: SuggestionsData | null;
@@ -10,7 +14,9 @@ export interface UseSuggestionFeedbackOptions {
 }
 
 export interface UseSuggestionFeedbackReturn {
-  handleSuggestionClickWithFeedback: (suggestion: SuggestionItem | string) => void;
+  handleSuggestionClickWithFeedback: (
+    suggestion: SuggestionItem | string,
+  ) => void;
 }
 
 export function useSuggestionFeedback({
@@ -33,10 +39,10 @@ export function useSuggestionFeedback({
   const handleSuggestionClickWithFeedback = useCallback(
     (suggestion: SuggestionItem | string): void => {
       const suggestionText =
-        typeof suggestion === 'string'
+        typeof suggestion === "string"
           ? suggestion
-          : (suggestion as { text?: string } | null)?.text || '';
-      const from = suggestionsData?.selectedText || '';
+          : (suggestion as { text?: string } | null)?.text || "";
+      const from = suggestionsData?.selectedText || "";
 
       if (from && suggestionText) {
         setState({ justReplaced: { from, to: suggestionText } });
@@ -53,7 +59,13 @@ export function useSuggestionFeedback({
 
       onSuggestionClick?.(suggestion);
     },
-    [suggestionsData?.selectedText, selectedSpanId, onSuggestionClick, setState, clearJustReplacedTimeout]
+    [
+      suggestionsData?.selectedText,
+      selectedSpanId,
+      onSuggestionClick,
+      setState,
+      clearJustReplacedTimeout,
+    ],
   );
 
   return { handleSuggestionClickWithFeedback };

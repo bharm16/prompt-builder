@@ -4,11 +4,11 @@
  * Manages video preview state and generation.
  */
 
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { promptOptimizationApiV2 } from '@/services';
-import { generateVideoPreview } from '../api/previewApi';
-import { pollJobStatus } from '../api/pollJobStatus';
-import { VIDEO_DRAFT_MODEL } from '@/components/ToolSidebar/config/modelConfig';
+import { useState, useEffect, useCallback, useRef } from "react";
+import { promptOptimizationApiV2 } from "@/services";
+import { generateVideoPreview } from "../api/previewApi";
+import { pollJobStatus } from "../api/pollJobStatus";
+import { VIDEO_DRAFT_MODEL } from "@/components/ToolSidebar/config/modelConfig";
 
 interface UseVideoPreviewOptions {
   prompt: string;
@@ -31,7 +31,7 @@ const COMPILE_TIMEOUT_MS = 4000;
 
 const stripVideoPreviewPrompt = (prompt: string): string => {
   // Strip content after "**Technical specs**" section
-  const technicalSpecsIndex = prompt.indexOf('**Technical specs**');
+  const technicalSpecsIndex = prompt.indexOf("**Technical specs**");
   if (technicalSpecsIndex !== -1) {
     return prompt.substring(0, technicalSpecsIndex).trim();
   }
@@ -55,13 +55,13 @@ export function useVideoPreview({
   const [error, setError] = useState<string | null>(null);
 
   const abortControllerRef = useRef<AbortController | null>(null);
-  const lastPromptRef = useRef<string>('');
+  const lastPromptRef = useRef<string>("");
 
   useEffect(() => {
     setVideoUrl(null);
     setError(null);
     setLoading(false);
-    lastPromptRef.current = '';
+    lastPromptRef.current = "";
   }, [prompt, aspectRatio, inputReference, startImage]);
 
   /**
@@ -98,11 +98,15 @@ export function useVideoPreview({
       abortControllerRef.current = abortController;
 
       try {
-        const resolvedModel = model && model.trim().length > 0 ? model.trim() : VIDEO_DRAFT_MODEL.id;
+        const resolvedModel =
+          model && model.trim().length > 0
+            ? model.trim()
+            : VIDEO_DRAFT_MODEL.id;
         const normalizedModel = resolvedModel.toLowerCase();
-        const isWanModel = normalizedModel.includes('wan');
-        const isSoraModel = normalizedModel.includes('sora');
-        const resolvedInputReference = inputReference || (isSoraModel ? startImage : undefined);
+        const isWanModel = normalizedModel.includes("wan");
+        const isSoraModel = normalizedModel.includes("sora");
+        const resolvedInputReference =
+          inputReference || (isSoraModel ? startImage : undefined);
 
         const options = (() => {
           const payload: {
@@ -111,7 +115,8 @@ export function useVideoPreview({
             generationParams?: Record<string, unknown>;
           } = {};
           if (startImage) payload.startImage = startImage;
-          if (resolvedInputReference) payload.inputReference = resolvedInputReference;
+          if (resolvedInputReference)
+            payload.inputReference = resolvedInputReference;
           if (generationParams) payload.generationParams = generationParams;
           return Object.keys(payload).length ? payload : undefined;
         })();
@@ -125,16 +130,21 @@ export function useVideoPreview({
               compileAbortController.abort();
             }, COMPILE_TIMEOUT_MS);
 
-            abortController.signal.addEventListener('abort', abortCompile, { once: true });
+            abortController.signal.addEventListener("abort", abortCompile, {
+              once: true,
+            });
             try {
               const compiled = await promptOptimizationApiV2.compilePrompt({
                 prompt: cleanedPrompt,
-                targetModel: 'wan',
+                targetModel: "wan",
                 signal: compileAbortController.signal,
               });
 
               if (!compileAbortController.signal.aborted) {
-                if (compiled?.compiledPrompt && typeof compiled.compiledPrompt === 'string') {
+                if (
+                  compiled?.compiledPrompt &&
+                  typeof compiled.compiledPrompt === "string"
+                ) {
                   const trimmed = compiled.compiledPrompt.trim();
                   if (trimmed) {
                     resolvedPrompt = trimmed;
@@ -143,7 +153,7 @@ export function useVideoPreview({
               }
             } finally {
               window.clearTimeout(timeoutId);
-              abortController.signal.removeEventListener('abort', abortCompile);
+              abortController.signal.removeEventListener("abort", abortCompile);
             }
           } catch {
             // Best-effort compile; fallback to cleaned prompt on errors/timeouts.
@@ -154,7 +164,12 @@ export function useVideoPreview({
           return;
         }
 
-        const response = await generateVideoPreview(resolvedPrompt, aspectRatio, resolvedModel, options);
+        const response = await generateVideoPreview(
+          resolvedPrompt,
+          aspectRatio,
+          resolvedModel,
+          options,
+        );
 
         // Check if request was aborted
         if (abortController.signal.aborted) {
@@ -168,7 +183,10 @@ export function useVideoPreview({
         }
 
         if (response.success && response.jobId) {
-          const pollResult = await pollJobStatus(response.jobId, abortController.signal);
+          const pollResult = await pollJobStatus(
+            response.jobId,
+            abortController.signal,
+          );
           if (!pollResult || abortController.signal.aborted) {
             return;
           }
@@ -177,7 +195,11 @@ export function useVideoPreview({
           return;
         }
 
-        throw new Error(response.error || response.message || 'Failed to generate video preview');
+        throw new Error(
+          response.error ||
+            response.message ||
+            "Failed to generate video preview",
+        );
       } catch (err) {
         // Don't set error if request was aborted
         if (abortController.signal.aborted) {
@@ -185,7 +207,9 @@ export function useVideoPreview({
         }
 
         const errorMessage =
-          err instanceof Error ? err.message : 'Failed to generate video preview';
+          err instanceof Error
+            ? err.message
+            : "Failed to generate video preview";
         setError(errorMessage);
         setVideoUrl(null);
       } finally {
@@ -195,7 +219,14 @@ export function useVideoPreview({
         }
       }
     },
-    [aspectRatio, model, videoUrl, startImage, inputReference, generationParams]
+    [
+      aspectRatio,
+      model,
+      videoUrl,
+      startImage,
+      inputReference,
+      generationParams,
+    ],
   );
 
   /**
@@ -234,7 +265,7 @@ export function useVideoPreview({
     setVideoUrl(null);
     setError(null);
     setLoading(false);
-    lastPromptRef.current = '';
+    lastPromptRef.current = "";
   }, [model]);
 
   /**
@@ -255,4 +286,3 @@ export function useVideoPreview({
     regenerate,
   };
 }
-

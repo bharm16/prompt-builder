@@ -1,6 +1,6 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const STORAGE_KEY = 'promptBuilder.spanLabelingCache.v2';
+const STORAGE_KEY = "promptBuilder.spanLabelingCache.v2";
 
 interface CacheModule {
   spanLabelingCache: {
@@ -8,7 +8,11 @@ interface CacheModule {
     get: (payload: Record<string, unknown>) => unknown;
     set: (
       payload: Record<string, unknown>,
-      data: { spans: unknown[]; meta: Record<string, unknown> | null; signature?: string }
+      data: {
+        spans: unknown[];
+        meta: Record<string, unknown> | null;
+        signature?: string;
+      },
     ) => void;
     hydrate: () => void;
     getSnapshot: () => Array<{ key: string; textPreview: string }>;
@@ -17,15 +21,16 @@ interface CacheModule {
 
 async function loadCacheModule(): Promise<CacheModule> {
   vi.resetModules();
-  return import('../SpanLabelingCache') as unknown as Promise<CacheModule>;
+  return import("../SpanLabelingCache") as unknown as Promise<CacheModule>;
 }
 
-describe('SpanLabelingCache service', () => {
+describe("SpanLabelingCache service", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.useFakeTimers();
     localStorage.clear();
-    delete (globalThis as { requestIdleCallback?: unknown }).requestIdleCallback;
+    delete (globalThis as { requestIdleCallback?: unknown })
+      .requestIdleCallback;
   });
 
   afterEach(() => {
@@ -33,30 +38,36 @@ describe('SpanLabelingCache service', () => {
     localStorage.clear();
   });
 
-  it('validates version at initialization and resets stale cache', async () => {
-    localStorage.setItem('span_cache_version', 'stale-version');
-    localStorage.setItem(STORAGE_KEY, JSON.stringify([['x', { text: 'stale' }]]));
+  it("validates version at initialization and resets stale cache", async () => {
+    localStorage.setItem("span_cache_version", "stale-version");
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify([["x", { text: "stale" }]]),
+    );
 
     await loadCacheModule();
 
     expect(localStorage.removeItem).toHaveBeenCalledWith(STORAGE_KEY);
-    expect(localStorage.setItem).toHaveBeenCalledWith('span_cache_version', expect.any(String));
+    expect(localStorage.setItem).toHaveBeenCalledWith(
+      "span_cache_version",
+      expect.any(String),
+    );
   });
 
-  it('persists entries and retrieves cache hits with signatures', async () => {
+  it("persists entries and retrieves cache hits with signatures", async () => {
     const { spanLabelingCache } = await loadCacheModule();
 
     const payload = {
-      text: 'A neon city skyline',
-      cacheId: 'prompt-1',
+      text: "A neon city skyline",
+      cacheId: "prompt-1",
       maxSpans: 20,
       minConfidence: 0.5,
-      templateVersion: 'v1',
+      templateVersion: "v1",
     };
 
     spanLabelingCache.set(payload, {
-      spans: [{ start: 2, end: 6, category: 'environment', confidence: 0.9 }],
-      meta: { source: 'network' },
+      spans: [{ start: 2, end: 6, category: "environment", confidence: 0.9 }],
+      meta: { source: "network" },
     });
 
     const cached = spanLabelingCache.get(payload) as {
@@ -68,29 +79,29 @@ describe('SpanLabelingCache service', () => {
     expect(cached).not.toBeNull();
     expect(cached?.spans).toHaveLength(1);
     expect(cached?.signature).toBeTruthy();
-    expect(cached?.meta).toMatchObject({ source: 'network' });
+    expect(cached?.meta).toMatchObject({ source: "network" });
 
     const persistedRaw = localStorage.getItem(STORAGE_KEY);
     expect(persistedRaw).toBeTruthy();
-    const persisted = JSON.parse(persistedRaw || '[]');
+    const persisted = JSON.parse(persistedRaw || "[]");
     const firstEntryValue = persisted[0]?.[1];
     expect(firstEntryValue.version).toEqual(expect.any(String));
     expect(firstEntryValue.meta.cacheVersion).toEqual(expect.any(String));
   });
 
-  it('hydrates asynchronously from storage and loads valid entries only', async () => {
+  it("hydrates asynchronously from storage and loads valid entries only", async () => {
     const { spanLabelingCache } = await loadCacheModule();
 
     const payload = {
-      text: 'Hydrate me from storage',
-      cacheId: 'hydrate-1',
+      text: "Hydrate me from storage",
+      cacheId: "hydrate-1",
       maxSpans: 10,
     };
 
     spanLabelingCache.set(payload, {
-      spans: [{ start: 0, end: 7, category: 'subject', confidence: 0.8 }],
-      meta: { source: 'seed' },
-      signature: 'sig-hydrate',
+      spans: [{ start: 0, end: 7, category: "subject", confidence: 0.8 }],
+      meta: { source: "seed" },
+      signature: "sig-hydrate",
     });
 
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -104,35 +115,37 @@ describe('SpanLabelingCache service', () => {
     spanLabelingCache.hydrate();
     await vi.advanceTimersByTimeAsync(100);
 
-    const hydrated = spanLabelingCache.get(payload) as { signature: string } | null;
+    const hydrated = spanLabelingCache.get(payload) as {
+      signature: string;
+    } | null;
     expect(hydrated).not.toBeNull();
-    expect(hydrated?.signature).toBe('sig-hydrate');
+    expect(hydrated?.signature).toBe("sig-hydrate");
   });
 
-  it('invalidates cache entries older than max age', async () => {
+  it("invalidates cache entries older than max age", async () => {
     const now = Date.now();
-    vi.spyOn(Date, 'now').mockReturnValue(now);
+    vi.spyOn(Date, "now").mockReturnValue(now);
 
     const { spanLabelingCache } = await loadCacheModule();
 
     const payload = {
-      text: 'expiring entry',
-      cacheId: 'exp-1',
+      text: "expiring entry",
+      cacheId: "exp-1",
       maxSpans: 5,
     };
 
     spanLabelingCache.set(payload, {
-      spans: [{ start: 0, end: 7, category: 'subject', confidence: 0.8 }],
+      spans: [{ start: 0, end: 7, category: "subject", confidence: 0.8 }],
       meta: null,
     });
 
-    vi.spyOn(Date, 'now').mockReturnValue(now + 25 * 60 * 60 * 1000);
+    vi.spyOn(Date, "now").mockReturnValue(now + 25 * 60 * 60 * 1000);
 
     const expired = spanLabelingCache.get(payload);
     expect(expired).toBeNull();
   });
 
-  it('applies LRU eviction when cache exceeds configured limit', async () => {
+  it("applies LRU eviction when cache exceeds configured limit", async () => {
     const { spanLabelingCache } = await loadCacheModule();
 
     for (let i = 0; i < 55; i += 1) {
@@ -143,16 +156,20 @@ describe('SpanLabelingCache service', () => {
           maxSpans: 5,
         },
         {
-          spans: [{ start: 0, end: 3, category: 'subject', confidence: 0.7 }],
+          spans: [{ start: 0, end: 3, category: "subject", confidence: 0.7 }],
           meta: null,
-        }
+        },
       );
     }
 
     const snapshot = spanLabelingCache.getSnapshot();
 
     expect(snapshot.length).toBeLessThanOrEqual(50);
-    expect(snapshot.some((entry) => entry.textPreview.includes('entry-54'))).toBe(true);
-    expect(snapshot.some((entry) => entry.textPreview.includes('entry-0'))).toBe(false);
+    expect(
+      snapshot.some((entry) => entry.textPreview.includes("entry-54")),
+    ).toBe(true);
+    expect(
+      snapshot.some((entry) => entry.textPreview.includes("entry-0")),
+    ).toBe(false);
   });
 });

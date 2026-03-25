@@ -1,71 +1,74 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import { renderHook, act } from "@testing-library/react";
 
-import { useAssetsSidebar } from '@features/prompt-optimizer/components/AssetsSidebar/hooks/useAssetsSidebar';
-import { assetsSidebarApi } from '@features/prompt-optimizer/components/AssetsSidebar/api/assetsSidebarApi';
-import type { Asset } from '@shared/types/asset';
+import { useAssetsSidebar } from "@features/prompt-optimizer/components/AssetsSidebar/hooks/useAssetsSidebar";
+import { assetsSidebarApi } from "@features/prompt-optimizer/components/AssetsSidebar/api/assetsSidebarApi";
+import type { Asset } from "@shared/types/asset";
 
 const listeners: Array<(user: unknown) => void> = [];
 const unsubscribe = vi.fn();
 
-vi.mock('firebase/auth', () => ({
+vi.mock("firebase/auth", () => ({
   onAuthStateChanged: vi.fn((_auth, callback: (user: unknown) => void) => {
     listeners.push(callback);
     return unsubscribe;
   }),
 }));
 
-vi.mock('@/config/firebase', () => ({
+vi.mock("@/config/firebase", () => ({
   auth: {},
 }));
 
-vi.mock('@features/prompt-optimizer/components/AssetsSidebar/api/assetsSidebarApi', () => ({
-  assetsSidebarApi: {
-    list: vi.fn(),
-  },
-}));
+vi.mock(
+  "@features/prompt-optimizer/components/AssetsSidebar/api/assetsSidebarApi",
+  () => ({
+    assetsSidebarApi: {
+      list: vi.fn(),
+    },
+  }),
+);
 
 const mockAssetsSidebarApi = vi.mocked(assetsSidebarApi);
 
 const createAsset = (overrides: Partial<Asset> = {}): Asset => ({
-  id: overrides.id ?? 'asset-1',
-  userId: 'user-1',
-  type: overrides.type ?? 'character',
-  trigger: overrides.trigger ?? '@hero',
-  name: overrides.name ?? 'Hero',
-  textDefinition: overrides.textDefinition ?? 'hero',
+  id: overrides.id ?? "asset-1",
+  userId: "user-1",
+  type: overrides.type ?? "character",
+  trigger: overrides.trigger ?? "@hero",
+  name: overrides.name ?? "Hero",
+  textDefinition: overrides.textDefinition ?? "hero",
   referenceImages: [],
   usageCount: 0,
   lastUsedAt: null,
-  createdAt: '2024-01-01T00:00:00Z',
-  updatedAt: '2024-01-01T00:00:00Z',
+  createdAt: "2024-01-01T00:00:00Z",
+  updatedAt: "2024-01-01T00:00:00Z",
   ...overrides,
 });
 
-describe('useAssetsSidebar', () => {
+describe("useAssetsSidebar", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     listeners.length = 0;
   });
 
-  describe('error handling', () => {
-    it('stores the error message when asset loading fails', async () => {
-      mockAssetsSidebarApi.list.mockRejectedValue(new Error('boom'));
+  describe("error handling", () => {
+    it("stores the error message when asset loading fails", async () => {
+      mockAssetsSidebarApi.list.mockRejectedValue(new Error("boom"));
 
       const { result } = renderHook(() => useAssetsSidebar());
 
       await act(async () => {
-        listeners[0]?.({ uid: 'user-1' });
+        listeners[0]?.({ uid: "user-1" });
         await Promise.resolve();
       });
 
-      expect(result.current.error).toBe('boom');
+      expect(result.current.error).toBe("boom");
       expect(result.current.isLoading).toBe(false);
     });
   });
 
-  describe('edge cases', () => {
-    it('clears assets and stops loading when the user logs out', async () => {
+  describe("edge cases", () => {
+    it("clears assets and stops loading when the user logs out", async () => {
       mockAssetsSidebarApi.list.mockResolvedValue({
         assets: [createAsset()],
         total: 1,
@@ -84,8 +87,8 @@ describe('useAssetsSidebar', () => {
     });
   });
 
-  describe('core behavior', () => {
-    it('loads assets when a user is present', async () => {
+  describe("core behavior", () => {
+    it("loads assets when a user is present", async () => {
       const hero = createAsset();
       mockAssetsSidebarApi.list.mockResolvedValue({
         assets: [hero],
@@ -96,7 +99,7 @@ describe('useAssetsSidebar', () => {
       const { result } = renderHook(() => useAssetsSidebar());
 
       await act(async () => {
-        listeners[0]?.({ uid: 'user-1' });
+        listeners[0]?.({ uid: "user-1" });
         await Promise.resolve();
       });
 
@@ -105,7 +108,7 @@ describe('useAssetsSidebar', () => {
       expect(result.current.isLoading).toBe(false);
     });
 
-    it('refreshes assets on demand', async () => {
+    it("refreshes assets on demand", async () => {
       const hero = createAsset();
       mockAssetsSidebarApi.list.mockResolvedValueOnce({
         assets: [],
@@ -121,7 +124,7 @@ describe('useAssetsSidebar', () => {
       const { result } = renderHook(() => useAssetsSidebar());
 
       await act(async () => {
-        listeners[0]?.({ uid: 'user-1' });
+        listeners[0]?.({ uid: "user-1" });
         await Promise.resolve();
       });
 

@@ -1,6 +1,6 @@
 /**
  * Logger Interface
- * 
+ *
  * SOLID Principles Applied:
  * - ISP: Minimal logging interface
  * - DIP: Abstraction for logging operations
@@ -32,4 +32,3 @@ export interface ILogger {
    */
   child(bindings: Record<string, unknown>): ILogger;
 }
-

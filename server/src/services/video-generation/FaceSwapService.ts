@@ -5,8 +5,11 @@
  * Used when both startImage and characterAssetId are provided.
  */
 
-import { logger } from '@infrastructure/Logger';
-import { FalFaceSwapProvider, type FaceSwapOptions } from './providers/FalFaceSwapProvider';
+import { logger } from "@infrastructure/Logger";
+import {
+  FalFaceSwapProvider,
+  type FaceSwapOptions,
+} from "./providers/FalFaceSwapProvider";
 
 export interface FaceSwapRequest {
   characterPrimaryImageUrl: string;
@@ -16,16 +19,17 @@ export interface FaceSwapRequest {
 
 export interface FaceSwapResponse {
   swappedImageUrl: string;
-  provider: 'easel';
+  provider: "easel";
   durationMs: number;
 }
 
 export class FaceSwapService {
   private readonly faceSwapProvider: FalFaceSwapProvider;
-  private readonly log = logger.child({ service: 'FaceSwapService' });
+  private readonly log = logger.child({ service: "FaceSwapService" });
 
   constructor(options: { faceSwapProvider?: FalFaceSwapProvider } = {}) {
-    this.faceSwapProvider = options.faceSwapProvider ?? new FalFaceSwapProvider();
+    this.faceSwapProvider =
+      options.faceSwapProvider ?? new FalFaceSwapProvider();
   }
 
   public isAvailable(): boolean {
@@ -34,21 +38,23 @@ export class FaceSwapService {
 
   public async swap(request: FaceSwapRequest): Promise<FaceSwapResponse> {
     if (!this.faceSwapProvider.isAvailable()) {
-      throw new Error('Face-swap provider is not configured. Set FAL_KEY or FAL_API_KEY.');
+      throw new Error(
+        "Face-swap provider is not configured. Set FAL_KEY or FAL_API_KEY.",
+      );
     }
 
     if (!request.characterPrimaryImageUrl) {
-      throw new Error('Character reference image is required for face swap');
+      throw new Error("Character reference image is required for face swap");
     }
 
     if (!request.targetCompositionUrl) {
-      throw new Error('Target composition image is required for face swap');
+      throw new Error("Target composition image is required for face swap");
     }
 
-    const operation = 'swap';
+    const operation = "swap";
     const startTime = performance.now();
 
-    this.log.info('Starting face swap preprocessing', {
+    this.log.info("Starting face swap preprocessing", {
       operation,
       aspectRatio: request.aspectRatio ?? null,
     });
@@ -57,27 +63,28 @@ export class FaceSwapService {
       const options: FaceSwapOptions = {
         faceImageUrl: request.characterPrimaryImageUrl,
         targetImageUrl: request.targetCompositionUrl,
-        preserveHair: 'user',
+        preserveHair: "user",
         upscale: true,
       };
 
       const result = await this.faceSwapProvider.swapFace(options);
       const durationMs = Math.round(performance.now() - startTime);
 
-      this.log.info('Face swap preprocessing completed', {
+      this.log.info("Face swap preprocessing completed", {
         operation,
         durationMs,
       });
 
       return {
         swappedImageUrl: result.imageUrl,
-        provider: 'easel',
+        provider: "easel",
         durationMs,
       };
     } catch (error) {
-      const errorInstance = error instanceof Error ? error : new Error(String(error));
+      const errorInstance =
+        error instanceof Error ? error : new Error(String(error));
       const errorMessage = errorInstance.message;
-      this.log.error('Face swap preprocessing failed', errorInstance, {
+      this.log.error("Face swap preprocessing failed", errorInstance, {
         operation,
         durationMs: Math.round(performance.now() - startTime),
       });

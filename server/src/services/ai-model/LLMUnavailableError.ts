@@ -1,4 +1,4 @@
-import { DomainError } from '@server/errors/DomainError';
+import { DomainError } from "@server/errors/DomainError";
 
 /**
  * Thrown when no LLM providers are configured or all providers are unavailable.
@@ -8,11 +8,11 @@ import { DomainError } from '@server/errors/DomainError';
  * targeted "AI services temporarily unavailable" message.
  */
 export class LLMUnavailableError extends DomainError {
-  readonly code = 'LLM_UNAVAILABLE';
+  readonly code = "LLM_UNAVAILABLE";
 
   constructor(message: string, details?: Record<string, unknown>) {
     super(message, details);
-    this.name = 'LLMUnavailableError';
+    this.name = "LLMUnavailableError";
   }
 
   getHttpStatus(): number {
@@ -20,6 +20,6 @@ export class LLMUnavailableError extends DomainError {
   }
 
   getUserMessage(): string {
-    return 'AI services are temporarily unavailable. Please try again in a moment.';
+    return "AI services are temporarily unavailable. Please try again in a moment.";
   }
 }
