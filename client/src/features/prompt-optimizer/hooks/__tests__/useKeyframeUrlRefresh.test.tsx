@@ -1,12 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
-import type { GenerationControlsState } from "@features/generation-controls/context/generationControlsStoreTypes";
-import { DEFAULT_GENERATION_CONTROLS_STATE } from "@features/generation-controls/context/generationControlsStoreTypes";
+import type { GenerationControlsState } from "@features/generation-controls";
+import { DEFAULT_GENERATION_CONTROLS_STATE } from "@features/generation-controls";
 import {
   GenerationControlsStoreProvider,
   useGenerationControlsStoreState,
-} from "@features/generation-controls/context/GenerationControlsStore";
+} from "@features/generation-controls";
 import { useKeyframeUrlRefresh } from "../useKeyframeUrlRefresh";
 import { resolveMediaUrl } from "@/services/media/MediaUrlResolver";
 

@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { VIDEO_DRAFT_MODEL } from "@/components/ToolSidebar/config/modelConfig";
 import { useGenerationsRuntime } from "../useGenerationsRuntime";
 import type { CapabilitiesSchema } from "@shared/capabilities";
-import type { ExtendVideoSource } from "@features/generation-controls/context/generationControlsStoreTypes";
+import type { ExtendVideoSource } from "@features/generation-controls";
 
 const setControlsMock = vi.fn();
 const updateShotMock = vi.fn().mockResolvedValue(undefined);
@@ -136,7 +136,7 @@ vi.mock(
 );
 
 vi.mock(
-  "@features/generation-controls/context/GenerationControlsStore",
+  "@features/generation-controls",
   () => ({
     useGenerationControlsStoreState: () => ({
       domain: {

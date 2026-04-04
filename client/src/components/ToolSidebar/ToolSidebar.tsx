@@ -6,8 +6,8 @@ import {
   type ReactElement,
 } from "react";
 import { FEATURES } from "@/config/features.config";
-import { dispatchPromptFocusIntent } from "@features/workspace-shell/events";
-import type { PromptHistoryEntry } from "@/features/prompt-optimizer/types/domain/prompt-session";
+import { dispatchPromptFocusIntent } from "@features/workspace-shell";
+import type { PromptHistoryEntry } from "@features/prompt-optimizer";
 import { ToolRail } from "./components/ToolRail";
 import { ToolPanel } from "./components/ToolPanel";
 import { SessionsPanel } from "./components/panels/SessionsPanel";

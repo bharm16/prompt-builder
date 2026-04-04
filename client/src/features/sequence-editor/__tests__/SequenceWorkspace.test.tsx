@@ -158,7 +158,7 @@ vi.mock("@components/Toast", () => ({
 }));
 
 vi.mock(
-  "@features/generation-controls/context/GenerationControlsStore",
+  "@features/generation-controls",
   () => ({
     useGenerationControlsStoreState: () => ({
       domain: generationDomain,

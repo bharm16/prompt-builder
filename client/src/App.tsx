@@ -17,7 +17,7 @@ import {
 import { ToastProvider } from "./components/Toast";
 import { AppShellProvider } from "./contexts/AppShellContext";
 import { LoadingDots } from "./components/LoadingDots";
-import { GenerationControlsStoreProvider } from "@features/generation-controls/context/GenerationControlsStore";
+import { GenerationControlsStoreProvider } from "@features/generation-controls";
 import { apiClient } from "./services/ApiClient";
 import { trackPageView } from "./services/analytics";
 

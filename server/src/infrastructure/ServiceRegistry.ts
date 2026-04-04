@@ -60,6 +60,7 @@ export interface ServiceRegistry {
   gcsBucket: Bucket;
 
   // LLM clients (nullable — credentials may be absent)
+  openAIClient: LLMClient | null;
   claudeClient: LLMClient | null;
   groqClient: LLMClient | null;
   qwenClient: LLMClient | null;

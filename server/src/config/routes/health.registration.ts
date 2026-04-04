@@ -130,7 +130,7 @@ export function registerHealthRoutes(
   }
 
   const healthRoutes = createHealthRoutes({
-    claudeClient: container.resolve("claudeClient"),
+    openAIClient: container.resolve("openAIClient"),
     groqClient: container.resolve("groqClient"),
     geminiClient: container.resolve("geminiClient"),
     cacheService: container.resolve("cacheService"),

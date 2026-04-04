@@ -5,7 +5,7 @@
  */
 
 import type { ComponentType, ReactNode } from "react";
-import type { User } from "@features/prompt-optimizer/types/domain/prompt-session";
+import type { User } from "@features/prompt-optimizer";
 
 // -----------------------------------------------------------------------------
 // Navigation Item Types

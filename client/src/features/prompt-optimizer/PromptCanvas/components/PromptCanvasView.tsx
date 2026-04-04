@@ -8,7 +8,7 @@ import { GenerationsPanel } from "@features/generations";
 import { SpanBentoGrid } from "@features/prompt-optimizer/SpanBentoGrid/SpanBentoGrid";
 import { HighlightingErrorBoundary } from "@features/span-highlighting/components/HighlightingErrorBoundary";
 import { CoherencePanel } from "@features/prompt-optimizer/components/coherence/CoherencePanel";
-import { CanvasWorkspace } from "@features/workspace-shell/CanvasWorkspace";
+import { CanvasWorkspace } from "@features/workspace-shell";
 import type { PromptCanvasViewProps } from "./PromptCanvasView.types";
 import { PromptCanvasEditorSection } from "./PromptCanvasEditorSection";
 import { PromptCanvasMobileGenerations } from "./PromptCanvasMobileGenerations";

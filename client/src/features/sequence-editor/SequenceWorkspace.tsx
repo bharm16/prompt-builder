@@ -7,7 +7,7 @@ import { GenerationFooter } from "@components/ToolSidebar/components/panels/Gene
 import { VideoSettingsRow } from "@components/ToolSidebar/components/panels/GenerationControlsPanel/components/VideoSettingsRow";
 import { useCapabilitiesClamping } from "@components/ToolSidebar/components/panels/GenerationControlsPanel/hooks/useCapabilitiesClamping";
 import { useModelSelectionRecommendation } from "@components/ToolSidebar/components/panels/GenerationControlsPanel/hooks/useModelSelectionRecommendation";
-import type { VideoTier } from "@components/ToolSidebar/types";
+import type { VideoTier } from "@features/generation-controls";
 import type { CameraPath } from "@/features/convergence/types";
 import type { ContinuityShot } from "@/features/continuity/types";
 import { useAuthUser } from "@/hooks/useAuthUser";
@@ -17,7 +17,7 @@ import { useLowBalanceWarning } from "@/features/billing/hooks/useLowBalanceWarn
 import {
   useGenerationControlsStoreActions,
   useGenerationControlsStoreState,
-} from "@features/generation-controls/context/GenerationControlsStore";
+} from "@features/generation-controls";
 import { useGenerationControlsContext } from "@/features/prompt-optimizer/context/GenerationControlsContext";
 import { useClipboard } from "@/features/prompt-optimizer/hooks/useClipboard";
 import { useWorkspaceSession } from "@/features/prompt-optimizer/context/WorkspaceSessionContext";

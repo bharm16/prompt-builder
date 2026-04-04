@@ -11,7 +11,7 @@ import type {
   ValidationPolicy,
   ProcessingOptions,
 } from "../types";
-import type { AIService as BaseAIService } from "@services/enhancement/services/types";
+import type { AIExecutionPort } from "@services/ai-model/ports/AIExecutionPort";
 import { SubstringPositionCache } from "../cache/SubstringPositionCache";
 
 /**
@@ -22,7 +22,7 @@ export interface LlmSpanParams {
   policy: ValidationPolicy;
   options: ProcessingOptions;
   enableRepair: boolean;
-  aiService: BaseAIService;
+  aiService: AIExecutionPort;
   cache: SubstringPositionCache;
   nlpSpansAttempted?: number;
 }

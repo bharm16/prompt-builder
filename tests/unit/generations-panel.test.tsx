@@ -58,10 +58,22 @@ vi.mock("@features/prompt-optimizer/context/WorkspaceSessionContext", () => ({
 vi.mock("@features/prompt-optimizer/context/PromptStateContext", () => ({
   usePromptNavigation: () => mockUsePromptNavigation(),
   usePromptSession: () => mockUsePromptSession(),
+  usePromptServices: () => ({
+    promptHistory: {
+      history: [],
+      saveToHistory: vi.fn(),
+    },
+    promptOptimizer: {
+      inputPrompt: "",
+      displayedPrompt: "",
+      optimizedPrompt: "",
+      qualityScore: null,
+    },
+  }),
 }));
 
 vi.mock(
-  "@features/generation-controls/context/GenerationControlsStore",
+  "@features/generation-controls",
   () => ({
     useGenerationControlsStoreState: () =>
       mockUseGenerationControlsStoreState(),
@@ -171,6 +183,10 @@ describe("GenerationsPanel", () => {
       },
     });
     mockUseGenerationControlsStoreActions.mockReturnValue({
+      setStartFrame: vi.fn(),
+      clearStartFrame: vi.fn(),
+      setExtendVideo: vi.fn(),
+      clearExtendVideo: vi.fn(),
       setKeyframes: vi.fn(),
     });
   });

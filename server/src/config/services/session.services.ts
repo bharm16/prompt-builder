@@ -161,7 +161,7 @@ export function registerSessionServices(container: DIContainer): void {
   );
 
   container.register(
-    "referenceImageService",
+    "referenceImageRepository",
     (gcsBucket: Bucket, gcsBucketName: string) => {
       try {
         return new ReferenceImageRepository({
@@ -178,6 +178,13 @@ export function registerSessionServices(container: DIContainer): void {
       }
     },
     ["gcsBucket", "gcsBucketName"],
+    { singleton: true },
+  );
+  container.register(
+    "referenceImageService",
+    (referenceImageRepository: ReferenceImageRepository | null) =>
+      referenceImageRepository,
+    ["referenceImageRepository"],
     { singleton: true },
   );
 }

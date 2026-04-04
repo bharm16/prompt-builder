@@ -57,9 +57,7 @@
     "zod": "^4.1.13"
   },
   "overrides": {
-    "_comment_onnxruntime": "Pin to 1.19.2: later versions introduce breaking native binary changes that crash GLiNER model loading at startup. Test before bumping.",
     "onnxruntime-node": "1.19.2",
-    "_comment_transformers": "Force onnxruntime-node 1.19.2 and sharp 0.34.5 inside transformer libs to avoid duplicate native binaries and peer dep conflicts.",
     "@xenova/transformers": {
       "onnxruntime-node": "1.19.2",
       "sharp": "0.34.5"
@@ -68,7 +66,6 @@
       "onnxruntime-node": "1.19.2",
       "sharp": "0.34.5"
     },
-    "_comment_baseline": "Pin to 2.9.18: later versions cause resolution failures in the Vite build pipeline.",
     "baseline-browser-mapping": "2.9.18"
   },
   "devDependencies": {

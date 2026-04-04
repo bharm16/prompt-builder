@@ -12,36 +12,24 @@ import { ModelScoringService } from "../services/ModelScoringService";
 import { PromptRequirementsService } from "../services/PromptRequirementsService";
 import { RecommendationExplainerService } from "../services/RecommendationExplainerService";
 import { AvailabilityGateService } from "../services/AvailabilityGateService";
+import type { PromptSpanProvider } from "../ports/PromptSpanProvider";
 import { SAMPLE_PROMPT, SAMPLE_SPANS } from "./fixtures/testPrompts";
-import type { AIModelService } from "@services/ai-model/AIModelService";
 import type { VideoGenerationService } from "@services/video-generation/VideoGenerationService";
 import type {
   VideoAvailabilitySnapshot,
   VideoAvailabilitySnapshotModel,
 } from "@services/video-generation/types";
 import type { LLMSpan } from "@llm/span-labeling/types";
-import { labelSpans } from "@llm/span-labeling/SpanLabelingService";
-
-vi.mock("@llm/span-labeling/SpanLabelingService", () => ({
-  labelSpans: vi.fn(),
-}));
-
-const mockedLabelSpans = labelSpans as MockedFunction<typeof labelSpans>;
 
 describe("ModelIntelligenceService (integration)", () => {
-  afterEach(() => {
-    mockedLabelSpans.mockReset();
-  });
-
   it("generates recommendations using labeled spans", async () => {
     const spans: LLMSpan[] = SAMPLE_SPANS.map((span) => ({
       ...span,
       role: span.role ?? "subject",
     }));
-    mockedLabelSpans.mockResolvedValue({
-      spans,
-      meta: { version: "test", notes: "mocked" },
-    });
+    const promptSpanProvider = {
+      label: vi.fn<PromptSpanProvider["label"]>().mockResolvedValue(spans),
+    };
 
     const registry = new ModelCapabilityRegistry();
     const modelIds = registry.getAllModels();
@@ -64,14 +52,8 @@ describe("ModelIntelligenceService (integration)", () => {
       getAvailabilitySnapshot: vi.fn().mockReturnValue(snapshot),
     } as unknown as VideoGenerationService;
 
-    const aiService = {
-      execute: vi.fn<AIModelService["execute"]>(),
-    } as unknown as AIModelService;
-
     const service = new ModelIntelligenceService({
-      aiService,
-      videoGenerationService,
-      userCreditService: null,
+      promptSpanProvider,
       requirementsService: new PromptRequirementsService(),
       registry,
       scoringService: new ModelScoringService(),
@@ -86,7 +68,7 @@ describe("ModelIntelligenceService (integration)", () => {
       mode: "t2v",
     });
 
-    expect(mockedLabelSpans).toHaveBeenCalled();
+    expect(promptSpanProvider.label).toHaveBeenCalled();
     expect(recommendation.requirements.physics.hasParticleSystems).toBe(true);
     expect(recommendation.recommendations.length).toBeGreaterThan(0);
   });

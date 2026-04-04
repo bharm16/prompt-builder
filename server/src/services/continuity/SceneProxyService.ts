@@ -2,9 +2,8 @@ import { logger } from "@infrastructure/Logger";
 import { generateId } from "@utils/uid";
 import { StorageService } from "@services/storage/StorageService";
 import { STORAGE_TYPES } from "@services/storage/config/storageConfig";
-import { createDepthEstimationServiceForUser } from "@services/convergence/depth";
-import type { StorageService as ConvergenceStorageService } from "@services/convergence/storage";
 import sharp from "sharp";
+import type { DepthEstimationFactory } from "./ports/DepthEstimationFactory";
 import type { FrameBridgeService } from "./FrameBridgeService";
 import type { SceneProxy, SceneProxyRender } from "./types";
 
@@ -23,6 +22,7 @@ export class SceneProxyService {
   constructor(
     private storage: StorageService,
     private frameBridge: FrameBridgeService,
+    private createDepthEstimationService: DepthEstimationFactory,
   ) {}
 
   async createProxyFromVideo(
@@ -41,10 +41,7 @@ export class SceneProxyService {
       let depthMapUrl: string | undefined;
       let depthBuffer: Buffer | undefined;
 
-      const depthService = createDepthEstimationServiceForUser(
-        this.storage as unknown as ConvergenceStorageService,
-        userId,
-      );
+      const depthService = this.createDepthEstimationService(userId);
 
       if (depthService.isAvailable()) {
         try {

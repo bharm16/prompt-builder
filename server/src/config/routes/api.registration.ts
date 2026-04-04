@@ -88,7 +88,7 @@ export function registerApiRoutes(
     ...(consistentVideoService ? { consistentVideoService } : {}),
     userCreditService:
       container.resolve<UserCreditService>("userCreditService"),
-    referenceImageService: container.resolve("referenceImageService"),
+    referenceImageService: container.resolve("referenceImageRepository"),
     imageObservationService: container.resolve("imageObservationService"),
     continuitySessionService,
     sessionService: container.resolve("sessionService"),

@@ -1,5 +1,5 @@
 import { getFewShotExamples } from "../../utils/promptBuilder";
-import type { AIService as BaseAIService } from "@services/enhancement/services/types";
+import type { AIExecutionPort } from "@services/ai-model/ports/AIExecutionPort";
 import type { ExecuteParams } from "@services/ai-model/AIModelService";
 
 /**
@@ -44,7 +44,7 @@ export async function callModel({
 }: {
   systemPrompt: string;
   userPayload: string;
-  aiService: BaseAIService;
+  aiService: AIExecutionPort;
   maxTokens: number;
   providerOptions: ProviderRequestOptions;
   schema?: Record<string, unknown>;

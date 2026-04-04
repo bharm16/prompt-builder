@@ -884,7 +884,7 @@ export class EnhancementService {
   }
 
   private _getEnhancementTemperature(): number {
-    const config = this.core.ai.getOperationConfig("enhance_suggestions");
+    const config = this.core.ai.getOperationConfig?.("enhance_suggestions");
     if (typeof config?.temperature === "number") {
       return config.temperature;
     }

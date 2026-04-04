@@ -7,7 +7,7 @@ import React, {
 } from "react";
 import { X } from "@promptstudio/system/components/ui";
 import { Textarea } from "@promptstudio/system/components/ui/textarea";
-import type { SidebarUploadedImage } from "@components/ToolSidebar/types";
+import type { SidebarUploadedImage } from "@features/generation-controls";
 import { MAX_REQUEST_LENGTH } from "@/components/SuggestionsPanel/config/panelConfig";
 import { TriggerAutocomplete } from "@/features/assets/components/TriggerAutocomplete";
 import type { AssetSuggestion } from "@/features/assets/hooks/useTriggerAutocomplete";

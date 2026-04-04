@@ -7,6 +7,7 @@ import { AIModelService } from "@services/ai-model/index";
 import AssetService from "@services/asset/AssetService";
 import { CapabilitiesProbeService } from "@services/capabilities/CapabilitiesProbeService";
 import type { UserCreditService } from "@services/credits/UserCreditService";
+import { labelSpans } from "@llm/span-labeling/SpanLabelingService";
 import ConsistentVideoService from "@services/video-generation/ConsistentVideoService";
 import FaceSwapService from "@services/video-generation/FaceSwapService";
 import KeyframeGenerationService from "@services/video-generation/KeyframeGenerationService";
@@ -24,6 +25,8 @@ import {
 import { StoryboardFramePlanner } from "@services/image-generation/storyboard/StoryboardFramePlanner";
 import { StoryboardPreviewService } from "@services/image-generation/storyboard/StoryboardPreviewService";
 import { ModelIntelligenceService } from "@services/model-intelligence/ModelIntelligenceService";
+import { AvailabilityGateService } from "@services/model-intelligence/services/AvailabilityGateService";
+import type { PromptSpanProvider } from "@services/model-intelligence/ports/PromptSpanProvider";
 import { BillingProfileStore } from "@services/payment/BillingProfileStore";
 import type { FirestoreCircuitExecutor } from "@services/firestore/FirestoreCircuitExecutor";
 import { VideoGenerationService } from "@services/video-generation/VideoGenerationService";
@@ -66,26 +69,26 @@ export function registerGenerationServices(container: DIContainer): void {
 
   container.register(
     "storyboardFramePlanner",
-    (geminiClient: LLMClient | null, claudeClient: LLMClient | null) => {
+    (geminiClient: LLMClient | null, openAIClient: LLMClient | null) => {
       if (!geminiClient) {
         logger.warn(
           "Gemini client not available, storyboard frame planner disabled",
         );
         return null;
       }
-      if (!claudeClient) {
+      if (!openAIClient) {
         logger.warn(
           "OpenAI client not available, vision-based storyboard planning disabled (text-only fallback)",
         );
       }
       return new StoryboardFramePlanner({
         llmClient: geminiClient,
-        visionLlmClient: claudeClient,
+        visionLlmClient: openAIClient,
         timeoutMs: 8000,
         visionTimeoutMs: 15000,
       });
     },
-    ["geminiClient", "claudeClient"],
+    ["geminiClient", "openAIClient"],
   );
 
   container.register(
@@ -246,26 +249,48 @@ export function registerGenerationServices(container: DIContainer): void {
   );
 
   container.register(
-    "modelIntelligenceService",
+    "modelIntelligencePromptSpanProvider",
+    (aiService: AIModelService): PromptSpanProvider => ({
+      label: async (prompt: string) => {
+        const result = await labelSpans({ text: prompt }, aiService);
+        return Array.isArray(result.spans) ? result.spans : [];
+      },
+    }),
+    ["aiService"],
+    { singleton: true },
+  );
+
+  container.register(
+    "modelIntelligenceAvailabilityGate",
     (
-      aiService: AIModelService,
       videoGenerationService: VideoGenerationService | null,
       creditService: UserCreditService,
       billingProfileStore: BillingProfileStore,
+    ) =>
+      new AvailabilityGateService(
+        videoGenerationService,
+        creditService,
+        billingProfileStore,
+      ),
+    ["videoGenerationService", "userCreditService", "billingProfileStore"],
+    { singleton: true },
+  );
+
+  container.register(
+    "modelIntelligenceService",
+    (
+      promptSpanProvider: PromptSpanProvider,
+      availabilityGate: AvailabilityGateService,
       metricsService: MetricsService,
     ) =>
       new ModelIntelligenceService({
-        aiService,
-        videoGenerationService,
-        userCreditService: creditService,
-        billingProfileStore,
+        promptSpanProvider,
+        availabilityGate,
         metricsService,
       }),
     [
-      "aiService",
-      "videoGenerationService",
-      "userCreditService",
-      "billingProfileStore",
+      "modelIntelligencePromptSpanProvider",
+      "modelIntelligenceAvailabilityGate",
       "metricsService",
     ],
     { singleton: true },

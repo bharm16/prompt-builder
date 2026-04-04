@@ -71,7 +71,7 @@ export function registerLLMServices(container: DIContainer): void {
   );
 
   container.register(
-    "claudeClient",
+    "openAIClient",
     (
       config: ServiceConfig,
       openAILimiter: ConcurrencyLimiter,
@@ -101,6 +101,12 @@ export function registerLLMServices(container: DIContainer): void {
       });
     },
     ["config", "openAILimiter", "metricsService"],
+  );
+
+  container.register(
+    "claudeClient",
+    (openAIClient: LLMClient | null) => openAIClient,
+    ["openAIClient"],
   );
 
   container.register(
@@ -199,7 +205,7 @@ export function registerLLMServices(container: DIContainer): void {
   container.register(
     "aiService",
     (
-      claudeClient: LLMClient | null,
+      openAIClient: LLMClient | null,
       groqClient: LLMClient | null,
       qwenClient: LLMClient | null,
       geminiClient: LLMClient | null,
@@ -215,7 +221,7 @@ export function registerLLMServices(container: DIContainer): void {
 
       return new AIModelService({
         clients: {
-          openai: claudeClient,
+          openai: openAIClient,
           groq: groqClient,
           qwen: qwenClient,
           gemini: geminiClient,
@@ -224,7 +230,7 @@ export function registerLLMServices(container: DIContainer): void {
       });
     },
     [
-      "claudeClient",
+      "openAIClient",
       "groqClient",
       "qwenClient",
       "geminiClient",

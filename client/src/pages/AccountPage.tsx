@@ -13,7 +13,7 @@ import { getAuthRepository } from "@repositories/index";
 import { useToast } from "@components/Toast";
 import { Button } from "@promptstudio/system/components/ui/button";
 import { useAuthUser } from "@hooks/useAuthUser";
-import type { User } from "@features/prompt-optimizer/types/domain/prompt-session";
+import type { User } from "@features/prompt-optimizer";
 import { AuthShell } from "./auth/AuthShell";
 import {
   AUTH_COLORS,

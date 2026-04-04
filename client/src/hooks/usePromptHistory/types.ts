@@ -10,13 +10,13 @@ export type {
   PromptVersionPreview,
   PromptVersionVideo,
   PromptVersionEntry,
-} from "@features/prompt-optimizer/types/domain/prompt-session";
+} from "@features/prompt-optimizer";
 
 import type {
   PromptHistoryEntry,
   PromptKeyframe,
   PromptVersionEntry,
-} from "@features/prompt-optimizer/types/domain/prompt-session";
+} from "@features/prompt-optimizer";
 import type { Toast } from "@hooks/types";
 
 export interface HistoryState {

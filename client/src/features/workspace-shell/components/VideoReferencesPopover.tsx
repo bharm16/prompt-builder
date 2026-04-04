@@ -1,7 +1,7 @@
 import React, { useCallback, useRef, useState } from "react";
 import { Image, X } from "@promptstudio/system/components/ui";
-import type { SidebarUploadedImage } from "@components/ToolSidebar/types";
-import type { VideoReferenceImage } from "@features/generation-controls/context/generationControlsStoreTypes";
+import type { SidebarUploadedImage } from "@features/generation-controls";
+import type { VideoReferenceImage } from "@features/generation-controls";
 import { useResolvedMediaUrl } from "@/hooks/useResolvedMediaUrl";
 import { hasGcsSignedUrlParams } from "@/utils/storageUrl";
 import { cn } from "@/utils/cn";

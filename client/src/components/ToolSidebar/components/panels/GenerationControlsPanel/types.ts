@@ -6,7 +6,7 @@ import type {
 export type {
   GenerationControlsTab,
   ImageSubTab,
-} from "@features/generation-controls/context/generationControlsStoreTypes";
+} from "@features/generation-controls";
 
 export interface GenerationControlsPanelProps {
   isProcessing?: boolean;

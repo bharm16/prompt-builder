@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { Generation, GenerationParams } from "../types";
-import type { DraftModel } from "@components/ToolSidebar/types";
+import type { DraftModel } from "@features/generation-controls";
 import type { GenerationsAction } from "./useGenerationsState";
 import {
   compileWanPrompt,

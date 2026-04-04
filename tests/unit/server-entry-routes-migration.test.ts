@@ -58,6 +58,7 @@ vi.mock("@services/quality-feedback/services/LLMJudgeService", () => ({
 
 import * as middlewareConfig from "@config/middleware.config";
 import * as routesConfig from "@config/routes.config";
+import { resolveAppDependencies } from "@config/app.dependencies";
 import { createApp } from "@server/app";
 import { startServer } from "@server/server";
 import { createHealthRoutes } from "@routes/health.routes";
@@ -124,7 +125,7 @@ describe("createApp", () => {
       }),
     };
 
-    const app = createApp(container as never);
+    const app = createApp(resolveAppDependencies(container as never));
 
     expect(app.get("trust proxy")).toBe(1);
     expect(configureMiddleware).toHaveBeenCalledWith(app, {
@@ -169,7 +170,7 @@ describe("startServer", () => {
 describe("health.routes", () => {
   it("serves health, readiness, and live endpoints", async () => {
     const deps = {
-      claudeClient: { getStats: () => ({ state: "CLOSED" }) },
+      openAIClient: { getStats: () => ({ state: "CLOSED" }) },
       groqClient: null,
       geminiClient: null,
       cacheService: {
@@ -209,7 +210,7 @@ describe("health.routes", () => {
 
   it("reports not ready when Firestore circuit is open", async () => {
     const deps = {
-      claudeClient: { getStats: () => ({ state: "CLOSED" }) },
+      openAIClient: { getStats: () => ({ state: "CLOSED" }) },
       groqClient: null,
       geminiClient: null,
       cacheService: {
@@ -261,7 +262,7 @@ describe("health.routes", () => {
 
   it("reports not ready when video execution path check fails", async () => {
     const deps = {
-      claudeClient: { getStats: () => ({ state: "CLOSED" }) },
+      openAIClient: { getStats: () => ({ state: "CLOSED" }) },
       groqClient: null,
       geminiClient: null,
       cacheService: {
@@ -296,7 +297,7 @@ describe("health.routes", () => {
     process.env.METRICS_TOKEN = "secret-token";
 
     const deps = {
-      claudeClient: { getStats: () => ({ state: "CLOSED" }) },
+      openAIClient: { getStats: () => ({ state: "CLOSED" }) },
       groqClient: null,
       geminiClient: null,
       cacheService: {

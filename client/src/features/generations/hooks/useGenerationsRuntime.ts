@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
   DraftModel,
   GenerationOverrides,
-} from "@components/ToolSidebar/types";
+} from "@features/generation-controls";
 import { useCreditBalance } from "@/contexts/CreditBalanceContext";
 import { useAuthUser } from "@hooks/useAuthUser";
 import { useToast } from "@components/Toast";
@@ -18,7 +18,7 @@ import { useGenerationControlsContext } from "@features/prompt-optimizer/context
 import {
   useGenerationControlsStoreActions,
   useGenerationControlsStoreState,
-} from "@features/generation-controls/context/GenerationControlsStore";
+} from "@features/generation-controls";
 import { resolvePrimaryVideoSource } from "../utils/videoSource";
 import { getModelConfig, getModelCreditCost } from "../config/generationConfig";
 import { useGenerationsState } from "./useGenerationsState";

@@ -2,8 +2,7 @@
  * Types for enhancement services
  * Shared type definitions used across enhancement service modules
  */
-
-import type { AIModelService } from "@services/ai-model/AIModelService";
+import type { AIExecutionPort } from "@services/ai-model/ports/AIExecutionPort";
 import type { VideoPromptService } from "@services/video-prompt-analysis/index";
 import type { PromptMode } from "../constants.js";
 import type { ImageObservation } from "@services/image-observation/types";
@@ -291,7 +290,7 @@ export interface FallbackRegenerationParams {
     highlightedCategoryConfidence?: number;
   };
   requestParams: PromptBuildParams;
-  aiService: AIModelService;
+  aiService: AIExecutionPort;
   schema: OutputSchema;
   temperature: number;
 }
@@ -420,7 +419,7 @@ export interface VideoService {
   ): VideoConstraints | null;
 }
 
-export type AIService = AIModelService;
+export type AIService = AIExecutionPort;
 
 /**
  * Brainstorm builder interface

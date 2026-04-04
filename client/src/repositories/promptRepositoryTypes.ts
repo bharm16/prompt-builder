@@ -1,7 +1,7 @@
 import type {
   PromptKeyframe,
   PromptVersionEntry,
-} from "@features/prompt-optimizer/types/domain/prompt-session";
+} from "@features/prompt-optimizer";
 
 export type PromptData = {
   uuid?: string;

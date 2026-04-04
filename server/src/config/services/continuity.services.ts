@@ -26,12 +26,16 @@ import {
   StyleReferenceService,
 } from "@services/continuity";
 import type { ServiceConfig } from "./service-config.types.ts";
+import { createDepthEstimationServiceForUser } from "@services/convergence/depth";
+import type { StorageService as ConvergenceStorageService } from "@services/convergence/storage";
+import type { DepthEstimationFactory } from "@services/continuity/ports/DepthEstimationFactory";
 
 export function registerContinuityServices(container: DIContainer): void {
   container.register(
     "continuitySessionStore",
-    () => new ContinuitySessionStore(),
-    [],
+    (sessionStore: import("@services/sessions/SessionStore").SessionStore) =>
+      new ContinuitySessionStore(sessionStore),
+    ["sessionStore"],
     { singleton: true },
   );
 
@@ -130,12 +134,30 @@ export function registerContinuityServices(container: DIContainer): void {
   );
 
   container.register(
+    "continuityDepthEstimationFactory",
+    (storageService: AppStorageService): DepthEstimationFactory =>
+      (userId: string) =>
+        createDepthEstimationServiceForUser(
+          storageService as unknown as ConvergenceStorageService,
+          userId,
+        ),
+    ["storageService"],
+    { singleton: true },
+  );
+
+  container.register(
     "sceneProxyService",
     (
       storageService: AppStorageService,
       frameBridgeService: FrameBridgeService,
-    ) => new SceneProxyService(storageService, frameBridgeService),
-    ["storageService", "frameBridgeService"],
+      depthEstimationFactory: DepthEstimationFactory,
+    ) =>
+      new SceneProxyService(
+        storageService,
+        frameBridgeService,
+        depthEstimationFactory,
+      ),
+    ["storageService", "frameBridgeService", "continuityDepthEstimationFactory"],
     { singleton: true },
   );
 

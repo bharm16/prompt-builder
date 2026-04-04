@@ -36,7 +36,8 @@ export class ContinuitySessionVersionMismatchError extends DomainError {
 export class ContinuitySessionStore {
   private readonly db = getFirestore();
   private readonly legacyCollection = this.db.collection("continuity_sessions");
-  private readonly sessionStore = new SessionStore();
+
+  constructor(private readonly sessionStore: SessionStore) {}
 
   async save(session: ContinuitySession): Promise<void> {
     await this.saveInternal(session);

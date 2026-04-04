@@ -1,7 +1,7 @@
 import type {
   DraftModel,
   GenerationOverrides,
-} from "@components/ToolSidebar/types";
+} from "@features/generation-controls";
 
 export type PendingGenerationIntent =
   | {

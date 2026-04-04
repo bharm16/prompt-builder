@@ -4,7 +4,7 @@ import type { KeyframeTile } from "@components/ToolSidebar/types";
 import type {
   ExtendVideoSource,
   VideoReferenceImage,
-} from "@features/generation-controls/context/generationControlsStoreTypes";
+} from "@features/generation-controls";
 import { StartFrameControl } from "@components/ToolSidebar/components/panels/StartFrameControl";
 import { EndFrameControl } from "@components/ToolSidebar/components/panels/EndFrameControl";
 import { VideoPromptToolbar } from "./VideoPromptToolbar";

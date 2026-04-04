@@ -11,7 +11,7 @@ import { VideoCamera } from "@promptstudio/system/components/ui";
 import { usePromptOptimizer } from "@hooks/usePromptOptimizer";
 import { usePromptHistory } from "@hooks/usePromptHistory";
 import { useDebugLogger } from "@hooks/useDebugLogger";
-import { useGenerationControlsStoreState } from "@features/generation-controls/context/GenerationControlsStore";
+import { useGenerationControlsStoreState } from "@features/generation-controls";
 import type {
   PromptActionsState,
   PromptConfigState,

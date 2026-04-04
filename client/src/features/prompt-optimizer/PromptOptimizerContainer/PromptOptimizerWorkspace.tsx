@@ -34,7 +34,7 @@ import {
 import {
   useGenerationControlsStoreActions,
   useGenerationControlsStoreState,
-} from "@features/generation-controls/context/GenerationControlsStore";
+} from "@features/generation-controls";
 import { scrollToSpanById } from "../utils/scrollToSpanById";
 import {
   uploadPreviewImage,

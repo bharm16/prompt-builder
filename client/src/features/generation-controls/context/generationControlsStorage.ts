@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { KeyframeTile } from "@components/ToolSidebar/types";
+import type { KeyframeTile } from "../types";
 import type { CameraPath } from "@/features/convergence/types";
 import { CAMERA_MOTION_CATEGORIES } from "@/features/convergence/types";
 

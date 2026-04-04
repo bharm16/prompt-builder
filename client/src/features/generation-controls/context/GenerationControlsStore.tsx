@@ -7,7 +7,7 @@ import React, {
 } from "react";
 import type { CapabilityValues } from "@shared/capabilities";
 import type { CameraPath } from "@/features/convergence/types";
-import type { KeyframeTile, VideoTier } from "@components/ToolSidebar/types";
+import type { KeyframeTile, VideoTier } from "../types";
 import {
   DEFAULT_GENERATION_CONTROLS_STATE,
   type ConstraintMode,

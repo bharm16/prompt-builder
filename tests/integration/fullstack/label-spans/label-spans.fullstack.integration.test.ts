@@ -9,6 +9,7 @@ import {
   it,
   vi,
 } from "vitest";
+import { resolveAppDependencies } from "@config/app.dependencies";
 import { configureServices, initializeServices } from "@config/services.config";
 import { createApp } from "@server/app";
 
@@ -97,7 +98,7 @@ describe("Label Spans Routes (full-stack integration)", () => {
     container.registerValue("aiService", aiServiceMock);
 
     await initializeServices(container);
-    app = createApp(container);
+    app = createApp(resolveAppDependencies(container));
   }, 30_000);
 
   afterAll(() => {

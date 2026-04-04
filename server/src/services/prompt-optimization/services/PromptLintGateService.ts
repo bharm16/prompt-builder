@@ -1,6 +1,6 @@
 import { logger } from "@infrastructure/Logger";
+import type { ModelConstraints } from "@server/contracts/prompt-analysis/modelConstraints";
 import { resolvePromptModelId } from "@services/video-models/ModelRegistry";
-import type { ModelConstraints } from "@services/video-prompt-analysis/strategies";
 import { getPromptModelConstraints } from "@shared/videoModels";
 
 const FORBIDDEN_PATTERNS: Array<{ pattern: RegExp; message: string }> = [

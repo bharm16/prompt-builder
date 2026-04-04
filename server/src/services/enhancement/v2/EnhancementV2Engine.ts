@@ -228,7 +228,7 @@ export class EnhancementV2Engine {
     context: EnhancementV2RequestContext,
     policy: SlotPolicy,
   ): Promise<Suggestion[]> {
-    const operationConfig = this.dependencies.aiService.getOperationConfig(
+    const operationConfig = this.dependencies.aiService.getOperationConfig?.(
       "enhance_suggestions",
     );
     const temperature =

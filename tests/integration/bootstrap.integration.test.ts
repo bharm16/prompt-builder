@@ -1,5 +1,6 @@
 import type { Server } from "node:http";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { resolveAppDependencies } from "@config/app.dependencies";
 import { configureServices, initializeServices } from "@config/services.config";
 import type { DIContainer } from "@infrastructure/DIContainer";
 import { createApp } from "@server/app";
@@ -18,7 +19,7 @@ describe("Server Bootstrap (integration)", () => {
     container = await configureServices();
     await initializeServices(container);
 
-    const app = createApp(container);
+    const app = createApp(resolveAppDependencies(container));
     server = await startServer(app, container);
 
     const address = server.address();

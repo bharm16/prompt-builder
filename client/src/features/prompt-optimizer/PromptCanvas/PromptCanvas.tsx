@@ -40,7 +40,7 @@ import { PromptCanvasView } from "./components/PromptCanvasView";
 import { postEnhancementSuggestions } from "@/api/enhancementSuggestionsApi";
 import { buildSuggestionContext } from "@features/prompt-optimizer/utils/enhancementSuggestionContext";
 import { prepareSpanContext } from "@features/span-highlighting/utils/spanProcessing";
-import { useGenerationControlsStoreState } from "@features/generation-controls/context/GenerationControlsStore";
+import { useGenerationControlsStoreState } from "@features/generation-controls";
 import { useWorkspaceSession } from "../context/WorkspaceSessionContext";
 import { usePromptInsertionBus } from "../context/PromptInsertionBusContext";
 import {

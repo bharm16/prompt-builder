@@ -1,6 +1,6 @@
 import React, { useCallback, useMemo } from "react";
 import { Eye, MagicWand, Images, X } from "@promptstudio/system/components/ui";
-import type { SidebarUploadedImage } from "@components/ToolSidebar/types";
+import type { SidebarUploadedImage } from "@features/generation-controls";
 import {
   VIDEO_DRAFT_MODELS,
   VIDEO_RENDER_MODELS,
@@ -12,7 +12,7 @@ import { useGenerationControlsContext } from "@/features/prompt-optimizer/contex
 import {
   useGenerationControlsStoreActions,
   useGenerationControlsStoreState,
-} from "@features/generation-controls/context/GenerationControlsStore";
+} from "@features/generation-controls";
 import { useCapabilitiesClamping } from "@/components/ToolSidebar/components/panels/GenerationControlsPanel/hooks/useCapabilitiesClamping";
 import { useVideoInputCapabilities } from "@/components/ToolSidebar/components/panels/GenerationControlsPanel/hooks/useVideoInputCapabilities";
 import { trackModelRecommendationEvent } from "@/features/model-intelligence/api";

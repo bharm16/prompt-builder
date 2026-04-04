@@ -2,9 +2,8 @@
  * Types for prompt optimization services
  * Shared type definitions used across prompt optimization modules
  */
-import type { VideoPromptStructuredResponse } from "./strategies/videoPromptTypes";
-import type { ExecuteParams } from "@services/ai-model/AIModelService";
-import type { AIResponse } from "@interfaces/IAIClient";
+import type { VideoPromptStructuredResponse } from "@server/contracts/prompt-analysis/structuredPrompt";
+import type { AIExecutionPort } from "@services/ai-model/ports/AIExecutionPort";
 import type { CapabilityValues } from "@shared/capabilities";
 import type { I2VConstraintMode, I2VOptimizationResult } from "./types/i2v";
 
@@ -164,18 +163,7 @@ export interface OptimizationStrategy {
   name: string;
 }
 
-/**
- * AI Service interface (minimal)
- */
-export interface AIService {
-  execute(operation: string, options: ExecuteParams): Promise<AIResponse>;
-  stream?(
-    operation: string,
-    options: ExecuteParams & { onChunk: (chunk: string) => void },
-  ): Promise<string>;
-  supportsStreaming?(operation: string): boolean;
-  getAvailableClients?(): string[];
-}
+export type AIService = AIExecutionPort;
 
 /**
  * Template service interface (minimal)

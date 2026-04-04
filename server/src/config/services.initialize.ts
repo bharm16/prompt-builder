@@ -140,12 +140,12 @@ async function initializeCommon(container: DIContainer): Promise<void> {
   }
 
   // Validate LLM clients
-  const claudeClient = container.resolve<LLMClient | null>("claudeClient");
-  if (claudeClient) {
+  const openAIClient = container.resolve<LLMClient | null>("openAIClient");
+  if (openAIClient) {
     logger.info("Validating OpenAI API key...");
     await validateLLMClient(container, {
-      client: claudeClient,
-      serviceName: "claudeClient",
+      client: openAIClient,
+      serviceName: "openAIClient",
       successMessage: "✅ OpenAI API key validated successfully",
       unhealthyMessage:
         "⚠️  OpenAI API key validation failed - OpenAI adapter disabled",
@@ -230,7 +230,7 @@ async function initializeCommon(container: DIContainer): Promise<void> {
 
   // Pre-warm LLM provider connections in the background (non-blocking)
   const llmClientsToWarm = [
-    claudeClient,
+    openAIClient,
     groqClient,
     qwenClient,
     geminiClient,

@@ -1,6 +1,7 @@
 import type { Application } from "express";
 import request from "supertest";
 import { describe, expect, it } from "vitest";
+import { resolveAppDependencies } from "@config/app.dependencies";
 import { configureServices, initializeServices } from "@config/services.config";
 import { createApp } from "@server/app";
 
@@ -41,7 +42,7 @@ async function withApp(
 
     const container = await configureServices();
     await initializeServices(container);
-    const app = createApp(container);
+    const app = createApp(resolveAppDependencies(container));
     await run(app);
   } finally {
     for (const key of ENV_KEYS) {

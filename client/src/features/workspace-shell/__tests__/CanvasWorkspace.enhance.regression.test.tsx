@@ -9,7 +9,7 @@ import type {
 import { CanvasWorkspace } from "../CanvasWorkspace";
 
 vi.mock(
-  "@features/generation-controls/context/GenerationControlsStore",
+  "@features/generation-controls",
   () => ({
     useGenerationControlsStoreActions: () => ({
       setSelectedModel: vi.fn(),

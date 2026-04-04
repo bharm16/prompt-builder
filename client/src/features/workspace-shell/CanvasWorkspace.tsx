@@ -7,7 +7,7 @@ import { sanitizeText } from "@/features/span-highlighting";
 import {
   useGenerationControlsStoreActions,
   useGenerationControlsStoreState,
-} from "@features/generation-controls/context/GenerationControlsStore";
+} from "@features/generation-controls";
 import { useOptionalPromptHighlights } from "@/features/prompt-optimizer/context/PromptStateContext";
 import { useWorkspaceSession } from "@/features/prompt-optimizer/context/WorkspaceSessionContext";
 import { useGenerationsRuntime } from "@features/generations";

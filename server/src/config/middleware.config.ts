@@ -620,7 +620,7 @@ export function applyBodyParserMiddleware(app: Application): void {
   app.use(express.text({ limit: "2mb" }));
 }
 
-interface MiddlewareServices {
+export interface MiddlewareServices {
   logger: ILogger;
   metricsService: IMetricsCollector;
   redisClient?: Redis | null;

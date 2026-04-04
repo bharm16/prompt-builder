@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import { X, Image, Plus } from "@promptstudio/system/components/ui";
 import type { CameraPath } from "@/features/convergence/types";
-import type { KeyframeTile } from "@components/ToolSidebar/types";
+import type { KeyframeTile } from "@features/generation-controls";
 import { cn } from "@/utils/cn";
 import { useResolvedMediaUrl } from "@/hooks/useResolvedMediaUrl";
 import { hasGcsSignedUrlParams } from "@/utils/storageUrl";

@@ -1,6 +1,6 @@
 import { extractSemanticSpans } from "../../../../llm/span-labeling/nlp/NlpSpanService";
 import SpanLabelingConfig from "../../../../llm/span-labeling/config/SpanLabelingConfig";
-import type { VideoPromptStructuredResponse } from "@services/prompt-optimization/strategies/videoPromptTypes";
+import type { VideoPromptStructuredResponse } from "@server/contracts/prompt-analysis/structuredPrompt";
 import type { VideoPromptIR } from "../../types";
 import { createEmptyIR } from "./IrFactory";
 import { LlmIrExtractor } from "./LlmIrExtractor";

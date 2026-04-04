@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { act, renderHook } from "@testing-library/react";
 import type { ReactNode } from "react";
-import type { KeyframeTile } from "@components/ToolSidebar/types";
+import type { KeyframeTile } from "../../types";
 import type { CameraPath } from "@/features/convergence/types";
 import {
   DEFAULT_GENERATION_CONTROLS_STATE,

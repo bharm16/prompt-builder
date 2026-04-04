@@ -17,7 +17,7 @@ let runtimeState: {
 };
 
 vi.mock(
-  "@features/generation-controls/context/GenerationControlsStore",
+  "@features/generation-controls",
   () => ({
     useGenerationControlsStoreActions: () => ({
       setSelectedModel: vi.fn(),

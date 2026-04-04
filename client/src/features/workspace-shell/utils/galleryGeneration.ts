@@ -1,4 +1,4 @@
-import type { PromptVersionEntry } from "@features/prompt-optimizer/types/domain/prompt-session";
+import type { PromptVersionEntry } from "@features/prompt-optimizer";
 import { getModelConfig } from "@features/generations/config/generationConfig";
 import type { Generation } from "@features/generations/types";
 import type {

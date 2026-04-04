@@ -19,7 +19,7 @@ interface VideoExecutionCheckResult {
 }
 
 interface HealthDependencies {
-  claudeClient?: { getStats: () => { state: string } } | null;
+  openAIClient?: { getStats: () => { state: string } } | null;
   groqClient?: { getStats: () => { state: string } } | null;
   geminiClient?: { getStats: () => { state: string } } | null;
   cacheService: {
@@ -51,7 +51,7 @@ export function createHealthRoutes(dependencies: HealthDependencies): Router {
   const router = express.Router();
   const healthTimeout = createRouteTimeout(5_000);
   const {
-    claudeClient,
+    openAIClient,
     groqClient,
     geminiClient,
     cacheService,
@@ -96,7 +96,7 @@ export function createHealthRoutes(dependencies: HealthDependencies): Router {
       // Firestore is the exception: it has no local state, so a metadata-only call
       // with a tight timeout verifies connectivity without reading documents.
       const cacheHealth = cacheService.isHealthy();
-      const claudeStats = claudeClient?.getStats();
+      const openAIStats = openAIClient?.getStats();
       const groqStats = groqClient?.getStats();
       const geminiStats = geminiClient?.getStats();
       const firestoreCircuitSnapshot =
@@ -204,10 +204,10 @@ export function createHealthRoutes(dependencies: HealthDependencies): Router {
                 enabled: false,
                 message: "Firestore check not configured",
               },
-        openAI: claudeStats
+        openAI: openAIStats
           ? {
-              healthy: claudeStats.state === "CLOSED",
-              circuitBreakerState: claudeStats.state,
+              healthy: openAIStats.state === "CLOSED",
+              circuitBreakerState: openAIStats.state,
               enabled: true,
             }
           : {
@@ -329,7 +329,7 @@ export function createHealthRoutes(dependencies: HealthDependencies): Router {
     });
 
     const cacheStats = cacheService.getCacheStats();
-    const claudeStats = claudeClient?.getStats();
+    const openAIStats = openAIClient?.getStats();
     const groqStats = groqClient ? groqClient.getStats() : null;
     const geminiStats = geminiClient ? geminiClient.getStats() : null;
 
@@ -346,7 +346,7 @@ export function createHealthRoutes(dependencies: HealthDependencies): Router {
       cache: cacheStats,
       redis: { status: redisStatus },
       apis: {
-        openAI: claudeStats || { message: "OpenAI API not configured" },
+        openAI: openAIStats || { message: "OpenAI API not configured" },
         groq: groqStats || { message: "Groq API not configured" },
         gemini: geminiStats || { message: "Gemini API not configured" },
       },

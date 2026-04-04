@@ -9,6 +9,7 @@ import {
   it,
   vi,
 } from "vitest";
+import { resolveAppDependencies } from "@config/app.dependencies";
 import { configureServices, initializeServices } from "@config/services.config";
 import { createApp } from "@server/app";
 import type { ContinuitySession } from "@services/continuity/types";
@@ -200,7 +201,7 @@ describe("Continuity stream routes (full-stack integration)", () => {
     container.registerValue("userCreditService", userCreditServiceMock);
 
     await initializeServices(container);
-    app = createApp(container);
+    app = createApp(resolveAppDependencies(container));
   }, 30_000);
 
   beforeEach(() => {

@@ -44,29 +44,42 @@ vi.mock("@server/routes/payment.routes.ts", () => ({
 }));
 
 import { createApp } from "@server/app";
+import { resolveAppDependencies } from "@server/config/app.dependencies.ts";
 
 describe("createApp", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  describe("error handling", () => {
-    it("throws when dependency resolution fails", () => {
+  describe("dependency resolution", () => {
+    it("throws when app dependency resolution fails", () => {
       const container = {
         resolve: vi.fn(() => {
           throw new Error("resolve failed");
         }),
       };
 
-      expect(() => createApp(container as never)).toThrow("resolve failed");
+      expect(() => resolveAppDependencies(container as never)).toThrow(
+        "resolve failed",
+      );
     });
   });
 
   describe("edge cases", () => {
     it("registers webhook routes before middleware", () => {
-      const container = { resolve: vi.fn(() => ({ id: "dep" })) };
+      const dependencies = {
+        routeContainer: { resolve: vi.fn() },
+        paymentRouteServices: {
+          paymentService: { id: "paymentService" },
+        },
+        middlewareServices: {
+          logger: { id: "logger" },
+          metricsService: { id: "metrics" },
+          redisClient: { id: "redis" },
+        },
+      };
 
-      createApp(container as never);
+      createApp(dependencies as never);
 
       expect(useMock).toHaveBeenCalledWith("/api/payment", { id: "webhook" });
       const useCallOrder = useMock.mock.invocationCallOrder[0];
@@ -79,12 +92,23 @@ describe("createApp", () => {
   });
 
   describe("core behavior", () => {
-    it("sets trust proxy and wires routes with resolved dependencies", () => {
-      const container = {
+    it("sets trust proxy and wires routes with explicit dependencies", () => {
+      const routeContainer = {
         resolve: vi.fn((token: string) => ({ token })),
       };
+      const dependencies = {
+        routeContainer,
+        paymentRouteServices: {
+          paymentService: { token: "paymentService" },
+        },
+        middlewareServices: {
+          logger: { token: "logger" },
+          metricsService: { token: "metricsService" },
+          redisClient: { token: "redisClient" },
+        },
+      };
 
-      const app = createApp(container as never);
+      const app = createApp(dependencies as never);
 
       expect(app).toBe(appInstance);
       expect(setMock).toHaveBeenCalledWith("trust proxy", 1);
@@ -93,7 +117,10 @@ describe("createApp", () => {
         metricsService: { token: "metricsService" },
         redisClient: { token: "redisClient" },
       });
-      expect(configureRoutesMock).toHaveBeenCalledWith(appInstance, container);
+      expect(configureRoutesMock).toHaveBeenCalledWith(
+        appInstance,
+        routeContainer,
+      );
     });
   });
 });

@@ -32,7 +32,7 @@ export function registerEnhancementServices(container: DIContainer): void {
   );
 
   container.register(
-    "videoService",
+    "videoPromptService",
     (
       videoPromptLlmGateway: AIServiceVideoPromptLlmGateway,
       config: ServiceConfig,
@@ -42,6 +42,11 @@ export function registerEnhancementServices(container: DIContainer): void {
         promptOutputOnly: config.features.promptOutputOnly,
       }),
     ["videoPromptLlmGateway", "config"],
+  );
+  container.register(
+    "videoService",
+    (videoPromptService: VideoPromptService) => videoPromptService,
+    ["videoPromptService"],
   );
   container.register(
     "multimodalAssetManager",
@@ -58,9 +63,9 @@ export function registerEnhancementServices(container: DIContainer): void {
 
   container.register(
     "validationService",
-    (videoService: VideoService) =>
-      new SuggestionValidationService(videoService),
-    ["videoService"],
+    (videoPromptService: VideoService) =>
+      new SuggestionValidationService(videoPromptService),
+    ["videoPromptService"],
   );
 
   container.register(
@@ -81,7 +86,7 @@ export function registerEnhancementServices(container: DIContainer): void {
     (
       aiService: AIModelService,
       cacheService: CacheService,
-      videoService: VideoPromptService,
+      videoPromptService: VideoPromptService,
       imageObservationService: ImageObservationService,
       templateService: TemplateService,
       config: ServiceConfig,
@@ -90,7 +95,7 @@ export function registerEnhancementServices(container: DIContainer): void {
       return new PromptOptimizationService(
         aiService,
         cacheService,
-        videoService,
+        videoPromptService,
         imageObservationService,
         templateService,
         { cacheTtlMs: po.shotPlanCacheTtlMs, cacheMax: po.shotPlanCacheMax },
@@ -99,7 +104,7 @@ export function registerEnhancementServices(container: DIContainer): void {
     [
       "aiService",
       "cacheService",
-      "videoService",
+      "videoPromptService",
       "imageObservationService",
       "templateService",
       "config",
@@ -117,7 +122,7 @@ export function registerEnhancementServices(container: DIContainer): void {
     "enhancementService",
     (
       aiService: AIModelService,
-      videoService: VideoService,
+      videoPromptService: VideoService,
       brainstormBuilder: BrainstormContextBuilder,
       promptBuilder: CleanPromptBuilder,
       validationService: SuggestionValidationService,
@@ -129,7 +134,7 @@ export function registerEnhancementServices(container: DIContainer): void {
     ) =>
       new EnhancementService({
         aiService,
-        videoService,
+        videoService: videoPromptService,
         brainstormBuilder,
         promptBuilder,
         validationService,
@@ -141,7 +146,7 @@ export function registerEnhancementServices(container: DIContainer): void {
       }),
     [
       "aiService",
-      "videoService",
+      "videoPromptService",
       "brainstormBuilder",
       "promptBuilder",
       "validationService",
