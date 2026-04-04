@@ -36,7 +36,6 @@ const serverSchema = z.object({
 
 const featureFlagSchema = z.object({
   PROMPT_OUTPUT_ONLY: coerceBooleanString(false),
-  PROMPT_PIPELINE_V2: coerceBooleanString(true),
   ENABLE_CONVERGENCE: z
     .string()
     .default("true")

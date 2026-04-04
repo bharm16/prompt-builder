@@ -1,5 +1,14 @@
-# Ignore generated snapshots (can be regenerated)
+# Ignore generated timestamped snapshots (can be regenerated)
+snapshot-*.json
+report-*.txt
+report-gemini-*.txt
+
+# Ignore the ephemeral latest JSON snapshot
 latest.json
 
-# Keep baseline for CI/CD comparison
+# Keep canonical comparison artifacts
 !baseline.json
+!baseline-report.txt
+!latest-report.txt
+!latest-gemini.json
+!latest-gemini-report.txt

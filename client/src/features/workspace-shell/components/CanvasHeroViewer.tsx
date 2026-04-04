@@ -12,6 +12,7 @@ import { resolvePrimaryVideoSource } from "@features/generations/utils/videoSour
 
 interface CanvasHeroViewerProps {
   generation: Generation | null;
+  onCancel?: ((generation: Generation) => void) | undefined;
 }
 
 const resolveTierLabel = (generation: Generation | null): string => {
@@ -60,6 +61,7 @@ const resolveAspectRatio = (generation: Generation | null): string => {
 
 export function CanvasHeroViewer({
   generation,
+  onCancel,
 }: CanvasHeroViewerProps): React.ReactElement | null {
   const rawPrimaryMediaUrl = useMemo(
     () => normalizeUrl(generation?.mediaUrls[0] ?? null),
@@ -159,6 +161,21 @@ export function CanvasHeroViewer({
           className="relative mx-auto flex w-full max-w-[780px] flex-col items-center justify-center bg-gradient-to-br from-tool-rail-border to-tool-surface-deep"
           style={{ aspectRatio }}
         >
+          {onCancel ? (
+            <button
+              type="button"
+              aria-label="Cancel render"
+              className="absolute right-4 top-4 rounded-full border border-white/10 bg-black/30 px-3 py-1 text-[11px] font-medium text-white/70 backdrop-blur transition-colors hover:text-white"
+              onClick={() => {
+                if (generation) {
+                  onCancel(generation);
+                }
+              }}
+            >
+              Cancel
+            </button>
+          ) : null}
+
           {/* Central progress content */}
           <div className="flex flex-col items-center gap-5 px-6 text-center">
             {/* Pulsing ring indicator */}

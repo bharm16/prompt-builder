@@ -355,14 +355,6 @@ export async function resolveMediaUrl(
   }
 }
 
-export function invalidateMediaUrlCache(key: string): void {
-  cache.delete(key);
-}
-
-export function buildMediaCacheKey(req: MediaUrlRequest): string {
-  return buildCacheKey(req);
-}
-
 // ---------------------------------------------------------------------------
 // Batch resolution for image assets (reduces N API calls to 1)
 // ---------------------------------------------------------------------------

@@ -1,7 +1,6 @@
 export interface RuntimeFlags {
   processRole: "api" | "worker";
   promptOutputOnly: boolean;
-  promptPipelineV2: boolean;
   enableConvergence: boolean;
   videoWorkerDisabled: boolean;
   videoJobInlineEnabled: boolean;
@@ -47,7 +46,6 @@ export function getRuntimeFlags(
   return {
     processRole,
     promptOutputOnly: isTrue(env.PROMPT_OUTPUT_ONLY),
-    promptPipelineV2: env.PROMPT_PIPELINE_V2 !== "false",
     enableConvergence: env.ENABLE_CONVERGENCE !== "false",
     videoWorkerDisabled:
       processRole !== "worker" || isTrue(env.VIDEO_JOB_WORKER_DISABLED),

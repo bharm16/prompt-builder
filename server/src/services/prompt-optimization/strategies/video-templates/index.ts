@@ -127,28 +127,6 @@ export function getVideoTemplateBuilder(options: {
   return groqBuilder;
 }
 
-/**
- * Create a new template builder instance (for testing)
- *
- * @param provider - Provider type
- * @returns New template builder instance
- */
-export function createVideoTemplateBuilder(
-  provider: "openai" | "groq",
-): BaseVideoTemplateBuilder {
-  const operation = "createVideoTemplateBuilder";
-
-  log.debug("Creating new video template builder instance", {
-    operation,
-    provider,
-  });
-
-  if (provider === "openai") {
-    return new OpenAIVideoTemplateBuilder();
-  }
-  return new GroqVideoTemplateBuilder();
-}
-
 // Re-export types and classes
 export { BaseVideoTemplateBuilder } from "./BaseVideoTemplateBuilder";
 export type {

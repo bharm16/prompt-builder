@@ -36,6 +36,7 @@ export interface Generation {
   characterAssetId?: string | null | undefined;
   faceSwapApplied?: boolean | null | undefined;
   faceSwapUrl?: string | null | undefined;
+  jobId?: string | null | undefined;
   serverProgress?: number | null | undefined;
   /** Server-reported job status (queued, processing, completed, failed). */
   serverJobStatus?:

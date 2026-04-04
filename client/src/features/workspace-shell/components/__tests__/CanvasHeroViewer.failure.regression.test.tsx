@@ -47,4 +47,24 @@ describe("regression: canvas hero viewer keeps failure states honest", () => {
       screen.getByText("No media is available for this generation."),
     ).toBeInTheDocument();
   });
+
+  it("keeps cancel available while a render is still generating", () => {
+    const onCancel = vi.fn();
+
+    render(
+      <CanvasHeroViewer
+        generation={createGeneration({
+          status: "generating",
+          completedAt: null,
+          serverProgress: 42,
+          serverJobStatus: "processing",
+        })}
+        onCancel={onCancel}
+      />,
+    );
+
+    screen.getByRole("button", { name: "Cancel render" }).click();
+
+    expect(onCancel).toHaveBeenCalledTimes(1);
+  });
 });

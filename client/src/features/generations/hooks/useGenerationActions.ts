@@ -301,7 +301,13 @@ export function useGenerationActions(
         type: "UPDATE_GENERATION",
         payload: {
           id,
-          updates: { status: "failed", error: reason, completedAt: Date.now() },
+          updates: {
+            status: "failed",
+            error: reason,
+            completedAt: Date.now(),
+            jobId: null,
+            serverJobStatus: "failed",
+          },
         },
       });
       inFlightRef.current.delete(id);
@@ -368,6 +374,104 @@ export function useGenerationActions(
     },
     [dispatch],
   );
+
+  const updateGenerationProgress = useCallback(
+    (id: string, status: string, progress: number | null) => {
+      dispatch({
+        type: "UPDATE_GENERATION",
+        payload: {
+          id,
+          updates: {
+            status: resolveAcceptedGenerationStatus(status),
+            serverProgress: progress,
+            serverJobStatus: status as Generation["serverJobStatus"],
+          },
+        },
+      });
+    },
+    [dispatch],
+  );
+
+  const resumeGenerationJob = useCallback(
+    (generation: Generation) => {
+      const jobId = generation.jobId?.trim();
+      if (!jobId) return;
+      if (
+        generation.status !== "pending" &&
+        generation.status !== "generating"
+      ) {
+        return;
+      }
+      if (inFlightRef.current.has(generation.id)) {
+        return;
+      }
+
+      const controller = new AbortController();
+      inFlightRef.current.set(generation.id, controller);
+
+      log.info("Resuming persisted video generation job", {
+        generationId: generation.id,
+        jobId,
+        status: generation.status,
+        serverJobStatus: generation.serverJobStatus ?? null,
+      });
+
+      void waitForVideoJob(jobId, controller.signal, (update) => {
+        updateGenerationProgress(generation.id, update.status, update.progress);
+      })
+        .then((jobResult) => {
+          if (controller.signal.aborted || !jobResult?.videoUrl) {
+            return;
+          }
+
+          finalizeGeneration(generation.id, {
+            status: "completed",
+            completedAt: Date.now(),
+            mediaUrls: [jobResult.videoUrl],
+            ...(jobResult.assetId
+              ? { mediaAssetIds: [extractAssetId(jobResult.assetId)] }
+              : jobResult.storagePath
+                ? { mediaAssetIds: [extractAssetId(jobResult.storagePath)] }
+                : {}),
+            jobId: null,
+            serverProgress: 100,
+            serverJobStatus: "completed",
+            error: null,
+          });
+        })
+        .catch((error) => {
+          if (controller.signal.aborted) {
+            return;
+          }
+
+          const info = sanitizeError(error);
+          const errObj =
+            error instanceof Error ? error : new Error(info.message);
+
+          log.warn("Persisted video generation job failed after resume", {
+            generationId: generation.id,
+            jobId,
+            error: errObj.message,
+            errorName: info.name,
+          });
+
+          finalizeGeneration(generation.id, {
+            status: "failed",
+            completedAt: Date.now(),
+            error: errObj.message,
+            jobId: null,
+            serverJobStatus: "failed",
+          });
+        });
+    },
+    [finalizeGeneration, updateGenerationProgress],
+  );
+
+  useEffect(() => {
+    for (const generation of options.generations ?? []) {
+      resumeGenerationJob(generation);
+    }
+  }, [options.generations, resumeGenerationJob]);
 
   // Bug 9 fix: read options from ref to avoid callback recreation on every options change
   const generateDraft = useCallback(
@@ -672,6 +776,7 @@ export function useGenerationActions(
           generationAccepted = true;
           acceptGeneration(generation, {
             status: resolveAcceptedGenerationStatus(response.status),
+            jobId: response.jobId,
             ...(response.status ? { serverJobStatus: response.status } : {}),
             ...(response.faceSwapApplied || response.faceSwapUrl
               ? {
@@ -696,6 +801,7 @@ export function useGenerationActions(
                   id: generation.id,
                   updates: {
                     status: resolveAcceptedGenerationStatus(update.status),
+                    jobId: response.jobId,
                     serverProgress: update.progress,
                     serverJobStatus: update.status,
                   },
@@ -745,6 +851,9 @@ export function useGenerationActions(
             status: "completed",
             completedAt: Date.now(),
             mediaUrls: [videoUrl],
+            jobId: null,
+            serverProgress: 100,
+            serverJobStatus: "completed",
             ...(videoAssetId
               ? { mediaAssetIds: [extractAssetId(videoAssetId)] }
               : videoStoragePath
@@ -790,6 +899,8 @@ export function useGenerationActions(
             status: "failed",
             completedAt: Date.now(),
             error: errObj.message,
+            jobId: null,
+            serverJobStatus: "failed",
           });
         } else {
           inFlightRef.current.delete(generation.id);
@@ -1153,6 +1264,7 @@ export function useGenerationActions(
           generationAccepted = true;
           acceptGeneration(generation, {
             status: resolveAcceptedGenerationStatus(response.status),
+            jobId: response.jobId,
             ...(response.status ? { serverJobStatus: response.status } : {}),
             ...(response.faceSwapApplied || response.faceSwapUrl
               ? {
@@ -1177,6 +1289,7 @@ export function useGenerationActions(
                   id: generation.id,
                   updates: {
                     status: resolveAcceptedGenerationStatus(update.status),
+                    jobId: response.jobId,
                     serverProgress: update.progress,
                     serverJobStatus: update.status,
                   },
@@ -1226,6 +1339,9 @@ export function useGenerationActions(
             status: "completed",
             completedAt: Date.now(),
             mediaUrls: [videoUrl],
+            jobId: null,
+            serverProgress: 100,
+            serverJobStatus: "completed",
             ...(videoAssetId
               ? { mediaAssetIds: [extractAssetId(videoAssetId)] }
               : videoStoragePath
@@ -1270,6 +1386,8 @@ export function useGenerationActions(
             status: "failed",
             completedAt: Date.now(),
             error: errObj.message,
+            jobId: null,
+            serverJobStatus: "failed",
           });
         } else {
           inFlightRef.current.delete(generation.id);

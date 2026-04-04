@@ -3,21 +3,6 @@ export function sleep(ms: number): Promise<void> {
 }
 
 /**
- * Sleep for a duration with ±jitterFraction random variation.
- * Useful for provider polling to avoid thundering-herd effects.
- * @param baseMs Base delay in milliseconds
- * @param jitterFraction Fraction of baseMs to vary (default 0.25 = ±25%)
- */
-export function sleepWithJitter(
-  baseMs: number,
-  jitterFraction = 0.25,
-): Promise<void> {
-  const jitter = baseMs * jitterFraction * (2 * Math.random() - 1);
-  const ms = Math.max(100, Math.round(baseMs + jitter));
-  return sleep(ms);
-}
-
-/**
  * Compute a polling delay with optional exponential backoff and jitter.
  * @param baseMs Base poll interval
  * @param elapsedMs Time elapsed since polling started

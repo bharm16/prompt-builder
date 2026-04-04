@@ -159,7 +159,6 @@
     "test:integration": "vitest run --config config/test/vitest.integration.config.js",
     "prepare": "bash scripts/install-hooks.sh",
     "test:unit": "vitest run --config config/test/vitest.unit.config.js",
-    "test:unit:legacy": "bash scripts/test-unit-legacy.sh",
     "test:watch": "vitest --config config/test/vitest.unit.config.js",
     "test:ui": "vitest --ui --config config/test/vitest.unit.config.js",
     "test:coverage": "vitest run --coverage --config config/test/vitest.unit.config.js",

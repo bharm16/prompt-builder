@@ -483,7 +483,10 @@ export function CanvasWorkspace({
                 className="motion-presence-panel mb-5"
                 data-motion-state={heroPhase}
               >
-                <CanvasHeroViewer generation={displayHeroGeneration} />
+                <CanvasHeroViewer
+                  generation={displayHeroGeneration}
+                  onCancel={generationsRuntime.handleCancel}
+                />
               </div>
             ) : null}
 
