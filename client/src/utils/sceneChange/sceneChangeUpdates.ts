@@ -1,10 +1,10 @@
 const escapeRegExp = (value: string): string =>
-  value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 export function applySceneChangeUpdates(
   prompt: string,
   suggestedUpdates: Record<string, string>,
-  affectedFields: Record<string, string>
+  affectedFields: Record<string, string>,
 ): string {
   let finalPrompt = prompt;
 
@@ -17,7 +17,7 @@ export function applySceneChangeUpdates(
 
     const pattern = new RegExp(
       `(- ${escapeRegExp(fieldName)}: \\[)${escapeRegExp(oldFieldValue)}(\\])`,
-      'g'
+      "g",
     );
 
     finalPrompt = finalPrompt.replace(pattern, `$1${newFieldValue}$2`);

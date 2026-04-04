@@ -1,18 +1,18 @@
-import React from 'react';
-import { CollapsibleDrawer } from '@components/CollapsibleDrawer';
-import { FEATURES } from '@/config/features.config';
-import { cn } from '@/utils/cn';
-import { CategoryLegend } from '@features/prompt-optimizer/components/CategoryLegend';
-import { VersionsPanel } from '@features/prompt-optimizer/components/VersionsPanel';
-import { GenerationsPanel } from '@features/prompt-optimizer/GenerationsPanel';
-import { SpanBentoGrid } from '@features/prompt-optimizer/SpanBentoGrid/SpanBentoGrid';
-import { HighlightingErrorBoundary } from '@features/span-highlighting/components/HighlightingErrorBoundary';
-import { CoherencePanel } from '@features/prompt-optimizer/components/coherence/CoherencePanel';
-import { CanvasWorkspace } from '@features/prompt-optimizer/CanvasWorkspace/CanvasWorkspace';
-import type { PromptCanvasViewProps } from './PromptCanvasView.types';
-import { PromptCanvasEditorSection } from './PromptCanvasEditorSection';
-import { PromptCanvasMobileGenerations } from './PromptCanvasMobileGenerations';
-import { PromptCanvasDiffDialog } from './PromptCanvasDiffDialog';
+import React from "react";
+import { CollapsibleDrawer } from "@components/CollapsibleDrawer";
+import { FEATURES } from "@/config/features.config";
+import { cn } from "@/utils/cn";
+import { CategoryLegend } from "@features/prompt-optimizer/components/CategoryLegend";
+import { VersionsPanel } from "@features/prompt-optimizer/components/VersionsPanel";
+import { GenerationsPanel } from "@features/generations";
+import { SpanBentoGrid } from "@features/prompt-optimizer/SpanBentoGrid/SpanBentoGrid";
+import { HighlightingErrorBoundary } from "@features/span-highlighting/components/HighlightingErrorBoundary";
+import { CoherencePanel } from "@features/prompt-optimizer/components/coherence/CoherencePanel";
+import { CanvasWorkspace } from "@features/workspace-shell/CanvasWorkspace";
+import type { PromptCanvasViewProps } from "./PromptCanvasView.types";
+import { PromptCanvasEditorSection } from "./PromptCanvasEditorSection";
+import { PromptCanvasMobileGenerations } from "./PromptCanvasMobileGenerations";
+import { PromptCanvasDiffDialog } from "./PromptCanvasDiffDialog";
 
 export function PromptCanvasView({
   selectedMode,
@@ -74,6 +74,9 @@ export function PromptCanvasView({
   onCustomRequestSubmit,
   isCustomRequestDisabled,
   isCustomLoading,
+  responseMetadata = null,
+  onCopyAllDebug,
+  isBulkCopyLoading = false,
   isInlineLoading,
   isInlineError,
   inlineErrorMessage,
@@ -119,6 +122,8 @@ export function PromptCanvasView({
   onToggleExportMenu,
   onExport,
   onShare,
+  onEnhance,
+  isEnhancing = false,
 }: PromptCanvasViewProps): React.ReactElement {
   if (FEATURES.CANVAS_FIRST_LAYOUT) {
     return (
@@ -151,6 +156,7 @@ export function PromptCanvasView({
         onAutocompleteSelect={onAutocompleteSelect}
         onAutocompleteClose={onAutocompleteClose}
         onAutocompleteIndexChange={onAutocompleteIndexChange}
+        enableMLHighlighting={enableMLHighlighting}
         selectedSpanId={selectedSpanId}
         suggestionCount={suggestionCount}
         suggestionsListRef={suggestionsListRef}
@@ -173,19 +179,24 @@ export function PromptCanvasView({
         onCustomRequestSubmit={onCustomRequestSubmit}
         isCustomRequestDisabled={isCustomRequestDisabled}
         isCustomLoading={isCustomLoading}
+        responseMetadata={responseMetadata ?? null}
+        {...(onCopyAllDebug ? { onCopyAllDebug } : {})}
+        {...(isBulkCopyLoading ? { isBulkCopyLoading } : {})}
         showI2VLockIndicator={showI2VLockIndicator}
         resolvedI2VReason={resolvedI2VReason}
         i2vMotionAlternatives={i2vMotionAlternatives}
         onLockedAlternativeClick={onLockedAlternativeClick}
+        {...(onEnhance ? { onEnhance } : {})}
+        isEnhancing={isEnhancing}
       />
     );
   }
 
   return (
     <div
-      className={cn('relative flex min-h-0 flex-1 flex-col pb-20 lg:pb-0')}
+      className={cn("relative flex min-h-0 flex-1 flex-col pb-20 lg:pb-0")}
       data-mode={selectedMode}
-      data-outline-open={outlineOverlayActive ? 'true' : 'false'}
+      data-outline-open={outlineOverlayActive ? "true" : "false"}
     >
       <CategoryLegend
         show={showLegend}
@@ -198,16 +209,20 @@ export function PromptCanvasView({
         <div
           ref={outlineOverlayRef}
           className={cn(
-            'z-modal border-border bg-surface-1 absolute bottom-6 left-6 top-6 flex w-96 flex-col overflow-hidden rounded-xl border shadow-lg',
-            'ps-animate-scale-in'
+            "z-modal border-border bg-surface-1 absolute bottom-6 left-6 top-6 flex w-96 flex-col overflow-hidden rounded-xl border shadow-lg",
+            "ps-animate-scale-in",
           )}
           data-state={outlineOverlayState}
           role="dialog"
           aria-label="Prompt structure"
         >
           <div className="border-border border-b p-4">
-            <div className="text-body-lg text-foreground font-semibold">Prompt Structure</div>
-            <div className="text-meta text-muted mt-1">Semantic breakdown used for generation</div>
+            <div className="text-body-lg text-foreground font-semibold">
+              Prompt Structure
+            </div>
+            <div className="text-meta text-muted mt-1">
+              Semantic breakdown used for generation
+            </div>
           </div>
           <div className="flex-1 overflow-auto p-4">
             <HighlightingErrorBoundary>
@@ -226,27 +241,30 @@ export function PromptCanvasView({
 
       <div
         className={cn(
-          'gap-ps-3 p-ps-3 relative flex min-h-0 flex-1 flex-col bg-[#111318]',
-          outlineOverlayActive && 'pointer-events-none opacity-60'
+          "gap-ps-3 p-ps-3 relative flex min-h-0 flex-1 flex-col bg-tool-panel-inner",
+          outlineOverlayActive && "pointer-events-none opacity-60",
         )}
       >
         {!hasCanvasContent ? (
           <div className="flex flex-1 flex-col items-center justify-center px-6 py-16 text-center">
             <div className="max-w-md space-y-4">
-              <h2 className="text-heading-24 text-foreground font-semibold">Describe your shot</h2>
+              <h2 className="text-heading-24 text-foreground font-semibold">
+                Describe your shot
+              </h2>
               <p className="text-body text-muted">
-                Enter a rough prompt in the bar above and we'll optimize it for cinematic video generation.
+                Enter a rough prompt in the bar above and we'll optimize it for
+                cinematic video generation.
               </p>
               <div className="pt-4">
                 <p className="text-label-sm text-faint">
-                  Tip: Press{' '}
+                  Tip: Press{" "}
                   <kbd className="px-1.5 py-0.5 rounded bg-surface-3 text-muted font-mono text-xs">
                     ⌘
-                  </kbd>{' '}
-                  +{' '}
+                  </kbd>{" "}
+                  +{" "}
                   <kbd className="px-1.5 py-0.5 rounded bg-surface-3 text-muted font-mono text-xs">
                     Enter
-                  </kbd>{' '}
+                  </kbd>{" "}
                   to optimize
                 </p>
               </div>
@@ -255,7 +273,10 @@ export function PromptCanvasView({
         ) : (
           <div className="gap-ps-4 lg:gap-ps-5 flex min-h-0 flex-1 flex-col lg:flex-row">
             <div className="gap-ps-3 flex min-h-0 min-w-0 flex-1 flex-col self-stretch lg:min-w-80 lg:flex-[9]">
-              <div ref={editorColumnRef} className={cn('flex min-h-0 min-w-0 flex-1 flex-col')}>
+              <div
+                ref={editorColumnRef}
+                className={cn("flex min-h-0 min-w-0 flex-1 flex-col")}
+              >
                 <div className="flex min-h-[200px] flex-auto flex-col overflow-y-auto lg:min-h-[300px]">
                   <div className="pb-ps-card flex h-full min-h-0 w-full flex-1 flex-col gap-0 overflow-hidden px-0">
                     <PromptCanvasEditorSection
@@ -326,6 +347,9 @@ export function PromptCanvasView({
                       onCustomRequestSubmit={onCustomRequestSubmit}
                       isCustomRequestDisabled={isCustomRequestDisabled}
                       isCustomLoading={isCustomLoading}
+                      responseMetadata={responseMetadata ?? null}
+                      {...(onCopyAllDebug ? { onCopyAllDebug } : {})}
+                      {...(isBulkCopyLoading ? { isBulkCopyLoading } : {})}
                       isInlineLoading={isInlineLoading}
                       isInlineError={isInlineError}
                       inlineErrorMessage={inlineErrorMessage}
@@ -374,7 +398,10 @@ export function PromptCanvasView({
           </div>
         )}
 
-        <div className="hidden w-px self-stretch bg-[#1A1C22] lg:block" aria-hidden="true" />
+        <div
+          className="hidden w-px self-stretch bg-tool-rail-border lg:block"
+          aria-hidden="true"
+        />
 
         <div className="lg:min-w-88 hidden min-h-0 flex-1 flex-col lg:flex lg:flex-[11]">
           <GenerationsPanel {...generationsPanelProps} />

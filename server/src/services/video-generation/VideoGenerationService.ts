@@ -1,5 +1,5 @@
-import { logger } from '@infrastructure/Logger';
-import type { VideoAssetStore, VideoAssetStream } from './storage';
+import { logger } from "@infrastructure/Logger";
+import type { VideoAssetStore, VideoAssetStream } from "./storage";
 import type {
   VideoAvailabilityReport,
   VideoAvailabilitySnapshot,
@@ -9,24 +9,33 @@ import type {
   VideoModelAvailability,
   VideoProviderAvailability,
   VideoModelId,
-} from './types';
-import { createVideoProviders, type VideoProviderMap } from './providers/VideoProviders';
-import { getProviderAvailability } from './providers/ProviderRegistry';
-import { generateVideoWorkflow } from './workflows/generateVideo';
-import { getAvailabilityReport, getAvailabilitySnapshot, getModelAvailability } from './availability';
+} from "./types";
+import {
+  createVideoProviders,
+  type VideoProviderMap,
+} from "./providers/VideoProviders";
+import { getProviderAvailability } from "./providers/ProviderRegistry";
+import { generateVideoWorkflow } from "./workflows/generateVideo";
+import {
+  getAvailabilityReport,
+  getAvailabilitySnapshot,
+  getModelAvailability,
+} from "./availability";
 
 /**
  * VideoGenerationService - Orchestrates video generation providers
  */
 export class VideoGenerationService {
   private readonly providers: VideoProviderMap;
-  private readonly log = logger.child({ service: 'VideoGenerationService' });
+  private readonly log = logger.child({ service: "VideoGenerationService" });
   private readonly assetStore: VideoAssetStore;
 
   constructor(options: VideoGenerationServiceOptions) {
     this.providers = createVideoProviders(options, this.log);
     if (!options.assetStore) {
-      throw new Error('VideoGenerationService requires an injected video asset store');
+      throw new Error(
+        "VideoGenerationService requires an injected video asset store",
+      );
     }
     this.assetStore = options.assetStore;
   }
@@ -40,9 +49,15 @@ export class VideoGenerationService {
    */
   async generateVideo(
     prompt: string,
-    options: VideoGenerationOptions = {}
+    options: VideoGenerationOptions = {},
   ): Promise<VideoGenerationResult> {
-    return await generateVideoWorkflow(prompt, options, this.providers, this.assetStore, this.log);
+    return await generateVideoWorkflow(
+      prompt,
+      options,
+      this.providers,
+      this.assetStore,
+      this.log,
+    );
   }
 
   public async getVideoContent(id: string): Promise<VideoAssetStream | null> {
@@ -58,32 +73,50 @@ export class VideoGenerationService {
   }
 
   public getModelAvailability(model?: string | null): VideoModelAvailability {
-    return getModelAvailability(model, this.getProviderAvailability(), this.log);
+    return getModelAvailability(
+      model,
+      this.getProviderAvailability(),
+      this.log,
+    );
   }
 
   public getAvailabilityReport(modelIds: string[]): VideoAvailabilityReport {
     const availabilityLog = {
       warn: (message: string, meta?: Record<string, unknown>) => {
-        if (message === 'Unknown video model requested; falling back to default') {
+        if (
+          message === "Unknown video model requested; falling back to default"
+        ) {
           return;
         }
         this.log.warn(message, meta);
       },
     };
 
-    return getAvailabilityReport(modelIds, this.getProviderAvailability(), availabilityLog);
+    return getAvailabilityReport(
+      modelIds,
+      this.getProviderAvailability(),
+      availabilityLog,
+    );
   }
 
-  public getAvailabilitySnapshot(modelIds: VideoModelId[]): VideoAvailabilitySnapshot {
+  public getAvailabilitySnapshot(
+    modelIds: VideoModelId[],
+  ): VideoAvailabilitySnapshot {
     const availabilityLog = {
       warn: (message: string, meta?: Record<string, unknown>) => {
-        if (message === 'Unknown video model requested; falling back to default') {
+        if (
+          message === "Unknown video model requested; falling back to default"
+        ) {
           return;
         }
         this.log.warn(message, meta);
       },
     };
 
-    return getAvailabilitySnapshot(modelIds, this.getProviderAvailability(), availabilityLog);
+    return getAvailabilitySnapshot(
+      modelIds,
+      this.getProviderAvailability(),
+      availabilityLog,
+    );
   }
 }

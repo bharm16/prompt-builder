@@ -43,7 +43,6 @@
   - [x] 4.3 Implement `withCreditReservation()` wrapper in ConvergenceService
   - [x] 4.4 Add `checkCredits()` helper for pre-operation balance check
 
-
 ## Phase 2: Backend Services
 
 - [x] 5. Implement StorageService for GCS
@@ -113,7 +112,6 @@
     - [x] 11.4.3 Calculate total credits consumed with `calculateTotalCredits()` helper
     - [x] 11.4.4 Mark session as completed
 
-
 ## Phase 3: Backend Routes
 
 - [x] 12. Create convergence routes
@@ -178,7 +176,6 @@
     - [x] 17.4.5 resumeSession, abandonAndStartFresh
   - [x] 17.5 Implement handleApiError for INSUFFICIENT_CREDITS and other errors
 
-
 ## Phase 5: Frontend Components - Selection Flow
 
 - [x] 18. Implement shared components
@@ -232,7 +229,6 @@
   - [x] 23.5 Create CameraMotionErrorBoundary that falls back to text mode
   - [x] 23.6 Wrap with CameraMotionPickerWithErrorBoundary
   - [x] 23.7 Add keyboard focus support
-
 
 ## Phase 7: Frontend Components - Subject Motion & Preview
 
@@ -288,7 +284,6 @@
   - [x] 29.6 Add ResumeSessionModal when pendingResumeSession exists
   - [x] 29.7 Add InsufficientCreditsModal when insufficientCreditsModal exists
   - [x] 29.8 Add ProgressIndicator at top
-
 
 ## Phase 10: Tool Panel Integration
 

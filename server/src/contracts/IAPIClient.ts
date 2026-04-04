@@ -29,7 +29,10 @@ export interface IAPIClient {
   /**
    * Generate a completion from the LLM
    */
-  generateCompletion(params: { prompt: string; options?: CompletionOptions }): Promise<string>;
+  generateCompletion(params: {
+    prompt: string;
+    options?: CompletionOptions;
+  }): Promise<string>;
 
   /**
    * Check if the API client is healthy and accessible
@@ -46,4 +49,3 @@ export interface IAPIClient {
    */
   getModel(): string;
 }
-

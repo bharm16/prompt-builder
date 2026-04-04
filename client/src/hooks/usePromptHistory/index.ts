@@ -9,5 +9,12 @@
  * - types.ts: Type definitions
  */
 
-export { usePromptHistory } from './usePromptHistory';
-export type { User, PromptHistoryEntry, Toast, HistoryState, SaveEntryParams, SaveResult } from './types';
+export { usePromptHistory } from "./usePromptHistory";
+export type {
+  User,
+  PromptHistoryEntry,
+  Toast,
+  HistoryState,
+  SaveEntryParams,
+  SaveResult,
+} from "./types";

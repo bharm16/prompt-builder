@@ -18,6 +18,7 @@ This document tracks the progress of migrating the Prompt Builder codebase from 
 **Location**: `client/src/features/span-highlighting/`
 
 **Utils** (13 files):
+
 - ✅ anchorRanges.ts
 - ✅ categoryValidators.ts
 - ✅ tokenBoundaries.ts
@@ -33,24 +34,29 @@ This document tracks the progress of migrating the Prompt Builder codebase from 
 - ✅ highlightConversion.ts
 
 **Hooks** (4 files):
+
 - ✅ useSpanLabeling.ts
 - ✅ useHighlightRendering.ts
 - ✅ useHighlightSourceSelection.ts
 - ✅ useProgressiveSpanRendering.ts
 
 **Services** (2 files):
+
 - ✅ SpanLabelingCache.ts
 - ✅ storageAdapter.ts
 
 **Config** (3 files):
+
 - ✅ constants.ts
 - ✅ debounce.ts
 - ✅ highlightStyles.ts
 
 **Components** (1 file):
+
 - ✅ HighlightingErrorBoundary.tsx
 
 **API** (1 file):
+
 - ✅ spanLabelingApi.ts (already TypeScript)
 
 **Total**: 24 files migrated
@@ -85,11 +91,13 @@ This document tracks the progress of migrating the Prompt Builder codebase from 
 **Location**: `client/src/features/prompt-optimizer/`
 
 **Hooks** (3 files):
+
 - ✅ useEnhancementSuggestions.ts
 - ✅ useUndoRedo.ts
 - ✅ usePromptOptimization.ts
 
 **Utils** (6 files):
+
 - ✅ applySuggestion.ts
 - ✅ textFormatting.ts
 - ✅ textSelection.ts
@@ -104,18 +112,22 @@ This document tracks the progress of migrating the Prompt Builder codebase from 
 **Location**: `client/src/` (various feature directories)
 
 **VideoConceptBuilder API** (2 files):
+
 - ✅ videoConceptApi.ts (with Zod schemas)
 - ✅ schemas.ts (Zod validation schemas)
 
 **SuggestionsPanel API** (2 files):
+
 - ✅ customSuggestionsApi.ts (with Zod schemas)
 - ✅ schemas.ts (Zod validation schemas)
 
 **Span-Highlighting API** (1 file):
+
 - ✅ spanLabelingApi.ts (already TypeScript)
 - ✅ index.ts (re-export file)
 
 **Prompt-Optimizer API** (1 file):
+
 - ✅ enhancementSuggestionsApi.ts (already TypeScript)
 
 **Total**: 6 API files migrated with runtime validation
@@ -150,6 +162,7 @@ This document tracks the progress of migrating the Prompt Builder codebase from 
 **Location**: `client/src/components/SuggestionsPanel/`
 
 **Sub-components** (5 files):
+
 - ✅ PanelStates.tsx (LoadingState, EmptyState, InactiveState)
 - ✅ PanelHeader.tsx
 - ✅ CategoryTabs.tsx
@@ -158,6 +171,7 @@ This document tracks the progress of migrating the Prompt Builder codebase from 
 - ✅ types.ts (component type definitions)
 
 **Main Component** (1 file):
+
 - ✅ SuggestionsPanel.tsx (main orchestration component)
 
 **Total**: 6 component files migrated
@@ -167,6 +181,7 @@ This document tracks the progress of migrating the Prompt Builder codebase from 
 **Location**: `client/src/components/VideoConceptBuilder/components/`
 
 **Sub-components** (8 files):
+
 - ✅ ProgressHeader.tsx
 - ✅ ConceptPreview.tsx
 - ✅ ConflictsAlert.tsx
@@ -178,6 +193,7 @@ This document tracks the progress of migrating the Prompt Builder codebase from 
 - ✅ types.ts (component type definitions)
 
 **Main Component** (1 file):
+
 - ✅ VideoConceptBuilder.tsx (main orchestration component)
 
 **Total**: 10 component files migrated (100% complete)
@@ -195,6 +211,7 @@ This document tracks the progress of migrating the Prompt Builder codebase from 
 **Location**: `client/src/features/prompt-optimizer/`
 
 **Components** (9 files migrated):
+
 - ✅ PromptInput.tsx
 - ✅ CategoryLegend.tsx
 - ✅ FloatingToolbar.tsx
@@ -207,6 +224,7 @@ This document tracks the progress of migrating the Prompt Builder codebase from 
 - ✅ types.ts (shared type definitions)
 
 **Still need migration**:
+
 - PromptCanvas.jsx (large component ~550 lines)
 - PromptOptimizerContainer/PromptOptimizerContainer.jsx
 - SpanBentoGrid components (SpanBentoGrid.jsx, BentoBox.jsx, SpanItem.jsx)
@@ -233,4 +251,3 @@ This document tracks the progress of migrating the Prompt Builder codebase from 
 - All migrated files follow STYLE_RULES.md guidelines
 - Migration follows incremental approach (JS and TS coexist)
 - Backward compatibility maintained via re-exports where needed
-

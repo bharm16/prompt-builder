@@ -6,6 +6,7 @@ what each service expects as input, what it guarantees as output, and which
 services it should (and should not) be paired with.
 
 ## Span labeling (prompt highlights)
+
 - Entry points: `/llm/label-spans`, `server/src/llm/span-labeling/SpanLabelingService.ts`
 - Primary responsibility: produce high-fidelity spans for the UI with stable offsets and
   taxonomy-aligned roles.
@@ -22,6 +23,7 @@ services it should (and should not) be paired with.
   `SpanLabelingCacheService`.
 
 ## Video prompt analysis
+
 - Entry points: `EnhancementService`, `VideoPromptService`
 - Primary responsibility: detect prompt context (model/section/phrase role) and generate
   constraints/guidance for suggestion generation.
@@ -34,6 +36,7 @@ services it should (and should not) be paired with.
 - Avoid: Do not use this service as a span labeling substitute.
 
 ## NLP span extraction
+
 - Entry point: `server/src/llm/span-labeling/nlp/NlpSpanService.ts`
 - Primary responsibility: fast, rule- and model-based extraction to reduce LLM load.
 - Use when: invoked internally by `SpanLabelingService` as Tier 1/2 extraction.
@@ -41,6 +44,7 @@ services it should (and should not) be paired with.
 - Avoid: not a standalone API route and not suitable as a general span labeling API.
 
 ## Canonical import and composition rules
+
 - Import service implementations from domain paths only (`server/src/services/enhancement/*`,
   `server/src/services/video-concept/*`).
 - Root-level compatibility shims are retired. Do not add or reintroduce
@@ -50,6 +54,7 @@ services it should (and should not) be paired with.
 - Route handlers and middleware should consume DI-injected services, not singleton imports.
 
 ## Decision guide
+
 Use this quick checklist before wiring a new flow:
 
 - Need UI highlight offsets or editor annotations -> use span labeling.
@@ -57,8 +62,10 @@ Use this quick checklist before wiring a new flow:
 - Need fast extraction without LLM -> only within span labeling.
 
 ## Anti-patterns
+
 - Using video prompt analysis as a replacement for labeling.
 
 ## Rule of thumb
+
 - Pick one labeling pipeline per request.
 - If multiple signals are needed, derive them from a single pipeline output to avoid duplicate LLM calls.

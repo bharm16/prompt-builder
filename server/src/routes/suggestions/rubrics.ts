@@ -1,11 +1,15 @@
-declare const require: NodeRequire;
+import {
+  VIDEO_RUBRIC,
+  GENERAL_RUBRIC,
+  type RubricDefinition,
+} from "../../services/quality-feedback/config/judgeRubrics";
 
-export interface RubricDefinition {
-  [key: string]: unknown;
-}
+export type { RubricDefinition };
 
-export function loadRubrics(): { video: RubricDefinition; general: RubricDefinition } {
-  const { VIDEO_RUBRIC, GENERAL_RUBRIC } = require('../../services/quality-feedback/config/judgeRubrics');
+export function loadRubrics(): {
+  video: RubricDefinition;
+  general: RubricDefinition;
+} {
   return {
     video: VIDEO_RUBRIC,
     general: GENERAL_RUBRIC,

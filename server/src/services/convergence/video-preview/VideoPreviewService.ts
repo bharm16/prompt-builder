@@ -12,10 +12,10 @@
  * @module convergence/video-preview
  */
 
-import Replicate from 'replicate';
-import { logger } from '@infrastructure/Logger';
-import { withRetry } from '../helpers';
-import type { StorageService } from '../storage';
+import Replicate from "replicate";
+import { logger } from "@infrastructure/Logger";
+import { withRetry } from "../helpers";
+import type { StorageService } from "../storage";
 
 // ============================================================================
 // Configuration
@@ -25,24 +25,24 @@ import type { StorageService } from '../storage';
  * Wan 2.2 text-to-video model identifier on Replicate
  * This is the fast version optimized for preview generation
  */
-const WAN_2_2_MODEL = 'wan-video/wan-2.2-t2v-fast' as const;
-const WAN_2_2_I2V_MODEL = 'wan-video/wan-2.2-i2v-fast' as const;
+const WAN_2_2_MODEL = "wan-video/wan-2.2-t2v-fast" as const;
+const WAN_2_2_I2V_MODEL = "wan-video/wan-2.2-i2v-fast" as const;
 
 /**
  * Default negative prompt for Wan 2.2 to improve quality
  */
 const DEFAULT_NEGATIVE_PROMPT =
-  'morphing, distorted, disfigured, text, watermark, low quality, blurry, static, extra limbs, fused fingers';
+  "morphing, distorted, disfigured, text, watermark, low quality, blurry, static, extra limbs, fused fingers";
 
 /**
  * Aspect ratio to size mapping for Wan 2.2
  */
 const ASPECT_RATIO_SIZE_MAP: Record<string, string> = {
-  '16:9': '1280*720',
-  '9:16': '720*1280',
-  '1:1': '1024*1024',
-  '4:3': '1024*768',
-  '3:4': '768*1024',
+  "16:9": "1280*720",
+  "9:16": "720*1280",
+  "1:1": "1024*1024",
+  "4:3": "1024*768",
+  "3:4": "768*1024",
 };
 
 /**
@@ -56,7 +56,7 @@ const VIDEO_PREVIEW_CONFIG = {
   /** Default video duration in seconds */
   defaultDuration: 3,
   /** Default aspect ratio */
-  defaultAspectRatio: '16:9',
+  defaultAspectRatio: "16:9",
   /** Frames per second */
   fps: 16,
   /** Number of frames for 3 second video at 16fps */
@@ -92,7 +92,10 @@ export interface VideoPreviewService {
    * @returns URL to generated video (signed GCS URL)
    * @throws Error if video generation fails after retries
    */
-  generatePreview(prompt: string, options?: VideoPreviewOptions): Promise<string>;
+  generatePreview(
+    prompt: string,
+    options?: VideoPreviewOptions,
+  ): Promise<string>;
 
   /**
    * Check if the video preview service is available
@@ -126,7 +129,7 @@ export interface VideoPreviewServiceOptions {
  * Videos are uploaded to GCS and served via signed URLs.
  */
 export class ReplicateVideoPreviewService implements VideoPreviewService {
-  private readonly log = logger.child({ service: 'VideoPreviewService' });
+  private readonly log = logger.child({ service: "VideoPreviewService" });
   private readonly replicate: Replicate | null;
   private readonly storageService: StorageService;
   private readonly userId: string;
@@ -138,11 +141,13 @@ export class ReplicateVideoPreviewService implements VideoPreviewService {
       this.replicate = new Replicate({ auth: apiToken });
     } else {
       this.replicate = null;
-      this.log.warn('REPLICATE_API_TOKEN not provided, video preview will be unavailable');
+      this.log.warn(
+        "REPLICATE_API_TOKEN not provided, video preview will be unavailable",
+      );
     }
 
     this.storageService = options.storageService;
-    this.userId = options.userId || 'anonymous';
+    this.userId = options.userId || "anonymous";
   }
 
   /**
@@ -163,29 +168,36 @@ export class ReplicateVideoPreviewService implements VideoPreviewService {
    * @returns Signed GCS URL of the generated video
    * @throws Error if video generation fails after retries
    */
-  async generatePreview(prompt: string, options?: VideoPreviewOptions): Promise<string> {
+  async generatePreview(
+    prompt: string,
+    options?: VideoPreviewOptions,
+  ): Promise<string> {
     if (!this.replicate) {
-      throw new Error('Video preview service is not available: missing API token');
+      throw new Error(
+        "Video preview service is not available: missing API token",
+      );
     }
 
     const startTime = Date.now();
     const duration = options?.duration ?? VIDEO_PREVIEW_CONFIG.defaultDuration;
-    const aspectRatio = options?.aspectRatio ?? VIDEO_PREVIEW_CONFIG.defaultAspectRatio;
+    const aspectRatio =
+      options?.aspectRatio ?? VIDEO_PREVIEW_CONFIG.defaultAspectRatio;
     const startImage = options?.startImage;
 
-    this.log.info('Starting video preview generation', {
+    this.log.info("Starting video preview generation", {
       promptLength: prompt.length,
       duration,
       aspectRatio,
-      inputMode: startImage ? 'i2v' : 't2v',
+      inputMode: startImage ? "i2v" : "t2v",
     });
 
     try {
       // Use withRetry for resilience (Requirement 7.6 fallback handled by caller)
       const videoTempUrl = await withRetry(
-        () => this.runVideoGeneration(prompt, duration, aspectRatio, startImage),
+        () =>
+          this.runVideoGeneration(prompt, duration, aspectRatio, startImage),
         VIDEO_PREVIEW_CONFIG.maxRetries,
-        VIDEO_PREVIEW_CONFIG.baseDelayMs
+        VIDEO_PREVIEW_CONFIG.baseDelayMs,
       );
 
       // Upload video to GCS and generate a signed URL
@@ -193,7 +205,7 @@ export class ReplicateVideoPreviewService implements VideoPreviewService {
       const signedUrl = await this.uploadVideoToGCS(videoTempUrl, destination);
 
       const totalDuration = Date.now() - startTime;
-      this.log.info('Video preview generation completed', {
+      this.log.info("Video preview generation completed", {
         totalDuration,
         signedUrl,
       });
@@ -201,7 +213,7 @@ export class ReplicateVideoPreviewService implements VideoPreviewService {
       return signedUrl;
     } catch (error) {
       const totalDuration = Date.now() - startTime;
-      this.log.error('Video preview generation failed', error as Error, {
+      this.log.error("Video preview generation failed", error as Error, {
         promptLength: prompt.length,
         duration,
         aspectRatio,
@@ -227,17 +239,18 @@ export class ReplicateVideoPreviewService implements VideoPreviewService {
     prompt: string,
     duration: number,
     aspectRatio: string,
-    startImage?: string
+    startImage?: string,
   ): Promise<string> {
     if (!this.replicate) {
-      throw new Error('Replicate client not initialized');
+      throw new Error("Replicate client not initialized");
     }
 
     // Calculate number of frames based on duration
     const numFrames = Math.round(duration * VIDEO_PREVIEW_CONFIG.fps);
 
     // Resolve size from aspect ratio
-    const size = ASPECT_RATIO_SIZE_MAP[aspectRatio] ?? ASPECT_RATIO_SIZE_MAP['16:9'];
+    const size =
+      ASPECT_RATIO_SIZE_MAP[aspectRatio] ?? ASPECT_RATIO_SIZE_MAP["16:9"];
 
     const input: Record<string, unknown> = {
       prompt,
@@ -256,26 +269,31 @@ export class ReplicateVideoPreviewService implements VideoPreviewService {
 
     const modelId = startImage ? WAN_2_2_I2V_MODEL : WAN_2_2_MODEL;
 
-    this.log.debug('Calling Replicate video generation', {
+    this.log.debug("Calling Replicate video generation", {
       model: modelId,
       input: {
         ...input,
-        prompt: prompt.slice(0, 100) + (prompt.length > 100 ? '...' : ''),
+        prompt: prompt.slice(0, 100) + (prompt.length > 100 ? "..." : ""),
       },
     });
 
-    const output = await this.replicate.run(modelId as `${string}/${string}`, { input });
+    const output = await this.replicate.run(modelId as `${string}/${string}`, {
+      input,
+    });
 
-    this.log.debug('Replicate video generation response', {
+    this.log.debug("Replicate video generation response", {
       outputType: typeof output,
-      outputKeys: output && typeof output === 'object' ? Object.keys(output) : [],
+      outputKeys:
+        output && typeof output === "object" ? Object.keys(output) : [],
     });
 
     // Extract URL from output
     const videoUrl = this.extractUrlFromOutput(output);
 
     if (!videoUrl) {
-      throw new Error('Invalid output format from Replicate: Could not extract video URL');
+      throw new Error(
+        "Invalid output format from Replicate: Could not extract video URL",
+      );
     }
 
     return videoUrl;
@@ -288,8 +306,11 @@ export class ReplicateVideoPreviewService implements VideoPreviewService {
    * @param destination - GCS destination path
    * @returns Signed GCS URL
    */
-  private async uploadVideoToGCS(tempUrl: string, destination: string): Promise<string> {
-    this.log.debug('Uploading video to GCS', {
+  private async uploadVideoToGCS(
+    tempUrl: string,
+    destination: string,
+  ): Promise<string> {
+    this.log.debug("Uploading video to GCS", {
       tempUrlHost: this.getUrlHost(tempUrl),
       destination,
     });
@@ -311,29 +332,29 @@ export class ReplicateVideoPreviewService implements VideoPreviewService {
    */
   private extractUrlFromOutput(output: unknown): string | null {
     // Direct string URL
-    if (typeof output === 'string' && output.startsWith('http')) {
+    if (typeof output === "string" && output.startsWith("http")) {
       return output;
     }
 
     // Object with url property or method
-    if (output && typeof output === 'object') {
+    if (output && typeof output === "object") {
       const outputRecord = output as Record<string, unknown>;
 
       // FileOutput with url() method
-      if ('url' in outputRecord && typeof outputRecord.url === 'function') {
+      if ("url" in outputRecord && typeof outputRecord.url === "function") {
         const url = (outputRecord.url as () => unknown)();
-        return typeof url === 'string' ? url : String(url);
+        return typeof url === "string" ? url : String(url);
       }
 
       // Direct url property
-      if ('url' in outputRecord && typeof outputRecord.url === 'string') {
+      if ("url" in outputRecord && typeof outputRecord.url === "string") {
         return outputRecord.url;
       }
 
       // Array of URLs
       if (Array.isArray(output) && output.length > 0) {
         const firstItem = output[0];
-        if (typeof firstItem === 'string' && firstItem.startsWith('http')) {
+        if (typeof firstItem === "string" && firstItem.startsWith("http")) {
           return firstItem;
         }
       }
@@ -365,7 +386,7 @@ export class ReplicateVideoPreviewService implements VideoPreviewService {
  * @returns VideoPreviewService instance
  */
 export function createVideoPreviewService(
-  options: VideoPreviewServiceOptions
+  options: VideoPreviewServiceOptions,
 ): VideoPreviewService {
   return new ReplicateVideoPreviewService(options);
 }
@@ -381,7 +402,7 @@ export function createVideoPreviewService(
 export function createVideoPreviewServiceForUser(
   storageService: StorageService,
   userId: string,
-  apiToken?: string
+  apiToken?: string,
 ): VideoPreviewService {
   return new ReplicateVideoPreviewService({
     storageService,

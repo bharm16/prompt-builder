@@ -1,5 +1,5 @@
-import { logger } from '@infrastructure/Logger';
-import type { VideoGenerationOptions } from '@services/video-generation/types';
+import { logger } from "@infrastructure/Logger";
+import type { VideoGenerationOptions } from "@services/video-generation/types";
 import type {
   ContinuitySession,
   ContinuityShot,
@@ -7,20 +7,23 @@ import type {
   ProviderContinuityCapabilities,
   ContinuityStrategy,
   StyleReference,
-} from './types';
-import type { CharacterKeyframeService } from './CharacterKeyframeService';
-import { ContinuitySessionStore, ContinuitySessionVersionMismatchError } from './ContinuitySessionStore';
-import { ContinuityProviderService } from './ContinuityProviderService';
-import { ContinuityMediaService } from './ContinuityMediaService';
-import { ContinuityPostProcessingService } from './ContinuityPostProcessingService';
+} from "./types";
+import type { CharacterKeyframeService } from "./CharacterKeyframeService";
+import {
+  ContinuitySessionStore,
+  ContinuitySessionVersionMismatchError,
+} from "./ContinuitySessionStore";
+import { ContinuityProviderService } from "./ContinuityProviderService";
+import { ContinuityMediaService } from "./ContinuityMediaService";
+import { ContinuityPostProcessingService } from "./ContinuityPostProcessingService";
 import type {
   ShotGenerationEvent,
   ShotGenerationObserver,
-} from './ShotGenerationProgress';
+} from "./ShotGenerationProgress";
 
 const DEFAULT_FACE_STRENGTH = 0.8;
-const ASPECT_RATIOS = ['16:9', '9:16', '1:1', '4:3', '3:4'] as const;
-type AspectRatio = typeof ASPECT_RATIOS[number];
+const ASPECT_RATIOS = ["16:9", "9:16", "1:1", "4:3", "3:4"] as const;
+type AspectRatio = (typeof ASPECT_RATIOS)[number];
 
 type ContinuityMechanismContext = {
   session: ContinuitySession;
@@ -39,24 +42,24 @@ type ContinuityMechanismContext = {
 
 type ContinuityMechanismResult = {
   startImageUrl?: string;
-  continuityMechanismUsed: ContinuityShot['continuityMechanismUsed'];
+  continuityMechanismUsed: ContinuityShot["continuityMechanismUsed"];
 };
 
 export class ContinuityShotGenerator {
-  private readonly log = logger.child({ service: 'ContinuityShotGenerator' });
+  private readonly log = logger.child({ service: "ContinuityShotGenerator" });
 
   constructor(
     private providerService: ContinuityProviderService,
     private mediaService: ContinuityMediaService,
     private postProcessingService: ContinuityPostProcessingService,
     private characterKeyframes: CharacterKeyframeService | null,
-    private sessionStore: ContinuitySessionStore
+    private sessionStore: ContinuitySessionStore,
   ) {}
 
   async generateShot(
     sessionId: string,
     shotId: string,
-    observer?: ShotGenerationObserver
+    observer?: ShotGenerationObserver,
   ): Promise<ContinuityShot> {
     const session = await this.sessionStore.get(sessionId);
     if (!session) throw new Error(`Session not found: ${sessionId}`);
@@ -64,29 +67,45 @@ export class ContinuityShotGenerator {
     if (!shot) throw new Error(`Shot not found: ${shotId}`);
 
     const provider = this.providerService.getProviderFromModel(shot.modelId);
-    const previousShot = session.shots.find((s) => s.sequenceIndex === shot.sequenceIndex - 1);
-    const providerCaps = this.providerService.getCapabilities(provider, shot.modelId);
+    const previousShot = session.shots.find(
+      (s) => s.sequenceIndex === shot.sequenceIndex - 1,
+    );
+    const providerCaps = this.providerService.getCapabilities(
+      provider,
+      shot.modelId,
+    );
 
-    const generationMode = shot.generationMode || session.defaultSettings.generationMode;
-    const isContinuity = generationMode === 'continuity';
+    const generationMode =
+      shot.generationMode || session.defaultSettings.generationMode;
+    const isContinuity = generationMode === "continuity";
     const effectiveContinuityMode = isContinuity
       ? shot.continuityMode
-      : shot.continuityMode === 'frame-bridge'
-        ? 'frame-bridge'
-        : 'none';
+      : shot.continuityMode === "frame-bridge"
+        ? "frame-bridge"
+        : "none";
 
     if (isContinuity) {
-      this.providerService.assertProviderSupportsContinuity(provider, shot.modelId);
+      this.providerService.assertProviderSupportsContinuity(
+        provider,
+        shot.modelId,
+      );
     }
 
-    if (effectiveContinuityMode === 'frame-bridge' && !shot.frameBridge && previousShot?.videoAssetId) {
+    if (
+      effectiveContinuityMode === "frame-bridge" &&
+      !shot.frameBridge &&
+      previousShot?.videoAssetId
+    ) {
       this.emitStage(observer, {
         shotId,
-        stage: 'extracting-frame',
+        stage: "extracting-frame",
         progress: 10,
-        message: 'Extracting bridge frame from previous shot.',
+        message: "Extracting bridge frame from previous shot.",
       });
-      const videoUrl = await this.mediaService.getVideoUrl(previousShot.videoAssetId, session.userId);
+      const videoUrl = await this.mediaService.getVideoUrl(
+        previousShot.videoAssetId,
+        session.userId,
+      );
       if (videoUrl) {
         try {
           shot.frameBridge = await this.mediaService.extractBridgeFrame(
@@ -94,10 +113,10 @@ export class ContinuityShotGenerator {
             previousShot.videoAssetId,
             videoUrl,
             previousShot.id,
-            'last'
+            "last",
           );
         } catch (error) {
-          this.log.warn('Failed to extract frame bridge on-demand', {
+          this.log.warn("Failed to extract frame bridge on-demand", {
             shotId,
             error: error instanceof Error ? error.message : String(error),
           });
@@ -109,7 +128,7 @@ export class ContinuityShotGenerator {
       ? this.resolveContinuityMode(
           effectiveContinuityMode,
           providerCaps,
-          Boolean(shot.frameBridge)
+          Boolean(shot.frameBridge),
         )
       : effectiveContinuityMode;
 
@@ -122,8 +141,10 @@ export class ContinuityShotGenerator {
       shot.retryCount = attempt - 1;
 
       try {
-        if (isContinuity && resolvedContinuityMode === 'none') {
-          throw new Error('Continuity mode requires a visual anchor, but the selected provider cannot accept image inputs or style references. Switch to an eligible provider.');
+        if (isContinuity && resolvedContinuityMode === "none") {
+          throw new Error(
+            "Continuity mode requires a visual anchor, but the selected provider cannot accept image inputs or style references. Switch to an eligible provider.",
+          );
         }
 
         shot.styleDegraded = false;
@@ -132,15 +153,27 @@ export class ContinuityShotGenerator {
 
         const supportsSeedPersistence = providerCaps.supportsSeedPersistence;
         const inheritedSeed = supportsSeedPersistence
-          ? this.providerService.getInheritedSeed(previousShot?.seedInfo, provider)
+          ? this.providerService.getInheritedSeed(
+              previousShot?.seedInfo,
+              provider,
+            )
           : undefined;
         if (inheritedSeed !== undefined) {
           shot.inheritedSeed = inheritedSeed;
         }
 
-        const requiresCharacter = this.requiresCharacterConsistency(shot, session);
-        const modeForStrategy = isContinuity ? resolvedContinuityMode : effectiveContinuityMode;
-        const strategy = this.providerService.getContinuityStrategy(provider, modeForStrategy, shot.modelId);
+        const requiresCharacter = this.requiresCharacterConsistency(
+          shot,
+          session,
+        );
+        const modeForStrategy = isContinuity
+          ? resolvedContinuityMode
+          : effectiveContinuityMode;
+        const strategy = this.providerService.getContinuityStrategy(
+          provider,
+          modeForStrategy,
+          shot.modelId,
+        );
 
         const mechanismContext = {
           session,
@@ -156,7 +189,8 @@ export class ContinuityShotGenerator {
           ...(previousShot ? { previousShot } : {}),
           ...(inheritedSeed !== undefined ? { inheritedSeed } : {}),
         };
-        const mechanism = await this.resolveContinuityMechanism(mechanismContext);
+        const mechanism =
+          await this.resolveContinuityMechanism(mechanismContext);
 
         const startImageUrl = mechanism.startImageUrl;
         const continuityMechanismUsed = mechanism.continuityMechanismUsed;
@@ -164,9 +198,11 @@ export class ContinuityShotGenerator {
         if (
           isContinuity &&
           !startImageUrl &&
-          strategy.type !== 'native-style-ref'
+          strategy.type !== "native-style-ref"
         ) {
-          throw new Error('Continuity mode requires a visual anchor (startImage or native style reference).');
+          throw new Error(
+            "Continuity mode requires a visual anchor (startImage or native style reference).",
+          );
         }
 
         let generationOptions: Record<string, unknown> = {
@@ -174,7 +210,7 @@ export class ContinuityShotGenerator {
           startImage: startImageUrl,
         };
 
-        if (shot.characterAssetId && generationMode === 'standard') {
+        if (shot.characterAssetId && generationMode === "standard") {
           generationOptions = {
             ...generationOptions,
             characterAssetId: shot.characterAssetId,
@@ -193,23 +229,23 @@ export class ContinuityShotGenerator {
           : {};
         generationOptions = { ...generationOptions, ...seedParams };
 
-        if (strategy.type === 'native-style-ref') {
+        if (strategy.type === "native-style-ref") {
           const styleRef = this.resolveStyleReference(session, shot);
           shot.styleReference = styleRef;
           const { options } = await this.providerService.buildGenerationOptions(
             provider,
             generationOptions,
             styleRef,
-            shot.styleStrength
+            shot.styleStrength,
           );
           generationOptions = options;
         }
 
         this.emitStage(observer, {
           shotId,
-          stage: 'generating-video',
+          stage: "generating-video",
           progress: 50,
-          message: 'Generating video.',
+          message: "Generating video.",
           metadata: {
             ...(continuityMechanismUsed !== undefined
               ? { continuityMechanismUsed }
@@ -217,23 +253,25 @@ export class ContinuityShotGenerator {
             ...(shot.generatedKeyframeUrl
               ? { generatedKeyframeUrl: shot.generatedKeyframeUrl }
               : {}),
-            ...(shot.frameBridge?.frameUrl ? { frameBridgeUrl: shot.frameBridge.frameUrl } : {}),
+            ...(shot.frameBridge?.frameUrl
+              ? { frameBridgeUrl: shot.frameBridge.frameUrl }
+              : {}),
           },
         });
 
-        shot.status = 'generating-video';
+        shot.status = "generating-video";
         await this.sessionStore.save(session);
 
         const result = await this.mediaService.generateVideo(
           shot.userPrompt,
-          generationOptions as VideoGenerationOptions
+          generationOptions as VideoGenerationOptions,
         );
 
         if (supportsSeedPersistence) {
           const seedInfo = this.providerService.extractSeed(
             provider,
             shot.modelId,
-            result as unknown as Record<string, unknown>
+            result as unknown as Record<string, unknown>,
           );
           if (seedInfo) {
             shot.seedInfo = seedInfo;
@@ -241,10 +279,13 @@ export class ContinuityShotGenerator {
         }
 
         // Post-grade
-        if (generationMode === 'continuity') {
+        if (generationMode === "continuity") {
           const styleRef = this.resolveStyleReference(session, shot);
           shot.styleReference = styleRef;
-          const graded = await this.postProcessingService.matchPalette(result.assetId, styleRef.frameUrl);
+          const graded = await this.postProcessingService.matchPalette(
+            result.assetId,
+            styleRef.frameUrl,
+          );
           if (graded.applied && graded.assetId) {
             shot.videoAssetId = graded.assetId;
           } else {
@@ -254,11 +295,13 @@ export class ContinuityShotGenerator {
           // Quality gate
           this.emitStage(observer, {
             shotId,
-            stage: 'quality-gate',
+            stage: "quality-gate",
             progress: 85,
-            message: 'Evaluating continuity quality.',
+            message: "Evaluating continuity quality.",
             metadata: {
-              ...(shot.retryCount !== undefined ? { retryCount: shot.retryCount } : {}),
+              ...(shot.retryCount !== undefined
+                ? { retryCount: shot.retryCount }
+                : {}),
             },
           });
           const quality = await this.postProcessingService.evaluateQuality({
@@ -267,17 +310,25 @@ export class ContinuityShotGenerator {
             generatedVideoUrl: graded.videoUrl || result.videoUrl,
             ...(shot.characterAssetId
               ? {
-                  characterReferenceUrl: await this.mediaService.getCharacterReferenceUrl(
-                    session.userId,
-                    shot.characterAssetId
-                  ),
+                  characterReferenceUrl:
+                    await this.mediaService.getCharacterReferenceUrl(
+                      session.userId,
+                      shot.characterAssetId,
+                    ),
                 }
               : {}),
             ...(session.defaultSettings.qualityThresholds?.style !== undefined
-              ? { styleThreshold: session.defaultSettings.qualityThresholds.style }
+              ? {
+                  styleThreshold:
+                    session.defaultSettings.qualityThresholds.style,
+                }
               : {}),
-            ...(session.defaultSettings.qualityThresholds?.identity !== undefined
-              ? { identityThreshold: session.defaultSettings.qualityThresholds.identity }
+            ...(session.defaultSettings.qualityThresholds?.identity !==
+            undefined
+              ? {
+                  identityThreshold:
+                    session.defaultSettings.qualityThresholds.identity,
+                }
               : {}),
           });
           if (quality.styleScore !== undefined) {
@@ -288,17 +339,23 @@ export class ContinuityShotGenerator {
           }
           shot.qualityScore = quality.passed ? 1 : 0;
 
-          const styleThreshold = session.defaultSettings.qualityThresholds?.style ?? 0.75;
-          const identityThreshold = session.defaultSettings.qualityThresholds?.identity ?? 0.6;
+          const styleThreshold =
+            session.defaultSettings.qualityThresholds?.style ?? 0.75;
+          const identityThreshold =
+            session.defaultSettings.qualityThresholds?.identity ?? 0.6;
 
-          if (!quality.passed && session.defaultSettings.autoRetryOnFailure && attempt <= maxRetries) {
+          if (
+            !quality.passed &&
+            session.defaultSettings.autoRetryOnFailure &&
+            attempt <= maxRetries
+          ) {
             const adjusted = this.adjustForQualityGate(shot, quality, {
               styleThreshold,
               identityThreshold,
             });
 
             if (adjusted) {
-              this.log.warn('Quality gate failed, retrying', {
+              this.log.warn("Quality gate failed, retrying", {
                 shotId,
                 attempt,
                 styleScore: quality.styleScore,
@@ -308,7 +365,7 @@ export class ContinuityShotGenerator {
               });
               this.emitStage(observer, {
                 shotId,
-                stage: 'retrying',
+                stage: "retrying",
                 progress: 35,
                 message: `Retrying generation (attempt ${attempt + 1}/${maxRetries + 1}).`,
                 metadata: {
@@ -331,11 +388,17 @@ export class ContinuityShotGenerator {
         if (continuityMechanismUsed !== undefined) {
           shot.continuityMechanismUsed = continuityMechanismUsed;
         }
-        shot.status = 'completed';
+        shot.status = "completed";
         shot.generatedAt = new Date();
 
-        if (session.defaultSettings.autoExtractFrameBridge && shot.videoAssetId) {
-          const videoUrl = await this.mediaService.getVideoUrl(shot.videoAssetId, session.userId);
+        if (
+          session.defaultSettings.autoExtractFrameBridge &&
+          shot.videoAssetId
+        ) {
+          const videoUrl = await this.mediaService.getVideoUrl(
+            shot.videoAssetId,
+            session.userId,
+          );
           if (videoUrl) {
             try {
               const bridge = await this.mediaService.extractBridgeFrame(
@@ -343,22 +406,24 @@ export class ContinuityShotGenerator {
                 shot.videoAssetId,
                 videoUrl,
                 shot.id,
-                'last'
+                "last",
               );
               shot.frameBridge = bridge;
 
-              const representative = await this.mediaService.extractRepresentativeFrame(
-                session.userId,
-                shot.videoAssetId,
-                videoUrl,
-                shot.id
-              );
-              shot.styleReference = await this.mediaService.createStyleReferenceFromVideo(
-                shot.videoAssetId,
-                representative
-              );
+              const representative =
+                await this.mediaService.extractRepresentativeFrame(
+                  session.userId,
+                  shot.videoAssetId,
+                  videoUrl,
+                  shot.id,
+                );
+              shot.styleReference =
+                await this.mediaService.createStyleReferenceFromVideo(
+                  shot.videoAssetId,
+                  representative,
+                );
             } catch (error) {
-              this.log.warn('Post-generation frame extraction failed', {
+              this.log.warn("Post-generation frame extraction failed", {
                 shotId,
                 error: error instanceof Error ? error.message : String(error),
               });
@@ -369,10 +434,11 @@ export class ContinuityShotGenerator {
         finalResult = shot;
         break;
       } catch (error) {
-        shot.status = 'failed';
-        shot.error = error instanceof Error ? error.message : 'Generation failed';
+        shot.status = "failed";
+        shot.error =
+          error instanceof Error ? error.message : "Generation failed";
         const err = error instanceof Error ? error : new Error(shot.error);
-        this.log.error('Shot generation failed', err, { shotId });
+        this.log.error("Shot generation failed", err, { shotId });
         finalResult = shot;
         break;
       }
@@ -380,9 +446,9 @@ export class ContinuityShotGenerator {
 
     // Ensure shot has a terminal status if the loop ended without break
     if (!finalResult) {
-      shot.status = shot.videoAssetId ? 'completed' : 'failed';
+      shot.status = shot.videoAssetId ? "completed" : "failed";
       if (!shot.videoAssetId && !shot.error) {
-        shot.error = 'Quality gate not passed after maximum retries';
+        shot.error = "Quality gate not passed after maximum retries";
       }
       shot.generatedAt = new Date();
       finalResult = shot;
@@ -390,12 +456,12 @@ export class ContinuityShotGenerator {
 
     await this.persistShotResult(sessionId, shotId, finalResult, session);
 
-    if (finalResult.status === 'completed') {
+    if (finalResult.status === "completed") {
       this.emitStage(observer, {
         shotId,
-        stage: 'completed',
+        stage: "completed",
         progress: 100,
-        message: 'Shot generation completed.',
+        message: "Shot generation completed.",
         metadata: {
           ...(finalResult.continuityMechanismUsed !== undefined
             ? { continuityMechanismUsed: finalResult.continuityMechanismUsed }
@@ -403,8 +469,12 @@ export class ContinuityShotGenerator {
           ...(finalResult.generatedKeyframeUrl
             ? { generatedKeyframeUrl: finalResult.generatedKeyframeUrl }
             : {}),
-          ...(finalResult.frameBridge?.frameUrl ? { frameBridgeUrl: finalResult.frameBridge.frameUrl } : {}),
-          ...(finalResult.styleScore !== undefined ? { styleScore: finalResult.styleScore } : {}),
+          ...(finalResult.frameBridge?.frameUrl
+            ? { frameBridgeUrl: finalResult.frameBridge.frameUrl }
+            : {}),
+          ...(finalResult.styleScore !== undefined
+            ? { styleScore: finalResult.styleScore }
+            : {}),
           ...(finalResult.identityScore !== undefined
             ? { identityScore: finalResult.identityScore }
             : {}),
@@ -414,17 +484,21 @@ export class ContinuityShotGenerator {
           ...(finalResult.styleDegradedReason
             ? { styleDegradedReason: finalResult.styleDegradedReason }
             : {}),
-          ...(finalResult.retryCount !== undefined ? { retryCount: finalResult.retryCount } : {}),
+          ...(finalResult.retryCount !== undefined
+            ? { retryCount: finalResult.retryCount }
+            : {}),
         },
       });
     } else {
       this.emitStage(observer, {
         shotId,
-        stage: 'failed',
+        stage: "failed",
         progress: 100,
-        message: finalResult.error || 'Shot generation failed.',
+        message: finalResult.error || "Shot generation failed.",
         metadata: {
-          ...(finalResult.retryCount !== undefined ? { retryCount: finalResult.retryCount } : {}),
+          ...(finalResult.retryCount !== undefined
+            ? { retryCount: finalResult.retryCount }
+            : {}),
           ...(finalResult.error ? { error: finalResult.error } : {}),
         },
       });
@@ -434,10 +508,12 @@ export class ContinuityShotGenerator {
   }
 
   private async resolveContinuityMechanism(
-    context: ContinuityMechanismContext
+    context: ContinuityMechanismContext,
   ): Promise<ContinuityMechanismResult> {
     const chain: Array<
-      (ctx: ContinuityMechanismContext) => Promise<ContinuityMechanismResult | null>
+      (
+        ctx: ContinuityMechanismContext,
+      ) => Promise<ContinuityMechanismResult | null>
     > = context.isContinuity
       ? [
           this.applySceneProxyMechanism.bind(this),
@@ -457,14 +533,14 @@ export class ContinuityShotGenerator {
       }
     }
 
-    return { continuityMechanismUsed: 'none' };
+    return { continuityMechanismUsed: "none" };
   }
 
   private async persistShotResult(
     sessionId: string,
     shotId: string,
     result: ContinuityShot,
-    fallbackSession: ContinuitySession
+    fallbackSession: ContinuitySession,
   ): Promise<void> {
     const maxAttempts = 3;
 
@@ -486,10 +562,10 @@ export class ContinuityShotGenerator {
       freshSession.updatedAt = new Date();
 
       try {
-        if (typeof freshSession.version === 'number') {
+        if (typeof freshSession.version === "number") {
           const newVersion = await this.sessionStore.saveWithVersion(
             freshSession,
-            freshSession.version
+            freshSession.version,
           );
           freshSession.version = newVersion;
         } else {
@@ -497,8 +573,11 @@ export class ContinuityShotGenerator {
         }
         return;
       } catch (error) {
-        if (error instanceof ContinuitySessionVersionMismatchError && attempt < maxAttempts) {
-          this.log.warn('Continuity session version conflict, retrying save', {
+        if (
+          error instanceof ContinuitySessionVersionMismatchError &&
+          attempt < maxAttempts
+        ) {
+          this.log.warn("Continuity session version conflict, retrying save", {
             sessionId,
             shotId,
             attempt,
@@ -507,10 +586,14 @@ export class ContinuityShotGenerator {
           });
           continue;
         }
-        this.log.error('Failed to persist continuity shot update', error as Error, {
-          sessionId,
-          shotId,
-        });
+        this.log.error(
+          "Failed to persist continuity shot update",
+          error as Error,
+          {
+            sessionId,
+            shotId,
+          },
+        );
         throw error;
       }
     }
@@ -518,7 +601,7 @@ export class ContinuityShotGenerator {
 
   private emitStage(
     observer: ShotGenerationObserver | undefined,
-    event: ShotGenerationEvent
+    event: ShotGenerationEvent,
   ): void {
     if (!observer) {
       return;
@@ -527,11 +610,17 @@ export class ContinuityShotGenerator {
   }
 
   private async applySceneProxyMechanism(
-    context: ContinuityMechanismContext
+    context: ContinuityMechanismContext,
   ): Promise<ContinuityMechanismResult | null> {
     if (!context.isContinuity) return null;
     if (!context.session.sceneProxy) return null;
-    if (!this.providerService.shouldUseSceneProxy(context.session, context.shot, context.modeForStrategy)) {
+    if (
+      !this.providerService.shouldUseSceneProxy(
+        context.session,
+        context.shot,
+        context.modeForStrategy,
+      )
+    ) {
       return null;
     }
 
@@ -539,89 +628,91 @@ export class ContinuityShotGenerator {
       context.session.userId,
       context.session.sceneProxy,
       context.shot.id,
-      context.shot.camera
+      context.shot.camera,
     );
     context.shot.sceneProxyRenderUrl = render.renderUrl;
     return {
       startImageUrl: render.renderUrl,
-      continuityMechanismUsed: 'scene-proxy',
+      continuityMechanismUsed: "scene-proxy",
     };
   }
 
   private async applyNativeStyleReferenceMechanism(
-    context: ContinuityMechanismContext
+    context: ContinuityMechanismContext,
   ): Promise<ContinuityMechanismResult | null> {
     if (!context.isContinuity) return null;
-    if (context.strategy.type !== 'native-style-ref') return null;
-    return { continuityMechanismUsed: 'native-style-ref' };
+    if (context.strategy.type !== "native-style-ref") return null;
+    return { continuityMechanismUsed: "native-style-ref" };
   }
 
   private async applyFrameBridgeMechanism(
-    context: ContinuityMechanismContext
+    context: ContinuityMechanismContext,
   ): Promise<ContinuityMechanismResult | null> {
     if (!context.isContinuity) return null;
-    if (context.strategy.type !== 'frame-bridge') return null;
+    if (context.strategy.type !== "frame-bridge") return null;
     if (!context.shot.frameBridge) return null;
     return {
       startImageUrl: context.shot.frameBridge.frameUrl,
-      continuityMechanismUsed: 'frame-bridge',
+      continuityMechanismUsed: "frame-bridge",
     };
   }
 
   private async applyStandardFrameBridgeMechanism(
-    context: ContinuityMechanismContext
+    context: ContinuityMechanismContext,
   ): Promise<ContinuityMechanismResult | null> {
     if (context.isContinuity) return null;
-    if (context.strategy.type !== 'frame-bridge') return null;
+    if (context.strategy.type !== "frame-bridge") return null;
     if (!context.shot.frameBridge) return null;
     return {
       startImageUrl: context.shot.frameBridge.frameUrl,
-      continuityMechanismUsed: 'frame-bridge',
+      continuityMechanismUsed: "frame-bridge",
     };
   }
 
   private async applySeedOnlyMechanism(
-    context: ContinuityMechanismContext
+    context: ContinuityMechanismContext,
   ): Promise<ContinuityMechanismResult | null> {
     if (context.isContinuity) return null;
     if (!context.supportsSeedPersistence) return null;
     if (context.inheritedSeed === undefined) return null;
-    return { continuityMechanismUsed: 'seed-only' };
+    return { continuityMechanismUsed: "seed-only" };
   }
 
   private async applyIpAdapterMechanism(
-    context: ContinuityMechanismContext
+    context: ContinuityMechanismContext,
   ): Promise<ContinuityMechanismResult | null> {
     if (!context.isContinuity) return null;
-    if (context.strategy.type !== 'ip-adapter') return null;
+    if (context.strategy.type !== "ip-adapter") return null;
 
-    const keyframeMechanism: ContinuityShot['continuityMechanismUsed'] = context.requiresCharacter
-      ? 'pulid-keyframe'
-      : 'ip-adapter';
+    const keyframeMechanism: ContinuityShot["continuityMechanismUsed"] =
+      context.requiresCharacter ? "pulid-keyframe" : "ip-adapter";
     this.emitStage(context.observer, {
       shotId: context.shot.id,
-      stage: 'generating-keyframe',
+      stage: "generating-keyframe",
       progress: 30,
-      message: 'Generating continuity keyframe.',
+      message: "Generating continuity keyframe.",
       metadata: {
         continuityMechanismUsed: keyframeMechanism,
-        ...(context.shot.retryCount !== undefined ? { retryCount: context.shot.retryCount } : {}),
+        ...(context.shot.retryCount !== undefined
+          ? { retryCount: context.shot.retryCount }
+          : {}),
       },
     });
 
-    context.shot.status = 'generating-keyframe';
+    context.shot.status = "generating-keyframe";
     await this.sessionStore.save(context.session);
 
     const styleRef = this.resolveStyleReference(context.session, context.shot);
     context.shot.styleReference = styleRef;
 
     let startImageUrl: string | undefined;
-    let continuityMechanismUsed: ContinuityShot['continuityMechanismUsed'] = 'ip-adapter';
+    let continuityMechanismUsed: ContinuityShot["continuityMechanismUsed"] =
+      "ip-adapter";
 
     if (context.requiresCharacter) {
       if (!this.characterKeyframes) {
         throw new Error(
-          'PuLID keyframe generation is not available. Configure FAL_KEY/FAL_API_KEY to enable character consistency.'
+          "PuLID keyframe generation is not available. Configure FAL_KEY/FAL_API_KEY to enable character consistency.",
         );
       }
       const characterAssetId =
@@ -630,7 +721,9 @@ export class ContinuityShotGenerator {
           ? this.resolveCharacterFromSession(context.session)
           : undefined);
       if (!characterAssetId) {
-        throw new Error('Character consistency requested but no characterAssetId provided');
+        throw new Error(
+          "Character consistency requested but no characterAssetId provided",
+        );
       }
       const faceStrength = context.shot.faceStrength ?? DEFAULT_FACE_STRENGTH;
       const aspectRatio = this.coerceAspectRatio(styleRef.aspectRatio);
@@ -642,20 +735,20 @@ export class ContinuityShotGenerator {
         faceStrength,
       });
       context.shot.faceStrength = faceStrength;
-      continuityMechanismUsed = 'pulid-keyframe';
+      continuityMechanismUsed = "pulid-keyframe";
 
-      if (context.modeForStrategy === 'style-match') {
+      if (context.modeForStrategy === "style-match") {
         const transfer = await this.postProcessingService.matchImagePalette(
           context.session.userId,
           startImageUrl,
-          styleRef.frameUrl
+          styleRef.frameUrl,
         );
         if (transfer.applied && transfer.imageUrl) {
           startImageUrl = transfer.imageUrl;
           context.shot.styleTransferApplied = true;
         } else {
           context.shot.styleDegraded = true;
-          context.shot.styleDegradedReason = 'style-transfer-unavailable';
+          context.shot.styleDegradedReason = "style-transfer-unavailable";
         }
       }
     } else {
@@ -669,10 +762,13 @@ export class ContinuityShotGenerator {
           ...(aspectRatio ? { aspectRatio } : {}),
         });
       } catch (error) {
-        const message = error instanceof Error ? error.message : 'Unknown error';
-        throw new Error(`Style keyframe generation failed (IP-Adapter). ${message}`);
+        const message =
+          error instanceof Error ? error.message : "Unknown error";
+        throw new Error(
+          `Style keyframe generation failed (IP-Adapter). ${message}`,
+        );
       }
-      continuityMechanismUsed = 'ip-adapter';
+      continuityMechanismUsed = "ip-adapter";
     }
 
     context.shot.generatedKeyframeUrl = startImageUrl;
@@ -680,7 +776,10 @@ export class ContinuityShotGenerator {
     return { startImageUrl, continuityMechanismUsed };
   }
 
-  private resolveStyleReference(session: ContinuitySession, shot: ContinuityShot): StyleReference {
+  private resolveStyleReference(
+    session: ContinuitySession,
+    shot: ContinuityShot,
+  ): StyleReference {
     if (!shot.styleReferenceId) {
       return session.primaryStyleReference;
     }
@@ -695,53 +794,72 @@ export class ContinuityShotGenerator {
 
   private resolveContinuityMode(
     requested: ContinuityMode,
-    capabilities: { supportsStartImage: boolean; supportsNativeStyleReference: boolean },
-    hasFrameBridge: boolean
+    capabilities: {
+      supportsStartImage: boolean;
+      supportsNativeStyleReference: boolean;
+    },
+    hasFrameBridge: boolean,
   ): ContinuityMode {
     let mode: ContinuityMode = requested;
 
-    if (!capabilities.supportsStartImage && !capabilities.supportsNativeStyleReference) {
-      return 'none';
+    if (
+      !capabilities.supportsStartImage &&
+      !capabilities.supportsNativeStyleReference
+    ) {
+      return "none";
     }
 
-    if (requested === 'frame-bridge') {
+    if (requested === "frame-bridge") {
       if (!hasFrameBridge || !capabilities.supportsStartImage) {
-        mode = capabilities.supportsNativeStyleReference ? 'native' : 'style-match';
+        mode = capabilities.supportsNativeStyleReference
+          ? "native"
+          : "style-match";
       }
-    } else if (requested === 'native') {
+    } else if (requested === "native") {
       if (!capabilities.supportsNativeStyleReference) {
-        mode = capabilities.supportsStartImage ? 'style-match' : 'none';
+        mode = capabilities.supportsStartImage ? "style-match" : "none";
       }
-    } else if (requested === 'style-match') {
+    } else if (requested === "style-match") {
       if (capabilities.supportsNativeStyleReference) {
-        mode = 'native';
+        mode = "native";
       } else if (!capabilities.supportsStartImage) {
-        mode = 'none';
+        mode = "none";
       }
     }
 
-    if (mode === 'style-match' && !capabilities.supportsStartImage && !capabilities.supportsNativeStyleReference) {
-      return 'none';
+    if (
+      mode === "style-match" &&
+      !capabilities.supportsStartImage &&
+      !capabilities.supportsNativeStyleReference
+    ) {
+      return "none";
     }
 
     return mode;
   }
 
-  private requiresCharacterConsistency(shot: ContinuityShot, session: ContinuitySession): boolean {
-    return Boolean(shot.characterAssetId || session.defaultSettings.useCharacterConsistency);
+  private requiresCharacterConsistency(
+    shot: ContinuityShot,
+    session: ContinuitySession,
+  ): boolean {
+    return Boolean(
+      shot.characterAssetId || session.defaultSettings.useCharacterConsistency,
+    );
   }
 
   private adjustForQualityGate(
     shot: ContinuityShot,
     quality: { styleScore?: number; identityScore?: number; passed: boolean },
-    thresholds: { styleThreshold: number; identityThreshold: number }
+    thresholds: { styleThreshold: number; identityThreshold: number },
   ): boolean {
     const { styleThreshold, identityThreshold } = thresholds;
-    const hasStyle = typeof quality.styleScore === 'number';
-    const hasIdentity = typeof quality.identityScore === 'number';
+    const hasStyle = typeof quality.styleScore === "number";
+    const hasIdentity = typeof quality.identityScore === "number";
 
-    const needsIdentity = hasIdentity && (quality.identityScore as number) < identityThreshold;
-    const needsStyle = hasStyle && (quality.styleScore as number) < styleThreshold;
+    const needsIdentity =
+      hasIdentity && (quality.identityScore as number) < identityThreshold;
+    const needsStyle =
+      hasStyle && (quality.styleScore as number) < styleThreshold;
 
     let adjusted = false;
 
@@ -751,13 +869,16 @@ export class ContinuityShotGenerator {
         shot.styleStrength = nextStyleStrength;
         adjusted = true;
       }
-      const nextFaceStrength = Math.min(0.95, (shot.faceStrength ?? DEFAULT_FACE_STRENGTH) + 0.05);
+      const nextFaceStrength = Math.min(
+        0.95,
+        (shot.faceStrength ?? DEFAULT_FACE_STRENGTH) + 0.05,
+      );
       if (nextFaceStrength !== shot.faceStrength) {
         shot.faceStrength = nextFaceStrength;
         adjusted = true;
       }
       shot.styleDegraded = true;
-      shot.styleDegradedReason = 'identity-threshold';
+      shot.styleDegradedReason = "identity-threshold";
     } else if (needsStyle) {
       const nextStyleStrength = Math.min(0.95, shot.styleStrength + 0.1);
       if (nextStyleStrength !== shot.styleStrength) {
@@ -769,7 +890,9 @@ export class ContinuityShotGenerator {
     return adjusted;
   }
 
-  private resolveCharacterFromSession(session: ContinuitySession): string | undefined {
+  private resolveCharacterFromSession(
+    session: ContinuitySession,
+  ): string | undefined {
     for (let i = session.shots.length - 1; i >= 0; i -= 1) {
       const candidate = session.shots[i]?.characterAssetId;
       if (candidate) return candidate;
@@ -777,8 +900,12 @@ export class ContinuityShotGenerator {
     return undefined;
   }
 
-  private coerceAspectRatio(value: string | undefined): AspectRatio | undefined {
+  private coerceAspectRatio(
+    value: string | undefined,
+  ): AspectRatio | undefined {
     if (!value) return undefined;
-    return ASPECT_RATIOS.includes(value as AspectRatio) ? (value as AspectRatio) : undefined;
+    return ASPECT_RATIOS.includes(value as AspectRatio)
+      ? (value as AspectRatio)
+      : undefined;
   }
 }

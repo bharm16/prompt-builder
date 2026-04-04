@@ -19,13 +19,14 @@ You need a Firebase service account to run the migration. Follow these steps:
    - A JSON file will download (e.g., `flibberai-firebase-adminsdk-xxxxx.json`)
 
 3. **Save the File Securely**
+
    ```bash
    # Create a secure directory (optional)
    mkdir -p ~/.firebase-keys
-   
+
    # Move the downloaded file there
    mv ~/Downloads/flibberai-firebase-adminsdk-*.json ~/.firebase-keys/flibberai-service-account.json
-   
+
    # Set restrictive permissions
    chmod 600 ~/.firebase-keys/flibberai-service-account.json
    ```
@@ -40,6 +41,7 @@ FIREBASE_SERVICE_ACCOUNT_PATH=/Users/bryceharmon/.firebase-keys/flibberai-servic
 ```
 
 **Or use the absolute path to wherever you saved the file:**
+
 ```bash
 FIREBASE_SERVICE_ACCOUNT_PATH=/absolute/path/to/your/service-account.json
 ```
@@ -52,6 +54,7 @@ tsx --tsconfig server/tsconfig.json scripts/migrations/backfill-highlight-cache.
 ```
 
 You should see:
+
 ```
 ✓ Connected to Firestore project: flibberai
 📥 Fetching documents from Firestore...
@@ -65,6 +68,7 @@ You should see:
 ⚠️ **IMPORTANT**: The service account file contains sensitive credentials!
 
 ### DO:
+
 - ✅ Store it outside your project directory (e.g., `~/.firebase-keys/`)
 - ✅ Add it to `.gitignore` if stored in project
 - ✅ Set file permissions to 600 (read/write for owner only)
@@ -72,6 +76,7 @@ You should see:
 - ✅ Rotate keys periodically (Firebase Console)
 
 ### DON'T:
+
 - ❌ Commit service account JSON to Git
 - ❌ Share the file publicly
 - ❌ Store in cloud storage without encryption
@@ -84,13 +89,15 @@ You should see:
 ### "FIREBASE_SERVICE_ACCOUNT_PATH not found"
 
 **Solution**: Check that:
+
 1. The path in `.env` is absolute (starts with `/`)
 2. The file exists at that path: `ls -l /path/to/service-account.json`
 3. You've restarted any running servers after updating `.env`
 
 ### "Permission denied" errors
 
-**Solution**: 
+**Solution**:
+
 ```bash
 chmod 600 /path/to/service-account.json
 ```
@@ -137,6 +144,7 @@ tsx --tsconfig server/tsconfig.json scripts/migrations/backfill-highlight-cache.
 ## Help
 
 If you encounter issues:
+
 1. Check this guide first
 2. Verify your service account has Firestore read/write permissions
 3. Check the Firebase Console for IAM role assignments

@@ -3,7 +3,9 @@
 ## What Changed
 
 ### Updated `NlpSpanService.ts`
+
 Full TypeScript rewrite using the official `gliner` npm package directly:
+
 - Reduced from ~600 lines to ~300 lines
 - Removed custom RobustGLiNER implementation
 - Direct import from `gliner` package - no wrapper needed
@@ -12,6 +14,7 @@ Full TypeScript rewrite using the official `gliner` npm package directly:
 ## Setup Steps
 
 ### Step 1: Install the gliner package
+
 ```bash
 npm install gliner
 ```
@@ -37,10 +40,10 @@ Edit `server/src/llm/span-labeling/config/SpanLabelingConfig.ts`:
 ```typescript
 export const NEURO_SYMBOLIC = {
   ENABLED: true,
-  
+
   GLINER: {
-    ENABLED: true,  // Enable GLiNER
-    MODEL_PATH: 'onnx-community/gliner_small-v2.1',
+    ENABLED: true, // Enable GLiNER
+    MODEL_PATH: "onnx-community/gliner_small-v2.1",
     THRESHOLD: 0.3,
     MAX_WIDTH: 12,
   },
@@ -48,6 +51,7 @@ export const NEURO_SYMBOLIC = {
 ```
 
 ### Step 4: Test
+
 ```bash
 npm run server
 ```
@@ -76,7 +80,9 @@ Text Input
 ## Potential Issues
 
 ### gliner package uses onnxruntime-web
+
 The package is browser-focused but works in Node.js via WASM. If you hit issues:
+
 1. Stick with Aho-Corasick + LLM only
 2. Use a Python sidecar for GLiNER
 3. Fix the original onnxruntime-node implementation

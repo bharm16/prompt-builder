@@ -1,10 +1,10 @@
-import type { IconProps } from '@promptstudio/system/components/ui';
-import type { User } from './prompt-session';
+import type { IconProps } from "@promptstudio/system/components/ui";
+import type { User } from "./prompt-session";
 
 export interface Mode {
   id: string;
   name: string;
-  icon: IconProps['icon'];
+  icon: IconProps["icon"];
   description: string;
 }
 

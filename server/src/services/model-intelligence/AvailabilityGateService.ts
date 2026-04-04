@@ -1,1 +1,1 @@
-export { AvailabilityGateService } from './services/AvailabilityGateService';
+export { AvailabilityGateService } from "./services/AvailabilityGateService";

@@ -1,9 +1,12 @@
-import type { ModelScore, PromptRequirements } from '../types';
+import type { ModelScore, PromptRequirements } from "../types";
 
 export class RecommendationExplainerService {
-  explainRecommendation(score: ModelScore, _requirements: PromptRequirements): string {
+  explainRecommendation(
+    score: ModelScore,
+    _requirements: PromptRequirements,
+  ): string {
     if (!score.factorScores.length) {
-      return 'Balanced fit for general video generation requirements.';
+      return "Balanced fit for general video generation requirements.";
     }
 
     const topFactors = [...score.factorScores]
@@ -21,12 +24,14 @@ export class RecommendationExplainerService {
 
   explainEfficientOption(score: ModelScore): string {
     if (!score.factorScores.length) {
-      return 'Efficient alternative with solid overall performance.';
+      return "Efficient alternative with solid overall performance.";
     }
 
-    const topFactor = [...score.factorScores].sort((a, b) => b.contribution - a.contribution)[0];
+    const topFactor = [...score.factorScores].sort(
+      (a, b) => b.contribution - a.contribution,
+    )[0];
     if (!topFactor) {
-      return 'Efficient alternative with solid overall performance.';
+      return "Efficient alternative with solid overall performance.";
     }
 
     return `Efficient option that still performs well for ${topFactor.label.toLowerCase()}.`;

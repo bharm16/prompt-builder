@@ -1,14 +1,18 @@
 /**
  * LLM Client Interface
- * 
+ *
  * Base interface for provider-specific LLM clients.
  * Each provider (Groq, OpenAI, etc.) implements this interface
  * with provider-specific optimizations.
  */
 
-import type { LabelSpansResult, ValidationPolicy, ProcessingOptions } from '../types';
-import type { AIService as BaseAIService } from '@services/enhancement/services/types';
-import { SubstringPositionCache } from '../cache/SubstringPositionCache';
+import type {
+  LabelSpansResult,
+  ValidationPolicy,
+  ProcessingOptions,
+} from "../types";
+import type { AIService as BaseAIService } from "@services/enhancement/services/types";
+import { SubstringPositionCache } from "../cache/SubstringPositionCache";
 
 /**
  * Parameters for LLM span extraction
@@ -35,10 +39,17 @@ export interface ILlmClient {
   /**
    * Stream spans using LLM (optional support)
    */
-  streamSpans?(params: LlmSpanParams): AsyncGenerator<Record<string, unknown>, void, unknown>;
+  streamSpans?(
+    params: LlmSpanParams,
+  ): AsyncGenerator<Record<string, unknown>, void, unknown>;
 }
 
 /**
  * Provider type for factory selection
  */
-export type LlmClientProvider = 'groq' | 'openai' | 'anthropic' | 'gemini' | 'unknown';
+export type LlmClientProvider =
+  | "groq"
+  | "openai"
+  | "anthropic"
+  | "gemini"
+  | "unknown";

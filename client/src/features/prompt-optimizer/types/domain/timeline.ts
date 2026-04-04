@@ -1,4 +1,4 @@
-import type { Generation } from './generation';
+import type { Generation } from "./generation";
 
 export interface TimelineGeneration extends Generation {
   _versionId: string;
@@ -6,7 +6,7 @@ export interface TimelineGeneration extends Generation {
 }
 
 export interface TimelineDivider {
-  type: 'divider';
+  type: "divider";
   versionId: string;
   versionLabel: string;
   promptChanged: boolean;
@@ -14,7 +14,7 @@ export interface TimelineDivider {
 }
 
 export interface TimelineGenerationItem {
-  type: 'generation';
+  type: "generation";
   generation: TimelineGeneration;
   timestamp: number;
 }

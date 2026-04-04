@@ -5,7 +5,7 @@
  */
 
 export function calculateConfidenceFromLogprobs(
-  logprobs: Array<{ logprob: number; probability?: number }>
+  logprobs: Array<{ logprob: number; probability?: number }>,
 ): {
   average: number;
   min: number;
@@ -17,7 +17,7 @@ export function calculateConfidenceFromLogprobs(
   }
 
   const probabilities = logprobs.map((lp) =>
-    lp.probability !== undefined ? lp.probability : Math.exp(lp.logprob)
+    lp.probability !== undefined ? lp.probability : Math.exp(lp.logprob),
   );
 
   const sum = probabilities.reduce((a, b) => a + b, 0);

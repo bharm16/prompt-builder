@@ -1,90 +1,94 @@
 # Testing Quick Reference Card
 
 ## 🚫 NEVER Do This
+
 ```javascript
 // ❌ Mock fetch directly
 global.fetch = vi.fn();
 
 // ❌ Test implementation details
-expect(component.state.value).toBe('test');
+expect(component.state.value).toBe("test");
 
 // ❌ Test CSS classes
-expect(container).toHaveClass('flex-col');
+expect(container).toHaveClass("flex-col");
 
 // ❌ Module-level mocking in services
-vi.mock('../SomeService');
+vi.mock("../SomeService");
 ```
 
 ## ✅ ALWAYS Do This
+
 ```javascript
 // ✅ Mock at service boundaries
 const mockService = { getData: vi.fn() };
 
 // ✅ Test user behavior
-await user.click(screen.getByRole('button'));
-expect(screen.getByText('Success')).toBeInTheDocument();
+await user.click(screen.getByRole("button"));
+expect(screen.getByText("Success")).toBeInTheDocument();
 
 // ✅ Constructor dependency injection
 new Service({ dependency: mockDependency });
 
 // ✅ Clear AAA pattern
 // Arrange
-const input = 'test';
-// Act  
+const input = "test";
+// Act
 const result = doSomething(input);
 // Assert
-expect(result).toBe('expected');
+expect(result).toBe("expected");
 ```
 
 ## Test Structure Formula
 
 ### Frontend (React)
+
 ```javascript
-describe('Component', () => {
+describe("Component", () => {
   let mockService;
-  
+
   beforeEach(() => {
     mockService = { method: vi.fn() };
   });
-  
+
   const renderComponent = (props = {}) => {
     return render(<Component service={mockService} {...props} />);
   };
-  
-  it('should [behavior] when [user action]', async () => {
+
+  it("should [behavior] when [user action]", async () => {
     // Arrange
     const user = userEvent.setup();
     renderComponent();
-    
+
     // Act
-    await user.click(screen.getByRole('button'));
-    
-    // Assert  
-    expect(screen.getByText('Result')).toBeInTheDocument();
+    await user.click(screen.getByRole("button"));
+
+    // Assert
+    expect(screen.getByText("Result")).toBeInTheDocument();
   });
 });
 ```
 
 ### Backend (Service)
+
 ```javascript
-describe('Service', () => {
+describe("Service", () => {
   let service;
   let mockDependency;
-  
+
   beforeEach(() => {
     mockDependency = { method: vi.fn() };
     service = new Service({ dependency: mockDependency });
   });
-  
-  it('should [result] when [condition]', async () => {
+
+  it("should [result] when [condition]", async () => {
     // Arrange
-    mockDependency.method.mockResolvedValue('data');
-    
+    mockDependency.method.mockResolvedValue("data");
+
     // Act
     const result = await service.doSomething();
-    
+
     // Assert
-    expect(result).toBe('expected');
+    expect(result).toBe("expected");
     expect(mockDependency.method).toHaveBeenCalled();
   });
 });
@@ -102,10 +106,10 @@ describe('Service', () => {
 
 ```javascript
 // ✅ Good - Describes behavior
-it('should show error message when form is submitted without required fields')
+it("should show error message when form is submitted without required fields");
 
 // ❌ Bad - Vague
-it('should work correctly')
+it("should work correctly");
 ```
 
 ## Commands
@@ -115,7 +119,7 @@ it('should work correctly')
 npm test -- ComponentName
 
 # With coverage
-npm test -- --coverage ComponentName  
+npm test -- --coverage ComponentName
 
 # Watch mode
 npm test -- --watch
@@ -131,4 +135,4 @@ npm test -- -u
 
 ---
 
-*Print this and keep it visible while writing tests*
+_Print this and keep it visible while writing tests_

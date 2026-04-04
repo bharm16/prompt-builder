@@ -5,12 +5,12 @@
  * Handles model detection, section detection, phrase role analysis, and constraint generation.
  */
 
-import { logger } from '@infrastructure/Logger';
+import { logger } from "@infrastructure/Logger";
 import type {
   VideoService,
   VideoConstraints,
   EnhancementMetrics,
-} from './types';
+} from "./types";
 
 export interface VideoContextDetectionParams {
   fullPrompt: string;
@@ -40,15 +40,19 @@ export class VideoContextDetectionService {
   /**
    * Detect video context and extract video-specific information
    */
-  detectVideoContext(params: VideoContextDetectionParams): VideoContextDetectionResult {
+  detectVideoContext(
+    params: VideoContextDetectionParams,
+  ): VideoContextDetectionResult {
     const isVideoPrompt = this.videoService.isVideoPrompt(params.fullPrompt);
-    const highlightWordCount = this.videoService.countWords(params.highlightedText);
+    const highlightWordCount = this.videoService.countWords(
+      params.highlightedText,
+    );
     const phraseRole = isVideoPrompt
       ? this.videoService.detectVideoPhraseRole(
           params.highlightedText,
           params.contextBefore,
           params.contextAfter,
-          params.highlightedCategory
+          params.highlightedCategory,
         )
       : null;
     const videoConstraints = isVideoPrompt
@@ -57,7 +61,8 @@ export class VideoContextDetectionService {
           phraseRole,
           highlightedText: params.highlightedText,
           highlightedCategory: params.highlightedCategory,
-          highlightedCategoryConfidence: params.highlightedCategoryConfidence ?? null,
+          highlightedCategoryConfidence:
+            params.highlightedCategoryConfidence ?? null,
         })
       : null;
 
@@ -73,15 +78,15 @@ export class VideoContextDetectionService {
       promptSection = this.videoService.detectPromptSection(
         params.highlightedText,
         params.fullPrompt,
-        params.contextBefore
+        params.contextBefore,
       );
       params.metrics.sectionDetection = Date.now() - sectionStart;
     }
 
-    logger.debug('Model and section detection', {
+    logger.debug("Model and section detection", {
       isVideoPrompt,
-      modelTarget: modelTarget || 'none detected',
-      promptSection: promptSection || 'main_prompt',
+      modelTarget: modelTarget || "none detected",
+      promptSection: promptSection || "main_prompt",
       modelDetectionTime: params.metrics.modelDetection,
       sectionDetectionTime: params.metrics.sectionDetection,
     });
@@ -96,4 +101,3 @@ export class VideoContextDetectionService {
     };
   }
 }
-

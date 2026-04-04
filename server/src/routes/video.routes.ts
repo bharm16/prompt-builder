@@ -1,19 +1,19 @@
-import express, { type Router } from 'express';
-import { asyncHandler } from '@middleware/asyncHandler';
-import { validateRequest } from '@middleware/validateRequest';
+import express, { type Router } from "express";
+import { asyncHandler } from "@middleware/asyncHandler";
+import { validateRequest } from "@middleware/validateRequest";
 import {
   creativeSuggestionSchema,
   completeSceneSchema,
   variationsSchema,
   parseConceptSchema,
   videoValidationSchema,
-} from '@utils/validation';
-import type { VideoServices } from './video/types';
-import { createVideoSuggestionsHandler } from './video/handlers/suggestions';
-import { createVideoValidateHandler } from './video/handlers/validate';
-import { createVideoCompleteHandler } from './video/handlers/complete';
-import { createVideoVariationsHandler } from './video/handlers/variations';
-import { createVideoParseHandler } from './video/handlers/parse';
+} from "@utils/validation";
+import type { VideoServices } from "./video/types";
+import { createVideoSuggestionsHandler } from "./video/handlers/suggestions";
+import { createVideoValidateHandler } from "./video/handlers/validate";
+import { createVideoCompleteHandler } from "./video/handlers/complete";
+import { createVideoVariationsHandler } from "./video/handlers/variations";
+import { createVideoParseHandler } from "./video/handlers/parse";
 
 /**
  * Create video concept routes
@@ -30,33 +30,33 @@ export function createVideoRoutes(services: VideoServices): Router {
   const parseHandler = createVideoParseHandler(videoConceptService);
 
   router.post(
-    '/suggestions',
+    "/suggestions",
     validateRequest(creativeSuggestionSchema),
-    asyncHandler(suggestionsHandler)
+    asyncHandler(suggestionsHandler),
   );
 
   router.post(
-    '/validate',
+    "/validate",
     validateRequest(videoValidationSchema),
-    asyncHandler(validateHandler)
+    asyncHandler(validateHandler),
   );
 
   router.post(
-    '/complete',
+    "/complete",
     validateRequest(completeSceneSchema),
-    asyncHandler(completeHandler)
+    asyncHandler(completeHandler),
   );
 
   router.post(
-    '/variations',
+    "/variations",
     validateRequest(variationsSchema),
-    asyncHandler(variationsHandler)
+    asyncHandler(variationsHandler),
   );
 
   router.post(
-    '/parse',
+    "/parse",
     validateRequest(parseConceptSchema),
-    asyncHandler(parseHandler)
+    asyncHandler(parseHandler),
   );
 
   return router;

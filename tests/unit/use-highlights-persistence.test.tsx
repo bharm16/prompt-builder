@@ -1,11 +1,18 @@
-import { describe, expect, it, beforeEach, vi, type MockedFunction } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
+import {
+  describe,
+  expect,
+  it,
+  beforeEach,
+  vi,
+  type MockedFunction,
+} from "vitest";
+import { renderHook, act } from "@testing-library/react";
 
-import { useHighlightsPersistence } from '@features/prompt-optimizer/PromptOptimizerContainer/hooks/useHighlightsPersistence';
-import { getPromptRepository } from '@repositories/index';
-import type { HighlightSnapshot } from '@features/prompt-optimizer/context/types';
-import type { Toast } from '@hooks/types';
-import type { SpanLabelingResult } from '@features/span-highlighting/hooks/types';
+import { useHighlightsPersistence } from "@features/prompt-optimizer/PromptOptimizerContainer/hooks/useHighlightsPersistence";
+import { getPromptRepository } from "@repositories/index";
+import type { HighlightSnapshot } from "@features/prompt-optimizer/context/types";
+import type { Toast } from "@hooks/types";
+import type { SpanLabelingResult } from "@features/span-highlighting/hooks/types";
 
 const { logSpies } = vi.hoisted(() => ({
   logSpies: {
@@ -13,11 +20,11 @@ const { logSpies } = vi.hoisted(() => ({
   },
 }));
 
-vi.mock('@repositories/index', () => ({
+vi.mock("@repositories/index", () => ({
   getPromptRepository: vi.fn(),
 }));
 
-vi.mock('@/services/LoggingService', () => ({
+vi.mock("@/services/LoggingService", () => ({
   logger: {
     child: () => logSpies,
   },
@@ -25,14 +32,18 @@ vi.mock('@/services/LoggingService', () => ({
 
 const mockGetPromptRepository = vi.mocked(getPromptRepository);
 
-type UseHighlightsPersistenceParams = Parameters<typeof useHighlightsPersistence>[0];
+type UseHighlightsPersistenceParams = Parameters<
+  typeof useHighlightsPersistence
+>[0];
 
-type ApplyInitialHighlightSnapshot = UseHighlightsPersistenceParams['applyInitialHighlightSnapshot'];
+type ApplyInitialHighlightSnapshot =
+  UseHighlightsPersistenceParams["applyInitialHighlightSnapshot"];
 
-type UpdateEntryHighlight = UseHighlightsPersistenceParams['promptHistory']['updateEntryHighlight'];
+type UpdateEntryHighlight =
+  UseHighlightsPersistenceParams["promptHistory"]["updateEntryHighlight"];
 
 type PromptRepositoryInstance = ReturnType<typeof getPromptRepository>;
-type UpdateHighlights = PromptRepositoryInstance['updateHighlights'];
+type UpdateHighlights = PromptRepositoryInstance["updateHighlights"];
 
 const createToast = (): Toast => ({
   success: vi.fn(),
@@ -41,14 +52,17 @@ const createToast = (): Toast => ({
   info: vi.fn(),
 });
 
-const createDefaults = (overrides: Partial<UseHighlightsPersistenceParams> = {}): UseHighlightsPersistenceParams => {
-  const applyInitialHighlightSnapshot: MockedFunction<ApplyInitialHighlightSnapshot> = vi.fn();
+const createDefaults = (
+  overrides: Partial<UseHighlightsPersistenceParams> = {},
+): UseHighlightsPersistenceParams => {
+  const applyInitialHighlightSnapshot: MockedFunction<ApplyInitialHighlightSnapshot> =
+    vi.fn();
   const updateEntryHighlight: MockedFunction<UpdateEntryHighlight> = vi.fn();
 
   return {
-    currentPromptUuid: 'uuid-1',
-    currentPromptDocId: 'doc-1',
-    user: { uid: 'user-1' },
+    currentPromptUuid: "uuid-1",
+    currentPromptDocId: "doc-1",
+    user: { uid: "user-1" },
     toast: createToast(),
     applyInitialHighlightSnapshot,
     promptHistory: { updateEntryHighlight },
@@ -58,34 +72,36 @@ const createDefaults = (overrides: Partial<UseHighlightsPersistenceParams> = {})
   };
 };
 
-const createResult = (overrides: Partial<SpanLabelingResult> = {}): SpanLabelingResult => ({
-  spans: [{ start: 0, end: 3, category: 'style', confidence: 0.9 }],
-  meta: { source: 'test' },
-  text: 'Prompt text',
-  signature: 'sig-default',
-  cacheId: 'uuid-1',
-  source: 'network',
+const createResult = (
+  overrides: Partial<SpanLabelingResult> = {},
+): SpanLabelingResult => ({
+  spans: [{ start: 0, end: 3, category: "style", confidence: 0.9 }],
+  meta: { source: "test" },
+  text: "Prompt text",
+  signature: "sig-default",
+  cacheId: "uuid-1",
+  source: "network",
   ...overrides,
 });
 
-describe('useHighlightsPersistence', () => {
+describe("useHighlightsPersistence", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('updates local state and persists network highlights', async () => {
+  it("updates local state and persists network highlights", async () => {
     const updateHighlights: MockedFunction<UpdateHighlights> = vi.fn();
-    mockGetPromptRepository.mockReturnValue(
-      { updateHighlights } as unknown as PromptRepositoryInstance
-    );
+    mockGetPromptRepository.mockReturnValue({
+      updateHighlights,
+    } as unknown as PromptRepositoryInstance);
 
     const params = createDefaults();
 
     const { result } = renderHook(() => useHighlightsPersistence(params));
 
     const input = createResult({
-      signature: 'sig-1',
-      cacheId: 'uuid-1',
+      signature: "sig-1",
+      cacheId: "uuid-1",
     });
 
     await act(async () => {
@@ -94,76 +110,82 @@ describe('useHighlightsPersistence', () => {
 
     expect(params.latestHighlightRef.current).toEqual(
       expect.objectContaining({
-        signature: 'sig-1',
-        cacheId: 'uuid-1',
-      })
+        signature: "sig-1",
+        cacheId: "uuid-1",
+      }),
     );
 
     expect(params.applyInitialHighlightSnapshot).toHaveBeenCalledWith(
-      expect.objectContaining({ signature: 'sig-1' }),
-      { bumpVersion: false, markPersisted: false }
+      expect.objectContaining({ signature: "sig-1" }),
+      { bumpVersion: false, markPersisted: false },
     );
 
     expect(params.promptHistory.updateEntryHighlight).toHaveBeenCalledWith(
-      'uuid-1',
-      expect.objectContaining({ signature: 'sig-1' })
+      "uuid-1",
+      expect.objectContaining({ signature: "sig-1" }),
     );
-    expect(updateHighlights).toHaveBeenCalledWith('doc-1', {
-      highlightCache: expect.objectContaining({ signature: 'sig-1' }),
+    expect(updateHighlights).toHaveBeenCalledWith("doc-1", {
+      highlightCache: expect.objectContaining({ signature: "sig-1" }),
     });
-    expect(params.persistedSignatureRef.current).toBe('sig-1');
+    expect(params.persistedSignatureRef.current).toBe("sig-1");
   });
 
-  it('skips remote persistence when signature is already saved', async () => {
+  it("skips remote persistence when signature is already saved", async () => {
     const updateHighlights: MockedFunction<UpdateHighlights> = vi.fn();
-    mockGetPromptRepository.mockReturnValue(
-      { updateHighlights } as unknown as PromptRepositoryInstance
-    );
+    mockGetPromptRepository.mockReturnValue({
+      updateHighlights,
+    } as unknown as PromptRepositoryInstance);
 
-    const params = createDefaults({ persistedSignatureRef: { current: 'sig-2' } });
+    const params = createDefaults({
+      persistedSignatureRef: { current: "sig-2" },
+    });
 
     const { result } = renderHook(() => useHighlightsPersistence(params));
 
     await act(async () => {
-      await result.current.handleHighlightsPersist(createResult({
-        spans: [{ start: 1, end: 2, category: 'style', confidence: 0.7 }],
-        text: 'Prompt text',
-        signature: 'sig-2',
-        source: 'network',
-      }));
+      await result.current.handleHighlightsPersist(
+        createResult({
+          spans: [{ start: 1, end: 2, category: "style", confidence: 0.7 }],
+          text: "Prompt text",
+          signature: "sig-2",
+          source: "network",
+        }),
+      );
     });
 
     expect(params.promptHistory.updateEntryHighlight).toHaveBeenCalled();
     expect(updateHighlights).not.toHaveBeenCalled();
   });
 
-  it('warns when persistence is denied', async () => {
+  it("warns when persistence is denied", async () => {
     const updateHighlights: MockedFunction<UpdateHighlights> = vi.fn();
 
-    const error = new Error('Permission denied') as Error & { code?: string };
-    error.code = 'permission-denied';
+    const error = new Error("Permission denied") as Error & { code?: string };
+    error.code = "permission-denied";
 
     updateHighlights.mockRejectedValue(error);
 
-    mockGetPromptRepository.mockReturnValue(
-      { updateHighlights } as unknown as PromptRepositoryInstance
-    );
+    mockGetPromptRepository.mockReturnValue({
+      updateHighlights,
+    } as unknown as PromptRepositoryInstance);
 
     const params = createDefaults();
 
     const { result } = renderHook(() => useHighlightsPersistence(params));
 
     await act(async () => {
-      await result.current.handleHighlightsPersist(createResult({
-        spans: [{ start: 0, end: 2, category: 'style', confidence: 0.5 }],
-        text: 'Prompt text',
-        signature: 'sig-3',
-        source: 'network',
-      }));
+      await result.current.handleHighlightsPersist(
+        createResult({
+          spans: [{ start: 0, end: 2, category: "style", confidence: 0.5 }],
+          text: "Prompt text",
+          signature: "sig-3",
+          source: "network",
+        }),
+      );
     });
 
     expect(params.toast.warning).toHaveBeenCalledWith(
-      'Unable to save highlights. You may need to sign in.'
+      "Unable to save highlights. You may need to sign in.",
     );
     expect(logSpies.warn).toHaveBeenCalled();
   });

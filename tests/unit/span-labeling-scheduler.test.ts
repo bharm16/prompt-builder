@@ -1,46 +1,46 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { describe, expect, it, vi, beforeEach } from "vitest";
 
 import {
   calculateEffectiveDebounce,
   checkCache,
   createDisabledState,
   createLoadingState,
-} from '@features/span-highlighting/utils/spanLabelingScheduler';
-import { spanLabelingCache } from '@features/span-highlighting/services/index.ts';
-import { calculateSmartDebounce } from '@features/span-highlighting/config/index.ts';
-import type { SpanLabelingPayload } from '@features/span-highlighting/hooks/types';
+} from "@features/span-highlighting/utils/spanLabelingScheduler";
+import { spanLabelingCache } from "@features/span-highlighting/services/index.ts";
+import { calculateSmartDebounce } from "@features/span-highlighting/config/index.ts";
+import type { SpanLabelingPayload } from "@features/span-highlighting/hooks/types";
 
-vi.mock('@features/span-highlighting/services/index.ts', () => ({
+vi.mock("@features/span-highlighting/services/index.ts", () => ({
   spanLabelingCache: {
     get: vi.fn(),
   },
 }));
 
-vi.mock('@features/span-highlighting/config/index.ts', () => ({
+vi.mock("@features/span-highlighting/config/index.ts", () => ({
   calculateSmartDebounce: vi.fn(),
 }));
 
 const mockCache = vi.mocked(spanLabelingCache);
 const mockCalculateSmartDebounce = vi.mocked(calculateSmartDebounce);
 
-const payload: SpanLabelingPayload = { text: 'hello', maxSpans: 5 };
+const payload: SpanLabelingPayload = { text: "hello", maxSpans: 5 };
 
-describe('spanLabelingScheduler', () => {
+describe("spanLabelingScheduler", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('returns cached result when available', () => {
-    const performanceSpy = vi.spyOn(performance, 'now');
+  it("returns cached result when available", () => {
+    const performanceSpy = vi.spyOn(performance, "now");
     performanceSpy.mockReturnValueOnce(10).mockReturnValueOnce(20);
 
     mockCache.get.mockReturnValue({
       spans: [],
       meta: null,
-      version: 'test',
-      cacheId: 'cache',
-      signature: 'sig',
-      text: 'hello',
+      version: "test",
+      cacheId: "cache",
+      signature: "sig",
+      text: "hello",
       timestamp: Date.now(),
     });
 
@@ -49,13 +49,13 @@ describe('spanLabelingScheduler', () => {
     expect(result.cached).toEqual({
       spans: [],
       meta: null,
-      cacheId: 'cache',
-      signature: 'sig',
+      cacheId: "cache",
+      signature: "sig",
     });
     expect(result.cacheCheckDuration).toBe(10);
   });
 
-  it('calculates debounce using smart debounce', () => {
+  it("calculates debounce using smart debounce", () => {
     mockCalculateSmartDebounce.mockReturnValue(750);
 
     expect(
@@ -64,33 +64,39 @@ describe('spanLabelingScheduler', () => {
         debounceMs: 500,
         useSmartDebounce: true,
         immediate: false,
-      })
+      }),
     ).toBe(750);
   });
 
-  it('returns zero debounce when immediate', () => {
+  it("returns zero debounce when immediate", () => {
     expect(
       calculateEffectiveDebounce(payload, {
         enabled: true,
         debounceMs: 500,
         useSmartDebounce: false,
         immediate: true,
-      })
+      }),
     ).toBe(0);
   });
 
-  it('creates disabled and loading states', () => {
+  it("creates disabled and loading states", () => {
     expect(createDisabledState()).toEqual({
       spans: [],
       meta: null,
-      status: 'idle',
+      status: "idle",
       error: null,
       signature: null,
     });
 
-    const loading = createLoadingState(true, 'success', [{ id: '1' }], { source: 'cache' }, 'sig');
-    expect(loading.status).toBe('loading');
-    expect(loading.spans).toEqual([{ id: '1' }]);
-    expect(loading.signature).toBe('sig');
+    const loading = createLoadingState(
+      true,
+      "success",
+      [{ id: "1" }],
+      { source: "cache" },
+      "sig",
+    );
+    expect(loading.status).toBe("loading");
+    expect(loading.spans).toEqual([{ id: "1" }]);
+    expect(loading.signature).toBe("sig");
   });
 });

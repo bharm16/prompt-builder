@@ -1,44 +1,71 @@
-import React from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { CheckCircle2, Mail, RefreshCw, ShieldAlert } from '@promptstudio/system/components/ui';
-import { getAuthRepository } from '@repositories/index';
-import { useToast } from '@components/Toast';
-import { Button } from '@promptstudio/system/components/ui/button';
-import { useAuthUser } from '@hooks/useAuthUser';
-import { AuthShell } from './auth/AuthShell';
+import React from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import {
+  CheckCircle2,
+  Mail,
+  RefreshCw,
+  ShieldAlert,
+} from "@promptstudio/system/components/ui";
+import { getAuthRepository } from "@repositories/index";
+import { useToast } from "@components/Toast";
+import { Button } from "@promptstudio/system/components/ui/button";
+import { useAuthUser } from "@hooks/useAuthUser";
+import { AuthShell } from "./auth/AuthShell";
+import {
+  AUTH_COLORS,
+  AUTH_CTA_CLASS,
+  AUTH_CTA_STYLE,
+  AUTH_SECONDARY_BTN_CLASS,
+  AUTH_SECONDARY_BTN_STYLE,
+  AUTH_ERROR_STYLE,
+  AUTH_SUCCESS_STYLE,
+  AUTH_CARD_STYLE,
+} from "./auth/auth-styles";
 
 function getSafeRedirect(search: string): string | null {
   const params = new URLSearchParams(search);
-  const raw = params.get('redirect');
+  const raw = params.get("redirect");
   if (!raw) return null;
-  if (!raw.startsWith('/')) return null;
-  if (raw.startsWith('//')) return null;
+  if (!raw.startsWith("/")) return null;
+  if (raw.startsWith("//")) return null;
   return raw;
 }
 
 function getInitialEmail(search: string): string {
   const params = new URLSearchParams(search);
-  const raw = params.get('email');
-  if (!raw) return '';
+  const raw = params.get("email");
+  if (!raw) return "";
   return raw.trim();
 }
 
 function getOobCode(search: string): string | null {
   const params = new URLSearchParams(search);
-  const code = params.get('oobCode');
+  const code = params.get("oobCode");
   return code ? code.trim() : null;
 }
 
 function getMode(search: string): string | null {
   const params = new URLSearchParams(search);
-  const mode = params.get('mode');
+  const mode = params.get("mode");
   return mode ? mode.trim() : null;
 }
 
 function Spinner(): React.ReactElement {
   return (
-    <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+    <svg
+      className="h-4 w-4 animate-spin"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+    >
+      <circle
+        className="opacity-25"
+        cx="12"
+        cy="12"
+        r="10"
+        stroke="currentColor"
+        strokeWidth="4"
+      />
       <path
         className="opacity-75"
         fill="currentColor"
@@ -49,42 +76,57 @@ function Spinner(): React.ReactElement {
 }
 
 function mapVerificationError(error: unknown): string {
-  if (!error || typeof error !== 'object') return 'Something went wrong. Please try again.';
-  const code = 'code' in error && typeof error.code === 'string' ? error.code : null;
+  if (!error || typeof error !== "object")
+    return "Something went wrong. Please try again.";
+  const code =
+    "code" in error && typeof error.code === "string" ? error.code : null;
 
   switch (code) {
-    case 'auth/invalid-action-code':
-      return 'That verification link is invalid or already used.';
-    case 'auth/expired-action-code':
-      return 'That verification link has expired. Request a new one.';
-    case 'auth/user-disabled':
-      return 'This account is disabled.';
-    case 'auth/too-many-requests':
-      return 'Too many attempts. Try again in a bit.';
+    case "auth/invalid-action-code":
+      return "That verification link is invalid or already used.";
+    case "auth/expired-action-code":
+      return "That verification link has expired. Request a new one.";
+    case "auth/user-disabled":
+      return "This account is disabled.";
+    case "auth/too-many-requests":
+      return "Too many attempts. Try again in a bit.";
     default:
-      return 'Failed to verify email. Please try again.';
+      return "Failed to verify email. Please try again.";
   }
 }
 
 function mapResendError(error: unknown): string {
-  if (!error || typeof error !== 'object') return 'Something went wrong. Please try again.';
-  const code = 'code' in error && typeof error.code === 'string' ? error.code : null;
+  if (!error || typeof error !== "object")
+    return "Something went wrong. Please try again.";
+  const code =
+    "code" in error && typeof error.code === "string" ? error.code : null;
 
   switch (code) {
-    case 'auth/too-many-requests':
-      return 'Too many emails sent. Try again later.';
-    case 'auth/network-request-failed':
-      return 'Network error. Check your connection and try again.';
-    case 'auth/unauthorized-continue-uri':
-    case 'auth/invalid-continue-uri':
-    case 'auth/missing-continue-uri':
-      return 'Email verification links aren’t configured for this domain yet.';
+    case "auth/too-many-requests":
+      return "Too many emails sent. Try again later.";
+    case "auth/network-request-failed":
+      return "Network error. Check your connection and try again.";
+    case "auth/unauthorized-continue-uri":
+    case "auth/invalid-continue-uri":
+    case "auth/missing-continue-uri":
+      return "Email verification links aren't configured for this domain yet.";
     default:
-      return 'Failed to resend verification email. Please try again.';
+      return "Failed to resend verification email. Please try again.";
   }
 }
 
-type VerifyState = 'idle' | 'verifying' | 'verified' | 'error';
+type VerifyState = "idle" | "verifying" | "verified" | "error";
+type DeliveryState = "sent" | "failed";
+type EmailVerificationNavState = {
+  delivery?: DeliveryState;
+};
+
+function getDeliveryState(state: unknown): DeliveryState | undefined {
+  if (!state || typeof state !== "object" || !("delivery" in state))
+    return undefined;
+  const delivery = state.delivery;
+  return delivery === "sent" || delivery === "failed" ? delivery : undefined;
+}
 
 export function EmailVerificationPage(): React.ReactElement {
   const toast = useToast();
@@ -96,11 +138,18 @@ export function EmailVerificationPage(): React.ReactElement {
   const mode = getMode(location.search);
 
   const user = useAuthUser();
-  const [verifyState, setVerifyState] = React.useState<VerifyState>('idle');
+  const [verifyState, setVerifyState] = React.useState<VerifyState>("idle");
   const [error, setError] = React.useState<string | null>(null);
   const [isResending, setIsResending] = React.useState(false);
   const [resendCooldown, setResendCooldown] = React.useState(0);
-  const [emailHint, setEmailHint] = React.useState(() => getInitialEmail(location.search));
+  const [emailHint, setEmailHint] = React.useState(() =>
+    getInitialEmail(location.search),
+  );
+  const [deliveryState, setDeliveryState] = React.useState<
+    DeliveryState | undefined
+  >(() =>
+    getDeliveryState(location.state as EmailVerificationNavState | undefined),
+  );
 
   React.useEffect(() => {
     const initial = getInitialEmail(location.search);
@@ -117,14 +166,14 @@ export function EmailVerificationPage(): React.ReactElement {
 
   React.useEffect(() => {
     if (!oobCode) return;
-    if (mode && mode !== 'verifyEmail') {
-      setVerifyState('error');
-      setError('This link is not an email verification link.');
+    if (mode && mode !== "verifyEmail") {
+      setVerifyState("error");
+      setError("This link is not an email verification link.");
       return;
     }
 
     let cancelled = false;
-    setVerifyState('verifying');
+    setVerifyState("verifying");
     setError(null);
 
     (async () => {
@@ -136,13 +185,13 @@ export function EmailVerificationPage(): React.ReactElement {
           // ignore refresh failures; verification already succeeded
         }
         if (cancelled) return;
-        setVerifyState('verified');
-        toast.success('Email verified.');
+        setVerifyState("verified");
+        toast.success("Email verified.");
       } catch (err) {
         if (cancelled) return;
-        setVerifyState('error');
+        setVerifyState("error");
         setError(mapVerificationError(err));
-        toast.error('Email verification failed.');
+        toast.error("Email verification failed.");
       }
     })();
 
@@ -151,23 +200,27 @@ export function EmailVerificationPage(): React.ReactElement {
     };
   }, [mode, oobCode, toast]);
 
-  const continuePath = redirect ?? '/';
-  const continueLink = user ? continuePath : `/signin?redirect=${encodeURIComponent(continuePath)}`;
+  const continuePath = redirect ?? "/";
+  const continueLink = user
+    ? continuePath
+    : `/signin?redirect=${encodeURIComponent(continuePath)}`;
 
-  const userEmail = user && typeof user.email === 'string' ? user.email : '';
+  const userEmail = user && typeof user.email === "string" ? user.email : "";
   const displayEmail = (userEmail || emailHint).trim();
-  const isEmailVerified = user && typeof user.emailVerified === 'boolean' ? user.emailVerified : false;
+  const isEmailVerified =
+    user && typeof user.emailVerified === "boolean"
+      ? user.emailVerified
+      : false;
 
   const handleResend = async (): Promise<void> => {
     setError(null);
     setIsResending(true);
     try {
       await getAuthRepository().sendVerificationEmail(redirect ?? undefined);
-      toast.success('Verification email sent.');
+      setDeliveryState("sent");
       setResendCooldown(30);
     } catch (err) {
       setError(mapResendError(err));
-      toast.error('Failed to send verification email.');
     } finally {
       setIsResending(false);
     }
@@ -181,41 +234,63 @@ export function EmailVerificationPage(): React.ReactElement {
     navigate(continueLink, { replace: true });
   };
 
-  const showVerifiedPanel = verifyState === 'verified' || isEmailVerified;
-  const showVerifyInProgress = verifyState === 'verifying';
-  const showVerifyError = verifyState === 'error' && error;
+  const showVerifiedPanel = verifyState === "verified" || isEmailVerified;
+  const showVerifyInProgress = verifyState === "verifying";
+  const showInlineError =
+    Boolean(error) && !showVerifiedPanel && !showVerifyInProgress;
+  const showDeliveryFailurePanel =
+    deliveryState === "failed" && !showVerifiedPanel;
+  const showInboxPanel = !showVerifiedPanel && !showDeliveryFailurePanel;
+  const inlineErrorTitle =
+    verifyState === "error"
+      ? "Verification failed"
+      : "Could not send verification email";
 
   return (
     <AuthShell
-      title="Verify your email."
-      subtitle="A quick confirmation step. One link click — then you’re back to building prompts like it’s a product demo."
+      title="Verify your email"
       footer={
         <>
-          Need to sign in?{' '}
-          <Link to={`/signin?redirect=${encodeURIComponent(continuePath)}`} className="text-white hover:underline">
+          Need to sign in?{" "}
+          <Link
+            to={`/signin?redirect=${encodeURIComponent(continuePath)}`}
+            className="text-white hover:underline"
+          >
             Sign in
           </Link>
           .
         </>
       }
     >
-      <div className="flex flex-col gap-5">
-        <div>
-          <h2 className="text-lg font-semibold tracking-tight text-white">Account confirmation</h2>
-          <p className="mt-1 text-[13px] leading-relaxed text-white/60">
-            We use verification to keep accounts clean and deliver resets securely.
-          </p>
-        </div>
+      <div className="flex flex-col gap-4">
+        <p
+          className="text-[13px] leading-relaxed"
+          style={{ color: AUTH_COLORS.textSecondary }}
+        >
+          We use verification to keep accounts secure and deliver resets
+          reliably.
+        </p>
 
         {showVerifyInProgress ? (
-          <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3">
-            <div className="flex items-start gap-3">
-              <span className="mt-0.5 inline-flex h-9 w-9 items-center justify-center rounded-xl bg-white/5 ring-1 ring-white/10">
+          <div className="px-3.5 py-3" style={AUTH_CARD_STYLE}>
+            <div className="flex items-start gap-2.5">
+              <span
+                className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
+                style={{
+                  background: AUTH_COLORS.inputBg,
+                  border: `1px solid ${AUTH_COLORS.inputBorder}`,
+                }}
+              >
                 <Spinner />
               </span>
               <div className="min-w-0">
-                <p className="text-[13px] font-semibold text-white">Verifying…</p>
-                <p className="mt-1 text-[13px] leading-snug text-white/60">
+                <p className="text-[13px] font-semibold text-white">
+                  Verifying…
+                </p>
+                <p
+                  className="mt-1 text-[13px] leading-snug"
+                  style={{ color: AUTH_COLORS.textSecondary }}
+                >
                   Applying your confirmation code. This should take a moment.
                 </p>
               </div>
@@ -224,49 +299,103 @@ export function EmailVerificationPage(): React.ReactElement {
         ) : null}
 
         {showVerifiedPanel ? (
-          <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3">
-            <div className="flex items-start gap-3">
-              <span className="mt-0.5 inline-flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/10 ring-1 ring-emerald-500/20">
-                <CheckCircle2 className="h-5 w-5 text-emerald-200 animate-scale-in" aria-hidden="true" />
+          <div className="px-3.5 py-2.5" style={AUTH_SUCCESS_STYLE}>
+            <div className="flex items-start gap-2.5">
+              <span
+                className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
+                style={{
+                  background: `${AUTH_COLORS.success}15`,
+                  border: `1px solid ${AUTH_COLORS.success}30`,
+                }}
+              >
+                <CheckCircle2
+                  className="h-4 w-4 animate-scale-in"
+                  style={{ color: AUTH_COLORS.success }}
+                  aria-hidden="true"
+                />
               </span>
               <div className="min-w-0">
-                <p className="text-[13px] font-semibold text-emerald-100">Email verified</p>
-                <p className="mt-1 text-[13px] leading-snug text-emerald-100/70">
-                  You’re confirmed. Keep the momentum — jump back into the app.
+                <p
+                  className="text-[13px] font-semibold"
+                  style={{ color: AUTH_COLORS.success }}
+                >
+                  Email verified
+                </p>
+                <p
+                  className="mt-0.5 text-[13px] leading-snug"
+                  style={{ color: AUTH_COLORS.success, opacity: 0.7 }}
+                >
+                  You're confirmed. Jump back into the app.
                 </p>
               </div>
             </div>
           </div>
         ) : null}
 
-        {showVerifyError ? (
-          <div role="alert" className="rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3">
-            <div className="flex items-start gap-3">
-              <ShieldAlert className="mt-0.5 h-4 w-4 text-red-100/90" aria-hidden="true" />
+        {showInlineError ? (
+          <div role="alert" className="px-3.5 py-2.5" style={AUTH_ERROR_STYLE}>
+            <div className="flex items-start gap-2.5">
+              <ShieldAlert
+                className="mt-0.5 h-4 w-4 shrink-0"
+                style={{ color: AUTH_COLORS.danger }}
+                aria-hidden="true"
+              />
               <div className="min-w-0">
-                <p className="text-[13px] font-semibold text-red-100">Verification failed</p>
-                <p className="mt-1 text-[13px] leading-snug text-red-100/80">{error}</p>
+                <p
+                  className="text-[13px] font-semibold"
+                  style={{ color: AUTH_COLORS.danger }}
+                >
+                  {inlineErrorTitle}
+                </p>
+                <p
+                  className="mt-0.5 text-[13px] leading-snug"
+                  style={{ color: AUTH_COLORS.danger, opacity: 0.8 }}
+                >
+                  {error}
+                </p>
               </div>
             </div>
           </div>
         ) : null}
 
-        {!showVerifiedPanel ? (
-          <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3">
-            <div className="flex items-start gap-3">
-              <span className="mt-0.5 inline-flex h-9 w-9 items-center justify-center rounded-xl bg-white/5 ring-1 ring-white/10">
-                <Mail className="h-4 w-4 text-white/80" aria-hidden="true" />
+        {showDeliveryFailurePanel ? (
+          <div className="px-3.5 py-3" style={AUTH_CARD_STYLE}>
+            <div className="flex items-start gap-2.5">
+              <span
+                className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
+                style={{
+                  background: AUTH_COLORS.inputBg,
+                  border: `1px solid ${AUTH_COLORS.inputBorder}`,
+                }}
+              >
+                <ShieldAlert
+                  className="h-4 w-4"
+                  style={{ color: AUTH_COLORS.danger }}
+                  aria-hidden="true"
+                />
               </span>
               <div className="min-w-0">
-                <p className="text-[13px] font-semibold text-white">Check your inbox</p>
-                <p className="mt-1 text-[13px] leading-snug text-white/60">
+                <p className="text-[13px] font-semibold text-white">
+                  Verification email not sent
+                </p>
+                <p
+                  className="mt-1 text-[13px] leading-snug"
+                  style={{ color: AUTH_COLORS.textSecondary }}
+                >
                   {displayEmail ? (
                     <>
-                      We sent a verification link to <span className="font-medium text-white">{displayEmail}</span>.
-                      Click it to confirm.
+                      Your account was created for{" "}
+                      <span className="font-medium text-white">
+                        {displayEmail}
+                      </span>
+                      , but we couldn&apos;t send the verification email yet.
+                      Try resending it from this page.
                     </>
                   ) : (
-                    <>Open the verification email and click the link to confirm.</>
+                    <>
+                      Your account was created, but we couldn&apos;t send the
+                      verification email yet. Try resending it from this page.
+                    </>
                   )}
                 </p>
                 <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -275,26 +404,131 @@ export function EmailVerificationPage(): React.ReactElement {
                     onClick={handleResend}
                     disabled={!user || isResending || resendCooldown > 0}
                     variant="ghost"
-                    className="h-11 gap-2 rounded-[12px] border border-white/10 bg-white/[0.04] px-4 text-[14px] font-semibold text-white transition hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-50"
+                    className={AUTH_SECONDARY_BTN_CLASS}
+                    style={AUTH_SECONDARY_BTN_STYLE}
                   >
-                    {isResending ? <Spinner /> : <RefreshCw className="h-4 w-4" aria-hidden="true" />}
-                    {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend email'}
+                    {isResending ? (
+                      <Spinner />
+                    ) : (
+                      <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
+                    )}
+                    {resendCooldown > 0
+                      ? `Resend in ${resendCooldown}s`
+                      : "Resend email"}
                   </Button>
 
                   <Button
                     asChild
                     variant="ghost"
-                    className="h-11 rounded-[12px] border border-white/10 bg-black/30 px-4 text-[14px] font-semibold text-white/80 transition hover:bg-black/40 hover:text-white"
+                    className={AUTH_SECONDARY_BTN_CLASS}
+                    style={{
+                      ...AUTH_SECONDARY_BTN_STYLE,
+                      background: AUTH_COLORS.inputBg,
+                    }}
                   >
-                    <Link to={`/forgot-password${redirect ? `?redirect=${encodeURIComponent(redirect)}` : ''}`}>
+                    <Link
+                      to={`/forgot-password${redirect ? `?redirect=${encodeURIComponent(redirect)}` : ""}`}
+                    >
                       Password help
                     </Link>
                   </Button>
                 </div>
 
                 {!user ? (
-                  <p className="mt-3 text-[12px] leading-relaxed text-white/45">
-                    Sign in first to resend a verification email. If you’re on a different device, just click the link in your inbox.
+                  <p
+                    className="mt-3 text-[12px] leading-relaxed"
+                    style={{ color: AUTH_COLORS.textLabel }}
+                  >
+                    Sign in first to resend a verification email. If you&apos;re
+                    on a different device, just click the link in your inbox.
+                  </p>
+                ) : null}
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {showInboxPanel ? (
+          <div className="px-3.5 py-3" style={AUTH_CARD_STYLE}>
+            <div className="flex items-start gap-2.5">
+              <span
+                className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
+                style={{
+                  background: AUTH_COLORS.inputBg,
+                  border: `1px solid ${AUTH_COLORS.inputBorder}`,
+                }}
+              >
+                <Mail
+                  className="h-4 w-4"
+                  style={{ color: AUTH_COLORS.textDim }}
+                  aria-hidden="true"
+                />
+              </span>
+              <div className="min-w-0">
+                <p className="text-[13px] font-semibold text-white">
+                  Check your inbox
+                </p>
+                <p
+                  className="mt-1 text-[13px] leading-snug"
+                  style={{ color: AUTH_COLORS.textSecondary }}
+                >
+                  {displayEmail ? (
+                    <>
+                      We sent a verification link to{" "}
+                      <span className="font-medium text-white">
+                        {displayEmail}
+                      </span>
+                      . Click it to confirm.
+                    </>
+                  ) : (
+                    <>
+                      Open the verification email and click the link to confirm.
+                    </>
+                  )}
+                </p>
+                <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  <Button
+                    type="button"
+                    onClick={handleResend}
+                    disabled={!user || isResending || resendCooldown > 0}
+                    variant="ghost"
+                    className={AUTH_SECONDARY_BTN_CLASS}
+                    style={AUTH_SECONDARY_BTN_STYLE}
+                  >
+                    {isResending ? (
+                      <Spinner />
+                    ) : (
+                      <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
+                    )}
+                    {resendCooldown > 0
+                      ? `Resend in ${resendCooldown}s`
+                      : "Resend email"}
+                  </Button>
+
+                  <Button
+                    asChild
+                    variant="ghost"
+                    className={AUTH_SECONDARY_BTN_CLASS}
+                    style={{
+                      ...AUTH_SECONDARY_BTN_STYLE,
+                      background: AUTH_COLORS.inputBg,
+                    }}
+                  >
+                    <Link
+                      to={`/forgot-password${redirect ? `?redirect=${encodeURIComponent(redirect)}` : ""}`}
+                    >
+                      Password help
+                    </Link>
+                  </Button>
+                </div>
+
+                {!user ? (
+                  <p
+                    className="mt-3 text-[12px] leading-relaxed"
+                    style={{ color: AUTH_COLORS.textLabel }}
+                  >
+                    Sign in first to resend a verification email. If you're on a
+                    different device, just click the link in your inbox.
                   </p>
                 ) : null}
               </div>
@@ -306,7 +540,8 @@ export function EmailVerificationPage(): React.ReactElement {
           type="button"
           onClick={handleContinue}
           variant="ghost"
-          className="h-11 w-full rounded-[12px] bg-gradient-to-r from-accent-500 via-fuchsia-500 to-blue-500 px-4 text-[14px] font-semibold text-white shadow-[0_18px_40px_rgba(255,56,92,0.20)] transition hover:-translate-y-px hover:shadow-[0_26px_64px_rgba(168,85,247,0.22)]"
+          className={AUTH_CTA_CLASS}
+          style={AUTH_CTA_STYLE}
         >
           Continue
         </Button>

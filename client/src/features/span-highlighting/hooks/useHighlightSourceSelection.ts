@@ -1,29 +1,22 @@
-import { useMemo } from 'react';
-import { createHighlightSignature } from './useSpanLabeling';
+import { useMemo } from "react";
+import { createHighlightSignature } from "./useSpanLabeling";
 import type {
   SpanData,
   HighlightSourceResult,
   UseHighlightSourceSelectionOptions,
-} from './types';
+} from "./types";
 
 // Re-export types for backward compatibility
 export type {
   SpanData,
   HighlightSourceResult,
   UseHighlightSourceSelectionOptions,
-} from './types';
+} from "./types";
 
 /**
- * Determines which highlight source to use based on priority:
- * 1. Draft spans (instant ~300ms highlights)
- * 2. Refined spans (updated after refinement completes)
- * 3. Persisted spans (loaded from history)
+ * Determines which persisted highlight source to use.
  */
 export function useHighlightSourceSelection({
-  draftSpans,
-  refinedSpans,
-  isDraftReady,
-  isRefining,
   initialHighlights,
   promptUuid,
   displayedPrompt,
@@ -40,66 +33,34 @@ export function useHighlightSourceSelection({
 
     if (initialHighlights && hasLocalUpdate) {
       const resolvedSignature =
-        initialHighlights.signature ?? createHighlightSignature(displayedPrompt ?? '');
+        initialHighlights.signature ??
+        createHighlightSignature(displayedPrompt ?? "");
 
       return {
         spans: initialHighlights.spans,
         meta: initialHighlights.meta ?? null,
         signature: resolvedSignature,
-        cacheId: initialHighlights.cacheId ?? (promptUuid ? String(promptUuid) : null),
-        source: 'persisted',
+        cacheId:
+          initialHighlights.cacheId ?? (promptUuid ? String(promptUuid) : null),
+        source: "persisted",
       };
     }
 
-    // PRIORITY 1: Use draft spans if available and we're showing draft text
-    // This provides instant highlights at ~300ms
-    if (draftSpans && isDraftReady && !refinedSpans) {
-      const signature = createHighlightSignature(displayedPrompt ?? '');
-      return {
-        spans: draftSpans.spans || [],
-        meta: draftSpans.meta || null,
-        signature,
-        cacheId: promptUuid ? String(promptUuid) : null,
-        source: 'draft',
-      };
-    }
-
-    // PRIORITY 2: Use refined spans if available
-    // This provides updated highlights when refinement completes
-    if (refinedSpans && !isRefining) {
-      const signature = createHighlightSignature(displayedPrompt ?? '');
-      return {
-        spans: refinedSpans.spans || [],
-        meta: refinedSpans.meta || null,
-        signature,
-        cacheId: promptUuid ? String(promptUuid) : null,
-        source: 'refined',
-      };
-    }
-
-    // PRIORITY 3: Fallback to persisted highlights (e.g., loaded from history)
     if (initialHighlights && Array.isArray(initialHighlights.spans)) {
       const resolvedSignature =
-        initialHighlights.signature ?? createHighlightSignature(displayedPrompt ?? '');
+        initialHighlights.signature ??
+        createHighlightSignature(displayedPrompt ?? "");
 
       return {
         spans: initialHighlights.spans,
         meta: initialHighlights.meta ?? null,
         signature: resolvedSignature,
-        cacheId: initialHighlights.cacheId ?? (promptUuid ? String(promptUuid) : null),
-        source: 'persisted',
+        cacheId:
+          initialHighlights.cacheId ?? (promptUuid ? String(promptUuid) : null),
+        source: "persisted",
       };
     }
 
     return null;
-  }, [
-    enableMLHighlighting,
-    draftSpans,
-    refinedSpans,
-    isDraftReady,
-    isRefining,
-    initialHighlights,
-    promptUuid,
-    displayedPrompt,
-  ]);
+  }, [enableMLHighlighting, initialHighlights, promptUuid, displayedPrompt]);
 }

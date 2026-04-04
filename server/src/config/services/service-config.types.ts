@@ -44,6 +44,12 @@ export interface ServiceConfig {
       intervalSeconds: number;
       lookbackHours: number;
     };
+    profileRepair: {
+      disabled: boolean;
+      intervalSeconds: number;
+      maxPerRun: number;
+      maxAttempts: number;
+    };
   };
   credits: {
     refundSweeper: {
@@ -107,6 +113,12 @@ export interface ServiceConfig {
       tokenSecret: string | undefined;
       tokenTtlSeconds: number;
     };
+    reconciler: {
+      disabled: boolean;
+      orphanThresholdMs: number;
+      reconcileIntervalMs: number;
+      maxObjectsPerRun: number;
+    };
   };
   imageAssets: {
     storage: {
@@ -155,6 +167,11 @@ export interface ServiceConfig {
   promptOptimization: {
     shotPlanCacheTtlMs: number;
     shotPlanCacheMax: number;
+  };
+  enhancement: {
+    defaultEngine: "v1" | "v2";
+    legacyV1Enabled: boolean;
+    policyVersion: string;
   };
   features: {
     faceEmbedding: boolean;

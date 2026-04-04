@@ -11,22 +11,27 @@
  * @module tech-stripper.property.test
  */
 
-import { describe, it, expect } from 'vitest';
-import * as fc from 'fast-check';
+import { describe, it, expect } from "vitest";
+import * as fc from "fast-check";
 
-import { TechStripper } from '@services/video-prompt-analysis/utils/TechStripper';
+import { TechStripper } from "@services/video-prompt-analysis/utils/TechStripper";
 
-describe('TechStripper Property Tests', () => {
+describe("TechStripper Property Tests", () => {
   const stripper = new TechStripper();
 
   // Models where tokens should be STRIPPED
-  const stripModels = ['runway-gen45', 'luma-ray3'];
+  const stripModels = ["runway-gen45", "luma-ray3"];
 
   // Models where tokens should be KEPT
-  const keepModels = ['kling-26', 'veo-4', 'sora-2'];
+  const keepModels = ["kling-26", "veo-4", "sora-2"];
 
   // Core placebo tokens from requirements
-  const corePlaceboTokens = ['4k', '8k', 'trending on artstation', 'award winning'];
+  const corePlaceboTokens = [
+    "4k",
+    "8k",
+    "trending on artstation",
+    "award winning",
+  ];
 
   /**
    * Property 7: TechStripper Model-Aware Behavior
@@ -38,8 +43,8 @@ describe('TechStripper Property Tests', () => {
    * **Feature: video-model-optimization, Property 7: TechStripper Model-Aware Behavior**
    * **Validates: Requirements 8.1, 8.2, 8.3, 8.4, 8.5**
    */
-  describe('Property 7: TechStripper Model-Aware Behavior', () => {
-    it('removes placebo tokens for Runway/Luma models', () => {
+  describe("Property 7: TechStripper Model-Aware Behavior", () => {
+    it("removes placebo tokens for Runway/Luma models", () => {
       fc.assert(
         fc.property(
           fc.constantFrom(...stripModels),
@@ -51,7 +56,7 @@ describe('TechStripper Property Tests', () => {
             const result = stripper.strip(input, modelId);
 
             // Token should be removed from output
-            const tokenRegex = new RegExp(`\\b${placeboToken}\\b`, 'i');
+            const tokenRegex = new RegExp(`\\b${placeboToken}\\b`, "i");
             expect(result.text).not.toMatch(tokenRegex);
 
             // Should report that tokens were stripped
@@ -60,16 +65,16 @@ describe('TechStripper Property Tests', () => {
             // Stripped tokens should include the placebo token
             expect(
               result.strippedTokens.some(
-                (t) => t.toLowerCase() === placeboToken.toLowerCase()
-              )
+                (t) => t.toLowerCase() === placeboToken.toLowerCase(),
+              ),
             ).toBe(true);
-          }
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
 
-    it('preserves placebo tokens for Kling/Veo/Sora models', () => {
+    it("preserves placebo tokens for Kling/Veo/Sora models", () => {
       fc.assert(
         fc.property(
           fc.constantFrom(...keepModels),
@@ -81,7 +86,7 @@ describe('TechStripper Property Tests', () => {
             const result = stripper.strip(input, modelId);
 
             // Token should be preserved in output
-            const tokenRegex = new RegExp(`\\b${placeboToken}\\b`, 'i');
+            const tokenRegex = new RegExp(`\\b${placeboToken}\\b`, "i");
             expect(result.text).toMatch(tokenRegex);
 
             // Should report that tokens were NOT stripped
@@ -89,24 +94,24 @@ describe('TechStripper Property Tests', () => {
 
             // Stripped tokens list should be empty
             expect(result.strippedTokens).toHaveLength(0);
-          }
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
 
-    it('identifies all core placebo tokens correctly', () => {
+    it("identifies all core placebo tokens correctly", () => {
       fc.assert(
         fc.property(fc.constantFrom(...corePlaceboTokens), (token) => {
           expect(stripper.isPlaceboToken(token)).toBe(true);
           expect(stripper.isPlaceboToken(token.toUpperCase())).toBe(true);
           expect(stripper.isPlaceboToken(token.toLowerCase())).toBe(true);
         }),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
 
-    it('returns original text unchanged when no placebo tokens present', () => {
+    it("returns original text unchanged when no placebo tokens present", () => {
       fc.assert(
         fc.property(
           fc.constantFrom(...stripModels, ...keepModels),
@@ -115,8 +120,8 @@ describe('TechStripper Property Tests', () => {
             .filter(
               (s) =>
                 !corePlaceboTokens.some((token) =>
-                  s.toLowerCase().includes(token.toLowerCase())
-                )
+                  s.toLowerCase().includes(token.toLowerCase()),
+                ),
             ),
           (modelId, input) => {
             const result = stripper.strip(input, modelId);
@@ -128,13 +133,13 @@ describe('TechStripper Property Tests', () => {
 
             // Stripped tokens should be empty
             expect(result.strippedTokens).toHaveLength(0);
-          }
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
 
-    it('handles multiple placebo tokens in single input', () => {
+    it("handles multiple placebo tokens in single input", () => {
       fc.assert(
         fc.property(
           fc.constantFrom(...stripModels),
@@ -143,40 +148,40 @@ describe('TechStripper Property Tests', () => {
             maxLength: 4,
           }),
           (modelId, tokens) => {
-            const input = tokens.join(', ');
+            const input = tokens.join(", ");
             const result = stripper.strip(input, modelId);
 
             // All tokens should be removed
             for (const token of tokens) {
-              const tokenRegex = new RegExp(`\\b${token}\\b`, 'i');
+              const tokenRegex = new RegExp(`\\b${token}\\b`, "i");
               expect(result.text).not.toMatch(tokenRegex);
             }
 
             // Should report stripping occurred
             expect(result.tokensWereStripped).toBe(true);
-          }
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
 
-    it('preserves non-placebo content when stripping', () => {
+    it("preserves non-placebo content when stripping", () => {
       fc.assert(
         fc.property(
           fc.constantFrom(...stripModels),
           fc.constantFrom(...corePlaceboTokens),
           fc
-            .array(fc.constantFrom(...'abcdefghijklmnopqrstuvwxyz'.split('')), {
+            .array(fc.constantFrom(..."abcdefghijklmnopqrstuvwxyz".split("")), {
               minLength: 5,
               maxLength: 50,
             })
-            .map((chars) => chars.join(''))
+            .map((chars) => chars.join(""))
             .filter(
               (s) =>
                 s.trim().length > 0 &&
                 !corePlaceboTokens.some((t) =>
-                  s.toLowerCase().includes(t.toLowerCase())
-                )
+                  s.toLowerCase().includes(t.toLowerCase()),
+                ),
             ),
           (modelId, placeboToken, preservedContent) => {
             const input = `${preservedContent} ${placeboToken}`;
@@ -184,26 +189,26 @@ describe('TechStripper Property Tests', () => {
 
             // Preserved content should still be in output
             expect(result.text.toLowerCase()).toContain(
-              preservedContent.toLowerCase()
+              preservedContent.toLowerCase(),
             );
-          }
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
 
-    it('model detection is case-insensitive', () => {
+    it("model detection is case-insensitive", () => {
       fc.assert(
         fc.property(
           fc.constantFrom(...stripModels),
-          fc.constantFrom('upper', 'lower', 'mixed'),
+          fc.constantFrom("upper", "lower", "mixed"),
           (modelId, caseType) => {
             let testModelId: string;
             switch (caseType) {
-              case 'upper':
+              case "upper":
                 testModelId = modelId.toUpperCase();
                 break;
-              case 'lower':
+              case "lower":
                 testModelId = modelId.toLowerCase();
                 break;
               default:
@@ -213,13 +218,13 @@ describe('TechStripper Property Tests', () => {
 
             // Should strip for all case variations of strip models
             expect(stripper.shouldStripTokens(testModelId)).toBe(true);
-          }
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
 
-    it('returns consistent result structure', () => {
+    it("returns consistent result structure", () => {
       fc.assert(
         fc.property(
           fc.string({ minLength: 0, maxLength: 200 }),
@@ -228,17 +233,17 @@ describe('TechStripper Property Tests', () => {
             const result = stripper.strip(input, modelId);
 
             // Result should always have required fields
-            expect(typeof result.text).toBe('string');
+            expect(typeof result.text).toBe("string");
             expect(Array.isArray(result.strippedTokens)).toBe(true);
-            expect(typeof result.tokensWereStripped).toBe('boolean');
+            expect(typeof result.tokensWereStripped).toBe("boolean");
 
             // tokensWereStripped should match strippedTokens length
             expect(result.tokensWereStripped).toBe(
-              result.strippedTokens.length > 0
+              result.strippedTokens.length > 0,
             );
-          }
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
   });

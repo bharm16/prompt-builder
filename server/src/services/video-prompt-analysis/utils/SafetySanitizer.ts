@@ -16,7 +16,7 @@ export interface SanitizationReplacement {
   /** The generic descriptor that replaced it */
   replacement: string;
   /** Category of the blocked term */
-  category: 'celebrity' | 'nsfw' | 'violence' | 'other';
+  category: "celebrity" | "nsfw" | "violence" | "other";
 }
 
 /**
@@ -36,45 +36,45 @@ export interface SafetySanitizerResult {
  * This is a representative sample - production would use a more comprehensive list
  */
 const CELEBRITY_REPLACEMENTS: Record<string, string> = {
-  'taylor swift': 'a pop star with blonde hair',
-  'beyonce': 'a singer with dark curly hair',
-  'beyoncé': 'a singer with dark curly hair',
-  'elon musk': 'a businessman with short brown hair',
-  'donald trump': 'an older man with blonde hair',
-  'joe biden': 'an elderly man with white hair',
-  'kim kardashian': 'a woman with long dark hair',
-  'kanye west': 'a man with short dark hair',
-  'ye': 'a man with short dark hair',
-  'rihanna': 'a singer with dark hair',
-  'drake': 'a man with a beard',
-  'ariana grande': 'a young woman with a ponytail',
-  'justin bieber': 'a young man with light brown hair',
-  'selena gomez': 'a young woman with dark hair',
-  'dwayne johnson': 'a muscular bald man',
-  'the rock': 'a muscular bald man',
-  'tom cruise': 'a man with dark hair',
-  'brad pitt': 'a man with blonde hair',
-  'angelina jolie': 'a woman with dark hair',
-  'jennifer lawrence': 'a woman with blonde hair',
-  'leonardo dicaprio': 'a man with light brown hair',
-  'scarlett johansson': 'a woman with blonde hair',
-  'chris hemsworth': 'a tall man with blonde hair',
-  'robert downey jr': 'a man with dark hair and goatee',
-  'keanu reeves': 'a man with long dark hair',
-  'zendaya': 'a young woman with curly hair',
-  'timothee chalamet': 'a young man with curly dark hair',
-  'timothée chalamet': 'a young man with curly dark hair',
-  'billie eilish': 'a young woman with dyed hair',
-  'harry styles': 'a young man with curly hair',
-  'emma watson': 'a woman with brown hair',
-  'chris evans': 'a man with short brown hair',
-  'mark zuckerberg': 'a man with short curly hair',
-  'jeff bezos': 'a bald man',
-  'bill gates': 'a man with glasses',
-  'oprah winfrey': 'a woman with dark hair',
-  'barack obama': 'a man with short dark hair',
-  'michelle obama': 'a woman with dark hair',
-  'lebron james': 'a professional basketball player',
+  "taylor swift": "a pop star with blonde hair",
+  beyonce: "a singer with dark curly hair",
+  beyoncé: "a singer with dark curly hair",
+  "elon musk": "a businessman with short brown hair",
+  "donald trump": "an older man with blonde hair",
+  "joe biden": "an elderly man with white hair",
+  "kim kardashian": "a woman with long dark hair",
+  "kanye west": "a man with short dark hair",
+  ye: "a man with short dark hair",
+  rihanna: "a singer with dark hair",
+  drake: "a man with a beard",
+  "ariana grande": "a young woman with a ponytail",
+  "justin bieber": "a young man with light brown hair",
+  "selena gomez": "a young woman with dark hair",
+  "dwayne johnson": "a muscular bald man",
+  "the rock": "a muscular bald man",
+  "tom cruise": "a man with dark hair",
+  "brad pitt": "a man with blonde hair",
+  "angelina jolie": "a woman with dark hair",
+  "jennifer lawrence": "a woman with blonde hair",
+  "leonardo dicaprio": "a man with light brown hair",
+  "scarlett johansson": "a woman with blonde hair",
+  "chris hemsworth": "a tall man with blonde hair",
+  "robert downey jr": "a man with dark hair and goatee",
+  "keanu reeves": "a man with long dark hair",
+  zendaya: "a young woman with curly hair",
+  "timothee chalamet": "a young man with curly dark hair",
+  "timothée chalamet": "a young man with curly dark hair",
+  "billie eilish": "a young woman with dyed hair",
+  "harry styles": "a young man with curly hair",
+  "emma watson": "a woman with brown hair",
+  "chris evans": "a man with short brown hair",
+  "mark zuckerberg": "a man with short curly hair",
+  "jeff bezos": "a bald man",
+  "bill gates": "a man with glasses",
+  "oprah winfrey": "a woman with dark hair",
+  "barack obama": "a man with short dark hair",
+  "michelle obama": "a woman with dark hair",
+  "lebron james": "a professional basketball player",
 };
 
 /**
@@ -82,48 +82,48 @@ const CELEBRITY_REPLACEMENTS: Record<string, string> = {
  * Using generic placeholders - production would use comprehensive list
  */
 const NSFW_TERMS = new Set([
-  'nude',
-  'naked',
-  'nsfw',
-  'explicit',
-  'pornographic',
-  'sexual',
-  'erotic',
-  'xxx',
-  'adult content',
-  'obscene',
-  'indecent',
+  "nude",
+  "naked",
+  "nsfw",
+  "explicit",
+  "pornographic",
+  "sexual",
+  "erotic",
+  "xxx",
+  "adult content",
+  "obscene",
+  "indecent",
 ]);
 
 /**
  * Violence-related terms that should be blocked
  */
 const VIOLENCE_TERMS = new Set([
-  'murder',
-  'killing',
-  'torture',
-  'gore',
-  'dismember',
-  'decapitate',
-  'mutilate',
-  'massacre',
-  'slaughter',
-  'bloodbath',
-  'execution',
-  'assassination',
-  'terrorist',
-  'terrorism',
-  'bomb making',
-  'mass shooting',
+  "murder",
+  "killing",
+  "torture",
+  "gore",
+  "dismember",
+  "decapitate",
+  "mutilate",
+  "massacre",
+  "slaughter",
+  "bloodbath",
+  "execution",
+  "assassination",
+  "terrorist",
+  "terrorism",
+  "bomb making",
+  "mass shooting",
 ]);
 
 /**
  * Generic replacements for blocked categories
  */
 const CATEGORY_REPLACEMENTS: Record<string, string> = {
-  nsfw: '[content removed]',
-  violence: '[content removed]',
-  other: '[content removed]',
+  nsfw: "[content removed]",
+  violence: "[content removed]",
+  other: "[content removed]",
 };
 
 /**
@@ -142,7 +142,7 @@ export class SafetySanitizer {
     // Pre-compile celebrity patterns for efficiency
     this.celebrityPatterns = new Map();
     for (const [name, replacement] of Object.entries(CELEBRITY_REPLACEMENTS)) {
-      const pattern = new RegExp(`\\b${this.escapeRegex(name)}\\b`, 'gi');
+      const pattern = new RegExp(`\\b${this.escapeRegex(name)}\\b`, "gi");
       this.celebrityPatterns.set(pattern, replacement);
     }
   }
@@ -164,16 +164,16 @@ export class SafetySanitizer {
     processedText = this.sanitizeTerms(
       processedText,
       NSFW_TERMS,
-      'nsfw',
-      replacements
+      "nsfw",
+      replacements,
     );
 
     // Process violence terms
     processedText = this.sanitizeTerms(
       processedText,
       VIOLENCE_TERMS,
-      'violence',
-      replacements
+      "violence",
+      replacements,
     );
 
     // Clean up whitespace
@@ -250,7 +250,7 @@ export class SafetySanitizer {
    */
   private sanitizeCelebrities(
     text: string,
-    replacements: SanitizationReplacement[]
+    replacements: SanitizationReplacement[],
   ): string {
     let result = text;
 
@@ -261,7 +261,7 @@ export class SafetySanitizer {
           replacements.push({
             original: match,
             replacement,
-            category: 'celebrity',
+            category: "celebrity",
           });
         }
         result = result.replace(pattern, replacement);
@@ -277,14 +277,14 @@ export class SafetySanitizer {
   private sanitizeTerms(
     text: string,
     terms: Set<string>,
-    category: 'nsfw' | 'violence' | 'other',
-    replacements: SanitizationReplacement[]
+    category: "nsfw" | "violence" | "other",
+    replacements: SanitizationReplacement[],
   ): string {
     let result = text;
-    const replacement = CATEGORY_REPLACEMENTS[category] ?? '[content removed]';
+    const replacement = CATEGORY_REPLACEMENTS[category] ?? "[content removed]";
 
     for (const term of terms) {
-      const pattern = new RegExp(`\\b${this.escapeRegex(term)}\\b`, 'gi');
+      const pattern = new RegExp(`\\b${this.escapeRegex(term)}\\b`, "gi");
       const matches = result.match(pattern);
 
       if (matches) {
@@ -306,7 +306,7 @@ export class SafetySanitizer {
    * Check if text contains a word (with word boundaries)
    */
   private containsWord(text: string, word: string): boolean {
-    const pattern = new RegExp(`\\b${this.escapeRegex(word)}\\b`, 'i');
+    const pattern = new RegExp(`\\b${this.escapeRegex(word)}\\b`, "i");
     return pattern.test(text);
   }
 
@@ -314,7 +314,7 @@ export class SafetySanitizer {
    * Escape special regex characters
    */
   private escapeRegex(str: string): string {
-    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   }
 
   /**
@@ -322,10 +322,10 @@ export class SafetySanitizer {
    */
   private cleanWhitespace(text: string): string {
     return text
-      .replace(/\s+/g, ' ')
-      .replace(/\s*,\s*,/g, ',')
-      .replace(/,\s*$/g, '')
-      .replace(/^\s*,/g, '')
+      .replace(/\s+/g, " ")
+      .replace(/\s*,\s*,/g, ",")
+      .replace(/,\s*$/g, "")
+      .replace(/^\s*,/g, "")
       .trim();
   }
 }

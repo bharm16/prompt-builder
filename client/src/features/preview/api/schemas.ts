@@ -9,7 +9,8 @@ export {
   UploadPreviewImageResponseSchema,
   GenerateStoryboardPreviewResponseSchema,
   MediaViewUrlResponseSchema,
+  MediaViewUrlBatchResponseSchema,
   FaceSwapPreviewResponseSchema,
   GenerateVideoResponseSchema,
   VideoJobStatusResponseSchema,
-} from '@shared/schemas/preview.schemas';
+} from "@shared/schemas/preview.schemas";

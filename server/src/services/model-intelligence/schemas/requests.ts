@@ -1,6 +1,6 @@
-import { z } from 'zod';
+import { z } from "zod";
 
-export const ModelRecommendationModeSchema = z.enum(['t2v', 'i2v']);
+export const ModelRecommendationModeSchema = z.enum(["t2v", "i2v"]);
 
 export const LabeledSpanSchema = z.object({
   text: z.string().min(1),
@@ -18,14 +18,16 @@ export const ModelRecommendationRequestSchema = z.object({
   durationSeconds: z.number().int().positive().optional(),
 });
 
-export type ModelRecommendationRequestSchemaType = z.infer<typeof ModelRecommendationRequestSchema>;
+export type ModelRecommendationRequestSchemaType = z.infer<
+  typeof ModelRecommendationRequestSchema
+>;
 
 export const ModelRecommendationEventSchema = z.object({
   event: z.enum([
-    'recommendation_viewed',
-    'compare_opened',
-    'model_selected',
-    'generation_started',
+    "recommendation_viewed",
+    "compare_opened",
+    "model_selected",
+    "generation_started",
   ]),
   recommendationId: z.string().optional(),
   promptId: z.string().optional(),
@@ -36,4 +38,6 @@ export const ModelRecommendationEventSchema = z.object({
   timeSinceRecommendationMs: z.number().int().nonnegative().optional(),
 });
 
-export type ModelRecommendationEventSchemaType = z.infer<typeof ModelRecommendationEventSchema>;
+export type ModelRecommendationEventSchemaType = z.infer<
+  typeof ModelRecommendationEventSchema
+>;

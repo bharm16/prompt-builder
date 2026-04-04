@@ -1,15 +1,15 @@
-import { useMemo } from 'react';
-import { CATEGORY_ORDER } from '../config/bentoConfig.ts';
+import { useMemo } from "react";
+import { CATEGORY_ORDER } from "../config/bentoConfig.ts";
 import {
   TAXONOMY,
   getParentCategory,
   isAttribute,
   getAllParentCategories,
-} from '@shared/taxonomy';
-import type { Span } from '../components/types';
-import { logger } from '@/services/LoggingService';
+} from "@shared/taxonomy";
+import type { Span } from "../components/types";
+import { logger } from "@/services/LoggingService";
 
-const log = logger.child('useSpanGrouping');
+const log = logger.child("useSpanGrouping");
 
 interface HierarchyInfo {
   parentCategories: string[];
@@ -80,8 +80,8 @@ function mapToDisplayCategory(categoryId: string | undefined): string {
   }
 
   // Unknown category - default to subject
-  log.warn('Unknown category mapped to subject', {
-    operation: 'mapToDisplayCategory',
+  log.warn("Unknown category mapped to subject", {
+    operation: "mapToDisplayCategory",
     categoryId: categoryId ?? null,
     mappedTo: TAXONOMY.SUBJECT.id,
   });
@@ -97,7 +97,7 @@ function mapToDisplayCategory(categoryId: string | undefined): string {
  */
 export function useSpanGrouping(
   spans: Span[] | null | undefined,
-  options: GroupingOptions = {}
+  options: GroupingOptions = {},
 ): GroupingResult {
   const { enableHierarchy = false } = options;
 
@@ -118,7 +118,7 @@ export function useSpanGrouping(
     // Populate with actual spans
     if (Array.isArray(spans)) {
       const categoriesPresent = new Set(
-        spans.map((s) => s.category).filter(Boolean) as string[]
+        spans.map((s) => s.category).filter(Boolean) as string[],
       );
 
       spans.forEach((span) => {
@@ -171,8 +171,8 @@ export function useSpanGrouping(
           const subjectGroup = groups[TAXONOMY.SUBJECT.id];
           if (subjectGroup) {
             subjectGroup.push(span);
-            log.warn('Display category not in config; adding to subject', {
-              operation: 'groupSpans',
+            log.warn("Display category not in config; adding to subject", {
+              operation: "groupSpans",
               displayCategory,
               mappedTo: TAXONOMY.SUBJECT.id,
             });
@@ -192,7 +192,7 @@ export function useSpanGrouping(
     // Calculate metadata
     const totalSpans = Array.isArray(spans) ? spans.length : 0;
     const categoryCount = Object.values(groups).filter(
-      (arr) => arr.length > 0
+      (arr) => arr.length > 0,
     ).length;
     const hasOrphans = hierarchyInfo.orphanedAttributes.length > 0;
 

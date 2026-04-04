@@ -1,10 +1,10 @@
-import { GENERATION_ERROR_CODES } from '@routes/generationErrorCodes';
-import { TRIGGER_REGEX } from './constants';
+import { GENERATION_ERROR_CODES } from "@routes/generationErrorCodes";
+import { TRIGGER_REGEX } from "./constants";
 import type {
   TriggerResolutionArgs,
   TriggerResolutionSuccess,
   VideoErrorResult,
-} from './types';
+} from "./types";
 
 export const extractPromptTriggers = (prompt: string): string[] =>
   Array.from(prompt.matchAll(TRIGGER_REGEX))
@@ -12,8 +12,11 @@ export const extractPromptTriggers = (prompt: string): string[] =>
     .filter((trigger): trigger is string => Boolean(trigger));
 
 export const resolvePromptTriggers = async (
-  args: TriggerResolutionArgs
-): Promise<{ ok: true; value: TriggerResolutionSuccess } | { ok: false; error: VideoErrorResult }> => {
+  args: TriggerResolutionArgs,
+): Promise<
+  | { ok: true; value: TriggerResolutionSuccess }
+  | { ok: false; error: VideoErrorResult }
+> => {
   const {
     cleanedPrompt,
     hasPromptTriggers,
@@ -33,14 +36,17 @@ export const resolvePromptTriggers = async (
 
   if (hasPromptTriggers) {
     if (!assetService) {
-      log.warn('Asset service unavailable for video trigger resolution', {
+      log.warn("Asset service unavailable for video trigger resolution", {
         requestId,
         userId,
         uniquePromptTriggerCount,
       });
     } else {
       try {
-        const resolvedPrompt = await assetService.resolvePrompt(userId, nextPrompt);
+        const resolvedPrompt = await assetService.resolvePrompt(
+          userId,
+          nextPrompt,
+        );
         const expandedPrompt = resolvedPrompt.expandedText.trim();
         resolvedAssetCount = resolvedPrompt.assets.length;
         resolvedCharacterCount = resolvedPrompt.characters.length;
@@ -54,22 +60,23 @@ export const resolvePromptTriggers = async (
           nextCharacterAssetId = resolvedPrompt.characters[0]?.id;
         }
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
         log.error(
-          'Video prompt trigger resolution failed',
+          "Video prompt trigger resolution failed",
           error instanceof Error ? error : new Error(errorMessage),
           {
             requestId,
             userId,
             uniquePromptTriggerCount,
-          }
+          },
         );
         return {
           ok: false,
           error: {
             status: 500,
             payload: {
-              error: 'Prompt resolution failed',
+              error: "Prompt resolution failed",
               code: GENERATION_ERROR_CODES.GENERATION_FAILED,
               details: errorMessage,
             },
@@ -83,7 +90,9 @@ export const resolvePromptTriggers = async (
     ok: true,
     value: {
       cleanedPrompt: nextPrompt,
-      ...(nextCharacterAssetId ? { characterAssetId: nextCharacterAssetId } : {}),
+      ...(nextCharacterAssetId
+        ? { characterAssetId: nextCharacterAssetId }
+        : {}),
       resolvedAssetCount,
       resolvedCharacterCount,
       promptExpandedFromTrigger,

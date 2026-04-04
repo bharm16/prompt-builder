@@ -5,13 +5,13 @@
  * Handles debouncing to prevent excessive API calls.
  */
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   generatePreview,
   generateStoryboardPreview,
   type PreviewProvider,
   type PreviewSpeedMode,
-} from '../api/previewApi';
+} from "../api/previewApi";
 
 interface UseImagePreviewOptions {
   prompt: string;
@@ -59,7 +59,7 @@ export function useImagePreview({
 
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
-  const lastPromptRef = useRef<string>('');
+  const lastPromptRef = useRef<string>("");
   const requestIdRef = useRef(0);
 
   useEffect(() => {
@@ -67,7 +67,7 @@ export function useImagePreview({
     setImageUrls([]);
     setError(null);
     setLoading(false);
-    lastPromptRef.current = '';
+    lastPromptRef.current = "";
   }, [prompt, aspectRatio]);
 
   /**
@@ -104,33 +104,44 @@ export function useImagePreview({
       abortControllerRef.current = abortController;
 
       try {
-        if (provider === 'replicate-flux-kontext-fast') {
+        if (provider === "replicate-flux-kontext-fast") {
           setImageUrls(Array.from({ length: 4 }, () => null));
           const referenceImageUrl = imageUrl ?? seedImageUrl;
           const storyboardSeedImageUrl =
-            useReferenceImage && referenceImageUrl ? referenceImageUrl : undefined;
+            useReferenceImage && referenceImageUrl
+              ? referenceImageUrl
+              : undefined;
 
           const response = await generateStoryboardPreview(promptToGenerate, {
             ...(aspectRatio ? { aspectRatio } : {}),
-            ...(storyboardSeedImageUrl ? { seedImageUrl: storyboardSeedImageUrl } : {}),
+            ...(storyboardSeedImageUrl
+              ? { seedImageUrl: storyboardSeedImageUrl }
+              : {}),
             ...(seed !== undefined ? { seed } : {}),
             ...(speedMode ? { speedMode } : {}),
           });
 
-          if (abortController.signal.aborted || requestId !== requestIdRef.current) {
+          if (
+            abortController.signal.aborted ||
+            requestId !== requestIdRef.current
+          ) {
             return;
           }
 
           if (response.success && Array.isArray(response.data?.imageUrls)) {
             const urls = response.data.imageUrls;
             if (urls.length === 0) {
-              throw new Error('Storyboard response contained no images');
+              throw new Error("Storyboard response contained no images");
             }
             const baseUrl = response.data.baseImageUrl || urls[0] || null;
             setImageUrl(baseUrl);
             setImageUrls(urls);
           } else {
-            throw new Error(response.message || response.error || 'Failed to generate storyboard');
+            throw new Error(
+              response.message ||
+                response.error ||
+                "Failed to generate storyboard",
+            );
           }
           return;
         }
@@ -144,29 +155,42 @@ export function useImagePreview({
           ...(outputQuality !== undefined ? { outputQuality } : {}),
         });
 
-        if (abortController.signal.aborted || requestId !== requestIdRef.current) {
+        if (
+          abortController.signal.aborted ||
+          requestId !== requestIdRef.current
+        ) {
           return;
         }
 
         if (response.success && response.data?.imageUrl) {
           setImageUrl(response.data.imageUrl);
         } else {
-          throw new Error(response.message || response.error || 'Failed to generate preview');
+          throw new Error(
+            response.message || response.error || "Failed to generate preview",
+          );
         }
       } catch (err) {
         // Don't set error if request was aborted
-        if (abortController.signal.aborted || requestId !== requestIdRef.current) {
+        if (
+          abortController.signal.aborted ||
+          requestId !== requestIdRef.current
+        ) {
           return;
         }
 
         const errorMessage =
-          err instanceof Error ? err.message : 'Failed to generate preview image';
+          err instanceof Error
+            ? err.message
+            : "Failed to generate preview image";
         setError(errorMessage);
         setImageUrl(null);
         setImageUrls([]);
       } finally {
         // Only update loading state if this request wasn't aborted
-        if (!abortController.signal.aborted && requestId === requestIdRef.current) {
+        if (
+          !abortController.signal.aborted &&
+          requestId === requestIdRef.current
+        ) {
           setLoading(false);
         }
       }
@@ -180,7 +204,7 @@ export function useImagePreview({
       seedImageUrl,
       speedMode,
       useReferenceImage,
-    ]
+    ],
   );
 
   /**

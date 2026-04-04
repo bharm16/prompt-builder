@@ -7,10 +7,10 @@
  * @requirement 15.2 - Display credits consumed at each step
  */
 
-import React from 'react';
-import { Coins } from '@promptstudio/system/components/ui';
-import { cn } from '@/utils/cn';
-import type { ConvergenceStep } from '@/features/convergence/types';
+import React from "react";
+import { Coins } from "@promptstudio/system/components/ui";
+import { cn } from "@/utils/cn";
+import type { ConvergenceStep } from "@/features/convergence/types";
 
 /**
  * Credit costs for convergence operations
@@ -32,7 +32,7 @@ export interface StepCreditBadgeProps {
   /** Override the default cost for the step */
   cost?: number;
   /** Size variant */
-  size?: 'sm' | 'md';
+  size?: "sm" | "md";
   /** Additional CSS classes */
   className?: string;
   /** Whether to show the label "credits" */
@@ -52,7 +52,7 @@ export function getStepCost(step: ConvergenceStep): number {
 export const StepCreditBadge: React.FC<StepCreditBadgeProps> = ({
   step,
   cost,
-  size = 'sm',
+  size = "sm",
   className,
   showLabel = true,
 }) => {
@@ -64,38 +64,41 @@ export const StepCreditBadge: React.FC<StepCreditBadgeProps> = ({
   }
 
   const sizeClasses = {
-    sm: 'px-2 py-0.5 text-xs gap-1',
-    md: 'px-3 py-1 text-sm gap-1.5',
+    sm: "px-2 py-0.5 text-xs gap-1",
+    md: "px-3 py-1 text-sm gap-1.5",
   };
 
   const iconSizes = {
-    sm: 'h-3 w-3',
-    md: 'h-4 w-4',
+    sm: "h-3 w-3",
+    md: "h-4 w-4",
   };
 
   return (
     <div
       className={cn(
-        'inline-flex items-center rounded-full',
-        'bg-amber-50 text-amber-700 border border-amber-200',
-        'font-medium',
+        "inline-flex items-center rounded-full",
+        "bg-amber-50 text-amber-700 border border-amber-200",
+        "font-medium",
         sizeClasses[size],
-        className
+        className,
       )}
       role="status"
-      aria-label={`This step costs ${creditCost} credit${creditCost !== 1 ? 's' : ''}`}
+      aria-label={`This step costs ${creditCost} credit${creditCost !== 1 ? "s" : ""}`}
     >
-      <Coins className={cn(iconSizes[size], 'text-amber-500')} aria-hidden="true" />
+      <Coins
+        className={cn(iconSizes[size], "text-amber-500")}
+        aria-hidden="true"
+      />
       <span>{creditCost}</span>
       {showLabel && (
         <span className="text-amber-600/80">
-          {creditCost === 1 ? 'credit' : 'credits'}
+          {creditCost === 1 ? "credit" : "credits"}
         </span>
       )}
     </div>
   );
 };
 
-StepCreditBadge.displayName = 'StepCreditBadge';
+StepCreditBadge.displayName = "StepCreditBadge";
 
 export default StepCreditBadge;

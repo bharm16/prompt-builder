@@ -8,7 +8,7 @@
  * Storage: Session-only (resets on page refresh)
  */
 
-import { useReducer, useCallback, useMemo } from 'react';
+import { useReducer, useCallback, useMemo } from "react";
 
 interface Edit {
   id: string;
@@ -35,13 +35,16 @@ interface EditHistoryState {
 }
 
 type EditHistoryAction =
-  | { type: 'ADD_EDIT'; payload: EditPayload }
-  | { type: 'CLEAR_HISTORY' }
-  | { type: 'REMOVE_EDIT'; payload: string }
-  | { type: 'SAVE_STATE'; payload: { prompt: string; metadata: Record<string, unknown> } }
-  | { type: 'UNDO' }
-  | { type: 'REDO' }
-  | { type: 'CLEAR_HISTORY_STATES' };
+  | { type: "ADD_EDIT"; payload: EditPayload }
+  | { type: "CLEAR_HISTORY" }
+  | { type: "REMOVE_EDIT"; payload: string }
+  | {
+      type: "SAVE_STATE";
+      payload: { prompt: string; metadata: Record<string, unknown> };
+    }
+  | { type: "UNDO" }
+  | { type: "REDO" }
+  | { type: "CLEAR_HISTORY_STATES" };
 
 const initialState: EditHistoryState = {
   edits: [],
@@ -56,10 +59,10 @@ const initialState: EditHistoryState = {
  */
 function editHistoryReducer(
   state: EditHistoryState,
-  action: EditHistoryAction
+  action: EditHistoryAction,
 ): EditHistoryState {
   switch (action.type) {
-    case 'ADD_EDIT': {
+    case "ADD_EDIT": {
       const newEdit: Edit = {
         id: `edit_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
         original: action.payload.original,
@@ -82,19 +85,19 @@ function editHistoryReducer(
       };
     }
 
-    case 'CLEAR_HISTORY':
+    case "CLEAR_HISTORY":
       return {
         ...state,
         edits: [],
       };
 
-    case 'REMOVE_EDIT':
+    case "REMOVE_EDIT":
       return {
         ...state,
         edits: state.edits.filter((edit) => edit.id !== action.payload),
       };
 
-    case 'SAVE_STATE': {
+    case "SAVE_STATE": {
       const { prompt, metadata } = action.payload;
 
       // If we're in the middle of history (user went back), discard future states
@@ -126,7 +129,7 @@ function editHistoryReducer(
       };
     }
 
-    case 'UNDO': {
+    case "UNDO": {
       if (state.historyIndex <= 0) {
         return state; // Can't undo
       }
@@ -137,7 +140,7 @@ function editHistoryReducer(
       };
     }
 
-    case 'REDO': {
+    case "REDO": {
       if (state.historyIndex >= state.promptHistory.length - 1) {
         return state; // Can't redo
       }
@@ -148,7 +151,7 @@ function editHistoryReducer(
       };
     }
 
-    case 'CLEAR_HISTORY_STATES': {
+    case "CLEAR_HISTORY_STATES": {
       return {
         ...state,
         promptHistory: [],
@@ -169,7 +172,7 @@ interface AddEditParams {
   confidence?: number | null;
 }
 
-type EditPayload = Omit<Edit, 'id' | 'timestamp'>;
+type EditPayload = Omit<Edit, "id" | "timestamp">;
 
 /**
  * Custom hook for tracking edit history
@@ -199,7 +202,7 @@ export function useEditHistory() {
     };
 
     dispatch({
-      type: 'ADD_EDIT',
+      type: "ADD_EDIT",
       payload,
     });
   }, []);
@@ -211,14 +214,14 @@ export function useEditHistory() {
     (count: number = 10): Edit[] => {
       return state.edits.slice(-count).reverse(); // Most recent first
     },
-    [state.edits]
+    [state.edits],
   );
 
   /**
    * Clear all edit history
    */
   const clearHistory = useCallback(() => {
-    dispatch({ type: 'CLEAR_HISTORY' });
+    dispatch({ type: "CLEAR_HISTORY" });
   }, []);
 
   /**
@@ -233,10 +236,10 @@ export function useEditHistory() {
       return state.edits.filter(
         (edit) =>
           edit.category &&
-          edit.category.toLowerCase() === category.toLowerCase()
+          edit.category.toLowerCase() === category.toLowerCase(),
       );
     },
-    [state.edits]
+    [state.edits],
   );
 
   /**
@@ -244,7 +247,7 @@ export function useEditHistory() {
    */
   const hasEdited = useCallback(
     (text: string): boolean => {
-      if (!text || typeof text !== 'string') {
+      if (!text || typeof text !== "string") {
         return false;
       }
 
@@ -252,10 +255,10 @@ export function useEditHistory() {
       return state.edits.some(
         (edit) =>
           edit.original.trim().toLowerCase() === normalized ||
-          edit.replacement.trim().toLowerCase() === normalized
+          edit.replacement.trim().toLowerCase() === normalized,
       );
     },
-    [state.edits]
+    [state.edits],
   );
 
   /**
@@ -263,7 +266,7 @@ export function useEditHistory() {
    */
   const getEditForText = useCallback(
     (text: string): Edit | null => {
-      if (!text || typeof text !== 'string') {
+      if (!text || typeof text !== "string") {
         return null;
       }
 
@@ -272,18 +275,18 @@ export function useEditHistory() {
         state.edits.find(
           (edit) =>
             edit.original.trim().toLowerCase() === normalized ||
-            edit.replacement.trim().toLowerCase() === normalized
+            edit.replacement.trim().toLowerCase() === normalized,
         ) || null
       );
     },
-    [state.edits]
+    [state.edits],
   );
 
   /**
    * Remove a specific edit
    */
   const removeEdit = useCallback((editId: string) => {
-    dispatch({ type: 'REMOVE_EDIT', payload: editId });
+    dispatch({ type: "REMOVE_EDIT", payload: editId });
   }, []);
 
   /**
@@ -292,11 +295,9 @@ export function useEditHistory() {
   const getRecentEditsByTime = useCallback(
     (minutes: number = 10): Edit[] => {
       const cutoff = Date.now() - minutes * 60 * 1000;
-      return state.edits
-        .filter((edit) => edit.timestamp >= cutoff)
-        .reverse();
+      return state.edits.filter((edit) => edit.timestamp >= cutoff).reverse();
     },
-    [state.edits]
+    [state.edits],
   );
 
   /**
@@ -304,7 +305,9 @@ export function useEditHistory() {
    * Simplified format for backend processing
    */
   const getEditSummary = useCallback(
-    (count: number = 10): Array<{
+    (
+      count: number = 10,
+    ): Array<{
       original: string;
       replacement: string;
       category: string | null;
@@ -319,7 +322,7 @@ export function useEditHistory() {
         minutesAgo: Math.floor((Date.now() - edit.timestamp) / 60000),
       }));
     },
-    [state.edits]
+    [state.edits],
   );
 
   // ============ Undo/Redo Methods ============
@@ -329,16 +332,16 @@ export function useEditHistory() {
    */
   const saveState = useCallback(
     (prompt: string, metadata: Record<string, unknown> = {}) => {
-      if (!prompt || typeof prompt !== 'string') {
+      if (!prompt || typeof prompt !== "string") {
         return;
       }
 
       dispatch({
-        type: 'SAVE_STATE',
+        type: "SAVE_STATE",
         payload: { prompt, metadata },
       });
     },
-    []
+    [],
   );
 
   /**
@@ -349,7 +352,7 @@ export function useEditHistory() {
       return null;
     }
 
-    dispatch({ type: 'UNDO' });
+    dispatch({ type: "UNDO" });
     const previousState = state.promptHistory[state.historyIndex - 1];
     return previousState ?? null;
   }, [state.historyIndex, state.promptHistory]);
@@ -362,7 +365,7 @@ export function useEditHistory() {
       return null;
     }
 
-    dispatch({ type: 'REDO' });
+    dispatch({ type: "REDO" });
     const nextState = state.promptHistory[state.historyIndex + 1];
     return nextState ?? null;
   }, [state.historyIndex, state.promptHistory]);
@@ -421,7 +424,7 @@ export function useEditHistory() {
    * Clear prompt history (keeps edit history)
    */
   const clearHistoryStates = useCallback(() => {
-    dispatch({ type: 'CLEAR_HISTORY_STATES' });
+    dispatch({ type: "CLEAR_HISTORY_STATES" });
   }, []);
 
   // Memoized computed values
@@ -432,7 +435,7 @@ export function useEditHistory() {
   const editsByCategory = useMemo(() => {
     const counts: Record<string, number> = {};
     state.edits.forEach((edit) => {
-      const category = edit.category || 'uncategorized';
+      const category = edit.category || "uncategorized";
       counts[category] = (counts[category] || 0) + 1;
     });
     return counts;
@@ -470,4 +473,3 @@ export function useEditHistory() {
     clearHistoryStates,
   };
 }
-

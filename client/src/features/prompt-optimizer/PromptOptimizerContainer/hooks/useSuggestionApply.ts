@@ -10,20 +10,27 @@
  * Line count: ~80 lines (within <150 limit for hooks)
  */
 
-import { useCallback, type MutableRefObject } from 'react';
-import { applySuggestionToPrompt } from '@features/prompt-optimizer/utils/applySuggestion';
-import { updateHighlightSnapshotForSuggestion } from '@features/prompt-optimizer/utils/updateHighlightSnapshot';
-import { updateSpanListForSuggestion } from '@features/prompt-optimizer/utils/updateSpanListForSuggestion';
-import { useEditHistory } from '@features/prompt-optimizer/hooks/useEditHistory';
-import type { Toast } from '@hooks/types';
-import type { HighlightSnapshot, SuggestionItem, SuggestionsData } from '@features/prompt-optimizer/PromptCanvas/types';
-import type { CoherenceCheckRequest, CoherenceSpan } from '@features/prompt-optimizer/types/coherence';
-import { logger } from '@/services/LoggingService';
-import { sanitizeError } from '@/utils/logging';
-import { buildCoherenceSpansFromSnapshot } from '../utils/buildCoherenceSpans';
+import { useCallback, type MutableRefObject } from "react";
+import { applySuggestionToPrompt } from "@features/prompt-optimizer/utils/applySuggestion";
+import { updateHighlightSnapshotForSuggestion } from "@features/prompt-optimizer/utils/updateHighlightSnapshot";
+import { updateSpanListForSuggestion } from "@features/prompt-optimizer/utils/updateSpanListForSuggestion";
+import { useEditHistory } from "@features/prompt-optimizer/hooks/useEditHistory";
+import type { Toast } from "@hooks/types";
+import type {
+  HighlightSnapshot,
+  SuggestionItem,
+  SuggestionsData,
+} from "@features/prompt-optimizer/PromptCanvas/types";
+import type {
+  CoherenceCheckRequest,
+  CoherenceSpan,
+} from "@features/prompt-optimizer/types/coherence";
+import { logger } from "@/services/LoggingService";
+import { sanitizeError } from "@/utils/logging";
+import { buildCoherenceSpansFromSnapshot } from "../utils/buildCoherenceSpans";
 
-const log = logger.child('useSuggestionApply');
-export { buildCoherenceSpansFromSnapshot } from '../utils/buildCoherenceSpans';
+const log = logger.child("useSuggestionApply");
+export { buildCoherenceSpansFromSnapshot } from "../utils/buildCoherenceSpans";
 
 interface UseSuggestionApplyParams {
   suggestionsData: SuggestionsData | null;
@@ -31,16 +38,22 @@ interface UseSuggestionApplyParams {
   setSuggestionsData: (data: SuggestionsData | null) => void;
   applyInitialHighlightSnapshot: (
     snapshot: HighlightSnapshot | null,
-    options: { bumpVersion: boolean; markPersisted: boolean }
+    options: { bumpVersion: boolean; markPersisted: boolean },
   ) => void;
   latestHighlightRef: MutableRefObject<HighlightSnapshot | null>;
   toast: Toast;
   currentPromptUuid: string | null;
   currentPromptDocId: string | null;
   promptHistory: {
-    updateEntryOutput: (uuid: string, docId: string | null, output: string) => void;
+    updateEntryOutput: (
+      uuid: string,
+      docId: string | null,
+      output: string,
+    ) => void;
   };
-  onCoherenceCheck?: ((payload: CoherenceCheckRequest) => Promise<void> | void) | undefined;
+  onCoherenceCheck?:
+    | ((payload: CoherenceCheckRequest) => Promise<void> | void)
+    | undefined;
 }
 
 /**
@@ -70,7 +83,7 @@ export function useSuggestionApply({
   const handleSuggestionClick = useCallback(
     async (suggestion: SuggestionItem | string): Promise<void> => {
       const suggestionText =
-        typeof suggestion === 'string' ? suggestion : suggestion?.text || '';
+        typeof suggestion === "string" ? suggestion : suggestion?.text || "";
 
       if (!suggestionText || !suggestionsData) return;
 
@@ -83,8 +96,12 @@ export function useSuggestionApply({
           suggestionText,
           highlight: selectedText,
           spanMeta: (metadata?.span as Record<string, unknown>) || {},
-          ...(metadata ? { metadata: metadata as Record<string, unknown> } : {}),
-          ...(offsets ? { offsets: offsets as { start?: number; end?: number } } : {}),
+          ...(metadata
+            ? { metadata: metadata as Record<string, unknown> }
+            : {}),
+          ...(offsets
+            ? { offsets: offsets as { start?: number; end?: number } }
+            : {}),
         });
 
         // Update displayed prompt
@@ -93,7 +110,9 @@ export function useSuggestionApply({
           // When prompt changes, useSpanLabeling checks if initialData matches.
           // If we update prompt first, it sees new text + old initialData = mismatch = API call.
           // By updating highlights first, the signature will match when the prompt updates.
-          const targetSpan = (metadata?.span as Record<string, unknown> | undefined) ?? undefined;
+          const targetSpan =
+            (metadata?.span as Record<string, unknown> | undefined) ??
+            undefined;
           const updatedHighlights = updateHighlightSnapshotForSuggestion({
             snapshot: latestHighlightRef.current,
             matchStart: result.matchStart ?? offsets?.start ?? null,
@@ -123,7 +142,7 @@ export function useSuggestionApply({
           if (updatedHighlights) {
             // Debug: trace what we're applying
             if (import.meta.env.DEV) {
-              log.debug('Applying highlight update', {
+              log.debug("Applying highlight update", {
                 spansCount: updatedHighlights.spans?.length,
                 signaturePrefix: updatedHighlights.signature?.slice(0, 16),
                 hasLocalUpdate: updatedHighlights.meta?.localUpdate,
@@ -138,7 +157,7 @@ export function useSuggestionApply({
 
           // Now update the prompt - initialData is already set with matching signature
           handleDisplayedPromptChange(result.updatedPrompt);
-          toast.success('Suggestion applied');
+          toast.success("Suggestion applied");
 
           const targetSpanId =
             (targetSpan?.id as string | null | undefined) ??
@@ -173,7 +192,7 @@ export function useSuggestionApply({
 
             const fallbackSpans = buildCoherenceSpansFromSnapshot(
               updatedHighlights ?? latestHighlightRef.current,
-              result.updatedPrompt
+              result.updatedPrompt,
             );
             const coherenceSpans: CoherenceSpan[] =
               updatedSpans.length > 0
@@ -202,8 +221,7 @@ export function useSuggestionApply({
           addEdit({
             original: selectedText,
             replacement: suggestionText,
-            category:
-              metadata?.category || metadata?.span?.category || null,
+            category: metadata?.category || metadata?.span?.category || null,
             position: offsets?.start || null,
             confidence:
               metadata?.confidence || metadata?.span?.confidence || null,
@@ -215,13 +233,13 @@ export function useSuggestionApply({
               updateEntryOutput(
                 currentPromptUuid,
                 currentPromptDocId,
-                result.updatedPrompt
+                result.updatedPrompt,
               );
             } catch (error) {
               // Don't block UI if save fails - just log warning
               const info = sanitizeError(error);
-              log.warn('Failed to persist suggestion update', {
-                operation: 'updateEntryOutput',
+              log.warn("Failed to persist suggestion update", {
+                operation: "updateEntryOutput",
                 error: info.message,
                 errorName: info.name,
                 promptUuid: currentPromptUuid,
@@ -230,15 +248,20 @@ export function useSuggestionApply({
             }
           }
         } else {
-          toast.error('Could not locate text to replace');
+          toast.error("Could not locate text to replace");
         }
 
         // Close suggestions panel
         setSuggestionsData(null);
       } catch (error) {
-        const errObj = error instanceof Error ? error : new Error(sanitizeError(error).message);
-        log.error('Error applying suggestion', errObj, { operation: 'handleSuggestionClick' });
-        toast.error('Failed to apply suggestion');
+        const errObj =
+          error instanceof Error
+            ? error
+            : new Error(sanitizeError(error).message);
+        log.error("Error applying suggestion", errObj, {
+          operation: "handleSuggestionClick",
+        });
+        toast.error("Failed to apply suggestion");
       }
     },
     [
@@ -253,7 +276,7 @@ export function useSuggestionApply({
       currentPromptDocId,
       updateEntryOutput,
       onCoherenceCheck,
-    ]
+    ],
   );
 
   return {

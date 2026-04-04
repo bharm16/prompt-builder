@@ -4,11 +4,16 @@
  * Handles errors during span labeling requests with fallback to cached results.
  */
 
-import type { SpanLabelingPayload, SpanLabelingState, SpanMeta, LabeledSpan } from '../hooks/types.ts';
-import type { SpanLabelingCacheService } from '../hooks/useSpanLabelingCache';
-import { logger } from '@/services/LoggingService';
+import type {
+  SpanLabelingPayload,
+  SpanLabelingState,
+  SpanMeta,
+  LabeledSpan,
+} from "../hooks/types.ts";
+import type { SpanLabelingCacheService } from "../hooks/useSpanLabelingCache";
+import { logger } from "@/services/LoggingService";
 
-const log = logger.child('spanLabelingErrorHandler');
+const log = logger.child("spanLabelingErrorHandler");
 
 export interface ErrorHandlerOptions {
   requestId: number;
@@ -51,7 +56,7 @@ export function shouldHandleError(options: ErrorHandlerOptions): boolean {
 export function createFallbackResult(
   payload: SpanLabelingPayload,
   error: Error,
-  cacheService: SpanLabelingCacheService | null
+  cacheService: SpanLabelingCacheService | null,
 ): FallbackResult | null {
   if (!cacheService) {
     return null;
@@ -69,7 +74,7 @@ export function createFallbackResult(
     spans: Array.isArray(fallback.spans) ? fallback.spans : [],
     meta: {
       ...fallback.meta,
-      source: 'cache-fallback',
+      source: "cache-fallback",
       cacheAge,
       error: error.message,
     } as SpanMeta,
@@ -84,12 +89,12 @@ export function createFallbackResult(
  */
 export function createErrorStateWithFallback(
   fallbackResult: FallbackResult,
-  error: Error
+  error: Error,
 ): SpanLabelingState {
   return {
     spans: fallbackResult.spans,
     meta: fallbackResult.meta,
-    status: 'stale',
+    status: "stale",
     error,
     signature: fallbackResult.signature,
   };
@@ -102,7 +107,7 @@ export function createErrorState(error: Error): SpanLabelingState {
   return {
     spans: [],
     meta: null,
-    status: 'error',
+    status: "error",
     error,
     signature: null,
   };
@@ -114,10 +119,10 @@ export function createErrorState(error: Error): SpanLabelingState {
 export function logErrorWarning(
   error: Error,
   payload: SpanLabelingPayload,
-  cacheAge?: number
+  cacheAge?: number,
 ): void {
-  log.warn('Span labeling network error - using cached fallback', {
-    operation: 'spanLabeling',
+  log.warn("Span labeling network error - using cached fallback", {
+    operation: "spanLabeling",
     error: error.message,
     cacheAgeMs: cacheAge,
     textLength: payload.text?.length,

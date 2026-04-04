@@ -1,8 +1,8 @@
-import { describe, expect, it } from 'vitest';
-import { ModelScoringService } from '../services/ModelScoringService';
-import { BASE_REQUIREMENTS } from './fixtures/testPrompts';
-import type { ModelCapabilities, PromptRequirements } from '../types';
-import { VIDEO_MODELS } from '@config/modelConfig';
+import { describe, expect, it } from "vitest";
+import { ModelScoringService } from "../services/ModelScoringService";
+import { BASE_REQUIREMENTS } from "./fixtures/testPrompts";
+import type { ModelCapabilities, PromptRequirements } from "../types";
+import { VIDEO_MODELS } from "@config/modelConfig";
 
 const baseCapabilities: ModelCapabilities = {
   physics: 0.7,
@@ -23,30 +23,37 @@ const baseCapabilities: ModelCapabilities = {
   transitions: 0.7,
   t2vBoost: 1,
   i2vBoost: 1,
-  speedTier: 'medium',
-  costTier: 'medium',
-  qualityTier: 'standard',
+  speedTier: "medium",
+  costTier: "medium",
+  qualityTier: "standard",
 };
 
-const withRequirements = (overrides: Partial<PromptRequirements>): PromptRequirements => ({
+const withRequirements = (
+  overrides: Partial<PromptRequirements>,
+): PromptRequirements => ({
   ...BASE_REQUIREMENTS,
   ...overrides,
 });
 
-describe('ModelScoringService', () => {
+describe("ModelScoringService", () => {
   const service = new ModelScoringService();
 
-  describe('edge cases', () => {
-    it('defaults to general quality weights when no requirements match', () => {
-      const score = service.scoreModel(VIDEO_MODELS.SORA_2, baseCapabilities, BASE_REQUIREMENTS, 't2v');
+  describe("edge cases", () => {
+    it("defaults to general quality weights when no requirements match", () => {
+      const score = service.scoreModel(
+        VIDEO_MODELS.SORA_2,
+        baseCapabilities,
+        BASE_REQUIREMENTS,
+        "t2v",
+      );
 
       const factors = score.factorScores.map((factor) => factor.factor);
-      expect(factors).toContain('photorealism');
-      expect(factors).toContain('motionComplexity');
+      expect(factors).toContain("photorealism");
+      expect(factors).toContain("motionComplexity");
       expect(score.overallScore).toBeGreaterThan(0);
     });
 
-    it('uses default mode boost when boost values are missing', () => {
+    it("uses default mode boost when boost values are missing", () => {
       const requirements = withRequirements({
         motion: { ...BASE_REQUIREMENTS.motion, hasMorphing: true },
       });
@@ -60,21 +67,21 @@ describe('ModelScoringService', () => {
         VIDEO_MODELS.SORA_2,
         capabilitiesWithoutBoost,
         requirements,
-        't2v'
+        "t2v",
       );
       const i2vScore = service.scoreModel(
         VIDEO_MODELS.SORA_2,
         capabilitiesWithoutBoost,
         requirements,
-        'i2v'
+        "i2v",
       );
 
       expect(i2vScore.overallScore).toBe(t2vScore.overallScore);
     });
   });
 
-  describe('core behavior', () => {
-    it('rewards models with higher morphing capability when required', () => {
+  describe("core behavior", () => {
+    it("rewards models with higher morphing capability when required", () => {
       const requirements = withRequirements({
         motion: { ...BASE_REQUIREMENTS.motion, hasMorphing: true },
       });
@@ -83,31 +90,41 @@ describe('ModelScoringService', () => {
         VIDEO_MODELS.LUMA_RAY3,
         { ...baseCapabilities, morphing: 0.95 },
         requirements,
-        't2v'
+        "t2v",
       );
       const lowMorph = service.scoreModel(
         VIDEO_MODELS.SORA_2,
         { ...baseCapabilities, morphing: 0.4 },
         requirements,
-        't2v'
+        "t2v",
       );
 
       expect(highMorph.overallScore).toBeGreaterThan(lowMorph.overallScore);
     });
 
-    it('applies i2v boost modifiers to factor scores', () => {
+    it("applies i2v boost modifiers to factor scores", () => {
       const requirements = withRequirements({
         physics: { ...BASE_REQUIREMENTS.physics, hasComplexPhysics: true },
       });
       const capabilities = { ...baseCapabilities, i2vBoost: 0.8, t2vBoost: 1 };
 
-      const t2vScore = service.scoreModel(VIDEO_MODELS.SORA_2, capabilities, requirements, 't2v');
-      const i2vScore = service.scoreModel(VIDEO_MODELS.SORA_2, capabilities, requirements, 'i2v');
+      const t2vScore = service.scoreModel(
+        VIDEO_MODELS.SORA_2,
+        capabilities,
+        requirements,
+        "t2v",
+      );
+      const i2vScore = service.scoreModel(
+        VIDEO_MODELS.SORA_2,
+        capabilities,
+        requirements,
+        "i2v",
+      );
 
       expect(i2vScore.overallScore).toBeLessThan(t2vScore.overallScore);
     });
 
-    it('records strengths for high capability factors', () => {
+    it("records strengths for high capability factors", () => {
       const requirements = withRequirements({
         style: { ...BASE_REQUIREMENTS.style, isPhotorealistic: true },
       });
@@ -115,21 +132,21 @@ describe('ModelScoringService', () => {
         VIDEO_MODELS.SORA_2,
         { ...baseCapabilities, photorealism: 0.9 },
         requirements,
-        't2v'
+        "t2v",
       );
 
       expect(score.strengths).toEqual(
-        expect.arrayContaining([expect.stringContaining('Photorealism')])
+        expect.arrayContaining([expect.stringContaining("Photorealism")]),
       );
     });
 
-    it('records weaknesses and warnings when weighted capabilities are low', () => {
+    it("records weaknesses and warnings when weighted capabilities are low", () => {
       const requirements = withRequirements({
         physics: { ...BASE_REQUIREMENTS.physics, hasComplexPhysics: true },
         character: {
           ...BASE_REQUIREMENTS.character,
           requiresFacialPerformance: true,
-          emotionalIntensity: 'intense',
+          emotionalIntensity: "intense",
         },
         motion: { ...BASE_REQUIREMENTS.motion, hasMorphing: true },
       });
@@ -144,16 +161,16 @@ describe('ModelScoringService', () => {
           characterActing: 0.4,
         },
         requirements,
-        't2v'
+        "t2v",
       );
 
       expect(score.weaknesses.length).toBeGreaterThan(0);
       expect(score.warnings).toEqual(
         expect.arrayContaining([
-          'Physics simulation may be inconsistent',
-          'Facial expressions may lack subtlety',
-          'Morphing effects may not render smoothly',
-        ])
+          "Physics simulation may be inconsistent",
+          "Facial expressions may lack subtlety",
+          "Morphing effects may not render smoothly",
+        ]),
       );
     });
   });

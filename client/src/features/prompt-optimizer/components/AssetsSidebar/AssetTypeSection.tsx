@@ -1,11 +1,21 @@
-import React from 'react';
-import { Box, ChevronDown, MapPin, Palette, Plus, User } from '@promptstudio/system/components/ui';
-import type { Asset, AssetType } from '@shared/types/asset';
-import { cn } from '@/utils/cn';
-import { getAssetTypeConfig } from '@/features/assets/config/assetConfig';
-import { AssetThumbnail } from './AssetThumbnail';
+import React from "react";
+import {
+  Box,
+  ChevronDown,
+  MapPin,
+  Palette,
+  Plus,
+  User,
+} from "@promptstudio/system/components/ui";
+import type { Asset, AssetType } from "@shared/types/asset";
+import { cn } from "@/utils/cn";
+import { getAssetTypeConfig } from "@/features/assets/config/assetConfig";
+import { AssetThumbnail } from "./AssetThumbnail";
 
-const TYPE_ICONS: Record<AssetType, React.ComponentType<{ className?: string }>> = {
+const TYPE_ICONS: Record<
+  AssetType,
+  React.ComponentType<{ className?: string }>
+> = {
   character: User,
   style: Palette,
   location: MapPin,
@@ -45,11 +55,11 @@ export function AssetTypeSection({
         <div className="flex items-center gap-2">
           <div
             className={cn(
-              'flex h-6 w-6 items-center justify-center rounded-md',
-              config.bgClass
+              "flex h-6 w-6 items-center justify-center rounded-md",
+              config.bgClass,
             )}
           >
-            <Icon className={cn('h-3.5 w-3.5', config.colorClass)} />
+            <Icon className={cn("h-3.5 w-3.5", config.colorClass)} />
           </div>
           <span className="text-sm font-semibold text-foreground">
             {config.label}
@@ -60,8 +70,8 @@ export function AssetTypeSection({
         </div>
         <ChevronDown
           className={cn(
-            'h-4 w-4 text-muted transition-transform',
-            isExpanded && 'rotate-180'
+            "h-4 w-4 text-muted transition-transform",
+            isExpanded && "rotate-180",
           )}
         />
       </button>
@@ -70,7 +80,9 @@ export function AssetTypeSection({
         <div className="p-3 pt-1">
           {assets.length === 0 ? (
             <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border bg-surface-2 p-4 text-center">
-              <p className="text-xs text-muted">No {config.label.toLowerCase()} assets yet</p>
+              <p className="text-xs text-muted">
+                No {config.label.toLowerCase()} assets yet
+              </p>
               <button
                 type="button"
                 onClick={onCreateAsset}

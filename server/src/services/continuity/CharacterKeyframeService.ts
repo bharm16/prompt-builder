@@ -1,28 +1,32 @@
-import { logger } from '@infrastructure/Logger';
-import type { AssetService } from '@services/asset/AssetService';
-import type KeyframeGenerationService from '@services/generation/KeyframeGenerationService';
-import { StorageService } from '@services/storage/StorageService';
-import { STORAGE_TYPES } from '@services/storage/config/storageConfig';
-import type { CharacterKeyframeOptions } from './types';
+import { logger } from "@infrastructure/Logger";
+import type { AssetService } from "@services/asset/AssetService";
+import type KeyframeGenerationService from "@services/video-generation/KeyframeGenerationService";
+import { StorageService } from "@services/storage/StorageService";
+import { STORAGE_TYPES } from "@services/storage/config/storageConfig";
+import type { CharacterKeyframeOptions } from "./types";
 
 export class CharacterKeyframeService {
-  private readonly log = logger.child({ service: 'CharacterKeyframeService' });
+  private readonly log = logger.child({ service: "CharacterKeyframeService" });
 
   constructor(
     private keyframeService: KeyframeGenerationService,
     private assetService: AssetService,
-    private storage: StorageService
+    private storage: StorageService,
   ) {}
 
   async generateKeyframe(options: CharacterKeyframeOptions): Promise<string> {
-    const { userId, prompt, characterAssetId, aspectRatio, faceStrength } = options;
+    const { userId, prompt, characterAssetId, aspectRatio, faceStrength } =
+      options;
 
-    const character = await this.assetService.getAssetForGeneration(userId, characterAssetId);
+    const character = await this.assetService.getAssetForGeneration(
+      userId,
+      characterAssetId,
+    );
     if (!character.primaryImageUrl) {
-      throw new Error('Character has no primary reference image');
+      throw new Error("Character has no primary reference image");
     }
 
-    this.log.info('Generating PuLID keyframe', {
+    this.log.info("Generating PuLID keyframe", {
       userId,
       characterAssetId,
     });
@@ -48,11 +52,11 @@ export class CharacterKeyframeService {
       userId,
       buffer,
       STORAGE_TYPES.PREVIEW_IMAGE,
-      'image/png',
+      "image/png",
       {
-        source: 'pulid',
+        source: "pulid",
         characterAssetId,
-      }
+      },
     );
 
     return stored.viewUrl;

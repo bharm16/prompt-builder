@@ -1,18 +1,21 @@
-import { logger } from '@infrastructure/Logger';
-import type { SeedInfo } from './types';
-import type { VideoGenerationResult } from '@services/video-generation/types';
+import { logger } from "@infrastructure/Logger";
+import type { SeedInfo } from "./types";
+import type { VideoGenerationResult } from "@services/video-generation/types";
 
 export class SeedPersistenceService {
-  private readonly log = logger.child({ service: 'SeedPersistenceService' });
+  private readonly log = logger.child({ service: "SeedPersistenceService" });
 
   extractSeed(
     provider: string,
     modelId: string,
-    generationResult: Record<string, unknown> | VideoGenerationResult
+    generationResult: Record<string, unknown> | VideoGenerationResult,
   ): SeedInfo | null {
-    const seed = this.extractSeedFromResult(provider, generationResult as Record<string, unknown>);
+    const seed = this.extractSeedFromResult(
+      provider,
+      generationResult as Record<string, unknown>,
+    );
     if (seed === null || seed === undefined) {
-      this.log.debug('No seed found in generation result', { provider });
+      this.log.debug("No seed found in generation result", { provider });
       return null;
     }
 
@@ -30,7 +33,10 @@ export class SeedPersistenceService {
     return { [param]: seed };
   }
 
-  getInheritedSeed(previousShotSeedInfo: SeedInfo | undefined, currentProvider: string): number | undefined {
+  getInheritedSeed(
+    previousShotSeedInfo: SeedInfo | undefined,
+    currentProvider: string,
+  ): number | undefined {
     if (!previousShotSeedInfo) return undefined;
     if (previousShotSeedInfo.provider !== currentProvider) {
       return undefined;
@@ -38,22 +44,25 @@ export class SeedPersistenceService {
     return previousShotSeedInfo.seed;
   }
 
-  private extractSeedFromResult(provider: string, result: Record<string, unknown>): number | null {
-    if (typeof result.seed === 'number') return result.seed;
-    if (provider === 'replicate') {
+  private extractSeedFromResult(
+    provider: string,
+    result: Record<string, unknown>,
+  ): number | null {
+    if (typeof result.seed === "number") return result.seed;
+    if (provider === "replicate") {
       const metrics = result.metrics as Record<string, unknown> | undefined;
-      if (metrics && typeof metrics.seed === 'number') return metrics.seed;
+      if (metrics && typeof metrics.seed === "number") return metrics.seed;
     }
     return null;
   }
 
   private getSeedParamName(provider: string): string {
     switch (provider) {
-      case 'replicate':
-      case 'runway':
-        return 'seed';
+      case "replicate":
+      case "runway":
+        return "seed";
       default:
-        return 'seed';
+        return "seed";
     }
   }
 }

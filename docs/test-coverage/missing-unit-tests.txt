@@ -203,7 +203,6 @@ server/src/services/prompt-optimization/services/ContextInferenceService.ts
 server/src/services/prompt-optimization/services/DraftGenerationService.ts
 server/src/services/prompt-optimization/services/ModeDetectionService.ts
 server/src/services/prompt-optimization/services/OptimizationCacheService.ts
-server/src/services/prompt-optimization/services/QualityAssessmentService.ts
 server/src/services/prompt-optimization/services/ShotInterpreterService.ts
 server/src/services/prompt-optimization/services/StrategyFactory.ts
 server/src/services/prompt-optimization/services/TemplateService.ts

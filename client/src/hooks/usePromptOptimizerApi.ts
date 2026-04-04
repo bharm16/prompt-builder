@@ -1,23 +1,20 @@
-import { useCallback } from 'react';
+import { useCallback } from "react";
 
-import { promptOptimizationApiV2 } from '../services';
-import { logger } from '../services/LoggingService';
+import { promptOptimizationApiV2 } from "../services";
+import { logger } from "../services/LoggingService";
 
 export type AnalyzeAndOptimizeOptions = Omit<
-  Parameters<typeof promptOptimizationApiV2.optimizeLegacy>[0],
-  'mode'
+  Parameters<typeof promptOptimizationApiV2.optimize>[0],
+  "mode"
 >;
 
-export type OptimizeWithFallbackOptions = Omit<
-  Parameters<typeof promptOptimizationApiV2.optimizeWithFallback>[0],
-  'mode'
->;
-
-export type CompilePromptOptions = Parameters<typeof promptOptimizationApiV2.compilePrompt>[0];
+export type CompilePromptOptions = Parameters<
+  typeof promptOptimizationApiV2.compilePrompt
+>[0];
 
 export function usePromptOptimizerApi(
   selectedMode: string,
-  log: ReturnType<typeof logger.child>
+  log: ReturnType<typeof logger.child>,
 ) {
   const analyzeAndOptimize = useCallback(
     async ({
@@ -33,20 +30,22 @@ export function usePromptOptimizerApi(
       constraintMode,
       signal,
     }: AnalyzeAndOptimizeOptions) => {
-      log.debug('analyzeAndOptimize called', {
+      log.debug("analyzeAndOptimize called", {
         promptLength: prompt.length,
         mode: selectedMode,
         targetModel,
         hasContext: !!context,
         hasBrainstormContext: !!brainstormContext,
-        generationParamCount: generationParams ? Object.keys(generationParams).length : 0,
+        generationParamCount: generationParams
+          ? Object.keys(generationParams).length
+          : 0,
         skipCache: !!skipCache,
         lockedSpanCount: lockedSpans?.length ?? 0,
       });
-      logger.startTimer('analyzeAndOptimize');
+      logger.startTimer("analyzeAndOptimize");
 
       try {
-        const data = await promptOptimizationApiV2.optimizeLegacy({
+        const data = await promptOptimizationApiV2.optimize({
           prompt,
           mode: selectedMode,
           ...(targetModel ? { targetModel } : {}),
@@ -61,41 +60,34 @@ export function usePromptOptimizerApi(
           ...(signal ? { signal } : {}),
         });
 
-        const duration = logger.endTimer('analyzeAndOptimize');
-        log.info('analyzeAndOptimize completed', {
+        const duration = logger.endTimer("analyzeAndOptimize");
+        log.info("analyzeAndOptimize completed", {
           duration,
-          outputLength: data.prompt?.length || data.optimizedPrompt?.length || 0,
+          outputLength:
+            data.prompt?.length || data.optimizedPrompt?.length || 0,
         });
 
         return data;
       } catch (error) {
-        logger.endTimer('analyzeAndOptimize');
-        log.error('analyzeAndOptimize failed', error as Error);
+        logger.endTimer("analyzeAndOptimize");
+        log.error("analyzeAndOptimize failed", error as Error);
         throw error;
       }
     },
-    [selectedMode, log]
-  );
-
-  const optimizeWithFallback = useCallback(
-    (options: OptimizeWithFallbackOptions) =>
-      promptOptimizationApiV2.optimizeWithFallback({
-        ...options,
-        mode: selectedMode,
-      }),
-    [selectedMode]
+    [selectedMode, log],
   );
 
   const calculateQualityScore = useCallback(
     (inputPrompt: string, outputPrompt: string) =>
       promptOptimizationApiV2.calculateQualityScore(inputPrompt, outputPrompt),
-    []
+    [],
   );
 
   return {
     analyzeAndOptimize,
-    optimizeWithFallback,
-    compilePrompt: promptOptimizationApiV2.compilePrompt.bind(promptOptimizationApiV2),
+    compilePrompt: promptOptimizationApiV2.compilePrompt.bind(
+      promptOptimizationApiV2,
+    ),
     calculateQualityScore,
   };
 }

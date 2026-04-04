@@ -1,29 +1,29 @@
-import { logger } from '@infrastructure/Logger';
-import { HierarchyValidator } from './services/HierarchyValidator';
-import { OrphanDetector } from './services/OrphanDetector';
-import { ValidationReporter } from './services/ValidationReporter';
+import { logger } from "@infrastructure/Logger";
+import { HierarchyValidator } from "./services/HierarchyValidator";
+import { OrphanDetector } from "./services/OrphanDetector";
+import { ValidationReporter } from "./services/ValidationReporter";
 import type {
   Span,
   ValidationOptions,
   ValidationResult,
   PreAddValidation,
   ValidationStats,
-  ValidationIssue
-} from './types';
+  ValidationIssue,
+} from "./types";
 
 /**
  * TaxonomyValidationService
  * Main orchestrator for taxonomy hierarchy validation
- * 
+ *
  * Follows the PromptOptimizationService pattern:
  * - Thin orchestrator that delegates to specialized services
  * - Single public API: validateSpans()
  * - Returns structured validation results
- * 
+ *
  * USAGE:
  *   const validator = new TaxonomyValidationService();
  *   const result = validator.validateSpans(spans, options);
- * 
+ *
  * RETURNS:
  *   {
  *     isValid: boolean,
@@ -36,7 +36,7 @@ export class TaxonomyValidationService {
   private readonly hierarchyValidator: HierarchyValidator;
   private readonly orphanDetector: OrphanDetector;
   private readonly reporter: ValidationReporter;
-  private readonly log = logger.child({ service: 'TaxonomyValidationService' });
+  private readonly log = logger.child({ service: "TaxonomyValidationService" });
 
   constructor() {
     this.hierarchyValidator = new HierarchyValidator();
@@ -48,17 +48,20 @@ export class TaxonomyValidationService {
    * Validate spans against taxonomy hierarchy rules
    * Main public API method
    */
-  validateSpans(spans: Span[], options: ValidationOptions = {}): ValidationResult {
+  validateSpans(
+    spans: Span[],
+    options: ValidationOptions = {},
+  ): ValidationResult {
     const startTime = performance.now();
-    const operation = 'validateSpans';
-    
+    const operation = "validateSpans";
+
     const {
       strictMode = false,
       checkConsistency = false,
-      ignoreCategories = []
+      ignoreCategories = [],
     } = options;
 
-    this.log.debug('Validating spans', {
+    this.log.debug("Validating spans", {
       operation,
       spanCount: spans.length,
       strictMode,
@@ -67,9 +70,10 @@ export class TaxonomyValidationService {
     });
 
     // Filter out ignored categories
-    const filteredSpans = ignoreCategories.length > 0
-      ? spans.filter(s => !ignoreCategories.includes(s.category || ''))
-      : spans;
+    const filteredSpans =
+      ignoreCategories.length > 0
+        ? spans.filter((s) => !ignoreCategories.includes(s.category || ""))
+        : spans;
 
     // Step 1: Detect orphaned attributes (primary check)
     const orphans = this.orphanDetector.findOrphanedAttributes(filteredSpans);
@@ -77,13 +81,17 @@ export class TaxonomyValidationService {
     // Step 2: Optional consistency checks (proximity, etc.)
     let consistencyIssues: ValidationIssue[] = [];
     if (checkConsistency) {
-      consistencyIssues = this.hierarchyValidator.validateConsistency(filteredSpans);
+      consistencyIssues =
+        this.hierarchyValidator.validateConsistency(filteredSpans);
     }
 
     // Step 3: Format results
     // Note: We use orphans as the primary source since they provide better grouping
     // than raw hierarchy issues. Consistency issues are separate (span proximity, etc.)
-    const result = this.reporter.formatValidationResult(consistencyIssues, orphans);
+    const result = this.reporter.formatValidationResult(
+      consistencyIssues,
+      orphans,
+    );
 
     // Step 5: Apply strict mode if enabled
     if (strictMode && result.hasWarnings) {
@@ -91,8 +99,8 @@ export class TaxonomyValidationService {
     }
 
     const duration = Math.round(performance.now() - startTime);
-    
-    this.log.info('Span validation complete', {
+
+    this.log.info("Span validation complete", {
       operation,
       duration,
       spanCount: spans.length,
@@ -120,33 +128,47 @@ export class TaxonomyValidationService {
    */
   getMissingParents(spans: Span[]): string[] {
     const requiredParents = this.hierarchyValidator.getRequiredParents(spans);
-    const existingCategories = new Set(spans.map(s => s.category).filter(Boolean) as string[]);
-    
-    return Array.from(requiredParents).filter(parent => !existingCategories.has(parent));
+    const existingCategories = new Set(
+      spans.map((s) => s.category).filter(Boolean) as string[],
+    );
+
+    return Array.from(requiredParents).filter(
+      (parent) => !existingCategories.has(parent),
+    );
   }
 
   /**
    * Validate a single span before adding it
    * Returns whether it would create an orphan
    */
-  validateBeforeAdd(categoryId: string, existingSpans: Span[]): PreAddValidation {
-    const existingCategories = existingSpans.map(s => s.category).filter(Boolean) as string[];
-    const validation = this.hierarchyValidator.canAttributeExist(categoryId, existingCategories);
+  validateBeforeAdd(
+    categoryId: string,
+    existingSpans: Span[],
+  ): PreAddValidation {
+    const existingCategories = existingSpans
+      .map((s) => s.category)
+      .filter(Boolean) as string[];
+    const validation = this.hierarchyValidator.canAttributeExist(
+      categoryId,
+      existingCategories,
+    );
 
     if (validation.valid) {
       return {
         canAdd: true,
         missingParent: null,
-        warning: null
+        warning: null,
       };
     }
 
-    const parentLabel = this.reporter.getCategoryLabel(validation.missingParent || '');
-    
+    const parentLabel = this.reporter.getCategoryLabel(
+      validation.missingParent || "",
+    );
+
     return {
       canAdd: true, // Don't block, just warn
       missingParent: validation.missingParent,
-      warning: `This attribute requires a ${parentLabel}. Consider adding one first.`
+      warning: `This attribute requires a ${parentLabel}. Consider adding one first.`,
     };
   }
 
@@ -161,7 +183,7 @@ export class TaxonomyValidationService {
       orphanedCount: orphans.reduce((sum, o) => sum + o.count, 0),
       issueCount: orphans.length,
       hasOrphans: orphans.length > 0,
-      missingParents: orphans.map(o => o.missingParent)
+      missingParents: orphans.map((o) => o.missingParent),
     };
   }
 }

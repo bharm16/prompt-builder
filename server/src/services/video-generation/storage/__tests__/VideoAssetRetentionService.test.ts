@@ -1,28 +1,27 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   VideoAssetRetentionService,
   createVideoAssetRetentionService,
-} from '../VideoAssetRetentionService';
-import type { VideoAssetStore } from '../types';
+} from "../VideoAssetRetentionService";
+import type { VideoAssetStore } from "../types";
 
 const mocks = vi.hoisted(() => ({
   loggerInfo: vi.fn(),
   loggerWarn: vi.fn(),
 }));
 
-vi.mock(
-  '@infrastructure/Logger',
-  () => ({
-    logger: {
-      child: () => ({
-        info: mocks.loggerInfo,
-        warn: mocks.loggerWarn,
-      }),
-    },
-  })
-);
+vi.mock("@infrastructure/Logger", () => ({
+  logger: {
+    child: () => ({
+      info: mocks.loggerInfo,
+      warn: mocks.loggerWarn,
+    }),
+  },
+}));
 
-const createStore = (cleanupExpired = vi.fn<VideoAssetStore['cleanupExpired']>()) =>
+const createStore = (
+  cleanupExpired = vi.fn<VideoAssetStore["cleanupExpired"]>(),
+) =>
   ({
     storeFromBuffer: vi.fn(),
     storeFromStream: vi.fn(),
@@ -31,7 +30,7 @@ const createStore = (cleanupExpired = vi.fn<VideoAssetStore['cleanupExpired']>()
     cleanupExpired,
   }) as unknown as VideoAssetStore;
 
-describe('VideoAssetRetentionService', () => {
+describe("VideoAssetRetentionService", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.useRealTimers();
@@ -41,10 +40,12 @@ describe('VideoAssetRetentionService', () => {
     vi.useRealTimers();
   });
 
-  it('runOnce computes cutoff and logs cleanup count when assets are deleted', async () => {
+  it("runOnce computes cutoff and logs cleanup count when assets are deleted", async () => {
     vi.useFakeTimers();
-    vi.setSystemTime(new Date('2026-02-10T00:00:00.000Z'));
-    const cleanupExpired = vi.fn<VideoAssetStore['cleanupExpired']>().mockResolvedValue(3);
+    vi.setSystemTime(new Date("2026-02-10T00:00:00.000Z"));
+    const cleanupExpired = vi
+      .fn<VideoAssetStore["cleanupExpired"]>()
+      .mockResolvedValue(3);
     const store = createStore(cleanupExpired);
     const service = new VideoAssetRetentionService(store, {
       maxAgeMs: 3_600_000,
@@ -55,16 +56,19 @@ describe('VideoAssetRetentionService', () => {
     await service.runOnce();
 
     expect(cleanupExpired).toHaveBeenCalledWith(Date.now() - 3_600_000, 25);
-    expect(mocks.loggerInfo).toHaveBeenCalledWith('Expired video assets cleaned up', {
-      deleted: 3,
-      cutoffMs: Date.now() - 3_600_000,
-    });
+    expect(mocks.loggerInfo).toHaveBeenCalledWith(
+      "Expired video assets cleaned up",
+      {
+        deleted: 3,
+        cutoffMs: Date.now() - 3_600_000,
+      },
+    );
   });
 
-  it('runOnce swallows cleanup errors and logs warning', async () => {
+  it("runOnce swallows cleanup errors and logs warning", async () => {
     const cleanupExpired = vi
-      .fn<VideoAssetStore['cleanupExpired']>()
-      .mockRejectedValue(new Error('retention backend unavailable'));
+      .fn<VideoAssetStore["cleanupExpired"]>()
+      .mockRejectedValue(new Error("retention backend unavailable"));
     const store = createStore(cleanupExpired);
     const service = new VideoAssetRetentionService(store, {
       maxAgeMs: 3_600_000,
@@ -73,15 +77,21 @@ describe('VideoAssetRetentionService', () => {
     });
 
     await expect(service.runOnce()).resolves.toBeUndefined();
-    expect(mocks.loggerWarn).toHaveBeenCalledWith('Failed to cleanup expired video assets', {
-      error: 'retention backend unavailable',
-    });
+    expect(mocks.loggerWarn).toHaveBeenCalledWith(
+      "Failed to cleanup expired video assets",
+      {
+        error: "retention backend unavailable",
+      },
+    );
   });
 
-  it('runOnce prevents overlapping cleanup runs', async () => {
+  it("runOnce prevents overlapping cleanup runs", async () => {
     let resolveCleanup: ((value: number) => void) | undefined;
-    const cleanupExpired = vi.fn<VideoAssetStore['cleanupExpired']>(
-      () => new Promise<number>((resolve) => { resolveCleanup = resolve; })
+    const cleanupExpired = vi.fn<VideoAssetStore["cleanupExpired"]>(
+      () =>
+        new Promise<number>((resolve) => {
+          resolveCleanup = resolve;
+        }),
     );
     const store = createStore(cleanupExpired);
     const service = new VideoAssetRetentionService(store, {
@@ -99,16 +109,18 @@ describe('VideoAssetRetentionService', () => {
     await second;
   });
 
-  it('start runs immediately and on interval, and stop cancels future runs', async () => {
+  it("start runs immediately and on interval, and stop cancels future runs", async () => {
     vi.useFakeTimers();
-    const cleanupExpired = vi.fn<VideoAssetStore['cleanupExpired']>().mockResolvedValue(0);
+    const cleanupExpired = vi
+      .fn<VideoAssetStore["cleanupExpired"]>()
+      .mockResolvedValue(0);
     const store = createStore(cleanupExpired);
     const service = new VideoAssetRetentionService(store, {
       maxAgeMs: 3_600_000,
       cleanupIntervalMs: 1_000,
       batchSize: 10,
     });
-    const runOnceSpy = vi.spyOn(service, 'runOnce');
+    const runOnceSpy = vi.spyOn(service, "runOnce");
 
     service.start();
     expect(runOnceSpy).toHaveBeenCalledTimes(1);
@@ -125,9 +137,11 @@ describe('VideoAssetRetentionService', () => {
     expect(runOnceSpy).toHaveBeenCalledTimes(4);
   });
 
-  it('does not start when maxAgeMs is disabled', () => {
+  it("does not start when maxAgeMs is disabled", () => {
     vi.useFakeTimers();
-    const cleanupExpired = vi.fn<VideoAssetStore['cleanupExpired']>().mockResolvedValue(0);
+    const cleanupExpired = vi
+      .fn<VideoAssetStore["cleanupExpired"]>()
+      .mockResolvedValue(0);
     const store = createStore(cleanupExpired);
     const service = new VideoAssetRetentionService(store, {
       maxAgeMs: 0,
@@ -139,10 +153,12 @@ describe('VideoAssetRetentionService', () => {
     void vi.advanceTimersByTimeAsync(1_500);
 
     expect(cleanupExpired).not.toHaveBeenCalled();
-    expect(mocks.loggerWarn).toHaveBeenCalledWith('Video asset retention disabled (maxAgeMs <= 0)');
+    expect(mocks.loggerWarn).toHaveBeenCalledWith(
+      "Video asset retention disabled (maxAgeMs <= 0)",
+    );
   });
 
-  it('factory returns null for disabled or invalid interval and builds service for valid config', () => {
+  it("factory returns null for disabled or invalid interval and builds service for valid config", () => {
     const store = createStore();
 
     expect(
@@ -151,7 +167,7 @@ describe('VideoAssetRetentionService', () => {
         retentionHours: 24,
         cleanupIntervalMinutes: 15,
         batchSize: 100,
-      })
+      }),
     ).toBeNull();
 
     expect(
@@ -160,7 +176,7 @@ describe('VideoAssetRetentionService', () => {
         retentionHours: 24,
         cleanupIntervalMinutes: 0,
         batchSize: 100,
-      })
+      }),
     ).toBeNull();
 
     const service = createVideoAssetRetentionService(store, {

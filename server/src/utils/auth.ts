@@ -1,26 +1,26 @@
-import type { Request } from 'express';
+import type { Request } from "express";
 
-const BEARER_PREFIX = 'Bearer ';
-const FIREBASE_TOKEN_HEADER = 'x-firebase-token';
+const BEARER_PREFIX = "Bearer ";
+const FIREBASE_TOKEN_HEADER = "x-firebase-token";
 
 export interface RequestWithApiKey extends Request {
   apiKey?: string;
 }
 
 export function normalizeHeaderValue(
-  headerValue: string | string[] | undefined
+  headerValue: string | string[] | undefined,
 ): string | null {
   if (Array.isArray(headerValue)) {
     return headerValue[0] || null;
   }
-  if (typeof headerValue === 'string' && headerValue.trim().length > 0) {
+  if (typeof headerValue === "string" && headerValue.trim().length > 0) {
     return headerValue.trim();
   }
   return null;
 }
 
 export function extractBearerToken(
-  headerValue: string | string[] | undefined
+  headerValue: string | string[] | undefined,
 ): string | null {
   const value = normalizeHeaderValue(headerValue);
   if (!value || !value.startsWith(BEARER_PREFIX)) {

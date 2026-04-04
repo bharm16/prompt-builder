@@ -17,12 +17,18 @@
  * - CoT reasoning improves accuracy at negligible latency cost
  */
 
-import { logger } from '@infrastructure/Logger';
-import { SECURITY_REMINDER } from '@utils/SecurityPrompts';
-import { BaseVideoTemplateBuilder, VideoTemplateContext, VideoTemplateResult } from './BaseVideoTemplateBuilder';
+import { logger } from "@infrastructure/Logger";
+import { SECURITY_REMINDER } from "@utils/SecurityPrompts";
+import {
+  BaseVideoTemplateBuilder,
+  VideoTemplateContext,
+  VideoTemplateResult,
+} from "./BaseVideoTemplateBuilder";
 
 export class GroqVideoTemplateBuilder extends BaseVideoTemplateBuilder {
-  protected override readonly log = logger.child({ service: 'GroqVideoTemplateBuilder' });
+  protected override readonly log = logger.child({
+    service: "GroqVideoTemplateBuilder",
+  });
   /**
    * Build Groq-optimized template
    *
@@ -33,11 +39,17 @@ export class GroqVideoTemplateBuilder extends BaseVideoTemplateBuilder {
    */
   override buildTemplate(context: VideoTemplateContext): VideoTemplateResult {
     const startTime = performance.now();
-    const operation = 'buildTemplate';
-    
-    const { userConcept, interpretedPlan, includeInstructions = true, generationParams, originalUserPrompt } = context;
+    const operation = "buildTemplate";
 
-    this.log.debug('Building Groq video template', {
+    const {
+      userConcept,
+      interpretedPlan,
+      includeInstructions = true,
+      generationParams,
+      originalUserPrompt,
+    } = context;
+
+    this.log.debug("Building Groq video template", {
       operation,
       includeInstructions,
       hasInterpretedPlan: !!interpretedPlan,
@@ -46,14 +58,21 @@ export class GroqVideoTemplateBuilder extends BaseVideoTemplateBuilder {
 
     try {
       // System prompt: All instructions embedded (8B model needs explicit guidance)
-      const systemPrompt = this.buildSystemPrompt(includeInstructions, generationParams);
+      const systemPrompt = this.buildSystemPrompt(
+        includeInstructions,
+        generationParams,
+      );
 
       // User message: Data + format reminder (sandwich prompting)
-      const userMessage = this.buildUserMessage(userConcept, interpretedPlan, originalUserPrompt ?? null);
+      const userMessage = this.buildUserMessage(
+        userConcept,
+        interpretedPlan,
+        originalUserPrompt ?? null,
+      );
 
       const duration = Math.round(performance.now() - startTime);
 
-      this.log.info('Groq video template built', {
+      this.log.info("Groq video template built", {
         operation,
         duration,
         systemPromptLength: systemPrompt.length,
@@ -63,17 +82,17 @@ export class GroqVideoTemplateBuilder extends BaseVideoTemplateBuilder {
       return {
         systemPrompt,
         userMessage,
-        provider: 'groq',
+        provider: "groq",
       };
     } catch (error) {
       const duration = Math.round(performance.now() - startTime);
-      
-      this.log.error('Failed to build Groq video template', error as Error, {
+
+      this.log.error("Failed to build Groq video template", error as Error, {
         operation,
         duration,
         conceptLength: userConcept.length,
       });
-      
+
       throw error;
     }
   }
@@ -84,23 +103,33 @@ export class GroqVideoTemplateBuilder extends BaseVideoTemplateBuilder {
    * All constraints embedded - no developer role available
    * Focuses on core concepts, avoids overwhelming detail
    */
-  private buildSystemPrompt(includeInstructions: boolean, generationParams?: Record<string, string | number | boolean>): string {
+  private buildSystemPrompt(
+    includeInstructions: boolean,
+    generationParams?: Record<string, string | number | boolean>,
+  ): string {
     if (!includeInstructions) {
-      return 'You are an expert video prompt optimizer.';
+      return "You are an expert video prompt optimizer.";
     }
 
-    let userOverrides = '';
+    let userOverrides = "";
     if (generationParams) {
       const overrides = [];
-      if (generationParams.aspect_ratio) overrides.push(`- Aspect Ratio: ${generationParams.aspect_ratio}`);
-      if (generationParams.resolution) overrides.push(`- Resolution: ${generationParams.resolution}`);
-      if (generationParams.duration_s) overrides.push(`- Duration: ${generationParams.duration_s}s`);
-      if (generationParams.fps) overrides.push(`- Frame Rate: ${generationParams.fps}fps`);
-      if (typeof generationParams.audio === 'boolean') overrides.push(`- Audio: ${generationParams.audio ? 'Enabled' : 'Muted'}`);
-      
+      if (generationParams.aspect_ratio)
+        overrides.push(`- Aspect Ratio: ${generationParams.aspect_ratio}`);
+      if (generationParams.resolution)
+        overrides.push(`- Resolution: ${generationParams.resolution}`);
+      if (generationParams.duration_s)
+        overrides.push(`- Duration: ${generationParams.duration_s}s`);
+      if (generationParams.fps)
+        overrides.push(`- Frame Rate: ${generationParams.fps}fps`);
+      if (typeof generationParams.audio === "boolean")
+        overrides.push(
+          `- Audio: ${generationParams.audio ? "Enabled" : "Muted"}`,
+        );
+
       if (overrides.length > 0) {
         userOverrides = `\n\n## USER OVERRIDES (Reflect these in output technical_specs)
-${overrides.join('\n')}`;
+${overrides.join("\n")}`;
       }
     }
 
@@ -195,10 +224,14 @@ If <original_user_prompt> is provided, treat it as source of truth; use <user_co
   private buildUserMessage(
     userConcept: string,
     interpretedPlan?: Record<string, unknown> | null,
-    originalUserPrompt?: string | null
+    originalUserPrompt?: string | null,
   ): string {
     // Wrap user concept and plan in XML
-    const xmlData = this.wrapUserConcept(userConcept, interpretedPlan, originalUserPrompt);
+    const xmlData = this.wrapUserConcept(
+      userConcept,
+      interpretedPlan,
+      originalUserPrompt,
+    );
 
     // Sandwich prompting: Add format reminder at end
     return `${xmlData}

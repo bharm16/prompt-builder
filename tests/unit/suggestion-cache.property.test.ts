@@ -8,12 +8,15 @@
  * @module SuggestionCache.property.test
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
-import * as fc from 'fast-check';
+import { describe, it, expect, beforeEach } from "vitest";
+import * as fc from "fast-check";
 
-import { SuggestionCache, simpleHash } from '@features/prompt-optimizer/utils/SuggestionCache';
+import {
+  SuggestionCache,
+  simpleHash,
+} from "@features/prompt-optimizer/utils/SuggestionCache";
 
-describe('SuggestionCache Property Tests', () => {
+describe("SuggestionCache Property Tests", () => {
   /**
    * Property 5: Cache Key Uniqueness
    *
@@ -24,8 +27,8 @@ describe('SuggestionCache Property Tests', () => {
    * **Feature: ai-suggestions-fixes, Property 5: Cache Key Uniqueness**
    * **Validates: Requirements 6.2, 6.5**
    */
-  describe('Property 5: Cache Key Uniqueness', () => {
-    it('identical inputs produce identical cache keys', () => {
+  describe("Property 5: Cache Key Uniqueness", () => {
+    it("identical inputs produce identical cache keys", () => {
       fc.assert(
         fc.property(
           fc.string({ minLength: 0, maxLength: 100 }),
@@ -37,24 +40,24 @@ describe('SuggestionCache Property Tests', () => {
               highlightedText,
               contextBefore,
               contextAfter,
-              promptHash
+              promptHash,
             );
             const key2 = SuggestionCache.generateKey(
               highlightedText,
               contextBefore,
               contextAfter,
-              promptHash
+              promptHash,
             );
 
             // Same inputs must produce same key
             expect(key1).toBe(key2);
-          }
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
 
-    it('different highlightedText produces different cache keys', () => {
+    it("different highlightedText produces different cache keys", () => {
       fc.assert(
         fc.property(
           fc.string({ minLength: 1, maxLength: 50 }),
@@ -66,18 +69,28 @@ describe('SuggestionCache Property Tests', () => {
             // Skip if texts are the same
             fc.pre(text1 !== text2);
 
-            const key1 = SuggestionCache.generateKey(text1, contextBefore, contextAfter, promptHash);
-            const key2 = SuggestionCache.generateKey(text2, contextBefore, contextAfter, promptHash);
+            const key1 = SuggestionCache.generateKey(
+              text1,
+              contextBefore,
+              contextAfter,
+              promptHash,
+            );
+            const key2 = SuggestionCache.generateKey(
+              text2,
+              contextBefore,
+              contextAfter,
+              promptHash,
+            );
 
             // Different highlighted text must produce different keys
             expect(key1).not.toBe(key2);
-          }
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
 
-    it('different contextBefore produces different cache keys', () => {
+    it("different contextBefore produces different cache keys", () => {
       fc.assert(
         fc.property(
           fc.string({ minLength: 0, maxLength: 50 }),
@@ -93,24 +106,24 @@ describe('SuggestionCache Property Tests', () => {
               highlightedText,
               context1,
               contextAfter,
-              promptHash
+              promptHash,
             );
             const key2 = SuggestionCache.generateKey(
               highlightedText,
               context2,
               contextAfter,
-              promptHash
+              promptHash,
             );
 
             // Different context before must produce different keys
             expect(key1).not.toBe(key2);
-          }
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
 
-    it('different contextAfter produces different cache keys', () => {
+    it("different contextAfter produces different cache keys", () => {
       fc.assert(
         fc.property(
           fc.string({ minLength: 0, maxLength: 50 }),
@@ -126,24 +139,24 @@ describe('SuggestionCache Property Tests', () => {
               highlightedText,
               contextBefore,
               context1,
-              promptHash
+              promptHash,
             );
             const key2 = SuggestionCache.generateKey(
               highlightedText,
               contextBefore,
               context2,
-              promptHash
+              promptHash,
             );
 
             // Different context after must produce different keys
             expect(key1).not.toBe(key2);
-          }
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
 
-    it('different promptHash produces different cache keys', () => {
+    it("different promptHash produces different cache keys", () => {
       fc.assert(
         fc.property(
           fc.string({ minLength: 0, maxLength: 50 }),
@@ -159,24 +172,24 @@ describe('SuggestionCache Property Tests', () => {
               highlightedText,
               contextBefore,
               contextAfter,
-              hash1
+              hash1,
             );
             const key2 = SuggestionCache.generateKey(
               highlightedText,
               contextBefore,
               contextAfter,
-              hash2
+              hash2,
             );
 
             // Different prompt hash must produce different keys
             expect(key1).not.toBe(key2);
-          }
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
 
-    it('simpleHash produces consistent results for same input', () => {
+    it("simpleHash produces consistent results for same input", () => {
       fc.assert(
         fc.property(fc.string({ minLength: 0, maxLength: 500 }), (input) => {
           const hash1 = simpleHash(input);
@@ -185,7 +198,7 @@ describe('SuggestionCache Property Tests', () => {
           // Same input must produce same hash
           expect(hash1).toBe(hash2);
         }),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
   });
@@ -199,15 +212,21 @@ describe('SuggestionCache Property Tests', () => {
    * **Feature: ai-suggestions-fixes, Property 6: Cache Hit Returns Without API Call**
    * **Validates: Requirements 6.1, 6.3**
    */
-  describe('Property 6: Cache Hit Returns Without API Call', () => {
-    it('cached values are returned without modification', () => {
+  describe("Property 6: Cache Hit Returns Without API Call", () => {
+    it("cached values are returned without modification", () => {
       fc.assert(
         fc.property(
           fc.string({ minLength: 1, maxLength: 50 }),
-          fc.array(fc.string({ minLength: 1, maxLength: 100 }), { minLength: 1, maxLength: 10 }),
+          fc.array(fc.string({ minLength: 1, maxLength: 100 }), {
+            minLength: 1,
+            maxLength: 10,
+          }),
           (key, suggestions) => {
             // Create fresh cache for each iteration to avoid cross-iteration pollution
-            const cache = new SuggestionCache<{ suggestions: string[] }>({ ttlMs: 300000, maxEntries: 100 });
+            const cache = new SuggestionCache<{ suggestions: string[] }>({
+              ttlMs: 300000,
+              maxEntries: 100,
+            });
             const value = { suggestions };
 
             // Set the value
@@ -219,24 +238,30 @@ describe('SuggestionCache Property Tests', () => {
             expect(retrieved).not.toBeNull();
             expect(retrieved).toEqual(value);
             expect(retrieved?.suggestions).toEqual(suggestions);
-          }
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
 
-    it('cache hit returns value, cache miss returns null', () => {
+    it("cache hit returns value, cache miss returns null", () => {
       fc.assert(
         fc.property(
           fc.string({ minLength: 1, maxLength: 50 }),
           fc.string({ minLength: 1, maxLength: 50 }),
-          fc.array(fc.string({ minLength: 1, maxLength: 50 }), { minLength: 1, maxLength: 5 }),
+          fc.array(fc.string({ minLength: 1, maxLength: 50 }), {
+            minLength: 1,
+            maxLength: 5,
+          }),
           (cachedKey, uncachedKey, suggestions) => {
             // Ensure keys are different
             fc.pre(cachedKey !== uncachedKey);
 
             // Create fresh cache for each iteration to avoid cross-iteration pollution
-            const cache = new SuggestionCache<{ suggestions: string[] }>({ ttlMs: 300000, maxEntries: 100 });
+            const cache = new SuggestionCache<{ suggestions: string[] }>({
+              ttlMs: 300000,
+              maxEntries: 100,
+            });
             const value = { suggestions };
 
             // Set value for cachedKey only
@@ -247,19 +272,25 @@ describe('SuggestionCache Property Tests', () => {
 
             // Uncached key should return null
             expect(cache.get(uncachedKey)).toBeNull();
-          }
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
 
-    it('multiple cache entries are stored and retrieved independently', () => {
+    it("multiple cache entries are stored and retrieved independently", () => {
       fc.assert(
         fc.property(
-          fc.uniqueArray(fc.string({ minLength: 1, maxLength: 30 }), { minLength: 2, maxLength: 10 }),
+          fc.uniqueArray(fc.string({ minLength: 1, maxLength: 30 }), {
+            minLength: 2,
+            maxLength: 10,
+          }),
           (keys) => {
             // Create fresh cache for each iteration to avoid cross-iteration pollution
-            const cache = new SuggestionCache<{ suggestions: string[] }>({ ttlMs: 300000, maxEntries: 100 });
+            const cache = new SuggestionCache<{ suggestions: string[] }>({
+              ttlMs: 300000,
+              maxEntries: 100,
+            });
 
             // Create unique values for each key
             const entries = keys.map((key, index) => ({
@@ -277,13 +308,13 @@ describe('SuggestionCache Property Tests', () => {
               const retrieved = cache.get(entry.key);
               expect(retrieved).toEqual(entry.value);
             }
-          }
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
 
-    it('cache respects maxEntries limit', () => {
+    it("cache respects maxEntries limit", () => {
       fc.assert(
         fc.property(
           fc.integer({ min: 5, max: 20 }),
@@ -308,13 +339,13 @@ describe('SuggestionCache Property Tests', () => {
             for (let i = totalEntries - maxEntries; i < totalEntries; i++) {
               expect(limitedCache.get(`key_${i}`)).toEqual({ id: i });
             }
-          }
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
 
-    it('expired entries return null (simulated with short TTL)', async () => {
+    it("expired entries return null (simulated with short TTL)", async () => {
       // Use very short TTL for this test
       const shortTtlCache = new SuggestionCache<{ data: string }>({
         ttlMs: 10, // 10ms TTL
@@ -339,25 +370,32 @@ describe('SuggestionCache Property Tests', () => {
 
             // After expiry, should return null
             expect(shortTtlCache.get(key)).toBeNull();
-          }
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     }, 30000);
 
-    it('has() returns true for valid entries and false for missing/expired', () => {
+    it("has() returns true for valid entries and false for missing/expired", () => {
       fc.assert(
         fc.property(
           // Use prefixed keys to avoid prototype property name collisions
-          fc.string({ minLength: 1, maxLength: 50 }).map((s) => `cache_key_${s}`),
-          fc.string({ minLength: 1, maxLength: 50 }).map((s) => `cache_key_${s}`),
+          fc
+            .string({ minLength: 1, maxLength: 50 })
+            .map((s) => `cache_key_${s}`),
+          fc
+            .string({ minLength: 1, maxLength: 50 })
+            .map((s) => `cache_key_${s}`),
           fc.array(fc.string(), { minLength: 1, maxLength: 5 }),
           (existingKey, missingKey, suggestions) => {
             // Ensure keys are different
             fc.pre(existingKey !== missingKey);
 
             // Create fresh cache for each iteration to avoid cross-iteration pollution
-            const cache = new SuggestionCache<{ suggestions: string[] }>({ ttlMs: 300000, maxEntries: 100 });
+            const cache = new SuggestionCache<{ suggestions: string[] }>({
+              ttlMs: 300000,
+              maxEntries: 100,
+            });
 
             cache.set(existingKey, { suggestions });
 
@@ -366,19 +404,25 @@ describe('SuggestionCache Property Tests', () => {
 
             // has() should return false for missing key
             expect(cache.has(missingKey)).toBe(false);
-          }
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
 
-    it('clear() removes all entries', () => {
+    it("clear() removes all entries", () => {
       fc.assert(
         fc.property(
-          fc.uniqueArray(fc.string({ minLength: 1, maxLength: 30 }), { minLength: 1, maxLength: 10 }),
+          fc.uniqueArray(fc.string({ minLength: 1, maxLength: 30 }), {
+            minLength: 1,
+            maxLength: 10,
+          }),
           (keys) => {
             // Create fresh cache for each iteration to avoid cross-iteration pollution
-            const cache = new SuggestionCache<{ suggestions: string[] }>({ ttlMs: 300000, maxEntries: 100 });
+            const cache = new SuggestionCache<{ suggestions: string[] }>({
+              ttlMs: 300000,
+              maxEntries: 100,
+            });
 
             // Add entries
             for (const key of keys) {
@@ -396,9 +440,9 @@ describe('SuggestionCache Property Tests', () => {
             for (const key of keys) {
               expect(cache.get(key)).toBeNull();
             }
-          }
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
   });

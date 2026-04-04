@@ -1,6 +1,6 @@
 /**
  * Configuration Module
- * 
+ *
  * Barrel export for all configuration constants and utilities.
  */
 
@@ -12,13 +12,10 @@ export {
   PERFORMANCE_MARKS,
   PERFORMANCE_MEASURES,
   DATASET_KEYS,
-} from './constants';
+} from "./constants";
 
 // Debounce utilities
-export { calculateSmartDebounce } from './debounce';
+export { calculateSmartDebounce } from "./debounce";
 
 // Highlight styles
-export {
-  getHighlightClassName,
-  applyHighlightStyles,
-} from './highlightStyles';
+export { getHighlightClassName, applyHighlightStyles } from "./highlightStyles";

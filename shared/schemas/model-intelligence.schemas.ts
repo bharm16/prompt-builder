@@ -5,7 +5,7 @@
  * re-export).  Used in contract tests to validate server payloads.
  * `.passthrough()` allows forward-compatible additions.
  */
-import { z } from 'zod';
+import { z } from "zod";
 
 export const FactorScoreSchema = z.object({
   factor: z.string(),
@@ -27,7 +27,7 @@ export const ModelScoreSchema = z.object({
 
 export const RecommendationSummarySchema = z.object({
   modelId: z.string(),
-  confidence: z.enum(['high', 'medium', 'low']).optional(),
+  confidence: z.enum(["high", "medium", "low"]).optional(),
   reasoning: z.string(),
 });
 
@@ -37,7 +37,7 @@ export const PromptRequirementsSchema = z.object({
     hasParticleSystems: z.boolean(),
     hasFluidDynamics: z.boolean(),
     hasSoftBodyPhysics: z.boolean(),
-    physicsComplexity: z.enum(['none', 'simple', 'moderate', 'complex']),
+    physicsComplexity: z.enum(["none", "simple", "moderate", "complex"]),
   }),
   character: z.object({
     hasHumanCharacter: z.boolean(),
@@ -46,18 +46,18 @@ export const PromptRequirementsSchema = z.object({
     requiresFacialPerformance: z.boolean(),
     requiresBodyLanguage: z.boolean(),
     requiresLipSync: z.boolean(),
-    emotionalIntensity: z.enum(['none', 'subtle', 'moderate', 'intense']),
+    emotionalIntensity: z.enum(["none", "subtle", "moderate", "intense"]),
   }),
   environment: z.object({
-    complexity: z.enum(['simple', 'moderate', 'complex']),
-    type: z.enum(['interior', 'exterior', 'abstract', 'mixed']),
+    complexity: z.enum(["simple", "moderate", "complex"]),
+    type: z.enum(["interior", "exterior", "abstract", "mixed"]),
     hasArchitecture: z.boolean(),
     hasNature: z.boolean(),
     hasUrbanElements: z.boolean(),
   }),
   lighting: z.object({
-    requirements: z.enum(['natural', 'stylized', 'dramatic', 'mixed']),
-    complexity: z.enum(['simple', 'moderate', 'complex']),
+    requirements: z.enum(["natural", "stylized", "dramatic", "mixed"]),
+    complexity: z.enum(["simple", "moderate", "complex"]),
     hasPracticalLights: z.boolean(),
     requiresAtmospherics: z.boolean(),
   }),
@@ -69,8 +69,8 @@ export const PromptRequirementsSchema = z.object({
     hasSpecificAesthetic: z.string().nullable(),
   }),
   motion: z.object({
-    cameraComplexity: z.enum(['static', 'simple', 'moderate', 'complex']),
-    subjectComplexity: z.enum(['static', 'simple', 'moderate', 'complex']),
+    cameraComplexity: z.enum(["static", "simple", "moderate", "complex"]),
+    subjectComplexity: z.enum(["static", "simple", "moderate", "complex"]),
     hasMorphing: z.boolean(),
     hasTransitions: z.boolean(),
   }),
@@ -93,7 +93,7 @@ export const ModelRecommendationSchema = z
         z.object({
           modelId: z.string(),
           reason: z.string(),
-        })
+        }),
       )
       .optional(),
     computedAt: z.union([z.string(), z.date()]).optional(),
@@ -107,4 +107,6 @@ export const ModelRecommendationResponseSchema = z.object({
   details: z.unknown().optional(),
 });
 
-export type ModelRecommendationResponse = z.infer<typeof ModelRecommendationResponseSchema>;
+export type ModelRecommendationResponse = z.infer<
+  typeof ModelRecommendationResponseSchema
+>;

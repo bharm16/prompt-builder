@@ -44,7 +44,7 @@ interface Prediction {
   policy: Record<string, unknown> | null;
   templateVersion: string | null;
   confidence: number;
-  reason: 'frequent_pattern' | 'similar_pattern';
+  reason: "frequent_pattern" | "similar_pattern";
 }
 
 interface ServiceStats {
@@ -185,7 +185,7 @@ export class PredictiveCacheService {
         policy: data.policy,
         templateVersion: data.templateVersion,
         confidence: Math.min(data.count / 10, 1), // Confidence score
-        reason: 'frequent_pattern',
+        reason: "frequent_pattern",
       });
     });
 
@@ -200,14 +200,17 @@ export class PredictiveCacheService {
           return; // Already in predictions
         }
 
-        const similarity = this._calculateSimilarity(lastRequest.text, data.text);
+        const similarity = this._calculateSimilarity(
+          lastRequest.text,
+          data.text,
+        );
         if (similarity > 0.8) {
           predictions.push({
             text: data.text,
             policy: data.policy,
             templateVersion: data.templateVersion,
             confidence: similarity,
-            reason: 'similar_pattern',
+            reason: "similar_pattern",
           });
         }
       });
@@ -270,7 +273,8 @@ export class PredictiveCacheService {
       preWarmQueueSize: this.preWarmQueue.length,
       predictionAccuracy:
         this.stats.preWarmSuccess > 0
-          ? (this.stats.cacheHitsFromPrediction / this.stats.preWarmSuccess) * 100
+          ? (this.stats.cacheHitsFromPrediction / this.stats.preWarmSuccess) *
+            100
           : 0,
     };
   }
@@ -301,15 +305,17 @@ export class PredictiveCacheService {
    */
   private _getPatternKey(
     request:
-      | { text: string; policy?: Record<string, unknown> | null; templateVersion?: string | null }
-      | Prediction
+      | {
+          text: string;
+          policy?: Record<string, unknown> | null;
+          templateVersion?: string | null;
+        }
+      | Prediction,
   ): string {
     // Simple hash based on text length + policy
     const textHash = this._simpleHash(request.text);
-    const policyHash = this._simpleHash(
-      JSON.stringify(request.policy || {})
-    );
-    return `${textHash}_${policyHash}_${request.templateVersion || 'v1'}`;
+    const policyHash = this._simpleHash(JSON.stringify(request.policy || {}));
+    return `${textHash}_${policyHash}_${request.templateVersion || "v1"}`;
   }
 
   /**
@@ -373,7 +379,7 @@ export class PredictiveCacheService {
    * @private
    */
   private _schedulePreWarm(): void {
-    if (typeof requestIdleCallback === 'undefined') {
+    if (typeof requestIdleCallback === "undefined") {
       return; // Not supported
     }
 
@@ -389,7 +395,7 @@ export class PredictiveCacheService {
    */
   private _waitForIdle(): Promise<boolean> {
     return new Promise((resolve) => {
-      if (typeof requestIdleCallback === 'undefined') {
+      if (typeof requestIdleCallback === "undefined") {
         // Fallback: Use setTimeout
         setTimeout(() => resolve(true), 100);
         return;
@@ -397,7 +403,7 @@ export class PredictiveCacheService {
 
       requestIdleCallback(
         () => resolve(true),
-        { timeout: 2000 } // Max 2s wait
+        { timeout: 2000 }, // Max 2s wait
       );
     });
   }
@@ -410,4 +416,3 @@ export const predictiveCacheService = new PredictiveCacheService({
   minFrequency: 2,
   predictionWindow: 5,
 });
-

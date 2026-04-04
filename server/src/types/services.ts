@@ -4,7 +4,10 @@
  * Types for service interfaces and implementations
  */
 
-import type { PromptOptimizationRequest, SuggestionRequest } from './requests.ts';
+import type {
+  PromptOptimizationRequest,
+  SuggestionRequest,
+} from "./requests.ts";
 
 export interface OptimizationResult {
   optimizedPrompt: string;
@@ -66,7 +69,5 @@ export interface CacheStats {
   hitRate: number;
 }
 
-
-
 // Re-export AIService type for backward compatibility
-export type { AIService } from '../services/enhancement/services/types.ts';
+export type { AIService } from "../services/enhancement/services/types.ts";

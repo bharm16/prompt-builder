@@ -1,5 +1,5 @@
-import { logger } from '@infrastructure/Logger';
-import type { ILogger } from '@interfaces/ILogger';
+import { logger } from "@infrastructure/Logger";
+import type { ILogger } from "@interfaces/ILogger";
 
 interface Telemetry {
   exactMatches: number;
@@ -34,14 +34,14 @@ export class SubstringPositionCache {
   constructor() {
     this.cache = new Map();
     this.currentText = null;
-    this.log = logger.child({ service: 'SubstringPositionCache' });
+    this.log = logger.child({ service: "SubstringPositionCache" });
     // Telemetry for Phase 1
     this.telemetry = {
       exactMatches: 0,
       caseInsensitiveMatches: 0,
       fuzzyMatches: 0,
       failures: 0,
-      totalRequests: 0
+      totalRequests: 0,
     };
   }
 
@@ -61,7 +61,7 @@ export class SubstringPositionCache {
       caseInsensitiveMatches: 0,
       fuzzyMatches: 0,
       failures: 0,
-      totalRequests: 0
+      totalRequests: 0,
     };
   }
 
@@ -70,14 +70,14 @@ export class SubstringPositionCache {
    * (removes quotes/markdown noise, collapses whitespace, normalizes unicode)
    */
   private _cleanForMatch(value: unknown): string {
-    if (typeof value !== 'string') return '';
+    if (typeof value !== "string") return "";
 
     return value
-      .normalize('NFD') // Unicode normalization (decompose accented characters)
-      .replace(/[\u0300-\u036f]/g, '') // Remove combining diacritical marks
-      .replace(/[`"'""]/g, '') // Remove quotes
-      .replace(/\*\*/g, '') // Remove markdown bold
-      .replace(/\s+/g, ' ') // Collapse whitespace
+      .normalize("NFD") // Unicode normalization (decompose accented characters)
+      .replace(/[\u0300-\u036f]/g, "") // Remove combining diacritical marks
+      .replace(/[`"'""]/g, "") // Remove quotes
+      .replace(/\*\*/g, "") // Remove markdown bold
+      .replace(/\s+/g, " ") // Collapse whitespace
       .toLowerCase()
       .trim();
   }
@@ -107,7 +107,7 @@ export class SubstringPositionCache {
         curr[j + 1] = Math.min(
           curr[j] + 1, // insertion
           prev[j + 1] + 1, // deletion
-          prev[j] + cost // substitution
+          prev[j] + cost, // substitution
         );
       }
       const swap = prev;
@@ -222,13 +222,13 @@ export class SubstringPositionCache {
    */
   findAllMatches(text: string, substring: string): MatchResult[] {
     if (!substring) return [];
-    
+
     const occurrences = this._getOccurrences(text, substring);
     const len = substring.length;
-    
-    return occurrences.map(start => ({
+
+    return occurrences.map((start) => ({
       start,
-      end: start + len
+      end: start + len,
     }));
   }
 
@@ -246,7 +246,7 @@ export class SubstringPositionCache {
   findBestMatch(
     text: string,
     substring: string,
-    preferredStart = 0
+    preferredStart = 0,
   ): MatchResult | null {
     if (!substring) return null;
 
@@ -261,22 +261,22 @@ export class SubstringPositionCache {
       const idx = loweredTarget ? loweredSource.indexOf(loweredTarget) : -1;
       if (idx === -1) {
         // Fuzzy fallback for minor typos or spacing differences (Design A - anchored substring extraction)
-        this.log.debug('Fuzzy matching required', {
-          operation: 'find',
+        this.log.debug("Fuzzy matching required", {
+          operation: "find",
           substringPreview: substring.slice(0, 50),
         });
         const result = this._fuzzyFind(text, substring);
         if (result) {
           this.telemetry.fuzzyMatches++;
-          this.log.debug('Fuzzy match found', {
-            operation: 'find',
+          this.log.debug("Fuzzy match found", {
+            operation: "find",
             start: result.start,
             end: result.end,
           });
         } else {
           this.telemetry.failures++;
-          this.log.warn('No match found for substring', {
-            operation: 'find',
+          this.log.warn("No match found for substring", {
+            operation: "find",
             substringPreview: substring.slice(0, 50),
           });
         }
@@ -295,7 +295,7 @@ export class SubstringPositionCache {
     }
 
     const preferred =
-      typeof preferredStart === 'number' && Number.isFinite(preferredStart)
+      typeof preferredStart === "number" && Number.isFinite(preferredStart)
         ? preferredStart
         : 0;
 
@@ -308,7 +308,10 @@ export class SubstringPositionCache {
     // If preferred is before first occurrence, return first
     const firstOccurrence = occurrences[0];
     if (firstOccurrence !== undefined && preferred <= firstOccurrence) {
-      return { start: firstOccurrence, end: firstOccurrence + substring.length };
+      return {
+        start: firstOccurrence,
+        end: firstOccurrence + substring.length,
+      };
     }
 
     // If preferred is after last occurrence, return last
@@ -322,7 +325,7 @@ export class SubstringPositionCache {
       const mid = Math.floor((left + right) / 2);
       const candidate = occurrences[mid];
       if (candidate === undefined) break;
-      
+
       const distance = Math.abs(candidate - preferred);
 
       if (distance < bestDistance) {
@@ -343,8 +346,8 @@ export class SubstringPositionCache {
 
     this.telemetry.exactMatches++; // Multiple occurrences, but we found the best one
     if (preferred !== 0 && bestDistance > 100) {
-      this.log.debug('Large offset difference detected', {
-        operation: 'find',
+      this.log.debug("Large offset difference detected", {
+        operation: "find",
         preferred,
         found: best,
         distance: bestDistance,

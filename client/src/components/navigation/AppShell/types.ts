@@ -4,16 +4,18 @@
  * @see ARCHITECTURE_STANDARD.md Section 1 - Frontend Component Structure
  */
 
-import type { ComponentType, ReactNode } from 'react';
-import type { User } from '@features/prompt-optimizer/types/domain/prompt-session';
-import type { ToolSidebarProps } from '@components/ToolSidebar/types';
+import type { ComponentType, ReactNode } from "react";
+import type { User } from "@features/prompt-optimizer/types/domain/prompt-session";
 
 // -----------------------------------------------------------------------------
 // Navigation Item Types
 // -----------------------------------------------------------------------------
 
 /** Icon component type for nav items */
-export type IconComponent = ComponentType<{ className?: string; size?: number }>;
+export type IconComponent = ComponentType<{
+  className?: string;
+  size?: number;
+}>;
 
 /** Single navigation item configuration */
 export interface NavItem {
@@ -25,28 +27,28 @@ export interface NavItem {
 }
 
 /** Available shell variants based on route */
-export type ShellVariant = 'topnav' | 'sidebar' | 'none';
+export type ShellVariant = "topnav" | "sidebar" | "none";
 // -----------------------------------------------------------------------------
 // Component Props
 // -----------------------------------------------------------------------------
 
 /** Props for BrandLogo component */
 export interface BrandLogoProps {
-  readonly variant: 'topnav' | 'sidebar' | 'sidebar-collapsed';
+  readonly variant: "topnav" | "sidebar" | "sidebar-collapsed";
   readonly className?: string;
 }
 
 /** Props for NavLinks component */
 export interface NavLinksProps {
   readonly items: readonly NavItem[];
-  readonly variant: 'horizontal' | 'vertical' | 'vertical-collapsed';
+  readonly variant: "horizontal" | "vertical" | "vertical-collapsed";
   readonly className?: string;
 }
 
 /** Props for UserMenu component */
 export interface UserMenuProps {
   readonly user: User | null;
-  readonly variant: 'topnav' | 'sidebar';
+  readonly variant: "topnav" | "sidebar";
   readonly className?: string;
 }
 
@@ -61,7 +63,6 @@ export interface AppShellProps {
   readonly children: ReactNode;
   readonly showHistory?: boolean;
   readonly onToggleHistory?: (show: boolean) => void;
-  readonly toolSidebarProps?: Omit<ToolSidebarProps, 'user'> | undefined;
 }
 
 // -----------------------------------------------------------------------------

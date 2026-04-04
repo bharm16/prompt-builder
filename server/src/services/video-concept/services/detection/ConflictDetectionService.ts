@@ -1,14 +1,16 @@
-import { logger } from '@infrastructure/Logger';
-import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer';
-import type { StructuredOutputSchema } from '@utils/structured-output/types';
-import {
-  detectDescriptorCategory,
-} from '@services/video-concept/config/descriptorCategories';
-import type { AIService } from '@services/prompt-optimization/types';
+import { logger } from "@infrastructure/Logger";
+import { StructuredOutputEnforcer } from "@utils/StructuredOutputEnforcer";
+import type { StructuredOutputSchema } from "@utils/structured-output/types";
+import { detectDescriptorCategory } from "@services/video-concept/config/descriptorCategories";
+import type { AIService } from "@services/prompt-optimization/types";
 
-const SUBJECT_DESCRIPTOR_KEYS = ['subjectDescriptor1', 'subjectDescriptor2', 'subjectDescriptor3'] as const;
+const SUBJECT_DESCRIPTOR_KEYS = [
+  "subjectDescriptor1",
+  "subjectDescriptor2",
+  "subjectDescriptor3",
+] as const;
 
-type SubjectDescriptorKey = typeof SUBJECT_DESCRIPTOR_KEYS[number];
+type SubjectDescriptorKey = (typeof SUBJECT_DESCRIPTOR_KEYS)[number];
 
 type DescriptorDetection = {
   category: string | null;
@@ -30,7 +32,7 @@ type DescriptorCategoryEntry = DescriptorInput & {
  */
 export interface Conflict {
   elements: string[];
-  severity: 'high' | 'medium' | 'low';
+  severity: "high" | "medium" | "low";
   message: string;
   resolution: string;
 }
@@ -41,13 +43,13 @@ export interface Conflict {
  */
 export class ConflictDetectionService {
   private readonly ai: AIService;
-  private readonly log = logger.child({ service: 'ConflictDetectionService' });
+  private readonly log = logger.child({ service: "ConflictDetectionService" });
 
   constructor(aiService: AIService) {
     this.ai = aiService;
-    
-    this.log.debug('ConflictDetectionService initialized', {
-      operation: 'constructor',
+
+    this.log.debug("ConflictDetectionService initialized", {
+      operation: "constructor",
     });
   }
 
@@ -57,19 +59,21 @@ export class ConflictDetectionService {
   async detectConflicts(params: {
     elements: Record<string, string>;
   }): Promise<{ conflicts: Conflict[] }> {
-    const operation = 'detectConflicts';
+    const operation = "detectConflicts";
     const startTime = performance.now();
-    
-    const filledElements = Object.entries(params.elements).filter(([_, v]) => v);
 
-    this.log.debug('Starting operation.', {
+    const filledElements = Object.entries(params.elements).filter(
+      ([_, v]) => v,
+    );
+
+    this.log.debug("Starting operation.", {
       operation,
       filledElementCount: filledElements.length,
       totalElements: Object.keys(params.elements).length,
     });
 
     if (filledElements.length < 2) {
-      this.log.debug('Insufficient elements for conflict detection.', {
+      this.log.debug("Insufficient elements for conflict detection.", {
         operation,
         filledElementCount: filledElements.length,
         duration: Math.round(performance.now() - startTime),
@@ -78,23 +82,31 @@ export class ConflictDetectionService {
     }
 
     // Detect descriptor categories for enhanced conflict detection
-    const descriptors = SUBJECT_DESCRIPTOR_KEYS
-      .map((key) => ({ key, value: params.elements[key] }))
-      .filter((d): d is DescriptorInput => typeof d.value === 'string' && d.value.length > 0);
+    const descriptors = SUBJECT_DESCRIPTOR_KEYS.map((key) => ({
+      key,
+      value: params.elements[key],
+    })).filter(
+      (d): d is DescriptorInput =>
+        typeof d.value === "string" && d.value.length > 0,
+    );
 
-    const descriptorCategories: DescriptorCategoryEntry[] = descriptors.map((desc) => ({
-      ...desc,
-      detection: detectDescriptorCategory(desc.value) as DescriptorDetection,
-    }));
+    const descriptorCategories: DescriptorCategoryEntry[] = descriptors.map(
+      (desc) => ({
+        ...desc,
+        detection: detectDescriptorCategory(desc.value) as DescriptorDetection,
+      }),
+    );
 
     // Build enhanced element list with descriptor categories
-    const elementsList = filledElements.map(([k, v]) => {
-      const descriptorInfo = descriptorCategories.find((d) => d.key === k);
-      if (descriptorInfo && descriptorInfo.detection.category) {
-        return `${k} (${descriptorInfo.detection.category} category): ${v}`;
-      }
-      return `${k}: ${v}`;
-    }).join('\n');
+    const elementsList = filledElements
+      .map(([k, v]) => {
+        const descriptorInfo = descriptorCategories.find((d) => d.key === k);
+        if (descriptorInfo && descriptorInfo.detection.category) {
+          return `${k} (${descriptorInfo.detection.category} category): ${v}`;
+        }
+        return `${k}: ${v}`;
+      })
+      .join("\n");
 
     const prompt = `Analyze these video elements for logical conflicts or inconsistencies.
 
@@ -120,32 +132,33 @@ Return ONLY a JSON array of conflicts (empty array if none):
 
     try {
       const schema: StructuredOutputSchema = {
-        type: 'array',
+        type: "array",
         items: {
-          required: ['elements', 'severity', 'message'],
+          required: ["elements", "severity", "message"],
         },
       };
 
-      const conflicts = await StructuredOutputEnforcer.enforceJSON(
+      const conflicts = (await StructuredOutputEnforcer.enforceJSON(
         this.ai,
         prompt,
         {
-          operation: 'video_conflict_detection',
+          operation: "video_conflict_detection",
           schema,
           isArray: true,
           maxTokens: 512,
           temperature: 0.3,
-        }
-      ) as Conflict[];
+        },
+      )) as Conflict[];
 
       // Check for descriptor-specific conflicts
-      const descriptorConflicts = this.checkDescriptorCategoryConflicts(descriptorCategories);
+      const descriptorConflicts =
+        this.checkDescriptorCategoryConflicts(descriptorCategories);
 
       // Combine all conflicts
       const allConflicts = [...conflicts, ...descriptorConflicts];
 
       const duration = Math.round(performance.now() - startTime);
-      this.log.info('Operation completed.', {
+      this.log.info("Operation completed.", {
         operation,
         duration,
         llmConflictCount: conflicts.length,
@@ -156,7 +169,7 @@ Return ONLY a JSON array of conflicts (empty array if none):
       return { conflicts: allConflicts };
     } catch (error) {
       const duration = Math.round(performance.now() - startTime);
-      this.log.error('Operation failed.', error as Error, {
+      this.log.error("Operation failed.", error as Error, {
         operation,
         duration,
         filledElementCount: filledElements.length,
@@ -169,7 +182,7 @@ Return ONLY a JSON array of conflicts (empty array if none):
    * Check for conflicts between descriptor categories
    */
   private checkDescriptorCategoryConflicts(
-    descriptorCategories: DescriptorCategoryEntry[]
+    descriptorCategories: DescriptorCategoryEntry[],
   ): Conflict[] {
     const conflicts: Conflict[] = [];
 
@@ -187,30 +200,54 @@ Return ONLY a JSON array of conflicts (empty array if none):
         const value2Lower = desc2.value.toLowerCase();
 
         // Wardrobe conflicts
-        if (desc1.detection.category === 'wardrobe' && desc2.detection.category === 'wardrobe') {
-          if ((value1Lower.includes('formal') || value1Lower.includes('tuxedo') || value1Lower.includes('suit')) &&
-              (value2Lower.includes('casual') || value2Lower.includes('torn') || value2Lower.includes('ragged'))) {
+        if (
+          desc1.detection.category === "wardrobe" &&
+          desc2.detection.category === "wardrobe"
+        ) {
+          if (
+            (value1Lower.includes("formal") ||
+              value1Lower.includes("tuxedo") ||
+              value1Lower.includes("suit")) &&
+            (value2Lower.includes("casual") ||
+              value2Lower.includes("torn") ||
+              value2Lower.includes("ragged"))
+          ) {
             conflicts.push({
               elements: [desc1.key, desc2.key],
-              severity: 'medium',
+              severity: "medium",
               message: `Wardrobe style mismatch: formal clothing with casual/worn elements`,
-              resolution: `Choose a consistent wardrobe style (all formal or all casual)`
+              resolution: `Choose a consistent wardrobe style (all formal or all casual)`,
             });
           }
         }
 
         // Era conflicts
-        const hasModernTerms1 = value1Lower.includes('modern') || value1Lower.includes('contemporary') || value1Lower.includes('digital');
-        const hasModernTerms2 = value2Lower.includes('modern') || value2Lower.includes('contemporary') || value2Lower.includes('digital');
-        const hasVintageTerms1 = value1Lower.includes('vintage') || value1Lower.includes('antique') || value1Lower.includes('old-fashioned');
-        const hasVintageTerms2 = value2Lower.includes('vintage') || value2Lower.includes('antique') || value2Lower.includes('old-fashioned');
+        const hasModernTerms1 =
+          value1Lower.includes("modern") ||
+          value1Lower.includes("contemporary") ||
+          value1Lower.includes("digital");
+        const hasModernTerms2 =
+          value2Lower.includes("modern") ||
+          value2Lower.includes("contemporary") ||
+          value2Lower.includes("digital");
+        const hasVintageTerms1 =
+          value1Lower.includes("vintage") ||
+          value1Lower.includes("antique") ||
+          value1Lower.includes("old-fashioned");
+        const hasVintageTerms2 =
+          value2Lower.includes("vintage") ||
+          value2Lower.includes("antique") ||
+          value2Lower.includes("old-fashioned");
 
-        if ((hasModernTerms1 && hasVintageTerms2) || (hasVintageTerms1 && hasModernTerms2)) {
+        if (
+          (hasModernTerms1 && hasVintageTerms2) ||
+          (hasVintageTerms1 && hasModernTerms2)
+        ) {
           conflicts.push({
             elements: [desc1.key, desc2.key],
-            severity: 'low',
+            severity: "low",
             message: `Era mismatch: mixing modern and vintage elements`,
-            resolution: `Consider if the era mix is intentional (e.g., steampunk) or should be unified`
+            resolution: `Consider if the era mix is intentional (e.g., steampunk) or should be unified`,
           });
         }
       }

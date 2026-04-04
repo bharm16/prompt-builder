@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const constructorArgs: Array<{
   bucket: unknown;
@@ -7,7 +7,7 @@ const constructorArgs: Array<{
   cacheControl: string;
 }> = [];
 
-vi.mock('../GcsVideoAssetStore', () => ({
+vi.mock("../GcsVideoAssetStore", () => ({
   GcsVideoAssetStore: vi.fn().mockImplementation((options) => {
     constructorArgs.push(options);
     return {
@@ -20,9 +20,9 @@ vi.mock('../GcsVideoAssetStore', () => ({
   }),
 }));
 
-import { createVideoAssetStore } from '../index';
+import { createVideoAssetStore } from "../index";
 
-describe('createVideoAssetStore', () => {
+describe("createVideoAssetStore", () => {
   const bucket = { file: vi.fn(), getFiles: vi.fn() } as never;
 
   beforeEach(() => {
@@ -30,33 +30,33 @@ describe('createVideoAssetStore', () => {
     vi.clearAllMocks();
   });
 
-  it('uses defaults with injected bucket', () => {
+  it("uses defaults with injected bucket", () => {
     createVideoAssetStore({ bucket });
 
     expect(constructorArgs).toEqual([
       {
         bucket,
-        basePath: 'video-previews',
+        basePath: "video-previews",
         signedUrlTtlMs: 3_600_000,
-        cacheControl: 'public, max-age=86400',
+        cacheControl: "public, max-age=86400",
       },
     ]);
   });
 
-  it('respects explicit overrides', () => {
+  it("respects explicit overrides", () => {
     createVideoAssetStore({
       bucket,
-      basePath: 'custom-videos',
+      basePath: "custom-videos",
       signedUrlTtlMs: 120_000,
-      cacheControl: 'private, max-age=30',
+      cacheControl: "private, max-age=30",
     });
 
     expect(constructorArgs).toEqual([
       {
         bucket,
-        basePath: 'custom-videos',
+        basePath: "custom-videos",
         signedUrlTtlMs: 120_000,
-        cacheControl: 'private, max-age=30',
+        cacheControl: "private, max-age=30",
       },
     ]);
   });

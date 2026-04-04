@@ -29,8 +29,8 @@ function computeTokenScore(
   fullText: string,
   matchIndex: number,
   matchLength: number,
-  leftCtx: string = '',
-  rightCtx: string = ''
+  leftCtx: string = "",
+  rightCtx: string = "",
 ): number {
   let score = 0;
   const WINDOW_SIZE = 20; // Look at up to 20 words of context
@@ -97,14 +97,14 @@ function findCandidates(text: string, quote: string): QuoteMatch[] {
   if (candidates.length === 0) {
     // Escape regex characters
     const escapeRegExp = (string: string): string =>
-      string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
     // Create a regex that allows variable whitespace between words
     // e.g. "hello world" -> "hello\s+world"
     const parts = quote.split(/\s+/).filter(Boolean);
     if (parts.length > 0) {
-      const pattern = parts.map(escapeRegExp).join('\\s+');
-      const regex = new RegExp(pattern, 'g');
+      const pattern = parts.map(escapeRegExp).join("\\s+");
+      const regex = new RegExp(pattern, "g");
 
       let match: RegExpExecArray | null;
       while ((match = regex.exec(text)) !== null) {
@@ -123,8 +123,8 @@ function findCandidates(text: string, quote: string): QuoteMatch[] {
 export function relocateQuote({
   text,
   quote,
-  leftCtx = '',
-  rightCtx = '',
+  leftCtx = "",
+  rightCtx = "",
   preferIndex = null,
 }: RelocateQuoteParams): QuoteMatch | null {
   if (!text || !quote) return null;
@@ -156,12 +156,12 @@ export function relocateQuote({
       match.start,
       match.end - match.start,
       leftCtx,
-      rightCtx
+      rightCtx,
     );
 
     // 3. Distance Penalty (Heuristic)
     // If we have a preferred index (old position), prefer candidates close to it.
-    if (typeof preferIndex === 'number') {
+    if (typeof preferIndex === "number") {
       const distance = Math.abs(match.start - preferIndex);
       // Determine penalty weight: e.g., -1 point for every 1000 chars of distance
       // This breaks ties in context score.
@@ -176,4 +176,3 @@ export function relocateQuote({
 
   return bestMatch ?? null;
 }
-

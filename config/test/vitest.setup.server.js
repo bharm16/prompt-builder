@@ -1,17 +1,22 @@
-import { vi } from 'vitest';
+import { vi } from "vitest";
 
 // Ensure all tests run with test environment semantics.
-process.env.NODE_ENV = 'test';
-process.env.GCS_BUCKET_NAME = process.env.GCS_BUCKET_NAME || 'prompt-builder-test-bucket';
-process.env.VIDEO_GENERATE_IDEMPOTENCY_MODE = process.env.VIDEO_GENERATE_IDEMPOTENCY_MODE || 'soft';
+process.env.NODE_ENV = "test";
+process.env.GCS_BUCKET_NAME =
+  process.env.GCS_BUCKET_NAME || "prompt-builder-test-bucket";
+process.env.VIDEO_GENERATE_IDEMPOTENCY_MODE =
+  process.env.VIDEO_GENERATE_IDEMPOTENCY_MODE || "soft";
 
 // Provide a safe default fetch mock so adapter tests have stable defaults.
 global.fetch = vi.fn().mockResolvedValue({
   ok: true,
   status: 200,
-  statusText: 'OK',
+  statusText: "OK",
   json: async () => ({
-    candidates: [{ content: { parts: [{ text: 'stub' }] } }],
+    candidates: [{ content: { parts: [{ text: "stub" }] } }],
   }),
-  text: async () => JSON.stringify({ candidates: [{ content: { parts: [{ text: 'stub' }] } }] }),
+  text: async () =>
+    JSON.stringify({
+      candidates: [{ content: { parts: [{ text: "stub" }] } }],
+    }),
 });

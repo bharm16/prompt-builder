@@ -3,7 +3,7 @@
  * Handles exporting prompts in various formats (text, markdown, JSON)
  */
 
-type ExportFormat = 'text' | 'markdown' | 'json';
+type ExportFormat = "text" | "markdown" | "json";
 
 interface ExportData {
   inputPrompt: string;
@@ -27,7 +27,10 @@ export class ExportService {
   /**
    * Exports prompt as markdown
    */
-  static exportAsMarkdown({ inputPrompt, displayedPrompt }: ExportData): string {
+  static exportAsMarkdown({
+    inputPrompt,
+    displayedPrompt,
+  }: ExportData): string {
     const timestamp = new Date().toLocaleString();
     return `# Prompt Optimization\n\n**Date:** ${timestamp}\n\n## Original Prompt\n${inputPrompt}\n\n## Optimized Prompt\n${displayedPrompt}`;
   }
@@ -50,7 +53,7 @@ export class ExportService {
         mode: selectedMode,
       },
       null,
-      2
+      2,
     );
   }
 
@@ -60,11 +63,11 @@ export class ExportService {
   static downloadFile(
     content: string,
     filename: string,
-    mimeType: string = 'text/plain'
+    mimeType: string = "text/plain",
   ): void {
     const blob = new Blob([content], { type: mimeType });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
     a.download = filename;
     a.click();
@@ -76,11 +79,11 @@ export class ExportService {
    */
   static getFileExtension(format: ExportFormat): string {
     const extensions: Record<ExportFormat, string> = {
-      text: 'txt',
-      markdown: 'md',
-      json: 'json',
+      text: "txt",
+      markdown: "md",
+      json: "json",
     };
-    return extensions[format] || 'txt';
+    return extensions[format] || "txt";
   }
 
   /**
@@ -88,27 +91,27 @@ export class ExportService {
    */
   static getMimeType(format: ExportFormat): string {
     const mimeTypes: Record<ExportFormat, string> = {
-      text: 'text/plain',
-      markdown: 'text/markdown',
-      json: 'application/json',
+      text: "text/plain",
+      markdown: "text/markdown",
+      json: "application/json",
     };
-    return mimeTypes[format] || 'text/plain';
+    return mimeTypes[format] || "text/plain";
   }
 
   /**
    * Exports and downloads a prompt in the specified format
    */
   static export(format: ExportFormat, data: ExportData): void {
-    let content = '';
+    let content = "";
 
     switch (format) {
-      case 'markdown':
+      case "markdown":
         content = this.exportAsMarkdown(data);
         break;
-      case 'json':
+      case "json":
         content = this.exportAsJson(data);
         break;
-      case 'text':
+      case "text":
       default:
         content = this.exportAsText(data);
         break;
@@ -120,4 +123,3 @@ export class ExportService {
     this.downloadFile(content, filename, mimeType);
   }
 }
-

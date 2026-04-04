@@ -9,10 +9,10 @@
  *   tsx --tsconfig server/tsconfig.json scripts/migrations/inventory-preview-image-references.ts --dry-run --limit=100
  */
 
-import { initializeFirebaseAdmin } from './firebase-admin-init.js';
-import { pathToFileURL } from 'node:url';
+import { initializeFirebaseAdmin } from "./firebase-admin-init.js";
+import { pathToFileURL } from "node:url";
 
-type CollectionName = 'sessions' | 'continuity_sessions';
+type CollectionName = "sessions" | "continuity_sessions";
 
 interface Options {
   dryRun: boolean;
@@ -34,23 +34,27 @@ interface CollectionScanStats {
   matches: number;
 }
 
-const COLLECTIONS: CollectionName[] = ['sessions', 'continuity_sessions'];
+const COLLECTIONS: CollectionName[] = ["sessions", "continuity_sessions"];
 
 function parseOptions(argv: string[]): Options {
-  const dryRun = argv.includes('--dry-run');
-  const limitRaw = argv.find((arg) => arg.startsWith('--limit='))?.split('=')[1];
-  const limitParsed = Number.parseInt(limitRaw || '', 10);
-  const userId = argv.find((arg) => arg.startsWith('--userId='))?.split('=')[1];
+  const dryRun = argv.includes("--dry-run");
+  const limitRaw = argv
+    .find((arg) => arg.startsWith("--limit="))
+    ?.split("=")[1];
+  const limitParsed = Number.parseInt(limitRaw || "", 10);
+  const userId = argv.find((arg) => arg.startsWith("--userId="))?.split("=")[1];
 
   return {
     dryRun,
     limit: Number.isFinite(limitParsed) && limitParsed > 0 ? limitParsed : null,
-    ...(typeof userId === 'string' && userId.trim().length > 0 ? { userId: userId.trim() } : {}),
+    ...(typeof userId === "string" && userId.trim().length > 0
+      ? { userId: userId.trim() }
+      : {}),
   };
 }
 
 function toRecord(value: unknown): Record<string, unknown> | null {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
     return null;
   }
   return value as Record<string, unknown>;
@@ -64,56 +68,56 @@ function truncate(value: string, max = 160): string {
 }
 
 function normalizePath(path: string[]): string {
-  return path.join('.');
+  return path.join(".");
 }
 
 export function findReasons(path: string, value: string): string[] {
   const reasons = new Set<string>();
-  const key = path.split('.').at(-1)?.toLowerCase() ?? '';
+  const key = path.split(".").at(-1)?.toLowerCase() ?? "";
   const normalizedValue = value.toLowerCase();
   const normalizedPath = path.toLowerCase();
 
-  if (normalizedValue.includes('image-previews/')) {
-    reasons.add('value:contains-image-previews-path');
+  if (normalizedValue.includes("image-previews/")) {
+    reasons.add("value:contains-image-previews-path");
   }
-  if (normalizedValue.includes('image-previews%2f')) {
-    reasons.add('value:contains-encoded-image-previews-path');
+  if (normalizedValue.includes("image-previews%2f")) {
+    reasons.add("value:contains-encoded-image-previews-path");
   }
-  if (key === 'previewassetid') {
-    reasons.add('key:previewAssetId');
+  if (key === "previewassetid") {
+    reasons.add("key:previewAssetId");
   }
-  if (key === 'assetid' && normalizedPath.includes('.preview.')) {
-    reasons.add('key:preview.assetId');
+  if (key === "assetid" && normalizedPath.includes(".preview.")) {
+    reasons.add("key:preview.assetId");
   }
-  if (key === 'storagepath' && normalizedPath.includes('.preview.')) {
-    reasons.add('key:preview.storagePath');
+  if (key === "storagepath" && normalizedPath.includes(".preview.")) {
+    reasons.add("key:preview.storagePath");
   }
-  if (key === 'imageurl' && normalizedPath.includes('.preview.')) {
-    reasons.add('key:preview.imageUrl');
+  if (key === "imageurl" && normalizedPath.includes(".preview.")) {
+    reasons.add("key:preview.imageUrl");
   }
   if (
-    normalizedPath.includes('.continuity.shots[].previewassetid') ||
-    normalizedPath.includes('.shots[].previewassetid')
+    normalizedPath.includes(".continuity.shots[].previewassetid") ||
+    normalizedPath.includes(".shots[].previewassetid")
   ) {
-    reasons.add('path:continuity-shot-previewAssetId');
+    reasons.add("path:continuity-shot-previewAssetId");
   }
-  if (normalizedPath.includes('.generations.[].mediaurls.[]')) {
-    reasons.add('path:generations-mediaUrls');
+  if (normalizedPath.includes(".generations.[].mediaurls.[]")) {
+    reasons.add("path:generations-mediaUrls");
   }
-  if (normalizedPath.includes('.generations.[].thumbnailurl')) {
-    reasons.add('path:generations-thumbnailUrl');
+  if (normalizedPath.includes(".generations.[].thumbnailurl")) {
+    reasons.add("path:generations-thumbnailUrl");
   }
-  if (normalizedPath.includes('.generations.[].mediaassetids.[]')) {
-    reasons.add('path:generations-mediaAssetIds');
+  if (normalizedPath.includes(".generations.[].mediaassetids.[]")) {
+    reasons.add("path:generations-mediaAssetIds");
   }
-  if (normalizedPath.includes('.keyframes.[].url')) {
-    reasons.add('path:keyframes-url');
+  if (normalizedPath.includes(".keyframes.[].url")) {
+    reasons.add("path:keyframes-url");
   }
-  if (normalizedPath.includes('.keyframes.[].storagepath')) {
-    reasons.add('path:keyframes-storagePath');
+  if (normalizedPath.includes(".keyframes.[].storagepath")) {
+    reasons.add("path:keyframes-storagePath");
   }
-  if (normalizedPath.includes('.keyframes.[].assetid')) {
-    reasons.add('path:keyframes-assetId');
+  if (normalizedPath.includes(".keyframes.[].assetid")) {
+    reasons.add("path:keyframes-assetId");
   }
 
   return Array.from(reasons);
@@ -125,7 +129,7 @@ function addFieldHit(
   path: string,
   docId: string,
   value: string,
-  reasons: string[]
+  reasons: string[],
 ): void {
   const key = `${collection}:${path}`;
   const current = hits.get(key);
@@ -154,11 +158,11 @@ function addFieldHit(
 function walkAndCollect(
   value: unknown,
   path: string[],
-  visit: (fieldPath: string, stringValue: string) => void
+  visit: (fieldPath: string, stringValue: string) => void,
 ): void {
   if (Array.isArray(value)) {
     for (const entry of value) {
-      walkAndCollect(entry, [...path, '[]'], visit);
+      walkAndCollect(entry, [...path, "[]"], visit);
     }
     return;
   }
@@ -171,7 +175,7 @@ function walkAndCollect(
     return;
   }
 
-  if (typeof value === 'string') {
+  if (typeof value === "string") {
     visit(normalizePath(path), value);
   }
 }
@@ -180,11 +184,11 @@ async function scanCollection(
   db: FirebaseFirestore.Firestore,
   collection: CollectionName,
   options: Options,
-  hits: Map<string, FieldStat>
+  hits: Map<string, FieldStat>,
 ): Promise<CollectionScanStats> {
   let query: FirebaseFirestore.Query = db.collection(collection);
   if (options.userId) {
-    query = query.where('userId', '==', options.userId);
+    query = query.where("userId", "==", options.userId);
   }
   if (options.limit) {
     query = query.limit(options.limit);
@@ -217,18 +221,18 @@ async function run(): Promise<void> {
   const fieldHits = new Map<string, FieldStat>();
   const collectionStats = new Map<CollectionName, CollectionScanStats>();
 
-  console.log('Running preview image reference inventory');
+  console.log("Running preview image reference inventory");
   console.log(
     JSON.stringify(
       {
-        mode: options.dryRun ? 'dry-run' : 'read-only',
+        mode: options.dryRun ? "dry-run" : "read-only",
         limit: options.limit ?? null,
         userId: options.userId ?? null,
         collections: COLLECTIONS,
       },
       null,
-      2
-    )
+      2,
+    ),
   );
 
   for (const collection of COLLECTIONS) {
@@ -245,38 +249,46 @@ async function run(): Promise<void> {
       sampleDocIds: Array.from(entry.sampleDocIds),
       sampleValues: Array.from(entry.sampleValues),
     }))
-    .sort((a, b) => b.count - a.count || a.collection.localeCompare(b.collection) || a.path.localeCompare(b.path));
+    .sort(
+      (a, b) =>
+        b.count - a.count ||
+        a.collection.localeCompare(b.collection) ||
+        a.path.localeCompare(b.path),
+    );
 
   const result = {
-    mode: options.dryRun ? 'dry-run' : 'read-only',
+    mode: options.dryRun ? "dry-run" : "read-only",
     scanned: {
-      sessions: collectionStats.get('sessions')?.docsScanned ?? 0,
-      continuity_sessions: collectionStats.get('continuity_sessions')?.docsScanned ?? 0,
+      sessions: collectionStats.get("sessions")?.docsScanned ?? 0,
+      continuity_sessions:
+        collectionStats.get("continuity_sessions")?.docsScanned ?? 0,
       total:
-        (collectionStats.get('sessions')?.docsScanned ?? 0) +
-        (collectionStats.get('continuity_sessions')?.docsScanned ?? 0),
+        (collectionStats.get("sessions")?.docsScanned ?? 0) +
+        (collectionStats.get("continuity_sessions")?.docsScanned ?? 0),
     },
     matches: {
-      sessions: collectionStats.get('sessions')?.matches ?? 0,
-      continuity_sessions: collectionStats.get('continuity_sessions')?.matches ?? 0,
+      sessions: collectionStats.get("sessions")?.matches ?? 0,
+      continuity_sessions:
+        collectionStats.get("continuity_sessions")?.matches ?? 0,
       total:
-        (collectionStats.get('sessions')?.matches ?? 0) +
-        (collectionStats.get('continuity_sessions')?.matches ?? 0),
+        (collectionStats.get("sessions")?.matches ?? 0) +
+        (collectionStats.get("continuity_sessions")?.matches ?? 0),
     },
     fieldCount: fields.length,
     fields,
   };
 
-  console.log('\nInventory summary');
+  console.log("\nInventory summary");
   console.log(JSON.stringify(result, null, 2));
 }
 
 const isDirectExecution =
-  typeof process.argv[1] === 'string' && pathToFileURL(process.argv[1]).href === import.meta.url;
+  typeof process.argv[1] === "string" &&
+  pathToFileURL(process.argv[1]).href === import.meta.url;
 
 if (isDirectExecution) {
   run().catch((error) => {
-    console.error('Inventory failed', error);
+    console.error("Inventory failed", error);
     process.exit(1);
   });
 }

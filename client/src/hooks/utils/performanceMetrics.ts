@@ -9,21 +9,21 @@
  * Mark the start of optimization
  */
 export function markOptimizationStart(): void {
-  performance.mark('optimize-start');
+  performance.mark("optimize-start");
 }
 
 /**
  * Mark when draft is ready
  */
 export function markDraftReady(): void {
-  performance.mark('draft-ready');
+  performance.mark("draft-ready");
 }
 
 /**
  * Mark when refinement is complete
  */
 export function markRefinementComplete(): void {
-  performance.mark('refinement-complete');
+  performance.mark("refinement-complete");
 }
 
 /**
@@ -38,9 +38,9 @@ export function markSpansReceived(source: string): void {
  */
 export function measureOptimizeToDraft(): void {
   try {
-    const entries = performance.getEntriesByName('optimize-start', 'mark');
+    const entries = performance.getEntriesByName("optimize-start", "mark");
     if (entries.length > 0) {
-      performance.measure('optimize-to-draft', 'optimize-start', 'draft-ready');
+      performance.measure("optimize-to-draft", "optimize-start", "draft-ready");
     }
   } catch (e) {
     // Silently ignore if mark doesn't exist
@@ -52,9 +52,13 @@ export function measureOptimizeToDraft(): void {
  */
 export function measureDraftToRefined(): void {
   try {
-    const entries = performance.getEntriesByName('draft-ready', 'mark');
+    const entries = performance.getEntriesByName("draft-ready", "mark");
     if (entries.length > 0) {
-      performance.measure('draft-to-refined', 'draft-ready', 'refinement-complete');
+      performance.measure(
+        "draft-to-refined",
+        "draft-ready",
+        "refinement-complete",
+      );
     }
   } catch (e) {
     // Silently ignore if mark doesn't exist
@@ -66,9 +70,12 @@ export function measureDraftToRefined(): void {
  */
 export function measureOptimizeToRefinedTotal(): void {
   try {
-    performance.measure('optimize-to-refined-total', 'optimize-start', 'refinement-complete');
+    performance.measure(
+      "optimize-to-refined-total",
+      "optimize-start",
+      "refinement-complete",
+    );
   } catch (e) {
     // Silently ignore if mark doesn't exist
   }
 }
-

@@ -1,9 +1,9 @@
-import type { ModelRecommendation, PromptSpan } from './domain';
+import type { ModelRecommendation, PromptSpan } from "./domain";
 
 export interface ModelRecommendationRequest {
   prompt: string;
   spans?: PromptSpan[];
-  mode?: 't2v' | 'i2v';
+  mode?: "t2v" | "i2v";
   durationSeconds?: number;
 }
 

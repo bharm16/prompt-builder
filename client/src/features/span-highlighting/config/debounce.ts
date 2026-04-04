@@ -15,7 +15,9 @@
  * - 500-2000 chars: 300ms (balanced for medium text)
  * - >2000 chars: 450ms (still responsive for large text)
  */
-export const calculateSmartDebounce = (text: string | null | undefined): number => {
+export const calculateSmartDebounce = (
+  text: string | null | undefined,
+): number => {
   if (!text) return 50; // Default for empty text
 
   const length = text.length;
@@ -30,4 +32,3 @@ export const calculateSmartDebounce = (text: string | null | undefined): number 
     return 450; // Large text: still responsive
   }
 };
-

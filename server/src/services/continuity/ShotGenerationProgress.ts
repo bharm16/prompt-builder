@@ -1,13 +1,13 @@
-import type { ContinuityShot } from './types';
+import type { ContinuityShot } from "./types";
 
 export type ShotGenerationStage =
-  | 'extracting-frame'
-  | 'generating-keyframe'
-  | 'generating-video'
-  | 'quality-gate'
-  | 'retrying'
-  | 'completed'
-  | 'failed';
+  | "extracting-frame"
+  | "generating-keyframe"
+  | "generating-video"
+  | "quality-gate"
+  | "retrying"
+  | "completed"
+  | "failed";
 
 export interface ShotGenerationEvent {
   shotId: string;
@@ -15,7 +15,7 @@ export interface ShotGenerationEvent {
   progress: number;
   message: string;
   metadata?: {
-    continuityMechanismUsed?: ContinuityShot['continuityMechanismUsed'];
+    continuityMechanismUsed?: ContinuityShot["continuityMechanismUsed"];
     generatedKeyframeUrl?: string;
     frameBridgeUrl?: string;
     styleScore?: number;

@@ -2,7 +2,7 @@
  * Cache key building utilities for span labeling
  */
 
-import { serializePolicy } from './textUtils';
+import { serializePolicy } from "./textUtils";
 
 export interface CacheKeyPayload {
   text?: string;
@@ -25,20 +25,22 @@ export interface CacheKeyPayload {
  */
 export const buildCacheKey = (
   payload: CacheKeyPayload = {},
-  hashString: (text: string) => string
+  hashString: (text: string) => string,
 ): string => {
-  const text = payload.text ?? '';
+  const text = payload.text ?? "";
   const baseId =
-    typeof payload.cacheId === 'string' && payload.cacheId.trim().length > 0
+    typeof payload.cacheId === "string" && payload.cacheId.trim().length > 0
       ? payload.cacheId.trim()
       : null;
-  const derivedId = baseId ? `${baseId}::${hashString(text)}` : `anon::${hashString(text)}`;
+  const derivedId = baseId
+    ? `${baseId}::${hashString(text)}`
+    : `anon::${hashString(text)}`;
   const policyKey = serializePolicy(payload.policy);
   return [
-    payload.maxSpans ?? '',
-    payload.minConfidence ?? '',
-    payload.templateVersion ?? '',
+    payload.maxSpans ?? "",
+    payload.minConfidence ?? "",
+    payload.templateVersion ?? "",
     policyKey,
     derivedId,
-  ].join('::');
+  ].join("::");
 };

@@ -1,7 +1,7 @@
-import express from 'express';
-import request from 'supertest';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { createImageAssetViewHandler } from '../imageAssetView';
+import express from "express";
+import request from "supertest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { createImageAssetViewHandler } from "../imageAssetView";
 
 interface ErrorWithCode {
   code?: string;
@@ -9,27 +9,30 @@ interface ErrorWithCode {
 }
 
 const isSocketPermissionError = (error: unknown): boolean => {
-  if (!error || typeof error !== 'object') {
+  if (!error || typeof error !== "object") {
     return false;
   }
 
   const candidate = error as ErrorWithCode;
-  const code = typeof candidate.code === 'string' ? candidate.code : '';
-  const message = typeof candidate.message === 'string' ? candidate.message : '';
-  if (code === 'EPERM' || code === 'EACCES') {
+  const code = typeof candidate.code === "string" ? candidate.code : "";
+  const message =
+    typeof candidate.message === "string" ? candidate.message : "";
+  if (code === "EPERM" || code === "EACCES") {
     return true;
   }
 
   return (
-    message.includes('listen EPERM') ||
-    message.includes('listen EACCES') ||
-    message.includes('operation not permitted') ||
+    message.includes("listen EPERM") ||
+    message.includes("listen EACCES") ||
+    message.includes("operation not permitted") ||
     message.includes("Cannot read properties of null (reading 'port')")
   );
 };
 
-const runSupertestOrSkip = async <T>(execute: () => Promise<T>): Promise<T | null> => {
-  if (process.env.CODEX_SANDBOX === 'seatbelt') {
+const runSupertestOrSkip = async <T>(
+  execute: () => Promise<T>,
+): Promise<T | null> => {
+  if (process.env.CODEX_SANDBOX === "seatbelt") {
     return null;
   }
 
@@ -45,7 +48,7 @@ const runSupertestOrSkip = async <T>(execute: () => Promise<T>): Promise<T | nul
 
 const createApp = (
   handler: ReturnType<typeof createImageAssetViewHandler>,
-  userId: string | null = 'user-1'
+  userId: string | null = "user-1",
 ): express.Express => {
   const app = express();
   app.use((req, _res, next) => {
@@ -57,18 +60,18 @@ const createApp = (
     }
     next();
   });
-  app.get('/preview/image/view', (req, res, next) => {
+  app.get("/preview/image/view", (req, res, next) => {
     void handler(req, res).catch(next);
   });
   return app;
 };
 
-describe('imageAssetView ownership regression', () => {
+describe("imageAssetView ownership regression", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('requires authentication', async () => {
+  it("requires authentication", async () => {
     const getImageUrl = vi.fn();
     const handler = createImageAssetViewHandler({
       imageGenerationService: { getImageUrl } as never,
@@ -76,7 +79,7 @@ describe('imageAssetView ownership regression', () => {
     const app = createApp(handler, null);
 
     const response = await runSupertestOrSkip(() =>
-      request(app).get('/preview/image/view').query({ assetId: 'asset-1' })
+      request(app).get("/preview/image/view").query({ assetId: "asset-1" }),
     );
     if (!response) return;
 
@@ -84,40 +87,42 @@ describe('imageAssetView ownership regression', () => {
     expect(getImageUrl).not.toHaveBeenCalled();
   });
 
-  it('returns 404 when owned image asset is missing', async () => {
+  it("returns 404 when owned image asset is missing", async () => {
     const getImageUrl = vi.fn().mockResolvedValue(null);
     const handler = createImageAssetViewHandler({
       imageGenerationService: { getImageUrl } as never,
     });
-    const app = createApp(handler, 'user-1');
+    const app = createApp(handler, "user-1");
 
     const response = await runSupertestOrSkip(() =>
-      request(app).get('/preview/image/view').query({ assetId: 'asset-1' })
+      request(app).get("/preview/image/view").query({ assetId: "asset-1" }),
     );
     if (!response) return;
 
     expect(response.status).toBe(404);
-    expect(getImageUrl).toHaveBeenCalledWith('asset-1', 'user-1');
+    expect(getImageUrl).toHaveBeenCalledWith("asset-1", "user-1");
   });
 
-  it('returns owner-scoped image URL for owned assets', async () => {
-    const getImageUrl = vi.fn().mockResolvedValue('https://images.example.com/asset-1');
+  it("returns owner-scoped image URL for owned assets", async () => {
+    const getImageUrl = vi
+      .fn()
+      .mockResolvedValue("https://images.example.com/asset-1");
     const handler = createImageAssetViewHandler({
       imageGenerationService: { getImageUrl } as never,
     });
-    const app = createApp(handler, 'user-1');
+    const app = createApp(handler, "user-1");
 
     const response = await runSupertestOrSkip(() =>
-      request(app).get('/preview/image/view').query({ assetId: 'asset-1' })
+      request(app).get("/preview/image/view").query({ assetId: "asset-1" }),
     );
     if (!response) return;
 
     expect(response.status).toBe(200);
     expect(response.body.data).toMatchObject({
-      viewUrl: 'https://images.example.com/asset-1',
-      assetId: 'asset-1',
-      source: 'preview',
+      viewUrl: "https://images.example.com/asset-1",
+      assetId: "asset-1",
+      source: "preview",
     });
-    expect(getImageUrl).toHaveBeenCalledWith('asset-1', 'user-1');
+    expect(getImageUrl).toHaveBeenCalledWith("asset-1", "user-1");
   });
 });

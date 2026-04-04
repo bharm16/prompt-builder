@@ -5,15 +5,15 @@
  * content it wraps.
  */
 
-import React from 'react';
-import { Box, type BoxProps } from './Box';
+import React from "react";
+import { Box, type BoxProps } from "./Box";
 
 export interface ContainerProps extends BoxProps {
   /**
    * Container size variant
    */
-  size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | 'full';
-  
+  size?: "sm" | "md" | "lg" | "xl" | "2xl" | "full";
+
   /**
    * Custom max width
    */
@@ -24,35 +24,31 @@ export interface ContainerProps extends BoxProps {
  * Container sizes
  */
 const containerSizes = {
-  sm: 'var(--ps-container-sm)', // Small content
-  md: 'var(--ps-container-md)', // Medium content
-  lg: 'var(--ps-container-lg)', // Large content (common)
-  xl: 'var(--ps-container-xl)', // Extra large
-  '2xl': 'var(--ps-container-2xl)', // Maximum width
-  full: '100%', // Full width
+  sm: "var(--ps-container-sm)", // Small content
+  md: "var(--ps-container-md)", // Medium content
+  lg: "var(--ps-container-lg)", // Large content (common)
+  xl: "var(--ps-container-xl)", // Extra large
+  "2xl": "var(--ps-container-2xl)", // Maximum width
+  full: "100%", // Full width
 };
 
 export const Container = React.forwardRef<HTMLDivElement, ContainerProps>(
   (
     {
-      size = 'xl',
+      size = "xl",
       maxWidth,
-      className = '',
+      className = "",
       style = {},
       children,
       ...boxProps
     },
-    ref
+    ref,
   ): React.ReactElement => {
     const containerMaxWidth = maxWidth || containerSizes[size];
-    
-    const containerClasses = [
-      'container',
-      'mx-auto',
-      className,
-    ]
+
+    const containerClasses = ["container", "mx-auto", className]
       .filter(Boolean)
-      .join(' ');
+      .join(" ");
 
     const inlineStyles: React.CSSProperties = {
       ...style,
@@ -69,9 +65,9 @@ export const Container = React.forwardRef<HTMLDivElement, ContainerProps>(
         {children}
       </Box>
     );
-  }
+  },
 );
 
-Container.displayName = 'Container';
+Container.displayName = "Container";
 
 export default Container;

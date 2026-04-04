@@ -1,24 +1,24 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from "vitest";
 
 import {
   buildSuggestionContext,
   resolveHighlightLocation,
-} from '@features/prompt-optimizer/utils/enhancementSuggestionContext';
-import { relocateQuote } from '@utils/textQuoteRelocator';
+} from "@features/prompt-optimizer/utils/enhancementSuggestionContext";
+import { relocateQuote } from "@utils/textQuoteRelocator";
 
-vi.mock('@utils/textQuoteRelocator', () => ({
+vi.mock("@utils/textQuoteRelocator", () => ({
   relocateQuote: vi.fn(),
 }));
 
 const mockRelocateQuote = vi.mocked(relocateQuote);
 
-describe('enhancementSuggestionContext', () => {
-  it('returns location from relocateQuote when available', () => {
+describe("enhancementSuggestionContext", () => {
+  it("returns location from relocateQuote when available", () => {
     mockRelocateQuote.mockReturnValue({ start: 4, end: 9, exact: true });
 
     const result = resolveHighlightLocation({
-      normalizedPrompt: 'Hello world',
-      highlightedText: 'world',
+      normalizedPrompt: "Hello world",
+      highlightedText: "world",
       preferIndex: 4,
     });
 
@@ -30,12 +30,12 @@ describe('enhancementSuggestionContext', () => {
     });
   });
 
-  it('falls back to indexOf when relocateQuote fails', () => {
+  it("falls back to indexOf when relocateQuote fails", () => {
     mockRelocateQuote.mockReturnValue(null);
 
     const result = resolveHighlightLocation({
-      normalizedPrompt: 'Hello world',
-      highlightedText: 'world',
+      normalizedPrompt: "Hello world",
+      highlightedText: "world",
       preferIndex: null,
     });
 
@@ -47,12 +47,12 @@ describe('enhancementSuggestionContext', () => {
     });
   });
 
-  it('returns not found when text does not exist', () => {
+  it("returns not found when text does not exist", () => {
     mockRelocateQuote.mockReturnValue(null);
 
     const result = resolveHighlightLocation({
-      normalizedPrompt: 'Hello world',
-      highlightedText: 'missing',
+      normalizedPrompt: "Hello world",
+      highlightedText: "missing",
       preferIndex: null,
     });
 
@@ -64,13 +64,13 @@ describe('enhancementSuggestionContext', () => {
     });
   });
 
-  it('builds suggestion context around the highlight', () => {
+  it("builds suggestion context around the highlight", () => {
     mockRelocateQuote.mockReturnValue({ start: 6, end: 11, exact: true });
 
-    const result = buildSuggestionContext('Hello world', 'world', 6, 3);
+    const result = buildSuggestionContext("Hello world", "world", 6, 3);
 
-    expect(result.contextBefore).toBe('lo');
-    expect(result.contextAfter).toBe('');
+    expect(result.contextBefore).toBe("lo");
+    expect(result.contextAfter).toBe("");
     expect(result.found).toBe(true);
   });
 });

@@ -1,17 +1,17 @@
-import type { HighlightSnapshot } from '@features/prompt-optimizer/PromptCanvas/types';
-import type { CoherenceSpan } from '@features/prompt-optimizer/types/coherence';
+import type { HighlightSnapshot } from "@features/prompt-optimizer/PromptCanvas/types";
+import type { CoherenceSpan } from "@features/prompt-optimizer/types/coherence";
 
 export function buildCoherenceSpansFromSnapshot(
   snapshot: HighlightSnapshot | null,
-  prompt: string
+  prompt: string,
 ): CoherenceSpan[] {
   if (!snapshot || !Array.isArray(snapshot.spans) || !prompt) {
     return [];
   }
 
   const mapped = snapshot.spans.map((span, index): CoherenceSpan | null => {
-    const start = typeof span.start === 'number' ? span.start : null;
-    const end = typeof span.end === 'number' ? span.end : null;
+    const start = typeof span.start === "number" ? span.start : null;
+    const end = typeof span.end === "number" ? span.end : null;
 
     if (start === null || end === null || end <= start) {
       return null;

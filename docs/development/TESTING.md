@@ -15,6 +15,7 @@ This document provides comprehensive information about the testing infrastructur
 ## Testing Stack
 
 ### Unit & Integration Testing
+
 - **Framework:** Vitest
 - **React Testing:** @testing-library/react
 - **User Interactions:** @testing-library/user-event
@@ -22,6 +23,7 @@ This document provides comprehensive information about the testing infrastructur
 - **Assertions:** vitest/expect + @testing-library/jest-dom
 
 ### E2E Testing
+
 - **Framework:** Playwright
 - **Browsers:** Chromium, Firefox, WebKit
 - **Mobile:** Chrome Mobile, Safari Mobile
@@ -104,6 +106,7 @@ npm run test:all
 ### Vitest Configuration
 
 Located in `vitest.config.js`:
+
 - **Environment:** jsdom (simulates browser environment)
 - **Globals:** Enabled
 - **Setup Files:** vitest.setup.js
@@ -113,6 +116,7 @@ Located in `vitest.config.js`:
 ### Playwright Configuration
 
 Located in `playwright.config.js`:
+
 - **Test Directory:** ./e2e
 - **Parallel Execution:** Enabled
 - **Retries:** 2 (in CI), 0 (local)
@@ -127,21 +131,21 @@ Located in `playwright.config.js`:
 ### Test Structure (AAA Pattern)
 
 ```javascript
-describe('FeatureName', () => {
+describe("FeatureName", () => {
   // Arrange
   beforeEach(() => {
     // Setup
   });
 
-  it('should do something', () => {
+  it("should do something", () => {
     // Arrange - Set up test data
-    const input = 'test';
+    const input = "test";
 
     // Act - Execute the function
     const result = functionUnderTest(input);
 
     // Assert - Verify the result
-    expect(result).toBe('expected');
+    expect(result).toBe("expected");
   });
 
   afterEach(() => {
@@ -153,17 +157,17 @@ describe('FeatureName', () => {
 ### Unit Test Example
 
 ```javascript
-import { describe, it, expect, vi } from 'vitest';
-import { functionToTest } from '../module';
+import { describe, it, expect, vi } from "vitest";
+import { functionToTest } from "../module";
 
-describe('functionToTest', () => {
-  it('should return correct result for valid input', () => {
-    const result = functionToTest('input');
-    expect(result).toBe('output');
+describe("functionToTest", () => {
+  it("should return correct result for valid input", () => {
+    const result = functionToTest("input");
+    expect(result).toBe("output");
   });
 
-  it('should throw error for invalid input', () => {
-    expect(() => functionToTest(null)).toThrow('Invalid input');
+  it("should throw error for invalid input", () => {
+    expect(() => functionToTest(null)).toThrow("Invalid input");
   });
 });
 ```
@@ -171,23 +175,23 @@ describe('functionToTest', () => {
 ### Component Test Example
 
 ```javascript
-import { render, screen, fireEvent } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import MyComponent from '../MyComponent';
+import { render, screen, fireEvent } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import MyComponent from "../MyComponent";
 
-describe('MyComponent', () => {
-  it('should render with default props', () => {
+describe("MyComponent", () => {
+  it("should render with default props", () => {
     render(<MyComponent />);
-    expect(screen.getByText('Expected Text')).toBeInTheDocument();
+    expect(screen.getByText("Expected Text")).toBeInTheDocument();
   });
 
-  it('should handle user interaction', async () => {
+  it("should handle user interaction", async () => {
     const user = userEvent.setup();
     const handleClick = vi.fn();
 
     render(<MyComponent onClick={handleClick} />);
 
-    await user.click(screen.getByRole('button'));
+    await user.click(screen.getByRole("button"));
 
     expect(handleClick).toHaveBeenCalledTimes(1);
   });
@@ -197,12 +201,12 @@ describe('MyComponent', () => {
 ### E2E Test Example
 
 ```javascript
-import { test, expect } from '@playwright/test';
+import { test, expect } from "@playwright/test";
 
-test('user can submit prompt', async ({ page }) => {
-  await page.goto('/');
+test("user can submit prompt", async ({ page }) => {
+  await page.goto("/");
 
-  await page.fill('textarea[name="prompt"]', 'Test prompt');
+  await page.fill('textarea[name="prompt"]', "Test prompt");
   await page.click('button[type="submit"]');
 
   await expect(page.locator('[data-testid="result"]')).toBeVisible();
@@ -214,9 +218,9 @@ test('user can submit prompt', async ({ page }) => {
 ### Mocking Modules
 
 ```javascript
-vi.mock('../api-client', () => ({
+vi.mock("../api-client", () => ({
   apiClient: {
-    post: vi.fn().mockResolvedValue({ data: 'mock data' }),
+    post: vi.fn().mockResolvedValue({ data: "mock data" }),
   },
 }));
 ```
@@ -225,18 +229,18 @@ vi.mock('../api-client', () => ({
 
 ```javascript
 // Using nock
-import nock from 'nock';
+import nock from "nock";
 
-nock('https://api.example.com')
-  .post('/endpoint')
-  .reply(200, { result: 'success' });
+nock("https://api.example.com")
+  .post("/endpoint")
+  .reply(200, { result: "success" });
 
 // Playwright route mocking
-await page.route('**/api/**', (route) => {
+await page.route("**/api/**", (route) => {
   route.fulfill({
     status: 200,
-    contentType: 'application/json',
-    body: JSON.stringify({ result: 'mocked' }),
+    contentType: "application/json",
+    body: JSON.stringify({ result: "mocked" }),
   });
 });
 ```
@@ -244,10 +248,10 @@ await page.route('**/api/**', (route) => {
 ### Mocking Time
 
 ```javascript
-import { vi } from 'vitest';
+import { vi } from "vitest";
 
 vi.useFakeTimers();
-vi.setSystemTime(new Date('2024-01-01'));
+vi.setSystemTime(new Date("2024-01-01"));
 
 // Run tests...
 
@@ -283,23 +287,25 @@ vi.useRealTimers();
 ### React Component Testing
 
 1. **Query by Accessibility Attributes**
+
    ```javascript
-   screen.getByRole('button', { name: 'Submit' })
-   screen.getByLabelText('Email')
-   screen.getByText('Welcome')
+   screen.getByRole("button", { name: "Submit" });
+   screen.getByLabelText("Email");
+   screen.getByText("Welcome");
    ```
 
 2. **Use User Event for Interactions**
+
    ```javascript
    const user = userEvent.setup();
    await user.click(button);
-   await user.type(input, 'text');
+   await user.type(input, "text");
    ```
 
 3. **Wait for Async Updates**
    ```javascript
    await waitFor(() => {
-     expect(screen.getByText('Loaded')).toBeInTheDocument();
+     expect(screen.getByText("Loaded")).toBeInTheDocument();
    });
    ```
 
@@ -341,6 +347,7 @@ npm run test:coverage -- --reporter=text
 ### Coverage Thresholds
 
 Current thresholds (vitest.config.js):
+
 - Lines: 85%
 - Functions: 80%
 - Branches: 75%
@@ -362,7 +369,7 @@ jobs:
       - uses: actions/checkout@v2
       - uses: actions/setup-node@v2
         with:
-          node-version: '18'
+          node-version: "18"
       - run: npm ci
       - run: npm run test:coverage
       - run: npx playwright install --with-deps
@@ -406,8 +413,9 @@ npx playwright test --slow-mo=1000
 ### Issue: Tests timing out
 
 **Solution:** Increase timeout in test or config
+
 ```javascript
-it('slow test', { timeout: 30000 }, async () => {
+it("slow test", { timeout: 30000 }, async () => {
   // test code
 });
 ```
@@ -415,6 +423,7 @@ it('slow test', { timeout: 30000 }, async () => {
 ### Issue: Module not found errors
 
 **Solution:** Check import paths are correct and modules are installed
+
 ```bash
 npm install
 ```
@@ -422,23 +431,25 @@ npm install
 ### Issue: Flaky E2E tests
 
 **Solution:** Use proper waits and avoid race conditions
+
 ```javascript
 // Bad
-await page.click('button');
+await page.click("button");
 await page.waitForTimeout(1000);
 
 // Good
-await page.click('button');
+await page.click("button");
 await page.waitForSelector('[data-testid="result"]');
 ```
 
 ### Issue: React component not rendering
 
 **Solution:** Ensure proper test setup and mocks
+
 ```javascript
 // Check vitest.setup.js for required configuration
 // Mock any external dependencies
-vi.mock('../api');
+vi.mock("../api");
 ```
 
 ## Performance Testing
@@ -476,6 +487,7 @@ When adding new features:
 ## Contact
 
 For questions about testing:
+
 - Review existing tests for examples
 - Check this documentation
 - Consult the team's testing guidelines

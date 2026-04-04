@@ -1,4 +1,4 @@
-import type { HttpClientConfig } from './HttpClientConfig';
+import type { HttpClientConfig } from "./HttpClientConfig";
 
 interface RequestOptions {
   method?: string;
@@ -18,7 +18,7 @@ export class ApiRequestBuilder {
   constructor(private readonly config: HttpClientConfig) {}
 
   build(endpoint: string, options: RequestOptions = {}): BuiltRequest {
-    const method = options.method || 'GET';
+    const method = options.method || "GET";
     const url = this.config.buildUrl(endpoint);
     const headers = this.config.mergeHeaders(options.headers);
     const signal = options.signal || this.config.createSignal(options.timeout);
@@ -39,15 +39,18 @@ export class ApiRequestBuilder {
   }
 
   private serializeBody(method: string, body: unknown): BodyInit | undefined {
-    if (!body || method === 'GET' || method === 'HEAD') {
+    if (!body || method === "GET" || method === "HEAD") {
       return undefined;
     }
 
-    if (body instanceof FormData || typeof body === 'string' || body instanceof Blob) {
+    if (
+      body instanceof FormData ||
+      typeof body === "string" ||
+      body instanceof Blob
+    ) {
       return body;
     }
 
     return JSON.stringify(body);
   }
 }
-

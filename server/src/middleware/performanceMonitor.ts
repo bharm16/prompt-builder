@@ -1,5 +1,5 @@
-import { logger } from '@infrastructure/Logger';
-import type { NextFunction, Request, Response } from 'express';
+import { logger } from "@infrastructure/Logger";
+import type { NextFunction, Request, Response } from "express";
 
 interface MetricsService {
   recordAlert?: (name: string, payload: Record<string, unknown>) => void;
@@ -34,7 +34,7 @@ type RequestWithPerf = Request & { perfMonitor?: RequestPerfMonitor };
 /**
  * Performance Monitor Middleware
  * Tracks request-level performance metrics for API endpoints
- * 
+ *
  * Features:
  * - Attaches timing context to req.perfMonitor
  * - Tracks total request time
@@ -50,7 +50,7 @@ export class PerformanceMonitor {
 
   constructor(metricsService: MetricsService | null = null) {
     this.metricsService = metricsService;
-    this.isDev = process.env.NODE_ENV === 'development';
+    this.isDev = process.env.NODE_ENV === "development";
   }
 
   /**
@@ -120,7 +120,7 @@ export class PerformanceMonitor {
   _getMetrics(perfContext: PerfContext): PerfMetrics {
     const total = Date.now() - perfContext.startTime;
     const operations: Record<string, number> = {};
-    
+
     Object.keys(perfContext.operations).forEach((name) => {
       const op = perfContext.operations[name];
       operations[name] = op?.duration ?? 0;
@@ -137,12 +137,16 @@ export class PerformanceMonitor {
    * Complete request and flush metrics
    * @private
    */
-  _completeRequest(req: RequestWithPerf, res: Response, perfContext: PerfContext): void {
+  _completeRequest(
+    req: RequestWithPerf,
+    res: Response,
+    perfContext: PerfContext,
+  ): void {
     const metrics = this._getMetrics(perfContext);
     const route = req.route?.path || req.path;
 
     // Add response time header
-    res.setHeader('X-Response-Time', `${metrics.total}ms`);
+    res.setHeader("X-Response-Time", `${metrics.total}ms`);
 
     // Log metrics in development
     if (this.isDev) {
@@ -160,7 +164,7 @@ export class PerformanceMonitor {
     }
 
     // Always log to structured logger
-    logger.info('Request completed', {
+    logger.info("Request completed", {
       route,
       method: req.method,
       duration: metrics.total,
@@ -174,8 +178,8 @@ export class PerformanceMonitor {
    * @private
    */
   _logDevelopmentMetrics(route: string, metrics: PerfMetrics): void {
-    logger.debug('Request performance metrics', {
-      operation: '_logDevelopmentMetrics',
+    logger.debug("Request performance metrics", {
+      operation: "_logDevelopmentMetrics",
       route,
       total: metrics.total,
       operations: metrics.operations,
@@ -198,7 +202,7 @@ export class PerformanceMonitor {
    * @private
    */
   _alertSlowRequest(route: string, metrics: PerfMetrics): void {
-    logger.warn('Request exceeded latency threshold', {
+    logger.warn("Request exceeded latency threshold", {
       route,
       total: metrics.total,
       threshold: 2000,
@@ -207,8 +211,8 @@ export class PerformanceMonitor {
     });
 
     // Alert in production
-    if (process.env.NODE_ENV === 'production' && this.metricsService) {
-      this.metricsService.recordAlert?.('request_latency_exceeded', {
+    if (process.env.NODE_ENV === "production" && this.metricsService) {
+      this.metricsService.recordAlert?.("request_latency_exceeded", {
         route,
         total: metrics.total,
         threshold: 2000,

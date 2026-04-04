@@ -1,6 +1,7 @@
-import type { UserCreditService } from '@services/credits/UserCreditService';
-import { buildRefundKey, refundWithGuard } from '@services/credits/refundGuard';
-import type { RefundManager } from './types';
+import { randomUUID } from "node:crypto";
+import type { UserCreditService } from "@services/credits/UserCreditService";
+import { buildRefundKey, refundWithGuard } from "@services/credits/refundGuard";
+import type { RefundManager } from "./types";
 
 interface CreateVideoRefundManagerArgs {
   userCreditService: UserCreditService;
@@ -24,20 +25,32 @@ export const createVideoRefundManager = ({
   };
   const refundOperationToken =
     requestId ??
-    buildRefundKey(['preview-video', userId, cleanedPrompt, model ?? 'auto', Date.now(), Math.random()]);
+    buildRefundKey([
+      "preview-video",
+      userId,
+      cleanedPrompt,
+      model ?? "auto",
+      Date.now(),
+      randomUUID().slice(0, 8),
+    ]);
   const faceSwapRefundKey = buildRefundKey([
-    'preview-video',
+    "preview-video",
     refundOperationToken,
     userId,
-    'faceSwap',
+    "faceSwap",
   ]);
   const keyframeRefundKey = buildRefundKey([
-    'preview-video',
+    "preview-video",
     refundOperationToken,
     userId,
-    'keyframe',
+    "keyframe",
   ]);
-  const videoRefundKey = buildRefundKey(['preview-video', refundOperationToken, userId, 'video']);
+  const videoRefundKey = buildRefundKey([
+    "preview-video",
+    refundOperationToken,
+    userId,
+    "video",
+  ]);
 
   const refundFaceSwapCredits = async (reason: string): Promise<void> => {
     if (ledger.faceSwapCost <= 0) {
@@ -51,7 +64,7 @@ export const createVideoRefundManager = ({
       reason,
       metadata: {
         requestId,
-        route: 'preview/video/generate',
+        route: "preview/video/generate",
       },
     });
   };
@@ -68,7 +81,7 @@ export const createVideoRefundManager = ({
       reason,
       metadata: {
         requestId,
-        route: 'preview/video/generate',
+        route: "preview/video/generate",
       },
     });
   };
@@ -85,7 +98,7 @@ export const createVideoRefundManager = ({
       reason,
       metadata: {
         requestId,
-        route: 'preview/video/generate',
+        route: "preview/video/generate",
       },
     });
   };

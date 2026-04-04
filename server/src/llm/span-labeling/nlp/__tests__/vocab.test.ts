@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import { VOCAB } from '../vocab';
+import { describe, it, expect } from "vitest";
+import { VOCAB } from "../vocab";
 
 /**
  * Tests for the VOCAB constant
@@ -8,42 +8,42 @@ import { VOCAB } from '../vocab';
  * its structure and behavior rather than trying to mock the file loading.
  * The implementation handles file not found gracefully by returning {}.
  */
-describe('VOCAB', () => {
-  describe('structure', () => {
-    it('is an object', () => {
-      expect(typeof VOCAB).toBe('object');
+describe("VOCAB", () => {
+  describe("structure", () => {
+    it("is an object", () => {
+      expect(typeof VOCAB).toBe("object");
       expect(VOCAB).not.toBeNull();
     });
 
-    it('has string keys', () => {
+    it("has string keys", () => {
       for (const key of Object.keys(VOCAB)) {
-        expect(typeof key).toBe('string');
+        expect(typeof key).toBe("string");
       }
     });
 
-    it('has array values (if vocab.json exists)', () => {
+    it("has array values (if vocab.json exists)", () => {
       // If vocab.json exists, values should be string arrays
       // If it doesn't exist, VOCAB will be {}
       for (const value of Object.values(VOCAB)) {
         expect(Array.isArray(value)).toBe(true);
         if (Array.isArray(value)) {
           value.forEach((item: unknown) => {
-            expect(typeof item).toBe('string');
+            expect(typeof item).toBe("string");
           });
         }
       }
     });
   });
 
-  describe('error handling behavior', () => {
-    it('returns a valid object even if file loading fails', () => {
+  describe("error handling behavior", () => {
+    it("returns a valid object even if file loading fails", () => {
       // The implementation catches errors and returns {}
       // so VOCAB should always be a valid object
       expect(VOCAB).toBeDefined();
-      expect(typeof VOCAB).toBe('object');
+      expect(typeof VOCAB).toBe("object");
     });
 
-    it('is iterable', () => {
+    it("is iterable", () => {
       // Should be able to iterate over the vocab
       expect(() => {
         for (const _key of Object.keys(VOCAB)) {
@@ -53,8 +53,8 @@ describe('VOCAB', () => {
     });
   });
 
-  describe('usage patterns', () => {
-    it('supports lookup by category', () => {
+  describe("usage patterns", () => {
+    it("supports lookup by category", () => {
       // Common usage pattern: check if a word exists in a category
       const category = Object.keys(VOCAB)[0];
       if (category) {
@@ -63,7 +63,7 @@ describe('VOCAB', () => {
       }
     });
 
-    it('supports checking for word existence', () => {
+    it("supports checking for word existence", () => {
       // Common usage pattern: check if a word exists in the vocab
       const allWords: string[] = [];
       for (const words of Object.values(VOCAB)) {

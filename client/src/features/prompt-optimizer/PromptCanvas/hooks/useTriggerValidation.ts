@@ -1,6 +1,6 @@
-import { useEffect, useMemo } from 'react';
-import debounce from 'lodash/debounce';
-import { validatePromptTriggers } from '../api/triggerValidation';
+import { useEffect, useMemo } from "react";
+import debounce from "lodash/debounce";
+import { validatePromptTriggers } from "../api/triggerValidation";
 
 export function useTriggerValidation(delayMs = 500): (text: string) => void {
   const debouncedValidate = useMemo(
@@ -8,7 +8,7 @@ export function useTriggerValidation(delayMs = 500): (text: string) => void {
       debounce((text: string) => {
         void validatePromptTriggers(text);
       }, delayMs),
-    [delayMs]
+    [delayMs],
   );
 
   useEffect(() => {

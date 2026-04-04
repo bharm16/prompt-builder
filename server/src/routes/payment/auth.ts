@@ -1,7 +1,7 @@
-import type { Request } from 'express';
-import { logger } from '@infrastructure/Logger';
-import { getAuth } from '@infrastructure/firebaseAdmin';
-import { extractFirebaseToken } from '@utils/auth';
+import type { Request } from "express";
+import { logger } from "@infrastructure/Logger";
+import { getAuth } from "@infrastructure/firebaseAdmin";
+import { extractFirebaseToken } from "@utils/auth";
 
 interface PaymentRequestWithAuth extends Request {
   user?: { uid?: string };
@@ -23,7 +23,7 @@ export async function resolveUserId(req: Request): Promise<string | null> {
       reqWithAuth.user = { uid };
       return uid;
     } catch (error) {
-      logger.warn('Failed to verify auth token for payment request', {
+      logger.warn("Failed to verify auth token for payment request", {
         path: req.path,
         error: (error as Error).message,
       });

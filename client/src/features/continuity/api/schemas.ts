@@ -1,11 +1,11 @@
-import { z } from 'zod';
+import { z } from "zod";
 
-const GenerationModeSchema = z.enum(['continuity', 'standard']);
+const GenerationModeSchema = z.enum(["continuity", "standard"]);
 const ContinuityModeSchema = z.enum([
-  'frame-bridge',
-  'style-match',
-  'native',
-  'none',
+  "frame-bridge",
+  "style-match",
+  "native",
+  "none",
 ]);
 
 const ResolutionSchema = z.object({
@@ -30,6 +30,7 @@ const StyleReferenceSchema = z
         confidence: z.number(),
       })
       .optional(),
+    extractedAt: z.string().optional(),
   })
   .passthrough();
 
@@ -39,7 +40,7 @@ const FrameBridgeSchema = z
     sourceVideoId: z.string(),
     sourceShotId: z.string(),
     frameUrl: z.string(),
-    framePosition: z.enum(['first', 'last', 'representative']),
+    framePosition: z.enum(["first", "last", "representative"]),
     frameTimestamp: z.number(),
     resolution: ResolutionSchema,
     aspectRatio: z.string(),
@@ -95,11 +96,11 @@ const ContinuityShotSchema = z
     qualityScore: z.number().optional(),
     retryCount: z.number().optional(),
     status: z.enum([
-      'draft',
-      'generating-keyframe',
-      'generating-video',
-      'completed',
-      'failed',
+      "draft",
+      "generating-keyframe",
+      "generating-video",
+      "completed",
+      "failed",
     ]),
     error: z.string().optional(),
     createdAt: z.string(),
@@ -133,7 +134,7 @@ const SceneProxySchema = z
     proxyType: z.string(),
     referenceFrameUrl: z.string(),
     depthMapUrl: z.string().optional(),
-    status: z.enum(['ready', 'failed', 'building']),
+    status: z.enum(["ready", "failed", "building"]),
     createdAt: z.string().optional(),
     error: z.string().optional(),
   })
@@ -149,13 +150,15 @@ const ContinuitySessionSchema = z
     sceneProxy: SceneProxySchema.nullable().optional(),
     shots: z.array(ContinuityShotSchema),
     defaultSettings: ContinuitySessionSettingsSchema,
-    status: z.enum(['active', 'completed', 'archived']),
+    status: z.enum(["active", "completed", "archived"]),
     createdAt: z.string(),
     updatedAt: z.string(),
   })
   .passthrough();
 
-export const ContinuityApiResponseSchema = <T extends z.ZodTypeAny>(dataSchema: T) =>
+export const ContinuityApiResponseSchema = <T extends z.ZodTypeAny>(
+  dataSchema: T,
+) =>
   z.object({
     success: z.literal(true),
     data: dataSchema,
@@ -166,6 +169,7 @@ export {
   ContinuitySessionSettingsSchema,
   ContinuityShotSchema,
   FrameBridgeSchema,
+  SceneProxySchema,
   SeedInfoSchema,
   StyleReferenceSchema,
 };

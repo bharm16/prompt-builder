@@ -1,4 +1,4 @@
-import { relocateQuote } from '@utils/textQuoteRelocator';
+import { relocateQuote } from "@utils/textQuoteRelocator";
 
 interface ResolveHighlightLocationParams {
   normalizedPrompt: string;
@@ -60,7 +60,7 @@ export function buildSuggestionContext(
   normalizedPrompt: string,
   highlightedText: string,
   preferIndex: number | null,
-  contextSize: number = 1000
+  contextSize: number = 1000,
 ): SuggestionContextResult {
   const resolved = resolveHighlightLocation({
     normalizedPrompt,
@@ -69,13 +69,19 @@ export function buildSuggestionContext(
   });
 
   const contextBefore = normalizedPrompt
-    .substring(Math.max(0, resolved.startIndex - contextSize), resolved.startIndex)
+    .substring(
+      Math.max(0, resolved.startIndex - contextSize),
+      resolved.startIndex,
+    )
     .trim();
 
   const contextAfter = normalizedPrompt
     .substring(
       resolved.startIndex + resolved.matchLength,
-      Math.min(normalizedPrompt.length, resolved.startIndex + resolved.matchLength + contextSize)
+      Math.min(
+        normalizedPrompt.length,
+        resolved.startIndex + resolved.matchLength + contextSize,
+      ),
     )
     .trim();
 

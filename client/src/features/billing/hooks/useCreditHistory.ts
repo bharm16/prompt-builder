@@ -1,6 +1,9 @@
-import React from 'react';
-import { fetchCreditHistory, type CreditTransaction } from '@/api/billingApi';
-import { useAuthUser } from '@/hooks/useAuthUser';
+import React from "react";
+import {
+  fetchCreditHistory,
+  type CreditTransaction,
+} from "@/features/billing/api/billingApi";
+import { useAuthUser } from "@/hooks/useAuthUser";
 
 interface UseCreditHistoryOptions {
   limit?: number;
@@ -13,10 +16,12 @@ interface UseCreditHistoryResult {
   refresh: () => Promise<void>;
 }
 
-export function useCreditHistory(options: UseCreditHistoryOptions = {}): UseCreditHistoryResult {
+export function useCreditHistory(
+  options: UseCreditHistoryOptions = {},
+): UseCreditHistoryResult {
   const user = useAuthUser();
   const userId = user?.uid ?? null;
-  const limit = typeof options.limit === 'number' ? options.limit : 50;
+  const limit = typeof options.limit === "number" ? options.limit : 50;
   const [history, setHistory] = React.useState<CreditTransaction[]>([]);
   const [isLoading, setIsLoading] = React.useState<boolean>(Boolean(userId));
   const [error, setError] = React.useState<string | null>(null);
@@ -36,7 +41,11 @@ export function useCreditHistory(options: UseCreditHistoryOptions = {}): UseCred
       const rows = await fetchCreditHistory(limit);
       setHistory(rows);
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Failed to load credit history');
+      setError(
+        loadError instanceof Error
+          ? loadError.message
+          : "Failed to load credit history",
+      );
     } finally {
       setIsLoading(false);
     }
@@ -62,7 +71,11 @@ export function useCreditHistory(options: UseCreditHistoryOptions = {}): UseCred
         setHistory(rows);
       } catch (loadError) {
         if (cancelled) return;
-        setError(loadError instanceof Error ? loadError.message : 'Failed to load credit history');
+        setError(
+          loadError instanceof Error
+            ? loadError.message
+            : "Failed to load credit history",
+        );
       } finally {
         if (cancelled) return;
         setIsLoading(false);

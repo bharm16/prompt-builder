@@ -1,13 +1,13 @@
-import type { PromptRequirements, PromptSpan } from '../../types';
+import type { PromptRequirements, PromptSpan } from "../../types";
 
 export const SAMPLE_PROMPT =
-  'A robot walks through heavy rain in a neon city, dramatic cinematic lighting.';
+  "A robot walks through heavy rain in a neon city, dramatic cinematic lighting.";
 
 export const SAMPLE_SPANS: PromptSpan[] = [
-  { text: 'robot', role: 'subject.identity' },
-  { text: 'heavy rain', role: 'environment.weather.rain' },
-  { text: 'neon city', role: 'environment.urban' },
-  { text: 'dramatic cinematic lighting', role: 'lighting.cinematic' },
+  { text: "robot", role: "subject.identity" },
+  { text: "heavy rain", role: "environment.weather.rain" },
+  { text: "neon city", role: "environment.urban" },
+  { text: "dramatic cinematic lighting", role: "lighting.cinematic" },
 ];
 
 export const BASE_REQUIREMENTS: PromptRequirements = {
@@ -16,7 +16,7 @@ export const BASE_REQUIREMENTS: PromptRequirements = {
     hasParticleSystems: false,
     hasFluidDynamics: false,
     hasSoftBodyPhysics: false,
-    physicsComplexity: 'none',
+    physicsComplexity: "none",
   },
   character: {
     hasHumanCharacter: false,
@@ -25,18 +25,18 @@ export const BASE_REQUIREMENTS: PromptRequirements = {
     requiresFacialPerformance: false,
     requiresBodyLanguage: false,
     requiresLipSync: false,
-    emotionalIntensity: 'none',
+    emotionalIntensity: "none",
   },
   environment: {
-    complexity: 'simple',
-    type: 'abstract',
+    complexity: "simple",
+    type: "abstract",
     hasArchitecture: false,
     hasNature: false,
     hasUrbanElements: false,
   },
   lighting: {
-    requirements: 'natural',
-    complexity: 'simple',
+    requirements: "natural",
+    complexity: "simple",
     hasPracticalLights: false,
     requiresAtmospherics: false,
   },
@@ -48,8 +48,8 @@ export const BASE_REQUIREMENTS: PromptRequirements = {
     hasSpecificAesthetic: null,
   },
   motion: {
-    cameraComplexity: 'static',
-    subjectComplexity: 'static',
+    cameraComplexity: "static",
+    subjectComplexity: "static",
     hasMorphing: false,
     hasTransitions: false,
   },

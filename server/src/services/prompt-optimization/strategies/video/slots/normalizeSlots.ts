@@ -1,9 +1,11 @@
-import type { VideoPromptSlots } from '@services/prompt-optimization/strategies/videoPromptTypes';
+import type { VideoPromptSlots } from "@services/prompt-optimization/strategies/videoPromptTypes";
 
-export function normalizeSlots(raw: Partial<VideoPromptSlots>): VideoPromptSlots {
+export function normalizeSlots(
+  raw: Partial<VideoPromptSlots>,
+): VideoPromptSlots {
   const normalizeStringOrNull = (value: unknown): string | null => {
-    if (value === null || typeof value === 'undefined') return null;
-    if (typeof value !== 'string') return null;
+    if (value === null || typeof value === "undefined") return null;
+    if (typeof value !== "string") return null;
     const trimmed = value.trim();
     return trimmed.length > 0 ? trimmed : null;
   };
@@ -14,15 +16,17 @@ export function normalizeSlots(raw: Partial<VideoPromptSlots>): VideoPromptSlots
   };
 
   const normalizeStringArrayOrNull = (value: unknown): string[] | null => {
-    if (value === null || typeof value === 'undefined') return null;
+    if (value === null || typeof value === "undefined") return null;
     if (!Array.isArray(value)) return null;
-    const rawItems = value.filter((item) => typeof item === 'string') as string[];
+    const rawItems = value.filter(
+      (item) => typeof item === "string",
+    ) as string[];
 
     const expanded = rawItems.flatMap((item) =>
       item
-        .split(',')
+        .split(",")
         .map((part) => part.trim())
-        .filter(Boolean)
+        .filter(Boolean),
     );
 
     const seen = new Set<string>();
@@ -39,11 +43,20 @@ export function normalizeSlots(raw: Partial<VideoPromptSlots>): VideoPromptSlots
   };
 
   const subject = normalizeStringOrNull(raw.subject);
-  let subjectDetails = subject ? normalizeStringArrayOrNull(raw.subject_details) : null;
+  let subjectDetails = subject
+    ? normalizeStringArrayOrNull(raw.subject_details)
+    : null;
 
   if (subjectDetails) {
-    const generic = new Set(['main subject', 'subject', 'the subject', 'person']);
-    subjectDetails = subjectDetails.filter((d) => !generic.has(d.trim().toLowerCase()));
+    const generic = new Set([
+      "main subject",
+      "subject",
+      "the subject",
+      "person",
+    ]);
+    subjectDetails = subjectDetails.filter(
+      (d) => !generic.has(d.trim().toLowerCase()),
+    );
     if (subjectDetails.length === 0) subjectDetails = null;
   }
 
@@ -51,9 +64,9 @@ export function normalizeSlots(raw: Partial<VideoPromptSlots>): VideoPromptSlots
 
   if (subject && subjectDetails) {
     const looksLikeActionDetail = (detail: string): boolean => {
-      const firstToken = detail.trim().split(/\s+/)[0]?.toLowerCase() || '';
-      if (!firstToken.endsWith('ing')) return false;
-      if (firstToken === 'wearing' || firstToken === 'dressed') return false;
+      const firstToken = detail.trim().split(/\s+/)[0]?.toLowerCase() || "";
+      if (!firstToken.endsWith("ing")) return false;
+      if (firstToken === "wearing" || firstToken === "dressed") return false;
       return true;
     };
 
@@ -76,13 +89,13 @@ export function normalizeSlots(raw: Partial<VideoPromptSlots>): VideoPromptSlots
 
   if (subjectDetails) {
     const normalizedDetails = subjectDetails
-      .map((d) => d.trim().replace(/\s+/g, ' '))
-      .map((d) => d.replace(/^[-*\u2022]\s+/, ''))
-      .map((d) => d.replace(/^(?:and|with)\s+/i, ''))
-      .map((d) => d.replace(/[.]+$/g, '').trim())
+      .map((d) => d.trim().replace(/\s+/g, " "))
+      .map((d) => d.replace(/^[-*\u2022]\s+/, ""))
+      .map((d) => d.replace(/^(?:and|with)\s+/i, ""))
+      .map((d) => d.replace(/[.]+$/g, "").trim())
       .map((d) => {
         const words = d.split(/\s+/).filter(Boolean);
-        return words.length > 6 ? words.slice(0, 6).join(' ') : d;
+        return words.length > 6 ? words.slice(0, 6).join(" ") : d;
       })
       .filter(Boolean);
 
@@ -93,12 +106,13 @@ export function normalizeSlots(raw: Partial<VideoPromptSlots>): VideoPromptSlots
       seen.add(key);
       return true;
     });
-    subjectDetails = subjectDetails.length > 0 ? subjectDetails.slice(0, 3) : null;
+    subjectDetails =
+      subjectDetails.length > 0 ? subjectDetails.slice(0, 3) : null;
   }
 
   return {
-    shot_framing: normalizeString(raw.shot_framing, 'Wide Shot'),
-    camera_angle: normalizeString(raw.camera_angle, 'Eye-Level Shot'),
+    shot_framing: normalizeString(raw.shot_framing, "Wide Shot"),
+    camera_angle: normalizeString(raw.camera_angle, "Eye-Level Shot"),
     camera_move: normalizeStringOrNull(raw.camera_move),
     subject,
     subject_details: subjectDetails,

@@ -20,17 +20,17 @@
  * - "neon light" → lighting.source
  */
 
-import nlp from 'compromise';
-import { logger } from '@infrastructure/Logger';
-import type { NlpSpan } from './types';
+import nlp from "compromise";
+import { logger } from "@infrastructure/Logger";
+import type { NlpSpan } from "./types";
 import {
   classifyLightingSemantically,
   lightingClassToTaxonomy,
   isLightingSemanticsReady,
   warmupLightingSemantics,
-} from './LightingSemantics';
+} from "./LightingSemantics";
 
-const log = logger.child({ service: 'LightingService' });
+const log = logger.child({ service: "LightingService" });
 
 // =============================================================================
 // CONFIGURATION
@@ -44,7 +44,7 @@ export interface LightingConfig {
 
 export const DEFAULT_LIGHTING_CONFIG: LightingConfig = {
   enabled: true,
-  minConfidence: 0.70,
+  minConfidence: 0.7,
   maxPhraseWords: 5,
 };
 
@@ -59,19 +59,27 @@ export const DEFAULT_LIGHTING_CONFIG: LightingConfig = {
  * We pattern match: #Adjective* + anchor_noun
  */
 const SHADOW_NOUNS = new Set([
-  'shadow', 'shadows',
-  'silhouette', 'silhouettes',
+  "shadow",
+  "shadows",
+  "silhouette",
+  "silhouettes",
 ]);
 
 const LIGHT_NOUNS = new Set([
-  'light', 'lights', 'lighting',
-  'glow', 'glows',
-  'highlight', 'highlights',
-  'illumination',
-  'luminance',
-  'radiance',
-  'beam', 'beams',
-  'ray', 'rays',
+  "light",
+  "lights",
+  "lighting",
+  "glow",
+  "glows",
+  "highlight",
+  "highlights",
+  "illumination",
+  "luminance",
+  "radiance",
+  "beam",
+  "beams",
+  "ray",
+  "rays",
 ]);
 
 const ALL_LIGHTING_NOUNS = new Set([...SHADOW_NOUNS, ...LIGHT_NOUNS]);
@@ -81,23 +89,21 @@ const ALL_LIGHTING_NOUNS = new Set([...SHADOW_NOUNS, ...LIGHT_NOUNS]);
  * (e.g., "traffic light" is not about lighting quality)
  */
 const EXCLUDED_COMPOUNDS = new Set([
-  'traffic light',
-  'traffic lights',
-  'light switch',
-  'light bulb',
-  'light fixture',
-  'light meter',
-  'highlight reel',
-  'flashlight', // This is a subject/prop, not lighting description
+  "traffic light",
+  "traffic lights",
+  "light switch",
+  "light bulb",
+  "light fixture",
+  "light meter",
+  "highlight reel",
+  "flashlight", // This is a subject/prop, not lighting description
 ]);
 
 /**
  * Context words that indicate the lighting phrase is about the light SOURCE
  * rather than quality (helps with classification disambiguation)
  */
-const SOURCE_INDICATORS = new Set([
-  'from', 'through', 'via', 'by', 'of',
-]);
+const SOURCE_INDICATORS = new Set(["from", "through", "via", "by", "of"]);
 
 // =============================================================================
 // EXTRACTION LOGIC
@@ -117,7 +123,7 @@ interface LightingMatch {
 function findPhrasePosition(
   text: string,
   phrase: string,
-  afterIndex: number = 0
+  afterIndex: number = 0,
 ): { start: number; end: number } | null {
   const lowerText = text.toLowerCase();
   const lowerPhrase = phrase.toLowerCase().trim();
@@ -126,7 +132,7 @@ function findPhrasePosition(
 
   if (start === -1) {
     // Try without extra whitespace
-    const normalizedPhrase = lowerPhrase.replace(/\s+/g, ' ');
+    const normalizedPhrase = lowerPhrase.replace(/\s+/g, " ");
     start = lowerText.indexOf(normalizedPhrase, afterIndex);
   }
 
@@ -164,21 +170,21 @@ function isExcludedPhrase(phrase: string): boolean {
 function extractLightingPatterns(
   doc: ReturnType<typeof nlp>,
   text: string,
-  config: LightingConfig
+  config: LightingConfig,
 ): LightingMatch[] {
   const matches: LightingMatch[] = [];
   const seenPositions = new Set<string>();
 
   // Strategy 1: Find adjective(s) + lighting noun patterns
   // e.g., "soft shadows", "warm ambient glow", "harsh dramatic light"
-  doc.match('#Adjective+ #Noun').forEach((match) => {
+  doc.match("#Adjective+ #Noun").forEach((match) => {
     const matchText = match.text().trim();
     const words = matchText.split(/\s+/);
 
     if (words.length > config.maxPhraseWords) return;
 
     // Check if the last word (noun) is a lighting anchor
-    const lastWord = words[words.length - 1]?.toLowerCase() || '';
+    const lastWord = words[words.length - 1]?.toLowerCase() || "";
     if (!isLightingNoun(lastWord)) return;
 
     // Check for exclusions
@@ -201,7 +207,7 @@ function extractLightingPatterns(
 
   // Strategy 2: Find standalone lighting nouns with preceding adjectives
   // This catches cases where Compromise might not tag perfectly
-  doc.match('#Noun').forEach((match) => {
+  doc.match("#Noun").forEach((match) => {
     const nounText = match.text().trim().toLowerCase();
 
     if (!isLightingNoun(nounText)) return;
@@ -215,16 +221,18 @@ function extractLightingPatterns(
     if (seenPositions.has(key)) return;
 
     // Look backwards for adjectives
-    const beforeText = text.slice(Math.max(0, nounPos.start - 50), nounPos.start).trim();
+    const beforeText = text
+      .slice(Math.max(0, nounPos.start - 50), nounPos.start)
+      .trim();
     const beforeWords = beforeText.split(/\s+/).slice(-3); // Last 3 words before noun
 
     // Try to find adjective + noun pattern
     for (let i = beforeWords.length - 1; i >= 0; i--) {
-      const potentialPhrase = [...beforeWords.slice(i), nounText].join(' ');
+      const potentialPhrase = [...beforeWords.slice(i), nounText].join(" ");
       const phraseDoc = nlp(potentialPhrase);
 
       // Check if it matches adjective + noun pattern
-      if (phraseDoc.match('#Adjective+ #Noun').found) {
+      if (phraseDoc.match("#Adjective+ #Noun").found) {
         const phrasePos = findPhrasePosition(text, potentialPhrase);
         if (phrasePos && !isExcludedPhrase(potentialPhrase)) {
           const phraseKey = `${phrasePos.start}-${phrasePos.end}`;
@@ -255,7 +263,7 @@ function deduplicateMatches(matches: LightingMatch[]): LightingMatch[] {
   // Sort by start position, then by length (longer first)
   const sorted = [...matches].sort((a, b) => {
     if (a.start !== b.start) return a.start - b.start;
-    return (b.end - b.start) - (a.end - a.start);
+    return b.end - b.start - (a.end - a.start);
   });
 
   const result: LightingMatch[] = [];
@@ -265,8 +273,11 @@ function deduplicateMatches(matches: LightingMatch[]): LightingMatch[] {
     if (match.start < lastEnd) {
       // Overlapping - check if this is longer
       const lastMatch = result[result.length - 1];
-      if (lastMatch && match.start === lastMatch.start &&
-          (match.end - match.start) > (lastMatch.end - lastMatch.start)) {
+      if (
+        lastMatch &&
+        match.start === lastMatch.start &&
+        match.end - match.start > lastMatch.end - lastMatch.start
+      ) {
         result.pop();
         result.push(match);
         lastEnd = match.end;
@@ -301,15 +312,21 @@ export interface LightingExtractionResult {
  */
 export async function extractLightingSpans(
   text: string,
-  config: Partial<LightingConfig> = {}
+  config: Partial<LightingConfig> = {},
 ): Promise<LightingExtractionResult> {
   const startTime = performance.now();
   const mergedConfig = { ...DEFAULT_LIGHTING_CONFIG, ...config };
 
-  if (!mergedConfig.enabled || !text || typeof text !== 'string') {
+  if (!mergedConfig.enabled || !text || typeof text !== "string") {
     return {
       spans: [],
-      stats: { patternsFound: 0, shadowPhrases: 0, lightPhrases: 0, totalExtracted: 0, latencyMs: 0 },
+      stats: {
+        patternsFound: 0,
+        shadowPhrases: 0,
+        lightPhrases: 0,
+        totalExtracted: 0,
+        latencyMs: 0,
+      },
     };
   }
 
@@ -320,18 +337,22 @@ export async function extractLightingSpans(
     const matches = extractLightingPatterns(doc, text, mergedConfig);
     const dedupedMatches = deduplicateMatches(matches);
 
-    const shadowCount = dedupedMatches.filter(m => m.isShadow).length;
+    const shadowCount = dedupedMatches.filter((m) => m.isShadow).length;
     const lightCount = dedupedMatches.length - shadowCount;
 
     // Classify each match semantically and convert to NlpSpan
     const spans: NlpSpan[] = await Promise.all(
       dedupedMatches.map(async (match) => {
         // Use semantic classification to determine the lighting category
-        const { lightingClass, confidence } = await classifyLightingSemantically(match.text);
+        const { lightingClass, confidence } =
+          await classifyLightingSemantically(match.text);
         const taxonomyId = lightingClassToTaxonomy(lightingClass);
 
         // Use the higher of semantic confidence or min confidence
-        const finalConfidence = Math.max(confidence, mergedConfig.minConfidence);
+        const finalConfidence = Math.max(
+          confidence,
+          mergedConfig.minConfidence,
+        );
 
         return {
           text: match.text,
@@ -339,15 +360,15 @@ export async function extractLightingSpans(
           confidence: Math.round(finalConfidence * 100) / 100,
           start: match.start,
           end: match.end,
-          source: 'lighting' as const,
+          source: "lighting" as const,
         };
-      })
+      }),
     );
 
     const latencyMs = Math.round(performance.now() - startTime);
 
-    log.debug('Lighting extraction completed', {
-      operation: 'extractLightingSpans',
+    log.debug("Lighting extraction completed", {
+      operation: "extractLightingSpans",
       textLength: text.length,
       patternsFound: dedupedMatches.length,
       shadowPhrases: shadowCount,
@@ -367,14 +388,20 @@ export async function extractLightingSpans(
       },
     };
   } catch (error) {
-    log.error('Lighting extraction failed', error as Error, {
-      operation: 'extractLightingSpans',
+    log.error("Lighting extraction failed", error as Error, {
+      operation: "extractLightingSpans",
       textLength: text.length,
     });
 
     return {
       spans: [],
-      stats: { patternsFound: 0, shadowPhrases: 0, lightPhrases: 0, totalExtracted: 0, latencyMs: 0 },
+      stats: {
+        patternsFound: 0,
+        shadowPhrases: 0,
+        lightPhrases: 0,
+        totalExtracted: 0,
+        latencyMs: 0,
+      },
     };
   }
 }
@@ -384,8 +411,8 @@ export async function extractLightingSpans(
  */
 export function isLightingServiceAvailable(): boolean {
   try {
-    const doc = nlp('test sentence');
-    return doc !== null && typeof doc.match === 'function';
+    const doc = nlp("test sentence");
+    return doc !== null && typeof doc.match === "function";
   } catch {
     return false;
   }
@@ -394,7 +421,10 @@ export function isLightingServiceAvailable(): boolean {
 /**
  * Warm up LightingService and semantic classifier
  */
-export async function warmupLightingService(): Promise<{ success: boolean; latencyMs: number }> {
+export async function warmupLightingService(): Promise<{
+  success: boolean;
+  latencyMs: number;
+}> {
   const startTime = performance.now();
 
   try {
@@ -403,13 +433,13 @@ export async function warmupLightingService(): Promise<{ success: boolean; laten
 
     // Run a sample extraction
     const result = await extractLightingSpans(
-      'The scene features soft shadows and warm ambient glow with golden hour light.'
+      "The scene features soft shadows and warm ambient glow with golden hour light.",
     );
 
     const latencyMs = Math.round(performance.now() - startTime);
 
-    log.info('LightingService warmup completed', {
-      operation: 'warmupLightingService',
+    log.info("LightingService warmup completed", {
+      operation: "warmupLightingService",
       spansExtracted: result.spans.length,
       semanticsReady: isLightingSemanticsReady(),
       latencyMs,
@@ -417,8 +447,8 @@ export async function warmupLightingService(): Promise<{ success: boolean; laten
 
     return { success: result.spans.length > 0, latencyMs };
   } catch (error) {
-    log.error('LightingService warmup failed', error as Error, {
-      operation: 'warmupLightingService',
+    log.error("LightingService warmup failed", error as Error, {
+      operation: "warmupLightingService",
     });
     return { success: false, latencyMs: 0 };
   }

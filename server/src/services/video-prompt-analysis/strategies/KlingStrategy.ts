@@ -21,178 +21,185 @@ import {
   type NormalizeResult,
   type TransformResult,
   type AugmentResult,
-} from './BaseStrategy';
-import type { PromptOptimizationResult, PromptContext, VideoPromptIR } from './types';
+} from "./BaseStrategy";
+import { getPromptModelConstraints } from "@shared/videoModels";
+import type {
+  PromptOptimizationResult,
+  PromptContext,
+  RewriteConstraints,
+  VideoPromptIR,
+} from "./types";
 
 /**
  * Generic sound/noise terms to strip (prevent white noise generation)
  */
 const GENERIC_SOUND_TERMS = [
-  'sound',
-  'sounds',
-  'noise',
-  'noises',
-  'audio',
-  'sonic',
-  'acoustics',
-  'acoustic',
+  "sound",
+  "sounds",
+  "noise",
+  "noises",
+  "audio",
+  "sonic",
+  "acoustics",
+  "acoustic",
 ] as const;
 
 /**
  * Visual quality tokens to strip from audio sections
  */
 const VISUAL_QUALITY_TOKENS = [
-  '4k',
-  '8k',
-  'hd',
-  'uhd',
-  'high resolution',
-  'high-resolution',
-  'ultra hd',
-  'ultra-hd',
-  'cinematic',
-  'film grain',
-  'bokeh',
-  'depth of field',
-  'lens flare',
-  'chromatic aberration',
-  'sharp',
-  'crisp',
-  'vivid',
-  'vibrant',
+  "4k",
+  "8k",
+  "hd",
+  "uhd",
+  "high resolution",
+  "high-resolution",
+  "ultra hd",
+  "ultra-hd",
+  "cinematic",
+  "film grain",
+  "bokeh",
+  "depth of field",
+  "lens flare",
+  "chromatic aberration",
+  "sharp",
+  "crisp",
+  "vivid",
+  "vibrant",
 ] as const;
 
 /**
  * Audio trigger terms for Kling
  */
 const AUDIO_TRIGGERS = [
-  'synced lips',
-  'natural speech',
-  'high fidelity audio',
+  "synced lips",
+  "natural speech",
+  "high fidelity audio",
 ] as const;
 
 /**
  * Emotion indicators for dialogue formatting
  */
 const EMOTION_INDICATORS = [
-  'angrily',
-  'happily',
-  'sadly',
-  'excitedly',
-  'nervously',
-  'calmly',
-  'fearfully',
-  'joyfully',
-  'sarcastically',
-  'whispers',
-  'shouts',
-  'yells',
-  'screams',
-  'murmurs',
-  'laughs',
-  'cries',
-  'sighs',
+  "angrily",
+  "happily",
+  "sadly",
+  "excitedly",
+  "nervously",
+  "calmly",
+  "fearfully",
+  "joyfully",
+  "sarcastically",
+  "whispers",
+  "shouts",
+  "yells",
+  "screams",
+  "murmurs",
+  "laughs",
+  "cries",
+  "sighs",
 ] as const;
 
 /**
  * Emotion mapping from adverbs to adjectives
  */
 const EMOTION_MAP: Record<string, string> = {
-  angrily: 'angry',
-  happily: 'happy',
-  sadly: 'sad',
-  excitedly: 'excited',
-  nervously: 'nervous',
-  calmly: 'calm',
-  fearfully: 'fearful',
-  joyfully: 'joyful',
-  sarcastically: 'sarcastic',
-  whispers: 'whispering',
-  shouts: 'shouting',
-  yells: 'yelling',
-  screams: 'screaming',
-  murmurs: 'murmuring',
-  laughs: 'laughing',
-  cries: 'crying',
-  sighs: 'sighing',
+  angrily: "angry",
+  happily: "happy",
+  sadly: "sad",
+  excitedly: "excited",
+  nervously: "nervous",
+  calmly: "calm",
+  fearfully: "fearful",
+  joyfully: "joyful",
+  sarcastically: "sarcastic",
+  whispers: "whispering",
+  shouts: "shouting",
+  yells: "yelling",
+  screams: "screaming",
+  murmurs: "murmuring",
+  laughs: "laughing",
+  cries: "crying",
+  sighs: "sighing",
 };
 
 /**
  * Sound effect indicators
  */
 const SFX_INDICATORS = [
-  'sfx:',
-  'sound effect:',
-  'sound of',
-  'the sound of',
-  'hear',
-  'hears',
-  'hearing',
-  'bang',
-  'crash',
-  'boom',
-  'whoosh',
-  'splash',
-  'thud',
-  'click',
-  'beep',
-  'ring',
-  'buzz',
-  'hum',
-  'roar',
-  'thunder',
-  'explosion',
-  'footsteps',
-  'door',
-  'glass',
-  'metal',
-  'wind',
-  'rain',
-  'water',
+  "sfx:",
+  "sound effect:",
+  "sound of",
+  "the sound of",
+  "hear",
+  "hears",
+  "hearing",
+  "bang",
+  "crash",
+  "boom",
+  "whoosh",
+  "splash",
+  "thud",
+  "click",
+  "beep",
+  "ring",
+  "buzz",
+  "hum",
+  "roar",
+  "thunder",
+  "explosion",
+  "footsteps",
+  "door",
+  "glass",
+  "metal",
+  "wind",
+  "rain",
+  "water",
 ] as const;
 
 /**
  * Ambience indicators
  */
 const AMBIENCE_INDICATORS = [
-  'ambience:',
-  'ambient:',
-  'background:',
-  'atmosphere:',
-  'environmental sound',
-  'room tone',
-  'city sounds',
-  'nature sounds',
-  'crowd noise',
-  'traffic',
-  'birds chirping',
-  'wind blowing',
-  'rain falling',
-  'ocean waves',
+  "ambience:",
+  "ambient:",
+  "background:",
+  "atmosphere:",
+  "environmental sound",
+  "room tone",
+  "city sounds",
+  "nature sounds",
+  "crowd noise",
+  "traffic",
+  "birds chirping",
+  "wind blowing",
+  "rain falling",
+  "ocean waves",
 ] as const;
 
 /**
  * Music indicators
  */
 const MUSIC_INDICATORS = [
-  'music:',
-  'soundtrack:',
-  'score:',
-  'playing music',
-  'background music',
-  'musical',
-  'melody',
-  'song',
-  'tune',
-  'rhythm',
-  'beat',
-  'orchestra',
-  'piano',
-  'guitar',
-  'violin',
-  'drums',
+  "music:",
+  "soundtrack:",
+  "score:",
+  "playing music",
+  "background music",
+  "musical",
+  "melody",
+  "song",
+  "tune",
+  "rhythm",
+  "beat",
+  "orchestra",
+  "piano",
+  "guitar",
+  "violin",
+  "drums",
 ] as const;
 
+const MODEL_CONSTRAINTS = getPromptModelConstraints("kling-2.1")!;
 
 /**
  * Dialogue pattern for extraction
@@ -220,7 +227,7 @@ interface DialogueLine {
  * Parsed audio block
  */
 interface AudioBlock {
-  type: 'sfx' | 'ambience' | 'music';
+  type: "sfx" | "ambience" | "music";
   description: string;
 }
 
@@ -248,82 +255,103 @@ interface KlingScreenplayBlock {
  * KlingStrategy optimizes prompts for Kling AI 2.6's MDT architecture
  */
 export class KlingStrategy extends BaseStrategy {
-  readonly modelId = 'kling-26';
-  readonly modelName = 'Kling AI 2.6';
+  readonly modelId = "kling-2.1";
+  readonly modelName = "Kling 2.1";
 
   // Track entities across shots for MemFlow
   private entityRegistry: Map<string, string> = new Map();
   private shotCounter = 0;
 
+  getModelConstraints() {
+    return MODEL_CONSTRAINTS;
+  }
+
   /**
    * Validate input against Kling-specific constraints
    */
-  protected async doValidate(input: string, context?: PromptContext): Promise<void> {
+  protected async doValidate(
+    input: string,
+    context?: PromptContext,
+  ): Promise<void> {
     // Check for aspect ratio constraints if provided
     if (context?.constraints?.formRequirement) {
       const aspectRatio = context.constraints.formRequirement;
-      const validAspectRatios = ['16:9', '9:16', '1:1', '4:3', '3:4'];
+      const validAspectRatios = ["16:9", "9:16", "1:1", "4:3", "3:4"];
       if (!validAspectRatios.includes(aspectRatio)) {
-        this.addWarning(`Aspect ratio "${aspectRatio}" may not be supported by Kling`);
+        this.addWarning(
+          `Aspect ratio "${aspectRatio}" may not be supported by Kling`,
+        );
       }
     }
 
     // Check for very long prompts
     const wordCount = input.split(/\s+/).length;
-    if (wordCount > 300) {
-      this.addWarning('Prompt exceeds 300 words; Kling may truncate or ignore excess content');
+    if (wordCount > MODEL_CONSTRAINTS.wordLimits.max) {
+      this.addWarning(
+        `Prompt exceeds ${MODEL_CONSTRAINTS.wordLimits.max} words; Kling may truncate or ignore excess content`,
+      );
     }
 
     // Check for dialogue without clear character attribution
     const hasQuotes = /["'][^"']+["']/.test(input);
-    const hasCharacter = /\b(?:man|woman|person|character|he|she|they)\b/i.test(input);
+    const hasCharacter = /\b(?:man|woman|person|character|he|she|they)\b/i.test(
+      input,
+    );
     if (hasQuotes && !hasCharacter) {
-      this.addWarning('Dialogue detected without clear character attribution; consider adding character names');
+      this.addWarning(
+        "Dialogue detected without clear character attribution; consider adding character names",
+      );
     }
   }
 
   /**
    * Normalize input by stripping generic sound/noise terms and visual tokens from audio sections
    */
-  protected doNormalize(input: string, context?: PromptContext): NormalizeResult {
+  protected doNormalize(
+    input: string,
+    context?: PromptContext,
+  ): NormalizeResult {
     let text = input;
     const changes: string[] = [];
     const strippedTokens: string[] = [];
 
     // Compound audio phrases that should NOT be stripped
     const compoundAudioPhrases = [
-      'city sounds',
-      'nature sounds',
-      'crowd noise',
-      'background noise',
-      'ambient sound',
-      'ambient sounds',
-      'environmental sound',
-      'environmental sounds',
-      'room sound',
-      'room sounds',
-      'street sounds',
-      'ocean sounds',
-      'forest sounds',
-      'traffic noise',
-      'white noise',
+      "city sounds",
+      "nature sounds",
+      "crowd noise",
+      "background noise",
+      "ambient sound",
+      "ambient sounds",
+      "environmental sound",
+      "environmental sounds",
+      "room sound",
+      "room sounds",
+      "street sounds",
+      "ocean sounds",
+      "forest sounds",
+      "traffic noise",
+      "white noise",
     ];
 
     // Strip generic sound/noise terms (prevent white noise generation)
     // But preserve compound phrases that describe specific audio
     for (const term of GENERIC_SOUND_TERMS) {
       // Check if this term is part of a compound phrase we want to keep
-      const isPartOfCompound = compoundAudioPhrases.some(phrase => {
+      const isPartOfCompound = compoundAudioPhrases.some((phrase) => {
         const lowerText = text.toLowerCase();
         return lowerText.includes(phrase.toLowerCase());
       });
 
       if (!isPartOfCompound) {
         // Only strip standalone generic terms, not specific sound descriptions
-        const standalonePattern = new RegExp(`\\b${this.escapeRegex(term)}\\b(?!\\s+(?:of|effect|track|design))`, 'gi');
+        const standalonePattern = new RegExp(
+          `\\b${this.escapeRegex(term)}\\b(?!\\s+(?:of|effect|track|design))`,
+          "gi",
+        );
         if (standalonePattern.test(text)) {
           const before = text;
-          text = text.replace(standalonePattern, '');
+          text = text.replace(standalonePattern, "");
           if (text !== before) {
             changes.push(`Stripped generic sound term: "${term}"`);
             strippedTokens.push(term);
@@ -333,48 +361,54 @@ export class KlingStrategy extends BaseStrategy {
     }
 
     // Identify audio sections and strip visual quality tokens from them
-    const audioSectionPattern = /(?:audio|sound|music|sfx|ambience)[:\s]+([^.!?\n]+(?:[.!?][^.!?\n]+)?)/gi;
+    const audioSectionPattern =
+      /(?:audio|sound|music|sfx|ambience)[:\s]+([^.!?\n]+(?:[.!?][^.!?\n]+)?)/gi;
     let match;
-    
+
     // Collect replacements to apply them safely
-    const replacements: Array<{start: number, end: number, replacement: string}> = [];
-    
+    const replacements: Array<{
+      start: number;
+      end: number;
+      replacement: string;
+    }> = [];
+
     while ((match = audioSectionPattern.exec(text)) !== null) {
-        if (match.index === undefined) continue;
-        
-        const sectionFull = match[0];
-        const sectionContent = match[1];
-        if (!sectionContent) continue;
-        
-        const contentStart = match.index + sectionFull.indexOf(sectionContent);
-        
-        let cleanedContent = sectionContent;
-        let modified = false;
-        
-        for (const token of VISUAL_QUALITY_TOKENS) {
-            if (this.containsWord(cleanedContent, token)) {
-                cleanedContent = this.replaceWord(cleanedContent, token, '');
-                changes.push(`Stripped visual token "${token}" from audio section`);
-                strippedTokens.push(token);
-                modified = true;
-            }
+      if (match.index === undefined) continue;
+
+      const sectionFull = match[0];
+      const sectionContent = match[1];
+      if (!sectionContent) continue;
+
+      const contentStart = match.index + sectionFull.indexOf(sectionContent);
+
+      let cleanedContent = sectionContent;
+      let modified = false;
+
+      for (const token of VISUAL_QUALITY_TOKENS) {
+        if (this.containsWord(cleanedContent, token)) {
+          cleanedContent = this.replaceWord(cleanedContent, token, "");
+          changes.push(`Stripped visual token "${token}" from audio section`);
+          strippedTokens.push(token);
+          modified = true;
         }
-        
-        if (modified) {
-            replacements.push({
-                start: contentStart,
-                end: contentStart + sectionContent.length,
-                replacement: cleanedContent
-            });
-        }
+      }
+
+      if (modified) {
+        replacements.push({
+          start: contentStart,
+          end: contentStart + sectionContent.length,
+          replacement: cleanedContent,
+        });
+      }
     }
-    
+
     // Apply replacements from back to front to keep indices valid
     for (let i = replacements.length - 1; i >= 0; i--) {
-        const r = replacements[i];
-        if (r) {
-            text = text.substring(0, r.start) + r.replacement + text.substring(r.end);
-        }
+      const r = replacements[i];
+      if (r) {
+        text =
+          text.substring(0, r.start) + r.replacement + text.substring(r.end);
+      }
     }
 
     // Clean up whitespace
@@ -386,21 +420,42 @@ export class KlingStrategy extends BaseStrategy {
   /**
    * Final adjustments after LLM rewrite
    */
-  protected doTransform(llmPrompt: string | Record<string, unknown>, _ir: VideoPromptIR, context?: PromptContext): TransformResult {
+  protected doTransform(
+    llmPrompt: string | Record<string, unknown>,
+    _ir: VideoPromptIR,
+    context?: PromptContext,
+  ): TransformResult {
     const changes: string[] = [];
-    const sourcePrompt = typeof llmPrompt === 'string' ? llmPrompt : JSON.stringify(llmPrompt);
-    const screenplay = this.parseScreenplay(sourcePrompt, context);
-    let prompt = this.formatScreenplay(screenplay);
-    if (!prompt || prompt.trim().length === 0) {
-      prompt = sourcePrompt;
-    } else if (prompt !== sourcePrompt) {
-      changes.push('Formatted output to Kling screenplay structure');
+    const sourcePrompt =
+      typeof llmPrompt === "string" ? llmPrompt : JSON.stringify(llmPrompt);
+    const ir = _ir;
+
+    const shouldUseScreenplayFormatting =
+      /@Element\(|"[^"\n]{2,}"|“[^”\n]{2,}”|\b(?:sfx|ambience|audio|dialogue|music)\b/i.test(
+        sourcePrompt,
+      );
+
+    let prompt: string;
+    if (shouldUseScreenplayFormatting) {
+      const screenplay = this.parseScreenplay(sourcePrompt, context);
+      prompt = this.formatScreenplay(screenplay);
+      if (!prompt || prompt.trim().length === 0) {
+        prompt = sourcePrompt;
+      } else if (prompt !== sourcePrompt) {
+        changes.push("Formatted output to Kling screenplay structure");
+      }
+    } else {
+      const compactSource = this.cleanWhitespace(sourcePrompt);
+      const words = compactSource.split(/\s+/).filter(Boolean);
+      prompt =
+        words.length > 80 ? `${words.slice(0, 80).join(" ")}.` : compactSource;
+      changes.push("Kept concise source prose for Kling prompt fidelity");
     }
 
     // Add @Element references from context assets (Kling specific requirement)
     if (context?.assets) {
       for (const asset of context.assets) {
-        if (asset.type === 'image' && asset.token) {
+        if (asset.type === "image" && asset.token) {
           if (!prompt.includes(`@Element(${asset.token})`)) {
             prompt = `${prompt}. @Element(${asset.token})`;
             changes.push(`Added @Element reference: ${asset.token}`);
@@ -417,17 +472,33 @@ export class KlingStrategy extends BaseStrategy {
    */
   protected doAugment(
     result: PromptOptimizationResult,
-    _context?: PromptContext
+    _context?: PromptContext,
   ): AugmentResult {
     const changes: string[] = [];
     const triggersInjected: string[] = [];
-    let prompt = typeof result.prompt === 'string' ? result.prompt : JSON.stringify(result.prompt);
+    let prompt =
+      typeof result.prompt === "string"
+        ? result.prompt
+        : JSON.stringify(result.prompt);
 
-    // Enforce core Kling audio constraints post-rewrite for deterministic behavior.
-    const mandatoryResult = this.enforceMandatoryConstraints(prompt, [...AUDIO_TRIGGERS]);
-    prompt = mandatoryResult.prompt;
-    changes.push(...mandatoryResult.changes);
-    triggersInjected.push(...mandatoryResult.injected);
+    const requestsAudio =
+      /\b(?:audio|dialogue|voice|speech|says|music|sfx|ambience)\b/i.test(
+        prompt,
+      );
+    if (requestsAudio) {
+      const mandatoryAudioConstraints = AUDIO_TRIGGERS.filter(
+        (trigger) => trigger !== "synced lips",
+      );
+      const mandatoryResult = this.enforceMandatoryConstraints(
+        prompt,
+        mandatoryAudioConstraints,
+      );
+      prompt = mandatoryResult.prompt;
+      changes.push(...mandatoryResult.changes);
+      triggersInjected.push(...mandatoryResult.injected);
+    } else {
+      prompt = this.cleanWhitespace(prompt);
+    }
 
     return {
       prompt,
@@ -436,14 +507,34 @@ export class KlingStrategy extends BaseStrategy {
     };
   }
 
-  // ============================================================ 
+  protected override getRewriteConstraints(
+    ir: VideoPromptIR,
+    _context?: PromptContext,
+  ): RewriteConstraints {
+    const hasAudioIntent =
+      Boolean(ir.audio.dialogue || ir.audio.music || ir.audio.sfx) ||
+      /\b(?:dialogue|voice|speech|says|music|sfx|ambience)\b/i.test(ir.raw);
+
+    return {
+      ...(hasAudioIntent
+        ? { mandatory: ["natural speech", "high fidelity audio"] }
+        : {}),
+      suggested: ["expressive facial gestures", "detailed micro-movements"],
+      avoid: [...VISUAL_QUALITY_TOKENS],
+    };
+  }
+
+  // ============================================================
   // Private Helper Methods
-  // ============================================================ 
+  // ============================================================
 
   /**
    * Parse input into screenplay structure
    */
-  private parseScreenplay(input: string, context?: PromptContext): KlingScreenplayBlock {
+  private parseScreenplay(
+    input: string,
+    context?: PromptContext,
+  ): KlingScreenplayBlock {
     const dialogue = this.extractDialogue(input);
     const audio = this.extractAudio(input);
     const elementReferences = this.extractElementReferences(input, context);
@@ -537,8 +628,8 @@ export class KlingStrategy extends BaseStrategy {
     return name
       .trim()
       .split(/\s+/)
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-      .join(' ');
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(" ");
   }
 
   /**
@@ -553,7 +644,7 @@ export class KlingStrategy extends BaseStrategy {
       if (lowerInput.includes(indicator.toLowerCase())) {
         const description = this.extractAudioDescription(input, indicator);
         if (description) {
-          audioBlocks.push({ type: 'sfx', description });
+          audioBlocks.push({ type: "sfx", description });
         }
       }
     }
@@ -563,7 +654,7 @@ export class KlingStrategy extends BaseStrategy {
       if (lowerInput.includes(indicator.toLowerCase())) {
         const description = this.extractAudioDescription(input, indicator);
         if (description) {
-          audioBlocks.push({ type: 'ambience', description });
+          audioBlocks.push({ type: "ambience", description });
         }
       }
     }
@@ -573,14 +664,14 @@ export class KlingStrategy extends BaseStrategy {
       if (lowerInput.includes(indicator.toLowerCase())) {
         const description = this.extractAudioDescription(input, indicator);
         if (description) {
-          audioBlocks.push({ type: 'music', description });
+          audioBlocks.push({ type: "music", description });
         }
       }
     }
 
     // Deduplicate by description
     const seen = new Set<string>();
-    return audioBlocks.filter(block => {
+    return audioBlocks.filter((block) => {
       const key = `${block.type}:${block.description}`;
       if (seen.has(key)) return false;
       seen.add(key);
@@ -591,7 +682,10 @@ export class KlingStrategy extends BaseStrategy {
   /**
    * Extract audio description following an indicator
    */
-  private extractAudioDescription(input: string, indicator: string): string | null {
+  private extractAudioDescription(
+    input: string,
+    indicator: string,
+  ): string | null {
     const lowerInput = input.toLowerCase();
     const pos = lowerInput.indexOf(indicator.toLowerCase());
 
@@ -609,7 +703,7 @@ export class KlingStrategy extends BaseStrategy {
     }
 
     // If indicator is a standalone word (like "thunder"), use it as description
-    if (!indicator.includes(':')) {
+    if (!indicator.includes(":")) {
       return indicator;
     }
 
@@ -619,7 +713,10 @@ export class KlingStrategy extends BaseStrategy {
   /**
    * Extract @Element references from context assets
    */
-  private extractElementReferences(input: string, context?: PromptContext): string[] {
+  private extractElementReferences(
+    input: string,
+    context?: PromptContext,
+  ): string[] {
     const references: string[] = [];
 
     // Check for existing @Element syntax in input
@@ -634,7 +731,7 @@ export class KlingStrategy extends BaseStrategy {
     // Add references from context assets
     if (context?.assets) {
       for (const asset of context.assets) {
-        if (asset.type === 'image' && asset.token) {
+        if (asset.type === "image" && asset.token) {
           if (!references.includes(asset.token)) {
             references.push(asset.token);
           }
@@ -651,19 +748,26 @@ export class KlingStrategy extends BaseStrategy {
   private extractVisualDescription(
     input: string,
     dialogue: DialogueLine[],
-    audio: AudioBlock[]
+    audio: AudioBlock[],
   ): string {
     let visual = input;
 
     // Remove dialogue patterns
     for (const pattern of DIALOGUE_PATTERNS) {
-      visual = visual.replace(pattern, '');
+      visual = visual.replace(pattern, "");
     }
 
     // Remove audio indicators and their descriptions
-    for (const indicator of [...SFX_INDICATORS, ...AMBIENCE_INDICATORS, ...MUSIC_INDICATORS]) {
-      const pattern = new RegExp(`${this.escapeRegex(indicator)}[:\\s]*[^.!?,;]*[.!?,;]?`, 'gi');
-      visual = visual.replace(pattern, '');
+    for (const indicator of [
+      ...SFX_INDICATORS,
+      ...AMBIENCE_INDICATORS,
+      ...MUSIC_INDICATORS,
+    ]) {
+      const pattern = new RegExp(
+        `${this.escapeRegex(indicator)}[:\\s]*[^.!?,;]*[.!?,;]?`,
+        "gi",
+      );
+      visual = visual.replace(pattern, "");
     }
 
     // Clean up
@@ -677,7 +781,7 @@ export class KlingStrategy extends BaseStrategy {
    */
   private buildMemFlowContext(
     input: string,
-    context?: PromptContext
+    context?: PromptContext,
   ): MemFlowContext | undefined {
     // Check if this is part of a multi-shot sequence
     if (!context?.history || context.history.length === 0) {
@@ -685,7 +789,8 @@ export class KlingStrategy extends BaseStrategy {
     }
 
     // Extract entity references from current input
-    const entityPattern = /\b(?:the\s+)?(?:same\s+)?(\w+(?:\s+\w+)?)\s+(?:from|in)\s+(?:shot|scene|previous)/gi;
+    const entityPattern =
+      /\b(?:the\s+)?(?:same\s+)?(\w+(?:\s+\w+)?)\s+(?:from|in)\s+(?:shot|scene|previous)/gi;
     const entities: string[] = [];
     let match;
 
@@ -702,11 +807,13 @@ export class KlingStrategy extends BaseStrategy {
       const name = match[1];
       if (name) {
         // Check if this character appeared in previous edits
-        const appearedBefore = context.history.some(h => {
-          const original = h.original?.toLowerCase() ?? '';
-          const replacement = h.replacement?.toLowerCase() ?? '';
+        const appearedBefore = context.history.some((h) => {
+          const original = h.original?.toLowerCase() ?? "";
+          const replacement = h.replacement?.toLowerCase() ?? "";
           const nameLower = name.toLowerCase();
-          return original.includes(nameLower) || replacement.includes(nameLower);
+          return (
+            original.includes(nameLower) || replacement.includes(nameLower)
+          );
         });
         if (appearedBefore && !entities.includes(name)) {
           entities.push(name);
@@ -719,7 +826,7 @@ export class KlingStrategy extends BaseStrategy {
     }
 
     // Generate entity IDs
-    const entityIds = entities.map(entity => {
+    const entityIds = entities.map((entity) => {
       const entityKey = entity.toLowerCase();
       const existingId = this.entityRegistry.get(entityKey);
       if (existingId) {
@@ -732,7 +839,7 @@ export class KlingStrategy extends BaseStrategy {
 
     return {
       entityIds,
-      continuityDescription: `Maintaining visual consistency for: ${entities.join(', ')}`,
+      continuityDescription: `Maintaining visual consistency for: ${entities.join(", ")}`,
     };
   }
 
@@ -749,14 +856,14 @@ export class KlingStrategy extends BaseStrategy {
 
     // Add @Element references
     for (const ref of screenplay.elementReferences) {
-      if (!parts.some(p => p.includes(`@Element(${ref})`))) {
+      if (!parts.some((p) => p.includes(`@Element(${ref})`))) {
         parts.push(`@Element(${ref})`);
       }
     }
 
     // Add formatted dialogue
     for (const line of screenplay.dialogue) {
-      const emotionPart = line.emotion ? ` (${line.emotion})` : '';
+      const emotionPart = line.emotion ? ` (${line.emotion})` : "";
       parts.push(`[${line.character}]${emotionPart}: "${line.line}"`);
     }
 
@@ -768,10 +875,12 @@ export class KlingStrategy extends BaseStrategy {
 
     // Add MemFlow context if present
     if (screenplay.memflowContext) {
-      parts.push(`[MemFlow: ${screenplay.memflowContext.continuityDescription}]`);
+      parts.push(
+        `[MemFlow: ${screenplay.memflowContext.continuityDescription}]`,
+      );
     }
 
-    return parts.join('. ');
+    return parts.join(". ");
   }
 
   /**
@@ -782,4 +891,3 @@ export class KlingStrategy extends BaseStrategy {
     this.shotCounter = 0;
   }
 }
-

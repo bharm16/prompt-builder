@@ -1,10 +1,10 @@
 import type {
   SessionPromptKeyframe,
   SessionPromptVersionEntry,
-} from '@shared/types/session';
+} from "@shared/types/session";
 
 export type ImmutableMediaWarning = {
-  scope: 'version' | 'generation' | 'keyframe';
+  scope: "version" | "generation" | "keyframe";
   field: string;
   versionId?: string;
   generationId?: string;
@@ -16,19 +16,20 @@ export type ImmutableMediaWarning = {
 type GenerationRecord = Record<string, unknown>;
 
 const isNonEmptyString = (value: unknown): value is string =>
-  typeof value === 'string' && value.trim().length > 0;
+  typeof value === "string" && value.trim().length > 0;
 
 const normalizeStringList = (value?: unknown): string[] =>
   Array.isArray(value) ? value.filter(isNonEmptyString) : [];
 
 const listsEqual = (left: string[], right: string[]): boolean =>
-  left.length === right.length && left.every((value, index) => value === right[index]);
+  left.length === right.length &&
+  left.every((value, index) => value === right[index]);
 
 const preserveImmutableString = (
   existing: string | null | undefined,
   incoming: string | null | undefined,
   warnings: ImmutableMediaWarning[],
-  context: Omit<ImmutableMediaWarning, 'previous' | 'incoming'>
+  context: Omit<ImmutableMediaWarning, "previous" | "incoming">,
 ): string | null | undefined => {
   if (isNonEmptyString(existing)) {
     if (isNonEmptyString(incoming) && existing !== incoming) {
@@ -40,29 +41,39 @@ const preserveImmutableString = (
     }
     return existing;
   }
-  return isNonEmptyString(incoming) ? incoming : incoming ?? existing;
+  return isNonEmptyString(incoming) ? incoming : (incoming ?? existing);
 };
 
 const mergePreview = (
-  existing: SessionPromptVersionEntry['preview'] | null | undefined,
-  incoming: SessionPromptVersionEntry['preview'] | null | undefined,
+  existing: SessionPromptVersionEntry["preview"] | null | undefined,
+  incoming: SessionPromptVersionEntry["preview"] | null | undefined,
   versionId: string,
-  warnings: ImmutableMediaWarning[]
-): SessionPromptVersionEntry['preview'] | null | undefined => {
+  warnings: ImmutableMediaWarning[],
+): SessionPromptVersionEntry["preview"] | null | undefined => {
   if (!existing) return incoming;
   if (!incoming) return existing;
 
   const next = { ...incoming };
-  const storagePath = preserveImmutableString(existing.storagePath, incoming.storagePath, warnings, {
-    scope: 'version',
-    field: 'preview.storagePath',
-    versionId,
-  });
-  const assetId = preserveImmutableString(existing.assetId, incoming.assetId, warnings, {
-    scope: 'version',
-    field: 'preview.assetId',
-    versionId,
-  });
+  const storagePath = preserveImmutableString(
+    existing.storagePath,
+    incoming.storagePath,
+    warnings,
+    {
+      scope: "version",
+      field: "preview.storagePath",
+      versionId,
+    },
+  );
+  const assetId = preserveImmutableString(
+    existing.assetId,
+    incoming.assetId,
+    warnings,
+    {
+      scope: "version",
+      field: "preview.assetId",
+      versionId,
+    },
+  );
 
   if (storagePath && storagePath !== incoming.storagePath) {
     next.storagePath = storagePath;
@@ -92,25 +103,35 @@ const mergePreview = (
 };
 
 const mergeVideo = (
-  existing: SessionPromptVersionEntry['video'] | null | undefined,
-  incoming: SessionPromptVersionEntry['video'] | null | undefined,
+  existing: SessionPromptVersionEntry["video"] | null | undefined,
+  incoming: SessionPromptVersionEntry["video"] | null | undefined,
   versionId: string,
-  warnings: ImmutableMediaWarning[]
-): SessionPromptVersionEntry['video'] | null | undefined => {
+  warnings: ImmutableMediaWarning[],
+): SessionPromptVersionEntry["video"] | null | undefined => {
   if (!existing) return incoming;
   if (!incoming) return existing;
 
   const next = { ...incoming };
-  const storagePath = preserveImmutableString(existing.storagePath, incoming.storagePath, warnings, {
-    scope: 'version',
-    field: 'video.storagePath',
-    versionId,
-  });
-  const assetId = preserveImmutableString(existing.assetId, incoming.assetId, warnings, {
-    scope: 'version',
-    field: 'video.assetId',
-    versionId,
-  });
+  const storagePath = preserveImmutableString(
+    existing.storagePath,
+    incoming.storagePath,
+    warnings,
+    {
+      scope: "version",
+      field: "video.storagePath",
+      versionId,
+    },
+  );
+  const assetId = preserveImmutableString(
+    existing.assetId,
+    incoming.assetId,
+    warnings,
+    {
+      scope: "version",
+      field: "video.assetId",
+      versionId,
+    },
+  );
 
   if (storagePath && storagePath !== incoming.storagePath) {
     next.storagePath = storagePath;
@@ -143,7 +164,7 @@ const mergeGeneration = (
   existing: GenerationRecord | undefined,
   incoming: GenerationRecord,
   versionId: string,
-  warnings: ImmutableMediaWarning[]
+  warnings: ImmutableMediaWarning[],
 ): GenerationRecord => {
   if (!existing) return incoming;
 
@@ -154,7 +175,10 @@ const mergeGeneration = (
     next.mediaUrls = existingUrls;
   }
 
-  if (!isNonEmptyString(incoming.thumbnailUrl) && isNonEmptyString(existing.thumbnailUrl)) {
+  if (
+    !isNonEmptyString(incoming.thumbnailUrl) &&
+    isNonEmptyString(existing.thumbnailUrl)
+  ) {
     next.thumbnailUrl = existing.thumbnailUrl;
   }
 
@@ -163,8 +187,8 @@ const mergeGeneration = (
   if (existingIds.length) {
     if (!incomingIds.length || !listsEqual(existingIds, incomingIds)) {
       const warning: ImmutableMediaWarning = {
-        scope: 'generation',
-        field: 'mediaAssetIds',
+        scope: "generation",
+        field: "mediaAssetIds",
         versionId,
         previous: existingIds,
         incoming: incomingIds.length ? incomingIds : null,
@@ -179,11 +203,11 @@ const mergeGeneration = (
 };
 
 const mergeGenerations = (
-  existing: SessionPromptVersionEntry['generations'] | null | undefined,
-  incoming: SessionPromptVersionEntry['generations'] | null | undefined,
+  existing: SessionPromptVersionEntry["generations"] | null | undefined,
+  incoming: SessionPromptVersionEntry["generations"] | null | undefined,
   versionId: string,
-  warnings: ImmutableMediaWarning[]
-): SessionPromptVersionEntry['generations'] | null | undefined => {
+  warnings: ImmutableMediaWarning[],
+): SessionPromptVersionEntry["generations"] | null | undefined => {
   const incomingList = Array.isArray(incoming) ? incoming : [];
   const existingList = Array.isArray(existing) ? existing : [];
   if (!incomingList.length) {
@@ -195,14 +219,18 @@ const mergeGenerations = (
 
   const existingMap = new Map<string, GenerationRecord>();
   for (const generation of existingList) {
-    if (generation && typeof generation === 'object' && isNonEmptyString((generation as { id?: string }).id)) {
+    if (
+      generation &&
+      typeof generation === "object" &&
+      isNonEmptyString((generation as { id?: string }).id)
+    ) {
       existingMap.set((generation as { id: string }).id, generation);
     }
   }
 
   const incomingIds = new Set<string>();
   const merged = incomingList.map((generation) => {
-    if (!generation || typeof generation !== 'object') return generation;
+    if (!generation || typeof generation !== "object") return generation;
     const generationId = isNonEmptyString((generation as { id?: string }).id)
       ? (generation as { id: string }).id
       : null;
@@ -213,12 +241,12 @@ const mergeGenerations = (
       generationId ? existingMap.get(generationId) : undefined,
       generation,
       versionId,
-      warnings
+      warnings,
     );
   });
 
   for (const generation of existingList) {
-    if (!generation || typeof generation !== 'object') {
+    if (!generation || typeof generation !== "object") {
       merged.push(generation);
       continue;
     }
@@ -235,8 +263,11 @@ const mergeGenerations = (
 
 export function enforceImmutableVersions(
   existing: SessionPromptVersionEntry[] | null | undefined,
-  incoming: SessionPromptVersionEntry[] | null | undefined
-): { versions: SessionPromptVersionEntry[] | null | undefined; warnings: ImmutableMediaWarning[] } {
+  incoming: SessionPromptVersionEntry[] | null | undefined,
+): {
+  versions: SessionPromptVersionEntry[] | null | undefined;
+  warnings: ImmutableMediaWarning[];
+} {
   const warnings: ImmutableMediaWarning[] = [];
   if (!Array.isArray(incoming) || incoming.length === 0) {
     return { versions: incoming, warnings };
@@ -247,18 +278,30 @@ export function enforceImmutableVersions(
     return { versions: incoming, warnings };
   }
 
-  const existingMap = new Map(existingList.map((version) => [version.versionId, version]));
+  const existingMap = new Map(
+    existingList.map((version) => [version.versionId, version]),
+  );
   const merged = incoming.map((version) => {
     const existingVersion = existingMap.get(version.versionId);
     if (!existingVersion) return version;
     const next: SessionPromptVersionEntry = { ...version };
-    const preview = mergePreview(existingVersion.preview, version.preview, version.versionId, warnings);
-    const video = mergeVideo(existingVersion.video, version.video, version.versionId, warnings);
+    const preview = mergePreview(
+      existingVersion.preview,
+      version.preview,
+      version.versionId,
+      warnings,
+    );
+    const video = mergeVideo(
+      existingVersion.video,
+      version.video,
+      version.versionId,
+      warnings,
+    );
     const generations = mergeGenerations(
       existingVersion.generations,
       version.generations,
       version.versionId,
-      warnings
+      warnings,
     );
 
     if (preview != null) {
@@ -293,8 +336,11 @@ const resolveKeyframeKey = (keyframe: SessionPromptKeyframe): string | null => {
 
 export function enforceImmutableKeyframes(
   existing: SessionPromptKeyframe[] | null | undefined,
-  incoming: SessionPromptKeyframe[] | null | undefined
-): { keyframes: SessionPromptKeyframe[] | null | undefined; warnings: ImmutableMediaWarning[] } {
+  incoming: SessionPromptKeyframe[] | null | undefined,
+): {
+  keyframes: SessionPromptKeyframe[] | null | undefined;
+  warnings: ImmutableMediaWarning[];
+} {
   const warnings: ImmutableMediaWarning[] = [];
   if (!Array.isArray(incoming)) {
     return { keyframes: incoming, warnings };
@@ -324,13 +370,21 @@ export function enforceImmutableKeyframes(
       existingFrame.storagePath,
       frame.storagePath,
       warnings,
-      { scope: 'keyframe', field: 'storagePath', keyframeId: existingFrame.id ?? key }
+      {
+        scope: "keyframe",
+        field: "storagePath",
+        keyframeId: existingFrame.id ?? key,
+      },
     );
     const assetId = preserveImmutableString(
       existingFrame.assetId,
       frame.assetId,
       warnings,
-      { scope: 'keyframe', field: 'assetId', keyframeId: existingFrame.id ?? key }
+      {
+        scope: "keyframe",
+        field: "assetId",
+        keyframeId: existingFrame.id ?? key,
+      },
     );
 
     if (storagePath && storagePath !== frame.storagePath) {

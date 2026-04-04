@@ -1,0 +1,199 @@
+{
+  "label": "03-immediately-after-generate-click",
+  "time": "2026-04-03T17:59:57.110Z",
+  "url": "http://localhost:5173/",
+  "title": "Vidra",
+  "bodyText": "Vidra\nTool\nChars\nStyles\nGallery\nSessions\nHome\nU\nAccount\nSign in\nSkip to main content\nUntitled session\nVideo\n\nStart with a scene, subject, or motion cue. The editor stays live while the workspace grows around it.\n\n— cr\nModel\nSora\nA lone astronaut in a weathered white spacesuit walks across a vast red Martian plain at golden hour, dust drifting through the air as a colossal metallic terraforming dome glints on the horizon, cinematic, photoreal, slow tracking shot, dramatic light, 16:9.\nStart frame\nAssets\n16:9\n8s",
+  "buttons": [
+    {
+      "text": "Tool",
+      "ariaLabel": "Tool",
+      "disabled": false
+    },
+    {
+      "text": "Chars",
+      "ariaLabel": "Chars",
+      "disabled": false
+    },
+    {
+      "text": "Styles",
+      "ariaLabel": "Styles",
+      "disabled": false
+    },
+    {
+      "text": "Gallery",
+      "ariaLabel": "Gallery",
+      "disabled": false
+    },
+    {
+      "text": "Sessions",
+      "ariaLabel": "Sessions",
+      "disabled": false
+    },
+    {
+      "text": "Untitled session",
+      "ariaLabel": "",
+      "disabled": false
+    },
+    {
+      "text": "Model\nSora",
+      "ariaLabel": "Video model",
+      "disabled": false
+    },
+    {
+      "text": "Start frame",
+      "ariaLabel": "",
+      "disabled": false
+    },
+    {
+      "text": "Assets",
+      "ariaLabel": "",
+      "disabled": false
+    },
+    {
+      "text": "16:9",
+      "ariaLabel": "",
+      "disabled": false
+    },
+    {
+      "text": "8s",
+      "ariaLabel": "",
+      "disabled": false
+    },
+    {
+      "text": "",
+      "ariaLabel": "Enhance prompt",
+      "disabled": false
+    },
+    {
+      "text": "",
+      "ariaLabel": "Preview storyboard 4 credits",
+      "disabled": false
+    },
+    {
+      "text": "",
+      "ariaLabel": "Generate 48 credits",
+      "disabled": false
+    }
+  ],
+  "videoCount": 0,
+  "imageCount": 0,
+  "dialogs": [],
+  "alerts": [],
+  "ax": {
+    "role": "WebArea",
+    "name": "Vidra",
+    "children": [
+      {
+        "role": "text",
+        "name": "Vidra"
+      },
+      {
+        "role": "button",
+        "name": "Tool",
+        "pressed": true
+      },
+      {
+        "role": "button",
+        "name": "Chars",
+        "pressed": false
+      },
+      {
+        "role": "button",
+        "name": "Styles",
+        "pressed": false
+      },
+      {
+        "role": "button",
+        "name": "Gallery",
+        "pressed": false
+      },
+      {
+        "role": "button",
+        "name": "Sessions"
+      },
+      {
+        "role": "link",
+        "name": "Home"
+      },
+      {
+        "role": "link",
+        "name": "Sign in"
+      },
+      {
+        "role": "link",
+        "name": "Skip to main content"
+      },
+      {
+        "role": "button",
+        "name": "Untitled session"
+      },
+      {
+        "role": "text",
+        "name": "Video"
+      },
+      {
+        "role": "text",
+        "name": "Start with a scene, subject, or motion cue. The editor stays live while the workspace grows around it."
+      },
+      {
+        "role": "text",
+        "name": "— cr"
+      },
+      {
+        "role": "button",
+        "name": "Video model",
+        "haspopup": "listbox"
+      },
+      {
+        "role": "textbox",
+        "name": "Optimized prompt",
+        "focused": true,
+        "multiline": true,
+        "value": "A lone astronaut in a weathered white spacesuit walks across a vast red Martian plain at golden hour, dust drifting through the air as a colossal metallic terraforming dome glints on the horizon, cinematic, photoreal, slow tracking shot, dramatic light, 16:9."
+      },
+      {
+        "role": "button",
+        "name": "Start frame",
+        "haspopup": "dialog"
+      },
+      {
+        "role": "button",
+        "name": "Assets"
+      },
+      {
+        "role": "button",
+        "name": "16:9"
+      },
+      {
+        "role": "button",
+        "name": "8s"
+      },
+      {
+        "role": "button",
+        "name": "Enhance prompt",
+        "description": "Enhance"
+      },
+      {
+        "role": "button",
+        "name": "Preview storyboard 4 credits",
+        "description": "Preview · 4 cr"
+      },
+      {
+        "role": "button",
+        "name": "Generate 48 credits",
+        "description": "Generate · 48 cr"
+      },
+      {
+        "role": "region",
+        "name": "Notifications (F8)",
+        "children": [
+          {
+            "role": "list",
+            "name": ""
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -2,10 +2,10 @@
  * OpenAiRequestBuilder - Builds request payloads for OpenAI-compatible APIs
  */
 
-import type { CompletionOptions, OpenAiPayload } from './types.ts';
-import { OpenAiMessageBuilder } from './OpenAiMessageBuilder.ts';
-import { hashString } from '@utils/hash';
-import { normalizeOpenAiSchema } from './normalizeSchema.ts';
+import type { CompletionOptions, OpenAiPayload } from "./types.ts";
+import { OpenAiMessageBuilder } from "./OpenAiMessageBuilder.ts";
+import { hashString } from "@utils/hash";
+import { normalizeOpenAiSchema } from "./normalizeSchema.ts";
 
 interface RequestBuilderConfig {
   defaultModel: string;
@@ -15,19 +15,24 @@ interface RequestBuilderConfig {
 export class OpenAiRequestBuilder {
   constructor(
     private readonly messageBuilder: OpenAiMessageBuilder,
-    private readonly config: RequestBuilderConfig
+    private readonly config: RequestBuilderConfig,
   ) {}
 
   buildPayload(
     systemPrompt: string,
     options: CompletionOptions,
-    stream: boolean = false
+    stream: boolean = false,
   ): OpenAiPayload {
     const messages = this.messageBuilder.buildMessages(systemPrompt, options);
 
-    const isStructuredOutput = !!(options.schema || options.responseFormat || options.jsonMode);
+    const isStructuredOutput = !!(
+      options.schema ||
+      options.responseFormat ||
+      options.jsonMode
+    );
     const defaultTemp = isStructuredOutput ? 0.0 : 0.7;
-    const temperature = options.temperature !== undefined ? options.temperature : defaultTemp;
+    const temperature =
+      options.temperature !== undefined ? options.temperature : defaultTemp;
 
     const payload: OpenAiPayload = {
       model: options.model || this.config.defaultModel,
@@ -55,7 +60,7 @@ export class OpenAiRequestBuilder {
     if (options.schema) {
       const { name, schema } = normalizeOpenAiSchema(options.schema);
       payload.response_format = {
-        type: 'json_schema',
+        type: "json_schema",
         json_schema: {
           name,
           strict: true,
@@ -65,7 +70,7 @@ export class OpenAiRequestBuilder {
     } else if (options.responseFormat) {
       payload.response_format = options.responseFormat;
     } else if (options.jsonMode && !options.isArray) {
-      payload.response_format = { type: 'json_object' };
+      payload.response_format = { type: "json_object" };
     }
 
     if (isStructuredOutput) {
@@ -86,5 +91,4 @@ export class OpenAiRequestBuilder {
 
     return payload;
   }
-
 }

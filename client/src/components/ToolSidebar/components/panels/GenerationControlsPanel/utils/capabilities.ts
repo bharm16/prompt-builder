@@ -5,7 +5,7 @@ import {
   type CapabilityFieldState,
   type CapabilityValue,
   type CapabilityValues,
-} from '@shared/capabilities';
+} from "@shared/capabilities";
 
 export interface FieldInfo {
   field: CapabilityField;
@@ -16,7 +16,7 @@ export interface FieldInfo {
 export const getFieldInfo = (
   schema: CapabilitiesSchema | null,
   values: CapabilityValues,
-  fieldName: string
+  fieldName: string,
 ): FieldInfo | null => {
   if (!schema?.fields?.[fieldName]) return null;
   const field = schema.fields[fieldName];
@@ -24,15 +24,13 @@ export const getFieldInfo = (
   const state = resolveFieldState(field, values);
   if (!state.available) return null;
   const allowedValues =
-    field.type === 'enum'
-      ? (state.allowedValues ?? field.values ?? [])
-      : [];
+    field.type === "enum" ? (state.allowedValues ?? field.values ?? []) : [];
   return { field, state, allowedValues };
 };
 
 export const resolveStringOptions = (
   allowedValues: CapabilityValue[] | undefined,
-  fallback: string[]
+  fallback: string[],
 ): string[] => {
   const values = allowedValues ?? fallback;
   return values.map((value) => String(value));
@@ -40,7 +38,7 @@ export const resolveStringOptions = (
 
 export const resolveNumberOptions = (
   allowedValues: CapabilityValue[] | undefined,
-  fallback: number[]
+  fallback: number[],
 ): number[] => {
   const values = allowedValues ?? fallback;
   return values.map((value) => Number(value));

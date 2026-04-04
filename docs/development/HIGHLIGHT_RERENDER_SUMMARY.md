@@ -40,6 +40,7 @@ Created a migration script that forces all existing prompts to regenerate their 
 ## How It Works
 
 ### Clear Mode (Default - Recommended)
+
 ```bash
 npm run migrate:rerender
 ```
@@ -50,12 +51,14 @@ npm run migrate:rerender
 4. Highlights regenerate automatically when users load prompts
 
 **Benefits:**
+
 - ⚡ Very fast (~0.04s per document)
 - 💰 No API costs
 - 🎯 Only regenerates when needed
 - ✅ Users see highlights immediately (fresh or cached)
 
 ### Regenerate Mode (Pre-deployment)
+
 ```bash
 npm run migrate:rerender:regenerate
 ```
@@ -67,6 +70,7 @@ npm run migrate:rerender:regenerate
 5. Adds version tracking entry
 
 **Benefits:**
+
 - 🔄 All prompts have fresh highlights before users access them
 - ✨ Guaranteed consistency across all prompts
 - 📊 Complete immediately (no lazy loading)
@@ -74,6 +78,7 @@ npm run migrate:rerender:regenerate
 ## Usage Examples
 
 ### Quick Start
+
 ```bash
 # Test first (always recommended)
 npm run migrate:rerender:dry
@@ -83,6 +88,7 @@ npm run migrate:rerender
 ```
 
 ### Advanced Usage
+
 ```bash
 # Test on specific user
 tsx --tsconfig server/tsconfig.json scripts/migrations/force-highlight-rerender.ts \
@@ -104,15 +110,17 @@ tsx --tsconfig server/tsconfig.json scripts/migrations/force-highlight-rerender.
 ## Performance Benchmarks
 
 ### Clear Mode
+
 | Prompt Count | Estimated Time |
-|--------------|----------------|
+| ------------ | -------------- |
 | 100          | ~4 seconds     |
 | 1,000        | ~40 seconds    |
 | 10,000       | ~7 minutes     |
 
 ### Regenerate Mode
+
 | Prompt Count | Estimated Time |
-|--------------|----------------|
+| ------------ | -------------- |
 | 100          | ~5-8 minutes   |
 | 1,000        | ~50-80 minutes |
 | 10,000       | ~8-13 hours    |
@@ -125,10 +133,11 @@ The existing system uses `templateVersion` in the cache key to invalidate highli
 
 ```javascript
 // In useSpanLabeling.js
-templateVersion: TEMPLATE_VERSIONS.SPAN_LABELING_V1
+templateVersion: TEMPLATE_VERSIONS.SPAN_LABELING_V1;
 ```
 
 **This script provides an alternative approach:**
+
 - Instead of bumping `templateVersion` (which invalidates all caches globally)
 - You can selectively clear specific prompts' caches
 - More control over rollout timing
@@ -136,11 +145,11 @@ templateVersion: TEMPLATE_VERSIONS.SPAN_LABELING_V1
 
 ### Comparison
 
-| Method | Scope | Control | Speed | Use Case |
-|--------|-------|---------|-------|----------|
-| **Change templateVersion** | Global | Low | Instant | Algorithm breaking changes |
-| **Force Rerender (clear)** | Selective | High | Fast | Gradual rollouts |
-| **Force Rerender (regenerate)** | Selective | High | Slow | Pre-deployment prep |
+| Method                          | Scope     | Control | Speed   | Use Case                   |
+| ------------------------------- | --------- | ------- | ------- | -------------------------- |
+| **Change templateVersion**      | Global    | Low     | Instant | Algorithm breaking changes |
+| **Force Rerender (clear)**      | Selective | High    | Fast    | Gradual rollouts           |
+| **Force Rerender (regenerate)** | Selective | High    | Slow    | Pre-deployment prep        |
 
 ### Workflow Example
 
@@ -211,16 +220,20 @@ See `scripts/migrations/README.md` for detailed setup.
 ### Common Issues
 
 **"No documents found"**
+
 - Remove filters or check Firebase connection
 
 **"Unable to detect Project Id"**
+
 - Set up Firebase authentication (see Prerequisites)
 
 **High error count**
+
 - Check API keys and rate limits
 - Review failed documents in summary report
 
 **Slow performance in regenerate mode**
+
 - Reduce `--batch-size`
 - Use `--mode=clear` instead
 - Run during off-peak hours
@@ -228,6 +241,7 @@ See `scripts/migrations/README.md` for detailed setup.
 ## Future Enhancements
 
 Potential improvements:
+
 - [ ] Progress resume capability (checkpoint/restart)
 - [ ] Parallel batch processing
 - [ ] Webhook notifications on completion
@@ -258,6 +272,7 @@ Before production use:
 ## Support
 
 For questions or issues:
+
 1. Check `scripts/migrations/README.md`
 2. Review `FORCE_RERENDER_GUIDE.md`
 3. Run with `--dry-run` to test safely
@@ -268,5 +283,3 @@ For questions or issues:
 **Created**: November 19, 2025
 **Script Version**: 1.0.0
 **Compatibility**: Works with existing highlight system
-
-

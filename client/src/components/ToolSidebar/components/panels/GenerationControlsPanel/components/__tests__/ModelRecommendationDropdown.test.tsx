@@ -13,6 +13,7 @@ vi.mock("@promptstudio/system/components/ui", () => {
     CaretDown: Icon,
     Star: Icon,
     WarningCircle: Icon,
+    X: Icon,
   };
 });
 
@@ -43,7 +44,7 @@ describe("ModelRecommendationDropdown", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("renders recommended section when recommendation model ids require alias normalization", async () => {
+  it("renders card view when clicked with recommendation model", async () => {
     const user = userEvent.setup();
 
     render(
@@ -79,8 +80,10 @@ describe("ModelRecommendationDropdown", () => {
 
     await user.click(screen.getByRole("button", { name: "Video model" }));
 
-    expect(screen.getByText("Recommended for this prompt")).toBeInTheDocument();
-    expect(screen.getByRole("option", { name: /Veo/ })).toBeInTheDocument();
-    expect(screen.getByText("92%")).toBeInTheDocument();
+    expect(screen.getByText("Render Models")).toBeInTheDocument();
+    expect(screen.getByText("Draft Models")).toBeInTheDocument();
+    expect(
+      screen.getByText("High-quality models for final production output."),
+    ).toBeInTheDocument();
   });
 });

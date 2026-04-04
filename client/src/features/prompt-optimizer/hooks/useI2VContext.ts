@@ -1,32 +1,35 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   useGenerationControlsStoreActions,
   useGenerationControlsStoreState,
-} from '../context/GenerationControlsStore';
-import { observeImage } from '../api/i2vApi';
+} from "@features/generation-controls/context/GenerationControlsStore";
+import { observeImage } from "../api/i2vApi";
 import {
   deriveLockMap,
   type I2VConstraintMode,
   type I2VContext,
   type ImageObservation,
-} from '../types/i2v';
-import { resolveMediaUrl } from '@/services/media/MediaUrlResolver';
+} from "../types/i2v";
+import { resolveMediaUrl } from "@/services/media/MediaUrlResolver";
 import {
   extractStorageObjectPath,
   hasGcsSignedUrlParams,
   parseGcsSignedUrlExpiryMs,
-} from '@/utils/storageUrl';
+} from "@/utils/storageUrl";
 
 const OBSERVATION_REFRESH_BUFFER_MS = 2 * 60 * 1000;
 
 const parseExpiresAtMs = (value?: string | null): number | null => {
-  if (!value || typeof value !== 'string') return null;
+  if (!value || typeof value !== "string") return null;
   const parsed = Date.parse(value);
   return Number.isFinite(parsed) ? parsed : null;
 };
 
-const shouldRefreshObservationUrl = (url: string | null, expiresAtMs: number | null): boolean => {
-  if (!url || typeof url !== 'string') return true;
+const shouldRefreshObservationUrl = (
+  url: string | null,
+  expiresAtMs: number | null,
+): boolean => {
+  if (!url || typeof url !== "string") return true;
   if (expiresAtMs !== null) {
     return Date.now() >= expiresAtMs - OBSERVATION_REFRESH_BUFFER_MS;
   }
@@ -53,34 +56,36 @@ export function useI2VContext(): I2VContext {
 
   const lockMap = useMemo(
     () =>
-      isI2VMode
-        ? deriveLockMap(constraintMode, { cameraMotionLocked })
-        : null,
-    [cameraMotionLocked, constraintMode, isI2VMode]
+      isI2VMode ? deriveLockMap(constraintMode, { cameraMotionLocked }) : null,
+    [cameraMotionLocked, constraintMode, isI2VMode],
   );
 
-  const handleSetConstraintMode = useCallback((mode: I2VConstraintMode) => {
-    setConstraintMode(mode);
-  }, [setConstraintMode]);
+  const handleSetConstraintMode = useCallback(
+    (mode: I2VConstraintMode) => {
+      setConstraintMode(mode);
+    },
+    [setConstraintMode],
+  );
 
   const resolveObservationUrl = useCallback(
     async (url: string | null): Promise<string | null> => {
-      if (!url || typeof url !== 'string') return url;
+      if (!url || typeof url !== "string") return url;
       const storagePath = extractStorageObjectPath(url);
       const expiresAtMs =
-        parseExpiresAtMs(startImageViewUrlExpiresAt) ?? parseGcsSignedUrlExpiryMs(url);
+        parseExpiresAtMs(startImageViewUrlExpiresAt) ??
+        parseGcsSignedUrlExpiryMs(url);
       const needsRefresh = shouldRefreshObservationUrl(url, expiresAtMs);
       if (!needsRefresh) return url;
 
       const resolved = await resolveMediaUrl({
-        kind: 'image',
+        kind: "image",
         url,
         storagePath: storagePath ?? null,
         preferFresh: true,
       });
       return resolved.url ?? url;
     },
-    [startImageViewUrlExpiresAt]
+    [startImageViewUrlExpiresAt],
   );
 
   const refreshObservation = useCallback(async () => {
@@ -100,14 +105,16 @@ export function useI2VContext(): I2VContext {
       const result = await observeImage(
         {
           image: resolvedUrl || startImageUrl,
-          ...(startImageSourcePrompt ? { sourcePrompt: startImageSourcePrompt } : {}),
+          ...(startImageSourcePrompt
+            ? { sourcePrompt: startImageSourcePrompt }
+            : {}),
         },
-        { signal: controller.signal }
+        { signal: controller.signal },
       );
 
       if (!result.success || !result.observation) {
         setObservation(null);
-        setError(result.error || 'Image analysis failed');
+        setError(result.error || "Image analysis failed");
         return;
       }
 
@@ -116,7 +123,8 @@ export function useI2VContext(): I2VContext {
       if (controller.signal.aborted) {
         return;
       }
-      const message = err instanceof Error ? err.message : 'Image analysis failed';
+      const message =
+        err instanceof Error ? err.message : "Image analysis failed";
       setObservation(null);
       setError(message);
     } finally {
@@ -136,7 +144,7 @@ export function useI2VContext(): I2VContext {
       return;
     }
 
-    const imageKey = `${startImageUrl}|${startImageSourcePrompt ?? ''}`;
+    const imageKey = `${startImageUrl}|${startImageSourcePrompt ?? ""}`;
 
     if (lastImageRef.current === imageKey) {
       return;

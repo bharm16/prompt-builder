@@ -1,7 +1,7 @@
-import type { ReactElement } from 'react';
-import type { IconProps as PhosphorIconProps } from '@phosphor-icons/react';
-import type { ComponentType } from 'react';
-import { cn } from '@utils/cn';
+import type { ReactElement } from "react";
+import type { IconProps as PhosphorIconProps } from "@phosphor-icons/react";
+import type { ComponentType } from "react";
+import { cn } from "@utils/cn";
 
 /** Phosphor icon component (not the wrapped Icon from our design system). */
 type PhosphorIcon = ComponentType<PhosphorIconProps>;
@@ -11,38 +11,49 @@ interface ToolNavButtonProps {
   label: string;
   isActive: boolean;
   onClick: () => void;
-  variant?: 'header' | 'default';
+  variant?: "header" | "default";
 }
 
 /**
  * Rail navigation button matching v5 mockup.
  *
- * - Header variant: 36×36 icon-only button (hamburger menu)
- * - Default variant: 44px wide, icon + 9px label, rounded-lg
- * - Active: white text + subtle bg (#1C1E26)
- * - Inactive: muted text (#555B6E), hover bg (#151720)
+ * - Header variant: full-width row button
+ * - Default variant: full-width row button, icon + label
+ * - Active: brighter bg (tool-nav-active)
+ * - Inactive: base bg (tool-nav-hover on hover)
  */
 export function ToolNavButton({
   icon: IconComponent,
   label,
   isActive,
   onClick,
-  variant = 'default',
+  variant = "default",
 }: ToolNavButtonProps): ReactElement {
-  if (variant === 'header') {
+  if (variant === "header") {
     return (
       <button
         type="button"
         className={cn(
-          'flex h-9 w-9 items-center justify-center rounded-lg border transition-colors',
+          "relative flex w-full items-center gap-3 overflow-hidden rounded-lg px-3.5 py-3 text-left transition-[background-color,transform]",
+          "duration-[160ms] [transition-timing-function:var(--motion-ease-emphasized)] hover:-translate-y-px",
           isActive
-            ? 'border-[#22252C] bg-[#1C1E26] text-[#E2E6EF]'
-            : 'border-[#1A1C22] bg-transparent text-[#555B6E] hover:bg-[#151720] hover:text-[#8B92A5]'
+            ? "bg-tool-nav-active text-foreground"
+            : "bg-transparent text-foreground hover:bg-tool-nav-hover hover:text-foreground",
         )}
         onClick={onClick}
         aria-label={label}
       >
-        <IconComponent className="h-4 w-4" />
+        <span
+          className={cn(
+            "motion-active-pill absolute inset-y-2 left-0 w-[3px] rounded-r-full bg-tool-nav-indicator",
+            isActive ? "opacity-100 scale-y-100" : "opacity-0 scale-y-50",
+          )}
+          aria-hidden="true"
+        />
+        <IconComponent className="h-5 w-5 shrink-0" weight="bold" />
+        <span className="text-body-sm font-semibold leading-none tracking-[0.02em]">
+          {label}
+        </span>
       </button>
     );
   }
@@ -51,17 +62,27 @@ export function ToolNavButton({
     <button
       type="button"
       className={cn(
-        'flex w-11 flex-col items-center gap-[3px] rounded-lg py-[7px] transition-all',
+        "relative flex w-full items-center gap-3 overflow-hidden rounded-lg px-3.5 py-3 text-left transition-[background-color,transform]",
+        "duration-[160ms] [transition-timing-function:var(--motion-ease-emphasized)] hover:-translate-y-px",
         isActive
-          ? 'bg-[#1C1E26] text-[#E2E6EF]'
-          : 'bg-transparent text-[#555B6E] hover:bg-[#151720] hover:text-[#8B92A5]'
+          ? "bg-tool-nav-active text-foreground"
+          : "bg-transparent text-foreground hover:bg-tool-nav-hover hover:text-foreground",
       )}
       onClick={onClick}
       aria-label={label}
       aria-pressed={isActive}
     >
-      <IconComponent className="h-4 w-4" />
-      <span className="text-[9px] font-medium tracking-[0.03em]">{label}</span>
+      <span
+        className={cn(
+          "motion-active-pill absolute inset-y-2 left-0 w-[3px] rounded-r-full bg-tool-nav-indicator",
+          isActive ? "opacity-100 scale-y-100" : "opacity-0 scale-y-50",
+        )}
+        aria-hidden="true"
+      />
+      <IconComponent className="h-5 w-5 shrink-0" weight="bold" />
+      <span className="text-body-sm font-semibold leading-none tracking-[0.02em]">
+        {label}
+      </span>
     </button>
   );
 }

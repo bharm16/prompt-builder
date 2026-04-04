@@ -1,37 +1,37 @@
-import express from 'express';
-import request from 'supertest';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import express from "express";
+import request from "supertest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { apiAuthMiddleware } from '@middleware/apiAuth';
-import { createSessionRoutes } from '@routes/sessions.routes';
-import { SessionAccessDeniedError } from '@services/sessions/SessionService';
+import { apiAuthMiddleware } from "@middleware/apiAuth";
+import { createSessionRoutes } from "@routes/sessions.routes";
+import { SessionAccessDeniedError } from "@services/sessions/SessionService";
 
-const TEST_API_KEY = 'integration-sessions-key';
+const TEST_API_KEY = "integration-sessions-key";
 const TEST_USER_ID = `api-key:${TEST_API_KEY}`;
 
 function buildSession(id: string) {
   return {
     id,
     userId: TEST_USER_ID,
-    name: 'Session name',
+    name: "Session name",
     prompt: {
       uuid: `prompt-${id}`,
-      input: 'prompt input',
-      output: 'prompt output',
+      input: "prompt input",
+      output: "prompt output",
     },
   };
 }
 
 function buildContinuitySession() {
   return {
-    id: 'continuity-session-1',
+    id: "continuity-session-1",
     userId: TEST_USER_ID,
-    name: 'Continuity',
+    name: "Continuity",
     shots: [],
     defaultSettings: {
-      generationMode: 'continuity',
-      defaultContinuityMode: 'style-match',
-      defaultModel: 'sora2',
+      generationMode: "continuity",
+      defaultContinuityMode: "style-match",
+      defaultModel: "sora2",
       maxRetries: 1,
       useCharacterConsistency: false,
     },
@@ -39,12 +39,14 @@ function buildContinuitySession() {
 }
 
 function createApp(options: { continuityEnabled?: boolean } = {}) {
-  const baseSession = buildSession('session_123');
+  const baseSession = buildSession("session_123");
   const continuitySession = buildContinuitySession();
 
   const sessionService = {
     createPromptSession: vi.fn().mockResolvedValue(baseSession),
-    toDto: vi.fn().mockImplementation((session: Record<string, unknown>) => session),
+    toDto: vi
+      .fn()
+      .mockImplementation((session: Record<string, unknown>) => session),
     getSession: vi.fn().mockResolvedValue(baseSession),
     listSessions: vi.fn().mockResolvedValue([baseSession]),
     getSessionByPromptUuid: vi.fn().mockResolvedValue(baseSession),
@@ -64,10 +66,12 @@ function createApp(options: { continuityEnabled?: boolean } = {}) {
 
   const continuityService = {
     getSession: vi.fn().mockResolvedValue(continuitySession),
-    addShot: vi.fn().mockResolvedValue({ id: 'shot-1' }),
-    updateShot: vi.fn().mockResolvedValue({ id: 'shot-1' }),
-    generateShot: vi.fn().mockResolvedValue({ status: 'completed', retryCount: 0 }),
-    updateShotStyleReference: vi.fn().mockResolvedValue({ id: 'shot-1' }),
+    addShot: vi.fn().mockResolvedValue({ id: "shot-1" }),
+    updateShot: vi.fn().mockResolvedValue({ id: "shot-1" }),
+    generateShot: vi
+      .fn()
+      .mockResolvedValue({ status: "completed", retryCount: 0 }),
+    updateShotStyleReference: vi.fn().mockResolvedValue({ id: "shot-1" }),
     updateSessionSettings: vi.fn().mockResolvedValue(continuitySession),
     updatePrimaryStyleReference: vi.fn().mockResolvedValue(continuitySession),
     createSceneProxy: vi.fn().mockResolvedValue(continuitySession),
@@ -78,19 +82,19 @@ function createApp(options: { continuityEnabled?: boolean } = {}) {
   const app = express();
   app.use(express.json());
   app.use(
-    '/api/v2/sessions',
+    "/api/v2/sessions",
     apiAuthMiddleware,
     createSessionRoutes(
       sessionService as never,
       options.continuityEnabled === false ? null : (continuityService as never),
-      null
-    )
+      null,
+    ),
   );
 
   return { app, sessionService };
 }
 
-describe('Sessions Routes (integration)', () => {
+describe("Sessions Routes (integration)", () => {
   let previousAllowedApiKeys: string | undefined;
 
   beforeEach(() => {
@@ -106,36 +110,38 @@ describe('Sessions Routes (integration)', () => {
     process.env.ALLOWED_API_KEYS = previousAllowedApiKeys;
   });
 
-  it('POST /api/v2/sessions creates a session when payload is valid', async () => {
+  it("POST /api/v2/sessions creates a session when payload is valid", async () => {
     const { app, sessionService } = createApp();
 
     const response = await request(app)
-      .post('/api/v2/sessions')
-      .set('x-api-key', TEST_API_KEY)
+      .post("/api/v2/sessions")
+      .set("x-api-key", TEST_API_KEY)
       .send({
-        name: 'My prompt session',
+        name: "My prompt session",
         prompt: {
-          input: 'A cinematic skyline at dawn',
+          input: "A cinematic skyline at dawn",
         },
       });
 
     expect(response.status).toBe(200);
     expect(response.body.success).toBe(true);
-    expect(response.body.data.id).toBe('session_123');
+    expect(response.body.data.id).toBe("session_123");
     expect(sessionService.createPromptSession).toHaveBeenCalledWith(
       TEST_USER_ID,
       expect.objectContaining({
-        name: 'My prompt session',
-      })
+        name: "My prompt session",
+      }),
     );
   });
 
-  it('GET /api/v2/sessions returns session list and list options', async () => {
+  it("GET /api/v2/sessions returns session list and list options", async () => {
     const { app, sessionService } = createApp();
 
     const response = await request(app)
-      .get('/api/v2/sessions?limit=7&includePrompt=false&includeContinuity=false')
-      .set('x-api-key', TEST_API_KEY);
+      .get(
+        "/api/v2/sessions?limit=7&includePrompt=false&includeContinuity=false",
+      )
+      .set("x-api-key", TEST_API_KEY);
 
     expect(response.status).toBe(200);
     expect(response.body.success).toBe(true);
@@ -147,12 +153,12 @@ describe('Sessions Routes (integration)', () => {
     });
   });
 
-  it('keeps core /api/v2/sessions routes available without continuity service', async () => {
+  it("keeps core /api/v2/sessions routes available without continuity service", async () => {
     const { app, sessionService } = createApp({ continuityEnabled: false });
 
     const listResponse = await request(app)
-      .get('/api/v2/sessions')
-      .set('x-api-key', TEST_API_KEY);
+      .get("/api/v2/sessions")
+      .set("x-api-key", TEST_API_KEY);
 
     expect(listResponse.status).toBe(200);
     expect(sessionService.listSessions).toHaveBeenCalledWith(TEST_USER_ID, {
@@ -161,182 +167,219 @@ describe('Sessions Routes (integration)', () => {
     });
 
     const continuitySubroute = await request(app)
-      .get('/api/v2/sessions/session_123/shots/shot-1/status')
-      .set('x-api-key', TEST_API_KEY);
+      .get("/api/v2/sessions/session_123/shots/shot-1/status")
+      .set("x-api-key", TEST_API_KEY);
 
     expect(continuitySubroute.status).toBe(404);
   });
 
-  it('GET /api/v2/sessions/by-prompt/:uuid returns mapped session', async () => {
+  it("GET /api/v2/sessions/by-prompt/:uuid returns mapped session", async () => {
     const { app, sessionService } = createApp();
 
     const response = await request(app)
-      .get('/api/v2/sessions/by-prompt/prompt-session_123')
-      .set('x-api-key', TEST_API_KEY);
+      .get("/api/v2/sessions/by-prompt/prompt-session_123")
+      .set("x-api-key", TEST_API_KEY);
 
     expect(response.status).toBe(200);
     expect(response.body.success).toBe(true);
     expect(sessionService.getSessionByPromptUuid).toHaveBeenCalledWith(
       TEST_USER_ID,
-      'prompt-session_123'
+      "prompt-session_123",
     );
   });
 
-  it('GET /api/v2/sessions/:sessionId blocks cross-user access', async () => {
+  it("GET /api/v2/sessions/:sessionId blocks cross-user access", async () => {
     const { app, sessionService } = createApp();
     sessionService.getSession.mockResolvedValueOnce({
-      ...buildSession('session_999'),
-      userId: 'api-key:someone-else',
+      ...buildSession("session_999"),
+      userId: "api-key:someone-else",
     });
 
     const response = await request(app)
-      .get('/api/v2/sessions/session_999')
-      .set('x-api-key', TEST_API_KEY);
+      .get("/api/v2/sessions/session_999")
+      .set("x-api-key", TEST_API_KEY);
 
     expect(response.status).toBe(403);
     expect(response.body.success).toBe(false);
-    expect(response.body.error).toBe('Access denied');
+    expect(response.body.error).toBe("Access denied");
   });
 
-  it('PATCH /api/v2/sessions/:sessionId updates the session', async () => {
+  it("PATCH /api/v2/sessions/:sessionId updates the session", async () => {
     const { app, sessionService } = createApp();
 
     const response = await request(app)
-      .patch('/api/v2/sessions/session_123')
-      .set('x-api-key', TEST_API_KEY)
+      .patch("/api/v2/sessions/session_123")
+      .set("x-api-key", TEST_API_KEY)
       .send({
-        name: 'Updated name',
-        status: 'active',
+        name: "Updated name",
+        status: "active",
       });
 
     expect(response.status).toBe(200);
     expect(response.body.success).toBe(true);
-    expect(sessionService.updateSessionForUser).toHaveBeenCalledWith(TEST_USER_ID, 'session_123', {
-      name: 'Updated name',
-      status: 'active',
-    });
+    expect(sessionService.updateSessionForUser).toHaveBeenCalledWith(
+      TEST_USER_ID,
+      "session_123",
+      {
+        name: "Updated name",
+        status: "active",
+      },
+    );
     expect(sessionService.updateSession).not.toHaveBeenCalled();
   });
 
-  it('DELETE /api/v2/sessions/:sessionId deletes owned session', async () => {
+  it("DELETE /api/v2/sessions/:sessionId deletes owned session", async () => {
     const { app, sessionService } = createApp();
 
     const response = await request(app)
-      .delete('/api/v2/sessions/session_123')
-      .set('x-api-key', TEST_API_KEY);
+      .delete("/api/v2/sessions/session_123")
+      .set("x-api-key", TEST_API_KEY);
 
     expect(response.status).toBe(200);
     expect(response.body.success).toBe(true);
-    expect(sessionService.deleteSessionForUser).toHaveBeenCalledWith(TEST_USER_ID, 'session_123');
+    expect(sessionService.deleteSessionForUser).toHaveBeenCalledWith(
+      TEST_USER_ID,
+      "session_123",
+    );
     expect(sessionService.deleteSession).not.toHaveBeenCalled();
   });
 
-  it('PATCH prompt/highlights/output/versions routes update each session payload section', async () => {
+  it("PATCH prompt/highlights/output/versions routes update each session payload section", async () => {
     const { app, sessionService } = createApp();
 
     const promptResponse = await request(app)
-      .patch('/api/v2/sessions/session_123/prompt')
-      .set('x-api-key', TEST_API_KEY)
+      .patch("/api/v2/sessions/session_123/prompt")
+      .set("x-api-key", TEST_API_KEY)
       .send({
-        input: 'new input',
-        output: 'new output',
+        input: "new input",
+        output: "new output",
       });
     expect(promptResponse.status).toBe(200);
-    expect(sessionService.updatePromptForUser).toHaveBeenCalledWith(TEST_USER_ID, 'session_123', {
-      input: 'new input',
-      output: 'new output',
-    });
+    expect(sessionService.updatePromptForUser).toHaveBeenCalledWith(
+      TEST_USER_ID,
+      "session_123",
+      {
+        input: "new input",
+        output: "new output",
+      },
+    );
 
     const highlightsResponse = await request(app)
-      .patch('/api/v2/sessions/session_123/highlights')
-      .set('x-api-key', TEST_API_KEY)
+      .patch("/api/v2/sessions/session_123/highlights")
+      .set("x-api-key", TEST_API_KEY)
       .send({
         highlightCache: { main: [] },
-        versionEntry: { timestamp: '2026-01-01T00:00:00.000Z' },
+        versionEntry: { timestamp: "2026-01-01T00:00:00.000Z" },
       });
     expect(highlightsResponse.status).toBe(200);
-    expect(sessionService.updateHighlightsForUser).toHaveBeenCalledWith(TEST_USER_ID, 'session_123', {
-      highlightCache: { main: [] },
-      versionEntry: { timestamp: '2026-01-01T00:00:00.000Z' },
-    });
+    expect(sessionService.updateHighlightsForUser).toHaveBeenCalledWith(
+      TEST_USER_ID,
+      "session_123",
+      {
+        highlightCache: { main: [] },
+        versionEntry: { timestamp: "2026-01-01T00:00:00.000Z" },
+      },
+    );
 
     const outputResponse = await request(app)
-      .patch('/api/v2/sessions/session_123/output')
-      .set('x-api-key', TEST_API_KEY)
-      .send({ output: 'final output' });
+      .patch("/api/v2/sessions/session_123/output")
+      .set("x-api-key", TEST_API_KEY)
+      .send({ output: "final output" });
     expect(outputResponse.status).toBe(200);
-    expect(sessionService.updateOutputForUser).toHaveBeenCalledWith(TEST_USER_ID, 'session_123', {
-      output: 'final output',
-    });
+    expect(sessionService.updateOutputForUser).toHaveBeenCalledWith(
+      TEST_USER_ID,
+      "session_123",
+      {
+        output: "final output",
+      },
+    );
 
     const versionsResponse = await request(app)
-      .patch('/api/v2/sessions/session_123/versions')
-      .set('x-api-key', TEST_API_KEY)
+      .patch("/api/v2/sessions/session_123/versions")
+      .set("x-api-key", TEST_API_KEY)
       .send({
-        versions: [{ id: 'v1', output: 'v1 output' }],
+        versions: [{ id: "v1", output: "v1 output" }],
       });
     expect(versionsResponse.status).toBe(200);
-    expect(sessionService.updateVersionsForUser).toHaveBeenCalledWith(TEST_USER_ID, 'session_123', {
-      versions: [{ id: 'v1', output: 'v1 output' }],
-    });
+    expect(sessionService.updateVersionsForUser).toHaveBeenCalledWith(
+      TEST_USER_ID,
+      "session_123",
+      {
+        versions: [{ id: "v1", output: "v1 output" }],
+      },
+    );
   });
 
-  it('returns 403 and does not invoke unscoped mutation path when session update is unauthorized', async () => {
+  it("returns 403 and does not invoke unscoped mutation path when session update is unauthorized", async () => {
     const { app, sessionService } = createApp();
     sessionService.updateSessionForUser.mockRejectedValueOnce(
-      new SessionAccessDeniedError('session_123', TEST_USER_ID, 'api-key:other-owner')
+      new SessionAccessDeniedError(
+        "session_123",
+        TEST_USER_ID,
+        "api-key:other-owner",
+      ),
     );
 
     const response = await request(app)
-      .patch('/api/v2/sessions/session_123')
-      .set('x-api-key', TEST_API_KEY)
-      .send({ name: 'should not persist' });
+      .patch("/api/v2/sessions/session_123")
+      .set("x-api-key", TEST_API_KEY)
+      .send({ name: "should not persist" });
 
     expect(response.status).toBe(403);
-    expect(response.body).toEqual({ success: false, error: 'Access denied' });
-    expect(sessionService.updateSessionForUser).toHaveBeenCalledWith(TEST_USER_ID, 'session_123', {
-      name: 'should not persist',
-    });
+    expect(response.body).toEqual({ success: false, error: "Access denied" });
+    expect(sessionService.updateSessionForUser).toHaveBeenCalledWith(
+      TEST_USER_ID,
+      "session_123",
+      {
+        name: "should not persist",
+      },
+    );
     expect(sessionService.updateSession).not.toHaveBeenCalled();
   });
 
-  it('returns 403 and does not invoke unscoped mutation path when delete is unauthorized', async () => {
+  it("returns 403 and does not invoke unscoped mutation path when delete is unauthorized", async () => {
     const { app, sessionService } = createApp();
     sessionService.deleteSessionForUser.mockRejectedValueOnce(
-      new SessionAccessDeniedError('session_123', TEST_USER_ID, 'api-key:other-owner')
+      new SessionAccessDeniedError(
+        "session_123",
+        TEST_USER_ID,
+        "api-key:other-owner",
+      ),
     );
 
     const response = await request(app)
-      .delete('/api/v2/sessions/session_123')
-      .set('x-api-key', TEST_API_KEY);
+      .delete("/api/v2/sessions/session_123")
+      .set("x-api-key", TEST_API_KEY);
 
     expect(response.status).toBe(403);
-    expect(response.body).toEqual({ success: false, error: 'Access denied' });
-    expect(sessionService.deleteSessionForUser).toHaveBeenCalledWith(TEST_USER_ID, 'session_123');
+    expect(response.body).toEqual({ success: false, error: "Access denied" });
+    expect(sessionService.deleteSessionForUser).toHaveBeenCalledWith(
+      TEST_USER_ID,
+      "session_123",
+    );
     expect(sessionService.deleteSession).not.toHaveBeenCalled();
   });
 
-  it('returns 400 for invalid request payloads and 401 for unauthenticated requests', async () => {
+  it("returns 400 for invalid request payloads and 401 for unauthenticated requests", async () => {
     const { app, sessionService } = createApp();
 
     const invalidResponse = await request(app)
-      .post('/api/v2/sessions')
-      .set('x-api-key', TEST_API_KEY)
+      .post("/api/v2/sessions")
+      .set("x-api-key", TEST_API_KEY)
       .send({
-        prompt: 'invalid-prompt-shape',
+        prompt: "invalid-prompt-shape",
       });
 
     expect(invalidResponse.status).toBe(400);
     expect(invalidResponse.body.success).toBe(false);
-    expect(invalidResponse.body.error).toBe('Invalid request');
+    expect(invalidResponse.body.error).toBe("Invalid request");
     expect(sessionService.createPromptSession).not.toHaveBeenCalled();
     expect(sessionService.updateSessionForUser).not.toHaveBeenCalled();
     expect(sessionService.deleteSessionForUser).not.toHaveBeenCalled();
 
-    const unauthenticatedResponse = await request(app)
-      .get('/api/v2/sessions');
+    const unauthenticatedResponse = await request(app).get("/api/v2/sessions");
 
     expect(unauthenticatedResponse.status).toBe(401);
-    expect(unauthenticatedResponse.body.error).toBe('Authentication required');
+    expect(unauthenticatedResponse.body.error).toBe("Authentication required");
   });
 });

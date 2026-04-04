@@ -1,1 +1,1 @@
-export { PromptRequirementsService } from './services/PromptRequirementsService';
+export { PromptRequirementsService } from "./services/PromptRequirementsService";

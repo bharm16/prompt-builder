@@ -5,8 +5,8 @@
  * contract tests.  The `.passthrough()` calls allow forward-compatible server
  * additions without breaking client-side parsing.
  */
-import { z } from 'zod';
-import { API_ERROR_CODES } from '../types/api.js';
+import { z } from "zod";
+import { API_ERROR_CODES } from "../types/api.js";
 
 // ---------------------------------------------------------------------------
 // Error schemas
@@ -28,7 +28,9 @@ export const ApiErrorResponseSchema = z
 // ---------------------------------------------------------------------------
 
 /** Generic success response — pass a Zod schema for the `data` field. */
-export const ApiSuccessResponseSchema = <T extends z.ZodTypeAny>(dataSchema: T) =>
+export const ApiSuccessResponseSchema = <T extends z.ZodTypeAny>(
+  dataSchema: T,
+) =>
   z
     .object({
       success: z.literal(true),
@@ -39,7 +41,7 @@ export const ApiSuccessResponseSchema = <T extends z.ZodTypeAny>(dataSchema: T) 
 
 /** Generic API response (success | error) — pass a Zod schema for the data. */
 export const ApiResponseSchema = <T extends z.ZodTypeAny>(dataSchema: T) =>
-  z.discriminatedUnion('success', [
+  z.discriminatedUnion("success", [
     z.object({
       success: z.literal(true),
       data: dataSchema,

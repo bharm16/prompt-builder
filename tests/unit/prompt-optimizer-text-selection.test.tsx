@@ -1,22 +1,22 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from "vitest";
 
 import {
   getSelectionOffsets,
   restoreSelectionFromOffsets,
   selectRange,
   TextSelectionManager,
-} from '@features/prompt-optimizer/utils/textSelection';
+} from "@features/prompt-optimizer/utils/textSelection";
 
-vi.mock('@/services/LoggingService', () => ({
+vi.mock("@/services/LoggingService", () => ({
   logger: {
     child: () => ({ error: vi.fn(), warn: vi.fn() }),
   },
 }));
 
-describe('textSelection utils', () => {
-  it('computes selection offsets within an element', () => {
-    const root = document.createElement('div');
-    root.textContent = 'Hello world';
+describe("textSelection utils", () => {
+  it("computes selection offsets within an element", () => {
+    const root = document.createElement("div");
+    root.textContent = "Hello world";
     document.body.appendChild(root);
 
     const range = document.createRange();
@@ -29,20 +29,20 @@ describe('textSelection utils', () => {
     expect(offsets).toEqual({ start: 0, end: 5 });
   });
 
-  it('restores selection from offsets', () => {
-    const root = document.createElement('div');
-    root.textContent = 'Hello world';
+  it("restores selection from offsets", () => {
+    const root = document.createElement("div");
+    root.textContent = "Hello world";
     document.body.appendChild(root);
 
     restoreSelectionFromOffsets(root, 6, 11);
 
     const selection = window.getSelection();
-    expect(selection?.toString()).toBe('world');
+    expect(selection?.toString()).toBe("world");
   });
 
-  it('selects a range in the window selection', () => {
-    const root = document.createElement('div');
-    root.textContent = 'Hello world';
+  it("selects a range in the window selection", () => {
+    const root = document.createElement("div");
+    root.textContent = "Hello world";
     document.body.appendChild(root);
 
     const range = document.createRange();
@@ -53,12 +53,12 @@ describe('textSelection utils', () => {
     selectRange(range);
 
     const selection = window.getSelection();
-    expect(selection?.toString()).toBe('Hello');
+    expect(selection?.toString()).toBe("Hello");
   });
 
-  it('TextSelectionManager delegates to helpers', () => {
-    const root = document.createElement('div');
-    root.textContent = 'Hello world';
+  it("TextSelectionManager delegates to helpers", () => {
+    const root = document.createElement("div");
+    root.textContent = "Hello world";
     document.body.appendChild(root);
 
     const manager = new TextSelectionManager(root);
@@ -71,6 +71,6 @@ describe('textSelection utils', () => {
 
     manager.restoreSelection(0, 5);
     const selection = window.getSelection();
-    expect(selection?.toString()).toBe('Hello');
+    expect(selection?.toString()).toBe("Hello");
   });
 });

@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 
 interface ContinueSceneButtonProps {
   onClick?: () => void;
@@ -13,7 +13,7 @@ export function ContinueSceneButton({
   disabled = false,
   isLoading = false,
   className,
-  label = 'Continue Scene',
+  label = "Continue Scene",
 }: ContinueSceneButtonProps): React.ReactElement {
   return (
     <div className={className}>
@@ -21,8 +21,8 @@ export function ContinueSceneButton({
         type="button"
         className={`rounded-md px-2 py-1 text-xs font-medium ${
           disabled || isLoading
-            ? 'border border-[#22252C] bg-transparent text-[#3A3E4C] cursor-not-allowed'
-            : 'border border-[#22252C] bg-transparent text-[#555B6E] hover:border-[#3A3D46] hover:text-[#8B92A5]'
+            ? "border border-tool-nav-active bg-transparent text-tool-text-label cursor-not-allowed"
+            : "border border-tool-nav-active bg-transparent text-tool-text-subdued hover:border-tool-text-disabled hover:text-tool-text-dim"
         }`}
         onClick={(event) => {
           event.stopPropagation();
@@ -30,7 +30,7 @@ export function ContinueSceneButton({
         }}
         disabled={disabled || isLoading}
       >
-        {isLoading ? 'Starting...' : label}
+        {isLoading ? "Starting..." : label}
       </button>
     </div>
   );

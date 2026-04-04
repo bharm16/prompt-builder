@@ -11,50 +11,58 @@
  * REQUIRES: npm install gliner
  */
 
-import { NEURO_SYMBOLIC, COMPROMISE, LIGHTING } from '@llm/span-labeling/config/SpanLabelingConfig';
+import {
+  NEURO_SYMBOLIC,
+  COMPROMISE,
+  LIGHTING,
+} from "@llm/span-labeling/config/SpanLabelingConfig";
 import {
   extractActionSpans as extractCompromiseSpans,
   warmupCompromise,
   isCompromiseAvailable,
-  type CompromiseConfig
-} from './CompromiseService.js';
+  type CompromiseConfig,
+} from "./CompromiseService.js";
 import {
   extractLightingSpans,
   warmupLightingService,
   isLightingServiceAvailable,
-  type LightingConfig
-} from './LightingService.js';
+  type LightingConfig,
+} from "./LightingService.js";
 import type {
   NlpSpan,
   ExtractionOptions,
   ExtractionResult,
   VocabStats,
-  WarmupResult
-} from './types';
-import { log } from './log';
-import { extractClosedVocabulary } from './tier1/closedVocabulary';
-import { filterSectionHeaders } from './filters/sectionHeaders';
-import { mergeSpans, deduplicateSpans } from './merge';
-import { extractOpenVocabulary, isGlinerReady, warmupGliner as warmupGlinerModel, ALL_GLINER_LABELS } from './tier2/gliner';
-import { VOCAB } from './vocab';
+  WarmupResult,
+} from "./types";
+import { log } from "./log";
+import { extractClosedVocabulary } from "./tier1/closedVocabulary";
+import { filterSectionHeaders } from "./filters/sectionHeaders";
+import { mergeSpans, deduplicateSpans } from "./merge";
+import {
+  extractOpenVocabulary,
+  isGlinerReady,
+  warmupGliner as warmupGlinerModel,
+  ALL_GLINER_LABELS,
+} from "./tier2/gliner";
+import { VOCAB } from "./vocab";
 
 export async function extractSemanticSpans(
   text: string,
-  options: ExtractionOptions = {}
+  options: ExtractionOptions = {},
 ): Promise<ExtractionResult> {
-  const operation = 'extractSemanticSpans';
+  const operation = "extractSemanticSpans";
   const startTime = performance.now();
-  const promptOutputOnly = process.env.PROMPT_OUTPUT_ONLY === 'true';
+  const promptOutputOnly = process.env.PROMPT_OUTPUT_ONLY === "true";
   const glinerConfigured =
     (NEURO_SYMBOLIC?.ENABLED ?? false) &&
     (NEURO_SYMBOLIC.GLINER?.ENABLED ?? false);
-  const useGliner = !promptOutputOnly &&
-    glinerConfigured &&
-    (options.useGliner ?? true);
+  const useGliner =
+    !promptOutputOnly && glinerConfigured && (options.useGliner ?? true);
   const useCompromise = COMPROMISE?.ENABLED ?? true;
   const useLighting = LIGHTING?.ENABLED ?? true;
 
-  log.debug('Starting semantic span extraction', {
+  log.debug("Starting semantic span extraction", {
     operation,
     useGliner,
     useCompromise,
@@ -62,11 +70,11 @@ export async function extractSemanticSpans(
     textLength: text?.length ?? 0,
   });
 
-  if (!text || typeof text !== 'string') {
+  if (!text || typeof text !== "string") {
     return {
       spans: [],
       stats: {
-        phase: 'empty-input',
+        phase: "empty-input",
         totalSpans: 0,
         closedVocabSpans: 0,
         openVocabSpans: 0,
@@ -74,8 +82,8 @@ export async function extractSemanticSpans(
         tier15Latency: 0,
         tier15bLatency: 0,
         tier2Latency: 0,
-        totalLatency: 0
-      }
+        totalLatency: 0,
+      },
     };
   }
 
@@ -83,8 +91,12 @@ export async function extractSemanticSpans(
     const tier1Start = performance.now();
     const closedSpans = extractClosedVocabulary(text);
     const tier1Time = Math.round(performance.now() - tier1Start);
-    const patternSpans = closedSpans.filter((span) => span.source === 'pattern').length;
-    const heuristicSpans = closedSpans.filter((span) => span.source === 'heuristic').length;
+    const patternSpans = closedSpans.filter(
+      (span) => span.source === "pattern",
+    ).length;
+    const heuristicSpans = closedSpans.filter(
+      (span) => span.source === "heuristic",
+    ).length;
 
     let compromiseSpans: NlpSpan[] = [];
     let tier15aTime = 0;
@@ -100,11 +112,14 @@ export async function extractSemanticSpans(
         includeObjects: COMPROMISE?.INCLUDE_OBJECTS ?? true,
         maxPhraseWords: COMPROMISE?.MAX_PHRASE_WORDS ?? 5,
       };
-      const compromiseResult = await extractCompromiseSpans(text, compromiseConfig);
+      const compromiseResult = await extractCompromiseSpans(
+        text,
+        compromiseConfig,
+      );
       compromiseSpans = compromiseResult.spans;
       tier15aTime = compromiseResult.stats.latencyMs;
 
-      log.debug('Compromise extraction completed', {
+      log.debug("Compromise extraction completed", {
         operation,
         spansExtracted: compromiseSpans.length,
         verbPhrases: compromiseResult.stats.verbPhrases,
@@ -120,14 +135,14 @@ export async function extractSemanticSpans(
       const tier15bStart = performance.now();
       const lightingConfig: Partial<LightingConfig> = {
         enabled: true,
-        minConfidence: LIGHTING?.MIN_CONFIDENCE ?? 0.70,
+        minConfidence: LIGHTING?.MIN_CONFIDENCE ?? 0.7,
         maxPhraseWords: LIGHTING?.MAX_PHRASE_WORDS ?? 5,
       };
       const lightingResult = await extractLightingSpans(text, lightingConfig);
       lightingSpans = lightingResult.spans;
       tier15bTime = lightingResult.stats.latencyMs;
 
-      log.debug('Lighting extraction completed', {
+      log.debug("Lighting extraction completed", {
         operation,
         spansExtracted: lightingSpans.length,
         shadowPhrases: lightingResult.stats.shadowPhrases,
@@ -144,7 +159,7 @@ export async function extractSemanticSpans(
       openSpans = await extractOpenVocabulary(text);
       tier2Time = Math.round(performance.now() - tier2Start);
     } else {
-      log.debug('GLiNER disabled for semantic extraction', {
+      log.debug("GLiNER disabled for semantic extraction", {
         operation,
         useGliner,
       });
@@ -159,7 +174,7 @@ export async function extractSemanticSpans(
 
     const totalTime = Math.round(performance.now() - startTime);
 
-    log.info('Operation completed.', {
+    log.info("Operation completed.", {
       operation,
       duration: totalTime,
       totalSpans: outputSpans.length,
@@ -177,7 +192,7 @@ export async function extractSemanticSpans(
     return {
       spans: outputSpans,
       stats: {
-        phase: 'neuro-symbolic',
+        phase: "neuro-symbolic",
         totalSpans: outputSpans.length,
         closedVocabSpans: closedSpans.length,
         openVocabSpans: openSpans.length,
@@ -191,30 +206,31 @@ export async function extractSemanticSpans(
         tier15bLatency: tier15bTime,
         tier2Latency: tier2Time,
         totalLatency: totalTime,
-      }
+      },
     };
   } catch (error) {
-    log.error('Operation failed.', error as Error, { operation });
+    log.error("Operation failed.", error as Error, { operation });
     throw error;
   }
 }
 
 export function extractKnownSpans(text: string): NlpSpan[] {
-  if (!text || typeof text !== 'string') return [];
+  if (!text || typeof text !== "string") return [];
 
   const closedSpans = extractClosedVocabulary(text);
   return deduplicateSpans(closedSpans).map(({ source: _, ...span }) => span);
 }
 
 export function getVocabStats(): VocabStats {
-  const stats: Record<string, { termCount: number; sampleTerms: string[] }> = {};
+  const stats: Record<string, { termCount: number; sampleTerms: string[] }> =
+    {};
   let totalTerms = 0;
 
   for (const [taxonomyId, terms] of Object.entries(VOCAB)) {
     totalTerms += terms.length;
     stats[taxonomyId] = {
       termCount: terms.length,
-      sampleTerms: terms.slice(0, 5)
+      sampleTerms: terms.slice(0, 5),
     };
   }
 
@@ -252,14 +268,14 @@ export async function warmupNlpServices(): Promise<{
   compromise: { success: boolean; latencyMs: number };
   lighting: { success: boolean; latencyMs: number };
 }> {
-  const operation = 'warmupNlpServices';
-  log.info('Starting warmup of all NLP services.', { operation });
+  const operation = "warmupNlpServices";
+  log.info("Starting warmup of all NLP services.", { operation });
 
   const glinerResult = await warmupGliner();
   const compromiseResult = await warmupCompromise();
   const lightingResult = await warmupLightingService();
 
-  log.info('Warmup complete.', {
+  log.info("Warmup complete.", {
     operation,
     gliner: glinerResult.success,
     compromise: compromiseResult.success,
@@ -271,7 +287,7 @@ export async function warmupNlpServices(): Promise<{
   return {
     gliner: glinerResult,
     compromise: compromiseResult,
-    lighting: lightingResult
+    lighting: lightingResult,
   };
 }
 

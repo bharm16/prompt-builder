@@ -1,5 +1,5 @@
-import { useCallback } from 'react';
-import type { SpanLabelingPayload, LabeledSpan, SpanMeta } from './types.ts';
+import { useCallback } from "react";
+import type { SpanLabelingPayload, LabeledSpan, SpanMeta } from "./types.ts";
 
 export interface SpanLabelingCacheService {
   get(payload: SpanLabelingPayload): {
@@ -12,7 +12,7 @@ export interface SpanLabelingCacheService {
   } | null;
   set(
     payload: SpanLabelingPayload,
-    data: { spans: LabeledSpan[]; meta: SpanMeta | null; signature?: string }
+    data: { spans: LabeledSpan[]; meta: SpanMeta | null; signature?: string },
   ): void;
 }
 
@@ -32,18 +32,23 @@ export interface CacheCheckResult {
  * Handles cache checking and setting for span labeling.
  * Accepts cache service via dependency injection (not singleton).
  */
-export function useSpanLabelingCache(cacheService: SpanLabelingCacheService | null) {
+export function useSpanLabelingCache(
+  cacheService: SpanLabelingCacheService | null,
+) {
   const checkCacheForPayload = useCallback(
     (payload: SpanLabelingPayload): CacheCheckResult => {
       const cacheCheckStart = performance.now();
-      
+
       if (!cacheService) {
-        return { cached: null, cacheCheckDuration: performance.now() - cacheCheckStart };
+        return {
+          cached: null,
+          cacheCheckDuration: performance.now() - cacheCheckStart,
+        };
       }
 
       const cacheResult = cacheService.get(payload);
       const cacheCheckDuration = performance.now() - cacheCheckStart;
-      
+
       if (cacheResult) {
         return {
           cached: {
@@ -58,20 +63,20 @@ export function useSpanLabelingCache(cacheService: SpanLabelingCacheService | nu
 
       return { cached: null, cacheCheckDuration };
     },
-    [cacheService]
+    [cacheService],
   );
 
   const setCacheForPayload = useCallback(
     (
       payload: SpanLabelingPayload,
-      data: { spans: LabeledSpan[]; meta: SpanMeta | null; signature?: string }
+      data: { spans: LabeledSpan[]; meta: SpanMeta | null; signature?: string },
     ): void => {
       if (!cacheService) {
         return;
       }
       cacheService.set(payload, data);
     },
-    [cacheService]
+    [cacheService],
   );
 
   return {

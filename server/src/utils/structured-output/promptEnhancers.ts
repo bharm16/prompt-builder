@@ -1,25 +1,25 @@
-import { logger } from '@infrastructure/Logger';
-import type { StructuredOutputSchema } from './types';
+import { logger } from "@infrastructure/Logger";
+import type { StructuredOutputSchema } from "./types";
 
 export function enhancePromptForJSON(
   systemPrompt: string,
   isArray: boolean,
   hasStrictSchema: boolean,
   needsPromptFormatInstructions: boolean,
-  schema?: StructuredOutputSchema | null
+  schema?: StructuredOutputSchema | null,
 ): string {
   if (hasStrictSchema && !needsPromptFormatInstructions) {
-    logger.debug('Skipping JSON format instructions (strict schema mode)');
+    logger.debug("Skipping JSON format instructions (strict schema mode)");
     return systemPrompt;
   }
 
-  const schemaExpectsObject = schema?.type === 'object';
+  const schemaExpectsObject = schema?.type === "object";
 
-  if (schemaExpectsObject && schema?.required?.includes('suggestions')) {
+  if (schemaExpectsObject && schema?.required?.includes("suggestions")) {
     return `${systemPrompt}\n\nIMPORTANT: Return ONLY valid JSON in this exact wrapper format:\n{"suggestions": [...your suggestions array here...]}`;
   }
 
-  const start = schemaExpectsObject ? '{' : (isArray ? '[' : '{');
+  const start = schemaExpectsObject ? "{" : isArray ? "[" : "{";
   return `${systemPrompt}\n\nRespond with ONLY valid JSON. Start with ${start} - no other text.`;
 }
 
@@ -28,11 +28,11 @@ export function enhancePromptWithErrorFeedback(
   errorMessage: string,
   isArray: boolean,
   _needsPromptFormatInstructions: boolean,
-  schema?: StructuredOutputSchema | null
+  schema?: StructuredOutputSchema | null,
 ): string {
-  const schemaExpectsObject = schema?.type === 'object';
+  const schemaExpectsObject = schema?.type === "object";
 
-  if (schemaExpectsObject && schema?.required?.includes('suggestions')) {
+  if (schemaExpectsObject && schema?.required?.includes("suggestions")) {
     return `${systemPrompt}
 
 Previous attempt failed: ${errorMessage}
@@ -43,7 +43,7 @@ RETRY - USE THIS EXACT FORMAT:
 Do NOT return a bare array. Wrap it in {"suggestions": ...}`;
   }
 
-  const start = schemaExpectsObject ? '{' : (isArray ? '[' : '{');
+  const start = schemaExpectsObject ? "{" : isArray ? "[" : "{";
 
   return `${systemPrompt}
 

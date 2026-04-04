@@ -1,12 +1,16 @@
-import { describe, expect, it, vi } from 'vitest';
-import { ApiError } from '../http/ApiError';
-import { ApiClient } from '../ApiClient';
+import { describe, expect, it, vi } from "vitest";
+import { ApiError } from "../http/ApiError";
+import { ApiClient } from "../ApiClient";
 
-describe('ApiClient', () => {
-  it('runs full request pipeline in order and returns handled payload', async () => {
+describe("ApiClient", () => {
+  it("runs full request pipeline in order and returns handled payload", async () => {
     const builtRequest = {
-      url: 'https://api.example.com/resource',
-      init: { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{"a":1}' },
+      url: "https://api.example.com/resource",
+      init: {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: '{"a":1}',
+      },
     };
     const requestBuilder = {
       build: vi.fn().mockReturnValue(builtRequest),
@@ -14,21 +18,25 @@ describe('ApiClient', () => {
 
     const requestInterceptors = {
       use: vi.fn(),
-      run: vi.fn().mockImplementation(async (request: { url: string; init: RequestInit }) => ({
-        ...request,
-        init: {
-          ...request.init,
-          headers: {
-            ...(request.init.headers as Record<string, string>),
-            Authorization: 'Bearer intercepted',
-          },
-        },
-      })),
+      run: vi
+        .fn()
+        .mockImplementation(
+          async (request: { url: string; init: RequestInit }) => ({
+            ...request,
+            init: {
+              ...request.init,
+              headers: {
+                ...(request.init.headers as Record<string, string>),
+                Authorization: "Bearer intercepted",
+              },
+            },
+          }),
+        ),
     };
 
     const transportResponse = new Response(JSON.stringify({ ok: true }), {
       status: 200,
-      headers: { 'content-type': 'application/json' },
+      headers: { "content-type": "application/json" },
     });
     const transport = {
       send: vi.fn().mockResolvedValue(transportResponse),
@@ -53,34 +61,37 @@ describe('ApiClient', () => {
       responseHandler: responseHandler as never,
     });
 
-    const result = await client.request('/resource', {
-      method: 'POST',
+    const result = await client.request("/resource", {
+      method: "POST",
       body: { a: 1 },
     });
 
-    expect(requestBuilder.build).toHaveBeenCalledWith('/resource', {
-      method: 'POST',
+    expect(requestBuilder.build).toHaveBeenCalledWith("/resource", {
+      method: "POST",
       body: { a: 1 },
     });
     expect(requestInterceptors.run).toHaveBeenCalledWith(builtRequest);
-    expect(transport.send).toHaveBeenCalledWith('https://api.example.com/resource', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: 'Bearer intercepted',
+    expect(transport.send).toHaveBeenCalledWith(
+      "https://api.example.com/resource",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer intercepted",
+        },
+        body: '{"a":1}',
       },
-      body: '{"a":1}',
-    });
+    );
     expect(responseInterceptors.run).toHaveBeenCalledWith(transportResponse);
     expect(responseHandler.handle).toHaveBeenCalledWith(transportResponse);
     expect(result).toEqual({ transformed: true });
   });
 
-  it('normalizes thrown errors via responseHandler.mapError', async () => {
+  it("normalizes thrown errors via responseHandler.mapError", async () => {
     const requestBuilder = {
-      build: vi.fn().mockReturnValue({ url: '/x', init: {} }),
+      build: vi.fn().mockReturnValue({ url: "/x", init: {} }),
     };
-    const mapped = new ApiError('Mapped network error');
+    const mapped = new ApiError("Mapped network error");
     const responseHandler = {
       handle: vi.fn(),
       mapError: vi.fn().mockReturnValue(mapped),
@@ -89,19 +100,22 @@ describe('ApiClient', () => {
     const client = new ApiClient({
       config: {} as never,
       requestBuilder: requestBuilder as never,
-      requestInterceptors: { use: vi.fn(), run: vi.fn().mockResolvedValue({ url: '/x', init: {} }) } as never,
+      requestInterceptors: {
+        use: vi.fn(),
+        run: vi.fn().mockResolvedValue({ url: "/x", init: {} }),
+      } as never,
       transport: {
-        send: vi.fn().mockRejectedValue(new Error('socket failure')),
+        send: vi.fn().mockRejectedValue(new Error("socket failure")),
       } as never,
       responseInterceptors: { use: vi.fn(), run: vi.fn() } as never,
       responseHandler: responseHandler as never,
     });
 
-    await expect(client.request('/x')).rejects.toBe(mapped);
+    await expect(client.request("/x")).rejects.toBe(mapped);
     expect(responseHandler.mapError).toHaveBeenCalledWith(expect.any(Error));
   });
 
-  it('registers request and response interceptors via add* methods', () => {
+  it("registers request and response interceptors via add* methods", () => {
     const requestInterceptors = {
       use: vi.fn(),
       run: vi.fn(),
@@ -130,65 +144,79 @@ describe('ApiClient', () => {
     expect(responseInterceptors.use).toHaveBeenCalledWith(responseInterceptor);
   });
 
-  it('get sets method GET and forwards options', async () => {
+  it("get sets method GET and forwards options", async () => {
     const client = new ApiClient();
-    const requestSpy = vi.spyOn(client, 'request').mockResolvedValue({ ok: true });
+    const requestSpy = vi
+      .spyOn(client, "request")
+      .mockResolvedValue({ ok: true });
 
-    await client.get('/users', { headers: { A: '1' } });
+    await client.get("/users", { headers: { A: "1" } });
 
-    expect(requestSpy).toHaveBeenCalledWith('/users', {
-      headers: { A: '1' },
-      method: 'GET',
+    expect(requestSpy).toHaveBeenCalledWith("/users", {
+      headers: { A: "1" },
+      method: "GET",
     });
   });
 
-  it('post sets method POST and body', async () => {
+  it("post sets method POST and body", async () => {
     const client = new ApiClient();
-    const requestSpy = vi.spyOn(client, 'request').mockResolvedValue({ ok: true });
+    const requestSpy = vi
+      .spyOn(client, "request")
+      .mockResolvedValue({ ok: true });
 
-    await client.post('/users', { name: 'test' }, { timeout: 1000 });
+    await client.post("/users", { name: "test" }, { timeout: 1000 });
 
-    expect(requestSpy).toHaveBeenCalledWith('/users', {
+    expect(requestSpy).toHaveBeenCalledWith("/users", {
       timeout: 1000,
-      method: 'POST',
-      body: { name: 'test' },
+      method: "POST",
+      body: { name: "test" },
     });
   });
 
-  it('put sets method PUT and body', async () => {
+  it("put sets method PUT and body", async () => {
     const client = new ApiClient();
-    const requestSpy = vi.spyOn(client, 'request').mockResolvedValue({ ok: true });
+    const requestSpy = vi
+      .spyOn(client, "request")
+      .mockResolvedValue({ ok: true });
 
-    await client.put('/users/1', { name: 'updated' }, { headers: { A: '2' } });
+    await client.put("/users/1", { name: "updated" }, { headers: { A: "2" } });
 
-    expect(requestSpy).toHaveBeenCalledWith('/users/1', {
-      headers: { A: '2' },
-      method: 'PUT',
-      body: { name: 'updated' },
+    expect(requestSpy).toHaveBeenCalledWith("/users/1", {
+      headers: { A: "2" },
+      method: "PUT",
+      body: { name: "updated" },
     });
   });
 
-  it('delete sets method DELETE', async () => {
+  it("delete sets method DELETE", async () => {
     const client = new ApiClient();
-    const requestSpy = vi.spyOn(client, 'request').mockResolvedValue({ ok: true });
+    const requestSpy = vi
+      .spyOn(client, "request")
+      .mockResolvedValue({ ok: true });
 
-    await client.delete('/users/1', { signal: new AbortController().signal });
+    await client.delete("/users/1", { signal: new AbortController().signal });
 
-    expect(requestSpy).toHaveBeenCalledWith('/users/1', {
+    expect(requestSpy).toHaveBeenCalledWith("/users/1", {
       signal: expect.any(AbortSignal),
-      method: 'DELETE',
+      method: "DELETE",
     });
   });
 
-  it('patch sets method PATCH and body', async () => {
+  it("patch sets method PATCH and body", async () => {
     const client = new ApiClient();
-    const requestSpy = vi.spyOn(client, 'request').mockResolvedValue({ ok: true });
+    const requestSpy = vi
+      .spyOn(client, "request")
+      .mockResolvedValue({ ok: true });
 
-    await client.patch('/users/1', { active: false }, { fetchOptions: { mode: 'cors' } });
+    await client.patch(
+      "/users/1",
+      { active: false },
+      { fetchOptions: { mode: "cors" } },
+    );
 
-    expect(requestSpy).toHaveBeenCalledWith('/users/1', {
-      fetchOptions: { mode: 'cors' },
-      method: 'PATCH',
+    expect(requestSpy).toHaveBeenCalledWith("/users/1", {
+      fetchOptions: { mode: "cors" },
+      method: "PATCH",
       body: { active: false },
     });
   });

@@ -1,8 +1,8 @@
 /**
  * Logging Utilities
- * 
+ *
  * Centralized exports for logging-related utilities.
- * 
+ *
  * @module utils/logging
  */
 
@@ -12,4 +12,4 @@ export {
   redactSensitiveFields,
   getEmailDomain,
   sanitizeUserData,
-} from './sanitize';
+} from "./sanitize";

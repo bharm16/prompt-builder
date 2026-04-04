@@ -1,6 +1,7 @@
-export function stripVideoPreviewPrompt(
-  prompt: string
-): { cleaned: string; wasStripped: boolean } {
+export function stripVideoPreviewPrompt(prompt: string): {
+  cleaned: string;
+  wasStripped: boolean;
+} {
   const trimmed = prompt.trim();
   if (!trimmed) {
     return { cleaned: trimmed, wasStripped: false };
@@ -25,8 +26,8 @@ export function stripVideoPreviewPrompt(
 
   let cleaned = (cutIndex >= 0 ? trimmed.slice(0, cutIndex) : trimmed).trim();
   cleaned = cleaned
-    .replace(/^\s*\*\*\s*prompt\s*:\s*\*\*/i, '')
-    .replace(/^\s*prompt\s*:\s*/i, '')
+    .replace(/^\s*\*\*\s*prompt\s*:\s*\*\*/i, "")
+    .replace(/^\s*prompt\s*:\s*/i, "")
     .trim();
 
   if (cleaned.length < 10) {

@@ -1,8 +1,12 @@
-import { v4 as uuidv4 } from 'uuid';
-import type { Bucket } from '@google-cloud/storage';
-import { admin, getFirestore } from '@infrastructure/firebaseAdmin';
-import { logger } from '@infrastructure/Logger';
-import type { Asset, AssetReferenceImage, AssetType } from '@shared/types/asset';
+import { v4 as uuidv4 } from "uuid";
+import type { Bucket } from "@google-cloud/storage";
+import { admin, getFirestore } from "@infrastructure/firebaseAdmin";
+import { logger } from "@infrastructure/Logger";
+import type {
+  Asset,
+  AssetReferenceImage,
+  AssetType,
+} from "@shared/types/asset";
 
 interface AssetRepositoryOptions {
   db?: FirebaseFirestore.Firestore;
@@ -11,11 +15,11 @@ interface AssetRepositoryOptions {
 }
 
 export interface ReferenceImageMetadataInput {
-  angle?: AssetReferenceImage['metadata']['angle'];
-  expression?: AssetReferenceImage['metadata']['expression'];
-  styleType?: AssetReferenceImage['metadata']['styleType'];
-  timeOfDay?: AssetReferenceImage['metadata']['timeOfDay'];
-  lighting?: AssetReferenceImage['metadata']['lighting'];
+  angle?: AssetReferenceImage["metadata"]["angle"];
+  expression?: AssetReferenceImage["metadata"]["expression"];
+  styleType?: AssetReferenceImage["metadata"]["styleType"];
+  timeOfDay?: AssetReferenceImage["metadata"]["timeOfDay"];
+  lighting?: AssetReferenceImage["metadata"]["lighting"];
   width?: number;
   height?: number;
 }
@@ -30,7 +34,11 @@ export interface ProcessedImageInput {
 
 const MAX_IN_QUERY = 10;
 
-function buildDownloadUrl(bucketName: string, storagePath: string, token: string): string {
+function buildDownloadUrl(
+  bucketName: string,
+  storagePath: string,
+  token: string,
+): string {
   const encodedPath = encodeURIComponent(storagePath);
   return `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${encodedPath}?alt=media&token=${token}`;
 }
@@ -41,7 +49,7 @@ function buildDownloadUrl(bucketName: string, storagePath: string, token: string
 function extractTokenFromUrl(url: string): string | null {
   try {
     const parsed = new URL(url);
-    return parsed.searchParams.get('token');
+    return parsed.searchParams.get("token");
   } catch {
     return null;
   }
@@ -54,7 +62,9 @@ function extractTokenFromUrl(url: string): string | null {
 function extractBucketFromUrl(url: string): string | null {
   try {
     // Match Firebase Storage URL pattern: firebasestorage.googleapis.com/v0/b/{bucket}/o/
-    const match = url.match(/firebasestorage\.googleapis\.com\/v0\/b\/([^/]+)\/o\//);
+    const match = url.match(
+      /firebasestorage\.googleapis\.com\/v0\/b\/([^/]+)\/o\//,
+    );
     return match?.[1] ?? null;
   } catch {
     return null;
@@ -80,7 +90,7 @@ function isValidFirebaseStorageUrl(url: string): boolean {
  */
 function refreshImageUrls(
   image: AssetReferenceImage,
-  bucketName: string
+  bucketName: string,
 ): AssetReferenceImage {
   // If we don't have storage paths, we can't refresh
   if (!image.storagePath) {
@@ -95,7 +105,9 @@ function refreshImageUrls(
 
   // Only refresh if URL is malformed or missing expected components
   const imageToken = extractTokenFromUrl(image.url);
-  const thumbToken = image.thumbnailUrl ? extractTokenFromUrl(image.thumbnailUrl) : null;
+  const thumbToken = image.thumbnailUrl
+    ? extractTokenFromUrl(image.thumbnailUrl)
+    : null;
 
   // If we can't extract tokens, return as-is
   if (!imageToken) {
@@ -105,9 +117,10 @@ function refreshImageUrls(
   return {
     ...image,
     url: buildDownloadUrl(bucketName, image.storagePath, imageToken),
-    thumbnailUrl: image.thumbnailPath && thumbToken
-      ? buildDownloadUrl(bucketName, image.thumbnailPath, thumbToken)
-      : image.thumbnailUrl,
+    thumbnailUrl:
+      image.thumbnailPath && thumbToken
+        ? buildDownloadUrl(bucketName, image.thumbnailPath, thumbToken)
+        : image.thumbnailUrl,
   };
 }
 
@@ -121,7 +134,9 @@ function refreshAssetUrls(asset: Asset, bucketName: string): Asset {
 
   return {
     ...asset,
-    referenceImages: asset.referenceImages.map((img) => refreshImageUrls(img, bucketName)),
+    referenceImages: asset.referenceImages.map((img) =>
+      refreshImageUrls(img, bucketName),
+    ),
   };
 }
 
@@ -129,39 +144,49 @@ export class AssetRepository {
   private readonly db: FirebaseFirestore.Firestore;
   private readonly bucket: Bucket;
   private readonly bucketName: string;
-  private readonly log = logger.child({ service: 'AssetRepository' });
+  private readonly log = logger.child({ service: "AssetRepository" });
 
   constructor(options: AssetRepositoryOptions) {
     if (!options.bucket) {
-      throw new Error('AssetRepository requires an injected storage bucket');
+      throw new Error("AssetRepository requires an injected storage bucket");
     }
     this.db = options.db || getFirestore();
     this.bucket = options.bucket;
     this.bucketName = options.bucketName || options.bucket.name;
   }
 
-  private getAssetsCollection(userId: string): FirebaseFirestore.CollectionReference {
-    return this.db.collection('users').doc(userId).collection('assets');
+  private getAssetsCollection(
+    userId: string,
+  ): FirebaseFirestore.CollectionReference {
+    return this.db.collection("users").doc(userId).collection("assets");
   }
 
-  private getAssetDoc(userId: string, assetId: string): FirebaseFirestore.DocumentReference {
+  private getAssetDoc(
+    userId: string,
+    assetId: string,
+  ): FirebaseFirestore.DocumentReference {
     return this.getAssetsCollection(userId).doc(assetId);
   }
 
-  private getUsageCollection(userId: string): FirebaseFirestore.CollectionReference {
-    return this.db.collection('users').doc(userId).collection('assetUsage');
+  private getUsageCollection(
+    userId: string,
+  ): FirebaseFirestore.CollectionReference {
+    return this.db.collection("users").doc(userId).collection("assetUsage");
   }
 
-  async create(userId: string, assetData: {
-    type: AssetType;
-    trigger: string;
-    name: string;
-    textDefinition: string;
-    negativePrompt?: string;
-  }): Promise<Asset> {
-    const operation = 'create';
+  async create(
+    userId: string,
+    assetData: {
+      type: AssetType;
+      trigger: string;
+      name: string;
+      textDefinition: string;
+      negativePrompt?: string;
+    },
+  ): Promise<Asset> {
+    const operation = "create";
     const startTime = performance.now();
-    this.log.debug('Starting operation.', {
+    this.log.debug("Starting operation.", {
       operation,
       userId,
       type: assetData.type,
@@ -169,7 +194,7 @@ export class AssetRepository {
       nameLength: assetData.name.length,
     });
 
-    const assetId = `asset_${uuidv4().replace(/-/g, '').slice(0, 12)}`;
+    const assetId = `asset_${uuidv4().replace(/-/g, "").slice(0, 12)}`;
     const now = new Date().toISOString();
 
     const asset: Asset = {
@@ -178,8 +203,8 @@ export class AssetRepository {
       type: assetData.type,
       trigger: assetData.trigger.toLowerCase(),
       name: assetData.name,
-      textDefinition: assetData.textDefinition || '',
-      negativePrompt: assetData.negativePrompt || '',
+      textDefinition: assetData.textDefinition || "",
+      negativePrompt: assetData.negativePrompt || "",
       referenceImages: [],
       faceEmbedding: null,
       usageCount: 0,
@@ -190,7 +215,7 @@ export class AssetRepository {
 
     try {
       await this.getAssetDoc(userId, assetId).set(asset);
-      this.log.info('Operation completed.', {
+      this.log.info("Operation completed.", {
         operation,
         userId,
         assetId,
@@ -199,8 +224,9 @@ export class AssetRepository {
       });
       return asset;
     } catch (error) {
-      const errorObj = error instanceof Error ? error : new Error(String(error));
-      this.log.error('Operation failed.', errorObj, {
+      const errorObj =
+        error instanceof Error ? error : new Error(String(error));
+      this.log.error("Operation failed.", errorObj, {
         operation,
         userId,
         assetId,
@@ -222,7 +248,7 @@ export class AssetRepository {
   async getByTrigger(userId: string, trigger: string): Promise<Asset | null> {
     const normalized = trigger.toLowerCase();
     const snapshot = await this.getAssetsCollection(userId)
-      .where('trigger', '==', normalized)
+      .where("trigger", "==", normalized)
       .limit(1)
       .get();
 
@@ -243,10 +269,12 @@ export class AssetRepository {
     const results: Asset[] = [];
     for (const batch of batches) {
       const snapshot = await this.getAssetsCollection(userId)
-        .where('trigger', 'in', batch)
+        .where("trigger", "in", batch)
         .get();
       results.push(
-        ...snapshot.docs.map((doc) => refreshAssetUrls(doc.data() as Asset, this.bucketName))
+        ...snapshot.docs.map((doc) =>
+          refreshAssetUrls(doc.data() as Asset, this.bucketName),
+        ),
       );
     }
 
@@ -255,41 +283,53 @@ export class AssetRepository {
 
   async getAll(
     userId: string,
-    options: { limit?: number; orderByField?: string; type?: AssetType | null } = {}
+    options: {
+      limit?: number;
+      orderByField?: string;
+      type?: AssetType | null;
+    } = {},
   ): Promise<Asset[]> {
-    const { limit: maxResults = 100, orderByField = 'updatedAt', type = null } = options;
+    const {
+      limit: maxResults = 100,
+      orderByField = "updatedAt",
+      type = null,
+    } = options;
 
     let query = this.getAssetsCollection(userId)
-      .orderBy(orderByField, 'desc')
+      .orderBy(orderByField, "desc")
       .limit(maxResults);
 
     if (type) {
       query = this.getAssetsCollection(userId)
-        .where('type', '==', type)
-        .orderBy(orderByField, 'desc')
+        .where("type", "==", type)
+        .orderBy(orderByField, "desc")
         .limit(maxResults);
     }
 
     const snapshot = await query.get();
-    return snapshot.docs.map((doc) => refreshAssetUrls(doc.data() as Asset, this.bucketName));
+    return snapshot.docs.map((doc) =>
+      refreshAssetUrls(doc.data() as Asset, this.bucketName),
+    );
   }
 
   async getByType(userId: string, type: AssetType): Promise<Asset[]> {
     const snapshot = await this.getAssetsCollection(userId)
-      .where('type', '==', type)
-      .orderBy('updatedAt', 'desc')
+      .where("type", "==", type)
+      .orderBy("updatedAt", "desc")
       .get();
-    return snapshot.docs.map((doc) => refreshAssetUrls(doc.data() as Asset, this.bucketName));
+    return snapshot.docs.map((doc) =>
+      refreshAssetUrls(doc.data() as Asset, this.bucketName),
+    );
   }
 
   async update(
     userId: string,
     assetId: string,
-    updates: Partial<Asset>
+    updates: Partial<Asset>,
   ): Promise<Asset | null> {
-    const operation = 'update';
+    const operation = "update";
     const startTime = performance.now();
-    this.log.debug('Starting operation.', {
+    this.log.debug("Starting operation.", {
       operation,
       userId,
       assetId,
@@ -309,7 +349,7 @@ export class AssetRepository {
     try {
       await this.getAssetDoc(userId, assetId).update(updateData);
       const updated = await this.getById(userId, assetId);
-      this.log.debug('Operation completed.', {
+      this.log.debug("Operation completed.", {
         operation,
         userId,
         assetId,
@@ -317,8 +357,9 @@ export class AssetRepository {
       });
       return updated;
     } catch (error) {
-      const errorObj = error instanceof Error ? error : new Error(String(error));
-      this.log.error('Operation failed.', errorObj, {
+      const errorObj =
+        error instanceof Error ? error : new Error(String(error));
+      this.log.error("Operation failed.", errorObj, {
         operation,
         userId,
         assetId,
@@ -329,7 +370,7 @@ export class AssetRepository {
   }
 
   async incrementUsage(userId: string, assetId: string): Promise<void> {
-    const operation = 'incrementUsage';
+    const operation = "incrementUsage";
     const startTime = performance.now();
     const now = new Date().toISOString();
     try {
@@ -338,15 +379,16 @@ export class AssetRepository {
         lastUsedAt: now,
         updatedAt: now,
       });
-      this.log.debug('Operation completed.', {
+      this.log.debug("Operation completed.", {
         operation,
         userId,
         assetId,
         duration: Math.round(performance.now() - startTime),
       });
     } catch (error) {
-      const errorObj = error instanceof Error ? error : new Error(String(error));
-      this.log.error('Operation failed.', errorObj, {
+      const errorObj =
+        error instanceof Error ? error : new Error(String(error));
+      this.log.error("Operation failed.", errorObj, {
         operation,
         userId,
         assetId,
@@ -357,9 +399,9 @@ export class AssetRepository {
   }
 
   async delete(userId: string, assetId: string): Promise<boolean> {
-    const operation = 'delete';
+    const operation = "delete";
     const startTime = performance.now();
-    this.log.debug('Starting operation.', { operation, userId, assetId });
+    this.log.debug("Starting operation.", { operation, userId, assetId });
 
     try {
       const asset = await this.getById(userId, assetId);
@@ -370,7 +412,7 @@ export class AssetRepository {
       }
 
       await this.getAssetDoc(userId, assetId).delete();
-      this.log.info('Operation completed.', {
+      this.log.info("Operation completed.", {
         operation,
         userId,
         assetId,
@@ -378,8 +420,9 @@ export class AssetRepository {
       });
       return true;
     } catch (error) {
-      const errorObj = error instanceof Error ? error : new Error(String(error));
-      this.log.error('Operation failed.', errorObj, {
+      const errorObj =
+        error instanceof Error ? error : new Error(String(error));
+      this.log.error("Operation failed.", errorObj, {
         operation,
         userId,
         assetId,
@@ -394,11 +437,11 @@ export class AssetRepository {
     assetId: string,
     image: ProcessedImageInput,
     thumbnail: ProcessedImageInput,
-    metadata: ReferenceImageMetadataInput
+    metadata: ReferenceImageMetadataInput,
   ): Promise<AssetReferenceImage> {
-    const operation = 'addReferenceImage';
+    const operation = "addReferenceImage";
     const startTime = performance.now();
-    this.log.debug('Starting operation.', {
+    this.log.debug("Starting operation.", {
       operation,
       userId,
       assetId,
@@ -406,7 +449,7 @@ export class AssetRepository {
       thumbnailSize: thumbnail.sizeBytes,
     });
 
-    const imageId = `img_${uuidv4().replace(/-/g, '').slice(0, 8)}`;
+    const imageId = `img_${uuidv4().replace(/-/g, "").slice(0, 8)}`;
     const storagePath = `users/${userId}/assets/${assetId}/${imageId}.jpg`;
     const thumbnailPath = `users/${userId}/assets/${assetId}/${imageId}_thumb.jpg`;
 
@@ -416,9 +459,9 @@ export class AssetRepository {
     try {
       await this.bucket.file(storagePath).save(image.buffer, {
         resumable: false,
-        contentType: 'image/jpeg',
+        contentType: "image/jpeg",
         metadata: {
-          cacheControl: 'public, max-age=31536000',
+          cacheControl: "public, max-age=31536000",
           metadata: {
             firebaseStorageDownloadTokens: imageToken,
           },
@@ -429,9 +472,9 @@ export class AssetRepository {
       try {
         await this.bucket.file(thumbnailPath).save(thumbnail.buffer, {
           resumable: false,
-          contentType: 'image/jpeg',
+          contentType: "image/jpeg",
           metadata: {
-            cacheControl: 'public, max-age=31536000',
+            cacheControl: "public, max-age=31536000",
             metadata: {
               firebaseStorageDownloadTokens: thumbnailToken,
             },
@@ -439,14 +482,21 @@ export class AssetRepository {
           preconditionOpts: { ifGenerationMatch: 0 },
         });
       } catch (thumbnailError) {
-        await this.bucket.file(storagePath).delete().catch(() => undefined);
+        await this.bucket
+          .file(storagePath)
+          .delete()
+          .catch(() => undefined);
         throw thumbnailError;
       }
 
       const referenceImage: AssetReferenceImage = {
         id: imageId,
         url: buildDownloadUrl(this.bucketName, storagePath, imageToken),
-        thumbnailUrl: buildDownloadUrl(this.bucketName, thumbnailPath, thumbnailToken),
+        thumbnailUrl: buildDownloadUrl(
+          this.bucketName,
+          thumbnailPath,
+          thumbnailToken,
+        ),
         isPrimary: false,
         storagePath,
         thumbnailPath,
@@ -464,14 +514,20 @@ export class AssetRepository {
       };
 
       const asset = await this.getById(userId, assetId);
-      const referenceImages = [...(asset?.referenceImages || []), referenceImage];
+      const referenceImages = [
+        ...(asset?.referenceImages || []),
+        referenceImage,
+      ];
 
       if (referenceImages.length === 1) {
-        referenceImages[0] = { ...referenceImages[0], isPrimary: true } as AssetReferenceImage;
+        referenceImages[0] = {
+          ...referenceImages[0],
+          isPrimary: true,
+        } as AssetReferenceImage;
       }
 
       await this.update(userId, assetId, { referenceImages });
-      this.log.info('Operation completed.', {
+      this.log.info("Operation completed.", {
         operation,
         userId,
         assetId,
@@ -480,8 +536,9 @@ export class AssetRepository {
       });
       return referenceImage;
     } catch (error) {
-      const errorObj = error instanceof Error ? error : new Error(String(error));
-      this.log.error('Operation failed.', errorObj, {
+      const errorObj =
+        error instanceof Error ? error : new Error(String(error));
+      this.log.error("Operation failed.", errorObj, {
         operation,
         userId,
         assetId,
@@ -491,10 +548,19 @@ export class AssetRepository {
     }
   }
 
-  async deleteReferenceImage(userId: string, assetId: string, imageId: string): Promise<boolean> {
-    const operation = 'deleteReferenceImage';
+  async deleteReferenceImage(
+    userId: string,
+    assetId: string,
+    imageId: string,
+  ): Promise<boolean> {
+    const operation = "deleteReferenceImage";
     const startTime = performance.now();
-    this.log.debug('Starting operation.', { operation, userId, assetId, imageId });
+    this.log.debug("Starting operation.", {
+      operation,
+      userId,
+      assetId,
+      imageId,
+    });
 
     try {
       const asset = await this.getById(userId, assetId);
@@ -512,8 +578,9 @@ export class AssetRepository {
         try {
           await this.bucket.file(target.path).delete();
         } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : String(error);
-          this.log.warn('Failed to delete asset image from storage', {
+          const errorMessage =
+            error instanceof Error ? error.message : String(error);
+          this.log.warn("Failed to delete asset image from storage", {
             operation,
             assetId,
             imageId,
@@ -524,13 +591,18 @@ export class AssetRepository {
         }
       }
 
-      const referenceImages = asset.referenceImages.filter((img) => img.id !== imageId);
+      const referenceImages = asset.referenceImages.filter(
+        (img) => img.id !== imageId,
+      );
       if (image.isPrimary && referenceImages.length > 0) {
-        referenceImages[0] = { ...referenceImages[0], isPrimary: true } as AssetReferenceImage;
+        referenceImages[0] = {
+          ...referenceImages[0],
+          isPrimary: true,
+        } as AssetReferenceImage;
       }
 
       await this.update(userId, assetId, { referenceImages });
-      this.log.info('Operation completed.', {
+      this.log.info("Operation completed.", {
         operation,
         userId,
         assetId,
@@ -539,8 +611,9 @@ export class AssetRepository {
       });
       return true;
     } catch (error) {
-      const errorObj = error instanceof Error ? error : new Error(String(error));
-      this.log.error('Operation failed.', errorObj, {
+      const errorObj =
+        error instanceof Error ? error : new Error(String(error));
+      this.log.error("Operation failed.", errorObj, {
         operation,
         userId,
         assetId,
@@ -551,10 +624,19 @@ export class AssetRepository {
     }
   }
 
-  async setPrimaryImage(userId: string, assetId: string, imageId: string): Promise<Asset | null> {
-    const operation = 'setPrimaryImage';
+  async setPrimaryImage(
+    userId: string,
+    assetId: string,
+    imageId: string,
+  ): Promise<Asset | null> {
+    const operation = "setPrimaryImage";
     const startTime = performance.now();
-    this.log.debug('Starting operation.', { operation, userId, assetId, imageId });
+    this.log.debug("Starting operation.", {
+      operation,
+      userId,
+      assetId,
+      imageId,
+    });
 
     try {
       const asset = await this.getById(userId, assetId);
@@ -567,7 +649,7 @@ export class AssetRepository {
 
       await this.update(userId, assetId, { referenceImages });
       const updated = await this.getById(userId, assetId);
-      this.log.info('Operation completed.', {
+      this.log.info("Operation completed.", {
         operation,
         userId,
         assetId,
@@ -576,8 +658,9 @@ export class AssetRepository {
       });
       return updated;
     } catch (error) {
-      const errorObj = error instanceof Error ? error : new Error(String(error));
-      this.log.error('Operation failed.', errorObj, {
+      const errorObj =
+        error instanceof Error ? error : new Error(String(error));
+      this.log.error("Operation failed.", errorObj, {
         operation,
         userId,
         assetId,
@@ -588,10 +671,14 @@ export class AssetRepository {
     }
   }
 
-  async triggerExists(userId: string, trigger: string, excludeAssetId?: string | null): Promise<boolean> {
+  async triggerExists(
+    userId: string,
+    trigger: string,
+    excludeAssetId?: string | null,
+  ): Promise<boolean> {
     const normalized = trigger.toLowerCase();
     const snapshot = await this.getAssetsCollection(userId)
-      .where('trigger', '==', normalized)
+      .where("trigger", "==", normalized)
       .limit(1)
       .get();
     if (snapshot.empty) return false;
@@ -602,35 +689,41 @@ export class AssetRepository {
     return true;
   }
 
-  async createUsageRecord(userId: string, input: {
-    assetId: string;
-    assetType: AssetType;
-    generationId?: string | null;
-    promptText?: string | null;
-    expandedText?: string | null;
-  }): Promise<void> {
-    const operation = 'createUsageRecord';
+  async createUsageRecord(
+    userId: string,
+    input: {
+      assetId: string;
+      assetType: AssetType;
+      generationId?: string | null;
+      promptText?: string | null;
+      expandedText?: string | null;
+    },
+  ): Promise<void> {
+    const operation = "createUsageRecord";
     const startTime = performance.now();
-    const usageId = `usage_${uuidv4().replace(/-/g, '').slice(0, 12)}`;
+    const usageId = `usage_${uuidv4().replace(/-/g, "").slice(0, 12)}`;
     try {
-      await this.getUsageCollection(userId).doc(usageId).set({
-        id: usageId,
-        assetId: input.assetId,
-        assetType: input.assetType,
-        generationId: input.generationId || null,
-        promptText: input.promptText || '',
-        expandedText: input.expandedText || '',
-        createdAt: new Date().toISOString(),
-      });
-      this.log.debug('Operation completed.', {
+      await this.getUsageCollection(userId)
+        .doc(usageId)
+        .set({
+          id: usageId,
+          assetId: input.assetId,
+          assetType: input.assetType,
+          generationId: input.generationId || null,
+          promptText: input.promptText || "",
+          expandedText: input.expandedText || "",
+          createdAt: new Date().toISOString(),
+        });
+      this.log.debug("Operation completed.", {
         operation,
         userId,
         assetId: input.assetId,
         duration: Math.round(performance.now() - startTime),
       });
     } catch (error) {
-      const errorObj = error instanceof Error ? error : new Error(String(error));
-      this.log.error('Operation failed.', errorObj, {
+      const errorObj =
+        error instanceof Error ? error : new Error(String(error));
+      this.log.error("Operation failed.", errorObj, {
         operation,
         userId,
         assetId: input.assetId,

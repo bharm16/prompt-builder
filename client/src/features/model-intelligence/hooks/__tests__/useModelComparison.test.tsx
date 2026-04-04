@@ -1,11 +1,11 @@
-import { act, renderHook } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
-import { useModelComparison } from '../useModelComparison';
-import type { ModelScore } from '@features/model-intelligence/types';
+import { act, renderHook } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
+import { useModelComparison } from "../useModelComparison";
+import type { ModelScore } from "@features/model-intelligence/types";
 
 const recommendations: ModelScore[] = [
   {
-    modelId: 'sora-2',
+    modelId: "sora-2",
     overallScore: 91,
     factorScores: [],
     strengths: [],
@@ -13,7 +13,7 @@ const recommendations: ModelScore[] = [
     warnings: [],
   },
   {
-    modelId: 'luma-ray3',
+    modelId: "luma-ray3",
     overallScore: 88,
     factorScores: [],
     strengths: [],
@@ -21,21 +21,23 @@ const recommendations: ModelScore[] = [
     warnings: [],
   },
 ];
-const comparisonPair: [string, string] = ['sora-2', 'luma-ray3'];
+const comparisonPair: [string, string] = ["sora-2", "luma-ray3"];
 
-describe('useModelComparison', () => {
-  it('returns null comparison when models are missing', () => {
-    const { result } = renderHook(() => useModelComparison({ recommendations }));
+describe("useModelComparison", () => {
+  it("returns null comparison when models are missing", () => {
+    const { result } = renderHook(() =>
+      useModelComparison({ recommendations }),
+    );
     expect(result.current.comparison).toBeNull();
     expect(result.current.isOpen).toBe(false);
   });
 
-  it('opens and closes comparison for valid model pair', () => {
+  it("opens and closes comparison for valid model pair", () => {
     const { result } = renderHook(() =>
       useModelComparison({
         recommendations,
         comparisonModels: comparisonPair,
-      })
+      }),
     );
 
     act(() => {
@@ -44,8 +46,8 @@ describe('useModelComparison', () => {
 
     expect(result.current.isOpen).toBe(true);
     expect(result.current.comparison).toMatchObject({
-      left: { modelId: 'sora-2' },
-      right: { modelId: 'luma-ray3' },
+      left: { modelId: "sora-2" },
+      right: { modelId: "luma-ray3" },
     });
 
     act(() => {
@@ -55,14 +57,14 @@ describe('useModelComparison', () => {
     expect(result.current.isOpen).toBe(false);
   });
 
-  it('closes open comparison when the selected models are no longer resolvable', () => {
+  it("closes open comparison when the selected models are no longer resolvable", () => {
     const { result, rerender } = renderHook(
       ({ items }) =>
         useModelComparison({
           recommendations: items,
           comparisonModels: comparisonPair,
         }),
-      { initialProps: { items: recommendations } }
+      { initialProps: { items: recommendations } },
     );
 
     act(() => {

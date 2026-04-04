@@ -1,7 +1,10 @@
-import { useMemo } from 'react';
-import type { PromptVersionEntry } from '@features/prompt-optimizer/types/domain/prompt-session';
-import type { Generation, GenerationsPanelProps } from '@features/prompt-optimizer/GenerationsPanel/types';
-import type { VersionsPanelPropsBase } from '../components/PromptCanvasView.types';
+import { useMemo } from "react";
+import type { PromptVersionEntry } from "@features/prompt-optimizer/types/domain/prompt-session";
+import type {
+  Generation,
+  GenerationsPanelProps,
+} from "@features/generations/types";
+import type { VersionsPanelPropsBase } from "../components/PromptCanvasView.types";
 
 interface UsePromptCanvasPanelPropsArgs {
   versionsForPanel: PromptVersionEntry[];
@@ -66,14 +69,16 @@ export function usePromptCanvasPanelProps({
       onSelectVersion,
       onCreateVersion,
     }),
-    [versionsForPanel, selectedVersionId, onSelectVersion, onCreateVersion]
+    [versionsForPanel, selectedVersionId, onSelectVersion, onCreateVersion],
   );
 
   const generationsPanelProps = useMemo<GenerationsPanelProps>(
     () => ({
-      prompt: showResults ? (normalizedDisplayedPrompt ?? '') : normalizedInputPrompt,
+      prompt: showResults
+        ? (normalizedDisplayedPrompt ?? "")
+        : normalizedInputPrompt,
       promptVersionId,
-      aspectRatio: effectiveAspectRatio ?? '16:9',
+      aspectRatio: effectiveAspectRatio ?? "16:9",
       duration: durationSeconds ?? undefined,
       fps: fpsNumber ?? undefined,
       generationParams: generationParams ?? undefined,
@@ -97,7 +102,7 @@ export function usePromptCanvasPanelProps({
       currentVersions,
       onRestoreVersion,
       onCreateVersionIfNeeded,
-    ]
+    ],
   );
 
   return { versionsPanelProps, generationsPanelProps };

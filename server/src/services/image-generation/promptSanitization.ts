@@ -23,5 +23,7 @@ export const stripPreviewSections = (prompt: string): string => {
   }
 
   const stripped = (cutIndex >= 0 ? prompt.slice(0, cutIndex) : prompt).trim();
-  return stripped.length >= MIN_STRIPPED_PROMPT_LENGTH ? stripped : prompt.trim();
+  return stripped.length >= MIN_STRIPPED_PROMPT_LENGTH
+    ? stripped
+    : prompt.trim();
 };

@@ -1,6 +1,6 @@
-import type { AppSettings } from '../types';
-import { useSettingsDomSync } from './useSettingsDomSync';
-import { useSettingsStorage } from './useSettingsStorage';
+import type { AppSettings } from "../types";
+import { useSettingsDomSync } from "./useSettingsDomSync";
+import { useSettingsStorage } from "./useSettingsStorage";
 
 /**
  * Hook for managing user preferences with localStorage persistence.
@@ -10,7 +10,10 @@ export function useSettings() {
   const { settings, setSettings, resetSettings } = useSettingsStorage();
   useSettingsDomSync(settings);
 
-  const updateSetting = <K extends keyof AppSettings>(key: K, value: AppSettings[K]): void => {
+  const updateSetting = <K extends keyof AppSettings>(
+    key: K,
+    value: AppSettings[K],
+  ): void => {
     setSettings((prev) => ({ ...prev, [key]: value }));
   };
 

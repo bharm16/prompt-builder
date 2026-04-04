@@ -1,6 +1,7 @@
-import type { HighlightSpan } from '@features/span-highlighting/hooks/useHighlightRendering';
+import type { HighlightSpan } from "@features/span-highlighting/hooks/useHighlightRendering";
 
-const isFiniteNumber = (value: unknown): value is number => Number.isFinite(value);
+const isFiniteNumber = (value: unknown): value is number =>
+  Number.isFinite(value);
 
 const shiftNumber = (value: unknown, delta: number): number | undefined => {
   if (!isFiniteNumber(value)) {
@@ -36,7 +37,11 @@ export function updateSpanListForSuggestion({
     return spans;
   }
 
-  if (!isFiniteNumber(matchStart) || !isFiniteNumber(matchEnd) || matchEnd < matchStart) {
+  if (
+    !isFiniteNumber(matchStart) ||
+    !isFiniteNumber(matchEnd) ||
+    matchEnd < matchStart
+  ) {
     return spans;
   }
 
@@ -50,25 +55,34 @@ export function updateSpanListForSuggestion({
     targetIndex = spans.findIndex((span) => span?.id === targetSpanId);
   }
 
-  if (targetIndex < 0 && isFiniteNumber(targetStart) && isFiniteNumber(targetEnd)) {
+  if (
+    targetIndex < 0 &&
+    isFiniteNumber(targetStart) &&
+    isFiniteNumber(targetEnd)
+  ) {
     targetIndex = spans.findIndex(
-      (span) => span && span.start === targetStart && span.end === targetEnd
+      (span) => span && span.start === targetStart && span.end === targetEnd,
     );
   }
 
-  if (targetIndex < 0 && isFiniteNumber(targetStart) && isFiniteNumber(targetEnd) && targetCategory) {
+  if (
+    targetIndex < 0 &&
+    isFiniteNumber(targetStart) &&
+    isFiniteNumber(targetEnd) &&
+    targetCategory
+  ) {
     targetIndex = spans.findIndex(
       (span) =>
         span &&
         span.start === targetStart &&
         span.end === targetEnd &&
-        span.category === targetCategory
+        span.category === targetCategory,
     );
   }
 
   if (targetIndex < 0) {
     targetIndex = spans.findIndex(
-      (span) => span && span.start < matchEnd && span.end > matchStart
+      (span) => span && span.start < matchEnd && span.end > matchStart,
     );
   }
 

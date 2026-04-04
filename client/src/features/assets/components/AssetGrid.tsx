@@ -1,6 +1,6 @@
-import React from 'react';
-import type { Asset } from '@shared/types/asset';
-import AssetCard from './AssetCard';
+import React from "react";
+import type { Asset } from "@shared/types/asset";
+import AssetCard from "./AssetCard";
 
 interface AssetGridProps {
   assets: Asset[];

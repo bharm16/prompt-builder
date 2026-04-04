@@ -1,6 +1,6 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi } from "vitest";
 
-import { OpenAiStreamParser } from '@server/clients/adapters/openai/OpenAiStreamParser';
+import { OpenAiStreamParser } from "@server/clients/adapters/openai/OpenAiStreamParser";
 
 const { logSpies } = vi.hoisted(() => ({
   logSpies: {
@@ -8,7 +8,7 @@ const { logSpies } = vi.hoisted(() => ({
   },
 }));
 
-vi.mock('@infrastructure/Logger', () => ({
+vi.mock("@infrastructure/Logger", () => ({
   logger: logSpies,
 }));
 
@@ -23,54 +23,54 @@ const createStreamResponse = (chunks: string[]): Response => {
   return new Response(stream);
 };
 
-describe('OpenAiStreamParser', () => {
-  describe('error handling', () => {
-    it('throws when the response body is not readable', async () => {
+describe("OpenAiStreamParser", () => {
+  describe("error handling", () => {
+    it("throws when the response body is not readable", async () => {
       const parser = new OpenAiStreamParser();
       const response = { body: null } as Response;
 
       await expect(parser.readStream(response, () => {})).rejects.toThrow(
-        'Response body is not readable'
+        "Response body is not readable",
       );
     });
   });
 
-  describe('edge cases', () => {
-    it('skips malformed chunks without breaking the stream', async () => {
+  describe("edge cases", () => {
+    it("skips malformed chunks without breaking the stream", async () => {
       const parser = new OpenAiStreamParser();
       const chunks = [
-        'data: {not-json}\n',
+        "data: {not-json}\n",
         'data: {"choices":[{"delta":{"content":"Hi"}}]}\n',
-        'data: [DONE]\n',
+        "data: [DONE]\n",
       ];
       const response = createStreamResponse(chunks);
       const onChunk = vi.fn();
 
       const result = await parser.readStream(response, onChunk);
 
-      expect(result).toBe('Hi');
+      expect(result).toBe("Hi");
       expect(onChunk).toHaveBeenCalledTimes(1);
-      expect(onChunk).toHaveBeenCalledWith('Hi');
+      expect(onChunk).toHaveBeenCalledWith("Hi");
     });
   });
 
-  describe('core behavior', () => {
-    it('parses SSE chunks and emits content', async () => {
+  describe("core behavior", () => {
+    it("parses SSE chunks and emits content", async () => {
       const parser = new OpenAiStreamParser();
       const chunks = [
         'data: {"choices":[{"delta":{"content":"Hello "}}]}\n',
         'data: {"choices":[{"delta":{"content":"world"}}]}\n',
-        'data: [DONE]\n',
+        "data: [DONE]\n",
       ];
       const response = createStreamResponse(chunks);
       const onChunk = vi.fn();
 
       const result = await parser.readStream(response, onChunk);
 
-      expect(result).toBe('Hello world');
+      expect(result).toBe("Hello world");
       expect(onChunk).toHaveBeenCalledTimes(2);
-      expect(onChunk).toHaveBeenCalledWith('Hello ');
-      expect(onChunk).toHaveBeenCalledWith('world');
+      expect(onChunk).toHaveBeenCalledWith("Hello ");
+      expect(onChunk).toHaveBeenCalledWith("world");
     });
   });
 });

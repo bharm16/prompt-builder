@@ -22,31 +22,37 @@ Same as Highlight Cache Backfill (see section 2 below).
 #### Usage
 
 **Dry Run (Preview changes without committing):**
+
 ```bash
 tsx --tsconfig server/tsconfig.json scripts/migrations/force-highlight-rerender.ts --dry-run
 ```
 
 **Clear cache (forces rerender on next load - FAST):**
+
 ```bash
 tsx --tsconfig server/tsconfig.json scripts/migrations/force-highlight-rerender.ts --mode=clear
 ```
 
 **Clear and regenerate immediately (slower but complete):**
+
 ```bash
 tsx --tsconfig server/tsconfig.json scripts/migrations/force-highlight-rerender.ts --mode=regenerate
 ```
 
 **Process specific user's prompts:**
+
 ```bash
 tsx --tsconfig server/tsconfig.json scripts/migrations/force-highlight-rerender.ts --userId=YOUR_USER_ID --mode=clear
 ```
 
 **Test on limited documents:**
+
 ```bash
 tsx --tsconfig server/tsconfig.json scripts/migrations/force-highlight-rerender.ts --limit=10 --dry-run
 ```
 
 **Custom batch size:**
+
 ```bash
 tsx --tsconfig server/tsconfig.json scripts/migrations/force-highlight-rerender.ts --batch-size=20 --mode=regenerate
 ```
@@ -62,11 +68,13 @@ tsx --tsconfig server/tsconfig.json scripts/migrations/force-highlight-rerender.
 For each prompt document with existing `highlightCache`:
 
 **Clear Mode:**
+
 1. Removes the `highlightCache` field
 2. Adds a version entry tracking the cache invalidation
 3. Prompts will regenerate highlights on next load
 
 **Regenerate Mode:**
+
 1. Extracts the prompt text
 2. Calls the ML span labeling service to generate new highlights
 3. Updates the document with fresh `highlightCache`
@@ -143,6 +151,7 @@ Generates and populates `highlightCache` data for existing prompt documents that
 Before running the migration, you need to:
 
 1. **Install Firebase Admin SDK** (if not already installed):
+
    ```bash
    npm install firebase-admin
    ```
@@ -150,22 +159,24 @@ Before running the migration, you need to:
 2. **Set up Firebase authentication** using one of these methods:
 
    **Option A: Service Account (Recommended for local development)**
-   
+
    a. Download your service account key:
-      - Go to [Firebase Console](https://console.firebase.google.com/)
-      - Select your project (`flibberai`)
-      - Go to Project Settings → Service Accounts
-      - Click "Generate New Private Key"
-      - Save the JSON file somewhere secure (e.g., `~/firebase-service-account.json`)
-   
+   - Go to [Firebase Console](https://console.firebase.google.com/)
+   - Select your project (`flibberai`)
+   - Go to Project Settings → Service Accounts
+   - Click "Generate New Private Key"
+   - Save the JSON file somewhere secure (e.g., `~/firebase-service-account.json`)
+
    b. Add to your `.env` file:
-      ```bash
-      FIREBASE_SERVICE_ACCOUNT_PATH=/absolute/path/to/your/service-account.json
-      ```
-   
+
+   ```bash
+   FIREBASE_SERVICE_ACCOUNT_PATH=/absolute/path/to/your/service-account.json
+   ```
+
    **Option B: Application Default Credentials (For Cloud environments)**
-   
+
    Run this command to authenticate with your Google Cloud account:
+
    ```bash
    gcloud auth application-default login
    ```
@@ -173,26 +184,31 @@ Before running the migration, you need to:
 #### Usage
 
 **Dry Run (Preview changes without committing):**
+
 ```bash
 tsx --tsconfig server/tsconfig.json scripts/migrations/backfill-highlight-cache.ts --dry-run
 ```
 
 **Run the migration:**
+
 ```bash
 tsx --tsconfig server/tsconfig.json scripts/migrations/backfill-highlight-cache.ts
 ```
 
 **Process specific user's prompts:**
+
 ```bash
 tsx --tsconfig server/tsconfig.json scripts/migrations/backfill-highlight-cache.ts --userId=YOUR_USER_ID
 ```
 
 **Process limited number of documents (for testing):**
+
 ```bash
 tsx --tsconfig server/tsconfig.json scripts/migrations/backfill-highlight-cache.ts --limit=10 --dry-run
 ```
 
 **Custom batch size:**
+
 ```bash
 tsx --tsconfig server/tsconfig.json scripts/migrations/backfill-highlight-cache.ts --batch-size=10
 ```
@@ -272,6 +288,7 @@ Errors:                       0
 Legacy script to delete old prompts with incompatible timestamp formats.
 
 **Usage:**
+
 ```bash
 node scripts/migrations/migrate-timestamps.js
 ```

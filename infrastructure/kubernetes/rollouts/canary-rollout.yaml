@@ -118,10 +118,10 @@ spec:
           - templateName: success-rate
           - templateName: latency
           - templateName: error-rate
-        startingStep: 2  # Start analysis after first pause
+        startingStep: 2 # Start analysis after first pause
 
       # Auto-promotion configuration
-      autoPromotionEnabled: false  # Require manual promotion
+      autoPromotionEnabled: false # Require manual promotion
       autoPromotionSeconds: 0
 
       # Abort conditions

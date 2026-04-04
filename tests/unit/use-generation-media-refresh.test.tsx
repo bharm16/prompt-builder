@@ -1,10 +1,10 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { renderHook, waitFor } from '@testing-library/react';
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import { renderHook, waitFor } from "@testing-library/react";
 
-import { useGenerationMediaRefresh } from '@features/prompt-optimizer/GenerationsPanel/hooks/useGenerationMediaRefresh';
-import type { Generation } from '@features/prompt-optimizer/GenerationsPanel/types';
-import { resolveMediaUrl } from '@/services/media/MediaUrlResolver';
-import { extractStorageObjectPath } from '@/utils/storageUrl';
+import { useGenerationMediaRefresh } from "@features/generations/hooks/useGenerationMediaRefresh";
+import type { Generation } from "@features/generations/types";
+import { resolveMediaUrl } from "@/services/media/MediaUrlResolver";
+import { extractStorageObjectPath } from "@/utils/storageUrl";
 
 const loggerChild = vi.hoisted(() => ({
   warn: vi.fn(),
@@ -12,50 +12,57 @@ const loggerChild = vi.hoisted(() => ({
   error: vi.fn(),
 }));
 
-vi.mock('@/services/media/MediaUrlResolver', () => ({
+vi.mock("@/services/media/MediaUrlResolver", () => ({
   resolveMediaUrl: vi.fn(),
 }));
 
-vi.mock('@/utils/storageUrl', () => ({
+vi.mock("@/utils/storageUrl", () => ({
   extractStorageObjectPath: vi.fn(),
 }));
 
-vi.mock('@/services/LoggingService', () => ({
+vi.mock("@/services/LoggingService", () => ({
   logger: { child: () => loggerChild },
 }));
 
 const mockResolveMediaUrl = vi.mocked(resolveMediaUrl);
 const mockExtractStorageObjectPath = vi.mocked(extractStorageObjectPath);
 
-describe('useGenerationMediaRefresh', () => {
+describe("useGenerationMediaRefresh", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockResolveMediaUrl.mockResolvedValue({ url: null, source: 'unknown' } as any);
+    mockResolveMediaUrl.mockResolvedValue({
+      url: null,
+      source: "unknown",
+    } as any);
     mockExtractStorageObjectPath.mockReturnValue(null);
   });
 
-  const createGeneration = (overrides: Partial<Generation> = {}): Generation => ({
-    id: 'gen-1',
-    tier: 'draft',
-    status: 'completed',
-    model: 'wan-2.2',
-    prompt: 'Prompt',
-    promptVersionId: 'version-1',
+  const createGeneration = (
+    overrides: Partial<Generation> = {},
+  ): Generation => ({
+    id: "gen-1",
+    tier: "draft",
+    status: "completed",
+    model: "wan-2.2",
+    prompt: "Prompt",
+    promptVersionId: "version-1",
     createdAt: 1,
     completedAt: 2,
-    mediaType: 'video',
-    mediaUrls: ['https://cdn/original.mp4'],
+    mediaType: "video",
+    mediaUrls: ["https://cdn/original.mp4"],
     thumbnailUrl: null,
     error: null,
     ...overrides,
   });
 
-  describe('error handling', () => {
-    it('keeps original URLs when asset refresh fails', async () => {
-      mockResolveMediaUrl.mockRejectedValueOnce(new Error('boom'));
+  describe("error handling", () => {
+    it("keeps original URLs when asset refresh fails", async () => {
+      mockResolveMediaUrl.mockRejectedValueOnce(new Error("boom"));
       const dispatch = vi.fn();
 
-      renderHook(() => useGenerationMediaRefresh([createGeneration()], dispatch));
+      renderHook(() =>
+        useGenerationMediaRefresh([createGeneration()], dispatch),
+      );
 
       await waitFor(() => {
         expect(loggerChild.error).toHaveBeenCalled();
@@ -65,14 +72,14 @@ describe('useGenerationMediaRefresh', () => {
     });
   });
 
-  describe('edge cases', () => {
-    it('skips generations without completed media', async () => {
+  describe("edge cases", () => {
+    it("skips generations without completed media", async () => {
       const dispatch = vi.fn();
       renderHook(() =>
         useGenerationMediaRefresh(
-          [createGeneration({ status: 'generating', mediaUrls: [] })],
-          dispatch
-        )
+          [createGeneration({ status: "generating", mediaUrls: [] })],
+          dispatch,
+        ),
       );
 
       await waitFor(() => {
@@ -82,11 +89,11 @@ describe('useGenerationMediaRefresh', () => {
     });
   });
 
-  describe('core behavior', () => {
-    it('refreshes media URLs using storage paths', async () => {
+  describe("core behavior", () => {
+    it("refreshes media URLs using storage paths", async () => {
       mockResolveMediaUrl.mockResolvedValue({
-        url: 'https://cdn/updated.mp4',
-        source: 'storage',
+        url: "https://cdn/updated.mp4",
+        source: "storage",
       } as any);
       const dispatch = vi.fn();
 
@@ -94,22 +101,22 @@ describe('useGenerationMediaRefresh', () => {
         useGenerationMediaRefresh(
           [
             createGeneration({
-              mediaAssetIds: ['users/path/to/video'],
+              mediaAssetIds: ["users/path/to/video"],
             }),
           ],
-          dispatch
-        )
+          dispatch,
+        ),
       );
 
       await waitFor(() => {
         expect(dispatch).toHaveBeenCalledWith(
           expect.objectContaining({
-            type: 'UPDATE_GENERATION',
+            type: "UPDATE_GENERATION",
             payload: expect.objectContaining({
-              id: 'gen-1',
-              updates: { mediaUrls: ['https://cdn/updated.mp4'] },
+              id: "gen-1",
+              updates: { mediaUrls: ["https://cdn/updated.mp4"] },
             }),
-          })
+          }),
         );
       });
     });

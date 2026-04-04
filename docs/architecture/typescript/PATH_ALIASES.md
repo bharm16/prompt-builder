@@ -10,8 +10,8 @@ This document defines the path alias configuration for the Prompt Builder codeba
 
 ```typescript
 // ❌ FRAGILE - Relative import hell
-import { Logger } from '../../../infrastructure/Logger';
-import { UserService } from '../../../../services/UserService';
+import { Logger } from "../../../infrastructure/Logger";
+import { UserService } from "../../../../services/UserService";
 
 // Move this file? Every import breaks.
 // Count dots wrong? Runtime error.
@@ -20,8 +20,8 @@ import { UserService } from '../../../../services/UserService';
 
 ```typescript
 // ✅ ROBUST - Path aliases
-import { Logger } from '@infrastructure/Logger';
-import { UserService } from '@services/UserService';
+import { Logger } from "@infrastructure/Logger";
+import { UserService } from "@services/UserService";
 
 // Move this file? Imports still work.
 // Refactor directory structure? Find-and-replace is trivial.
@@ -145,9 +145,9 @@ npm install -D vite-tsconfig-paths
 
 ```typescript
 // vite.config.ts
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
-import tsconfigPaths from 'vite-tsconfig-paths';
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+import tsconfigPaths from "vite-tsconfig-paths";
 
 export default defineConfig({
   plugins: [react(), tsconfigPaths()],
@@ -160,20 +160,20 @@ If you prefer explicit configuration:
 
 ```typescript
 // vite.config.ts
-import { defineConfig } from 'vite';
-import path from 'path';
+import { defineConfig } from "vite";
+import path from "path";
 
 export default defineConfig({
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
-      '@components': path.resolve(__dirname, './src/components'),
-      '@features': path.resolve(__dirname, './src/features'),
-      '@hooks': path.resolve(__dirname, './src/hooks'),
-      '@api': path.resolve(__dirname, './src/api'),
-      '@types': path.resolve(__dirname, './src/types'),
-      '@utils': path.resolve(__dirname, './src/utils'),
-      '@config': path.resolve(__dirname, './src/config'),
+      "@": path.resolve(__dirname, "./src"),
+      "@components": path.resolve(__dirname, "./src/components"),
+      "@features": path.resolve(__dirname, "./src/features"),
+      "@hooks": path.resolve(__dirname, "./src/hooks"),
+      "@api": path.resolve(__dirname, "./src/api"),
+      "@types": path.resolve(__dirname, "./src/types"),
+      "@utils": path.resolve(__dirname, "./src/utils"),
+      "@config": path.resolve(__dirname, "./src/config"),
     },
   },
 });
@@ -185,27 +185,27 @@ export default defineConfig({
 
 ### Server Aliases
 
-| Alias | Resolves To | Use For |
-|-------|-------------|---------|
-| `@infrastructure/*` | `src/infrastructure/*` | Logger, database, cache |
-| `@services/*` | `src/services/*` | Business logic services |
-| `@api/*` | `src/api/*` | Route handlers, controllers |
-| `@types/*` | `src/types/*` | Shared type definitions |
-| `@utils/*` | `src/utils/*` | Pure utility functions |
-| `@config/*` | `src/config/*` | Configuration files |
+| Alias               | Resolves To            | Use For                     |
+| ------------------- | ---------------------- | --------------------------- |
+| `@infrastructure/*` | `src/infrastructure/*` | Logger, database, cache     |
+| `@services/*`       | `src/services/*`       | Business logic services     |
+| `@api/*`            | `src/api/*`            | Route handlers, controllers |
+| `@types/*`          | `src/types/*`          | Shared type definitions     |
+| `@utils/*`          | `src/utils/*`          | Pure utility functions      |
+| `@config/*`         | `src/config/*`         | Configuration files         |
 
 ### Client Aliases
 
-| Alias | Resolves To | Use For |
-|-------|-------------|---------|
-| `@/*` | `src/*` | Catch-all for src |
+| Alias           | Resolves To        | Use For                |
+| --------------- | ------------------ | ---------------------- |
+| `@/*`           | `src/*`            | Catch-all for src      |
 | `@components/*` | `src/components/*` | Reusable UI components |
-| `@features/*` | `src/features/*` | Feature modules |
-| `@hooks/*` | `src/hooks/*` | Custom React hooks |
-| `@api/*` | `src/api/*` | API client functions |
-| `@types/*` | `src/types/*` | TypeScript types |
-| `@utils/*` | `src/utils/*` | Utility functions |
-| `@config/*` | `src/config/*` | Configuration |
+| `@features/*`   | `src/features/*`   | Feature modules        |
+| `@hooks/*`      | `src/hooks/*`      | Custom React hooks     |
+| `@api/*`        | `src/api/*`        | API client functions   |
+| `@types/*`      | `src/types/*`      | TypeScript types       |
+| `@utils/*`      | `src/utils/*`      | Utility functions      |
+| `@config/*`     | `src/config/*`     | Configuration          |
 
 ---
 
@@ -228,11 +228,11 @@ grep -r "from '\.\./\.\./\.\." server/src --include="*.ts" | head -20
 
 ### Step 4: Convert Imports
 
-| From | To |
-|------|-----|
+| From                                    | To                              |
+| --------------------------------------- | ------------------------------- |
 | `from '../../../infrastructure/Logger'` | `from '@infrastructure/Logger'` |
-| `from '../../services/UserService'` | `from '@services/UserService'` |
-| `from '../../../types/user'` | `from '@types/user'` |
+| `from '../../services/UserService'`     | `from '@services/UserService'`  |
+| `from '../../../types/user'`            | `from '@types/user'`            |
 
 ### Step 5: Validate
 
@@ -282,12 +282,12 @@ Requires `moduleNameMapper`:
 // jest.config.js
 module.exports = {
   moduleNameMapper: {
-    '^@infrastructure/(.*)$': '<rootDir>/src/infrastructure/$1',
-    '^@services/(.*)$': '<rootDir>/src/services/$1',
-    '^@api/(.*)$': '<rootDir>/src/api/$1',
-    '^@types/(.*)$': '<rootDir>/src/types/$1',
-    '^@utils/(.*)$': '<rootDir>/src/utils/$1',
-    '^@config/(.*)$': '<rootDir>/src/config/$1',
+    "^@infrastructure/(.*)$": "<rootDir>/src/infrastructure/$1",
+    "^@services/(.*)$": "<rootDir>/src/services/$1",
+    "^@api/(.*)$": "<rootDir>/src/api/$1",
+    "^@types/(.*)$": "<rootDir>/src/types/$1",
+    "^@utils/(.*)$": "<rootDir>/src/utils/$1",
+    "^@config/(.*)$": "<rootDir>/src/config/$1",
   },
 };
 ```
@@ -301,6 +301,7 @@ module.exports = {
 **Cause:** Runtime doesn't know about TypeScript paths.
 
 **Fix:** Ensure runtime resolution is configured:
+
 - `tsx`: Works automatically
 - `ts-node`: Add `tsconfig-paths/register`
 - Vite: Add `vite-tsconfig-paths` plugin
@@ -317,6 +318,7 @@ module.exports = {
 **Cause:** `tsconfig.json` paths not configured correctly.
 
 **Fix:** Verify:
+
 1. `baseUrl` is set to `"."`
 2. Paths use correct glob patterns (`*` at the end)
 3. File is saved and TS server restarted
@@ -324,6 +326,7 @@ module.exports = {
 ### VSCode Not Suggesting Alias Imports
 
 **Fix:**
+
 1. Restart TS server: `Cmd+Shift+P` → "TypeScript: Restart TS Server"
 2. Ensure `.vscode/settings.json` has `"typescript.preferences.importModuleSpecifier": "non-relative"`
 
@@ -332,6 +335,7 @@ module.exports = {
 **Cause:** Compiled JS still has TypeScript path aliases.
 
 **Fix:** Use `tsc-alias` to rewrite paths after compilation:
+
 ```json
 {
   "scripts": {
@@ -348,12 +352,12 @@ module.exports = {
 
 ```typescript
 // ❌ Inconsistent
-import { Logger } from '@infrastructure/Logger';
-import { Config } from '../config/Config';
+import { Logger } from "@infrastructure/Logger";
+import { Config } from "../config/Config";
 
 // ✅ Consistent - use aliases everywhere
-import { Logger } from '@infrastructure/Logger';
-import { Config } from '@config/Config';
+import { Logger } from "@infrastructure/Logger";
+import { Config } from "@config/Config";
 ```
 
 ### ❌ Don't Create Overly Specific Aliases
@@ -372,10 +376,10 @@ import { Config } from '@config/Config';
 // In src/services/optimization/StrategyService.ts
 
 // ❌ Unnecessary - same directory
-import { helper } from '@services/optimization/helper';
+import { helper } from "@services/optimization/helper";
 
 // ✅ Relative is fine for same directory/siblings
-import { helper } from './helper';
+import { helper } from "./helper";
 ```
 
 **Rule of thumb:** Use aliases when crossing major boundaries (infrastructure, services, types). Use relative imports within the same feature/module.
@@ -396,19 +400,19 @@ import { helper } from './helper';
 
 ```typescript
 // External packages first
-import { z } from 'zod';
-import express from 'express';
+import { z } from "zod";
+import express from "express";
 
 // Alias imports (infrastructure, services, types)
-import { Logger } from '@infrastructure/Logger';
-import { UserService } from '@services/UserService';
-import type { User } from '@types/user';
+import { Logger } from "@infrastructure/Logger";
+import { UserService } from "@services/UserService";
+import type { User } from "@types/user";
 
 // Relative imports (same module/feature)
-import { helper } from './helper';
-import { localUtil } from '../utils';
+import { helper } from "./helper";
+import { localUtil } from "../utils";
 ```
 
 ---
 
-*Companion docs: [TSCONFIG_GUIDE.md](./TSCONFIG_GUIDE.md), [MIGRATION_GUIDE.md](./MIGRATION_GUIDE.md), [ARCHITECTURE_STANDARD.md](./ARCHITECTURE_STANDARD.md)*
+_Companion docs: [TSCONFIG_GUIDE.md](./TSCONFIG_GUIDE.md), [MIGRATION_GUIDE.md](./MIGRATION_GUIDE.md), [ARCHITECTURE_STANDARD.md](./ARCHITECTURE_STANDARD.md)_

@@ -12,12 +12,14 @@ If 2+ → split by responsibility.
 ## When to Refactor
 
 **Split when:**
+
 - File has multiple distinct responsibilities
 - Different parts have different reasons to change
 - You want to test parts independently
 - Parts could be reused elsewhere
 
 **Don't split when:**
+
 - File has one responsibility (even if it's long)
 - Pieces always change together
 - Pieces only make sense together

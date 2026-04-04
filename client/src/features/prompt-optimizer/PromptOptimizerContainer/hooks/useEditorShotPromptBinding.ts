@@ -1,9 +1,12 @@
-import { useEffect, useMemo, useRef } from 'react';
-import type { ContinuityShot, UpdateShotInput } from '@/features/continuity/types';
-import { debounce } from '@/features/prompt-optimizer/utils/debounce';
-import { logger } from '@/services/LoggingService';
+import { useEffect, useMemo, useRef } from "react";
+import type {
+  ContinuityShot,
+  UpdateShotInput,
+} from "@/features/continuity/types";
+import { debounce } from "@/features/prompt-optimizer/utils/debounce";
+import { logger } from "@/services/LoggingService";
 
-const log = logger.child('useEditorShotPromptBinding');
+const log = logger.child("useEditorShotPromptBinding");
 
 interface PromptOptimizerLike {
   inputPrompt: string;
@@ -15,7 +18,10 @@ interface UseEditorShotPromptBindingParams {
   currentEditorShot: ContinuityShot | null;
   hasActiveContinuityShot: boolean;
   promptOptimizer: PromptOptimizerLike;
-  updateShot: (shotId: string, updates: UpdateShotInput) => Promise<ContinuityShot>;
+  updateShot: (
+    shotId: string,
+    updates: UpdateShotInput,
+  ) => Promise<ContinuityShot>;
   setDisplayedPromptSilently: (text: string) => void;
   setShowResults: (show: boolean) => void;
   debounceMs?: number;
@@ -37,13 +43,13 @@ export function useEditorShotPromptBinding({
     () =>
       debounce((shotId: string, prompt: string) => {
         void updateShot(shotId, { prompt }).catch((error) => {
-          log.warn('Failed to persist shot prompt update', {
+          log.warn("Failed to persist shot prompt update", {
             shotId,
             error: error instanceof Error ? error.message : String(error),
           });
         });
       }, debounceMs),
-    [debounceMs, updateShot]
+    [debounceMs, updateShot],
   );
 
   useEffect(() => {
@@ -53,7 +59,7 @@ export function useEditorShotPromptBinding({
   }, [debouncedPersistPrompt]);
 
   useEffect(() => {
-    if (!currentEditorShot) {
+    if (!currentEditorShot || !hasActiveContinuityShot) {
       lastSyncedShotIdRef.current = null;
       return;
     }
@@ -65,13 +71,14 @@ export function useEditorShotPromptBinding({
     lastSyncedShotIdRef.current = currentEditorShot.id;
     debouncedPersistPrompt.cancel();
 
-    const nextPrompt = currentEditorShot.userPrompt ?? '';
-    if (inputPrompt !== nextPrompt) {
+    const nextPrompt = currentEditorShot.userPrompt ?? "";
+    const shouldSyncInputFromShot = inputPrompt !== nextPrompt;
+    if (shouldSyncInputFromShot) {
       setInputPrompt(nextPrompt);
     }
 
-    if (displayedPrompt.trim()) {
-      setDisplayedPromptSilently('');
+    if (shouldSyncInputFromShot && displayedPrompt.trim()) {
+      setDisplayedPromptSilently("");
       setShowResults(false);
     }
   }, [
@@ -79,6 +86,7 @@ export function useEditorShotPromptBinding({
     displayedPrompt,
     inputPrompt,
     setInputPrompt,
+    hasActiveContinuityShot,
     setDisplayedPromptSilently,
     setShowResults,
     debouncedPersistPrompt,
@@ -90,7 +98,7 @@ export function useEditorShotPromptBinding({
       return;
     }
 
-    const shotPrompt = currentEditorShot.userPrompt ?? '';
+    const shotPrompt = currentEditorShot.userPrompt ?? "";
     const nextPrompt = inputPrompt;
     if (shotPrompt === nextPrompt) {
       debouncedPersistPrompt.cancel();

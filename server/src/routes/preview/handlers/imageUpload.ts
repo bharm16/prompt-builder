@@ -1,20 +1,26 @@
-import type { Request, Response } from 'express';
-import { logger } from '@infrastructure/Logger';
-import type { PreviewRoutesServices } from '@routes/types';
-import { cleanupUploadFile, readUploadBuffer } from '@utils/upload';
-import { validateImageBuffer } from '@utils/validateFileType';
+import type { Request, Response } from "express";
+import { logger } from "@infrastructure/Logger";
+import type { PreviewRoutesServices } from "@routes/types";
+import { cleanupUploadFile, readUploadBuffer } from "@utils/upload";
+import { validateImageBuffer } from "@utils/validateFileType";
 
-const ALLOWED_CONTENT_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
+const ALLOWED_CONTENT_TYPES = new Set([
+  "image/png",
+  "image/jpeg",
+  "image/webp",
+]);
 
 function parseMetadata(value: unknown): Record<string, unknown> {
   if (!value) return {};
-  if (typeof value === 'object' && !Array.isArray(value)) {
+  if (typeof value === "object" && !Array.isArray(value)) {
     return value as Record<string, unknown>;
   }
-  if (typeof value === 'string') {
+  if (typeof value === "string") {
     try {
       const parsed = JSON.parse(value) as Record<string, unknown>;
-      return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+      return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+        ? parsed
+        : {};
     } catch {
       return {};
     }
@@ -23,21 +29,23 @@ function parseMetadata(value: unknown): Record<string, unknown> {
 }
 
 function normalizeOptionalString(value: unknown): string | undefined {
-  if (typeof value !== 'string') return undefined;
+  if (typeof value !== "string") return undefined;
   const trimmed = value.trim();
   return trimmed ? trimmed : undefined;
 }
 
-type ImageUploadServices = Pick<PreviewRoutesServices, 'storageService'>;
+type ImageUploadServices = Pick<PreviewRoutesServices, "storageService">;
 
-export const createImageUploadHandler = ({ storageService }: ImageUploadServices) =>
+export const createImageUploadHandler =
+  ({ storageService }: ImageUploadServices) =>
   async (req: Request, res: Response): Promise<Response | void> => {
-    const userId = (req as Request & { user?: { uid?: string } }).user?.uid ?? null;
+    const userId =
+      (req as Request & { user?: { uid?: string } }).user?.uid ?? null;
     if (!userId) {
       return res.status(401).json({
         success: false,
-        error: 'Authentication required',
-        message: 'You must be logged in to upload images.',
+        error: "Authentication required",
+        message: "You must be logged in to upload images.",
       });
     }
 
@@ -45,34 +53,40 @@ export const createImageUploadHandler = ({ storageService }: ImageUploadServices
     if (!file) {
       return res.status(400).json({
         success: false,
-        error: 'No file provided',
-        message: 'Upload must include a file field.',
+        error: "No file provided",
+        message: "Upload must include a file field.",
       });
     }
 
     if (!ALLOWED_CONTENT_TYPES.has(file.mimetype)) {
       return res.status(400).json({
         success: false,
-        error: 'Unsupported file type',
-        message: 'Supported types: PNG, JPEG, WebP.',
+        error: "Unsupported file type",
+        message: "Supported types: PNG, JPEG, WebP.",
       });
     }
 
-    const metadata = parseMetadata((req as Request & { body?: { metadata?: unknown } }).body?.metadata);
-    const source = normalizeOptionalString((req as Request & { body?: { source?: unknown } }).body?.source);
-    const label = normalizeOptionalString((req as Request & { body?: { label?: unknown } }).body?.label);
+    const metadata = parseMetadata(
+      (req as Request & { body?: { metadata?: unknown } }).body?.metadata,
+    );
+    const source = normalizeOptionalString(
+      (req as Request & { body?: { source?: unknown } }).body?.source,
+    );
+    const label = normalizeOptionalString(
+      (req as Request & { body?: { label?: unknown } }).body?.label,
+    );
 
     if (!storageService) {
       return res.status(503).json({
         success: false,
-        error: 'Storage service unavailable',
-        message: 'Storage service is not configured for preview uploads.',
+        error: "Storage service unavailable",
+        message: "Storage service is not configured for preview uploads.",
       });
     }
 
     try {
       const buffer = await readUploadBuffer(file);
-      const verifiedMime = await validateImageBuffer(buffer, 'file');
+      const verifiedMime = await validateImageBuffer(buffer, "file");
 
       const uploadMetadata = {
         ...metadata,
@@ -83,10 +97,10 @@ export const createImageUploadHandler = ({ storageService }: ImageUploadServices
 
       const result = await storageService.uploadBuffer(
         userId,
-        'preview-image',
+        "preview-image",
         buffer,
         verifiedMime,
-        uploadMetadata
+        uploadMetadata,
       );
 
       return res.status(201).json({
@@ -101,17 +115,22 @@ export const createImageUploadHandler = ({ storageService }: ImageUploadServices
         },
       });
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       const isClientError =
-        errorMessage.includes('Invalid content type') || errorMessage.includes('File too large');
+        errorMessage.includes("Invalid content type") ||
+        errorMessage.includes("File too large");
 
       if (!isClientError) {
-        logger.error('Image upload failed', error instanceof Error ? error : new Error(errorMessage));
+        logger.error(
+          "Image upload failed",
+          error instanceof Error ? error : new Error(errorMessage),
+        );
       }
 
       return res.status(isClientError ? 400 : 500).json({
         success: false,
-        error: 'Image upload failed',
+        error: "Image upload failed",
         message: errorMessage,
       });
     } finally {

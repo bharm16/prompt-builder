@@ -1,41 +1,47 @@
-import type { Request, Response } from 'express';
-import type Stripe from 'stripe';
-import { logger } from '@infrastructure/Logger';
-import type { WebhookHandlerDeps } from '../types';
-import { createWebhookEventHandlers } from './handlers';
+import type { Request, Response } from "express";
+import type Stripe from "stripe";
+import { logger } from "@infrastructure/Logger";
+import type { WebhookHandlerDeps } from "../types";
+import { createWebhookEventHandlers } from "./handlers";
 
-export const createStripeWebhookHandler = ({
-  paymentService,
-  webhookEventStore,
-  billingProfileStore,
-  userCreditService,
-  firestoreCircuitExecutor,
-}: WebhookHandlerDeps) =>
+export const createStripeWebhookHandler =
+  ({
+    paymentService,
+    webhookEventStore,
+    billingProfileStore,
+    userCreditService,
+    paymentConsistencyStore,
+    metricsService,
+    firestoreCircuitExecutor,
+  }: WebhookHandlerDeps) =>
   async (req: Request, res: Response): Promise<Response | void> => {
-    const signature = req.headers['stripe-signature'];
+    const signature = req.headers["stripe-signature"];
 
     if (!signature) {
-      return res.status(400).send('Missing stripe-signature header');
+      return res.status(400).send("Missing stripe-signature header");
     }
 
     let event: Stripe.Event;
     try {
       event = paymentService.constructEvent(req.body, signature as string);
     } catch (err) {
-      logger.error('Webhook signature verification failed', err as Error);
+      logger.error("Webhook signature verification failed", err as Error);
       return res.status(400).send(`Webhook Error: ${(err as Error).message}`);
     }
 
-    if (firestoreCircuitExecutor && !firestoreCircuitExecutor.isWriteAllowed()) {
+    if (
+      firestoreCircuitExecutor &&
+      !firestoreCircuitExecutor.isWriteAllowed()
+    ) {
       const retryAfterSeconds = firestoreCircuitExecutor.getRetryAfterSeconds();
-      logger.warn('Stripe webhook deferred due to Firestore write gate', {
+      logger.warn("Stripe webhook deferred due to Firestore write gate", {
         eventId: event.id,
         eventType: event.type,
         retryAfterSeconds,
       });
-      res.setHeader('Retry-After', String(retryAfterSeconds));
+      res.setHeader("Retry-After", String(retryAfterSeconds));
       return res.status(503).json({
-        error: 'Webhook handling deferred while datastore recovers',
+        error: "Webhook handling deferred while datastore recovers",
       });
     }
 
@@ -46,54 +52,65 @@ export const createStripeWebhookHandler = ({
         livemode: event.livemode,
       });
     } catch (error: unknown) {
-      const errorInstance = error instanceof Error ? error : new Error(String(error));
-      logger.error('Stripe webhook idempotency check failed', errorInstance, {
+      const errorInstance =
+        error instanceof Error ? error : new Error(String(error));
+      logger.error("Stripe webhook idempotency check failed", errorInstance, {
         eventId: event.id,
         eventType: event.type,
       });
-      return res.status(500).json({ error: 'Webhook handling failed' });
+      return res.status(500).json({ error: "Webhook handling failed" });
     }
 
-    if (claim.state === 'processed') {
+    if (claim.state === "processed") {
       return res.json({ received: true, duplicate: true });
     }
 
-    if (claim.state === 'in_progress') {
-      return res.status(409).json({ received: false, error: 'Webhook event is already processing' });
+    if (claim.state === "in_progress") {
+      return res.status(409).json({
+        received: false,
+        error: "Webhook event is already processing",
+      });
     }
 
-    const { handleCheckoutSessionCompleted, handleInvoicePaid } = createWebhookEventHandlers({
-      paymentService,
-      billingProfileStore,
-      userCreditService,
-    });
+    const { handleCheckoutSessionCompleted, handleInvoicePaid } =
+      createWebhookEventHandlers({
+        paymentService,
+        billingProfileStore,
+        userCreditService,
+        ...(paymentConsistencyStore ? { paymentConsistencyStore } : {}),
+        ...(metricsService ? { metricsService } : {}),
+      });
 
     try {
       switch (event.type) {
-        case 'checkout.session.completed': {
+        case "checkout.session.completed": {
           const session = event.data.object as Stripe.Checkout.Session;
-          await handleCheckoutSessionCompleted(session);
+          await handleCheckoutSessionCompleted(session, event.id);
           break;
         }
-        case 'invoice.paid': {
+        case "invoice.paid": {
           const invoice = event.data.object as Stripe.Invoice;
           await handleInvoicePaid(invoice, event.id);
           break;
         }
         default:
-          logger.info('Unhandled Stripe webhook event', { eventId: event.id, eventType: event.type });
+          logger.info("Unhandled Stripe webhook event", {
+            eventId: event.id,
+            eventType: event.type,
+          });
           break;
       }
 
       await webhookEventStore.markProcessed(event.id);
       return res.json({ received: true });
     } catch (error: unknown) {
-      const errorInstance = error instanceof Error ? error : new Error(String(error));
+      const errorInstance =
+        error instanceof Error ? error : new Error(String(error));
       await webhookEventStore.markFailed(event.id, errorInstance);
-      logger.error('Stripe webhook handling failed', errorInstance, {
+      logger.error("Stripe webhook handling failed", errorInstance, {
         eventId: event.id,
         eventType: event.type,
       });
-      return res.status(500).json({ error: 'Webhook handling failed' });
+      return res.status(500).json({ error: "Webhook handling failed" });
     }
   };

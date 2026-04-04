@@ -1,22 +1,25 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { render, screen, fireEvent } from "@testing-library/react";
 
-import { ErrorBoundary, FeatureErrorBoundary } from '@/components/ErrorBoundary';
-import { logger } from '@/services/LoggingService';
-import * as Sentry from '@sentry/react';
+import {
+  ErrorBoundary,
+  FeatureErrorBoundary,
+} from "@/components/ErrorBoundary";
+import { logger } from "@/services/LoggingService";
+import * as Sentry from "@sentry/react";
 
-vi.mock('@sentry/react', () => ({
-  captureException: vi.fn(() => 'event-id'),
+vi.mock("@sentry/react", () => ({
+  captureException: vi.fn(() => "event-id"),
   showReportDialog: vi.fn(),
 }));
 
-vi.mock('@/services/LoggingService', () => ({
+vi.mock("@/services/LoggingService", () => ({
   logger: {
     error: vi.fn(),
   },
 }));
 
-describe('ErrorBoundary', () => {
+describe("ErrorBoundary", () => {
   const mockLogger = vi.mocked(logger);
   const mockSentry = vi.mocked(Sentry);
 
@@ -24,33 +27,33 @@ describe('ErrorBoundary', () => {
     vi.clearAllMocks();
   });
 
-  describe('error handling', () => {
-    it('renders default fallback UI and reports errors', () => {
+  describe("error handling", () => {
+    it("renders default fallback UI and reports errors", () => {
       const Thrower = () => {
-        throw new Error('boom');
+        throw new Error("boom");
       };
 
       render(
         <ErrorBoundary title="Oops" message="Try again">
           <Thrower />
-        </ErrorBoundary>
+        </ErrorBoundary>,
       );
 
-      expect(screen.getByText('Oops')).toBeInTheDocument();
-      expect(screen.getByText('Try again')).toBeInTheDocument();
+      expect(screen.getByText("Oops")).toBeInTheDocument();
+      expect(screen.getByText("Try again")).toBeInTheDocument();
       expect(mockLogger.error).toHaveBeenCalledWith(
-        'Error caught by boundary',
+        "Error caught by boundary",
         expect.any(Error),
-        expect.objectContaining({ component: 'ErrorBoundary' })
+        expect.objectContaining({ component: "ErrorBoundary" }),
       );
       expect(mockSentry.captureException).toHaveBeenCalled();
     });
 
-    it('resets after a custom fallback reset handler', () => {
+    it("resets after a custom fallback reset handler", () => {
       let shouldThrow = true;
       const Thrower = () => {
         if (shouldThrow) {
-          throw new Error('boom');
+          throw new Error("boom");
         }
         return <div>Recovered</div>;
       };
@@ -69,19 +72,19 @@ describe('ErrorBoundary', () => {
           )}
         >
           <Thrower />
-        </ErrorBoundary>
+        </ErrorBoundary>,
       );
 
-      fireEvent.click(screen.getByText('Reset'));
+      fireEvent.click(screen.getByText("Reset"));
 
-      expect(screen.getByText('Recovered')).toBeInTheDocument();
+      expect(screen.getByText("Recovered")).toBeInTheDocument();
     });
 
-    it('renders feature fallback and allows retry', () => {
+    it("renders feature fallback and allows retry", () => {
       let shouldThrow = true;
       const Thrower = () => {
         if (shouldThrow) {
-          throw new Error('feature boom');
+          throw new Error("feature boom");
         }
         return <div>Feature content</div>;
       };
@@ -89,46 +92,50 @@ describe('ErrorBoundary', () => {
       render(
         <FeatureErrorBoundary featureName="Sharing">
           <Thrower />
-        </FeatureErrorBoundary>
+        </FeatureErrorBoundary>,
       );
 
-      expect(screen.getByText('Sharing Error')).toBeInTheDocument();
+      expect(screen.getByText("Sharing Error")).toBeInTheDocument();
 
       shouldThrow = false;
-      fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+      fireEvent.click(screen.getByRole("button", { name: "Retry" }));
 
-      expect(screen.getByText('Feature content')).toBeInTheDocument();
+      expect(screen.getByText("Feature content")).toBeInTheDocument();
     });
   });
 
-  describe('edge cases', () => {
-    it('renders children when no error occurs', () => {
+  describe("edge cases", () => {
+    it("renders children when no error occurs", () => {
       render(
         <ErrorBoundary>
           <div>Healthy</div>
-        </ErrorBoundary>
+        </ErrorBoundary>,
       );
 
-      expect(screen.getByText('Healthy')).toBeInTheDocument();
+      expect(screen.getByText("Healthy")).toBeInTheDocument();
     });
   });
 
-  describe('core behavior', () => {
-    it('opens Sentry report dialog for captured errors', () => {
+  describe("core behavior", () => {
+    it("opens Sentry report dialog for captured errors", () => {
       const Thrower = () => {
-        throw new Error('boom');
+        throw new Error("boom");
       };
 
       render(
         <ErrorBoundary>
           <Thrower />
-        </ErrorBoundary>
+        </ErrorBoundary>,
       );
 
-      const reportButton = screen.getByRole('button', { name: 'Report Feedback' });
+      const reportButton = screen.getByRole("button", {
+        name: "Report Feedback",
+      });
       fireEvent.click(reportButton);
 
-      expect(mockSentry.showReportDialog).toHaveBeenCalledWith({ eventId: 'event-id' });
+      expect(mockSentry.showReportDialog).toHaveBeenCalledWith({
+        eventId: "event-id",
+      });
     });
   });
 });

@@ -11,21 +11,27 @@
  * @module mam-token-caching.property.test
  */
 
-import { describe, it, expect } from 'vitest';
-import * as fc from 'fast-check';
+import { describe, it, expect } from "vitest";
+import * as fc from "fast-check";
 
 import {
   MultimodalAssetManager,
   type AssetType,
   type ProviderType,
-} from '@services/video-prompt-analysis/services/MultimodalAssetManager';
+} from "@services/video-prompt-analysis/services/MultimodalAssetManager";
 
-describe('MultimodalAssetManager Property Tests', () => {
+describe("MultimodalAssetManager Property Tests", () => {
   // Asset types for testing
-  const assetTypes: AssetType[] = ['image', 'video', 'cameo'];
+  const assetTypes: AssetType[] = ["image", "video", "cameo"];
 
   // Provider types for testing
-  const providerTypes: ProviderType[] = ['runway', 'luma', 'kling', 'sora', 'veo'];
+  const providerTypes: ProviderType[] = [
+    "runway",
+    "luma",
+    "kling",
+    "sora",
+    "veo",
+  ];
 
   /**
    * Property 10: MAM Token Caching
@@ -37,8 +43,8 @@ describe('MultimodalAssetManager Property Tests', () => {
    * **Feature: video-model-optimization, Property 10: MAM Token Caching**
    * **Validates: Requirements 12.3, 12.5**
    */
-  describe('Property 10: MAM Token Caching', () => {
-    it('returns cached token for same content hash without re-uploading', async () => {
+  describe("Property 10: MAM Token Caching", () => {
+    it("returns cached token for same content hash without re-uploading", async () => {
       await fc.assert(
         fc.asyncProperty(
           fc.constantFrom(...assetTypes),
@@ -47,13 +53,13 @@ describe('MultimodalAssetManager Property Tests', () => {
           async (assetType, provider, content) => {
             // Create fresh MAM instance for each iteration
             const mam = new MultimodalAssetManager();
-            
+
             // Stage an asset with specific content
             const buffer = Buffer.from(content);
             const staged = await mam.stageAsset({
               type: assetType,
               buffer,
-              mimeType: 'application/octet-stream',
+              mimeType: "application/octet-stream",
             });
 
             // First upload - should not be from cache
@@ -63,17 +69,20 @@ describe('MultimodalAssetManager Property Tests', () => {
             expect(firstResult.provider).toBe(provider);
 
             // Second upload with same asset - should be from cache
-            const secondResult = await mam.uploadToProvider(staged.id, provider);
+            const secondResult = await mam.uploadToProvider(
+              staged.id,
+              provider,
+            );
             expect(secondResult.fromCache).toBe(true);
             expect(secondResult.token).toBe(firstResult.token);
             expect(secondResult.provider).toBe(provider);
-          }
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
 
-    it('cached token is valid for target provider', async () => {
+    it("cached token is valid for target provider", async () => {
       await fc.assert(
         fc.asyncProperty(
           fc.constantFrom(...assetTypes),
@@ -85,7 +94,7 @@ describe('MultimodalAssetManager Property Tests', () => {
             const staged = await mam.stageAsset({
               type: assetType,
               buffer,
-              mimeType: 'application/octet-stream',
+              mimeType: "application/octet-stream",
             });
 
             // Upload to provider
@@ -101,13 +110,13 @@ describe('MultimodalAssetManager Property Tests', () => {
             };
 
             expect(result.token).toMatch(tokenFormats[provider]);
-          }
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
 
-    it('getCachedToken returns token after upload', async () => {
+    it("getCachedToken returns token after upload", async () => {
       await fc.assert(
         fc.asyncProperty(
           fc.constantFrom(...assetTypes),
@@ -119,26 +128,32 @@ describe('MultimodalAssetManager Property Tests', () => {
             const staged = await mam.stageAsset({
               type: assetType,
               buffer,
-              mimeType: 'application/octet-stream',
+              mimeType: "application/octet-stream",
             });
 
             // Before upload, no cached token
-            const beforeCache = mam.getCachedToken(staged.contentHash, provider);
+            const beforeCache = mam.getCachedToken(
+              staged.contentHash,
+              provider,
+            );
             expect(beforeCache).toBeUndefined();
 
             // Upload to provider
-            const uploadResult = await mam.uploadToProvider(staged.id, provider);
+            const uploadResult = await mam.uploadToProvider(
+              staged.id,
+              provider,
+            );
 
             // After upload, cached token should exist
             const afterCache = mam.getCachedToken(staged.contentHash, provider);
             expect(afterCache).toBe(uploadResult.token);
-          }
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
 
-    it('hasValidCachedToken returns correct status', async () => {
+    it("hasValidCachedToken returns correct status", async () => {
       await fc.assert(
         fc.asyncProperty(
           fc.constantFrom(...assetTypes),
@@ -150,22 +165,26 @@ describe('MultimodalAssetManager Property Tests', () => {
             const staged = await mam.stageAsset({
               type: assetType,
               buffer,
-              mimeType: 'application/octet-stream',
+              mimeType: "application/octet-stream",
             });
 
             // Before upload
-            expect(mam.hasValidCachedToken(staged.contentHash, provider)).toBe(false);
+            expect(mam.hasValidCachedToken(staged.contentHash, provider)).toBe(
+              false,
+            );
 
             // After upload
             await mam.uploadToProvider(staged.id, provider);
-            expect(mam.hasValidCachedToken(staged.contentHash, provider)).toBe(true);
-          }
+            expect(mam.hasValidCachedToken(staged.contentHash, provider)).toBe(
+              true,
+            );
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
 
-    it('different providers get different tokens for same asset', async () => {
+    it("different providers get different tokens for same asset", async () => {
       await fc.assert(
         fc.asyncProperty(
           fc.constantFrom(...assetTypes),
@@ -176,7 +195,7 @@ describe('MultimodalAssetManager Property Tests', () => {
             const staged = await mam.stageAsset({
               type: assetType,
               buffer,
-              mimeType: 'application/octet-stream',
+              mimeType: "application/octet-stream",
             });
 
             // Upload to all providers
@@ -189,13 +208,13 @@ describe('MultimodalAssetManager Property Tests', () => {
             // Each provider should have a unique token format
             const uniqueTokens = new Set(Object.values(tokens));
             expect(uniqueTokens.size).toBe(providerTypes.length);
-          }
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
 
-    it('same content staged multiple times returns same staged asset', async () => {
+    it("same content staged multiple times returns same staged asset", async () => {
       await fc.assert(
         fc.asyncProperty(
           fc.constantFrom(...assetTypes),
@@ -208,25 +227,25 @@ describe('MultimodalAssetManager Property Tests', () => {
             const staged1 = await mam.stageAsset({
               type: assetType,
               buffer,
-              mimeType: 'application/octet-stream',
+              mimeType: "application/octet-stream",
             });
 
             const staged2 = await mam.stageAsset({
               type: assetType,
               buffer,
-              mimeType: 'application/octet-stream',
+              mimeType: "application/octet-stream",
             });
 
             // Should return same staged asset (deduplication)
             expect(staged1.id).toBe(staged2.id);
             expect(staged1.contentHash).toBe(staged2.contentHash);
-          }
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
 
-    it('clearTokenCache removes all cached tokens', async () => {
+    it("clearTokenCache removes all cached tokens", async () => {
       await fc.assert(
         fc.asyncProperty(
           fc.constantFrom(...assetTypes),
@@ -238,27 +257,31 @@ describe('MultimodalAssetManager Property Tests', () => {
             const staged = await mam.stageAsset({
               type: assetType,
               buffer,
-              mimeType: 'application/octet-stream',
+              mimeType: "application/octet-stream",
             });
 
             // Upload and verify cache
             await mam.uploadToProvider(staged.id, provider);
-            expect(mam.hasValidCachedToken(staged.contentHash, provider)).toBe(true);
+            expect(mam.hasValidCachedToken(staged.contentHash, provider)).toBe(
+              true,
+            );
 
             // Clear cache
             mam.clearTokenCache();
 
             // Cache should be empty
-            expect(mam.hasValidCachedToken(staged.contentHash, provider)).toBe(false);
-          }
+            expect(mam.hasValidCachedToken(staged.contentHash, provider)).toBe(
+              false,
+            );
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
   });
 
-  describe('Cameo Token Validation', () => {
-    it('validates correctly formatted Cameo tokens', () => {
+  describe("Cameo Token Validation", () => {
+    it("validates correctly formatted Cameo tokens", () => {
       const mam = new MultimodalAssetManager();
       fc.assert(
         fc.property(
@@ -270,35 +293,35 @@ describe('MultimodalAssetManager Property Tests', () => {
 
             expect(result.isValid).toBe(true);
             expect(result.tokenId).toBe(uuid);
-            expect(result.provider).toBe('sora');
+            expect(result.provider).toBe("sora");
             expect(result.error).toBeUndefined();
-          }
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
 
-    it('rejects invalid Cameo token formats', () => {
+    it("rejects invalid Cameo token formats", () => {
       const mam = new MultimodalAssetManager();
       fc.assert(
         fc.property(
-          fc.string({ minLength: 1, maxLength: 50 }).filter(
-            (s) => !s.match(/^@Cameo\([a-f0-9-]{36}\)$/i)
-          ),
+          fc
+            .string({ minLength: 1, maxLength: 50 })
+            .filter((s) => !s.match(/^@Cameo\([a-f0-9-]{36}\)$/i)),
           (invalidToken) => {
             const result = mam.validateCameoToken(invalidToken);
 
             expect(result.isValid).toBe(false);
             expect(result.error).toBeDefined();
-          }
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
   });
 
-  describe('Asset Description', () => {
-    it('returns user-provided description when available', async () => {
+  describe("Asset Description", () => {
+    it("returns user-provided description when available", async () => {
       await fc.assert(
         fc.asyncProperty(
           fc.constantFrom(...assetTypes),
@@ -311,7 +334,7 @@ describe('MultimodalAssetManager Property Tests', () => {
             const staged = await mam.stageAsset({
               type: assetType,
               buffer,
-              mimeType: 'application/octet-stream',
+              mimeType: "application/octet-stream",
               description,
             });
 
@@ -320,13 +343,13 @@ describe('MultimodalAssetManager Property Tests', () => {
             expect(result.description).toBe(description);
             expect(result.confidence).toBe(1.0);
             expect(result.isPlaceholder).toBe(false);
-          }
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
 
-    it('returns placeholder description when VLM disabled and no user description', async () => {
+    it("returns placeholder description when VLM disabled and no user description", async () => {
       await fc.assert(
         fc.asyncProperty(
           fc.constantFrom(...assetTypes),
@@ -337,7 +360,7 @@ describe('MultimodalAssetManager Property Tests', () => {
             const staged = await mam.stageAsset({
               type: assetType,
               buffer,
-              mimeType: 'application/octet-stream',
+              mimeType: "application/octet-stream",
             });
 
             const result = await mam.describeAsset(staged.id);
@@ -346,15 +369,15 @@ describe('MultimodalAssetManager Property Tests', () => {
             expect(result.confidence).toBe(0.0);
             // Description should contain type-specific text
             expect(result.description.length).toBeGreaterThan(0);
-          }
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
   });
 
-  describe('Staging Area Management', () => {
-    it('getStagedAsset returns correct asset', async () => {
+  describe("Staging Area Management", () => {
+    it("getStagedAsset returns correct asset", async () => {
       await fc.assert(
         fc.asyncProperty(
           fc.constantFrom(...assetTypes),
@@ -365,7 +388,7 @@ describe('MultimodalAssetManager Property Tests', () => {
             const staged = await mam.stageAsset({
               type: assetType,
               buffer,
-              mimeType: 'application/octet-stream',
+              mimeType: "application/octet-stream",
             });
 
             const retrieved = mam.getStagedAsset(staged.id);
@@ -374,13 +397,13 @@ describe('MultimodalAssetManager Property Tests', () => {
             expect(retrieved?.id).toBe(staged.id);
             expect(retrieved?.type).toBe(assetType);
             expect(retrieved?.contentHash).toBe(staged.contentHash);
-          }
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
 
-    it('removeStagedAsset removes asset from staging', async () => {
+    it("removeStagedAsset removes asset from staging", async () => {
       await fc.assert(
         fc.asyncProperty(
           fc.constantFrom(...assetTypes),
@@ -391,7 +414,7 @@ describe('MultimodalAssetManager Property Tests', () => {
             const staged = await mam.stageAsset({
               type: assetType,
               buffer,
-              mimeType: 'application/octet-stream',
+              mimeType: "application/octet-stream",
             });
 
             // Asset should exist
@@ -403,25 +426,28 @@ describe('MultimodalAssetManager Property Tests', () => {
 
             // Asset should no longer exist
             expect(mam.getStagedAsset(staged.id)).toBeUndefined();
-          }
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
 
-    it('clearStagingArea removes all staged assets', async () => {
+    it("clearStagingArea removes all staged assets", async () => {
       await fc.assert(
         fc.asyncProperty(
-          fc.array(fc.stringMatching(/^[a-zA-Z0-9]{10,50}$/), { minLength: 1, maxLength: 5 }),
+          fc.array(fc.stringMatching(/^[a-zA-Z0-9]{10,50}$/), {
+            minLength: 1,
+            maxLength: 5,
+          }),
           async (contents) => {
             const mam = new MultimodalAssetManager();
             // Stage multiple assets
             const stagedIds: string[] = [];
             for (const content of contents) {
               const staged = await mam.stageAsset({
-                type: 'image',
+                type: "image",
                 buffer: Buffer.from(content),
-                mimeType: 'image/png',
+                mimeType: "image/png",
               });
               stagedIds.push(staged.id);
             }
@@ -438,9 +464,9 @@ describe('MultimodalAssetManager Property Tests', () => {
               expect(mam.getStagedAsset(id)).toBeUndefined();
             }
             expect(mam.getCacheStats().stagedCount).toBe(0);
-          }
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
   });

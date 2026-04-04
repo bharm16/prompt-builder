@@ -1,31 +1,61 @@
-import type { VideoModelId } from '@services/video-generation/types';
+import type { VideoModelId } from "@services/video-generation/types";
 
-export const COMPLEXITY_LEVELS = ['none', 'simple', 'moderate', 'complex'] as const;
-export type ComplexityLevel = typeof COMPLEXITY_LEVELS[number];
+export const COMPLEXITY_LEVELS = [
+  "none",
+  "simple",
+  "moderate",
+  "complex",
+] as const;
+export type ComplexityLevel = (typeof COMPLEXITY_LEVELS)[number];
 
-export const EMOTIONAL_INTENSITY = ['none', 'subtle', 'moderate', 'intense'] as const;
-export type EmotionalIntensity = typeof EMOTIONAL_INTENSITY[number];
+export const EMOTIONAL_INTENSITY = [
+  "none",
+  "subtle",
+  "moderate",
+  "intense",
+] as const;
+export type EmotionalIntensity = (typeof EMOTIONAL_INTENSITY)[number];
 
-export const ENVIRONMENT_TYPES = ['interior', 'exterior', 'abstract', 'mixed'] as const;
-export type EnvironmentType = typeof ENVIRONMENT_TYPES[number];
+export const ENVIRONMENT_TYPES = [
+  "interior",
+  "exterior",
+  "abstract",
+  "mixed",
+] as const;
+export type EnvironmentType = (typeof ENVIRONMENT_TYPES)[number];
 
-export const LIGHTING_REQUIREMENTS = ['natural', 'stylized', 'dramatic', 'mixed'] as const;
-export type LightingRequirement = typeof LIGHTING_REQUIREMENTS[number];
+export const LIGHTING_REQUIREMENTS = [
+  "natural",
+  "stylized",
+  "dramatic",
+  "mixed",
+] as const;
+export type LightingRequirement = (typeof LIGHTING_REQUIREMENTS)[number];
 
-export const CAMERA_COMPLEXITY = ['static', 'simple', 'moderate', 'complex'] as const;
-export type CameraComplexity = typeof CAMERA_COMPLEXITY[number];
+export const CAMERA_COMPLEXITY = [
+  "static",
+  "simple",
+  "moderate",
+  "complex",
+] as const;
+export type CameraComplexity = (typeof CAMERA_COMPLEXITY)[number];
 
-export const SUBJECT_COMPLEXITY = ['static', 'simple', 'moderate', 'complex'] as const;
-export type SubjectComplexity = typeof SUBJECT_COMPLEXITY[number];
+export const SUBJECT_COMPLEXITY = [
+  "static",
+  "simple",
+  "moderate",
+  "complex",
+] as const;
+export type SubjectComplexity = (typeof SUBJECT_COMPLEXITY)[number];
 
-export const SPEED_TIERS = ['fast', 'medium', 'slow'] as const;
-export type SpeedTier = typeof SPEED_TIERS[number];
+export const SPEED_TIERS = ["fast", "medium", "slow"] as const;
+export type SpeedTier = (typeof SPEED_TIERS)[number];
 
-export const COST_TIERS = ['low', 'medium', 'high'] as const;
-export type CostTier = typeof COST_TIERS[number];
+export const COST_TIERS = ["low", "medium", "high"] as const;
+export type CostTier = (typeof COST_TIERS)[number];
 
-export const QUALITY_TIERS = ['preview', 'standard', 'premium'] as const;
-export type QualityTier = typeof QUALITY_TIERS[number];
+export const QUALITY_TIERS = ["preview", "standard", "premium"] as const;
+export type QualityTier = (typeof QUALITY_TIERS)[number];
 
 export interface PromptSpan {
   text: string;
@@ -54,7 +84,7 @@ export interface PromptRequirements {
     emotionalIntensity: EmotionalIntensity;
   };
   environment: {
-    complexity: 'simple' | 'moderate' | 'complex';
+    complexity: "simple" | "moderate" | "complex";
     type: EnvironmentType;
     hasArchitecture: boolean;
     hasNature: boolean;
@@ -62,7 +92,7 @@ export interface PromptRequirements {
   };
   lighting: {
     requirements: LightingRequirement;
-    complexity: 'simple' | 'moderate' | 'complex';
+    complexity: "simple" | "moderate" | "complex";
     hasPracticalLights: boolean;
     requiresAtmospherics: boolean;
   };
@@ -132,7 +162,7 @@ export interface ModelRecommendation {
   recommendations: ModelScore[];
   recommended: {
     modelId: VideoModelId;
-    confidence: 'high' | 'medium' | 'low';
+    confidence: "high" | "medium" | "low";
     reasoning: string;
   };
   alsoConsider?: {

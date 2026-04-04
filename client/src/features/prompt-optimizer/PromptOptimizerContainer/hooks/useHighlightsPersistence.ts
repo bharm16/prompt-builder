@@ -1,13 +1,13 @@
-import { useCallback } from 'react';
-import { getPromptRepository } from '@repositories/index';
-import type { User } from '@features/prompt-optimizer/types/domain/prompt-session';
-import type { Toast } from '@hooks/types';
-import type { HighlightSnapshot } from '@features/prompt-optimizer/context/types';
-import type { SpanLabelingResult } from '@/features/span-highlighting/hooks/types';
-import { logger } from '@/services/LoggingService';
-import { sanitizeError } from '@/utils/logging';
+import { useCallback } from "react";
+import { getPromptRepository } from "@repositories/index";
+import type { User } from "@features/prompt-optimizer/types/domain/prompt-session";
+import type { Toast } from "@hooks/types";
+import type { HighlightSnapshot } from "@features/prompt-optimizer/context/types";
+import type { SpanLabelingResult } from "@/features/span-highlighting/hooks/types";
+import { logger } from "@/services/LoggingService";
+import { sanitizeError } from "@/utils/logging";
 
-const log = logger.child('useHighlightsPersistence');
+const log = logger.child("useHighlightsPersistence");
 
 type PersistenceResult = SpanLabelingResult;
 
@@ -22,7 +22,7 @@ interface UseHighlightsPersistenceParams {
   toast: Toast;
   applyInitialHighlightSnapshot: (
     snapshot: HighlightSnapshot,
-    options: { bumpVersion: boolean; markPersisted: boolean }
+    options: { bumpVersion: boolean; markPersisted: boolean },
   ) => void;
   promptHistory: PromptHistory;
   latestHighlightRef: React.MutableRefObject<HighlightSnapshot | null>;
@@ -63,7 +63,9 @@ export function useHighlightsPersistence({
       };
 
       // Check cache ID consistency
-      const activeCacheId = currentPromptUuid ? String(currentPromptUuid) : null;
+      const activeCacheId = currentPromptUuid
+        ? String(currentPromptUuid)
+        : null;
       if (
         activeCacheId &&
         snapshot.cacheId &&
@@ -85,12 +87,12 @@ export function useHighlightsPersistence({
       }
 
       // Update history for network-sourced highlights
-      if (result.source === 'network' || result.source === 'cache-fallback') {
+      if (result.source === "network" || result.source === "cache-fallback") {
         updateEntryHighlight(currentPromptUuid, snapshot);
       }
 
       // Early return if can't persist remotely
-      if (!user || !currentPromptDocId || result.source !== 'network') {
+      if (!user || !currentPromptDocId || result.source !== "network") {
         return;
       }
 
@@ -108,8 +110,8 @@ export function useHighlightsPersistence({
           persistedSignatureRef.current = result.signature;
         } catch (error) {
           const info = sanitizeError(error);
-          log.warn('Failed to persist highlight snapshot', {
-            operation: 'updateHighlights',
+          log.warn("Failed to persist highlight snapshot", {
+            operation: "updateHighlights",
             error: info.message,
             errorName: info.name,
             promptUuid: currentPromptUuid ?? null,
@@ -118,8 +120,10 @@ export function useHighlightsPersistence({
           // Silent failure for background highlight persistence - not critical to user workflow
           // Only show error if it's a permission issue
           const err = error as Error & { code?: string };
-          if (err.code === 'permission-denied') {
-            toast.warning('Unable to save highlights. You may need to sign in.');
+          if (err.code === "permission-denied") {
+            toast.warning(
+              "Unable to save highlights. You may need to sign in.",
+            );
           }
         }
       })();
@@ -133,7 +137,7 @@ export function useHighlightsPersistence({
       latestHighlightRef,
       persistedSignatureRef,
       toast,
-    ]
+    ],
   );
 
   return { handleHighlightsPersist };

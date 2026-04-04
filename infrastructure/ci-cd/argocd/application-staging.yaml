@@ -21,8 +21,8 @@ spec:
 
   syncPolicy:
     automated:
-      prune: true  # Remove resources that are no longer in Git
-      selfHeal: true  # Auto-sync if cluster state deviates
+      prune: true # Remove resources that are no longer in Git
+      selfHeal: true # Auto-sync if cluster state deviates
       allowEmpty: false
     syncOptions:
       - CreateNamespace=true
@@ -40,7 +40,7 @@ spec:
     - group: apps
       kind: Deployment
       jsonPointers:
-        - /spec/replicas  # Ignore HPA-managed replica count
+        - /spec/replicas # Ignore HPA-managed replica count
 
   # Hooks for pre/post sync
   revisionHistoryLimit: 10

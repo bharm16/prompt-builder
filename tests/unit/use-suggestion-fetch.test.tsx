@@ -1,24 +1,30 @@
-import type React from 'react';
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
+import type React from "react";
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import { renderHook, act } from "@testing-library/react";
 
-import { useSuggestionFetch } from '@features/prompt-optimizer/PromptOptimizerContainer/hooks/useSuggestionFetch';
-import { useSuggestionApi } from '@features/prompt-optimizer/PromptOptimizerContainer/hooks/useSuggestionApi';
-import { useSuggestionCache } from '@features/prompt-optimizer/PromptOptimizerContainer/hooks/useSuggestionCache';
-import { CancellationError } from '@features/prompt-optimizer/utils/signalUtils';
-import type { SuggestionsData } from '@features/prompt-optimizer/PromptCanvas/types';
-import type { PromptOptimizer } from '@features/prompt-optimizer/context/types';
-import type { Toast } from '@hooks/types';
+import { useSuggestionFetch } from "@features/prompt-optimizer/PromptOptimizerContainer/hooks/useSuggestionFetch";
+import { useSuggestionApi } from "@features/prompt-optimizer/PromptOptimizerContainer/hooks/useSuggestionApi";
+import { useSuggestionCache } from "@features/prompt-optimizer/PromptOptimizerContainer/hooks/useSuggestionCache";
+import { CancellationError } from "@features/prompt-optimizer/utils/signalUtils";
+import type { SuggestionsData } from "@features/prompt-optimizer/PromptCanvas/types";
+import type { PromptOptimizer } from "@features/prompt-optimizer/context/types";
+import type { Toast } from "@hooks/types";
 
-vi.mock('@features/prompt-optimizer/PromptOptimizerContainer/hooks/useSuggestionApi', () => ({
-  useSuggestionApi: vi.fn(),
-}));
+vi.mock(
+  "@features/prompt-optimizer/PromptOptimizerContainer/hooks/useSuggestionApi",
+  () => ({
+    useSuggestionApi: vi.fn(),
+  }),
+);
 
-vi.mock('@features/prompt-optimizer/PromptOptimizerContainer/hooks/useSuggestionCache', () => ({
-  useSuggestionCache: vi.fn(),
-}));
+vi.mock(
+  "@features/prompt-optimizer/PromptOptimizerContainer/hooks/useSuggestionCache",
+  () => ({
+    useSuggestionCache: vi.fn(),
+  }),
+);
 
-vi.mock('@/services/LoggingService', () => ({
+vi.mock("@/services/LoggingService", () => ({
   logger: {
     child: () => ({
       error: vi.fn(),
@@ -38,38 +44,40 @@ const createToast = (): Toast => ({
 });
 
 const basePromptOptimizer = {
-  displayedPrompt: 'A sample prompt with highlight',
-  inputPrompt: 'Input prompt',
+  displayedPrompt: "A sample prompt with highlight",
+  inputPrompt: "Input prompt",
 } as PromptOptimizer;
 
 const basePayload = {
-  highlightedText: 'highlight',
-  originalText: 'highlight',
-  displayedPrompt: 'A sample prompt with highlight',
+  highlightedText: "highlight",
+  originalText: "highlight",
+  displayedPrompt: "A sample prompt with highlight",
   offsets: { start: 24, end: 33 },
 };
 
 const createStateHarness = () => {
   let state: SuggestionsData | null = null;
-  const setSuggestionsData = vi.fn((action: React.SetStateAction<SuggestionsData | null>) => {
-    state = typeof action === 'function' ? action(state) : action;
-  });
+  const setSuggestionsData = vi.fn(
+    (action: React.SetStateAction<SuggestionsData | null>) => {
+      state = typeof action === "function" ? action(state) : action;
+    },
+  );
   return { getState: () => state, setSuggestionsData };
 };
 
-describe('useSuggestionFetch', () => {
+describe("useSuggestionFetch", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  describe('error handling', () => {
-    it('sets error state and toast when fetch fails', async () => {
+  describe("error handling", () => {
+    it("sets error state and toast when fetch fails", async () => {
       const { getState, setSuggestionsData } = createStateHarness();
       const toast = createToast();
 
       const fetchSuggestions = vi.fn(async ({ onRequestStart }) => {
         onRequestStart?.();
-        throw new Error('boom');
+        throw new Error("boom");
       });
 
       mockUseSuggestionApi.mockReturnValue({
@@ -79,7 +87,7 @@ describe('useSuggestionFetch', () => {
       });
 
       mockUseSuggestionCache.mockReturnValue({
-        buildCacheKey: vi.fn().mockReturnValue('cache-key'),
+        buildCacheKey: vi.fn().mockReturnValue("cache-key"),
         getCachedSuggestions: vi.fn().mockReturnValue(null),
         setCachedSuggestions: vi.fn(),
       });
@@ -87,13 +95,13 @@ describe('useSuggestionFetch', () => {
       const { result } = renderHook(() =>
         useSuggestionFetch({
           promptOptimizer: basePromptOptimizer,
-          selectedMode: 'video',
+          selectedMode: "video",
           suggestionsData: null,
           setSuggestionsData,
           stablePromptContext: null,
           toast,
           handleSuggestionClick: vi.fn(),
-        })
+        }),
       );
 
       await act(async () => {
@@ -102,18 +110,18 @@ describe('useSuggestionFetch', () => {
 
       const updated = getState();
       expect(updated?.isError).toBe(true);
-      expect(updated?.errorMessage).toBe('boom');
+      expect(updated?.errorMessage).toBe("boom");
       expect(updated?.suggestions).toEqual([]);
-      expect(toast.error).toHaveBeenCalledWith('Failed to load suggestions');
+      expect(toast.error).toHaveBeenCalledWith("Failed to load suggestions");
     });
 
-    it('ignores cancellation errors without showing toast', async () => {
+    it("ignores cancellation errors without showing toast", async () => {
       const { getState, setSuggestionsData } = createStateHarness();
       const toast = createToast();
 
       const fetchSuggestions = vi.fn(async ({ onRequestStart }) => {
         onRequestStart?.();
-        throw new CancellationError('cancelled');
+        throw new CancellationError("cancelled");
       });
 
       mockUseSuggestionApi.mockReturnValue({
@@ -123,7 +131,7 @@ describe('useSuggestionFetch', () => {
       });
 
       mockUseSuggestionCache.mockReturnValue({
-        buildCacheKey: vi.fn().mockReturnValue('cache-key'),
+        buildCacheKey: vi.fn().mockReturnValue("cache-key"),
         getCachedSuggestions: vi.fn().mockReturnValue(null),
         setCachedSuggestions: vi.fn(),
       });
@@ -131,13 +139,13 @@ describe('useSuggestionFetch', () => {
       const { result } = renderHook(() =>
         useSuggestionFetch({
           promptOptimizer: basePromptOptimizer,
-          selectedMode: 'video',
+          selectedMode: "video",
           suggestionsData: null,
           setSuggestionsData,
           stablePromptContext: null,
           toast,
           handleSuggestionClick: vi.fn(),
-        })
+        }),
       );
 
       await act(async () => {
@@ -149,8 +157,8 @@ describe('useSuggestionFetch', () => {
     });
   });
 
-  describe('edge cases', () => {
-    it('returns early when mode is not video or highlight is empty', async () => {
+  describe("edge cases", () => {
+    it("returns early when mode is not video or highlight is empty", async () => {
       const { setSuggestionsData } = createStateHarness();
 
       const fetchSuggestions = vi.fn();
@@ -171,17 +179,19 @@ describe('useSuggestionFetch', () => {
       const { result } = renderHook(() =>
         useSuggestionFetch({
           promptOptimizer: basePromptOptimizer,
-          selectedMode: 'image',
+          selectedMode: "image",
           suggestionsData: null,
           setSuggestionsData,
           stablePromptContext: null,
           toast: createToast(),
           handleSuggestionClick: vi.fn(),
-        })
+        }),
       );
 
       await act(async () => {
-        await result.current.fetchEnhancementSuggestions({ highlightedText: '' });
+        await result.current.fetchEnhancementSuggestions({
+          highlightedText: "",
+        });
       });
 
       expect(fetchSuggestions).not.toHaveBeenCalled();
@@ -189,7 +199,7 @@ describe('useSuggestionFetch', () => {
       expect(setSuggestionsData).not.toHaveBeenCalled();
     });
 
-    it('skips duplicate in-flight requests', async () => {
+    it("skips duplicate in-flight requests", async () => {
       const { setSuggestionsData } = createStateHarness();
       const fetchSuggestions = vi.fn();
       const cancelCurrentRequest = vi.fn();
@@ -201,7 +211,7 @@ describe('useSuggestionFetch', () => {
       });
 
       mockUseSuggestionCache.mockReturnValue({
-        buildCacheKey: vi.fn().mockReturnValue('cache-key'),
+        buildCacheKey: vi.fn().mockReturnValue("cache-key"),
         getCachedSuggestions: vi.fn(),
         setCachedSuggestions: vi.fn(),
       });
@@ -209,13 +219,13 @@ describe('useSuggestionFetch', () => {
       const { result } = renderHook(() =>
         useSuggestionFetch({
           promptOptimizer: basePromptOptimizer,
-          selectedMode: 'video',
+          selectedMode: "video",
           suggestionsData: null,
           setSuggestionsData,
           stablePromptContext: null,
           toast: createToast(),
           handleSuggestionClick: vi.fn(),
-        })
+        }),
       );
 
       await act(async () => {
@@ -227,8 +237,8 @@ describe('useSuggestionFetch', () => {
     });
   });
 
-  describe('core behavior', () => {
-    it('uses cached suggestions without calling the API', async () => {
+  describe("core behavior", () => {
+    it("uses cached suggestions without calling the API", async () => {
       const { getState, setSuggestionsData } = createStateHarness();
 
       const fetchSuggestions = vi.fn();
@@ -241,9 +251,9 @@ describe('useSuggestionFetch', () => {
       });
 
       mockUseSuggestionCache.mockReturnValue({
-        buildCacheKey: vi.fn().mockReturnValue('cache-key'),
+        buildCacheKey: vi.fn().mockReturnValue("cache-key"),
         getCachedSuggestions: vi.fn().mockReturnValue({
-          suggestions: [{ text: 'cached' }],
+          suggestions: [{ text: "cached" }],
           isPlaceholder: false,
         }),
         setCachedSuggestions: vi.fn(),
@@ -252,13 +262,13 @@ describe('useSuggestionFetch', () => {
       const { result } = renderHook(() =>
         useSuggestionFetch({
           promptOptimizer: basePromptOptimizer,
-          selectedMode: 'video',
+          selectedMode: "video",
           suggestionsData: null,
           setSuggestionsData,
           stablePromptContext: null,
           toast: createToast(),
           handleSuggestionClick: vi.fn(),
-        })
+        }),
       );
 
       await act(async () => {
@@ -267,7 +277,7 @@ describe('useSuggestionFetch', () => {
 
       expect(fetchSuggestions).not.toHaveBeenCalled();
       expect(cancelCurrentRequest).toHaveBeenCalledTimes(1);
-      expect(getState()?.suggestions).toEqual([{ text: 'cached' }]);
+      expect(getState()?.suggestions).toEqual([{ text: "cached" }]);
       expect(getState()?.isLoading).toBe(false);
     });
   });

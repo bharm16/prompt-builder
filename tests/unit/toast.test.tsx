@@ -1,84 +1,84 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
-import { renderHook } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { render, screen } from "@testing-library/react";
+import { renderHook } from "@testing-library/react";
 
-import { ToastProvider, useToast } from '@components/Toast';
+import { ToastProvider, useToast } from "@components/Toast";
 
 const { toastSpy } = vi.hoisted(() => ({
   toastSpy: vi.fn(),
 }));
 
-vi.mock('@promptstudio/system/hooks/use-toast', () => ({
+vi.mock("@promptstudio/system/hooks/use-toast", () => ({
   useToast: () => ({ toast: toastSpy }),
 }));
 
-vi.mock('@promptstudio/system/components/ui/toaster', () => ({
-  Toaster: () => <div data-testid="toaster" />, 
+vi.mock("@promptstudio/system/components/ui/toaster", () => ({
+  Toaster: () => <div data-testid="toaster" />,
 }));
 
-describe('Toast', () => {
+describe("Toast", () => {
   beforeEach(() => {
     toastSpy.mockClear();
   });
 
-  describe('error handling', () => {
-    it('adds destructive variant and duration for error toasts', () => {
+  describe("error handling", () => {
+    it("adds destructive variant and duration for error toasts", () => {
       const { result } = renderHook(() => useToast());
 
-      result.current.error('Boom', 1500);
+      result.current.error("Boom", 1500);
 
       expect(toastSpy).toHaveBeenCalledWith({
-        description: 'Boom',
-        variant: 'destructive',
+        description: "Boom",
+        variant: "destructive",
         duration: 1500,
       });
     });
 
-    it('omits duration when error duration is undefined', () => {
+    it("omits duration when error duration is undefined", () => {
       const { result } = renderHook(() => useToast());
 
-      result.current.error('Missing duration');
+      result.current.error("Missing duration");
 
       expect(toastSpy).toHaveBeenCalledWith({
-        description: 'Missing duration',
-        variant: 'destructive',
+        description: "Missing duration",
+        variant: "destructive",
       });
     });
   });
 
-  describe('edge cases', () => {
-    it('includes duration for success toasts when provided', () => {
+  describe("edge cases", () => {
+    it("includes duration for success toasts when provided", () => {
       const { result } = renderHook(() => useToast());
 
-      result.current.success('Saved', 800);
+      result.current.success("Saved", 800);
 
       expect(toastSpy).toHaveBeenCalledWith({
-        description: 'Saved',
+        description: "Saved",
         duration: 800,
       });
     });
 
-    it('does not set a variant for warning toasts', () => {
+    it("does not set a variant for warning toasts", () => {
       const { result } = renderHook(() => useToast());
 
-      result.current.warning('Heads up');
+      result.current.warning("Heads up");
 
       expect(toastSpy).toHaveBeenCalledWith({
-        description: 'Heads up',
+        description: "Heads up",
       });
     });
   });
 
-  describe('core behavior', () => {
-    it('renders the toaster alongside children', () => {
+  describe("core behavior", () => {
+    it("renders the toaster alongside children", () => {
       render(
         <ToastProvider>
           <div>Child content</div>
-        </ToastProvider>
+        </ToastProvider>,
       );
 
-      expect(screen.getByText('Child content')).toBeInTheDocument();
-      expect(screen.getByTestId('toaster')).toBeInTheDocument();
+      expect(screen.getByText("Child content")).toBeInTheDocument();
+      expect(screen.getByTestId("toaster")).toBeInTheDocument();
     });
   });
 });

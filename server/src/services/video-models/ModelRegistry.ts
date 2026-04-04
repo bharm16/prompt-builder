@@ -1,4 +1,8 @@
-import { VIDEO_MODELS } from '@config/modelConfig';
+import { VIDEO_MODELS } from "@config/modelConfig";
+import {
+  normalizePromptModelAlias,
+  resolveCanonicalPromptModelId,
+} from "@shared/videoModels";
 import type {
   KlingModelId,
   LumaModelId,
@@ -6,88 +10,56 @@ import type {
   VeoModelId,
   VideoModelId,
   VideoModelKey,
-} from '@services/video-generation/types';
+} from "@services/video-generation/types";
 
-type LogSink = { warn: (message: string, meta?: Record<string, unknown>) => void };
+type LogSink = {
+  warn: (message: string, meta?: Record<string, unknown>) => void;
+};
 
-const DEFAULT_VIDEO_MODEL = VIDEO_MODELS.PRO || 'wan-video/wan-2.2-t2v-fast';
-const VIDEO_MODEL_IDS = new Set<VideoModelId>(Object.values(VIDEO_MODELS) as VideoModelId[]);
-const VIDEO_MODEL_KEYS = new Set<VideoModelKey>(Object.keys(VIDEO_MODELS) as VideoModelKey[]);
+const DEFAULT_VIDEO_MODEL = VIDEO_MODELS.PRO || "wan-video/wan-2.2-t2v-fast";
+const VIDEO_MODEL_IDS = new Set<VideoModelId>(
+  Object.values(VIDEO_MODELS) as VideoModelId[],
+);
+const VIDEO_MODEL_KEYS = new Set<VideoModelKey>(
+  Object.keys(VIDEO_MODELS) as VideoModelKey[],
+);
 
 const GENERATION_MODEL_ALIASES: Record<string, VideoModelId> = {
   // Sora
-  'sora': 'sora-2',
-  'openai/sora-2': 'sora-2',
-  'sora-2': 'sora-2',
-  'sora-2-pro': 'sora-2-pro',
+  sora: "sora-2",
+  "openai/sora-2": "sora-2",
+  "sora-2": "sora-2",
+  "sora-2-pro": "sora-2-pro",
   // Kling
-  'kling': 'kling-v2-1-master',
-  'kling-v2.1': 'kling-v2-1-master',
-  'kling-26': 'kling-v2-1-master',
-  'kwaivgi/kling-v2.1': 'kling-v2-1-master',
+  kling: "kling-v2-1-master",
+  "kling-2.1": "kling-v2-1-master",
+  "kling-v2.1": "kling-v2-1-master",
+  "kling-26": "kling-v2-1-master",
+  "kling-v2-1-master": "kling-v2-1-master",
+  "kwaivgi/kling-v2.1": "kling-v2-1-master",
   // Veo
-  'veo': 'google/veo-3',
-  'google/veo-3': 'google/veo-3',
-  'veo-3': 'google/veo-3',
-  'veo-3.1': 'google/veo-3',
-  'veo-3.1-generate-preview': 'google/veo-3',
-  'veo-4': 'google/veo-3',
+  veo: "google/veo-3",
+  "google/veo-3": "google/veo-3",
+  "veo-3": "google/veo-3",
+  veo3: "google/veo-3",
+  "veo-3.1": "google/veo-3",
+  "veo-3.1-generate-preview": "google/veo-3",
+  "veo-4": "google/veo-3",
   // Luma
-  'luma-ray3': 'luma-ray3',
-  'luma': 'luma-ray3',
+  "luma-ray3": "luma-ray3",
+  luma: "luma-ray3",
   // Wan
-  'wan': 'wan-video/wan-2.2-t2v-fast',
-  'wan-2.2': 'wan-video/wan-2.2-t2v-fast',
-  'wan-video/wan-2.2-t2v-fast': 'wan-video/wan-2.2-t2v-fast',
-  'wan-video/wan-2.2-i2v-fast': 'wan-video/wan-2.2-i2v-fast',
-  'wan-2.5': 'wan-video/wan-2.5-i2v',
-  'wan-video/wan-2.5-i2v': 'wan-video/wan-2.5-i2v',
-  'wan-video/wan-2.5-i2v-fast': 'wan-video/wan-2.5-i2v-fast',
+  wan: "wan-video/wan-2.2-t2v-fast",
+  "wan-2.2": "wan-video/wan-2.2-t2v-fast",
+  "wan-video/wan-2.2-t2v-fast": "wan-video/wan-2.2-t2v-fast",
+  "wan-video/wan-2.2-i2v-fast": "wan-video/wan-2.2-i2v-fast",
+  "wan-2.5": "wan-video/wan-2.5-i2v",
+  "wan-video/wan-2.5-i2v": "wan-video/wan-2.5-i2v",
+  "wan-video/wan-2.5-i2v-fast": "wan-video/wan-2.5-i2v-fast",
 };
+const normalizeAliasKey = normalizePromptModelAlias;
 
-const PROMPT_MODEL_ALIASES: Record<string, string> = {
-  // Runway
-  'runway': 'runway-gen45',
-  'runway-gen45': 'runway-gen45',
-  // Luma
-  'luma': 'luma-ray3',
-  'luma-ray3': 'luma-ray3',
-  // Kling
-  'kling': 'kling-26',
-  'kling-26': 'kling-26',
-  'kling-v2-1-master': 'kling-26',
-  'kling-v2.1': 'kling-26',
-  'kwaivgi/kling-v2.1': 'kling-26',
-  // Sora
-  'sora': 'sora-2',
-  'sora-2': 'sora-2',
-  'sora-2-pro': 'sora-2',
-  // Veo
-  'veo': 'veo-4',
-  'veo3': 'veo-4',
-  'veo-3': 'veo-4',
-  'veo-3.0-generate-001': 'veo-4',
-  'veo-3.0-fast-generate-001': 'veo-4',
-  'veo-3.1': 'veo-4',
-  'veo-3.1-generate-preview': 'veo-4',
-  'google/veo-3': 'veo-4',
-  'veo-4': 'veo-4',
-  // Wan
-  'wan': 'wan-2.2',
-  'wan-2.2': 'wan-2.2',
-  'wan-video/wan-2.2-t2v-fast': 'wan-2.2',
-  'wan-video/wan-2.2-i2v-fast': 'wan-2.2',
-  'wan-2.5': 'wan-2.2',
-  'wan-video/wan-2.5-i2v': 'wan-2.2',
-  'wan-video/wan-2.5-i2v-fast': 'wan-2.2',
-  // Subscription-friendly aliases
-  'pro': 'wan-2.2',
-  'draft': 'wan-2.2',
-};
-
-const normalizeAliasKey = (value: string): string => value.trim().toLowerCase();
-
-export type ModelResolutionSource = 'default' | 'key' | 'alias' | 'id';
+export type ModelResolutionSource = "default" | "key" | "alias" | "id";
 
 export interface ModelResolution {
   modelId: VideoModelId;
@@ -97,47 +69,53 @@ export interface ModelResolution {
 
 export function resolveGenerationModelSelection(
   model?: VideoModelKey | VideoModelId | string,
-  log?: LogSink
+  log?: LogSink,
 ): ModelResolution {
   if (
     !model ||
-    (typeof model === 'string' &&
-      (model.trim().length === 0 || model.trim().toLowerCase() === 'auto'))
+    (typeof model === "string" &&
+      (model.trim().length === 0 || model.trim().toLowerCase() === "auto"))
   ) {
-    return { modelId: DEFAULT_VIDEO_MODEL, resolvedBy: 'default' };
+    return { modelId: DEFAULT_VIDEO_MODEL, resolvedBy: "default" };
   }
 
-  const normalized = typeof model === 'string' ? model.trim() : model;
+  const normalized = typeof model === "string" ? model.trim() : model;
 
   if (Object.prototype.hasOwnProperty.call(VIDEO_MODELS, normalized)) {
     return {
       modelId: VIDEO_MODELS[normalized as VideoModelKey],
-      resolvedBy: 'key',
+      resolvedBy: "key",
       requested: String(model),
     };
-  }
-
-  if (typeof normalized === 'string') {
-    const alias = GENERATION_MODEL_ALIASES[normalizeAliasKey(normalized)];
-    if (alias) {
-      return {
-        modelId: alias,
-        resolvedBy: 'alias',
-        requested: normalized,
-      };
-    }
   }
 
   if (VIDEO_MODEL_IDS.has(normalized as VideoModelId)) {
     return {
       modelId: normalized as VideoModelId,
-      resolvedBy: 'id',
+      resolvedBy: "id",
       requested: String(model),
     };
   }
 
-  log?.warn('Unknown video model requested; falling back to default', { model });
-  return { modelId: DEFAULT_VIDEO_MODEL, resolvedBy: 'default', requested: String(model) };
+  if (typeof normalized === "string") {
+    const alias = GENERATION_MODEL_ALIASES[normalizeAliasKey(normalized)];
+    if (alias) {
+      return {
+        modelId: alias,
+        resolvedBy: "alias",
+        requested: normalized,
+      };
+    }
+  }
+
+  log?.warn("Unknown video model requested; falling back to default", {
+    model,
+  });
+  return {
+    modelId: DEFAULT_VIDEO_MODEL,
+    resolvedBy: "default",
+    requested: String(model),
+  };
 }
 
 export function isKnownGenerationModelInput(value: string): boolean {
@@ -159,7 +137,7 @@ export function isKnownGenerationModelInput(value: string): boolean {
 
 export function resolveGenerationModelId(
   model?: VideoModelKey | VideoModelId | string,
-  log?: LogSink
+  log?: LogSink,
 ): VideoModelId {
   return resolveGenerationModelSelection(model, log).modelId;
 }
@@ -168,11 +146,12 @@ export function resolvePromptModelId(model?: string | null): string | null {
   if (!model || model.trim().length === 0) {
     return null;
   }
-  const normalized = normalizeAliasKey(model);
-  return PROMPT_MODEL_ALIASES[normalized] ?? model.trim();
+  return resolveCanonicalPromptModelId(model) ?? model.trim();
 }
 
-export function isOpenAISoraModelId(modelId: VideoModelId): modelId is SoraModelId {
+export function isOpenAISoraModelId(
+  modelId: VideoModelId,
+): modelId is SoraModelId {
   return modelId === VIDEO_MODELS.SORA_2 || modelId === VIDEO_MODELS.SORA_2_PRO;
 }
 
@@ -189,19 +168,19 @@ export function isVeoModelId(modelId: VideoModelId): modelId is VeoModelId {
 }
 
 export function resolveProviderForGenerationModel(
-  modelId: VideoModelId
-): 'openai' | 'luma' | 'kling' | 'gemini' | 'replicate' {
+  modelId: VideoModelId,
+): "openai" | "luma" | "kling" | "gemini" | "replicate" {
   if (isOpenAISoraModelId(modelId)) {
-    return 'openai';
+    return "openai";
   }
   if (isLumaModelId(modelId)) {
-    return 'luma';
+    return "luma";
   }
   if (isKlingModelId(modelId)) {
-    return 'kling';
+    return "kling";
   }
   if (isVeoModelId(modelId)) {
-    return 'gemini';
+    return "gemini";
   }
-  return 'replicate';
+  return "replicate";
 }

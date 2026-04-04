@@ -1,6 +1,6 @@
-import React from 'react';
-import { getAuthRepository } from '@repositories/index';
-import type { User } from './types';
+import React from "react";
+import { getAuthRepository } from "@repositories/index";
+import type { User } from "./types";
 
 export type UseAuthUserOptions = {
   onChange?: (user: User | null) => void;
@@ -10,9 +10,13 @@ export type UseAuthUserOptions = {
 
 export function useAuthUser(options: UseAuthUserOptions = {}): User | null {
   const [user, setUser] = React.useState<User | null>(null);
-  const onChangeRef = React.useRef<UseAuthUserOptions['onChange']>(options.onChange);
-  const onInitRef = React.useRef<UseAuthUserOptions['onInit']>(options.onInit);
-  const onCleanupRef = React.useRef<UseAuthUserOptions['onCleanup']>(options.onCleanup);
+  const onChangeRef = React.useRef<UseAuthUserOptions["onChange"]>(
+    options.onChange,
+  );
+  const onInitRef = React.useRef<UseAuthUserOptions["onInit"]>(options.onInit);
+  const onCleanupRef = React.useRef<UseAuthUserOptions["onCleanup"]>(
+    options.onCleanup,
+  );
 
   React.useEffect(() => {
     onChangeRef.current = options.onChange;
@@ -22,10 +26,12 @@ export function useAuthUser(options: UseAuthUserOptions = {}): User | null {
 
   React.useEffect(() => {
     onInitRef.current?.();
-    const unsubscribe = getAuthRepository().onAuthStateChanged((currentUser) => {
-      setUser(currentUser);
-      onChangeRef.current?.(currentUser);
-    });
+    const unsubscribe = getAuthRepository().onAuthStateChanged(
+      (currentUser) => {
+        setUser(currentUser);
+        onChangeRef.current?.(currentUser);
+      },
+    );
     return () => {
       onCleanupRef.current?.();
       unsubscribe();

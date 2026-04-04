@@ -1,7 +1,7 @@
-import * as React from "react"
+import * as React from "react";
 
-import { cn } from "@promptstudio/system/lib/utils"
-import { panelVariants } from "./Panel"
+import { cn } from "@promptstudio/system/lib/utils";
+import { panelVariants } from "./Panel";
 
 const Card = React.forwardRef<
   HTMLDivElement,
@@ -10,12 +10,17 @@ const Card = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      panelVariants({ surface: "1", shadow: "elevated", radius: "xl", padding: "none" }),
-      className
+      panelVariants({
+        surface: "1",
+        shadow: "elevated",
+        radius: "xl",
+        padding: "none",
+      }),
+      className,
     )}
     {...props}
   />
-))
-Card.displayName = "Card"
+));
+Card.displayName = "Card";
 
-export { Card }
+export { Card };

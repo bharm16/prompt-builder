@@ -1,5 +1,8 @@
-import { z } from 'zod';
-import type { LabelSpansParams, ValidationPolicy } from '@llm/span-labeling/types';
+import { z } from "zod";
+import type {
+  LabelSpansParams,
+  ValidationPolicy,
+} from "@llm/span-labeling/types";
 
 export interface ParsedLabelSpansRequest {
   payload: LabelSpansParams;
@@ -16,8 +19,8 @@ export type LabelSpansRequestParseResult =
   | { ok: false; status: number; error: string };
 
 const sanitizeNumber = (value: unknown): number | undefined => {
-  if (typeof value === 'number') return value;
-  if (typeof value === 'string' && value.trim() !== '') {
+  if (typeof value === "number") return value;
+  if (typeof value === "string" && value.trim() !== "") {
     const parsed = Number(value);
     if (!Number.isNaN(parsed)) return parsed;
   }
@@ -26,7 +29,7 @@ const sanitizeNumber = (value: unknown): number | undefined => {
 
 const LabelSpansRequestSchema = z
   .object({
-    text: z.string().min(1, 'text is required'),
+    text: z.string().min(1, "text is required"),
     maxSpans: z
       .preprocess(sanitizeNumber, z.number().int().min(1).max(80))
       .optional(),
@@ -38,19 +41,19 @@ const LabelSpansRequestSchema = z
     isI2VMode: z
       .preprocess(
         (value: unknown) =>
-          typeof value === 'boolean'
+          typeof value === "boolean"
             ? value
-            : typeof value === 'string'
-              ? value.toLowerCase() === 'true'
+            : typeof value === "string"
+              ? value.toLowerCase() === "true"
               : undefined,
-        z.boolean()
+        z.boolean(),
       )
       .optional(),
   })
   .strip();
 
 export function parseLabelSpansRequest(
-  body: unknown
+  body: unknown,
 ): LabelSpansRequestParseResult {
   const parsed = LabelSpansRequestSchema.safeParse(body ?? {});
   if (!parsed.success) {
@@ -58,29 +61,26 @@ export function parseLabelSpansRequest(
     return {
       ok: false,
       status: 400,
-      error: issue?.message || 'Invalid request',
+      error: issue?.message || "Invalid request",
     };
   }
 
-  const {
-    text,
-    maxSpans,
-    minConfidence,
-    policy,
-    templateVersion,
-    isI2VMode,
-  } = parsed.data;
+  const { text, maxSpans, minConfidence, policy, templateVersion, isI2VMode } =
+    parsed.data;
 
   const normalizedIsI2VMode = Boolean(isI2VMode);
 
-  const resolvedTemplateVersion = templateVersion || (normalizedIsI2VMode ? 'i2v-v1' : undefined);
+  const resolvedTemplateVersion =
+    templateVersion || (normalizedIsI2VMode ? "i2v-v1" : undefined);
 
   const payload: LabelSpansParams = {
     text,
     ...(maxSpans !== undefined ? { maxSpans } : {}),
     ...(minConfidence !== undefined ? { minConfidence } : {}),
     ...(policy ? { policy: policy as ValidationPolicy } : {}),
-    ...(resolvedTemplateVersion ? { templateVersion: resolvedTemplateVersion } : {}),
+    ...(resolvedTemplateVersion
+      ? { templateVersion: resolvedTemplateVersion }
+      : {}),
   };
 
   return {
@@ -91,7 +91,9 @@ export function parseLabelSpansRequest(
       ...(maxSpans !== undefined ? { maxSpans } : {}),
       ...(minConfidence !== undefined ? { minConfidence } : {}),
       ...(policy ? { policy: policy as ValidationPolicy } : {}),
-      ...(resolvedTemplateVersion ? { templateVersion: resolvedTemplateVersion } : {}),
+      ...(resolvedTemplateVersion
+        ? { templateVersion: resolvedTemplateVersion }
+        : {}),
       ...(normalizedIsI2VMode ? { isI2VMode: true } : {}),
     },
   };

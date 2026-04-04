@@ -4,7 +4,7 @@
 
 export function debounce<T extends (...args: Parameters<T>) => void>(
   func: T,
-  wait: number
+  wait: number,
 ): T & { cancel: () => void } {
   let timeoutId: ReturnType<typeof setTimeout> | undefined;
 

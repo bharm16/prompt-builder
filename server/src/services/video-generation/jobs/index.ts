@@ -1,3 +1,8 @@
-export { VideoJobStore } from './VideoJobStore';
-export { VideoJobWorker } from './VideoJobWorker';
-export type { VideoJobRecord, VideoJobStatus, VideoJobRequest } from './types';
+export { VideoJobStore } from "./VideoJobStore";
+export { VideoJobWorker } from "./VideoJobWorker";
+export { processVideoJob } from "./processVideoJob";
+export type {
+  JobProcessingStore,
+  ProcessVideoJobDeps,
+} from "./processVideoJob";
+export type { VideoJobRecord, VideoJobStatus, VideoJobRequest } from "./types";

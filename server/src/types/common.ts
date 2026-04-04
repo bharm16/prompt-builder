@@ -16,9 +16,14 @@ export class AppError extends Error {
   statusCode: number;
   details?: Record<string, unknown> | undefined;
 
-  constructor(message: string, code: string, statusCode: number = 500, details?: Record<string, unknown> | undefined) {
+  constructor(
+    message: string,
+    code: string,
+    statusCode: number = 500,
+    details?: Record<string, unknown> | undefined,
+  ) {
     super(message);
-    this.name = 'AppError';
+    this.name = "AppError";
     this.code = code;
     this.statusCode = statusCode;
     this.details = details;
@@ -47,4 +52,3 @@ export interface PaginatedResponse<T> {
     totalPages: number;
   };
 }
-

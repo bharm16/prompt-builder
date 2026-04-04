@@ -1,6 +1,6 @@
 /**
  * Schema Barrel Export
- * 
+ *
  * Central export point for all validation schemas.
  * Organized by domain: prompts, suggestions, video/creative workflows, and LLM outputs.
  */
@@ -11,7 +11,7 @@ export {
   type PromptRequest,
   compileSchema,
   type CompileRequest,
-} from './promptSchemas.ts';
+} from "./promptSchemas.ts";
 
 // Suggestion schemas
 export {
@@ -23,7 +23,7 @@ export {
   type CustomSuggestionRequest,
   type SceneChangeRequest,
   type CoherenceCheckRequest,
-} from './suggestionSchemas.ts';
+} from "./suggestionSchemas.ts";
 
 // Video/creative workflow schemas
 export {
@@ -46,7 +46,7 @@ export {
   type TemplateRecommendationsRequest,
   type RecordUserChoiceRequest,
   type AlternativePhrasingsRequest,
-} from './videoSchemas.ts';
+} from "./videoSchemas.ts";
 
 // LLM output schemas
 export {
@@ -61,4 +61,4 @@ export {
   smartDefaultsOutputSchema,
   alternativePhrasingsOutputSchema,
   coherenceCheckOutputSchema,
-} from './outputSchemas.ts';
+} from "./outputSchemas.ts";

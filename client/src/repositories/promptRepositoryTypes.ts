@@ -1,4 +1,7 @@
-import type { PromptKeyframe, PromptVersionEntry } from '@features/prompt-optimizer/types/domain/prompt-session';
+import type {
+  PromptKeyframe,
+  PromptVersionEntry,
+} from "@features/prompt-optimizer/types/domain/prompt-session";
 
 export type PromptData = {
   uuid?: string;
@@ -41,7 +44,7 @@ export class PromptRepositoryError extends Error {
 
   constructor(message: string, originalError: unknown) {
     super(message);
-    this.name = 'PromptRepositoryError';
+    this.name = "PromptRepositoryError";
     this.originalError = originalError;
   }
 }

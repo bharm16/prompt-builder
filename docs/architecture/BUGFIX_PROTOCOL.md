@@ -38,12 +38,12 @@ Before writing the regression test, output these three lines:
 
 Route the test based on **where the user experienced the failure**, not where the code fix lives.
 
-| User experienced… | Test type | Mock boundary | Example |
-|---|---|---|---|
-| HTTP error (4xx/5xx) | Integration test via `supertest(app)` | None — real middleware, real auth, real services | Auth fallback returning 403 |
-| Wrong UI state / broken interaction | Component test with `@testing-library/react` | Network layer only (MSW or fetch mock) | Stale data after session switch |
-| Wrong data / corrupt output | Service integration test with real dependency chain | External APIs only (LLM, Firebase, Stripe) | Missing triggers in augmented prompt |
-| Pure function edge case | Unit test or property test (fast-check) | None | Parser returning null on empty input |
+| User experienced…                   | Test type                                           | Mock boundary                                    | Example                              |
+| ----------------------------------- | --------------------------------------------------- | ------------------------------------------------ | ------------------------------------ |
+| HTTP error (4xx/5xx)                | Integration test via `supertest(app)`               | None — real middleware, real auth, real services | Auth fallback returning 403          |
+| Wrong UI state / broken interaction | Component test with `@testing-library/react`        | Network layer only (MSW or fetch mock)           | Stale data after session switch      |
+| Wrong data / corrupt output         | Service integration test with real dependency chain | External APIs only (LLM, Firebase, Stripe)       | Missing triggers in augmented prompt |
+| Pure function edge case             | Unit test or property test (fast-check)             | None                                             | Parser returning null on empty input |
 
 **Default to the highest layer that reproduces the bug.** A test at the HTTP layer catches bugs in middleware, services, AND the function — a unit test only catches bugs in the function.
 
@@ -55,7 +55,7 @@ Name the test file `*.regression.test.ts` so it can be audited separately.
 
 ```typescript
 // GOOD: Tests the invariant across input classes
-it('never produces placeholder text in suggestion output', async () => {
+it("never produces placeholder text in suggestion output", async () => {
   await fc.assert(
     fc.asyncProperty(
       fc.string({ minLength: 1, maxLength: 200 }),
@@ -64,17 +64,17 @@ it('never produces placeholder text in suggestion output', async () => {
         for (const suggestion of result.suggestions) {
           expect(suggestion.text).not.toMatch(/\[.*\]|placeholder|TODO/i);
         }
-      }
+      },
     ),
-    { numRuns: 100 }
+    { numRuns: 100 },
   );
 });
 ```
 
 ```typescript
 // BAD: Tests the specific fix, not the invariant
-it('returns array instead of null for empty input', () => {
-  const result = service.process('');
+it("returns array instead of null for empty input", () => {
+  const result = service.process("");
   expect(result).toEqual([]);
 });
 ```
@@ -83,24 +83,25 @@ it('returns array instead of null for empty input', () => {
 
 ```typescript
 // GOOD: Bug was an HTTP 403 → test hits the real HTTP route
-it('accepts request with expired Firebase token when API key is present', async () => {
+it("accepts request with expired Firebase token when API key is present", async () => {
   const res = await request(app)
-    .post('/api/optimize-stream')
-    .set('X-Firebase-Token', 'expired-token')
-    .set('X-API-Key', 'dev-key-12345')
-    .send({ prompt: 'test', mode: 'video' });
+    .post("/api/optimize-stream")
+    .set("X-Firebase-Token", "expired-token")
+    .set("X-API-Key", "dev-key-12345")
+    .send({ prompt: "test", mode: "video" });
   expect(res.status).not.toBe(403);
 });
 
 // BAD: Bug was an HTTP 403 → test mocks everything and checks a helper function
-it('includes dev API key fallback', async () => {
-  vi.mock('@/config/firebase', () => ({ auth: mockAuth }));
+it("includes dev API key fallback", async () => {
+  vi.mock("@/config/firebase", () => ({ auth: mockAuth }));
   const headers = await buildFirebaseAuthHeaders();
-  expect(headers['X-API-Key']).toBe('dev-key-12345');
+  expect(headers["X-API-Key"]).toBe("dev-key-12345");
 });
 ```
 
 **Name tests as invariants, not fixes:**
+
 - ✗ `it('fixes dev API key missing when Firebase token present')`
 - ✓ `it('dev requests with expired Firebase token fall back to API key auth')`
 
@@ -133,7 +134,7 @@ The commit-msg hook enforces that any commit with a `fix:` or `fix(` message pre
 Before considering your regression test complete, verify:
 
 - [ ] **Tests at the failure boundary.** If the user saw an HTTP error, the test hits an HTTP route. If they saw wrong UI, the test renders a component.
-- [ ] **Tests the invariant, not the fix.** Would this test catch a *different* bug in the same category?
+- [ ] **Tests the invariant, not the fix.** Would this test catch a _different_ bug in the same category?
 - [ ] **Minimal mocking.** External boundaries only (LLM APIs, databases). Never mock peer services to passthrough.
 - [ ] **Does not mock the service being fixed.** The mock boundary is strictly outward of the fix.
 - [ ] **Named as regression.** File is `*.regression.test.ts` for auditability.
@@ -156,6 +157,7 @@ npm run test:regression:quality  # Check for internal mock violations
 ```
 
 Review regression tests periodically. Each one should:
+
 1. Name the invariant it protects in the `describe` block
 2. Test at the failure boundary, not the fix location
 3. Use property-based testing where the invariant spans input classes

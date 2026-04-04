@@ -1,10 +1,10 @@
-import React from 'react';
-import { Image } from '@promptstudio/system/components/ui';
-import { cn } from '@/utils/cn';
-import { useResolvedMediaUrl } from '@/hooks/useResolvedMediaUrl';
+import React from "react";
+import { Image } from "@promptstudio/system/components/ui";
+import { cn } from "@/utils/cn";
+import { useResolvedMediaUrl } from "@/hooks/useResolvedMediaUrl";
 
-type HistoryThumbnailSize = 'sm' | 'md' | 'lg';
-type HistoryThumbnailVariant = 'default' | 'muted';
+type HistoryThumbnailSize = "sm" | "md" | "lg";
+type HistoryThumbnailVariant = "default" | "muted";
 
 interface HistoryThumbnailProps {
   src?: string | null;
@@ -18,25 +18,25 @@ interface HistoryThumbnailProps {
 }
 
 const SIZE_CLASSES: Record<HistoryThumbnailSize, string> = {
-  sm: 'ps-thumb-size-sm',
-  md: 'ps-thumb-size-md',
-  lg: 'ps-thumb-size-lg',
+  sm: "ps-thumb-size-sm",
+  md: "ps-thumb-size-md",
+  lg: "ps-thumb-size-lg",
 };
 
 export function HistoryThumbnail({
   src,
   storagePath,
   assetId,
-  label = 'Prompt thumbnail',
-  size = 'sm',
-  variant = 'default',
+  label = "Prompt thumbnail",
+  size = "sm",
+  variant = "default",
   isActive = false,
   className,
 }: HistoryThumbnailProps): React.ReactElement {
   const [didError, setDidError] = React.useState<boolean>(false);
   const refreshAttemptedRef = React.useRef(false);
   const { url: resolvedUrl, refresh } = useResolvedMediaUrl({
-    kind: 'image',
+    kind: "image",
     url: src ?? null,
     storagePath: storagePath ?? null,
     assetId: assetId ?? null,
@@ -47,34 +47,34 @@ export function HistoryThumbnail({
     refreshAttemptedRef.current = false;
   }, [src]);
 
-  const normalizedSrc = resolvedUrl?.trim?.() ?? '';
+  const normalizedSrc = resolvedUrl?.trim?.() ?? "";
   const hasSrc = normalizedSrc.length > 0;
   const showFallback = !hasSrc || didError;
 
   const fallbackChar = React.useMemo(() => {
-    const raw = (label ?? '').trim();
-    if (!raw) return '';
+    const raw = (label ?? "").trim();
+    if (!raw) return "";
     const match = raw.match(/[A-Za-z0-9]/);
-    return (match?.[0] ?? '').toUpperCase();
+    return (match?.[0] ?? "").toUpperCase();
   }, [label]);
 
   const variantClass =
-    variant === 'muted' ? 'ps-thumb-muted' : 'ps-thumb-placeholder';
+    variant === "muted" ? "ps-thumb-muted" : "ps-thumb-placeholder";
 
   return (
     <div
       className={cn(
-        'ps-thumb-frame flex flex-shrink-0 items-center justify-center bg-[rgb(44,48,55)]',
+        "ps-thumb-frame flex flex-shrink-0 items-center justify-center bg-[rgb(44,48,55)]",
         SIZE_CLASSES[size],
-        isActive && 'ps-thumb-active',
-        className
+        isActive && "ps-thumb-active",
+        className,
       )}
     >
       {showFallback ? (
         <div
           className={cn(
-            'flex h-full w-full items-center justify-center',
-            variantClass
+            "flex h-full w-full items-center justify-center",
+            variantClass,
           )}
         >
           {fallbackChar ? (
@@ -97,7 +97,7 @@ export function HistoryThumbnail({
               return;
             }
             refreshAttemptedRef.current = true;
-            const refreshed = await refresh('error');
+            const refreshed = await refresh("error");
             if (!refreshed.url || refreshed.url === normalizedSrc) {
               setDidError(true);
             }

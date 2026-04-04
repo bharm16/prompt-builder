@@ -1,6 +1,6 @@
-import type { CapabilitiesSchema } from '../../../shared/capabilities';
-import type { CatalogEntry } from '../modelCatalog';
-import { MANUAL_CAPABILITIES_REGISTRY } from '../../../server/src/services/capabilities/manualRegistry';
+import type { CapabilitiesSchema } from "../../../shared/capabilities";
+import type { CatalogEntry } from "../modelCatalog";
+import { MANUAL_CAPABILITIES_REGISTRY } from "../../../server/src/services/capabilities/manualRegistry";
 
 interface GoogleModelsResponse {
   models?: Array<{ name?: string }>;
@@ -10,7 +10,7 @@ export async function fetchGoogleCapabilities(
   entry: CatalogEntry,
   apiKey: string | undefined,
   generatedAt: string,
-  log: (message: string, meta?: Record<string, unknown>) => void
+  log: (message: string, meta?: Record<string, unknown>) => void,
 ): Promise<CapabilitiesSchema> {
   const manual = MANUAL_CAPABILITIES_REGISTRY[entry.provider]?.[entry.id];
   if (!manual) {
@@ -21,14 +21,16 @@ export async function fetchGoogleCapabilities(
   schema.generated_at = generatedAt;
 
   if (!apiKey) {
-    schema.source = 'google.manual';
-    log('GEMINI_API_KEY/GOOGLE_API_KEY missing, using manual baseline', { model: entry.id });
+    schema.source = "google.manual";
+    log("GEMINI_API_KEY/GOOGLE_API_KEY missing, using manual baseline", {
+      model: entry.id,
+    });
     return schema;
   }
 
   try {
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`
+      `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`,
     );
 
     if (!response.ok) {
@@ -38,14 +40,14 @@ export async function fetchGoogleCapabilities(
 
     const payload = (await response.json()) as GoogleModelsResponse;
     const modelIds = (payload.models || [])
-      .map((model) => model.name?.replace('models/', ''))
-      .filter((id): id is string => typeof id === 'string' && id.length > 0);
+      .map((model) => model.name?.replace("models/", ""))
+      .filter((id): id is string => typeof id === "string" && id.length > 0);
 
-    const veoModels = modelIds.filter((id) => id.toLowerCase().includes('veo'));
+    const veoModels = modelIds.filter((id) => id.toLowerCase().includes("veo"));
     if (veoModels.length > 0) {
-      schema.source = 'google.api+manual';
+      schema.source = "google.api+manual";
     } else {
-      schema.source = 'google.manual (no veo models found)';
+      schema.source = "google.manual (no veo models found)";
     }
 
     return schema;

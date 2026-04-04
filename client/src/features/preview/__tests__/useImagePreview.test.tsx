@@ -1,10 +1,10 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { renderHook, act, waitFor } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { renderHook, act, waitFor } from "@testing-library/react";
 
-import { useImagePreview } from '../hooks/useImagePreview';
-import { generatePreview, generateStoryboardPreview } from '../api/previewApi';
+import { useImagePreview } from "../hooks/useImagePreview";
+import { generatePreview, generateStoryboardPreview } from "../api/previewApi";
 
-vi.mock('../api/previewApi', () => ({
+vi.mock("../api/previewApi", () => ({
   generatePreview: vi.fn(),
   generateStoryboardPreview: vi.fn(),
 }));
@@ -16,20 +16,20 @@ const mockGenerateStoryboardPreview = vi.mocked(generateStoryboardPreview);
 // useImagePreview
 // ============================================================================
 
-describe('useImagePreview', () => {
+describe("useImagePreview", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  describe('error handling', () => {
-    it('sets an error when preview generation fails', async () => {
+  describe("error handling", () => {
+    it("sets an error when preview generation fails", async () => {
       mockGeneratePreview.mockResolvedValueOnce({
         success: false,
-        error: 'Preview failed',
+        error: "Preview failed",
       });
 
       const { result } = renderHook(() =>
-        useImagePreview({ prompt: 'Test', isVisible: true })
+        useImagePreview({ prompt: "Test", isVisible: true }),
       );
 
       act(() => {
@@ -37,27 +37,27 @@ describe('useImagePreview', () => {
       });
 
       await waitFor(() => {
-        expect(result.current.error).toBe('Preview failed');
+        expect(result.current.error).toBe("Preview failed");
       });
       expect(result.current.imageUrl).toBeNull();
     });
 
-    it('throws an error when storyboard responses are empty', async () => {
+    it("throws an error when storyboard responses are empty", async () => {
       mockGenerateStoryboardPreview.mockResolvedValueOnce({
         success: true,
         data: {
           imageUrls: [],
           deltas: [],
-          baseImageUrl: '',
+          baseImageUrl: "",
         },
       });
 
       const { result } = renderHook(() =>
         useImagePreview({
-          prompt: 'Storyboard prompt',
+          prompt: "Storyboard prompt",
           isVisible: true,
-          provider: 'replicate-flux-kontext-fast',
-        })
+          provider: "replicate-flux-kontext-fast",
+        }),
       );
 
       act(() => {
@@ -65,15 +65,17 @@ describe('useImagePreview', () => {
       });
 
       await waitFor(() => {
-        expect(result.current.error).toBe('Storyboard response contained no images');
+        expect(result.current.error).toBe(
+          "Storyboard response contained no images",
+        );
       });
     });
   });
 
-  describe('edge cases', () => {
-    it('does not generate when the prompt is empty', () => {
+  describe("edge cases", () => {
+    it("does not generate when the prompt is empty", () => {
       const { result } = renderHook(() =>
-        useImagePreview({ prompt: '   ', isVisible: true })
+        useImagePreview({ prompt: "   ", isVisible: true }),
       );
 
       act(() => {
@@ -84,24 +86,24 @@ describe('useImagePreview', () => {
       expect(result.current.loading).toBe(false);
     });
 
-    it('passes reference images to kontext storyboard generation', async () => {
+    it("passes reference images to kontext storyboard generation", async () => {
       mockGenerateStoryboardPreview.mockResolvedValueOnce({
         success: true,
         data: {
-          imageUrls: ['https://example.com/1.png', 'https://example.com/2.png'],
-          deltas: ['delta-1', 'delta-2'],
-          baseImageUrl: 'https://example.com/base.png',
+          imageUrls: ["https://example.com/1.png", "https://example.com/2.png"],
+          deltas: ["delta-1", "delta-2"],
+          baseImageUrl: "https://example.com/base.png",
         },
       });
 
       const { result } = renderHook(() =>
         useImagePreview({
-          prompt: 'Kontext prompt',
+          prompt: "Kontext prompt",
           isVisible: true,
-          provider: 'replicate-flux-kontext-fast',
-          seedImageUrl: 'https://example.com/seed.png',
+          provider: "replicate-flux-kontext-fast",
+          seedImageUrl: "https://example.com/seed.png",
           useReferenceImage: true,
-        })
+        }),
       );
 
       act(() => {
@@ -113,21 +115,23 @@ describe('useImagePreview', () => {
       });
 
       expect(mockGenerateStoryboardPreview).toHaveBeenCalledWith(
-        'Kontext prompt',
-        expect.objectContaining({ seedImageUrl: 'https://example.com/seed.png' })
+        "Kontext prompt",
+        expect.objectContaining({
+          seedImageUrl: "https://example.com/seed.png",
+        }),
       );
     });
   });
 
-  describe('core behavior', () => {
-    it('stores the generated preview image URL', async () => {
+  describe("core behavior", () => {
+    it("stores the generated preview image URL", async () => {
       mockGeneratePreview.mockResolvedValueOnce({
         success: true,
         data: {
-          imageUrl: 'https://example.com/preview.png',
+          imageUrl: "https://example.com/preview.png",
           metadata: {
-            aspectRatio: '16:9',
-            model: 'test-model',
+            aspectRatio: "16:9",
+            model: "test-model",
             duration: 0,
             generatedAt: new Date().toISOString(),
           },
@@ -135,7 +139,7 @@ describe('useImagePreview', () => {
       });
 
       const { result } = renderHook(() =>
-        useImagePreview({ prompt: 'Test', isVisible: true })
+        useImagePreview({ prompt: "Test", isVisible: true }),
       );
 
       act(() => {
@@ -143,7 +147,7 @@ describe('useImagePreview', () => {
       });
 
       await waitFor(() => {
-        expect(result.current.imageUrl).toBe('https://example.com/preview.png');
+        expect(result.current.imageUrl).toBe("https://example.com/preview.png");
         expect(result.current.error).toBeNull();
       });
     });

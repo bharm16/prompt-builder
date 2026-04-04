@@ -1,9 +1,18 @@
-import { logger } from '@infrastructure/Logger';
-import SpanLabelingConfig from '../config/SpanLabelingConfig.js';
-import { extractKnownSpans, getVocabStats, extractSemanticSpans, isGlinerAvailable } from '../nlp/NlpSpanService.js';
-import { validateSpans } from '../validation/SpanValidator.js';
-import type { SubstringPositionCache } from '../cache/SubstringPositionCache.js';
-import type { LabelSpansResult, ValidationPolicy, ProcessingOptions } from '../types.js';
+import { logger } from "@infrastructure/Logger";
+import SpanLabelingConfig from "../config/SpanLabelingConfig.js";
+import {
+  extractKnownSpans,
+  getVocabStats,
+  extractSemanticSpans,
+  isGlinerAvailable,
+} from "../nlp/NlpSpanService.js";
+import { validateSpans } from "../validation/SpanValidator.js";
+import type { SubstringPositionCache } from "../cache/SubstringPositionCache.js";
+import type {
+  LabelSpansResult,
+  ValidationPolicy,
+  ProcessingOptions,
+} from "../types.js";
 
 /**
  * NLP Span Strategy
@@ -15,7 +24,7 @@ import type { LabelSpansResult, ValidationPolicy, ProcessingOptions } from '../t
  * Returns null if fast-path should be skipped (insufficient coverage or disabled)
  */
 export class NlpSpanStrategy {
-  private readonly log = logger.child({ service: 'NlpSpanStrategy' });
+  private readonly log = logger.child({ service: "NlpSpanStrategy" });
 
   /**
    * NLP is inherently extractive: it can only label what exists in the text.
@@ -33,13 +42,13 @@ export class NlpSpanStrategy {
     else if (wordCount < 220) expected = 12;
     else expected = 15;
 
-    const limit = typeof maxSpans === 'number' && maxSpans > 0 ? maxSpans : 60;
+    const limit = typeof maxSpans === "number" && maxSpans > 0 ? maxSpans : 60;
     return Math.max(1, Math.min(expected, limit));
   }
 
   private _calculateCoveragePercent(
     spans: Array<{ start?: number; end?: number }> | null | undefined,
-    text: string
+    text: string,
   ): number {
     if (!Array.isArray(spans) || spans.length === 0 || !text) {
       return 0;
@@ -59,7 +68,8 @@ export class NlpSpanStrategy {
 
     const coveredWords = new Set<number>();
     spans.forEach((span) => {
-      if (typeof span.start !== 'number' || typeof span.end !== 'number') return;
+      if (typeof span.start !== "number" || typeof span.end !== "number")
+        return;
       for (let i = 0; i < words.length; i++) {
         const word = words[i];
         if (!word) continue;
@@ -73,8 +83,8 @@ export class NlpSpanStrategy {
   }
 
   private _getParentCategory(role: string | null | undefined): string {
-    if (!role || typeof role !== 'string') return '';
-    const dotIndex = role.indexOf('.');
+    if (!role || typeof role !== "string") return "";
+    const dotIndex = role.indexOf(".");
     return dotIndex > 0 ? role.substring(0, dotIndex) : role;
   }
 
@@ -90,9 +100,9 @@ export class NlpSpanStrategy {
 
     spans.forEach((span) => {
       const parent = this._getParentCategory(span.role);
-      if (parent === 'subject') subject = true;
-      if (parent === 'action') action = true;
-      if (parent === 'environment') environment = true;
+      if (parent === "subject") subject = true;
+      if (parent === "action") action = true;
+      if (parent === "environment") environment = true;
     });
 
     const count = [subject, action, environment].filter(Boolean).length;
@@ -100,31 +110,37 @@ export class NlpSpanStrategy {
   }
 
   private _isHighSignalRole(role: string | null | undefined): boolean {
-    if (!role || typeof role !== 'string') return false;
+    if (!role || typeof role !== "string") return false;
     const normalized = role.toLowerCase();
     return (
-      normalized.startsWith('technical') ||
-      normalized.startsWith('camera') ||
-      normalized.startsWith('shot') ||
-      normalized.startsWith('style') ||
-      normalized.startsWith('audio') ||
-      normalized.startsWith('lighting')
+      normalized.startsWith("technical") ||
+      normalized.startsWith("camera") ||
+      normalized.startsWith("shot") ||
+      normalized.startsWith("style") ||
+      normalized.startsWith("audio") ||
+      normalized.startsWith("lighting")
     );
   }
 
   private _getAverageConfidence(spans: Array<{ confidence?: number }>): number {
     if (!Array.isArray(spans) || spans.length === 0) return 0;
     const total = spans.reduce(
-      (sum, span) => sum + (typeof span.confidence === 'number' ? span.confidence : 0),
-      0
+      (sum, span) =>
+        sum + (typeof span.confidence === "number" ? span.confidence : 0),
+      0,
     );
     return total / spans.length;
   }
 
   private _assessFastPathSpans(
-    spans: Array<{ start?: number; end?: number; role?: string; confidence?: number }>,
+    spans: Array<{
+      start?: number;
+      end?: number;
+      role?: string;
+      confidence?: number;
+    }>,
     text: string,
-    options: ProcessingOptions
+    options: ProcessingOptions,
   ): {
     accept: boolean;
     spanCount: number;
@@ -135,37 +151,50 @@ export class NlpSpanStrategy {
     sparseHighConfidenceAccepted: boolean;
     wordCount: number;
     minSpanThreshold: number;
-    categoryCoverage: { subject: boolean; action: boolean; environment: boolean; count: number };
+    categoryCoverage: {
+      subject: boolean;
+      action: boolean;
+      environment: boolean;
+      count: number;
+    };
   } {
     const spanCount = spans.length;
-    const expectedMinSpans = this._getExpectedMinSpanCount(text, options.maxSpans);
+    const expectedMinSpans = this._getExpectedMinSpanCount(
+      text,
+      options.maxSpans,
+    );
     const wordCount = text.trim().split(/\s+/).filter(Boolean).length;
     const coveragePercent = this._calculateCoveragePercent(spans, text);
     const avgConfidence = this._getAverageConfidence(spans);
-    const minCoveragePercent = SpanLabelingConfig.NLP_FAST_PATH.MIN_COVERAGE_PERCENT;
+    const minCoveragePercent =
+      SpanLabelingConfig.NLP_FAST_PATH.MIN_COVERAGE_PERCENT;
     const baseMinConfidence =
-      typeof options.minConfidence === 'number'
+      typeof options.minConfidence === "number"
         ? options.minConfidence
         : SpanLabelingConfig.DEFAULT_OPTIONS.minConfidence;
-    const minSpanThreshold = SpanLabelingConfig.NLP_FAST_PATH.MIN_SPANS_THRESHOLD;
+    const minSpanThreshold =
+      SpanLabelingConfig.NLP_FAST_PATH.MIN_SPANS_THRESHOLD;
     const highConfidenceThreshold = Math.max(
       SpanLabelingConfig.NLP_FAST_PATH.SPARSE_HIGH_CONFIDENCE_THRESHOLD,
-      baseMinConfidence
+      baseMinConfidence,
     );
     const highSignalCount = spans.filter(
       (span) =>
-        (typeof span.confidence === 'number' ? span.confidence : 0) >= highConfidenceThreshold &&
-        this._isHighSignalRole(span.role)
+        (typeof span.confidence === "number" ? span.confidence : 0) >=
+          highConfidenceThreshold && this._isHighSignalRole(span.role),
     ).length;
     const sparseHighConfidenceAccepted =
       coveragePercent < minCoveragePercent &&
       spanCount >= SpanLabelingConfig.NLP_FAST_PATH.SPARSE_MIN_SPANS &&
       avgConfidence >= highConfidenceThreshold &&
-      highSignalCount >= SpanLabelingConfig.NLP_FAST_PATH.SPARSE_MIN_SIGNAL_SPANS;
+      highSignalCount >=
+        SpanLabelingConfig.NLP_FAST_PATH.SPARSE_MIN_SIGNAL_SPANS;
 
     const categoryCoverage = this._getCategoryCoverage(spans);
     const requiredMinSpans =
-      wordCount >= 80 ? Math.max(expectedMinSpans, minSpanThreshold) : expectedMinSpans;
+      wordCount >= 80
+        ? Math.max(expectedMinSpans, minSpanThreshold)
+        : expectedMinSpans;
 
     return {
       accept: spanCount >= requiredMinSpans || sparseHighConfidenceAccepted,
@@ -194,47 +223,66 @@ export class NlpSpanStrategy {
     text: string,
     policy: ValidationPolicy,
     options: ProcessingOptions,
-    cache: SubstringPositionCache
+    cache: SubstringPositionCache,
   ): Promise<LabelSpansResult | null> {
     const startTime = Date.now();
     let nlpSpans: unknown[] = [];
     let nlpMetadata: Record<string, unknown> = {};
-    let nlpSource = 'none';
+    let nlpSource = "none";
 
     // ============================================================================
     // PHASE 1: Neuro-Symbolic NLP (Aho-Corasick + GLiNER)
     // ============================================================================
-    if (SpanLabelingConfig.NEURO_SYMBOLIC && SpanLabelingConfig.NEURO_SYMBOLIC.ENABLED) {
+    if (
+      SpanLabelingConfig.NEURO_SYMBOLIC &&
+      SpanLabelingConfig.NEURO_SYMBOLIC.ENABLED
+    ) {
       try {
         // extractSemanticSpans runs both:
         // - Tier 1: Aho-Corasick for closed vocabulary (technical terms)
         // - Tier 2: GLiNER for open vocabulary (semantic entities)
         const semanticResult = await extractSemanticSpans(text);
 
-        const hasSpans = semanticResult.spans && semanticResult.spans.length > 0;
+        const hasSpans =
+          semanticResult.spans && semanticResult.spans.length > 0;
 
         if (hasSpans) {
           nlpSpans = semanticResult.spans as unknown[];
-          nlpSource = (semanticResult.stats as { phase?: string } | undefined)?.phase || 'neuro-symbolic';
+          nlpSource =
+            (semanticResult.stats as { phase?: string } | undefined)?.phase ||
+            "neuro-symbolic";
           nlpMetadata = {
-            closedVocab: (semanticResult.stats as { closedVocabSpans?: number } | undefined)?.closedVocabSpans || 0,
-            openVocab: (semanticResult.stats as { openVocabSpans?: number } | undefined)?.openVocabSpans || 0,
-            tier1Latency: (semanticResult.stats as { tier1Latency?: number } | undefined)?.tier1Latency || 0,
-            tier2Latency: (semanticResult.stats as { tier2Latency?: number } | undefined)?.tier2Latency || 0,
+            closedVocab:
+              (
+                semanticResult.stats as
+                  | { closedVocabSpans?: number }
+                  | undefined
+              )?.closedVocabSpans || 0,
+            openVocab:
+              (semanticResult.stats as { openVocabSpans?: number } | undefined)
+                ?.openVocabSpans || 0,
+            tier1Latency:
+              (semanticResult.stats as { tier1Latency?: number } | undefined)
+                ?.tier1Latency || 0,
+            tier2Latency:
+              (semanticResult.stats as { tier2Latency?: number } | undefined)
+                ?.tier2Latency || 0,
           };
 
-          this.log.info('Neuro-Symbolic spans extracted', {
-            operation: 'extractSpans',
+          this.log.info("Neuro-Symbolic spans extracted", {
+            operation: "extractSpans",
             spanCount: nlpSpans.length,
             closedVocab: nlpMetadata.closedVocab,
             openVocab: nlpMetadata.openVocab,
-            latency: (nlpMetadata.tier1Latency as number) + (nlpMetadata.tier2Latency as number),
+            latency:
+              (nlpMetadata.tier1Latency as number) +
+              (nlpMetadata.tier2Latency as number),
           });
         }
       } catch (error) {
         const err = error as Error;
-        this.log.warn('Neuro-Symbolic extraction error, falling back', {
-          operation: 'extractSpans',
+        this.log.warn("Neuro-Symbolic extraction error, falling back", {
+          operation: "extractSpans",
           error: err.message,
         });
       }
@@ -246,11 +294,11 @@ export class NlpSpanStrategy {
     if (nlpSpans.length === 0 && SpanLabelingConfig.NLP_FAST_PATH.ENABLED) {
       try {
         nlpSpans = extractKnownSpans(text) as unknown[];
-        nlpSource = 'dictionary';
+        nlpSource = "dictionary";
       } catch (error) {
         const err = error as Error;
-        this.log.warn('Dictionary extraction error', {
-          operation: 'extractSpans',
+        this.log.warn("Dictionary extraction error", {
+          operation: "extractSpans",
           error: err.message,
         });
       }
@@ -265,12 +313,14 @@ export class NlpSpanStrategy {
 
       // Validate NLP spans through the same pipeline
       const baseMeta = {
-        version: nlpSource === 'symbolic-nlp' ? 'nlp-v2-semantic' : 'nlp-v1',
+        version: nlpSource === "symbolic-nlp" ? "nlp-v2-semantic" : "nlp-v1",
         notes: `Generated via ${nlpSource} (${nlpSpans.length} spans, ${nlpLatency}ms)`,
         source: nlpSource,
         latency: nlpLatency,
         ...nlpMetadata,
-        vocabStats: SpanLabelingConfig.NLP_FAST_PATH.TRACK_METRICS ? getVocabStats() : undefined,
+        vocabStats: SpanLabelingConfig.NLP_FAST_PATH.TRACK_METRICS
+          ? getVocabStats()
+          : undefined,
       };
 
       const validation = validateSpans({
@@ -285,50 +335,68 @@ export class NlpSpanStrategy {
       });
 
       if (validation.ok) {
-        const assessment = this._assessFastPathSpans(validation.result.spans, text, options);
+        const assessment = this._assessFastPathSpans(
+          validation.result.spans,
+          text,
+          options,
+        );
         const requiresOpenVocab = assessment.wordCount >= 80;
-        const glinerEnabled = SpanLabelingConfig.NEURO_SYMBOLIC?.GLINER?.ENABLED ?? false;
+        const glinerEnabled =
+          SpanLabelingConfig.NEURO_SYMBOLIC?.GLINER?.ENABLED ?? false;
         const glinerReady = isGlinerAvailable();
 
         if (requiresOpenVocab && glinerEnabled && !glinerReady) {
-          this.log.info('GLiNER unavailable for long prompt, falling back to LLM', {
-            operation: 'extractSpans',
-            wordCount: assessment.wordCount,
-            spanCount: assessment.spanCount,
-            source: nlpSource,
-          });
+          this.log.info(
+            "GLiNER unavailable for long prompt, falling back to LLM",
+            {
+              operation: "extractSpans",
+              wordCount: assessment.wordCount,
+              spanCount: assessment.spanCount,
+              source: nlpSource,
+            },
+          );
           return null;
         }
 
         if (requiresOpenVocab && assessment.categoryCoverage.count < 2) {
-          this.log.info('NLP Fast-Path missing core categories for long prompt, falling back to LLM', {
-            operation: 'extractSpans',
-            wordCount: assessment.wordCount,
-            categoryCoverage: assessment.categoryCoverage,
-            spanCount: assessment.spanCount,
-            source: nlpSource,
-          });
+          this.log.info(
+            "NLP Fast-Path missing core categories for long prompt, falling back to LLM",
+            {
+              operation: "extractSpans",
+              wordCount: assessment.wordCount,
+              categoryCoverage: assessment.categoryCoverage,
+              spanCount: assessment.spanCount,
+              source: nlpSource,
+            },
+          );
           return null;
         }
 
         if (!assessment.accept) {
-          this.log.info('NLP Fast-Path span count insufficient for prompt size, falling back to LLM', {
-            operation: 'extractSpans',
-            spanCount: assessment.spanCount,
-            expectedMinSpans: assessment.expectedMinSpans,
-            coveragePercent: Math.round(assessment.coveragePercent * 10) / 10,
-            minCoveragePercent: SpanLabelingConfig.NLP_FAST_PATH.MIN_COVERAGE_PERCENT,
-            avgConfidence: Math.round(assessment.avgConfidence * 100) / 100,
-            highSignalCount: assessment.highSignalCount,
-            wordCount: assessment.wordCount,
-            source: nlpSource,
-          });
+          this.log.info(
+            "NLP Fast-Path span count insufficient for prompt size, falling back to LLM",
+            {
+              operation: "extractSpans",
+              spanCount: assessment.spanCount,
+              expectedMinSpans: assessment.expectedMinSpans,
+              coveragePercent: Math.round(assessment.coveragePercent * 10) / 10,
+              minCoveragePercent:
+                SpanLabelingConfig.NLP_FAST_PATH.MIN_COVERAGE_PERCENT,
+              avgConfidence: Math.round(assessment.avgConfidence * 100) / 100,
+              highSignalCount: assessment.highSignalCount,
+              wordCount: assessment.wordCount,
+              source: nlpSource,
+            },
+          );
           return null;
         }
 
-        if (assessment.spanCount < assessment.expectedMinSpans && assessment.sparseHighConfidenceAccepted) {
-          this.log.info('NLP Fast-Path accepted sparse high-confidence spans', {
-            operation: 'extractSpans',
+        if (
+          assessment.spanCount < assessment.expectedMinSpans &&
+          assessment.sparseHighConfidenceAccepted
+        ) {
+          this.log.info("NLP Fast-Path accepted sparse high-confidence spans", {
+            operation: "extractSpans",
             spanCount: assessment.spanCount,
             expectedMinSpans: assessment.expectedMinSpans,
             coveragePercent: Math.round(assessment.coveragePercent * 10) / 10,
@@ -338,34 +406,46 @@ export class NlpSpanStrategy {
           });
         }
 
-        if (assessment.coveragePercent < SpanLabelingConfig.NLP_FAST_PATH.MIN_COVERAGE_PERCENT) {
-          const acceptanceReason = assessment.spanCount >= assessment.expectedMinSpans ? 'span count' : 'sparse high-confidence spans';
-          this.log.debug('NLP Fast-Path coverage below threshold but accepted', {
-            operation: 'extractSpans',
-            acceptanceReason,
-            validationMode: 'strict',
-            spanCount: assessment.spanCount,
-            expectedMinSpans: assessment.expectedMinSpans,
-            coveragePercent: Math.round(assessment.coveragePercent * 10) / 10,
-            minCoveragePercent: SpanLabelingConfig.NLP_FAST_PATH.MIN_COVERAGE_PERCENT,
-            source: nlpSource,
-          });
+        if (
+          assessment.coveragePercent <
+          SpanLabelingConfig.NLP_FAST_PATH.MIN_COVERAGE_PERCENT
+        ) {
+          const acceptanceReason =
+            assessment.spanCount >= assessment.expectedMinSpans
+              ? "span count"
+              : "sparse high-confidence spans";
+          this.log.debug(
+            "NLP Fast-Path coverage below threshold but accepted",
+            {
+              operation: "extractSpans",
+              acceptanceReason,
+              validationMode: "strict",
+              spanCount: assessment.spanCount,
+              expectedMinSpans: assessment.expectedMinSpans,
+              coveragePercent: Math.round(assessment.coveragePercent * 10) / 10,
+              minCoveragePercent:
+                SpanLabelingConfig.NLP_FAST_PATH.MIN_COVERAGE_PERCENT,
+              source: nlpSource,
+            },
+          );
         }
 
         // Log telemetry if enabled
         if (SpanLabelingConfig.NLP_FAST_PATH.TRACK_COST_SAVINGS) {
-          this.log.info('NLP Fast-Path bypassed LLM call', {
-            operation: 'extractSpans',
+          this.log.info("NLP Fast-Path bypassed LLM call", {
+            operation: "extractSpans",
             spanCount: nlpSpans.length,
             latency: nlpLatency,
-            estimatedSavings: '$0.0005',
+            estimatedSavings: "$0.0005",
           });
         }
 
         return {
           spans: validation.result.spans,
           meta: validation.result.meta,
-          ...(validation.result.isAdversarial !== undefined && { isAdversarial: validation.result.isAdversarial }),
+          ...(validation.result.isAdversarial !== undefined && {
+            isAdversarial: validation.result.isAdversarial,
+          }),
         };
       }
 
@@ -382,75 +462,106 @@ export class NlpSpanStrategy {
       });
 
       if (lenientValidation.ok) {
-        const assessment = this._assessFastPathSpans(lenientValidation.result.spans, text, options);
+        const assessment = this._assessFastPathSpans(
+          lenientValidation.result.spans,
+          text,
+          options,
+        );
         const requiresOpenVocab = assessment.wordCount >= 80;
-        const glinerEnabled = SpanLabelingConfig.NEURO_SYMBOLIC?.GLINER?.ENABLED ?? false;
+        const glinerEnabled =
+          SpanLabelingConfig.NEURO_SYMBOLIC?.GLINER?.ENABLED ?? false;
         const glinerReady = isGlinerAvailable();
 
         if (requiresOpenVocab && glinerEnabled && !glinerReady) {
-          this.log.info('GLiNER unavailable for long prompt (lenient), falling back to LLM', {
-            operation: 'extractSpans',
-            wordCount: assessment.wordCount,
-            spanCount: assessment.spanCount,
-            source: nlpSource,
-          });
+          this.log.info(
+            "GLiNER unavailable for long prompt (lenient), falling back to LLM",
+            {
+              operation: "extractSpans",
+              wordCount: assessment.wordCount,
+              spanCount: assessment.spanCount,
+              source: nlpSource,
+            },
+          );
           return null;
         }
 
         if (requiresOpenVocab && assessment.categoryCoverage.count < 2) {
-          this.log.info('NLP Fast-Path missing core categories for long prompt (lenient), falling back to LLM', {
-            operation: 'extractSpans',
-            wordCount: assessment.wordCount,
-            categoryCoverage: assessment.categoryCoverage,
-            spanCount: assessment.spanCount,
-            source: nlpSource,
-          });
+          this.log.info(
+            "NLP Fast-Path missing core categories for long prompt (lenient), falling back to LLM",
+            {
+              operation: "extractSpans",
+              wordCount: assessment.wordCount,
+              categoryCoverage: assessment.categoryCoverage,
+              spanCount: assessment.spanCount,
+              source: nlpSource,
+            },
+          );
           return null;
         }
 
         if (!assessment.accept) {
-          this.log.info('NLP Fast-Path span count insufficient for prompt size (lenient), falling back to LLM', {
-            operation: 'extractSpans',
-            spanCount: assessment.spanCount,
-            expectedMinSpans: assessment.expectedMinSpans,
-            coveragePercent: Math.round(assessment.coveragePercent * 10) / 10,
-            minCoveragePercent: SpanLabelingConfig.NLP_FAST_PATH.MIN_COVERAGE_PERCENT,
-            avgConfidence: Math.round(assessment.avgConfidence * 100) / 100,
-            highSignalCount: assessment.highSignalCount,
-            wordCount: assessment.wordCount,
-            source: nlpSource,
-          });
+          this.log.info(
+            "NLP Fast-Path span count insufficient for prompt size (lenient), falling back to LLM",
+            {
+              operation: "extractSpans",
+              spanCount: assessment.spanCount,
+              expectedMinSpans: assessment.expectedMinSpans,
+              coveragePercent: Math.round(assessment.coveragePercent * 10) / 10,
+              minCoveragePercent:
+                SpanLabelingConfig.NLP_FAST_PATH.MIN_COVERAGE_PERCENT,
+              avgConfidence: Math.round(assessment.avgConfidence * 100) / 100,
+              highSignalCount: assessment.highSignalCount,
+              wordCount: assessment.wordCount,
+              source: nlpSource,
+            },
+          );
           return null;
         }
 
-        if (assessment.spanCount < assessment.expectedMinSpans && assessment.sparseHighConfidenceAccepted) {
-          this.log.info('NLP Fast-Path accepted sparse high-confidence spans (lenient)', {
-            operation: 'extractSpans',
-            spanCount: assessment.spanCount,
-            expectedMinSpans: assessment.expectedMinSpans,
-            coveragePercent: Math.round(assessment.coveragePercent * 10) / 10,
-            avgConfidence: Math.round(assessment.avgConfidence * 100) / 100,
-            highSignalCount: assessment.highSignalCount,
-            source: nlpSource,
-          });
+        if (
+          assessment.spanCount < assessment.expectedMinSpans &&
+          assessment.sparseHighConfidenceAccepted
+        ) {
+          this.log.info(
+            "NLP Fast-Path accepted sparse high-confidence spans (lenient)",
+            {
+              operation: "extractSpans",
+              spanCount: assessment.spanCount,
+              expectedMinSpans: assessment.expectedMinSpans,
+              coveragePercent: Math.round(assessment.coveragePercent * 10) / 10,
+              avgConfidence: Math.round(assessment.avgConfidence * 100) / 100,
+              highSignalCount: assessment.highSignalCount,
+              source: nlpSource,
+            },
+          );
         }
 
-        if (assessment.coveragePercent < SpanLabelingConfig.NLP_FAST_PATH.MIN_COVERAGE_PERCENT) {
-          const acceptanceReason = assessment.spanCount >= assessment.expectedMinSpans ? 'span count' : 'sparse high-confidence spans';
-          this.log.debug('NLP Fast-Path coverage below threshold but accepted', {
-            operation: 'extractSpans',
-            acceptanceReason,
-            validationMode: 'lenient',
-            spanCount: assessment.spanCount,
-            expectedMinSpans: assessment.expectedMinSpans,
-            coveragePercent: Math.round(assessment.coveragePercent * 10) / 10,
-            minCoveragePercent: SpanLabelingConfig.NLP_FAST_PATH.MIN_COVERAGE_PERCENT,
-            source: nlpSource,
-          });
+        if (
+          assessment.coveragePercent <
+          SpanLabelingConfig.NLP_FAST_PATH.MIN_COVERAGE_PERCENT
+        ) {
+          const acceptanceReason =
+            assessment.spanCount >= assessment.expectedMinSpans
+              ? "span count"
+              : "sparse high-confidence spans";
+          this.log.debug(
+            "NLP Fast-Path coverage below threshold but accepted",
+            {
+              operation: "extractSpans",
+              acceptanceReason,
+              validationMode: "lenient",
+              spanCount: assessment.spanCount,
+              expectedMinSpans: assessment.expectedMinSpans,
+              coveragePercent: Math.round(assessment.coveragePercent * 10) / 10,
+              minCoveragePercent:
+                SpanLabelingConfig.NLP_FAST_PATH.MIN_COVERAGE_PERCENT,
+              source: nlpSource,
+            },
+          );
         }
 
-        this.log.info('NLP Fast-Path accepted with lenient validation', {
-          operation: 'extractSpans',
+        this.log.info("NLP Fast-Path accepted with lenient validation", {
+          operation: "extractSpans",
           spanCount: assessment.spanCount,
           latency: nlpLatency,
         });
@@ -458,7 +569,9 @@ export class NlpSpanStrategy {
         return {
           spans: lenientValidation.result.spans,
           meta: lenientValidation.result.meta,
-          ...(lenientValidation.result.isAdversarial !== undefined && { isAdversarial: lenientValidation.result.isAdversarial }),
+          ...(lenientValidation.result.isAdversarial !== undefined && {
+            isAdversarial: lenientValidation.result.isAdversarial,
+          }),
         };
       }
     }

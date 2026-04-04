@@ -1,86 +1,72 @@
-import { logger } from '@infrastructure/Logger';
-import { CATEGORY_CONSTRAINTS, detectSubcategory } from '../config/CategoryConstraints.js';
-import { CONSTRAINT_THRESHOLDS } from '@services/video-prompt-analysis/config/constraintModes.js';
-import type { Suggestion, ValidationParams, CategoryAlignmentResult } from './types.js';
+import { logger } from "@infrastructure/Logger";
+import { CONSTRAINT_THRESHOLDS } from "@services/video-prompt-analysis/config/constraintModes";
+import { getParentCategory } from "@shared/taxonomy";
+import type {
+  Suggestion,
+  ValidationParams,
+  CategoryAlignmentResult,
+} from "./types.js";
 
 /**
  * Interface for validation service
  */
 interface ValidationService {
-  validateSuggestions(suggestions: Suggestion[], highlightedText: string, category: string): Suggestion[];
+  validateSuggestions(
+    suggestions: Suggestion[],
+    highlightedText: string,
+    category: string,
+  ): Suggestion[];
 }
 
 /**
  * CategoryAlignmentService
  *
- * Responsible for enforcing category alignment and providing fallback suggestions.
- * Ensures suggestions match the expected category and provides alternatives when needed.
+ * Responsible for enforcing category alignment of AI-generated suggestions.
+ * When suggestions are insufficient or mismatched, returns empty so the
+ * downstream FallbackRegenerationService can handle the gap with LLM calls.
  *
- * Single Responsibility: Category validation and fallback management
+ * Single Responsibility: Category validation and alignment gating
  */
 export class CategoryAlignmentService {
-  private readonly log = logger.child({ service: 'CategoryAlignmentService' });
+  private readonly log = logger.child({ service: "CategoryAlignmentService" });
+  private readonly legacyCategoryToParent: Record<string, string> = {
+    descriptive: "style",
+    framing: "shot",
+    cameramove: "camera",
+  };
 
   constructor(private readonly validationService: ValidationService) {}
 
   /**
    * Enforce category alignment for suggestions
-   * Validates suggestions match the category or provides fallbacks
+   * Validates suggestions match the category or returns empty for LLM fallback
    * @param suggestions - Array of suggestions to validate
    * @param params - Validation parameters
    * @returns Result with suggestions and metadata
    */
-  enforceCategoryAlignment(suggestions: Suggestion[], params: ValidationParams): CategoryAlignmentResult {
-    const operation = 'enforceCategoryAlignment';
-    const { highlightedText, highlightedCategory, highlightedCategoryConfidence } = params;
+  enforceCategoryAlignment(
+    suggestions: Suggestion[],
+    params: ValidationParams,
+  ): CategoryAlignmentResult {
+    const operation = "enforceCategoryAlignment";
+    const {
+      highlightedText,
+      highlightedCategory,
+      highlightedCategoryConfidence,
+    } = params;
     const confidenceIsLow =
-      typeof highlightedCategoryConfidence === 'number' &&
-      highlightedCategoryConfidence < CONSTRAINT_THRESHOLDS.MIN_CATEGORY_CONFIDENCE;
+      typeof highlightedCategoryConfidence === "number" &&
+      highlightedCategoryConfidence <
+        CONSTRAINT_THRESHOLDS.MIN_CATEGORY_CONFIDENCE;
 
-    this.log.debug('Enforcing category alignment', {
+    this.log.debug("Enforcing category alignment", {
       operation,
       suggestionCount: suggestions.length,
       category: highlightedCategory || null,
     });
 
-    // Check if we need fallbacks
-    const needsFallback = this.shouldUseFallback(
-      suggestions,
-      highlightedText,
-      highlightedCategory,
-      highlightedCategoryConfidence ?? null
-    );
-
-    if (needsFallback) {
-      this.log.warn('Fallback required due to category mismatch or low confidence', {
-        operation,
-        originalSuggestionCount: suggestions.length,
-        category: highlightedCategory || null,
-      });
-      
-      const fallbacks = this.getCategoryFallbacks(highlightedText, highlightedCategory);
-      
-      this.log.info('Fallback suggestions applied', {
-        operation,
-        fallbackCount: fallbacks.length,
-        category: highlightedCategory || null,
-      });
-      
-      const context = {
-        ...(highlightedCategory ? { baseCategory: highlightedCategory } : {}),
-        originalSuggestionsRejected: suggestions.length,
-        reason: 'Category mismatch or low confidence',
-      };
-
-      return {
-        suggestions: fallbacks,
-        fallbackApplied: true,
-        context,
-      };
-    }
-
     if (confidenceIsLow) {
-      this.log.info('Skipping category validation due to low confidence', {
+      this.log.info("Skipping category validation due to low confidence", {
         operation,
         category: highlightedCategory || null,
         confidence: highlightedCategoryConfidence,
@@ -90,7 +76,25 @@ export class CategoryAlignmentService {
         fallbackApplied: false,
         context: {
           ...(highlightedCategory ? { baseCategory: highlightedCategory } : {}),
-          reason: 'Low category confidence',
+          reason: "Low category confidence",
+        },
+      };
+    }
+
+    if (!suggestions || suggestions.length === 0) {
+      this.log.warn("Returning empty for LLM-based fallback regeneration", {
+        operation,
+        originalSuggestionCount: suggestions.length,
+        category: highlightedCategory || null,
+      });
+
+      return {
+        suggestions: [],
+        fallbackApplied: true,
+        context: {
+          ...(highlightedCategory ? { baseCategory: highlightedCategory } : {}),
+          originalSuggestionsRejected: suggestions.length,
+          reason: "Category mismatch or low confidence",
         },
       };
     }
@@ -99,10 +103,30 @@ export class CategoryAlignmentService {
     const validSuggestions = this.validationService.validateSuggestions(
       suggestions,
       highlightedText,
-      highlightedCategory || ''
+      highlightedCategory || "",
     );
 
-    this.log.info('Category alignment completed', {
+    if (validSuggestions.length < 2) {
+      this.log.warn("Returning empty for LLM-based fallback regeneration", {
+        operation,
+        originalSuggestionCount: suggestions.length,
+        validSuggestionCount: validSuggestions.length,
+        category: highlightedCategory || null,
+      });
+
+      return {
+        suggestions: [],
+        fallbackApplied: true,
+        context: {
+          ...(highlightedCategory ? { baseCategory: highlightedCategory } : {}),
+          originalSuggestionsRejected:
+            suggestions.length - validSuggestions.length,
+          reason: "Category mismatch or low confidence",
+        },
+      };
+    }
+
+    this.log.info("Category alignment completed", {
       operation,
       originalCount: suggestions.length,
       validCount: validSuggestions.length,
@@ -110,7 +134,9 @@ export class CategoryAlignmentService {
       fallbackApplied: false,
     });
 
-    const context = highlightedCategory ? { baseCategory: highlightedCategory } : {};
+    const context = highlightedCategory
+      ? { baseCategory: highlightedCategory }
+      : {};
 
     return {
       suggestions: validSuggestions,
@@ -121,197 +147,75 @@ export class CategoryAlignmentService {
 
   /**
    * Determine if fallback suggestions should be used
-   * Checks for category mismatches and quality issues
+   * Uses count-based heuristics only — no regex-based category detection.
+   * Cross-category contamination is handled downstream by _failsSlotFitGuard
+   * in SuggestionValidationService.sanitizeSuggestions().
    * @param suggestions - Suggestions to validate
-   * @param highlightedText - Original text
-   * @param category - Expected category
+   * @param _highlightedText - Original text (unused after regex removal)
+   * @param _category - Expected category (unused after regex removal)
+   * @param confidence - Category confidence score
    * @returns True if fallbacks should be used
    */
   shouldUseFallback(
     suggestions: Suggestion[],
     highlightedText: string,
     category?: string,
-    confidence?: number | null
+    confidence?: number | null,
   ): boolean {
-    const operation = 'shouldUseFallback';
+    const operation = "shouldUseFallback";
     const confidenceIsLow =
-      typeof confidence === 'number' &&
+      typeof confidence === "number" &&
       confidence < CONSTRAINT_THRESHOLDS.MIN_CATEGORY_CONFIDENCE;
-    
-    // Use fallback if no suggestions or very low count
+
+    // Use fallback if no suggestions
     if (!suggestions || suggestions.length === 0) {
-      this.log.debug('Fallback needed: insufficient suggestions', {
+      this.log.debug("Fallback needed: no suggestions", {
         operation,
         suggestionCount: suggestions?.length || 0,
       });
       return true;
     }
 
+    // Don't trigger fallback on low-confidence spans — let them pass through
     if (confidenceIsLow) {
-      this.log.debug('Category confidence low, skipping fallback checks', {
+      this.log.debug("Category confidence low, skipping fallback checks", {
         operation,
         confidence,
       });
       return false;
     }
 
-    if (suggestions.length < 2) {
-      this.log.debug('Fallback needed: insufficient suggestions', {
+    if (!category) {
+      return suggestions.length < 2;
+    }
+
+    const validated = this.validationService.validateSuggestions(
+      suggestions,
+      highlightedText,
+      category,
+    );
+
+    if (validated.length < 2) {
+      this.log.debug("Fallback needed: insufficient suggestions", {
         operation,
         suggestionCount: suggestions.length,
+        validCount: validated.length,
       });
       return true;
     }
 
-    if (!category) {
-      this.log.debug('No category specified, fallback not needed', { operation });
-      return false;
-    }
-
-    // Check for category mismatches
-    if (category === 'technical' && CATEGORY_CONSTRAINTS.technical) {
-      const subcategory = detectSubcategory(highlightedText, category);
-      if (subcategory) {
-        const constraint = CATEGORY_CONSTRAINTS.technical[subcategory as keyof typeof CATEGORY_CONSTRAINTS.technical];
-        if (
-          constraint &&
-          typeof constraint === 'object' &&
-          'pattern' in constraint &&
-          constraint.pattern instanceof RegExp
-        ) {
-          const validCount = suggestions.filter(s =>
-            constraint.pattern.test(s.text)
-          ).length;
-          const needsFallback = validCount < suggestions.length * 0.5;
-          
-          if (needsFallback) {
-            this.log.warn('Category mismatch detected in technical subcategory', {
-              operation,
-              subcategory,
-              validCount,
-              totalCount: suggestions.length,
-              validRatio: validCount / suggestions.length,
-            });
-          }
-          
-          return needsFallback;
-        }
-      }
-    }
-
-    // Check for audio suggestions in non-audio categories
-    if (['technical', 'framing', 'descriptive'].includes(category)) {
-      const audioCount = suggestions.filter(s =>
-        /audio|sound|music|score/i.test(s.text) ||
-        (s.category && s.category.toLowerCase().includes('audio'))
-      ).length;
-      if (audioCount > 0) {
-        this.log.warn('Audio suggestions detected in non-audio category', {
-          operation,
-          category,
-          audioCount,
-          totalCount: suggestions.length,
-        });
-        return true;
-      }
-    }
-
-    // Check for lighting suggestions in style descriptors
-    if (category === 'descriptive') {
-      const lightingCount = suggestions.filter(s =>
-        /light|shadow|glow|illuminat/i.test(s.text) ||
-        (s.category && s.category.toLowerCase().includes('light'))
-      ).length;
-      const needsFallback = lightingCount > suggestions.length * 0.5;
-      
-      if (needsFallback) {
-        this.log.warn('Lighting suggestions detected in descriptive category', {
-          operation,
-          lightingCount,
-          totalCount: suggestions.length,
-          lightingRatio: lightingCount / suggestions.length,
-        });
-      }
-      
-      return needsFallback;
-    }
-
-    this.log.debug('No fallback needed, suggestions are valid', {
-      operation,
-      category,
-      suggestionCount: suggestions.length,
-    });
-    
     return false;
   }
 
   /**
-   * Get fallback suggestions for a category
-   * Provides category-appropriate fallback suggestions when primary suggestions fail
-   * @param highlightedText - Original text
-   * @param category - Category to get fallbacks for
-   * @returns Fallback suggestions
-   */
-  getCategoryFallbacks(highlightedText: string, category?: string): Suggestion[] {
-    const operation = 'getCategoryFallbacks';
-    
-    this.log.debug('Getting category fallbacks', {
-      operation,
-      category: category || null,
-    });
-
-    if (!category) {
-      this.log.debug('No category specified, using generic fallbacks', { operation });
-      return this._getGenericFallbacks();
-    }
-
-    const subcategory = detectSubcategory(highlightedText, category);
-
-    // Get specific fallbacks for technical subcategories
-    if (category === 'technical' && subcategory && CATEGORY_CONSTRAINTS.technical) {
-      const constraint = CATEGORY_CONSTRAINTS.technical[subcategory as keyof typeof CATEGORY_CONSTRAINTS.technical];
-      if (
-        constraint &&
-        typeof constraint === 'object' &&
-        'fallbacks' in constraint &&
-        Array.isArray(constraint.fallbacks)
-      ) {
-        const fallbacks = constraint.fallbacks as Suggestion[];
-        this.log.debug('Using technical subcategory fallbacks', {
-          operation,
-          subcategory,
-          fallbackCount: fallbacks.length,
-        });
-        return fallbacks;
-      }
-    }
-
-    // Get fallbacks for other categories
-    const categoryConstraints = CATEGORY_CONSTRAINTS[category as keyof typeof CATEGORY_CONSTRAINTS];
-    if (categoryConstraints && 'fallbacks' in categoryConstraints) {
-      const fallbacks = (categoryConstraints as { fallbacks: Suggestion[] }).fallbacks;
-      this.log.debug('Using category-specific fallbacks', {
-        operation,
-        category,
-        fallbackCount: fallbacks.length,
-      });
-      return fallbacks;
-    }
-
-    // Generic fallbacks as last resort
-    this.log.debug('Using generic fallbacks as last resort', { operation, category });
-    return this._getGenericFallbacks(category);
-  }
-
-  /**
-   * Get generic fallback suggestions
+   * Resolve parent category from a full taxonomy ID or legacy category name
    * @private
    */
-  private _getGenericFallbacks(category?: string): Suggestion[] {
-    return [
-      { text: "alternative option 1", category: category || 'general', explanation: "Alternative suggestion" },
-      { text: "alternative option 2", category: category || 'general', explanation: "Different approach" },
-      { text: "alternative option 3", category: category || 'general', explanation: "Creative variation" }
-    ];
+  private _resolveParentCategory(category: string): string | null {
+    const explicitParent = getParentCategory(category);
+    if (explicitParent) {
+      return explicitParent;
+    }
+    return this.legacyCategoryToParent[category.toLowerCase()] || null;
   }
 }

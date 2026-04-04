@@ -13,10 +13,10 @@
  *   --min-age-days=N     Minimum age in days before delete (default: 7)
  */
 
-import { Storage } from '@google-cloud/storage';
-import { resolveBucketName } from '../../server/src/config/storageBucket.js';
+import { Storage } from "@google-cloud/storage";
+import { resolveBucketName } from "../../server/src/config/storageBucket.js";
 
-type Mode = 'dry-run' | 'apply';
+type Mode = "dry-run" | "apply";
 
 interface CleanupOptions {
   mode: Mode;
@@ -32,18 +32,20 @@ interface CleanupStats {
 }
 
 function parseOptions(argv: string[]): CleanupOptions {
-  const hasApply = argv.includes('--apply');
-  const hasDryRun = argv.includes('--dry-run');
+  const hasApply = argv.includes("--apply");
+  const hasDryRun = argv.includes("--dry-run");
 
   if (hasApply && hasDryRun) {
-    throw new Error('Use exactly one of --dry-run or --apply');
+    throw new Error("Use exactly one of --dry-run or --apply");
   }
 
-  const minAgeDaysRaw = argv.find((arg) => arg.startsWith('--min-age-days='))?.split('=')[1];
-  const minAgeDays = Number.parseInt(minAgeDaysRaw || '7', 10);
+  const minAgeDaysRaw = argv
+    .find((arg) => arg.startsWith("--min-age-days="))
+    ?.split("=")[1];
+  const minAgeDays = Number.parseInt(minAgeDaysRaw || "7", 10);
 
   return {
-    mode: hasApply ? 'apply' : 'dry-run',
+    mode: hasApply ? "apply" : "dry-run",
     minAgeDays: Number.isFinite(minAgeDays) && minAgeDays > 0 ? minAgeDays : 7,
   };
 }
@@ -75,7 +77,7 @@ async function run(): Promise<void> {
   console.log(`Bucket: ${bucketName}`);
   console.log(`Minimum age: ${options.minAgeDays} day(s)`);
 
-  const [files] = await bucket.getFiles({ prefix: 'users/dev-api-key:' });
+  const [files] = await bucket.getFiles({ prefix: "users/dev-api-key:" });
   stats.objectsFound = files.length;
 
   for (const file of files) {
@@ -89,18 +91,19 @@ async function run(): Promise<void> {
       }
 
       stats.eligible += 1;
-      if (options.mode === 'apply') {
+      if (options.mode === "apply") {
         await file.delete();
       }
       stats.deleted += 1;
     } catch (error) {
       stats.errors += 1;
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       console.error(`Failed processing ${file.name}: ${errorMessage}`);
     }
   }
 
-  console.log('\nCleanup summary');
+  console.log("\nCleanup summary");
   console.log(
     JSON.stringify(
       {
@@ -109,12 +112,12 @@ async function run(): Promise<void> {
         stats,
       },
       null,
-      2
-    )
+      2,
+    ),
   );
 }
 
 run().catch((error) => {
-  console.error('Cleanup aborted', error);
+  console.error("Cleanup aborted", error);
   process.exit(1);
 });

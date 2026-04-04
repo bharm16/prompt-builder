@@ -3,6 +3,7 @@
 ## Overview
 
 The NLP fast-path is now a **neuro-symbolic pipeline** for span labeling that reduces LLM calls by using:
+
 - **Closed vocabulary matching** (Aho-Corasick)
 - **Regex pattern extraction** (fps, durations, aspect ratios, f-stops, color temperature)
 - **GLiNER open vocabulary** (subjects, actions, environments, style, audio)
@@ -36,6 +37,7 @@ Curated vocabulary database across technical, lighting, style, and audio taxonom
 **Created:** `server/src/llm/span-labeling/nlp/NlpSpanService.ts`
 
 Core features:
+
 - **Aho-Corasick + regex** for deterministic extraction
 - **GLiNER open-vocabulary extraction** with taxonomy mapping
 - **Case-insensitive** matching with proper word boundaries
@@ -47,11 +49,11 @@ Core features:
 
 Implemented context-aware rules to prevent false positives:
 
-| Term | Camera Context | False Positive Context |
-|------|---------------|------------------------|
-| **pan** | "Camera pans left" ✓ | "Frying pan" ✗ |
-| **truck** | "Camera trucks right" ✓ | "Delivery truck" ✗ |
-| **roll** | "Camera rolls slightly" ✓ | "Bread roll" ✗ |
+| Term      | Camera Context            | False Positive Context |
+| --------- | ------------------------- | ---------------------- |
+| **pan**   | "Camera pans left" ✓      | "Frying pan" ✗         |
+| **truck** | "Camera trucks right" ✓   | "Delivery truck" ✗     |
+| **roll**  | "Camera rolls slightly" ✓ | "Bread roll" ✗         |
 
 Rules check surrounding context (20 chars before/after) for contextual keywords.
 
@@ -60,6 +62,7 @@ Rules check surrounding context (20 chars before/after) for contextual keywords.
 **Modified:** `server/src/llm/span-labeling/SpanLabelingService.ts`
 
 Integration flow:
+
 1. **NLP Fast-Path** attempts neuro-symbolic extraction first
 2. If coverage/category thresholds are met → **return immediately** (bypass LLM)
 3. If coverage is insufficient → **fall back to LLM** (hybrid mode)
@@ -70,6 +73,7 @@ Integration flow:
 **Modified:** `server/src/llm/span-labeling/config/SpanLabelingConfig.ts`
 
 New configuration section:
+
 ```javascript
 NLP_FAST_PATH: {
   ENABLED: true,                  // Enable fast-path
@@ -92,6 +96,7 @@ NEURO_SYMBOLIC: {
 **Created:** `server/src/llm/span-labeling/nlp/__tests__/NlpSpanService.test.ts`
 
 **34 comprehensive tests** covering:
+
 - ✓ Vocabulary matching (all 8 categories)
 - ✓ Disambiguation rules (pan, truck, roll)
 - ✓ Multi-word term extraction
@@ -126,17 +131,18 @@ End-to-end validation with **10 realistic video prompts**:
 
 ### Performance Improvements
 
-| Metric | Before (LLM) | After (NLP Fast-Path) | Improvement |
-|--------|--------------|----------------------|-------------|
-| **Latency** | ~800ms | ~0.2ms | **4000x faster** |
-| **Cost** | $0.0005 | $0 | **100% savings** |
-| **Accuracy** | ~95% | 100%* | **Deterministic** |
+| Metric       | Before (LLM) | After (NLP Fast-Path) | Improvement       |
+| ------------ | ------------ | --------------------- | ----------------- |
+| **Latency**  | ~800ms       | ~0.2ms                | **4000x faster**  |
+| **Cost**     | $0.0005      | $0                    | **100% savings**  |
+| **Accuracy** | ~95%         | 100%\*                | **Deterministic** |
 
-*For known technical terms in vocabulary
+\*For known technical terms in vocabulary
 
 ### Cost Savings Analysis
 
 Assuming 60-70% bypass rate:
+
 - **Per request savings**: $0.0003-0.0004
 - **1000 requests/day**: $0.30-0.40/day = **$110-150/year**
 - **10,000 requests/day**: $3-4/day = **$1,100-1,500/year**
@@ -150,6 +156,7 @@ Assuming 60-70% bypass rate:
 ## Usage Example
 
 ### Before (LLM only)
+
 ```javascript
 // Every request makes an expensive LLM call
 const result = await labelSpans({ text: "Wide shot in 16:9" }, aiService);
@@ -157,6 +164,7 @@ const result = await labelSpans({ text: "Wide shot in 16:9" }, aiService);
 ```
 
 ### After (with NLP Fast-Path)
+
 ```javascript
 // Most requests use fast dictionary matching
 const result = await labelSpans({ text: "Wide shot in 16:9" }, aiService);
@@ -179,12 +187,14 @@ const result = await labelSpans({ text: "Wide shot in 16:9" }, aiService);
 ## Testing & Validation
 
 ### Unit Tests
+
 ```bash
 npm test -- server/src/llm/span-labeling/nlp/__tests__/NlpSpanService.test.ts
 # ✓ 34 tests passing
 ```
 
 ### End-to-End Validation
+
 ```bash
 node scripts/validate-nlp-fastpath.js
 # ✨ All tests passed! NLP Fast-Path is working correctly.
@@ -193,12 +203,14 @@ node scripts/validate-nlp-fastpath.js
 ## Monitoring & Metrics
 
 The system tracks:
+
 - **NLP bypass rate** (% of requests using fast-path)
 - **Latency comparison** (NLP vs LLM)
 - **Cost savings** (estimated $ saved)
 - **Span quality** (validation pass rate)
 
 Metrics are logged when `NLP_FAST_PATH.TRACK_METRICS` is enabled:
+
 ```
 [NLP Fast-Path] Bypassed LLM call | Spans: 3 | Latency: 0ms | Estimated savings: $0.0005
 ```
@@ -206,6 +218,7 @@ Metrics are logged when `NLP_FAST_PATH.TRACK_METRICS` is enabled:
 ## Future Enhancements
 
 Potential improvements:
+
 1. **Expand vocabulary** - Add more specialized terms (lenses, camera models, etc.)
 2. **Phrase patterns** - Match common phrase structures ("shot from above", "lit from below")
 3. **Synonym handling** - Map synonyms to canonical terms

@@ -1,31 +1,41 @@
-import { logger } from '@infrastructure/Logger';
-import { StorageService } from '@services/storage/StorageService';
-import { STORAGE_TYPES } from '@services/storage/config/storageConfig';
-import { createDepthEstimationServiceForUser } from '@services/convergence/depth';
-import type { StorageService as ConvergenceStorageService } from '@services/convergence/storage';
-import sharp from 'sharp';
-import type { FrameBridgeService } from './FrameBridgeService';
-import type { SceneProxy, SceneProxyRender } from './types';
+import { logger } from "@infrastructure/Logger";
+import { generateId } from "@utils/uid";
+import { StorageService } from "@services/storage/StorageService";
+import { STORAGE_TYPES } from "@services/storage/config/storageConfig";
+import { createDepthEstimationServiceForUser } from "@services/convergence/depth";
+import type { StorageService as ConvergenceStorageService } from "@services/convergence/storage";
+import sharp from "sharp";
+import type { FrameBridgeService } from "./FrameBridgeService";
+import type { SceneProxy, SceneProxyRender } from "./types";
 
-type DepthPipeline = (input: Buffer) => Promise<{ depth: { data: Uint8Array | Uint16Array | Float32Array; width: number; height: number } }>;
+type DepthPipeline = (input: Buffer) => Promise<{
+  depth: {
+    data: Uint8Array | Uint16Array | Float32Array;
+    width: number;
+    height: number;
+  };
+}>;
 
 export class SceneProxyService {
-  private readonly log = logger.child({ service: 'SceneProxyService' });
+  private readonly log = logger.child({ service: "SceneProxyService" });
   private depthPipelinePromise: Promise<DepthPipeline> | null = null;
 
-  constructor(private storage: StorageService, private frameBridge: FrameBridgeService) {}
+  constructor(
+    private storage: StorageService,
+    private frameBridge: FrameBridgeService,
+  ) {}
 
   async createProxyFromVideo(
     userId: string,
     videoId: string,
-    videoUrl: string
+    videoUrl: string,
   ): Promise<SceneProxy> {
     try {
       const representative = await this.frameBridge.extractRepresentativeFrame(
         userId,
         videoId,
         videoUrl,
-        'scene-proxy'
+        "scene-proxy",
       );
 
       let depthMapUrl: string | undefined;
@@ -33,73 +43,80 @@ export class SceneProxyService {
 
       const depthService = createDepthEstimationServiceForUser(
         this.storage as unknown as ConvergenceStorageService,
-        userId
+        userId,
       );
 
       if (depthService.isAvailable()) {
         try {
-          depthMapUrl = await depthService.estimateDepth(representative.frameUrl);
+          depthMapUrl = await depthService.estimateDepth(
+            representative.frameUrl,
+          );
         } catch (error) {
-          this.log.warn('Depth estimation service failed, falling back to local depth', {
-            error: error instanceof Error ? error.message : String(error),
-          });
+          this.log.warn(
+            "Depth estimation service failed, falling back to local depth",
+            {
+              error: error instanceof Error ? error.message : String(error),
+            },
+          );
         }
       }
 
       if (!depthMapUrl) {
-        const referenceBuffer = await this.downloadImage(representative.frameUrl);
+        const referenceBuffer = await this.downloadImage(
+          representative.frameUrl,
+        );
         depthBuffer = await this.estimateDepth(referenceBuffer);
 
         const depthStored = await this.storage.saveFromBuffer(
           userId,
           depthBuffer,
           STORAGE_TYPES.PREVIEW_IMAGE,
-          'image/png',
-          { source: 'scene-proxy-depth' }
+          "image/png",
+          { source: "scene-proxy-depth" },
         );
         depthMapUrl = depthStored.viewUrl;
       }
 
       if (!depthMapUrl) {
-        throw new Error('Failed to build depth map for scene proxy');
+        throw new Error("Failed to build depth map for scene proxy");
       }
 
       const resolvedDepthMapUrl = depthMapUrl;
 
       const variance = await this.computeDepthVariance(
-        depthBuffer || (await this.downloadImage(resolvedDepthMapUrl))
+        depthBuffer || (await this.downloadImage(resolvedDepthMapUrl)),
       );
       if (variance < 0.005) {
         return {
-          id: this.generateId('proxy'),
+          id: this.generateId("proxy"),
           sourceVideoId: videoId,
-          proxyType: 'depth-parallax',
+          proxyType: "depth-parallax",
           referenceFrameUrl: representative.frameUrl,
           depthMapUrl: resolvedDepthMapUrl,
           createdAt: new Date(),
-          status: 'failed',
-          error: 'Insufficient parallax depth for scene proxy.',
+          status: "failed",
+          error: "Insufficient parallax depth for scene proxy.",
         };
       }
 
       return {
-        id: this.generateId('proxy'),
+        id: this.generateId("proxy"),
         sourceVideoId: videoId,
-        proxyType: 'depth-parallax',
+        proxyType: "depth-parallax",
         referenceFrameUrl: representative.frameUrl,
         depthMapUrl: resolvedDepthMapUrl,
         createdAt: new Date(),
-        status: 'ready',
+        status: "ready",
       };
     } catch (error) {
-      this.log.error('Scene proxy creation failed', error as Error);
+      this.log.error("Scene proxy creation failed", error as Error);
       return {
-        id: this.generateId('proxy'),
+        id: this.generateId("proxy"),
         sourceVideoId: videoId,
-        proxyType: 'depth-parallax',
-        referenceFrameUrl: '',
+        proxyType: "depth-parallax",
+        referenceFrameUrl: "",
         createdAt: new Date(),
-        status: 'failed',
+        status: "failed",
         error: (error as Error).message,
       };
     }
@@ -109,10 +126,15 @@ export class SceneProxyService {
     userId: string,
     proxy: SceneProxy,
     shotId: string,
-    cameraPose?: { yaw?: number; pitch?: number; roll?: number; dolly?: number }
+    cameraPose?: {
+      yaw?: number;
+      pitch?: number;
+      roll?: number;
+      dolly?: number;
+    },
   ): Promise<SceneProxyRender> {
     if (!proxy.referenceFrameUrl || !proxy.depthMapUrl) {
-      throw new Error('Scene proxy is missing reference assets');
+      throw new Error("Scene proxy is missing reference assets");
     }
 
     const [imageBuffer, depthBuffer] = await Promise.all([
@@ -120,14 +142,18 @@ export class SceneProxyService {
       this.downloadImage(proxy.depthMapUrl),
     ]);
 
-    const rendered = await this.renderParallax(imageBuffer, depthBuffer, cameraPose);
+    const rendered = await this.renderParallax(
+      imageBuffer,
+      depthBuffer,
+      cameraPose,
+    );
 
     const stored = await this.storage.saveFromBuffer(
       userId,
       rendered,
       STORAGE_TYPES.PREVIEW_IMAGE,
-      'image/png',
-      { source: 'scene-proxy-render' }
+      "image/png",
+      { source: "scene-proxy-render" },
     );
 
     const pose = cameraPose
@@ -135,12 +161,14 @@ export class SceneProxyService {
           yaw: cameraPose.yaw ?? 0,
           pitch: cameraPose.pitch ?? 0,
           ...(cameraPose.roll !== undefined ? { roll: cameraPose.roll } : {}),
-          ...(cameraPose.dolly !== undefined ? { dolly: cameraPose.dolly } : {}),
+          ...(cameraPose.dolly !== undefined
+            ? { dolly: cameraPose.dolly }
+            : {}),
         }
       : undefined;
 
     return {
-      id: this.generateId('render'),
+      id: this.generateId("render"),
       proxyId: proxy.id,
       shotId,
       renderUrl: stored.viewUrl,
@@ -156,24 +184,30 @@ export class SceneProxyService {
       const { data, width, height } = output.depth;
 
       const normalized = this.normalizeDepth(data);
-      return await sharp(Buffer.from(normalized), { raw: { width, height, channels: 1 } })
+      return await sharp(Buffer.from(normalized), {
+        raw: { width, height, channels: 1 },
+      })
         .png()
         .toBuffer();
     } catch (error) {
-      this.log.warn('Depth estimation failed, using luminance fallback', {
+      this.log.warn("Depth estimation failed, using luminance fallback", {
         error: (error as Error).message,
       });
       const { data, info } = await sharp(imageBuffer)
         .greyscale()
         .raw()
         .toBuffer({ resolveWithObject: true });
-      return await sharp(Buffer.from(data), { raw: { width: info.width, height: info.height, channels: 1 } })
+      return await sharp(Buffer.from(data), {
+        raw: { width: info.width, height: info.height, channels: 1 },
+      })
         .png()
         .toBuffer();
     }
   }
 
-  private normalizeDepth(data: Uint8Array | Uint16Array | Float32Array): Uint8Array {
+  private normalizeDepth(
+    data: Uint8Array | Uint16Array | Float32Array,
+  ): Uint8Array {
     let min = Infinity;
     let max = -Infinity;
     for (const value of data) {
@@ -192,7 +226,12 @@ export class SceneProxyService {
   private async renderParallax(
     imageBuffer: Buffer,
     depthBuffer: Buffer,
-    cameraPose?: { yaw?: number; pitch?: number; roll?: number; dolly?: number }
+    cameraPose?: {
+      yaw?: number;
+      pitch?: number;
+      roll?: number;
+      dolly?: number;
+    },
   ): Promise<Buffer> {
     const { data: rgb, info } = await sharp(imageBuffer)
       .ensureAlpha()
@@ -215,7 +254,7 @@ export class SceneProxyService {
     const pitch = cameraPose?.pitch ?? 0;
     const scale = 0.05; // parallax scale
 
-    const idx = (x: number, y: number) => (y * width + x);
+    const idx = (x: number, y: number) => y * width + x;
 
     // bucket by depth for simple occlusion (near overwrites far)
     const buckets: number[][] = Array.from({ length: 256 }, () => []);
@@ -282,11 +321,22 @@ export class SceneProxyService {
   private async getDepthPipeline(): Promise<DepthPipeline> {
     if (!this.depthPipelinePromise) {
       this.depthPipelinePromise = (async () => {
-        const transformers = await import('@huggingface/transformers');
-        const pipeline = await transformers.pipeline('depth-estimation', 'Xenova/dpt-hybrid-midas');
+        const transformers = await import("@huggingface/transformers");
+        const pipeline = await transformers.pipeline(
+          "depth-estimation",
+          "Xenova/dpt-hybrid-midas",
+        );
         return async (input: Buffer) => {
-          const output = await pipeline(input as unknown as Parameters<typeof pipeline>[0]);
-          return output as { depth: { data: Uint8Array | Uint16Array | Float32Array; width: number; height: number } };
+          const output = await pipeline(
+            input as unknown as Parameters<typeof pipeline>[0],
+          );
+          return output as {
+            depth: {
+              data: Uint8Array | Uint16Array | Float32Array;
+              width: number;
+              height: number;
+            };
+          };
         };
       })();
     }
@@ -304,7 +354,7 @@ export class SceneProxyService {
 
   private async computeDepthVariance(depthMap: Buffer): Promise<number> {
     const { data } = await sharp(depthMap)
-      .resize(128, 128, { fit: 'cover' })
+      .resize(128, 128, { fit: "cover" })
       .greyscale()
       .raw()
       .toBuffer({ resolveWithObject: true });
@@ -322,6 +372,6 @@ export class SceneProxyService {
   }
 
   private generateId(prefix: string): string {
-    return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+    return generateId(prefix);
   }
 }

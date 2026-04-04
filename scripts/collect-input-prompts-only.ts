@@ -14,10 +14,13 @@
  *     --local-file=~/Downloads/promptHistory.json
  */
 
-import dotenv from 'dotenv';
-import fs from 'fs';
-import path from 'path';
-import { initializeFirebaseAdmin, admin } from './migrations/firebase-admin-init.js';
+import dotenv from "dotenv";
+import fs from "fs";
+import path from "path";
+import {
+  initializeFirebaseAdmin,
+  admin,
+} from "./migrations/firebase-admin-init.js";
 
 type TimestampLike = admin.firestore.Timestamp | string | undefined;
 
@@ -26,13 +29,13 @@ interface ScriptOptions {
   batchSize: number;
   limit: number | null;
   output: string;
-  format: 'json' | 'csv';
+  format: "json" | "csv";
   localFile?: string;
   envFile?: string;
 }
 
 interface RawPromptEntry {
-  source: 'firestore' | 'localStorage';
+  source: "firestore" | "localStorage";
   id?: string;
   uuid?: string;
   userId?: string;
@@ -50,69 +53,90 @@ function parseOption(name: string): string | undefined {
 }
 
 const options: ScriptOptions = {
-  userId: parseOption('userId'),
-  batchSize: parseInt(parseOption('batch-size') ?? '500', 10),
-  limit: parseOption('limit') ? parseInt(parseOption('limit') as string, 10) : null,
-  output: parseOption('output') ?? 'input-prompts.json',
-  format: (parseOption('format') as 'json' | 'csv') ?? 'json',
-  localFile: parseOption('local-file'),
-  envFile: parseOption('env-file'),
+  userId: parseOption("userId"),
+  batchSize: parseInt(parseOption("batch-size") ?? "500", 10),
+  limit: parseOption("limit")
+    ? parseInt(parseOption("limit") as string, 10)
+    : null,
+  output: parseOption("output") ?? "input-prompts.json",
+  format: (parseOption("format") as "json" | "csv") ?? "json",
+  localFile: parseOption("local-file"),
+  envFile: parseOption("env-file"),
 };
 
-if (!options.batchSize || Number.isNaN(options.batchSize) || options.batchSize <= 0) {
+if (
+  !options.batchSize ||
+  Number.isNaN(options.batchSize) ||
+  options.batchSize <= 0
+) {
   options.batchSize = 500;
 }
 
-if (options.limit !== null && (Number.isNaN(options.limit) || options.limit <= 0)) {
+if (
+  options.limit !== null &&
+  (Number.isNaN(options.limit) || options.limit <= 0)
+) {
   options.limit = null;
 }
 
-if (options.format !== 'json' && options.format !== 'csv') {
-  options.format = 'json';
+if (options.format !== "json" && options.format !== "csv") {
+  options.format = "json";
 }
 
-dotenv.config({ path: options.envFile ?? '.env' });
+dotenv.config({ path: options.envFile ?? ".env" });
 
 function toIso(value: TimestampLike): string | undefined {
   if (!value) return undefined;
-  if (typeof value === 'string') {
+  if (typeof value === "string") {
     return value;
   }
-  if (typeof value.toDate === 'function') {
+  if (typeof value.toDate === "function") {
     return value.toDate().toISOString();
   }
   return undefined;
 }
 
-function buildEntryFromFirestore(doc: admin.firestore.QueryDocumentSnapshot<admin.firestore.DocumentData>): RawPromptEntry {
+function buildEntryFromFirestore(
+  doc: admin.firestore.QueryDocumentSnapshot<admin.firestore.DocumentData>,
+): RawPromptEntry {
   const data = doc.data();
-  const input = typeof data.input === 'string' ? data.input : typeof data.prompt === 'string' ? data.prompt : '';
+  const input =
+    typeof data.input === "string"
+      ? data.input
+      : typeof data.prompt === "string"
+        ? data.prompt
+        : "";
   return {
-    source: 'firestore',
+    source: "firestore",
     id: doc.id,
-    uuid: typeof data.uuid === 'string' ? data.uuid : undefined,
-    userId: typeof data.userId === 'string' ? data.userId : undefined,
+    uuid: typeof data.uuid === "string" ? data.uuid : undefined,
+    userId: typeof data.userId === "string" ? data.userId : undefined,
     timestamp: toIso(data.timestamp),
-    mode: typeof data.mode === 'string' ? data.mode : undefined,
+    mode: typeof data.mode === "string" ? data.mode : undefined,
     input: input.trim(),
   };
 }
 
-async function collectFromFirestore(opts: ScriptOptions): Promise<RawPromptEntry[]> {
+async function collectFromFirestore(
+  opts: ScriptOptions,
+): Promise<RawPromptEntry[]> {
   const db = initializeFirebaseAdmin();
   const entries: RawPromptEntry[] = [];
-  let lastDoc: admin.firestore.QueryDocumentSnapshot<admin.firestore.DocumentData> | null = null;
+  let lastDoc: admin.firestore.QueryDocumentSnapshot<admin.firestore.DocumentData> | null =
+    null;
   let remaining = opts.limit;
 
-  const baseCollection = db.collection('prompts');
+  const baseCollection = db.collection("prompts");
   const filteredCollection = opts.userId
-    ? baseCollection.where('userId', '==', opts.userId)
+    ? baseCollection.where("userId", "==", opts.userId)
     : baseCollection;
 
   while (true) {
     const batchSize =
       remaining !== null ? Math.min(opts.batchSize, remaining) : opts.batchSize;
-    let query = filteredCollection.orderBy('timestamp', 'desc').limit(batchSize);
+    let query = filteredCollection
+      .orderBy("timestamp", "desc")
+      .limit(batchSize);
 
     if (lastDoc) {
       query = query.startAfter(lastDoc);
@@ -137,7 +161,9 @@ async function collectFromFirestore(opts: ScriptOptions): Promise<RawPromptEntry
     }
   }
 
-  return remaining === null ? entries : entries.slice(0, opts.limit ?? entries.length);
+  return remaining === null
+    ? entries
+    : entries.slice(0, opts.limit ?? entries.length);
 }
 
 function loadLocalStorageEntries(filePath: string): RawPromptEntry[] {
@@ -146,43 +172,43 @@ function loadLocalStorageEntries(filePath: string): RawPromptEntry[] {
     throw new Error(`Local storage export not found at ${resolved}`);
   }
 
-  const raw = fs.readFileSync(resolved, 'utf8');
+  const raw = fs.readFileSync(resolved, "utf8");
   const parsed = JSON.parse(raw);
 
   if (!Array.isArray(parsed)) {
-    throw new Error('Local storage export must be a JSON array');
+    throw new Error("Local storage export must be a JSON array");
   }
 
   return parsed.map((entry: Record<string, unknown>, index: number) => {
     const input =
-      typeof entry.input === 'string'
+      typeof entry.input === "string"
         ? entry.input
-        : typeof entry.prompt === 'string'
-        ? entry.prompt
-        : '';
+        : typeof entry.prompt === "string"
+          ? entry.prompt
+          : "";
     const timestamp =
-      typeof entry.timestamp === 'string' ? entry.timestamp : undefined;
+      typeof entry.timestamp === "string" ? entry.timestamp : undefined;
 
     return {
-      source: 'localStorage' as const,
+      source: "localStorage" as const,
       id: entry.id ? String(entry.id) : `local-${index}`,
-      uuid: typeof entry.uuid === 'string' ? entry.uuid : undefined,
-      userId: typeof entry.userId === 'string' ? entry.userId : undefined,
+      uuid: typeof entry.uuid === "string" ? entry.uuid : undefined,
+      userId: typeof entry.userId === "string" ? entry.userId : undefined,
       timestamp,
-      mode: typeof entry.mode === 'string' ? entry.mode : undefined,
+      mode: typeof entry.mode === "string" ? entry.mode : undefined,
       input: input.trim(),
     };
   });
 }
 
 function writeJsonOutput(filePath: string, entries: RawPromptEntry[]): void {
-  fs.writeFileSync(filePath, JSON.stringify(entries, null, 2), 'utf8');
+  fs.writeFileSync(filePath, JSON.stringify(entries, null, 2), "utf8");
 }
 
 function toCsvLine(entry: RawPromptEntry): string {
   const escape = (value?: string): string => {
-    if (value === undefined) return '';
-    return `"${value.replace(/"/g, '""').replace(/\n/g, '\\n')}"`;
+    if (value === undefined) return "";
+    return `"${value.replace(/"/g, '""').replace(/\n/g, "\\n")}"`;
   };
 
   return [
@@ -193,18 +219,18 @@ function toCsvLine(entry: RawPromptEntry): string {
     escape(entry.timestamp),
     escape(entry.mode),
     escape(entry.input),
-  ].join(',');
+  ].join(",");
 }
 
 function writeCsvOutput(filePath: string, entries: RawPromptEntry[]): void {
-  const header = 'source,id,uuid,userId,timestamp,mode,input';
+  const header = "source,id,uuid,userId,timestamp,mode,input";
   const lines = [header, ...entries.map(toCsvLine)];
-  fs.writeFileSync(filePath, lines.join('\n'), 'utf8');
+  fs.writeFileSync(filePath, lines.join("\n"), "utf8");
 }
 
 async function main(): Promise<void> {
-  console.log('Collecting input prompts...');
-  console.log('Options:', JSON.stringify(options, null, 2));
+  console.log("Collecting input prompts...");
+  console.log("Options:", JSON.stringify(options, null, 2));
 
   let entries: RawPromptEntry[];
 
@@ -212,7 +238,7 @@ async function main(): Promise<void> {
     console.log(`Reading from local file: ${options.localFile}`);
     entries = loadLocalStorageEntries(options.localFile);
   } else {
-    console.log('Fetching from Firestore...');
+    console.log("Fetching from Firestore...");
     entries = await collectFromFirestore(options);
   }
 
@@ -226,7 +252,7 @@ async function main(): Promise<void> {
     fs.mkdirSync(outputDir, { recursive: true });
   }
 
-  if (options.format === 'csv') {
+  if (options.format === "csv") {
     writeCsvOutput(outputPath, entries);
   } else {
     writeJsonOutput(outputPath, entries);
@@ -236,6 +262,6 @@ async function main(): Promise<void> {
 }
 
 main().catch((err) => {
-  console.error('Error:', err);
+  console.error("Error:", err);
   process.exit(1);
 });

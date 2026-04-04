@@ -16,25 +16,28 @@
  * Reference: VideoConceptBuilder hooks pattern
  */
 
-import { useCallback } from 'react';
-import type React from 'react';
-import type { PromptContext } from '@utils/PromptContext/PromptContext';
-import type { PromptOptimizer } from '@features/prompt-optimizer/context/types';
-import type { SuggestionItem, SuggestionsData } from '@features/prompt-optimizer/PromptCanvas/types';
-import { buildSuggestionContext } from '@features/prompt-optimizer/utils/enhancementSuggestionContext';
-import { CancellationError } from '@features/prompt-optimizer/utils/signalUtils';
+import { useCallback } from "react";
+import type React from "react";
+import type { PromptContext } from "@utils/PromptContext/PromptContext";
+import type { PromptOptimizer } from "@features/prompt-optimizer/context/types";
+import type {
+  SuggestionItem,
+  SuggestionsData,
+} from "@features/prompt-optimizer/PromptCanvas/types";
+import { buildSuggestionContext } from "@features/prompt-optimizer/utils/enhancementSuggestionContext";
+import { CancellationError } from "@features/prompt-optimizer/utils/signalUtils";
 import {
   prepareSpanContext,
   buildSpanFingerprint,
-} from '@features/span-highlighting/utils/spanProcessing';
-import type { HighlightSpan } from '@features/span-highlighting/hooks/useHighlightRendering';
-import type { Toast } from '@hooks/types';
-import { logger } from '@/services/LoggingService';
-import { sanitizeError } from '@/utils/logging';
-import { useSuggestionApi } from './useSuggestionApi';
-import { useSuggestionCache } from './useSuggestionCache';
-import { mergeSuggestions } from '../utils/mergeSuggestions';
-import type { I2VContext } from '@features/prompt-optimizer/types/i2v';
+} from "@features/span-highlighting/utils/spanProcessing";
+import type { HighlightSpan } from "@features/span-highlighting/hooks/useHighlightRendering";
+import type { Toast } from "@hooks/types";
+import { logger } from "@/services/LoggingService";
+import { sanitizeError } from "@/utils/logging";
+import { useSuggestionApi } from "./useSuggestionApi";
+import { useSuggestionCache } from "./useSuggestionCache";
+import { mergeSuggestions } from "../utils/mergeSuggestions";
+import type { I2VContext } from "@features/prompt-optimizer/types/i2v";
 
 interface FetchPayload {
   highlightedText?: string;
@@ -42,12 +45,14 @@ interface FetchPayload {
   displayedPrompt?: string;
   range?: Range | null;
   offsets?: { start?: number; end?: number } | null;
-  metadata?: SuggestionsData['metadata'];
+  metadata?: SuggestionsData["metadata"];
   trigger?: string;
   allLabeledSpans?: unknown[];
 }
 
-type SetSuggestionsData = React.Dispatch<React.SetStateAction<SuggestionsData | null>>;
+type SetSuggestionsData = React.Dispatch<
+  React.SetStateAction<SuggestionsData | null>
+>;
 
 interface UseSuggestionFetchParams {
   promptOptimizer: PromptOptimizer;
@@ -60,12 +65,24 @@ interface UseSuggestionFetchParams {
   i2vContext?: I2VContext | null | undefined;
 }
 
-const log = logger.child('useSuggestionFetch');
-export { mergeSuggestions } from '../utils/mergeSuggestions';
+const log = logger.child("useSuggestionFetch");
+export { mergeSuggestions } from "../utils/mergeSuggestions";
+
+function buildResponseMetadata(response: {
+  metadata?: Record<string, unknown> | null;
+  _debug?: Record<string, unknown> | null;
+}): Record<string, unknown> | null {
+  const merged = {
+    ...(response.metadata ?? {}),
+    ...(response._debug ? { _debug: response._debug } : {}),
+  };
+
+  return Object.keys(merged).length > 0 ? merged : null;
+}
 
 /**
  * Hook for fetching enhancement suggestions
- * 
+ *
  * Features:
  * - Request cancellation on new selection
  * - Deduplication of in-flight requests
@@ -85,12 +102,14 @@ export function useSuggestionFetch({
   fetchEnhancementSuggestions: (payload?: FetchPayload) => Promise<void>;
 } {
   const displayedPrompt = promptOptimizer.displayedPrompt;
-  const { buildCacheKey, getCachedSuggestions, setCachedSuggestions } = useSuggestionCache();
-  const { fetchSuggestions, cancelCurrentRequest, isRequestInFlight } = useSuggestionApi({
-    promptOptimizer,
-    stablePromptContext,
-    i2vContext,
-  });
+  const { buildCacheKey, getCachedSuggestions, setCachedSuggestions } =
+    useSuggestionCache();
+  const { fetchSuggestions, cancelCurrentRequest, isRequestInFlight } =
+    useSuggestionApi({
+      promptOptimizer,
+      stablePromptContext,
+      i2vContext,
+    });
 
   const updateSuggestions = useCallback(
     (newSuggestions: SuggestionItem[]): void => {
@@ -105,12 +124,12 @@ export function useSuggestionFetch({
         };
       });
     },
-    [setSuggestionsData]
+    [setSuggestionsData],
   );
 
   /**
    * Fetch enhancement suggestions for highlighted text
-   * 
+   *
    * Flow:
    * 1. Validate input and check mode
    * 2. Check deduplication (skip if same text in-flight)
@@ -133,29 +152,31 @@ export function useSuggestionFetch({
         allLabeledSpans = [],
       } = payload;
 
-      const trimmedHighlight = (highlightedText || '').trim();
-      const normalizedHighlight = trimmedHighlight.normalize('NFC');
-      const rawPrompt = payloadPrompt ?? displayedPrompt ?? '';
-      const normalizedPrompt = rawPrompt.normalize('NFC');
-      const metadata: SuggestionsData['metadata'] = rawMetadata
+      const trimmedHighlight = (highlightedText || "").trim();
+      const normalizedHighlight = trimmedHighlight.normalize("NFC");
+      const rawPrompt = payloadPrompt ?? displayedPrompt ?? "";
+      const normalizedPrompt = rawPrompt.normalize("NFC");
+      const metadata: SuggestionsData["metadata"] = rawMetadata
         ? ({
             ...rawMetadata,
             ...(rawMetadata.span ? { span: { ...rawMetadata.span } } : {}),
-          } as SuggestionsData['metadata'])
+          } as SuggestionsData["metadata"])
         : null;
-      const normalizedLabeledSpans: HighlightSpan[] = Array.isArray(allLabeledSpans)
+      const normalizedLabeledSpans: HighlightSpan[] = Array.isArray(
+        allLabeledSpans,
+      )
         ? (allLabeledSpans as HighlightSpan[])
         : [];
 
       // Early returns for invalid cases
-      if (selectedMode !== 'video' || !trimmedHighlight) {
+      if (selectedMode !== "video" || !trimmedHighlight) {
         return;
       }
 
       const preferIndexRaw =
         metadata?.span?.start ?? metadata?.start ?? offsets?.start ?? null;
       const preferIndex =
-        typeof preferIndexRaw === 'number' && Number.isFinite(preferIndexRaw)
+        typeof preferIndexRaw === "number" && Number.isFinite(preferIndexRaw)
           ? preferIndexRaw
           : null;
 
@@ -163,34 +184,41 @@ export function useSuggestionFetch({
         normalizedPrompt,
         normalizedHighlight,
         preferIndex,
-        1000
+        1000,
       );
 
       const spanContext = prepareSpanContext(metadata, allLabeledSpans);
+      // Use client-computed fingerprint as a fallback. The server returns an
+      // authoritative spanFingerprint in its response which is stored in the
+      // cache; subsequent hits will use that instead.
       const spanFingerprint = buildSpanFingerprint(
         spanContext.simplifiedSpans,
-        spanContext.nearbySpans
+        spanContext.nearbySpans,
       );
 
       if (!suggestionContext.found) {
-        log.warn('Could not locate highlight in prompt; context may be inaccurate', {
-          operation: 'buildSuggestionContext',
-          highlightLength: normalizedHighlight.length,
-          promptLength: normalizedPrompt.length,
-          preferIndex,
-        });
+        log.warn(
+          "Could not locate highlight in prompt; context may be inaccurate",
+          {
+            operation: "buildSuggestionContext",
+            highlightLength: normalizedHighlight.length,
+            promptLength: normalizedPrompt.length,
+            preferIndex,
+          },
+        );
       }
 
       const lockKey = i2vContext?.lockMap
         ? Object.entries(i2vContext.lockMap)
             .sort(([a], [b]) => a.localeCompare(b))
             .map(([key, value]) => `${key}:${value}`)
-            .join('|')
-        : '';
+            .join("|")
+        : "";
       const i2vKey =
-        i2vContext?.isI2VMode && (i2vContext.observation?.imageHash || i2vContext.startImageUrl)
+        i2vContext?.isI2VMode &&
+        (i2vContext.observation?.imageHash || i2vContext.startImageUrl)
           ? `${i2vContext.constraintMode}:${i2vContext.observation?.imageHash || i2vContext.startImageUrl}:${lockKey}`
-          : '';
+          : "";
 
       // Check cache BEFORE showing loading state - Requirement 6.3
       const cacheKey = buildCacheKey({
@@ -229,7 +257,7 @@ export function useSuggestionFetch({
           range: range ?? null,
           offsets: offsets ?? null,
           metadata: metadata ?? null,
-          responseMetadata: cached.metadata ?? null,
+          responseMetadata: buildResponseMetadata(cached),
           allLabeledSpans: normalizedLabeledSpans,
           setSuggestions: updateSuggestions,
           onSuggestionClick: handleSuggestionClick,
@@ -280,6 +308,25 @@ export function useSuggestionFetch({
         // Cache the result - Requirement 6.1
         const cachedResult = setCachedSuggestions(cacheKey, result);
 
+        // If the server returned an authoritative fingerprint, also cache under
+        // that key so future requests using the server fingerprint get a hit.
+        if (
+          result.spanFingerprint &&
+          result.spanFingerprint !== spanFingerprint
+        ) {
+          const serverCacheKey = buildCacheKey({
+            normalizedHighlight,
+            normalizedPrompt,
+            suggestionContext,
+            category: metadata?.category ?? null,
+            spanFingerprint: result.spanFingerprint,
+            i2vKey,
+          });
+          if (serverCacheKey !== cacheKey) {
+            setCachedSuggestions(serverCacheKey, result);
+          }
+        }
+
         setSuggestionsData((prev) => {
           if (!prev) return prev;
           return {
@@ -289,7 +336,7 @@ export function useSuggestionFetch({
             isError: false,
             errorMessage: null,
             isPlaceholder: cachedResult.isPlaceholder,
-            responseMetadata: cachedResult.metadata ?? null,
+            responseMetadata: buildResponseMetadata(cachedResult),
             onRetry: retryFn,
           };
         });
@@ -299,9 +346,14 @@ export function useSuggestionFetch({
           return;
         }
 
-        const errObj = error instanceof Error ? error : new Error(sanitizeError(error).message);
-        log.error('Error fetching suggestions', errObj, { operation: 'fetchEnhancementSuggestions' });
-        toast.error('Failed to load suggestions');
+        const errObj =
+          error instanceof Error
+            ? error
+            : new Error(sanitizeError(error).message);
+        log.error("Error fetching suggestions", errObj, {
+          operation: "fetchEnhancementSuggestions",
+        });
+        toast.error("Failed to load suggestions");
 
         // Set error state with retry callback - Requirement 3.1, 3.3
         setSuggestionsData((prev) => {
@@ -310,7 +362,8 @@ export function useSuggestionFetch({
             ...prev,
             isLoading: false,
             isError: true,
-            errorMessage: errObj.message || 'Failed to load suggestions. Please try again.',
+            errorMessage:
+              errObj.message || "Failed to load suggestions. Please try again.",
             suggestions: [],
             responseMetadata: null,
             onRetry: retryFn, // Wire up retry callback
@@ -333,7 +386,7 @@ export function useSuggestionFetch({
       isRequestInFlight,
       updateSuggestions,
       i2vContext,
-    ]
+    ],
   );
 
   return {

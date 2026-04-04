@@ -36,6 +36,7 @@ npx tsx scripts/evaluation/generate-evaluation-prompts.ts --sample 30
 **Output:** `scripts/evaluation/data/evaluation-prompts-latest.json`
 
 This gives you:
+
 - Real user inputs (authentic test cases)
 - Consistent output format (current optimizer)
 - Clean baseline for comparison
@@ -80,28 +81,31 @@ npx tsx scripts/evaluation/compare-snapshots.ts
 ### No Ground Truth Required
 
 Instead of manually annotating "correct" spans, we use **LLM-as-Judge** with GPT-4o:
+
 - GPT-4o evaluates each span labeling result
 - Scores on 5 dimensions (25 points max)
 - Identifies specific issues (missed elements, incorrect extractions)
 
 GPT-4o was chosen as judge because:
+
 - 0.86 correlation with human annotators (per GeoBenchX benchmarks)
 - Different model family than span labeling (Groq/Llama) - avoids self-preference bias
 - Strong structured output adherence for consistent JSON responses
 
 ### LLM Judge Rubric
 
-| Dimension | What It Measures | Max |
-|-----------|------------------|-----|
-| **Coverage** | Did it extract ALL visual control points? | 5 |
-| **Precision** | Did it correctly SKIP abstract concepts? | 5 |
-| **Granularity** | Are span boundaries correct? | 5 |
-| **Taxonomy** | Are roles assigned correctly? | 5 |
-| **Technical Specs** | Did it extract fps, duration, aspect ratio? | 5 |
+| Dimension           | What It Measures                            | Max |
+| ------------------- | ------------------------------------------- | --- |
+| **Coverage**        | Did it extract ALL visual control points?   | 5   |
+| **Precision**       | Did it correctly SKIP abstract concepts?    | 5   |
+| **Granularity**     | Are span boundaries correct?                | 5   |
+| **Taxonomy**        | Are roles assigned correctly?               | 5   |
+| **Technical Specs** | Did it extract fps, duration, aspect ratio? | 5   |
 
 ### Regression Detection
 
 Compares snapshots to detect:
+
 - **Score regressions**: Prompts that got worse by 3+ points
 - **New errors**: Prompts that now fail to process
 - **Category changes**: Coverage improved but precision dropped
@@ -153,13 +157,13 @@ Options:
 
 ### Score Distribution
 
-| Range | Meaning |
-|-------|---------|
-| Excellent (23-25) | Ready for production |
-| Good (18-22) | Minor issues |
-| Acceptable (13-17) | Needs attention |
-| Poor (8-12) | Significant problems |
-| Failing (0-7) | Broken |
+| Range              | Meaning              |
+| ------------------ | -------------------- |
+| Excellent (23-25)  | Ready for production |
+| Good (18-22)       | Minor issues         |
+| Acceptable (13-17) | Needs attention      |
+| Poor (8-12)        | Significant problems |
+| Failing (0-7)      | Broken               |
 
 ### Regression Thresholds
 
@@ -170,6 +174,7 @@ Options:
 ### Example Output
 
 **Evaluation Report:**
+
 ```
 📊 SUMMARY (50 prompts evaluated):
   Average Score:      21.3/25
@@ -188,6 +193,7 @@ Options:
 ```
 
 **Regression Report:**
+
 ```
 📊 OVERALL CHANGE:
   Average Score: 21.3 → 20.1 (-1.2)
@@ -240,6 +246,7 @@ npx tsx scripts/evaluation/span-labeling-evaluation.ts --baseline
 ### Environment Variables
 
 Required:
+
 - `OPENAI_API_KEY` - **Required** for LLM-as-Judge (uses GPT-4o)
 - `GROQ_API_KEY` - For span labeling (or OpenAI as fallback)
 

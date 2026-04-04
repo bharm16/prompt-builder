@@ -1,55 +1,48 @@
-import { logger } from '@infrastructure/Logger';
-import type { ILogger } from '@interfaces/ILogger';
-import OptimizationConfig from '@config/OptimizationConfig';
+import { logger } from "@infrastructure/Logger";
+import type { ILogger } from "@interfaces/ILogger";
+import OptimizationConfig from "@config/OptimizationConfig";
 
-import { ContextInferenceService } from './services/ContextInferenceService';
-import { ModeDetectionService } from './services/ModeDetectionService';
-import { QualityAssessmentService } from './services/QualityAssessmentService';
-import { StrategyFactory } from './services/StrategyFactory';
-import { ShotInterpreterService } from './services/ShotInterpreterService';
-import { DraftGenerationService } from './services/DraftGenerationService';
-import { OptimizationCacheService } from './services/OptimizationCacheService';
-import { VideoPromptCompilationService } from './services/VideoPromptCompilationService';
-import { TemplateService } from './services/TemplateService';
-import { I2VMotionStrategy } from './strategies/I2VMotionStrategy';
-import type { ImageObservationService } from '@services/image-observation';
-import type { VideoPromptService } from '../video-prompt-analysis/VideoPromptService';
-import type { CapabilityValues } from '@shared/capabilities';
-import type { CacheService } from '@services/cache/CacheService';
+import { VideoStrategy } from "./strategies/VideoStrategy";
+import { ShotInterpreterService } from "./services/ShotInterpreterService";
+import { OptimizationCacheService } from "./services/OptimizationCacheService";
+import { VideoPromptCompilationService } from "./services/VideoPromptCompilationService";
+import { TemplateService } from "./services/TemplateService";
+import { IntentLockService } from "./services/IntentLockService";
+import { PromptLintGateService } from "./services/PromptLintGateService";
+import { applyIntentLockPolicy } from "./services/intentLockPolicy";
+import { I2VMotionStrategy } from "./strategies/I2VMotionStrategy";
+import type { ImageObservationService } from "@services/image-observation";
+import type { VideoPromptService } from "../video-prompt-analysis/VideoPromptService";
+import type { CapabilityValues } from "@shared/capabilities";
+import type { CacheService } from "@services/cache/CacheService";
 import type {
   AIService,
+  CompileContext,
+  CompilePromptResponse,
   OptimizationMode,
   OptimizationRequest,
   OptimizationResponse,
-  TwoStageOptimizationRequest,
-  TwoStageOptimizationResult,
-  InferredContext,
-  ShotPlan,
-} from './types';
-import type { I2VConstraintMode } from './types/i2v';
-import { runI2vFlow } from './workflows/i2vFlow';
-import { runTwoStageFlow } from './workflows/twoStageFlow';
-import { runOptimizeFlow } from './workflows/optimizeFlow';
-import { runIterativeRefinementFlow } from './workflows/iterativeRefinementFlow';
-import { runConstitutionalReviewFlow } from './workflows/constitutionalReview';
+} from "./types";
+import type { I2VConstraintMode } from "./types/i2v";
+import { runI2vFlow } from "./workflows/i2vFlow";
+import { runOptimizeFlow } from "./workflows/optimizeFlow";
+import { runConstitutionalReviewFlow } from "./workflows/constitutionalReview";
 
 /**
  * Refactored Prompt Optimization Service - Orchestrator Pattern
  */
 export class PromptOptimizationService {
   private readonly ai: AIService;
-  private readonly contextInference: ContextInferenceService;
-  private readonly modeDetection: ModeDetectionService;
-  private readonly qualityAssessment: QualityAssessmentService;
-  private readonly strategyFactory: StrategyFactory;
+  private readonly videoStrategy: VideoStrategy;
   private readonly shotInterpreter: ShotInterpreterService;
-  private readonly draftService: DraftGenerationService;
   private readonly optimizationCache: OptimizationCacheService;
   private readonly compilationService: VideoPromptCompilationService | null;
-  private readonly videoPromptService: VideoPromptService | null;
   private readonly imageObservation: ImageObservationService;
   private readonly i2vStrategy: I2VMotionStrategy;
   private readonly templateVersions: typeof OptimizationConfig.templateVersions;
+  private readonly intentLock: IntentLockService;
+  private readonly promptLint: PromptLintGateService;
+  private readonly pipelineV2Enabled: boolean;
   private readonly log: ILogger;
 
   constructor(
@@ -58,45 +51,48 @@ export class PromptOptimizationService {
     videoPromptService: VideoPromptService | null = null,
     imageObservationService: ImageObservationService,
     templateService?: TemplateService,
-    shotPlanCacheConfig?: { cacheTtlMs: number; cacheMax: number }
+    shotPlanCacheConfig?: { cacheTtlMs: number; cacheMax: number },
   ) {
     this.ai = aiService;
-    this.videoPromptService = videoPromptService;
-    this.log = logger.child({ service: 'PromptOptimizationService' });
+    this.log = logger.child({ service: "PromptOptimizationService" });
 
     const resolvedTemplateService = templateService ?? new TemplateService();
-    this.contextInference = new ContextInferenceService(aiService);
-    this.modeDetection = new ModeDetectionService(aiService);
-    this.qualityAssessment = new QualityAssessmentService(aiService);
-    this.strategyFactory = new StrategyFactory(aiService, resolvedTemplateService);
-    this.shotInterpreter = new ShotInterpreterService(aiService, shotPlanCacheConfig);
-    this.draftService = new DraftGenerationService(aiService);
+    this.videoStrategy = new VideoStrategy(aiService, resolvedTemplateService);
+    this.shotInterpreter = new ShotInterpreterService(
+      aiService,
+      shotPlanCacheConfig,
+    );
     this.optimizationCache = new OptimizationCacheService(cacheService);
     this.compilationService = videoPromptService
-      ? new VideoPromptCompilationService(videoPromptService, this.qualityAssessment)
+      ? new VideoPromptCompilationService(
+          videoPromptService,
+          this.optimizationCache,
+        )
       : null;
     this.imageObservation = imageObservationService;
     this.i2vStrategy = new I2VMotionStrategy(aiService);
+    this.intentLock = new IntentLockService();
+    this.promptLint = new PromptLintGateService(
+      videoPromptService
+        ? {
+            getModelConstraints: (modelId) =>
+              videoPromptService.getModelConstraints(modelId),
+          }
+        : undefined,
+    );
+    this.pipelineV2Enabled = process.env.PROMPT_PIPELINE_V2 !== "false";
 
     this.templateVersions = OptimizationConfig.templateVersions;
 
-    this.log.info('PromptOptimizationService initialized with refactored architecture', {
-      operation: 'constructor',
-      availableClients: this.ai.getAvailableClients?.(),
-      strategies: this.strategyFactory.getSupportedModes(),
-    });
-  }
-
-  async optimizeTwoStage(
-    request: TwoStageOptimizationRequest
-  ): Promise<TwoStageOptimizationResult> {
-    return runTwoStageFlow({
-      request,
-      log: this.log,
-      shotInterpreter: this.shotInterpreter,
-      draftService: this.draftService,
-      optimize: (nextRequest) => this.optimize(nextRequest),
-    });
+    this.log.info(
+      "PromptOptimizationService initialized with refactored architecture",
+      {
+        operation: "constructor",
+        availableClients: this.ai.getAvailableClients?.(),
+        strategy: this.videoStrategy.name,
+        pipelineV2Enabled: this.pipelineV2Enabled,
+      },
+    );
   }
 
   async optimize(request: OptimizationRequest): Promise<OptimizationResponse> {
@@ -125,37 +121,44 @@ export class PromptOptimizationService {
       log: this.log,
       optimizationCache: this.optimizationCache,
       shotInterpreter: this.shotInterpreter,
-      strategyFactory: this.strategyFactory,
-      qualityAssessment: this.qualityAssessment,
+      strategy: this.videoStrategy,
       compilationService: this.compilationService,
-      optimizeIteratively: (
-        iterativePrompt,
-        mode,
-        context,
-        brainstormContext,
-        lockedSpans,
-        iterativeGenerationParams,
-        shotPlan,
-        useConstitutionalAI,
-        signal,
-        onMetadata
-      ) =>
-        this.optimizeIteratively(
-          iterativePrompt,
-          mode,
-          context,
-          brainstormContext,
-          lockedSpans,
-          iterativeGenerationParams,
-          shotPlan,
-          useConstitutionalAI,
-          signal,
-          onMetadata
-        ),
       applyConstitutionalAI: (nextPrompt, mode, signal) =>
         this.applyConstitutionalAI(nextPrompt, mode, signal),
       logOptimizationMetrics: (originalPrompt, optimizedPrompt, mode) =>
         this.logOptimizationMetrics(originalPrompt, optimizedPrompt, mode),
+      intentLock: this.pipelineV2Enabled
+        ? this.intentLock
+        : {
+            enforceIntentLock: ({
+              optimizedPrompt,
+              originalPrompt,
+              shotPlan,
+            }) => {
+              void originalPrompt;
+              void shotPlan;
+              return {
+                prompt: optimizedPrompt,
+                passed: true,
+                repaired: false,
+                required: { subject: null, action: null },
+              };
+            },
+          },
+      promptLint: this.pipelineV2Enabled
+        ? this.promptLint
+        : {
+            enforce: ({ prompt }) => ({
+              prompt,
+              lint: {
+                ok: true,
+                errors: [],
+                warnings: [],
+                wordCount: prompt.split(/\s+/).length,
+              },
+              repaired: false,
+            }),
+          },
     });
   }
 
@@ -179,57 +182,79 @@ export class PromptOptimizationService {
    */
   async compilePrompt({
     prompt,
+    artifactKey,
     targetModel,
     context,
   }: {
-    prompt: string;
+    prompt?: string;
+    artifactKey?: string;
     targetModel: string;
-    context?: unknown | null;
-  }): Promise<{
-    compiledPrompt: string;
-    metadata: Record<string, unknown> | null;
-    targetModel: string;
-  }> {
-    void context;
+    context?: CompileContext | null;
+  }): Promise<CompilePromptResponse> {
     if (!this.compilationService) {
-      throw new Error('Video prompt service unavailable');
+      throw new Error("Video prompt service unavailable");
     }
 
-    return this.compilationService.compilePrompt(prompt, targetModel);
-  }
-
-  /**
-   * Iteratively refine a prompt until quality threshold is met
-   */
-  private async optimizeIteratively(
-    prompt: string,
-    mode: OptimizationMode,
-    context: InferredContext | null,
-    brainstormContext: Record<string, unknown> | null,
-    lockedSpans: Array<{ text: string; leftCtx?: string | null; rightCtx?: string | null }> | null,
-    generationParams: CapabilityValues | null,
-    shotPlan: ShotPlan | null,
-    useConstitutionalAI: boolean,
-    signal?: AbortSignal,
-    onMetadata?: (metadata: Record<string, unknown>) => void
-  ): Promise<string> {
-    return runIterativeRefinementFlow({
-      prompt,
-      mode,
-      context,
-      brainstormContext,
-      lockedSpans,
-      generationParams,
-      shotPlan,
-      useConstitutionalAI,
-      signal,
-      onMetadata,
-      log: this.log,
-      strategyFactory: this.strategyFactory,
-      qualityAssessment: this.qualityAssessment,
-      applyConstitutionalAI: (nextPrompt, nextMode, nextSignal) =>
-        this.applyConstitutionalAI(nextPrompt, nextMode, nextSignal),
+    const normalizedPrompt = typeof prompt === "string" ? prompt : "";
+    const compilation = await this.compilationService.compile({
+      operation: "compilePrompt",
+      mode: "video",
+      targetModel,
+      source: artifactKey
+        ? { kind: "artifactKey", artifactKey }
+        : { kind: "prompt", prompt: normalizedPrompt },
+      context: context ?? null,
+      fallbackPrompt: normalizedPrompt,
+      ...(artifactKey ? { artifactKey } : {}),
     });
+    let compiledPrompt = compilation.prompt;
+    let metadata = compilation.metadata;
+    let compilationState = compilation.compilation;
+
+    if (this.pipelineV2Enabled) {
+      const originalPrompt = this.resolveOriginalPromptForCompile(
+        context,
+        normalizedPrompt,
+      );
+      const intent = applyIntentLockPolicy({
+        intentLock: this.intentLock,
+        originalPrompt,
+        optimizedPrompt: compiledPrompt,
+        shotPlan: null,
+        compilation: compilationState,
+      });
+      compiledPrompt = intent.prompt;
+      compilationState = {
+        ...compilationState,
+        ...(intent.compilationIntentLock
+          ? { intentLock: intent.compilationIntentLock }
+          : {}),
+      };
+
+      const lint = this.promptLint.enforce({
+        prompt: compiledPrompt,
+        modelId: compilationState.compiledFor ?? targetModel,
+      });
+      compiledPrompt = lint.prompt;
+
+      metadata = {
+        ...(metadata || {}),
+        ...intent.legacyMetadata,
+        promptLint: lint.lint,
+        promptLintRepaired: lint.repaired,
+        compilation: compilationState,
+      };
+    }
+
+    return {
+      compiledPrompt,
+      metadata,
+      targetModel: compilationState.compiledFor ?? targetModel,
+      ...(compilation.artifactKey
+        ? { artifactKey: compilation.artifactKey }
+        : {}),
+      compilation: compilationState,
+    };
   }
 
   /**
@@ -238,7 +263,7 @@ export class PromptOptimizationService {
   private async applyConstitutionalAI(
     prompt: string,
     mode: OptimizationMode,
-    signal?: AbortSignal
+    signal?: AbortSignal,
   ): Promise<string> {
     return runConstitutionalReviewFlow({
       prompt,
@@ -250,41 +275,51 @@ export class PromptOptimizationService {
   }
 
   /**
-   * Automatically detect optimal mode for a prompt
-   */
-  async detectOptimalMode(prompt: string): Promise<OptimizationMode> {
-    return this.modeDetection.detectMode(prompt);
-  }
-
-  /**
-   * Infer context from a prompt
-   */
-  async inferContextFromPrompt(prompt: string) {
-    return this.contextInference.inferContext(prompt);
-  }
-
-  /**
-   * Assess the quality of a prompt
-   */
-  async assessPromptQuality(prompt: string, mode: OptimizationMode) {
-    return this.qualityAssessment.assessQuality(prompt, mode);
-  }
-
-  /**
    * Log optimization metrics
    */
   private logOptimizationMetrics(
     originalPrompt: string,
     optimizedPrompt: string,
-    mode: OptimizationMode
+    mode: OptimizationMode,
   ): void {
-    logger.info('Optimization metrics', {
+    logger.info("Optimization metrics", {
       mode,
       originalLength: originalPrompt.length,
       optimizedLength: optimizedPrompt.length,
       lengthChange: optimizedPrompt.length - originalPrompt.length,
-      lengthChangePercent: ((optimizedPrompt.length / originalPrompt.length - 1) * 100).toFixed(1),
+      lengthChangePercent: (
+        (optimizedPrompt.length / originalPrompt.length - 1) *
+        100
+      ).toFixed(1),
     });
+  }
+
+  private resolveOriginalPromptForCompile(
+    context: CompileContext | null | undefined,
+    fallbackPrompt: string,
+  ): string {
+    if (!context || typeof context !== "object") {
+      return fallbackPrompt;
+    }
+
+    const contextRecord = context as Record<string, unknown>;
+    const originalPromptCandidate = contextRecord.originalPrompt;
+    if (
+      typeof originalPromptCandidate === "string" &&
+      originalPromptCandidate.trim().length > 0
+    ) {
+      return originalPromptCandidate.trim();
+    }
+
+    const originalUserPromptCandidate = contextRecord.originalUserPrompt;
+    if (
+      typeof originalUserPromptCandidate === "string" &&
+      originalUserPromptCandidate.trim().length > 0
+    ) {
+      return originalUserPromptCandidate.trim();
+    }
+
+    return fallbackPrompt;
   }
 }
 

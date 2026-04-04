@@ -1,5 +1,10 @@
-import React from 'react';
-import { Copy, GraduationCap, ScanEye, Trash2 } from '@promptstudio/system/components/ui';
+import React from "react";
+import {
+  Copy,
+  GraduationCap,
+  ScanEye,
+  Trash2,
+} from "@promptstudio/system/components/ui";
 
 interface ImagePromptFooterActionsProps {
   onCopy: () => void;
@@ -24,7 +29,7 @@ export function ImagePromptFooterActions({
         <button
           type="button"
           aria-label="Copy text"
-          className="w-6 h-6 rounded-md flex items-center justify-center text-[#A0AEC0] hover:bg-[#1B1E23]"
+          className="w-6 h-6 rounded-md flex items-center justify-center text-tool-text-muted hover:bg-surface-1"
           onClick={onCopy}
           disabled={!canCopy}
         >
@@ -33,7 +38,7 @@ export function ImagePromptFooterActions({
         <button
           type="button"
           aria-label="Clear text"
-          className="w-6 h-6 rounded-md flex items-center justify-center text-[#A0AEC0] hover:bg-[#1B1E23]"
+          className="w-6 h-6 rounded-md flex items-center justify-center text-tool-text-muted hover:bg-surface-1"
           onClick={onClear}
           disabled={!canClear}
         >
@@ -45,7 +50,7 @@ export function ImagePromptFooterActions({
         <button
           type="button"
           aria-label="View guide"
-          className="w-6 h-6 rounded-md flex items-center justify-center text-[#A0AEC0] hover:bg-[#1B1E23]"
+          className="w-6 h-6 rounded-md flex items-center justify-center text-tool-text-muted hover:bg-surface-1"
           onClick={onViewGuide}
         >
           <GraduationCap className="w-4 h-4" />
@@ -53,7 +58,7 @@ export function ImagePromptFooterActions({
         <button
           type="button"
           aria-label="Generate prompt from image"
-          className="w-6 h-6 rounded-md flex items-center justify-center text-[#A0AEC0] hover:bg-[#1B1E23] disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-6 h-6 rounded-md flex items-center justify-center text-tool-text-muted hover:bg-surface-1 disabled:opacity-50 disabled:cursor-not-allowed"
           onClick={onGenerateFromImage}
           disabled={!onGenerateFromImage}
         >

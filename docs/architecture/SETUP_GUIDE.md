@@ -30,7 +30,6 @@ git commit -m "Add Claude Code architecture templates"
    - `docs/architecture/CLAUDE_CODE_RULES.md`
    - `docs/architecture/CLAUDE_CODE_TEMPLATES.md`
    - `client/src/components/VideoConceptBuilder/REFACTORING_SUMMARY.md`
-   
 4. Wait for indexing to complete
 
 ---
@@ -51,7 +50,7 @@ alias cc-review-be="echo 'Review these for multiple responsibilities:' && find s
 
 Then reload: `source ~/.bashrc` or `source ~/.zshrc`
 
-**IMPORTANT:** These commands help you find files to *review*, not files to automatically split. A long file with one responsibility is fine.
+**IMPORTANT:** These commands help you find files to _review_, not files to automatically split. A long file with one responsibility is fine.
 
 ---
 
@@ -140,6 +139,7 @@ Create `.vscode/claude-code.code-snippets`:
 ## Step 5: Keep Cheatsheet Visible
 
 **Option A: Browser Tab**
+
 ```bash
 open docs/architecture/CLAUDE_CODE_CHEATSHEET.md
 ```
@@ -155,13 +155,17 @@ Seriously. Print `EMERGENCY_REFERENCE.md` and stick it next to your monitor.
 ## Step 6: Test Your Setup (3 minutes)
 
 ### Test 1: Project Knowledge Works
+
 In Claude UI:
+
 ```
 What's the principle behind splitting files in this project?
 ```
+
 Should reference "one reason to change" and responsibility, NOT line counts.
 
 ### Test 2: Full Claude Code Request
+
 ```bash
 claude-code "Add a simple ToastMessage component
 
@@ -175,6 +179,7 @@ SHOW STRUCTURE FIRST"
 ```
 
 Claude Code should:
+
 1. Show you the proposed structure
 2. Confirm each file has one responsibility
 3. Follow the pattern
@@ -193,6 +198,7 @@ Claude Code should:
 ### After Claude Code Runs
 
 Ask yourself:
+
 1. Can I describe each new file in ≤10 words?
 2. Can I test each piece with ≤2 mocks?
 3. Do files that change together live together?
@@ -257,6 +263,7 @@ git commit -m "Add PDF export following VideoConceptBuilder pattern"
 ### "Claude Code isn't following the patterns"
 
 Be more explicit about responsibilities:
+
 ```bash
 claude-code "Add feature
 
@@ -274,6 +281,7 @@ SHOW STRUCTURE FIRST"
 ### "Should I split this file?"
 
 Ask these questions:
+
 1. **Does it have multiple responsibilities?** (multiple reasons to change)
 2. **Can I describe it in one sentence without 'and'?**
 3. **Can I test it with ≤2 mocks?**
@@ -284,6 +292,7 @@ If any answer differs → Split by responsibility.
 ### "I keep creating files that change together"
 
 That's a sign you split wrong. The rule is:
+
 - Files that change together should live together
 - Split by responsibility, not by arbitrary boundaries
 
@@ -294,12 +303,15 @@ If `ComponentA.jsx` and `useComponentA.js` always change together for the same r
 ## Summary
 
 **The principle:**
+
 > Split by responsibility, not by size.
 
 **The test:**
+
 > "Can I describe this in one sentence without 'and'?"
 
 **The workflow:**
+
 1. Copy template
 2. State each file's single responsibility
 3. Ask for structure first

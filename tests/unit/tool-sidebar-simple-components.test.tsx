@@ -1,24 +1,23 @@
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
-import type { AppIcon } from '@/types';
+import { describe, it, expect, vi } from "vitest";
+import { render, screen, within } from "@testing-library/react";
+import type { AppIcon } from "@/types";
 
-import { ToolNavButton } from '@components/ToolSidebar/components/ToolNavButton';
-import { ToolPanel } from '@components/ToolSidebar/components/ToolPanel';
-import { StylesPanel } from '@components/ToolSidebar/components/panels/StylesPanel';
+import { ToolNavButton } from "@components/ToolSidebar/components/ToolNavButton";
+import { ToolPanel } from "@components/ToolSidebar/components/ToolPanel";
+import { StylesPanel } from "@components/ToolSidebar/components/panels/StylesPanel";
 
-vi.mock(
-  '@utils/cn',
-  () => ({
-    cn: (...classes: Array<string | false | null | undefined>) =>
-      classes.filter(Boolean).join(' '),
-  })
+vi.mock("@utils/cn", () => ({
+  cn: (...classes: Array<string | false | null | undefined>) =>
+    classes.filter(Boolean).join(" "),
+}));
+
+const DummyIcon: AppIcon = (props) => (
+  <svg data-testid="dummy-icon" {...props} />
 );
 
-const DummyIcon: AppIcon = (props) => <svg data-testid="dummy-icon" {...props} />;
-
-describe('ToolSidebar simple components', () => {
-  describe('error handling', () => {
-    it('renders header variant without aria-pressed even when active', () => {
+describe("ToolSidebar simple components", () => {
+  describe("error handling", () => {
+    it("renders header variant without aria-pressed even when active", () => {
       render(
         <ToolNavButton
           icon={DummyIcon}
@@ -26,28 +25,28 @@ describe('ToolSidebar simple components', () => {
           isActive
           onClick={vi.fn()}
           variant="header"
-        />
+        />,
       );
 
-      const button = screen.getByRole('button', { name: 'Sessions' });
-      expect(button.getAttribute('aria-pressed')).toBeNull();
-      const icon = within(button).getByTestId('dummy-icon');
-      expect(icon.getAttribute('class')).toContain('h-4 w-4');
-      expect(button.getAttribute('class')).toContain('text-[#E2E6EF]');
+      const button = screen.getByRole("button", { name: "Sessions" });
+      expect(button.getAttribute("aria-pressed")).toBeNull();
+      const icon = within(button).getByTestId("dummy-icon");
+      expect(icon.getAttribute("class")).toContain("h-5 w-5");
+      expect(button.getAttribute("class")).toContain("text-foreground");
     });
 
-    it('keeps data-panel attribute when children are null', () => {
+    it("keeps data-panel attribute when children are null", () => {
       const { container } = render(
-        <ToolPanel activePanel="styles">{null}</ToolPanel>
+        <ToolPanel activePanel="styles">{null}</ToolPanel>,
       );
 
       const panel = container.querySelector('[data-panel="styles"]');
       expect(panel).not.toBeNull();
     });
 
-    it('updates data-panel when activePanel changes', () => {
+    it("updates data-panel when activePanel changes", () => {
       const { container, rerender } = render(
-        <ToolPanel activePanel="sessions">Content</ToolPanel>
+        <ToolPanel activePanel="sessions">Content</ToolPanel>,
       );
 
       expect(container.querySelector('[data-panel="sessions"]')).not.toBeNull();
@@ -57,35 +56,33 @@ describe('ToolSidebar simple components', () => {
     });
   });
 
-  describe('edge cases', () => {
-    it('renders inactive nav button styling and aria-pressed false', () => {
+  describe("edge cases", () => {
+    it("renders inactive nav button styling and aria-pressed false", () => {
       render(
         <ToolNavButton
           icon={DummyIcon}
           label="Create"
           isActive={false}
           onClick={vi.fn()}
-        />
+        />,
       );
 
-      const button = screen.getByRole('button', { name: 'Create' });
-      expect(button).toHaveAttribute('aria-pressed', 'false');
-      const icon = within(button).getByTestId('dummy-icon');
-      expect(icon.getAttribute('class')).toContain('h-4 w-4');
-      expect(button.getAttribute('class')).toContain('text-[#555B6E]');
+      const button = screen.getByRole("button", { name: "Create" });
+      expect(button).toHaveAttribute("aria-pressed", "false");
+      const icon = within(button).getByTestId("dummy-icon");
+      expect(icon.getAttribute("class")).toContain("h-5 w-5");
+      expect(button.getAttribute("class")).toContain("text-foreground");
     });
 
-    it('shows the styles placeholder message', () => {
+    it("shows the styles placeholder message", () => {
       render(<StylesPanel />);
 
-      expect(
-        screen.getByText('Style presets coming soon')
-      ).toBeInTheDocument();
+      expect(screen.getByText("Style presets coming soon")).toBeInTheDocument();
     });
   });
 
-  describe('core behavior', () => {
-    it('renders active styling and triggers onClick', () => {
+  describe("core behavior", () => {
+    it("renders active styling and triggers onClick", () => {
       const onClick = vi.fn();
 
       render(
@@ -94,14 +91,14 @@ describe('ToolSidebar simple components', () => {
           label="Studio"
           isActive
           onClick={onClick}
-        />
+        />,
       );
 
-      const button = screen.getByRole('button', { name: 'Studio' });
-      expect(button).toHaveAttribute('aria-pressed', 'true');
-      const icon = within(button).getByTestId('dummy-icon');
-      expect(icon.getAttribute('class')).toContain('h-4 w-4');
-      expect(button.getAttribute('class')).toContain('text-[#E2E6EF]');
+      const button = screen.getByRole("button", { name: "Studio" });
+      expect(button).toHaveAttribute("aria-pressed", "true");
+      const icon = within(button).getByTestId("dummy-icon");
+      expect(icon.getAttribute("class")).toContain("h-5 w-5");
+      expect(button.getAttribute("class")).toContain("text-foreground");
 
       button.click();
       expect(onClick).toHaveBeenCalledTimes(1);

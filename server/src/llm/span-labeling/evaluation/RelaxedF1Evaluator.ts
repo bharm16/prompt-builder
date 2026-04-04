@@ -1,12 +1,12 @@
 /**
  * Relaxed F1 Evaluator
- * 
+ *
  * PDF Section 4.2: Evaluation Metrics
- * 
+ *
  * Implements "Relaxed F1" metric where matches are counted if:
  * - Intersection over Union (IoU) > 0.5
  * - AND role matches ground truth
- * 
+ *
  * This forgives minor boundary drift but penalizes wrong labels.
  * Standard "Exact Match" metrics are too harsh for span extraction.
  */
@@ -43,20 +43,23 @@ export class RelaxedF1Evaluator {
     if (
       !predicted ||
       !groundTruth ||
-      typeof predicted.start !== 'number' ||
-      typeof predicted.end !== 'number' ||
-      typeof groundTruth.start !== 'number' ||
-      typeof groundTruth.end !== 'number'
+      typeof predicted.start !== "number" ||
+      typeof predicted.end !== "number" ||
+      typeof groundTruth.start !== "number" ||
+      typeof groundTruth.end !== "number"
     ) {
       return 0;
     }
 
     const intersection = Math.max(
       0,
-      Math.min(predicted.end, groundTruth.end) - Math.max(predicted.start, groundTruth.start)
+      Math.min(predicted.end, groundTruth.end) -
+        Math.max(predicted.start, groundTruth.start),
     );
-    const union = Math.max(predicted.end, groundTruth.end) - Math.min(predicted.start, groundTruth.start);
-    
+    const union =
+      Math.max(predicted.end, groundTruth.end) -
+      Math.min(predicted.start, groundTruth.start);
+
     return union > 0 ? intersection / union : 0;
   }
 
@@ -75,27 +78,38 @@ export class RelaxedF1Evaluator {
     predicted: SpanLike[] | null | undefined,
     groundTruth: SpanLike[] | null | undefined,
     iouThreshold = 0.1,
-    useParentRole = true
+    useParentRole = true,
   ) {
-    if (!Array.isArray(predicted) || !Array.isArray(groundTruth) || groundTruth.length === 0) {
-      return { rate: 0, fragmentedCount: 0, totalGroundTruth: groundTruth?.length || 0, examples: [] };
+    if (
+      !Array.isArray(predicted) ||
+      !Array.isArray(groundTruth) ||
+      groundTruth.length === 0
+    ) {
+      return {
+        rate: 0,
+        fragmentedCount: 0,
+        totalGroundTruth: groundTruth?.length || 0,
+        examples: [],
+      };
     }
 
     let fragmentedCount = 0;
     const examples: Array<{
       groundTruth: SpanLike;
-      fragments: Array<Pick<SpanLike, 'text' | 'role' | 'start' | 'end'>>;
+      fragments: Array<Pick<SpanLike, "text" | "role" | "start" | "end">>;
     }> = [];
 
     for (const gt of groundTruth) {
-      const overlapping = predicted.filter((p) => this.calculateIoU(p, gt) > iouThreshold);
+      const overlapping = predicted.filter(
+        (p) => this.calculateIoU(p, gt) > iouThreshold,
+      );
 
       const filtered = useParentRole
         ? overlapping.filter(
             (p) =>
-              typeof p.role === 'string' &&
-              typeof gt.role === 'string' &&
-              p.role.split('.')[0] === gt.role.split('.')[0]
+              typeof p.role === "string" &&
+              typeof gt.role === "string" &&
+              p.role.split(".")[0] === gt.role.split(".")[0],
           )
         : overlapping;
 
@@ -104,11 +118,11 @@ export class RelaxedF1Evaluator {
         if (examples.length < 5) {
           examples.push({
             groundTruth: gt,
-            fragments: filtered.map((f) => ({ 
-              text: f.text ?? '', 
-              role: f.role ?? '', 
-              start: f.start ?? 0, 
-              end: f.end ?? 0 
+            fragments: filtered.map((f) => ({
+              text: f.text ?? "",
+              role: f.role ?? "",
+              start: f.start ?? 0,
+              end: f.end ?? 0,
             })),
           });
         }
@@ -136,7 +150,7 @@ export class RelaxedF1Evaluator {
   calculateOverExtractionRate(
     predicted: SpanLike[] | null | undefined,
     groundTruth: SpanLike[] | null | undefined,
-    iouThreshold = 0.5
+    iouThreshold = 0.5,
   ): {
     rate: number;
     spuriousCount: number;
@@ -144,7 +158,12 @@ export class RelaxedF1Evaluator {
     examples: SpanLike[];
   } {
     if (!Array.isArray(predicted) || predicted.length === 0) {
-      return { rate: 0, spuriousCount: 0, totalPredicted: predicted?.length || 0, examples: [] };
+      return {
+        rate: 0,
+        spuriousCount: 0,
+        totalPredicted: predicted?.length || 0,
+        examples: [],
+      };
     }
 
     const examples: SpanLike[] = [];
@@ -186,7 +205,7 @@ export class RelaxedF1Evaluator {
     matrix: ConfusionMatrix | null | undefined,
     predicted: SpanLike[] | null | undefined,
     groundTruth: SpanLike[] | null | undefined,
-    iouThreshold = 0.5
+    iouThreshold = 0.5,
   ): ConfusionMatrix {
     const updated: ConfusionMatrix = matrix || {};
     if (!Array.isArray(predicted) || !Array.isArray(groundTruth)) {
@@ -210,17 +229,19 @@ export class RelaxedF1Evaluator {
         }
       }
 
-      const gtRole = typeof gt.role === 'string' ? gt.role : 'unknown';
+      const gtRole = typeof gt.role === "string" ? gt.role : "unknown";
       if (!updated[gtRole]) updated[gtRole] = {};
 
       if (bestIdx !== -1 && bestIou > iouThreshold) {
         const matchedPred = predicted[bestIdx];
         const predRole =
-          matchedPred && typeof matchedPred.role === 'string' ? matchedPred.role : 'unknown';
+          matchedPred && typeof matchedPred.role === "string"
+            ? matchedPred.role
+            : "unknown";
         updated[gtRole][predRole] = (updated[gtRole][predRole] || 0) + 1;
         usedPred.add(bestIdx);
       } else {
-        updated[gtRole]['<missed>'] = (updated[gtRole]['<missed>'] || 0) + 1;
+        updated[gtRole]["<missed>"] = (updated[gtRole]["<missed>"] || 0) + 1;
       }
     }
 
@@ -228,9 +249,13 @@ export class RelaxedF1Evaluator {
     for (let i = 0; i < predicted.length; i++) {
       if (usedPred.has(i)) continue;
       const predSpan = predicted[i];
-      const predRole = predSpan && typeof predSpan.role === 'string' ? predSpan.role : 'unknown';
-      if (!updated['<spurious>']) updated['<spurious>'] = {};
-      updated['<spurious>'][predRole] = (updated['<spurious>'][predRole] || 0) + 1;
+      const predRole =
+        predSpan && typeof predSpan.role === "string"
+          ? predSpan.role
+          : "unknown";
+      if (!updated["<spurious>"]) updated["<spurious>"] = {};
+      updated["<spurious>"][predRole] =
+        (updated["<spurious>"][predRole] || 0) + 1;
     }
 
     return updated;
@@ -244,12 +269,17 @@ export class RelaxedF1Evaluator {
    */
   generateConfusionMatrix(
     testResults: EvaluationTestCase[] | null | undefined,
-    iouThreshold = 0.5
+    iouThreshold = 0.5,
   ): ConfusionMatrix {
     const matrix: ConfusionMatrix = {};
     if (!Array.isArray(testResults)) return matrix;
     for (const r of testResults) {
-      this.updateConfusionMatrix(matrix, r.predicted || [], r.groundTruth || [], iouThreshold);
+      this.updateConfusionMatrix(
+        matrix,
+        r.predicted || [],
+        r.groundTruth || [],
+        iouThreshold,
+      );
     }
     return matrix;
   }
@@ -264,7 +294,7 @@ export class RelaxedF1Evaluator {
   evaluateSpans(
     predicted: SpanLike[],
     groundTruth: SpanLike[],
-    iouThreshold = 0.5
+    iouThreshold = 0.5,
   ): {
     precision: number;
     recall: number;
@@ -283,14 +313,14 @@ export class RelaxedF1Evaluator {
     for (let i = 0; i < predicted.length; i++) {
       const pred = predicted[i];
       if (!pred) continue;
-      
+
       for (let j = 0; j < groundTruth.length; j++) {
         if (matchedGT.has(j)) continue;
-        
+
         const gt = groundTruth[j];
         if (!gt) continue;
         const iou = this.calculateIoU(pred, gt);
-        
+
         // Match if IoU > threshold AND roles match
         if (iou > iouThreshold && pred.role === gt.role) {
           truePositives++;
@@ -304,9 +334,14 @@ export class RelaxedF1Evaluator {
     const falsePositives = predicted.length - truePositives;
     const falseNegatives = groundTruth.length - truePositives;
 
-    const precision = predicted.length > 0 ? truePositives / predicted.length : 0;
-    const recall = groundTruth.length > 0 ? truePositives / groundTruth.length : 0;
-    const f1 = (precision + recall) > 0 ? (2 * precision * recall) / (precision + recall) : 0;
+    const precision =
+      predicted.length > 0 ? truePositives / predicted.length : 0;
+    const recall =
+      groundTruth.length > 0 ? truePositives / groundTruth.length : 0;
+    const f1 =
+      precision + recall > 0
+        ? (2 * precision * recall) / (precision + recall)
+        : 0;
 
     return {
       precision,
@@ -316,7 +351,7 @@ export class RelaxedF1Evaluator {
       falsePositives,
       falseNegatives,
       totalPredicted: predicted.length,
-      totalGroundTruth: groundTruth.length
+      totalGroundTruth: groundTruth.length,
     };
   }
 
@@ -331,7 +366,7 @@ export class RelaxedF1Evaluator {
   evaluateTaxonomyAccuracy(
     predicted: SpanLike[],
     groundTruth: SpanLike[],
-    iouThreshold = 0.5
+    iouThreshold = 0.5,
   ): { accuracy: number; correct: number; total: number } {
     let correctRoles = 0;
     let totalSpatialMatches = 0;
@@ -340,16 +375,16 @@ export class RelaxedF1Evaluator {
     for (const pred of predicted) {
       for (let j = 0; j < groundTruth.length; j++) {
         if (matchedGT.has(j)) continue;
-        
+
         const gt = groundTruth[j];
         if (!gt) continue;
         const iou = this.calculateIoU(pred, gt);
-        
+
         // If spans overlap spatially
         if (iou > iouThreshold) {
           totalSpatialMatches++;
           matchedGT.add(j);
-          
+
           // Check if role is correct
           if (pred.role === gt.role) {
             correctRoles++;
@@ -359,12 +394,13 @@ export class RelaxedF1Evaluator {
       }
     }
 
-    const accuracy = totalSpatialMatches > 0 ? correctRoles / totalSpatialMatches : 0;
+    const accuracy =
+      totalSpatialMatches > 0 ? correctRoles / totalSpatialMatches : 0;
 
     return {
       accuracy,
       correct: correctRoles,
-      total: totalSpatialMatches
+      total: totalSpatialMatches,
     };
   }
 
@@ -373,10 +409,12 @@ export class RelaxedF1Evaluator {
    * @param {Array} results - Array of {success: boolean} results
    * @returns {Object} {rate, valid, total}
    */
-  calculateJsonValidityRate(
-    results: Array<{ success: boolean }>
-  ): { rate: number; valid: number; total: number } {
-    const valid = results.filter(r => r.success).length;
+  calculateJsonValidityRate(results: Array<{ success: boolean }>): {
+    rate: number;
+    valid: number;
+    total: number;
+  } {
+    const valid = results.filter((r) => r.success).length;
     const total = results.length;
     const rate = total > 0 ? valid / total : 0;
 
@@ -389,9 +427,11 @@ export class RelaxedF1Evaluator {
    * @returns {Object} {rate, passed, total}
    */
   calculateSafetyPassRate(
-    adversarialTests: Array<{ flagged: boolean; expected: boolean }>
+    adversarialTests: Array<{ flagged: boolean; expected: boolean }>,
   ): { rate: number; passed: number; total: number } {
-    const passed = adversarialTests.filter(test => test.flagged === test.expected).length;
+    const passed = adversarialTests.filter(
+      (test) => test.flagged === test.expected,
+    ).length;
     const total = adversarialTests.length;
     const rate = total > 0 ? passed / total : 0;
 
@@ -406,7 +446,10 @@ export class RelaxedF1Evaluator {
   generateEvaluationReport(testSuite: EvaluationSuite): {
     timestamp: string;
     summary: Record<string, number>;
-    byCategory: Record<string, { f1: number; precision: number; recall: number; support: number }>;
+    byCategory: Record<
+      string,
+      { f1: number; precision: number; recall: number; support: number }
+    >;
     examples: {
       truePositives: SpanLike[];
       falsePositives: SpanLike[];
@@ -416,12 +459,15 @@ export class RelaxedF1Evaluator {
     const results = {
       timestamp: new Date().toISOString(),
       summary: {} as Record<string, number>,
-      byCategory: {} as Record<string, { f1: number; precision: number; recall: number; support: number }>,
+      byCategory: {} as Record<
+        string,
+        { f1: number; precision: number; recall: number; support: number }
+      >,
       examples: {
         truePositives: [],
         falsePositives: [],
-        falseNegatives: []
-      }
+        falseNegatives: [],
+      },
     };
 
     // Overall metrics must be computed per-test-case to avoid cross-prompt index collisions.
@@ -435,8 +481,12 @@ export class RelaxedF1Evaluator {
     let taxonomyTotal = 0;
 
     for (const testCase of testSuite.tests || []) {
-      const predicted = Array.isArray(testCase.predicted) ? testCase.predicted : [];
-      const groundTruth = Array.isArray(testCase.groundTruth) ? testCase.groundTruth : [];
+      const predicted = Array.isArray(testCase.predicted)
+        ? testCase.predicted
+        : [];
+      const groundTruth = Array.isArray(testCase.groundTruth)
+        ? testCase.groundTruth
+        : [];
 
       const f1 = this.evaluateSpans(predicted, groundTruth);
       totalTruePositives += f1.truePositives;
@@ -450,10 +500,16 @@ export class RelaxedF1Evaluator {
       taxonomyTotal += taxonomy.total;
     }
 
-    const precision = totalPredicted > 0 ? totalTruePositives / totalPredicted : 0;
-    const recall = totalGroundTruth > 0 ? totalTruePositives / totalGroundTruth : 0;
-    const f1Score = (precision + recall) > 0 ? (2 * precision * recall) / (precision + recall) : 0;
-    const taxonomyAccuracy = taxonomyTotal > 0 ? taxonomyCorrect / taxonomyTotal : 0;
+    const precision =
+      totalPredicted > 0 ? totalTruePositives / totalPredicted : 0;
+    const recall =
+      totalGroundTruth > 0 ? totalTruePositives / totalGroundTruth : 0;
+    const f1Score =
+      precision + recall > 0
+        ? (2 * precision * recall) / (precision + recall)
+        : 0;
+    const taxonomyAccuracy =
+      taxonomyTotal > 0 ? taxonomyCorrect / taxonomyTotal : 0;
 
     results.summary = {
       relaxedF1: f1Score,
@@ -470,7 +526,9 @@ export class RelaxedF1Evaluator {
     // Per-category breakdown
     const categories = new Set<string>();
     for (const testCase of testSuite.tests || []) {
-      const groundTruth = Array.isArray(testCase.groundTruth) ? testCase.groundTruth : [];
+      const groundTruth = Array.isArray(testCase.groundTruth)
+        ? testCase.groundTruth
+        : [];
       groundTruth.forEach((span) => {
         if (span.role !== undefined) {
           categories.add(span.role);
@@ -485,8 +543,12 @@ export class RelaxedF1Evaluator {
       let support = 0;
 
       for (const testCase of testSuite.tests || []) {
-        const predicted = Array.isArray(testCase.predicted) ? testCase.predicted : [];
-        const groundTruth = Array.isArray(testCase.groundTruth) ? testCase.groundTruth : [];
+        const predicted = Array.isArray(testCase.predicted)
+          ? testCase.predicted
+          : [];
+        const groundTruth = Array.isArray(testCase.groundTruth)
+          ? testCase.groundTruth
+          : [];
 
         const catPredicted = predicted.filter((s) => s.role === category);
         const catGroundTruth = groundTruth.filter((s) => s.role === category);
@@ -504,7 +566,10 @@ export class RelaxedF1Evaluator {
       if (support > 0) {
         const catPrecision = tp + fp > 0 ? tp / (tp + fp) : 0;
         const catRecall = tp + fn > 0 ? tp / (tp + fn) : 0;
-        const catF1 = catPrecision + catRecall > 0 ? (2 * catPrecision * catRecall) / (catPrecision + catRecall) : 0;
+        const catF1 =
+          catPrecision + catRecall > 0
+            ? (2 * catPrecision * catRecall) / (catPrecision + catRecall)
+            : 0;
 
         if (category !== undefined) {
           results.byCategory[category] = {
@@ -546,43 +611,67 @@ export class RelaxedF1Evaluator {
   } {
     const targets = {
       relaxedF1: 0.85,
-      taxonomyAccuracy: 0.90,
+      taxonomyAccuracy: 0.9,
       jsonValidityRate: 0.995,
       safetyPassRate: 1.0,
-      fragmentationRate: 0.20,   // Max acceptable fragmentation
-      overExtractionRate: 0.15   // Max acceptable spurious spans
+      fragmentationRate: 0.2, // Max acceptable fragmentation
+      overExtractionRate: 0.15, // Max acceptable spurious spans
     };
 
     const failures = [];
 
     if (metrics.relaxedF1 < targets.relaxedF1) {
-      failures.push(`Relaxed F1 (${metrics.relaxedF1.toFixed(3)}) below target (${targets.relaxedF1})`);
+      failures.push(
+        `Relaxed F1 (${metrics.relaxedF1.toFixed(3)}) below target (${targets.relaxedF1})`,
+      );
     }
 
     if (metrics.taxonomyAccuracy < targets.taxonomyAccuracy) {
-      failures.push(`Taxonomy Accuracy (${metrics.taxonomyAccuracy.toFixed(3)}) below target (${targets.taxonomyAccuracy})`);
+      failures.push(
+        `Taxonomy Accuracy (${metrics.taxonomyAccuracy.toFixed(3)}) below target (${targets.taxonomyAccuracy})`,
+      );
     }
 
-    if (metrics.jsonValidityRate !== undefined && metrics.jsonValidityRate < targets.jsonValidityRate) {
-      failures.push(`JSON Validity Rate (${metrics.jsonValidityRate.toFixed(3)}) below target (${targets.jsonValidityRate})`);
+    if (
+      metrics.jsonValidityRate !== undefined &&
+      metrics.jsonValidityRate < targets.jsonValidityRate
+    ) {
+      failures.push(
+        `JSON Validity Rate (${metrics.jsonValidityRate.toFixed(3)}) below target (${targets.jsonValidityRate})`,
+      );
     }
 
-    if (metrics.safetyPassRate !== undefined && metrics.safetyPassRate < targets.safetyPassRate) {
-      failures.push(`Safety Pass Rate (${metrics.safetyPassRate.toFixed(3)}) below target (${targets.safetyPassRate})`);
+    if (
+      metrics.safetyPassRate !== undefined &&
+      metrics.safetyPassRate < targets.safetyPassRate
+    ) {
+      failures.push(
+        `Safety Pass Rate (${metrics.safetyPassRate.toFixed(3)}) below target (${targets.safetyPassRate})`,
+      );
     }
 
-    if (metrics.fragmentationRate !== undefined && metrics.fragmentationRate > targets.fragmentationRate) {
-      failures.push(`Fragmentation Rate (${metrics.fragmentationRate.toFixed(3)}) above target (${targets.fragmentationRate})`);
+    if (
+      metrics.fragmentationRate !== undefined &&
+      metrics.fragmentationRate > targets.fragmentationRate
+    ) {
+      failures.push(
+        `Fragmentation Rate (${metrics.fragmentationRate.toFixed(3)}) above target (${targets.fragmentationRate})`,
+      );
     }
 
-    if (metrics.overExtractionRate !== undefined && metrics.overExtractionRate > targets.overExtractionRate) {
-      failures.push(`Over-Extraction Rate (${metrics.overExtractionRate.toFixed(3)}) above target (${targets.overExtractionRate})`);
+    if (
+      metrics.overExtractionRate !== undefined &&
+      metrics.overExtractionRate > targets.overExtractionRate
+    ) {
+      failures.push(
+        `Over-Extraction Rate (${metrics.overExtractionRate.toFixed(3)}) above target (${targets.overExtractionRate})`,
+      );
     }
 
     return {
       passed: failures.length === 0,
       failures,
-      targets
+      targets,
     };
   }
 }

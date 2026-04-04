@@ -5,7 +5,7 @@
  * Add these interceptors to the ApiClient instance.
  */
 
-import { logger } from '../LoggingService';
+import { logger } from "../LoggingService";
 
 interface BuiltRequest {
   url: string;
@@ -23,7 +23,9 @@ const requestMetadata = new Map<string, RequestMetadata>();
 /**
  * Request interceptor - logs outgoing requests
  */
-export function createRequestLoggingInterceptor(): (request: BuiltRequest) => BuiltRequest {
+export function createRequestLoggingInterceptor(): (
+  request: BuiltRequest,
+) => BuiltRequest {
   return (request: BuiltRequest): BuiltRequest => {
     const traceId = logger.generateTraceId();
     const url = new URL(request.url, window.location.origin);
@@ -40,7 +42,7 @@ export function createRequestLoggingInterceptor(): (request: BuiltRequest) => Bu
     if (request.init.body) {
       try {
         body =
-          typeof request.init.body === 'string'
+          typeof request.init.body === "string"
             ? JSON.parse(request.init.body)
             : request.init.body;
       } catch {
@@ -49,17 +51,19 @@ export function createRequestLoggingInterceptor(): (request: BuiltRequest) => Bu
     }
 
     logger.setTraceId(traceId);
-    logger.debug('API request', {
-      operation: 'apiRequest',
+    logger.debug("API request", {
+      operation: "apiRequest",
       requestId: traceId,
-      method: request.init.method || 'GET',
+      method: request.init.method || "GET",
       endpoint,
       url: request.url,
-      direction: 'outbound',
+      direction: "outbound",
       headers: Object.fromEntries(
         Object.entries(request.init.headers || {}).filter(
-          ([key]) => !key.toLowerCase().includes('auth') && !key.toLowerCase().includes('key')
-        )
+          ([key]) =>
+            !key.toLowerCase().includes("auth") &&
+            !key.toLowerCase().includes("key"),
+        ),
       ),
       body: body ? summarizePayload(body) : undefined,
     });
@@ -71,13 +75,17 @@ export function createRequestLoggingInterceptor(): (request: BuiltRequest) => Bu
 /**
  * Response interceptor - logs incoming responses
  */
-export function createResponseLoggingInterceptor(): (response: Response) => Promise<Response> {
+export function createResponseLoggingInterceptor(): (
+  response: Response,
+) => Promise<Response> {
   return async (response: Response): Promise<Response> => {
     const url = response.url;
     const metadata = requestMetadata.get(url);
     requestMetadata.delete(url);
 
-    const duration = metadata ? Math.round(performance.now() - metadata.startTime) : undefined;
+    const duration = metadata
+      ? Math.round(performance.now() - metadata.startTime)
+      : undefined;
     const endpoint = new URL(url).pathname;
 
     if (metadata?.traceId) {
@@ -88,14 +96,14 @@ export function createResponseLoggingInterceptor(): (response: Response) => Prom
     const clonedResponse = response.clone();
 
     try {
-      const contentType = response.headers.get('content-type') || '';
+      const contentType = response.headers.get("content-type") || "";
 
-      if (contentType.includes('application/json')) {
+      if (contentType.includes("application/json")) {
         const body = await clonedResponse.json();
 
         if (response.ok) {
-          logger.debug('API response', {
-            operation: 'apiResponse',
+          logger.debug("API response", {
+            operation: "apiResponse",
             requestId: metadata?.traceId,
             status: response.status,
             endpoint,
@@ -104,8 +112,8 @@ export function createResponseLoggingInterceptor(): (response: Response) => Prom
             response: summarizePayload(body),
           });
         } else {
-          logger.warn('API response error', {
-            operation: 'apiResponse',
+          logger.warn("API response error", {
+            operation: "apiResponse",
             requestId: metadata?.traceId,
             status: response.status,
             endpoint,
@@ -115,8 +123,8 @@ export function createResponseLoggingInterceptor(): (response: Response) => Prom
           });
         }
       } else {
-        logger.debug('API response', {
-          operation: 'apiResponse',
+        logger.debug("API response", {
+          operation: "apiResponse",
           requestId: metadata?.traceId,
           status: response.status,
           endpoint,
@@ -125,13 +133,13 @@ export function createResponseLoggingInterceptor(): (response: Response) => Prom
         });
       }
     } catch {
-      logger.debug('API response', {
-        operation: 'apiResponse',
+      logger.debug("API response", {
+        operation: "apiResponse",
         requestId: metadata?.traceId,
         status: response.status,
         endpoint,
         duration,
-        note: 'Could not parse response body',
+        note: "Could not parse response body",
       });
     }
 
@@ -145,8 +153,8 @@ export function createResponseLoggingInterceptor(): (response: Response) => Prom
  */
 export function createErrorLoggingInterceptor(): (error: Error) => never {
   return (error: Error): never => {
-    logger.error('API Request Failed', error, {
-      operation: 'apiRequest',
+    logger.error("API Request Failed", error, {
+      operation: "apiRequest",
       type: error.name,
       message: error.message,
     });
@@ -162,8 +170,10 @@ function summarizePayload(payload: unknown, maxLength = 500): unknown {
     return payload;
   }
 
-  if (typeof payload === 'string') {
-    return payload.length > maxLength ? `${payload.slice(0, maxLength)}... (${payload.length} chars)` : payload;
+  if (typeof payload === "string") {
+    return payload.length > maxLength
+      ? `${payload.slice(0, maxLength)}... (${payload.length} chars)`
+      : payload;
   }
 
   if (Array.isArray(payload)) {
@@ -174,12 +184,15 @@ function summarizePayload(payload: unknown, maxLength = 500): unknown {
     };
   }
 
-  if (typeof payload === 'object') {
+  if (typeof payload === "object") {
     const summary: Record<string, unknown> = {};
     const keys = Object.keys(payload as object);
 
     for (const key of keys.slice(0, 10)) {
-      summary[key] = summarizePayload((payload as Record<string, unknown>)[key], 100);
+      summary[key] = summarizePayload(
+        (payload as Record<string, unknown>)[key],
+        100,
+      );
     }
 
     if (keys.length > 10) {
@@ -196,13 +209,17 @@ function summarizePayload(payload: unknown, maxLength = 500): unknown {
  * Setup all logging interceptors on ApiClient
  */
 export function setupApiLogging(apiClient: {
-  addRequestInterceptor: (interceptor: (request: BuiltRequest) => BuiltRequest) => void;
-  addResponseInterceptor: (interceptor: (response: Response) => Response | Promise<Response>) => void;
+  addRequestInterceptor: (
+    interceptor: (request: BuiltRequest) => BuiltRequest,
+  ) => void;
+  addResponseInterceptor: (
+    interceptor: (response: Response) => Response | Promise<Response>,
+  ) => void;
 }): void {
   apiClient.addRequestInterceptor(createRequestLoggingInterceptor());
   apiClient.addResponseInterceptor(createResponseLoggingInterceptor());
 
-  logger.info('API logging interceptors initialized', {
-    operation: 'setupApiLogging',
+  logger.info("API logging interceptors initialized", {
+    operation: "setupApiLogging",
   });
 }

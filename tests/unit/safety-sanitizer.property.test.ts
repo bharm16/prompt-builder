@@ -12,29 +12,29 @@
  * @module safety-sanitizer.property.test
  */
 
-import { describe, it, expect } from 'vitest';
-import * as fc from 'fast-check';
+import { describe, it, expect } from "vitest";
+import * as fc from "fast-check";
 
-import { SafetySanitizer } from '@services/video-prompt-analysis/utils/SafetySanitizer';
+import { SafetySanitizer } from "@services/video-prompt-analysis/utils/SafetySanitizer";
 
-describe('SafetySanitizer Property Tests', () => {
+describe("SafetySanitizer Property Tests", () => {
   const sanitizer = new SafetySanitizer();
 
   // Sample celebrity names for testing
   const celebrityNames = [
-    'Taylor Swift',
-    'Elon Musk',
-    'Beyonce',
-    'Kim Kardashian',
-    'Dwayne Johnson',
-    'Tom Cruise',
+    "Taylor Swift",
+    "Elon Musk",
+    "Beyonce",
+    "Kim Kardashian",
+    "Dwayne Johnson",
+    "Tom Cruise",
   ];
 
   // Sample NSFW terms for testing
-  const nsfwTerms = ['nude', 'naked', 'nsfw', 'explicit'];
+  const nsfwTerms = ["nude", "naked", "nsfw", "explicit"];
 
   // Sample violence terms for testing
-  const violenceTerms = ['murder', 'torture', 'gore', 'massacre'];
+  const violenceTerms = ["murder", "torture", "gore", "massacre"];
 
   /**
    * Property 8: SafetySanitizer Replacement Consistency
@@ -47,8 +47,8 @@ describe('SafetySanitizer Property Tests', () => {
    * **Feature: video-model-optimization, Property 8: SafetySanitizer Replacement Consistency**
    * **Validates: Requirements 9.1, 9.2, 9.3, 9.4, 9.5**
    */
-  describe('Property 8: SafetySanitizer Replacement Consistency', () => {
-    it('replaces celebrity names with physical descriptions', () => {
+  describe("Property 8: SafetySanitizer Replacement Consistency", () => {
+    it("replaces celebrity names with physical descriptions", () => {
       fc.assert(
         fc.property(
           fc.constantFrom(...celebrityNames),
@@ -60,7 +60,7 @@ describe('SafetySanitizer Property Tests', () => {
 
             // Celebrity name should not appear in output
             expect(result.text.toLowerCase()).not.toContain(
-              celebrity.toLowerCase()
+              celebrity.toLowerCase(),
             );
 
             // Should have at least one replacement
@@ -68,19 +68,19 @@ describe('SafetySanitizer Property Tests', () => {
 
             // Replacement should be for celebrity category
             const celebrityReplacement = result.replacements.find(
-              (r) => r.category === 'celebrity'
+              (r) => r.category === "celebrity",
             );
             expect(celebrityReplacement).toBeDefined();
 
             // wasModified should be true
             expect(result.wasModified).toBe(true);
-          }
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
 
-    it('replaces NSFW terms with content removed marker', () => {
+    it("replaces NSFW terms with content removed marker", () => {
       fc.assert(
         fc.property(
           fc.constantFrom(...nsfwTerms),
@@ -91,24 +91,24 @@ describe('SafetySanitizer Property Tests', () => {
             const result = sanitizer.sanitize(input);
 
             // NSFW term should not appear in output (as a word)
-            const termRegex = new RegExp(`\\b${nsfwTerm}\\b`, 'i');
+            const termRegex = new RegExp(`\\b${nsfwTerm}\\b`, "i");
             expect(result.text).not.toMatch(termRegex);
 
             // Should have replacement for nsfw category
             const nsfwReplacement = result.replacements.find(
-              (r) => r.category === 'nsfw'
+              (r) => r.category === "nsfw",
             );
             expect(nsfwReplacement).toBeDefined();
 
             // wasModified should be true
             expect(result.wasModified).toBe(true);
-          }
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
 
-    it('replaces violence terms with content removed marker', () => {
+    it("replaces violence terms with content removed marker", () => {
       fc.assert(
         fc.property(
           fc.constantFrom(...violenceTerms),
@@ -119,32 +119,35 @@ describe('SafetySanitizer Property Tests', () => {
             const result = sanitizer.sanitize(input);
 
             // Violence term should not appear in output (as a word)
-            const termRegex = new RegExp(`\\b${violenceTerm}\\b`, 'i');
+            const termRegex = new RegExp(`\\b${violenceTerm}\\b`, "i");
             expect(result.text).not.toMatch(termRegex);
 
             // Should have replacement for violence category
             const violenceReplacement = result.replacements.find(
-              (r) => r.category === 'violence'
+              (r) => r.category === "violence",
             );
             expect(violenceReplacement).toBeDefined();
 
             // wasModified should be true
             expect(result.wasModified).toBe(true);
-          }
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
 
-    it('returns original text unchanged when no blocked terms present', () => {
+    it("returns original text unchanged when no blocked terms present", () => {
       fc.assert(
         fc.property(
           fc
-            .array(fc.constantFrom(...'abcdefghijklmnopqrstuvwxyz '.split('')), {
-              minLength: 10,
-              maxLength: 100,
-            })
-            .map((chars) => chars.join(''))
+            .array(
+              fc.constantFrom(..."abcdefghijklmnopqrstuvwxyz ".split("")),
+              {
+                minLength: 10,
+                maxLength: 100,
+              },
+            )
+            .map((chars) => chars.join(""))
             .filter((s) => {
               const lower = s.toLowerCase();
               // Ensure no blocked terms are present
@@ -158,8 +161,8 @@ describe('SafetySanitizer Property Tests', () => {
             const result = sanitizer.sanitize(safeInput);
 
             // Text should be unchanged (except whitespace normalization)
-            expect(result.text.replace(/\s+/g, ' ').trim()).toBe(
-              safeInput.replace(/\s+/g, ' ').trim()
+            expect(result.text.replace(/\s+/g, " ").trim()).toBe(
+              safeInput.replace(/\s+/g, " ").trim(),
             );
 
             // No replacements should be made
@@ -167,22 +170,22 @@ describe('SafetySanitizer Property Tests', () => {
 
             // wasModified should be false
             expect(result.wasModified).toBe(false);
-          }
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
 
-    it('replacements list contains entry for each replacement made', () => {
+    it("replacements list contains entry for each replacement made", () => {
       fc.assert(
         fc.property(
           fc.array(
             fc.constantFrom(...celebrityNames, ...nsfwTerms, ...violenceTerms),
-            { minLength: 1, maxLength: 3 }
+            { minLength: 1, maxLength: 3 },
           ),
           (blockedTerms) => {
             // Create input with multiple blocked terms
-            const input = blockedTerms.join(' and ');
+            const input = blockedTerms.join(" and ");
             const result = sanitizer.sanitize(input);
 
             // Should have at least as many replacements as unique blocked terms
@@ -194,17 +197,17 @@ describe('SafetySanitizer Property Tests', () => {
               expect(replacement.original).toBeDefined();
               expect(replacement.replacement).toBeDefined();
               expect(replacement.category).toBeDefined();
-              expect(['celebrity', 'nsfw', 'violence', 'other']).toContain(
-                replacement.category
+              expect(["celebrity", "nsfw", "violence", "other"]).toContain(
+                replacement.category,
               );
             }
-          }
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
 
-    it('celebrity replacements are physical descriptions', () => {
+    it("celebrity replacements are physical descriptions", () => {
       fc.assert(
         fc.property(fc.constantFrom(...celebrityNames), (celebrity) => {
           const input = `A video featuring ${celebrity}`;
@@ -212,41 +215,41 @@ describe('SafetySanitizer Property Tests', () => {
 
           // Find the celebrity replacement
           const replacement = result.replacements.find(
-            (r) => r.category === 'celebrity'
+            (r) => r.category === "celebrity",
           );
 
           expect(replacement).toBeDefined();
           if (replacement) {
             // Replacement should be a physical description (contains descriptive words)
             const descriptiveWords = [
-              'man',
-              'woman',
-              'hair',
-              'singer',
-              'star',
-              'bald',
-              'muscular',
-              'young',
-              'elderly',
-              'businessman',
-              'beard',
-              'glasses',
-              'ponytail',
-              'goatee',
-              'curly',
-              'tall',
+              "man",
+              "woman",
+              "hair",
+              "singer",
+              "star",
+              "bald",
+              "muscular",
+              "young",
+              "elderly",
+              "businessman",
+              "beard",
+              "glasses",
+              "ponytail",
+              "goatee",
+              "curly",
+              "tall",
             ];
             const hasDescriptiveWord = descriptiveWords.some((word) =>
-              replacement.replacement.toLowerCase().includes(word)
+              replacement.replacement.toLowerCase().includes(word),
             );
             expect(hasDescriptiveWord).toBe(true);
           }
         }),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
 
-    it('containsBlockedTerms correctly identifies blocked content', () => {
+    it("containsBlockedTerms correctly identifies blocked content", () => {
       fc.assert(
         fc.property(
           fc.constantFrom(...celebrityNames, ...nsfwTerms, ...violenceTerms),
@@ -256,38 +259,38 @@ describe('SafetySanitizer Property Tests', () => {
 
             // Should detect blocked terms
             expect(sanitizer.containsBlockedTerms(input)).toBe(true);
-          }
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
 
-    it('isBlockedTerm correctly identifies individual blocked terms', () => {
+    it("isBlockedTerm correctly identifies individual blocked terms", () => {
       fc.assert(
         fc.property(
           fc.constantFrom(...celebrityNames, ...nsfwTerms, ...violenceTerms),
           (blockedTerm) => {
             expect(sanitizer.isBlockedTerm(blockedTerm)).toBe(true);
-          }
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
 
-    it('returns consistent result structure', () => {
+    it("returns consistent result structure", () => {
       fc.assert(
         fc.property(fc.string({ minLength: 0, maxLength: 200 }), (input) => {
           const result = sanitizer.sanitize(input);
 
           // Result should always have required fields
-          expect(typeof result.text).toBe('string');
+          expect(typeof result.text).toBe("string");
           expect(Array.isArray(result.replacements)).toBe(true);
-          expect(typeof result.wasModified).toBe('boolean');
+          expect(typeof result.wasModified).toBe("boolean");
 
           // wasModified should match replacements length
           expect(result.wasModified).toBe(result.replacements.length > 0);
         }),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
   });

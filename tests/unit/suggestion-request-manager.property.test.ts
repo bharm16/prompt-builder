@@ -9,13 +9,13 @@
  * @module SuggestionRequestManager.property.test
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import * as fc from 'fast-check';
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import * as fc from "fast-check";
 
-import { SuggestionRequestManager } from '@features/prompt-optimizer/utils/SuggestionRequestManager';
-import { CancellationError } from '@features/prompt-optimizer/utils/signalUtils';
+import { SuggestionRequestManager } from "@features/prompt-optimizer/utils/SuggestionRequestManager";
+import { CancellationError } from "@features/prompt-optimizer/utils/signalUtils";
 
-describe('SuggestionRequestManager Property Tests', () => {
+describe("SuggestionRequestManager Property Tests", () => {
   /**
    * Property 1: Cancellation Prevents State Updates
    *
@@ -26,7 +26,7 @@ describe('SuggestionRequestManager Property Tests', () => {
    * **Feature: ai-suggestions-fixes, Property 1: Cancellation Prevents State Updates**
    * **Validates: Requirements 1.1, 1.2, 1.3**
    */
-  describe('Property 1: Cancellation Prevents State Updates', () => {
+  describe("Property 1: Cancellation Prevents State Updates", () => {
     beforeEach(() => {
       vi.useFakeTimers();
     });
@@ -35,18 +35,25 @@ describe('SuggestionRequestManager Property Tests', () => {
       vi.useRealTimers();
     });
 
-    it('cancelled requests should throw CancellationError and not resolve with data', async () => {
+    it("cancelled requests should throw CancellationError and not resolve with data", async () => {
       await fc.assert(
         fc.asyncProperty(
           // Generate two distinct non-empty strings
-          fc.string({ minLength: 1, maxLength: 50 }).filter((s) => s.trim().length > 0),
-          fc.string({ minLength: 1, maxLength: 50 }).filter((s) => s.trim().length > 0),
+          fc
+            .string({ minLength: 1, maxLength: 50 })
+            .filter((s) => s.trim().length > 0),
+          fc
+            .string({ minLength: 1, maxLength: 50 })
+            .filter((s) => s.trim().length > 0),
           async (text1, text2) => {
             // Ensure texts are different
             const firstText = text1;
-            const secondText = text1 === text2 ? text2 + '_diff' : text2;
+            const secondText = text1 === text2 ? text2 + "_diff" : text2;
 
-            const manager = new SuggestionRequestManager({ debounceMs: 10, timeoutMs: 5000 });
+            const manager = new SuggestionRequestManager({
+              debounceMs: 10,
+              timeoutMs: 5000,
+            });
             const stateUpdates: string[] = [];
             let firstRequestCompleted = false;
 
@@ -64,7 +71,7 @@ describe('SuggestionRequestManager Property Tests', () => {
               })
               .catch((e) => {
                 if (e instanceof CancellationError) {
-                  return 'CANCELLED';
+                  return "CANCELLED";
                 }
                 throw e;
               });
@@ -80,7 +87,7 @@ describe('SuggestionRequestManager Property Tests', () => {
               })
               .catch((e) => {
                 if (e instanceof CancellationError) {
-                  return 'CANCELLED';
+                  return "CANCELLED";
                 }
                 throw e;
               });
@@ -92,7 +99,7 @@ describe('SuggestionRequestManager Property Tests', () => {
             const secondResult = await secondPromise;
 
             // First request should have been cancelled
-            expect(firstResult).toBe('CANCELLED');
+            expect(firstResult).toBe("CANCELLED");
 
             // Second request should succeed
             expect(secondResult).toBe(`result_for_${secondText}`);
@@ -104,28 +111,33 @@ describe('SuggestionRequestManager Property Tests', () => {
             expect(firstRequestCompleted).toBe(false);
 
             manager.dispose();
-          }
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
 
-    it('cancellation during debounce should prevent request execution', async () => {
+    it("cancellation during debounce should prevent request execution", async () => {
       await fc.assert(
         fc.asyncProperty(
-          fc.string({ minLength: 1, maxLength: 50 }).filter((s) => s.trim().length > 0),
+          fc
+            .string({ minLength: 1, maxLength: 50 })
+            .filter((s) => s.trim().length > 0),
           async (text) => {
-            const manager = new SuggestionRequestManager({ debounceMs: 100, timeoutMs: 5000 });
+            const manager = new SuggestionRequestManager({
+              debounceMs: 100,
+              timeoutMs: 5000,
+            });
             let requestExecuted = false;
 
             const promise = manager
               .scheduleRequest(text, async () => {
                 requestExecuted = true;
-                return 'result';
+                return "result";
               })
               .catch((e) => {
                 if (e instanceof CancellationError) {
-                  return 'CANCELLED';
+                  return "CANCELLED";
                 }
                 throw e;
               });
@@ -140,15 +152,15 @@ describe('SuggestionRequestManager Property Tests', () => {
             const result = await promise;
 
             // Request should be cancelled
-            expect(result).toBe('CANCELLED');
+            expect(result).toBe("CANCELLED");
 
             // Request function should never have been called
             expect(requestExecuted).toBe(false);
 
             manager.dispose();
-          }
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
   });
@@ -163,7 +175,7 @@ describe('SuggestionRequestManager Property Tests', () => {
    * **Feature: ai-suggestions-fixes, Property 2: Deduplication Prevents Redundant Requests**
    * **Validates: Requirements 2.1, 2.3**
    */
-  describe('Property 2: Deduplication Prevents Redundant Requests', () => {
+  describe("Property 2: Deduplication Prevents Redundant Requests", () => {
     beforeEach(() => {
       vi.useFakeTimers();
     });
@@ -172,17 +184,22 @@ describe('SuggestionRequestManager Property Tests', () => {
       vi.useRealTimers();
     });
 
-    it('isRequestInFlight returns true for same dedupKey during request', async () => {
+    it("isRequestInFlight returns true for same dedupKey during request", async () => {
       await fc.assert(
         fc.asyncProperty(
-          fc.string({ minLength: 1, maxLength: 100 }).filter((s) => s.trim().length > 0),
+          fc
+            .string({ minLength: 1, maxLength: 100 })
+            .filter((s) => s.trim().length > 0),
           async (dedupKey) => {
-            const manager = new SuggestionRequestManager({ debounceMs: 10, timeoutMs: 5000 });
+            const manager = new SuggestionRequestManager({
+              debounceMs: 10,
+              timeoutMs: 5000,
+            });
 
             // Start a request
             const promise = manager
               .scheduleRequest(dedupKey, async () => {
-                return 'result';
+                return "result";
               })
               .catch(() => null);
 
@@ -190,7 +207,9 @@ describe('SuggestionRequestManager Property Tests', () => {
             expect(manager.isRequestInFlight(dedupKey)).toBe(true);
 
             // Different key should return false
-            expect(manager.isRequestInFlight(dedupKey + '_different')).toBe(false);
+            expect(manager.isRequestInFlight(dedupKey + "_different")).toBe(
+              false,
+            );
 
             // Complete the request
             await vi.advanceTimersByTimeAsync(20);
@@ -200,24 +219,29 @@ describe('SuggestionRequestManager Property Tests', () => {
             expect(manager.isRequestInFlight(dedupKey)).toBe(false);
 
             manager.dispose();
-          }
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
 
-    it('different dedupKeys allow new requests (cancelling previous)', async () => {
+    it("different dedupKeys allow new requests (cancelling previous)", async () => {
       await fc.assert(
         fc.asyncProperty(
           // Generate array of 2-5 unique non-empty strings
           fc
             .uniqueArray(
-              fc.string({ minLength: 1, maxLength: 30 }).filter((s) => s.trim().length > 0),
-              { minLength: 2, maxLength: 5 }
+              fc
+                .string({ minLength: 1, maxLength: 30 })
+                .filter((s) => s.trim().length > 0),
+              { minLength: 2, maxLength: 5 },
             )
             .filter((arr) => arr.length >= 2),
           async (uniqueKeys) => {
-            const manager = new SuggestionRequestManager({ debounceMs: 5, timeoutMs: 5000 });
+            const manager = new SuggestionRequestManager({
+              debounceMs: 5,
+              timeoutMs: 5000,
+            });
             const executedRequests: string[] = [];
 
             // Schedule multiple requests rapidly (each cancels the previous)
@@ -230,7 +254,7 @@ describe('SuggestionRequestManager Property Tests', () => {
                 .catch((e) => {
                   if (e instanceof CancellationError) return null;
                   throw e;
-                })
+                }),
             );
 
             // Advance timers to complete all
@@ -242,9 +266,9 @@ describe('SuggestionRequestManager Property Tests', () => {
             expect(executedRequests).toEqual([lastKey]);
 
             manager.dispose();
-          }
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
   });
@@ -259,7 +283,7 @@ describe('SuggestionRequestManager Property Tests', () => {
    * **Feature: ai-suggestions-fixes, Property 4: Debounce Coalesces Rapid Selections**
    * **Validates: Requirements 4.1, 4.2**
    */
-  describe('Property 4: Debounce Coalesces Rapid Selections', () => {
+  describe("Property 4: Debounce Coalesces Rapid Selections", () => {
     beforeEach(() => {
       vi.useFakeTimers();
     });
@@ -268,19 +292,24 @@ describe('SuggestionRequestManager Property Tests', () => {
       vi.useRealTimers();
     });
 
-    it('rapid selections within debounce window result in single request for last selection', async () => {
+    it("rapid selections within debounce window result in single request for last selection", async () => {
       await fc.assert(
         fc.asyncProperty(
           // Generate array of 2-10 unique non-empty strings
           fc
             .uniqueArray(
-              fc.string({ minLength: 1, maxLength: 20 }).filter((s) => s.trim().length > 0),
-              { minLength: 2, maxLength: 10 }
+              fc
+                .string({ minLength: 1, maxLength: 20 })
+                .filter((s) => s.trim().length > 0),
+              { minLength: 2, maxLength: 10 },
             )
             .filter((arr) => arr.length >= 2),
           fc.integer({ min: 50, max: 200 }),
           async (uniqueSelections, debounceMs) => {
-            const manager = new SuggestionRequestManager({ debounceMs, timeoutMs: 5000 });
+            const manager = new SuggestionRequestManager({
+              debounceMs,
+              timeoutMs: 5000,
+            });
             const executedSelections: string[] = [];
 
             // Schedule all selections rapidly (within debounce window)
@@ -295,7 +324,7 @@ describe('SuggestionRequestManager Property Tests', () => {
                   .catch((e) => {
                     if (e instanceof CancellationError) return null;
                     throw e;
-                  })
+                  }),
               );
               // Small delay but still within debounce window (1ms between each)
               await vi.advanceTimersByTimeAsync(1);
@@ -310,20 +339,27 @@ describe('SuggestionRequestManager Property Tests', () => {
             expect(executedSelections).toEqual([lastSelection]);
 
             manager.dispose();
-          }
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
 
-    it('selections after debounce window trigger new requests', async () => {
+    it("selections after debounce window trigger new requests", async () => {
       await fc.assert(
         fc.asyncProperty(
-          fc.string({ minLength: 1, maxLength: 30 }).filter((s) => s.trim().length > 0),
-          fc.string({ minLength: 1, maxLength: 30 }).filter((s) => s.trim().length > 0),
+          fc
+            .string({ minLength: 1, maxLength: 30 })
+            .filter((s) => s.trim().length > 0),
+          fc
+            .string({ minLength: 1, maxLength: 30 })
+            .filter((s) => s.trim().length > 0),
           async (firstSelection, secondSelection) => {
             const debounceMs = 50;
-            const manager = new SuggestionRequestManager({ debounceMs, timeoutMs: 5000 });
+            const manager = new SuggestionRequestManager({
+              debounceMs,
+              timeoutMs: 5000,
+            });
             const executedSelections: string[] = [];
 
             // First selection
@@ -361,9 +397,9 @@ describe('SuggestionRequestManager Property Tests', () => {
             expect(executedSelections.length).toBe(2);
 
             manager.dispose();
-          }
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
   });

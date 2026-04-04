@@ -2,7 +2,7 @@ import {
   VIDEO_DRAFT_MODEL,
   VIDEO_DRAFT_MODELS,
   VIDEO_RENDER_MODELS,
-} from '@/components/ToolSidebar/config/modelConfig';
+} from "@/components/ToolSidebar/config/modelConfig";
 
 const MODEL_LABELS = new Map<string, string>([
   ...VIDEO_DRAFT_MODELS.map((model) => [model.id, model.label] as const),
@@ -10,24 +10,27 @@ const MODEL_LABELS = new Map<string, string>([
 ]);
 
 const MODEL_ID_ALIASES = new Map<string, string>([
-  ['wan-video/wan-2.2-t2v-fast', 'wan-2.2'],
-  ['wan-video/wan-2.2-i2v-fast', 'wan-2.2'],
-  ['wan-2.2', 'wan-2.2'],
-  ['wan-video/wan-2.5-i2v', 'wan-2.5'],
-  ['wan-video/wan-2.5-i2v-fast', 'wan-2.5'],
-  ['wan-2.5', 'wan-2.5'],
-  ['kling-26', 'kling-v2-1-master'],
-  ['veo-4', 'google/veo-3'],
-  ['veo-3', 'google/veo-3'],
+  ["wan-video/wan-2.2-t2v-fast", "wan-2.2"],
+  ["wan-video/wan-2.2-i2v-fast", "wan-2.2"],
+  ["wan-2.2", "wan-2.2"],
+  ["wan-video/wan-2.5-i2v", "wan-2.5"],
+  ["wan-video/wan-2.5-i2v-fast", "wan-2.5"],
+  ["wan-2.5", "wan-2.5"],
+  ["kling-2.1", "kling-v2-1-master"],
+  ["kling-26", "kling-v2-1-master"],
+  ["veo-4", "google/veo-3"],
+  ["veo-3", "google/veo-3"],
 ]);
 
 const MODEL_LABEL_OVERRIDES = new Map<string, string>([
-  ['sora-2-pro', 'Sora Pro'],
+  ["sora-2-pro", "Sora Pro"],
 ]);
 
-const normalizeModelId = (modelId: string): string => MODEL_ID_ALIASES.get(modelId) ?? modelId;
+const normalizeModelId = (modelId: string): string =>
+  MODEL_ID_ALIASES.get(modelId) ?? modelId;
 
-export const normalizeModelIdForSelection = (modelId: string): string => normalizeModelId(modelId);
+export const normalizeModelIdForSelection = (modelId: string): string =>
+  normalizeModelId(modelId);
 
 export const getModelLabel = (modelId: string): string => {
   if (MODEL_LABEL_OVERRIDES.has(modelId)) {

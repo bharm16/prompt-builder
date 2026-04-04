@@ -1,6 +1,6 @@
 /**
  * Centralized Type Definitions for Span Highlighting Hooks
- * 
+ *
  * All shared types used across span highlighting hooks are defined here
  * to ensure consistency and maintainability.
  */
@@ -77,10 +77,16 @@ export interface SpanLabelingResult {
   text: string;
   signature: string;
   cacheId: string | null;
-  source: 'initial' | 'cache' | 'network' | 'cache-fallback' | 'refresh-cache';
+  source: "initial" | "cache" | "network" | "cache-fallback" | "refresh-cache";
 }
 
-export type SpanLabelingStatus = 'idle' | 'loading' | 'refreshing' | 'success' | 'error' | 'stale';
+export type SpanLabelingStatus =
+  | "idle"
+  | "loading"
+  | "refreshing"
+  | "success"
+  | "error"
+  | "stale";
 
 export interface SpanLabelingState {
   spans: LabeledSpan[];
@@ -227,14 +233,10 @@ export interface HighlightSourceResult {
   meta: Record<string, unknown> | null;
   signature: string;
   cacheId: string | null;
-  source: 'draft' | 'refined' | 'persisted';
+  source: "persisted";
 }
 
 export interface UseHighlightSourceSelectionOptions {
-  draftSpans?: SpanData | null;
-  refinedSpans?: SpanData | null;
-  isDraftReady?: boolean;
-  isRefining?: boolean;
   initialHighlights?: {
     spans: Array<{
       start: number;
@@ -280,7 +282,7 @@ export interface WorkerCallback {
 
 export interface WorkerMessage {
   id: number;
-  type: 'ready' | 'result' | 'error' | 'process';
+  type: "ready" | "result" | "error" | "process";
   processedSpans?: Span[];
   meta?: Record<string, unknown>;
   error?: string;

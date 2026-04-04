@@ -1,1 +1,1 @@
-export * from '../../../shared/cinematography';
+export * from "../../../shared/cinematography";

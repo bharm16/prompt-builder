@@ -1,4 +1,4 @@
-import { logger } from '@infrastructure/Logger';
+import { logger } from "@infrastructure/Logger";
 
 /**
  * ConcurrencyService - Manages concurrent API request limits with priority queue
@@ -121,7 +121,7 @@ export class ConcurrencyLimiter {
       queueTimes: [],
     };
 
-    logger.debug('ConcurrencyLimiter initialized', {
+    logger.debug("ConcurrencyLimiter initialized", {
       maxConcurrent: this.maxConcurrent,
       queueTimeout: this.queueTimeout,
       maxQueueLength: this.maxQueueLength,
@@ -138,7 +138,10 @@ export class ConcurrencyLimiter {
    * @param options.priority - If true, cancels oldest queued request
    * @returns Result of the function execution
    */
-  async execute<T>(fn: () => Promise<T>, options: ExecutionOptions = {}): Promise<T> {
+  async execute<T>(
+    fn: () => Promise<T>,
+    options: ExecutionOptions = {},
+  ): Promise<T> {
     const requestId = this.nextRequestId++;
     const startTime = Date.now();
 
@@ -150,9 +153,9 @@ export class ConcurrencyLimiter {
     // Reject immediately if queue is full (load-shedding)
     if (this.queue.length >= this.maxQueueLength) {
       this.stats.totalRejected++;
-      this.metrics.recordGauge('request_queue_length', this.queue.length);
+      this.metrics.recordGauge("request_queue_length", this.queue.length);
 
-      logger.warn('Request rejected — queue full', {
+      logger.warn("Request rejected — queue full", {
         requestId,
         queueLength: this.queue.length,
         maxQueueLength: this.maxQueueLength,
@@ -160,9 +163,9 @@ export class ConcurrencyLimiter {
       });
 
       const error = new Error(
-        `Server busy: ${this.queue.length} requests queued. Try again shortly.`
+        `Server busy: ${this.queue.length} requests queued. Try again shortly.`,
       ) as Error & { code?: string; retryAfter?: number };
-      error.code = 'QUEUE_FULL';
+      error.code = "QUEUE_FULL";
       error.retryAfter = 5;
       throw error;
     }
@@ -175,11 +178,14 @@ export class ConcurrencyLimiter {
    * Execute immediately without queueing
    * @private
    */
-  private async _executeImmediately<T>(fn: () => Promise<T>, requestId: number): Promise<T> {
+  private async _executeImmediately<T>(
+    fn: () => Promise<T>,
+    requestId: number,
+  ): Promise<T> {
     this.activeCount++;
     this.stats.totalExecuted++;
 
-    logger.debug('Executing request immediately', {
+    logger.debug("Executing request immediately", {
       requestId,
       activeCount: this.activeCount,
       queueLength: this.queue.length,
@@ -202,21 +208,27 @@ export class ConcurrencyLimiter {
     fn: () => Promise<T>,
     requestId: number,
     startTime: number,
-    options: ExecutionOptions
+    options: ExecutionOptions,
   ): Promise<T> {
     return new Promise<T>((resolve, reject) => {
       // Handle priority requests (cancel oldest if enabled)
-      if (options.priority && this.enableCancellation && this.queue.length > 0) {
+      if (
+        options.priority &&
+        this.enableCancellation &&
+        this.queue.length > 0
+      ) {
         const oldestRequest = this.queue.shift();
         if (oldestRequest) {
           // Clear timeout before rejecting to prevent memory leak
           if (oldestRequest.timeoutId) {
             clearTimeout(oldestRequest.timeoutId);
           }
-          oldestRequest.reject(new Error('Request cancelled by higher priority request'));
+          oldestRequest.reject(
+            new Error("Request cancelled by higher priority request"),
+          );
           this.stats.totalCancelled++;
 
-          logger.debug('Cancelled oldest request for priority', {
+          logger.debug("Cancelled oldest request for priority", {
             cancelledId: oldestRequest.id,
             newRequestId: requestId,
           });
@@ -241,23 +253,26 @@ export class ConcurrencyLimiter {
 
       // Handle abort signal if provided
       if (options.signal) {
-        options.signal.addEventListener('abort', () => {
+        options.signal.addEventListener("abort", () => {
           this._cancelRequest(queueItemUnknown);
         });
       }
 
       this.queue.push(queueItemUnknown);
       this.stats.totalQueued++;
-      this.stats.maxQueueLength = Math.max(this.stats.maxQueueLength, this.queue.length);
+      this.stats.maxQueueLength = Math.max(
+        this.stats.maxQueueLength,
+        this.queue.length,
+      );
 
-      logger.debug('Request queued', {
+      logger.debug("Request queued", {
         requestId,
         queueLength: this.queue.length,
         activeCount: this.activeCount,
       });
 
       // Record queue metric
-      this.metrics.recordGauge('request_queue_length', this.queue.length);
+      this.metrics.recordGauge("request_queue_length", this.queue.length);
     });
   }
 
@@ -290,9 +305,10 @@ export class ConcurrencyLimiter {
     }
 
     this.stats.avgQueueTime =
-      this.stats.queueTimes.reduce((a, b) => a + b, 0) / this.stats.queueTimes.length;
+      this.stats.queueTimes.reduce((a, b) => a + b, 0) /
+      this.stats.queueTimes.length;
 
-    logger.debug('Processing queued request', {
+    logger.debug("Processing queued request", {
       requestId: queueItem.id,
       queueTime,
       remainingQueue: this.queue.length,
@@ -302,11 +318,12 @@ export class ConcurrencyLimiter {
     this.activeCount++;
     this.stats.totalExecuted++;
 
-    queueItem.fn()
-      .then(result => {
+    queueItem
+      .fn()
+      .then((result) => {
         queueItem.resolve(result);
       })
-      .catch(error => {
+      .catch((error) => {
         queueItem.reject(error as Error);
       })
       .finally(() => {
@@ -315,8 +332,8 @@ export class ConcurrencyLimiter {
       });
 
     // Record metrics
-    this.metrics.recordGauge('request_queue_length', this.queue.length);
-    this.metrics.recordHistogram('request_queue_time_ms', queueTime);
+    this.metrics.recordGauge("request_queue_length", this.queue.length);
+    this.metrics.recordHistogram("request_queue_time_ms", queueTime);
   }
 
   /**
@@ -334,19 +351,19 @@ export class ConcurrencyLimiter {
     this.stats.totalTimedOut++;
 
     const error = new Error(
-      `Request timed out after ${this.queueTimeout}ms in queue`
+      `Request timed out after ${this.queueTimeout}ms in queue`,
     ) as Error & { code?: string };
-    error.code = 'QUEUE_TIMEOUT';
+    error.code = "QUEUE_TIMEOUT";
 
     queueItem.reject(error);
 
-    logger.warn('Request timed out in queue', {
+    logger.warn("Request timed out in queue", {
       requestId: queueItem.id,
       queueTime: Date.now() - queueItem.timestamp,
       queueLength: this.queue.length,
     });
 
-    this.metrics.recordGauge('request_queue_length', this.queue.length);
+    this.metrics.recordGauge("request_queue_length", this.queue.length);
   }
 
   /**
@@ -368,17 +385,17 @@ export class ConcurrencyLimiter {
       clearTimeout(queueItem.timeoutId);
     }
 
-    const error = new Error('Request cancelled') as Error & { code?: string };
-    error.code = 'CANCELLED';
+    const error = new Error("Request cancelled") as Error & { code?: string };
+    error.code = "CANCELLED";
 
     queueItem.reject(error);
 
-    logger.debug('Request cancelled', {
+    logger.debug("Request cancelled", {
       requestId: queueItem.id,
       queueLength: this.queue.length,
     });
 
-    this.metrics.recordGauge('request_queue_length', this.queue.length);
+    this.metrics.recordGauge("request_queue_length", this.queue.length);
   }
 
   /**
@@ -414,11 +431,11 @@ export class ConcurrencyLimiter {
         clearTimeout(queueItem.timeoutId);
       }
 
-      queueItem.reject(new Error('Queue cleared'));
+      queueItem.reject(new Error("Queue cleared"));
     }
 
-    logger.info('Queue cleared', { clearedCount: count });
-    this.metrics.recordGauge('request_queue_length', 0);
+    logger.info("Queue cleared", { clearedCount: count });
+    this.metrics.recordGauge("request_queue_length", 0);
   }
 
   /**
@@ -431,16 +448,17 @@ export class ConcurrencyLimiter {
       activeRequests: this.activeCount,
       queuedRequests: this.queue.length,
       availableSlots: this.maxConcurrent - this.activeCount,
-      oldestQueuedRequest: firstItem
-        ? Date.now() - firstItem.timestamp
-        : null,
+      oldestQueuedRequest: firstItem ? Date.now() - firstItem.timestamp : null,
     };
   }
 }
 
 /** Parse an env var as an integer with a fallback. Exported for DI limiter registration. */
-export const parseEnvInt = (value: string | undefined, fallback: number): number => {
-  const parsed = Number.parseInt(value || '', 10);
+export const parseEnvInt = (
+  value: string | undefined,
+  fallback: number,
+): number => {
+  const parsed = Number.parseInt(value || "", 10);
   return Number.isFinite(parsed) ? parsed : fallback;
 };
 

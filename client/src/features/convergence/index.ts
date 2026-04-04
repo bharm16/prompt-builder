@@ -5,8 +5,8 @@
  * and shared utilities remain in use.
  */
 
-export * from './types';
-export * from './utils';
-export * from './components/CameraMotionPicker';
-export * from './components/SubjectMotionInput';
-export * from './components/shared';
+export * from "./types";
+export * from "./utils";
+export * from "./components/CameraMotionPicker";
+export * from "./components/SubjectMotionInput";
+export * from "./components/shared";

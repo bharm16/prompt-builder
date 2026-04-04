@@ -1,9 +1,9 @@
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
+import { fileURLToPath } from "url";
+import { dirname, join } from "path";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-export const vocabPath = join(__dirname, 'vocab.json');
-export const modelDirPath = join(__dirname, 'models');
-export const modelPath = join(modelDirPath, 'model.onnx');
+export const vocabPath = join(__dirname, "vocab.json");
+export const modelDirPath = join(__dirname, "models");
+export const modelPath = join(modelDirPath, "model.onnx");

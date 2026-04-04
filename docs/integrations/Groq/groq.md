@@ -7,24 +7,26 @@ This integration adds **two-stage prompt optimization** to dramatically reduce p
 ### Architecture
 
 **Stage 1: Fast Draft (Groq Llama 3.1 8B Instant)**
+
 - Generates concise draft in ~200-500ms
 - Users can immediately view and interact with results
 - Runs on ultra-fast Groq inference infrastructure
 
 **Stage 2: Quality Refinement (OpenAI GPT-4o-mini)**
+
 - Refines draft in background
 - Seamlessly upgrades UI when complete
 - No interruption to user workflow
 
 ## Benefits
 
-| Metric | Before | After |
-|--------|--------|-------|
-| Time to first content | ~8500ms | ~300ms |
-| Perceived latency | 8.5s | 0.3s |
-| User can interact | After 8.5s | After 0.3s |
-| Cost per request | ~$0.001 | ~$0.00116 |
-| Additional cost | - | +$0.00016/request |
+| Metric                | Before     | After             |
+| --------------------- | ---------- | ----------------- |
+| Time to first content | ~8500ms    | ~300ms            |
+| Perceived latency     | 8.5s       | 0.3s              |
+| User can interact     | After 8.5s | After 0.3s        |
+| Cost per request      | ~$0.001    | ~$0.00116         |
+| Additional cost       | -          | +$0.00016/request |
 
 ## Setup
 
@@ -50,6 +52,7 @@ npm run server
 ```
 
 The server will log:
+
 - ✅ "Groq client initialized for two-stage optimization" (if GROQ_API_KEY is set)
 - ⚠️ "GROQ_API_KEY not provided, two-stage optimization disabled" (if not set)
 
@@ -58,6 +61,7 @@ The server will log:
 ### Automatic Behavior
 
 Two-stage optimization is **enabled by default** when:
+
 1. GROQ_API_KEY is configured
 2. User clicks "Optimize" button
 3. Any optimization mode (video, reasoning, research, etc.)
@@ -78,6 +82,7 @@ Two-stage optimization is **enabled by default** when:
 ### Fallback Behavior
 
 The system automatically falls back to single-stage optimization if:
+
 - GROQ_API_KEY not configured
 - Groq API unavailable
 - Two-stage optimization fails
@@ -90,6 +95,7 @@ The system automatically falls back to single-stage optimization if:
 Single-stage optimization (backward compatible)
 
 **Request:**
+
 ```json
 {
   "prompt": "Your prompt here",
@@ -100,6 +106,7 @@ Single-stage optimization (backward compatible)
 ```
 
 **Response:**
+
 ```json
 {
   "optimizedPrompt": "Optimized prompt text..."
@@ -113,6 +120,7 @@ Two-stage streaming optimization with Server-Sent Events (SSE)
 **Request:** Same as `/api/optimize`
 
 **Response (Streaming):**
+
 ```
 event: draft
 data: {"draft":"Draft text...","status":"draft_ready","timestamp":1234567890}
@@ -129,27 +137,28 @@ data: {"status":"finished","usedFallback":false}
 ### Using usePromptOptimizer Hook
 
 ```javascript
-import { usePromptOptimizer } from './hooks/usePromptOptimizer';
+import { usePromptOptimizer } from "./hooks/usePromptOptimizer";
 
 function MyComponent() {
-  const promptOptimizer = usePromptOptimizer(selectedMode, useTwoStage = true);
+  const promptOptimizer = usePromptOptimizer(
+    selectedMode,
+    (useTwoStage = true),
+  );
 
   const handleOptimize = async () => {
     await promptOptimizer.optimize(prompt);
 
     // Check states:
-    console.log('Is processing?', promptOptimizer.isProcessing);
-    console.log('Draft ready?', promptOptimizer.isDraftReady);
-    console.log('Is refining?', promptOptimizer.isRefining);
-    console.log('Draft:', promptOptimizer.draftPrompt);
-    console.log('Final:', promptOptimizer.optimizedPrompt);
+    console.log("Is processing?", promptOptimizer.isProcessing);
+    console.log("Draft ready?", promptOptimizer.isDraftReady);
+    console.log("Is refining?", promptOptimizer.isRefining);
+    console.log("Draft:", promptOptimizer.draftPrompt);
+    console.log("Final:", promptOptimizer.optimizedPrompt);
   };
 
   return (
     <>
-      {promptOptimizer.isRefining && (
-        <div>Refining in background...</div>
-      )}
+      {promptOptimizer.isRefining && <div>Refining in background...</div>}
       {/* ... */}
     </>
   );
@@ -159,27 +168,27 @@ function MyComponent() {
 ### Direct API Usage
 
 ```javascript
-import { promptOptimizationApiV2 } from './services';
+import { promptOptimizationApiV2 } from "./services";
 
 // With automatic fallback
 const result = await promptOptimizationApiV2.optimizeWithFallback({
   prompt: "Your prompt",
   mode: "video",
   onDraft: (draft) => {
-    console.log('Draft ready:', draft);
+    console.log("Draft ready:", draft);
     setDisplayText(draft);
   },
   onRefined: (refined, metadata) => {
-    console.log('Refinement complete:', refined);
+    console.log("Refinement complete:", refined);
     setDisplayText(refined);
   },
   onError: (error) => {
-    console.error('Optimization failed:', error);
-  }
+    console.error("Optimization failed:", error);
+  },
 });
 
-console.log('Final result:', result.refined);
-console.log('Used fallback?', result.usedFallback);
+console.log("Final result:", result.refined);
+console.log("Used fallback?", result.usedFallback);
 ```
 
 ## Architecture Details
@@ -236,18 +245,18 @@ console.log('Used fallback?', result.usedFallback);
 
 ```javascript
 // Draft generation
-logger.info('Draft generated successfully', {
+logger.info("Draft generated successfully", {
   duration: 287,
   draftLength: 125,
-  mode: 'video'
+  mode: "video",
 });
 
 // Refinement complete
-logger.info('Two-stage optimization complete', {
+logger.info("Two-stage optimization complete", {
   draftDuration: 287,
   refinementDuration: 8432,
   totalDuration: 8719,
-  mode: 'video'
+  mode: "video",
 });
 ```
 
@@ -258,6 +267,7 @@ logger.info('Two-stage optimization complete', {
 **Cause:** GROQ_API_KEY not set in `.env`
 
 **Fix:**
+
 1. Get API key from [console.groq.com](https://console.groq.com)
 2. Add to `.env`: `GROQ_API_KEY=gsk_...`
 3. Restart server
@@ -273,6 +283,7 @@ logger.info('Two-stage optimization complete', {
 ### No draft appearing
 
 **Check:**
+
 1. Browser console for errors
 2. Server logs for Groq API errors
 3. Network tab for SSE connection
@@ -282,11 +293,11 @@ logger.info('Two-stage optimization complete', {
 
 ### Per-Request Costs
 
-| Model | Tokens | Cost |
-|-------|--------|------|
-| Groq Llama 3.1 8B | ~200 | $0.00016 |
-| OpenAI GPT-4o-mini | ~2000 | $0.001 |
-| **Total** | | **$0.00116** |
+| Model              | Tokens | Cost         |
+| ------------------ | ------ | ------------ |
+| Groq Llama 3.1 8B  | ~200   | $0.00016     |
+| OpenAI GPT-4o-mini | ~2000  | $0.001       |
+| **Total**          |        | **$0.00116** |
 
 ### Monthly Costs (1000 users, 10 optimizations/month)
 
@@ -308,7 +319,7 @@ logger.info('Two-stage optimization complete', {
 Set `useTwoStage` parameter to `false`:
 
 ```javascript
-const promptOptimizer = usePromptOptimizer(selectedMode, useTwoStage = false);
+const promptOptimizer = usePromptOptimizer(selectedMode, (useTwoStage = false));
 ```
 
 ### Customize Draft Length
@@ -316,7 +327,7 @@ const promptOptimizer = usePromptOptimizer(selectedMode, useTwoStage = false);
 Edit `getDraftSystemPrompt()` in `PromptOptimizationService.js`:
 
 ```javascript
-video: `Create a concise video prompt (75-125 words).`
+video: `Create a concise video prompt (75-125 words).`;
 //                                        ^^^  ^^^
 //                                     Adjust these
 ```
@@ -365,11 +376,13 @@ tail -f server.log
 **Optional:** Add visual indicators to your UI:
 
 ```jsx
-{promptOptimizer.isRefining && (
-  <div className="alert alert-info">
-    <Spinner /> Refining in background...
-  </div>
-)}
+{
+  promptOptimizer.isRefining && (
+    <div className="alert alert-info">
+      <Spinner /> Refining in background...
+    </div>
+  );
+}
 ```
 
 ### Rollback to Single-Stage
@@ -407,6 +420,7 @@ tail -f server.log
 ### Contact
 
 For issues or questions:
+
 - GitHub Issues: [Your Repo]
 - Email: [Your Email]
 - Discord: [Your Discord]

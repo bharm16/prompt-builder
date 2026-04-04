@@ -1,10 +1,12 @@
 # Prompt Builder - Workflow & Implementation Documentation
+
 **Branch:** production-changes/prompt-changes
 **Generated:** 2025-10-21
 
 ---
 
 ## Table of Contents
+
 1. [System Architecture](#system-architecture)
 2. [Current Workflow](#current-workflow)
 3. [Text Parsing Implementation](#text-parsing-implementation)
@@ -17,6 +19,7 @@
 ## System Architecture
 
 ### Tech Stack
+
 - **Frontend:** React 18+ with Vite
 - **Routing:** React Router v6
 - **Styling:** Tailwind CSS
@@ -26,6 +29,7 @@
 - **State Management:** React hooks (useState, useEffect, useCallback)
 
 ### Project Structure
+
 ```
 prompt-builder/
 ├── client/
@@ -67,6 +71,7 @@ prompt-builder/
 ### 2. Detailed Step-by-Step Flow
 
 #### **Step 1: Landing Page**
+
 - **Location:** `PromptInput.jsx` (lines 147-233)
 - User sees clean input interface with:
   - Hero section: "Prompt Builder"
@@ -76,6 +81,7 @@ prompt-builder/
   - "Optimize" button
 
 #### **Step 2: Input & Mode Selection**
+
 - **Component:** `PromptInput.jsx`
 - User enters text in textarea (lines 174-186)
   ```jsx
@@ -89,17 +95,18 @@ prompt-builder/
 - Pressing Enter or clicking "Optimize" triggers optimization
 
 #### **Step 3: API Call & Processing**
+
 - **Hook:** `usePromptOptimizer.js` (lines 61-97)
 - Flow:
   1. Validates input is not empty
   2. Sets `isProcessing = true`
   3. Makes POST request to `/api/optimize`
      ```javascript
-     const response = await fetch('/api/optimize', {
-       method: 'POST',
+     const response = await fetch("/api/optimize", {
+       method: "POST",
        headers: {
-         'Content-Type': 'application/json',
-         'X-API-Key': 'dev-key-12345',
+         "Content-Type": "application/json",
+         "X-API-Key": "dev-key-12345",
        },
        body: JSON.stringify({
          prompt: prompt,
@@ -114,6 +121,7 @@ prompt-builder/
      - Returns structured, optimized prompt
 
 #### **Step 4: Typewriter Animation**
+
 - **Container:** `PromptOptimizerContainer.jsx` (lines 148-174)
 - Once API returns optimized text:
   ```javascript
@@ -128,25 +136,31 @@ prompt-builder/
 - Creates smooth typing effect showing the AI's response
 
 #### **Step 5: Text Parsing & Highlighting**
+
 - **Component:** `PromptCanvas.jsx` (lines 22-227)
 - **CRITICAL:** Highlighting ONLY activates when:
   1. Mode is `video` mode
   2. Animation is complete (`isAnimationComplete === true`)
 
 - **Key Logic** (lines 448-466):
+
   ```javascript
   // Check if animation is complete
   useEffect(() => {
-    if (displayedPrompt && optimizedPrompt && displayedPrompt === optimizedPrompt) {
+    if (
+      displayedPrompt &&
+      optimizedPrompt &&
+      displayedPrompt === optimizedPrompt
+    ) {
       setIsAnimationComplete(true); // Trigger highlighting
     }
   }, [displayedPrompt, optimizedPrompt]);
 
   // Enable ML highlighting ONLY after animation completes
-  const enableMLHighlighting = selectedMode === 'video' && isAnimationComplete;
+  const enableMLHighlighting = selectedMode === "video" && isAnimationComplete;
   const { html: formattedHTML } = useMemo(
     () => formatTextToHTML(displayedPrompt, enableMLHighlighting),
-    [displayedPrompt, enableMLHighlighting]
+    [displayedPrompt, enableMLHighlighting],
   );
   ```
 
@@ -155,53 +169,68 @@ prompt-builder/
 ## Text Parsing Implementation
 
 ### Overview
+
 The text parsing system uses **two-stage processing**:
+
 1. **Formatting stage:** Converts plain text to HTML with styling
 2. **ML highlighting stage:** Applies NLP-based phrase extraction (video mode only)
 
 ### Stage 1: Text-to-HTML Formatting
+
 **Function:** `formatTextToHTML()` in `PromptCanvas.jsx` (lines 22-227)
 
 #### Input Processing
+
 ```javascript
-const lines = text.split('\n');
+const lines = text.split("\n");
 ```
 
 #### Pattern Detection & Formatting
+
 The formatter detects these patterns:
 
 1. **Headers with separators** (lines 150-164)
+
    ```
    ━━━━━━━━━━
    MAIN TITLE
    ━━━━━━━━━━
    ```
+
    → Converts to `<h1>` with styling
 
 2. **ALL CAPS headers** (lines 167-179)
+
    ```
    SECTION TITLE
    ```
+
    → Converts to `<h2>`
 
 3. **Lines ending with colon** (lines 182-187)
+
    ```
    Subsection:
    ```
+
    → Converts to `<h3>`
 
 4. **Bullet points** (lines 190-195)
+
    ```
    - Item text
    • Another item
    ```
+
    → Converts to styled `<div>` with bullet
 
 5. **Numbered lists** (lines 198-204)
+
    ```
    1. First item
    2. Second item
    ```
+
    → Converts to numbered `<div>`
 
 6. **Paragraphs** (lines 207-223)
@@ -209,6 +238,7 @@ The formatter detects these patterns:
    - Multiple consecutive lines are joined
 
 #### Example Transform
+
 ```
 Input:
 ━━━━━━━━━━
@@ -227,10 +257,12 @@ Output (HTML):
 ```
 
 ### Stage 2: ML-Powered Phrase Extraction
+
 **File:** `phraseExtractor.js`
 **Library:** compromise.js (NLP library)
 
 #### Activation Conditions
+
 - ONLY runs in **video mode**
 - ONLY after **typewriter animation completes**
 - Prevents classification during streaming
@@ -240,91 +272,124 @@ Output (HTML):
 **Function:** `extractVideoPromptPhrases(text)` (lines 4-44)
 
 ##### 1. Descriptive Phrases (lines 11-16)
+
 ```javascript
-const descriptive = doc.match('#Adjective+ #Noun+').out('array')
+const descriptive = doc.match("#Adjective+ #Noun+").out("array");
 // Example matches: "golden hour lighting", "soft shadows"
-phrases.push(...descriptive.map(p => ({
-  text: p,
-  category: 'descriptive',
-  color: { bg: 'rgba(251, 191, 36, 0.15)', border: 'rgba(251, 191, 36, 0.5)' }
-})))
+phrases.push(
+  ...descriptive.map((p) => ({
+    text: p,
+    category: "descriptive",
+    color: {
+      bg: "rgba(251, 191, 36, 0.15)",
+      border: "rgba(251, 191, 36, 0.5)",
+    },
+  })),
+);
 ```
 
 ##### 2. Camera Movements (lines 18-24)
+
 ```javascript
-const cameraMovement = doc.match('camera #Adverb? #Verb').out('array')
+const cameraMovement = doc.match("camera #Adverb? #Verb").out("array");
 // Example matches: "camera slowly dollies", "camera pans"
-phrases.push(...cameraMovement.map(p => ({
-  text: p,
-  category: 'camera',
-  color: { bg: 'rgba(139, 92, 246, 0.15)', border: 'rgba(139, 92, 246, 0.5)' }
-})))
+phrases.push(
+  ...cameraMovement.map((p) => ({
+    text: p,
+    category: "camera",
+    color: {
+      bg: "rgba(139, 92, 246, 0.15)",
+      border: "rgba(139, 92, 246, 0.5)",
+    },
+  })),
+);
 ```
 
 ##### 3. Compound Nouns (lines 26-32)
+
 ```javascript
-const compounds = doc.match('#Noun #Noun+').out('array')
+const compounds = doc.match("#Noun #Noun+").out("array");
 // Example matches: "frock coat", "battlefield cemetery"
-phrases.push(...compounds.map(p => ({
-  text: p,
-  category: 'subject',
-  color: { bg: 'rgba(59, 130, 246, 0.15)', border: 'rgba(59, 130, 246, 0.5)' }
-})))
+phrases.push(
+  ...compounds.map((p) => ({
+    text: p,
+    category: "subject",
+    color: {
+      bg: "rgba(59, 130, 246, 0.15)",
+      border: "rgba(59, 130, 246, 0.5)",
+    },
+  })),
+);
 ```
 
 ##### 4. Technical Specs (lines 34-40)
+
 ```javascript
-const technical = doc.match('/[0-9]+mm|[0-9]+fps|[0-9]+:[0-9]+/').out('array')
+const technical = doc.match("/[0-9]+mm|[0-9]+fps|[0-9]+:[0-9]+/").out("array");
 // Example matches: "35mm", "24fps", "2.39:1"
-phrases.push(...technical.map(p => ({
-  text: p,
-  category: 'technical',
-  color: { bg: 'rgba(99, 102, 241, 0.15)', border: 'rgba(99, 102, 241, 0.5)' }
-})))
+phrases.push(
+  ...technical.map((p) => ({
+    text: p,
+    category: "technical",
+    color: {
+      bg: "rgba(99, 102, 241, 0.15)",
+      border: "rgba(99, 102, 241, 0.5)",
+    },
+  })),
+);
 ```
 
 ##### 5. Duplicate Removal (lines 46-58)
+
 ```javascript
 function removeDuplicates(phrases) {
-  phrases.sort((a, b) => b.text.length - a.text.length) // Longest first
-  const kept = []
+  phrases.sort((a, b) => b.text.length - a.text.length); // Longest first
+  const kept = [];
 
   for (const phrase of phrases) {
-    const overlaps = kept.some(existing =>
-      phrase.text.includes(existing.text) || existing.text.includes(phrase.text)
-    )
-    if (!overlaps) kept.push(phrase)
+    const overlaps = kept.some(
+      (existing) =>
+        phrase.text.includes(existing.text) ||
+        existing.text.includes(phrase.text),
+    );
+    if (!overlaps) kept.push(phrase);
   }
 
-  return kept
+  return kept;
 }
 ```
 
 **Logic:** Keeps longer phrases, discards shorter overlapping ones
+
 - "golden hour" vs "hour" → keeps "golden hour"
 - "camera dollies forward" vs "camera dollies" → keeps longer version
 
 #### Structural Element Detection
+
 **Location:** `PromptCanvas.jsx` (lines 65-91)
 
 The system intelligently **skips highlighting** for:
 
 1. **Headers (ALL CAPS, 5+ chars)**
+
    ```javascript
    if (/^[A-Z\s\-&/]{5,}$/.test(trimmed)) return true;
    ```
 
 2. **Emoji headers**
+
    ```javascript
-   if (firstChar >= 0xD83C || firstChar >= 0xD83D) return true;
+   if (firstChar >= 0xd83c || firstChar >= 0xd83d) return true;
    ```
 
 3. **Section labels**
+
    ```
    WHO - SUBJECT/CHARACTER
    ```
 
 4. **Category labels**
+
    ```
    **Technical Specs**:
    ```
@@ -337,6 +402,7 @@ The system intelligently **skips highlighting** for:
 **Why?** Prevents cluttering headers with unnecessary highlights.
 
 #### Highlight Application
+
 **Location:** `PromptCanvas.jsx` (lines 109-136)
 
 ```javascript
@@ -344,10 +410,10 @@ const highlightValueWords = (input) => {
   const phrases = extractVideoPromptPhrases(input);
   phrases.sort((a, b) => input.indexOf(a.text) - input.indexOf(b.text));
 
-  let result = '';
+  let result = "";
   let lastIndex = 0;
 
-  phrases.forEach(phrase => {
+  phrases.forEach((phrase) => {
     const start = input.indexOf(phrase.text, lastIndex);
     // Add text before phrase
     result += escapeHtml(input.slice(lastIndex, start));
@@ -366,7 +432,7 @@ const highlightValueWords = (input) => {
   // Add remaining text
   result += escapeHtml(input.slice(lastIndex));
   return result;
-}
+};
 ```
 
 **Output:** HTML with inline-styled `<span>` elements for each phrase.
@@ -376,8 +442,10 @@ const highlightValueWords = (input) => {
 ## Component Breakdown
 
 ### 1. PromptOptimizerContainer.jsx
+
 **Role:** Main orchestrator
 **Responsibilities:**
+
 - Route management (`/`, `/prompt/:uuid`)
 - State coordination between child components
 - User authentication (Firebase)
@@ -386,20 +454,24 @@ const highlightValueWords = (input) => {
 - Modal management (brainstorm, improvement forms)
 
 **Key State:**
+
 ```javascript
-const [selectedMode, setSelectedMode] = useState('optimize');
+const [selectedMode, setSelectedMode] = useState("optimize");
 const [showResults, setShowResults] = useState(false);
 const [suggestionsData, setSuggestionsData] = useState(null);
 ```
 
 **Key Functions:**
+
 - `handleOptimize()` - Triggers optimization flow
 - `fetchEnhancementSuggestions()` - Gets AI alternatives for highlighted text
 - `loadFromHistory()` - Restores previous prompt from history
 
 ### 2. PromptInput.jsx
+
 **Role:** Input interface
 **Features:**
+
 - Textarea with auto-resize
 - Mode selector integration
 - Quick action templates
@@ -407,20 +479,23 @@ const [suggestionsData, setSuggestionsData] = useState(null);
 - "Build Concept" button (video mode only)
 
 **Key Props:**
+
 ```javascript
 {
-  inputPrompt,
-  onInputChange,
-  selectedMode,
-  onModeChange,
-  onOptimize,
-  isProcessing
+  (inputPrompt,
+    onInputChange,
+    selectedMode,
+    onModeChange,
+    onOptimize,
+    isProcessing);
 }
 ```
 
 ### 3. PromptCanvas.jsx
+
 **Role:** Interactive editor/canvas
 **Features:**
+
 - ContentEditable HTML editor
 - Floating toolbar (copy, share, export, legend)
 - Three-pane layout:
@@ -432,6 +507,7 @@ const [suggestionsData, setSuggestionsData] = useState(null);
 - Copy/paste handling
 
 **Key State:**
+
 ```javascript
 const [copied, setCopied] = useState(false);
 const [showLegend, setShowLegend] = useState(false);
@@ -439,6 +515,7 @@ const [isAnimationComplete, setIsAnimationComplete] = useState(false);
 ```
 
 **Editor Reference:**
+
 ```javascript
 const editorRef = useRef(null);
 
@@ -450,34 +527,39 @@ const editorRef = useRef(null);
   onClick={handleHighlightClick}
   onMouseDown={handleHighlightMouseDown}
   onMouseUp={handleTextSelection}
-/>
+/>;
 ```
 
 ### 4. usePromptOptimizer.js
+
 **Role:** Core optimization hook
 **State Management:**
+
 ```javascript
 {
-  inputPrompt,
-  optimizedPrompt,
-  displayedPrompt,       // For typewriter animation
-  qualityScore,
-  isProcessing,
-  skipAnimation,
-  improvementContext
+  (inputPrompt,
+    optimizedPrompt,
+    displayedPrompt, // For typewriter animation
+    qualityScore,
+    isProcessing,
+    skipAnimation,
+    improvementContext);
 }
 ```
 
 **Key Functions:**
+
 - `optimize(prompt, context)` - Main API call
 - `calculateQualityScore(input, output)` - Scores optimization quality
 - `resetPrompt()` - Clears all state
 
 ### 5. phraseExtractor.js
+
 **Role:** NLP-powered text analysis
 **Dependencies:** compromise.js
 
 **Exports:**
+
 ```javascript
 export function extractVideoPromptPhrases(text) {
   // Returns array of { text, category, color }
@@ -485,6 +567,7 @@ export function extractVideoPromptPhrases(text) {
 ```
 
 **Categories Detected:**
+
 - `descriptive` - Adjective + Noun phrases
 - `camera` - Camera movements
 - `subject` - Compound nouns
@@ -647,19 +730,23 @@ User clicks "blue hour"
 ## Key Features
 
 ### 1. Intelligent Highlighting
+
 - **Pattern-based:** Uses NLP (compromise.js) not regex
 - **Context-aware:** Skips headers and labels
 - **De-duplicated:** Keeps longest matching phrases
 - **Conditional:** Only in video mode, post-animation
 
 ### 2. Interactive Editing
+
 - **ContentEditable:** Full text editing capabilities
 - **Click-to-suggest:** Click any highlight for alternatives
 - **Manual selection:** Select any text for custom suggestions
 - **Real-time updates:** Changes sync to state immediately
 
 ### 3. Multi-Mode Support
+
 Modes with different prompting strategies:
+
 - **Standard:** General optimization
 - **Reasoning:** For o1/o3 models (deep thinking)
 - **Research:** Comprehensive research plans
@@ -667,17 +754,20 @@ Modes with different prompting strategies:
 - **Video:** Cinematic prompt generation
 
 ### 4. Typewriter Animation
+
 - **Smooth:** 3 chars every 5ms
 - **Skippable:** Can click to complete instantly
 - **State-aware:** Triggers post-processing on completion
 
 ### 5. AI-Powered Suggestions
+
 - **Contextual:** Sends 300 chars before/after
 - **Relevant:** Tailored to video terminology
 - **Fast:** Cached for repeated requests
 - **Interactive:** One-click application
 
 ### 6. History Management
+
 - **Firebase storage:** Persists across sessions
 - **UUID tracking:** Shareable links (`/prompt/:uuid`)
 - **Search:** Filter by content or mode
@@ -688,40 +778,49 @@ Modes with different prompting strategies:
 ## Performance Optimizations
 
 ### 1. Conditional Highlighting
+
 ```javascript
 // ONLY highlight when both conditions true
-const enableMLHighlighting = selectedMode === 'video' && isAnimationComplete;
+const enableMLHighlighting = selectedMode === "video" && isAnimationComplete;
 ```
+
 **Why?** Prevents expensive NLP processing during animation.
 
 ### 2. Memoization
+
 ```javascript
 const { html: formattedHTML } = useMemo(
   () => formatTextToHTML(displayedPrompt, enableMLHighlighting),
-  [displayedPrompt, enableMLHighlighting]
+  [displayedPrompt, enableMLHighlighting],
 );
 ```
+
 **Why?** Only re-formats when inputs change.
 
 ### 3. Debounced Suggestions
+
 ```javascript
 // Wait 300ms before fetching suggestions
 debounceTimerRef.current = setTimeout(performFetch, 300);
 ```
+
 **Why?** Prevents API spam during text selection.
 
 ### 4. Request Deduplication
+
 ```javascript
-const requestId = Symbol('suggestions');
+const requestId = Symbol("suggestions");
 lastRequestRef.current = requestId;
 // Later...
 if (lastRequestRef.current !== requestId) {
   return; // Ignore stale response
 }
 ```
+
 **Why?** Ignores outdated API responses.
 
 ### 5. CSS-based Hover Effects
+
 ```css
 .value-word:hover {
   filter: brightness(0.95);
@@ -729,6 +828,7 @@ if (lastRequestRef.current !== requestId) {
   cursor: pointer !important;
 }
 ```
+
 **Why?** Native CSS is faster than JavaScript hover handlers.
 
 ---
@@ -736,31 +836,36 @@ if (lastRequestRef.current !== requestId) {
 ## Security Considerations
 
 ### 1. XSS Prevention
+
 ```javascript
 const escapeHtml = (str) => {
   return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 };
 ```
+
 **Applied:** Before any text is inserted into HTML.
 
 ### 2. ContentEditable Safety
+
 ```javascript
-suppressContentEditableWarning  // React-controlled content
-onCopy={handleCopyEvent}        // Custom copy handler
-onInput={handleInput}           // Sanitized input
+suppressContentEditableWarning; // React-controlled content
+onCopy = { handleCopyEvent }; // Custom copy handler
+onInput = { handleInput }; // Sanitized input
 ```
 
 ### 3. API Authentication
+
 ```javascript
 headers: {
   'X-API-Key': 'dev-key-12345',
 }
 ```
+
 **Note:** Production should use environment variables.
 
 ---
@@ -768,6 +873,7 @@ headers: {
 ## Browser Compatibility
 
 ### Tested Features
+
 - ✅ ContentEditable (all modern browsers)
 - ✅ getSelection() API
 - ✅ Range manipulation
@@ -775,6 +881,7 @@ headers: {
 - ✅ ES6+ features (via Vite transpilation)
 
 ### Known Limitations
+
 - Safari: Occasional focus issues with contentEditable
 - Firefox: Slight rendering differences in tooltips
 
@@ -783,24 +890,29 @@ headers: {
 ## Future Enhancement Opportunities
 
 ### 1. Offline Support
+
 - Cache responses for offline editing
 - IndexedDB for local history storage
 
 ### 2. Collaborative Editing
+
 - WebSocket-based real-time collaboration
 - Conflict resolution for simultaneous edits
 
 ### 3. Extended NLP
+
 - Custom phrase training
 - User-defined categories
 - Sentiment analysis for tone
 
 ### 4. Export Formats
+
 - PDF with formatting preserved
 - Direct export to video tools (Runway, Pika)
 - Notion/Obsidian integration
 
 ### 5. Analytics
+
 - Track which suggestions are used most
 - Optimize templates based on user preferences
 - A/B testing for prompt templates
@@ -810,21 +922,24 @@ headers: {
 ## Debugging Tips
 
 ### Enable Highlight Debugging
+
 ```javascript
 // In PromptCanvas.jsx, add console logs:
-console.log('Highlighting enabled?', enableMLHighlighting);
-console.log('Phrases extracted:', phrases);
+console.log("Highlighting enabled?", enableMLHighlighting);
+console.log("Phrases extracted:", phrases);
 ```
 
 ### View Raw HTML
+
 ```javascript
 // In browser console:
 console.log(editorRef.current.innerHTML);
 ```
 
 ### Test Phrase Extraction
+
 ```javascript
-import { extractVideoPromptPhrases } from './phraseExtractor.js';
+import { extractVideoPromptPhrases } from "./phraseExtractor.js";
 
 const text = "A camera slowly dollies forward capturing golden hour lighting";
 const phrases = extractVideoPromptPhrases(text);
@@ -832,6 +947,7 @@ console.log(phrases);
 ```
 
 ### Monitor API Calls
+
 ```javascript
 // In Network tab, filter by:
 // - /api/optimize

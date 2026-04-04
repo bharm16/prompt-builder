@@ -1,9 +1,13 @@
-import React from 'react';
-import { Sparkles } from '@promptstudio/system/components/ui';
-import { VIDEO_DRAFT_MODEL, VIDEO_RENDER_MODELS } from '@components/ToolSidebar/config/modelConfig';
-import { ModelRecommendationDropdown } from './ModelRecommendationDropdown';
-import type { ModelRecommendation } from '@/features/model-intelligence/types';
-import { cn } from '@/utils/cn';
+import React from "react";
+import { Sparkles } from "@promptstudio/system/components/ui";
+import {
+  VIDEO_DRAFT_MODEL,
+  VIDEO_RENDER_MODELS,
+  getVideoCost,
+} from "@components/ToolSidebar/config/modelConfig";
+import { ModelRecommendationDropdown } from "./ModelRecommendationDropdown";
+import type { ModelRecommendation } from "@/features/model-intelligence/types";
+import { cn } from "@/utils/cn";
 
 interface ModelOption {
   id: string;
@@ -17,6 +21,7 @@ interface GenerationFooterProps {
   onGenerate: () => void;
   isGenerateDisabled: boolean;
   creditBalance?: number | null | undefined;
+  duration?: number | undefined;
   generateLabel?: string | undefined;
   /** Model recommendation data — enables the rich dropdown with match %, capabilities, etc. */
   modelRecommendation?: ModelRecommendation | null | undefined;
@@ -38,7 +43,8 @@ export function GenerationFooter({
   onGenerate,
   isGenerateDisabled,
   creditBalance,
-  generateLabel = 'Generate',
+  duration,
+  generateLabel = "Generate",
   modelRecommendation,
   recommendedModelId,
   efficientModelId,
@@ -46,9 +52,12 @@ export function GenerationFooter({
   const isDraft = renderModelId === VIDEO_DRAFT_MODEL.id;
   const currentModel = isDraft
     ? VIDEO_DRAFT_MODEL
-    : VIDEO_RENDER_MODELS.find((m) => m.id === renderModelId) ?? VIDEO_RENDER_MODELS[0];
+    : (VIDEO_RENDER_MODELS.find((m) => m.id === renderModelId) ??
+      VIDEO_RENDER_MODELS[0]);
 
-  const creditCost = currentModel?.cost ?? null;
+  const creditCost = currentModel
+    ? getVideoCost(currentModel.id, duration)
+    : null;
   const hasSufficientCredits =
     creditBalance !== null && creditBalance !== undefined
       ? creditBalance >= (creditCost ?? 0)
@@ -57,7 +66,7 @@ export function GenerationFooter({
   const disabledForCredits = !hasSufficientCredits;
 
   return (
-    <footer className="flex h-16 items-center gap-2.5 border-t border-[#1A1C22] bg-[linear-gradient(180deg,#111318_0%,#0D0E12_100%)] px-3.5">
+    <footer className="flex h-16 items-center gap-2.5 border-t border-tool-rail-border bg-[linear-gradient(180deg,#111318_0%,#0D0E12_100%)] px-3.5">
       {/* ── Model selector (recommendation-aware dropdown) ── */}
       <ModelRecommendationDropdown
         renderModelOptions={renderModelOptions}
@@ -70,13 +79,15 @@ export function GenerationFooter({
       />
 
       {/* ── Credit cost ── */}
-      <span className="whitespace-nowrap text-[11px] tabular-nums text-[#555B6E]">
-        {creditCost !== null ? `· ${creditCost} cr` : ''}
+      <span className="whitespace-nowrap text-[11px] tabular-nums text-tool-text-subdued">
+        {creditCost !== null ? `· ${creditCost} cr` : ""}
         {creditBalance !== null && creditBalance !== undefined ? (
           <span
             className={cn(
-              'ml-1',
-              creditBalance < (creditCost ?? 0) ? 'text-amber-400' : 'text-[#555B6E]'
+              "ml-1",
+              creditBalance < (creditCost ?? 0)
+                ? "text-amber-400"
+                : "text-tool-text-subdued",
             )}
           >
             · {creditBalance} bal

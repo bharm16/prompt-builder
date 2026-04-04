@@ -14,7 +14,7 @@
  *   logger.info('User action', { component: 'Button', action: 'click' });
  */
 
-type LogLevel = 'debug' | 'info' | 'warn' | 'error';
+type LogLevel = "debug" | "info" | "warn" | "error";
 
 interface LogEntry {
   level: LogLevel;
@@ -47,7 +47,7 @@ const LOG_LEVELS: Record<LogLevel, number> = {
   error: 3,
 };
 
-const STORAGE_KEY = 'prompt_builder_logs';
+const STORAGE_KEY = "prompt_builder_logs";
 
 class LoggingService {
   private config: LoggerConfig;
@@ -58,38 +58,51 @@ class LoggingService {
   private includeLogCaller: boolean;
 
   constructor(config?: Partial<LoggerConfig>) {
-    const isDev = import.meta.env?.MODE === 'development';
-    const includeLogStack = isDev || import.meta.env?.VITE_LOG_STACK === 'true';
+    const isDev = import.meta.env?.MODE === "development";
+    const includeLogStack = isDev || import.meta.env?.VITE_LOG_STACK === "true";
     const stackLevels = config?.logStackLevels?.length
       ? config.logStackLevels
-      : (import.meta.env?.VITE_LOG_STACK_LEVELS || 'warn,error')
-          .split(',')
+      : ((import.meta.env?.VITE_LOG_STACK_LEVELS || "warn,error")
+          .split(",")
           .map((level: string) => level.trim().toLowerCase())
-          .filter(Boolean) as LogLevel[];
-    const resolvedStackLevels = stackLevels.length > 0 ? stackLevels : (['warn', 'error'] as LogLevel[]);
-    const stackDepth = config?.logStackDepth ?? Number.parseInt(import.meta.env?.VITE_LOG_STACK_DEPTH || '6', 10);
-    const stackLimit = config?.logStackLimit ?? Number.parseInt(import.meta.env?.VITE_LOG_STACK_LIMIT || '', 10);
-    const includeLogCaller = config?.includeLogCaller ??
-      (import.meta.env?.VITE_LOG_CALLER ? import.meta.env?.VITE_LOG_CALLER === 'true' : includeLogStack);
+          .filter(Boolean) as LogLevel[]);
+    const resolvedStackLevels =
+      stackLevels.length > 0 ? stackLevels : (["warn", "error"] as LogLevel[]);
+    const stackDepth =
+      config?.logStackDepth ??
+      Number.parseInt(import.meta.env?.VITE_LOG_STACK_DEPTH || "6", 10);
+    const stackLimit =
+      config?.logStackLimit ??
+      Number.parseInt(import.meta.env?.VITE_LOG_STACK_LIMIT || "", 10);
+    const includeLogCaller =
+      config?.includeLogCaller ??
+      (import.meta.env?.VITE_LOG_CALLER
+        ? import.meta.env?.VITE_LOG_CALLER === "true"
+        : includeLogStack);
 
     this.config = {
-      enabled: isDev || import.meta.env?.VITE_DEBUG_LOGGING === 'true',
-      level: (import.meta.env?.VITE_LOG_LEVEL as LogLevel) || (isDev ? 'debug' : 'warn'),
+      enabled: isDev || import.meta.env?.VITE_DEBUG_LOGGING === "true",
+      level:
+        (import.meta.env?.VITE_LOG_LEVEL as LogLevel) ||
+        (isDev ? "debug" : "warn"),
       includeTimestamp: true,
       includeStackTrace: isDev,
       includeLogStack,
       includeLogCaller,
       logStackLevels: resolvedStackLevels,
       logStackDepth: stackDepth,
-      logStackLimit: Number.isFinite(stackLimit) && stackLimit > 0 ? stackLimit : null,
+      logStackLimit:
+        Number.isFinite(stackLimit) && stackLimit > 0 ? stackLimit : null,
       persistToStorage: isDev,
       maxStoredLogs: 500,
       ...config,
     };
     this.logStackLevels = new Set(this.config.logStackLevels);
-    this.logStackDepth = Number.isFinite(this.config.logStackDepth) && this.config.logStackDepth > 0
-      ? this.config.logStackDepth
-      : 6;
+    this.logStackDepth =
+      Number.isFinite(this.config.logStackDepth) &&
+      this.config.logStackDepth > 0
+        ? this.config.logStackDepth
+        : 6;
     this.includeLogCaller = this.config.includeLogCaller;
     this.applyStackTraceLimit(this.config.logStackLimit);
   }
@@ -165,13 +178,14 @@ class LoggingService {
     level: LogLevel,
     message: string,
     meta?: Record<string, unknown>,
-    context?: string
+    context?: string,
   ): void {
     if (!this.config.enabled) return;
     if (LOG_LEVELS[level] < LOG_LEVELS[this.config.level]) return;
 
     const finalMeta = this.buildMeta(level, meta);
-    const metaForEntry = finalMeta && Object.keys(finalMeta).length > 0 ? finalMeta : undefined;
+    const metaForEntry =
+      finalMeta && Object.keys(finalMeta).length > 0 ? finalMeta : undefined;
 
     const entry: LogEntry = {
       level,
@@ -184,17 +198,17 @@ class LoggingService {
 
     // Console output with styling
     const styles = {
-      debug: 'color: #6b7280',
-      info: 'color: #3b82f6',
-      warn: 'color: #f59e0b; font-weight: bold',
-      error: 'color: #ef4444; font-weight: bold',
+      debug: "color: #6b7280",
+      info: "color: #3b82f6",
+      warn: "color: #f59e0b; font-weight: bold",
+      error: "color: #ef4444; font-weight: bold",
     };
 
-    const prefix = context ? `[${context}]` : '';
-    const tracePrefix = entry.traceId ? `[${entry.traceId.slice(-8)}]` : '';
+    const prefix = context ? `[${context}]` : "";
+    const tracePrefix = entry.traceId ? `[${entry.traceId.slice(-8)}]` : "";
     const fullMessage = `${tracePrefix}${prefix} ${message}`;
 
-    const consoleMethod = level === 'debug' ? 'log' : level;
+    const consoleMethod = level === "debug" ? "log" : level;
 
     if (metaForEntry && Object.keys(metaForEntry).length > 0) {
       console[consoleMethod](`%c${fullMessage}`, styles[level], metaForEntry);
@@ -203,8 +217,8 @@ class LoggingService {
     }
 
     // Add stack trace for errors
-    if (level === 'error' && this.config.includeStackTrace) {
-      console.trace('Stack trace:');
+    if (level === "error" && this.config.includeStackTrace) {
+      console.trace("Stack trace:");
     }
 
     // Persist to localStorage for debugging
@@ -213,7 +227,10 @@ class LoggingService {
     }
   }
 
-  private buildMeta(level: LogLevel, meta?: Record<string, unknown>): Record<string, unknown> | undefined {
+  private buildMeta(
+    level: LogLevel,
+    meta?: Record<string, unknown>,
+  ): Record<string, unknown> | undefined {
     const enriched: Record<string, unknown> = { ...(meta || {}) };
     const includeStack = this.shouldIncludeStack(level);
     const includeCaller = this.includeLogCaller || includeStack;
@@ -244,18 +261,21 @@ class LoggingService {
     const stack = new Error().stack;
     if (!stack) return undefined;
     const lines = stack
-      .split('\n')
+      .split("\n")
       .map((line) => line.trim())
       .filter(Boolean);
 
-    if (lines[0] === 'Error') {
+    if (lines[0] === "Error") {
       lines.shift();
     }
 
     return lines;
   }
 
-  private filterStackFrames(frames: string[]): { caller?: string; frames: string[] } {
+  private filterStackFrames(frames: string[]): {
+    caller?: string;
+    frames: string[];
+  } {
     const normalized = frames
       .map((frame) => this.normalizeStackFrame(frame))
       .filter((frame): frame is string => Boolean(frame))
@@ -267,36 +287,40 @@ class LoggingService {
     const caller = selected[0];
     return {
       frames: selected,
-      ...(typeof caller === 'string' ? { caller } : {}),
+      ...(typeof caller === "string" ? { caller } : {}),
     };
   }
 
   private normalizeStackFrame(frame: string): string | undefined {
     let line = frame.trim();
     if (!line) return undefined;
-    if (line.startsWith('at ')) {
+    if (line.startsWith("at ")) {
       line = line.slice(3);
     }
 
-    line = line.replace(/file:\/\//g, '');
-    line = line.replace(/https?:\/\/[^/]+\//g, '');
-    line = line.replace(/webpack:\/\//g, '');
-    line = line.replace(/\(\/+/g, '(');
-    line = line.replace(/^\/+/, '');
+    line = line.replace(/file:\/\//g, "");
+    line = line.replace(/https?:\/\/[^/]+\//g, "");
+    line = line.replace(/webpack:\/\//g, "");
+    line = line.replace(/\(\/+/g, "(");
+    line = line.replace(/^\/+/, "");
 
     return line;
   }
 
   private isNoiseFrame(frame: string): boolean {
     return (
-      frame.includes('node_modules') ||
-      frame.includes('LoggingService.') ||
-      frame.includes('client/src/services/LoggingService.ts')
+      frame.includes("node_modules") ||
+      frame.includes("LoggingService.") ||
+      frame.includes("client/src/services/LoggingService.ts")
     );
   }
 
   private isAppFrame(frame: string): boolean {
-    return frame.includes('/src/') || frame.startsWith('src/') || frame.includes('client/src/');
+    return (
+      frame.includes("/src/") ||
+      frame.startsWith("src/") ||
+      frame.includes("client/src/")
+    );
   }
 
   private applyStackTraceLimit(limit: number | null): void {
@@ -354,15 +378,15 @@ class LoggingService {
 
   // Convenience methods
   debug(message: string, meta?: Record<string, unknown>): void {
-    this.log('debug', message, meta);
+    this.log("debug", message, meta);
   }
 
   info(message: string, meta?: Record<string, unknown>): void {
-    this.log('info', message, meta);
+    this.log("info", message, meta);
   }
 
   warn(message: string, meta?: Record<string, unknown>): void {
-    this.log('warn', message, meta);
+    this.log("warn", message, meta);
   }
 
   error(message: string, error?: Error, meta?: Record<string, unknown>): void {
@@ -374,7 +398,7 @@ class LoggingService {
           ...meta,
         }
       : meta;
-    this.log('error', message, errorMeta);
+    this.log("error", message, errorMeta);
   }
 
   /**
@@ -386,7 +410,7 @@ class LoggingService {
     request?: unknown,
     response?: unknown,
     duration?: number,
-    error?: Error
+    error?: Error,
   ): void {
     const meta: Record<string, unknown> = {
       method,
@@ -414,7 +438,11 @@ class LoggingService {
   /**
    * Log user interaction
    */
-  interaction(action: string, target: string, meta?: Record<string, unknown>): void {
+  interaction(
+    action: string,
+    target: string,
+    meta?: Record<string, unknown>,
+  ): void {
     this.info(`User ${action}`, { target, ...meta });
   }
 }
@@ -425,30 +453,67 @@ class LoggingService {
 class ContextLogger {
   constructor(
     private parent: LoggingService,
-    private context: string
+    private context: string,
   ) {}
 
   debug(message: string, meta?: Record<string, unknown>): void {
-    (this.parent as unknown as { log: (level: LogLevel, message: string, meta?: Record<string, unknown>, context?: string) => void })
-      .log('debug', message, meta, this.context);
+    (
+      this.parent as unknown as {
+        log: (
+          level: LogLevel,
+          message: string,
+          meta?: Record<string, unknown>,
+          context?: string,
+        ) => void;
+      }
+    ).log("debug", message, meta, this.context);
   }
 
   info(message: string, meta?: Record<string, unknown>): void {
-    (this.parent as unknown as { log: (level: LogLevel, message: string, meta?: Record<string, unknown>, context?: string) => void })
-      .log('info', message, meta, this.context);
+    (
+      this.parent as unknown as {
+        log: (
+          level: LogLevel,
+          message: string,
+          meta?: Record<string, unknown>,
+          context?: string,
+        ) => void;
+      }
+    ).log("info", message, meta, this.context);
   }
 
   warn(message: string, meta?: Record<string, unknown>): void {
-    (this.parent as unknown as { log: (level: LogLevel, message: string, meta?: Record<string, unknown>, context?: string) => void })
-      .log('warn', message, meta, this.context);
+    (
+      this.parent as unknown as {
+        log: (
+          level: LogLevel,
+          message: string,
+          meta?: Record<string, unknown>,
+          context?: string,
+        ) => void;
+      }
+    ).log("warn", message, meta, this.context);
   }
 
   error(message: string, error?: Error, meta?: Record<string, unknown>): void {
     const errorMeta = error
-      ? { errorName: error.name, errorMessage: error.message, stack: error.stack, ...meta }
+      ? {
+          errorName: error.name,
+          errorMessage: error.message,
+          stack: error.stack,
+          ...meta,
+        }
       : meta;
-    (this.parent as unknown as { log: (level: LogLevel, message: string, meta?: Record<string, unknown>, context?: string) => void })
-      .log('error', message, errorMeta, this.context);
+    (
+      this.parent as unknown as {
+        log: (
+          level: LogLevel,
+          message: string,
+          meta?: Record<string, unknown>,
+          context?: string,
+        ) => void;
+      }
+    ).log("error", message, errorMeta, this.context);
   }
 }
 
@@ -456,7 +521,7 @@ class ContextLogger {
 export const logger = new LoggingService();
 
 // Make it available globally for debugging
-if (typeof window !== 'undefined') {
+if (typeof window !== "undefined") {
   (window as unknown as { __logger: LoggingService }).__logger = logger;
 }
 

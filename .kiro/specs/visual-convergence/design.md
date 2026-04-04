@@ -5,10 +5,12 @@
 The Visual Convergence feature transforms PromptCanvas into a visual-first video creation platform. Users make creative decisions by selecting from generated images rather than writing prompts. The system guides users through a progressive refinement flow: Direction → Mood → Framing → Lighting → Camera Motion → Subject Motion → Final Generation.
 
 The architecture follows a client-server model with:
+
 - **Backend**: Express.js services for session management, image generation orchestration, depth estimation, and prompt building
 - **Frontend**: React components with useReducer state management, Three.js for camera motion rendering
 
 Key design decisions:
+
 1. **Session-based persistence**: Firestore stores session state with 24-hour TTL
 2. **Parallel image generation**: All dimension options generated simultaneously for speed
 3. **Client-side camera motion**: Three.js depth parallax avoids expensive video generation
@@ -70,7 +72,6 @@ Key design decisions:
 │                                          (Depth Anything)                    │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
-
 
 ### Request Flow
 
@@ -158,25 +159,25 @@ User enters intent
 ### Error Types
 
 ```typescript
-type ConvergenceErrorCode = 
-  | 'SESSION_NOT_FOUND'
-  | 'SESSION_EXPIRED'
-  | 'ACTIVE_SESSION_EXISTS'
-  | 'INSUFFICIENT_CREDITS'
-  | 'REGENERATION_LIMIT_EXCEEDED'
-  | 'DEPTH_ESTIMATION_FAILED'
-  | 'IMAGE_GENERATION_FAILED'
-  | 'VIDEO_GENERATION_FAILED'
-  | 'INCOMPLETE_SESSION'
-  | 'UNAUTHORIZED';
+type ConvergenceErrorCode =
+  | "SESSION_NOT_FOUND"
+  | "SESSION_EXPIRED"
+  | "ACTIVE_SESSION_EXISTS"
+  | "INSUFFICIENT_CREDITS"
+  | "REGENERATION_LIMIT_EXCEEDED"
+  | "DEPTH_ESTIMATION_FAILED"
+  | "IMAGE_GENERATION_FAILED"
+  | "VIDEO_GENERATION_FAILED"
+  | "INCOMPLETE_SESSION"
+  | "UNAUTHORIZED";
 
 class ConvergenceError extends Error {
   constructor(
     public code: ConvergenceErrorCode,
-    public details?: Record<string, unknown>
+    public details?: Record<string, unknown>,
   ) {
     super(code);
-    this.name = 'ConvergenceError';
+    this.name = "ConvergenceError";
   }
 }
 ```
@@ -191,7 +192,7 @@ class ConvergenceError extends Error {
 async function withRetry<T>(
   operation: () => Promise<T>,
   maxRetries: number = 2,
-  baseDelay: number = 1000
+  baseDelay: number = 1000,
 ): Promise<T> {
   let lastError: Error;
   for (let i = 0; i <= maxRetries; i++) {
@@ -208,10 +209,9 @@ async function withRetry<T>(
 }
 
 function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 ```
-
 
 ### Backend Services
 
@@ -219,21 +219,21 @@ function sleep(ms: number): Promise<void> {
 
 ```typescript
 // All convergence routes require authentication (Requirement 1.8-1.9)
-import { authMiddleware } from '@middleware/auth';
+import { authMiddleware } from "@middleware/auth";
 
 const router = Router();
 
 // Apply auth middleware to all convergence routes
 router.use(authMiddleware);
 
-router.post('/start', asyncHandler(startSessionHandler));
-router.post('/select', asyncHandler(selectOptionHandler));
-router.post('/regenerate', asyncHandler(regenerateHandler));
-router.post('/camera-motion', asyncHandler(generateCameraMotionHandler));
-router.post('/camera-motion/select', asyncHandler(selectCameraMotionHandler));
-router.post('/subject-motion', asyncHandler(generateSubjectMotionHandler));
-router.post('/finalize', asyncHandler(finalizeHandler));
-router.get('/session/active', asyncHandler(getActiveSessionHandler)); // For resume flow
+router.post("/start", asyncHandler(startSessionHandler));
+router.post("/select", asyncHandler(selectOptionHandler));
+router.post("/regenerate", asyncHandler(regenerateHandler));
+router.post("/camera-motion", asyncHandler(generateCameraMotionHandler));
+router.post("/camera-motion/select", asyncHandler(selectCameraMotionHandler));
+router.post("/subject-motion", asyncHandler(generateSubjectMotionHandler));
+router.post("/finalize", asyncHandler(finalizeHandler));
+router.get("/session/active", asyncHandler(getActiveSessionHandler)); // For resume flow
 ```
 
 #### ConvergenceService
@@ -253,29 +253,50 @@ interface ConvergenceServiceDeps {
 
 class ConvergenceService {
   constructor(deps: ConvergenceServiceDeps);
-  
+
   // Session lifecycle - userId from auth middleware (Requirement 1.8)
-  startSession(request: StartSessionRequest, userId: string): Promise<StartSessionResponse>;
+  startSession(
+    request: StartSessionRequest,
+    userId: string,
+  ): Promise<StartSessionResponse>;
   getSession(sessionId: string): Promise<ConvergenceSession | null>;
   getActiveSession(userId: string): Promise<ConvergenceSession | null>; // For resume flow (Requirement 1.6)
-  finalizeSession(sessionId: string, userId: string): Promise<FinalizeSessionResponse>;
-  
+  finalizeSession(
+    sessionId: string,
+    userId: string,
+  ): Promise<FinalizeSessionResponse>;
+
   // Dimension selection
-  selectOption(request: SelectOptionRequest, userId: string): Promise<SelectOptionResponse>;
-  regenerate(request: RegenerateRequest, userId: string): Promise<RegenerateResponse>;
-  
+  selectOption(
+    request: SelectOptionRequest,
+    userId: string,
+  ): Promise<SelectOptionResponse>;
+  regenerate(
+    request: RegenerateRequest,
+    userId: string,
+  ): Promise<RegenerateResponse>;
+
   // Camera motion
-  generateCameraMotion(request: GenerateCameraMotionRequest, userId: string): Promise<GenerateCameraMotionResponse>;
-  selectCameraMotion(request: SelectCameraMotionRequest, userId: string): Promise<void>;
-  
+  generateCameraMotion(
+    request: GenerateCameraMotionRequest,
+    userId: string,
+  ): Promise<GenerateCameraMotionResponse>;
+  selectCameraMotion(
+    request: SelectCameraMotionRequest,
+    userId: string,
+  ): Promise<void>;
+
   // Subject motion
-  generateSubjectMotion(request: GenerateSubjectMotionRequest, userId: string): Promise<GenerateSubjectMotionResponse>;
-  
+  generateSubjectMotion(
+    request: GenerateSubjectMotionRequest,
+    userId: string,
+  ): Promise<GenerateSubjectMotionResponse>;
+
   // Credit reservation pattern (Requirement 15.6)
   private async withCreditReservation<T>(
     userId: string,
     creditAmount: number,
-    operation: () => Promise<T>
+    operation: () => Promise<T>,
   ): Promise<T> {
     const reservation = await this.creditsService.reserve(userId, creditAmount);
     try {
@@ -287,23 +308,25 @@ class ConvergenceService {
       throw error;
     }
   }
-  
+
   // Image generation with GCS persistence (Requirement 1.7)
   private async generateAndPersistImages(
     prompts: Array<{ prompt: string; dimension: string; optionId: string }>,
-    userId: string
+    userId: string,
   ): Promise<GeneratedImage[]> {
     // Generate images with retry
     const tempUrls = await Promise.all(
-      prompts.map(p => withRetry(() => this.imageGenerationService.generatePreview(p.prompt)))
+      prompts.map((p) =>
+        withRetry(() => this.imageGenerationService.generatePreview(p.prompt)),
+      ),
     );
-    
+
     // Upload to GCS for permanent storage
     const permanentUrls = await this.storageService.uploadBatch(
-      tempUrls.map(r => r.imageUrl),
-      `convergence/${userId}`
+      tempUrls.map((r) => r.imageUrl),
+      `convergence/${userId}`,
     );
-    
+
     return permanentUrls.map((url, i) => ({
       id: uuidv4(),
       url,
@@ -325,9 +348,9 @@ async startSession(request: StartSessionRequest, userId: string): Promise<StartS
   if (existing) {
     throw new ConvergenceError('ACTIVE_SESSION_EXISTS', { sessionId: existing.id });
   }
-  
+
   const sessionId = uuidv4();
-  
+
   // Create session first
   const session: ConvergenceSession = {
     id: sessionId,
@@ -347,13 +370,13 @@ async startSession(request: StartSessionRequest, userId: string): Promise<StartS
     createdAt: new Date(),
     updatedAt: new Date(),
   };
-  
+
   await this.sessionStore.create(session);
-  
+
   // Generate direction images with credit reservation
   const directionPrompts = this.promptBuilder.buildDirectionPrompts(request.intent);
   const estimatedCost = DIRECTION_IMAGE_COST * 4;
-  
+
   const images = await this.withCreditReservation(userId, estimatedCost, async () => {
     return this.generateAndPersistImages(
       directionPrompts.map(d => ({
@@ -364,13 +387,13 @@ async startSession(request: StartSessionRequest, userId: string): Promise<StartS
       userId
     );
   });
-  
+
   // Update session with images
-  await this.sessionStore.update(sessionId, { 
+  await this.sessionStore.update(sessionId, {
     generatedImages: images,
     imageHistory: { direction: images },
   });
-  
+
   return {
     sessionId,
     images,
@@ -381,7 +404,6 @@ async startSession(request: StartSessionRequest, userId: string): Promise<StartS
 }
 ```
 
-
 #### SessionStore
 
 Repository for Firestore persistence of convergence sessions.
@@ -390,7 +412,10 @@ Repository for Firestore persistence of convergence sessions.
 class SessionStore {
   create(session: ConvergenceSession): Promise<void>;
   get(sessionId: string): Promise<ConvergenceSession | null>;
-  update(sessionId: string, updates: Partial<ConvergenceSession>): Promise<void>;
+  update(
+    sessionId: string,
+    updates: Partial<ConvergenceSession>,
+  ): Promise<void>;
   delete(sessionId: string): Promise<void>;
   getByUserId(userId: string, limit?: number): Promise<ConvergenceSession[]>;
   getActiveByUserId(userId: string): Promise<ConvergenceSession | null>; // For single session check
@@ -416,9 +441,11 @@ class PromptBuilderService {
     intent: string,
     direction: Direction,
     lockedDimensions: LockedDimension[],
-    previewDimension: { type: string; optionId: string; fragments: string[] }
+    previewDimension: { type: string; optionId: string; fragments: string[] },
   ): string;
-  buildDirectionPrompts(intent: string): Array<{ direction: Direction; prompt: string }>;
+  buildDirectionPrompts(
+    intent: string,
+  ): Array<{ direction: Direction; prompt: string }>;
 }
 ```
 
@@ -456,10 +483,17 @@ interface ConvergenceState {
   finalPrompt: string | null;
   isLoading: boolean;
   // More granular loading operation types (Requirement 9.7)
-  loadingOperation: 'startSession' | 'selectOption' | 'regenerate' | 'depthEstimation' | 'videoPreview' | 'finalize' | null;
+  loadingOperation:
+    | "startSession"
+    | "selectOption"
+    | "regenerate"
+    | "depthEstimation"
+    | "videoPreview"
+    | "finalize"
+    | null;
   error: string | null;
-  regenerationCounts: Map<DimensionType | 'direction', number>;
-  imageHistory: Map<DimensionType | 'direction', GeneratedImage[]>;
+  regenerationCounts: Map<DimensionType | "direction", number>;
+  imageHistory: Map<DimensionType | "direction", GeneratedImage[]>;
   // AbortController for cancellation support (Requirement 10.5)
   abortController: AbortController | null;
   // Resume prompt state (Requirement 1.6)
@@ -473,7 +507,10 @@ interface ConvergenceState {
 interface ConvergenceActions {
   setIntent(intent: string): void;
   startSession(intent: string): Promise<void>;
-  selectOption(dimension: DimensionType | 'direction', optionId: string): Promise<void>;
+  selectOption(
+    dimension: DimensionType | "direction",
+    optionId: string,
+  ): Promise<void>;
   regenerate(): Promise<void>;
   goBack(): void;
   jumpToStep(step: ConvergenceStep): void;
@@ -488,7 +525,9 @@ interface ConvergenceActions {
   resumeSession(): void;
   abandonAndStartFresh(): Promise<void>;
   // Keyboard navigation (Requirement 12.5-12.6)
-  moveFocus(direction: 'ArrowLeft' | 'ArrowRight' | 'ArrowUp' | 'ArrowDown'): void;
+  moveFocus(
+    direction: "ArrowLeft" | "ArrowRight" | "ArrowUp" | "ArrowDown",
+  ): void;
   selectFocused(): void;
 }
 
@@ -506,7 +545,7 @@ async startSession(intent: string): Promise<void> {
   const controller = new AbortController();
   dispatch({ type: 'SET_ABORT_CONTROLLER', payload: controller });
   dispatch({ type: 'START_SESSION_REQUEST' });
-  
+
   try {
     const result = await convergenceApi.startSession(intent, controller.signal);
     dispatch({ type: 'START_SESSION_SUCCESS', payload: result });
@@ -522,7 +561,7 @@ async startSession(intent: string): Promise<void> {
 // selectOption with image history restoration (Requirement 13.5)
 async selectOption(dimension: DimensionType | 'direction', optionId: string): Promise<void> {
   const previousSelection = state.lockedDimensions.find(d => d.type === dimension);
-  
+
   // Same option selected - restore from cache, no API call, no credits charged (Requirement 15.8)
   if (previousSelection?.optionId === optionId) {
     const nextDimension = getNextDimension(dimension);
@@ -532,12 +571,12 @@ async selectOption(dimension: DimensionType | 'direction', optionId: string): Pr
       return;
     }
   }
-  
+
   // Different option - call API
   const controller = new AbortController();
   dispatch({ type: 'SET_ABORT_CONTROLLER', payload: controller });
   dispatch({ type: 'SELECT_OPTION_REQUEST' });
-  
+
   try {
     const result = await convergenceApi.selectOption(state.sessionId!, dimension, optionId, controller.signal);
     dispatch({ type: 'SELECT_OPTION_SUCCESS', payload: result });
@@ -559,14 +598,13 @@ cancelGeneration(): void {
 // jumpToStep - client-side only, syncs on next action (Requirement 18.5)
 jumpToStep(step: ConvergenceStep): void {
   const stepOrder = getStepOrder(step);
-  const newLocked = state.lockedDimensions.filter(d => 
+  const newLocked = state.lockedDimensions.filter(d =>
     getDimensionOrder(d.type) < stepOrder
   );
   dispatch({ type: 'JUMP_TO_STEP', payload: { step, lockedDimensions: newLocked } });
   // No API call - session updated on next selectOption
 }
 ```
-
 
 #### convergenceApi
 
@@ -603,13 +641,13 @@ function renderCameraMotionFrames(
   imageUrl: string,
   depthMapUrl: string,
   cameraPath: CameraPath,
-  options?: RenderOptions
+  options?: RenderOptions,
 ): Promise<string[]>;
 
 function createFrameAnimator(
   frames: string[],
   fps: number,
-  onFrame: (frameDataUrl: string) => void
+  onFrame: (frameDataUrl: string) => void,
 ): {
   start(): void;
   stop(): void;
@@ -665,29 +703,32 @@ ConvergenceFlow (orchestrator)
 useEffect(() => {
   const handleKeyDown = (e: KeyboardEvent) => {
     // Don't handle if user is typing in an input
-    if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+    if (
+      e.target instanceof HTMLInputElement ||
+      e.target instanceof HTMLTextAreaElement
+    ) {
       return;
     }
-    
+
     switch (e.key) {
-      case 'Escape':
+      case "Escape":
         actions.goBack();
         break;
-      case 'Enter':
+      case "Enter":
         actions.selectFocused();
         break;
-      case 'ArrowLeft':
-      case 'ArrowRight':
-      case 'ArrowUp':
-      case 'ArrowDown':
+      case "ArrowLeft":
+      case "ArrowRight":
+      case "ArrowUp":
+      case "ArrowDown":
         e.preventDefault();
         actions.moveFocus(e.key);
         break;
     }
   };
-  
-  window.addEventListener('keydown', handleKeyDown);
-  return () => window.removeEventListener('keydown', handleKeyDown);
+
+  window.addEventListener("keydown", handleKeyDown);
+  return () => window.removeEventListener("keydown", handleKeyDown);
 }, [state.step, actions]);
 ```
 
@@ -707,7 +748,7 @@ useEffect(() => {
       console.debug('No active session to resume');
     }
   };
-  
+
   checkExistingSession();
 }, []);
 
@@ -725,27 +766,26 @@ function ResumeSessionModal({ session, onResume, onStartFresh }) {
 }
 ```
 
-
 ## Data Models
 
 ### Firestore Schema: convergence_sessions
 
 ```typescript
 interface ConvergenceSessionDocument {
-  id: string;                           // UUID v4
-  userId: string;                       // Firebase Auth UID
-  intent: string;                       // Original user input
-  direction: Direction | null;          // 'cinematic' | 'social' | 'artistic' | 'documentary'
-  lockedDimensions: LockedDimension[];  // Array of locked selections
-  currentStep: ConvergenceStep;         // Current step in flow (renamed from currentDimension for clarity)
-  generatedImages: GeneratedImage[];    // All generated images (GCS URLs)
+  id: string; // UUID v4
+  userId: string; // Firebase Auth UID
+  intent: string; // Original user input
+  direction: Direction | null; // 'cinematic' | 'social' | 'artistic' | 'documentary'
+  lockedDimensions: LockedDimension[]; // Array of locked selections
+  currentStep: ConvergenceStep; // Current step in flow (renamed from currentDimension for clarity)
+  generatedImages: GeneratedImage[]; // All generated images (GCS URLs)
   imageHistory: Record<string, GeneratedImage[]>; // Images per dimension for back nav (Requirement 13.5)
-  regenerationCounts: Record<string, number>;     // Regen count per dimension (Requirement 14.4)
-  depthMapUrl: string | null;           // GCS URL to depth map
-  cameraMotion: string | null;          // Selected camera motion ID
-  subjectMotion: string | null;         // User's subject motion text
-  finalPrompt: string | null;           // Complete generated prompt
-  status: 'active' | 'completed' | 'abandoned';
+  regenerationCounts: Record<string, number>; // Regen count per dimension (Requirement 14.4)
+  depthMapUrl: string | null; // GCS URL to depth map
+  cameraMotion: string | null; // Selected camera motion ID
+  subjectMotion: string | null; // User's subject motion text
+  finalPrompt: string | null; // Complete generated prompt
+  status: "active" | "completed" | "abandoned";
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }
@@ -759,8 +799,8 @@ interface LockedDimension {
 
 interface GeneratedImage {
   id: string;
-  url: string;                          // GCS URL (permanent)
-  dimension: DimensionType | 'direction';
+  url: string; // GCS URL (permanent)
+  dimension: DimensionType | "direction";
   optionId: string;
   prompt: string;
   generatedAt: Timestamp;
@@ -778,20 +818,20 @@ convergence_sessions:
 ### Type Definitions
 
 ```typescript
-type Direction = 'cinematic' | 'social' | 'artistic' | 'documentary';
+type Direction = "cinematic" | "social" | "artistic" | "documentary";
 
-type DimensionType = 'mood' | 'framing' | 'lighting' | 'camera_motion';
+type DimensionType = "mood" | "framing" | "lighting" | "camera_motion";
 
-type ConvergenceStep = 
-  | 'intent'
-  | 'direction'
-  | 'mood'
-  | 'framing'
-  | 'lighting'
-  | 'camera_motion'
-  | 'subject_motion'
-  | 'preview'
-  | 'complete';
+type ConvergenceStep =
+  | "intent"
+  | "direction"
+  | "mood"
+  | "framing"
+  | "lighting"
+  | "camera_motion"
+  | "subject_motion"
+  | "preview"
+  | "complete";
 
 interface CameraPath {
   id: string;
@@ -818,69 +858,296 @@ interface DimensionConfig {
 ```typescript
 // Direction fragments
 const DIRECTION_FRAGMENTS: Record<Direction, string[]> = {
-  cinematic: ['cinematic composition', 'film-like quality', 'dramatic framing', 'movie production value', 'anamorphic lens feel'],
-  social: ['social media ready', 'vibrant and engaging', 'eye-catching composition', 'scroll-stopping visual', 'high energy aesthetic'],
-  artistic: ['artistic interpretation', 'creative visual style', 'expressive composition', 'aesthetic focus', 'painterly quality'],
-  documentary: ['documentary style', 'naturalistic look', 'authentic atmosphere', 'observational framing', 'raw realism'],
+  cinematic: [
+    "cinematic composition",
+    "film-like quality",
+    "dramatic framing",
+    "movie production value",
+    "anamorphic lens feel",
+  ],
+  social: [
+    "social media ready",
+    "vibrant and engaging",
+    "eye-catching composition",
+    "scroll-stopping visual",
+    "high energy aesthetic",
+  ],
+  artistic: [
+    "artistic interpretation",
+    "creative visual style",
+    "expressive composition",
+    "aesthetic focus",
+    "painterly quality",
+  ],
+  documentary: [
+    "documentary style",
+    "naturalistic look",
+    "authentic atmosphere",
+    "observational framing",
+    "raw realism",
+  ],
 };
 
 // Mood options (4 options, 5 fragments each)
 const MOOD_DIMENSION: DimensionConfig = {
-  type: 'mood',
+  type: "mood",
   options: [
-    { id: 'dramatic', label: 'Dramatic', promptFragments: ['high contrast lighting', 'deep shadows', 'intense atmosphere', 'dramatic tension', 'bold visual statement'] },
-    { id: 'peaceful', label: 'Peaceful', promptFragments: ['soft diffused light', 'gentle color palette', 'serene atmosphere', 'tranquil mood', 'calming visual tone'] },
-    { id: 'mysterious', label: 'Mysterious', promptFragments: ['atmospheric haze', 'obscured details', 'enigmatic mood', 'subtle shadows', 'intriguing composition'] },
-    { id: 'nostalgic', label: 'Nostalgic', promptFragments: ['warm vintage tones', 'soft focus edges', 'memory-like quality', 'wistful atmosphere', 'timeless feel'] },
+    {
+      id: "dramatic",
+      label: "Dramatic",
+      promptFragments: [
+        "high contrast lighting",
+        "deep shadows",
+        "intense atmosphere",
+        "dramatic tension",
+        "bold visual statement",
+      ],
+    },
+    {
+      id: "peaceful",
+      label: "Peaceful",
+      promptFragments: [
+        "soft diffused light",
+        "gentle color palette",
+        "serene atmosphere",
+        "tranquil mood",
+        "calming visual tone",
+      ],
+    },
+    {
+      id: "mysterious",
+      label: "Mysterious",
+      promptFragments: [
+        "atmospheric haze",
+        "obscured details",
+        "enigmatic mood",
+        "subtle shadows",
+        "intriguing composition",
+      ],
+    },
+    {
+      id: "nostalgic",
+      label: "Nostalgic",
+      promptFragments: [
+        "warm vintage tones",
+        "soft focus edges",
+        "memory-like quality",
+        "wistful atmosphere",
+        "timeless feel",
+      ],
+    },
   ],
 };
 
 // Framing options
 const FRAMING_DIMENSION: DimensionConfig = {
-  type: 'framing',
+  type: "framing",
   options: [
-    { id: 'wide', label: 'Wide Shot', promptFragments: ['wide establishing shot', 'environment visible', 'subject in context', 'expansive framing', 'full scene coverage'] },
-    { id: 'medium', label: 'Medium Shot', promptFragments: ['medium shot framing', 'waist-up framing', 'balanced composition', 'conversational distance', 'natural perspective'] },
-    { id: 'closeup', label: 'Close-up', promptFragments: ['intimate close-up shot', 'shallow depth of field', 'face fills frame', 'detailed features visible', 'emotional proximity'] },
-    { id: 'extreme_closeup', label: 'Extreme Close-up', promptFragments: ['extreme close-up detail', 'macro-like framing', 'texture emphasis', 'ultra shallow focus', 'abstract detail shot'] },
+    {
+      id: "wide",
+      label: "Wide Shot",
+      promptFragments: [
+        "wide establishing shot",
+        "environment visible",
+        "subject in context",
+        "expansive framing",
+        "full scene coverage",
+      ],
+    },
+    {
+      id: "medium",
+      label: "Medium Shot",
+      promptFragments: [
+        "medium shot framing",
+        "waist-up framing",
+        "balanced composition",
+        "conversational distance",
+        "natural perspective",
+      ],
+    },
+    {
+      id: "closeup",
+      label: "Close-up",
+      promptFragments: [
+        "intimate close-up shot",
+        "shallow depth of field",
+        "face fills frame",
+        "detailed features visible",
+        "emotional proximity",
+      ],
+    },
+    {
+      id: "extreme_closeup",
+      label: "Extreme Close-up",
+      promptFragments: [
+        "extreme close-up detail",
+        "macro-like framing",
+        "texture emphasis",
+        "ultra shallow focus",
+        "abstract detail shot",
+      ],
+    },
   ],
 };
 
 // Lighting options
 const LIGHTING_DIMENSION: DimensionConfig = {
-  type: 'lighting',
+  type: "lighting",
   options: [
-    { id: 'golden_hour', label: 'Golden Hour', promptFragments: ['warm golden hour sunlight', 'long shadows', 'orange and amber tones', 'soft directional light', 'magic hour glow'] },
-    { id: 'blue_hour', label: 'Blue Hour', promptFragments: ['cool blue hour light', 'twilight atmosphere', 'soft ambient illumination', 'blue and purple tones', 'ethereal dusk lighting'] },
-    { id: 'high_key', label: 'High Key', promptFragments: ['bright high-key lighting', 'minimal shadows', 'clean bright aesthetic', 'even illumination', 'airy light quality'] },
-    { id: 'low_key', label: 'Low Key', promptFragments: ['dramatic low-key lighting', 'deep blacks', 'selective illumination', 'chiaroscuro effect', 'moody shadow play'] },
+    {
+      id: "golden_hour",
+      label: "Golden Hour",
+      promptFragments: [
+        "warm golden hour sunlight",
+        "long shadows",
+        "orange and amber tones",
+        "soft directional light",
+        "magic hour glow",
+      ],
+    },
+    {
+      id: "blue_hour",
+      label: "Blue Hour",
+      promptFragments: [
+        "cool blue hour light",
+        "twilight atmosphere",
+        "soft ambient illumination",
+        "blue and purple tones",
+        "ethereal dusk lighting",
+      ],
+    },
+    {
+      id: "high_key",
+      label: "High Key",
+      promptFragments: [
+        "bright high-key lighting",
+        "minimal shadows",
+        "clean bright aesthetic",
+        "even illumination",
+        "airy light quality",
+      ],
+    },
+    {
+      id: "low_key",
+      label: "Low Key",
+      promptFragments: [
+        "dramatic low-key lighting",
+        "deep blacks",
+        "selective illumination",
+        "chiaroscuro effect",
+        "moody shadow play",
+      ],
+    },
   ],
 };
 
 // Camera motion options
 const CAMERA_MOTION_DIMENSION: DimensionConfig = {
-  type: 'camera_motion',
+  type: "camera_motion",
   options: [
-    { id: 'static', label: 'Static', promptFragments: ['locked off camera', 'stable tripod shot', 'no camera movement'] },
-    { id: 'pan_left', label: 'Pan Left', promptFragments: ['camera pans left', 'horizontal pan movement', 'smooth lateral tracking'] },
-    { id: 'pan_right', label: 'Pan Right', promptFragments: ['camera pans right', 'horizontal pan movement', 'smooth lateral tracking'] },
-    { id: 'push_in', label: 'Push In', promptFragments: ['camera pushes in slowly', 'dolly forward movement', 'increasing intimacy'] },
-    { id: 'pull_back', label: 'Pull Back', promptFragments: ['camera pulls back', 'dolly backward movement', 'revealing wider context'] },
-    { id: 'crane_up', label: 'Crane Up', promptFragments: ['camera cranes upward', 'vertical ascending movement', 'elevated perspective reveal'] },
+    {
+      id: "static",
+      label: "Static",
+      promptFragments: [
+        "locked off camera",
+        "stable tripod shot",
+        "no camera movement",
+      ],
+    },
+    {
+      id: "pan_left",
+      label: "Pan Left",
+      promptFragments: [
+        "camera pans left",
+        "horizontal pan movement",
+        "smooth lateral tracking",
+      ],
+    },
+    {
+      id: "pan_right",
+      label: "Pan Right",
+      promptFragments: [
+        "camera pans right",
+        "horizontal pan movement",
+        "smooth lateral tracking",
+      ],
+    },
+    {
+      id: "push_in",
+      label: "Push In",
+      promptFragments: [
+        "camera pushes in slowly",
+        "dolly forward movement",
+        "increasing intimacy",
+      ],
+    },
+    {
+      id: "pull_back",
+      label: "Pull Back",
+      promptFragments: [
+        "camera pulls back",
+        "dolly backward movement",
+        "revealing wider context",
+      ],
+    },
+    {
+      id: "crane_up",
+      label: "Crane Up",
+      promptFragments: [
+        "camera cranes upward",
+        "vertical ascending movement",
+        "elevated perspective reveal",
+      ],
+    },
   ],
 };
 
 // Camera paths for Three.js rendering
 const CAMERA_PATHS: CameraPath[] = [
-  { id: 'static', label: 'Static', start: { x: 0, y: 0, z: 0 }, end: { x: 0, y: 0, z: 0 }, duration: 3 },
-  { id: 'pan_left', label: 'Pan Left', start: { x: 0.15, y: 0, z: 0 }, end: { x: -0.15, y: 0, z: 0 }, duration: 3 },
-  { id: 'pan_right', label: 'Pan Right', start: { x: -0.15, y: 0, z: 0 }, end: { x: 0.15, y: 0, z: 0 }, duration: 3 },
-  { id: 'push_in', label: 'Push In', start: { x: 0, y: 0, z: -0.1 }, end: { x: 0, y: 0, z: 0.25 }, duration: 3 },
-  { id: 'pull_back', label: 'Pull Back', start: { x: 0, y: 0, z: 0.2 }, end: { x: 0, y: 0, z: -0.15 }, duration: 3 },
-  { id: 'crane_up', label: 'Crane Up', start: { x: 0, y: -0.1, z: 0 }, end: { x: 0, y: 0.15, z: 0.05 }, duration: 3 },
+  {
+    id: "static",
+    label: "Static",
+    start: { x: 0, y: 0, z: 0 },
+    end: { x: 0, y: 0, z: 0 },
+    duration: 3,
+  },
+  {
+    id: "pan_left",
+    label: "Pan Left",
+    start: { x: 0.15, y: 0, z: 0 },
+    end: { x: -0.15, y: 0, z: 0 },
+    duration: 3,
+  },
+  {
+    id: "pan_right",
+    label: "Pan Right",
+    start: { x: -0.15, y: 0, z: 0 },
+    end: { x: 0.15, y: 0, z: 0 },
+    duration: 3,
+  },
+  {
+    id: "push_in",
+    label: "Push In",
+    start: { x: 0, y: 0, z: -0.1 },
+    end: { x: 0, y: 0, z: 0.25 },
+    duration: 3,
+  },
+  {
+    id: "pull_back",
+    label: "Pull Back",
+    start: { x: 0, y: 0, z: 0.2 },
+    end: { x: 0, y: 0, z: -0.15 },
+    duration: 3,
+  },
+  {
+    id: "crane_up",
+    label: "Crane Up",
+    start: { x: 0, y: -0.1, z: 0 },
+    end: { x: 0, y: 0.15, z: 0.05 },
+    duration: 3,
+  },
 ];
 ```
-
 
 ### API Request/Response Types
 
@@ -893,7 +1160,7 @@ interface StartSessionRequest {
 interface StartSessionResponse {
   sessionId: string;
   images: GeneratedImage[];
-  currentDimension: 'direction';
+  currentDimension: "direction";
   options: Array<{ id: Direction; label: string }>;
   estimatedCost: number;
 }
@@ -901,14 +1168,14 @@ interface StartSessionResponse {
 // Select Option
 interface SelectOptionRequest {
   sessionId: string;
-  dimension: DimensionType | 'direction';
+  dimension: DimensionType | "direction";
   optionId: string;
 }
 
 interface SelectOptionResponse {
   sessionId: string;
   images: GeneratedImage[];
-  currentDimension: DimensionType | 'camera_motion' | 'subject_motion';
+  currentDimension: DimensionType | "camera_motion" | "subject_motion";
   lockedDimensions: LockedDimension[];
   options?: Array<{ id: string; label: string }>;
   creditsConsumed: number;
@@ -917,7 +1184,7 @@ interface SelectOptionResponse {
 // Regenerate
 interface RegenerateRequest {
   sessionId: string;
-  dimension: DimensionType | 'direction';
+  dimension: DimensionType | "direction";
 }
 
 interface RegenerateResponse {
@@ -934,9 +1201,9 @@ interface GenerateCameraMotionRequest {
 
 interface GenerateCameraMotionResponse {
   sessionId: string;
-  depthMapUrl: string | null;  // null when fallbackMode is true
+  depthMapUrl: string | null; // null when fallbackMode is true
   cameraPaths: CameraPath[];
-  fallbackMode: boolean;       // true if depth estimation failed
+  fallbackMode: boolean; // true if depth estimation failed
   creditsConsumed: number;
 }
 
@@ -974,6 +1241,7 @@ interface FinalizeSessionResponse {
 ## Correctness Properties
 
 ### Property 1: Session Uniqueness
+
 For any user, at most one active convergence session exists at any time.
 
 ```typescript
@@ -985,6 +1253,7 @@ forAll(userId: string, sessions: ConvergenceSession[]) {
 ```
 
 ### Property 2: Credit Reservation Consistency
+
 Credits reserved for an operation are either committed on success or refunded on failure, never lost.
 
 ```typescript
@@ -1003,18 +1272,20 @@ forAll(reservation: CreditReservation, operation: () => Promise<T>) {
 ```
 
 ### Property 3: Image Persistence
+
 All generated images are stored in GCS before being referenced in session state.
 
 ```typescript
 // Property: Images are persisted before session update
 forAll(session: ConvergenceSession) {
-  return session.generatedImages.every(img => 
+  return session.generatedImages.every(img =>
     img.url.startsWith('https://storage.googleapis.com/')
   );
 }
 ```
 
 ### Property 4: Dimension Order Invariant
+
 Locked dimensions always follow the defined order: direction → mood → framing → lighting → camera_motion.
 
 ```typescript
@@ -1022,13 +1293,14 @@ Locked dimensions always follow the defined order: direction → mood → framin
 forAll(session: ConvergenceSession) {
   const order = ['direction', 'mood', 'framing', 'lighting', 'camera_motion'];
   const lockedTypes = session.lockedDimensions.map(d => d.type);
-  return lockedTypes.every((type, i) => 
+  return lockedTypes.every((type, i) =>
     i === 0 || order.indexOf(type) > order.indexOf(lockedTypes[i - 1])
   );
 }
 ```
 
 ### Property 5: Regeneration Limit
+
 No dimension can be regenerated more than 3 times per session.
 
 ```typescript
@@ -1039,6 +1311,7 @@ forAll(session: ConvergenceSession, dimension: DimensionType | 'direction') {
 ```
 
 ### Property 6: Authentication Invariant
+
 All convergence API operations require a valid authenticated user.
 
 ```typescript
@@ -1048,7 +1321,6 @@ forAll(request: ConvergenceRequest, handler: RequestHandler) {
 }
 ```
 
-
 ## Tool Panel Integration Architecture
 
 ### AppShell Context (Requirements 16-17)
@@ -1056,8 +1328,8 @@ forAll(request: ConvergenceRequest, handler: RequestHandler) {
 ```typescript
 // Shared context for tool switching (Requirement 16.6, 17.6)
 interface AppShellContextValue {
-  activeTool: 'create' | 'studio';
-  setActiveTool: (tool: 'create' | 'studio') => void;
+  activeTool: "create" | "studio";
+  setActiveTool: (tool: "create" | "studio") => void;
   convergenceHandoff: ConvergenceHandoff | null;
   setConvergenceHandoff: (handoff: ConvergenceHandoff | null) => void;
 }
@@ -1074,7 +1346,8 @@ const AppShellContext = createContext<AppShellContextValue | null>(null);
 
 function useAppShell() {
   const context = useContext(AppShellContext);
-  if (!context) throw new Error('useAppShell must be used within AppShellProvider');
+  if (!context)
+    throw new Error("useAppShell must be used within AppShellProvider");
   return context;
 }
 ```
@@ -1086,7 +1359,7 @@ function useAppShell() {
 function AppShell() {
   const [activeTool, setActiveTool] = useState<'create' | 'studio'>('studio');
   const [convergenceHandoff, setConvergenceHandoff] = useState<ConvergenceHandoff | null>(null);
-  
+
   // Warn before switching tools during generation (Requirement 17.7)
   const handleToolChange = (tool: 'create' | 'studio') => {
     if (isGenerating && tool !== activeTool) {
@@ -1095,13 +1368,13 @@ function AppShell() {
     }
     setActiveTool(tool);
   };
-  
+
   return (
     <AppShellContext.Provider value={{ activeTool, setActiveTool: handleToolChange, convergenceHandoff, setConvergenceHandoff }}>
       <div className="flex h-screen">
         {/* Left tool panel (Requirement 16.1-16.4) */}
         <ToolPanel activeTool={activeTool} onToolChange={handleToolChange} />
-        
+
         {/* Main workspace - renders at / based on active selection (Requirement 16.6) */}
         <MainWorkspace>
           {activeTool === 'create' ? (
@@ -1110,7 +1383,7 @@ function AppShell() {
             <Studio handoff={convergenceHandoff} />
           )}
         </MainWorkspace>
-        
+
         {/* Shared bottom control bar (Requirement 16.5) */}
         <BottomControlBar />
       </div>
@@ -1133,7 +1406,7 @@ function ToolPanel({ activeTool, onToolChange }: ToolPanelProps) {
         isActive={activeTool === 'create'}
         onClick={() => onToolChange('create')}
       />
-      
+
       {/* Studio icon - renamed from "Tool" (Requirement 16.2) */}
       <ToolButton
         icon={<PencilIcon />}
@@ -1141,7 +1414,7 @@ function ToolPanel({ activeTool, onToolChange }: ToolPanelProps) {
         isActive={activeTool === 'studio'}
         onClick={() => onToolChange('studio')}
       />
-      
+
       {/* Other existing tools... */}
     </div>
   );
@@ -1154,7 +1427,7 @@ function ToolPanel({ activeTool, onToolChange }: ToolPanelProps) {
 // In ConvergencePreview component
 function ConvergencePreview({ finalizeResponse }: ConvergencePreviewProps) {
   const { setActiveTool, setConvergenceHandoff } = useAppShell();
-  
+
   const handleEditInStudio = () => {
     // Pass data via shared React context (Requirement 17.6)
     setConvergenceHandoff({
@@ -1166,7 +1439,7 @@ function ConvergencePreview({ finalizeResponse }: ConvergencePreviewProps) {
     });
     setActiveTool('studio');
   };
-  
+
   return (
     // ...
     <Button onClick={handleEditInStudio}>Edit in Studio</Button>
@@ -1177,7 +1450,7 @@ function ConvergencePreview({ finalizeResponse }: ConvergencePreviewProps) {
 // In Studio component - receive handoff
 function Studio({ handoff }: { handoff: ConvergenceHandoff | null }) {
   const [prompt, setPrompt] = useState('');
-  
+
   // Pre-fill prompt from convergence handoff (Requirement 17.2)
   useEffect(() => {
     if (handoff) {
@@ -1185,7 +1458,7 @@ function Studio({ handoff }: { handoff: ConvergenceHandoff | null }) {
       // Optionally show locked dimensions as reference (Requirement 17.3)
     }
   }, [handoff]);
-  
+
   // ...
 }
 ```
@@ -1203,7 +1476,7 @@ interface StorageService {
    * @returns Permanent GCS URL
    */
   upload(tempUrl: string, destination: string): Promise<string>;
-  
+
   /**
    * Upload multiple images in parallel
    * @param tempUrls Array of temporary Replicate URLs
@@ -1211,7 +1484,7 @@ interface StorageService {
    * @returns Array of permanent GCS URLs in same order
    */
   uploadBatch(tempUrls: string[], destinationPrefix: string): Promise<string[]>;
-  
+
   /**
    * Delete images (for cleanup on session abandonment)
    */
@@ -1220,34 +1493,43 @@ interface StorageService {
 
 class GCSStorageService implements StorageService {
   constructor(private bucket: Bucket) {}
-  
+
   async upload(tempUrl: string, destination: string): Promise<string> {
     const response = await fetch(tempUrl);
     const buffer = await response.arrayBuffer();
-    
+
     const file = this.bucket.file(destination);
     await file.save(Buffer.from(buffer), {
-      contentType: 'image/png',
+      contentType: "image/png",
       public: true,
     });
-    
+
     return `https://storage.googleapis.com/${this.bucket.name}/${destination}`;
   }
-  
-  async uploadBatch(tempUrls: string[], destinationPrefix: string): Promise<string[]> {
+
+  async uploadBatch(
+    tempUrls: string[],
+    destinationPrefix: string,
+  ): Promise<string[]> {
     return Promise.all(
-      tempUrls.map((url, i) => 
-        this.upload(url, `${destinationPrefix}/${uuidv4()}.png`)
-      )
+      tempUrls.map((url, i) =>
+        this.upload(url, `${destinationPrefix}/${uuidv4()}.png`),
+      ),
     );
   }
-  
+
   async delete(gcsUrls: string[]): Promise<void> {
     await Promise.all(
-      gcsUrls.map(url => {
-        const path = url.replace(`https://storage.googleapis.com/${this.bucket.name}/`, '');
-        return this.bucket.file(path).delete().catch(() => {}); // Ignore if already deleted
-      })
+      gcsUrls.map((url) => {
+        const path = url.replace(
+          `https://storage.googleapis.com/${this.bucket.name}/`,
+          "",
+        );
+        return this.bucket
+          .file(path)
+          .delete()
+          .catch(() => {}); // Ignore if already deleted
+      }),
     );
   }
 }
@@ -1258,37 +1540,37 @@ class GCSStorageService implements StorageService {
 ```typescript
 // Credit costs for convergence operations
 const CONVERGENCE_COSTS = {
-  DIRECTION_IMAGES: 4,        // 4 images × 1 credit each
-  DIMENSION_IMAGES: 4,        // 4 images × 1 credit each
-  DEPTH_ESTIMATION: 1,        // Depth Anything v2
-  WAN_PREVIEW: 5,             // Wan 2.2 video preview
-  REGENERATION: 4,            // Same as dimension images
-  
+  DIRECTION_IMAGES: 4, // 4 images × 1 credit each
+  DIMENSION_IMAGES: 4, // 4 images × 1 credit each
+  DEPTH_ESTIMATION: 1, // Depth Anything v2
+  WAN_PREVIEW: 5, // Wan 2.2 video preview
+  REGENERATION: 4, // Same as dimension images
+
   // Estimated total for full flow (without regenerations)
   ESTIMATED_TOTAL: 4 + 4 + 4 + 4 + 1 + 5, // 22 credits
 } as const;
 
 // Final generation costs (from existing model pricing)
 const GENERATION_COSTS: Record<string, number> = {
-  'sora-2': 80,
-  'veo-3': 30,
-  'kling-v2.1': 35,
-  'luma-ray-3': 40,
-  'wan-2.2': 15,
-  'runway-gen4': 50,
+  "sora-2": 80,
+  "veo-3": 30,
+  "kling-v2.1": 35,
+  "luma-ray-3": 40,
+  "wan-2.2": 15,
+  "runway-gen4": 50,
 };
 
 // Get cost for current step
 function getStepCost(step: ConvergenceStep): number {
   switch (step) {
-    case 'direction':
-    case 'mood':
-    case 'framing':
-    case 'lighting':
+    case "direction":
+    case "mood":
+    case "framing":
+    case "lighting":
       return CONVERGENCE_COSTS.DIMENSION_IMAGES;
-    case 'camera_motion':
+    case "camera_motion":
       return CONVERGENCE_COSTS.DEPTH_ESTIMATION;
-    case 'subject_motion':
+    case "subject_motion":
       return CONVERGENCE_COSTS.WAN_PREVIEW;
     default:
       return 0;
@@ -1296,36 +1578,35 @@ function getStepCost(step: ConvergenceStep): number {
 }
 ```
 
-
 ## Finalization Validation
 
 ```typescript
 // In ConvergenceService.finalizeSession (Requirement 8.3-8.4)
 async finalizeSession(sessionId: string, userId: string): Promise<FinalizeSessionResponse> {
   const session = await this.sessionStore.get(sessionId);
-  
+
   if (!session) {
     throw new ConvergenceError('SESSION_NOT_FOUND');
   }
   if (session.userId !== userId) {
     throw new ConvergenceError('UNAUTHORIZED');
   }
-  
+
   // Validate required selections (Requirement 8.3)
   const requiredDimensions: DimensionType[] = ['mood', 'framing', 'lighting', 'camera_motion'];
   const lockedTypes = new Set(session.lockedDimensions.map(d => d.type));
-  
+
   const missing: string[] = [];
   if (!session.direction) missing.push('direction');
   for (const dim of requiredDimensions) {
     if (!lockedTypes.has(dim)) missing.push(dim);
   }
   if (!session.cameraMotion) missing.push('camera_motion');
-  
+
   if (missing.length > 0) {
     throw new ConvergenceError('INCOMPLETE_SESSION', { missingDimensions: missing });
   }
-  
+
   // Build final prompt
   const finalPrompt = this.promptBuilder.buildPrompt({
     intent: session.intent,
@@ -1333,19 +1614,19 @@ async finalizeSession(sessionId: string, userId: string): Promise<FinalizeSessio
     lockedDimensions: session.lockedDimensions,
     subjectMotion: session.subjectMotion || undefined,
   });
-  
+
   // Mark session as completed
   await this.sessionStore.update(sessionId, {
     status: 'completed',
     finalPrompt,
   });
-  
+
   // Get the preview image URL
   const lastImage = session.generatedImages[session.generatedImages.length - 1];
-  
+
   // Calculate total credits consumed
   const totalCreditsConsumed = this.calculateTotalCredits(session);
-  
+
   return {
     sessionId,
     finalPrompt,
@@ -1360,27 +1641,27 @@ async finalizeSession(sessionId: string, userId: string): Promise<FinalizeSessio
 
 private calculateTotalCredits(session: ConvergenceSession): number {
   let total = CONVERGENCE_COSTS.DIRECTION_IMAGES; // Initial direction images
-  
+
   // Add dimension image costs
   const dimensionSteps = ['mood', 'framing', 'lighting'];
   total += dimensionSteps.length * CONVERGENCE_COSTS.DIMENSION_IMAGES;
-  
+
   // Add depth estimation if used
   if (session.depthMapUrl) {
     total += CONVERGENCE_COSTS.DEPTH_ESTIMATION;
   }
-  
+
   // Add Wan preview if used
   if (session.subjectMotion) {
     total += CONVERGENCE_COSTS.WAN_PREVIEW;
   }
-  
+
   // Add regeneration costs
   const regenCounts = session.regenerationCounts || {};
   for (const count of Object.values(regenCounts)) {
     total += count * CONVERGENCE_COSTS.REGENERATION;
   }
-  
+
   return total;
 }
 ```
@@ -1392,7 +1673,7 @@ private calculateTotalCredits(session: ConvergenceSession): number {
 ```typescript
 interface ConvergenceState {
   // ... existing fields
-  
+
   // Insufficient credits modal state
   insufficientCreditsModal: {
     isOpen: boolean;
@@ -1410,57 +1691,57 @@ interface ConvergenceState {
 function handleApiError(error: Error, dispatch: Dispatch<ConvergenceAction>) {
   if (error instanceof ConvergenceError) {
     switch (error.code) {
-      case 'INSUFFICIENT_CREDITS':
+      case "INSUFFICIENT_CREDITS":
         dispatch({
-          type: 'SHOW_CREDITS_MODAL',
+          type: "SHOW_CREDITS_MODAL",
           payload: {
             required: error.details?.required as number,
             available: error.details?.available as number,
           },
         });
         return; // Don't dispatch failure, show modal instead
-        
-      case 'ACTIVE_SESSION_EXISTS':
+
+      case "ACTIVE_SESSION_EXISTS":
         dispatch({
-          type: 'PROMPT_RESUME',
+          type: "PROMPT_RESUME",
           payload: error.details?.existingSession as ConvergenceSession,
         });
         return;
-        
+
       // ... other error codes
     }
   }
-  
+
   // Generic error
-  dispatch({ type: 'GENERIC_ERROR', payload: error.message });
+  dispatch({ type: "GENERIC_ERROR", payload: error.message });
 }
 ```
 
 ### InsufficientCreditsModal Component
 
 ```typescript
-function InsufficientCreditsModal({ 
-  isOpen, 
-  required, 
-  available, 
+function InsufficientCreditsModal({
+  isOpen,
+  required,
+  available,
   onClose,
-  onPurchase 
+  onPurchase
 }: InsufficientCreditsModalProps) {
   const navigate = useNavigate();
-  
+
   if (!isOpen) return null;
-  
+
   const handlePurchase = () => {
     onClose();
     navigate('/pricing');
   };
-  
+
   return (
     <Modal isOpen={isOpen} onClose={onClose}>
       <div className="p-6">
         <h2 className="text-xl font-semibold mb-4">Insufficient Credits</h2>
         <p className="text-gray-600 mb-4">
-          This operation requires <strong>{required} credits</strong>. 
+          This operation requires <strong>{required} credits</strong>.
           You currently have <strong>{available} credits</strong>.
         </p>
         <p className="text-gray-600 mb-6">
@@ -1498,7 +1779,7 @@ private async checkCredits(userId: string, required: number): Promise<void> {
 async startSession(request: StartSessionRequest, userId: string): Promise<StartSessionResponse> {
   // Check credits first (Requirement 15.5)
   await this.checkCredits(userId, CONVERGENCE_COSTS.DIRECTION_IMAGES);
-  
+
   // ... rest of implementation
 }
 ```
@@ -1509,43 +1790,60 @@ async startSession(request: StartSessionRequest, userId: string): Promise<StartS
 // Step and dimension ordering utilities
 
 const STEP_ORDER: ConvergenceStep[] = [
-  'intent', 'direction', 'mood', 'framing', 'lighting',
-  'camera_motion', 'subject_motion', 'preview', 'complete'
+  "intent",
+  "direction",
+  "mood",
+  "framing",
+  "lighting",
+  "camera_motion",
+  "subject_motion",
+  "preview",
+  "complete",
 ];
 
-const DIMENSION_ORDER = ['direction', 'mood', 'framing', 'lighting', 'camera_motion'] as const;
+const DIMENSION_ORDER = [
+  "direction",
+  "mood",
+  "framing",
+  "lighting",
+  "camera_motion",
+] as const;
 
 function getStepOrder(step: ConvergenceStep): number {
   return STEP_ORDER.indexOf(step);
 }
 
-function getDimensionOrder(dimension: DimensionType | 'direction'): number {
+function getDimensionOrder(dimension: DimensionType | "direction"): number {
   return DIMENSION_ORDER.indexOf(dimension);
 }
 
-function getNextDimension(current: DimensionType | 'direction'): DimensionType | null {
+function getNextDimension(
+  current: DimensionType | "direction",
+): DimensionType | null {
   const flow: Record<string, DimensionType> = {
-    'direction': 'mood',
-    'mood': 'framing',
-    'framing': 'lighting',
-    'lighting': 'camera_motion',
+    direction: "mood",
+    mood: "framing",
+    framing: "lighting",
+    lighting: "camera_motion",
   };
   return flow[current] || null;
 }
 
-function getPreviousDimension(current: DimensionType | 'direction'): DimensionType | 'direction' | null {
-  const flow: Record<string, DimensionType | 'direction'> = {
-    'mood': 'direction',
-    'framing': 'mood',
-    'lighting': 'framing',
-    'camera_motion': 'lighting',
+function getPreviousDimension(
+  current: DimensionType | "direction",
+): DimensionType | "direction" | null {
+  const flow: Record<string, DimensionType | "direction"> = {
+    mood: "direction",
+    framing: "mood",
+    lighting: "framing",
+    camera_motion: "lighting",
   };
   return flow[current] || null;
 }
 
 function getNextStep(current: ConvergenceStep): ConvergenceStep {
   const idx = getStepOrder(current);
-  return STEP_ORDER[idx + 1] || 'complete';
+  return STEP_ORDER[idx + 1] || "complete";
 }
 
 function getPreviousStep(current: ConvergenceStep): ConvergenceStep {
@@ -1553,96 +1851,122 @@ function getPreviousStep(current: ConvergenceStep): ConvergenceStep {
   return STEP_ORDER[Math.max(0, idx - 1)];
 }
 
-function stepToDimension(step: ConvergenceStep): DimensionType | 'direction' | null {
-  if (step === 'direction') return 'direction';
-  if (['mood', 'framing', 'lighting', 'camera_motion'].includes(step)) {
+function stepToDimension(
+  step: ConvergenceStep,
+): DimensionType | "direction" | null {
+  if (step === "direction") return "direction";
+  if (["mood", "framing", "lighting", "camera_motion"].includes(step)) {
     return step as DimensionType;
   }
   return null;
 }
 
-function dimensionToStep(dimension: DimensionType | 'direction'): ConvergenceStep {
+function dimensionToStep(
+  dimension: DimensionType | "direction",
+): ConvergenceStep {
   return dimension as ConvergenceStep;
 }
 ```
-
 
 ## Reducer Action Types and Implementation
 
 ```typescript
 type ConvergenceAction =
   // Intent
-  | { type: 'SET_INTENT'; payload: string }
-  
-  // AbortController
-  | { type: 'SET_ABORT_CONTROLLER'; payload: AbortController }
-  
-  // Start Session
-  | { type: 'START_SESSION_REQUEST' }
-  | { type: 'START_SESSION_SUCCESS'; payload: StartSessionResponse }
-  | { type: 'START_SESSION_FAILURE'; payload: string }
-  
-  // Select Option
-  | { type: 'SELECT_OPTION_REQUEST' }
-  | { type: 'SELECT_OPTION_SUCCESS'; payload: SelectOptionResponse }
-  | { type: 'SELECT_OPTION_FAILURE'; payload: string }
-  | { type: 'RESTORE_CACHED_IMAGES'; payload: { dimension: DimensionType; images: GeneratedImage[] } }
-  
-  // Regenerate
-  | { type: 'REGENERATE_REQUEST' }
-  | { type: 'REGENERATE_SUCCESS'; payload: RegenerateResponse }
-  | { type: 'REGENERATE_FAILURE'; payload: string }
-  
-  // Camera Motion
-  | { type: 'CAMERA_MOTION_REQUEST' }
-  | { type: 'CAMERA_MOTION_SUCCESS'; payload: GenerateCameraMotionResponse }
-  | { type: 'CAMERA_MOTION_FAILURE'; payload: string }
-  | { type: 'SELECT_CAMERA_MOTION'; payload: string }
-  
-  // Subject Motion
-  | { type: 'SET_SUBJECT_MOTION'; payload: string }
-  | { type: 'SUBJECT_MOTION_PREVIEW_REQUEST' }
-  | { type: 'SUBJECT_MOTION_PREVIEW_SUCCESS'; payload: GenerateSubjectMotionResponse }
-  | { type: 'SUBJECT_MOTION_PREVIEW_FAILURE'; payload: string }
-  | { type: 'SKIP_SUBJECT_MOTION' }
-  
-  // Finalize
-  | { type: 'FINALIZE_REQUEST' }
-  | { type: 'FINALIZE_SUCCESS'; payload: FinalizeSessionResponse }
-  | { type: 'FINALIZE_FAILURE'; payload: string }
-  
-  // Navigation
-  | { type: 'GO_BACK' }
-  | { type: 'JUMP_TO_STEP'; payload: { step: ConvergenceStep; lockedDimensions: LockedDimension[] } }
-  | { type: 'CANCEL_GENERATION' }
-  
-  // Resume Flow
-  | { type: 'PROMPT_RESUME'; payload: ConvergenceSession }
-  | { type: 'RESUME_SESSION' }
-  | { type: 'ABANDON_SESSION' }
-  
-  // Keyboard Navigation
-  | { type: 'MOVE_FOCUS'; payload: 'ArrowLeft' | 'ArrowRight' | 'ArrowUp' | 'ArrowDown' }
-  
-  // Credits Modal
-  | { type: 'SHOW_CREDITS_MODAL'; payload: { required: number; available: number } }
-  | { type: 'HIDE_CREDITS_MODAL' }
-  
-  // Reset
-  | { type: 'RESET' };
+  | { type: "SET_INTENT"; payload: string }
 
-function convergenceReducer(state: ConvergenceState, action: ConvergenceAction): ConvergenceState {
+  // AbortController
+  | { type: "SET_ABORT_CONTROLLER"; payload: AbortController }
+
+  // Start Session
+  | { type: "START_SESSION_REQUEST" }
+  | { type: "START_SESSION_SUCCESS"; payload: StartSessionResponse }
+  | { type: "START_SESSION_FAILURE"; payload: string }
+
+  // Select Option
+  | { type: "SELECT_OPTION_REQUEST" }
+  | { type: "SELECT_OPTION_SUCCESS"; payload: SelectOptionResponse }
+  | { type: "SELECT_OPTION_FAILURE"; payload: string }
+  | {
+      type: "RESTORE_CACHED_IMAGES";
+      payload: { dimension: DimensionType; images: GeneratedImage[] };
+    }
+
+  // Regenerate
+  | { type: "REGENERATE_REQUEST" }
+  | { type: "REGENERATE_SUCCESS"; payload: RegenerateResponse }
+  | { type: "REGENERATE_FAILURE"; payload: string }
+
+  // Camera Motion
+  | { type: "CAMERA_MOTION_REQUEST" }
+  | { type: "CAMERA_MOTION_SUCCESS"; payload: GenerateCameraMotionResponse }
+  | { type: "CAMERA_MOTION_FAILURE"; payload: string }
+  | { type: "SELECT_CAMERA_MOTION"; payload: string }
+
+  // Subject Motion
+  | { type: "SET_SUBJECT_MOTION"; payload: string }
+  | { type: "SUBJECT_MOTION_PREVIEW_REQUEST" }
+  | {
+      type: "SUBJECT_MOTION_PREVIEW_SUCCESS";
+      payload: GenerateSubjectMotionResponse;
+    }
+  | { type: "SUBJECT_MOTION_PREVIEW_FAILURE"; payload: string }
+  | { type: "SKIP_SUBJECT_MOTION" }
+
+  // Finalize
+  | { type: "FINALIZE_REQUEST" }
+  | { type: "FINALIZE_SUCCESS"; payload: FinalizeSessionResponse }
+  | { type: "FINALIZE_FAILURE"; payload: string }
+
+  // Navigation
+  | { type: "GO_BACK" }
+  | {
+      type: "JUMP_TO_STEP";
+      payload: { step: ConvergenceStep; lockedDimensions: LockedDimension[] };
+    }
+  | { type: "CANCEL_GENERATION" }
+
+  // Resume Flow
+  | { type: "PROMPT_RESUME"; payload: ConvergenceSession }
+  | { type: "RESUME_SESSION" }
+  | { type: "ABANDON_SESSION" }
+
+  // Keyboard Navigation
+  | {
+      type: "MOVE_FOCUS";
+      payload: "ArrowLeft" | "ArrowRight" | "ArrowUp" | "ArrowDown";
+    }
+
+  // Credits Modal
+  | {
+      type: "SHOW_CREDITS_MODAL";
+      payload: { required: number; available: number };
+    }
+  | { type: "HIDE_CREDITS_MODAL" }
+
+  // Reset
+  | { type: "RESET" };
+
+function convergenceReducer(
+  state: ConvergenceState,
+  action: ConvergenceAction,
+): ConvergenceState {
   switch (action.type) {
-    case 'SET_INTENT':
+    case "SET_INTENT":
       return { ...state, intent: action.payload };
-      
-    case 'SET_ABORT_CONTROLLER':
+
+    case "SET_ABORT_CONTROLLER":
       return { ...state, abortController: action.payload };
-      
-    case 'START_SESSION_REQUEST':
-      return { ...state, isLoading: true, loadingOperation: 'startSession', error: null };
-      
-    case 'START_SESSION_SUCCESS':
+
+    case "START_SESSION_REQUEST":
+      return {
+        ...state,
+        isLoading: true,
+        loadingOperation: "startSession",
+        error: null,
+      };
+
+    case "START_SESSION_SUCCESS":
       return {
         ...state,
         isLoading: false,
@@ -1650,21 +1974,34 @@ function convergenceReducer(state: ConvergenceState, action: ConvergenceAction):
         sessionId: action.payload.sessionId,
         currentImages: action.payload.images,
         currentOptions: action.payload.options,
-        step: 'direction',
-        imageHistory: new Map([['direction', action.payload.images]]),
+        step: "direction",
+        imageHistory: new Map([["direction", action.payload.images]]),
       };
-      
-    case 'START_SESSION_FAILURE':
-      return { ...state, isLoading: false, loadingOperation: null, error: action.payload };
-      
-    case 'SELECT_OPTION_REQUEST':
-      return { ...state, isLoading: true, loadingOperation: 'selectOption', error: null };
-      
-    case 'SELECT_OPTION_SUCCESS': {
+
+    case "START_SESSION_FAILURE":
+      return {
+        ...state,
+        isLoading: false,
+        loadingOperation: null,
+        error: action.payload,
+      };
+
+    case "SELECT_OPTION_REQUEST":
+      return {
+        ...state,
+        isLoading: true,
+        loadingOperation: "selectOption",
+        error: null,
+      };
+
+    case "SELECT_OPTION_SUCCESS": {
       const nextStep = getNextStep(state.step);
       const newHistory = new Map(state.imageHistory);
-      newHistory.set(stepToDimension(nextStep) || nextStep, action.payload.images);
-      
+      newHistory.set(
+        stepToDimension(nextStep) || nextStep,
+        action.payload.images,
+      );
+
       return {
         ...state,
         isLoading: false,
@@ -1676,21 +2013,31 @@ function convergenceReducer(state: ConvergenceState, action: ConvergenceAction):
         imageHistory: newHistory,
       };
     }
-      
-    case 'SELECT_OPTION_FAILURE':
-      return { ...state, isLoading: false, loadingOperation: null, error: action.payload };
-      
-    case 'RESTORE_CACHED_IMAGES':
+
+    case "SELECT_OPTION_FAILURE":
+      return {
+        ...state,
+        isLoading: false,
+        loadingOperation: null,
+        error: action.payload,
+      };
+
+    case "RESTORE_CACHED_IMAGES":
       return {
         ...state,
         currentImages: action.payload.images,
         step: dimensionToStep(action.payload.dimension),
       };
-      
-    case 'REGENERATE_REQUEST':
-      return { ...state, isLoading: true, loadingOperation: 'regenerate', error: null };
-      
-    case 'REGENERATE_SUCCESS': {
+
+    case "REGENERATE_REQUEST":
+      return {
+        ...state,
+        isLoading: true,
+        loadingOperation: "regenerate",
+        error: null,
+      };
+
+    case "REGENERATE_SUCCESS": {
       const dim = stepToDimension(state.step);
       const newCounts = new Map(state.regenerationCounts);
       if (dim) {
@@ -1700,7 +2047,7 @@ function convergenceReducer(state: ConvergenceState, action: ConvergenceAction):
       if (dim) {
         newHistory.set(dim, action.payload.images);
       }
-      
+
       return {
         ...state,
         isLoading: false,
@@ -1710,14 +2057,24 @@ function convergenceReducer(state: ConvergenceState, action: ConvergenceAction):
         imageHistory: newHistory,
       };
     }
-      
-    case 'REGENERATE_FAILURE':
-      return { ...state, isLoading: false, loadingOperation: null, error: action.payload };
-      
-    case 'CAMERA_MOTION_REQUEST':
-      return { ...state, isLoading: true, loadingOperation: 'depthEstimation', error: null };
-      
-    case 'CAMERA_MOTION_SUCCESS':
+
+    case "REGENERATE_FAILURE":
+      return {
+        ...state,
+        isLoading: false,
+        loadingOperation: null,
+        error: action.payload,
+      };
+
+    case "CAMERA_MOTION_REQUEST":
+      return {
+        ...state,
+        isLoading: true,
+        loadingOperation: "depthEstimation",
+        error: null,
+      };
+
+    case "CAMERA_MOTION_SUCCESS":
       return {
         ...state,
         isLoading: false,
@@ -1725,71 +2082,106 @@ function convergenceReducer(state: ConvergenceState, action: ConvergenceAction):
         depthMapUrl: action.payload.depthMapUrl,
         cameraPaths: action.payload.cameraPaths,
         cameraMotionFallbackMode: action.payload.fallbackMode,
-        step: 'camera_motion',
+        step: "camera_motion",
       };
-      
-    case 'CAMERA_MOTION_FAILURE':
-      return { ...state, isLoading: false, loadingOperation: null, error: action.payload };
-      
-    case 'SELECT_CAMERA_MOTION':
-      return { ...state, selectedCameraMotion: action.payload, step: 'subject_motion' };
-      
-    case 'SET_SUBJECT_MOTION':
+
+    case "CAMERA_MOTION_FAILURE":
+      return {
+        ...state,
+        isLoading: false,
+        loadingOperation: null,
+        error: action.payload,
+      };
+
+    case "SELECT_CAMERA_MOTION":
+      return {
+        ...state,
+        selectedCameraMotion: action.payload,
+        step: "subject_motion",
+      };
+
+    case "SET_SUBJECT_MOTION":
       return { ...state, subjectMotion: action.payload };
-      
-    case 'SUBJECT_MOTION_PREVIEW_REQUEST':
-      return { ...state, isLoading: true, loadingOperation: 'videoPreview', error: null };
-      
-    case 'SUBJECT_MOTION_PREVIEW_SUCCESS':
+
+    case "SUBJECT_MOTION_PREVIEW_REQUEST":
+      return {
+        ...state,
+        isLoading: true,
+        loadingOperation: "videoPreview",
+        error: null,
+      };
+
+    case "SUBJECT_MOTION_PREVIEW_SUCCESS":
       return {
         ...state,
         isLoading: false,
         loadingOperation: null,
         subjectMotionVideoUrl: action.payload.videoUrl,
         finalPrompt: action.payload.prompt,
-        step: 'preview',
+        step: "preview",
       };
-      
-    case 'SUBJECT_MOTION_PREVIEW_FAILURE':
-      return { ...state, isLoading: false, loadingOperation: null, error: action.payload };
-      
-    case 'SKIP_SUBJECT_MOTION':
-      return { ...state, step: 'preview' };
-      
-    case 'FINALIZE_REQUEST':
-      return { ...state, isLoading: true, loadingOperation: 'finalize', error: null };
-      
-    case 'FINALIZE_SUCCESS':
+
+    case "SUBJECT_MOTION_PREVIEW_FAILURE":
+      return {
+        ...state,
+        isLoading: false,
+        loadingOperation: null,
+        error: action.payload,
+      };
+
+    case "SKIP_SUBJECT_MOTION":
+      return { ...state, step: "preview" };
+
+    case "FINALIZE_REQUEST":
+      return {
+        ...state,
+        isLoading: true,
+        loadingOperation: "finalize",
+        error: null,
+      };
+
+    case "FINALIZE_SUCCESS":
       return {
         ...state,
         isLoading: false,
         loadingOperation: null,
         finalPrompt: action.payload.finalPrompt,
-        step: 'complete',
+        step: "complete",
       };
-      
-    case 'FINALIZE_FAILURE':
-      return { ...state, isLoading: false, loadingOperation: null, error: action.payload };
-      
-    case 'GO_BACK': {
+
+    case "FINALIZE_FAILURE":
+      return {
+        ...state,
+        isLoading: false,
+        loadingOperation: null,
+        error: action.payload,
+      };
+
+    case "GO_BACK": {
       const prevStep = getPreviousStep(state.step);
       const prevDim = stepToDimension(prevStep);
-      const cachedImages = prevDim ? state.imageHistory.get(prevDim) : undefined;
-      
+      const cachedImages = prevDim
+        ? state.imageHistory.get(prevDim)
+        : undefined;
+
       return {
         ...state,
         step: prevStep,
         currentImages: cachedImages || state.currentImages,
-        lockedDimensions: state.lockedDimensions.filter(d => 
-          getDimensionOrder(d.type) < getDimensionOrder(prevDim || 'direction')
+        lockedDimensions: state.lockedDimensions.filter(
+          (d) =>
+            getDimensionOrder(d.type) <
+            getDimensionOrder(prevDim || "direction"),
         ),
       };
     }
-      
-    case 'JUMP_TO_STEP': {
+
+    case "JUMP_TO_STEP": {
       const targetDim = stepToDimension(action.payload.step);
-      const cachedImages = targetDim ? state.imageHistory.get(targetDim) : undefined;
-      
+      const cachedImages = targetDim
+        ? state.imageHistory.get(targetDim)
+        : undefined;
+
       return {
         ...state,
         step: action.payload.step,
@@ -1797,22 +2189,22 @@ function convergenceReducer(state: ConvergenceState, action: ConvergenceAction):
         currentImages: cachedImages || state.currentImages,
       };
     }
-      
-    case 'CANCEL_GENERATION':
+
+    case "CANCEL_GENERATION":
       return {
         ...state,
         isLoading: false,
         loadingOperation: null,
         abortController: null,
       };
-      
-    case 'PROMPT_RESUME':
+
+    case "PROMPT_RESUME":
       return { ...state, pendingResumeSession: action.payload };
-      
-    case 'RESUME_SESSION': {
+
+    case "RESUME_SESSION": {
       const session = state.pendingResumeSession;
       if (!session) return state;
-      
+
       return {
         ...state,
         sessionId: session.id,
@@ -1822,58 +2214,59 @@ function convergenceReducer(state: ConvergenceState, action: ConvergenceAction):
         step: session.currentStep as ConvergenceStep,
         depthMapUrl: session.depthMapUrl,
         selectedCameraMotion: session.cameraMotion,
-        subjectMotion: session.subjectMotion || '',
+        subjectMotion: session.subjectMotion || "",
         pendingResumeSession: null,
         // Restore image history from session
         imageHistory: new Map(Object.entries(session.imageHistory || {})),
       };
     }
-      
-    case 'ABANDON_SESSION':
+
+    case "ABANDON_SESSION":
       return { ...state, pendingResumeSession: null };
-      
-    case 'MOVE_FOCUS': {
-      const optionCount = state.currentOptions.length || state.cameraPaths.length;
-      const cols = state.step === 'camera_motion' ? 3 : 2; // Grid columns
+
+    case "MOVE_FOCUS": {
+      const optionCount =
+        state.currentOptions.length || state.cameraPaths.length;
+      const cols = state.step === "camera_motion" ? 3 : 2; // Grid columns
       let newIndex = state.focusedOptionIndex;
-      
+
       switch (action.payload) {
-        case 'ArrowLeft':
+        case "ArrowLeft":
           newIndex = Math.max(0, newIndex - 1);
           break;
-        case 'ArrowRight':
+        case "ArrowRight":
           newIndex = Math.min(optionCount - 1, newIndex + 1);
           break;
-        case 'ArrowUp':
+        case "ArrowUp":
           newIndex = Math.max(0, newIndex - cols);
           break;
-        case 'ArrowDown':
+        case "ArrowDown":
           newIndex = Math.min(optionCount - 1, newIndex + cols);
           break;
       }
-      
+
       return { ...state, focusedOptionIndex: newIndex };
     }
-      
-    case 'SHOW_CREDITS_MODAL':
+
+    case "SHOW_CREDITS_MODAL":
       return {
         ...state,
         insufficientCreditsModal: {
           isOpen: true,
           required: action.payload.required,
           available: action.payload.available,
-          operation: state.loadingOperation || 'unknown',
+          operation: state.loadingOperation || "unknown",
         },
         isLoading: false,
         loadingOperation: null,
       };
-      
-    case 'HIDE_CREDITS_MODAL':
+
+    case "HIDE_CREDITS_MODAL":
       return { ...state, insufficientCreditsModal: null };
-      
-    case 'RESET':
+
+    case "RESET":
       return initialConvergenceState;
-      
+
     default:
       return state;
   }
@@ -1881,8 +2274,8 @@ function convergenceReducer(state: ConvergenceState, action: ConvergenceAction):
 
 const initialConvergenceState: ConvergenceState = {
   sessionId: null,
-  step: 'intent',
-  intent: '',
+  step: "intent",
+  intent: "",
   direction: null,
   lockedDimensions: [],
   currentImages: [],
@@ -1890,7 +2283,7 @@ const initialConvergenceState: ConvergenceState = {
   depthMapUrl: null,
   cameraPaths: [],
   selectedCameraMotion: null,
-  subjectMotion: '',
+  subjectMotion: "",
   subjectMotionVideoUrl: null,
   finalPrompt: null,
   isLoading: false,
@@ -1905,7 +2298,6 @@ const initialConvergenceState: ConvergenceState = {
   insufficientCreditsModal: null,
 };
 ```
-
 
 ## Camera Motion Fallback UI (Requirement 5.5)
 
@@ -1940,7 +2332,7 @@ function CameraMotionPicker({
           </p>
         )}
       </div>
-      
+
       <div className={cn(
         "grid gap-4",
         fallbackMode ? "grid-cols-2 md:grid-cols-3" : "grid-cols-2 md:grid-cols-3"
@@ -2013,7 +2405,7 @@ function CameraMotionOption({
       </button>
     );
   }
-  
+
   // Normal Three.js rendered preview (Requirement 6.1-6.6)
   return (
     <CameraMotionPreview
@@ -2039,7 +2431,7 @@ function CameraMotionPreview({
   const [isHovering, setIsHovering] = useState(false);
   const [frames, setFrames] = useState<string[]>([]);
   const [isRendering, setIsRendering] = useState(false);
-  
+
   // Lazy render on hover (Requirement 6.5)
   useEffect(() => {
     if (isHovering && frames.length === 0 && !isRendering) {
@@ -2051,7 +2443,7 @@ function CameraMotionPreview({
       }).then(setFrames).finally(() => setIsRendering(false));
     }
   }, [isHovering, frames.length, isRendering, selectedImage, depthMapUrl, path]);
-  
+
   return (
     <button
       className={cn(
@@ -2070,19 +2462,19 @@ function CameraMotionPreview({
       ) : (
         <img src={selectedImage} alt={path.label} className="w-full h-full object-cover" />
       )}
-      
+
       {/* Loading indicator */}
       {isRendering && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/30">
           <Spinner className="w-6 h-6 text-white" />
         </div>
       )}
-      
+
       {/* Label overlay */}
       <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-3">
         <div className="text-white font-medium">{path.label}</div>
       </div>
-      
+
       {/* Selected indicator */}
       {isSelected && (
         <div className="absolute top-2 right-2 bg-blue-500 text-white rounded-full p-1">
@@ -2107,10 +2499,10 @@ function ConvergencePreview({ finalizeResponse, onEditInStudio }: ConvergencePre
   const { selectedModel, aspectRatio } = useBottomControlBar();
   const { generateVideo, isGenerating } = useVideoGeneration();
   const navigate = useNavigate();
-  
+
   // Get cost for selected model
   const generationCost = GENERATION_COSTS[selectedModel] || 0;
-  
+
   const handleGenerateNow = async () => {
     // Requirement 8.5-8.6: Use existing video generation with control bar settings
     try {
@@ -2125,33 +2517,33 @@ function ConvergencePreview({ finalizeResponse, onEditInStudio }: ConvergencePre
           lockedDimensions: finalizeResponse.lockedDimensions,
         },
       });
-      
+
       // Navigate to generations view after starting
       navigate('/generations');
     } catch (error) {
       // Error handled by useVideoGeneration hook
     }
   };
-  
+
   return (
     <div className="space-y-6">
       {/* Preview video or image */}
       <div className="aspect-video bg-gray-900 rounded-lg overflow-hidden">
         {finalizeResponse.previewImageUrl && (
-          <img 
-            src={finalizeResponse.previewImageUrl} 
-            alt="Preview" 
+          <img
+            src={finalizeResponse.previewImageUrl}
+            alt="Preview"
             className="w-full h-full object-cover"
           />
         )}
       </div>
-      
+
       {/* Final prompt display */}
       <div className="bg-gray-50 rounded-lg p-4">
         <h3 className="text-sm font-medium text-gray-500 mb-2">Final Prompt</h3>
         <p className="text-gray-900">{finalizeResponse.finalPrompt}</p>
       </div>
-      
+
       {/* Dimension summary */}
       <div className="flex flex-wrap gap-2">
         {finalizeResponse.lockedDimensions.map(dim => (
@@ -2165,12 +2557,12 @@ function ConvergencePreview({ finalizeResponse, onEditInStudio }: ConvergencePre
           </span>
         )}
       </div>
-      
+
       {/* Credit summary */}
       <div className="text-sm text-gray-500">
         Total credits used: {finalizeResponse.totalCreditsConsumed}
       </div>
-      
+
       {/* Action buttons */}
       <div className="flex gap-4">
         <Button
@@ -2192,7 +2584,7 @@ function ConvergencePreview({ finalizeResponse, onEditInStudio }: ConvergencePre
             </>
           )}
         </Button>
-        
+
         <Button
           variant="secondary"
           size="lg"
@@ -2202,7 +2594,7 @@ function ConvergencePreview({ finalizeResponse, onEditInStudio }: ConvergencePre
           Edit in Studio
         </Button>
       </div>
-      
+
       {/* Model selection hint */}
       <p className="text-xs text-gray-400 text-center">
         Using {selectedModel} • Change model in the control bar below
@@ -2275,7 +2667,7 @@ function EstimatedCostBadge() {
 function StepCreditBadge({ step }: { step: ConvergenceStep }) {
   const cost = getStepCost(step);
   if (cost === 0) return null;
-  
+
   return (
     <div className="flex items-center gap-1 text-xs text-gray-500">
       <CreditIcon className="w-3 h-3" />
@@ -2285,15 +2677,15 @@ function StepCreditBadge({ step }: { step: ConvergenceStep }) {
 }
 
 // Regenerate button with remaining count and cost
-function RegenerateButton({ 
-  dimension, 
-  regenerationCount, 
+function RegenerateButton({
+  dimension,
+  regenerationCount,
   onRegenerate,
   isLoading,
 }: RegenerateButtonProps) {
   const remaining = 3 - (regenerationCount || 0);
   const disabled = remaining <= 0 || isLoading;
-  
+
   return (
     <button
       onClick={onRegenerate}
@@ -2319,7 +2711,7 @@ function ModelCostTable({ selectedModel }: { selectedModel: string }) {
       <h4 className="font-medium mb-2">Generation Costs</h4>
       <div className="grid grid-cols-2 gap-2">
         {Object.entries(GENERATION_COSTS).map(([model, cost]) => (
-          <div 
+          <div
             key={model}
             className={cn(
               "flex justify-between px-2 py-1 rounded",
@@ -2336,17 +2728,16 @@ function ModelCostTable({ selectedModel }: { selectedModel: string }) {
 }
 ```
 
-
 ## Additional Constants and Interfaces
 
 ### Direction Options Constant
 
 ```typescript
 const DIRECTION_OPTIONS: Array<{ id: Direction; label: string }> = [
-  { id: 'cinematic', label: 'Cinematic' },
-  { id: 'social', label: 'Social Media' },
-  { id: 'artistic', label: 'Artistic' },
-  { id: 'documentary', label: 'Documentary' },
+  { id: "cinematic", label: "Cinematic" },
+  { id: "social", label: "Social Media" },
+  { id: "artistic", label: "Artistic" },
+  { id: "documentary", label: "Documentary" },
 ];
 ```
 
@@ -2358,7 +2749,7 @@ interface CreditReservation {
   userId: string;
   amount: number;
   createdAt: Date;
-  status: 'pending' | 'committed' | 'refunded';
+  status: "pending" | "committed" | "refunded";
 }
 
 interface CreditsService {
@@ -2366,23 +2757,23 @@ interface CreditsService {
    * Get current credit balance for user
    */
   getBalance(userId: string): Promise<number>;
-  
+
   /**
    * Reserve credits for an operation (holds but doesn't deduct)
    * @throws ConvergenceError('INSUFFICIENT_CREDITS') if balance < amount
    */
   reserve(userId: string, amount: number): Promise<CreditReservation>;
-  
+
   /**
    * Commit a reservation (actually deducts credits)
    */
   commit(reservationId: string): Promise<void>;
-  
+
   /**
    * Refund a reservation (releases hold without deducting)
    */
   refund(reservationId: string): Promise<void>;
-  
+
   /**
    * Direct debit for committed operations (no reservation)
    */
@@ -2394,8 +2785,8 @@ interface CreditsService {
 
 ```typescript
 interface VideoPreviewOptions {
-  duration?: number;      // seconds, default 3
-  aspectRatio?: string;   // e.g., '16:9', '9:16', '1:1'
+  duration?: number; // seconds, default 3
+  aspectRatio?: string; // e.g., '16:9', '9:16', '1:1'
 }
 
 interface VideoPreviewService {
@@ -2405,8 +2796,11 @@ interface VideoPreviewService {
    * @param options Generation options
    * @returns URL to generated video (GCS permanent URL)
    */
-  generatePreview(prompt: string, options?: VideoPreviewOptions): Promise<string>;
-  
+  generatePreview(
+    prompt: string,
+    options?: VideoPreviewOptions,
+  ): Promise<string>;
+
   /**
    * Check if preview service is available
    */
@@ -2426,30 +2820,30 @@ async selectOption(dimension: DimensionType | 'direction', optionId: string): Pr
   const previousOptionId = dimension === 'direction'
     ? state.direction
     : state.lockedDimensions.find(d => d.type === dimension)?.optionId;
-  
+
   if (previousOptionId === optionId) {
     // Same option selected - restore from cache, no API call, no credits charged
     const nextDimension = getNextDimension(dimension);
     const cachedImages = nextDimension ? state.imageHistory.get(nextDimension) : undefined;
     if (cachedImages) {
-      dispatch({ 
-        type: 'RESTORE_CACHED_IMAGES', 
-        payload: { dimension: nextDimension, images: cachedImages } 
+      dispatch({
+        type: 'RESTORE_CACHED_IMAGES',
+        payload: { dimension: nextDimension, images: cachedImages }
       });
       return;
     }
   }
-  
+
   // Different option - call API
   const controller = new AbortController();
   dispatch({ type: 'SET_ABORT_CONTROLLER', payload: controller });
   dispatch({ type: 'SELECT_OPTION_REQUEST' });
-  
+
   try {
     const result = await convergenceApi.selectOption(
-      state.sessionId!, 
-      dimension, 
-      optionId, 
+      state.sessionId!,
+      dimension,
+      optionId,
       controller.signal
     );
     dispatch({ type: 'SELECT_OPTION_SUCCESS', payload: result });
@@ -2470,9 +2864,9 @@ async selectOption(dimension: DimensionType | 'direction', optionId: string): Pr
 interface SelectOptionResponse {
   sessionId: string;
   images: GeneratedImage[];
-  currentDimension: DimensionType | 'camera_motion' | 'subject_motion';
+  currentDimension: DimensionType | "camera_motion" | "subject_motion";
   lockedDimensions: LockedDimension[];
-  direction?: Direction;  // Included when direction was just selected
+  direction?: Direction; // Included when direction was just selected
   options?: Array<{ id: string; label: string }>;
   creditsConsumed: number;
 }
@@ -2484,14 +2878,14 @@ interface SelectOptionResponse {
 case 'SELECT_OPTION_SUCCESS': {
   const response = action.payload;
   const nextStep = getNextStep(state.step);
-  
+
   // Update image history
   const newHistory = new Map(state.imageHistory);
   const nextDim = stepToDimension(nextStep);
   if (nextDim) {
     newHistory.set(nextDim, response.images);
   }
-  
+
   return {
     ...state,
     isLoading: false,
@@ -2514,7 +2908,7 @@ case 'SELECT_OPTION_SUCCESS': {
 case 'RESUME_SESSION': {
   const session = state.pendingResumeSession;
   if (!session) return state;
-  
+
   // Properly typed conversion from Record to Map
   const imageHistory = new Map<DimensionType | 'direction', GeneratedImage[]>();
   if (session.imageHistory) {
@@ -2525,11 +2919,11 @@ case 'RESUME_SESSION': {
       }
     }
   }
-  
+
   // Restore current images from history based on current step
   const currentDim = stepToDimension(session.currentStep as ConvergenceStep);
   const currentImages = currentDim ? imageHistory.get(currentDim) : undefined;
-  
+
   return {
     ...state,
     sessionId: session.id,
@@ -2555,7 +2949,7 @@ All session-modifying methods must validate ownership:
 ```typescript
 // Helper for ownership validation
 private async getSessionWithOwnershipCheck(
-  sessionId: string, 
+  sessionId: string,
   userId: string
 ): Promise<ConvergenceSession> {
   const session = await this.sessionStore.get(sessionId);
@@ -2571,14 +2965,14 @@ private async getSessionWithOwnershipCheck(
 // selectOption with ownership check
 async selectOption(request: SelectOptionRequest, userId: string): Promise<SelectOptionResponse> {
   const session = await this.getSessionWithOwnershipCheck(request.sessionId, userId);
-  
+
   // ... rest of implementation
 }
 
 // regenerate with ownership and limit check
 async regenerate(request: RegenerateRequest, userId: string): Promise<RegenerateResponse> {
   const session = await this.getSessionWithOwnershipCheck(request.sessionId, userId);
-  
+
   // Check regeneration limit (Requirement 14.4)
   const count = session.regenerationCounts?.[request.dimension] || 0;
   if (count >= 3) {
@@ -2588,28 +2982,28 @@ async regenerate(request: RegenerateRequest, userId: string): Promise<Regenerate
       max: 3,
     });
   }
-  
+
   // ... rest of implementation
 }
 
 // generateCameraMotion with ownership check
 async generateCameraMotion(request: GenerateCameraMotionRequest, userId: string): Promise<GenerateCameraMotionResponse> {
   const session = await this.getSessionWithOwnershipCheck(request.sessionId, userId);
-  
+
   // ... rest of implementation
 }
 
 // selectCameraMotion with ownership check
 async selectCameraMotion(request: SelectCameraMotionRequest, userId: string): Promise<void> {
   const session = await this.getSessionWithOwnershipCheck(request.sessionId, userId);
-  
+
   // ... rest of implementation
 }
 
 // generateSubjectMotion with ownership check
 async generateSubjectMotion(request: GenerateSubjectMotionRequest, userId: string): Promise<GenerateSubjectMotionResponse> {
   const session = await this.getSessionWithOwnershipCheck(request.sessionId, userId);
-  
+
   // ... rest of implementation
 }
 ```
@@ -2625,20 +3019,20 @@ private async generateAndPersistImages(
 ): Promise<GeneratedImage[]> {
   // Generate images with retry and aspect ratio
   const tempUrls = await Promise.all(
-    prompts.map(p => withRetry(() => 
-      this.imageGenerationService.generatePreview(p.prompt, { 
+    prompts.map(p => withRetry(() =>
+      this.imageGenerationService.generatePreview(p.prompt, {
         aspectRatio,
         model: 'flux-schnell', // Cost-efficient model for previews
       })
     ))
   );
-  
+
   // Upload to GCS for permanent storage
   const permanentUrls = await this.storageService.uploadBatch(
     tempUrls.map(r => r.imageUrl),
     `convergence/${userId}`
   );
-  
+
   return permanentUrls.map((url, i) => ({
     id: uuidv4(),
     url,
@@ -2652,7 +3046,7 @@ private async generateAndPersistImages(
 // Usage in startSession - pass aspect ratio from request
 async startSession(request: StartSessionRequest, userId: string): Promise<StartSessionResponse> {
   // ... validation ...
-  
+
   const images = await this.withCreditReservation(userId, CONVERGENCE_COSTS.DIRECTION_IMAGES, async () => {
     return this.generateAndPersistImages(
       directionPrompts.map(d => ({
@@ -2664,7 +3058,7 @@ async startSession(request: StartSessionRequest, userId: string): Promise<StartS
       request.aspectRatio || '16:9'  // Use requested aspect ratio
     );
   });
-  
+
   // ... rest
 }
 ```
@@ -2691,9 +3085,9 @@ function ImageSkeleton({ count }: { count: number }) {
 }
 
 // Updated ImageGrid with loading state
-function ImageGrid({ 
-  images, 
-  isLoading, 
+function ImageGrid({
+  images,
+  isLoading,
   expectedCount = 4,
   onSelect,
   focusedIndex,
@@ -2705,7 +3099,7 @@ function ImageGrid({
       </div>
     );
   }
-  
+
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
       {images.map((image, index) => (
@@ -2721,9 +3115,9 @@ function ImageGrid({
 }
 
 // Updated DirectionFork with skeleton
-function DirectionFork({ 
-  images, 
-  options, 
+function DirectionFork({
+  images,
+  options,
   isLoading,
   focusedIndex,
   onSelect,
@@ -2736,7 +3130,7 @@ function DirectionFork({
         <h2 className="text-xl font-semibold">Choose a Direction</h2>
         <StepCreditBadge step="direction" />
       </div>
-      
+
       <ImageGrid
         images={images}
         isLoading={isLoading}
@@ -2744,7 +3138,7 @@ function DirectionFork({
         onSelect={onSelect}
         focusedIndex={focusedIndex}
       />
-      
+
       <div className="flex justify-center">
         <RegenerateButton
           dimension="direction"
@@ -2824,6 +3218,6 @@ function CameraMotionPickerWithErrorBoundary(props: CameraMotionPickerProps) {
 ```typescript
 interface StartSessionRequest {
   intent: string;
-  aspectRatio?: string;  // Optional, defaults to '16:9'
+  aspectRatio?: string; // Optional, defaults to '16:9'
 }
 ```

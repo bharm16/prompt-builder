@@ -1,2 +1,2 @@
-export { StyleReferencePanel } from './StyleReferencePanel';
-export { StrengthSlider } from './StrengthSlider';
+export { StyleReferencePanel } from "./StyleReferencePanel";
+export { StrengthSlider } from "./StrengthSlider";

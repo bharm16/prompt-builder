@@ -1,5 +1,5 @@
-import type { EnhancementMetrics } from '../services/types.js';
-import type { EnhancementMetricsService } from '../services/EnhancementMetricsService.js';
+import type { EnhancementMetrics } from "../services/types.js";
+import type { EnhancementMetricsService } from "../services/EnhancementMetricsService.js";
 
 export interface MetricsContext {
   highlightedCategory: string | null;
@@ -28,7 +28,7 @@ export class MetricsDecorator {
     fn: (metrics: EnhancementMetrics) => Promise<T>,
     metricsLogger: EnhancementMetricsService,
     context: MetricsContext,
-    initialMetrics: EnhancementMetrics
+    initialMetrics: EnhancementMetrics,
   ): Promise<T> {
     const startTotal = Date.now();
     initialMetrics.total = 0;
@@ -46,15 +46,3 @@ export class MetricsDecorator {
     }
   }
 }
-
-
-
-
-
-
-
-
-
-
-
-

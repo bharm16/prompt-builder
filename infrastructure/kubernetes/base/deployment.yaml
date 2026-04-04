@@ -11,7 +11,7 @@ spec:
     type: RollingUpdate
     rollingUpdate:
       maxSurge: 1
-      maxUnavailable: 0  # Zero-downtime deployments
+      maxUnavailable: 0 # Zero-downtime deployments
   selector:
     matchLabels:
       app: prompt-builder
@@ -123,7 +123,7 @@ spec:
             periodSeconds: 5
             timeoutSeconds: 3
             successThreshold: 1
-            failureThreshold: 12  # 60 seconds max startup time
+            failureThreshold: 12 # 60 seconds max startup time
 
           # Lifecycle hooks for graceful shutdown
           lifecycle:
@@ -132,7 +132,7 @@ spec:
                 command:
                   - /bin/sh
                   - -c
-                  - sleep 15  # Allow time for load balancer to deregister
+                  - sleep 15 # Allow time for load balancer to deregister
 
           securityContext:
             allowPrivilegeEscalation: false

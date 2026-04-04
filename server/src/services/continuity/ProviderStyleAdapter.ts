@@ -2,11 +2,16 @@ import {
   ProviderContinuityCapabilities,
   ContinuityStrategy,
   StyleReference,
-} from './types';
-import { logger } from '@infrastructure/Logger';
-import { isKlingModel, isLumaModel, isOpenAISoraModel, isVeoModel } from '@services/video-generation/modelResolver';
-import { getModelCapabilities } from '@services/video-generation/availability';
-import type { VideoModelId } from '@services/video-generation/types';
+} from "./types";
+import { logger } from "@infrastructure/Logger";
+import {
+  isKlingModel,
+  isLumaModel,
+  isOpenAISoraModel,
+  isVeoModel,
+} from "@services/video-generation/modelResolver";
+import { getModelCapabilities } from "@services/video-generation/availability";
+import type { VideoModelId } from "@services/video-generation/types";
 
 const PROVIDER_DEFAULTS: Record<string, ProviderContinuityCapabilities> = {
   runway: {
@@ -15,7 +20,7 @@ const PROVIDER_DEFAULTS: Record<string, ProviderContinuityCapabilities> = {
     supportsStartImage: true,
     supportsSeedPersistence: true,
     supportsExtendVideo: true,
-    styleReferenceParam: 'style_reference',
+    styleReferenceParam: "style_reference",
   },
   kling: {
     supportsNativeStyleReference: false,
@@ -55,46 +60,50 @@ const PROVIDER_DEFAULTS: Record<string, ProviderContinuityCapabilities> = {
 };
 
 export class ProviderStyleAdapter {
-  private readonly log = logger.child({ service: 'ProviderStyleAdapter' });
+  private readonly log = logger.child({ service: "ProviderStyleAdapter" });
 
   getContinuityStrategy(
     provider: string,
-    mode: 'frame-bridge' | 'style-match' | 'native' | 'none',
-    modelId?: VideoModelId
+    mode: "frame-bridge" | "style-match" | "native" | "none",
+    modelId?: VideoModelId,
   ): ContinuityStrategy {
     const caps = this.getCapabilities(provider, modelId);
 
-    if (mode === 'native' && caps.supportsNativeStyleReference) {
-      return { type: 'native-style-ref', provider };
+    if (mode === "native" && caps.supportsNativeStyleReference) {
+      return { type: "native-style-ref", provider };
     }
 
-    if (mode === 'frame-bridge' && caps.supportsStartImage) {
-      return { type: 'frame-bridge' };
+    if (mode === "frame-bridge" && caps.supportsStartImage) {
+      return { type: "frame-bridge" };
     }
 
-    if (mode === 'style-match') {
+    if (mode === "style-match") {
       if (caps.supportsNativeStyleReference) {
-        return { type: 'native-style-ref', provider };
+        return { type: "native-style-ref", provider };
       }
-      return { type: 'ip-adapter' };
+      return { type: "ip-adapter" };
     }
 
-    if (mode === 'frame-bridge' && !caps.supportsStartImage && caps.supportsNativeStyleReference) {
-      return { type: 'native-style-ref', provider };
+    if (
+      mode === "frame-bridge" &&
+      !caps.supportsStartImage &&
+      caps.supportsNativeStyleReference
+    ) {
+      return { type: "native-style-ref", provider };
     }
 
-    return { type: 'none' };
+    return { type: "none" };
   }
 
   async buildGenerationOptions(
     provider: string,
     baseOptions: Record<string, unknown>,
     styleRef: StyleReference,
-    strength: number
+    strength: number,
   ): Promise<{ options: Record<string, unknown> }> {
     const caps = this.getCapabilities(provider);
     if (caps.supportsNativeStyleReference && caps.styleReferenceParam) {
-      this.log.info('Using native style reference', { provider });
+      this.log.info("Using native style reference", { provider });
       return {
         options: {
           ...baseOptions,
@@ -108,26 +117,35 @@ export class ProviderStyleAdapter {
   }
 
   getProviderFromModel(modelId: VideoModelId): string {
-    if (isKlingModel(modelId)) return 'kling';
-    if (isLumaModel(modelId)) return 'luma';
-    if (isOpenAISoraModel(modelId)) return 'sora';
-    if (isVeoModel(modelId)) return 'veo';
-    return 'replicate';
+    if (isKlingModel(modelId)) return "kling";
+    if (isLumaModel(modelId)) return "luma";
+    if (isOpenAISoraModel(modelId)) return "sora";
+    if (isVeoModel(modelId)) return "veo";
+    return "replicate";
   }
 
-  getCapabilities(provider: string, modelId?: VideoModelId): ProviderContinuityCapabilities {
-    const base = (PROVIDER_DEFAULTS[provider] ?? PROVIDER_DEFAULTS.replicate) as ProviderContinuityCapabilities;
+  getCapabilities(
+    provider: string,
+    modelId?: VideoModelId,
+  ): ProviderContinuityCapabilities {
+    const base = (PROVIDER_DEFAULTS[provider] ??
+      PROVIDER_DEFAULTS.replicate) as ProviderContinuityCapabilities;
     if (!modelId) return base;
     const modelCaps = getModelCapabilities(modelId);
     return {
       supportsNativeStyleReference:
         modelCaps.supportsStyleReference ?? base.supportsNativeStyleReference,
       supportsNativeCharacterReference:
-        modelCaps.supportsCharacterReference ?? base.supportsNativeCharacterReference,
+        modelCaps.supportsCharacterReference ??
+        base.supportsNativeCharacterReference,
       supportsStartImage: modelCaps.supportsImageInput,
-      supportsSeedPersistence: modelCaps.supportsSeed ?? base.supportsSeedPersistence,
-      supportsExtendVideo: modelCaps.supportsExtendVideo ?? base.supportsExtendVideo,
-      ...(base.styleReferenceParam ? { styleReferenceParam: base.styleReferenceParam } : {}),
+      supportsSeedPersistence:
+        modelCaps.supportsSeed ?? base.supportsSeedPersistence,
+      supportsExtendVideo:
+        modelCaps.supportsExtendVideo ?? base.supportsExtendVideo,
+      ...(base.styleReferenceParam
+        ? { styleReferenceParam: base.styleReferenceParam }
+        : {}),
       ...(base.maxStyleReferenceImages !== undefined
         ? { maxStyleReferenceImages: base.maxStyleReferenceImages }
         : {}),

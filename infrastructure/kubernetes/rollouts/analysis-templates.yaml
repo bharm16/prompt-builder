@@ -40,7 +40,7 @@ spec:
   metrics:
     - name: p95-latency
       interval: 1m
-      successCondition: result <= 1000  # 1 second
+      successCondition: result <= 1000 # 1 second
       failureLimit: 3
       provider:
         prometheus:
@@ -55,7 +55,7 @@ spec:
             )
     - name: p99-latency
       interval: 1m
-      successCondition: result <= 2000  # 2 seconds
+      successCondition: result <= 2000 # 2 seconds
       failureLimit: 3
       provider:
         prometheus:
@@ -81,7 +81,7 @@ spec:
   metrics:
     - name: error-rate
       interval: 1m
-      successCondition: result <= 0.05  # Max 5% error rate
+      successCondition: result <= 0.05 # Max 5% error rate
       failureLimit: 3
       provider:
         prometheus:
@@ -111,7 +111,7 @@ spec:
   metrics:
     - name: memory-usage
       interval: 1m
-      successCondition: result <= 0.9  # Max 90% of limit
+      successCondition: result <= 0.9 # Max 90% of limit
       failureLimit: 5
       provider:
         prometheus:

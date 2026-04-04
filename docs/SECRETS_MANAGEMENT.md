@@ -7,11 +7,13 @@ This project uses a multi-layered approach to secrets management to ensure secur
 ## Strategy
 
 ### Local Development
+
 - Use `.env` files (NOT committed to Git)
 - Copy `.env.example` to `.env` and populate with development values
 - Use non-production API keys
 
 ### CI/CD (GitHub Actions)
+
 - Store secrets in GitHub Secrets (Settings → Secrets and variables → Actions)
 - Use environment-specific secrets
 - Required secrets:
@@ -24,6 +26,7 @@ This project uses a multi-layered approach to secrets management to ensure secur
 ### Production Deployment
 
 #### Option 1: Docker Secrets (Docker Swarm)
+
 ```bash
 # Create secrets
 echo "api-key-value" | docker secret create anthropic_api_key -
@@ -38,20 +41,25 @@ services:
 ```
 
 #### Option 2: AWS Secrets Manager
+
 ```javascript
 // src/utils/getSecrets.js
-import { SecretsManagerClient, GetSecretValueCommand } from "@aws-sdk/client-secrets-manager";
+import {
+  SecretsManagerClient,
+  GetSecretValueCommand,
+} from "@aws-sdk/client-secrets-manager";
 
 export async function getSecret(secretName) {
   const client = new SecretsManagerClient({ region: "us-east-1" });
   const response = await client.send(
-    new GetSecretValueCommand({ SecretId: secretName })
+    new GetSecretValueCommand({ SecretId: secretName }),
   );
   return JSON.parse(response.SecretString);
 }
 ```
 
 #### Option 3: HashiCorp Vault
+
 ```bash
 # Install Vault Agent
 vault agent -config=vault-agent.hcl
@@ -70,6 +78,7 @@ template {
 ```
 
 #### Option 4: Kubernetes Secrets + External Secrets Operator
+
 ```yaml
 # external-secret.yaml
 apiVersion: external-secrets.io/v1beta1
@@ -119,6 +128,7 @@ spec:
 ## Secret Rotation Procedure
 
 ### Anthropic API Key Rotation
+
 1. Generate new API key in Anthropic Console
 2. Update secret in secrets manager
 3. Deploy new configuration (zero-downtime)
@@ -127,6 +137,7 @@ spec:
 6. Update documentation
 
 ### Firebase Configuration Rotation
+
 1. Create new Firebase project configuration
 2. Update secrets
 3. Deploy changes
@@ -143,6 +154,7 @@ spec:
 ## Emergency Procedures
 
 ### Secret Compromise
+
 1. Immediately revoke compromised secret
 2. Generate new secret
 3. Deploy updated configuration

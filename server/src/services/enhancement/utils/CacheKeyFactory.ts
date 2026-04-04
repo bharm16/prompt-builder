@@ -1,8 +1,13 @@
-import type { CacheService } from '@services/cache/CacheService';
-import type { VideoConstraints, BrainstormSignature, EditHistoryEntry } from '../services/types.js';
-import { PROMPT_PREVIEW_LIMIT } from '../constants.js';
+import type { CacheService } from "@services/cache/CacheService";
+import type {
+  VideoConstraints,
+  BrainstormSignature,
+  EditHistoryEntry,
+} from "../services/types.js";
+import { PROMPT_PREVIEW_LIMIT } from "../constants.js";
 
 export interface EnhancementCacheParams {
+  engineVersion: "v1" | "v2";
   highlightedText: string;
   contextBefore: string;
   contextAfter: string;
@@ -17,6 +22,7 @@ export interface EnhancementCacheParams {
   editHistory: EditHistoryEntry[];
   modelTarget: string | null;
   promptSection: string | null;
+  policyVersion?: string | null;
   spanFingerprint?: string | null;
 }
 
@@ -38,23 +44,27 @@ export class CacheKeyFactory {
   static generateKey(
     namespace: string,
     params: EnhancementCacheParams,
-    cacheService: Pick<CacheService, 'generateKey'>
+    cacheService: Pick<CacheService, "generateKey">,
   ): string {
     let editFingerprint: string | null = null;
     if (Array.isArray(params.editHistory) && params.editHistory.length > 0) {
       // Create compact fingerprint from recent edit patterns
       editFingerprint = params.editHistory
         .slice(-5) // Last 5 edits only
-        .map((edit) => `${edit.category || 'n'}:${(edit.original || '').substring(0, 10)}`)
-        .join('|');
+        .map(
+          (edit) =>
+            `${edit.category || "n"}:${(edit.original || "").substring(0, 10)}`,
+        )
+        .join("|");
     }
 
     return cacheService.generateKey(namespace, {
+      engineVersion: params.engineVersion,
       highlightedText: params.highlightedText,
       contextBefore: params.contextBefore,
       contextAfter: params.contextAfter,
-      fullPrompt: (params.fullPrompt || '').substring(0, PROMPT_PREVIEW_LIMIT),
-      originalUserPrompt: (params.originalUserPrompt || '').substring(0, 500),
+      fullPrompt: (params.fullPrompt || "").substring(0, PROMPT_PREVIEW_LIMIT),
+      originalUserPrompt: (params.originalUserPrompt || "").substring(0, 500),
       isVideoPrompt: params.isVideoPrompt,
       brainstormSignature: params.brainstormSignature,
       highlightedCategory: params.highlightedCategory || null,
@@ -64,16 +74,8 @@ export class CacheKeyFactory {
       editFingerprint: editFingerprint || null,
       modelTarget: params.modelTarget || null,
       promptSection: params.promptSection || null,
+      policyVersion: params.policyVersion || null,
       spanFingerprint: params.spanFingerprint || null,
     });
   }
 }
-
-
-
-
-
-
-
-
-

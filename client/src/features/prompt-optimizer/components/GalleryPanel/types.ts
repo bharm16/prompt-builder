@@ -1,7 +1,10 @@
-import type { GenerationMediaType, GenerationSettingsSnapshot } from '@/features/prompt-optimizer/GenerationsPanel/types';
+import type {
+  GenerationMediaType,
+  GenerationSettingsSnapshot,
+} from "@features/generations/types";
 
-export type GalleryTier = 'preview' | 'draft' | 'final';
-export type GalleryFilter = 'all' | 'preview' | 'draft' | 'favorites';
+export type GalleryTier = "preview" | "draft" | "final";
+export type GalleryFilter = "all" | "preview" | "draft" | "favorites";
 
 export interface GalleryPromptSpan {
   start: number;
@@ -24,6 +27,10 @@ export interface GalleryGeneration {
   isFavorite: boolean;
   generationSettings: GenerationSettingsSnapshot | null;
   promptSpans?: GalleryPromptSpan[] | undefined;
+  /** Asset ID for the primary media (image or video) — enables asset-based URL resolution. */
+  mediaAssetId?: string | null | undefined;
+  /** Asset ID for the thumbnail image — enables asset-based URL resolution. */
+  thumbnailAssetId?: string | null | undefined;
 }
 
 export interface GalleryPanelProps {
@@ -32,4 +39,3 @@ export interface GalleryPanelProps {
   onSelectGeneration: (generationId: string) => void;
   onClose: () => void;
 }
-

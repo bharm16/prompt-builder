@@ -1,29 +1,29 @@
-import { Storage } from '@google-cloud/storage';
-import { SignedUrlService } from './services/SignedUrlService';
-import { UploadService } from './services/UploadService';
-import { RetentionService } from './services/RetentionService';
-import { safeUrlHost } from '@utils/url';
-import { logger } from '@infrastructure/Logger';
+import { Storage } from "@google-cloud/storage";
+import { SignedUrlService } from "./services/SignedUrlService";
+import { UploadService } from "./services/UploadService";
+import { RetentionService } from "./services/RetentionService";
+import { safeUrlHost } from "@utils/url";
+import { logger } from "@infrastructure/Logger";
 import {
   STORAGE_CONFIG,
   STORAGE_TYPES,
   resolveStorageTypeKey,
   type StorageType,
-} from './config/storageConfig';
-import { generateStoragePath, validatePathOwnership } from './utils/pathUtils';
-import { createForbiddenError } from './utils/httpError';
+} from "./config/storageConfig";
+import { generateStoragePath, validatePathOwnership } from "./utils/pathUtils";
+import { createForbiddenError } from "./utils/httpError";
 
 function normalizeContentType(value: string): string {
-  const [primary] = value.split(';');
-  return (primary ?? '').trim().toLowerCase();
+  const [primary] = value.split(";");
+  return (primary ?? "").trim().toLowerCase();
 }
 
 function resolveExtension(contentType: string): string {
   const normalized = normalizeContentType(contentType);
-  if (normalized === 'image/jpeg') return 'jpg';
-  if (normalized === 'video/quicktime') return 'mov';
-  const parts = normalized.split('/');
-  return parts[1] || 'bin';
+  if (normalized === "image/jpeg") return "jpg";
+  if (normalized === "video/quicktime") return "mov";
+  const parts = normalized.split("/");
+  return parts[1] || "bin";
 }
 
 function isAllowedContentType(type: StorageType, contentType: string): boolean {
@@ -33,7 +33,7 @@ function isAllowedContentType(type: StorageType, contentType: string): boolean {
   return allowed.some((allowedType) => normalized.startsWith(allowedType));
 }
 
-type SuccessLogLevel = 'debug' | 'info';
+type SuccessLogLevel = "debug" | "info";
 
 export class StorageService {
   private readonly storage: Storage;
@@ -41,52 +41,57 @@ export class StorageService {
   private readonly signedUrlService: SignedUrlService;
   private readonly uploadService: UploadService;
   private readonly retentionService: RetentionService;
-  private readonly log = logger.child({ service: 'StorageService' });
+  private readonly log = logger.child({ service: "StorageService" });
 
-  constructor(dependencies: {
-    storage?: Storage;
-    bucketName?: string;
-    signedUrlService?: SignedUrlService;
-    uploadService?: UploadService;
-    retentionService?: RetentionService;
-  } = {}) {
+  constructor(
+    dependencies: {
+      storage?: Storage;
+      bucketName?: string;
+      signedUrlService?: SignedUrlService;
+      uploadService?: UploadService;
+      retentionService?: RetentionService;
+    } = {},
+  ) {
     if (!dependencies.storage) {
-      throw new Error('StorageService requires an injected Storage instance');
+      throw new Error("StorageService requires an injected Storage instance");
     }
     this.storage = dependencies.storage;
     const bucketName = dependencies.bucketName || STORAGE_CONFIG.bucketName;
     this.bucket = this.storage.bucket(bucketName);
     this.signedUrlService =
-      dependencies.signedUrlService || new SignedUrlService(this.storage, bucketName);
-    this.uploadService = dependencies.uploadService || new UploadService(this.storage, bucketName);
+      dependencies.signedUrlService ||
+      new SignedUrlService(this.storage, bucketName);
+    this.uploadService =
+      dependencies.uploadService || new UploadService(this.storage, bucketName);
     this.retentionService =
-      dependencies.retentionService || new RetentionService(this.storage, bucketName);
+      dependencies.retentionService ||
+      new RetentionService(this.storage, bucketName);
   }
 
   private async withTiming<T>(
     operation: string,
     meta: Record<string, unknown>,
     fn: () => Promise<T>,
-    successLevel: SuccessLogLevel = 'info'
+    successLevel: SuccessLogLevel = "info",
   ): Promise<T> {
     const startTime = Date.now();
-    this.log.debug('Storage operation started', { operation, ...meta });
+    this.log.debug("Storage operation started", { operation, ...meta });
 
     try {
       const result = await fn();
       const duration = Date.now() - startTime;
       const payload = { operation, duration, ...meta };
 
-      if (successLevel === 'info') {
-        this.log.info('Storage operation completed', payload);
+      if (successLevel === "info") {
+        this.log.info("Storage operation completed", payload);
       } else {
-        this.log.debug('Storage operation completed', payload);
+        this.log.debug("Storage operation completed", payload);
       }
 
       return result;
     } catch (error) {
       const duration = Date.now() - startTime;
-      this.log.error('Storage operation failed', error as Error, {
+      this.log.error("Storage operation failed", error as Error, {
         operation,
         duration,
         ...meta,
@@ -99,7 +104,7 @@ export class StorageService {
     userId: string,
     type: StorageType,
     contentType: string,
-    _metadata: Record<string, unknown> = {}
+    _metadata: Record<string, unknown> = {},
   ): Promise<{
     uploadUrl: string;
     storagePath: string;
@@ -112,7 +117,9 @@ export class StorageService {
 
     const normalizedContentType = normalizeContentType(contentType);
     if (!isAllowedContentType(type, normalizedContentType)) {
-      throw new Error(`Invalid content type ${normalizedContentType} for type ${type}`);
+      throw new Error(
+        `Invalid content type ${normalizedContentType} for type ${type}`,
+      );
     }
 
     const extension = resolveExtension(normalizedContentType);
@@ -120,7 +127,7 @@ export class StorageService {
     const maxSize = STORAGE_CONFIG.maxFileSize[resolveStorageTypeKey(type)];
 
     const result = await this.withTiming(
-      'getUploadUrl',
+      "getUploadUrl",
       {
         userId,
         type,
@@ -129,11 +136,12 @@ export class StorageService {
         storagePath: path,
       },
       async () => {
-        const { uploadUrl, expiresAt } = await this.signedUrlService.getUploadUrl(
-          path,
-          normalizedContentType,
-          maxSize
-        );
+        const { uploadUrl, expiresAt } =
+          await this.signedUrlService.getUploadUrl(
+            path,
+            normalizedContentType,
+            maxSize,
+          );
 
         void _metadata;
 
@@ -143,7 +151,7 @@ export class StorageService {
           expiresAt,
           maxSizeBytes: maxSize,
         };
-      }
+      },
     );
 
     return result;
@@ -153,7 +161,7 @@ export class StorageService {
     userId: string,
     sourceUrl: string,
     type: StorageType,
-    metadata: Record<string, unknown> = {}
+    metadata: Record<string, unknown> = {},
   ): Promise<{
     storagePath: string;
     viewUrl: string;
@@ -167,7 +175,7 @@ export class StorageService {
     }
 
     const result = await this.withTiming(
-      'saveFromUrl',
+      "saveFromUrl",
       {
         userId,
         type,
@@ -178,11 +186,11 @@ export class StorageService {
           sourceUrl,
           userId,
           type,
-          metadata
+          metadata,
         );
 
         const { viewUrl, expiresAt } = await this.signedUrlService.getViewUrl(
-          uploadResult.storagePath
+          uploadResult.storagePath,
         );
 
         return {
@@ -190,7 +198,7 @@ export class StorageService {
           viewUrl,
           expiresAt,
         };
-      }
+      },
     );
 
     return result;
@@ -201,7 +209,7 @@ export class StorageService {
     buffer: Buffer,
     type: StorageType,
     contentType: string,
-    metadata: Record<string, unknown> = {}
+    metadata: Record<string, unknown> = {},
   ): Promise<{
     storagePath: string;
     viewUrl: string;
@@ -215,7 +223,7 @@ export class StorageService {
     }
 
     const result = await this.withTiming(
-      'saveFromBuffer',
+      "saveFromBuffer",
       {
         userId,
         type,
@@ -228,11 +236,11 @@ export class StorageService {
           userId,
           type,
           contentType,
-          metadata
+          metadata,
         );
 
         const { viewUrl, expiresAt } = await this.signedUrlService.getViewUrl(
-          uploadResult.storagePath
+          uploadResult.storagePath,
         );
 
         return {
@@ -240,7 +248,7 @@ export class StorageService {
           viewUrl,
           expiresAt,
         };
-      }
+      },
     );
 
     return result;
@@ -251,7 +259,7 @@ export class StorageService {
     type: StorageType,
     buffer: Buffer,
     contentType: string,
-    metadata: Record<string, unknown> = {}
+    metadata: Record<string, unknown> = {},
   ): Promise<{
     storagePath: string;
     viewUrl: string;
@@ -264,7 +272,7 @@ export class StorageService {
     }
 
     const result = await this.withTiming(
-      'uploadBuffer',
+      "uploadBuffer",
       {
         userId,
         type,
@@ -277,11 +285,11 @@ export class StorageService {
           userId,
           type,
           contentType,
-          metadata
+          metadata,
         );
 
         const { viewUrl, expiresAt } = await this.signedUrlService.getViewUrl(
-          uploadResult.storagePath
+          uploadResult.storagePath,
         );
 
         return {
@@ -289,7 +297,7 @@ export class StorageService {
           viewUrl,
           expiresAt,
         };
-      }
+      },
     );
 
     return result;
@@ -301,7 +309,7 @@ export class StorageService {
     stream: NodeJS.ReadableStream,
     sizeBytes: number,
     contentType: string,
-    metadata: Record<string, unknown> = {}
+    metadata: Record<string, unknown> = {},
   ): Promise<{
     storagePath: string;
     viewUrl: string;
@@ -314,7 +322,7 @@ export class StorageService {
     }
 
     const result = await this.withTiming(
-      'uploadStream',
+      "uploadStream",
       {
         userId,
         type,
@@ -328,11 +336,11 @@ export class StorageService {
           userId,
           type,
           contentType,
-          metadata
+          metadata,
         );
 
         const { viewUrl, expiresAt } = await this.signedUrlService.getViewUrl(
-          uploadResult.storagePath
+          uploadResult.storagePath,
         );
 
         return {
@@ -340,35 +348,38 @@ export class StorageService {
           viewUrl,
           expiresAt,
         };
-      }
+      },
     );
 
     return result;
   }
 
-  async confirmUpload(userId: string, storagePath: string): Promise<{
+  async confirmUpload(
+    userId: string,
+    storagePath: string,
+  ): Promise<{
     storagePath: string;
     sizeBytes: number;
     contentType: string | undefined;
     createdAt: string;
   }> {
-    return this.withTiming(
-      'confirmUpload',
-      { userId, storagePath },
-      async () => this.uploadService.confirmUpload(storagePath, userId)
+    return this.withTiming("confirmUpload", { userId, storagePath }, async () =>
+      this.uploadService.confirmUpload(storagePath, userId),
     );
   }
 
   async getViewUrl(
     userId: string,
-    storagePath: string
+    storagePath: string,
   ): Promise<{ viewUrl: string; expiresAt: string; storagePath: string }> {
     if (!validatePathOwnership(storagePath, userId)) {
-      throw createForbiddenError('Unauthorized - cannot access files belonging to other users');
+      throw createForbiddenError(
+        "Unauthorized - cannot access files belonging to other users",
+      );
     }
 
     return this.withTiming(
-      'getViewUrl',
+      "getViewUrl",
       { userId, storagePath },
       async () => {
         const result = await this.signedUrlService.getViewUrl(storagePath);
@@ -377,33 +388,39 @@ export class StorageService {
           storagePath,
         };
       },
-      'debug'
+      "debug",
     );
   }
 
   async getDownloadUrl(
     userId: string,
     storagePath: string,
-    filename?: string | null
+    filename?: string | null,
   ): Promise<{ downloadUrl: string; expiresAt: string }> {
     if (!validatePathOwnership(storagePath, userId)) {
-      throw createForbiddenError('Unauthorized - cannot access files belonging to other users');
+      throw createForbiddenError(
+        "Unauthorized - cannot access files belonging to other users",
+      );
     }
 
     return this.withTiming(
-      'getDownloadUrl',
+      "getDownloadUrl",
       { userId, storagePath, hasFilename: Boolean(filename) },
       async () => this.signedUrlService.getDownloadUrl(storagePath, filename),
-      'debug'
+      "debug",
     );
   }
 
   async listFiles(
     userId: string,
-    options: { type?: string | null; limit?: number; pageToken?: string | null } = {}
+    options: {
+      type?: string | null;
+      limit?: number;
+      pageToken?: string | null;
+    } = {},
   ): Promise<{ items: unknown[]; nextCursor: string | null }> {
     return this.withTiming(
-      'listFiles',
+      "listFiles",
       {
         userId,
         type: options.type ?? null,
@@ -411,26 +428,27 @@ export class StorageService {
         hasPageToken: Boolean(options.pageToken),
       },
       async () => this.retentionService.listUserFiles(userId, options),
-      'debug'
+      "debug",
     );
   }
 
-  async deleteFile(userId: string, storagePath: string): Promise<{ deleted: boolean; path: string }> {
-    return this.withTiming(
-      'deleteFile',
-      { userId, storagePath },
-      async () => this.retentionService.deleteFile(storagePath, userId)
+  async deleteFile(
+    userId: string,
+    storagePath: string,
+  ): Promise<{ deleted: boolean; path: string }> {
+    return this.withTiming("deleteFile", { userId, storagePath }, async () =>
+      this.retentionService.deleteFile(storagePath, userId),
     );
   }
 
   async deleteFiles(
     userId: string,
-    storagePaths: string[]
+    storagePaths: string[],
   ): Promise<{ deleted: number; failed: number; details: unknown[] }> {
     return this.withTiming(
-      'deleteFiles',
+      "deleteFiles",
       { userId, pathsCount: storagePaths.length },
-      async () => this.retentionService.deleteFiles(storagePaths, userId)
+      async () => this.retentionService.deleteFiles(storagePaths, userId),
     );
   }
 
@@ -441,29 +459,29 @@ export class StorageService {
     fileCount: number;
   }> {
     return this.withTiming(
-      'getStorageUsage',
+      "getStorageUsage",
       { userId },
       async () => this.retentionService.getUserStorageUsage(userId),
-      'debug'
+      "debug",
     );
   }
 
   async fileExists(storagePath: string): Promise<boolean> {
     return this.withTiming(
-      'fileExists',
+      "fileExists",
       { storagePath },
       async () => {
         const file = this.bucket.file(storagePath);
         const [exists] = await file.exists();
         return exists;
       },
-      'debug'
+      "debug",
     );
   }
 
   async getFileMetadata(
     userId: string,
-    storagePath: string
+    storagePath: string,
   ): Promise<{
     storagePath: string;
     sizeBytes: number;
@@ -473,11 +491,11 @@ export class StorageService {
     metadata: Record<string, unknown>;
   }> {
     if (!validatePathOwnership(storagePath, userId)) {
-      throw createForbiddenError('Unauthorized');
+      throw createForbiddenError("Unauthorized");
     }
 
     return this.withTiming(
-      'getFileMetadata',
+      "getFileMetadata",
       { userId, storagePath },
       async () => {
         const file = this.bucket.file(storagePath);
@@ -485,14 +503,14 @@ export class StorageService {
 
         return {
           storagePath,
-          sizeBytes: Number.parseInt(String(metadata.size ?? '0'), 10),
+          sizeBytes: Number.parseInt(String(metadata.size ?? "0"), 10),
           contentType: metadata.contentType,
           createdAt: metadata.timeCreated ?? new Date().toISOString(),
           updatedAt: metadata.updated,
           metadata: metadata.metadata || {},
         };
       },
-      'debug'
+      "debug",
     );
   }
 }

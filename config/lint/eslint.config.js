@@ -81,28 +81,31 @@ export default [
       'no-unsafe-finally': 'warn',
       'no-constant-binary-expression': 'warn',
       'no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
-      'no-restricted-imports': ['error', {
-        patterns: [
-          {
-            group: [
-              '@services/EnhancementService',
-              '@services/VideoConceptService',
-            ],
-            message:
-              'Use canonical domain imports instead of legacy root service shims.',
-          },
-          {
-            group: [
-              '@/features/prompt-optimizer/PromptOptimizerContainer/PromptOptimizerContainer',
-              '@features/prompt-optimizer/PromptOptimizerContainer/PromptOptimizerContainer',
-              '**/PromptOptimizerContainer/PromptOptimizerContainer',
-              '**/PromptOptimizerContainer/PromptOptimizerContainer.tsx',
-            ],
-            message:
-              'Import from @/features/prompt-optimizer/PromptOptimizerContainer (folder entrypoint) or PromptOptimizerWorkspace directly.',
-          },
-        ],
-      }],
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: [
+                '@services/EnhancementService',
+                '@services/VideoConceptService',
+              ],
+              message:
+                'Use canonical domain imports instead of legacy root service shims.',
+            },
+            {
+              group: [
+                '@/features/prompt-optimizer/PromptOptimizerContainer/PromptOptimizerContainer',
+                '@features/prompt-optimizer/PromptOptimizerContainer/PromptOptimizerContainer',
+                '**/PromptOptimizerContainer/PromptOptimizerContainer',
+                '**/PromptOptimizerContainer/PromptOptimizerContainer.tsx',
+              ],
+              message:
+                'Import from @/features/prompt-optimizer/PromptOptimizerContainer (folder entrypoint) or PromptOptimizerWorkspace directly.',
+            },
+          ],
+        },
+      ],
       'react/prop-types': 'off', // Turn off if not using prop-types
       // Security rules
       'no-secrets/no-secrets': 'warn',
@@ -120,12 +123,17 @@ export default [
       'security/detect-possible-timing-attacks': 'warn',
       'security/detect-pseudoRandomBytes': 'error',
       'security/detect-unsafe-regex': 'off',
+      // Hardcoded hex colors in Tailwind className strings
+      'no-hardcoded-css/no-arbitrary-color': 'error',
       // Hardcoded spacing/formatting values detection in inline styles
-      'no-hardcoded-css/no-hardcoded-css': ['warn', {
-        allowPixelValues: false,
-        allowSmallValues: true, // Allow 0px, 1px, 2px for borders, etc.
-        allowedProperties: ['zIndex', 'opacity', 'borderWidth'], // Properties that commonly need hardcoded values
-      }],
+      'no-hardcoded-css/no-hardcoded-css': [
+        'warn',
+        {
+          allowPixelValues: false,
+          allowSmallValues: true, // Allow 0px, 1px, 2px for borders, etc.
+          allowedProperties: ['zIndex', 'opacity', 'borderWidth'], // Properties that commonly need hardcoded values
+        },
+      ],
     },
   },
   {
@@ -144,7 +152,10 @@ export default [
     rules: {
       'no-undef': 'off',
       'no-unused-vars': 'off',
-      '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
+      '@typescript-eslint/no-unused-vars': [
+        'warn',
+        { argsIgnorePattern: '^_' },
+      ],
     },
   },
   {
@@ -153,27 +164,36 @@ export default [
       'server/src/middleware/**/*.{js,ts,jsx,tsx}',
     ],
     rules: {
-      'no-restricted-imports': ['error', {
-        paths: [
-          {
-            name: '@services/credits/UserCreditService',
-            importNames: ['userCreditService'],
-            message:
-              'Inject credit services through DI or route factory parameters instead of singleton imports.',
-          },
-          {
-            name: '@services/storage/StorageService',
-            importNames: ['getStorageService'],
-            message:
-              'Inject storage services through DI or route factory parameters instead of singleton imports.',
-          },
-        ],
-      }],
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: '@services/credits/UserCreditService',
+              importNames: ['userCreditService'],
+              message:
+                'Inject credit services through DI or route factory parameters instead of singleton imports.',
+            },
+            {
+              name: '@services/storage/StorageService',
+              importNames: ['getStorageService'],
+              message:
+                'Inject storage services through DI or route factory parameters instead of singleton imports.',
+            },
+          ],
+        },
+      ],
     },
   },
   // Server-side configuration
   {
-    files: ['server.{js,ts}', 'utils/**/*.{js,ts}', 'src/**/*.{js,ts}', 'migrate-*.*', 'verify-*.*'],
+    files: [
+      'server.{js,ts}',
+      'utils/**/*.{js,ts}',
+      'src/**/*.{js,ts}',
+      'migrate-*.*',
+      'verify-*.*',
+    ],
     languageOptions: {
       globals: {
         ...globals.node,
@@ -248,11 +268,7 @@ export default [
   },
   // Migration and utility scripts - allow console
   {
-    files: [
-      'migrate-*.*',
-      'verify-*.*',
-      'scripts/**/*.{js,ts,mjs,cjs}',
-    ],
+    files: ['migrate-*.*', 'verify-*.*', 'scripts/**/*.{js,ts,mjs,cjs}'],
     rules: {
       'no-console': 'off',
       'no-secrets/no-secrets': 'off',

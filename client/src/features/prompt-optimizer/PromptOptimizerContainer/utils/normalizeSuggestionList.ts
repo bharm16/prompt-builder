@@ -1,4 +1,4 @@
-import type { SuggestionItem } from '@features/prompt-optimizer/PromptCanvas/types';
+import type { SuggestionItem } from "@features/prompt-optimizer/PromptCanvas/types";
 
 export type EnhancementSuggestionEntry =
   | SuggestionItem
@@ -6,7 +6,7 @@ export type EnhancementSuggestionEntry =
   | { suggestions?: Array<SuggestionItem | string>; category?: string };
 
 export function normalizeSuggestionList(
-  input: Array<EnhancementSuggestionEntry | null | undefined>
+  input: Array<EnhancementSuggestionEntry | null | undefined>,
 ): SuggestionItem[] {
   const normalized: SuggestionItem[] = [];
 
@@ -15,12 +15,12 @@ export function normalizeSuggestionList(
       return;
     }
 
-    if (typeof entry === 'string') {
+    if (typeof entry === "string") {
       normalized.push({ text: entry });
       return;
     }
 
-    if (typeof entry !== 'object') {
+    if (typeof entry !== "object") {
       return;
     }
 
@@ -31,14 +31,14 @@ export function normalizeSuggestionList(
 
     if (Array.isArray(candidate.suggestions)) {
       const groupCategory =
-        typeof candidate.category === 'string' ? candidate.category : undefined;
+        typeof candidate.category === "string" ? candidate.category : undefined;
 
       candidate.suggestions.forEach((nested) => {
         if (!nested) {
           return;
         }
 
-        if (typeof nested === 'string') {
+        if (typeof nested === "string") {
           normalized.push({
             text: nested,
             ...(groupCategory ? { category: groupCategory } : {}),
@@ -46,12 +46,14 @@ export function normalizeSuggestionList(
           return;
         }
 
-        if (typeof nested === 'object') {
+        if (typeof nested === "object") {
           const nestedItem = nested as SuggestionItem;
-          const hasCategory = typeof nestedItem.category === 'string';
+          const hasCategory = typeof nestedItem.category === "string";
           normalized.push({
             ...nestedItem,
-            ...(groupCategory && !hasCategory ? { category: groupCategory } : {}),
+            ...(groupCategory && !hasCategory
+              ? { category: groupCategory }
+              : {}),
           });
         }
       });

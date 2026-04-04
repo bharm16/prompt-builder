@@ -4,5 +4,8 @@
  * Exports the SubjectMotionInput component and its types.
  */
 
-export { SubjectMotionInput, type SubjectMotionInputProps } from './SubjectMotionInput';
-export { default } from './SubjectMotionInput';
+export {
+  SubjectMotionInput,
+  type SubjectMotionInputProps,
+} from "./SubjectMotionInput";
+export { default } from "./SubjectMotionInput";

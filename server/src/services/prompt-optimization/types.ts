@@ -2,39 +2,24 @@
  * Types for prompt optimization services
  * Shared type definitions used across prompt optimization modules
  */
-import type { ExecuteParams } from '@services/ai-model/AIModelService';
-import type { AIResponse } from '@interfaces/IAIClient';
-import type { CapabilityValues } from '@shared/capabilities';
-import type { I2VConstraintMode, I2VOptimizationResult } from './types/i2v';
+import type { VideoPromptStructuredResponse } from "./strategies/videoPromptTypes";
+import type { ExecuteParams } from "@services/ai-model/AIModelService";
+import type { AIResponse } from "@interfaces/IAIClient";
+import type { CapabilityValues } from "@shared/capabilities";
+import type { I2VConstraintMode, I2VOptimizationResult } from "./types/i2v";
 
 /**
  * Optimization mode type
  */
-export type OptimizationMode = 'video';
+export type OptimizationMode = "video";
 
 /**
  * Context inferred from prompt
  */
 export interface InferredContext {
   specificAspects: string;
-  backgroundLevel: 'beginner' | 'intermediate' | 'advanced';
+  backgroundLevel: "beginner" | "intermediate" | "advanced";
   intendedUse: string;
-}
-
-/**
- * Quality assessment result
- */
-export interface QualityAssessment {
-  score: number;
-  details: {
-    clarity: number;
-    specificity: number;
-    structure: number;
-    completeness: number;
-    actionability: number;
-  };
-  strengths: string[];
-  weaknesses: string[];
 }
 
 export interface LockedSpan {
@@ -85,9 +70,7 @@ export interface OptimizationRequest {
   shotPlanAttempted?: boolean;
   domainContent?: string | null;
   useConstitutionalAI?: boolean;
-  useIterativeRefinement?: boolean;
   onMetadata?: (metadata: Record<string, unknown>) => void;
-  onChunk?: (delta: string) => void;
   signal?: AbortSignal;
   // I2V-specific
   startImage?: string;
@@ -96,39 +79,70 @@ export interface OptimizationRequest {
   sourcePrompt?: string;
 }
 
-export interface TwoStageOptimizationRequest {
-  prompt: string;
-  mode?: OptimizationMode;
-  targetModel?: string; // e.g., 'runway', 'luma', 'veo'
-  context?: InferredContext | null;
-  brainstormContext?: Record<string, unknown> | null;
-  generationParams?: CapabilityValues | null;
-  skipCache?: boolean;
-  lockedSpans?: LockedSpan[];
-  onDraft?: ((draft: string, spans: { spans?: unknown[]; meta?: unknown } | null) => void) | null;
-  onDraftChunk?: ((delta: string) => void) | null;
-  onRefinedChunk?: ((delta: string) => void) | null;
-  signal?: AbortSignal;
+export interface StructuredOptimizationArtifact {
+  sourcePrompt: string;
+  structuredPrompt: VideoPromptStructuredResponse;
+  previewPrompt: string;
+  aspectRatio?: string;
+  fallbackUsed: boolean;
+  lintPassed: boolean;
+}
+
+export type CompileSource =
+  | { kind: "artifact"; artifact: StructuredOptimizationArtifact }
+  | { kind: "artifactKey"; artifactKey: string }
+  | { kind: "prompt"; prompt: string };
+
+export type CompilationStatus =
+  | "compiled"
+  | "generic-fallback"
+  | "compile-skipped";
+
+export interface CompilationIntentLockState {
+  passed: boolean;
+  repaired: boolean;
+  skippedRepair: boolean;
+  warning?: string;
+  required: { subject: string | null; action: string | null };
+}
+
+export interface CompilationState {
+  status: CompilationStatus;
+  usedFallback: boolean;
+  reason?: string;
+  sourceKind: CompileSource["kind"];
+  structuredArtifactReused: boolean;
+  analyzerBypassed: boolean;
+  compiledFor: string | null;
+  intentLock?: CompilationIntentLockState;
+}
+
+export interface CompileContext {
+  originalPrompt?: string;
+  originalUserPrompt?: string;
+  specificAspects?: string;
+  backgroundLevel?: string;
+  intendedUse?: string;
+  constraints?: Record<string, unknown>;
+  apiParams?: Record<string, unknown>;
+  assets?: Array<Record<string, unknown>>;
+}
+
+export interface CompilePromptResponse {
+  compiledPrompt: string;
+  metadata: Record<string, unknown> | null;
+  targetModel: string;
+  artifactKey?: string;
+  compilation: CompilationState;
 }
 
 export interface OptimizationResponse {
   prompt: string;
-  inputMode: 't2v' | 'i2v';
+  inputMode: "t2v" | "i2v";
   metadata?: Record<string, unknown>;
   i2v?: I2VOptimizationResult;
-}
-
-/**
- * Two-stage optimization result
- */
-export interface TwoStageOptimizationResult {
-  draft: string;
-  refined: string;
-  draftSpans?: { spans?: unknown[]; meta?: unknown } | null;
-  refinedSpans?: { spans?: unknown[]; meta?: unknown } | null;
-  metadata?: Record<string, unknown>;
-  usedFallback?: boolean;
-  error?: string;
+  artifactKey?: string;
+  compilation?: CompilationState;
 }
 
 /**
@@ -136,7 +150,17 @@ export interface TwoStageOptimizationResult {
  */
 export interface OptimizationStrategy {
   optimize(request: OptimizationRequest): Promise<string>;
-  generateDomainContent?(prompt: string, context?: InferredContext | null, shotPlan?: ShotPlan | null): Promise<unknown>;
+  optimizeStructured?(
+    request: OptimizationRequest,
+  ): Promise<StructuredOptimizationArtifact>;
+  renderStructuredPrompt?(
+    structuredPrompt: VideoPromptStructuredResponse,
+  ): string;
+  generateDomainContent?(
+    prompt: string,
+    context?: InferredContext | null,
+    shotPlan?: ShotPlan | null,
+  ): Promise<unknown>;
   name: string;
 }
 
@@ -147,7 +171,7 @@ export interface AIService {
   execute(operation: string, options: ExecuteParams): Promise<AIResponse>;
   stream?(
     operation: string,
-    options: ExecuteParams & { onChunk: (chunk: string) => void }
+    options: ExecuteParams & { onChunk: (chunk: string) => void },
   ): Promise<string>;
   supportsStreaming?(operation: string): boolean;
   getAvailableClients?(): string[];
@@ -158,6 +182,12 @@ export interface AIService {
  */
 export interface TemplateService {
   getTemplate?(name: string, version?: string): Promise<string>;
-  load?(templateName: string, variables?: Record<string, string | number | null | undefined>): Promise<string>;
-  loadSection?(sectionName: string, variables?: Record<string, string | number | null | undefined>): Promise<string>;
+  load?(
+    templateName: string,
+    variables?: Record<string, string | number | null | undefined>,
+  ): Promise<string>;
+  loadSection?(
+    sectionName: string,
+    variables?: Record<string, string | number | null | undefined>,
+  ): Promise<string>;
 }

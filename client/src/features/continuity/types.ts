@@ -9,7 +9,7 @@ import type {
   SessionSceneProxy,
   SessionStyleReference,
   SessionPromptVersionEntry,
-} from '@shared/types/session';
+} from "@shared/types/session";
 
 export type GenerationMode = SessionGenerationMode;
 export type ContinuityMode = SessionContinuityMode;
@@ -27,7 +27,7 @@ export type ContinuitySession = {
   sceneProxy?: SessionSceneProxy | null;
   shots: ContinuityShot[];
   defaultSettings: ContinuitySessionSettings;
-  status: 'active' | 'completed' | 'archived';
+  status: "active" | "completed" | "archived";
   createdAt: string;
   updatedAt: string;
 };

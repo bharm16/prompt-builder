@@ -1,4 +1,4 @@
-import type { Question } from './api/schemas';
+import type { Question } from "./api/schemas";
 
 export type { Question };
 

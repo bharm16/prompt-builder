@@ -1,8 +1,12 @@
-import { pipeline } from 'node:stream/promises';
-import { v4 as uuidv4 } from 'uuid';
-import type { Bucket, File } from '@google-cloud/storage';
-import { logger } from '@infrastructure/Logger';
-import type { StoredVideoAsset, VideoAssetStore, VideoAssetStream } from './types';
+import { pipeline } from "node:stream/promises";
+import { v4 as uuidv4 } from "uuid";
+import type { Bucket, File } from "@google-cloud/storage";
+import { logger } from "@infrastructure/Logger";
+import type {
+  StoredVideoAsset,
+  VideoAssetStore,
+  VideoAssetStream,
+} from "./types";
 
 interface GcsVideoAssetStoreOptions {
   bucket: Bucket;
@@ -16,16 +20,19 @@ export class GcsVideoAssetStore implements VideoAssetStore {
   private readonly basePath: string;
   private readonly signedUrlTtlMs: number;
   private readonly cacheControl: string;
-  private readonly log = logger.child({ service: 'GcsVideoAssetStore' });
+  private readonly log = logger.child({ service: "GcsVideoAssetStore" });
 
   constructor(options: GcsVideoAssetStoreOptions) {
     this.bucket = options.bucket;
-    this.basePath = options.basePath.replace(/^\/+|\/+$/g, '');
+    this.basePath = options.basePath.replace(/^\/+|\/+$/g, "");
     this.signedUrlTtlMs = options.signedUrlTtlMs;
     this.cacheControl = options.cacheControl;
   }
 
-  async storeFromBuffer(buffer: Buffer, contentType: string): Promise<StoredVideoAsset> {
+  async storeFromBuffer(
+    buffer: Buffer,
+    contentType: string,
+  ): Promise<StoredVideoAsset> {
     const id = uuidv4();
     const file = this.bucket.file(this.objectPath(id));
 
@@ -41,7 +48,10 @@ export class GcsVideoAssetStore implements VideoAssetStore {
     const [metadata] = await file.getMetadata();
     const url = await this.getSignedUrl(file);
     const resolvedSize = Number(metadata.size || 0);
-    const sizeBytes = Number.isFinite(resolvedSize) && resolvedSize > 0 ? resolvedSize : undefined;
+    const sizeBytes =
+      Number.isFinite(resolvedSize) && resolvedSize > 0
+        ? resolvedSize
+        : undefined;
     return {
       id,
       url,
@@ -51,7 +61,10 @@ export class GcsVideoAssetStore implements VideoAssetStore {
     };
   }
 
-  async storeFromStream(stream: NodeJS.ReadableStream, contentType: string): Promise<StoredVideoAsset> {
+  async storeFromStream(
+    stream: NodeJS.ReadableStream,
+    contentType: string,
+  ): Promise<StoredVideoAsset> {
     const id = uuidv4();
     const file = this.bucket.file(this.objectPath(id));
 
@@ -63,13 +76,16 @@ export class GcsVideoAssetStore implements VideoAssetStore {
           cacheControl: this.cacheControl,
         },
         preconditionOpts: { ifGenerationMatch: 0 },
-      })
+      }),
     );
 
     const [metadata] = await file.getMetadata();
     const url = await this.getSignedUrl(file);
     const resolvedSize = Number(metadata.size || 0);
-    const sizeBytes = Number.isFinite(resolvedSize) && resolvedSize > 0 ? resolvedSize : undefined;
+    const sizeBytes =
+      Number.isFinite(resolvedSize) && resolvedSize > 0
+        ? resolvedSize
+        : undefined;
     return {
       id,
       url,
@@ -87,9 +103,15 @@ export class GcsVideoAssetStore implements VideoAssetStore {
     }
 
     const [metadata] = await file.getMetadata();
-    const contentType = typeof metadata.contentType === 'string' ? metadata.contentType : 'video/mp4';
+    const contentType =
+      typeof metadata.contentType === "string"
+        ? metadata.contentType
+        : "video/mp4";
     const resolvedSize = Number(metadata.size || 0);
-    const sizeBytes = Number.isFinite(resolvedSize) && resolvedSize > 0 ? resolvedSize : undefined;
+    const sizeBytes =
+      Number.isFinite(resolvedSize) && resolvedSize > 0
+        ? resolvedSize
+        : undefined;
 
     return {
       stream: file.createReadStream(),
@@ -103,13 +125,14 @@ export class GcsVideoAssetStore implements VideoAssetStore {
     try {
       const [exists] = await file.exists();
       if (!exists) {
-        this.log.warn('Video asset missing in GCS', { assetId });
+        this.log.warn("Video asset missing in GCS", { assetId });
         return null;
       }
       return await this.getSignedUrl(file);
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      this.log.warn('Failed to generate video signed URL', {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      this.log.warn("Failed to generate video signed URL", {
         assetId,
         error: errorMessage,
       });
@@ -117,7 +140,10 @@ export class GcsVideoAssetStore implements VideoAssetStore {
     }
   }
 
-  async cleanupExpired(olderThanMs: number, maxItems?: number): Promise<number> {
+  async cleanupExpired(
+    olderThanMs: number,
+    maxItems?: number,
+  ): Promise<number> {
     if (!Number.isFinite(olderThanMs) || olderThanMs <= 0) {
       return 0;
     }
@@ -133,7 +159,9 @@ export class GcsVideoAssetStore implements VideoAssetStore {
 
       try {
         const [metadata] = await file.getMetadata();
-        const createdAt = metadata.timeCreated ? Date.parse(metadata.timeCreated) : NaN;
+        const createdAt = metadata.timeCreated
+          ? Date.parse(metadata.timeCreated)
+          : NaN;
         if (!Number.isFinite(createdAt) || createdAt > olderThanMs) {
           continue;
         }
@@ -141,8 +169,9 @@ export class GcsVideoAssetStore implements VideoAssetStore {
         await file.delete();
         deleted += 1;
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        this.log.warn('Failed to delete expired video asset', {
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        this.log.warn("Failed to delete expired video asset", {
           fileName: file.name,
           error: errorMessage,
         });
@@ -159,8 +188,8 @@ export class GcsVideoAssetStore implements VideoAssetStore {
   private async getSignedUrl(file: File): Promise<string> {
     const expiresAt = Date.now() + this.signedUrlTtlMs;
     const [url] = await file.getSignedUrl({
-      version: 'v4',
-      action: 'read',
+      version: "v4",
+      action: "read",
       expires: expiresAt,
     });
     return url;

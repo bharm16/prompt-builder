@@ -1,7 +1,7 @@
-import AhoCorasick from 'ahocorasick';
-import { VOCAB } from '../vocab';
-import { extractPatternSpans } from './patterns';
-import type { NlpSpan, PatternInfo } from '../types';
+import AhoCorasick from "ahocorasick";
+import { VOCAB } from "../vocab";
+import { extractPatternSpans } from "./patterns";
+import type { NlpSpan, PatternInfo } from "../types";
 
 function buildAhoCorasickAutomaton(): {
   ac: AhoCorasick;
@@ -30,9 +30,13 @@ function isWordChar(value: string | undefined): boolean {
   return Boolean(value && WORD_CHAR_REGEX.test(value));
 }
 
-function hasSafeWordBoundaries(text: string, start: number, end: number): boolean {
-  const before = start > 0 ? text[start - 1] : '';
-  const after = end < text.length ? text[end] : '';
+function hasSafeWordBoundaries(
+  text: string,
+  start: number,
+  end: number,
+): boolean {
+  const before = start > 0 ? text[start - 1] : "";
+  const after = end < text.length ? text[end] : "";
   const startChar = text[start];
   const endChar = text[end - 1];
 
@@ -42,7 +46,7 @@ function hasSafeWordBoundaries(text: string, start: number, end: number): boolea
 }
 
 export function extractClosedVocabulary(text: string): NlpSpan[] {
-  if (!text || typeof text !== 'string') return [];
+  if (!text || typeof text !== "string") return [];
 
   const lowerText = text.toLowerCase();
   const results = ahoCorasick.search(lowerText);
@@ -67,7 +71,7 @@ export function extractClosedVocabulary(text: string): NlpSpan[] {
         confidence: 1.0,
         start,
         end,
-        source: 'aho-corasick'
+        source: "aho-corasick",
       });
     }
   }

@@ -1,29 +1,32 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo } from "react";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
-} from '@promptstudio/system/components/ui/select';
+} from "@promptstudio/system/components/ui/select";
 import {
   Brain,
   FrameCorners,
   Gauge,
   Icon,
   Timer,
-} from '@promptstudio/system/components/ui';
-import { usePromptConfig, usePromptServices } from '../context/PromptStateContext';
-import { useCapabilities } from '../hooks/useCapabilities';
-import { useModelRegistry } from '../hooks/useModelRegistry';
-import { AI_MODEL_IDS, AI_MODEL_LABELS, AI_MODEL_PROVIDERS } from './constants';
-import { resolveFieldState, type CapabilityValue } from '@shared/capabilities';
-import { cn } from '@/utils/cn';
+} from "@promptstudio/system/components/ui";
+import {
+  usePromptConfig,
+  usePromptServices,
+} from "../context/PromptStateContext";
+import { useCapabilities } from "../hooks/useCapabilities";
+import { useModelRegistry } from "../hooks/useModelRegistry";
+import { AI_MODEL_IDS, AI_MODEL_LABELS, AI_MODEL_PROVIDERS } from "./constants";
+import { resolveFieldState, type CapabilityValue } from "@shared/capabilities";
+import { cn } from "@/utils/cn";
 
 type PromptControlsRowProps = {
   className?: string;
   onModelChange?: (
     nextModel: string,
-    previousModel: string | undefined
+    previousModel: string | undefined,
   ) => void;
 };
 
@@ -39,10 +42,8 @@ export function PromptControlsRow({
     setGenerationParams,
   } = usePromptConfig();
   const { promptOptimizer } = usePromptServices();
-  const showVideoPreview = selectedMode === 'video';
-  const isOptimizing = Boolean(
-    promptOptimizer.isProcessing || promptOptimizer.isRefining
-  );
+  const showVideoPreview = selectedMode === "video";
+  const isOptimizing = Boolean(promptOptimizer.isProcessing);
   const { schema } = useCapabilities(selectedModel);
   const { models: registryModels } = useModelRegistry();
 
@@ -67,24 +68,24 @@ export function PromptControlsRow({
       if (!state.available || state.disabled) return null;
 
       const allowedValues =
-        field.type === 'enum'
+        field.type === "enum"
           ? (state.allowedValues ?? field.values ?? [])
           : [];
 
       return { field, allowedValues };
     },
-    [schema, generationParams]
+    [schema, generationParams],
   );
 
   const aspectRatioInfo = useMemo(
-    () => getFieldInfo('aspect_ratio'),
-    [getFieldInfo]
+    () => getFieldInfo("aspect_ratio"),
+    [getFieldInfo],
   );
   const durationInfo = useMemo(
-    () => getFieldInfo('duration_s'),
-    [getFieldInfo]
+    () => getFieldInfo("duration_s"),
+    [getFieldInfo],
   );
-  const fpsInfo = useMemo(() => getFieldInfo('fps'), [getFieldInfo]);
+  const fpsInfo = useMemo(() => getFieldInfo("fps"), [getFieldInfo]);
 
   const handleParamChange = useCallback(
     (key: string, value: CapabilityValue) => {
@@ -96,7 +97,7 @@ export function PromptControlsRow({
         [key]: value,
       });
     },
-    [generationParams, setGenerationParams]
+    [generationParams, setGenerationParams],
   );
 
   const renderDropdown = useCallback(
@@ -104,25 +105,25 @@ export function PromptControlsRow({
       info: ReturnType<typeof getFieldInfo>,
       key: string,
       ariaLabel: string,
-      icon: React.ComponentProps<typeof Icon>['icon'],
-      disabled: boolean
+      icon: React.ComponentProps<typeof Icon>["icon"],
+      disabled: boolean,
     ) => {
       if (!info) return null;
 
       const formatDisplay = (val: unknown) => {
-        if (key === 'duration_s') return `${val}s`;
-        if (key === 'fps') return `${val} fps`;
+        if (key === "duration_s") return `${val}s`;
+        if (key === "fps") return `${val} fps`;
         return String(val);
       };
 
-      const currentRaw = generationParams?.[key] ?? info.field.default ?? '';
+      const currentRaw = generationParams?.[key] ?? info.field.default ?? "";
       const currentDisplay = formatDisplay(currentRaw);
 
       return (
         <Select
           value={String(currentRaw)}
           onValueChange={(value) => {
-            const val = info.field.type === 'int' ? Number(value) : value;
+            const val = info.field.type === "int" ? Number(value) : value;
             handleParamChange(key, val);
           }}
           disabled={disabled}
@@ -146,7 +147,7 @@ export function PromptControlsRow({
         </Select>
       );
     },
-    [generationParams, handleParamChange]
+    [generationParams, handleParamChange],
   );
 
   const handleModelSelect = useCallback(
@@ -161,7 +162,7 @@ export function PromptControlsRow({
       setSelectedModel(nextModel);
       onModelChange?.(nextModel, previousModel);
     },
-    [isOptimizing, onModelChange, selectedModel, setSelectedModel]
+    [isOptimizing, onModelChange, selectedModel, setSelectedModel],
   );
 
   if (!showVideoPreview) {
@@ -169,22 +170,22 @@ export function PromptControlsRow({
   }
 
   const modelValue =
-    selectedModel && selectedModel.trim() ? selectedModel : 'auto';
+    selectedModel && selectedModel.trim() ? selectedModel : "auto";
   const modelLabel =
-    modelValue === 'auto'
-      ? 'Auto'
+    modelValue === "auto"
+      ? "Auto"
       : (modelOptions.find((opt) => opt.id === modelValue)?.label ??
         modelValue);
 
   return (
     <div
-      className={cn('flex flex-nowrap items-center gap-ps-1', className)}
+      className={cn("flex flex-nowrap items-center gap-ps-1", className)}
       aria-label="Prompt controls"
     >
       <Select
         value={modelValue}
         onValueChange={(value) =>
-          handleModelSelect(value === 'auto' ? '' : value)
+          handleModelSelect(value === "auto" ? "" : value)
         }
         disabled={isOptimizing}
       >
@@ -212,23 +213,23 @@ export function PromptControlsRow({
       {aspectRatioInfo &&
         renderDropdown(
           aspectRatioInfo,
-          'aspect_ratio',
-          'Aspect ratio',
+          "aspect_ratio",
+          "Aspect ratio",
           FrameCorners,
-          isOptimizing
+          isOptimizing,
         )}
 
       {durationInfo &&
         renderDropdown(
           durationInfo,
-          'duration_s',
-          'Duration',
+          "duration_s",
+          "Duration",
           Timer,
-          isOptimizing
+          isOptimizing,
         )}
 
       {fpsInfo &&
-        renderDropdown(fpsInfo, 'fps', 'Frame rate', Gauge, isOptimizing)}
+        renderDropdown(fpsInfo, "fps", "Frame rate", Gauge, isOptimizing)}
     </div>
   );
 }

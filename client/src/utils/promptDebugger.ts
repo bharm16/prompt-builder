@@ -25,7 +25,7 @@ interface PromptCapture {
 interface PromptDebugger {
   captureFullPromptData: (
     state: PromptState,
-    fetchSuggestionsForHighlight: unknown
+    fetchSuggestionsForHighlight: unknown,
   ) => Promise<PromptCapture>;
   printReport: (capture: PromptCapture) => void;
   exportToFile: () => void;
@@ -40,10 +40,10 @@ export const promptDebugger: PromptDebugger = {
   async captureFullPromptData(state: PromptState): Promise<PromptCapture> {
     return {
       timestamp: new Date().toISOString(),
-      inputPrompt: state.inputPrompt || '',
-      optimizedPrompt: state.optimizedPrompt || '',
-      displayedPrompt: state.displayedPrompt || '',
-      selectedMode: state.selectedMode || 'video',
+      inputPrompt: state.inputPrompt || "",
+      optimizedPrompt: state.optimizedPrompt || "",
+      displayedPrompt: state.displayedPrompt || "",
+      selectedMode: state.selectedMode || "video",
       highlights: [],
       suggestions: [],
     };
@@ -77,4 +77,3 @@ export const promptDebugger: PromptDebugger = {
 };
 
 export default promptDebugger;
-

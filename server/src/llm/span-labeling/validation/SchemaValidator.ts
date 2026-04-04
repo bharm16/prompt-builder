@@ -1,7 +1,7 @@
-import Ajv, { type ErrorObject, type ValidateFunction } from 'ajv';
-import { readFileSync } from 'fs';
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
+import Ajv, { type ErrorObject, type ValidateFunction } from "ajv";
+import { readFileSync } from "fs";
+import { fileURLToPath } from "url";
+import { dirname, join } from "path";
 
 /**
  * JSON Schema validation for LLM span responses
@@ -15,13 +15,16 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 // Load schema
-const schemaPath = join(__dirname, 'schemas', 'spanResponseSchema.json');
-const schema = JSON.parse(readFileSync(schemaPath, 'utf-8')) as Record<string, unknown>;
+const schemaPath = join(__dirname, "schemas", "spanResponseSchema.json");
+const schema = JSON.parse(readFileSync(schemaPath, "utf-8")) as Record<
+  string,
+  unknown
+>;
 
 // Configure AJV
 const ajv = new Ajv({
   allErrors: true,
-  removeAdditional: 'failing',
+  removeAdditional: "failing",
   useDefaults: true,
 });
 
@@ -30,10 +33,10 @@ const validateResponseSchema: ValidateFunction = ajv.compile(schema);
 const schemaCache = new WeakMap<object, ValidateFunction>();
 
 function normalizeSchema(input: unknown): Record<string, unknown> | null {
-  if (!input || typeof input !== 'object') return null;
+  if (!input || typeof input !== "object") return null;
   const schemaObj = input as Record<string, unknown>;
 
-  if (schemaObj.schema && typeof schemaObj.schema === 'object') {
+  if (schemaObj.schema && typeof schemaObj.schema === "object") {
     return schemaObj.schema as Record<string, unknown>;
   }
 
@@ -49,10 +52,13 @@ function normalizeSchema(input: unknown): Record<string, unknown> | null {
  * @param {Object} data - LLM response to validate
  * @returns {boolean} True if valid, false otherwise
  */
-export function validateSchema(data: unknown, schemaOverride?: Record<string, unknown>): boolean {
+export function validateSchema(
+  data: unknown,
+  schemaOverride?: Record<string, unknown>,
+): boolean {
   if (!schemaOverride) {
     const result = validateResponseSchema(data);
-    return typeof result === 'boolean' ? result : false;
+    return typeof result === "boolean" ? result : false;
   }
 
   let validator = schemaCache.get(schemaOverride as object);
@@ -60,14 +66,14 @@ export function validateSchema(data: unknown, schemaOverride?: Record<string, un
     const normalized = normalizeSchema(schemaOverride);
     if (!normalized) {
       const result = validateResponseSchema(data);
-      return typeof result === 'boolean' ? result : false;
+      return typeof result === "boolean" ? result : false;
     }
     validator = ajv.compile(normalized);
     schemaCache.set(schemaOverride as object, validator);
   }
 
   const result = validator(data);
-  return typeof result === 'boolean' ? result : false;
+  return typeof result === "boolean" ? result : false;
 }
 
 /**
@@ -75,7 +81,9 @@ export function validateSchema(data: unknown, schemaOverride?: Record<string, un
  *
  * @returns {Array} AJV error objects
  */
-export function getSchemaErrors(override?: Record<string, unknown>): ErrorObject[] {
+export function getSchemaErrors(
+  override?: Record<string, unknown>,
+): ErrorObject[] {
   if (!override) {
     return (validateResponseSchema.errors || []) as ErrorObject[];
   }
@@ -98,12 +106,14 @@ export function formatSchemaErrors(override?: Record<string, unknown>): string {
   return errors
     .map((err) => {
       // Handle both old (dataPath) and new (instancePath) AJV versions
-      const path = (err as ErrorObject & { dataPath?: string; instancePath?: string }).dataPath 
-        ?? (err as ErrorObject & { instancePath?: string }).instancePath 
-        ?? '';
-      return `${path} ${err.message ?? 'Unknown error'}`;
+      const path =
+        (err as ErrorObject & { dataPath?: string; instancePath?: string })
+          .dataPath ??
+        (err as ErrorObject & { instancePath?: string }).instancePath ??
+        "";
+      return `${path} ${err.message ?? "Unknown error"}`;
     })
-    .join('; ');
+    .join("; ");
 }
 
 /**
@@ -112,9 +122,14 @@ export function formatSchemaErrors(override?: Record<string, unknown>): string {
  * @param {Object} data - Data to validate
  * @throws {Error} If validation fails
  */
-export function validateSchemaOrThrow(data: unknown, schemaOverride?: Record<string, unknown>): void {
+export function validateSchemaOrThrow(
+  data: unknown,
+  schemaOverride?: Record<string, unknown>,
+): void {
   const valid = validateSchema(data, schemaOverride);
   if (!valid) {
-    throw new Error(`Schema validation failed: ${formatSchemaErrors(schemaOverride)}`);
+    throw new Error(
+      `Schema validation failed: ${formatSchemaErrors(schemaOverride)}`,
+    );
   }
 }

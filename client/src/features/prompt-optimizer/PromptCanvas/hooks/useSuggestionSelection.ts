@@ -1,6 +1,6 @@
-import { useEffect } from 'react';
+import { useEffect } from "react";
 
-import type { PromptCanvasState } from '../types';
+import type { PromptCanvasState } from "../types";
 
 export interface UseSuggestionSelectionOptions {
   selectedSpanId: string | null;
@@ -18,5 +18,4 @@ export function useSuggestionSelection({
       setState({ hasInteracted: true });
     }
   }, [selectedSpanId, hasInteracted, setState]);
-
 }

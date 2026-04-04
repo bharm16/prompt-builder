@@ -16,6 +16,7 @@ Added comprehensive telemetry to verify the zero-shot suggestion engine is activ
 **Log Message:** "Building zero-shot placeholder prompt"
 
 **What to look for:**
+
 ```javascript
 {
   highlightedText: "[lighting]",
@@ -36,6 +37,7 @@ Added comprehensive telemetry to verify the zero-shot suggestion engine is activ
 ```
 
 **What it tells you:**
+
 - ✅ Zero-shot prompt builder is being called
 - ✅ Context enrichment is working (brainstorm, edit history, spans)
 - ✅ Model detection is functioning
@@ -49,6 +51,7 @@ Added comprehensive telemetry to verify the zero-shot suggestion engine is activ
 **Log Message:** "Raw suggestions from Claude"
 
 **What to look for:**
+
 ```javascript
 {
   isPlaceholder: true,
@@ -68,16 +71,19 @@ Added comprehensive telemetry to verify the zero-shot suggestion engine is activ
 ```
 
 **What it tells you:**
+
 - ✅ Zero-shot system is active
 - ✅ No poisonous patterns detected
 - ✅ Suggestions are contextual (not generic)
 
 **⚠️ WARNING LOG:** If poisonous patterns detected:
+
 ```javascript
-"ALERT: Poisonous example patterns detected in zero-shot suggestions!"
+"ALERT: Poisonous example patterns detected in zero-shot suggestions!";
 ```
 
 **Poisonous patterns checked:**
+
 - "specific element detail"
 - "alternative aspect feature"
 - "varied choice showcasing"
@@ -91,6 +97,7 @@ Added comprehensive telemetry to verify the zero-shot suggestion engine is activ
 **Location:** `server/src/services/enhancement/__tests__/zero-shot.manual.test.js`
 
 **How to run:**
+
 ```bash
 # From project root
 node server/src/services/enhancement/__tests__/zero-shot.manual.test.js
@@ -100,6 +107,7 @@ npm test -- zero-shot.manual
 ```
 
 **What it checks:**
+
 1. ✅ Prompt doesn't contain old example JSON
 2. ✅ Prompt contains zero-shot format instruction
 3. ✅ Prompt contains context sections
@@ -107,6 +115,7 @@ npm test -- zero-shot.manual
 5. ✅ Edit history is included (if provided)
 
 **Expected output:**
+
 ```
 🧪 Zero-Shot Verification Test
 ============================================================
@@ -142,12 +151,14 @@ npm test -- zero-shot.manual
 **Look for these log entries:**
 
 1. **At prompt build time:**
+
    ```
    [INFO] Building zero-shot placeholder prompt
      promptingMode: "zero-shot"
    ```
 
 2. **At suggestion generation:**
+
    ```
    [INFO] Raw suggestions from Claude
      zeroShotActive: true
@@ -176,6 +187,7 @@ grep "sampleSuggestions" production.log | head -5
 ```
 
 **Expected:**
+
 - ✅ `zeroShotActive: true` appears in logs
 - ✅ No poison alerts
 - ✅ Sample suggestions are contextual, not generic
@@ -185,26 +197,45 @@ grep "sampleSuggestions" production.log | head -5
 ## What Good vs Bad Looks Like
 
 ### ❌ BAD (Old System with Poison)
+
 ```json
 [
-  {"text": "specific element detail", "category": "Noun Phrases"},
-  {"text": "alternative aspect feature", "category": "Noun Phrases"},
-  {"text": "distinctive", "category": "Single Adjectives"},
-  {"text": "remarkable", "category": "Single Adjectives"}
+  { "text": "specific element detail", "category": "Noun Phrases" },
+  { "text": "alternative aspect feature", "category": "Noun Phrases" },
+  { "text": "distinctive", "category": "Single Adjectives" },
+  { "text": "remarkable", "category": "Single Adjectives" }
 ]
 ```
 
 ### ✅ GOOD (New Zero-Shot System)
+
 ```json
 [
-  {"text": "soft window light from left", "category": "Natural Lighting", "explanation": "Diffused directional light creating gentle shadows"},
-  {"text": "harsh overhead fluorescent", "category": "Artificial Lighting", "explanation": "Clinical institutional feeling with flat illumination"},
-  {"text": "golden hour backlight", "category": "Time-Specific", "explanation": "Warm rim light silhouetting subject"},
-  {"text": "practical neon glow", "category": "Stylized", "explanation": "Colored accent lighting from visible sources"}
+  {
+    "text": "soft window light from left",
+    "category": "Natural Lighting",
+    "explanation": "Diffused directional light creating gentle shadows"
+  },
+  {
+    "text": "harsh overhead fluorescent",
+    "category": "Artificial Lighting",
+    "explanation": "Clinical institutional feeling with flat illumination"
+  },
+  {
+    "text": "golden hour backlight",
+    "category": "Time-Specific",
+    "explanation": "Warm rim light silhouetting subject"
+  },
+  {
+    "text": "practical neon glow",
+    "category": "Stylized",
+    "explanation": "Colored accent lighting from visible sources"
+  }
 ]
 ```
 
 **Key differences:**
+
 - ❌ Generic words → ✅ Specific descriptions
 - ❌ No visual detail → ✅ Camera-ready terminology
 - ❌ Same category → ✅ Diverse categories
@@ -219,6 +250,7 @@ grep "sampleSuggestions" production.log | head -5
 **Problem:** Old code may still be running
 
 **Fix:**
+
 1. Verify `ContextAwareExamples.js` is deleted
 2. Check `SystemPromptBuilder.js` doesn't import it
 3. Restart server to clear any cached modules
@@ -228,11 +260,13 @@ grep "sampleSuggestions" production.log | head -5
 **Problem:** AI is mimicking old patterns somehow
 
 **Possible causes:**
+
 1. Model has been trained on old examples (unlikely)
 2. Prompt leakage from somewhere else
 3. Cache contains old suggestions
 
 **Fix:**
+
 1. Check cache invalidation
 2. Verify no other services generate examples
 3. Review actual prompt being sent to AI
@@ -242,6 +276,7 @@ grep "sampleSuggestions" production.log | head -5
 **Problem:** Context not being enriched properly
 
 **Fix:**
+
 1. Check `contextRichness` values in logs
 2. Verify brainstorm/edit history is being passed
 3. Check span labeling is working
@@ -252,11 +287,13 @@ grep "sampleSuggestions" production.log | head -5
 ## Performance Impact
 
 **Logging overhead:**
+
 - Build-time log: ~1ms (negligible)
 - Poison detection: ~2ms (scanning 12 suggestions)
 - Total impact: < 5ms per request
 
 **Development vs Production:**
+
 - Development: All logs visible
 - Production: Use log level filtering
   - Keep `INFO` for health checks
@@ -279,5 +316,3 @@ grep "sampleSuggestions" production.log | head -5
 **Implementation Complete:** ✅  
 **Verification Tools:** ✅  
 **Ready for Production:** ✅
-
-

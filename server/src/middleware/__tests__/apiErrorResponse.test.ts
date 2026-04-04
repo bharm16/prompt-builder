@@ -1,6 +1,6 @@
-import { describe, expect, it, vi } from 'vitest';
-import type { Request, Response } from 'express';
-import { sendApiError } from '../apiErrorResponse';
+import { describe, expect, it, vi } from "vitest";
+import type { Request, Response } from "express";
+import { sendApiError } from "../apiErrorResponse";
 
 type RequestWithId = Request & { id?: string };
 
@@ -11,33 +11,33 @@ function createResponse(): Response {
   } as unknown as Response;
 }
 
-describe('sendApiError', () => {
-  it('returns status and payload with optional fields omitted', () => {
+describe("sendApiError", () => {
+  it("returns status and payload with optional fields omitted", () => {
     const res = createResponse();
     const req = { id: undefined } as unknown as RequestWithId;
 
-    sendApiError(res, req, 400, { error: 'Bad request' });
+    sendApiError(res, req, 400, { error: "Bad request" });
 
     expect(res.status).toHaveBeenCalledWith(400);
-    expect(res.json).toHaveBeenCalledWith({ error: 'Bad request' });
+    expect(res.json).toHaveBeenCalledWith({ error: "Bad request" });
   });
 
-  it('includes code details and requestId when present', () => {
+  it("includes code details and requestId when present", () => {
     const res = createResponse();
-    const req = { id: 'req-123' } as RequestWithId;
+    const req = { id: "req-123" } as RequestWithId;
 
     sendApiError(res, req, 422, {
-      error: 'Validation failed',
-      code: 'INVALID_REQUEST',
-      details: 'invalid payload',
+      error: "Validation failed",
+      code: "INVALID_REQUEST",
+      details: "invalid payload",
     });
 
     expect(res.status).toHaveBeenCalledWith(422);
     expect(res.json).toHaveBeenCalledWith({
-      error: 'Validation failed',
-      code: 'INVALID_REQUEST',
-      details: 'invalid payload',
-      requestId: 'req-123',
+      error: "Validation failed",
+      code: "INVALID_REQUEST",
+      details: "invalid payload",
+      requestId: "req-123",
     });
   });
 });

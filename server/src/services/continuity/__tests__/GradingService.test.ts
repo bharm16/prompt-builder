@@ -1,11 +1,11 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { promises as fs } from 'node:fs';
-import { GradingService } from '../GradingService';
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { promises as fs } from "node:fs";
+import { GradingService } from "../GradingService";
 
-describe('GradingService', () => {
+describe("GradingService", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
-    vi.stubGlobal('fetch', vi.fn());
+    vi.stubGlobal("fetch", vi.fn());
   });
 
   afterEach(() => {
@@ -13,62 +13,72 @@ describe('GradingService', () => {
     vi.restoreAllMocks();
   });
 
-  it('returns not applied when asset store does not provide a public URL', async () => {
+  it("returns not applied when asset store does not provide a public URL", async () => {
     const service = new GradingService(
       {
         getPublicUrl: vi.fn().mockResolvedValue(null),
         storeFromBuffer: vi.fn(),
       } as never,
-      undefined
+      undefined,
     );
 
-    const result = await service.matchPalette('asset-1', 'https://example.com/ref.png');
+    const result = await service.matchPalette(
+      "asset-1",
+      "https://example.com/ref.png",
+    );
 
     expect(result).toEqual({ applied: false });
   });
 
-  it('returns not applied when video download fails', async () => {
+  it("returns not applied when video download fails", async () => {
     const service = new GradingService(
       {
-        getPublicUrl: vi.fn().mockResolvedValue('https://example.com/video.mp4'),
+        getPublicUrl: vi
+          .fn()
+          .mockResolvedValue("https://example.com/video.mp4"),
         storeFromBuffer: vi.fn(),
       } as never,
-      undefined
+      undefined,
     );
 
-    (global.fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-      ok: false,
-      status: 500,
-      arrayBuffer: async () => new ArrayBuffer(0),
-    });
+    (global.fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
+      {
+        ok: false,
+        status: 500,
+        arrayBuffer: async () => new ArrayBuffer(0),
+      },
+    );
 
-    const result = await service.matchPalette('asset-1', 'https://example.com/ref.png');
+    const result = await service.matchPalette(
+      "asset-1",
+      "https://example.com/ref.png",
+    );
 
     expect(result).toEqual({ applied: false });
   });
 
-  it('returns not applied for image palette matching when storage service is unavailable', async () => {
+  it("returns not applied for image palette matching when storage service is unavailable", async () => {
     const service = new GradingService(
       {
         getPublicUrl: vi.fn(),
         storeFromBuffer: vi.fn(),
       } as never,
-      undefined
+      undefined,
     );
 
     const result = await service.matchImagePalette(
-      'user-1',
-      'https://example.com/source.png',
-      'https://example.com/ref.png'
+      "user-1",
+      "https://example.com/source.png",
+      "https://example.com/ref.png",
     );
 
     expect(result).toEqual({ applied: false });
   });
 
-  it('stores transformed image when image palette matching succeeds', async () => {
+  it("stores transformed image when image palette matching succeeds", async () => {
     const storage = {
       saveFromBuffer: vi.fn().mockResolvedValue({
-        viewUrl: 'https://example.com/stored.png',
+        viewUrl: "https://example.com/stored.png",
       }),
     };
 
@@ -77,41 +87,46 @@ describe('GradingService', () => {
         getPublicUrl: vi.fn(),
         storeFromBuffer: vi.fn(),
       } as never,
-      storage as never
+      storage as never,
     );
 
     const serviceAny = service as unknown as {
       exec: (command: string, args: string[]) => Promise<void>;
     };
 
-    vi.spyOn(serviceAny, 'exec').mockImplementation(async (_command: string, args: string[]) => {
-      const outputPath = args[args.length - 1] as string;
-      await fs.writeFile(outputPath, Buffer.from('graded-image'));
-    });
+    vi.spyOn(serviceAny, "exec").mockImplementation(
+      async (_command: string, args: string[]) => {
+        const outputPath = args[args.length - 1] as string;
+        await fs.writeFile(outputPath, Buffer.from("graded-image"));
+      },
+    );
 
     (global.fetch as unknown as ReturnType<typeof vi.fn>)
       .mockResolvedValueOnce({
         ok: true,
-        arrayBuffer: async () => Buffer.from('source'),
+        arrayBuffer: async () => Buffer.from("source"),
       })
       .mockResolvedValueOnce({
         ok: true,
-        arrayBuffer: async () => Buffer.from('reference'),
+        arrayBuffer: async () => Buffer.from("reference"),
       });
 
     const result = await service.matchImagePalette(
-      'user-1',
-      'https://example.com/source.png',
-      'https://example.com/ref.png'
+      "user-1",
+      "https://example.com/source.png",
+      "https://example.com/ref.png",
     );
 
     expect(storage.saveFromBuffer).toHaveBeenCalledWith(
-      'user-1',
+      "user-1",
       expect.any(Buffer),
-      'preview-image',
-      'image/png',
-      expect.objectContaining({ source: 'continuity-style-transfer' })
+      "preview-image",
+      "image/png",
+      expect.objectContaining({ source: "continuity-style-transfer" }),
     );
-    expect(result).toEqual({ applied: true, imageUrl: 'https://example.com/stored.png' });
+    expect(result).toEqual({
+      applied: true,
+      imageUrl: "https://example.com/stored.png",
+    });
   });
 });

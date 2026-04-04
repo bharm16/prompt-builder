@@ -27,4 +27,3 @@ export interface ResponseMetadata {
   requestId?: string;
   version?: string;
 }
-

@@ -1,9 +1,9 @@
 /**
  * Text Chunking Utilities for Large Prompt Processing
- * 
+ *
  * Splits large texts into processable chunks while preserving sentence boundaries.
  * Enables handling of prompts that exceed LLM token limits.
- * 
+ *
  * CHUNKING STRATEGY:
  * - Split at sentence boundaries to maintain semantic coherence
  * - Track offsets to reconstruct span positions
@@ -11,7 +11,7 @@
  * - Handle overlapping spans at chunk boundaries
  */
 
-import type { SpanLike } from '../types.js';
+import type { SpanLike } from "../types.js";
 
 interface SentenceSlice {
   text: string;
@@ -46,33 +46,39 @@ export class TextChunker {
     this.maxChunkSize = maxChunkSize; // words per chunk
     this.overlapWords = Math.max(0, overlapWords);
   }
-  
+
   /**
    * Split text into chunks at sentence boundaries
    * @param {string} text - Text to chunk
    * @returns {Array<Object>} Array of chunks with offsets
    */
   chunkText(text: unknown): TextChunk[] {
-    if (!text || typeof text !== 'string') {
+    if (!text || typeof text !== "string") {
       return [];
     }
-    
+
     const sentences = this.splitIntoSentences(text);
     if (sentences.length === 0) {
       return [];
     }
 
-    const sentenceEntries: SentenceSliceWithCount[] = sentences.map(sentence => ({
-      ...sentence,
-      wordCount: sentence.text.split(/\s+/).filter(w => w.length > 0).length,
-    }));
+    const sentenceEntries: SentenceSliceWithCount[] = sentences.map(
+      (sentence) => ({
+        ...sentence,
+        wordCount: sentence.text.split(/\s+/).filter((w) => w.length > 0)
+          .length,
+      }),
+    );
 
     const chunks: TextChunk[] = [];
 
     let currentSentences: SentenceSliceWithCount[] = [];
     let currentWordCount = 0;
 
-    const pushChunk = (sentencesForChunk: SentenceSliceWithCount[], wordCount: number): void => {
+    const pushChunk = (
+      sentencesForChunk: SentenceSliceWithCount[],
+      wordCount: number,
+    ): void => {
       if (!sentencesForChunk.length) {
         return;
       }
@@ -91,11 +97,13 @@ export class TextChunker {
         wordCount,
       });
     };
-    
+
     for (const sentence of sentenceEntries) {
       // If adding this sentence exceeds limit, start new chunk
-      if (currentWordCount > 0 &&
-          currentWordCount + sentence.wordCount > this.maxChunkSize) {
+      if (
+        currentWordCount > 0 &&
+        currentWordCount + sentence.wordCount > this.maxChunkSize
+      ) {
         pushChunk(currentSentences, currentWordCount);
 
         const overlap = this.getOverlapSentences(currentSentences);
@@ -106,13 +114,13 @@ export class TextChunker {
       currentSentences.push(sentence);
       currentWordCount += sentence.wordCount;
     }
-    
+
     // Add final chunk
     pushChunk(currentSentences, currentWordCount);
-    
+
     return chunks;
   }
-  
+
   /**
    * Split text into sentences with offset tracking
    * @param {string} text - Text to split
@@ -141,7 +149,9 @@ export class TextChunker {
       }
 
       const isBullet = /^[-*•]\s+/.test(trimmed);
-      const isHeading = /^#{1,6}\s+/.test(trimmed) || (/^\*\*.+\*\*$/.test(trimmed) && trimmed.length > 4);
+      const isHeading =
+        /^#{1,6}\s+/.test(trimmed) ||
+        (/^\*\*.+\*\*$/.test(trimmed) && trimmed.length > 4);
 
       if (isBullet || isHeading) {
         const offsetWithinLine = lineText.indexOf(trimmed);
@@ -164,7 +174,11 @@ export class TextChunker {
         sentences.push({
           text: sentenceText,
           startOffset: lineStart + sentenceMatch.index + offsetWithinLine,
-          endOffset: lineStart + sentenceMatch.index + offsetWithinLine + sentenceText.length,
+          endOffset:
+            lineStart +
+            sentenceMatch.index +
+            offsetWithinLine +
+            sentenceText.length,
         });
         hadSentence = true;
       }
@@ -189,7 +203,7 @@ export class TextChunker {
 
     return sentences;
   }
-  
+
   /**
    * Merge spans from multiple chunks back together
    * Adjusts span positions by chunk offset
@@ -199,12 +213,12 @@ export class TextChunker {
   mergeChunkedSpans(chunkResults: ChunkResult[]): SpanLike[] {
     const mergedSpans: SpanLike[] = [];
     const seenSpans = new Set<string>(); // Track to avoid duplicates
-    
+
     for (const { spans, chunkOffset } of chunkResults) {
       if (!Array.isArray(spans)) {
         continue;
       }
-      
+
       for (const span of spans) {
         // Adjust span positions by chunk offset
         const adjustedSpan: SpanLike = {
@@ -212,31 +226,31 @@ export class TextChunker {
           start: span.start + chunkOffset,
           end: span.end + chunkOffset,
         };
-        
+
         // Create unique key to detect duplicates
         const spanKey = `${adjustedSpan.start}-${adjustedSpan.end}-${adjustedSpan.category || adjustedSpan.role}`;
-        
+
         if (!seenSpans.has(spanKey)) {
           mergedSpans.push(adjustedSpan);
           seenSpans.add(spanKey);
         }
       }
     }
-    
+
     // Sort by position for consistent ordering
     return mergedSpans.sort((a, b) => a.start - b.start);
   }
-  
+
   /**
    * Check if text needs chunking
    * @param {string} text - Text to check
    * @returns {boolean} True if text exceeds chunk size
    */
   needsChunking(text: unknown): boolean {
-    if (!text || typeof text !== 'string') {
+    if (!text || typeof text !== "string") {
       return false;
     }
-    const wordCount = text.split(/\s+/).filter(w => w.length > 0).length;
+    const wordCount = text.split(/\s+/).filter((w) => w.length > 0).length;
     return wordCount > this.maxChunkSize;
   }
 
@@ -272,10 +286,10 @@ export class TextChunker {
  * @returns {number} Word count
  */
 export function countWords(text: unknown): number {
-  if (!text || typeof text !== 'string') {
+  if (!text || typeof text !== "string") {
     return 0;
   }
-  return text.split(/\s+/).filter(w => w.length > 0).length;
+  return text.split(/\s+/).filter((w) => w.length > 0).length;
 }
 
 export default TextChunker;

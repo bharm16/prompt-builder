@@ -1,5 +1,8 @@
-import { logger } from '@infrastructure/Logger';
-import type { CreditReconciliationService, ReconciliationRunResult } from './CreditReconciliationService';
+import { logger } from "@infrastructure/Logger";
+import type {
+  CreditReconciliationService,
+  ReconciliationRunResult,
+} from "./CreditReconciliationService";
 
 const DEFAULT_INCREMENTAL_INTERVAL_MS = 60 * 60 * 1000;
 const DEFAULT_FULL_PASS_INTERVAL_MS = 24 * 60 * 60 * 1000;
@@ -12,17 +15,22 @@ interface CreditReconciliationWorkerOptions {
   maxIntervalMs?: number;
   backoffFactor?: number;
   metrics?: {
-    recordAlert?: (alertName: string, metadata?: Record<string, unknown>) => void;
+    recordAlert?: (
+      alertName: string,
+      metadata?: Record<string, unknown>,
+    ) => void;
   };
 }
 
 export class CreditReconciliationWorker {
-  private readonly log = logger.child({ service: 'CreditReconciliationWorker' });
+  private readonly log = logger.child({
+    service: "CreditReconciliationWorker",
+  });
   private readonly incrementalIntervalMs: number;
   private readonly fullPassIntervalMs: number;
   private readonly maxIntervalMs: number;
   private readonly backoffFactor: number;
-  private readonly metrics: CreditReconciliationWorkerOptions['metrics'];
+  private readonly metrics: CreditReconciliationWorkerOptions["metrics"];
   private timer: NodeJS.Timeout | null = null;
   private currentIntervalMs = 0;
   private running = false;
@@ -31,11 +39,13 @@ export class CreditReconciliationWorker {
 
   constructor(
     private readonly reconciliationService: CreditReconciliationService,
-    options: CreditReconciliationWorkerOptions
+    options: CreditReconciliationWorkerOptions,
   ) {
     this.incrementalIntervalMs = options.incrementalIntervalMs;
     this.fullPassIntervalMs = options.fullPassIntervalMs;
-    this.maxIntervalMs = options.maxIntervalMs ?? Math.max(this.incrementalIntervalMs * 6, DEFAULT_MAX_INTERVAL_MS);
+    this.maxIntervalMs =
+      options.maxIntervalMs ??
+      Math.max(this.incrementalIntervalMs * 6, DEFAULT_MAX_INTERVAL_MS);
     this.backoffFactor = options.backoffFactor ?? DEFAULT_BACKOFF_FACTOR;
     this.metrics = options.metrics;
     this.currentIntervalMs = this.incrementalIntervalMs;
@@ -74,16 +84,29 @@ export class CreditReconciliationWorker {
       return;
     }
 
-    const ok = await this.runOnce();
-    if (ok) {
-      this.currentIntervalMs = this.incrementalIntervalMs;
-    } else {
+    try {
+      const ok = await this.runOnce();
+      if (ok) {
+        this.currentIntervalMs = this.incrementalIntervalMs;
+      } else {
+        this.currentIntervalMs = Math.min(
+          this.maxIntervalMs,
+          Math.round(this.currentIntervalMs * this.backoffFactor),
+        );
+      }
+    } catch (error) {
+      this.log.error("Worker loop failed unexpectedly", error as Error);
+      this.metrics?.recordAlert?.("worker_loop_crash", {
+        worker: "CreditReconciliationWorker",
+      });
       this.currentIntervalMs = Math.min(
         this.maxIntervalMs,
-        Math.round(this.currentIntervalMs * this.backoffFactor)
+        Math.round(this.currentIntervalMs * this.backoffFactor),
       );
     }
-    this.scheduleNext(this.currentIntervalMs);
+    if (this.started) {
+      this.scheduleNext(this.currentIntervalMs);
+    }
   }
 
   private async runOnce(): Promise<boolean> {
@@ -93,7 +116,8 @@ export class CreditReconciliationWorker {
 
     this.running = true;
     try {
-      const incrementalResult = await this.reconciliationService.runIncrementalPass();
+      const incrementalResult =
+        await this.reconciliationService.runIncrementalPass();
       this.logRunResult(incrementalResult);
 
       if (Date.now() >= this.nextFullPassAtMs) {
@@ -104,11 +128,18 @@ export class CreditReconciliationWorker {
 
       return true;
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      this.log.error('Credit reconciliation worker run failed', error as Error, {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      this.log.error(
+        "Credit reconciliation worker run failed",
+        error as Error,
+        {
+          error: errorMessage,
+        },
+      );
+      this.metrics?.recordAlert?.("credit_reconciliation_worker_failure", {
         error: errorMessage,
       });
-      this.metrics?.recordAlert?.('credit_reconciliation_worker_failure', { error: errorMessage });
       return false;
     } finally {
       this.running = false;
@@ -122,11 +153,13 @@ export class CreditReconciliationWorker {
       result.queuedNegativeCorrections === 0 &&
       result.scannedItems === 0
     ) {
-      this.log.debug('Credit reconciliation run completed with no work', { scope: result.scope });
+      this.log.debug("Credit reconciliation run completed with no work", {
+        scope: result.scope,
+      });
       return;
     }
 
-    this.log.info('Credit reconciliation run completed', {
+    this.log.info("Credit reconciliation run completed", {
       scope: result.scope,
       scannedItems: result.scannedItems,
       processedUsers: result.processedUsers,
@@ -147,9 +180,14 @@ interface ReconciliationConfig {
 
 export function createCreditReconciliationWorker(
   reconciliationService: CreditReconciliationService,
-  metrics: {
-    recordAlert?: (alertName: string, metadata?: Record<string, unknown>) => void;
-  } | undefined,
+  metrics:
+    | {
+        recordAlert?: (
+          alertName: string,
+          metadata?: Record<string, unknown>,
+        ) => void;
+      }
+    | undefined,
   config: ReconciliationConfig,
 ): CreditReconciliationWorker | null {
   if (config.disabled) {

@@ -2,33 +2,23 @@
  * Types for PromptCanvas component
  */
 
-import type { OptimizationOptions } from '../types';
-import type { PromptContext } from '@utils/PromptContext/PromptContext';
-import type { CanonicalText } from '@utils/canonicalText';
-import type { HighlightSpan } from '@features/span-highlighting/hooks/useHighlightRendering';
-import type { SpanLabelingResult } from '@features/span-highlighting/hooks/types';
-import type { Mode, WorkspaceUser as User } from '@features/prompt-optimizer/types/domain/workspace';
+import type { OptimizationOptions } from "../types";
+import type { PromptContext } from "@utils/PromptContext/PromptContext";
+import type { CanonicalText } from "@utils/canonicalText";
+import type { HighlightSpan } from "@features/span-highlighting/hooks/useHighlightRendering";
+import type { SpanLabelingResult } from "@features/span-highlighting/hooks/types";
+import type {
+  Mode,
+  WorkspaceUser as User,
+} from "@features/prompt-optimizer/types/domain/workspace";
 import type {
   SuggestionItem,
   SuggestionPayload,
-} from '@features/prompt-optimizer/types/domain/suggestions';
+} from "@features/prompt-optimizer/types/domain/suggestions";
 
-import type { SpanData } from '@features/span-highlighting/hooks/useHighlightSourceSelection';
-import type { CoherenceIssue } from '../components/coherence/useCoherenceAnnotations';
-import type { CoherenceRecommendation } from '@features/prompt-optimizer/types/coherence';
-import type { I2VContext } from '../types/i2v';
-
-export interface SpansData {
-  spans: Array<{
-    start: number;
-    end: number;
-    category: string;
-    confidence: number;
-  }>;
-  meta: Record<string, unknown> | null;
-  source: string;
-  timestamp: number;
-}
+import type { CoherenceIssue } from "../components/coherence/useCoherenceAnnotations";
+import type { CoherenceRecommendation } from "@features/prompt-optimizer/types/coherence";
+import type { I2VContext } from "../types/i2v";
 
 export interface HighlightSnapshot {
   spans: Array<{
@@ -44,13 +34,34 @@ export interface HighlightSnapshot {
   [key: string]: unknown;
 }
 
+/**
+ * Pipeline health status.
+ *
+ * - `idle`       – no labeling requested yet
+ * - `loading`    – first request in-flight, no data yet
+ * - `refreshing` – re-fetching while stale data is still displayed
+ * - `success`    – fresh data, no errors
+ * - `stale`      – showing cached fallback after a network error
+ * - `error`      – labeling failed and no fallback is available
+ */
+export type ParseResultStatus =
+  | "idle"
+  | "loading"
+  | "refreshing"
+  | "success"
+  | "stale"
+  | "error";
+
 export interface ParseResult {
   canonical: CanonicalText;
   spans: HighlightSpan[];
   meta: Record<string, unknown> | null;
-  status: 'idle' | 'loading' | 'success' | 'error';
+  status: ParseResultStatus;
   error: Error | null;
   displayText: string;
+  /** True when the pipeline is serving cached/fallback data after an error.
+   *  UI can use this to show a subtle indicator without blocking interaction. */
+  degraded: boolean;
 }
 
 export interface SpanClickPayload {
@@ -112,7 +123,9 @@ export interface SuggestionsData {
   allLabeledSpans?: HighlightSpan[];
   onRetry?: () => void;
   setSuggestions?: (suggestions: SuggestionItem[], category?: string) => void;
-  onSuggestionClick?: (suggestion: SuggestionItem | string) => void | Promise<void>;
+  onSuggestionClick?: (
+    suggestion: SuggestionItem | string,
+  ) => void | Promise<void>;
   onClose?: () => void;
   responseMetadata?: Record<string, unknown> | null;
   [key: string]: unknown;
@@ -121,7 +134,7 @@ export interface SuggestionsData {
 export interface PromptCanvasState {
   showExportMenu: boolean;
   showLegend: boolean;
-  rightPaneMode: 'refine' | 'preview';
+  rightPaneMode: "refine" | "preview";
   showHighlights: boolean;
   visualLastGeneratedAt: number | null;
   videoLastGeneratedAt: number | null;
@@ -135,15 +148,15 @@ export interface PromptCanvasState {
   hasInteracted: boolean;
   hoveredSpanId: string | null;
   lastSwapTime: number | null;
-  promptState: 'generated' | 'edited' | 'synced';
+  promptState: "generated" | "edited" | "synced";
   generatedTimestamp: number | null;
   justReplaced: { from: string; to: string } | null;
 }
 
 export type PromptCanvasAction =
-  | { type: 'MERGE_STATE'; payload: Partial<PromptCanvasState> }
-  | { type: 'INCREMENT_VISUAL_REQUEST_ID' }
-  | { type: 'INCREMENT_VIDEO_REQUEST_ID' };
+  | { type: "MERGE_STATE"; payload: Partial<PromptCanvasState> }
+  | { type: "INCREMENT_VISUAL_REQUEST_ID" }
+  | { type: "INCREMENT_VIDEO_REQUEST_ID" };
 
 export interface ValidSpan {
   start: number;
@@ -158,7 +171,10 @@ export interface PromptCanvasProps {
   inputPrompt: string;
   onInputPromptChange: (text: string) => void;
   onResetResultsForEditing?: (() => void) | undefined;
-  onReoptimize: (promptToOptimize?: string, options?: OptimizationOptions) => Promise<void>;
+  onReoptimize: (
+    promptToOptimize?: string,
+    options?: OptimizationOptions,
+  ) => Promise<void>;
   displayedPrompt: string | null;
   optimizedPrompt: string;
   previewPrompt?: string | null | undefined;
@@ -171,7 +187,9 @@ export interface PromptCanvasProps {
   onDisplayedPromptChange: (text: string) => void;
   suggestionsData: SuggestionsData | null;
   onFetchSuggestions?: ((payload: SuggestionPayload) => void) | undefined;
-  onSuggestionClick?: ((suggestion: SuggestionItem | string) => void) | undefined;
+  onSuggestionClick?:
+    | ((suggestion: SuggestionItem | string) => void)
+    | undefined;
   onCreateNew: () => void;
   initialHighlights?: HighlightSnapshot | null | undefined;
   initialHighlightsVersion?: number | undefined;
@@ -180,13 +198,10 @@ export interface PromptCanvasProps {
   onRedo?: (() => void) | undefined;
   canUndo?: boolean | undefined;
   canRedo?: boolean | undefined;
-  isDraftReady?: boolean | undefined;
-  isRefining?: boolean | undefined;
   isProcessing?: boolean | undefined;
-  draftSpans?: SpansData | null | undefined;
-  refinedSpans?: SpansData | null | undefined;
+  optimizationResultVersion?: number | undefined;
   coherenceAffectedSpanIds?: Set<string> | undefined;
-  coherenceSpanIssueMap?: Map<string, 'conflict' | 'harmonization'> | undefined;
+  coherenceSpanIssueMap?: Map<string, "conflict" | "harmonization"> | undefined;
 
   // Coherence panel (inline, collapsible)
   coherenceIssues?: CoherenceIssue[] | undefined;
@@ -195,10 +210,9 @@ export interface PromptCanvasProps {
   onToggleCoherencePanelExpanded?: (() => void) | undefined;
   onDismissCoherenceIssue?: ((issueId: string) => void) | undefined;
   onDismissAllCoherenceIssues?: (() => void) | undefined;
-  onApplyCoherenceFix?: ((
-    issueId: string,
-    recommendation: CoherenceRecommendation
-  ) => void) | undefined;
+  onApplyCoherenceFix?:
+    | ((issueId: string, recommendation: CoherenceRecommendation) => void)
+    | undefined;
   onScrollToCoherenceSpan?: ((spanId: string) => void) | undefined;
   i2vContext?: I2VContext | null | undefined;
 }

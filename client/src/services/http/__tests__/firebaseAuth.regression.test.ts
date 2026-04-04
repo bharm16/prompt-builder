@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { mockAuth, mockOnAuthStateChanged } = vi.hoisted(() => ({
   mockAuth: {
@@ -9,24 +9,24 @@ const { mockAuth, mockOnAuthStateChanged } = vi.hoisted(() => ({
   mockOnAuthStateChanged: vi.fn(),
 }));
 
-vi.mock('@/config/firebase', () => ({
+vi.mock("@/config/firebase", () => ({
   auth: mockAuth,
 }));
 
-vi.mock('firebase/auth', () => ({
+vi.mock("firebase/auth", () => ({
   onAuthStateChanged: mockOnAuthStateChanged,
 }));
 
 async function loadFirebaseAuthModule() {
   vi.resetModules();
-  return import('../firebaseAuth');
+  return import("../firebaseAuth");
 }
 
 const originalMode = (import.meta as { env?: { MODE?: string } }).env?.MODE;
 
 const setMode = (mode?: string): void => {
   const env = { ...((import.meta as { env?: { MODE?: string } }).env ?? {}) };
-  if (typeof mode === 'string') {
+  if (typeof mode === "string") {
     env.MODE = mode;
   } else {
     delete env.MODE;
@@ -34,16 +34,16 @@ const setMode = (mode?: string): void => {
   (import.meta as { env?: { MODE?: string } }).env = env;
 };
 
-describe('firebaseAuth regression', () => {
+describe("firebaseAuth regression", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockOnAuthStateChanged.mockImplementation((_auth, onNext) => {
       onNext(mockAuth.currentUser);
       return vi.fn();
     });
-    setMode('development');
+    setMode("development");
     mockAuth.currentUser = {
-      getIdToken: vi.fn().mockResolvedValue('firebase-token-123'),
+      getIdToken: vi.fn().mockResolvedValue("firebase-token-123"),
     };
   });
 
@@ -51,12 +51,12 @@ describe('firebaseAuth regression', () => {
     setMode(originalMode);
   });
 
-  it('includes dev API key fallback when Firebase token is present in development', async () => {
+  it("includes dev API key fallback when Firebase token is present in development", async () => {
     const { buildFirebaseAuthHeaders } = await loadFirebaseAuthModule();
 
     await expect(buildFirebaseAuthHeaders()).resolves.toEqual({
-      'X-Firebase-Token': 'firebase-token-123',
-      'X-API-Key': 'dev-key-12345',
+      "X-Firebase-Token": "firebase-token-123",
+      "X-API-Key": "dev-key-12345",
     });
   });
 });

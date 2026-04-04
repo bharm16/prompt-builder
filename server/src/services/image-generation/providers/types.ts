@@ -3,19 +3,20 @@
  */
 
 export const IMAGE_PREVIEW_PROVIDER_IDS = [
-  'replicate-flux-schnell',
-  'replicate-flux-kontext-fast',
+  "replicate-flux-schnell",
+  "replicate-flux-kontext-fast",
 ] as const;
 
-export type ImagePreviewProviderId = (typeof IMAGE_PREVIEW_PROVIDER_IDS)[number];
+export type ImagePreviewProviderId =
+  (typeof IMAGE_PREVIEW_PROVIDER_IDS)[number];
 
-export type ImagePreviewProviderSelection = ImagePreviewProviderId | 'auto';
+export type ImagePreviewProviderSelection = ImagePreviewProviderId | "auto";
 
 export type ImagePreviewSpeedMode =
-  | 'Lightly Juiced'
-  | 'Juiced'
-  | 'Extra Juiced'
-  | 'Real Time';
+  | "Lightly Juiced"
+  | "Juiced"
+  | "Extra Juiced"
+  | "Real Time";
 
 export interface ImagePreviewRequest {
   prompt: string;

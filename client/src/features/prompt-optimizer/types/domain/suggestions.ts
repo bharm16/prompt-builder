@@ -1,4 +1,4 @@
-import type { HighlightSpan } from '@features/span-highlighting/hooks/useHighlightRendering';
+import type { HighlightSpan } from "@features/span-highlighting/hooks/useHighlightRendering";
 
 export interface SuggestionPayload {
   highlightedText?: string;
@@ -7,7 +7,7 @@ export interface SuggestionPayload {
   range?: Range | null;
   offsets?: { start?: number; end?: number } | null;
   metadata?: Record<string, unknown> | null;
-  trigger?: 'selection' | 'highlight' | 'bento-grid';
+  trigger?: "selection" | "highlight" | "bento-grid";
   allLabeledSpans?: HighlightSpan[];
 }
 

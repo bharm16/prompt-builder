@@ -1,4 +1,4 @@
-import type { Generation } from './generation';
+import type { Generation } from "./generation";
 
 export interface User {
   uid: string;
@@ -9,7 +9,11 @@ export interface User {
   isAnonymous?: boolean;
 }
 
-export type PromptKeyframeSource = 'upload' | 'library' | 'generation' | 'asset';
+export type PromptKeyframeSource =
+  | "upload"
+  | "library"
+  | "generation"
+  | "asset";
 
 export interface PromptKeyframe {
   id?: string;
@@ -23,7 +27,7 @@ export interface PromptKeyframe {
 export interface PromptVersionEdit {
   timestamp: string;
   delta?: number;
-  source?: 'manual' | 'suggestion' | 'unknown';
+  source?: "manual" | "suggestion" | "unknown";
 }
 
 export interface PromptVersionPreview {

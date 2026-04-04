@@ -1,12 +1,15 @@
 /**
  * useEditorContent Hook
- * 
+ *
  * Handles editor content updates and cursor position management.
  * Extracted from PromptCanvas component to improve separation of concerns.
  */
 
-import { useLayoutEffect, type RefObject } from 'react';
-import { getSelectionOffsets, restoreSelectionFromOffsets } from '@features/prompt-optimizer/utils/textSelection';
+import { useLayoutEffect, type RefObject } from "react";
+import {
+  getSelectionOffsets,
+  restoreSelectionFromOffsets,
+} from "@features/prompt-optimizer/utils/textSelection";
 
 export interface UseEditorContentOptions {
   editorRef: RefObject<HTMLElement>;
@@ -29,8 +32,9 @@ export function useEditorContent({
       return;
     }
 
-    const currentText = editorRef.current.innerText || editorRef.current.textContent || '';
-    const newText = editorText ?? '';
+    const currentText =
+      editorRef.current.innerText || editorRef.current.textContent || "";
+    const newText = editorText ?? "";
     if (currentText === newText) {
       return;
     }
@@ -66,7 +70,11 @@ export function useEditorContent({
     try {
       editorRef.current.focus();
       if (savedOffsets) {
-        restoreSelectionFromOffsets(editorRef.current, savedOffsets.start, savedOffsets.end);
+        restoreSelectionFromOffsets(
+          editorRef.current,
+          savedOffsets.start,
+          savedOffsets.end,
+        );
       }
     } catch {
       // Ignore focus restoration errors.

@@ -1,34 +1,118 @@
-import React, { lazy, Suspense, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, Outlet, useNavigate, useParams, useLocation } from 'react-router-dom';
-import { AppShell } from '@components/navigation/AppShell';
-import { ErrorBoundary, FeatureErrorBoundary } from './components/ErrorBoundary/';
-import { ToastProvider } from './components/Toast';
-import { AppShellProvider } from './contexts/AppShellContext';
-import { LoadingDots } from './components/LoadingDots';
-import { GenerationControlsStoreProvider } from './features/prompt-optimizer/context/GenerationControlsStore';
-import { apiClient } from './services/ApiClient';
-import { trackPageView } from './services/analytics';
+import React, { lazy, Suspense, useEffect } from "react";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+  Outlet,
+  useNavigate,
+  useParams,
+  useLocation,
+} from "react-router-dom";
+import { AppShell } from "@components/navigation/AppShell";
+import {
+  ErrorBoundary,
+  FeatureErrorBoundary,
+} from "./components/ErrorBoundary/";
+import { ToastProvider } from "./components/Toast";
+import { AppShellProvider } from "./contexts/AppShellContext";
+import { LoadingDots } from "./components/LoadingDots";
+import { GenerationControlsStoreProvider } from "@features/generation-controls/context/GenerationControlsStore";
+import { apiClient } from "./services/ApiClient";
+import { trackPageView } from "./services/analytics";
 
-const HomePage = lazy(() => import('./pages/HomePage').then((module) => ({ default: module.HomePage })));
-const ProductsPage = lazy(() => import('./pages/ProductsPage').then((module) => ({ default: module.ProductsPage })));
-const PricingPage = lazy(() => import('./pages/PricingPage').then((module) => ({ default: module.PricingPage })));
-const DocsPage = lazy(() => import('./pages/DocsPage').then((module) => ({ default: module.DocsPage })));
-const SignInPage = lazy(() => import('./pages/SignInPage').then((module) => ({ default: module.SignInPage })));
-const SignUpPage = lazy(() => import('./pages/SignUpPage').then((module) => ({ default: module.SignUpPage })));
-const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage').then((module) => ({ default: module.ForgotPasswordPage })));
-const EmailVerificationPage = lazy(() => import('./pages/EmailVerificationPage').then((module) => ({ default: module.EmailVerificationPage })));
-const PasswordResetPage = lazy(() => import('./pages/PasswordResetPage').then((module) => ({ default: module.PasswordResetPage })));
-const AccountPage = lazy(() => import('./pages/AccountPage').then((module) => ({ default: module.AccountPage })));
-const PrivacyPolicyPage = lazy(() => import('./pages/PrivacyPolicyPage').then((module) => ({ default: module.PrivacyPolicyPage })));
-const TermsOfServicePage = lazy(() => import('./pages/TermsOfServicePage').then((module) => ({ default: module.TermsOfServicePage })));
-const ContactSupportPage = lazy(() => import('./pages/ContactSupportPage').then((module) => ({ default: module.ContactSupportPage })));
-const BillingPage = lazy(() => import('./pages/BillingPage').then((module) => ({ default: module.BillingPage })));
-const BillingInvoicesPage = lazy(() => import('./pages/BillingInvoicesPage').then((module) => ({ default: module.BillingInvoicesPage })));
-const HistoryPage = lazy(() => import('./pages/HistoryPage').then((module) => ({ default: module.HistoryPage })));
-const AssetsPage = lazy(() => import('./pages/AssetsPage').then((module) => ({ default: module.AssetsPage })));
-const SharedPrompt = lazy(() => import('./components/SharedPrompt'));
-const MainWorkspace = lazy(() => import('./components/layout/MainWorkspace').then((module) => ({ default: module.MainWorkspace })));
-const NotFoundPage = lazy(() => import('./pages/NotFoundPage').then((module) => ({ default: module.NotFoundPage })));
+// HomePage is eagerly imported — it's tiny (~40 LOC, no heavy deps) and is the
+// marketing landing page, so lazy-loading it just adds a visible blank-shell delay.
+import { HomePage } from "./pages/HomePage";
+const ProductsPage = lazy(() =>
+  import("./pages/ProductsPage").then((module) => ({
+    default: module.ProductsPage,
+  })),
+);
+const PricingPage = lazy(() =>
+  import("./pages/PricingPage").then((module) => ({
+    default: module.PricingPage,
+  })),
+);
+const DocsPage = lazy(() =>
+  import("./pages/DocsPage").then((module) => ({ default: module.DocsPage })),
+);
+const SignInPage = lazy(() =>
+  import("./pages/SignInPage").then((module) => ({
+    default: module.SignInPage,
+  })),
+);
+const SignUpPage = lazy(() =>
+  import("./pages/SignUpPage").then((module) => ({
+    default: module.SignUpPage,
+  })),
+);
+const ForgotPasswordPage = lazy(() =>
+  import("./pages/ForgotPasswordPage").then((module) => ({
+    default: module.ForgotPasswordPage,
+  })),
+);
+const EmailVerificationPage = lazy(() =>
+  import("./pages/EmailVerificationPage").then((module) => ({
+    default: module.EmailVerificationPage,
+  })),
+);
+const PasswordResetPage = lazy(() =>
+  import("./pages/PasswordResetPage").then((module) => ({
+    default: module.PasswordResetPage,
+  })),
+);
+const AccountPage = lazy(() =>
+  import("./pages/AccountPage").then((module) => ({
+    default: module.AccountPage,
+  })),
+);
+const PrivacyPolicyPage = lazy(() =>
+  import("./pages/PrivacyPolicyPage").then((module) => ({
+    default: module.PrivacyPolicyPage,
+  })),
+);
+const TermsOfServicePage = lazy(() =>
+  import("./pages/TermsOfServicePage").then((module) => ({
+    default: module.TermsOfServicePage,
+  })),
+);
+const ContactSupportPage = lazy(() =>
+  import("./pages/ContactSupportPage").then((module) => ({
+    default: module.ContactSupportPage,
+  })),
+);
+const BillingPage = lazy(() =>
+  import("./pages/BillingPage").then((module) => ({
+    default: module.BillingPage,
+  })),
+);
+const BillingInvoicesPage = lazy(() =>
+  import("./pages/BillingInvoicesPage").then((module) => ({
+    default: module.BillingInvoicesPage,
+  })),
+);
+const HistoryPage = lazy(() =>
+  import("./pages/HistoryPage").then((module) => ({
+    default: module.HistoryPage,
+  })),
+);
+const AssetsPage = lazy(() =>
+  import("./pages/AssetsPage").then((module) => ({
+    default: module.AssetsPage,
+  })),
+);
+const SharedPrompt = lazy(() => import("./components/SharedPrompt"));
+const MainWorkspace = lazy(() =>
+  import("./components/layout/MainWorkspace").then((module) => ({
+    default: module.MainWorkspace,
+  })),
+);
+const NotFoundPage = lazy(() =>
+  import("./pages/NotFoundPage").then((module) => ({
+    default: module.NotFoundPage,
+  })),
+);
 
 function RouteFallback(): React.ReactElement {
   return (
@@ -38,10 +122,31 @@ function RouteFallback(): React.ReactElement {
   );
 }
 
+function MarketingFallback(): React.ReactElement {
+  return (
+    <div
+      className="flex min-h-[200px] items-center justify-center"
+      style={{ background: "#131416" }}
+    >
+      <LoadingDots />
+    </div>
+  );
+}
+
 function MarketingShell(): React.ReactElement {
+  const location = useLocation();
+
   return (
     <AppShell>
-      <Outlet />
+      <div
+        key={location.pathname}
+        className="motion-presence-panel ps-animate-fade-in"
+        data-motion-state="entered"
+      >
+        <Suspense fallback={<MarketingFallback />}>
+          <Outlet />
+        </Suspense>
+      </div>
     </AppShell>
   );
 }
@@ -62,11 +167,13 @@ function PromptRedirect(): React.ReactElement {
     let cancelled = false;
     const resolve = async () => {
       if (!uuid) {
-        navigate('/', { replace: true });
+        navigate("/", { replace: true });
         return;
       }
       try {
-        const response = await apiClient.get(`/v2/sessions/by-prompt/${encodeURIComponent(uuid)}`);
+        const response = await apiClient.get(
+          `/v2/sessions/by-prompt/${encodeURIComponent(uuid)}`,
+        );
         const data = (response as { data?: { id: string } }).data;
         if (!cancelled && data?.id) {
           navigate(`/session/${data.id}`, { replace: true });
@@ -76,7 +183,7 @@ function PromptRedirect(): React.ReactElement {
         // fall through
       }
       if (!cancelled) {
-        navigate('/', { replace: true });
+        navigate("/", { replace: true });
       }
     };
     void resolve();
@@ -119,8 +226,14 @@ function AppRoutes(): React.ReactElement {
         <Route path="/contact" element={<ContactSupportPage />} />
         <Route path="/support" element={<Navigate to="/contact" replace />} />
         <Route path="/settings/billing" element={<BillingPage />} />
-        <Route path="/settings/billing/invoices" element={<BillingInvoicesPage />} />
-        <Route path="/billing" element={<Navigate to="/settings/billing" replace />} />
+        <Route
+          path="/settings/billing/invoices"
+          element={<BillingInvoicesPage />}
+        />
+        <Route
+          path="/billing"
+          element={<Navigate to="/settings/billing" replace />}
+        />
         <Route
           path="/share/:uuid"
           element={
@@ -132,18 +245,9 @@ function AppRoutes(): React.ReactElement {
       </Route>
 
       {/* App routes */}
-      <Route
-        path="/"
-        element={<WorkspaceRoute />}
-      />
-      <Route
-        path="/create"
-        element={<Navigate to="/" replace />}
-      />
-      <Route
-        path="/session/:sessionId"
-        element={<WorkspaceRoute />}
-      />
+      <Route path="/" element={<WorkspaceRoute />} />
+      <Route path="/create" element={<Navigate to="/" replace />} />
+      <Route path="/session/:sessionId" element={<WorkspaceRoute />} />
       <Route
         path="/session/:sessionId/studio"
         element={<Navigate to="/session/:sessionId" replace />}
@@ -163,27 +267,23 @@ function AppRoutes(): React.ReactElement {
       <Route
         path="/assets"
         element={
-          <FeatureErrorBoundary featureName="Asset Library">
-            <AssetsPage />
-          </FeatureErrorBoundary>
+          <div
+            className="motion-presence-panel ps-animate-fade-in"
+            data-motion-state="entered"
+          >
+            <FeatureErrorBoundary featureName="Asset Library">
+              <AssetsPage />
+            </FeatureErrorBoundary>
+          </div>
         }
       />
-      <Route
-        path="/continuity"
-        element={<Navigate to="/" replace />}
-      />
+      <Route path="/continuity" element={<Navigate to="/" replace />} />
       <Route
         path="/continuity/:sessionId"
         element={<Navigate to="/session/:sessionId" replace />}
       />
-      <Route
-        path="/consistent"
-        element={<Navigate to="/" replace />}
-      />
-      <Route
-        path="/prompt/:uuid"
-        element={<PromptRedirect />}
-      />
+      <Route path="/consistent" element={<Navigate to="/" replace />} />
+      <Route path="/prompt/:uuid" element={<PromptRedirect />} />
 
       {/* Catch-all 404 — wrapped in MarketingShell for nav/footer */}
       <Route element={<MarketingShell />}>

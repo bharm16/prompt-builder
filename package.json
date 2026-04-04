@@ -18,7 +18,6 @@
     "@sentry/profiling-node": "^10.22.0",
     "@sentry/react": "^10.22.0",
     "@sentry/vite-plugin": "^4.5.0",
-    "@types/three": "^0.182.0",
     "ahocorasick": "^1.0.2",
     "compression": "^1.8.1",
     "compromise": "^14.14.5",
@@ -27,14 +26,12 @@
     "dotenv": "^16.6.1",
     "express": "^4.21.2",
     "express-rate-limit": "^8.1.0",
-    "express-validator": "^7.2.1",
     "file-type": "^21.3.0",
     "firebase": "^12.4.0",
     "firebase-admin": "^13.5.0",
     "gliner": "^0.0.19",
     "helmet": "^8.1.0",
     "ioredis": "^5.8.2",
-    "joi": "^18.0.1",
     "lodash": "^4.17.21",
     "lumaai": "^1.18.2",
     "multer": "^1.4.5-lts.1",
@@ -60,7 +57,9 @@
     "zod": "^4.1.13"
   },
   "overrides": {
+    "_comment_onnxruntime": "Pin to 1.19.2: later versions introduce breaking native binary changes that crash GLiNER model loading at startup. Test before bumping.",
     "onnxruntime-node": "1.19.2",
+    "_comment_transformers": "Force onnxruntime-node 1.19.2 and sharp 0.34.5 inside transformer libs to avoid duplicate native binaries and peer dep conflicts.",
     "@xenova/transformers": {
       "onnxruntime-node": "1.19.2",
       "sharp": "0.34.5"
@@ -69,6 +68,7 @@
       "onnxruntime-node": "1.19.2",
       "sharp": "0.34.5"
     },
+    "_comment_baseline": "Pin to 2.9.18: later versions cause resolution failures in the Vite build pipeline.",
     "baseline-browser-mapping": "2.9.18"
   },
   "devDependencies": {
@@ -123,7 +123,8 @@
     "tailwindcss": "^3.3.6",
     "typescript": "^5.9.3",
     "vite": "^7.1.9",
-    "vitest": "^3.2.4"
+    "vitest": "^3.2.4",
+    "@types/three": "^0.182.0"
   },
   "scripts": {
     "dev": "vite --config config/build/vite.config.ts",
@@ -138,6 +139,8 @@
     "verify-keys": "tsx scripts/verify-api-keys.ts",
     "sync:capabilities": "tsx --tsconfig server/tsconfig.json scripts/sync-capabilities.ts",
     "openapi:generate": "tsx --tsconfig server/tsconfig.json scripts/generate-openapi.ts",
+    "test:optimize-pipeline": "tsx --tsconfig server/tsconfig.json scripts/test-prompt-optimizer-pipeline.ts",
+    "test:enhancement-compare": "tsx --tsconfig server/tsconfig.json scripts/test-enhancement-v1-v2.ts",
     "test:flash": "node scripts/test-gemini-flash-spans.js",
     "highlight-stats": "tsx scripts/get-highlight-stats.ts",
     "highlight-stats:watch": "tsx scripts/get-highlight-stats.ts --watch",
@@ -156,7 +159,6 @@
     "test:integration": "vitest run --config config/test/vitest.integration.config.js",
     "prepare": "bash scripts/install-hooks.sh",
     "test:unit": "vitest run --config config/test/vitest.unit.config.js",
-    "test:unit:legacy": "bash scripts/test-unit-legacy.sh",
     "test:watch": "vitest --config config/test/vitest.unit.config.js",
     "test:ui": "vitest --ui --config config/test/vitest.unit.config.js",
     "test:coverage": "vitest run --coverage --config config/test/vitest.unit.config.js",

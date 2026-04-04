@@ -1,6 +1,7 @@
 # FLUX.1 [schnell] - Complete Comprehensive Documentation
 
 ## Table of Contents
+
 - [Model Overview](#model-overview)
 - [Quick Stats](#quick-stats)
 - [Pricing](#pricing)
@@ -33,21 +34,22 @@
 - **Last Updated:** June 25, 2025, 8:02 p.m.
 
 ### One-Line Description
+
 "The fastest image generation model tailored for local development and personal use"
 
 ## Quick Stats
 
-| Metric | Value |
-|--------|-------|
-| **Total Runs** | 592.7M (highest among fast models) |
-| **Generation Speed** | 0.83 seconds |
-| **Inference Steps** | 1-4 (4 recommended) |
-| **Parameters** | 12 Billion |
-| **Quality Level** | High |
+| Metric               | Value                                    |
+| -------------------- | ---------------------------------------- |
+| **Total Runs**       | 592.7M (highest among fast models)       |
+| **Generation Speed** | 0.83 seconds                             |
+| **Inference Steps**  | 1-4 (4 recommended)                      |
+| **Parameters**       | 12 Billion                               |
+| **Quality Level**    | High                                     |
 | **Prompt Adherence** | Excellent (matches closed-source models) |
-| **Cold Start Time** | Warm (pre-booted) |
-| **Model Status** | Official |
-| **Availability** | Always-on |
+| **Cold Start Time**  | Warm (pre-booted)                        |
+| **Model Status**     | Official                                 |
+| **Availability**     | Always-on                                |
 
 ## Pricing
 
@@ -61,30 +63,35 @@
 ## Key Features
 
 ### 1. Cutting-Edge Output Quality
+
 - Competitive prompt following matching performance of closed-source models
 - State-of-the-art image generation quality at ultra-fast speeds
 - Exceptional balance between speed and visual quality
 - Fine detail preservation despite minimal inference steps
 
 ### 2. Latent Adversarial Diffusion Distillation (ADD)
+
 - Advanced training technique enabling fast generation without quality loss
 - Trained using sophisticated distillation from larger models
 - Can generate high-quality images in only 1-4 inference steps
 - Maintains visual quality even with minimal computational steps
 
 ### 3. Apache 2.0 License
+
 - Open source and freely available
 - Can be used for personal, scientific, and commercial purposes
 - Full legal rights for commercial deployment
 - No restrictions on derivative works
 
 ### 4. Speed Optimization
+
 - Fastest image generation model tailored for local development and personal use
 - Supports multiple inference step configurations (1-4)
 - Optional accelerated inference mode (go_fast flag for FP8 quantization)
 - Sub-1 second generation times
 
 ### 5. Broad Aspect Ratio Support
+
 11 different aspect ratios including:
 
 - **Square:** 1:1
@@ -95,17 +102,20 @@
 - **Ultravertical:** 9:21
 
 ### 6. Output Format Flexibility
+
 - **WebP** (default, best compression) - recommended for web
 - **JPG** (standard compression) - broad compatibility
 - **PNG** (lossless) - for maximum quality
 - Configurable quality (0-100 scale)
 
 ### 7. Reproducible Generation
+
 - Seed parameter for consistent results
 - Deterministic output with same seed
 - Useful for A/B testing and iteration
 
 ### 8. Batch Processing
+
 - Generate up to 4 images simultaneously
 - Parallel processing capability
 - More efficient than sequential generation
@@ -121,6 +131,7 @@
   - Standard inference mode for full precision
 
 **Key Technical Properties:**
+
 - Latent space diffusion (operates in compressed representation)
 - Flow-based matching objective
 - Distilled from larger base models
@@ -131,6 +142,7 @@
 ### Input Parameters
 
 #### `prompt` (required)
+
 - **Type:** String
 - **Description:** Text prompt for image generation
 - **Max Length:** Unlimited (but long prompts may lose clarity)
@@ -139,6 +151,7 @@
 - **Recommendation:** Include style, mood, lighting, composition, and specific details
 
 #### `aspect_ratio` (optional)
+
 - **Type:** String
 - **Default:** `"1:1"`
 - **Options:** `1:1`, `16:9`, `21:9`, `3:2`, `2:3`, `4:5`, `5:4`, `3:4`, `4:3`, `9:16`, `9:21`
@@ -150,6 +163,7 @@
   - `3:2`: Photography, traditional landscape
 
 #### `num_outputs` (optional)
+
 - **Type:** Integer
 - **Range:** 1-4
 - **Default:** 1
@@ -159,6 +173,7 @@
 - **Use Cases:** A/B testing, variations, batch processing
 
 #### `num_inference_steps` (optional)
+
 - **Type:** Integer
 - **Range:** 1-4
 - **Default:** 4
@@ -171,6 +186,7 @@
 - **Description:** Number of denoising diffusion steps
 
 #### `seed` (optional)
+
 - **Type:** Integer
 - **Default:** Random (varies each run)
 - **Range:** Any integer
@@ -181,6 +197,7 @@
   - Systematic variation
 
 #### `output_format` (optional)
+
 - **Type:** String
 - **Default:** `"webp"`
 - **Options:** `webp`, `jpg`, `png`
@@ -192,6 +209,7 @@
 - **Recommendation:** Use WebP for web, PNG for print
 
 #### `output_quality` (optional)
+
 - **Type:** Integer
 - **Range:** 0-100
 - **Default:** 80
@@ -203,6 +221,7 @@
   - `0`: Minimum quality (not recommended)
 
 #### `disable_safety_checker` (optional)
+
 - **Type:** Boolean
 - **Default:** `false`
 - **Website Limitation:** Cannot be disabled when running on the website
@@ -211,6 +230,7 @@
 - **Note:** Safety filtering is applied by default
 
 #### `go_fast` (optional)
+
 - **Type:** Boolean
 - **Default:** `true`
 - **Description:** Run faster predictions with FP8 quantized model
@@ -220,6 +240,7 @@
 - **Recommendation:** Keep true for most use cases
 
 #### `megapixels` (optional)
+
 - **Type:** String
 - **Default:** `"1"`
 - **Options:** `"0.25"`, `"1"`
@@ -234,11 +255,13 @@
 ## API Usage & Integration
 
 ### API Endpoints
+
 - **Replicate API Base URL:** `https://api.replicate.com/v1`
 - **Model Endpoint:** `https://api.replicate.com/v1/predictions`
 - **Model Identifier:** `black-forest-labs/flux-schnell`
 
 ### Authentication
+
 - **Method:** Bearer Token (HTTP Header)
 - **Header:** `Authorization: Bearer $REPLICATE_API_TOKEN`
 - **Token Format:** `r8_*` prefix
@@ -251,26 +274,31 @@
 ### Environment Setup
 
 **Set Token (macOS/Linux):**
+
 ```bash
 export REPLICATE_API_TOKEN=r8_your_token_here
 ```
 
 **Set Token (Windows PowerShell):**
+
 ```powershell
 $env:REPLICATE_API_TOKEN='r8_your_token_here'
 ```
 
 **Verify Token:**
+
 ```bash
 echo $REPLICATE_API_TOKEN  # Should output your token
 ```
 
 ### Request/Response Format
+
 - **Request Method:** POST
 - **Content-Type:** application/json
 - **Response Format:** JSON with prediction details
 
 **Response includes:**
+
 - Prediction ID
 - Status (starting, processing, succeeded, failed)
 - Created timestamp
@@ -281,11 +309,13 @@ echo $REPLICATE_API_TOKEN  # Should output your token
 ## Code Examples
 
 ### Node.js - Quick Start (One-Liner)
+
 ```bash
 npx create-replicate --model=black-forest-labs/flux-schnell
 ```
 
 ### Node.js - Full Example with All Parameters
+
 ```javascript
 import Replicate from "replicate";
 import { writeFile } from "fs/promises";
@@ -298,7 +328,8 @@ async function generateImage() {
   try {
     const output = await replicate.run("black-forest-labs/flux-schnell", {
       input: {
-        prompt: "black forest gateau cake spelling out the words \"FLUX SCHNELL\", tasty, food photography, dynamic shot",
+        prompt:
+          'black forest gateau cake spelling out the words "FLUX SCHNELL", tasty, food photography, dynamic shot',
         aspect_ratio: "1:1",
         num_outputs: 1,
         num_inference_steps: 4,
@@ -331,6 +362,7 @@ generateImage();
 ```
 
 ### Node.js - Streaming Example
+
 ```javascript
 import Replicate from "replicate";
 
@@ -355,11 +387,13 @@ console.log("Images:", completed.output);
 ```
 
 ### Python - Quick Start
+
 ```bash
 pip install replicate
 ```
 
 ### Python - Full Example
+
 ```python
 import replicate
 import requests
@@ -385,7 +419,7 @@ output = client.run(
 print("Generated images:")
 for i, url in enumerate(output):
     print(f"  {i}: {url}")
-    
+
     # Download images
     response = requests.get(url)
     Path(f"output_{i}.webp").write_bytes(response.content)
@@ -393,6 +427,7 @@ for i, url in enumerate(output):
 ```
 
 ### Python - Advanced Example with Error Handling
+
 ```python
 import replicate
 import asyncio
@@ -401,9 +436,9 @@ from pathlib import Path
 
 async def generate_and_save(prompt: str, num_outputs: int = 1):
     """Generate images and save them locally."""
-    
+
     client = replicate.Replicate()
-    
+
     try:
         output = client.run(
             "black-forest-labs/flux-schnell",
@@ -416,18 +451,18 @@ async def generate_and_save(prompt: str, num_outputs: int = 1):
                 "output_quality": 90,
             }
         )
-        
+
         # Download images asynchronously
         async with aiohttp.ClientSession() as session:
             tasks = []
             for i, url in enumerate(output):
                 task = download_image(session, url, f"output_{i}.webp")
                 tasks.append(task)
-            
+
             await asyncio.gather(*tasks)
-        
+
         print(f"Successfully generated and saved {len(output)} image(s)")
-        
+
     except Exception as e:
         print(f"Error: {e}")
 
@@ -446,6 +481,7 @@ asyncio.run(generate_and_save("a beautiful sunset over mountains", num_outputs=2
 ```
 
 ### cURL - Basic Request
+
 ```bash
 curl -X POST https://api.replicate.com/v1/predictions \
   -H "Authorization: Bearer $REPLICATE_API_TOKEN" \
@@ -462,6 +498,7 @@ curl -X POST https://api.replicate.com/v1/predictions \
 ```
 
 ### cURL - Full Example with Polling
+
 ```bash
 #!/bin/bash
 
@@ -485,9 +522,9 @@ echo "Prediction ID: $PREDICTION_ID"
 while true; do
   STATUS=$(curl -s -H "Authorization: Bearer $REPLICATE_API_TOKEN" \
     "https://api.replicate.com/v1/predictions/$PREDICTION_ID" | jq -r '.status')
-  
+
   echo "Status: $STATUS"
-  
+
   if [ "$STATUS" = "succeeded" ]; then
     IMAGES=$(curl -s -H "Authorization: Bearer $REPLICATE_API_TOKEN" \
       "https://api.replicate.com/v1/predictions/$PREDICTION_ID" | jq -r '.output[]')
@@ -498,18 +535,30 @@ while true; do
     echo "Generation failed!"
     break
   fi
-  
+
   sleep 1
 done
 ```
 
 ### TypeScript - Type-Safe Example
+
 ```typescript
 import Replicate from "replicate";
 
 interface FluxInput {
   prompt: string;
-  aspect_ratio?: "1:1" | "16:9" | "21:9" | "3:2" | "2:3" | "4:5" | "5:4" | "3:4" | "4:3" | "9:16" | "9:21";
+  aspect_ratio?:
+    | "1:1"
+    | "16:9"
+    | "21:9"
+    | "3:2"
+    | "2:3"
+    | "4:5"
+    | "5:4"
+    | "3:4"
+    | "4:3"
+    | "9:16"
+    | "9:21";
   num_outputs?: number;
   num_inference_steps?: number;
   seed?: number;
@@ -555,11 +604,13 @@ console.log("Generated images:", images);
 ### Example 1: High-Quality Portrait
 
 **Prompt:**
+
 ```
 A professional portrait of a woman in her 30s with warm lighting, soft focus background, shot on a 50mm lens, fashion photography style, high detail, studio lighting
 ```
 
 **Recommended Settings:**
+
 - `num_inference_steps`: 4 (default)
 - `output_quality`: 90
 - `aspect_ratio`: 3:4 (portrait)
@@ -571,11 +622,13 @@ A professional portrait of a woman in her 30s with warm lighting, soft focus bac
 ### Example 2: Product Photography
 
 **Prompt:**
+
 ```
 A sleek Apple iPhone 15 Pro on a marble table with soft window lighting, professional product photography, shallow depth of field, luxury magazine style photography
 ```
 
 **Recommended Settings:**
+
 - `num_inference_steps`: 4
 - `output_quality`: 95
 - `aspect_ratio`: 1:1 (square for e-commerce)
@@ -587,11 +640,13 @@ A sleek Apple iPhone 15 Pro on a marble table with soft window lighting, profess
 ### Example 3: Landscape Concept Art
 
 **Prompt:**
+
 ```
 Dramatic mountain landscape at sunrise, epic cinematic composition, golden hour light, misty valleys, fantasy art style, vibrant colors, matte painting quality, depth and scale
 ```
 
 **Recommended Settings:**
+
 - `num_inference_steps`: 4
 - `output_quality`: 85
 - `aspect_ratio`: 16:9 (widescreen)
@@ -603,11 +658,13 @@ Dramatic mountain landscape at sunrise, epic cinematic composition, golden hour 
 ### Example 4: UI/UX Mockup
 
 **Prompt:**
+
 ```
 Clean modern app interface for a fitness tracking application, minimalist design, bright colors, iOS style, professional design, high contrast, mobile interface mockup
 ```
 
 **Recommended Settings:**
+
 - `num_inference_steps`: 4
 - `output_quality`: 80
 - `aspect_ratio`: 9:16 (mobile)
@@ -619,11 +676,13 @@ Clean modern app interface for a fitness tracking application, minimalist design
 ### Example 5: Food Photography
 
 **Prompt:**
+
 ```
 A beautifully plated gourmet dish - seared scallops with microgreens and colorful sauce on a white plate, soft natural lighting, macro photography, professional food photography, fine dining presentation
 ```
 
 **Recommended Settings:**
+
 - `num_inference_steps`: 4
 - `output_quality`: 90
 - `aspect_ratio`: 4:5
@@ -635,11 +694,13 @@ A beautifully plated gourmet dish - seared scallops with microgreens and colorfu
 ### Example 6: Character Design
 
 **Prompt:**
+
 ```
 A fantasy character - elf ranger with pointed ears, leather armor, holding a bow, dynamic pose, magical aura around her, fantasy art style, character sheet illustration, detailed costume design
 ```
 
 **Recommended Settings:**
+
 - `num_inference_steps`: 4
 - `output_quality`: 85
 - `aspect_ratio`: 3:4 (portrait)
@@ -651,11 +712,13 @@ A fantasy character - elf ranger with pointed ears, leather armor, holding a bow
 ### Example 7: Interior Design
 
 **Prompt:**
+
 ```
 Modern minimalist living room with concrete walls, large windows with natural light, mid-century modern furniture, warm tones, plants, cozy atmosphere, interior design photography, realistic rendering
 ```
 
 **Recommended Settings:**
+
 - `num_inference_steps`: 4
 - `output_quality`: 85
 - `aspect_ratio`: 16:9
@@ -667,6 +730,7 @@ Modern minimalist living room with concrete walls, large windows with natural li
 ## Implementation & Repositories
 
 ### Official GitHub Repository (Black Forest Labs)
+
 - **URL:** https://github.com/black-forest-labs/flux
 - **Contents:**
   - Reference implementation of FLUX.1 [schnell]
@@ -676,6 +740,7 @@ Modern minimalist living room with concrete walls, large windows with natural li
   - Research documentation
 
 ### Replicate Cog Implementation
+
 - **URL:** https://github.com/replicate/cog-flux
 - **Purpose:** Cog inference wrapper for FLUX models on Replicate
 - **Contents:**
@@ -685,6 +750,7 @@ Modern minimalist living room with concrete walls, large windows with natural li
   - Documentation
 
 ### Model Weights
+
 - **URL:** https://huggingface.co/black-forest-labs/FLUX.1-schnell
 - **Provider:** Hugging Face Model Hub
 - **Format:** Diffusers-compatible weights
@@ -696,6 +762,7 @@ Modern minimalist living room with concrete walls, large windows with natural li
   - Research
 
 ### ComfyUI Support
+
 - **URL:** https://github.com/comfyanonymous/ComfyUI
 - **Compatibility:** FLUX.1 [schnell] available as node
 - **Interface:** Node-based visual workflow
@@ -708,14 +775,14 @@ Modern minimalist living room with concrete walls, large windows with natural li
 
 ### Speed Performance
 
-| Metric | Value |
-|--------|-------|
-| **Typical Generation Time** | 0.83 seconds |
-| **Time for 2 Images** | ~1.66 seconds |
-| **Time for 3 Images** | ~2.49 seconds |
-| **Time for 4 Images** | ~3.32 seconds |
-| **Cold Start** | None (warm/always-on) |
-| **Inference Steps** | 1-4 (4 recommended) |
+| Metric                      | Value                 |
+| --------------------------- | --------------------- |
+| **Typical Generation Time** | 0.83 seconds          |
+| **Time for 2 Images**       | ~1.66 seconds         |
+| **Time for 3 Images**       | ~2.49 seconds         |
+| **Time for 4 Images**       | ~3.32 seconds         |
+| **Cold Start**              | None (warm/always-on) |
+| **Inference Steps**         | 1-4 (4 recommended)   |
 
 ### Quality Performance
 
@@ -780,48 +847,56 @@ Modern minimalist living room with concrete walls, large windows with natural li
 The model and its derivatives may NOT be used for:
 
 ### 1. **Illegal Activity**
+
 - Violating national, federal, state, local, or international law
 - Facilitating unlawful conduct
 - Breaking any applicable regulations
 - Creating content for illegal purposes
 
 ### 2. **Harm to Minors**
+
 - Exploiting, harming, or attempting to harm minors in any way
 - Sexual content involving minors (any age)
 - Child endangerment or abuse material
 - Content that endangers children's safety or wellbeing
 
 ### 3. **Misinformation & Disinformation**
+
 - Generating or disseminating verifiably false information
 - Content intended to cause harm through deception
 - False impersonation or identity fraud
 - Deepfakes used for deception (unless clearly labeled)
 
 ### 4. **Privacy Violations**
+
 - Generating or disseminating personally identifiable information (PII)
 - Content that could be used to harm individuals
 - Privacy breaches or invasion of privacy
 - Unauthorized use of real people's likenesses
 
 ### 5. **Harassment & Violence**
+
 - Harassing, abusing, threatening, stalking, or bullying individuals/groups
 - Incitement to violence or harm
 - Hate speech or discriminatory content
 - Content promoting violence against any group
 
 ### 6. **Non-Consensual Content**
+
 - Creating non-consensual nudity
 - Deepfake pornography without consent
 - Illegal pornographic content
 - Sexual content without consent of all parties depicted
 
 ### 7. **Autonomous Decision-Making**
+
 - Fully automated decision making with legal consequences
 - Systems that impact individual rights without human review
 - Automated hiring/firing decisions
 - Legal determinations without human oversight
 
 ### 8. **Disinformation Campaigns**
+
 - Generating or facilitating large-scale disinformation
 - Coordinated manipulation campaigns
 - Election interference or manipulation
@@ -830,6 +905,7 @@ The model and its derivatives may NOT be used for:
 ## Training & Fine-Tuning
 
 ### Fine-Tuning Support
+
 - **Availability:** FLUX.1 [schnell] supports fine-tuning
 - **Purpose:** Adapt model to specific domains or styles
 - **Documentation:** https://replicate.com/blog/fine-tune-flux
@@ -840,6 +916,7 @@ The model and its derivatives may NOT be used for:
   - Custom visual language
 
 ### Fine-Tuning Blog Post
+
 - **URL:** http://replicate.com/blog/fine-tune-flux
 - **Contents:**
   - Complete fine-tuning guide
@@ -849,6 +926,7 @@ The model and its derivatives may NOT be used for:
   - Cost and time estimates
 
 ### Training Data
+
 - Trained on high-quality, diverse image-text pairs
 - Distilled from larger base models using ADD method
 - Optimized for fast inference without significant quality loss
@@ -858,36 +936,38 @@ The model and its derivatives may NOT be used for:
 
 ### FLUX.1 Model Variants on Replicate
 
-| Model | Speed | Quality | Use Case | Cost |
-|-------|-------|---------|----------|------|
-| **flux-schnell** | 0.83s ⚡⚡⚡ | High | Fast production | $0.003/img |
-| **flux-dev** | ~8s | Very High | Development, features | Higher |
-| **flux-1.1-pro** | ~10s | Ultra High | Professional production | Higher |
-| **flux-1.1-pro-ultra** | ~15s | Maximum | Quality over speed | Higher |
-| **flux-kontext-pro** | ~10s | High | Text-based editing | Higher |
-| **flux-kontext-max** | ~15s | Ultra High | Professional editing | Higher |
+| Model                  | Speed        | Quality    | Use Case                | Cost       |
+| ---------------------- | ------------ | ---------- | ----------------------- | ---------- |
+| **flux-schnell**       | 0.83s ⚡⚡⚡ | High       | Fast production         | $0.003/img |
+| **flux-dev**           | ~8s          | Very High  | Development, features   | Higher     |
+| **flux-1.1-pro**       | ~10s         | Ultra High | Professional production | Higher     |
+| **flux-1.1-pro-ultra** | ~15s         | Maximum    | Quality over speed      | Higher     |
+| **flux-kontext-pro**   | ~10s         | High       | Text-based editing      | Higher     |
+| **flux-kontext-max**   | ~15s         | Ultra High | Professional editing    | Higher     |
 
 ### Fastest Alternatives (Non-FLUX)
 
-| Model | Speed | Quality | Cost | Best For |
-|-------|-------|---------|------|----------|
-| **flux-schnell** | 0.83s | High | $0.003 | Best overall |
-| **prunaai/p-image** | <1s | Good | $0.005 | Sub-second |
-| **z-image-turbo** | 1.4s | Excellent | $0.0025-0.01 | Text rendering |
-| **imagen-4-fast** | 2.9s | Good | $0.02 | Budget option |
-| **ideogram-v3-turbo** | 6.1s | Excellent | $0.03 | Design work |
+| Model                 | Speed | Quality   | Cost         | Best For       |
+| --------------------- | ----- | --------- | ------------ | -------------- |
+| **flux-schnell**      | 0.83s | High      | $0.003       | Best overall   |
+| **prunaai/p-image**   | <1s   | Good      | $0.005       | Sub-second     |
+| **z-image-turbo**     | 1.4s  | Excellent | $0.0025-0.01 | Text rendering |
+| **imagen-4-fast**     | 2.9s  | Good      | $0.02        | Budget option  |
+| **ideogram-v3-turbo** | 6.1s  | Excellent | $0.03        | Design work    |
 
 ## External Resources
 
 ### Official Documentation & Links
 
 **Black Forest Labs Official:**
+
 - Announcement: https://blackforestlabs.ai/announcing-black-forest-labs/
 - License: https://github.com/black-forest-labs/flux/blob/main/model_licenses/LICENSE-FLUX1-schnell
 - GitHub: https://github.com/black-forest-labs/flux
 - Model Weights: https://huggingface.co/black-forest-labs/FLUX.1-schnell
 
 **Replicate Official:**
+
 - Model Page: https://replicate.com/black-forest-labs/flux-schnell
 - Playground: https://replicate.com/black-forest-labs/flux-schnell
 - API Documentation: https://replicate.com/black-forest-labs/flux-schnell/api
@@ -898,12 +978,14 @@ The model and its derivatives may NOT be used for:
 - Model Status: https://replicatestatus.com
 
 **Developer Tools:**
+
 - ComfyUI: https://github.com/comfyanonymous/ComfyUI
 - Replicate Node.js: https://github.com/replicate/replicate-javascript
 - Replicate Python: https://github.com/replicate/replicate-python
 - Replicate Docs: https://replicate.com/docs
 
 ### API Schema & Reference
+
 - **Schema Details:** https://replicate.com/black-forest-labs/flux-schnell/api/schema
 - **API Reference:** https://replicate.com/black-forest-labs/flux-schnell/api/api-reference
 - **Learn More:** https://replicate.com/black-forest-labs/flux-schnell/api/learn-more
@@ -913,6 +995,7 @@ The model and its derivatives may NOT be used for:
 ### For Best Results
 
 #### 1. **Prompt Techniques**
+
 - **Use Detailed Descriptions:** "A woman" → "A woman in her 30s with warm lighting, soft focus background"
 - **Include Style Keywords:** photorealistic, oil painting, digital art, cinematic, watercolor
 - **Mention Lighting:** golden hour, studio lighting, soft natural light, dramatic shadows
@@ -921,22 +1004,25 @@ The model and its derivatives may NOT be used for:
 - **Example:** "A serene landscape at sunset, golden hour light, mountain peaks, mist in valleys, vibrant orange and purple sky, matte painting quality, epic composition"
 
 #### 2. **Inference Steps Strategy**
+
 - **4 steps (default):** Recommended for best quality/speed balance
 - **3 steps:** Still good quality, slightly faster
 - **2 steps:** Decent quality, noticeably faster, good for drafting
 - **1 step:** Fastest but lowest quality, use for rapid prototyping only
 
 #### 3. **Aspect Ratio Selection**
-| Aspect Ratio | Use Case | Examples |
-|--------------|----------|----------|
-| **1:1** | General purpose, social media, square layouts | Instagram, Twitter, Product images |
-| **16:9** | Widescreen, cinematic, desktop backgrounds | Movies, YouTube, Desktop |
-| **9:16** | Mobile, vertical video, portraits | TikTok, Instagram Stories, Mobile apps |
-| **3:2** | Photography, landscape | Professional photos |
-| **4:5** | Portrait, Fashion | Instagram posts, Fashion |
-| **21:9** | Ultrawide, panoramic | Gaming, Ultra-wide monitors |
+
+| Aspect Ratio | Use Case                                      | Examples                               |
+| ------------ | --------------------------------------------- | -------------------------------------- |
+| **1:1**      | General purpose, social media, square layouts | Instagram, Twitter, Product images     |
+| **16:9**     | Widescreen, cinematic, desktop backgrounds    | Movies, YouTube, Desktop               |
+| **9:16**     | Mobile, vertical video, portraits             | TikTok, Instagram Stories, Mobile apps |
+| **3:2**      | Photography, landscape                        | Professional photos                    |
+| **4:5**      | Portrait, Fashion                             | Instagram posts, Fashion               |
+| **21:9**     | Ultrawide, panoramic                          | Gaming, Ultra-wide monitors            |
 
 #### 4. **Output Quality Settings**
+
 - **80 (default):** Good balance for most uses
 - **90-100:** Professional, print-quality, archival
 - **70:** Acceptable for web use, smaller files
@@ -944,6 +1030,7 @@ The model and its derivatives may NOT be used for:
 - **Below 50:** Not recommended
 
 #### 5. **Batch Generation Strategy**
+
 ```
 For A/B Testing:
 - Generate 2-4 variations of same prompt
@@ -958,13 +1045,14 @@ For Rapid Iteration:
 ```
 
 #### 6. **Seed Usage for Reproducibility**
+
 ```javascript
 // First generation with seed
 const output1 = await replicate.run("black-forest-labs/flux-schnell", {
   input: {
     prompt: "a beautiful landscape",
     seed: 42,
-  }
+  },
 });
 
 // Same prompt, same seed = identical image
@@ -972,7 +1060,7 @@ const output2 = await replicate.run("black-forest-labs/flux-schnell", {
   input: {
     prompt: "a beautiful landscape",
     seed: 42,
-  }
+  },
 });
 
 // Same seed, different prompt = similar style
@@ -980,13 +1068,14 @@ const output3 = await replicate.run("black-forest-labs/flux-schnell", {
   input: {
     prompt: "a different landscape",
     seed: 42, // Similar composition/lighting
-  }
+  },
 });
 ```
 
 ### API Best Practices
 
 #### 1. **Error Handling**
+
 ```python
 import replicate
 import time
@@ -1008,6 +1097,7 @@ def generate_with_retry(prompt, max_retries=3):
 ```
 
 #### 2. **Cost Optimization**
+
 - Generate multiple images in parallel (num_outputs: 2-4)
 - Use WebP format for smaller file sizes
 - Cache results for repeated prompts
@@ -1015,6 +1105,7 @@ def generate_with_retry(prompt, max_retries=3):
 - Batch process requests during off-peak hours
 
 #### 3. **Production Deployment**
+
 ```python
 # Use async for high-volume generation
 import asyncio
@@ -1023,14 +1114,14 @@ import replicate
 async def batch_generate(prompts: list, max_concurrent=5):
     """Generate multiple images with rate limiting."""
     semaphore = asyncio.Semaphore(max_concurrent)
-    
+
     async def generate_one(prompt):
         async with semaphore:
             return await replicate.async_run(
                 "black-forest-labs/flux-schnell",
                 input={"prompt": prompt}
             )
-    
+
     tasks = [generate_one(prompt) for prompt in prompts]
     return await asyncio.gather(*tasks)
 
@@ -1043,6 +1134,7 @@ results = asyncio.run(batch_generate([
 ```
 
 #### 4. **Monitoring & Logging**
+
 ```python
 import logging
 import replicate
@@ -1053,7 +1145,7 @@ logger = logging.getLogger(__name__)
 def generate_with_logging(prompt):
     logger.info(f"Starting generation: {prompt}")
     start = time.time()
-    
+
     try:
         output = replicate.run(
             "black-forest-labs/flux-schnell",
@@ -1070,6 +1162,7 @@ def generate_with_logging(prompt):
 ## Status & Support
 
 ### Model Status
+
 - **Current Status:** Official, Always-On
 - **Availability:** 99.9%+ uptime SLA
 - **Support Level:** Full production support
@@ -1077,10 +1170,12 @@ def generate_with_logging(prompt):
 - **Last Updated:** June 25, 2025
 
 ### Support Channels
+
 - **Email:** support@replicate.com
 - **Status Page:** https://replicatestatus.com
 - **Documentation:** https://replicate.com/docs
 - **GitHub Issues:** https://github.com/black-forest-labs/flux/issues
 
 ### Version History
+
 - **v1 Released:** July 30, 2024

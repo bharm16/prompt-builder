@@ -1,15 +1,15 @@
-import { act, renderHook } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { act, renderHook } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { mockCalculateEffectiveDebounce } = vi.hoisted(() => ({
   mockCalculateEffectiveDebounce: vi.fn(),
 }));
 
-vi.mock('../../utils/spanLabelingScheduler.ts', () => ({
+vi.mock("../../utils/spanLabelingScheduler.ts", () => ({
   calculateEffectiveDebounce: mockCalculateEffectiveDebounce,
 }));
 
-import { useAsyncScheduler } from '../useAsyncScheduler';
+import { useAsyncScheduler } from "../useAsyncScheduler";
 
 function createDeferred<T>() {
   let resolve!: (value: T) => void;
@@ -21,15 +21,20 @@ function createDeferred<T>() {
   return { promise, resolve, reject };
 }
 
-describe('useAsyncScheduler', () => {
+describe("useAsyncScheduler", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.clearAllMocks();
     if (!performance.mark) {
-      (performance as unknown as { mark: (name: string) => void }).mark = vi.fn();
+      (performance as unknown as { mark: (name: string) => void }).mark =
+        vi.fn();
     }
     if (!performance.measure) {
-      (performance as unknown as { measure: (name: string, start: string, end: string) => void }).measure = vi.fn();
+      (
+        performance as unknown as {
+          measure: (name: string, start: string, end: string) => void;
+        }
+      ).measure = vi.fn();
     }
   });
 
@@ -37,7 +42,7 @@ describe('useAsyncScheduler', () => {
     vi.useRealTimers();
   });
 
-  it('schedules execution using calculated debounce delay', async () => {
+  it("schedules execution using calculated debounce delay", async () => {
     mockCalculateEffectiveDebounce.mockReturnValue(200);
 
     const onExecute = vi.fn().mockResolvedValue({ ok: true });
@@ -46,13 +51,18 @@ describe('useAsyncScheduler', () => {
 
     const { result } = renderHook(() =>
       useAsyncScheduler(
-        { enabled: true, debounceMs: 300, useSmartDebounce: true, immediate: false },
-        { onExecute, onSuccess, onLoadingState }
-      )
+        {
+          enabled: true,
+          debounceMs: 300,
+          useSmartDebounce: true,
+          immediate: false,
+        },
+        { onExecute, onSuccess, onLoadingState },
+      ),
     );
 
     act(() => {
-      result.current.schedule({ text: 'hello world' });
+      result.current.schedule({ text: "hello world" });
     });
 
     expect(onLoadingState).toHaveBeenCalledWith(false);
@@ -69,27 +79,37 @@ describe('useAsyncScheduler', () => {
     });
 
     expect(onExecute).toHaveBeenCalledTimes(1);
-    expect(onSuccess).toHaveBeenCalledWith({ ok: true }, { text: 'hello world' });
+    expect(onSuccess).toHaveBeenCalledWith(
+      { ok: true },
+      { text: "hello world" },
+    );
   });
 
-  it('cancelPending clears queued debounce and aborts active controller', async () => {
+  it("cancelPending clears queued debounce and aborts active controller", async () => {
     mockCalculateEffectiveDebounce.mockReturnValue(0);
 
     let observedSignal: AbortSignal | undefined;
-    const onExecute = vi.fn().mockImplementation(async (_payload, signal: AbortSignal) => {
-      observedSignal = signal;
-      return new Promise(() => undefined);
-    });
+    const onExecute = vi
+      .fn()
+      .mockImplementation(async (_payload, signal: AbortSignal) => {
+        observedSignal = signal;
+        return new Promise(() => undefined);
+      });
 
     const { result } = renderHook(() =>
       useAsyncScheduler(
-        { enabled: true, debounceMs: 0, useSmartDebounce: false, immediate: true },
-        { onExecute }
-      )
+        {
+          enabled: true,
+          debounceMs: 0,
+          useSmartDebounce: false,
+          immediate: true,
+        },
+        { onExecute },
+      ),
     );
 
     act(() => {
-      result.current.schedule({ text: 'long running' }, true);
+      result.current.schedule({ text: "long running" }, true);
     });
 
     expect(onExecute).toHaveBeenCalledTimes(1);
@@ -102,7 +122,7 @@ describe('useAsyncScheduler', () => {
     expect(observedSignal?.aborted).toBe(true);
   });
 
-  it('suppresses stale request results when a newer request is scheduled', async () => {
+  it("suppresses stale request results when a newer request is scheduled", async () => {
     mockCalculateEffectiveDebounce.mockReturnValue(0);
 
     const first = createDeferred<{ id: number }>();
@@ -115,14 +135,19 @@ describe('useAsyncScheduler', () => {
 
     const { result } = renderHook(() =>
       useAsyncScheduler(
-        { enabled: true, debounceMs: 0, useSmartDebounce: false, immediate: true },
-        { onExecute, onSuccess }
-      )
+        {
+          enabled: true,
+          debounceMs: 0,
+          useSmartDebounce: false,
+          immediate: true,
+        },
+        { onExecute, onSuccess },
+      ),
     );
 
     act(() => {
-      result.current.schedule({ text: 'first' }, true);
-      result.current.schedule({ text: 'second' }, true);
+      result.current.schedule({ text: "first" }, true);
+      result.current.schedule({ text: "second" }, true);
     });
 
     await act(async () => {
@@ -130,7 +155,7 @@ describe('useAsyncScheduler', () => {
       await Promise.resolve();
     });
 
-    expect(onSuccess).not.toHaveBeenCalledWith({ id: 1 }, { text: 'first' });
+    expect(onSuccess).not.toHaveBeenCalledWith({ id: 1 }, { text: "first" });
 
     await act(async () => {
       second.resolve({ id: 2 });
@@ -138,29 +163,38 @@ describe('useAsyncScheduler', () => {
     });
 
     expect(onSuccess).toHaveBeenCalledTimes(1);
-    expect(onSuccess).toHaveBeenCalledWith({ id: 2 }, { text: 'second' });
+    expect(onSuccess).toHaveBeenCalledWith({ id: 2 }, { text: "second" });
   });
 
-  it('calls onError for active non-aborted failures', async () => {
+  it("calls onError for active non-aborted failures", async () => {
     mockCalculateEffectiveDebounce.mockReturnValue(0);
 
     const onError = vi.fn();
-    const onExecute = vi.fn().mockRejectedValue(new Error('network failed'));
+    const onExecute = vi.fn().mockRejectedValue(new Error("network failed"));
 
     const { result } = renderHook(() =>
       useAsyncScheduler(
-        { enabled: true, debounceMs: 0, useSmartDebounce: false, immediate: true },
-        { onExecute, onError }
-      )
+        {
+          enabled: true,
+          debounceMs: 0,
+          useSmartDebounce: false,
+          immediate: true,
+        },
+        { onExecute, onError },
+      ),
     );
 
     await act(async () => {
-      result.current.schedule({ text: 'error path' }, true);
+      result.current.schedule({ text: "error path" }, true);
       await Promise.resolve();
     });
 
     expect(onError).toHaveBeenCalledTimes(1);
-    expect(onError.mock.calls[0]?.[0]).toMatchObject({ message: 'network failed' });
-    expect(onError).toHaveBeenCalledWith(expect.any(Error), { text: 'error path' });
+    expect(onError.mock.calls[0]?.[0]).toMatchObject({
+      message: "network failed",
+    });
+    expect(onError).toHaveBeenCalledWith(expect.any(Error), {
+      text: "error path",
+    });
   });
 });

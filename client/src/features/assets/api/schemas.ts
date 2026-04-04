@@ -1,11 +1,6 @@
-import { z } from 'zod';
+import { z } from "zod";
 
-const AssetTypeSchema = z.enum([
-  'character',
-  'style',
-  'location',
-  'object',
-]);
+const AssetTypeSchema = z.enum(["character", "style", "location", "object"]);
 
 const AssetReferenceImageSchema = z
   .object({
@@ -18,23 +13,23 @@ const AssetReferenceImageSchema = z
     metadata: z
       .object({
         angle: z
-          .enum(['front', 'profile', 'three-quarter', 'back'])
+          .enum(["front", "profile", "three-quarter", "back"])
           .nullable()
           .optional(),
         expression: z
-          .enum(['neutral', 'smiling', 'serious', 'expressive'])
+          .enum(["neutral", "smiling", "serious", "expressive"])
           .nullable()
           .optional(),
         styleType: z
-          .enum(['color-palette', 'mood-board', 'reference-frame'])
+          .enum(["color-palette", "mood-board", "reference-frame"])
           .nullable()
           .optional(),
         timeOfDay: z
-          .enum(['day', 'night', 'golden-hour', 'blue-hour'])
+          .enum(["day", "night", "golden-hour", "blue-hour"])
           .nullable()
           .optional(),
         lighting: z
-          .enum(['natural', 'studio', 'dramatic', 'backlit'])
+          .enum(["natural", "studio", "dramatic", "backlit"])
           .nullable()
           .optional(),
         uploadedAt: z.string(),

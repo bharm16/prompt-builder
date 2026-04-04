@@ -27,12 +27,12 @@ The current `PromptOptimizationService` assumes **creative freedom** - it can fr
 
 In image-to-video (i2v), **the image is ground truth**. The optimizer might currently suggest:
 
-| Optimizer Suggestion | Image Reality | Result |
-|---------------------|---------------|--------|
-| "Wide establishing shot" | Close-up portrait | ❌ Conflict |
-| "Golden hour backlight" | Flat overcast lighting | ❌ Conflict |
-| "A woman in her 30s" | Elderly man | ❌ Conflict |
-| "Camera pans left" | Subject at frame edge | ⚠️ May break framing |
+| Optimizer Suggestion     | Image Reality          | Result               |
+| ------------------------ | ---------------------- | -------------------- |
+| "Wide establishing shot" | Close-up portrait      | ❌ Conflict          |
+| "Golden hour backlight"  | Flat overcast lighting | ❌ Conflict          |
+| "A woman in her 30s"     | Elderly man            | ❌ Conflict          |
+| "Camera pans left"       | Subject at frame edge  | ⚠️ May break framing |
 
 **The prompt should describe motion, not re-describe the scene.**
 
@@ -148,7 +148,7 @@ server/src/services/
 ```typescript
 /**
  * Image Analysis Types
- * 
+ *
  * Defines the visual ground truth extracted from source images for i2v.
  */
 
@@ -159,9 +159,9 @@ export interface SubjectAnalysis {
   /** Primary subject description */
   description: string;
   /** Subject type */
-  type: 'person' | 'animal' | 'object' | 'landscape' | 'abstract' | 'multiple';
+  type: "person" | "animal" | "object" | "landscape" | "abstract" | "multiple";
   /** Position in frame */
-  position: 'center' | 'left' | 'right' | 'top' | 'bottom' | 'distributed';
+  position: "center" | "left" | "right" | "top" | "bottom" | "distributed";
   /** Approximate count if multiple subjects */
   count: number;
   /** Physical attributes (age, gender, clothing, etc.) */
@@ -177,15 +177,35 @@ export interface SubjectAnalysis {
  */
 export interface FramingAnalysis {
   /** Shot type */
-  shotType: 'extreme-close-up' | 'close-up' | 'medium-close-up' | 'medium' | 'medium-wide' | 'wide' | 'extreme-wide';
+  shotType:
+    | "extreme-close-up"
+    | "close-up"
+    | "medium-close-up"
+    | "medium"
+    | "medium-wide"
+    | "wide"
+    | "extreme-wide";
   /** Camera angle */
-  angle: 'eye-level' | 'low-angle' | 'high-angle' | 'birds-eye' | 'worms-eye' | 'dutch' | 'over-shoulder';
+  angle:
+    | "eye-level"
+    | "low-angle"
+    | "high-angle"
+    | "birds-eye"
+    | "worms-eye"
+    | "dutch"
+    | "over-shoulder";
   /** Approximate focal length feel */
-  focalLength: 'wide' | 'normal' | 'telephoto';
+  focalLength: "wide" | "normal" | "telephoto";
   /** Depth of field */
-  depthOfField: 'shallow' | 'moderate' | 'deep';
+  depthOfField: "shallow" | "moderate" | "deep";
   /** Composition rule */
-  composition: 'rule-of-thirds' | 'centered' | 'symmetrical' | 'asymmetrical' | 'leading-lines' | 'framing';
+  composition:
+    | "rule-of-thirds"
+    | "centered"
+    | "symmetrical"
+    | "asymmetrical"
+    | "leading-lines"
+    | "framing";
 }
 
 /**
@@ -193,17 +213,23 @@ export interface FramingAnalysis {
  */
 export interface LightingAnalysis {
   /** Overall lighting quality */
-  quality: 'natural' | 'artificial' | 'mixed' | 'dramatic' | 'flat';
+  quality: "natural" | "artificial" | "mixed" | "dramatic" | "flat";
   /** Primary light direction */
-  direction: 'front' | 'side' | 'back' | 'top' | 'bottom' | 'ambient';
+  direction: "front" | "side" | "back" | "top" | "bottom" | "ambient";
   /** Time of day feel */
-  timeOfDay: 'golden-hour' | 'blue-hour' | 'midday' | 'night' | 'overcast' | 'indoor';
+  timeOfDay:
+    | "golden-hour"
+    | "blue-hour"
+    | "midday"
+    | "night"
+    | "overcast"
+    | "indoor";
   /** Contrast level */
-  contrast: 'high' | 'medium' | 'low';
+  contrast: "high" | "medium" | "low";
   /** Color temperature */
-  temperature: 'warm' | 'neutral' | 'cool';
+  temperature: "warm" | "neutral" | "cool";
   /** Key lighting style */
-  style: 'high-key' | 'low-key' | 'balanced';
+  style: "high-key" | "low-key" | "balanced";
 }
 
 /**
@@ -211,7 +237,7 @@ export interface LightingAnalysis {
  */
 export interface EnvironmentAnalysis {
   /** Setting type */
-  type: 'interior' | 'exterior' | 'studio' | 'abstract';
+  type: "interior" | "exterior" | "studio" | "abstract";
   /** Specific location description */
   location: string;
   /** Weather/atmosphere if applicable */
@@ -219,7 +245,7 @@ export interface EnvironmentAnalysis {
   /** Key environmental elements */
   elements: string[];
   /** Depth/space description */
-  depth: 'shallow' | 'moderate' | 'deep' | 'infinite';
+  depth: "shallow" | "moderate" | "deep" | "infinite";
 }
 
 /**
@@ -229,11 +255,22 @@ export interface ColorStyleAnalysis {
   /** Dominant colors */
   dominantColors: string[];
   /** Color palette mood */
-  paletteMood: 'vibrant' | 'muted' | 'monochromatic' | 'complementary' | 'analogous';
+  paletteMood:
+    | "vibrant"
+    | "muted"
+    | "monochromatic"
+    | "complementary"
+    | "analogous";
   /** Overall visual style */
-  style: 'realistic' | 'cinematic' | 'stylized' | 'vintage' | 'modern' | 'artistic';
+  style:
+    | "realistic"
+    | "cinematic"
+    | "stylized"
+    | "vintage"
+    | "modern"
+    | "artistic";
   /** Texture quality */
-  texture: 'smooth' | 'detailed' | 'grainy' | 'sharp';
+  texture: "smooth" | "detailed" | "grainy" | "sharp";
 }
 
 /**
@@ -249,12 +286,12 @@ export interface MotionCompatibility {
   /** Motion constraints */
   constraints: string[];
   /** Overall motion potential */
-  motionPotential: 'high' | 'medium' | 'low';
+  motionPotential: "high" | "medium" | "low";
 }
 
 export interface CameraMoveCompatibility {
   movement: string;
-  compatibility: 'excellent' | 'good' | 'possible' | 'risky';
+  compatibility: "excellent" | "good" | "possible" | "risky";
   reason: string;
 }
 
@@ -268,20 +305,20 @@ export interface VisualGroundTruth {
   analyzedAt: Date;
   /** Source image URL */
   sourceUrl: string;
-  
+
   /** Extracted analyses */
   subject: SubjectAnalysis;
   framing: FramingAnalysis;
   lighting: LightingAnalysis;
   environment: EnvironmentAnalysis;
   colorStyle: ColorStyleAnalysis;
-  
+
   /** Motion compatibility */
   motion: MotionCompatibility;
-  
+
   /** Raw description for prompt prefix */
   sceneDescription: string;
-  
+
   /** Confidence scores */
   confidence: {
     overall: number;
@@ -295,36 +332,41 @@ export interface VisualGroundTruth {
 /**
  * Categories that are "locked" by the image (cannot be changed)
  */
-export type LockedCategory = 
-  | 'subject.identity'
-  | 'subject.appearance'
-  | 'subject.position'
-  | 'shot.type'
-  | 'shot.angle'
-  | 'lighting.quality'
-  | 'lighting.direction'
-  | 'environment.type'
-  | 'environment.location'
-  | 'color.palette';
+export type LockedCategory =
+  | "subject.identity"
+  | "subject.appearance"
+  | "subject.position"
+  | "shot.type"
+  | "shot.angle"
+  | "lighting.quality"
+  | "lighting.direction"
+  | "environment.type"
+  | "environment.location"
+  | "color.palette";
 
 /**
  * Categories that are "free" (can be influenced by prompt)
  */
 export type FreeCategory =
-  | 'action.movement'
-  | 'action.gesture'
-  | 'camera.movement'
-  | 'camera.speed'
-  | 'subject.expression'
-  | 'subject.emotion'
-  | 'atmosphere.change';
+  | "action.movement"
+  | "action.gesture"
+  | "camera.movement"
+  | "camera.speed"
+  | "subject.expression"
+  | "subject.emotion"
+  | "atmosphere.change";
 
 /**
  * Service configuration
  */
 export interface ImageAnalysisConfig {
   /** Vision model to use */
-  visionModel: 'gpt-4o' | 'gpt-4o-mini' | 'gemini-1.5-pro' | 'gemini-1.5-flash' | 'claude-3-sonnet';
+  visionModel:
+    | "gpt-4o"
+    | "gpt-4o-mini"
+    | "gemini-1.5-pro"
+    | "gemini-1.5-flash"
+    | "claude-3-sonnet";
   /** Cache TTL in seconds */
   cacheTtlSeconds: number;
   /** Max concurrent analyses */
@@ -363,7 +405,7 @@ export interface ImageAnalysisResult {
 
 **File:** `server/src/services/image-analysis/templates/image-analysis-prompt.md`
 
-```markdown
+````markdown
 # Image Analysis for Video Generation
 
 You are an expert cinematographer and visual analyst. Analyze this image to extract precise visual information that will constrain video generation prompts.
@@ -425,6 +467,7 @@ Respond with ONLY valid JSON matching this structure:
   }
 }
 ```
+````
 
 ## Guidelines
 
@@ -453,7 +496,8 @@ Respond with ONLY valid JSON matching this structure:
 5. **Scene Description**: Write as if describing to someone who will recreate this exact frame. Include only what's visible.
 
 Remember: This analysis will constrain video generation. Inaccurate analysis leads to prompt conflicts. When in doubt, be conservative.
-```
+
+````
 
 ### 1.3 Motion Compatibility Prompt
 
@@ -498,11 +542,12 @@ Respond with ONLY valid JSON:
   ],
   "motionPotential": "high|medium|low"
 }
-```
+````
 
 ## Camera Movement Reference
 
 Consider these movements:
+
 - **Pan (left/right)**: Rotation on vertical axis
 - **Tilt (up/down)**: Rotation on horizontal axis
 - **Dolly (in/out)**: Physical movement toward/away
@@ -527,7 +572,8 @@ Consider these movements:
 3. Rule-of-thirds compositions risk cutoff with lateral moves
 4. Shallow DOF limits dolly range
 5. Consider what's revealed by camera movement
-```
+
+````
 
 ### 1.4 ImageAnalysisService Implementation
 
@@ -536,10 +582,10 @@ Consider these movements:
 ```typescript
 /**
  * ImageAnalysisService - Extracts visual ground truth from images
- * 
+ *
  * Uses vision-capable LLMs to analyze source images and extract
  * structured information that constrains i2v prompt optimization.
- * 
+ *
  * PATTERN: PromptOptimizationService (orchestrator)
  * MAX LINES: 400
  */
@@ -731,10 +777,10 @@ export class ImageAnalysisService {
     const systemPrompt = await templateService.getTemplate('image-analysis-prompt');
 
     const isBase64 = request.image.startsWith('data:');
-    
+
     const response = await this.ai.executeWithImage('analyze_image', {
       systemPrompt,
-      ...(isBase64 
+      ...(isBase64
         ? { imageBase64: request.image }
         : { imageUrl: request.image }
       ),
@@ -745,7 +791,7 @@ export class ImageAnalysisService {
 
     // Parse JSON response
     const parsed = this.parseJsonResponse(response.text);
-    
+
     return {
       subject: this.validateSubjectAnalysis(parsed.subject),
       framing: this.validateFramingAnalysis(parsed.framing),
@@ -850,7 +896,7 @@ export class ImageAnalysisService {
       .replace(/```json\s*/g, '')
       .replace(/```\s*/g, '')
       .trim();
-    
+
     try {
       return JSON.parse(cleaned);
     } catch (e) {
@@ -975,7 +1021,7 @@ export class ImageAnalysisService {
     await this.cache.delete(hash);
   }
 }
-```
+````
 
 ### 1.5 Image Analysis Cache
 
@@ -984,23 +1030,26 @@ export class ImageAnalysisService {
 ```typescript
 /**
  * ImageAnalysisCache - Caches image analysis results by hash
- * 
+ *
  * Uses in-memory cache with optional Redis backing.
- * 
+ *
  * PATTERN: Repository pattern
  * MAX LINES: 150
  */
 
-import { logger } from '@infrastructure/Logger';
-import { cacheService } from '@services/cache/CacheService';
-import type { VisualGroundTruth } from '../types';
+import { logger } from "@infrastructure/Logger";
+import { cacheService } from "@services/cache/CacheService";
+import type { VisualGroundTruth } from "../types";
 
-const CACHE_NAMESPACE = 'image-analysis';
+const CACHE_NAMESPACE = "image-analysis";
 
 export class ImageAnalysisCache {
   private readonly ttlSeconds: number;
-  private readonly memoryCache: Map<string, { data: VisualGroundTruth; expiresAt: number }>;
-  private readonly log = logger.child({ service: 'ImageAnalysisCache' });
+  private readonly memoryCache: Map<
+    string,
+    { data: VisualGroundTruth; expiresAt: number }
+  >;
+  private readonly log = logger.child({ service: "ImageAnalysisCache" });
 
   constructor(ttlSeconds: number = 86400) {
     this.ttlSeconds = ttlSeconds;
@@ -1014,14 +1063,14 @@ export class ImageAnalysisCache {
     // Check memory cache first
     const memoryCached = this.memoryCache.get(imageHash);
     if (memoryCached && memoryCached.expiresAt > Date.now()) {
-      this.log.debug('Memory cache hit', { imageHash });
+      this.log.debug("Memory cache hit", { imageHash });
       return memoryCached.data;
     }
 
     // Check Redis cache
     try {
       const redisCached = await cacheService.get<VisualGroundTruth>(
-        `${CACHE_NAMESPACE}:${imageHash}`
+        `${CACHE_NAMESPACE}:${imageHash}`,
       );
       if (redisCached) {
         // Populate memory cache
@@ -1029,11 +1078,14 @@ export class ImageAnalysisCache {
           data: redisCached,
           expiresAt: Date.now() + this.ttlSeconds * 1000,
         });
-        this.log.debug('Redis cache hit', { imageHash });
+        this.log.debug("Redis cache hit", { imageHash });
         return redisCached;
       }
     } catch (error) {
-      this.log.warn('Redis cache read failed', { imageHash, error: (error as Error).message });
+      this.log.warn("Redis cache read failed", {
+        imageHash,
+        error: (error as Error).message,
+      });
     }
 
     return null;
@@ -1051,10 +1103,13 @@ export class ImageAnalysisCache {
       await cacheService.set(
         `${CACHE_NAMESPACE}:${imageHash}`,
         data,
-        this.ttlSeconds
+        this.ttlSeconds,
       );
     } catch (error) {
-      this.log.warn('Redis cache write failed', { imageHash, error: (error as Error).message });
+      this.log.warn("Redis cache write failed", {
+        imageHash,
+        error: (error as Error).message,
+      });
     }
   }
 
@@ -1067,14 +1122,17 @@ export class ImageAnalysisCache {
     try {
       await cacheService.delete(`${CACHE_NAMESPACE}:${imageHash}`);
     } catch (error) {
-      this.log.warn('Redis cache delete failed', { imageHash, error: (error as Error).message });
+      this.log.warn("Redis cache delete failed", {
+        imageHash,
+        error: (error as Error).message,
+      });
     }
   }
 
   private cleanupExpired(): void {
     const now = Date.now();
     let cleaned = 0;
-    
+
     for (const [key, value] of this.memoryCache.entries()) {
       if (value.expiresAt <= now) {
         this.memoryCache.delete(key);
@@ -1083,7 +1141,7 @@ export class ImageAnalysisCache {
     }
 
     if (cleaned > 0) {
-      this.log.debug('Cleaned expired cache entries', { count: cleaned });
+      this.log.debug("Cleaned expired cache entries", { count: cleaned });
     }
   }
 }
@@ -1097,58 +1155,55 @@ export class ImageAnalysisCache {
 
 **File:** `server/src/services/prompt-optimization/strategies/ImageToVideoStrategy.ts`
 
-```typescript
+````typescript
 /**
  * ImageToVideoStrategy - Optimizes prompts constrained by source image
- * 
+ *
  * This strategy receives visual ground truth from ImageAnalysisService
  * and only optimizes motion-related aspects of the prompt, preserving
  * visual elements that are locked by the source image.
- * 
+ *
  * PATTERN: Strategy pattern (VideoStrategy sibling)
  * MAX LINES: 400
  */
 
-import { logger } from '@infrastructure/Logger';
-import type { ILogger } from '@interfaces/ILogger';
-import { templateService } from '../services/TemplateService';
-import type {
-  OptimizationStrategy,
-  StrategyOptimizeParams,
-} from '../types';
+import { logger } from "@infrastructure/Logger";
+import type { ILogger } from "@interfaces/ILogger";
+import { templateService } from "../services/TemplateService";
+import type { OptimizationStrategy, StrategyOptimizeParams } from "../types";
 import type {
   VisualGroundTruth,
   LockedCategory,
   FreeCategory,
-} from '@services/image-analysis/types';
+} from "@services/image-analysis/types";
 
 /**
  * Categories that are locked by the image (cannot be modified)
  */
 const LOCKED_CATEGORIES: LockedCategory[] = [
-  'subject.identity',
-  'subject.appearance',
-  'subject.position',
-  'shot.type',
-  'shot.angle',
-  'lighting.quality',
-  'lighting.direction',
-  'environment.type',
-  'environment.location',
-  'color.palette',
+  "subject.identity",
+  "subject.appearance",
+  "subject.position",
+  "shot.type",
+  "shot.angle",
+  "lighting.quality",
+  "lighting.direction",
+  "environment.type",
+  "environment.location",
+  "color.palette",
 ];
 
 /**
  * Categories that can be freely optimized
  */
 const FREE_CATEGORIES: FreeCategory[] = [
-  'action.movement',
-  'action.gesture',
-  'camera.movement',
-  'camera.speed',
-  'subject.expression',
-  'subject.emotion',
-  'atmosphere.change',
+  "action.movement",
+  "action.gesture",
+  "camera.movement",
+  "camera.speed",
+  "subject.expression",
+  "subject.emotion",
+  "atmosphere.change",
 ];
 
 interface I2VOptimizeParams extends StrategyOptimizeParams {
@@ -1156,12 +1211,12 @@ interface I2VOptimizeParams extends StrategyOptimizeParams {
 }
 
 export class ImageToVideoStrategy implements OptimizationStrategy {
-  private readonly ai: StrategyOptimizeParams['aiService'];
+  private readonly ai: StrategyOptimizeParams["aiService"];
   private readonly log: ILogger;
 
-  constructor(aiService: StrategyOptimizeParams['aiService']) {
+  constructor(aiService: StrategyOptimizeParams["aiService"]) {
     this.ai = aiService;
-    this.log = logger.child({ service: 'ImageToVideoStrategy' });
+    this.log = logger.child({ service: "ImageToVideoStrategy" });
   }
 
   /**
@@ -1171,7 +1226,7 @@ export class ImageToVideoStrategy implements OptimizationStrategy {
     const { prompt, visualGroundTruth, onMetadata, signal } = params;
     const startTime = performance.now();
 
-    this.log.debug('Starting i2v optimization', {
+    this.log.debug("Starting i2v optimization", {
       promptLength: prompt.length,
       confidence: visualGroundTruth.confidence.overall,
     });
@@ -1182,19 +1237,19 @@ export class ImageToVideoStrategy implements OptimizationStrategy {
     // Step 2: Validate motion against ground truth
     const validatedMotion = this.validateMotionAgainstGroundTruth(
       motionIntent,
-      visualGroundTruth
+      visualGroundTruth,
     );
 
     // Step 3: Build i2v prompt
     const optimizedPrompt = this.buildI2VPrompt(
       visualGroundTruth,
-      validatedMotion
+      validatedMotion,
     );
 
     // Step 4: Report locked/free elements via metadata
     if (onMetadata) {
       onMetadata({
-        strategy: 'image-to-video',
+        strategy: "image-to-video",
         lockedElements: this.getLockedElements(visualGroundTruth),
         motionElements: validatedMotion,
         confidence: visualGroundTruth.confidence,
@@ -1202,7 +1257,7 @@ export class ImageToVideoStrategy implements OptimizationStrategy {
       });
     }
 
-    this.log.info('I2V optimization complete', {
+    this.log.info("I2V optimization complete", {
       inputLength: prompt.length,
       outputLength: optimizedPrompt.length,
       motionPotential: visualGroundTruth.motion.motionPotential,
@@ -1216,7 +1271,7 @@ export class ImageToVideoStrategy implements OptimizationStrategy {
    */
   private async extractMotionIntent(
     prompt: string,
-    signal?: AbortSignal
+    signal?: AbortSignal,
   ): Promise<MotionIntent> {
     const systemPrompt = `You are a motion intent extractor for video generation.
 
@@ -1246,7 +1301,7 @@ If no motion is specified, return:
   "duration": "short"
 }`;
 
-    const response = await this.ai.execute('extract_motion', {
+    const response = await this.ai.execute("extract_motion", {
       systemPrompt,
       userPrompt: prompt,
       maxTokens: 500,
@@ -1256,17 +1311,20 @@ If no motion is specified, return:
 
     try {
       const parsed = JSON.parse(
-        response.text.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim()
+        response.text
+          .replace(/```json\s*/g, "")
+          .replace(/```\s*/g, "")
+          .trim(),
       );
       return this.validateMotionIntent(parsed);
     } catch {
       // Default motion if extraction fails
       return {
-        subjectMotion: 'subtle natural movement',
-        cameraMotion: 'static',
-        pacing: 'slow',
+        subjectMotion: "subtle natural movement",
+        cameraMotion: "static",
+        pacing: "slow",
         emotionalArc: null,
-        duration: 'short',
+        duration: "short",
       };
     }
   }
@@ -1274,11 +1332,11 @@ If no motion is specified, return:
   private validateMotionIntent(data: unknown): MotionIntent {
     const d = data as Partial<MotionIntent>;
     return {
-      subjectMotion: d?.subjectMotion || 'subtle movement',
-      cameraMotion: d?.cameraMotion || 'static',
-      pacing: d?.pacing || 'slow',
+      subjectMotion: d?.subjectMotion || "subtle movement",
+      cameraMotion: d?.cameraMotion || "static",
+      pacing: d?.pacing || "slow",
       emotionalArc: d?.emotionalArc || null,
-      duration: d?.duration || 'short',
+      duration: d?.duration || "short",
     };
   }
 
@@ -1287,48 +1345,52 @@ If no motion is specified, return:
    */
   private validateMotionAgainstGroundTruth(
     motion: MotionIntent,
-    groundTruth: VisualGroundTruth
+    groundTruth: VisualGroundTruth,
   ): ValidatedMotion {
     const warnings: string[] = [];
     let validatedCameraMotion = motion.cameraMotion;
 
     // Check camera motion compatibility
-    if (motion.cameraMotion !== 'static') {
+    if (motion.cameraMotion !== "static") {
       const normalizedMotion = motion.cameraMotion.toLowerCase();
       const isIncompatible = groundTruth.motion.incompatibleCameraMoves.some(
-        (move) => normalizedMotion.includes(move.toLowerCase())
+        (move) => normalizedMotion.includes(move.toLowerCase()),
       );
 
       if (isIncompatible) {
         warnings.push(
           `Camera movement "${motion.cameraMotion}" may not work with this framing. ` +
-          `Recommended: ${groundTruth.motion.compatibleCameraMoves
-            .filter((m) => m.compatibility === 'excellent' || m.compatibility === 'good')
-            .map((m) => m.movement)
-            .join(', ')}`
+            `Recommended: ${groundTruth.motion.compatibleCameraMoves
+              .filter(
+                (m) =>
+                  m.compatibility === "excellent" || m.compatibility === "good",
+              )
+              .map((m) => m.movement)
+              .join(", ")}`,
         );
 
         // Suggest alternative
-        const bestAlternative = groundTruth.motion.compatibleCameraMoves
-          .find((m) => m.compatibility === 'excellent');
+        const bestAlternative = groundTruth.motion.compatibleCameraMoves.find(
+          (m) => m.compatibility === "excellent",
+        );
         if (bestAlternative) {
           validatedCameraMotion = bestAlternative.movement;
         } else {
-          validatedCameraMotion = 'subtle movement';
+          validatedCameraMotion = "subtle movement";
         }
       }
     }
 
     // Check subject position constraints
-    if (groundTruth.subject.position !== 'center') {
-      const lateralMoves = ['pan', 'truck', 'arc'];
-      const hasLateralMove = lateralMoves.some(
-        (move) => validatedCameraMotion.toLowerCase().includes(move)
+    if (groundTruth.subject.position !== "center") {
+      const lateralMoves = ["pan", "truck", "arc"];
+      const hasLateralMove = lateralMoves.some((move) =>
+        validatedCameraMotion.toLowerCase().includes(move),
       );
       if (hasLateralMove) {
         warnings.push(
           `Subject is positioned ${groundTruth.subject.position}. ` +
-          `Lateral camera movement may cut off subject.`
+            `Lateral camera movement may cut off subject.`,
         );
       }
     }
@@ -1349,7 +1411,7 @@ If no motion is specified, return:
    */
   private buildI2VPrompt(
     groundTruth: VisualGroundTruth,
-    motion: ValidatedMotion
+    motion: ValidatedMotion,
   ): string {
     const parts: string[] = [];
 
@@ -1357,7 +1419,7 @@ If no motion is specified, return:
     parts.push(groundTruth.sceneDescription);
 
     // Subject motion (primary focus)
-    if (motion.subjectMotion && motion.subjectMotion !== 'static') {
+    if (motion.subjectMotion && motion.subjectMotion !== "static") {
       parts.push(motion.subjectMotion);
     }
 
@@ -1367,15 +1429,15 @@ If no motion is specified, return:
     }
 
     // Camera motion
-    if (motion.cameraMotion && motion.cameraMotion !== 'static') {
+    if (motion.cameraMotion && motion.cameraMotion !== "static") {
       parts.push(`camera ${motion.cameraMotion}`);
     }
 
     // Pacing
     const pacingMap: Record<string, string> = {
-      slow: 'smooth, gradual movement',
-      medium: 'natural pacing',
-      fast: 'dynamic, energetic movement',
+      slow: "smooth, gradual movement",
+      medium: "natural pacing",
+      fast: "dynamic, energetic movement",
     };
     if (motion.pacing && pacingMap[motion.pacing]) {
       parts.push(pacingMap[motion.pacing]);
@@ -1383,16 +1445,16 @@ If no motion is specified, return:
 
     // Technical specs based on ground truth
     const techSpecs: string[] = [];
-    
+
     // Maintain visual continuity
     techSpecs.push(`${groundTruth.lighting.style} lighting`);
     techSpecs.push(`${groundTruth.colorStyle.paletteMood} color palette`);
 
     if (techSpecs.length > 0) {
-      parts.push(techSpecs.join(', '));
+      parts.push(techSpecs.join(", "));
     }
 
-    return parts.join('. ') + '.';
+    return parts.join(". ") + ".";
   }
 
   /**
@@ -1401,27 +1463,27 @@ If no motion is specified, return:
   private getLockedElements(groundTruth: VisualGroundTruth): LockedElement[] {
     return [
       {
-        category: 'subject.identity',
+        category: "subject.identity",
         value: groundTruth.subject.description,
         locked: true,
       },
       {
-        category: 'shot.type',
+        category: "shot.type",
         value: groundTruth.framing.shotType,
         locked: true,
       },
       {
-        category: 'shot.angle',
+        category: "shot.angle",
         value: groundTruth.framing.angle,
         locked: true,
       },
       {
-        category: 'lighting.quality',
+        category: "lighting.quality",
         value: `${groundTruth.lighting.quality} ${groundTruth.lighting.direction} lighting`,
         locked: true,
       },
       {
-        category: 'environment.location',
+        category: "environment.location",
         value: groundTruth.environment.location,
         locked: true,
       },
@@ -1433,9 +1495,9 @@ If no motion is specified, return:
 interface MotionIntent {
   subjectMotion: string;
   cameraMotion: string;
-  pacing: 'slow' | 'medium' | 'fast';
+  pacing: "slow" | "medium" | "fast";
   emotionalArc: string | null;
-  duration: 'short' | 'medium' | 'long';
+  duration: "short" | "medium" | "long";
 }
 
 interface ValidatedMotion extends MotionIntent {
@@ -1448,7 +1510,7 @@ interface LockedElement {
   value: string;
   locked: boolean;
 }
-```
+````
 
 ### 2.2 Modify StrategyFactory
 
@@ -1470,7 +1532,7 @@ getStrategy(mode: OptimizationMode, visualGroundTruth?: VisualGroundTruth): Opti
     }
     return new ImageToVideoStrategy(this.ai);
   }
-  
+
   // ... existing logic
 }
 
@@ -1494,9 +1556,9 @@ private readonly imageAnalysis: ImageAnalysisService | null;
 
 constructor(aiService: AIService, videoPromptService: VideoPromptService | null = null) {
   // ... existing
-  
+
   // Initialize image analysis if vision-capable AI is available
-  this.imageAnalysis = aiService.supportsVision?.() 
+  this.imageAnalysis = aiService.supportsVision?.()
     ? new ImageAnalysisService(aiService)
     : null;
 }
@@ -1504,7 +1566,7 @@ constructor(aiService: AIService, videoPromptService: VideoPromptService | null 
 // Add to OptimizationRequest type
 interface OptimizationRequest {
   // ... existing fields
-  
+
   /** Source image for i2v optimization */
   startImage?: string;
   /** Pre-computed visual ground truth (skips analysis) */
@@ -1514,10 +1576,10 @@ interface OptimizationRequest {
 // Modify optimize method
 async optimize(request: OptimizationRequest): Promise<string> {
   const { prompt, startImage, visualGroundTruth: providedGroundTruth, ...rest } = request;
-  
+
   // Detect i2v mode
   const isI2V = Boolean(startImage || providedGroundTruth);
-  
+
   if (isI2V) {
     return this.optimizeI2V({
       prompt,
@@ -1526,7 +1588,7 @@ async optimize(request: OptimizationRequest): Promise<string> {
       ...rest,
     });
   }
-  
+
   // ... existing t2v optimization logic
 }
 
@@ -1537,32 +1599,32 @@ private async optimizeI2V(request: OptimizationRequest & { startImage?: string }
 
   // Get or compute visual ground truth
   let groundTruth = request.visualGroundTruth;
-  
+
   if (!groundTruth && request.startImage) {
     if (!this.imageAnalysis) {
       throw new Error('Image analysis not available - vision model required');
     }
-    
+
     const analysisResult = await this.imageAnalysis.analyze({
       image: request.startImage,
       includeMotionAnalysis: true,
       signal: request.signal,
     });
-    
+
     if (!analysisResult.success || !analysisResult.groundTruth) {
       throw new Error(`Image analysis failed: ${analysisResult.error}`);
     }
-    
+
     groundTruth = analysisResult.groundTruth;
   }
-  
+
   if (!groundTruth) {
     throw new Error('No visual ground truth available for i2v optimization');
   }
 
   // Get i2v strategy
   const strategy = this.strategyFactory.getStrategy('image-to-video', groundTruth);
-  
+
   // Optimize with ground truth constraints
   const optimizedPrompt = await strategy.optimize({
     prompt: request.prompt,
@@ -1597,64 +1659,68 @@ The enhancement service needs to respect visual ground truth when generating sug
 ```typescript
 /**
  * I2VConstrainedSuggestions - Generates suggestions constrained by visual ground truth
- * 
+ *
  * When a user clicks on a span in an i2v context, this service ensures
  * suggestions don't conflict with the locked visual elements.
- * 
+ *
  * PATTERN: Strategy pattern
  * MAX LINES: 250
  */
 
-import { logger } from '@infrastructure/Logger';
-import type { VisualGroundTruth, LockedCategory, FreeCategory } from '@services/image-analysis/types';
-import type { Suggestion } from './types';
+import { logger } from "@infrastructure/Logger";
+import type {
+  VisualGroundTruth,
+  LockedCategory,
+  FreeCategory,
+} from "@services/image-analysis/types";
+import type { Suggestion } from "./types";
 
 /**
  * Map taxonomy categories to locked/free status
  */
-const CATEGORY_LOCK_MAP: Record<string, 'locked' | 'free' | 'conditional'> = {
+const CATEGORY_LOCK_MAP: Record<string, "locked" | "free" | "conditional"> = {
   // Locked by image
-  'subject.identity': 'locked',
-  'subject.appearance': 'locked',
-  'subject.age': 'locked',
-  'subject.gender': 'locked',
-  'subject.clothing': 'locked',
-  'shot.type': 'locked',
-  'shot.angle': 'locked',
-  'shot.framing': 'locked',
-  'lighting.type': 'locked',
-  'lighting.quality': 'locked',
-  'lighting.direction': 'locked',
-  'environment.setting': 'locked',
-  'environment.location': 'locked',
-  'color.palette': 'locked',
-  'style.visual': 'locked',
-  
+  "subject.identity": "locked",
+  "subject.appearance": "locked",
+  "subject.age": "locked",
+  "subject.gender": "locked",
+  "subject.clothing": "locked",
+  "shot.type": "locked",
+  "shot.angle": "locked",
+  "shot.framing": "locked",
+  "lighting.type": "locked",
+  "lighting.quality": "locked",
+  "lighting.direction": "locked",
+  "environment.setting": "locked",
+  "environment.location": "locked",
+  "color.palette": "locked",
+  "style.visual": "locked",
+
   // Free to modify
-  'action.movement': 'free',
-  'action.gesture': 'free',
-  'action.interaction': 'free',
-  'camera.movement': 'free',
-  'camera.speed': 'free',
-  'subject.expression': 'free',
-  'subject.emotion': 'free',
-  'atmosphere.mood': 'conditional', // Can suggest gradual change
-  'timing.duration': 'free',
-  'timing.pacing': 'free',
-  
+  "action.movement": "free",
+  "action.gesture": "free",
+  "action.interaction": "free",
+  "camera.movement": "free",
+  "camera.speed": "free",
+  "subject.expression": "free",
+  "subject.emotion": "free",
+  "atmosphere.mood": "conditional", // Can suggest gradual change
+  "timing.duration": "free",
+  "timing.pacing": "free",
+
   // Default for unknown categories
-  'default': 'conditional',
+  default: "conditional",
 };
 
 export class I2VConstrainedSuggestions {
-  private readonly log = logger.child({ service: 'I2VConstrainedSuggestions' });
+  private readonly log = logger.child({ service: "I2VConstrainedSuggestions" });
 
   /**
    * Check if a category is locked by the source image
    */
   isCategoryLocked(category: string, groundTruth: VisualGroundTruth): boolean {
-    const status = CATEGORY_LOCK_MAP[category] || CATEGORY_LOCK_MAP['default'];
-    return status === 'locked';
+    const status = CATEGORY_LOCK_MAP[category] || CATEGORY_LOCK_MAP["default"];
+    return status === "locked";
   }
 
   /**
@@ -1663,13 +1729,13 @@ export class I2VConstrainedSuggestions {
   filterSuggestions(
     suggestions: Suggestion[],
     groundTruth: VisualGroundTruth,
-    category: string
+    category: string,
   ): Suggestion[] {
     if (!this.isCategoryLocked(category, groundTruth)) {
       return suggestions;
     }
 
-    this.log.debug('Filtering suggestions for locked category', {
+    this.log.debug("Filtering suggestions for locked category", {
       category,
       originalCount: suggestions.length,
     });
@@ -1684,18 +1750,18 @@ export class I2VConstrainedSuggestions {
    */
   generateMotionSuggestions(
     currentText: string,
-    groundTruth: VisualGroundTruth
+    groundTruth: VisualGroundTruth,
   ): Suggestion[] {
     const suggestions: Suggestion[] = [];
 
     // Add compatible camera movements
     for (const move of groundTruth.motion.compatibleCameraMoves) {
-      if (move.compatibility === 'excellent' || move.compatibility === 'good') {
+      if (move.compatibility === "excellent" || move.compatibility === "good") {
         suggestions.push({
           text: `camera ${move.movement}`,
-          category: 'camera.movement',
+          category: "camera.movement",
           reason: move.reason,
-          confidence: move.compatibility === 'excellent' ? 0.95 : 0.85,
+          confidence: move.compatibility === "excellent" ? 0.95 : 0.85,
         });
       }
     }
@@ -1704,8 +1770,8 @@ export class I2VConstrainedSuggestions {
     for (const motion of groundTruth.motion.suggestedSubjectMotions) {
       suggestions.push({
         text: motion,
-        category: 'action.movement',
-        reason: 'Natural motion for this subject',
+        category: "action.movement",
+        reason: "Natural motion for this subject",
         confidence: 0.8,
       });
     }
@@ -1718,20 +1784,20 @@ export class I2VConstrainedSuggestions {
    */
   getLockedCategoryExplanation(
     category: string,
-    groundTruth: VisualGroundTruth
+    groundTruth: VisualGroundTruth,
   ): string {
     const explanations: Record<string, () => string> = {
-      'subject.identity': () => 
+      "subject.identity": () =>
         `Subject is fixed by image: ${groundTruth.subject.description}`,
-      'subject.appearance': () =>
-        `Appearance is determined by image: ${groundTruth.subject.attributes.join(', ')}`,
-      'shot.type': () =>
+      "subject.appearance": () =>
+        `Appearance is determined by image: ${groundTruth.subject.attributes.join(", ")}`,
+      "shot.type": () =>
         `Shot type is ${groundTruth.framing.shotType} - defined by source image`,
-      'shot.angle': () =>
+      "shot.angle": () =>
         `Camera angle is ${groundTruth.framing.angle} - fixed by source image`,
-      'lighting.type': () =>
+      "lighting.type": () =>
         `Lighting is ${groundTruth.lighting.quality} ${groundTruth.lighting.direction} - fixed by source`,
-      'environment.location': () =>
+      "environment.location": () =>
         `Environment is ${groundTruth.environment.location} - shown in source image`,
     };
 
@@ -1749,17 +1815,22 @@ export class I2VConstrainedSuggestions {
   annotateSuggestionsForI2V(
     suggestions: Suggestion[],
     category: string,
-    groundTruth: VisualGroundTruth
+    groundTruth: VisualGroundTruth,
   ): AnnotatedSuggestion[] {
     const isLocked = this.isCategoryLocked(category, groundTruth);
 
     if (isLocked) {
-      return [{
-        ...suggestions[0] || { text: '', category, confidence: 0 },
-        isLocked: true,
-        lockedReason: this.getLockedCategoryExplanation(category, groundTruth),
-        alternatives: [],
-      }];
+      return [
+        {
+          ...(suggestions[0] || { text: "", category, confidence: 0 }),
+          isLocked: true,
+          lockedReason: this.getLockedCategoryExplanation(
+            category,
+            groundTruth,
+          ),
+          alternatives: [],
+        },
+      ];
     }
 
     return suggestions.map((s) => ({
@@ -1907,33 +1978,37 @@ export interface LockedSpanInfo {
 ```typescript
 /**
  * useI2VContext - Manages i2v optimization context
- * 
+ *
  * Handles image analysis and ground truth state for i2v mode.
- * 
+ *
  * PATTERN: Custom hook
  * MAX LINES: 150
  */
 
-import { useState, useCallback, useEffect } from 'react';
-import { analyzeImage } from '../api/imageAnalysisApi';
-import type { VisualGroundTruth, I2VOptimizationContext } from '../types/i2v';
+import { useState, useCallback, useEffect } from "react";
+import { analyzeImage } from "../api/imageAnalysisApi";
+import type { VisualGroundTruth, I2VOptimizationContext } from "../types/i2v";
 
 const LOCKED_CATEGORIES = [
-  'subject.identity',
-  'subject.appearance',
-  'shot.type',
-  'shot.angle',
-  'lighting.quality',
-  'lighting.direction',
-  'environment.location',
-  'color.palette',
+  "subject.identity",
+  "subject.appearance",
+  "shot.type",
+  "shot.angle",
+  "lighting.quality",
+  "lighting.direction",
+  "environment.location",
+  "color.palette",
 ];
 
-export function useI2VContext(startImageUrl: string | null): I2VOptimizationContext & {
+export function useI2VContext(
+  startImageUrl: string | null,
+): I2VOptimizationContext & {
   analyzeStartImage: () => Promise<void>;
   clearGroundTruth: () => void;
 } {
-  const [groundTruth, setGroundTruth] = useState<VisualGroundTruth | null>(null);
+  const [groundTruth, setGroundTruth] = useState<VisualGroundTruth | null>(
+    null,
+  );
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
 
@@ -1953,7 +2028,7 @@ export function useI2VContext(startImageUrl: string | null): I2VOptimizationCont
       if (result.success && result.groundTruth) {
         setGroundTruth(result.groundTruth);
       } else {
-        setAnalysisError(result.error || 'Failed to analyze image');
+        setAnalysisError(result.error || "Failed to analyze image");
       }
     } catch (error) {
       setAnalysisError((error as Error).message);
@@ -1996,14 +2071,14 @@ export function useI2VContext(startImageUrl: string | null): I2VOptimizationCont
 ```typescript
 /**
  * Image Analysis API
- * 
+ *
  * PATTERN: API layer
  * MAX LINES: 100
  */
 
-import type { VisualGroundTruth } from '../types/i2v';
+import type { VisualGroundTruth } from "../types/i2v";
 
-const API_BASE = '/api/image-analysis';
+const API_BASE = "/api/image-analysis";
 
 interface AnalyzeImageResponse {
   success: boolean;
@@ -2018,11 +2093,11 @@ export async function analyzeImage(
   options?: {
     includeMotionAnalysis?: boolean;
     skipCache?: boolean;
-  }
+  },
 ): Promise<AnalyzeImageResponse> {
   const response = await fetch(`${API_BASE}/analyze`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       image: imageUrl,
       includeMotionAnalysis: options?.includeMotionAnalysis ?? true,
@@ -2031,7 +2106,9 @@ export async function analyzeImage(
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: 'Analysis failed' }));
+    const error = await response
+      .json()
+      .catch(() => ({ message: "Analysis failed" }));
     return {
       success: false,
       error: error.message,
@@ -2044,7 +2121,9 @@ export async function analyzeImage(
 }
 
 export async function checkAnalysisCache(imageUrl: string): Promise<boolean> {
-  const response = await fetch(`${API_BASE}/cached?url=${encodeURIComponent(imageUrl)}`);
+  const response = await fetch(
+    `${API_BASE}/cached?url=${encodeURIComponent(imageUrl)}`,
+  );
   const data = await response.json();
   return data.cached === true;
 }
@@ -2057,7 +2136,7 @@ export async function checkAnalysisCache(imageUrl: string): Promise<boolean> {
 ```typescript
 /**
  * LockedSpanIndicator - Shows lock icon and tooltip for i2v-locked spans
- * 
+ *
  * PATTERN: UI Component
  * MAX LINES: 100
  */
@@ -2085,8 +2164,8 @@ export function LockedSpanIndicator({
       <TooltipTrigger asChild>
         <span
           className={`
-            inline-flex items-center gap-1 px-1.5 py-0.5 
-            rounded bg-amber-500/10 text-amber-500 
+            inline-flex items-center gap-1 px-1.5 py-0.5
+            rounded bg-amber-500/10 text-amber-500
             border border-amber-500/20
             cursor-help
             ${className}
@@ -2117,10 +2196,10 @@ export function LockedSpanIndicator({
 ```typescript
 /**
  * MotionSuggestionsPanel - Shows motion suggestions for i2v mode
- * 
+ *
  * Replaces or supplements the normal suggestions panel when in i2v mode,
  * focusing on compatible camera movements and subject motions.
- * 
+ *
  * PATTERN: UI Component
  * MAX LINES: 180
  */
@@ -2186,7 +2265,7 @@ export function MotionSuggestionsPanel({
                 <button
                   key={move.movement}
                   onClick={() => onSelectMotion(`camera ${move.movement}`)}
-                  className="px-2 py-1 text-xs rounded bg-green-500/10 text-green-400 
+                  className="px-2 py-1 text-xs rounded bg-green-500/10 text-green-400
                            border border-green-500/20 hover:bg-green-500/20 transition"
                   title={move.reason}
                 >
@@ -2205,7 +2284,7 @@ export function MotionSuggestionsPanel({
                 <button
                   key={move.movement}
                   onClick={() => onSelectMotion(`camera ${move.movement}`)}
-                  className="px-2 py-1 text-xs rounded bg-blue-500/10 text-blue-400 
+                  className="px-2 py-1 text-xs rounded bg-blue-500/10 text-blue-400
                            border border-blue-500/20 hover:bg-blue-500/20 transition"
                   title={move.reason}
                 >
@@ -2227,7 +2306,7 @@ export function MotionSuggestionsPanel({
                 <button
                   key={move.movement}
                   onClick={() => onSelectMotion(`camera ${move.movement}`)}
-                  className="px-2 py-1 text-xs rounded bg-amber-500/10 text-amber-400 
+                  className="px-2 py-1 text-xs rounded bg-amber-500/10 text-amber-400
                            border border-amber-500/20 hover:bg-amber-500/20 transition"
                   title={move.reason}
                 >
@@ -2251,7 +2330,7 @@ export function MotionSuggestionsPanel({
               <button
                 key={i}
                 onClick={() => onSelectMotion(subjectMotion)}
-                className="px-2 py-1 text-xs rounded bg-violet-500/10 text-violet-400 
+                className="px-2 py-1 text-xs rounded bg-violet-500/10 text-violet-400
                          border border-violet-500/20 hover:bg-violet-500/20 transition"
               >
                 {subjectMotion}
@@ -2284,13 +2363,14 @@ export function MotionSuggestionsPanel({
 ### 5.1 I2V Span Labeling Mode
 
 When labeling spans for i2v prompts, the system should:
+
 1. Mark visual categories as "locked"
 2. Focus on motion/action categories
 3. Provide visual indicators for locked spans
 
 **File:** `server/src/llm/span-labeling/templates/i2v-span-labeling-prompt.md`
 
-```markdown
+````markdown
 # I2V Span Labeling System Prompt
 
 You are labeling spans in a prompt that will be used with an existing source image. The visual elements are FIXED by the image - you should only label motion and action elements.
@@ -2298,6 +2378,7 @@ You are labeling spans in a prompt that will be used with an existing source ima
 ## Context
 
 This prompt is for image-to-video generation. The source image already defines:
+
 - Subject identity and appearance
 - Shot type and camera angle
 - Lighting conditions
@@ -2311,20 +2392,24 @@ Your job is to identify and label MOTION elements only.
 Only use these categories:
 
 ### Action Categories (LABEL THESE)
+
 - `action.movement` - Physical motion (walking, running, turning)
 - `action.gesture` - Hand/body gestures
 - `action.interaction` - Interaction with objects/environment
 
 ### Camera Categories (LABEL THESE)
+
 - `camera.movement` - Pan, tilt, dolly, zoom, crane
 - `camera.speed` - Slow, fast, accelerating
 - `camera.focus` - Focus pulls, rack focus
 
 ### Timing Categories (LABEL THESE)
+
 - `timing.duration` - Length indicators (brief, extended)
 - `timing.pacing` - Rhythm (slow, energetic, building)
 
 ### Emotional Categories (LABEL THESE)
+
 - `subject.expression` - Facial expressions
 - `subject.emotion` - Emotional state changes
 - `atmosphere.change` - Mood transitions
@@ -2332,6 +2417,7 @@ Only use these categories:
 ## DO NOT LABEL
 
 These are fixed by the source image:
+
 - Subject descriptions (who/what they are)
 - Physical appearance (clothing, age, etc.)
 - Shot type (close-up, wide, etc.)
@@ -2346,14 +2432,23 @@ These are fixed by the source image:
 {
   "analysis_trace": "Identified motion elements only, ignoring visual descriptions fixed by source image.",
   "spans": [
-    {"text": "slowly turns her head", "role": "action.movement", "confidence": 0.95},
-    {"text": "camera dollies in", "role": "camera.movement", "confidence": 0.9}
+    {
+      "text": "slowly turns her head",
+      "role": "action.movement",
+      "confidence": 0.95
+    },
+    {
+      "text": "camera dollies in",
+      "role": "camera.movement",
+      "confidence": 0.9
+    }
   ],
   "i2vMode": true,
   "skippedVisualElements": ["description of woman", "golden hour lighting"],
-  "meta": {"version": "v3-i2v"}
+  "meta": { "version": "v3-i2v" }
 }
 ```
+````
 
 ## Guidelines
 
@@ -2361,7 +2456,8 @@ These are fixed by the source image:
 2. Skip any visual descriptions - they're provided by the image
 3. If the prompt is mostly visual descriptions, return few/no spans
 4. Note skipped visual elements in `skippedVisualElements` for transparency
-```
+
+````
 
 ### 5.2 Modify SpanLabelingService
 
@@ -2392,10 +2488,10 @@ private async labelSpansI2V(
   groundTruth?: VisualGroundTruth
 ): Promise<SpanLabelingResult> {
   const template = await this.templateService.getTemplate('i2v-span-labeling-prompt');
-  
+
   // ... i2v-specific labeling logic
 }
-```
+````
 
 ---
 
@@ -2403,23 +2499,24 @@ private async labelSpansI2V(
 
 ### New Endpoints
 
-| Method | Path | Description |
-|--------|------|-------------|
-| POST | `/api/image-analysis/analyze` | Analyze image and extract visual ground truth |
-| GET | `/api/image-analysis/cached` | Check if analysis is cached |
+| Method | Path                          | Description                                   |
+| ------ | ----------------------------- | --------------------------------------------- |
+| POST   | `/api/image-analysis/analyze` | Analyze image and extract visual ground truth |
+| GET    | `/api/image-analysis/cached`  | Check if analysis is cached                   |
 
 ### Modified Endpoints
 
-| Method | Path | Changes |
-|--------|------|---------|
-| POST | `/api/optimize` | Add `startImage` and `visualGroundTruth` params |
-| POST | `/api/optimize-stream` | Add i2v support |
-| POST | `/api/enhance` | Add `visualGroundTruth` for constrained suggestions |
-| POST | `/api/span-label` | Add `isI2VMode` param |
+| Method | Path                   | Changes                                             |
+| ------ | ---------------------- | --------------------------------------------------- |
+| POST   | `/api/optimize`        | Add `startImage` and `visualGroundTruth` params     |
+| POST   | `/api/optimize-stream` | Add i2v support                                     |
+| POST   | `/api/enhance`         | Add `visualGroundTruth` for constrained suggestions |
+| POST   | `/api/span-label`      | Add `isI2VMode` param                               |
 
 ### Request Examples
 
 **Analyze Image:**
+
 ```json
 POST /api/image-analysis/analyze
 {
@@ -2430,6 +2527,7 @@ POST /api/image-analysis/analyze
 ```
 
 **I2V Optimization:**
+
 ```json
 POST /api/optimize
 {
@@ -2440,6 +2538,7 @@ POST /api/optimize
 ```
 
 **Constrained Enhancement:**
+
 ```json
 POST /api/enhance
 {
@@ -2479,12 +2578,12 @@ tests/integration/
 
 ### Test Coverage Targets
 
-| Component | Target |
-|-----------|--------|
-| ImageAnalysisService | 85% |
-| ImageToVideoStrategy | 80% |
-| I2VConstrainedSuggestions | 90% |
-| useI2VContext | 85% |
+| Component                 | Target |
+| ------------------------- | ------ |
+| ImageAnalysisService      | 85%    |
+| ImageToVideoStrategy      | 80%    |
+| I2VConstrainedSuggestions | 90%    |
+| useI2VContext             | 85%    |
 
 ### Key Test Cases
 
@@ -2517,6 +2616,7 @@ tests/integration/
 ## Implementation Checklist
 
 ### Phase 1: ImageAnalysisService (Week 1)
+
 - [ ] Create `server/src/services/image-analysis/` directory
 - [ ] Implement `types.ts`
 - [ ] Implement `templates/image-analysis-prompt.md`
@@ -2528,6 +2628,7 @@ tests/integration/
 - [ ] Test with real images
 
 ### Phase 2: I2V Optimization Strategy (Week 2)
+
 - [ ] Implement `ImageToVideoStrategy.ts`
 - [ ] Modify `StrategyFactory.ts`
 - [ ] Modify `PromptOptimizationService.ts` for i2v routing
@@ -2536,12 +2637,14 @@ tests/integration/
 - [ ] Integration tests
 
 ### Phase 3: Constrained Enhancement (Week 2-3)
+
 - [ ] Implement `I2VConstrainedSuggestions.ts`
 - [ ] Modify `EnhancementService.ts`
 - [ ] Add ground truth param to enhance endpoint
 - [ ] Write unit tests
 
 ### Phase 4: Frontend Integration (Week 3)
+
 - [ ] Create `types/i2v.ts`
 - [ ] Implement `api/imageAnalysisApi.ts`
 - [ ] Implement `hooks/useI2VContext.ts`
@@ -2551,12 +2654,14 @@ tests/integration/
 - [ ] Test UI interactions
 
 ### Phase 5: Span Labeling (Week 4)
+
 - [ ] Create `i2v-span-labeling-prompt.md`
 - [ ] Modify `SpanLabelingService.ts`
 - [ ] Update span highlighting for i2v mode
 - [ ] Test labeling accuracy
 
 ### Polish & Launch (Week 4-5)
+
 - [ ] End-to-end testing
 - [ ] Performance optimization
 - [ ] Documentation
@@ -2644,6 +2749,7 @@ client/src/features/prompt-optimizer/
 **Decision:** Image analysis happens server-side in `ImageAnalysisService`
 
 **Rationale:**
+
 1. Optimization already happens server-side
 2. Can reuse existing AI service routing with circuit breakers
 3. Can cache analysis results by image hash
@@ -2651,6 +2757,7 @@ client/src/features/prompt-optimizer/
 5. Single source of truth for ground truth
 
 **Alternatives Considered:**
+
 - Client-side analysis: Would require exposing API keys, no caching benefits
 - Hybrid: Adds complexity, harder to maintain consistency
 
@@ -2659,12 +2766,14 @@ client/src/features/prompt-optimizer/
 **Decision:** I2V optimization only modifies motion-related elements
 
 **Rationale:**
+
 1. Visual elements are fixed by source image
 2. Modifying them causes generation conflicts
 3. Users expect the video to match their image
 4. Focus on what can actually change: motion
 
 **Alternatives Considered:**
+
 - Full optimization with filters: More complex, harder to explain to users
 - Two-prompt system (scene + motion): Cleaner separation but more UI complexity
 
@@ -2673,6 +2782,7 @@ client/src/features/prompt-optimizer/
 **Decision:** Show locked spans with amber lock icon and tooltip explanation
 
 **Rationale:**
+
 1. Makes constraints visible to users
 2. Explains why alternatives aren't available
 3. Guides users toward motion-focused editing

@@ -4,29 +4,34 @@
  * API client for image preview generation
  */
 
-import { apiClient } from '@/services/ApiClient';
-import { API_CONFIG } from '@/config/api.config';
-import { buildFirebaseAuthHeaders } from '@/services/http/firebaseAuth';
-import { logger } from '@/services/LoggingService';
-import { sanitizeError } from '@/utils/logging';
-import { safeUrlHost } from '@/utils/url';
+import { apiClient } from "@/services/ApiClient";
+import { API_CONFIG } from "@/config/api.config";
+import { buildFirebaseAuthHeaders } from "@/services/http/firebaseAuth";
+import { logger } from "@/services/LoggingService";
+import { sanitizeError } from "@/utils/logging";
+import { safeUrlHost } from "@/utils/url";
 import {
   FaceSwapPreviewResponseSchema,
   GeneratePreviewResponseSchema,
   GenerateStoryboardPreviewResponseSchema,
   GenerateVideoResponseSchema,
   MediaViewUrlResponseSchema,
+  MediaViewUrlBatchResponseSchema,
   UploadPreviewImageResponseSchema,
   VideoJobStatusResponseSchema,
-} from './schemas';
+} from "./schemas";
 
-const log = logger.child('previewApi');
-const VIDEO_OPERATION = 'generateVideoPreview';
-const PREVIEW_IMAGE_ALLOWED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
+const log = logger.child("previewApi");
+const VIDEO_OPERATION = "generateVideoPreview";
+const PREVIEW_IMAGE_ALLOWED_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+]);
 const PREVIEW_IMAGE_MAX_BYTES = 10 * 1024 * 1024;
 
 const normalizeMotionString = (value: unknown): string | null => {
-  if (typeof value !== 'string') {
+  if (typeof value !== "string") {
     return null;
   }
   const trimmed = value.trim();
@@ -38,7 +43,9 @@ const extractMotionMeta = (generationParams?: Record<string, unknown>) => {
   const generationParamKeys = Object.keys(params);
   const cameraMotionId = normalizeMotionString(params.camera_motion_id);
   const subjectMotion = normalizeMotionString(params.subject_motion);
-  const keyframesCount = Array.isArray(params.keyframes) ? params.keyframes.length : 0;
+  const keyframesCount = Array.isArray(params.keyframes)
+    ? params.keyframes.length
+    : 0;
 
   return {
     hasGenerationParams: generationParamKeys.length > 0,
@@ -52,14 +59,20 @@ const extractMotionMeta = (generationParams?: Record<string, unknown>) => {
   } as const;
 };
 
-function requireNonEmptyString(value: unknown, name: string): asserts value is string {
-  if (!value || typeof value !== 'string' || value.trim().length === 0) {
+function requireNonEmptyString(
+  value: unknown,
+  name: string,
+): asserts value is string {
+  if (!value || typeof value !== "string" || value.trim().length === 0) {
     throw new Error(`${name} is required and must be a non-empty string`);
   }
 }
 
 function generateIdempotencyKey(): string {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+  if (
+    typeof crypto !== "undefined" &&
+    typeof crypto.randomUUID === "function"
+  ) {
     return crypto.randomUUID();
   }
   const randomPart = Math.random().toString(36).slice(2);
@@ -67,11 +80,15 @@ function generateIdempotencyKey(): string {
 }
 
 export type PreviewProvider =
-  | 'replicate-flux-schnell'
-  | 'replicate-flux-kontext-fast'
-  | 'auto';
+  | "replicate-flux-schnell"
+  | "replicate-flux-kontext-fast"
+  | "auto";
 
-export type PreviewSpeedMode = 'Lightly Juiced' | 'Juiced' | 'Extra Juiced' | 'Real Time';
+export type PreviewSpeedMode =
+  | "Lightly Juiced"
+  | "Juiced"
+  | "Extra Juiced"
+  | "Real Time";
 
 export interface GeneratePreviewRequest {
   prompt: string;
@@ -120,12 +137,17 @@ export type PreviewImageValidationResult =
   | { valid: true }
   | { valid: false; error: string };
 
-export function validatePreviewImageFile(file: File): PreviewImageValidationResult {
+export function validatePreviewImageFile(
+  file: File,
+): PreviewImageValidationResult {
   if (!PREVIEW_IMAGE_ALLOWED_TYPES.has(file.type)) {
-    return { valid: false, error: 'Only PNG, JPEG, and WebP files are supported.' };
+    return {
+      valid: false,
+      error: "Only PNG, JPEG, and WebP files are supported.",
+    };
   }
   if (file.size > PREVIEW_IMAGE_MAX_BYTES) {
-    return { valid: false, error: 'Image must be 10MB or smaller.' };
+    return { valid: false, error: "Image must be 10MB or smaller." };
   }
   return { valid: true };
 }
@@ -182,33 +204,49 @@ export interface FaceSwapPreviewResponse {
  */
 export async function generatePreview(
   prompt: string,
-  options?: string | Omit<GeneratePreviewRequest, 'prompt'>
+  options?: string | Omit<GeneratePreviewRequest, "prompt">,
 ): Promise<GeneratePreviewResponse> {
-  requireNonEmptyString(prompt, 'Prompt');
+  requireNonEmptyString(prompt, "Prompt");
 
-  const resolvedOptions: Omit<GeneratePreviewRequest, 'prompt'> | undefined =
-    typeof options === 'string' ? { aspectRatio: options } : options;
+  const resolvedOptions: Omit<GeneratePreviewRequest, "prompt"> | undefined =
+    typeof options === "string" ? { aspectRatio: options } : options;
   const inputImageUrl = resolvedOptions?.inputImageUrl?.trim();
   const isKontext =
-    resolvedOptions?.provider === 'replicate-flux-kontext-fast' || Boolean(inputImageUrl);
+    resolvedOptions?.provider === "replicate-flux-kontext-fast" ||
+    Boolean(inputImageUrl);
 
   const payload = (await apiClient.post(
-    '/preview/generate',
+    "/preview/generate",
     {
       prompt: prompt.trim(),
-      ...(resolvedOptions?.aspectRatio ? { aspectRatio: resolvedOptions.aspectRatio } : {}),
-      ...(resolvedOptions?.provider ? { provider: resolvedOptions.provider } : {}),
+      ...(resolvedOptions?.aspectRatio
+        ? { aspectRatio: resolvedOptions.aspectRatio }
+        : {}),
+      ...(resolvedOptions?.provider
+        ? { provider: resolvedOptions.provider }
+        : {}),
       ...(inputImageUrl ? { inputImageUrl } : {}),
-      ...(resolvedOptions?.seed !== undefined ? { seed: resolvedOptions.seed } : {}),
-      ...(resolvedOptions?.speedMode ? { speedMode: resolvedOptions.speedMode } : {}),
+      ...(resolvedOptions?.seed !== undefined
+        ? { seed: resolvedOptions.seed }
+        : {}),
+      ...(resolvedOptions?.speedMode
+        ? { speedMode: resolvedOptions.speedMode }
+        : {}),
       ...(resolvedOptions?.outputQuality !== undefined
         ? { outputQuality: resolvedOptions.outputQuality }
         : {}),
     },
-    isKontext ? { timeout: 60000 } : {}
+    {
+      ...(isKontext ? { timeout: 60000 } : {}),
+      headers: {
+        "Idempotency-Key": generateIdempotencyKey(),
+      },
+    },
   )) as unknown;
 
-  return GeneratePreviewResponseSchema.parse(payload) as GeneratePreviewResponse;
+  return GeneratePreviewResponseSchema.parse(
+    payload,
+  ) as GeneratePreviewResponse;
 }
 
 /**
@@ -216,14 +254,14 @@ export async function generatePreview(
  */
 export async function generateStoryboardPreview(
   prompt: string,
-  options?: Omit<GenerateStoryboardPreviewRequest, 'prompt'>
+  options?: Omit<GenerateStoryboardPreviewRequest, "prompt">,
 ): Promise<GenerateStoryboardPreviewResponse> {
-  requireNonEmptyString(prompt, 'Prompt');
+  requireNonEmptyString(prompt, "Prompt");
 
   const seedImageUrl = options?.seedImageUrl?.trim();
 
   const payload = (await apiClient.post(
-    '/preview/generate/storyboard',
+    "/preview/generate/storyboard",
     {
       prompt: prompt.trim(),
       ...(options?.aspectRatio ? { aspectRatio: options.aspectRatio } : {}),
@@ -233,10 +271,15 @@ export async function generateStoryboardPreview(
     },
     {
       timeout: API_CONFIG.timeout.storyboard,
-    }
+      headers: {
+        "Idempotency-Key": generateIdempotencyKey(),
+      },
+    },
   )) as unknown;
 
-  return GenerateStoryboardPreviewResponseSchema.parse(payload) as GenerateStoryboardPreviewResponse;
+  return GenerateStoryboardPreviewResponseSchema.parse(
+    payload,
+  ) as GenerateStoryboardPreviewResponse;
 }
 
 export async function faceSwapPreview(options: {
@@ -244,62 +287,111 @@ export async function faceSwapPreview(options: {
   targetImageUrl: string;
   aspectRatio?: string;
 }): Promise<FaceSwapPreviewResponse> {
-  requireNonEmptyString(options?.characterAssetId, 'characterAssetId');
-  requireNonEmptyString(options?.targetImageUrl, 'targetImageUrl');
+  requireNonEmptyString(options?.characterAssetId, "characterAssetId");
+  requireNonEmptyString(options?.targetImageUrl, "targetImageUrl");
 
-  const payload = (await apiClient.post('/preview/face-swap', {
-    characterAssetId: options.characterAssetId.trim(),
-    targetImageUrl: options.targetImageUrl.trim(),
-    ...(options.aspectRatio ? { aspectRatio: options.aspectRatio } : {}),
-  })) as unknown;
+  const payload = (await apiClient.post(
+    "/preview/face-swap",
+    {
+      characterAssetId: options.characterAssetId.trim(),
+      targetImageUrl: options.targetImageUrl.trim(),
+      ...(options.aspectRatio ? { aspectRatio: options.aspectRatio } : {}),
+    },
+    {
+      headers: {
+        "Idempotency-Key": generateIdempotencyKey(),
+      },
+    },
+  )) as unknown;
 
-  const parsed = FaceSwapPreviewResponseSchema.parse(payload) as FaceSwapPreviewResponse;
+  const parsed = FaceSwapPreviewResponseSchema.parse(
+    payload,
+  ) as FaceSwapPreviewResponse;
 
-  log.info('Face-swap preview request completed', {
+  log.info("Face-swap preview request completed", {
     hasFaceSwapUrl: Boolean(parsed.data?.faceSwapUrl),
-    faceSwapUrlHost: parsed.data?.faceSwapUrl ? safeUrlHost(parsed.data.faceSwapUrl) : null,
+    faceSwapUrlHost: parsed.data?.faceSwapUrl
+      ? safeUrlHost(parsed.data.faceSwapUrl)
+      : null,
     creditsDeducted: parsed.data?.creditsDeducted ?? null,
   });
 
   return parsed;
 }
 
-export async function getImageAssetViewUrl(assetId: string): Promise<MediaViewUrlResponse> {
-  requireNonEmptyString(assetId, 'assetId');
+export async function getImageAssetViewUrl(
+  assetId: string,
+): Promise<MediaViewUrlResponse> {
+  requireNonEmptyString(assetId, "assetId");
 
   const encoded = encodeURIComponent(assetId.trim());
-  const payload = (await apiClient.get(`/preview/image/view?assetId=${encoded}`)) as unknown;
+  const payload = (await apiClient.get(
+    `/preview/image/view?assetId=${encoded}`,
+  )) as unknown;
   return MediaViewUrlResponseSchema.parse(payload) as MediaViewUrlResponse;
 }
 
-export async function getVideoAssetViewUrl(assetId: string): Promise<MediaViewUrlResponse> {
-  requireNonEmptyString(assetId, 'assetId');
+export async function getVideoAssetViewUrl(
+  assetId: string,
+): Promise<MediaViewUrlResponse> {
+  requireNonEmptyString(assetId, "assetId");
 
   const encoded = encodeURIComponent(assetId.trim());
-  const payload = (await apiClient.get(`/preview/video/view?assetId=${encoded}`)) as unknown;
+  const payload = (await apiClient.get(
+    `/preview/video/view?assetId=${encoded}`,
+  )) as unknown;
   return MediaViewUrlResponseSchema.parse(payload) as MediaViewUrlResponse;
+}
+
+export interface BatchViewUrlItem {
+  assetId: string;
+  viewUrl: string | null;
+  error?: string;
+}
+
+export interface BatchViewUrlResponse {
+  success: boolean;
+  data?: { results: BatchViewUrlItem[] };
+  error?: string;
+}
+
+/**
+ * Resolve multiple image asset IDs to signed view URLs in a single request.
+ * Falls back to individual requests if the batch endpoint fails.
+ */
+export async function getImageAssetViewUrlBatch(
+  assetIds: string[],
+): Promise<BatchViewUrlResponse> {
+  if (assetIds.length === 0) {
+    return { success: true, data: { results: [] } };
+  }
+
+  const payload = (await apiClient.post("/preview/image/view-batch", {
+    assetIds,
+  })) as unknown;
+  return MediaViewUrlBatchResponseSchema.parse(payload) as BatchViewUrlResponse;
 }
 
 export async function uploadPreviewImage(
   file: File,
   metadata: Record<string, unknown> = {},
-  options: { source?: string; label?: string } = {}
+  options: { source?: string; label?: string } = {},
 ): Promise<UploadPreviewImageResponse> {
   const authHeaders = await buildFirebaseAuthHeaders();
   const formData = new FormData();
-  formData.append('file', file);
+  formData.append("file", file);
   if (Object.keys(metadata).length > 0) {
-    formData.append('metadata', JSON.stringify(metadata));
+    formData.append("metadata", JSON.stringify(metadata));
   }
   if (options.source) {
-    formData.append('source', options.source);
+    formData.append("source", options.source);
   }
   if (options.label) {
-    formData.append('label', options.label);
+    formData.append("label", options.label);
   }
 
   const response = await fetch(`${API_CONFIG.baseURL}/preview/upload`, {
-    method: 'POST',
+    method: "POST",
     headers: {
       ...authHeaders,
     },
@@ -314,13 +406,15 @@ export async function uploadPreviewImage(
   }
 
   if (!response.ok) {
-    throw new Error(payload?.error || payload?.message || 'Failed to upload image');
+    throw new Error(
+      payload?.error || payload?.message || "Failed to upload image",
+    );
   }
 
   if (!payload) {
     return UploadPreviewImageResponseSchema.parse({
       success: false,
-      error: 'Failed to upload image',
+      error: "Failed to upload image",
     }) as UploadPreviewImageResponse;
   }
 
@@ -328,7 +422,7 @@ export async function uploadPreviewImage(
   if (!parsed.success) {
     return UploadPreviewImageResponseSchema.parse({
       success: false,
-      error: 'Failed to upload image',
+      error: "Failed to upload image",
     }) as UploadPreviewImageResponse;
   }
 
@@ -343,12 +437,13 @@ export interface GenerateVideoResponse {
   viewUrl?: string;
   viewUrlExpiresAt?: string;
   sizeBytes?: number;
-  inputMode?: 't2v' | 'i2v';
+  inputMode?: "t2v" | "i2v";
   startImageUrl?: string;
   jobId?: string;
   status?: VideoJobStatus;
   creditsReserved?: number;
   creditsDeducted?: number;
+  remainingCredits?: number;
   keyframeGenerated?: boolean;
   keyframeUrl?: string | null;
   faceSwapApplied?: boolean;
@@ -357,7 +452,7 @@ export interface GenerateVideoResponse {
   message?: string;
 }
 
-export type VideoJobStatus = 'queued' | 'processing' | 'completed' | 'failed';
+export type VideoJobStatus = "queued" | "processing" | "completed" | "failed";
 
 export interface VideoJobStatusResponse {
   success: boolean;
@@ -372,8 +467,10 @@ export interface VideoJobStatusResponse {
   viewUrl?: string;
   viewUrlExpiresAt?: string;
   sizeBytes?: number;
-  inputMode?: 't2v' | 'i2v';
+  inputMode?: "t2v" | "i2v";
   startImageUrl?: string;
+  resolvedAspectRatio?: string;
+  serverTimeoutMs?: number;
   creditsReserved?: number;
   creditsDeducted?: number;
   error?: string;
@@ -383,7 +480,7 @@ export interface VideoJobStatusResponse {
 export interface GenerateVideoPreviewOptions {
   startImage?: string | undefined;
   endImage?: string | undefined;
-  referenceImages?: Array<{ url: string; type: 'asset' | 'style' }> | undefined;
+  referenceImages?: Array<{ url: string; type: "asset" | "style" }> | undefined;
   extendVideoUrl?: string | undefined;
   inputReference?: string | undefined;
   generationParams?: Record<string, unknown> | undefined;
@@ -400,11 +497,12 @@ export async function generateVideoPreview(
   prompt: string,
   aspectRatio?: string,
   model?: string,
-  options?: GenerateVideoPreviewOptions
+  options?: GenerateVideoPreviewOptions,
 ): Promise<GenerateVideoResponse> {
-  requireNonEmptyString(prompt, 'Prompt');
+  requireNonEmptyString(prompt, "Prompt");
   const trimmedPrompt = prompt.trim();
-  const startedAt = typeof performance !== 'undefined' ? performance.now() : Date.now();
+  const startedAt =
+    typeof performance !== "undefined" ? performance.now() : Date.now();
   const motionMeta = extractMotionMeta(options?.generationParams);
   const startImageUrlHost = safeUrlHost(options?.startImage);
   const endImageUrlHost = safeUrlHost(options?.endImage);
@@ -417,20 +515,34 @@ export async function generateVideoPreview(
     ...(model ? { model } : {}),
     ...(options?.startImage ? { startImage: options.startImage } : {}),
     ...(options?.endImage ? { endImage: options.endImage } : {}),
-    ...(options?.referenceImages?.length ? { referenceImages: options.referenceImages } : {}),
-    ...(options?.extendVideoUrl ? { extendVideoUrl: options.extendVideoUrl } : {}),
-    ...(options?.inputReference ? { inputReference: options.inputReference } : {}),
-    ...(options?.generationParams ? { generationParams: options.generationParams } : {}),
-    ...(options?.characterAssetId ? { characterAssetId: options.characterAssetId } : {}),
-    ...(options?.autoKeyframe !== undefined ? { autoKeyframe: options.autoKeyframe } : {}),
-    ...(options?.faceSwapAlreadyApplied ? { faceSwapAlreadyApplied: true } : {}),
+    ...(options?.referenceImages?.length
+      ? { referenceImages: options.referenceImages }
+      : {}),
+    ...(options?.extendVideoUrl
+      ? { extendVideoUrl: options.extendVideoUrl }
+      : {}),
+    ...(options?.inputReference
+      ? { inputReference: options.inputReference }
+      : {}),
+    ...(options?.generationParams
+      ? { generationParams: options.generationParams }
+      : {}),
+    ...(options?.characterAssetId
+      ? { characterAssetId: options.characterAssetId }
+      : {}),
+    ...(options?.autoKeyframe !== undefined
+      ? { autoKeyframe: options.autoKeyframe }
+      : {}),
+    ...(options?.faceSwapAlreadyApplied
+      ? { faceSwapAlreadyApplied: true }
+      : {}),
   };
   const idempotencyKey =
     options?.idempotencyKey && options.idempotencyKey.trim().length > 0
       ? options.idempotencyKey.trim()
       : generateIdempotencyKey();
 
-  log.info('Video preview request started', {
+  log.info("Video preview request started", {
     operation: VIDEO_OPERATION,
     promptLength: trimmedPrompt.length,
     aspectRatio: aspectRatio ?? null,
@@ -452,23 +564,26 @@ export async function generateVideoPreview(
 
   try {
     const responsePayload = (await apiClient.post(
-      '/preview/video/generate',
+      "/preview/video/generate",
       payload,
       {
         timeout: API_CONFIG.timeout.video,
         headers: {
-          'Idempotency-Key': idempotencyKey,
+          "Idempotency-Key": idempotencyKey,
         },
-      }
+      },
     )) as unknown;
 
-    const response = GenerateVideoResponseSchema.parse(responsePayload) as GenerateVideoResponse;
+    const response = GenerateVideoResponseSchema.parse(
+      responsePayload,
+    ) as GenerateVideoResponse;
 
     const durationMs = Math.round(
-      (typeof performance !== 'undefined' ? performance.now() : Date.now()) - startedAt
+      (typeof performance !== "undefined" ? performance.now() : Date.now()) -
+        startedAt,
     );
 
-    log.info('Video preview request succeeded', {
+    log.info("Video preview request succeeded", {
       operation: VIDEO_OPERATION,
       durationMs,
       success: response.success,
@@ -483,12 +598,13 @@ export async function generateVideoPreview(
     return response;
   } catch (error) {
     const durationMs = Math.round(
-      (typeof performance !== 'undefined' ? performance.now() : Date.now()) - startedAt
+      (typeof performance !== "undefined" ? performance.now() : Date.now()) -
+        startedAt,
     );
     const info = sanitizeError(error);
     const errObj = error instanceof Error ? error : new Error(info.message);
 
-    log.error('Video preview request failed', errObj, {
+    log.error("Video preview request failed", errObj, {
       operation: VIDEO_OPERATION,
       durationMs,
       promptLength: trimmedPrompt.length,
@@ -513,14 +629,16 @@ export async function generateVideoPreview(
   }
 }
 
-export async function getVideoPreviewStatus(jobId: string): Promise<VideoJobStatusResponse> {
-  if (!jobId || typeof jobId !== 'string') {
-    throw new Error('jobId is required');
+export async function getVideoPreviewStatus(
+  jobId: string,
+): Promise<VideoJobStatusResponse> {
+  if (!jobId || typeof jobId !== "string") {
+    throw new Error("jobId is required");
   }
 
   const payload = (await apiClient.get(`/preview/video/jobs/${jobId}`, {
     fetchOptions: {
-      cache: 'no-store',
+      cache: "no-store",
     },
   })) as unknown;
 

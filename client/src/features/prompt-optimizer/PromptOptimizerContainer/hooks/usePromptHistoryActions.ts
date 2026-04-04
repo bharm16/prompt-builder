@@ -1,16 +1,9 @@
-import { useCallback } from 'react';
-import type { KeyframeTile } from '@components/ToolSidebar/types';
-import type { PromptHistoryEntry } from '@features/prompt-optimizer/types/domain/prompt-session';
-import type { PromptHistory } from '../../context/types';
-import { hydrateKeyframes } from '../../utils/keyframeTransforms';
+import { useCallback } from "react";
+import type { PromptHistoryEntry } from "@features/prompt-optimizer/types/domain/prompt-session";
+import type { PromptHistory } from "../../context/types";
 
 type UsePromptHistoryActionsParams = {
-  promptHistory: Pick<PromptHistory, 'saveToHistory' | 'updateEntryPersisted'>;
-  setKeyframes: (tiles: KeyframeTile[] | null | undefined) => void;
-  setStartFrame: (tile: KeyframeTile | null) => void;
-  clearEndFrame: () => void;
-  clearVideoReferences: () => void;
-  clearExtendVideo: () => void;
+  promptHistory: Pick<PromptHistory, "saveToHistory" | "updateEntryPersisted">;
   loadFromHistory: (entry: PromptHistoryEntry) => void;
   handleCreateNew: () => void;
 };
@@ -24,57 +17,27 @@ export type UsePromptHistoryActionsResult = {
 
 export function usePromptHistoryActions({
   promptHistory,
-  setKeyframes,
-  setStartFrame,
-  clearEndFrame,
-  clearVideoReferences,
-  clearExtendVideo,
   loadFromHistory,
   handleCreateNew,
 }: UsePromptHistoryActionsParams): UsePromptHistoryActionsResult {
   const { saveToHistory, updateEntryPersisted } = promptHistory;
   const handleLoadFromHistory = useCallback(
     (entry: PromptHistoryEntry): void => {
-      const hydrated = hydrateKeyframes(entry.keyframes ?? []);
-      setKeyframes(hydrated);
-      setStartFrame(hydrated[0] ?? null);
-      clearEndFrame();
-      clearVideoReferences();
-      clearExtendVideo();
       loadFromHistory(entry);
     },
-    [
-      clearEndFrame,
-      clearExtendVideo,
-      clearVideoReferences,
-      loadFromHistory,
-      setKeyframes,
-      setStartFrame,
-    ]
+    [loadFromHistory],
   );
 
   const handleCreateNewWithKeyframes = useCallback((): void => {
-    setKeyframes([]);
-    setStartFrame(null);
-    clearEndFrame();
-    clearVideoReferences();
-    clearExtendVideo();
     handleCreateNew();
-  }, [
-    clearEndFrame,
-    clearExtendVideo,
-    clearVideoReferences,
-    handleCreateNew,
-    setKeyframes,
-    setStartFrame,
-  ]);
+  }, [handleCreateNew]);
 
   const handleDuplicate = useCallback(
     async (entry: PromptHistoryEntry): Promise<void> => {
       const mode =
-        typeof entry.mode === 'string' && entry.mode.trim()
+        typeof entry.mode === "string" && entry.mode.trim()
           ? entry.mode.trim()
-          : 'video';
+          : "video";
       const result = await saveToHistory(
         entry.input,
         entry.output,
@@ -86,7 +49,7 @@ export function usePromptHistoryActions({
         entry.brainstormContext ?? null,
         entry.highlightCache ?? null,
         null,
-        entry.title ?? null
+        entry.title ?? null,
       );
 
       if (result?.uuid) {
@@ -108,7 +71,7 @@ export function usePromptHistoryActions({
         });
       }
     },
-    [handleLoadFromHistory, saveToHistory]
+    [handleLoadFromHistory, saveToHistory],
   );
 
   const handleRename = useCallback(
@@ -116,7 +79,7 @@ export function usePromptHistoryActions({
       if (!entry.uuid) return;
       updateEntryPersisted(entry.uuid, entry.id ?? null, { title });
     },
-    [updateEntryPersisted]
+    [updateEntryPersisted],
   );
 
   return {

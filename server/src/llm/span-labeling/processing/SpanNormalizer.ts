@@ -1,7 +1,7 @@
-import { createHash } from 'crypto';
-import { ROLE_SET } from '../config/roles.js';
-import { TAXONOMY } from '#shared/taxonomy.ts';
-import { clamp01 } from '../utils/textUtils.js';
+import { createHash } from "crypto";
+import { ROLE_SET } from "../config/roles.js";
+import { TAXONOMY } from "#shared/taxonomy.ts";
+import { clamp01 } from "../utils/textUtils.js";
 
 export interface SpanInput {
   text: string;
@@ -30,18 +30,18 @@ export interface NormalizedSpan {
 /**
  * Generate a stable ID for a span
  * IDs are deterministic and based on text content and position
- * 
+ *
  * @param {Object} span - The span to generate ID for
  * @param {string} sourceText - The full source text (for hashing)
  * @returns {string} Stable span ID
  */
 function generateSpanId(span: SpanInput, sourceText: string): string {
   // Hash the source text to create a deterministic prefix
-  const textHash = createHash('sha256')
+  const textHash = createHash("sha256")
     .update(sourceText)
-    .digest('hex')
+    .digest("hex")
     .substring(0, 8); // Use first 8 chars for brevity
-  
+
   // Combine hash with span coordinates and role for uniqueness
   return `${textHash}-${span.start}-${span.end}-${span.role}`;
 }
@@ -65,13 +65,13 @@ function generateSpanId(span: SpanInput, sourceText: string): string {
 export function normalizeSpan(
   span: SpanInput,
   sourceText: string,
-  lenient = false
+  lenient = false,
 ): NormalizedSpan | null {
   const confidence = clamp01(span.confidence);
 
   // Validate role against taxonomy
   const role =
-    typeof span.role === 'string' && ROLE_SET.has(span.role)
+    typeof span.role === "string" && ROLE_SET.has(span.role)
       ? span.role
       : lenient
         ? TAXONOMY.SUBJECT.id

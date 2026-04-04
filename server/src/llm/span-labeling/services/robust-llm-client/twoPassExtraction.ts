@@ -1,7 +1,11 @@
-import { detectAndGetCapabilities } from '@utils/provider/ProviderDetector';
-import { logger } from '@infrastructure/Logger';
-import type { AIService as BaseAIService } from '@services/enhancement/services/types';
-import { callModel, type ModelResponse, type ProviderRequestOptions } from './modelInvocation';
+import { detectAndGetCapabilities } from "@utils/provider/ProviderDetector";
+import { logger } from "@infrastructure/Logger";
+import type { AIService as BaseAIService } from "@services/enhancement/services/types";
+import {
+  callModel,
+  type ModelResponse,
+  type ProviderRequestOptions,
+} from "./modelInvocation";
 
 export async function twoPassExtraction({
   systemPrompt,
@@ -27,12 +31,12 @@ export async function twoPassExtraction({
   const payloadData = JSON.parse(userPayload);
 
   const { capabilities } = detectAndGetCapabilities({
-    operation: 'span_labeling',
+    operation: "span_labeling",
     ...(modelName ? { model: modelName } : {}),
     ...(clientName ? { client: clientName } : {}),
   });
 
-  logger.info('Using two-pass extraction for complex schema', {
+  logger.info("Using two-pass extraction for complex schema", {
     provider: providerName,
     hasDeveloperRole: capabilities.developerRole,
   });
@@ -49,7 +53,7 @@ Do NOT worry about JSON structure yet - just reason through the task.`;
   const reasoningResponse = await callModel({
     systemPrompt: reasoningPrompt,
     userPayload: JSON.stringify({
-      task: 'Analyze the text and provide step-by-step reasoning about what spans should be labeled.',
+      task: "Analyze the text and provide step-by-step reasoning about what spans should be labeled.",
       policy: payloadData.policy,
       text: payloadData.text,
       templateVersion: payloadData.templateVersion,
@@ -62,7 +66,7 @@ Do NOT worry about JSON structure yet - just reason through the task.`;
     },
   });
 
-  logger.debug('Pass 1 (reasoning) completed', {
+  logger.debug("Pass 1 (reasoning) completed", {
     responseLength: reasoningResponse.text.length,
     provider: providerName,
   });
@@ -92,7 +96,7 @@ Convert this analysis to the required JSON format.`
   const structuredResponse = await callModel({
     systemPrompt: structuringPrompt,
     userPayload: JSON.stringify({
-      task: 'Convert the Pass 1 analysis into structured JSON spans following the schema.',
+      task: "Convert the Pass 1 analysis into structured JSON spans following the schema.",
       policy: payloadData.policy,
       text: payloadData.text,
       templateVersion: payloadData.templateVersion,
@@ -106,7 +110,7 @@ Convert this analysis to the required JSON format.`
     ...(schema && { schema }),
   });
 
-  logger.info('Pass 2 (structuring) completed', {
+  logger.info("Pass 2 (structuring) completed", {
     provider: providerName,
     usedDeveloperMessage: !!structuringDeveloperMessage,
   });

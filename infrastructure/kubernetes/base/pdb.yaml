@@ -5,7 +5,7 @@ metadata:
   labels:
     app: prompt-builder
 spec:
-  minAvailable: 2  # Always keep at least 2 pods running
+  minAvailable: 2 # Always keep at least 2 pods running
   selector:
     matchLabels:
       app: prompt-builder

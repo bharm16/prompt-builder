@@ -1,7 +1,11 @@
-import { useState, useEffect, useMemo } from 'react';
-import { capabilitiesApi } from '@/services';
-import { AI_MODEL_LABELS, AI_MODEL_PROVIDERS, type AIModelId } from '../components/constants';
-import type { CapabilitiesSchema } from '@shared/capabilities';
+import { useState, useEffect, useMemo } from "react";
+import { capabilitiesApi } from "@/services";
+import {
+  AI_MODEL_LABELS,
+  AI_MODEL_PROVIDERS,
+  type AIModelId,
+} from "../components/constants";
+import type { CapabilitiesSchema } from "@shared/capabilities";
 
 export interface UseCapabilitiesResult {
   schema: CapabilitiesSchema | null;
@@ -18,31 +22,54 @@ interface UseCapabilitiesOptions {
   enabled?: boolean;
 }
 
-const resolveLabel = (selectedModel?: string, resolvedModel?: string): string => {
+const CAPABILITIES_UNSUPPORTED_MODELS = new Set([
+  "flux-kontext",
+  "replicate-flux-schnell",
+  "replicate-flux-kontext-fast",
+]);
+
+const isUnsupportedCapabilitiesModel = (modelId: string): boolean => {
+  const normalized = modelId.trim().toLowerCase();
+  return (
+    CAPABILITIES_UNSUPPORTED_MODELS.has(normalized) ||
+    normalized.startsWith("replicate-flux-")
+  );
+};
+
+const resolveLabel = (
+  selectedModel?: string,
+  resolvedModel?: string,
+): string => {
   if (!selectedModel) {
-    return 'Auto-detect';
+    return "Auto-detect";
   }
 
   const resolvedLabel = resolvedModel
     ? AI_MODEL_LABELS[resolvedModel as AIModelId]
     : undefined;
 
-  return resolvedLabel || AI_MODEL_LABELS[selectedModel as AIModelId] || selectedModel;
+  return (
+    resolvedLabel ||
+    AI_MODEL_LABELS[selectedModel as AIModelId] ||
+    selectedModel
+  );
 };
 
-const resolveTarget = (selectedModel?: string): { provider: string; model: string; label: string } => {
+const resolveTarget = (
+  selectedModel?: string,
+): { provider: string; model: string; label: string } => {
   if (!selectedModel) {
-    return { provider: 'generic', model: 'auto', label: resolveLabel() };
+    return { provider: "generic", model: "auto", label: resolveLabel() };
   }
 
-  const provider = AI_MODEL_PROVIDERS[selectedModel as AIModelId] ?? 'generic';
+  const provider = AI_MODEL_PROVIDERS[selectedModel as AIModelId] ?? "generic";
   const label = resolveLabel(selectedModel);
   return { provider, model: selectedModel, label };
 };
 
 export const useCapabilities = (
   selectedModel?: string,
-  options: UseCapabilitiesOptions = {}
+  options: UseCapabilitiesOptions = {},
 ): UseCapabilitiesResult => {
   const { enabled = true } = options;
   const [target, setTarget] = useState(() => resolveTarget(selectedModel));
@@ -54,6 +81,12 @@ export const useCapabilities = (
     const newTarget = resolveTarget(selectedModel);
     setTarget(newTarget);
     if (!enabled) {
+      return;
+    }
+    if (isUnsupportedCapabilitiesModel(newTarget.model)) {
+      setSchema(null);
+      setError(null);
+      setIsLoading(false);
       return;
     }
     let active = true;
@@ -74,7 +107,9 @@ export const useCapabilities = (
       .catch((err) => {
         if (!active) return;
         setSchema(null);
-        setError(err instanceof Error ? err.message : 'Unable to load capabilities');
+        setError(
+          err instanceof Error ? err.message : "Unable to load capabilities",
+        );
       })
       .finally(() => {
         if (!active) return;
@@ -86,5 +121,8 @@ export const useCapabilities = (
     };
   }, [selectedModel, enabled]);
 
-  return useMemo(() => ({ schema, isLoading, error, target }), [schema, isLoading, error, target]);
+  return useMemo(
+    () => ({ schema, isLoading, error, target }),
+    [schema, isLoading, error, target],
+  );
 };

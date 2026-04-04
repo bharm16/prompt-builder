@@ -11,7 +11,8 @@ If the answer is 1, don't touch it. If the answer is 2+, split by responsibility
 ## Before Writing Code
 
 ### 1. Responsibility Check
-Ask: *"Can I describe what this does in one sentence without using 'and'?"*
+
+Ask: _"Can I describe what this does in one sentence without using 'and'?"_
 
 - ✅ "Manages wizard step navigation"
 - ❌ "Manages wizard steps and validates form input and calls the API"
@@ -19,12 +20,14 @@ Ask: *"Can I describe what this does in one sentence without using 'and'?"*
 If you need "and," you have multiple responsibilities. Split them.
 
 ### 2. Testability Check
-Ask: *"Can I test this by mocking ≤2 dependencies?"*
+
+Ask: _"Can I test this by mocking ≤2 dependencies?"_
 
 If you need to mock 5 things to test one function, that function knows too much. Extract what it's reaching into.
 
 ### 3. Change Coupling Check
-Ask: *"When I change X, what else breaks?"*
+
+Ask: _"When I change X, what else breaks?"_
 
 If changing the API response format requires touching 6 files, you have a coupling problem. The parser should live in one place.
 
@@ -32,14 +35,14 @@ If changing the API response format requires touching 6 files, you have a coupli
 
 ## Where Things Go
 
-| Thing | Location | Why |
-|-------|----------|-----|
-| HTTP calls | `api/` layer | One place to change when endpoints change |
-| State logic | `hooks/` (useReducer) | Testable without rendering |
-| Business rules | `services/` (backend) or `hooks/` (frontend) | Isolate from UI concerns |
-| Pure transforms | `utils/` | No dependencies, easy to test |
-| Display decisions | Components | Keep rendering concerns together |
-| Configuration | `config/` | Change without touching logic |
+| Thing             | Location                                     | Why                                       |
+| ----------------- | -------------------------------------------- | ----------------------------------------- |
+| HTTP calls        | `api/` layer                                 | One place to change when endpoints change |
+| State logic       | `hooks/` (useReducer)                        | Testable without rendering                |
+| Business rules    | `services/` (backend) or `hooks/` (frontend) | Isolate from UI concerns                  |
+| Pure transforms   | `utils/`                                     | No dependencies, easy to test             |
+| Display decisions | Components                                   | Keep rendering concerns together          |
+| Configuration     | `config/`                                    | Change without touching logic             |
 
 **The test:** If you're importing something from a different layer to make a change, the responsibility is in the wrong place.
 
@@ -48,6 +51,7 @@ If changing the API response format requires touching 6 files, you have a coupli
 ## Patterns
 
 ### Frontend: VideoConceptBuilder Pattern
+
 ```
 ComponentName/
 ├── ComponentName.jsx    → Orchestration: wires pieces together, no logic
@@ -61,6 +65,7 @@ ComponentName/
 **Orchestrator test:** If `ComponentName.jsx` has an `if` statement with business logic, extract it.
 
 ### Backend: PromptOptimizationService Pattern
+
 ```
 ServiceName/
 ├── ServiceName.js       → Orchestration: coordinates specialized services
@@ -79,10 +84,8 @@ Split when you can answer YES to any of these:
 
 1. **Different stakeholders care about different parts**
    - Designer changes styles, backend dev changes data fetching → separate
-   
 2. **Different triggers cause changes**
    - API contract change vs. UI redesign → separate
-   
 3. **You want to test parts independently**
    - Validation logic vs. form rendering → separate
 
@@ -109,13 +112,13 @@ Don't split when:
 
 ## Code Smells to Watch For
 
-| Smell | Symptom | Fix |
-|-------|---------|-----|
-| **Feature Envy** | Function uses more data from another module than its own | Move it to that module |
-| **Shotgun Surgery** | One conceptual change requires editing 5+ files | Consolidate the responsibility |
-| **God Object** | One file that everything depends on | Split by responsibility |
-| **Primitive Obsession** | Passing 5 related strings instead of an object | Create a type/object |
-| **Inappropriate Intimacy** | Module reaches into another's internals | Define a proper interface |
+| Smell                      | Symptom                                                  | Fix                            |
+| -------------------------- | -------------------------------------------------------- | ------------------------------ |
+| **Feature Envy**           | Function uses more data from another module than its own | Move it to that module         |
+| **Shotgun Surgery**        | One conceptual change requires editing 5+ files          | Consolidate the responsibility |
+| **God Object**             | One file that everything depends on                      | Split by responsibility        |
+| **Primitive Obsession**    | Passing 5 related strings instead of an object           | Create a type/object           |
+| **Inappropriate Intimacy** | Module reaches into another's internals                  | Define a proper interface      |
 
 ---
 
@@ -137,4 +140,4 @@ If any answer is "no," you have a cohesion problem—not a line count problem.
 - **Frontend:** `client/src/components/VideoConceptBuilder/`
 - **Backend:** `server/src/services/PromptOptimizationService.js`
 
-Read these to understand the *why*, not just the structure.
+Read these to understand the _why_, not just the structure.

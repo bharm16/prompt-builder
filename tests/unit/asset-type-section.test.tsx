@@ -1,43 +1,49 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
 
-import { AssetTypeSection } from '@features/prompt-optimizer/components/AssetsSidebar/AssetTypeSection';
-import type { Asset } from '@shared/types/asset';
+import { AssetTypeSection } from "@features/prompt-optimizer/components/AssetsSidebar/AssetTypeSection";
+import type { Asset } from "@shared/types/asset";
 
-vi.mock('@features/prompt-optimizer/components/AssetsSidebar/AssetThumbnail', () => ({
-  AssetThumbnail: ({
-    asset,
-    onInsert,
-    onEdit,
-  }: {
-    asset: Asset;
-    onInsert: () => void;
-    onEdit: () => void;
-  }) => (
-    <div data-testid={`asset-${asset.id}`}>
-      <button type="button" onClick={onInsert}>Insert</button>
-      <button type="button" onClick={onEdit}>Edit</button>
-    </div>
-  ),
-}));
+vi.mock(
+  "@features/prompt-optimizer/components/AssetsSidebar/AssetThumbnail",
+  () => ({
+    AssetThumbnail: ({
+      asset,
+      onInsert,
+      onEdit,
+    }: {
+      asset: Asset;
+      onInsert: () => void;
+      onEdit: () => void;
+    }) => (
+      <div data-testid={`asset-${asset.id}`}>
+        <button type="button" onClick={onInsert}>
+          Insert
+        </button>
+        <button type="button" onClick={onEdit}>
+          Edit
+        </button>
+      </div>
+    ),
+  }),
+);
 
 const createAsset = (overrides: Partial<Asset> = {}): Asset => ({
-  id: overrides.id ?? 'asset-1',
-  userId: 'user-1',
-  type: overrides.type ?? 'character',
-  trigger: overrides.trigger ?? '@hero',
-  name: overrides.name ?? 'Hero',
-  textDefinition: overrides.textDefinition ?? 'hero',
+  id: overrides.id ?? "asset-1",
+  userId: "user-1",
+  type: overrides.type ?? "character",
+  trigger: overrides.trigger ?? "@hero",
+  name: overrides.name ?? "Hero",
+  textDefinition: overrides.textDefinition ?? "hero",
   referenceImages: [],
   usageCount: 0,
   lastUsedAt: null,
-  createdAt: '2024-01-01T00:00:00Z',
-  updatedAt: '2024-01-01T00:00:00Z',
+  createdAt: "2024-01-01T00:00:00Z",
+  updatedAt: "2024-01-01T00:00:00Z",
   ...overrides,
 });
 
-describe('AssetTypeSection', () => {
+describe("AssetTypeSection", () => {
   const onToggle = vi.fn();
   const onInsertTrigger = vi.fn();
   const onCreateAsset = vi.fn();
@@ -47,9 +53,8 @@ describe('AssetTypeSection', () => {
     vi.clearAllMocks();
   });
 
-  describe('error handling', () => {
-    it('shows empty state and triggers create when expanded and empty', async () => {
-      const user = userEvent.setup();
+  describe("error handling", () => {
+    it("shows empty state and triggers create when expanded and empty", () => {
       render(
         <AssetTypeSection
           type="character"
@@ -59,18 +64,17 @@ describe('AssetTypeSection', () => {
           onInsertTrigger={onInsertTrigger}
           onCreateAsset={onCreateAsset}
           onEditAsset={onEditAsset}
-        />
+        />,
       );
 
       expect(screen.getByText(/No character assets yet/i)).toBeInTheDocument();
-      await user.click(screen.getByRole('button', { name: /Add Character/i }));
+      fireEvent.click(screen.getByRole("button", { name: /Add Character/i }));
       expect(onCreateAsset).toHaveBeenCalled();
     });
   });
 
-  describe('edge cases', () => {
-    it('calls onToggle when the header button is clicked', async () => {
-      const user = userEvent.setup();
+  describe("edge cases", () => {
+    it("calls onToggle when the header button is clicked", () => {
       render(
         <AssetTypeSection
           type="character"
@@ -80,18 +84,17 @@ describe('AssetTypeSection', () => {
           onInsertTrigger={onInsertTrigger}
           onCreateAsset={onCreateAsset}
           onEditAsset={onEditAsset}
-        />
+        />,
       );
 
-      await user.click(screen.getByRole('button', { name: /character/i }));
+      fireEvent.click(screen.getByRole("button", { name: /character/i }));
       expect(onToggle).toHaveBeenCalled();
     });
   });
 
-  describe('core behavior', () => {
-    it('renders assets and wires insert/edit/create actions', async () => {
-      const user = userEvent.setup();
-      const hero = createAsset({ id: 'asset-hero', trigger: '@hero' });
+  describe("core behavior", () => {
+    it("renders assets and wires insert/edit/create actions", () => {
+      const hero = createAsset({ id: "asset-hero", trigger: "@hero" });
 
       render(
         <AssetTypeSection
@@ -102,18 +105,18 @@ describe('AssetTypeSection', () => {
           onInsertTrigger={onInsertTrigger}
           onCreateAsset={onCreateAsset}
           onEditAsset={onEditAsset}
-        />
+        />,
       );
 
-      expect(screen.getByTestId('asset-asset-hero')).toBeInTheDocument();
+      expect(screen.getByTestId("asset-asset-hero")).toBeInTheDocument();
 
-      await user.click(screen.getByRole('button', { name: 'Insert' }));
-      expect(onInsertTrigger).toHaveBeenCalledWith('@hero');
+      fireEvent.click(screen.getByRole("button", { name: "Insert" }));
+      expect(onInsertTrigger).toHaveBeenCalledWith("@hero");
 
-      await user.click(screen.getByRole('button', { name: 'Edit' }));
-      expect(onEditAsset).toHaveBeenCalledWith('asset-hero');
+      fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+      expect(onEditAsset).toHaveBeenCalledWith("asset-hero");
 
-      await user.click(screen.getByRole('button', { name: 'Add' }));
+      fireEvent.click(screen.getByRole("button", { name: "Add" }));
       expect(onCreateAsset).toHaveBeenCalled();
     });
   });

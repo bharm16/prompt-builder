@@ -49,7 +49,7 @@ export interface SuggestionRequest {
     category?: string;
     confidence?: number;
     distance: number;
-    position: 'before' | 'after';
+    position: "before" | "after";
     start?: number;
     end?: number;
   }>;
@@ -81,16 +81,16 @@ export interface SceneChangeRequest {
 }
 
 export type ElementType =
-  | 'subject'
-  | 'subjectDescriptor1'
-  | 'subjectDescriptor2'
-  | 'subjectDescriptor3'
-  | 'action'
-  | 'location'
-  | 'time'
-  | 'mood'
-  | 'style'
-  | 'event';
+  | "subject"
+  | "subjectDescriptor1"
+  | "subjectDescriptor2"
+  | "subjectDescriptor3"
+  | "action"
+  | "location"
+  | "time"
+  | "mood"
+  | "style"
+  | "event";
 
 export interface CreativeSuggestionRequest {
   elementType: ElementType;
@@ -108,7 +108,7 @@ export interface VideoValidationRequest {
 export interface CompleteSceneRequest {
   existingElements: Record<string, unknown>;
   concept?: string;
-  smartDefaultsFor?: ElementType | 'technical';
+  smartDefaultsFor?: ElementType | "technical";
 }
 
 export interface VariationsRequest {

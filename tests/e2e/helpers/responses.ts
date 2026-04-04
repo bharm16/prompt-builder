@@ -7,7 +7,7 @@
 
 export const jsonResponse = (body: unknown, status = 200) => ({
   status,
-  contentType: 'application/json',
+  contentType: "application/json",
   body: JSON.stringify(body),
 });
 
@@ -15,14 +15,18 @@ export const jsonResponse = (body: unknown, status = 200) => ({
  * Build a Server-Sent Events body string from an array of typed events.
  * Each entry becomes `event: <name>\ndata: <json>\n\n`.
  */
-export function sseBody(events: Array<{ event: string; data: unknown }>): string {
+export function sseBody(
+  events: Array<{ event: string; data: unknown }>,
+): string {
   return (
-    events.map((e) => `event: ${e.event}\ndata: ${JSON.stringify(e.data)}\n`).join('\n') + '\n'
+    events
+      .map((e) => `event: ${e.event}\ndata: ${JSON.stringify(e.data)}\n`)
+      .join("\n") + "\n"
   );
 }
 
 /** Minimal 1x1 transparent PNG for upload tests. */
 export const ONE_PIXEL_PNG = Buffer.from(
-  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4//8/AwAI/AL+Q5dbWQAAAABJRU5ErkJggg==',
-  'base64',
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4//8/AwAI/AL+Q5dbWQAAAABJRU5ErkJggg==",
+  "base64",
 );

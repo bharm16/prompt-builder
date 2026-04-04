@@ -5,12 +5,12 @@
  * Implements the Service Locator pattern for repositories
  */
 
-import { auth } from '../config/firebase';
-import { setSentryUser, addSentryBreadcrumb } from '../config/sentry';
-import { AuthRepository, MockAuthRepository } from './AuthRepository';
-import { PromptRepository } from './PromptRepository';
-import { LocalStoragePromptRepository } from './LocalStoragePromptRepository';
-import type { SentryIntegration } from './AuthRepository';
+import { auth } from "../config/firebase";
+import { setSentryUser, addSentryBreadcrumb } from "../config/sentry";
+import { AuthRepository, MockAuthRepository } from "./AuthRepository";
+import { PromptRepository } from "./PromptRepository";
+import { LocalStoragePromptRepository } from "./LocalStoragePromptRepository";
+import type { SentryIntegration } from "./AuthRepository";
 
 // Sentry integration adapter
 const sentryAdapter: SentryIntegration = {
@@ -29,13 +29,16 @@ let localPromptRepository: LocalStoragePromptRepository | null = null;
 export function getAuthRepository(): AuthRepository {
   if (!authRepository) {
     // E2E test hook: use MockAuthRepository when test global is set
-    const win = typeof window !== 'undefined' ? (window as unknown as Record<string, unknown>) : undefined;
+    const win =
+      typeof window !== "undefined"
+        ? (window as unknown as Record<string, unknown>)
+        : undefined;
     if (win?.__E2E_AUTH_USER__) {
       const mockRepo = new MockAuthRepository();
       const user = win.__E2E_AUTH_USER__ as Record<string, unknown>;
       void mockRepo.signInWithEmail(
-        (user.email as string) ?? 'test@example.com',
-        'e2e-password'
+        (user.email as string) ?? "test@example.com",
+        "e2e-password",
       );
       authRepository = mockRepo as unknown as AuthRepository;
       return authRepository;
@@ -68,7 +71,9 @@ export function getLocalPromptRepository(): LocalStoragePromptRepository {
 /**
  * Get appropriate prompt repository based on auth state
  */
-export function getPromptRepositoryForUser(isAuthenticated: boolean): PromptRepository | LocalStoragePromptRepository {
+export function getPromptRepositoryForUser(
+  isAuthenticated: boolean,
+): PromptRepository | LocalStoragePromptRepository {
   return isAuthenticated ? getPromptRepository() : getLocalPromptRepository();
 }
 

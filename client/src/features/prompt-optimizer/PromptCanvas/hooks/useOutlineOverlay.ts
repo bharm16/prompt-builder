@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import type React from 'react';
+import { useCallback, useEffect, useRef, useState } from "react";
+import type React from "react";
 
-type OverlayState = 'closed' | 'opening' | 'open' | 'closing';
+type OverlayState = "closed" | "opening" | "open" | "closing";
 
 interface UseOutlineOverlayParams {
   outlineOverlayRef: React.RefObject<HTMLDivElement>;
@@ -20,10 +20,10 @@ interface UseOutlineOverlayReturn {
 }
 
 function escapeAttr(value: string): string {
-  if (typeof CSS !== 'undefined' && typeof CSS.escape === 'function') {
+  if (typeof CSS !== "undefined" && typeof CSS.escape === "function") {
     return CSS.escape(value);
   }
-  return value.replace(/["\\]/g, '\\$&');
+  return value.replace(/["\\]/g, "\\$&");
 }
 
 export function useOutlineOverlay({
@@ -34,26 +34,27 @@ export function useOutlineOverlay({
   hoveredSpanId,
   setHoveredSpanId,
 }: UseOutlineOverlayParams): UseOutlineOverlayReturn {
-  const [outlineOverlayState, setOutlineOverlayState] = useState<OverlayState>('closed');
-  const outlineOverlayActive = outlineOverlayState !== 'closed';
+  const [outlineOverlayState, setOutlineOverlayState] =
+    useState<OverlayState>("closed");
+  const outlineOverlayActive = outlineOverlayState !== "closed";
 
   const closeOutlineOverlay = useCallback((): void => {
     setHoveredSpanId(null);
-    setOutlineOverlayState('closing');
+    setOutlineOverlayState("closing");
     window.setTimeout(() => {
-      setOutlineOverlayState('closed');
+      setOutlineOverlayState("closed");
     }, 160);
   }, [setHoveredSpanId]);
 
   const openOutlineOverlay = useCallback((): void => {
-    setOutlineOverlayState('opening');
-    requestAnimationFrame(() => setOutlineOverlayState('open'));
+    setOutlineOverlayState("opening");
+    requestAnimationFrame(() => setOutlineOverlayState("open"));
   }, []);
 
   // On small screens, avoid a skinny rail and show the outline content by default.
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const mql = window.matchMedia('(max-width: 768px)');
+    if (typeof window === "undefined") return;
+    const mql = window.matchMedia("(max-width: 768px)");
     if (mql.matches) openOutlineOverlay();
   }, [openOutlineOverlay]);
 
@@ -61,7 +62,7 @@ export function useOutlineOverlay({
   useEffect(() => {
     if (!outlineOverlayActive) return;
     const handleKeyDown = (event: KeyboardEvent): void => {
-      if (event.key === 'Escape') {
+      if (event.key === "Escape") {
         closeOutlineOverlay();
       }
     };
@@ -72,11 +73,11 @@ export function useOutlineOverlay({
       if (outlineOverlayRef.current.contains(target)) return;
       closeOutlineOverlay();
     };
-    document.addEventListener('keydown', handleKeyDown);
-    document.addEventListener('mousedown', handleMouseDown);
+    document.addEventListener("keydown", handleKeyDown);
+    document.addEventListener("mousedown", handleMouseDown);
     return () => {
-      document.removeEventListener('keydown', handleKeyDown);
-      document.removeEventListener('mousedown', handleMouseDown);
+      document.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("mousedown", handleMouseDown);
     };
   }, [closeOutlineOverlay, outlineOverlayActive, outlineOverlayRef]);
 
@@ -91,14 +92,14 @@ export function useOutlineOverlay({
       !outlineOverlayActive
     ) {
       if (inspectedSpanElementRef.current) {
-        inspectedSpanElementRef.current.classList.remove('brightness-90');
+        inspectedSpanElementRef.current.classList.remove("brightness-90");
         inspectedSpanElementRef.current = null;
       }
       return;
     }
 
     if (inspectedSpanElementRef.current) {
-      inspectedSpanElementRef.current.classList.remove('brightness-90');
+      inspectedSpanElementRef.current.classList.remove("brightness-90");
       inspectedSpanElementRef.current = null;
     }
 
@@ -107,13 +108,13 @@ export function useOutlineOverlay({
     }
 
     const el = root.querySelector(
-      `[data-span-id="${escapeAttr(hoveredSpanId)}"]`
+      `[data-span-id="${escapeAttr(hoveredSpanId)}"]`,
     ) as HTMLElement | null;
     if (!el) return;
-    el.classList.add('brightness-90');
+    el.classList.add("brightness-90");
     inspectedSpanElementRef.current = el;
     return () => {
-      el.classList.remove('brightness-90');
+      el.classList.remove("brightness-90");
       if (inspectedSpanElementRef.current === el) {
         inspectedSpanElementRef.current = null;
       }

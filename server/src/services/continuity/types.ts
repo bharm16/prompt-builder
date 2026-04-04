@@ -9,19 +9,19 @@ import type {
   SessionSeedInfo,
   SessionStatus,
   SessionStyleReference,
-} from '@shared/types/session';
-import type { VideoModelId } from '@services/video-generation/types';
+} from "@shared/types/session";
+import type { VideoModelId } from "@services/video-generation/types";
 
 export type GenerationMode = SessionGenerationMode;
 export type ContinuityMode = SessionContinuityMode;
 export type ContinuityMechanismUsed =
-  | 'native-style-ref'
-  | 'frame-bridge'
-  | 'pulid-keyframe'
-  | 'ip-adapter'
-  | 'scene-proxy'
-  | 'seed-only'
-  | 'none';
+  | "native-style-ref"
+  | "frame-bridge"
+  | "pulid-keyframe"
+  | "ip-adapter"
+  | "scene-proxy"
+  | "seed-only"
+  | "none";
 
 /**
  * A frame extracted from a video for style reference or i2v input
@@ -29,7 +29,7 @@ export type ContinuityMechanismUsed =
 export interface StyleReference
   extends Omit<
     SessionStyleReference,
-    'sourceVideoId' | 'sourceFrameIndex' | 'extractedAt' | 'analysisMetadata'
+    "sourceVideoId" | "sourceFrameIndex" | "extractedAt" | "analysisMetadata"
   > {
   sourceVideoId: string;
   sourceFrameIndex: number;
@@ -55,19 +55,20 @@ export interface ProviderContinuityCapabilities {
   maxStyleReferenceImages?: number;
 }
 
-export interface SeedInfo extends Omit<SessionSeedInfo, 'modelId' | 'extractedAt'> {
+export interface SeedInfo
+  extends Omit<SessionSeedInfo, "modelId" | "extractedAt"> {
   modelId: VideoModelId;
   extractedAt: Date;
 }
 
-export interface FrameBridge extends Omit<SessionFrameBridge, 'extractedAt'> {
+export interface FrameBridge extends Omit<SessionFrameBridge, "extractedAt"> {
   extractedAt: Date;
 }
 
 export interface SceneProxy
-  extends Omit<SessionSceneProxy, 'proxyType' | 'createdAt'> {
+  extends Omit<SessionSceneProxy, "proxyType" | "createdAt"> {
   sourceVideoId: string;
-  proxyType: 'depth-parallax' | 'gaussian-splat' | 'nerf';
+  proxyType: "depth-parallax" | "gaussian-splat" | "nerf";
   createdAt: Date;
 }
 
@@ -88,15 +89,15 @@ export interface SceneProxyRender {
 export interface ContinuityShot
   extends Omit<
     SessionContinuityShot,
-    | 'generationMode'
-    | 'continuityMode'
-    | 'styleReference'
-    | 'frameBridge'
-    | 'seedInfo'
-    | 'modelId'
-    | 'createdAt'
-    | 'generatedAt'
-    | 'continuityMechanismUsed'
+    | "generationMode"
+    | "continuityMode"
+    | "styleReference"
+    | "frameBridge"
+    | "seedInfo"
+    | "modelId"
+    | "createdAt"
+    | "generatedAt"
+    | "continuityMechanismUsed"
   > {
   generationMode?: GenerationMode;
   continuityMode: ContinuityMode;
@@ -113,7 +114,7 @@ export interface ContinuityShot
 export interface ContinuitySessionSettings
   extends Omit<
     SessionContinuitySettings,
-    'generationMode' | 'defaultContinuityMode' | 'defaultModel'
+    "generationMode" | "defaultContinuityMode" | "defaultModel"
   > {
   generationMode: GenerationMode;
   defaultContinuityMode: ContinuityMode;
@@ -147,7 +148,7 @@ export interface StyleMatchOptions {
   prompt: string;
   styleReferenceUrl: string;
   strength: number;
-  aspectRatio?: '16:9' | '9:16' | '1:1' | '4:3' | '3:4';
+  aspectRatio?: "16:9" | "9:16" | "1:1" | "4:3" | "3:4";
   negativePrompt?: string;
 }
 
@@ -155,7 +156,7 @@ export interface CharacterKeyframeOptions {
   userId: string;
   prompt: string;
   characterAssetId: string;
-  aspectRatio?: '16:9' | '9:16' | '1:1' | '4:3' | '3:4';
+  aspectRatio?: "16:9" | "9:16" | "1:1" | "4:3" | "3:4";
   faceStrength?: number;
 }
 

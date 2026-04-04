@@ -1,9 +1,10 @@
-import { VIDEO_MODELS } from '@config/modelConfig';
-import type { ModelCapabilities } from '../types';
-import type { VideoModelId } from '@services/video-generation/types';
+import { VIDEO_MODELS } from "@config/modelConfig";
+import type { ModelCapabilities } from "../types";
+import type { VideoModelId } from "@services/video-generation/types";
 
 export class ModelCapabilityRegistry {
-  private readonly capabilities: Map<VideoModelId, ModelCapabilities> = new Map();
+  private readonly capabilities: Map<VideoModelId, ModelCapabilities> =
+    new Map();
 
   constructor() {
     this.initializeCapabilities();
@@ -19,11 +20,14 @@ export class ModelCapabilityRegistry {
 
   getProductionModels(): VideoModelId[] {
     return Array.from(this.capabilities.entries())
-      .filter(([, cap]) => cap.qualityTier !== 'preview')
+      .filter(([, cap]) => cap.qualityTier !== "preview")
       .map(([id]) => id);
   }
 
-  updateCapability(modelId: VideoModelId, updates: Partial<ModelCapabilities>): void {
+  updateCapability(
+    modelId: VideoModelId,
+    updates: Partial<ModelCapabilities>,
+  ): void {
     const existing = this.capabilities.get(modelId);
     if (!existing) return;
     this.capabilities.set(modelId, { ...existing, ...updates });
@@ -49,9 +53,9 @@ export class ModelCapabilityRegistry {
       transitions: 0.55,
       t2vBoost: 1,
       i2vBoost: 0.9,
-      speedTier: 'slow',
-      costTier: 'high',
-      qualityTier: 'premium',
+      speedTier: "slow",
+      costTier: "high",
+      qualityTier: "premium",
     });
 
     this.capabilities.set(VIDEO_MODELS.VEO_3, {
@@ -73,9 +77,9 @@ export class ModelCapabilityRegistry {
       transitions: 0.65,
       t2vBoost: 1,
       i2vBoost: 0.95,
-      speedTier: 'medium',
-      costTier: 'medium',
-      qualityTier: 'premium',
+      speedTier: "medium",
+      costTier: "medium",
+      qualityTier: "premium",
     });
 
     this.capabilities.set(VIDEO_MODELS.KLING_V2_1, {
@@ -97,9 +101,9 @@ export class ModelCapabilityRegistry {
       transitions: 0.5,
       t2vBoost: 1,
       i2vBoost: 0.95,
-      speedTier: 'medium',
-      costTier: 'medium',
-      qualityTier: 'standard',
+      speedTier: "medium",
+      costTier: "medium",
+      qualityTier: "standard",
     });
 
     this.capabilities.set(VIDEO_MODELS.LUMA_RAY3, {
@@ -121,9 +125,9 @@ export class ModelCapabilityRegistry {
       transitions: 0.92,
       t2vBoost: 0.95,
       i2vBoost: 1.1,
-      speedTier: 'fast',
-      costTier: 'medium',
-      qualityTier: 'standard',
+      speedTier: "fast",
+      costTier: "medium",
+      qualityTier: "standard",
     });
 
     this.capabilities.set(VIDEO_MODELS.DRAFT, {
@@ -145,9 +149,9 @@ export class ModelCapabilityRegistry {
       transitions: 0.48,
       t2vBoost: 1,
       i2vBoost: 1,
-      speedTier: 'fast',
-      costTier: 'low',
-      qualityTier: 'preview',
+      speedTier: "fast",
+      costTier: "low",
+      qualityTier: "preview",
     });
 
     const draftI2vCaps: ModelCapabilities = {
@@ -169,9 +173,9 @@ export class ModelCapabilityRegistry {
       transitions: 0.48,
       t2vBoost: 1,
       i2vBoost: 1,
-      speedTier: 'fast',
-      costTier: 'low',
-      qualityTier: 'preview',
+      speedTier: "fast",
+      costTier: "low",
+      qualityTier: "preview",
     };
 
     this.capabilities.set(VIDEO_MODELS.DRAFT_I2V, draftI2vCaps);

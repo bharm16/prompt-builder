@@ -1,18 +1,18 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { render, screen, fireEvent } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
-import { PromptActions } from '@features/prompt-optimizer/components/PromptActions';
-import { usePromptConfig } from '@features/prompt-optimizer/context/PromptStateContext';
-import { AI_MODEL_URLS } from '@features/prompt-optimizer/components/constants';
+import { PromptActions } from "@features/prompt-optimizer/components/PromptActions";
+import { usePromptConfig } from "@features/prompt-optimizer/context/PromptStateContext";
+import { AI_MODEL_URLS } from "@features/prompt-optimizer/components/constants";
 
-vi.mock('@features/prompt-optimizer/context/PromptStateContext', () => ({
+vi.mock("@features/prompt-optimizer/context/PromptStateContext", () => ({
   usePromptConfig: vi.fn(),
 }));
 
 const mockUsePromptConfig = vi.mocked(usePromptConfig);
 
-describe('PromptActions', () => {
+describe("PromptActions", () => {
   const baseProps = {
     onCopy: vi.fn(),
     onExport: vi.fn(),
@@ -35,20 +35,26 @@ describe('PromptActions', () => {
     vi.clearAllMocks();
   });
 
-  describe('error handling', () => {
-    it('disables generate when no supported model is selected', async () => {
-      mockUsePromptConfig.mockReturnValue({ selectedModel: undefined } as unknown as ReturnType<typeof usePromptConfig>);
+  describe("error handling", () => {
+    it("disables generate when no supported model is selected", async () => {
+      mockUsePromptConfig.mockReturnValue({
+        selectedModel: undefined,
+      } as unknown as ReturnType<typeof usePromptConfig>);
 
       render(<PromptActions {...baseProps} />);
 
-      const generateButton = screen.getByRole('button', { name: /Generate with model/i });
+      const generateButton = screen.getByRole("button", {
+        name: /Generate with model/i,
+      });
       expect(generateButton).toBeDisabled();
     });
   });
 
-  describe('edge cases', () => {
-    it('closes export menu when clicking outside', () => {
-      mockUsePromptConfig.mockReturnValue({ selectedModel: 'sora-2' } as unknown as ReturnType<typeof usePromptConfig>);
+  describe("edge cases", () => {
+    it("closes export menu when clicking outside", () => {
+      mockUsePromptConfig.mockReturnValue({
+        selectedModel: "sora-2",
+      } as unknown as ReturnType<typeof usePromptConfig>);
       const onToggleExportMenu = vi.fn();
 
       render(
@@ -56,7 +62,7 @@ describe('PromptActions', () => {
           {...baseProps}
           showExportMenu
           onToggleExportMenu={onToggleExportMenu}
-        />
+        />,
       );
 
       fireEvent.mouseDown(document.body);
@@ -65,29 +71,33 @@ describe('PromptActions', () => {
     });
   });
 
-  describe('core behavior', () => {
-    it('copies prompt and opens model URL for the selected model', async () => {
-      mockUsePromptConfig.mockReturnValue({ selectedModel: 'sora-2' } as unknown as ReturnType<typeof usePromptConfig>);
+  describe("core behavior", () => {
+    it("copies prompt and opens model URL for the selected model", async () => {
+      mockUsePromptConfig.mockReturnValue({
+        selectedModel: "sora-2",
+      } as unknown as ReturnType<typeof usePromptConfig>);
       const user = userEvent.setup();
       const onCopy = vi.fn();
       const onToggleExportMenu = vi.fn();
-      const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
+      const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
 
       render(
         <PromptActions
           {...baseProps}
           onCopy={onCopy}
           onToggleExportMenu={onToggleExportMenu}
-        />
+        />,
       );
 
-      await user.click(screen.getByRole('button', { name: /Generate with Sora/i }));
+      await user.click(
+        screen.getByRole("button", { name: /Generate with Sora/i }),
+      );
 
       expect(onCopy).toHaveBeenCalled();
       expect(openSpy).toHaveBeenCalledWith(
-        AI_MODEL_URLS['sora-2'],
-        '_blank',
-        'noopener,noreferrer'
+        AI_MODEL_URLS["sora-2"],
+        "_blank",
+        "noopener,noreferrer",
       );
       expect(onToggleExportMenu).toHaveBeenCalledWith(false);
 

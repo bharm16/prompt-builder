@@ -7,12 +7,12 @@
  * @module SuggestionsStateSync.property.test
  */
 
-import { describe, it, expect } from 'vitest';
-import * as fc from 'fast-check';
-import { renderHook, act } from '@testing-library/react';
+import { describe, it, expect } from "vitest";
+import * as fc from "fast-check";
+import { renderHook, act } from "@testing-library/react";
 
-import { useSuggestionsState } from '@components/SuggestionsPanel/hooks/useSuggestionsState';
-import type { SuggestionItem } from '@components/SuggestionsPanel/hooks/types';
+import { useSuggestionsState } from "@components/SuggestionsPanel/hooks/useSuggestionsState";
+import type { SuggestionItem } from "@components/SuggestionsPanel/hooks/types";
 
 /**
  * Helper to create a suggestion item with a category
@@ -26,12 +26,14 @@ function createSuggestion(text: string, category: string): SuggestionItem {
  */
 function createSuggestionsWithCategories(
   categories: string[],
-  suggestionsPerCategory: number = 2
+  suggestionsPerCategory: number = 2,
 ): SuggestionItem[] {
   const suggestions: SuggestionItem[] = [];
   for (const category of categories) {
     for (let i = 0; i < suggestionsPerCategory; i++) {
-      suggestions.push(createSuggestion(`${category}_suggestion_${i}`, category));
+      suggestions.push(
+        createSuggestion(`${category}_suggestion_${i}`, category),
+      );
     }
   }
   return suggestions;
@@ -40,9 +42,11 @@ function createSuggestionsWithCategories(
 /**
  * Generate safe category names that won't conflict with JS prototype properties
  */
-const safeCategoryArb = fc.string({ minLength: 1, maxLength: 20 }).map((s) => `cat_${s}`);
+const safeCategoryArb = fc
+  .string({ minLength: 1, maxLength: 20 })
+  .map((s) => `cat_${s}`);
 
-describe('Suggestions State Synchronization Property Tests', () => {
+describe("Suggestions State Synchronization Property Tests", () => {
   /**
    * Property 8: State Synchronization Preserves Category
    *
@@ -53,8 +57,8 @@ describe('Suggestions State Synchronization Property Tests', () => {
    * **Feature: ai-suggestions-fixes, Property 8: State Synchronization Preserves Category**
    * **Validates: Requirements 8.1, 8.2, 8.3**
    */
-  describe('Property 8: State Synchronization Preserves Category', () => {
-    it('preserves active category when it still exists in new suggestions', () => {
+  describe("Property 8: State Synchronization Preserves Category", () => {
+    it("preserves active category when it still exists in new suggestions", () => {
       fc.assert(
         fc.property(
           // Generate 2-5 unique category names with safe prefix
@@ -63,11 +67,12 @@ describe('Suggestions State Synchronization Property Tests', () => {
             maxLength: 5,
           }),
           (categories) => {
-            const initialSuggestions = createSuggestionsWithCategories(categories);
+            const initialSuggestions =
+              createSuggestionsWithCategories(categories);
 
             const { result, rerender } = renderHook(
               ({ suggestions }) => useSuggestionsState(suggestions),
-              { initialProps: { suggestions: initialSuggestions } }
+              { initialProps: { suggestions: initialSuggestions } },
             );
 
             // Get the initial active category (should be first category)
@@ -97,13 +102,13 @@ describe('Suggestions State Synchronization Property Tests', () => {
 
             // Active category should be preserved
             expect(result.current.activeCategory).toBe(targetCategory);
-          }
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
 
-    it('falls back to first category when active category no longer exists', () => {
+    it("falls back to first category when active category no longer exists", () => {
       fc.assert(
         fc.property(
           // Generate 3-5 unique category names with safe prefix
@@ -112,11 +117,12 @@ describe('Suggestions State Synchronization Property Tests', () => {
             maxLength: 5,
           }),
           (categories) => {
-            const initialSuggestions = createSuggestionsWithCategories(categories);
+            const initialSuggestions =
+              createSuggestionsWithCategories(categories);
 
             const { result, rerender } = renderHook(
               ({ suggestions }) => useSuggestionsState(suggestions),
-              { initialProps: { suggestions: initialSuggestions } }
+              { initialProps: { suggestions: initialSuggestions } },
             );
 
             // Change to the last category
@@ -136,20 +142,21 @@ describe('Suggestions State Synchronization Property Tests', () => {
 
             // Create new suggestions WITHOUT the target category
             const remainingCategories = categories.slice(0, -1);
-            const newSuggestions = createSuggestionsWithCategories(remainingCategories);
+            const newSuggestions =
+              createSuggestionsWithCategories(remainingCategories);
 
             // Rerender with new suggestions
             rerender({ suggestions: newSuggestions });
 
             // Active category should fall back to first available
             expect(result.current.activeCategory).toBe(remainingCategories[0]);
-          }
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
 
-    it('syncs internal state when suggestions prop changes', () => {
+    it("syncs internal state when suggestions prop changes", () => {
       fc.assert(
         fc.property(
           fc.uniqueArray(safeCategoryArb, {
@@ -166,7 +173,7 @@ describe('Suggestions State Synchronization Property Tests', () => {
 
             const { result, rerender } = renderHook(
               ({ suggestions }) => useSuggestionsState(suggestions),
-              { initialProps: { suggestions: suggestions1 } }
+              { initialProps: { suggestions: suggestions1 } },
             );
 
             // Verify initial categories
@@ -177,16 +184,16 @@ describe('Suggestions State Synchronization Property Tests', () => {
 
             // Categories should reflect new suggestions
             expect(result.current.categories.length).toBe(categories2.length);
-            expect(result.current.categories.map((c) => c.category).sort()).toEqual(
-              categories2.sort()
-            );
-          }
+            expect(
+              result.current.categories.map((c) => c.category).sort(),
+            ).toEqual(categories2.sort());
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
 
-    it('handles empty suggestions gracefully', () => {
+    it("handles empty suggestions gracefully", () => {
       fc.assert(
         fc.property(
           fc.uniqueArray(safeCategoryArb, {
@@ -194,11 +201,12 @@ describe('Suggestions State Synchronization Property Tests', () => {
             maxLength: 3,
           }),
           (categories) => {
-            const initialSuggestions = createSuggestionsWithCategories(categories);
+            const initialSuggestions =
+              createSuggestionsWithCategories(categories);
 
             const { result, rerender } = renderHook(
               ({ suggestions }) => useSuggestionsState(suggestions),
-              { initialProps: { suggestions: initialSuggestions } }
+              { initialProps: { suggestions: initialSuggestions } },
             );
 
             // Verify initial state
@@ -210,13 +218,13 @@ describe('Suggestions State Synchronization Property Tests', () => {
             // Active category should be null when no suggestions
             expect(result.current.activeCategory).toBeNull();
             expect(result.current.categories.length).toBe(0);
-          }
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
 
-    it('respects initialCategory when provided and exists', () => {
+    it("respects initialCategory when provided and exists", () => {
       fc.assert(
         fc.property(
           fc.uniqueArray(safeCategoryArb, {
@@ -228,18 +236,18 @@ describe('Suggestions State Synchronization Property Tests', () => {
             const initialCategory = categories[1]; // Use second category as initial
 
             const { result } = renderHook(() =>
-              useSuggestionsState(suggestions, initialCategory)
+              useSuggestionsState(suggestions, initialCategory),
             );
 
             // Active category should be the initial category
             expect(result.current.activeCategory).toBe(initialCategory);
-          }
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
 
-    it('falls back to first category when initialCategory does not exist', () => {
+    it("falls back to first category when initialCategory does not exist", () => {
       fc.assert(
         fc.property(
           fc.uniqueArray(safeCategoryArb, {
@@ -254,18 +262,18 @@ describe('Suggestions State Synchronization Property Tests', () => {
             const suggestions = createSuggestionsWithCategories(categories);
 
             const { result } = renderHook(() =>
-              useSuggestionsState(suggestions, nonExistentCategory)
+              useSuggestionsState(suggestions, nonExistentCategory),
             );
 
             // Active category should fall back to first category
             expect(result.current.activeCategory).toBe(categories[0]);
-          }
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
 
-    it('currentSuggestions reflects active category', () => {
+    it("currentSuggestions reflects active category", () => {
       fc.assert(
         fc.property(
           fc.uniqueArray(safeCategoryArb, {
@@ -276,10 +284,12 @@ describe('Suggestions State Synchronization Property Tests', () => {
           (categories, suggestionsPerCategory) => {
             const suggestions = createSuggestionsWithCategories(
               categories,
-              suggestionsPerCategory
+              suggestionsPerCategory,
             );
 
-            const { result } = renderHook(() => useSuggestionsState(suggestions));
+            const { result } = renderHook(() =>
+              useSuggestionsState(suggestions),
+            );
 
             // Change to each category and verify currentSuggestions
             for (const category of categories) {
@@ -291,14 +301,18 @@ describe('Suggestions State Synchronization Property Tests', () => {
               });
 
               // Current suggestions should all belong to active category
-              expect(result.current.currentSuggestions.length).toBe(suggestionsPerCategory);
+              expect(result.current.currentSuggestions.length).toBe(
+                suggestionsPerCategory,
+              );
               expect(
-                result.current.currentSuggestions.every((s) => s.category === category)
+                result.current.currentSuggestions.every(
+                  (s) => s.category === category,
+                ),
               ).toBe(true);
             }
-          }
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
   });

@@ -12,35 +12,35 @@
  * @module model-detection.property.test
  */
 
-import { describe, it, expect } from 'vitest';
-import * as fc from 'fast-check';
+import { describe, it, expect } from "vitest";
+import * as fc from "fast-check";
 
-import { ModelDetectionService } from '@services/video-prompt-analysis/services/detection/ModelDetectionService';
+import { ModelDetectionService } from "@services/video-prompt-analysis/services/detection/ModelDetectionService";
 
-describe('ModelDetectionService Property Tests', () => {
+describe("ModelDetectionService Property Tests", () => {
   const service = new ModelDetectionService();
 
   // POE model patterns from Requirements 2.1-2.5
   const poeModelPatterns = {
-    'runway-gen45': {
-      patterns: ['gen-4.5', 'gen4.5', 'gen 4.5', 'runway gen 4.5'],
-      description: 'Runway Gen-4.5',
+    "runway-gen45": {
+      patterns: ["gen-4.5", "gen4.5", "gen 4.5", "runway gen 4.5"],
+      description: "Runway Gen-4.5",
     },
-    'luma-ray3': {
-      patterns: ['ray-3', 'ray3', 'ray 3', 'luma ray', 'luma ray-3'],
-      description: 'Luma Ray-3',
+    "luma-ray3": {
+      patterns: ["ray-3", "ray3", "ray 3", "luma ray", "luma ray-3"],
+      description: "Luma Ray-3",
     },
-    'kling-26': {
-      patterns: ['kling 2.6', 'kling2.6', 'kling ai 2.6'],
-      description: 'Kling AI 2.6',
+    "kling-26": {
+      patterns: ["kling 2.6", "kling2.6", "kling ai 2.6"],
+      description: "Kling AI 2.6",
     },
-    'sora-2': {
-      patterns: ['sora 2', 'sora2', 'openai sora 2'],
-      description: 'OpenAI Sora 2',
+    "sora-2": {
+      patterns: ["sora 2", "sora2", "openai sora 2"],
+      description: "OpenAI Sora 2",
     },
-    'veo-4': {
-      patterns: ['veo 4', 'veo4', 'google veo 4'],
-      description: 'Google Veo 4',
+    "veo-4": {
+      patterns: ["veo 4", "veo4", "google veo 4"],
+      description: "Google Veo 4",
     },
   } as const;
 
@@ -57,25 +57,25 @@ describe('ModelDetectionService Property Tests', () => {
    * **Feature: video-model-optimization, Property 1: Model Detection Correctness**
    * **Validates: Requirements 2.1, 2.2, 2.3, 2.4, 2.5, 2.6**
    */
-  describe('Property 1: Model Detection Correctness', () => {
+  describe("Property 1: Model Detection Correctness", () => {
     /**
      * Requirement 2.1: Runway Gen-4.5 detection
      * WHEN a prompt contains "gen-4.5", "gen4.5", or "runway gen 4.5" patterns,
      * THE ModelDetectionService SHALL detect "runway-gen45" as the target model
      */
-    it('detects runway-gen45 from pattern variations', () => {
+    it("detects runway-gen45 from pattern variations", () => {
       fc.assert(
         fc.property(
-          fc.constantFrom(...poeModelPatterns['runway-gen45'].patterns),
+          fc.constantFrom(...poeModelPatterns["runway-gen45"].patterns),
           fc.string({ minLength: 0, maxLength: 50 }),
           fc.string({ minLength: 0, maxLength: 50 }),
           (pattern, prefix, suffix) => {
             const prompt = `${prefix} ${pattern} ${suffix}`.trim();
             const result = service.detectTargetModel(prompt);
-            expect(result).toBe('runway-gen45');
-          }
+            expect(result).toBe("runway-gen45");
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
 
@@ -84,19 +84,19 @@ describe('ModelDetectionService Property Tests', () => {
      * WHEN a prompt contains "ray-3", "ray3", or "luma ray" patterns,
      * THE ModelDetectionService SHALL detect "luma-ray3" as the target model
      */
-    it('detects luma-ray3 from pattern variations', () => {
+    it("detects luma-ray3 from pattern variations", () => {
       fc.assert(
         fc.property(
-          fc.constantFrom(...poeModelPatterns['luma-ray3'].patterns),
+          fc.constantFrom(...poeModelPatterns["luma-ray3"].patterns),
           fc.string({ minLength: 0, maxLength: 50 }),
           fc.string({ minLength: 0, maxLength: 50 }),
           (pattern, prefix, suffix) => {
             const prompt = `${prefix} ${pattern} ${suffix}`.trim();
             const result = service.detectTargetModel(prompt);
-            expect(result).toBe('luma-ray3');
-          }
+            expect(result).toBe("luma-ray3");
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
 
@@ -105,19 +105,19 @@ describe('ModelDetectionService Property Tests', () => {
      * WHEN a prompt contains "kling 2.6", "kling2.6", or "kling ai 2.6" patterns,
      * THE ModelDetectionService SHALL detect "kling-26" as the target model
      */
-    it('detects kling-26 from pattern variations', () => {
+    it("detects kling-26 from pattern variations", () => {
       fc.assert(
         fc.property(
-          fc.constantFrom(...poeModelPatterns['kling-26'].patterns),
+          fc.constantFrom(...poeModelPatterns["kling-26"].patterns),
           fc.string({ minLength: 0, maxLength: 50 }),
           fc.string({ minLength: 0, maxLength: 50 }),
           (pattern, prefix, suffix) => {
             const prompt = `${prefix} ${pattern} ${suffix}`.trim();
             const result = service.detectTargetModel(prompt);
-            expect(result).toBe('kling-26');
-          }
+            expect(result).toBe("kling-26");
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
 
@@ -126,19 +126,19 @@ describe('ModelDetectionService Property Tests', () => {
      * WHEN a prompt contains "sora 2", "sora2", or "openai sora 2" patterns,
      * THE ModelDetectionService SHALL detect "sora-2" as the target model
      */
-    it('detects sora-2 from pattern variations', () => {
+    it("detects sora-2 from pattern variations", () => {
       fc.assert(
         fc.property(
-          fc.constantFrom(...poeModelPatterns['sora-2'].patterns),
+          fc.constantFrom(...poeModelPatterns["sora-2"].patterns),
           fc.string({ minLength: 0, maxLength: 50 }),
           fc.string({ minLength: 0, maxLength: 50 }),
           (pattern, prefix, suffix) => {
             const prompt = `${prefix} ${pattern} ${suffix}`.trim();
             const result = service.detectTargetModel(prompt);
-            expect(result).toBe('sora-2');
-          }
+            expect(result).toBe("sora-2");
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
 
@@ -147,19 +147,19 @@ describe('ModelDetectionService Property Tests', () => {
      * WHEN a prompt contains "veo 4", "veo4", or "google veo 4" patterns,
      * THE ModelDetectionService SHALL detect "veo-4" as the target model
      */
-    it('detects veo-4 from pattern variations', () => {
+    it("detects veo-4 from pattern variations", () => {
       fc.assert(
         fc.property(
-          fc.constantFrom(...poeModelPatterns['veo-4'].patterns),
+          fc.constantFrom(...poeModelPatterns["veo-4"].patterns),
           fc.string({ minLength: 0, maxLength: 50 }),
           fc.string({ minLength: 0, maxLength: 50 }),
           (pattern, prefix, suffix) => {
             const prompt = `${prefix} ${pattern} ${suffix}`.trim();
             const result = service.detectTargetModel(prompt);
-            expect(result).toBe('veo-4');
-          }
+            expect(result).toBe("veo-4");
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
 
@@ -168,119 +168,126 @@ describe('ModelDetectionService Property Tests', () => {
      * WHEN no model is explicitly detected,
      * THE ModelDetectionService SHALL return null
      */
-    it('returns null when no model pattern is detected', () => {
+    it("returns null when no model pattern is detected", () => {
       // Words that should NOT trigger any model detection
       const safeWords = [
-        'video',
-        'animation',
-        'create',
-        'generate',
-        'beautiful',
-        'scene',
-        'landscape',
-        'person',
-        'walking',
-        'sunset',
-        'ocean',
-        'mountain',
-        'city',
-        'night',
-        'day',
+        "video",
+        "animation",
+        "create",
+        "generate",
+        "beautiful",
+        "scene",
+        "landscape",
+        "person",
+        "walking",
+        "sunset",
+        "ocean",
+        "mountain",
+        "city",
+        "night",
+        "day",
       ];
 
       fc.assert(
         fc.property(
-          fc.array(fc.constantFrom(...safeWords), { minLength: 1, maxLength: 10 }),
+          fc.array(fc.constantFrom(...safeWords), {
+            minLength: 1,
+            maxLength: 10,
+          }),
           (words) => {
-            const prompt = words.join(' ');
+            const prompt = words.join(" ");
             const result = service.detectTargetModel(prompt);
             expect(result).toBeNull();
-          }
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
 
     /**
      * Detection is case-insensitive
      */
-    it('detects models regardless of case', () => {
+    it("detects models regardless of case", () => {
       fc.assert(
         fc.property(
           fc.constantFrom(...poeModelIds),
-          fc.constantFrom('upper', 'lower', 'mixed'),
+          fc.constantFrom("upper", "lower", "mixed"),
           (modelId, caseType) => {
             const patterns = poeModelPatterns[modelId].patterns;
             const pattern = patterns[0];
 
             let testPattern: string;
             switch (caseType) {
-              case 'upper':
+              case "upper":
                 testPattern = pattern.toUpperCase();
                 break;
-              case 'lower':
+              case "lower":
                 testPattern = pattern.toLowerCase();
                 break;
               default:
                 testPattern = pattern
-                  .split('')
-                  .map((c, i) => (i % 2 === 0 ? c.toUpperCase() : c.toLowerCase()))
-                  .join('');
+                  .split("")
+                  .map((c, i) =>
+                    i % 2 === 0 ? c.toUpperCase() : c.toLowerCase(),
+                  )
+                  .join("");
             }
 
             const result = service.detectTargetModel(testPattern);
             expect(result).toBe(modelId);
-          }
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
 
     /**
      * Empty and null inputs return null
      */
-    it('returns null for empty, null, or undefined inputs', () => {
+    it("returns null for empty, null, or undefined inputs", () => {
       fc.assert(
         fc.property(
-          fc.constantFrom(null, undefined, '', '   ', '\t\n'),
+          fc.constantFrom(null, undefined, "", "   ", "\t\n"),
           (input) => {
-            const result = service.detectTargetModel(input as string | null | undefined);
+            const result = service.detectTargetModel(
+              input as string | null | undefined,
+            );
             expect(result).toBeNull();
-          }
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
 
     /**
      * All POE models can be detected with their primary pattern
      */
-    it('detects all POE models with their primary patterns', () => {
+    it("detects all POE models with their primary patterns", () => {
       fc.assert(
         fc.property(fc.constantFrom(...poeModelIds), (modelId) => {
           const primaryPattern = poeModelPatterns[modelId].patterns[0];
           const result = service.detectTargetModel(primaryPattern);
           expect(result).toBe(modelId);
         }),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
 
     /**
      * Model detection returns valid ModelId type
      */
-    it('returns a valid model ID or null', () => {
+    it("returns a valid model ID or null", () => {
       const allModelIds = [
-        'sora',
-        'veo3',
-        'runway',
-        'kling',
-        'luma',
-        'runway-gen45',
-        'luma-ray3',
-        'kling-26',
-        'sora-2',
-        'veo-4',
+        "sora",
+        "veo3",
+        "runway",
+        "kling",
+        "luma",
+        "runway-gen45",
+        "luma-ray3",
+        "kling-26",
+        "sora-2",
+        "veo-4",
       ];
 
       fc.assert(
@@ -290,7 +297,7 @@ describe('ModelDetectionService Property Tests', () => {
             expect(allModelIds).toContain(result);
           }
         }),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
   });

@@ -3,6 +3,7 @@
 ## Quick Start
 
 ### Run Tests
+
 ```bash
 # Unit tests
 npm test -- server/src/llm/span-labeling/nlp/__tests__/NlpSpanService.test.ts
@@ -37,12 +38,15 @@ NEURO_SYMBOLIC: {
 No code changes required! The fast-path is transparent:
 
 ```javascript
-import { labelSpans } from './server/src/llm/span-labeling/SpanLabelingService.js';
+import { labelSpans } from "./server/src/llm/span-labeling/SpanLabelingService.js";
 
 // Automatically uses NLP fast-path when applicable
-const result = await labelSpans({ 
-  text: "Wide shot in 16:9, camera dollies forward"
-}, aiService);
+const result = await labelSpans(
+  {
+    text: "Wide shot in 16:9, camera dollies forward",
+  },
+  aiService,
+);
 
 // Check if fast-path was used
 console.log(result.meta.source); // 'nlp-fast-path' or 'llm'
@@ -55,21 +59,23 @@ Edit `server/src/llm/span-labeling/nlp/vocab.json`:
 ```json
 {
   "camera.movement": [
-    "Pan", "Tilt", "Dolly",
-    "YOUR_NEW_TERM_HERE"  // Add here
+    "Pan",
+    "Tilt",
+    "Dolly",
+    "YOUR_NEW_TERM_HERE" // Add here
   ]
 }
 ```
 
 ## Key Files
 
-| File | Purpose |
-|------|---------|
-| `nlp/vocab.json` | Vocabulary database (closed vocab + curated style/audio terms) |
-| `nlp/NlpSpanService.ts` | NLP extraction engine |
-| `SpanLabelingService.ts` | Integration point |
-| `config/SpanLabelingConfig.ts` | Configuration |
-| `scripts/validate-nlp-fastpath.js` | Validation script |
+| File                               | Purpose                                                        |
+| ---------------------------------- | -------------------------------------------------------------- |
+| `nlp/vocab.json`                   | Vocabulary database (closed vocab + curated style/audio terms) |
+| `nlp/NlpSpanService.ts`            | NLP extraction engine                                          |
+| `SpanLabelingService.ts`           | Integration point                                              |
+| `config/SpanLabelingConfig.ts`     | Configuration                                                  |
+| `scripts/validate-nlp-fastpath.js` | Validation script                                              |
 
 ## Performance Metrics
 
@@ -92,10 +98,10 @@ Edit `server/src/llm/span-labeling/nlp/vocab.json`:
 Add disambiguation rule in `shouldIncludeMatch()` function in `NlpSpanService.ts`:
 
 ```javascript
-if (taxonomyId === 'camera.movement') {
-  if (matchLower === 'your_term') {
+if (taxonomyId === "camera.movement") {
+  if (matchLower === "your_term") {
     // Check context
-    if (context.includes('false_positive_keyword')) {
+    if (context.includes("false_positive_keyword")) {
       return false; // Exclude this match
     }
   }
@@ -105,6 +111,7 @@ if (taxonomyId === 'camera.movement') {
 ### Issue: Slow performance
 
 Run diagnostic:
+
 ```bash
 node scripts/validate-nlp-fastpath.js
 ```
@@ -114,6 +121,7 @@ Check "Average Latency" - should be <1ms.
 ## Monitoring
 
 Enable metrics in config, then check logs:
+
 ```
 [NLP Fast-Path] Bypassed LLM call | Spans: 3 | Latency: 0ms | Estimated savings: $0.0005
 ```

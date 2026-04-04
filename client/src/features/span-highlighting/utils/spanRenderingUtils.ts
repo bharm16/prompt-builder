@@ -1,10 +1,10 @@
 /**
  * Span Processing Utilities
- * 
+ *
  * Functions for filtering, validating, and sorting spans for highlighting.
  */
 
-import { snapSpanToTokenBoundaries, type Range } from './tokenBoundaries';
+import { snapSpanToTokenBoundaries, type Range } from "./tokenBoundaries";
 
 export interface SpanWithOffsets {
   displayStart?: number | undefined;
@@ -31,11 +31,14 @@ export function hasValidOffsets(span: SpanWithOffsets): boolean {
 /**
  * Snap a span to token boundaries
  */
-export function snapSpan<T extends SpanWithOffsets>(span: T, displayText: string): ProcessedSpan<T> | null {
+export function snapSpan<T extends SpanWithOffsets>(
+  span: T,
+  displayText: string,
+): ProcessedSpan<T> | null {
   const start = Number(span.displayStart ?? span.start);
   const end = Number(span.displayEnd ?? span.end);
   const snapped = snapSpanToTokenBoundaries(displayText, start, end);
-  
+
   return snapped
     ? {
         span,
@@ -50,7 +53,7 @@ export function snapSpan<T extends SpanWithOffsets>(span: T, displayText: string
  */
 export function processAndSortSpans<T extends SpanWithOffsets>(
   spans: T[],
-  displayText: string
+  displayText: string,
 ): ProcessedSpan<T>[] {
   return [...spans]
     .filter(hasValidOffsets)

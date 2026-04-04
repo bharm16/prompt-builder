@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from "zod";
 
 export interface VideoPromptTechnicalSpecs {
   duration?: string;
@@ -59,24 +59,28 @@ const VideoPromptSlotsSchema = z
   })
   .partial();
 
-export const VideoPromptStructuredResponseSchema = VideoPromptSlotsSchema.extend({
-  _creative_strategy: z.string().optional(),
-  technical_specs: VideoPromptTechnicalSpecsSchema.optional(),
-  variations: z
-    .array(
-      z.object({
-        label: z.string(),
-        prompt: z.string(),
-      })
-    )
-    .optional(),
-  shot_plan: z.record(z.string(), z.unknown()).nullable().optional(),
-}).passthrough();
+export const VideoPromptStructuredResponseSchema =
+  VideoPromptSlotsSchema.extend({
+    _creative_strategy: z.string().optional(),
+    technical_specs: VideoPromptTechnicalSpecsSchema.optional(),
+    variations: z
+      .array(
+        z.object({
+          label: z.string(),
+          prompt: z.string(),
+        }),
+      )
+      .optional(),
+    shot_plan: z.record(z.string(), z.unknown()).nullable().optional(),
+  }).passthrough();
 
 export function parseVideoPromptStructuredResponse(
-  raw: string
+  raw: string,
 ): VideoPromptStructuredResponse {
-  const cleaned = raw.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
+  const cleaned = raw
+    .replace(/```json\s*/g, "")
+    .replace(/```\s*/g, "")
+    .trim();
   const parsed = JSON.parse(cleaned) as unknown;
   const validated = VideoPromptStructuredResponseSchema.safeParse(parsed);
   if (!validated.success) {

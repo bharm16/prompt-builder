@@ -1,8 +1,11 @@
-import { z } from 'zod';
-import { logger } from '@infrastructure/Logger';
+import { z } from "zod";
+import { logger } from "@infrastructure/Logger";
 
 interface ClaudeClient {
-  complete(prompt: string, options?: { maxTokens?: number }): Promise<{
+  complete(
+    prompt: string,
+    options?: { maxTokens?: number },
+  ): Promise<{
     text?: string;
     content?: Array<{
       text: string;
@@ -12,7 +15,7 @@ interface ClaudeClient {
 
 const CritiqueIssueSchema = z.object({
   principle: z.string(),
-  severity: z.enum(['minor', 'moderate', 'major']),
+  severity: z.enum(["minor", "moderate", "major"]),
   description: z.string(),
   suggestion: z.string(),
 });
@@ -39,10 +42,14 @@ interface ConstitutionalReviewResult {
   improvements?: CritiqueIssue[];
 }
 
-type DomainType = 'creative-content' | 'technical-content' | 'educational-content' | 'business-content';
+type DomainType =
+  | "creative-content"
+  | "technical-content"
+  | "educational-content"
+  | "business-content";
 
-type DiversityLevel = 'low' | 'medium' | 'high' | 'maximum';
-type PrecisionLevel = 'low' | 'medium' | 'high' | 'maximum';
+type DiversityLevel = "low" | "medium" | "high" | "maximum";
+type PrecisionLevel = "low" | "medium" | "high" | "maximum";
 
 /**
  * Constitutional AI Wrapper
@@ -57,7 +64,7 @@ export class ConstitutionalAI {
     claudeClient: ClaudeClient,
     originalPrompt: string,
     initialOutput: string,
-    options: ConstitutionalReviewOptions = {}
+    options: ConstitutionalReviewOptions = {},
   ): Promise<ConstitutionalReviewResult> {
     const {
       principles = this.getDefaultPrinciples(),
@@ -65,7 +72,7 @@ export class ConstitutionalAI {
       threshold = 0.7, // Confidence threshold for revision
     } = options;
 
-    logger.debug('Starting constitutional AI review', {
+    logger.debug("Starting constitutional AI review", {
       outputLength: initialOutput.length,
       principlesCount: principles.length,
     });
@@ -75,12 +82,12 @@ export class ConstitutionalAI {
       claudeClient,
       originalPrompt,
       initialOutput,
-      principles
+      principles,
     );
 
     // Step 2: Decide if revision is needed
     if (!autoRevise || critique.overallScore >= threshold) {
-      logger.info('Constitutional review passed', {
+      logger.info("Constitutional review passed", {
         score: critique.overallScore,
         revisionsNeeded: critique.issues.length,
       });
@@ -93,7 +100,7 @@ export class ConstitutionalAI {
     }
 
     // Step 3: Revise the output based on critique
-    logger.info('Constitutional review flagged issues, revising', {
+    logger.info("Constitutional review flagged issues, revising", {
       score: critique.overallScore,
       issues: critique.issues.length,
     });
@@ -102,7 +109,7 @@ export class ConstitutionalAI {
       claudeClient,
       originalPrompt,
       initialOutput,
-      critique
+      critique,
     );
 
     return {
@@ -121,11 +128,11 @@ export class ConstitutionalAI {
     claudeClient: ClaudeClient,
     originalPrompt: string,
     output: string,
-    principles: string[]
+    principles: string[],
   ): Promise<Critique> {
     const principlesList = principles
       .map((p, i) => `${i + 1}. ${p}`)
-      .join('\n');
+      .join("\n");
 
     const critiquePrompt = `You are a quality assurance reviewer evaluating an AI-generated output for potential issues.
 
@@ -168,33 +175,33 @@ If there are NO issues, return an empty issues array and a high overallScore (0.
       maxTokens: 2048,
     });
 
-    let critiqueText = response.text || response.content?.[0]?.text || '';
+    let critiqueText = response.text || response.content?.[0]?.text || "";
     critiqueText = critiqueText
-      .replace(/```json\n?/g, '')
-      .replace(/```\n?/g, '')
+      .replace(/```json\n?/g, "")
+      .replace(/```\n?/g, "")
       .trim();
 
     let parsed: unknown;
     try {
       parsed = JSON.parse(critiqueText);
     } catch (error) {
-      logger.warn('Failed to parse critique JSON', {
-        operation: 'constitutionalReview',
+      logger.warn("Failed to parse critique JSON", {
+        operation: "constitutionalReview",
         error: error instanceof Error ? error.message : String(error),
       });
-      throw new Error('Failed to parse critique JSON');
+      throw new Error("Failed to parse critique JSON");
     }
 
     const validated = CritiqueSchema.safeParse(parsed);
     if (!validated.success) {
-      logger.warn('Critique response failed validation', {
-        operation: 'constitutionalReview',
+      logger.warn("Critique response failed validation", {
+        operation: "constitutionalReview",
         issues: validated.error.issues.map((issue) => ({
-          path: issue.path.join('.'),
+          path: issue.path.join("."),
           message: issue.message,
         })),
       });
-      throw new Error('Critique response validation failed');
+      throw new Error("Critique response validation failed");
     }
 
     return validated.data;
@@ -208,14 +215,14 @@ If there are NO issues, return an empty issues array and a high overallScore (0.
     claudeClient: ClaudeClient,
     originalPrompt: string,
     output: string,
-    critique: Critique
+    critique: Critique,
   ): Promise<string> {
     const issuesList = critique.issues
       .map(
         (issue, i) =>
-          `${i + 1}. ${issue.principle} (${issue.severity}): ${issue.description}\n   Suggestion: ${issue.suggestion}`
+          `${i + 1}. ${issue.principle} (${issue.severity}): ${issue.description}\n   Suggestion: ${issue.suggestion}`,
       )
-      .join('\n\n');
+      .join("\n\n");
 
     const revisionPrompt = `You are revising an AI-generated output to address identified quality issues.
 
@@ -241,9 +248,13 @@ Return ONLY the revised output. Do not include explanations, preambles, or meta-
       maxTokens: 4096,
     });
 
-    const revisedOutput = (response.text || response.content?.[0]?.text || '').trim();
+    const revisedOutput = (
+      response.text ||
+      response.content?.[0]?.text ||
+      ""
+    ).trim();
 
-    logger.debug('Output revised via constitutional AI', {
+    logger.debug("Output revised via constitutional AI", {
       originalLength: output.length,
       revisedLength: revisedOutput.length,
       issuesAddressed: critique.issues.length,
@@ -257,14 +268,14 @@ Return ONLY the revised output. Do not include explanations, preambles, or meta-
    */
   static getDefaultPrinciples(): string[] {
     return [
-      'The output should be helpful, harmless, and honest',
-      'The output should avoid any harmful, unethical, racist, sexist, toxic, dangerous, or illegal content',
-      'The output should be factually accurate and not contain misinformation',
-      'The output should be clear, well-structured, and easy to understand',
-      'The output should respect user privacy and not request or expose sensitive information',
-      'The output should acknowledge uncertainty when appropriate rather than making unfounded claims',
-      'The output should be relevant and directly address the user\'s request',
-      'The output should maintain appropriate tone and professionalism',
+      "The output should be helpful, harmless, and honest",
+      "The output should avoid any harmful, unethical, racist, sexist, toxic, dangerous, or illegal content",
+      "The output should be factually accurate and not contain misinformation",
+      "The output should be clear, well-structured, and easy to understand",
+      "The output should respect user privacy and not request or expose sensitive information",
+      "The output should acknowledge uncertainty when appropriate rather than making unfounded claims",
+      "The output should be relevant and directly address the user's request",
+      "The output should maintain appropriate tone and professionalism",
     ];
   }
 
@@ -273,32 +284,32 @@ Return ONLY the revised output. Do not include explanations, preambles, or meta-
    */
   static getPrinciplesForDomain(domain: DomainType): string[] {
     const domainPrinciples: Record<DomainType, string[]> = {
-      'creative-content': [
+      "creative-content": [
         ...this.getDefaultPrinciples(),
-        'The output should be original and avoid plagiarism',
-        'The output should respect intellectual property and attribution',
-        'The output should be age-appropriate if targeting specific audiences',
+        "The output should be original and avoid plagiarism",
+        "The output should respect intellectual property and attribution",
+        "The output should be age-appropriate if targeting specific audiences",
       ],
 
-      'technical-content': [
+      "technical-content": [
         ...this.getDefaultPrinciples(),
-        'The output should follow technical best practices and industry standards',
-        'The output should include proper error handling and edge case considerations',
-        'The output should be maintainable and well-documented',
+        "The output should follow technical best practices and industry standards",
+        "The output should include proper error handling and edge case considerations",
+        "The output should be maintainable and well-documented",
       ],
 
-      'educational-content': [
+      "educational-content": [
         ...this.getDefaultPrinciples(),
-        'The output should be pedagogically sound and age-appropriate',
-        'The output should encourage critical thinking rather than rote learning',
-        'The output should be inclusive and accessible to diverse learners',
+        "The output should be pedagogically sound and age-appropriate",
+        "The output should encourage critical thinking rather than rote learning",
+        "The output should be inclusive and accessible to diverse learners",
       ],
 
-      'business-content': [
+      "business-content": [
         ...this.getDefaultPrinciples(),
-        'The output should be professional and maintain business etiquette',
-        'The output should avoid unsubstantiated claims or promises',
-        'The output should respect confidentiality and business ethics',
+        "The output should be professional and maintain business etiquette",
+        "The output should avoid unsubstantiated claims or promises",
+        "The output should respect confidentiality and business ethics",
       ],
     };
 
@@ -311,11 +322,11 @@ Return ONLY the revised output. Do not include explanations, preambles, or meta-
   static async quickValidation(
     claudeClient: ClaudeClient,
     output: string,
-    principles: string[] | null = null
+    principles: string[] | null = null,
   ): Promise<boolean> {
     const principlesToCheck = principles || this.getDefaultPrinciples();
 
-    const validationPrompt = `Does the following output comply with these principles: ${principlesToCheck.join(', ')}?
+    const validationPrompt = `Does the following output comply with these principles: ${principlesToCheck.join(", ")}?
 
 Output: ${output}
 
@@ -325,7 +336,9 @@ Respond with ONLY "YES" or "NO".`;
       maxTokens: 10,
     });
 
-    const result = (response.text || response.content?.[0]?.text || '').trim().toUpperCase();
-    return result === 'YES';
+    const result = (response.text || response.content?.[0]?.text || "")
+      .trim()
+      .toUpperCase();
+    return result === "YES";
   }
 }

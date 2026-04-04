@@ -1,12 +1,12 @@
-import type { RedisClient } from '../types';
+import type { RedisClient } from "../types";
 
 export function isRedisReady(redis: RedisClient | null): boolean {
-  return !!redis && redis.status === 'ready';
+  return !!redis && redis.status === "ready";
 }
 
 export async function getRedisValue(
   redis: RedisClient | null,
-  key: string
+  key: string,
 ): Promise<string | null> {
   if (!isRedisReady(redis) || !redis?.get) {
     return null;
@@ -19,18 +19,18 @@ export async function setRedisValue(
   redis: RedisClient | null,
   key: string,
   value: string,
-  ttlSeconds: number
+  ttlSeconds: number,
 ): Promise<void> {
   if (!isRedisReady(redis) || !redis?.set) {
     return;
   }
 
-  await redis.set(key, value, 'EX', ttlSeconds);
+  await redis.set(key, value, "EX", ttlSeconds);
 }
 
 export async function deleteRedisKey(
   redis: RedisClient | null,
-  key: string
+  key: string,
 ): Promise<number> {
   if (!isRedisReady(redis) || !redis?.del) {
     return 0;
@@ -41,7 +41,7 @@ export async function deleteRedisKey(
 
 export async function deleteRedisPattern(
   redis: RedisClient | null,
-  pattern: string
+  pattern: string,
 ): Promise<number> {
   if (!isRedisReady(redis) || !redis?.keys || !redis?.del) {
     return 0;

@@ -1,6 +1,6 @@
-import { getFewShotExamples } from '../../utils/promptBuilder';
-import type { AIService as BaseAIService } from '@services/enhancement/services/types';
-import type { ExecuteParams } from '@services/ai-model/AIModelService';
+import { getFewShotExamples } from "../../utils/promptBuilder";
+import type { AIService as BaseAIService } from "@services/enhancement/services/types";
+import type { ExecuteParams } from "@services/ai-model/AIModelService";
 
 /**
  * Response from callModel with full metadata
@@ -68,24 +68,30 @@ export async function callModel({
   }
 
   if (providerOptions.useFewShot) {
-    const fewShotExamples = getFewShotExamples(providerOptions.providerName || 'groq');
+    const fewShotExamples = getFewShotExamples(
+      providerOptions.providerName || "groq",
+    );
     const payloadObj = JSON.parse(userPayload);
 
     requestOptions.messages = [
-      { role: 'system', content: systemPrompt },
+      { role: "system", content: systemPrompt },
       ...fewShotExamples,
-      { role: 'user', content: payloadObj.text }
+      { role: "user", content: payloadObj.text },
     ];
     requestOptions.enableSandwich = true;
   }
 
-  const response = await aiService.execute('span_labeling', requestOptions);
+  const response = await aiService.execute("span_labeling", requestOptions);
 
-  let text = '';
+  let text = "";
   if (response.text) {
     text = response.text;
-  } else if (response.content && Array.isArray(response.content) && response.content.length > 0) {
-    text = response.content[0]?.text || '';
+  } else if (
+    response.content &&
+    Array.isArray(response.content) &&
+    response.content.length > 0
+  ) {
+    text = response.content[0]?.text || "";
   }
 
   return {

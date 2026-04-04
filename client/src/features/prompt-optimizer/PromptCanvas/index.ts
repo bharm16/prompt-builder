@@ -1,13 +1,12 @@
 /**
  * PromptCanvas Module
- * 
+ *
  * Barrel exports for PromptCanvas component and related types.
  */
 
-export { PromptCanvas } from './PromptCanvas';
+export { PromptCanvas } from "./PromptCanvas";
 export type {
   PromptCanvasProps,
-  SpansData,
   HighlightSnapshot,
   ParseResult,
   SuggestionPayload,
@@ -16,4 +15,4 @@ export type {
   PromptCanvasState,
   PromptCanvasAction,
   ValidSpan,
-} from './types';
+} from "./types";

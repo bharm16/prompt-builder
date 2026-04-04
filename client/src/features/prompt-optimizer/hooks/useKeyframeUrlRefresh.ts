@@ -1,23 +1,23 @@
-import { useCallback, useEffect, useRef } from 'react';
-import type { KeyframeTile } from '@components/ToolSidebar/types';
-import { logger } from '@/services/LoggingService';
-import { resolveMediaUrl } from '@/services/media/MediaUrlResolver';
+import { useCallback, useEffect, useRef } from "react";
+import type { KeyframeTile } from "@components/ToolSidebar/types";
+import { logger } from "@/services/LoggingService";
+import { resolveMediaUrl } from "@/services/media/MediaUrlResolver";
 import {
   extractStorageObjectPath,
   hasGcsSignedUrlParams,
   parseGcsSignedUrlExpiryMs,
-} from '@/utils/storageUrl';
+} from "@/utils/storageUrl";
 import {
   useGenerationControlsStoreActions,
   useGenerationControlsStoreState,
-} from '../context/GenerationControlsStore';
+} from "@features/generation-controls/context/GenerationControlsStore";
 
-const log = logger.child('useKeyframeUrlRefresh');
+const log = logger.child("useKeyframeUrlRefresh");
 const KEYFRAME_REFRESH_INTERVAL_MS = 60 * 1000;
 const KEYFRAME_REFRESH_BUFFER_MS = 2 * 60 * 1000;
 
 const parseExpiresAtMs = (value?: string | null): number | null => {
-  if (!value || typeof value !== 'string') return null;
+  if (!value || typeof value !== "string") return null;
   const parsed = Date.parse(value);
   return Number.isFinite(parsed) ? parsed : null;
 };
@@ -26,9 +26,9 @@ const shouldRefreshUrl = (
   url: string | null,
   expiresAtMs: number | null,
   key: string,
-  lastRefreshSignature: Map<string, string>
+  lastRefreshSignature: Map<string, string>,
 ): boolean => {
-  if (!url || typeof url !== 'string') return true;
+  if (!url || typeof url !== "string") return true;
   if (expiresAtMs !== null) {
     return Date.now() >= expiresAtMs - KEYFRAME_REFRESH_BUFFER_MS;
   }
@@ -58,7 +58,12 @@ export function useKeyframeUrlRefresh(): void {
   }, [startFrame]);
 
   const updateKeyframe = useCallback(
-    (frame: KeyframeTile, nextUrl: string, storagePath: string, expiresAt?: string): void => {
+    (
+      frame: KeyframeTile,
+      nextUrl: string,
+      storagePath: string,
+      expiresAt?: string,
+    ): void => {
       const current = keyframesRef.current;
       let changed = false;
       const next = current.map((tile) => {
@@ -83,11 +88,16 @@ export function useKeyframeUrlRefresh(): void {
       keyframesRef.current = next;
       setKeyframes(next);
     },
-    [setKeyframes]
+    [setKeyframes],
   );
 
   const updateStartFrame = useCallback(
-    (frame: KeyframeTile, nextUrl: string, storagePath: string, expiresAt?: string): void => {
+    (
+      frame: KeyframeTile,
+      nextUrl: string,
+      storagePath: string,
+      expiresAt?: string,
+    ): void => {
       const current = startFrameRef.current;
       if (!current || current.id !== frame.id) return;
       const updated: KeyframeTile = {
@@ -106,25 +116,32 @@ export function useKeyframeUrlRefresh(): void {
       startFrameRef.current = updated;
       setStartFrame(updated);
     },
-    [setStartFrame]
+    [setStartFrame],
   );
 
   const refreshStaleKeyframes = useCallback(async () => {
     const refreshFrame = async (
       frame: KeyframeTile,
       refreshKey: string,
-      onUpdate: (input: KeyframeTile, nextUrl: string, storagePath: string, expiresAt?: string) => void
+      onUpdate: (
+        input: KeyframeTile,
+        nextUrl: string,
+        storagePath: string,
+        expiresAt?: string,
+      ) => void,
     ): Promise<void> => {
-      const storagePath = frame.storagePath || extractStorageObjectPath(frame.url || '');
+      const storagePath =
+        frame.storagePath || extractStorageObjectPath(frame.url || "");
       if (!storagePath) return;
 
       const expiresAtMs =
-        parseExpiresAtMs(frame.viewUrlExpiresAt) ?? parseGcsSignedUrlExpiryMs(frame.url || '');
+        parseExpiresAtMs(frame.viewUrlExpiresAt) ??
+        parseGcsSignedUrlExpiryMs(frame.url || "");
       const needsRefresh = shouldRefreshUrl(
         frame.url ?? null,
         expiresAtMs,
         refreshKey,
-        lastRefreshSignatureRef.current
+        lastRefreshSignatureRef.current,
       );
       if (!needsRefresh) return;
       if (refreshInFlightRef.current.has(refreshKey)) return;
@@ -132,7 +149,7 @@ export function useKeyframeUrlRefresh(): void {
       refreshInFlightRef.current.add(refreshKey);
       try {
         const result = await resolveMediaUrl({
-          kind: 'image',
+          kind: "image",
           url: frame.url ?? null,
           storagePath,
           preferFresh: true,
@@ -142,7 +159,7 @@ export function useKeyframeUrlRefresh(): void {
         onUpdate(frame, nextUrl, storagePath, result.expiresAt ?? undefined);
         lastRefreshSignatureRef.current.set(refreshKey, nextUrl);
       } catch (error) {
-        log.debug('Failed to refresh keyframe view URL', {
+        log.debug("Failed to refresh keyframe view URL", {
           keyframeId: frame.id,
           storagePath,
           error: error instanceof Error ? error.message : String(error),
@@ -155,13 +172,13 @@ export function useKeyframeUrlRefresh(): void {
     const frames = keyframesRef.current;
     if (frames.length) {
       await Promise.all(
-        frames.map((frame) => refreshFrame(frame, frame.id, updateKeyframe))
+        frames.map((frame) => refreshFrame(frame, frame.id, updateKeyframe)),
       );
     }
 
     const latestStartFrame = startFrameRef.current;
     if (latestStartFrame) {
-      await refreshFrame(latestStartFrame, 'start-frame', updateStartFrame);
+      await refreshFrame(latestStartFrame, "start-frame", updateStartFrame);
     }
   }, [updateKeyframe, updateStartFrame]);
 
@@ -176,5 +193,10 @@ export function useKeyframeUrlRefresh(): void {
       isActive = false;
       clearInterval(intervalId);
     };
-  }, [refreshStaleKeyframes, keyframes.length, startFrame?.id, startFrame?.url]);
+  }, [
+    refreshStaleKeyframes,
+    keyframes.length,
+    startFrame?.id,
+    startFrame?.url,
+  ]);
 }

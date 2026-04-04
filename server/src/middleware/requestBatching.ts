@@ -1,24 +1,33 @@
-import type { RequestHandler } from 'express';
-import { logger } from '@infrastructure/Logger';
-import { labelSpans } from '@llm/span-labeling/SpanLabelingService';
+import type { RequestHandler } from "express";
+import { logger } from "@infrastructure/Logger";
+import { labelSpans } from "@llm/span-labeling/SpanLabelingService";
 
 /** Narrow metrics interface — avoids importing the concrete MetricsService class. */
 interface BatchMetrics {
   recordHistogram(name: string, value: number): void;
   recordCounter(name: string): void;
 }
-import type { LabelSpansParams, LabelSpansResult } from '@llm/span-labeling/types';
-import type { AIService as BaseAIService } from '@services/enhancement/services/types';
-import { toPublicLabelSpansResult, type PublicLabelSpansResult } from '../routes/labelSpans/transform';
+import type {
+  LabelSpansParams,
+  LabelSpansResult,
+} from "@llm/span-labeling/types";
+import type { AIService as BaseAIService } from "@services/enhancement/services/types";
+import {
+  toPublicLabelSpansResult,
+  type PublicLabelSpansResult,
+} from "../routes/labelSpans/transform";
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null;
+  typeof value === "object" && value !== null;
 
 const isLabelSpansParams = (value: unknown): value is LabelSpansParams =>
-  isRecord(value) && typeof value.text === 'string' && value.text.trim().length > 0;
+  isRecord(value) &&
+  typeof value.text === "string" &&
+  value.text.trim().length > 0;
 
-const isLabelSpansParamsArray = (value: unknown[]): value is LabelSpansParams[] =>
-  value.every(isLabelSpansParams);
+const isLabelSpansParamsArray = (
+  value: unknown[],
+): value is LabelSpansParams[] => value.every(isLabelSpansParams);
 
 type BatchResult =
   | { success: true; data: LabelSpansResult; index: number }
@@ -63,7 +72,14 @@ export class RequestBatchingService {
 
   private readonly metrics: BatchMetrics | undefined;
 
-  constructor(options: { batchWindow?: number; maxBatchSize?: number; maxConcurrency?: number; metricsService?: BatchMetrics } = {}) {
+  constructor(
+    options: {
+      batchWindow?: number;
+      maxBatchSize?: number;
+      maxConcurrency?: number;
+      metricsService?: BatchMetrics;
+    } = {},
+  ) {
     this.metrics = options.metricsService;
     this.batchWindow = options.batchWindow || 50; // 50ms collection window
     this.maxBatchSize = options.maxBatchSize || 10; // Max requests per batch
@@ -87,7 +103,7 @@ export class RequestBatchingService {
       batchSavings: 0, // Requests saved by batching
     };
 
-    logger.info('RequestBatchingService initialized', {
+    logger.info("RequestBatchingService initialized", {
       batchWindow: this.batchWindow,
       maxBatchSize: this.maxBatchSize,
       maxConcurrency: this.maxConcurrency,
@@ -118,14 +134,14 @@ export class RequestBatchingService {
         // Validate input
         if (!Array.isArray(requests)) {
           res.status(400).json({
-            error: 'Body must be an array of span labeling requests',
+            error: "Body must be an array of span labeling requests",
           });
           return;
         }
 
         if (!isLabelSpansParamsArray(requests)) {
           res.status(400).json({
-            error: 'Each request must include a non-empty text field',
+            error: "Each request must include a non-empty text field",
           });
           return;
         }
@@ -152,7 +168,7 @@ export class RequestBatchingService {
           this.stats.totalRequests / this.stats.totalBatches;
         this.stats.maxBatchSize = Math.max(
           this.stats.maxBatchSize,
-          requests.length
+          requests.length,
         );
 
         // Calculate savings (requests - 1 API call for the batch)
@@ -161,16 +177,16 @@ export class RequestBatchingService {
         }
 
         // Record metrics
-        this.metrics?.recordHistogram('batch_size', requests.length);
-        this.metrics?.recordCounter('batched_requests_total');
+        this.metrics?.recordHistogram("batch_size", requests.length);
+        this.metrics?.recordCounter("batched_requests_total");
 
         res.json(results);
         return;
       } catch (error) {
         const err = error instanceof Error ? error : new Error(String(error));
-        logger.error('Batch processing failed', err);
+        logger.error("Batch processing failed", err);
         res.status(500).json({
-          error: 'Batch processing failed',
+          error: "Batch processing failed",
           message: err.message,
         });
         return;
@@ -187,11 +203,13 @@ export class RequestBatchingService {
    */
   async processBatch(
     requests: LabelSpansParams[],
-    aiService: BaseAIService
-  ): Promise<Array<PublicLabelSpansResult | { error: { message: string; code: string } }>> {
+    aiService: BaseAIService,
+  ): Promise<
+    Array<PublicLabelSpansResult | { error: { message: string; code: string } }>
+  > {
     const startTime = Date.now();
 
-    logger.debug('Processing batch', {
+    logger.debug("Processing batch", {
       batchSize: requests.length,
       timestamp: new Date().toISOString(),
     });
@@ -204,7 +222,7 @@ export class RequestBatchingService {
           // Process individual request
           const result = await labelSpans(request, aiService);
 
-          logger.debug('Batch item completed', {
+          logger.debug("Batch item completed", {
             index,
             spanCount: result.spans?.length || 0,
           });
@@ -216,11 +234,11 @@ export class RequestBatchingService {
           };
         } catch (error) {
           const err = error instanceof Error ? error : new Error(String(error));
-          logger.error('Batch item failed', err, { index });
+          logger.error("Batch item failed", err, { index });
           const code =
-            isRecord(error) && typeof error.code === 'string'
+            isRecord(error) && typeof error.code === "string"
               ? error.code
-              : 'UNKNOWN_ERROR';
+              : "UNKNOWN_ERROR";
 
           return {
             success: false,
@@ -231,24 +249,26 @@ export class RequestBatchingService {
             index,
           };
         }
-      }
+      },
     );
 
     const duration = Date.now() - startTime;
 
-    logger.info('Batch processing completed', {
+    logger.info("Batch processing completed", {
       batchSize: requests.length,
       duration,
       avgPerRequest: duration / requests.length,
-      successCount: results.filter(r => r.success).length,
-      errorCount: results.filter(r => !r.success).length,
+      successCount: results.filter((r) => r.success).length,
+      errorCount: results.filter((r) => !r.success).length,
     });
 
-    this.metrics?.recordHistogram('batch_processing_duration_ms', duration);
+    this.metrics?.recordHistogram("batch_processing_duration_ms", duration);
 
     // Return results in original order, transforming role → category for frontend
     return results.map((result) =>
-      result.success ? toPublicLabelSpansResult(result.data) : { error: result.error }
+      result.success
+        ? toPublicLabelSpansResult(result.data)
+        : { error: result.error },
     );
   }
 
@@ -262,7 +282,7 @@ export class RequestBatchingService {
    */
   async _processWithConcurrency<TItem, TResult>(
     items: TItem[],
-    processor: (item: TItem, index: number) => Promise<TResult>
+    processor: (item: TItem, index: number) => Promise<TResult>,
   ): Promise<TResult[]> {
     const results: TResult[] = new Array(items.length);
     let index = 0;
@@ -282,7 +302,7 @@ export class RequestBatchingService {
     // Create workers (up to maxConcurrency)
     const workers = Array.from(
       { length: Math.min(this.maxConcurrency, items.length) },
-      () => worker()
+      () => worker(),
     );
 
     // Wait for all workers to complete
@@ -312,7 +332,7 @@ export class RequestBatchingService {
 
     return {
       ...this.stats,
-      savingsPercent: savingsPercent.toFixed(2) + '%',
+      savingsPercent: savingsPercent.toFixed(2) + "%",
       efficiency:
         this.stats.avgBatchSize > 1
           ? ((this.stats.avgBatchSize - 1) / this.stats.avgBatchSize) * 100
@@ -338,7 +358,10 @@ export class RequestBatchingService {
  * Express middleware factory for batch endpoint.
  * Accepts metricsService for recording batch-level histograms/counters.
  */
-export function createBatchMiddleware(aiService: BaseAIService, metricsService?: BatchMetrics): RequestHandler {
+export function createBatchMiddleware(
+  aiService: BaseAIService,
+  metricsService?: BatchMetrics,
+): RequestHandler {
   const service = new RequestBatchingService({
     batchWindow: 50,
     maxBatchSize: 10,

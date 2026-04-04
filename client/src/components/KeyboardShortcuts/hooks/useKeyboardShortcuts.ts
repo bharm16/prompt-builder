@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import { isMac } from '../shortcuts.config';
+import { useEffect } from "react";
+import { isMac } from "../shortcuts.config";
 
 export interface KeyboardShortcutsCallbacks {
   openShortcuts?: () => void;
@@ -20,37 +20,39 @@ export interface KeyboardShortcutsCallbacks {
  * Custom hook for handling keyboard shortcuts.
  * Registers global keyboard event listeners for app-wide shortcuts.
  */
-export function useKeyboardShortcuts(callbacks: KeyboardShortcutsCallbacks): void {
+export function useKeyboardShortcuts(
+  callbacks: KeyboardShortcutsCallbacks,
+): void {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent): void => {
       const isMod = isMac ? e.metaKey : e.ctrlKey;
 
       // Cmd/Ctrl + K - Open shortcuts
-      if (isMod && e.key === 'k') {
+      if (isMod && e.key === "k") {
         e.preventDefault();
         callbacks.openShortcuts?.();
       }
 
       // Cmd/Ctrl + , - Open settings
-      if (isMod && e.key === ',') {
+      if (isMod && e.key === ",") {
         e.preventDefault();
         callbacks.openSettings?.();
       }
 
       // Cmd/Ctrl + N - New prompt
-      if (isMod && e.key === 'n') {
+      if (isMod && e.key === "n") {
         e.preventDefault();
         callbacks.createNew?.();
       }
 
       // Cmd/Ctrl + Enter - Optimize
-      if (isMod && e.key === 'Enter') {
+      if (isMod && e.key === "Enter") {
         e.preventDefault();
         callbacks.optimize?.();
       }
 
       // Cmd/Ctrl + C - Copy (only in results view and only when no text is selected)
-      if (isMod && e.key === 'c' && callbacks.canCopy?.()) {
+      if (isMod && e.key === "c" && callbacks.canCopy?.()) {
         const selection = window.getSelection();
         const selectedText = selection?.toString().trim();
 
@@ -62,19 +64,19 @@ export function useKeyboardShortcuts(callbacks: KeyboardShortcutsCallbacks): voi
       }
 
       // Cmd/Ctrl + E - Export
-      if (isMod && e.key === 'e') {
+      if (isMod && e.key === "e") {
         e.preventDefault();
         callbacks.export?.();
       }
 
       // Cmd/Ctrl + B - Toggle sidebar
-      if (isMod && e.key === 'b') {
+      if (isMod && e.key === "b") {
         e.preventDefault();
         callbacks.toggleSidebar?.();
       }
 
       // Cmd/Ctrl + 1-5 - Switch modes
-      if (isMod && ['1', '2', '3', '4', '5'].includes(e.key)) {
+      if (isMod && ["1", "2", "3", "4", "5"].includes(e.key)) {
         e.preventDefault();
         const modeIndex = parseInt(e.key) - 1;
         callbacks.switchMode?.(modeIndex);
@@ -88,12 +90,12 @@ export function useKeyboardShortcuts(callbacks: KeyboardShortcutsCallbacks): voi
       }
 
       // Escape - Close modals
-      if (e.key === 'Escape') {
+      if (e.key === "Escape") {
         callbacks.closeModal?.();
       }
     };
 
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
   }, [callbacks]);
 }

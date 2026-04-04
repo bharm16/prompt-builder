@@ -1,7 +1,7 @@
-import { logger } from '@infrastructure/Logger';
-import type { ILogger } from '@interfaces/ILogger';
-import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer';
-import type { AIService, ShotPlan } from '../types';
+import { logger } from "@infrastructure/Logger";
+import type { ILogger } from "@interfaces/ILogger";
+import { StructuredOutputEnforcer } from "@utils/StructuredOutputEnforcer";
+import type { AIService, ShotPlan } from "../types";
 
 /**
  * ShotInterpreterService
@@ -18,16 +18,19 @@ import type { AIService, ShotPlan } from '../types';
 export class ShotInterpreterService {
   private readonly ai: AIService;
   private readonly log: ILogger;
-  private readonly cache = new Map<string, { value: ShotPlan | null; expiresAt: number }>();
+  private readonly cache = new Map<
+    string,
+    { value: ShotPlan | null; expiresAt: number }
+  >();
   private readonly cacheTtlMs: number;
   private readonly cacheMaxEntries: number;
 
   constructor(
     aiService: AIService,
-    cacheConfig?: { cacheTtlMs: number; cacheMax: number }
+    cacheConfig?: { cacheTtlMs: number; cacheMax: number },
   ) {
     this.ai = aiService;
-    this.log = logger.child({ service: 'ShotInterpreterService' });
+    this.log = logger.child({ service: "ShotInterpreterService" });
     this.cacheTtlMs = cacheConfig?.cacheTtlMs ?? 300_000;
     this.cacheMaxEntries = cacheConfig?.cacheMax ?? 200;
   }
@@ -35,14 +38,17 @@ export class ShotInterpreterService {
   /**
    * Interpret a raw concept into a structured shot plan
    */
-  async interpret(prompt: string, signal?: AbortSignal): Promise<ShotPlan | null> {
+  async interpret(
+    prompt: string,
+    signal?: AbortSignal,
+  ): Promise<ShotPlan | null> {
     const startTime = performance.now();
-    const operation = 'interpret';
-    
+    const operation = "interpret";
+
     if (!prompt || !prompt.trim()) {
-      this.log.debug('Operation skipped.', {
+      this.log.debug("Operation skipped.", {
         operation,
-        reason: 'empty_prompt',
+        reason: "empty_prompt",
         duration: Math.round(performance.now() - startTime),
       });
       return null;
@@ -51,14 +57,14 @@ export class ShotInterpreterService {
     const cacheKey = this.getCacheKey(prompt);
     const cached = this.getCached(cacheKey);
     if (cached !== undefined) {
-      this.log.debug('Cache hit.', {
+      this.log.debug("Cache hit.", {
         operation,
         promptLength: prompt.length,
       });
       return cached;
     }
 
-    this.log.debug('Starting operation.', {
+    this.log.debug("Starting operation.", {
       operation,
       promptLength: prompt.length,
     });
@@ -67,39 +73,43 @@ export class ShotInterpreterService {
 
     // Lightweight schema to keep output predictable without blocking optional fields
     const schema = {
-      type: 'object' as const,
-      required: ['shot_type', 'core_intent'],
+      type: "object" as const,
+      required: ["shot_type", "core_intent"],
       properties: {
-        shot_type: { type: 'string' },
-        core_intent: { type: 'string' },
-        subject: { type: ['string', 'null'] },
-        action: { type: ['string', 'null'] },
-        visual_focus: { type: ['string', 'null'] },
-        setting: { type: ['string', 'null'] },
-        time: { type: ['string', 'null'] },
-        mood: { type: ['string', 'null'] },
-        style: { type: ['string', 'null'] },
-        camera_move: { type: ['string', 'null'] },
-        camera_angle: { type: ['string', 'null'] },
-        lighting: { type: ['string', 'null'] },
-        audio: { type: ['string', 'null'] },
-        duration_hint: { type: ['string', 'null'] },
-        risks: { type: 'array' },
-        confidence: { type: 'number' },
+        shot_type: { type: "string" },
+        core_intent: { type: "string" },
+        subject: { type: ["string", "null"] },
+        action: { type: ["string", "null"] },
+        visual_focus: { type: ["string", "null"] },
+        setting: { type: ["string", "null"] },
+        time: { type: ["string", "null"] },
+        mood: { type: ["string", "null"] },
+        style: { type: ["string", "null"] },
+        camera_move: { type: ["string", "null"] },
+        camera_angle: { type: ["string", "null"] },
+        lighting: { type: ["string", "null"] },
+        audio: { type: ["string", "null"] },
+        duration_hint: { type: ["string", "null"] },
+        risks: { type: "array" },
+        confidence: { type: "number" },
       },
     };
 
     try {
-      const parsed = await StructuredOutputEnforcer.enforceJSON<ShotPlan>(this.ai, systemPrompt, {
-        operation: 'optimize_shot_interpreter',
-        schema,
-        maxRetries: 1,
-        temperature: 0,
-        maxTokens: 400,
-        ...(signal ? { signal } : {}),
-      });
+      const parsed = await StructuredOutputEnforcer.enforceJSON<ShotPlan>(
+        this.ai,
+        systemPrompt,
+        {
+          operation: "optimize_shot_interpreter",
+          schema,
+          maxRetries: 1,
+          temperature: 0,
+          maxTokens: 400,
+          ...(signal ? { signal } : {}),
+        },
+      );
 
-      this.log.info('Operation completed.', {
+      this.log.info("Operation completed.", {
         operation,
         duration: Math.round(performance.now() - startTime),
         shotType: parsed.shot_type,
@@ -109,7 +119,7 @@ export class ShotInterpreterService {
       this.setCached(cacheKey, parsed as ShotPlan);
       return parsed as ShotPlan;
     } catch (error) {
-      this.log.warn('Operation failed; continuing without structured plan.', {
+      this.log.warn("Operation failed; continuing without structured plan.", {
         operation,
         duration: Math.round(performance.now() - startTime),
         error: (error as Error).message,

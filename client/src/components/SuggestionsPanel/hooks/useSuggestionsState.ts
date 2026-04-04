@@ -6,22 +6,22 @@
  * Following VideoConceptBuilder pattern: hooks/useVideoConceptState.ts
  */
 
-import { useReducer, useEffect, useMemo, type Dispatch } from 'react';
+import { useReducer, useEffect, useMemo, type Dispatch } from "react";
 import type {
   SuggestionItem,
   CategoryGroup,
   SuggestionsState,
   SuggestionsAction,
-} from './types';
+} from "./types";
 
 // ===========================
 // ACTION TYPES
 // ===========================
 
 const ACTIONS = {
-  SET_SUGGESTIONS: 'SET_SUGGESTIONS',
-  SET_ACTIVE_CATEGORY: 'SET_ACTIVE_CATEGORY',
-  SET_LOADING: 'SET_LOADING',
+  SET_SUGGESTIONS: "SET_SUGGESTIONS",
+  SET_ACTIVE_CATEGORY: "SET_ACTIVE_CATEGORY",
+  SET_LOADING: "SET_LOADING",
 } as const;
 
 // ===========================
@@ -30,7 +30,7 @@ const ACTIONS = {
 
 function suggestionsReducer(
   state: SuggestionsState,
-  action: SuggestionsAction
+  action: SuggestionsAction,
 ): SuggestionsState {
   switch (action.type) {
     case ACTIONS.SET_SUGGESTIONS:
@@ -76,7 +76,7 @@ interface UseSuggestionsStateReturn {
  */
 export function useSuggestionsState(
   suggestions: SuggestionItem[] = [],
-  initialCategory: string | null = null
+  initialCategory: string | null = null,
 ): UseSuggestionsStateReturn {
   const initialState: SuggestionsState = {
     suggestions,
@@ -91,17 +91,11 @@ export function useSuggestionsState(
   // ===========================
 
   const hasCategories = useMemo(() => {
-    return (
-      suggestions?.length > 0 &&
-      suggestions[0]?.category !== undefined
-    );
+    return suggestions?.length > 0 && suggestions[0]?.category !== undefined;
   }, [suggestions]);
 
   const isGroupedFormat = useMemo(() => {
-    return (
-      suggestions?.length > 0 &&
-      suggestions[0]?.suggestions !== undefined
-    );
+    return suggestions?.length > 0 && suggestions[0]?.suggestions !== undefined;
   }, [suggestions]);
 
   const categories = useMemo(() => {
@@ -116,7 +110,7 @@ export function useSuggestionsState(
     if (hasCategories) {
       const grouped: Record<string, CategoryGroup> = {};
       suggestions.forEach((suggestion) => {
-        const cat = suggestion.category || 'Other';
+        const cat = suggestion.category || "Other";
         if (!grouped[cat]) {
           grouped[cat] = { category: cat, suggestions: [] };
         }
@@ -126,7 +120,7 @@ export function useSuggestionsState(
     }
 
     // No categories - create single group
-    return [{ category: 'Suggestions', suggestions }];
+    return [{ category: "Suggestions", suggestions }];
   }, [suggestions, hasCategories, isGroupedFormat]);
 
   // ===========================
@@ -152,7 +146,7 @@ export function useSuggestionsState(
 
     // Check if current active category still exists in new categories
     const activeCategoryExists = categories.some(
-      (cat) => cat.category === state.activeCategory
+      (cat) => cat.category === state.activeCategory,
     );
 
     // Preserve active category if it still exists (Requirement 8.2)
@@ -186,7 +180,7 @@ export function useSuggestionsState(
     if (!state.activeCategory) return categories[0]?.suggestions || [];
 
     const current = categories.find(
-      (cat) => cat.category === state.activeCategory
+      (cat) => cat.category === state.activeCategory,
     );
     return current?.suggestions || categories[0]?.suggestions || [];
   }, [categories, state.activeCategory]);

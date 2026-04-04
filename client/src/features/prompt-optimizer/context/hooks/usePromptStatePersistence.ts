@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import { persistSelectedMode } from '../promptStateStorage';
+import { useEffect } from "react";
+import { persistSelectedMode } from "../promptStateStorage";
 
 interface UsePromptStatePersistenceOptions {
   selectedMode: string;

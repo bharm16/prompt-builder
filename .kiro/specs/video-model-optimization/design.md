@@ -19,13 +19,13 @@ flowchart TB
     subgraph POE[Prompt Optimization Engine]
         MD[ModelDetectionService]
         SR[StrategyRegistry]
-        
+
         subgraph Pipeline
             N[1. Normalize]
             T[2. Transform]
             A[3. Augment]
         end
-        
+
         subgraph Strategies
             RW[RunwayStrategy]
             LM[LumaStrategy]
@@ -33,7 +33,7 @@ flowchart TB
             SO[SoraStrategy]
             VE[VeoStrategy]
         end
-        
+
         subgraph Utilities
             TS[TechStripper]
             SS[SafetySanitizer]
@@ -92,7 +92,7 @@ export interface OptimizationMetadata {
 }
 
 export interface PhaseResult {
-  phase: 'normalize' | 'transform' | 'augment';
+  phase: "normalize" | "transform" | "augment";
   durationMs: number;
   changes: string[];
 }
@@ -110,7 +110,7 @@ export interface PromptContext {
 }
 
 export interface AssetReference {
-  type: 'image' | 'video' | 'cameo';
+  type: "image" | "video" | "cameo";
   localPath?: string;
   url?: string;
   token?: string;
@@ -129,22 +129,25 @@ export interface PromptOptimizationStrategy {
    * Returns warnings or throws errors for hard constraints.
    */
   validate(input: string, context?: PromptContext): Promise<void>;
-  
+
   /**
    * Phase 1: Strip incompatible tokens and normalize input
    */
   normalize(input: string, context?: PromptContext): string;
-  
+
   /**
    * Phase 2: Translate intent into model-native structure
    */
   transform(input: string, context?: PromptContext): PromptOptimizationResult;
-  
+
   /**
    * Phase 3: Inject model-specific triggers and enforce compliance
    * Note: Runway strategy must inject VLM descriptions from assets here.
    */
-  augment(result: PromptOptimizationResult, context?: PromptContext): PromptOptimizationResult;
+  augment(
+    result: PromptOptimizationResult,
+    context?: PromptContext,
+  ): PromptOptimizationResult;
 }
 ```
 
@@ -155,7 +158,7 @@ export interface PromptOptimizationStrategy {
 
 export class StrategyRegistry {
   private strategies: Map<string, PromptOptimizationStrategy> = new Map();
-  
+
   register(strategy: PromptOptimizationStrategy): void;
   get(modelId: string): PromptOptimizationStrategy | undefined;
   getAll(): PromptOptimizationStrategy[];
@@ -170,24 +173,30 @@ export class StrategyRegistry {
 
 // New model patterns to add
 const NEW_MODEL_PATTERNS = {
-  'runway-gen45': {
-    keywords: ['gen-4.5', 'gen4.5', 'gen 4.5', 'runway gen 4.5', 'whisper thunder'],
+  "runway-gen45": {
+    keywords: [
+      "gen-4.5",
+      "gen4.5",
+      "gen 4.5",
+      "runway gen 4.5",
+      "whisper thunder",
+    ],
     indicators: /\b(gen[_\s-]?4\.?5|whisper\s*thunder)\b/i,
   },
-  'luma-ray3': {
-    keywords: ['ray-3', 'ray3', 'ray 3', 'luma ray', 'luma ray-3'],
+  "luma-ray3": {
+    keywords: ["ray-3", "ray3", "ray 3", "luma ray", "luma ray-3"],
     indicators: /\b(ray[_\s-]?3|luma\s*ray)\b/i,
   },
-  'kling-26': {
-    keywords: ['kling 2.6', 'kling2.6', 'kling ai 2.6'],
+  "kling-26": {
+    keywords: ["kling 2.6", "kling2.6", "kling ai 2.6"],
     indicators: /\b(kling[_\s-]?2\.?6)\b/i,
   },
-  'sora-2': {
-    keywords: ['sora 2', 'sora2', 'openai sora 2'],
+  "sora-2": {
+    keywords: ["sora 2", "sora2", "openai sora 2"],
     indicators: /\b(sora[_\s-]?2|openai\s*sora\s*2)\b/i,
   },
-  'veo-4': {
-    keywords: ['veo 4', 'veo4', 'google veo 4', 'veo 4'],
+  "veo-4": {
+    keywords: ["veo 4", "veo4", "google veo 4", "veo 4"],
     indicators: /\b(veo[_\s-]?4|google\s*veo\s*4)\b/i,
   },
 } as const;
@@ -202,14 +211,14 @@ interface LumaPromptStructure {
   prompt: string;
   negative_prompt?: string; // Implicitly supported via "Modify" or exclusion
   keyframes?: {
-    frame0?: { url: string; type: 'image' };
-    frame1?: { url: string; type: 'image' };
+    frame0?: { url: string; type: "image" };
+    frame1?: { url: string; type: "image" };
   };
   loop: boolean;
   aspect_ratio?: string;
   render_settings: {
     hdr: boolean; // Triggers 16-bit EXR pipeline
-    motion_speed?: 'slow' | 'normal' | 'fast';
+    motion_speed?: "slow" | "normal" | "fast";
   };
 }
 ```
@@ -219,18 +228,18 @@ interface LumaPromptStructure {
 ```typescript
 interface RunwayPromptStructure {
   camera: {
-    movement?: string;  // pan, tilt, truck, pedestal, dolly, zoom
-    angle?: string;     // low, high, eye-level, dutch
-    lens?: string;      // wide, telephoto, macro
+    movement?: string; // pan, tilt, truck, pedestal, dolly, zoom
+    angle?: string; // low, high, eye-level, dutch
+    lens?: string; // wide, telephoto, macro
   };
   subject: {
     description: string;
-    invariants: string[];  // features that must remain consistent
+    invariants: string[]; // features that must remain consistent
     reference_description?: string; // Appended from VLM for visual consistency
   };
   action: {
-    temporal: string;      // what happens over time
-    physics?: string[];    // physical interactions
+    temporal: string; // what happens over time
+    physics?: string[]; // physical interactions
   };
   environment: {
     setting: string;
@@ -244,10 +253,10 @@ interface RunwayPromptStructure {
 
 ```typescript
 interface VeoPromptSchema {
-  mode: 'generate' | 'edit'; // Supports Flow editing
+  mode: "generate" | "edit"; // Supports Flow editing
   edit_config?: {
     instruction: string; // "Remove the boom mic"
-    mask?: string;       // "mask the sky"
+    mask?: string; // "mask the sky"
   };
   negative_prompt?: string;
   subject: {
@@ -291,7 +300,7 @@ interface KlingScreenplayBlock {
 }
 
 interface AudioBlock {
-  type: 'sfx' | 'ambience' | 'music';
+  type: "sfx" | "ambience" | "music";
   description: string;
 }
 
@@ -328,65 +337,65 @@ interface PhysicsConstraints {
 
 ## Correctness Properties
 
-*A property is a characteristic or behavior that should hold true across all valid executions of a system—essentially, a formal statement about what the system should do. Properties serve as the bridge between human-readable specifications and machine-verifiable correctness guarantees.*
+_A property is a characteristic or behavior that should hold true across all valid executions of a system—essentially, a formal statement about what the system should do. Properties serve as the bridge between human-readable specifications and machine-verifiable correctness guarantees._
 
 ### Property 1: Model Detection Correctness
 
-*For any* prompt string containing a model identifier pattern (e.g., "gen-4.5", "ray-3", "kling 2.6", "sora 2", "veo 4"), the ModelDetectionService SHALL return the corresponding model ID, and for prompts without any model pattern, it SHALL return null.
+_For any_ prompt string containing a model identifier pattern (e.g., "gen-4.5", "ray-3", "kling 2.6", "sora 2", "veo 4"), the ModelDetectionService SHALL return the corresponding model ID, and for prompts without any model pattern, it SHALL return null.
 
 **Validates: Requirements 2.1, 2.2, 2.3, 2.4, 2.5, 2.6**
 
 ### Property 2: Strategy Pipeline Validity
 
-*For any* PromptOptimizationStrategy implementation and any valid input string, executing the full pipeline (normalize → transform → augment) SHALL produce a valid PromptOptimizationResult with non-null prompt field and populated metadata.
+_For any_ PromptOptimizationStrategy implementation and any valid input string, executing the full pipeline (normalize → transform → augment) SHALL produce a valid PromptOptimizationResult with non-null prompt field and populated metadata.
 
 **Validates: Requirements 1.1, 1.2, 1.3, 1.4, 1.5**
 
 ### Property 3: Normalization Token Stripping
 
-*For any* strategy and input containing model-incompatible tokens (as defined per strategy), the normalize phase SHALL return text that does not contain those incompatible tokens, while preserving the semantic intent of the original prompt.
+_For any_ strategy and input containing model-incompatible tokens (as defined per strategy), the normalize phase SHALL return text that does not contain those incompatible tokens, while preserving the semantic intent of the original prompt.
 
 **Validates: Requirements 3.1, 3.2, 4.1, 4.2, 5.1, 5.2, 6.1, 7.1**
 
 ### Property 4: Runway CSAE Ordering
 
-*For any* Runway prompt containing camera, subject, action, and environment elements, the transform phase SHALL produce output where camera terms appear before subject terms, subject terms appear before action terms, and action terms appear before environment terms.
+_For any_ Runway prompt containing camera, subject, action, and environment elements, the transform phase SHALL produce output where camera terms appear before subject terms, subject terms appear before action terms, and action terms appear before environment terms.
 
 **Validates: Requirements 3.3, 3.4**
 
 ### Property 5: Veo JSON Schema Validity
 
-*For any* Veo prompt, the transform phase SHALL produce a valid JSON object containing at minimum: subject.description, subject.action, camera.type, camera.movement, environment.lighting fields.
+_For any_ Veo prompt, the transform phase SHALL produce a valid JSON object containing at minimum: subject.description, subject.action, camera.type, camera.movement, environment.lighting fields.
 
 **Validates: Requirements 7.2, 7.3, 7.5**
 
 ### Property 6: Augmentation Trigger Injection
 
-*For any* strategy and input, the augment phase SHALL inject at least one model-specific trigger into the result, and the output SHALL contain all required triggers for that model (e.g., "single continuous shot" for Runway, HDR triggers for Luma).
+_For any_ strategy and input, the augment phase SHALL inject at least one model-specific trigger into the result, and the output SHALL contain all required triggers for that model (e.g., "single continuous shot" for Runway, HDR triggers for Luma).
 
 **Validates: Requirements 3.5, 3.6, 3.7, 4.4, 4.5, 5.5, 6.5, 6.6, 7.4**
 
 ### Property 7: TechStripper Model-Aware Behavior
 
-*For any* input containing placebo tokens ("4k", "8k", "trending on artstation", "award winning") and any model identifier, TechStripper SHALL remove tokens for Runway/Luma models and preserve tokens for Kling/Veo models.
+_For any_ input containing placebo tokens ("4k", "8k", "trending on artstation", "award winning") and any model identifier, TechStripper SHALL remove tokens for Runway/Luma models and preserve tokens for Kling/Veo models.
 
 **Validates: Requirements 8.1, 8.2, 8.3, 8.4, 8.5**
 
 ### Property 8: SafetySanitizer Replacement Consistency
 
-*For any* input containing blocked terms, SafetySanitizer SHALL return sanitized text where all blocked terms are replaced with generic descriptors, and the replacements list SHALL contain an entry for each replacement made. For inputs without blocked terms, the original text SHALL be returned unchanged.
+_For any_ input containing blocked terms, SafetySanitizer SHALL return sanitized text where all blocked terms are replaced with generic descriptors, and the replacements list SHALL contain an entry for each replacement made. For inputs without blocked terms, the original text SHALL be returned unchanged.
 
 **Validates: Requirements 9.1, 9.2, 9.3, 9.4, 9.5**
 
 ### Property 9: Cross-Model Translation Isolation
 
-*For any* input, translateToAllModels SHALL return results for all 5 supported models, and if any single strategy throws an error, the other strategies SHALL still execute successfully and return their results.
+_For any_ input, translateToAllModels SHALL return results for all 5 supported models, and if any single strategy throws an error, the other strategies SHALL still execute successfully and return their results.
 
 **Validates: Requirements 11.1, 11.2, 11.3, 11.4**
 
 ### Property 10: MAM Token Caching
 
-*For any* asset uploaded to MAM, subsequent requests for the same asset (by content hash) SHALL return the cached token without re-uploading, and the cached token SHALL be valid for the target provider.
+_For any_ asset uploaded to MAM, subsequent requests for the same asset (by content hash) SHALL return the cached token without re-uploading, and the cached token SHALL be valid for the target provider.
 
 **Validates: Requirements 12.3, 12.5**
 
@@ -398,12 +407,12 @@ interface PhysicsConstraints {
 class StrategyError extends Error {
   constructor(
     public readonly modelId: string,
-    public readonly phase: 'normalize' | 'transform' | 'augment',
+    public readonly phase: "normalize" | "transform" | "augment",
     public readonly originalError: Error,
-    message: string
+    message: string,
   ) {
     super(message);
-    this.name = 'StrategyError';
+    this.name = "StrategyError";
   }
 }
 ```

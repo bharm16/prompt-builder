@@ -1,39 +1,42 @@
 # Project: Vidra (PromptCanvas)
 
 ## Purpose
+
 - Interactive editing canvas for AI video prompts with semantic span labeling, click-to-enhance suggestions, and fast previews.
 
 ## Tech stack
+
 - Monorepo, Node.js >= 20, ESM (package.json has "type": "module").
 - Client: React 18 + Vite, Tailwind CSS + DaisyUI, TypeScript migration in progress.
 - Server: Express + tsx (TypeScript), LLM providers (OpenAI, Gemini, Groq), Firebase, Stripe.
-- Shared code is in shared/ and can be imported via #shared/*.
+- Shared code is in shared/ and can be imported via #shared/\*.
 
 ## Repo layout
-- client/        Frontend app (Vite + React)
-- server/        API + services (Express)
-- shared/        Shared types/utils
-- packages/      Workspace packages (ex: @promptstudio/system)
-- config/        Build/lint/test config
-- scripts/       Dev tools, migrations, evals
-- docs/          Architecture + TS migration docs
-- tests/         E2E, load, and evaluation suites
+
+- client/ Frontend app (Vite + React)
+- server/ API + services (Express)
+- shared/ Shared types/utils
+- packages/ Workspace packages (ex: @promptstudio/system)
+- config/ Build/lint/test config
+- scripts/ Dev tools, migrations, evals
+- docs/ Architecture + TS migration docs
+- tests/ E2E, load, and evaluation suites
 
 ## Domain Glossary
 
 These terms have specific meanings in this codebase. Do not conflate them.
 
-| Term | Meaning | Server Path | Route |
-|------|---------|-------------|-------|
-| **Span labeling** | ML categorization of prompt phrases into taxonomy categories (subject, camera, lighting…) for UI highlights | `server/src/llm/span-labeling/` | `/llm/label-spans` |
-| **Enhancement / Suggestions** | AI-generated alternative phrases for a user-selected span (click-to-enhance) | `server/src/services/enhancement/` | `/api/suggestions`, `/api/enhance` |
-| **Optimization** | Two-stage prompt rewriting pipeline (Groq fast draft → OpenAI refinement) | `server/src/services/prompt-optimization/` | `/api/optimize-stream` (SSE) |
-| **Continuity** | Shot-to-shot visual consistency in multi-shot sequences (frame-bridge, style-match) | `server/src/services/continuity/` | `/api/continuity` |
-| **Convergence** | Motion and visual convergence pipeline (iterative refinement toward target) | `server/src/services/convergence/` | `/api/motion` |
-| **Video Concept** | Guided wizard flow: subject → action → location → camera → lighting → style | `server/src/services/video-concept/` | via `/api` routes |
-| **Model Intelligence** | AI-powered model recommendation based on prompt analysis | `server/src/services/model-intelligence/` | `/api/model-intelligence` |
-| **Preview** | Image (Flux Schnell) and video (Wan 2.2) draft generation before final render | `server/src/services/image-generation/`, `server/src/services/video-generation/` | `/api/preview` |
-| **Generation** | Final video render via Sora, Veo, Kling, Luma, Runway | `server/src/services/video-generation/` | `/api/preview` (shared routes) |
+| Term                          | Meaning                                                                                                     | Server Path                                                                      | Route                              |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- | ---------------------------------- |
+| **Span labeling**             | ML categorization of prompt phrases into taxonomy categories (subject, camera, lighting…) for UI highlights | `server/src/llm/span-labeling/`                                                  | `/llm/label-spans`                 |
+| **Enhancement / Suggestions** | AI-generated alternative phrases for a user-selected span (click-to-enhance)                                | `server/src/services/enhancement/`                                               | `/api/suggestions`, `/api/enhance` |
+| **Optimization**              | Two-stage prompt rewriting pipeline (Groq fast draft → OpenAI refinement)                                   | `server/src/services/prompt-optimization/`                                       | `/api/optimize-stream` (SSE)       |
+| **Continuity**                | Shot-to-shot visual consistency in multi-shot sequences (frame-bridge, style-match)                         | `server/src/services/continuity/`                                                | `/api/continuity`                  |
+| **Convergence**               | Motion and visual convergence pipeline (iterative refinement toward target)                                 | `server/src/services/convergence/`                                               | `/api/motion`                      |
+| **Video Concept**             | Guided wizard flow: subject → action → location → camera → lighting → style                                 | `server/src/services/video-concept/`                                             | via `/api` routes                  |
+| **Model Intelligence**        | AI-powered model recommendation based on prompt analysis                                                    | `server/src/services/model-intelligence/`                                        | `/api/model-intelligence`          |
+| **Preview**                   | Image (Flux Schnell) and video (Wan 2.2) draft generation before final render                               | `server/src/services/image-generation/`, `server/src/services/video-generation/` | `/api/preview`                     |
+| **Generation**                | Final video render via Sora, Veo, Kling, Luma, Runway                                                       | `server/src/services/video-generation/`                                          | `/api/preview` (shared routes)     |
 
 **Critical distinction:** `EnhancementService.ts` and `VideoConceptService.ts` at the root of `server/src/services/` are **legacy files**. Import from the domain subdirectories (`enhancement/`, `video-concept/`).
 
@@ -43,54 +46,56 @@ See also: `docs/architecture/SERVICE_BOUNDARIES.md`.
 
 Services are registered via domain-scoped files in `server/src/config/services/`:
 
-| Registration File | Registers |
-|---|---|
-| `infrastructure.services.ts` | cache, metrics, Firebase clients, storage, assets, credits |
-| `llm.services.ts` | aiService, claudeClient, groqClient, geminiClient |
-| `enhancement.services.ts` | enhancementService, sceneDetection, coherence, videoPromptAnalysis |
-| `generation.services.ts` | imageGeneration, videoGeneration, storyboardPreview, keyframe, faceSwap |
-| `continuity.services.ts` | continuitySessionService (gated — see Feature Flags) |
-| `session.services.ts` | sessionService, modelIntelligence |
+| Registration File            | Registers                                                               |
+| ---------------------------- | ----------------------------------------------------------------------- |
+| `infrastructure.services.ts` | cache, metrics, Firebase clients, storage, assets, credits              |
+| `llm.services.ts`            | aiService, claudeClient, groqClient, geminiClient                       |
+| `enhancement.services.ts`    | enhancementService, sceneDetection, coherence, videoPromptAnalysis      |
+| `generation.services.ts`     | imageGeneration, videoGeneration, storyboardPreview, keyframe, faceSwap |
+| `continuity.services.ts`     | continuitySessionService (gated — see Feature Flags)                    |
+| `session.services.ts`        | sessionService, modelIntelligence                                       |
 
 Container created in `server/src/config/services.config.ts`, initialized in `services.initialize.ts`. Routes consume services via factories in `server/src/config/routes.config.ts`.
 
 Dependency rules:
+
 - **Constructor injection** only — never `container.resolve()` outside route factories or DI config.
 - `aiService` is the **only** LLM routing layer. Never call provider clients directly from business services.
 - Cross-domain dependencies flow through route layer or orchestrator, not direct imports.
 
 ## Feature Flags
 
-| Flag | Default | Effect |
-|------|---------|--------|
-| `PROMPT_OUTPUT_ONLY=true` | `false` | Disables ALL preview, video generation, motion, and convergence routes. |
-| `ENABLE_CONVERGENCE=false` | `true` | `continuitySessionService` resolves to **`null`**. Must null-check. |
+| Flag                       | Default | Effect                                                                  |
+| -------------------------- | ------- | ----------------------------------------------------------------------- |
+| `PROMPT_OUTPUT_ONLY=true`  | `false` | Disables ALL preview, video generation, motion, and convergence routes. |
+| `ENABLE_CONVERGENCE=false` | `true`  | `continuitySessionService` resolves to **`null`**. Must null-check.     |
 
 When adding new routes, check `routes.config.ts` for the `promptOutputOnly` guard. Generation routes must be inside that block.
 
 ## Route → Service → Client API Map
 
-| Route | Server Route File | Client API/Service |
-|-------|-------------------|--------------------|
-| `POST /api/optimize-stream` | `optimize.routes.ts` | `services/PromptOptimizationApi.ts` |
-| `POST /api/enhance`, `/api/suggestions` | `enhancement.routes.ts`, `suggestions.ts` | `services/EnhancementApi.ts` |
-| `POST /llm/label-spans` | `labelSpansRoute.ts` | `features/span-highlighting/api/spanLabelingApi.ts` |
-| `/api/preview/*` | `preview.routes.ts` | `features/preview/api/` |
-| `/api/payment/*` | `payment.routes.ts` | `api/billingApi.ts` |
-| `/api/motion/*` | `motion.routes.ts` | `api/motionApi.ts` |
-| `/api/storage/*` | `storage.routes.ts` | `api/storageApi.ts` |
-| `/api/capabilities` | `capabilities.routes.ts` | `services/CapabilitiesApi.ts` |
-| `/api/continuity/*` | `continuity.routes.ts` | `features/continuity/api/` |
-| `/api/model-intelligence/*` | `model-intelligence.routes.ts` | `features/model-intelligence/api/` |
-| `/api/sessions/*` | `sessions.routes.ts` | (uses ApiClient directly) |
-| `/api/video/*` | `video.routes.ts` | `services/VideoConceptApi.ts` |
-| `/api/assets/*` | `asset.routes.ts` | `features/assets/` |
-| `/api/reference-images/*` | `reference-images.routes.ts` | `features/reference-images/` |
-| `/health` | `health.routes.ts` | (not called from client) |
+| Route                                   | Server Route File                         | Client API/Service                                  |
+| --------------------------------------- | ----------------------------------------- | --------------------------------------------------- |
+| `POST /api/optimize-stream`             | `optimize.routes.ts`                      | `services/PromptOptimizationApi.ts`                 |
+| `POST /api/enhance`, `/api/suggestions` | `enhancement.routes.ts`, `suggestions.ts` | `services/EnhancementApi.ts`                        |
+| `POST /llm/label-spans`                 | `labelSpansRoute.ts`                      | `features/span-highlighting/api/spanLabelingApi.ts` |
+| `/api/preview/*`                        | `preview.routes.ts`                       | `features/preview/api/`                             |
+| `/api/payment/*`                        | `payment.routes.ts`                       | `api/billingApi.ts`                                 |
+| `/api/motion/*`                         | `motion.routes.ts`                        | `api/motionApi.ts`                                  |
+| `/api/storage/*`                        | `storage.routes.ts`                       | `api/storageApi.ts`                                 |
+| `/api/capabilities`                     | `capabilities.routes.ts`                  | `services/CapabilitiesApi.ts`                       |
+| `/api/continuity/*`                     | `continuity.routes.ts`                    | `features/continuity/api/`                          |
+| `/api/model-intelligence/*`             | `model-intelligence.routes.ts`            | `features/model-intelligence/api/`                  |
+| `/api/sessions/*`                       | `sessions.routes.ts`                      | (uses ApiClient directly)                           |
+| `/api/video/*`                          | `video.routes.ts`                         | `services/VideoConceptApi.ts`                       |
+| `/api/assets/*`                         | `asset.routes.ts`                         | `features/assets/`                                  |
+| `/api/reference-images/*`               | `reference-images.routes.ts`              | `features/reference-images/`                        |
+| `/health`                               | `health.routes.ts`                        | (not called from client)                            |
 
 API calls never go directly in React components. Use `client/src/api/` for thin fetch wrappers, `client/src/services/` for stateful clients, or `client/src/features/<name>/api/` for feature-scoped APIs.
 
 ## Architecture rules
+
 - Frontend: follow VideoConceptBuilder pattern in client/src/components/VideoConceptBuilder/.
   - Orchestrator component + hooks/useReducer + api/ + components/.
 - Backend: follow PromptOptimizationService pattern in server/src/services/prompt-optimization/PromptOptimizationService.js.
@@ -103,18 +108,20 @@ API calls never go directly in React components. Use `client/src/api/` for thin 
 - Prefer TypeScript, avoid any, and use Zod at boundaries (see docs/architecture/typescript/).
 
 ## Environment
+
 - Copy .env.example to .env.
-- Required for local dev: VITE_FIREBASE_* and at least one LLM key (ex: OPENAI_API_KEY).
+- Required for local dev: VITE*FIREBASE*\* and at least one LLM key (ex: OPENAI_API_KEY).
 
 ## Common commands
-- npm start          Dev orchestrator (see scripts/dev/start.ts)
-- npm run dev        Vite client only
-- npm run server     API server only
-- npm run lint       ESLint
-- npm run lint:css   Stylelint
-- npm run test       Vitest
-- npm run test:e2e   Playwright
-- npm run build      Vite build
+
+- npm start Dev orchestrator (see scripts/dev/start.ts)
+- npm run dev Vite client only
+- npm run server API server only
+- npm run lint ESLint
+- npm run lint:css Stylelint
+- npm run test Vitest
+- npm run test:e2e Playwright
+- npm run build Vite build
 
 ## Integration tests
 
@@ -123,6 +130,7 @@ Read `docs/architecture/typescript/TEST_GUIDE.md` Part 3 before writing any inte
 Cardinal rule: **write tests from contracts, not implementations.**
 
 Contract files to read:
+
 - `server/src/config/services.config.ts` (service registrations)
 - `server/src/config/services.initialize.ts` (init order, health checks)
 - `server/src/app.ts` (middleware, route mounting)
@@ -132,6 +140,7 @@ Contract files to read:
 Do NOT read service class internals, handler bodies, or prompt templates when writing assertions.
 
 Workflow:
+
 1. Read contract files.
 2. Write assertions against what contracts promise.
 3. Run tests — expect failures.
@@ -141,6 +150,7 @@ Workflow:
 When fixing failures: default to fixing source code, not the test. Never weaken assertions.
 
 When modifying `services.config.ts`, `services.initialize.ts`, `app.ts`, `server.ts`, or `server/index.ts`, run:
+
 ```bash
 PORT=0 npx vitest run tests/integration/bootstrap.integration.test.ts tests/integration/di-container.integration.test.ts --config config/test/vitest.integration.config.js
 ```
@@ -162,6 +172,7 @@ When fixing a bug, follow this sequence exactly:
 The pre-commit hook rejects `fix:` / `fix(` commits without new test blocks.
 
 Test update rules during bugfixes:
+
 - Never weaken an existing test to accommodate a fix. A failing existing test means your fix changed a contract — treat that as a separate decision.
 - Never update a test and the source file it covers in the same logical change unless the contract itself is intentionally changing.
 - A failing existing test after a bugfix is information. Investigate before touching the test.
@@ -170,6 +181,7 @@ Test update rules during bugfixes:
 See: `docs/architecture/BUGFIX_PROTOCOL.md`
 
 ## Working notes
+
 - Keep changes small and consistent with existing patterns.
 - Update or add tests for behavior changes.
 - See client/GEMINI.md and server/GEMINI.md for subsystem-specific guidance.

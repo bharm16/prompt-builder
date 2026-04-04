@@ -1,7 +1,7 @@
-import { describe, it, expect, vi } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
+import { act, renderHook } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
 
-vi.mock('@/services/LoggingService', () => ({
+vi.mock("@/services/LoggingService", () => ({
   logger: {
     child: () => ({
       debug: vi.fn(),
@@ -12,146 +12,120 @@ vi.mock('@/services/LoggingService', () => ({
   },
 }));
 
-import { usePromptOptimizerState } from '@hooks/usePromptOptimizerState';
+import { usePromptOptimizerState } from "@hooks/usePromptOptimizerState";
 
-describe('usePromptOptimizerState', () => {
-  describe('error and edge cases', () => {
-    it('ADD_LOCKED_SPAN with duplicate id does not add a second entry', () => {
-      const { result } = renderHook(() => usePromptOptimizerState());
+describe("usePromptOptimizerState", () => {
+  it("deduplicates locked spans by id", () => {
+    const { result } = renderHook(() => usePromptOptimizerState());
 
-      act(() => {
-        result.current.addLockedSpan({ id: 'span-1', text: 'first', category: 'subject' });
+    act(() => {
+      result.current.addLockedSpan({
+        id: "span-1",
+        text: "first",
+        category: "subject",
       });
-      act(() => {
-        result.current.addLockedSpan({ id: 'span-1', text: 'duplicate', category: 'action' });
+      result.current.addLockedSpan({
+        id: "span-1",
+        text: "duplicate",
+        category: "action",
       });
-
-      expect(result.current.state.lockedSpans).toHaveLength(1);
-      expect(result.current.state.lockedSpans[0]?.text).toBe('first');
     });
 
-    it('REMOVE_LOCKED_SPAN with non-existent id leaves state unchanged', () => {
-      const { result } = renderHook(() => usePromptOptimizerState());
-
-      act(() => {
-        result.current.addLockedSpan({ id: 'span-1', text: 'keep', category: 'subject' });
-      });
-      act(() => {
-        result.current.removeLockedSpan('non-existent');
-      });
-
-      expect(result.current.state.lockedSpans).toHaveLength(1);
-    });
-
-    it('CLEAR_LOCKED_SPANS empties locked spans even when populated', () => {
-      const { result } = renderHook(() => usePromptOptimizerState());
-
-      act(() => {
-        result.current.addLockedSpan({ id: 'a', text: 'x', category: 'subject' });
-        result.current.addLockedSpan({ id: 'b', text: 'y', category: 'action' });
-      });
-      act(() => {
-        result.current.clearLockedSpans();
-      });
-
-      expect(result.current.state.lockedSpans).toHaveLength(0);
-    });
-
-    it('setIsProcessing(false) also sets isRefining to false', () => {
-      const { result } = renderHook(() => usePromptOptimizerState());
-
-      act(() => {
-        result.current.setIsRefining(true);
-      });
-      expect(result.current.state.isRefining).toBe(true);
-
-      act(() => {
-        result.current.setIsProcessing(false);
-      });
-      expect(result.current.state.isProcessing).toBe(false);
-      expect(result.current.state.isRefining).toBe(false);
-    });
+    expect(result.current.state.lockedSpans).toHaveLength(1);
+    expect(result.current.state.lockedSpans[0]?.text).toBe("first");
   });
 
-  describe('START_OPTIMIZATION resets output state but preserves lockedSpans', () => {
-    it('clears optimizedPrompt, displayedPrompt, qualityScore, and draft state', () => {
-      const { result } = renderHook(() => usePromptOptimizerState());
+  it("startOptimization clears output state but preserves locked spans", () => {
+    const { result } = renderHook(() => usePromptOptimizerState());
 
-      act(() => {
-        result.current.setOptimizedPrompt('some optimized prompt');
-        result.current.setDisplayedPrompt('displayed');
-        result.current.setQualityScore(85);
-        result.current.setDraftPrompt('draft');
-        result.current.setIsDraftReady(true);
-        result.current.addLockedSpan({ id: 'lock-1', text: 'locked', category: 'subject' });
+    act(() => {
+      result.current.setOptimizedPrompt("optimized");
+      result.current.setDisplayedPrompt("displayed");
+      result.current.setQualityScore(85);
+      result.current.addLockedSpan({
+        id: "lock-1",
+        text: "locked",
+        category: "subject",
       });
-
-      act(() => {
-        result.current.startOptimization();
-      });
-
-      expect(result.current.state.optimizedPrompt).toBe('');
-      expect(result.current.state.displayedPrompt).toBe('');
-      expect(result.current.state.qualityScore).toBeNull();
-      expect(result.current.state.draftPrompt).toBe('');
-      expect(result.current.state.isDraftReady).toBe(false);
-      expect(result.current.state.isProcessing).toBe(true);
-      // lockedSpans preserved
-      expect(result.current.state.lockedSpans).toHaveLength(1);
-      expect(result.current.state.lockedSpans[0]?.id).toBe('lock-1');
     });
+
+    act(() => {
+      result.current.startOptimization();
+    });
+
+    expect(result.current.state.optimizedPrompt).toBe("");
+    expect(result.current.state.displayedPrompt).toBe("");
+    expect(result.current.state.qualityScore).toBeNull();
+    expect(result.current.state.isProcessing).toBe(true);
+    expect(result.current.state.lockedSpans).toHaveLength(1);
   });
 
-  describe('RESET returns to initial state', () => {
-    it('resets all fields including lockedSpans', () => {
-      const { result } = renderHook(() => usePromptOptimizerState());
+  it("restores the rollback snapshot and clears processing", () => {
+    const { result } = renderHook(() => usePromptOptimizerState());
 
-      act(() => {
-        result.current.setInputPrompt('test input');
-        result.current.setOptimizedPrompt('optimized');
-        result.current.addLockedSpan({ id: 'x', text: 'x', category: 'subject' });
-      });
-
-      act(() => {
-        result.current.resetPrompt();
-      });
-
-      expect(result.current.state.inputPrompt).toBe('');
-      expect(result.current.state.optimizedPrompt).toBe('');
-      expect(result.current.state.lockedSpans).toHaveLength(0);
-      expect(result.current.state.isProcessing).toBe(false);
-      expect(result.current.state.qualityScore).toBeNull();
+    act(() => {
+      result.current.setOptimizedPrompt("before");
+      result.current.setDisplayedPrompt("before displayed");
+      result.current.setQualityScore(70);
+      result.current.snapshotForRollback();
+      result.current.startOptimization();
+      result.current.setOptimizedPrompt("after");
+      result.current.setIsProcessing(true);
     });
+
+    act(() => {
+      result.current.rollback();
+    });
+
+    expect(result.current.state.optimizedPrompt).toBe("before");
+    expect(result.current.state.displayedPrompt).toBe("before displayed");
+    expect(result.current.state.qualityScore).toBe(70);
+    expect(result.current.state.isProcessing).toBe(false);
+    expect(result.current.state.rollbackSnapshot).toBeNull();
   });
 
-  describe('core state setters', () => {
-    it('setInputPrompt updates inputPrompt', () => {
-      const { result } = renderHook(() => usePromptOptimizerState());
-      act(() => { result.current.setInputPrompt('new prompt'); });
-      expect(result.current.state.inputPrompt).toBe('new prompt');
+  it("rollback without a snapshot only clears processing", () => {
+    const { result } = renderHook(() => usePromptOptimizerState());
+
+    act(() => {
+      result.current.setOptimizedPrompt("kept");
+      result.current.setIsProcessing(true);
     });
 
-    it('setPreviewPrompt and setPreviewAspectRatio update their fields', () => {
-      const { result } = renderHook(() => usePromptOptimizerState());
-      act(() => {
-        result.current.setPreviewPrompt('preview text');
-        result.current.setPreviewAspectRatio('16:9');
-      });
-      expect(result.current.state.previewPrompt).toBe('preview text');
-      expect(result.current.state.previewAspectRatio).toBe('16:9');
+    act(() => {
+      result.current.rollback();
     });
 
-    it('setSkipAnimation toggles skipAnimation', () => {
-      const { result } = renderHook(() => usePromptOptimizerState());
-      act(() => { result.current.setSkipAnimation(true); });
-      expect(result.current.state.skipAnimation).toBe(true);
+    expect(result.current.state.optimizedPrompt).toBe("kept");
+    expect(result.current.state.isProcessing).toBe(false);
+  });
+
+  it("reset clears the rollback snapshot", () => {
+    const { result } = renderHook(() => usePromptOptimizerState());
+
+    act(() => {
+      result.current.setOptimizedPrompt("saved");
+      result.current.snapshotForRollback();
     });
 
-    it('setImprovementContext stores arbitrary context', () => {
-      const { result } = renderHook(() => usePromptOptimizerState());
-      const ctx = { suggestions: ['improve lighting'] };
-      act(() => { result.current.setImprovementContext(ctx); });
-      expect(result.current.state.improvementContext).toEqual(ctx);
+    expect(result.current.state.rollbackSnapshot).not.toBeNull();
+
+    act(() => {
+      result.current.resetPrompt();
     });
+
+    expect(result.current.state.rollbackSnapshot).toBeNull();
+    expect(result.current.state.optimizedPrompt).toBe("");
+  });
+
+  it("increments optimizationResultVersion explicitly", () => {
+    const { result } = renderHook(() => usePromptOptimizerState());
+
+    act(() => {
+      result.current.bumpOptimizationResultVersion();
+      result.current.bumpOptimizationResultVersion();
+    });
+
+    expect(result.current.state.optimizationResultVersion).toBe(2);
   });
 });

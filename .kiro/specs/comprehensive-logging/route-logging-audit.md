@@ -7,6 +7,7 @@ This document audits all route files in `server/src/routes/` to identify gaps in
 ## Audit Criteria
 
 For each route, we check:
+
 - ✅ Request received logging (info level with requestId, method, path)
 - ✅ Response sent logging (info level with requestId, status, duration)
 - ✅ Operation start logging (debug level)
@@ -24,6 +25,7 @@ For each route, we check:
 **Endpoints Analyzed**:
 
 #### POST /api/optimize
+
 - ✅ Request received: Yes (info level with requestId, operation, prompt length, mode, context flags)
 - ✅ Response sent: Yes (info level with duration, input/output lengths)
 - ✅ Operation start: Implicit via request received log
@@ -32,6 +34,7 @@ For each route, we check:
 - ✅ Sanitization: Yes (only logs lengths, not content)
 
 #### POST /api/optimize-stream
+
 - ✅ Request received: Yes (info level with requestId, operation, prompt length, mode, context flags)
 - ✅ Response sent: Yes (info level with duration, usedFallback flag)
 - ✅ Operation start: Implicit via request received log
@@ -40,6 +43,7 @@ For each route, we check:
 - ✅ Sanitization: Yes (only logs lengths, not content)
 
 #### POST /api/video/suggestions
+
 - ✅ Request received: Yes (info level with requestId, operation, element type, context flags)
 - ✅ Response sent: Yes (info level with duration, suggestion count)
 - ✅ Operation start: Implicit via request received log
@@ -48,6 +52,7 @@ For each route, we check:
 - ✅ Sanitization: Yes (only logs flags and counts)
 
 #### POST /api/video/validate
+
 - ❌ Request received: No
 - ❌ Response sent: No
 - ❌ Operation start: No
@@ -56,6 +61,7 @@ For each route, we check:
 - ❌ Sanitization: N/A
 
 #### POST /api/video/complete
+
 - ❌ Request received: No
 - ❌ Response sent: No
 - ❌ Operation start: No
@@ -64,6 +70,7 @@ For each route, we check:
 - ❌ Sanitization: N/A
 
 #### POST /api/video/variations
+
 - ❌ Request received: No
 - ❌ Response sent: No
 - ❌ Operation start: No
@@ -72,6 +79,7 @@ For each route, we check:
 - ❌ Sanitization: N/A
 
 #### POST /api/video/parse
+
 - ❌ Request received: No
 - ❌ Response sent: No
 - ❌ Operation start: No
@@ -80,6 +88,7 @@ For each route, we check:
 - ❌ Sanitization: N/A
 
 #### POST /api/video/semantic-parse
+
 - ✅ Request received: Yes (info level with requestId, operation, text length)
 - ✅ Response sent: Yes (info level with duration, span count)
 - ✅ Operation start: Implicit via request received log
@@ -88,6 +97,7 @@ For each route, we check:
 - ✅ Sanitization: Yes (only logs text length)
 
 #### POST /api/get-enhancement-suggestions
+
 - ✅ Request received: Yes (info level with requestId, operation, lengths, category, context flags)
 - ✅ Response sent: Yes (info level with duration, suggestion count, cache hit, category)
 - ✅ Operation start: Implicit via request received log
@@ -96,6 +106,7 @@ For each route, we check:
 - ✅ Sanitization: Yes (only logs lengths and flags)
 
 #### POST /api/get-custom-suggestions
+
 - ✅ Request received: Yes (info level with requestId, operation, text lengths)
 - ✅ Response sent: Yes (info level with duration, suggestion count)
 - ✅ Operation start: Implicit via request received log
@@ -104,6 +115,7 @@ For each route, we check:
 - ✅ Sanitization: Yes (only logs lengths)
 
 #### POST /api/detect-scene-change
+
 - ❌ Request received: No
 - ❌ Response sent: No
 - ❌ Operation start: No
@@ -112,6 +124,7 @@ For each route, we check:
 - ❌ Sanitization: N/A
 
 #### GET /api/test-nlp
+
 - ❌ Request received: No
 - ❌ Response sent: No
 - ❌ Operation start: No
@@ -130,6 +143,7 @@ For each route, we check:
 **Endpoints Analyzed**:
 
 #### GET /health
+
 - ✅ Request received: Yes (debug level with requestId, operation)
 - ✅ Response sent: Implicit (simple health check)
 - ✅ Operation start: Yes (debug level)
@@ -138,6 +152,7 @@ For each route, we check:
 - ✅ Sanitization: N/A
 
 #### GET /health/ready
+
 - ✅ Request received: Yes (debug level with requestId, operation)
 - ✅ Response sent: Yes (info level with duration, status, checks)
 - ✅ Operation start: Yes (debug level)
@@ -146,6 +161,7 @@ For each route, we check:
 - ✅ Sanitization: N/A
 
 #### GET /health/live
+
 - ✅ Request received: Yes (debug level with requestId, operation)
 - ✅ Response sent: Implicit (simple liveness check)
 - ✅ Operation start: Yes (debug level)
@@ -154,6 +170,7 @@ For each route, we check:
 - ✅ Sanitization: N/A
 
 #### GET /metrics
+
 - ⚠️ Request received: No (but protected endpoint, minimal logging acceptable)
 - ⚠️ Response sent: No
 - ⚠️ Operation start: No
@@ -162,6 +179,7 @@ For each route, we check:
 - ✅ Sanitization: N/A
 
 #### GET /stats
+
 - ✅ Request received: Yes (debug level with requestId, operation)
 - ✅ Response sent: Yes (info level with duration)
 - ✅ Operation start: Yes (debug level)
@@ -170,6 +188,7 @@ For each route, we check:
 - ✅ Sanitization: N/A
 
 #### GET /debug-sentry
+
 - ⚠️ Request received: No (test endpoint, acceptable)
 - ⚠️ Response sent: N/A (throws error)
 - ⚠️ Operation start: No
@@ -188,6 +207,7 @@ For each route, we check:
 **Endpoints Analyzed**:
 
 #### POST /label-spans
+
 - ✅ Request received: Yes (debug level with requestId, operation, text length, params)
 - ✅ Response sent: Yes (info level with duration, span count, cache hit, API time)
 - ✅ Operation start: Yes (debug level)
@@ -207,6 +227,7 @@ For each route, we check:
 **Endpoints Analyzed**:
 
 #### POST /api/preview/generate
+
 - ✅ Request received: Yes (debug level with requestId, operation, userId, prompt length, aspect ratio)
 - ✅ Response sent: Yes (info level with duration, userId)
 - ✅ Operation start: Yes (debug level)
@@ -225,6 +246,7 @@ For each route, we check:
 **Endpoints Analyzed**:
 
 #### POST /role-classify
+
 - ✅ Request received: Yes (debug level with requestId, operation)
 - ✅ Response sent: Yes (info level with duration, span counts, template version)
 - ✅ Operation start: Yes (debug level)
@@ -244,6 +266,7 @@ For each route, we check:
 **Endpoints Analyzed**:
 
 #### POST /api/suggestions/evaluate
+
 - ✅ Request received: Yes (debug level with requestId, operation, suggestion count, rubric, flags)
 - ✅ Response sent: Yes (info level with duration, overall score)
 - ✅ Operation start: Yes (debug level)
@@ -252,6 +275,7 @@ For each route, we check:
 - ✅ Sanitization: Yes (only logs counts and flags)
 
 #### POST /api/suggestions/evaluate/single
+
 - ✅ Request received: Yes (debug level with requestId, operation, suggestion length, rubric)
 - ✅ Response sent: Yes (info level with duration, overall score)
 - ✅ Operation start: Yes (debug level)
@@ -260,6 +284,7 @@ For each route, we check:
 - ✅ Sanitization: Yes (only logs lengths)
 
 #### POST /api/suggestions/evaluate/compare
+
 - ✅ Request received: Yes (debug level with requestId, operation, set counts)
 - ✅ Response sent: Yes (info level with duration, winner, score difference)
 - ✅ Operation start: Yes (debug level)
@@ -268,6 +293,7 @@ For each route, we check:
 - ✅ Sanitization: Yes (only logs counts)
 
 #### GET /api/suggestions/evaluate/rubrics
+
 - ❌ Request received: No
 - ❌ Response sent: No
 - ❌ Operation start: No
@@ -282,6 +308,7 @@ For each route, we check:
 ## Summary of Findings
 
 ### Routes with Complete Logging
+
 1. ✅ health.routes.js - All endpoints properly logged
 2. ✅ labelSpansRoute.ts - Comprehensive logging
 3. ✅ roleClassifyRoute.ts - Excellent logging with child logger
@@ -290,7 +317,9 @@ For each route, we check:
 ### Routes Needing Logging Additions
 
 #### api.routes.js
+
 **Missing logging in 7 endpoints**:
+
 1. POST /api/video/validate
 2. POST /api/video/complete
 3. POST /api/video/variations
@@ -300,7 +329,9 @@ For each route, we check:
 7. GET /metrics (health.routes.js) - optional
 
 #### suggestions.js
+
 **Issues in 3 endpoints**:
+
 1. POST /api/suggestions/evaluate/single - Fix error logging (not passing Error object)
 2. POST /api/suggestions/evaluate/compare - Fix error logging (not passing Error object)
 3. GET /api/suggestions/evaluate/rubrics - Add basic logging
@@ -308,12 +339,14 @@ For each route, we check:
 ### Common Patterns Found
 
 **Good Patterns**:
+
 - Most routes use `performance.now()` for timing
 - Most routes include `requestId` from request
 - Most routes log operation name consistently
 - Most routes sanitize data (log lengths, not content)
 
 **Issues to Fix**:
+
 - Some routes rely solely on asyncHandler for error logging
 - Some error handlers don't pass Error object correctly to logger.error()
 - Some simple GET endpoints lack any logging
@@ -322,6 +355,7 @@ For each route, we check:
 ## Recommendations
 
 ### Priority 1: Add logging to missing endpoints in api.routes.js
+
 - POST /api/video/validate
 - POST /api/video/complete
 - POST /api/video/variations
@@ -330,10 +364,12 @@ For each route, we check:
 - GET /api/test-nlp
 
 ### Priority 2: Fix error logging in suggestions.js
+
 - POST /api/suggestions/evaluate/single
 - POST /api/suggestions/evaluate/compare
 
 ### Priority 3: Add minimal logging to simple endpoints
+
 - GET /api/suggestions/evaluate/rubrics
 - GET /metrics (optional)
 

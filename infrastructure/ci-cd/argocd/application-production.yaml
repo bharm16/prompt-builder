@@ -13,7 +13,7 @@ spec:
 
   source:
     repoURL: https://github.com/bharm16/prompt-builder.git
-    targetRevision: HEAD  # Use tags for production
+    targetRevision: HEAD # Use tags for production
     path: k8s/overlays/production
 
   destination:
@@ -39,14 +39,14 @@ spec:
     - group: apps
       kind: Deployment
       jsonPointers:
-        - /spec/replicas  # Ignore HPA-managed replica count
+        - /spec/replicas # Ignore HPA-managed replica count
 
   revisionHistoryLimit: 30
 
   # Sync windows - prevent deployments during business hours
   syncWindows:
     - kind: allow
-      schedule: '0 0-6,20-23 * * *'  # Only allow deploys outside 7am-8pm
+      schedule: "0 0-6,20-23 * * *" # Only allow deploys outside 7am-8pm
       duration: 1h
       applications:
         - prompt-builder-production

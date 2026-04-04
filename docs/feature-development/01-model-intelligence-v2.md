@@ -12,13 +12,13 @@
 
 Users don't know which video model to use. Each has distinct strengths:
 
-| Model | Best For | Weakest At |
-|-------|----------|------------|
-| **Sora 2** | Physics, spatial complexity, mechanical movement | Stylization, artistic looks |
-| **Veo 3** | Cinematic lighting, atmosphere, mood | Complex physics |
-| **Kling 2.1** | Facial performance, character emotion, acting | Environment detail |
-| **Luma Ray 3** | Morphing, transitions, stylized looks | Realistic physics |
-| **Wan 2.2** | Fast previews, general purpose | Final production quality |
+| Model          | Best For                                         | Weakest At                  |
+| -------------- | ------------------------------------------------ | --------------------------- |
+| **Sora 2**     | Physics, spatial complexity, mechanical movement | Stylization, artistic looks |
+| **Veo 3**      | Cinematic lighting, atmosphere, mood             | Complex physics             |
+| **Kling 2.1**  | Facial performance, character emotion, acting    | Environment detail          |
+| **Luma Ray 3** | Morphing, transitions, stylized looks            | Realistic physics           |
+| **Wan 2.2**    | Fast previews, general purpose                   | Final production quality    |
 
 This knowledge is tribal — locked in Reddit threads and Discord servers. Users either pick randomly, use what they used last time, or assume expensive = best.
 
@@ -131,7 +131,7 @@ client/src/features/model-intelligence/
 ```typescript
 // server/src/services/model-intelligence/types.ts
 
-import { VideoModelId } from '@/services/video-generation/types';
+import { VideoModelId } from "@/services/video-generation/types";
 
 /**
  * Requirements extracted from a prompt
@@ -140,11 +140,11 @@ import { VideoModelId } from '@/services/video-generation/types';
 export interface PromptRequirements {
   // Physics complexity
   physics: {
-    hasComplexPhysics: boolean;      // water, fire, cloth, collision
-    hasParticleSystems: boolean;     // rain, snow, smoke, sparks
-    hasFluidDynamics: boolean;       // water, liquids
-    hasSoftBodyPhysics: boolean;     // cloth, hair, organic deformation
-    physicsComplexity: 'none' | 'simple' | 'moderate' | 'complex';
+    hasComplexPhysics: boolean; // water, fire, cloth, collision
+    hasParticleSystems: boolean; // rain, snow, smoke, sparks
+    hasFluidDynamics: boolean; // water, liquids
+    hasSoftBodyPhysics: boolean; // cloth, hair, organic deformation
+    physicsComplexity: "none" | "simple" | "moderate" | "complex";
   };
 
   // Character requirements
@@ -155,13 +155,13 @@ export interface PromptRequirements {
     requiresFacialPerformance: boolean;
     requiresBodyLanguage: boolean;
     requiresLipSync: boolean;
-    emotionalIntensity: 'none' | 'subtle' | 'moderate' | 'intense';
+    emotionalIntensity: "none" | "subtle" | "moderate" | "intense";
   };
 
   // Environment
   environment: {
-    complexity: 'simple' | 'moderate' | 'complex';
-    type: 'interior' | 'exterior' | 'abstract' | 'mixed';
+    complexity: "simple" | "moderate" | "complex";
+    type: "interior" | "exterior" | "abstract" | "mixed";
     hasArchitecture: boolean;
     hasNature: boolean;
     hasUrbanElements: boolean;
@@ -169,10 +169,10 @@ export interface PromptRequirements {
 
   // Lighting
   lighting: {
-    requirements: 'natural' | 'stylized' | 'dramatic' | 'mixed';
-    complexity: 'simple' | 'moderate' | 'complex';
-    hasPracticalLights: boolean;     // neon, lamps, screens
-    requiresAtmospherics: boolean;   // fog, haze, volumetrics
+    requirements: "natural" | "stylized" | "dramatic" | "mixed";
+    complexity: "simple" | "moderate" | "complex";
+    hasPracticalLights: boolean; // neon, lamps, screens
+    requiresAtmospherics: boolean; // fog, haze, volumetrics
   };
 
   // Style
@@ -181,13 +181,13 @@ export interface PromptRequirements {
     isStylized: boolean;
     isAbstract: boolean;
     requiresCinematicLook: boolean;
-    hasSpecificAesthetic: string | null;  // "anime", "noir", etc.
+    hasSpecificAesthetic: string | null; // "anime", "noir", etc.
   };
 
   // Motion
   motion: {
-    cameraComplexity: 'static' | 'simple' | 'moderate' | 'complex';
-    subjectComplexity: 'static' | 'simple' | 'moderate' | 'complex';
+    cameraComplexity: "static" | "simple" | "moderate" | "complex";
+    subjectComplexity: "static" | "simple" | "moderate" | "complex";
     hasMorphing: boolean;
     hasTransitions: boolean;
   };
@@ -227,13 +227,13 @@ export interface ModelCapabilities {
   transitions: number;
 
   // Mode modifiers
-  i2vBoost?: number;          // Optional multiplier for i2v mode
-  t2vBoost?: number;          // Optional multiplier for t2v mode
+  i2vBoost?: number; // Optional multiplier for i2v mode
+  t2vBoost?: number; // Optional multiplier for t2v mode
 
   // Meta
-  speedTier: 'fast' | 'medium' | 'slow';
-  costTier: 'low' | 'medium' | 'high';
-  qualityTier: 'preview' | 'standard' | 'premium';
+  speedTier: "fast" | "medium" | "slow";
+  costTier: "low" | "medium" | "high";
+  qualityTier: "preview" | "standard" | "premium";
 }
 
 /**
@@ -241,7 +241,7 @@ export interface ModelCapabilities {
  */
 export interface ModelScore {
   modelId: VideoModelId;
-  overallScore: number;           // 0-100
+  overallScore: number; // 0-100
 
   // Breakdown
   factorScores: FactorScore[];
@@ -251,16 +251,16 @@ export interface ModelScore {
   weaknesses: string[];
 
   // Warnings
-  warnings: string[];             // e.g., "May struggle with rain physics"
+  warnings: string[]; // e.g., "May struggle with rain physics"
 }
 
 export interface FactorScore {
-  factor: string;                 // e.g., "physics", "facialPerformance"
-  label: string;                  // e.g., "Complex Physics"
-  weight: number;                 // How important this was
-  capability: number;             // Model's capability (0-1)
-  contribution: number;           // Weighted contribution to score
-  explanation: string;            // Why this matters for this prompt
+  factor: string; // e.g., "physics", "facialPerformance"
+  label: string; // e.g., "Complex Physics"
+  weight: number; // How important this was
+  capability: number; // Model's capability (0-1)
+  contribution: number; // Weighted contribution to score
+  explanation: string; // Why this matters for this prompt
 }
 
 /**
@@ -278,7 +278,7 @@ export interface ModelRecommendation {
   // Top pick
   recommended: {
     modelId: VideoModelId;
-    confidence: 'high' | 'medium' | 'low';
+    confidence: "high" | "medium" | "low";
     reasoning: string;
   };
 
@@ -311,18 +311,17 @@ Extracts requirements from **span.role** (taxonomy IDs), not `span.category`.
 ```typescript
 // server/src/services/model-intelligence/PromptRequirementsService.ts
 
-import { LLMSpan } from '@/llm/span-labeling/types';
-import { PromptRequirements } from './types';
+import { LLMSpan } from "@/llm/span-labeling/types";
+import { PromptRequirements } from "./types";
 
 export class PromptRequirementsService {
   /**
    * Extract generation requirements from labeled spans
    */
-  extractRequirements(
-    prompt: string,
-    spans: LLMSpan[]
-  ): PromptRequirements {
-    const categories = spans.map(s => s.role || (s as any).category).filter(Boolean) as string[];
+  extractRequirements(prompt: string, spans: LLMSpan[]): PromptRequirements {
+    const categories = spans
+      .map((s) => s.role || (s as any).category)
+      .filter(Boolean) as string[];
 
     return {
       physics: this.analyzePhysics(spans),
@@ -336,21 +335,39 @@ export class PromptRequirementsService {
     };
   }
 
-  private analyzePhysics(spans: LLMSpan[]): PromptRequirements['physics'] {
-    const spanTexts = spans.map(s => s.text.toLowerCase());
-    const allText = spanTexts.join(' ');
+  private analyzePhysics(spans: LLMSpan[]): PromptRequirements["physics"] {
+    const spanTexts = spans.map((s) => s.text.toLowerCase());
+    const allText = spanTexts.join(" ");
 
-    const roles = spans.map(s => s.role || (s as any).category).filter(Boolean) as string[];
+    const roles = spans
+      .map((s) => s.role || (s as any).category)
+      .filter(Boolean) as string[];
 
-    const hasWater = /\b(water|rain|ocean|river|splash|wet|puddle|wave)\b/.test(allText);
+    const hasWater = /\b(water|rain|ocean|river|splash|wet|puddle|wave)\b/.test(
+      allText,
+    );
     const hasFire = /\b(fire|flame|burning|explosion|spark)\b/.test(allText);
-    const hasParticles = /\b(rain|snow|smoke|dust|sparks|embers|fog)\b/.test(allText);
-    const hasCloth = /\b(dress|cape|curtain|flag|fabric|flowing)\b/.test(allText);
-    const hasCollision = /\b(crash|impact|breaking|shatter|collision)\b/.test(allText);
+    const hasParticles = /\b(rain|snow|smoke|dust|sparks|embers|fog)\b/.test(
+      allText,
+    );
+    const hasCloth = /\b(dress|cape|curtain|flag|fabric|flowing)\b/.test(
+      allText,
+    );
+    const hasCollision = /\b(crash|impact|breaking|shatter|collision)\b/.test(
+      allText,
+    );
 
-    const weatherSpans = roles.filter(r => r === 'environment.weather' || r.startsWith('environment.weather.'));
-    const complexityScore = [hasWater, hasFire, hasParticles, hasCloth, hasCollision]
-      .filter(Boolean).length;
+    const weatherSpans = roles.filter(
+      (r) =>
+        r === "environment.weather" || r.startsWith("environment.weather."),
+    );
+    const complexityScore = [
+      hasWater,
+      hasFire,
+      hasParticles,
+      hasCloth,
+      hasCollision,
+    ].filter(Boolean).length;
 
     return {
       hasComplexPhysics: complexityScore >= 2 || hasWater || hasFire,
@@ -361,22 +378,37 @@ export class PromptRequirementsService {
     };
   }
 
-  private analyzeCharacter(spans: LLMSpan[]): PromptRequirements['character'] {
-    const roles = spans.map(s => s.role || (s as any).category).filter(Boolean) as string[];
-    const subjectRoles = roles.filter(r => r.startsWith('subject.'));
-    const emotionRoles = roles.filter(r => r === 'subject.emotion');
-    const actionRoles = roles.filter(r => r.startsWith('action.'));
+  private analyzeCharacter(spans: LLMSpan[]): PromptRequirements["character"] {
+    const roles = spans
+      .map((s) => s.role || (s as any).category)
+      .filter(Boolean) as string[];
+    const subjectRoles = roles.filter((r) => r.startsWith("subject."));
+    const emotionRoles = roles.filter((r) => r === "subject.emotion");
+    const actionRoles = roles.filter((r) => r.startsWith("action."));
 
-    const allText = spans.map(s => s.text.toLowerCase()).join(' ');
+    const allText = spans.map((s) => s.text.toLowerCase()).join(" ");
 
-    const hasHuman = subjectRoles.includes('subject.identity') || /\b(person|man|woman|child|people|face|human|girl|boy)\b/.test(allText);
+    const hasHuman =
+      subjectRoles.includes("subject.identity") ||
+      /\b(person|man|woman|child|people|face|human|girl|boy)\b/.test(allText);
     const hasAnimal = /\b(dog|cat|bird|animal|creature|horse)\b/.test(allText);
-    const hasMech = /\b(robot|machine|android|mech|drone|vehicle)\b/.test(allText);
+    const hasMech = /\b(robot|machine|android|mech|drone|vehicle)\b/.test(
+      allText,
+    );
 
-    const needsFace = emotionRoles.length > 0 || /\b(expression|smile|cry|laugh|frown|gaze|eyes|face)\b/.test(allText);
-    const needsBody = actionRoles.length > 0 || /\b(gesture|posture|stance|movement|walk|run|dance|sit|stand)\b/.test(allText);
+    const needsFace =
+      emotionRoles.length > 0 ||
+      /\b(expression|smile|cry|laugh|frown|gaze|eyes|face)\b/.test(allText);
+    const needsBody =
+      actionRoles.length > 0 ||
+      /\b(gesture|posture|stance|movement|walk|run|dance|sit|stand)\b/.test(
+        allText,
+      );
 
-    const emotionalIntensity = this.assessEmotionalIntensity(emotionRoles, allText);
+    const emotionalIntensity = this.assessEmotionalIntensity(
+      emotionRoles,
+      allText,
+    );
 
     return {
       hasHumanCharacter: hasHuman,
@@ -389,54 +421,112 @@ export class PromptRequirementsService {
     };
   }
 
-  private analyzeEnvironment(spans: LLMSpan[]): PromptRequirements['environment'] {
-    const roles = spans.map(s => s.role || (s as any).category).filter(Boolean) as string[];
-    const envRoles = roles.filter(r => r.startsWith('environment.'));
-    const allText = spans.map(s => s.text.toLowerCase()).join(' ');
+  private analyzeEnvironment(
+    spans: LLMSpan[],
+  ): PromptRequirements["environment"] {
+    const roles = spans
+      .map((s) => s.role || (s as any).category)
+      .filter(Boolean) as string[];
+    const envRoles = roles.filter((r) => r.startsWith("environment."));
+    const allText = spans.map((s) => s.text.toLowerCase()).join(" ");
 
-    const hasInterior = /\b(room|interior|inside|indoor|house|building|office|kitchen|bedroom)\b/.test(allText);
-    const hasExterior = /\b(outside|outdoor|street|city|forest|beach|mountain|sky)\b/.test(allText);
+    const hasInterior =
+      /\b(room|interior|inside|indoor|house|building|office|kitchen|bedroom)\b/.test(
+        allText,
+      );
+    const hasExterior =
+      /\b(outside|outdoor|street|city|forest|beach|mountain|sky)\b/.test(
+        allText,
+      );
 
-    const complexity = envRoles.length <= 1 ? 'simple' : envRoles.length <= 3 ? 'moderate' : 'complex';
+    const complexity =
+      envRoles.length <= 1
+        ? "simple"
+        : envRoles.length <= 3
+          ? "moderate"
+          : "complex";
 
     return {
       complexity,
-      type: hasInterior && hasExterior ? 'mixed' : hasInterior ? 'interior' : hasExterior ? 'exterior' : 'abstract',
+      type:
+        hasInterior && hasExterior
+          ? "mixed"
+          : hasInterior
+            ? "interior"
+            : hasExterior
+              ? "exterior"
+              : "abstract",
       hasArchitecture: /\b(building|architecture|city|street)\b/.test(allText),
       hasNature: /\b(tree|forest|ocean|mountain)\b/.test(allText),
       hasUrbanElements: /\b(city|urban|neon|street)\b/.test(allText),
     };
   }
 
-  private analyzeLighting(spans: LLMSpan[]): PromptRequirements['lighting'] {
-    const roles = spans.map(s => s.role || (s as any).category).filter(Boolean) as string[];
-    const lightingRoles = roles.filter(r => r.startsWith('lighting.'));
-    const allText = spans.map(s => s.text.toLowerCase()).join(' ');
+  private analyzeLighting(spans: LLMSpan[]): PromptRequirements["lighting"] {
+    const roles = spans
+      .map((s) => s.role || (s as any).category)
+      .filter(Boolean) as string[];
+    const lightingRoles = roles.filter((r) => r.startsWith("lighting."));
+    const allText = spans.map((s) => s.text.toLowerCase()).join(" ");
 
-    const hasDramatic = /\b(dramatic|rim|backlight|silhouette|chiaroscuro|noir|moody|contrast)\b/.test(allText);
+    const hasDramatic =
+      /\b(dramatic|rim|backlight|silhouette|chiaroscuro|noir|moody|contrast)\b/.test(
+        allText,
+      );
     const hasStylized = /\b(neon|colorful|vibrant|saturated)\b/.test(allText);
-    const hasPractical = /\b(neon|lamp|screen|sign|glow|light source)\b/.test(allText);
-    const hasAtmospherics = /\b(fog|haze|mist|smoke|volumetric|rays)\b/.test(allText);
+    const hasPractical = /\b(neon|lamp|screen|sign|glow|light source)\b/.test(
+      allText,
+    );
+    const hasAtmospherics = /\b(fog|haze|mist|smoke|volumetric|rays)\b/.test(
+      allText,
+    );
 
     return {
-      requirements: hasDramatic ? 'dramatic' : hasStylized ? 'stylized' : 'natural',
-      complexity: lightingRoles.length <= 1 ? 'simple' : lightingRoles.length <= 2 ? 'moderate' : 'complex',
+      requirements: hasDramatic
+        ? "dramatic"
+        : hasStylized
+          ? "stylized"
+          : "natural",
+      complexity:
+        lightingRoles.length <= 1
+          ? "simple"
+          : lightingRoles.length <= 2
+            ? "moderate"
+            : "complex",
       hasPracticalLights: hasPractical,
       requiresAtmospherics: hasAtmospherics,
     };
   }
 
-  private analyzeStyle(spans: LLMSpan[]): PromptRequirements['style'] {
-    const roles = spans.map(s => s.role || (s as any).category).filter(Boolean) as string[];
-    const styleRoles = roles.filter(r => r.startsWith('style.'));
-    const allText = spans.map(s => s.text.toLowerCase()).join(' ');
+  private analyzeStyle(spans: LLMSpan[]): PromptRequirements["style"] {
+    const roles = spans
+      .map((s) => s.role || (s as any).category)
+      .filter(Boolean) as string[];
+    const styleRoles = roles.filter((r) => r.startsWith("style."));
+    const allText = spans.map((s) => s.text.toLowerCase()).join(" ");
 
-    const isPhotorealistic = /\b(realistic|photorealistic|lifelike|real)\b/.test(allText);
-    const isStylized = /\b(anime|cartoon|illustration|painted|artistic|stylized|abstract)\b/.test(allText);
-    const isCinematic = /\b(cinematic|film|movie|cinema|theatrical|anamorphic|widescreen|letterbox)\b/.test(allText);
+    const isPhotorealistic =
+      /\b(realistic|photorealistic|lifelike|real)\b/.test(allText);
+    const isStylized =
+      /\b(anime|cartoon|illustration|painted|artistic|stylized|abstract)\b/.test(
+        allText,
+      );
+    const isCinematic =
+      /\b(cinematic|film|movie|cinema|theatrical|anamorphic|widescreen|letterbox)\b/.test(
+        allText,
+      );
 
     let specificAesthetic: string | null = null;
-    const aesthetics = ['anime', 'noir', 'cyberpunk', 'vintage', 'retro', 'minimalist', 'surreal', 'gothic'];
+    const aesthetics = [
+      "anime",
+      "noir",
+      "cyberpunk",
+      "vintage",
+      "retro",
+      "minimalist",
+      "surreal",
+      "gothic",
+    ];
     for (const aesthetic of aesthetics) {
       if (allText.includes(aesthetic)) {
         specificAesthetic = aesthetic;
@@ -447,65 +537,87 @@ export class PromptRequirementsService {
     return {
       isPhotorealistic: isPhotorealistic && !isStylized,
       isStylized,
-      isAbstract: allText.includes('abstract'),
+      isAbstract: allText.includes("abstract"),
       requiresCinematicLook: isCinematic,
       hasSpecificAesthetic: specificAesthetic,
     };
   }
 
-  private analyzeMotion(spans: LLMSpan[]): PromptRequirements['motion'] {
-    const roles = spans.map(s => s.role || (s as any).category).filter(Boolean) as string[];
-    const cameraRoles = roles.filter(r => r.startsWith('camera.'));
-    const actionRoles = roles.filter(r => r.startsWith('action.'));
-    const allText = spans.map(s => s.text.toLowerCase()).join(' ');
+  private analyzeMotion(spans: LLMSpan[]): PromptRequirements["motion"] {
+    const roles = spans
+      .map((s) => s.role || (s as any).category)
+      .filter(Boolean) as string[];
+    const cameraRoles = roles.filter((r) => r.startsWith("camera."));
+    const actionRoles = roles.filter((r) => r.startsWith("action."));
+    const allText = spans.map((s) => s.text.toLowerCase()).join(" ");
 
-    const complexCamera = /\b(tracking|dolly|crane|aerial|orbit)\b/.test(allText);
+    const complexCamera = /\b(tracking|dolly|crane|aerial|orbit)\b/.test(
+      allText,
+    );
     const simpleCamera = /\b(pan|tilt|zoom)\b/.test(allText);
     const staticCamera = /\b(static|locked|still|fixed)\b/.test(allText);
 
-    let cameraComplexity: 'static' | 'simple' | 'moderate' | 'complex' = 'static';
-    if (complexCamera) cameraComplexity = 'complex';
-    else if (simpleCamera) cameraComplexity = 'simple';
-    else if (cameraRoles.length > 0 && !staticCamera) cameraComplexity = 'moderate';
+    let cameraComplexity: "static" | "simple" | "moderate" | "complex" =
+      "static";
+    if (complexCamera) cameraComplexity = "complex";
+    else if (simpleCamera) cameraComplexity = "simple";
+    else if (cameraRoles.length > 0 && !staticCamera)
+      cameraComplexity = "moderate";
 
-    const subjectComplexity = actionRoles.length === 0 ? 'static' :
-      actionRoles.length <= 1 ? 'simple' :
-      actionRoles.length <= 2 ? 'moderate' : 'complex';
+    const subjectComplexity =
+      actionRoles.length === 0
+        ? "static"
+        : actionRoles.length <= 1
+          ? "simple"
+          : actionRoles.length <= 2
+            ? "moderate"
+            : "complex";
 
-    const hasMorphing = /\b(morph|transform|transition|become|change into)\b/.test(allText);
+    const hasMorphing =
+      /\b(morph|transform|transition|become|change into)\b/.test(allText);
 
     return {
       cameraComplexity,
       subjectComplexity,
       hasMorphing,
-      hasTransitions: hasMorphing || allText.includes('transition'),
+      hasTransitions: hasMorphing || allText.includes("transition"),
     };
   }
 
   private assessEmotionalIntensity(
     emotionRoles: string[],
-    allText: string
-  ): 'none' | 'subtle' | 'moderate' | 'intense' {
-    if (emotionRoles.length === 0) return 'none';
+    allText: string,
+  ): "none" | "subtle" | "moderate" | "intense" {
+    if (emotionRoles.length === 0) return "none";
 
-    if (/\b(crying|screaming|rage|terror|ecstatic|devastated|furious)\b/.test(allText)) return 'intense';
-    if (/\b(sad|happy|angry|scared|excited|worried|joyful)\b/.test(allText)) return 'moderate';
-    return 'subtle';
+    if (
+      /\b(crying|screaming|rage|terror|ecstatic|devastated|furious)\b/.test(
+        allText,
+      )
+    )
+      return "intense";
+    if (/\b(sad|happy|angry|scared|excited|worried|joyful)\b/.test(allText))
+      return "moderate";
+    return "subtle";
   }
 
-  private scoreToComplexity(score: number, max: number): 'none' | 'simple' | 'moderate' | 'complex' {
+  private scoreToComplexity(
+    score: number,
+    max: number,
+  ): "none" | "simple" | "moderate" | "complex" {
     const ratio = score / max;
-    if (ratio === 0) return 'none';
-    if (ratio <= 0.25) return 'simple';
-    if (ratio <= 0.5) return 'moderate';
-    return 'complex';
+    if (ratio === 0) return "none";
+    if (ratio <= 0.25) return "simple";
+    if (ratio <= 0.5) return "moderate";
+    return "complex";
   }
 
   private calculateConfidence(spans: LLMSpan[]): number {
     if (spans.length === 0) return 0.3;
     const spanConfidence = Math.min(spans.length / 10, 1);
-    const avgSpanConfidence = spans.reduce((sum, s) => sum + (s.confidence || 0.5), 0) / spans.length;
-    return (spanConfidence * 0.4) + (avgSpanConfidence * 0.6);
+    const avgSpanConfidence =
+      spans.reduce((sum, s) => sum + (s.confidence || 0.5), 0) / spans.length;
+    return spanConfidence * 0.4 + avgSpanConfidence * 0.6;
   }
 }
 ```
@@ -517,8 +629,8 @@ Configuration-driven model capabilities using **canonical generation IDs** from 
 ```typescript
 // server/src/services/model-intelligence/ModelCapabilityRegistry.ts
 
-import { VIDEO_MODELS } from '@/config/modelConfig';
-import { ModelCapabilities } from './types';
+import { VIDEO_MODELS } from "@/config/modelConfig";
+import { ModelCapabilities } from "./types";
 
 export class ModelCapabilityRegistry {
   private capabilities: Map<string, ModelCapabilities>;
@@ -538,57 +650,57 @@ export class ModelCapabilityRegistry {
 
   getProductionModels(): string[] {
     return Array.from(this.capabilities.entries())
-      .filter(([_, cap]) => cap.qualityTier !== 'preview')
+      .filter(([_, cap]) => cap.qualityTier !== "preview")
       .map(([id]) => id);
   }
 
   private initializeCapabilities(): void {
     this.capabilities.set(VIDEO_MODELS.SORA_2, {
       physics: 0.95,
-      particleSystems: 0.90,
+      particleSystems: 0.9,
       fluidDynamics: 0.92,
-      facialPerformance: 0.70,
+      facialPerformance: 0.7,
       bodyLanguage: 0.75,
       characterActing: 0.68,
-      cinematicLighting: 0.80,
+      cinematicLighting: 0.8,
       atmospherics: 0.85,
-      environmentDetail: 0.90,
+      environmentDetail: 0.9,
       architecturalAccuracy: 0.88,
       motionComplexity: 0.85,
       cameraControl: 0.82,
-      stylization: 0.60,
+      stylization: 0.6,
       photorealism: 0.88,
-      morphing: 0.50,
+      morphing: 0.5,
       transitions: 0.55,
       t2vBoost: 1.0,
       i2vBoost: 0.9,
-      speedTier: 'slow',
-      costTier: 'high',
-      qualityTier: 'premium',
+      speedTier: "slow",
+      costTier: "high",
+      qualityTier: "premium",
     });
 
     this.capabilities.set(VIDEO_MODELS.VEO_3, {
-      physics: 0.70,
+      physics: 0.7,
       particleSystems: 0.65,
       fluidDynamics: 0.68,
       facialPerformance: 0.75,
       bodyLanguage: 0.72,
-      characterActing: 0.70,
+      characterActing: 0.7,
       cinematicLighting: 0.95,
       atmospherics: 0.92,
       environmentDetail: 0.85,
-      architecturalAccuracy: 0.80,
+      architecturalAccuracy: 0.8,
       motionComplexity: 0.75,
       cameraControl: 0.78,
-      stylization: 0.80,
+      stylization: 0.8,
       photorealism: 0.85,
-      morphing: 0.60,
+      morphing: 0.6,
       transitions: 0.65,
       t2vBoost: 1.0,
       i2vBoost: 0.95,
-      speedTier: 'medium',
-      costTier: 'medium',
-      qualityTier: 'premium',
+      speedTier: "medium",
+      costTier: "medium",
+      qualityTier: "premium",
     });
 
     this.capabilities.set(VIDEO_MODELS.KLING_V2_1, {
@@ -597,36 +709,36 @@ export class ModelCapabilityRegistry {
       fluidDynamics: 0.58,
       facialPerformance: 0.92,
       bodyLanguage: 0.88,
-      characterActing: 0.90,
-      cinematicLighting: 0.70,
+      characterActing: 0.9,
+      cinematicLighting: 0.7,
       atmospherics: 0.65,
-      environmentDetail: 0.70,
+      environmentDetail: 0.7,
       architecturalAccuracy: 0.65,
-      motionComplexity: 0.80,
+      motionComplexity: 0.8,
       cameraControl: 0.75,
       stylization: 0.65,
       photorealism: 0.78,
       morphing: 0.55,
-      transitions: 0.50,
+      transitions: 0.5,
       t2vBoost: 1.0,
       i2vBoost: 0.95,
-      speedTier: 'medium',
-      costTier: 'medium',
-      qualityTier: 'standard',
+      speedTier: "medium",
+      costTier: "medium",
+      qualityTier: "standard",
     });
 
     this.capabilities.set(VIDEO_MODELS.LUMA_RAY3, {
-      physics: 0.60,
+      physics: 0.6,
       particleSystems: 0.58,
       fluidDynamics: 0.55,
       facialPerformance: 0.65,
       bodyLanguage: 0.62,
-      characterActing: 0.60,
+      characterActing: 0.6,
       cinematicLighting: 0.75,
       atmospherics: 0.78,
-      environmentDetail: 0.70,
+      environmentDetail: 0.7,
       architecturalAccuracy: 0.65,
-      motionComplexity: 0.70,
+      motionComplexity: 0.7,
       cameraControl: 0.72,
       stylization: 0.88,
       photorealism: 0.68,
@@ -634,33 +746,33 @@ export class ModelCapabilityRegistry {
       transitions: 0.92,
       t2vBoost: 0.95,
       i2vBoost: 1.1,
-      speedTier: 'fast',
-      costTier: 'medium',
-      qualityTier: 'standard',
+      speedTier: "fast",
+      costTier: "medium",
+      qualityTier: "standard",
     });
 
     this.capabilities.set(VIDEO_MODELS.DRAFT, {
       physics: 0.55,
-      particleSystems: 0.50,
+      particleSystems: 0.5,
       fluidDynamics: 0.48,
       facialPerformance: 0.58,
       bodyLanguage: 0.55,
       characterActing: 0.52,
-      cinematicLighting: 0.60,
+      cinematicLighting: 0.6,
       atmospherics: 0.58,
       environmentDetail: 0.58,
       architecturalAccuracy: 0.55,
       motionComplexity: 0.55,
       cameraControl: 0.52,
-      stylization: 0.60,
+      stylization: 0.6,
       photorealism: 0.55,
-      morphing: 0.50,
+      morphing: 0.5,
       transitions: 0.48,
       t2vBoost: 1.0,
       i2vBoost: 1.0,
-      speedTier: 'fast',
-      costTier: 'low',
-      qualityTier: 'preview',
+      speedTier: "fast",
+      costTier: "low",
+      qualityTier: "preview",
     });
   }
 }
@@ -673,23 +785,33 @@ Scoring algorithm that matches requirements to capabilities, with tie-break logi
 ```typescript
 // server/src/services/model-intelligence/ModelScoringService.ts
 
-import { PromptRequirements, ModelCapabilities, ModelScore, FactorScore } from './types';
+import {
+  PromptRequirements,
+  ModelCapabilities,
+  ModelScore,
+  FactorScore,
+} from "./types";
 
 export class ModelScoringService {
   scoreModel(
     modelId: string,
     capabilities: ModelCapabilities,
     requirements: PromptRequirements,
-    mode: 't2v' | 'i2v' = 't2v'
+    mode: "t2v" | "i2v" = "t2v",
   ): ModelScore {
     const weights = this.calculateWeights(requirements);
 
-    const factorScores = weights.map(w => ({
+    const factorScores = weights.map((w) => ({
       factor: w.factor,
       label: w.label,
       weight: w.weight,
-      capability: (capabilities[w.factor] as number) * this.getModeBoost(capabilities, mode),
-      contribution: (capabilities[w.factor] as number) * w.weight * this.getModeBoost(capabilities, mode),
+      capability:
+        (capabilities[w.factor] as number) *
+        this.getModeBoost(capabilities, mode),
+      contribution:
+        (capabilities[w.factor] as number) *
+        w.weight *
+        this.getModeBoost(capabilities, mode),
       explanation: w.explanation(requirements),
     }));
 
@@ -719,14 +841,20 @@ export class ModelScoringService {
   private calculateOverallScore(factorScores: FactorScore[]): number {
     if (factorScores.length === 0) return 50;
 
-    const totalContribution = factorScores.reduce((sum, f) => sum + f.contribution, 0);
+    const totalContribution = factorScores.reduce(
+      (sum, f) => sum + f.contribution,
+      0,
+    );
     const totalWeight = factorScores.reduce((sum, f) => sum + f.weight, 0);
 
     return Math.round((totalContribution / totalWeight) * 100);
   }
 
-  private getModeBoost(capabilities: ModelCapabilities, mode: 't2v' | 'i2v'): number {
-    if (mode === 'i2v') return capabilities.i2vBoost ?? 1.0;
+  private getModeBoost(
+    capabilities: ModelCapabilities,
+    mode: "t2v" | "i2v",
+  ): number {
+    if (mode === "i2v") return capabilities.i2vBoost ?? 1.0;
     return capabilities.t2vBoost ?? 1.0;
   }
 }
@@ -739,16 +867,14 @@ Uses `labelSpans(...)` directly (or coordinator), and applies availability gatin
 ```typescript
 // server/src/services/model-intelligence/ModelIntelligenceService.ts
 
-import { labelSpans } from '@/llm/span-labeling/SpanLabelingService';
-import { VideoGenerationService } from '@/services/video-generation/VideoGenerationService';
-import { PromptRequirementsService } from './PromptRequirementsService';
-import { ModelCapabilityRegistry } from './ModelCapabilityRegistry';
-import { ModelScoringService } from './ModelScoringService';
+import { labelSpans } from "@/llm/span-labeling/SpanLabelingService";
+import { VideoGenerationService } from "@/services/video-generation/VideoGenerationService";
+import { PromptRequirementsService } from "./PromptRequirementsService";
+import { ModelCapabilityRegistry } from "./ModelCapabilityRegistry";
+import { ModelScoringService } from "./ModelScoringService";
 
 export class ModelIntelligenceService {
-  constructor(
-    private videoService: VideoGenerationService
-  ) {
+  constructor(private videoService: VideoGenerationService) {
     this.requirementsService = new PromptRequirementsService();
     this.registry = new ModelCapabilityRegistry();
     this.scoringService = new ModelScoringService();
@@ -758,11 +884,14 @@ export class ModelIntelligenceService {
   private registry: ModelCapabilityRegistry;
   private scoringService: ModelScoringService;
 
-  async getRecommendation(prompt: string, mode: 't2v' | 'i2v' = 't2v') {
+  async getRecommendation(prompt: string, mode: "t2v" | "i2v" = "t2v") {
     const result = await labelSpans({ text: prompt }, this.videoService as any);
     const spans = result.spans || [];
 
-    const requirements = this.requirementsService.extractRequirements(prompt, spans);
+    const requirements = this.requirementsService.extractRequirements(
+      prompt,
+      spans,
+    );
 
     const modelIds = this.registry.getAllModels();
     const availability = this.videoService.getAvailabilityReport(modelIds);
@@ -776,7 +905,9 @@ export class ModelIntelligenceService {
         return this.scoringService.scoreModel(id, caps, requirements, mode);
       })
       .filter(Boolean)
-      .sort((a, b) => (b as any).overallScore - (a as any).overallScore) as any[];
+      .sort(
+        (a, b) => (b as any).overallScore - (a as any).overallScore,
+      ) as any[];
 
     return {
       requirements,
@@ -795,6 +926,7 @@ The recommendation engine must **not** rely on the current `getAvailabilityRepor
 ### Required Refactor
 
 **New availability contract must:**
+
 - Accept canonical generation IDs only.
 - Return per-model `available`, `reason`, `requiredKey`, `supportsI2V`, and `planTier/entitlement` flags.
 - Expose a fast “availability snapshot” with no network calls.
@@ -809,17 +941,17 @@ The recommendation engine must **not** rely on the current `getAvailabilityRepor
 ```typescript
 // server/src/routes/model-intelligence.ts
 
-router.post('/recommend', async (req, res) => {
-  const { prompt, spans, mode = 't2v' } = req.body;
+router.post("/recommend", async (req, res) => {
+  const { prompt, spans, mode = "t2v" } = req.body;
 
-  if (!prompt) return res.status(400).json({ error: 'Prompt is required' });
+  if (!prompt) return res.status(400).json({ error: "Prompt is required" });
 
   try {
-    const service = req.app.get('modelIntelligenceService');
+    const service = req.app.get("modelIntelligenceService");
     const recommendation = await service.getRecommendation(prompt, mode, spans);
     res.json({ success: true, data: recommendation });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to generate recommendation' });
+    res.status(500).json({ error: "Failed to generate recommendation" });
   }
 });
 ```
@@ -851,30 +983,30 @@ router.post('/recommend', async (req, res) => {
 
 ## Success Metrics
 
-| Metric | Target | How to Measure |
-|--------|--------|----------------|
-| Recommendation follow rate | > 60% | Track model selection vs recommendation |
-| Comparison usage | > 15% of sessions | Track "Compare Both" clicks |
-| Generation success improvement | +10% | Compare success rate recommended vs non-recommended |
-| Multi-model usage | +25% | Track users trying 2+ models |
-| Time to first generation | -20% | Measure decision time with/without recommendation |
+| Metric                         | Target            | How to Measure                                      |
+| ------------------------------ | ----------------- | --------------------------------------------------- |
+| Recommendation follow rate     | > 60%             | Track model selection vs recommendation             |
+| Comparison usage               | > 15% of sessions | Track "Compare Both" clicks                         |
+| Generation success improvement | +10%              | Compare success rate recommended vs non-recommended |
+| Multi-model usage              | +25%              | Track users trying 2+ models                        |
+| Time to first generation       | -20%              | Measure decision time with/without recommendation   |
 
 ---
 
 ## Effort Breakdown
 
-| Task | Estimate | Dependencies |
-|------|----------|--------------|
-| PromptRequirementsService (role-based) | 3 days | Span labeling system |
-| ModelCapabilityRegistry (canonical IDs) | 2 days | VIDEO_MODELS |
-| ModelScoringService + tie-break | 2 days | Registry |
-| Availability refactor | 2 days | VideoGenerationService |
-| API endpoints | 1 day | Services |
-| Client: useModelRecommendation | 1 day | API |
-| Client: ModelRecommendation UI | 2 days | Hook |
-| Integration with generation flow | 1 day | All above |
-| Testing | 2 days | All above |
-| **Total** | **~2.5 weeks** | |
+| Task                                    | Estimate       | Dependencies           |
+| --------------------------------------- | -------------- | ---------------------- |
+| PromptRequirementsService (role-based)  | 3 days         | Span labeling system   |
+| ModelCapabilityRegistry (canonical IDs) | 2 days         | VIDEO_MODELS           |
+| ModelScoringService + tie-break         | 2 days         | Registry               |
+| Availability refactor                   | 2 days         | VideoGenerationService |
+| API endpoints                           | 1 day          | Services               |
+| Client: useModelRecommendation          | 1 day          | API                    |
+| Client: ModelRecommendation UI          | 2 days         | Hook                   |
+| Integration with generation flow        | 1 day          | All above              |
+| Testing                                 | 2 days         | All above              |
+| **Total**                               | **~2.5 weeks** |                        |
 
 ---
 

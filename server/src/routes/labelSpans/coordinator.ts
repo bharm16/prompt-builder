@@ -1,10 +1,14 @@
-import { createHash } from 'crypto';
-import { logger } from '@infrastructure/Logger';
-import { labelSpans } from '@llm/span-labeling/SpanLabelingService';
-import { getCurrentSpanProvider } from '@llm/span-labeling/services/LlmClientFactory';
-import type { AIModelService } from '@services/ai-model/AIModelService';
-import type { SpanLabelingCacheService } from '@services/cache/SpanLabelingCacheService';
-import type { LabelSpansParams, LabelSpansResult, ValidationPolicy } from '@llm/span-labeling/types';
+import { createHash } from "crypto";
+import { logger } from "@infrastructure/Logger";
+import { labelSpans } from "@llm/span-labeling/SpanLabelingService";
+import { getCurrentSpanProvider } from "@llm/span-labeling/services/LlmClientFactory";
+import type { AIModelService } from "@services/ai-model/AIModelService";
+import type { SpanLabelingCacheService } from "@services/cache/SpanLabelingCacheService";
+import type {
+  LabelSpansParams,
+  LabelSpansResult,
+  ValidationPolicy,
+} from "@llm/span-labeling/types";
 
 interface LabelSpansCoordinatorInput {
   payload: LabelSpansParams;
@@ -24,28 +28,33 @@ export interface LabelSpansCoordinatorResult {
 const createCoalescingKey = (
   text: string,
   policy: ValidationPolicy | null,
-  templateVersion: string | null
+  templateVersion: string | null,
 ): string => {
-  const textHash = createHash('sha256')
+  const textHash = createHash("sha256")
     .update(text)
-    .digest('hex')
+    .digest("hex")
     .substring(0, 16);
 
-  const policyHash = createHash('sha256')
+  const policyHash = createHash("sha256")
     .update(
       JSON.stringify({
         policy: policy || {},
-        templateVersion: templateVersion || 'v1',
-      })
+        templateVersion: templateVersion || "v1",
+      }),
     )
-    .digest('hex')
+    .digest("hex")
     .substring(0, 8);
 
   return `span:${textHash}:${policyHash}`;
 };
 
-export function createLabelSpansCoordinator(aiService: AIModelService, spanLabelingCache: SpanLabelingCacheService | null = null): {
-  resolve: (input: LabelSpansCoordinatorInput) => Promise<LabelSpansCoordinatorResult>;
+export function createLabelSpansCoordinator(
+  aiService: AIModelService,
+  spanLabelingCache: SpanLabelingCacheService | null = null,
+): {
+  resolve: (
+    input: LabelSpansCoordinatorInput,
+  ) => Promise<LabelSpansCoordinatorResult>;
 } {
   const inflightRequests = new Map<string, Promise<LabelSpansResult>>();
 
@@ -60,7 +69,7 @@ export function createLabelSpansCoordinator(aiService: AIModelService, spanLabel
       startTimeMs,
     }: LabelSpansCoordinatorInput): Promise<LabelSpansCoordinatorResult> {
       const headers: Record<string, string> = {};
-      const operation = 'labelSpans';
+      const operation = "labelSpans";
       const cachePolicy = policy ?? null;
       const cacheTemplateVersion = templateVersion ?? null;
 
@@ -74,14 +83,14 @@ export function createLabelSpansCoordinator(aiService: AIModelService, spanLabel
           text,
           cachePolicy,
           cacheTemplateVersion,
-          cacheProvider
+          cacheProvider,
         )) as LabelSpansResult | null;
 
         if (cached) {
           result = cached;
 
           const cacheTime = Math.round(performance.now() - cacheStartTime);
-          logger.debug('Span labeling cache hit', {
+          logger.debug("Span labeling cache hit", {
             operation,
             requestId,
             userId,
@@ -91,8 +100,8 @@ export function createLabelSpansCoordinator(aiService: AIModelService, spanLabel
             duration: Math.round(performance.now() - startTimeMs),
           });
 
-          headers['X-Cache'] = 'HIT';
-          headers['X-Cache-Time'] = `${cacheTime}ms`;
+          headers["X-Cache"] = "HIT";
+          headers["X-Cache-Time"] = `${cacheTime}ms`;
         }
       }
 
@@ -100,7 +109,7 @@ export function createLabelSpansCoordinator(aiService: AIModelService, spanLabel
         const coalescingKey = createCoalescingKey(
           text,
           cachePolicy,
-          cacheTemplateVersion
+          cacheTemplateVersion,
         );
         const inflight = inflightRequests.get(coalescingKey);
 
@@ -109,7 +118,7 @@ export function createLabelSpansCoordinator(aiService: AIModelService, spanLabel
           result = await inflight;
 
           const coalescedTime = Math.round(performance.now() - coalescedStart);
-          logger.debug('Span labeling request coalesced', {
+          logger.debug("Span labeling request coalesced", {
             operation,
             requestId,
             userId,
@@ -117,9 +126,9 @@ export function createLabelSpansCoordinator(aiService: AIModelService, spanLabel
             textLength: text.length,
           });
 
-          headers['X-Cache'] = 'COALESCED';
-          headers['X-Coalesced'] = '1';
-          headers['X-Coalesced-Time'] = `${coalescedTime}ms`;
+          headers["X-Cache"] = "COALESCED";
+          headers["X-Coalesced"] = "1";
+          headers["X-Coalesced-Time"] = `${coalescedTime}ms`;
         } else {
           const apiStartTime = performance.now();
           const labelPromise = (async () => {
@@ -132,7 +141,7 @@ export function createLabelSpansCoordinator(aiService: AIModelService, spanLabel
                 cachePolicy,
                 cacheTemplateVersion,
                 computed,
-                { ttl, provider: getCurrentSpanProvider() }
+                { ttl, provider: getCurrentSpanProvider() },
               );
             }
 
@@ -149,7 +158,7 @@ export function createLabelSpansCoordinator(aiService: AIModelService, spanLabel
 
           const apiTime = Math.round(performance.now() - apiStartTime);
 
-          logger.info('Operation completed.', {
+          logger.info("Operation completed.", {
             operation,
             requestId,
             userId,
@@ -161,8 +170,8 @@ export function createLabelSpansCoordinator(aiService: AIModelService, spanLabel
             coalesced: false,
           });
 
-          headers['X-Cache'] = 'MISS';
-          headers['X-API-Time'] = `${apiTime}ms`;
+          headers["X-Cache"] = "MISS";
+          headers["X-API-Time"] = `${apiTime}ms`;
         }
       }
 

@@ -1,10 +1,13 @@
-import React, { useState } from 'react';
-import type { AssetType } from '@shared/types/asset';
-import { Button } from '@promptstudio/system/components/ui/button';
+import React, { useState } from "react";
+import type { AssetType } from "@shared/types/asset";
+import { Button } from "@promptstudio/system/components/ui/button";
 
 interface ReferenceImageUploaderProps {
   assetType: AssetType;
-  onUpload: (file: File, metadata: Record<string, string | undefined>) => Promise<void>;
+  onUpload: (
+    file: File,
+    metadata: Record<string, string | undefined>,
+  ) => Promise<void>;
   maxImages: number;
   currentCount: number;
 }
@@ -16,9 +19,13 @@ export function ReferenceImageUploader({
   currentCount,
 }: ReferenceImageUploaderProps): React.ReactElement {
   const [isUploading, setIsUploading] = useState(false);
-  const [metadata, setMetadata] = useState<Record<string, string | undefined>>({});
+  const [metadata, setMetadata] = useState<Record<string, string | undefined>>(
+    {},
+  );
 
-  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -26,7 +33,7 @@ export function ReferenceImageUploader({
     try {
       await onUpload(file, metadata);
       setMetadata({});
-      event.target.value = '';
+      event.target.value = "";
     } catch {
       // Avoid unhandled promise rejections from async event handlers.
       // Parent upload handlers are responsible for presenting error state.
@@ -38,15 +45,24 @@ export function ReferenceImageUploader({
   const isAtLimit = currentCount >= maxImages;
 
   return (
-    <div className="space-y-3 rounded-lg border border-border bg-surface-2 p-3">
+    <div
+      className="motion-presence-panel space-y-3 rounded-lg border border-border bg-surface-2 p-3"
+      data-motion-state="entered"
+    >
       <div className="flex items-center justify-between">
         <div>
-          <h4 className="text-sm font-semibold text-foreground">Reference images</h4>
+          <h4 className="text-sm font-semibold text-foreground">
+            Reference images
+          </h4>
           <p className="text-xs text-muted">
             {currentCount}/{maxImages} uploaded
           </p>
         </div>
-        <Button type="button" variant="outline" disabled={isUploading || isAtLimit}>
+        <Button
+          type="button"
+          variant="outline"
+          disabled={isUploading || isAtLimit}
+        >
           <label className="cursor-pointer">
             <input
               type="file"
@@ -55,18 +71,21 @@ export function ReferenceImageUploader({
               className="hidden"
               disabled={isUploading || isAtLimit}
             />
-            {isUploading ? 'Uploading...' : 'Upload image'}
+            {isUploading ? "Uploading..." : "Upload image"}
           </label>
         </Button>
       </div>
 
       <div className="grid grid-cols-2 gap-2 text-xs text-muted sm:grid-cols-3">
-        {assetType === 'character' && (
+        {assetType === "character" && (
           <>
             <select
-              value={metadata.angle || ''}
+              value={metadata.angle || ""}
               onChange={(event) =>
-                setMetadata((prev) => ({ ...prev, angle: event.target.value || undefined }))
+                setMetadata((prev) => ({
+                  ...prev,
+                  angle: event.target.value || undefined,
+                }))
               }
               className="rounded-md border border-border bg-surface-1 px-2 py-1"
             >
@@ -77,9 +96,12 @@ export function ReferenceImageUploader({
               <option value="back">Back</option>
             </select>
             <select
-              value={metadata.expression || ''}
+              value={metadata.expression || ""}
               onChange={(event) =>
-                setMetadata((prev) => ({ ...prev, expression: event.target.value || undefined }))
+                setMetadata((prev) => ({
+                  ...prev,
+                  expression: event.target.value || undefined,
+                }))
               }
               className="rounded-md border border-border bg-surface-1 px-2 py-1"
             >
@@ -92,11 +114,14 @@ export function ReferenceImageUploader({
           </>
         )}
 
-        {assetType === 'style' && (
+        {assetType === "style" && (
           <select
-            value={metadata.styleType || ''}
+            value={metadata.styleType || ""}
             onChange={(event) =>
-              setMetadata((prev) => ({ ...prev, styleType: event.target.value || undefined }))
+              setMetadata((prev) => ({
+                ...prev,
+                styleType: event.target.value || undefined,
+              }))
             }
             className="rounded-md border border-border bg-surface-1 px-2 py-1"
           >
@@ -107,11 +132,14 @@ export function ReferenceImageUploader({
           </select>
         )}
 
-        {assetType === 'location' && (
+        {assetType === "location" && (
           <select
-            value={metadata.timeOfDay || ''}
+            value={metadata.timeOfDay || ""}
             onChange={(event) =>
-              setMetadata((prev) => ({ ...prev, timeOfDay: event.target.value || undefined }))
+              setMetadata((prev) => ({
+                ...prev,
+                timeOfDay: event.target.value || undefined,
+              }))
             }
             className="rounded-md border border-border bg-surface-1 px-2 py-1"
           >
@@ -124,9 +152,12 @@ export function ReferenceImageUploader({
         )}
 
         <select
-          value={metadata.lighting || ''}
+          value={metadata.lighting || ""}
           onChange={(event) =>
-            setMetadata((prev) => ({ ...prev, lighting: event.target.value || undefined }))
+            setMetadata((prev) => ({
+              ...prev,
+              lighting: event.target.value || undefined,
+            }))
           }
           className="rounded-md border border-border bg-surface-1 px-2 py-1"
         >

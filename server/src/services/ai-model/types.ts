@@ -1,4 +1,8 @@
-import type { CompletionOptions, IAIClient, MessageContent } from '@interfaces/IAIClient';
+import type {
+  CompletionOptions,
+  IAIClient,
+  MessageContent,
+} from "@interfaces/IAIClient";
 
 export interface ClientsMap {
   openai: IAIClient | null;
@@ -28,7 +32,7 @@ export interface ExecuteParams extends CompletionOptions {
   topLogprobs?: number;
 }
 
-export interface StreamParams extends Omit<ExecuteParams, 'responseFormat'> {
+export interface StreamParams extends Omit<ExecuteParams, "responseFormat"> {
   onChunk: (chunk: string) => void;
 }
 
@@ -43,7 +47,8 @@ export interface ModelConfigEntry {
     model: string;
     timeout: number;
   };
-  responseFormat?: 'json_object';
+  strictClient?: boolean;
+  responseFormat?: "json_object";
   useSeed?: boolean;
   useDeveloperMessage?: boolean;
 }

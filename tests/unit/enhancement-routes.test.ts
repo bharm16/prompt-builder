@@ -1,12 +1,12 @@
-import express from 'express';
-import request from 'supertest';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { createEnhancementRoutes } from '@routes/enhancement.routes';
-import { countSuggestions } from '@routes/enhancement/utils';
+import express from "express";
+import request from "supertest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { createEnhancementRoutes } from "@routes/enhancement.routes";
+import { countSuggestions } from "@routes/enhancement/utils";
 
-vi.mock('@llm/span-labeling/nlp/NlpSpanService', () => ({
+vi.mock("@llm/span-labeling/nlp/NlpSpanService", () => ({
   extractSemanticSpans: vi.fn(async () => ({
-    spans: [{ text: 'runner', role: 'subject', category: 'subject.identity' }],
+    spans: [{ text: "runner", role: "subject", category: "subject.identity" }],
   })),
 }));
 
@@ -24,11 +24,13 @@ function createApp(overrides?: {
 }) {
   const enhancementService = {
     getEnhancementSuggestions: vi.fn(async () => ({
-      suggestions: [{ text: 'Use a low-angle tracking shot', category: 'camera.movement' }],
+      suggestions: [
+        { text: "Use a low-angle tracking shot", category: "camera.movement" },
+      ],
       fromCache: false,
     })),
     getCustomSuggestions: vi.fn(async () => ({
-      suggestions: [{ text: 'Push into a tighter frame for urgency' }],
+      suggestions: [{ text: "Push into a tighter frame for urgency" }],
     })),
     ...overrides?.enhancementService,
   };
@@ -36,8 +38,8 @@ function createApp(overrides?: {
   const sceneDetectionService = {
     detectSceneChange: vi.fn(async () => ({
       isSceneChange: true,
-      confidence: 'high',
-      suggestedUpdates: { Location: 'Desert' },
+      confidence: "high",
+      suggestedUpdates: { Location: "Desert" },
     })),
     ...overrides?.sceneDetectionService,
   };
@@ -57,7 +59,7 @@ function createApp(overrides?: {
       enhancementService,
       sceneDetectionService,
       promptCoherenceService,
-    })
+    }),
   );
 
   // Deterministic error surface for async route failures
@@ -66,10 +68,10 @@ function createApp(overrides?: {
       err: Error,
       _req: express.Request,
       res: express.Response,
-      _next: express.NextFunction
+      _next: express.NextFunction,
     ) => {
       res.status(500).json({ error: err.message });
-    }
+    },
   );
 
   return {
@@ -80,34 +82,38 @@ function createApp(overrides?: {
   };
 }
 
-describe('enhancement routes', () => {
+describe("enhancement routes", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  describe('/get-enhancement-suggestions', () => {
-    it('returns 400 for invalid request body', async () => {
+  describe("/get-enhancement-suggestions", () => {
+    it("returns 400 for invalid request body", async () => {
       const { app, enhancementService } = createApp();
 
       const response = await request(app)
-        .post('/get-enhancement-suggestions')
-        .send({ fullPrompt: 'A runner in rain' });
+        .post("/get-enhancement-suggestions")
+        .send({ fullPrompt: "A runner in rain" });
 
       expect(response.status).toBe(400);
-      expect(response.body.error).toBe('Validation failed');
-      expect(enhancementService.getEnhancementSuggestions).not.toHaveBeenCalled();
+      expect(response.body.error).toBe("Validation failed");
+      expect(
+        enhancementService.getEnhancementSuggestions,
+      ).not.toHaveBeenCalled();
     });
 
-    it('returns suggestions for valid payload and supports grouped counts', async () => {
+    it("returns suggestions for valid payload and supports grouped counts", async () => {
       const groupedResult = {
         suggestions: [
           {
-            category: 'camera',
-            suggestions: [{ text: 'Dolly in', category: 'camera.movement' }],
+            category: "camera",
+            suggestions: [{ text: "Dolly in", category: "camera.movement" }],
           },
           {
-            category: 'lighting',
-            suggestions: [{ text: 'Soft rim light', category: 'lighting.quality' }],
+            category: "lighting",
+            suggestions: [
+              { text: "Soft rim light", category: "lighting.quality" },
+            ],
           },
         ],
         fromCache: true,
@@ -118,12 +124,14 @@ describe('enhancement routes', () => {
         },
       });
 
-      const response = await request(app).post('/get-enhancement-suggestions').send({
-        highlightedText: 'tracking shot',
-        fullPrompt: 'A cinematic runner in rain, tracking shot.',
-        contextBefore: 'A cinematic runner in rain, ',
-        contextAfter: '.',
-      });
+      const response = await request(app)
+        .post("/get-enhancement-suggestions")
+        .send({
+          highlightedText: "tracking shot",
+          fullPrompt: "A cinematic runner in rain, tracking shot.",
+          contextBefore: "A cinematic runner in rain, ",
+          contextAfter: ".",
+        });
 
       expect(response.status).toBe(200);
       expect(response.body).toEqual(groupedResult);
@@ -131,81 +139,85 @@ describe('enhancement routes', () => {
       expect(countSuggestions(groupedResult.suggestions)).toBe(2);
     });
 
-    it('returns 500 when enhancement service throws', async () => {
+    it("returns 500 when enhancement service throws", async () => {
       const { app } = createApp({
         enhancementService: {
           getEnhancementSuggestions: vi.fn(async () => {
-            throw new Error('service down');
+            throw new Error("service down");
           }),
         },
       });
 
-      const response = await request(app).post('/get-enhancement-suggestions').send({
-        highlightedText: 'tracking shot',
-        fullPrompt: 'A cinematic runner in rain, tracking shot.',
-      });
+      const response = await request(app)
+        .post("/get-enhancement-suggestions")
+        .send({
+          highlightedText: "tracking shot",
+          fullPrompt: "A cinematic runner in rain, tracking shot.",
+        });
 
       expect(response.status).toBe(500);
-      expect(response.body).toEqual({ error: 'service down' });
+      expect(response.body).toEqual({ error: "service down" });
     });
   });
 
-  it('returns 400 for invalid custom suggestion requests', async () => {
+  it("returns 400 for invalid custom suggestion requests", async () => {
     const { app } = createApp();
 
-    const response = await request(app).post('/get-custom-suggestions').send({
-      highlightedText: 'runner',
-      fullPrompt: 'A runner in rain',
-    });
-
-    expect(response.status).toBe(400);
-    expect(response.body.error).toBe('Validation failed');
-  });
-
-  it('returns 400 for invalid coherence check requests', async () => {
-    const { app } = createApp();
-
-    const response = await request(app).post('/check-prompt-coherence').send({
-      beforePrompt: 'A runner in rain',
+    const response = await request(app).post("/get-custom-suggestions").send({
+      highlightedText: "runner",
+      fullPrompt: "A runner in rain",
     });
 
     expect(response.status).toBe(400);
-    expect(response.body.error).toBe('Validation failed');
+    expect(response.body.error).toBe("Validation failed");
   });
 
-  it('returns 400 for invalid scene change requests', async () => {
+  it("returns 400 for invalid coherence check requests", async () => {
     const { app } = createApp();
 
-    const response = await request(app).post('/detect-scene-change').send({
-      newValue: 'desert',
-      fullPrompt: 'A runner in rain',
+    const response = await request(app).post("/check-prompt-coherence").send({
+      beforePrompt: "A runner in rain",
     });
 
     expect(response.status).toBe(400);
-    expect(response.body.error).toBe('Validation failed');
+    expect(response.body.error).toBe("Validation failed");
   });
 
-  it('returns 400 when /test-nlp is missing prompt query', async () => {
+  it("returns 400 for invalid scene change requests", async () => {
     const { app } = createApp();
 
-    const response = await request(app).get('/test-nlp');
+    const response = await request(app).post("/detect-scene-change").send({
+      newValue: "desert",
+      fullPrompt: "A runner in rain",
+    });
+
+    expect(response.status).toBe(400);
+    expect(response.body.error).toBe("Validation failed");
+  });
+
+  it("returns 400 when /test-nlp is missing prompt query", async () => {
+    const { app } = createApp();
+
+    const response = await request(app).get("/test-nlp");
 
     expect(response.status).toBe(400);
     expect(response.body).toEqual({
-      error: 'prompt query parameter is required',
+      error: "prompt query parameter is required",
     });
   });
 
-  it('returns NLP spans when /test-nlp query is valid', async () => {
+  it("returns NLP spans when /test-nlp query is valid", async () => {
     const { app } = createApp();
 
-    const response = await request(app).get('/test-nlp').query({
-      prompt: 'A runner in rain with neon reflections',
+    const response = await request(app).get("/test-nlp").query({
+      prompt: "A runner in rain with neon reflections",
     });
 
     expect(response.status).toBe(200);
     expect(response.body).toEqual({
-      spans: [{ text: 'runner', role: 'subject', category: 'subject.identity' }],
+      spans: [
+        { text: "runner", role: "subject", category: "subject.identity" },
+      ],
     });
   });
 });

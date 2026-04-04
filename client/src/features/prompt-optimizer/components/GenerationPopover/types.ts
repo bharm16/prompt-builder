@@ -1,4 +1,4 @@
-import type { GalleryGeneration } from '@/features/prompt-optimizer/components/GalleryPanel';
+import type { GalleryGeneration } from "@/features/prompt-optimizer/components/GalleryPanel";
 
 export interface GenerationPopoverProps {
   generations: GalleryGeneration[];
@@ -29,4 +29,3 @@ export interface PopoverDetailProps {
   onReuse: () => void;
   onCopyPrompt: () => void;
 }
-

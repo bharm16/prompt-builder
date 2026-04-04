@@ -13,6 +13,7 @@ npm run verify-keys
 ```
 
 **Features:**
+
 - Validates OpenAI and Groq API keys
 - Shows available models for each service
 - Tests response times for both APIs
@@ -31,10 +32,12 @@ npm run highlight-stats:watch
 ```
 
 **Prerequisites:**
+
 - App must be running on localhost:5173
 - Navigate to a page with highlighting before running for best results
 
 **Metrics Displayed:**
+
 - **Critical Metric**: Total time from prompt input to highlights rendered (target: ≤290ms)
 - **Cache Performance**: Hit rate, average response times
 - **API Performance**: Call count, response times
@@ -42,6 +45,7 @@ npm run highlight-stats:watch
 - **Performance Grade**: A+ to C based on critical metric timing
 
 **Performance Grades:**
+
 - **A+**: ≤200ms (Exceptional)
 - **A**: 200-290ms (Excellent, meets target)
 - **B+**: 290-400ms (Good, slightly over target)
@@ -53,14 +57,18 @@ npm run highlight-stats:watch
 A browser console script for viewing performance stats directly in the browser.
 
 **Usage:**
+
 1. Open your app in the browser
 2. Open DevTools Console (F12)
 3. Copy and paste the entire contents of `browser-highlight-stats.js`
 4. Press Enter to run
 
 **Pro Tip**: Save as a bookmarklet for quick access:
+
 ```javascript
-javascript:(function(){/* paste minified script here */})();
+javascript: (function () {
+  /* paste minified script here */
+})();
 ```
 
 ## Performance Monitoring Best Practices
@@ -136,6 +144,7 @@ npm run sync:capabilities
 ```
 
 **Notes:**
+
 - Uses `.env` in the repo root for API keys (OPENAI_API_KEY, LUMA_API_KEY/LUMAAI_API_KEY, FAL_KEY, GEMINI_API_KEY/GOOGLE_API_KEY).
 - OpenAI metadata pulls from the documented OpenAPI spec (aligned with https://platform.openai.com/docs/guides/video-generation); override with `OPENAI_OPENAPI_URL` if needed.
 - Luma metadata defaults to the public docs OpenAPI (no key required). Override with `LUMA_DOCS_URL` if needed.
@@ -159,15 +168,15 @@ tsx --tsconfig server/tsconfig.json scripts/collect-raw-prompts.ts \
   --local-file=~/Downloads/promptHistory-export.json
 ```
 
-| Option | Description |
-| --- | --- |
-| `--userId=<id>` | Restrict to a single user for auditing. |
-| `--limit=<n>` | Stop after `<n>` Firestore documents (default: unlimited). |
-| `--batch-size=<n>` | Firestore page size (default: 500). |
-| `--output=<path>` | File to write (creates directories as needed). Default: `raw-prompts.json`. |
-| `--format=json|csv` | Output format (default: `json`). |
-| `--local-file=<path>` | Optional path to a `promptHistory` export from localStorage (JSON array). |
-| `--env-file=<path>` | Optional `.env` file containing Firebase credentials; defaults to project root. |
+| Option                | Description                                                                     |
+| --------------------- | ------------------------------------------------------------------------------- | -------------------------------- |
+| `--userId=<id>`       | Restrict to a single user for auditing.                                         |
+| `--limit=<n>`         | Stop after `<n>` Firestore documents (default: unlimited).                      |
+| `--batch-size=<n>`    | Firestore page size (default: 500).                                             |
+| `--output=<path>`     | File to write (creates directories as needed). Default: `raw-prompts.json`.     |
+| `--format=json        | csv`                                                                            | Output format (default: `json`). |
+| `--local-file=<path>` | Optional path to a `promptHistory` export from localStorage (JSON array).       |
+| `--env-file=<path>`   | Optional `.env` file containing Firebase credentials; defaults to project root. |
 
 The script prints a quick summary and saves every raw prompt with metadata like
 `userId`, `mode`, and `timestamp`. CSV outputs escape quotes so you can open them in

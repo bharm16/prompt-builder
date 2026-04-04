@@ -1,32 +1,24 @@
 # Overview of span system implementation
+
 _Exported on 11/22/2025 at 10:09:11 CST from Cursor (2.0.77)_
 
 ---
 
 **User**
 
-give me a detailed overview of the implementation and workflow of the span system and how each files is used in the system. 
+give me a detailed overview of the implementation and workflow of the span system and how each files is used in the system.
 
-
-
-first give me an explanation using natural langauge, then give me a technical explanation 
+first give me an explanation using natural langauge, then give me a technical explanation
 
 ---
 
 **Cursor**
 
-
 Exploring the codebase to map the span system's implementation and workflow.
-
-
 
 Searching for additional span-related files to understand the complete workflow:
 
-
-
 Reading a few more key files to complete the picture:
-
-
 
 ## Natural Language Explanation
 
@@ -35,6 +27,7 @@ The span system analyzes video prompt text and highlights semantic elements (sho
 ### The User Experience
 
 When a user types or edits a video prompt:
+
 1. The text is sent to the backend for analysis (debounced to avoid excessive requests).
 2. An LLM identifies meaningful parts and assigns categories (e.g., "wide shot" → `shot.type`, "cowboy" → `subject.identity`).
 3. The backend validates and corrects the results.
@@ -57,6 +50,7 @@ The system uses caching (client and server) to reduce API calls and improve resp
 ### Architecture Overview
 
 The span system has three layers:
+
 1. Frontend: React hooks, rendering, caching
 2. Backend API: Express route, LLM service, validation
 3. Shared: Taxonomy definitions
@@ -66,6 +60,7 @@ The span system has three layers:
 #### **Shared Layer**
 
 **`shared/taxonomy.js`** (559 lines)
+
 - Single source of truth for categories
 - Defines parent categories (`shot`, `subject`, `action`, `environment`, `lighting`, `camera`, `style`, `technical`, `audio`) and their attributes (`subject.identity`, `camera.movement`, etc.)
 - Provides validation sets, legacy ID mapping, and helper functions
@@ -74,12 +69,14 @@ The span system has three layers:
 #### **Backend Layer**
 
 **`server/src/routes/labelSpansRoute.js`** (121 lines)
+
 - Express route handler for `POST /llm/label-spans`
 - Validates request parameters (`text`, `maxSpans`, `minConfidence`, `policy`, `templateVersion`)
 - Implements cache-aside: checks cache first, falls back to LLM service
 - Returns spans with cache hit/miss headers for monitoring
 
 **`server/src/llm/span-labeling/SpanLabelingService.js`** (388 lines)
+
 - Main orchestrator for span labeling
 - Builds system prompt dynamically from `taxonomy.js` at runtime
 - Handles chunking for large texts (>1000 words)
@@ -93,6 +90,7 @@ The span system has three layers:
 - Returns `{spans: Array, meta: Object}`
 
 **`server/src/llm/span-labeling/validation/SpanValidator.js`**
+
 - Core validation orchestrator
 - 6-phase pipeline:
   1. Individual span validation & auto-correction (uses `SubstringPositionCache` to fix indices)
@@ -104,6 +102,7 @@ The span system has three layers:
 - Supports strict and lenient modes
 
 **`server/src/llm/span-labeling/processing/`**
+
 - `SpanNormalizer.js`: Normalizes roles, generates IDs, handles legacy mappings
 - `SpanDeduplicator.js`: Removes duplicate spans
 - `OverlapResolver.js`: Resolves overlapping spans based on policy
@@ -111,21 +110,25 @@ The span system has three layers:
 - `SpanTruncator.js`: Limits to `maxSpans`
 
 **`server/src/llm/span-labeling/cache/SubstringPositionCache.js`**
+
 - Performance cache for substring position lookups
 - Used during validation to auto-correct span indices
 - Caches text → position mappings to avoid repeated searches
 
 **`server/src/llm/span-labeling/utils/`**
+
 - `chunkingUtils.js`: Splits large texts into processable chunks
 - `jsonUtils.js`: Parses LLM JSON responses with error handling
 - `policyUtils.js`: Sanitizes and validates policy objects
 - `textUtils.js`: Text utilities (word count, formatting)
 
 **`server/src/llm/span-labeling/validation/SchemaValidator.js`**
+
 - Validates LLM response against JSON schema (`schemas/spanResponseSchema.json`)
 - Ensures required fields (`spans`, `meta`) are present
 
 **`server/src/services/cache/SpanLabelingCacheService.js`** (401 lines)
+
 - Server-side caching (Redis + in-memory fallback)
 - Cache key: `span:{textHash}:{policyHash}`
 - TTL: 1 hour default, 5 min for large texts
@@ -135,6 +138,7 @@ The span system has three layers:
 #### **Frontend Layer**
 
 **`client/src/features/span-highlighting/hooks/useSpanLabeling.js`** (447 lines)
+
 - Main React hook for span labeling
 - Features:
   - Debouncing (smart debounce based on text length)
@@ -146,11 +150,13 @@ The span system has three layers:
 - Status: `'idle' | 'loading' | 'refreshing' | 'success' | 'error' | 'stale'`
 
 **`client/src/features/span-highlighting/api/spanLabelingApi.js`** (83 lines)
+
 - API client for `/llm/label-spans`
 - Handles fetch, error parsing, response normalization
 - Supports AbortSignal for cancellation
 
 **`client/src/features/span-highlighting/hooks/useHighlightRendering.js`**
+
 - Renders highlights in the DOM
 - Diff-based rendering: only updates changed spans
 - Process:
@@ -162,6 +168,7 @@ The span system has three layers:
 - Uses `createHighlightWrapper()` to wrap text nodes with `<span>` elements
 
 **`client/src/features/span-highlighting/utils/domManipulation.js`**
+
 - `createHighlightWrapper()`: Creates `<span>` wrapper with:
   - CSS class based on category
   - Dataset attributes (`data-category`, `data-start`, `data-end`, etc.)
@@ -169,22 +176,26 @@ The span system has three layers:
 - `enhanceWrapperWithMetadata()`: Adds additional metadata
 
 **`client/src/features/span-highlighting/utils/categoryValidators.js`**
+
 - Validates spans on the frontend (structural checks only)
 - Checks taxonomy IDs, text presence, basic structure
 - Trusts backend for semantic categorization
 
 **`client/src/features/span-highlighting/services/SpanLabelingCache.js`**
+
 - Client-side cache (in-memory Map + localStorage)
 - Cache key includes: text hash + policy + templateVersion + maxSpans + minConfidence
 - Provides fast lookup before API calls
 
 **`client/src/features/span-highlighting/hooks/useHighlightSourceSelection.js`**
+
 - Determines which span source to use (priority):
   1. Draft spans (from parallel draft execution)
   2. Refined spans (after refinement completes)
   3. Persisted spans (from history/storage)
 
 **`client/src/features/span-highlighting/config/highlightStyles.js`**
+
 - Maps category IDs to CSS classes and colors
 - Uses taxonomy colors for visual consistency
 
@@ -300,59 +311,59 @@ what files contain any prompts being sent to the llm for anything span related?
 
 **Cursor**
 
-
 Searching for files that contain LLM prompts for span-related operations.
 
-
-
 Checking the user payload builder to see what's sent to the LLM:
-
-
 
 Files that contain prompts sent to the LLM for span-related operations:
 
 ## Primary Prompt Files
 
 ### 1. **`server/src/llm/span-labeling/templates/span-labeling-prompt.md`** (361 lines)
-   - Main template file with instructions
-   - Contains:
-     - Taxonomy structure definitions
-     - Role definitions with detection patterns
-     - Categorization priority rules
-     - Critical instructions
-     - Example output format
-     - Validation requirements
-   - Used as the base template for the system prompt
+
+- Main template file with instructions
+- Contains:
+  - Taxonomy structure definitions
+  - Role definitions with detection patterns
+  - Categorization priority rules
+  - Critical instructions
+  - Example output format
+  - Validation requirements
+- Used as the base template for the system prompt
 
 ### 2. **`server/src/llm/span-labeling/SpanLabelingService.js`** (lines 60-102, 189-193, 268-272)
-   - **`buildSystemPrompt()` function** (lines 60-102):
-     - Dynamically generates the system prompt at runtime
-     - Combines taxonomy structure from `shared/taxonomy.js` with detection patterns from the template
-     - Extracts sections from the template file
-     - Builds the complete system prompt string
-   - **`callModel()` function** (lines 111-121):
-     - Sends `systemPrompt` and `userMessage` to the LLM
-   - **Primary call** (lines 189-193):
-     - Uses `BASE_SYSTEM_PROMPT` (generated at initialization)
-     - Uses `buildUserPayload()` for the user message
-   - **Repair attempt** (lines 268-272):
-     - Adds validation feedback to the system prompt
-     - Includes repair instructions
+
+- **`buildSystemPrompt()` function** (lines 60-102):
+  - Dynamically generates the system prompt at runtime
+  - Combines taxonomy structure from `shared/taxonomy.js` with detection patterns from the template
+  - Extracts sections from the template file
+  - Builds the complete system prompt string
+- **`callModel()` function** (lines 111-121):
+  - Sends `systemPrompt` and `userMessage` to the LLM
+- **Primary call** (lines 189-193):
+  - Uses `BASE_SYSTEM_PROMPT` (generated at initialization)
+  - Uses `buildUserPayload()` for the user message
+- **Repair attempt** (lines 268-272):
+  - Adds validation feedback to the system prompt
+  - Includes repair instructions
 
 ### 3. **`server/src/llm/span-labeling/utils/jsonUtils.js`** (lines 65-78)
-   - **`buildUserPayload()` function**:
-     - Constructs the user message payload
-     - Includes: `task`, `policy`, `text`, `templateVersion`, and optional `validation` feedback
-     - Returns JSON stringified payload
+
+- **`buildUserPayload()` function**:
+  - Constructs the user message payload
+  - Includes: `task`, `policy`, `text`, `templateVersion`, and optional `validation` feedback
+  - Returns JSON stringified payload
 
 ### 4. **`server/src/llm/span-labeling/utils/policyUtils.js`** (lines 86-88)
-   - **`buildTaskDescription()` function**:
-     - Creates the task instruction: `"Identify up to ${maxSpans} spans and assign roles."`
-     - Included in the user payload
+
+- **`buildTaskDescription()` function**:
+  - Creates the task instruction: `"Identify up to ${maxSpans} spans and assign roles."`
+  - Included in the user payload
 
 ## How Prompts Are Constructed
 
 **System Prompt** (sent as `systemPrompt`):
+
 ```
 = Taxonomy structure (from taxonomy.js)
 + Detection patterns (from template file)
@@ -360,6 +371,7 @@ Files that contain prompts sent to the LLM for span-related operations:
 ```
 
 **User Message** (sent as `userMessage`):
+
 ```json
 {
   "task": "Identify up to X spans and assign roles.",
@@ -405,46 +417,45 @@ so how many different templates are sent to the llm throughout this process?
 
 **Cursor**
 
-
 Tracing the code to identify all prompt variations sent to the LLM:
 
-
-
 Checking chunked processing to confirm it uses the same prompt:
-
-
 
 There are 2 different system prompts sent to the LLM:
 
 ## System Prompts (2 variations)
 
 ### 1. **Base System Prompt** (`BASE_SYSTEM_PROMPT`)
-   - Built once at service initialization (line 105)
-   - Used for:
-     - Initial span labeling (line 190)
-     - Chunked processing (via `labelSpansSingle`, line 323)
-   - Content:
-     - Taxonomy structure (from `taxonomy.js`)
-     - Detection patterns (from template file)
-     - Rules section (from template file)
+
+- Built once at service initialization (line 105)
+- Used for:
+  - Initial span labeling (line 190)
+  - Chunked processing (via `labelSpansSingle`, line 323)
+- Content:
+  - Taxonomy structure (from `taxonomy.js`)
+  - Detection patterns (from template file)
+  - Rules section (from template file)
 
 ### 2. **Repair System Prompt** (`BASE_SYSTEM_PROMPT + repair instruction`)
-   - Used only when `enableRepair === true` and validation fails (lines 268-271)
-   - Content:
-     - Same as base prompt
-     - Plus: `"If validation feedback is provided, correct the issues without altering span text."`
-   - Example:
-     ```javascript
-     systemPrompt: `${BASE_SYSTEM_PROMPT}
 
-     If validation feedback is provided, correct the issues without altering span text.`
-     ```
+- Used only when `enableRepair === true` and validation fails (lines 268-271)
+- Content:
+  - Same as base prompt
+  - Plus: `"If validation feedback is provided, correct the issues without altering span text."`
+- Example:
+
+  ```javascript
+  systemPrompt: `${BASE_SYSTEM_PROMPT}
+  
+  If validation feedback is provided, correct the issues without altering span text.`;
+  ```
 
 ## User Messages (same structure, varying content)
 
 The user message structure is consistent, but content varies:
 
 **Standard user payload:**
+
 ```json
 {
   "task": "Identify up to X spans and assign roles.",
@@ -455,6 +466,7 @@ The user message structure is consistent, but content varies:
 ```
 
 **Repair user payload** (includes validation feedback):
+
 ```json
 {
   "task": "Identify up to X spans and assign roles.",
@@ -480,9 +492,9 @@ The user message structure is consistent, but content varies:
 The repair prompt is the base prompt with one additional instruction appended.
 
 ```javascript
-     systemPrompt: `${BASE_SYSTEM_PROMPT}
+systemPrompt: `${BASE_SYSTEM_PROMPT}
 
-     If validation feedback is provided, correct the issues without altering span text.`
+     If validation feedback is provided, correct the issues without altering span text.`;
 ```
 
 ```json
@@ -518,22 +530,13 @@ which files explicity send those prompts?
 
 **Cursor**
 
-
 Finding files that explicitly send prompts to the LLM:
-
-
 
 Checking where `labelSpans` is called with `aiService`:
 
-
-
 Checking how PromptOptimizationService calls labelSpans:
 
-
-
 Checking if PromptOptimizationService passes aiService to labelSpans:
-
-
 
 Files that explicitly send prompts to the LLM:
 
@@ -544,20 +547,22 @@ Files that explicitly send prompts to the LLM:
 This file contains the function that sends prompts:
 
 **`callModel()` function** (lines 111-121):
+
 ```javascript
 async function callModel({ systemPrompt, userPayload, aiService, maxTokens }) {
-  const response = await aiService.execute('span_labeling', {
+  const response = await aiService.execute("span_labeling", {
     systemPrompt,
     userMessage: userPayload,
     maxTokens,
   });
-  return response.content[0]?.text || '';
+  return response.content[0]?.text || "";
 }
 ```
 
 Called from two places in the same file:
 
 1. Primary labeling call (line 189-193):
+
    ```javascript
    const primaryResponse = await callModel({
      systemPrompt: BASE_SYSTEM_PROMPT,
@@ -589,6 +594,7 @@ These files call `labelSpans()`, which internally calls `callModel()`:
 ## Summary
 
 Only one file explicitly sends prompts: `server/src/llm/span-labeling/SpanLabelingService.js` via `callModel()`. It sends prompts in two scenarios:
+
 - Initial labeling (base prompt)
 - Repair attempt (base prompt + repair instruction)
 
@@ -596,29 +602,29 @@ The actual LLM API call happens through `aiService.execute('span_labeling', {...
 
 ```javascript
 async function callModel({ systemPrompt, userPayload, aiService, maxTokens }) {
-  const response = await aiService.execute('span_labeling', {
+  const response = await aiService.execute("span_labeling", {
     systemPrompt,
     userMessage: userPayload,
     maxTokens,
   });
-  return response.content[0]?.text || '';
+  return response.content[0]?.text || "";
 }
 ```
 
 ```javascript
-   const primaryResponse = await callModel({
-     systemPrompt: BASE_SYSTEM_PROMPT,
-     userPayload: buildUserPayload(basePayload),
-     aiService,
-   });
+const primaryResponse = await callModel({
+  systemPrompt: BASE_SYSTEM_PROMPT,
+  userPayload: buildUserPayload(basePayload),
+  aiService,
+});
 ```
 
 ```javascript
-   const repairResponse = await callModel({
-     systemPrompt: `${BASE_SYSTEM_PROMPT}\n\nIf validation feedback is provided...`,
-     userPayload: buildUserPayload(repairPayload),
-     aiService,
-   });
+const repairResponse = await callModel({
+  systemPrompt: `${BASE_SYSTEM_PROMPT}\n\nIf validation feedback is provided...`,
+  userPayload: buildUserPayload(repairPayload),
+  aiService,
+});
 ```
 
 ---
@@ -631,72 +637,79 @@ ok then which files contain the prompts that are sent
 
 **Cursor**
 
-
 Identifying files that contain the prompt text sent to the LLM:
-
-
 
 Files that contain the prompt text sent to the LLM:
 
 ## Files containing prompt content
 
 ### 1. **`server/src/llm/span-labeling/templates/span-labeling-prompt.md`** (361 lines)
-   - Base template file
-   - Contains:
-     - Role definitions with detection patterns (lines 31-155)
-     - Critical instructions (lines 212-243)
-     - Rules section (lines 247-260)
-     - Example output format (lines 258-352)
-   - Extracted and used in the system prompt
+
+- Base template file
+- Contains:
+  - Role definitions with detection patterns (lines 31-155)
+  - Critical instructions (lines 212-243)
+  - Rules section (lines 247-260)
+  - Example output format (lines 258-352)
+- Extracted and used in the system prompt
 
 ### 2. **`server/src/llm/span-labeling/SpanLabelingService.js`**
-   - Contains prompt assembly code:
-   
-   **`buildSystemPrompt()` function** (lines 60-102):
-   - Assembles the system prompt
-   - Contains hardcoded prompt text:
-     ```javascript
-     return `# Span Labeling System Prompt
 
-     Label spans for AI video prompt elements using our unified taxonomy system.
+- Contains prompt assembly code:
 
-     **IMPORTANT: Respond ONLY with valid JSON. No markdown, no explanatory text, just pure JSON.**
+**`buildSystemPrompt()` function** (lines 60-102):
 
-     ## Taxonomy Structure
-     ...
-     `.trim();
-     ```
-   
-   **Repair instruction** (lines 269-271):
-   - Additional text appended for repair attempts:
-     ```javascript
-     systemPrompt: `${BASE_SYSTEM_PROMPT}
+- Assembles the system prompt
+- Contains hardcoded prompt text:
 
-     If validation feedback is provided, correct the issues without altering span text.`
-     ```
+  ```javascript
+  return `# Span Labeling System Prompt
+  
+  Label spans for AI video prompt elements using our unified taxonomy system.
+  
+  **IMPORTANT: Respond ONLY with valid JSON. No markdown, no explanatory text, just pure JSON.**
+  
+  ## Taxonomy Structure
+  ...
+  `.trim();
+  ```
+
+**Repair instruction** (lines 269-271):
+
+- Additional text appended for repair attempts:
+
+  ```javascript
+  systemPrompt: `${BASE_SYSTEM_PROMPT}
+  
+  If validation feedback is provided, correct the issues without altering span text.`;
+  ```
 
 ### 3. **`shared/taxonomy.js`** (559 lines)
-   - Contains taxonomy structure
-   - Contributes to the prompt via `buildSystemPrompt()`:
-     - Parent category descriptions (lines 28-236)
-     - Attribute IDs and labels
-   - Dynamically injected into the system prompt
+
+- Contains taxonomy structure
+- Contributes to the prompt via `buildSystemPrompt()`:
+  - Parent category descriptions (lines 28-236)
+  - Attribute IDs and labels
+- Dynamically injected into the system prompt
 
 ### 4. **`server/src/llm/span-labeling/utils/policyUtils.js`** (line 87)
-   - Contains the task description template:
-     ```javascript
-     return `Identify up to ${maxSpans} spans and assign roles.`;
-     ```
-   - Included in the user message payload
+
+- Contains the task description template:
+  ```javascript
+  return `Identify up to ${maxSpans} spans and assign roles.`;
+  ```
+- Included in the user message payload
 
 ### 5. **`server/src/llm/span-labeling/utils/jsonUtils.js`** (lines 65-78)
-   - Contains `buildUserPayload()` function
-   - Structures the user message payload
-   - The actual text content comes from parameters passed in (not hardcoded here)
+
+- Contains `buildUserPayload()` function
+- Structures the user message payload
+- The actual text content comes from parameters passed in (not hardcoded here)
 
 ## Summary
 
 Prompt content is located in:
+
 1. `server/src/llm/span-labeling/templates/span-labeling-prompt.md` — Main template (detection patterns, rules, examples)
 2. `server/src/llm/span-labeling/SpanLabelingService.js` — System prompt assembly + repair instruction
 3. `shared/taxonomy.js` — Taxonomy structure (dynamically injected)
@@ -705,7 +718,7 @@ Prompt content is located in:
 The final prompts are assembled at runtime by combining these sources.
 
 ```javascript
-     return `# Span Labeling System Prompt
+return `# Span Labeling System Prompt
 
      Label spans for AI video prompt elements using our unified taxonomy system.
 
@@ -717,13 +730,13 @@ The final prompts are assembled at runtime by combining these sources.
 ```
 
 ```javascript
-     systemPrompt: `${BASE_SYSTEM_PROMPT}
+systemPrompt: `${BASE_SYSTEM_PROMPT}
 
-     If validation feedback is provided, correct the issues without altering span text.`
+     If validation feedback is provided, correct the issues without altering span text.`;
 ```
 
 ```javascript
-     return `Identify up to ${maxSpans} spans and assign roles.`;
+return `Identify up to ${maxSpans} spans and assign roles.`;
 ```
 
 ---
@@ -736,16 +749,13 @@ show me the final built prompt sent at runtime
 
 **Cursor**
 
-
 Tracing the code to show the final prompt sent at runtime:
-
-
 
 Final prompt sent at runtime:
 
 ## **SYSTEM PROMPT** (sent as `systemPrompt`)
 
-```
+````
 # Span Labeling System Prompt
 
 Label spans for AI video prompt elements using our unified taxonomy system.
@@ -870,16 +880,18 @@ MANDATORY: If you see a line like "- **Frame Rate:** 24fps", you MUST extract "2
     "notes": "Labeled 11 spans using unified taxonomy IDs"
   }
 }
-```
+````
 
 **VALIDATION REQUIREMENTS - STRICTLY ENFORCED:**
+
 - Response MUST have TWO top-level keys: "spans" and "meta"
 - Every span MUST have: text, start, end, role, confidence
 - The "role" field MUST be a valid taxonomy ID (parent or attribute)
 - The "meta" object MUST have: version, notes
 - Missing ANY required field = validation error = request fails
 - Output ONLY valid JSON (no markdown, no explanatory text)
-```
+
+````
 
 ---
 
@@ -896,9 +908,10 @@ MANDATORY: If you see a line like "- **Frame Rate:** 24fps", you MUST extract "2
   "text": "Close-up of weathered hands holding a vibrant brush, palette of bold colors. The camera slowly pans back, illuminated by the warm glow of a setting sun, reminiscent of a high-contrast urban documentary.\n\n**TECHNICAL SPECS**\n- **Duration:** 4-8s\n- **Aspect Ratio:** 16:9\n- **Frame Rate:** 24fps",
   "templateVersion": "v2"
 }
-```
+````
 
 **For Repair Attempt** (when validation fails):
+
 ```json
 {
   "task": "Identify up to 60 spans and assign roles.",
@@ -937,14 +950,15 @@ If validation feedback is provided, correct the issues without altering span tex
 ## **How It's Sent**
 
 The final API call looks like:
+
 ```javascript
-aiService.execute('span_labeling', {
-  systemPrompt: BASE_SYSTEM_PROMPT,  // The full system prompt above
-  userMessage: JSON.stringify(userPayload),  // The JSON payload above
-  maxTokens: 4096,  // From modelConfig.js
-  temperature: 0.2,  // From modelConfig.js
-  responseFormat: 'json_object'  // From modelConfig.js
-})
+aiService.execute("span_labeling", {
+  systemPrompt: BASE_SYSTEM_PROMPT, // The full system prompt above
+  userMessage: JSON.stringify(userPayload), // The JSON payload above
+  maxTokens: 4096, // From modelConfig.js
+  temperature: 0.2, // From modelConfig.js
+  responseFormat: "json_object", // From modelConfig.js
+});
 ```
 
 The taxonomy count (currently 8) and attribute lists are dynamically generated from `taxonomy.js` at service initialization, so they update automatically if the taxonomy changes.
@@ -1137,12 +1151,11 @@ If validation feedback is provided, correct the issues without altering span tex
 ```
 
 ```javascript
-aiService.execute('span_labeling', {
-  systemPrompt: BASE_SYSTEM_PROMPT,  // The full system prompt above
-  userMessage: JSON.stringify(userPayload),  // The JSON payload above
-  maxTokens: 4096,  // From modelConfig.js
-  temperature: 0.2,  // From modelConfig.js
-  responseFormat: 'json_object'  // From modelConfig.js
-})
+aiService.execute("span_labeling", {
+  systemPrompt: BASE_SYSTEM_PROMPT, // The full system prompt above
+  userMessage: JSON.stringify(userPayload), // The JSON payload above
+  maxTokens: 4096, // From modelConfig.js
+  temperature: 0.2, // From modelConfig.js
+  responseFormat: "json_object", // From modelConfig.js
+});
 ```
-

@@ -2,13 +2,13 @@
  * Image Asset Storage
  */
 
-import type { Bucket } from '@google-cloud/storage';
-import { SIGNED_URL_TTL_MS } from '@config/signedUrlPolicy';
-import { GcsImageAssetStore } from './GcsImageAssetStore';
-import type { ImageAssetStore } from './types';
+import type { Bucket } from "@google-cloud/storage";
+import { SIGNED_URL_TTL_MS } from "@config/signedUrlPolicy";
+import { GcsImageAssetStore } from "./GcsImageAssetStore";
+import type { ImageAssetStore } from "./types";
 
-const DEFAULT_BASE_PATH = 'image-previews';
-const DEFAULT_CACHE_CONTROL = 'public, max-age=86400';
+const DEFAULT_BASE_PATH = "image-previews";
+const DEFAULT_CACHE_CONTROL = "public, max-age=86400";
 
 interface CreateImageAssetStoreOptions {
   bucket: Bucket;
@@ -20,7 +20,9 @@ interface CreateImageAssetStoreOptions {
 /**
  * Create an image asset store using the injected bucket.
  */
-export function createImageAssetStore(options: CreateImageAssetStoreOptions): ImageAssetStore {
+export function createImageAssetStore(
+  options: CreateImageAssetStoreOptions,
+): ImageAssetStore {
   return new GcsImageAssetStore({
     bucket: options.bucket,
     basePath: options.basePath || DEFAULT_BASE_PATH,
@@ -29,4 +31,4 @@ export function createImageAssetStore(options: CreateImageAssetStoreOptions): Im
   });
 }
 
-export type { ImageAssetStore, StoredImageAsset } from './types';
+export type { ImageAssetStore, StoredImageAsset } from "./types";

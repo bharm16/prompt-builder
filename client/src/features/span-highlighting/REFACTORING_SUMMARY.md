@@ -95,14 +95,19 @@ client/src/features/span-highlighting/
 ### 1. **Single Source of Truth**
 
 All span/highlighting logic in one location:
+
 ```javascript
 // Before (fragmented)
-import { validateSpan } from '../../../utils/categoryValidators';
-import { useSpanLabeling } from '../features/prompt-optimizer/hooks/useSpanLabeling';
-import { buildTextNodeIndex } from '../../../utils/anchorRanges';
+import { validateSpan } from "../../../utils/categoryValidators";
+import { useSpanLabeling } from "../features/prompt-optimizer/hooks/useSpanLabeling";
+import { buildTextNodeIndex } from "../../../utils/anchorRanges";
 
 // After (unified)
-import { validateSpan, useSpanLabeling, buildTextNodeIndex } from '@/features/span-highlighting';
+import {
+  validateSpan,
+  useSpanLabeling,
+  buildTextNodeIndex,
+} from "@/features/span-highlighting";
 ```
 
 ### 2. **Clear Separation of Concerns**
@@ -116,12 +121,13 @@ import { validateSpan, useSpanLabeling, buildTextNodeIndex } from '@/features/sp
 ### 3. **Improved Testability**
 
 Each module can be tested independently:
+
 ```javascript
 // Test utilities in isolation
-import { snapSpanToTokenBoundaries } from '@/features/span-highlighting';
+import { snapSpanToTokenBoundaries } from "@/features/span-highlighting";
 
-test('snaps to word boundaries', () => {
-  const result = snapSpanToTokenBoundaries('hello world', 3, 7);
+test("snaps to word boundaries", () => {
+  const result = snapSpanToTokenBoundaries("hello world", 3, 7);
   expect(result).toEqual({ start: 0, end: 5 });
 });
 ```
@@ -137,30 +143,30 @@ test('snaps to word boundaries', () => {
 
 ```javascript
 // Reuse hooks in other features
-import { useSpanLabeling } from '@/features/span-highlighting';
+import { useSpanLabeling } from "@/features/span-highlighting";
 
 // Reuse utilities
-import { validateSpan } from '@/features/span-highlighting';
+import { validateSpan } from "@/features/span-highlighting";
 
 // Reuse services
-import { spanLabelingCache } from '@/features/span-highlighting';
+import { spanLabelingCache } from "@/features/span-highlighting";
 ```
 
 ## Migration Details
 
 ### File Movements
 
-| Source | Destination | Changes |
-|--------|-------------|---------|
-| `utils/anchorRanges.js` | `utils/anchorRanges.js` | None (copied as-is) |
-| `utils/categoryValidators.js` | `utils/categoryValidators.js` | None (copied as-is) |
-| `prompt-optimizer/hooks/useSpanLabeling.js` | `hooks/useSpanLabeling.js` | Updated imports |
-| `prompt-optimizer/hooks/useSpanLabeling/*` | Split into: `api/`, `config/`, `services/`, `utils/` | Flattened structure |
-| `prompt-optimizer/hooks/useHighlightRendering/*` | `hooks/`, `utils/`, `config/` | Flattened structure |
-| `prompt-optimizer/utils/spanUtils.js` | `utils/spanProcessing.js` | Renamed for clarity |
-| `prompt-optimizer/utils/spanValidation.js` | `utils/spanValidation.js` | None |
-| `prompt-optimizer/utils/tokenBoundaries.js` | `utils/tokenBoundaries.js` | None |
-| `prompt-optimizer/utils/highlightConversion.js` | `utils/highlightConversion.js` | None |
+| Source                                           | Destination                                          | Changes             |
+| ------------------------------------------------ | ---------------------------------------------------- | ------------------- |
+| `utils/anchorRanges.js`                          | `utils/anchorRanges.js`                              | None (copied as-is) |
+| `utils/categoryValidators.js`                    | `utils/categoryValidators.js`                        | None (copied as-is) |
+| `prompt-optimizer/hooks/useSpanLabeling.js`      | `hooks/useSpanLabeling.js`                           | Updated imports     |
+| `prompt-optimizer/hooks/useSpanLabeling/*`       | Split into: `api/`, `config/`, `services/`, `utils/` | Flattened structure |
+| `prompt-optimizer/hooks/useHighlightRendering/*` | `hooks/`, `utils/`, `config/`                        | Flattened structure |
+| `prompt-optimizer/utils/spanUtils.js`            | `utils/spanProcessing.js`                            | Renamed for clarity |
+| `prompt-optimizer/utils/spanValidation.js`       | `utils/spanValidation.js`                            | None                |
+| `prompt-optimizer/utils/tokenBoundaries.js`      | `utils/tokenBoundaries.js`                           | None                |
+| `prompt-optimizer/utils/highlightConversion.js`  | `utils/highlightConversion.js`                       | None                |
 
 ### Import Updates
 
@@ -168,44 +174,47 @@ All imports updated to use new paths:
 
 ```javascript
 // OLD: Deep nested imports
-import { DEFAULT_OPTIONS } from './useSpanLabeling/config/constants.js';
-import { spanLabelingCache } from './useSpanLabeling/services/SpanLabelingCache.js';
-import { buildTextNodeIndex } from '../../../../utils/anchorRanges.js';
+import { DEFAULT_OPTIONS } from "./useSpanLabeling/config/constants.js";
+import { spanLabelingCache } from "./useSpanLabeling/services/SpanLabelingCache.js";
+import { buildTextNodeIndex } from "../../../../utils/anchorRanges.js";
 
 // NEW: Flat, organized imports
-import { DEFAULT_OPTIONS } from '../config/index.js';
-import { spanLabelingCache } from '../services/index.js';
-import { buildTextNodeIndex } from '../utils/index.js';
+import { DEFAULT_OPTIONS } from "../config/index.js";
+import { spanLabelingCache } from "../services/index.js";
+import { buildTextNodeIndex } from "../utils/index.js";
 ```
 
 ## Metrics
 
 ### Line Count Analysis
 
-| Category | Files | Total Lines | Avg Lines/File |
-|----------|-------|-------------|----------------|
-| **Hooks** | 5 | ~880 | 176 |
-| **Utils** | 12 | ~1,350 | 112 |
-| **Services** | 2 | ~280 | 140 |
-| **API** | 1 | ~80 | 80 |
-| **Config** | 3 | ~250 | 83 |
-| **Infrastructure** | 6 index files | ~80 | 13 |
-| **Total** | 29 files | ~2,920 | 101 |
+| Category           | Files         | Total Lines | Avg Lines/File |
+| ------------------ | ------------- | ----------- | -------------- |
+| **Hooks**          | 5             | ~880        | 176            |
+| **Utils**          | 12            | ~1,350      | 112            |
+| **Services**       | 2             | ~280        | 140            |
+| **API**            | 1             | ~80         | 80             |
+| **Config**         | 3             | ~250        | 83             |
+| **Infrastructure** | 6 index files | ~80         | 13             |
+| **Total**          | 29 files      | ~2,920      | 101            |
 
 ### Architecture Compliance
 
 ✅ **File Size Guidelines Met**
+
 - Main hooks: 150-440 lines (acceptable per guidelines)
 - Utils: 40-285 lines (focused, single responsibility)
 - Config: 40-150 lines per file
 - Services: ~200 lines (acceptable for cache layer)
 
 ✅ **Separation of Concerns**
+
 - Clear boundaries between hooks, utils, services, api, config
 - Pure functions separated from side effects
 - Business logic separated from presentation
 
 ✅ **Following VideoConceptBuilder Pattern**
+
 - Flat structure (2-3 levels max, not 4-5)
 - Clear barrel exports via index.js
 - Single responsibility per file
@@ -216,7 +225,10 @@ import { buildTextNodeIndex } from '../utils/index.js';
 ### Basic Usage
 
 ```javascript
-import { useSpanLabeling, useHighlightRendering } from '@/features/span-highlighting';
+import {
+  useSpanLabeling,
+  useHighlightRendering,
+} from "@/features/span-highlighting";
 
 function PromptEditor() {
   // Label spans in text
@@ -245,20 +257,20 @@ import {
   validateSpan,
   snapSpanToTokenBoundaries,
   buildSimplifiedSpans,
-} from '@/features/span-highlighting';
+} from "@/features/span-highlighting";
 
 // Use cache directly
-import { spanLabelingCache } from '@/features/span-highlighting';
+import { spanLabelingCache } from "@/features/span-highlighting";
 
 // Customize configuration
-import { DEFAULT_OPTIONS } from '@/features/span-highlighting';
+import { DEFAULT_OPTIONS } from "@/features/span-highlighting";
 ```
 
 ### Namespace Imports
 
 ```javascript
 // Import by namespace for organization
-import { spanHooks, spanUtils, spanConfig } from '@/features/span-highlighting';
+import { spanHooks, spanUtils, spanConfig } from "@/features/span-highlighting";
 
 const { useSpanLabeling } = spanHooks;
 const { validateSpan } = spanUtils;
@@ -270,6 +282,7 @@ const { DEFAULT_OPTIONS } = spanConfig;
 ### Temporary Re-export Shims
 
 Shims created in old locations with deprecation warnings:
+
 - `utils/anchorRanges.js` → re-exports with warning
 - `utils/categoryValidators.js` → re-exports with warning
 - `prompt-optimizer/hooks/useSpanLabeling.js` → re-exports
@@ -288,6 +301,7 @@ Shims created in old locations with deprecation warnings:
 ### Unit Tests
 
 Each module tested independently:
+
 - `utils/__tests__/` - Pure function tests
 - `hooks/__tests__/` - Hook behavior tests
 - `services/__tests__/` - Cache and storage tests
@@ -296,6 +310,7 @@ Each module tested independently:
 ### Integration Tests
 
 End-to-end workflow tests:
+
 - Span labeling → validation → rendering
 - Cache persistence and retrieval
 - Error handling and edge cases
@@ -303,6 +318,7 @@ End-to-end workflow tests:
 ### Test Migration
 
 Tests moved alongside their modules:
+
 - `utils/__tests__/anchorRanges.test.js` → `__tests__/anchorRanges.test.js`
 - `utils/__tests__/categoryValidators.test.js` → `__tests__/categoryValidators.test.js`
 - Additional tests created for new structure
@@ -310,16 +326,19 @@ Tests moved alongside their modules:
 ## Performance Impact
 
 ### Before
+
 - Import paths: 4-5 levels deep
 - File location: 15+ directories
 - Code navigation: Difficult, scattered
 
 ### After
+
 - Import paths: 2-3 levels max
 - File location: 1 directory with clear structure
 - Code navigation: Easy, organized
 
 ### Runtime Performance
+
 - No runtime performance impact
 - Same code, better organization
 - Improved code splitting opportunities
@@ -337,6 +356,7 @@ Tests moved alongside their modules:
 ### Extension Points
 
 The modular structure makes it easy to:
+
 - Add new validation rules (extend `utils/`)
 - Add new cache adapters (extend `services/`)
 - Add new rendering strategies (extend `hooks/`)
@@ -362,5 +382,4 @@ This refactoring demonstrates **production-grade architecture**:
 **Breaking Changes**: None (backward compatibility maintained)  
 **Files Created**: 29  
 **Files Modified**: 0 (old files preserved)  
-**Architecture Compliance**: ✅ Follows VideoConceptBuilder pattern  
-
+**Architecture Compliance**: ✅ Follows VideoConceptBuilder pattern

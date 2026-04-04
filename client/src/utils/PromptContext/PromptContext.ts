@@ -1,12 +1,21 @@
 /**
  * PromptContext - Core Data Model
- * 
+ *
  * Manages context data from Creative Brainstorm for intelligent phrase extraction
  */
 
-import { buildKeywordMaps, buildSemanticGroups, generateVariations, type Elements as ElementsType } from './keywordExtraction.ts';
-import { findCategoryForPhrase as findCategory, mapGroupToCategory, type SemanticGroups as SemanticGroupsType } from './categoryMatching.ts';
-import { getCategoryColor } from './categoryStyles.ts';
+import {
+  buildKeywordMaps,
+  buildSemanticGroups,
+  generateVariations,
+  type Elements as ElementsType,
+} from "./keywordExtraction.ts";
+import {
+  findCategoryForPhrase as findCategory,
+  mapGroupToCategory,
+  type SemanticGroups as SemanticGroupsType,
+} from "./categoryMatching.ts";
+import { getCategoryColor } from "./categoryStyles.ts";
 
 interface BrainstormData {
   subject?: string | null;
@@ -52,7 +61,7 @@ export class PromptContext {
   semanticGroups: ReturnType<typeof buildSemanticGroups>;
 
   constructor(brainstormData: BrainstormData = {}, metadata: Metadata = {}) {
-    this.version = '1.0.0';
+    this.version = "1.0.0";
     this.createdAt = Date.now();
 
     // Core elements from Creative Brainstorm
@@ -68,7 +77,7 @@ export class PromptContext {
 
     // Metadata from optimization process
     this.metadata = {
-      format: metadata.format || 'detailed',
+      format: metadata.format || "detailed",
       technicalParams: metadata.technicalParams || {},
       validationScore: metadata.validationScore || null,
       history: metadata.history || [],
@@ -83,7 +92,9 @@ export class PromptContext {
    * Check if context has any meaningful data
    */
   hasContext(): boolean {
-    return Object.values(this.elements).some(value => value && value.trim().length > 0);
+    return Object.values(this.elements).some(
+      (value) => value && value.trim().length > 0,
+    );
   }
 
   /**
@@ -91,7 +102,12 @@ export class PromptContext {
    * Returns null if no match, or match result if matched
    */
   findCategoryForPhrase(phraseText: string): ReturnType<typeof findCategory> {
-    return findCategory(phraseText, this.keywordMaps, this.semanticGroups as SemanticGroupsType, this.elements as ElementsType);
+    return findCategory(
+      phraseText,
+      this.keywordMaps,
+      this.semanticGroups as SemanticGroupsType,
+      this.elements as ElementsType,
+    );
   }
 
   /**
@@ -112,7 +128,9 @@ export class PromptContext {
   /**
    * Get category color for UI display
    */
-  static getCategoryColor(category: string): ReturnType<typeof getCategoryColor> {
+  static getCategoryColor(
+    category: string,
+  ): ReturnType<typeof getCategoryColor> {
     return getCategoryColor(category);
   }
 
@@ -131,7 +149,9 @@ export class PromptContext {
   /**
    * Deserialize context from stored JSON
    */
-  static fromJSON(json: PromptContextJSON | Record<string, unknown> | null | undefined): PromptContext | null {
+  static fromJSON(
+    json: PromptContextJSON | Record<string, unknown> | null | undefined,
+  ): PromptContext | null {
     if (!json) return null;
     const data = json as PromptContextJSON;
     return new PromptContext(data.elements || {}, data.metadata || {});

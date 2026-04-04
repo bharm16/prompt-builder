@@ -1,41 +1,45 @@
-import { logger } from '@/services/LoggingService';
-import { sanitizeError } from '@/utils/logging';
+import { logger } from "@/services/LoggingService";
+import { sanitizeError } from "@/utils/logging";
 
-const PARSER_DEBUG_FLAG = 'PARSER_DEBUG';
+const PARSER_DEBUG_FLAG = "PARSER_DEBUG";
 
 let cachedDebugState: boolean | null = null;
-const log = logger.child('parserDebug');
+const log = logger.child("parserDebug");
 
 const coerceBoolean = (value: unknown): boolean | null => {
-  if (typeof value === 'boolean') return value;
-  if (typeof value === 'number') return value !== 0;
-  if (typeof value === 'string') {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "number") return value !== 0;
+  if (typeof value === "string") {
     const normalized = value.trim().toLowerCase();
-    if (['1', 'true', 'yes', 'on'].includes(normalized)) return true;
-    if (['0', 'false', 'no', 'off'].includes(normalized)) return false;
+    if (["1", "true", "yes", "on"].includes(normalized)) return true;
+    if (["0", "false", "no", "off"].includes(normalized)) return false;
   }
   return null;
 };
 
 const readEnvFlag = (): boolean => {
-  if (typeof import.meta !== 'undefined' && (import.meta as unknown as { env?: Record<string, unknown> }).env) {
-    const env = (import.meta as unknown as { env: Record<string, unknown> }).env;
+  if (
+    typeof import.meta !== "undefined" &&
+    (import.meta as unknown as { env?: Record<string, unknown> }).env
+  ) {
+    const env = (import.meta as unknown as { env: Record<string, unknown> })
+      .env;
     const value =
-      env[`VITE_${PARSER_DEBUG_FLAG}`] ??
-      env[PARSER_DEBUG_FLAG] ??
-      null;
+      env[`VITE_${PARSER_DEBUG_FLAG}`] ?? env[PARSER_DEBUG_FLAG] ?? null;
     const coerced = coerceBoolean(value);
     if (coerced !== null) return coerced;
   }
 
-  if (typeof process !== 'undefined' && process.env) {
+  if (typeof process !== "undefined" && process.env) {
     const value = process.env[PARSER_DEBUG_FLAG] ?? null;
     const coerced = coerceBoolean(value);
     if (coerced !== null) return coerced;
   }
 
-  if (typeof window !== 'undefined') {
-    const windowValue = (window as unknown as Record<string, unknown>)[PARSER_DEBUG_FLAG];
+  if (typeof window !== "undefined") {
+    const windowValue = (window as unknown as Record<string, unknown>)[
+      PARSER_DEBUG_FLAG
+    ];
     if (windowValue !== undefined) {
       const coerced = coerceBoolean(windowValue);
       if (coerced !== null) return coerced;
@@ -47,8 +51,8 @@ const readEnvFlag = (): boolean => {
       if (coerced !== null) return coerced;
     } catch (error) {
       const info = sanitizeError(error);
-      log.warn('Unable to read localStorage flag', {
-        operation: 'readEnvFlag',
+      log.warn("Unable to read localStorage flag", {
+        operation: "readEnvFlag",
         error: info.message,
         errorName: info.name,
       });
@@ -75,16 +79,22 @@ interface BaseEventPayload {
   [key: string]: unknown;
 }
 
-const baseEvent = (event: string, payload: Record<string, unknown> = {}): BaseEventPayload => ({
+const baseEvent = (
+  event: string,
+  payload: Record<string, unknown> = {},
+): BaseEventPayload => ({
   event,
   timestamp: new Date().toISOString(),
   ...payload,
 });
 
-export const parserDebugLog = (event: string, payload: Record<string, unknown> = {}): void => {
+export const parserDebugLog = (
+  event: string,
+  payload: Record<string, unknown> = {},
+): void => {
   if (!isParserDebugEnabled()) return;
   const record = baseEvent(event, payload);
-  log.debug('Parser debug event', record);
+  log.debug("Parser debug event", record);
 };
 
 interface SpanLifecyclePayload {
@@ -102,7 +112,12 @@ interface SpanLifecyclePayload {
   extra?: Record<string, unknown>;
 }
 
-export const logSpanLifecycle = ({ stage, span, reason = null, extra = {} }: SpanLifecyclePayload): void => {
+export const logSpanLifecycle = ({
+  stage,
+  span,
+  reason = null,
+  extra = {},
+}: SpanLifecyclePayload): void => {
   if (!isParserDebugEnabled()) return;
   parserDebugLog(`span:${stage}`, {
     source: span?.source,
@@ -122,7 +137,11 @@ interface PipelineMetricPayload {
   context?: Record<string, unknown>;
 }
 
-export const logPipelineMetric = ({ metric, value, context = {} }: PipelineMetricPayload): void => {
+export const logPipelineMetric = ({
+  metric,
+  value,
+  context = {},
+}: PipelineMetricPayload): void => {
   if (!isParserDebugEnabled()) return;
   parserDebugLog(`metric:${metric}`, { value, ...context });
 };

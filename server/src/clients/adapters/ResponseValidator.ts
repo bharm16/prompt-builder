@@ -1,13 +1,13 @@
 /**
  * LLM Response Validator
- * 
+ *
  * Validates LLM responses for common issues:
  * - Malformed JSON
  * - Refusal patterns
  * - Empty responses
  * - Truncation detection
  * - Preamble/postamble detection
- * 
+ *
  * Used by both GroqLlamaAdapter and OpenAICompatibleAdapter
  * for automatic retry logic on validation failures.
  */
@@ -78,7 +78,7 @@ const POSTAMBLE_PATTERNS = [
  */
 export function validateLLMResponse(
   text: string,
-  options: ValidationOptions = {}
+  options: ValidationOptions = {},
 ): ValidationResult {
   const result: ValidationResult = {
     isValid: true,
@@ -94,7 +94,7 @@ export function validateLLMResponse(
   // Handle empty response
   if (!text || text.trim().length === 0) {
     result.isValid = false;
-    result.errors.push('Empty response');
+    result.errors.push("Empty response");
     result.confidence = 0;
     return result;
   }
@@ -103,20 +103,24 @@ export function validateLLMResponse(
   result.isRefusal = detectRefusal(text);
   if (result.isRefusal) {
     result.isValid = false;
-    result.errors.push('Response appears to be a refusal');
+    result.errors.push("Response appears to be a refusal");
     result.confidence = 0.1;
     return result;
   }
 
   // Check length constraints
   if (options.minLength && text.length < options.minLength) {
-    result.errors.push(`Response too short: ${text.length} < ${options.minLength}`);
+    result.errors.push(
+      `Response too short: ${text.length} < ${options.minLength}`,
+    );
     result.isValid = false;
     result.confidence *= 0.5;
   }
 
   if (options.maxLength && text.length > options.maxLength) {
-    result.warnings.push(`Response may be truncated: ${text.length} > ${options.maxLength}`);
+    result.warnings.push(
+      `Response may be truncated: ${text.length} > ${options.maxLength}`,
+    );
     result.isTruncated = true;
     result.confidence *= 0.8;
   }
@@ -136,22 +140,31 @@ export function validateLLMResponse(
     result.confidence *= jsonResult.confidence;
 
     // Check truncation for JSON
-    if (result.parsed === undefined && text.includes('{')) {
+    if (result.parsed === undefined && text.includes("{")) {
       const openBraces = (text.match(/{/g) || []).length;
       const closeBraces = (text.match(/}/g) || []).length;
       if (openBraces > closeBraces) {
         result.isTruncated = true;
-        result.warnings.push(`JSON appears truncated: ${openBraces} open braces, ${closeBraces} close braces`);
+        result.warnings.push(
+          `JSON appears truncated: ${openBraces} open braces, ${closeBraces} close braces`,
+        );
       }
     }
 
     // Validate required fields
-    if (result.parsed && options.requiredFields && options.requiredFields.length > 0) {
+    if (
+      result.parsed &&
+      options.requiredFields &&
+      options.requiredFields.length > 0
+    ) {
       const missingFields = options.requiredFields.filter(
-        field => !hasNestedField(result.parsed as Record<string, unknown>, field)
+        (field) =>
+          !hasNestedField(result.parsed as Record<string, unknown>, field),
       );
       if (missingFields.length > 0) {
-        result.errors.push(`Missing required fields: ${missingFields.join(', ')}`);
+        result.errors.push(
+          `Missing required fields: ${missingFields.join(", ")}`,
+        );
         result.isValid = false;
         result.confidence *= 0.5;
       }
@@ -166,7 +179,7 @@ export function validateLLMResponse(
  */
 export function detectRefusal(text: string): boolean {
   const trimmed = text.trim();
-  
+
   // Check each refusal pattern
   for (const pattern of REFUSAL_PATTERNS) {
     if (pattern.test(trimmed)) {
@@ -182,7 +195,7 @@ export function detectRefusal(text: string): boolean {
  */
 function validateJsonResponse(
   text: string,
-  options: ValidationOptions
+  options: ValidationOptions,
 ): {
   isValid: boolean;
   errors: string[];
@@ -223,8 +236,8 @@ function validateJsonResponse(
   for (const pattern of PREAMBLE_PATTERNS) {
     if (pattern.test(cleanedText)) {
       result.hasPreamble = true;
-      cleanedText = cleanedText.replace(pattern, '').trim();
-      result.warnings.push('Response contained preamble text');
+      cleanedText = cleanedText.replace(pattern, "").trim();
+      result.warnings.push("Response contained preamble text");
       result.confidence *= 0.9;
     }
   }
@@ -233,8 +246,8 @@ function validateJsonResponse(
   for (const pattern of POSTAMBLE_PATTERNS) {
     if (pattern.test(cleanedText)) {
       result.hasPostamble = true;
-      cleanedText = cleanedText.replace(pattern, '').trim();
-      result.warnings.push('Response contained postamble text');
+      cleanedText = cleanedText.replace(pattern, "").trim();
+      result.warnings.push("Response contained postamble text");
       result.confidence *= 0.9;
     }
   }
@@ -245,24 +258,26 @@ function validateJsonResponse(
     cleanedText = codeBlockMatch[1].trim();
     result.hasPreamble = true;
     result.hasPostamble = true;
-    result.warnings.push('JSON was wrapped in markdown code blocks');
+    result.warnings.push("JSON was wrapped in markdown code blocks");
     result.confidence *= 0.95;
   }
 
   // Find JSON boundaries
   const expectArray = options.expectArray ?? false;
-  const jsonStart = cleanedText.indexOf(expectArray ? '[' : '{');
-  const jsonEnd = cleanedText.lastIndexOf(expectArray ? ']' : '}');
+  const jsonStart = cleanedText.indexOf(expectArray ? "[" : "{");
+  const jsonEnd = cleanedText.lastIndexOf(expectArray ? "]" : "}");
 
   if (jsonStart === -1) {
-    result.errors.push(`No ${expectArray ? 'array' : 'object'} found in response`);
+    result.errors.push(
+      `No ${expectArray ? "array" : "object"} found in response`,
+    );
     result.isValid = false;
     result.confidence = 0.1;
     return result;
   }
 
   if (jsonEnd === -1 || jsonEnd < jsonStart) {
-    result.errors.push('JSON appears incomplete or malformed');
+    result.errors.push("JSON appears incomplete or malformed");
     result.isValid = false;
     result.confidence = 0.2;
     return result;
@@ -275,14 +290,14 @@ function validateJsonResponse(
   // Parse JSON
   try {
     result.parsed = JSON.parse(extractedJson);
-    
+
     // Validate expected type
     if (expectArray && !Array.isArray(result.parsed)) {
-      result.errors.push('Expected array but got object');
+      result.errors.push("Expected array but got object");
       result.isValid = false;
       result.confidence *= 0.3;
     } else if (!expectArray && Array.isArray(result.parsed)) {
-      result.errors.push('Expected object but got array');
+      result.errors.push("Expected object but got array");
       result.isValid = false;
       result.confidence *= 0.3;
     }
@@ -311,11 +326,15 @@ function validateJsonResponse(
  * Check if object has a nested field (supports dot notation)
  */
 function hasNestedField(obj: Record<string, unknown>, path: string): boolean {
-  const parts = path.split('.');
+  const parts = path.split(".");
   let current: unknown = obj;
 
   for (const part of parts) {
-    if (current === null || current === undefined || typeof current !== 'object') {
+    if (
+      current === null ||
+      current === undefined ||
+      typeof current !== "object"
+    ) {
       return false;
     }
     current = (current as Record<string, unknown>)[part];

@@ -1,6 +1,10 @@
-import type { SpanLike } from '../types.js';
-import { META_MARKERS, ALTERNATIVE_SECTION_REGEX, STYLE_REFERENCE_CONTEXT_REGEX } from '../config/SemanticConfig.js';
-import { TAXONOMY } from '#shared/taxonomy.ts';
+import type { SpanLike } from "../types.js";
+import {
+  META_MARKERS,
+  ALTERNATIVE_SECTION_REGEX,
+  STYLE_REFERENCE_CONTEXT_REGEX,
+} from "../config/SemanticConfig.js";
+import { TAXONOMY } from "#shared/taxonomy.ts";
 
 interface FilterResult {
   spans: SpanLike[];
@@ -31,9 +35,9 @@ function findAlternativeSectionStart(text: string): number | null {
 function normalizeLabel(text: string): string {
   return text
     .toLowerCase()
-    .replace(/[^a-z0-9\s-]+/g, ' ')
-    .replace(/-/g, ' ')
-    .replace(/\s+/g, ' ')
+    .replace(/[^a-z0-9\s-]+/g, " ")
+    .replace(/-/g, " ")
+    .replace(/\s+/g, " ")
     .trim();
 }
 
@@ -44,17 +48,21 @@ function isProperNoun(text: string): boolean {
   return tokens.some((token) => /^[A-Z][a-z]/.test(token));
 }
 
-function isStyleReferenceSpan(spanText: string, span: SpanLike, text: string): boolean {
+function isStyleReferenceSpan(
+  spanText: string,
+  span: SpanLike,
+  text: string,
+): boolean {
   if (!spanText) return false;
   if (!isProperNoun(spanText)) return false;
 
-  const role = typeof span.role === 'string' ? span.role : '';
-  if (role.startsWith('style.filmStock') || role.startsWith('technical')) {
+  const role = typeof span.role === "string" ? span.role : "";
+  if (role.startsWith("style.filmStock") || role.startsWith("technical")) {
     return false;
   }
 
-  const start = typeof span.start === 'number' ? span.start : 0;
-  const end = typeof span.end === 'number' ? span.end : start + spanText.length;
+  const start = typeof span.start === "number" ? span.start : 0;
+  const end = typeof span.end === "number" ? span.end : start + spanText.length;
   const contextStart = Math.max(0, start - 100);
   const contextEnd = Math.min(text.length, end + 40);
   const context = text.slice(contextStart, contextEnd).toLowerCase();
@@ -65,11 +73,11 @@ function isStyleReferenceSpan(spanText: string, span: SpanLike, text: string): b
 function isMetaSpanText(spanText: string): boolean {
   const normalized = normalizeLabel(spanText);
   if (!normalized) return true;
-  
-  const tokens = normalized.split(' ').filter(Boolean);
+
+  const tokens = normalized.split(" ").filter(Boolean);
   if (tokens.length === 0) return true;
 
-  // Check 1: Is the entire span just a Taxonomy Label? 
+  // Check 1: Is the entire span just a Taxonomy Label?
   // e.g. "Action", "Lighting", "Camera Movement"
   if (TAXONOMY_LABELS.has(normalized)) {
     return true;
@@ -80,13 +88,23 @@ function isMetaSpanText(spanText: string): boolean {
   if (tokens.length >= 2 && tokens.length <= 4) {
     const firstToken = tokens[0];
     const lastToken = tokens[tokens.length - 1];
-    
-    if (firstToken && lastToken && META_MARKERS.has(firstToken) && TAXONOMY_LABELS.has(lastToken)) {
+
+    if (
+      firstToken &&
+      lastToken &&
+      META_MARKERS.has(firstToken) &&
+      TAXONOMY_LABELS.has(lastToken)
+    ) {
       return true;
     }
-    
+
     // Also check "The [TaxonomyLabel]"
-    if (firstToken && lastToken && (firstToken === 'the' || firstToken === 'a') && TAXONOMY_LABELS.has(lastToken)) {
+    if (
+      firstToken &&
+      lastToken &&
+      (firstToken === "the" || firstToken === "a") &&
+      TAXONOMY_LABELS.has(lastToken)
+    ) {
       return true;
     }
   }
@@ -96,8 +114,14 @@ function isMetaSpanText(spanText: string): boolean {
   if (tokens.length === 1 && tokens[0] && META_MARKERS.has(tokens[0])) {
     return true;
   }
-  
-  if (tokens.length === 2 && tokens[0] && tokens[1] && META_MARKERS.has(tokens[0]) && /\d+/.test(tokens[1])) {
+
+  if (
+    tokens.length === 2 &&
+    tokens[0] &&
+    tokens[1] &&
+    META_MARKERS.has(tokens[0]) &&
+    /\d+/.test(tokens[1])
+  ) {
     return true; // "Variation 1"
   }
 
@@ -108,9 +132,13 @@ function isMetaSpanText(spanText: string): boolean {
  * Check if a span is a variation header like "Variation 1 (Alternate Angle):"
  * These appear in the alternatives section and should be filtered out.
  */
-function isVariationHeader(spanText: string, span: SpanLike, text: string): boolean {
-  const start = typeof span.start === 'number' ? span.start : 0;
-  const end = typeof span.end === 'number' ? span.end : start + spanText.length;
+function isVariationHeader(
+  spanText: string,
+  span: SpanLike,
+  text: string,
+): boolean {
+  const start = typeof span.start === "number" ? span.start : 0;
+  const end = typeof span.end === "number" ? span.end : start + spanText.length;
 
   // Look at surrounding context
   const contextBefore = text.slice(Math.max(0, start - 20), start);
@@ -129,20 +157,26 @@ function isVariationHeader(spanText: string, span: SpanLike, text: string): bool
   return false;
 }
 
-export function filterNonVisualSpans(spans: SpanLike[], text: string): FilterResult {
+export function filterNonVisualSpans(
+  spans: SpanLike[],
+  text: string,
+): FilterResult {
   const notes: string[] = [];
   const altStart = findAlternativeSectionStart(text);
 
   const filtered = spans.filter((span) => {
-    const spanText = typeof span.text === 'string' ? span.text : '';
-    const isInAlternatives = typeof span.start === 'number' && altStart !== null && span.start >= altStart;
+    const spanText = typeof span.text === "string" ? span.text : "";
+    const isInAlternatives =
+      typeof span.start === "number" &&
+      altStart !== null &&
+      span.start >= altStart;
 
     // For alternatives section: only filter out variation headers and meta-text, not visual content
     if (isInAlternatives) {
       // Filter variation headers like "Alternate Angle" inside "**Variation 1 (Alternate Angle):**"
       if (spanText && isVariationHeader(spanText, span, text)) {
         notes.push(
-          `Dropped variation-header span "${spanText}" at ${span.start}-${span.end ?? '?'} (role: ${span.role ?? 'unknown'})`
+          `Dropped variation-header span "${spanText}" at ${span.start}-${span.end ?? "?"} (role: ${span.role ?? "unknown"})`,
         );
         return false;
       }
@@ -150,7 +184,7 @@ export function filterNonVisualSpans(spans: SpanLike[], text: string): FilterRes
       // Filter meta-text but keep visual control points
       if (spanText && isMetaSpanText(spanText)) {
         notes.push(
-          `Dropped non-visual span in alternatives "${spanText}" at ${span.start ?? '?'}-${span.end ?? '?'} (role: ${span.role ?? 'unknown'})`
+          `Dropped non-visual span in alternatives "${spanText}" at ${span.start ?? "?"}-${span.end ?? "?"} (role: ${span.role ?? "unknown"})`,
         );
         return false;
       }
@@ -161,14 +195,14 @@ export function filterNonVisualSpans(spans: SpanLike[], text: string): FilterRes
 
     if (spanText && isStyleReferenceSpan(spanText, span, text)) {
       notes.push(
-        `Dropped style-reference span "${spanText}" at ${span.start ?? '?'}-${span.end ?? '?'} (role: ${span.role ?? 'unknown'})`
+        `Dropped style-reference span "${spanText}" at ${span.start ?? "?"}-${span.end ?? "?"} (role: ${span.role ?? "unknown"})`,
       );
       return false;
     }
 
     if (spanText && isMetaSpanText(spanText)) {
       notes.push(
-        `Dropped non-visual span "${spanText}" at ${span.start ?? '?'}-${span.end ?? '?'} (role: ${span.role ?? 'unknown'})`
+        `Dropped non-visual span "${spanText}" at ${span.start ?? "?"}-${span.end ?? "?"} (role: ${span.role ?? "unknown"})`,
       );
       return false;
     }

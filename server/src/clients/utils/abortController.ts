@@ -6,7 +6,7 @@ export interface AbortControllerResult {
 
 export const createAbortController = (
   timeout: number,
-  externalSignal?: AbortSignal
+  externalSignal?: AbortSignal,
 ): AbortControllerResult => {
   const controller = new AbortController();
   const abortedByTimeout = { value: false };
@@ -19,7 +19,9 @@ export const createAbortController = (
     if (externalSignal.aborted) {
       controller.abort();
     } else {
-      externalSignal.addEventListener('abort', () => controller.abort(), { once: true });
+      externalSignal.addEventListener("abort", () => controller.abort(), {
+        once: true,
+      });
     }
   }
 

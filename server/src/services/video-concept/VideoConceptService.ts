@@ -1,5 +1,5 @@
-import { logger } from '@infrastructure/Logger';
-import type { CacheService } from '@services/cache/CacheService';
+import { logger } from "@infrastructure/Logger";
+import type { CacheService } from "@services/cache/CacheService";
 
 // Import specialized services
 import {
@@ -14,9 +14,13 @@ import {
   PromptValidationService,
   ConflictDetectionService,
   VideoTemplateRepository,
-} from '@services/video-concept/index.js';
-import type { AIService } from '@services/prompt-optimization/types';
-import type { VideoTemplate, StorageAdapter, TemplateStorageAdapter } from '@services/video-concept/types';
+} from "@services/video-concept/index.ts";
+import type { AIService } from "@services/prompt-optimization/types";
+import type {
+  VideoTemplate,
+  StorageAdapter,
+  TemplateStorageAdapter,
+} from "@services/video-concept/types";
 
 /**
  * Video concept service options
@@ -79,26 +83,35 @@ export class VideoConceptService {
   private readonly conflictDetection: ConflictDetectionService;
   private readonly cacheService: CacheService;
 
-  constructor(aiService: AIService, cacheService: CacheService, options: VideoConceptServiceOptions = {}) {
+  constructor(
+    aiService: AIService,
+    cacheService: CacheService,
+    options: VideoConceptServiceOptions = {},
+  ) {
     this.ai = aiService;
     this.cacheService = cacheService;
 
     // Initialize repository with optional storage adapter
-    this.preferenceRepository = options.preferenceRepository ||
+    this.preferenceRepository =
+      options.preferenceRepository ||
       new PreferenceRepository(options.preferenceRepositoryOptions);
 
-    this.templateRepository = options.templateRepository ||
+    this.templateRepository =
+      options.templateRepository ||
       new VideoTemplateRepository(options.templateRepositoryOptions);
 
     // Initialize compatibility service (needs cache for semantic scoring)
-    this.compatibilityService = new CompatibilityService(aiService, this.cacheService);
+    this.compatibilityService = new CompatibilityService(
+      aiService,
+      this.cacheService,
+    );
 
     // Initialize suggestion generator (depends on preference repository and compatibility service)
     this.suggestionGenerator = new SuggestionGeneratorService(
       aiService,
       this.cacheService,
       this.preferenceRepository,
-      this.compatibilityService
+      this.compatibilityService,
     );
 
     // Initialize scene analysis services
@@ -114,7 +127,7 @@ export class VideoConceptService {
     // Initialize conflict detection
     this.conflictDetection = new ConflictDetectionService(aiService);
 
-    logger.info('VideoConceptService initialized with orchestrator pattern');
+    logger.info("VideoConceptService initialized with orchestrator pattern");
   }
 
   // ==================== Suggestion Generation ====================
@@ -168,9 +181,14 @@ export class VideoConceptService {
     elementType: string,
     chosen: string,
     rejected: string[],
-    userId: string = 'default'
+    userId: string = "default",
   ) {
-    return this.preferenceRepository.recordChoice(userId, elementType, chosen, rejected);
+    return this.preferenceRepository.recordChoice(
+      userId,
+      elementType,
+      chosen,
+      rejected,
+    );
   }
 
   /**
@@ -225,9 +243,7 @@ export class VideoConceptService {
    * Get refined suggestions based on progressive context
    * Delegates to RefinementService
    */
-  async getRefinementSuggestions(params: {
-    elements: Record<string, string>;
-  }) {
+  async getRefinementSuggestions(params: { elements: Record<string, string> }) {
     return this.refinement.getRefinementSuggestions(params);
   }
 
@@ -235,9 +251,7 @@ export class VideoConceptService {
    * Generate technical parameters based on elements
    * Delegates to TechnicalParameterService
    */
-  async generateTechnicalParams(params: {
-    elements: Record<string, string>;
-  }) {
+  async generateTechnicalParams(params: { elements: Record<string, string> }) {
     return this.technicalParameter.generateTechnicalParams(params);
   }
 
@@ -269,9 +283,7 @@ export class VideoConceptService {
    * Detect conflicts between elements
    * Delegates to ConflictDetectionService
    */
-  async detectConflicts(params: {
-    elements: Record<string, string>;
-  }) {
+  async detectConflicts(params: { elements: Record<string, string> }) {
     return this.conflictDetection.detectConflicts(params);
   }
 
@@ -329,7 +341,11 @@ export class VideoConceptService {
    * Update template
    * Delegates to VideoTemplateRepository
    */
-  async updateTemplate(templateId: string, updates: Partial<VideoTemplate>, userId: string) {
+  async updateTemplate(
+    templateId: string,
+    updates: Partial<VideoTemplate>,
+    userId: string,
+  ) {
     return this.templateRepository.updateTemplate(templateId, updates, userId);
   }
 
@@ -348,6 +364,6 @@ export class VideoConceptService {
    */
   clearCaches(): void {
     this.compatibilityService.clearCache();
-    logger.info('All caches cleared');
+    logger.info("All caches cleared");
   }
 }

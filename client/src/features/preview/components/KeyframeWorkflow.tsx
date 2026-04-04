@@ -1,8 +1,8 @@
-import React from 'react';
-import { Check } from '@promptstudio/system/components/ui';
-import { Button } from '@promptstudio/system/components/ui/button';
-import { VisualPreview } from './VisualPreview';
-import { VideoPreview } from './VideoPreview';
+import React from "react";
+import { Check } from "@promptstudio/system/components/ui";
+import { Button } from "@promptstudio/system/components/ui/button";
+import { VisualPreview } from "./VisualPreview";
+import { VideoPreview } from "./VideoPreview";
 
 interface KeyframeWorkflowProps {
   prompt: string;
@@ -11,7 +11,7 @@ interface KeyframeWorkflowProps {
   modelCapabilities?: Record<string, { supportsImageInput: boolean }>;
 }
 
-type WorkflowStage = 'selecting' | 'generating';
+type WorkflowStage = "selecting" | "generating";
 
 export function KeyframeWorkflow({
   prompt,
@@ -21,20 +21,20 @@ export function KeyframeWorkflow({
 }: KeyframeWorkflowProps): React.ReactElement {
   const [selectedImage, setSelectedImage] = React.useState<string | null>(null);
   const [selectedIndex, setSelectedIndex] = React.useState<number | null>(null);
-  const [stage, setStage] = React.useState<WorkflowStage>('selecting');
+  const [stage, setStage] = React.useState<WorkflowStage>("selecting");
   const [frameRequestId, setFrameRequestId] = React.useState(0);
   const [videoRequestId, setVideoRequestId] = React.useState(0);
 
   const targetSupportsI2v = targetModel
-    ? modelCapabilities?.[targetModel]?.supportsImageInput ?? false
+    ? (modelCapabilities?.[targetModel]?.supportsImageInput ?? false)
     : false;
-  const i2vModel = targetSupportsI2v ? targetModel : 'sora-2';
+  const i2vModel = targetSupportsI2v ? targetModel : "sora-2";
   const usingFallback = Boolean(targetModel && !targetSupportsI2v);
 
   React.useEffect(() => {
     setSelectedImage(null);
     setSelectedIndex(null);
-    setStage('selecting');
+    setStage("selecting");
     if (prompt.trim()) {
       setFrameRequestId((current) => current + 1);
     }
@@ -47,15 +47,15 @@ export function KeyframeWorkflow({
 
   const handleGenerateVideo = () => {
     if (!selectedImage) return;
-    setStage('generating');
+    setStage("generating");
     setVideoRequestId((current) => current + 1);
   };
 
   const handleBack = () => {
-    setStage('selecting');
+    setStage("selecting");
   };
 
-  if (stage === 'generating' && selectedImage) {
+  if (stage === "generating" && selectedImage) {
     return (
       <div className="space-y-4">
         <Button variant="ghost" size="sm" onClick={handleBack} type="button">

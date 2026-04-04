@@ -24,7 +24,7 @@ function process(data: unknown): string {
   if (isValidData(data)) {
     return data.value;
   }
-  throw new Error('Invalid data');
+  throw new Error("Invalid data");
 }
 
 // ✅ CORRECT - Use generics
@@ -44,12 +44,12 @@ const result = legacyFunction() as any;
 
 ### What to Use Instead
 
-| Instead of `any` | Use |
-|------------------|-----|
-| Unknown input | `unknown` + type guard |
-| Generic data | `<T>` generic parameter |
-| Object with unknown keys | `Record<string, unknown>` |
-| Array of unknown | `unknown[]` |
+| Instead of `any`             | Use                               |
+| ---------------------------- | --------------------------------- |
+| Unknown input                | `unknown` + type guard            |
+| Generic data                 | `<T>` generic parameter           |
+| Object with unknown keys     | `Record<string, unknown>`         |
+| Array of unknown             | `unknown[]`                       |
 | Function with unknown params | `(...args: unknown[]) => unknown` |
 
 ---
@@ -80,6 +80,7 @@ function optimize(prompt: string, options: OptimizeOptions): Promise<string> {
 ```
 
 ### JSDoc IS Allowed For:
+
 - **Descriptions**: What the function does
 - **Examples**: Usage examples
 - **Deprecation**: `@deprecated` notices
@@ -88,11 +89,11 @@ function optimize(prompt: string, options: OptimizeOptions): Promise<string> {
 ```typescript
 /**
  * Calculates the quality score for an optimized prompt.
- * 
+ *
  * @example
  * const score = calculateScore(original, optimized);
  * console.log(`Quality: ${score}%`);
- * 
+ *
  * @see https://docs.example.com/scoring
  */
 function calculateScore(original: string, optimized: string): number {
@@ -109,35 +110,40 @@ function calculateScore(original: string, optimized: string): number {
 ```typescript
 // ❌ FORBIDDEN - Magic strings
 function setMode(mode: string) {
-  if (mode === 'video') {
+  if (mode === "video") {
     // ...
-  } else if (mode === 'research') {
+  } else if (mode === "research") {
     // ...
   }
 }
 
 // Call site has no type safety
-setMode('vidoe'); // Typo goes unnoticed!
+setMode("vidoe"); // Typo goes unnoticed!
 
 // ✅ CORRECT - Union type
-type OptimizationMode = 'video' | 'research' | 'creative' | 'standard';
+type OptimizationMode = "video" | "research" | "creative" | "standard";
 
 function setMode(mode: OptimizationMode) {
-  if (mode === 'video') {
+  if (mode === "video") {
     // ...
   }
 }
 
 // Call site is type-checked
-setMode('vidoe'); // TS Error: Argument of type '"vidoe"' is not assignable
+setMode("vidoe"); // TS Error: Argument of type '"vidoe"' is not assignable
 ```
 
 ### Pattern: `as const` Arrays
 
 ```typescript
 // Define once, use everywhere
-export const OPTIMIZATION_MODES = ['video', 'research', 'creative', 'standard'] as const;
-export type OptimizationMode = typeof OPTIMIZATION_MODES[number];
+export const OPTIMIZATION_MODES = [
+  "video",
+  "research",
+  "creative",
+  "standard",
+] as const;
+export type OptimizationMode = (typeof OPTIMIZATION_MODES)[number];
 
 // Use in validation
 function isValidMode(mode: string): mode is OptimizationMode {
@@ -162,13 +168,13 @@ async function fetchUser(id: string): Promise<User> {
 }
 
 // ✅ SAFE - Runtime validation
-import { z } from 'zod';
+import { z } from "zod";
 
 const UserSchema = z.object({
   id: z.string().uuid(),
   name: z.string().min(1),
   email: z.string().email(),
-  role: z.enum(['admin', 'user', 'guest']),
+  role: z.enum(["admin", "user", "guest"]),
 });
 
 type User = z.infer<typeof UserSchema>;
@@ -182,15 +188,15 @@ async function fetchUser(id: string): Promise<User> {
 
 ### Where to Use Zod
 
-| Boundary | Use Zod? | Reason |
-|----------|----------|--------|
-| API responses | **YES** | External data, can't trust |
-| User form input | **YES** | User-provided, must validate |
-| URL parameters | **YES** | User-controlled |
-| LocalStorage | **YES** | Can be corrupted |
-| Inter-service calls | **YES** | API contracts can drift |
-| Component props | No | Already type-checked by TS |
-| Internal function args | No | TS handles this |
+| Boundary               | Use Zod? | Reason                       |
+| ---------------------- | -------- | ---------------------------- |
+| API responses          | **YES**  | External data, can't trust   |
+| User form input        | **YES**  | User-provided, must validate |
+| URL parameters         | **YES**  | User-controlled              |
+| LocalStorage           | **YES**  | Can be corrupted             |
+| Inter-service calls    | **YES**  | API contracts can drift      |
+| Component props        | No       | Already type-checked by TS   |
+| Internal function args | No       | TS handles this              |
 
 ---
 
@@ -211,9 +217,9 @@ interface User {
 }
 
 interface UserProfile {
-  name: string;            // Required
-  avatarUrl?: string;      // Explicitly optional
-  address?: Address;       // Explicitly optional
+  name: string; // Required
+  avatarUrl?: string; // Explicitly optional
+  address?: Address; // Explicitly optional
 }
 
 // Now chaining is intentional
@@ -227,7 +233,7 @@ If you need `?.` more than 2 levels deep, your types are probably wrong:
 
 ```typescript
 // ❌ Smells like bad types
-data?.response?.result?.items?.[0]?.value
+data?.response?.result?.items?.[0]?.value;
 
 // ✅ Fix your types or add a type guard
 if (isValidResponse(data)) {
@@ -248,10 +254,7 @@ const user = data as User;
 // ✅ PREFER - Type guard (proves to TS the type is correct)
 function isUser(data: unknown): data is User {
   return (
-    typeof data === 'object' &&
-    data !== null &&
-    'id' in data &&
-    'name' in data
+    typeof data === "object" && data !== null && "id" in data && "name" in data
   );
 }
 
@@ -263,14 +266,16 @@ if (isUser(data)) {
 ### When Assertions ARE Acceptable
 
 1. **After Zod validation** (Zod already proved the type):
+
    ```typescript
    const validated = UserSchema.parse(data);
    // validated is already typed correctly
    ```
 
 2. **DOM elements** when you know the element type:
+
    ```typescript
-   const input = document.getElementById('email') as HTMLInputElement;
+   const input = document.getElementById("email") as HTMLInputElement;
    ```
 
 3. **Test mocks**:
@@ -293,17 +298,17 @@ type Action = {
 
 // ✅ GOOD - Discriminated union
 type Action =
-  | { type: 'SET_USER'; user: User }
-  | { type: 'SET_LOADING'; loading: boolean }
-  | { type: 'SET_ERROR'; error: string }
-  | { type: 'RESET' };
+  | { type: "SET_USER"; user: User }
+  | { type: "SET_LOADING"; loading: boolean }
+  | { type: "SET_ERROR"; error: string }
+  | { type: "RESET" };
 
 function reducer(state: State, action: Action): State {
   switch (action.type) {
-    case 'SET_USER':
+    case "SET_USER":
       // TS knows action.user exists here
       return { ...state, user: action.user };
-    case 'SET_LOADING':
+    case "SET_LOADING":
       // TS knows action.loading exists here
       return { ...state, loading: action.loading };
     // ...
@@ -346,7 +351,7 @@ export function UserCard({ user }: UserCardProps): React.ReactElement {
 const double = (n: number) => n * 2;
 
 // OK - Callback in typed context
-users.map(user => user.name);
+users.map((user) => user.name);
 ```
 
 ---
@@ -368,8 +373,8 @@ interface User {
 // ✅ Consistent - use undefined
 interface User {
   name: string;
-  email?: string;  // string | undefined
-  phone?: string;  // string | undefined
+  email?: string; // string | undefined
+  phone?: string; // string | undefined
 }
 
 // Exception: API contracts that explicitly use null
@@ -396,9 +401,9 @@ function getProperty<T, K extends keyof T>(obj: T, key: K): T[K] {
 }
 
 // Usage is now type-safe
-const user = { name: 'Alice', age: 30 };
-const name = getProperty(user, 'name'); // string
-const invalid = getProperty(user, 'invalid'); // TS Error!
+const user = { name: "Alice", age: 30 };
+const name = getProperty(user, "name"); // string
+const invalid = getProperty(user, "invalid"); // TS Error!
 ```
 
 ---
@@ -420,11 +425,11 @@ try {
   await fetchUser(id);
 } catch (error) {
   if (error instanceof ZodError) {
-    console.log('Validation failed:', error.errors);
+    console.log("Validation failed:", error.errors);
   } else if (error instanceof ApiError) {
-    console.log('API error:', error.message);
+    console.log("API error:", error.message);
   } else {
-    console.log('Unknown error:', error);
+    console.log("Unknown error:", error);
   }
 }
 
@@ -465,8 +470,8 @@ type StringMap = Record<string, string | undefined>;
 When enabled, indexed access returns `T | undefined`:
 
 ```typescript
-const map: Record<string, string> = { a: 'A' };
-const value = map['b']; // string | undefined (not just string)
+const map: Record<string, string> = { a: "A" };
+const value = map["b"]; // string | undefined (not just string)
 
 // Must handle undefined
 if (value !== undefined) {
@@ -484,16 +489,19 @@ Add these to your ESLint config:
 // .eslintrc.js
 module.exports = {
   rules: {
-    '@typescript-eslint/no-explicit-any': 'error',
-    '@typescript-eslint/explicit-function-return-type': ['error', {
-      allowExpressions: true,
-      allowTypedFunctionExpressions: true,
-    }],
-    '@typescript-eslint/no-non-null-assertion': 'warn',
-    '@typescript-eslint/strict-boolean-expressions': 'error',
-    '@typescript-eslint/no-unnecessary-type-assertion': 'error',
-    '@typescript-eslint/prefer-nullish-coalescing': 'error',
-    '@typescript-eslint/prefer-optional-chain': 'error',
+    "@typescript-eslint/no-explicit-any": "error",
+    "@typescript-eslint/explicit-function-return-type": [
+      "error",
+      {
+        allowExpressions: true,
+        allowTypedFunctionExpressions: true,
+      },
+    ],
+    "@typescript-eslint/no-non-null-assertion": "warn",
+    "@typescript-eslint/strict-boolean-expressions": "error",
+    "@typescript-eslint/no-unnecessary-type-assertion": "error",
+    "@typescript-eslint/prefer-nullish-coalescing": "error",
+    "@typescript-eslint/prefer-optional-chain": "error",
   },
 };
 ```
@@ -502,18 +510,18 @@ module.exports = {
 
 ## Quick Reference Card
 
-| Rule | Bad | Good |
-|------|-----|------|
-| No `any` | `: any` | `: unknown` + guard |
-| No JSDoc types | `@param {string}` | TS annotation |
-| No magic strings | `'video'` | `OptimizationMode` |
-| Zod at boundaries | `as User` | `Schema.parse()` |
-| Deliberate `?.` | `a?.b?.c?.d` | Fix types |
+| Rule                 | Bad                | Good                 |
+| -------------------- | ------------------ | -------------------- |
+| No `any`             | `: any`            | `: unknown` + guard  |
+| No JSDoc types       | `@param {string}`  | TS annotation        |
+| No magic strings     | `'video'`          | `OptimizationMode`   |
+| Zod at boundaries    | `as User`          | `Schema.parse()`     |
+| Deliberate `?.`      | `a?.b?.c?.d`       | Fix types            |
 | Discriminated unions | `{ type: string }` | `{ type: 'X'; ... }` |
-| Explicit returns | Inferred | `: ReturnType` |
-| Prefer `undefined` | `null` | `undefined` |
-| Constrain generics | `<T>` | `<T extends X>` |
+| Explicit returns     | Inferred           | `: ReturnType`       |
+| Prefer `undefined`   | `null`             | `undefined`          |
+| Constrain generics   | `<T>`              | `<T extends X>`      |
 
 ---
 
-*Companion docs: [ARCHITECTURE_STANDARD.md](./ARCHITECTURE_STANDARD.md), [ZOD_PATTERNS.md](./ZOD_PATTERNS.md)*
+_Companion docs: [ARCHITECTURE_STANDARD.md](./ARCHITECTURE_STANDARD.md), [ZOD_PATTERNS.md](./ZOD_PATTERNS.md)_

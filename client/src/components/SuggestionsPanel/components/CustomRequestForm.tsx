@@ -5,11 +5,11 @@
  * Following VideoConceptBuilder pattern: Controlled form component
  */
 
-import type { FormEvent, ReactElement } from 'react';
-import { Loader2, Sparkles } from '@promptstudio/system/components/ui';
-import { Button } from '@promptstudio/system/components/ui/button';
-import { Textarea } from '@promptstudio/system/components/ui/textarea';
-import { MAX_REQUEST_LENGTH } from '../config/panelConfig';
+import type { FormEvent, ReactElement } from "react";
+import { Loader2, Sparkles } from "@promptstudio/system/components/ui";
+import { Button } from "@promptstudio/system/components/ui/button";
+import { Textarea } from "@promptstudio/system/components/ui/textarea";
+import { MAX_REQUEST_LENGTH } from "../config/panelConfig";
 
 interface CustomRequestFormProps {
   customRequest?: string;
@@ -19,30 +19,30 @@ interface CustomRequestFormProps {
   placeholder?: string;
   helperText?: string;
   ctaLabel?: string;
-  variant?: 'default' | 'tokenEditor';
+  variant?: "default" | "tokenEditor";
 }
 
 export function CustomRequestForm({
-  customRequest = '',
+  customRequest = "",
   onCustomRequestChange = () => {},
   onSubmit = () => {},
   isLoading = false,
   placeholder,
-  helperText = 'Describe the tone, detail, or direction you want to see.',
-  ctaLabel = 'Get Suggestions',
-  variant = 'default',
+  helperText = "Describe the tone, detail, or direction you want to see.",
+  ctaLabel = "Get Suggestions",
+  variant = "default",
 }: CustomRequestFormProps): ReactElement {
-  const defaultPlaceholder = 'Make it more cinematic, brighter, tense, etc.';
+  const defaultPlaceholder = "Make it more cinematic, brighter, tense, etc.";
 
   const handleSubmit = (e: FormEvent): void => {
     e.preventDefault();
     onSubmit();
   };
 
-  if (variant === 'tokenEditor') {
+  if (variant === "tokenEditor") {
     const tokenEditorPlaceholder =
-      placeholder ?? 'e.g. more cinematic, more intense, younger, older';
-    const tokenEditorCtaLabel = ctaLabel || 'Generate more';
+      placeholder ?? "e.g. more cinematic, more intense, younger, older";
+    const tokenEditorCtaLabel = ctaLabel || "Generate more";
 
     return (
       <div className="flex w-full flex-col gap-2 -mt-0.5">
@@ -109,8 +109,8 @@ export function CustomRequestForm({
           variant="ghost"
           className={`w-full gap-1 px-3 py-1 text-label-12 rounded-md transition-colors duration-150 ${
             isLoading || !customRequest.trim()
-              ? 'bg-surface-2 text-muted cursor-not-allowed'
-              : 'bg-foreground text-white hover:bg-muted'
+              ? "bg-surface-2 text-muted cursor-not-allowed"
+              : "bg-foreground text-white hover:bg-muted"
           }`}
           aria-busy={isLoading}
           aria-live="polite"

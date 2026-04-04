@@ -2,7 +2,10 @@
  * Image generation request types
  */
 
-import type { ImagePreviewProviderSelection, ImagePreviewSpeedMode } from '../providers/types';
+import type {
+  ImagePreviewProviderSelection,
+  ImagePreviewSpeedMode,
+} from "../providers/types";
 
 /**
  * Image generation options

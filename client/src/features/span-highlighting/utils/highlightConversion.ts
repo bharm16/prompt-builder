@@ -4,12 +4,12 @@
  * Now uses unified taxonomy system with namespaced IDs
  */
 
-import { VALID_CATEGORIES, TAXONOMY } from '@shared/taxonomy';
-import { logger } from '@/services/LoggingService';
+import { VALID_CATEGORIES, TAXONOMY } from "@shared/taxonomy";
+import { logger } from "@/services/LoggingService";
 
-const log = logger.child('highlightConversion');
+const log = logger.child("highlightConversion");
 
-const LLM_PARSER_VERSION = 'llm-v2-taxonomy';
+const LLM_PARSER_VERSION = "llm-v2-taxonomy";
 const CONTEXT_WINDOW_CHARS = 20;
 
 /**
@@ -17,17 +17,17 @@ const CONTEXT_WINDOW_CHARS = 20;
  * Will be removed once all cached responses are using taxonomy IDs
  */
 const LEGACY_ROLE_TO_CATEGORY: Record<string, string> = {
-  Subject: 'subject',
-  Appearance: 'subject.appearance',
-  Wardrobe: 'subject.wardrobe',
-  Movement: 'action.movement',
-  Environment: 'environment',
-  Lighting: 'lighting',
-  Camera: 'camera',
-  Framing: 'shot.type',
-  Specs: 'technical',
-  Style: 'style',
-  Quality: 'style.aesthetic',
+  Subject: "subject",
+  Appearance: "subject.appearance",
+  Wardrobe: "subject.wardrobe",
+  Movement: "action.movement",
+  Environment: "environment",
+  Lighting: "lighting",
+  Camera: "camera",
+  Framing: "shot.type",
+  Specs: "technical",
+  Style: "style",
+  Quality: "style.aesthetic",
 };
 
 export interface LLMSpan {
@@ -71,7 +71,7 @@ export interface CanonicalText {
  * Normalize a role to a valid taxonomy ID
  */
 function normalizeRole(role: string | null | undefined): string {
-  if (!role || typeof role !== 'string') {
+  if (!role || typeof role !== "string") {
     return TAXONOMY.SUBJECT.id;
   }
 
@@ -83,8 +83,8 @@ function normalizeRole(role: string | null | undefined): string {
   // Check for legacy capitalized format
   if (LEGACY_ROLE_TO_CATEGORY[role]) {
     if (import.meta.env.DEV) {
-      log.warn('Legacy role mapped to taxonomy category', {
-        operation: 'normalizeRole',
+      log.warn("Legacy role mapped to taxonomy category", {
+        operation: "normalizeRole",
         role,
         mappedTo: LEGACY_ROLE_TO_CATEGORY[role],
       });
@@ -93,8 +93,8 @@ function normalizeRole(role: string | null | undefined): string {
   }
 
   // Debugging: Log invalid roles to help identify drift
-  log.warn('Invalid role not in taxonomy; defaulting', {
-    operation: 'normalizeRole',
+  log.warn("Invalid role not in taxonomy; defaulting", {
+    operation: "normalizeRole",
     role,
     defaultingTo: TAXONOMY.SUBJECT.id,
     validCategoryCount: VALID_CATEGORIES.size,
@@ -110,8 +110,8 @@ function normalizeRole(role: string | null | undefined): string {
  * e.g., "shot.type" → "shot"
  */
 function getParentCategory(category: string | null | undefined): string {
-  if (!category || typeof category !== 'string') return '';
-  const dotIndex = category.indexOf('.');
+  if (!category || typeof category !== "string") return "";
+  const dotIndex = category.indexOf(".");
   return dotIndex > 0 ? category.substring(0, dotIndex) : category;
 }
 
@@ -119,17 +119,23 @@ function getParentCategory(category: string | null | undefined): string {
  * Check if two categories are compatible for merging
  * Compatible means they share the same parent category
  */
-function areCategoriesCompatible(category1: string, category2: string): boolean {
+function areCategoriesCompatible(
+  category1: string,
+  category2: string,
+): boolean {
   const parent1 = getParentCategory(category1);
   const parent2 = getParentCategory(category2);
-  return parent1 === parent2 && parent1 !== '';
+  return parent1 === parent2 && parent1 !== "";
 }
 
 /**
  * Helper to merge adjacent spans that were split by newlines/whitespace
  * Uses parent category matching to be consistent with server-side merge
  */
-function mergeFragmentedSpans(highlights: Highlight[], fullText: string): Highlight[] {
+function mergeFragmentedSpans(
+  highlights: Highlight[],
+  fullText: string,
+): Highlight[] {
   if (highlights.length < 2) return highlights;
 
   const merged: Highlight[] = [];
@@ -142,7 +148,10 @@ function mergeFragmentedSpans(highlights: Highlight[], fullText: string): Highli
 
     // 1. Must have compatible categories (same parent category)
     // This matches the server-side merge logic
-    const compatibleCategories = areCategoriesCompatible(current.category, next.category);
+    const compatibleCategories = areCategoriesCompatible(
+      current.category,
+      next.category,
+    );
 
     // 2. Must be adjacent (only whitespace/newlines in between)
     // We assume highlights are already sorted by start
@@ -158,7 +167,7 @@ function mergeFragmentedSpans(highlights: Highlight[], fullText: string): Highli
       current.displayQuote = current.quote;
 
       // Keep the more specific category (one with a dot)
-      if (next.category.includes('.') && !current.category.includes('.')) {
+      if (next.category.includes(".") && !current.category.includes(".")) {
         current.category = next.category;
         current.role = next.role;
       }
@@ -166,7 +175,7 @@ function mergeFragmentedSpans(highlights: Highlight[], fullText: string): Highli
       // Inherit the right context from the later span
       current.rightCtx = next.rightCtx;
       current.displayRightCtx = next.displayRightCtx;
-      if (typeof next.endGrapheme === 'number') {
+      if (typeof next.endGrapheme === "number") {
         current.endGrapheme = next.endGrapheme;
       }
 
@@ -196,10 +205,10 @@ export const convertLabeledSpansToHighlights = ({
   canonical?: CanonicalText;
 }): Highlight[] => {
   if (import.meta.env.DEV) {
-    log.debug('convertLabeledSpansToHighlights input', {
+    log.debug("convertLabeledSpansToHighlights input", {
       spanCount: Array.isArray(spans) ? spans.length : 0,
       textLength: text?.length,
-      sampleSpans: spans?.slice(0, 3)
+      sampleSpans: spans?.slice(0, 3),
     });
   }
 
@@ -210,18 +219,23 @@ export const convertLabeledSpansToHighlights = ({
   // 1. Convert raw LLM spans to highlight objects
   const rawHighlights = spans
     .map((span, index): Highlight | null => {
-      if (!span || typeof span !== 'object') {
+      if (!span || typeof span !== "object") {
         if (import.meta.env.DEV) {
-          log.debug('convertLabeledSpansToHighlights invalid span object', { span });
+          log.debug("convertLabeledSpansToHighlights invalid span object", {
+            span,
+          });
         }
         return null;
       }
 
       // Normalize role to valid taxonomy ID (handles both new and legacy formats)
       // API returns 'category', but legacy responses may have 'role'
-      const rawRole = typeof span.category === 'string' ? span.category
-                    : typeof span.role === 'string' ? span.role
-                    : TAXONOMY.SUBJECT.id;
+      const rawRole =
+        typeof span.category === "string"
+          ? span.category
+          : typeof span.role === "string"
+            ? span.role
+            : TAXONOMY.SUBJECT.id;
       const category = normalizeRole(rawRole);
       const role = rawRole;
 
@@ -230,7 +244,11 @@ export const convertLabeledSpansToHighlights = ({
 
       if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) {
         if (import.meta.env.DEV) {
-          log.debug('convertLabeledSpansToHighlights invalid indices', { start, end, span });
+          log.debug("convertLabeledSpansToHighlights invalid indices", {
+            start,
+            end,
+            span,
+          });
         }
         return null;
       }
@@ -239,7 +257,11 @@ export const convertLabeledSpansToHighlights = ({
       const clampedEnd = Math.max(clampedStart, Math.min(text.length, end));
       if (clampedEnd <= clampedStart) {
         if (import.meta.env.DEV) {
-          log.debug('convertLabeledSpansToHighlights clamped empty range', { clampedStart, clampedEnd, span });
+          log.debug("convertLabeledSpansToHighlights clamped empty range", {
+            clampedStart,
+            clampedEnd,
+            span,
+          });
         }
         return null;
       }
@@ -247,18 +269,22 @@ export const convertLabeledSpansToHighlights = ({
       const slice = text.slice(clampedStart, clampedEnd);
       if (!slice) {
         if (import.meta.env.DEV) {
-          log.debug('convertLabeledSpansToHighlights empty slice', { clampedStart, clampedEnd, span });
+          log.debug("convertLabeledSpansToHighlights empty slice", {
+            clampedStart,
+            clampedEnd,
+            span,
+          });
         }
         return null;
       }
 
       const leftCtx = text.slice(
         Math.max(0, clampedStart - CONTEXT_WINDOW_CHARS),
-        clampedStart
+        clampedStart,
       );
       const rightCtx = text.slice(
         clampedEnd,
-        Math.min(text.length, clampedEnd + CONTEXT_WINDOW_CHARS)
+        Math.min(text.length, clampedEnd + CONTEXT_WINDOW_CHARS),
       );
 
       const startGrapheme = canonical?.graphemeIndexForCodeUnit
@@ -282,12 +308,14 @@ export const convertLabeledSpansToHighlights = ({
         rightCtx,
         displayLeftCtx: leftCtx,
         displayRightCtx: rightCtx,
-        source: 'llm',
+        source: "llm",
         validatorPass: true,
         version: LLM_PARSER_VERSION,
-        ...(typeof span.confidence === 'number' ? { confidence: span.confidence } : {}),
-        ...(typeof startGrapheme === 'number' ? { startGrapheme } : {}),
-        ...(typeof endGrapheme === 'number' ? { endGrapheme } : {}),
+        ...(typeof span.confidence === "number"
+          ? { confidence: span.confidence }
+          : {}),
+        ...(typeof startGrapheme === "number" ? { startGrapheme } : {}),
+        ...(typeof endGrapheme === "number" ? { endGrapheme } : {}),
       };
     })
     .filter((highlight): highlight is Highlight => highlight !== null)
@@ -300,13 +328,13 @@ export const convertLabeledSpansToHighlights = ({
 
   // 2. Merge fragmented spans before returning
   const merged = mergeFragmentedSpans(rawHighlights, text);
-  
+
   if (import.meta.env.DEV) {
-    log.debug('convertLabeledSpansToHighlights result', {
+    log.debug("convertLabeledSpansToHighlights result", {
       rawCount: rawHighlights.length,
-      mergedCount: merged.length
+      mergedCount: merged.length,
     });
   }
-  
+
   return merged;
 };

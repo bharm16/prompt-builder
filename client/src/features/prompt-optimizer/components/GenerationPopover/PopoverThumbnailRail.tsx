@@ -1,8 +1,11 @@
-import React, { useMemo, useState } from 'react';
-import { useResolvedMediaUrl } from '@/hooks/useResolvedMediaUrl';
-import { extractStorageObjectPath, extractVideoContentAssetId } from '@/utils/storageUrl';
-import type { GalleryGeneration } from '@/features/prompt-optimizer/components/GalleryPanel';
-import type { PopoverThumbnailRailProps } from './types';
+import React, { useMemo, useState } from "react";
+import { useResolvedMediaUrl } from "@/hooks/useResolvedMediaUrl";
+import {
+  extractStorageObjectPath,
+  extractVideoContentAssetId,
+} from "@/utils/storageUrl";
+import type { GalleryGeneration } from "@/features/prompt-optimizer/components/GalleryPanel";
+import type { PopoverThumbnailRailProps } from "./types";
 
 interface PopoverRailThumbnailProps {
   generation: GalleryGeneration;
@@ -17,51 +20,60 @@ function PopoverRailThumbnail({
 }: PopoverRailThumbnailProps): React.ReactElement {
   const [videoLoadFailed, setVideoLoadFailed] = useState(false);
   const rawThumbnailUrl = useMemo(() => {
-    if (typeof generation.thumbnailUrl !== 'string') return null;
+    if (typeof generation.thumbnailUrl !== "string") return null;
     const trimmed = generation.thumbnailUrl.trim();
     return trimmed.length > 0 ? trimmed : null;
   }, [generation.thumbnailUrl]);
   const rawMediaUrl = useMemo(() => {
-    if (typeof generation.mediaUrl !== 'string') return null;
+    if (typeof generation.mediaUrl !== "string") return null;
     const trimmed = generation.mediaUrl.trim();
     return trimmed.length > 0 ? trimmed : null;
   }, [generation.mediaUrl]);
 
   const imageCandidateUrl = useMemo(() => {
-    if (generation.mediaType === 'video') return rawThumbnailUrl;
+    if (generation.mediaType === "video") return rawThumbnailUrl;
     return rawThumbnailUrl ?? rawMediaUrl;
   }, [generation.mediaType, rawMediaUrl, rawThumbnailUrl]);
   const imageStoragePath = useMemo(
-    () => (imageCandidateUrl ? extractStorageObjectPath(imageCandidateUrl) : null),
-    [imageCandidateUrl]
+    () =>
+      imageCandidateUrl ? extractStorageObjectPath(imageCandidateUrl) : null,
+    [imageCandidateUrl],
   );
+  const imageAssetId = generation.thumbnailAssetId ?? null;
   const { url: resolvedThumbnailUrl } = useResolvedMediaUrl({
-    kind: 'image',
+    kind: "image",
     url: imageCandidateUrl,
     storagePath: imageStoragePath,
+    assetId: imageAssetId,
     deferUntilResolved: true,
-    enabled: Boolean(imageCandidateUrl),
+    enabled: Boolean(imageCandidateUrl || imageAssetId),
   });
 
   const videoStoragePath = useMemo(
     () => (rawMediaUrl ? extractStorageObjectPath(rawMediaUrl) : null),
-    [rawMediaUrl]
+    [rawMediaUrl],
   );
   const videoAssetId = useMemo(
-    () => (rawMediaUrl && !videoStoragePath ? extractVideoContentAssetId(rawMediaUrl) : null),
-    [rawMediaUrl, videoStoragePath]
+    () =>
+      generation.mediaAssetId ??
+      (rawMediaUrl && !videoStoragePath
+        ? extractVideoContentAssetId(rawMediaUrl)
+        : null),
+    [generation.mediaAssetId, rawMediaUrl, videoStoragePath],
   );
   const { url: resolvedVideoUrl } = useResolvedMediaUrl({
-    kind: 'video',
+    kind: "video",
     url: rawMediaUrl,
     storagePath: videoStoragePath,
     assetId: videoAssetId,
     deferUntilResolved: true,
-    enabled: generation.mediaType === 'video' && Boolean(rawMediaUrl || videoStoragePath || videoAssetId),
+    enabled:
+      generation.mediaType === "video" &&
+      Boolean(rawMediaUrl || videoStoragePath || videoAssetId),
   });
 
   const showVideoFallback =
-    generation.mediaType === 'video' &&
+    generation.mediaType === "video" &&
     !resolvedThumbnailUrl &&
     Boolean(resolvedVideoUrl) &&
     !videoLoadFailed;
@@ -72,8 +84,8 @@ function PopoverRailThumbnail({
       onClick={onClick}
       className={`relative h-[70px] w-full flex-shrink-0 overflow-hidden rounded-[14px] border-[2.5px] transition-opacity ${
         isSelected
-          ? 'border-[#6C5CE7] opacity-100'
-          : 'border-transparent opacity-50 hover:opacity-80'
+          ? "border-tool-accent-selection opacity-100"
+          : "border-transparent opacity-50 hover:opacity-80"
       }`}
       aria-label="Change active generation"
       data-testid={`popover-rail-${generation.id}`}
@@ -97,7 +109,7 @@ function PopoverRailThumbnail({
           onError={() => setVideoLoadFailed(true)}
         />
       ) : (
-        <div className="h-full w-full bg-gradient-to-br from-[#1A1C22] to-[#0D0E12]" />
+        <div className="h-full w-full bg-gradient-to-br from-tool-rail-border to-tool-surface-deep" />
       )}
     </button>
   );

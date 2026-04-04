@@ -1,11 +1,11 @@
-import { useState } from 'react';
-import type { CapabilityValues } from '@shared/capabilities';
-import type { VideoTier } from '@components/ToolSidebar/types';
-import { loadSelectedMode } from '../promptStateStorage';
+import { useState } from "react";
+import type { CapabilityValues } from "@shared/capabilities";
+import type { VideoTier } from "@components/ToolSidebar/types";
+import { loadSelectedMode } from "../promptStateStorage";
 import {
   useGenerationControlsStoreActions,
   useGenerationControlsStoreState,
-} from '../GenerationControlsStore';
+} from "@features/generation-controls/context/GenerationControlsStore";
 
 export function usePromptConfigState(): {
   selectedMode: string;
@@ -17,7 +17,9 @@ export function usePromptConfigState(): {
   videoTier: VideoTier;
   setVideoTier: (tier: VideoTier) => void;
 } {
-  const [selectedMode, setSelectedMode] = useState<string>(() => loadSelectedMode());
+  const [selectedMode, setSelectedMode] = useState<string>(() =>
+    loadSelectedMode(),
+  );
   const { domain } = useGenerationControlsStoreState();
   const actions = useGenerationControlsStoreActions();
 

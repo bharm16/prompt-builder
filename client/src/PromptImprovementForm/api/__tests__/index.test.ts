@@ -1,14 +1,14 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { mockBuildFirebaseAuthHeaders } = vi.hoisted(() => ({
   mockBuildFirebaseAuthHeaders: vi.fn(),
 }));
 
-vi.mock('@/services/http/firebaseAuth', () => ({
+vi.mock("@/services/http/firebaseAuth", () => ({
   buildFirebaseAuthHeaders: mockBuildFirebaseAuthHeaders,
 }));
 
-vi.mock('@/services/LoggingService', () => ({
+vi.mock("@/services/LoggingService", () => ({
   logger: {
     child: () => ({
       debug: vi.fn(),
@@ -19,88 +19,90 @@ vi.mock('@/services/LoggingService', () => ({
   },
 }));
 
-import { fetchGeneratedQuestions } from '../index';
+import { fetchGeneratedQuestions } from "../index";
 
-describe('PromptImprovementForm api', () => {
+describe("PromptImprovementForm api", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockBuildFirebaseAuthHeaders.mockResolvedValue({
-      Authorization: 'Bearer firebase-token',
+      Authorization: "Bearer firebase-token",
     });
   });
 
-  it('sends request with auth headers and parses question schema', async () => {
+  it("sends request with auth headers and parses question schema", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(
         JSON.stringify({
           questions: [
             {
               id: 1,
-              title: 'What should be emphasized?',
-              description: 'Focus areas for the result',
-              field: 'specificAspects',
-              examples: ['Practical use cases', 'Edge cases'],
+              title: "What should be emphasized?",
+              description: "Focus areas for the result",
+              field: "specificAspects",
+              examples: ["Practical use cases", "Edge cases"],
             },
           ],
         }),
         {
           status: 200,
-          headers: { 'content-type': 'application/json' },
-        }
-      )
+          headers: { "content-type": "application/json" },
+        },
+      ),
     );
-    vi.stubGlobal('fetch', fetchMock);
+    vi.stubGlobal("fetch", fetchMock);
 
-    const questions = await fetchGeneratedQuestions('Improve this prompt');
+    const questions = await fetchGeneratedQuestions("Improve this prompt");
 
-    expect(fetchMock).toHaveBeenCalledWith('/api/generate-questions', {
-      method: 'POST',
+    expect(fetchMock).toHaveBeenCalledWith("/api/generate-questions", {
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        Authorization: 'Bearer firebase-token',
+        "Content-Type": "application/json",
+        Authorization: "Bearer firebase-token",
       },
-      body: JSON.stringify({ prompt: 'Improve this prompt' }),
+      body: JSON.stringify({ prompt: "Improve this prompt" }),
     });
     expect(questions).toEqual([
       {
         id: 1,
-        title: 'What should be emphasized?',
-        description: 'Focus areas for the result',
-        field: 'specificAspects',
-        examples: ['Practical use cases', 'Edge cases'],
+        title: "What should be emphasized?",
+        description: "Focus areas for the result",
+        field: "specificAspects",
+        examples: ["Practical use cases", "Edge cases"],
       },
     ]);
   });
 
-  it('throws status-based error when API responds non-ok', async () => {
+  it("throws status-based error when API responds non-ok", async () => {
     vi.stubGlobal(
-      'fetch',
+      "fetch",
       vi.fn().mockResolvedValue(
-        new Response('service unavailable', {
+        new Response("service unavailable", {
           status: 503,
-        })
-      )
+        }),
+      ),
     );
 
-    await expect(fetchGeneratedQuestions('Prompt')).rejects.toThrow('Failed to generate questions: 503');
+    await expect(fetchGeneratedQuestions("Prompt")).rejects.toThrow(
+      "Failed to generate questions: 503",
+    );
   });
 
-  it('throws when response schema is invalid', async () => {
+  it("throws when response schema is invalid", async () => {
     vi.stubGlobal(
-      'fetch',
+      "fetch",
       vi.fn().mockResolvedValue(
         new Response(
           JSON.stringify({
-            questions: [{ id: 'wrong-type' }],
+            questions: [{ id: "wrong-type" }],
           }),
           {
             status: 200,
-            headers: { 'content-type': 'application/json' },
-          }
-        )
-      )
+            headers: { "content-type": "application/json" },
+          },
+        ),
+      ),
     );
 
-    await expect(fetchGeneratedQuestions('Prompt')).rejects.toThrow();
+    await expect(fetchGeneratedQuestions("Prompt")).rejects.toThrow();
   });
 });

@@ -1,9 +1,9 @@
 /**
  * Visual Convergence Service
- * 
+ *
  * This module provides the core infrastructure for the Visual Convergence feature,
  * which transforms PromptCanvas into a visual-first video creation platform.
- * 
+ *
  * @module convergence
  */
 
@@ -40,7 +40,7 @@ export type {
   RegenerateFinalFrameRequest,
   CreditReservation,
   CreditReservationStatus,
-} from './types';
+} from "./types";
 export {
   CONVERGENCE_STEPS,
   CREDIT_RESERVATION_STATUSES,
@@ -48,11 +48,11 @@ export {
   DIRECTIONS,
   STARTING_POINT_MODES,
   SESSION_STATUSES,
-} from './types';
+} from "./types";
 
 // Errors
-export { ConvergenceError, isConvergenceError } from './errors';
-export type { ConvergenceErrorCode } from './errors';
+export { ConvergenceError, isConvergenceError } from "./errors";
+export type { ConvergenceErrorCode } from "./errors";
 
 // Helper functions
 export {
@@ -70,7 +70,7 @@ export {
   getRequiredLockedDimensions,
   withRetry,
   sleep,
-} from './helpers';
+} from "./helpers";
 
 // Constants
 export {
@@ -86,10 +86,10 @@ export {
   FINAL_FRAME_PROVIDER,
   SESSION_TTL_HOURS,
   SESSION_TTL_MS,
-} from './constants';
+} from "./constants";
 
 // Credits Service
-export type { CreditsService } from './credits';
+export type { CreditsService } from "./credits";
 export {
   FirestoreCreditsService,
   getCreditsService,
@@ -97,14 +97,11 @@ export {
   withCreditReservation,
   checkCredits,
   getCreditBalance,
-} from './credits';
+} from "./credits";
 
 // Storage Service
-export type { StorageService } from './storage';
-export {
-  GCSStorageService,
-  createGCSStorageService,
-} from './storage';
+export type { StorageService } from "./storage";
+export { GCSStorageService, createGCSStorageService } from "./storage";
 
 // Depth Estimation Service
 export type {
@@ -112,17 +109,21 @@ export type {
   DepthEstimationServiceOptions,
   DepthEstimationProvider,
   FalDepthResponse,
-} from './depth';
+} from "./depth";
 export {
   FalDepthEstimationService,
   createDepthEstimationService,
   createDepthEstimationServiceForUser,
-} from './depth';
+} from "./depth";
 
 // Video Preview Service
-export type { VideoPreviewService, VideoPreviewOptions, VideoPreviewServiceOptions } from './video-preview';
+export type {
+  VideoPreviewService,
+  VideoPreviewOptions,
+  VideoPreviewServiceOptions,
+} from "./video-preview";
 export {
   ReplicateVideoPreviewService,
   createVideoPreviewService,
   createVideoPreviewServiceForUser,
-} from './video-preview';
+} from "./video-preview";

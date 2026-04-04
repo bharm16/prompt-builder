@@ -1,39 +1,44 @@
-import type { GradingService } from './GradingService';
-import type { QualityGateService } from './QualityGateService';
-import type { SceneProxyService } from './SceneProxyService';
-import type { ContinuitySession } from './types';
+import type { GradingService } from "./GradingService";
+import type { QualityGateService } from "./QualityGateService";
+import type { SceneProxyService } from "./SceneProxyService";
+import type { ContinuitySession } from "./types";
 
 export class ContinuityPostProcessingService {
   constructor(
     private grading: GradingService,
     private qualityGate: QualityGateService,
-    private sceneProxy: SceneProxyService
+    private sceneProxy: SceneProxyService,
   ) {}
 
-  matchPalette(assetId: string, referenceUrl: string): ReturnType<GradingService['matchPalette']> {
+  matchPalette(
+    assetId: string,
+    referenceUrl: string,
+  ): ReturnType<GradingService["matchPalette"]> {
     return this.grading.matchPalette(assetId, referenceUrl);
   }
 
   matchImagePalette(
     userId: string,
     imageUrl: string,
-    referenceUrl: string
-  ): ReturnType<GradingService['matchImagePalette']> {
+    referenceUrl: string,
+  ): ReturnType<GradingService["matchImagePalette"]> {
     return this.grading.matchImagePalette(userId, imageUrl, referenceUrl);
   }
 
-  evaluateQuality(payload: Parameters<QualityGateService['evaluate']>[0]): ReturnType<QualityGateService['evaluate']> {
+  evaluateQuality(
+    payload: Parameters<QualityGateService["evaluate"]>[0],
+  ): ReturnType<QualityGateService["evaluate"]> {
     return this.qualityGate.evaluate(payload);
   }
 
   renderSceneProxy(
     userId: string,
-    proxy: ContinuitySession['sceneProxy'],
+    proxy: ContinuitySession["sceneProxy"],
     shotId: string,
-    camera: ContinuitySession['shots'][number]['camera']
-  ): ReturnType<SceneProxyService['renderFromProxy']> {
+    camera: ContinuitySession["shots"][number]["camera"],
+  ): ReturnType<SceneProxyService["renderFromProxy"]> {
     if (!proxy) {
-      throw new Error('Scene proxy is not available');
+      throw new Error("Scene proxy is not available");
     }
     const normalizedCamera = camera
       ? {
@@ -43,14 +48,19 @@ export class ContinuityPostProcessingService {
           ...(camera.dolly !== undefined ? { dolly: camera.dolly } : {}),
         }
       : undefined;
-    return this.sceneProxy.renderFromProxy(userId, proxy, shotId, normalizedCamera);
+    return this.sceneProxy.renderFromProxy(
+      userId,
+      proxy,
+      shotId,
+      normalizedCamera,
+    );
   }
 
   createSceneProxyFromVideo(
     userId: string,
     videoId: string,
-    videoUrl: string
-  ): ReturnType<SceneProxyService['createProxyFromVideo']> {
+    videoUrl: string,
+  ): ReturnType<SceneProxyService["createProxyFromVideo"]> {
     return this.sceneProxy.createProxyFromVideo(userId, videoId, videoUrl);
   }
 }

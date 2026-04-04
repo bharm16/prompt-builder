@@ -26,15 +26,16 @@ By the time you get what you wanted, you've burned through half your credits on 
 
 Vidra lets you preview your video with fast, inexpensive models before committing to final generation:
 
-| Stage | Model | Credit cost | Time | Purpose |
-|-------|-------|-------------|------|--------|
-| **Image Preview** | Flux Schnell | 1 credit / image | 5-10s | Validate framing, lighting, mood |
-| **Video Preview** | Wan 2.2 | 28 credits (8s) | 30-60s | Test motion, pacing, camera |
-| **Final Generation** | Sora 2, Veo 3, Kling, Luma | 48-192 credits (8s) | 2-5min | Production-ready output |
+| Stage                | Model                      | Credit cost         | Time   | Purpose                          |
+| -------------------- | -------------------------- | ------------------- | ------ | -------------------------------- |
+| **Image Preview**    | Flux Schnell               | 1 credit / image    | 5-10s  | Validate framing, lighting, mood |
+| **Video Preview**    | Wan 2.2                    | 28 credits (8s)     | 30-60s | Test motion, pacing, camera      |
+| **Final Generation** | Sora 2, Veo 3, Kling, Luma | 48-192 credits (8s) | 2-5min | Production-ready output          |
 
 **The workflow:**
+
 1. **Write** → Interactive editor with semantic highlighting
-2. **Preview** → Fast drafts with Flux/Wan to validate direction  
+2. **Preview** → Fast drafts with Flux/Wan to validate direction
 3. **Refine** → Click any highlighted phrase for AI-powered alternatives
 4. **Generate** → Final video with Sora, Veo, Kling, or Luma
 
@@ -101,21 +102,21 @@ Moved to `docs/QUICKSTART.md`.
 
 ## Key Features
 
-| Feature | What It Does |
-|---------|--------------|
-| **Semantic Labeling** | 30+ categories tuned for video (subject, camera, lighting, action, style...) |
-| **Click-to-Enhance** | Click any highlight → get context-aware alternatives → one-click replace |
-| **Direct Video Generation** | Generate actual videos using OpenAI Sora 2, Google Veo 4, Runway Gen-45, Luma Ray 3, and Kling |
-| **Visual Preview** | Auto-generates preview images using Flux Schnell as you type (debounced) |
-| **Two-Stage Speed** | Sub-300ms draft (Groq) + background refinement (OpenAI) |
-| **Video Concept Builder** | Guided wizard: subject → action → location → camera → lighting → style |
-| **Consistency Tracking** | Suggestions respect your edit history to maintain coherence |
-| **Integrated Asset System** | Create and reuse **characters, styles, locations, and objects** directly inside the prompt optimizer for consistent production output |
-| **`@trigger` Prompt Assembly** | Reference assets via `@trigger` tokens with UX support (autocomplete/detection) so prompt building becomes reusable “building blocks” |
-| **Reference Image Library** | Upload/manage reference images (standalone + asset-attached) to support identity + visual continuity |
-| **Keyframe / Image-to-Video Workflow** | Use a start frame/keyframe (from uploads, library, or assets) to guide generation instead of text-only video |
-| **Face-Consistent Keyframes (PuLID)** | Higher-quality face identity preservation for character consistency (with fallback behavior when not configured) |
-| **Consistent Generation Workflow** | Supports “generate keyframe → approve → generate video” for multi-shot/series production patterns |
+| Feature                                | What It Does                                                                                                                          |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| **Semantic Labeling**                  | 30+ categories tuned for video (subject, camera, lighting, action, style...)                                                          |
+| **Click-to-Enhance**                   | Click any highlight → get context-aware alternatives → one-click replace                                                              |
+| **Direct Video Generation**            | Generate actual videos using OpenAI Sora 2, Google Veo 4, Runway Gen-45, Luma Ray 3, and Kling                                        |
+| **Visual Preview**                     | Auto-generates preview images using Flux Schnell as you type (debounced)                                                              |
+| **Two-Stage Speed**                    | Sub-300ms draft (Groq) + background refinement (OpenAI)                                                                               |
+| **Video Concept Builder**              | Guided wizard: subject → action → location → camera → lighting → style                                                                |
+| **Consistency Tracking**               | Suggestions respect your edit history to maintain coherence                                                                           |
+| **Integrated Asset System**            | Create and reuse **characters, styles, locations, and objects** directly inside the prompt optimizer for consistent production output |
+| **`@trigger` Prompt Assembly**         | Reference assets via `@trigger` tokens with UX support (autocomplete/detection) so prompt building becomes reusable “building blocks” |
+| **Reference Image Library**            | Upload/manage reference images (standalone + asset-attached) to support identity + visual continuity                                  |
+| **Keyframe / Image-to-Video Workflow** | Use a start frame/keyframe (from uploads, library, or assets) to guide generation instead of text-only video                          |
+| **Face-Consistent Keyframes (PuLID)**  | Higher-quality face identity preservation for character consistency (with fallback behavior when not configured)                      |
+| **Consistent Generation Workflow**     | Supports “generate keyframe → approve → generate video” for multi-shot/series production patterns                                     |
 
 ---
 
@@ -123,14 +124,15 @@ Moved to `docs/QUICKSTART.md`.
 
 ### Plans (monthly)
 
-| Plan | Price | Credits/month |
-|------|-------|---------------|
-| Free | $0 | n/a |
-| Explorer | $19 | 500 |
-| Creator | $59 | 1,800 |
-| Agency | $179 | 6,000 |
+| Plan     | Price | Credits/month |
+| -------- | ----- | ------------- |
+| Free     | $0    | n/a           |
+| Explorer | $19   | 500           |
+| Creator  | $59   | 1,800         |
+| Agency   | $179  | 6,000         |
 
 **Plan highlights (from the pricing page):**
+
 - Free: Local history, core prompt optimization, upgrade anytime
 - Explorer: Priority generation queue, email support
 - Creator: Faster generations, early feature access
@@ -138,12 +140,12 @@ Moved to `docs/QUICKSTART.md`.
 
 ### Add-on credit packs (one-time)
 
-| Pack | Credits | Price |
-|------|---------|-------|
-| Starter Pack | 300 | $15 |
-| Booster Pack | 600 | $28 |
-| Pro Pack | 1,200 | $52 |
-| Studio Pack | 3,000 | $120 |
+| Pack         | Credits | Price |
+| ------------ | ------- | ----- |
+| Starter Pack | 300     | $15   |
+| Booster Pack | 600     | $28   |
+| Pro Pack     | 1,200   | $52   |
+| Studio Pack  | 3,000   | $120  |
 
 Stripe setup: map price IDs to credit amounts via `STRIPE_PRICE_CREDITS` (include both subscriptions and packs).
 Credit packs are one-time top-ups applied after checkout completes.
@@ -152,16 +154,16 @@ Credit packs are one-time top-ups applied after checkout completes.
 
 Video credits are charged per second. Default duration is 8 seconds.
 
-| Model | Credits/sec | 8s Video |
-|-------|-------------|----------|
-| WAN Draft | 3.5 | 28 credits |
-| WAN Pro | 5 | 40 credits |
-| Sora 2 | 6 | 48 credits |
-| Sora 2 Pro | 14 | 112 credits |
-| Veo 3 | 24 | 192 credits |
-| Luma Ray-3 | 7 | 56 credits |
-| Kling v2.1 | 5 | 40 credits |
-| Minimax | 4 | 32 credits |
+| Model      | Credits/sec | 8s Video    |
+| ---------- | ----------- | ----------- |
+| WAN Draft  | 3.5         | 28 credits  |
+| WAN Pro    | 5           | 40 credits  |
+| Sora 2     | 6           | 48 credits  |
+| Sora 2 Pro | 14          | 112 credits |
+| Veo 3      | 24          | 192 credits |
+| Luma Ray-3 | 7           | 56 credits  |
+| Kling v2.1 | 5           | 40 credits  |
+| Minimax    | 4           | 32 credits  |
 
 Image previews: 1 credit per image.
 
@@ -189,39 +191,42 @@ AI video models (Sora, Runway, Veo3) are sensitive to prompt quality. The differ
 
 Vidra is designed to be the all-in-one studio for the AI video ecosystem. It optimizes prompts AND directly generates video with:
 
-*   **OpenAI Sora 2** (Physics simulation & continuity)
-*   **Google Veo 4** (Cinematic lighting & atmosphere)
-*   **Runway Gen-45** (Stylized visuals & VFX)
-*   **Kling 2.6** (Character performance)
-*   **Luma Ray 3** (Morphing & transitions)
-*   **Wan 2.2** (High-fidelity previews)
+- **OpenAI Sora 2** (Physics simulation & continuity)
+- **Google Veo 4** (Cinematic lighting & atmosphere)
+- **Runway Gen-45** (Stylized visuals & VFX)
+- **Kling 2.6** (Character performance)
+- **Luma Ray 3** (Morphing & transitions)
+- **Wan 2.2** (High-fidelity previews)
 
 ---
 
 ## Strategic Value
 
 ### For Creative Agencies
-*   **Standardize Quality:** Ensure every prompt sent to production meets a baseline of cinematographic detail.
-*   **Asset Management:** Save, search, and share successful prompt patterns across the team.
-*   **Client Alignment:** Use the visual preview to align with clients on style/mood before generating expensive video assets.
+
+- **Standardize Quality:** Ensure every prompt sent to production meets a baseline of cinematographic detail.
+- **Asset Management:** Save, search, and share successful prompt patterns across the team.
+- **Client Alignment:** Use the visual preview to align with clients on style/mood before generating expensive video assets.
 
 ### For Marketing Teams
-*   **Speed to Market:** Reduce the "prompt engineering" learning curve for social media managers and content creators.
-*   **Consistency:** Maintain brand aesthetics by reusing specific Style and Lighting tokens.
+
+- **Speed to Market:** Reduce the "prompt engineering" learning curve for social media managers and content creators.
+- **Consistency:** Maintain brand aesthetics by reusing specific Style and Lighting tokens.
 
 ---
 
 ## Current Status
 
 **Production Ready Features:**
-*   ✅ Advanced Text Optimization Engine (Two-Stage Pipeline)
-*   ✅ Direct Video Generation (Sora 2, Veo 4, Luma Ray 3, Runway Gen-45)
-*   ✅ Video Preview Generation (Wan 2.2)
-*   ✅ Image Preview Generation (Flux Schnell)
-*   ✅ Concept Builder & Improvement Wizards
-*   ✅ Scene Change & Conflict Detection
-*   ✅ Enterprise-grade History & Auto-save
-*   ✅ Multi-Format Export (JSON/MD/TXT)
+
+- ✅ Advanced Text Optimization Engine (Two-Stage Pipeline)
+- ✅ Direct Video Generation (Sora 2, Veo 4, Luma Ray 3, Runway Gen-45)
+- ✅ Video Preview Generation (Wan 2.2)
+- ✅ Image Preview Generation (Flux Schnell)
+- ✅ Concept Builder & Improvement Wizards
+- ✅ Scene Change & Conflict Detection
+- ✅ Enterprise-grade History & Auto-save
+- ✅ Multi-Format Export (JSON/MD/TXT)
 
 **[→ View Full Documentation](OVERVIEW.md)**
 
@@ -229,12 +234,12 @@ Vidra is designed to be the all-in-one studio for the AI video ecosystem. It opt
 
 ## Tech Stack
 
-| | |
-|-|-|
-| **Frontend** | React 18, Vite, Tailwind, TypeScript |
-| **Backend** | Express, TypeScript, Firebase |
-| **LLMs** | OpenAI (quality), Groq (speed), Gemini (diversity) |
-| **Infra** | Docker, Kubernetes, Redis, Prometheus |
+|              |                                                    |
+| ------------ | -------------------------------------------------- |
+| **Frontend** | React 18, Vite, Tailwind, TypeScript               |
+| **Backend**  | Express, TypeScript, Firebase                      |
+| **LLMs**     | OpenAI (quality), Groq (speed), Gemini (diversity) |
+| **Infra**    | Docker, Kubernetes, Redis, Prometheus              |
 
 ---
 
@@ -277,6 +282,7 @@ prompt-builder/
 ## API
 
 **Optimize with streaming:**
+
 ```bash
 POST /api/optimize-stream
 Content-Type: application/json
@@ -290,6 +296,7 @@ Content-Type: application/json
 ```
 
 **Get suggestions for a span:**
+
 ```bash
 POST /api/enhance
 Content-Type: application/json
@@ -304,6 +311,7 @@ Content-Type: application/json
 ```
 
 **Generate preview image:**
+
 ```bash
 POST /api/preview/generate
 Content-Type: application/json
@@ -348,14 +356,14 @@ npm run arch:check  # Architecture gates (cycles + forbidden imports)
 
 ## Documentation
 
-| Doc | Contents |
-|-----|----------|
-| **[OVERVIEW.md](OVERVIEW.md)** | Full product documentation, architecture, features |
-| **[docs/QUICKSTART.md](docs/QUICKSTART.md)** | Minimal local setup |
-| **[docs/API.md](docs/API.md)** | API reference |
-| **[docs/billing/BILLING_SYSTEM_JAN2026.md](docs/billing/BILLING_SYSTEM_JAN2026.md)** | Current billing system documentation |
-| **[docs/development/IMPLEMENTATION_GUIDE.md](docs/development/IMPLEMENTATION_GUIDE.md)** | Development guide |
-| **[docs/DEPLOYMENT_GUIDE.md](docs/DEPLOYMENT_GUIDE.md)** | Deployment instructions |
+| Doc                                                                                      | Contents                                           |
+| ---------------------------------------------------------------------------------------- | -------------------------------------------------- |
+| **[OVERVIEW.md](OVERVIEW.md)**                                                           | Full product documentation, architecture, features |
+| **[docs/QUICKSTART.md](docs/QUICKSTART.md)**                                             | Minimal local setup                                |
+| **[docs/API.md](docs/API.md)**                                                           | API reference                                      |
+| **[docs/billing/BILLING_SYSTEM_JAN2026.md](docs/billing/BILLING_SYSTEM_JAN2026.md)**     | Current billing system documentation               |
+| **[docs/development/IMPLEMENTATION_GUIDE.md](docs/development/IMPLEMENTATION_GUIDE.md)** | Development guide                                  |
+| **[docs/DEPLOYMENT_GUIDE.md](docs/DEPLOYMENT_GUIDE.md)**                                 | Deployment instructions                            |
 
 ---
 

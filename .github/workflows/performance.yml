@@ -7,7 +7,7 @@ on:
     branches: [main]
   schedule:
     # Run performance tests daily at 3 AM UTC
-    - cron: '0 3 * * *'
+    - cron: "0 3 * * *"
   workflow_dispatch:
 
 jobs:
@@ -27,8 +27,8 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: "20"
+          cache: "npm"
 
       - name: Install dependencies
         run: npm ci
@@ -163,8 +163,8 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: "20"
+          cache: "npm"
 
       - name: Install dependencies
         run: npm ci
@@ -231,8 +231,8 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: "20"
+          cache: "npm"
 
       - name: Install dependencies
         run: npm ci
@@ -249,11 +249,11 @@ jobs:
       - name: Run Lighthouse
         uses: treosh/lighthouse-ci-action@v10
         with:
-          urls: 'http://localhost:8080'
+          urls: "http://localhost:8080"
           uploadArtifacts: true
           temporaryPublicStorage: true
           runs: 3
-          budgetPath: '.lighthouserc.json'
+          budgetPath: ".lighthouserc.json"
 
       - name: Check performance budget
         run: |
@@ -275,8 +275,8 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: "20"
+          cache: "npm"
 
       - name: Install dependencies
         run: npm ci

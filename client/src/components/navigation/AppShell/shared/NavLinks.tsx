@@ -2,22 +2,26 @@
  * Navigation links rendered in horizontal or vertical layout.
  */
 
-import type { ReactElement } from 'react';
-import { NavLink } from 'react-router-dom';
-import { cn } from '@utils/cn';
+import type { ReactElement } from "react";
+import { NavLink } from "react-router-dom";
+import { cn } from "@utils/cn";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from '@promptstudio/system/components/ui/tooltip';
-import type { NavLinksProps } from '../types';
+} from "@promptstudio/system/components/ui/tooltip";
+import type { NavLinksProps } from "../types";
 
-export function NavLinks({ items, variant, className }: NavLinksProps): ReactElement {
-  if (variant === 'vertical-collapsed') {
+export function NavLinks({
+  items,
+  variant,
+  className,
+}: NavLinksProps): ReactElement {
+  if (variant === "vertical-collapsed") {
     return (
       <TooltipProvider delayDuration={120}>
-        <nav className={cn('flex flex-col items-center gap-2', className)}>
+        <nav className={cn("flex flex-col items-center gap-2", className)}>
           {items.map((item) => (
             <Tooltip key={item.to}>
               <TooltipTrigger asChild>
@@ -25,10 +29,10 @@ export function NavLinks({ items, variant, className }: NavLinksProps): ReactEle
                   to={item.to}
                   className={({ isActive }) =>
                     cn(
-                      'flex h-8 w-8 items-center justify-center rounded-md',
-                      'text-muted transition-colors',
-                      'hover:bg-[rgb(36,42,56)] hover:text-foreground',
-                      isActive && 'bg-[rgb(44,48,55)] text-foreground'
+                      "flex h-8 w-8 items-center justify-center rounded-md",
+                      "text-muted transition-colors",
+                      "hover:bg-[rgb(36,42,56)] hover:text-foreground",
+                      isActive && "bg-[rgb(44,48,55)] text-foreground",
                     )
                   }
                   aria-label={item.label}
@@ -49,19 +53,19 @@ export function NavLinks({ items, variant, className }: NavLinksProps): ReactEle
     );
   }
 
-  if (variant === 'vertical') {
+  if (variant === "vertical") {
     return (
-      <nav className={cn('flex flex-col gap-1', className)}>
+      <nav className={cn("flex flex-col gap-1", className)}>
         {items.map((item) => (
           <NavLink
             key={item.to}
             to={item.to}
             className={({ isActive }) =>
               cn(
-                'flex items-center gap-3 rounded-lg px-3 py-2',
-                'text-[13px] font-medium text-muted transition-colors',
-                'hover:bg-[rgba(255,255,255,0.05)] hover:text-foreground',
-                isActive && 'bg-[rgba(255,255,255,0.08)] text-foreground'
+                "flex items-center gap-3 rounded-lg px-3 py-2",
+                "text-[13px] font-medium text-muted transition-colors",
+                "hover:bg-[rgba(255,255,255,0.05)] hover:text-foreground",
+                isActive && "bg-[rgba(255,255,255,0.08)] text-foreground",
               )
             }
           >
@@ -74,19 +78,22 @@ export function NavLinks({ items, variant, className }: NavLinksProps): ReactEle
   }
 
   return (
-    <nav className={cn('flex items-center gap-2', className)}>
+    <nav className={cn("flex items-center gap-2", className)}>
       {items.map((item) => (
         <NavLink
           key={item.to}
           to={item.to}
           className={({ isActive }) =>
             cn(
-              'block rounded-md px-4 py-2 text-[13px] font-medium leading-4 uppercase tracking-[0.5px] text-muted transition-colors',
-              isActive
-                ? 'bg-surface-1 text-foreground'
-                : 'text-muted hover:bg-surface-1 hover:text-foreground'
+              "block rounded-md px-4 py-2 text-[13px] font-medium leading-4 uppercase tracking-[0.5px] transition-colors",
+              isActive ? "text-white" : "hover:text-white",
             )
           }
+          style={({ isActive }) => ({
+            color: isActive ? "#FFFFFF" : "#8B92A5",
+            background: isActive ? "#22252C" : "transparent",
+            ...(isActive ? {} : {}),
+          })}
         >
           {item.label}
         </NavLink>

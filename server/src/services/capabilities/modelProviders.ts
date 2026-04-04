@@ -1,37 +1,40 @@
-import { findProviderForModel } from './registry';
+import { findProviderForModel } from "./registry";
 
 const MODEL_ID_ALIASES: Record<string, string> = {
-  runway: 'runway-gen45',
-  luma: 'luma-ray3',
-  kling: 'kling-26',
-  sora: 'sora-2',
-  veo: 'veo-4',
-  wan: 'wan-2.2',
-  'wan-2.5': 'wan-2.5',
+  runway: "runway-gen45",
+  luma: "luma-ray3",
+  kling: "kling-26",
+  sora: "sora-2",
+  veo: "veo-4",
+  wan: "wan-2.2",
+  "wan-2.5": "wan-2.5",
+  "kling-2.1": "kling-26",
+  "veo-3": "veo-4",
+  "kling-26": "kling-26",
+  "veo-4": "veo-4",
   // Video-generation model keys/ids (used by /preview/video/generate)
-  PRO: 'wan-2.2',
-  DRAFT: 'wan-2.2',
-  DRAFT_I2V: 'wan-2.5',
-  DRAFT_I2V_LEGACY: 'wan-2.2',
-  DRAFT_I2V_WAN_2_5: 'wan-2.5',
-  'wan-video/wan-2.2-t2v-fast': 'wan-2.2',
-  'wan-video/wan-2.2-i2v-fast': 'wan-2.2',
-  'kling-v2-1-master': 'kling-26',
-  'kwaivgi/kling-v2.1': 'kling-26',
-  'google/veo-3': 'veo-4',
-  'veo-3': 'veo-4',
-  'wan-video/wan-2.5-i2v': 'wan-2.5',
-  'wan-video/wan-2.5-i2v-fast': 'wan-2.5',
+  PRO: "wan-2.2",
+  DRAFT: "wan-2.2",
+  DRAFT_I2V: "wan-2.5",
+  DRAFT_I2V_LEGACY: "wan-2.2",
+  DRAFT_I2V_WAN_2_5: "wan-2.5",
+  "wan-video/wan-2.2-t2v-fast": "wan-2.2",
+  "wan-video/wan-2.2-i2v-fast": "wan-2.2",
+  "kling-v2-1-master": "kling-26",
+  "kwaivgi/kling-v2.1": "kling-26",
+  "google/veo-3": "veo-4",
+  "wan-video/wan-2.5-i2v": "wan-2.5",
+  "wan-video/wan-2.5-i2v-fast": "wan-2.5",
 };
 
 const MODEL_PROVIDER_MAP: Record<string, string> = {
-  'runway-gen45': 'runway',
-  'luma-ray3': 'luma',
-  'sora-2': 'openai',
-  'veo-4': 'google',
-  'kling-26': 'kling',
-  'wan-2.2': 'wan',
-  'wan-2.5': 'wan',
+  "runway-gen45": "runway",
+  "luma-ray3": "luma",
+  "sora-2": "openai",
+  "veo-4": "google",
+  "kling-26": "kling",
+  "wan-2.2": "wan",
+  "wan-2.5": "wan",
 };
 
 export const resolveModelId = (modelId?: string | null): string | null => {
@@ -41,7 +44,9 @@ export const resolveModelId = (modelId?: string | null): string | null => {
   return MODEL_ID_ALIASES[modelId] ?? modelId;
 };
 
-export const resolveProviderForModel = (modelId?: string | null): string | null => {
+export const resolveProviderForModel = (
+  modelId?: string | null,
+): string | null => {
   const resolved = resolveModelId(modelId);
   if (!resolved) {
     return null;

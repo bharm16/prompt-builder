@@ -1,7 +1,7 @@
-import { logger } from '@infrastructure/Logger';
-import type { ILogger } from '@interfaces/ILogger';
-import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer';
-import type { AIService } from '@services/prompt-optimization/types';
+import { logger } from "@infrastructure/Logger";
+import type { ILogger } from "@interfaces/ILogger";
+import { StructuredOutputEnforcer } from "@utils/StructuredOutputEnforcer";
+import type { AIService } from "@services/prompt-optimization/types";
 
 /**
  * Validation breakdown
@@ -27,7 +27,7 @@ export interface ValidationResult {
 /**
  * Service responsible for validating prompt quality and completeness.
  * Provides quality scoring and smart default suggestions.
- * 
+ *
  * Extracted from SceneAnalysisService to follow single responsibility principle.
  */
 export class PromptValidationService {
@@ -36,7 +36,7 @@ export class PromptValidationService {
 
   constructor(aiService: AIService) {
     this.ai = aiService;
-    this.log = logger.child({ service: 'PromptValidationService' });
+    this.log = logger.child({ service: "PromptValidationService" });
   }
 
   /**
@@ -47,9 +47,9 @@ export class PromptValidationService {
     concept?: string;
   }): Promise<ValidationResult> {
     const startTime = performance.now();
-    const operation = 'validatePrompt';
-    
-    this.log.debug('Starting operation.', {
+    const operation = "validatePrompt";
+
+    this.log.debug("Starting operation.", {
       operation,
       elementCount: Object.keys(params.elements).length,
       hasConcept: !!params.concept,
@@ -57,12 +57,12 @@ export class PromptValidationService {
 
     const prompt = `Evaluate the quality and completeness of this video prompt.
 
-Concept: ${params.concept || 'Not specified'}
+Concept: ${params.concept || "Not specified"}
 
 Elements:
 ${Object.entries(params.elements)
-  .map(([k, v]) => `${k}: ${v || '(empty)'}`)
-  .join('\n')}
+  .map(([k, v]) => `${k}: ${v || "(empty)"}`)
+  .join("\n")}
 
 Evaluate:
 1. Completeness (0-30 points): How many elements are filled?
@@ -85,32 +85,32 @@ Return ONLY a JSON object:
 }`;
 
     try {
-      const schema: { type: 'object' | 'array'; required?: string[] } = {
-        type: 'object' as const,
-        required: ['score', 'breakdown', 'feedback', 'strengths', 'weaknesses'],
+      const schema: { type: "object" | "array"; required?: string[] } = {
+        type: "object" as const,
+        required: ["score", "breakdown", "feedback", "strengths", "weaknesses"],
       };
-      
-      const validation = await StructuredOutputEnforcer.enforceJSON(
+
+      const validation = (await StructuredOutputEnforcer.enforceJSON(
         this.ai,
         prompt,
         {
-          operation: 'video_prompt_validation',
+          operation: "video_prompt_validation",
           schema,
           maxTokens: 512,
           temperature: 0.3,
-        }
-      ) as ValidationResult;
-      
-      this.log.info('Operation completed.', {
+        },
+      )) as ValidationResult;
+
+      this.log.info("Operation completed.", {
         operation,
         duration: Math.round(performance.now() - startTime),
         score: validation.score,
         feedbackCount: validation.feedback.length,
       });
-      
+
       return validation;
     } catch (error) {
-      this.log.error('Operation failed.', error as Error, {
+      this.log.error("Operation failed.", error as Error, {
         operation,
         duration: Math.round(performance.now() - startTime),
       });
@@ -122,7 +122,7 @@ Return ONLY a JSON object:
           coherence: 0,
           visualPotential: 0,
         },
-        feedback: ['Unable to validate'],
+        feedback: ["Unable to validate"],
         strengths: [],
         weaknesses: [],
       };
@@ -137,9 +137,9 @@ Return ONLY a JSON object:
     existingElements: Record<string, string>;
   }): Promise<{ defaults: string[] }> {
     const startTime = performance.now();
-    const operation = 'getSmartDefaults';
-    
-    this.log.debug('Starting operation.', {
+    const operation = "getSmartDefaults";
+
+    this.log.debug("Starting operation.", {
       operation,
       elementType: params.elementType,
       existingElementCount: Object.keys(params.existingElements).length,
@@ -148,12 +148,12 @@ Return ONLY a JSON object:
     const dependencies = Object.entries(params.existingElements)
       .filter(([_, v]) => v)
       .map(([k, v]) => `${k}: ${v}`)
-      .join('\n');
+      .join("\n");
 
     if (!dependencies) {
-      this.log.debug('Operation skipped.', {
+      this.log.debug("Operation skipped.", {
         operation,
-        reason: 'no_dependencies',
+        reason: "no_dependencies",
         duration: Math.round(performance.now() - startTime),
       });
       return { defaults: [] };
@@ -173,31 +173,34 @@ Return ONLY a JSON array:
 ["default 1", "default 2", "default 3"]`;
 
     try {
-      const schema: { type: 'object' | 'array'; items?: { required?: string[] } } = {
-        type: 'array' as const,
+      const schema: {
+        type: "object" | "array";
+        items?: { required?: string[] };
+      } = {
+        type: "array" as const,
       };
-      
-      const defaults = await StructuredOutputEnforcer.enforceJSON(
+
+      const defaults = (await StructuredOutputEnforcer.enforceJSON(
         this.ai,
         prompt,
         {
-          operation: 'video_smart_defaults',
+          operation: "video_smart_defaults",
           schema,
           isArray: true,
           maxTokens: 256,
           temperature: 0.6,
-        }
-      ) as string[];
-      
-      this.log.info('Operation completed.', {
+        },
+      )) as string[];
+
+      this.log.info("Operation completed.", {
         operation,
         duration: Math.round(performance.now() - startTime),
         defaultCount: defaults.length,
       });
-      
+
       return { defaults };
     } catch (error) {
-      this.log.error('Operation failed.', error as Error, {
+      this.log.error("Operation failed.", error as Error, {
         operation,
         duration: Math.round(performance.now() - startTime),
         elementType: params.elementType,

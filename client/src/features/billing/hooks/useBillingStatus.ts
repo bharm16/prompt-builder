@@ -1,6 +1,9 @@
-import React from 'react';
-import { fetchBillingStatus, type BillingStatus } from '@/api/billingApi';
-import { useAuthUser } from '@/hooks/useAuthUser';
+import React from "react";
+import {
+  fetchBillingStatus,
+  type BillingStatus,
+} from "@/features/billing/api/billingApi";
+import { useAuthUser } from "@/hooks/useAuthUser";
 
 interface UseBillingStatusResult {
   status: BillingStatus | null;
@@ -31,7 +34,11 @@ export function useBillingStatus(): UseBillingStatusResult {
       const nextStatus = await fetchBillingStatus();
       setStatus(nextStatus);
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Failed to load billing status');
+      setError(
+        loadError instanceof Error
+          ? loadError.message
+          : "Failed to load billing status",
+      );
     } finally {
       setIsLoading(false);
     }
@@ -57,7 +64,11 @@ export function useBillingStatus(): UseBillingStatusResult {
         setStatus(nextStatus);
       } catch (loadError) {
         if (cancelled) return;
-        setError(loadError instanceof Error ? loadError.message : 'Failed to load billing status');
+        setError(
+          loadError instanceof Error
+            ? loadError.message
+            : "Failed to load billing status",
+        );
       } finally {
         if (cancelled) return;
         setIsLoading(false);

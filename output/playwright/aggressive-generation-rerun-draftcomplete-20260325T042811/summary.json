@@ -1,0 +1,34 @@
+{
+  "runDir": "/Users/bryceharmon/Desktop/prompt-builder/output/playwright/aggressive-generation-rerun-draftcomplete-20260325T042811",
+  "screenshots": [
+    "/Users/bryceharmon/Desktop/prompt-builder/output/playwright/aggressive-generation-rerun-draftcomplete-20260325T042811/01-01-before-generate.png",
+    "/Users/bryceharmon/Desktop/prompt-builder/output/playwright/aggressive-generation-rerun-draftcomplete-20260325T042811/02-02-after-3s.png",
+    "/Users/bryceharmon/Desktop/prompt-builder/output/playwright/aggressive-generation-rerun-draftcomplete-20260325T042811/03-03-final-state.png"
+  ],
+  "trackedResponses": [
+    {
+      "method": "POST",
+      "url": "http://localhost:5173/api/preview/video/generate",
+      "status": 402,
+      "body": "{\"error\":\"Insufficient credits\",\"code\":\"INSUFFICIENT_CREDITS\",\"details\":\"This generation requires 18 credits.\",\"requestId\":\"6352e005-327b-4272-915d-5b456958f276\"}",
+      "ts": 1774430935391
+    }
+  ],
+  "state": {
+    "after3sBody": "Vidra Tool Chars Styles Gallery Sessions Home C Codex QA Free Skip to main content Credits power generation You started with 25 credits. You can top up anytime in billing. Untitled session Model Wan 2.5 8% Rendering WAN 2.5 · 3s · est. 45s A fox running through snow at sunrise. Start frame Assets 16:9 5s",
+    "finalStatus": "timeout",
+    "finalBody": "Vidra Tool Chars Styles Gallery Sessions Home C Codex QA Free Skip to main content Credits power generation You started with 25 credits. You can top up anytime in billing. Untitled session Video Start with a scene, subject, or motion cue. The editor stays live while the workspace grows around it. 7 cr Model Wan 2.5 A fox running through snow at sunrise. Start frame Assets 16:9 5s",
+    "jobResponses": [],
+    "generateResponse": [
+      {
+        "status": 402,
+        "body": {
+          "error": "Insufficient credits",
+          "code": "INSUFFICIENT_CREDITS",
+          "details": "This generation requires 18 credits.",
+          "requestId": "6352e005-327b-4272-915d-5b456958f276"
+        }
+      }
+    ]
+  }
+}

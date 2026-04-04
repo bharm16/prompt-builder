@@ -1,0 +1,578 @@
+{
+  "runDir": "/Users/bryceharmon/Desktop/prompt-builder/output/playwright/aggressive-generation-rerun-freshdraft-20260325T043042",
+  "email": "codex.qa+1774431071839@example.com",
+  "screenshots": [
+    "/Users/bryceharmon/Desktop/prompt-builder/output/playwright/aggressive-generation-rerun-freshdraft-20260325T043042/01-01-signup-filled.png",
+    "/Users/bryceharmon/Desktop/prompt-builder/output/playwright/aggressive-generation-rerun-freshdraft-20260325T043042/02-02-workspace-ready.png",
+    "/Users/bryceharmon/Desktop/prompt-builder/output/playwright/aggressive-generation-rerun-freshdraft-20260325T043042/03-03-wan-selected.png",
+    "/Users/bryceharmon/Desktop/prompt-builder/output/playwright/aggressive-generation-rerun-freshdraft-20260325T043042/04-04-prompt-entered.png",
+    "/Users/bryceharmon/Desktop/prompt-builder/output/playwright/aggressive-generation-rerun-freshdraft-20260325T043042/05-05-after-3s.png",
+    "/Users/bryceharmon/Desktop/prompt-builder/output/playwright/aggressive-generation-rerun-freshdraft-20260325T043042/06-06-final-state.png"
+  ],
+  "trackedResponses": [
+    {
+      "method": "GET",
+      "url": "http://localhost:5173/api/payment/credits/balance",
+      "status": 200,
+      "body": "{\"balance\":25}",
+      "ts": 1774431078761
+    },
+    {
+      "method": "POST",
+      "url": "http://localhost:5173/api/preview/video/generate",
+      "status": 202,
+      "body": "{\"success\":true,\"data\":{\"jobId\":\"BSVG6MpoEurZTGNfPLyN\",\"status\":\"queued\",\"creditsReserved\":18,\"creditsDeducted\":18,\"remainingCredits\":7,\"keyframeGenerated\":false,\"keyframeUrl\":null,\"faceSwapApplied\":false,\"faceSwapUrl\":null},\"jobId\":\"BSVG6MpoEurZTGNfPLyN\",\"status\":\"queued\",\"creditsReserved\":18,\"creditsDeducted\":18,\"remainingCredits\":7,\"keyframeGenerated\":false,\"keyframeUrl\":null,\"faceSwapApplied\":false,\"faceSwapUrl\":null}",
+      "ts": 1774431088444
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:5173/api/preview/video/jobs/BSVG6MpoEurZTGNfPLyN",
+      "status": 200,
+      "body": "{\"success\":true,\"jobId\":\"BSVG6MpoEurZTGNfPLyN\",\"status\":\"queued\",\"creditsReserved\":18,\"creditsDeducted\":18,\"progress\":5,\"createdAtMs\":1774431088159,\"attempts\":0,\"maxAttempts\":3,\"serverTimeoutMs\":300000}",
+      "ts": 1774431088535
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:5173/api/preview/video/jobs/BSVG6MpoEurZTGNfPLyN",
+      "status": 200,
+      "body": "{\"success\":true,\"jobId\":\"BSVG6MpoEurZTGNfPLyN\",\"status\":\"processing\",\"creditsReserved\":18,\"creditsDeducted\":18,\"progress\":11,\"createdAtMs\":1774431088159,\"attempts\":1,\"maxAttempts\":3,\"serverTimeoutMs\":300000,\"lastHeartbeatAtMs\":1774431088636}",
+      "ts": 1774431090613
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:5173/api/preview/video/jobs/BSVG6MpoEurZTGNfPLyN",
+      "status": 200,
+      "body": "{\"success\":true,\"jobId\":\"BSVG6MpoEurZTGNfPLyN\",\"status\":\"processing\",\"creditsReserved\":18,\"creditsDeducted\":18,\"progress\":12,\"createdAtMs\":1774431088159,\"attempts\":1,\"maxAttempts\":3,\"serverTimeoutMs\":300000,\"lastHeartbeatAtMs\":1774431088636}",
+      "ts": 1774431092698
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:5173/api/preview/video/jobs/BSVG6MpoEurZTGNfPLyN",
+      "status": 200,
+      "body": "{\"success\":true,\"jobId\":\"BSVG6MpoEurZTGNfPLyN\",\"status\":\"processing\",\"creditsReserved\":18,\"creditsDeducted\":18,\"progress\":13,\"createdAtMs\":1774431088159,\"attempts\":1,\"maxAttempts\":3,\"serverTimeoutMs\":300000,\"lastHeartbeatAtMs\":1774431088636}",
+      "ts": 1774431094845
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:5173/api/preview/video/jobs/BSVG6MpoEurZTGNfPLyN",
+      "status": 200,
+      "body": "{\"success\":true,\"jobId\":\"BSVG6MpoEurZTGNfPLyN\",\"status\":\"processing\",\"creditsReserved\":18,\"creditsDeducted\":18,\"progress\":14,\"createdAtMs\":1774431088159,\"attempts\":1,\"maxAttempts\":3,\"serverTimeoutMs\":300000,\"lastHeartbeatAtMs\":1774431088636}",
+      "ts": 1774431096921
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:5173/api/preview/video/jobs/BSVG6MpoEurZTGNfPLyN",
+      "status": 200,
+      "body": "{\"success\":true,\"jobId\":\"BSVG6MpoEurZTGNfPLyN\",\"status\":\"processing\",\"creditsReserved\":18,\"creditsDeducted\":18,\"progress\":15,\"createdAtMs\":1774431088159,\"attempts\":1,\"maxAttempts\":3,\"serverTimeoutMs\":300000,\"lastHeartbeatAtMs\":1774431088636}",
+      "ts": 1774431098997
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:5173/api/preview/video/jobs/BSVG6MpoEurZTGNfPLyN",
+      "status": 200,
+      "body": "{\"success\":true,\"jobId\":\"BSVG6MpoEurZTGNfPLyN\",\"status\":\"processing\",\"creditsReserved\":18,\"creditsDeducted\":18,\"progress\":16,\"createdAtMs\":1774431088159,\"attempts\":1,\"maxAttempts\":3,\"serverTimeoutMs\":300000,\"lastHeartbeatAtMs\":1774431088636}",
+      "ts": 1774431101083
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:5173/api/preview/video/jobs/BSVG6MpoEurZTGNfPLyN",
+      "status": 200,
+      "body": "{\"success\":true,\"jobId\":\"BSVG6MpoEurZTGNfPLyN\",\"status\":\"processing\",\"creditsReserved\":18,\"creditsDeducted\":18,\"progress\":17,\"createdAtMs\":1774431088159,\"attempts\":1,\"maxAttempts\":3,\"serverTimeoutMs\":300000,\"lastHeartbeatAtMs\":1774431088636}",
+      "ts": 1774431103167
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:5173/api/preview/video/jobs/BSVG6MpoEurZTGNfPLyN",
+      "status": 200,
+      "body": "{\"success\":true,\"jobId\":\"BSVG6MpoEurZTGNfPLyN\",\"status\":\"processing\",\"creditsReserved\":18,\"creditsDeducted\":18,\"progress\":18,\"createdAtMs\":1774431088159,\"attempts\":1,\"maxAttempts\":3,\"serverTimeoutMs\":300000,\"lastHeartbeatAtMs\":1774431088636}",
+      "ts": 1774431105232
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:5173/api/preview/video/jobs/BSVG6MpoEurZTGNfPLyN",
+      "status": 200,
+      "body": "{\"success\":true,\"jobId\":\"BSVG6MpoEurZTGNfPLyN\",\"status\":\"processing\",\"creditsReserved\":18,\"creditsDeducted\":18,\"progress\":19,\"createdAtMs\":1774431088159,\"attempts\":1,\"maxAttempts\":3,\"serverTimeoutMs\":300000,\"lastHeartbeatAtMs\":1774431088636}",
+      "ts": 1774431107315
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:5173/api/preview/video/jobs/BSVG6MpoEurZTGNfPLyN",
+      "status": 200,
+      "body": "{\"success\":true,\"jobId\":\"BSVG6MpoEurZTGNfPLyN\",\"status\":\"processing\",\"creditsReserved\":18,\"creditsDeducted\":18,\"progress\":20,\"createdAtMs\":1774431088159,\"attempts\":1,\"maxAttempts\":3,\"serverTimeoutMs\":300000,\"lastHeartbeatAtMs\":1774431108793}",
+      "ts": 1774431109394
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:5173/api/preview/video/jobs/BSVG6MpoEurZTGNfPLyN",
+      "status": 200,
+      "body": "{\"success\":true,\"jobId\":\"BSVG6MpoEurZTGNfPLyN\",\"status\":\"processing\",\"creditsReserved\":18,\"creditsDeducted\":18,\"progress\":21,\"createdAtMs\":1774431088159,\"attempts\":1,\"maxAttempts\":3,\"serverTimeoutMs\":300000,\"lastHeartbeatAtMs\":1774431108793}",
+      "ts": 1774431111476
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:5173/api/preview/video/jobs/BSVG6MpoEurZTGNfPLyN",
+      "status": 200,
+      "body": "{\"success\":true,\"jobId\":\"BSVG6MpoEurZTGNfPLyN\",\"status\":\"processing\",\"creditsReserved\":18,\"creditsDeducted\":18,\"progress\":21,\"createdAtMs\":1774431088159,\"attempts\":1,\"maxAttempts\":3,\"serverTimeoutMs\":300000,\"lastHeartbeatAtMs\":1774431108793}",
+      "ts": 1774431113560
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:5173/api/preview/video/jobs/BSVG6MpoEurZTGNfPLyN",
+      "status": 200,
+      "body": "{\"success\":true,\"jobId\":\"BSVG6MpoEurZTGNfPLyN\",\"status\":\"processing\",\"creditsReserved\":18,\"creditsDeducted\":18,\"progress\":22,\"createdAtMs\":1774431088159,\"attempts\":1,\"maxAttempts\":3,\"serverTimeoutMs\":300000,\"lastHeartbeatAtMs\":1774431108793}",
+      "ts": 1774431115652
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:5173/api/preview/video/jobs/BSVG6MpoEurZTGNfPLyN",
+      "status": 200,
+      "body": "{\"success\":true,\"jobId\":\"BSVG6MpoEurZTGNfPLyN\",\"status\":\"processing\",\"creditsReserved\":18,\"creditsDeducted\":18,\"progress\":23,\"createdAtMs\":1774431088159,\"attempts\":1,\"maxAttempts\":3,\"serverTimeoutMs\":300000,\"lastHeartbeatAtMs\":1774431108793}",
+      "ts": 1774431117731
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:5173/api/preview/video/jobs/BSVG6MpoEurZTGNfPLyN",
+      "status": 200,
+      "body": "{\"success\":true,\"jobId\":\"BSVG6MpoEurZTGNfPLyN\",\"status\":\"processing\",\"creditsReserved\":18,\"creditsDeducted\":18,\"progress\":24,\"createdAtMs\":1774431088159,\"attempts\":1,\"maxAttempts\":3,\"serverTimeoutMs\":300000,\"lastHeartbeatAtMs\":1774431108793}",
+      "ts": 1774431119824
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:5173/api/preview/video/jobs/BSVG6MpoEurZTGNfPLyN",
+      "status": 200,
+      "body": "{\"success\":true,\"jobId\":\"BSVG6MpoEurZTGNfPLyN\",\"status\":\"processing\",\"creditsReserved\":18,\"creditsDeducted\":18,\"progress\":25,\"createdAtMs\":1774431088159,\"attempts\":1,\"maxAttempts\":3,\"serverTimeoutMs\":300000,\"lastHeartbeatAtMs\":1774431108793}",
+      "ts": 1774431121903
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:5173/api/preview/video/jobs/BSVG6MpoEurZTGNfPLyN",
+      "status": 200,
+      "body": "{\"success\":true,\"jobId\":\"BSVG6MpoEurZTGNfPLyN\",\"status\":\"processing\",\"creditsReserved\":18,\"creditsDeducted\":18,\"progress\":26,\"createdAtMs\":1774431088159,\"attempts\":1,\"maxAttempts\":3,\"serverTimeoutMs\":300000,\"lastHeartbeatAtMs\":1774431108793}",
+      "ts": 1774431123985
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:5173/api/preview/video/jobs/BSVG6MpoEurZTGNfPLyN",
+      "status": 200,
+      "body": "{\"success\":true,\"jobId\":\"BSVG6MpoEurZTGNfPLyN\",\"status\":\"processing\",\"creditsReserved\":18,\"creditsDeducted\":18,\"progress\":27,\"createdAtMs\":1774431088159,\"attempts\":1,\"maxAttempts\":3,\"serverTimeoutMs\":300000,\"lastHeartbeatAtMs\":1774431108793}",
+      "ts": 1774431126070
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:5173/api/preview/video/jobs/BSVG6MpoEurZTGNfPLyN",
+      "status": 200,
+      "body": "{\"success\":true,\"jobId\":\"BSVG6MpoEurZTGNfPLyN\",\"status\":\"processing\",\"creditsReserved\":18,\"creditsDeducted\":18,\"progress\":28,\"createdAtMs\":1774431088159,\"attempts\":1,\"maxAttempts\":3,\"serverTimeoutMs\":300000,\"lastHeartbeatAtMs\":1774431108793}",
+      "ts": 1774431128165
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:5173/api/preview/video/jobs/BSVG6MpoEurZTGNfPLyN",
+      "status": 200,
+      "body": "{\"success\":true,\"jobId\":\"BSVG6MpoEurZTGNfPLyN\",\"status\":\"processing\",\"creditsReserved\":18,\"creditsDeducted\":18,\"progress\":29,\"createdAtMs\":1774431088159,\"attempts\":1,\"maxAttempts\":3,\"serverTimeoutMs\":300000,\"lastHeartbeatAtMs\":1774431128793}",
+      "ts": 1774431130248
+    },
+    {
+      "method": "GET",
+      "url": "http://localhost:5173/api/preview/video/jobs/BSVG6MpoEurZTGNfPLyN",
+      "status": 200,
+      "body": "{\"success\":true,\"jobId\":\"BSVG6MpoEurZTGNfPLyN\",\"status\":\"completed\",\"creditsReserved\":18,\"creditsDeducted\":18,\"storagePath\":\"users/UmgegZlDffgUlJefOJ8WpjXZrWO2/generations/1774431130288-7ea58bb2a6583dc9.mp4\",\"viewUrlExpiresAt\":\"2026-03-25T10:32:12.323Z\",\"videoUrl\":\"https://storage.googleapis.com/vidra-media-prod/users/UmgegZlDffgUlJefOJ8WpjXZrWO2/generations/1774431130288-7ea58bb2a6583dc9.mp4?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=vidra-storage%40gen-lang-client-0569793111.iam.gserviceaccount.com%2F20260325%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20260325T093212Z&X-Goog-Expires=3600&X-Goog-SignedHeaders=host&response-content-disposition=inline&X-Goog-Signature=0c4fad8754566236f18d610e4e22b36ff9c6d7a996680e107cb898fbfef90ddb426a087d6df8936e39591ba5c1d8a9de6dd276ac1027ff2b2634a6e653da1a122e1529d01519489777c2dca3ee1ce8e88f37bec880516059c86b1b902d303af5054eec42a21bb58868b3a74590a22ac8198da5143582b1232fef007bf3d1dd757b169d1a72cd7c55d3b2df573559fdcb498245cb483ab11dcdfa588b3bb0812ff5b2f7bcce16db8a66689cd40e5442d39109d2f150092e22431f82249ae4ad584e8baeca644b0766a54130bfdd2b46937c29a226583e2134acae9a295fa0cd09c9a442bd4c9106acbaeeb3f1d0f13fea660bc12eefb3a282177223a93b34422e\",\"assetId\":\"9f64d87f-7b4a-4405-87f3-e282aab277d0\",\"contentType\":\"video/mp4\",\"viewUrl\":\"https://storage.googleapis.com/vidra-media-prod/users/UmgegZlDffgUlJefOJ8WpjXZrWO2/generations/1774431130288-7ea58bb2a6583dc9.mp4?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=vidra-storage%40gen-lang-client-0569793111.iam.gserviceaccount.com%2F20260325%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20260325T093210Z&X-Goog-Expires=3600&X-Goog-SignedHeaders=host&response-content-disposition=inline&X-Goog-Signature=86f69aa20a728e17c8b3a2781dc2c447fd5dd1308474cb3728100b53e4510c97e69ce1a7c7f42852ce17233ed4bee6a16cd5a396647cb4adb184f47bec0d163de01a413fc4910fdf006c0b2379d8e46af5a05f99a629f4c590d546b0ffef4ff04376e7de1bd88dc696c9807771bb3d7835d01182e94f8f91e4b149d3f77a4077739c90ced63e76d55d88b7eb2ee8a763e87d7a824da6770b129f120bc89d47f06cc8012702316018a913d70c459517fc9dff450d52385d755a2f002508647523d61af65f0f86a116696daa51c7d8dc6199bca9cfad4e849f47f1b0b6c168082d6421ab4a5eb7516b44993235a83518c3c2014ac6cd8f279ad50466efc617de21\",\"sizeBytes\":708218,\"inputMode\":\"t2v\",\"progress\":100,\"createdAtMs\":1774431088159,\"attempts\":1,\"maxAttempts\":3,\"serverTimeoutMs\":300000}",
+      "ts": 1774431132352
+    }
+  ],
+  "state": {
+    "workspaceBody": "Vidra Tool Chars Styles Gallery Sessions Home C Codex QA Free Skip to main content Credits power generation You started with 25 credits. You can top up anytime in billing. Untitled session Video Start with a scene, subject, or motion cue. The editor stays live while the workspace grows around it. 25 cr Model Sora Start frame Assets 16:9 4s Account created. Welcome, Codex QA!",
+    "afterModelSwitchBody": "Vidra Tool Chars Styles Gallery Sessions Home C Codex QA Free Skip to main content Credits power generation You started with 25 credits. You can top up anytime in billing. Untitled session Video Start with a scene, subject, or motion cue. The editor stays live while the workspace grows around it. 25 cr Model Wan 2.5 Start frame Assets 16:9 5s Account created. Welcome, Codex QA!",
+    "generateLabel": "Draft 18 credits",
+    "after3sBody": "Vidra Tool Chars Styles Gallery Sessions Home C Codex QA Free Skip to main content Credits power generation You started with 25 credits. You can top up anytime in billing. Untitled session Model Wan 2.5 8% Rendering WAN 2.5 · 3s · est. 45s A fox running through snow at sunrise. Start frame Assets 16:9 5s",
+    "finalStatus": "completed",
+    "finalBody": "Vidra Tool Chars Styles Gallery Sessions Home C Codex QA Free Skip to main content Credits power generation You started with 25 credits. You can top up anytime in billing. Untitled session Model Wan 2.5 draft · 5s · WAN 2.5 · just now A fox running through snow at sunrise. Start frame Assets 16:9 5s A fox running through snow at sunrise. WAN 2.5 • Mar 25",
+    "generateResponse": [
+      {
+        "status": 202,
+        "body": {
+          "success": true,
+          "data": {
+            "jobId": "BSVG6MpoEurZTGNfPLyN",
+            "status": "queued",
+            "creditsReserved": 18,
+            "creditsDeducted": 18,
+            "remainingCredits": 7,
+            "keyframeGenerated": false,
+            "keyframeUrl": null,
+            "faceSwapApplied": false,
+            "faceSwapUrl": null
+          },
+          "jobId": "BSVG6MpoEurZTGNfPLyN",
+          "status": "queued",
+          "creditsReserved": 18,
+          "creditsDeducted": 18,
+          "remainingCredits": 7,
+          "keyframeGenerated": false,
+          "keyframeUrl": null,
+          "faceSwapApplied": false,
+          "faceSwapUrl": null
+        }
+      }
+    ],
+    "jobResponses": [
+      {
+        "status": 200,
+        "body": {
+          "success": true,
+          "jobId": "BSVG6MpoEurZTGNfPLyN",
+          "status": "queued",
+          "creditsReserved": 18,
+          "creditsDeducted": 18,
+          "progress": 5,
+          "createdAtMs": 1774431088159,
+          "attempts": 0,
+          "maxAttempts": 3,
+          "serverTimeoutMs": 300000
+        }
+      },
+      {
+        "status": 200,
+        "body": {
+          "success": true,
+          "jobId": "BSVG6MpoEurZTGNfPLyN",
+          "status": "processing",
+          "creditsReserved": 18,
+          "creditsDeducted": 18,
+          "progress": 11,
+          "createdAtMs": 1774431088159,
+          "attempts": 1,
+          "maxAttempts": 3,
+          "serverTimeoutMs": 300000,
+          "lastHeartbeatAtMs": 1774431088636
+        }
+      },
+      {
+        "status": 200,
+        "body": {
+          "success": true,
+          "jobId": "BSVG6MpoEurZTGNfPLyN",
+          "status": "processing",
+          "creditsReserved": 18,
+          "creditsDeducted": 18,
+          "progress": 12,
+          "createdAtMs": 1774431088159,
+          "attempts": 1,
+          "maxAttempts": 3,
+          "serverTimeoutMs": 300000,
+          "lastHeartbeatAtMs": 1774431088636
+        }
+      },
+      {
+        "status": 200,
+        "body": {
+          "success": true,
+          "jobId": "BSVG6MpoEurZTGNfPLyN",
+          "status": "processing",
+          "creditsReserved": 18,
+          "creditsDeducted": 18,
+          "progress": 13,
+          "createdAtMs": 1774431088159,
+          "attempts": 1,
+          "maxAttempts": 3,
+          "serverTimeoutMs": 300000,
+          "lastHeartbeatAtMs": 1774431088636
+        }
+      },
+      {
+        "status": 200,
+        "body": {
+          "success": true,
+          "jobId": "BSVG6MpoEurZTGNfPLyN",
+          "status": "processing",
+          "creditsReserved": 18,
+          "creditsDeducted": 18,
+          "progress": 14,
+          "createdAtMs": 1774431088159,
+          "attempts": 1,
+          "maxAttempts": 3,
+          "serverTimeoutMs": 300000,
+          "lastHeartbeatAtMs": 1774431088636
+        }
+      },
+      {
+        "status": 200,
+        "body": {
+          "success": true,
+          "jobId": "BSVG6MpoEurZTGNfPLyN",
+          "status": "processing",
+          "creditsReserved": 18,
+          "creditsDeducted": 18,
+          "progress": 15,
+          "createdAtMs": 1774431088159,
+          "attempts": 1,
+          "maxAttempts": 3,
+          "serverTimeoutMs": 300000,
+          "lastHeartbeatAtMs": 1774431088636
+        }
+      },
+      {
+        "status": 200,
+        "body": {
+          "success": true,
+          "jobId": "BSVG6MpoEurZTGNfPLyN",
+          "status": "processing",
+          "creditsReserved": 18,
+          "creditsDeducted": 18,
+          "progress": 16,
+          "createdAtMs": 1774431088159,
+          "attempts": 1,
+          "maxAttempts": 3,
+          "serverTimeoutMs": 300000,
+          "lastHeartbeatAtMs": 1774431088636
+        }
+      },
+      {
+        "status": 200,
+        "body": {
+          "success": true,
+          "jobId": "BSVG6MpoEurZTGNfPLyN",
+          "status": "processing",
+          "creditsReserved": 18,
+          "creditsDeducted": 18,
+          "progress": 17,
+          "createdAtMs": 1774431088159,
+          "attempts": 1,
+          "maxAttempts": 3,
+          "serverTimeoutMs": 300000,
+          "lastHeartbeatAtMs": 1774431088636
+        }
+      },
+      {
+        "status": 200,
+        "body": {
+          "success": true,
+          "jobId": "BSVG6MpoEurZTGNfPLyN",
+          "status": "processing",
+          "creditsReserved": 18,
+          "creditsDeducted": 18,
+          "progress": 18,
+          "createdAtMs": 1774431088159,
+          "attempts": 1,
+          "maxAttempts": 3,
+          "serverTimeoutMs": 300000,
+          "lastHeartbeatAtMs": 1774431088636
+        }
+      },
+      {
+        "status": 200,
+        "body": {
+          "success": true,
+          "jobId": "BSVG6MpoEurZTGNfPLyN",
+          "status": "processing",
+          "creditsReserved": 18,
+          "creditsDeducted": 18,
+          "progress": 19,
+          "createdAtMs": 1774431088159,
+          "attempts": 1,
+          "maxAttempts": 3,
+          "serverTimeoutMs": 300000,
+          "lastHeartbeatAtMs": 1774431088636
+        }
+      },
+      {
+        "status": 200,
+        "body": {
+          "success": true,
+          "jobId": "BSVG6MpoEurZTGNfPLyN",
+          "status": "processing",
+          "creditsReserved": 18,
+          "creditsDeducted": 18,
+          "progress": 20,
+          "createdAtMs": 1774431088159,
+          "attempts": 1,
+          "maxAttempts": 3,
+          "serverTimeoutMs": 300000,
+          "lastHeartbeatAtMs": 1774431108793
+        }
+      },
+      {
+        "status": 200,
+        "body": {
+          "success": true,
+          "jobId": "BSVG6MpoEurZTGNfPLyN",
+          "status": "processing",
+          "creditsReserved": 18,
+          "creditsDeducted": 18,
+          "progress": 21,
+          "createdAtMs": 1774431088159,
+          "attempts": 1,
+          "maxAttempts": 3,
+          "serverTimeoutMs": 300000,
+          "lastHeartbeatAtMs": 1774431108793
+        }
+      },
+      {
+        "status": 200,
+        "body": {
+          "success": true,
+          "jobId": "BSVG6MpoEurZTGNfPLyN",
+          "status": "processing",
+          "creditsReserved": 18,
+          "creditsDeducted": 18,
+          "progress": 21,
+          "createdAtMs": 1774431088159,
+          "attempts": 1,
+          "maxAttempts": 3,
+          "serverTimeoutMs": 300000,
+          "lastHeartbeatAtMs": 1774431108793
+        }
+      },
+      {
+        "status": 200,
+        "body": {
+          "success": true,
+          "jobId": "BSVG6MpoEurZTGNfPLyN",
+          "status": "processing",
+          "creditsReserved": 18,
+          "creditsDeducted": 18,
+          "progress": 22,
+          "createdAtMs": 1774431088159,
+          "attempts": 1,
+          "maxAttempts": 3,
+          "serverTimeoutMs": 300000,
+          "lastHeartbeatAtMs": 1774431108793
+        }
+      },
+      {
+        "status": 200,
+        "body": {
+          "success": true,
+          "jobId": "BSVG6MpoEurZTGNfPLyN",
+          "status": "processing",
+          "creditsReserved": 18,
+          "creditsDeducted": 18,
+          "progress": 23,
+          "createdAtMs": 1774431088159,
+          "attempts": 1,
+          "maxAttempts": 3,
+          "serverTimeoutMs": 300000,
+          "lastHeartbeatAtMs": 1774431108793
+        }
+      },
+      {
+        "status": 200,
+        "body": {
+          "success": true,
+          "jobId": "BSVG6MpoEurZTGNfPLyN",
+          "status": "processing",
+          "creditsReserved": 18,
+          "creditsDeducted": 18,
+          "progress": 24,
+          "createdAtMs": 1774431088159,
+          "attempts": 1,
+          "maxAttempts": 3,
+          "serverTimeoutMs": 300000,
+          "lastHeartbeatAtMs": 1774431108793
+        }
+      },
+      {
+        "status": 200,
+        "body": {
+          "success": true,
+          "jobId": "BSVG6MpoEurZTGNfPLyN",
+          "status": "processing",
+          "creditsReserved": 18,
+          "creditsDeducted": 18,
+          "progress": 25,
+          "createdAtMs": 1774431088159,
+          "attempts": 1,
+          "maxAttempts": 3,
+          "serverTimeoutMs": 300000,
+          "lastHeartbeatAtMs": 1774431108793
+        }
+      },
+      {
+        "status": 200,
+        "body": {
+          "success": true,
+          "jobId": "BSVG6MpoEurZTGNfPLyN",
+          "status": "processing",
+          "creditsReserved": 18,
+          "creditsDeducted": 18,
+          "progress": 26,
+          "createdAtMs": 1774431088159,
+          "attempts": 1,
+          "maxAttempts": 3,
+          "serverTimeoutMs": 300000,
+          "lastHeartbeatAtMs": 1774431108793
+        }
+      },
+      {
+        "status": 200,
+        "body": {
+          "success": true,
+          "jobId": "BSVG6MpoEurZTGNfPLyN",
+          "status": "processing",
+          "creditsReserved": 18,
+          "creditsDeducted": 18,
+          "progress": 27,
+          "createdAtMs": 1774431088159,
+          "attempts": 1,
+          "maxAttempts": 3,
+          "serverTimeoutMs": 300000,
+          "lastHeartbeatAtMs": 1774431108793
+        }
+      },
+      {
+        "status": 200,
+        "body": {
+          "success": true,
+          "jobId": "BSVG6MpoEurZTGNfPLyN",
+          "status": "processing",
+          "creditsReserved": 18,
+          "creditsDeducted": 18,
+          "progress": 28,
+          "createdAtMs": 1774431088159,
+          "attempts": 1,
+          "maxAttempts": 3,
+          "serverTimeoutMs": 300000,
+          "lastHeartbeatAtMs": 1774431108793
+        }
+      },
+      {
+        "status": 200,
+        "body": {
+          "success": true,
+          "jobId": "BSVG6MpoEurZTGNfPLyN",
+          "status": "processing",
+          "creditsReserved": 18,
+          "creditsDeducted": 18,
+          "progress": 29,
+          "createdAtMs": 1774431088159,
+          "attempts": 1,
+          "maxAttempts": 3,
+          "serverTimeoutMs": 300000,
+          "lastHeartbeatAtMs": 1774431128793
+        }
+      },
+      {
+        "status": 200,
+        "body": {
+          "success": true,
+          "jobId": "BSVG6MpoEurZTGNfPLyN",
+          "status": "completed",
+          "creditsReserved": 18,
+          "creditsDeducted": 18,
+          "storagePath": "users/UmgegZlDffgUlJefOJ8WpjXZrWO2/generations/1774431130288-7ea58bb2a6583dc9.mp4",
+          "viewUrlExpiresAt": "2026-03-25T10:32:12.323Z",
+          "videoUrl": "https://storage.googleapis.com/vidra-media-prod/users/UmgegZlDffgUlJefOJ8WpjXZrWO2/generations/1774431130288-7ea58bb2a6583dc9.mp4?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=vidra-storage%40gen-lang-client-0569793111.iam.gserviceaccount.com%2F20260325%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20260325T093212Z&X-Goog-Expires=3600&X-Goog-SignedHeaders=host&response-content-disposition=inline&X-Goog-Signature=0c4fad8754566236f18d610e4e22b36ff9c6d7a996680e107cb898fbfef90ddb426a087d6df8936e39591ba5c1d8a9de6dd276ac1027ff2b2634a6e653da1a122e1529d01519489777c2dca3ee1ce8e88f37bec880516059c86b1b902d303af5054eec42a21bb58868b3a74590a22ac8198da5143582b1232fef007bf3d1dd757b169d1a72cd7c55d3b2df573559fdcb498245cb483ab11dcdfa588b3bb0812ff5b2f7bcce16db8a66689cd40e5442d39109d2f150092e22431f82249ae4ad584e8baeca644b0766a54130bfdd2b46937c29a226583e2134acae9a295fa0cd09c9a442bd4c9106acbaeeb3f1d0f13fea660bc12eefb3a282177223a93b34422e",
+          "assetId": "9f64d87f-7b4a-4405-87f3-e282aab277d0",
+          "contentType": "video/mp4",
+          "viewUrl": "https://storage.googleapis.com/vidra-media-prod/users/UmgegZlDffgUlJefOJ8WpjXZrWO2/generations/1774431130288-7ea58bb2a6583dc9.mp4?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=vidra-storage%40gen-lang-client-0569793111.iam.gserviceaccount.com%2F20260325%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20260325T093210Z&X-Goog-Expires=3600&X-Goog-SignedHeaders=host&response-content-disposition=inline&X-Goog-Signature=86f69aa20a728e17c8b3a2781dc2c447fd5dd1308474cb3728100b53e4510c97e69ce1a7c7f42852ce17233ed4bee6a16cd5a396647cb4adb184f47bec0d163de01a413fc4910fdf006c0b2379d8e46af5a05f99a629f4c590d546b0ffef4ff04376e7de1bd88dc696c9807771bb3d7835d01182e94f8f91e4b149d3f77a4077739c90ced63e76d55d88b7eb2ee8a763e87d7a824da6770b129f120bc89d47f06cc8012702316018a913d70c459517fc9dff450d52385d755a2f002508647523d61af65f0f86a116696daa51c7d8dc6199bca9cfad4e849f47f1b0b6c168082d6421ab4a5eb7516b44993235a83518c3c2014ac6cd8f279ad50466efc617de21",
+          "sizeBytes": 708218,
+          "inputMode": "t2v",
+          "progress": 100,
+          "createdAtMs": 1774431088159,
+          "attempts": 1,
+          "maxAttempts": 3,
+          "serverTimeoutMs": 300000
+        }
+      }
+    ]
+  }
+}

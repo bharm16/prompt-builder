@@ -1,12 +1,10 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef } from "react";
 
-import type { PromptCanvasState } from '../types';
+import type { PromptCanvasState } from "../types";
 
 export interface UsePromptStatusOptions {
   displayedPrompt: string | null;
   inputPrompt: string;
-  isDraftReady: boolean;
-  isRefining: boolean;
   isProcessing: boolean;
   generatedTimestamp: number | null;
   setState: (payload: Partial<PromptCanvasState>) => void;
@@ -15,8 +13,6 @@ export interface UsePromptStatusOptions {
 export function usePromptStatus({
   displayedPrompt,
   inputPrompt,
-  isDraftReady,
-  isRefining,
   isProcessing,
   generatedTimestamp,
   setState,
@@ -32,37 +28,30 @@ export function usePromptStatus({
   useEffect(() => {
     if (!displayedPrompt) {
       hasSetTimestampRef.current = false;
-      setState({ promptState: 'generated', generatedTimestamp: null });
+      setState({ promptState: "generated", generatedTimestamp: null });
       return;
     }
 
     if (displayedPrompt === inputPrompt) {
-      setState({ promptState: 'synced' });
+      setState({ promptState: "synced" });
       return;
     }
 
-    if (isDraftReady && !isRefining && !isProcessing) {
+    if (displayedPrompt !== inputPrompt && !isProcessing) {
       // Only set timestamp once per draft to prevent loops
       if (!generatedTimestampRef.current && !hasSetTimestampRef.current) {
         hasSetTimestampRef.current = true;
         setState({
-          promptState: 'generated',
+          promptState: "generated",
           generatedTimestamp: Date.now(),
         });
       } else {
-        setState({ promptState: 'generated' });
+        setState({ promptState: "generated" });
       }
       return;
     }
 
     hasSetTimestampRef.current = false;
-    setState({ promptState: 'edited' });
-  }, [
-    displayedPrompt,
-    inputPrompt,
-    isDraftReady,
-    isRefining,
-    isProcessing,
-    setState,
-  ]);
+    setState({ promptState: "edited" });
+  }, [displayedPrompt, inputPrompt, isProcessing, setState]);
 }

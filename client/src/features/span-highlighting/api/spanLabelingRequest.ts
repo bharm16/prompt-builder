@@ -1,4 +1,4 @@
-import type { LabelSpansPayload } from './spanLabelingTypes';
+import type { LabelSpansPayload } from "./spanLabelingTypes";
 
 /**
  * Builds the request body for span labeling API calls.

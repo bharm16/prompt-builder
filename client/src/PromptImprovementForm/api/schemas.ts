@@ -1,10 +1,10 @@
-import { z } from 'zod';
+import { z } from "zod";
 
 export const QuestionSchema = z.object({
   id: z.number(),
   title: z.string(),
   description: z.string(),
-  field: z.enum(['specificAspects', 'backgroundLevel', 'intendedUse']),
+  field: z.enum(["specificAspects", "backgroundLevel", "intendedUse"]),
   examples: z.array(z.string()),
 });
 

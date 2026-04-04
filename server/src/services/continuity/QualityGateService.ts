@@ -1,13 +1,13 @@
-import { spawn } from 'node:child_process';
-import { promises as fs } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import sharp from 'sharp';
-import { logger } from '@infrastructure/Logger';
-import { FaceEmbeddingService } from '@services/asset/FaceEmbeddingService';
-import type { StorageService } from '@services/storage/StorageService';
-import { STORAGE_TYPES } from '@services/storage/config/storageConfig';
-import type { QualityGateResult } from './types';
+import { spawn } from "node:child_process";
+import { promises as fs } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import sharp from "sharp";
+import { logger } from "@infrastructure/Logger";
+import { FaceEmbeddingService } from "@services/asset/FaceEmbeddingService";
+import type { StorageService } from "@services/storage/StorageService";
+import { STORAGE_TYPES } from "@services/storage/config/storageConfig";
+import type { QualityGateResult } from "./types";
 
 interface QualityGateOptions {
   userId: string;
@@ -20,11 +20,11 @@ interface QualityGateOptions {
 
 type ClipPipeline = (
   input: Buffer,
-  options: { pool: boolean }
+  options: { pool: boolean },
 ) => Promise<{ data?: ArrayLike<number> }>;
 
 export class QualityGateService {
-  private readonly log = logger.child({ service: 'QualityGateService' });
+  private readonly log = logger.child({ service: "QualityGateService" });
   private readonly faceEmbedding: FaceEmbeddingService | null;
   private readonly disableClip: boolean;
   private static clipPipelinePromise: Promise<ClipPipeline> | null = null;
@@ -32,7 +32,7 @@ export class QualityGateService {
   constructor(
     faceEmbedding?: FaceEmbeddingService | null,
     private storage?: StorageService,
-    options?: { disableClip?: boolean }
+    options?: { disableClip?: boolean },
   ) {
     this.faceEmbedding = faceEmbedding ?? null;
     this.disableClip = options?.disableClip ?? false;
@@ -43,7 +43,10 @@ export class QualityGateService {
 
     const frameBuffer = await this.extractMidFrame(generatedVideoUrl);
     const referenceBuffer = await this.downloadImage(referenceImageUrl);
-    let styleScore = await this.compareClipSimilarity(referenceBuffer, frameBuffer);
+    let styleScore = await this.compareClipSimilarity(
+      referenceBuffer,
+      frameBuffer,
+    );
     if (styleScore === undefined) {
       styleScore = await this.compareHistogram(referenceBuffer, frameBuffer);
     }
@@ -51,18 +54,25 @@ export class QualityGateService {
     let identityScore: number | undefined;
     if (options.characterReferenceUrl && this.faceEmbedding && this.storage) {
       try {
-        const ref = await this.faceEmbedding.extractEmbedding(options.characterReferenceUrl);
+        const ref = await this.faceEmbedding.extractEmbedding(
+          options.characterReferenceUrl,
+        );
         const stored = await this.storage.saveFromBuffer(
           options.userId,
           frameBuffer,
           STORAGE_TYPES.PREVIEW_IMAGE,
-          'image/png',
-          { source: 'quality-gate' }
+          "image/png",
+          { source: "quality-gate" },
         );
-        const candidate = await this.faceEmbedding.extractEmbedding(stored.viewUrl);
-        identityScore = this.faceEmbedding.computeSimilarity(ref.embedding, candidate.embedding);
+        const candidate = await this.faceEmbedding.extractEmbedding(
+          stored.viewUrl,
+        );
+        identityScore = this.faceEmbedding.computeSimilarity(
+          ref.embedding,
+          candidate.embedding,
+        );
       } catch (error) {
-        this.log.warn('Identity similarity check failed', {
+        this.log.warn("Identity similarity check failed", {
           error: (error as Error).message,
         });
       }
@@ -71,7 +81,8 @@ export class QualityGateService {
     const styleThreshold = options.styleThreshold ?? 0.75;
     const identityThreshold = options.identityThreshold ?? 0.6;
 
-    const passedStyle = styleScore !== undefined ? styleScore >= styleThreshold : true;
+    const passedStyle =
+      styleScore !== undefined ? styleScore >= styleThreshold : true;
     const passedIdentity =
       identityScore !== undefined ? identityScore >= identityThreshold : true;
 
@@ -90,21 +101,26 @@ export class QualityGateService {
   private async extractMidFrame(videoUrl: string): Promise<Buffer> {
     const duration = await this.getVideoDuration(videoUrl);
     const timestamp = duration > 0 ? duration / 2 : 0;
-    const tempDir = await fs.mkdtemp(join(tmpdir(), 'quality-'));
+    const tempDir = await fs.mkdtemp(join(tmpdir(), "quality-"));
 
     try {
-      const outputPath = join(tempDir, 'frame.png');
+      const outputPath = join(tempDir, "frame.png");
       const args = [
-        '-y',
-        '-ss', String(Math.max(0, timestamp)),
-        '-i', videoUrl,
-        '-frames:v', '1',
-        '-f', 'image2',
-        '-vcodec', 'png',
+        "-y",
+        "-ss",
+        String(Math.max(0, timestamp)),
+        "-i",
+        videoUrl,
+        "-frames:v",
+        "1",
+        "-f",
+        "image2",
+        "-vcodec",
+        "png",
         outputPath,
       ];
 
-      await this.exec('ffmpeg', args);
+      await this.exec("ffmpeg", args);
       return await fs.readFile(outputPath);
     } finally {
       await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
@@ -113,18 +129,24 @@ export class QualityGateService {
 
   private async getVideoDuration(videoUrl: string): Promise<number> {
     const args = [
-      '-v', 'error',
-      '-show_entries', 'format=duration',
-      '-of', 'default=noprint_wrappers=1:nokey=1',
+      "-v",
+      "error",
+      "-show_entries",
+      "format=duration",
+      "-of",
+      "default=noprint_wrappers=1:nokey=1",
       videoUrl,
     ];
 
-    const output = await this.execWithOutput('ffprobe', args);
+    const output = await this.execWithOutput("ffprobe", args);
     const duration = Number(output.trim());
     return Number.isFinite(duration) ? duration : 0;
   }
 
-  private async compareHistogram(referenceBuffer: Buffer, frameBuffer: Buffer): Promise<number> {
+  private async compareHistogram(
+    referenceBuffer: Buffer,
+    frameBuffer: Buffer,
+  ): Promise<number> {
     const refHist = await this.computeHistogram(referenceBuffer);
     const frameHist = await this.computeHistogram(frameBuffer);
 
@@ -133,7 +155,7 @@ export class QualityGateService {
 
   private async compareClipSimilarity(
     referenceBuffer: Buffer,
-    frameBuffer: Buffer
+    frameBuffer: Buffer,
   ): Promise<number | undefined> {
     const pipeline = await this.getClipPipeline();
     if (!pipeline) return undefined;
@@ -144,8 +166,12 @@ export class QualityGateService {
         pipeline(frameBuffer, { pool: true }),
       ]);
 
-      const refEmbedding = this.normalizeEmbedding(this.extractEmbedding(refTensor));
-      const frameEmbedding = this.normalizeEmbedding(this.extractEmbedding(frameTensor));
+      const refEmbedding = this.normalizeEmbedding(
+        this.extractEmbedding(refTensor),
+      );
+      const frameEmbedding = this.normalizeEmbedding(
+        this.extractEmbedding(frameTensor),
+      );
 
       if (refEmbedding.length === 0 || frameEmbedding.length === 0) {
         return undefined;
@@ -154,7 +180,7 @@ export class QualityGateService {
       const similarity = this.cosineSimilarity(refEmbedding, frameEmbedding);
       return Math.max(0, Math.min(1, similarity));
     } catch (error) {
-      this.log.warn('CLIP similarity check failed, falling back to histogram', {
+      this.log.warn("CLIP similarity check failed, falling back to histogram", {
         error: (error as Error).message,
       });
       return undefined;
@@ -168,8 +194,11 @@ export class QualityGateService {
 
     if (!QualityGateService.clipPipelinePromise) {
       QualityGateService.clipPipelinePromise = (async () => {
-        const transformers = await import('@huggingface/transformers');
-        const pipeline = await transformers.pipeline('image-feature-extraction', 'Xenova/clip-vit-base-patch32');
+        const transformers = await import("@huggingface/transformers");
+        const pipeline = await transformers.pipeline(
+          "image-feature-extraction",
+          "Xenova/clip-vit-base-patch32",
+        );
         return pipeline as unknown as ClipPipeline;
       })();
     }
@@ -177,7 +206,7 @@ export class QualityGateService {
     try {
       return await QualityGateService.clipPipelinePromise;
     } catch (error) {
-      this.log.warn('Failed to load CLIP pipeline, falling back to histogram', {
+      this.log.warn("Failed to load CLIP pipeline, falling back to histogram", {
         error: (error as Error).message,
       });
       QualityGateService.clipPipelinePromise = null;
@@ -187,7 +216,7 @@ export class QualityGateService {
 
   private extractEmbedding(tensor: { data?: ArrayLike<number> }): Float32Array {
     const raw = tensor?.data;
-    if (!raw || typeof raw.length !== 'number') return new Float32Array();
+    if (!raw || typeof raw.length !== "number") return new Float32Array();
     if (raw instanceof Float32Array) return raw;
     return Float32Array.from(Array.from(raw));
   }
@@ -217,7 +246,7 @@ export class QualityGateService {
 
   private async computeHistogram(buffer: Buffer): Promise<number[]> {
     const { data } = await sharp(buffer)
-      .resize(256, 256, { fit: 'cover' })
+      .resize(256, 256, { fit: "cover" })
       .removeAlpha()
       .raw()
       .toBuffer({ resolveWithObject: true });
@@ -257,33 +286,46 @@ export class QualityGateService {
 
   private async exec(command: string, args: string[]): Promise<void> {
     await new Promise<void>((resolve, reject) => {
-      const child = spawn(command, args, { stdio: ['ignore', 'pipe', 'pipe'] });
-      let stderr = '';
-      child.stderr.on('data', (chunk) => { stderr += chunk.toString(); });
-      child.on('error', reject);
-      child.on('close', (code) => {
+      const child = spawn(command, args, { stdio: ["ignore", "pipe", "pipe"] });
+      let stderr = "";
+      child.stderr.on("data", (chunk) => {
+        stderr += chunk.toString();
+      });
+      child.on("error", reject);
+      child.on("close", (code) => {
         if (code === 0) {
           resolve();
         } else {
-          reject(new Error(`${command} failed (${code}): ${stderr.slice(0, 400)}`));
+          reject(
+            new Error(`${command} failed (${code}): ${stderr.slice(0, 400)}`),
+          );
         }
       });
     });
   }
 
-  private async execWithOutput(command: string, args: string[]): Promise<string> {
+  private async execWithOutput(
+    command: string,
+    args: string[],
+  ): Promise<string> {
     return await new Promise((resolve, reject) => {
-      const child = spawn(command, args, { stdio: ['ignore', 'pipe', 'pipe'] });
-      let stdout = '';
-      let stderr = '';
-      child.stdout.on('data', (chunk) => { stdout += chunk.toString(); });
-      child.stderr.on('data', (chunk) => { stderr += chunk.toString(); });
-      child.on('error', reject);
-      child.on('close', (code) => {
+      const child = spawn(command, args, { stdio: ["ignore", "pipe", "pipe"] });
+      let stdout = "";
+      let stderr = "";
+      child.stdout.on("data", (chunk) => {
+        stdout += chunk.toString();
+      });
+      child.stderr.on("data", (chunk) => {
+        stderr += chunk.toString();
+      });
+      child.on("error", reject);
+      child.on("close", (code) => {
         if (code === 0) {
           resolve(stdout);
         } else {
-          reject(new Error(`${command} failed (${code}): ${stderr.slice(0, 400)}`));
+          reject(
+            new Error(`${command} failed (${code}): ${stderr.slice(0, 400)}`),
+          );
         }
       });
     });

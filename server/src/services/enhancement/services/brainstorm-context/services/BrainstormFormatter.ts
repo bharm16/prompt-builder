@@ -1,4 +1,4 @@
-import { logger } from '@infrastructure/Logger';
+import { logger } from "@infrastructure/Logger";
 
 /**
  * Brainstorm Formatter
@@ -7,7 +7,7 @@ import { logger } from '@infrastructure/Logger';
  * Single Responsibility: String formatting and output presentation.
  */
 export class BrainstormFormatter {
-  private readonly log = logger.child({ service: 'BrainstormFormatter' });
+  private readonly log = logger.child({ service: "BrainstormFormatter" });
 
   constructor() {
     // No dependencies - pure logic
@@ -27,18 +27,18 @@ export class BrainstormFormatter {
    */
   formatBrainstormKey(key: string): string {
     if (!key) {
-      return '';
+      return "";
     }
 
     return (
       key
         .toString()
         // Insert space before capital letters
-        .replace(/([A-Z])/g, ' $1')
+        .replace(/([A-Z])/g, " $1")
         // Replace underscores and hyphens with spaces
-        .replace(/[_-]/g, ' ')
+        .replace(/[_-]/g, " ")
         // Normalize multiple spaces to single space
-        .replace(/\s+/g, ' ')
+        .replace(/\s+/g, " ")
         .trim()
         // Capitalize first letter of each word
         .replace(/\b\w/g, (char) => char.toUpperCase())
@@ -59,10 +59,10 @@ export class BrainstormFormatter {
    */
   formatBrainstormValue(value: unknown): string {
     if (Array.isArray(value)) {
-      return value.join(', ');
+      return value.join(", ");
     }
 
-    if (typeof value === 'object' && value !== null) {
+    if (typeof value === "object" && value !== null) {
       return JSON.stringify(value);
     }
 

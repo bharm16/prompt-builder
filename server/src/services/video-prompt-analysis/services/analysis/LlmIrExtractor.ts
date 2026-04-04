@@ -1,17 +1,17 @@
-import type { VideoPromptIR } from '../../types';
-import type { VideoPromptLlmGateway } from '../llm/VideoPromptLlmGateway';
-import { createEmptyIR } from './IrFactory';
+import type { VideoPromptIR } from "../../types";
+import type { VideoPromptLlmGateway } from "../llm/VideoPromptLlmGateway";
+import { createEmptyIR } from "./IrFactory";
 
 type UnknownRecord = Record<string, unknown>;
 
 function isRecord(value: unknown): value is UnknownRecord {
-  return typeof value === 'object' && value !== null;
+  return typeof value === "object" && value !== null;
 }
 
 function asTrimmedStringArray(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
   return value
-    .map((item) => (typeof item === 'string' ? item.trim() : ''))
+    .map((item) => (typeof item === "string" ? item.trim() : ""))
     .filter((item) => item.length > 0);
 }
 
@@ -24,13 +24,17 @@ export class LlmIrExtractor {
     }
 
     try {
-      const response = await this.gateway.extractIr(this.buildLlmPrompt(text), this.getIrSchema());
+      const response = await this.gateway.extractIr(
+        this.buildLlmPrompt(text),
+        this.getIrSchema(),
+      );
 
       if (!isRecord(response)) {
         return null;
       }
 
-      const narrative = typeof response.narrative === 'string' ? response.narrative : '';
+      const narrative =
+        typeof response.narrative === "string" ? response.narrative : "";
       if (!narrative.trim()) {
         return null;
       }
@@ -44,7 +48,8 @@ export class LlmIrExtractor {
   private buildIrFromLlm(parsed: UnknownRecord, raw: string): VideoPromptIR {
     const ir = createEmptyIR(raw);
 
-    const narrative = typeof parsed.narrative === 'string' ? parsed.narrative.trim() : '';
+    const narrative =
+      typeof parsed.narrative === "string" ? parsed.narrative.trim() : "";
     if (narrative) {
       ir.raw = narrative;
     }
@@ -63,39 +68,49 @@ export class LlmIrExtractor {
     if (camera) {
       const movements = asTrimmedStringArray(camera.movements);
       if (movements.length > 0) {
-        ir.camera.movements = movements.map((movement) => movement.toLowerCase());
+        ir.camera.movements = movements.map((movement) =>
+          movement.toLowerCase(),
+        );
       }
-      if (typeof camera.shotType === 'string' && camera.shotType.trim()) {
+      if (typeof camera.shotType === "string" && camera.shotType.trim()) {
         ir.camera.shotType = camera.shotType.trim().toLowerCase();
       }
-      if (typeof camera.angle === 'string' && camera.angle.trim()) {
+      if (typeof camera.angle === "string" && camera.angle.trim()) {
         ir.camera.angle = camera.angle.trim().toLowerCase();
       }
     }
 
-    const environment = isRecord(parsed.environment) ? parsed.environment : null;
+    const environment = isRecord(parsed.environment)
+      ? parsed.environment
+      : null;
     if (environment) {
-      if (typeof environment.setting === 'string' && environment.setting.trim()) {
+      if (
+        typeof environment.setting === "string" &&
+        environment.setting.trim()
+      ) {
         ir.environment.setting = environment.setting.trim();
       }
       const lighting = asTrimmedStringArray(environment.lighting);
       if (lighting.length > 0) {
         ir.environment.lighting = lighting.map((light) => light.toLowerCase());
       }
-      if (typeof environment.weather === 'string' && environment.weather.trim()) {
+      if (
+        typeof environment.weather === "string" &&
+        environment.weather.trim()
+      ) {
         ir.environment.weather = environment.weather.trim().toLowerCase();
       }
     }
 
     const audio = isRecord(parsed.audio) ? parsed.audio : null;
     if (audio) {
-      if (typeof audio.dialogue === 'string' && audio.dialogue.trim()) {
+      if (typeof audio.dialogue === "string" && audio.dialogue.trim()) {
         ir.audio.dialogue = audio.dialogue.trim();
       }
-      if (typeof audio.music === 'string' && audio.music.trim()) {
+      if (typeof audio.music === "string" && audio.music.trim()) {
         ir.audio.music = audio.music.trim();
       }
-      if (typeof audio.sfx === 'string' && audio.sfx.trim()) {
+      if (typeof audio.sfx === "string" && audio.sfx.trim()) {
         ir.audio.sfx = audio.sfx.trim();
       }
     }
@@ -116,8 +131,8 @@ export class LlmIrExtractor {
       const technical: Record<string, string> = {};
       for (const entry of parsed.technical) {
         if (!isRecord(entry)) continue;
-        const key = typeof entry.key === 'string' ? entry.key : '';
-        const value = typeof entry.value === 'string' ? entry.value : '';
+        const key = typeof entry.key === "string" ? entry.key : "";
+        const value = typeof entry.value === "string" ? entry.value : "";
         if (key && value) {
           technical[key] = value;
         }
@@ -155,56 +170,56 @@ Return ONLY the JSON object.`;
 
   private getIrSchema(): Record<string, unknown> {
     return {
-      type: 'object',
+      type: "object",
       properties: {
-        narrative: { type: 'string' },
-        subjects: { type: 'array', items: { type: 'string' } },
-        actions: { type: 'array', items: { type: 'string' } },
+        narrative: { type: "string" },
+        subjects: { type: "array", items: { type: "string" } },
+        actions: { type: "array", items: { type: "string" } },
         camera: {
-          type: 'object',
+          type: "object",
           properties: {
-            shotType: { type: 'string' },
-            angle: { type: 'string' },
-            movements: { type: 'array', items: { type: 'string' } },
+            shotType: { type: "string" },
+            angle: { type: "string" },
+            movements: { type: "array", items: { type: "string" } },
           },
         },
         environment: {
-          type: 'object',
+          type: "object",
           properties: {
-            setting: { type: 'string' },
-            lighting: { type: 'array', items: { type: 'string' } },
-            weather: { type: 'string' },
+            setting: { type: "string" },
+            lighting: { type: "array", items: { type: "string" } },
+            weather: { type: "string" },
           },
         },
         audio: {
-          type: 'object',
+          type: "object",
           properties: {
-            dialogue: { type: 'string' },
-            music: { type: 'string' },
-            sfx: { type: 'string' },
-            ambience: { type: 'string' },
+            dialogue: { type: "string" },
+            music: { type: "string" },
+            sfx: { type: "string" },
+            ambience: { type: "string" },
           },
         },
         meta: {
-          type: 'object',
+          type: "object",
           properties: {
-            mood: { type: 'array', items: { type: 'string' } },
-            style: { type: 'array', items: { type: 'string' } },
+            mood: { type: "array", items: { type: "string" } },
+            style: { type: "array", items: { type: "string" } },
           },
         },
         technical: {
-          type: 'array',
+          type: "array",
           items: {
-            type: 'object',
+            type: "object",
             properties: {
-              key: { type: 'string' },
-              value: { type: 'string' },
+              key: { type: "string" },
+              value: { type: "string" },
             },
-            required: ['key', 'value'],
+            required: ["key", "value"],
           },
         },
       },
-      required: ['narrative'],
+      required: ["narrative"],
     };
   }
 }

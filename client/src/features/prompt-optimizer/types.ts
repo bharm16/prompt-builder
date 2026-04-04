@@ -1,13 +1,16 @@
-import type { IconProps } from '@promptstudio/system/components/ui';
-import type { User } from '@features/prompt-optimizer/types/domain/prompt-session';
-import type { FormData } from '@/PromptImprovementForm';
-import type { PromptContext } from '@utils/PromptContext/PromptContext';
-import type { CapabilityValues } from '@shared/capabilities';
-import type { SuggestionItem, SuggestionPayload } from './types/domain/suggestions';
-import type { CoherenceIssue } from './components/coherence/useCoherenceAnnotations';
-import type { CoherenceRecommendation } from './types/coherence';
-import type { I2VContext } from './types/i2v';
-import type { SpanLabelingResult } from '@/features/span-highlighting/hooks/types';
+import type { IconProps } from "@promptstudio/system/components/ui";
+import type { User } from "@features/prompt-optimizer/types/domain/prompt-session";
+import type { FormData } from "@/PromptImprovementForm";
+import type { PromptContext } from "@utils/PromptContext/PromptContext";
+import type { CapabilityValues } from "@shared/capabilities";
+import type {
+  SuggestionItem,
+  SuggestionPayload,
+} from "./types/domain/suggestions";
+import type { CoherenceIssue } from "./components/coherence/useCoherenceAnnotations";
+import type { CoherenceRecommendation } from "./types/coherence";
+import type { I2VContext } from "./types/i2v";
+import type { SpanLabelingResult } from "@/features/span-highlighting/hooks/types";
 
 /**
  * Prompt optimization mode configuration
@@ -15,7 +18,7 @@ import type { SpanLabelingResult } from '@/features/span-highlighting/hooks/type
 export interface PromptMode {
   id: string;
   name: string;
-  icon: IconProps['icon'];
+  icon: IconProps["icon"];
   description?: string;
 }
 
@@ -32,7 +35,7 @@ export interface CategoryLegendProps {
 /**
  * Export format type
  */
-export type ExportFormat = 'text' | 'markdown' | 'json';
+export type ExportFormat = "text" | "markdown" | "json";
 
 export interface OptimizationOptions {
   skipCache?: boolean;
@@ -44,7 +47,7 @@ export interface OptimizationOptions {
   createVersion?: boolean;
   startImage?: string;
   sourcePrompt?: string;
-  constraintMode?: 'strict' | 'flexible' | 'transform';
+  constraintMode?: "strict" | "flexible" | "transform";
   preserveSessionView?: boolean;
 }
 
@@ -85,6 +88,7 @@ export interface FloatingToolbarProps {
  */
 export interface PromptEditorProps {
   className?: string;
+  placeholder?: string;
   onTextSelection: (e: React.MouseEvent<HTMLDivElement>) => void;
   onHighlightClick: (e: React.MouseEvent<HTMLDivElement>) => void;
   onHighlightMouseDown: (e: React.MouseEvent<HTMLDivElement>) => void;
@@ -108,7 +112,7 @@ export interface PromptModalsProps {
   onConceptComplete?: (
     finalConcept: string,
     elements: Record<string, unknown>,
-    metadata: Record<string, unknown>
+    metadata: Record<string, unknown>,
   ) => void;
   onSkipBrainstorm?: () => void;
 }
@@ -119,7 +123,10 @@ export interface PromptModalsProps {
 export interface PromptResultsSectionProps {
   user: User | null;
   onDisplayedPromptChange: (text: string) => void;
-  onReoptimize: (promptToOptimize?: string, options?: OptimizationOptions) => Promise<void>;
+  onReoptimize: (
+    promptToOptimize?: string,
+    options?: OptimizationOptions,
+  ) => Promise<void>;
   onFetchSuggestions: (payload?: SuggestionPayload) => void;
   onSuggestionClick: (suggestion: SuggestionItem | string) => void;
   onHighlightsPersist: (highlights: SpanLabelingResult) => void;
@@ -127,7 +134,7 @@ export interface PromptResultsSectionProps {
   onRedo: () => void;
   stablePromptContext?: PromptContext | null | undefined;
   coherenceAffectedSpanIds?: Set<string> | undefined;
-  coherenceSpanIssueMap?: Map<string, 'conflict' | 'harmonization'> | undefined;
+  coherenceSpanIssueMap?: Map<string, "conflict" | "harmonization"> | undefined;
 
   // Coherence panel (inline, collapsible)
   coherenceIssues?: CoherenceIssue[] | undefined;
@@ -136,10 +143,9 @@ export interface PromptResultsSectionProps {
   onToggleCoherencePanelExpanded?: (() => void) | undefined;
   onDismissCoherenceIssue?: ((issueId: string) => void) | undefined;
   onDismissAllCoherenceIssues?: (() => void) | undefined;
-  onApplyCoherenceFix?: ((
-    issueId: string,
-    recommendation: CoherenceRecommendation
-  ) => void) | undefined;
+  onApplyCoherenceFix?:
+    | ((issueId: string, recommendation: CoherenceRecommendation) => void)
+    | undefined;
   onScrollToCoherenceSpan?: ((spanId: string) => void) | undefined;
   i2vContext?: I2VContext | null | undefined;
 }

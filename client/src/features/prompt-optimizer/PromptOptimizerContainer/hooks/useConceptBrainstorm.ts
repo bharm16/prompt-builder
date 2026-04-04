@@ -1,15 +1,15 @@
-import { useCallback, useEffect, useRef } from 'react';
-import { PromptContext } from '@utils/PromptContext';
-import { PERFORMANCE_CONFIG } from '@config/performance.config';
-import type { PromptHistoryEntry } from '@features/prompt-optimizer/types/domain/prompt-session';
-import type { Toast } from '@hooks/types';
-import type { HighlightSnapshot } from '@features/prompt-optimizer/context/types';
-import type { CapabilityValues } from '@shared/capabilities';
-import { logger } from '@/services/LoggingService';
-import { sanitizeError } from '@/utils/logging';
-import { applyOptimizationResult } from '../utils/persistOptimizationResult';
+import { useCallback, useEffect, useRef } from "react";
+import { PromptContext } from "@utils/PromptContext";
+import { PERFORMANCE_CONFIG } from "@config/performance.config";
+import type { PromptHistoryEntry } from "@features/prompt-optimizer/types/domain/prompt-session";
+import type { Toast } from "@hooks/types";
+import type { HighlightSnapshot } from "@features/prompt-optimizer/context/types";
+import type { CapabilityValues } from "@shared/capabilities";
+import { logger } from "@/services/LoggingService";
+import { sanitizeError } from "@/utils/logging";
+import { applyOptimizationResult } from "../utils/persistOptimizationResult";
 
-const log = logger.child('useConceptBrainstorm');
+const log = logger.child("useConceptBrainstorm");
 
 interface PromptOptimizer {
   setInputPrompt: (prompt: string) => void;
@@ -18,7 +18,7 @@ interface PromptOptimizer {
     context: Record<string, unknown> | null,
     brainstormContext: Record<string, unknown>,
     targetModel?: string,
-    options?: { generationParams?: CapabilityValues }
+    options?: { generationParams?: CapabilityValues },
   ) => Promise<{ optimized: string; score: number | null } | null>;
 }
 
@@ -30,11 +30,11 @@ interface PromptHistory {
     mode: string,
     targetModel?: string | null,
     generationParams?: Record<string, unknown> | null,
-    keyframes?: PromptHistoryEntry['keyframes'],
+    keyframes?: PromptHistoryEntry["keyframes"],
     context?: Record<string, unknown>,
     highlightCache?: Record<string, unknown>,
     existingUuid?: string | null,
-    title?: string | null
+    title?: string | null,
   ) => Promise<{ uuid: string; id?: string | null } | null>;
 }
 
@@ -44,7 +44,7 @@ interface UseConceptBrainstormParams {
   selectedMode: string;
   selectedModel?: string;
   generationParams: CapabilityValues;
-  keyframes?: PromptHistoryEntry['keyframes'];
+  keyframes?: PromptHistoryEntry["keyframes"];
   setConceptElements: (elements: Record<string, unknown>) => void;
   setPromptContext: (context: PromptContext | null) => void;
   setShowBrainstorm: (show: boolean) => void;
@@ -54,7 +54,7 @@ interface UseConceptBrainstormParams {
   setShowResults: (show: boolean) => void;
   applyInitialHighlightSnapshot: (
     snapshot: HighlightSnapshot | null,
-    options: { bumpVersion: boolean; markPersisted: boolean }
+    options: { bumpVersion: boolean; markPersisted: boolean },
   ) => void;
   resetEditStacks: () => void;
   persistedSignatureRef: React.MutableRefObject<string | null>;
@@ -91,15 +91,15 @@ export function useConceptBrainstorm({
   handleConceptComplete: (
     finalConcept: string,
     elements: Record<string, unknown>,
-    metadata: Record<string, unknown>
+    metadata: Record<string, unknown>,
   ) => Promise<void>;
   handleSkipBrainstorm: () => void;
 } {
   const { setInputPrompt, optimize } = promptOptimizer;
   const { saveToHistory } = promptHistory;
-  const conceptOptimizeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
-    null
-  );
+  const conceptOptimizeTimeoutRef = useRef<ReturnType<
+    typeof setTimeout
+  > | null>(null);
 
   // Cleanup timeout on unmount
   useEffect(() => {
@@ -117,7 +117,7 @@ export function useConceptBrainstorm({
     async (
       finalConcept: string,
       elements: Record<string, unknown>,
-      metadata: Record<string, unknown>
+      metadata: Record<string, unknown>,
     ): Promise<void> => {
       setConceptElements(elements);
 
@@ -145,8 +145,8 @@ export function useConceptBrainstorm({
             finalConcept,
             null,
             brainstormContextData,
-            selectedMode === 'video' ? selectedModel : undefined,
-            generationParams ? { generationParams } : undefined
+            selectedMode === "video" ? selectedModel : undefined,
+            generationParams ? { generationParams } : undefined,
           );
 
           if (result) {
@@ -155,10 +155,10 @@ export function useConceptBrainstorm({
               result.optimized,
               result.score,
               selectedMode,
-              selectedMode === 'video' ? selectedModel ?? null : null,
+              selectedMode === "video" ? (selectedModel ?? null) : null,
               (generationParams as unknown as Record<string, unknown>) ?? null,
               keyframes ?? null,
-              serializedContext as unknown as Record<string, unknown>
+              serializedContext as unknown as Record<string, unknown>,
             );
 
             if (saveResult?.uuid) {
@@ -175,17 +175,20 @@ export function useConceptBrainstorm({
                 skipLoadFromUrlRef,
                 navigate,
               });
-              toast.success('Video prompt generated successfully!');
+              toast.success("Video prompt generated successfully!");
             }
           }
         } catch (error) {
-          const errObj = error instanceof Error ? error : new Error(sanitizeError(error).message);
-          log.error('Error generating video prompt from brainstorm', errObj, {
-            operation: 'handleConceptComplete',
+          const errObj =
+            error instanceof Error
+              ? error
+              : new Error(sanitizeError(error).message);
+          log.error("Error generating video prompt from brainstorm", errObj, {
+            operation: "handleConceptComplete",
             selectedMode,
             selectedModel,
           });
-          toast.error('Failed to generate video prompt. Please try again.');
+          toast.error("Failed to generate video prompt. Please try again.");
         } finally {
           conceptOptimizeTimeoutRef.current = null;
         }
@@ -212,7 +215,7 @@ export function useConceptBrainstorm({
       skipLoadFromUrlRef,
       navigate,
       toast,
-    ]
+    ],
   );
 
   /**

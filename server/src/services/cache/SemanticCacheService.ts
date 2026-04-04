@@ -1,6 +1,6 @@
-import crypto from 'crypto';
-import { logger } from '@infrastructure/Logger';
-import type { GenerateKeyOptions, Logger } from './types.js';
+import crypto from "crypto";
+import { logger } from "@infrastructure/Logger";
+import type { GenerateKeyOptions, Logger } from "./types.js";
 
 /**
  * Semantic features extracted from prompt
@@ -17,7 +17,7 @@ export interface SemanticFeatures {
  * Cache optimization recommendation
  */
 export interface CacheRecommendation {
-  priority: 'high' | 'medium' | 'low';
+  priority: "high" | "medium" | "low";
   category: string;
   issue: string;
   suggestion: string;
@@ -28,7 +28,7 @@ export interface CacheRecommendation {
  * Cache optimization recommendations result
  */
 export interface CacheOptimizationRecommendations {
-  overall: 'needs-improvement' | 'good';
+  overall: "needs-improvement" | "good";
   currentHitRate: string;
   targetHitRate: string;
   recommendations: CacheRecommendation[];
@@ -73,15 +73,17 @@ export interface CacheStatsForRecommendations {
 
 /**
  * Semantic Cache Service
- * 
+ *
  * Improves cache hit rates through intelligent normalization and similarity matching.
  * Aims to increase hit rate from ~30% to ~60%.
- * 
+ *
  * Previously located in utils/ - moved to services/cache/ as this is a stateful
  * service with complex business logic, not a simple utility function.
  */
 export class SemanticCacheEnhancer {
-  private static readonly log = logger.child({ service: 'SemanticCacheEnhancer' });
+  private static readonly log = logger.child({
+    service: "SemanticCacheEnhancer",
+  });
 
   /**
    * Generate normalized cache key with semantic awareness
@@ -89,12 +91,16 @@ export class SemanticCacheEnhancer {
   static generateSemanticKey(
     namespace: string,
     data: Record<string, unknown>,
-    options: GenerateKeyOptions = {}
+    options: GenerateKeyOptions = {},
   ): string {
-    const operation = 'generateSemanticKey';
-    const { normalizeWhitespace = true, ignoreCase = true, sortKeys = true } = options;
+    const operation = "generateSemanticKey";
+    const {
+      normalizeWhitespace = true,
+      ignoreCase = true,
+      sortKeys = true,
+    } = options;
 
-    this.log.debug('Generating semantic cache key', {
+    this.log.debug("Generating semantic cache key", {
       operation,
       namespace,
       normalizeWhitespace,
@@ -111,14 +117,14 @@ export class SemanticCacheEnhancer {
 
     // Generate hash from normalized data
     const hash = crypto
-      .createHash('sha256')
+      .createHash("sha256")
       .update(JSON.stringify(normalized))
-      .digest('hex')
+      .digest("hex")
       .substring(0, 16);
 
     const key = `${namespace}:semantic:${hash}`;
-    
-    this.log.debug('Semantic cache key generated', {
+
+    this.log.debug("Semantic cache key generated", {
       operation,
       namespace,
       keyHash: hash,
@@ -149,8 +155,8 @@ export class SemanticCacheEnhancer {
       length: words.length,
       uniqueWords: uniqueWords.size,
       keyTerms,
-      firstWords: words.slice(0, 5).join(' '),
-      lastWords: words.slice(-3).join(' '),
+      firstWords: words.slice(0, 5).join(" "),
+      lastWords: words.slice(-3).join(" "),
     };
 
     return features;
@@ -161,9 +167,9 @@ export class SemanticCacheEnhancer {
    */
   static calculateSimilarity(prompt1: string, prompt2: string): number {
     const startTime = performance.now();
-    const operation = 'calculateSimilarity';
-    
-    this.log.debug('Calculating similarity between prompts', {
+    const operation = "calculateSimilarity";
+
+    this.log.debug("Calculating similarity between prompts", {
       operation,
       prompt1Length: prompt1.length,
       prompt2Length: prompt2.length,
@@ -190,7 +196,7 @@ export class SemanticCacheEnhancer {
     const similarityScore = 0.7 * jaccardScore + 0.3 * lengthScore;
 
     const duration = Math.round(performance.now() - startTime);
-    this.log.debug('Similarity calculation complete', {
+    this.log.debug("Similarity calculation complete", {
       operation,
       duration,
       similarityScore,
@@ -206,9 +212,9 @@ export class SemanticCacheEnhancer {
    */
   private static _normalizeData(
     data: unknown,
-    options: GenerateKeyOptions
+    options: GenerateKeyOptions,
   ): unknown {
-    if (typeof data === 'string') {
+    if (typeof data === "string") {
       return this._normalizeText(data, options);
     }
 
@@ -216,12 +222,17 @@ export class SemanticCacheEnhancer {
       return data.map((item) => this._normalizeData(item, options));
     }
 
-    if (data && typeof data === 'object') {
+    if (data && typeof data === "object") {
       const normalized: Record<string, unknown> = {};
-      const keys = options.sortKeys ? Object.keys(data).sort() : Object.keys(data);
+      const keys = options.sortKeys
+        ? Object.keys(data).sort()
+        : Object.keys(data);
 
       for (const key of keys) {
-        normalized[key] = this._normalizeData((data as Record<string, unknown>)[key], options);
+        normalized[key] = this._normalizeData(
+          (data as Record<string, unknown>)[key],
+          options,
+        );
       }
 
       return normalized;
@@ -233,7 +244,10 @@ export class SemanticCacheEnhancer {
   /**
    * Normalize text for semantic comparison
    */
-  private static _normalizeText(text: string, options: GenerateKeyOptions = {}): string {
+  private static _normalizeText(
+    text: string,
+    options: GenerateKeyOptions = {},
+  ): string {
     const { normalizeWhitespace = true, ignoreCase = true } = options;
 
     let normalized = text;
@@ -244,29 +258,29 @@ export class SemanticCacheEnhancer {
 
     if (normalizeWhitespace) {
       // Normalize whitespace
-      normalized = normalized.replace(/\s+/g, ' ').trim();
+      normalized = normalized.replace(/\s+/g, " ").trim();
 
       // Normalize punctuation spacing
-      normalized = normalized.replace(/\s*([.,!?;:])\s*/g, '$1 ');
+      normalized = normalized.replace(/\s*([.,!?;:])\s*/g, "$1 ");
     }
 
     // Remove common filler words that don't affect semantic meaning
     const fillers = [
-      'please',
-      'could you',
-      'can you',
-      'i want',
+      "please",
+      "could you",
+      "can you",
+      "i want",
       "i'd like",
-      'help me',
+      "help me",
     ];
 
     for (const filler of fillers) {
-      const regex = new RegExp(`\\b${filler}\\b`, 'gi');
-      normalized = normalized.replace(regex, '');
+      const regex = new RegExp(`\\b${filler}\\b`, "gi");
+      normalized = normalized.replace(regex, "");
     }
 
     // Final cleanup
-    normalized = normalized.replace(/\s+/g, ' ').trim();
+    normalized = normalized.replace(/\s+/g, " ").trim();
 
     return normalized;
   }
@@ -275,16 +289,16 @@ export class SemanticCacheEnhancer {
    * Get cache recommendations for improving hit rate
    */
   static getCacheOptimizationRecommendations(
-    currentStats: CacheStatsForRecommendations
+    currentStats: CacheStatsForRecommendations,
   ): CacheOptimizationRecommendations {
     const startTime = performance.now();
-    const operation = 'getCacheOptimizationRecommendations';
+    const operation = "getCacheOptimizationRecommendations";
     const recommendations: CacheRecommendation[] = [];
     const { hitRate, keys, hits, misses } = currentStats;
 
     const numericHitRate = parseFloat(hitRate) || 0;
 
-    this.log.debug('Generating cache optimization recommendations', {
+    this.log.debug("Generating cache optimization recommendations", {
       operation,
       currentHitRate: hitRate,
       keys,
@@ -295,33 +309,33 @@ export class SemanticCacheEnhancer {
     // Analyze hit rate
     if (numericHitRate < 30) {
       recommendations.push({
-        priority: 'high',
-        category: 'hit-rate',
-        issue: 'Very low cache hit rate',
+        priority: "high",
+        category: "hit-rate",
+        issue: "Very low cache hit rate",
         suggestion:
-          'Enable semantic caching with normalized keys to improve similarity matching',
-        expectedImpact: '+20-30% hit rate',
+          "Enable semantic caching with normalized keys to improve similarity matching",
+        expectedImpact: "+20-30% hit rate",
       });
     } else if (numericHitRate < 50) {
       recommendations.push({
-        priority: 'medium',
-        category: 'hit-rate',
-        issue: 'Moderate cache hit rate',
+        priority: "medium",
+        category: "hit-rate",
+        issue: "Moderate cache hit rate",
         suggestion:
-          'Fine-tune normalization options and consider caching more aggressively',
-        expectedImpact: '+10-20% hit rate',
+          "Fine-tune normalization options and consider caching more aggressively",
+        expectedImpact: "+10-20% hit rate",
       });
     }
 
     // Analyze cache size
     if (keys && keys > 10000) {
       recommendations.push({
-        priority: 'medium',
-        category: 'memory',
-        issue: 'Large number of cache keys',
+        priority: "medium",
+        category: "memory",
+        issue: "Large number of cache keys",
         suggestion:
-          'Implement LRU eviction or reduce TTL to manage memory usage',
-        expectedImpact: 'Reduced memory footprint',
+          "Implement LRU eviction or reduce TTL to manage memory usage",
+        expectedImpact: "Reduced memory footprint",
       });
     }
 
@@ -329,24 +343,24 @@ export class SemanticCacheEnhancer {
     const totalRequests = (hits || 0) + (misses || 0);
     if (totalRequests > 1000 && numericHitRate < 40) {
       recommendations.push({
-        priority: 'high',
-        category: 'optimization',
-        issue: 'High request volume with low hit rate',
+        priority: "high",
+        category: "optimization",
+        issue: "High request volume with low hit rate",
         suggestion:
-          'Implement cache warming for common queries and increase TTL for stable content',
-        expectedImpact: '+15-25% hit rate',
+          "Implement cache warming for common queries and increase TTL for stable content",
+        expectedImpact: "+15-25% hit rate",
       });
     }
 
     const result: CacheOptimizationRecommendations = {
-      overall: numericHitRate < 40 ? 'needs-improvement' : 'good',
+      overall: numericHitRate < 40 ? "needs-improvement" : "good",
       currentHitRate: hitRate,
-      targetHitRate: '60%+',
+      targetHitRate: "60%+",
       recommendations,
     };
 
     const duration = Math.round(performance.now() - startTime);
-    this.log.info('Cache optimization recommendations generated', {
+    this.log.info("Cache optimization recommendations generated", {
       operation,
       duration,
       overall: result.overall,
@@ -360,11 +374,13 @@ export class SemanticCacheEnhancer {
   /**
    * Generate cache warming strategies
    */
-  static generateCacheWarmingStrategy(commonPrompts: string[]): CacheWarmingStrategy {
+  static generateCacheWarmingStrategy(
+    commonPrompts: string[],
+  ): CacheWarmingStrategy {
     const startTime = performance.now();
-    const operation = 'generateCacheWarmingStrategy';
-    
-    this.log.debug('Generating cache warming strategy', {
+    const operation = "generateCacheWarmingStrategy";
+
+    this.log.debug("Generating cache warming strategy", {
       operation,
       promptCount: commonPrompts.length,
     });
@@ -382,12 +398,12 @@ export class SemanticCacheEnhancer {
 
     const strategy: CacheWarmingStrategy = {
       clusters: clusters.length,
-      strategy: 'Pre-cache common variations of popular prompts',
+      strategy: "Pre-cache common variations of popular prompts",
       prompts,
     };
 
     const duration = Math.round(performance.now() - startTime);
-    this.log.debug('Cache warming strategy generated', {
+    this.log.debug("Cache warming strategy generated", {
       operation,
       duration,
       clusterCount: clusters.length,
@@ -400,7 +416,10 @@ export class SemanticCacheEnhancer {
   /**
    * Cluster similar prompts
    */
-  private static _clusterPrompts(prompts: string[], threshold: number = 0.7): string[][] {
+  private static _clusterPrompts(
+    prompts: string[],
+    threshold: number = 0.7,
+  ): string[][] {
     const clusters: string[][] = [];
     const used = new Set<number>();
 
@@ -437,33 +456,35 @@ export class SemanticCacheEnhancer {
    */
   static getOptimizedCacheConfig(cacheType: string): OptimizedCacheConfig {
     const configs: Record<string, OptimizedCacheConfig> = {
-      'prompt-optimization': {
+      "prompt-optimization": {
         ttl: 7200, // 2 hours - prompts change less frequently
-        namespace: 'prompt-opt',
+        namespace: "prompt-opt",
         useSemanticKeys: true,
         normalization: {
           normalizeWhitespace: true,
           ignoreCase: true,
           sortKeys: true,
         },
-        reasoning: 'Prompt optimizations are stable and benefit from longer caching',
+        reasoning:
+          "Prompt optimizations are stable and benefit from longer caching",
       },
 
-      'question-generation': {
+      "question-generation": {
         ttl: 3600, // 1 hour
-        namespace: 'questions',
+        namespace: "questions",
         useSemanticKeys: true,
         normalization: {
           normalizeWhitespace: true,
           ignoreCase: true,
           sortKeys: false, // Order matters for questions
         },
-        reasoning: 'Questions benefit from semantic matching but order is important',
+        reasoning:
+          "Questions benefit from semantic matching but order is important",
       },
 
       enhancement: {
         ttl: 5400, // 1.5 hours
-        namespace: 'enhance',
+        namespace: "enhance",
         useSemanticKeys: true,
         normalization: {
           normalizeWhitespace: true,
@@ -471,45 +492,45 @@ export class SemanticCacheEnhancer {
           sortKeys: true,
         },
         reasoning:
-          'Enhancements are contextual but similar contexts should share cache',
+          "Enhancements are contextual but similar contexts should share cache",
       },
 
-      'scene-detection': {
+      "scene-detection": {
         ttl: 3600, // 1 hour
-        namespace: 'scene',
+        namespace: "scene",
         useSemanticKeys: true,
         normalization: {
           normalizeWhitespace: true,
           ignoreCase: true,
           sortKeys: true,
         },
-        reasoning: 'Scene changes are deterministic and highly cacheable',
+        reasoning: "Scene changes are deterministic and highly cacheable",
       },
 
       creative: {
         ttl: 1800, // 30 minutes - creative content should vary more
-        namespace: 'creative',
+        namespace: "creative",
         useSemanticKeys: false, // Less aggressive caching for creativity
         normalization: {
           normalizeWhitespace: true,
           ignoreCase: true,
           sortKeys: true,
         },
-        reasoning: 'Creative content benefits from fresh generation',
+        reasoning: "Creative content benefits from fresh generation",
       },
     };
 
     return (
       configs[cacheType] || {
         ttl: 3600,
-        namespace: 'default',
+        namespace: "default",
         useSemanticKeys: true,
         normalization: {
           normalizeWhitespace: true,
           ignoreCase: true,
           sortKeys: true,
         },
-        reasoning: 'Default balanced configuration',
+        reasoning: "Default balanced configuration",
       }
     );
   }

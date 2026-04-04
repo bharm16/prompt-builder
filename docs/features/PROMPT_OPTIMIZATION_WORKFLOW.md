@@ -33,7 +33,7 @@ The Prompt Optimization workflow transforms raw user input into production-ready
 - **Model-Specific Compilation**: Compiles prompts for Runway, Luma, Veo, etc.
 - **Chain-of-Thought Reasoning**: Video mode uses CoT for cinematographic analysis
 - **Shot Plan Interpretation**: Pre-interprets concepts into flexible shot plans
-- **Quality Scoring**: Calculates quality scores for optimization results
+- **Client Quality Score**: Calculates a heuristic quality score for optimization results
 - **Streaming Support**: Server-Sent Events (SSE) for real-time updates
 
 ### Optimization Modes
@@ -100,10 +100,12 @@ PromptOptimizerContainer
 **Entry Point:** `PromptInputSection` component
 
 **Files:**
+
 - `client/src/features/prompt-optimizer/components/PromptInputSection.tsx`
 - `client/src/features/prompt-optimizer/PromptInput.tsx`
 
 **Steps:**
+
 1. User enters text in textarea
 2. User selects mode (video, reasoning, research, socratic, standard)
 3. User selects target model (video mode only: Runway, Luma, Veo, etc.)
@@ -114,6 +116,7 @@ PromptOptimizerContainer
 **File:** `client/src/features/prompt-optimizer/PromptOptimizerContainer/hooks/usePromptOptimization.ts`
 
 **Steps:**
+
 1. **Extract Input**: Get prompt from `promptOptimizer.inputPrompt` or parameter
 2. **Serialize Context**: Convert `promptContext` to JSON format
 3. **Call Optimize**: `promptOptimizer.optimize(prompt, context, brainstormContext, targetModel)`
@@ -126,12 +129,13 @@ PromptOptimizerContainer
 **File:** `client/src/hooks/usePromptOptimizer.ts`
 
 **Steps:**
+
 1. **Validation**: Check prompt is not empty
 2. **Cancellation**: Abort previous request if in-flight
 3. **Request ID**: Increment request ID for deduplication
 4. **Start Optimization**: Set `isProcessing = true`
 5. **Performance Tracking**: Start timer, mark optimization start
-6. **Choose Flow**: 
+6. **Choose Flow**:
    - Two-stage: `runTwoStageOptimization()` (default)
    - Single-stage: `runSingleStageOptimization()`
 7. **Error Handling**: Handle abort errors, network errors
@@ -144,6 +148,7 @@ PromptOptimizerContainer
 **Function:** `runTwoStageOptimization()`
 
 **Steps:**
+
 1. **Call API**: `optimizeWithFallback()` with callbacks
 2. **Draft Callback** (`onDraft`):
    - Set draft prompt in state
@@ -174,6 +179,7 @@ PromptOptimizerContainer
 **Function:** `runSingleStageOptimization()`
 
 **Steps:**
+
 1. **Call API**: `analyzeAndOptimize()` (non-streaming)
 2. **Set State**: Set optimized prompt, quality score
 3. **Set Preview**: Set preview prompt and aspect ratio if available
@@ -187,10 +193,12 @@ PromptOptimizerContainer
 **Two Methods:**
 
 **A. Legacy (Non-Streaming):**
+
 - `optimizeLegacy()`: POST to `/api/optimize`
 - Returns: `{ optimizedPrompt, metadata }`
 
 **B. Streaming (Two-Stage):**
+
 - `optimizeWithStreaming()`: POST to `/api/optimize-stream`
 - Uses Server-Sent Events (SSE)
 - Parses events: `draft`, `spans`, `refined`, `done`, `error`
@@ -207,12 +215,14 @@ PromptOptimizerContainer
 **Two Endpoints:**
 
 **A. POST /api/optimize** (Single-Stage)
+
 1. Validate request (`promptSchema`)
 2. Extract: `prompt`, `mode`, `targetModel`, `context`, `brainstormContext`
 3. Call: `promptOptimizationService.optimize()`
 4. Return: `{ optimizedPrompt, metadata }`
 
 **B. POST /api/optimize-stream** (Two-Stage)
+
 1. Validate request (`promptSchema`)
 2. Set up SSE headers
 3. Create internal abort controller
@@ -231,6 +241,7 @@ PromptOptimizerContainer
 **Main Method: `optimize()`**
 
 **Steps:**
+
 1. **Mode Validation**: Default to 'video' if not specified
 2. **Shot Plan Interpretation**: Pre-interpret concept into flexible shot plan
 3. **Cache Check**: Check Redis/memory cache (1-hour TTL)
@@ -246,6 +257,7 @@ PromptOptimizerContainer
 **Two-Stage Method: `optimizeTwoStage()`**
 
 **Steps:**
+
 1. **Mode Validation**: Default to 'video'
 2. **Shot Plan Interpretation**: Pre-interpret concept
 3. **Streaming Check**: Verify ChatGPT available for draft
@@ -269,6 +281,7 @@ PromptOptimizerContainer
 **Purpose:** Creates mode-specific optimization strategies
 
 **Strategies:**
+
 - `VideoStrategy`: Video prompt optimization with CoT
 - `ReasoningStrategy`: Deep thinking prompts
 - `ResearchStrategy`: Research plan generation
@@ -280,6 +293,7 @@ PromptOptimizerContainer
 **File:** `server/src/services/prompt-optimization/strategies/VideoStrategy.ts`
 
 **Process:**
+
 1. **Template Selection**: Get video prompt template
 2. **Shot Plan Integration**: Merge interpreted shot plan
 3. **Domain Content**: Generate cinematographic context
@@ -290,6 +304,7 @@ PromptOptimizerContainer
 8. **Return**: Optimized prompt string
 
 **Template Features:**
+
 - Chain-of-Thought reasoning
 - Cinematographic analysis (subject scale, motion, emotional tone)
 - Shot selection logic
@@ -304,6 +319,7 @@ PromptOptimizerContainer
 **Purpose:** Pre-interprets raw concepts into flexible shot plans
 
 **Process:**
+
 1. **AI Call**: Call LLM with shot interpretation prompt
 2. **Structured Output**: Parse JSON shot plan
 3. **Validation**: Validate shot plan structure
@@ -321,6 +337,7 @@ PromptOptimizerContainer
 **Method:** `optimizeForModel()`
 
 **Process:**
+
 1. **Model Detection**: Detect target model (Runway, Luma, Veo, etc.)
 2. **Strategy Pipeline**:
    - **Analyzer**: Analyzes prompt structure
@@ -340,6 +357,7 @@ PromptOptimizerContainer
 ### Architecture
 
 **Stage 1: Fast Draft (1-3 seconds)**
+
 - **Model**: ChatGPT (gpt-4o-mini)
 - **Purpose**: Quick initial result
 - **Temperature**: 0.7 (creative)
@@ -347,6 +365,7 @@ PromptOptimizerContainer
 - **Timeout**: 15 seconds
 
 **Stage 2: Refinement (Background)**
+
 - **Model**: Primary model (Groq/OpenAI)
 - **Purpose**: High-quality refinement
 - **Input**: Draft from Stage 1
@@ -390,6 +409,7 @@ Client: Complete
 **Template:** `videoPromptOptimizationTemplate.js`
 
 **Features:**
+
 - Chain-of-Thought reasoning
 - Cinematographic analysis
 - Shot selection logic
@@ -398,6 +418,7 @@ Client: Complete
 - Variations
 
 **Output Format:**
+
 ```
 [Main Prompt Paragraph]
 
@@ -417,6 +438,7 @@ Client: Complete
 **Purpose:** Deep thinking prompts for o1/o3 models
 
 **Features:**
+
 - Multi-step reasoning
 - Chain-of-thought structure
 - Explicit thinking steps
@@ -426,6 +448,7 @@ Client: Complete
 **Purpose:** Comprehensive research plans
 
 **Features:**
+
 - Research questions
 - Methodology suggestions
 - Resource recommendations
@@ -435,6 +458,7 @@ Client: Complete
 **Purpose:** Question-based learning
 
 **Features:**
+
 - Progressive questions
 - Guided discovery
 - Educational structure
@@ -444,6 +468,7 @@ Client: Complete
 **Purpose:** General-purpose optimization
 
 **Features:**
+
 - Clarity improvement
 - Structure enhancement
 - Completeness checks
@@ -455,36 +480,41 @@ Client: Complete
 ### Frontend (15+ files)
 
 **Core Hooks:**
+
 - `usePromptOptimization.ts` - Orchestration hook
 - `usePromptOptimizer.ts` - Core optimizer hook
 - `usePromptOptimizerState.ts` - State management
 - `usePromptOptimizerApi.ts` - API layer
 
 **Flow Management:**
+
 - `promptOptimizationFlow.ts` - Two-stage/single-stage flows
 - `performanceMetrics.ts` - Performance tracking
 
 **Components:**
+
 - `PromptInputSection.tsx` - Input component
 - `PromptInput.tsx` - Input form
 - `PromptResultsSection.tsx` - Results display
 - `PromptCanvas.tsx` - Canvas editor
 
 **API:**
+
 - `PromptOptimizationApi.ts` - API service
 
 ### Backend (20+ files)
 
 **Core Services:**
+
 - `PromptOptimizationService.ts` - Main orchestrator
 - `StrategyFactory.ts` - Strategy factory
 - `ContextInferenceService.ts` - Context inference
 - `ModeDetectionService.ts` - Mode detection
-- `QualityAssessmentService.ts` - Quality assessment
 - `ShotInterpreterService.ts` - Shot interpretation
 - `TemplateService.ts` - Template management
 
 **Strategies:**
+
 - `VideoStrategy.ts` - Video optimization
 - `ReasoningStrategy.ts` - Reasoning optimization
 - `ResearchStrategy.ts` - Research optimization
@@ -492,15 +522,18 @@ Client: Complete
 - `StandardStrategy.ts` - Standard optimization
 
 **Templates:**
+
 - `videoPromptOptimizationTemplate.js` - Video template
 - `reasoningPromptOptimizationTemplate.js` - Reasoning template
 - `researchPromptOptimizationTemplate.js` - Research template
 - `socraticPromptOptimizationTemplate.js` - Socratic template
 
 **Routes:**
+
 - `optimize.routes.ts` - Express routes
 
 **Configuration:**
+
 - `OptimizationConfig.ts` - Configuration
 
 ---
@@ -512,6 +545,7 @@ Client: Complete
 **File:** `server/src/services/prompt-optimization/strategies/videoPromptOptimizationTemplate.js`
 
 **Algorithm:**
+
 1. **Analysis Phase**: Analyze cinematographic requirements
    - Subject Scale (landscape vs. detail)
    - Motion (static vs. dynamic)
@@ -533,6 +567,7 @@ Client: Complete
 **Purpose:** Pre-interpret concepts into flexible shot plans
 
 **Process:**
+
 1. **AI Call**: Call LLM with interpretation prompt
 2. **Structured Output**: Parse JSON shot plan
 3. **Validation**: Validate required fields
@@ -543,23 +578,23 @@ Client: Complete
 **File:** `server/src/services/video-prompt-analysis/VideoPromptService.ts`
 
 **Pipeline:**
+
 1. **Analyzer**: Analyzes prompt structure
 2. **IR Generation**: Converts to intermediate representation
 3. **Synthesizer**: Generates model-specific syntax
 4. **Validation**: Validates against model constraints
 
-### 4. Quality Scoring
+### 4. Client Quality Score
 
-**File:** `client/src/services/PromptOptimizationApi.ts`
+**File:** `client/src/services/prompt-optimization/qualityScore.ts`
 
 **Method:** `calculateQualityScore()`
 
 **Factors:**
-- Clarity
-- Specificity
-- Structure
-- Completeness
-- Actionability
+
+- Output is longer than the input
+- Output includes section headers
+- Output includes key prompt-building markers like `Goal`, `Return Format`, `Research`, `Context`, or `Learning`
 
 **Score Range:** 0-100
 
@@ -603,15 +638,18 @@ Client: Complete
 ### Frontend
 
 **Abort Errors:**
+
 - Silent return (no state update)
 - User cancelled request
 
 **Network Errors:**
+
 - Show error toast
 - Reset processing state
 - Allow retry
 
 **Streaming Errors:**
+
 - Handle `error` event
 - Reset refining state
 - Show error message
@@ -619,15 +657,18 @@ Client: Complete
 ### Backend
 
 **Validation Errors:**
+
 - Return 400 with error message
 - Logged with request ID
 
 **AI Service Errors:**
+
 - Fallback to single-stage if two-stage fails
 - Log error but continue
 - Return partial results if possible
 
 **Compilation Errors:**
+
 - Revert to generic optimization
 - Log error
 - Continue with uncompiled version
@@ -654,6 +695,7 @@ Client: Complete
 - **Token Usage**: Input/output token counts
 
 **Logging:**
+
 - Request/response logging
 - Performance metrics
 - Error tracking
@@ -680,4 +722,3 @@ Client: Complete
 - [Architecture Guide](../architecture/README.md)
 - [Video CoT Developer Guide](../architecture/VIDEO_COT_DEVELOPER_GUIDE.md)
 - [API Documentation](../API.md)
-

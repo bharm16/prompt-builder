@@ -1,9 +1,12 @@
-import { useEffect, useMemo } from 'react';
-import type { CapabilitiesSchema, CapabilityValues } from '@shared/capabilities';
+import { useEffect, useMemo } from "react";
+import type {
+  CapabilitiesSchema,
+  CapabilityValues,
+} from "@shared/capabilities";
 import {
   areCapabilityValuesEqual,
   sanitizeCapabilityValues,
-} from '../utils/capabilities';
+} from "../utils/capabilities";
 
 interface UseNormalizedCapabilityValuesOptions {
   schema: CapabilitiesSchema | null;

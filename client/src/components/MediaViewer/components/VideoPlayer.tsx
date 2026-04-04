@@ -1,4 +1,4 @@
-import { cn } from '@/utils/cn';
+import { cn } from "@/utils/cn";
 
 interface VideoPlayerProps {
   src: string | null;
@@ -25,8 +25,8 @@ export function VideoPlayer({
     return (
       <div
         className={cn(
-          'flex h-full w-full items-center justify-center rounded-md bg-[rgb(30,34,40)] text-xs text-faint',
-          className
+          "flex h-full w-full items-center justify-center rounded-md bg-[rgb(30,34,40)] text-xs text-faint",
+          className,
         )}
       >
         Video unavailable
@@ -37,7 +37,10 @@ export function VideoPlayer({
   return (
     <video
       src={src}
-      className={cn('h-full w-full rounded-md bg-black object-cover', className)}
+      className={cn(
+        "h-full w-full rounded-md bg-black object-cover",
+        className,
+      )}
       controls={controls}
       autoPlay={autoPlay}
       loop={loop}

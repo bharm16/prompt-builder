@@ -1,22 +1,22 @@
-import { logger } from '@infrastructure/Logger';
-import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer';
-import type { AIService } from '@services/prompt-optimization/types';
+import { logger } from "@infrastructure/Logger";
+import { StructuredOutputEnforcer } from "@utils/StructuredOutputEnforcer";
+import type { AIService } from "@services/prompt-optimization/types";
 
 /**
  * Service responsible for completing video scenes by filling empty elements.
  * Suggests values for missing elements based on existing context.
- * 
+ *
  * Extracted from SceneAnalysisService to follow single responsibility principle.
  */
 export class SceneCompletionService {
   private readonly ai: AIService;
-  private readonly log = logger.child({ service: 'SceneCompletionService' });
+  private readonly log = logger.child({ service: "SceneCompletionService" });
 
   constructor(aiService: AIService) {
     this.ai = aiService;
-    
-    this.log.debug('SceneCompletionService initialized', {
-      operation: 'constructor',
+
+    this.log.debug("SceneCompletionService initialized", {
+      operation: "constructor",
     });
   }
 
@@ -27,16 +27,17 @@ export class SceneCompletionService {
     existingElements: Record<string, string>;
     concept: string;
   }): Promise<{ suggestions: Record<string, string> }> {
-    const operation = 'completeScene';
+    const operation = "completeScene";
     const startTime = performance.now();
-    
+
     const emptyElements = Object.entries(params.existingElements)
       .filter(([_, value]) => !value)
       .map(([key]) => key);
 
-    const filledCount = Object.keys(params.existingElements).length - emptyElements.length;
-    
-    this.log.debug('Starting operation.', {
+    const filledCount =
+      Object.keys(params.existingElements).length - emptyElements.length;
+
+    this.log.debug("Starting operation.", {
       operation,
       emptyElementCount: emptyElements.length,
       filledElementCount: filledCount,
@@ -44,7 +45,7 @@ export class SceneCompletionService {
     });
 
     if (emptyElements.length === 0) {
-      this.log.debug('No empty elements to complete.', {
+      this.log.debug("No empty elements to complete.", {
         operation,
         duration: Math.round(performance.now() - startTime),
       });
@@ -53,16 +54,16 @@ export class SceneCompletionService {
 
     const prompt = `Complete this video scene by filling in the missing elements.
 
-Concept: ${params.concept || 'Not specified'}
+Concept: ${params.concept || "Not specified"}
 
 Existing Elements:
 ${Object.entries(params.existingElements)
   .filter(([_, v]) => v)
   .map(([k, v]) => `${k}: ${v}`)
-  .join('\n')}
+  .join("\n")}
 
 Missing Elements to Fill:
-${emptyElements.join(', ')}
+${emptyElements.join(", ")}
 
 Requirements:
 1. Ensure all suggestions work harmoniously with existing elements
@@ -77,35 +78,35 @@ Return ONLY a JSON object with the missing elements:
 }`;
 
     try {
-      const schema: { type: 'object' | 'array' } = {
-        type: 'object' as const,
+      const schema: { type: "object" | "array" } = {
+        type: "object" as const,
       };
-      
-      const suggestions = await StructuredOutputEnforcer.enforceJSON(
+
+      const suggestions = (await StructuredOutputEnforcer.enforceJSON(
         this.ai,
         prompt,
         {
-          operation: 'video_scene_completion',
+          operation: "video_scene_completion",
           schema,
           maxTokens: 512,
           temperature: 0.7,
-        }
-      ) as Record<string, string>;
-      
+        },
+      )) as Record<string, string>;
+
       const duration = Math.round(performance.now() - startTime);
       const completedCount = Object.keys(suggestions).length;
-      
-      this.log.info('Operation completed.', {
+
+      this.log.info("Operation completed.", {
         operation,
         duration,
         emptyElementCount: emptyElements.length,
         completedCount,
       });
-      
+
       return { suggestions: { ...params.existingElements, ...suggestions } };
     } catch (error) {
       const duration = Math.round(performance.now() - startTime);
-      this.log.error('Operation failed.', error as Error, {
+      this.log.error("Operation failed.", error as Error, {
         operation,
         duration,
         emptyElementCount: emptyElements.length,

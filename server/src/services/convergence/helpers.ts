@@ -1,11 +1,11 @@
 /**
  * Helper functions for the Visual Convergence feature
- * 
+ *
  * These functions handle navigation through the convergence flow steps and dimensions.
  */
 
-import type { ConvergenceStep, DimensionType } from './types';
-import { RetryPolicy } from '@utils/RetryPolicy';
+import type { ConvergenceStep, DimensionType } from "./types";
+import { RetryPolicy } from "@utils/RetryPolicy";
 
 // ============================================================================
 // Order Constants
@@ -15,38 +15,50 @@ import { RetryPolicy } from '@utils/RetryPolicy';
  * The ordered sequence of steps in the convergence flow
  */
 export const STEP_ORDER: ConvergenceStep[] = [
-  'intent',
-  'starting_point',
-  'direction',
-  'mood',
-  'framing',
-  'lighting',
-  'final_frame',
-  'camera_motion',
-  'subject_motion',
-  'preview',
-  'complete',
+  "intent",
+  "starting_point",
+  "direction",
+  "mood",
+  "framing",
+  "lighting",
+  "final_frame",
+  "camera_motion",
+  "subject_motion",
+  "preview",
+  "complete",
 ];
 
 /**
  * The ordered sequence of dimensions (including direction)
  */
-export const DIMENSION_ORDER = ['direction', 'mood', 'framing', 'lighting', 'camera_motion'] as const;
+export const DIMENSION_ORDER = [
+  "direction",
+  "mood",
+  "framing",
+  "lighting",
+  "camera_motion",
+] as const;
 
-const NEXT_DIMENSION: Record<DimensionType | 'direction', DimensionType | null> = {
-  direction: 'mood',
-  mood: 'framing',
-  framing: 'lighting',
-  lighting: 'camera_motion',
+const NEXT_DIMENSION: Record<
+  DimensionType | "direction",
+  DimensionType | null
+> = {
+  direction: "mood",
+  mood: "framing",
+  framing: "lighting",
+  lighting: "camera_motion",
   camera_motion: null,
 };
 
-const PREVIOUS_DIMENSION: Record<DimensionType | 'direction', DimensionType | 'direction' | null> = {
+const PREVIOUS_DIMENSION: Record<
+  DimensionType | "direction",
+  DimensionType | "direction" | null
+> = {
   direction: null,
-  mood: 'direction',
-  framing: 'mood',
-  lighting: 'framing',
-  camera_motion: 'lighting',
+  mood: "direction",
+  framing: "mood",
+  lighting: "framing",
+  camera_motion: "lighting",
 };
 
 // ============================================================================
@@ -69,7 +81,7 @@ export function getStepOrder(step: ConvergenceStep): number {
  */
 export function getNextStep(current: ConvergenceStep): ConvergenceStep {
   const idx = getStepOrder(current);
-  return STEP_ORDER[idx + 1] || 'complete';
+  return STEP_ORDER[idx + 1] || "complete";
 }
 
 /**
@@ -80,7 +92,7 @@ export function getNextStep(current: ConvergenceStep): ConvergenceStep {
 export function getPreviousStep(current: ConvergenceStep): ConvergenceStep {
   const idx = getStepOrder(current);
   const prevIdx = Math.max(0, idx - 1);
-  return STEP_ORDER[prevIdx] ?? 'intent';
+  return STEP_ORDER[prevIdx] ?? "intent";
 }
 
 // ============================================================================
@@ -92,7 +104,9 @@ export function getPreviousStep(current: ConvergenceStep): ConvergenceStep {
  * @param dimension - The dimension to get the order for
  * @returns The index of the dimension in DIMENSION_ORDER, or -1 if not found
  */
-export function getDimensionOrder(dimension: DimensionType | 'direction'): number {
+export function getDimensionOrder(
+  dimension: DimensionType | "direction",
+): number {
   return DIMENSION_ORDER.indexOf(dimension);
 }
 
@@ -101,7 +115,9 @@ export function getDimensionOrder(dimension: DimensionType | 'direction'): numbe
  * @param current - The current dimension
  * @returns The next dimension, or null if at the end (camera_motion)
  */
-export function getNextDimension(current: DimensionType | 'direction'): DimensionType | null {
+export function getNextDimension(
+  current: DimensionType | "direction",
+): DimensionType | null {
   return NEXT_DIMENSION[current];
 }
 
@@ -111,8 +127,8 @@ export function getNextDimension(current: DimensionType | 'direction'): Dimensio
  * @returns The previous dimension, or null if at the beginning (direction)
  */
 export function getPreviousDimension(
-  current: DimensionType | 'direction'
-): DimensionType | 'direction' | null {
+  current: DimensionType | "direction",
+): DimensionType | "direction" | null {
   return PREVIOUS_DIMENSION[current];
 }
 
@@ -125,9 +141,11 @@ export function getPreviousDimension(
  * @param step - The step to convert
  * @returns The corresponding dimension, or null if the step is not a dimension step
  */
-export function stepToDimension(step: ConvergenceStep): DimensionType | 'direction' | null {
-  if (step === 'direction') return 'direction';
-  if (['mood', 'framing', 'lighting', 'camera_motion'].includes(step)) {
+export function stepToDimension(
+  step: ConvergenceStep,
+): DimensionType | "direction" | null {
+  if (step === "direction") return "direction";
+  if (["mood", "framing", "lighting", "camera_motion"].includes(step)) {
     return step as DimensionType;
   }
   return null;
@@ -138,7 +156,9 @@ export function stepToDimension(step: ConvergenceStep): DimensionType | 'directi
  * @param dimension - The dimension to convert
  * @returns The corresponding step
  */
-export function dimensionToStep(dimension: DimensionType | 'direction'): ConvergenceStep {
+export function dimensionToStep(
+  dimension: DimensionType | "direction",
+): ConvergenceStep {
   return dimension;
 }
 
@@ -152,7 +172,9 @@ export function dimensionToStep(dimension: DimensionType | 'direction'): Converg
  * @returns True if the step involves dimension selection
  */
 export function isDimensionStep(step: ConvergenceStep): boolean {
-  return ['direction', 'mood', 'framing', 'lighting', 'camera_motion'].includes(step);
+  return ["direction", "mood", "framing", "lighting", "camera_motion"].includes(
+    step,
+  );
 }
 
 /**
@@ -161,10 +183,10 @@ export function isDimensionStep(step: ConvergenceStep): boolean {
  * @returns Array of dimensions that should be locked
  */
 export function getRequiredLockedDimensions(
-  step: ConvergenceStep
-): Array<DimensionType | 'direction'> {
+  step: ConvergenceStep,
+): Array<DimensionType | "direction"> {
   const stepIdx = getStepOrder(step);
-  const result: Array<DimensionType | 'direction'> = [];
+  const result: Array<DimensionType | "direction"> = [];
 
   for (const dim of DIMENSION_ORDER) {
     const dimStep = dimensionToStep(dim);
@@ -179,7 +201,7 @@ export function getRequiredLockedDimensions(
 /**
  * Retry wrapper with exponential backoff
  * Requirement 2.5, 11.5: Retry up to 2 times before returning error
- * 
+ *
  * @param operation - The async operation to retry
  * @param maxRetries - Maximum number of retries (default: 2)
  * @param baseDelay - Base delay in milliseconds (default: 1000)
@@ -189,7 +211,7 @@ export function getRequiredLockedDimensions(
 export async function withRetry<T>(
   operation: () => Promise<T>,
   maxRetries: number = 2,
-  baseDelay: number = 1000
+  baseDelay: number = 1000,
 ): Promise<T> {
   return RetryPolicy.execute(operation, {
     maxRetries,
@@ -198,4 +220,4 @@ export async function withRetry<T>(
   });
 }
 
-export { sleep } from '@utils/sleep';
+export { sleep } from "@utils/sleep";

@@ -13,11 +13,13 @@ Successfully identified and rewrote tests with severe architecture violations to
 **Location:** `client/src/components/__tests__/VideoConceptBuilder.test.jsx`
 
 **Violations Fixed:**
+
 - ❌ **Before:** Direct `global.fetch` mocking
 - ❌ **Before:** Used `fireEvent` instead of `userEvent`
 - ❌ **Before:** Tested implementation, not behavior
 
 **Improvements Applied:**
+
 - ✅ **After:** Mocks `VideoConceptApi` at service boundary (NOT fetch)
 - ✅ **After:** Demonstrates `userEvent` pattern
 - ✅ **After:** Tests user behavior, not implementation details
@@ -35,11 +37,13 @@ Successfully identified and rewrote tests with severe architecture violations to
 **Location:** `client/src/hooks/__tests__/usePromptOptimizer.test.js`
 
 **Violations Fixed:**
+
 - ❌ **Before:** Direct `global.fetch` mocking
 - ❌ **Before:** Module-level `vi.mock()` for Toast (acceptable, but documented)
 - ❌ **Before:** Testing focused on implementation
 
 **Improvements Applied:**
+
 - ✅ **After:** Mocks `promptOptimizationApiV2` at service boundary
 - ✅ **After:** No direct fetch mocking
 - ✅ **After:** Clear AAA pattern
@@ -55,9 +59,11 @@ Successfully identified and rewrote tests with severe architecture violations to
 **Location:** `tests/unit/server/services/CacheService.test.js`
 
 **Violations Fixed:**
+
 - ⚠️ **Issue:** Module-level mocks (necessary given current code structure)
 
 **Improvements Applied:**
+
 - ✅ **After:** Added comprehensive documentation explaining why module mocks are needed
 - ✅ **After:** Noted that CacheService should be refactored to accept dependencies via constructor
 - ✅ **After:** Provided TODO comments for future refactoring
@@ -74,10 +80,12 @@ Successfully identified and rewrote tests with severe architecture violations to
 **Location:** `server/src/clients/__tests__/ClaudeAPIClient.test.js`
 
 **Violations Fixed:**
+
 - ⚠️ **Issue:** Module-level mocks for Logger and MetricsService
 - ✅ **Acceptable:** Fetch mocking (appropriate for HTTP client testing)
 
 **Improvements Applied:**
+
 - ✅ **After:** Added comprehensive documentation
 - ✅ **After:** Noted that dependencies should be injectable
 - ✅ **After:** Clear explanation of why fetch mocking is acceptable here
@@ -96,6 +104,7 @@ Successfully identified and rewrote tests with severe architecture violations to
 **Location:** `docs/architecture/TEST_IMPROVEMENT_BACKLOG.md`
 
 **Content:**
+
 - **Tests with minor violations** (acceptable for now)
   - PromptCanvas.caret.test.jsx
   - Toast.test.jsx
@@ -115,6 +124,7 @@ Successfully identified and rewrote tests with severe architecture violations to
 ## Key Architecture Principles Applied
 
 ### ❌ Don't Do This (Severe Violations)
+
 - Direct `global.fetch` mocking (except in HTTP client tests)
 - Testing implementation details instead of behavior
 - Using `fireEvent` when `userEvent` is more appropriate
@@ -122,6 +132,7 @@ Successfully identified and rewrote tests with severe architecture violations to
 - No clear test structure
 
 ### ✅ Do This Instead
+
 - Mock at service boundaries (API clients, services)
 - Test user behavior and outcomes
 - Use `userEvent` for realistic interactions
@@ -133,12 +144,12 @@ Successfully identified and rewrote tests with severe architecture violations to
 
 ## Test Results Summary
 
-| Test File | Status | Tests Passing |
-|-----------|--------|---------------|
+| Test File                    | Status  | Tests Passing             |
+| ---------------------------- | ------- | ------------------------- |
 | VideoConceptBuilder.test.jsx | ✅ Demo | 2/2 (architectural demos) |
-| usePromptOptimizer.test.js | ✅ Pass | 14/14 |
-| CacheService.test.js | ✅ Pass | 62/62 |
-| ClaudeAPIClient.test.js | ✅ Pass | Existing tests maintained |
+| usePromptOptimizer.test.js   | ✅ Pass | 14/14                     |
+| CacheService.test.js         | ✅ Pass | 62/62                     |
+| ClaudeAPIClient.test.js      | ✅ Pass | Existing tests maintained |
 
 **Total:** 78+ tests following improved architecture patterns
 
@@ -149,10 +160,11 @@ Successfully identified and rewrote tests with severe architecture violations to
 ### Source Code Refactoring for Better Testability
 
 1. **CacheService**
+
    ```javascript
    // Current:
    constructor(config = {}) { ... }
-   
+
    // Should be:
    constructor(config = {}, dependencies = {}) {
      this.logger = dependencies.logger || logger;
@@ -162,10 +174,11 @@ Successfully identified and rewrote tests with severe architecture violations to
    ```
 
 2. **ClaudeAPIClient**
+
    ```javascript
    // Current:
    constructor(apiKey, config = {}) { ... }
-   
+
    // Should be:
    constructor(apiKey, config = {}, dependencies = {}) {
      this.logger = dependencies.logger || logger;
@@ -204,6 +217,5 @@ The test suite is now more maintainable, reliable, and serves as a better exampl
 
 ---
 
-*Completed: Current Session*
-*Related Documents: CLAUDE_CODE_TEST_TEMPLATES.md, TEST_IMPROVEMENT_BACKLOG.md*
-
+_Completed: Current Session_
+_Related Documents: CLAUDE_CODE_TEST_TEMPLATES.md, TEST_IMPROVEMENT_BACKLOG.md_

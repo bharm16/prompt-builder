@@ -1,11 +1,11 @@
-import { logger } from '@infrastructure/Logger';
+import { logger } from "@infrastructure/Logger";
 import {
   getCapabilities,
   resolveModelId,
   resolveProviderForModel,
   validateCapabilityValues,
-} from '@services/capabilities';
-import type { CapabilityValues } from '@shared/capabilities';
+} from "@services/capabilities";
+import type { CapabilityValues } from "@shared/capabilities";
 
 interface NormalizeGenerationParamsInput {
   generationParams: unknown;
@@ -31,34 +31,42 @@ export const normalizeGenerationParams = ({
   requestId,
   userId,
 }: NormalizeGenerationParamsInput): NormalizeGenerationParamsResult => {
-  if (!generationParams || typeof generationParams !== 'object') {
+  if (!generationParams || typeof generationParams !== "object") {
     return { normalizedGenerationParams: null };
   }
 
   const resolvedModel = resolveModelId(targetModel);
-  const provider = resolveProviderForModel(resolvedModel) || 'generic';
+  const provider = resolveProviderForModel(resolvedModel) || "generic";
   const model =
-    resolvedModel && getCapabilities(provider, resolvedModel) ? resolvedModel : 'auto';
+    resolvedModel && getCapabilities(provider, resolvedModel)
+      ? resolvedModel
+      : "auto";
   const schema = getCapabilities(provider, model);
   if (!schema) {
     return {
       normalizedGenerationParams: null,
       error: {
         status: 400,
-        error: 'Capabilities not found',
+        error: "Capabilities not found",
         details: `No registry entry for ${provider}/${model}`,
       },
     };
   }
 
-  const validation = validateCapabilityValues(schema, generationParams as CapabilityValues);
+  const validation = validateCapabilityValues(
+    schema,
+    generationParams as CapabilityValues,
+  );
   if (!validation.ok) {
-    logger.warn('Invalid generation parameters; falling back to sanitized defaults', {
-      operation,
-      requestId,
-      userId,
-      errors: validation.errors,
-    });
+    logger.warn(
+      "Invalid generation parameters; falling back to sanitized defaults",
+      {
+        operation,
+        requestId,
+        userId,
+        errors: validation.errors,
+      },
+    );
   }
 
   return { normalizedGenerationParams: validation.values };

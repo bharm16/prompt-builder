@@ -1,5 +1,5 @@
-import React from 'react';
-import { useToast } from '@components/Toast';
+import React from "react";
+import { useToast } from "@components/Toast";
 
 interface UseLowBalanceWarningInput {
   userId: string | null;
@@ -9,7 +9,8 @@ interface UseLowBalanceWarningInput {
   enabled?: boolean;
 }
 
-const buildWarningKey = (userId: string): string => `low-balance-warned:${userId}`;
+const buildWarningKey = (userId: string): string =>
+  `low-balance-warned:${userId}`;
 
 export function useLowBalanceWarning({
   userId,
@@ -28,13 +29,15 @@ export function useLowBalanceWarning({
 
     const storageKey = buildWarningKey(userId);
     try {
-      if (sessionStorage.getItem(storageKey) === '1') {
+      if (sessionStorage.getItem(storageKey) === "1") {
         return;
       }
-      sessionStorage.setItem(storageKey, '1');
+      sessionStorage.setItem(storageKey, "1");
     } catch {
       // Storage can be unavailable in strict browser privacy contexts.
     }
-    toast.warning(`${operation} needs ${requiredCredits} credits. You currently have ${balance}.`);
+    toast.warning(
+      `${operation} needs ${requiredCredits} credits. You currently have ${balance}.`,
+    );
   }, [balance, enabled, operation, requiredCredits, toast, userId]);
 }

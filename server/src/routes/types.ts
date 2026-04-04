@@ -2,25 +2,25 @@
  * Types for route factories
  */
 
-import type { Router } from 'express';
-import type { ImageGenerationService } from '@services/image-generation/ImageGenerationService';
-import type { StoryboardPreviewService } from '@services/image-generation/storyboard/StoryboardPreviewService';
-import type { VideoGenerationService } from '@services/video-generation/VideoGenerationService';
-import type { AIModelService } from '@services/ai-model/AIModelService';
-import type { UserCreditService } from '@services/credits/UserCreditService';
-import type { VideoJobStore } from '@services/video-generation/jobs/VideoJobStore';
-import type { VideoContentAccessService } from '@services/video-generation/access/VideoContentAccessService';
-import type KeyframeGenerationService from '@services/generation/KeyframeGenerationService';
-import type { FaceSwapService } from '@services/generation/FaceSwapService';
-import type { AssetService } from '@services/asset/AssetService';
-import type { RequestIdempotencyService } from '@services/idempotency/RequestIdempotencyService';
+import type { Router } from "express";
+import type { ImageGenerationService } from "@services/image-generation/ImageGenerationService";
+import type { StoryboardPreviewService } from "@services/image-generation/storyboard/StoryboardPreviewService";
+import type { VideoGenerationService } from "@services/video-generation/VideoGenerationService";
+import type { AIModelService } from "@services/ai-model/AIModelService";
+import type { UserCreditService } from "@services/credits/UserCreditService";
+import type { VideoJobStore } from "@services/video-generation/jobs/VideoJobStore";
+import type { VideoContentAccessService } from "@services/video-generation/access/VideoContentAccessService";
+import type KeyframeGenerationService from "@services/video-generation/KeyframeGenerationService";
+import type { FaceSwapService } from "@services/video-generation/FaceSwapService";
+import type { AssetService } from "@services/asset/AssetService";
+import type { RequestIdempotencyService } from "@services/idempotency/RequestIdempotencyService";
 
 export interface PreviewStorageService {
   saveFromUrl: (
     userId: string,
     sourceUrl: string,
-    type: 'generation' | 'preview-image',
-    metadata?: Record<string, unknown>
+    type: "generation" | "preview-image",
+    metadata?: Record<string, unknown>,
   ) => Promise<{
     storagePath: string;
     viewUrl: string;
@@ -29,7 +29,7 @@ export interface PreviewStorageService {
   }>;
   getViewUrl: (
     userId: string,
-    path: string
+    path: string,
   ) => Promise<{
     viewUrl: string;
     expiresAt: string;
@@ -37,10 +37,10 @@ export interface PreviewStorageService {
   }>;
   uploadBuffer: (
     userId: string,
-    type: 'preview-image',
+    type: "preview-image",
     buffer: Buffer,
     contentType: string,
-    metadata?: Record<string, unknown>
+    metadata?: Record<string, unknown>,
   ) => Promise<{
     storagePath: string;
     viewUrl: string;
@@ -50,11 +50,11 @@ export interface PreviewStorageService {
   }>;
   uploadStream: (
     userId: string,
-    type: 'preview-image',
+    type: "preview-image",
     stream: NodeJS.ReadableStream,
     sizeBytes: number,
     contentType: string,
-    metadata?: Record<string, unknown>
+    metadata?: Record<string, unknown>,
   ) => Promise<{
     storagePath: string;
     viewUrl: string;

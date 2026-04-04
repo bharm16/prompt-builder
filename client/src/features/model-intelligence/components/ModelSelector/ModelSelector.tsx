@@ -1,5 +1,5 @@
-import React from 'react';
-import { cn } from '@/utils/cn';
+import React from "react";
+import { cn } from "@/utils/cn";
 
 export interface ModelSelectorOption {
   id: string;
@@ -23,7 +23,7 @@ interface ModelSelectorProps {
 const buildLabel = (
   option: ModelSelectorOption,
   recommendedId?: string,
-  efficientId?: string
+  efficientId?: string,
 ): string => {
   if (option.id === recommendedId) return `${option.label} · Best Match`;
   if (option.id === efficientId) return `${option.label} · Efficient`;
@@ -38,7 +38,7 @@ export function ModelSelector({
   disabled = false,
   onChange,
   className,
-  label = 'Model',
+  label = "Model",
   labelClassName,
   selectClassName,
   ariaLabel,
@@ -50,20 +50,20 @@ export function ModelSelector({
   const showLabel = label !== null && label !== undefined;
 
   return (
-    <div className={cn('space-y-1', className)}>
+    <div className={cn("space-y-1", className)}>
       {showLabel && (
-        <label className={cn('text-xs text-[#A1AFC5]', labelClassName)}>
-          {label || 'Model'}
+        <label className={cn("text-xs text-ghost", labelClassName)}>
+          {label || "Model"}
         </label>
       )}
       <select
-        value={selectedModel ?? ''}
+        value={selectedModel ?? ""}
         onChange={(event) => onChange(event.target.value)}
         disabled={disabled}
-        aria-label={ariaLabel ?? (showLabel ? undefined : 'Model')}
+        aria-label={ariaLabel ?? (showLabel ? undefined : "Model")}
         className={cn(
-          'w-full rounded-md border border-[#2A2B31] bg-[#1E1F25] px-2 py-1.5 text-sm text-white',
-          selectClassName
+          "w-full rounded-md border border-surface-2 bg-tool-nav-active px-2 py-1.5 text-sm text-white",
+          selectClassName,
         )}
       >
         {items.map((option) => (

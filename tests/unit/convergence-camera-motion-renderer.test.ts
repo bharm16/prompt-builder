@@ -1,14 +1,22 @@
-import { describe, it, expect, vi, beforeEach, afterEach, type MockedFunction } from 'vitest';
+import {
+  describe,
+  it,
+  expect,
+  vi,
+  beforeEach,
+  afterEach,
+  type MockedFunction,
+} from "vitest";
 
 import {
   createFrameAnimator,
   createCleanupFunction,
   easeInOutCubic,
-} from '@features/convergence/utils/cameraMotionRenderer';
+} from "@features/convergence/utils/cameraMotionRenderer";
 
 type RafCallback = FrameRequestCallback;
 
-describe('cameraMotionRenderer', () => {
+describe("cameraMotionRenderer", () => {
   let requestAnimationFrameMock: MockedFunction<typeof requestAnimationFrame>;
   let cancelAnimationFrameMock: MockedFunction<typeof cancelAnimationFrame>;
   let rafCallbacks: Map<number, RafCallback>;
@@ -17,8 +25,8 @@ describe('cameraMotionRenderer', () => {
 
   const runAnimationFrame = (callIndex: number, timestamp: number) => {
     const id = requestAnimationFrameMock.mock.results[callIndex]?.value;
-    if (typeof id !== 'number') {
-      throw new Error('Expected requestAnimationFrame to return a numeric id');
+    if (typeof id !== "number") {
+      throw new Error("Expected requestAnimationFrame to return a numeric id");
     }
 
     const callback = rafCallbacks.get(id);
@@ -52,8 +60,10 @@ describe('cameraMotionRenderer', () => {
       cancelAnimationFrame?: typeof cancelAnimationFrame;
     };
 
-    globalWithRaf.requestAnimationFrame = requestAnimationFrameMock as unknown as typeof requestAnimationFrame;
-    globalWithRaf.cancelAnimationFrame = cancelAnimationFrameMock as unknown as typeof cancelAnimationFrame;
+    globalWithRaf.requestAnimationFrame =
+      requestAnimationFrameMock as unknown as typeof requestAnimationFrame;
+    globalWithRaf.cancelAnimationFrame =
+      cancelAnimationFrameMock as unknown as typeof cancelAnimationFrame;
   });
 
   afterEach(() => {
@@ -77,8 +87,8 @@ describe('cameraMotionRenderer', () => {
     vi.restoreAllMocks();
   });
 
-  describe('error handling', () => {
-    it('does not start when frames are empty', () => {
+  describe("error handling", () => {
+    it("does not start when frames are empty", () => {
       const onFrame = vi.fn();
       const animator = createFrameAnimator([], 15, onFrame);
 
@@ -89,37 +99,39 @@ describe('cameraMotionRenderer', () => {
       expect(animator.isPlaying()).toBe(false);
     });
 
-    it('ignores start when already playing', () => {
+    it("ignores start when already playing", () => {
       const onFrame = vi.fn();
-      vi.spyOn(performance, 'now').mockReturnValue(0);
+      vi.spyOn(performance, "now").mockReturnValue(0);
 
-      const animator = createFrameAnimator(['frame-a', 'frame-b'], 12, onFrame);
+      const animator = createFrameAnimator(["frame-a", "frame-b"], 12, onFrame);
 
       animator.start();
       animator.start();
 
       expect(onFrame).toHaveBeenCalledTimes(1);
-      expect(onFrame).toHaveBeenCalledWith('frame-a', 0);
+      expect(onFrame).toHaveBeenCalledWith("frame-a", 0);
       expect(requestAnimationFrameMock).toHaveBeenCalledTimes(1);
       expect(animator.isPlaying()).toBe(true);
     });
 
-    it('stops animation and ignores pending callbacks', () => {
+    it("stops animation and ignores pending callbacks", () => {
       const onFrame = vi.fn();
-      vi.spyOn(performance, 'now').mockReturnValue(0);
+      vi.spyOn(performance, "now").mockReturnValue(0);
 
-      const animator = createFrameAnimator(['frame-a', 'frame-b'], 10, onFrame);
+      const animator = createFrameAnimator(["frame-a", "frame-b"], 10, onFrame);
 
       animator.start();
 
       const firstId = requestAnimationFrameMock.mock.results[0]?.value;
-      if (typeof firstId !== 'number') {
-        throw new Error('Expected requestAnimationFrame to return a numeric id');
+      if (typeof firstId !== "number") {
+        throw new Error(
+          "Expected requestAnimationFrame to return a numeric id",
+        );
       }
 
       const scheduledCallback = rafCallbacks.get(firstId);
       if (!scheduledCallback) {
-        throw new Error('Expected a scheduled requestAnimationFrame callback');
+        throw new Error("Expected a scheduled requestAnimationFrame callback");
       }
 
       animator.stop();
@@ -134,21 +146,21 @@ describe('cameraMotionRenderer', () => {
     });
   });
 
-  describe('edge cases', () => {
-    it('returns expected cubic ease boundaries', () => {
+  describe("edge cases", () => {
+    it("returns expected cubic ease boundaries", () => {
       expect(easeInOutCubic(0)).toBe(0);
       expect(easeInOutCubic(0.5)).toBeCloseTo(0.5, 6);
       expect(easeInOutCubic(1)).toBe(1);
     });
 
-    it('disposes resources via cleanup function', () => {
+    it("disposes resources via cleanup function", () => {
       const geometry = { dispose: vi.fn() };
       const material = { dispose: vi.fn() };
       const imageTexture = { dispose: vi.fn() };
       const depthTexture = { dispose: vi.fn() };
       const renderer = { dispose: vi.fn() };
       const scene = { remove: vi.fn(), clear: vi.fn() };
-      const mesh = { name: 'mesh' };
+      const mesh = { name: "mesh" };
 
       const resources = {
         scene,
@@ -175,12 +187,12 @@ describe('cameraMotionRenderer', () => {
     });
   });
 
-  describe('core behavior', () => {
-    it('advances frames on elapsed time and loops', () => {
+  describe("core behavior", () => {
+    it("advances frames on elapsed time and loops", () => {
       const onFrame = vi.fn();
-      vi.spyOn(performance, 'now').mockReturnValue(0);
+      vi.spyOn(performance, "now").mockReturnValue(0);
 
-      const animator = createFrameAnimator(['frame-a', 'frame-b'], 2, onFrame);
+      const animator = createFrameAnimator(["frame-a", "frame-b"], 2, onFrame);
 
       animator.start();
 
@@ -188,11 +200,11 @@ describe('cameraMotionRenderer', () => {
       runAnimationFrame(1, 1000);
       runAnimationFrame(2, 1500);
 
-      expect(onFrame.mock.calls.map(call => call[0])).toEqual([
-        'frame-a',
-        'frame-a',
-        'frame-b',
-        'frame-a',
+      expect(onFrame.mock.calls.map((call) => call[0])).toEqual([
+        "frame-a",
+        "frame-a",
+        "frame-b",
+        "frame-a",
       ]);
     });
   });

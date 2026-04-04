@@ -17,7 +17,7 @@ interface User {
 }
 
 async function fetchUser(): Promise<User> {
-  const response = await fetch('/api/user');
+  const response = await fetch("/api/user");
   const data = await response.json();
   return data as User; // DANGER: No runtime check!
 }
@@ -30,7 +30,7 @@ console.log(user.name); // undefined - runtime error!
 Zod **validates at runtime**:
 
 ```typescript
-import { z } from 'zod';
+import { z } from "zod";
 
 const UserSchema = z.object({
   id: z.string(),
@@ -40,7 +40,7 @@ const UserSchema = z.object({
 type User = z.infer<typeof UserSchema>;
 
 async function fetchUser(): Promise<User> {
-  const response = await fetch('/api/user');
+  const response = await fetch("/api/user");
   const data = await response.json();
   return UserSchema.parse(data); // Throws ZodError if invalid
 }
@@ -62,7 +62,7 @@ npm install zod
 
 ```typescript
 // api/schemas.ts
-import { z } from 'zod';
+import { z } from "zod";
 
 // Define the schema
 export const VideoConceptResponseSchema = z.object({
@@ -83,19 +83,24 @@ export const VideoConceptResponseSchema = z.object({
 export type VideoConceptResponse = z.infer<typeof VideoConceptResponseSchema>;
 
 // api/index.ts
-import { VideoConceptResponseSchema, type VideoConceptResponse } from './schemas';
+import {
+  VideoConceptResponseSchema,
+  type VideoConceptResponse,
+} from "./schemas";
 
-export async function fetchVideoConcept(prompt: string): Promise<VideoConceptResponse> {
-  const response = await fetch('/api/video-concept', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+export async function fetchVideoConcept(
+  prompt: string,
+): Promise<VideoConceptResponse> {
+  const response = await fetch("/api/video-concept", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ prompt }),
   });
-  
+
   if (!response.ok) {
     throw new Error(`API error: ${response.status}`);
   }
-  
+
   const data = await response.json();
   return VideoConceptResponseSchema.parse(data);
 }
@@ -105,29 +110,29 @@ export async function fetchVideoConcept(prompt: string): Promise<VideoConceptRes
 
 ```typescript
 // schemas/forms.ts
-import { z } from 'zod';
+import { z } from "zod";
 
 export const VideoFormSchema = z.object({
-  subject: z.string()
-    .min(3, 'Subject must be at least 3 characters')
-    .max(100, 'Subject must be under 100 characters'),
-  action: z.string()
-    .min(3, 'Action must be at least 3 characters'),
-  location: z.string()
-    .min(3, 'Location must be at least 3 characters'),
-  duration: z.number()
-    .min(1, 'Duration must be at least 1 second')
-    .max(60, 'Duration must be under 60 seconds')
+  subject: z
+    .string()
+    .min(3, "Subject must be at least 3 characters")
+    .max(100, "Subject must be under 100 characters"),
+  action: z.string().min(3, "Action must be at least 3 characters"),
+  location: z.string().min(3, "Location must be at least 3 characters"),
+  duration: z
+    .number()
+    .min(1, "Duration must be at least 1 second")
+    .max(60, "Duration must be under 60 seconds")
     .optional(),
-  style: z.enum(['cinematic', 'documentary', 'abstract']).default('cinematic'),
+  style: z.enum(["cinematic", "documentary", "abstract"]).default("cinematic"),
 });
 
 export type VideoFormData = z.infer<typeof VideoFormSchema>;
 
 // hooks/useVideoForm.ts
-import { useState } from 'react';
-import { VideoFormSchema, type VideoFormData } from '../schemas/forms';
-import type { ZodError } from 'zod';
+import { useState } from "react";
+import { VideoFormSchema, type VideoFormData } from "../schemas/forms";
+import type { ZodError } from "zod";
 
 interface ValidationErrors {
   [key: string]: string;
@@ -135,7 +140,7 @@ interface ValidationErrors {
 
 export function useVideoForm() {
   const [errors, setErrors] = useState<ValidationErrors>({});
-  
+
   const validate = (data: unknown): data is VideoFormData => {
     try {
       VideoFormSchema.parse(data);
@@ -154,13 +159,18 @@ export function useVideoForm() {
       return false;
     }
   };
-  
-  const validateField = (field: keyof VideoFormData, value: unknown): string | null => {
+
+  const validateField = (
+    field: keyof VideoFormData,
+    value: unknown,
+  ): string | null => {
     const fieldSchema = VideoFormSchema.shape[field];
     const result = fieldSchema.safeParse(value);
-    return result.success ? null : result.error.errors[0]?.message ?? 'Invalid value';
+    return result.success
+      ? null
+      : (result.error.errors[0]?.message ?? "Invalid value");
   };
-  
+
   return { errors, validate, validateField };
 }
 ```
@@ -169,30 +179,30 @@ export function useVideoForm() {
 
 ```typescript
 // schemas/params.ts
-import { z } from 'zod';
+import { z } from "zod";
 
 export const VideoParamsSchema = z.object({
   id: z.string().uuid(),
-  mode: z.enum(['edit', 'view', 'preview']).default('view'),
+  mode: z.enum(["edit", "view", "preview"]).default("view"),
   tab: z.coerce.number().min(0).max(4).default(0),
 });
 
 export type VideoParams = z.infer<typeof VideoParamsSchema>;
 
 // hooks/useVideoParams.ts
-import { useParams, useSearchParams } from 'react-router-dom';
-import { VideoParamsSchema, type VideoParams } from '../schemas/params';
+import { useParams, useSearchParams } from "react-router-dom";
+import { VideoParamsSchema, type VideoParams } from "../schemas/params";
 
 export function useVideoParams(): VideoParams {
   const { id } = useParams();
   const [searchParams] = useSearchParams();
-  
+
   const rawParams = {
     id,
-    mode: searchParams.get('mode'),
-    tab: searchParams.get('tab'),
+    mode: searchParams.get("mode"),
+    tab: searchParams.get("tab"),
   };
-  
+
   // Will throw if invalid - wrap in ErrorBoundary
   return VideoParamsSchema.parse(rawParams);
 }
@@ -202,7 +212,7 @@ export function useVideoParams(): VideoParams {
 
 ```typescript
 // config/env.ts
-import { z } from 'zod';
+import { z } from "zod";
 
 const EnvSchema = z.object({
   VITE_API_URL: z.string().url(),
@@ -226,7 +236,7 @@ console.log(env.VITE_API_URL); // string (guaranteed)
 
 ```typescript
 // schemas/events.ts
-import { z } from 'zod';
+import { z } from "zod";
 
 const BaseEventSchema = z.object({
   id: z.string().uuid(),
@@ -234,7 +244,7 @@ const BaseEventSchema = z.object({
 });
 
 const UserCreatedSchema = BaseEventSchema.extend({
-  type: z.literal('USER_CREATED'),
+  type: z.literal("USER_CREATED"),
   payload: z.object({
     userId: z.string(),
     email: z.string().email(),
@@ -242,7 +252,7 @@ const UserCreatedSchema = BaseEventSchema.extend({
 });
 
 const UserUpdatedSchema = BaseEventSchema.extend({
-  type: z.literal('USER_UPDATED'),
+  type: z.literal("USER_UPDATED"),
   payload: z.object({
     userId: z.string(),
     changes: z.record(z.unknown()),
@@ -250,13 +260,13 @@ const UserUpdatedSchema = BaseEventSchema.extend({
 });
 
 const UserDeletedSchema = BaseEventSchema.extend({
-  type: z.literal('USER_DELETED'),
+  type: z.literal("USER_DELETED"),
   payload: z.object({
     userId: z.string(),
   }),
 });
 
-export const EventSchema = z.discriminatedUnion('type', [
+export const EventSchema = z.discriminatedUnion("type", [
   UserCreatedSchema,
   UserUpdatedSchema,
   UserDeletedSchema,
@@ -267,11 +277,11 @@ export type Event = z.infer<typeof EventSchema>;
 // Usage - type narrowing works automatically
 function handleEvent(event: Event) {
   switch (event.type) {
-    case 'USER_CREATED':
+    case "USER_CREATED":
       // TypeScript knows event.payload has userId and email
       console.log(event.payload.email);
       break;
-    case 'USER_DELETED':
+    case "USER_DELETED":
       // TypeScript knows event.payload only has userId
       console.log(event.payload.userId);
       break;
@@ -283,7 +293,7 @@ function handleEvent(event: Event) {
 
 ```typescript
 // schemas/tree.ts
-import { z } from 'zod';
+import { z } from "zod";
 
 interface TreeNode {
   id: string;
@@ -297,7 +307,7 @@ const TreeNodeSchema: z.ZodType<TreeNode> = z.lazy(() =>
     id: z.string(),
     name: z.string(),
     children: z.array(TreeNodeSchema),
-  })
+  }),
 );
 
 export type { TreeNode };
@@ -308,7 +318,7 @@ export { TreeNodeSchema };
 
 ```typescript
 // schemas/transforms.ts
-import { z } from 'zod';
+import { z } from "zod";
 
 // Coerce string to number
 const PortSchema = z.coerce.number().min(1).max(65535);
@@ -317,20 +327,23 @@ const PortSchema = z.coerce.number().min(1).max(65535);
 const DateSchema = z.string().transform((val) => new Date(val));
 
 // Transform with validation
-const SlugSchema = z.string()
-  .transform((val) => val.toLowerCase().replace(/\s+/g, '-'))
+const SlugSchema = z
+  .string()
+  .transform((val) => val.toLowerCase().replace(/\s+/g, "-"))
   .pipe(z.string().regex(/^[a-z0-9-]+$/));
 
 // Parse and transform API response
-const ApiUserSchema = z.object({
-  user_id: z.string(),
-  user_name: z.string(),
-  created_at: z.string(),
-}).transform((data) => ({
-  id: data.user_id,
-  name: data.user_name,
-  createdAt: new Date(data.created_at),
-}));
+const ApiUserSchema = z
+  .object({
+    user_id: z.string(),
+    user_name: z.string(),
+    created_at: z.string(),
+  })
+  .transform((data) => ({
+    id: data.user_id,
+    name: data.user_name,
+    createdAt: new Date(data.created_at),
+  }));
 
 type User = z.infer<typeof ApiUserSchema>;
 // { id: string; name: string; createdAt: Date }
@@ -340,40 +353,34 @@ type User = z.infer<typeof ApiUserSchema>;
 
 ```typescript
 // schemas/refinements.ts
-import { z } from 'zod';
+import { z } from "zod";
 
 // Custom validation logic
-const PasswordSchema = z.string()
-  .min(8, 'Password must be at least 8 characters')
-  .refine(
-    (val) => /[A-Z]/.test(val),
-    'Password must contain uppercase letter'
-  )
-  .refine(
-    (val) => /[0-9]/.test(val),
-    'Password must contain a number'
-  );
+const PasswordSchema = z
+  .string()
+  .min(8, "Password must be at least 8 characters")
+  .refine((val) => /[A-Z]/.test(val), "Password must contain uppercase letter")
+  .refine((val) => /[0-9]/.test(val), "Password must contain a number");
 
 // Cross-field validation
-const DateRangeSchema = z.object({
-  startDate: z.date(),
-  endDate: z.date(),
-}).refine(
-  (data) => data.endDate > data.startDate,
-  {
-    message: 'End date must be after start date',
-    path: ['endDate'], // Which field the error belongs to
-  }
-);
+const DateRangeSchema = z
+  .object({
+    startDate: z.date(),
+    endDate: z.date(),
+  })
+  .refine((data) => data.endDate > data.startDate, {
+    message: "End date must be after start date",
+    path: ["endDate"], // Which field the error belongs to
+  });
 
 // Async validation
-const UniqueEmailSchema = z.string().email().refine(
-  async (email) => {
+const UniqueEmailSchema = z
+  .string()
+  .email()
+  .refine(async (email) => {
     const exists = await checkEmailExists(email);
     return !exists;
-  },
-  'Email already in use'
-);
+  }, "Email already in use");
 ```
 
 ---
@@ -383,7 +390,7 @@ const UniqueEmailSchema = z.string().email().refine(
 ### Pattern 9: Safe Parsing
 
 ```typescript
-import { z } from 'zod';
+import { z } from "zod";
 
 const UserSchema = z.object({
   name: z.string(),
@@ -413,22 +420,25 @@ if (result.success) {
 
 ```typescript
 // schemas/messages.ts
-import { z } from 'zod';
+import { z } from "zod";
 
 const UserSchema = z.object({
-  name: z.string({
-    required_error: 'Name is required',
-    invalid_type_error: 'Name must be a string',
-  }).min(2, { message: 'Name must be at least 2 characters' }),
-  
-  email: z.string()
-    .email({ message: 'Please enter a valid email address' }),
-  
-  age: z.number({
-    required_error: 'Age is required',
-    invalid_type_error: 'Age must be a number',
-  }).min(0, { message: 'Age cannot be negative' })
-    .max(150, { message: 'Please enter a valid age' }),
+  name: z
+    .string({
+      required_error: "Name is required",
+      invalid_type_error: "Name must be a string",
+    })
+    .min(2, { message: "Name must be at least 2 characters" }),
+
+  email: z.string().email({ message: "Please enter a valid email address" }),
+
+  age: z
+    .number({
+      required_error: "Age is required",
+      invalid_type_error: "Age must be a number",
+    })
+    .min(0, { message: "Age cannot be negative" })
+    .max(150, { message: "Please enter a valid age" }),
 });
 ```
 
@@ -436,7 +446,7 @@ const UserSchema = z.object({
 
 ```typescript
 // utils/zodErrors.ts
-import { ZodError } from 'zod';
+import { ZodError } from "zod";
 
 interface FormattedError {
   field: string;
@@ -445,7 +455,7 @@ interface FormattedError {
 
 export function formatZodError(error: ZodError): FormattedError[] {
   return error.errors.map((err) => ({
-    field: err.path.join('.'),
+    field: err.path.join("."),
     message: err.message,
   }));
 }
@@ -453,7 +463,7 @@ export function formatZodError(error: ZodError): FormattedError[] {
 export function zodErrorToRecord(error: ZodError): Record<string, string> {
   const record: Record<string, string> = {};
   error.errors.forEach((err) => {
-    const field = err.path.join('.');
+    const field = err.path.join(".");
     if (!record[field]) {
       record[field] = err.message;
     }
@@ -491,23 +501,23 @@ export function ContactForm() {
   } = useForm<ContactFormData>({
     resolver: zodResolver(ContactFormSchema),
   });
-  
+
   const onSubmit = (data: ContactFormData) => {
     // data is already validated and typed
     console.log(data);
   };
-  
+
   return (
     <form onSubmit={handleSubmit(onSubmit)}>
       <input {...register('name')} />
       {errors.name && <span>{errors.name.message}</span>}
-      
+
       <input {...register('email')} />
       {errors.email && <span>{errors.email.message}</span>}
-      
+
       <textarea {...register('message')} />
       {errors.message && <span>{errors.message.message}</span>}
-      
+
       <button type="submit">Send</button>
     </form>
   );
@@ -538,13 +548,13 @@ src/
 
 ### Schema Naming Convention
 
-| Schema Type | Naming Pattern | Example |
-|-------------|----------------|---------|
+| Schema Type  | Naming Pattern             | Example                      |
+| ------------ | -------------------------- | ---------------------------- |
 | API Response | `{Resource}ResponseSchema` | `VideoConceptResponseSchema` |
-| API Request | `{Action}RequestSchema` | `CreateVideoRequestSchema` |
-| Form Data | `{Form}Schema` | `VideoFormSchema` |
-| Params | `{Resource}ParamsSchema` | `VideoParamsSchema` |
-| Events | `{Event}Schema` | `UserCreatedEventSchema` |
+| API Request  | `{Action}RequestSchema`    | `CreateVideoRequestSchema`   |
+| Form Data    | `{Form}Schema`             | `VideoFormSchema`            |
+| Params       | `{Resource}ParamsSchema`   | `VideoParamsSchema`          |
+| Events       | `{Event}Schema`            | `UserCreatedEventSchema`     |
 
 ---
 
@@ -574,7 +584,7 @@ const UserSchema = z.object({
   id: z.string(),
   name: z.string(),
   email: z.string().email(),
-  role: z.enum(['admin', 'user']),
+  role: z.enum(["admin", "user"]),
 });
 
 // Partial for updates
@@ -591,7 +601,7 @@ const CreateUserSchema = UserSchema.omit({ id: true });
 
 ```typescript
 // For very large schemas, load dynamically
-const getLargeSchema = () => import('./largeSchema').then((m) => m.schema);
+const getLargeSchema = () => import("./largeSchema").then((m) => m.schema);
 
 async function validateLargeData(data: unknown) {
   const schema = await getLargeSchema();
@@ -733,4 +743,4 @@ z.object({...}).superRefine((data, ctx) => { ... })
 
 ---
 
-*Companion docs: [ARCHITECTURE_STANDARD.md](./ARCHITECTURE_STANDARD.md), [STYLE_RULES.md](./STYLE_RULES.md)*
+_Companion docs: [ARCHITECTURE_STANDARD.md](./ARCHITECTURE_STANDARD.md), [STYLE_RULES.md](./STYLE_RULES.md)_

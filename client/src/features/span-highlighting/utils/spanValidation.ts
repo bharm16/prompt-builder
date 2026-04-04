@@ -1,9 +1,9 @@
 /**
  * Span Validation Utilities
- * 
+ *
  * Pure functions for validating and sanitizing span data.
  * Extracted from useEnhancementSuggestions.js to eliminate duplication.
- * 
+ *
  * Architecture: Pure utility functions (no dependencies)
  * Pattern: Single responsibility - validation only
  */
@@ -32,13 +32,13 @@ export interface NormalizedSpan {
  * Check if a span object is valid
  */
 export function isValidSpan(span: unknown): span is SpanInput {
-  if (!span || typeof span !== 'object') {
+  if (!span || typeof span !== "object") {
     return false;
   }
-  
+
   const spanObj = span as SpanInput;
-  const text = spanObj.quote || spanObj.text || '';
-  return typeof text === 'string' && text.trim().length > 0;
+  const text = spanObj.quote || spanObj.text || "";
+  return typeof text === "string" && text.trim().length > 0;
 }
 
 /**
@@ -48,7 +48,7 @@ export function sanitizeSpans(spans: unknown[]): SpanInput[] {
   if (!Array.isArray(spans)) {
     return [];
   }
-  
+
   return spans.filter(isValidSpan);
 }
 
@@ -59,22 +59,22 @@ export function normalizeSpan(span: unknown): NormalizedSpan | null {
   if (!isValidSpan(span)) {
     return null;
   }
-  
-  const text = (span.quote || span.text || '').trim();
-  
+
+  const text = (span.quote || span.text || "").trim();
+
   const normalized: NormalizedSpan = {
     text,
-    role: span.role || span.category || 'unknown',
-    category: span.category || span.role || 'unknown',
+    role: span.role || span.category || "unknown",
+    category: span.category || span.role || "unknown",
   };
 
-  if (typeof span.confidence === 'number') {
+  if (typeof span.confidence === "number") {
     normalized.confidence = span.confidence;
   }
-  if (typeof span.start === 'number') {
+  if (typeof span.start === "number") {
     normalized.start = span.start;
   }
-  if (typeof span.end === 'number') {
+  if (typeof span.end === "number") {
     normalized.end = span.end;
   }
 

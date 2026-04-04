@@ -1,5 +1,5 @@
-import type { Asset, AssetListResponse } from '@shared/types/asset';
-import { buildFirebaseAuthHeaders } from '@/services/http/firebaseAuth';
+import type { Asset, AssetListResponse } from "@shared/types/asset";
+import { buildFirebaseAuthHeaders } from "@/services/http/firebaseAuth";
 import {
   AssetSchema,
   AssetListResponseSchema,
@@ -8,11 +8,14 @@ import {
   AssetForGenerationSchema,
   ResolvedPromptSchema,
   TriggerValidationSchema,
-} from './schemas';
+} from "./schemas";
 
-const API_BASE = '/api/assets';
+const API_BASE = "/api/assets";
 
-async function handleError(response: Response, fallback: string): Promise<never> {
+async function handleError(
+  response: Response,
+  fallback: string,
+): Promise<never> {
   try {
     const payload = await response.json();
     throw new Error(payload.error || payload.message || fallback);
@@ -30,10 +33,10 @@ export const assetApi = {
     const authHeaders = await buildFirebaseAuthHeaders();
     const response = await fetch(url, {
       headers: authHeaders,
-      credentials: 'include',
+      credentials: "include",
     });
     if (!response.ok) {
-      return await handleError(response, 'Failed to fetch assets');
+      return await handleError(response, "Failed to fetch assets");
     }
     const payload = await response.json();
     return AssetListResponseSchema.parse(payload) as AssetListResponse;
@@ -43,10 +46,10 @@ export const assetApi = {
     const authHeaders = await buildFirebaseAuthHeaders();
     const response = await fetch(`${API_BASE}/${assetId}`, {
       headers: authHeaders,
-      credentials: 'include',
+      credentials: "include",
     });
     if (!response.ok) {
-      return await handleError(response, 'Failed to fetch asset');
+      return await handleError(response, "Failed to fetch asset");
     }
     const payload = await response.json();
     return AssetSchema.parse(payload) as Asset;
@@ -61,16 +64,16 @@ export const assetApi = {
   }): Promise<Asset> {
     const authHeaders = await buildFirebaseAuthHeaders();
     const response = await fetch(API_BASE, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         ...authHeaders,
       },
-      credentials: 'include',
+      credentials: "include",
       body: JSON.stringify(data),
     });
     if (!response.ok) {
-      return await handleError(response, 'Failed to create asset');
+      return await handleError(response, "Failed to create asset");
     }
     const payload = await response.json();
     return AssetSchema.parse(payload) as Asset;
@@ -83,20 +86,20 @@ export const assetApi = {
       name?: string;
       textDefinition?: string;
       negativePrompt?: string;
-    }
+    },
   ): Promise<Asset> {
     const authHeaders = await buildFirebaseAuthHeaders();
     const response = await fetch(`${API_BASE}/${assetId}`, {
-      method: 'PATCH',
+      method: "PATCH",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         ...authHeaders,
       },
-      credentials: 'include',
+      credentials: "include",
       body: JSON.stringify(data),
     });
     if (!response.ok) {
-      return await handleError(response, 'Failed to update asset');
+      return await handleError(response, "Failed to update asset");
     }
     const payload = await response.json();
     return AssetSchema.parse(payload) as Asset;
@@ -105,12 +108,12 @@ export const assetApi = {
   async delete(assetId: string): Promise<boolean> {
     const authHeaders = await buildFirebaseAuthHeaders();
     const response = await fetch(`${API_BASE}/${assetId}`, {
-      method: 'DELETE',
+      method: "DELETE",
       headers: authHeaders,
-      credentials: 'include',
+      credentials: "include",
     });
     if (!response.ok) {
-      return await handleError(response, 'Failed to delete asset');
+      return await handleError(response, "Failed to delete asset");
     }
     return true;
   },
@@ -121,11 +124,11 @@ export const assetApi = {
       `${API_BASE}/suggestions?q=${encodeURIComponent(query)}`,
       {
         headers: authHeaders,
-        credentials: 'include',
-      }
+        credentials: "include",
+      },
     );
     if (!response.ok) {
-      return await handleError(response, 'Failed to get suggestions');
+      return await handleError(response, "Failed to get suggestions");
     }
     const payload = await response.json();
     return AssetSuggestionSchema.array().parse(payload);
@@ -134,16 +137,16 @@ export const assetApi = {
   async resolve(prompt: string) {
     const authHeaders = await buildFirebaseAuthHeaders();
     const response = await fetch(`${API_BASE}/resolve`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         ...authHeaders,
       },
-      credentials: 'include',
+      credentials: "include",
       body: JSON.stringify({ prompt }),
     });
     if (!response.ok) {
-      return await handleError(response, 'Failed to resolve prompt');
+      return await handleError(response, "Failed to resolve prompt");
     }
     const payload = await response.json();
     return ResolvedPromptSchema.parse(payload);
@@ -152,16 +155,16 @@ export const assetApi = {
   async validate(prompt: string) {
     const authHeaders = await buildFirebaseAuthHeaders();
     const response = await fetch(`${API_BASE}/validate`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         ...authHeaders,
       },
-      credentials: 'include',
+      credentials: "include",
       body: JSON.stringify({ prompt }),
     });
     if (!response.ok) {
-      return await handleError(response, 'Failed to validate triggers');
+      return await handleError(response, "Failed to validate triggers");
     }
     const payload = await response.json();
     return TriggerValidationSchema.parse(payload);
@@ -170,10 +173,10 @@ export const assetApi = {
   async addImage(
     assetId: string,
     file: File,
-    metadata: Record<string, string | undefined> = {}
+    metadata: Record<string, string | undefined> = {},
   ) {
     const formData = new FormData();
-    formData.append('image', file);
+    formData.append("image", file);
     Object.entries(metadata).forEach(([key, value]) => {
       if (value) {
         formData.append(key, value);
@@ -182,13 +185,13 @@ export const assetApi = {
 
     const authHeaders = await buildFirebaseAuthHeaders();
     const response = await fetch(`${API_BASE}/${assetId}/images`, {
-      method: 'POST',
+      method: "POST",
       headers: authHeaders,
-      credentials: 'include',
+      credentials: "include",
       body: formData,
     });
     if (!response.ok) {
-      return await handleError(response, 'Failed to upload image');
+      return await handleError(response, "Failed to upload image");
     }
     const payload = await response.json();
     return AssetImageUploadResponseSchema.parse(payload);
@@ -197,12 +200,12 @@ export const assetApi = {
   async deleteImage(assetId: string, imageId: string): Promise<boolean> {
     const authHeaders = await buildFirebaseAuthHeaders();
     const response = await fetch(`${API_BASE}/${assetId}/images/${imageId}`, {
-      method: 'DELETE',
+      method: "DELETE",
       headers: authHeaders,
-      credentials: 'include',
+      credentials: "include",
     });
     if (!response.ok) {
-      return await handleError(response, 'Failed to delete image');
+      return await handleError(response, "Failed to delete image");
     }
     return true;
   },
@@ -212,13 +215,13 @@ export const assetApi = {
     const response = await fetch(
       `${API_BASE}/${assetId}/images/${imageId}/primary`,
       {
-        method: 'PATCH',
+        method: "PATCH",
         headers: authHeaders,
-        credentials: 'include',
-      }
+        credentials: "include",
+      },
     );
     if (!response.ok) {
-      return await handleError(response, 'Failed to set primary image');
+      return await handleError(response, "Failed to set primary image");
     }
     const payload = await response.json();
     return AssetSchema.parse(payload) as Asset;
@@ -228,10 +231,10 @@ export const assetApi = {
     const authHeaders = await buildFirebaseAuthHeaders();
     const response = await fetch(`${API_BASE}/${assetId}/for-generation`, {
       headers: authHeaders,
-      credentials: 'include',
+      credentials: "include",
     });
     if (!response.ok) {
-      return await handleError(response, 'Asset not ready for generation');
+      return await handleError(response, "Asset not ready for generation");
     }
     const payload = await response.json();
     return AssetForGenerationSchema.parse(payload);

@@ -4,16 +4,18 @@ import type {
   AssetType,
   CreateAssetRequest,
   UpdateAssetRequest,
-} from '@shared/types/asset';
-import AssetRepository, { type ReferenceImageMetadataInput } from './AssetRepository';
-import ReferenceImageService from './ReferenceImageService';
-import AssetResolverService from './AssetResolverService';
-import TriggerValidationService from './TriggerValidationService';
-import type FaceEmbeddingService from './FaceEmbeddingService';
-import { AssetCrudService } from './services/AssetCrudService';
-import { AssetReferenceImageService } from './services/AssetReferenceImageService';
-import { AssetPromptService } from './services/AssetPromptService';
-import { AssetEmbeddingService } from './services/AssetEmbeddingService';
+} from "@shared/types/asset";
+import AssetRepository, {
+  type ReferenceImageMetadataInput,
+} from "./AssetRepository";
+import ReferenceImageService from "./ReferenceImageService";
+import AssetResolverService from "./AssetResolverService";
+import TriggerValidationService from "./TriggerValidationService";
+import type FaceEmbeddingService from "./FaceEmbeddingService";
+import { AssetCrudService } from "./services/AssetCrudService";
+import { AssetReferenceImageService } from "./services/AssetReferenceImageService";
+import { AssetPromptService } from "./services/AssetPromptService";
+import { AssetEmbeddingService } from "./services/AssetEmbeddingService";
 
 export class AssetService {
   private readonly crud: AssetCrudService;
@@ -26,7 +28,7 @@ export class AssetService {
     referenceImageService: ReferenceImageService,
     resolverService = new AssetResolverService(assetRepository),
     triggerValidation = new TriggerValidationService(),
-    embeddingService: FaceEmbeddingService | null = null
+    embeddingService: FaceEmbeddingService | null = null,
   ) {
     this.crud = new AssetCrudService(assetRepository, triggerValidation);
     this.embeddings = embeddingService
@@ -36,12 +38,15 @@ export class AssetService {
       assetRepository,
       referenceImageService,
       this.crud,
-      this.embeddings
+      this.embeddings,
     );
     this.prompts = new AssetPromptService(resolverService);
   }
 
-  async createAsset(userId: string, payload: CreateAssetRequest): Promise<Asset> {
+  async createAsset(
+    userId: string,
+    payload: CreateAssetRequest,
+  ): Promise<Asset> {
     return this.crud.createAsset(userId, payload);
   }
 
@@ -51,7 +56,11 @@ export class AssetService {
 
   async listAssets(
     userId: string,
-    options: { limit?: number; orderByField?: string; type?: AssetType | null } = {}
+    options: {
+      limit?: number;
+      orderByField?: string;
+      type?: AssetType | null;
+    } = {},
   ): Promise<AssetListResponse> {
     return this.crud.listAssets(userId, options);
   }
@@ -60,7 +69,11 @@ export class AssetService {
     return this.crud.listAssetsByType(userId, type);
   }
 
-  async updateAsset(userId: string, assetId: string, updates: UpdateAssetRequest): Promise<Asset | null> {
+  async updateAsset(
+    userId: string,
+    assetId: string,
+    updates: UpdateAssetRequest,
+  ): Promise<Asset | null> {
     return this.crud.updateAsset(userId, assetId, updates);
   }
 
@@ -72,16 +85,29 @@ export class AssetService {
     userId: string,
     assetId: string,
     imageBuffer: Buffer,
-    metadata: ReferenceImageMetadataInput = {}
-  ): Promise<{ image: Asset['referenceImages'][number]; warnings: string[] }> {
-    return this.referenceImages.addReferenceImage(userId, assetId, imageBuffer, metadata);
+    metadata: ReferenceImageMetadataInput = {},
+  ): Promise<{ image: Asset["referenceImages"][number]; warnings: string[] }> {
+    return this.referenceImages.addReferenceImage(
+      userId,
+      assetId,
+      imageBuffer,
+      metadata,
+    );
   }
 
-  async deleteReferenceImage(userId: string, assetId: string, imageId: string): Promise<boolean> {
+  async deleteReferenceImage(
+    userId: string,
+    assetId: string,
+    imageId: string,
+  ): Promise<boolean> {
     return this.referenceImages.deleteReferenceImage(userId, assetId, imageId);
   }
 
-  async setPrimaryImage(userId: string, assetId: string, imageId: string): Promise<Asset | null> {
+  async setPrimaryImage(
+    userId: string,
+    assetId: string,
+    imageId: string,
+  ): Promise<Asset | null> {
     return this.referenceImages.setPrimaryImage(userId, assetId, imageId);
   }
 
@@ -97,7 +123,10 @@ export class AssetService {
     return this.prompts.validateTriggers(userId, rawPrompt);
   }
 
-  async getAssetForGeneration(userId: string, assetId: string): Promise<{
+  async getAssetForGeneration(
+    userId: string,
+    assetId: string,
+  ): Promise<{
     id: string;
     type: AssetType;
     trigger: string;
@@ -105,19 +134,23 @@ export class AssetService {
     textDefinition: string;
     negativePrompt?: string;
     primaryImageUrl: string | null;
-    referenceImages: Asset['referenceImages'];
+    referenceImages: Asset["referenceImages"];
     faceEmbedding?: string | null;
   }> {
     return this.crud.getAssetForGeneration(userId, assetId);
   }
 
-  async generateDescriptionFromImage(_userId: string, _assetId: string, _imageId?: string | null) {
-    throw new Error('AI description generation not yet implemented');
+  async generateDescriptionFromImage(
+    _userId: string,
+    _assetId: string,
+    _imageId?: string | null,
+  ) {
+    throw new Error("AI description generation not yet implemented");
   }
 
   async extractAndStoreFaceEmbedding(userId: string, assetId: string) {
     if (!this.embeddings) {
-      throw new Error('Face embedding service is not configured');
+      throw new Error("Face embedding service is not configured");
     }
     return this.embeddings.extractAndStoreFaceEmbedding(userId, assetId);
   }

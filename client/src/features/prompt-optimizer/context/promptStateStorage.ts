@@ -1,18 +1,18 @@
-import { z } from 'zod';
-import type { CapabilityValues } from '@shared/capabilities';
+import { z } from "zod";
+import type { CapabilityValues } from "@shared/capabilities";
 
 const STORAGE_KEYS = {
-  selectedMode: 'prompt-optimizer:selectedMode',
-  selectedModel: 'prompt-optimizer:selectedModel',
-  generationParams: 'prompt-optimizer:generationParams',
-  videoTier: 'prompt-optimizer:videoTier',
+  selectedMode: "prompt-optimizer:selectedMode",
+  selectedModel: "prompt-optimizer:selectedModel",
+  generationParams: "prompt-optimizer:generationParams",
+  videoTier: "prompt-optimizer:videoTier",
 } as const;
 
 const CapabilityValueSchema = z.union([z.string(), z.number(), z.boolean()]);
 const CapabilityValuesSchema = z.record(z.string(), CapabilityValueSchema);
 const SelectedModeSchema = z.string();
 const SelectedModelSchema = z.string();
-const VideoTierSchema = z.enum(['draft', 'render']);
+const VideoTierSchema = z.enum(["draft", "render"]);
 
 const safeParseJson = (raw: string): unknown => {
   try {
@@ -23,32 +23,32 @@ const safeParseJson = (raw: string): unknown => {
 };
 
 export const loadSelectedModel = (): string => {
-  if (typeof window === 'undefined') return '';
+  if (typeof window === "undefined") return "";
   try {
     const value = window.localStorage.getItem(STORAGE_KEYS.selectedModel);
-    if (!value) return '';
+    if (!value) return "";
     const parsed = SelectedModelSchema.safeParse(value);
-    return parsed.success ? parsed.data : '';
+    return parsed.success ? parsed.data : "";
   } catch {
-    return '';
+    return "";
   }
 };
 
 export const loadSelectedMode = (): string => {
-  if (typeof window === 'undefined') return 'video';
+  if (typeof window === "undefined") return "video";
   try {
     const value = window.localStorage.getItem(STORAGE_KEYS.selectedMode);
-    if (!value) return 'video';
+    if (!value) return "video";
     const parsed = SelectedModeSchema.safeParse(value);
-    if (!parsed.success) return 'video';
-    return parsed.data.trim() ? parsed.data : 'video';
+    if (!parsed.success) return "video";
+    return parsed.data.trim() ? parsed.data : "video";
   } catch {
-    return 'video';
+    return "video";
   }
 };
 
 export const loadGenerationParams = (): CapabilityValues => {
-  if (typeof window === 'undefined') return {};
+  if (typeof window === "undefined") return {};
   try {
     const raw = window.localStorage.getItem(STORAGE_KEYS.generationParams);
     if (!raw) return {};
@@ -59,52 +59,52 @@ export const loadGenerationParams = (): CapabilityValues => {
   }
 };
 
-export const loadVideoTier = (): 'draft' | 'render' => {
-  if (typeof window === 'undefined') return 'render';
+export const loadVideoTier = (): "draft" | "render" => {
+  if (typeof window === "undefined") return "render";
   try {
     const value = window.localStorage.getItem(STORAGE_KEYS.videoTier);
-    if (!value) return 'render';
+    if (!value) return "render";
     const parsed = VideoTierSchema.safeParse(value);
-    return parsed.success ? parsed.data : 'render';
+    return parsed.success ? parsed.data : "render";
   } catch {
-    return 'render';
+    return "render";
   }
 };
 
 export const persistSelectedMode = (value: string): void => {
-  if (typeof window === 'undefined') return;
+  if (typeof window === "undefined") return;
   try {
-    window.localStorage.setItem(STORAGE_KEYS.selectedMode, value ?? '');
+    window.localStorage.setItem(STORAGE_KEYS.selectedMode, value ?? "");
   } catch {
     // ignore
   }
 };
 
 export const persistSelectedModel = (value: string): void => {
-  if (typeof window === 'undefined') return;
+  if (typeof window === "undefined") return;
   try {
-    window.localStorage.setItem(STORAGE_KEYS.selectedModel, value ?? '');
+    window.localStorage.setItem(STORAGE_KEYS.selectedModel, value ?? "");
   } catch {
     // ignore
   }
 };
 
 export const persistGenerationParams = (value: CapabilityValues): void => {
-  if (typeof window === 'undefined') return;
+  if (typeof window === "undefined") return;
   try {
     window.localStorage.setItem(
       STORAGE_KEYS.generationParams,
-      JSON.stringify(value ?? {})
+      JSON.stringify(value ?? {}),
     );
   } catch {
     // ignore
   }
 };
 
-export const persistVideoTier = (value: 'draft' | 'render'): void => {
-  if (typeof window === 'undefined') return;
+export const persistVideoTier = (value: "draft" | "render"): void => {
+  if (typeof window === "undefined") return;
   try {
-    window.localStorage.setItem(STORAGE_KEYS.videoTier, value ?? 'render');
+    window.localStorage.setItem(STORAGE_KEYS.videoTier, value ?? "render");
   } catch {
     // ignore
   }

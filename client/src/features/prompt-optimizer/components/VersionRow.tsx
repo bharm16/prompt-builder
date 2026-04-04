@@ -1,10 +1,10 @@
-import React from 'react';
-import { Icon, Image, Play } from '@promptstudio/system/components/ui';
-import { Button } from '@promptstudio/system/components/ui/button';
-import { formatTimestamp } from '../PromptCanvas/utils/promptCanvasFormatters';
-import { cn } from '@/utils/cn';
-import type { PromptVersionEdit } from '@features/prompt-optimizer/types/domain/prompt-session';
-import type { Generation } from '@/features/prompt-optimizer/GenerationsPanel/types';
+import React from "react";
+import { Icon, Image, Play } from "@promptstudio/system/components/ui";
+import { Button } from "@promptstudio/system/components/ui/button";
+import { formatTimestamp } from "../PromptCanvas/utils/promptCanvasFormatters";
+import { cn } from "@/utils/cn";
+import type { PromptVersionEdit } from "@features/prompt-optimizer/types/domain/prompt-session";
+import type { Generation } from "@features/generations/types";
 
 type VersionPreview = {
   generatedAt?: string;
@@ -41,11 +41,11 @@ interface VersionRowProps {
   isSelected: boolean;
   onSelect: () => void;
   /** Layout direction */
-  layout?: 'vertical' | 'horizontal';
+  layout?: "vertical" | "horizontal";
 }
 
 const normalizeUrl = (value: unknown): string | null => {
-  if (typeof value !== 'string') return null;
+  if (typeof value !== "string") return null;
   const trimmed = value.trim();
   return trimmed ? trimmed : null;
 };
@@ -64,8 +64,12 @@ const resolvePreviewImageCandidates = (entry: VersionEntry): string[] => {
   pushUniqueUrl(candidates, entry.thumbnailUrl);
 
   const generations = Array.isArray(entry.generations) ? entry.generations : [];
-  const completedGenerations = generations.filter((generation) => generation.status === 'completed');
-  const source = completedGenerations.length ? completedGenerations : generations;
+  const completedGenerations = generations.filter(
+    (generation) => generation.status === "completed",
+  );
+  const source = completedGenerations.length
+    ? completedGenerations
+    : generations;
 
   // Prefer explicit generation thumbnails first.
   for (const generation of source) {
@@ -74,7 +78,10 @@ const resolvePreviewImageCandidates = (entry: VersionEntry): string[] => {
 
   // Then prefer image-like generation outputs.
   for (const generation of source) {
-    if (generation.mediaType === 'image' || generation.mediaType === 'image-sequence') {
+    if (
+      generation.mediaType === "image" ||
+      generation.mediaType === "image-sequence"
+    ) {
       pushUniqueUrl(candidates, generation.mediaUrls?.[0]);
     }
   }
@@ -87,11 +94,11 @@ const resolvePreviewImageCandidates = (entry: VersionEntry): string[] => {
   return candidates;
 };
 
-const resolveTimestamp = (value: VersionEntry['timestamp']): number | null => {
-  if (typeof value === 'number' && Number.isFinite(value)) {
+const resolveTimestamp = (value: VersionEntry["timestamp"]): number | null => {
+  if (typeof value === "number" && Number.isFinite(value)) {
     return value;
   }
-  if (typeof value === 'string' && value.trim()) {
+  if (typeof value === "string" && value.trim()) {
     const parsed = Date.parse(value);
     if (!Number.isNaN(parsed)) return parsed;
     const asNumber = Number(value);
@@ -101,35 +108,39 @@ const resolveTimestamp = (value: VersionEntry['timestamp']): number | null => {
 };
 
 const resolveMetaLabel = (entry: VersionEntry): string => {
-  if (typeof entry.meta === 'string' && entry.meta.trim()) {
+  if (typeof entry.meta === "string" && entry.meta.trim()) {
     return entry.meta.trim();
   }
   const count =
-    typeof entry.editCount === 'number'
+    typeof entry.editCount === "number"
       ? entry.editCount
       : Array.isArray(entry.edits)
         ? entry.edits.length
-        : typeof entry.edits === 'number'
+        : typeof entry.edits === "number"
           ? entry.edits
           : null;
-  if (typeof count === 'number' && Number.isFinite(count)) {
-    return `${count} edit${count === 1 ? '' : 's'}`;
+  if (typeof count === "number" && Number.isFinite(count)) {
+    return `${count} edit${count === 1 ? "" : "s"}`;
   }
   const timestamp = resolveTimestamp(entry.timestamp);
   if (timestamp !== null) {
     return formatTimestamp(timestamp);
   }
-  return '';
+  return "";
 };
 
-const resolveVersionLabel = (entry: VersionEntry, index: number, total: number): string => {
-  if (typeof entry.label === 'string' && entry.label.trim()) {
+const resolveVersionLabel = (
+  entry: VersionEntry,
+  index: number,
+  total: number,
+): string => {
+  if (typeof entry.label === "string" && entry.label.trim()) {
     return entry.label.trim();
   }
-  if (typeof entry.version === 'string' && entry.version.trim()) {
+  if (typeof entry.version === "string" && entry.version.trim()) {
     return entry.version.trim();
   }
-  if (typeof entry.version === 'number' && Number.isFinite(entry.version)) {
+  if (typeof entry.version === "number" && Number.isFinite(entry.version)) {
     return `v${entry.version}`;
   }
   return `v${total - index}`;
@@ -141,16 +152,18 @@ export function VersionRow({
   total,
   isSelected,
   onSelect,
-  layout = 'vertical',
+  layout = "vertical",
 }: VersionRowProps): React.ReactElement {
   const previewImageCandidates = resolvePreviewImageCandidates(entry);
-  const previewImageCandidateKey = previewImageCandidates.join('|');
+  const previewImageCandidateKey = previewImageCandidates.join("|");
   const [previewImageIndex, setPreviewImageIndex] = React.useState(0);
   const previewImageUrl =
     previewImageIndex >= 0 && previewImageIndex < previewImageCandidates.length
-      ? previewImageCandidates[previewImageIndex] ?? null
+      ? (previewImageCandidates[previewImageIndex] ?? null)
       : null;
-  const hasPreview = Boolean(entry.hasPreview || entry.preview || previewImageCandidates.length > 0);
+  const hasPreview = Boolean(
+    entry.hasPreview || entry.preview || previewImageCandidates.length > 0,
+  );
   const hasVideo = Boolean(entry.hasVideo ?? entry.video);
   const label = resolveVersionLabel(entry, index, total);
   const meta = resolveMetaLabel(entry);
@@ -165,32 +178,34 @@ export function VersionRow({
   const handleImageError = React.useCallback((): void => {
     setPreviewImageIndex((current) => {
       const next = current + 1;
-      return next < previewImageCandidates.length ? next : previewImageCandidates.length;
+      return next < previewImageCandidates.length
+        ? next
+        : previewImageCandidates.length;
     });
   }, [previewImageCandidates.length]);
 
   // Horizontal layout (compact filmstrip thumb)
-  if (layout === 'horizontal') {
+  if (layout === "horizontal") {
     return (
       <button
         type="button"
         onClick={onSelect}
         className={cn(
-          'group snap-start',
-          'flex flex-shrink-0 flex-col items-center gap-1.5',
-          'bg-transparent border-none p-0 outline-none cursor-pointer'
+          "group snap-start",
+          "flex flex-shrink-0 flex-col items-center gap-1.5",
+          "bg-transparent border-none p-0 outline-none cursor-pointer",
         )}
-        data-active={isSelected ? 'true' : 'false'}
+        data-active={isSelected ? "true" : "false"}
         aria-pressed={isSelected}
       >
         {/* 96×54 thumbnail (16:9) */}
         <div
           className={cn(
-            'relative h-[54px] w-24 overflow-hidden rounded-md',
-            'transition-all duration-150',
+            "relative h-[54px] w-24 overflow-hidden rounded-md",
+            "transition-all duration-150",
             isSelected
-              ? 'ring-[1.5px] ring-accent shadow-[0_0_0_1px_rgba(108,92,231,0.2),0_2px_8px_rgba(108,92,231,0.08)]'
-              : 'border border-border group-hover:border-border-strong'
+              ? "ring-[1.5px] ring-accent shadow-[0_0_0_1px_rgba(108,92,231,0.2),0_2px_8px_rgba(108,92,231,0.08)]"
+              : "border border-border group-hover:border-border-strong",
           )}
         >
           {/* Preview content */}
@@ -204,14 +219,26 @@ export function VersionRow({
             />
           ) : (
             <div className="flex h-full w-full items-center justify-center bg-surface-2">
-              <Icon icon={Image} size="sm" weight="bold" aria-hidden="true" className="text-faint" />
+              <Icon
+                icon={Image}
+                size="sm"
+                weight="bold"
+                aria-hidden="true"
+                className="text-faint"
+              />
             </div>
           )}
 
           {/* Video badge overlay */}
           {hasVideo ? (
             <div className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded bg-black/60 backdrop-blur-sm">
-              <Icon icon={Play} size="xs" weight="fill" aria-hidden="true" className="text-white" />
+              <Icon
+                icon={Play}
+                size="xs"
+                weight="fill"
+                aria-hidden="true"
+                className="text-white"
+              />
             </div>
           ) : null}
 
@@ -228,10 +255,10 @@ export function VersionRow({
         <div className="flex max-w-24 items-center gap-1">
           <span
             className={cn(
-              'truncate text-[10px] transition-colors duration-150',
+              "truncate text-[10px] transition-colors duration-150",
               isSelected
-                ? 'font-semibold text-foreground'
-                : 'font-medium text-muted group-hover:text-foreground/70'
+                ? "font-semibold text-foreground"
+                : "font-medium text-muted group-hover:text-foreground/70",
             )}
           >
             {label}
@@ -245,7 +272,9 @@ export function VersionRow({
 
         {/* Meta */}
         {meta ? (
-          <span className="-mt-0.5 text-[9px] tracking-wide text-faint">{meta}</span>
+          <span className="-mt-0.5 text-[9px] tracking-wide text-faint">
+            {meta}
+          </span>
         ) : null}
       </button>
     );
@@ -257,15 +286,18 @@ export function VersionRow({
       type="button"
       onClick={onSelect}
       className={cn(
-        'relative flex h-ps-10 w-full items-center justify-between gap-ps-3 rounded-lg border border-border bg-surface-2 px-ps-3 text-left transition-colors hover:border-border-strong',
-        isSelected && 'border-accent/50 ring-2 ring-accent/10'
+        "relative flex h-ps-10 w-full items-center justify-between gap-ps-3 rounded-lg border border-border bg-surface-2 px-ps-3 text-left transition-colors hover:border-border-strong",
+        isSelected && "border-accent/50 ring-2 ring-accent/10",
       )}
-      data-active={isSelected ? 'true' : 'false'}
+      data-active={isSelected ? "true" : "false"}
       aria-pressed={isSelected}
       variant="ghost"
     >
       {isSelected && (
-        <span className="absolute left-0 top-0 h-full w-ps-1 rounded-l-lg bg-accent" aria-hidden="true" />
+        <span
+          className="absolute left-0 top-0 h-full w-ps-1 rounded-l-lg bg-accent"
+          aria-hidden="true"
+        />
       )}
       <div className="flex min-w-0 flex-1 flex-col gap-ps-1">
         <div className="flex min-w-0 items-center gap-ps-2">
@@ -275,7 +307,9 @@ export function VersionRow({
               aria-hidden="true"
             />
           ) : null}
-          <div className="truncate text-body-sm font-semibold text-foreground">{label}</div>
+          <div className="truncate text-body-sm font-semibold text-foreground">
+            {label}
+          </div>
         </div>
         <div className="text-label-12 text-muted">{meta}</div>
       </div>

@@ -1,8 +1,8 @@
-import type { ModelRecommendation } from '../../types';
+import type { ModelRecommendation } from "../../types";
 
 export interface ModelRecommendationProps {
   prompt: string;
-  mode?: 't2v' | 'i2v';
+  mode?: "t2v" | "i2v";
   durationSeconds?: number;
   onSelectModel: (modelId: string) => void;
   onCompareModels?: (models: [string, string]) => void;

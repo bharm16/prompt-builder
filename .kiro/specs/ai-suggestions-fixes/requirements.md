@@ -7,6 +7,7 @@ This specification addresses bugs and issues identified in the AI suggestions wo
 ## Priority
 
 Requirements are prioritized as follows:
+
 - **P0 (Critical)**: Race conditions causing users to see wrong suggestions
 - **P1 (High)**: Error handling and timeout issues
 - **P2 (Medium)**: Request debouncing and UX improvements
@@ -121,7 +122,6 @@ Requirements are prioritized as follows:
 1. WHEN clipboard write succeeds, THEN THE Suggestions_List SHALL display a brief "Copied!" toast or visual indicator
 2. WHEN clipboard write fails, THEN THE Suggestions_List SHALL handle the error gracefully without crashing
 3. THE Suggestions_List SHALL use proper async error handling for clipboard operations
-
 
 ## Testing Requirements
 

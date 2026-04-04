@@ -1,16 +1,16 @@
-import { logger } from '@infrastructure/Logger';
-import type { ILogger } from '@interfaces/ILogger';
-import type { CacheService } from '@services/cache/CacheService';
-import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer';
-import { TemperatureOptimizer } from '@utils/TemperatureOptimizer';
-import type { AIService } from '@services/prompt-optimization/types';
+import { logger } from "@infrastructure/Logger";
+import type { ILogger } from "@interfaces/ILogger";
+import type { CacheService } from "@services/cache/CacheService";
+import { StructuredOutputEnforcer } from "@utils/StructuredOutputEnforcer";
+import { TemperatureOptimizer } from "@utils/TemperatureOptimizer";
+import type { AIService } from "@services/prompt-optimization/types";
 
 /**
  * Scene change detection result
  */
 export interface SceneChangeResult {
   isSceneChange: boolean;
-  confidence: 'high' | 'medium' | 'low';
+  confidence: "high" | "medium" | "low";
   reasoning: string;
   suggestedUpdates: Record<string, string>;
 }
@@ -18,7 +18,7 @@ export interface SceneChangeResult {
 /**
  * Service for detecting scene changes in video prompts
  * Determines if field changes require updating related fields
- * 
+ *
  * Moved from SceneDetectionService.js to video-concept folder for better
  * logical grouping with other scene-related services (SceneAnalysisService,
  * ConflictDetectionService).
@@ -28,10 +28,13 @@ export class SceneChangeDetectionService {
   private readonly cacheConfig: { ttl: number; namespace: string };
   private readonly log: ILogger;
 
-  constructor(aiService: AIService, private readonly cacheService: CacheService) {
+  constructor(
+    aiService: AIService,
+    private readonly cacheService: CacheService,
+  ) {
     this.ai = aiService;
-    this.cacheConfig = this.cacheService.getConfig('sceneDetection');
-    this.log = logger.child({ service: 'SceneChangeDetectionService' });
+    this.cacheConfig = this.cacheService.getConfig("sceneDetection");
+    this.log = logger.child({ service: "SceneChangeDetectionService" });
   }
 
   /**
@@ -47,9 +50,9 @@ export class SceneChangeDetectionService {
     sectionContext?: string | null;
   }): Promise<SceneChangeResult> {
     const startTime = performance.now();
-    const operation = 'detectSceneChange';
-    
-    this.log.debug('Starting operation.', {
+    const operation = "detectSceneChange";
+
+    this.log.debug("Starting operation.", {
       operation,
       changedField: params.changedField,
       hasOldValue: !!params.oldValue,
@@ -66,9 +69,12 @@ export class SceneChangeDetectionService {
       sectionHeading: params.sectionHeading,
     });
 
-    const cached = await this.cacheService.get<SceneChangeResult>(cacheKey, 'scene-detection');
+    const cached = await this.cacheService.get<SceneChangeResult>(
+      cacheKey,
+      "scene-detection",
+    );
     if (cached) {
-      this.log.debug('Cache hit.', {
+      this.log.debug("Cache hit.", {
         operation,
         duration: Math.round(performance.now() - startTime),
         isSceneChange: cached.isSceneChange,
@@ -80,37 +86,45 @@ export class SceneChangeDetectionService {
     const systemPrompt = this.buildSystemPrompt(params);
 
     // Define schema for validation
-    const schema: { type: 'object' | 'array'; required?: string[] } = {
-      type: 'object' as const,
-      required: ['isSceneChange', 'confidence', 'reasoning', 'suggestedUpdates'],
+    const schema: { type: "object" | "array"; required?: string[] } = {
+      type: "object" as const,
+      required: [
+        "isSceneChange",
+        "confidence",
+        "reasoning",
+        "suggestedUpdates",
+      ],
     };
 
     // Get optimal temperature for scene detection
-    const temperature = TemperatureOptimizer.getOptimalTemperature('scene-detection', {
-      diversity: 'low',
-      precision: 'high',
-    });
+    const temperature = TemperatureOptimizer.getOptimalTemperature(
+      "scene-detection",
+      {
+        diversity: "low",
+        precision: "high",
+      },
+    );
 
     // Call AI service with structured output enforcement
-    const result = await StructuredOutputEnforcer.enforceJSON(
+    const result = (await StructuredOutputEnforcer.enforceJSON(
       this.ai,
       systemPrompt,
       {
-        operation: 'video_scene_change_detection',
+        operation: "video_scene_change_detection",
         schema,
         isArray: false, // Expecting object
         maxTokens: 2048,
         maxRetries: 2,
         temperature,
-      }
-    ) as SceneChangeResult;
+      },
+    )) as SceneChangeResult;
 
     // Cache the result
     await this.cacheService.set(cacheKey, result, {
       ttl: this.cacheConfig.ttl,
     });
 
-    this.log.info('Operation completed.', {
+    this.log.info("Operation completed.", {
       operation,
       duration: Math.round(performance.now() - startTime),
       isSceneChange: result.isSceneChange,
@@ -137,7 +151,7 @@ export class SceneChangeDetectionService {
 
 <analysis_process>
 Step 1: Assess the magnitude of change
-- Old value: "${params.oldValue || 'Not set'}"
+- Old value: "${params.oldValue || "Not set"}"
 - New value: "${params.newValue}"
 - Field: ${params.changedField}
 - Is this a refinement within the same environment, or a fundamental location/environment shift?
@@ -165,13 +179,13 @@ Step 5: Generate suggestions if needed
 </analysis_process>
 
 **Field Changed:** ${params.changedField}
-**Old Value:** "${params.oldValue || 'Not set'}"
+**Old Value:** "${params.oldValue || "Not set"}"
 **New Value:** "${params.newValue}"
 
-**Section:** ${params.sectionHeading || 'Unknown section'}
+**Section:** ${params.sectionHeading || "Unknown section"}
 
 **Relevant Section Content:**
-${params.sectionContext ? params.sectionContext.substring(0, 1500) : 'Not provided'}
+${params.sectionContext ? params.sectionContext.substring(0, 1500) : "Not provided"}
 
 **Full Prompt Context (truncated):**
 ${params.fullPrompt.substring(0, 1500)}

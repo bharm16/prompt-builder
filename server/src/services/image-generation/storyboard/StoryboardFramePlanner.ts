@@ -1,20 +1,23 @@
-import type { LLMClient } from '@clients/LLMClient';
-import { logger } from '@infrastructure/Logger';
-import { extractResponseText } from '@utils/JsonExtractor';
-import { STORYBOARD_FRAME_TIMESTAMPS } from './constants';
-import { fetchImageAsDataUrl } from './fetchImageAsDataUrl';
+import type { LLMClient } from "@clients/LLMClient";
+import { logger } from "@infrastructure/Logger";
+import { extractResponseText } from "@utils/JsonExtractor";
+import { STORYBOARD_FRAME_TIMESTAMPS } from "./constants";
+import { fetchImageAsDataUrl } from "./fetchImageAsDataUrl";
 import {
   buildFallbackDeltas,
   buildRepairSystemPrompt,
   buildSystemPrompt,
   buildVisionDeltaUserPrompt,
-} from './prompts';
+} from "./prompts";
 import {
   parseStoryboardDeltas,
   type StoryboardDeltasParseResult,
-} from './planParser';
+} from "./planParser";
 
-type StoryboardPartialDeltas = Extract<StoryboardDeltasParseResult, { ok: false }>['partial'];
+type StoryboardPartialDeltas = Extract<
+  StoryboardDeltasParseResult,
+  { ok: false }
+>["partial"];
 
 export interface StoryboardFramePlannerOptions {
   llmClient: LLMClient;
@@ -30,7 +33,7 @@ export class StoryboardFramePlanner {
   private readonly visionLlmClient: LLMClient | null;
   private readonly timeoutMs: number;
   private readonly visionTimeoutMs: number;
-  private readonly log = logger.child({ service: 'StoryboardFramePlanner' });
+  private readonly log = logger.child({ service: "StoryboardFramePlanner" });
 
   constructor(options: StoryboardFramePlannerOptions) {
     this.llmClient = options.llmClient;
@@ -39,7 +42,11 @@ export class StoryboardFramePlanner {
     this.visionTimeoutMs = options.visionTimeoutMs ?? 15000;
   }
 
-  async planDeltas(prompt: string, frameCount: number, baseImageUrl?: string): Promise<string[]> {
+  async planDeltas(
+    prompt: string,
+    frameCount: number,
+    baseImageUrl?: string,
+  ): Promise<string[]> {
     const trimmed = prompt.trim();
     if (!trimmed) {
       return [];
@@ -50,13 +57,17 @@ export class StoryboardFramePlanner {
       return [];
     }
 
-    const responseText = await this.requestPlan(trimmed, expectedCount, baseImageUrl);
+    const responseText = await this.requestPlan(
+      trimmed,
+      expectedCount,
+      baseImageUrl,
+    );
     const parsed = this.parseDeltas(responseText, expectedCount);
     if (parsed.ok) {
       return parsed.deltas;
     }
 
-    this.log.warn('Storyboard plan parse failed; attempting repair', {
+    this.log.warn("Storyboard plan parse failed; attempting repair", {
       parseError: parsed.error,
       expectedCount,
       responseLength: responseText.length,
@@ -69,7 +80,7 @@ export class StoryboardFramePlanner {
       responseText,
       expectedCount,
       parsed.partial?.deltas,
-      baseImageUrl
+      baseImageUrl,
     );
     const repaired = this.parseDeltas(repairText, expectedCount);
     if (repaired.ok) {
@@ -78,35 +89,43 @@ export class StoryboardFramePlanner {
 
     const bestPartial = this.pickBestPartial(parsed.partial, repaired.partial);
     if (bestPartial) {
-      this.log.warn('Storyboard plan parse failed after repair; padding with fallback deltas', {
-        parseError: repaired.error,
-        expectedCount,
-        responseLength: repairText.length,
-        partialCount: bestPartial.actualCount,
-        partialSource: bestPartial.source,
-      });
+      this.log.warn(
+        "Storyboard plan parse failed after repair; padding with fallback deltas",
+        {
+          parseError: repaired.error,
+          expectedCount,
+          responseLength: repairText.length,
+          partialCount: bestPartial.actualCount,
+          partialSource: bestPartial.source,
+        },
+      );
 
       return this.padDeltas(bestPartial.deltas, expectedCount);
     }
 
-    this.log.warn('Storyboard plan parse failed after repair; using fallback deltas', {
-      parseError: repaired.error,
-      expectedCount,
-      responseLength: repairText.length,
-    });
+    this.log.warn(
+      "Storyboard plan parse failed after repair; using fallback deltas",
+      {
+        parseError: repaired.error,
+        expectedCount,
+        responseLength: repairText.length,
+      },
+    );
 
     return buildFallbackDeltas(expectedCount);
   }
 
   private resolveExpectedCount(frameCount: number): number {
-    const normalizedFrameCount = Number.isFinite(frameCount) ? Math.floor(frameCount) : 0;
+    const normalizedFrameCount = Number.isFinite(frameCount)
+      ? Math.floor(frameCount)
+      : 0;
     return Math.max(0, normalizedFrameCount - 1);
   }
 
   private async requestPlan(
     prompt: string,
     expectedCount: number,
-    baseImageUrl?: string
+    baseImageUrl?: string,
   ): Promise<string> {
     if (baseImageUrl && this.visionLlmClient) {
       return this.requestVisionPlan(prompt, expectedCount, baseImageUrl);
@@ -115,7 +134,10 @@ export class StoryboardFramePlanner {
     return this.requestTextPlan(prompt, expectedCount);
   }
 
-  private async requestTextPlan(prompt: string, expectedCount: number): Promise<string> {
+  private async requestTextPlan(
+    prompt: string,
+    expectedCount: number,
+  ): Promise<string> {
     const response = await this.llmClient.complete(
       buildSystemPrompt(expectedCount, STORYBOARD_FRAME_TIMESTAMPS),
       {
@@ -124,7 +146,7 @@ export class StoryboardFramePlanner {
         temperature: 0.4,
         timeout: this.timeoutMs,
         jsonMode: true,
-      }
+      },
     );
     return extractResponseText(response);
   }
@@ -134,14 +156,16 @@ export class StoryboardFramePlanner {
     responseText: string,
     expectedCount: number,
     partialDeltas?: string[],
-    baseImageUrl?: string
+    baseImageUrl?: string,
   ): Promise<string> {
     const partialSection =
       partialDeltas && partialDeltas.length > 0
         ? `\n\nParsed deltas (${partialDeltas.length}):\n${partialDeltas
             .map((delta, index) => `${index + 1}. ${delta}`)
-            .join('\n')}\n\nReturn a full list of ${expectedCount} deltas, reusing these when valid.`
-        : '';
+            .join(
+              "\n",
+            )}\n\nReturn a full list of ${expectedCount} deltas, reusing these when valid.`
+        : "";
 
     const repairUserMessage = `Base prompt:\n${prompt}\n\nPrevious response:\n${responseText}${partialSection}`;
 
@@ -153,35 +177,52 @@ export class StoryboardFramePlanner {
         });
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
-        this.log.warn('Vision repair image fetch failed, falling back to text-only', {
-          error: message,
-          imageUrl: baseImageUrl.slice(0, 120),
-        });
-        dataUrl = '';
+        this.log.warn(
+          "Vision repair image fetch failed, falling back to text-only",
+          {
+            error: message,
+            imageUrl: baseImageUrl.slice(0, 120),
+          },
+        );
+        dataUrl = "";
       }
 
       if (dataUrl) {
         const repairSystemPrompt = buildRepairSystemPrompt(
           expectedCount,
-          STORYBOARD_FRAME_TIMESTAMPS
+          STORYBOARD_FRAME_TIMESTAMPS,
         );
-        const repairVisionResponse = await this.visionLlmClient.complete(repairSystemPrompt, {
-          messages: [
-            { role: 'system', content: repairSystemPrompt },
+        try {
+          const repairVisionResponse = await this.visionLlmClient.complete(
+            repairSystemPrompt,
             {
-              role: 'user',
-              content: [
-                { type: 'image_url', image_url: { url: dataUrl } },
-                { type: 'text', text: repairUserMessage },
+              messages: [
+                { role: "system", content: repairSystemPrompt },
+                {
+                  role: "user",
+                  content: [
+                    { type: "image_url", image_url: { url: dataUrl } },
+                    { type: "text", text: repairUserMessage },
+                  ],
+                },
               ],
+              maxTokens: 400,
+              temperature: 0,
+              timeout: this.visionTimeoutMs,
+              jsonMode: true,
             },
-          ],
-          maxTokens: 400,
-          temperature: 0,
-          timeout: this.visionTimeoutMs,
-          jsonMode: true,
-        });
-        return extractResponseText(repairVisionResponse);
+          );
+          return extractResponseText(repairVisionResponse);
+        } catch (error) {
+          const message =
+            error instanceof Error ? error.message : String(error);
+          this.log.warn(
+            "Vision repair request failed, falling back to text-only",
+            {
+              error: message,
+            },
+          );
+        }
       }
     }
 
@@ -193,7 +234,7 @@ export class StoryboardFramePlanner {
         temperature: 0,
         timeout: this.timeoutMs,
         jsonMode: true,
-      }
+      },
     );
     return extractResponseText(repairResponse);
   }
@@ -201,7 +242,7 @@ export class StoryboardFramePlanner {
   private async requestVisionPlan(
     prompt: string,
     expectedCount: number,
-    baseImageUrl: string
+    baseImageUrl: string,
   ): Promise<string> {
     const visionClient = this.visionLlmClient;
     if (!visionClient) {
@@ -215,40 +256,54 @@ export class StoryboardFramePlanner {
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      this.log.warn('Vision plan image fetch failed, falling back to text-only', {
-        error: message,
-        imageUrl: baseImageUrl.slice(0, 120),
-      });
+      this.log.warn(
+        "Vision plan image fetch failed, falling back to text-only",
+        {
+          error: message,
+          imageUrl: baseImageUrl.slice(0, 120),
+        },
+      );
       return this.requestTextPlan(prompt, expectedCount);
     }
 
-    const systemPrompt = buildSystemPrompt(expectedCount, STORYBOARD_FRAME_TIMESTAMPS);
-    const response = await visionClient.complete(systemPrompt, {
-      messages: [
-        { role: 'system', content: systemPrompt },
-        {
-          role: 'user',
-          content: [
-            { type: 'image_url', image_url: { url: dataUrl } },
-            { type: 'text', text: buildVisionDeltaUserPrompt(prompt) },
-          ],
-        },
-      ],
-      maxTokens: 400,
-      temperature: 0.4,
-      timeout: this.visionTimeoutMs,
-      jsonMode: true,
-    });
-    return extractResponseText(response);
+    const systemPrompt = buildSystemPrompt(
+      expectedCount,
+      STORYBOARD_FRAME_TIMESTAMPS,
+    );
+    try {
+      const response = await visionClient.complete(systemPrompt, {
+        messages: [
+          { role: "system", content: systemPrompt },
+          {
+            role: "user",
+            content: [
+              { type: "image_url", image_url: { url: dataUrl } },
+              { type: "text", text: buildVisionDeltaUserPrompt(prompt) },
+            ],
+          },
+        ],
+        maxTokens: 400,
+        temperature: 0.4,
+        timeout: this.visionTimeoutMs,
+        jsonMode: true,
+      });
+      return extractResponseText(response);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.log.warn("Vision plan request failed, falling back to text-only", {
+        error: message,
+      });
+      return this.requestTextPlan(prompt, expectedCount);
+    }
   }
 
   private parseDeltas(
     responseText: string,
-    expectedCount: number
+    expectedCount: number,
   ): StoryboardDeltasParseResult {
     const parsed = parseStoryboardDeltas(responseText, expectedCount);
     if (parsed.ok && parsed.truncated) {
-      this.log.warn('Storyboard planner returned extra deltas, truncating', {
+      this.log.warn("Storyboard planner returned extra deltas, truncating", {
         expectedCount,
         actualCount: parsed.actualCount,
         source: parsed.source,

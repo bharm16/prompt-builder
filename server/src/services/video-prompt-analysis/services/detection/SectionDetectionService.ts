@@ -1,29 +1,54 @@
-import { logger } from '@infrastructure/Logger';
-import { normalizeText } from '@services/video-prompt-analysis/utils/textHelpers';
+import { logger } from "@infrastructure/Logger";
+import { normalizeText } from "@services/video-prompt-analysis/utils/textHelpers";
 
 /**
  * Section detection patterns
  */
 const SECTION_PATTERNS = {
   main_prompt: {
-    headers: ['main prompt', 'primary description', 'core concept', 'scene description'],
-    keywords: ['describe', 'showing', 'featuring', 'depicting', 'establishing'],
-    position: 'early', // Usually in first 30% of prompt
+    headers: [
+      "main prompt",
+      "primary description",
+      "core concept",
+      "scene description",
+    ],
+    keywords: ["describe", "showing", "featuring", "depicting", "establishing"],
+    position: "early", // Usually in first 30% of prompt
   },
   technical_specs: {
-    headers: ['technical specs', 'technical specifications', 'camera settings', 'render settings'],
-    keywords: ['camera:', 'lens:', 'aperture:', 'iso:', 'framerate:', 'resolution:', 'aspect ratio:'],
-    position: 'middle', // Usually in middle section
+    headers: [
+      "technical specs",
+      "technical specifications",
+      "camera settings",
+      "render settings",
+    ],
+    keywords: [
+      "camera:",
+      "lens:",
+      "aperture:",
+      "iso:",
+      "framerate:",
+      "resolution:",
+      "aspect ratio:",
+    ],
+    position: "middle", // Usually in middle section
   },
   alternatives: {
-    headers: ['alternative', 'variations', 'other options', 'alternatives'],
-    keywords: ['alternatively', 'or:', 'option:', 'variation:', 'could also'],
-    position: 'late', // Usually near end
+    headers: ["alternative", "variations", "other options", "alternatives"],
+    keywords: ["alternatively", "or:", "option:", "variation:", "could also"],
+    position: "late", // Usually near end
   },
   style_direction: {
-    headers: ['style', 'visual style', 'aesthetic', 'reference'],
-    keywords: ['style:', 'aesthetic:', 'inspired by', 'similar to', 'like', 'reminiscent'],
-    position: 'any',
+    headers: ["style", "visual style", "aesthetic", "reference"],
+    keywords: [
+      "style:",
+      "aesthetic:",
+      "inspired by",
+      "similar to",
+      "like",
+      "reminiscent",
+    ],
+    position: "any",
   },
 } as const;
 
@@ -32,52 +57,65 @@ const SECTION_PATTERNS = {
  */
 const SECTION_CONSTRAINTS = {
   main_prompt: {
-    tone: 'descriptive',
-    precision: 'moderate',
-    creativity: 'high',
+    tone: "descriptive",
+    precision: "moderate",
+    creativity: "high",
     requirements: [
-      'Clear, vivid descriptions',
-      'Focus on key visual elements',
-      'Narrative flow',
-      'Sensory details',
+      "Clear, vivid descriptions",
+      "Focus on key visual elements",
+      "Narrative flow",
+      "Sensory details",
     ],
-    avoid: ['Technical jargon in narrative', 'Ambiguous pronouns', 'Overly abstract concepts'],
+    avoid: [
+      "Technical jargon in narrative",
+      "Ambiguous pronouns",
+      "Overly abstract concepts",
+    ],
   },
   technical_specs: {
-    tone: 'technical',
-    precision: 'high',
-    creativity: 'low',
+    tone: "technical",
+    precision: "high",
+    creativity: "low",
     requirements: [
-      'Exact parameter values',
-      'Standard terminology',
-      'Measurable specifications',
+      "Exact parameter values",
+      "Standard terminology",
+      "Measurable specifications",
       'Format: "Parameter: value"',
     ],
-    avoid: ['Poetic language', 'Vague descriptors', 'Approximate values', 'Creative interpretations'],
+    avoid: [
+      "Poetic language",
+      "Vague descriptors",
+      "Approximate values",
+      "Creative interpretations",
+    ],
   },
   alternatives: {
-    tone: 'suggestive',
-    precision: 'moderate',
-    creativity: 'very high',
+    tone: "suggestive",
+    precision: "moderate",
+    creativity: "very high",
     requirements: [
-      'Diverse variations',
-      'Different creative directions',
-      'Clear alternatives',
-      'Distinct from main prompt',
+      "Diverse variations",
+      "Different creative directions",
+      "Clear alternatives",
+      "Distinct from main prompt",
     ],
-    avoid: ['Minor tweaks', 'Same concept rephrased', 'Technical specifications'],
+    avoid: [
+      "Minor tweaks",
+      "Same concept rephrased",
+      "Technical specifications",
+    ],
   },
   style_direction: {
-    tone: 'referential',
-    precision: 'high',
-    creativity: 'moderate',
+    tone: "referential",
+    precision: "high",
+    creativity: "moderate",
     requirements: [
-      'Specific visual references',
-      'Art/film movements',
-      'Named artists or works',
-      'Clear aesthetic descriptors',
+      "Specific visual references",
+      "Art/film movements",
+      "Named artists or works",
+      "Clear aesthetic descriptors",
     ],
-    avoid: ['Generic style terms', 'Vague comparisons', 'Mixed metaphors'],
+    avoid: ["Generic style terms", "Vague comparisons", "Mixed metaphors"],
   },
 } as const;
 
@@ -94,14 +132,14 @@ export interface SectionConstraints {
 interface SectionPatterns {
   headers: readonly string[];
   keywords: readonly string[];
-  position: 'early' | 'middle' | 'late' | 'any';
+  position: "early" | "middle" | "late" | "any";
 }
 
 /**
  * Service responsible for detecting prompt template section
  */
 export class SectionDetectionService {
-  private readonly log = logger.child({ service: 'SectionDetectionService' });
+  private readonly log = logger.child({ service: "SectionDetectionService" });
 
   /**
    * Detect which section of the prompt template is being edited
@@ -109,18 +147,18 @@ export class SectionDetectionService {
   detectSection(
     highlightedText: string | null | undefined,
     fullPrompt: string | null | undefined,
-    contextBefore: string = ''
+    contextBefore: string = "",
   ): SectionId {
-    const operation = 'detectSection';
-    
+    const operation = "detectSection";
+
     if (!highlightedText || !fullPrompt) {
-      this.log.debug('Missing input, returning default section', {
+      this.log.debug("Missing input, returning default section", {
         operation,
       });
-      return 'main_prompt'; // Default
+      return "main_prompt"; // Default
     }
-    
-    this.log.debug('Detecting prompt section', {
+
+    this.log.debug("Detecting prompt section", {
       operation,
       highlightLength: highlightedText.length,
       fullPromptLength: fullPrompt.length,
@@ -141,7 +179,7 @@ export class SectionDetectionService {
         normalizedContext,
         normalizedHighlight,
         patterns,
-        position
+        position,
       );
     }
 
@@ -150,16 +188,22 @@ export class SectionDetectionService {
     const maxScore = Math.max(...entries.map(([, score]) => score));
 
     if (maxScore === 0) {
-      return 'main_prompt'; // Default if no matches
+      return "main_prompt"; // Default if no matches
     }
 
-    return (entries.find(([, score]) => score === maxScore)?.[0] as SectionId) || 'main_prompt';
+    return (
+      (entries.find(([, score]) => score === maxScore)?.[0] as SectionId) ||
+      "main_prompt"
+    );
   }
 
   /**
    * Calculate relative position of highlight in prompt (0-1)
    */
-  private _calculatePosition(highlightedText: string, fullPrompt: string): number {
+  private _calculatePosition(
+    highlightedText: string,
+    fullPrompt: string,
+  ): number {
     const index = fullPrompt.indexOf(highlightedText);
     if (index === -1) {
       return 0.5; // Middle if not found
@@ -175,7 +219,7 @@ export class SectionDetectionService {
     normalizedContext: string,
     normalizedHighlight: string,
     patterns: SectionPatterns,
-    position: number
+    position: number,
   ): number {
     let score = 0;
 
@@ -188,25 +232,35 @@ export class SectionDetectionService {
 
     // Check for section headers anywhere in prompt (medium signal)
     patterns.headers.forEach((header) => {
-      if (normalizedPrompt.includes(header) && !normalizedContext.includes(header)) {
+      if (
+        normalizedPrompt.includes(header) &&
+        !normalizedContext.includes(header)
+      ) {
         score += 3;
       }
     });
 
     // Check for keywords in context or highlight (medium signal)
     patterns.keywords.forEach((keyword) => {
-      if (normalizedContext.includes(keyword) || normalizedHighlight.includes(keyword)) {
+      if (
+        normalizedContext.includes(keyword) ||
+        normalizedHighlight.includes(keyword)
+      ) {
         score += 2;
       }
     });
 
     // Check position match (weak signal)
-    if (patterns.position !== 'any') {
-      if (patterns.position === 'early' && position < 0.3) {
+    if (patterns.position !== "any") {
+      if (patterns.position === "early" && position < 0.3) {
         score += 1;
-      } else if (patterns.position === 'middle' && position >= 0.3 && position <= 0.7) {
+      } else if (
+        patterns.position === "middle" &&
+        position >= 0.3 &&
+        position <= 0.7
+      ) {
         score += 1;
-      } else if (patterns.position === 'late' && position > 0.7) {
+      } else if (patterns.position === "late" && position > 0.7) {
         score += 1;
       }
     }
@@ -217,7 +271,9 @@ export class SectionDetectionService {
   /**
    * Get section-specific constraints
    */
-  getSectionConstraints(section: string | null | undefined): SectionConstraints | null {
+  getSectionConstraints(
+    section: string | null | undefined,
+  ): SectionConstraints | null {
     if (!section || !(section in SECTION_CONSTRAINTS)) {
       return null;
     }
@@ -228,7 +284,10 @@ export class SectionDetectionService {
   /**
    * Get section-specific guidance for a category
    */
-  getSectionGuidance(section: string | null | undefined, category: string | null | undefined): string[] {
+  getSectionGuidance(
+    section: string | null | undefined,
+    category: string | null | undefined,
+  ): string[] {
     if (!section || !category) {
       return [];
     }
@@ -242,37 +301,46 @@ export class SectionDetectionService {
     const normalizedCategory = category.toLowerCase();
 
     // Section-specific category guidance
-    if (section === 'main_prompt') {
-      guidance.push('Use descriptive, narrative language');
-      guidance.push('Focus on visual storytelling');
-      if (normalizedCategory.includes('action') || normalizedCategory.includes('movement')) {
-        guidance.push('Describe action with vivid, cinematic detail');
+    if (section === "main_prompt") {
+      guidance.push("Use descriptive, narrative language");
+      guidance.push("Focus on visual storytelling");
+      if (
+        normalizedCategory.includes("action") ||
+        normalizedCategory.includes("movement")
+      ) {
+        guidance.push("Describe action with vivid, cinematic detail");
       }
     }
 
-    if (section === 'technical_specs') {
-      guidance.push('Use precise technical terminology');
-      guidance.push('Provide exact values and measurements');
+    if (section === "technical_specs") {
+      guidance.push("Use precise technical terminology");
+      guidance.push("Provide exact values and measurements");
       guidance.push('Format as "Parameter: value" pairs');
-      if (normalizedCategory.includes('camera')) {
-        guidance.push('Specify: lens (35mm, 50mm), aperture (f/2.8), movement type');
+      if (normalizedCategory.includes("camera")) {
+        guidance.push(
+          "Specify: lens (35mm, 50mm), aperture (f/2.8), movement type",
+        );
       }
-      if (normalizedCategory.includes('lighting')) {
-        guidance.push('Include: color temp (3200K, 5600K), intensity, direction');
+      if (normalizedCategory.includes("lighting")) {
+        guidance.push(
+          "Include: color temp (3200K, 5600K), intensity, direction",
+        );
       }
     }
 
-    if (section === 'alternatives') {
-      guidance.push('Offer truly different creative directions');
-      guidance.push('Explore variations that change the mood or approach');
-      guidance.push('Each alternative should feel distinct');
+    if (section === "alternatives") {
+      guidance.push("Offer truly different creative directions");
+      guidance.push("Explore variations that change the mood or approach");
+      guidance.push("Each alternative should feel distinct");
     }
 
-    if (section === 'style_direction') {
-      guidance.push('Reference specific visual styles or artists');
-      guidance.push('Name art movements, film styles, or known works');
-      if (normalizedCategory.includes('style')) {
-        guidance.push('Use terms like: noir, surrealism, impressionist, cyberpunk');
+    if (section === "style_direction") {
+      guidance.push("Reference specific visual styles or artists");
+      guidance.push("Name art movements, film styles, or known works");
+      if (normalizedCategory.includes("style")) {
+        guidance.push(
+          "Use terms like: noir, surrealism, impressionist, cyberpunk",
+        );
       }
     }
 
@@ -284,18 +352,18 @@ export class SectionDetectionService {
    */
   formatSectionContext(section: string | null | undefined): string {
     if (!section) {
-      return '';
+      return "";
     }
 
     const constraints = this.getSectionConstraints(section);
     if (!constraints) {
-      return '';
+      return "";
     }
 
     const sectionName = section
-      .split('_')
+      .split("_")
       .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(' ');
+      .join(" ");
 
     let context = `\n**PROMPT SECTION: ${sectionName}**\n`;
     context += `Tone: ${constraints.tone.charAt(0).toUpperCase() + constraints.tone.slice(1)}\n`;
@@ -312,4 +380,3 @@ export class SectionDetectionService {
     return context;
   }
 }
-

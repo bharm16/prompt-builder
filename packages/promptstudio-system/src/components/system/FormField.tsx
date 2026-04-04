@@ -1,10 +1,10 @@
-import * as React from "react"
+import * as React from "react";
 
 interface FormFieldProps {
-  label: string
-  hint?: string
-  error?: string
-  children: React.ReactNode
+  label: string;
+  hint?: string;
+  error?: string;
+  children: React.ReactNode;
 }
 
 const FormField = ({ label, hint, error, children }: FormFieldProps) => {
@@ -20,8 +20,8 @@ const FormField = ({ label, hint, error, children }: FormFieldProps) => {
         ) : null}
       </div>
     </div>
-  )
-}
+  );
+};
 
-export { FormField }
-export type { FormFieldProps }
+export { FormField };
+export type { FormFieldProps };

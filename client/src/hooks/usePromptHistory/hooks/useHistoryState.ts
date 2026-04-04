@@ -7,8 +7,8 @@
  * - Search query and filtering
  */
 
-import { useState, useMemo, useCallback } from 'react';
-import type { PromptHistoryEntry, HistoryState } from '../types';
+import { useState, useMemo, useCallback } from "react";
+import type { PromptHistoryEntry, HistoryState } from "../types";
 
 export interface UseHistoryStateReturn {
   state: HistoryState;
@@ -26,7 +26,7 @@ export interface UseHistoryStateReturn {
 const MAX_HISTORY_ENTRIES = 100;
 
 const normalizeIdentifier = (value: unknown): string | null => {
-  if (typeof value !== 'string') return null;
+  if (typeof value !== "string") return null;
   const normalized = value.trim();
   return normalized.length > 0 ? normalized : null;
 };
@@ -63,7 +63,7 @@ const dedupeEntries = (entries: PromptHistoryEntry[]): PromptHistoryEntry[] => {
 export function useHistoryState(): UseHistoryStateReturn {
   const [history, setHistoryInternal] = useState<PromptHistoryEntry[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
 
   const setSearchQueryWithLog = useCallback((query: string) => {
     setSearchQuery(query);
@@ -80,7 +80,8 @@ export function useHistoryState(): UseHistoryStateReturn {
         const sameUuid =
           normalizeIdentifier(entry.uuid) !== null &&
           normalizeIdentifier(existing.uuid) !== null &&
-          normalizeIdentifier(entry.uuid) === normalizeIdentifier(existing.uuid);
+          normalizeIdentifier(entry.uuid) ===
+            normalizeIdentifier(existing.uuid);
         const sameId =
           normalizeIdentifier(entry.id) !== null &&
           normalizeIdentifier(existing.id) !== null &&
@@ -91,11 +92,16 @@ export function useHistoryState(): UseHistoryStateReturn {
     });
   }, []);
 
-  const updateEntry = useCallback((uuid: string, updates: Partial<PromptHistoryEntry>) => {
-    setHistoryInternal((prev) =>
-      prev.map((entry) => (entry.uuid === uuid ? { ...entry, ...updates } : entry))
-    );
-  }, []);
+  const updateEntry = useCallback(
+    (uuid: string, updates: Partial<PromptHistoryEntry>) => {
+      setHistoryInternal((prev) =>
+        prev.map((entry) =>
+          entry.uuid === uuid ? { ...entry, ...updates } : entry,
+        ),
+      );
+    },
+    [],
+  );
 
   const removeEntry = useCallback((entryId: string) => {
     setHistoryInternal((prev) => prev.filter((entry) => entry.id !== entryId));
@@ -112,14 +118,14 @@ export function useHistoryState(): UseHistoryStateReturn {
     return history.filter(
       (entry) =>
         entry.input.toLowerCase().includes(query) ||
-        entry.output.toLowerCase().includes(query)
+        (entry.title && entry.title.toLowerCase().includes(query)),
     );
   }, [history, searchQuery]);
 
   // Bug 6 fix: memoize state object to prevent unnecessary re-renders
   const state = useMemo<HistoryState>(
     () => ({ history, isLoadingHistory, searchQuery }),
-    [history, isLoadingHistory, searchQuery]
+    [history, isLoadingHistory, searchQuery],
   );
 
   return {

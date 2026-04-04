@@ -1,10 +1,10 @@
-import type { Request, Response, NextFunction } from 'express';
+import type { Request, Response, NextFunction } from "express";
 
 const isPlainObject = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value);
+  typeof value === "object" && value !== null && !Array.isArray(value);
 
 const coerceJsonObject = (value: unknown): unknown => {
-  if (typeof value !== 'string') {
+  if (typeof value !== "string") {
     return value;
   }
   try {
@@ -16,21 +16,28 @@ const coerceJsonObject = (value: unknown): unknown => {
 };
 
 const isPrimitive = (value: unknown): value is string | number | boolean =>
-  typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean';
+  typeof value === "string" ||
+  typeof value === "number" ||
+  typeof value === "boolean";
 
 export function normalizeOptimizationRequest(
   req: Request,
   _res: Response,
-  next: NextFunction
+  next: NextFunction,
 ): void {
   const body = isPlainObject(req.body) ? req.body : {};
 
   const coercedContext = coerceJsonObject(body.context);
-  body.context = isPlainObject(coercedContext) || coercedContext === null ? coercedContext : null;
+  body.context =
+    isPlainObject(coercedContext) || coercedContext === null
+      ? coercedContext
+      : null;
 
   const coercedBrainstorm = coerceJsonObject(body.brainstormContext);
   body.brainstormContext =
-    isPlainObject(coercedBrainstorm) || coercedBrainstorm === null ? coercedBrainstorm : null;
+    isPlainObject(coercedBrainstorm) || coercedBrainstorm === null
+      ? coercedBrainstorm
+      : null;
 
   if (isPlainObject(body.generationParams)) {
     const normalized: Record<string, string | number | boolean> = {};
@@ -49,26 +56,31 @@ export function normalizeOptimizationRequest(
       .filter((span) => isPlainObject(span))
       .map((span) => {
         const nextSpan: Record<string, unknown> = {};
-        if (typeof span.id === 'string') nextSpan.id = span.id;
-        if (typeof span.text === 'string') nextSpan.text = span.text;
-        if (typeof span.leftCtx === 'string' || span.leftCtx === null) {
+        if (typeof span.id === "string") nextSpan.id = span.id;
+        if (typeof span.text === "string") nextSpan.text = span.text;
+        if (typeof span.leftCtx === "string" || span.leftCtx === null) {
           nextSpan.leftCtx = span.leftCtx;
         }
-        if (typeof span.rightCtx === 'string' || span.rightCtx === null) {
+        if (typeof span.rightCtx === "string" || span.rightCtx === null) {
           nextSpan.rightCtx = span.rightCtx;
         }
-        if (typeof span.category === 'string' || span.category === null) {
+        if (typeof span.category === "string" || span.category === null) {
           nextSpan.category = span.category;
         }
-        if (typeof span.source === 'string' || span.source === null) {
+        if (typeof span.source === "string" || span.source === null) {
           nextSpan.source = span.source;
         }
-        if (typeof span.confidence === 'number' && Number.isFinite(span.confidence)) {
+        if (
+          typeof span.confidence === "number" &&
+          Number.isFinite(span.confidence)
+        ) {
           nextSpan.confidence = span.confidence;
         }
         return nextSpan;
       })
-      .filter((span) => typeof span.text === 'string' && span.text.trim().length > 0);
+      .filter(
+        (span) => typeof span.text === "string" && span.text.trim().length > 0,
+      );
   } else if (body.lockedSpans !== undefined) {
     delete body.lockedSpans;
   }

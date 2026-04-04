@@ -26,6 +26,7 @@ video-concept/
 ```
 
 **Key Issues:**
+
 1. **God Object**: `SceneAnalysisService.js` (416 lines) handled 7 different responsibilities
 2. **Flat Structure**: All files in root directory, difficult to navigate
 3. **Misleading Names**: `PromptBuilderService` builds AI system prompts, not user prompts
@@ -62,6 +63,7 @@ video-concept/
 ```
 
 **Improvements:**
+
 1. ✅ Clear hierarchical structure by responsibility
 2. ✅ All services under 330 lines (well within 500-line orchestrator limit)
 3. ✅ Single responsibility per service
@@ -74,27 +76,29 @@ video-concept/
 ### Service Splitting
 
 **SceneAnalysisService.js** (416 lines) → Split into 4 focused services:
+
 - `SceneCompletionService.js` (76 lines) - Fill empty scene elements
 - `SceneVariationService.js` (74 lines) - Generate creative variations
 - `ConceptParsingService.js` (78 lines) - Parse text into structured elements
 - `RefinementService.js` (64 lines) - Refine elements for coherence
 
 **SceneAnalysisService.js** → Also extracted 2 additional services:
+
 - `TechnicalParameterService.js` (90 lines) - Camera, lighting, technical parameters
 - `PromptValidationService.js` (131 lines) - Validate prompt quality and smart defaults
 
 ### File Relocations
 
-| Original | New Location | Reason |
-|----------|-------------|---------|
-| `PromptBuilderService.js` | `services/generation/SystemPromptBuilder.js` | Clarifies it builds AI system prompts |
-| `SuggestionGeneratorService.js` | `services/generation/SuggestionGeneratorService.js` | Groups generation logic |
-| `CompatibilityService.js` | `services/validation/CompatibilityService.js` | Groups validation logic |
-| `ConflictDetectionService.js` | `services/detection/ConflictDetectionService.js` | Groups detection logic |
-| `SceneChangeDetectionService.js` | `services/detection/SceneChangeDetectionService.js` | Groups detection logic |
-| `SubjectDescriptorCategories.js` | `config/descriptorCategories.js` | Pure configuration data |
-| `TemplateManagerService.js` | `repositories/VideoTemplateRepository.js` | Repository pattern naming |
-| `PreferenceRepository.js` | `repositories/PreferenceRepository.js` | Groups data access layer |
+| Original                         | New Location                                        | Reason                                |
+| -------------------------------- | --------------------------------------------------- | ------------------------------------- |
+| `PromptBuilderService.js`        | `services/generation/SystemPromptBuilder.js`        | Clarifies it builds AI system prompts |
+| `SuggestionGeneratorService.js`  | `services/generation/SuggestionGeneratorService.js` | Groups generation logic               |
+| `CompatibilityService.js`        | `services/validation/CompatibilityService.js`       | Groups validation logic               |
+| `ConflictDetectionService.js`    | `services/detection/ConflictDetectionService.js`    | Groups detection logic                |
+| `SceneChangeDetectionService.js` | `services/detection/SceneChangeDetectionService.js` | Groups detection logic                |
+| `SubjectDescriptorCategories.js` | `config/descriptorCategories.js`                    | Pure configuration data               |
+| `TemplateManagerService.js`      | `repositories/VideoTemplateRepository.js`           | Repository pattern naming             |
+| `PreferenceRepository.js`        | `repositories/PreferenceRepository.js`              | Groups data access layer              |
 
 ### Class Renames
 
@@ -103,6 +107,7 @@ video-concept/
 ### Import Path Updates
 
 Updated imports in:
+
 1. `server/src/config/services.config.js` - SceneChangeDetectionService path
 2. `server/src/services/enhancement/services/SuggestionProcessor.js` - descriptorCategories path
 3. `server/src/services/VideoConceptService.js` - All service imports updated
@@ -110,6 +115,7 @@ Updated imports in:
 ### VideoConceptService Updates
 
 Updated orchestrator to delegate to new split services:
+
 - Added 9 new specialized service initializations
 - Updated method delegation to appropriate services
 - Renamed `templateManager` → `templateRepository`
@@ -120,6 +126,7 @@ Updated orchestrator to delegate to new split services:
 ### File Size Limits (per REFACTORING_STANDARD.md)
 
 ✅ **All files comply:**
+
 - Orchestrator services: max 500 lines
   - VideoConceptService.js: 273 lines ✓
 - Specialized services: max 300 lines
@@ -159,6 +166,7 @@ Updated orchestrator to delegate to new split services:
 ### Backward Compatibility
 
 ✅ **Fully backward compatible:**
+
 - All public APIs remain unchanged
 - Existing code using VideoConceptService works without modifications
 - Only internal structure and organization changed
@@ -166,6 +174,7 @@ Updated orchestrator to delegate to new split services:
 ## Testing Strategy
 
 Tests should be added for:
+
 1. Individual service methods (unit tests)
 2. Service integration with orchestrator
 3. Import path validation
@@ -176,6 +185,7 @@ See `docs/architecture/EXAMPLE_BACKEND_TEST.test.js` for test patterns.
 ## Related Patterns
 
 This refactoring follows the same successful pattern used in:
+
 - `server/src/services/enhancement/` - Similar structure
 - `server/src/services/video-prompt/` - Similar organization
 - `server/src/services/question-generation/` - Similar splitting
@@ -189,4 +199,3 @@ This refactoring follows the same successful pattern used in:
 - ✅ Single responsibility per service
 - ✅ Repository pattern for data access
 - ✅ Configuration separated from logic
-

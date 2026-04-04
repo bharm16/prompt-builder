@@ -1,11 +1,11 @@
-import { describe, expect, it } from 'vitest';
-import type { Bucket } from '@google-cloud/storage';
+import { describe, expect, it } from "vitest";
+import type { Bucket } from "@google-cloud/storage";
 import {
   collectSessionMappings,
   migrateMappings,
   type MappingEntry,
   type Stats,
-} from '@migrations/migrate-preview-image-ownership.ts';
+} from "@migrations/migrate-preview-image-ownership.ts";
 
 function createStats(): Stats {
   return {
@@ -47,29 +47,29 @@ function createBucketMock(existingPaths: Set<string>): {
   return { bucket, fileCalls, copiedSourcePaths };
 }
 
-describe('migrate-preview-image-ownership migration mapping', () => {
-  it('collects generation media URL, thumbnail URL, and mediaAssetIds references', () => {
+describe("migrate-preview-image-ownership migration mapping", () => {
+  it("collects generation media URL, thumbnail URL, and mediaAssetIds references", () => {
     const mappings = new Map<string, MappingEntry>();
     const ownersByAsset = new Map<string, Set<string>>();
 
     collectSessionMappings(
-      'session-1',
+      "session-1",
       {
-        userId: 'user-1',
+        userId: "user-1",
         prompt: {
           versions: [
             {
               generations: [
                 {
                   mediaUrls: [
-                    'https://storage.googleapis.com/vidra-media-prod/image-previews/media-asset-1?X-Goog-Signature=abc',
+                    "https://storage.googleapis.com/vidra-media-prod/image-previews/media-asset-1?X-Goog-Signature=abc",
                   ],
                   thumbnailUrl:
-                    'https://firebasestorage.googleapis.com/v0/b/app/o/image-previews%2Fthumb-asset-1?alt=media',
+                    "https://firebasestorage.googleapis.com/v0/b/app/o/image-previews%2Fthumb-asset-1?alt=media",
                   mediaAssetIds: [
-                    'users/user-1/generations/video.mp4',
-                    'plain-media-asset-id',
-                    'https://storage.googleapis.com/vidra-media-prod/image-previews/media-asset-2',
+                    "users/user-1/generations/video.mp4",
+                    "plain-media-asset-id",
+                    "https://storage.googleapis.com/vidra-media-prod/image-previews/media-asset-2",
                   ],
                 },
               ],
@@ -78,82 +78,88 @@ describe('migrate-preview-image-ownership migration mapping', () => {
         },
       },
       mappings,
-      ownersByAsset
+      ownersByAsset,
     );
 
-    const mappedAssetIds = new Set(Array.from(mappings.values()).map((entry) => entry.assetId));
-    expect(mappedAssetIds.has('media-asset-1')).toBe(true);
-    expect(mappedAssetIds.has('thumb-asset-1')).toBe(true);
-    expect(mappedAssetIds.has('plain-media-asset-id')).toBe(true);
-    expect(mappedAssetIds.has('media-asset-2')).toBe(true);
-    expect(mappedAssetIds.has('users')).toBe(false);
+    const mappedAssetIds = new Set(
+      Array.from(mappings.values()).map((entry) => entry.assetId),
+    );
+    expect(mappedAssetIds.has("media-asset-1")).toBe(true);
+    expect(mappedAssetIds.has("thumb-asset-1")).toBe(true);
+    expect(mappedAssetIds.has("plain-media-asset-id")).toBe(true);
+    expect(mappedAssetIds.has("media-asset-2")).toBe(true);
+    expect(mappedAssetIds.has("users")).toBe(false);
   });
 
-  it('collects keyframe URL, storagePath, and assetId references', () => {
+  it("collects keyframe URL, storagePath, and assetId references", () => {
     const mappings = new Map<string, MappingEntry>();
     const ownersByAsset = new Map<string, Set<string>>();
 
     collectSessionMappings(
-      'session-2',
+      "session-2",
       {
-        userId: 'user-2',
+        userId: "user-2",
         prompt: {
           keyframes: [
             {
-              url: 'https://storage.googleapis.com/vidra-media-prod/image-previews/keyframe-url-asset.webp',
-              storagePath: 'image-previews/keyframe-storage-asset',
-              assetId: 'plain-keyframe-asset',
+              url: "https://storage.googleapis.com/vidra-media-prod/image-previews/keyframe-url-asset.webp",
+              storagePath: "image-previews/keyframe-storage-asset",
+              assetId: "plain-keyframe-asset",
             },
             {
-              assetId: 'users/user-2/generations/not-an-image-path.mp4',
+              assetId: "users/user-2/generations/not-an-image-path.mp4",
             },
           ],
         },
       },
       mappings,
-      ownersByAsset
+      ownersByAsset,
     );
 
-    const mappedAssetIds = new Set(Array.from(mappings.values()).map((entry) => entry.assetId));
-    expect(mappedAssetIds.has('keyframe-url-asset')).toBe(true);
-    expect(mappedAssetIds.has('keyframe-storage-asset')).toBe(true);
-    expect(mappedAssetIds.has('plain-keyframe-asset')).toBe(true);
-    expect(mappedAssetIds.has('not-an-image-path')).toBe(false);
+    const mappedAssetIds = new Set(
+      Array.from(mappings.values()).map((entry) => entry.assetId),
+    );
+    expect(mappedAssetIds.has("keyframe-url-asset")).toBe(true);
+    expect(mappedAssetIds.has("keyframe-storage-asset")).toBe(true);
+    expect(mappedAssetIds.has("plain-keyframe-asset")).toBe(true);
+    expect(mappedAssetIds.has("not-an-image-path")).toBe(false);
   });
 });
 
-describe('migrate-preview-image-ownership apply behavior', () => {
-  it('skips conflicted assets and does not attempt copy for them', async () => {
+describe("migrate-preview-image-ownership apply behavior", () => {
+  it("skips conflicted assets and does not attempt copy for them", async () => {
     const mappings: MappingEntry[] = [
       {
-        userId: 'user-1',
-        assetId: 'conflicted-asset',
-        sources: new Set(['sessions/a']),
+        userId: "user-1",
+        assetId: "conflicted-asset",
+        sources: new Set(["sessions/a"]),
       },
       {
-        userId: 'user-1',
-        assetId: 'safe-asset',
-        sources: new Set(['sessions/b']),
+        userId: "user-1",
+        assetId: "safe-asset",
+        sources: new Set(["sessions/b"]),
       },
     ];
 
     const { bucket, copiedSourcePaths, fileCalls } = createBucketMock(
-      new Set(['image-previews/safe-asset'])
+      new Set(["image-previews/safe-asset"]),
     );
 
     const stats = createStats();
     await migrateMappings(
       bucket,
       mappings,
-      new Set(['conflicted-asset']),
-      { mode: 'apply', limit: null },
-      stats
+      new Set(["conflicted-asset"]),
+      { mode: "apply", limit: null },
+      stats,
     );
 
     expect(stats.skippedConflicts).toBe(1);
     expect(stats.plannedCopies).toBe(1);
     expect(stats.copied).toBe(1);
-    expect(copiedSourcePaths).toEqual(['image-previews/safe-asset']);
-    expect(fileCalls.some((path) => path.includes('conflicted-asset'))).toBe(false);
+    expect(copiedSourcePaths).toEqual(["image-previews/safe-asset"]);
+    expect(fileCalls.some((path) => path.includes("conflicted-asset"))).toBe(
+      false,
+    );
   });
 });

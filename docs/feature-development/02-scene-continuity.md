@@ -13,6 +13,7 @@
 User generates a beautiful clip of a woman in a red dress walking through neon-lit Tokyo streets. Now they want shot 2: same woman, same street, different angle.
 
 They re-run the prompt. They get:
+
 - Different shade of red
 - Different neon colors (pink vs cyan)
 - Different time of night
@@ -26,6 +27,7 @@ They re-run the prompt. They get:
 Video models have no memory. Each generation is completely stateless. The "Tokyo at night" in generation 1 is a completely different "Tokyo at night" in generation 2.
 
 **Current workarounds (all inadequate):**
+
 - **Seed locking** — Helps slightly, but models interpret prompts differently each time
 - **Style keywords** — "cyberpunk, neon pink and blue" — too loose, inconsistent
 - **Manual iteration** — Generate 20 times, hope 2 happen to match
@@ -155,7 +157,7 @@ client/src/features/continuity/
 ```typescript
 // server/src/services/continuity/types.ts
 
-import { VideoModelId } from '@/types/video';
+import { VideoModelId } from "@/types/video";
 
 /**
  * Extracted visual style from a video/frame
@@ -163,50 +165,50 @@ import { VideoModelId } from '@/types/video';
 export interface ExtractedStyle {
   id: string;
   sourceVideoId: string;
-  sourceFrameIndex: number;      // Which frame was analyzed
+  sourceFrameIndex: number; // Which frame was analyzed
   extractedAt: Date;
-  
+
   // Color characteristics
   color: {
     palette: ColorPalette;
-    temperature: 'warm' | 'neutral' | 'cool';
-    saturation: 'muted' | 'natural' | 'vibrant';
-    contrast: 'low' | 'medium' | 'high';
+    temperature: "warm" | "neutral" | "cool";
+    saturation: "muted" | "natural" | "vibrant";
+    contrast: "low" | "medium" | "high";
   };
-  
+
   // Lighting characteristics
   lighting: {
-    style: string;               // "low-key with strong rim lighting"
-    direction: string;           // "from left, slightly behind"
-    quality: string;             // "hard shadows, neon bounce fill"
-    keyLight: string;            // "neon signage"
-    fillLight?: string;          // "ambient city glow"
-    intensity: 'dim' | 'moderate' | 'bright';
+    style: string; // "low-key with strong rim lighting"
+    direction: string; // "from left, slightly behind"
+    quality: string; // "hard shadows, neon bounce fill"
+    keyLight: string; // "neon signage"
+    fillLight?: string; // "ambient city glow"
+    intensity: "dim" | "moderate" | "bright";
   };
-  
+
   // Atmospheric elements
   atmosphere: {
-    elements: string[];          // ["wet streets", "light rain", "reflections"]
-    timeOfDay: string;           // "night", "golden hour", etc.
-    weather: string;             // "rainy", "clear", "foggy"
-    mood: string;                // "melancholic", "tense", "peaceful"
+    elements: string[]; // ["wet streets", "light rain", "reflections"]
+    timeOfDay: string; // "night", "golden hour", etc.
+    weather: string; // "rainy", "clear", "foggy"
+    mood: string; // "melancholic", "tense", "peaceful"
   };
-  
+
   // Technical style
   technical: {
-    filmStock: string;           // "cinematic, high contrast"
+    filmStock: string; // "cinematic, high contrast"
     lensCharacteristics: string; // "anamorphic, lens flares"
-    grainLevel: 'none' | 'light' | 'moderate' | 'heavy';
-    depthOfField: 'deep' | 'moderate' | 'shallow';
-    motionBlur: 'none' | 'subtle' | 'noticeable';
+    grainLevel: "none" | "light" | "moderate" | "heavy";
+    depthOfField: "deep" | "moderate" | "shallow";
+    motionBlur: "none" | "subtle" | "noticeable";
   };
-  
+
   // Pre-composed prompt fragment
   stylePromptFragment: string;
-  
+
   // Confidence in extraction
-  confidence: number;            // 0-1
-  
+  confidence: number; // 0-1
+
   // Raw VLM response for debugging
   rawAnalysis?: string;
 }
@@ -217,7 +219,7 @@ export interface ColorPalette {
   accent: HexColor;
   shadows: HexColor;
   highlights: HexColor;
-  dominant: HexColor[];          // Top 3-5 colors by area
+  dominant: HexColor[]; // Top 3-5 colors by area
 }
 
 export type HexColor = `#${string}`;
@@ -228,17 +230,17 @@ export type HexColor = `#${string}`;
 export interface FrameBridge {
   id: string;
   sourceVideoId: string;
-  framePosition: 'first' | 'last' | number;
-  frameUrl: string;              // URL to stored frame image
-  frameTimestamp: number;        // Seconds into video
+  framePosition: "first" | "last" | number;
+  frameUrl: string; // URL to stored frame image
+  frameTimestamp: number; // Seconds into video
   extractedAt: Date;
-  
+
   // Frame metadata
   resolution: {
     width: number;
     height: number;
   };
-  aspectRatio: string;           // "16:9", "9:16", etc.
+  aspectRatio: string; // "16:9", "9:16", etc.
 }
 
 /**
@@ -247,28 +249,28 @@ export interface FrameBridge {
 export interface ContinuityShot {
   id: string;
   sessionId: string;
-  sequenceIndex: number;         // 0, 1, 2, ...
-  
+  sequenceIndex: number; // 0, 1, 2, ...
+
   // User input
-  userPrompt: string;            // What user typed
-  
+  userPrompt: string; // What user typed
+
   // Processed
-  injectedPrompt: string;        // With style tokens added
-  
+  injectedPrompt: string; // With style tokens added
+
   // Generation details
   modelId: VideoModelId;
   videoAssetId?: string;
   previewAssetId?: string;
-  
+
   // Continuity linkage
-  styleSource: 'base' | 'inherited' | 'custom';
+  styleSource: "base" | "inherited" | "custom";
   appliedStyle?: ExtractedStyle;
-  bridgeFrame?: FrameBridge;     // Last frame from previous shot
-  
+  bridgeFrame?: FrameBridge; // Last frame from previous shot
+
   // State
-  status: 'draft' | 'pending' | 'generating' | 'completed' | 'failed';
+  status: "draft" | "pending" | "generating" | "completed" | "failed";
   error?: string;
-  
+
   // Timestamps
   createdAt: Date;
   generatedAt?: Date;
@@ -280,24 +282,24 @@ export interface ContinuityShot {
 export interface ContinuitySession {
   id: string;
   userId: string;
-  
+
   // Metadata
-  name: string;                  // User-defined scene name
+  name: string; // User-defined scene name
   description?: string;
-  
+
   // Style baseline
   baseStyle: ExtractedStyle;
-  styleSource: 'extracted' | 'user-defined' | 'template';
-  
+  styleSource: "extracted" | "user-defined" | "template";
+
   // Shots in sequence
   shots: ContinuityShot[];
-  
+
   // Settings
   settings: ContinuitySettings;
-  
+
   // State
-  status: 'active' | 'completed' | 'archived';
-  
+  status: "active" | "completed" | "archived";
+
   // Timestamps
   createdAt: Date;
   updatedAt: Date;
@@ -305,39 +307,39 @@ export interface ContinuitySession {
 
 export interface ContinuitySettings {
   // Automatic behavior
-  autoExtractStyle: boolean;     // Extract style after each generation
-  autoFrameBridge: boolean;      // Use last frame for next shot
-  
+  autoExtractStyle: boolean; // Extract style after each generation
+  autoFrameBridge: boolean; // Use last frame for next shot
+
   // Style injection
-  styleInjectionStrength: 'light' | 'medium' | 'strong';
-  styleInjectionPosition: 'prefix' | 'suffix' | 'smart';
-  
+  styleInjectionStrength: "light" | "medium" | "strong";
+  styleInjectionPosition: "prefix" | "suffix" | "smart";
+
   // What to inherit
   inheritColor: boolean;
   inheritLighting: boolean;
   inheritAtmosphere: boolean;
   inheritTechnical: boolean;
-  
+
   // Generation
   defaultModel: VideoModelId;
-  usePreviewFirst: boolean;      // Generate Wan preview before final
+  usePreviewFirst: boolean; // Generate Wan preview before final
 }
 
 /**
  * Style injection options
  */
 export interface StyleInjectionOptions {
-  strength: 'light' | 'medium' | 'strong';
-  position: 'prefix' | 'suffix' | 'smart';
-  
+  strength: "light" | "medium" | "strong";
+  position: "prefix" | "suffix" | "smart";
+
   // Selective injection
   includeColor: boolean;
   includeLighting: boolean;
   includeAtmosphere: boolean;
   includeTechnical: boolean;
-  
+
   // Conflict resolution
-  skipConflicting: boolean;      // Don't override user-specified elements
+  skipConflicting: boolean; // Don't override user-specified elements
 }
 
 /**
@@ -346,8 +348,8 @@ export interface StyleInjectionOptions {
 export interface CreateShotRequest {
   sessionId: string;
   prompt: string;
-  modelId?: VideoModelId;        // Override default
-  useFrameBridge?: boolean;      // Override setting
+  modelId?: VideoModelId; // Override default
+  useFrameBridge?: boolean; // Override setting
   styleOverrides?: Partial<ExtractedStyle>;
 }
 
@@ -357,11 +359,11 @@ export interface CreateShotRequest {
 export interface CreateSessionRequest {
   name: string;
   description?: string;
-  
+
   // Initial shot (optional)
   initialPrompt?: string;
-  initialVideoId?: string;       // Create from existing video
-  
+  initialVideoId?: string; // Create from existing video
+
   // Settings
   settings?: Partial<ContinuitySettings>;
 }
@@ -378,19 +380,19 @@ Uses VLM to analyze video frames and extract visual style.
 ```typescript
 // server/src/services/continuity/StyleExtractionService.ts
 
-import { VLMService } from '@/services/vlm/VLMService';
-import { AssetService } from '@/services/asset/AssetService';
-import { ExtractedStyle, ColorPalette, HexColor } from './types';
-import { loadTemplate } from '@/utils/templates';
+import { VLMService } from "@/services/vlm/VLMService";
+import { AssetService } from "@/services/asset/AssetService";
+import { ExtractedStyle, ColorPalette, HexColor } from "./types";
+import { loadTemplate } from "@/utils/templates";
 
 export class StyleExtractionService {
   private extractionPrompt: string;
 
   constructor(
     private vlm: VLMService,
-    private assetService: AssetService
+    private assetService: AssetService,
   ) {
-    this.extractionPrompt = loadTemplate('continuity/style-extraction.md');
+    this.extractionPrompt = loadTemplate("continuity/style-extraction.md");
   }
 
   /**
@@ -398,17 +400,17 @@ export class StyleExtractionService {
    */
   async extractFromVideo(
     videoId: string,
-    framePosition: 'first' | 'middle' | 'last' | number = 'middle'
+    framePosition: "first" | "middle" | "last" | number = "middle",
   ): Promise<ExtractedStyle> {
     // Extract frame from video
     const frame = await this.assetService.extractFrame(videoId, framePosition);
-    
+
     // Analyze frame with VLM
     const analysis = await this.analyzeFrame(frame.url);
-    
+
     // Parse and structure the response
     const style = this.parseAnalysis(analysis, videoId, frame.index);
-    
+
     return style;
   }
 
@@ -417,7 +419,7 @@ export class StyleExtractionService {
    */
   async extractFromImage(imageUrl: string): Promise<ExtractedStyle> {
     const analysis = await this.analyzeFrame(imageUrl);
-    return this.parseAnalysis(analysis, 'image', 0);
+    return this.parseAnalysis(analysis, "image", 0);
   }
 
   /**
@@ -427,7 +429,7 @@ export class StyleExtractionService {
     const response = await this.vlm.analyzeImage({
       imageUrl: frameUrl,
       prompt: this.extractionPrompt,
-      responseFormat: 'json',
+      responseFormat: "json",
       maxTokens: 2000,
     });
 
@@ -440,11 +442,11 @@ export class StyleExtractionService {
   private parseAnalysis(
     analysis: VLMAnalysisResponse,
     sourceId: string,
-    frameIndex: number
+    frameIndex: number,
   ): ExtractedStyle {
     // Extract color palette
     const palette = this.parseColorPalette(analysis.colors);
-    
+
     // Build style prompt fragment
     const styleFragment = this.buildStyleFragment(analysis);
 
@@ -453,38 +455,38 @@ export class StyleExtractionService {
       sourceVideoId: sourceId,
       sourceFrameIndex: frameIndex,
       extractedAt: new Date(),
-      
+
       color: {
         palette,
-        temperature: analysis.colorTemperature || 'neutral',
-        saturation: analysis.saturation || 'natural',
-        contrast: analysis.contrast || 'medium',
+        temperature: analysis.colorTemperature || "neutral",
+        saturation: analysis.saturation || "natural",
+        contrast: analysis.contrast || "medium",
       },
-      
+
       lighting: {
-        style: analysis.lightingStyle || 'natural lighting',
-        direction: analysis.lightingDirection || 'frontal',
-        quality: analysis.lightingQuality || 'soft',
-        keyLight: analysis.keyLight || 'natural',
+        style: analysis.lightingStyle || "natural lighting",
+        direction: analysis.lightingDirection || "frontal",
+        quality: analysis.lightingQuality || "soft",
+        keyLight: analysis.keyLight || "natural",
         fillLight: analysis.fillLight,
-        intensity: analysis.lightingIntensity || 'moderate',
+        intensity: analysis.lightingIntensity || "moderate",
       },
-      
+
       atmosphere: {
         elements: analysis.atmosphericElements || [],
-        timeOfDay: analysis.timeOfDay || 'day',
-        weather: analysis.weather || 'clear',
-        mood: analysis.mood || 'neutral',
+        timeOfDay: analysis.timeOfDay || "day",
+        weather: analysis.weather || "clear",
+        mood: analysis.mood || "neutral",
       },
-      
+
       technical: {
-        filmStock: analysis.filmStock || 'digital',
-        lensCharacteristics: analysis.lensCharacteristics || 'standard',
-        grainLevel: analysis.grain || 'none',
-        depthOfField: analysis.depthOfField || 'moderate',
-        motionBlur: analysis.motionBlur || 'none',
+        filmStock: analysis.filmStock || "digital",
+        lensCharacteristics: analysis.lensCharacteristics || "standard",
+        grainLevel: analysis.grain || "none",
+        depthOfField: analysis.depthOfField || "moderate",
+        motionBlur: analysis.motionBlur || "none",
       },
-      
+
       stylePromptFragment: styleFragment,
       confidence: analysis.confidence || 0.8,
       rawAnalysis: JSON.stringify(analysis),
@@ -497,28 +499,28 @@ export class StyleExtractionService {
   private parseColorPalette(colors: VLMColorResponse): ColorPalette {
     const toHex = (color: string): HexColor => {
       // Handle various formats: "neon pink", "#FF1493", "rgb(255, 20, 147)"
-      if (color.startsWith('#')) return color as HexColor;
-      
+      if (color.startsWith("#")) return color as HexColor;
+
       // Color name to hex mapping
       const colorMap: Record<string, HexColor> = {
-        'neon pink': '#FF1493',
-        'cyan': '#00FFFF',
-        'deep blue': '#0A0A2E',
-        'warm orange': '#FF8C00',
-        'golden': '#FFD700',
+        "neon pink": "#FF1493",
+        cyan: "#00FFFF",
+        "deep blue": "#0A0A2E",
+        "warm orange": "#FF8C00",
+        golden: "#FFD700",
         // Add more as needed
       };
-      
+
       const normalized = color.toLowerCase().trim();
-      return colorMap[normalized] || '#808080';
+      return colorMap[normalized] || "#808080";
     };
 
     return {
-      primary: toHex(colors.primary || '#808080'),
-      secondary: toHex(colors.secondary || '#606060'),
-      accent: toHex(colors.accent || '#404040'),
-      shadows: toHex(colors.shadows || '#1a1a1a'),
-      highlights: toHex(colors.highlights || '#ffffff'),
+      primary: toHex(colors.primary || "#808080"),
+      secondary: toHex(colors.secondary || "#606060"),
+      accent: toHex(colors.accent || "#404040"),
+      shadows: toHex(colors.shadows || "#1a1a1a"),
+      highlights: toHex(colors.highlights || "#ffffff"),
       dominant: (colors.dominant || []).map(toHex),
     };
   }
@@ -545,18 +547,21 @@ export class StyleExtractionService {
 
     // Atmosphere
     if (analysis.atmosphericElements?.length > 0) {
-      parts.push(analysis.atmosphericElements.join(', '));
+      parts.push(analysis.atmosphericElements.join(", "));
     }
 
     // Technical style
-    if (analysis.filmStock && analysis.filmStock !== 'digital') {
+    if (analysis.filmStock && analysis.filmStock !== "digital") {
       parts.push(analysis.filmStock);
     }
-    if (analysis.lensCharacteristics && analysis.lensCharacteristics !== 'standard') {
+    if (
+      analysis.lensCharacteristics &&
+      analysis.lensCharacteristics !== "standard"
+    ) {
       parts.push(analysis.lensCharacteristics);
     }
 
-    return parts.join('. ') + '.';
+    return parts.join(". ") + ".";
   }
 
   /**
@@ -564,14 +569,21 @@ export class StyleExtractionService {
    */
   async compareStyles(
     style1: ExtractedStyle,
-    style2: ExtractedStyle
+    style2: ExtractedStyle,
   ): Promise<StyleComparison> {
     // Calculate similarity scores for each aspect
     const colorSimilarity = this.compareColors(style1.color, style2.color);
-    const lightingSimilarity = this.compareLighting(style1.lighting, style2.lighting);
-    const atmosphereSimilarity = this.compareAtmosphere(style1.atmosphere, style2.atmosphere);
-    
-    const overall = (colorSimilarity + lightingSimilarity + atmosphereSimilarity) / 3;
+    const lightingSimilarity = this.compareLighting(
+      style1.lighting,
+      style2.lighting,
+    );
+    const atmosphereSimilarity = this.compareAtmosphere(
+      style1.atmosphere,
+      style2.atmosphere,
+    );
+
+    const overall =
+      (colorSimilarity + lightingSimilarity + atmosphereSimilarity) / 3;
 
     return {
       overall,
@@ -582,7 +594,10 @@ export class StyleExtractionService {
     };
   }
 
-  private compareColors(c1: ExtractedStyle['color'], c2: ExtractedStyle['color']): number {
+  private compareColors(
+    c1: ExtractedStyle["color"],
+    c2: ExtractedStyle["color"],
+  ): number {
     // Simple comparison - could be enhanced with color distance algorithms
     let score = 0;
     if (c1.temperature === c2.temperature) score += 0.3;
@@ -591,7 +606,10 @@ export class StyleExtractionService {
     return score;
   }
 
-  private compareLighting(l1: ExtractedStyle['lighting'], l2: ExtractedStyle['lighting']): number {
+  private compareLighting(
+    l1: ExtractedStyle["lighting"],
+    l2: ExtractedStyle["lighting"],
+  ): number {
     let score = 0;
     if (l1.style === l2.style) score += 0.4;
     if (l1.direction === l2.direction) score += 0.3;
@@ -599,31 +617,42 @@ export class StyleExtractionService {
     return score;
   }
 
-  private compareAtmosphere(a1: ExtractedStyle['atmosphere'], a2: ExtractedStyle['atmosphere']): number {
+  private compareAtmosphere(
+    a1: ExtractedStyle["atmosphere"],
+    a2: ExtractedStyle["atmosphere"],
+  ): number {
     let score = 0;
     if (a1.timeOfDay === a2.timeOfDay) score += 0.4;
     if (a1.weather === a2.weather) score += 0.3;
-    
+
     // Compare elements overlap
-    const overlap = a1.elements.filter(e => a2.elements.includes(e));
-    score += 0.3 * (overlap.length / Math.max(a1.elements.length, a2.elements.length, 1));
-    
+    const overlap = a1.elements.filter((e) => a2.elements.includes(e));
+    score +=
+      0.3 *
+      (overlap.length / Math.max(a1.elements.length, a2.elements.length, 1));
+
     return score;
   }
 
   private identifyIssues(s1: ExtractedStyle, s2: ExtractedStyle): string[] {
     const issues: string[] = [];
-    
+
     if (s1.color.temperature !== s2.color.temperature) {
-      issues.push(`Color temperature mismatch: ${s1.color.temperature} vs ${s2.color.temperature}`);
+      issues.push(
+        `Color temperature mismatch: ${s1.color.temperature} vs ${s2.color.temperature}`,
+      );
     }
     if (s1.lighting.direction !== s2.lighting.direction) {
-      issues.push(`Lighting direction mismatch: ${s1.lighting.direction} vs ${s2.lighting.direction}`);
+      issues.push(
+        `Lighting direction mismatch: ${s1.lighting.direction} vs ${s2.lighting.direction}`,
+      );
     }
     if (s1.atmosphere.timeOfDay !== s2.atmosphere.timeOfDay) {
-      issues.push(`Time of day mismatch: ${s1.atmosphere.timeOfDay} vs ${s2.atmosphere.timeOfDay}`);
+      issues.push(
+        `Time of day mismatch: ${s1.atmosphere.timeOfDay} vs ${s2.atmosphere.timeOfDay}`,
+      );
     }
-    
+
     return issues;
   }
 
@@ -635,29 +664,29 @@ export class StyleExtractionService {
 // VLM response types
 interface VLMAnalysisResponse {
   colors: VLMColorResponse;
-  colorTemperature: 'warm' | 'neutral' | 'cool';
+  colorTemperature: "warm" | "neutral" | "cool";
   colorDescription: string;
-  saturation: 'muted' | 'natural' | 'vibrant';
-  contrast: 'low' | 'medium' | 'high';
-  
+  saturation: "muted" | "natural" | "vibrant";
+  contrast: "low" | "medium" | "high";
+
   lightingStyle: string;
   lightingDirection: string;
   lightingQuality: string;
   keyLight: string;
   fillLight?: string;
-  lightingIntensity: 'dim' | 'moderate' | 'bright';
-  
+  lightingIntensity: "dim" | "moderate" | "bright";
+
   atmosphericElements: string[];
   timeOfDay: string;
   weather: string;
   mood: string;
-  
+
   filmStock: string;
   lensCharacteristics: string;
-  grain: 'none' | 'light' | 'moderate' | 'heavy';
-  depthOfField: 'deep' | 'moderate' | 'shallow';
-  motionBlur: 'none' | 'subtle' | 'noticeable';
-  
+  grain: "none" | "light" | "moderate" | "heavy";
+  depthOfField: "deep" | "moderate" | "shallow";
+  motionBlur: "none" | "subtle" | "noticeable";
+
   confidence: number;
 }
 
@@ -681,7 +710,7 @@ interface StyleComparison {
 
 ### VLM Prompt Template
 
-```markdown
+````markdown
 <!-- server/src/services/continuity/templates/style-extraction.md -->
 
 Analyze this video frame and extract detailed visual style characteristics.
@@ -703,33 +732,35 @@ Return a JSON object with the following structure:
   "colorDescription": "One sentence describing the color palette",
   "saturation": "muted | natural | vibrant",
   "contrast": "low | medium | high",
-  
+
   "lightingStyle": "Detailed description of lighting approach (e.g., 'low-key with strong rim lighting')",
   "lightingDirection": "Where light comes from (e.g., 'from left, slightly behind')",
   "lightingQuality": "Hard/soft shadows, quality description",
   "keyLight": "Main light source",
   "fillLight": "Secondary light source if visible",
   "lightingIntensity": "dim | moderate | bright",
-  
+
   "atmosphericElements": ["List visible atmospheric elements like: wet streets, rain, fog, dust, etc."],
   "timeOfDay": "night | dawn | day | dusk | golden hour | blue hour",
   "weather": "clear | cloudy | rainy | foggy | snowy",
   "mood": "One word mood descriptor",
-  
+
   "filmStock": "Visual style description (e.g., 'cinematic, high contrast' or 'vintage film')",
   "lensCharacteristics": "Lens effects (e.g., 'anamorphic, lens flares' or 'standard')",
   "grain": "none | light | moderate | heavy",
   "depthOfField": "deep | moderate | shallow",
   "motionBlur": "none | subtle | noticeable",
-  
+
   "confidence": 0.0 to 1.0
 }
 ```
+````
 
 Be specific and use cinematography terminology.
 Extract what you actually see, not what you assume.
 If uncertain about an element, provide your best estimate but lower the confidence score.
-```
+
+````
 
 ### 2. StyleInjectionService
 
@@ -752,12 +783,12 @@ export class StyleInjectionService {
   ): string {
     // Build style prefix from selected components
     const styleTokens = this.buildStyleTokens(style, options);
-    
+
     // Clean user prompt of conflicting elements
     const cleanedPrompt = options.skipConflicting
       ? this.removeConflictingElements(userPrompt, style)
       : userPrompt;
-    
+
     // Combine based on position preference
     return this.combinePrompts(styleTokens, cleanedPrompt, options.position);
   }
@@ -895,21 +926,21 @@ export class StyleInjectionService {
     const colorConflicts = ['warm', 'cool', 'cold', 'vibrant', 'muted', 'saturated'];
     const lightingConflicts = ['bright', 'dim', 'dark', 'shadowy', 'backlit', 'frontlit'];
     const timeConflicts = ['day', 'night', 'sunset', 'sunrise', 'dawn', 'dusk'];
-    
+
     let cleaned = prompt;
-    
+
     // Remove standalone conflicting words (not part of larger descriptions)
     const allConflicts = [...colorConflicts, ...lightingConflicts, ...timeConflicts];
-    
+
     for (const word of allConflicts) {
       // Only remove if it's a standalone word, not part of something else
       const regex = new RegExp(`\\b${word}\\b(?!\\s+(?:sky|scene|shot))`, 'gi');
       cleaned = cleaned.replace(regex, '');
     }
-    
+
     // Clean up double spaces
     cleaned = cleaned.replace(/\s+/g, ' ').trim();
-    
+
     return cleaned;
   }
 
@@ -922,15 +953,15 @@ export class StyleInjectionService {
     position: 'prefix' | 'suffix' | 'smart'
   ): string {
     if (!styleTokens) return userPrompt;
-    
+
     if (position === 'prefix') {
       return `${styleTokens} ${userPrompt}`;
     }
-    
+
     if (position === 'suffix') {
       return `${userPrompt}. ${styleTokens}`;
     }
-    
+
     // Smart: inject after scene setup, before action
     return this.smartInject(styleTokens, userPrompt);
   }
@@ -945,7 +976,7 @@ export class StyleInjectionService {
       /,\s+(?=she|he|they|it)/i,  // Before pronouns
       /:\s+/,                      // After colon
     ];
-    
+
     for (const pattern of breakPoints) {
       const match = userPrompt.match(pattern);
       if (match && match.index !== undefined) {
@@ -957,7 +988,7 @@ export class StyleInjectionService {
         );
       }
     }
-    
+
     // Fallback to prefix
     return `${styleTokens}. ${userPrompt}`;
   }
@@ -974,7 +1005,7 @@ export class StyleInjectionService {
     };
   }
 }
-```
+````
 
 ### 3. FrameBridgeService
 
@@ -983,14 +1014,14 @@ Extracts frames from videos for i2v continuity.
 ```typescript
 // server/src/services/continuity/FrameBridgeService.ts
 
-import { AssetService } from '@/services/asset/AssetService';
-import { StorageService } from '@/services/storage/StorageService';
-import { FrameBridge } from './types';
+import { AssetService } from "@/services/asset/AssetService";
+import { StorageService } from "@/services/storage/StorageService";
+import { FrameBridge } from "./types";
 
 export class FrameBridgeService {
   constructor(
     private assetService: AssetService,
-    private storage: StorageService
+    private storage: StorageService,
   ) {}
 
   /**
@@ -998,36 +1029,40 @@ export class FrameBridgeService {
    */
   async extractBridgeFrame(
     videoId: string,
-    position: 'first' | 'last' | number = 'last'
+    position: "first" | "last" | number = "last",
   ): Promise<FrameBridge> {
     // Get video metadata
     const video = await this.assetService.getVideoAsset(videoId);
-    
+
     if (!video) {
       throw new Error(`Video not found: ${videoId}`);
     }
 
     // Calculate frame position
-    const frameIndex = this.calculateFrameIndex(position, video.frameCount, video.duration);
-    
+    const frameIndex = this.calculateFrameIndex(
+      position,
+      video.frameCount,
+      video.duration,
+    );
+
     // Extract frame
     const frameBuffer = await this.assetService.extractFrameBuffer(
       videoId,
-      frameIndex
+      frameIndex,
     );
-    
+
     // Store frame for use in generation
     const frameUrl = await this.storage.uploadImage(
       frameBuffer,
       `bridge-frames/${videoId}/${frameIndex}.png`,
-      { 
-        contentType: 'image/png',
+      {
+        contentType: "image/png",
         metadata: {
           sourceVideo: videoId,
           frameIndex: frameIndex.toString(),
-          extractedFor: 'continuity-bridge',
-        }
-      }
+          extractedFor: "continuity-bridge",
+        },
+      },
     );
 
     return {
@@ -1049,14 +1084,14 @@ export class FrameBridgeService {
    * Get the last frame of a video
    */
   async getLastFrame(videoId: string): Promise<FrameBridge> {
-    return this.extractBridgeFrame(videoId, 'last');
+    return this.extractBridgeFrame(videoId, "last");
   }
 
   /**
    * Get the first frame of a video
    */
   async getFirstFrame(videoId: string): Promise<FrameBridge> {
-    return this.extractBridgeFrame(videoId, 'first');
+    return this.extractBridgeFrame(videoId, "first");
   }
 
   /**
@@ -1064,23 +1099,23 @@ export class FrameBridgeService {
    */
   async prewarmBridgeFrame(videoId: string): Promise<void> {
     // Extract and cache the last frame for quick access
-    await this.extractBridgeFrame(videoId, 'last');
+    await this.extractBridgeFrame(videoId, "last");
   }
 
   private calculateFrameIndex(
-    position: 'first' | 'last' | number,
+    position: "first" | "last" | number,
     frameCount: number,
-    duration: number
+    duration: number,
   ): number {
-    if (position === 'first') return 0;
-    if (position === 'last') return Math.max(0, frameCount - 1);
-    
+    if (position === "first") return 0;
+    if (position === "last") return Math.max(0, frameCount - 1);
+
     // Position as seconds
-    if (typeof position === 'number') {
+    if (typeof position === "number") {
       const fps = frameCount / duration;
       return Math.min(Math.floor(position * fps), frameCount - 1);
     }
-    
+
     return frameCount - 1;
   }
 
@@ -1089,7 +1124,7 @@ export class FrameBridgeService {
   }
 
   private calculateAspectRatio(width: number, height: number): string {
-    const gcd = (a: number, b: number): number => b === 0 ? a : gcd(b, a % b);
+    const gcd = (a: number, b: number): number => (b === 0 ? a : gcd(b, a % b));
     const divisor = gcd(width, height);
     return `${width / divisor}:${height / divisor}`;
   }
@@ -1107,18 +1142,18 @@ Manages multi-shot sessions.
 ```typescript
 // server/src/services/continuity/ContinuitySessionService.ts
 
-import { 
-  ContinuitySession, 
-  ContinuityShot, 
+import {
+  ContinuitySession,
+  ContinuityShot,
   CreateSessionRequest,
   CreateShotRequest,
   ContinuitySettings,
-  ExtractedStyle
-} from './types';
-import { StyleExtractionService } from './StyleExtractionService';
-import { StyleInjectionService } from './StyleInjectionService';
-import { FrameBridgeService } from './FrameBridgeService';
-import { VideoGenerationService } from '@/services/video-generation/VideoGenerationService';
+  ExtractedStyle,
+} from "./types";
+import { StyleExtractionService } from "./StyleExtractionService";
+import { StyleInjectionService } from "./StyleInjectionService";
+import { FrameBridgeService } from "./FrameBridgeService";
+import { VideoGenerationService } from "@/services/video-generation/VideoGenerationService";
 
 export class ContinuitySessionService {
   constructor(
@@ -1126,7 +1161,7 @@ export class ContinuitySessionService {
     private styleInjector: StyleInjectionService,
     private frameBridge: FrameBridgeService,
     private videoGenerator: VideoGenerationService,
-    private sessionStore: SessionStore  // Your persistence layer
+    private sessionStore: SessionStore, // Your persistence layer
   ) {}
 
   /**
@@ -1134,13 +1169,15 @@ export class ContinuitySessionService {
    */
   async createSession(
     userId: string,
-    request: CreateSessionRequest
+    request: CreateSessionRequest,
   ): Promise<ContinuitySession> {
     let baseStyle: ExtractedStyle;
 
     // Extract style from existing video or use defaults
     if (request.initialVideoId) {
-      baseStyle = await this.styleExtractor.extractFromVideo(request.initialVideoId);
+      baseStyle = await this.styleExtractor.extractFromVideo(
+        request.initialVideoId,
+      );
     } else {
       baseStyle = this.createDefaultStyle();
     }
@@ -1151,17 +1188,21 @@ export class ContinuitySessionService {
       name: request.name,
       description: request.description,
       baseStyle,
-      styleSource: request.initialVideoId ? 'extracted' : 'user-defined',
+      styleSource: request.initialVideoId ? "extracted" : "user-defined",
       shots: [],
       settings: { ...this.defaultSettings(), ...request.settings },
-      status: 'active',
+      status: "active",
       createdAt: new Date(),
       updatedAt: new Date(),
     };
 
     // Create initial shot if prompt provided
     if (request.initialPrompt) {
-      const initialShot = this.createDraftShot(session, request.initialPrompt, 0);
+      const initialShot = this.createDraftShot(
+        session,
+        request.initialPrompt,
+        0,
+      );
       session.shots.push(initialShot);
     }
 
@@ -1174,7 +1215,7 @@ export class ContinuitySessionService {
    */
   async addShot(request: CreateShotRequest): Promise<ContinuityShot> {
     const session = await this.sessionStore.get(request.sessionId);
-    
+
     if (!session) {
       throw new Error(`Session not found: ${request.sessionId}`);
     }
@@ -1186,14 +1227,16 @@ export class ContinuitySessionService {
     let bridgeFrame;
     if (request.useFrameBridge ?? session.settings.autoFrameBridge) {
       if (previousShot?.videoAssetId) {
-        bridgeFrame = await this.frameBridge.getLastFrame(previousShot.videoAssetId);
+        bridgeFrame = await this.frameBridge.getLastFrame(
+          previousShot.videoAssetId,
+        );
       }
     }
 
     // Inject style into prompt
     const injectedPrompt = this.styleInjector.injectStyle(
       request.prompt,
-      request.styleOverrides 
+      request.styleOverrides
         ? this.mergeStyles(session.baseStyle, request.styleOverrides)
         : session.baseStyle,
       {
@@ -1204,7 +1247,7 @@ export class ContinuitySessionService {
         includeAtmosphere: session.settings.inheritAtmosphere,
         includeTechnical: session.settings.inheritTechnical,
         skipConflicting: true,
-      }
+      },
     );
 
     const shot: ContinuityShot = {
@@ -1214,10 +1257,10 @@ export class ContinuitySessionService {
       userPrompt: request.prompt,
       injectedPrompt,
       modelId: request.modelId || session.settings.defaultModel,
-      styleSource: 'inherited',
+      styleSource: "inherited",
       appliedStyle: session.baseStyle,
       bridgeFrame,
-      status: 'draft',
+      status: "draft",
       createdAt: new Date(),
     };
 
@@ -1233,17 +1276,17 @@ export class ContinuitySessionService {
    */
   async generateShot(
     sessionId: string,
-    shotId: string
+    shotId: string,
   ): Promise<ContinuityShot> {
     const session = await this.sessionStore.get(sessionId);
-    const shot = session?.shots.find(s => s.id === shotId);
+    const shot = session?.shots.find((s) => s.id === shotId);
 
     if (!session || !shot) {
       throw new Error(`Shot not found: ${shotId}`);
     }
 
     // Update status
-    shot.status = 'generating';
+    shot.status = "generating";
     await this.sessionStore.save(session);
 
     try {
@@ -1257,17 +1300,19 @@ export class ContinuitySessionService {
 
       // Update shot with result
       shot.videoAssetId = result.videoId;
-      shot.status = 'completed';
+      shot.status = "completed";
       shot.generatedAt = new Date();
 
       // Extract style for future shots if enabled
       if (session.settings.autoExtractStyle) {
-        shot.appliedStyle = await this.styleExtractor.extractFromVideo(result.videoId);
-        
+        shot.appliedStyle = await this.styleExtractor.extractFromVideo(
+          result.videoId,
+        );
+
         // Update base style if this is the first shot
         if (shot.sequenceIndex === 0) {
           session.baseStyle = shot.appliedStyle;
-          session.styleSource = 'extracted';
+          session.styleSource = "extracted";
         }
       }
 
@@ -1275,10 +1320,9 @@ export class ContinuitySessionService {
       if (session.settings.autoFrameBridge) {
         await this.frameBridge.prewarmBridgeFrame(result.videoId);
       }
-
     } catch (error) {
-      shot.status = 'failed';
-      shot.error = error instanceof Error ? error.message : 'Generation failed';
+      shot.status = "failed";
+      shot.error = error instanceof Error ? error.message : "Generation failed";
     }
 
     session.updatedAt = new Date();
@@ -1292,16 +1336,16 @@ export class ContinuitySessionService {
    */
   async updateSessionStyle(
     sessionId: string,
-    styleUpdates: Partial<ExtractedStyle>
+    styleUpdates: Partial<ExtractedStyle>,
   ): Promise<ContinuitySession> {
     const session = await this.sessionStore.get(sessionId);
-    
+
     if (!session) {
       throw new Error(`Session not found: ${sessionId}`);
     }
 
     session.baseStyle = this.mergeStyles(session.baseStyle, styleUpdates);
-    session.styleSource = 'user-defined';
+    session.styleSource = "user-defined";
     session.updatedAt = new Date();
 
     await this.sessionStore.save(session);
@@ -1314,10 +1358,10 @@ export class ContinuitySessionService {
   async regenerateShot(
     sessionId: string,
     shotId: string,
-    newPrompt?: string
+    newPrompt?: string,
   ): Promise<ContinuityShot> {
     const session = await this.sessionStore.get(sessionId);
-    const shot = session?.shots.find(s => s.id === shotId);
+    const shot = session?.shots.find((s) => s.id === shotId);
 
     if (!session || !shot) {
       throw new Error(`Shot not found: ${shotId}`);
@@ -1328,13 +1372,13 @@ export class ContinuitySessionService {
       shot.injectedPrompt = this.styleInjector.injectStyle(
         newPrompt,
         session.baseStyle,
-        this.buildInjectionOptions(session.settings)
+        this.buildInjectionOptions(session.settings),
       );
     }
 
-    shot.status = 'pending';
+    shot.status = "pending";
     shot.error = undefined;
-    
+
     await this.sessionStore.save(session);
     return this.generateShot(sessionId, shotId);
   }
@@ -1356,7 +1400,7 @@ export class ContinuitySessionService {
   private createDraftShot(
     session: ContinuitySession,
     prompt: string,
-    index: number
+    index: number,
   ): ContinuityShot {
     return {
       id: this.generateShotId(),
@@ -1365,15 +1409,15 @@ export class ContinuitySessionService {
       userPrompt: prompt,
       injectedPrompt: prompt, // Will be injected on generate
       modelId: session.settings.defaultModel,
-      styleSource: 'base',
-      status: 'draft',
+      styleSource: "base",
+      status: "draft",
       createdAt: new Date(),
     };
   }
 
   private mergeStyles(
     base: ExtractedStyle,
-    overrides: Partial<ExtractedStyle>
+    overrides: Partial<ExtractedStyle>,
   ): ExtractedStyle {
     return {
       ...base,
@@ -1399,44 +1443,44 @@ export class ContinuitySessionService {
 
   private createDefaultStyle(): ExtractedStyle {
     return {
-      id: 'default',
-      sourceVideoId: 'none',
+      id: "default",
+      sourceVideoId: "none",
       sourceFrameIndex: 0,
       extractedAt: new Date(),
       color: {
         palette: {
-          primary: '#808080',
-          secondary: '#606060',
-          accent: '#a0a0a0',
-          shadows: '#1a1a1a',
-          highlights: '#ffffff',
+          primary: "#808080",
+          secondary: "#606060",
+          accent: "#a0a0a0",
+          shadows: "#1a1a1a",
+          highlights: "#ffffff",
           dominant: [],
         },
-        temperature: 'neutral',
-        saturation: 'natural',
-        contrast: 'medium',
+        temperature: "neutral",
+        saturation: "natural",
+        contrast: "medium",
       },
       lighting: {
-        style: 'natural lighting',
-        direction: 'frontal',
-        quality: 'soft',
-        keyLight: 'natural',
-        intensity: 'moderate',
+        style: "natural lighting",
+        direction: "frontal",
+        quality: "soft",
+        keyLight: "natural",
+        intensity: "moderate",
       },
       atmosphere: {
         elements: [],
-        timeOfDay: 'day',
-        weather: 'clear',
-        mood: 'neutral',
+        timeOfDay: "day",
+        weather: "clear",
+        mood: "neutral",
       },
       technical: {
-        filmStock: 'digital',
-        lensCharacteristics: 'standard',
-        grainLevel: 'none',
-        depthOfField: 'moderate',
-        motionBlur: 'none',
+        filmStock: "digital",
+        lensCharacteristics: "standard",
+        grainLevel: "none",
+        depthOfField: "moderate",
+        motionBlur: "none",
       },
-      stylePromptFragment: '',
+      stylePromptFragment: "",
       confidence: 1.0,
     };
   }
@@ -1445,13 +1489,13 @@ export class ContinuitySessionService {
     return {
       autoExtractStyle: true,
       autoFrameBridge: true,
-      styleInjectionStrength: 'medium',
-      styleInjectionPosition: 'prefix',
+      styleInjectionStrength: "medium",
+      styleInjectionPosition: "prefix",
       inheritColor: true,
       inheritLighting: true,
       inheritAtmosphere: true,
       inheritTechnical: true,
-      defaultModel: 'veo-3',
+      defaultModel: "veo-3",
       usePreviewFirst: true,
     };
   }
@@ -1481,8 +1525,8 @@ interface SessionStore {
 ```typescript
 // server/src/routes/continuity.ts
 
-import { Router } from 'express';
-import { authenticateUser } from '@/middleware/auth';
+import { Router } from "express";
+import { authenticateUser } from "@/middleware/auth";
 
 const router = Router();
 
@@ -1493,11 +1537,12 @@ router.use(authenticateUser);
  * POST /api/continuity/sessions
  * Create a new continuity session
  */
-router.post('/sessions', async (req, res) => {
-  const { name, description, initialPrompt, initialVideoId, settings } = req.body;
-  
+router.post("/sessions", async (req, res) => {
+  const { name, description, initialPrompt, initialVideoId, settings } =
+    req.body;
+
   try {
-    const service = req.app.get('continuitySessionService');
+    const service = req.app.get("continuitySessionService");
     const session = await service.createSession(req.user.id, {
       name,
       description,
@@ -1505,10 +1550,10 @@ router.post('/sessions', async (req, res) => {
       initialVideoId,
       settings,
     });
-    
+
     res.json({ success: true, data: session });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to create session' });
+    res.status(500).json({ error: "Failed to create session" });
   }
 });
 
@@ -1516,8 +1561,8 @@ router.post('/sessions', async (req, res) => {
  * GET /api/continuity/sessions
  * Get all sessions for current user
  */
-router.get('/sessions', async (req, res) => {
-  const service = req.app.get('continuitySessionService');
+router.get("/sessions", async (req, res) => {
+  const service = req.app.get("continuitySessionService");
   const sessions = await service.getUserSessions(req.user.id);
   res.json({ success: true, data: sessions });
 });
@@ -1526,14 +1571,14 @@ router.get('/sessions', async (req, res) => {
  * GET /api/continuity/sessions/:sessionId
  * Get a single session
  */
-router.get('/sessions/:sessionId', async (req, res) => {
-  const service = req.app.get('continuitySessionService');
+router.get("/sessions/:sessionId", async (req, res) => {
+  const service = req.app.get("continuitySessionService");
   const session = await service.getSession(req.params.sessionId);
-  
+
   if (!session) {
-    return res.status(404).json({ error: 'Session not found' });
+    return res.status(404).json({ error: "Session not found" });
   }
-  
+
   res.json({ success: true, data: session });
 });
 
@@ -1541,11 +1586,11 @@ router.get('/sessions/:sessionId', async (req, res) => {
  * POST /api/continuity/sessions/:sessionId/shots
  * Add a new shot to a session
  */
-router.post('/sessions/:sessionId/shots', async (req, res) => {
+router.post("/sessions/:sessionId/shots", async (req, res) => {
   const { prompt, modelId, useFrameBridge, styleOverrides } = req.body;
-  
+
   try {
-    const service = req.app.get('continuitySessionService');
+    const service = req.app.get("continuitySessionService");
     const shot = await service.addShot({
       sessionId: req.params.sessionId,
       prompt,
@@ -1553,10 +1598,10 @@ router.post('/sessions/:sessionId/shots', async (req, res) => {
       useFrameBridge,
       styleOverrides,
     });
-    
+
     res.json({ success: true, data: shot });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to add shot' });
+    res.status(500).json({ error: "Failed to add shot" });
   }
 });
 
@@ -1564,17 +1609,17 @@ router.post('/sessions/:sessionId/shots', async (req, res) => {
  * POST /api/continuity/sessions/:sessionId/shots/:shotId/generate
  * Generate a shot
  */
-router.post('/sessions/:sessionId/shots/:shotId/generate', async (req, res) => {
+router.post("/sessions/:sessionId/shots/:shotId/generate", async (req, res) => {
   try {
-    const service = req.app.get('continuitySessionService');
+    const service = req.app.get("continuitySessionService");
     const shot = await service.generateShot(
       req.params.sessionId,
-      req.params.shotId
+      req.params.shotId,
     );
-    
+
     res.json({ success: true, data: shot });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to generate shot' });
+    res.status(500).json({ error: "Failed to generate shot" });
   }
 });
 
@@ -1582,17 +1627,17 @@ router.post('/sessions/:sessionId/shots/:shotId/generate', async (req, res) => {
  * PUT /api/continuity/sessions/:sessionId/style
  * Update session style
  */
-router.put('/sessions/:sessionId/style', async (req, res) => {
+router.put("/sessions/:sessionId/style", async (req, res) => {
   try {
-    const service = req.app.get('continuitySessionService');
+    const service = req.app.get("continuitySessionService");
     const session = await service.updateSessionStyle(
       req.params.sessionId,
-      req.body.style
+      req.body.style,
     );
-    
+
     res.json({ success: true, data: session });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to update style' });
+    res.status(500).json({ error: "Failed to update style" });
   }
 });
 
@@ -1600,16 +1645,16 @@ router.put('/sessions/:sessionId/style', async (req, res) => {
  * POST /api/continuity/extract-style
  * Extract style from a video (standalone)
  */
-router.post('/extract-style', async (req, res) => {
+router.post("/extract-style", async (req, res) => {
   const { videoId, framePosition } = req.body;
-  
+
   try {
-    const extractor = req.app.get('styleExtractionService');
+    const extractor = req.app.get("styleExtractionService");
     const style = await extractor.extractFromVideo(videoId, framePosition);
-    
+
     res.json({ success: true, data: style });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to extract style' });
+    res.status(500).json({ error: "Failed to extract style" });
   }
 });
 
@@ -1733,7 +1778,7 @@ export function ContinuitySessionProvider({ children }: { children: React.ReactN
     options?: { modelId?: string; useFrameBridge?: boolean }
   ) => {
     if (!state.session) throw new Error('No active session');
-    
+
     const shot = await continuityApi.addShot(state.session.id, {
       prompt,
       ...options,
@@ -1744,7 +1789,7 @@ export function ContinuitySessionProvider({ children }: { children: React.ReactN
 
   const generateShot = useCallback(async (shotId: string) => {
     if (!state.session) return;
-    
+
     // Update to generating status
     const shot = state.session.shots.find(s => s.id === shotId);
     if (shot) {
@@ -1763,7 +1808,7 @@ export function ContinuitySessionProvider({ children }: { children: React.ReactN
 
   const updateStyle = useCallback(async (updates: Partial<ExtractedStyle>) => {
     if (!state.session) return;
-    
+
     const session = await continuityApi.updateStyle(state.session.id, updates);
     dispatch({ type: 'UPDATE_STYLE', style: session.baseStyle });
   }, [state.session]);
@@ -1898,7 +1943,7 @@ function CreateSessionPrompt() {
         placeholder="Scene name..."
         className="input-field w-64 mb-4"
       />
-      <button 
+      <button
         onClick={handleCreate}
         disabled={!name.trim()}
         className="btn-primary"
@@ -1925,10 +1970,10 @@ export function GenerationComplete({ generation }) {
   return (
     <div className="generation-complete">
       {/* ... existing completion UI ... */}
-      
+
       {/* Add Continue Scene option */}
       <div className="mt-4 pt-4 border-t border-zinc-700">
-        <ContinueSceneButton 
+        <ContinueSceneButton
           videoId={generation.videoId}
           prompt={generation.prompt}
         />
@@ -1963,7 +2008,7 @@ export function ContinueSceneButton({ videoId, prompt }: ContinueSceneButtonProp
         initialVideoId: videoId,
         initialPrompt: prompt,
       });
-      
+
       // Navigate to continuity view
       navigate(`/continuity/${session.id}`);
     } catch (error) {
@@ -1990,32 +2035,32 @@ export function ContinueSceneButton({ videoId, prompt }: ContinueSceneButtonProp
 
 ## Success Metrics
 
-| Metric | Target | How to Measure |
-|--------|--------|----------------|
-| Continuity session creation | > 20% of users | Track session creates |
-| Shots per session | > 2.5 average | Avg shots in active sessions |
-| Style consistency score | > 0.75 | VLM comparison of consecutive shots |
-| Re-generation rate | < 30% | Shots needing re-gen due to style mismatch |
-| Frame bridge usage | > 60% of shots | Track i2v usage in sessions |
+| Metric                      | Target         | How to Measure                             |
+| --------------------------- | -------------- | ------------------------------------------ |
+| Continuity session creation | > 20% of users | Track session creates                      |
+| Shots per session           | > 2.5 average  | Avg shots in active sessions               |
+| Style consistency score     | > 0.75         | VLM comparison of consecutive shots        |
+| Re-generation rate          | < 30%          | Shots needing re-gen due to style mismatch |
+| Frame bridge usage          | > 60% of shots | Track i2v usage in sessions                |
 
 ---
 
 ## Effort Breakdown
 
-| Task | Estimate | Dependencies |
-|------|----------|--------------|
-| StyleExtractionService + VLM integration | 3 days | VLM access (GPT-4o Vision) |
-| StyleInjectionService | 2 days | Extraction service |
-| FrameBridgeService | 2 days | Asset service |
-| ContinuitySessionService | 3 days | All above |
-| API endpoints | 1 day | Services |
-| Client: Context + hooks | 2 days | API |
-| Client: Session timeline UI | 3 days | Context |
-| Client: Style panel | 2 days | Context |
-| Client: Shot editor | 2 days | Context |
-| Integration with existing generation | 1 day | All above |
-| Testing | 3 days | All above |
-| **Total** | **~3.5 weeks** | |
+| Task                                     | Estimate       | Dependencies               |
+| ---------------------------------------- | -------------- | -------------------------- |
+| StyleExtractionService + VLM integration | 3 days         | VLM access (GPT-4o Vision) |
+| StyleInjectionService                    | 2 days         | Extraction service         |
+| FrameBridgeService                       | 2 days         | Asset service              |
+| ContinuitySessionService                 | 3 days         | All above                  |
+| API endpoints                            | 1 day          | Services                   |
+| Client: Context + hooks                  | 2 days         | API                        |
+| Client: Session timeline UI              | 3 days         | Context                    |
+| Client: Style panel                      | 2 days         | Context                    |
+| Client: Shot editor                      | 2 days         | Context                    |
+| Integration with existing generation     | 1 day          | All above                  |
+| Testing                                  | 3 days         | All above                  |
+| **Total**                                | **~3.5 weeks** |                            |
 
 ---
 

@@ -1,5 +1,5 @@
-import type { IAIClient } from '@interfaces/IAIClient';
-import type { ClientsMap, ModelConfigEntry } from '../types';
+import type { IAIClient } from "@interfaces/IAIClient";
+import type { ClientsMap, ModelConfigEntry } from "../types";
 
 export class ClientResolver {
   private readonly clients: ClientsMap;
@@ -8,7 +8,9 @@ export class ClientResolver {
 
   constructor(clients: ClientsMap) {
     this.clients = clients;
-    const available = Object.keys(clients).filter(key => clients[key] !== null);
+    const available = Object.keys(clients).filter(
+      (key) => clients[key] !== null,
+    );
     this.availableClients = new Set(available);
     this.hasAny = available.length > 0;
   }
@@ -22,7 +24,9 @@ export class ClientResolver {
   }
 
   getAvailableClients(): string[] {
-    return Object.keys(this.clients).filter(key => this.clients[key] !== null);
+    return Object.keys(this.clients).filter(
+      (key) => this.clients[key] !== null,
+    );
   }
 
   getClientByName(clientName: string): IAIClient | null {
@@ -35,8 +39,10 @@ export class ClientResolver {
     if (!client) {
       throw new Error(
         `Client '${config.client}' is not available. ` +
-        `Available clients: ${Object.keys(this.clients).filter(k => this.clients[k]).join(', ')}. ` +
-        `Configure fallbackTo in ModelConfig if automatic fallback is desired.`
+          `Available clients: ${Object.keys(this.clients)
+            .filter((k) => this.clients[k])
+            .join(", ")}. ` +
+          `Configure fallbackTo in ModelConfig if automatic fallback is desired.`,
       );
     }
 

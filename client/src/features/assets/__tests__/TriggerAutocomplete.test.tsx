@@ -1,11 +1,11 @@
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
-import { TriggerAutocomplete } from '../components/TriggerAutocomplete';
+import { describe, it, expect, vi } from "vitest";
+import { render, screen, fireEvent } from "@testing-library/react";
+import { TriggerAutocomplete } from "../components/TriggerAutocomplete";
 
-describe('TriggerAutocomplete', () => {
-  it('renders suggestions and handles selection', () => {
+describe("TriggerAutocomplete", () => {
+  it("renders suggestions and handles selection", () => {
     const suggestions = [
-      { id: '1', type: 'character', trigger: '@Alice', name: 'Alice' },
+      { id: "1", type: "character", trigger: "@Alice", name: "Alice" },
     ];
     const onSelect = vi.fn();
 
@@ -19,10 +19,10 @@ describe('TriggerAutocomplete', () => {
         onSelect={onSelect}
         onClose={vi.fn()}
         setSelectedIndex={vi.fn()}
-      />
+      />,
     );
 
-    fireEvent.click(screen.getByText('Alice'));
+    fireEvent.click(screen.getByText("Alice"));
     expect(onSelect).toHaveBeenCalledWith(suggestions[0]);
   });
 });

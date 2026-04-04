@@ -1,6 +1,6 @@
 /**
  * Cache Service Interface
- * 
+ *
  * SOLID Principles Applied:
  * - ISP: Minimal interface for cache operations
  * - DIP: Abstraction that services depend on
@@ -32,4 +32,3 @@ export interface ICacheService {
    */
   generateKey(namespace: string, data: Record<string, unknown>): string;
 }
-

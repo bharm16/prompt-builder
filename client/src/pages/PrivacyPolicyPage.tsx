@@ -1,99 +1,144 @@
-import React from 'react';
-import { MarketingPage } from './MarketingPage';
-import { Card } from '@promptstudio/system/components/ui/card';
+import React from "react";
+import { Link } from "react-router-dom";
+import { AUTH_COLORS } from "./auth/auth-styles";
+
+const CARD: React.CSSProperties = {
+  background: AUTH_COLORS.card,
+  border: `1px solid ${AUTH_COLORS.cardBorder}`,
+  borderRadius: "10px",
+};
+
+type TocItem = { id: string; label: string };
+
+const TOC: TocItem[] = [
+  { id: "overview", label: "Overview" },
+  { id: "data", label: "Information we collect" },
+  { id: "use", label: "How we use data" },
+  { id: "sharing", label: "Sharing" },
+  { id: "retention", label: "Retention" },
+  { id: "choices", label: "Your choices & rights" },
+  { id: "security", label: "Security" },
+  { id: "transfers", label: "International transfers" },
+  { id: "changes", label: "Changes" },
+  { id: "contact", label: "Contact" },
+];
+
+function SectionHeading({
+  id,
+  children,
+}: {
+  id: string;
+  children: React.ReactNode;
+}): React.ReactElement {
+  return (
+    <h2
+      id={id}
+      className="scroll-mt-16 mb-3 text-[14px] font-semibold text-white"
+    >
+      {children}
+    </h2>
+  );
+}
 
 export function PrivacyPolicyPage(): React.ReactElement {
-  const updatedAt = 'January 13, 2026';
+  const updatedAt = "January 13, 2026";
   const supportEmail =
-    (import.meta as { env?: { VITE_SUPPORT_EMAIL?: string } }).env?.VITE_SUPPORT_EMAIL?.trim() || 'support@yourdomain.com';
-  const companyName = 'Vidra';
-  const productName = 'Vidra';
+    (
+      import.meta as { env?: { VITE_SUPPORT_EMAIL?: string } }
+    ).env?.VITE_SUPPORT_EMAIL?.trim() || "support@yourdomain.com";
+  const companyName = "Vidra";
+  const productName = "Vidra";
 
   return (
-    <MarketingPage
-      variant="legal"
-      eyebrow="LEGAL"
-      title="Privacy Policy"
-      subtitle={`How ${companyName} collects, uses, and shares information when you use ${productName}. Last updated ${updatedAt}.`}
+    <div
+      className="h-full overflow-y-auto"
+      style={{ background: AUTH_COLORS.bg }}
     >
-      <div className="mt-8 grid gap-6 lg:grid-cols-[260px_1fr]">
-        <aside className="lg:sticky lg:top-[calc(var(--global-top-nav-height)+24px)] lg:self-start">
-          <Card className="rounded-xl bg-[rgb(23,24,31)] p-4">
-            <nav aria-label="On this page" className="text-sm">
-              <p className="text-[11px] font-semibold tracking-[0.22em] uppercase text-muted">
+      {/* Sticky header */}
+      <div
+        className="sticky top-0 z-10 px-4 py-3 sm:px-6"
+        style={{
+          background: AUTH_COLORS.bg,
+          borderBottom: `1px solid ${AUTH_COLORS.divider}`,
+        }}
+      >
+        <div className="mx-auto max-w-4xl flex items-center justify-between gap-4">
+          <div className="min-w-0">
+            <p
+              className="text-[10px] font-semibold tracking-[0.2em]"
+              style={{ color: AUTH_COLORS.textLabel }}
+            >
+              LEGAL
+            </p>
+            <h1 className="text-[15px] font-semibold text-white tracking-tight">
+              Privacy Policy
+            </h1>
+          </div>
+          <div className="flex items-center gap-3 shrink-0">
+            <span
+              className="text-[11px]"
+              style={{ color: AUTH_COLORS.textDim }}
+            >
+              Updated {updatedAt}
+            </span>
+            <Link
+              to="/"
+              className="text-[12px] font-medium hover:text-white transition-colors"
+              style={{ color: AUTH_COLORS.textDim }}
+            >
+              Back to app
+            </Link>
+          </div>
+        </div>
+      </div>
+
+      {/* Content with sidebar TOC */}
+      <div className="mx-auto max-w-4xl px-4 sm:px-6 pb-16">
+        <div className="mt-5 grid gap-5 lg:grid-cols-[200px_1fr]">
+          {/* TOC sidebar */}
+          <aside className="lg:sticky lg:top-14 lg:self-start">
+            <nav aria-label="On this page" className="text-[12px]">
+              <p
+                className="text-[10px] font-semibold tracking-[0.18em] mb-2"
+                style={{ color: AUTH_COLORS.textLabel }}
+              >
                 ON THIS PAGE
               </p>
-              <ul className="mt-3 space-y-2">
-                <li>
-                  <a className="text-[rgb(170,174,187)] hover:text-foreground hover:underline" href="#overview">
-                    Overview
-                  </a>
-                </li>
-                <li>
-                  <a className="text-[rgb(170,174,187)] hover:text-foreground hover:underline" href="#data">
-                    Information we collect
-                  </a>
-                </li>
-                <li>
-                  <a className="text-[rgb(170,174,187)] hover:text-foreground hover:underline" href="#use">
-                    How we use data
-                  </a>
-                </li>
-                <li>
-                  <a className="text-[rgb(170,174,187)] hover:text-foreground hover:underline" href="#sharing">
-                    Sharing
-                  </a>
-                </li>
-                <li>
-                  <a className="text-[rgb(170,174,187)] hover:text-foreground hover:underline" href="#retention">
-                    Retention
-                  </a>
-                </li>
-                <li>
-                  <a className="text-[rgb(170,174,187)] hover:text-foreground hover:underline" href="#choices">
-                    Your choices & rights
-                  </a>
-                </li>
-                <li>
-                  <a className="text-[rgb(170,174,187)] hover:text-foreground hover:underline" href="#security">
-                    Security
-                  </a>
-                </li>
-                <li>
-                  <a className="text-[rgb(170,174,187)] hover:text-foreground hover:underline" href="#transfers">
-                    International transfers
-                  </a>
-                </li>
-                <li>
-                  <a className="text-[rgb(170,174,187)] hover:text-foreground hover:underline" href="#changes">
-                    Changes
-                  </a>
-                </li>
-                <li>
-                  <a className="text-[rgb(170,174,187)] hover:text-foreground hover:underline" href="#contact">
-                    Contact
-                  </a>
-                </li>
+              <ul className="space-y-1.5">
+                {TOC.map((item) => (
+                  <li key={item.id}>
+                    <a
+                      className="hover:text-white transition-colors"
+                      style={{ color: AUTH_COLORS.textDim }}
+                      href={`#${item.id}`}
+                    >
+                      {item.label}
+                    </a>
+                  </li>
+                ))}
               </ul>
             </nav>
-          </Card>
-        </aside>
+          </aside>
 
-        <div className="ps-border-gradient rounded-xl">
-          <Card className="p-8">
-            <div className="space-y-12 text-base leading-5 text-[rgb(170,174,187)]">
+          {/* Main content */}
+          <div className="p-4" style={CARD}>
+            <div
+              className="space-y-8 text-[12px] leading-relaxed"
+              style={{ color: AUTH_COLORS.textSecondary }}
+            >
               <section>
-                <h2 id="overview" className="scroll-mt-24 mb-4 text-2xl font-normal leading-none tracking-tight text-foreground">
-                  Overview
-                </h2>
+                <SectionHeading id="overview">Overview</SectionHeading>
                 <p>
-                  This Privacy Policy explains how {companyName} (“we”, “us”, “our”) collects, uses, and shares information when you use{' '}
-                  {productName} (the “Service”).
+                  This Privacy Policy explains how {companyName}{" "}
+                  (&ldquo;we&rdquo;, &ldquo;us&rdquo;, &ldquo;our&rdquo;)
+                  collects, uses, and shares information when you use{" "}
+                  {productName} (the &ldquo;Service&rdquo;).
                 </p>
-                <p className="mt-4">
-                  If you have questions about this policy or want to exercise a privacy right, contact us at{' '}
+                <p className="mt-2">
+                  Questions? Contact us at{" "}
                   <a
-                    className="font-medium text-[rgb(236,72,153)] hover:underline"
+                    className="font-medium hover:underline"
+                    style={{ color: AUTH_COLORS.accent }}
                     href={`mailto:${supportEmail}`}
                   >
                     {supportEmail}
@@ -103,116 +148,134 @@ export function PrivacyPolicyPage(): React.ReactElement {
               </section>
 
               <section>
-                <h2 id="data" className="scroll-mt-24 mb-4 text-2xl font-normal leading-none tracking-tight text-foreground">
+                <SectionHeading id="data">
                   Information we collect
-                </h2>
-                <ul className="list-disc pl-6 space-y-2">
+                </SectionHeading>
+                <ul className="list-disc pl-5 space-y-1.5">
                   <li>
-                    <span className="font-semibold text-foreground">Account information</span>: email address, display name, and authentication identifiers from our auth provider.
+                    <span className="font-semibold text-white">
+                      Account information
+                    </span>
+                    : email, display name, auth identifiers.
                   </li>
                   <li>
-                    <span className="font-semibold text-foreground">Content you submit</span>: prompts, generated outputs, and any text or assets you choose to save. If you create a share link, shared content may be accessible to anyone with the link.
+                    <span className="font-semibold text-white">
+                      Content you submit
+                    </span>
+                    : prompts, outputs, saved assets. Shared content may be
+                    accessible via link.
                   </li>
                   <li>
-                    <span className="font-semibold text-foreground">Usage and device information</span>: interactions with the Service, pages/screens viewed, diagnostic logs, and performance metrics (including via analytics tooling).
+                    <span className="font-semibold text-white">
+                      Usage and device info
+                    </span>
+                    : interactions, pages viewed, diagnostic logs, performance
+                    metrics.
                   </li>
                   <li>
-                    <span className="font-semibold text-foreground">Billing information</span>: payments are processed by Stripe. We receive limited billing metadata such as subscription status and invoice details; we do not receive full card numbers.
+                    <span className="font-semibold text-white">
+                      Billing information
+                    </span>
+                    : processed by Stripe. We receive limited metadata; never
+                    full card numbers.
                   </li>
                   <li>
-                    <span className="font-semibold text-foreground">Support communications</span>: information you include when contacting support (e.g., email, message content, attachments).
+                    <span className="font-semibold text-white">
+                      Support communications
+                    </span>
+                    : email, message content, attachments.
                   </li>
                 </ul>
-                <p className="mt-4">
-                  <span className="font-semibold text-foreground">AI processing.</span> When you use features that call an AI model (for example,
-                  generating suggestions or previews), we send the inputs you provide to the relevant AI provider to process your request and return results.
+                <p className="mt-3">
+                  <span className="font-semibold text-white">
+                    AI processing.
+                  </span>{" "}
+                  When you use AI features, we send inputs to the relevant AI
+                  provider to process your request and return results.
                 </p>
               </section>
 
               <section>
-                <h2 id="use" className="scroll-mt-24 mb-4 text-2xl font-normal leading-none tracking-tight text-foreground">
-                  How we use data
-                </h2>
-                <ul className="list-disc pl-6 space-y-2">
+                <SectionHeading id="use">How we use data</SectionHeading>
+                <ul className="list-disc pl-5 space-y-1.5">
                   <li>Provide, maintain, and improve the Service.</li>
                   <li>Authenticate you and secure accounts.</li>
                   <li>Process payments and prevent fraud.</li>
                   <li>Debug issues and measure performance.</li>
-                  <li>Communicate with you about updates and support requests.</li>
+                  <li>Communicate about updates and support requests.</li>
                 </ul>
               </section>
 
               <section>
-                <h2 id="sharing" className="scroll-mt-24 mb-4 text-2xl font-normal leading-none tracking-tight text-foreground">
-                  Sharing
-                </h2>
+                <SectionHeading id="sharing">Sharing</SectionHeading>
                 <p>
-                  We share information with service providers that help us operate the Service (e.g., hosting, analytics, error monitoring, and payment processing),
-                  as well as AI providers you choose to use through the Service. We may also share information to comply with law, protect rights and safety,
-                  or in connection with a business transfer (e.g., merger or acquisition). We do not sell personal information.
+                  We share information with service providers (hosting,
+                  analytics, error monitoring, payment processing) and AI
+                  providers you use through the Service. We may share to comply
+                  with law, protect rights/safety, or in connection with a
+                  business transfer. We do not sell personal information.
                 </p>
               </section>
 
               <section>
-                <h2 id="retention" className="scroll-mt-24 mb-4 text-2xl font-normal leading-none tracking-tight text-foreground">
-                  Retention
-                </h2>
+                <SectionHeading id="retention">Retention</SectionHeading>
                 <p>
-                  We retain information for as long as needed to provide the Service and for legitimate business purposes such as security, fraud prevention,
-                  dispute resolution, and compliance with legal obligations. You can request deletion, and we will honor requests subject to these requirements.
+                  We retain information as needed to provide the Service and for
+                  legitimate business purposes. You can request deletion,
+                  subject to legal and operational requirements.
                 </p>
               </section>
 
               <section>
-                <h2 id="choices" className="scroll-mt-24 mb-4 text-2xl font-normal leading-none tracking-tight text-foreground">
-                  Your choices & rights
-                </h2>
-                <ul className="list-disc pl-6 space-y-2">
-                  <li>You can access and update certain account information in the Service.</li>
-                  <li>You can request deletion of your account and saved content, subject to legal and operational requirements.</li>
-                  <li>You can opt out of non-essential communications.</li>
-                  <li>If you are in the EEA/UK or certain other regions, you may have additional rights (e.g., access, correction, portability, objection, restriction).</li>
+                <SectionHeading id="choices">
+                  Your choices &amp; rights
+                </SectionHeading>
+                <ul className="list-disc pl-5 space-y-1.5">
+                  <li>Access and update account information in the Service.</li>
+                  <li>Request deletion of your account and saved content.</li>
+                  <li>Opt out of non-essential communications.</li>
+                  <li>
+                    EEA/UK residents may have additional rights (access,
+                    correction, portability, objection, restriction).
+                  </li>
                 </ul>
               </section>
 
               <section>
-                <h2 id="security" className="scroll-mt-24 mb-4 text-2xl font-normal leading-none tracking-tight text-foreground">
-                  Security
-                </h2>
+                <SectionHeading id="security">Security</SectionHeading>
                 <p>
-                  We use administrative, technical, and physical safeguards designed to protect information. No method of transmission or storage is 100% secure,
-                  so we cannot guarantee absolute security.
+                  We use administrative, technical, and physical safeguards. No
+                  method is 100% secure, so we cannot guarantee absolute
+                  security.
                 </p>
               </section>
 
               <section>
-                <h2 id="transfers" className="scroll-mt-24 mb-4 text-2xl font-normal leading-none tracking-tight text-foreground">
+                <SectionHeading id="transfers">
                   International transfers
-                </h2>
+                </SectionHeading>
                 <p>
-                  We and our service providers may process and store information in countries other than where you live. When we transfer information internationally,
-                  we take steps to protect it as required by applicable law.
+                  We and our service providers may process information in other
+                  countries. We take steps to protect it as required by
+                  applicable law.
                 </p>
               </section>
 
               <section>
-                <h2 id="changes" className="scroll-mt-24 mb-4 text-2xl font-normal leading-none tracking-tight text-foreground">
-                  Changes
-                </h2>
+                <SectionHeading id="changes">Changes</SectionHeading>
                 <p>
-                  We may update this policy from time to time. If changes are material, we will provide notice as required by law. The “Last updated” date above reflects
-                  the effective date of the latest version.
+                  We may update this policy. Material changes will be
+                  communicated as required by law.
                 </p>
               </section>
 
               <section>
-                <h2 id="contact" className="scroll-mt-24 mb-4 text-2xl font-normal leading-none tracking-tight text-foreground">
-                  Contact
-                </h2>
+                <SectionHeading id="contact">Contact</SectionHeading>
                 <p>
-                  Questions about this policy? Email{' '}
+                  Questions? Email{" "}
                   <a
-                    className="font-medium text-[rgb(236,72,153)] hover:underline"
+                    className="font-medium hover:underline"
+                    style={{ color: AUTH_COLORS.accent }}
                     href={`mailto:${supportEmail}`}
                   >
                     {supportEmail}
@@ -221,9 +284,47 @@ export function PrivacyPolicyPage(): React.ReactElement {
                 </p>
               </section>
             </div>
-          </Card>
+          </div>
         </div>
+
+        {/* Footer */}
+        <footer
+          className="mt-8 py-6 text-[12px]"
+          style={{
+            borderTop: `1px solid ${AUTH_COLORS.cardBorder}`,
+            color: AUTH_COLORS.textDim,
+          }}
+        >
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <Link to="/" className="font-medium text-white hover:underline">
+              Go to app
+            </Link>
+            <nav className="flex flex-wrap items-center gap-x-4 gap-y-1">
+              <Link
+                to="/terms-of-service"
+                className="hover:text-white"
+                style={{ color: AUTH_COLORS.textDim }}
+              >
+                Terms
+              </Link>
+              <Link
+                to="/contact"
+                className="hover:text-white"
+                style={{ color: AUTH_COLORS.textDim }}
+              >
+                Support
+              </Link>
+              <Link
+                to="/pricing"
+                className="hover:text-white"
+                style={{ color: AUTH_COLORS.textDim }}
+              >
+                Pricing
+              </Link>
+            </nav>
+          </div>
+        </footer>
       </div>
-    </MarketingPage>
+    </div>
   );
 }

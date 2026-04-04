@@ -13,13 +13,13 @@ commonLabels:
 
 replicas:
   - name: prompt-builder-api
-    count: 5  # More replicas in production
+    count: 5 # More replicas in production
   - name: prompt-builder-worker
     count: 2
 
 images:
   - name: ghcr.io/bharm16/prompt-builder
-    newTag: v1.0.0  # Use specific version tag in production
+    newTag: v1.0.0 # Use specific version tag in production
 
 patchesStrategicMerge:
   - deployment-patch.yaml

@@ -21,29 +21,39 @@
  * @requirement 12.5-12.6 - Keyboard navigation support
  */
 
-import React, { useCallback, useEffect, useMemo, useRef, useState, useId } from 'react';
-import { Video } from '@promptstudio/system/components/ui';
-import { logger } from '@/services/LoggingService';
-import { cn } from '@/utils/cn';
-import { safeUrlHost } from '@/utils/url';
-import type { CameraMotionCategory, CameraPath } from '@/features/convergence/types';
-import { CameraMotionOption } from './CameraMotionOption';
-import { CameraMotionErrorBoundary } from './CameraMotionErrorBoundary';
-import { BackButton, StepCreditBadge } from '../shared';
-const log = logger.child('CameraMotionPicker');
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useId,
+} from "react";
+import { Video } from "@promptstudio/system/components/ui";
+import { logger } from "@/services/LoggingService";
+import { cn } from "@/utils/cn";
+import { safeUrlHost } from "@/utils/url";
+import type {
+  CameraMotionCategory,
+  CameraPath,
+} from "@/features/convergence/types";
+import { CameraMotionOption } from "./CameraMotionOption";
+import { CameraMotionErrorBoundary } from "./CameraMotionErrorBoundary";
+import { BackButton, StepCreditBadge } from "../shared";
+const log = logger.child("CameraMotionPicker");
 
 // ============================================================================
 // Constants
 // ============================================================================
 
-const CATEGORY_LABELS: Record<CameraMotionCategory | 'all', string> = {
-  all: 'All',
-  static: 'Static',
-  pan_tilt: 'Pan & Tilt',
-  dolly: 'Dolly',
-  crane: 'Crane',
-  orbital: 'Orbital',
-  compound: 'Compound',
+const CATEGORY_LABELS: Record<CameraMotionCategory | "all", string> = {
+  all: "All",
+  static: "Static",
+  pan_tilt: "Pan & Tilt",
+  dolly: "Dolly",
+  crane: "Crane",
+  orbital: "Orbital",
+  compound: "Compound",
 };
 
 // ============================================================================
@@ -112,7 +122,9 @@ export const CameraMotionPicker: React.FC<CameraMotionPickerProps> = ({
   className,
   disabled = false,
 }) => {
-  const [selectedCategory, setSelectedCategory] = useState<CameraMotionCategory | 'all'>('all');
+  const [selectedCategory, setSelectedCategory] = useState<
+    CameraMotionCategory | "all"
+  >("all");
   const pickerStateRef = useRef<string | null>(null);
   const listboxId = useId();
   const imageUrlHost = safeUrlHost(imageUrl);
@@ -132,7 +144,7 @@ export const CameraMotionPicker: React.FC<CameraMotionPickerProps> = ({
       const selectedPath = cameraPathById.get(cameraMotionId);
 
       if (disabled || isLoading) {
-        log.warn('Camera motion selection blocked in picker', {
+        log.warn("Camera motion selection blocked in picker", {
           cameraMotionId,
           label: selectedPath?.label ?? null,
           category: selectedPath?.category ?? null,
@@ -143,7 +155,7 @@ export const CameraMotionPicker: React.FC<CameraMotionPickerProps> = ({
         return;
       }
 
-      log.info('Camera motion selected in picker', {
+      log.info("Camera motion selected in picker", {
         cameraMotionId,
         label: selectedPath?.label ?? null,
         category: selectedPath?.category ?? null,
@@ -154,30 +166,40 @@ export const CameraMotionPicker: React.FC<CameraMotionPickerProps> = ({
 
       onSelect?.(cameraMotionId);
     },
-    [cameraPathById, depthMapUrlHost, disabled, fallbackMode, imageUrlHost, isLoading, onSelect]
+    [
+      cameraPathById,
+      depthMapUrlHost,
+      disabled,
+      fallbackMode,
+      imageUrlHost,
+      isLoading,
+      onSelect,
+    ],
   );
 
   const filteredPaths = useMemo(() => {
-    if (selectedCategory === 'all') return cameraPaths;
+    if (selectedCategory === "all") return cameraPaths;
     return cameraPaths.filter((path) => path.category === selectedCategory);
   }, [cameraPaths, selectedCategory]);
 
   const focusedCameraPathId =
     focusedOptionIndex >= 0 ? cameraPaths[focusedOptionIndex]?.id : undefined;
   const focusedCameraPathVisible = Boolean(
-    focusedCameraPathId && filteredPaths.some((path) => path.id === focusedCameraPathId)
+    focusedCameraPathId &&
+      filteredPaths.some((path) => path.id === focusedCameraPathId),
   );
   const activeOptionId = focusedCameraPathVisible
     ? `${listboxId}-option-${focusedCameraPathId}`
     : undefined;
   const rovingTabIndexId =
     (focusedCameraPathVisible && focusedCameraPathId) ||
-    (selectedCameraMotion && filteredPaths.some((path) => path.id === selectedCameraMotion)
+    (selectedCameraMotion &&
+    filteredPaths.some((path) => path.id === selectedCameraMotion)
       ? selectedCameraMotion
       : filteredPaths[0]?.id);
 
   const categoryCounts = useMemo(() => {
-    const counts: Record<CameraMotionCategory | 'all', number> = {
+    const counts: Record<CameraMotionCategory | "all", number> = {
       all: cameraPaths.length,
       static: 0,
       pan_tilt: 0,
@@ -200,20 +222,20 @@ export const CameraMotionPicker: React.FC<CameraMotionPickerProps> = ({
     const stateKey = [
       cameraPaths.length,
       filteredPaths.length,
-      fallbackMode ? 'fallback' : 'depth',
-      depthMapUrlHost ?? 'no-depth-host',
-      selectedCameraMotion ?? 'none',
+      fallbackMode ? "fallback" : "depth",
+      depthMapUrlHost ?? "no-depth-host",
+      selectedCameraMotion ?? "none",
       focusedOptionIndex,
       selectedCategory,
-      isDisabled ? 'disabled' : 'enabled',
-    ].join('|');
+      isDisabled ? "disabled" : "enabled",
+    ].join("|");
 
     if (pickerStateRef.current === stateKey) {
       return;
     }
 
     pickerStateRef.current = stateKey;
-    log.info('Camera motion picker state updated', {
+    log.info("Camera motion picker state updated", {
       cameraPathsCount: cameraPaths.length,
       filteredPathsCount: filteredPaths.length,
       fallbackMode,
@@ -239,26 +261,23 @@ export const CameraMotionPicker: React.FC<CameraMotionPickerProps> = ({
   ]);
 
   const handleCategoryChange = useCallback(
-    (category: CameraMotionCategory | 'all') => {
+    (category: CameraMotionCategory | "all") => {
       if (category === selectedCategory) {
         return;
       }
-      log.info('Camera motion category changed', {
+      log.info("Camera motion category changed", {
         previousCategory: selectedCategory,
         nextCategory: category,
         cameraPathsCount: cameraPaths.length,
       });
       setSelectedCategory(category);
     },
-    [cameraPaths.length, selectedCategory]
+    [cameraPaths.length, selectedCategory],
   );
 
   return (
     <div
-      className={cn(
-        'flex flex-col w-full max-w-4xl mx-auto px-4',
-        className
-      )}
+      className={cn("flex flex-col w-full max-w-4xl mx-auto px-4", className)}
     >
       {/* Header Section */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
@@ -276,25 +295,21 @@ export const CameraMotionPicker: React.FC<CameraMotionPickerProps> = ({
             </h2>
             <p className="text-sm text-muted">
               {fallbackMode
-                ? 'Select how the camera moves in your video'
-                : 'Hover to preview camera movements'}
+                ? "Select how the camera moves in your video"
+                : "Hover to preview camera movements"}
             </p>
           </div>
         </div>
 
         {/* Step Credit Badge */}
-        <StepCreditBadge
-          step="camera_motion"
-          size="md"
-          showLabel={true}
-        />
+        <StepCreditBadge step="camera_motion" size="md" showLabel={true} />
       </div>
 
       {/* Fallback mode notice */}
       {fallbackMode && (
         <div className="mb-4 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
           <p className="text-sm text-amber-600 dark:text-amber-400">
-            <strong>Note:</strong> Camera motion previews are unavailable. 
+            <strong>Note:</strong> Camera motion previews are unavailable.
             Please select based on the descriptions below.
           </p>
         </div>
@@ -305,25 +320,27 @@ export const CameraMotionPicker: React.FC<CameraMotionPickerProps> = ({
           <button
             key={key}
             type="button"
-            onClick={() => handleCategoryChange(key as CameraMotionCategory | 'all')}
+            onClick={() =>
+              handleCategoryChange(key as CameraMotionCategory | "all")
+            }
             aria-pressed={selectedCategory === key}
             className={cn(
-              'px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors',
+              "px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors",
               selectedCategory === key
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-surface-2 text-muted hover:text-foreground'
+                ? "bg-primary text-primary-foreground"
+                : "bg-surface-2 text-muted hover:text-foreground",
             )}
           >
             <span>{label}</span>
             <span
               className={cn(
-                'ml-2 inline-flex items-center justify-center rounded-full px-2 py-0.5 text-[11px]',
+                "ml-2 inline-flex items-center justify-center rounded-full px-2 py-0.5 text-[11px]",
                 selectedCategory === key
-                  ? 'bg-primary-foreground/15 text-primary-foreground'
-                  : 'bg-surface-3 text-muted'
+                  ? "bg-primary-foreground/15 text-primary-foreground"
+                  : "bg-surface-3 text-muted",
               )}
             >
-              {categoryCounts[key as CameraMotionCategory | 'all'] ?? 0}
+              {categoryCounts[key as CameraMotionCategory | "all"] ?? 0}
             </span>
           </button>
         ))}
@@ -333,8 +350,10 @@ export const CameraMotionPicker: React.FC<CameraMotionPickerProps> = ({
       {/* Responsive grid: 2 columns on mobile, 3-4 columns on desktop */}
       <div
         className={cn(
-          'grid gap-4 mb-6',
-          filteredPaths.length <= 6 ? 'grid-cols-2 md:grid-cols-3' : 'grid-cols-2 md:grid-cols-4'
+          "grid gap-4 mb-6",
+          filteredPaths.length <= 6
+            ? "grid-cols-2 md:grid-cols-3"
+            : "grid-cols-2 md:grid-cols-4",
         )}
         role="listbox"
         aria-label="Camera motion options"
@@ -342,8 +361,12 @@ export const CameraMotionPicker: React.FC<CameraMotionPickerProps> = ({
       >
         {filteredPaths.length === 0 ? (
           <div className="col-span-full flex flex-col items-center justify-center rounded-lg border border-dashed border-border bg-surface-2/50 p-6 text-center">
-            <div className="text-sm font-medium text-foreground mb-2">No motions in this category</div>
-            <div className="text-xs text-muted">Try another category to explore more options.</div>
+            <div className="text-sm font-medium text-foreground mb-2">
+              No motions in this category
+            </div>
+            <div className="text-xs text-muted">
+              Try another category to explore more options.
+            </div>
           </div>
         ) : (
           filteredPaths.map((cameraPath) => (
@@ -380,18 +403,18 @@ export const CameraMotionPicker: React.FC<CameraMotionPickerProps> = ({
       {/* Keyboard Navigation Hint (Task 23.7) */}
       {!isLoading && (
         <p className="text-xs text-muted text-center mt-4">
-          Use{' '}
+          Use{" "}
           <kbd className="px-1.5 py-0.5 bg-surface-2 rounded text-xs font-mono">
             Arrow keys
-          </kbd>{' '}
-          to navigate,{' '}
+          </kbd>{" "}
+          to navigate,{" "}
           <kbd className="px-1.5 py-0.5 bg-surface-2 rounded text-xs font-mono">
             Enter
-          </kbd>{' '}
-          to select,{' '}
+          </kbd>{" "}
+          to select,{" "}
           <kbd className="px-1.5 py-0.5 bg-surface-2 rounded text-xs font-mono">
             Escape
-          </kbd>{' '}
+          </kbd>{" "}
           to go back
         </p>
       )}
@@ -399,13 +422,14 @@ export const CameraMotionPicker: React.FC<CameraMotionPickerProps> = ({
   );
 };
 
-CameraMotionPicker.displayName = 'CameraMotionPicker';
+CameraMotionPicker.displayName = "CameraMotionPicker";
 
 // ============================================================================
 // Wrapped Component with Error Boundary (Task 23.6)
 // ============================================================================
 
-export interface CameraMotionPickerWithErrorBoundaryProps extends CameraMotionPickerProps {
+export interface CameraMotionPickerWithErrorBoundaryProps
+  extends CameraMotionPickerProps {
   /** Callback when Three.js error occurs */
   onThreeJsError?: (error: Error) => void;
 }
@@ -415,31 +439,28 @@ export interface CameraMotionPickerWithErrorBoundaryProps extends CameraMotionPi
  *
  * Catches Three.js errors and falls back to text mode automatically.
  */
-export const CameraMotionPickerWithErrorBoundary: React.FC<CameraMotionPickerWithErrorBoundaryProps> = ({
-  onThreeJsError,
-  ...props
-}) => {
+export const CameraMotionPickerWithErrorBoundary: React.FC<
+  CameraMotionPickerWithErrorBoundaryProps
+> = ({ onThreeJsError, ...props }) => {
   const [forceFallback, setForceFallback] = React.useState(false);
 
-  const handleError = useCallback((error: Error) => {
-    log.error('Three.js error in CameraMotionPicker', error, {
-      fallbackEnabled: true,
-    });
-    setForceFallback(true);
-    if (onThreeJsError) {
-      onThreeJsError(error);
-    }
-  }, [onThreeJsError]);
+  const handleError = useCallback(
+    (error: Error) => {
+      log.error("Three.js error in CameraMotionPicker", error, {
+        fallbackEnabled: true,
+      });
+      setForceFallback(true);
+      if (onThreeJsError) {
+        onThreeJsError(error);
+      }
+    },
+    [onThreeJsError],
+  );
 
   return (
     <CameraMotionErrorBoundary
       onError={handleError}
-      fallback={
-        <CameraMotionPicker
-          {...props}
-          fallbackMode={true}
-        />
-      }
+      fallback={<CameraMotionPicker {...props} fallbackMode={true} />}
     >
       <CameraMotionPicker
         {...props}
@@ -449,6 +470,7 @@ export const CameraMotionPickerWithErrorBoundary: React.FC<CameraMotionPickerWit
   );
 };
 
-CameraMotionPickerWithErrorBoundary.displayName = 'CameraMotionPickerWithErrorBoundary';
+CameraMotionPickerWithErrorBoundary.displayName =
+  "CameraMotionPickerWithErrorBoundary";
 
 export default CameraMotionPicker;

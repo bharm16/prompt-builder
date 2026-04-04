@@ -1,13 +1,28 @@
-import React, { useEffect, useCallback } from 'react';
-import { Plus, User, Palette, MapPin, Box, Layers } from '@promptstudio/system/components/ui';
-import type { Asset, AssetType, CreateAssetRequest, UpdateAssetRequest } from '@shared/types/asset';
-import { useAssetState } from './hooks/useAssetState';
-import { assetApi } from './api/assetApi';
-import AssetGrid from './components/AssetGrid';
-import AssetEditor from './components/AssetEditor';
-import { ASSET_TYPE_LIST } from './config/assetConfig';
+import React, { useEffect, useCallback } from "react";
+import {
+  Plus,
+  User,
+  Palette,
+  MapPin,
+  Box,
+  Layers,
+} from "@promptstudio/system/components/ui";
+import type {
+  Asset,
+  AssetType,
+  CreateAssetRequest,
+  UpdateAssetRequest,
+} from "@shared/types/asset";
+import { useAssetState } from "./hooks/useAssetState";
+import { assetApi } from "./api/assetApi";
+import AssetGrid from "./components/AssetGrid";
+import AssetEditor from "./components/AssetEditor";
+import { ASSET_TYPE_LIST } from "./config/assetConfig";
 
-const ASSET_TYPE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+const ASSET_TYPE_ICONS: Record<
+  string,
+  React.ComponentType<{ className?: string }>
+> = {
   character: User,
   style: Palette,
   location: MapPin,
@@ -38,7 +53,9 @@ export function AssetLibrary({
       const result = await assetApi.list();
       actions.setAssets(result);
     } catch (err) {
-      actions.setError(err instanceof Error ? err.message : 'Failed to load assets');
+      actions.setError(
+        err instanceof Error ? err.message : "Failed to load assets",
+      );
     }
   }, [actions]);
 
@@ -53,11 +70,13 @@ export function AssetLibrary({
         actions.addAsset(asset);
         return asset;
       } catch (err) {
-        actions.setError(err instanceof Error ? err.message : 'Failed to create asset');
+        actions.setError(
+          err instanceof Error ? err.message : "Failed to create asset",
+        );
         throw err;
       }
     },
-    [actions]
+    [actions],
   );
 
   const handleUpdateAsset = useCallback(
@@ -67,11 +86,13 @@ export function AssetLibrary({
         actions.updateAsset(asset);
         return asset;
       } catch (err) {
-        actions.setError(err instanceof Error ? err.message : 'Failed to update asset');
+        actions.setError(
+          err instanceof Error ? err.message : "Failed to update asset",
+        );
         throw err;
       }
     },
-    [actions]
+    [actions],
   );
 
   const handleDeleteAsset = useCallback(
@@ -80,25 +101,33 @@ export function AssetLibrary({
         await assetApi.delete(assetId);
         actions.deleteAsset(assetId);
       } catch (err) {
-        actions.setError(err instanceof Error ? err.message : 'Failed to delete asset');
+        actions.setError(
+          err instanceof Error ? err.message : "Failed to delete asset",
+        );
         throw err;
       }
     },
-    [actions]
+    [actions],
   );
 
   const handleAddImage = useCallback(
-    async (assetId: string, file: File, metadata: Record<string, string | undefined>) => {
+    async (
+      assetId: string,
+      file: File,
+      metadata: Record<string, string | undefined>,
+    ) => {
       try {
         await assetApi.addImage(assetId, file, metadata);
         const updated = await assetApi.get(assetId);
         actions.updateAsset(updated);
       } catch (err) {
-        actions.setError(err instanceof Error ? err.message : 'Failed to upload image');
+        actions.setError(
+          err instanceof Error ? err.message : "Failed to upload image",
+        );
         throw err;
       }
     },
-    [actions]
+    [actions],
   );
 
   const handleDeleteImage = useCallback(
@@ -108,11 +137,13 @@ export function AssetLibrary({
         const updated = await assetApi.get(assetId);
         actions.updateAsset(updated);
       } catch (err) {
-        actions.setError(err instanceof Error ? err.message : 'Failed to delete image');
+        actions.setError(
+          err instanceof Error ? err.message : "Failed to delete image",
+        );
         throw err;
       }
     },
-    [actions]
+    [actions],
   );
 
   const handleSetPrimaryImage = useCallback(
@@ -121,25 +152,29 @@ export function AssetLibrary({
         const updated = await assetApi.setPrimaryImage(assetId, imageId);
         actions.updateAsset(updated);
       } catch (err) {
-        actions.setError(err instanceof Error ? err.message : 'Failed to set primary image');
+        actions.setError(
+          err instanceof Error ? err.message : "Failed to set primary image",
+        );
         throw err;
       }
     },
-    [actions]
+    [actions],
   );
 
   const handleSelectForGeneration = useCallback(
     async (asset: Asset) => {
-      if (onSelectForGeneration && asset.type === 'character') {
+      if (onSelectForGeneration && asset.type === "character") {
         try {
           const generationData = await assetApi.getForGeneration(asset.id);
           onSelectForGeneration(generationData);
         } catch (err) {
-          actions.setError(err instanceof Error ? err.message : 'Failed to load asset');
+          actions.setError(
+            err instanceof Error ? err.message : "Failed to load asset",
+          );
         }
       }
     },
-    [onSelectForGeneration, actions]
+    [onSelectForGeneration, actions],
   );
 
   return (
@@ -147,12 +182,14 @@ export function AssetLibrary({
       <div className="flex items-center justify-between border-b border-border px-4 py-3">
         <div className="flex items-center gap-2">
           <Layers className="h-5 w-5 text-muted" />
-          <h2 className="text-lg font-semibold text-foreground">Asset Library</h2>
+          <h2 className="text-lg font-semibold text-foreground">
+            Asset Library
+          </h2>
         </div>
         <button
           type="button"
-          onClick={() => actions.openEditor('create')}
-          className="flex items-center gap-1.5 rounded-md bg-violet-600 px-3 py-1.5 text-sm font-semibold text-white transition-colors hover:bg-violet-500"
+          onClick={() => actions.openEditor("create")}
+          className="flex items-center gap-1.5 rounded-md bg-violet-600 px-3 py-1.5 text-sm font-semibold text-white transition-[background-color,transform,box-shadow] duration-[140ms] [transition-timing-function:var(--motion-ease-standard)] hover:-translate-y-px hover:bg-violet-500 hover:shadow-[0_12px_30px_rgba(124,58,237,0.25)]"
         >
           <Plus className="h-4 w-4" />
           New Asset
@@ -165,8 +202,8 @@ export function AssetLibrary({
           onClick={() => actions.setFilter(null)}
           className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-sm transition-colors ${
             filterType === null
-              ? 'bg-surface-2 text-foreground'
-              : 'text-muted hover:text-foreground'
+              ? "motion-pulse-once bg-surface-2 text-foreground"
+              : "text-muted hover:text-foreground"
           }`}
         >
           All
@@ -186,8 +223,8 @@ export function AssetLibrary({
               onClick={() => actions.setFilter(typeConfig.id as AssetType)}
               className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-sm transition-colors ${
                 filterType === typeConfig.id
-                  ? `${typeConfig.bgClass} ${typeConfig.colorClass}`
-                  : 'text-muted hover:text-foreground'
+                  ? `motion-pulse-once ${typeConfig.bgClass} ${typeConfig.colorClass}`
+                  : "text-muted hover:text-foreground"
               }`}
             >
               <Icon className="h-4 w-4" />
@@ -201,7 +238,7 @@ export function AssetLibrary({
       </div>
 
       {error && (
-        <div className="border-b border-border bg-red-50 px-4 py-2">
+        <div className="motion-shake-x border-b border-border bg-red-50 px-4 py-2">
           <p className="text-sm text-red-700">{error}</p>
         </div>
       )}
@@ -213,14 +250,20 @@ export function AssetLibrary({
       )}
 
       {!isLoading && assets.length === 0 && (
-        <div className="flex flex-1 flex-col items-center justify-center px-4 text-center">
+        <div
+          className="motion-presence-panel flex flex-1 flex-col items-center justify-center px-4 text-center"
+          data-motion-state="entered"
+        >
           <Layers className="mb-3 h-12 w-12 text-muted" />
-          <h3 className="text-lg font-semibold text-foreground">No assets yet</h3>
+          <h3 className="text-lg font-semibold text-foreground">
+            No assets yet
+          </h3>
           <p className="mt-2 max-w-md text-sm text-muted">
-            Create characters, styles, locations, and objects to keep visual consistency. Use
+            Create characters, styles, locations, and objects to keep visual
+            consistency. Use
             <code className="rounded bg-surface-2 px-1.5 py-0.5 text-violet-600">
               @triggers
-            </code>{' '}
+            </code>{" "}
             in your prompts to reference them.
           </p>
           <div className="mt-5 grid w-full max-w-md grid-cols-2 gap-3">
@@ -231,16 +274,24 @@ export function AssetLibrary({
                 <button
                   key={typeConfig.id}
                   type="button"
-                  onClick={() => actions.openEditor('create', null, typeConfig.id as AssetType)}
+                  onClick={() =>
+                    actions.openEditor(
+                      "create",
+                      null,
+                      typeConfig.id as AssetType,
+                    )
+                  }
                   className={`flex items-center gap-2 rounded-md border px-3 py-2 text-left transition-colors ${typeConfig.borderClass} ${typeConfig.bgClass}`}
                 >
                   <Icon className={`h-4 w-4 ${typeConfig.colorClass}`} />
                   <div>
-                    <p className={`text-sm font-semibold ${typeConfig.colorClass}`}>
+                    <p
+                      className={`text-sm font-semibold ${typeConfig.colorClass}`}
+                    >
                       {typeConfig.label}
                     </p>
                     <p className="text-xs text-muted">
-                      {typeConfig.description.split(',')[0]}
+                      {typeConfig.description.split(",")[0]}
                     </p>
                   </div>
                 </button>
@@ -255,7 +306,7 @@ export function AssetLibrary({
           assets={filteredAssets}
           selectedAsset={selectedAsset}
           onSelect={actions.selectAsset}
-          onEdit={(asset) => actions.openEditor('edit', asset)}
+          onEdit={(asset) => actions.openEditor("edit", asset)}
           onDelete={handleDeleteAsset}
           onSelectForGeneration={handleSelectForGeneration}
         />

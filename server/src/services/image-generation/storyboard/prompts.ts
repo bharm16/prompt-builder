@@ -1,20 +1,24 @@
-import { STORYBOARD_FRAME_TIMESTAMPS, STORYBOARD_DURATION_SECONDS } from './constants';
+import {
+  STORYBOARD_FRAME_TIMESTAMPS,
+  STORYBOARD_DURATION_SECONDS,
+} from "./constants";
 
 const FALLBACK_TEMPORAL_KEYFRAMES = [
-  'Mid-shot of the same subject, slightly further from camera, action progressed one beat forward, same lighting and environment visible at wider framing.',
-  'Wide shot of the same subject at moderate distance, action at midpoint, environment now visible in full context, lighting consistent with base frame.',
-  'Establishing wide shot, subject at far distance completing the action, full environment and sky visible, same lighting direction and atmosphere.',
+  "Mid-shot of the same subject, slightly further from camera, action progressed one beat forward, same lighting and environment visible at wider framing.",
+  "Wide shot of the same subject at moderate distance, action at midpoint, environment now visible in full context, lighting consistent with base frame.",
+  "Establishing wide shot, subject at far distance completing the action, full environment and sky visible, same lighting direction and atmosphere.",
 ];
 
 export const buildSystemPrompt = (
   keyframeCount: number,
-  timestamps: readonly number[] = STORYBOARD_FRAME_TIMESTAMPS
+  timestamps: readonly number[] = STORYBOARD_FRAME_TIMESTAMPS,
 ): string => {
-  const duration = timestamps[timestamps.length - 1] ?? STORYBOARD_DURATION_SECONDS;
+  const duration =
+    timestamps[timestamps.length - 1] ?? STORYBOARD_DURATION_SECONDS;
   const frameList = timestamps
     .slice(1, keyframeCount + 1)
     .map((time, index) => `  Frame ${index + 1} (${time.toFixed(1)}s)`)
-    .join('\n');
+    .join("\n");
 
   return `You are a cinematic storyboard planner.
 
@@ -56,7 +60,7 @@ BAD KEYFRAME (edit command):
 
 export const buildRepairSystemPrompt = (
   keyframeCount: number,
-  timestamps: readonly number[] = STORYBOARD_FRAME_TIMESTAMPS
+  timestamps: readonly number[] = STORYBOARD_FRAME_TIMESTAMPS,
 ): string =>
   `${buildSystemPrompt(keyframeCount, timestamps)}
 
@@ -70,7 +74,10 @@ REPAIR MODE:
  * In the temporal keyframe paradigm, the description IS the prompt.
  * The base image provides identity/style via Kontext's img_cond_path.
  */
-export const buildEditPrompt = (basePrompt: string, temporalDescription: string): string => {
+export const buildEditPrompt = (
+  basePrompt: string,
+  temporalDescription: string,
+): string => {
   const description = temporalDescription.trim();
   return description || basePrompt.trim();
 };
@@ -83,7 +90,7 @@ export const buildFallbackDeltas = (expectedCount: number): string[] => {
   for (let index = 0; index < expectedCount; index += 1) {
     deltas.push(
       FALLBACK_TEMPORAL_KEYFRAMES[index % FALLBACK_TEMPORAL_KEYFRAMES.length] ??
-        FALLBACK_TEMPORAL_KEYFRAMES[0]!
+        FALLBACK_TEMPORAL_KEYFRAMES[0]!,
     );
   }
   return deltas;

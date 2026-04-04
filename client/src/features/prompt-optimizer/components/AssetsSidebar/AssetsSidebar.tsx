@@ -1,7 +1,7 @@
-import React from 'react';
-import { Layers, Plus } from '@promptstudio/system/components/ui';
-import type { Asset, AssetType } from '@shared/types/asset';
-import { AssetTypeSection } from './AssetTypeSection';
+import React from "react";
+import { Layers, Plus } from "@promptstudio/system/components/ui";
+import type { Asset, AssetType } from "@shared/types/asset";
+import { AssetTypeSection } from "./AssetTypeSection";
 
 interface AssetsSidebarProps {
   assets: Asset[];
@@ -31,11 +31,13 @@ export function AssetsSidebar({
       <div className="flex items-center justify-between px-4 py-3">
         <div className="flex items-center gap-2">
           <Layers className="h-4 w-4 text-muted" />
-          <span className="text-sm font-semibold text-foreground">My Assets</span>
+          <span className="text-sm font-semibold text-foreground">
+            My Assets
+          </span>
         </div>
         <button
           type="button"
-          onClick={() => onCreateAsset('character')}
+          onClick={() => onCreateAsset("character")}
           className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs font-semibold text-foreground transition hover:bg-surface-2"
         >
           <Plus className="h-3 w-3" />

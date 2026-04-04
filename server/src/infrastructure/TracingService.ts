@@ -1,15 +1,34 @@
-import { trace, context, SpanStatusCode, type Span, type Tracer, type Attributes } from '@opentelemetry/api';
-import { resourceFromAttributes, defaultResource, type Resource } from '@opentelemetry/resources';
-import { SEMRESATTRS_SERVICE_NAME, SEMRESATTRS_SERVICE_VERSION, SEMRESATTRS_DEPLOYMENT_ENVIRONMENT } from '@opentelemetry/semantic-conventions';
-import { NodeTracerProvider } from '@opentelemetry/sdk-trace-node';
-import { SimpleSpanProcessor, BatchSpanProcessor, ConsoleSpanExporter } from '@opentelemetry/sdk-trace-base';
-import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
-import { HttpInstrumentation } from '@opentelemetry/instrumentation-http';
-import { ExpressInstrumentation } from '@opentelemetry/instrumentation-express';
-import { registerInstrumentations } from '@opentelemetry/instrumentation';
-import type { IncomingMessage } from 'http';
-import type { Request, Response, NextFunction } from 'express';
-import { logger } from './Logger.ts';
+import {
+  trace,
+  context,
+  SpanStatusCode,
+  type Span,
+  type Tracer,
+  type Attributes,
+} from "@opentelemetry/api";
+import {
+  resourceFromAttributes,
+  defaultResource,
+  type Resource,
+} from "@opentelemetry/resources";
+import {
+  SEMRESATTRS_SERVICE_NAME,
+  SEMRESATTRS_SERVICE_VERSION,
+  SEMRESATTRS_DEPLOYMENT_ENVIRONMENT,
+} from "@opentelemetry/semantic-conventions";
+import { NodeTracerProvider } from "@opentelemetry/sdk-trace-node";
+import {
+  SimpleSpanProcessor,
+  BatchSpanProcessor,
+  ConsoleSpanExporter,
+} from "@opentelemetry/sdk-trace-base";
+import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
+import { HttpInstrumentation } from "@opentelemetry/instrumentation-http";
+import { ExpressInstrumentation } from "@opentelemetry/instrumentation-express";
+import { registerInstrumentations } from "@opentelemetry/instrumentation";
+import type { IncomingMessage } from "http";
+import type { Request, Response, NextFunction } from "express";
+import { logger } from "./Logger.ts";
 
 interface TracingConfig {
   serviceName?: string;
@@ -53,16 +72,17 @@ export class TracingService {
 
   constructor(config: TracingConfig = {}) {
     this.config = {
-      serviceName: config.serviceName || 'prompt-builder-api',
-      serviceVersion: config.serviceVersion || '1.0.0',
-      environment: process.env.NODE_ENV || 'development',
-      enabled: config.enabled !== false && process.env.ENABLE_TRACING !== 'false',
+      serviceName: config.serviceName || "prompt-builder-api",
+      serviceVersion: config.serviceVersion || "1.0.0",
+      environment: process.env.NODE_ENV || "development",
+      enabled:
+        config.enabled !== false && process.env.ENABLE_TRACING !== "false",
     };
 
     if (this.config.enabled) {
       this.initialize();
     } else {
-      logger.info('Tracing is disabled');
+      logger.info("Tracing is disabled");
     }
   }
 
@@ -90,16 +110,21 @@ export class TracingService {
             new OTLPTraceExporter({
               url: `${otlpEndpoint}/v1/traces`,
               ...(process.env.OTEL_EXPORTER_OTLP_HEADERS
-                ? { headers: this._parseOtlpHeaders(process.env.OTEL_EXPORTER_OTLP_HEADERS) }
+                ? {
+                    headers: this._parseOtlpHeaders(
+                      process.env.OTEL_EXPORTER_OTLP_HEADERS,
+                    ),
+                  }
                 : {}),
-              timeoutMillis: Number(process.env.OTEL_EXPORTER_OTLP_TIMEOUT) || 10000,
+              timeoutMillis:
+                Number(process.env.OTEL_EXPORTER_OTLP_TIMEOUT) || 10000,
             }),
             {
               maxQueueSize: 2048,
               maxExportBatchSize: 512,
               scheduledDelayMillis: 5000,
               exportTimeoutMillis: 30000,
-            }
+            },
           )
         : new SimpleSpanProcessor(new ConsoleSpanExporter());
 
@@ -115,7 +140,7 @@ export class TracingService {
       // Get tracer
       this.tracer = trace.getTracer(
         this.config.serviceName,
-        this.config.serviceVersion
+        this.config.serviceVersion,
       );
 
       // Register automatic instrumentations
@@ -126,9 +151,9 @@ export class TracingService {
               // Type guard to check if request is IncomingMessage (has headers)
               const incomingMessage = request as IncomingMessage;
               if (incomingMessage.headers) {
-                const userAgent = incomingMessage.headers['user-agent'];
-                if (userAgent && typeof userAgent === 'string') {
-                  span.setAttribute('http.user_agent', userAgent);
+                const userAgent = incomingMessage.headers["user-agent"];
+                if (userAgent && typeof userAgent === "string") {
+                  span.setAttribute("http.user_agent", userAgent);
                 }
               }
             },
@@ -136,21 +161,24 @@ export class TracingService {
           new ExpressInstrumentation({
             requestHook: (span, info) => {
               if (info.route) {
-                span.setAttribute('express.route', info.route);
+                span.setAttribute("express.route", info.route);
               }
             },
           }),
         ],
       });
 
-      logger.info('OpenTelemetry tracing initialized', {
+      logger.info("OpenTelemetry tracing initialized", {
         serviceName: this.config.serviceName,
         environment: this.config.environment,
-        exporter: otlpEndpoint ? 'otlp' : 'console',
+        exporter: otlpEndpoint ? "otlp" : "console",
         ...(otlpEndpoint ? { otlpEndpoint } : {}),
       });
     } catch (error) {
-      logger.error('Failed to initialize tracing', error instanceof Error ? error : new Error(String(error)));
+      logger.error(
+        "Failed to initialize tracing",
+        error instanceof Error ? error : new Error(String(error)),
+      );
       this.config.enabled = false;
     }
   }
@@ -168,7 +196,7 @@ export class TracingService {
   async traceAsync<T>(
     name: string,
     fn: (span: Span | null) => Promise<T>,
-    attributes: Record<string, unknown> = {}
+    attributes: Record<string, unknown> = {},
   ): Promise<T> {
     if (!this.config.enabled || !this.tracer) {
       // If tracing disabled, execute function without tracing
@@ -188,13 +216,15 @@ export class TracingService {
       // Execute function within span context
       const result = await context.with(
         trace.setSpan(context.active(), span),
-        async () => await fn(span)
+        async () => await fn(span),
       );
 
       span.setStatus({ code: SpanStatusCode.OK });
       return result;
     } catch (error) {
-      span.recordException(error instanceof Error ? error : new Error(String(error)));
+      span.recordException(
+        error instanceof Error ? error : new Error(String(error)),
+      );
       span.setStatus({
         code: SpanStatusCode.ERROR,
         message: error instanceof Error ? error.message : String(error),
@@ -208,7 +238,11 @@ export class TracingService {
   /**
    * Create a span for synchronous operations
    */
-  trace<T>(name: string, fn: (span: Span | null) => T, attributes: Record<string, unknown> = {}): T {
+  trace<T>(
+    name: string,
+    fn: (span: Span | null) => T,
+    attributes: Record<string, unknown> = {},
+  ): T {
     if (!this.config.enabled || !this.tracer) {
       return fn(null);
     }
@@ -221,13 +255,15 @@ export class TracingService {
 
     try {
       const result = context.with(trace.setSpan(context.active(), span), () =>
-        fn(span)
+        fn(span),
       );
 
       span.setStatus({ code: SpanStatusCode.OK });
       return result;
     } catch (error) {
-      span.recordException(error instanceof Error ? error : new Error(String(error)));
+      span.recordException(
+        error instanceof Error ? error : new Error(String(error)),
+      );
       span.setStatus({
         code: SpanStatusCode.ERROR,
         message: error instanceof Error ? error.message : String(error),
@@ -276,12 +312,12 @@ export class TracingService {
       const span = trace.getSpan(context.active());
       if (span) {
         const reqWithId = req as Request & { id?: string };
-        span.setAttribute('request.id', reqWithId.id || 'unknown');
-        span.setAttribute('request.path', req.path);
-        span.setAttribute('request.method', req.method);
+        span.setAttribute("request.id", reqWithId.id || "unknown");
+        span.setAttribute("request.path", req.path);
+        span.setAttribute("request.method", req.method);
 
-        if (req.body && typeof req.body === 'object' && 'mode' in req.body) {
-          span.setAttribute('request.mode', String(req.body.mode));
+        if (req.body && typeof req.body === "object" && "mode" in req.body) {
+          span.setAttribute("request.mode", String(req.body.mode));
         }
       }
 
@@ -294,8 +330,8 @@ export class TracingService {
    */
   private _parseOtlpHeaders(raw: string): Record<string, string> {
     const headers: Record<string, string> = {};
-    for (const pair of raw.split(',')) {
-      const eqIdx = pair.indexOf('=');
+    for (const pair of raw.split(",")) {
+      const eqIdx = pair.indexOf("=");
       if (eqIdx > 0) {
         headers[pair.slice(0, eqIdx).trim()] = pair.slice(eqIdx + 1).trim();
       }
@@ -309,15 +345,15 @@ export class TracingService {
   async shutdown(): Promise<void> {
     if (this.provider) {
       await this.provider.shutdown();
-      logger.info('Tracing service shut down');
+      logger.info("Tracing service shut down");
     }
   }
 }
 
 // Singleton instance
 export const tracingService = new TracingService({
-  serviceName: 'prompt-builder-api',
-  serviceVersion: '1.0.0',
+  serviceName: "prompt-builder-api",
+  serviceVersion: "1.0.0",
 });
 
 /**
@@ -329,18 +365,24 @@ export const tracingService = new TracingService({
  *   async doWork() { ... }
  * }
  */
-export function traced(operationName: string, attributes: Record<string, unknown> = {}) {
+export function traced(
+  operationName: string,
+  attributes: Record<string, unknown> = {},
+) {
   return function <T extends (...args: unknown[]) => Promise<unknown>>(
     target: unknown,
     propertyKey: string,
-    descriptor: TypedPropertyDescriptor<T>
+    descriptor: TypedPropertyDescriptor<T>,
   ): TypedPropertyDescriptor<T> {
     const originalMethod = descriptor.value;
     if (!originalMethod) {
       return descriptor;
     }
 
-    descriptor.value = (async function (this: unknown, ...args: Parameters<T>): Promise<ReturnType<T>> {
+    descriptor.value = async function (
+      this: unknown,
+      ...args: Parameters<T>
+    ): Promise<ReturnType<T>> {
       const spanName = `${(target as { constructor: { name: string } }).constructor.name}.${operationName || propertyKey}`;
 
       return await tracingService.traceAsync(
@@ -351,13 +393,12 @@ export function traced(operationName: string, attributes: Record<string, unknown
             span?.setAttribute(key, String(value));
           });
 
-          return await originalMethod.apply(this, args) as ReturnType<T>;
+          return (await originalMethod.apply(this, args)) as ReturnType<T>;
         },
-        attributes
+        attributes,
       );
-    }) as T;
+    } as T;
 
     return descriptor;
   };
 }
-

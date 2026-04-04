@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 
-import fs from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-import ts from 'typescript';
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import ts from "typescript";
 
-type Bucket = 'likely-dead' | 'single-consumer' | 'multi-consumer';
-type Decision = 'keep' | 'merge' | 'delete';
+type Bucket = "likely-dead" | "single-consumer" | "multi-consumer";
+type Decision = "keep" | "merge" | "delete";
 
 interface HookRecord {
   key: string;
@@ -26,28 +26,34 @@ interface HookRecord {
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const repoRoot = path.resolve(__dirname, '..', '..');
-const tsconfigPath = path.join(repoRoot, 'tsconfig.json');
+const repoRoot = path.resolve(__dirname, "..", "..");
+const tsconfigPath = path.join(repoRoot, "tsconfig.json");
 
 const REPORT_DEFAULT_PATH = path.join(
   repoRoot,
-  'docs',
-  'architecture',
-  'HOOK_AUDIT_2026-02-10.md'
+  "docs",
+  "architecture",
+  "HOOK_AUDIT_2026-02-10.md",
 );
 
-const normalizePath = (filePath: string): string => path.resolve(filePath).replaceAll('\\', '/');
+const normalizePath = (filePath: string): string =>
+  path.resolve(filePath).replaceAll("\\", "/");
 
 const relativeToRepo = (filePath: string): string =>
-  path.relative(repoRoot, filePath).replaceAll('\\', '/');
+  path.relative(repoRoot, filePath).replaceAll("\\", "/");
 
 const isHookFile = (filePath: string): boolean => {
   const normalized = normalizePath(filePath);
-  if (!normalized.startsWith(normalizePath(path.join(repoRoot, 'client', 'src')))) {
+  if (
+    !normalized.startsWith(normalizePath(path.join(repoRoot, "client", "src")))
+  ) {
     return false;
   }
   const rel = relativeToRepo(normalized);
-  if (!/^client\/src\/.*\/use[^/]*\.(ts|tsx)$/.test(rel) && !/^client\/src\/use[^/]*\.(ts|tsx)$/.test(rel)) {
+  if (
+    !/^client\/src\/.*\/use[^/]*\.(ts|tsx)$/.test(rel) &&
+    !/^client\/src\/use[^/]*\.(ts|tsx)$/.test(rel)
+  ) {
     return false;
   }
   return !/\.(test|spec|stories)\.(ts|tsx)$/.test(rel);
@@ -70,7 +76,10 @@ const isImportPathDirect = (modulePath: string): boolean =>
 const getCompilerConfig = (): ts.ParsedCommandLine => {
   const readResult = ts.readConfigFile(tsconfigPath, ts.sys.readFile);
   if (readResult.error) {
-    const message = ts.flattenDiagnosticMessageText(readResult.error.messageText, '\n');
+    const message = ts.flattenDiagnosticMessageText(
+      readResult.error.messageText,
+      "\n",
+    );
     throw new Error(`Failed to read tsconfig: ${message}`);
   }
   return ts.parseJsonConfigFileContent(
@@ -78,11 +87,14 @@ const getCompilerConfig = (): ts.ParsedCommandLine => {
     ts.sys,
     path.dirname(tsconfigPath),
     undefined,
-    tsconfigPath
+    tsconfigPath,
   );
 };
 
-const resolveAliasedSymbol = (checker: ts.TypeChecker, symbol: ts.Symbol): ts.Symbol => {
+const resolveAliasedSymbol = (
+  checker: ts.TypeChecker,
+  symbol: ts.Symbol,
+): ts.Symbol => {
   if ((symbol.flags & ts.SymbolFlags.Alias) === 0) {
     return symbol;
   }
@@ -99,7 +111,8 @@ const getSymbolKey = (symbol: ts.Symbol): string => {
   return `${normalizePath(decl.getSourceFile().fileName)}:${decl.getStart()}:${symbol.getName()}`;
 };
 
-const safeSort = (values: Iterable<string>): string[] => Array.from(values).sort((a, b) => a.localeCompare(b));
+const safeSort = (values: Iterable<string>): string[] =>
+  Array.from(values).sort((a, b) => a.localeCompare(b));
 
 const parseArgs = (): { writePath: string | null } => {
   const argv = process.argv.slice(2);
@@ -107,16 +120,20 @@ const parseArgs = (): { writePath: string | null } => {
 
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
-    if (arg === '--write') {
+    if (arg === "--write") {
       const next = argv[i + 1];
-      if (!next) throw new Error('--write requires a file path');
-      writePath = path.isAbsolute(next) ? next : path.resolve(process.cwd(), next);
+      if (!next) throw new Error("--write requires a file path");
+      writePath = path.isAbsolute(next)
+        ? next
+        : path.resolve(process.cwd(), next);
       i += 1;
       continue;
     }
-    if (arg.startsWith('--write=')) {
-      const value = arg.slice('--write='.length);
-      writePath = path.isAbsolute(value) ? value : path.resolve(process.cwd(), value);
+    if (arg.startsWith("--write=")) {
+      const value = arg.slice("--write=".length);
+      writePath = path.isAbsolute(value)
+        ? value
+        : path.resolve(process.cwd(), value);
     }
   }
 
@@ -144,10 +161,14 @@ const buildAudit = (): {
   const sourceFiles = program
     .getSourceFiles()
     .filter((file) => !file.isDeclarationFile)
-    .filter((file) => normalizePath(file.fileName).startsWith(normalizePath(repoRoot)))
-    .filter((file) => !normalizePath(file.fileName).includes('/node_modules/'));
+    .filter((file) =>
+      normalizePath(file.fileName).startsWith(normalizePath(repoRoot)),
+    )
+    .filter((file) => !normalizePath(file.fileName).includes("/node_modules/"));
 
-  const hookFiles = sourceFiles.filter((sourceFile) => isHookFile(sourceFile.fileName));
+  const hookFiles = sourceFiles.filter((sourceFile) =>
+    isHookFile(sourceFile.fileName),
+  );
 
   const recordsByKey = new Map<string, HookRecord>();
   const hooksByFile = new Map<string, HookRecord[]>();
@@ -165,7 +186,9 @@ const buildAudit = (): {
       const canonicalSymbol = resolveAliasedSymbol(checker, exportedSymbol);
       const declarations = canonicalSymbol.declarations ?? [];
       const declaredInThisFile = declarations.some(
-        (decl) => normalizePath(decl.getSourceFile().fileName) === normalizePath(hookFile.fileName)
+        (decl) =>
+          normalizePath(decl.getSourceFile().fileName) ===
+          normalizePath(hookFile.fileName),
       );
 
       if (!declaredInThisFile) {
@@ -185,10 +208,10 @@ const buildAudit = (): {
         directCallerFiles: new Set<string>(),
         barrelCallerFiles: new Set<string>(),
         importEvidence: new Set<string>(),
-        bucket: 'multi-consumer',
-        decision: 'keep',
-        chainPattern: 'none',
-        evidence: '',
+        bucket: "multi-consumer",
+        decision: "keep",
+        chainPattern: "none",
+        evidence: "",
       };
 
       recordsByKey.set(key, record);
@@ -237,9 +260,13 @@ const buildAudit = (): {
 
         const caller = normalizePath(sourceFile.fileName);
         const callerRel = relativeToRepo(caller);
-        const isDirect = normalizePath(record.definedIn) === normalizePath(canonical.declarations?.[0]?.getSourceFile().fileName ?? '');
+        const isDirect =
+          normalizePath(record.definedIn) ===
+          normalizePath(
+            canonical.declarations?.[0]?.getSourceFile().fileName ?? "",
+          );
         const directByImportPath = isImportPathDirect(modulePath);
-        const importKind = isDirect && directByImportPath ? 'direct' : 'barrel';
+        const importKind = isDirect && directByImportPath ? "direct" : "barrel";
 
         if (isTestFile(caller)) {
           record.testCallerFiles.add(caller);
@@ -247,7 +274,7 @@ const buildAudit = (): {
           record.productionCallerFiles.add(caller);
         }
         record.importPaths.add(modulePath);
-        if (importKind === 'direct') {
+        if (importKind === "direct") {
           record.directCallerFiles.add(caller);
         } else {
           record.barrelCallerFiles.add(caller);
@@ -269,20 +296,20 @@ const buildAudit = (): {
   for (const record of records) {
     const prodConsumers = safeSort(record.productionCallerFiles);
     if (prodConsumers.length === 0) {
-      record.bucket = 'likely-dead';
+      record.bucket = "likely-dead";
     } else if (prodConsumers.length === 1) {
-      record.bucket = 'single-consumer';
+      record.bucket = "single-consumer";
     } else {
-      record.bucket = 'multi-consumer';
+      record.bucket = "multi-consumer";
     }
 
-    if (record.bucket === 'likely-dead') {
-      record.decision = 'delete';
+    if (record.bucket === "likely-dead") {
+      record.decision = "delete";
     } else {
-      record.decision = 'keep';
+      record.decision = "keep";
     }
 
-    if (record.bucket === 'single-consumer') {
+    if (record.bucket === "single-consumer") {
       const singleConsumer = safeSort(record.productionCallerFiles)[0];
       const consumerRecord = recordByFileSingleSymbol.get(singleConsumer);
       if (consumerRecord) {
@@ -291,22 +318,22 @@ const buildAudit = (): {
       } else {
         record.chainPattern = `${record.symbol} -> ${relativeToRepo(singleConsumer)}`;
       }
-    } else if (record.bucket === 'multi-consumer') {
-      record.chainPattern = 'fan-out';
+    } else if (record.bucket === "multi-consumer") {
+      record.chainPattern = "fan-out";
     } else {
-      record.chainPattern = 'none';
+      record.chainPattern = "none";
     }
 
     const directCount = record.directCallerFiles.size;
     const barrelCount = record.barrelCallerFiles.size;
     const importShape =
       directCount === 0 && barrelCount === 0
-        ? 'none'
+        ? "none"
         : directCount > 0 && barrelCount === 0
-          ? 'direct'
+          ? "direct"
           : directCount === 0 && barrelCount > 0
-            ? 'barrel'
-            : 'mixed';
+            ? "barrel"
+            : "mixed";
 
     record.evidence = `AST(prod=${record.productionCallerFiles.size},test=${record.testCallerFiles.size},direct=${directCount},barrel=${barrelCount},shape=${importShape})`;
   }
@@ -315,16 +342,23 @@ const buildAudit = (): {
     .filter(([, hookRecords]) => hookRecords.length > 1)
     .map(([symbol, hookRecords]) => ({
       symbol,
-      files: safeSort(hookRecords.map((record) => relativeToRepo(record.definedIn))),
+      files: safeSort(
+        hookRecords.map((record) => relativeToRepo(record.definedIn)),
+      ),
     }))
     .sort((left, right) => left.symbol.localeCompare(right.symbol));
 
   const summary = {
     totalHookSymbols: records.length,
     totalHookFiles: hookFiles.length,
-    likelyDead: records.filter((record) => record.bucket === 'likely-dead').length,
-    singleConsumer: records.filter((record) => record.bucket === 'single-consumer').length,
-    multiConsumer: records.filter((record) => record.bucket === 'multi-consumer').length,
+    likelyDead: records.filter((record) => record.bucket === "likely-dead")
+      .length,
+    singleConsumer: records.filter(
+      (record) => record.bucket === "single-consumer",
+    ).length,
+    multiConsumer: records.filter(
+      (record) => record.bucket === "multi-consumer",
+    ).length,
   };
 
   records.sort((left, right) => {
@@ -340,34 +374,40 @@ const buildAudit = (): {
 const renderDirectVsBarrel = (record: HookRecord): string => {
   const direct = record.directCallerFiles.size;
   const barrel = record.barrelCallerFiles.size;
-  if (direct === 0 && barrel === 0) return 'none';
-  if (direct > 0 && barrel === 0) return 'direct';
-  if (direct === 0 && barrel > 0) return 'barrel';
-  return 'mixed';
+  if (direct === 0 && barrel === 0) return "none";
+  if (direct > 0 && barrel === 0) return "direct";
+  if (direct === 0 && barrel > 0) return "barrel";
+  return "mixed";
 };
 
-const escapeCell = (value: string): string => value.replaceAll('|', '\\|');
+const escapeCell = (value: string): string => value.replaceAll("|", "\\|");
 
 const renderMarkdown = (audit: ReturnType<typeof buildAudit>): string => {
   const lines: string[] = [];
-  lines.push('# Hook Audit Report (2026-02-10)');
-  lines.push('');
-  lines.push('## Scope');
-  lines.push('- Root: `client/src`');
-  lines.push('- Files: `use*.ts` / `use*.tsx` (tests/stories excluded from inventory)');
-  lines.push('- Method: TypeScript AST import graph + symbol-level classification');
-  lines.push('');
-  lines.push('## Baseline');
+  lines.push("# Hook Audit Report (2026-02-10)");
+  lines.push("");
+  lines.push("## Scope");
+  lines.push("- Root: `client/src`");
+  lines.push(
+    "- Files: `use*.ts` / `use*.tsx` (tests/stories excluded from inventory)",
+  );
+  lines.push(
+    "- Method: TypeScript AST import graph + symbol-level classification",
+  );
+  lines.push("");
+  lines.push("## Baseline");
   lines.push(`- Total hook files: **${audit.summary.totalHookFiles}**`);
-  lines.push(`- Total exported hook symbols: **${audit.summary.totalHookSymbols}**`);
+  lines.push(
+    `- Total exported hook symbols: **${audit.summary.totalHookSymbols}**`,
+  );
   lines.push(`- likely-dead: **${audit.summary.likelyDead}**`);
   lines.push(`- single-consumer: **${audit.summary.singleConsumer}**`);
   lines.push(`- multi-consumer: **${audit.summary.multiConsumer}**`);
-  lines.push('');
+  lines.push("");
 
-  lines.push('## Duplicate Hook Symbols');
+  lines.push("## Duplicate Hook Symbols");
   if (audit.duplicateSymbols.length === 0) {
-    lines.push('- None');
+    lines.push("- None");
   } else {
     for (const duplicate of audit.duplicateSymbols) {
       lines.push(`- \`${duplicate.symbol}\``);
@@ -376,49 +416,53 @@ const renderMarkdown = (audit: ReturnType<typeof buildAudit>): string => {
       }
     }
   }
-  lines.push('');
+  lines.push("");
 
-  lines.push('## Inventory');
+  lines.push("## Inventory");
   lines.push(
-    '| symbol | defined_in | production_callers | test_callers | import_paths | direct_vs_barrel | chain_pattern | decision | evidence |'
+    "| symbol | defined_in | production_callers | test_callers | import_paths | direct_vs_barrel | chain_pattern | decision | evidence |",
   );
-  lines.push(
-    '| --- | --- | --- | --- | --- | --- | --- | --- | --- |'
-  );
+  lines.push("| --- | --- | --- | --- | --- | --- | --- | --- | --- |");
 
   for (const record of audit.records) {
     const productionCallers = safeSort(record.productionCallerFiles)
       .map(relativeToRepo)
-      .join('<br>');
+      .join("<br>");
     const testCallers = safeSort(record.testCallerFiles)
       .map(relativeToRepo)
-      .join('<br>');
-    const importPaths = safeSort(record.importPaths).join('<br>');
+      .join("<br>");
+    const importPaths = safeSort(record.importPaths).join("<br>");
     const row = [
       record.symbol,
       relativeToRepo(record.definedIn),
-      productionCallers || '-',
-      testCallers || '-',
-      importPaths || '-',
+      productionCallers || "-",
+      testCallers || "-",
+      importPaths || "-",
       renderDirectVsBarrel(record),
       record.chainPattern,
       record.decision,
       record.evidence,
     ]
       .map((value) => escapeCell(value))
-      .join(' | ');
+      .join(" | ");
     lines.push(`| ${row} |`);
   }
 
-  lines.push('');
-  lines.push('## Notes');
-  lines.push('- `decision=delete` indicates zero production callers in AST graph.');
-  lines.push('- `decision=merge` indicates candidate chain flattening seam (single-consumer chain, no standalone tests).');
-  lines.push('- `decision=keep` indicates active usage or stable boundary.');
-  lines.push('- Pass-B corroboration (`rg`) is executed separately before deletion.');
-  lines.push('');
+  lines.push("");
+  lines.push("## Notes");
+  lines.push(
+    "- `decision=delete` indicates zero production callers in AST graph.",
+  );
+  lines.push(
+    "- `decision=merge` indicates candidate chain flattening seam (single-consumer chain, no standalone tests).",
+  );
+  lines.push("- `decision=keep` indicates active usage or stable boundary.");
+  lines.push(
+    "- Pass-B corroboration (`rg`) is executed separately before deletion.",
+  );
+  lines.push("");
 
-  return lines.join('\n');
+  return lines.join("\n");
 };
 
 const main = (): void => {
@@ -429,7 +473,7 @@ const main = (): void => {
   if (writePath) {
     const targetPath = normalizePath(writePath);
     fs.mkdirSync(path.dirname(targetPath), { recursive: true });
-    fs.writeFileSync(targetPath, `${markdown}\n`, 'utf8');
+    fs.writeFileSync(targetPath, `${markdown}\n`, "utf8");
     console.log(`[hook-audit] wrote ${relativeToRepo(targetPath)}`);
   } else {
     process.stdout.write(markdown);

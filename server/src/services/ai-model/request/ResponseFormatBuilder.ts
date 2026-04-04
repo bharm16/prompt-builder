@@ -1,5 +1,5 @@
-import type { ProviderCapabilities } from '@utils/provider/ProviderDetector';
-import type { ExecuteParams, ModelConfigEntry } from '../types';
+import type { ProviderCapabilities } from "@utils/provider/ProviderDetector";
+import type { ExecuteParams, ModelConfigEntry } from "../types";
 
 export interface ResponseFormatResult {
   responseFormat?: { type: string; [key: string]: unknown };
@@ -9,16 +9,16 @@ export interface ResponseFormatResult {
 export function buildResponseFormat(
   params: ExecuteParams,
   config: ModelConfigEntry,
-  capabilities: ProviderCapabilities
+  capabilities: ProviderCapabilities,
 ): ResponseFormatResult {
   let responseFormat: { type: string; [key: string]: unknown } | undefined;
   let jsonMode = false;
 
   if (params.schema) {
     responseFormat = {
-      type: 'json_schema',
+      type: "json_schema",
       json_schema: {
-        name: 'video_prompt_response',
+        name: "video_prompt_response",
         strict: capabilities.strictJsonSchema,
         schema: params.schema,
       },
@@ -27,8 +27,8 @@ export function buildResponseFormat(
   } else if (params.responseFormat) {
     responseFormat = params.responseFormat;
     jsonMode = false;
-  } else if (config.responseFormat === 'json_object') {
-    responseFormat = { type: 'json_object' };
+  } else if (config.responseFormat === "json_object") {
+    responseFormat = { type: "json_object" };
     jsonMode = true;
   } else {
     jsonMode = params.jsonMode || false;

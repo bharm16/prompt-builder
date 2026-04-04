@@ -25,6 +25,6 @@ export interface SuggestionsState {
 
 // Discriminated union for reducer actions
 export type SuggestionsAction =
-  | { type: 'SET_SUGGESTIONS'; payload: SuggestionItem[] }
-  | { type: 'SET_ACTIVE_CATEGORY'; payload: string | null }
-  | { type: 'SET_LOADING'; payload: boolean };
+  | { type: "SET_SUGGESTIONS"; payload: SuggestionItem[] }
+  | { type: "SET_ACTIVE_CATEGORY"; payload: string | null }
+  | { type: "SET_LOADING"; payload: boolean };

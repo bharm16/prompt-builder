@@ -1,1 +1,1 @@
-export { ModelCapabilityRegistry } from './services/ModelCapabilityRegistry';
+export { ModelCapabilityRegistry } from "./services/ModelCapabilityRegistry";

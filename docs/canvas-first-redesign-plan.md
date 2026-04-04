@@ -1,9 +1,11 @@
 # Canvas-First Redesign — Implementation Plan
 
 ## Reference Mockup
+
 `canvas-redesign-v1.jsx` (in project files) — interactive React prototype showing final target state.
 
 ## Summary of Changes
+
 Remove the 400px sidebar panel. Keep the 56px ToolRail. Move all generation controls (prompt, model, settings, generate) into the canvas area as a bottom prompt bar. Model selector becomes a floating corner element. Motion attaches to the start frame popover. Preview and Generate become explicit cost-labeled buttons.
 
 ---
@@ -11,15 +13,18 @@ Remove the 400px sidebar panel. Keep the 56px ToolRail. Move all generation cont
 ## Architecture Overview (Current → Target)
 
 ### Current Layout
+
 ```
 [ToolRail 56px] [ToolPanel 400px] [Canvas flex-1]
 ```
+
 - `AppShell.tsx` renders `<ToolSidebar>` (rail + panel) + children
 - `ToolSidebar.tsx` renders `<ToolRail>` + `<ToolPanel>` side by side
 - `GenerationControlsPanel` inside ToolPanel owns: PanelHeader, prompt card, VideoPromptToolbar, VideoSettingsRow, ReferencesOnboardingCard, GenerationFooter
 - Canvas (`PromptCanvasView`) renders video output, SpanBentoGrid, GenerationsPanel, VersionsPanel
 
 ### Target Layout
+
 ```
 [ToolRail 56px] [CanvasWorkspace flex-1]
                  ├── TopBar (session name, credits)
@@ -35,13 +40,17 @@ Remove the 400px sidebar panel. Keep the 56px ToolRail. Move all generation cont
 ## Phase 0: Feature Flag + Scaffold
 
 ### 0.1 Add feature flag
+
 **File:** `client/src/config/featureFlags.ts` (or equivalent)
+
 ```ts
 export const CANVAS_FIRST_LAYOUT = true; // toggle during development
 ```
+
 This flag gates the new layout so existing layout continues working until migration is complete.
 
 ### 0.2 Create new component directory
+
 ```
 client/src/features/prompt-optimizer/CanvasWorkspace/
   CanvasWorkspace.tsx          — orchestrator
@@ -63,6 +72,7 @@ client/src/features/prompt-optimizer/CanvasWorkspace/
 Before building the new layout, extract business logic out of panel-specific components so both layouts can share it.
 
 ### 1.1 Extract model selection logic
+
 **Source:** `client/src/components/ToolSidebar/components/panels/GenerationControlsPanel/components/GenerationFooter.tsx` (lines 1-50)
 **Source:** `client/src/components/ToolSidebar/components/panels/GenerationControlsPanel/hooks/useModelSelectionRecommendation.ts`
 **Source:** `client/src/components/ToolSidebar/config/modelConfig.ts`
@@ -70,28 +80,34 @@ Before building the new layout, extract business logic out of panel-specific com
 **Action:** These are already clean. `modelConfig.ts` exports `VIDEO_DRAFT_MODEL`, `VIDEO_RENDER_MODELS`, `STORYBOARD_COST`. `useModelSelectionRecommendation` is a standalone hook. No extraction needed — just import them in the new components.
 
 ### 1.2 Extract generation trigger logic
+
 **Source:** `client/src/components/ToolSidebar/components/panels/GenerationControlsPanel/hooks/useGenerationControlsPanel.ts`
 
 **Action:** Identify the `handleGenerate` callback and its dependencies. This hook likely coordinates `generationParams`, model selection, and the actual generation API call. The new `CanvasPromptBar` needs access to the same `onGenerate` callback. Trace through `GenerationControlsPanel.tsx` to confirm how it passes `onGenerate` to `GenerationFooter`. The new layout needs the same callback — it should come from the same store/context (`GenerationControlsStore` + `useGenerationControlsStoreActions`).
 
 ### 1.3 Extract camera motion flow
+
 **Source:** `client/src/components/ToolSidebar/components/panels/GenerationControlsPanel/hooks/useCameraMotionModalFlow.ts`
 **Source:** `client/src/components/ToolSidebar/components/panels/GenerationControlsPanel/components/CameraMotionSelector.tsx`
 
 **Action:** The current flow opens a full modal. The new design uses an inline popover with pill-selection instead. Create a simpler hook:
+
 ```ts
 // useMotionSelection.ts
 // Reads: store.domain.cameraMotion, store.domain.startFrame
 // Writes: store.actions.setCameraMotion
 // No modal — just a list of motion IDs and a setter
 ```
+
 The motion options list currently lives in `CameraMotionSelector.tsx`. Extract the motion ID list as a constant (e.g. `CAMERA_MOTION_OPTIONS`) so both the old modal and the new popover can use it.
 
 ### 1.4 Extract start frame upload logic
+
 **Source:** `client/src/features/prompt-optimizer/PromptOptimizerContainer/PromptOptimizerWorkspace.tsx` (lines ~290-320, `handleStartFrameUpload` callback)
 **Source:** Store actions: `useGenerationControlsStoreActions().setStartFrame`, `clearStartFrame`
 
 **Action:** `handleStartFrameUpload` is already a standalone callback in the workspace. It's passed down through `SidebarDataProvider`. The new `StartFramePopover` needs access to:
+
 - `store.domain.startFrame` (read)
 - `store.actions.setStartFrame` (write)
 - `store.actions.clearStartFrame` (write)
@@ -100,6 +116,7 @@ The motion options list currently lives in `CameraMotionSelector.tsx`. Extract t
 No extraction needed — consume from existing context/store.
 
 ### 1.5 Extract preview (storyboard) generation logic
+
 **Source:** `client/src/features/prompt-optimizer/GenerationsPanel/hooks/useKeyframeWorkflow.ts` (lines 131-147, `handleSelectFrame`)
 **Source:** `client/src/features/prompt-optimizer/GenerationsPanel/hooks/useGenerationActions.ts`
 
@@ -110,7 +127,9 @@ No extraction needed — consume from existing context/store.
 ## Phase 2: Build New Canvas Components
 
 ### 2.1 `CanvasTopBar.tsx`
+
 Simple bar at top of canvas area. Contains:
+
 - App name / logo (left)
 - Session name + dropdown (center-right)
 - Credits display (right)
@@ -118,15 +137,18 @@ Simple bar at top of canvas area. Contains:
 Pull session name from `useWorkspaceSession()`. Pull credits from auth/billing context.
 
 ### 2.2 `ModelCornerSelector.tsx`
+
 Floating `position: absolute; bottom: 16px; left: 16px` button.
 
 **Data:**
+
 - Read `store.domain.selectedModel` for current selection
 - Read `VIDEO_RENDER_MODELS` and `VIDEO_DRAFT_MODELS` from `modelConfig.ts`
 - Write via `useGenerationControlsStoreActions().setSelectedModel` (exists, traced from `usePromptState().setSelectedModel`)
 - Read model recommendation from `useModelSelectionRecommendation` hook
 
 **Behavior:**
+
 - Click opens popover above the button
 - Each model row shows: name, cost tag, capability tags (Start Frame, End Frame, etc.), optional "New" badge
 - Selecting a model calls `setSelectedModel(modelId)` and closes popover
@@ -135,9 +157,11 @@ Floating `position: absolute; bottom: 16px; left: 16px` button.
 **Props:** None (reads everything from store/hooks).
 
 ### 2.3 `StartFramePopover.tsx`
+
 Triggered by a button in `CanvasSettingsRow`. Opens upward from the button position.
 
 **Two states:**
+
 1. **No start frame** (`store.domain.startFrame === null`):
    - Dashed upload zone with "Drop image or click to upload"
    - Text: "Or select from storyboard previews"
@@ -155,13 +179,16 @@ Triggered by a button in `CanvasSettingsRow`. Opens upward from the button posit
 **Key behavioral rule:** Motion selector ONLY appears when a start frame exists. This replaces the perpetually-disabled Motion button in the old `VideoSettingsRow`.
 
 ### 2.4 `StoryboardStrip.tsx`
+
 Horizontal filmstrip that appears between the video canvas and prompt bar after Preview is clicked.
 
 **Data:**
+
 - Reads generation results from `useGenerationsState` (the Kontext preview outputs)
 - Selected index is local state
 
 **Behavior:**
+
 - Shows 4 thumbnail frames from the preview generation
 - Click to select (visual ring)
 - "Use as start frame" button calls `setStartFrame` with the selected frame's data
@@ -170,35 +197,42 @@ Horizontal filmstrip that appears between the video canvas and prompt bar after 
 **Wiring:** The existing pipeline `GenerationCard` → `KontextFrameStrip` → `onFrameClick` → `onSelectFrame` → `useKeyframeWorkflow.handleSelectFrame` → `setStartFrame` already works. The new strip needs to replicate just the `setStartFrame` call with the frame data — it doesn't need the full `GenerationsPanel` machinery.
 
 ### 2.5 `CanvasSettingsRow.tsx`
+
 Single row inside the prompt container, below the prompt text, separated by a subtle border.
 
 **Layout (left to right):**
+
 ```
 [Start frame] [Assets] [16:9] [5s] [✦ Enhance]  ←spacer→  [char count] [Preview · ~4cr] [Generate · 80cr]
 ```
 
 **Start frame button:**
+
 - No frame: ghost icon + "Start frame" label
 - Has frame: mini thumbnail (20×14) + "Start frame" + motion badge if set (e.g. purple "Dolly in")
 - Click toggles `StartFramePopover`
 
 **Assets button:**
+
 - Ghost icon + "Assets" label
 - Click opens a popover with the same content as current `ReferencesOnboardingCard` (upload + assets library)
 - Reads assets from `useSidebarAssetsDomain()`
 
 **Aspect ratio / Duration:**
+
 - Read from `store.domain.generationParams` (or `useCapabilitiesClamping` hook)
 - Write via `setGenerationParams` (same actions as `VideoSettingsRow`)
 - Click opens small dropdown with options
 - Options come from `useCapabilitiesClamping` which returns `aspectRatioOptions`, `durationOptions`
 
 **Enhance button:**
+
 - Purple accent style
 - Triggers the existing optimize flow: `handleOptimize()` from `usePromptOptimization`
 - Same callback currently wired to "AI Enhance" in `VideoPromptToolbar`
 
 **Preview button:**
+
 - Secondary/bordered style
 - Label: "Preview · ~4 cr" (cost from `STORYBOARD_COST` in `modelConfig.ts`)
 - Loading state: spinner + "Generating…"
@@ -206,6 +240,7 @@ Single row inside the prompt container, below the prompt text, separated by a su
 - On completion: shows `StoryboardStrip`
 
 **Generate button:**
+
 - **When model is Wan (draft tier):** Outlined style, label "Draft · 5 cr"
 - **When model is render tier:** Filled white style, label "Generate · 80 cr"
 - Determine tier: `renderModelId === VIDEO_DRAFT_MODEL.id` or check `store.domain.videoTier`
@@ -213,9 +248,11 @@ Single row inside the prompt container, below the prompt text, separated by a su
 - On click: same `onGenerate` callback as current `GenerationFooter`
 
 ### 2.6 `CanvasPromptBar.tsx`
+
 The prompt text area + settings row combined into a single container.
 
 **Structure:**
+
 ```tsx
 <div className="prompt-container"> {/* border, rounded, surface bg */}
   <PromptEditor ... />           {/* existing semantic span editor */}
@@ -226,23 +263,27 @@ The prompt text area + settings row combined into a single container.
 **Key integration:** The `PromptEditor` component already exists at `client/src/features/prompt-optimizer/components/PromptEditor.tsx`. It handles contenteditable, span highlighting, trigger autocomplete, inline suggestions. It currently lives inside `PromptCanvasView`. Reuse it directly — don't rebuild it.
 
 ### 2.7 `CanvasWorkspace.tsx` (orchestrator)
+
 Replaces the current panel + canvas split. This is the main content area after the ToolRail.
 
 ```tsx
 <div className="flex flex-col h-full">
   <CanvasTopBar />
-  <div className="flex-1 relative"> {/* canvas area */}
-    <VersionThumbnails />   {/* left edge, absolute */}
-    <VideoCanvas />          {/* the video player / output */}
-    <ModelCornerSelector />  {/* absolute bottom-left */}
+  <div className="flex-1 relative">
+    {" "}
+    {/* canvas area */}
+    <VersionThumbnails /> {/* left edge, absolute */}
+    <VideoCanvas /> {/* the video player / output */}
+    <ModelCornerSelector /> {/* absolute bottom-left */}
   </div>
-  <ActionRow />              {/* Reuse, Extend, Copy, Share, Download */}
+  <ActionRow /> {/* Reuse, Extend, Copy, Share, Download */}
   {showStoryboard && <StoryboardStrip />}
   <CanvasPromptBar />
 </div>
 ```
 
 **Context requirements:** Needs access to all the same providers currently wrapping `PromptOptimizerWorkspaceView`:
+
 - `PromptStateContext` (prompt text, optimization, suggestions)
 - `GenerationControlsStore` (model, params, start frame, camera motion)
 - `PromptResultsActionsContext` (suggestion clicks, coherence)
@@ -256,9 +297,11 @@ These providers already wrap at the `PromptOptimizerWorkspace` level, so the new
 ## Phase 3: Integrate into App Shell
 
 ### 3.1 Modify `AppShell.tsx`
+
 **File:** `client/src/components/navigation/AppShell/AppShell.tsx`
 
 Current sidebar variant:
+
 ```tsx
 <div className="flex h-full min-h-0 overflow-hidden bg-app">
   <ToolSidebar {...toolSidebarProps} user={user} />
@@ -269,11 +312,16 @@ Current sidebar variant:
 ```
 
 **Change to (behind flag):**
+
 ```tsx
 <div className="flex h-full min-h-0 overflow-hidden bg-app">
   {CANVAS_FIRST_LAYOUT ? (
     <>
-      <ToolRail activePanel={activePanel} onPanelChange={setActivePanel} user={user} />
+      <ToolRail
+        activePanel={activePanel}
+        onPanelChange={setActivePanel}
+        user={user}
+      />
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-black">
         {children}
       </div>
@@ -292,6 +340,7 @@ Current sidebar variant:
 The `ToolRail` component already exists standalone at `client/src/components/ToolSidebar/components/ToolRail.tsx`. It doesn't depend on the panel — it just emits `onPanelChange` events.
 
 **ToolRail panel actions in canvas-first mode:**
+
 - "Tool" (studio): No-op or focuses the prompt bar
 - "Chars": Opens a floating panel or sheet for character assets
 - "Styles": Opens a floating panel or sheet for styles
@@ -300,22 +349,23 @@ The `ToolRail` component already exists standalone at `client/src/components/Too
 For Phase 3, the tool rail buttons can open overlay sheets (`Sheet` from the UI library) instead of the old inline panel. This is a follow-up concern — the critical path is removing the panel from the main layout flow.
 
 ### 3.2 Modify `PromptOptimizerWorkspaceView.tsx`
+
 **File:** `client/src/features/prompt-optimizer/PromptOptimizerContainer/components/PromptOptimizerWorkspaceView.tsx`
 
 Currently renders `<PromptResultsLayout />` which renders `<PromptResultsSection />` which renders `<PromptCanvas />`.
 
 **Behind flag, replace with:**
+
 ```tsx
-{CANVAS_FIRST_LAYOUT ? (
-  <CanvasWorkspace />
-) : (
-  <PromptResultsLayout />
-)}
+{
+  CANVAS_FIRST_LAYOUT ? <CanvasWorkspace /> : <PromptResultsLayout />;
+}
 ```
 
 `CanvasWorkspace` composes the video canvas (from existing `PromptCanvasView` internals) + `CanvasPromptBar` + `ModelCornerSelector` + `StoryboardStrip`.
 
 ### 3.3 Wire the video canvas
+
 The actual video player / generation output display currently lives deep in `PromptCanvasView.tsx`. It renders `<GenerationsPanel>` which shows generation cards with video players.
 
 **In the new layout**, `GenerationsPanel` moves from being a section within the canvas to being the primary canvas content. The latest generation should render as a full-canvas video player (hero view), with the generation history accessible through the version thumbnails on the left edge.
@@ -330,38 +380,42 @@ The `GenerationsPanel` already handles video display, progress overlays, and gen
 ## Phase 4: Remove Panel Dependencies
 
 ### 4.1 Components that become unused (panel-only)
+
 Once the flag is permanently on, these panel-specific components can be deleted:
 
-| Component | File | Replacement |
-|-----------|------|-------------|
-| `GenerationControlsPanel` | `ToolSidebar/components/panels/GenerationControlsPanel/GenerationControlsPanel.tsx` | `CanvasWorkspace` orchestrator |
-| `PanelHeader` | `GenerationControlsPanel/components/PanelHeader.tsx` | `CanvasTopBar` (video/image pill moves here or is removed) |
-| `VideoTabContent` | `GenerationControlsPanel/components/VideoTabContent.tsx` | Content split across `CanvasPromptBar` + `CanvasSettingsRow` |
-| `VideoPromptToolbar` | `GenerationControlsPanel/components/VideoPromptToolbar.tsx` | Replaced by `CanvasSettingsRow` |
-| `VideoSettingsRow` | `GenerationControlsPanel/components/VideoSettingsRow.tsx` | Settings inline in `CanvasSettingsRow`; motion in `StartFramePopover` |
-| `GenerationFooter` | `GenerationControlsPanel/components/GenerationFooter.tsx` | Generate button in `CanvasSettingsRow`; model in `ModelCornerSelector` |
-| `ReferencesOnboardingCard` | `GenerationControlsPanel/components/ReferencesOnboardingCard.tsx` | Assets popover from `CanvasSettingsRow` Assets button |
-| `StartFrameControl` | `ToolSidebar/components/panels/StartFrameControl.tsx` | `StartFramePopover` |
-| `ToolPanel` | `ToolSidebar/components/ToolPanel.tsx` | Removed (rail stays) |
-| `ModelRecommendationDropdown` | `GenerationControlsPanel/components/ModelRecommendationDropdown.tsx` | `ModelCornerSelector` popover |
+| Component                     | File                                                                                | Replacement                                                            |
+| ----------------------------- | ----------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| `GenerationControlsPanel`     | `ToolSidebar/components/panels/GenerationControlsPanel/GenerationControlsPanel.tsx` | `CanvasWorkspace` orchestrator                                         |
+| `PanelHeader`                 | `GenerationControlsPanel/components/PanelHeader.tsx`                                | `CanvasTopBar` (video/image pill moves here or is removed)             |
+| `VideoTabContent`             | `GenerationControlsPanel/components/VideoTabContent.tsx`                            | Content split across `CanvasPromptBar` + `CanvasSettingsRow`           |
+| `VideoPromptToolbar`          | `GenerationControlsPanel/components/VideoPromptToolbar.tsx`                         | Replaced by `CanvasSettingsRow`                                        |
+| `VideoSettingsRow`            | `GenerationControlsPanel/components/VideoSettingsRow.tsx`                           | Settings inline in `CanvasSettingsRow`; motion in `StartFramePopover`  |
+| `GenerationFooter`            | `GenerationControlsPanel/components/GenerationFooter.tsx`                           | Generate button in `CanvasSettingsRow`; model in `ModelCornerSelector` |
+| `ReferencesOnboardingCard`    | `GenerationControlsPanel/components/ReferencesOnboardingCard.tsx`                   | Assets popover from `CanvasSettingsRow` Assets button                  |
+| `StartFrameControl`           | `ToolSidebar/components/panels/StartFrameControl.tsx`                               | `StartFramePopover`                                                    |
+| `ToolPanel`                   | `ToolSidebar/components/ToolPanel.tsx`                                              | Removed (rail stays)                                                   |
+| `ModelRecommendationDropdown` | `GenerationControlsPanel/components/ModelRecommendationDropdown.tsx`                | `ModelCornerSelector` popover                                          |
 
 ### 4.2 Components that survive as-is
-| Component | Why |
-|-----------|-----|
-| `ToolRail.tsx` | Stays — it's the 56px icon rail |
-| `SessionsPanel.tsx` | Moves to an overlay/sheet, but component internals unchanged |
-| `CharactersPanel.tsx` | Same — opens as sheet overlay |
-| `StylesPanel.tsx` | Same |
-| `PromptEditor.tsx` | Core editor — reused inside `CanvasPromptBar` |
-| `SpanBentoGrid` | Suggestion grid — still appears on span click |
-| `GenerationsPanel` | Video output display — becomes hero canvas content |
-| `CameraMotionSelector.tsx` | Motion list may be reused in `StartFramePopover` (extract options) |
-| All hooks in `GenerationControlsPanel/hooks/` | Business logic stays, UI changes |
+
+| Component                                     | Why                                                                |
+| --------------------------------------------- | ------------------------------------------------------------------ |
+| `ToolRail.tsx`                                | Stays — it's the 56px icon rail                                    |
+| `SessionsPanel.tsx`                           | Moves to an overlay/sheet, but component internals unchanged       |
+| `CharactersPanel.tsx`                         | Same — opens as sheet overlay                                      |
+| `StylesPanel.tsx`                             | Same                                                               |
+| `PromptEditor.tsx`                            | Core editor — reused inside `CanvasPromptBar`                      |
+| `SpanBentoGrid`                               | Suggestion grid — still appears on span click                      |
+| `GenerationsPanel`                            | Video output display — becomes hero canvas content                 |
+| `CameraMotionSelector.tsx`                    | Motion list may be reused in `StartFramePopover` (extract options) |
+| All hooks in `GenerationControlsPanel/hooks/` | Business logic stays, UI changes                                   |
 
 ### 4.3 Store changes
+
 **File:** `client/src/features/prompt-optimizer/context/generationControlsStoreTypes.ts`
 
 No schema changes needed. The store already has:
+
 - `selectedModel: string`
 - `startFrame: KeyframeTile | null`
 - `cameraMotion: CameraPath | null`
@@ -375,15 +429,19 @@ All the new components read/write the same fields. The only new state is local U
 ## Phase 5: Polish + Cleanup
 
 ### 5.1 SpanBentoGrid positioning
+
 Currently the suggestion grid appears within the panel. In canvas-first mode, it should appear as a floating popover anchored below the active span in the prompt bar, or as a row above the prompt (as shown in the mockup's "ALT" suggestion strip).
 
 ### 5.2 Image mode
+
 The current `PanelHeader` has a video/image pill switcher. In canvas-first mode, this can move to the `CanvasTopBar` or become a keyboard shortcut. The image-specific components (`ImageTabContent`, `ImageSubTabSelector`, etc.) need equivalent canvas-first treatment — but this is a fast follow, not part of the initial refactor.
 
 ### 5.3 Continuity/sequence mode
+
 The `PromptResultsLayout` renders sequence-specific UI (`ShotVisualStrip`, `ContinuityIntentPicker`, etc.). These need to work within `CanvasWorkspace`. They're positioned above/below the canvas and should slot in naturally.
 
 ### 5.4 Delete feature flag
+
 Once stable, remove `CANVAS_FIRST_LAYOUT` flag and delete all Phase 4.1 components + the old `ToolPanel`.
 
 ---
@@ -416,37 +474,49 @@ These are the exact import paths for the data the new components need:
 
 ```ts
 // Store state
-import { useGenerationControlsStoreState, useGenerationControlsStoreActions } from '@/features/prompt-optimizer/context/GenerationControlsStore';
+import {
+  useGenerationControlsStoreState,
+  useGenerationControlsStoreActions,
+} from "@/features/prompt-optimizer/context/GenerationControlsStore";
 // → .domain.selectedModel, .domain.startFrame, .domain.cameraMotion, .domain.generationParams
 // → .setStartFrame(), .clearStartFrame(), .setCameraMotion(), .setSelectedModel()
 
 // Model config
-import { VIDEO_DRAFT_MODEL, VIDEO_RENDER_MODELS, VIDEO_DRAFT_MODELS, STORYBOARD_COST } from '@components/ToolSidebar/config/modelConfig';
+import {
+  VIDEO_DRAFT_MODEL,
+  VIDEO_RENDER_MODELS,
+  VIDEO_DRAFT_MODELS,
+  STORYBOARD_COST,
+} from "@components/ToolSidebar/config/modelConfig";
 
 // Capabilities (aspect ratio, duration options)
-import { useCapabilitiesClamping } from '@components/ToolSidebar/components/panels/GenerationControlsPanel/hooks/useCapabilitiesClamping';
+import { useCapabilitiesClamping } from "@components/ToolSidebar/components/panels/GenerationControlsPanel/hooks/useCapabilitiesClamping";
 
 // Model recommendation
-import { useModelSelectionRecommendation } from '@components/ToolSidebar/components/panels/GenerationControlsPanel/hooks/useModelSelectionRecommendation';
+import { useModelSelectionRecommendation } from "@components/ToolSidebar/components/panels/GenerationControlsPanel/hooks/useModelSelectionRecommendation";
 
 // Assets
-import { useSidebarAssetsDomain } from '@components/ToolSidebar/context';
+import { useSidebarAssetsDomain } from "@components/ToolSidebar/context";
 
 // Upload
-import { useSidebarData } from '@components/ToolSidebar/context';
+import { useSidebarData } from "@components/ToolSidebar/context";
 // → .assets.onStartFrameUpload, .assets.onImageUpload
 
 // Prompt state
-import { usePromptState, usePromptActions, usePromptServices } from '@/features/prompt-optimizer/context/PromptStateContext';
+import {
+  usePromptState,
+  usePromptActions,
+  usePromptServices,
+} from "@/features/prompt-optimizer/context/PromptStateContext";
 
 // Generation actions (for Preview trigger)
-import { useGenerationActions } from '@/features/prompt-optimizer/GenerationsPanel/hooks/useGenerationActions';
+import { useGenerationActions } from "@/features/prompt-optimizer/GenerationsPanel/hooks/useGenerationActions";
 
 // Keyframe workflow (for storyboard → start frame)
-import { useKeyframeWorkflow } from '@/features/prompt-optimizer/GenerationsPanel/hooks/useKeyframeWorkflow';
+import { useKeyframeWorkflow } from "@/features/prompt-optimizer/GenerationsPanel/hooks/useKeyframeWorkflow";
 
 // Camera motion modal (existing, for reference)
-import { useCameraMotionModalFlow } from '@components/ToolSidebar/components/panels/GenerationControlsPanel/hooks/useCameraMotionModalFlow';
+import { useCameraMotionModalFlow } from "@components/ToolSidebar/components/panels/GenerationControlsPanel/hooks/useCameraMotionModalFlow";
 ```
 
 ---

@@ -1,6 +1,6 @@
-import { EventEmitter } from 'events';
-import type { Request } from 'express';
-import { vi } from 'vitest';
+import { EventEmitter } from "events";
+import type { Request } from "express";
+import { vi } from "vitest";
 
 export interface ParsedSseEvent {
   event: string;
@@ -16,14 +16,23 @@ export interface MockSseResponse {
   writableEnded: boolean;
   writable: boolean;
   destroyed: boolean;
-  setHeader: (name: string, value: string | number | readonly string[]) => MockSseResponse;
+  setHeader: (
+    name: string,
+    value: string | number | readonly string[],
+  ) => MockSseResponse;
   write: (chunk: string) => boolean;
   flushHeaders?: () => void;
   end: () => MockSseResponse;
   status: (code: number) => MockSseResponse;
   json: (payload: unknown) => MockSseResponse;
-  on: (event: string, listener: (...args: unknown[]) => void) => MockSseResponse;
-  removeListener: (event: string, listener: (...args: unknown[]) => void) => MockSseResponse;
+  on: (
+    event: string,
+    listener: (...args: unknown[]) => void,
+  ) => MockSseResponse;
+  removeListener: (
+    event: string,
+    listener: (...args: unknown[]) => void,
+  ) => MockSseResponse;
   emitClose: () => void;
 }
 
@@ -41,10 +50,12 @@ export function createMockSseResponse(): MockSseResponse {
     writableEnded: false,
     writable: true,
     destroyed: false,
-    setHeader: vi.fn((name: string, value: string | number | readonly string[]) => {
-      headersMap[name] = String(value);
-      return res;
-    }),
+    setHeader: vi.fn(
+      (name: string, value: string | number | readonly string[]) => {
+        headersMap[name] = String(value);
+        return res;
+      },
+    ),
     write: vi.fn((chunk: string) => {
       chunks.push(String(chunk));
       res.headersSent = true;
@@ -71,12 +82,14 @@ export function createMockSseResponse(): MockSseResponse {
       emitter.on(event, listener);
       return res;
     }),
-    removeListener: vi.fn((event: string, listener: (...args: unknown[]) => void) => {
-      emitter.removeListener(event, listener);
-      return res;
-    }),
+    removeListener: vi.fn(
+      (event: string, listener: (...args: unknown[]) => void) => {
+        emitter.removeListener(event, listener);
+        return res;
+      },
+    ),
     emitClose: () => {
-      emitter.emit('close');
+      emitter.emit("close");
     },
   };
 
@@ -85,14 +98,14 @@ export function createMockSseResponse(): MockSseResponse {
 
 export function createMockSseRequest(
   body: Record<string, unknown>,
-  overrides: Partial<Request> = {}
+  overrides: Partial<Request> = {},
 ): Request {
   const emitter = new EventEmitter();
   const req = emitter as unknown as Request;
   Object.assign(req, {
     body,
     headers: {},
-    id: 'req-test-1',
+    id: "req-test-1",
     on: emitter.on.bind(emitter),
     removeListener: emitter.removeListener.bind(emitter),
     ...overrides,
@@ -102,16 +115,16 @@ export function createMockSseRequest(
 
 export function parseSseEvents(chunks: string[]): ParsedSseEvent[] {
   const events: ParsedSseEvent[] = [];
-  let currentEvent = 'message';
+  let currentEvent = "message";
 
   for (const chunk of chunks) {
-    const lines = String(chunk).split('\n');
+    const lines = String(chunk).split("\n");
     for (const line of lines) {
-      if (line.startsWith('event: ')) {
+      if (line.startsWith("event: ")) {
         currentEvent = line.slice(7).trim();
         continue;
       }
-      if (!line.startsWith('data: ')) {
+      if (!line.startsWith("data: ")) {
         continue;
       }
 

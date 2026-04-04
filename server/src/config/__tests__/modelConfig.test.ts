@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from "vitest";
 import {
   DEFAULT_CONFIG,
   ModelConfig,
@@ -7,43 +7,43 @@ import {
   listOperations,
   shouldUseDeveloperMessage,
   shouldUseSeed,
-} from '../modelConfig';
+} from "../modelConfig";
 
-describe('modelConfig', () => {
-  it('returns operation-specific config when available', () => {
-    const config = getModelConfig('optimize_standard');
+describe("modelConfig", () => {
+  it("returns operation-specific config when available", () => {
+    const config = getModelConfig("optimize_standard");
 
     expect(config).toBe(ModelConfig.optimize_standard);
     expect(config.model).toBeDefined();
   });
 
-  it('returns DEFAULT_CONFIG when operation is missing', () => {
-    const config = getModelConfig('missing_operation');
+  it("returns DEFAULT_CONFIG when operation is missing", () => {
+    const config = getModelConfig("missing_operation");
 
     expect(config).toBe(DEFAULT_CONFIG);
   });
 
-  it('lists configured operations', () => {
+  it("lists configured operations", () => {
     const operations = listOperations();
 
     expect(operations.length).toBeGreaterThan(0);
-    expect(operations).toContain('optimize_standard');
-    expect(operations).toContain('span_labeling');
-    expect(operations).toContain('video_prompt_ir_extraction');
-    expect(operations).toContain('video_prompt_rewrite');
+    expect(operations).toContain("optimize_standard");
+    expect(operations).toContain("span_labeling");
+    expect(operations).toContain("video_prompt_ir_extraction");
+    expect(operations).toContain("video_prompt_rewrite");
   });
 
-  it('reports seed and developer message flags from operation config', () => {
-    expect(shouldUseSeed('optimize_mode_detection')).toBe(true);
-    expect(shouldUseSeed('video_scene_variation')).toBe(false);
-    expect(shouldUseDeveloperMessage('optimize_standard')).toBe(true);
-    expect(shouldUseDeveloperMessage('video_scene_variation')).toBe(false);
+  it("reports seed and developer message flags from operation config", () => {
+    expect(shouldUseSeed("optimize_mode_detection")).toBe(true);
+    expect(shouldUseSeed("video_scene_variation")).toBe(false);
+    expect(shouldUseDeveloperMessage("optimize_standard")).toBe(true);
+    expect(shouldUseDeveloperMessage("video_scene_variation")).toBe(false);
   });
 
-  it('exports expected video model identifiers', () => {
+  it("exports expected video model identifiers", () => {
     expect(VIDEO_MODELS.DRAFT).toBeDefined();
     expect(VIDEO_MODELS.PRO).toBeDefined();
-    expect(VIDEO_MODELS.SORA_2).toBe('sora-2');
-    expect(VIDEO_MODELS.VEO_3).toBe('google/veo-3');
+    expect(VIDEO_MODELS.SORA_2).toBe("sora-2");
+    expect(VIDEO_MODELS.VEO_3).toBe("google/veo-3");
   });
 });

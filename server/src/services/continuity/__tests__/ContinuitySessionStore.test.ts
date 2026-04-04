@@ -1,19 +1,26 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { ContinuitySession } from '../types';
-import { serializeContinuitySession } from '../continuitySerialization';
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { ContinuitySession } from "../types";
+import { serializeContinuitySession } from "../continuitySerialization";
 
 type StoreRecord = Record<string, unknown>;
 
 const applyPatch = (current: StoreRecord, patch: StoreRecord): StoreRecord => {
   const next = { ...current };
   for (const [key, value] of Object.entries(patch)) {
-    if ((value as { _methodName?: string } | undefined)?._methodName === 'FieldValue.serverTimestamp') {
+    if (
+      (value as { _methodName?: string } | undefined)?._methodName ===
+      "FieldValue.serverTimestamp"
+    ) {
       next[key] = Date.now();
       continue;
     }
-    if ((value as { _methodName?: string; operand?: number } | undefined)?._methodName === 'FieldValue.increment') {
+    if (
+      (value as { _methodName?: string; operand?: number } | undefined)
+        ?._methodName === "FieldValue.increment"
+    ) {
       const previous = Number(next[key] ?? 0);
-      next[key] = previous + Number((value as { operand?: number }).operand ?? 0);
+      next[key] =
+        previous + Number((value as { operand?: number }).operand ?? 0);
       continue;
     }
     next[key] = value;
@@ -32,8 +39,11 @@ const mocks = vi.hoisted(() => ({
     findContinuityByUser: vi.fn(),
     delete: vi.fn(),
   },
-  serverTimestamp: vi.fn(() => ({ _methodName: 'FieldValue.serverTimestamp' })),
-  increment: vi.fn((operand: number) => ({ _methodName: 'FieldValue.increment', operand })),
+  serverTimestamp: vi.fn(() => ({ _methodName: "FieldValue.serverTimestamp" })),
+  increment: vi.fn((operand: number) => ({
+    _methodName: "FieldValue.increment",
+    operand,
+  })),
 }));
 
 const createLegacyDocRef = (id: string) => ({
@@ -58,11 +68,11 @@ const createLegacyDocRef = (id: string) => ({
   },
 });
 
-vi.mock('@services/sessions/SessionStore', () => ({
+vi.mock("@services/sessions/SessionStore", () => ({
   SessionStore: vi.fn().mockImplementation(() => mocks.sessionStore),
 }));
 
-vi.mock('@infrastructure/firebaseAdmin', () => ({
+vi.mock("@infrastructure/firebaseAdmin", () => ({
   admin: {
     firestore: {
       FieldValue: {
@@ -73,7 +83,7 @@ vi.mock('@infrastructure/firebaseAdmin', () => ({
   },
   getFirestore: () => ({
     collection: (name: string) => {
-      if (name !== 'continuity_sessions') {
+      if (name !== "continuity_sessions") {
         throw new Error(`Unexpected collection: ${name}`);
       }
       return {
@@ -102,7 +112,7 @@ vi.mock('@infrastructure/firebaseAdmin', () => ({
         set: (
           docRef: ReturnType<typeof createLegacyDocRef>,
           data: StoreRecord,
-          options?: { merge?: boolean }
+          options?: { merge?: boolean },
         ) => docRef.set(data, options),
       };
       await fn(tx);
@@ -113,38 +123,41 @@ vi.mock('@infrastructure/firebaseAdmin', () => ({
 import {
   ContinuitySessionStore,
   ContinuitySessionVersionMismatchError,
-} from '../ContinuitySessionStore';
+} from "../ContinuitySessionStore";
 
-const buildSession = (overrides: Partial<ContinuitySession> = {}): ContinuitySession => ({
-  id: 'session-1',
-  userId: 'user-1',
-  name: 'Session',
+const buildSession = (
+  overrides: Partial<ContinuitySession> = {},
+): ContinuitySession => ({
+  id: "session-1",
+  userId: "user-1",
+  name: "Session",
   primaryStyleReference: {
-    id: 'style-1',
-    sourceVideoId: 'video-1',
+    id: "style-1",
+    sourceVideoId: "video-1",
     sourceFrameIndex: 0,
-    frameUrl: 'https://example.com/style.png',
+    frameUrl: "https://example.com/style.png",
     frameTimestamp: 0,
     resolution: { width: 1920, height: 1080 },
-    aspectRatio: '16:9',
-    extractedAt: new Date('2026-01-01T00:00:00.000Z'),
+    aspectRatio: "16:9",
+    extractedAt: new Date("2026-01-01T00:00:00.000Z"),
   },
   shots: [],
   defaultSettings: {
-    generationMode: 'continuity',
-    defaultContinuityMode: 'frame-bridge',
+    generationMode: "continuity",
+    defaultContinuityMode: "frame-bridge",
     defaultStyleStrength: 0.6,
-    defaultModel: 'model-a' as ContinuitySession['defaultSettings']['defaultModel'],
+    defaultModel:
+      "model-a" as ContinuitySession["defaultSettings"]["defaultModel"],
     autoExtractFrameBridge: false,
     useCharacterConsistency: false,
   },
-  status: 'active',
-  createdAt: new Date('2026-01-01T00:00:00.000Z'),
-  updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+  status: "active",
+  createdAt: new Date("2026-01-01T00:00:00.000Z"),
+  updatedAt: new Date("2026-01-01T00:00:00.000Z"),
   ...overrides,
 });
 
-describe('ContinuitySessionStore', () => {
+describe("ContinuitySessionStore", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.legacyRecords.clear();
@@ -154,11 +167,11 @@ describe('ContinuitySessionStore', () => {
     mocks.sessionStore.saveInTransaction.mockImplementation(
       (_tx: unknown, session: { id: string; [key: string]: unknown }) => {
         mocks.unifiedRecords.set(session.id, session as unknown as StoreRecord);
-      }
+      },
     );
   });
 
-  it('saves new sessions to unified and legacy stores in a single transaction', async () => {
+  it("saves new sessions to unified and legacy stores in a single transaction", async () => {
     const store = new ContinuitySessionStore();
     const session = buildSession();
 
@@ -166,7 +179,7 @@ describe('ContinuitySessionStore', () => {
 
     const legacy = mocks.legacyRecords.get(session.id);
     expect(legacy).toBeDefined();
-    expect(legacy?.userId).toBe('user-1');
+    expect(legacy?.userId).toBe("user-1");
     expect(legacy?.version).toBe(1);
     expect(mocks.sessionStore.saveInTransaction).toHaveBeenCalledWith(
       expect.anything(),
@@ -174,12 +187,12 @@ describe('ContinuitySessionStore', () => {
         id: session.id,
         hasContinuity: true,
         continuity: session,
-      })
+      }),
     );
     expect(mocks.unifiedRecords.has(session.id)).toBe(true);
   });
 
-  it('increments legacy version when saving existing sessions', async () => {
+  it("increments legacy version when saving existing sessions", async () => {
     const store = new ContinuitySessionStore();
     const session = buildSession();
     mocks.legacyRecords.set(session.id, {
@@ -195,7 +208,7 @@ describe('ContinuitySessionStore', () => {
     expect(mocks.sessionStore.saveInTransaction).toHaveBeenCalled();
   });
 
-  it('supports optimistic versioned save and rejects mismatches', async () => {
+  it("supports optimistic versioned save and rejects mismatches", async () => {
     const store = new ContinuitySessionStore();
     const session = buildSession();
 
@@ -209,11 +222,11 @@ describe('ContinuitySessionStore', () => {
     await expect(store.saveWithVersion(session, 1)).resolves.toBe(2);
 
     await expect(store.saveWithVersion(session, 1)).rejects.toBeInstanceOf(
-      ContinuitySessionVersionMismatchError
+      ContinuitySessionVersionMismatchError,
     );
   });
 
-  it('does not commit unified write when versioned save fails', async () => {
+  it("does not commit unified write when versioned save fails", async () => {
     const store = new ContinuitySessionStore();
     const session = buildSession();
 
@@ -230,7 +243,7 @@ describe('ContinuitySessionStore', () => {
     });
 
     await expect(store.saveWithVersion(session, 1)).rejects.toBeInstanceOf(
-      ContinuitySessionVersionMismatchError
+      ContinuitySessionVersionMismatchError,
     );
 
     // The version check throws before saveInTransaction is called,
@@ -239,13 +252,13 @@ describe('ContinuitySessionStore', () => {
     expect(mocks.sessionStore.saveInTransaction).not.toHaveBeenCalled();
   });
 
-  it('returns unified continuity session when available', async () => {
+  it("returns unified continuity session when available", async () => {
     const store = new ContinuitySessionStore();
     const session = buildSession();
     mocks.sessionStore.get.mockResolvedValueOnce({
       id: session.id,
       userId: session.userId,
-      status: 'active',
+      status: "active",
       createdAt: session.createdAt,
       updatedAt: session.updatedAt,
       continuity: session,
@@ -257,7 +270,7 @@ describe('ContinuitySessionStore', () => {
     expect(result).toBe(session);
   });
 
-  it('falls back to legacy get and backfills unified store', async () => {
+  it("falls back to legacy get and backfills unified store", async () => {
     const store = new ContinuitySessionStore();
     const session = buildSession();
 
@@ -273,11 +286,11 @@ describe('ContinuitySessionStore', () => {
     expect(result?.id).toBe(session.id);
     expect(result?.version).toBe(2);
     expect(mocks.sessionStore.save).toHaveBeenCalledWith(
-      expect.objectContaining({ id: session.id, hasContinuity: true })
+      expect.objectContaining({ id: session.id, hasContinuity: true }),
     );
   });
 
-  it('uses unified findByUser first and falls back to legacy with backfill', async () => {
+  it("uses unified findByUser first and falls back to legacy with backfill", async () => {
     const store = new ContinuitySessionStore();
     const session = buildSession();
 
@@ -285,7 +298,7 @@ describe('ContinuitySessionStore', () => {
       {
         id: session.id,
         userId: session.userId,
-        status: 'active',
+        status: "active",
         createdAt: session.createdAt,
         updatedAt: session.updatedAt,
         continuity: session,
@@ -296,8 +309,8 @@ describe('ContinuitySessionStore', () => {
     await expect(store.findByUser(session.userId)).resolves.toEqual([session]);
 
     mocks.sessionStore.findContinuityByUser.mockResolvedValueOnce([]);
-    mocks.legacyRecords.set('legacy-1', {
-      ...serializeContinuitySession(buildSession({ id: 'legacy-1' })),
+    mocks.legacyRecords.set("legacy-1", {
+      ...serializeContinuitySession(buildSession({ id: "legacy-1" })),
       createdAtMs: session.createdAt.getTime(),
       updatedAtMs: session.updatedAt.getTime(),
       version: 1,
@@ -306,13 +319,13 @@ describe('ContinuitySessionStore', () => {
     const fallback = await store.findByUser(session.userId);
 
     expect(fallback).toHaveLength(1);
-    expect(fallback[0]?.id).toBe('legacy-1');
+    expect(fallback[0]?.id).toBe("legacy-1");
     expect(mocks.sessionStore.save).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 'legacy-1', hasContinuity: true })
+      expect.objectContaining({ id: "legacy-1", hasContinuity: true }),
     );
   });
 
-  it('deletes from legacy and unified stores', async () => {
+  it("deletes from legacy and unified stores", async () => {
     const store = new ContinuitySessionStore();
     const session = buildSession();
     mocks.legacyRecords.set(session.id, {

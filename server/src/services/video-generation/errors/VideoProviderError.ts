@@ -1,6 +1,12 @@
-import { DomainError } from '@server/errors/DomainError';
+import { DomainError } from "@server/errors/DomainError";
 
-type VideoProviderErrorCategory = 'provider' | 'timeout' | 'validation' | 'auth' | 'rate_limit' | 'unknown';
+type VideoProviderErrorCategory =
+  | "provider"
+  | "timeout"
+  | "validation"
+  | "auth"
+  | "rate_limit"
+  | "unknown";
 
 interface VideoProviderErrorOptions {
   provider: string;
@@ -20,14 +26,14 @@ interface ErrorWithCode {
 }
 
 function coerceNumber(value: unknown): number | undefined {
-  if (typeof value === 'number' && Number.isFinite(value)) {
+  if (typeof value === "number" && Number.isFinite(value)) {
     return Math.trunc(value);
   }
   return undefined;
 }
 
 function extractStatusCode(error: unknown): number | undefined {
-  if (!error || typeof error !== 'object') {
+  if (!error || typeof error !== "object") {
     return undefined;
   }
   const typed = error as ErrorWithCode;
@@ -35,77 +41,97 @@ function extractStatusCode(error: unknown): number | undefined {
 }
 
 function extractCode(error: unknown): string | undefined {
-  if (!error || typeof error !== 'object') {
+  if (!error || typeof error !== "object") {
     return undefined;
   }
   const code = (error as ErrorWithCode).code;
-  return typeof code === 'string' && code.trim().length > 0 ? code : undefined;
+  return typeof code === "string" && code.trim().length > 0 ? code : undefined;
 }
 
 function normalizeMessage(error: unknown): string {
   if (error instanceof Error) {
     return error.message;
   }
-  if (!error || typeof error !== 'object') {
+  if (!error || typeof error !== "object") {
     return String(error);
   }
   const message = (error as ErrorWithCode).message;
-  if (typeof message === 'string') {
+  if (typeof message === "string") {
     return message;
   }
   return String(error);
 }
 
-function categorize(statusCode: number | undefined, message: string): VideoProviderErrorCategory {
+function categorize(
+  statusCode: number | undefined,
+  message: string,
+): VideoProviderErrorCategory {
   const lowered = message.toLowerCase();
 
-  if (statusCode === 401 || statusCode === 403 || lowered.includes('unauthorized') || lowered.includes('forbidden')) {
-    return 'auth';
+  if (
+    statusCode === 401 ||
+    statusCode === 403 ||
+    lowered.includes("unauthorized") ||
+    lowered.includes("forbidden")
+  ) {
+    return "auth";
   }
-  if (statusCode === 429 || lowered.includes('rate limit') || lowered.includes('too many requests')) {
-    return 'rate_limit';
+  if (
+    statusCode === 429 ||
+    lowered.includes("rate limit") ||
+    lowered.includes("too many requests")
+  ) {
+    return "rate_limit";
   }
   if (
     statusCode === 400 ||
     statusCode === 404 ||
     statusCode === 422 ||
-    lowered.includes('invalid') ||
-    lowered.includes('unsupported') ||
-    lowered.includes('validation')
+    lowered.includes("invalid") ||
+    lowered.includes("unsupported") ||
+    lowered.includes("validation")
   ) {
-    return 'validation';
+    return "validation";
   }
   if (
-    lowered.includes('timeout') ||
-    lowered.includes('timed out') ||
-    lowered.includes('deadline exceeded') ||
-    lowered.includes('etimedout')
+    lowered.includes("timeout") ||
+    lowered.includes("timed out") ||
+    lowered.includes("deadline exceeded") ||
+    lowered.includes("etimedout")
   ) {
-    return 'timeout';
+    return "timeout";
   }
-  if (typeof statusCode === 'number' && statusCode >= 500) {
-    return 'provider';
+  if (typeof statusCode === "number" && statusCode >= 500) {
+    return "provider";
   }
-  return 'unknown';
+  return "unknown";
 }
 
-function isRetryable(category: VideoProviderErrorCategory, statusCode: number | undefined): boolean {
-  if (category === 'validation' || category === 'auth') {
+function isRetryable(
+  category: VideoProviderErrorCategory,
+  statusCode: number | undefined,
+): boolean {
+  if (category === "validation" || category === "auth") {
     return false;
   }
-  if (typeof statusCode === 'number' && statusCode >= 400 && statusCode < 500 && statusCode !== 429) {
+  if (
+    typeof statusCode === "number" &&
+    statusCode >= 400 &&
+    statusCode < 500 &&
+    statusCode !== 429
+  ) {
     return false;
   }
   return true;
 }
 
 const CATEGORY_CODES: Record<VideoProviderErrorCategory, string> = {
-  auth: 'VIDEO_PROVIDER_AUTH',
-  rate_limit: 'VIDEO_PROVIDER_RATE_LIMIT',
-  validation: 'VIDEO_PROVIDER_VALIDATION',
-  timeout: 'VIDEO_PROVIDER_TIMEOUT',
-  provider: 'VIDEO_PROVIDER_ERROR',
-  unknown: 'VIDEO_PROVIDER_ERROR',
+  auth: "VIDEO_PROVIDER_AUTH",
+  rate_limit: "VIDEO_PROVIDER_RATE_LIMIT",
+  validation: "VIDEO_PROVIDER_VALIDATION",
+  timeout: "VIDEO_PROVIDER_TIMEOUT",
+  provider: "VIDEO_PROVIDER_ERROR",
+  unknown: "VIDEO_PROVIDER_ERROR",
 };
 
 const CATEGORY_HTTP_STATUS: Record<VideoProviderErrorCategory, number> = {
@@ -118,12 +144,12 @@ const CATEGORY_HTTP_STATUS: Record<VideoProviderErrorCategory, number> = {
 };
 
 const CATEGORY_USER_MESSAGE: Record<VideoProviderErrorCategory, string> = {
-  auth: 'Authentication failed with video provider.',
-  rate_limit: 'Video provider rate limit reached. Please try again later.',
-  validation: 'Invalid video generation request.',
-  timeout: 'Video generation timed out. Please try again.',
-  provider: 'Video generation failed. Please try again.',
-  unknown: 'Video generation failed. Please try again.',
+  auth: "Authentication failed with video provider.",
+  rate_limit: "Video provider rate limit reached. Please try again later.",
+  validation: "Invalid video generation request.",
+  timeout: "Video generation timed out. Please try again.",
+  provider: "Video generation failed. Please try again.",
+  unknown: "Video generation failed. Please try again.",
 };
 
 export class VideoProviderError extends DomainError {
@@ -136,16 +162,22 @@ export class VideoProviderError extends DomainError {
   override readonly cause: unknown;
 
   constructor(options: VideoProviderErrorOptions) {
-    const category = options.category ?? categorize(options.statusCode, options.message);
-    const retryable = options.retryable ?? isRetryable(category, options.statusCode);
+    const category =
+      options.category ?? categorize(options.statusCode, options.message);
+    const retryable =
+      options.retryable ?? isRetryable(category, options.statusCode);
     super(options.message, {
       provider: options.provider,
       category,
       retryable,
-      ...(options.providerCode !== undefined ? { providerCode: options.providerCode } : {}),
-      ...(options.statusCode !== undefined ? { statusCode: options.statusCode } : {}),
+      ...(options.providerCode !== undefined
+        ? { providerCode: options.providerCode }
+        : {}),
+      ...(options.statusCode !== undefined
+        ? { statusCode: options.statusCode }
+        : {}),
     });
-    this.name = 'VideoProviderError';
+    this.name = "VideoProviderError";
     this.provider = options.provider;
     this.statusCode = options.statusCode;
     this.providerCode = options.providerCode;
@@ -164,11 +196,16 @@ export class VideoProviderError extends DomainError {
   }
 }
 
-export function isVideoProviderError(error: unknown): error is VideoProviderError {
+export function isVideoProviderError(
+  error: unknown,
+): error is VideoProviderError {
   return error instanceof VideoProviderError;
 }
 
-export function toVideoProviderError(error: unknown, provider: string): VideoProviderError {
+export function toVideoProviderError(
+  error: unknown,
+  provider: string,
+): VideoProviderError {
   if (isVideoProviderError(error)) {
     return error;
   }
@@ -180,7 +217,7 @@ export function toVideoProviderError(error: unknown, provider: string): VideoPro
   return new VideoProviderError({
     provider,
     message,
-    ...(typeof statusCode === 'number' ? { statusCode } : {}),
+    ...(typeof statusCode === "number" ? { statusCode } : {}),
     ...(providerCode ? { providerCode } : {}),
     cause: error,
   });

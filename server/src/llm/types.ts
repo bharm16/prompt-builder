@@ -2,8 +2,8 @@
  * Types for LLM services
  */
 
-import type { ExecuteParams } from '@services/ai-model/AIModelService';
-import type { AIResponse } from '@interfaces/IAIClient';
+import type { ExecuteParams } from "@services/ai-model/AIModelService";
+import type { AIResponse } from "@interfaces/IAIClient";
 
 /**
  * Input span for role classification

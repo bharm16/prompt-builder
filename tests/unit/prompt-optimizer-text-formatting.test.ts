@@ -1,31 +1,31 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from "vitest";
 
 import {
   escapeHTMLForMLHighlighting,
   formatTextToHTML,
-} from '@features/prompt-optimizer/utils/textFormatting';
+} from "@features/prompt-optimizer/utils/textFormatting";
 
-describe('textFormatting', () => {
-  it('escapes HTML and strips inline event handlers', () => {
+describe("textFormatting", () => {
+  it("escapes HTML and strips inline event handlers", () => {
     const result = escapeHTMLForMLHighlighting(
-      '<div onclick="alert(1)">Hello & bye</div>'
+      '<div onclick="alert(1)">Hello & bye</div>',
     );
 
-    expect(result).toContain('&lt;div');
-    expect(result).toContain('Hello &amp; bye');
-    expect(result).not.toContain('onclick');
+    expect(result).toContain("&lt;div");
+    expect(result).toContain("Hello &amp; bye");
+    expect(result).not.toContain("onclick");
   });
 
-  it('wraps escaped text in ML highlighting container', () => {
-    const result = escapeHTMLForMLHighlighting('Test');
+  it("wraps escaped text in ML highlighting container", () => {
+    const result = escapeHTMLForMLHighlighting("Test");
 
-    expect(result).toContain('whitespace-pre-wrap');
-    expect(result).toContain('Test');
+    expect(result).toContain("whitespace-pre-wrap");
+    expect(result).toContain("Test");
   });
 
-  it('formatTextToHTML returns HTML payload', () => {
-    const payload = formatTextToHTML('Line 1');
+  it("formatTextToHTML returns HTML payload", () => {
+    const payload = formatTextToHTML("Line 1");
 
-    expect(payload).toEqual({ html: expect.stringContaining('Line 1') });
+    expect(payload).toEqual({ html: expect.stringContaining("Line 1") });
   });
 });

@@ -1,18 +1,21 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
-import { SpanBentoGrid } from '@features/prompt-optimizer/SpanBentoGrid/SpanBentoGrid';
-import { useSpanGrouping } from '@features/prompt-optimizer/SpanBentoGrid/hooks/useSpanGrouping';
-import { scrollToSpan } from '@features/prompt-optimizer/SpanBentoGrid/utils/spanFormatting';
-import { TAXONOMY } from '@shared/taxonomy';
-import type { Span } from '@features/prompt-optimizer/SpanBentoGrid/components/types';
+import { SpanBentoGrid } from "@features/prompt-optimizer/SpanBentoGrid/SpanBentoGrid";
+import { useSpanGrouping } from "@features/prompt-optimizer/SpanBentoGrid/hooks/useSpanGrouping";
+import { scrollToSpan } from "@features/prompt-optimizer/SpanBentoGrid/utils/spanFormatting";
+import { TAXONOMY } from "@shared/taxonomy";
+import type { Span } from "@features/prompt-optimizer/SpanBentoGrid/components/types";
 
-vi.mock('@features/prompt-optimizer/SpanBentoGrid/hooks/useSpanGrouping', () => ({
-  useSpanGrouping: vi.fn(),
-}));
+vi.mock(
+  "@features/prompt-optimizer/SpanBentoGrid/hooks/useSpanGrouping",
+  () => ({
+    useSpanGrouping: vi.fn(),
+  }),
+);
 
-vi.mock('@features/prompt-optimizer/SpanBentoGrid/components/BentoBox', () => ({
+vi.mock("@features/prompt-optimizer/SpanBentoGrid/components/BentoBox", () => ({
   BentoBox: ({
     category,
     spans,
@@ -29,8 +32,8 @@ vi.mock('@features/prompt-optimizer/SpanBentoGrid/components/BentoBox', () => ({
     <button
       type="button"
       data-testid={`bento-${category}`}
-      data-expanded={defaultExpanded ? 'true' : 'false'}
-      data-has-hover={onSpanHoverChange ? 'true' : 'false'}
+      data-expanded={defaultExpanded ? "true" : "false"}
+      data-has-hover={onSpanHoverChange ? "true" : "false"}
       onClick={() => spans[0] && onSpanClick(spans[0])}
     >
       {category}
@@ -38,21 +41,30 @@ vi.mock('@features/prompt-optimizer/SpanBentoGrid/components/BentoBox', () => ({
   ),
 }));
 
-vi.mock('@features/prompt-optimizer/SpanBentoGrid/utils/spanFormatting', () => ({
-  scrollToSpan: vi.fn(),
-}));
+vi.mock(
+  "@features/prompt-optimizer/SpanBentoGrid/utils/spanFormatting",
+  () => ({
+    scrollToSpan: vi.fn(),
+  }),
+);
 
 const mockUseSpanGrouping = vi.mocked(useSpanGrouping);
 const mockScrollToSpan = vi.mocked(scrollToSpan);
 
-describe('SpanBentoGrid', () => {
+describe("SpanBentoGrid", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  describe('error handling', () => {
-    it('omits hover handlers when onSpanHoverChange is not provided', () => {
-      const span: Span = { id: 'span-1', quote: 'hello', start: 0, end: 5, category: TAXONOMY.SHOT.id };
+  describe("error handling", () => {
+    it("omits hover handlers when onSpanHoverChange is not provided", () => {
+      const span: Span = {
+        id: "span-1",
+        quote: "hello",
+        start: 0,
+        end: 5,
+        category: TAXONOMY.SHOT.id,
+      };
       mockUseSpanGrouping.mockReturnValue({
         groups: {
           [TAXONOMY.SHOT.id]: [span],
@@ -66,20 +78,26 @@ describe('SpanBentoGrid', () => {
       render(
         <SpanBentoGrid
           spans={[span]}
-          editorRef={{ current: document.createElement('div') }}
-        />
+          editorRef={{ current: document.createElement("div") }}
+        />,
       );
 
       expect(screen.getByTestId(`bento-${TAXONOMY.SHOT.id}`)).toHaveAttribute(
-        'data-has-hover',
-        'false'
+        "data-has-hover",
+        "false",
       );
     });
   });
 
-  describe('edge cases', () => {
-    it('passes defaultExpanded for shot and subject categories', () => {
-      const span: Span = { id: 'span-1', quote: 'hello', start: 0, end: 5, category: TAXONOMY.SHOT.id };
+  describe("edge cases", () => {
+    it("passes defaultExpanded for shot and subject categories", () => {
+      const span: Span = {
+        id: "span-1",
+        quote: "hello",
+        start: 0,
+        end: 5,
+        category: TAXONOMY.SHOT.id,
+      };
       mockUseSpanGrouping.mockReturnValue({
         groups: {
           [TAXONOMY.SHOT.id]: [span],
@@ -93,26 +111,31 @@ describe('SpanBentoGrid', () => {
       render(
         <SpanBentoGrid
           spans={[span]}
-          editorRef={{ current: document.createElement('div') }}
-        />
+          editorRef={{ current: document.createElement("div") }}
+        />,
       );
 
       expect(screen.getByTestId(`bento-${TAXONOMY.SHOT.id}`)).toHaveAttribute(
-        'data-expanded',
-        'true'
+        "data-expanded",
+        "true",
       );
-      expect(screen.getByTestId(`bento-${TAXONOMY.SUBJECT.id}`)).toHaveAttribute(
-        'data-expanded',
-        'true'
-      );
+      expect(
+        screen.getByTestId(`bento-${TAXONOMY.SUBJECT.id}`),
+      ).toHaveAttribute("data-expanded", "true");
     });
   });
 
-  describe('core behavior', () => {
-    it('calls scrollToSpan when a span is clicked', async () => {
+  describe("core behavior", () => {
+    it("calls scrollToSpan when a span is clicked", async () => {
       const user = userEvent.setup();
-      const span: Span = { id: 'span-1', quote: 'hello', start: 0, end: 5, category: TAXONOMY.SHOT.id };
-      const editorRef = { current: document.createElement('div') };
+      const span: Span = {
+        id: "span-1",
+        quote: "hello",
+        start: 0,
+        end: 5,
+        category: TAXONOMY.SHOT.id,
+      };
+      const editorRef = { current: document.createElement("div") };
 
       mockUseSpanGrouping.mockReturnValue({
         groups: {
@@ -124,12 +147,7 @@ describe('SpanBentoGrid', () => {
         hierarchyInfo: null,
       });
 
-      render(
-        <SpanBentoGrid
-          spans={[span]}
-          editorRef={editorRef}
-        />
-      );
+      render(<SpanBentoGrid spans={[span]} editorRef={editorRef} />);
 
       await user.click(screen.getByTestId(`bento-${TAXONOMY.SHOT.id}`));
 

@@ -1,6 +1,10 @@
-export type SessionStatus = 'active' | 'completed' | 'archived';
+export type SessionStatus = "active" | "completed" | "archived";
 
-export type SessionPromptKeyframeSource = 'upload' | 'library' | 'generation' | 'asset';
+export type SessionPromptKeyframeSource =
+  | "upload"
+  | "library"
+  | "generation"
+  | "asset";
 
 export interface SessionPromptKeyframe {
   id?: string;
@@ -14,7 +18,7 @@ export interface SessionPromptKeyframe {
 export interface SessionPromptVersionEdit {
   timestamp: string;
   delta?: number;
-  source?: 'manual' | 'suggestion' | 'unknown';
+  source?: "manual" | "suggestion" | "unknown";
 }
 
 export interface SessionPromptVersionPreview {
@@ -65,8 +69,12 @@ export interface SessionPrompt {
   versions?: SessionPromptVersionEntry[];
 }
 
-export type SessionGenerationMode = 'continuity' | 'standard';
-export type SessionContinuityMode = 'frame-bridge' | 'style-match' | 'native' | 'none';
+export type SessionGenerationMode = "continuity" | "standard";
+export type SessionContinuityMode =
+  | "frame-bridge"
+  | "style-match"
+  | "native"
+  | "none";
 
 export interface SessionStyleReference {
   id: string;
@@ -76,12 +84,14 @@ export interface SessionStyleReference {
   frameTimestamp: number;
   resolution: { width: number; height: number };
   aspectRatio: string;
-  analysisMetadata?: {
-    dominantColors: string[];
-    lightingDescription: string;
-    moodDescription: string;
-    confidence: number;
-  } | undefined;
+  analysisMetadata?:
+    | {
+        dominantColors: string[];
+        lightingDescription: string;
+        moodDescription: string;
+        confidence: number;
+      }
+    | undefined;
   extractedAt?: string | undefined;
 }
 
@@ -90,7 +100,7 @@ export interface SessionFrameBridge {
   sourceVideoId: string;
   sourceShotId: string;
   frameUrl: string;
-  framePosition: 'first' | 'last' | 'representative';
+  framePosition: "first" | "last" | "representative";
   frameTimestamp: number;
   resolution: { width: number; height: number };
   aspectRatio: string;
@@ -117,12 +127,14 @@ export interface SessionContinuityShot {
   frameBridge?: SessionFrameBridge | undefined;
   characterAssetId?: string | undefined;
   faceStrength?: number | undefined;
-  camera?: {
-    yaw?: number | undefined;
-    pitch?: number | undefined;
-    roll?: number | undefined;
-    dolly?: number | undefined;
-  } | undefined;
+  camera?:
+    | {
+        yaw?: number | undefined;
+        pitch?: number | undefined;
+        roll?: number | undefined;
+        dolly?: number | undefined;
+      }
+    | undefined;
   modelId: string;
   seedInfo?: SessionSeedInfo | undefined;
   inheritedSeed?: number | undefined;
@@ -138,7 +150,12 @@ export interface SessionContinuityShot {
   identityScore?: number | undefined;
   qualityScore?: number | undefined;
   retryCount?: number | undefined;
-  status: 'draft' | 'generating-keyframe' | 'generating-video' | 'completed' | 'failed';
+  status:
+    | "draft"
+    | "generating-keyframe"
+    | "generating-video"
+    | "completed"
+    | "failed";
   error?: string | undefined;
   createdAt: string;
   generatedAt?: string | undefined;
@@ -155,10 +172,12 @@ export interface SessionContinuitySettings {
   useSceneProxy?: boolean | undefined;
   autoRetryOnFailure?: boolean | undefined;
   maxRetries?: number | undefined;
-  qualityThresholds?: {
-    style: number;
-    identity: number;
-  } | undefined;
+  qualityThresholds?:
+    | {
+        style: number;
+        identity: number;
+      }
+    | undefined;
 }
 
 export interface SessionSceneProxy {
@@ -166,7 +185,7 @@ export interface SessionSceneProxy {
   proxyType: string;
   referenceFrameUrl: string;
   depthMapUrl?: string | undefined;
-  status: 'ready' | 'failed' | 'building';
+  status: "ready" | "failed" | "building";
   createdAt?: string | undefined;
   error?: string | undefined;
 }

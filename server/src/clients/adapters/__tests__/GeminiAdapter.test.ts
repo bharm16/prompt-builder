@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 const { loggerMock } = vi.hoisted(() => ({
   loggerMock: {
@@ -9,24 +9,24 @@ const { loggerMock } = vi.hoisted(() => ({
   },
 }));
 
-vi.mock('@infrastructure/Logger', () => ({
+vi.mock("@infrastructure/Logger", () => ({
   logger: {
     child: () => loggerMock,
   },
 }));
 
-vi.mock('@infrastructure/MetricsService', () => ({
+vi.mock("@infrastructure/MetricsService", () => ({
   metricsService: {
     recordClaudeAPICall: vi.fn(),
     updateCircuitBreakerState: vi.fn(),
   },
 }));
 
-vi.mock('@clients/utils/abortController', () => ({
+vi.mock("@clients/utils/abortController", () => ({
   createAbortController: (timeout: number, signal?: AbortSignal) => {
     const controller = new AbortController();
     if (signal) {
-      signal.addEventListener('abort', () => controller.abort());
+      signal.addEventListener("abort", () => controller.abort());
     }
     return {
       controller,
@@ -36,7 +36,7 @@ vi.mock('@clients/utils/abortController', () => ({
   },
 }));
 
-vi.mock('opossum', () => ({
+vi.mock("opossum", () => ({
   default: class FakeBreaker {
     private readonly fn: (...args: unknown[]) => Promise<unknown>;
     constructor(fn: (...args: unknown[]) => Promise<unknown>) {
@@ -54,9 +54,9 @@ vi.mock('opossum', () => ({
   },
 }));
 
-import { GeminiAdapter } from '../GeminiAdapter';
+import { GeminiAdapter } from "../GeminiAdapter";
 
-describe('GeminiAdapter', () => {
+describe("GeminiAdapter", () => {
   const originalFetch = global.fetch;
 
   afterEach(() => {
@@ -64,65 +64,85 @@ describe('GeminiAdapter', () => {
     vi.restoreAllMocks();
   });
 
-  it('throws when API key is missing', () => {
-    expect(() => new GeminiAdapter({ apiKey: '', defaultModel: 'gemini-2.5-flash' })).toThrow(
-      'API key required'
-    );
+  it("throws when API key is missing", () => {
+    expect(
+      () => new GeminiAdapter({ apiKey: "", defaultModel: "gemini-2.5-flash" }),
+    ).toThrow("API key required");
   });
 
-  it('parses Gemini response text parts', async () => {
-    const adapter = new GeminiAdapter({ apiKey: 'key', defaultModel: 'gemini-2.5-flash' });
+  it("parses Gemini response text parts", async () => {
+    const adapter = new GeminiAdapter({
+      apiKey: "key",
+      defaultModel: "gemini-2.5-flash",
+    });
     global.fetch = vi.fn().mockResolvedValue(
       new Response(
         JSON.stringify({
-          candidates: [{ content: { parts: [{ text: 'Hello' }, { text: ' world' }] } }],
+          candidates: [
+            { content: { parts: [{ text: "Hello" }, { text: " world" }] } },
+          ],
         }),
-        { status: 200 }
-      )
+        { status: 200 },
+      ),
     ) as typeof fetch;
 
-    const response = await adapter.complete('System prompt', {});
+    const response = await adapter.complete("System prompt", {});
 
-    expect(response.text).toBe('Hello world');
+    expect(response.text).toBe("Hello world");
   });
 
-  it('throws APIError when Gemini HTTP response is not ok', async () => {
-    const adapter = new GeminiAdapter({ apiKey: 'key', defaultModel: 'gemini-2.5-flash' });
-    global.fetch = vi.fn().mockResolvedValue(new Response('bad request', { status: 400 })) as typeof fetch;
+  it("throws APIError when Gemini HTTP response is not ok", async () => {
+    const adapter = new GeminiAdapter({
+      apiKey: "key",
+      defaultModel: "gemini-2.5-flash",
+    });
+    global.fetch = vi
+      .fn()
+      .mockResolvedValue(
+        new Response("bad request", { status: 400 }),
+      ) as typeof fetch;
 
-    await expect(adapter.complete('System prompt', {})).rejects.toMatchObject({
-      name: 'APIError',
+    await expect(adapter.complete("System prompt", {})).rejects.toMatchObject({
+      name: "APIError",
       statusCode: 400,
       isRetryable: false,
     });
   });
 
-  it('handles malformed structured output by throwing parse error', async () => {
-    const adapter = new GeminiAdapter({ apiKey: 'key', defaultModel: 'gemini-2.5-flash' });
-    vi.spyOn(adapter, 'complete').mockResolvedValue({
-      text: '{invalid',
+  it("handles malformed structured output by throwing parse error", async () => {
+    const adapter = new GeminiAdapter({
+      apiKey: "key",
+      defaultModel: "gemini-2.5-flash",
+    });
+    vi.spyOn(adapter, "complete").mockResolvedValue({
+      text: "{invalid",
       metadata: {},
     });
 
-    await expect(adapter.generateStructuredOutput('Prompt', { type: 'object' })).rejects.toThrow(
-      'Invalid JSON response from Gemini'
-    );
+    await expect(
+      adapter.generateStructuredOutput("Prompt", { type: "object" }),
+    ).rejects.toThrow("Invalid JSON response from Gemini");
   });
 
-  it('streams SSE chunks and raw JSON fallback chunks', async () => {
-    const adapter = new GeminiAdapter({ apiKey: 'key', defaultModel: 'gemini-2.5-flash' });
+  it("streams SSE chunks and raw JSON fallback chunks", async () => {
+    const adapter = new GeminiAdapter({
+      apiKey: "key",
+      defaultModel: "gemini-2.5-flash",
+    });
     const sse = [
       'data: {"candidates":[{"content":{"parts":[{"text":"Hi"}]}}]}',
       '{"candidates":[{"content":{"parts":[{"text":" there"}]}}]}',
-      'data: [DONE]',
-      '',
-    ].join('\n');
-    global.fetch = vi.fn().mockResolvedValue(new Response(sse, { status: 200 })) as typeof fetch;
+      "data: [DONE]",
+      "",
+    ].join("\n");
+    global.fetch = vi
+      .fn()
+      .mockResolvedValue(new Response(sse, { status: 200 })) as typeof fetch;
 
     const onChunk = vi.fn();
-    const text = await adapter.streamComplete('System prompt', { onChunk });
+    const text = await adapter.streamComplete("System prompt", { onChunk });
 
-    expect(text).toBe('Hi there');
+    expect(text).toBe("Hi there");
     expect(onChunk).toHaveBeenCalledTimes(2);
   });
 });

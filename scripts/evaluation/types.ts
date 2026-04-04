@@ -1,4 +1,8 @@
-export const SECTION_NAMES = ['main', 'technicalSpecs', 'alternatives'] as const;
+export const SECTION_NAMES = [
+  "main",
+  "technicalSpecs",
+  "alternatives",
+] as const;
 export type SectionName = (typeof SECTION_NAMES)[number];
 
 export interface PromptSections {
@@ -15,7 +19,7 @@ export interface JudgeScores {
   technicalSpecs: number;
 }
 
-export const MISSED_SEVERITIES = ['critical', 'important', 'minor'] as const;
+export const MISSED_SEVERITIES = ["critical", "important", "minor"] as const;
 export type MissedSeverity = (typeof MISSED_SEVERITIES)[number];
 
 export interface MissedElement {
@@ -25,7 +29,11 @@ export interface MissedElement {
   severity: MissedSeverity;
 }
 
-export const GRANULARITY_ERROR_TYPES = ['too_fine', 'too_coarse', 'other'] as const;
+export const GRANULARITY_ERROR_TYPES = [
+  "too_fine",
+  "too_coarse",
+  "other",
+] as const;
 export type GranularityErrorType = (typeof GRANULARITY_ERROR_TYPES)[number];
 
 export interface GranularityError {
@@ -35,12 +43,12 @@ export interface GranularityError {
 }
 
 export const FALSE_POSITIVE_REASONS = [
-  'section_header',
-  'abstract_concept',
-  'non_visual',
-  'instruction_text',
-  'duplicate',
-  'other',
+  "section_header",
+  "abstract_concept",
+  "non_visual",
+  "instruction_text",
+  "duplicate",
+  "other",
 ] as const;
 export type FalsePositiveReason = (typeof FALSE_POSITIVE_REASONS)[number];
 
@@ -59,15 +67,15 @@ export interface TaxonomyError {
 }
 
 export const CATEGORY_NAMES = [
-  'shot',
-  'subject',
-  'action',
-  'environment',
-  'lighting',
-  'camera',
-  'style',
-  'technical',
-  'audio',
+  "shot",
+  "subject",
+  "action",
+  "environment",
+  "lighting",
+  "camera",
+  "style",
+  "technical",
+  "audio",
 ] as const;
 export type CategoryName = (typeof CATEGORY_NAMES)[number];
 
@@ -167,9 +175,24 @@ export interface ErrorsBySection {
 
 export interface ConfidenceAnalysis {
   buckets: {
-    high: { range: [number, number]; total: number; errors: number; errorRate: number };
-    medium: { range: [number, number]; total: number; errors: number; errorRate: number };
-    low: { range: [number, number]; total: number; errors: number; errorRate: number };
+    high: {
+      range: [number, number];
+      total: number;
+      errors: number;
+      errorRate: number;
+    };
+    medium: {
+      range: [number, number];
+      total: number;
+      errors: number;
+      errorRate: number;
+    };
+    low: {
+      range: [number, number];
+      total: number;
+      errors: number;
+      errorRate: number;
+    };
   };
   recommendedThreshold: number | null;
   notes: string;

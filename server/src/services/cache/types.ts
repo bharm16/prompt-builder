@@ -3,7 +3,7 @@
  * Shared type definitions used across cache service modules
  */
 
-import type { ICacheService } from '@interfaces/ICacheService';
+import type { ICacheService } from "@interfaces/ICacheService";
 
 /**
  * Cache configuration options
@@ -42,7 +42,7 @@ export interface SemanticEnhancer {
   generateSemanticKey?: (
     namespace: string,
     data: Record<string, unknown>,
-    options?: GenerateKeyOptions
+    options?: GenerateKeyOptions,
   ) => string;
 }
 
@@ -106,7 +106,7 @@ export interface CacheKeyGenerator {
   generate(
     namespace: string,
     data: Record<string, unknown>,
-    options?: GenerateKeyOptions
+    options?: GenerateKeyOptions,
   ): string;
 }
 
@@ -116,7 +116,9 @@ export interface CacheKeyGenerator {
 export interface RedisClient {
   status?: string;
   get?: (key: string) => Promise<string | null>;
-  set?: (...args: [string, string | number, ...(string | number)[]]) => Promise<unknown>;
+  set?: (
+    ...args: [string, string | number, ...(string | number)[]]
+  ) => Promise<unknown>;
   del?: (...keys: string[]) => Promise<number>;
   keys?: (pattern: string) => Promise<string[]>;
 }

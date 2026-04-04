@@ -1,1 +1,1 @@
-export type PromptRowStage = 'draft' | 'optimized' | 'generated' | 'error';
+export type PromptRowStage = "draft" | "optimized" | "generated" | "error";

@@ -1,5 +1,5 @@
-import React from 'react';
-import type { GalleryFilter } from './types';
+import React from "react";
+import type { GalleryFilter } from "./types";
 
 interface GalleryFiltersProps {
   activeFilter: GalleryFilter;
@@ -7,10 +7,10 @@ interface GalleryFiltersProps {
 }
 
 const FILTERS: Array<{ id: GalleryFilter; label: string }> = [
-  { id: 'all', label: 'All' },
-  { id: 'preview', label: 'Preview' },
-  { id: 'draft', label: 'Draft' },
-  { id: 'favorites', label: '★' },
+  { id: "all", label: "All" },
+  { id: "preview", label: "Preview" },
+  { id: "draft", label: "Draft" },
+  { id: "favorites", label: "★" },
 ];
 
 export function GalleryFilters({
@@ -28,8 +28,8 @@ export function GalleryFilters({
             onClick={() => onFilterChange(filter.id)}
             className={`inline-flex h-5 min-w-[22px] items-center justify-center rounded-md px-1.5 text-[10px] font-medium transition-colors ${
               isActive
-                ? 'bg-[#262626] text-[#F5F5F5]'
-                : 'bg-transparent text-[#737373] hover:bg-[#171717] hover:text-[#D4D4D4]'
+                ? "bg-neutral-800 text-foreground"
+                : "bg-transparent text-tool-text-subdued hover:bg-tool-surface-deep hover:text-muted"
             }`}
             aria-pressed={isActive}
           >
@@ -40,4 +40,3 @@ export function GalleryFilters({
     </div>
   );
 }
-

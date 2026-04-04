@@ -1,10 +1,10 @@
-import { act, renderHook } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { HighlightSpan } from '@features/span-highlighting/hooks/useHighlightRendering';
+import { act, renderHook } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { HighlightSpan } from "@features/span-highlighting/hooks/useHighlightRendering";
 import type {
   SuggestionItem,
   SuggestionsData,
-} from '@features/prompt-optimizer/PromptCanvas/types';
+} from "@features/prompt-optimizer/PromptCanvas/types";
 
 const {
   mockHandleCustomRequest,
@@ -15,10 +15,10 @@ const {
   mockHandleCustomRequest: vi.fn(),
   mockSetCustomRequest: vi.fn(),
   mockHandleSuggestionClickWithFeedback: vi.fn(),
-  mockCustomRequestState: { value: 'Please adjust pacing', loading: false },
+  mockCustomRequestState: { value: "Please adjust pacing", loading: false },
 }));
 
-vi.mock('@components/SuggestionsPanel/hooks/useCustomRequest', () => ({
+vi.mock("@components/SuggestionsPanel/hooks/useCustomRequest", () => ({
   useCustomRequest: () => ({
     customRequest: mockCustomRequestState.value,
     setCustomRequest: mockSetCustomRequest,
@@ -27,56 +27,54 @@ vi.mock('@components/SuggestionsPanel/hooks/useCustomRequest', () => ({
   }),
 }));
 
-vi.mock('../useSuggestionFeedback', () => ({
+vi.mock("../useSuggestionFeedback", () => ({
   useSuggestionFeedback: () => ({
     handleSuggestionClickWithFeedback: mockHandleSuggestionClickWithFeedback,
   }),
 }));
 
-import { useInlineSuggestionState } from '../useInlineSuggestionState';
+import { useInlineSuggestionState } from "../useInlineSuggestionState";
 
 const spans: HighlightSpan[] = [
   {
-    id: 'span-1',
+    id: "span-1",
     start: 0,
     end: 5,
-    text: 'alpha',
-    quote: 'alpha',
-    category: 'scene',
+    text: "alpha",
+    quote: "alpha",
+    category: "scene",
     confidence: 0.9,
   } as HighlightSpan,
   {
-    id: 'span-2',
+    id: "span-2",
     start: 6,
     end: 10,
-    text: 'beta',
-    quote: 'beta',
-    category: 'style',
+    text: "beta",
+    quote: "beta",
+    category: "style",
     confidence: 0.8,
   } as HighlightSpan,
 ];
 
-const baseSuggestions = (
-  suggestions: SuggestionItem[]
-): SuggestionsData => ({
+const baseSuggestions = (suggestions: SuggestionItem[]): SuggestionsData => ({
   show: true,
-  selectedText: 'alpha',
-  originalText: 'alpha',
+  selectedText: "alpha",
+  originalText: "alpha",
   suggestions,
   isLoading: false,
   isError: false,
   errorMessage: null,
   isPlaceholder: false,
-  fullPrompt: 'alpha beta gamma',
+  fullPrompt: "alpha beta gamma",
   setSuggestions: vi.fn(),
   onSuggestionClick: vi.fn(),
   onClose: vi.fn(),
 });
 
-describe('useInlineSuggestionState', () => {
+describe("useInlineSuggestionState", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockCustomRequestState.value = 'Please adjust pacing';
+    mockCustomRequestState.value = "Please adjust pacing";
     mockCustomRequestState.loading = false;
   });
 
@@ -84,79 +82,81 @@ describe('useInlineSuggestionState', () => {
     vi.clearAllMocks();
   });
 
-  it('wraps keyboard navigation and applies active suggestion on Enter', () => {
+  it("wraps keyboard navigation and applies active suggestion on Enter", () => {
     const setSelectedSpanId = vi.fn();
     const onClose = vi.fn();
     const suggestionsData = baseSuggestions([
-      { text: 'First suggestion' },
-      { text: 'Second suggestion' },
+      { text: "First suggestion" },
+      { text: "Second suggestion" },
     ]);
     suggestionsData.onClose = onClose;
 
     const { result } = renderHook(() =>
       useInlineSuggestionState({
         suggestionsData,
-        selectedSpanId: 'span-1',
+        selectedSpanId: "span-1",
         setSelectedSpanId,
         parseResultSpans: spans,
-        normalizedDisplayedPrompt: 'alpha beta gamma',
+        normalizedDisplayedPrompt: "alpha beta gamma",
         setState: vi.fn(),
-      })
+      }),
     );
 
     expect(result.current.activeSuggestionIndex).toBe(0);
 
     act(() => {
-      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp' }));
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowUp" }));
     });
     expect(result.current.activeSuggestionIndex).toBe(1);
 
     act(() => {
-      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown' }));
+      document.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "ArrowDown" }),
+      );
     });
     expect(result.current.activeSuggestionIndex).toBe(0);
 
     act(() => {
-      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
     });
 
     expect(mockHandleSuggestionClickWithFeedback).toHaveBeenCalledWith(
-      suggestionsData.suggestions[0]
+      suggestionsData.suggestions[0],
     );
     expect(setSelectedSpanId).toHaveBeenCalledWith(null);
     expect(onClose).toHaveBeenCalled();
   });
 
-  it('closes the inline popover on Escape', () => {
+  it("closes the inline popover on Escape", () => {
     const setSelectedSpanId = vi.fn();
     const onClose = vi.fn();
-    const suggestionsData = baseSuggestions([{ text: 'Only option' }]);
+    const suggestionsData = baseSuggestions([{ text: "Only option" }]);
     suggestionsData.onClose = onClose;
 
     renderHook(() =>
       useInlineSuggestionState({
         suggestionsData,
-        selectedSpanId: 'span-1',
+        selectedSpanId: "span-1",
         setSelectedSpanId,
         parseResultSpans: spans,
-        normalizedDisplayedPrompt: 'alpha beta gamma',
+        normalizedDisplayedPrompt: "alpha beta gamma",
         setState: vi.fn(),
-      })
+      }),
     );
 
     act(() => {
-      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
     });
 
     expect(setSelectedSpanId).toHaveBeenCalledWith(null);
     expect(onClose).toHaveBeenCalled();
   });
 
-  it('resets active index when selected span changes and when suggestion count changes', () => {
+  it("resets active index when selected span changes and when suggestion count changes", () => {
     const setSelectedSpanId = vi.fn();
     const initialSuggestions = baseSuggestions([
-      { text: 'First' },
-      { text: 'Second' },
+      { text: "First" },
+      { text: "Second" },
     ]);
 
     const { result, rerender } = renderHook(
@@ -166,15 +166,15 @@ describe('useInlineSuggestionState', () => {
           selectedSpanId,
           setSelectedSpanId,
           parseResultSpans: spans,
-          normalizedDisplayedPrompt: 'alpha beta gamma',
+          normalizedDisplayedPrompt: "alpha beta gamma",
           setState: vi.fn(),
         }),
       {
         initialProps: {
-          selectedSpanId: 'span-1',
+          selectedSpanId: "span-1",
           suggestionsData: initialSuggestions,
         },
-      }
+      },
     );
 
     act(() => {
@@ -183,7 +183,7 @@ describe('useInlineSuggestionState', () => {
     expect(result.current.activeSuggestionIndex).toBe(1);
 
     rerender({
-      selectedSpanId: 'span-2',
+      selectedSpanId: "span-2",
       suggestionsData: initialSuggestions,
     });
     expect(result.current.activeSuggestionIndex).toBe(0);
@@ -194,32 +194,32 @@ describe('useInlineSuggestionState', () => {
     expect(result.current.activeSuggestionIndex).toBe(1);
 
     rerender({
-      selectedSpanId: 'span-2',
+      selectedSpanId: "span-2",
       suggestionsData: baseSuggestions([
-        { text: 'First' },
-        { text: 'Second' },
-        { text: 'Third' },
+        { text: "First" },
+        { text: "Second" },
+        { text: "Third" },
       ]),
     });
     expect(result.current.activeSuggestionIndex).toBe(0);
   });
 
-  it('derives loading, error, and empty states correctly', () => {
+  it("derives loading, error, and empty states correctly", () => {
     const setSelectedSpanId = vi.fn();
 
     const { result, rerender } = renderHook(
       ({ suggestionsData }) =>
         useInlineSuggestionState({
           suggestionsData,
-          selectedSpanId: 'span-1',
+          selectedSpanId: "span-1",
           setSelectedSpanId,
           parseResultSpans: spans,
-          normalizedDisplayedPrompt: 'alpha beta gamma',
+          normalizedDisplayedPrompt: "alpha beta gamma",
           setState: vi.fn(),
         }),
       {
         initialProps: { suggestionsData: null as SuggestionsData | null },
-      }
+      },
     );
 
     expect(result.current.isInlineLoading).toBe(true);
@@ -228,11 +228,11 @@ describe('useInlineSuggestionState', () => {
       suggestionsData: {
         ...baseSuggestions([]),
         isError: true,
-        errorMessage: 'Failed to load',
+        errorMessage: "Failed to load",
       },
     });
     expect(result.current.isInlineError).toBe(true);
-    expect(result.current.inlineErrorMessage).toBe('Failed to load');
+    expect(result.current.inlineErrorMessage).toBe("Failed to load");
 
     rerender({
       suggestionsData: baseSuggestions([]),
@@ -242,28 +242,28 @@ describe('useInlineSuggestionState', () => {
     expect(result.current.isInlineEmpty).toBe(true);
   });
 
-  it('derives custom-request disabled state from request content and loading', () => {
+  it("derives custom-request disabled state from request content and loading", () => {
     const setSelectedSpanId = vi.fn();
-    const suggestionsData = baseSuggestions([{ text: 'First' }]);
+    const suggestionsData = baseSuggestions([{ text: "First" }]);
 
     const { result, rerender } = renderHook(() =>
       useInlineSuggestionState({
         suggestionsData,
-        selectedSpanId: 'span-1',
+        selectedSpanId: "span-1",
         setSelectedSpanId,
         parseResultSpans: spans,
-        normalizedDisplayedPrompt: 'alpha beta gamma',
+        normalizedDisplayedPrompt: "alpha beta gamma",
         setState: vi.fn(),
-      })
+      }),
     );
 
     expect(result.current.isCustomRequestDisabled).toBe(false);
 
-    mockCustomRequestState.value = '   ';
+    mockCustomRequestState.value = "   ";
     rerender();
     expect(result.current.isCustomRequestDisabled).toBe(true);
 
-    mockCustomRequestState.value = 'Refine this';
+    mockCustomRequestState.value = "Refine this";
     mockCustomRequestState.loading = true;
     rerender();
     expect(result.current.isCustomRequestDisabled).toBe(true);

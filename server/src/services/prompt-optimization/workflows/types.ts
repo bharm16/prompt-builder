@@ -1,18 +1,18 @@
-import type { ILogger } from '@interfaces/ILogger';
-import type { CapabilityValues } from '@shared/capabilities';
+import type { ILogger } from "@interfaces/ILogger";
+import type { CapabilityValues } from "@shared/capabilities";
 import type {
   AIService,
+  CompilationState,
+  CompileContext,
+  CompileSource,
   InferredContext,
-  LockedSpan,
   OptimizationMode,
   OptimizationRequest,
   OptimizationResponse,
-  QualityAssessment,
   ShotPlan,
-  TwoStageOptimizationRequest,
-  TwoStageOptimizationResult,
-} from '../types';
-import type { I2VConstraintMode, I2VOptimizationResult } from '../types/i2v';
+  StructuredOptimizationArtifact,
+} from "../types";
+import type { I2VConstraintMode, I2VOptimizationResult } from "../types/i2v";
 
 export type MetadataMap = Record<string, unknown>;
 
@@ -24,11 +24,37 @@ export type OptimizationCacheLike = {
     brainstormContext: Record<string, unknown> | null,
     targetModel?: string,
     generationParams?: Record<string, unknown> | null,
-    lockedSpans?: Array<{ text: string; leftCtx?: string | null; rightCtx?: string | null }>
+    lockedSpans?: Array<{
+      text: string;
+      leftCtx?: string | null;
+      rightCtx?: string | null;
+    }>,
   ): string;
+  buildStructuredArtifactKeyFromInputs(params: {
+    prompt: string;
+    sourcePrompt?: string | null;
+    shotPlan?: ShotPlan | null;
+    generationParams?: Record<string, unknown> | null;
+    lockedSpans?: Array<{
+      text: string;
+      leftCtx?: string | null;
+      rightCtx?: string | null;
+    }>;
+  }): string;
   getCachedResult(key: string): Promise<string | null>;
   getCachedMetadata(key: string): Promise<MetadataMap | null>;
-  cacheResult(key: string, result: string, metadata?: MetadataMap | null): Promise<void>;
+  getStructuredArtifact(
+    key: string,
+  ): Promise<StructuredOptimizationArtifact | null>;
+  cacheResult(
+    key: string,
+    result: string,
+    metadata?: MetadataMap | null,
+  ): Promise<void>;
+  cacheStructuredArtifact(
+    key: string,
+    artifact: StructuredOptimizationArtifact,
+  ): Promise<void>;
 };
 
 export type ShotInterpreterLike = {
@@ -37,85 +63,91 @@ export type ShotInterpreterLike = {
 
 export type OptimizationStrategyLike = {
   optimize(request: OptimizationRequest): Promise<string>;
+  optimizeStructured?(
+    request: OptimizationRequest,
+  ): Promise<StructuredOptimizationArtifact>;
+  renderStructuredPrompt?(
+    structuredPrompt: StructuredOptimizationArtifact["structuredPrompt"],
+  ): string;
   generateDomainContent?(
     prompt: string,
     context?: InferredContext | null,
-    shotPlan?: ShotPlan | null
+    shotPlan?: ShotPlan | null,
   ): Promise<unknown>;
 };
 
-export type StrategyFactoryLike = {
-  getStrategy(mode: OptimizationMode): OptimizationStrategyLike;
-};
-
-export type QualityAssessmentLike = {
-  assessQuality(prompt: string, mode: OptimizationMode): Promise<QualityAssessment>;
-};
-
 export type CompilationServiceLike = {
-  compileOptimizedPrompt(args: {
+  compile(args: {
     operation: string;
-    optimizedPrompt: string;
     mode: OptimizationMode;
-    qualityAssessment: QualityAssessment;
     targetModel?: string;
-  }): Promise<{ prompt: string; metadata: MetadataMap | null }>;
+    source: CompileSource;
+    context?: CompileContext | null;
+    fallbackPrompt?: string;
+    artifactKey?: string;
+  }): Promise<{
+    prompt: string;
+    metadata: MetadataMap | null;
+    compilation: CompilationState;
+    artifactKey?: string;
+  }>;
 };
-
-export type IterativeRefinementLike = (
-  prompt: string,
-  mode: OptimizationMode,
-  context: InferredContext | null,
-  brainstormContext: Record<string, unknown> | null,
-  lockedSpans: Array<{ text: string; leftCtx?: string | null; rightCtx?: string | null }> | null,
-  generationParams: CapabilityValues | null,
-  shotPlan: ShotPlan | null,
-  useConstitutionalAI: boolean,
-  signal?: AbortSignal | undefined,
-  onMetadata?: ((metadata: MetadataMap) => void) | undefined
-) => Promise<string>;
 
 export type ConstitutionalReviewLike = (
   prompt: string,
   mode: OptimizationMode,
-  signal?: AbortSignal | undefined
+  signal?: AbortSignal | undefined,
 ) => Promise<string>;
+
+export type IntentLockLike = {
+  enforceIntentLock(params: {
+    originalPrompt: string;
+    optimizedPrompt: string;
+    shotPlan: ShotPlan | null;
+  }): {
+    prompt: string;
+    passed: boolean;
+    repaired: boolean;
+    required: { subject: string | null; action: string | null };
+  };
+  validateIntentPreservation?(params: {
+    originalPrompt: string;
+    optimizedPrompt: string;
+    shotPlan: ShotPlan | null;
+  }): {
+    passed: boolean;
+    required: { subject: string | null; action: string | null };
+  };
+};
+
+export type PromptLintLike = {
+  enforce(params: { prompt: string; modelId?: string | null }): {
+    prompt: string;
+    lint: {
+      ok: boolean;
+      errors: string[];
+      warnings: string[];
+      wordCount: number;
+    };
+    repaired: boolean;
+  };
+};
 
 export interface OptimizeFlowArgs {
   request: OptimizationRequest;
   log: ILogger;
   optimizationCache: OptimizationCacheLike;
   shotInterpreter: ShotInterpreterLike;
-  strategyFactory: StrategyFactoryLike;
-  qualityAssessment: QualityAssessmentLike;
+  strategy: OptimizationStrategyLike;
   compilationService: CompilationServiceLike | null;
-  optimizeIteratively: IterativeRefinementLike;
   applyConstitutionalAI: ConstitutionalReviewLike;
   logOptimizationMetrics: (
     originalPrompt: string,
     optimizedPrompt: string,
-    mode: OptimizationMode
-  ) => void;
-}
-
-export type DraftGenerationLike = {
-  supportsStreaming(): boolean;
-  generateDraft(
-    prompt: string,
     mode: OptimizationMode,
-    shotPlan: ShotPlan | null,
-    generationParams: CapabilityValues | null,
-    signal?: AbortSignal,
-    onChunk?: (delta: string) => void
-  ): Promise<string>;
-};
-
-export interface TwoStageFlowArgs {
-  request: TwoStageOptimizationRequest;
-  log: ILogger;
-  shotInterpreter: ShotInterpreterLike;
-  draftService: DraftGenerationLike;
-  optimize: (request: OptimizationRequest) => Promise<OptimizationResponse>;
+  ) => void;
+  intentLock: IntentLockLike;
+  promptLint: PromptLintLike;
 }
 
 export type ImageObservationLike = {
@@ -147,23 +179,6 @@ export interface I2VFlowArgs {
   i2vStrategy: I2VStrategyLike;
 }
 
-export interface IterativeRefinementFlowArgs {
-  prompt: string;
-  mode: OptimizationMode;
-  context: InferredContext | null;
-  brainstormContext: Record<string, unknown> | null;
-  lockedSpans: LockedSpan[] | null;
-  generationParams: CapabilityValues | null;
-  shotPlan: ShotPlan | null;
-  useConstitutionalAI: boolean;
-  signal?: AbortSignal | undefined;
-  onMetadata?: ((metadata: MetadataMap) => void) | undefined;
-  log: ILogger;
-  strategyFactory: StrategyFactoryLike;
-  qualityAssessment: QualityAssessmentLike;
-  applyConstitutionalAI: ConstitutionalReviewLike;
-}
-
 export interface ConstitutionalReviewFlowArgs {
   prompt: string;
   mode: OptimizationMode;
@@ -171,5 +186,3 @@ export interface ConstitutionalReviewFlowArgs {
   log: ILogger;
   ai: AIService;
 }
-
-export type TwoStageResult = Promise<TwoStageOptimizationResult>;

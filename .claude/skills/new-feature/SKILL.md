@@ -32,6 +32,7 @@ client/src/features/<feature-name>/
 ```
 
 Rules:
+
 - API calls only in `api/` — never fetch inline in components
 - Zod-validate all API responses in `api/schemas.ts`
 - UI components consume transformed client types, never raw server DTOs
@@ -52,6 +53,7 @@ server/src/services/<service-name>/
 ```
 
 Rules:
+
 - Constructor injection for all dependencies
 - LLM calls only through `aiService` — never call provider clients directly
 - Prompt templates in external `.md` files, not inline strings
@@ -61,14 +63,14 @@ Rules:
 
 Register the new service in the appropriate file under `server/src/config/services/`:
 
-| Domain | Registration File |
-|--------|-------------------|
+| Domain                                   | Registration File            |
+| ---------------------------------------- | ---------------------------- |
 | Infrastructure (cache, metrics, storage) | `infrastructure.services.ts` |
-| LLM clients | `llm.services.ts` |
-| Enhancement / analysis | `enhancement.services.ts` |
-| Generation (image, video) | `generation.services.ts` |
-| Continuity | `continuity.services.ts` |
-| Sessions | `session.services.ts` |
+| LLM clients                              | `llm.services.ts`            |
+| Enhancement / analysis                   | `enhancement.services.ts`    |
+| Generation (image, video)                | `generation.services.ts`     |
+| Continuity                               | `continuity.services.ts`     |
+| Sessions                                 | `session.services.ts`        |
 
 After registration, add a route factory in `server/src/config/routes.config.ts`.
 

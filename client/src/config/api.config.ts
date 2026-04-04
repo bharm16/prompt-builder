@@ -5,31 +5,31 @@
  * Makes it easy to change API endpoints, keys, timeouts, etc.
  */
 
-const ENV = import.meta.env.MODE || 'development';
+const ENV = import.meta.env.MODE || "development";
 
 export const API_CONFIG = {
   // Base URLs
-  baseURL: import.meta.env.VITE_API_URL || '/api',
+  baseURL: import.meta.env.VITE_API_URL || "/api",
 
   // Timeouts (in milliseconds)
   timeout: {
-    default: 30000,  // 30 seconds
-    optimization: 60000,  // 60 seconds for prompt optimization
+    default: 30000, // 30 seconds
+    optimization: 60000, // 60 seconds for prompt optimization
     video: 90000, // 90 seconds for video generation (allow buffer over user's 60s)
     storyboard: 180000, // 180 seconds for storyboard preview chaining
-    suggestions: 8000,  // 8 seconds for suggestions (server enhancement pipeline: 2–8s on cache miss)
+    suggestions: 8000, // 8 seconds for suggestions (server enhancement pipeline: 2–8s on cache miss)
   },
 
   // Debounce configuration (in milliseconds)
   debounce: {
-    suggestions: 150,  // 150ms debounce for suggestion requests (Requirement 4.3)
+    suggestions: 150, // 150ms debounce for suggestion requests (Requirement 4.3)
   },
 
   // Retry configuration
   retry: {
-    enabled: ENV === 'production',
+    enabled: ENV === "production",
     maxRetries: 3,
-    retryDelay: 1000,  // 1 second
+    retryDelay: 1000, // 1 second
     retryableStatuses: [408, 429, 500, 502, 503, 504],
   },
 
@@ -37,19 +37,19 @@ export const API_CONFIG = {
   cache: {
     suggestions: {
       enabled: true,
-      ttl: 300000,  // 5 minutes
+      ttl: 300000, // 5 minutes
     },
   },
 
   // Rate limiting
   rateLimit: {
     suggestions: {
-      minInterval: 500,  // Minimum 500ms between calls
+      minInterval: 500, // Minimum 500ms between calls
     },
   },
 } as const;
 
-type ServiceName = 'optimization' | 'suggestions' | 'default';
+type ServiceName = "optimization" | "suggestions" | "default";
 
 interface ServiceConfig {
   timeout?: number;

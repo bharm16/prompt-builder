@@ -9,23 +9,37 @@
  * - Conditional layout rendering
  */
 
-import React, { useCallback, useMemo, useEffect } from 'react';
-import { useLocation, useParams } from 'react-router-dom';
-import { useKeyboardShortcuts } from '@components/KeyboardShortcuts';
-import { useToast } from '@components/Toast';
-import { logger } from '@/services/LoggingService';
-import { useAuthUser } from '@hooks/useAuthUser';
-import type { User } from '../context/types';
-import type { CameraMotionCategory, CameraPath, ConvergenceHandoff } from '@/features/convergence/types';
-import type { CapabilityValues } from '@shared/capabilities';
-import { useAssetsSidebar } from '../components/AssetsSidebar';
-import { usePromptState, PromptStateProvider } from '../context/PromptStateContext';
+import React, { useCallback, useMemo, useEffect } from "react";
+import { useLocation, useParams } from "react-router-dom";
+import { useKeyboardShortcuts } from "@components/KeyboardShortcuts";
+import { useToast } from "@components/Toast";
+import { logger } from "@/services/LoggingService";
+import { useAuthUser } from "@hooks/useAuthUser";
+import type { User } from "../context/types";
+import type {
+  CameraMotionCategory,
+  CameraPath,
+  ConvergenceHandoff,
+} from "@/features/convergence/types";
+import type { CapabilityValues } from "@shared/capabilities";
+import type {
+  PromptHistoryEntry,
+  PromptVersionEntry,
+} from "@features/prompt-optimizer/types/domain/prompt-session";
+import { useAssetsSidebar } from "../components/AssetsSidebar";
+import {
+  usePromptState,
+  PromptStateProvider,
+} from "../context/PromptStateContext";
 import {
   useGenerationControlsStoreActions,
   useGenerationControlsStoreState,
-} from '../context/GenerationControlsStore';
-import { scrollToSpanById } from '../utils/scrollToSpanById';
-import { uploadPreviewImage, validatePreviewImageFile } from '@/features/preview/api/previewApi';
+} from "@features/generation-controls/context/GenerationControlsStore";
+import { scrollToSpanById } from "../utils/scrollToSpanById";
+import {
+  uploadPreviewImage,
+  validatePreviewImageFile,
+} from "@/features/preview/api/previewApi";
 import {
   usePromptLoader,
   useHighlightsPersistence,
@@ -39,47 +53,69 @@ import {
   usePromptCoherence,
   useAssetManagement,
   useEditorShotPromptBinding,
-} from './hooks';
-import { useI2VContext } from '../hooks/useI2VContext';
-import { PromptOptimizerWorkspaceView } from './components/PromptOptimizerWorkspaceView';
-import { WorkspaceSessionProvider, useWorkspaceSession } from '../context/WorkspaceSessionContext';
-import { PromptResultsActionsProvider } from '../context/PromptResultsActionsContext';
-import { PromptInsertionBusProvider } from '../context/PromptInsertionBusContext';
+} from "./hooks";
+import { useI2VContext } from "../hooks/useI2VContext";
+import { PromptOptimizerWorkspaceView } from "./components/PromptOptimizerWorkspaceView";
 import {
-  SidebarDataProvider,
-} from './providers/sidebar';
+  WorkspaceSessionProvider,
+  useWorkspaceSession,
+} from "../context/WorkspaceSessionContext";
+import { PromptResultsActionsProvider } from "../context/PromptResultsActionsContext";
+import { PromptInsertionBusProvider } from "../context/PromptInsertionBusContext";
+import { SidebarDataProvider } from "./providers/sidebar";
 
-const log = logger.child('PromptOptimizerWorkspace');
-const buildDefaultCameraTransform = (): CameraPath['start'] => ({
+const log = logger.child("PromptOptimizerWorkspace");
+const buildDefaultCameraTransform = (): CameraPath["start"] => ({
   position: { x: 0, y: 0, z: 0 },
   rotation: { pitch: 0, yaw: 0, roll: 0 },
 });
 
 const formatCameraMotionLabel = (id: string): string =>
   id
-    .replace(/[_-]+/g, ' ')
+    .replace(/[_-]+/g, " ")
     .trim()
     .replace(/\b\w/g, (char) => char.toUpperCase());
 
 const inferCameraMotionCategory = (id: string): CameraMotionCategory => {
-  if (id === 'static') return 'static';
-  if (id.startsWith('pan_') || id.startsWith('tilt_') || id.startsWith('dutch_')) {
-    return 'pan_tilt';
+  if (id === "static") return "static";
+  if (
+    id.startsWith("pan_") ||
+    id.startsWith("tilt_") ||
+    id.startsWith("dutch_")
+  ) {
+    return "pan_tilt";
   }
-  if (['push_in', 'pull_back', 'track_left', 'track_right'].includes(id)) {
-    return 'dolly';
+  if (["push_in", "pull_back", "track_left", "track_right"].includes(id)) {
+    return "dolly";
   }
-  if (id.startsWith('crane_') || id.startsWith('pedestal_')) {
-    return 'crane';
+  if (id.startsWith("crane_") || id.startsWith("pedestal_")) {
+    return "crane";
   }
-  if (id.startsWith('arc_')) {
-    return 'orbital';
+  if (id.startsWith("arc_")) {
+    return "orbital";
   }
-  if (id === 'reveal') {
-    return 'compound';
+  if (id === "reveal") {
+    return "compound";
   }
-  return 'static';
+  return "static";
 };
+
+interface HydratedPromptHistoryInput {
+  id?: string;
+  uuid?: string;
+  title?: string | null;
+  input?: string;
+  output?: string;
+  score?: number | null;
+  mode?: string;
+  targetModel?: string | null;
+  generationParams?: string | Record<string, unknown> | null;
+  keyframes?: PromptHistoryEntry["keyframes"];
+  brainstormContext?: string | Record<string, unknown> | null;
+  highlightCache?: Record<string, unknown> | null;
+  timestamp?: string;
+  versions?: PromptVersionEntry[];
+}
 
 const buildFallbackCameraPath = (cameraMotionId: string): CameraPath => ({
   id: cameraMotionId,
@@ -95,12 +131,14 @@ const buildFallbackCameraPath = (cameraMotionId: string): CameraPath => ({
  */
 interface PromptOptimizerContentProps {
   user: User | null;
+  isAuthResolved: boolean;
   /** Handoff data from Visual Convergence for prompt pre-fill (Requirement 17.2) */
   convergenceHandoff?: ConvergenceHandoff | null | undefined;
 }
 
 function PromptOptimizerContent({
   user,
+  isAuthResolved,
   convergenceHandoff,
 }: PromptOptimizerContentProps): React.ReactElement {
   const location = useLocation();
@@ -112,8 +150,10 @@ function PromptOptimizerContent({
     // State
     selectedMode,
     selectedModel,
+    setSelectedMode,
     setSelectedModel,
     generationParams,
+    setGenerationParams,
     showResults,
     showSettings,
     setShowSettings,
@@ -182,6 +222,7 @@ function PromptOptimizerContent({
     clearEndFrame,
     clearVideoReferences,
     clearExtendVideo,
+    clearKeyframes: clearGenerationKeyframes,
     setCameraMotion,
     setSubjectMotion,
   } = useGenerationControlsStoreActions();
@@ -191,37 +232,69 @@ function PromptOptimizerContent({
   const subjectMotion = domain.subjectMotion;
   const setInputPrompt = promptOptimizer.setInputPrompt;
   const i2vContext = useI2VContext();
-  const {
-    hasActiveContinuityShot,
-    currentShotId,
-    currentShot,
-    updateShot,
-  } = useWorkspaceSession();
+  const { hasActiveContinuityShot, currentShotId, currentShot, updateShot } =
+    useWorkspaceSession();
 
-  const { serializedKeyframes: serializedKeyframesSync, onLoadKeyframes } = usePromptKeyframesSync({
-    keyframes,
-    setKeyframes,
-    setStartFrame,
+  const { serializedKeyframes: serializedKeyframesSync, onLoadKeyframes } =
+    usePromptKeyframesSync({
+      keyframes,
+      setKeyframes,
+      setStartFrame,
+      clearEndFrame,
+      clearVideoReferences,
+      clearExtendVideo,
+      currentPromptUuid,
+      currentPromptDocId,
+      isLoadingHistory: promptHistory.isLoadingHistory,
+      promptHistory,
+    });
+
+  // Reset generation controls when a new draft is created via + New.
+  // The event is dispatched synchronously from handleCreateNew before navigate,
+  // so these state updates are batched with the prompt state resets.
+  useEffect(() => {
+    const handleWorkspaceReset = (): void => {
+      clearStartFrame();
+      clearEndFrame();
+      clearGenerationKeyframes();
+      clearVideoReferences();
+      clearExtendVideo();
+      setCameraMotion(null);
+      setSubjectMotion("");
+      setShowResults(false);
+    };
+    window.addEventListener("po:workspace-reset", handleWorkspaceReset);
+    return () =>
+      window.removeEventListener("po:workspace-reset", handleWorkspaceReset);
+  }, [
+    clearStartFrame,
     clearEndFrame,
+    clearGenerationKeyframes,
     clearVideoReferences,
     clearExtendVideo,
-    currentPromptUuid,
-    currentPromptDocId,
-    promptHistory,
-  });
+    setCameraMotion,
+    setSubjectMotion,
+    setShowResults,
+  ]);
 
   React.useEffect(() => {
     const params = new URLSearchParams(location.search);
-    const shouldOpenSettings = params.get('settings');
-    if (shouldOpenSettings !== '1' && shouldOpenSettings !== 'true') return;
+    const shouldOpenSettings = params.get("settings");
+    if (shouldOpenSettings !== "1" && shouldOpenSettings !== "true") return;
 
     setShowSettings(true);
 
-    params.delete('settings');
+    params.delete("settings");
     const nextSearch = params.toString();
-    const nextUrl = `${location.pathname}${nextSearch ? `?${nextSearch}` : ''}${location.hash}`;
+    const nextUrl = `${location.pathname}${nextSearch ? `?${nextSearch}` : ""}${location.hash}`;
     navigate(nextUrl, { replace: true });
-  }, [location.hash, location.pathname, location.search, navigate, setShowSettings]);
+  }, [
+    location.hash,
+    location.pathname,
+    location.search,
+    navigate,
+    setShowSettings,
+  ]);
 
   /**
    * Handle convergence handoff - pre-fill prompt when provided
@@ -229,16 +302,16 @@ function PromptOptimizerContent({
    */
   useEffect(() => {
     if (!convergenceHandoff) return;
-    
+
     // Create a unique key for this handoff to prevent re-applying
     const handoffKey = `${convergenceHandoff.prompt.slice(0, 50)}-${convergenceHandoff.cameraMotion}`;
-    
+
     // Skip if we've already applied this handoff
     if (handoffAppliedRef.current === handoffKey) return;
-    
+
     // Mark this handoff as applied
     handoffAppliedRef.current = handoffKey;
-    
+
     // Pre-fill the input prompt with the converged prompt
     setInputPrompt(convergenceHandoff.prompt);
 
@@ -250,16 +323,16 @@ function PromptOptimizerContent({
     if (handoffSubjectMotion) {
       setSubjectMotion(handoffSubjectMotion);
     }
-    
+
     // Clear any existing displayed prompt to show the input
-    setDisplayedPromptSilently('');
+    setDisplayedPromptSilently("");
     setShowResults(false);
-    
+
     // Show a toast notification
-    toast.success('Prompt loaded from Visual Convergence');
-    
+    toast.success("Prompt loaded from Visual Convergence");
+
     // Log the handoff for debugging
-    log.info('Applied convergence handoff', {
+    log.info("Applied convergence handoff", {
       promptLength: convergenceHandoff.prompt.length,
       lockedDimensionsCount: convergenceHandoff.lockedDimensions.length,
       cameraMotion: convergenceHandoff.cameraMotion,
@@ -300,6 +373,74 @@ function PromptOptimizerContent({
   ]);
 
   const stablePromptContext = useStablePromptContext(promptContext);
+  const promptHistoryEntries = promptHistory.history;
+  const createPromptHistoryDraft = promptHistory.createDraft;
+  const updatePromptHistoryEntryLocal = promptHistory.updateEntryLocal;
+
+  const upsertHistoryEntryFromSessionLoad = useCallback(
+    (entry: HydratedPromptHistoryInput, sessionDocId: string): void => {
+      const uuid = typeof entry.uuid === "string" ? entry.uuid.trim() : "";
+      if (!uuid) return;
+
+      const mode =
+        typeof entry.mode === "string" && entry.mode.trim()
+          ? entry.mode.trim()
+          : "video";
+      const generationParams =
+        entry.generationParams && typeof entry.generationParams === "object"
+          ? entry.generationParams
+          : null;
+
+      const existing = promptHistoryEntries.find((item) => item.uuid === uuid);
+      if (!existing) {
+        createPromptHistoryDraft({
+          mode,
+          targetModel: entry.targetModel ?? null,
+          generationParams,
+          keyframes: entry.keyframes ?? null,
+          uuid,
+        });
+      }
+
+      const normalizedContext =
+        typeof entry.brainstormContext === "string"
+          ? (() => {
+              try {
+                const parsed = JSON.parse(entry.brainstormContext) as unknown;
+                return parsed && typeof parsed === "object"
+                  ? (parsed as Record<string, unknown>)
+                  : null;
+              } catch {
+                return null;
+              }
+            })()
+          : entry.brainstormContext &&
+              typeof entry.brainstormContext === "object"
+            ? entry.brainstormContext
+            : null;
+
+      updatePromptHistoryEntryLocal(uuid, {
+        id: entry.id ?? sessionDocId,
+        timestamp: entry.timestamp ?? new Date().toISOString(),
+        title: entry.title ?? null,
+        input: entry.input ?? "",
+        output: entry.output ?? "",
+        score: entry.score ?? null,
+        mode,
+        targetModel: entry.targetModel ?? null,
+        generationParams,
+        keyframes: entry.keyframes ?? null,
+        brainstormContext: normalizedContext,
+        highlightCache: entry.highlightCache ?? null,
+        versions: Array.isArray(entry.versions) ? entry.versions : [],
+      });
+    },
+    [
+      promptHistoryEntries,
+      createPromptHistoryDraft,
+      updatePromptHistoryEntryLocal,
+    ],
+  );
 
   // ============================================================================
   // Custom Hooks - Business Logic Delegation
@@ -308,7 +449,12 @@ function PromptOptimizerContent({
   // Load prompt from URL parameter
   const { isLoading } = usePromptLoader({
     sessionId,
-    currentPromptUuid,
+    isAuthResolved,
+    historyEntries: promptHistoryEntries,
+    createDraftEntry: createPromptHistoryDraft,
+    selectedMode,
+    selectedModelValue: selectedModel,
+    generationParamsValue: generationParams,
     navigate,
     toast,
     user,
@@ -320,7 +466,12 @@ function PromptOptimizerContent({
     setCurrentPromptDocId,
     setCurrentPromptUuid,
     setShowResults,
+    setSelectedMode,
     setSelectedModel,
+    setGenerationParams,
+    upsertHistoryEntry: upsertHistoryEntryFromSessionLoad,
+    setSuggestionsData,
+    setConceptElements,
     setPromptContext,
     onLoadKeyframes,
     skipLoadFromUrlRef,
@@ -344,7 +495,7 @@ function PromptOptimizerContent({
     setDisplayedPromptSilently,
     applyInitialHighlightSnapshot,
     onEdit: ({ previousText, nextText }) =>
-      registerPromptEdit({ previousText, nextText, source: 'manual' }),
+      registerPromptEdit({ previousText, nextText, source: "manual" }),
     undoStackRef,
     redoStackRef,
     latestHighlightRef,
@@ -352,24 +503,10 @@ function PromptOptimizerContent({
     setCanUndo,
     setCanRedo,
   });
-  const handleCreateNewWithKeyframes = useCallback((): void => {
-    setKeyframes([]);
-    clearStartFrame();
-    clearEndFrame();
-    clearVideoReferences();
-    clearExtendVideo();
-    handleCreateNew();
-  }, [
-    clearEndFrame,
-    clearExtendVideo,
-    clearStartFrame,
-    clearVideoReferences,
-    handleCreateNew,
-    setKeyframes,
-  ]);
-
   const uploadSidebarImage = useCallback(
-    async (file: File): Promise<{
+    async (
+      file: File,
+    ): Promise<{
       url: string;
       storagePath?: string;
       viewUrlExpiresAt?: string;
@@ -380,23 +517,33 @@ function PromptOptimizerContent({
         return null;
       }
 
-      const response = await uploadPreviewImage(file, {}, { source: 'tool-sidebar' });
+      const response = await uploadPreviewImage(
+        file,
+        {},
+        { source: "tool-sidebar" },
+      );
       if (!response.success || !response.data) {
-        throw new Error(response.error || response.message || 'Failed to upload image');
+        throw new Error(
+          response.error || response.message || "Failed to upload image",
+        );
       }
 
       const imageUrl = response.data.viewUrl || response.data.imageUrl;
       if (!imageUrl) {
-        throw new Error('Upload did not return an image URL');
+        throw new Error("Upload did not return an image URL");
       }
 
       return {
         url: imageUrl,
-        ...(response.data.storagePath ? { storagePath: response.data.storagePath } : {}),
-        ...(response.data.viewUrlExpiresAt ? { viewUrlExpiresAt: response.data.viewUrlExpiresAt } : {}),
+        ...(response.data.storagePath
+          ? { storagePath: response.data.storagePath }
+          : {}),
+        ...(response.data.viewUrlExpiresAt
+          ? { viewUrlExpiresAt: response.data.viewUrlExpiresAt }
+          : {}),
       };
     },
-    [toast]
+    [toast],
   );
 
   const handleImageUpload = useCallback(
@@ -406,15 +553,19 @@ function PromptOptimizerContent({
         if (!uploaded) return;
         addKeyframe({
           url: uploaded.url,
-          source: 'upload',
-          ...(uploaded.storagePath ? { storagePath: uploaded.storagePath } : {}),
-          ...(uploaded.viewUrlExpiresAt ? { viewUrlExpiresAt: uploaded.viewUrlExpiresAt } : {}),
+          source: "upload",
+          ...(uploaded.storagePath
+            ? { storagePath: uploaded.storagePath }
+            : {}),
+          ...(uploaded.viewUrlExpiresAt
+            ? { viewUrlExpiresAt: uploaded.viewUrlExpiresAt }
+            : {}),
         });
       } catch (error) {
-        toast.error(error instanceof Error ? error.message : 'Upload failed');
+        toast.error(error instanceof Error ? error.message : "Upload failed");
       }
     },
-    [addKeyframe, toast, uploadSidebarImage]
+    [addKeyframe, toast, uploadSidebarImage],
   );
 
   const handleStartFrameUpload = useCallback(
@@ -425,23 +576,31 @@ function PromptOptimizerContent({
         setStartFrame({
           id: `start-frame-upload-${Date.now()}`,
           url: uploaded.url,
-          source: 'upload',
-          ...(uploaded.storagePath ? { storagePath: uploaded.storagePath } : {}),
-          ...(uploaded.viewUrlExpiresAt ? { viewUrlExpiresAt: uploaded.viewUrlExpiresAt } : {}),
+          source: "upload",
+          ...(uploaded.storagePath
+            ? { storagePath: uploaded.storagePath }
+            : {}),
+          ...(uploaded.viewUrlExpiresAt
+            ? { viewUrlExpiresAt: uploaded.viewUrlExpiresAt }
+            : {}),
         });
       } catch (error) {
-        toast.error(error instanceof Error ? error.message : 'Upload failed');
+        toast.error(error instanceof Error ? error.message : "Upload failed");
       }
     },
-    [setStartFrame, toast, uploadSidebarImage]
+    [setStartFrame, toast, uploadSidebarImage],
   );
 
   const clearResultsView = useCallback((): void => {
     if (promptOptimizer.displayedPrompt?.trim()) {
-      setDisplayedPromptSilently('');
+      setDisplayedPromptSilently("");
     }
     setShowResults(false);
-  }, [promptOptimizer.displayedPrompt, setDisplayedPromptSilently, setShowResults]);
+  }, [
+    promptOptimizer.displayedPrompt,
+    setDisplayedPromptSilently,
+    setShowResults,
+  ]);
 
   const handleSequenceOptimizationApplied = useCallback(
     async (optimizedPrompt: string): Promise<void> => {
@@ -449,14 +608,14 @@ function PromptOptimizerContent({
       try {
         await updateShot(currentShotId, { prompt: optimizedPrompt });
       } catch (error) {
-        log.warn('Failed to persist optimized sequence prompt', {
+        log.warn("Failed to persist optimized sequence prompt", {
           shotId: currentShotId,
           error: error instanceof Error ? error.message : String(error),
         });
-        toast.error('Failed to save optimized shot prompt');
+        toast.error("Failed to save optimized shot prompt");
       }
     },
-    [currentShotId, hasActiveContinuityShot, toast, updateShot]
+    [currentShotId, hasActiveContinuityShot, toast, updateShot],
   );
 
   const promptForAssets = useMemo(() => {
@@ -464,7 +623,11 @@ function PromptOptimizerContent({
       return promptOptimizer.displayedPrompt;
     }
     return promptOptimizer.inputPrompt;
-  }, [promptOptimizer.displayedPrompt, promptOptimizer.inputPrompt, showResults]);
+  }, [
+    promptOptimizer.displayedPrompt,
+    promptOptimizer.inputPrompt,
+    showResults,
+  ]);
 
   const optimizationGenerationParams = useMemo<CapabilityValues>(
     () => ({
@@ -472,7 +635,7 @@ function PromptOptimizerContent({
       ...(cameraMotion?.id ? { camera_motion_id: cameraMotion.id } : {}),
       ...(subjectMotion.trim() ? { subject_motion: subjectMotion.trim() } : {}),
     }),
-    [generationParams, cameraMotion?.id, subjectMotion]
+    [generationParams, cameraMotion?.id, subjectMotion],
   );
 
   // Prompt optimization
@@ -557,22 +720,23 @@ function PromptOptimizerContent({
   });
 
   // Enhancement suggestions
-  const { fetchEnhancementSuggestions, handleSuggestionClick } = useEnhancementSuggestions({
-    promptOptimizer,
-    selectedMode,
-    suggestionsData,
-    setSuggestionsData,
-    handleDisplayedPromptChange,
-    stablePromptContext,
-    toast,
-    applyInitialHighlightSnapshot,
-    latestHighlightRef,
-    currentPromptUuid,
-    currentPromptDocId,
-    promptHistory,
-    onCoherenceCheck: runCoherenceCheck,
-    i2vContext,
-  });
+  const { fetchEnhancementSuggestions, handleSuggestionClick } =
+    useEnhancementSuggestions({
+      promptOptimizer,
+      selectedMode,
+      suggestionsData,
+      setSuggestionsData,
+      handleDisplayedPromptChange,
+      stablePromptContext,
+      toast,
+      applyInitialHighlightSnapshot,
+      latestHighlightRef,
+      currentPromptUuid,
+      currentPromptDocId,
+      promptHistory,
+      onCoherenceCheck: runCoherenceCheck,
+      i2vContext,
+    });
 
   // ============================================================================
   // Keyboard Shortcuts
@@ -580,15 +744,18 @@ function PromptOptimizerContent({
   useKeyboardShortcuts({
     openShortcuts: () => setShowShortcuts(true),
     openSettings: () => setShowSettings(true),
-    createNew: handleCreateNewWithKeyframes,
-    optimize: () => !promptOptimizer.isProcessing && showResults === false && handleOptimize(),
+    createNew: handleCreateNew,
+    optimize: () =>
+      !promptOptimizer.isProcessing &&
+      showResults === false &&
+      handleOptimize(),
     improveFirst: handleImproveFirst,
     canCopy: () => showResults && Boolean(promptOptimizer.displayedPrompt),
     copy: () => {
       navigator.clipboard.writeText(promptOptimizer.displayedPrompt);
-      toast.success('Copied to clipboard!');
+      toast.success("Copied to clipboard!");
     },
-    export: () => showResults && toast.info('Use export button in canvas'),
+    export: () => showResults && toast.info("Use export button in canvas"),
     toggleSidebar: () => setShowHistory(!showHistory),
     switchMode: () => {
       // Implementation from original
@@ -690,12 +857,16 @@ function PromptOptimizerContent({
               enabled:
                 false &&
                 (import.meta.env.DEV ||
-                  new URLSearchParams(window.location.search).get('debug') === 'true'),
+                  new URLSearchParams(window.location.search).get("debug") ===
+                    "true"),
               inputPrompt: promptOptimizer.inputPrompt,
               displayedPrompt: promptOptimizer.displayedPrompt,
               optimizedPrompt: promptOptimizer.optimizedPrompt,
               selectedMode,
-              promptContext: stablePromptContext as unknown as Record<string, unknown> | null,
+              promptContext: stablePromptContext as unknown as Record<
+                string,
+                unknown
+              > | null,
             }}
           />
         </PromptResultsActionsProvider>
@@ -715,13 +886,22 @@ interface PromptOptimizerWorkspaceProps {
 function PromptOptimizerWorkspace({
   convergenceHandoff,
 }: PromptOptimizerWorkspaceProps): React.ReactElement {
-  const user = useAuthUser();
+  const [isAuthResolved, setIsAuthResolved] = React.useState(false);
+  const user = useAuthUser({
+    onChange: () => {
+      setIsAuthResolved(true);
+    },
+  });
   const { sessionId } = useParams<{ sessionId?: string }>();
 
   return (
     <WorkspaceSessionProvider {...(sessionId ? { sessionId } : {})}>
       <PromptStateProvider user={user}>
-        <PromptOptimizerContent user={user} convergenceHandoff={convergenceHandoff} />
+        <PromptOptimizerContent
+          user={user}
+          isAuthResolved={isAuthResolved}
+          convergenceHandoff={convergenceHandoff}
+        />
       </PromptStateProvider>
     </WorkspaceSessionProvider>
   );

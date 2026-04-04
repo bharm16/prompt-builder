@@ -10,11 +10,11 @@
  * Exit code 0 = all checks pass, 1 = at least one failure.
  */
 
-import { initializeApp, cert, applicationDefault } from 'firebase-admin/app';
-import { getFirestore } from 'firebase-admin/firestore';
+import { initializeApp, cert, applicationDefault } from "firebase-admin/app";
+import { getFirestore } from "firebase-admin/firestore";
 
 const isEmulator = Boolean(process.env.FIRESTORE_EMULATOR_HOST);
-const projectId = process.env.GCLOUD_PROJECT || 'demo-project';
+const projectId = process.env.GCLOUD_PROJECT || "demo-project";
 
 initializeApp({
   credential: isEmulator ? applicationDefault() : applicationDefault(),
@@ -36,11 +36,11 @@ function fail(check, detail) {
 // --- Check 1: Credit balance vs transaction sum ---
 
 async function checkCreditBalances() {
-  console.log('\n[1/4] Credit balance integrity...');
+  console.log("\n[1/4] Credit balance integrity...");
 
-  const balancesSnap = await db.collection('credit_balances').get();
+  const balancesSnap = await db.collection("credit_balances").get();
   if (balancesSnap.empty) {
-    pass('No credit balances to verify (empty collection)');
+    pass("No credit balances to verify (empty collection)");
     return;
   }
 
@@ -52,9 +52,9 @@ async function checkCreditBalances() {
     const storedBalance = balanceDoc.data().balance ?? 0;
 
     const txSnap = await db
-      .collection('credit_balances')
+      .collection("credit_balances")
       .doc(userId)
-      .collection('credit_transactions')
+      .collection("credit_transactions")
       .get();
 
     let computedBalance = 0;
@@ -66,7 +66,7 @@ async function checkCreditBalances() {
     if (Math.abs(storedBalance - computedBalance) > 0.01) {
       fail(
         `User ${userId}`,
-        `stored=${storedBalance}, computed=${computedBalance}, drift=${storedBalance - computedBalance}`
+        `stored=${storedBalance}, computed=${computedBalance}, drift=${storedBalance - computedBalance}`,
       );
       mismatches += 1;
     }
@@ -81,12 +81,12 @@ async function checkCreditBalances() {
 // --- Check 2: Video job status distribution ---
 
 async function checkVideoJobDistribution() {
-  console.log('\n[2/4] Video job status distribution...');
+  console.log("\n[2/4] Video job status distribution...");
 
   const statusCounts = { queued: 0, processing: 0, completed: 0, failed: 0 };
   let total = 0;
 
-  const jobsSnap = await db.collection('video_jobs').get();
+  const jobsSnap = await db.collection("video_jobs").get();
   for (const doc of jobsSnap.docs) {
     const status = doc.data().status;
     if (status in statusCounts) {
@@ -96,18 +96,25 @@ async function checkVideoJobDistribution() {
   }
 
   console.log(`    Total jobs: ${total}`);
-  console.log(`    Queued: ${statusCounts.queued}, Processing: ${statusCounts.processing}`);
-  console.log(`    Completed: ${statusCounts.completed}, Failed: ${statusCounts.failed}`);
+  console.log(
+    `    Queued: ${statusCounts.queued}, Processing: ${statusCounts.processing}`,
+  );
+  console.log(
+    `    Completed: ${statusCounts.completed}, Failed: ${statusCounts.failed}`,
+  );
 
   if (total === 0) {
-    pass('No video jobs to verify (empty collection)');
+    pass("No video jobs to verify (empty collection)");
     return;
   }
 
   // Sanity: processing jobs should be a small fraction (no stale claims)
   const processingRatio = statusCounts.processing / total;
   if (processingRatio > 0.5 && total > 10) {
-    fail('Processing ratio', `${(processingRatio * 100).toFixed(1)}% of jobs are stuck in processing`);
+    fail(
+      "Processing ratio",
+      `${(processingRatio * 100).toFixed(1)}% of jobs are stuck in processing`,
+    );
   } else {
     pass(`Processing ratio ${(processingRatio * 100).toFixed(1)}% is healthy`);
   }
@@ -116,13 +123,16 @@ async function checkVideoJobDistribution() {
 // --- Check 3: Orphaned credit transactions ---
 
 async function checkOrphanedTransactions() {
-  console.log('\n[3/4] Orphaned credit transactions...');
+  console.log("\n[3/4] Orphaned credit transactions...");
 
-  const balancesSnap = await db.collection('credit_balances').get();
+  const balancesSnap = await db.collection("credit_balances").get();
   const userIds = new Set(balancesSnap.docs.map((d) => d.id));
 
   // Check via collection group query
-  const txGroupSnap = await db.collectionGroup('credit_transactions').limit(500).get();
+  const txGroupSnap = await db
+    .collectionGroup("credit_transactions")
+    .limit(500)
+    .get();
 
   let orphaned = 0;
   for (const txDoc of txGroupSnap.docs) {
@@ -134,7 +144,10 @@ async function checkOrphanedTransactions() {
   }
 
   if (orphaned > 0) {
-    fail('Orphaned transactions', `${orphaned} transactions have no parent credit_balance doc`);
+    fail(
+      "Orphaned transactions",
+      `${orphaned} transactions have no parent credit_balance doc`,
+    );
   } else {
     pass(`No orphaned transactions in ${txGroupSnap.size} sampled`);
   }
@@ -143,11 +156,11 @@ async function checkOrphanedTransactions() {
 // --- Check 4: DLQ entry validity ---
 
 async function checkDlqEntries() {
-  console.log('\n[4/4] DLQ entry validity...');
+  console.log("\n[4/4] DLQ entry validity...");
 
-  const dlqSnap = await db.collection('video_job_dlq').get();
+  const dlqSnap = await db.collection("video_job_dlq").get();
   if (dlqSnap.empty) {
-    pass('No DLQ entries to verify (empty collection)');
+    pass("No DLQ entries to verify (empty collection)");
     return;
   }
 
@@ -157,12 +170,12 @@ async function checkDlqEntries() {
   for (const dlqDoc of dlqSnap.docs) {
     const jobId = dlqDoc.data().jobId;
     if (!jobId) {
-      fail(`DLQ ${dlqDoc.id}`, 'Missing jobId field');
+      fail(`DLQ ${dlqDoc.id}`, "Missing jobId field");
       invalid += 1;
       continue;
     }
 
-    const jobSnap = await db.collection('video_jobs').doc(jobId).get();
+    const jobSnap = await db.collection("video_jobs").doc(jobId).get();
     if (!jobSnap.exists) {
       fail(`DLQ ${dlqDoc.id}`, `References non-existent job ${jobId}`);
       invalid += 1;
@@ -177,8 +190,8 @@ async function checkDlqEntries() {
 
 // --- Run all checks ---
 
-console.log(`DR Smoke Test — ${isEmulator ? 'Emulator' : projectId}`);
-console.log('='.repeat(50));
+console.log(`DR Smoke Test — ${isEmulator ? "Emulator" : projectId}`);
+console.log("=".repeat(50));
 
 try {
   await checkCreditBalances();
@@ -186,15 +199,15 @@ try {
   await checkOrphanedTransactions();
   await checkDlqEntries();
 } catch (error) {
-  console.error('\nFATAL: Smoke test crashed:', error.message);
+  console.error("\nFATAL: Smoke test crashed:", error.message);
   process.exit(2);
 }
 
-console.log('\n' + '='.repeat(50));
+console.log("\n" + "=".repeat(50));
 if (failures > 0) {
   console.log(`RESULT: ${failures} check(s) FAILED`);
   process.exit(1);
 } else {
-  console.log('RESULT: All checks PASSED');
+  console.log("RESULT: All checks PASSED");
   process.exit(0);
 }

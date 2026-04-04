@@ -12,6 +12,7 @@ cd /Users/bryceharmon/Desktop/prompt-builder
 ```
 
 This script will:
+
 - Check Cursor installation
 - Clear corrupted caches
 - Reset extension state
@@ -20,6 +21,7 @@ This script will:
 ### Option 2: Manual Quick Fixes
 
 #### Clear Extension Cache
+
 ```bash
 # Close Cursor first!
 killall Cursor
@@ -31,6 +33,7 @@ rm -rf ~/Library/Caches/com.todesktop.230313mzl4w4u92/*
 ```
 
 #### Reset Extension State
+
 ```bash
 # Close Cursor first!
 killall Cursor
@@ -45,6 +48,7 @@ rm -rf ~/Library/Application\ Support/Cursor/User/globalStorage/*codex*
 ```
 
 #### Full Cache Clear
+
 ```bash
 # Close Cursor first!
 killall Cursor
@@ -107,16 +111,19 @@ rm -rf ~/Library/Logs/Cursor
 ## Workspace-Specific Settings
 
 This workspace has minimal Cursor-specific settings:
+
 - `.vscode/settings.json` - Only contains terminal scrollback and MCP config
 - No conflicting extension configurations
 
 If issues persist after fixes, check:
+
 - macOS System Preferences > Security & Privacy > Privacy > Full Disk Access
 - Ensure Cursor has necessary permissions
 
 ## Getting Help
 
 If problems persist:
+
 1. Check Cursor logs: `~/Library/Logs/Cursor/`
 2. Report issues: https://cursor.sh/support
 3. Check known issues: https://github.com/getcursor/cursor/issues

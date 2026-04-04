@@ -2,7 +2,7 @@
  * Types for SpanBentoGrid components
  */
 
-import type React from 'react';
+import type React from "react";
 
 export interface Span {
   id: string;
@@ -18,7 +18,12 @@ export interface CategoryConfig {
   label: string;
   backgroundColor: string;
   borderColor: string;
-  icon: React.ComponentType<{ size?: number; color?: string; className?: string; style?: React.CSSProperties }>;
+  icon: React.ComponentType<{
+    size?: number;
+    color?: string;
+    className?: string;
+    style?: React.CSSProperties;
+  }>;
   order: number;
   description: string;
 }

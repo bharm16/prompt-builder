@@ -1,4 +1,4 @@
-declare module 'ahocorasick' {
+declare module "ahocorasick" {
   /**
    * AhoCorasick search result tuple: [endIndex, matchedPatterns]
    * - endIndex: The position where the match ends in the text

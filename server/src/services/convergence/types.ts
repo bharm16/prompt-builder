@@ -1,6 +1,6 @@
 /**
  * Type definitions for the Visual Convergence feature
- * 
+ *
  * The Visual Convergence feature transforms PromptCanvas into a visual-first video creation platform.
  * Users make creative decisions by selecting from generated images rather than writing prompts.
  */
@@ -12,36 +12,46 @@
 /**
  * High-level creative direction that influences all subsequent options
  */
-export const DIRECTIONS = ['cinematic', 'social', 'artistic', 'documentary'] as const;
+export const DIRECTIONS = [
+  "cinematic",
+  "social",
+  "artistic",
+  "documentary",
+] as const;
 export type Direction = (typeof DIRECTIONS)[number];
 
 /**
  * Visual attribute categories that users select from
  */
-export const DIMENSION_TYPES = ['mood', 'framing', 'lighting', 'camera_motion'] as const;
+export const DIMENSION_TYPES = [
+  "mood",
+  "framing",
+  "lighting",
+  "camera_motion",
+] as const;
 export type DimensionType = (typeof DIMENSION_TYPES)[number];
 
 /**
  * Starting point modes for the convergence flow
  */
-export const STARTING_POINT_MODES = ['upload', 'quick', 'converge'] as const;
+export const STARTING_POINT_MODES = ["upload", "quick", "converge"] as const;
 export type StartingPointMode = (typeof STARTING_POINT_MODES)[number];
 
 /**
  * Steps in the convergence flow
  */
 export const CONVERGENCE_STEPS = [
-  'intent',
-  'starting_point',
-  'direction',
-  'mood',
-  'framing',
-  'lighting',
-  'final_frame',
-  'camera_motion',
-  'subject_motion',
-  'preview',
-  'complete',
+  "intent",
+  "starting_point",
+  "direction",
+  "mood",
+  "framing",
+  "lighting",
+  "final_frame",
+  "camera_motion",
+  "subject_motion",
+  "preview",
+  "complete",
 ] as const;
 export type ConvergenceStep = (typeof CONVERGENCE_STEPS)[number];
 
@@ -53,12 +63,12 @@ export type ConvergenceStep = (typeof CONVERGENCE_STEPS)[number];
  * Camera motion categories for grouping and filtering motions
  */
 export const CAMERA_MOTION_CATEGORIES = [
-  'static',
-  'pan_tilt',
-  'dolly',
-  'crane',
-  'orbital',
-  'compound',
+  "static",
+  "pan_tilt",
+  "dolly",
+  "crane",
+  "orbital",
+  "compound",
 ] as const;
 export type CameraMotionCategory = (typeof CAMERA_MOTION_CATEGORIES)[number];
 
@@ -158,7 +168,7 @@ export interface LockedDimension {
 export interface GeneratedImage {
   id: string;
   url: string; // Signed GCS URL
-  dimension: DimensionType | 'direction';
+  dimension: DimensionType | "direction";
   optionId: string;
   prompt: string;
   generatedAt: Date;
@@ -171,7 +181,7 @@ export interface GeneratedImage {
 /**
  * Session status
  */
-export const SESSION_STATUSES = ['active', 'completed', 'abandoned'] as const;
+export const SESSION_STATUSES = ["active", "completed", "abandoned"] as const;
 export type SessionStatus = (typeof SESSION_STATUSES)[number];
 
 /**
@@ -220,7 +230,7 @@ export interface StartSessionRequest {
 export interface StartSessionResponse {
   sessionId: string;
   images: GeneratedImage[];
-  currentDimension: 'starting_point' | 'direction';
+  currentDimension: "starting_point" | "direction";
   options?: Array<{ id: Direction; label: string }>;
   estimatedCost: number;
 }
@@ -230,7 +240,7 @@ export interface StartSessionResponse {
  */
 export interface SelectOptionRequest {
   sessionId: string;
-  dimension: DimensionType | 'direction';
+  dimension: DimensionType | "direction";
   optionId: string;
 }
 
@@ -240,7 +250,11 @@ export interface SelectOptionRequest {
 export interface SelectOptionResponse {
   sessionId: string;
   images: GeneratedImage[];
-  currentDimension: DimensionType | 'camera_motion' | 'subject_motion' | 'final_frame';
+  currentDimension:
+    | DimensionType
+    | "camera_motion"
+    | "subject_motion"
+    | "final_frame";
   lockedDimensions: LockedDimension[];
   options?: Array<{ id: string; label: string }>;
   creditsConsumed: number;
@@ -252,7 +266,7 @@ export interface SelectOptionResponse {
  */
 export interface RegenerateRequest {
   sessionId: string;
-  dimension: DimensionType | 'direction';
+  dimension: DimensionType | "direction";
 }
 
 /**
@@ -307,7 +321,7 @@ export interface GenerateSubjectMotionResponse {
   videoUrl: string;
   prompt: string;
   creditsConsumed: number;
-  inputMode: 'i2v' | 't2v';
+  inputMode: "i2v" | "t2v";
   startImageUrl: string | null;
 }
 
@@ -338,7 +352,7 @@ export interface AbandonSessionRequest {
  */
 export interface AbandonSessionResponse {
   sessionId: string;
-  status: 'abandoned';
+  status: "abandoned";
   imagesDeleted: boolean;
 }
 
@@ -396,8 +410,13 @@ export interface RegenerateFinalFrameRequest {
 /**
  * Status of a credit reservation
  */
-export const CREDIT_RESERVATION_STATUSES = ['pending', 'committed', 'refunded'] as const;
-export type CreditReservationStatus = (typeof CREDIT_RESERVATION_STATUSES)[number];
+export const CREDIT_RESERVATION_STATUSES = [
+  "pending",
+  "committed",
+  "refunded",
+] as const;
+export type CreditReservationStatus =
+  (typeof CREDIT_RESERVATION_STATUSES)[number];
 
 /**
  * Credit reservation for atomic credit operations

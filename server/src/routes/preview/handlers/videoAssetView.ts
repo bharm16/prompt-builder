@@ -1,53 +1,55 @@
-import type { Request, Response } from 'express';
-import type { PreviewRoutesServices } from '@routes/types';
+import type { Request, Response } from "express";
+import type { PreviewRoutesServices } from "@routes/types";
 
 type VideoAssetViewServices = Pick<
   PreviewRoutesServices,
-  'videoGenerationService' | 'videoJobStore' | 'storageService'
+  "videoGenerationService" | "videoJobStore" | "storageService"
 >;
 
-export const createVideoAssetViewHandler = ({
-  videoGenerationService,
-  videoJobStore,
-  storageService,
-}: VideoAssetViewServices) =>
+export const createVideoAssetViewHandler =
+  ({
+    videoGenerationService,
+    videoJobStore,
+    storageService,
+  }: VideoAssetViewServices) =>
   async (req: Request, res: Response): Promise<Response | void> => {
     if (!videoGenerationService) {
       return res.status(503).json({
         success: false,
-        error: 'Video generation service is not available',
+        error: "Video generation service is not available",
       });
     }
 
-    const userId = (req as Request & { user?: { uid?: string } }).user?.uid ?? null;
+    const userId =
+      (req as Request & { user?: { uid?: string } }).user?.uid ?? null;
     if (!userId) {
       return res.status(401).json({
         success: false,
-        error: 'Authentication required',
-        message: 'You must be logged in to access preview videos.',
+        error: "Authentication required",
+        message: "You must be logged in to access preview videos.",
       });
     }
 
     const assetId =
-      typeof req.query.assetId === 'string' ? req.query.assetId.trim() : '';
+      typeof req.query.assetId === "string" ? req.query.assetId.trim() : "";
     if (!assetId) {
       return res.status(400).json({
         success: false,
-        error: 'assetId is required',
+        error: "assetId is required",
       });
     }
 
-    if (assetId.includes('/')) {
+    if (assetId.includes("/")) {
       return res.status(400).json({
         success: false,
-        error: 'Invalid assetId',
+        error: "Invalid assetId",
       });
     }
 
     if (!videoJobStore) {
       return res.status(503).json({
         success: false,
-        error: 'Video job store is not available',
+        error: "Video job store is not available",
       });
     }
 
@@ -55,27 +57,25 @@ export const createVideoAssetViewHandler = ({
     if (!job) {
       return res.status(404).json({
         success: false,
-        error: 'Video asset not found',
+        error: "Video asset not found",
       });
     }
 
     if (job.userId !== userId) {
       return res.status(403).json({
         success: false,
-        error: 'Access denied',
-        message: 'This video does not belong to the authenticated user.',
+        error: "Access denied",
+        message: "This video does not belong to the authenticated user.",
       });
     }
 
     if (job.result?.storagePath) {
       try {
         if (!storageService) {
-          throw new Error('storage unavailable');
+          throw new Error("storage unavailable");
         }
-        const { viewUrl, expiresAt, storagePath } = await storageService.getViewUrl(
-          userId,
-          job.result.storagePath
-        );
+        const { viewUrl, expiresAt, storagePath } =
+          await storageService.getViewUrl(userId, job.result.storagePath);
         return res.json({
           success: true,
           data: {
@@ -83,7 +83,7 @@ export const createVideoAssetViewHandler = ({
             expiresAt,
             storagePath,
             assetId,
-            source: 'storage',
+            source: "storage",
           },
         });
       } catch {
@@ -95,7 +95,7 @@ export const createVideoAssetViewHandler = ({
     if (!viewUrl) {
       return res.status(404).json({
         success: false,
-        error: 'Video asset not found',
+        error: "Video asset not found",
       });
     }
 
@@ -104,7 +104,7 @@ export const createVideoAssetViewHandler = ({
       data: {
         viewUrl,
         assetId,
-        source: 'preview',
+        source: "preview",
       },
     });
   };

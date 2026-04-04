@@ -17,5 +17,8 @@ export function getProviderPollTimeoutMs(): number {
 }
 
 export function getWorkflowWatchdogTimeoutMs(): number {
-  return Math.max(configuredWorkflowTimeoutMs, configuredPollTimeoutMs + 10_000);
+  return Math.max(
+    configuredWorkflowTimeoutMs,
+    configuredPollTimeoutMs + 10_000,
+  );
 }

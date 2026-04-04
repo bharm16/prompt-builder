@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from "zod";
 import type {
   CapabilitiesSchema,
   CapabilityCondition,
@@ -7,11 +7,11 @@ import type {
   CapabilityFieldUI,
   CapabilityValueRule,
   ModelFeatures,
-} from '@shared/capabilities';
-import { ApiClient, apiClient } from './ApiClient';
+} from "@shared/capabilities";
+import { ApiClient, apiClient } from "./ApiClient";
 
 const CapabilityValueSchema = z.union([z.string(), z.number(), z.boolean()]);
-const CapabilityFieldTypeSchema = z.enum(['enum', 'int', 'bool', 'string']);
+const CapabilityFieldTypeSchema = z.enum(["enum", "int", "bool", "string"]);
 
 const CapabilityConditionSchema = z.object({
   field: z.string(),
@@ -37,7 +37,7 @@ const CapabilityFieldConstraintsSchema = z.object({
 
 const CapabilityFieldUISchema = z.object({
   label: z.string().optional(),
-  control: z.enum(['select', 'segmented', 'toggle', 'input']).optional(),
+  control: z.enum(["select", "segmented", "toggle", "input"]).optional(),
   group: z.string().optional(),
   order: z.number().optional(),
   description: z.string().optional(),
@@ -95,20 +95,24 @@ const VideoAvailabilityResponseSchema = z.object({
 
 const CapabilitiesRegistrySchema = z.record(
   z.string(),
-  z.record(z.string(), CapabilitiesSchemaSchema)
+  z.record(z.string(), CapabilitiesSchemaSchema),
 );
 
 type ModelsResponse = z.infer<typeof ModelsResponseSchema>;
-type VideoAvailabilityResponse = z.infer<typeof VideoAvailabilityResponseSchema>;
+type VideoAvailabilityResponse = z.infer<
+  typeof VideoAvailabilityResponseSchema
+>;
 type ParsedCapabilityCondition = z.infer<typeof CapabilityConditionSchema>;
 type ParsedCapabilityValueRule = z.infer<typeof CapabilityValueRuleSchema>;
-type ParsedCapabilityFieldConstraints = z.infer<typeof CapabilityFieldConstraintsSchema>;
+type ParsedCapabilityFieldConstraints = z.infer<
+  typeof CapabilityFieldConstraintsSchema
+>;
 type ParsedCapabilityFieldUI = z.infer<typeof CapabilityFieldUISchema>;
 type ParsedCapabilityField = z.infer<typeof CapabilityFieldSchema>;
 type ParsedCapabilitiesSchema = z.infer<typeof CapabilitiesSchemaSchema>;
 
 const normalizeCondition = (
-  condition: ParsedCapabilityCondition
+  condition: ParsedCapabilityCondition,
 ): CapabilityCondition => ({
   field: condition.field,
   ...(condition.eq !== undefined ? { eq: condition.eq } : {}),
@@ -118,14 +122,14 @@ const normalizeCondition = (
 });
 
 const normalizeValueRule = (
-  rule: ParsedCapabilityValueRule
+  rule: ParsedCapabilityValueRule,
 ): CapabilityValueRule => ({
   if: normalizeCondition(rule.if),
   values: rule.values,
 });
 
 const normalizeFieldConstraints = (
-  constraints: ParsedCapabilityFieldConstraints
+  constraints: ParsedCapabilityFieldConstraints,
 ): CapabilityFieldConstraints => ({
   ...(constraints.min !== undefined ? { min: constraints.min } : {}),
   ...(constraints.max !== undefined ? { max: constraints.max } : {}),
@@ -137,50 +141,61 @@ const normalizeFieldConstraints = (
     ? { disabled_if: constraints.disabled_if.map(normalizeCondition) }
     : {}),
   ...(Array.isArray(constraints.available_values_if)
-    ? { available_values_if: constraints.available_values_if.map(normalizeValueRule) }
+    ? {
+        available_values_if:
+          constraints.available_values_if.map(normalizeValueRule),
+      }
     : {}),
 });
 
 const normalizeFieldUi = (ui: ParsedCapabilityFieldUI): CapabilityFieldUI => ({
-  ...(typeof ui.label === 'string' ? { label: ui.label } : {}),
+  ...(typeof ui.label === "string" ? { label: ui.label } : {}),
   ...(ui.control ? { control: ui.control } : {}),
-  ...(typeof ui.group === 'string' ? { group: ui.group } : {}),
-  ...(typeof ui.order === 'number' ? { order: ui.order } : {}),
-  ...(typeof ui.description === 'string' ? { description: ui.description } : {}),
-  ...(typeof ui.placeholder === 'string' ? { placeholder: ui.placeholder } : {}),
+  ...(typeof ui.group === "string" ? { group: ui.group } : {}),
+  ...(typeof ui.order === "number" ? { order: ui.order } : {}),
+  ...(typeof ui.description === "string"
+    ? { description: ui.description }
+    : {}),
+  ...(typeof ui.placeholder === "string"
+    ? { placeholder: ui.placeholder }
+    : {}),
 });
 
 const normalizeField = (field: ParsedCapabilityField): CapabilityField => ({
   type: field.type,
   ...(Array.isArray(field.values) ? { values: field.values } : {}),
   ...(field.default !== undefined ? { default: field.default } : {}),
-  ...(field.constraints ? { constraints: normalizeFieldConstraints(field.constraints) } : {}),
+  ...(field.constraints
+    ? { constraints: normalizeFieldConstraints(field.constraints) }
+    : {}),
   ...(field.ui ? { ui: normalizeFieldUi(field.ui) } : {}),
 });
 
-const normalizeFeatures = (features: ParsedCapabilitiesSchema['features']): ModelFeatures | undefined => {
+const normalizeFeatures = (
+  features: ParsedCapabilitiesSchema["features"],
+): ModelFeatures | undefined => {
   if (!features) {
     return undefined;
   }
   return {
     text_to_video: features.text_to_video,
     image_to_video: features.image_to_video,
-    ...(typeof features.video_to_video === 'boolean'
+    ...(typeof features.video_to_video === "boolean"
       ? { video_to_video: features.video_to_video }
       : {}),
   };
 };
 
 const normalizeCapabilitiesSchema = (
-  payload: ParsedCapabilitiesSchema
+  payload: ParsedCapabilitiesSchema,
 ): CapabilitiesSchema => {
   const normalizedFeatures = normalizeFeatures(payload.features);
   return {
     provider: payload.provider,
     model: payload.model,
     version: payload.version,
-    ...(typeof payload.source === 'string' ? { source: payload.source } : {}),
-    ...(typeof payload.generated_at === 'string'
+    ...(typeof payload.source === "string" ? { source: payload.source } : {}),
+    ...(typeof payload.generated_at === "string"
       ? { generated_at: payload.generated_at }
       : {}),
     ...(normalizedFeatures ? { features: normalizedFeatures } : {}),
@@ -188,7 +203,7 @@ const normalizeCapabilitiesSchema = (
       Object.entries(payload.fields).map(([key, value]) => [
         key,
         normalizeField(value),
-      ])
+      ]),
     ),
     ...(Array.isArray(payload.unknown_fields)
       ? { unknown_fields: payload.unknown_fields }
@@ -199,29 +214,40 @@ const normalizeCapabilitiesSchema = (
 export class CapabilitiesApi {
   constructor(private readonly client: ApiClient) {}
 
-  async getCapabilities(provider: string, model: string): Promise<CapabilitiesSchema> {
+  async getCapabilities(
+    provider: string,
+    model: string,
+  ): Promise<CapabilitiesSchema> {
     const encodedProvider = encodeURIComponent(provider);
     const encodedModel = encodeURIComponent(model);
     const parsed = CapabilitiesSchemaSchema.parse(
-      await this.client.get(`/capabilities?provider=${encodedProvider}&model=${encodedModel}`)
+      await this.client.get(
+        `/capabilities?provider=${encodedProvider}&model=${encodedModel}`,
+      ),
     );
     return normalizeCapabilitiesSchema(parsed);
   }
 
   async listProviders(): Promise<string[]> {
-    const data = ProvidersResponseSchema.parse(await this.client.get('/providers'));
+    const data = ProvidersResponseSchema.parse(
+      await this.client.get("/providers"),
+    );
     return data.providers;
   }
 
   async listModels(provider: string): Promise<ModelsResponse> {
     const encodedProvider = encodeURIComponent(provider);
     return ModelsResponseSchema.parse(
-      await this.client.get(`/models?provider=${encodedProvider}`)
+      await this.client.get(`/models?provider=${encodedProvider}`),
     );
   }
 
-  async getRegistry(): Promise<Record<string, Record<string, CapabilitiesSchema>>> {
-    const parsed = CapabilitiesRegistrySchema.parse(await this.client.get('/registry'));
+  async getRegistry(): Promise<
+    Record<string, Record<string, CapabilitiesSchema>>
+  > {
+    const parsed = CapabilitiesRegistrySchema.parse(
+      await this.client.get("/registry"),
+    );
     return Object.fromEntries(
       Object.entries(parsed).map(([provider, models]) => [
         provider,
@@ -229,15 +255,15 @@ export class CapabilitiesApi {
           Object.entries(models).map(([modelId, capability]) => [
             modelId,
             normalizeCapabilitiesSchema(capability),
-          ])
+          ]),
         ),
-      ])
+      ]),
     );
   }
 
   async getVideoAvailability(): Promise<VideoAvailabilityResponse> {
     return VideoAvailabilityResponseSchema.parse(
-      await this.client.get('/preview/video/availability')
+      await this.client.get("/preview/video/availability"),
     );
   }
 }

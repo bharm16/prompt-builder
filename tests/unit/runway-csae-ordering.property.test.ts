@@ -14,85 +14,85 @@
  * **Validates: Requirements 3.3, 3.4**
  */
 
-import { describe, it, expect } from 'vitest';
-import * as fc from 'fast-check';
+import { describe, it, expect } from "vitest";
+import * as fc from "fast-check";
 
-import { RunwayStrategy } from '@services/video-prompt-analysis/strategies/RunwayStrategy';
+import { RunwayStrategy } from "@services/video-prompt-analysis/strategies/RunwayStrategy";
 
 /**
  * Camera movement terms for generating test prompts
  */
 const CAMERA_TERMS = [
-  'pan left',
-  'pan right',
-  'tilt up',
-  'tilt down',
-  'dolly in',
-  'dolly out',
-  'zoom in',
-  'zoom out',
-  'tracking shot',
-  'crane shot',
-  'steadicam',
-  'handheld',
-  'low angle',
-  'high angle',
-  'wide angle',
-  'telephoto',
+  "pan left",
+  "pan right",
+  "tilt up",
+  "tilt down",
+  "dolly in",
+  "dolly out",
+  "zoom in",
+  "zoom out",
+  "tracking shot",
+  "crane shot",
+  "steadicam",
+  "handheld",
+  "low angle",
+  "high angle",
+  "wide angle",
+  "telephoto",
 ] as const;
 
 /**
  * Subject terms for generating test prompts
  */
 const SUBJECT_TERMS = [
-  'a man',
-  'a woman',
-  'a person',
-  'a child',
-  'a dog',
-  'a cat',
-  'the man',
-  'the woman',
-  'someone',
-  'a figure',
-  'a character',
+  "a man",
+  "a woman",
+  "a person",
+  "a child",
+  "a dog",
+  "a cat",
+  "the man",
+  "the woman",
+  "someone",
+  "a figure",
+  "a character",
 ] as const;
 
 /**
  * Action terms for generating test prompts
  */
 const ACTION_TERMS = [
-  'walking',
-  'running',
-  'jumping',
-  'sitting',
-  'standing',
-  'dancing',
-  'talking',
-  'looking',
-  'holding',
-  'reaching',
-  'falling',
-  'flying',
-  'swimming',
-  'driving',
+  "walking",
+  "running",
+  "jumping",
+  "sitting",
+  "standing",
+  "dancing",
+  "talking",
+  "looking",
+  "holding",
+  "reaching",
+  "falling",
+  "flying",
+  "swimming",
+  "driving",
 ] as const;
 
 /**
  * Environment terms for generating test prompts
  */
 const ENVIRONMENT_TERMS = [
-  'in a forest',
-  'in the city',
-  'at the beach',
-  'on a mountain',
-  'in a room',
-  'at a park',
-  'in the desert',
-  'on the street',
-  'inside a building',
-  'outside',
-  'in the garden',
+  "in a forest",
+  "in the city",
+  "at the beach",
+  "on a mountain",
+  "in a room",
+  "at a park",
+  "in the desert",
+  "on the street",
+  "inside a building",
+  "outside",
+  "in the garden",
 ] as const;
 
 /**
@@ -108,12 +108,12 @@ function findTermPosition(prompt: string, term: string): number {
 function findSegmentIndex(prompt: string, terms: readonly string[]): number {
   const segments = prompt
     .toLowerCase()
-    .split(',')
-    .map(segment => segment.trim());
+    .split(",")
+    .map((segment) => segment.trim());
 
   for (let i = 0; i < segments.length; i += 1) {
     const segment = segments[i];
-    if (segment && terms.some(term => segment.includes(term.toLowerCase()))) {
+    if (segment && terms.some((term) => segment.includes(term.toLowerCase()))) {
       return i;
     }
   }
@@ -122,7 +122,7 @@ function findSegmentIndex(prompt: string, terms: readonly string[]): number {
 }
 
 function subjectTermVariants(subjectTerm: string): string[] {
-  const stripped = subjectTerm.replace(/^(a|the)\s+/i, '').trim();
+  const stripped = subjectTerm.replace(/^(a|the)\s+/i, "").trim();
   const variants = [subjectTerm.toLowerCase()];
   if (stripped.length > 0) {
     variants.push(stripped.toLowerCase());
@@ -130,7 +130,10 @@ function subjectTermVariants(subjectTerm: string): string[] {
   return variants;
 }
 
-function findFirstTermPosition(prompt: string, terms: readonly string[]): number {
+function findFirstTermPosition(
+  prompt: string,
+  terms: readonly string[],
+): number {
   const lowerPrompt = prompt.toLowerCase();
   let best = Number.POSITIVE_INFINITY;
 
@@ -144,7 +147,7 @@ function findFirstTermPosition(prompt: string, terms: readonly string[]): number
   return Number.isFinite(best) ? best : -1;
 }
 
-describe('Runway CSAE Ordering Property Tests', () => {
+describe("Runway CSAE Ordering Property Tests", () => {
   const strategy = new RunwayStrategy();
 
   /**
@@ -157,8 +160,8 @@ describe('Runway CSAE Ordering Property Tests', () => {
    * **Feature: video-model-optimization, Property 4: Runway CSAE Ordering**
    * **Validates: Requirements 3.3, 3.4**
    */
-  describe('Property 4: Runway CSAE Ordering', () => {
-    it('camera terms appear before subject terms in transformed output', async () => {
+  describe("Property 4: Runway CSAE Ordering", () => {
+    it("camera terms appear before subject terms in transformed output", async () => {
       await fc.assert(
         fc.asyncProperty(
           fc.constantFrom(...CAMERA_TERMS),
@@ -176,34 +179,45 @@ describe('Runway CSAE Ordering Property Tests', () => {
               // Run normalize first (required before transform)
               const normalized = strategy.normalize(input);
               const result = await strategy.transform(normalized);
-              const prompt = typeof result.prompt === 'string' ? result.prompt : JSON.stringify(result.prompt);
+              const prompt =
+                typeof result.prompt === "string"
+                  ? result.prompt
+                  : JSON.stringify(result.prompt);
 
               // If both categories are present in output, camera should come first.
               const cameraPos = findSegmentIndex(prompt, [cameraTerm]);
-              const subjectPos = findSegmentIndex(prompt, subjectTermVariants(subjectTerm));
+              const subjectPos = findSegmentIndex(
+                prompt,
+                subjectTermVariants(subjectTerm),
+              );
 
               if (cameraPos !== -1 && subjectPos !== -1) {
                 expect(cameraPos).toBeLessThan(subjectPos);
               }
             }
-          }
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
 
-    it('camera terms are moved to absolute start when present', async () => {
+    it("camera terms are moved to absolute start when present", async () => {
       await fc.assert(
         fc.asyncProperty(
           fc.constantFrom(...CAMERA_TERMS),
-          fc.string({ minLength: 5, maxLength: 100 }).filter(s => s.trim().length > 0),
+          fc
+            .string({ minLength: 5, maxLength: 100 })
+            .filter((s) => s.trim().length > 0),
           async (cameraTerm, otherContent) => {
             // Create input with camera term NOT at the start
             const input = `${otherContent} ${cameraTerm}`;
 
             const normalized = strategy.normalize(input);
             const result = await strategy.transform(normalized);
-            const prompt = typeof result.prompt === 'string' ? result.prompt : JSON.stringify(result.prompt);
+            const prompt =
+              typeof result.prompt === "string"
+                ? result.prompt
+                : JSON.stringify(result.prompt);
 
             // Camera term should be near the start (within first 50 chars or first element)
             const cameraPos = findTermPosition(prompt, cameraTerm);
@@ -211,19 +225,22 @@ describe('Runway CSAE Ordering Property Tests', () => {
             if (cameraPos !== -1) {
               // Camera should be in the first portion of the prompt
               // Allow some flexibility for formatting
-              const firstCommaPos = prompt.indexOf(',');
-              const firstSegmentEnd = firstCommaPos !== -1 ? firstCommaPos : prompt.length;
+              const firstCommaPos = prompt.indexOf(",");
+              const firstSegmentEnd =
+                firstCommaPos !== -1 ? firstCommaPos : prompt.length;
 
               // Camera term should appear before or within the first segment
-              expect(cameraPos).toBeLessThanOrEqual(firstSegmentEnd + cameraTerm.length);
+              expect(cameraPos).toBeLessThanOrEqual(
+                firstSegmentEnd + cameraTerm.length,
+              );
             }
-          }
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
 
-    it('subject terms appear before action terms in transformed output', async () => {
+    it("subject terms appear before action terms in transformed output", async () => {
       await fc.assert(
         fc.asyncProperty(
           fc.constantFrom(...SUBJECT_TERMS),
@@ -235,16 +252,27 @@ describe('Runway CSAE Ordering Property Tests', () => {
 
             const normalized = strategy.normalize(input);
             const result = await strategy.transform(normalized);
-            const prompt = typeof result.prompt === 'string' ? result.prompt : JSON.stringify(result.prompt);
+            const prompt =
+              typeof result.prompt === "string"
+                ? result.prompt
+                : JSON.stringify(result.prompt);
 
-            const subjectPos = findSegmentIndex(prompt, subjectTermVariants(subjectTerm));
+            const subjectPos = findSegmentIndex(
+              prompt,
+              subjectTermVariants(subjectTerm),
+            );
             const actionPos = findSegmentIndex(prompt, [actionTerm]);
 
             // If both categories are present, subject should come before action.
             if (subjectPos !== -1 && actionPos !== -1) {
               if (subjectPos === actionPos) {
-                const subjectTextPos = findFirstTermPosition(prompt, subjectTermVariants(subjectTerm));
-                const actionTextPos = findFirstTermPosition(prompt, [actionTerm]);
+                const subjectTextPos = findFirstTermPosition(
+                  prompt,
+                  subjectTermVariants(subjectTerm),
+                );
+                const actionTextPos = findFirstTermPosition(prompt, [
+                  actionTerm,
+                ]);
                 if (subjectTextPos !== -1 && actionTextPos !== -1) {
                   expect(subjectTextPos).toBeLessThan(actionTextPos);
                 }
@@ -252,13 +280,13 @@ describe('Runway CSAE Ordering Property Tests', () => {
                 expect(subjectPos).toBeLessThan(actionPos);
               }
             }
-          }
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
 
-    it('action terms appear before environment terms in transformed output', async () => {
+    it("action terms appear before environment terms in transformed output", async () => {
       await fc.assert(
         fc.asyncProperty(
           fc.constantFrom(...ACTION_TERMS),
@@ -270,7 +298,10 @@ describe('Runway CSAE Ordering Property Tests', () => {
 
             const normalized = strategy.normalize(input);
             const result = await strategy.transform(normalized);
-            const prompt = typeof result.prompt === 'string' ? result.prompt : JSON.stringify(result.prompt);
+            const prompt =
+              typeof result.prompt === "string"
+                ? result.prompt
+                : JSON.stringify(result.prompt);
 
             const actionPos = findSegmentIndex(prompt, [actionTerm]);
             const envPos = findSegmentIndex(prompt, [envTerm]);
@@ -279,13 +310,13 @@ describe('Runway CSAE Ordering Property Tests', () => {
             if (actionPos !== -1 && envPos !== -1) {
               expect(actionPos).toBeLessThan(envPos);
             }
-          }
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
 
-    it('full CSAE ordering is maintained with all four elements', async () => {
+    it("full CSAE ordering is maintained with all four elements", async () => {
       await fc.assert(
         fc.asyncProperty(
           fc.constantFrom(...CAMERA_TERMS),
@@ -298,10 +329,16 @@ describe('Runway CSAE Ordering Property Tests', () => {
 
             const normalized = strategy.normalize(input);
             const result = await strategy.transform(normalized);
-            const prompt = typeof result.prompt === 'string' ? result.prompt : JSON.stringify(result.prompt);
+            const prompt =
+              typeof result.prompt === "string"
+                ? result.prompt
+                : JSON.stringify(result.prompt);
 
             const cameraPos = findSegmentIndex(prompt, [cameraTerm]);
-            const subjectPos = findSegmentIndex(prompt, subjectTermVariants(subjectTerm));
+            const subjectPos = findSegmentIndex(
+              prompt,
+              subjectTermVariants(subjectTerm),
+            );
             const actionPos = findSegmentIndex(prompt, [actionTerm]);
             const envPos = findSegmentIndex(prompt, [envTerm]);
 
@@ -318,14 +355,14 @@ describe('Runway CSAE Ordering Property Tests', () => {
             if (actionPos !== -1 && envPos !== -1) {
               expect(actionPos).toBeLessThan(envPos);
             }
-          }
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
 
-    it('depth terms are mapped to dolly camera motion', async () => {
-      const depthTerms = ['depth', '3d feel', '3d effect', 'parallax'];
+    it("depth terms are mapped to dolly camera motion", async () => {
+      const depthTerms = ["depth", "3d feel", "3d effect", "parallax"];
 
       await fc.assert(
         fc.asyncProperty(
@@ -336,18 +373,21 @@ describe('Runway CSAE Ordering Property Tests', () => {
 
             const normalized = strategy.normalize(input);
             const result = await strategy.transform(normalized);
-            const prompt = typeof result.prompt === 'string' ? result.prompt : JSON.stringify(result.prompt);
+            const prompt =
+              typeof result.prompt === "string"
+                ? result.prompt
+                : JSON.stringify(result.prompt);
 
             // Should contain dolly camera motion
-            expect(prompt.toLowerCase()).toContain('dolly');
-          }
+            expect(prompt.toLowerCase()).toContain("dolly");
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
 
-    it('vertigo terms are mapped to zoom camera motion', async () => {
-      const vertigoTerms = ['vertigo', 'compression', 'dolly zoom', 'zolly'];
+    it("vertigo terms are mapped to zoom camera motion", async () => {
+      const vertigoTerms = ["vertigo", "compression", "dolly zoom", "zolly"];
 
       await fc.assert(
         fc.asyncProperty(
@@ -358,19 +398,22 @@ describe('Runway CSAE Ordering Property Tests', () => {
 
             const normalized = strategy.normalize(input);
             const result = await strategy.transform(normalized);
-            const prompt = typeof result.prompt === 'string' ? result.prompt : JSON.stringify(result.prompt);
+            const prompt =
+              typeof result.prompt === "string"
+                ? result.prompt
+                : JSON.stringify(result.prompt);
 
             // Should contain zoom camera motion
-            expect(prompt.toLowerCase()).toContain('zoom');
-          }
+            expect(prompt.toLowerCase()).toContain("zoom");
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
   });
 
-  describe('CSAE Ordering Edge Cases', () => {
-    it('handles prompts with only camera terms', async () => {
+  describe("CSAE Ordering Edge Cases", () => {
+    it("handles prompts with only camera terms", async () => {
       await fc.assert(
         fc.asyncProperty(
           fc.constantFrom(...CAMERA_TERMS),
@@ -382,22 +425,24 @@ describe('Runway CSAE Ordering Property Tests', () => {
 
             expect(result.prompt).not.toBeNull();
             expect(result.prompt).not.toBeUndefined();
-          }
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
 
-    it('handles prompts with no recognizable CSAE elements', async () => {
+    it("handles prompts with no recognizable CSAE elements", async () => {
       await fc.assert(
         fc.asyncProperty(
-          fc.string({ minLength: 5, maxLength: 100 }).filter(s => {
+          fc.string({ minLength: 5, maxLength: 100 }).filter((s) => {
             const lower = s.toLowerCase();
             // Filter out strings that contain CSAE terms
-            return !CAMERA_TERMS.some(t => lower.includes(t.toLowerCase())) &&
-                   !SUBJECT_TERMS.some(t => lower.includes(t.toLowerCase())) &&
-                   !ACTION_TERMS.some(t => lower.includes(t.toLowerCase())) &&
-                   !ENVIRONMENT_TERMS.some(t => lower.includes(t.toLowerCase()));
+            return (
+              !CAMERA_TERMS.some((t) => lower.includes(t.toLowerCase())) &&
+              !SUBJECT_TERMS.some((t) => lower.includes(t.toLowerCase())) &&
+              !ACTION_TERMS.some((t) => lower.includes(t.toLowerCase())) &&
+              !ENVIRONMENT_TERMS.some((t) => lower.includes(t.toLowerCase()))
+            );
           }),
           async (input) => {
             const normalized = strategy.normalize(input);
@@ -406,13 +451,13 @@ describe('Runway CSAE Ordering Property Tests', () => {
             // Should still produce valid output
             expect(result.prompt).not.toBeNull();
             expect(result.metadata).toBeDefined();
-          }
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
 
-    it('preserves semantic content during CSAE reordering', async () => {
+    it("preserves semantic content during CSAE reordering", async () => {
       await fc.assert(
         fc.asyncProperty(
           fc.constantFrom(...CAMERA_TERMS),
@@ -423,17 +468,22 @@ describe('Runway CSAE Ordering Property Tests', () => {
 
             const normalized = strategy.normalize(input);
             const result = await strategy.transform(normalized);
-            const prompt = typeof result.prompt === 'string' ? result.prompt : JSON.stringify(result.prompt);
+            const prompt =
+              typeof result.prompt === "string"
+                ? result.prompt
+                : JSON.stringify(result.prompt);
             const lowerPrompt = prompt.toLowerCase();
             const subjectVariants = subjectTermVariants(subjectTerm);
 
             // All original terms should still be present (possibly reordered)
             expect(lowerPrompt).toContain(cameraTerm.toLowerCase());
-            expect(subjectVariants.some(term => lowerPrompt.includes(term))).toBe(true);
+            expect(
+              subjectVariants.some((term) => lowerPrompt.includes(term)),
+            ).toBe(true);
             expect(lowerPrompt).toContain(actionTerm.toLowerCase());
-          }
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
   });

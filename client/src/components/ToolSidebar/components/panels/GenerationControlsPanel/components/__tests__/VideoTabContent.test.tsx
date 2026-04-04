@@ -1,12 +1,12 @@
-import { describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
-import type { ComponentProps } from 'react';
-import { VideoTabContent } from '../VideoTabContent';
+import { describe, expect, it, vi } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
+import type { ComponentProps } from "react";
+import { VideoTabContent } from "../VideoTabContent";
 
 type VideoTabContentProps = ComponentProps<typeof VideoTabContent>;
 
 const buildProps = (
-  overrides: Partial<VideoTabContentProps> = {}
+  overrides: Partial<VideoTabContentProps> = {},
 ): VideoTabContentProps => ({
   startFrame: null,
   endFrame: null,
@@ -31,9 +31,9 @@ const buildProps = (
   onUpdateVideoReferenceType: vi.fn(),
   onClearExtendVideo: vi.fn(),
   promptLength: 20,
-  faceSwapMode: 'direct',
+  faceSwapMode: "direct",
   faceSwapCharacterOptions: [],
-  selectedCharacterId: '',
+  selectedCharacterId: "",
   onFaceSwapCharacterChange: vi.fn(),
   onFaceSwapPreview: vi.fn(),
   isFaceSwapPreviewDisabled: true,
@@ -53,28 +53,30 @@ const buildProps = (
   ...overrides,
 });
 
-describe('VideoTabContent', () => {
-  it('hides references section when model does not support references', () => {
-    render(<VideoTabContent {...buildProps({ supportsReferenceImages: false })} />);
+describe("VideoTabContent", () => {
+  it("hides references section when model does not support references", () => {
+    render(
+      <VideoTabContent {...buildProps({ supportsReferenceImages: false })} />,
+    );
 
-    expect(screen.queryByText('References')).toBeNull();
+    expect(screen.queryByText("References")).toBeNull();
   });
 
-  it('shows references onboarding when capability is enabled', () => {
+  it("shows references onboarding when capability is enabled", () => {
     render(
       <VideoTabContent
         {...buildProps({
           supportsReferenceImages: true,
           maxReferenceImages: 3,
         })}
-      />
+      />,
     );
 
-    expect(screen.getByText('References')).toBeInTheDocument();
-    expect(screen.getByText('Create consistent scenes')).toBeInTheDocument();
+    expect(screen.getByText("References")).toBeInTheDocument();
+    expect(screen.getByText("Create consistent scenes")).toBeInTheDocument();
   });
 
-  it('shows extend banner and clears extend mode', () => {
+  it("shows extend banner and clears extend mode", () => {
     const onClearExtendVideo = vi.fn();
 
     render(
@@ -82,18 +84,18 @@ describe('VideoTabContent', () => {
         {...buildProps({
           supportsExtendVideo: true,
           extendVideo: {
-            url: 'https://example.com/video.mp4',
-            source: 'generation',
-            generationId: 'gen-1',
+            url: "https://example.com/video.mp4",
+            source: "generation",
+            generationId: "gen-1",
           },
           onClearExtendVideo,
         })}
-      />
+      />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Clear' }));
+    fireEvent.click(screen.getByRole("button", { name: "Clear" }));
 
-    expect(screen.getByText('Extending video')).toBeInTheDocument();
+    expect(screen.getByText("Extending video")).toBeInTheDocument();
     expect(onClearExtendVideo).toHaveBeenCalledTimes(1);
   });
 });

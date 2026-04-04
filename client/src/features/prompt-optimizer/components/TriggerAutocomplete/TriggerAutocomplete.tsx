@@ -1,7 +1,7 @@
-import React, { useEffect, useRef } from 'react';
-import { Plus } from '@promptstudio/system/components/ui';
-import type { Asset } from '@shared/types/asset';
-import { TriggerSuggestion } from './TriggerSuggestion';
+import React, { useEffect, useRef } from "react";
+import { Plus } from "@promptstudio/system/components/ui";
+import type { Asset } from "@shared/types/asset";
+import { TriggerSuggestion } from "./TriggerSuggestion";
 
 interface TriggerAutocompleteProps {
   isOpen: boolean;
@@ -30,14 +30,18 @@ export function TriggerAutocomplete({
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(event.target as Node)
+      ) {
         onClose();
       }
     };
 
     if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
+      document.addEventListener("mousedown", handleClickOutside);
+      return () =>
+        document.removeEventListener("mousedown", handleClickOutside);
     }
     return undefined;
   }, [isOpen, onClose]);

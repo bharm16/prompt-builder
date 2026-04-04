@@ -22,6 +22,7 @@ Analyzed `shared/` for files >150 lines, excluding tests, types, configs, and in
 
 **Why Not a Violation:**
 This file has ONE clear responsibility: defining and providing utilities for the video prompt taxonomy. While it contains:
+
 - Type definitions (CategoryConfig, Taxonomy)
 - Constant data (TAXONOMY object)
 - Validation set (VALID_CATEGORIES)
@@ -30,6 +31,7 @@ This file has ONE clear responsibility: defining and providing utilities for the
 All of these serve the SAME concern: taxonomy management. The helper functions are pure utilities that operate on the taxonomy data. They would all change together if the taxonomy structure changes.
 
 **Stakeholders:**
+
 - All stakeholders who need taxonomy changes would modify this single file
 - No different "reasons to change" exist - it's all taxonomy-related
 
@@ -46,6 +48,7 @@ All of these serve the SAME concern: taxonomy management. The helper functions a
 
 **Why Not a Violation:**
 This file has ONE clear responsibility: centralizing magic numbers and configuration strings. While it contains many different categories of constants:
+
 - Timing constants
 - Cache constants
 - Token limits
@@ -56,6 +59,7 @@ This file has ONE clear responsibility: centralizing magic numbers and configura
 All of these serve the SAME concern: providing a single source of truth for configuration values. The file is organized by category for readability, but the responsibility is singular: "provide application constants."
 
 **Stakeholders:**
+
 - Any developer needing to adjust configuration values
 - No different "reasons to change" - all changes are configuration adjustments
 
@@ -71,13 +75,14 @@ All of these serve the SAME concern: providing a single source of truth for conf
 
 ## Summary
 
-| Severity | Count | Files |
-|----------|-------|-------|
-| High (3+) | 0 | - |
-| Medium (2) | 0 | - |
-| No Violation | 2 | taxonomy.ts, constants.ts |
+| Severity     | Count | Files                     |
+| ------------ | ----- | ------------------------- |
+| High (3+)    | 0     | -                         |
+| Medium (2)   | 0     | -                         |
+| No Violation | 2     | taxonomy.ts, constants.ts |
 
 **Key Observations:**
+
 1. The shared directory is well-designed with clear single responsibilities
 2. `taxonomy.ts` is large but cohesive - all code serves taxonomy management
 3. `constants.ts` is a proper constants file - organized by category but single responsibility

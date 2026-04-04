@@ -1,14 +1,18 @@
-import { useCallback, useMemo, type MutableRefObject } from 'react';
-import { createHighlightSignature } from '@/features/span-highlighting';
-import type { CapabilityValues } from '@shared/capabilities';
-import type { PromptHistoryEntry, PromptVersionEdit, PromptVersionEntry } from '@features/prompt-optimizer/types/domain/prompt-session';
-import type { Generation } from '@/features/prompt-optimizer/GenerationsPanel/types';
-import type { HighlightSnapshot } from '../types';
-import { usePromptVersioning } from './usePromptVersioning';
+import { useCallback, useMemo, type MutableRefObject } from "react";
+import { createHighlightSignature } from "@/features/span-highlighting";
+import type { CapabilityValues } from "@shared/capabilities";
+import type {
+  PromptHistoryEntry,
+  PromptVersionEdit,
+  PromptVersionEntry,
+} from "@features/prompt-optimizer/types/domain/prompt-session";
+import type { Generation } from "@features/generations/types";
+import type { HighlightSnapshot } from "../types";
+import { usePromptVersioning } from "./usePromptVersioning";
 import {
   isHighlightSnapshot,
   resolveVersionTimestamp,
-} from '../utils/versioning';
+} from "../utils/versioning";
 
 interface PromptHistoryStore {
   history: PromptHistoryEntry[];
@@ -16,10 +20,14 @@ interface PromptHistoryStore {
     mode: string;
     targetModel: string | null;
     generationParams: Record<string, unknown> | null;
-    keyframes?: PromptHistoryEntry['keyframes'];
+    keyframes?: PromptHistoryEntry["keyframes"];
     uuid?: string;
   }) => { uuid: string; id: string };
-  updateEntryVersions: (uuid: string, docId: string | null, versions: PromptVersionEntry[]) => void;
+  updateEntryVersions: (
+    uuid: string,
+    docId: string | null,
+    versions: PromptVersionEntry[],
+  ) => void;
 }
 
 interface PromptOptimizerActions {
@@ -43,11 +51,11 @@ interface UseVersionManagementOptions {
   selectedMode: string;
   selectedModel: string;
   generationParams: CapabilityValues;
-  serializedKeyframes: PromptHistoryEntry['keyframes'];
+  serializedKeyframes: PromptHistoryEntry["keyframes"];
   promptOptimizer: PromptOptimizerActions;
   applyInitialHighlightSnapshot: (
     snapshot: HighlightSnapshot | null,
-    options: { bumpVersion: boolean; markPersisted: boolean }
+    options: { bumpVersion: boolean; markPersisted: boolean },
   ) => void;
   resetEditStacks: () => void;
   setDisplayedPromptSilently: (text: string) => void;
@@ -70,7 +78,10 @@ interface UseVersionManagementResult {
   createVersionIfNeeded: () => string;
   handleGenerationsChange: (nextGenerations: Generation[]) => void;
   setGenerationFavorite: (generationId: string, isFavorite: boolean) => void;
-  syncVersionHighlights: (snapshot: HighlightSnapshot, promptText: string) => void;
+  syncVersionHighlights: (
+    snapshot: HighlightSnapshot,
+    promptText: string,
+  ) => void;
   versioningPromptUuid: string | null;
 }
 
@@ -104,27 +115,30 @@ export function useVersionManagement({
 }: UseVersionManagementOptions): UseVersionManagementResult {
   const { history, createDraft, updateEntryVersions } = promptHistory;
   const { setOptimizedPrompt } = promptOptimizer;
-  const versionHistory = useMemo(
-    () => {
-      if (hasShotContext && shotPromptEntry) {
-        return {
-          history: [shotPromptEntry],
-          updateEntryVersions: (
-            _uuid: string,
-            _docId: string | null,
-            versions: PromptVersionEntry[]
-          ) => {
-            updateShotVersions(versions);
-          },
-        };
-      }
+  const versionHistory = useMemo(() => {
+    if (hasShotContext && shotPromptEntry) {
       return {
-        history,
-        updateEntryVersions,
+        history: [shotPromptEntry],
+        updateEntryVersions: (
+          _uuid: string,
+          _docId: string | null,
+          versions: PromptVersionEntry[],
+        ) => {
+          updateShotVersions(versions);
+        },
       };
-    },
-    [hasShotContext, shotPromptEntry, updateShotVersions, history, updateEntryVersions]
-  );
+    }
+    return {
+      history,
+      updateEntryVersions,
+    };
+  }, [
+    hasShotContext,
+    shotPromptEntry,
+    updateShotVersions,
+    history,
+    updateEntryVersions,
+  ]);
 
   const versioningPromptUuid = hasShotContext ? shotId : currentPromptUuid;
   const versioningPromptDocId = hasShotContext ? null : currentPromptDocId;
@@ -133,19 +147,27 @@ export function useVersionManagement({
     if (!versionHistory.history.length) return null;
     if (versioningPromptUuid) {
       return (
-        versionHistory.history.find((item) => item.uuid === versioningPromptUuid) ||
-        null
+        versionHistory.history.find(
+          (item) => item.uuid === versioningPromptUuid,
+        ) || null
       );
     }
     if (versioningPromptDocId) {
-      return versionHistory.history.find((item) => item.id === versioningPromptDocId) || null;
+      return (
+        versionHistory.history.find(
+          (item) => item.id === versioningPromptDocId,
+        ) || null
+      );
     }
     return versionHistory.history[0] ?? null;
   }, [versionHistory.history, versioningPromptUuid, versioningPromptDocId]);
 
   const currentVersions = useMemo(
-    () => (Array.isArray(currentPromptEntry?.versions) ? currentPromptEntry.versions : []),
-    [currentPromptEntry]
+    () =>
+      Array.isArray(currentPromptEntry?.versions)
+        ? currentPromptEntry.versions
+        : [],
+    [currentPromptEntry],
   );
 
   const orderedVersions = useMemo(() => {
@@ -161,19 +183,24 @@ export function useVersionManagement({
   }, [currentVersions]);
 
   const currentSignature = useMemo(() => {
-    if (!normalizedDisplayedPrompt) return '';
+    if (!normalizedDisplayedPrompt) return "";
     return createHighlightSignature(normalizedDisplayedPrompt);
   }, [normalizedDisplayedPrompt]);
 
   const latestVersionSignature = orderedVersions[0]?.signature ?? null;
   const hasEditsSinceLastVersion = Boolean(
-    latestVersionSignature && currentSignature && latestVersionSignature !== currentSignature
+    latestVersionSignature &&
+      currentSignature &&
+      latestVersionSignature !== currentSignature,
   );
 
   const versionsForPanel = useMemo(
     () =>
       orderedVersions.map((entry, index) => {
-        const entryWithDirty = entry as PromptVersionEntry & { isDirty?: boolean; dirty?: boolean };
+        const entryWithDirty = entry as PromptVersionEntry & {
+          isDirty?: boolean;
+          dirty?: boolean;
+        };
         return {
           ...entry,
           isDirty:
@@ -182,20 +209,25 @@ export function useVersionManagement({
               : Boolean(entryWithDirty.isDirty ?? entryWithDirty.dirty),
         };
       }),
-    [orderedVersions, hasEditsSinceLastVersion]
+    [orderedVersions, hasEditsSinceLastVersion],
   );
 
   const selectedVersionId = useMemo(() => {
-    if (activeVersionId && versionsForPanel.some((version) => version.versionId === activeVersionId)) {
+    if (
+      activeVersionId &&
+      versionsForPanel.some((version) => version.versionId === activeVersionId)
+    ) {
       return activeVersionId;
     }
-    return versionsForPanel[0]?.versionId ?? '';
+    return versionsForPanel[0]?.versionId ?? "";
   }, [activeVersionId, versionsForPanel]);
 
   const activeVersion = useMemo(() => {
     if (selectedVersionId) {
       return (
-        currentVersions.find((version) => version.versionId === selectedVersionId) ??
+        currentVersions.find(
+          (version) => version.versionId === selectedVersionId,
+        ) ??
         orderedVersions[0] ??
         null
       );
@@ -203,21 +235,23 @@ export function useVersionManagement({
     return orderedVersions[0] ?? null;
   }, [currentVersions, orderedVersions, selectedVersionId]);
 
-  const promptVersionId = activeVersion?.versionId ?? selectedVersionId ?? '';
+  const promptVersionId = activeVersion?.versionId ?? selectedVersionId ?? "";
 
-  const { syncVersionHighlights, syncVersionGenerations } = usePromptVersioning({
-    promptHistory: versionHistory,
-    currentPromptUuid: versioningPromptUuid,
-    currentPromptDocId: versioningPromptDocId,
-    activeVersionId,
-    latestHighlightRef,
-    versionEditCountRef,
-    versionEditsRef,
-    resetVersionEdits,
-    effectiveAspectRatio,
-    generationParams,
-    selectedModel,
-  });
+  const { syncVersionHighlights, syncVersionGenerations } = usePromptVersioning(
+    {
+      promptHistory: versionHistory,
+      currentPromptUuid: versioningPromptUuid,
+      currentPromptDocId: versioningPromptDocId,
+      activeVersionId,
+      latestHighlightRef,
+      versionEditCountRef,
+      versionEditsRef,
+      resetVersionEdits,
+      effectiveAspectRatio,
+      generationParams,
+      selectedModel,
+    },
+  );
 
   const handleSelectVersion = useCallback(
     (versionId: string): void => {
@@ -226,7 +260,7 @@ export function useVersionManagement({
         orderedVersions.find((version) => version.versionId === versionId) ||
         null;
       if (!target) return;
-      const promptText = typeof target.prompt === 'string' ? target.prompt : '';
+      const promptText = typeof target.prompt === "string" ? target.prompt : "";
       if (!promptText.trim()) return;
 
       setActiveVersionId(versionId);
@@ -252,20 +286,21 @@ export function useVersionManagement({
       setOptimizedPrompt,
       setActiveVersionId,
       setDisplayedPromptSilently,
-    ]
+    ],
   );
 
   const ensureDraftEntry = useCallback((): { uuid: string; docId: string } => {
     if (hasShotContext && shotId) {
-      return { uuid: shotId, docId: '' };
+      return { uuid: shotId, docId: "" };
     }
     if (currentPromptUuid) {
-      return { uuid: currentPromptUuid, docId: currentPromptDocId ?? '' };
+      return { uuid: currentPromptUuid, docId: currentPromptDocId ?? "" };
     }
     const draft = createDraft({
       mode: selectedMode,
       targetModel: selectedModel?.trim() ? selectedModel.trim() : null,
-      generationParams: (generationParams as unknown as Record<string, unknown>) ?? null,
+      generationParams:
+        (generationParams as unknown as Record<string, unknown>) ?? null,
       keyframes: serializedKeyframes,
     });
     setCurrentPromptUuid(draft.uuid);
@@ -286,21 +321,28 @@ export function useVersionManagement({
   ]);
 
   const persistVersions = useCallback(
-    (versions: PromptVersionEntry[], identifiers?: { uuid: string; docId?: string }) => {
+    (
+      versions: PromptVersionEntry[],
+      identifiers?: { uuid: string; docId?: string },
+    ) => {
       if (hasShotContext && shotId) {
         updateShotVersions(versions);
         return;
       }
       if (!identifiers?.uuid) return;
-      updateEntryVersions(identifiers.uuid, identifiers.docId ?? null, versions);
+      updateEntryVersions(
+        identifiers.uuid,
+        identifiers.docId ?? null,
+        versions,
+      );
     },
-    [hasShotContext, shotId, updateShotVersions, updateEntryVersions]
+    [hasShotContext, shotId, updateShotVersions, updateEntryVersions],
   );
 
   const handleCreateVersion = useCallback((): void => {
     if (!currentVersions) return;
     const promptText =
-      (normalizedDisplayedPrompt ?? '').trim() || (inputPrompt ?? '').trim();
+      (normalizedDisplayedPrompt ?? "").trim() || (inputPrompt ?? "").trim();
     if (!promptText) return;
     const { uuid, docId } = ensureDraftEntry();
 
@@ -321,7 +363,9 @@ export function useVersionManagement({
       signature,
       prompt: promptText,
       timestamp: new Date().toISOString(),
-      ...(latestHighlightRef.current ? { highlights: latestHighlightRef.current } : {}),
+      ...(latestHighlightRef.current
+        ? { highlights: latestHighlightRef.current }
+        : {}),
       ...(editCount > 0 ? { editCount } : {}),
       ...(edits.length ? { edits } : {}),
     };
@@ -344,9 +388,9 @@ export function useVersionManagement({
 
   const createVersionIfNeeded = useCallback((): string => {
     const promptText =
-      (normalizedDisplayedPrompt ?? '').trim() || (inputPrompt ?? '').trim();
+      (normalizedDisplayedPrompt ?? "").trim() || (inputPrompt ?? "").trim();
     if (!promptText) {
-      return activeVersion?.versionId ?? '';
+      return activeVersion?.versionId ?? "";
     }
     const { uuid, docId } = ensureDraftEntry();
 
@@ -359,11 +403,13 @@ export function useVersionManagement({
         : [];
       const newVersion = {
         versionId: `v-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-        label: 'v1',
+        label: "v1",
         signature,
         prompt: promptText,
         timestamp: new Date().toISOString(),
-        ...(latestHighlightRef.current ? { highlights: latestHighlightRef.current } : {}),
+        ...(latestHighlightRef.current
+          ? { highlights: latestHighlightRef.current }
+          : {}),
         generations: [],
         ...(editCount > 0 ? { editCount } : {}),
         ...(edits.length ? { edits } : {}),
@@ -390,7 +436,9 @@ export function useVersionManagement({
       signature,
       prompt: promptText,
       timestamp: new Date().toISOString(),
-      ...(latestHighlightRef.current ? { highlights: latestHighlightRef.current } : {}),
+      ...(latestHighlightRef.current
+        ? { highlights: latestHighlightRef.current }
+        : {}),
       generations: [],
       ...(editCount > 0 ? { editCount } : {}),
       ...(edits.length ? { edits } : {}),
@@ -418,7 +466,7 @@ export function useVersionManagement({
     (nextGenerations: Generation[]) => {
       syncVersionGenerations(nextGenerations);
     },
-    [syncVersionGenerations]
+    [syncVersionGenerations],
   );
 
   const setGenerationFavorite = useCallback(
@@ -431,7 +479,10 @@ export function useVersionManagement({
       let hasChanges = false;
 
       const nextVersions = currentVersions.map((version) => {
-        if (!Array.isArray(version.generations) || version.generations.length === 0) {
+        if (
+          !Array.isArray(version.generations) ||
+          version.generations.length === 0
+        ) {
           return version;
         }
 
@@ -457,7 +508,7 @@ export function useVersionManagement({
       if (!hasChanges) return;
       persistVersions(nextVersions, { uuid, docId });
     },
-    [currentVersions, ensureDraftEntry, persistVersions]
+    [currentVersions, ensureDraftEntry, persistVersions],
   );
 
   return {

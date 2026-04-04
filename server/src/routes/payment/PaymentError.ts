@@ -1,9 +1,9 @@
-import { DomainError } from '@server/errors/DomainError';
+import { DomainError } from "@server/errors/DomainError";
 
 type PaymentErrorKind =
-  | 'NO_BILLING_PROFILE'
-  | 'BILLING_URL_NOT_CONFIGURED'
-  | 'UNKNOWN_PRICE_ID';
+  | "NO_BILLING_PROFILE"
+  | "BILLING_URL_NOT_CONFIGURED"
+  | "UNKNOWN_PRICE_ID";
 
 const STATUS_MAP: Record<PaymentErrorKind, number> = {
   NO_BILLING_PROFILE: 400,
@@ -17,11 +17,11 @@ export class PaymentError extends DomainError {
   constructor(
     readonly kind: PaymentErrorKind,
     message: string,
-    details?: Record<string, unknown>
+    details?: Record<string, unknown>,
   ) {
     super(message, details);
     this.code = kind;
-    this.name = 'PaymentError';
+    this.name = "PaymentError";
   }
 
   getHttpStatus(): number {

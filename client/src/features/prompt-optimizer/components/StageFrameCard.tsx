@@ -1,8 +1,8 @@
-import React from 'react';
-import { Check, Play, X } from '@promptstudio/system/components/ui';
-import { cn } from '@/utils/cn';
+import React from "react";
+import { Check, Play, X } from "@promptstudio/system/components/ui";
+import { cn } from "@/utils/cn";
 
-export type FrameStatus = 'ready' | 'queued' | 'generating' | 'idle' | 'error';
+export type FrameStatus = "ready" | "queued" | "generating" | "idle" | "error";
 
 export interface StageFrameMeta {
   title: string;
@@ -25,34 +25,34 @@ const STATUS_CONFIG: Record<
   { icon: string; label: string; dotClass: string; textClass: string }
 > = {
   ready: {
-    icon: '✓',
-    label: 'Ready',
-    dotClass: 'bg-success',
-    textClass: 'text-success',
+    icon: "✓",
+    label: "Ready",
+    dotClass: "bg-success",
+    textClass: "text-success",
   },
   queued: {
-    icon: '◌',
-    label: 'Queued',
-    dotClass: 'bg-warning',
-    textClass: 'text-warning',
+    icon: "◌",
+    label: "Queued",
+    dotClass: "bg-warning",
+    textClass: "text-warning",
   },
   generating: {
-    icon: '◐',
-    label: 'Generating',
-    dotClass: 'bg-accent animate-pulse',
-    textClass: 'text-accent',
+    icon: "◐",
+    label: "Generating",
+    dotClass: "bg-accent animate-pulse",
+    textClass: "text-accent",
   },
   idle: {
-    icon: '−',
-    label: 'Idle',
-    dotClass: 'bg-border',
-    textClass: 'text-muted',
+    icon: "−",
+    label: "Idle",
+    dotClass: "bg-border",
+    textClass: "text-muted",
   },
   error: {
-    icon: '✕',
-    label: 'Error',
-    dotClass: 'bg-error',
-    textClass: 'text-error',
+    icon: "✕",
+    label: "Error",
+    dotClass: "bg-error",
+    textClass: "text-error",
   },
 };
 
@@ -66,12 +66,12 @@ const StatusBadge = ({
   return (
     <span
       className={cn(
-        'text-label-sm inline-flex items-center gap-1.5 font-medium',
-        config.textClass
+        "text-label-sm inline-flex items-center gap-1.5 font-medium",
+        config.textClass,
       )}
     >
       <span
-        className={cn('h-2 w-2 rounded-full', config.dotClass)}
+        className={cn("h-2 w-2 rounded-full", config.dotClass)}
         aria-hidden="true"
       />
       <span>{config.label}</span>
@@ -91,13 +91,13 @@ export const StageFrameCard = ({
     <button
       type="button"
       className={cn(
-        'group w-full overflow-hidden rounded-xl border text-left transition-all duration-200',
-        'focus-visible:ring-accent focus-visible:ring-offset-surface-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
+        "group w-full overflow-hidden rounded-xl border text-left transition-all duration-200",
+        "focus-visible:ring-accent focus-visible:ring-offset-surface-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
         isSelected
-          ? 'border-accent/60 ps-glow-accent'
-          : 'border-border hover:border-border-strong'
+          ? "border-accent/60 ps-glow-accent"
+          : "border-border hover:border-border-strong",
       )}
-      data-selected={isSelected ? 'true' : 'false'}
+      data-selected={isSelected ? "true" : "false"}
       onClick={onClick}
       aria-pressed={isSelected}
     >
@@ -147,6 +147,6 @@ export const StageFrameCard = ({
   );
 };
 
-StageFrameCard.displayName = 'StageFrameCard';
+StageFrameCard.displayName = "StageFrameCard";
 
 export default StageFrameCard;

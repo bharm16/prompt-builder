@@ -22,21 +22,21 @@ interface TokenCostRate {
  */
 const MODEL_COST_RATES: Record<string, TokenCostRate> = {
   // OpenAI
-  'gpt-4o-mini': { input: 0.00015, output: 0.0006 },
-  'gpt-4o': { input: 0.0025, output: 0.01 },
+  "gpt-4o-mini": { input: 0.00015, output: 0.0006 },
+  "gpt-4o": { input: 0.0025, output: 0.01 },
 
   // Gemini
-  'gemini-2.5-flash': { input: 0.00015, output: 0.0006 },
-  'gemini-2.0-flash': { input: 0.0001, output: 0.0004 },
+  "gemini-2.5-flash": { input: 0.00015, output: 0.0006 },
+  "gemini-2.0-flash": { input: 0.0001, output: 0.0004 },
 
   // Groq-hosted Qwen
-  'qwen/qwen3-32b': { input: 0.00018, output: 0.00018 },
+  "qwen/qwen3-32b": { input: 0.00018, output: 0.00018 },
 
   // Groq-hosted Llama
-  'llama-3.1-8b-instant': { input: 0.00005, output: 0.00008 },
+  "llama-3.1-8b-instant": { input: 0.00005, output: 0.00008 },
 
   // Anthropic
-  'claude-sonnet-4': { input: 0.003, output: 0.015 },
+  "claude-sonnet-4": { input: 0.003, output: 0.015 },
 };
 
 /** Fallback rate for models not in the lookup table. */
@@ -54,7 +54,7 @@ function resolveRate(model: string): TokenCostRate {
   }
 
   // Prefix match (longest prefix wins)
-  let bestMatch = '';
+  let bestMatch = "";
   for (const prefix of Object.keys(MODEL_COST_RATES)) {
     if (model.startsWith(prefix) && prefix.length > bestMatch.length) {
       bestMatch = prefix;
@@ -68,7 +68,13 @@ function resolveRate(model: string): TokenCostRate {
 /**
  * Calculate estimated LLM API cost in USD.
  */
-export function calculateLLMCost(model: string, inputTokens: number, outputTokens: number): number {
+export function calculateLLMCost(
+  model: string,
+  inputTokens: number,
+  outputTokens: number,
+): number {
   const rate = resolveRate(model);
-  return (inputTokens / 1000) * rate.input + (outputTokens / 1000) * rate.output;
+  return (
+    (inputTokens / 1000) * rate.input + (outputTokens / 1000) * rate.output
+  );
 }

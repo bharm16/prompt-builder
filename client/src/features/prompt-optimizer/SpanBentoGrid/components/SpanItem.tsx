@@ -1,8 +1,8 @@
-import { memo } from 'react';
-import type { CSSProperties } from 'react';
-import { Button } from '@promptstudio/system/components/ui/button';
-import type { SpanItemProps } from './types';
-import { cn } from '@/utils/cn';
+import { memo } from "react";
+import type { CSSProperties } from "react";
+import { Button } from "@promptstudio/system/components/ui/button";
+import type { SpanItemProps } from "./types";
+import { cn } from "@/utils/cn";
 
 /**
  * Individual span display with confidence badge
@@ -18,13 +18,13 @@ export const SpanItem = memo<SpanItemProps>(
       <Button
         type="button"
         className={cn(
-          'inline-flex rounded-full border px-3 py-1 text-label-sm font-medium text-foreground shadow-inset transition-all duration-150 hover:-translate-y-px hover:brightness-95',
-          'border-[var(--span-border)] bg-[var(--span-bg)]'
+          "inline-flex rounded-full border px-3 py-1 text-label-sm font-medium text-foreground shadow-inset transition-all duration-150 hover:-translate-y-px hover:brightness-95",
+          "border-[var(--span-border)] bg-[var(--span-bg)]",
         )}
         style={
           {
-            '--span-bg': backgroundColor,
-            '--span-border': borderColor ?? backgroundColor,
+            "--span-bg": backgroundColor,
+            "--span-border": borderColor ?? backgroundColor,
           } as CSSProperties
         }
         onMouseEnter={() => onHoverChange?.(span.id)}
@@ -36,7 +36,7 @@ export const SpanItem = memo<SpanItemProps>(
         {span.quote}
       </Button>
     );
-  }
+  },
 );
 
-SpanItem.displayName = 'SpanItem';
+SpanItem.displayName = "SpanItem";

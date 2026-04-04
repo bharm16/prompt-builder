@@ -1,11 +1,14 @@
-import { logger } from '@infrastructure/Logger';
+import { logger } from "@infrastructure/Logger";
 import {
   PRIMARY_INTENT_PATTERNS,
   NARRATIVE_DIRECTION_PATTERNS,
   EMOTIONAL_TONE_PATTERNS,
   CONFLICT_PATTERNS,
-} from '../config/intentPatterns.js';
-import type { CreativeIntent, StyleConflict } from '@services/enhancement/services/types';
+} from "../config/intentPatterns.js";
+import type {
+  CreativeIntent,
+  StyleConflict,
+} from "@services/enhancement/services/types";
 
 /**
  * Creative Intent Analyzer
@@ -14,7 +17,7 @@ import type { CreativeIntent, StyleConflict } from '@services/enhancement/servic
  * Single Responsibility: Pattern matching and semantic analysis of creative direction.
  */
 export class CreativeIntentAnalyzer {
-  private readonly log = logger.child({ service: 'CreativeIntentAnalyzer' });
+  private readonly log = logger.child({ service: "CreativeIntentAnalyzer" });
 
   constructor() {
     // No dependencies - pure logic
@@ -28,18 +31,18 @@ export class CreativeIntentAnalyzer {
    * @returns Creative intent analysis or null if no intent detected
    */
   inferCreativeIntent(
-    elements: Record<string, string> | null | undefined
+    elements: Record<string, string> | null | undefined,
   ): CreativeIntent | null {
-    const operation = 'inferCreativeIntent';
-    
-    if (!elements || typeof elements !== 'object') {
-      this.log.debug('No elements provided for intent inference', {
+    const operation = "inferCreativeIntent";
+
+    if (!elements || typeof elements !== "object") {
+      this.log.debug("No elements provided for intent inference", {
         operation,
       });
       return null;
     }
-    
-    this.log.debug('Inferring creative intent', {
+
+    this.log.debug("Inferring creative intent", {
       operation,
       elementCount: Object.keys(elements).length,
     });
@@ -53,8 +56,8 @@ export class CreativeIntentAnalyzer {
 
     // Combine all element values into searchable text
     const elementText = Object.values(elements)
-      .filter((v) => typeof v === 'string')
-      .join(' ')
+      .filter((v) => typeof v === "string")
+      .join(" ")
       .toLowerCase();
 
     // Detect primary intent using configuration patterns
@@ -84,9 +87,9 @@ export class CreativeIntentAnalyzer {
 
     // Return null if no intent was detected
     const result = analysis.primaryIntent ? analysis : null;
-    
+
     if (result) {
-      this.log.debug('Creative intent inferred', {
+      this.log.debug("Creative intent inferred", {
         operation,
         primaryIntent: result.primaryIntent,
         narrativeDirection: result.narrativeDirection,
@@ -94,11 +97,11 @@ export class CreativeIntentAnalyzer {
         supportingThemesCount: result.supportingThemes.length,
       });
     } else {
-      this.log.debug('No creative intent detected', {
+      this.log.debug("No creative intent detected", {
         operation,
       });
     }
-    
+
     return result;
   }
 
@@ -110,18 +113,18 @@ export class CreativeIntentAnalyzer {
    * @returns Array of detected conflicts
    */
   detectStyleConflicts(
-    elements: Record<string, string> | null | undefined
+    elements: Record<string, string> | null | undefined,
   ): StyleConflict[] {
-    const operation = 'detectStyleConflicts';
-    
-    if (!elements || typeof elements !== 'object') {
-      this.log.debug('No elements provided for conflict detection', {
+    const operation = "detectStyleConflicts";
+
+    if (!elements || typeof elements !== "object") {
+      this.log.debug("No elements provided for conflict detection", {
         operation,
       });
       return [];
     }
-    
-    this.log.debug('Detecting style conflicts', {
+
+    this.log.debug("Detecting style conflicts", {
       operation,
       elementCount: Object.keys(elements).length,
     });
@@ -130,8 +133,8 @@ export class CreativeIntentAnalyzer {
 
     // Combine all element values into searchable text
     const elementText = Object.values(elements)
-      .filter((v) => typeof v === 'string')
-      .join(' ')
+      .filter((v) => typeof v === "string")
+      .join(" ")
       .toLowerCase();
 
     // Check for conflicts using configuration patterns
@@ -142,10 +145,7 @@ export class CreativeIntentAnalyzer {
       description,
       suggestion,
     } of CONFLICT_PATTERNS) {
-      if (
-        elementText.match(firstPattern) &&
-        elementText.match(secondPattern)
-      ) {
+      if (elementText.match(firstPattern) && elementText.match(secondPattern)) {
         conflicts.push({
           type,
           description,
@@ -154,7 +154,7 @@ export class CreativeIntentAnalyzer {
       }
     }
 
-    this.log.debug('Style conflict detection complete', {
+    this.log.debug("Style conflict detection complete", {
       operation,
       conflictCount: conflicts.length,
     });

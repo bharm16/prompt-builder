@@ -1,0 +1,56 @@
+{
+  "baseUrl": "http://localhost:5174",
+  "outDir": "/Users/bryceharmon/Desktop/prompt-builder/output/playwright/fix-verification-2026-03-25T01-51-12-913Z",
+  "steps": [
+    {
+      "screenshot": "/Users/bryceharmon/Desktop/prompt-builder/output/playwright/fix-verification-2026-03-25T01-51-12-913Z/01-signup.png",
+      "url": "http://localhost:5174/signup"
+    },
+    {
+      "screenshot": "/Users/bryceharmon/Desktop/prompt-builder/output/playwright/fix-verification-2026-03-25T01-51-12-913Z/02-signup-filled.png",
+      "url": "http://localhost:5174/signup"
+    },
+    {
+      "screenshot": "/Users/bryceharmon/Desktop/prompt-builder/output/playwright/fix-verification-2026-03-25T01-51-12-913Z/03-workspace.png",
+      "url": "http://localhost:5174/"
+    },
+    {
+      "screenshot": "/Users/bryceharmon/Desktop/prompt-builder/output/playwright/fix-verification-2026-03-25T01-51-12-913Z/04-prompt-1.png",
+      "url": "http://localhost:5174/"
+    },
+    {
+      "screenshot": "/Users/bryceharmon/Desktop/prompt-builder/output/playwright/fix-verification-2026-03-25T01-51-12-913Z/05-after-generate.png",
+      "url": "http://localhost:5174/"
+    },
+    {
+      "screenshot": "/Users/bryceharmon/Desktop/prompt-builder/output/playwright/fix-verification-2026-03-25T01-51-12-913Z/06-after-reload.png",
+      "url": "http://localhost:5174/"
+    },
+    {
+      "screenshot": "/Users/bryceharmon/Desktop/prompt-builder/output/playwright/fix-verification-2026-03-25T01-51-12-913Z/07-prompt-mutated.png",
+      "url": "http://localhost:5174/"
+    }
+  ],
+  "generateResponses": [
+    {
+      "url": "http://localhost:5174/api/preview/video/generate",
+      "status": 202,
+      "method": "POST",
+      "body": "{\"success\":true,\"data\":{\"jobId\":\"sTlNCePByBZoY0zsrnPc\",\"status\":\"queued\",\"creditsReserved\":24,\"creditsDeducted\":24,\"keyframeGenerated\":false,\"keyframeUrl\":null,\"faceSwapApplied\":false,\"faceSwapUrl\":null},\"jobId\":\"sTlNCePByBZoY0zsrnPc\",\"status\":\"queued\",\"creditsReserved\":24,\"creditsDeducted\":24,\"keyframeGenerated\":false,\"keyframeUrl\":null,\"faceSwapApplied\":false,\"faceSwapUrl\":null}"
+    }
+  ],
+  "jobResponses": [],
+  "consoleErrors": [],
+  "sessionTexts": [],
+  "finalUrl": null,
+  "assertions": {
+    "firstGenerateRequests": 1,
+    "firstGenerateQueued": true,
+    "afterReloadShowsQueued": false,
+    "afterReloadShowsRendering": false
+  },
+  "error": {
+    "message": "page.waitForSelector: Timeout 15000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('[aria-label=\"Sessions list\"]') to be visible\u001b[22m\n",
+    "stack": "page.waitForSelector: Timeout 15000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('[aria-label=\"Sessions list\"]') to be visible\u001b[22m\n\n    at /Users/bryceharmon/Desktop/prompt-builder/[eval1]:110:14"
+  }
+}

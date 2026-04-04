@@ -62,13 +62,13 @@
 
 ## What Makes This Different
 
-| Traditional Prompt Tools | PromptCanvas |
-|--------------------------|--------------|
-| Paste prompt → get output | Interactive editing canvas |
-| One-shot optimization | Click-to-refine any phrase |
-| Generic text improvement | 9 semantic categories for video (subject, camera, lighting...) |
-| No feedback on structure | See exactly what elements your prompt contains |
-| Wait for full response | Sub-300ms draft, then progressive refinement |
+| Traditional Prompt Tools  | PromptCanvas                                                   |
+| ------------------------- | -------------------------------------------------------------- |
+| Paste prompt → get output | Interactive editing canvas                                     |
+| One-shot optimization     | Click-to-refine any phrase                                     |
+| Generic text improvement  | 9 semantic categories for video (subject, camera, lighting...) |
+| No feedback on structure  | See exactly what elements your prompt contains                 |
+| Wait for full response    | Sub-300ms draft, then progressive refinement                   |
 
 **The core insight:** AI video prompts aren't monolithic text—they're composed of distinct elements (subject, action, camera, lighting, style). PromptCanvas lets you refine each element individually while maintaining consistency.
 
@@ -165,17 +165,17 @@ You see results in under a second. Refinement happens in the background.
 
 9 parent categories, 30+ attributes, built specifically for video:
 
-| Category | What It Covers |
-|----------|----------------|
-| **Shot** | Framing: wide shot, close-up, bird's eye |
-| **Subject** | Identity, appearance, wardrobe, emotion |
-| **Action** | Movement, state, gestures |
-| **Environment** | Location, weather, context |
-| **Lighting** | Source, quality, time of day |
-| **Camera** | Movement, lens, angle |
-| **Style** | Aesthetic, film stock |
-| **Technical** | Aspect ratio, FPS, resolution, duration |
-| **Audio** | Score, sound effects |
+| Category        | What It Covers                           |
+| --------------- | ---------------------------------------- |
+| **Shot**        | Framing: wide shot, close-up, bird's eye |
+| **Subject**     | Identity, appearance, wardrobe, emotion  |
+| **Action**      | Movement, state, gestures                |
+| **Environment** | Location, weather, context               |
+| **Lighting**    | Source, quality, time of day             |
+| **Camera**      | Movement, lens, angle                    |
+| **Style**       | Aesthetic, film stock                    |
+| **Technical**   | Aspect ratio, FPS, resolution, duration  |
+| **Audio**       | Score, sound effects                     |
 
 This taxonomy is the backbone of span labeling. When you click "golden hour," the system knows it's `lighting.timeOfDay` and generates lighting-appropriate alternatives.
 
@@ -238,6 +238,7 @@ This taxonomy is the backbone of span labeling. When you click "golden hour," th
 ## Example: Before & After
 
 ### Input
+
 ```
 "cyberpunk street scene"
 ```
@@ -308,6 +309,7 @@ npm start
 ```
 
 **Requirements:**
+
 - Node.js >= 20.0.0
 - OpenAI API key (required)
 - Groq API key (optional, enables fast drafts)
@@ -320,6 +322,7 @@ npm start
 **Current:** In active development (v0.1.0)
 
 **Recent:**
+
 - ✅ Two-stage optimization pipeline
 - ✅ Span labeling with 30+ categories
 - ✅ Click-to-enhance suggestions
@@ -327,6 +330,7 @@ npm start
 - ✅ Multi-provider LLM support
 
 **Next:**
+
 - [ ] Payment integration
 - [ ] Team collaboration
 - [ ] API access tier
@@ -336,11 +340,11 @@ npm start
 
 ## Technology Stack
 
-| Layer | Tech |
-|-------|------|
-| Frontend | React 18, Vite, Tailwind, TypeScript |
-| Backend | Express, TypeScript, Firebase |
-| LLMs | OpenAI, Groq, Gemini |
+| Layer          | Tech                                  |
+| -------------- | ------------------------------------- |
+| Frontend       | React 18, Vite, Tailwind, TypeScript  |
+| Backend        | Express, TypeScript, Firebase         |
+| LLMs           | OpenAI, Groq, Gemini                  |
 | Infrastructure | Docker, Kubernetes, Redis, Prometheus |
 
 ---
@@ -372,4 +376,4 @@ PromptCanvas is not another "make my prompt better" tool. It's an **interactive 
 
 ---
 
-*Built for the AI video generation community*
+_Built for the AI video generation community_

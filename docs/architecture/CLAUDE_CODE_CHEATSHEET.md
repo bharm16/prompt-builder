@@ -14,6 +14,7 @@ Show me the proposed file structure BEFORE implementing.
 ## 📋 Copy-Paste Templates (Choose One)
 
 ### 1️⃣ New Frontend Feature
+
 ```
 Add [FEATURE]
 
@@ -29,6 +30,7 @@ SHOW STRUCTURE FIRST
 ```
 
 ### 2️⃣ New Backend Feature
+
 ```
 Add [FEATURE]
 
@@ -43,6 +45,7 @@ SHOW STRUCTURE FIRST
 ```
 
 ### 3️⃣ Modify Existing Code
+
 ```
 Modify [FILE] to [DO WHAT]
 
@@ -55,6 +58,7 @@ SHOW WHAT CHANGES BEFORE implementing
 ```
 
 ### 4️⃣ Full-Stack Feature
+
 ```
 Add [FEATURE] (full-stack)
 
@@ -79,12 +83,13 @@ SHOW COMPLETE STRUCTURE FIRST
 
 ## 🎯 Pattern Selection
 
-| Working On | Pattern | Reference |
-|------------|---------|-----------|
-| **Frontend** | VideoConceptBuilder | `client/src/components/VideoConceptBuilder/` |
-| **Backend** | PromptOptimizationService | `server/src/services/PromptOptimizationService.js` |
+| Working On   | Pattern                   | Reference                                          |
+| ------------ | ------------------------- | -------------------------------------------------- |
+| **Frontend** | VideoConceptBuilder       | `client/src/components/VideoConceptBuilder/`       |
+| **Backend**  | PromptOptimizationService | `server/src/services/PromptOptimizationService.js` |
 
 ### Frontend Structure
+
 ```
 ComponentName/
 ├── ComponentName.jsx   → Wires pieces together. No if/else business logic.
@@ -96,6 +101,7 @@ ComponentName/
 ```
 
 ### Backend Structure
+
 ```
 ServiceName/
 ├── MainService.js      → Coordinates. Doesn't implement.
@@ -128,24 +134,26 @@ Before creating or splitting ANY file:
 
 Ask yourself:
 
-| Question | If "No" |
-|----------|---------|
-| Can I explain each file in ≤10 words? | Responsibility unclear—simplify or rename |
-| Do files that change together live together? | Shotgun surgery—consolidate |
-| Can I test each piece with ≤2 mocks? | Too much coupling—extract dependencies |
-| If I delete this file, does exactly one thing disappear? | Mixed responsibilities—split by concern |
+| Question                                                 | If "No"                                   |
+| -------------------------------------------------------- | ----------------------------------------- |
+| Can I explain each file in ≤10 words?                    | Responsibility unclear—simplify or rename |
+| Do files that change together live together?             | Shotgun surgery—consolidate               |
+| Can I test each piece with ≤2 mocks?                     | Too much coupling—extract dependencies    |
+| If I delete this file, does exactly one thing disappear? | Mixed responsibilities—split by concern   |
 
 ---
 
 ## 🔥 Red Flags
 
 ### ❌ Stop Immediately If You See
+
 - Splitting a file "because it's too long" (not a valid reason)
 - Creating a component used in exactly one place
 - Extracting code that always changes with its caller
 - Adding a wrapper that just calls another function
 
 ### ⚠️ Investigate If You See
+
 - `if` statements with business logic in an orchestrator
 - A function using more data from another module than its own
 - Mocking 3+ things to test one function

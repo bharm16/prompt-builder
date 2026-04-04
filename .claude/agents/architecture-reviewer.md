@@ -30,12 +30,12 @@ Before flagging a file, ask yourself:
 
 **DO NOT flag files solely for exceeding a line count.** Line counts are heuristics, not triggers:
 
-| Type | Soft Threshold | Actually Split When |
-|------|---------------|---------------------|
-| Components | ~200 lines | Mixed presentation + business logic |
-| Hooks | ~150 lines | Managing unrelated state domains |
-| Services | ~300-500 lines | Multiple reasons to change |
-| Utils | ~100 lines | Functions with different concerns |
+| Type       | Soft Threshold | Actually Split When                 |
+| ---------- | -------------- | ----------------------------------- |
+| Components | ~200 lines     | Mixed presentation + business logic |
+| Hooks      | ~150 lines     | Managing unrelated state domains    |
+| Services   | ~300-500 lines | Multiple reasons to change          |
+| Utils      | ~100 lines     | Functions with different concerns   |
 
 A 600-line state machine with one responsibility is fine. A 100-line file with three responsibilities is not.
 
@@ -44,6 +44,7 @@ A 600-line state machine with one responsibility is fine. A 100-line file with t
 Reference implementation: `client/src/components/VideoConceptBuilder/`
 
 Verify feature modules follow:
+
 ```
 FeatureName/
 ├── FeatureName.tsx        # Orchestration only — wires pieces together, no business logic
@@ -75,6 +76,7 @@ FeatureName/
 Reference implementation: `server/src/services/prompt-optimization/`
 
 Verify services follow:
+
 ```
 ServiceName/
 ├── ServiceNameService.ts  # Thin orchestrator — coordinates sub-services
@@ -94,28 +96,28 @@ ServiceName/
 
 Flag violations of:
 
-| Rule | What to Flag |
-|------|-------------|
-| **No `any`** | Any use of `any` type (use `unknown` + type guards, generics, or `Record<string, unknown>`) |
-| **No JSDoc types** | `@param {string}`, `@returns {Promise}` etc. (JSDoc for descriptions/examples is OK) |
-| **No magic strings** | String literals used in conditionals — should be union types or `as const` arrays |
-| **Zod at boundaries** | API responses, user input, URL params, localStorage read without Zod validation |
-| **Explicit return types** | Exported functions and async functions missing return type annotations |
-| **Prefer `undefined`** | Use of `null` unless the API explicitly returns null |
-| **Optional chaining depth** | `?.` used more than 2 levels deep — types need fixing |
-| **Type assertions** | `as Type` without prior Zod validation or type guard (except DOM elements and test mocks) |
-| **Discriminated unions** | Reducer actions using `{ type: string; payload?: any }` instead of discriminated unions |
-| **Generic constraints** | Unconstrained generics where constraints are possible |
+| Rule                        | What to Flag                                                                                |
+| --------------------------- | ------------------------------------------------------------------------------------------- |
+| **No `any`**                | Any use of `any` type (use `unknown` + type guards, generics, or `Record<string, unknown>`) |
+| **No JSDoc types**          | `@param {string}`, `@returns {Promise}` etc. (JSDoc for descriptions/examples is OK)        |
+| **No magic strings**        | String literals used in conditionals — should be union types or `as const` arrays           |
+| **Zod at boundaries**       | API responses, user input, URL params, localStorage read without Zod validation             |
+| **Explicit return types**   | Exported functions and async functions missing return type annotations                      |
+| **Prefer `undefined`**      | Use of `null` unless the API explicitly returns null                                        |
+| **Optional chaining depth** | `?.` used more than 2 levels deep — types need fixing                                       |
+| **Type assertions**         | `as Type` without prior Zod validation or type guard (except DOM elements and test mocks)   |
+| **Discriminated unions**    | Reducer actions using `{ type: string; payload?: any }` instead of discriminated unions     |
+| **Generic constraints**     | Unconstrained generics where constraints are possible                                       |
 
 ### 5. Code Smells
 
-| Smell | Symptom | Recommendation |
-|-------|---------|---------------|
-| **Feature Envy** | Function uses more data from another module than its own | Move to that module |
-| **Shotgun Surgery** | One change requires editing 5+ files | Consolidate the responsibility |
-| **God Object** | One file everything depends on | Split by responsibility |
-| **Primitive Obsession** | Passing 5+ related strings instead of an object | Create a type/object |
-| **Inappropriate Intimacy** | Module reaches into another's internals | Define a proper interface |
+| Smell                      | Symptom                                                  | Recommendation                 |
+| -------------------------- | -------------------------------------------------------- | ------------------------------ |
+| **Feature Envy**           | Function uses more data from another module than its own | Move to that module            |
+| **Shotgun Surgery**        | One change requires editing 5+ files                     | Consolidate the responsibility |
+| **God Object**             | One file everything depends on                           | Split by responsibility        |
+| **Primitive Obsession**    | Passing 5+ related strings instead of an object          | Create a type/object           |
+| **Inappropriate Intimacy** | Module reaches into another's internals                  | Define a proper interface      |
 
 ### 6. Frontend-Backend Decoupling
 
@@ -135,14 +137,14 @@ UI Components → Hooks → Feature API Layer → shared/ contracts → Server R
 
 #### What to Flag
 
-| Violation | Severity | Fix |
-|-----------|----------|-----|
-| Client file imports from `server/src/` | **CRITICAL** | Move shared type to `shared/`, consume via `@shared/*` or `#shared/*` |
-| Server file imports from `client/src/` | **CRITICAL** | Extract shared logic to `shared/` or duplicate with a service-specific type |
-| React component directly uses a type from `shared/` for rendering | **WARNING** | Component should consume a client-side type; the feature `api/` layer transforms DTOs into client shapes |
-| UI change requires modifying a `shared/` type | **WARNING** | Add a display-specific type in the feature's `types/` directory instead of widening the shared contract |
-| Feature hook calls `fetch()` directly | **CRITICAL** | HTTP calls belong in the feature's `api/` layer, not hooks or components |
-| Server route handler contains response-shape logic tailored to a specific UI component | **WARNING** | Route should return a general DTO; client `api/` layer transforms it |
+| Violation                                                                              | Severity     | Fix                                                                                                      |
+| -------------------------------------------------------------------------------------- | ------------ | -------------------------------------------------------------------------------------------------------- |
+| Client file imports from `server/src/`                                                 | **CRITICAL** | Move shared type to `shared/`, consume via `@shared/*` or `#shared/*`                                    |
+| Server file imports from `client/src/`                                                 | **CRITICAL** | Extract shared logic to `shared/` or duplicate with a service-specific type                              |
+| React component directly uses a type from `shared/` for rendering                      | **WARNING**  | Component should consume a client-side type; the feature `api/` layer transforms DTOs into client shapes |
+| UI change requires modifying a `shared/` type                                          | **WARNING**  | Add a display-specific type in the feature's `types/` directory instead of widening the shared contract  |
+| Feature hook calls `fetch()` directly                                                  | **CRITICAL** | HTTP calls belong in the feature's `api/` layer, not hooks or components                                 |
+| Server route handler contains response-shape logic tailored to a specific UI component | **WARNING**  | Route should return a general DTO; client `api/` layer transforms it                                     |
 
 #### The Anti-Corruption Layer
 
@@ -212,6 +214,7 @@ Structure your review as:
 ```
 
 Severity levels:
+
 - **CRITICAL**: Violates core SRP/SoC principles or TypeScript safety rules (`any`, missing Zod validation at boundaries)
 - **WARNING**: Deviates from established patterns (wrong layer placement, missing return types)
 - **INFO**: Minor improvement opportunity (could be cleaner but doesn't violate rules)

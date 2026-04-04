@@ -7,11 +7,15 @@
  * - Keeps tracking calls centralized rather than scattered across components
  */
 
-import { analytics } from '@/config/firebase';
+import { analytics } from "@/config/firebase";
 
 type EventParams = Record<string, string | number | boolean>;
 
-type LogEventFn = (instance: unknown, name: string, params?: EventParams) => void;
+type LogEventFn = (
+  instance: unknown,
+  name: string,
+  params?: EventParams,
+) => void;
 
 let logEventFn: LogEventFn | null = null;
 
@@ -19,7 +23,7 @@ let logEventFn: LogEventFn | null = null;
 async function ensureLogEvent(): Promise<LogEventFn | null> {
   if (logEventFn) return logEventFn;
   try {
-    const mod = await import('firebase/analytics');
+    const mod = await import("firebase/analytics");
     logEventFn = mod.logEvent as unknown as LogEventFn;
     return logEventFn;
   } catch {
@@ -30,7 +34,10 @@ async function ensureLogEvent(): Promise<LogEventFn | null> {
 /**
  * Track a custom analytics event. Safe to call when analytics is unavailable.
  */
-export async function trackEvent(name: string, params?: EventParams): Promise<void> {
+export async function trackEvent(
+  name: string,
+  params?: EventParams,
+): Promise<void> {
   if (!analytics) return;
   const log = await ensureLogEvent();
   if (log) log(analytics, name, params);
@@ -40,27 +47,27 @@ export async function trackEvent(name: string, params?: EventParams): Promise<vo
  * Track a page view. Called on route changes.
  */
 export async function trackPageView(path: string): Promise<void> {
-  await trackEvent('page_view', { page_path: path });
+  await trackEvent("page_view", { page_path: path });
 }
 
 // ── Product Events ──────────────────────────────────────────────────────────
 
 export function trackPromptOptimize(mode: string): void {
-  void trackEvent('prompt_optimize', { mode });
+  void trackEvent("prompt_optimize", { mode });
 }
 
 export function trackSuggestionRequest(category: string): void {
-  void trackEvent('suggestion_request', { category });
+  void trackEvent("suggestion_request", { category });
 }
 
 export function trackPreviewGenerate(mediaType: string): void {
-  void trackEvent('preview_generate', { media_type: mediaType });
+  void trackEvent("preview_generate", { media_type: mediaType });
 }
 
 export function trackSessionCreate(): void {
-  void trackEvent('session_create');
+  void trackEvent("session_create");
 }
 
 export function trackShare(): void {
-  void trackEvent('prompt_share');
+  void trackEvent("prompt_share");
 }

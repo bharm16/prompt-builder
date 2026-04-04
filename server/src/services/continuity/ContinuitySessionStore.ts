@@ -1,27 +1,27 @@
-import { admin, getFirestore } from '@infrastructure/firebaseAdmin';
-import type { ContinuitySession } from './types';
+import { admin, getFirestore } from "@infrastructure/firebaseAdmin";
+import type { ContinuitySession } from "./types";
 import {
   deserializeContinuitySession,
   serializeContinuitySession,
   type StoredContinuitySession,
-} from './continuitySerialization';
-import { SessionStore } from '@services/sessions/SessionStore';
-import type { SessionRecord } from '@services/sessions/types';
-import { DomainError } from '@server/errors/DomainError';
+} from "./continuitySerialization";
+import { SessionStore } from "@services/sessions/SessionStore";
+import type { SessionRecord } from "@services/sessions/types";
+import { DomainError } from "@server/errors/DomainError";
 
 export class ContinuitySessionVersionMismatchError extends DomainError {
-  readonly code = 'SESSION_VERSION_CONFLICT' as const;
+  readonly code = "SESSION_VERSION_CONFLICT" as const;
 
   constructor(
     readonly sessionId: string,
     readonly expectedVersion: number,
-    readonly actualVersion?: number
+    readonly actualVersion?: number,
   ) {
     super(
-      `Continuity session version mismatch for ${sessionId} (expected ${expectedVersion}, got ${actualVersion ?? 'unknown'})`,
-      { sessionId, expectedVersion, actualVersion }
+      `Continuity session version mismatch for ${sessionId} (expected ${expectedVersion}, got ${actualVersion ?? "unknown"})`,
+      { sessionId, expectedVersion, actualVersion },
     );
-    this.name = 'ContinuitySessionVersionMismatchError';
+    this.name = "ContinuitySessionVersionMismatchError";
   }
 
   getHttpStatus(): number {
@@ -29,24 +29,30 @@ export class ContinuitySessionVersionMismatchError extends DomainError {
   }
 
   getUserMessage(): string {
-    return 'Your changes conflicted with another edit. Please reload to see the latest version.';
+    return "Your changes conflicted with another edit. Please reload to see the latest version.";
   }
 }
 
 export class ContinuitySessionStore {
   private readonly db = getFirestore();
-  private readonly legacyCollection = this.db.collection('continuity_sessions');
+  private readonly legacyCollection = this.db.collection("continuity_sessions");
   private readonly sessionStore = new SessionStore();
 
   async save(session: ContinuitySession): Promise<void> {
     await this.saveInternal(session);
   }
 
-  async saveWithVersion(session: ContinuitySession, expectedVersion: number): Promise<number> {
+  async saveWithVersion(
+    session: ContinuitySession,
+    expectedVersion: number,
+  ): Promise<number> {
     return await this.saveInternal(session, expectedVersion);
   }
 
-  private async saveInternal(session: ContinuitySession, expectedVersion?: number): Promise<number> {
+  private async saveInternal(
+    session: ContinuitySession,
+    expectedVersion?: number,
+  ): Promise<number> {
     const docRef = this.legacyCollection.doc(session.id);
     const now = Date.now();
 
@@ -67,17 +73,30 @@ export class ContinuitySessionStore {
       hasContinuity: true,
     };
 
-    if (typeof expectedVersion === 'number') {
+    if (typeof expectedVersion === "number") {
       const newVersion = expectedVersion + 1;
       await this.db.runTransaction(async (transaction) => {
         const docSnapshot = await transaction.get(docRef);
         if (!docSnapshot.exists) {
-          throw new ContinuitySessionVersionMismatchError(session.id, expectedVersion, undefined);
+          throw new ContinuitySessionVersionMismatchError(
+            session.id,
+            expectedVersion,
+            undefined,
+          );
         }
-        const stored = docSnapshot.data() as StoredContinuitySession | undefined;
+        const stored = docSnapshot.data() as
+          | StoredContinuitySession
+          | undefined;
         const actualVersion = stored?.version;
-        if (typeof actualVersion === 'number' && actualVersion !== expectedVersion) {
-          throw new ContinuitySessionVersionMismatchError(session.id, expectedVersion, actualVersion);
+        if (
+          typeof actualVersion === "number" &&
+          actualVersion !== expectedVersion
+        ) {
+          throw new ContinuitySessionVersionMismatchError(
+            session.id,
+            expectedVersion,
+            actualVersion,
+          );
         }
         this.sessionStore.saveInTransaction(transaction, unifiedSession);
         transaction.set(
@@ -87,7 +106,7 @@ export class ContinuitySessionStore {
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
             version: newVersion,
           },
-          { merge: true }
+          { merge: true },
         );
       });
       return newVersion;
@@ -98,8 +117,11 @@ export class ContinuitySessionStore {
       this.sessionStore.saveInTransaction(transaction, unifiedSession);
 
       if (docSnapshot.exists) {
-        const stored = docSnapshot.data() as StoredContinuitySession | undefined;
-        const currentVersion = typeof stored?.version === 'number' ? stored.version : 0;
+        const stored = docSnapshot.data() as
+          | StoredContinuitySession
+          | undefined;
+        const currentVersion =
+          typeof stored?.version === "number" ? stored.version : 0;
         const newVersion = currentVersion + 1;
         transaction.set(
           docRef,
@@ -108,7 +130,7 @@ export class ContinuitySessionStore {
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
             version: newVersion,
           },
-          { merge: true }
+          { merge: true },
         );
         return newVersion;
       }
@@ -136,7 +158,7 @@ export class ContinuitySessionStore {
 
     const legacy = deserializeContinuitySession(
       sessionId,
-      snapshot.data() as StoredContinuitySession
+      snapshot.data() as StoredContinuitySession,
     );
     await this.sessionStore.save({
       id: legacy.id,
@@ -153,18 +175,25 @@ export class ContinuitySessionStore {
   }
 
   async findByUser(userId: string): Promise<ContinuitySession[]> {
-    const unifiedSessions = await this.sessionStore.findContinuityByUser(userId);
+    const unifiedSessions =
+      await this.sessionStore.findContinuityByUser(userId);
     if (unifiedSessions.length > 0) {
       return unifiedSessions
         .map((session) => session.continuity)
         .filter((session): session is ContinuitySession => Boolean(session));
     }
 
-    const snapshot = await this.legacyCollection.where('userId', '==', userId).orderBy('updatedAtMs', 'desc').get();
+    const snapshot = await this.legacyCollection
+      .where("userId", "==", userId)
+      .orderBy("updatedAtMs", "desc")
+      .get();
     if (snapshot.empty) return [];
 
-    const legacySessions = snapshot.docs.map(doc =>
-      deserializeContinuitySession(doc.id, doc.data() as StoredContinuitySession)
+    const legacySessions = snapshot.docs.map((doc) =>
+      deserializeContinuitySession(
+        doc.id,
+        doc.data() as StoredContinuitySession,
+      ),
     );
     for (const legacy of legacySessions) {
       await this.sessionStore.save({

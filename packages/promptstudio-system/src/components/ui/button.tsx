@@ -1,8 +1,8 @@
-import * as React from "react"
-import { Slot } from "@radix-ui/react-slot"
-import { cva, type VariantProps } from "class-variance-authority"
+import * as React from "react";
+import { Slot } from "@radix-ui/react-slot";
+import { cva, type VariantProps } from "class-variance-authority";
 
-import { cn } from "@promptstudio/system/lib/utils"
+import { cn } from "@promptstudio/system/lib/utils";
 
 const buttonVariants = cva(
   "relative inline-flex items-center justify-center gap-ps-2 whitespace-nowrap rounded-sm text-button-14 font-medium ps-edge-lit transition-colors disabled:pointer-events-none disabled:opacity-50 ps-press [&_svg]:pointer-events-none [&_svg]:size-icon-sm [&_svg]:shrink-0",
@@ -16,7 +16,8 @@ const buttonVariants = cva(
           "border border-border bg-transparent text-muted hover:border-border-strong hover:bg-surface-3 hover:text-foreground",
         secondary:
           "border border-border bg-surface-2 text-foreground hover:bg-surface-3",
-        ghost: "bg-transparent text-muted hover:bg-surface-3 hover:text-foreground",
+        ghost:
+          "bg-transparent text-muted hover:bg-surface-3 hover:text-foreground",
         canvas:
           "border border-transparent bg-transparent text-muted hover:border-border hover:bg-surface-3 hover:text-foreground",
         "canvas-solid":
@@ -42,21 +43,33 @@ const buttonVariants = cva(
       variant: "default",
       size: "default",
     },
-  }
-)
+  },
+);
 
 export interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof buttonVariants> {
-  asChild?: boolean
-  loading?: boolean
+  asChild?: boolean;
+  loading?: boolean;
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, asChild = false, loading, disabled, children, ...props }, ref) => {
+  (
+    {
+      className,
+      variant,
+      size,
+      asChild = false,
+      loading,
+      disabled,
+      children,
+      ...props
+    },
+    ref,
+  ) => {
     // When loading with asChild, we can't safely inject the spinner into the slotted component
     // Fall back to a regular button to show the loading state properly
-    const Comp = asChild && !loading ? Slot : "button"
+    const Comp = asChild && !loading ? Slot : "button";
     return (
       <Comp
         className={cn(buttonVariants({ variant, size, className }))}
@@ -96,9 +109,9 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
           children
         )}
       </Comp>
-    )
-  }
-)
-Button.displayName = "Button"
+    );
+  },
+);
+Button.displayName = "Button";
 
-export { Button, buttonVariants }
+export { Button, buttonVariants };

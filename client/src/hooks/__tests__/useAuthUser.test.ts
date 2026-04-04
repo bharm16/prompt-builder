@@ -1,22 +1,22 @@
-import { act, renderHook } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { act, renderHook } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { mockGetAuthRepository } = vi.hoisted(() => ({
   mockGetAuthRepository: vi.fn(),
 }));
 
-vi.mock('@repositories/index', () => ({
+vi.mock("@repositories/index", () => ({
   getAuthRepository: mockGetAuthRepository,
 }));
 
-import { useAuthUser } from '../useAuthUser';
+import { useAuthUser } from "../useAuthUser";
 
-describe('useAuthUser', () => {
+describe("useAuthUser", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('subscribes to auth changes, updates state, and calls lifecycle callbacks', () => {
+  it("subscribes to auth changes, updates state, and calls lifecycle callbacks", () => {
     const unsubscribe = vi.fn();
     let onAuthStateChangedCallback: ((user: any) => void) | undefined;
 
@@ -35,14 +35,14 @@ describe('useAuthUser', () => {
         onInit,
         onCleanup,
         onChange,
-      })
+      }),
     );
 
     expect(onInit).toHaveBeenCalledTimes(1);
     expect(onAuthStateChanged).toHaveBeenCalledTimes(1);
     expect(result.current).toBeNull();
 
-    const user = { uid: 'u1', email: 'user@example.com' };
+    const user = { uid: "u1", email: "user@example.com" };
     act(() => {
       onAuthStateChangedCallback?.(user);
     });
@@ -56,7 +56,7 @@ describe('useAuthUser', () => {
     expect(unsubscribe).toHaveBeenCalledTimes(1);
   });
 
-  it('uses latest callback references without re-subscribing', () => {
+  it("uses latest callback references without re-subscribing", () => {
     const unsubscribe = vi.fn();
     let onAuthStateChangedCallback: ((user: any) => void) | undefined;
 
@@ -70,20 +70,21 @@ describe('useAuthUser', () => {
     const secondOnChange = vi.fn();
 
     const { rerender } = renderHook(
-      ({ onChange }: { onChange: (user: any) => void }) => useAuthUser({ onChange }),
+      ({ onChange }: { onChange: (user: any) => void }) =>
+        useAuthUser({ onChange }),
       {
         initialProps: { onChange: firstOnChange },
-      }
+      },
     );
 
     rerender({ onChange: secondOnChange });
 
     act(() => {
-      onAuthStateChangedCallback?.({ uid: 'u2' });
+      onAuthStateChangedCallback?.({ uid: "u2" });
     });
 
     expect(firstOnChange).not.toHaveBeenCalled();
-    expect(secondOnChange).toHaveBeenCalledWith({ uid: 'u2' });
+    expect(secondOnChange).toHaveBeenCalledWith({ uid: "u2" });
     expect(onAuthStateChanged).toHaveBeenCalledTimes(1);
   });
 });

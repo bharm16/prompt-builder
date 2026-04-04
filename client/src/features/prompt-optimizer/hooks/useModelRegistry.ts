@@ -1,2 +1,2 @@
-export { useModelRegistry } from '@/hooks/useModelRegistry';
-export type { ModelOption } from '@/hooks/useModelRegistry';
+export { useModelRegistry } from "@/hooks/useModelRegistry";
+export type { ModelOption } from "@/hooks/useModelRegistry";

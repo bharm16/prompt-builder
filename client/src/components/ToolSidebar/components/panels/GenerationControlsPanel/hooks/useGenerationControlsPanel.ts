@@ -8,6 +8,7 @@ import {
 } from "react";
 import { safeUrlHost } from "@/utils/url";
 import { VIDEO_DRAFT_MODEL } from "@components/ToolSidebar/config/modelConfig";
+import { getDefaultGenerationDurationSeconds } from "@shared/generationPricing";
 import type {
   GenerationControlsPanelProps,
   GenerationControlsTab,
@@ -20,12 +21,12 @@ import type { ModelRecommendation } from "@/features/model-intelligence/types";
 import type {
   ExtendVideoSource,
   VideoReferenceImage,
-} from "@/features/prompt-optimizer/context/generationControlsStoreTypes";
+} from "@features/generation-controls/context/generationControlsStoreTypes";
 import { useGenerationControlsContext } from "@/features/prompt-optimizer/context/GenerationControlsContext";
 import {
   useGenerationControlsStoreActions,
   useGenerationControlsStoreState,
-} from "@/features/prompt-optimizer/context/GenerationControlsStore";
+} from "@features/generation-controls/context/GenerationControlsStore";
 import { useWorkspaceSession } from "@/features/prompt-optimizer/context/WorkspaceSessionContext";
 import {
   useOptionalPromptHighlights,
@@ -136,7 +137,10 @@ export interface UseGenerationControlsPanelResult {
     handleVideoReferenceFile: (file: File) => Promise<void>;
     handleVideoReferenceUploadRequest: () => void;
     handleRemoveVideoReference: (id: string) => void;
-    handleUpdateVideoReferenceType: (id: string, type: "asset" | "style") => void;
+    handleUpdateVideoReferenceType: (
+      id: string,
+      type: "asset" | "style",
+    ) => void;
     handleClearExtendVideo: () => void;
     handleCameraMotionButtonClick: () => void;
     handleCloseCameraMotionModal: () => void;
@@ -157,7 +161,6 @@ export const useGenerationControlsPanel = (
 ): UseGenerationControlsPanelResult => {
   const {
     isProcessing = false,
-    isRefining = false,
     assets = [],
     onImageUpload,
     onStartFrameUpload,
@@ -183,7 +186,8 @@ export const useGenerationControlsPanel = (
     faceSwapPreview: faceSwapPreviewState,
     setFaceSwapPreview,
   } = useGenerationControlsContext();
-  const { hasActiveContinuityShot, currentShot, updateShot } = useWorkspaceSession();
+  const { hasActiveContinuityShot, currentShot, updateShot } =
+    useWorkspaceSession();
   const { domain, ui } = useGenerationControlsStoreState();
   const storeActions = useGenerationControlsStoreActions();
 
@@ -211,14 +215,20 @@ export const useGenerationControlsPanel = (
   const duration = useMemo(() => {
     const durationValue = generationParams?.duration_s;
     if (typeof durationValue === "number") {
-      return Number.isFinite(durationValue) ? durationValue : 5;
+      return Number.isFinite(durationValue)
+        ? durationValue
+        : getDefaultGenerationDurationSeconds(selectedModel);
     }
     if (typeof durationValue === "string") {
       const parsed = Number.parseFloat(durationValue);
-      return Number.isFinite(parsed) ? parsed : 5;
+      return Number.isFinite(parsed)
+        ? parsed
+        : getDefaultGenerationDurationSeconds(selectedModel);
     }
-    return 5;
-  }, [generationParams?.duration_s]);
+    return getDefaultGenerationDurationSeconds(
+      selectedModel || (tier === "draft" ? VIDEO_DRAFT_MODEL.id : null),
+    );
+  }, [generationParams?.duration_s, selectedModel, tier]);
 
   const handleModelChange = useCallback(
     (model: string): void => {
@@ -230,7 +240,11 @@ export const useGenerationControlsPanel = (
         storeActions.setVideoTier(nextTier);
       }
 
-      if (hasActiveContinuityShot && currentShot && currentShot.modelId !== model) {
+      if (
+        hasActiveContinuityShot &&
+        currentShot &&
+        currentShot.modelId !== model
+      ) {
         void updateShot(currentShot.id, { modelId: model });
       }
     },
@@ -308,8 +322,10 @@ export const useGenerationControlsPanel = (
     promptHighlights: promptHighlights?.initialHighlights ?? null,
   });
 
-  const isOptimizing = Boolean(isProcessing || isRefining);
+  const isOptimizing = Boolean(isProcessing);
   const isGenerating = controls?.isGenerating ?? false;
+  const isSubmitting = controls?.isSubmitting ?? false;
+  const isGenerationBusy = isGenerating || isSubmitting;
   const isGenerationReady = Boolean(controls);
 
   const {
@@ -352,7 +368,7 @@ export const useGenerationControlsPanel = (
         }
       }
     },
-    [isUploadDisabled, onImageUpload]
+    [isUploadDisabled, onImageUpload],
   );
 
   const handleUploadRequest = useCallback(() => {
@@ -399,7 +415,9 @@ export const useGenerationControlsPanel = (
   });
 
   useEffect(() => {
-    const nextShotId = hasActiveContinuityShot ? (currentShot?.id ?? null) : null;
+    const nextShotId = hasActiveContinuityShot
+      ? (currentShot?.id ?? null)
+      : null;
     if (previousShotIdRef.current === nextShotId) return;
     previousShotIdRef.current = nextShotId;
     setFaceSwapMode("direct");
@@ -454,7 +472,9 @@ export const useGenerationControlsPanel = (
           id: `start-frame-upload-${Date.now()}`,
           url: uploaded.url,
           source: "upload",
-          ...(uploaded.storagePath ? { storagePath: uploaded.storagePath } : {}),
+          ...(uploaded.storagePath
+            ? { storagePath: uploaded.storagePath }
+            : {}),
           ...(uploaded.viewUrlExpiresAt
             ? { viewUrlExpiresAt: uploaded.viewUrlExpiresAt }
             : {}),
@@ -468,7 +488,7 @@ export const useGenerationControlsPanel = (
       onStartFrameUpload,
       onUploadSidebarImage,
       storeActions,
-    ]
+    ],
   );
 
   const handleStartFrameUploadRequest = useCallback(() => {
@@ -480,8 +500,7 @@ export const useGenerationControlsPanel = (
     storeActions.clearStartFrame();
   }, [storeActions]);
 
-  const isEndFrameUploadDisabled =
-    !onUploadSidebarImage || isEndFrameUploading;
+  const isEndFrameUploadDisabled = !onUploadSidebarImage || isEndFrameUploading;
 
   const handleEndFrameFile = useCallback(
     async (file: File): Promise<void> => {
@@ -494,7 +513,9 @@ export const useGenerationControlsPanel = (
           id: `end-frame-upload-${Date.now()}`,
           url: uploaded.url,
           source: "upload",
-          ...(uploaded.storagePath ? { storagePath: uploaded.storagePath } : {}),
+          ...(uploaded.storagePath
+            ? { storagePath: uploaded.storagePath }
+            : {}),
           ...(uploaded.viewUrlExpiresAt
             ? { viewUrlExpiresAt: uploaded.viewUrlExpiresAt }
             : {}),
@@ -503,7 +524,7 @@ export const useGenerationControlsPanel = (
         setIsEndFrameUploading(false);
       }
     },
-    [isEndFrameUploadDisabled, onUploadSidebarImage, storeActions]
+    [isEndFrameUploadDisabled, onUploadSidebarImage, storeActions],
   );
 
   const handleEndFrameUploadRequest = useCallback(() => {
@@ -516,7 +537,9 @@ export const useGenerationControlsPanel = (
   }, [storeActions]);
 
   const isVideoReferenceUploadDisabled =
-    !onUploadSidebarImage || isVideoRefUploading || isVideoReferenceLimitReached;
+    !onUploadSidebarImage ||
+    isVideoRefUploading ||
+    isVideoReferenceLimitReached;
 
   const handleVideoReferenceFile = useCallback(
     async (file: File): Promise<void> => {
@@ -529,7 +552,9 @@ export const useGenerationControlsPanel = (
           url: uploaded.url,
           referenceType: "asset",
           source: "upload",
-          ...(uploaded.storagePath ? { storagePath: uploaded.storagePath } : {}),
+          ...(uploaded.storagePath
+            ? { storagePath: uploaded.storagePath }
+            : {}),
           ...(uploaded.viewUrlExpiresAt
             ? { viewUrlExpiresAt: uploaded.viewUrlExpiresAt }
             : {}),
@@ -538,7 +563,7 @@ export const useGenerationControlsPanel = (
         setIsVideoRefUploading(false);
       }
     },
-    [isVideoReferenceUploadDisabled, onUploadSidebarImage, storeActions]
+    [isVideoReferenceUploadDisabled, onUploadSidebarImage, storeActions],
   );
 
   const handleVideoReferenceUploadRequest = useCallback(() => {
@@ -550,14 +575,14 @@ export const useGenerationControlsPanel = (
     (id: string): void => {
       storeActions.removeVideoReference(id);
     },
-    [storeActions]
+    [storeActions],
   );
 
   const handleUpdateVideoReferenceType = useCallback(
     (id: string, type: "asset" | "style"): void => {
       storeActions.updateVideoReferenceType(id, type);
     },
-    [storeActions]
+    [storeActions],
   );
 
   const handleClearExtendVideo = useCallback(() => {
@@ -571,8 +596,10 @@ export const useGenerationControlsPanel = (
   const isVideoGenerateDisabled =
     activeTab === "video" && !hasPrompt && !startFrame;
   const isStoryboardDisabled = !hasPrompt && !startFrame;
-  const isDraftDisabled = !hasPrompt || !isGenerationReady || isGenerating;
-  const isRenderDisabled = !hasPrompt || !isGenerationReady || isGenerating;
+  const isDraftDisabled =
+    !hasPrompt || !isGenerationReady || isGenerationBusy;
+  const isRenderDisabled =
+    !hasPrompt || !isGenerationReady || isGenerationBusy;
   const isGenerateDisabled =
     (tier === "draft" ? isDraftDisabled : isRenderDisabled) ||
     isImageGenerateDisabled ||

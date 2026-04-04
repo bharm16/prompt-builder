@@ -5,10 +5,14 @@
  * Following VideoConceptBuilder pattern: components/ConflictsAlert.tsx
  */
 
-import { Info } from '@promptstudio/system/components/ui';
-import { Button } from '@promptstudio/system/components/ui/button';
-import { getLoadingSkeletonCount } from '../utils/suggestionHelpers';
-import type { EmptyStateConfig, ErrorStateConfig, InactiveStateConfig } from './types';
+import { Info } from "@promptstudio/system/components/ui";
+import { Button } from "@promptstudio/system/components/ui/button";
+import { getLoadingSkeletonCount } from "../utils/suggestionHelpers";
+import type {
+  EmptyStateConfig,
+  ErrorStateConfig,
+  InactiveStateConfig,
+} from "./types";
 
 // ===========================
 // LOADING STATE
@@ -21,8 +25,8 @@ interface LoadingStateProps {
 }
 
 export function LoadingState({
-  contextValue = '',
-  selectedText = '',
+  contextValue = "",
+  selectedText = "",
   isPlaceholder = false,
 }: LoadingStateProps): React.ReactElement {
   const textLength = contextValue?.length || selectedText?.length || 0;
@@ -34,24 +38,38 @@ export function LoadingState({
         <div
           key={i}
           className="relative overflow-hidden px-3 py-2 bg-surface-1 border border-border rounded-md animate-pulse"
-          style={{ animationDelay: `${i * 75}ms`, animationDuration: '1.5s' }}
+          style={{ animationDelay: `${i * 75}ms`, animationDuration: "1.5s" }}
         >
           <div className="space-y-1">
             <div
               className={`h-3 bg-surface-2 rounded-md ${
-                i % 4 === 0 ? 'w-3/4' : i % 4 === 1 ? 'w-2/3' : i % 4 === 2 ? 'w-4/5' : 'w-5/6'
+                i % 4 === 0
+                  ? "w-3/4"
+                  : i % 4 === 1
+                    ? "w-2/3"
+                    : i % 4 === 2
+                      ? "w-4/5"
+                      : "w-5/6"
               }`}
             />
             {isPlaceholder ? (
               <>
-                <div className={`h-2.5 bg-surface-2 rounded-md ${i % 2 === 0 ? 'w-full' : 'w-11/12'}`} />
-                <div className={`h-2.5 bg-surface-2 rounded-md ${i % 3 === 0 ? 'w-5/6' : 'w-4/5'}`} />
+                <div
+                  className={`h-2.5 bg-surface-2 rounded-md ${i % 2 === 0 ? "w-full" : "w-11/12"}`}
+                />
+                <div
+                  className={`h-2.5 bg-surface-2 rounded-md ${i % 3 === 0 ? "w-5/6" : "w-4/5"}`}
+                />
               </>
             ) : (
               <>
-                <div className={`h-2.5 bg-surface-2 rounded-md ${i % 2 === 0 ? 'w-full' : 'w-11/12'}`} />
+                <div
+                  className={`h-2.5 bg-surface-2 rounded-md ${i % 2 === 0 ? "w-full" : "w-11/12"}`}
+                />
                 {i % 3 !== 2 && (
-                  <div className={`h-2.5 bg-surface-2 rounded-md ${i % 2 === 0 ? 'w-5/6' : 'w-4/5'}`} />
+                  <div
+                    className={`h-2.5 bg-surface-2 rounded-md ${i % 2 === 0 ? "w-5/6" : "w-4/5"}`}
+                  />
                 )}
               </>
             )}
@@ -59,7 +77,7 @@ export function LoadingState({
         </div>
       ))}
       <p className="text-center text-label-12 text-muted mt-4">
-        {isPlaceholder ? 'Finding relevant values...' : 'Analyzing context...'}
+        {isPlaceholder ? "Finding relevant values..." : "Analyzing context..."}
       </p>
     </div>
   );
@@ -73,7 +91,9 @@ interface EmptyStateProps {
   emptyState: EmptyStateConfig;
 }
 
-export function EmptyState({ emptyState }: EmptyStateProps): React.ReactElement {
+export function EmptyState({
+  emptyState,
+}: EmptyStateProps): React.ReactElement {
   const EmptyIcon = emptyState.icon;
 
   return (
@@ -141,7 +161,9 @@ interface InactiveStateProps {
   inactiveState: InactiveStateConfig;
 }
 
-export function InactiveState({ inactiveState }: InactiveStateProps): React.ReactElement {
+export function InactiveState({
+  inactiveState,
+}: InactiveStateProps): React.ReactElement {
   const InactiveIcon = inactiveState.icon;
   const example = inactiveState.example;
 
@@ -162,16 +184,18 @@ export function InactiveState({ inactiveState }: InactiveStateProps): React.Reac
           </div>
         </div>
 
-        {example?.from && Array.isArray(example.to) && example.to.length > 0 && (
-          <div className="mt-4">
-            <div className="text-[11px] font-medium text-muted uppercase tracking-wide mb-2">
-              Example
+        {example?.from &&
+          Array.isArray(example.to) &&
+          example.to.length > 0 && (
+            <div className="mt-4">
+              <div className="text-[11px] font-medium text-muted uppercase tracking-wide mb-2">
+                Example
+              </div>
+              <div className="px-3 py-2 bg-surface-1 border border-border rounded-md text-label-12 text-foreground font-mono">
+                {example.from} → {example.to.join(" | ")}
+              </div>
             </div>
-            <div className="px-3 py-2 bg-surface-1 border border-border rounded-md text-label-12 text-foreground font-mono">
-              {example.from} → {example.to.join(' | ')}
-            </div>
-          </div>
-        )}
+          )}
 
         {Array.isArray(inactiveState.tips) && inactiveState.tips.length > 0 && (
           <div className="mt-3 space-y-1 text-left">
@@ -182,7 +206,10 @@ export function InactiveState({ inactiveState }: InactiveStateProps): React.Reac
                   key={`${tip.text}-${index}`}
                   className="flex items-start gap-2 px-2 py-1 bg-surface-1 border border-border rounded-md"
                 >
-                  <TipIcon className="h-3 w-3 text-muted flex-shrink-0 mt-0.5" aria-hidden="true" />
+                  <TipIcon
+                    className="h-3 w-3 text-muted flex-shrink-0 mt-0.5"
+                    aria-hidden="true"
+                  />
                   <span className="text-label-12 text-muted">{tip.text}</span>
                 </div>
               );

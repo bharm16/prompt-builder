@@ -1,2 +1,2 @@
-export { ModelComparison } from './ModelComparison';
-export { ComparisonPreview } from './ComparisonPreview';
+export { ModelComparison } from "./ModelComparison";
+export { ComparisonPreview } from "./ComparisonPreview";

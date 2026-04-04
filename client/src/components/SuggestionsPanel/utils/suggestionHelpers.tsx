@@ -5,9 +5,12 @@
  * Following VideoConceptBuilder pattern: utils/validation.ts
  */
 
-import { CheckCircle, AlertCircle } from '@promptstudio/system/components/ui';
-import { COMPATIBILITY_THRESHOLDS, MAX_KEYBOARD_SHORTCUTS } from '../config/panelConfig';
-import type { SuggestionItem } from '../hooks/types';
+import { CheckCircle, AlertCircle } from "@promptstudio/system/components/ui";
+import {
+  COMPATIBILITY_THRESHOLDS,
+  MAX_KEYBOARD_SHORTCUTS,
+} from "../config/panelConfig";
+import type { SuggestionItem } from "../hooks/types";
 
 // ===========================
 // COMPATIBILITY UTILITIES
@@ -22,19 +25,21 @@ export interface CompatibilityStyles {
 /**
  * Get styling classes for compatibility badge based on score
  */
-export function getCompatibilityStyles(compatibility: number | undefined): CompatibilityStyles | null {
-  if (typeof compatibility !== 'number') {
+export function getCompatibilityStyles(
+  compatibility: number | undefined,
+): CompatibilityStyles | null {
+  if (typeof compatibility !== "number") {
     return null;
   }
 
-  let tone = 'text-muted bg-surface-1 border border-border';
+  let tone = "text-muted bg-surface-1 border border-border";
   let IconComponent: typeof CheckCircle | typeof AlertCircle | null = null;
 
   if (compatibility >= COMPATIBILITY_THRESHOLDS.HIGH) {
-    tone = 'text-emerald-600 bg-emerald-50 border border-emerald-200';
+    tone = "text-emerald-600 bg-emerald-50 border border-emerald-200";
     IconComponent = CheckCircle;
   } else if (compatibility < COMPATIBILITY_THRESHOLDS.LOW) {
-    tone = 'text-amber-600 bg-amber-50 border border-amber-200';
+    tone = "text-amber-600 bg-amber-50 border border-amber-200";
     IconComponent = AlertCircle;
   }
 
@@ -48,15 +53,21 @@ export function getCompatibilityStyles(compatibility: number | undefined): Compa
 /**
  * Render compatibility badge component
  */
-export function renderCompatibilityBadge(compatibility: number | undefined): React.ReactElement | null {
+export function renderCompatibilityBadge(
+  compatibility: number | undefined,
+): React.ReactElement | null {
   const styles = getCompatibilityStyles(compatibility);
   if (!styles) return null;
 
   const { tone, IconComponent, percent } = styles;
 
   return (
-    <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-label-12 ${tone}`}>
-      {IconComponent ? <IconComponent className="h-3.5 w-3.5" aria-hidden="true" /> : null}
+    <div
+      className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-label-12 ${tone}`}
+    >
+      {IconComponent ? (
+        <IconComponent className="h-3.5 w-3.5" aria-hidden="true" />
+      ) : null}
       <span>{percent}% fit</span>
     </div>
   );
@@ -69,7 +80,10 @@ export function renderCompatibilityBadge(compatibility: number | undefined): Rea
 /**
  * Compute keyboard hint text based on active state and suggestion count
  */
-export function computeKeyboardHint(hasActiveSuggestions: boolean, suggestionCount: number): string | null {
+export function computeKeyboardHint(
+  hasActiveSuggestions: boolean,
+  suggestionCount: number,
+): string | null {
   if (!hasActiveSuggestions || suggestionCount === 0) {
     return null;
   }
@@ -85,7 +99,10 @@ export function computeKeyboardHint(hasActiveSuggestions: boolean, suggestionCou
 /**
  * Calculate number of loading skeleton items to display
  */
-export function getLoadingSkeletonCount(textLength: number, isPlaceholder: boolean): number {
+export function getLoadingSkeletonCount(
+  textLength: number,
+  isPlaceholder: boolean,
+): number {
   if (isPlaceholder) return 4;
   if (textLength < 20) return 6;
   if (textLength < 100) return 5;
@@ -104,11 +121,13 @@ export interface NormalizedSuggestion extends SuggestionItem {
 /**
  * Normalize suggestion to object format
  */
-export function normalizeSuggestion(suggestion: string | SuggestionItem): NormalizedSuggestion | null {
-  if (typeof suggestion === 'string') {
+export function normalizeSuggestion(
+  suggestion: string | SuggestionItem,
+): NormalizedSuggestion | null {
+  if (typeof suggestion === "string") {
     return { text: suggestion };
   }
-  if (suggestion && typeof suggestion.text === 'string') {
+  if (suggestion && typeof suggestion.text === "string") {
     return { ...suggestion, text: suggestion.text };
   }
   return null;

@@ -11,10 +11,10 @@ import type {
   LightingQuality,
   SubjectPosition,
   CameraMovement,
-} from '@shared/cinematography';
+} from "@shared/cinematography";
 
 export interface SubjectObservation {
-  type: 'person' | 'animal' | 'object' | 'scene' | 'abstract';
+  type: "person" | "animal" | "object" | "scene" | "abstract";
   description: string;
   position: SubjectPosition;
   confidence: number;
@@ -28,7 +28,13 @@ export interface FramingObservation {
 
 export interface LightingObservation {
   quality: LightingQuality;
-  timeOfDay: 'day' | 'night' | 'golden-hour' | 'blue-hour' | 'indoor' | 'unknown';
+  timeOfDay:
+    | "day"
+    | "night"
+    | "golden-hour"
+    | "blue-hour"
+    | "indoor"
+    | "unknown";
   confidence: number;
 }
 

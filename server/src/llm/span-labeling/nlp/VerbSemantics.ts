@@ -10,43 +10,43 @@
  * 3. Classify by cosine similarity to nearest prototype cluster
  */
 
-import type { FeatureExtractionPipeline } from '@huggingface/transformers';
-import { logger } from '@infrastructure/Logger';
-import { loadEmbeddingPipeline } from './embeddingPipeline';
+import type { FeatureExtractionPipeline } from "@huggingface/transformers";
+import { logger } from "@infrastructure/Logger";
+import { loadEmbeddingPipeline } from "./embeddingPipeline";
 
-const log = logger.child({ service: 'VerbSemantics' });
+const log = logger.child({ service: "VerbSemantics" });
 
 // Prototype verbs for each action class (small, representative set)
 const PROTOTYPES = {
   state: [
-    'gazing at something',
-    'sitting quietly',
-    'standing still',
-    'watching carefully',
-    'waiting patiently',
-    'lying down',
-    'resting peacefully',
-    'observing intently',
+    "gazing at something",
+    "sitting quietly",
+    "standing still",
+    "watching carefully",
+    "waiting patiently",
+    "lying down",
+    "resting peacefully",
+    "observing intently",
   ],
   movement: [
-    'running fast',
-    'jumping high',
-    'dancing gracefully',
-    'walking slowly',
-    'swimming through water',
-    'climbing up',
-    'flying through air',
-    'jogging steadily',
+    "running fast",
+    "jumping high",
+    "dancing gracefully",
+    "walking slowly",
+    "swimming through water",
+    "climbing up",
+    "flying through air",
+    "jogging steadily",
   ],
   gesture: [
-    'waving hand',
-    'pointing finger',
-    'nodding head',
-    'shaking head',
-    'clapping hands',
-    'beckoning someone',
-    'saluting',
-    'bowing respectfully',
+    "waving hand",
+    "pointing finger",
+    "nodding head",
+    "shaking head",
+    "clapping hands",
+    "beckoning someone",
+    "saluting",
+    "bowing respectfully",
   ],
 } as const;
 
@@ -68,7 +68,7 @@ async function initialize(): Promise<void> {
   isInitializing = true;
   initPromise = (async () => {
     try {
-      log.info('Initializing verb semantic classifier');
+      log.info("Initializing verb semantic classifier");
       const startTime = performance.now();
 
       embeddingModel = await loadEmbeddingPipeline();
@@ -86,12 +86,15 @@ async function initialize(): Promise<void> {
       }
 
       const latency = Math.round(performance.now() - startTime);
-      log.info('Verb semantic classifier initialized', {
+      log.info("Verb semantic classifier initialized", {
         latencyMs: latency,
         prototypeCount: Object.values(PROTOTYPES).flat().length,
       });
     } catch (error) {
-      log.error('Failed to initialize verb semantic classifier', error as Error);
+      log.error(
+        "Failed to initialize verb semantic classifier",
+        error as Error,
+      );
       throw error;
     } finally {
       isInitializing = false;
@@ -108,12 +111,15 @@ async function getEmbedding(text: string): Promise<number[] | null> {
   if (!embeddingModel) return null;
 
   try {
-    const output = await embeddingModel(text, { pooling: 'mean', normalize: true });
+    const output = await embeddingModel(text, {
+      pooling: "mean",
+      normalize: true,
+    });
     // Extract the embedding array
     const data = output.data as Float32Array;
     return Array.from(data);
   } catch (error) {
-    log.error('Embedding extraction failed', error as Error, { text });
+    log.error("Embedding extraction failed", error as Error, { text });
     return null;
   }
 }
@@ -141,7 +147,10 @@ function cosineSimilarity(a: number[], b: number[]): number {
 /**
  * Find the average similarity to a class's prototypes
  */
-function classScore(verbEmbedding: number[], classEmbeddings: number[][]): number {
+function classScore(
+  verbEmbedding: number[],
+  classEmbeddings: number[][],
+): number {
   if (classEmbeddings.length === 0) return 0;
 
   let totalSim = 0;
@@ -158,30 +167,30 @@ function classScore(verbEmbedding: number[], classEmbeddings: number[][]): numbe
  * @returns The action class and confidence score
  */
 export async function classifyVerbSemantically(
-  verbPhrase: string
+  verbPhrase: string,
 ): Promise<{ actionClass: ActionClass; confidence: number }> {
   // Ensure model is initialized
   await initialize();
 
   if (!embeddingModel || !prototypeEmbeddings) {
     // Fallback to movement if model not available
-    return { actionClass: 'movement', confidence: 0.5 };
+    return { actionClass: "movement", confidence: 0.5 };
   }
 
   const embedding = await getEmbedding(verbPhrase);
   if (!embedding) {
-    return { actionClass: 'movement', confidence: 0.5 };
+    return { actionClass: "movement", confidence: 0.5 };
   }
 
   // Score against each class
   const scores: Record<ActionClass, number> = {
-    state: classScore(embedding, prototypeEmbeddings.get('state') || []),
-    movement: classScore(embedding, prototypeEmbeddings.get('movement') || []),
-    gesture: classScore(embedding, prototypeEmbeddings.get('gesture') || []),
+    state: classScore(embedding, prototypeEmbeddings.get("state") || []),
+    movement: classScore(embedding, prototypeEmbeddings.get("movement") || []),
+    gesture: classScore(embedding, prototypeEmbeddings.get("gesture") || []),
   };
 
   // Find highest scoring class
-  let bestClass: ActionClass = 'movement';
+  let bestClass: ActionClass = "movement";
   let bestScore = scores.movement;
 
   for (const [className, score] of Object.entries(scores)) {
@@ -201,12 +210,12 @@ export async function classifyVerbSemantically(
 export function classifyVerbSync(verbPhrase: string): string {
   // If model not ready, use simple fallback
   if (!embeddingModel || !prototypeEmbeddings) {
-    return 'action.movement'; // Default fallback
+    return "action.movement"; // Default fallback
   }
 
   // For sync operation, we can't await - schedule async classification
   // and return default. The async version should be used when possible.
-  return 'action.movement';
+  return "action.movement";
 }
 
 /**
@@ -222,17 +231,17 @@ export async function warmupVerbSemantics(): Promise<{
     await initialize();
 
     // Test classification
-    const result = await classifyVerbSemantically('running quickly');
+    const result = await classifyVerbSemantically("running quickly");
     const latencyMs = Math.round(performance.now() - startTime);
 
-    log.info('Verb semantics warmup completed', {
+    log.info("Verb semantics warmup completed", {
       testResult: result,
       latencyMs,
     });
 
     return { success: true, latencyMs };
   } catch (error) {
-    log.error('Verb semantics warmup failed', error as Error);
+    log.error("Verb semantics warmup failed", error as Error);
     return { success: false, latencyMs: 0 };
   }
 }

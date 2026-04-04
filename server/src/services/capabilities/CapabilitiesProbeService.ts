@@ -1,7 +1,7 @@
-import { readFile } from 'node:fs/promises';
-import { logger } from '@infrastructure/Logger';
-import type { CapabilitiesSchema } from '@shared/capabilities';
-import { setDynamicCapabilitiesRegistry } from './dynamicRegistry';
+import { readFile } from "node:fs/promises";
+import { logger } from "@infrastructure/Logger";
+import type { CapabilitiesSchema } from "@shared/capabilities";
+import { setDynamicCapabilitiesRegistry } from "./dynamicRegistry";
 
 type CapabilitiesRegistry = Record<string, Record<string, CapabilitiesSchema>>;
 
@@ -14,7 +14,7 @@ interface CapabilitiesProbeConfig {
 }
 
 export class CapabilitiesProbeService {
-  private readonly log = logger.child({ service: 'CapabilitiesProbeService' });
+  private readonly log = logger.child({ service: "CapabilitiesProbeService" });
   private readonly config: CapabilitiesProbeConfig;
   private refreshTimer: NodeJS.Timeout | null = null;
 
@@ -29,10 +29,13 @@ export class CapabilitiesProbeService {
   start(): void {
     const url = this.config.probeUrl;
     const path = this.config.probePath;
-    const intervalMs = this.config.probeRefreshMs > 0 ? this.config.probeRefreshMs : DEFAULT_REFRESH_MS;
+    const intervalMs =
+      this.config.probeRefreshMs > 0
+        ? this.config.probeRefreshMs
+        : DEFAULT_REFRESH_MS;
 
     if (!url && !path) {
-      this.log.debug('Capabilities probe disabled (no URL or path configured)');
+      this.log.debug("Capabilities probe disabled (no URL or path configured)");
       return;
     }
 
@@ -46,13 +49,13 @@ export class CapabilitiesProbeService {
 
         if (registry) {
           setDynamicCapabilitiesRegistry(registry);
-          this.log.info('Capabilities registry updated', {
-            source: url ? 'url' : 'file',
+          this.log.info("Capabilities registry updated", {
+            source: url ? "url" : "file",
             providers: Object.keys(registry).length,
           });
         }
       } catch (error) {
-        this.log.warn('Failed to refresh capabilities registry', {
+        this.log.warn("Failed to refresh capabilities registry", {
           error: error instanceof Error ? error.message : String(error),
         });
       }
@@ -83,13 +86,13 @@ export class CapabilitiesProbeService {
   }
 
   private async loadFromFile(path: string): Promise<CapabilitiesRegistry> {
-    const data = await readFile(path, 'utf-8');
+    const data = await readFile(path, "utf-8");
     return this.normalizeRegistry(JSON.parse(data));
   }
 
   private normalizeRegistry(raw: unknown): CapabilitiesRegistry {
-    if (!raw || typeof raw !== 'object') {
-      throw new Error('Capabilities registry payload is invalid');
+    if (!raw || typeof raw !== "object") {
+      throw new Error("Capabilities registry payload is invalid");
     }
     return raw as CapabilitiesRegistry;
   }

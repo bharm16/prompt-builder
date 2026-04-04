@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 type StoreRecord = Record<string, unknown>;
 
@@ -11,7 +11,7 @@ type MockDocRef = {
 const mocks = vi.hoisted(() => ({
   runTransaction: vi.fn(),
   loggerError: vi.fn(),
-  serverTimestamp: vi.fn(() => ({ _methodName: 'FieldValue.serverTimestamp' })),
+  serverTimestamp: vi.fn(() => ({ _methodName: "FieldValue.serverTimestamp" })),
   records: new Map<string, StoreRecord>(),
 }));
 
@@ -37,14 +37,20 @@ const createDocRef = (id: string): MockDocRef => ({
   },
 });
 
-vi.mock('@infrastructure/Logger', () => ({
+vi.mock("@infrastructure/Logger", () => ({
   logger: {
     error: mocks.loggerError,
-    child: vi.fn(() => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn(), child: vi.fn() })),
+    child: vi.fn(() => ({
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+      debug: vi.fn(),
+      child: vi.fn(),
+    })),
   },
 }));
 
-vi.mock('@infrastructure/firebaseAdmin', () => ({
+vi.mock("@infrastructure/firebaseAdmin", () => ({
   admin: {
     firestore: {
       FieldValue: {
@@ -60,100 +66,107 @@ vi.mock('@infrastructure/firebaseAdmin', () => ({
   }),
 }));
 
-import { BillingProfileStore } from '../BillingProfileStore';
+import { BillingProfileStore } from "../BillingProfileStore";
 
-describe('BillingProfileStore', () => {
+describe("BillingProfileStore", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.records.clear();
 
-    mocks.runTransaction.mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) => {
-      const tx = {
-        get: (docRef: MockDocRef) => docRef.get(),
-        set: (docRef: MockDocRef, data: StoreRecord, options?: { merge?: boolean }) =>
-          docRef.set(data, options),
-      };
-      return fn(tx);
-    });
+    mocks.runTransaction.mockImplementation(
+      async (fn: (tx: unknown) => Promise<unknown>) => {
+        const tx = {
+          get: (docRef: MockDocRef) => docRef.get(),
+          set: (
+            docRef: MockDocRef,
+            data: StoreRecord,
+            options?: { merge?: boolean },
+          ) => docRef.set(data, options),
+        };
+        return fn(tx);
+      },
+    );
   });
 
-  it('returns null when profile does not exist', async () => {
+  it("returns null when profile does not exist", async () => {
     const store = new BillingProfileStore();
 
-    await expect(store.getProfile('user-1')).resolves.toBeNull();
+    await expect(store.getProfile("user-1")).resolves.toBeNull();
   });
 
-  it('returns profile when record exists', async () => {
-    mocks.records.set('user-1', {
-      stripeCustomerId: 'cus_123',
-      stripeSubscriptionId: 'sub_123',
+  it("returns profile when record exists", async () => {
+    mocks.records.set("user-1", {
+      stripeCustomerId: "cus_123",
+      stripeSubscriptionId: "sub_123",
       createdAtMs: 100,
       updatedAtMs: 100,
     });
     const store = new BillingProfileStore();
 
-    await expect(store.getProfile('user-1')).resolves.toMatchObject({
-      stripeCustomerId: 'cus_123',
-      stripeSubscriptionId: 'sub_123',
+    await expect(store.getProfile("user-1")).resolves.toMatchObject({
+      stripeCustomerId: "cus_123",
+      stripeSubscriptionId: "sub_123",
     });
   });
 
-  it('creates profile when missing', async () => {
+  it("creates profile when missing", async () => {
     const store = new BillingProfileStore();
 
-    await store.upsertProfile('user-1', {
-      stripeCustomerId: 'cus_123',
+    await store.upsertProfile("user-1", {
+      stripeCustomerId: "cus_123",
       stripeLivemode: false,
     });
 
-    const record = mocks.records.get('user-1');
+    const record = mocks.records.get("user-1");
     expect(record).toBeDefined();
     expect(record).toMatchObject({
-      stripeCustomerId: 'cus_123',
+      stripeCustomerId: "cus_123",
       stripeLivemode: false,
     });
     expect(record?.createdAtMs).toEqual(expect.any(Number));
     expect(record?.updatedAtMs).toEqual(expect.any(Number));
   });
 
-  it('merges profile updates when record exists', async () => {
-    mocks.records.set('user-1', {
-      stripeCustomerId: 'cus_old',
+  it("merges profile updates when record exists", async () => {
+    mocks.records.set("user-1", {
+      stripeCustomerId: "cus_old",
       createdAtMs: 100,
       updatedAtMs: 100,
     });
 
     const store = new BillingProfileStore();
-    await store.upsertProfile('user-1', {
-      stripeSubscriptionId: 'sub_new',
-      planTier: 'creator',
+    await store.upsertProfile("user-1", {
+      stripeSubscriptionId: "sub_new",
+      planTier: "creator",
     });
 
-    expect(mocks.records.get('user-1')).toMatchObject({
-      stripeCustomerId: 'cus_old',
-      stripeSubscriptionId: 'sub_new',
-      planTier: 'creator',
+    expect(mocks.records.get("user-1")).toMatchObject({
+      stripeCustomerId: "cus_old",
+      stripeSubscriptionId: "sub_new",
+      planTier: "creator",
       createdAtMs: 100,
     });
-    expect(mocks.records.get('user-1')?.updatedAtMs).toEqual(expect.any(Number));
+    expect(mocks.records.get("user-1")?.updatedAtMs).toEqual(
+      expect.any(Number),
+    );
   });
 
-  it('logs and rethrows transaction errors', async () => {
+  it("logs and rethrows transaction errors", async () => {
     const store = new BillingProfileStore();
-    mocks.runTransaction.mockRejectedValueOnce(new Error('db down'));
+    mocks.runTransaction.mockRejectedValueOnce(new Error("db down"));
 
     await expect(
-      store.upsertProfile('user-1', {
-        stripeCustomerId: 'cus_123',
-      })
-    ).rejects.toThrow('db down');
+      store.upsertProfile("user-1", {
+        stripeCustomerId: "cus_123",
+      }),
+    ).rejects.toThrow("db down");
 
     expect(mocks.loggerError).toHaveBeenCalledWith(
-      'Failed to upsert billing profile',
+      "Failed to upsert billing profile",
       expect.any(Error),
       expect.objectContaining({
-        userId: 'user-1',
-      })
+        userId: "user-1",
+      }),
     );
   });
 });

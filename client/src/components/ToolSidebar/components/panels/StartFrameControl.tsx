@@ -1,8 +1,8 @@
-import React, { useCallback, useState, type ReactElement } from 'react';
-import { cn } from '@utils/cn';
-import type { KeyframeTile } from '@components/ToolSidebar/types';
-import { useResolvedMediaUrl } from '@/hooks/useResolvedMediaUrl';
-import { hasGcsSignedUrlParams } from '@/utils/storageUrl';
+import React, { useCallback, useState, type ReactElement } from "react";
+import { cn } from "@utils/cn";
+import type { KeyframeTile } from "@components/ToolSidebar/types";
+import { useResolvedMediaUrl } from "@/hooks/useResolvedMediaUrl";
+import { hasGcsSignedUrlParams } from "@/utils/storageUrl";
 
 interface StartFrameControlProps {
   startFrame: KeyframeTile | null;
@@ -14,11 +14,13 @@ interface StartFrameControlProps {
 
 function StartFramePreview({ tile }: { tile: KeyframeTile }): ReactElement {
   const shouldResolveUrl = Boolean(
-    tile.storagePath || tile.assetId || (tile.url && hasGcsSignedUrlParams(tile.url))
+    tile.storagePath ||
+      tile.assetId ||
+      (tile.url && hasGcsSignedUrlParams(tile.url)),
   );
 
   const { url: resolvedUrl } = useResolvedMediaUrl({
-    kind: 'image',
+    kind: "image",
     url: tile.url,
     storagePath: tile.storagePath ?? null,
     assetId: tile.assetId ?? null,
@@ -54,7 +56,7 @@ export function StartFrameControl({
         void onUploadFile(file);
       }
     },
-    [isUploadDisabled, onUploadFile]
+    [isUploadDisabled, onUploadFile],
   );
 
   return (
@@ -64,7 +66,7 @@ export function StartFrameControl({
           <button
             type="button"
             onClick={onClear}
-            className="h-5 rounded-md border border-[#22252C] bg-[#0D0E12]/90 px-1.5 text-[10px] text-[#8B92A5] transition-colors hover:text-white"
+            className="h-5 rounded-md border border-tool-nav-active bg-tool-surface-deep/90 px-1.5 text-[10px] text-tool-text-dim transition-colors hover:text-white"
           >
             Clear
           </button>
@@ -73,11 +75,13 @@ export function StartFrameControl({
       <button
         type="button"
         className={cn(
-          'relative h-9 w-[116.65px] rounded-lg border bg-[#16181E] px-3 py-2 transition-colors',
-          startFrame ? 'border-[#3A3D46]' : 'border-dashed border-[#22252C]',
-          isUploadDisabled && 'cursor-not-allowed opacity-60',
-          !isUploadDisabled && 'cursor-pointer',
-          isDragging && !isUploadDisabled && 'border-[#6C5CE7]'
+          "relative h-9 w-[116.65px] rounded-lg border bg-tool-surface-card px-3 py-2 transition-colors",
+          startFrame
+            ? "border-tool-text-disabled"
+            : "border-dashed border-tool-nav-active",
+          isUploadDisabled && "cursor-not-allowed opacity-60",
+          !isUploadDisabled && "cursor-pointer",
+          isDragging && !isUploadDisabled && "border-tool-accent-selection",
         )}
         onClick={() => {
           if (isUploadDisabled) return;

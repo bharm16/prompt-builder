@@ -1,1 +1,1 @@
-export { SidebarDataProvider } from './SidebarDataProvider';
+export { SidebarDataProvider } from "./SidebarDataProvider";

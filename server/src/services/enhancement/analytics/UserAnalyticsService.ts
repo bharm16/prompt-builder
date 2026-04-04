@@ -1,4 +1,4 @@
-import { logger } from '@infrastructure/Logger';
+import { logger } from "@infrastructure/Logger";
 
 interface MetricsService {
   recordCounter: (name: string, labels: Record<string, string>) => void;
@@ -37,7 +37,7 @@ interface AnalyticsSummary {
 /**
  * User Analytics Service
  * Tracks user interaction analytics for enhancement suggestions
- * 
+ *
  * Metrics tracked:
  * - suggestionAccepted: boolean
  * - timeToDecision: ms (future - requires frontend integration)
@@ -74,13 +74,13 @@ export class UserAnalyticsService {
 
     // Track category breakdown
     if (metadata.category) {
-      this.sessionMetrics.categoryBreakdown[metadata.category] = 
+      this.sessionMetrics.categoryBreakdown[metadata.category] =
         (this.sessionMetrics.categoryBreakdown[metadata.category] || 0) + 1;
     }
 
     // Track model targets
     if (metadata.modelTarget) {
-      this.sessionMetrics.modelTargets[metadata.modelTarget] = 
+      this.sessionMetrics.modelTargets[metadata.modelTarget] =
         (this.sessionMetrics.modelTargets[metadata.modelTarget] || 0) + 1;
     }
 
@@ -93,14 +93,14 @@ export class UserAnalyticsService {
 
     // Send to metrics service
     if (this.metricsService) {
-      this.metricsService.recordCounter('suggestion_accepted_total', {
-        category: metadata.category || 'unknown',
-        modelTarget: metadata.modelTarget || 'none',
-        cacheHit: metadata.cacheHit ? 'true' : 'false',
+      this.metricsService.recordCounter("suggestion_accepted_total", {
+        category: metadata.category || "unknown",
+        modelTarget: metadata.modelTarget || "none",
+        cacheHit: metadata.cacheHit ? "true" : "false",
       });
     }
 
-    logger.debug('Suggestion accepted', {
+    logger.debug("Suggestion accepted", {
       category: metadata.category,
       modelTarget: metadata.modelTarget,
       cacheHit: metadata.cacheHit,
@@ -117,13 +117,13 @@ export class UserAnalyticsService {
 
     // Send to metrics service
     if (this.metricsService) {
-      this.metricsService.recordCounter('suggestion_rejected_total', {
-        category: metadata.category || 'unknown',
-        modelTarget: metadata.modelTarget || 'none',
+      this.metricsService.recordCounter("suggestion_rejected_total", {
+        category: metadata.category || "unknown",
+        modelTarget: metadata.modelTarget || "none",
       });
     }
 
-    logger.debug('Suggestion rejected', {
+    logger.debug("Suggestion rejected", {
       category: metadata.category,
       modelTarget: metadata.modelTarget,
     });
@@ -137,12 +137,12 @@ export class UserAnalyticsService {
 
     // Send to metrics service
     if (this.metricsService) {
-      this.metricsService.recordCounter('undo_actions_total', {
-        category: metadata.category || 'unknown',
+      this.metricsService.recordCounter("undo_actions_total", {
+        category: metadata.category || "unknown",
       });
     }
 
-    logger.debug('Undo action', {
+    logger.debug("Undo action", {
       category: metadata.category,
       undoRate: this.getUndoRate(),
     });
@@ -153,10 +153,12 @@ export class UserAnalyticsService {
    */
   getUndoRate(): string {
     if (this.sessionMetrics.acceptedSuggestions === 0) {
-      return '0';
+      return "0";
     }
     return (
-      (this.sessionMetrics.undoActions / this.sessionMetrics.acceptedSuggestions) * 100
+      (this.sessionMetrics.undoActions /
+        this.sessionMetrics.acceptedSuggestions) *
+      100
     ).toFixed(2);
   }
 
@@ -168,21 +170,29 @@ export class UserAnalyticsService {
       totalSuggestions: this.sessionMetrics.totalSuggestions,
       acceptedSuggestions: this.sessionMetrics.acceptedSuggestions,
       rejectedSuggestions: this.sessionMetrics.rejectedSuggestions,
-      acceptanceRate: 
+      acceptanceRate:
         this.sessionMetrics.totalSuggestions > 0
-          ? ((this.sessionMetrics.acceptedSuggestions / this.sessionMetrics.totalSuggestions) * 100).toFixed(2)
-          : '0',
+          ? (
+              (this.sessionMetrics.acceptedSuggestions /
+                this.sessionMetrics.totalSuggestions) *
+              100
+            ).toFixed(2)
+          : "0",
       undoActions: this.sessionMetrics.undoActions,
       undoRate: this.getUndoRate(),
       cacheHitRate:
         this.sessionMetrics.totalSuggestions > 0
-          ? ((this.sessionMetrics.cacheHits / this.sessionMetrics.totalSuggestions) * 100).toFixed(2)
-          : '0',
+          ? (
+              (this.sessionMetrics.cacheHits /
+                this.sessionMetrics.totalSuggestions) *
+              100
+            ).toFixed(2)
+          : "0",
       categoryBreakdown: this.sessionMetrics.categoryBreakdown,
       modelTargets: this.sessionMetrics.modelTargets,
     };
 
-    logger.info('Analytics summary', { summary });
+    logger.info("Analytics summary", { summary });
     return summary;
   }
 

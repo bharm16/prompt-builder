@@ -1,17 +1,20 @@
-import type { AIResponse } from '@interfaces/IAIClient';
-import type { AIModelService } from '@services/ai-model/AIModelService';
+import type { AIResponse } from "@interfaces/IAIClient";
+import type { AIModelService } from "@services/ai-model/AIModelService";
 
 const DEFAULT_REWRITE_TEMPERATURE = 0.4;
 const DEFAULT_REWRITE_MAX_TOKENS = 8192;
 
 export interface VideoPromptLlmGateway {
   extractIr(prompt: string, schema: Record<string, unknown>): Promise<unknown>;
-  rewriteStructured(prompt: string, schema: Record<string, unknown>): Promise<unknown>;
+  rewriteStructured(
+    prompt: string,
+    schema: Record<string, unknown>,
+  ): Promise<unknown>;
   rewriteText(prompt: string): Promise<string>;
 }
 
 function responseText(response: AIResponse): string {
-  return (response.text || response.content?.[0]?.text || '').trim();
+  return (response.text || response.content?.[0]?.text || "").trim();
 }
 
 function parseStructuredResponse(response: AIResponse): unknown {
@@ -38,30 +41,39 @@ function parseStructuredResponse(response: AIResponse): unknown {
 export class AIServiceVideoPromptLlmGateway implements VideoPromptLlmGateway {
   constructor(private readonly aiService: AIModelService) {}
 
-  async extractIr(prompt: string, schema: Record<string, unknown>): Promise<unknown> {
-    const response = await this.aiService.execute('video_prompt_ir_extraction', {
-      systemPrompt: prompt,
-      schema,
-      jsonMode: true,
-      responseFormat: { type: 'json_object' },
-    });
+  async extractIr(
+    prompt: string,
+    schema: Record<string, unknown>,
+  ): Promise<unknown> {
+    const response = await this.aiService.execute(
+      "video_prompt_ir_extraction",
+      {
+        systemPrompt: prompt,
+        schema,
+        jsonMode: true,
+        responseFormat: { type: "json_object" },
+      },
+    );
 
     return parseStructuredResponse(response);
   }
 
-  async rewriteStructured(prompt: string, schema: Record<string, unknown>): Promise<unknown> {
-    const response = await this.aiService.execute('video_prompt_rewrite', {
+  async rewriteStructured(
+    prompt: string,
+    schema: Record<string, unknown>,
+  ): Promise<unknown> {
+    const response = await this.aiService.execute("video_prompt_rewrite", {
       systemPrompt: prompt,
       schema,
       jsonMode: true,
-      responseFormat: { type: 'json_object' },
+      responseFormat: { type: "json_object" },
     });
 
     return parseStructuredResponse(response);
   }
 
   async rewriteText(prompt: string): Promise<string> {
-    const response = await this.aiService.execute('video_prompt_rewrite', {
+    const response = await this.aiService.execute("video_prompt_rewrite", {
       systemPrompt: prompt,
       temperature: DEFAULT_REWRITE_TEMPERATURE,
       maxTokens: DEFAULT_REWRITE_MAX_TOKENS,

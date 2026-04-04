@@ -1,13 +1,13 @@
-import React from 'react';
-import type { Asset, AssetType } from '@shared/types/asset';
-import { AppShell } from '@components/navigation/AppShell';
-import DebugButton from '@components/DebugButton';
-import AssetEditor from '@features/assets/components/AssetEditor';
-import type { PromptModalsProps } from '@features/prompt-optimizer/types';
-import { PromptModals } from '@features/prompt-optimizer/components/PromptModals';
-import { QuickCharacterCreate } from '@features/prompt-optimizer/components/QuickCharacterCreate';
-import { DetectedAssets } from '@features/prompt-optimizer/components/DetectedAssets';
-import { PromptResultsLayout } from '@features/prompt-optimizer/layouts/PromptResultsLayout';
+import React from "react";
+import type { Asset, AssetType } from "@shared/types/asset";
+import { AppShell } from "@components/navigation/AppShell";
+import DebugButton from "@components/DebugButton";
+import AssetEditor from "@features/assets/components/AssetEditor";
+import type { PromptModalsProps } from "@features/prompt-optimizer/types";
+import { PromptModals } from "@features/prompt-optimizer/components/PromptModals";
+import { QuickCharacterCreate } from "@features/prompt-optimizer/components/QuickCharacterCreate";
+import { DetectedAssets } from "@features/prompt-optimizer/components/DetectedAssets";
+import { PromptResultsLayout } from "@features/prompt-optimizer/layouts/PromptResultsLayout";
 
 interface QuickCreateState {
   isOpen: boolean;
@@ -15,7 +15,7 @@ interface QuickCreateState {
 }
 
 interface AssetEditorState {
-  mode: 'create' | 'edit';
+  mode: "create" | "edit";
   asset?: Asset | null;
   preselectedType?: AssetType | null;
 }
@@ -31,9 +31,18 @@ interface AssetEditorHandlers {
   }) => Promise<Asset>;
   onUpdate: (
     assetId: string,
-    data: { trigger?: string; name?: string; textDefinition?: string; negativePrompt?: string }
+    data: {
+      trigger?: string;
+      name?: string;
+      textDefinition?: string;
+      negativePrompt?: string;
+    },
   ) => Promise<Asset>;
-  onAddImage: (assetId: string, file: File, metadata: Record<string, string | undefined>) => Promise<void>;
+  onAddImage: (
+    assetId: string,
+    file: File,
+    metadata: Record<string, string | undefined>,
+  ) => Promise<void>;
   onDeleteImage: (assetId: string, imageId: string) => Promise<void>;
   onSetPrimaryImage: (assetId: string, imageId: string) => Promise<void>;
 }
@@ -81,10 +90,7 @@ export function PromptOptimizerWorkspaceView({
   debugProps,
 }: PromptOptimizerWorkspaceViewProps): React.ReactElement {
   return (
-    <AppShell
-      showHistory={showHistory}
-      onToggleHistory={onToggleHistory}
-    >
+    <AppShell showHistory={showHistory} onToggleHistory={onToggleHistory}>
       <div className="flex h-full min-h-0 flex-col overflow-hidden font-sans text-foreground">
         <a href="#main-content" className="ps-skip-link">
           Skip to main content
@@ -99,6 +105,7 @@ export function PromptOptimizerWorkspaceView({
         />
         {assetEditorState && (
           <AssetEditor
+            key={`${assetEditorState.mode}-${assetEditorState.preselectedType ?? "none"}-${assetEditorState.asset?.id ?? "new"}`}
             mode={assetEditorState.mode}
             asset={assetEditorState.asset || undefined}
             preselectedType={assetEditorState.preselectedType || undefined}
@@ -120,7 +127,10 @@ export function PromptOptimizerWorkspaceView({
           />
 
           {shouldShowLoading ? (
-            <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto" id="main-content">
+            <main
+              className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto"
+              id="main-content"
+            >
               <div className="flex flex-1 items-center justify-center px-6 py-9 sm:px-8 sm:py-10">
                 <div className="flex flex-col items-center gap-4">
                   <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-border-strong" />

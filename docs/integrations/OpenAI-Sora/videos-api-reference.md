@@ -173,11 +173,11 @@ Returns the video job matching the provided identifier.
 ### Example request
 
 ```javascript
-import OpenAI from 'openai';
+import OpenAI from "openai";
 
 const client = new OpenAI();
 
-const video = await client.videos.retrieve('video_123');
+const video = await client.videos.retrieve("video_123");
 
 console.log(video.id);
 ```
@@ -202,11 +202,11 @@ Returns the deleted video job metadata.
 ### Example request
 
 ```javascript
-import OpenAI from 'openai';
+import OpenAI from "openai";
 
 const client = new OpenAI();
 
-const video = await client.videos.delete('video_123');
+const video = await client.videos.delete("video_123");
 
 console.log(video.id);
 ```
@@ -236,11 +236,11 @@ Streams the rendered video content for the specified video job.
 ### Example request
 
 ```javascript
-import OpenAI from 'openai';
+import OpenAI from "openai";
 
 const client = new OpenAI();
 
-const response = await client.videos.downloadContent('video_123');
+const response = await client.videos.downloadContent("video_123");
 
 console.log(response);
 
@@ -294,5 +294,3 @@ Structured information describing a generated video job.
 
 - **status** (string)  
   Current lifecycle status of the video job.
-
-

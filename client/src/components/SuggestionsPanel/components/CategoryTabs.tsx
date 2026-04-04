@@ -5,8 +5,8 @@
  * Following VideoConceptBuilder pattern: components/TemplateSelector.tsx
  */
 
-import { Button } from '@promptstudio/system/components/ui/button';
-import type { CategoryGroup } from '../hooks/types';
+import { Button } from "@promptstudio/system/components/ui/button";
+import type { CategoryGroup } from "../hooks/types";
 
 interface CategoryTabsProps {
   categories?: CategoryGroup[];
@@ -32,8 +32,8 @@ export function CategoryTabs({
           variant="ghost"
           className={`items-center gap-1 px-2 py-1 text-label-12 rounded-md transition-colors duration-150 ${
             activeCategory === cat.category
-              ? 'bg-foreground text-white'
-              : 'bg-app text-foreground hover:bg-surface-1 border border-border hover:border-border-strong'
+              ? "bg-foreground text-white"
+              : "bg-app text-foreground hover:bg-surface-1 border border-border hover:border-border-strong"
           }`}
           aria-pressed={activeCategory === cat.category}
           aria-label={`Category: ${cat.category} (${cat.suggestions.length} options)`}
@@ -42,8 +42,8 @@ export function CategoryTabs({
           <span
             className={`text-label-12 px-1 py-1 rounded-md ${
               activeCategory === cat.category
-                ? 'bg-white/20'
-                : 'bg-surface-1 text-muted'
+                ? "bg-white/20"
+                : "bg-surface-1 text-muted"
             }`}
           >
             {cat.suggestions.length}

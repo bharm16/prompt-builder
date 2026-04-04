@@ -1,6 +1,6 @@
-import React from 'react';
-import { AppShell } from '@components/navigation/AppShell';
-import AssetLibrary from '@/features/assets/AssetLibrary';
+import React from "react";
+import { AppShell } from "@components/navigation/AppShell";
+import AssetLibrary from "@/features/assets/AssetLibrary";
 
 export function AssetsPage(): React.ReactElement {
   return (

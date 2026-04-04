@@ -1,7 +1,7 @@
-import { promises as fs } from 'fs';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
-import { logger } from '@infrastructure/Logger';
+import { promises as fs } from "fs";
+import { join, dirname } from "path";
+import { fileURLToPath } from "url";
+import { logger } from "@infrastructure/Logger";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -16,7 +16,7 @@ export class TemplateService {
   private cacheEnabled: boolean;
 
   constructor() {
-    this.templateDir = join(__dirname, '../templates');
+    this.templateDir = join(__dirname, "../templates");
     this.templateCache = new Map();
     this.cacheEnabled = true;
   }
@@ -24,20 +24,23 @@ export class TemplateService {
   /**
    * Load a template file and render it with variables
    */
-  async load(templateName: string, variables: Record<string, string | number | null | undefined> = {}): Promise<string> {
+  async load(
+    templateName: string,
+    variables: Record<string, string | number | null | undefined> = {},
+  ): Promise<string> {
     try {
       // Check cache first
       const cacheKey = templateName;
       if (this.cacheEnabled && this.templateCache.has(cacheKey)) {
-        logger.debug('Template loaded from cache', { templateName });
+        logger.debug("Template loaded from cache", { templateName });
         return this.render(this.templateCache.get(cacheKey)!, variables);
       }
 
       // Load template from file
       const templatePath = join(this.templateDir, `${templateName}.md`);
-      logger.debug('Loading template from file', { templatePath });
+      logger.debug("Loading template from file", { templatePath });
 
-      const templateContent = await fs.readFile(templatePath, 'utf-8');
+      const templateContent = await fs.readFile(templatePath, "utf-8");
 
       // Cache the template
       if (this.cacheEnabled) {
@@ -46,7 +49,7 @@ export class TemplateService {
 
       return this.render(templateContent, variables);
     } catch (error) {
-      logger.error('Failed to load template', error as Error, {
+      logger.error("Failed to load template", error as Error, {
         templateName,
       });
       throw new Error(`Template not found: ${templateName}`);
@@ -57,19 +60,22 @@ export class TemplateService {
    * Render a template with variables
    * Supports both ${variable} and {{variable}} syntax
    */
-  render(template: string, variables: Record<string, string | number | null | undefined> = {}): string {
+  render(
+    template: string,
+    variables: Record<string, string | number | null | undefined> = {},
+  ): string {
     let rendered = template;
 
     // Replace ${variable} syntax
     for (const [key, value] of Object.entries(variables)) {
-      const regex = new RegExp(`\\$\\{${key}\\}`, 'g');
-      rendered = rendered.replace(regex, String(value ?? ''));
+      const regex = new RegExp(`\\$\\{${key}\\}`, "g");
+      rendered = rendered.replace(regex, String(value ?? ""));
     }
 
     // Replace {{variable}} syntax
     for (const [key, value] of Object.entries(variables)) {
-      const regex = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
-      rendered = rendered.replace(regex, String(value ?? ''));
+      const regex = new RegExp(`\\{\\{${key}\\}\\}`, "g");
+      rendered = rendered.replace(regex, String(value ?? ""));
     }
 
     return rendered;
@@ -78,18 +84,21 @@ export class TemplateService {
   /**
    * Load a template section (for composable templates)
    */
-  async loadSection(sectionName: string, variables: Record<string, string | number | null | undefined> = {}): Promise<string> {
-    const sectionPath = join(this.templateDir, 'sections', `${sectionName}.md`);
+  async loadSection(
+    sectionName: string,
+    variables: Record<string, string | number | null | undefined> = {},
+  ): Promise<string> {
+    const sectionPath = join(this.templateDir, "sections", `${sectionName}.md`);
 
     try {
-      const sectionContent = await fs.readFile(sectionPath, 'utf-8');
+      const sectionContent = await fs.readFile(sectionPath, "utf-8");
       return this.render(sectionContent, variables);
     } catch (error) {
-      logger.warn('Failed to load template section', {
+      logger.warn("Failed to load template section", {
         sectionName,
         error: (error as Error).message,
       });
-      return '';
+      return "";
     }
   }
 
@@ -98,7 +107,7 @@ export class TemplateService {
    */
   clearCache(): void {
     this.templateCache.clear();
-    logger.info('Template cache cleared');
+    logger.info("Template cache cleared");
   }
 
   /**
@@ -116,5 +125,3 @@ export class TemplateService {
     this.cacheEnabled = true;
   }
 }
-
-

@@ -2,35 +2,44 @@
  * Unit tests for Settings component
  */
 
-import { describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import type { ButtonHTMLAttributes, ReactNode } from 'react';
+import { describe, expect, it, vi } from "vitest";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import type { ButtonHTMLAttributes, ReactNode } from "react";
 
-import Settings from '@components/Settings/Settings';
-import type { AppSettings } from '@components/Settings/types';
+import Settings from "@components/Settings/Settings";
+import type { AppSettings } from "@components/Settings/types";
 
-vi.mock('@promptstudio/system/components/ui/button', () => ({
+vi.mock("@promptstudio/system/components/ui/button", () => ({
   Button: ({ children, ...props }: ButtonHTMLAttributes<HTMLButtonElement>) => (
     <button {...props}>{children}</button>
   ),
 }));
 
-vi.mock('@promptstudio/system/components/ui/card', () => ({
+vi.mock("@promptstudio/system/components/ui/card", () => ({
   Card: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   CardContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   CardFooter: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   CardHeader: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }));
 
-vi.mock('@promptstudio/system/components/ui/dialog', () => ({
+vi.mock("@promptstudio/system/components/ui/dialog", () => ({
   Dialog: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  DialogContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  DialogContent: ({ children }: { children: ReactNode }) => (
+    <div>{children}</div>
+  ),
   DialogTitle: ({ children }: { children: ReactNode }) => <h2>{children}</h2>,
 }));
 
-vi.mock('@promptstudio/system/components/ui/switch', () => ({
-  Switch: ({ checked, onCheckedChange, ...props }: { checked?: boolean; onCheckedChange?: (value: boolean) => void }) => (
+vi.mock("@promptstudio/system/components/ui/switch", () => ({
+  Switch: ({
+    checked,
+    onCheckedChange,
+    ...props
+  }: {
+    checked?: boolean;
+    onCheckedChange?: (value: boolean) => void;
+  }) => (
     <button
       type="button"
       role="switch"
@@ -43,14 +52,14 @@ vi.mock('@promptstudio/system/components/ui/switch', () => ({
 
 const baseSettings: AppSettings = {
   darkMode: false,
-  fontSize: 'medium',
+  fontSize: "medium",
   autoSave: true,
-  exportFormat: 'markdown',
+  exportFormat: "markdown",
 };
 
-describe('Settings', () => {
-  describe('error handling', () => {
-    it('handles missing clear data handler gracefully', async () => {
+describe("Settings", () => {
+  describe("error handling", () => {
+    it("handles missing clear data handler gracefully", async () => {
       const user = userEvent.setup();
       render(
         <Settings
@@ -59,23 +68,27 @@ describe('Settings', () => {
           settings={baseSettings}
           updateSetting={vi.fn()}
           resetSettings={vi.fn()}
-        />
+        />,
       );
 
-      await user.click(screen.getByText('Clear All Data'));
+      await user.click(screen.getByText("Clear All Data"));
       expect(
-        screen.getByText('Are you sure? This will permanently delete all your saved prompts and history.')
+        screen.getByText(
+          "Are you sure? This will permanently delete all your saved prompts and history.",
+        ),
       ).toBeInTheDocument();
 
-      await user.click(screen.getByText('Yes, Delete All'));
+      await user.click(screen.getByText("Yes, Delete All"));
       expect(
-        screen.queryByText('Are you sure? This will permanently delete all your saved prompts and history.')
+        screen.queryByText(
+          "Are you sure? This will permanently delete all your saved prompts and history.",
+        ),
       ).not.toBeInTheDocument();
     });
   });
 
-  describe('edge cases', () => {
-    it('renders nothing when closed', () => {
+  describe("edge cases", () => {
+    it("renders nothing when closed", () => {
       const { container } = render(
         <Settings
           isOpen={false}
@@ -83,15 +96,15 @@ describe('Settings', () => {
           settings={baseSettings}
           updateSetting={vi.fn()}
           resetSettings={vi.fn()}
-        />
+        />,
       );
 
       expect(container).toBeEmptyDOMElement();
     });
   });
 
-  describe('core behavior', () => {
-    it('updates settings via toggles and selectors', async () => {
+  describe("core behavior", () => {
+    it("updates settings via toggles and selectors", async () => {
       const user = userEvent.setup();
       const updateSetting = vi.fn();
 
@@ -102,17 +115,17 @@ describe('Settings', () => {
           settings={baseSettings}
           updateSetting={updateSetting}
           resetSettings={vi.fn()}
-        />
+        />,
       );
 
-      await user.click(screen.getByLabelText('Toggle dark mode'));
-      expect(updateSetting).toHaveBeenCalledWith('darkMode', true);
+      await user.click(screen.getByLabelText("Toggle dark mode"));
+      expect(updateSetting).toHaveBeenCalledWith("darkMode", true);
 
-      await user.click(screen.getByText('Large'));
-      expect(updateSetting).toHaveBeenCalledWith('fontSize', 'large');
+      await user.click(screen.getByText("Large"));
+      expect(updateSetting).toHaveBeenCalledWith("fontSize", "large");
     });
 
-    it('confirms and executes reset settings', async () => {
+    it("confirms and executes reset settings", async () => {
       const user = userEvent.setup();
       const resetSettings = vi.fn();
 
@@ -123,23 +136,27 @@ describe('Settings', () => {
           settings={baseSettings}
           updateSetting={vi.fn()}
           resetSettings={resetSettings}
-        />
+        />,
       );
 
-      await user.click(screen.getByText('Reset Settings to Default'));
+      await user.click(screen.getByText("Reset Settings to Default"));
       expect(
-        screen.getByText('Are you sure? This will reset all settings to their default values.')
+        screen.getByText(
+          "Are you sure? This will reset all settings to their default values.",
+        ),
       ).toBeInTheDocument();
 
-      await user.click(screen.getByText('Yes, Reset'));
+      await user.click(screen.getByText("Yes, Reset"));
 
       expect(resetSettings).toHaveBeenCalled();
       expect(
-        screen.queryByText('Are you sure? This will reset all settings to their default values.')
+        screen.queryByText(
+          "Are you sure? This will reset all settings to their default values.",
+        ),
       ).not.toBeInTheDocument();
     });
 
-    it('invokes clear data handler when confirmed', async () => {
+    it("invokes clear data handler when confirmed", async () => {
       const user = userEvent.setup();
       const onClearAllData = vi.fn();
 
@@ -151,11 +168,11 @@ describe('Settings', () => {
           updateSetting={vi.fn()}
           resetSettings={vi.fn()}
           onClearAllData={onClearAllData}
-        />
+        />,
       );
 
-      await user.click(screen.getByText('Clear All Data'));
-      await user.click(screen.getByText('Yes, Delete All'));
+      await user.click(screen.getByText("Clear All Data"));
+      await user.click(screen.getByText("Yes, Delete All"));
 
       expect(onClearAllData).toHaveBeenCalled();
     });

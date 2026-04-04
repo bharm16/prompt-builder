@@ -9,11 +9,13 @@ This document provides a detailed technical breakdown of prompt engineering requ
 Runway Gen-4.5 Alpha is the current #1 ranked video model (as of Dec 2025). It uses an **Autoregressive-to-Diffusion (A2D)** architecture for unprecedented physical accuracy and character expression.
 
 ### Technical Constraints
-*   **Character Limit:** 1000 characters.
-*   **Negative Prompts:** **Not Supported.** Use positive environmental descriptions.
-*   **Architecture:** A2D (NVIDIA-backed).
+
+- **Character Limit:** 1000 characters.
+- **Negative Prompts:** **Not Supported.** Use positive environmental descriptions.
+- **Architecture:** A2D (NVIDIA-backed).
 
 ### Core Syntax
+
 Recommended format:
 `[camera movement]: [establishing scene]. [subject details]. [lighting & atmosphere].`
 
@@ -24,11 +26,13 @@ Recommended format:
 Kling 2.6 (Dec 2025) is the first to feature **Native Audio** generation and the **MemFlow** dynamic memory mechanism for narrative coherence in long videos.
 
 ### Technical Constraints
-*   **Aspect Ratios:** Native support for `16:9`, `9:16`, `1:1`.
-*   **Negative Prompts:** Fully supported via a separate field.
-*   **Consistent Characters:** Kling O1 supports multi-angle reference images.
+
+- **Aspect Ratios:** Native support for `16:9`, `9:16`, `1:1`.
+- **Negative Prompts:** Fully supported via a separate field.
+- **Consistent Characters:** Kling O1 supports multi-angle reference images.
 
 ### Core Structure (The 4-Layer Rule)
+
 1.  **Subject:** Physical appearance, posture, clothing.
 2.  **Action:** Specific motion (e.g., "running with high knees").
 3.  **Context:** Setting, weather, time of day.
@@ -41,13 +45,15 @@ Kling 2.6 (Dec 2025) is the first to feature **Native Audio** generation and the
 Luma Ray-3 (Sept 2025) is a reasoning-driven model that can "think" through scene descriptions to refine results.
 
 ### Technical Constraints
-*   **HDR Pipeline:** First-to-market native 16-bit High Dynamic Range generation.
-*   **Draft Mode:** High-speed preview generation.
-*   **Keyframes:** Advanced first/middle/last frame control.
+
+- **HDR Pipeline:** First-to-market native 16-bit High Dynamic Range generation.
+- **Draft Mode:** High-speed preview generation.
+- **Keyframes:** Advanced first/middle/last frame control.
 
 ### Key Features
-*   **Reasoning-Driven:** Automatically evaluates its own outputs for prompt adherence.
-*   **Modify Video:** Supports character reference and complex video-to-video transformations.
+
+- **Reasoning-Driven:** Automatically evaluates its own outputs for prompt adherence.
+- **Modify Video:** Supports character reference and complex video-to-video transformations.
 
 ---
 
@@ -56,13 +62,14 @@ Luma Ray-3 (Sept 2025) is a reasoning-driven model that can "think" through scen
 Pika 2.2 (June 2025) and the 3.0 preview focus on **Pikaswaps** (video inpainting) and **Pikadditions**.
 
 ### Technical Parameters
-| Parameter | Description | Values |
-| :--- | :--- | :--- |
-| `-fps` | Frames per second | `8 - 60` |
-| `-motion` | Motion intensity | `0 - 4` |
-| `-gs` | Guidance Scale | `8 - 24` |
-| `-neg` | Negative Prompt | Space-separated keywords |
-| `-ar` | Aspect Ratio | `16:9`, `9:16`, `1:1`, `4:5` |
+
+| Parameter | Description       | Values                       |
+| :-------- | :---------------- | :--------------------------- |
+| `-fps`    | Frames per second | `8 - 60`                     |
+| `-motion` | Motion intensity  | `0 - 4`                      |
+| `-gs`     | Guidance Scale    | `8 - 24`                     |
+| `-neg`    | Negative Prompt   | Space-separated keywords     |
+| `-ar`     | Aspect Ratio      | `16:9`, `9:16`, `1:1`, `4:5` |
 
 ---
 
@@ -71,6 +78,7 @@ Pika 2.2 (June 2025) and the 3.0 preview focus on **Pikaswaps** (video inpaintin
 Hailuo 2.3 Fast is optimized for "super-fast" 30-second turnaround for 6-second clips.
 
 ### Core Formula
+
 `[Camera Shot + Motion] + [Subject + Description] + [Action] + [Scene + Description] + [Lighting] + [Style/Aesthetic] + [Atmosphere]`
 
 ---
@@ -119,14 +127,15 @@ Veo 3.1/4 generates up to **60-second 4K** video with native synchronized audio.
 
 ## Summary of Strategy for Prompt Builder
 
-| Feature | Runway | Kling | Luma | Pika | Hailuo | HunYuan | Wan |
-| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| **Neg Prompt** | ❌ | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ |
-| **Param Style** | Narrative | Layered | Reasoning | CLI | Formula | Master | MoE |
-| **Motion Cap** | Ultra | Ultra | Ultra | High | Ultra | High | High |
-| **Max Tokens** | 1000ch | High | High | Med | High | Ultra | High |
+| Feature         |  Runway   |  Kling  |   Luma    | Pika | Hailuo  | HunYuan | Wan  |
+| :-------------- | :-------: | :-----: | :-------: | :--: | :-----: | :-----: | :--: |
+| **Neg Prompt**  |    ❌     |   ✅    |    ❌     |  ✅  |   ✅    |   ✅    |  ✅  |
+| **Param Style** | Narrative | Layered | Reasoning | CLI  | Formula | Master  | MoE  |
+| **Motion Cap**  |   Ultra   |  Ultra  |   Ultra   | High |  Ultra  |  High   | High |
+| **Max Tokens**  |  1000ch   |  High   |   High    | Med  |  High   |  Ultra  | High |
 
 ### Optimizer Logic:
+
 1.  **Normalization:** Strip all existing parameters (`--ar`, `-motion`, etc.).
 2.  **Expansion:** Use the "Reasoning-Driven Expansion" for Luma Ray-3 and Sora 2.
 3.  **Structuring:** Reorder text into `Subject -> Action -> Scene -> Style` for Kling/Wan.
@@ -138,12 +147,14 @@ Veo 3.1/4 generates up to **60-second 4K** video with native synchronized audio.
 ## Project-Based Prioritization (Current Codebase)
 
 ### Start Here (Best Fit)
+
 1.  **Runway Gen-4.5 Alpha:** Narrative prompts, A2D architecture.
 2.  **Luma Ray-3:** Reasoning-driven prompting; aligns with narrative expansion.
 3.  **Kling AI 2.6:** Structured 4-layer rule + Native Audio.
 4.  **Sora 2 + Veo 3.1/4:** Standard narrative targets with 60s/4K support.
 
 ### Hold Off / Later
+
 1.  **Pika 2.2/3.0:** Requires CLI-style parameterization and explicit inpainting/addition fields.
 2.  **MiniMax (Hailuo 2.3 Fast):** Fast-path workflow.
 3.  **Wan 3.0:** First-to-Last frame logic.

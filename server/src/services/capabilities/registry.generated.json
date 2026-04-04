@@ -13,11 +13,7 @@
       "fields": {
         "aspect_ratio": {
           "type": "enum",
-          "values": [
-            "16:9",
-            "9:16",
-            "1:1"
-          ],
+          "values": ["16:9", "9:16", "1:1"],
           "default": "16:9",
           "ui": {
             "label": "Aspect ratio",
@@ -28,10 +24,7 @@
         },
         "duration_s": {
           "type": "enum",
-          "values": [
-            4,
-            8
-          ],
+          "values": [4, 8],
           "default": 4,
           "ui": {
             "label": "Duration",
@@ -42,9 +35,7 @@
         },
         "fps": {
           "type": "enum",
-          "values": [
-            24
-          ],
+          "values": [24],
           "default": 24,
           "ui": {
             "label": "Frame rate",
@@ -55,9 +46,7 @@
         },
         "resolution": {
           "type": "enum",
-          "values": [
-            "720p"
-          ],
+          "values": ["720p"],
           "default": "720p",
           "ui": {
             "label": "Resolution",
@@ -72,18 +61,14 @@
                   "field": "aspect_ratio",
                   "eq": "9:16"
                 },
-                "values": [
-                  "720p"
-                ]
+                "values": ["720p"]
               },
               {
                 "if": {
                   "field": "aspect_ratio",
                   "eq": "1:1"
                 },
-                "values": [
-                  "720p"
-                ]
+                "values": ["720p"]
               }
             ]
           }
@@ -105,11 +90,7 @@
       "fields": {
         "aspect_ratio": {
           "type": "enum",
-          "values": [
-            "16:9",
-            "9:16",
-            "1:1"
-          ],
+          "values": ["16:9", "9:16", "1:1"],
           "default": "16:9",
           "ui": {
             "label": "Aspect ratio",
@@ -131,20 +112,14 @@
             "available_if": [
               {
                 "field": "resolution",
-                "in": [
-                  "720p"
-                ]
+                "in": ["720p"]
               }
             ]
           }
         },
         "duration_s": {
           "type": "enum",
-          "values": [
-            4,
-            6,
-            8
-          ],
+          "values": [4, 6, 8],
           "default": 4,
           "ui": {
             "label": "Duration",
@@ -166,9 +141,7 @@
         },
         "fps": {
           "type": "enum",
-          "values": [
-            24
-          ],
+          "values": [24],
           "default": 24,
           "ui": {
             "label": "Frame rate",
@@ -212,11 +185,7 @@
         },
         "resolution": {
           "type": "enum",
-          "values": [
-            "720p",
-            "1080p",
-            "4k"
-          ],
+          "values": ["720p", "1080p", "4k"],
           "default": "720p",
           "ui": {
             "label": "Resolution",
@@ -231,18 +200,14 @@
                   "field": "aspect_ratio",
                   "eq": "9:16"
                 },
-                "values": [
-                  "720p"
-                ]
+                "values": ["720p"]
               },
               {
                 "if": {
                   "field": "aspect_ratio",
                   "eq": "1:1"
                 },
-                "values": [
-                  "720p"
-                ]
+                "values": ["720p"]
               }
             ]
           }
@@ -280,11 +245,7 @@
       "fields": {
         "aspect_ratio": {
           "type": "enum",
-          "values": [
-            "16:9",
-            "9:16",
-            "1:1"
-          ],
+          "values": ["16:9", "9:16", "1:1"],
           "default": "16:9",
           "ui": {
             "label": "Aspect ratio",
@@ -306,9 +267,7 @@
             "available_if": [
               {
                 "field": "resolution",
-                "in": [
-                  "720p"
-                ]
+                "in": ["720p"]
               }
             ]
           }
@@ -326,10 +285,7 @@
         },
         "duration_s": {
           "type": "enum",
-          "values": [
-            5,
-            10
-          ],
+          "values": [5, 10],
           "default": 5,
           "ui": {
             "label": "Duration",
@@ -340,10 +296,7 @@
         },
         "fps": {
           "type": "enum",
-          "values": [
-            24,
-            30
-          ],
+          "values": [24, 30],
           "default": 24,
           "ui": {
             "label": "Frame rate",
@@ -376,9 +329,7 @@
         },
         "resolution": {
           "type": "enum",
-          "values": [
-            "720p"
-          ],
+          "values": ["720p"],
           "default": "720p",
           "ui": {
             "label": "Resolution",
@@ -393,18 +344,14 @@
                   "field": "aspect_ratio",
                   "eq": "9:16"
                 },
-                "values": [
-                  "720p"
-                ]
+                "values": ["720p"]
               },
               {
                 "if": {
                   "field": "aspect_ratio",
                   "eq": "1:1"
                 },
-                "values": [
-                  "720p"
-                ]
+                "values": ["720p"]
               }
             ]
           }
@@ -442,10 +389,7 @@
       "fields": {
         "aspect_ratio": {
           "type": "enum",
-          "values": [
-            "16:9",
-            "9:16"
-          ],
+          "values": ["16:9", "9:16"],
           "default": "16:9",
           "ui": {
             "label": "Aspect ratio",
@@ -456,10 +400,7 @@
         },
         "duration_s": {
           "type": "enum",
-          "values": [
-            4,
-            8
-          ],
+          "values": [4, 8],
           "default": 4,
           "ui": {
             "label": "Duration",
@@ -481,9 +422,7 @@
         },
         "fps": {
           "type": "enum",
-          "values": [
-            24
-          ],
+          "values": [24],
           "default": 24,
           "ui": {
             "label": "Frame rate",
@@ -516,9 +455,7 @@
         },
         "resolution": {
           "type": "enum",
-          "values": [
-            "720p"
-          ],
+          "values": ["720p"],
           "default": "720p",
           "ui": {
             "label": "Resolution",
@@ -533,18 +470,14 @@
                   "field": "aspect_ratio",
                   "eq": "9:16"
                 },
-                "values": [
-                  "720p"
-                ]
+                "values": ["720p"]
               },
               {
                 "if": {
                   "field": "aspect_ratio",
                   "eq": "1:1"
                 },
-                "values": [
-                  "720p"
-                ]
+                "values": ["720p"]
               }
             ]
           }
@@ -582,11 +515,7 @@
       "fields": {
         "aspect_ratio": {
           "type": "enum",
-          "values": [
-            "16:9",
-            "9:16",
-            "1:1"
-          ],
+          "values": ["16:9", "9:16", "1:1"],
           "default": "16:9",
           "ui": {
             "label": "Aspect ratio",
@@ -608,20 +537,14 @@
             "available_if": [
               {
                 "field": "resolution",
-                "in": [
-                  "720p"
-                ]
+                "in": ["720p"]
               }
             ]
           }
         },
         "duration_s": {
           "type": "enum",
-          "values": [
-            4,
-            8,
-            12
-          ],
+          "values": [4, 8, 12],
           "default": 4,
           "ui": {
             "label": "Duration",
@@ -632,10 +555,7 @@
         },
         "fps": {
           "type": "enum",
-          "values": [
-            24,
-            30
-          ],
+          "values": [24, 30],
           "default": 24,
           "ui": {
             "label": "Frame rate",
@@ -657,10 +577,7 @@
         },
         "resolution": {
           "type": "enum",
-          "values": [
-            "720p",
-            "1080p"
-          ],
+          "values": ["720p", "1080p"],
           "default": "720p",
           "ui": {
             "label": "Resolution",
@@ -675,18 +592,14 @@
                   "field": "aspect_ratio",
                   "eq": "9:16"
                 },
-                "values": [
-                  "720p"
-                ]
+                "values": ["720p"]
               },
               {
                 "if": {
                   "field": "aspect_ratio",
                   "eq": "1:1"
                 },
-                "values": [
-                  "720p"
-                ]
+                "values": ["720p"]
               }
             ]
           }
@@ -722,11 +635,7 @@
       "fields": {
         "aspect_ratio": {
           "type": "enum",
-          "values": [
-            "16:9",
-            "9:16",
-            "1:1"
-          ],
+          "values": ["16:9", "9:16", "1:1"],
           "default": "16:9",
           "ui": {
             "label": "Aspect ratio",
@@ -748,20 +657,14 @@
             "available_if": [
               {
                 "field": "resolution",
-                "in": [
-                  "720p"
-                ]
+                "in": ["720p"]
               }
             ]
           }
         },
         "duration_s": {
           "type": "enum",
-          "values": [
-            4,
-            8,
-            12
-          ],
+          "values": [4, 8, 12],
           "default": 4,
           "ui": {
             "label": "Duration",
@@ -772,10 +675,7 @@
         },
         "fps": {
           "type": "enum",
-          "values": [
-            24,
-            30
-          ],
+          "values": [24, 30],
           "default": 24,
           "ui": {
             "label": "Frame rate",
@@ -797,10 +697,7 @@
         },
         "resolution": {
           "type": "enum",
-          "values": [
-            "720p",
-            "1080p"
-          ],
+          "values": ["720p", "1080p"],
           "default": "720p",
           "ui": {
             "label": "Resolution",
@@ -815,18 +712,14 @@
                   "field": "aspect_ratio",
                   "eq": "9:16"
                 },
-                "values": [
-                  "720p"
-                ]
+                "values": ["720p"]
               },
               {
                 "if": {
                   "field": "aspect_ratio",
                   "eq": "1:1"
                 },
-                "values": [
-                  "720p"
-                ]
+                "values": ["720p"]
               }
             ]
           }
@@ -864,11 +757,7 @@
       "fields": {
         "aspect_ratio": {
           "type": "enum",
-          "values": [
-            "16:9",
-            "9:16",
-            "1:1"
-          ],
+          "values": ["16:9", "9:16", "1:1"],
           "default": "16:9",
           "ui": {
             "label": "Aspect ratio",
@@ -890,11 +779,7 @@
         },
         "duration_s": {
           "type": "enum",
-          "values": [
-            4,
-            8,
-            12
-          ],
+          "values": [4, 8, 12],
           "default": 4,
           "ui": {
             "label": "Duration",
@@ -916,10 +801,7 @@
         },
         "fps": {
           "type": "enum",
-          "values": [
-            24,
-            30
-          ],
+          "values": [24, 30],
           "default": 24,
           "ui": {
             "label": "Frame rate",
@@ -956,10 +838,7 @@
         },
         "resolution": {
           "type": "enum",
-          "values": [
-            "720p",
-            "1080p"
-          ],
+          "values": ["720p", "1080p"],
           "default": "720p",
           "ui": {
             "label": "Resolution",
@@ -974,18 +853,14 @@
                   "field": "aspect_ratio",
                   "eq": "9:16"
                 },
-                "values": [
-                  "720p"
-                ]
+                "values": ["720p"]
               },
               {
                 "if": {
                   "field": "aspect_ratio",
                   "eq": "1:1"
                 },
-                "values": [
-                  "720p"
-                ]
+                "values": ["720p"]
               }
             ]
           }
@@ -1036,10 +911,7 @@
             "group": "Format",
             "order": 10
           },
-          "values": [
-            "16:9",
-            "9:16"
-          ],
+          "values": ["16:9", "9:16"],
           "default": "16:9"
         },
         "fps": {
@@ -1091,10 +963,7 @@
             "group": "Quality",
             "order": 30
           },
-          "values": [
-            "480p",
-            "720p"
-          ],
+          "values": ["480p", "720p"],
           "default": "480p"
         },
         "seed": {
@@ -1152,10 +1021,7 @@
             "group": "Timing",
             "order": 20
           },
-          "values": [
-            5,
-            10
-          ],
+          "values": [5, 10],
           "default": 5
         },
         "image_input": {
@@ -1177,11 +1043,7 @@
             "group": "Quality",
             "order": 30
           },
-          "values": [
-            "480p",
-            "720p",
-            "1080p"
-          ],
+          "values": ["480p", "720p", "1080p"],
           "default": "720p"
         },
         "seed": {

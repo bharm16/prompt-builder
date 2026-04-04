@@ -1,13 +1,16 @@
-import { renderHook, waitFor } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { usePromptLoader } from '../usePromptLoader';
+import { renderHook, waitFor } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { usePromptLoader } from "../usePromptLoader";
 
 const mockGetById = vi.hoisted(() => vi.fn());
-
-vi.mock('@repositories/index', () => ({
-  getPromptRepositoryForUser: vi.fn(() => ({
+const mockGetPromptRepositoryForUser = vi.hoisted(() =>
+  vi.fn(() => ({
     getById: mockGetById,
   })),
+);
+
+vi.mock("@repositories/index", () => ({
+  getPromptRepositoryForUser: mockGetPromptRepositoryForUser,
 }));
 
 type LoaderOverrides = Partial<Parameters<typeof usePromptLoader>[0]>;
@@ -22,12 +25,16 @@ const buildParams = (overrides: LoaderOverrides = {}) => {
 
   return {
     sessionId: null,
-    currentPromptUuid: null,
     navigate: vi.fn(),
     toast: baseToast,
-    user: { uid: 'user-1' },
+    user: { uid: "user-1" },
+    historyEntries: [],
+    createDraftEntry: vi.fn(() => ({ uuid: "draft-uuid", id: "draft-123" })),
+    selectedMode: "video",
+    selectedModelValue: "model-a",
+    generationParamsValue: {},
     promptOptimizer: {
-      displayedPrompt: '',
+      displayedPrompt: "",
       setInputPrompt: vi.fn(),
       setOptimizedPrompt: vi.fn(),
       setDisplayedPrompt: vi.fn(),
@@ -42,7 +49,12 @@ const buildParams = (overrides: LoaderOverrides = {}) => {
     setCurrentPromptDocId: vi.fn(),
     setCurrentPromptUuid: vi.fn(),
     setShowResults: vi.fn(),
+    setSelectedMode: vi.fn(),
     setSelectedModel: vi.fn(),
+    setGenerationParams: vi.fn(),
+    upsertHistoryEntry: vi.fn(),
+    setSuggestionsData: vi.fn(),
+    setConceptElements: vi.fn(),
     setPromptContext: vi.fn(),
     onLoadKeyframes: vi.fn(),
     skipLoadFromUrlRef: { current: false },
@@ -50,14 +62,30 @@ const buildParams = (overrides: LoaderOverrides = {}) => {
   };
 };
 
-describe('usePromptLoader', () => {
+describe("usePromptLoader", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('does not fetch remote prompt data for local draft session ids', async () => {
-    mockGetById.mockResolvedValue(null);
-    const params = buildParams({ sessionId: 'draft-123' });
+  it("hydrates draft routes from in-memory history without remote fetches", async () => {
+    const params = buildParams({
+      sessionId: "draft-123",
+      historyEntries: [
+        {
+          id: "draft-123",
+          uuid: "draft-uuid",
+          input: "local input",
+          output: "local output",
+          mode: "video",
+          targetModel: "model-a",
+          generationParams: { duration: 8 },
+          keyframes: [],
+          brainstormContext: null,
+          highlightCache: null,
+          versions: [],
+        },
+      ],
+    });
 
     const { result } = renderHook(() => usePromptLoader(params));
 
@@ -65,28 +93,59 @@ describe('usePromptLoader', () => {
       expect(result.current.isLoading).toBe(false);
     });
 
-    expect(mockGetById).not.toHaveBeenCalled();
+    expect(mockGetPromptRepositoryForUser).not.toHaveBeenCalled();
+    expect(params.setCurrentPromptUuid).toHaveBeenCalledWith("draft-uuid");
+    expect(params.setCurrentPromptDocId).toHaveBeenCalledWith("draft-123");
+    expect(params.setShowResults).toHaveBeenCalledWith(true);
     expect(params.navigate).not.toHaveBeenCalled();
     expect(params.toast.error).not.toHaveBeenCalled();
   });
 
-  it('dedupes failed fetch attempts for the same session key across rerenders', async () => {
-    mockGetById.mockRejectedValue(new Error('Session not found'));
-    const params = buildParams({ sessionId: 'session-1' });
+  it("bootstraps a missing draft route locally without redirecting or toasting", async () => {
+    mockGetById.mockResolvedValue(null);
+    const params = buildParams({ sessionId: "draft-123" });
+
+    const { result } = renderHook(() => usePromptLoader(params));
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    expect(mockGetPromptRepositoryForUser).toHaveBeenCalledWith(false);
+    expect(mockGetById).toHaveBeenCalledWith("draft-123");
+    expect(params.createDraftEntry).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: "draft-123",
+        mode: "video",
+        targetModel: "model-a",
+        generationParams: {},
+        persist: false,
+      }),
+    );
+    expect(params.setCurrentPromptUuid).toHaveBeenCalledWith("draft-uuid");
+    expect(params.setCurrentPromptDocId).toHaveBeenCalledWith("draft-123");
+    expect(params.setShowResults).toHaveBeenCalledWith(false);
+    expect(params.navigate).not.toHaveBeenCalled();
+    expect(params.toast.error).not.toHaveBeenCalled();
+  });
+
+  it("dedupes failed fetch attempts for the same session key across rerenders", async () => {
+    mockGetById.mockRejectedValue(new Error("Session not found"));
+    const params = buildParams({ sessionId: "session-1" });
     let onLoadKeyframes = vi.fn();
 
     const { rerender } = renderHook(() =>
       usePromptLoader({
         ...params,
         onLoadKeyframes,
-      })
+      }),
     );
 
     await waitFor(() => {
       expect(mockGetById).toHaveBeenCalledTimes(1);
     });
     await waitFor(() => {
-      expect(params.navigate).toHaveBeenCalledWith('/', { replace: true });
+      expect(params.navigate).toHaveBeenCalledWith("/", { replace: true });
     });
 
     onLoadKeyframes = vi.fn();

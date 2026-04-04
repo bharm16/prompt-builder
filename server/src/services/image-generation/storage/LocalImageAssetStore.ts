@@ -4,11 +4,11 @@
  * Stores images to local filesystem (development fallback).
  */
 
-import * as fs from 'node:fs/promises';
-import * as path from 'node:path';
-import { v4 as uuidv4 } from 'uuid';
-import { logger } from '@infrastructure/Logger';
-import type { ImageAssetStore, StoredImageAsset } from './types';
+import * as fs from "node:fs/promises";
+import * as path from "node:path";
+import { v4 as uuidv4 } from "uuid";
+import { logger } from "@infrastructure/Logger";
+import type { ImageAssetStore, StoredImageAsset } from "./types";
 
 interface LocalImageAssetStoreOptions {
   directory: string;
@@ -18,12 +18,12 @@ interface LocalImageAssetStoreOptions {
 export class LocalImageAssetStore implements ImageAssetStore {
   private readonly directory: string;
   private readonly publicPath: string;
-  private readonly log = logger.child({ service: 'LocalImageAssetStore' });
+  private readonly log = logger.child({ service: "LocalImageAssetStore" });
   private initialized = false;
 
   constructor(options: LocalImageAssetStoreOptions) {
     this.directory = path.resolve(options.directory);
-    this.publicPath = options.publicPath.replace(/\/+$/, '');
+    this.publicPath = options.publicPath.replace(/\/+$/, "");
   }
 
   private async ensureDirectory(): Promise<void> {
@@ -35,19 +35,21 @@ export class LocalImageAssetStore implements ImageAssetStore {
   async storeFromUrl(
     sourceUrl: string,
     userId: string,
-    contentType?: string
+    contentType?: string,
   ): Promise<StoredImageAsset> {
     await this.ensureUserDirectory(userId);
 
     const id = uuidv4();
     const response = await fetch(sourceUrl);
     if (!response.ok) {
-      throw new Error(`Failed to fetch image: ${response.status} ${response.statusText}`);
+      throw new Error(
+        `Failed to fetch image: ${response.status} ${response.statusText}`,
+      );
     }
 
     const buffer = Buffer.from(await response.arrayBuffer());
     const resolvedContentType =
-      contentType || response.headers.get('content-type') || 'image/webp';
+      contentType || response.headers.get("content-type") || "image/webp";
 
     const extension = this.getExtension(resolvedContentType);
     const filename = `${id}${extension}`;
@@ -59,7 +61,7 @@ export class LocalImageAssetStore implements ImageAssetStore {
     const stats = await fs.stat(filePath);
     const url = this.buildPublicUrl(userId, id);
 
-    this.log.info('Stored image locally', { id, sizeBytes: stats.size });
+    this.log.info("Stored image locally", { id, sizeBytes: stats.size });
 
     return {
       id,
@@ -74,7 +76,7 @@ export class LocalImageAssetStore implements ImageAssetStore {
   async storeFromBuffer(
     buffer: Buffer,
     contentType: string,
-    userId: string
+    userId: string,
   ): Promise<StoredImageAsset> {
     await this.ensureUserDirectory(userId);
 
@@ -112,7 +114,10 @@ export class LocalImageAssetStore implements ImageAssetStore {
     return files.length > 0;
   }
 
-  async cleanupExpired(olderThanMs: number, maxItems?: number): Promise<number> {
+  async cleanupExpired(
+    olderThanMs: number,
+    maxItems?: number,
+  ): Promise<number> {
     if (!Number.isFinite(olderThanMs) || olderThanMs <= 0) {
       return 0;
     }
@@ -161,7 +166,10 @@ export class LocalImageAssetStore implements ImageAssetStore {
     }
   }
 
-  private async findAssetFiles(assetId: string, userId: string): Promise<string[]> {
+  private async findAssetFiles(
+    assetId: string,
+    userId: string,
+  ): Promise<string[]> {
     try {
       const userDirectory = this.resolveUserDirectory(userId);
       const files = await fs.readdir(userDirectory);
@@ -192,18 +200,18 @@ export class LocalImageAssetStore implements ImageAssetStore {
   private sanitizeUserId(userId: string): string {
     const trimmed = userId.trim();
     if (trimmed.length === 0) {
-      return 'anonymous';
+      return "anonymous";
     }
-    return trimmed.replace(/[^a-zA-Z0-9._:@-]/g, '_');
+    return trimmed.replace(/[^a-zA-Z0-9._:@-]/g, "_");
   }
 
   private getExtension(contentType: string): string {
     const map: Record<string, string> = {
-      'image/webp': '.webp',
-      'image/png': '.png',
-      'image/jpeg': '.jpg',
-      'image/gif': '.gif',
+      "image/webp": ".webp",
+      "image/png": ".png",
+      "image/jpeg": ".jpg",
+      "image/gif": ".gif",
     };
-    return map[contentType] || '.webp';
+    return map[contentType] || ".webp";
   }
 }

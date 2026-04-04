@@ -1,10 +1,21 @@
-import { createReadStream, createWriteStream } from 'node:fs';
-import { mkdir, readFile, readdir, stat, unlink, writeFile } from 'node:fs/promises';
-import path from 'node:path';
-import { pipeline } from 'node:stream/promises';
-import { v4 as uuidv4 } from 'uuid';
-import { logger } from '@infrastructure/Logger';
-import type { StoredVideoAsset, VideoAssetStore, VideoAssetStream } from './types';
+import { createReadStream, createWriteStream } from "node:fs";
+import {
+  mkdir,
+  readFile,
+  readdir,
+  stat,
+  unlink,
+  writeFile,
+} from "node:fs/promises";
+import path from "node:path";
+import { pipeline } from "node:stream/promises";
+import { v4 as uuidv4 } from "uuid";
+import { logger } from "@infrastructure/Logger";
+import type {
+  StoredVideoAsset,
+  VideoAssetStore,
+  VideoAssetStream,
+} from "./types";
 
 interface LocalVideoAssetStoreOptions {
   directory: string;
@@ -20,14 +31,17 @@ interface LocalVideoMetadata {
 export class LocalVideoAssetStore implements VideoAssetStore {
   private readonly directory: string;
   private readonly publicPath: string;
-  private readonly log = logger.child({ service: 'LocalVideoAssetStore' });
+  private readonly log = logger.child({ service: "LocalVideoAssetStore" });
 
   constructor(options: LocalVideoAssetStoreOptions) {
     this.directory = options.directory;
-    this.publicPath = options.publicPath.replace(/\/+$/, '');
+    this.publicPath = options.publicPath.replace(/\/+$/, "");
   }
 
-  async storeFromBuffer(buffer: Buffer, contentType: string): Promise<StoredVideoAsset> {
+  async storeFromBuffer(
+    buffer: Buffer,
+    contentType: string,
+  ): Promise<StoredVideoAsset> {
     await mkdir(this.directory, { recursive: true });
     const id = uuidv4();
     const dataPath = path.join(this.directory, id);
@@ -50,7 +64,10 @@ export class LocalVideoAssetStore implements VideoAssetStore {
     };
   }
 
-  async storeFromStream(stream: NodeJS.ReadableStream, contentType: string): Promise<StoredVideoAsset> {
+  async storeFromStream(
+    stream: NodeJS.ReadableStream,
+    contentType: string,
+  ): Promise<StoredVideoAsset> {
     await mkdir(this.directory, { recursive: true });
     const id = uuidv4();
     const dataPath = path.join(this.directory, id);
@@ -102,7 +119,10 @@ export class LocalVideoAssetStore implements VideoAssetStore {
     return this.buildPublicUrl(assetId);
   }
 
-  async cleanupExpired(olderThanMs: number, maxItems?: number): Promise<number> {
+  async cleanupExpired(
+    olderThanMs: number,
+    maxItems?: number,
+  ): Promise<number> {
     if (!Number.isFinite(olderThanMs) || olderThanMs <= 0) {
       return 0;
     }
@@ -114,7 +134,7 @@ export class LocalVideoAssetStore implements VideoAssetStore {
     }
 
     const entries = await readdir(this.directory);
-    const metadataFiles = entries.filter((entry) => entry.endsWith('.json'));
+    const metadataFiles = entries.filter((entry) => entry.endsWith(".json"));
     let deleted = 0;
 
     for (const metaFile of metadataFiles) {
@@ -122,7 +142,7 @@ export class LocalVideoAssetStore implements VideoAssetStore {
         break;
       }
 
-      const assetId = metaFile.replace(/\.json$/i, '');
+      const assetId = metaFile.replace(/\.json$/i, "");
       const metadata = await this.readMetadata(assetId);
       if (!metadata || metadata.createdAt > olderThanMs) {
         continue;
@@ -136,8 +156,9 @@ export class LocalVideoAssetStore implements VideoAssetStore {
         await unlink(metaPath).catch(() => undefined);
         deleted += 1;
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        this.log.warn('Failed to delete expired video asset', {
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        this.log.warn("Failed to delete expired video asset", {
           assetId,
           error: errorMessage,
         });
@@ -155,12 +176,14 @@ export class LocalVideoAssetStore implements VideoAssetStore {
     return path.join(this.directory, `${assetId}.json`);
   }
 
-  private async readMetadata(assetId: string): Promise<LocalVideoMetadata | null> {
+  private async readMetadata(
+    assetId: string,
+  ): Promise<LocalVideoMetadata | null> {
     const metaPath = this.metadataPath(assetId);
     try {
-      const raw = await readFile(metaPath, 'utf8');
+      const raw = await readFile(metaPath, "utf8");
       const parsed = JSON.parse(raw) as LocalVideoMetadata;
-      if (!parsed || typeof parsed.contentType !== 'string') {
+      if (!parsed || typeof parsed.contentType !== "string") {
         return null;
       }
       return parsed;

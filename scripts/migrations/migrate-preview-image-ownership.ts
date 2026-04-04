@@ -10,12 +10,12 @@
  *   tsx --tsconfig server/tsconfig.json scripts/migrations/migrate-preview-image-ownership.ts --dry-run --limit=100
  */
 
-import { Storage } from '@google-cloud/storage';
-import { pathToFileURL } from 'node:url';
-import { resolveBucketName } from '../../server/src/config/storageBucket.js';
-import { initializeFirebaseAdmin } from './firebase-admin-init.js';
+import { Storage } from "@google-cloud/storage";
+import { pathToFileURL } from "node:url";
+import { resolveBucketName } from "../../server/src/config/storageBucket.js";
+import { initializeFirebaseAdmin } from "./firebase-admin-init.js";
 
-type Mode = 'dry-run' | 'apply';
+type Mode = "dry-run" | "apply";
 
 interface Options {
   mode: Mode;
@@ -45,19 +45,23 @@ export interface Stats {
 }
 
 function parseOptions(argv: string[]): Options {
-  const hasApply = argv.includes('--apply');
-  const hasDryRun = argv.includes('--dry-run');
+  const hasApply = argv.includes("--apply");
+  const hasDryRun = argv.includes("--dry-run");
   if (hasApply && hasDryRun) {
-    throw new Error('Use exactly one of --dry-run or --apply');
+    throw new Error("Use exactly one of --dry-run or --apply");
   }
 
-  const userIdRaw = argv.find((arg) => arg.startsWith('--userId='))?.split('=')[1];
-  const limitRaw = argv.find((arg) => arg.startsWith('--limit='))?.split('=')[1];
-  const limitParsed = Number.parseInt(limitRaw || '', 10);
+  const userIdRaw = argv
+    .find((arg) => arg.startsWith("--userId="))
+    ?.split("=")[1];
+  const limitRaw = argv
+    .find((arg) => arg.startsWith("--limit="))
+    ?.split("=")[1];
+  const limitParsed = Number.parseInt(limitRaw || "", 10);
 
   return {
-    mode: hasApply ? 'apply' : 'dry-run',
-    ...(typeof userIdRaw === 'string' && userIdRaw.trim().length > 0
+    mode: hasApply ? "apply" : "dry-run",
+    ...(typeof userIdRaw === "string" && userIdRaw.trim().length > 0
       ? { userId: userIdRaw.trim() }
       : {}),
     limit: Number.isFinite(limitParsed) && limitParsed > 0 ? limitParsed : null,
@@ -65,7 +69,7 @@ function parseOptions(argv: string[]): Options {
 }
 
 function toRecord(value: unknown): Record<string, unknown> | null {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
     return null;
   }
   return value as Record<string, unknown>;
@@ -74,9 +78,9 @@ function toRecord(value: unknown): Record<string, unknown> | null {
 function sanitizeUserId(userId: string): string {
   const trimmed = userId.trim();
   if (trimmed.length === 0) {
-    return 'anonymous';
+    return "anonymous";
   }
-  return trimmed.replace(/[^a-zA-Z0-9._:@-]/g, '_');
+  return trimmed.replace(/[^a-zA-Z0-9._:@-]/g, "_");
 }
 
 function decodeSafely(value: string): string {
@@ -88,12 +92,14 @@ function decodeSafely(value: string): string {
 }
 
 function stripImageExtension(value: string): string {
-  return value.replace(/\.(png|jpg|jpeg|webp|gif)$/i, '');
+  return value.replace(/\.(png|jpg|jpeg|webp|gif)$/i, "");
 }
 
 export function containsImagePreviewMarker(value: string): boolean {
   const decoded = decodeSafely(value).toLowerCase();
-  return decoded.includes('image-previews/') || decoded.includes('image-previews%2f');
+  return (
+    decoded.includes("image-previews/") || decoded.includes("image-previews%2f")
+  );
 }
 
 export function isPlainSingleSegmentToken(value: string): boolean {
@@ -101,7 +107,7 @@ export function isPlainSingleSegmentToken(value: string): boolean {
   if (trimmed.length === 0) {
     return false;
   }
-  if (trimmed.includes('/') || trimmed.includes('?') || trimmed.includes('#')) {
+  if (trimmed.includes("/") || trimmed.includes("?") || trimmed.includes("#")) {
     return false;
   }
   if (/^[a-z][a-z0-9+.-]*:/i.test(trimmed)) {
@@ -116,16 +122,16 @@ export function extractAssetIdFromReference(value: string): string | null {
     return null;
   }
 
-  const decoded = decodeSafely(trimmed).replace(/\\/g, '/');
-  const marker = 'image-previews/';
+  const decoded = decodeSafely(trimmed).replace(/\\/g, "/");
+  const marker = "image-previews/";
   const markerIndex = decoded.indexOf(marker);
 
   if (markerIndex === -1) {
     if (
-      decoded.includes('/') ||
-      decoded.includes('?') ||
-      decoded.includes('#') ||
-      decoded.toLowerCase().startsWith('http')
+      decoded.includes("/") ||
+      decoded.includes("?") ||
+      decoded.includes("#") ||
+      decoded.toLowerCase().startsWith("http")
     ) {
       return null;
     }
@@ -133,8 +139,8 @@ export function extractAssetIdFromReference(value: string): string | null {
   }
 
   const afterMarker = decoded.slice(markerIndex + marker.length);
-  const pathOnly = afterMarker.split(/[?#]/)[0] || '';
-  const segments = pathOnly.split('/').filter(Boolean);
+  const pathOnly = afterMarker.split(/[?#]/)[0] || "";
+  const segments = pathOnly.split("/").filter(Boolean);
   if (segments.length === 0) {
     return null;
   }
@@ -152,7 +158,7 @@ function addMapping(
   ownersByAsset: Map<string, Set<string>>,
   assetIdRaw: string | null,
   userIdRaw: string | null,
-  source: string
+  source: string,
 ): void {
   if (!assetIdRaw || !userIdRaw) {
     return;
@@ -163,7 +169,7 @@ function addMapping(
   if (assetId.length === 0 || userId.length === 0) {
     return;
   }
-  if (assetId.includes('/')) {
+  if (assetId.includes("/")) {
     return;
   }
 
@@ -189,22 +195,42 @@ function collectFromPreviewRecord(
   userId: string,
   sourcePrefix: string,
   mappings: Map<string, MappingEntry>,
-  ownersByAsset: Map<string, Set<string>>
+  ownersByAsset: Map<string, Set<string>>,
 ): void {
   const directAssetId =
-    typeof preview.assetId === 'string' ? extractAssetIdFromReference(preview.assetId) : null;
+    typeof preview.assetId === "string"
+      ? extractAssetIdFromReference(preview.assetId)
+      : null;
   const storageAssetId =
-    typeof preview.storagePath === 'string'
+    typeof preview.storagePath === "string"
       ? extractAssetIdFromReference(preview.storagePath)
       : null;
   const imageUrlAssetId =
-    typeof preview.imageUrl === 'string'
+    typeof preview.imageUrl === "string"
       ? extractAssetIdFromReference(preview.imageUrl)
       : null;
 
-  addMapping(mappings, ownersByAsset, directAssetId, userId, `${sourcePrefix}.assetId`);
-  addMapping(mappings, ownersByAsset, storageAssetId, userId, `${sourcePrefix}.storagePath`);
-  addMapping(mappings, ownersByAsset, imageUrlAssetId, userId, `${sourcePrefix}.imageUrl`);
+  addMapping(
+    mappings,
+    ownersByAsset,
+    directAssetId,
+    userId,
+    `${sourcePrefix}.assetId`,
+  );
+  addMapping(
+    mappings,
+    ownersByAsset,
+    storageAssetId,
+    userId,
+    `${sourcePrefix}.storagePath`,
+  );
+  addMapping(
+    mappings,
+    ownersByAsset,
+    imageUrlAssetId,
+    userId,
+    `${sourcePrefix}.imageUrl`,
+  );
 }
 
 function collectFromGenerationRecord(
@@ -212,11 +238,13 @@ function collectFromGenerationRecord(
   userId: string,
   sourcePrefix: string,
   mappings: Map<string, MappingEntry>,
-  ownersByAsset: Map<string, Set<string>>
+  ownersByAsset: Map<string, Set<string>>,
 ): void {
-  const mediaUrls = Array.isArray(generation.mediaUrls) ? generation.mediaUrls : [];
+  const mediaUrls = Array.isArray(generation.mediaUrls)
+    ? generation.mediaUrls
+    : [];
   mediaUrls.forEach((mediaUrl, index) => {
-    if (typeof mediaUrl !== 'string' || !containsImagePreviewMarker(mediaUrl)) {
+    if (typeof mediaUrl !== "string" || !containsImagePreviewMarker(mediaUrl)) {
       return;
     }
     addMapping(
@@ -224,12 +252,12 @@ function collectFromGenerationRecord(
       ownersByAsset,
       extractAssetIdFromReference(mediaUrl),
       userId,
-      `${sourcePrefix}.mediaUrls[${index}]`
+      `${sourcePrefix}.mediaUrls[${index}]`,
     );
   });
 
   if (
-    typeof generation.thumbnailUrl === 'string' &&
+    typeof generation.thumbnailUrl === "string" &&
     containsImagePreviewMarker(generation.thumbnailUrl)
   ) {
     addMapping(
@@ -237,13 +265,15 @@ function collectFromGenerationRecord(
       ownersByAsset,
       extractAssetIdFromReference(generation.thumbnailUrl),
       userId,
-      `${sourcePrefix}.thumbnailUrl`
+      `${sourcePrefix}.thumbnailUrl`,
     );
   }
 
-  const mediaAssetIds = Array.isArray(generation.mediaAssetIds) ? generation.mediaAssetIds : [];
+  const mediaAssetIds = Array.isArray(generation.mediaAssetIds)
+    ? generation.mediaAssetIds
+    : [];
   mediaAssetIds.forEach((mediaAssetId, index) => {
-    if (typeof mediaAssetId !== 'string') {
+    if (typeof mediaAssetId !== "string") {
       return;
     }
     if (
@@ -257,7 +287,7 @@ function collectFromGenerationRecord(
       ownersByAsset,
       extractAssetIdFromReference(mediaAssetId),
       userId,
-      `${sourcePrefix}.mediaAssetIds[${index}]`
+      `${sourcePrefix}.mediaAssetIds[${index}]`,
     );
   });
 }
@@ -267,20 +297,23 @@ function collectFromKeyframeRecord(
   userId: string,
   sourcePrefix: string,
   mappings: Map<string, MappingEntry>,
-  ownersByAsset: Map<string, Set<string>>
+  ownersByAsset: Map<string, Set<string>>,
 ): void {
-  if (typeof keyframe.url === 'string' && containsImagePreviewMarker(keyframe.url)) {
+  if (
+    typeof keyframe.url === "string" &&
+    containsImagePreviewMarker(keyframe.url)
+  ) {
     addMapping(
       mappings,
       ownersByAsset,
       extractAssetIdFromReference(keyframe.url),
       userId,
-      `${sourcePrefix}.url`
+      `${sourcePrefix}.url`,
     );
   }
 
   if (
-    typeof keyframe.storagePath === 'string' &&
+    typeof keyframe.storagePath === "string" &&
     containsImagePreviewMarker(keyframe.storagePath)
   ) {
     addMapping(
@@ -288,20 +321,21 @@ function collectFromKeyframeRecord(
       ownersByAsset,
       extractAssetIdFromReference(keyframe.storagePath),
       userId,
-      `${sourcePrefix}.storagePath`
+      `${sourcePrefix}.storagePath`,
     );
   }
 
   if (
-    typeof keyframe.assetId === 'string' &&
-    (containsImagePreviewMarker(keyframe.assetId) || isPlainSingleSegmentToken(keyframe.assetId))
+    typeof keyframe.assetId === "string" &&
+    (containsImagePreviewMarker(keyframe.assetId) ||
+      isPlainSingleSegmentToken(keyframe.assetId))
   ) {
     addMapping(
       mappings,
       ownersByAsset,
       extractAssetIdFromReference(keyframe.assetId),
       userId,
-      `${sourcePrefix}.assetId`
+      `${sourcePrefix}.assetId`,
     );
   }
 }
@@ -310,9 +344,9 @@ export function collectSessionMappings(
   docId: string,
   data: Record<string, unknown>,
   mappings: Map<string, MappingEntry>,
-  ownersByAsset: Map<string, Set<string>>
+  ownersByAsset: Map<string, Set<string>>,
 ): void {
-  const userId = typeof data.userId === 'string' ? data.userId : null;
+  const userId = typeof data.userId === "string" ? data.userId : null;
   if (!userId) {
     return;
   }
@@ -328,7 +362,7 @@ export function collectSessionMappings(
         userId,
         `sessions/${docId}.prompt.versions[${index}].preview`,
         mappings,
-        ownersByAsset
+        ownersByAsset,
       );
     }
 
@@ -345,7 +379,7 @@ export function collectSessionMappings(
         userId,
         `sessions/${docId}.prompt.versions[${index}].generations[${generationIndex}]`,
         mappings,
-        ownersByAsset
+        ownersByAsset,
       );
     });
   });
@@ -361,7 +395,7 @@ export function collectSessionMappings(
       userId,
       `sessions/${docId}.prompt.keyframes[${index}]`,
       mappings,
-      ownersByAsset
+      ownersByAsset,
     );
   });
 
@@ -373,13 +407,13 @@ export function collectSessionMappings(
       return;
     }
 
-    if (typeof shotRecord.previewAssetId === 'string') {
+    if (typeof shotRecord.previewAssetId === "string") {
       addMapping(
         mappings,
         ownersByAsset,
         extractAssetIdFromReference(shotRecord.previewAssetId),
         userId,
-        `sessions/${docId}.continuity.shots[${index}].previewAssetId`
+        `sessions/${docId}.continuity.shots[${index}].previewAssetId`,
       );
     }
 
@@ -390,7 +424,7 @@ export function collectSessionMappings(
         userId,
         `sessions/${docId}.continuity.shots[${index}].preview`,
         mappings,
-        ownersByAsset
+        ownersByAsset,
       );
     }
   });
@@ -400,9 +434,9 @@ function collectLegacyContinuityMappings(
   docId: string,
   data: Record<string, unknown>,
   mappings: Map<string, MappingEntry>,
-  ownersByAsset: Map<string, Set<string>>
+  ownersByAsset: Map<string, Set<string>>,
 ): void {
-  const userId = typeof data.userId === 'string' ? data.userId : null;
+  const userId = typeof data.userId === "string" ? data.userId : null;
   if (!userId) {
     return;
   }
@@ -414,13 +448,13 @@ function collectLegacyContinuityMappings(
       return;
     }
 
-    if (typeof shotRecord.previewAssetId === 'string') {
+    if (typeof shotRecord.previewAssetId === "string") {
       addMapping(
         mappings,
         ownersByAsset,
         extractAssetIdFromReference(shotRecord.previewAssetId),
         userId,
-        `continuity_sessions/${docId}.shots[${index}].previewAssetId`
+        `continuity_sessions/${docId}.shots[${index}].previewAssetId`,
       );
     }
 
@@ -431,7 +465,7 @@ function collectLegacyContinuityMappings(
         userId,
         `continuity_sessions/${docId}.shots[${index}].preview`,
         mappings,
-        ownersByAsset
+        ownersByAsset,
       );
     }
   });
@@ -439,7 +473,7 @@ function collectLegacyContinuityMappings(
 
 async function collectMappings(
   db: FirebaseFirestore.Firestore,
-  options: Options
+  options: Options,
 ): Promise<{
   mappings: Map<string, MappingEntry>;
   ownersByAsset: Map<string, Set<string>>;
@@ -451,9 +485,9 @@ async function collectMappings(
   let scannedSessions = 0;
   let scannedContinuitySessions = 0;
 
-  let sessionsQuery: FirebaseFirestore.Query = db.collection('sessions');
+  let sessionsQuery: FirebaseFirestore.Query = db.collection("sessions");
   if (options.userId) {
-    sessionsQuery = sessionsQuery.where('userId', '==', options.userId);
+    sessionsQuery = sessionsQuery.where("userId", "==", options.userId);
   }
   if (options.limit) {
     sessionsQuery = sessionsQuery.limit(options.limit);
@@ -462,12 +496,19 @@ async function collectMappings(
   const sessionsSnapshot = await sessionsQuery.get();
   scannedSessions = sessionsSnapshot.size;
   for (const doc of sessionsSnapshot.docs) {
-    collectSessionMappings(doc.id, doc.data() as Record<string, unknown>, mappings, ownersByAsset);
+    collectSessionMappings(
+      doc.id,
+      doc.data() as Record<string, unknown>,
+      mappings,
+      ownersByAsset,
+    );
   }
 
-  let continuityQuery: FirebaseFirestore.Query = db.collection('continuity_sessions');
+  let continuityQuery: FirebaseFirestore.Query = db.collection(
+    "continuity_sessions",
+  );
   if (options.userId) {
-    continuityQuery = continuityQuery.where('userId', '==', options.userId);
+    continuityQuery = continuityQuery.where("userId", "==", options.userId);
   }
   if (options.limit) {
     continuityQuery = continuityQuery.limit(options.limit);
@@ -480,7 +521,7 @@ async function collectMappings(
       doc.id,
       doc.data() as Record<string, unknown>,
       mappings,
-      ownersByAsset
+      ownersByAsset,
     );
   }
 
@@ -493,11 +534,11 @@ async function collectMappings(
 }
 
 export async function migrateMappings(
-  bucket: import('@google-cloud/storage').Bucket,
+  bucket: import("@google-cloud/storage").Bucket,
   mappings: Iterable<MappingEntry>,
   conflictedAssetIds: ReadonlySet<string>,
   options: Options,
-  stats: Stats
+  stats: Stats,
 ): Promise<void> {
   for (const mapping of mappings) {
     if (conflictedAssetIds.has(mapping.assetId)) {
@@ -524,15 +565,16 @@ export async function migrateMappings(
       }
 
       stats.plannedCopies += 1;
-      if (options.mode === 'apply') {
+      if (options.mode === "apply") {
         await sourceFile.copy(targetFile);
         stats.copied += 1;
       }
     } catch (error) {
       stats.errors += 1;
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       console.error(
-        `Failed to migrate asset ${mapping.assetId} for user ${mapping.userId}: ${errorMessage}`
+        `Failed to migrate asset ${mapping.assetId} for user ${mapping.userId}: ${errorMessage}`,
       );
     }
   }
@@ -545,7 +587,7 @@ async function run(): Promise<void> {
   const storage = new Storage();
   const bucket = storage.bucket(bucketName);
 
-  console.log('Starting preview image ownership migration');
+  console.log("Starting preview image ownership migration");
   console.log(
     JSON.stringify(
       {
@@ -555,8 +597,8 @@ async function run(): Promise<void> {
         limit: options.limit ?? null,
       },
       null,
-      2
-    )
+      2,
+    ),
   );
 
   const {
@@ -573,15 +615,20 @@ async function run(): Promise<void> {
       userIds: Array.from(owners).sort(),
       ownerCount: owners.size,
     }))
-    .sort((a, b) => b.ownerCount - a.ownerCount || a.assetId.localeCompare(b.assetId));
-  const conflictedAssetIds = new Set(conflictEntries.map((entry) => entry.assetId));
+    .sort(
+      (a, b) =>
+        b.ownerCount - a.ownerCount || a.assetId.localeCompare(b.assetId),
+    );
+  const conflictedAssetIds = new Set(
+    conflictEntries.map((entry) => entry.assetId),
+  );
 
   const stats: Stats = {
     scannedSessions,
     scannedContinuitySessions,
     mappingsDiscovered: Array.from(mappings.values()).reduce(
       (count, entry) => count + entry.sources.size,
-      0
+      0,
     ),
     uniqueUserAssetMappings: mappings.size,
     uniqueAssetIds: ownersByAsset.size,
@@ -594,9 +641,15 @@ async function run(): Promise<void> {
     errors: 0,
   };
 
-  await migrateMappings(bucket, mappings.values(), conflictedAssetIds, options, stats);
+  await migrateMappings(
+    bucket,
+    mappings.values(),
+    conflictedAssetIds,
+    options,
+    stats,
+  );
 
-  console.log('\nMigration summary');
+  console.log("\nMigration summary");
   console.log(
     JSON.stringify(
       {
@@ -608,17 +661,18 @@ async function run(): Promise<void> {
         },
       },
       null,
-      2
-    )
+      2,
+    ),
   );
 }
 
 const isDirectExecution =
-  typeof process.argv[1] === 'string' && pathToFileURL(process.argv[1]).href === import.meta.url;
+  typeof process.argv[1] === "string" &&
+  pathToFileURL(process.argv[1]).href === import.meta.url;
 
 if (isDirectExecution) {
   run().catch((error) => {
-    console.error('Migration failed', error);
+    console.error("Migration failed", error);
     process.exit(1);
   });
 }

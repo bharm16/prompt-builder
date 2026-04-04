@@ -1,8 +1,8 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { NextFunction, Request, Response } from 'express';
-import { metricsAuthMiddleware } from '../metricsAuth';
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { NextFunction, Request, Response } from "express";
+import { metricsAuthMiddleware } from "../metricsAuth";
 
-vi.mock('@infrastructure/Logger', () => ({
+vi.mock("@infrastructure/Logger", () => ({
   logger: {
     warn: vi.fn(),
     info: vi.fn(),
@@ -13,9 +13,9 @@ vi.mock('@infrastructure/Logger', () => ({
 function createRequest(overrides: Partial<Request> = {}): Request {
   return {
     headers: {},
-    ip: '127.0.0.1',
-    path: '/metrics',
-    id: 'req-1',
+    ip: "127.0.0.1",
+    path: "/metrics",
+    id: "req-1",
     ...overrides,
   } as Request;
 }
@@ -27,7 +27,7 @@ function createResponse(): Response {
   } as unknown as Response;
 }
 
-describe('metricsAuthMiddleware', () => {
+describe("metricsAuthMiddleware", () => {
   const originalEnv = process.env;
 
   beforeEach(() => {
@@ -36,7 +36,7 @@ describe('metricsAuthMiddleware', () => {
     delete process.env.METRICS_TOKEN;
   });
 
-  it('returns 401 when authorization header is missing', () => {
+  it("returns 401 when authorization header is missing", () => {
     const req = createRequest();
     const res = createResponse();
     const next = vi.fn() as NextFunction;
@@ -47,9 +47,9 @@ describe('metricsAuthMiddleware', () => {
     expect(next).not.toHaveBeenCalled();
   });
 
-  it('returns 401 when authorization header is not bearer format', () => {
+  it("returns 401 when authorization header is not bearer format", () => {
     const req = createRequest({
-      headers: { authorization: 'Token abc' } as Request['headers'],
+      headers: { authorization: "Token abc" } as Request["headers"],
     });
     const res = createResponse();
     const next = vi.fn() as NextFunction;
@@ -60,9 +60,9 @@ describe('metricsAuthMiddleware', () => {
     expect(next).not.toHaveBeenCalled();
   });
 
-  it('returns 500 when METRICS_TOKEN is not configured', () => {
+  it("returns 500 when METRICS_TOKEN is not configured", () => {
     const req = createRequest({
-      headers: { authorization: 'Bearer token' } as Request['headers'],
+      headers: { authorization: "Bearer token" } as Request["headers"],
     });
     const res = createResponse();
     const next = vi.fn() as NextFunction;
@@ -73,10 +73,10 @@ describe('metricsAuthMiddleware', () => {
     expect(next).not.toHaveBeenCalled();
   });
 
-  it('returns 403 for token length mismatch', () => {
-    process.env.METRICS_TOKEN = 'expected-token';
+  it("returns 403 for token length mismatch", () => {
+    process.env.METRICS_TOKEN = "expected-token";
     const req = createRequest({
-      headers: { authorization: 'Bearer short' } as Request['headers'],
+      headers: { authorization: "Bearer short" } as Request["headers"],
     });
     const res = createResponse();
     const next = vi.fn() as NextFunction;
@@ -87,10 +87,10 @@ describe('metricsAuthMiddleware', () => {
     expect(next).not.toHaveBeenCalled();
   });
 
-  it('returns 403 for token value mismatch with same length', () => {
-    process.env.METRICS_TOKEN = 'expected-token';
+  it("returns 403 for token value mismatch with same length", () => {
+    process.env.METRICS_TOKEN = "expected-token";
     const req = createRequest({
-      headers: { authorization: 'Bearer expected-tokeX' } as Request['headers'],
+      headers: { authorization: "Bearer expected-tokeX" } as Request["headers"],
     });
     const res = createResponse();
     const next = vi.fn() as NextFunction;
@@ -101,10 +101,10 @@ describe('metricsAuthMiddleware', () => {
     expect(next).not.toHaveBeenCalled();
   });
 
-  it('calls next when bearer token is valid', () => {
-    process.env.METRICS_TOKEN = 'expected-token';
+  it("calls next when bearer token is valid", () => {
+    process.env.METRICS_TOKEN = "expected-token";
     const req = createRequest({
-      headers: { authorization: 'Bearer expected-token' } as Request['headers'],
+      headers: { authorization: "Bearer expected-token" } as Request["headers"],
     });
     const res = createResponse();
     const next = vi.fn() as NextFunction;

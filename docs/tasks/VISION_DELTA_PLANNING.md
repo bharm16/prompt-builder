@@ -54,7 +54,7 @@ text-only fallback path with zero changes to its code path.
 Utility to fetch an image URL and return a base64 data URL string.
 
 ```ts
-import { logger } from '@infrastructure/Logger';
+import { logger } from "@infrastructure/Logger";
 
 const DEFAULT_TIMEOUT_MS = 10_000;
 const DEFAULT_MAX_BYTES = 10 * 1024 * 1024; // 10 MB
@@ -67,9 +67,9 @@ const DEFAULT_MAX_BYTES = 10 * 1024 * 1024; // 10 MB
  */
 export async function fetchImageAsDataUrl(
   imageUrl: string,
-  options?: { timeoutMs?: number; maxBytes?: number }
+  options?: { timeoutMs?: number; maxBytes?: number },
 ): Promise<string> {
-  const log = logger.child({ service: 'fetchImageAsDataUrl' });
+  const log = logger.child({ service: "fetchImageAsDataUrl" });
   const timeoutMs = options?.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const maxBytes = options?.maxBytes ?? DEFAULT_MAX_BYTES;
 
@@ -79,24 +79,29 @@ export async function fetchImageAsDataUrl(
   try {
     const response = await fetch(imageUrl, { signal: controller.signal });
     if (!response.ok) {
-      throw new Error(`Image fetch failed: ${response.status} ${response.statusText}`);
+      throw new Error(
+        `Image fetch failed: ${response.status} ${response.statusText}`,
+      );
     }
 
-    const contentType = response.headers.get('content-type') ?? 'image/png';
-    const mimeType = contentType.split(';')[0]!.trim();
+    const contentType = response.headers.get("content-type") ?? "image/png";
+    const mimeType = contentType.split(";")[0]!.trim();
 
     const buffer = await response.arrayBuffer();
     if (buffer.byteLength > maxBytes) {
       throw new Error(
-        `Image too large: ${buffer.byteLength} bytes exceeds ${maxBytes} byte limit`
+        `Image too large: ${buffer.byteLength} bytes exceeds ${maxBytes} byte limit`,
       );
     }
 
-    const base64 = Buffer.from(buffer).toString('base64');
+    const base64 = Buffer.from(buffer).toString("base64");
     return `data:${mimeType};base64,${base64}`;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    log.warn('Failed to fetch image as data URL', { imageUrl: imageUrl.slice(0, 120), error: message });
+    log.warn("Failed to fetch image as data URL", {
+      imageUrl: imageUrl.slice(0, 120),
+      error: message,
+    });
     throw error;
   } finally {
     clearTimeout(timer);
@@ -137,6 +142,7 @@ Now plan your edit deltas based on what you SEE in this image, not what the text
 #### 3a. Change the options interface
 
 Replace:
+
 ```ts
 export interface StoryboardFramePlannerOptions {
   llmClient: LLMClient;
@@ -145,6 +151,7 @@ export interface StoryboardFramePlannerOptions {
 ```
 
 With:
+
 ```ts
 export interface StoryboardFramePlannerOptions {
   llmClient: LLMClient;
@@ -159,12 +166,14 @@ export interface StoryboardFramePlannerOptions {
 #### 3b. Store new fields in the constructor
 
 Add two private fields and assign them in the constructor:
+
 ```ts
 private readonly visionLlmClient: LLMClient | null;
 private readonly visionTimeoutMs: number;
 ```
 
 Constructor body additions:
+
 ```ts
 this.visionLlmClient = options.visionLlmClient ?? null;
 this.visionTimeoutMs = options.visionTimeoutMs ?? 15000;
@@ -173,18 +182,25 @@ this.visionTimeoutMs = options.visionTimeoutMs ?? 15000;
 #### 3c. Change `planDeltas` signature
 
 Replace:
+
 ```ts
 async planDeltas(prompt: string, frameCount: number): Promise<string[]> {
 ```
 
 With:
+
 ```ts
 async planDeltas(prompt: string, frameCount: number, baseImageUrl?: string): Promise<string[]> {
 ```
 
 Pass `baseImageUrl` through to `requestPlan`:
+
 ```ts
-const responseText = await this.requestPlan(trimmed, expectedCount, baseImageUrl);
+const responseText = await this.requestPlan(
+  trimmed,
+  expectedCount,
+  baseImageUrl,
+);
 ```
 
 And to `requestRepair` (add as optional 5th parameter — see 3f).
@@ -268,18 +284,20 @@ private async requestVisionPlan(
 ```
 
 Add the necessary imports at the top of the file:
+
 ```ts
-import { fetchImageAsDataUrl } from './fetchImageAsDataUrl';
+import { fetchImageAsDataUrl } from "./fetchImageAsDataUrl";
 ```
 
 Update the existing prompts import line to include `buildVisionDeltaUserPrompt`:
+
 ```ts
 import {
   buildFallbackDeltas,
   buildRepairSystemPrompt,
   buildSystemPrompt,
-  buildVisionDeltaUserPrompt,  // ADD THIS
-} from './prompts';
+  buildVisionDeltaUserPrompt, // ADD THIS
+} from "./prompts";
 ```
 
 #### 3f. Pass `baseImageUrl` through repair flow
@@ -303,13 +321,14 @@ user message content). Otherwise keep the existing text-only repair path
 unchanged.
 
 Update the call site in `planDeltas` to pass `baseImageUrl`:
+
 ```ts
 const repairText = await this.requestRepair(
   trimmed,
   responseText,
   expectedCount,
   parsed.partial?.deltas,
-  baseImageUrl  // ADD THIS
+  baseImageUrl, // ADD THIS
 );
 ```
 
@@ -324,32 +343,37 @@ In `generateStoryboard`, replace the current order:
 // CURRENT ORDER (remove this block):
 const deltas = await this.storyboardFramePlanner.planDeltas(
   storyboardPrompt,
-  STORYBOARD_FRAME_COUNT
+  STORYBOARD_FRAME_COUNT,
 );
 
 if (deltas.length !== STORYBOARD_FRAME_COUNT - 1) {
-  throw new Error('Storyboard planner did not return the expected number of deltas');
+  throw new Error(
+    "Storyboard planner did not return the expected number of deltas",
+  );
 }
 
-this.log.info('Storyboard deltas planned', {
+this.log.info("Storyboard deltas planned", {
   userId,
   deltaCount: deltas.length,
 });
 
-const { baseImageUrl, baseProviderUrl, baseStoragePath } = await this.resolveBaseImage({
-  prompt: storyboardPrompt,
-  ...(request.aspectRatio ? { aspectRatio: request.aspectRatio } : {}),
-  ...(seedImageUrl ? { seedImageUrl } : {}),
-  ...(effectiveReferenceImageUrl ? { referenceImageUrl: effectiveReferenceImageUrl } : {}),
-  ...(request.speedMode ? { speedMode: request.speedMode } : {}),
-  userId,
-});
+const { baseImageUrl, baseProviderUrl, baseStoragePath } =
+  await this.resolveBaseImage({
+    prompt: storyboardPrompt,
+    ...(request.aspectRatio ? { aspectRatio: request.aspectRatio } : {}),
+    ...(seedImageUrl ? { seedImageUrl } : {}),
+    ...(effectiveReferenceImageUrl
+      ? { referenceImageUrl: effectiveReferenceImageUrl }
+      : {}),
+    ...(request.speedMode ? { speedMode: request.speedMode } : {}),
+    userId,
+  });
 const baseProvider = seedImageUrl
-  ? 'seed-image'
+  ? "seed-image"
   : effectiveReferenceImageUrl
     ? EDIT_PROVIDER
     : BASE_PROVIDER;
-this.log.info('Storyboard base image resolved', {
+this.log.info("Storyboard base image resolved", {
   userId,
   baseProvider,
   usedSeedImage: Boolean(seedImageUrl),
@@ -361,20 +385,23 @@ With:
 
 ```ts
 // NEW ORDER — resolve base image FIRST, then plan deltas with it:
-const { baseImageUrl, baseProviderUrl, baseStoragePath } = await this.resolveBaseImage({
-  prompt: storyboardPrompt,
-  ...(request.aspectRatio ? { aspectRatio: request.aspectRatio } : {}),
-  ...(seedImageUrl ? { seedImageUrl } : {}),
-  ...(effectiveReferenceImageUrl ? { referenceImageUrl: effectiveReferenceImageUrl } : {}),
-  ...(request.speedMode ? { speedMode: request.speedMode } : {}),
-  userId,
-});
+const { baseImageUrl, baseProviderUrl, baseStoragePath } =
+  await this.resolveBaseImage({
+    prompt: storyboardPrompt,
+    ...(request.aspectRatio ? { aspectRatio: request.aspectRatio } : {}),
+    ...(seedImageUrl ? { seedImageUrl } : {}),
+    ...(effectiveReferenceImageUrl
+      ? { referenceImageUrl: effectiveReferenceImageUrl }
+      : {}),
+    ...(request.speedMode ? { speedMode: request.speedMode } : {}),
+    userId,
+  });
 const baseProvider = seedImageUrl
-  ? 'seed-image'
+  ? "seed-image"
   : effectiveReferenceImageUrl
     ? EDIT_PROVIDER
     : BASE_PROVIDER;
-this.log.info('Storyboard base image resolved', {
+this.log.info("Storyboard base image resolved", {
   userId,
   baseProvider,
   usedSeedImage: Boolean(seedImageUrl),
@@ -387,14 +414,16 @@ this.log.info('Storyboard base image resolved', {
 const deltas = await this.storyboardFramePlanner.planDeltas(
   storyboardPrompt,
   STORYBOARD_FRAME_COUNT,
-  baseProviderUrl  // NEW — enables vision-based planning
+  baseProviderUrl, // NEW — enables vision-based planning
 );
 
 if (deltas.length !== STORYBOARD_FRAME_COUNT - 1) {
-  throw new Error('Storyboard planner did not return the expected number of deltas');
+  throw new Error(
+    "Storyboard planner did not return the expected number of deltas",
+  );
 }
 
-this.log.info('Storyboard deltas planned', {
+this.log.info("Storyboard deltas planned", {
   userId,
   deltaCount: deltas.length,
 });
@@ -407,12 +436,15 @@ Keep the rest of the method (`generateEditFrames` call and return) unchanged.
 Change the `storyboardFramePlanner` registration to inject `claudeClient`:
 
 Replace:
+
 ```ts
 container.register(
-  'storyboardFramePlanner',
+  "storyboardFramePlanner",
   (geminiClient: LLMClient | null) => {
     if (!geminiClient) {
-      logger.warn('Gemini client not available, storyboard frame planner disabled');
+      logger.warn(
+        "Gemini client not available, storyboard frame planner disabled",
+      );
       return null;
     }
     return new StoryboardFramePlanner({
@@ -420,21 +452,26 @@ container.register(
       timeoutMs: 8000,
     });
   },
-  ['geminiClient']
+  ["geminiClient"],
 );
 ```
 
 With:
+
 ```ts
 container.register(
-  'storyboardFramePlanner',
+  "storyboardFramePlanner",
   (geminiClient: LLMClient | null, claudeClient: LLMClient | null) => {
     if (!geminiClient) {
-      logger.warn('Gemini client not available, storyboard frame planner disabled');
+      logger.warn(
+        "Gemini client not available, storyboard frame planner disabled",
+      );
       return null;
     }
     if (!claudeClient) {
-      logger.warn('OpenAI client not available, vision-based storyboard planning disabled (text-only fallback)');
+      logger.warn(
+        "OpenAI client not available, vision-based storyboard planning disabled (text-only fallback)",
+      );
     }
     return new StoryboardFramePlanner({
       llmClient: geminiClient,
@@ -443,7 +480,7 @@ container.register(
       visionTimeoutMs: 15000,
     });
   },
-  ['geminiClient', 'claudeClient']
+  ["geminiClient", "claudeClient"],
 );
 ```
 
@@ -456,93 +493,126 @@ the text-only path which is unchanged (no `baseImageUrl` argument, no
 `visionLlmClient` configured). Add a NEW `describe('vision path', ...)` block:
 
 ```ts
-describe('vision path', () => {
+describe("vision path", () => {
   const createVisionClient = () => {
     const completeMock: MockedFunction<
-      (systemPrompt: string, options?: Record<string, unknown>) => Promise<AIResponse>
+      (
+        systemPrompt: string,
+        options?: Record<string, unknown>,
+      ) => Promise<AIResponse>
     > = vi.fn();
     const adapter = { complete: completeMock };
-    const client = new LLMClient({ adapter, providerName: 'test-vision', defaultTimeout: 5000 });
+    const client = new LLMClient({
+      adapter,
+      providerName: "test-vision",
+      defaultTimeout: 5000,
+    });
     return { client, completeMock };
   };
 
-  it('uses the vision client when baseImageUrl is provided', async () => {
+  it("uses the vision client when baseImageUrl is provided", async () => {
     const { client: textClient } = createClient();
-    const { client: visionClient, completeMock: visionComplete } = createVisionClient();
+    const { client: visionClient, completeMock: visionComplete } =
+      createVisionClient();
     visionComplete.mockResolvedValueOnce(
-      buildResponse('{"deltas": ["move foot forward", "shift weight", "extend arm"]}')
+      buildResponse(
+        '{"deltas": ["move foot forward", "shift weight", "extend arm"]}',
+      ),
     );
 
     // Mock the fetch utility at the module level
-    vi.mock('../fetchImageAsDataUrl', () => ({
-      fetchImageAsDataUrl: vi.fn().mockResolvedValue('data:image/png;base64,AAAA'),
+    vi.mock("../fetchImageAsDataUrl", () => ({
+      fetchImageAsDataUrl: vi
+        .fn()
+        .mockResolvedValue("data:image/png;base64,AAAA"),
     }));
 
     const planner = new StoryboardFramePlanner({
       llmClient: textClient,
       visionLlmClient: visionClient,
     });
-    const result = await planner.planDeltas('prompt', 4, 'https://example.com/base.webp');
+    const result = await planner.planDeltas(
+      "prompt",
+      4,
+      "https://example.com/base.webp",
+    );
 
-    expect(result).toEqual(['move foot forward', 'shift weight', 'extend arm']);
+    expect(result).toEqual(["move foot forward", "shift weight", "extend arm"]);
     expect(visionComplete).toHaveBeenCalledTimes(1);
 
     // Verify multimodal message structure
-    const callOptions = visionComplete.mock.calls[0]?.[1] as Record<string, unknown>;
-    expect(callOptions).toHaveProperty('messages');
-    const messages = callOptions.messages as Array<{ role: string; content: unknown }>;
-    const userMessage = messages.find(m => m.role === 'user');
+    const callOptions = visionComplete.mock.calls[0]?.[1] as Record<
+      string,
+      unknown
+    >;
+    expect(callOptions).toHaveProperty("messages");
+    const messages = callOptions.messages as Array<{
+      role: string;
+      content: unknown;
+    }>;
+    const userMessage = messages.find((m) => m.role === "user");
     expect(Array.isArray(userMessage?.content)).toBe(true);
   });
 
-  it('falls back to text-only when image fetch fails', async () => {
+  it("falls back to text-only when image fetch fails", async () => {
     const { client: textClient, completeMock: textComplete } = createClient();
     const { client: visionClient } = createVisionClient();
     textComplete.mockResolvedValueOnce(
-      buildResponse('{"deltas": ["text delta 1", "text delta 2", "text delta 3"]}')
+      buildResponse(
+        '{"deltas": ["text delta 1", "text delta 2", "text delta 3"]}',
+      ),
     );
 
-    vi.mock('../fetchImageAsDataUrl', () => ({
-      fetchImageAsDataUrl: vi.fn().mockRejectedValue(new Error('fetch failed')),
+    vi.mock("../fetchImageAsDataUrl", () => ({
+      fetchImageAsDataUrl: vi.fn().mockRejectedValue(new Error("fetch failed")),
     }));
 
     const planner = new StoryboardFramePlanner({
       llmClient: textClient,
       visionLlmClient: visionClient,
     });
-    const result = await planner.planDeltas('prompt', 4, 'https://example.com/base.webp');
+    const result = await planner.planDeltas(
+      "prompt",
+      4,
+      "https://example.com/base.webp",
+    );
 
-    expect(result).toEqual(['text delta 1', 'text delta 2', 'text delta 3']);
+    expect(result).toEqual(["text delta 1", "text delta 2", "text delta 3"]);
     expect(textComplete).toHaveBeenCalledTimes(1);
   });
 
-  it('uses text-only path when no visionLlmClient is configured', async () => {
+  it("uses text-only path when no visionLlmClient is configured", async () => {
     const { client: textClient, completeMock: textComplete } = createClient();
     textComplete.mockResolvedValueOnce(
-      buildResponse('{"deltas": ["d1", "d2", "d3"]}')
+      buildResponse('{"deltas": ["d1", "d2", "d3"]}'),
     );
 
     const planner = new StoryboardFramePlanner({ llmClient: textClient });
-    const result = await planner.planDeltas('prompt', 4, 'https://example.com/base.webp');
+    const result = await planner.planDeltas(
+      "prompt",
+      4,
+      "https://example.com/base.webp",
+    );
 
-    expect(result).toEqual(['d1', 'd2', 'd3']);
+    expect(result).toEqual(["d1", "d2", "d3"]);
     expect(textComplete).toHaveBeenCalledTimes(1);
   });
 
-  it('uses text-only path when baseImageUrl is not provided even with vision client', async () => {
+  it("uses text-only path when baseImageUrl is not provided even with vision client", async () => {
     const { client: textClient, completeMock: textComplete } = createClient();
-    const { client: visionClient, completeMock: visionComplete } = createVisionClient();
+    const { client: visionClient, completeMock: visionComplete } =
+      createVisionClient();
     textComplete.mockResolvedValueOnce(
-      buildResponse('{"deltas": ["d1", "d2", "d3"]}')
+      buildResponse('{"deltas": ["d1", "d2", "d3"]}'),
     );
 
     const planner = new StoryboardFramePlanner({
       llmClient: textClient,
       visionLlmClient: visionClient,
     });
-    const result = await planner.planDeltas('prompt', 4);
+    const result = await planner.planDeltas("prompt", 4);
 
-    expect(result).toEqual(['d1', 'd2', 'd3']);
+    expect(result).toEqual(["d1", "d2", "d3"]);
     expect(textComplete).toHaveBeenCalledTimes(1);
     expect(visionComplete).not.toHaveBeenCalled();
   });
@@ -552,10 +622,12 @@ describe('vision path', () => {
 **Important mock note:** The `vi.mock` calls for `fetchImageAsDataUrl` should
 be hoisted. If this causes issues with the existing tests in the same file,
 consider:
+
 1. Moving vision path tests to a separate test file, OR
 2. Using `vi.spyOn` with dynamic imports instead of `vi.mock`
 
 The key assertions are:
+
 - Vision client receives multimodal messages when image URL is provided
 - Text client is used as fallback when vision is unavailable
 - Both clients being absent (no visionLlmClient) works identically to current behavior
@@ -582,21 +654,25 @@ and throw. **Fix**: Add a `generatePreview` mock before `planDeltas` in that
 specific test:
 
 ```ts
-it('throws when the planner returns the wrong number of deltas', async () => {
-  const { imageGenerationService, storyboardFramePlanner, planDeltas, generatePreview } =
-    createServices();
+it("throws when the planner returns the wrong number of deltas", async () => {
+  const {
+    imageGenerationService,
+    storyboardFramePlanner,
+    planDeltas,
+    generatePreview,
+  } = createServices();
   // resolveBaseImage now runs before planDeltas — must mock generatePreview
   generatePreview.mockResolvedValueOnce({
-    imageUrl: 'https://images.example.com/base.webp',
-    providerUrl: 'https://images.example.com/base-provider.webp',
+    imageUrl: "https://images.example.com/base.webp",
+    providerUrl: "https://images.example.com/base-provider.webp",
     metadata: {
-      aspectRatio: '16:9',
-      model: 'flux-schnell',
+      aspectRatio: "16:9",
+      model: "flux-schnell",
       duration: 1200,
       generatedAt: new Date().toISOString(),
     },
   });
-  planDeltas.mockResolvedValueOnce(['only one']);
+  planDeltas.mockResolvedValueOnce(["only one"]);
 
   const service = new StoryboardPreviewService({
     imageGenerationService,
@@ -604,8 +680,10 @@ it('throws when the planner returns the wrong number of deltas', async () => {
   });
 
   await expect(
-    service.generateStoryboard({ prompt: 'valid prompt' })
-  ).rejects.toThrow('Storyboard planner did not return the expected number of deltas');
+    service.generateStoryboard({ prompt: "valid prompt" }),
+  ).rejects.toThrow(
+    "Storyboard planner did not return the expected number of deltas",
+  );
 });
 ```
 
@@ -613,27 +691,31 @@ Add one new test to the existing `describe('core behavior', ...)` or
 `describe('edge cases', ...)` block:
 
 ```ts
-it('passes baseProviderUrl to planDeltas for vision-based planning', async () => {
-  const { imageGenerationService, storyboardFramePlanner, planDeltas, generatePreview } =
-    createServices();
-  planDeltas.mockResolvedValueOnce(['delta 1', 'delta 2', 'delta 3']);
+it("passes baseProviderUrl to planDeltas for vision-based planning", async () => {
+  const {
+    imageGenerationService,
+    storyboardFramePlanner,
+    planDeltas,
+    generatePreview,
+  } = createServices();
+  planDeltas.mockResolvedValueOnce(["delta 1", "delta 2", "delta 3"]);
   generatePreview
     .mockResolvedValueOnce({
-      imageUrl: 'https://images.example.com/base.webp',
-      providerUrl: 'https://images.example.com/base-provider.webp',
+      imageUrl: "https://images.example.com/base.webp",
+      providerUrl: "https://images.example.com/base-provider.webp",
       metadata: {
-        aspectRatio: '16:9',
-        model: 'flux-schnell',
+        aspectRatio: "16:9",
+        model: "flux-schnell",
         duration: 1200,
         generatedAt: new Date().toISOString(),
       },
     })
     .mockResolvedValue({
-      imageUrl: 'https://images.example.com/edit.webp',
-      providerUrl: 'https://images.example.com/edit-provider.webp',
+      imageUrl: "https://images.example.com/edit.webp",
+      providerUrl: "https://images.example.com/edit-provider.webp",
       metadata: {
-        aspectRatio: '16:9',
-        model: 'kontext-fast',
+        aspectRatio: "16:9",
+        model: "kontext-fast",
         duration: 1200,
         generatedAt: new Date().toISOString(),
       },
@@ -644,13 +726,13 @@ it('passes baseProviderUrl to planDeltas for vision-based planning', async () =>
     storyboardFramePlanner,
   });
 
-  await service.generateStoryboard({ prompt: 'valid prompt' });
+  await service.generateStoryboard({ prompt: "valid prompt" });
 
   // planDeltas should receive the provider URL as the third argument
   expect(planDeltas).toHaveBeenCalledWith(
-    'valid prompt',
+    "valid prompt",
     STORYBOARD_FRAME_COUNT,
-    'https://images.example.com/base-provider.webp'
+    "https://images.example.com/base-provider.webp",
   );
 });
 ```
@@ -658,59 +740,61 @@ it('passes baseProviderUrl to planDeltas for vision-based planning', async () =>
 #### 6c. NEW FILE: `server/src/services/image-generation/storyboard/__tests__/fetchImageAsDataUrl.test.ts`
 
 ```ts
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { fetchImageAsDataUrl } from '../fetchImageAsDataUrl';
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { fetchImageAsDataUrl } from "../fetchImageAsDataUrl";
 
-describe('fetchImageAsDataUrl', () => {
+describe("fetchImageAsDataUrl", () => {
   beforeEach(() => {
-    vi.stubGlobal('fetch', vi.fn());
+    vi.stubGlobal("fetch", vi.fn());
   });
 
   afterEach(() => {
     vi.unstubAllGlobals();
   });
 
-  it('returns a base64 data URL for a valid image', async () => {
+  it("returns a base64 data URL for a valid image", async () => {
     const imageBytes = new Uint8Array([0x89, 0x50, 0x4e, 0x47]);
     const mockResponse = {
       ok: true,
-      headers: new Headers({ 'content-type': 'image/png' }),
+      headers: new Headers({ "content-type": "image/png" }),
       arrayBuffer: () => Promise.resolve(imageBytes.buffer),
     };
     (fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce(mockResponse);
 
-    const result = await fetchImageAsDataUrl('https://example.com/image.png');
+    const result = await fetchImageAsDataUrl("https://example.com/image.png");
 
     expect(result).toMatch(/^data:image\/png;base64,/);
     expect(fetch).toHaveBeenCalledWith(
-      'https://example.com/image.png',
-      expect.objectContaining({ signal: expect.any(AbortSignal) })
+      "https://example.com/image.png",
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
     );
   });
 
-  it('throws when the response is not ok', async () => {
-    const mockResponse = { ok: false, status: 404, statusText: 'Not Found' };
+  it("throws when the response is not ok", async () => {
+    const mockResponse = { ok: false, status: 404, statusText: "Not Found" };
     (fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce(mockResponse);
 
-    await expect(fetchImageAsDataUrl('https://example.com/missing.png'))
-      .rejects.toThrow('Image fetch failed: 404 Not Found');
+    await expect(
+      fetchImageAsDataUrl("https://example.com/missing.png"),
+    ).rejects.toThrow("Image fetch failed: 404 Not Found");
   });
 
-  it('throws when image exceeds max byte limit', async () => {
+  it("throws when image exceeds max byte limit", async () => {
     const largeBuffer = new ArrayBuffer(100);
     const mockResponse = {
       ok: true,
-      headers: new Headers({ 'content-type': 'image/jpeg' }),
+      headers: new Headers({ "content-type": "image/jpeg" }),
       arrayBuffer: () => Promise.resolve(largeBuffer),
     };
     (fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce(mockResponse);
 
-    await expect(fetchImageAsDataUrl('https://example.com/huge.jpg', { maxBytes: 50 }))
-      .rejects.toThrow(/too large/);
+    await expect(
+      fetchImageAsDataUrl("https://example.com/huge.jpg", { maxBytes: 50 }),
+    ).rejects.toThrow(/too large/);
   });
 
-  it('defaults content type to image/png when header is missing', async () => {
-    const imageBytes = new Uint8Array([0xFF, 0xD8]);
+  it("defaults content type to image/png when header is missing", async () => {
+    const imageBytes = new Uint8Array([0xff, 0xd8]);
     const mockResponse = {
       ok: true,
       headers: new Headers(),
@@ -718,7 +802,7 @@ describe('fetchImageAsDataUrl', () => {
     };
     (fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce(mockResponse);
 
-    const result = await fetchImageAsDataUrl('https://example.com/image');
+    const result = await fetchImageAsDataUrl("https://example.com/image");
     expect(result).toMatch(/^data:image\/png;base64,/);
   });
 });
@@ -749,33 +833,33 @@ npx tsc --noEmit
 
 ## What is NOT Changing
 
-| File/Module | Status |
-|---|---|
-| `GeminiAdapter` + `gemini/*` | Untouched |
-| `OpenAICompatibleAdapter` + `openai/*` | Untouched |
-| `LLMClient.ts` | Untouched |
-| `IAIClient.ts` | Untouched |
-| `VideoToImagePromptTransformer` | Untouched |
-| `AIModelService` | Untouched |
-| `planParser.ts` | Untouched |
-| `storyboardUtils.ts` | Untouched |
-| `constants.ts` | Untouched |
-| `buildEditPrompt` in `prompts.ts` | Untouched |
-| `buildSystemPrompt` in `prompts.ts` | Untouched |
+| File/Module                               | Status    |
+| ----------------------------------------- | --------- |
+| `GeminiAdapter` + `gemini/*`              | Untouched |
+| `OpenAICompatibleAdapter` + `openai/*`    | Untouched |
+| `LLMClient.ts`                            | Untouched |
+| `IAIClient.ts`                            | Untouched |
+| `VideoToImagePromptTransformer`           | Untouched |
+| `AIModelService`                          | Untouched |
+| `planParser.ts`                           | Untouched |
+| `storyboardUtils.ts`                      | Untouched |
+| `constants.ts`                            | Untouched |
+| `buildEditPrompt` in `prompts.ts`         | Untouched |
+| `buildSystemPrompt` in `prompts.ts`       | Untouched |
 | `buildRepairSystemPrompt` in `prompts.ts` | Untouched |
-| `buildFallbackDeltas` in `prompts.ts` | Untouched |
-| Health routes | Untouched |
-| All other DI registrations | Untouched |
+| `buildFallbackDeltas` in `prompts.ts`     | Untouched |
+| Health routes                             | Untouched |
+| All other DI registrations                | Untouched |
 
 ## Summary of Changes
 
-| # | File | Change Type | Description |
-|---|---|---|---|
-| 1 | `storyboard/fetchImageAsDataUrl.ts` | **NEW** | Fetch image URL → base64 data URL |
-| 2 | `storyboard/prompts.ts` | **ADD** | New `buildVisionDeltaUserPrompt()` function |
-| 3 | `storyboard/StoryboardFramePlanner.ts` | **MODIFY** | Add `visionLlmClient` option, vision path in `requestPlan`, graceful fallback |
-| 4 | `storyboard/StoryboardPreviewService.ts` | **MODIFY** | Flip execution order: `resolveBaseImage()` before `planDeltas()`, pass `baseProviderUrl` |
-| 5 | `config/services/generation.services.ts` | **MODIFY** | Inject `claudeClient` into `storyboardFramePlanner` registration |
-| 6 | `storyboard/__tests__/fetchImageAsDataUrl.test.ts` | **NEW** | Unit tests for fetch utility |
-| 7 | `storyboard/__tests__/StoryboardFramePlanner.test.ts` | **ADD** | New `describe('vision path')` test block |
-| 8 | `storyboard/__tests__/StoryboardPreviewService.test.ts` | **MODIFY** | Fix delta-count test setup, add `baseProviderUrl` pass-through test |
+| #   | File                                                    | Change Type | Description                                                                              |
+| --- | ------------------------------------------------------- | ----------- | ---------------------------------------------------------------------------------------- |
+| 1   | `storyboard/fetchImageAsDataUrl.ts`                     | **NEW**     | Fetch image URL → base64 data URL                                                        |
+| 2   | `storyboard/prompts.ts`                                 | **ADD**     | New `buildVisionDeltaUserPrompt()` function                                              |
+| 3   | `storyboard/StoryboardFramePlanner.ts`                  | **MODIFY**  | Add `visionLlmClient` option, vision path in `requestPlan`, graceful fallback            |
+| 4   | `storyboard/StoryboardPreviewService.ts`                | **MODIFY**  | Flip execution order: `resolveBaseImage()` before `planDeltas()`, pass `baseProviderUrl` |
+| 5   | `config/services/generation.services.ts`                | **MODIFY**  | Inject `claudeClient` into `storyboardFramePlanner` registration                         |
+| 6   | `storyboard/__tests__/fetchImageAsDataUrl.test.ts`      | **NEW**     | Unit tests for fetch utility                                                             |
+| 7   | `storyboard/__tests__/StoryboardFramePlanner.test.ts`   | **ADD**     | New `describe('vision path')` test block                                                 |
+| 8   | `storyboard/__tests__/StoryboardPreviewService.test.ts` | **MODIFY**  | Fix delta-count test setup, add `baseProviderUrl` pass-through test                      |

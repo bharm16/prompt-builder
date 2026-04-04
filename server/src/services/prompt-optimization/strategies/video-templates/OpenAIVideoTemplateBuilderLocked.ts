@@ -5,17 +5,30 @@
  * modifying the existing OpenAI template content.
  */
 
-import { logger } from '@infrastructure/Logger';
-import { wrapUserData } from '@utils/provider/PromptBuilder';
-import { OpenAIVideoTemplateBuilder } from './OpenAIVideoTemplateBuilder';
-import { BaseVideoTemplateBuilder, type VideoTemplateContext, type VideoTemplateResult } from './BaseVideoTemplateBuilder';
+import { logger } from "@infrastructure/Logger";
+import { wrapUserData } from "@utils/provider/PromptBuilder";
+import { OpenAIVideoTemplateBuilder } from "./OpenAIVideoTemplateBuilder";
+import {
+  BaseVideoTemplateBuilder,
+  type VideoTemplateContext,
+  type VideoTemplateResult,
+} from "./BaseVideoTemplateBuilder";
 
 export class OpenAIVideoTemplateBuilderLocked extends BaseVideoTemplateBuilder {
-  protected override readonly log = logger.child({ service: 'OpenAIVideoTemplateBuilderLocked' });
+  protected override readonly log = logger.child({
+    service: "OpenAIVideoTemplateBuilderLocked",
+  });
   private readonly baseBuilder = new OpenAIVideoTemplateBuilder();
 
   override buildTemplate(context: VideoTemplateContext): VideoTemplateResult {
-    const { userConcept, interpretedPlan, includeInstructions = true, lockedSpans = [], generationParams, originalUserPrompt } = context;
+    const {
+      userConcept,
+      interpretedPlan,
+      includeInstructions = true,
+      lockedSpans = [],
+      generationParams,
+      originalUserPrompt,
+    } = context;
 
     const baseTemplate = this.baseBuilder.buildTemplate({
       userConcept,
@@ -25,8 +38,14 @@ export class OpenAIVideoTemplateBuilderLocked extends BaseVideoTemplateBuilder {
       ...(generationParams ? { generationParams } : {}),
     });
 
-    const developerMessage = `${baseTemplate.developerMessage ?? ''}\n\n${this.buildLockedSpanInstructions()}`.trim();
-    const userMessage = this.wrapUserConceptWithLockedSpans(userConcept, interpretedPlan, lockedSpans, originalUserPrompt ?? null);
+    const developerMessage =
+      `${baseTemplate.developerMessage ?? ""}\n\n${this.buildLockedSpanInstructions()}`.trim();
+    const userMessage = this.wrapUserConceptWithLockedSpans(
+      userConcept,
+      interpretedPlan,
+      lockedSpans,
+      originalUserPrompt ?? null,
+    );
 
     return {
       ...baseTemplate,
@@ -46,8 +65,8 @@ export class OpenAIVideoTemplateBuilderLocked extends BaseVideoTemplateBuilder {
   private wrapUserConceptWithLockedSpans(
     userConcept: string,
     interpretedPlan?: Record<string, unknown> | null,
-    lockedSpans: VideoTemplateContext['lockedSpans'] = [],
-    originalUserPrompt?: string | null
+    lockedSpans: VideoTemplateContext["lockedSpans"] = [],
+    originalUserPrompt?: string | null,
   ): string {
     const fields: Record<string, string> = {
       user_concept: userConcept,

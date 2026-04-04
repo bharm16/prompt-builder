@@ -1,6 +1,6 @@
-import { logger } from '@infrastructure/Logger';
-import type { UserCreditService } from './UserCreditService';
-import type { RefundFailureStore } from './RefundFailureStore';
+import { logger } from "@infrastructure/Logger";
+import type { UserCreditService } from "./UserCreditService";
+import type { RefundFailureStore } from "./RefundFailureStore";
 
 /** Narrow metrics interface — avoids importing the concrete MetricsService class. */
 interface SweeperMetrics {
@@ -22,11 +22,12 @@ interface CreditRefundSweeperOptions {
 export interface WorkerStatus {
   running: boolean;
   lastRunAt: Date | null;
+  lastSuccessfulRunAt?: Date | null;
   consecutiveFailures: number;
 }
 
 export class CreditRefundSweeper {
-  private readonly log = logger.child({ service: 'CreditRefundSweeper' });
+  private readonly log = logger.child({ service: "CreditRefundSweeper" });
   private readonly failureStore: RefundFailureStore;
   private readonly userCreditService: UserCreditService;
   private readonly baseSweepIntervalMs: number;
@@ -40,6 +41,7 @@ export class CreditRefundSweeper {
   private started = false;
   private running = false;
   private lastRunAt: Date | null = null;
+  private lastSuccessfulRunAt: Date | null = null;
   private consecutiveFailures = 0;
 
   constructor(
@@ -51,7 +53,9 @@ export class CreditRefundSweeper {
     this.failureStore = failureStore;
     this.userCreditService = userCreditService;
     this.baseSweepIntervalMs = options.sweepIntervalMs;
-    this.maxSweepIntervalMs = options.maxSweepIntervalMs ?? Math.max(this.baseSweepIntervalMs * 8, 120_000);
+    this.maxSweepIntervalMs =
+      options.maxSweepIntervalMs ??
+      Math.max(this.baseSweepIntervalMs * 8, 120_000);
     this.backoffFactor = options.backoffFactor ?? 2;
     this.maxPerRun = options.maxPerRun;
     this.maxAttempts = options.maxAttempts;
@@ -81,16 +85,30 @@ export class CreditRefundSweeper {
     if (!this.started) {
       return;
     }
-    const success = await this.runOnce();
-    if (success) {
-      this.currentSweepIntervalMs = this.baseSweepIntervalMs;
-    } else {
+    try {
+      const success = await this.runOnce();
+      if (success) {
+        this.currentSweepIntervalMs = this.baseSweepIntervalMs;
+      } else {
+        this.currentSweepIntervalMs = Math.min(
+          this.maxSweepIntervalMs,
+          Math.round(this.currentSweepIntervalMs * this.backoffFactor),
+        );
+      }
+    } catch (error) {
+      this.consecutiveFailures += 1;
+      this.log.error("Worker loop failed unexpectedly", error as Error);
+      this.metrics?.recordAlert("worker_loop_crash", {
+        worker: "CreditRefundSweeper",
+      });
       this.currentSweepIntervalMs = Math.min(
         this.maxSweepIntervalMs,
-        Math.round(this.currentSweepIntervalMs * this.backoffFactor)
+        Math.round(this.currentSweepIntervalMs * this.backoffFactor),
       );
     }
-    this.scheduleNext(this.currentSweepIntervalMs);
+    if (this.started) {
+      this.scheduleNext(this.currentSweepIntervalMs);
+    }
   }
 
   stop(): void {
@@ -105,6 +123,7 @@ export class CreditRefundSweeper {
     return {
       running: this.started,
       lastRunAt: this.lastRunAt,
+      lastSuccessfulRunAt: this.lastSuccessfulRunAt,
       consecutiveFailures: this.consecutiveFailures,
     };
   }
@@ -119,19 +138,26 @@ export class CreditRefundSweeper {
       let processed = 0;
 
       while (processed < this.maxPerRun) {
-        const next = await this.failureStore.claimNextPending(this.maxAttempts, this.maxPerRun);
+        const next = await this.failureStore.claimNextPending(
+          this.maxAttempts,
+          this.maxPerRun,
+        );
         if (!next) {
           break;
         }
 
-        const ok = await this.userCreditService.refundCredits(next.userId, next.amount, {
-          refundKey: next.refundKey,
-          ...(next.reason ? { reason: next.reason } : {}),
-        });
+        const ok = await this.userCreditService.refundCredits(
+          next.userId,
+          next.amount,
+          {
+            refundKey: next.refundKey,
+            ...(next.reason ? { reason: next.reason } : {}),
+          },
+        );
 
         if (ok) {
           await this.failureStore.markResolved(next.refundKey);
-          this.log.info('Recovered queued credit refund', {
+          this.log.info("Recovered queued credit refund", {
             refundKey: next.refundKey,
             userId: next.userId,
             amount: next.amount,
@@ -139,37 +165,46 @@ export class CreditRefundSweeper {
           });
         } else {
           const nextAttempts = next.attempts + 1;
-          const errorMessage = 'Background refund retry failed';
+          const errorMessage = "Background refund retry failed";
 
           if (nextAttempts >= this.maxAttempts) {
             await this.failureStore.markEscalated(next.refundKey, errorMessage);
-            this.log.error('Credit refund escalated after max attempts', undefined, {
-              refundKey: next.refundKey,
-              userId: next.userId,
-              amount: next.amount,
-              attempts: nextAttempts,
-              severity: 'critical',
-            });
-            this.metrics?.recordAlert('credit_refund_escalated', {
+            this.log.error(
+              "Credit refund escalated after max attempts",
+              undefined,
+              {
+                refundKey: next.refundKey,
+                userId: next.userId,
+                amount: next.amount,
+                attempts: nextAttempts,
+                severity: "critical",
+              },
+            );
+            this.metrics?.recordAlert("credit_refund_escalated", {
               refundKey: next.refundKey,
               userId: next.userId,
               amount: next.amount,
               attempts: nextAttempts,
             });
           } else {
-            await this.failureStore.releaseForRetry(next.refundKey, errorMessage);
+            await this.failureStore.releaseForRetry(
+              next.refundKey,
+              errorMessage,
+            );
           }
         }
 
         processed += 1;
       }
-      this.lastRunAt = new Date();
+      const now = new Date();
+      this.lastRunAt = now;
+      this.lastSuccessfulRunAt = now;
       this.consecutiveFailures = 0;
       return true;
     } catch (error) {
       this.lastRunAt = new Date();
       this.consecutiveFailures += 1;
-      this.log.error('Credit refund sweeper run failed', error as Error);
+      this.log.error("Credit refund sweeper run failed", error as Error);
       return false;
     } finally {
       this.running = false;
@@ -195,15 +230,24 @@ export function createCreditRefundSweeper(
   }
 
   const sweepIntervalMs = config.intervalSeconds * 1000;
-  if (sweepIntervalMs <= 0 || config.maxPerRun <= 0 || config.maxAttempts <= 0) {
+  if (
+    sweepIntervalMs <= 0 ||
+    config.maxPerRun <= 0 ||
+    config.maxAttempts <= 0
+  ) {
     return null;
   }
 
-  return new CreditRefundSweeper(failureStore, userCreditService, {
-    sweepIntervalMs,
-    maxSweepIntervalMs: sweepIntervalMs * 8,
-    backoffFactor: 2,
-    maxPerRun: config.maxPerRun,
-    maxAttempts: config.maxAttempts,
-  }, metricsService);
+  return new CreditRefundSweeper(
+    failureStore,
+    userCreditService,
+    {
+      sweepIntervalMs,
+      maxSweepIntervalMs: sweepIntervalMs * 8,
+      backoffFactor: 2,
+      maxPerRun: config.maxPerRun,
+      maxAttempts: config.maxAttempts,
+    },
+    metricsService,
+  );
 }

@@ -1,13 +1,13 @@
 /**
  * Span Highlighting Module
- * 
+ *
  * Unified module for span labeling and text highlighting functionality.
  * Provides hooks, utilities, and services for:
  * - AI-powered span labeling
  * - DOM-based text highlighting
  * - Span validation and processing
  * - Cache management
- * 
+ *
  * @module span-highlighting
  */
 
@@ -21,7 +21,7 @@ export {
   useHighlightSourceSelection,
   useHighlightFingerprint,
   createHighlightSignature,
-} from './hooks/index.ts';
+} from "./hooks/index.ts";
 
 // ============================================================================
 // UTILITIES (Secondary API)
@@ -32,7 +32,7 @@ export {
   buildTextNodeIndex,
   wrapRangeSegments,
   mapGlobalRangeToDom,
-} from './utils/anchorRanges';
+} from "./utils/anchorRanges";
 
 // Validation - Most commonly used
 export {
@@ -41,49 +41,41 @@ export {
   normalizeSpan,
   snapSpanToTokenBoundaries,
   convertLabeledSpansToHighlights,
-} from './utils/index.ts';
+} from "./utils/index.ts";
 
 // Processing - Most commonly used
 export {
   findNearbySpans,
   buildSimplifiedSpans,
   prepareSpanContext,
-} from './utils/spanProcessing';
+} from "./utils/spanProcessing";
 
 // Cache utilities - Most commonly used
-export {
-  hashString,
-  sanitizeText,
-} from './utils/index.ts';
+export { hashString, sanitizeText } from "./utils/index.ts";
 
 // ============================================================================
 // SERVICES (Advanced API)
 // ============================================================================
 
-export { spanLabelingCache } from './services/index.ts';
-export { SpanLabelingApi } from './api/index.ts';
+export { spanLabelingCache } from "./services/index.ts";
+export { SpanLabelingApi } from "./api/index.ts";
 
 // ============================================================================
 // CONFIGURATION (Exports for customization)
 // ============================================================================
 
-export {
-  DEFAULT_POLICY,
-  DEFAULT_OPTIONS,
-} from './config/index.ts';
+export { DEFAULT_POLICY, DEFAULT_OPTIONS } from "./config/index.ts";
 
-export {
-  CATEGORY_CAPS,
-} from './utils/index.ts';
+export { CATEGORY_CAPS } from "./utils/index.ts";
 
 // ============================================================================
 // NAMESPACE EXPORTS (For organized imports)
 // ============================================================================
 
-import * as spanHooks from './hooks/index.ts';
-import * as spanUtils from './utils/index.ts';
-import * as spanConfig from './config/index.ts';
-import * as spanServices from './services/index.ts';
-import * as spanApi from './api/index.ts';
+import * as spanHooks from "./hooks/index.ts";
+import * as spanUtils from "./utils/index.ts";
+import * as spanConfig from "./config/index.ts";
+import * as spanServices from "./services/index.ts";
+import * as spanApi from "./api/index.ts";
 
 export { spanHooks, spanUtils, spanConfig, spanServices, spanApi };

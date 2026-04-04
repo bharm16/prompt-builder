@@ -1,13 +1,13 @@
-import type { Request, Response } from 'express';
-import { logger } from '@infrastructure/Logger';
-import { extractUserId } from '@utils/requestHelpers';
-import type { SuggestionsServices } from './serviceFactory';
+import type { Request, Response } from "express";
+import { logger } from "@infrastructure/Logger";
+import { extractUserId } from "@utils/requestHelpers";
+import type { SuggestionsServices } from "./serviceFactory";
 import {
   validateCompareRequest,
   validateEvaluateRequest,
   validateSingleEvaluationRequest,
-} from './validators';
-import { loadRubrics } from './rubrics';
+} from "./validators";
+import { loadRubrics } from "./rubrics";
 
 export interface SuggestionsHandlers {
   evaluate: (req: Request, res: Response) => Promise<Response | void>;
@@ -32,17 +32,18 @@ export function createSuggestionsHandlers({
       }
 
       const { suggestions, context, rubric } = validation.data;
-      const resolvedRubric = rubric === 'general' || rubric === 'video' ? rubric : undefined;
-      const operation = 'evaluateSuggestions';
+      const resolvedRubric =
+        rubric === "general" || rubric === "video" ? rubric : undefined;
+      const operation = "evaluateSuggestions";
       const requestId = req.id;
       const userId = extractUserId(req);
 
-      logger.debug('Starting operation.', {
+      logger.debug("Starting operation.", {
         operation,
         requestId,
         userId,
         suggestionCount: suggestions.length,
-        rubric: resolvedRubric || 'auto-detect',
+        rubric: resolvedRubric || "auto-detect",
         isVideoPrompt: context.isVideoPrompt,
       });
 
@@ -54,7 +55,7 @@ export function createSuggestionsHandlers({
 
       const responseTime = Math.round(performance.now() - startTime);
 
-      logger.info('Operation completed.', {
+      logger.info("Operation completed.", {
         operation,
         requestId,
         userId,
@@ -70,7 +71,7 @@ export function createSuggestionsHandlers({
 
     async evaluateSingle(req, res) {
       const startTime = performance.now();
-      const operation = 'evaluateSingleSuggestion';
+      const operation = "evaluateSingleSuggestion";
       const requestId = req.id;
       const userId = extractUserId(req);
 
@@ -83,25 +84,26 @@ export function createSuggestionsHandlers({
       }
 
       const { suggestion, context, rubric } = validation.data;
-      const resolvedRubric = rubric === 'general' || rubric === 'video' ? rubric : undefined;
+      const resolvedRubric =
+        rubric === "general" || rubric === "video" ? rubric : undefined;
 
-      logger.debug('Starting operation.', {
+      logger.debug("Starting operation.", {
         operation,
         requestId,
         userId,
         suggestionLength: suggestion.length,
-        rubric: resolvedRubric || 'auto-detect',
+        rubric: resolvedRubric || "auto-detect",
       });
 
       const evaluation = await llmJudge.evaluateSingleSuggestion(
         suggestion,
         context,
-        resolvedRubric
+        resolvedRubric,
       );
 
       const responseTime = Math.round(performance.now() - startTime);
 
-      logger.info('Operation completed.', {
+      logger.info("Operation completed.", {
         operation,
         requestId,
         userId,
@@ -117,7 +119,7 @@ export function createSuggestionsHandlers({
 
     async compare(req, res) {
       const startTime = performance.now();
-      const operation = 'compareSuggestionSets';
+      const operation = "compareSuggestionSets";
       const requestId = req.id;
 
       const validation = validateCompareRequest(req.body);
@@ -129,9 +131,10 @@ export function createSuggestionsHandlers({
       }
 
       const { setA, setB, context, rubric } = validation.data;
-      const resolvedRubric = rubric === 'general' || rubric === 'video' ? rubric : undefined;
+      const resolvedRubric =
+        rubric === "general" || rubric === "video" ? rubric : undefined;
 
-      logger.debug('Starting operation.', {
+      logger.debug("Starting operation.", {
         operation,
         requestId,
         setACount: setA.length,
@@ -142,12 +145,12 @@ export function createSuggestionsHandlers({
         setA,
         setB,
         context,
-        resolvedRubric
+        resolvedRubric,
       );
 
       const responseTime = Math.round(performance.now() - startTime);
 
-      logger.info('Operation completed.', {
+      logger.info("Operation completed.", {
         operation,
         requestId,
         duration: responseTime,
@@ -163,9 +166,9 @@ export function createSuggestionsHandlers({
 
     getRubrics(req, res) {
       const requestId = req.id;
-      const operation = 'getRubrics';
+      const operation = "getRubrics";
 
-      logger.debug('Rubrics request received', {
+      logger.debug("Rubrics request received", {
         operation,
         requestId,
       });

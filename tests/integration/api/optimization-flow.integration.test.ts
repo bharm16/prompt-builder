@@ -1,62 +1,12 @@
-import express from 'express';
-import request from 'supertest';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { apiAuthMiddleware } from '@middleware/apiAuth';
-import { createOptimizeRoutes } from '@routes/optimize.routes';
-import { VALID_CATEGORIES } from '#shared/taxonomy';
+import express from "express";
+import request from "supertest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { apiAuthMiddleware } from "@middleware/apiAuth";
+import { createOptimizeRoutes } from "@routes/optimize.routes";
 
-const TEST_API_KEY = 'integration-optimize-key';
+const TEST_API_KEY = "integration-optimize-key";
 
-interface ParsedSseEvent {
-  event: string;
-  data: unknown;
-}
-
-function parseSseEvents(ssePayload: string): ParsedSseEvent[] {
-  const chunks = ssePayload
-    .split('\n\n')
-    .map((chunk) => chunk.trim())
-    .filter((chunk) => chunk.length > 0);
-
-  const events: ParsedSseEvent[] = [];
-
-  for (const chunk of chunks) {
-    const lines = chunk.split('\n').map((line) => line.trim());
-    let eventType = 'message';
-    const dataLines: string[] = [];
-
-    for (const line of lines) {
-      if (line.startsWith(':')) {
-        continue;
-      }
-      if (line.startsWith('event:')) {
-        eventType = line.slice('event:'.length).trim();
-        continue;
-      }
-      if (line.startsWith('data:')) {
-        dataLines.push(line.slice('data:'.length).trim());
-      }
-    }
-
-    if (dataLines.length === 0) {
-      continue;
-    }
-
-    const rawData = dataLines.join('\n');
-    let data: unknown = rawData;
-    try {
-      data = JSON.parse(rawData) as unknown;
-    } catch {
-      // Leave as raw string when payload is not JSON.
-    }
-
-    events.push({ event: eventType, data });
-  }
-
-  return events;
-}
-
-describe('Optimization Flow (integration)', () => {
+describe("Optimization Flow (integration)", () => {
   let previousAllowedApiKeys: string | undefined;
 
   beforeEach(() => {
@@ -72,100 +22,63 @@ describe('Optimization Flow (integration)', () => {
     process.env.ALLOWED_API_KEYS = previousAllowedApiKeys;
   });
 
-  it('POST /api/optimize-stream emits draft, spans, refined, and done SSE events', async () => {
+  it("POST /api/optimize returns the final optimized prompt payload", async () => {
     const promptOptimizationService = {
-      optimize: vi.fn(),
+      optimize: vi.fn(async () => ({
+        prompt: "A cinematic runner with atmosphere",
+        inputMode: "t2v" as const,
+        metadata: {
+          provider: "test",
+          genericPrompt: "A generic runner prompt",
+          normalizedModelId: "kling-v1",
+        },
+      })),
       compilePrompt: vi.fn(),
-      optimizeTwoStage: vi.fn(async (requestContext: Record<string, unknown>) => {
-        const onDraftChunk = requestContext.onDraftChunk as ((delta: string) => void) | undefined;
-        const onDraft = requestContext.onDraft as
-          | ((draft: string, spans: { spans: unknown[]; meta: Record<string, unknown> }) => void)
-          | undefined;
-        const onRefinedChunk = requestContext.onRefinedChunk as ((delta: string) => void) | undefined;
-
-        onDraftChunk?.('A cinematic');
-        onDraft?.('A cinematic draft prompt', {
-          spans: [
-            {
-              text: 'runner',
-              role: 'subject',
-              category: 'subject.identity',
-              start: 2,
-              end: 8,
-              confidence: 0.9,
-            },
-          ],
-          meta: { source: 'integration-draft' },
-        });
-        onRefinedChunk?.(' with atmosphere');
-
-        return {
-          refined: 'A cinematic runner with atmosphere',
-          refinedSpans: {
-            spans: [
-              {
-                text: 'golden hour',
-                role: 'lighting',
-                category: 'lighting.timeOfDay',
-                start: 30,
-                end: 41,
-                confidence: 0.88,
-              },
-            ],
-            meta: { source: 'integration-refined' },
-          },
-          metadata: { provider: 'test' },
-          usedFallback: false,
-        };
-      }),
     };
 
     const app = express();
     app.use(express.json());
     app.use(
-      '/api',
+      "/api",
       apiAuthMiddleware,
       createOptimizeRoutes({
         promptOptimizationService: promptOptimizationService as never,
-      })
+      }),
     );
 
     const response = await request(app)
-      .post('/api/optimize-stream')
-      .set('x-api-key', TEST_API_KEY)
-      .set('Accept', 'text/event-stream')
-      .send({ prompt: 'person walking on beach', mode: 'video' });
-
-    expect(response.status).toBe(200);
-    expect(response.headers['content-type']).toContain('text/event-stream');
-
-    const events = parseSseEvents(response.text);
-    const eventNames = events.map((event) => event.event);
-
-    expect(eventNames).toContain('draft');
-    expect(eventNames).toContain('spans');
-    expect(eventNames).toContain('refined');
-    expect(eventNames).toContain('done');
-
-    const refinedEvent = events.find((event) => event.event === 'refined');
-    expect((refinedEvent?.data as { refined?: string } | undefined)?.refined).toBe(
-      'A cinematic runner with atmosphere'
-    );
-
-    const spans = events
-      .filter((event) => event.event === 'spans')
-      .flatMap((event) => {
-        const data = event.data as { spans?: Array<{ category?: string }> } | undefined;
-        return data?.spans ?? [];
+      .post("/api/optimize")
+      .set("x-api-key", TEST_API_KEY)
+      .send({
+        prompt: "person walking on beach",
+        mode: "video",
+        targetModel: "kling-v1",
       });
 
-    expect(spans.length).toBeGreaterThan(0);
-
-    for (const span of spans) {
-      if (!span.category) {
-        continue;
-      }
-      expect(VALID_CATEGORIES.has(span.category)).toBe(true);
-    }
+    expect(response.status).toBe(200);
+    expect(response.body.success).toBe(true);
+    expect(response.body.prompt).toBe("A cinematic runner with atmosphere");
+    expect(response.body.optimizedPrompt).toBe(
+      "A cinematic runner with atmosphere",
+    );
+    expect(response.body.data).toEqual(
+      expect.objectContaining({
+        prompt: "A cinematic runner with atmosphere",
+        optimizedPrompt: "A cinematic runner with atmosphere",
+        inputMode: "t2v",
+        metadata: expect.objectContaining({
+          provider: "test",
+          genericPrompt: "A generic runner prompt",
+          normalizedModelId: "kling-v1",
+        }),
+      }),
+    );
+    expect(promptOptimizationService.optimize).toHaveBeenCalledWith(
+      expect.objectContaining({
+        prompt: "person walking on beach",
+        mode: "video",
+        targetModel: "kling-v1",
+      }),
+    );
   });
 });

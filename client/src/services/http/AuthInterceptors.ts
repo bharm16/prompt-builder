@@ -1,11 +1,13 @@
-import { buildFirebaseAuthHeaders } from './firebaseAuth';
+import { buildFirebaseAuthHeaders } from "./firebaseAuth";
 
 interface BuiltRequest {
   url: string;
   init: RequestInit;
 }
 
-export function createFirebaseTokenInterceptor(): (request: BuiltRequest) => Promise<BuiltRequest> {
+export function createFirebaseTokenInterceptor(): (
+  request: BuiltRequest,
+) => Promise<BuiltRequest> {
   return async (request: BuiltRequest): Promise<BuiltRequest> => {
     const headers = new Headers(request.init.headers);
     const authHeaders = await buildFirebaseAuthHeaders();
@@ -25,7 +27,9 @@ export function createFirebaseTokenInterceptor(): (request: BuiltRequest) => Pro
 
 export function setupApiAuth(apiClient: {
   addRequestInterceptor: (
-    interceptor: (request: BuiltRequest) => BuiltRequest | Promise<BuiltRequest>
+    interceptor: (
+      request: BuiltRequest,
+    ) => BuiltRequest | Promise<BuiltRequest>,
   ) => void;
 }): void {
   apiClient.addRequestInterceptor(createFirebaseTokenInterceptor());

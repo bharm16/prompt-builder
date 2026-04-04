@@ -1,10 +1,10 @@
 /**
  * Coverage Tracking Utilities
- * 
+ *
  * Functions for tracking which text ranges have been highlighted to prevent overlaps.
  */
 
-import { rangeOverlaps, type Range } from './tokenBoundaries';
+import { rangeOverlaps, type Range } from "./tokenBoundaries";
 
 /**
  * Check if a range overlaps with any ranges in the coverage array
@@ -12,7 +12,7 @@ import { rangeOverlaps, type Range } from './tokenBoundaries';
 export function hasOverlap(
   coverage: Range[],
   start: number,
-  end: number
+  end: number,
 ): boolean {
   return rangeOverlaps(coverage, start, end);
 }
@@ -23,8 +23,7 @@ export function hasOverlap(
 export function addToCoverage(
   coverage: Range[],
   start: number,
-  end: number
+  end: number,
 ): void {
   coverage.push({ start, end });
 }
-

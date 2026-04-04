@@ -1,5 +1,5 @@
-import React from 'react';
-import type { ContinuityShot } from '../../types';
+import React from "react";
+import type { ContinuityShot } from "../../types";
 
 interface ShotCardProps {
   shot: ContinuityShot;
@@ -9,12 +9,12 @@ interface ShotCardProps {
   onView?: (assetId: string) => void;
 }
 
-const STATUS_STYLES: Record<ContinuityShot['status'], string> = {
-  draft: 'text-muted',
-  'generating-keyframe': 'text-accent',
-  'generating-video': 'text-accent',
-  completed: 'text-success',
-  failed: 'text-error',
+const STATUS_STYLES: Record<ContinuityShot["status"], string> = {
+  draft: "text-muted",
+  "generating-keyframe": "text-accent",
+  "generating-video": "text-accent",
+  completed: "text-success",
+  failed: "text-error",
 };
 
 export function ShotCard({
@@ -27,7 +27,7 @@ export function ShotCard({
   return (
     <div
       className={`rounded-lg border p-3 transition-colors ${
-        isSelected ? 'border-accent bg-accent/10' : 'border-border bg-surface-2'
+        isSelected ? "border-accent bg-accent/10" : "border-border bg-surface-2"
       }`}
     >
       <button
@@ -36,26 +36,34 @@ export function ShotCard({
         onClick={() => onSelect?.(shot.id)}
       >
         <div className="flex items-center justify-between">
-          <div className="text-sm font-semibold">Shot {shot.sequenceIndex + 1}</div>
+          <div className="text-sm font-semibold">
+            Shot {shot.sequenceIndex + 1}
+          </div>
           <div className={`text-xs font-medium ${STATUS_STYLES[shot.status]}`}>
-            {shot.status.replace('-', ' ')}
+            {shot.status.replace("-", " ")}
           </div>
         </div>
-        <div className="mt-1 text-xs text-muted ps-line-clamp-2">{shot.userPrompt}</div>
+        <div className="mt-1 text-xs text-muted ps-line-clamp-2">
+          {shot.userPrompt}
+        </div>
         {shot.continuityMechanismUsed && (
           <div className="mt-2 text-[11px] text-muted">
             Continuity: {shot.continuityMechanismUsed}
           </div>
         )}
         {shot.styleTransferApplied && (
-          <div className="mt-1 text-[11px] text-muted">Style transfer applied</div>
+          <div className="mt-1 text-[11px] text-muted">
+            Style transfer applied
+          </div>
         )}
         {shot.styleDegraded && (
           <div className="mt-1 text-[11px] text-warning">
-            Style degraded{shot.styleDegradedReason ? ` (${shot.styleDegradedReason})` : ''}
+            Style degraded
+            {shot.styleDegradedReason ? ` (${shot.styleDegradedReason})` : ""}
           </div>
         )}
-        {(shot.styleScore !== undefined || shot.identityScore !== undefined) && (
+        {(shot.styleScore !== undefined ||
+          shot.identityScore !== undefined) && (
           <div className="mt-1 text-[11px] text-muted">
             {shot.styleScore !== undefined && (
               <span className="mr-2">Style {shot.styleScore.toFixed(2)}</span>
@@ -72,7 +80,9 @@ export function ShotCard({
 
       <div className="mt-3 flex items-center justify-between">
         <div className="text-xs text-muted">
-          {shot.generatedAt ? `Generated ${new Date(shot.generatedAt).toLocaleString()}` : ''}
+          {shot.generatedAt
+            ? `Generated ${new Date(shot.generatedAt).toLocaleString()}`
+            : ""}
         </div>
         <div className="flex items-center gap-2">
           {shot.videoAssetId && onView && (

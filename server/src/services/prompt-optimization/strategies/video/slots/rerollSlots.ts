@@ -1,12 +1,12 @@
-import type { AIService } from '@services/prompt-optimization/types';
+import type { AIService } from "@services/prompt-optimization/types";
 import {
   parseVideoPromptStructuredResponse,
   type VideoPromptStructuredResponse,
   type VideoPromptSlots,
-} from '@services/prompt-optimization/strategies/videoPromptTypes';
-import { lintVideoPromptSlots } from '../../videoPromptLinter';
-import { normalizeSlots } from './normalizeSlots';
-import { scoreSlots } from './scoreSlots';
+} from "@services/prompt-optimization/strategies/videoPromptTypes";
+import { lintVideoPromptSlots } from "../../videoPromptLinter";
+import { normalizeSlots } from "./normalizeSlots";
+import { scoreSlots } from "./scoreSlots";
 
 export async function rerollSlots(options: {
   ai: AIService;
@@ -22,21 +22,29 @@ export async function rerollSlots(options: {
   const attempts = Math.max(0, Math.min(options.attempts ?? 2, 4));
   if (attempts === 0) return null;
 
-  type Candidate = { parsed: VideoPromptStructuredResponse; slots: VideoPromptSlots; score: number };
+  type Candidate = {
+    parsed: VideoPromptStructuredResponse;
+    slots: VideoPromptSlots;
+    score: number;
+  };
   const candidates: Candidate[] = [];
   const mergeLint = (...results: Array<{ ok: boolean; errors: string[] }>) => {
-    const errors = Array.from(new Set(results.flatMap((result) => result.errors)));
+    const errors = Array.from(
+      new Set(results.flatMap((result) => result.errors)),
+    );
     return { ok: errors.length === 0, errors };
   };
 
   for (let i = 0; i < attempts; i++) {
     const seed = (options.baseSeed + i + 1) % 2147483647;
     try {
-      const response = await options.ai.execute('optimize_standard', {
+      const response = await options.ai.execute("optimize_standard", {
         systemPrompt: options.templateSystemPrompt,
         messages: options.messages,
         schema: options.schema,
-        ...(options.developerMessage ? { developerMessage: options.developerMessage } : {}),
+        ...(options.developerMessage
+          ? { developerMessage: options.developerMessage }
+          : {}),
         maxTokens: options.config.maxTokens,
         temperature: 0.2,
         timeout: options.config.timeout,
@@ -48,13 +56,17 @@ export async function rerollSlots(options: {
       const slots = normalizeSlots(parsed);
       const lint = mergeLint(
         lintVideoPromptSlots(parsed),
-        lintVideoPromptSlots(slots)
+        lintVideoPromptSlots(slots),
       );
       if (!lint.ok) {
         continue;
       }
 
-      candidates.push({ parsed: { ...parsed, ...slots }, slots, score: scoreSlots(slots) });
+      candidates.push({
+        parsed: { ...parsed, ...slots },
+        slots,
+        score: scoreSlots(slots),
+      });
     } catch {
       // Ignore and continue trying other seeds.
     }

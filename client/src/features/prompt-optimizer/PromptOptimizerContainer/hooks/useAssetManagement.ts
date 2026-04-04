@@ -1,9 +1,9 @@
-import { useCallback, useState } from 'react';
-import type { Asset, AssetType } from '@shared/types/asset';
-import { assetApi } from '@/features/assets/api/assetApi';
+import { useCallback, useState } from "react";
+import type { Asset, AssetType } from "@shared/types/asset";
+import { assetApi } from "@/features/assets/api/assetApi";
 
 interface AssetEditorState {
-  mode: 'create' | 'edit';
+  mode: "create" | "edit";
   asset?: Asset | null;
   preselectedType?: AssetType | null;
 }
@@ -35,13 +35,20 @@ interface UseAssetManagementResult {
       textDefinition?: string;
       negativePrompt?: string;
     }) => Promise<Asset>;
-    onUpdate: (assetId: string, data: {
-      trigger?: string;
-      name?: string;
-      textDefinition?: string;
-      negativePrompt?: string;
-    }) => Promise<Asset>;
-    onAddImage: (assetId: string, file: File, metadata: Record<string, string | undefined>) => Promise<void>;
+    onUpdate: (
+      assetId: string,
+      data: {
+        trigger?: string;
+        name?: string;
+        textDefinition?: string;
+        negativePrompt?: string;
+      },
+    ) => Promise<Asset>;
+    onAddImage: (
+      assetId: string,
+      file: File,
+      metadata: Record<string, string | undefined>,
+    ) => Promise<void>;
     onDeleteImage: (assetId: string, imageId: string) => Promise<void>;
     onSetPrimaryImage: (assetId: string, imageId: string) => Promise<void>;
   };
@@ -51,28 +58,31 @@ export function useAssetManagement({
   assets,
   refreshAssets,
 }: UseAssetManagementOptions): UseAssetManagementResult {
-  const [assetEditorState, setAssetEditorState] = useState<AssetEditorState | null>(null);
-  const [quickCreateState, setQuickCreateState] = useState<QuickCreateState>({ isOpen: false });
+  const [assetEditorState, setAssetEditorState] =
+    useState<AssetEditorState | null>(null);
+  const [quickCreateState, setQuickCreateState] = useState<QuickCreateState>({
+    isOpen: false,
+  });
 
   const handleEditAsset = useCallback(
     (assetId: string): void => {
       const asset = assets.find((item) => item.id === assetId) ?? null;
       if (!asset) return;
-      setAssetEditorState({ mode: 'edit', asset });
+      setAssetEditorState({ mode: "edit", asset });
     },
-    [assets]
+    [assets],
   );
 
   const handleCreateAsset = useCallback((type: AssetType): void => {
-    if (type === 'character') {
+    if (type === "character") {
       setQuickCreateState({ isOpen: true });
       return;
     }
-    setAssetEditorState({ mode: 'create', preselectedType: type });
+    setAssetEditorState({ mode: "create", preselectedType: type });
   }, []);
 
   const handleCreateFromTrigger = useCallback((trigger: string): void => {
-    const trimmed = trigger.replace(/^@/, '');
+    const trimmed = trigger.replace(/^@/, "");
     setQuickCreateState({ isOpen: true, prefillTrigger: trimmed });
   }, []);
 
@@ -89,7 +99,7 @@ export function useAssetManagement({
       await refreshAssets();
       setQuickCreateState({ isOpen: false });
     },
-    [refreshAssets]
+    [refreshAssets],
   );
 
   const handleAssetCreate = useCallback(
@@ -104,31 +114,36 @@ export function useAssetManagement({
       await refreshAssets();
       return asset;
     },
-    [refreshAssets]
+    [refreshAssets],
   );
 
   const handleAssetUpdate = useCallback(
     async (
       assetId: string,
-      data: { trigger?: string; name?: string; textDefinition?: string; negativePrompt?: string }
+      data: {
+        trigger?: string;
+        name?: string;
+        textDefinition?: string;
+        negativePrompt?: string;
+      },
     ): Promise<Asset> => {
       const asset = await assetApi.update(assetId, data);
       await refreshAssets();
       return asset;
     },
-    [refreshAssets]
+    [refreshAssets],
   );
 
   const handleAddAssetImage = useCallback(
     async (
       assetId: string,
       file: File,
-      metadata: Record<string, string | undefined>
+      metadata: Record<string, string | undefined>,
     ): Promise<void> => {
       await assetApi.addImage(assetId, file, metadata);
       await refreshAssets();
     },
-    [refreshAssets]
+    [refreshAssets],
   );
 
   const handleDeleteAssetImage = useCallback(
@@ -136,7 +151,7 @@ export function useAssetManagement({
       await assetApi.deleteImage(assetId, imageId);
       await refreshAssets();
     },
-    [refreshAssets]
+    [refreshAssets],
   );
 
   const handleSetPrimaryAssetImage = useCallback(
@@ -144,7 +159,7 @@ export function useAssetManagement({
       await assetApi.setPrimaryImage(assetId, imageId);
       await refreshAssets();
     },
-    [refreshAssets]
+    [refreshAssets],
   );
 
   return {

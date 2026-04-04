@@ -1,7 +1,7 @@
-import { logger } from '@infrastructure/Logger';
-import { CreativeIntentAnalyzer } from './brainstorm-context/services/CreativeIntentAnalyzer.js';
-import { ElementSuggester } from './brainstorm-context/services/ElementSuggester.js';
-import { BrainstormFormatter } from './brainstorm-context/services/BrainstormFormatter.js';
+import { logger } from "@infrastructure/Logger";
+import { CreativeIntentAnalyzer } from "./brainstorm-context/services/CreativeIntentAnalyzer.js";
+import { ElementSuggester } from "./brainstorm-context/services/ElementSuggester.js";
+import { BrainstormFormatter } from "./brainstorm-context/services/BrainstormFormatter.js";
 import type {
   BrainstormContext,
   BrainstormSignature,
@@ -9,7 +9,7 @@ import type {
   StyleConflict,
   ComplementaryElement,
   MissingElement,
-} from './types.js';
+} from "./types.js";
 
 /**
  * BrainstormContextBuilder
@@ -25,7 +25,7 @@ export class BrainstormContextBuilder {
   private intentAnalyzer: CreativeIntentAnalyzer;
   private elementSuggester: ElementSuggester;
   private formatter: BrainstormFormatter;
-  private readonly log = logger.child({ service: 'BrainstormContextBuilder' });
+  private readonly log = logger.child({ service: "BrainstormContextBuilder" });
 
   constructor() {
     // Instantiate specialized services
@@ -40,9 +40,9 @@ export class BrainstormContextBuilder {
    * @returns Normalized signature or null
    */
   buildBrainstormSignature(
-    brainstormContext: BrainstormContext | null | undefined
+    brainstormContext: BrainstormContext | null | undefined,
   ): BrainstormSignature | null {
-    if (!brainstormContext || typeof brainstormContext !== 'object') {
+    if (!brainstormContext || typeof brainstormContext !== "object") {
       return null;
     }
 
@@ -50,7 +50,7 @@ export class BrainstormContextBuilder {
 
     const normalizedElements = Object.entries(elements).reduce(
       (acc, [key, value]) => {
-        if (typeof value === 'string') {
+        if (typeof value === "string") {
           const trimmed = value.trim();
           if (trimmed) {
             acc[key] = trimmed;
@@ -58,51 +58,54 @@ export class BrainstormContextBuilder {
         }
         return acc;
       },
-      {} as Record<string, string>
+      {} as Record<string, string>,
     );
 
-    const normalizedMetadata: BrainstormSignature['metadata'] = {};
-    if (metadata && typeof metadata === 'object') {
-      if (typeof metadata.format === 'string' && metadata.format.trim()) {
+    const normalizedMetadata: BrainstormSignature["metadata"] = {};
+    if (metadata && typeof metadata === "object") {
+      if (typeof metadata.format === "string" && metadata.format.trim()) {
         normalizedMetadata.format = metadata.format.trim();
       }
 
       if (
         metadata.technicalParams &&
-        typeof metadata.technicalParams === 'object'
+        typeof metadata.technicalParams === "object"
       ) {
         const technicalEntries = Object.entries(
-          metadata.technicalParams
-        ).reduce((acc, [key, value]) => {
-          if (value === undefined || value === null) {
-            return acc;
-          }
-
-          if (typeof value === 'string') {
-            const trimmedValue = value.trim();
-            if (trimmedValue) {
-              acc[key] = trimmedValue;
+          metadata.technicalParams,
+        ).reduce(
+          (acc, [key, value]) => {
+            if (value === undefined || value === null) {
+              return acc;
             }
-            return acc;
-          }
 
-          if (Array.isArray(value)) {
-            if (value.length > 0) {
-              acc[key] = value;
+            if (typeof value === "string") {
+              const trimmedValue = value.trim();
+              if (trimmedValue) {
+                acc[key] = trimmedValue;
+              }
+              return acc;
             }
-            return acc;
-          }
 
-          if (typeof value === 'object') {
-            if (Object.keys(value).length > 0) {
-              acc[key] = value;
+            if (Array.isArray(value)) {
+              if (value.length > 0) {
+                acc[key] = value;
+              }
+              return acc;
             }
-            return acc;
-          }
 
-          acc[key] = value;
-          return acc;
-        }, {} as Record<string, unknown>);
+            if (typeof value === "object") {
+              if (Object.keys(value).length > 0) {
+                acc[key] = value;
+              }
+              return acc;
+            }
+
+            acc[key] = value;
+            return acc;
+          },
+          {} as Record<string, unknown>,
+        );
 
         if (Object.keys(technicalEntries).length) {
           normalizedMetadata.technicalParams = technicalEntries;
@@ -110,7 +113,7 @@ export class BrainstormContextBuilder {
       }
 
       if (
-        typeof metadata.validationScore === 'number' &&
+        typeof metadata.validationScore === "number" &&
         Number.isFinite(metadata.validationScore)
       ) {
         normalizedMetadata.validationScore = metadata.validationScore;
@@ -136,7 +139,7 @@ export class BrainstormContextBuilder {
    * @returns Creative intent analysis
    */
   inferCreativeIntent(
-    elements: Record<string, string> | null | undefined
+    elements: Record<string, string> | null | undefined,
   ): CreativeIntent | null {
     return this.intentAnalyzer.inferCreativeIntent(elements);
   }
@@ -151,7 +154,7 @@ export class BrainstormContextBuilder {
    */
   suggestMissingElements(
     intent: CreativeIntent | null,
-    elements: Record<string, string> | null | undefined
+    elements: Record<string, string> | null | undefined,
   ): MissingElement[] {
     return this.elementSuggester.suggestMissingElements(intent, elements);
   }
@@ -164,7 +167,7 @@ export class BrainstormContextBuilder {
    * @returns Detected conflicts
    */
   detectStyleConflicts(
-    elements: Record<string, string> | null | undefined
+    elements: Record<string, string> | null | undefined,
   ): StyleConflict[] {
     return this.intentAnalyzer.detectStyleConflicts(elements);
   }
@@ -179,7 +182,7 @@ export class BrainstormContextBuilder {
    */
   getComplementaryElements(
     element: string,
-    intent: CreativeIntent | null
+    intent: CreativeIntent | null,
   ): ComplementaryElement[] {
     return this.elementSuggester.getComplementaryElements(element, intent);
   }
@@ -201,46 +204,52 @@ export class BrainstormContextBuilder {
    */
   buildBrainstormContextSection(
     brainstormContext: BrainstormContext | null | undefined,
-    options: { includeCategoryGuidance?: boolean; isVideoPrompt?: boolean } = {}
+    options: {
+      includeCategoryGuidance?: boolean;
+      isVideoPrompt?: boolean;
+    } = {},
   ): string {
     const startTime = performance.now();
-    const operation = 'buildBrainstormContextSection';
-    
-    if (!brainstormContext || typeof brainstormContext !== 'object') {
-      this.log.debug('Empty brainstorm context, returning empty string', {
+    const operation = "buildBrainstormContextSection";
+
+    if (!brainstormContext || typeof brainstormContext !== "object") {
+      this.log.debug("Empty brainstorm context, returning empty string", {
         operation,
       });
-      return '';
+      return "";
     }
 
     const { includeCategoryGuidance = false, isVideoPrompt = false } = options;
-    
-    this.log.debug('Building brainstorm context section', {
+
+    this.log.debug("Building brainstorm context section", {
       operation,
       includeCategoryGuidance,
       isVideoPrompt,
-      hasElements: !!(brainstormContext.elements && Object.keys(brainstormContext.elements).length > 0),
+      hasElements: !!(
+        brainstormContext.elements &&
+        Object.keys(brainstormContext.elements).length > 0
+      ),
     });
     const elements = brainstormContext.elements || {};
     const metadata = brainstormContext.metadata || {};
 
     const definedElements = Object.entries(elements).filter(([, value]) => {
-      return typeof value === 'string' && value.trim().length > 0;
+      return typeof value === "string" && value.trim().length > 0;
     });
 
     const technicalParams =
-      metadata && typeof metadata.technicalParams === 'object'
+      metadata && typeof metadata.technicalParams === "object"
         ? Object.entries(metadata.technicalParams).filter(([, value]) => {
             if (value === null || value === undefined) {
               return false;
             }
-            if (typeof value === 'string') {
+            if (typeof value === "string") {
               return value.trim().length > 0;
             }
             if (Array.isArray(value)) {
               return value.length > 0;
             }
-            if (typeof value === 'object') {
+            if (typeof value === "object") {
               return Object.keys(value).length > 0;
             }
             return true;
@@ -248,12 +257,12 @@ export class BrainstormContextBuilder {
         : [];
 
     const formatPreference =
-      typeof metadata.format === 'string' && metadata.format.trim().length > 0
+      typeof metadata.format === "string" && metadata.format.trim().length > 0
         ? metadata.format.trim()
         : null;
 
     const validationScore =
-      typeof metadata.validationScore === 'number' &&
+      typeof metadata.validationScore === "number" &&
       Number.isFinite(metadata.validationScore)
         ? metadata.validationScore
         : null;
@@ -264,7 +273,7 @@ export class BrainstormContextBuilder {
       !formatPreference &&
       validationScore === null
     ) {
-      return '';
+      return "";
     }
 
     // Delegate analysis to specialized services
@@ -275,9 +284,9 @@ export class BrainstormContextBuilder {
       : [];
 
     // Build output section
-    let section = '**Creative Brainstorm Structured Context:**\n';
+    let section = "**Creative Brainstorm Structured Context:**\n";
     section +=
-      'These are user-confirmed anchors that suggestions must respect.\n';
+      "These are user-confirmed anchors that suggestions must respect.\n";
 
     if (definedElements.length) {
       definedElements.forEach(([key, value]) => {
@@ -287,7 +296,7 @@ export class BrainstormContextBuilder {
 
     // Include creative intent analysis
     if (intent && intent.primaryIntent) {
-      section += '\n**Creative Intent Analysis:**\n';
+      section += "\n**Creative Intent Analysis:**\n";
       section += `The elements suggest a "${intent.primaryIntent}" direction`;
 
       if (intent.narrativeDirection) {
@@ -298,14 +307,14 @@ export class BrainstormContextBuilder {
         section += `, conveying a ${intent.emotionalTone} emotional tone`;
       }
 
-      section += '.\n';
+      section += ".\n";
 
       if (intent.supportingThemes.length > 0) {
-        section += `Supporting themes: ${intent.supportingThemes.join(', ')}.\n`;
+        section += `Supporting themes: ${intent.supportingThemes.join(", ")}.\n`;
       }
 
       // Show element relationships as narrative
-      section += '\n**Element Relationships:**\n';
+      section += "\n**Element Relationships:**\n";
       definedElements.forEach(([key, value]) => {
         const complements = this.getComplementaryElements(value, intent);
         if (complements.length > 0) {
@@ -319,7 +328,7 @@ export class BrainstormContextBuilder {
 
     // Highlight gaps and opportunities
     if (missingElements.length > 0) {
-      section += '\n**Opportunities to Strengthen:**\n';
+      section += "\n**Opportunities to Strengthen:**\n";
       missingElements.forEach(({ category, reason }) => {
         section += `- Consider adding ${category}: ${reason}\n`;
       });
@@ -327,15 +336,19 @@ export class BrainstormContextBuilder {
 
     // Warn about conflicts
     if (conflicts.length > 0) {
-      section += '\n**⚠️  Style Considerations:**\n';
+      section += "\n**⚠️  Style Considerations:**\n";
       conflicts.forEach((c) => {
         section += `- ${c.description}\n`;
         section += `  Suggestion: ${c.suggestion}\n`;
       });
     }
 
-    if (formatPreference || technicalParams.length || validationScore !== null) {
-      section += '\n**Metadata & Technical Guidance:**\n';
+    if (
+      formatPreference ||
+      technicalParams.length ||
+      validationScore !== null
+    ) {
+      section += "\n**Metadata & Technical Guidance:**\n";
 
       if (formatPreference) {
         section += `- Format Preference: ${formatPreference}\n`;
@@ -355,17 +368,17 @@ export class BrainstormContextBuilder {
         "\nUse these anchors to inspire category labels and keep suggestions aligned with the user's core concept.\n";
     } else {
       section +=
-        '\nEnsure every rewrite strengthens these anchors and creative intent rather than contradicting them.\n';
+        "\nEnsure every rewrite strengthens these anchors and creative intent rather than contradicting them.\n";
     }
 
     if (isVideoPrompt) {
       section +=
-        'Translate these anchors into cinematic details that serve the narrative direction.\n';
+        "Translate these anchors into cinematic details that serve the narrative direction.\n";
     }
 
     const duration = Math.round(performance.now() - startTime);
-    
-    this.log.info('Brainstorm context section built', {
+
+    this.log.info("Brainstorm context section built", {
       operation,
       duration,
       sectionLength: section.length,

@@ -8,10 +8,15 @@
  * @task 37.3 - Add network disconnect detection and recovery prompt
  */
 
-import React, { useEffect, useState } from 'react';
-import { WifiOff, Wifi, RefreshCw, X } from '@promptstudio/system/components/ui';
-import { cn } from '@/utils/cn';
-import type { NetworkStatus } from '@/features/convergence/types';
+import React, { useEffect, useState } from "react";
+import {
+  WifiOff,
+  Wifi,
+  RefreshCw,
+  X,
+} from "@promptstudio/system/components/ui";
+import { cn } from "@/utils/cn";
+import type { NetworkStatus } from "@/features/convergence/types";
 
 // ============================================================================
 // Types
@@ -82,19 +87,22 @@ export const NetworkStatusBanner: React.FC<NetworkStatusBannerProps> = ({
     return (
       <div
         className={cn(
-          'fixed top-0 left-0 right-0 z-50',
-          'bg-warning/95 backdrop-blur-sm',
-          'border-b border-warning/20',
-          'px-4 py-3',
-          'animate-in slide-in-from-top duration-300',
-          className
+          "fixed top-0 left-0 right-0 z-50",
+          "bg-warning/95 backdrop-blur-sm",
+          "border-b border-warning/20",
+          "px-4 py-3",
+          "animate-in slide-in-from-top duration-300",
+          className,
         )}
         role="alert"
         aria-live="assertive"
       >
         <div className="max-w-4xl mx-auto flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <WifiOff className="w-5 h-5 text-warning-foreground" aria-hidden="true" />
+            <WifiOff
+              className="w-5 h-5 text-warning-foreground"
+              aria-hidden="true"
+            />
             <div>
               <p className="text-sm font-medium text-warning-foreground">
                 You're offline
@@ -114,19 +122,22 @@ export const NetworkStatusBanner: React.FC<NetworkStatusBannerProps> = ({
     return (
       <div
         className={cn(
-          'fixed top-0 left-0 right-0 z-50',
-          'bg-success/95 backdrop-blur-sm',
-          'border-b border-success/20',
-          'px-4 py-3',
-          'animate-in slide-in-from-top duration-300',
-          className
+          "fixed top-0 left-0 right-0 z-50",
+          "bg-success/95 backdrop-blur-sm",
+          "border-b border-success/20",
+          "px-4 py-3",
+          "animate-in slide-in-from-top duration-300",
+          className,
         )}
         role="alert"
         aria-live="polite"
       >
         <div className="max-w-4xl mx-auto flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <Wifi className="w-5 h-5 text-success-foreground" aria-hidden="true" />
+            <Wifi
+              className="w-5 h-5 text-success-foreground"
+              aria-hidden="true"
+            />
             <div>
               <p className="text-sm font-medium text-success-foreground">
                 You're back online
@@ -144,23 +155,20 @@ export const NetworkStatusBanner: React.FC<NetworkStatusBannerProps> = ({
                 onClick={onRetry}
                 disabled={isRetrying}
                 className={cn(
-                  'inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md',
-                  'bg-success-foreground/20 text-success-foreground',
-                  'hover:bg-success-foreground/30',
-                  'focus:outline-none focus:ring-2 focus:ring-success-foreground/50',
-                  'disabled:opacity-50 disabled:cursor-not-allowed',
-                  'transition-colors'
+                  "inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md",
+                  "bg-success-foreground/20 text-success-foreground",
+                  "hover:bg-success-foreground/30",
+                  "focus:outline-none focus:ring-2 focus:ring-success-foreground/50",
+                  "disabled:opacity-50 disabled:cursor-not-allowed",
+                  "transition-colors",
                 )}
-                aria-label={isRetrying ? 'Retrying...' : 'Retry last operation'}
+                aria-label={isRetrying ? "Retrying..." : "Retry last operation"}
               >
                 <RefreshCw
-                  className={cn(
-                    'w-3.5 h-3.5',
-                    isRetrying && 'animate-spin'
-                  )}
+                  className={cn("w-3.5 h-3.5", isRetrying && "animate-spin")}
                   aria-hidden="true"
                 />
-                {isRetrying ? 'Retrying...' : 'Retry'}
+                {isRetrying ? "Retrying..." : "Retry"}
               </button>
             )}
 
@@ -168,9 +176,9 @@ export const NetworkStatusBanner: React.FC<NetworkStatusBannerProps> = ({
               type="button"
               onClick={handleDismiss}
               className={cn(
-                'text-success-foreground/70 hover:text-success-foreground',
-                'focus:outline-none focus:ring-2 focus:ring-success-foreground/50 rounded',
-                'transition-colors'
+                "text-success-foreground/70 hover:text-success-foreground",
+                "focus:outline-none focus:ring-2 focus:ring-success-foreground/50 rounded",
+                "transition-colors",
               )}
               aria-label="Dismiss"
             >
@@ -185,6 +193,6 @@ export const NetworkStatusBanner: React.FC<NetworkStatusBannerProps> = ({
   return null;
 };
 
-NetworkStatusBanner.displayName = 'NetworkStatusBanner';
+NetworkStatusBanner.displayName = "NetworkStatusBanner";
 
 export default NetworkStatusBanner;

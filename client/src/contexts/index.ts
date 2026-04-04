@@ -10,5 +10,8 @@ export {
   useAppShell,
   type AppShellContextValue,
   type AppShellProviderProps,
-} from './AppShellContext';
-export { CreditBalanceProvider, useCreditBalance } from './CreditBalanceContext';
+} from "./AppShellContext";
+export {
+  CreditBalanceProvider,
+  useCreditBalance,
+} from "./CreditBalanceContext";

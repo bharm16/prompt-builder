@@ -4,8 +4,11 @@
  * Handles common LLM response formats like markdown code fences
  * and provides safe parsing with error handling.
  */
-import { attemptJsonRepair, assessRepairCompleteness } from '@clients/adapters/jsonRepair';
-import { cleanJSONResponse } from '@utils/JsonExtractor';
+import {
+  attemptJsonRepair,
+  assessRepairCompleteness,
+} from "@clients/adapters/jsonRepair";
+import { cleanJSONResponse } from "@utils/JsonExtractor";
 
 export interface UserPayloadParams {
   task: string;
@@ -16,7 +19,11 @@ export interface UserPayloadParams {
 }
 
 type ParseResult =
-  | { ok: true; value: unknown; repairMeta?: { isLikelyTruncated: boolean; reason?: string } }
+  | {
+      ok: true;
+      value: unknown;
+      repairMeta?: { isLikelyTruncated: boolean; reason?: string };
+    }
   | { ok: false; error: string };
 
 /**
@@ -29,16 +36,16 @@ type ParseResult =
  * @returns Cleaned string without markdown fences
  */
 export function cleanJsonEnvelope(value: unknown): string {
-  if (typeof value !== 'string') return '';
+  if (typeof value !== "string") return "";
 
   const trimmed = value.trim();
   if (!trimmed) return trimmed;
 
   // Check for markdown code fence
-  if (trimmed.startsWith('```')) {
+  if (trimmed.startsWith("```")) {
     return trimmed
-      .replace(/^```(?:json)?\s*/i, '')  // Remove opening fence
-      .replace(/```$/i, '')               // Remove closing fence
+      .replace(/^```(?:json)?\s*/i, "") // Remove opening fence
+      .replace(/```$/i, "") // Remove closing fence
       .trim();
   }
 
@@ -91,21 +98,21 @@ function tryParseJson(raw: string): ParseResult {
   }
 }
 
-function detectJsonContainer(text: string): 'array' | 'object' {
-  const arrayIndex = text.indexOf('[');
-  const objectIndex = text.indexOf('{');
+function detectJsonContainer(text: string): "array" | "object" {
+  const arrayIndex = text.indexOf("[");
+  const objectIndex = text.indexOf("{");
 
   if (arrayIndex === -1 && objectIndex === -1) {
-    return 'object';
+    return "object";
   }
   if (arrayIndex === -1) {
-    return 'object';
+    return "object";
   }
   if (objectIndex === -1) {
-    return 'array';
+    return "array";
   }
 
-  return arrayIndex < objectIndex ? 'array' : 'object';
+  return arrayIndex < objectIndex ? "array" : "object";
 }
 
 function extractJsonCandidate(raw: string): string {
@@ -114,7 +121,7 @@ function extractJsonCandidate(raw: string): string {
 
   const container = detectJsonContainer(trimmed);
   try {
-    return cleanJSONResponse(trimmed, container === 'array');
+    return cleanJSONResponse(trimmed, container === "array");
   } catch {
     return trimmed;
   }
@@ -123,7 +130,7 @@ function extractJsonCandidate(raw: string): string {
 function escapeNewlinesInStrings(value: string): string {
   if (!value) return value;
 
-  let result = '';
+  let result = "";
   let inString = false;
   let escaped = false;
 
@@ -137,7 +144,7 @@ function escapeNewlinesInStrings(value: string): string {
         continue;
       }
 
-      if (char === '\\') {
+      if (char === "\\") {
         escaped = true;
         result += char;
         continue;
@@ -149,18 +156,18 @@ function escapeNewlinesInStrings(value: string): string {
         continue;
       }
 
-      if (char === '\n') {
-        result += '\\n';
+      if (char === "\n") {
+        result += "\\n";
         continue;
       }
 
-      if (char === '\r') {
-        result += '\\r';
+      if (char === "\r") {
+        result += "\\r";
         continue;
       }
 
-      if (char === '\t') {
-        result += '\\t';
+      if (char === "\t") {
+        result += "\\t";
         continue;
       }
 
@@ -187,7 +194,7 @@ function escapeNewlinesInStrings(value: string): string {
  *
  * Constructs a JSON payload with task, policy, text, and optional validation feedback.
  * Used for both initial labeling and repair attempts.
- * 
+ *
  * SECURITY (PDF Section 1.6): Wraps user text in XML tags to prevent prompt injection
  *
  * @param params - Payload inputs for the LLM request

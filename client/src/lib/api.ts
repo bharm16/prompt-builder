@@ -1,15 +1,18 @@
-import { RoleClassifyResponseSchema } from '../schemas/roleClassify';
-import type { ClientSpan, LabeledSpan } from '../types/roleClassify';
-import { buildFirebaseAuthHeaders } from '../services/http/firebaseAuth';
+import { RoleClassifyResponseSchema } from "../schemas/roleClassify";
+import type { ClientSpan, LabeledSpan } from "../types/roleClassify";
+import { buildFirebaseAuthHeaders } from "../services/http/firebaseAuth";
 
 export { ClientSpan, LabeledSpan };
 
-export async function fetchRoles(spans: ClientSpan[], templateVersion: string = 'v1'): Promise<LabeledSpan[]> {
+export async function fetchRoles(
+  spans: ClientSpan[],
+  templateVersion: string = "v1",
+): Promise<LabeledSpan[]> {
   const authHeaders = await buildFirebaseAuthHeaders();
-  const res = await fetch('/api/role-classify', {
-    method: 'POST',
+  const res = await fetch("/api/role-classify", {
+    method: "POST",
     headers: {
-      'content-type': 'application/json',
+      "content-type": "application/json",
       ...authHeaders,
     },
     body: JSON.stringify({ spans, templateVersion }),

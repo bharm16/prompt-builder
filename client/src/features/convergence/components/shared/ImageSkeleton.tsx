@@ -7,18 +7,18 @@
  * @requirement 12.1 - Responsive grid display
  */
 
-import React from 'react';
-import { cn } from '@/utils/cn';
+import React from "react";
+import { cn } from "@/utils/cn";
 
 export interface ImageSkeletonProps {
   /** Additional CSS classes */
   className?: string;
   /** Aspect ratio of the skeleton (default: 'square') */
-  aspectRatio?: 'square' | 'video' | '4:3';
+  aspectRatio?: "square" | "video" | "4:3";
   /** Whether to show a shimmer animation */
   shimmer?: boolean;
   /** Accessible label for screen readers */
-  'aria-label'?: string;
+  "aria-label"?: string;
 }
 
 /**
@@ -26,14 +26,14 @@ export interface ImageSkeletonProps {
  */
 export const ImageSkeleton: React.FC<ImageSkeletonProps> = ({
   className,
-  aspectRatio = 'square',
+  aspectRatio = "square",
   shimmer = true,
-  'aria-label': ariaLabel = 'Loading image...',
+  "aria-label": ariaLabel = "Loading image...",
 }) => {
   const aspectRatioClasses: Record<string, string> = {
-    square: 'aspect-square',
-    video: 'aspect-video',
-    '4:3': 'aspect-[4/3]',
+    square: "aspect-square",
+    video: "aspect-video",
+    "4:3": "aspect-[4/3]",
   };
 
   return (
@@ -41,10 +41,10 @@ export const ImageSkeleton: React.FC<ImageSkeletonProps> = ({
       role="status"
       aria-label={ariaLabel}
       className={cn(
-        'relative overflow-hidden rounded-lg bg-surface-2 border border-border',
+        "relative overflow-hidden rounded-lg bg-surface-2 border border-border",
         aspectRatioClasses[aspectRatio],
-        shimmer && 'animate-pulse',
-        className
+        shimmer && "animate-pulse",
+        className,
       )}
     >
       {/* Shimmer overlay effect */}
@@ -79,6 +79,6 @@ export const ImageSkeleton: React.FC<ImageSkeletonProps> = ({
   );
 };
 
-ImageSkeleton.displayName = 'ImageSkeleton';
+ImageSkeleton.displayName = "ImageSkeleton";
 
 export default ImageSkeleton;

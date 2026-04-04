@@ -1,17 +1,19 @@
 /**
  * Registry for managing prompt optimization strategy factories
- * 
+ *
  * Stores factory functions instead of singleton instances to prevent
  * shared mutable state across concurrent requests. Every call to get()
  * returns a fresh strategy instance with clean state.
- * 
+ *
  * Bug context: BaseStrategy.currentMetadata, KlingStrategy.entityRegistry,
  * and VeoStrategy.sessionState are mutable instance fields. When strategies
  * were singletons, concurrent requests would corrupt each other's metadata,
  * leak entity IDs across users, and accumulate unbounded session state.
  */
 
-import type { PromptOptimizationStrategy } from './types';
+import { resolvePromptModelId } from "@services/video-models/ModelRegistry";
+import { getPromptModelConstraints } from "@shared/videoModels";
+import type { ModelConstraints, PromptOptimizationStrategy } from "./types";
 
 export type StrategyFactory = () => PromptOptimizationStrategy;
 
@@ -30,9 +32,7 @@ export class StrategyRegistry {
    */
   register(modelId: string, factory: StrategyFactory): void {
     if (this.factories.has(modelId)) {
-      throw new Error(
-        `Strategy for model "${modelId}" is already registered`
-      );
+      throw new Error(`Strategy for model "${modelId}" is already registered`);
     }
     this.factories.set(modelId, factory);
   }
@@ -43,8 +43,13 @@ export class StrategyRegistry {
    * @returns A new strategy instance if factory exists, undefined otherwise
    */
   get(modelId: string): PromptOptimizationStrategy | undefined {
-    const factory = this.factories.get(modelId);
+    const normalizedModelId = resolvePromptModelId(modelId) ?? modelId;
+    const factory = this.factories.get(normalizedModelId);
     return factory ? factory() : undefined;
+  }
+
+  getModelConstraints(modelId: string): ModelConstraints | undefined {
+    return getPromptModelConstraints(resolvePromptModelId(modelId) ?? modelId);
   }
 
   /**
@@ -52,7 +57,7 @@ export class StrategyRegistry {
    * @returns Array of new strategy instances
    */
   getAll(): PromptOptimizationStrategy[] {
-    return Array.from(this.factories.values()).map(f => f());
+    return Array.from(this.factories.values()).map((f) => f());
   }
 
   /**
@@ -61,7 +66,8 @@ export class StrategyRegistry {
    * @returns true if a factory exists for the model
    */
   has(modelId: string): boolean {
-    return this.factories.has(modelId);
+    const normalizedModelId = resolvePromptModelId(modelId) ?? modelId;
+    return this.factories.has(normalizedModelId);
   }
 
   /**

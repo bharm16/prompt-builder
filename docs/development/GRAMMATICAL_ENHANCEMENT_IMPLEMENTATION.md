@@ -69,21 +69,25 @@ GrammaticalAnalysisService analyzes structure & complexity
 ## Key Features
 
 ### 1. Algorithmic Detection
+
 - **No hardcoded word lists**
 - Uses compromise NLP tags (#Gerund, #Preposition, #Verb)
 - Detects: gerund_phrase, prepositional_phrase, complex_clause, simple_clause, noun_phrase
 
 ### 2. Mathematical Complexity Scoring
+
 - **Sigmoid normalization**: `1 / (1 + e^(-k * (x - x0)))`
 - Features: verbDensity, clauseDepth, modifierDensity, structuralDepth
 - Output range: 0.0 (simple) to 1.0 (complex)
 
 ### 3. Retry-Validation Loop
+
 - Dynamic temperature adjustment (hot → cold)
 - Increasing strictness with correction instructions
 - Structure and tense validation using NLP
 
 ### 4. Safe Fallback Strategy
+
 - Only proven transformations (no random modifications)
 - Preserves meaning and key information
 - Graceful degradation
@@ -113,6 +117,7 @@ Located in: `server/src/services/enhancement/config/grammaticalAnalysis.js`
 ## Files Created/Modified
 
 ### New Files (8)
+
 ```
 server/src/services/enhancement/
 ├── config/
@@ -130,6 +135,7 @@ server/src/services/enhancement/
 ```
 
 ### Modified Files (2)
+
 ```
 package.json                           (+1 dependency)
 server/src/services/enhancement/
@@ -139,6 +145,7 @@ server/src/services/enhancement/
 ## Metrics Added
 
 The system tracks:
+
 - `grammaticalAnalysis` - Time spent analyzing complexity
 - `complexHandling` - Time spent in complex span handler
 - `retryAttempts` - Number of retry attempts made
@@ -147,6 +154,7 @@ The system tracks:
 ## Non-Breaking Guarantee
 
 ✅ **All existing functionality preserved**
+
 - Simple spans use existing enhancement path (no change)
 - groqClient unavailable → falls back to claudeClient (existing pattern)
 - Complex handling fails → returns null, falls through to existing path
@@ -161,6 +169,7 @@ The system tracks:
 ```
 
 ### Test Coverage
+
 - Structure detection (gerund, prepositional, complex clause, etc.)
 - Complexity calculation (sigmoid normalization)
 - Tense detection (past, present, future, neutral)
@@ -174,6 +183,7 @@ The system tracks:
 ## Example Usage
 
 ### Simple Span (< 0.6 complexity)
+
 ```
 Input: "bright colors"
 Analysis: { structure: 'noun_phrase', complexity: 0.23 }
@@ -181,6 +191,7 @@ Route: Existing enhancement path ✓
 ```
 
 ### Complex Span (>= 0.6 complexity)
+
 ```
 Input: "running swiftly down the cobblestone street"
 Analysis: { structure: 'gerund_phrase', complexity: 0.72 }
@@ -192,6 +203,7 @@ Result: Enhanced suggestion returned
 ```
 
 ### Fallback Scenario
+
 ```
 Input: "glowing embers"
 Analysis: { structure: 'noun_phrase', complexity: 0.65 }
@@ -229,6 +241,7 @@ Result: "glowing, smoldering embers" (verb intensification)
 ## Support
 
 For issues or questions:
+
 1. Check logs for grammatical analysis debug output
 2. Review metrics in development console
 3. Adjust configuration in `grammaticalAnalysis.js`
@@ -239,4 +252,3 @@ For issues or questions:
 **Status**: ✅ **IMPLEMENTATION COMPLETE AND PRODUCTION READY**
 
 **Date**: November 19, 2025
-

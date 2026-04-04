@@ -1,7 +1,7 @@
-import { logger } from '@infrastructure/Logger';
-import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer';
-import type { StructuredOutputSchema } from '@utils/structured-output/types';
-import type { AIService } from '@services/prompt-optimization/types';
+import { logger } from "@infrastructure/Logger";
+import { StructuredOutputEnforcer } from "@utils/StructuredOutputEnforcer";
+import type { StructuredOutputSchema } from "@utils/structured-output/types";
+import type { AIService } from "@services/prompt-optimization/types";
 
 /**
  * Scene variation result
@@ -16,7 +16,7 @@ export interface SceneVariation {
 /**
  * Service responsible for generating creative variations of video scenes.
  * Creates alternative versions exploring different approaches while maintaining theme.
- * 
+ *
  * Extracted from SceneAnalysisService to follow single responsibility principle.
  */
 export class SceneVariationService {
@@ -33,17 +33,17 @@ export class SceneVariationService {
     elements: Record<string, string>;
     concept: string;
   }): Promise<{ variations: SceneVariation[] }> {
-    logger.info('Generating scene variations');
+    logger.info("Generating scene variations");
 
     const prompt = `Generate 3 creative variations of this video concept.
 
-Original Concept: ${params.concept || 'Not specified'}
+Original Concept: ${params.concept || "Not specified"}
 
 Original Elements:
 ${Object.entries(params.elements)
   .filter(([_, v]) => v)
   .map(([k, v]) => `${k}: ${v}`)
-  .join('\n')}
+  .join("\n")}
 
 Create 3 variations that:
 1. Maintain the core theme but explore different approaches
@@ -67,26 +67,26 @@ Return ONLY a JSON array of 3 variations:
 
     try {
       const schema: StructuredOutputSchema = {
-        type: 'array',
+        type: "array",
         items: {
-          required: ['name', 'description', 'elements'],
+          required: ["name", "description", "elements"],
         },
       };
 
-      const variations = await StructuredOutputEnforcer.enforceJSON(
+      const variations = (await StructuredOutputEnforcer.enforceJSON(
         this.ai,
         prompt,
         {
-          operation: 'video_scene_variations',
+          operation: "video_scene_variations",
           schema,
           isArray: true,
           maxTokens: 2048,
           temperature: 0.8,
-        }
-      ) as SceneVariation[];
+        },
+      )) as SceneVariation[];
       return { variations };
     } catch (error) {
-      logger.error('Failed to generate variations', error as Error);
+      logger.error("Failed to generate variations", error as Error);
       return { variations: [] };
     }
   }

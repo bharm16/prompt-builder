@@ -1,0 +1,62 @@
+{
+  "baseUrl": "http://localhost:5174",
+  "outDir": "/Users/bryceharmon/Desktop/prompt-builder/output/playwright/fix-verification-final-2026-03-25T02-05-50-192Z",
+  "steps": [
+    {
+      "screenshot": "/Users/bryceharmon/Desktop/prompt-builder/output/playwright/fix-verification-final-2026-03-25T02-05-50-192Z/01-first-prompt.png",
+      "url": "http://localhost:5174/"
+    },
+    {
+      "screenshot": "/Users/bryceharmon/Desktop/prompt-builder/output/playwright/fix-verification-final-2026-03-25T02-05-50-192Z/02-after-first-generate.png",
+      "url": "http://localhost:5174/"
+    },
+    {
+      "screenshot": "/Users/bryceharmon/Desktop/prompt-builder/output/playwright/fix-verification-final-2026-03-25T02-05-50-192Z/03-after-new-session.png",
+      "url": "http://localhost:5174/session/draft-1774404365803"
+    },
+    {
+      "screenshot": "/Users/bryceharmon/Desktop/prompt-builder/output/playwright/fix-verification-final-2026-03-25T02-05-50-192Z/04-second-prompt.png",
+      "url": "http://localhost:5174/session/draft-1774404365803"
+    },
+    {
+      "screenshot": "/Users/bryceharmon/Desktop/prompt-builder/output/playwright/fix-verification-final-2026-03-25T02-05-50-192Z/05-second-generate-attempt.png",
+      "url": "http://localhost:5174/session/draft-1774404365803"
+    }
+  ],
+  "generateResponses": [
+    {
+      "url": "http://localhost:5174/api/preview/video/generate",
+      "status": 202,
+      "method": "POST",
+      "body": "{\"success\":true,\"data\":{\"jobId\":\"73Lqv5d1WTI8tkSXEgap\",\"status\":\"queued\",\"creditsReserved\":24,\"creditsDeducted\":24,\"keyframeGenerated\":false,\"keyframeUrl\":null,\"faceSwapApplied\":false,\"faceSwapUrl\":null},\"jobId\":\"73Lqv5d1WTI8tkSXEgap\",\"status\":\"queued\",\"creditsReserved\":24,\"creditsDeducted\":24,\"keyframeGenerated\":false,\"keyframeUrl\":null,\"faceSwapApplied\":false,\"faceSwapUrl\":null}"
+    },
+    {
+      "url": "http://localhost:5174/api/preview/video/generate",
+      "status": 402,
+      "method": "POST",
+      "body": "{\"error\":\"Insufficient credits\",\"code\":\"INSUFFICIENT_CREDITS\",\"details\":\"This generation requires 24 credits.\",\"requestId\":\"d4048a20-7ab5-4dca-8724-2f9ba5fcfcf8\"}"
+    }
+  ],
+  "balanceResponses": [
+    {
+      "url": "http://localhost:5174/api/payment/credits/balance",
+      "status": 404,
+      "method": "GET",
+      "body": "{\"error\":\"Not found\",\"path\":\"/api/payment/credits/balance\",\"requestId\":\"f41eabdb-f344-4625-8656-2b78b8db1dee\"}"
+    },
+    {
+      "url": "http://localhost:5174/api/payment/credits/balance",
+      "status": 404,
+      "method": "GET",
+      "body": "{\"error\":\"Not found\",\"path\":\"/api/payment/credits/balance\",\"requestId\":\"39f6505c-8062-4287-aac6-556b120f189d\"}"
+    }
+  ],
+  "assertions": {
+    "balanceRefreshHit": true,
+    "secondGenerateSentRequest": true,
+    "secondAttemptHasCreditWarning": true
+  },
+  "bodyTextSnapshots": {
+    "afterSecondAttempt": "Vidra\nTool\nChars\nStyles\nGallery\nSessions\nHome\nC\nCodex QA\nFree\nSkip to main content\n\nCredits power generation\n\nYou started with 25 credits. You can top up anytime in billing.\n\nUntitled session\nVideo\n\nStart with a scene, subject, or motion cue. The editor stays live while the workspace grows around it.\n\n— cr\nModel\nSora\nA neon alley chase scene in heavy rain.\nStart frame\nAssets\n16:9\n4s\nSora render needs 80 credits."
+  }
+}

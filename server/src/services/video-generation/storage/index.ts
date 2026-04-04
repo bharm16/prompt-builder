@@ -1,10 +1,10 @@
-import type { Bucket } from '@google-cloud/storage';
-import { SIGNED_URL_TTL_MS } from '@config/signedUrlPolicy';
-import { GcsVideoAssetStore } from './GcsVideoAssetStore';
-import type { VideoAssetStore } from './types';
+import type { Bucket } from "@google-cloud/storage";
+import { SIGNED_URL_TTL_MS } from "@config/signedUrlPolicy";
+import { GcsVideoAssetStore } from "./GcsVideoAssetStore";
+import type { VideoAssetStore } from "./types";
 
-const DEFAULT_BASE_PATH = 'video-previews';
-const DEFAULT_CACHE_CONTROL = 'public, max-age=86400';
+const DEFAULT_BASE_PATH = "video-previews";
+const DEFAULT_CACHE_CONTROL = "public, max-age=86400";
 
 interface CreateVideoAssetStoreOptions {
   bucket: Bucket;
@@ -13,7 +13,9 @@ interface CreateVideoAssetStoreOptions {
   cacheControl?: string;
 }
 
-export function createVideoAssetStore(options: CreateVideoAssetStoreOptions): VideoAssetStore {
+export function createVideoAssetStore(
+  options: CreateVideoAssetStoreOptions,
+): VideoAssetStore {
   return new GcsVideoAssetStore({
     bucket: options.bucket,
     basePath: options.basePath || DEFAULT_BASE_PATH,
@@ -22,4 +24,8 @@ export function createVideoAssetStore(options: CreateVideoAssetStoreOptions): Vi
   });
 }
 
-export type { VideoAssetStore, StoredVideoAsset, VideoAssetStream } from './types';
+export type {
+  VideoAssetStore,
+  StoredVideoAsset,
+  VideoAssetStream,
+} from "./types";

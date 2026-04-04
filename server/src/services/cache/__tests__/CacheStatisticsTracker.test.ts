@@ -1,8 +1,8 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { CacheStatisticsTracker } from '../CacheStatisticsTracker';
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { CacheStatisticsTracker } from "../CacheStatisticsTracker";
 
 // Mock the logger
-vi.mock('@infrastructure/Logger', () => ({
+vi.mock("@infrastructure/Logger", () => ({
   logger: {
     child: vi.fn(() => ({
       debug: vi.fn(),
@@ -13,62 +13,68 @@ vi.mock('@infrastructure/Logger', () => ({
   },
 }));
 
-describe('CacheStatisticsTracker', () => {
+describe("CacheStatisticsTracker", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  describe('error handling', () => {
-    it('handles metrics collector without recordCacheHit method', () => {
+  describe("error handling", () => {
+    it("handles metrics collector without recordCacheHit method", () => {
       const partialCollector = {
         recordCacheMiss: vi.fn(),
       };
-      const tracker = new CacheStatisticsTracker({ metricsCollector: partialCollector });
+      const tracker = new CacheStatisticsTracker({
+        metricsCollector: partialCollector,
+      });
 
       // Should not throw
-      expect(() => tracker.recordHit('test')).not.toThrow();
+      expect(() => tracker.recordHit("test")).not.toThrow();
     });
 
-    it('handles metrics collector without recordCacheMiss method', () => {
+    it("handles metrics collector without recordCacheMiss method", () => {
       const partialCollector = {
         recordCacheHit: vi.fn(),
       };
-      const tracker = new CacheStatisticsTracker({ metricsCollector: partialCollector });
+      const tracker = new CacheStatisticsTracker({
+        metricsCollector: partialCollector,
+      });
 
       // Should not throw
-      expect(() => tracker.recordMiss('test')).not.toThrow();
+      expect(() => tracker.recordMiss("test")).not.toThrow();
     });
 
-    it('handles metrics collector without updateCacheHitRate method', () => {
+    it("handles metrics collector without updateCacheHitRate method", () => {
       const partialCollector = {
         recordCacheHit: vi.fn(),
         recordCacheMiss: vi.fn(),
       };
-      const tracker = new CacheStatisticsTracker({ metricsCollector: partialCollector });
+      const tracker = new CacheStatisticsTracker({
+        metricsCollector: partialCollector,
+      });
 
       // Should not throw
-      expect(() => tracker.recordHit('test')).not.toThrow();
+      expect(() => tracker.recordHit("test")).not.toThrow();
     });
 
-    it('handles null metrics collector', () => {
+    it("handles null metrics collector", () => {
       const tracker = new CacheStatisticsTracker({ metricsCollector: null });
 
       // Should not throw
-      expect(() => tracker.recordHit('test')).not.toThrow();
-      expect(() => tracker.recordMiss('test')).not.toThrow();
+      expect(() => tracker.recordHit("test")).not.toThrow();
+      expect(() => tracker.recordMiss("test")).not.toThrow();
     });
   });
 
-  describe('edge cases', () => {
-    it('returns 0% hit rate when no operations recorded', () => {
+  describe("edge cases", () => {
+    it("returns 0% hit rate when no operations recorded", () => {
       const tracker = new CacheStatisticsTracker();
 
       const stats = tracker.getStatistics();
 
-      expect(stats.hitRate).toBe('0.00%');
+      expect(stats.hitRate).toBe("0.00%");
     });
 
-    it('returns 100% hit rate when only hits recorded', () => {
+    it("returns 100% hit rate when only hits recorded", () => {
       const tracker = new CacheStatisticsTracker();
 
       tracker.recordHit();
@@ -77,10 +83,10 @@ describe('CacheStatisticsTracker', () => {
 
       const stats = tracker.getStatistics();
 
-      expect(stats.hitRate).toBe('100.00%');
+      expect(stats.hitRate).toBe("100.00%");
     });
 
-    it('returns 0% hit rate when only misses recorded', () => {
+    it("returns 0% hit rate when only misses recorded", () => {
       const tracker = new CacheStatisticsTracker();
 
       tracker.recordMiss();
@@ -88,10 +94,10 @@ describe('CacheStatisticsTracker', () => {
 
       const stats = tracker.getStatistics();
 
-      expect(stats.hitRate).toBe('0.00%');
+      expect(stats.hitRate).toBe("0.00%");
     });
 
-    it('calculates correct hit rate with mixed operations', () => {
+    it("calculates correct hit rate with mixed operations", () => {
       const tracker = new CacheStatisticsTracker();
 
       tracker.recordHit();
@@ -102,10 +108,10 @@ describe('CacheStatisticsTracker', () => {
       const stats = tracker.getStatistics();
 
       // 3 hits out of 4 total = 75%
-      expect(stats.hitRate).toBe('75.00%');
+      expect(stats.hitRate).toBe("75.00%");
     });
 
-    it('uses default cache type when not specified', () => {
+    it("uses default cache type when not specified", () => {
       const metricsCollector = {
         recordCacheHit: vi.fn(),
         recordCacheMiss: vi.fn(),
@@ -116,13 +122,13 @@ describe('CacheStatisticsTracker', () => {
       tracker.recordHit();
       tracker.recordMiss();
 
-      expect(metricsCollector.recordCacheHit).toHaveBeenCalledWith('default');
-      expect(metricsCollector.recordCacheMiss).toHaveBeenCalledWith('default');
+      expect(metricsCollector.recordCacheHit).toHaveBeenCalledWith("default");
+      expect(metricsCollector.recordCacheMiss).toHaveBeenCalledWith("default");
     });
   });
 
-  describe('metrics collector integration', () => {
-    it('calls recordCacheHit on metrics collector', () => {
+  describe("metrics collector integration", () => {
+    it("calls recordCacheHit on metrics collector", () => {
       const metricsCollector = {
         recordCacheHit: vi.fn(),
         recordCacheMiss: vi.fn(),
@@ -130,12 +136,14 @@ describe('CacheStatisticsTracker', () => {
       };
       const tracker = new CacheStatisticsTracker({ metricsCollector });
 
-      tracker.recordHit('span-cache');
+      tracker.recordHit("span-cache");
 
-      expect(metricsCollector.recordCacheHit).toHaveBeenCalledWith('span-cache');
+      expect(metricsCollector.recordCacheHit).toHaveBeenCalledWith(
+        "span-cache",
+      );
     });
 
-    it('calls recordCacheMiss on metrics collector', () => {
+    it("calls recordCacheMiss on metrics collector", () => {
       const metricsCollector = {
         recordCacheHit: vi.fn(),
         recordCacheMiss: vi.fn(),
@@ -143,12 +151,14 @@ describe('CacheStatisticsTracker', () => {
       };
       const tracker = new CacheStatisticsTracker({ metricsCollector });
 
-      tracker.recordMiss('semantic-cache');
+      tracker.recordMiss("semantic-cache");
 
-      expect(metricsCollector.recordCacheMiss).toHaveBeenCalledWith('semantic-cache');
+      expect(metricsCollector.recordCacheMiss).toHaveBeenCalledWith(
+        "semantic-cache",
+      );
     });
 
-    it('updates hit rate on metrics collector', () => {
+    it("updates hit rate on metrics collector", () => {
       const metricsCollector = {
         recordCacheHit: vi.fn(),
         recordCacheMiss: vi.fn(),
@@ -156,15 +166,18 @@ describe('CacheStatisticsTracker', () => {
       };
       const tracker = new CacheStatisticsTracker({ metricsCollector });
 
-      tracker.recordHit('test');
-      tracker.recordHit('test');
+      tracker.recordHit("test");
+      tracker.recordHit("test");
 
-      expect(metricsCollector.updateCacheHitRate).toHaveBeenCalledWith('test', 100);
+      expect(metricsCollector.updateCacheHitRate).toHaveBeenCalledWith(
+        "test",
+        100,
+      );
     });
   });
 
-  describe('hit rate change detection', () => {
-    it('logs significant hit rate changes (>=5%)', () => {
+  describe("hit rate change detection", () => {
+    it("logs significant hit rate changes (>=5%)", () => {
       const tracker = new CacheStatisticsTracker();
 
       // First operation logs initial hit rate
@@ -181,7 +194,7 @@ describe('CacheStatisticsTracker', () => {
       expect(parseFloat(stats.hitRate)).toBeLessThan(5);
     });
 
-    it('does not log insignificant hit rate changes (<5%)', () => {
+    it("does not log insignificant hit rate changes (<5%)", () => {
       const tracker = new CacheStatisticsTracker();
 
       // Many operations with small rate changes
@@ -196,8 +209,8 @@ describe('CacheStatisticsTracker', () => {
     });
   });
 
-  describe('core behavior', () => {
-    it('tracks hits correctly', () => {
+  describe("core behavior", () => {
+    it("tracks hits correctly", () => {
       const tracker = new CacheStatisticsTracker();
 
       tracker.recordHit();
@@ -209,7 +222,7 @@ describe('CacheStatisticsTracker', () => {
       expect(stats.hits).toBe(3);
     });
 
-    it('tracks misses correctly', () => {
+    it("tracks misses correctly", () => {
       const tracker = new CacheStatisticsTracker();
 
       tracker.recordMiss();
@@ -220,7 +233,7 @@ describe('CacheStatisticsTracker', () => {
       expect(stats.misses).toBe(2);
     });
 
-    it('tracks sets correctly', () => {
+    it("tracks sets correctly", () => {
       const tracker = new CacheStatisticsTracker();
 
       tracker.recordSet();
@@ -233,7 +246,7 @@ describe('CacheStatisticsTracker', () => {
       expect(stats.sets).toBe(4);
     });
 
-    it('returns complete statistics object', () => {
+    it("returns complete statistics object", () => {
       const tracker = new CacheStatisticsTracker();
 
       tracker.recordHit();
@@ -246,11 +259,11 @@ describe('CacheStatisticsTracker', () => {
         hits: 1,
         misses: 1,
         sets: 1,
-        hitRate: '50.00%',
+        hitRate: "50.00%",
       });
     });
 
-    it('maintains independent counts for multiple tracker instances', () => {
+    it("maintains independent counts for multiple tracker instances", () => {
       const tracker1 = new CacheStatisticsTracker();
       const tracker2 = new CacheStatisticsTracker();
 

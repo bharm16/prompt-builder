@@ -1,9 +1,13 @@
-import { useMemo } from 'react';
-import type { ContinuitySession, ContinuityShot, StyleReference } from '../types';
+import { useMemo } from "react";
+import type {
+  ContinuitySession,
+  ContinuityShot,
+  StyleReference,
+} from "../types";
 
 export function useStyleReference(
   session: ContinuitySession | null,
-  shot?: ContinuityShot | null
+  shot?: ContinuityShot | null,
 ): StyleReference | null {
   return useMemo(() => {
     if (!session) return null;
@@ -11,7 +15,9 @@ export function useStyleReference(
     if (!shot.styleReferenceId) {
       return session.primaryStyleReference;
     }
-    const refShot = session.shots.find((candidate) => candidate.id === shot.styleReferenceId);
+    const refShot = session.shots.find(
+      (candidate) => candidate.id === shot.styleReferenceId,
+    );
     if (refShot?.styleReference) {
       return refShot.styleReference;
     }

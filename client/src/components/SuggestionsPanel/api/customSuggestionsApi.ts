@@ -11,13 +11,14 @@
  * - Distinguishes timeout vs user cancellation in error handling
  */
 
-import { API_ENDPOINTS } from '../config/panelConfig';
+import { API_ENDPOINTS } from "../config/panelConfig";
+import { CustomSuggestionsResponseSchema } from "./schemas";
 import {
-  CustomSuggestionsResponseSchema,
-} from './schemas';
-import { CancellationError, combineSignals } from '@features/prompt-optimizer/utils/signalUtils';
-import { buildFirebaseAuthHeaders } from '@/services/http/firebaseAuth';
-import type { SuggestionItem } from '../hooks/types';
+  CancellationError,
+  combineSignals,
+} from "@features/prompt-optimizer/utils/signalUtils";
+import { buildFirebaseAuthHeaders } from "@/services/http/firebaseAuth";
+import type { SuggestionItem } from "../hooks/types";
 
 /** Timeout for custom suggestion requests in milliseconds */
 const CUSTOM_SUGGESTION_TIMEOUT_MS = 3000;
@@ -50,16 +51,16 @@ export async function fetchCustomSuggestions({
   metadata,
   signal: externalSignal,
 }: FetchCustomSuggestionsParams): Promise<SuggestionItem[]> {
-  const fetchFn = typeof fetch !== 'undefined' ? fetch : null;
+  const fetchFn = typeof fetch !== "undefined" ? fetch : null;
 
   if (!fetchFn) {
-    throw new Error('Fetch API unavailable');
+    throw new Error("Fetch API unavailable");
   }
 
   // Create timeout controller for 3-second timeout
   const timeoutController = new AbortController();
   const timeoutId = setTimeout(() => {
-    timeoutController.abort(new Error('Request timeout'));
+    timeoutController.abort(new Error("Request timeout"));
   }, CUSTOM_SUGGESTION_TIMEOUT_MS);
 
   // Combine external signal (user cancellation) with timeout signal
@@ -70,15 +71,15 @@ export async function fetchCustomSuggestions({
   try {
     const authHeaders = await buildFirebaseAuthHeaders();
     const response = await fetchFn(API_ENDPOINTS.CUSTOM_SUGGESTIONS, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         ...authHeaders,
       },
       body: JSON.stringify({
         highlightedText,
         customRequest,
-        fullPrompt: fullPrompt || '',
+        fullPrompt: fullPrompt || "",
         contextBefore,
         contextAfter,
         metadata: metadata ?? undefined,
@@ -90,7 +91,7 @@ export async function fetchCustomSuggestions({
 
     if (!response.ok) {
       throw new Error(
-        `Failed to fetch custom suggestions: ${response.status} ${response.statusText}`
+        `Failed to fetch custom suggestions: ${response.status} ${response.statusText}`,
       );
     }
 
@@ -98,13 +99,15 @@ export async function fetchCustomSuggestions({
     const parsed = CustomSuggestionsResponseSchema.parse(data);
 
     return parsed.suggestions
-      .map((item) => (typeof item === 'string' ? { text: item } : item))
-      .filter((item) => typeof item.text === 'string' && item.text.trim().length > 0);
+      .map((item) => (typeof item === "string" ? { text: item } : item))
+      .filter(
+        (item) => typeof item.text === "string" && item.text.trim().length > 0,
+      );
   } catch (error: unknown) {
     clearTimeout(timeoutId);
 
     // Handle AbortError - distinguish between timeout and user cancellation
-    if (error instanceof Error && error.name === 'AbortError') {
+    if (error instanceof Error && error.name === "AbortError") {
       // Check if this was a timeout (our internal abort) vs user cancellation (external signal)
       const isTimeout =
         timeoutController.signal.aborted &&
@@ -112,11 +115,11 @@ export async function fetchCustomSuggestions({
 
       if (isTimeout) {
         // Timeout should be treated as an error, not silent cancellation
-        throw new Error('Request timed out after 3 seconds');
+        throw new Error("Request timed out after 3 seconds");
       }
 
       // User cancellation - throw CancellationError for silent handling
-      throw new CancellationError('Request cancelled by user');
+      throw new CancellationError("Request cancelled by user");
     }
 
     // Re-throw other errors as-is

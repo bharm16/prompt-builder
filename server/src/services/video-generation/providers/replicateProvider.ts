@@ -1,55 +1,60 @@
-import { Blob as NodeBlob } from 'node:buffer';
-import type Replicate from 'replicate';
-import type { VideoGenerationOptions, VideoModelId } from '../types';
+import { Blob as NodeBlob } from "node:buffer";
+import type Replicate from "replicate";
+import type { VideoGenerationOptions, VideoModelId } from "../types";
 
 type LogSink = {
   info: (message: string, meta?: Record<string, unknown>) => void;
   warn: (message: string, meta?: Record<string, unknown>) => void;
-  error: (message: string, error?: Error, meta?: Record<string, unknown>) => void;
+  error: (
+    message: string,
+    error?: Error,
+    meta?: Record<string, unknown>,
+  ) => void;
 };
 
 const DEFAULT_WAN_NEGATIVE_PROMPT =
-  'morphing, distorted, disfigured, text, watermark, low quality, blurry, static, extra limbs, fused fingers';
+  "morphing, distorted, disfigured, text, watermark, low quality, blurry, static, extra limbs, fused fingers";
 
-const SUPPORTED_IMAGE_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp']);
+const SUPPORTED_IMAGE_EXTENSIONS = new Set([".jpg", ".jpeg", ".png", ".webp"]);
 const SUPPORTED_IMAGE_MIME_TYPES = new Set([
-  'image/jpeg',
-  'image/jpg',
-  'image/png',
-  'image/webp',
+  "image/jpeg",
+  "image/jpg",
+  "image/png",
+  "image/webp",
 ]);
 
 const WAN_ASPECT_RATIO_SIZE_MAP: Record<string, string> = {
-  '16:9': '1280*720',
-  '9:16': '720*1280',
-  '1:1': '1024*1024',
-  '4:3': '1024*768',
-  '3:4': '768*1024',
+  "16:9": "1280*720",
+  "9:16": "720*1280",
+  "1:1": "1024*1024",
+  "4:3": "1024*768",
+  "3:4": "768*1024",
 };
 
 const WAN_I2V_MODEL_MAP: Record<string, string> = {
-  'wan-video/wan-2.2-t2v-fast': 'wan-video/wan-2.2-i2v-fast',
-  'wan-video/wan-2.1-t2v-480p': 'wavespeedai/wan-2.1-i2v-480p',
-  'wan-video/wan-2.1-t2v-720p': 'wavespeedai/wan-2.1-i2v-720p',
+  "wan-video/wan-2.2-t2v-fast": "wan-video/wan-2.2-i2v-fast",
+  "wan-video/wan-2.1-t2v-480p": "wavespeedai/wan-2.1-i2v-480p",
+  "wan-video/wan-2.1-t2v-720p": "wavespeedai/wan-2.1-i2v-720p",
 };
-const WAN_T2V_FALLBACK_MODEL = 'wan-video/wan-2.2-t2v-fast';
+const WAN_T2V_FALLBACK_MODEL = "wan-video/wan-2.2-t2v-fast";
 
-const isWan25Model = (modelId: string): boolean => modelId.includes('wan-2.5');
+const isWan25Model = (modelId: string): boolean => modelId.includes("wan-2.5");
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null;
+  typeof value === "object" && value !== null;
 
 const isBlobLike = (value: unknown): value is Blob =>
-  (typeof Blob !== 'undefined' && value instanceof Blob) || value instanceof NodeBlob;
+  (typeof Blob !== "undefined" && value instanceof Blob) ||
+  value instanceof NodeBlob;
 
 const normalizeContentType = (value: string | null): string =>
-  value?.split(';')[0]?.trim().toLowerCase() ?? '';
+  value?.split(";")[0]?.trim().toLowerCase() ?? "";
 
 function getUrlExtension(value: string): string | null {
   try {
     const url = new URL(value);
     const pathname = url.pathname.toLowerCase();
-    const lastDot = pathname.lastIndexOf('.');
+    const lastDot = pathname.lastIndexOf(".");
     if (lastDot < 0) {
       return null;
     }
@@ -59,12 +64,14 @@ function getUrlExtension(value: string): string | null {
   }
 }
 
-function summarizeInputForLog(input: Record<string, unknown>): Record<string, unknown> {
+function summarizeInputForLog(
+  input: Record<string, unknown>,
+): Record<string, unknown> {
   const summary: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(input)) {
     if (isBlobLike(value)) {
       summary[key] = {
-        type: 'Blob',
+        type: "Blob",
         size: value.size,
         mime: value.type,
       };
@@ -72,15 +79,15 @@ function summarizeInputForLog(input: Record<string, unknown>): Record<string, un
     }
     if (Buffer.isBuffer(value)) {
       summary[key] = {
-        type: 'Buffer',
+        type: "Buffer",
         size: value.length,
       };
       continue;
     }
-    if (typeof value === 'string' && value.startsWith('data:')) {
-      const mime = value.slice(5, value.indexOf(';')) || 'unknown';
+    if (typeof value === "string" && value.startsWith("data:")) {
+      const mime = value.slice(5, value.indexOf(";")) || "unknown";
       summary[key] = {
-        type: 'data-uri',
+        type: "data-uri",
         length: value.length,
         mime,
       };
@@ -94,9 +101,9 @@ function summarizeInputForLog(input: Record<string, unknown>): Record<string, un
 async function resolveReplicateImageInput(
   imageUrl: string,
   log: LogSink,
-  fieldName: 'startImage' | 'style_reference'
+  fieldName: "startImage" | "style_reference",
 ): Promise<string | Blob> {
-  if (imageUrl.startsWith('data:')) {
+  if (imageUrl.startsWith("data:")) {
     return imageUrl;
   }
 
@@ -105,33 +112,35 @@ async function resolveReplicateImageInput(
     return imageUrl;
   }
 
-  log.info('Fetching image for Replicate input', {
+  log.info("Fetching image for Replicate input", {
     field: fieldName,
     hasExtension: Boolean(extension),
   });
 
-  const response = await fetch(imageUrl, { redirect: 'follow' });
+  const response = await fetch(imageUrl, { redirect: "follow" });
   if (!response.ok) {
     throw new Error(`Failed to fetch ${fieldName} (${response.status})`);
   }
 
-  const contentType = normalizeContentType(response.headers.get('content-type'));
+  const contentType = normalizeContentType(
+    response.headers.get("content-type"),
+  );
   if (!SUPPORTED_IMAGE_MIME_TYPES.has(contentType)) {
     throw new Error(
-      `Unsupported ${fieldName} format '${contentType || 'unknown'}'. Supported formats: .jpg, .jpeg, .png, .webp`
+      `Unsupported ${fieldName} format '${contentType || "unknown"}'. Supported formats: .jpg, .jpeg, .png, .webp`,
     );
   }
 
   const buffer = await response.arrayBuffer();
   const BlobCtor =
-    typeof globalThis.Blob === 'function'
+    typeof globalThis.Blob === "function"
       ? globalThis.Blob
       : (NodeBlob as unknown as typeof Blob);
   return new BlobCtor([buffer], { type: contentType });
 }
 
 function normalizeWanSize(rawSize: string): string | null {
-  const cleaned = rawSize.trim().toLowerCase().replace(/\s+/g, '');
+  const cleaned = rawSize.trim().toLowerCase().replace(/\s+/g, "");
   if (!cleaned) {
     return null;
   }
@@ -145,8 +154,8 @@ function normalizeWanSize(rawSize: string): string | null {
 }
 
 function resolveWanSize(aspectRatio: string, rawSize?: string): string {
-  if (typeof rawSize === 'string' && rawSize.trim().length > 0) {
-    const cleaned = rawSize.trim().toLowerCase().replace(/\s+/g, '');
+  if (typeof rawSize === "string" && rawSize.trim().length > 0) {
+    const cleaned = rawSize.trim().toLowerCase().replace(/\s+/g, "");
     if (!/^\d+p$/.test(cleaned)) {
       const normalized = normalizeWanSize(rawSize);
       if (normalized) {
@@ -156,12 +165,12 @@ function resolveWanSize(aspectRatio: string, rawSize?: string): string {
   }
 
   const normalizedAspectRatio = aspectRatio.trim();
-  const defaultSize = WAN_ASPECT_RATIO_SIZE_MAP['16:9'] ?? '1280*720';
+  const defaultSize = WAN_ASPECT_RATIO_SIZE_MAP["16:9"] ?? "1280*720";
   return WAN_ASPECT_RATIO_SIZE_MAP[normalizedAspectRatio] ?? defaultSize;
 }
 
 function resolveWan25Resolution(rawSize?: string): string | null {
-  if (typeof rawSize !== 'string') {
+  if (typeof rawSize !== "string") {
     return null;
   }
   const cleaned = rawSize.trim().toLowerCase();
@@ -179,25 +188,35 @@ function resolveWan25Resolution(rawSize?: string): string | null {
 }
 
 function resolveWan25Duration(options: VideoGenerationOptions): number | null {
-  if (typeof options.seconds === 'string' && options.seconds.trim().length > 0) {
+  if (
+    typeof options.seconds === "string" &&
+    options.seconds.trim().length > 0
+  ) {
     const parsed = Number(options.seconds);
     if (Number.isFinite(parsed) && parsed > 0) {
       return parsed;
     }
   }
-  if (typeof options.numFrames === 'number' && typeof options.fps === 'number' && options.fps > 0) {
+  if (
+    typeof options.numFrames === "number" &&
+    typeof options.fps === "number" &&
+    options.fps > 0
+  ) {
     const duration = Math.round(options.numFrames / options.fps);
     return duration > 0 ? duration : null;
   }
   return null;
 }
 
-function resolveWanModelForI2V(modelId: string, hasStartImage: boolean): string {
-  if (!modelId.includes('wan')) {
+function resolveWanModelForI2V(
+  modelId: string,
+  hasStartImage: boolean,
+): string {
+  if (!modelId.includes("wan")) {
     return modelId;
   }
 
-  const isI2VModel = modelId.includes('i2v');
+  const isI2VModel = modelId.includes("i2v");
   if (!hasStartImage) {
     return isI2VModel ? WAN_T2V_FALLBACK_MODEL : modelId;
   }
@@ -211,8 +230,8 @@ function resolveWanModelForI2V(modelId: string, hasStartImage: boolean): string 
     return i2vModel;
   }
 
-  if (modelId.includes('t2v')) {
-    return modelId.replace('t2v', 'i2v');
+  if (modelId.includes("t2v")) {
+    return modelId.replace("t2v", "i2v");
   }
 
   return modelId;
@@ -221,7 +240,7 @@ function resolveWanModelForI2V(modelId: string, hasStartImage: boolean): string 
 export function buildReplicateInput(
   modelId: VideoModelId,
   prompt: string,
-  options: VideoGenerationOptions
+  options: VideoGenerationOptions,
 ): Record<string, unknown> {
   const input: Record<string, unknown> = { prompt };
 
@@ -229,10 +248,10 @@ export function buildReplicateInput(
     input.seed = Math.round(options.seed as number);
   }
 
-  const isWanModel = modelId.includes('wan');
+  const isWanModel = modelId.includes("wan");
 
   if (!isWanModel) {
-    input.aspect_ratio = options.aspectRatio || '16:9';
+    input.aspect_ratio = options.aspectRatio || "16:9";
     if (options.negativePrompt) {
       input.negative_prompt = options.negativePrompt;
     }
@@ -242,16 +261,17 @@ export function buildReplicateInput(
     if (options.style_reference) {
       input.style_reference = options.style_reference;
     }
-    if (typeof options.style_reference_weight === 'number') {
+    if (typeof options.style_reference_weight === "number") {
       input.style_reference_weight = options.style_reference_weight;
     }
     return input;
   }
 
   if (isWan25Model(modelId)) {
-    const wanNegativePrompt = options.negativePrompt || DEFAULT_WAN_NEGATIVE_PROMPT;
+    const wanNegativePrompt =
+      options.negativePrompt || DEFAULT_WAN_NEGATIVE_PROMPT;
     const promptExtend =
-      typeof options.promptExtend === 'boolean' ? options.promptExtend : true;
+      typeof options.promptExtend === "boolean" ? options.promptExtend : true;
     const resolution = resolveWan25Resolution(options.size);
     const duration = resolveWan25Duration(options);
 
@@ -260,7 +280,7 @@ export function buildReplicateInput(
     if (resolution) {
       input.resolution = resolution;
     }
-    if (typeof duration === 'number') {
+    if (typeof duration === "number") {
       input.duration = duration;
     }
     if (options.startImage) {
@@ -269,16 +289,17 @@ export function buildReplicateInput(
     return input;
   }
 
-  const wanAspectRatio = options.aspectRatio || '16:9';
+  const wanAspectRatio = options.aspectRatio || "16:9";
   const wanSize = resolveWanSize(wanAspectRatio, options.size);
-  const wanNegativePrompt = options.negativePrompt || DEFAULT_WAN_NEGATIVE_PROMPT;
+  const wanNegativePrompt =
+    options.negativePrompt || DEFAULT_WAN_NEGATIVE_PROMPT;
 
   input.negative_prompt = wanNegativePrompt;
   input.size = wanSize;
   input.num_frames = options.numFrames || 81;
   input.frames_per_second = options.fps || 16;
   const promptExtend =
-    typeof options.promptExtend === 'boolean' ? options.promptExtend : true;
+    typeof options.promptExtend === "boolean" ? options.promptExtend : true;
   input.prompt_extend = promptExtend;
   input.go_fast = true;
   input.sample_shift = 12;
@@ -289,7 +310,7 @@ export function buildReplicateInput(
   if (options.style_reference) {
     input.style_reference = options.style_reference;
   }
-  if (typeof options.style_reference_weight === 'number') {
+  if (typeof options.style_reference_weight === "number") {
     input.style_reference_weight = options.style_reference_weight;
   }
 
@@ -301,69 +322,112 @@ export async function generateReplicateVideo(
   prompt: string,
   modelId: VideoModelId,
   options: VideoGenerationOptions,
-  log: LogSink
+  log: LogSink,
 ): Promise<{ url: string; seed?: number }> {
-  const resolvedModelId = resolveWanModelForI2V(modelId, Boolean(options.startImage));
-  const input = buildReplicateInput(resolvedModelId as VideoModelId, prompt, options);
-  if (typeof input.image === 'string') {
-    input.image = await resolveReplicateImageInput(input.image, log, 'startImage');
+  const resolvedModelId = resolveWanModelForI2V(
+    modelId,
+    Boolean(options.startImage),
+  );
+  const input = buildReplicateInput(
+    resolvedModelId as VideoModelId,
+    prompt,
+    options,
+  );
+  if (typeof input.image === "string") {
+    input.image = await resolveReplicateImageInput(
+      input.image,
+      log,
+      "startImage",
+    );
   }
-  if (typeof input.style_reference === 'string') {
+  if (typeof input.style_reference === "string") {
     input.style_reference = await resolveReplicateImageInput(
       input.style_reference,
       log,
-      'style_reference'
+      "style_reference",
     );
   }
 
-  log.info('Calling replicate.run', {
+  log.info("Calling replicate.run", {
     originalModelId: modelId,
     resolvedModelId,
     input: summarizeInputForLog(input),
     isI2V: Boolean(options.startImage),
   });
 
-  const output = (await replicate.run(resolvedModelId as `${string}/${string}`, { input })) as unknown;
+  const output = (await replicate.run(
+    resolvedModelId as `${string}/${string}`,
+    { input },
+  )) as unknown;
 
-  log.info('replicate.run finished', {
+  log.info("replicate.run finished", {
     outputType: typeof output,
-    outputKeys: output && typeof output === 'object' ? Object.keys(output) : [],
-    outputValue: typeof output === 'string' ? output : 'object',
+    outputKeys: output && typeof output === "object" ? Object.keys(output) : [],
+    outputValue: typeof output === "string" ? output : "object",
   });
 
-  if (typeof output === 'string') {
-    if (output.startsWith('http')) {
+  if (typeof output === "string") {
+    if (output.startsWith("http")) {
       return { url: output };
     }
-    log.warn('Output is a string but not http', { output });
+    throw new Error(
+      `Replicate returned a string output that is not an HTTP URL: "${output.slice(0, 200)}"`,
+    );
   }
 
-  if (output && typeof output === 'object') {
+  if (output && typeof output === "object") {
     const outputRecord = output as Record<string, unknown>;
-    const metrics = isRecord(outputRecord.metrics) ? outputRecord.metrics : null;
+    const metrics = isRecord(outputRecord.metrics)
+      ? outputRecord.metrics
+      : null;
     const seed =
-      typeof outputRecord.seed === 'number'
+      typeof outputRecord.seed === "number"
         ? outputRecord.seed
-        : typeof metrics?.seed === 'number'
+        : typeof metrics?.seed === "number"
           ? metrics.seed
           : undefined;
 
-    if ('url' in outputRecord && typeof outputRecord.url === 'function') {
+    if ("url" in outputRecord && typeof outputRecord.url === "function") {
       const url = (outputRecord.url as () => unknown)();
-      log.info('Extracted URL from FileOutput', { url: String(url) });
-      return { url: String(url), ...(seed !== undefined ? { seed } : {}) };
+      const urlStr = String(url);
+      if (!urlStr.startsWith("http")) {
+        throw new Error(
+          `Replicate FileOutput.url() returned non-HTTP value: "${urlStr.slice(0, 200)}"`,
+        );
+      }
+      log.info("Extracted URL from FileOutput", { url: urlStr });
+      return { url: urlStr, ...(seed !== undefined ? { seed } : {}) };
     }
 
-    if (Array.isArray(output) && output.length > 0 && typeof output[0] === 'string') {
+    if (
+      Array.isArray(output) &&
+      output.length > 0 &&
+      typeof output[0] === "string"
+    ) {
       const firstUrl = output[0];
+      if (!firstUrl.startsWith("http")) {
+        throw new Error(
+          `Replicate array output[0] is not an HTTP URL: "${firstUrl.slice(0, 200)}"`,
+        );
+      }
       return { url: firstUrl, ...(seed !== undefined ? { seed } : {}) };
     }
 
-    if (typeof outputRecord.url === 'string') {
+    if (typeof outputRecord.url === "string") {
+      if (!outputRecord.url.startsWith("http")) {
+        throw new Error(
+          `Replicate output.url is not an HTTP URL: "${outputRecord.url.slice(0, 200)}"`,
+        );
+      }
       return { url: outputRecord.url, ...(seed !== undefined ? { seed } : {}) };
     }
   }
 
-  log.error('Could not extract video URL from output', undefined, { output });
-  throw new Error('Invalid output format from Replicate: Could not extract video URL');
+  log.error("Could not extract video URL from output", undefined, {
+    outputType: typeof output,
+    outputPreview: JSON.stringify(output)?.slice(0, 500),
+  });
+  throw new Error(
+    "Invalid output format from Replicate: Could not extract video URL",
+  );
 }

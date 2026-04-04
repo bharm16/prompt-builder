@@ -1,12 +1,18 @@
-import React, { useMemo, useState } from 'react';
-import type { ContinuitySession, ContinuityShot } from '../../types';
-import { useStyleReference } from '../../hooks/useStyleReference';
+import React, { useMemo, useState } from "react";
+import type { ContinuitySession, ContinuityShot } from "../../types";
+import { useStyleReference } from "../../hooks/useStyleReference";
 
 interface StyleReferencePanelProps {
   session: ContinuitySession;
   selectedShot?: ContinuityShot | null;
-  onUpdateShotStyleReference?: (shotId: string, styleReferenceId: string | null) => Promise<void> | void;
-  onUpdatePrimaryReference?: (input: { sourceVideoId?: string; sourceImageUrl?: string }) => Promise<void> | void;
+  onUpdateShotStyleReference?: (
+    shotId: string,
+    styleReferenceId: string | null,
+  ) => Promise<void> | void;
+  onUpdatePrimaryReference?: (input: {
+    sourceVideoId?: string;
+    sourceImageUrl?: string;
+  }) => Promise<void> | void;
 }
 
 export function StyleReferencePanel({
@@ -17,13 +23,13 @@ export function StyleReferencePanel({
 }: StyleReferencePanelProps): React.ReactElement {
   const reference = useStyleReference(session, selectedShot ?? null);
   const [isUpdatingPrimary, setIsUpdatingPrimary] = useState(false);
-  const [primaryVideoId, setPrimaryVideoId] = useState('');
-  const [primaryImageUrl, setPrimaryImageUrl] = useState('');
+  const [primaryVideoId, setPrimaryVideoId] = useState("");
+  const [primaryImageUrl, setPrimaryImageUrl] = useState("");
   const [isSavingPrimary, setIsSavingPrimary] = useState(false);
 
   const referenceOptions = useMemo(() => {
     const options: Array<{ label: string; value: string | null }> = [
-      { label: 'Primary reference', value: null },
+      { label: "Primary reference", value: null },
     ];
     session.shots.forEach((shot) => {
       options.push({
@@ -34,10 +40,12 @@ export function StyleReferencePanel({
     return options;
   }, [session.shots]);
 
-  const handleUpdateStyleReference = async (event: React.ChangeEvent<HTMLSelectElement>) => {
+  const handleUpdateStyleReference = async (
+    event: React.ChangeEvent<HTMLSelectElement>,
+  ) => {
     if (!selectedShot || !onUpdateShotStyleReference) return;
-    const value = event.target.value || 'primary';
-    const resolved = value === 'primary' ? null : value;
+    const value = event.target.value || "primary";
+    const resolved = value === "primary" ? null : value;
     await onUpdateShotStyleReference(selectedShot.id, resolved);
   };
 
@@ -50,8 +58,8 @@ export function StyleReferencePanel({
         ...(primaryVideoId ? { sourceVideoId: primaryVideoId } : {}),
         ...(primaryImageUrl ? { sourceImageUrl: primaryImageUrl } : {}),
       });
-      setPrimaryVideoId('');
-      setPrimaryImageUrl('');
+      setPrimaryVideoId("");
+      setPrimaryImageUrl("");
       setIsUpdatingPrimary(false);
     } finally {
       setIsSavingPrimary(false);
@@ -63,13 +71,15 @@ export function StyleReferencePanel({
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-base font-semibold text-foreground">Style Reference</h2>
+        <h2 className="text-base font-semibold text-foreground">
+          Style Reference
+        </h2>
         <button
           type="button"
           className="text-xs text-muted hover:text-foreground transition-colors"
           onClick={() => setIsUpdatingPrimary((prev) => !prev)}
         >
-          {isUpdatingPrimary ? 'Cancel' : 'Update primary'}
+          {isUpdatingPrimary ? "Cancel" : "Update primary"}
         </button>
       </div>
 
@@ -82,7 +92,9 @@ export function StyleReferencePanel({
           />
           {reference.analysisMetadata && (
             <div className="space-y-2 text-sm text-muted">
-              <div>Lighting: {reference.analysisMetadata.lightingDescription}</div>
+              <div>
+                Lighting: {reference.analysisMetadata.lightingDescription}
+              </div>
               <div>Mood: {reference.analysisMetadata.moodDescription}</div>
               {colors.length > 0 && (
                 <div className="flex items-center gap-2">
@@ -110,16 +122,18 @@ export function StyleReferencePanel({
 
       {selectedShot && onUpdateShotStyleReference && (
         <div className="space-y-2">
-          <label className="text-xs font-medium text-muted">Style source for selected shot</label>
+          <label className="text-xs font-medium text-muted">
+            Style source for selected shot
+          </label>
           <select
             className="w-full rounded-md border border-border bg-surface-1 px-3 py-2 text-sm"
             onChange={handleUpdateStyleReference}
-            value={selectedShot.styleReferenceId ?? 'primary'}
+            value={selectedShot.styleReferenceId ?? "primary"}
           >
             {referenceOptions.map((option) => (
               <option
-                key={option.value ?? 'primary'}
-                value={option.value ?? 'primary'}
+                key={option.value ?? "primary"}
+                value={option.value ?? "primary"}
                 disabled={option.value === selectedShot.id}
               >
                 {option.label}
@@ -131,7 +145,9 @@ export function StyleReferencePanel({
 
       {isUpdatingPrimary && (
         <div className="space-y-2 rounded-lg border border-border bg-surface-2 p-3">
-          <div className="text-xs text-muted">Replace the primary style reference.</div>
+          <div className="text-xs text-muted">
+            Replace the primary style reference.
+          </div>
           <input
             type="text"
             value={primaryVideoId}
@@ -153,11 +169,11 @@ export function StyleReferencePanel({
             disabled={isSavingPrimary || (!primaryVideoId && !primaryImageUrl)}
             className={`w-full rounded-md px-3 py-2 text-sm font-medium ${
               isSavingPrimary || (!primaryVideoId && !primaryImageUrl)
-                ? 'bg-surface-3 text-muted cursor-not-allowed'
-                : 'bg-accent text-white'
+                ? "bg-surface-3 text-muted cursor-not-allowed"
+                : "bg-accent text-white"
             }`}
           >
-            {isSavingPrimary ? 'Updating...' : 'Update reference'}
+            {isSavingPrimary ? "Updating..." : "Update reference"}
           </button>
         </div>
       )}

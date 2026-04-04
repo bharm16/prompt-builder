@@ -1,14 +1,18 @@
-import { logger } from '@infrastructure/Logger';
-import { StructuredOutputEnforcer } from '@utils/StructuredOutputEnforcer';
-import { TemperatureOptimizer } from '@utils/TemperatureOptimizer';
-import { PromptBuilderService } from './SystemPromptBuilder.ts';
-import { TAXONOMY } from '#shared/taxonomy.ts';
-import type { AIService } from '@services/prompt-optimization/types';
-import type { PreferenceRepository } from '@services/video-concept/repositories/PreferenceRepository';
-import type { CacheService } from '@services/cache/CacheService';
-import type { ILogger } from '@interfaces/ILogger';
+import { logger } from "@infrastructure/Logger";
+import { StructuredOutputEnforcer } from "@utils/StructuredOutputEnforcer";
+import { TemperatureOptimizer } from "@utils/TemperatureOptimizer";
+import { PromptBuilderService } from "./SystemPromptBuilder.ts";
+import { TAXONOMY } from "#shared/taxonomy.ts";
+import type { AIService } from "@services/prompt-optimization/types";
+import type { PreferenceRepository } from "@services/video-concept/repositories/PreferenceRepository";
+import type { CacheService } from "@services/cache/CacheService";
+import type { ILogger } from "@interfaces/ILogger";
 
-const SUBJECT_DESCRIPTOR_KEYS = ['subjectDescriptor1', 'subjectDescriptor2', 'subjectDescriptor3'] as const;
+const SUBJECT_DESCRIPTOR_KEYS = [
+  "subjectDescriptor1",
+  "subjectDescriptor2",
+  "subjectDescriptor3",
+] as const;
 
 /**
  * Map legacy wizard field names to strict Taxonomy IDs
@@ -51,7 +55,7 @@ interface CompatibilityService {
       elementType: string;
       context: Record<string, string>;
       concept?: string;
-    }
+    },
   ): Promise<Suggestion[]>;
 }
 
@@ -72,15 +76,15 @@ export class SuggestionGeneratorService {
     aiService: AIService,
     cacheService: CacheService,
     preferenceRepository: PreferenceRepository,
-    compatibilityService: CompatibilityService
+    compatibilityService: CompatibilityService,
   ) {
     this.ai = aiService;
     this.cacheService = cacheService;
     this.preferenceRepository = preferenceRepository;
     this.compatibilityService = compatibilityService;
     this.promptBuilder = new PromptBuilderService();
-    this.cacheConfig = cacheService.getConfig('creative');
-    this.log = logger.child({ service: 'SuggestionGeneratorService' });
+    this.cacheConfig = cacheService.getConfig("creative");
+    this.log = logger.child({ service: "SuggestionGeneratorService" });
   }
 
   /**
@@ -94,19 +98,22 @@ export class SuggestionGeneratorService {
     userId?: string;
   }): Promise<{ suggestions: Suggestion[] }> {
     const startTime = performance.now();
-    const operation = 'getCreativeSuggestions';
-    
-    const normalizedElementType = (SUBJECT_DESCRIPTOR_KEYS as readonly string[]).includes(params.elementType)
-      ? 'subjectDescriptor'
+    const operation = "getCreativeSuggestions";
+
+    const normalizedElementType = (
+      SUBJECT_DESCRIPTOR_KEYS as readonly string[]
+    ).includes(params.elementType)
+      ? "subjectDescriptor"
       : params.elementType;
 
     // Resolve Taxonomy ID for scoping
     // If it's a descriptor, scope to the Subject Group generally
-    const taxonomyScope = normalizedElementType === 'subjectDescriptor'
-      ? TAXONOMY.SUBJECT.id 
-      : FIELD_CATEGORY_MAP[params.elementType];
+    const taxonomyScope =
+      normalizedElementType === "subjectDescriptor"
+        ? TAXONOMY.SUBJECT.id
+        : FIELD_CATEGORY_MAP[params.elementType];
 
-    this.log.debug('Starting operation.', {
+    this.log.debug("Starting operation.", {
       operation,
       elementType: params.elementType,
       normalizedElementType,
@@ -124,9 +131,12 @@ export class SuggestionGeneratorService {
       concept: params.concept?.substring(0, 200),
     });
 
-    const cached = await this.cacheService.get<{ suggestions: Suggestion[] }>(cacheKey, 'creative-suggestions');
+    const cached = await this.cacheService.get<{ suggestions: Suggestion[] }>(
+      cacheKey,
+      "creative-suggestions",
+    );
     if (cached) {
-      this.log.debug('Cache hit.', {
+      this.log.debug("Cache hit.", {
         operation,
         duration: Math.round(performance.now() - startTime),
         suggestionCount: cached.suggestions.length,
@@ -144,7 +154,7 @@ export class SuggestionGeneratorService {
     } = {
       elementType: normalizedElementType,
     };
-    
+
     if (taxonomyScope !== undefined) {
       systemPromptParams.taxonomyScope = taxonomyScope;
     }
@@ -157,58 +167,70 @@ export class SuggestionGeneratorService {
     if (params.concept !== undefined) {
       systemPromptParams.concept = params.concept;
     }
-    
-    const systemPrompt = this.promptBuilder.buildSystemPrompt(systemPromptParams);
+
+    const systemPrompt =
+      this.promptBuilder.buildSystemPrompt(systemPromptParams);
 
     // Define schema for validation
-    const schema: { type: 'object' | 'array'; items?: { required?: string[] } } = {
-      type: 'array' as const,
+    const schema: {
+      type: "object" | "array";
+      items?: { required?: string[] };
+    } = {
+      type: "array" as const,
       items: {
-        required: ['text', 'explanation'],
+        required: ["text", "explanation"],
       },
     };
 
     // Get optimal temperature for creative suggestions
-    const temperature = TemperatureOptimizer.getOptimalTemperature('creative-suggestion', {
-      diversity: 'high',
-      precision: 'low',
-    });
+    const temperature = TemperatureOptimizer.getOptimalTemperature(
+      "creative-suggestion",
+      {
+        diversity: "high",
+        precision: "low",
+      },
+    );
 
     // Call AI service with structured output enforcement
-    const suggestions = await StructuredOutputEnforcer.enforceJSON(
+    const suggestions = (await StructuredOutputEnforcer.enforceJSON(
       this.ai,
       systemPrompt,
       {
-        operation: 'video_suggestions',
+        operation: "video_suggestions",
         schema,
         isArray: true,
         maxTokens: 2048,
         maxRetries: 2,
         temperature,
-      }
-    ) as Suggestion[];
+      },
+    )) as Suggestion[];
 
     // Apply semantic compatibility filtering if context exists
     let filteredSuggestions = suggestions;
     if (params.context && Object.keys(params.context).length > 0) {
-      const filterParams: { elementType: string; context: Record<string, string>; concept?: string } = {
+      const filterParams: {
+        elementType: string;
+        context: Record<string, string>;
+        concept?: string;
+      } = {
         elementType: normalizedElementType,
         context: params.context,
       };
       if (params.concept !== undefined) {
         filterParams.concept = params.concept;
       }
-      filteredSuggestions = await this.compatibilityService.filterBySemanticCompatibility(
-        suggestions,
-        filterParams
-      );
+      filteredSuggestions =
+        await this.compatibilityService.filterBySemanticCompatibility(
+          suggestions,
+          filterParams,
+        );
     }
 
     // Apply user preference ranking
     const rankedSuggestions = await this.rankByUserPreferences(
       filteredSuggestions,
       normalizedElementType,
-      params.userId || 'default'
+      params.userId || "default",
     );
 
     const result = { suggestions: rankedSuggestions };
@@ -218,7 +240,7 @@ export class SuggestionGeneratorService {
       ttl: this.cacheConfig.ttl,
     });
 
-    this.log.info('Operation completed.', {
+    this.log.info("Operation completed.", {
       operation,
       duration: Math.round(performance.now() - startTime),
       elementType: normalizedElementType,
@@ -235,16 +257,19 @@ export class SuggestionGeneratorService {
   private async rankByUserPreferences(
     suggestions: Suggestion[],
     elementType: string,
-    userId: string = 'default'
+    userId: string = "default",
   ): Promise<Suggestion[]> {
-    const preferences = await this.preferenceRepository.getPreferences(userId, elementType);
+    const preferences = await this.preferenceRepository.getPreferences(
+      userId,
+      elementType,
+    );
 
     if (!preferences || preferences.chosen.length === 0) {
       return suggestions; // No preferences yet, return as-is
     }
 
     // Calculate preference scores
-    const scoredSuggestions = suggestions.map(suggestion => ({
+    const scoredSuggestions = suggestions.map((suggestion) => ({
       ...suggestion,
       preferenceScore: this.calculatePreferenceScore(suggestion, preferences),
     }));
@@ -260,27 +285,32 @@ export class SuggestionGeneratorService {
   /**
    * Calculate preference score based on historical choices
    */
-  private calculatePreferenceScore(suggestion: Suggestion, preferences: { chosen: string[]; rejected: string[] }): number {
+  private calculatePreferenceScore(
+    suggestion: Suggestion,
+    preferences: { chosen: string[]; rejected: string[] },
+  ): number {
     let score = 0;
     const text = suggestion.text.toLowerCase();
 
     // Positive signals from chosen items
-    preferences.chosen.forEach(choice => {
+    preferences.chosen.forEach((choice) => {
       const choiceText = choice.toLowerCase();
       // Exact match
       if (text === choiceText) score += 2;
       // Partial match
-      else if (text.includes(choiceText) || choiceText.includes(text)) score += 1;
+      else if (text.includes(choiceText) || choiceText.includes(text))
+        score += 1;
       // Similar keywords
       const commonWords = this.getCommonKeywords(text, choiceText);
       score += commonWords.length * 0.5;
     });
 
     // Negative signals from rejected items
-    preferences.rejected.forEach(rejected => {
+    preferences.rejected.forEach((rejected) => {
       const rejectedText = rejected.toLowerCase();
       if (text === rejectedText) score -= 2;
-      else if (text.includes(rejectedText) || rejectedText.includes(text)) score -= 1;
+      else if (text.includes(rejectedText) || rejectedText.includes(text))
+        score -= 1;
     });
 
     return Math.max(0, score);
@@ -290,10 +320,22 @@ export class SuggestionGeneratorService {
    * Get common keywords between two texts
    */
   private getCommonKeywords(text1: string, text2: string): string[] {
-    const stopWords = new Set(['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for']);
-    const words1 = text1.split(/\s+/).filter(w => !stopWords.has(w));
-    const words2 = text2.split(/\s+/).filter(w => !stopWords.has(w));
-    return words1.filter(w => words2.includes(w));
+    const stopWords = new Set([
+      "the",
+      "a",
+      "an",
+      "and",
+      "or",
+      "but",
+      "in",
+      "on",
+      "at",
+      "to",
+      "for",
+    ]);
+    const words1 = text1.split(/\s+/).filter((w) => !stopWords.has(w));
+    const words2 = text2.split(/\s+/).filter((w) => !stopWords.has(w));
+    return words1.filter((w) => words2.includes(w));
   }
 
   /**
@@ -304,9 +346,9 @@ export class SuggestionGeneratorService {
     value: string;
   }): Promise<{ alternatives: AlternativePhrasing[] }> {
     const startTime = performance.now();
-    const operation = 'getAlternativePhrasings';
-    
-    this.log.debug('Starting operation.', {
+    const operation = "getAlternativePhrasings";
+
+    this.log.debug("Starting operation.", {
       operation,
       elementType: params.elementType,
       valueLength: params.value.length,
@@ -330,34 +372,37 @@ Return ONLY a JSON array:
 ]`;
 
     try {
-      const schema: { type: 'object' | 'array'; items?: { required?: string[] } } = {
-        type: 'array' as const,
+      const schema: {
+        type: "object" | "array";
+        items?: { required?: string[] };
+      } = {
+        type: "array" as const,
         items: {
-          required: ['text', 'tone'],
+          required: ["text", "tone"],
         },
       };
 
-      const alternatives = await StructuredOutputEnforcer.enforceJSON(
+      const alternatives = (await StructuredOutputEnforcer.enforceJSON(
         this.ai,
         prompt,
         {
-          operation: 'video_alternatives',
+          operation: "video_alternatives",
           schema,
           isArray: true,
           maxTokens: 512,
           temperature: 0.7,
-        }
-      ) as AlternativePhrasing[];
-      
-      this.log.info('Operation completed.', {
+        },
+      )) as AlternativePhrasing[];
+
+      this.log.info("Operation completed.", {
         operation,
         duration: Math.round(performance.now() - startTime),
         alternativeCount: alternatives.length,
       });
-      
+
       return { alternatives };
     } catch (error) {
-      this.log.error('Operation failed.', error as Error, {
+      this.log.error("Operation failed.", error as Error, {
         operation,
         duration: Math.round(performance.now() - startTime),
         elementType: params.elementType,

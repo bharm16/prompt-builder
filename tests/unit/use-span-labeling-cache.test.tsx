@@ -1,12 +1,12 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { renderHook } from '@testing-library/react';
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { renderHook } from "@testing-library/react";
 
-import { useSpanLabelingCache } from '@features/span-highlighting/hooks/useSpanLabelingCache';
-import type { SpanLabelingCacheService } from '@features/span-highlighting/hooks/useSpanLabelingCache';
-import type { SpanLabelingPayload } from '@features/span-highlighting/hooks/types';
+import { useSpanLabelingCache } from "@features/span-highlighting/hooks/useSpanLabelingCache";
+import type { SpanLabelingCacheService } from "@features/span-highlighting/hooks/useSpanLabelingCache";
+import type { SpanLabelingPayload } from "@features/span-highlighting/hooks/types";
 
-describe('useSpanLabelingCache', () => {
-  const payload: SpanLabelingPayload = { text: 'hello world', maxSpans: 5 };
+describe("useSpanLabelingCache", () => {
+  const payload: SpanLabelingPayload = { text: "hello world", maxSpans: 5 };
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -16,8 +16,8 @@ describe('useSpanLabelingCache', () => {
     vi.restoreAllMocks();
   });
 
-  describe('error handling', () => {
-    it('returns null cache results when no cache service is available', () => {
+  describe("error handling", () => {
+    it("returns null cache results when no cache service is available", () => {
       const { result } = renderHook(() => useSpanLabelingCache(null));
 
       const cacheResult = result.current.checkCache(payload);
@@ -26,17 +26,17 @@ describe('useSpanLabelingCache', () => {
       expect(cacheResult.cacheCheckDuration).toBeGreaterThanOrEqual(0);
     });
 
-    it('skips cache writes when cache service is missing', () => {
+    it("skips cache writes when cache service is missing", () => {
       const { result } = renderHook(() => useSpanLabelingCache(null));
 
       expect(() =>
-        result.current.setCache(payload, { spans: [], meta: null })
+        result.current.setCache(payload, { spans: [], meta: null }),
       ).not.toThrow();
     });
   });
 
-  describe('edge cases', () => {
-    it('returns null when the cache has no entry', () => {
+  describe("edge cases", () => {
+    it("returns null when the cache has no entry", () => {
       const cacheService: SpanLabelingCacheService = {
         get: vi.fn(() => null),
         set: vi.fn(),
@@ -51,15 +51,15 @@ describe('useSpanLabelingCache', () => {
     });
   });
 
-  describe('core behavior', () => {
-    it('returns cached spans and metadata when available', () => {
+  describe("core behavior", () => {
+    it("returns cached spans and metadata when available", () => {
       const cacheService: SpanLabelingCacheService = {
         get: vi.fn(() => ({
-          spans: [{ start: 0, end: 2, category: 'style', confidence: 0.8 }],
-          meta: { version: 'v1' },
-          cacheId: 'cache-1',
-          signature: 'sig-1',
-          text: 'hello world',
+          spans: [{ start: 0, end: 2, category: "style", confidence: 0.8 }],
+          meta: { version: "v1" },
+          cacheId: "cache-1",
+          signature: "sig-1",
+          text: "hello world",
           timestamp: 0,
         })),
         set: vi.fn(),
@@ -70,14 +70,14 @@ describe('useSpanLabelingCache', () => {
       const cacheResult = result.current.checkCache(payload);
 
       expect(cacheResult.cached).toEqual({
-        spans: [{ start: 0, end: 2, category: 'style', confidence: 0.8 }],
-        meta: { version: 'v1' },
-        cacheId: 'cache-1',
-        signature: 'sig-1',
+        spans: [{ start: 0, end: 2, category: "style", confidence: 0.8 }],
+        meta: { version: "v1" },
+        cacheId: "cache-1",
+        signature: "sig-1",
       });
     });
 
-    it('writes cache entries through the provided service', () => {
+    it("writes cache entries through the provided service", () => {
       const cacheService: SpanLabelingCacheService = {
         get: vi.fn(() => null),
         set: vi.fn(),
@@ -85,12 +85,16 @@ describe('useSpanLabelingCache', () => {
 
       const { result } = renderHook(() => useSpanLabelingCache(cacheService));
 
-      result.current.setCache(payload, { spans: [], meta: null, signature: 'sig' });
+      result.current.setCache(payload, {
+        spans: [],
+        meta: null,
+        signature: "sig",
+      });
 
       expect(cacheService.set).toHaveBeenCalledWith(payload, {
         spans: [],
         meta: null,
-        signature: 'sig',
+        signature: "sig",
       });
     });
   });

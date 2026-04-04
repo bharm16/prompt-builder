@@ -8,16 +8,19 @@
  * - Async hydration to avoid blocking initial render
  */
 
-import { PERFORMANCE_CONFIG, STORAGE_KEYS } from '@config/performance.config';
-import { hashString } from '../utils/hashing.ts';
-import { buildCacheKey as buildCacheKeyUtil, type CacheKeyPayload } from '../utils/cacheKey.ts';
-import { getCacheStorage } from './storageAdapter.ts';
-import { getVersionString } from '@shared/version';
-import type { LabeledSpan, SpanMeta } from '../hooks/types';
-import { logger } from '@/services/LoggingService';
-import { sanitizeError } from '@/utils/logging';
+import { PERFORMANCE_CONFIG, STORAGE_KEYS } from "@config/performance.config";
+import { hashString } from "../utils/hashing.ts";
+import {
+  buildCacheKey as buildCacheKeyUtil,
+  type CacheKeyPayload,
+} from "../utils/cacheKey.ts";
+import { getCacheStorage } from "./storageAdapter.ts";
+import { getVersionString } from "@shared/version";
+import type { LabeledSpan, SpanMeta } from "../hooks/types";
+import { logger } from "@/services/LoggingService";
+import { sanitizeError } from "@/utils/logging";
 
-const log = logger.child('SpanLabelingCache');
+const log = logger.child("SpanLabelingCache");
 
 // Cache version - includes system versions from shared/version.js
 // This ensures cache invalidation when taxonomy, prompts, or API changes
@@ -59,26 +62,26 @@ class SpanLabelingCache {
     this.cache = new Map();
     this.hydrated = false;
     this.storageKey = STORAGE_KEYS.SPAN_LABELING_CACHE;
-    this.versionKey = 'span_cache_version';
+    this.versionKey = "span_cache_version";
     this.limit = PERFORMANCE_CONFIG.SPAN_LABELING_CACHE_LIMIT;
     this.version = CURRENT_CACHE_VERSION;
-    
+
     // Validate version on initialization
     this.validateVersion();
   }
-  
+
   /**
    * Validate cache version and clear if mismatched
    */
   private validateVersion(): void {
     const storage = getCacheStorage();
     if (!storage) return;
-    
+
     try {
       const storedVersion = storage.getItem(this.versionKey);
       if (storedVersion !== this.version) {
-        log.info('Cache version changed; clearing cache', {
-          operation: 'validateVersion',
+        log.info("Cache version changed; clearing cache", {
+          operation: "validateVersion",
           from: storedVersion,
           to: this.version,
         });
@@ -87,8 +90,8 @@ class SpanLabelingCache {
       }
     } catch (error) {
       const info = sanitizeError(error);
-      log.warn('Failed to validate cache version', {
-        operation: 'validateVersion',
+      log.warn("Failed to validate cache version", {
+        operation: "validateVersion",
         error: info.message,
         errorName: info.name,
       });
@@ -131,19 +134,26 @@ class SpanLabelingCache {
         }
 
         entries.forEach(([key, value]) => {
-          if (!key || typeof key !== 'string' || !value || typeof value !== 'object') {
+          if (
+            !key ||
+            typeof key !== "string" ||
+            !value ||
+            typeof value !== "object"
+          ) {
             return;
           }
 
           const valueObj = value as Record<string, unknown>;
 
           // CACHE VERSION CHECK: Skip outdated entries during hydration
-          const entryVersion = (valueObj.version || (valueObj.meta as Record<string, unknown>)?.cacheVersion || '') as string;
+          const entryVersion = (valueObj.version ||
+            (valueObj.meta as Record<string, unknown>)?.cacheVersion ||
+            "") as string;
           if (entryVersion !== CURRENT_CACHE_VERSION) {
             // Skip outdated entries - different version
             return;
           }
-          
+
           // CACHE AGE CHECK: Skip expired entries (older than 24 hours)
           const timestamp = (valueObj.timestamp || 0) as number;
           const age = Date.now() - timestamp;
@@ -153,19 +163,26 @@ class SpanLabelingCache {
           }
 
           const normalized: CacheEntry = {
-            spans: Array.isArray(valueObj.spans) ? valueObj.spans as LabeledSpan[] : [],
+            spans: Array.isArray(valueObj.spans)
+              ? (valueObj.spans as LabeledSpan[])
+              : [],
             meta: (valueObj.meta ?? null) as SpanMeta | null,
-            timestamp: typeof valueObj.timestamp === 'number' ? valueObj.timestamp : Date.now(),
-            text: typeof valueObj.text === 'string' ? valueObj.text : '',
-            cacheId: typeof valueObj.cacheId === 'string' ? valueObj.cacheId : null,
-            signature: typeof valueObj.signature === 'string' ? valueObj.signature : '',
+            timestamp:
+              typeof valueObj.timestamp === "number"
+                ? valueObj.timestamp
+                : Date.now(),
+            text: typeof valueObj.text === "string" ? valueObj.text : "",
+            cacheId:
+              typeof valueObj.cacheId === "string" ? valueObj.cacheId : null,
+            signature:
+              typeof valueObj.signature === "string" ? valueObj.signature : "",
             version: CURRENT_CACHE_VERSION,
           };
           if (!normalized.text) {
             return;
           }
           if (!normalized.signature) {
-            normalized.signature = hashString(normalized.text ?? '');
+            normalized.signature = hashString(normalized.text ?? "");
           }
           this.cache.set(key, normalized);
         });
@@ -181,8 +198,8 @@ class SpanLabelingCache {
         }
       } catch (error) {
         const info = sanitizeError(error);
-        log.warn('Unable to hydrate span labeling cache', {
-          operation: 'hydrate',
+        log.warn("Unable to hydrate span labeling cache", {
+          operation: "hydrate",
           error: info.message,
           errorName: info.name,
         });
@@ -192,7 +209,7 @@ class SpanLabelingCache {
 
     // Use requestIdleCallback for non-blocking hydration
     // Falls back to setTimeout for browsers without requestIdleCallback
-    if (typeof requestIdleCallback !== 'undefined') {
+    if (typeof requestIdleCallback !== "undefined") {
       requestIdleCallback(performHydration, { timeout: 2000 });
     } else {
       setTimeout(performHydration, 100);
@@ -210,23 +227,31 @@ class SpanLabelingCache {
     }
 
     try {
-      const serialized = Array.from(this.cache.entries()).map(([key, value]) => [
-        key,
-        {
-          spans: Array.isArray(value.spans) ? value.spans : [],
-          meta: value.meta ?? null,
-          version: value.version || CURRENT_CACHE_VERSION,
-          timestamp: typeof value.timestamp === 'number' ? value.timestamp : Date.now(),
-          text: typeof value.text === 'string' ? value.text : '',
-          cacheId: typeof value.cacheId === 'string' ? value.cacheId : null,
-          signature: typeof value.signature === 'string' ? value.signature : hashString(value.text ?? ''),
-        },
-      ]);
+      const serialized = Array.from(this.cache.entries()).map(
+        ([key, value]) => [
+          key,
+          {
+            spans: Array.isArray(value.spans) ? value.spans : [],
+            meta: value.meta ?? null,
+            version: value.version || CURRENT_CACHE_VERSION,
+            timestamp:
+              typeof value.timestamp === "number"
+                ? value.timestamp
+                : Date.now(),
+            text: typeof value.text === "string" ? value.text : "",
+            cacheId: typeof value.cacheId === "string" ? value.cacheId : null,
+            signature:
+              typeof value.signature === "string"
+                ? value.signature
+                : hashString(value.text ?? ""),
+          },
+        ],
+      );
       storage.setItem(this.storageKey, JSON.stringify(serialized));
     } catch (error) {
       const info = sanitizeError(error);
-      log.warn('Unable to persist span labeling cache', {
-        operation: 'persist',
+      log.warn("Unable to persist span labeling cache", {
+        operation: "persist",
         error: info.message,
         errorName: info.name,
       });
@@ -249,28 +274,34 @@ class SpanLabelingCache {
     }
 
     // CACHE VERSION CHECK: Invalidate entries with different version
-    const entryVersion = cached.version || (cached.meta as Record<string, unknown>)?.cacheVersion || '';
+    const entryVersion =
+      cached.version ||
+      (cached.meta as Record<string, unknown>)?.cacheVersion ||
+      "";
     if (entryVersion !== CURRENT_CACHE_VERSION) {
-      log.debug('Invalidating outdated cache entry (version mismatch)', {
-        operation: 'get',
+      log.debug("Invalidating outdated cache entry (version mismatch)", {
+        operation: "get",
       });
       this.cache.delete(key);
       return null;
     }
-    
+
     // CACHE AGE CHECK: Invalidate expired entries
     const timestamp = cached.timestamp || 0;
     const age = Date.now() - timestamp;
     if (age > MAX_CACHE_AGE_MS) {
-      log.debug('Invalidating expired cache entry', {
-        operation: 'get',
+      log.debug("Invalidating expired cache entry", {
+        operation: "get",
         ageHours: Math.round(age / 3600000),
       });
       this.cache.delete(key);
       return null;
     }
 
-    const signature = typeof cached.signature === 'string' ? cached.signature : hashString(cached.text ?? '');
+    const signature =
+      typeof cached.signature === "string"
+        ? cached.signature
+        : hashString(cached.text ?? "");
     return {
       ...cached,
       signature,
@@ -280,7 +311,10 @@ class SpanLabelingCache {
   /**
    * Set cached result for a payload
    */
-  set(payload: CacheKeyPayload, data: { spans: LabeledSpan[]; meta: SpanMeta | null; signature?: string }): void {
+  set(
+    payload: CacheKeyPayload,
+    data: { spans: LabeledSpan[]; meta: SpanMeta | null; signature?: string },
+  ): void {
     this.hydrate();
     if (!payload?.text) {
       return;
@@ -294,9 +328,9 @@ class SpanLabelingCache {
       } as SpanMeta,
       version: CURRENT_CACHE_VERSION, // Primary version field
       timestamp: Date.now(),
-      text: payload.text ?? '',
+      text: payload.text ?? "",
       cacheId: payload.cacheId ?? null,
-      signature: data?.signature ?? hashString(payload.text ?? ''),
+      signature: data?.signature ?? hashString(payload.text ?? ""),
     };
 
     // Update recency for simple LRU semantics (delete then re-add moves to end)
@@ -343,7 +377,8 @@ class SpanLabelingCache {
       key,
       cacheId: value?.cacheId ?? null,
       spanCount: Array.isArray(value?.spans) ? value.spans.length : 0,
-      textPreview: typeof value?.text === 'string' ? value.text.slice(0, 40) : '',
+      textPreview:
+        typeof value?.text === "string" ? value.text.slice(0, 40) : "",
     }));
   }
 }

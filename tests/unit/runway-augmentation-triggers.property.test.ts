@@ -14,47 +14,49 @@
  * **Validates: Requirements 3.5, 3.6, 3.7**
  */
 
-import { describe, it, expect, vi } from 'vitest';
-import * as fc from 'fast-check';
+import { describe, it, expect, vi } from "vitest";
+import * as fc from "fast-check";
 
-import { RunwayStrategy } from '@services/video-prompt-analysis/strategies/RunwayStrategy';
+import { RunwayStrategy } from "@services/video-prompt-analysis/strategies/RunwayStrategy";
 
-vi.mock('@services/video-prompt-analysis/services/rewriter/VideoPromptLLMRewriter', () => ({
-  VideoPromptLLMRewriter: class {
-    async rewrite(ir: { raw?: string }) {
-      return typeof ir?.raw === 'string' ? ir.raw : '';
-    }
-  },
-}));
+vi.mock(
+  "@services/video-prompt-analysis/services/rewriter/VideoPromptLLMRewriter",
+  () => ({
+    VideoPromptLLMRewriter: class {
+      async rewrite(ir: { raw?: string }) {
+        return typeof ir?.raw === "string" ? ir.raw : "";
+      }
+    },
+  }),
+);
 
 /**
  * Required stability triggers for Runway A2D architecture
  * These MUST be injected by the augment phase
  */
 const REQUIRED_STABILITY_TRIGGERS = [
-  'single continuous shot',
-  'fluid motion',
-  'consistent geometry',
+  "single continuous shot",
+  "fluid motion",
+  "consistent geometry",
 ] as const;
 
 const CINEMATOGRAPHIC_TRIGGERS = [
-  'chromatic aberration',
-  'anamorphic lens flare',
-  'shallow depth of field',
-  'film grain',
-  'cinematic lighting',
-  'volumetric lighting',
-  'lens distortion',
-  'bokeh',
+  "chromatic aberration",
+  "anamorphic lens flare",
+  "shallow depth of field",
+  "film grain",
+  "cinematic lighting",
+  "volumetric lighting",
+  "lens distortion",
+  "bokeh",
 ] as const;
-
 
 /**
  * Execute the full pipeline for a strategy
  */
 async function executePipeline(
   strategy: RunwayStrategy,
-  input: string
+  input: string,
 ): Promise<{ prompt: string; metadata: { triggersInjected: string[] } }> {
   await strategy.validate(input);
   const normalized = strategy.normalize(input);
@@ -62,12 +64,15 @@ async function executePipeline(
   const augmented = strategy.augment(transformed);
 
   return {
-    prompt: typeof augmented.prompt === 'string' ? augmented.prompt : JSON.stringify(augmented.prompt),
+    prompt:
+      typeof augmented.prompt === "string"
+        ? augmented.prompt
+        : JSON.stringify(augmented.prompt),
     metadata: augmented.metadata,
   };
 }
 
-describe('Runway Augmentation Trigger Injection Property Tests', () => {
+describe("Runway Augmentation Trigger Injection Property Tests", () => {
   const strategy = new RunwayStrategy();
 
   /**
@@ -79,56 +84,68 @@ describe('Runway Augmentation Trigger Injection Property Tests', () => {
    * **Feature: video-model-optimization, Property 6 (Runway): Augmentation Trigger Injection**
    * **Validates: Requirements 3.5, 3.6, 3.7**
    */
-  describe('Property 6 (Runway): Augmentation Trigger Injection', () => {
+  describe("Property 6 (Runway): Augmentation Trigger Injection", () => {
     it('injects "single continuous shot" trigger to prevent hallucinated cuts', async () => {
       await fc.assert(
         fc.asyncProperty(
-          fc.string({ minLength: 5, maxLength: 200 }).filter(s => s.trim().length > 0),
+          fc
+            .string({ minLength: 5, maxLength: 200 })
+            .filter((s) => s.trim().length > 0),
           async (input) => {
             const result = await executePipeline(strategy, input);
 
             // Must contain "single continuous shot" trigger
-            expect(result.prompt.toLowerCase()).toContain('single continuous shot');
-          }
+            expect(result.prompt.toLowerCase()).toContain(
+              "single continuous shot",
+            );
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
 
     it('injects "fluid motion" trigger for A2D stability', async () => {
       await fc.assert(
         fc.asyncProperty(
-          fc.string({ minLength: 5, maxLength: 200 }).filter(s => s.trim().length > 0),
+          fc
+            .string({ minLength: 5, maxLength: 200 })
+            .filter((s) => s.trim().length > 0),
           async (input) => {
             const result = await executePipeline(strategy, input);
 
             // Must contain "fluid motion" trigger
-            expect(result.prompt.toLowerCase()).toContain('fluid motion');
-          }
+            expect(result.prompt.toLowerCase()).toContain("fluid motion");
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
 
     it('injects "consistent geometry" trigger for A2D stability', async () => {
       await fc.assert(
         fc.asyncProperty(
-          fc.string({ minLength: 5, maxLength: 200 }).filter(s => s.trim().length > 0),
+          fc
+            .string({ minLength: 5, maxLength: 200 })
+            .filter((s) => s.trim().length > 0),
           async (input) => {
             const result = await executePipeline(strategy, input);
 
             // Must contain "consistent geometry" trigger
-            expect(result.prompt.toLowerCase()).toContain('consistent geometry');
-          }
+            expect(result.prompt.toLowerCase()).toContain(
+              "consistent geometry",
+            );
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
 
-    it('injects all three required stability triggers', async () => {
+    it("injects all three required stability triggers", async () => {
       await fc.assert(
         fc.asyncProperty(
-          fc.string({ minLength: 5, maxLength: 200 }).filter(s => s.trim().length > 0),
+          fc
+            .string({ minLength: 5, maxLength: 200 })
+            .filter((s) => s.trim().length > 0),
           async (input) => {
             const result = await executePipeline(strategy, input);
             const lowerPrompt = result.prompt.toLowerCase();
@@ -137,17 +154,19 @@ describe('Runway Augmentation Trigger Injection Property Tests', () => {
             for (const trigger of REQUIRED_STABILITY_TRIGGERS) {
               expect(lowerPrompt).toContain(trigger.toLowerCase());
             }
-          }
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
 
-    it('does not duplicate triggers already present in input', async () => {
+    it("does not duplicate triggers already present in input", async () => {
       await fc.assert(
         fc.asyncProperty(
           fc.constantFrom(...REQUIRED_STABILITY_TRIGGERS),
-          fc.string({ minLength: 5, maxLength: 100 }).filter(s => s.trim().length > 0),
+          fc
+            .string({ minLength: 5, maxLength: 100 })
+            .filter((s) => s.trim().length > 0),
           async (existingTrigger, baseInput) => {
             // Input already contains a trigger
             const input = `${baseInput}, ${existingTrigger}`;
@@ -156,21 +175,21 @@ describe('Runway Augmentation Trigger Injection Property Tests', () => {
             const lowerPrompt = result.prompt.toLowerCase();
 
             // Count occurrences of the trigger
-            const regex = new RegExp(existingTrigger.toLowerCase(), 'g');
+            const regex = new RegExp(existingTrigger.toLowerCase(), "g");
             const matches = lowerPrompt.match(regex);
 
             // Should only appear once (not duplicated)
             expect(matches?.length ?? 0).toBe(1);
-          }
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
   });
 
-  describe('Cinematographic Trigger Selection', () => {
-    it('injects shallow depth of field for prompts with people', async () => {
-      const peopleTerms = ['person', 'man', 'woman', 'character'];
+  describe("Suggested Cinematography Is Not Forced", () => {
+    it("does not force shallow depth of field for prompts with people", async () => {
+      const peopleTerms = ["person", "man", "woman", "character"];
 
       await fc.assert(
         fc.asyncProperty(
@@ -181,16 +200,18 @@ describe('Runway Augmentation Trigger Injection Property Tests', () => {
 
             const result = await executePipeline(strategy, input);
 
-            // Should contain shallow depth of field for subject focus
-            expect(result.prompt.toLowerCase()).toContain('shallow depth of field');
-          }
+            // Suggested cinematography should remain optional; augment only enforces stability triggers.
+            expect(result.prompt.toLowerCase()).not.toContain(
+              "shallow depth of field",
+            );
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
 
-    it('injects lens flare for outdoor/bright scenes', async () => {
-      const outdoorTerms = ['sun', 'outdoor', 'bright', 'daylight'];
+    it("does not force lens flare for outdoor or bright scenes", async () => {
+      const outdoorTerms = ["sun", "outdoor", "bright", "daylight"];
 
       await fc.assert(
         fc.asyncProperty(
@@ -201,16 +222,17 @@ describe('Runway Augmentation Trigger Injection Property Tests', () => {
 
             const result = await executePipeline(strategy, input);
 
-            // Should contain anamorphic lens flare
-            expect(result.prompt.toLowerCase()).toContain('anamorphic lens flare');
-          }
+            expect(result.prompt.toLowerCase()).not.toContain(
+              "anamorphic lens flare",
+            );
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
 
-    it('injects film grain for cinematic prompts', async () => {
-      const cinematicTerms = ['cinematic', 'film', 'movie'];
+    it("does not force film grain for cinematic prompts", async () => {
+      const cinematicTerms = ["cinematic", "movie"];
 
       await fc.assert(
         fc.asyncProperty(
@@ -221,16 +243,15 @@ describe('Runway Augmentation Trigger Injection Property Tests', () => {
 
             const result = await executePipeline(strategy, input);
 
-            // Should contain film grain
-            expect(result.prompt.toLowerCase()).toContain('film grain');
-          }
+            expect(result.prompt.toLowerCase()).not.toContain("film grain");
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
 
-    it('injects volumetric lighting for atmospheric scenes', async () => {
-      const atmosphericTerms = ['fog', 'mist', 'smoke', 'dust'];
+    it("does not force volumetric lighting for atmospheric scenes", async () => {
+      const atmosphericTerms = ["fog", "mist", "smoke", "dust"];
 
       await fc.assert(
         fc.asyncProperty(
@@ -241,62 +262,57 @@ describe('Runway Augmentation Trigger Injection Property Tests', () => {
 
             const result = await executePipeline(strategy, input);
 
-            // Should contain volumetric lighting
-            expect(result.prompt.toLowerCase()).toContain('volumetric lighting');
-          }
+            expect(result.prompt.toLowerCase()).not.toContain(
+              "volumetric lighting",
+            );
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
 
-    it('injects default cinematic lighting when no specific triggers apply', async () => {
+    it("does not append suggested cinematographic triggers when none are already present", async () => {
       await fc.assert(
         fc.asyncProperty(
-          // Generate strings that don't contain trigger keywords
-          fc.string({ minLength: 5, maxLength: 100 }).filter(s => {
+          // Generate strings that don't contain known cinematographic trigger phrases.
+          fc.string({ minLength: 5, maxLength: 100 }).filter((s) => {
             const lower = s.toLowerCase();
-            return s.trim().length > 0 &&
-                   !lower.includes('person') &&
-                   !lower.includes('man') &&
-                   !lower.includes('woman') &&
-                   !lower.includes('character') &&
-                   !lower.includes('sun') &&
-                   !lower.includes('outdoor') &&
-                   !lower.includes('bright') &&
-                   !lower.includes('day') &&
-                   !lower.includes('cinematic') &&
-                   !lower.includes('film') &&
-                   !lower.includes('movie') &&
-                   !lower.includes('fog') &&
-                   !lower.includes('mist') &&
-                   !lower.includes('smoke') &&
-                   !lower.includes('dust');
+            return (
+              s.trim().length > 0 &&
+              !CINEMATOGRAPHIC_TRIGGERS.some((trigger) =>
+                lower.includes(trigger.toLowerCase()),
+              )
+            );
           }),
           async (input) => {
             const result = await executePipeline(strategy, input);
+            const lowerPrompt = result.prompt.toLowerCase();
 
-            // Should contain at least cinematic lighting as default
-            expect(result.prompt.toLowerCase()).toContain('cinematic lighting');
-          }
+            for (const trigger of CINEMATOGRAPHIC_TRIGGERS) {
+              expect(lowerPrompt).not.toContain(trigger.toLowerCase());
+            }
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
   });
 
-  describe('Trigger Injection Edge Cases', () => {
-    it('handles empty-ish input gracefully', async () => {
+  describe("Trigger Injection Edge Cases", () => {
+    it("handles empty-ish input gracefully", async () => {
       // Note: validate() will throw for truly empty input, so we test near-empty
-      const result = await executePipeline(strategy, 'a');
+      const result = await executePipeline(strategy, "a");
 
       expect(result.prompt).not.toBeNull();
       expect(result.metadata.triggersInjected.length).toBeGreaterThan(0);
     });
 
-    it('handles very long input without breaking', async () => {
+    it("handles very long input without breaking", async () => {
       await fc.assert(
         fc.asyncProperty(
-          fc.string({ minLength: 100, maxLength: 500 }).filter(s => s.trim().length > 0),
+          fc
+            .string({ minLength: 100, maxLength: 500 })
+            .filter((s) => s.trim().length > 0),
           async (input) => {
             const result = await executePipeline(strategy, input);
 
@@ -308,17 +324,19 @@ describe('Runway Augmentation Trigger Injection Property Tests', () => {
             for (const trigger of REQUIRED_STABILITY_TRIGGERS) {
               expect(lowerPrompt).toContain(trigger.toLowerCase());
             }
-          }
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
 
-    it('handles special characters in input', async () => {
+    it("handles special characters in input", async () => {
       await fc.assert(
         fc.asyncProperty(
-          fc.string({ minLength: 5, maxLength: 100 }).filter(s => s.trim().length > 0),
-          fc.constantFrom('!@#$%', '<>{}', '"\'`', '\\/', '\n\t'),
+          fc
+            .string({ minLength: 5, maxLength: 100 })
+            .filter((s) => s.trim().length > 0),
+          fc.constantFrom("!@#$%", "<>{}", "\"'`", "\\/", "\n\t"),
           async (baseInput, specialChars) => {
             const input = `${baseInput}${specialChars}`;
 
@@ -326,16 +344,18 @@ describe('Runway Augmentation Trigger Injection Property Tests', () => {
 
             // Should still inject triggers
             expect(result.metadata.triggersInjected.length).toBeGreaterThan(0);
-          }
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
 
-    it('limits cinematographic triggers to maximum of 3', async () => {
+    it("limits cinematographic triggers to maximum of 3", async () => {
       await fc.assert(
         fc.asyncProperty(
-          fc.string({ minLength: 5, maxLength: 200 }).filter(s => s.trim().length > 0),
+          fc
+            .string({ minLength: 5, maxLength: 200 })
+            .filter((s) => s.trim().length > 0),
           async (input) => {
             const result = await executePipeline(strategy, input);
 
@@ -351,9 +371,9 @@ describe('Runway Augmentation Trigger Injection Property Tests', () => {
 
             // Should not exceed 3 cinematographic triggers
             expect(cinematicCount).toBeLessThanOrEqual(3);
-          }
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
   });

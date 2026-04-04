@@ -7,13 +7,13 @@
  * @module SuggestionKeyGeneration.property.test
  */
 
-import { describe, it, expect } from 'vitest';
-import * as fc from 'fast-check';
+import { describe, it, expect } from "vitest";
+import * as fc from "fast-check";
 
-import { generateSuggestionKey } from '@components/SuggestionsPanel/components/SuggestionsList';
-import type { SuggestionItem } from '@components/SuggestionsPanel/hooks/types';
+import { generateSuggestionKey } from "@components/SuggestionsPanel/components/SuggestionsList";
+import type { SuggestionItem } from "@components/SuggestionsPanel/hooks/types";
 
-describe('Suggestion Key Generation Property Tests', () => {
+describe("Suggestion Key Generation Property Tests", () => {
   /**
    * Property 7: Fallback Key Generation Determinism
    *
@@ -24,8 +24,8 @@ describe('Suggestion Key Generation Property Tests', () => {
    * **Feature: ai-suggestions-fixes, Property 7: Fallback Key Generation Determinism**
    * **Validates: Requirements 7.3**
    */
-  describe('Property 7: Fallback Key Generation Determinism', () => {
-    it('same text and index produces same key (determinism)', () => {
+  describe("Property 7: Fallback Key Generation Determinism", () => {
+    it("same text and index produces same key (determinism)", () => {
       fc.assert(
         fc.property(
           fc.string({ minLength: 0, maxLength: 200 }),
@@ -38,13 +38,13 @@ describe('Suggestion Key Generation Property Tests', () => {
 
             // Same text + index must produce same key
             expect(key1).toBe(key2);
-          }
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
 
-    it('different indices produce different keys for same text (uniqueness within list)', () => {
+    it("different indices produce different keys for same text (uniqueness within list)", () => {
       fc.assert(
         fc.property(
           fc.string({ minLength: 0, maxLength: 200 }),
@@ -61,13 +61,13 @@ describe('Suggestion Key Generation Property Tests', () => {
 
             // Different indices must produce different keys
             expect(key1).not.toBe(key2);
-          }
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
 
-    it('backend ID is used when available (takes precedence)', () => {
+    it("backend ID is used when available (takes precedence)", () => {
       fc.assert(
         fc.property(
           fc.string({ minLength: 1, maxLength: 100 }),
@@ -80,13 +80,13 @@ describe('Suggestion Key Generation Property Tests', () => {
 
             // When ID is present, it should be used as the key
             expect(key).toBe(id);
-          }
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
 
-    it('backend ID is consistent regardless of index', () => {
+    it("backend ID is consistent regardless of index", () => {
       fc.assert(
         fc.property(
           fc.string({ minLength: 1, maxLength: 100 }),
@@ -103,13 +103,13 @@ describe('Suggestion Key Generation Property Tests', () => {
             expect(key1).toBe(id);
             expect(key2).toBe(id);
             expect(key1).toBe(key2);
-          }
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
 
-    it('fallback key format is consistent', () => {
+    it("fallback key format is consistent", () => {
       fc.assert(
         fc.property(
           fc.string({ minLength: 0, maxLength: 200 }),
@@ -123,29 +123,29 @@ describe('Suggestion Key Generation Property Tests', () => {
             expect(key).toMatch(/^suggestion_/);
             // Fallback key should end with the index
             expect(key).toMatch(new RegExp(`_${index}$`));
-          }
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
 
-    it('handles empty text gracefully', () => {
+    it("handles empty text gracefully", () => {
       fc.assert(
         fc.property(fc.integer({ min: 0, max: 1000 }), (index) => {
-          const suggestion: SuggestionItem = { text: '' };
+          const suggestion: SuggestionItem = { text: "" };
 
           const key = generateSuggestionKey(suggestion, index);
 
           // Should produce a valid key even with empty text
           expect(key).toBeTruthy();
-          expect(typeof key).toBe('string');
+          expect(typeof key).toBe("string");
           expect(key.length).toBeGreaterThan(0);
         }),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
 
-    it('handles undefined text gracefully', () => {
+    it("handles undefined text gracefully", () => {
       fc.assert(
         fc.property(fc.integer({ min: 0, max: 1000 }), (index) => {
           const suggestion: SuggestionItem = {};
@@ -154,30 +154,35 @@ describe('Suggestion Key Generation Property Tests', () => {
 
           // Should produce a valid key even with undefined text
           expect(key).toBeTruthy();
-          expect(typeof key).toBe('string');
+          expect(typeof key).toBe("string");
           expect(key.length).toBeGreaterThan(0);
         }),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
 
-    it('all keys in a list are unique', () => {
+    it("all keys in a list are unique", () => {
       fc.assert(
         fc.property(
-          fc.array(fc.string({ minLength: 0, maxLength: 100 }), { minLength: 1, maxLength: 20 }),
+          fc.array(fc.string({ minLength: 0, maxLength: 100 }), {
+            minLength: 1,
+            maxLength: 20,
+          }),
           (texts) => {
-            const suggestions: SuggestionItem[] = texts.map((text) => ({ text }));
+            const suggestions: SuggestionItem[] = texts.map((text) => ({
+              text,
+            }));
 
             const keys = suggestions.map((suggestion, index) =>
-              generateSuggestionKey(suggestion, index)
+              generateSuggestionKey(suggestion, index),
             );
 
             // All keys should be unique
             const uniqueKeys = new Set(keys);
             expect(uniqueKeys.size).toBe(keys.length);
-          }
+          },
         ),
-        { numRuns: 100 }
+        { numRuns: 100 },
       );
     });
   });

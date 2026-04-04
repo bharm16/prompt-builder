@@ -15,4 +15,4 @@ export interface FalDepthResponse {
 /**
  * Provider used for depth estimation
  */
-export type DepthEstimationProvider = 'fal.ai';
+export type DepthEstimationProvider = "fal.ai";

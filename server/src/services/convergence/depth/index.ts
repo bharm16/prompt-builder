@@ -7,9 +7,12 @@
  * @module convergence/depth
  */
 
-export type { DepthEstimationService, DepthEstimationServiceOptions } from './DepthEstimationService';
-export type { DepthModuleConfig } from './DepthEstimationService';
-export type { DepthEstimationProvider, FalDepthResponse } from './types';
+export type {
+  DepthEstimationService,
+  DepthEstimationServiceOptions,
+} from "./DepthEstimationService";
+export type { DepthModuleConfig } from "./DepthEstimationService";
+export type { DepthEstimationProvider, FalDepthResponse } from "./types";
 export {
   FalDepthEstimationService,
   createDepthEstimationService,
@@ -19,4 +22,4 @@ export {
   initializeDepthWarmer,
   setDepthEstimationModuleConfig,
   warmupDepthEstimationOnStartup,
-} from './DepthEstimationService';
+} from "./DepthEstimationService";

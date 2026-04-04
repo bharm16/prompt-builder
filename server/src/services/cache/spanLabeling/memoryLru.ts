@@ -1,4 +1,4 @@
-import type { MemoryCacheEntry } from '../types';
+import type { MemoryCacheEntry } from "../types";
 
 export class MemoryLruCache {
   private readonly cache = new Map<string, MemoryCacheEntry>();
@@ -61,7 +61,7 @@ export class MemoryLruCache {
       }
     }
 
-    toDelete.forEach(key => this.cache.delete(key));
+    toDelete.forEach((key) => this.cache.delete(key));
     return toDelete.length;
   }
 }

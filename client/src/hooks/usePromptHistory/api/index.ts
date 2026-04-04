@@ -14,4 +14,4 @@ export {
   updateVersions,
   deleteEntry,
   clearAll,
-} from './historyRepository';
+} from "./historyRepository";

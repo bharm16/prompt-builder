@@ -1,7 +1,16 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useClipboard } from '@features/prompt-optimizer/hooks/useClipboard';
-import { useShareLink } from '@features/prompt-optimizer/hooks/useShareLink';
-import { AI_MODEL_IDS, AI_MODEL_LABELS } from '@features/prompt-optimizer/components/constants';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { useClipboard } from "@features/prompt-optimizer/hooks/useClipboard";
+import { useShareLink } from "@features/prompt-optimizer/hooks/useShareLink";
+import {
+  AI_MODEL_IDS,
+  AI_MODEL_LABELS,
+} from "@features/prompt-optimizer/components/constants";
 
 type ReoptimizeOptions = {
   forceGenericTarget?: boolean;
@@ -18,7 +27,10 @@ interface CanvasEditorStateParams {
   promptUuid?: string | null;
   isOptimizing: boolean;
   genericOptimizedPrompt?: string | null;
-  onReoptimize: (prompt: string, options?: ReoptimizeOptions) => Promise<unknown> | unknown;
+  onReoptimize: (
+    prompt: string,
+    options?: ReoptimizeOptions,
+  ) => Promise<unknown> | unknown;
   logAction: (name: string, data?: Record<string, unknown>) => void;
 }
 
@@ -71,17 +83,17 @@ export function useCanvasEditorState({
       [...AI_MODEL_IDS]
         .map((id) => ({ id, label: AI_MODEL_LABELS[id] }))
         .sort((a, b) => a.label.localeCompare(b.label)),
-    []
+    [],
   );
 
-  const [modelFormatValue, setModelFormatValue] = useState<string>('auto');
+  const [modelFormatValue, setModelFormatValue] = useState<string>("auto");
   const modelFormatLabel = useMemo(() => {
-    if (modelFormatValue === 'auto') {
-      return 'Auto';
+    if (modelFormatValue === "auto") {
+      return "Auto";
     }
     return (
-      modelFormatOptions.find((option) => option.id === modelFormatValue)?.label ??
-      modelFormatValue
+      modelFormatOptions.find((option) => option.id === modelFormatValue)
+        ?.label ?? modelFormatValue
     );
   }, [modelFormatOptions, modelFormatValue]);
 
@@ -102,19 +114,19 @@ export function useCanvasEditorState({
         setShowExportMenuState(false);
       }
     };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [showExportMenu]);
 
   useEffect(() => {
     if (!showDiff) return;
     const handleKeyDown = (event: KeyboardEvent): void => {
-      if (event.key === 'Escape') {
+      if (event.key === "Escape") {
         setShowDiff(false);
       }
     };
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
   }, [showDiff]);
 
   useEffect(() => {
@@ -125,7 +137,7 @@ export function useCanvasEditorState({
   }, [showResults]);
 
   const handleCopy = useCallback((): void => {
-    logAction('copy', {
+    logAction("copy", {
       promptLength: displayedPrompt.length,
     });
     copy(displayedPrompt);
@@ -133,7 +145,7 @@ export function useCanvasEditorState({
 
   const handleShare = useCallback((): void => {
     if (promptUuid) {
-      logAction('share', { promptUuid });
+      logAction("share", { promptUuid });
       share(promptUuid);
     }
   }, [share, promptUuid, logAction]);
@@ -141,16 +153,16 @@ export function useCanvasEditorState({
   const handleCopyEvent = useCallback(
     (e: React.ClipboardEvent): void => {
       const selection = window.getSelection();
-      const selectedText = selection?.toString().trim() ?? '';
+      const selectedText = selection?.toString().trim() ?? "";
 
       if (selectedText) {
         return;
       }
 
-      e.clipboardData.setData('text/plain', displayedPrompt);
+      e.clipboardData.setData("text/plain", displayedPrompt);
       e.preventDefault();
     },
-    [displayedPrompt]
+    [displayedPrompt],
   );
 
   const handleModelFormatChange = useCallback(
@@ -159,23 +171,25 @@ export function useCanvasEditorState({
         return;
       }
 
-      const nextModel = nextValue === 'auto' ? '' : nextValue.trim();
-      const previousModel = modelFormatValue === 'auto' ? '' : modelFormatValue.trim();
+      const nextModel = nextValue === "auto" ? "" : nextValue.trim();
+      const previousModel =
+        modelFormatValue === "auto" ? "" : modelFormatValue.trim();
       if (nextModel === previousModel) {
         return;
       }
 
-      setModelFormatValue(nextValue === 'auto' ? 'auto' : nextModel);
+      setModelFormatValue(nextValue === "auto" ? "auto" : nextModel);
 
       const genericPrompt =
-        typeof genericOptimizedPrompt === 'string' && genericOptimizedPrompt.trim()
+        typeof genericOptimizedPrompt === "string" &&
+        genericOptimizedPrompt.trim()
           ? genericOptimizedPrompt
           : null;
       const hasGenericPrompt = Boolean(genericPrompt && genericPrompt.trim());
 
-      logAction('compileForModel', {
-        targetModel: nextModel || 'generic-auto',
-        source: nextValue === 'auto' ? 'auto' : 'manual',
+      logAction("compileForModel", {
+        targetModel: nextModel || "generic-auto",
+        source: nextValue === "auto" ? "auto" : "manual",
         genericPromptAvailable: hasGenericPrompt,
       });
 
@@ -215,7 +229,7 @@ export function useCanvasEditorState({
       logAction,
       modelFormatValue,
       onReoptimize,
-    ]
+    ],
   );
 
   return {

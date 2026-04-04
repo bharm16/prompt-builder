@@ -1,0 +1,3 @@
+# Ignore generated extraction snapshots. Keep the canonical latest file.
+extractions-*.json
+!extractions-latest.json

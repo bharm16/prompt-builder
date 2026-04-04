@@ -1,17 +1,22 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { onAuthStateChanged } from 'firebase/auth';
-import type { Asset, AssetType } from '@shared/types/asset';
-import { auth } from '@/config/firebase';
-import { assetsSidebarApi } from '../api/assetsSidebarApi';
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { onAuthStateChanged } from "firebase/auth";
+import type { Asset, AssetType } from "@shared/types/asset";
+import { auth } from "@/config/firebase";
+import { assetsSidebarApi } from "../api/assetsSidebarApi";
 
-const DEFAULT_EXPANDED: AssetType[] = ['character', 'style', 'location', 'object'];
+const DEFAULT_EXPANDED: AssetType[] = [
+  "character",
+  "style",
+  "location",
+  "object",
+];
 
 export function useAssetsSidebar() {
   const [assets, setAssets] = useState<Asset[]>([]);
   const [isLoading, setIsLoading] = useState(true); // Start as loading until auth is ready
   const [error, setError] = useState<string | null>(null);
   const [expandedSections, setExpandedSections] = useState<Set<AssetType>>(
-    () => new Set(DEFAULT_EXPANDED)
+    () => new Set(DEFAULT_EXPANDED),
   );
 
   // Ref to track if component is mounted, shared between effect and refresh callback
@@ -30,7 +35,7 @@ export function useAssetsSidebar() {
       }
     } catch (err) {
       if (isMountedRef.current) {
-        setError(err instanceof Error ? err.message : 'Failed to load assets');
+        setError(err instanceof Error ? err.message : "Failed to load assets");
       }
     } finally {
       if (isMountedRef.current) {
@@ -59,7 +64,9 @@ export function useAssetsSidebar() {
           })
           .catch((err) => {
             if (isMountedRef.current) {
-              setError(err instanceof Error ? err.message : 'Failed to load assets');
+              setError(
+                err instanceof Error ? err.message : "Failed to load assets",
+              );
             }
           })
           .finally(() => {

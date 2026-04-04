@@ -1,35 +1,35 @@
-import type { Application } from 'express';
-import request from 'supertest';
-import { describe, expect, it } from 'vitest';
-import { configureServices, initializeServices } from '@config/services.config';
-import { createApp } from '@server/app';
+import type { Application } from "express";
+import request from "supertest";
+import { describe, expect, it } from "vitest";
+import { configureServices, initializeServices } from "@config/services.config";
+import { createApp } from "@server/app";
 
-const TEST_API_KEY = 'runtime-flags-test-key';
+const TEST_API_KEY = "runtime-flags-test-key";
 
 const ENV_KEYS = [
-  'PROMPT_OUTPUT_ONLY',
-  'ENABLE_CONVERGENCE',
-  'PROCESS_ROLE',
-  'VIDEO_JOB_INLINE_ENABLED',
-  'ALLOWED_API_KEYS',
-  'PORT',
-  'NODE_ENV',
+  "PROMPT_OUTPUT_ONLY",
+  "ENABLE_CONVERGENCE",
+  "PROCESS_ROLE",
+  "VIDEO_JOB_INLINE_ENABLED",
+  "ALLOWED_API_KEYS",
+  "PORT",
+  "NODE_ENV",
 ] as const;
 
 type ManagedEnvKey = (typeof ENV_KEYS)[number];
 
 async function withApp(
   overrides: Partial<Record<ManagedEnvKey, string>>,
-  run: (app: Application) => Promise<void>
+  run: (app: Application) => Promise<void>,
 ): Promise<void> {
   const previous = Object.fromEntries(
-    ENV_KEYS.map((key) => [key, process.env[key]])
+    ENV_KEYS.map((key) => [key, process.env[key]]),
   ) as Record<ManagedEnvKey, string | undefined>;
 
   try {
-    process.env.NODE_ENV = 'test';
+    process.env.NODE_ENV = "test";
     process.env.ALLOWED_API_KEYS = TEST_API_KEY;
-    process.env.PORT = '0';
+    process.env.PORT = "0";
 
     for (const [key, value] of Object.entries(overrides)) {
       if (value === undefined) {
@@ -55,108 +55,108 @@ async function withApp(
   }
 }
 
-describe('Runtime flag matrix contracts (integration)', () => {
-  it('hides preview, motion, and video concept routes when PROMPT_OUTPUT_ONLY=true', async () => {
-    await withApp({ PROMPT_OUTPUT_ONLY: 'true' }, async (app) => {
+describe("Runtime flag matrix contracts (integration)", () => {
+  it("hides preview, motion, and video concept routes when PROMPT_OUTPUT_ONLY=true", async () => {
+    await withApp({ PROMPT_OUTPUT_ONLY: "true" }, async (app) => {
       const previewRoute = await request(app)
-        .get('/api/preview/video/availability')
-        .set('x-api-key', TEST_API_KEY);
+        .get("/api/preview/video/availability")
+        .set("x-api-key", TEST_API_KEY);
       expect(previewRoute.status).toBe(404);
 
       const videoConceptRoute = await request(app)
-        .post('/api/video/suggestions')
-        .set('x-api-key', TEST_API_KEY)
+        .post("/api/video/suggestions")
+        .set("x-api-key", TEST_API_KEY)
         .send({});
       expect(videoConceptRoute.status).toBe(404);
 
       const motionRoute = await request(app)
-        .get('/api/motion/media/health')
-        .set('x-api-key', TEST_API_KEY);
+        .get("/api/motion/media/health")
+        .set("x-api-key", TEST_API_KEY);
       expect(motionRoute.status).toBe(404);
 
       const optimizeRoute = await request(app)
-        .post('/api/optimize')
-        .set('x-api-key', TEST_API_KEY)
+        .post("/api/optimize")
+        .set("x-api-key", TEST_API_KEY)
         .send({});
       expect(optimizeRoute.status).toBe(400);
     });
   });
 
-  it('keeps health and optimization stable while disabling continuity when ENABLE_CONVERGENCE=false', async () => {
-    await withApp({ ENABLE_CONVERGENCE: 'false' }, async (app) => {
-      const health = await request(app).get('/health');
+  it("keeps health and optimization stable while disabling continuity when ENABLE_CONVERGENCE=false", async () => {
+    await withApp({ ENABLE_CONVERGENCE: "false" }, async (app) => {
+      const health = await request(app).get("/health");
       expect(health.status).toBe(200);
-      expect(health.body.status).toBe('healthy');
+      expect(health.body.status).toBe("healthy");
 
       const sessionsRoute = await request(app)
-        .patch('/api/v2/sessions/session-1')
-        .set('x-api-key', TEST_API_KEY)
-        .send({ status: 'not-a-valid-status' });
+        .patch("/api/v2/sessions/session-1")
+        .set("x-api-key", TEST_API_KEY)
+        .send({ status: "not-a-valid-status" });
       expect(sessionsRoute.status).toBe(400);
       expect(sessionsRoute.body.success).toBe(false);
-      expect(sessionsRoute.body.error).toBe('Invalid request');
+      expect(sessionsRoute.body.error).toBe("Invalid request");
 
       const continuityRoute = await request(app)
-        .get('/api/continuity/sessions')
-        .set('x-api-key', TEST_API_KEY);
+        .get("/api/continuity/sessions")
+        .set("x-api-key", TEST_API_KEY);
       expect(continuityRoute.status).toBe(404);
 
       const sessionsContinuitySubroute = await request(app)
-        .get('/api/v2/sessions/session-1/shots/shot-1/status')
-        .set('x-api-key', TEST_API_KEY);
+        .get("/api/v2/sessions/session-1/shots/shot-1/status")
+        .set("x-api-key", TEST_API_KEY);
       expect(sessionsContinuitySubroute.status).toBe(404);
 
       const optimizeRoute = await request(app)
-        .post('/api/optimize')
-        .set('x-api-key', TEST_API_KEY)
+        .post("/api/optimize")
+        .set("x-api-key", TEST_API_KEY)
         .send({});
       expect(optimizeRoute.status).toBe(400);
     });
   });
 
-  it('keeps /health and optimization routes stable with combined PROMPT_OUTPUT_ONLY + ENABLE_CONVERGENCE flags', async () => {
+  it("keeps /health and optimization routes stable with combined PROMPT_OUTPUT_ONLY + ENABLE_CONVERGENCE flags", async () => {
     await withApp(
       {
-        PROMPT_OUTPUT_ONLY: 'true',
-        ENABLE_CONVERGENCE: 'false',
+        PROMPT_OUTPUT_ONLY: "true",
+        ENABLE_CONVERGENCE: "false",
       },
       async (app) => {
-        const health = await request(app).get('/health');
+        const health = await request(app).get("/health");
         expect(health.status).toBe(200);
-        expect(health.body.status).toBe('healthy');
+        expect(health.body.status).toBe("healthy");
 
         const optimizeRoute = await request(app)
-          .post('/api/optimize')
-          .set('x-api-key', TEST_API_KEY)
+          .post("/api/optimize")
+          .set("x-api-key", TEST_API_KEY)
           .send({});
         expect(optimizeRoute.status).toBe(400);
-      }
+      },
     );
   });
 
-  it('keeps health stable across PROCESS_ROLE api/worker runtime modes', async () => {
+  it("keeps health stable across PROCESS_ROLE api/worker runtime modes", async () => {
     await withApp(
       {
-        PROCESS_ROLE: 'api',
-        VIDEO_JOB_INLINE_ENABLED: 'false',
+        PROCESS_ROLE: "api",
+        VIDEO_JOB_INLINE_ENABLED: "false",
       },
       async (app) => {
-        const health = await request(app).get('/health');
+        const health = await request(app).get("/health");
         expect(health.status).toBe(200);
-        expect(health.body.status).toBe('healthy');
-      }
+        expect(health.body.status).toBe("healthy");
+      },
     );
 
     await withApp(
       {
-        PROCESS_ROLE: 'worker',
-        VIDEO_JOB_INLINE_ENABLED: 'false',
+        PROCESS_ROLE: "worker",
+        VIDEO_JOB_INLINE_ENABLED: "false",
       },
       async (app) => {
-        const health = await request(app).get('/health');
+        const health = await request(app).get("/health");
         expect(health.status).toBe(200);
-        expect(health.body.status).toBe('healthy');
-      }
+        expect(health.body.status).toBe("healthy");
+      },
     );
   });
 });

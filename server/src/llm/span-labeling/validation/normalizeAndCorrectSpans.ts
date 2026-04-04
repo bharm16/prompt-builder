@@ -1,37 +1,43 @@
-import { ROLE_SET } from '../config/roles.js';
-import { getParentCategory } from '#shared/taxonomy.ts';
-import { wordCount } from '../utils/textUtils.js';
-import { normalizeSpan } from '../processing/SpanNormalizer.js';
-import type { SubstringPositionCache } from '../cache/SubstringPositionCache.js';
-import type { ValidationPolicy } from '../types.js';
-import type { SpanInput, NormalizedSpan } from '../processing/SpanNormalizer.js';
+import { ROLE_SET } from "../config/roles.js";
+import { getParentCategory } from "#shared/taxonomy.ts";
+import { wordCount } from "../utils/textUtils.js";
+import { normalizeSpan } from "../processing/SpanNormalizer.js";
+import type { SubstringPositionCache } from "../cache/SubstringPositionCache.js";
+import type { ValidationPolicy } from "../types.js";
+import type {
+  SpanInput,
+  NormalizedSpan,
+} from "../processing/SpanNormalizer.js";
 
 /**
  * Lightly sanitize span text before alignment to improve hit rate on
  * minor formatting differences (quotes, markdown emphasis, extra spaces).
  */
 function normalizeSpanTextForLookup(value: string): string {
-  if (typeof value !== 'string') return '';
+  if (typeof value !== "string") return "";
 
   return value
-    .replace(/[`"'""]/g, '')
-    .replace(/\*\*/g, '')
-    .replace(/\s+/g, ' ')
+    .replace(/[`"'""]/g, "")
+    .replace(/\*\*/g, "")
+    .replace(/\s+/g, " ")
     .trim();
 }
 
 /**
- * Validates and corrects span roles. 
+ * Validates and corrects span roles.
  * Formerly contained brittle regex overrides; now relies on the upstream model
  * and strict taxonomy validation.
  */
-function remapSpanRole(text: string, role: string): { role: string; note?: string } {
+function remapSpanRole(
+  text: string,
+  role: string,
+): { role: string; note?: string } {
   if (!text || !role) return { role };
-  
+
   // Logic removed: Brittle regex overrides (FOCUS_PATTERN, etc.) were deleting
   // valid spans that didn't match the regex. Trust the model's output or
   // valid taxonomy roles.
-  
+
   return { role };
 }
 
@@ -40,14 +46,18 @@ function remapSpanRole(text: string, role: string): { role: string; note?: strin
  * e.g. "with a woman," -> "woman"
  * e.g. "on 35mm with" -> "35mm"
  */
-function refineSpanBoundaries(text: string, start: number, end: number): { start: number; end: number; text: string } {
+function refineSpanBoundaries(
+  text: string,
+  start: number,
+  end: number,
+): { start: number; end: number; text: string } {
   let newStart = start;
   let newEnd = end;
-  
+
   // 1. Initial Trim: leading/trailing non-alphanumeric
   // Re-calculate spanText at each step to ensure validity
   let spanText = text.substring(newStart, newEnd);
-  
+
   const startTrimMatch = spanText.match(/^[^a-zA-Z0-9$]+/);
   if (startTrimMatch) {
     newStart += startTrimMatch[0].length;
@@ -69,7 +79,9 @@ function refineSpanBoundaries(text: string, start: number, end: number): { start
   while (changed) {
     changed = false;
     const innerText = text.substring(newStart, newEnd);
-    const leadingMatch = innerText.match(/^(of|with|in|on|at|by|from|to|for|a|an|the)\s+/i);
+    const leadingMatch = innerText.match(
+      /^(of|with|in|on|at|by|from|to|for|a|an|the)\s+/i,
+    );
     if (leadingMatch) {
       newStart += leadingMatch[0].length;
       changed = true;
@@ -81,7 +93,9 @@ function refineSpanBoundaries(text: string, start: number, end: number): { start
   while (changed) {
     changed = false;
     const innerText = text.substring(newStart, newEnd);
-    const trailingMatch = innerText.match(/\s+(of|with|in|on|at|by|from|to|for|a|an|the)$/i);
+    const trailingMatch = innerText.match(
+      /\s+(of|with|in|on|at|by|from|to|for|a|an|the)$/i,
+    );
     if (trailingMatch) {
       newEnd -= trailingMatch[0].length;
       changed = true;
@@ -99,7 +113,7 @@ function refineSpanBoundaries(text: string, start: number, end: number): { start
   return {
     start: newStart,
     end: newEnd,
-    text: text.substring(newStart, newEnd)
+    text: text.substring(newStart, newEnd),
   };
 }
 
@@ -130,7 +144,7 @@ export function normalizeAndCorrectSpans(
   text: string,
   policy: ValidationPolicy,
   cache: SubstringPositionCache,
-  lenient: boolean
+  lenient: boolean,
 ): NormalizeAndCorrectResult {
   const errors: string[] = [];
   const validationNotes: string[] = [];
@@ -140,9 +154,11 @@ export function normalizeAndCorrectSpans(
 
   spans.forEach((originalSpan, index) => {
     const label = `span[${index}]`;
-    const span = originalSpan ? { ...(originalSpan as Record<string, unknown>) } : originalSpan;
+    const span = originalSpan
+      ? { ...(originalSpan as Record<string, unknown>) }
+      : originalSpan;
 
-    if (!span || typeof span !== 'object') {
+    if (!span || typeof span !== "object") {
       if (!lenient) errors.push(`${label} invalid span object`);
       else validationNotes.push(`${label} dropped: invalid span object`);
       return;
@@ -151,39 +167,45 @@ export function normalizeAndCorrectSpans(
     const spanObj = span as Record<string, unknown>;
 
     // Check for text field
-    if (typeof spanObj.text !== 'string' || spanObj.text.length === 0) {
+    if (typeof spanObj.text !== "string" || spanObj.text.length === 0) {
       if (!lenient) errors.push(`${label} missing text`);
       else validationNotes.push(`${label} dropped: missing text`);
       return;
     }
 
     // Find correct indices in source text
-    const preferredStart = Number.isInteger(spanObj.start) ? (spanObj.start as number) : 0;
+    const preferredStart = Number.isInteger(spanObj.start)
+      ? (spanObj.start as number)
+      : 0;
     let corrected: { start: number; end: number } | null = null;
 
     // 1. Try exact matches (all occurrences) and pick best unclaimed
     const exactMatches = cache.findAllMatches(text, spanObj.text);
     if (exactMatches.length > 0) {
-       // Sort by distance to preferredStart
-       exactMatches.sort((a, b) => Math.abs(a.start - preferredStart) - Math.abs(b.start - preferredStart));
-       
-       // Pick first unclaimed
-       for (const m of exactMatches) {
-           const key = `${m.start}:${m.end}`;
-           if (!claimedKeys.has(key)) {
-               corrected = m;
-               claimedKeys.add(key);
-               break;
-           }
-       }
-       
-       // If all claimed, fallback to best one (will be deduped later if exact duplicate)
-       if (!corrected) {
-           const fallbackMatch = exactMatches[0];
-           if (fallbackMatch) {
-             corrected = fallbackMatch;
-           }
-       }
+      // Sort by distance to preferredStart
+      exactMatches.sort(
+        (a, b) =>
+          Math.abs(a.start - preferredStart) -
+          Math.abs(b.start - preferredStart),
+      );
+
+      // Pick first unclaimed
+      for (const m of exactMatches) {
+        const key = `${m.start}:${m.end}`;
+        if (!claimedKeys.has(key)) {
+          corrected = m;
+          claimedKeys.add(key);
+          break;
+        }
+      }
+
+      // If all claimed, fallback to best one (will be deduped later if exact duplicate)
+      if (!corrected) {
+        const fallbackMatch = exactMatches[0];
+        if (fallbackMatch) {
+          corrected = fallbackMatch;
+        }
+      }
     }
 
     // 2. Retry with normalized text if no exact match found
@@ -197,7 +219,9 @@ export function normalizeAndCorrectSpans(
     // 3. Last-resort case-insensitive search to catch minor casing mismatches
     if (!corrected) {
       const loweredSource = text.toLowerCase();
-      const loweredTarget = normalizeSpanTextForLookup(spanObj.text).toLowerCase();
+      const loweredTarget = normalizeSpanTextForLookup(
+        spanObj.text,
+      ).toLowerCase();
       const idx = loweredTarget ? loweredSource.indexOf(loweredTarget) : -1;
       if (idx !== -1) {
         corrected = { start: idx, end: idx + loweredTarget.length };
@@ -215,7 +239,7 @@ export function normalizeAndCorrectSpans(
 
     // If we found a match via fallback (2 or 3), mark it as claimed
     if (corrected) {
-        claimedKeys.add(`${corrected.start}:${corrected.end}`);
+      claimedKeys.add(`${corrected.start}:${corrected.end}`);
     }
 
     // Refine boundaries (trim punctuation/prepositions)
@@ -224,14 +248,17 @@ export function normalizeAndCorrectSpans(
     // Apply auto-corrected indices
     if (spanObj.start !== refined.start || spanObj.end !== refined.end) {
       autoFixNotes.push(
-        `${label} indices adjusted: ${spanObj.start}-${spanObj.end} -> ${refined.start}-${refined.end} ("${refined.text}")`
+        `${label} indices adjusted: ${spanObj.start}-${spanObj.end} -> ${refined.start}-${refined.end} ("${refined.text}")`,
       );
     }
 
     // Create corrected span (immutable)
     // Use refined.text instead of original spanObj.text
     const spanText = refined.text;
-    const spanRole = typeof spanObj.role === 'string' ? spanObj.role : String(spanObj.role ?? '');
+    const spanRole =
+      typeof spanObj.role === "string"
+        ? spanObj.role
+        : String(spanObj.role ?? "");
     const remapped = remapSpanRole(spanText, spanRole);
     if (remapped.note) {
       autoFixNotes.push(`${label} ${remapped.note}`);
@@ -242,7 +269,9 @@ export function normalizeAndCorrectSpans(
       start: refined.start,
       end: refined.end,
       role: remapped.role,
-      ...(typeof spanObj.confidence === 'number' ? { confidence: spanObj.confidence } : {}),
+      ...(typeof spanObj.confidence === "number"
+        ? { confidence: spanObj.confidence }
+        : {}),
     };
 
     // Normalize role and confidence (includes ID generation)
@@ -250,27 +279,28 @@ export function normalizeAndCorrectSpans(
     if (!normalized || !normalized.role) {
       if (!lenient) {
         errors.push(
-          `${label} role "${spanObj.role}" is not in the allowed set (${Array.from(ROLE_SET).join(', ')})`
+          `${label} role "${spanObj.role}" is not in the allowed set (${Array.from(ROLE_SET).join(", ")})`,
         );
       }
       return;
     }
 
     // Check if role is a technical category (should be exempt from word limit)
-    const isExemptCategory = 
-      normalized.role.startsWith('technical') || 
-      normalized.role.startsWith('style') || 
-      normalized.role.startsWith('camera') ||
-      normalized.role.startsWith('audio') ||
-      normalized.role.startsWith('lighting') ||
-      normalized.role === 'Specs' || // Keep legacy for safety
-      normalized.role === 'Style';
+    const isExemptCategory =
+      normalized.role.startsWith("technical") ||
+      normalized.role.startsWith("style") ||
+      normalized.role.startsWith("camera") ||
+      normalized.role.startsWith("audio") ||
+      normalized.role.startsWith("lighting") ||
+      normalized.role === "Specs" || // Keep legacy for safety
+      normalized.role === "Style";
 
-    const parentCategory = getParentCategory(normalized.role) || normalized.role;
+    const parentCategory =
+      getParentCategory(normalized.role) || normalized.role;
     const adjustedLimit =
-      parentCategory === 'action' || parentCategory === 'environment'
+      parentCategory === "action" || parentCategory === "environment"
         ? Math.max(policy.nonTechnicalWordLimit ?? 0, 12)
-        : policy.nonTechnicalWordLimit ?? 0;
+        : (policy.nonTechnicalWordLimit ?? 0);
 
     // Check word limit for non-exempt spans only
     if (
@@ -280,10 +310,12 @@ export function normalizeAndCorrectSpans(
     ) {
       if (!lenient) {
         errors.push(
-          `${label} exceeds non-technical word limit (${adjustedLimit} words)`
+          `${label} exceeds non-technical word limit (${adjustedLimit} words)`,
         );
       } else {
-        validationNotes.push(`${label} dropped: exceeds non-technical word limit`);
+        validationNotes.push(
+          `${label} dropped: exceeds non-technical word limit`,
+        );
       }
       return;
     }
@@ -297,9 +329,3 @@ export function normalizeAndCorrectSpans(
     notes: [...validationNotes, ...autoFixNotes],
   };
 }
-
-
-
-
-
-

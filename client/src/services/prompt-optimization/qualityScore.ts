@@ -1,4 +1,7 @@
-export function calculateQualityScore(inputPrompt: string, outputPrompt: string): number {
+export function calculateQualityScore(
+  inputPrompt: string,
+  outputPrompt: string,
+): number {
   let score = 0;
   const inputWords = inputPrompt.split(/\s+/).length;
   const outputWords = outputPrompt.split(/\s+/).length;
@@ -12,9 +15,14 @@ export function calculateQualityScore(inputPrompt: string, outputPrompt: string)
   score += Math.min(sections * 10, 30);
 
   // Key components
-  if (outputPrompt.includes('Goal')) score += 15;
-  if (outputPrompt.includes('Return Format') || outputPrompt.includes('Research')) score += 15;
-  if (outputPrompt.includes('Context') || outputPrompt.includes('Learning')) score += 15;
+  if (outputPrompt.includes("Goal")) score += 15;
+  if (
+    outputPrompt.includes("Return Format") ||
+    outputPrompt.includes("Research")
+  )
+    score += 15;
+  if (outputPrompt.includes("Context") || outputPrompt.includes("Learning"))
+    score += 15;
 
   return Math.min(score, 100);
 }

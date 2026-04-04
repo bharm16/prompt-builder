@@ -1,4 +1,4 @@
-import React, { type ReactNode } from 'react';
+import React, { type ReactNode } from "react";
 import {
   Sparkles,
   FileText,
@@ -9,11 +9,19 @@ import {
   Zap,
   Coffee,
   Inbox,
-} from '@promptstudio/system/components/ui';
-import { Button } from '@promptstudio/system/components/ui/button';
-import type { AppIcon } from '@/types';
+} from "@promptstudio/system/components/ui";
+import { Button } from "@promptstudio/system/components/ui/button";
+import type { AppIcon } from "@/types";
 
-type EmptyStateVariant = 'history' | 'search' | 'welcome' | 'error' | 'noInput' | 'loading' | 'success' | 'inbox';
+type EmptyStateVariant =
+  | "history"
+  | "search"
+  | "welcome"
+  | "error"
+  | "noInput"
+  | "loading"
+  | "success"
+  | "inbox";
 
 interface EmptyStateConfig {
   icon: AppIcon;
@@ -41,74 +49,82 @@ interface EmptyStateProps {
 const emptyStateConfig: Record<EmptyStateVariant, EmptyStateConfig> = {
   history: {
     icon: Clock,
-    title: 'No prompts yet',
-    description: 'Your optimized prompts will appear here',
+    title: "No prompts yet",
+    description: "Your optimized prompts will appear here",
     tips: [
-      'Try optimizing your first prompt above',
-      'Prompts are saved automatically',
-      'Sign in to sync across devices',
+      "Try optimizing your first prompt above",
+      "Prompts are saved automatically",
+      "Sign in to sync across devices",
     ],
   },
   search: {
     icon: Search,
-    title: 'No results found',
-    description: 'Try adjusting your search terms',
-    tips: ['Check your spelling', 'Try different keywords', 'Use fewer filters'],
+    title: "No results found",
+    description: "Try adjusting your search terms",
+    tips: [
+      "Check your spelling",
+      "Try different keywords",
+      "Use fewer filters",
+    ],
   },
   welcome: {
     icon: Sparkles,
-    title: 'Welcome to Prompt Builder',
-    description: 'Transform your ideas into powerful AI prompts',
+    title: "Welcome to Prompt Builder",
+    description: "Transform your ideas into powerful AI prompts",
     tips: [
-      'Start by typing your idea in the input above',
-      'Choose a prompt mode that fits your needs',
-      'Let AI optimize it into a detailed prompt',
+      "Start by typing your idea in the input above",
+      "Choose a prompt mode that fits your needs",
+      "Let AI optimize it into a detailed prompt",
     ],
   },
   error: {
     icon: Zap,
-    title: 'Something went wrong',
+    title: "Something went wrong",
     description: "We couldn't load your data",
-    tips: ['Check your internet connection', 'Refresh the page', 'Try again later'],
+    tips: [
+      "Check your internet connection",
+      "Refresh the page",
+      "Try again later",
+    ],
   },
   noInput: {
     icon: FileText,
-    title: 'Start typing to begin',
-    description: 'Enter your prompt idea to get started',
+    title: "Start typing to begin",
+    description: "Enter your prompt idea to get started",
     tips: [
-      'Describe what you want to achieve',
+      "Describe what you want to achieve",
       "Don't worry about being perfect - we'll optimize it",
-      'Try one of the quick actions below',
+      "Try one of the quick actions below",
     ],
   },
   loading: {
     icon: Coffee,
-    title: 'Loading...',
-    description: 'Just a moment while we fetch your data',
+    title: "Loading...",
+    description: "Just a moment while we fetch your data",
     tips: [],
   },
   success: {
     icon: TrendingUp,
     title: "You're all set!",
-    description: 'Everything is working perfectly',
+    description: "Everything is working perfectly",
     tips: [],
   },
   inbox: {
     icon: Inbox,
-    title: 'Nothing here',
-    description: 'This section is empty',
+    title: "Nothing here",
+    description: "This section is empty",
     tips: [],
   },
 };
 
 export default function EmptyState({
-  variant = 'history',
+  variant = "history",
   icon: CustomIcon = null,
   title = null,
   description = null,
   tips = null,
   action = null,
-  className = '',
+  className = "",
 }: EmptyStateProps): React.ReactElement {
   const config = emptyStateConfig[variant] || emptyStateConfig.inbox;
   const Icon = CustomIcon || config.icon;
@@ -132,11 +148,17 @@ export default function EmptyState({
 
         {/* Icon container */}
         <div className="relative flex items-center justify-center w-20 h-20 bg-gradient-to-br from-primary-50 to-secondary-50 rounded-full border-2 border-primary-200 animate-fade-in">
-          <Icon className="h-10 w-10 text-primary-600 animate-pulse" aria-hidden="true" />
+          <Icon
+            className="h-10 w-10 text-primary-600 animate-pulse"
+            aria-hidden="true"
+          />
         </div>
 
         {/* Floating sparkles decoration */}
-        <div className="absolute -top-2 -right-2 w-4 h-4 bg-yellow-400 rounded-full animate-bounce" aria-hidden="true" />
+        <div
+          className="absolute -top-2 -right-2 w-4 h-4 bg-yellow-400 rounded-full animate-bounce"
+          aria-hidden="true"
+        />
         <div
           className="absolute -bottom-2 -left-2 w-3 h-3 bg-blue-400 rounded-full animate-bounce animation-delay-200"
           aria-hidden="true"
@@ -144,7 +166,9 @@ export default function EmptyState({
       </div>
 
       {/* Title */}
-      <h3 className="text-xl font-bold text-neutral-900 mb-2">{displayTitle}</h3>
+      <h3 className="text-xl font-bold text-neutral-900 mb-2">
+        {displayTitle}
+      </h3>
 
       {/* Description */}
       <p className="text-neutral-600 mb-6 max-w-md">{displayDescription}</p>
@@ -154,12 +178,20 @@ export default function EmptyState({
         <div className="w-full max-w-md mb-6">
           <div className="text-left bg-white rounded-lg border-2 border-neutral-200 p-4">
             <div className="flex items-center gap-2 mb-3">
-              <Lightbulb className="h-4 w-4 text-primary-600" aria-hidden="true" />
-              <span className="text-sm font-semibold text-neutral-700">Tips to get started:</span>
+              <Lightbulb
+                className="h-4 w-4 text-primary-600"
+                aria-hidden="true"
+              />
+              <span className="text-sm font-semibold text-neutral-700">
+                Tips to get started:
+              </span>
             </div>
             <ul className="space-y-2">
               {displayTips.map((tip, index) => (
-                <li key={index} className="flex items-start gap-2 text-sm text-neutral-600">
+                <li
+                  key={index}
+                  className="flex items-start gap-2 text-sm text-neutral-600"
+                >
                   <span
                     className="flex-shrink-0 w-5 h-5 flex items-center justify-center bg-primary-100 text-primary-600 rounded-full text-xs font-semibold mt-0.5"
                     aria-hidden="true"
@@ -198,7 +230,9 @@ interface HistoryEmptyStateProps {
   onCreateNew?: () => void;
 }
 
-export function HistoryEmptyState({ onCreateNew }: HistoryEmptyStateProps): React.ReactElement {
+export function HistoryEmptyState({
+  onCreateNew,
+}: HistoryEmptyStateProps): React.ReactElement {
   return (
     <div className="p-4 text-center">
       {/* Empty state - no content when there's no history */}
@@ -211,15 +245,22 @@ interface SearchEmptyStateProps {
   onClearSearch?: () => void;
 }
 
-export function SearchEmptyState({ searchQuery, onClearSearch }: SearchEmptyStateProps): React.ReactElement {
+export function SearchEmptyState({
+  searchQuery,
+  onClearSearch,
+}: SearchEmptyStateProps): React.ReactElement {
   return (
     <EmptyState
       variant="search"
-      description={searchQuery ? `No results found for "${searchQuery}"` : 'Try adjusting your search terms'}
+      description={
+        searchQuery
+          ? `No results found for "${searchQuery}"`
+          : "Try adjusting your search terms"
+      }
       action={
         onClearSearch
           ? {
-              label: 'Clear search',
+              label: "Clear search",
               onClick: onClearSearch,
             }
           : null
@@ -232,14 +273,16 @@ interface WelcomeEmptyStateProps {
   onGetStarted?: () => void;
 }
 
-export function WelcomeEmptyState({ onGetStarted }: WelcomeEmptyStateProps): React.ReactElement {
+export function WelcomeEmptyState({
+  onGetStarted,
+}: WelcomeEmptyStateProps): React.ReactElement {
   return (
     <EmptyState
       variant="welcome"
       action={
         onGetStarted
           ? {
-              label: 'Get started',
+              label: "Get started",
               icon: Sparkles,
               onClick: onGetStarted,
             }
@@ -254,7 +297,10 @@ interface ErrorEmptyStateProps {
   errorMessage?: string;
 }
 
-export function ErrorEmptyState({ onRetry, errorMessage }: ErrorEmptyStateProps): React.ReactElement {
+export function ErrorEmptyState({
+  onRetry,
+  errorMessage,
+}: ErrorEmptyStateProps): React.ReactElement {
   return (
     <EmptyState
       variant="error"
@@ -262,7 +308,7 @@ export function ErrorEmptyState({ onRetry, errorMessage }: ErrorEmptyStateProps)
       action={
         onRetry
           ? {
-              label: 'Try again',
+              label: "Try again",
               icon: Zap,
               onClick: onRetry,
             }
@@ -276,6 +322,8 @@ interface LoadingEmptyStateProps {
   message?: string;
 }
 
-export function LoadingEmptyState({ message = 'Loading...' }: LoadingEmptyStateProps): React.ReactElement {
+export function LoadingEmptyState({
+  message = "Loading...",
+}: LoadingEmptyStateProps): React.ReactElement {
   return <EmptyState variant="loading" description={message} tips={[]} />;
 }

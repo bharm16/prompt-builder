@@ -1,11 +1,14 @@
-import React, { useEffect, useState } from 'react';
-import { Box, MapPin, Palette, User } from '@promptstudio/system/components/ui';
-import type { Asset } from '@shared/types/asset';
-import { cn } from '@/utils/cn';
-import { getAssetTypeConfig } from '@/features/assets/config/assetConfig';
-import { useResolvedMediaUrl } from '@/hooks/useResolvedMediaUrl';
+import React, { useEffect, useState } from "react";
+import { Box, MapPin, Palette, User } from "@promptstudio/system/components/ui";
+import type { Asset } from "@shared/types/asset";
+import { cn } from "@/utils/cn";
+import { getAssetTypeConfig } from "@/features/assets/config/assetConfig";
+import { useResolvedMediaUrl } from "@/hooks/useResolvedMediaUrl";
 
-const TYPE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+const TYPE_ICONS: Record<
+  string,
+  React.ComponentType<{ className?: string }>
+> = {
   character: User,
   style: Palette,
   location: MapPin,
@@ -26,27 +29,29 @@ export function AssetThumbnail({
   const primaryImage =
     asset.referenceImages?.find((img) => img.isPrimary) ||
     asset.referenceImages?.[0];
-  const thumbnailUrl = primaryImage?.thumbnailUrl?.trim?.() ?? '';
-  const fullUrl = primaryImage?.url?.trim?.() ?? '';
+  const thumbnailUrl = primaryImage?.thumbnailUrl?.trim?.() ?? "";
+  const fullUrl = primaryImage?.url?.trim?.() ?? "";
   const { url: resolvedThumbnailUrl } = useResolvedMediaUrl({
-    kind: 'image',
+    kind: "image",
     url: thumbnailUrl || null,
     storagePath: primaryImage?.thumbnailPath ?? null,
     enabled: Boolean(thumbnailUrl || primaryImage?.thumbnailPath),
   });
   const { url: resolvedFullUrl } = useResolvedMediaUrl({
-    kind: 'image',
+    kind: "image",
     url: fullUrl || null,
     storagePath: primaryImage?.storagePath ?? null,
     enabled: Boolean(fullUrl || primaryImage?.storagePath),
   });
   const preferredThumbnailUrl = resolvedThumbnailUrl || thumbnailUrl;
   const preferredFullUrl = resolvedFullUrl || fullUrl;
-  const [imageUrl, setImageUrl] = useState(preferredThumbnailUrl || preferredFullUrl);
+  const [imageUrl, setImageUrl] = useState(
+    preferredThumbnailUrl || preferredFullUrl,
+  );
   const [didTryFull, setDidTryFull] = useState(false);
   const config = getAssetTypeConfig(asset.type);
   const Icon = TYPE_ICONS[asset.type] || Box;
-  const triggerLabel = asset.trigger.startsWith('@')
+  const triggerLabel = asset.trigger.startsWith("@")
     ? asset.trigger
     : `@${asset.trigger}`;
 
@@ -61,7 +66,7 @@ export function AssetThumbnail({
       setImageUrl(preferredFullUrl);
       return;
     }
-    setImageUrl('');
+    setImageUrl("");
   };
 
   return (
@@ -77,8 +82,8 @@ export function AssetThumbnail({
     >
       <div
         className={cn(
-          'flex aspect-square w-full items-center justify-center overflow-hidden rounded-md',
-          imageUrl ? 'bg-surface-3' : config.bgClass
+          "flex aspect-square w-full items-center justify-center overflow-hidden rounded-md",
+          imageUrl ? "bg-surface-3" : config.bgClass,
         )}
       >
         {imageUrl ? (
@@ -89,10 +94,12 @@ export function AssetThumbnail({
             onError={handleImageError}
           />
         ) : (
-          <Icon className={cn('h-5 w-5', config.colorClass)} />
+          <Icon className={cn("h-5 w-5", config.colorClass)} />
         )}
       </div>
-      <span className="truncate px-1 text-[11px] text-muted">{triggerLabel}</span>
+      <span className="truncate px-1 text-[11px] text-muted">
+        {triggerLabel}
+      </span>
     </button>
   );
 }

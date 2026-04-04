@@ -34,6 +34,7 @@ The canvas-first layout has five interconnected gaps:
 **File:** `client/src/features/prompt-optimizer/CanvasWorkspace/components/CanvasGenerationStrip.tsx`
 
 **Props:**
+
 ```ts
 interface CanvasGenerationStripProps {
   generations: Generation[];
@@ -43,6 +44,7 @@ interface CanvasGenerationStripProps {
 ```
 
 **Behavior:**
+
 - Renders in same absolute position as current `CanvasVersionStrip` (`absolute left-5 top-1/2 z-20 -translate-y-[60%]`)
 - Each generation gets a 57×57px thumbnail button
 - Video generations: show `thumbnailUrl` or first `mediaUrls` entry as poster, with a small play icon overlay and tier badge ("D" for draft, "R" for render)
@@ -54,6 +56,7 @@ interface CanvasGenerationStripProps {
 - Label: tier abbreviation + index (e.g., "D1", "R1", "P1" for preview/storyboard)
 
 **Thumbnail resolution:**
+
 ```ts
 const resolveThumbnail = (generation: Generation): string | null => {
   if (generation.thumbnailUrl) return generation.thumbnailUrl;
@@ -67,17 +70,23 @@ const resolveThumbnail = (generation: Generation): string | null => {
 **File:** `client/src/features/prompt-optimizer/CanvasWorkspace/CanvasWorkspace.tsx`
 
 Add local state in `CanvasWorkspace`:
+
 ```ts
-const [selectedGenerationId, setSelectedGenerationId] = useState<string | null>(null);
+const [selectedGenerationId, setSelectedGenerationId] = useState<string | null>(
+  null,
+);
 ```
 
 **Auto-select logic:** When a new generation completes (detect via snapshot change), auto-select it:
+
 ```ts
 useEffect(() => {
   if (!snapshot?.generations?.length) return;
   const completed = snapshot.generations
-    .filter(g => g.status === 'completed')
-    .sort((a, b) => (b.completedAt ?? b.createdAt) - (a.completedAt ?? a.createdAt));
+    .filter((g) => g.status === "completed")
+    .sort(
+      (a, b) => (b.completedAt ?? b.createdAt) - (a.completedAt ?? a.createdAt),
+    );
   const latest = completed[0];
   if (latest && latest.id !== selectedGenerationId) {
     setSelectedGenerationId(latest.id);
@@ -105,13 +114,17 @@ useEffect(() => {
 const selectedGeneration = useMemo(() => {
   if (!snapshot?.generations?.length) return null;
   if (selectedGenerationId) {
-    const match = snapshot.generations.find(g => g.id === selectedGenerationId);
+    const match = snapshot.generations.find(
+      (g) => g.id === selectedGenerationId,
+    );
     if (match) return match;
   }
   // Fallback: latest completed non-storyboard, then latest completed anything
   const completed = snapshot.generations
-    .filter(g => g.status === 'completed')
-    .sort((a, b) => (b.completedAt ?? b.createdAt) - (a.completedAt ?? a.createdAt));
+    .filter((g) => g.status === "completed")
+    .sort(
+      (a, b) => (b.completedAt ?? b.createdAt) - (a.completedAt ?? a.createdAt),
+    );
   return completed[0] ?? null;
 }, [snapshot?.generations, selectedGenerationId]);
 ```
@@ -123,9 +136,11 @@ const selectedGeneration = useMemo(() => {
 Replace the current hero canvas section. Instead of always rendering `<GenerationsPanel presentation="hero">`, the hero area now branches based on selected generation type:
 
 ```tsx
-{/* Hero canvas content */}
+{
+  /* Hero canvas content */
+}
 <div className="relative mx-auto w-[55%]">
-  {selectedGeneration?.mediaType === 'image-sequence' ? (
+  {selectedGeneration?.mediaType === "image-sequence" ? (
     <StoryboardHeroView
       generation={selectedGeneration}
       onUseAsStartFrame={handleUseStoryboardFrame}
@@ -138,7 +153,7 @@ Replace the current hero canvas section. Instead of always rendering `<Generatio
       className="h-auto"
     />
   )}
-</div>
+</div>;
 ```
 
 **Important:** `GenerationsPanel` still needs to render for non-storyboard selections. Its internal `heroGeneration` memo already handles filtering. However, we need to sync which generation it shows with `selectedGenerationId`. Two approaches:
@@ -165,18 +180,21 @@ heroOverrideGenerationId?: string | null | undefined;
 **File:** `client/src/features/prompt-optimizer/GenerationsPanel/GenerationsPanel.tsx`
 
 Modify `heroGeneration` memo:
+
 ```ts
 const heroGeneration = useMemo(() => {
   // If external selection provided, honor it (but still exclude image-sequences)
   if (heroOverrideGenerationId) {
-    const override = generations.find(g => g.id === heroOverrideGenerationId);
-    if (override && override.mediaType !== 'image-sequence') return override;
+    const override = generations.find((g) => g.id === heroOverrideGenerationId);
+    if (override && override.mediaType !== "image-sequence") return override;
   }
   // Existing fallback logic
-  if (activeGeneration && activeGeneration.mediaType !== 'image-sequence') {
+  if (activeGeneration && activeGeneration.mediaType !== "image-sequence") {
     return activeGeneration;
   }
-  const nonStoryboard = generations.filter(g => g.mediaType !== 'image-sequence');
+  const nonStoryboard = generations.filter(
+    (g) => g.mediaType !== "image-sequence",
+  );
   return nonStoryboard[nonStoryboard.length - 1] ?? null;
 }, [activeGeneration, generations, heroOverrideGenerationId]);
 ```
@@ -186,6 +204,7 @@ const heroGeneration = useMemo(() => {
 **File:** `client/src/features/prompt-optimizer/CanvasWorkspace/components/StoryboardHeroView.tsx`
 
 **Props:**
+
 ```ts
 interface StoryboardHeroViewProps {
   generation: Generation;
@@ -196,6 +215,7 @@ interface StoryboardHeroViewProps {
 **Renders:** A 2×2 grid of frames at full hero canvas size. Each frame is clickable to select it. Selected frame has accent border. "Use as start frame" button below the grid or in a toolbar overlay.
 
 **Layout:**
+
 ```tsx
 <div className="flex flex-col gap-3 rounded-2xl bg-[#0D0E12] p-3">
   {/* 2×2 grid */}
@@ -206,13 +226,17 @@ interface StoryboardHeroViewProps {
         type="button"
         onClick={() => setSelectedIndex(index)}
         className={cn(
-          'aspect-video overflow-hidden rounded-lg border-2 transition-all',
+          "aspect-video overflow-hidden rounded-lg border-2 transition-all",
           selectedIndex === index
-            ? 'border-[#6C5CE7] shadow-[0_0_16px_#6C5CE744]'
-            : 'border-transparent hover:border-[#22252C]'
+            ? "border-[#6C5CE7] shadow-[0_0_16px_#6C5CE744]"
+            : "border-transparent hover:border-[#22252C]",
         )}
       >
-        <img src={url} alt={`Frame ${index + 1}`} className="h-full w-full object-cover" />
+        <img
+          src={url}
+          alt={`Frame ${index + 1}`}
+          className="h-full w-full object-cover"
+        />
       </button>
     ))}
   </div>
@@ -231,7 +255,7 @@ interface StoryboardHeroViewProps {
         onUseAsStartFrame({
           id: `storyboard-${generation.id}-frame-${selectedIndex}`,
           url: frame,
-          source: 'generation',
+          source: "generation",
           ...(generation.prompt ? { sourcePrompt: generation.prompt } : {}),
           ...resolveFrameAssetMetadata(generation, selectedIndex),
         });
@@ -360,75 +384,81 @@ Pass all suggestion props down to `<CanvasPromptBar>`.
 Add a collapsible suggestions tray below the prompt editor, inside the prompt card container. It appears when `selectedSpanId` is non-null:
 
 ```tsx
-{/* Suggestion pills tray — appears when a span is selected */}
-{selectedSpanId && (suggestionCount > 0 || isInlineLoading) ? (
-  <div className="mt-2 border-t border-[#22252C] pt-2">
-    {/* Selection label */}
-    <div className="mb-1.5 flex items-center justify-between">
-      <span className="text-[10px] font-semibold tracking-[0.05em] text-[#555B6E]">
-        {selectionLabel}
-      </span>
-      <button
-        type="button"
-        className="text-[10px] text-[#3A3E4C] hover:text-[#555B6E]"
-        onClick={onCloseInlinePopover}
-      >
-        ✕
-      </button>
+{
+  /* Suggestion pills tray — appears when a span is selected */
+}
+{
+  selectedSpanId && (suggestionCount > 0 || isInlineLoading) ? (
+    <div className="mt-2 border-t border-[#22252C] pt-2">
+      {/* Selection label */}
+      <div className="mb-1.5 flex items-center justify-between">
+        <span className="text-[10px] font-semibold tracking-[0.05em] text-[#555B6E]">
+          {selectionLabel}
+        </span>
+        <button
+          type="button"
+          className="text-[10px] text-[#3A3E4C] hover:text-[#555B6E]"
+          onClick={onCloseInlinePopover}
+        >
+          ✕
+        </button>
+      </div>
+
+      {/* Loading state */}
+      {isInlineLoading ? (
+        <div className="flex gap-2">
+          <div className="h-8 w-24 animate-pulse rounded-lg bg-[#1A1C22]" />
+          <div className="h-8 w-32 animate-pulse rounded-lg bg-[#1A1C22]" />
+          <div className="h-8 w-20 animate-pulse rounded-lg bg-[#1A1C22]" />
+        </div>
+      ) : null}
+
+      {/* Error state */}
+      {isInlineError ? (
+        <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-400">
+          {inlineErrorMessage}
+        </div>
+      ) : null}
+
+      {/* Suggestion pills — horizontal scrollable row */}
+      {!isInlineLoading && !isInlineError && suggestionCount > 0 ? (
+        <div
+          ref={suggestionsListRef}
+          className="flex gap-2 overflow-x-auto pb-1"
+        >
+          {inlineSuggestions.map((suggestion, index) => (
+            <button
+              key={suggestion.key}
+              type="button"
+              data-index={index}
+              className={cn(
+                "flex-shrink-0 rounded-lg border px-3 py-1.5 text-xs transition-colors",
+                activeSuggestionIndex === index
+                  ? "border-[#6C5CE7]/50 bg-[#6C5CE7]/10 text-[#E2E6EF]"
+                  : "border-[#22252C] bg-[#141519] text-[#8B92A5] hover:border-[#3A3E4C] hover:text-[#E2E6EF]",
+              )}
+              onMouseEnter={() => {
+                interactionSourceRef.current = "mouse";
+                onActiveSuggestionChange(index);
+              }}
+              onClick={() => {
+                onSuggestionClick(suggestion.item);
+                onCloseInlinePopover();
+              }}
+            >
+              {suggestion.text}
+              {index === 0 ? (
+                <span className="ml-1.5 text-[9px] font-semibold text-[#6C5CE7]">
+                  Best
+                </span>
+              ) : null}
+            </button>
+          ))}
+        </div>
+      ) : null}
     </div>
-
-    {/* Loading state */}
-    {isInlineLoading ? (
-      <div className="flex gap-2">
-        <div className="h-8 w-24 animate-pulse rounded-lg bg-[#1A1C22]" />
-        <div className="h-8 w-32 animate-pulse rounded-lg bg-[#1A1C22]" />
-        <div className="h-8 w-20 animate-pulse rounded-lg bg-[#1A1C22]" />
-      </div>
-    ) : null}
-
-    {/* Error state */}
-    {isInlineError ? (
-      <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-400">
-        {inlineErrorMessage}
-      </div>
-    ) : null}
-
-    {/* Suggestion pills — horizontal scrollable row */}
-    {!isInlineLoading && !isInlineError && suggestionCount > 0 ? (
-      <div
-        ref={suggestionsListRef}
-        className="flex gap-2 overflow-x-auto pb-1"
-      >
-        {inlineSuggestions.map((suggestion, index) => (
-          <button
-            key={suggestion.key}
-            type="button"
-            data-index={index}
-            className={cn(
-              'flex-shrink-0 rounded-lg border px-3 py-1.5 text-xs transition-colors',
-              activeSuggestionIndex === index
-                ? 'border-[#6C5CE7]/50 bg-[#6C5CE7]/10 text-[#E2E6EF]'
-                : 'border-[#22252C] bg-[#141519] text-[#8B92A5] hover:border-[#3A3E4C] hover:text-[#E2E6EF]'
-            )}
-            onMouseEnter={() => {
-              interactionSourceRef.current = 'mouse';
-              onActiveSuggestionChange(index);
-            }}
-            onClick={() => {
-              onSuggestionClick(suggestion.item);
-              onCloseInlinePopover();
-            }}
-          >
-            {suggestion.text}
-            {index === 0 ? (
-              <span className="ml-1.5 text-[9px] font-semibold text-[#6C5CE7]">Best</span>
-            ) : null}
-          </button>
-        ))}
-      </div>
-    ) : null}
-  </div>
-) : null}
+  ) : null;
+}
 ```
 
 **Design note:** The traditional layout renders suggestions as a vertical list in a side popover. The canvas-first layout uses horizontal pills inside the prompt card because there's no side panel. This is a deliberate UX adaptation, not a 1:1 port.
@@ -444,6 +474,7 @@ Prompt versions move from the left strip to the top bar as a dropdown next to th
 **File:** `client/src/features/prompt-optimizer/CanvasWorkspace/components/CanvasTopBar.tsx`
 
 Add a version selector dropdown:
+
 - Shows current version label (e.g., "v3")
 - Dropdown lists all versions with timestamps
 - Clicking a version calls `onSelectVersion(versionId)`
@@ -467,24 +498,25 @@ interface CanvasTopBarProps {
 
 ## File Change Summary
 
-| File | Action |
-|------|--------|
-| `CanvasWorkspace/components/CanvasGenerationStrip.tsx` | **CREATE** — generation output thumbnails |
-| `CanvasWorkspace/components/StoryboardHeroView.tsx` | **CREATE** — full-size storyboard frame grid |
-| `CanvasWorkspace/CanvasWorkspace.tsx` | **MODIFY** — add selectedGenerationId state, replace CanvasVersionStrip with CanvasGenerationStrip, add hero branching for storyboard, remove StoryboardStrip, wire suggestion props, pass heroOverrideGenerationId to GenerationsPanel |
-| `CanvasWorkspace/components/CanvasPromptBar.tsx` | **MODIFY** — accept suggestion props, render suggestion pills tray |
-| `CanvasWorkspace/components/CanvasVersionStrip.tsx` | **DEPRECATE** — add @deprecated JSDoc, keep file |
-| `CanvasWorkspace/components/StoryboardStrip.tsx` | **DEPRECATE** — add @deprecated JSDoc, keep file |
-| `CanvasWorkspace/components/CanvasTopBar.tsx` | **MODIFY** — add version dropdown (lower priority) |
-| `GenerationsPanel/types.ts` | **MODIFY** — add `heroOverrideGenerationId` to `GenerationsPanelProps` |
-| `GenerationsPanel/GenerationsPanel.tsx` | **MODIFY** — wire `heroOverrideGenerationId` into `heroGeneration` memo |
-| `PromptCanvas/components/PromptCanvasView.tsx` | **MODIFY** — pass suggestion props to CanvasWorkspace in canvas-first branch |
+| File                                                   | Action                                                                                                                                                                                                                                  |
+| ------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `CanvasWorkspace/components/CanvasGenerationStrip.tsx` | **CREATE** — generation output thumbnails                                                                                                                                                                                               |
+| `CanvasWorkspace/components/StoryboardHeroView.tsx`    | **CREATE** — full-size storyboard frame grid                                                                                                                                                                                            |
+| `CanvasWorkspace/CanvasWorkspace.tsx`                  | **MODIFY** — add selectedGenerationId state, replace CanvasVersionStrip with CanvasGenerationStrip, add hero branching for storyboard, remove StoryboardStrip, wire suggestion props, pass heroOverrideGenerationId to GenerationsPanel |
+| `CanvasWorkspace/components/CanvasPromptBar.tsx`       | **MODIFY** — accept suggestion props, render suggestion pills tray                                                                                                                                                                      |
+| `CanvasWorkspace/components/CanvasVersionStrip.tsx`    | **DEPRECATE** — add @deprecated JSDoc, keep file                                                                                                                                                                                        |
+| `CanvasWorkspace/components/StoryboardStrip.tsx`       | **DEPRECATE** — add @deprecated JSDoc, keep file                                                                                                                                                                                        |
+| `CanvasWorkspace/components/CanvasTopBar.tsx`          | **MODIFY** — add version dropdown (lower priority)                                                                                                                                                                                      |
+| `GenerationsPanel/types.ts`                            | **MODIFY** — add `heroOverrideGenerationId` to `GenerationsPanelProps`                                                                                                                                                                  |
+| `GenerationsPanel/GenerationsPanel.tsx`                | **MODIFY** — wire `heroOverrideGenerationId` into `heroGeneration` memo                                                                                                                                                                 |
+| `PromptCanvas/components/PromptCanvasView.tsx`         | **MODIFY** — pass suggestion props to CanvasWorkspace in canvas-first branch                                                                                                                                                            |
 
 ## Test Plan
 
 ### Unit tests
 
 **`CanvasGenerationStrip.test.tsx`**
+
 - Renders thumbnail for each generation
 - Selected generation has active border
 - Pending generation shows skeleton
@@ -493,12 +525,14 @@ interface CanvasTopBarProps {
 - Generations sorted newest-first
 
 **`StoryboardHeroView.test.tsx`**
+
 - Renders 2×2 grid from `generation.mediaUrls`
 - Click selects frame (border changes)
 - "Use as start frame" dispatches selected frame data
 - Handles generations with < 4 frames gracefully
 
 **`CanvasPromptBar.suggestion-pills.test.tsx`**
+
 - Suggestion tray hidden when `selectedSpanId` is null
 - Tray visible when `selectedSpanId` set and `suggestionCount > 0`
 - Loading skeletons shown during `isInlineLoading`
@@ -507,6 +541,7 @@ interface CanvasTopBarProps {
 - Active pill has accent styling
 
 **`GenerationsPanel.hero-override.test.tsx`**
+
 - `heroOverrideGenerationId` selects correct generation
 - Falls back to existing logic when override ID not found
 - Override ID pointing to image-sequence is ignored (still excluded from hero)

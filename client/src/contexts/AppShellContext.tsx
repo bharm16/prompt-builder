@@ -4,8 +4,14 @@
  * Provides shared state for workspace handoff data.
  */
 
-import React, { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
-import type { ConvergenceHandoff } from '@features/convergence/types';
+import React, {
+  createContext,
+  useContext,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
+import type { ConvergenceHandoff } from "@features/convergence/types";
 
 /**
  * Context value interface for AppShell
@@ -32,18 +38,25 @@ const AppShellContext = createContext<AppShellContextValue | null>(null);
 /**
  * AppShell Provider Component
  */
-export function AppShellProvider({ children }: AppShellProviderProps): React.ReactElement {
-  const [convergenceHandoff, setConvergenceHandoff] = useState<ConvergenceHandoff | null>(null);
+export function AppShellProvider({
+  children,
+}: AppShellProviderProps): React.ReactElement {
+  const [convergenceHandoff, setConvergenceHandoff] =
+    useState<ConvergenceHandoff | null>(null);
 
   const value: AppShellContextValue = useMemo(
     () => ({
       convergenceHandoff,
       setConvergenceHandoff,
     }),
-    [convergenceHandoff]
+    [convergenceHandoff],
   );
 
-  return <AppShellContext.Provider value={value}>{children}</AppShellContext.Provider>;
+  return (
+    <AppShellContext.Provider value={value}>
+      {children}
+    </AppShellContext.Provider>
+  );
 }
 
 /**
@@ -52,7 +65,7 @@ export function AppShellProvider({ children }: AppShellProviderProps): React.Rea
 export function useAppShell(): AppShellContextValue {
   const context = useContext(AppShellContext);
   if (!context) {
-    throw new Error('useAppShell must be used within an AppShellProvider');
+    throw new Error("useAppShell must be used within an AppShellProvider");
   }
   return context;
 }

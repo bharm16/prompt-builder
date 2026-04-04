@@ -10,13 +10,13 @@
  * - Proper error handling (no error-as-suggestion anti-pattern)
  */
 
-import { useState, useCallback, useRef, useEffect } from 'react';
-import { fetchCustomSuggestions } from '../api/customSuggestionsApi';
-import { logger } from '@/services/LoggingService';
-import { SuggestionRequestManager } from '@features/prompt-optimizer/utils/SuggestionRequestManager';
-import { CancellationError } from '@features/prompt-optimizer/utils/signalUtils';
+import { useState, useCallback, useRef, useEffect } from "react";
+import { fetchCustomSuggestions } from "../api/customSuggestionsApi";
+import { logger } from "@/services/LoggingService";
+import { SuggestionRequestManager } from "@features/prompt-optimizer/utils/SuggestionRequestManager";
+import { CancellationError } from "@features/prompt-optimizer/utils/signalUtils";
 
-import type { SuggestionItem } from './types';
+import type { SuggestionItem } from "./types";
 
 interface UseCustomRequestParams {
   selectedText?: string;
@@ -45,15 +45,15 @@ const REQUEST_CONFIG = {
 
 /**
  * Custom hook for handling custom suggestion requests
- * 
+ *
  * Features:
  * - Request cancellation on new request
  * - 8-second timeout
  * - Proper error handling via setError callback
  */
 export function useCustomRequest({
-  selectedText = '',
-  fullPrompt = '',
+  selectedText = "",
+  fullPrompt = "",
   contextBefore,
   contextAfter,
   metadata = null,
@@ -61,12 +61,12 @@ export function useCustomRequest({
   setSuggestions = undefined,
   setError = undefined,
 }: UseCustomRequestParams = {}): UseCustomRequestReturn {
-  const [customRequest, setCustomRequest] = useState('');
+  const [customRequest, setCustomRequest] = useState("");
   const [isCustomLoading, setIsCustomLoading] = useState(false);
 
   // Request manager instance (no debounce for custom requests)
   const requestManagerRef = useRef<SuggestionRequestManager>(
-    new SuggestionRequestManager(REQUEST_CONFIG)
+    new SuggestionRequestManager(REQUEST_CONFIG),
   );
 
   // Cleanup on unmount
@@ -85,23 +85,24 @@ export function useCustomRequest({
     if (!trimmedRequest) return;
     if (!selectedText.trim() || !fullPrompt.trim()) {
       if (setError) {
-        setError('Select text in the prompt before applying a custom request.');
+        setError("Select text in the prompt before applying a custom request.");
       }
       return;
     }
 
     const startTime = performance.now();
-    const operation = 'handleCustomRequest';
+    const operation = "handleCustomRequest";
     logger.startTimer(operation);
 
     // Check client-side cache before making a network request
-    const cached = requestManagerRef.current.getCached<SuggestionItem[]>(trimmedRequest);
+    const cached =
+      requestManagerRef.current.getCached<SuggestionItem[]>(trimmedRequest);
     if (cached) {
       if (setSuggestions && Array.isArray(cached)) {
         setSuggestions(cached, undefined);
       }
-      logger.info('Custom suggestions served from cache', {
-        hook: 'useCustomRequest',
+      logger.info("Custom suggestions served from cache", {
+        hook: "useCustomRequest",
         operation,
         suggestionCount: cached.length,
       });
@@ -112,7 +113,7 @@ export function useCustomRequest({
 
     // Clear any previous error
     if (setError) {
-      setError('');
+      setError("");
     }
 
     try {
@@ -120,10 +121,10 @@ export function useCustomRequest({
         trimmedRequest, // Use request text as dedup key
         async (signal) => {
           // If custom handler provided, use it
-          if (typeof onCustomRequest === 'function') {
+          if (typeof onCustomRequest === "function") {
             return onCustomRequest(trimmedRequest);
           }
-          
+
           // Otherwise, use default API with cancellation support
           const suggestions = await fetchCustomSuggestions({
             highlightedText: selectedText,
@@ -136,17 +137,17 @@ export function useCustomRequest({
           });
 
           return suggestions;
-        }
+        },
       );
 
       // Update suggestions with result
       if (setSuggestions && Array.isArray(result)) {
         setSuggestions(result, undefined);
       }
-      
+
       const duration = logger.endTimer(operation);
-      logger.info('Custom suggestions fetched successfully', {
-        hook: 'useCustomRequest',
+      logger.info("Custom suggestions fetched successfully", {
+        hook: "useCustomRequest",
         operation,
         duration,
         suggestionCount: Array.isArray(result) ? result.length : 0,
@@ -158,22 +159,22 @@ export function useCustomRequest({
       }
 
       const duration = logger.endTimer(operation);
-      logger.error('Error fetching custom suggestions', error as Error, {
-        hook: 'useCustomRequest',
+      logger.error("Error fetching custom suggestions", error as Error, {
+        hook: "useCustomRequest",
         operation,
         duration,
         customRequestLength: trimmedRequest.length,
         selectedTextLength: selectedText.length,
       });
-      
+
       // Set error state properly (not as a fake suggestion) - Requirement 3.1
       if (setError) {
-        setError('Failed to load custom suggestions. Please try again.');
+        setError("Failed to load custom suggestions. Please try again.");
       }
       // Note: We no longer set error as a suggestion item (removed anti-pattern)
     } finally {
       setIsCustomLoading(false);
-      setCustomRequest('');
+      setCustomRequest("");
     }
   }, [
     customRequest,

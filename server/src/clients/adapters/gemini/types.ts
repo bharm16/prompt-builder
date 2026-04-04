@@ -6,8 +6,8 @@
  * of the transport or parsing logic.
  */
 
-import type { AIResponse } from '@interfaces/IAIClient';
-export type { AbortControllerResult } from '@clients/utils/abortController';
+import type { AIResponse } from "@interfaces/IAIClient";
+export type { AbortControllerResult } from "@clients/utils/abortController";
 
 /**
  * Options for completion requests

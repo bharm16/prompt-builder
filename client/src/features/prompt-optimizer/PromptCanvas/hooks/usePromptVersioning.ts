@@ -1,15 +1,19 @@
-import { useCallback, useMemo, useRef, type MutableRefObject } from 'react';
-import { createHighlightSignature } from '@/features/span-highlighting';
-import type { CapabilityValues } from '@shared/capabilities';
-import type { PromptHistoryEntry, PromptVersionEdit, PromptVersionEntry } from '@features/prompt-optimizer/types/domain/prompt-session';
-import type { Generation } from '@/features/prompt-optimizer/GenerationsPanel/types';
-import { areGenerationsEqual } from '@/features/prompt-optimizer/GenerationsPanel/utils/generationComparison';
+import { useCallback, useMemo, useRef, type MutableRefObject } from "react";
+import { createHighlightSignature } from "@/features/span-highlighting";
+import type { CapabilityValues } from "@shared/capabilities";
+import type {
+  PromptHistoryEntry,
+  PromptVersionEdit,
+  PromptVersionEntry,
+} from "@features/prompt-optimizer/types/domain/prompt-session";
+import type { Generation } from "@features/generations/types";
+import { areGenerationsEqual } from "@features/generations/utils/generationComparison";
 import {
   extractStorageObjectPath,
   extractVideoContentAssetId,
   parseGcsSignedUrlExpiryMs,
-} from '@/utils/storageUrl';
-import type { HighlightSnapshot } from '../types';
+} from "@/utils/storageUrl";
+import type { HighlightSnapshot } from "../types";
 
 interface UsePromptVersioningOptions {
   promptHistory: PromptVersionStore;
@@ -27,11 +31,15 @@ interface UsePromptVersioningOptions {
 
 interface PromptVersionStore {
   history: PromptHistoryEntry[];
-  updateEntryVersions: (uuid: string, docId: string | null, versions: PromptVersionEntry[]) => void;
+  updateEntryVersions: (
+    uuid: string,
+    docId: string | null,
+    versions: PromptVersionEntry[],
+  ) => void;
 }
 
 interface UpsertVersionOutputParams {
-  action: 'preview' | 'video';
+  action: "preview" | "video";
   prompt: string;
   generatedAt: number | string;
   imageUrl?: string | null;
@@ -41,15 +49,18 @@ interface UpsertVersionOutputParams {
 
 interface UsePromptVersioningReturn {
   upsertVersionOutput: (params: UpsertVersionOutputParams) => void;
-  syncVersionHighlights: (snapshot: HighlightSnapshot, promptText: string) => void;
+  syncVersionHighlights: (
+    snapshot: HighlightSnapshot,
+    promptText: string,
+  ) => void;
   syncVersionGenerations: (generations: Generation[]) => void;
 }
 
 const toIsoString = (value: number | string): string => {
-  if (typeof value === 'number' && Number.isFinite(value)) {
+  if (typeof value === "number" && Number.isFinite(value)) {
     return new Date(value).toISOString();
   }
-  if (typeof value === 'string' && value.trim()) {
+  if (typeof value === "string" && value.trim()) {
     const parsed = Date.parse(value);
     if (!Number.isNaN(parsed)) {
       return new Date(parsed).toISOString();
@@ -60,14 +71,14 @@ const toIsoString = (value: number | string): string => {
 };
 
 const toExpiresAtIso = (url?: string | null): string | null => {
-  if (!url || typeof url !== 'string') return null;
+  if (!url || typeof url !== "string") return null;
   const expiresAtMs = parseGcsSignedUrlExpiryMs(url);
   return expiresAtMs ? new Date(expiresAtMs).toISOString() : null;
 };
 
 const extractAssetIdFromPath = (path?: string | null): string | null => {
   if (!path) return null;
-  const parts = path.split('/').filter(Boolean);
+  const parts = path.split("/").filter(Boolean);
   return parts.length ? (parts[parts.length - 1] ?? null) : null;
 };
 
@@ -75,22 +86,31 @@ const extractAssetIdFromPath = (path?: string | null): string | null => {
  * Extract the best thumbnail URL from a list of generations.
  * Prioritizes: explicit thumbnailUrl > image mediaUrls > first media URL
  */
-const extractThumbnailFromGenerations = (generations: Generation[]): string | null => {
-  const completed = generations.filter((g) => g.status === 'completed');
+const extractThumbnailFromGenerations = (
+  generations: Generation[],
+): string | null => {
+  const completed = generations.filter((g) => g.status === "completed");
   if (!completed.length) return null;
 
   // First, look for an explicit thumbnailUrl (set by flux-kontext storyboard)
   for (const gen of completed) {
-    if (gen.thumbnailUrl && typeof gen.thumbnailUrl === 'string' && gen.thumbnailUrl.trim()) {
+    if (
+      gen.thumbnailUrl &&
+      typeof gen.thumbnailUrl === "string" &&
+      gen.thumbnailUrl.trim()
+    ) {
       return gen.thumbnailUrl.trim();
     }
   }
 
   // Next, prefer image or image-sequence media types
   for (const gen of completed) {
-    if ((gen.mediaType === 'image' || gen.mediaType === 'image-sequence') && gen.mediaUrls.length) {
+    if (
+      (gen.mediaType === "image" || gen.mediaType === "image-sequence") &&
+      gen.mediaUrls.length
+    ) {
       const url = gen.mediaUrls[0];
-      if (url && typeof url === 'string' && url.trim()) {
+      if (url && typeof url === "string" && url.trim()) {
         return url.trim();
       }
     }
@@ -100,7 +120,7 @@ const extractThumbnailFromGenerations = (generations: Generation[]): string | nu
   for (const gen of completed) {
     if (gen.mediaUrls.length) {
       const url = gen.mediaUrls[0];
-      if (url && typeof url === 'string' && url.trim()) {
+      if (url && typeof url === "string" && url.trim()) {
         return url.trim();
       }
     }
@@ -118,8 +138,8 @@ const extractThumbnailFromGenerations = (generations: Generation[]): string | nu
  */
 const generationCompleteness = (gen: Generation): number => {
   let score = 0;
-  if (gen.status === 'completed') score += 10;
-  if (gen.status === 'failed') score += 5;
+  if (gen.status === "completed") score += 10;
+  if (gen.status === "failed") score += 5;
   if (gen.mediaUrls.length > 0) score += 3;
   if (gen.thumbnailUrl) score += 1;
   if (gen.completedAt) score += 1;
@@ -140,7 +160,7 @@ const generationCompleteness = (gen: Generation): number => {
  */
 const mergeGenerationsById = (
   persisted: Generation[] | null | undefined,
-  incoming: Generation[]
+  incoming: Generation[],
 ): Generation[] => {
   if (!persisted?.length) return incoming;
   // Bug 18 safeguard: if incoming is empty, preserve persisted data rather than wiping it.
@@ -166,9 +186,9 @@ const mergeGenerationsById = (
     return {
       ...preferred,
       isFavorite:
-        typeof incomingGen.isFavorite === 'boolean'
+        typeof incomingGen.isFavorite === "boolean"
           ? incomingGen.isFavorite
-          : typeof persistedGen.isFavorite === 'boolean'
+          : typeof persistedGen.isFavorite === "boolean"
             ? persistedGen.isFavorite
             : undefined,
       generationSettings:
@@ -188,6 +208,31 @@ const mergeGenerationsById = (
   }
 
   return merged;
+};
+
+const buildSeedVersionFromGeneration = (
+  generation: Generation,
+  highlights: HighlightSnapshot | null,
+): PromptVersionEntry | null => {
+  const promptText =
+    typeof generation.prompt === "string" ? generation.prompt.trim() : "";
+  if (!promptText) return null;
+
+  const versionId =
+    typeof generation.promptVersionId === "string" &&
+    generation.promptVersionId.trim().length > 0
+      ? generation.promptVersionId.trim()
+      : `v-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+  return {
+    versionId,
+    label: "v1",
+    signature: createHighlightSignature(promptText),
+    prompt: promptText,
+    timestamp: new Date().toISOString(),
+    ...(highlights ? { highlights } : {}),
+    generations: [],
+  };
 };
 
 export function usePromptVersioning({
@@ -217,8 +262,11 @@ export function usePromptVersioning({
   }, [history, currentPromptUuid, currentPromptDocId]);
 
   const currentVersions = useMemo<PromptVersionEntry[]>(
-    () => (Array.isArray(currentPromptEntry?.versions) ? currentPromptEntry.versions : []),
-    [currentPromptEntry]
+    () =>
+      Array.isArray(currentPromptEntry?.versions)
+        ? currentPromptEntry.versions
+        : [],
+    [currentPromptEntry],
   );
 
   // Bug 12/13 fix: refs for fresh values in callbacks to avoid stale closures
@@ -238,7 +286,7 @@ export function usePromptVersioning({
       const resolvedDocId = entry?.id ?? currentPromptDocId;
       updateEntryVersions(currentPromptUuid, resolvedDocId ?? null, versions);
     },
-    [updateEntryVersions, currentPromptUuid, currentPromptDocId]
+    [updateEntryVersions, currentPromptUuid, currentPromptDocId],
   );
 
   const createVersionEntry = useCallback(
@@ -251,27 +299,29 @@ export function usePromptVersioning({
     }: {
       signature: string;
       prompt: string;
-      highlights?: PromptVersionEntry['highlights'];
-      preview?: PromptVersionEntry['preview'];
-      video?: PromptVersionEntry['video'];
+      highlights?: PromptVersionEntry["highlights"];
+      preview?: PromptVersionEntry["preview"];
+      video?: PromptVersionEntry["video"];
     }): PromptVersionEntry => {
       const versionNumber = currentVersions.length + 1;
       const editCount = versionEditCountRef.current;
-      const edits = versionEditsRef.current.length ? [...versionEditsRef.current] : [];
+      const edits = versionEditsRef.current.length
+        ? [...versionEditsRef.current]
+        : [];
       return {
         versionId: `v-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         label: `v${versionNumber}`,
         signature,
         prompt,
         timestamp: new Date().toISOString(),
-        ...(typeof highlights !== 'undefined' ? { highlights } : {}),
+        ...(typeof highlights !== "undefined" ? { highlights } : {}),
         ...(editCount > 0 ? { editCount } : {}),
         ...(edits.length ? { edits } : {}),
-        ...(typeof preview !== 'undefined' ? { preview } : {}),
-        ...(typeof video !== 'undefined' ? { video } : {}),
+        ...(typeof preview !== "undefined" ? { preview } : {}),
+        ...(typeof video !== "undefined" ? { video } : {}),
       };
     },
-    [currentVersions.length, versionEditCountRef, versionEditsRef]
+    [currentVersions.length, versionEditCountRef, versionEditsRef],
   );
 
   const upsertVersionOutput = useCallback(
@@ -284,19 +334,24 @@ export function usePromptVersioning({
       const versions = currentVersionsRef.current;
       const signature = createHighlightSignature(promptText);
       const lastVersion = versions[versions.length - 1] ?? null;
-      const hasEditsSinceLastVersion = !lastVersion || lastVersion.signature !== signature;
+      const hasEditsSinceLastVersion =
+        !lastVersion || lastVersion.signature !== signature;
 
       const previewPayload =
-        params.action === 'preview'
+        params.action === "preview"
           ? {
               generatedAt: toIsoString(params.generatedAt),
               imageUrl: params.imageUrl ?? null,
               aspectRatio: params.aspectRatio ?? effectiveAspectRatio ?? null,
-              storagePath: params.imageUrl ? extractStorageObjectPath(params.imageUrl) : null,
+              storagePath: params.imageUrl
+                ? extractStorageObjectPath(params.imageUrl)
+                : null,
               assetId: params.imageUrl
                 ? (() => {
                     const path = extractStorageObjectPath(params.imageUrl);
-                    return path && !path.startsWith('users/') ? extractAssetIdFromPath(path) : null;
+                    return path && !path.startsWith("users/")
+                      ? extractAssetIdFromPath(path)
+                      : null;
                   })()
                 : null,
               viewUrlExpiresAt: toExpiresAtIso(params.imageUrl),
@@ -304,19 +359,23 @@ export function usePromptVersioning({
           : undefined;
 
       const videoPayload =
-        params.action === 'video'
+        params.action === "video"
           ? {
               generatedAt: toIsoString(params.generatedAt),
               videoUrl: params.videoUrl ?? null,
               model: selectedModel?.trim() ? selectedModel.trim() : null,
               generationParams: generationParams ?? null,
-              storagePath: params.videoUrl ? extractStorageObjectPath(params.videoUrl) : null,
+              storagePath: params.videoUrl
+                ? extractStorageObjectPath(params.videoUrl)
+                : null,
               assetId: params.videoUrl
-                ? extractVideoContentAssetId(params.videoUrl) ??
+                ? (extractVideoContentAssetId(params.videoUrl) ??
                   (() => {
                     const path = extractStorageObjectPath(params.videoUrl);
-                    return path && !path.startsWith('users/') ? extractAssetIdFromPath(path) : null;
-                  })()
+                    return path && !path.startsWith("users/")
+                      ? extractAssetIdFromPath(path)
+                      : null;
+                  })())
                 : null,
               viewUrlExpiresAt: toExpiresAtIso(params.videoUrl),
             }
@@ -353,7 +412,7 @@ export function usePromptVersioning({
       persistVersions,
       resetVersionEdits,
       selectedModel,
-    ]
+    ],
   );
 
   const syncVersionHighlights = useCallback(
@@ -390,12 +449,7 @@ export function usePromptVersioning({
       };
       persistVersions([...versions.slice(0, -1), updatedLast]);
     },
-    [
-      createVersionEntry,
-      currentPromptUuid,
-      persistVersions,
-      resetVersionEdits,
-    ]
+    [createVersionEntry, currentPromptUuid, persistVersions, resetVersionEdits],
   );
 
   // Bug 12 fix: read currentVersions/currentPromptEntry from refs to avoid stale closures
@@ -404,8 +458,25 @@ export function usePromptVersioning({
       if (!currentPromptUuid) return;
       if (!currentPromptEntryRef.current) return;
 
-      const versions = currentVersionsRef.current;
-      if (!versions.length) return;
+      let versions = currentVersionsRef.current;
+      if (!versions.length) {
+        const seedSource = [...generations]
+          .reverse()
+          .find(
+            (generation) =>
+              typeof generation.prompt === "string" && generation.prompt.trim(),
+          );
+        if (!seedSource) return;
+
+        const seedVersion = buildSeedVersionFromGeneration(
+          seedSource,
+          latestHighlightRef.current,
+        );
+        if (!seedVersion) return;
+
+        versions = [seedVersion];
+        currentVersionsRef.current = versions;
+      }
 
       const index = activeVersionId
         ? versions.findIndex((version) => version.versionId === activeVersionId)
@@ -417,21 +488,28 @@ export function usePromptVersioning({
 
       // Merge incoming generations with already-persisted ones by ID,
       // preferring the more complete record for each generation.
-      const mergedGenerations = mergeGenerationsById(target.generations, generations);
+      const mergedGenerations = mergeGenerationsById(
+        target.generations,
+        generations,
+      );
 
       // Extract thumbnail from the merged set (includes all completed generations)
       const thumbnailUrl = extractThumbnailFromGenerations(mergedGenerations);
       const existingPreviewUrl = target.preview?.imageUrl;
 
-      const alreadyPersisted = thumbnailUrl === lastPersistedThumbnailRef.current;
+      const alreadyPersisted =
+        thumbnailUrl === lastPersistedThumbnailRef.current;
       const shouldUpdatePreview = Boolean(
         thumbnailUrl &&
           thumbnailUrl !== existingPreviewUrl &&
-          !alreadyPersisted
+          !alreadyPersisted,
       );
 
       // Check if generations changed or if we have a new thumbnail to persist
-      const generationsChanged = !areGenerationsEqual(target.generations, mergedGenerations);
+      const generationsChanged = !areGenerationsEqual(
+        target.generations,
+        mergedGenerations,
+      );
 
       if (!generationsChanged && !shouldUpdatePreview) return;
 
@@ -449,7 +527,9 @@ export function usePromptVersioning({
           storagePath: extractStorageObjectPath(thumbnailUrl),
           assetId: (() => {
             const path = extractStorageObjectPath(thumbnailUrl);
-            return path && !path.startsWith('users/') ? extractAssetIdFromPath(path) : null;
+            return path && !path.startsWith("users/")
+              ? extractAssetIdFromPath(path)
+              : null;
           })(),
           viewUrlExpiresAt: toExpiresAtIso(thumbnailUrl),
         };
@@ -461,7 +541,7 @@ export function usePromptVersioning({
 
       persistVersions(updatedVersions);
     },
-    [activeVersionId, currentPromptUuid, persistVersions]
+    [activeVersionId, currentPromptUuid, latestHighlightRef, persistVersions],
   );
 
   return { upsertVersionOutput, syncVersionHighlights, syncVersionGenerations };

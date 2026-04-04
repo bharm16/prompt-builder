@@ -1,5 +1,5 @@
-import { relocateQuote } from '@utils/textQuoteRelocator';
-import type { CoherenceEdit, CoherenceSpan } from '../types/coherence';
+import { relocateQuote } from "@utils/textQuoteRelocator";
+import type { CoherenceEdit, CoherenceSpan } from "../types/coherence";
 
 export interface ApplySpanEditResult {
   updatedPrompt: string | null;
@@ -14,10 +14,10 @@ const buildContextWindow = (
   prompt: string,
   start: number | null,
   end: number | null,
-  windowSize = 24
+  windowSize = 24,
 ): { leftCtx: string; rightCtx: string } => {
-  if (typeof start !== 'number' || typeof end !== 'number') {
-    return { leftCtx: '', rightCtx: '' };
+  if (typeof start !== "number" || typeof end !== "number") {
+    return { leftCtx: "", rightCtx: "" };
   }
   const leftCtx = prompt.slice(Math.max(0, start - windowSize), start);
   const rightCtx = prompt.slice(end, Math.min(prompt.length, end + windowSize));
@@ -37,14 +37,17 @@ export function applySpanEditToPrompt({
     return { updatedPrompt: null };
   }
 
-  const quote =
-    (span?.quote || span?.text || edit.anchorQuote || '').trim();
+  const quote = (span?.quote || span?.text || edit.anchorQuote || "").trim();
   if (!quote) {
     return { updatedPrompt: null };
   }
 
   const preferIndex = ensureNumber(span?.start);
-  const { leftCtx, rightCtx } = buildContextWindow(prompt, span?.start ?? null, span?.end ?? null);
+  const { leftCtx, rightCtx } = buildContextWindow(
+    prompt,
+    span?.start ?? null,
+    span?.end ?? null,
+  );
   const match = relocateQuote({
     text: prompt,
     quote,
@@ -58,7 +61,7 @@ export function applySpanEditToPrompt({
   }
 
   const replacementText =
-    edit.type === 'replaceSpanText' ? edit.replacementText ?? '' : '';
+    edit.type === "replaceSpanText" ? (edit.replacementText ?? "") : "";
 
   const prefix = prompt.slice(0, match.start);
   const suffix = prompt.slice(match.end);

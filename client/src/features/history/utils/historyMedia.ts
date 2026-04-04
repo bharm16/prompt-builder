@@ -1,4 +1,4 @@
-import type { PromptHistoryEntry } from '@features/prompt-optimizer/types/domain/prompt-session';
+import type { PromptHistoryEntry } from "@features/prompt-optimizer/types/domain/prompt-session";
 
 export interface HistoryThumbnailRef {
   url: string | null;
@@ -6,14 +6,16 @@ export interface HistoryThumbnailRef {
   assetId?: string | null;
 }
 
-export function resolveHistoryThumbnail(entry: PromptHistoryEntry): HistoryThumbnailRef {
+export function resolveHistoryThumbnail(
+  entry: PromptHistoryEntry,
+): HistoryThumbnailRef {
   const versions = Array.isArray(entry.versions) ? entry.versions : [];
   for (let i = versions.length - 1; i >= 0; i -= 1) {
     const preview = versions[i]?.preview;
     const candidate = preview?.imageUrl;
     const storagePath = preview?.storagePath ?? null;
     const assetId = preview?.assetId ?? null;
-    if (typeof candidate === 'string' && candidate.trim()) {
+    if (typeof candidate === "string" && candidate.trim()) {
       return { url: candidate, storagePath, assetId };
     }
     if (storagePath || assetId) {
@@ -27,14 +29,26 @@ export function hasVideoArtifact(entry: PromptHistoryEntry): boolean {
   const versions = Array.isArray(entry.versions) ? entry.versions : [];
   return versions.some((version) => {
     const url = version?.video?.videoUrl;
-    return typeof url === 'string' && url.trim().length > 0;
+    return typeof url === "string" && url.trim().length > 0;
   });
 }
 
-export function isRecentEntry(entry: PromptHistoryEntry, days: number = 7): boolean {
+export function isRecentEntry(
+  entry: PromptHistoryEntry,
+  days: number = 7,
+): boolean {
   if (!entry.timestamp) return false;
-  const ms = Date.parse(entry.timestamp);
-  if (Number.isNaN(ms)) return false;
+
+  // Handle both ISO-8601 strings and numeric-string timestamps (legacy data).
+  let ms = Date.parse(entry.timestamp);
+  if (Number.isNaN(ms)) {
+    // Fallback: try parsing as a numeric string (milliseconds since epoch).
+    const numeric = Number(entry.timestamp);
+    if (!Number.isFinite(numeric) || numeric <= 0) return false;
+    // Disambiguate seconds vs milliseconds — timestamps below 1e12 are seconds.
+    ms = numeric < 1e12 ? numeric * 1000 : numeric;
+  }
+
   const diffMs = Date.now() - ms;
   return diffMs >= 0 && diffMs <= days * 24 * 60 * 60 * 1000;
 }

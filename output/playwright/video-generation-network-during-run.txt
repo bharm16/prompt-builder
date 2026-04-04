@@ -1,0 +1,50 @@
+[POST] https://o4506655473074176.ingest.us.sentry.io/api/4510247701512192/envelope/?sentry_version=7&sentry_key=6ac8e5574fa182f6cd6fa8ffe17f6d3d&sentry_client=sentry.javascript.react%2F10.22.0 => [200] 
+[GET] https://firebase.googleapis.com/v1alpha/projects/-/apps/1:82470612625:web:8e02d9b25cea1a6a2d5930/webConfig => [200] 
+[POST] https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=AIzaSyDCly-s1i1S_FWpkzTBEA0kk0XRy60d2JM => [200] 
+[GET] http://localhost:5173/api/assets => [200] OK
+[GET] http://localhost:5173/api/capabilities?provider=generic&model=wan-2.5 => [200] OK
+[GET] http://localhost:5173/api/capabilities?provider=generic&model=wan-2.5 => [200] OK
+[GET] http://localhost:5173/api/payment/status => [200] OK
+[GET] http://localhost:5173/api/payment/status => [200] OK
+[POST] https://firestore.googleapis.com/google.firestore.v1.Firestore/Listen/channel?VER=8&database=projects%2Fflibberai%2Fdatabases%2F(default)&RID=29426&CVER=22&X-HTTP-Session-Id=gsessionid&zx=bitmmwdfo7p&t=1 => [200] 
+[GET] https://firestore.googleapis.com/google.firestore.v1.Firestore/Listen/channel?gsessionid=lF3UXtpvBkIslFUaUJAOj9HOTlavwzEJfeGUbtWRQPQEtIhNLrcc9g&VER=8&database=projects%2Fflibberai%2Fdatabases%2F(default)&RID=rpc&SID=E06pkOCAsDgdNjFqDLDl2A&AID=0&CI=0&TYPE=xmlhttp&zx=w9rcrtk4ur2&t=1 => [200] 
+[GET] http://localhost:5173/api/v2/sessions?limit=100&includeContinuity=true&includePrompt=true => [200] OK
+[POST] http://localhost:5173/api/preview/image/view-batch => [200] OK
+[GET] http://localhost:5173/api/preview/image/view?assetId=24079f58-cebf-4a2e-9bfb-174adcf05f9c => [200] OK
+[GET] http://localhost:5173/api/preview/image/view?assetId=24079f58-cebf-4a2e-9bfb-174adcf05f9c => [200] OK
+[GET] http://localhost:5173/api/preview/image/view?assetId=7ad83f19-9e11-4a85-b4a0-de3f250aa15d => [200] OK
+[GET] http://localhost:5173/api/preview/image/view?assetId=8b08c3ba-6c1e-4a23-9cd7-dbf6a8d7f20e => [200] OK
+[GET] http://localhost:5173/api/preview/image/view?assetId=ffce503f-ad52-42cc-9e90-9bbb65835aac => [200] OK
+[POST] https://www.google-analytics.com/g/collect?v=2&tid=G-W5YQMNFYVL&gtm=45je63k1v9232011618za200zd9232011618&_p=1774333738041&gcd=13l3l3l3l1l1&npa=0&dma=0&_fid=exH3VpAibjKWgPRx2vmZRK&cid=1072967183.1771272959&ul=en-us&sr=1440x960&uaa=arm&uab=64&uafvl=Chromium%3B146.0.7680.154%7CNot-A.Brand%3B24.0.0.0%7CGoogle%2520Chrome%3B146.0.7680.154&uamb=0&uam=&uap=macOS&uapv=26.3.1&uaw=0&are=1&frm=0&pscdl=noapi&_eu=AAAAAAQ&_s=1&tag_exp=103116026~103200004~115938465~115938468~116024733~117484252~118104773~118131589&sid=1774333219&sct=24&seg=1&dl=http%3A%2F%2Flocalhost%2F&dt=Vidra&en=page_view&_ee=1&ep.origin=firebase&tfd=8563 => [204] 
+[POST] https://www.google-analytics.com/g/collect?v=2&tid=G-W5YQMNFYVL&gtm=45je63k1v9232011618za200zd9232011618&_p=1774333738041&gcd=13l3l3l3l1l1&npa=0&dma=0&_fid=exH3VpAibjKWgPRx2vmZRK&cid=1072967183.1771272959&ul=en-us&sr=1440x960&uaa=arm&uab=64&uafvl=Chromium%3B146.0.7680.154%7CNot-A.Brand%3B24.0.0.0%7CGoogle%2520Chrome%3B146.0.7680.154&uamb=0&uam=&uap=macOS&uapv=26.3.1&uaw=0&are=1&frm=0&pscdl=noapi&_eu=AAAAAAQ&_s=1&tag_exp=103116026~103200004~115938465~115938468~116024733~117484252~118104773~118131589&sid=1774333219&sct=24&seg=1&dl=http%3A%2F%2Flocalhost%2F&dt=Vidra&en=page_view&_ee=1&ep.origin=firebase&tfd=8563 => [204] 
+[POST] https://o4506655473074176.ingest.us.sentry.io/api/4510247701512192/envelope/?sentry_version=7&sentry_key=6ac8e5574fa182f6cd6fa8ffe17f6d3d&sentry_client=sentry.javascript.react%2F10.22.0 => [200] 
+[POST] http://localhost:5173/api/model-intelligence/recommend => [200] OK
+[GET] http://localhost:5173/api/preview/image/view?assetId=0b17eda1-55e4-4f58-9f69-12ad9f4ddd52 => [200] OK
+[GET] http://localhost:5173/api/preview/image/view?assetId=124ff35e-62ac-4e92-858c-71d61252a129 => [200] OK
+[GET] http://localhost:5173/api/storage/proxy?url=https%3A%2F%2Fstorage.googleapis.com%2Fvidra-media-prod%2Fimage-previews%2F38nG7qkytsYtp1ersptGpj5YqiL2%2F0b17eda1-55e4-4f58-9f69-12ad9f4ddd52%3FX-Goog-Algorithm%3DGOOG4-RSA-SHA256%26X-Goog-Credential%3Dvidra-storage%2540gen-lang-client-0569793111.iam.gserviceaccount.com%252F20260324%252Fauto%252Fstorage%252Fgoog4_request%26X-Goog-Date%3D20260324T002117Z%26X-Goog-Expires%3D3600%26X-Goog-SignedHeaders%3Dhost%26X-Goog-Signature%3Dccced080a594aaecd253309e0c36f4c5687e87faf262a770e849881b748071d413512bd6c0019a9476db56faeaab830c13ae92e5615344055a26a534ec2ec1a124116709c86228684218c65884b2fcd96a8480854a9ccf44e1c532e42dd9b67d86fc771a1443f4e23c1137a70297f4c3897c2445b4b0ef405cd82892bf1164e0fea434bd1b44d2d224abd07d1a37c47fa2624b0ed932a5f29d0d63a4bdb2720737b08f8b52a9b12c646fd3f65925f6922dc816be8f9a50845cd7705e40391f932796b418a35728a996ce35309e33736aa22b0411afd64beefa6642d7d49bf3373b877759423ecfc8253f4d11be9783e943bc53e9af16cc544aa20817a70ca241 => [FAILED] net::ERR_ABORTED
+[GET] http://localhost:5173/api/storage/proxy?url=https%3A%2F%2Fstorage.googleapis.com%2Fvidra-media-prod%2Fimage-previews%2F38nG7qkytsYtp1ersptGpj5YqiL2%2F0b17eda1-55e4-4f58-9f69-12ad9f4ddd52%3FX-Goog-Algorithm%3DGOOG4-RSA-SHA256%26X-Goog-Credential%3Dvidra-storage%2540gen-lang-client-0569793111.iam.gserviceaccount.com%252F20260324%252Fauto%252Fstorage%252Fgoog4_request%26X-Goog-Date%3D20260324T002117Z%26X-Goog-Expires%3D3600%26X-Goog-SignedHeaders%3Dhost%26X-Goog-Signature%3Dccced080a594aaecd253309e0c36f4c5687e87faf262a770e849881b748071d413512bd6c0019a9476db56faeaab830c13ae92e5615344055a26a534ec2ec1a124116709c86228684218c65884b2fcd96a8480854a9ccf44e1c532e42dd9b67d86fc771a1443f4e23c1137a70297f4c3897c2445b4b0ef405cd82892bf1164e0fea434bd1b44d2d224abd07d1a37c47fa2624b0ed932a5f29d0d63a4bdb2720737b08f8b52a9b12c646fd3f65925f6922dc816be8f9a50845cd7705e40391f932796b418a35728a996ce35309e33736aa22b0411afd64beefa6642d7d49bf3373b877759423ecfc8253f4d11be9783e943bc53e9af16cc544aa20817a70ca241 => [FAILED] net::ERR_ABORTED
+[POST] https://o4506655473074176.ingest.us.sentry.io/api/4510247701512192/envelope/?sentry_version=7&sentry_key=6ac8e5574fa182f6cd6fa8ffe17f6d3d&sentry_client=sentry.javascript.react%2F10.22.0 => [200] 
+[GET] https://firestore.googleapis.com/google.firestore.v1.Firestore/Listen/channel?gsessionid=lF3UXtpvBkIslFUaUJAOj9HOTlavwzEJfeGUbtWRQPQEtIhNLrcc9g&VER=8&database=projects%2Fflibberai%2Fdatabases%2F(default)&RID=rpc&SID=E06pkOCAsDgdNjFqDLDl2A&AID=0&CI=0&TYPE=xmlhttp&zx=w9rcrtk4ur2&t=1 => [200] 
+[GET] https://firestore.googleapis.com/google.firestore.v1.Firestore/Listen/channel?gsessionid=lF3UXtpvBkIslFUaUJAOj9HOTlavwzEJfeGUbtWRQPQEtIhNLrcc9g&VER=8&database=projects%2Fflibberai%2Fdatabases%2F(default)&RID=rpc&SID=E06pkOCAsDgdNjFqDLDl2A&AID=4&CI=0&TYPE=xmlhttp&zx=2ijyin1jyyuf&t=1 => [200] 
+[POST] https://www.google-analytics.com/g/collect?v=2&tid=G-W5YQMNFYVL&gtm=45je63k1v9232011618za200zd9232011618&_p=1774333738041&gcd=13l3l3l3l1l1&npa=0&dma=0&_fid=exH3VpAibjKWgPRx2vmZRK&cid=1072967183.1771272959&ul=en-us&sr=1440x960&uaa=arm&uab=64&uafvl=Chromium%3B146.0.7680.154%7CNot-A.Brand%3B24.0.0.0%7CGoogle%2520Chrome%3B146.0.7680.154&uamb=0&uam=&uap=macOS&uapv=26.3.1&uaw=0&are=1&frm=0&pscdl=noapi&_eu=AAAAAAQ&_s=2&tag_exp=103116026~103200004~115938465~115938468~116024733~117484252~118104773~118131589&dp=%2Fsession%2Fdraft-1774333796339&sid=1774333219&sct=24&seg=1&dl=http%3A%2F%2Flocalhost%2Fsession%2Fdraft-1774333796339&dt=Vidra&en=page_view&_ee=1&ep.origin=firebase&_et=58328&tfd=66895 => [204] 
+[POST] https://www.google-analytics.com/g/collect?v=2&tid=G-W5YQMNFYVL&gtm=45je63k1v9232011618za200zd9232011618&_p=1774333738041&gcd=13l3l3l3l1l1&npa=0&dma=0&_fid=exH3VpAibjKWgPRx2vmZRK&cid=1072967183.1771272959&ul=en-us&sr=1440x960&uaa=arm&uab=64&uafvl=Chromium%3B146.0.7680.154%7CNot-A.Brand%3B24.0.0.0%7CGoogle%2520Chrome%3B146.0.7680.154&uamb=0&uam=&uap=macOS&uapv=26.3.1&uaw=0&are=1&frm=0&pscdl=noapi&_eu=AAAAAAQ&_s=2&tag_exp=103116026~103200004~115938465~115938468~116024733~117484252~118104773~118131589&dp=%2Fsession%2Fdraft-1774333796339&sid=1774333219&sct=24&seg=1&dl=http%3A%2F%2Flocalhost%2Fsession%2Fdraft-1774333796339&dt=Vidra&en=page_view&_ee=1&ep.origin=firebase&_et=58328&tfd=66895 => [204] 
+[GET] https://firestore.googleapis.com/google.firestore.v1.Firestore/Listen/channel?gsessionid=lF3UXtpvBkIslFUaUJAOj9HOTlavwzEJfeGUbtWRQPQEtIhNLrcc9g&VER=8&database=projects%2Fflibberai%2Fdatabases%2F(default)&RID=rpc&SID=E06pkOCAsDgdNjFqDLDl2A&AID=4&CI=0&TYPE=xmlhttp&zx=2ijyin1jyyuf&t=1 => [200] 
+[POST] http://localhost:5173/api/model-intelligence/recommend => [200] OK
+[POST] http://localhost:5173/api/model-intelligence/track => [200] OK
+[GET] http://localhost:5173/api/capabilities?provider=generic&model=wan-2.5 => [200] OK
+[POST] http://localhost:5173/api/preview/video/generate => [202] Accepted
+[GET] http://localhost:5173/api/preview/video/jobs/kdZRGaAowPyx0Wf8nfql => [200] OK
+[GET] http://localhost:5173/api/preview/video/jobs/kdZRGaAowPyx0Wf8nfql => [200] OK
+[GET] http://localhost:5173/api/preview/video/jobs/kdZRGaAowPyx0Wf8nfql => [200] OK
+[GET] http://localhost:5173/api/preview/video/jobs/kdZRGaAowPyx0Wf8nfql => [200] OK
+[GET] http://localhost:5173/api/preview/video/jobs/kdZRGaAowPyx0Wf8nfql => [200] OK
+[GET] http://localhost:5173/api/preview/video/jobs/kdZRGaAowPyx0Wf8nfql => [200] OK
+[GET] http://localhost:5173/api/preview/video/jobs/kdZRGaAowPyx0Wf8nfql => [200] OK
+[GET] http://localhost:5173/api/preview/video/jobs/kdZRGaAowPyx0Wf8nfql => [200] OK
+[GET] http://localhost:5173/api/preview/video/jobs/kdZRGaAowPyx0Wf8nfql => [200] OK
+[GET] http://localhost:5173/api/preview/video/jobs/kdZRGaAowPyx0Wf8nfql => [200] OK
+[GET] http://localhost:5173/api/preview/video/jobs/kdZRGaAowPyx0Wf8nfql => [200] OK
+[GET] http://localhost:5173/api/preview/video/jobs/kdZRGaAowPyx0Wf8nfql => [200] OK
+[GET] http://localhost:5173/api/preview/video/jobs/kdZRGaAowPyx0Wf8nfql => [200] OK
+[GET] http://localhost:5173/api/preview/video/jobs/kdZRGaAowPyx0Wf8nfql => [200] OK
+[GET] http://localhost:5173/api/preview/video/jobs/kdZRGaAowPyx0Wf8nfql => [200] OK

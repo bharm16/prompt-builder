@@ -1,8 +1,8 @@
-import { pipeline } from 'node:stream/promises';
-import type { Response } from 'express';
-import { isKnownGenerationModelInput } from '@services/video-models/ModelRegistry';
+import { pipeline } from "node:stream/promises";
+import type { Response } from "express";
+import { isKnownGenerationModelInput } from "@services/video-models/ModelRegistry";
 
-export type VideoAspectRatio = '16:9' | '9:16' | '21:9' | '1:1';
+export type VideoAspectRatio = "16:9" | "9:16" | "21:9" | "1:1";
 
 export interface VideoPreviewPayload {
   prompt: string;
@@ -10,7 +10,7 @@ export interface VideoPreviewPayload {
   model?: string;
   startImage?: string;
   endImage?: string;
-  referenceImages?: Array<{ url: string; type: 'asset' | 'style' }>;
+  referenceImages?: Array<{ url: string; type: "asset" | "style" }>;
   extendVideoUrl?: string;
   inputReference?: string;
   generationParams?: unknown;
@@ -30,11 +30,20 @@ interface VideoPreviewParseFailure {
   error: string;
 }
 
-export type VideoPreviewParseResult = VideoPreviewParseSuccess | VideoPreviewParseFailure;
+export type VideoPreviewParseResult =
+  | VideoPreviewParseSuccess
+  | VideoPreviewParseFailure;
 
-const VIDEO_ASPECT_RATIOS = new Set<VideoAspectRatio>(['16:9', '9:16', '21:9', '1:1']);
+const VIDEO_ASPECT_RATIOS = new Set<VideoAspectRatio>([
+  "16:9",
+  "9:16",
+  "21:9",
+  "1:1",
+]);
 
-export const parseVideoPreviewRequest = (body: unknown): VideoPreviewParseResult => {
+export const parseVideoPreviewRequest = (
+  body: unknown,
+): VideoPreviewParseResult => {
   const {
     prompt,
     aspectRatio,
@@ -63,21 +72,25 @@ export const parseVideoPreviewRequest = (body: unknown): VideoPreviewParseResult
     faceSwapAlreadyApplied?: unknown;
   };
 
-  if (!prompt || typeof prompt !== 'string' || prompt.trim().length === 0) {
-    return { ok: false, status: 400, error: 'Prompt must be a non-empty string' };
+  if (!prompt || typeof prompt !== "string" || prompt.trim().length === 0) {
+    return {
+      ok: false,
+      status: 400,
+      error: "Prompt must be a non-empty string",
+    };
   }
 
   let resolvedAspectRatio: VideoAspectRatio | undefined;
   if (aspectRatio !== undefined) {
-    if (typeof aspectRatio !== 'string') {
-      return { ok: false, status: 400, error: 'aspectRatio must be a string' };
+    if (typeof aspectRatio !== "string") {
+      return { ok: false, status: 400, error: "aspectRatio must be a string" };
     }
     const trimmedAspectRatio = aspectRatio.trim();
     if (!VIDEO_ASPECT_RATIOS.has(trimmedAspectRatio as VideoAspectRatio)) {
       return {
         ok: false,
         status: 400,
-        error: 'aspectRatio must be one of: 16:9, 9:16, 21:9, 1:1',
+        error: "aspectRatio must be one of: 16:9, 9:16, 21:9, 1:1",
       };
     }
     resolvedAspectRatio = trimmedAspectRatio as VideoAspectRatio;
@@ -85,55 +98,86 @@ export const parseVideoPreviewRequest = (body: unknown): VideoPreviewParseResult
 
   let resolvedModel: string | undefined;
   if (model !== undefined) {
-    if (typeof model !== 'string') {
-      return { ok: false, status: 400, error: 'model must be a string' };
+    if (typeof model !== "string") {
+      return { ok: false, status: 400, error: "model must be a string" };
     }
     const trimmedModel = model.trim();
     if (trimmedModel.length === 0) {
-      return { ok: false, status: 400, error: 'model must be a non-empty string' };
+      return {
+        ok: false,
+        status: 400,
+        error: "model must be a non-empty string",
+      };
     }
-    if (trimmedModel.toLowerCase() !== 'auto' && !isKnownGenerationModelInput(trimmedModel)) {
-      return { ok: false, status: 400, error: `Unknown model: ${trimmedModel}` };
+    if (
+      trimmedModel.toLowerCase() !== "auto" &&
+      !isKnownGenerationModelInput(trimmedModel)
+    ) {
+      return {
+        ok: false,
+        status: 400,
+        error: `Unknown model: ${trimmedModel}`,
+      };
     }
     resolvedModel = trimmedModel;
   }
 
-  if (startImage !== undefined && typeof startImage !== 'string') {
-    return { ok: false, status: 400, error: 'startImage must be a string URL' };
+  if (startImage !== undefined && typeof startImage !== "string") {
+    return { ok: false, status: 400, error: "startImage must be a string URL" };
   }
 
-  if (inputReference !== undefined && typeof inputReference !== 'string') {
-    return { ok: false, status: 400, error: 'inputReference must be a string URL' };
+  if (inputReference !== undefined && typeof inputReference !== "string") {
+    return {
+      ok: false,
+      status: 400,
+      error: "inputReference must be a string URL",
+    };
   }
 
-  if (endImage !== undefined && typeof endImage !== 'string') {
-    return { ok: false, status: 400, error: 'endImage must be a string URL' };
+  if (endImage !== undefined && typeof endImage !== "string") {
+    return { ok: false, status: 400, error: "endImage must be a string URL" };
   }
 
-  if (extendVideoUrl !== undefined && typeof extendVideoUrl !== 'string') {
-    return { ok: false, status: 400, error: 'extendVideoUrl must be a string URL' };
+  if (extendVideoUrl !== undefined && typeof extendVideoUrl !== "string") {
+    return {
+      ok: false,
+      status: 400,
+      error: "extendVideoUrl must be a string URL",
+    };
   }
 
   if (referenceImages !== undefined) {
     if (!Array.isArray(referenceImages)) {
-      return { ok: false, status: 400, error: 'referenceImages must be an array' };
+      return {
+        ok: false,
+        status: 400,
+        error: "referenceImages must be an array",
+      };
     }
     if (referenceImages.length > 3) {
-      return { ok: false, status: 400, error: 'referenceImages supports a maximum of 3 items' };
+      return {
+        ok: false,
+        status: 400,
+        error: "referenceImages supports a maximum of 3 items",
+      };
     }
     for (const ref of referenceImages) {
-      if (!ref || typeof ref !== 'object') {
-        return { ok: false, status: 400, error: 'Each referenceImages entry must be an object' };
-      }
-      const typed = ref as { url?: unknown; type?: unknown };
-      if (typeof typed.url !== 'string' || typed.url.trim().length === 0) {
+      if (!ref || typeof ref !== "object") {
         return {
           ok: false,
           status: 400,
-          error: 'Each referenceImages entry requires a non-empty url',
+          error: "Each referenceImages entry must be an object",
         };
       }
-      if (typed.type !== 'asset' && typed.type !== 'style') {
+      const typed = ref as { url?: unknown; type?: unknown };
+      if (typeof typed.url !== "string" || typed.url.trim().length === 0) {
+        return {
+          ok: false,
+          status: 400,
+          error: "Each referenceImages entry requires a non-empty url",
+        };
+      }
+      if (typed.type !== "asset" && typed.type !== "style") {
         return {
           ok: false,
           status: 400,
@@ -143,20 +187,31 @@ export const parseVideoPreviewRequest = (body: unknown): VideoPreviewParseResult
     }
   }
 
-  if (characterAssetId !== undefined && typeof characterAssetId !== 'string') {
-    return { ok: false, status: 400, error: 'characterAssetId must be a string' };
+  if (characterAssetId !== undefined && typeof characterAssetId !== "string") {
+    return {
+      ok: false,
+      status: 400,
+      error: "characterAssetId must be a string",
+    };
   }
 
-  if (autoKeyframe !== undefined && typeof autoKeyframe !== 'boolean') {
-    return { ok: false, status: 400, error: 'autoKeyframe must be a boolean' };
+  if (autoKeyframe !== undefined && typeof autoKeyframe !== "boolean") {
+    return { ok: false, status: 400, error: "autoKeyframe must be a boolean" };
   }
 
-  if (faceSwapAlreadyApplied !== undefined && typeof faceSwapAlreadyApplied !== 'boolean') {
-    return { ok: false, status: 400, error: 'faceSwapAlreadyApplied must be a boolean' };
+  if (
+    faceSwapAlreadyApplied !== undefined &&
+    typeof faceSwapAlreadyApplied !== "boolean"
+  ) {
+    return {
+      ok: false,
+      status: 400,
+      error: "faceSwapAlreadyApplied must be a boolean",
+    };
   }
 
   const resolvedCharacterAssetId =
-    typeof characterAssetId === 'string' && characterAssetId.trim().length > 0
+    typeof characterAssetId === "string" && characterAssetId.trim().length > 0
       ? characterAssetId.trim()
       : undefined;
   const resolvedAutoKeyframe = autoKeyframe !== false;
@@ -174,28 +229,37 @@ export const parseVideoPreviewRequest = (body: unknown): VideoPreviewParseResult
       ...(extendVideoUrl ? { extendVideoUrl } : {}),
       ...(inputReference ? { inputReference } : {}),
       ...(generationParams !== undefined ? { generationParams } : {}),
-      ...(resolvedCharacterAssetId ? { characterAssetId: resolvedCharacterAssetId } : {}),
+      ...(resolvedCharacterAssetId
+        ? { characterAssetId: resolvedCharacterAssetId }
+        : {}),
       autoKeyframe: resolvedAutoKeyframe,
-      ...(resolvedFaceSwapAlreadyApplied ? { faceSwapAlreadyApplied: true } : {}),
+      ...(resolvedFaceSwapAlreadyApplied
+        ? { faceSwapAlreadyApplied: true }
+        : {}),
     },
   };
 };
 
 export const sendVideoContent = async (
   res: Response,
-  entry: { contentType: string; stream: NodeJS.ReadableStream; contentLength?: number }
+  entry: {
+    contentType: string;
+    stream: NodeJS.ReadableStream;
+    contentLength?: number;
+  },
 ): Promise<void> => {
-  res.setHeader('Content-Type', entry.contentType);
+  res.setHeader("Content-Type", entry.contentType);
   if (entry.contentLength) {
-    res.setHeader('Content-Length', String(entry.contentLength));
+    res.setHeader("Content-Length", String(entry.contentLength));
   }
-  res.setHeader('Cache-Control', 'private, max-age=600');
+  res.setHeader("Cache-Control", "private, max-age=600");
 
   try {
     await pipeline(entry.stream, res);
   } catch (error) {
     if (res.headersSent) {
-      const streamError = error instanceof Error ? error : new Error(String(error));
+      const streamError =
+        error instanceof Error ? error : new Error(String(error));
       res.destroy(streamError);
     }
     throw error;

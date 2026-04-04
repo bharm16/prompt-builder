@@ -9,11 +9,11 @@
  * @requirement 35.1 - Ensure 2-column grid on mobile, 4-column on desktop for images
  */
 
-import React from 'react';
-import { cn } from '@/utils/cn';
-import type { GeneratedImage } from '@/features/convergence/types';
-import { ImageSkeleton } from './ImageSkeleton';
-import { ImageOption, type ImageOptionProps } from './ImageOption';
+import React from "react";
+import { cn } from "@/utils/cn";
+import type { GeneratedImage } from "@/features/convergence/types";
+import { ImageSkeleton } from "./ImageSkeleton";
+import { ImageOption, type ImageOptionProps } from "./ImageOption";
 
 export interface ImageGridProps<OptionId extends string = string> {
   /** Array of generated images to display */
@@ -33,7 +33,7 @@ export interface ImageGridProps<OptionId extends string = string> {
   /** Additional CSS classes */
   className?: string;
   /** Aspect ratio for images */
-  aspectRatio?: ImageOptionProps['aspectRatio'];
+  aspectRatio?: ImageOptionProps["aspectRatio"];
   /** Whether options are disabled */
   disabled?: boolean;
 }
@@ -50,7 +50,7 @@ export function ImageGrid<OptionId extends string = string>({
   skeletonCount = 4,
   onSelect,
   className,
-  aspectRatio = 'square',
+  aspectRatio = "square",
   disabled = false,
 }: ImageGridProps<OptionId>): React.ReactElement {
   // Create a map of option ID to image for quick lookup
@@ -68,43 +68,41 @@ export function ImageGrid<OptionId extends string = string>({
       aria-label="Image options"
       className={cn(
         // Responsive grid: 2 columns on mobile, 4 on desktop
-        'grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4',
-        className
+        "grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4",
+        className,
       )}
     >
-      {isLoading ? (
-        // Loading state: show skeletons
-        Array.from({ length: skeletonCount }).map((_, index) => (
-          <ImageSkeleton
-            key={`skeleton-${index}`}
-            aspectRatio={aspectRatio}
-            aria-label={`Loading option ${index + 1}...`}
-          />
-        ))
-      ) : (
-        // Loaded state: show image options
-        options.map((option, index) => {
-          const image = imageMap.get(option.id);
-          return (
-            <ImageOption<OptionId>
-              key={option.id}
-              id={option.id}
-              imageUrl={image?.url || ''}
-              label={option.label}
-              isSelected={selectedId === option.id}
-              isFocused={focusedIndex === index}
-              disabled={disabled || !image?.url}
-              onSelect={onSelect}
+      {isLoading
+        ? // Loading state: show skeletons
+          Array.from({ length: skeletonCount }).map((_, index) => (
+            <ImageSkeleton
+              key={`skeleton-${index}`}
               aspectRatio={aspectRatio}
-              tabIndex={focusedIndex === index ? 0 : -1}
+              aria-label={`Loading option ${index + 1}...`}
             />
-          );
-        })
-      )}
+          ))
+        : // Loaded state: show image options
+          options.map((option, index) => {
+            const image = imageMap.get(option.id);
+            return (
+              <ImageOption<OptionId>
+                key={option.id}
+                id={option.id}
+                imageUrl={image?.url || ""}
+                label={option.label}
+                isSelected={selectedId === option.id}
+                isFocused={focusedIndex === index}
+                disabled={disabled || !image?.url}
+                onSelect={onSelect}
+                aspectRatio={aspectRatio}
+                tabIndex={focusedIndex === index ? 0 : -1}
+              />
+            );
+          })}
     </div>
   );
 }
 
-ImageGrid.displayName = 'ImageGrid';
+ImageGrid.displayName = "ImageGrid";
 
 export default ImageGrid;

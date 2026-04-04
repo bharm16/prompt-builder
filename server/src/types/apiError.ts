@@ -5,4 +5,7 @@
  * existing `import { ApiErrorCode } from '@server/types/apiError'` statements
  * continue to work without modification.
  */
-export type { ApiErrorCode, ApiErrorResponse as ApiError } from '@shared/types/api';
+export type {
+  ApiErrorCode,
+  ApiErrorResponse as ApiError,
+} from "@shared/types/api";

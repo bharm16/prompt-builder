@@ -3,6 +3,7 @@
 ## Overview
 
 Implement a unified generations timeline within the current prompt's GenerationsPanel that:
+
 1. Shows all generations across all prompt versions in a flat list (newest first)
 2. Inserts subtle dividers at version boundaries with "prompt changed" indicator
 3. Clicking any generation restores that version's prompt to the editor
@@ -26,38 +27,38 @@ interface PromptHistoryEntry {
 interface PromptVersionEntry {
   versionId: string;
   label?: string;
-  signature: string;  // Hash of prompt text
+  signature: string; // Hash of prompt text
   prompt: string;
   timestamp: string;
-  generations?: Generation[] | null;  // ← Generations attached here
+  generations?: Generation[] | null; // ← Generations attached here
   // ...
 }
 
 // client/src/features/prompt-optimizer/GenerationsPanel/types.ts
 interface Generation {
   id: string;
-  tier: 'draft' | 'render';
-  status: 'pending' | 'generating' | 'completed' | 'failed';
+  tier: "draft" | "render";
+  status: "pending" | "generating" | "completed" | "failed";
   model: string;
   prompt: string;
-  promptVersionId: string | null;  // ← Links to version
+  promptVersionId: string | null; // ← Links to version
   createdAt: number;
   mediaUrls: string[];
-  mediaType: 'image' | 'video' | 'image-sequence';
+  mediaType: "image" | "video" | "image-sequence";
   // ...
 }
 ```
 
 ### Key Files
 
-| File | Purpose |
-|------|---------|
-| `client/src/features/prompt-optimizer/PromptCanvas.tsx` | Main orchestrator, owns version state |
-| `client/src/features/prompt-optimizer/GenerationsPanel/GenerationsPanel.tsx` | Displays generations, handles draft/render |
-| `client/src/features/prompt-optimizer/GenerationsPanel/hooks/useGenerationsState.ts` | Local generation state management |
-| `client/src/features/prompt-optimizer/GenerationsPanel/hooks/useGenerationActions.ts` | Draft/render API calls |
-| `client/src/features/prompt-optimizer/PromptCanvas/hooks/usePromptVersioning.ts` | Version CRUD, syncs generations to versions |
-| `client/src/features/span-highlighting/index.ts` | Exports `createHighlightSignature()` |
+| File                                                                                  | Purpose                                     |
+| ------------------------------------------------------------------------------------- | ------------------------------------------- |
+| `client/src/features/prompt-optimizer/PromptCanvas.tsx`                               | Main orchestrator, owns version state       |
+| `client/src/features/prompt-optimizer/GenerationsPanel/GenerationsPanel.tsx`          | Displays generations, handles draft/render  |
+| `client/src/features/prompt-optimizer/GenerationsPanel/hooks/useGenerationsState.ts`  | Local generation state management           |
+| `client/src/features/prompt-optimizer/GenerationsPanel/hooks/useGenerationActions.ts` | Draft/render API calls                      |
+| `client/src/features/prompt-optimizer/PromptCanvas/hooks/usePromptVersioning.ts`      | Version CRUD, syncs generations to versions |
+| `client/src/features/span-highlighting/index.ts`                                      | Exports `createHighlightSignature()`        |
 
 ### Current Flow
 
@@ -79,9 +80,9 @@ interface Generation {
 **Purpose:** Flatten all generations across all versions into a single timeline with dividers.
 
 ```typescript
-import { useMemo } from 'react';
-import type { PromptVersionEntry } from '@hooks/types';
-import type { Generation } from '../types';
+import { useMemo } from "react";
+import type { PromptVersionEntry } from "@hooks/types";
+import type { Generation } from "../types";
 
 export interface TimelineGeneration extends Generation {
   _versionId: string;
@@ -89,7 +90,7 @@ export interface TimelineGeneration extends Generation {
 }
 
 export interface TimelineDivider {
-  type: 'divider';
+  type: "divider";
   versionId: string;
   versionLabel: string;
   promptChanged: boolean;
@@ -97,7 +98,7 @@ export interface TimelineDivider {
 }
 
 export interface TimelineGenerationItem {
-  type: 'generation';
+  type: "generation";
   generation: TimelineGeneration;
   timestamp: number;
 }
@@ -116,7 +117,7 @@ export function useGenerationsTimeline({
 
     // 1. Flatten all generations with version metadata
     const allGenerations: TimelineGeneration[] = [];
-    
+
     for (const version of versions) {
       const gens = version.generations ?? [];
       for (const gen of gens) {
@@ -140,7 +141,7 @@ export function useGenerationsTimeline({
       // Insert divider when version changes
       if (gen._versionId !== lastVersionId) {
         items.push({
-          type: 'divider',
+          type: "divider",
           versionId: gen._versionId,
           versionLabel: gen._versionLabel,
           promptChanged: !isFirstDivider, // First divider = no "changed" badge
@@ -151,7 +152,7 @@ export function useGenerationsTimeline({
       }
 
       items.push({
-        type: 'generation',
+        type: "generation",
         generation: gen,
         timestamp: gen.createdAt,
       });
@@ -163,6 +164,7 @@ export function useGenerationsTimeline({
 ```
 
 **Tests to consider:**
+
 - Empty versions array → returns empty array
 - Single version with generations → one divider (no "changed" badge) + generations
 - Multiple versions → dividers between version boundaries with "changed" badge
@@ -202,7 +204,7 @@ export function VersionDivider({
     >
       {/* Left line */}
       <div className="h-px flex-1 bg-[rgb(41,44,50)]" aria-hidden="true" />
-      
+
       {/* Label */}
       <div className="flex items-center gap-2">
         <span className="text-[11px] font-medium text-[rgb(107,114,128)] uppercase tracking-wide">
@@ -214,7 +216,7 @@ export function VersionDivider({
           </span>
         )}
       </div>
-      
+
       {/* Right line */}
       <div className="h-px flex-1 bg-[rgb(41,44,50)]" aria-hidden="true" />
     </div>
@@ -223,6 +225,7 @@ export function VersionDivider({
 ```
 
 **Design notes:**
+
 - Subtle, muted appearance (matches dark theme)
 - Non-interactive (no hover states, no click handler)
 - "prompt changed" badge uses warm/amber tone to draw attention without being harsh
@@ -246,20 +249,22 @@ export function VersionDivider({
  */
 const createVersionIfNeeded = useCallback((): string => {
   // If no prompt, return empty (shouldn't happen in practice)
-  const promptText = (normalizedDisplayedPrompt ?? '').trim();
+  const promptText = (normalizedDisplayedPrompt ?? "").trim();
   if (!promptText) {
-    return activeVersion?.versionId ?? '';
+    return activeVersion?.versionId ?? "";
   }
 
   const signature = createHighlightSignature(promptText);
-  
+
   // If no versions exist, create v1
   if (!currentVersions.length) {
     const editCount = versionEditCountRef.current;
-    const edits = versionEditsRef.current.length ? [...versionEditsRef.current] : [];
+    const edits = versionEditsRef.current.length
+      ? [...versionEditsRef.current]
+      : [];
     const newVersion = {
       versionId: `v-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      label: 'v1',
+      label: "v1",
       signature,
       prompt: promptText,
       timestamp: new Date().toISOString(),
@@ -271,7 +276,9 @@ const createVersionIfNeeded = useCallback((): string => {
       ...(edits.length ? { edits } : {}),
     };
 
-    promptHistory.updateEntryVersions(currentPromptUuid!, currentPromptDocId, [newVersion]);
+    promptHistory.updateEntryVersions(currentPromptUuid!, currentPromptDocId, [
+      newVersion,
+    ]);
     setActiveVersionId(newVersion.versionId);
     resetVersionEdits();
     return newVersion.versionId;
@@ -286,7 +293,9 @@ const createVersionIfNeeded = useCallback((): string => {
 
   // Prompt changed, create new version
   const editCount = versionEditCountRef.current;
-  const edits = versionEditsRef.current.length ? [...versionEditsRef.current] : [];
+  const edits = versionEditsRef.current.length
+    ? [...versionEditsRef.current]
+    : [];
   const newVersion = {
     versionId: `v-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     label: `v${currentVersions.length + 1}`,
@@ -334,6 +343,7 @@ const createVersionIfNeeded = useCallback((): string => {
 **This already exists as `handleSelectVersion`. Just ensure it's passed to GenerationsPanel.**
 
 The existing `handleSelectVersion` (around line 320) does exactly what we need:
+
 1. Finds the target version
 2. Sets active version ID
 3. Updates optimized prompt
@@ -360,20 +370,23 @@ export interface GenerationsPanelProps {
   initialGenerations?: Generation[];
   onGenerationsChange?: (generations: Generation[]) => void;
   className?: string;
-  
+
   // NEW PROPS
-  versions: PromptVersionEntry[];  // All versions for timeline
-  onRestoreVersion: (versionId: string) => void;  // Called when generation clicked
-  onCreateVersionIfNeeded: () => string;  // Called before generate, returns versionId
+  versions: PromptVersionEntry[]; // All versions for timeline
+  onRestoreVersion: (versionId: string) => void; // Called when generation clicked
+  onCreateVersionIfNeeded: () => string; // Called before generate, returns versionId
 }
 ```
 
 #### 5.2 Import New Dependencies
 
 ```typescript
-import { useGenerationsTimeline, type TimelineItem } from './hooks/useGenerationsTimeline';
-import { VersionDivider } from './components/VersionDivider';
-import type { PromptVersionEntry } from '@hooks/types';
+import {
+  useGenerationsTimeline,
+  type TimelineItem,
+} from "./hooks/useGenerationsTimeline";
+import { VersionDivider } from "./components/VersionDivider";
+import type { PromptVersionEntry } from "@hooks/types";
 ```
 
 #### 5.3 Use Timeline Hook
@@ -384,16 +397,15 @@ export function GenerationsPanel({
   promptVersionId,
   aspectRatio,
   // ... existing props
-  versions,  // NEW
-  onRestoreVersion,  // NEW
-  onCreateVersionIfNeeded,  // NEW
+  versions, // NEW
+  onRestoreVersion, // NEW
+  onCreateVersionIfNeeded, // NEW
 }: GenerationsPanelProps): React.ReactElement {
-  
   // ... existing hooks
-  
+
   // NEW: Build timeline from all versions
   const timeline = useGenerationsTimeline({ versions });
-  
+
   // ... rest of component
 }
 ```
@@ -406,25 +418,25 @@ Update `handleDraft` and `handleRender` to use `onCreateVersionIfNeeded`:
 const handleDraft = useCallback(
   (model: DraftModel) => {
     if (!prompt.trim()) return;
-    
+
     // NEW: Ensure version exists/is current before generating
     const versionId = onCreateVersionIfNeeded();
-    
+
     generateDraft(model, prompt, { promptVersionId: versionId });
   },
-  [generateDraft, prompt, onCreateVersionIfNeeded]
+  [generateDraft, prompt, onCreateVersionIfNeeded],
 );
 
 const handleRender = useCallback(
   (model: string) => {
     if (!prompt.trim()) return;
-    
+
     // NEW: Ensure version exists/is current before generating
     const versionId = onCreateVersionIfNeeded();
-    
+
     generateRender(model, prompt, { promptVersionId: versionId });
   },
-  [generateRender, prompt, onCreateVersionIfNeeded]
+  [generateRender, prompt, onCreateVersionIfNeeded],
 );
 ```
 
@@ -451,7 +463,7 @@ Replace the current `generations.map()` with timeline rendering:
           />
         );
       }
-      
+
       return (
         <GenerationCard
           key={item.generation.id}
@@ -528,7 +540,7 @@ Find the `<GenerationsPanel>` usage (around line 900) and update:
   generationParams={generationParams ?? undefined}
   initialGenerations={activeVersion?.generations ?? undefined}
   onGenerationsChange={handleGenerationsChange}
-  
+
   // NEW PROPS
   versions={currentVersions}
   onRestoreVersion={handleSelectVersion}
@@ -537,6 +549,7 @@ Find the `<GenerationsPanel>` usage (around line 900) and update:
 ```
 
 There are TWO `<GenerationsPanel>` instances in PromptCanvas.tsx:
+
 1. Desktop (around line 900)
 2. Mobile Sheet (around line 950)
 
@@ -551,25 +564,33 @@ There are TWO `<GenerationsPanel>` instances in PromptCanvas.tsx:
 Ensure exports include new files:
 
 ```typescript
-export { GenerationsPanel } from './GenerationsPanel';
-export type { Generation, GenerationParams, GenerationsPanelProps } from './types';
-export { useGenerationsTimeline } from './hooks/useGenerationsTimeline';
-export type { TimelineItem, TimelineDivider, TimelineGenerationItem } from './hooks/useGenerationsTimeline';
-export { VersionDivider } from './components/VersionDivider';
+export { GenerationsPanel } from "./GenerationsPanel";
+export type {
+  Generation,
+  GenerationParams,
+  GenerationsPanelProps,
+} from "./types";
+export { useGenerationsTimeline } from "./hooks/useGenerationsTimeline";
+export type {
+  TimelineItem,
+  TimelineDivider,
+  TimelineGenerationItem,
+} from "./hooks/useGenerationsTimeline";
+export { VersionDivider } from "./components/VersionDivider";
 ```
 
 ---
 
 ## File Summary
 
-| File | Action | Description |
-|------|--------|-------------|
+| File                                               | Action     | Description                                   |
+| -------------------------------------------------- | ---------- | --------------------------------------------- |
 | `GenerationsPanel/hooks/useGenerationsTimeline.ts` | **CREATE** | Flattens versions into timeline with dividers |
-| `GenerationsPanel/components/VersionDivider.tsx` | **CREATE** | Subtle divider component |
-| `GenerationsPanel/GenerationsPanel.tsx` | **MODIFY** | Use timeline, pass new props |
-| `GenerationsPanel/components/GenerationCard.tsx` | **MODIFY** | Add onClick prop |
-| `GenerationsPanel/index.ts` | **MODIFY** | Export new files |
-| `PromptCanvas.tsx` | **MODIFY** | Add `createVersionIfNeeded`, pass new props |
+| `GenerationsPanel/components/VersionDivider.tsx`   | **CREATE** | Subtle divider component                      |
+| `GenerationsPanel/GenerationsPanel.tsx`            | **MODIFY** | Use timeline, pass new props                  |
+| `GenerationsPanel/components/GenerationCard.tsx`   | **MODIFY** | Add onClick prop                              |
+| `GenerationsPanel/index.ts`                        | **MODIFY** | Export new files                              |
+| `PromptCanvas.tsx`                                 | **MODIFY** | Add `createVersionIfNeeded`, pass new props   |
 
 ---
 
@@ -639,7 +660,7 @@ export { VersionDivider } from './components/VersionDivider';
 This implementation follows the project's established patterns:
 
 - **VideoConceptBuilder pattern**: GenerationsPanel remains an orchestrator, new logic extracted to hooks
-- **File size limits**: 
+- **File size limits**:
   - `useGenerationsTimeline.ts` ~80 lines (under 150 hook limit)
   - `VersionDivider.tsx` ~40 lines (under 200 component limit)
   - Changes to `GenerationsPanel.tsx` add ~50 lines (stays under 500 orchestrator limit)
@@ -651,6 +672,7 @@ This implementation follows the project's established patterns:
 ## Dependencies
 
 No new npm dependencies required. Uses existing:
+
 - React hooks
 - Existing types from `@hooks/types`
 - Existing `createHighlightSignature` from span-highlighting
@@ -661,6 +683,7 @@ No new npm dependencies required. Uses existing:
 ## Rollback Plan
 
 If issues arise, changes can be reverted by:
+
 1. Removing new props from `<GenerationsPanel>` calls
 2. Reverting `GenerationsPanel.tsx` to use `generations.map()` instead of timeline
 3. Keeping new files (they won't be imported)

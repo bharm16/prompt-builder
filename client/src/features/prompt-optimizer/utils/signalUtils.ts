@@ -25,9 +25,9 @@
 export class CancellationError extends Error {
   readonly isCancellation = true;
 
-  constructor(message: string = 'Request cancelled') {
+  constructor(message: string = "Request cancelled") {
     super(message);
-    this.name = 'CancellationError';
+    this.name = "CancellationError";
     // Maintains proper stack trace for where error was thrown (V8 engines)
     if (Error.captureStackTrace) {
       Error.captureStackTrace(this, CancellationError);
@@ -41,8 +41,15 @@ export class CancellationError extends Error {
  * @param error - The error to check
  * @returns True if the error is a CancellationError
  */
-export function isCancellationError(error: unknown): error is CancellationError {
-  return error instanceof CancellationError || (error instanceof Error && 'isCancellation' in error && (error as CancellationError).isCancellation === true);
+export function isCancellationError(
+  error: unknown,
+): error is CancellationError {
+  return (
+    error instanceof CancellationError ||
+    (error instanceof Error &&
+      "isCancellation" in error &&
+      (error as CancellationError).isCancellation === true)
+  );
 }
 
 /**
@@ -79,7 +86,9 @@ export function combineSignals(...signals: AbortSignal[]): AbortSignal {
     }
 
     // Listen for abort on each signal
-    signal.addEventListener('abort', () => controller.abort(signal.reason), { once: true });
+    signal.addEventListener("abort", () => controller.abort(signal.reason), {
+      once: true,
+    });
   }
 
   return controller.signal;

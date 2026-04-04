@@ -1,53 +1,63 @@
-import type { DIContainer } from '@infrastructure/DIContainer';
-import { logger } from '@infrastructure/Logger';
-import type { Bucket } from '@google-cloud/storage';
-import AssetService from '@services/asset/AssetService';
-import AssetRepository from '@services/asset/AssetRepository';
-import AssetResolverService from '@services/asset/AssetResolverService';
-import AssetReferenceImageService from '@services/asset/ReferenceImageService';
-import type { FaceEmbeddingService } from '@services/asset/FaceEmbeddingService';
-import type { FirestoreCircuitExecutor } from '@services/firestore/FirestoreCircuitExecutor';
-import { BillingProfileStore } from '@services/payment/BillingProfileStore';
-import { PaymentService } from '@services/payment/PaymentService';
-import { StripeWebhookEventStore } from '@services/payment/StripeWebhookEventStore';
-import { WebhookReconciliationWorker } from '@services/payment/WebhookReconciliationWorker';
-import ReferenceImageService from '@services/reference-images/ReferenceImageService';
-import { SessionService } from '@services/sessions/SessionService';
-import { SessionStore } from '@services/sessions/SessionStore';
-import type { UserCreditService } from '@services/credits/UserCreditService';
-import type { MetricsService } from '@infrastructure/MetricsService';
-import type { ServiceConfig } from './service-config.types.ts';
+import type { DIContainer } from "@infrastructure/DIContainer";
+import { logger } from "@infrastructure/Logger";
+import type { Bucket } from "@google-cloud/storage";
+import AssetService from "@services/asset/AssetService";
+import AssetRepository from "@services/asset/AssetRepository";
+import AssetResolverService from "@services/asset/AssetResolverService";
+import { ReferenceImageProcessingService } from "@services/asset/ReferenceImageProcessingService";
+import type { FaceEmbeddingService } from "@services/asset/FaceEmbeddingService";
+import type { FirestoreCircuitExecutor } from "@services/firestore/FirestoreCircuitExecutor";
+import { BillingProfileStore } from "@services/payment/BillingProfileStore";
+import { createBillingProfileRepairWorker } from "@services/payment/BillingProfileRepairWorker";
+import { PaymentConsistencyStore } from "@services/payment/PaymentConsistencyStore";
+import { PaymentService } from "@services/payment/PaymentService";
+import { StripeWebhookEventStore } from "@services/payment/StripeWebhookEventStore";
+import { WebhookReconciliationWorker } from "@services/payment/WebhookReconciliationWorker";
+import { ReferenceImageRepository } from "@services/asset/reference-images/ReferenceImageRepository";
+import { SessionService } from "@services/sessions/SessionService";
+import { SessionStore } from "@services/sessions/SessionStore";
+import type { UserCreditService } from "@services/credits/UserCreditService";
+import type { MetricsService } from "@infrastructure/MetricsService";
+import type { ServiceConfig } from "./service-config.types.ts";
 
 export function registerSessionServices(container: DIContainer): void {
   container.register(
-    'billingProfileStore',
+    "billingProfileStore",
     (firestoreCircuitExecutor: FirestoreCircuitExecutor) =>
       new BillingProfileStore(firestoreCircuitExecutor),
-    ['firestoreCircuitExecutor'],
-    { singleton: true }
+    ["firestoreCircuitExecutor"],
+    { singleton: true },
   );
   container.register(
-    'paymentService',
+    "paymentService",
     (config: ServiceConfig) => new PaymentService(config.stripe),
-    ['config'],
-    { singleton: true }
+    ["config"],
+    { singleton: true },
   );
   container.register(
-    'stripeWebhookEventStore',
+    "stripeWebhookEventStore",
     (firestoreCircuitExecutor: FirestoreCircuitExecutor) =>
       new StripeWebhookEventStore(undefined, firestoreCircuitExecutor),
-    ['firestoreCircuitExecutor'],
-    { singleton: true }
+    ["firestoreCircuitExecutor"],
+    { singleton: true },
   );
   container.register(
-    'webhookReconciliationWorker',
+    "paymentConsistencyStore",
+    (firestoreCircuitExecutor: FirestoreCircuitExecutor) =>
+      new PaymentConsistencyStore(firestoreCircuitExecutor),
+    ["firestoreCircuitExecutor"],
+    { singleton: true },
+  );
+  container.register(
+    "webhookReconciliationWorker",
     (
       paymentService: PaymentService,
       webhookEventStore: StripeWebhookEventStore,
       billingProfileStore: BillingProfileStore,
       userCreditService: UserCreditService,
+      paymentConsistencyStore: PaymentConsistencyStore,
       metricsService: MetricsService,
-      config: ServiceConfig
+      config: ServiceConfig,
     ) => {
       const wrc = config.stripe.webhookReconciliation;
       if (wrc.disabled) {
@@ -62,56 +72,112 @@ export function registerSessionServices(container: DIContainer): void {
         webhookEventStore,
         billingProfileStore,
         userCreditService,
+        paymentConsistencyStore,
         {
           pollIntervalMs,
           lookbackHours: wrc.lookbackHours,
           metrics: metricsService,
-        }
+        },
       );
     },
-    ['paymentService', 'stripeWebhookEventStore', 'billingProfileStore', 'userCreditService', 'metricsService', 'config'],
-    { singleton: true }
+    [
+      "paymentService",
+      "stripeWebhookEventStore",
+      "billingProfileStore",
+      "userCreditService",
+      "paymentConsistencyStore",
+      "metricsService",
+      "config",
+    ],
+    { singleton: true },
   );
-  container.register('sessionStore', () => new SessionStore(), [], { singleton: true });
+  container.register(
+    "billingProfileRepairWorker",
+    (
+      paymentConsistencyStore: PaymentConsistencyStore,
+      billingProfileStore: BillingProfileStore,
+      metricsService: MetricsService,
+      config: ServiceConfig,
+    ) =>
+      createBillingProfileRepairWorker(
+        paymentConsistencyStore,
+        billingProfileStore,
+        metricsService,
+        config.stripe.profileRepair,
+      ),
+    [
+      "paymentConsistencyStore",
+      "billingProfileStore",
+      "metricsService",
+      "config",
+    ],
+    { singleton: true },
+  );
+  container.register("sessionStore", () => new SessionStore(), [], {
+    singleton: true,
+  });
 
   container.register(
-    'sessionService',
+    "sessionService",
     (sessionStore: SessionStore) => new SessionService(sessionStore),
-    ['sessionStore'],
-    { singleton: true }
+    ["sessionStore"],
+    { singleton: true },
   );
 
   container.register(
-    'assetService',
-    (gcsBucket: Bucket, gcsBucketName: string, faceEmbeddingService: FaceEmbeddingService | null, config: ServiceConfig) => {
+    "assetService",
+    (
+      gcsBucket: Bucket,
+      gcsBucketName: string,
+      faceEmbeddingService: FaceEmbeddingService | null,
+      config: ServiceConfig,
+    ) => {
       try {
-        const repository = new AssetRepository({ bucket: gcsBucket, bucketName: gcsBucketName });
+        const repository = new AssetRepository({
+          bucket: gcsBucket,
+          bucketName: gcsBucketName,
+        });
         const resolver = new AssetResolverService(repository);
-        const referenceImages = new AssetReferenceImageService();
-        const embeddingService = config.features.faceEmbedding ? faceEmbeddingService : null;
-        return new AssetService(repository, referenceImages, resolver, undefined, embeddingService);
+        const referenceImages = new ReferenceImageProcessingService();
+        const embeddingService = config.features.faceEmbedding
+          ? faceEmbeddingService
+          : null;
+        return new AssetService(
+          repository,
+          referenceImages,
+          resolver,
+          undefined,
+          embeddingService,
+        );
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        logger.warn('Asset service disabled', { error: errorMessage });
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        logger.warn("Asset service disabled", { error: errorMessage });
         return null;
       }
     },
-    ['gcsBucket', 'gcsBucketName', 'faceEmbeddingService', 'config'],
-    { singleton: true }
+    ["gcsBucket", "gcsBucketName", "faceEmbeddingService", "config"],
+    { singleton: true },
   );
 
   container.register(
-    'referenceImageService',
+    "referenceImageService",
     (gcsBucket: Bucket, gcsBucketName: string) => {
       try {
-        return new ReferenceImageService({ bucket: gcsBucket, bucketName: gcsBucketName });
+        return new ReferenceImageRepository({
+          bucket: gcsBucket,
+          bucketName: gcsBucketName,
+        });
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        logger.warn('Reference image service disabled', { error: errorMessage });
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        logger.warn("Reference image service disabled", {
+          error: errorMessage,
+        });
         return null;
       }
     },
-    ['gcsBucket', 'gcsBucketName'],
-    { singleton: true }
+    ["gcsBucket", "gcsBucketName"],
+    { singleton: true },
   );
 }

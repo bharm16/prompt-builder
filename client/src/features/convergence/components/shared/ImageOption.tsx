@@ -9,9 +9,9 @@
  * @requirement 36.4 - Add ARIA labels to ImageOption
  */
 
-import React, { useCallback, useState } from 'react';
-import { cn } from '@/utils/cn';
-import { Check } from '@promptstudio/system/components/ui';
+import React, { useCallback, useState } from "react";
+import { cn } from "@/utils/cn";
+import { Check } from "@promptstudio/system/components/ui";
 
 export interface ImageOptionProps<OptionId extends string = string> {
   /** Unique identifier for the option */
@@ -31,7 +31,7 @@ export interface ImageOptionProps<OptionId extends string = string> {
   /** Additional CSS classes */
   className?: string;
   /** Aspect ratio of the image */
-  aspectRatio?: 'square' | 'video' | '4:3';
+  aspectRatio?: "square" | "video" | "4:3";
   /** Index for keyboard navigation */
   tabIndex?: number;
 }
@@ -48,7 +48,7 @@ export function ImageOption<OptionId extends string = string>({
   disabled = false,
   onSelect,
   className,
-  aspectRatio = 'square',
+  aspectRatio = "square",
   tabIndex = 0,
 }: ImageOptionProps<OptionId>): React.ReactElement {
   const [isLoaded, setIsLoaded] = useState(false);
@@ -62,12 +62,12 @@ export function ImageOption<OptionId extends string = string>({
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
-      if ((e.key === 'Enter' || e.key === ' ') && !disabled && onSelect) {
+      if ((e.key === "Enter" || e.key === " ") && !disabled && onSelect) {
         e.preventDefault();
         onSelect(id);
       }
     },
-    [disabled, id, onSelect]
+    [disabled, id, onSelect],
   );
 
   const handleImageLoad = useCallback(() => {
@@ -80,42 +80,43 @@ export function ImageOption<OptionId extends string = string>({
   }, []);
 
   const aspectRatioClasses: Record<string, string> = {
-    square: 'aspect-square',
-    video: 'aspect-video',
-    '4:3': 'aspect-[4/3]',
+    square: "aspect-square",
+    video: "aspect-video",
+    "4:3": "aspect-[4/3]",
   };
 
   // Touch-friendly tap targets: min 44px (Task 35.4)
   // Images are naturally larger than 44px, but we ensure minimum dimensions
-  const minTouchTarget = 'min-h-[44px] min-w-[44px]';
+  const minTouchTarget = "min-h-[44px] min-w-[44px]";
 
   return (
     <button
       type="button"
       role="option"
       aria-selected={isSelected}
-      aria-label={`${label}${isSelected ? ' (selected)' : ''}`}
+      aria-label={`${label}${isSelected ? " (selected)" : ""}`}
       tabIndex={tabIndex}
       disabled={disabled}
       onClick={handleClick}
       onKeyDown={handleKeyDown}
       className={cn(
-        'group relative overflow-hidden rounded-lg border-2 transition-all duration-200',
+        "group relative overflow-hidden rounded-lg border-2 transition-all duration-200",
         aspectRatioClasses[aspectRatio],
         minTouchTarget,
         // Base state
-        'bg-surface-2 border-border',
+        "bg-surface-2 border-border",
         // Hover state
-        !disabled && !isSelected && 'hover:border-primary/50 hover:shadow-md',
+        !disabled && !isSelected && "hover:border-primary/50 hover:shadow-md",
         // Focus state (keyboard navigation) - Requirement 36.2
-        isFocused && 'ring-2 ring-blue-500 ring-offset-2 ring-offset-background',
+        isFocused &&
+          "ring-2 ring-blue-500 ring-offset-2 ring-offset-background",
         // Selected state
-        isSelected && 'border-primary ring-2 ring-primary/30',
+        isSelected && "border-primary ring-2 ring-primary/30",
         // Disabled state
-        disabled && 'opacity-50 cursor-not-allowed',
+        disabled && "opacity-50 cursor-not-allowed",
         // Cursor
-        !disabled && 'cursor-pointer',
-        className
+        !disabled && "cursor-pointer",
+        className,
       )}
     >
       {/* Image */}
@@ -127,10 +128,10 @@ export function ImageOption<OptionId extends string = string>({
           onLoad={handleImageLoad}
           onError={handleImageError}
           className={cn(
-            'h-full w-full object-cover transition-all duration-300',
-            !isLoaded && 'opacity-0',
-            isLoaded && 'opacity-100',
-            !disabled && 'group-hover:scale-105'
+            "h-full w-full object-cover transition-all duration-300",
+            !isLoaded && "opacity-0",
+            isLoaded && "opacity-100",
+            !disabled && "group-hover:scale-105",
           )}
         />
       ) : (
@@ -164,8 +165,8 @@ export function ImageOption<OptionId extends string = string>({
       {/* Label overlay */}
       <div
         className={cn(
-          'absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent p-3 pt-8',
-          'transition-opacity duration-200'
+          "absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent p-3 pt-8",
+          "transition-opacity duration-200",
         )}
       >
         <span className="text-sm font-medium text-white drop-shadow-sm">
@@ -194,6 +195,6 @@ export function ImageOption<OptionId extends string = string>({
   );
 }
 
-ImageOption.displayName = 'ImageOption';
+ImageOption.displayName = "ImageOption";
 
 export default ImageOption;

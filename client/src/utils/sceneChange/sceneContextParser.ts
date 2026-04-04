@@ -1,6 +1,6 @@
 /**
  * Scene Context Parser
- * 
+ *
  * Extracts structured scene context from formatted prompt text
  */
 
@@ -17,18 +17,19 @@ interface SceneContext {
  */
 export function extractSceneContext(
   fullPrompt: string | null | undefined,
-  targetValue: unknown
+  targetValue: unknown,
 ): SceneContext {
   if (!fullPrompt) {
     return {
-      changedField: 'Unknown Field',
+      changedField: "Unknown Field",
       affectedFields: {},
       sectionHeading: null,
       sectionContext: null,
     };
   }
 
-  const normalizedTarget = typeof targetValue === 'string' ? targetValue.toLowerCase().trim() : '';
+  const normalizedTarget =
+    typeof targetValue === "string" ? targetValue.toLowerCase().trim() : "";
   const sectionRegex = /\*\*(.+?)\*\*([\s\S]*?)(?=\*\*|$)/g;
   let matchedFields: Record<string, string> | null = null;
   let matchedHeading: string | null = null;
@@ -39,19 +40,23 @@ export function extractSceneContext(
 
   let sectionMatch: RegExpExecArray | null;
   while ((sectionMatch = sectionRegex.exec(fullPrompt)) !== null) {
-    const heading = sectionMatch[1]?.trim() ?? '';
-    const body = sectionMatch[2] ?? '';
+    const heading = sectionMatch[1]?.trim() ?? "";
+    const body = sectionMatch[2] ?? "";
     const fields: Record<string, string> = {};
 
     const fieldRegex = /- ([^:]+): \[(.*?)\]/g;
     let fieldMatch: RegExpExecArray | null;
     let foundInSection = false;
     while ((fieldMatch = fieldRegex.exec(body)) !== null) {
-      const fieldName = fieldMatch[1]?.trim() ?? '';
-      const fieldValue = fieldMatch[2]?.trim() ?? '';
+      const fieldName = fieldMatch[1]?.trim() ?? "";
+      const fieldValue = fieldMatch[2]?.trim() ?? "";
       fields[fieldName] = fieldValue;
 
-      if (!foundInSection && normalizedTarget && fieldValue.toLowerCase().includes(normalizedTarget)) {
+      if (
+        !foundInSection &&
+        normalizedTarget &&
+        fieldValue.toLowerCase().includes(normalizedTarget)
+      ) {
         foundInSection = true;
       }
     }
@@ -60,7 +65,11 @@ export function extractSceneContext(
       matchedFields = { ...fields };
       matchedHeading = heading;
       matchedContext = body.trim();
-    } else if (!matchedFields && Object.keys(fields).length > 0 && !fallbackFields) {
+    } else if (
+      !matchedFields &&
+      Object.keys(fields).length > 0 &&
+      !fallbackFields
+    ) {
       fallbackFields = { ...fields };
       fallbackHeading = heading;
       fallbackContext = body.trim();
@@ -75,10 +84,10 @@ export function extractSceneContext(
   const heading = matchedHeading || fallbackHeading || null;
   const context = matchedContext || fallbackContext || null;
 
-  let changedField = 'Unknown Field';
+  let changedField = "Unknown Field";
   if (normalizedTarget && Object.keys(selectedFields).length > 0) {
     const match = Object.entries(selectedFields).find(([, value]) =>
-      value.toLowerCase().includes(normalizedTarget)
+      value.toLowerCase().includes(normalizedTarget),
     );
     if (match) {
       changedField = match[0];

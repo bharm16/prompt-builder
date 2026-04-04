@@ -49,7 +49,11 @@ export interface UserPreferences {
  */
 export interface StorageAdapter {
   get(userId: string, elementType: string): Promise<UserPreferences | null>;
-  set(userId: string, elementType: string, preferences: UserPreferences): Promise<void>;
+  set(
+    userId: string,
+    elementType: string,
+    preferences: UserPreferences,
+  ): Promise<void>;
   delete(userId: string, elementType?: string): Promise<void>;
 }
 
@@ -94,4 +98,3 @@ export interface InMemoryTemplateStorage {
   getByUser(userId: string): Promise<VideoTemplate[]>;
   getAll(): Promise<VideoTemplate[]>;
 }
-

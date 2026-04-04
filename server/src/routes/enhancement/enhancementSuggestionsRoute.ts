@@ -1,10 +1,11 @@
-import type { Router } from 'express';
-import { logger } from '@infrastructure/Logger';
-import { asyncHandler } from '@middleware/asyncHandler';
-import { validateRequest } from '@middleware/validateRequest';
-import { PerformanceMonitor } from '@middleware/performanceMonitor';
-import { suggestionSchema } from '@utils/validation';
-import { countSuggestions } from './utils';
+import type { Router } from "express";
+import { logger } from "@infrastructure/Logger";
+import { asyncHandler } from "@middleware/asyncHandler";
+import { validateRequest } from "@middleware/validateRequest";
+import { PerformanceMonitor } from "@middleware/performanceMonitor";
+import { suggestionSchema } from "@utils/validation";
+import { countSuggestions } from "./utils";
+import type { EnhancementEngineVersion } from "@services/enhancement/services/types";
 
 interface EnhancementSuggestionsResult {
   suggestions?: unknown[];
@@ -14,23 +15,25 @@ interface EnhancementSuggestionsResult {
 
 interface EnhancementSuggestionsDeps {
   enhancementService: {
-    getEnhancementSuggestions: (payload: Record<string, unknown>) => Promise<EnhancementSuggestionsResult>;
+    getEnhancementSuggestions: (
+      payload: Record<string, unknown>,
+    ) => Promise<EnhancementSuggestionsResult>;
   };
   perfMonitor: PerformanceMonitor;
 }
 
 export function registerEnhancementSuggestionsRoute(
   router: Router,
-  { enhancementService, perfMonitor }: EnhancementSuggestionsDeps
+  { enhancementService, perfMonitor }: EnhancementSuggestionsDeps,
 ): void {
   router.post(
-    '/get-enhancement-suggestions',
+    "/get-enhancement-suggestions",
     perfMonitor.trackRequest.bind(perfMonitor),
     validateRequest(suggestionSchema),
     asyncHandler(async (req, res) => {
       const startTime = Date.now();
-      const requestId = req.id || 'unknown';
-      const operation = 'get-enhancement-suggestions';
+      const requestId = req.id || "unknown";
+      const operation = "get-enhancement-suggestions";
 
       const {
         highlightedText,
@@ -47,8 +50,19 @@ export function registerEnhancementSuggestionsRoute(
         editHistory,
         i2vContext,
       } = req.body;
+      const debugHeader = req.headers["x-debug"];
+      const debugRequested = Array.isArray(debugHeader)
+        ? debugHeader.includes("true")
+        : debugHeader === "true";
+      const debug = debugRequested && process.env.NODE_ENV !== "production";
+      const engineHeader = req.headers["x-enhancement-engine"];
+      const requestedEngineVersion: EnhancementEngineVersion | null =
+        process.env.NODE_ENV !== "production" &&
+        (engineHeader === "v1" || engineHeader === "v2")
+          ? engineHeader
+          : null;
 
-      logger.info('Enhancement suggestions request received', {
+      logger.info("Enhancement suggestions request received", {
         operation,
         requestId,
         highlightedTextLength: highlightedText?.length || 0,
@@ -60,7 +74,7 @@ export function registerEnhancementSuggestionsRoute(
       });
 
       if (req.perfMonitor) {
-        req.perfMonitor.start('service_call');
+        req.perfMonitor.start("service_call");
       }
 
       try {
@@ -78,21 +92,23 @@ export function registerEnhancementSuggestionsRoute(
           nearbySpans,
           editHistory,
           i2vContext,
+          requestedEngineVersion,
+          debug,
         });
 
         const suggestionCount = countSuggestions(result.suggestions);
 
         if (req.perfMonitor) {
-          req.perfMonitor.end('service_call');
-          req.perfMonitor.addMetadata('cacheHit', result.fromCache || false);
-          req.perfMonitor.addMetadata('suggestionCount', suggestionCount);
+          req.perfMonitor.end("service_call");
+          req.perfMonitor.addMetadata("cacheHit", result.fromCache || false);
+          req.perfMonitor.addMetadata("suggestionCount", suggestionCount);
           req.perfMonitor.addMetadata(
-            'category',
-            highlightedCategory || 'unknown'
+            "category",
+            highlightedCategory || "unknown",
           );
         }
 
-        logger.info('Enhancement suggestions request completed', {
+        logger.info("Enhancement suggestions request completed", {
           operation,
           requestId,
           duration: Date.now() - startTime,
@@ -103,14 +119,18 @@ export function registerEnhancementSuggestionsRoute(
 
         res.json(result);
       } catch (error) {
-        logger.error('Enhancement suggestions request failed', error instanceof Error ? error : new Error(String(error)), {
-          operation,
-          requestId,
-          duration: Date.now() - startTime,
-          highlightedCategory,
-        });
+        logger.error(
+          "Enhancement suggestions request failed",
+          error instanceof Error ? error : new Error(String(error)),
+          {
+            operation,
+            requestId,
+            duration: Date.now() - startTime,
+            highlightedCategory,
+          },
+        );
         throw error;
       }
-    })
+    }),
   );
 }

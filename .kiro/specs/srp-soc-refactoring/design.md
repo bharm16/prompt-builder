@@ -15,6 +15,7 @@ Recursively analyze all files in these directories:
 - `shared/` - Shared utilities and constants
 
 Prioritize results by violation severity:
+
 - **High**: Files with 3+ distinct responsibilities
 - **Medium**: Files with 2 distinct responsibilities
 
@@ -37,20 +38,21 @@ Skip these files (not worth analyzing):
 
 For each candidate file, identify which of these 6 categories are present:
 
-| Category | What to Look For |
-|----------|------------------|
-| State Management | Reducers, complex useState orchestration, useReducer |
-| API/Data Fetching | fetch calls, response handling, API client usage |
-| Business Logic | Validation, formatting, calculations, transformations |
-| UI Rendering | JSX, styling decisions, layout logic |
-| Side Effects | useEffect chains, subscriptions, event listeners |
-| Configuration | Magic numbers, feature flags, static data, constants |
+| Category          | What to Look For                                      |
+| ----------------- | ----------------------------------------------------- |
+| State Management  | Reducers, complex useState orchestration, useReducer  |
+| API/Data Fetching | fetch calls, response handling, API client usage      |
+| Business Logic    | Validation, formatting, calculations, transformations |
+| UI Rendering      | JSX, styling decisions, layout logic                  |
+| Side Effects      | useEffect chains, subscriptions, event listeners      |
+| Configuration     | Magic numbers, feature flags, static data, constants  |
 
 ### Step 4: Determine if Violation Exists
 
 A file is a violation if it has **2 or more** distinct responsibility categories.
 
 **NOT a violation:**
+
 - A large file that does ONE thing well
 - A component with many props but single rendering responsibility
 - A service with many methods that all serve the same concern
@@ -127,8 +129,8 @@ When splitting `Settings.tsx` into `Settings/Settings.tsx`:
  * @deprecated Import from './Settings' directory instead.
  * This file will be removed in a future version.
  */
-export * from './Settings';
-export { Settings as default } from './Settings';
+export * from "./Settings";
+export { Settings as default } from "./Settings";
 ```
 
 ## Violation Report Format
@@ -190,6 +192,7 @@ userReducer.ts + userActions.ts + userSelectors.ts
 ## Checklist Summary
 
 **Before Refactoring:**
+
 - [ ] File is >150 lines
 - [ ] File is not excluded (test, types, config, index, already-refactored)
 - [ ] File has 2+ distinct responsibility categories
@@ -199,29 +202,31 @@ userReducer.ts + userActions.ts + userSelectors.ts
 - [ ] Extracted files will be 50+ lines (or genuinely reused by multiple consumers)
 
 **During Refactoring:**
+
 - [ ] Applied correct refactoring pattern (frontend or backend)
 
 **After Refactoring:**
+
 - [ ] Imports still resolve via barrel exports
 - [ ] Tests pass after refactoring
 - [ ] Created deprecated re-export shim at original path (if applicable)
 
-
 ## Correctness Properties
 
-*A property is a characteristic or behavior that should hold true across all valid executions of a system—essentially, a formal statement about what the system should do. Properties serve as the bridge between human-readable specifications and machine-verifiable correctness guarantees.*
+_A property is a characteristic or behavior that should hold true across all valid executions of a system—essentially, a formal statement about what the system should do. Properties serve as the bridge between human-readable specifications and machine-verifiable correctness guarantees._
 
 Most requirements in this spec are process-oriented (manual analysis, human judgment about cohesion, documentation requirements) and are not amenable to automated property-based testing. However, the following properties can be verified:
 
 ### Property 1: Public API Preservation
 
-*For any* refactored module, the set of exported symbols from the new barrel export (`index.ts`) SHALL be identical to the set of symbols exported from the original file before refactoring.
+_For any_ refactored module, the set of exported symbols from the new barrel export (`index.ts`) SHALL be identical to the set of symbols exported from the original file before refactoring.
 
 **Validates: Requirements 7.1**
 
 ### Property 2: Backward Compatibility Shim Correctness
 
-*For any* file that is split into a directory structure, the deprecated re-export shim at the original path SHALL:
+_For any_ file that is split into a directory structure, the deprecated re-export shim at the original path SHALL:
+
 - Export all symbols that were previously exported
 - Include a `@deprecated` JSDoc annotation
 

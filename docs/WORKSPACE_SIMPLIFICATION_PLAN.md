@@ -11,6 +11,7 @@
 The Continuity Session Unification Plan was partially implemented, adding unified routes (`/session/:id/continuity`) and a `continuity` tool to the ToolRail. However, during review we identified a fundamental issue: **Create, Studio, and Continuity are not three different tools—they're the same workspace in different states.**
 
 This plan simplifies the architecture by:
+
 1. Merging Create and Studio (they render identical components)
 2. Making Continuity an emergent feature based on session state, not a separate destination
 3. Removing the ContinuityPage creation form entirely
@@ -22,14 +23,14 @@ This plan simplifies the architecture by:
 
 ### What Was Implemented (From Unification Plan)
 
-| Feature | Status |
-|---------|--------|
+| Feature                                                                         | Status         |
+| ------------------------------------------------------------------------------- | -------------- |
 | Routes: `/session/:id/studio`, `/session/:id/create`, `/session/:id/continuity` | ✅ Implemented |
-| `ActiveTool = 'create' \| 'studio' \| 'continuity'` | ✅ Implemented |
-| Continuity in ToolRail | ✅ Implemented |
-| Legacy redirects `/continuity/*` → `/session/*/continuity` | ✅ Implemented |
-| Unified Session schema | ✅ Implemented |
-| v2 API endpoints | ✅ Implemented |
+| `ActiveTool = 'create' \| 'studio' \| 'continuity'`                             | ✅ Implemented |
+| Continuity in ToolRail                                                          | ✅ Implemented |
+| Legacy redirects `/continuity/*` → `/session/*/continuity`                      | ✅ Implemented |
+| Unified Session schema                                                          | ✅ Implemented |
+| v2 API endpoints                                                                | ✅ Implemented |
 
 ### Problems with Current State
 
@@ -77,28 +78,28 @@ Session has 1+ shots   → Prompt editor + shot timeline + style controls
 
 ### ToolRail Simplification
 
-| Before | After |
-|--------|-------|
-| Sessions | Sessions |
-| Create | **Remove** |
-| Studio | **Remove** (optional: keep as alias) |
-| Chars | Chars |
-| Styles | Styles |
-| Continuity | **Remove** |
+| Before     | After                                |
+| ---------- | ------------------------------------ |
+| Sessions   | Sessions                             |
+| Create     | **Remove**                           |
+| Studio     | **Remove** (optional: keep as alias) |
+| Chars      | Chars                                |
+| Styles     | Styles                               |
+| Continuity | **Remove**                           |
 
 The workspace is always visible. The ToolRail switches what panel appears on the left (sessions list, characters library, styles library), not what's in the main workspace.
 
 ### Route Simplification
 
-| Before | After | Notes |
-|--------|-------|-------|
-| `/` | `/` | Workspace with last session |
-| `/session/:id` | `/session/:id` | Workspace with session |
-| `/session/:id/studio` | Redirect → `/session/:id` | Compatibility |
-| `/session/:id/create` | Redirect → `/session/:id` | Remove |
+| Before                    | After                     | Notes                                  |
+| ------------------------- | ------------------------- | -------------------------------------- |
+| `/`                       | `/`                       | Workspace with last session            |
+| `/session/:id`            | `/session/:id`            | Workspace with session                 |
+| `/session/:id/studio`     | Redirect → `/session/:id` | Compatibility                          |
+| `/session/:id/create`     | Redirect → `/session/:id` | Remove                                 |
 | `/session/:id/continuity` | Redirect → `/session/:id` | Remove (timeline shows based on state) |
-| `/session/new/continuity` | Redirect → `/` | Remove |
-| `/create` | Redirect → `/` | Remove |
+| `/session/new/continuity` | Redirect → `/`            | Remove                                 |
+| `/create`                 | Redirect → `/`            | Remove                                 |
 
 ---
 
@@ -162,6 +163,7 @@ The workspace is always visible. The ToolRail switches what panel appears on the
 ```
 
 **Changes from single-shot mode:**
+
 1. **Shot timeline** appears docked at bottom
 2. **Style Reference section** appears in GenerationControls
 3. **Prompt label** changes to "Shot N Prompt"
@@ -169,14 +171,14 @@ The workspace is always visible. The ToolRail switches what panel appears on the
 
 ### UI Behaviors
 
-| User Action | Result |
-|-------------|--------|
-| Click "+ Continue as Sequence" | Session gains `continuity` block, current video becomes Shot 1, timeline appears |
-| Click shot in timeline | Loads that shot's prompt/settings into editor, scrolls workspace to that shot's video |
-| Click [+] in timeline | Creates new empty shot draft, clears editor |
-| Change style reference dropdown | Updates current shot's style reference |
-| Adjust strength slider | Updates current shot's style strength |
-| Generate | Result added to current shot |
+| User Action                     | Result                                                                                |
+| ------------------------------- | ------------------------------------------------------------------------------------- |
+| Click "+ Continue as Sequence"  | Session gains `continuity` block, current video becomes Shot 1, timeline appears      |
+| Click shot in timeline          | Loads that shot's prompt/settings into editor, scrolls workspace to that shot's video |
+| Click [+] in timeline           | Creates new empty shot draft, clears editor                                           |
+| Change style reference dropdown | Updates current shot's style reference                                                |
+| Adjust strength slider          | Updates current shot's style strength                                                 |
+| Generate                        | Result added to current shot                                                          |
 
 ---
 
@@ -193,19 +195,29 @@ The workspace is always visible. The ToolRail switches what panel appears on the
 
 // BEFORE
 export const toolNavItems: ToolNavItem[] = [
-  { id: 'sessions', icon: LayoutGrid, label: 'Sessions', variant: 'header' },
-  { id: 'create', icon: Sparkles, label: 'Create', variant: 'default' },
-  { id: 'studio', icon: SlidersHorizontal, label: 'Studio', variant: 'default' },
-  { id: 'characters', icon: Users, label: 'Chars', variant: 'default' },
-  { id: 'styles', icon: Palette, label: 'Styles', variant: 'default' },
-  { id: 'continuity', icon: FilmSlate, label: 'Continuity', variant: 'default' },
+  { id: "sessions", icon: LayoutGrid, label: "Sessions", variant: "header" },
+  { id: "create", icon: Sparkles, label: "Create", variant: "default" },
+  {
+    id: "studio",
+    icon: SlidersHorizontal,
+    label: "Studio",
+    variant: "default",
+  },
+  { id: "characters", icon: Users, label: "Chars", variant: "default" },
+  { id: "styles", icon: Palette, label: "Styles", variant: "default" },
+  {
+    id: "continuity",
+    icon: FilmSlate,
+    label: "Continuity",
+    variant: "default",
+  },
 ];
 
 // AFTER
 export const toolNavItems: ToolNavItem[] = [
-  { id: 'sessions', icon: LayoutGrid, label: 'Sessions', variant: 'header' },
-  { id: 'characters', icon: Users, label: 'Chars', variant: 'default' },
-  { id: 'styles', icon: Palette, label: 'Styles', variant: 'default' },
+  { id: "sessions", icon: LayoutGrid, label: "Sessions", variant: "header" },
+  { id: "characters", icon: Users, label: "Chars", variant: "default" },
+  { id: "styles", icon: Palette, label: "Styles", variant: "default" },
 ];
 ```
 
@@ -215,10 +227,10 @@ export const toolNavItems: ToolNavItem[] = [
 // client/src/contexts/AppShellContext.tsx
 
 // BEFORE
-export type ActiveTool = 'create' | 'studio' | 'continuity';
+export type ActiveTool = "create" | "studio" | "continuity";
 
 // AFTER
-export type ActiveTool = 'sessions' | 'characters' | 'styles';
+export type ActiveTool = "sessions" | "characters" | "styles";
 // Or remove entirely if ToolRail just switches panels, not workspace content
 ```
 
@@ -289,6 +301,7 @@ export function MainWorkspace(): React.ReactElement {
 Since Create and Studio are identical, remove the `mode` prop entirely.
 
 **Deliverables:**
+
 - [ ] ToolRail reduced to: Sessions, Chars, Styles
 - [ ] Routes simplified with redirects for compatibility
 - [ ] `MainWorkspace` no longer conditionally renders `ContinuityPage`
@@ -319,11 +332,11 @@ interface WorkspaceShotTimelineProps {
   onAddShot: () => void;
 }
 
-export function WorkspaceShotTimeline({ 
-  shots, 
-  currentShotId, 
-  onShotSelect, 
-  onAddShot 
+export function WorkspaceShotTimeline({
+  shots,
+  currentShotId,
+  onShotSelect,
+  onAddShot
 }: WorkspaceShotTimelineProps): React.ReactElement | null {
   // Don't render if no shots
   if (shots.length === 0) return null;
@@ -355,7 +368,7 @@ return (
     <div className="flex-1 overflow-auto">
       {/* Existing workspace content */}
     </div>
-    
+
     {isSequenceMode && (
       <WorkspaceShotTimeline
         shots={session.continuity.shots}
@@ -369,6 +382,7 @@ return (
 ```
 
 **Deliverables:**
+
 - [ ] `WorkspaceShotTimeline` component created
 - [ ] Timeline renders when `session.continuity.shots.length > 0`
 - [ ] Timeline docked at bottom of workspace
@@ -386,11 +400,11 @@ return (
 // Extend existing store
 interface GenerationControlsState {
   // ... existing fields
-  
+
   // Sequence mode state
   currentShotId: string | null;
   isSequenceMode: boolean; // Derived from session
-  
+
   // Actions
   selectShot: (shotId: string) => void;
   clearCurrentShot: () => void;
@@ -403,8 +417,8 @@ interface GenerationControlsState {
 // When currentShotId changes:
 useEffect(() => {
   if (!currentShotId || !session?.continuity?.shots) return;
-  
-  const shot = session.continuity.shots.find(s => s.id === currentShotId);
+
+  const shot = session.continuity.shots.find((s) => s.id === currentShotId);
   if (shot) {
     // Load shot's prompt into editor
     setPromptInput(shot.prompt);
@@ -432,21 +446,23 @@ const handlePromptChange = async (newPrompt: string) => {
 
 ```typescript
 // Versions panel
-const versions = isSequenceMode && currentShotId
-  ? session.continuity.shots.find(s => s.id === currentShotId)?.versions ?? []
-  : session.prompt?.versions ?? [];
+const versions =
+  isSequenceMode && currentShotId
+    ? (session.continuity.shots.find((s) => s.id === currentShotId)?.versions ??
+      [])
+    : (session.prompt?.versions ?? []);
 ```
 
 #### 3.5 Update Labels
 
 ```typescript
 // Prompt label
-const promptLabel = isSequenceMode && currentShotId
-  ? `Shot ${shotIndex + 1} Prompt`
-  : 'Prompt';
+const promptLabel =
+  isSequenceMode && currentShotId ? `Shot ${shotIndex + 1} Prompt` : "Prompt";
 ```
 
 **Deliverables:**
+
 - [ ] Editor loads prompt from current shot in sequence mode
 - [ ] Edits save to current shot in sequence mode
 - [ ] Versions panel scoped to current shot
@@ -483,17 +499,17 @@ export function StyleReferenceControls({
 }: StyleReferenceControlsProps): React.ReactElement | null {
   // Don't render for shot 1 (no previous shots to reference)
   if (!currentShot || shots.length < 2) return null;
-  
+
   const previousShots = shots.filter(s => /* created before current shot */);
-  
+
   return (
     <div className="rounded-lg border border-border bg-surface-2 p-3 space-y-3">
       <h3 className="text-xs font-medium text-muted uppercase tracking-wide">
         Style Reference
       </h3>
-      
+
       {/* Source shot dropdown */}
-      <select 
+      <select
         value={currentShot.styleReference?.sourceId ?? previousShots[0]?.id}
         onChange={(e) => onStyleReferenceChange(e.target.value)}
         className="w-full ..."
@@ -504,7 +520,7 @@ export function StyleReferenceControls({
           </option>
         ))}
       </select>
-      
+
       {/* Strength slider */}
       <div>
         <label className="text-xs text-muted">Strength</label>
@@ -518,13 +534,13 @@ export function StyleReferenceControls({
           className="w-full"
         />
       </div>
-      
+
       {/* Mode toggle */}
       <div className="flex gap-2">
         <button
           className={`flex-1 py-1 rounded text-xs ${
-            currentShot.continuityMode === 'frame-bridge' 
-              ? 'bg-accent text-white' 
+            currentShot.continuityMode === 'frame-bridge'
+              ? 'bg-accent text-white'
               : 'bg-surface-3 text-muted'
           }`}
           onClick={() => onModeChange('frame-bridge')}
@@ -533,8 +549,8 @@ export function StyleReferenceControls({
         </button>
         <button
           className={`flex-1 py-1 rounded text-xs ${
-            currentShot.continuityMode === 'style-match' 
-              ? 'bg-accent text-white' 
+            currentShot.continuityMode === 'style-match'
+              ? 'bg-accent text-white'
               : 'bg-surface-3 text-muted'
           }`}
           onClick={() => onModeChange('style-match')}
@@ -559,7 +575,7 @@ return (
   <div className="space-y-4">
     {/* Prompt editor */}
     <PromptEditor ... />
-    
+
     {/* Style reference controls - only in sequence mode */}
     {isSequenceMode && (
       <StyleReferenceControls
@@ -570,10 +586,10 @@ return (
         onModeChange={handleModeChange}
       />
     )}
-    
+
     {/* Generation buttons */}
     <GenerationButtons ... />
-    
+
     {/* Versions */}
     <VersionsPanel ... />
   </div>
@@ -581,6 +597,7 @@ return (
 ```
 
 **Deliverables:**
+
 - [ ] `StyleReferenceControls` component created
 - [ ] Controls appear below prompt editor in sequence mode
 - [ ] Source shot dropdown lists all previous shots
@@ -597,7 +614,7 @@ return (
 
 ```typescript
 // In workspace, after video display
-const hasGeneratedVideo = (session?.prompt?.keyframes?.length ?? 0) > 0 
+const hasGeneratedVideo = (session?.prompt?.keyframes?.length ?? 0) > 0
   || /* check for generated videos */;
 const isSequenceMode = (session?.continuity?.shots?.length ?? 0) > 0;
 
@@ -611,16 +628,16 @@ const isSequenceMode = (session?.continuity?.shots?.length ?? 0) > 0;
 ```typescript
 const handleStartSequence = async () => {
   // 1. Get current video/generation data
-  const currentVideo = session.prompt?.keyframes?.[0] 
+  const currentVideo = session.prompt?.keyframes?.[0]
     ?? /* latest generation */;
-  
+
   // 2. Create Shot 1 from current state
   const shot1: CreateShotInput = {
     prompt: session.prompt?.output ?? session.prompt?.input ?? '',
     sourceAssetId: currentVideo?.assetId,
     generationParams: session.prompt?.generationParams,
   };
-  
+
   // 3. Update session with continuity block
   await updateSession({
     continuity: {
@@ -632,10 +649,10 @@ const handleStartSequence = async () => {
       },
     },
   });
-  
+
   // 4. Add the first shot
   const createdShot = await addShot(shot1);
-  
+
   // 5. UI automatically updates (timeline appears)
   setCurrentShotId(createdShot.id);
 };
@@ -647,13 +664,14 @@ The screenshot shows a "Continue Scene" button already exists. Wire it to `handl
 
 ```typescript
 // Find existing ContinueSceneButton usage and update
-<ContinueSceneButton 
+<ContinueSceneButton
   onClick={handleStartSequence}
   disabled={!hasGeneratedVideo || isSequenceMode}
 />
 ```
 
 **Deliverables:**
+
 - [ ] "Continue as Sequence" / "Continue Scene" button wired to conversion logic
 - [ ] Clicking creates Shot 1 from current video
 - [ ] Session gains `continuity` block
@@ -706,6 +724,7 @@ client/src/features/continuity/
 ```
 
 **Deliverables:**
+
 - [ ] `ContinuityPage.tsx` deleted
 - [ ] `ContinuitySession.tsx` deleted
 - [ ] No dead imports remaining
@@ -722,26 +741,29 @@ interface UnifiedSessionState {
   session: Session | null;
   loading: boolean;
   error: string | null;
-  
+
   // Sequence mode
   currentShotId: string | null;
   isSequenceMode: boolean; // Derived: session?.continuity?.shots?.length > 0
-  
+
   // Actions
   loadSession: (id: string) => Promise<void>;
   updateSession: (updates: Partial<Session>) => Promise<void>;
-  
+
   // Shot actions (only available in sequence mode)
   addShot: (input: CreateShotInput) => Promise<ContinuityShot>;
-  updateShot: (shotId: string, updates: Partial<ContinuityShot>) => Promise<void>;
+  updateShot: (
+    shotId: string,
+    updates: Partial<ContinuityShot>,
+  ) => Promise<void>;
   deleteShot: (shotId: string) => Promise<void>;
   selectShot: (shotId: string) => void;
   generateShot: (shotId: string) => Promise<void>;
-  
+
   // Style reference actions
   updateStyleReference: (shotId: string, ref: StyleReference) => Promise<void>;
   updateContinuityMode: (shotId: string, mode: ContinuityMode) => Promise<void>;
-  
+
   // Conversion
   startSequence: () => Promise<void>; // Convert single-shot to sequence
 }
@@ -752,13 +774,15 @@ interface UnifiedSessionState {
 ```typescript
 const isSequenceMode = (session?.continuity?.shots?.length ?? 0) > 0;
 
-const currentShot = isSequenceMode && currentShotId
-  ? session.continuity.shots.find(s => s.id === currentShotId)
-  : null;
+const currentShot =
+  isSequenceMode && currentShotId
+    ? session.continuity.shots.find((s) => s.id === currentShotId)
+    : null;
 
-const currentShotIndex = isSequenceMode && currentShotId
-  ? session.continuity.shots.findIndex(s => s.id === currentShotId)
-  : -1;
+const currentShotIndex =
+  isSequenceMode && currentShotId
+    ? session.continuity.shots.findIndex((s) => s.id === currentShotId)
+    : -1;
 
 const hasGeneratedVideo = (session?.prompt?.keyframes?.length ?? 0) > 0;
 ```
@@ -771,13 +795,13 @@ const hasGeneratedVideo = (session?.prompt?.keyframes?.length ?? 0) > 0;
 
 Existing v2 endpoints handle all operations:
 
-| Endpoint | Usage |
-|----------|-------|
-| `POST /api/v2/sessions/:id/shots` | Add shot (called by `addShot`) |
-| `PATCH /api/v2/sessions/:id/shots/:shotId` | Update shot |
-| `POST /api/v2/sessions/:id/shots/:shotId/generate` | Generate shot video |
-| `PUT /api/v2/sessions/:id/style-reference` | Update style reference |
-| `PUT /api/v2/sessions/:id/settings` | Update continuity settings |
+| Endpoint                                           | Usage                          |
+| -------------------------------------------------- | ------------------------------ |
+| `POST /api/v2/sessions/:id/shots`                  | Add shot (called by `addShot`) |
+| `PATCH /api/v2/sessions/:id/shots/:shotId`         | Update shot                    |
+| `POST /api/v2/sessions/:id/shots/:shotId/generate` | Generate shot video            |
+| `PUT /api/v2/sessions/:id/style-reference`         | Update style reference         |
+| `PUT /api/v2/sessions/:id/settings`                | Update continuity settings     |
 
 ### Session Update for Conversion
 
@@ -881,16 +905,16 @@ if (!useWorkspaceV2 && activeTool === 'continuity') {
 
 ## Effort Estimate
 
-| Phase | Estimate |
-|-------|----------|
-| Phase 1: Remove Create/Studio/Continuity distinction | 0.5 days |
-| Phase 2: Integrate shot timeline | 1 day |
-| Phase 3: Make editor shot-aware | 1.5 days |
-| Phase 4: Add style reference controls | 1 day |
-| Phase 5: Add "Continue as Sequence" entry point | 0.5 days |
-| Phase 6: Delete legacy code | 0.5 days |
-| Testing & polish | 1 day |
-| **Total** | **6 days** |
+| Phase                                                | Estimate   |
+| ---------------------------------------------------- | ---------- |
+| Phase 1: Remove Create/Studio/Continuity distinction | 0.5 days   |
+| Phase 2: Integrate shot timeline                     | 1 day      |
+| Phase 3: Make editor shot-aware                      | 1.5 days   |
+| Phase 4: Add style reference controls                | 1 day      |
+| Phase 5: Add "Continue as Sequence" entry point      | 0.5 days   |
+| Phase 6: Delete legacy code                          | 0.5 days   |
+| Testing & polish                                     | 1 day      |
+| **Total**                                            | **6 days** |
 
 ---
 
@@ -907,11 +931,11 @@ if (!useWorkspaceV2 && activeTool === 'continuity') {
 
 ## Appendix: Component Responsibility Matrix
 
-| Component | Single-Shot Mode | Sequence Mode |
-|-----------|------------------|---------------|
-| PromptEditor | Edits `session.prompt.input` | Edits `currentShot.prompt` |
-| GenerationButtons | Generates to session | Generates to current shot |
-| VersionsPanel | Shows `session.prompt.versions` | Shows `currentShot.versions` |
-| StyleReferenceControls | Hidden | Visible |
-| WorkspaceShotTimeline | Hidden | Visible |
-| ContinueAsSequenceButton | Visible (if has video) | Hidden |
+| Component                | Single-Shot Mode                | Sequence Mode                |
+| ------------------------ | ------------------------------- | ---------------------------- |
+| PromptEditor             | Edits `session.prompt.input`    | Edits `currentShot.prompt`   |
+| GenerationButtons        | Generates to session            | Generates to current shot    |
+| VersionsPanel            | Shows `session.prompt.versions` | Shows `currentShot.versions` |
+| StyleReferenceControls   | Hidden                          | Visible                      |
+| WorkspaceShotTimeline    | Hidden                          | Visible                      |
+| ContinueAsSequenceButton | Visible (if has video)          | Hidden                       |

@@ -4,14 +4,23 @@
  * Uses unified sessions API as the canonical store.
  */
 
-import type { SessionDto } from '@shared/types/session';
-import { apiClient } from '@/services/ApiClient';
-import { logger } from '../services/LoggingService';
-import type { PromptHistoryEntry, PromptKeyframe, PromptVersionEntry } from '../hooks/types';
-import type { PromptData, SavedPromptResult, UpdateHighlightsOptions, UpdatePromptOptions } from './promptRepositoryTypes';
-import { PromptRepositoryError } from './promptRepositoryTypes';
+import type { SessionDto } from "@shared/types/session";
+import { apiClient } from "@/services/ApiClient";
+import { logger } from "../services/LoggingService";
+import type {
+  PromptHistoryEntry,
+  PromptKeyframe,
+  PromptVersionEntry,
+} from "../hooks/types";
+import type {
+  PromptData,
+  SavedPromptResult,
+  UpdateHighlightsOptions,
+  UpdatePromptOptions,
+} from "./promptRepositoryTypes";
+import { PromptRepositoryError } from "./promptRepositoryTypes";
 
-const log = logger.child('PromptRepository');
+const log = logger.child("PromptRepository");
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -20,15 +29,21 @@ const UUID_REGEX =
  */
 export class PromptRepository {
   private readonly resolvedSessionIdCache = new Map<string, string>();
-  private readonly resolveSessionIdInFlight = new Map<string, Promise<string>>();
+  private readonly resolveSessionIdInFlight = new Map<
+    string,
+    Promise<string>
+  >();
 
   /**
    * Save a new prompt
    */
-  async save(userId: string, promptData: PromptData): Promise<SavedPromptResult> {
+  async save(
+    userId: string,
+    promptData: PromptData,
+  ): Promise<SavedPromptResult> {
     try {
       void userId;
-      const response = await apiClient.post('/v2/sessions', {
+      const response = await apiClient.post("/v2/sessions", {
         name: promptData.title ?? undefined,
         prompt: {
           uuid: promptData.uuid,
@@ -42,40 +57,45 @@ export class PromptRepository {
           keyframes: promptData.keyframes ?? null,
           brainstormContext: promptData.brainstormContext ?? null,
           highlightCache: promptData.highlightCache ?? null,
-          versions: Array.isArray(promptData.versions) ? promptData.versions : [],
+          versions: Array.isArray(promptData.versions)
+            ? promptData.versions
+            : [],
         },
       });
       const data = (response as { data?: SessionDto }).data;
       if (!data) {
-        throw new Error('Invalid session response');
+        throw new Error("Invalid session response");
       }
-      const uuid = data.prompt?.uuid ?? promptData.uuid ?? '';
+      const uuid = data.prompt?.uuid ?? promptData.uuid ?? "";
       if (uuid && data.id) {
         this.rememberSessionId(uuid, data.id);
       }
       return { id: data.id, uuid };
     } catch (error) {
-      log.error('Error saving prompt', error as Error);
-      throw new PromptRepositoryError('Failed to save prompt', error);
+      log.error("Error saving prompt", error as Error);
+      throw new PromptRepositoryError("Failed to save prompt", error);
     }
   }
 
   /**
    * Get prompts for a user
    */
-  async getUserPrompts(userId: string, limitCount: number = 10): Promise<PromptHistoryEntry[]> {
+  async getUserPrompts(
+    userId: string,
+    limitCount: number = 10,
+  ): Promise<PromptHistoryEntry[]> {
     try {
       void userId;
       const response = await apiClient.get(
-        `/v2/sessions?limit=${encodeURIComponent(String(limitCount))}&includeContinuity=true&includePrompt=true`
+        `/v2/sessions?limit=${encodeURIComponent(String(limitCount))}&includeContinuity=true&includePrompt=true`,
       );
       const data = (response as { data?: SessionDto[] }).data ?? [];
       return data
         .map((session) => this._mapSessionToPrompt(session))
         .filter((entry): entry is PromptHistoryEntry => Boolean(entry));
     } catch (error) {
-      log.error('Error fetching prompts', error as Error);
-      throw new PromptRepositoryError('Failed to fetch user prompts', error);
+      log.error("Error fetching prompts", error as Error);
+      throw new PromptRepositoryError("Failed to fetch user prompts", error);
     }
   }
 
@@ -84,13 +104,15 @@ export class PromptRepository {
    */
   async getByUuid(uuid: string): Promise<PromptHistoryEntry | null> {
     try {
-      const response = await apiClient.get(`/v2/sessions/by-prompt/${encodeURIComponent(uuid)}`);
+      const response = await apiClient.get(
+        `/v2/sessions/by-prompt/${encodeURIComponent(uuid)}`,
+      );
       const data = (response as { data?: SessionDto }).data;
       if (!data) return null;
       return this._mapSessionToPrompt(data);
     } catch (error) {
-      log.error('Error fetching prompt by UUID', error as Error);
-      throw new PromptRepositoryError('Failed to fetch prompt by UUID', error);
+      log.error("Error fetching prompt by UUID", error as Error);
+      throw new PromptRepositoryError("Failed to fetch prompt by UUID", error);
     }
   }
 
@@ -104,57 +126,80 @@ export class PromptRepository {
       if (this.isUuid(normalizedId)) {
         return await this.getByUuid(normalizedId);
       }
-      const response = await apiClient.get(`/v2/sessions/${encodeURIComponent(normalizedId)}`);
+      const response = await apiClient.get(
+        `/v2/sessions/${encodeURIComponent(normalizedId)}`,
+      );
       const data = (response as { data?: SessionDto }).data;
       if (!data) return null;
       return this._mapSessionToPrompt(data);
     } catch (error) {
-      log.error('Error fetching prompt by session id', error as Error);
-      throw new PromptRepositoryError('Failed to fetch prompt by session id', error);
+      log.error("Error fetching prompt by session id", error as Error);
+      throw new PromptRepositoryError(
+        "Failed to fetch prompt by session id",
+        error,
+      );
     }
   }
 
   /**
    * Update prompt details (input, model, params)
    */
-  async updatePrompt(docId: string, updates: UpdatePromptOptions): Promise<void> {
+  async updatePrompt(
+    docId: string,
+    updates: UpdatePromptOptions,
+  ): Promise<void> {
     try {
       if (!docId) return;
       const normalizedId = docId.trim();
       const sessionId = this.isLikelySessionId(normalizedId)
         ? normalizedId
         : await this.resolveSessionId(normalizedId);
-      await apiClient.patch(`/v2/sessions/${encodeURIComponent(sessionId)}/prompt`, {
-        ...(updates.input !== undefined ? { input: updates.input } : {}),
-        ...(updates.title !== undefined ? { title: updates.title } : {}),
-        ...(updates.targetModel !== undefined ? { targetModel: updates.targetModel } : {}),
-        ...(updates.generationParams !== undefined ? { generationParams: updates.generationParams } : {}),
-        ...(updates.keyframes !== undefined ? { keyframes: updates.keyframes } : {}),
-        ...(updates.mode !== undefined ? { mode: updates.mode } : {}),
-      });
+      await apiClient.patch(
+        `/v2/sessions/${encodeURIComponent(sessionId)}/prompt`,
+        {
+          ...(updates.input !== undefined ? { input: updates.input } : {}),
+          ...(updates.title !== undefined ? { title: updates.title } : {}),
+          ...(updates.targetModel !== undefined
+            ? { targetModel: updates.targetModel }
+            : {}),
+          ...(updates.generationParams !== undefined
+            ? { generationParams: updates.generationParams }
+            : {}),
+          ...(updates.keyframes !== undefined
+            ? { keyframes: updates.keyframes }
+            : {}),
+          ...(updates.mode !== undefined ? { mode: updates.mode } : {}),
+        },
+      );
     } catch (error) {
-      log.error('Error updating prompt', error as Error);
-      throw new PromptRepositoryError('Failed to update prompt', error);
+      log.error("Error updating prompt", error as Error);
+      throw new PromptRepositoryError("Failed to update prompt", error);
     }
   }
 
   /**
    * Update prompt highlights
    */
-  async updateHighlights(docId: string, { highlightCache, versionEntry }: UpdateHighlightsOptions): Promise<void> {
+  async updateHighlights(
+    docId: string,
+    { highlightCache, versionEntry }: UpdateHighlightsOptions,
+  ): Promise<void> {
     try {
       if (!docId) return;
       const normalizedId = docId.trim();
       const sessionId = this.isLikelySessionId(normalizedId)
         ? normalizedId
         : await this.resolveSessionId(normalizedId);
-      await apiClient.patch(`/v2/sessions/${encodeURIComponent(sessionId)}/highlights`, {
-        ...(highlightCache !== undefined ? { highlightCache } : {}),
-        ...(versionEntry ? { versionEntry } : {}),
-      });
+      await apiClient.patch(
+        `/v2/sessions/${encodeURIComponent(sessionId)}/highlights`,
+        {
+          ...(highlightCache !== undefined ? { highlightCache } : {}),
+          ...(versionEntry ? { versionEntry } : {}),
+        },
+      );
     } catch (error) {
-      log.error('Error updating prompt highlights', error as Error);
-      throw new PromptRepositoryError('Failed to update highlights', error);
+      log.error("Error updating prompt highlights", error as Error);
+      throw new PromptRepositoryError("Failed to update highlights", error);
     }
   }
 
@@ -168,27 +213,36 @@ export class PromptRepository {
       const sessionId = this.isLikelySessionId(normalizedId)
         ? normalizedId
         : await this.resolveSessionId(normalizedId);
-      await apiClient.patch(`/v2/sessions/${encodeURIComponent(sessionId)}/output`, { output });
+      await apiClient.patch(
+        `/v2/sessions/${encodeURIComponent(sessionId)}/output`,
+        { output },
+      );
     } catch (error) {
-      log.error('Error updating prompt output', error as Error);
-      throw new PromptRepositoryError('Failed to update output', error);
+      log.error("Error updating prompt output", error as Error);
+      throw new PromptRepositoryError("Failed to update output", error);
     }
   }
 
   /**
    * Replace versions array for a prompt
    */
-  async updateVersions(docId: string, versions: PromptVersionEntry[]): Promise<void> {
+  async updateVersions(
+    docId: string,
+    versions: PromptVersionEntry[],
+  ): Promise<void> {
     try {
       if (!docId) return;
       const normalizedId = docId.trim();
       const sessionId = this.isLikelySessionId(normalizedId)
         ? normalizedId
         : await this.resolveSessionId(normalizedId);
-      await apiClient.patch(`/v2/sessions/${encodeURIComponent(sessionId)}/versions`, { versions });
+      await apiClient.patch(
+        `/v2/sessions/${encodeURIComponent(sessionId)}/versions`,
+        { versions },
+      );
     } catch (error) {
-      log.error('Error updating prompt versions', error as Error);
-      throw new PromptRepositoryError('Failed to update versions', error);
+      log.error("Error updating prompt versions", error as Error);
+      throw new PromptRepositoryError("Failed to update versions", error);
     }
   }
 
@@ -198,16 +252,18 @@ export class PromptRepository {
   async deleteById(docId: string): Promise<void> {
     try {
       if (!docId) {
-        throw new Error('Document ID is required for deletion');
+        throw new Error("Document ID is required for deletion");
       }
       await apiClient.delete(`/v2/sessions/${encodeURIComponent(docId)}`);
     } catch (error) {
-      log.error('Error deleting prompt', error as Error);
-      throw new PromptRepositoryError('Failed to delete prompt', error);
+      log.error("Error deleting prompt", error as Error);
+      throw new PromptRepositoryError("Failed to delete prompt", error);
     }
   }
 
-  private _mapSessionToPrompt(session: SessionDto | null | undefined): PromptHistoryEntry | null {
+  private _mapSessionToPrompt(
+    session: SessionDto | null | undefined,
+  ): PromptHistoryEntry | null {
     if (!session?.prompt) {
       // Continuity-only sessions do not carry a prompt payload. Expose a
       // minimal entry so route loading can stay on the session view.
@@ -216,9 +272,9 @@ export class PromptRepository {
           id: session.id,
           uuid: session.id,
           timestamp: session.updatedAt,
-          title: session.name ?? 'Continuity Session',
-          input: '',
-          output: '',
+          title: session.name ?? "Continuity Session",
+          input: "",
+          output: "",
           score: null,
           targetModel: null,
           generationParams: null,
@@ -226,7 +282,7 @@ export class PromptRepository {
           brainstormContext: null,
           highlightCache: null,
           versions: [],
-          mode: 'video',
+          mode: "video",
         };
       }
       return null;
@@ -241,11 +297,15 @@ export class PromptRepository {
       output: prompt.output,
       score: prompt.score ?? null,
       targetModel: prompt.targetModel ?? null,
-      generationParams: (prompt.generationParams as Record<string, unknown>) ?? null,
+      generationParams:
+        (prompt.generationParams as Record<string, unknown>) ?? null,
       keyframes: (prompt.keyframes as PromptKeyframe[]) ?? null,
-      brainstormContext: (prompt.brainstormContext as Record<string, unknown>) ?? null,
-      highlightCache: (prompt.highlightCache as Record<string, unknown>) ?? null,
-      versions: ((prompt.versions as unknown as PromptVersionEntry[] | undefined) ?? []),
+      brainstormContext:
+        (prompt.brainstormContext as Record<string, unknown>) ?? null,
+      highlightCache:
+        (prompt.highlightCache as Record<string, unknown>) ?? null,
+      versions:
+        (prompt.versions as unknown as PromptVersionEntry[] | undefined) ?? [],
       ...(prompt.uuid ? { uuid: prompt.uuid } : {}),
       ...(prompt.mode ? { mode: prompt.mode } : {}),
     };
@@ -255,7 +315,7 @@ export class PromptRepository {
   private async resolveSessionId(sessionIdOrUuid: string): Promise<string> {
     const normalized = sessionIdOrUuid.trim();
     if (!normalized) {
-      throw new Error('Session id is required');
+      throw new Error("Session id is required");
     }
 
     if (this.isLikelySessionId(normalized)) {
@@ -273,10 +333,12 @@ export class PromptRepository {
     }
 
     const resolvePromise = (async () => {
-      const response = await apiClient.get(`/v2/sessions/by-prompt/${encodeURIComponent(normalized)}`);
+      const response = await apiClient.get(
+        `/v2/sessions/by-prompt/${encodeURIComponent(normalized)}`,
+      );
       const data = (response as { data?: { id: string } }).data;
       if (!data?.id) {
-        throw new Error('Session not found');
+        throw new Error("Session not found");
       }
       this.resolvedSessionIdCache.set(normalized, data.id);
       return data.id;
@@ -290,7 +352,10 @@ export class PromptRepository {
     }
   }
 
-  private rememberSessionId(uuid: string | null | undefined, sessionId: string): void {
+  private rememberSessionId(
+    uuid: string | null | undefined,
+    sessionId: string,
+  ): void {
     if (!uuid || !sessionId) return;
     this.resolvedSessionIdCache.set(uuid, sessionId);
   }
@@ -302,8 +367,8 @@ export class PromptRepository {
   private isLikelySessionId(value: string): boolean {
     const normalized = value.trim();
     if (!normalized) return false;
-    if (normalized.startsWith('draft-')) return false;
-    if (normalized.startsWith('session_')) return true;
+    if (normalized.startsWith("draft-")) return false;
+    if (normalized.startsWith("session_")) return true;
     return !this.isUuid(normalized);
   }
 }

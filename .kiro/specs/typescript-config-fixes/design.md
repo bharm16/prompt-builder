@@ -25,14 +25,14 @@ The fix strategy is organized into three layers:
 
 ### Error Categories and Fix Strategy
 
-| Error Type | Count | Fix Strategy |
-|------------|-------|--------------|
-| TS2307 (Cannot find module) | 279 | Path alias configuration + import refactoring |
-| TS2339 (Property does not exist) | 61 | Express Request type augmentation |
-| TS2345/TS2379/TS2322 (Type assignment) | 68 | exactOptionalPropertyTypes fixes |
-| TS18048/TS18047 (Possibly undefined) | 31 | Null checks and type guards |
-| TS7016 (Missing declarations) | 2 | Install @types/supertest |
-| TS7006 (Implicit any) | 8 | Add explicit type annotations |
+| Error Type                             | Count | Fix Strategy                                  |
+| -------------------------------------- | ----- | --------------------------------------------- |
+| TS2307 (Cannot find module)            | 279   | Path alias configuration + import refactoring |
+| TS2339 (Property does not exist)       | 61    | Express Request type augmentation             |
+| TS2345/TS2379/TS2322 (Type assignment) | 68    | exactOptionalPropertyTypes fixes              |
+| TS18048/TS18047 (Possibly undefined)   | 31    | Null checks and type guards                   |
+| TS7016 (Missing declarations)          | 2     | Install @types/supertest                      |
+| TS7006 (Implicit any)                  | 8     | Add explicit type annotations                 |
 
 ## Components and Interfaces
 
@@ -65,7 +65,7 @@ server/src/types/
 
 ```typescript
 // server/src/types/express.d.ts
-import 'express';
+import "express";
 
 declare global {
   namespace Express {
@@ -86,6 +86,7 @@ export {};
 ### 4. Path Alias Configuration
 
 #### Server Path Aliases (server/tsconfig.json)
+
 ```typescript
 {
   "compilerOptions": {
@@ -109,6 +110,7 @@ export {};
 ```
 
 #### Client Path Aliases (client/tsconfig.json)
+
 ```typescript
 {
   "compilerOptions": {
@@ -179,25 +181,25 @@ const SCHEMA = {
 
 ## Correctness Properties
 
-*A property is a characteristic or behavior that should hold true across all valid executions of a system—essentially, a formal statement about what the system should do. Properties serve as the bridge between human-readable specifications and machine-verifiable correctness guarantees.*
+_A property is a characteristic or behavior that should hold true across all valid executions of a system—essentially, a formal statement about what the system should do. Properties serve as the bridge between human-readable specifications and machine-verifiable correctness guarantees._
 
 Based on the prework analysis, the acceptance criteria consolidate into three key properties:
 
 ### Property 1: Zero TypeScript Compilation Errors
 
-*For any* TypeScript file in the project (client, server, or tests), running `tsc --noEmit` SHALL produce zero errors.
+_For any_ TypeScript file in the project (client, server, or tests), running `tsc --noEmit` SHALL produce zero errors.
 
 **Validates: Requirements 1.3, 1.4, 1.5, 2.3, 2.4, 2.5, 2.6, 3.1, 3.4, 4.1, 4.2, 4.3, 4.4, 4.5, 5.1, 5.2, 5.3, 6.1, 6.2, 6.4, 7.1, 7.2, 7.3, 7.4**
 
 ### Property 2: No Deep Relative Imports
 
-*For any* TypeScript file in the project, there SHALL be no import statements containing `../../` (traversing more than one directory level).
+_For any_ TypeScript file in the project, there SHALL be no import statements containing `../../` (traversing more than one directory level).
 
 **Validates: Requirements 1.9, 8.1, 8.2, 8.4**
 
 ### Property 3: Configuration Correctness
 
-*For any* path alias defined in tsconfig.json, the alias SHALL resolve to a valid directory path, and the vitest.config.js SHALL contain matching alias configurations.
+_For any_ path alias defined in tsconfig.json, the alias SHALL resolve to a valid directory path, and the vitest.config.js SHALL contain matching alias configurations.
 
 **Validates: Requirements 1.1, 1.2, 1.6, 1.7, 1.8, 1.10, 2.7, 3.2, 3.3, 6.3**
 
@@ -213,19 +215,20 @@ When fixing TypeScript errors, follow this priority order:
 
 ### Common Error Patterns and Fixes
 
-| Error | Pattern | Fix |
-|-------|---------|-----|
-| TS2307 | `Cannot find module '@infrastructure/Logger'` | Add path alias to tsconfig.json |
-| TS2339 | `Property 'id' does not exist on type 'Request'` | Add Express type augmentation |
-| TS2379 | `exactOptionalPropertyTypes` mismatch | Add `\| undefined` to optional properties |
-| TS18048 | `'x' is possibly 'undefined'` | Add null check or optional chaining |
-| TS7016 | `Could not find declaration file for 'supertest'` | Install @types/supertest |
+| Error   | Pattern                                           | Fix                                       |
+| ------- | ------------------------------------------------- | ----------------------------------------- |
+| TS2307  | `Cannot find module '@infrastructure/Logger'`     | Add path alias to tsconfig.json           |
+| TS2339  | `Property 'id' does not exist on type 'Request'`  | Add Express type augmentation             |
+| TS2379  | `exactOptionalPropertyTypes` mismatch             | Add `\| undefined` to optional properties |
+| TS18048 | `'x' is possibly 'undefined'`                     | Add null check or optional chaining       |
+| TS7016  | `Could not find declaration file for 'supertest'` | Install @types/supertest                  |
 
 ## Testing Strategy
 
 ### Dual Testing Approach
 
 The testing strategy combines:
+
 - **Unit tests**: Verify specific configuration examples and edge cases
 - **Property tests**: Verify universal properties across all files
 
@@ -254,37 +257,37 @@ The testing strategy combines:
 
 ```typescript
 // tests/unit/typescript-config.test.ts
-import { describe, it, expect } from 'vitest';
-import * as fc from 'fast-check';
-import { execSync } from 'child_process';
-import { readFileSync, readdirSync } from 'fs';
-import { join } from 'path';
+import { describe, it, expect } from "vitest";
+import * as fc from "fast-check";
+import { execSync } from "child_process";
+import { readFileSync, readdirSync } from "fs";
+import { join } from "path";
 
-describe('TypeScript Configuration', () => {
+describe("TypeScript Configuration", () => {
   // Property 1: Zero compilation errors
-  it('should compile without errors', () => {
-    const result = execSync('npx tsc --noEmit 2>&1', { encoding: 'utf-8' });
-    expect(result).not.toContain('error TS');
+  it("should compile without errors", () => {
+    const result = execSync("npx tsc --noEmit 2>&1", { encoding: "utf-8" });
+    expect(result).not.toContain("error TS");
   });
 
   // Property 2: No deep relative imports
-  it('should have no deep relative imports', () => {
+  it("should have no deep relative imports", () => {
     const files = getAllTypeScriptFiles();
     for (const file of files) {
-      const content = readFileSync(file, 'utf-8');
+      const content = readFileSync(file, "utf-8");
       const deepImports = content.match(/from ['"]\.\.\/\.\.\//g);
       expect(deepImports).toBeNull();
     }
   });
 
   // Property 3: Configuration correctness
-  it('should have matching path aliases in tsconfig and vitest', () => {
-    const tsconfig = JSON.parse(readFileSync('server/tsconfig.json', 'utf-8'));
-    const vitestConfig = readFileSync('config/test/vitest.config.js', 'utf-8');
-    
+  it("should have matching path aliases in tsconfig and vitest", () => {
+    const tsconfig = JSON.parse(readFileSync("server/tsconfig.json", "utf-8"));
+    const vitestConfig = readFileSync("config/test/vitest.config.js", "utf-8");
+
     const aliases = Object.keys(tsconfig.compilerOptions.paths);
     for (const alias of aliases) {
-      expect(vitestConfig).toContain(alias.replace('/*', ''));
+      expect(vitestConfig).toContain(alias.replace("/*", ""));
     }
   });
 });

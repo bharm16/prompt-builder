@@ -1,6 +1,6 @@
 /**
  * Simple Dependency Injection Container
- * 
+ *
  * SOLID Principles Applied:
  * - SRP: Manages dependency creation and resolution
  * - OCP: New dependencies registered without modifying container
@@ -30,7 +30,7 @@ export class DependencyContainer {
   register(
     name: string,
     factory: (container: DependencyContainer) => unknown,
-    options: { singleton?: boolean } = {}
+    options: { singleton?: boolean } = {},
   ): void {
     this.services.set(name, {
       factory,
@@ -78,4 +78,3 @@ export class DependencyContainer {
     return this.services.has(name) || this.singletons.has(name);
   }
 }
-

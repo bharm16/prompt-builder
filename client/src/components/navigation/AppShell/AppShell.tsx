@@ -7,38 +7,45 @@
  * - 'none': Auth pages (no shell)
  */
 
-import { memo, type ReactElement } from 'react';
+import { memo, type ReactElement } from "react";
 
-import { ToolSidebar } from '@components/ToolSidebar';
-import { useAuthUser } from '@hooks/useAuthUser';
-import { CreditBalanceProvider } from '@/contexts/CreditBalanceContext';
+import { ToolSidebar } from "@components/ToolSidebar";
+import { useAuthUser } from "@hooks/useAuthUser";
+import { CreditBalanceProvider } from "@/contexts/CreditBalanceContext";
 
-import type { AppShellProps } from './types';
-import { useNavigationConfig } from './hooks/useNavigationConfig';
-import { TopNavbar } from './variants/TopNavbar';
+import type { AppShellProps } from "./types";
+import { useNavigationConfig } from "./hooks/useNavigationConfig";
+import { TopNavbar } from "./variants/TopNavbar";
 
-export const AppShell = memo(function AppShell(props: AppShellProps): ReactElement {
-  const { children, toolSidebarProps } = props;
-  const { variant, navItems } = useNavigationConfig();
+export const AppShell = memo(function AppShell(
+  props: AppShellProps,
+): ReactElement {
+  const { children } = props;
+  const { variant, navItems, currentPath } = useNavigationConfig();
   const user = useAuthUser();
 
-  if (variant === 'none') {
+  if (variant === "none") {
     return <>{children}</>;
   }
 
-  if (variant === 'topnav') {
+  if (variant === "topnav") {
     return (
       <div className="flex min-h-full flex-col bg-app">
         <TopNavbar navItems={navItems.topNav} user={user} />
-        <div className="min-h-0 flex-1 pt-[var(--global-top-nav-height)]">{children}</div>
+        <div className="min-h-0 flex-1 pt-[var(--global-top-nav-height)]">
+          {children}
+        </div>
       </div>
     );
   }
 
+  // Non-session sidebar routes (e.g. /assets) should not restore persisted panel state
+  const isNonSessionRoute = currentPath === "/assets";
+
   return (
     <div className="flex h-full min-h-0 overflow-hidden bg-app">
       <CreditBalanceProvider userId={user?.uid ?? null}>
-        <ToolSidebar {...(toolSidebarProps ?? {})} user={user} />
+        <ToolSidebar user={user} forceDefaultPanel={isNonSessionRoute} />
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-black">
           {children}
         </div>
@@ -47,4 +54,4 @@ export const AppShell = memo(function AppShell(props: AppShellProps): ReactEleme
   );
 });
 
-AppShell.displayName = 'AppShell';
+AppShell.displayName = "AppShell";

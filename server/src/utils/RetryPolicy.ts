@@ -1,5 +1,5 @@
-import { logger } from '@infrastructure/Logger';
-import { sleep } from './sleep';
+import { logger } from "@infrastructure/Logger";
+import { sleep } from "./sleep";
 
 export interface RetryOptions {
   maxRetries?: number;
@@ -16,6 +16,13 @@ export interface RetryOptions {
    * The attempt parameter is 1-based (first retry is attempt=1).
    */
   getDelayMs?: (attempt: number) => number;
+}
+
+export interface ExponentialBackoffOptions {
+  /** Base delay in milliseconds (default: 120) */
+  baseDelayMs?: number;
+  /** Maximum random jitter in milliseconds (default: 80) */
+  jitterMs?: number;
 }
 
 /**
@@ -35,7 +42,7 @@ export class RetryPolicy {
    */
   static async execute<T>(
     fn: () => Promise<T>,
-    options: RetryOptions = {}
+    options: RetryOptions = {},
   ): Promise<T> {
     const {
       maxRetries = 2,
@@ -53,7 +60,8 @@ export class RetryPolicy {
       try {
         return await fn();
       } catch (error) {
-        const errorObj = error instanceof Error ? error : new Error(String(error));
+        const errorObj =
+          error instanceof Error ? error : new Error(String(error));
         lastError = errorObj;
 
         // Check if we should retry this error
@@ -69,7 +77,7 @@ export class RetryPolicy {
         }
 
         if (logRetries) {
-          logger.warn('Operation failed, retrying', {
+          logger.warn("Operation failed, retrying", {
             attempt,
             maxRetries: maxRetries + 1,
             error: errorObj.message,
@@ -83,7 +91,7 @@ export class RetryPolicy {
         }
 
         const computedDelay = getDelayMs ? getDelayMs(attempt) : delayMs;
-        if (typeof computedDelay === 'number' && computedDelay > 0) {
+        if (typeof computedDelay === "number" && computedDelay > 0) {
           await sleep(computedDelay);
         }
       }
@@ -91,14 +99,14 @@ export class RetryPolicy {
 
     // All retries exhausted
     if (logRetries) {
-      logger.error('All retry attempts exhausted', lastError ?? undefined, {
+      logger.error("All retry attempts exhausted", lastError ?? undefined, {
         attempts: maxRetries + 1,
         lastErrorMessage: lastError?.message,
       });
     }
 
     if (!lastError) {
-      throw new Error('Unknown error during retry execution');
+      throw new Error("Unknown error during retry execution");
     }
 
     throw lastError;
@@ -111,8 +119,8 @@ export class RetryPolicy {
     return (error: Error) => {
       const apiError = error as Error & { name?: string; statusCode?: number };
       // Don't retry API errors (rate limits, auth errors, etc.)
-      if (apiError.name === 'APIError' || apiError.statusCode) {
-        logger.warn('API error encountered, not retrying', {
+      if (apiError.name === "APIError" || apiError.statusCode) {
+        logger.warn("API error encountered, not retrying", {
           error: error.message,
           statusCode: apiError.statusCode,
         });
@@ -121,14 +129,27 @@ export class RetryPolicy {
       return true;
     };
   }
+
+  /**
+   * Create a getDelayMs function with exponential backoff and jitter.
+   *
+   * This is the canonical backoff strategy for the codebase.
+   * Delay = baseDelayMs * 2^(attempt-1) + random(0..jitterMs)
+   *
+   * @example
+   * RetryPolicy.execute(fn, {
+   *   maxRetries: 3,
+   *   getDelayMs: RetryPolicy.exponentialBackoff({ baseDelayMs: 120, jitterMs: 80 }),
+   * });
+   */
+  static exponentialBackoff(
+    options: ExponentialBackoffOptions = {},
+  ): (attempt: number) => number {
+    const { baseDelayMs = 120, jitterMs = 80 } = options;
+    return (attempt: number): number => {
+      const exponentialDelay = baseDelayMs * 2 ** (attempt - 1);
+      const jitter = Math.round(Math.random() * jitterMs);
+      return exponentialDelay + jitter;
+    };
+  }
 }
-
-
-
-
-
-
-
-
-
-

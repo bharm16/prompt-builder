@@ -1,14 +1,14 @@
 // IMPORTANT: This file must be imported at the top of your entry point, before any other imports
-import * as Sentry from '@sentry/node';
-import { nodeProfilingIntegration } from '@sentry/profiling-node';
-import dotenv from 'dotenv';
+import * as Sentry from "@sentry/node";
+import { nodeProfilingIntegration } from "@sentry/profiling-node";
+import dotenv from "dotenv";
 
 // Load environment variables first
 dotenv.config();
 
 const SENTRY_DSN = process.env.SENTRY_DSN;
-const ENVIRONMENT = process.env.NODE_ENV || 'development';
-const RELEASE = process.env.APP_VERSION || 'unknown';
+const ENVIRONMENT = process.env.NODE_ENV || "development";
+const RELEASE = process.env.APP_VERSION || "unknown";
 
 // Sentry initialization disabled
 /*

@@ -3,6 +3,7 @@
 ## Overview
 
 This document details the implementation of two high-impact features from the research PDFs:
+
 1. **Contrastive Decoding** - Enhanced diversity through iterative generation with negative constraints
 2. **LLM-as-a-Judge** - Optional quality evaluation using research-backed rubrics
 
@@ -13,6 +14,7 @@ All features are based on peer-reviewed research and implement patterns recommen
 ### What It Does
 
 Prevents "visual collapse" where all suggestions cluster around similar concepts. Implements the PDF's 3-batch approach:
+
 - **Batch 1**: 4 suggestions at temperature 0.7 (standard creativity)
 - **Batch 2**: 4 suggestions at temperature 0.9 with negative constraint listing Batch 1
 - **Batch 3**: 4 suggestions at temperature 1.0 with negative constraint listing Batches 1+2
@@ -26,6 +28,7 @@ From the PDF: "Standard temperature sampling is often insufficient for generatin
 ### When It's Used
 
 Automatically activated for:
+
 - Video prompts (where visual diversity is critical)
 - Placeholder generation (needing varied creative directions)
 - Text over 20 characters (shorter text doesn't benefit)
@@ -35,7 +38,7 @@ Automatically activated for:
 ```javascript
 // server/src/services/enhancement/services/ContrastiveDiversityEnforcer.js
 this.config = {
-  batchSizes: [4, 4, 4],       // Total: 12 suggestions
+  batchSizes: [4, 4, 4], // Total: 12 suggestions
   temperatures: [0.7, 0.9, 1.0], // Increasing creativity
   enabled: true,
 };
@@ -56,6 +59,7 @@ this.config = {
 ### Telemetry
 
 Logged metrics:
+
 - `usedContrastiveDecoding`: Boolean flag
 - `batch1Count`, `batch2Count`, `batch3Count`: Suggestions per batch
 - `avgSimilarity`, `minSimilarity`, `maxSimilarity`: Diversity metrics
@@ -71,6 +75,7 @@ Provides optional quality evaluation using a high-capability LLM (GPT-4o or Clau
 From the PDF: "This tier evaluates the qualitative aspects: Does the prompt sound like a director wrote it? Is it safe?"
 
 **Use Cases**:
+
 - A/B testing different generation strategies
 - Quality assurance for production systems
 - User feedback correlation analysis
@@ -93,6 +98,7 @@ From the PDF: "This tier evaluates the qualitative aspects: Does the prompt soun
 ### API Endpoints
 
 #### POST /api/suggestions/evaluate
+
 Evaluate a set of suggestions:
 
 ```javascript
@@ -136,9 +142,11 @@ Evaluate a set of suggestions:
 ```
 
 #### POST /api/suggestions/evaluate/single
+
 Evaluate a single suggestion in detail (same schema, single suggestion).
 
 #### POST /api/suggestions/evaluate/compare
+
 Compare two suggestion sets:
 
 ```javascript
@@ -171,6 +179,7 @@ Compare two suggestion sets:
 ```
 
 #### GET /api/suggestions/rubrics
+
 Get rubric definitions for documentation/debugging.
 
 ### Implementation Files
@@ -213,12 +222,14 @@ llm_judge_general: {
 ### When to Use
 
 ✅ **Good Use Cases**:
+
 - A/B testing generation strategies
 - Quality benchmarking across model versions
 - Correlation analysis with user acceptance
 - Production quality gates (async)
 
 ❌ **Avoid For**:
+
 - Real-time user-facing suggestions (too slow)
 - High-frequency calls (too expensive)
 - Binary pass/fail decisions (overkill)
@@ -241,20 +252,22 @@ JUDGE_GENERAL_MODEL=claude-sonnet-4  # Model for general evaluation
 Both features include comprehensive logging:
 
 ### Contrastive Decoding
+
 ```javascript
-logger.info('Contrastive decoding completed', {
+logger.info("Contrastive decoding completed", {
   totalSuggestions: 12,
   batch1Count: 4,
   batch2Count: 4,
   batch3Count: 4,
   totalTime: 2350,
-  avgSimilarity: 0.23,  // Lower = more diverse
+  avgSimilarity: 0.23, // Lower = more diverse
   minSimilarity: 0.05,
-  maxSimilarity: 0.45
+  maxSimilarity: 0.45,
 });
 ```
 
 ### LLM-as-a-Judge
+
 ```javascript
 logger.info('LLM-as-a-Judge evaluation completed', {
   overallScore: 85,
@@ -266,6 +279,7 @@ logger.info('LLM-as-a-Judge evaluation completed', {
 ## Testing
 
 Run all tests:
+
 ```bash
 npm test -- ContrastiveDiversityEnforcer
 npm test -- LLMJudgeService
@@ -274,11 +288,13 @@ npm test -- LLMJudgeService
 ## Success Metrics
 
 ### Contrastive Decoding
+
 - ✅ Reduce similar suggestion clusters by 60%+ (Jaccard similarity metric)
 - ✅ Maintain generation quality (no degradation in user acceptance)
 - ✅ Telemetry shows diversity metrics improve across video prompts
 
 ### LLM-as-a-Judge
+
 - ✅ Quality scores correlate with user acceptance rates (r > 0.7)
 - ✅ Evaluation consistency (same input → similar scores)
 - ✅ Useful feedback for model improvement
@@ -287,12 +303,14 @@ npm test -- LLMJudgeService
 
 ### Deferred: CLIP Embeddings (PDF Metric 4)
 
-**Why deferred**: 
+**Why deferred**:
+
 - Requires Python microservice + CLIP model hosting
-- PDF admits CLIP is a *proxy* for visual diversity, not ground truth
+- PDF admits CLIP is a _proxy_ for visual diversity, not ground truth
 - Text-based diversity (Jaccard similarity) catches most issues
 
 **When to implement**:
+
 - User feedback shows text-based diversity insufficient
 - Infrastructure for Python microservices exists
 - Budget allows for CLIP API costs or model hosting
@@ -319,6 +337,7 @@ npm test -- LLMJudgeService
 ## Support
 
 For questions or issues:
+
 1. Check logs for telemetry data
 2. Review test suites for usage examples
 3. Consult rubric definitions for evaluation criteria

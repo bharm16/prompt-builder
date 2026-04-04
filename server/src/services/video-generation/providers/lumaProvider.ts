@@ -1,7 +1,7 @@
-import type { LumaAI } from 'lumaai';
-import { sleep } from '../utils/sleep';
-import type { VideoGenerationOptions } from '../types';
-import { getProviderPollTimeoutMs } from './timeoutPolicy';
+import type { LumaAI } from "lumaai";
+import { sleep, pollingDelay } from "@utils/sleep";
+import type { VideoGenerationOptions } from "../types";
+import { getProviderPollTimeoutMs } from "./timeoutPolicy";
 
 type LogSink = {
   info: (message: string, meta?: Record<string, unknown>) => void;
@@ -10,7 +10,7 @@ type LogSink = {
 const LUMA_STATUS_POLL_INTERVAL_MS = 3000;
 
 interface LumaKeyframe {
-  type: 'image';
+  type: "image";
   url: string;
 }
 
@@ -19,23 +19,32 @@ interface LumaKeyframes {
   frame1?: LumaKeyframe;
 }
 
-type LumaAspectRatio = '1:1' | '16:9' | '9:16' | '4:3' | '3:4' | '21:9' | '9:21';
+type LumaAspectRatio =
+  | "1:1"
+  | "16:9"
+  | "9:16"
+  | "4:3"
+  | "3:4"
+  | "21:9"
+  | "9:21";
 
 function resolveLumaAspectRatio(
-  aspectRatio: VideoGenerationOptions['aspectRatio']
+  aspectRatio: VideoGenerationOptions["aspectRatio"],
 ): LumaAspectRatio | undefined {
   if (
-    aspectRatio === '16:9' ||
-    aspectRatio === '9:16' ||
-    aspectRatio === '1:1' ||
-    aspectRatio === '21:9'
+    aspectRatio === "16:9" ||
+    aspectRatio === "9:16" ||
+    aspectRatio === "1:1" ||
+    aspectRatio === "21:9"
   ) {
     return aspectRatio;
   }
   return undefined;
 }
 
-export function buildLumaKeyframes(options: VideoGenerationOptions): LumaKeyframes | undefined {
+export function buildLumaKeyframes(
+  options: VideoGenerationOptions,
+): LumaKeyframes | undefined {
   const hasStart = Boolean(options.startImage);
   const hasEnd = Boolean(options.endImage);
 
@@ -47,14 +56,14 @@ export function buildLumaKeyframes(options: VideoGenerationOptions): LumaKeyfram
 
   if (hasStart) {
     keyframes.frame0 = {
-      type: 'image',
+      type: "image",
       url: options.startImage!,
     };
   }
 
   if (hasEnd) {
     keyframes.frame1 = {
-      type: 'image',
+      type: "image",
       url: options.endImage!,
     };
   }
@@ -66,7 +75,7 @@ export async function generateLumaVideo(
   luma: LumaAI,
   prompt: string,
   options: VideoGenerationOptions,
-  log: LogSink
+  log: LogSink,
 ): Promise<string> {
   const timeoutMs = getProviderPollTimeoutMs();
   const keyframes = buildLumaKeyframes(options);
@@ -74,43 +83,44 @@ export async function generateLumaVideo(
 
   const generation = await luma.generations.create({
     prompt,
-    model: 'ray-2',
+    model: "ray-2",
     ...(aspectRatio ? { aspect_ratio: aspectRatio } : {}),
     ...(keyframes ? { keyframes } : {}),
   });
   if (!generation.id) {
-    throw new Error('Luma generation did not return an id');
+    throw new Error("Luma generation did not return an id");
   }
-  log.info('Luma generation started', {
+  log.info("Luma generation started", {
     generationId: generation.id,
     hasStartImage: Boolean(options.startImage),
     hasEndImage: Boolean(options.endImage),
     mode:
       options.endImage && options.startImage
-        ? 'interpolation'
+        ? "interpolation"
         : options.startImage
-          ? 'i2v'
+          ? "i2v"
           : options.endImage
-            ? 'end-frame-only'
-            : 't2v',
+            ? "end-frame-only"
+            : "t2v",
   });
 
   let result = generation;
   const start = Date.now();
-  while (result.state !== 'completed') {
-    if (result.state === 'failed') {
-      throw new Error('Luma generation failed');
+  while (result.state !== "completed") {
+    if (result.state === "failed") {
+      throw new Error("Luma generation failed");
     }
-    if (Date.now() - start > timeoutMs) {
+    const elapsed = Date.now() - start;
+    if (elapsed > timeoutMs) {
       throw new Error(`Timed out waiting for Luma generation ${generation.id}`);
     }
-    await sleep(LUMA_STATUS_POLL_INTERVAL_MS);
+    await sleep(pollingDelay(LUMA_STATUS_POLL_INTERVAL_MS, elapsed));
     result = await luma.generations.get(generation.id);
   }
 
   const videoUrl = result.assets?.video;
   if (!videoUrl) {
-    throw new Error('Luma generation completed without a video asset.');
+    throw new Error("Luma generation completed without a video asset.");
   }
 
   return videoUrl;

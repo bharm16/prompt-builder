@@ -3,9 +3,14 @@ export class ApiError extends Error {
   public readonly response: unknown;
   public readonly code: string | undefined;
 
-  constructor(message: string, status?: number, response?: unknown, code?: string) {
+  constructor(
+    message: string,
+    status?: number,
+    response?: unknown,
+    code?: string,
+  ) {
     super(message);
-    this.name = 'ApiError';
+    this.name = "ApiError";
     this.status = status;
     this.response = response;
     this.code = code;
@@ -46,4 +51,3 @@ export function getErrorCode(error: unknown): string | undefined {
   }
   return undefined;
 }
-

@@ -1,8 +1,8 @@
 /**
  * Frontend Logging Utilities
- * 
+ *
  * Centralized exports for logging-related utilities.
- * 
+ *
  * @module utils/logging
  */
 
@@ -13,4 +13,4 @@ export {
   getEmailDomain,
   sanitizeUserData,
   sanitizeError,
-} from './sanitize';
+} from "./sanitize";
