@@ -21,7 +21,7 @@ export class EnhancementV2Engine {
 
   constructor(private readonly dependencies: EnhancementV2Dependencies) {
     this.registry = new SlotPolicyRegistry(dependencies.policyVersion);
-    this.scorer = new V2CandidateScorer(dependencies.videoService);
+    this.scorer = new V2CandidateScorer(dependencies.videoPromptService);
   }
 
   async execute(

@@ -50,7 +50,7 @@ import type {
 
 interface EnhancementServiceDependencies {
   aiService: AIService;
-  videoService: VideoService;
+  videoPromptService: VideoService;
   brainstormBuilder: BrainstormBuilder;
   promptBuilder: PromptBuilder;
   validationService: ValidationService;
@@ -63,7 +63,7 @@ interface EnhancementServiceDependencies {
 
 interface EnhancementCoreServices {
   ai: AIService;
-  videoService: VideoService;
+  videoPromptService: VideoService;
   brainstormBuilder: BrainstormBuilder;
   promptBuilder: PromptBuilder;
   validationService: ValidationService;
@@ -104,7 +104,7 @@ export class EnhancementService {
   constructor(dependencies: EnhancementServiceDependencies) {
     const {
       aiService,
-      videoService,
+      videoPromptService,
       brainstormBuilder,
       promptBuilder,
       validationService,
@@ -121,7 +121,7 @@ export class EnhancementService {
 
     this.core = {
       ai: aiService,
-      videoService,
+      videoPromptService,
       brainstormBuilder,
       promptBuilder,
       validationService,
@@ -141,7 +141,7 @@ export class EnhancementService {
     // Initialize specialized services
     const contrastiveDiversity = new ContrastiveDiversityEnforcer(aiService);
     const fallbackRegeneration = new FallbackRegenerationService(
-      videoService,
+      videoPromptService,
       promptBuilder,
       validationService,
       diversityEnforcer,
@@ -159,7 +159,7 @@ export class EnhancementService {
       styleTransfer: new StyleTransferService(aiService),
       contrastiveDiversity,
       metricsLogger: new EnhancementMetricsService(metricsService),
-      videoContextDetection: new VideoContextDetectionService(videoService),
+      videoContextDetection: new VideoContextDetectionService(videoPromptService),
       suggestionGeneration: new SuggestionGenerationService(
         aiService,
         contrastiveDiversity,
@@ -167,7 +167,7 @@ export class EnhancementService {
       suggestionProcessing,
       enhancementV2: new EnhancementV2Engine({
         aiService,
-        videoService,
+        videoPromptService,
         diversityEnforcer,
         policyVersion: enhancementConfig.policyVersion,
       }),
@@ -256,7 +256,7 @@ export class EnhancementService {
         phraseRole,
       });
       const focusGuidance =
-        this.core.videoService.getCategoryFocusGuidance(
+        this.core.videoPromptService.getCategoryFocusGuidance(
           phraseRole,
           highlightedCategory ?? null,
           fullPrompt,
@@ -718,7 +718,7 @@ export class EnhancementService {
     }
 
     // Detect video prompt
-    const isVideoPrompt = this.core.videoService.isVideoPrompt(fullPrompt);
+    const isVideoPrompt = this.core.videoPromptService.isVideoPrompt(fullPrompt);
 
     // Build prompt
     const customPromptParams = {

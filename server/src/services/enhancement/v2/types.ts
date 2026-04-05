@@ -169,7 +169,7 @@ export interface EnhancementV2Execution {
 
 export interface EnhancementV2Dependencies {
   aiService: AIService;
-  videoService: VideoService;
+  videoPromptService: VideoService;
   diversityEnforcer: DiversityEnforcer;
   policyVersion: string;
 }

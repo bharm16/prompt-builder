@@ -5,7 +5,7 @@ import type { VideoService } from "../types";
 function createService(
   videoOverrides: Partial<VideoService> = {},
 ): SuggestionValidationService {
-  const videoService = {
+  const videoPromptService = {
     countWords: (text: string) =>
       text.trim().split(/\s+/).filter(Boolean).length,
     getVideoReplacementConstraints: vi.fn(() => ({
@@ -16,7 +16,7 @@ function createService(
     ...videoOverrides,
   } as unknown as VideoService;
 
-  return new SuggestionValidationService(videoService);
+  return new SuggestionValidationService(videoPromptService);
 }
 
 describe("SuggestionValidationService regression", () => {

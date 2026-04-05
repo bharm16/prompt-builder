@@ -44,11 +44,6 @@ export function registerEnhancementServices(container: DIContainer): void {
     ["videoPromptLlmGateway", "config"],
   );
   container.register(
-    "videoService",
-    (videoPromptService: VideoPromptService) => videoPromptService,
-    ["videoPromptService"],
-  );
-  container.register(
     "multimodalAssetManager",
     () => new MultimodalAssetManager(),
     [],
@@ -134,7 +129,7 @@ export function registerEnhancementServices(container: DIContainer): void {
     ) =>
       new EnhancementService({
         aiService,
-        videoService: videoPromptService,
+        videoPromptService,
         brainstormBuilder,
         promptBuilder,
         validationService,

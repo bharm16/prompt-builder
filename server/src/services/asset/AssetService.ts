@@ -25,7 +25,7 @@ export class AssetService {
 
   constructor(
     assetRepository: AssetRepository,
-    referenceImageService: ReferenceImageService,
+    referenceImageRepository: ReferenceImageService,
     resolverService = new AssetResolverService(assetRepository),
     triggerValidation = new TriggerValidationService(),
     embeddingService: FaceEmbeddingService | null = null,
@@ -36,7 +36,7 @@ export class AssetService {
       : null;
     this.referenceImages = new AssetReferenceImageService(
       assetRepository,
-      referenceImageService,
+      referenceImageRepository,
       this.crud,
       this.embeddings,
     );

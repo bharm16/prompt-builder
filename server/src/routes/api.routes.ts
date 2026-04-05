@@ -49,7 +49,7 @@ interface ApiServices extends OptimizeServices, EnhancementServices {
   assetService?: AssetService;
   consistentVideoService?: ConsistentVideoService;
   userCreditService?: UserCreditService;
-  referenceImageService?: ReferenceImageRepository | null;
+  referenceImageRepository?: ReferenceImageRepository | null;
   imageObservationService?: ImageObservationService | null;
   continuitySessionService?: ContinuitySessionService | null;
   modelIntelligenceService?: ModelIntelligenceService | null;
@@ -75,7 +75,7 @@ export function createAPIRoutes(services: ApiServices): Router {
     assetService,
     consistentVideoService,
     userCreditService,
-    referenceImageService,
+    referenceImageRepository,
     imageObservationService,
     continuitySessionService,
     modelIntelligenceService,
@@ -110,10 +110,10 @@ export function createAPIRoutes(services: ApiServices): Router {
     router.use("/assets", createAssetRoutes(assetService));
   }
 
-  if (referenceImageService) {
+  if (referenceImageRepository) {
     router.use(
       "/reference-images",
-      createReferenceImagesRoutes(referenceImageService),
+      createReferenceImagesRoutes(referenceImageRepository),
     );
   }
 

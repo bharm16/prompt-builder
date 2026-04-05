@@ -84,7 +84,7 @@ export class SuggestionQualityEvaluator {
 
   constructor(
     private readonly validationService: SuggestionValidationService,
-    private readonly videoService: VideoPromptService,
+    private readonly videoPromptService: VideoPromptService,
   ) {}
 
   async evaluateCase(
@@ -104,7 +104,7 @@ export class SuggestionQualityEvaluator {
         : [testCase.span.category]
     ).map((category) => category.toLowerCase());
 
-    const isVideoPrompt = this.videoService.isVideoPrompt(testCase.prompt);
+    const isVideoPrompt = this.videoPromptService.isVideoPrompt(testCase.prompt);
     const sanitizationContext: Record<string, unknown> = {
       highlightedText: testCase.span.text,
       highlightedCategory: testCase.span.category,

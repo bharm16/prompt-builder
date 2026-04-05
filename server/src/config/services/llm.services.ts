@@ -104,12 +104,6 @@ export function registerLLMServices(container: DIContainer): void {
   );
 
   container.register(
-    "claudeClient",
-    (openAIClient: LLMClient | null) => openAIClient,
-    ["openAIClient"],
-  );
-
-  container.register(
     "groqClient",
     (
       config: ServiceConfig,

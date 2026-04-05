@@ -68,7 +68,7 @@ export class SuggestionValidationService {
   private readonly deprioritizedMarker = "__deprioritized";
   private readonly lockedCategoryPatterns = patterns.lockedCategoryPatterns;
 
-  constructor(private readonly videoService: VideoService) {}
+  constructor(private readonly videoPromptService: VideoService) {}
 
   /**
    * Sanitize suggestions to ensure they are valid drop-in replacements
@@ -363,11 +363,11 @@ export class SuggestionValidationService {
     highlightedText: string | undefined,
   ): ReturnType<VideoService["getVideoReplacementConstraints"]> | undefined {
     const highlightWordCount = highlightedText
-      ? this.videoService.countWords(highlightedText)
+      ? this.videoPromptService.countWords(highlightedText)
       : undefined;
 
     try {
-      return this.videoService.getVideoReplacementConstraints({
+      return this.videoPromptService.getVideoReplacementConstraints({
         ...(highlightWordCount !== undefined ? { highlightWordCount } : {}),
         ...(highlightedText ? { highlightedText } : {}),
       });
@@ -394,7 +394,7 @@ export class SuggestionValidationService {
       return suggestions;
     }
 
-    const targetWords = this.videoService.countWords(context.highlightedText);
+    const targetWords = this.videoPromptService.countWords(context.highlightedText);
     if (targetWords <= 0) {
       return suggestions;
     }
@@ -404,7 +404,7 @@ export class SuggestionValidationService {
 
     const ranked = suggestions
       .map((suggestion, index) => {
-        const suggestionWordCount = this.videoService.countWords(
+        const suggestionWordCount = this.videoPromptService.countWords(
           suggestion.text,
         );
         const distance =
@@ -516,7 +516,7 @@ export class SuggestionValidationService {
       category === "lighting.quality" &&
       /ly$/i.test((context.highlightedText || "").trim().toLowerCase());
     const lowerText = text.toLowerCase();
-    const wordCount = this.videoService.countWords(text);
+    const wordCount = this.videoPromptService.countWords(text);
 
     if (context.isPlaceholder) {
       const fallbackVideoConstraints =
@@ -927,7 +927,7 @@ export class SuggestionValidationService {
       }
       const looksLikeSourceClause =
         patterns.lightSourceClauseTerms.test(text) &&
-        (this.videoService.countWords(text) >= 4 ||
+        (this.videoPromptService.countWords(text) >= 4 ||
           patterns.lightingClauseVerbTerms.test(text));
       if (looksLikeSourceClause) {
         return "slot_form";
@@ -995,10 +995,10 @@ export class SuggestionValidationService {
         : null;
     }
 
-    const highlightedWordCount = this.videoService.countWords(
+    const highlightedWordCount = this.videoPromptService.countWords(
       context.highlightedText || "",
     );
-    const suggestionWordCount = this.videoService.countWords(text);
+    const suggestionWordCount = this.videoPromptService.countWords(text);
     const isAdjectiveLikeLightingSlot =
       category === "lighting.quality" ||
       (category.startsWith("lighting.") &&

@@ -37,7 +37,7 @@ function createService(options?: {
     execute: vi.fn(),
   } as unknown as AIService;
 
-  const videoService = {
+  const videoPromptService = {
     isVideoPrompt: vi.fn(() => true),
     countWords: vi.fn(
       (text: string) => text.trim().split(/\s+/).filter(Boolean).length,
@@ -144,7 +144,7 @@ function createService(options?: {
 
   const service = new EnhancementService({
     aiService,
-    videoService,
+    videoPromptService,
     brainstormBuilder,
     promptBuilder,
     validationService,

@@ -57,7 +57,7 @@ function createEngine() {
     execute: vi.fn(),
   } as unknown as AIService;
 
-  const videoService = {
+  const videoPromptService = {
     countWords: vi.fn(
       (text: string) => text.trim().split(/\s+/).filter(Boolean).length,
     ),
@@ -69,7 +69,7 @@ function createEngine() {
 
   return new EnhancementV2Engine({
     aiService,
-    videoService,
+    videoPromptService,
     diversityEnforcer,
     policyVersion: "2026-03-v2a",
   });

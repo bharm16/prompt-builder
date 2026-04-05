@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { logger } from "@infrastructure/Logger";
 
-interface ClaudeClient {
+interface ConstitutionalLLMClient {
   complete(
     prompt: string,
     options?: { maxTokens?: number },
@@ -61,7 +61,7 @@ export class ConstitutionalAI {
    * Apply constitutional AI review to output
    */
   static async applyConstitutionalReview(
-    claudeClient: ClaudeClient,
+    llmClient: ConstitutionalLLMClient,
     originalPrompt: string,
     initialOutput: string,
     options: ConstitutionalReviewOptions = {},
@@ -79,7 +79,7 @@ export class ConstitutionalAI {
 
     // Step 1: Critique the output against principles
     const critique = await this._critiqueOutput(
-      claudeClient,
+      llmClient,
       originalPrompt,
       initialOutput,
       principles,
@@ -106,7 +106,7 @@ export class ConstitutionalAI {
     });
 
     const revisedOutput = await this._reviseOutput(
-      claudeClient,
+      llmClient,
       originalPrompt,
       initialOutput,
       critique,
@@ -125,7 +125,7 @@ export class ConstitutionalAI {
    * @private
    */
   private static async _critiqueOutput(
-    claudeClient: ClaudeClient,
+    llmClient: ConstitutionalLLMClient,
     originalPrompt: string,
     output: string,
     principles: string[],
@@ -171,7 +171,7 @@ If there are NO issues, return an empty issues array and a high overallScore (0.
 
 **CRITICAL: Return ONLY valid JSON. No markdown, no preamble, no explanations.**`;
 
-    const response = await claudeClient.complete(critiquePrompt, {
+    const response = await llmClient.complete(critiquePrompt, {
       maxTokens: 2048,
     });
 
@@ -212,7 +212,7 @@ If there are NO issues, return an empty issues array and a high overallScore (0.
    * @private
    */
   private static async _reviseOutput(
-    claudeClient: ClaudeClient,
+    llmClient: ConstitutionalLLMClient,
     originalPrompt: string,
     output: string,
     critique: Critique,
@@ -244,7 +244,7 @@ Create an improved version of the output that:
 
 Return ONLY the revised output. Do not include explanations, preambles, or meta-commentary about what you changed.`;
 
-    const response = await claudeClient.complete(revisionPrompt, {
+    const response = await llmClient.complete(revisionPrompt, {
       maxTokens: 4096,
     });
 
@@ -320,7 +320,7 @@ Return ONLY the revised output. Do not include explanations, preambles, or meta-
    * Quick validation check without full review
    */
   static async quickValidation(
-    claudeClient: ClaudeClient,
+    llmClient: ConstitutionalLLMClient,
     output: string,
     principles: string[] | null = null,
   ): Promise<boolean> {
@@ -332,7 +332,7 @@ Output: ${output}
 
 Respond with ONLY "YES" or "NO".`;
 
-    const response = await claudeClient.complete(validationPrompt, {
+    const response = await llmClient.complete(validationPrompt, {
       maxTokens: 10,
     });
 

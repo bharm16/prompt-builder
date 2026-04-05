@@ -163,6 +163,7 @@ export interface OptimizationStrategy {
   name: string;
 }
 
+/** @deprecated Use AIExecutionPort from @services/ai-model/ports/AIExecutionPort */
 export type AIService = AIExecutionPort;
 
 /**

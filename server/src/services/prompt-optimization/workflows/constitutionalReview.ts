@@ -34,7 +34,7 @@ export const runConstitutionalReviewFlow = async ({
       return prompt;
     }
 
-    const claudeClient = {
+    const llmClient = {
       complete: async (
         reviewPrompt: string,
         options?: { maxTokens?: number },
@@ -56,7 +56,7 @@ export const runConstitutionalReviewFlow = async ({
     };
 
     const reviewResult = await ConstitutionalAI.applyConstitutionalReview(
-      claudeClient,
+      llmClient,
       prompt,
       prompt,
     );

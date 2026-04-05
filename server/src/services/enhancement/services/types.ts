@@ -419,6 +419,7 @@ export interface VideoService {
   ): VideoConstraints | null;
 }
 
+/** @deprecated Use AIExecutionPort from @services/ai-model/ports/AIExecutionPort */
 export type AIService = AIExecutionPort;
 
 /**

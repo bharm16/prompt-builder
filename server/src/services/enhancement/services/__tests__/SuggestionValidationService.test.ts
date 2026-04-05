@@ -3,12 +3,12 @@ import { SuggestionValidationService } from "../SuggestionValidationService";
 import type { VideoService } from "../types";
 
 function createService() {
-  const videoService = {
+  const videoPromptService = {
     countWords: (text: string) =>
       text.trim().split(/\s+/).filter(Boolean).length,
   } as unknown as VideoService;
 
-  return new SuggestionValidationService(videoService);
+  return new SuggestionValidationService(videoPromptService);
 }
 
 describe("SuggestionValidationService", () => {

@@ -3,7 +3,7 @@ import { PolicyAwareSuggestionQualityEvaluator } from "../PolicyAwareSuggestionQ
 import { hardCaseBenchmarks } from "../__fixtures__/suggestionQualityHardCases";
 
 function createEvaluator() {
-  const videoService = {
+  const videoPromptService = {
     isVideoPrompt: vi.fn(() => true),
     countWords: vi.fn(
       (text: string) => text.trim().split(/\s+/).filter(Boolean).length,
@@ -11,7 +11,7 @@ function createEvaluator() {
   };
 
   return new PolicyAwareSuggestionQualityEvaluator(
-    videoService as never,
+    videoPromptService as never,
     "2026-03-v2a",
   );
 }

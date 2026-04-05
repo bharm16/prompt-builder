@@ -78,7 +78,7 @@ type InternalFallbackResult = FallbackRegenerationResult & {
  */
 export class FallbackRegenerationService {
   constructor(
-    private readonly videoService: VideoService,
+    private readonly videoPromptService: VideoService,
     private readonly promptBuilder: PromptBuilder,
     private readonly validationService: ValidationService,
     private readonly diversityEnforcer: DiversityEnforcer,
@@ -193,7 +193,7 @@ export class FallbackRegenerationService {
     }
 
     let currentConstraints = videoConstraints;
-    let fallbackConstraints = this.videoService.getVideoFallbackConstraints(
+    let fallbackConstraints = this.videoPromptService.getVideoFallbackConstraints(
       currentConstraints,
       regenerationDetails,
       attemptedModes,
@@ -247,7 +247,7 @@ export class FallbackRegenerationService {
       // Move to next fallback
       attemptedModes.add(fallbackConstraints.mode || "");
       currentConstraints = fallbackConstraints;
-      fallbackConstraints = this.videoService.getVideoFallbackConstraints(
+      fallbackConstraints = this.videoPromptService.getVideoFallbackConstraints(
         currentConstraints,
         regenerationDetails,
         attemptedModes,
