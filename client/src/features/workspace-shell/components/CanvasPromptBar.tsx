@@ -235,7 +235,7 @@ export function CanvasPromptBar({
               "ps-scrollbar-hide max-h-[180px] overflow-y-auto outline-none [&:empty]:min-h-[56px]",
               isEmptyLayout
                 ? "min-h-[56px] text-[15px] leading-[1.7] text-foreground caret-tool-accent-selection"
-                : "min-h-[56px] text-sm leading-[1.75] text-tool-text-dim",
+                : "min-h-[56px] text-[15px] leading-[1.75] text-tool-text-dim",
             )}
             placeholder="Describe a video and click generate..."
             onTextSelection={onTextSelection}
