@@ -230,6 +230,15 @@
   }
 }
 
+@keyframes aurora-rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .motion-safe-transition,
   .motion-presence-panel,
@@ -255,6 +264,10 @@
   .motion-count-bump,
   .motion-pulse-once,
   .motion-shake-x {
+    animation: none !important;
+  }
+
+  .motion-aurora {
     animation: none !important;
   }
 }

@@ -161,11 +161,28 @@ export function CanvasHeroViewer({
           className="relative mx-auto flex w-full max-w-[780px] flex-col items-center justify-center bg-gradient-to-br from-tool-rail-border to-tool-surface-deep"
           style={{ aspectRatio }}
         >
+          {/* Atmospheric aurora background */}
+          <div
+            className="pointer-events-none absolute inset-0 overflow-hidden rounded-2xl"
+            aria-hidden="true"
+          >
+            <div
+              className="motion-aurora absolute inset-[-50%] h-[200%] w-[200%]"
+              style={{
+                background:
+                  "conic-gradient(from 0deg, rgba(124,58,237,0.13), rgba(59,130,246,0.13), rgba(6,182,212,0.13), rgba(124,58,237,0.13))",
+                animation: "aurora-rotate 12s linear infinite",
+                filter: "blur(60px)",
+              }}
+            />
+          </div>
+
+          {/* Cancel button */}
           {onCancel ? (
             <button
               type="button"
               aria-label="Cancel render"
-              className="absolute right-4 top-4 rounded-full border border-white/10 bg-black/30 px-3 py-1 text-[11px] font-medium text-white/70 backdrop-blur transition-colors hover:text-white"
+              className="absolute right-4 top-4 z-10 rounded-full border border-white/10 bg-black/40 px-3 py-1.5 text-[11px] font-medium text-white/70 backdrop-blur-sm transition-colors hover:bg-black/60 hover:text-white"
               onClick={() => {
                 if (generation) {
                   onCancel(generation);
@@ -176,58 +193,27 @@ export function CanvasHeroViewer({
             </button>
           ) : null}
 
-          {/* Central progress content */}
-          <div className="flex flex-col items-center gap-5 px-6 text-center">
-            {/* Pulsing ring indicator */}
-            <div className="relative flex h-14 w-14 items-center justify-center">
-              <svg
-                className="h-full w-full -rotate-90"
-                viewBox="0 0 56 56"
-                aria-hidden="true"
-              >
-                <circle
-                  cx="28"
-                  cy="28"
-                  r="24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  className="text-tool-text-dim/15"
-                />
-                <circle
-                  cx="28"
-                  cy="28"
-                  r="24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  className="text-foreground/80 transition-[stroke-dashoffset] duration-700 ease-out"
-                  strokeDasharray={`${2 * Math.PI * 24}`}
-                  strokeDashoffset={`${2 * Math.PI * 24 * (1 - clampedProgress / 100)}`}
-                />
-              </svg>
-              <span className="absolute text-xs font-medium tabular-nums text-foreground">
-                {clampedProgress}%
-              </span>
-            </div>
+          {/* Progress content (center) */}
+          <div className="relative z-10 flex flex-col items-center gap-5 px-6 text-center">
+            <span className="text-2xl font-semibold tabular-nums text-foreground/90">
+              {clampedProgress}%
+            </span>
 
-            {/* Status text */}
             <div className="space-y-1.5">
-              <p className="text-sm font-semibold tracking-wide text-foreground">
+              <p className="text-sm font-medium tracking-wide text-foreground/80">
                 {stageLabel}
               </p>
               <p className="text-xs tabular-nums text-tool-text-subdued">
-                {modelLabel} · {elapsed}
-                {eta ? ` · est. ${eta}` : ""}
+                {modelLabel} &middot; {elapsed}
+                {eta ? ` \u00B7 est. ${eta}` : ""}
               </p>
             </div>
           </div>
 
-          {/* Bottom progress track */}
-          <div className="absolute inset-x-0 bottom-0 h-[3px] bg-tool-text-dim/10">
+          {/* Bottom progress bar */}
+          <div className="absolute inset-x-0 bottom-0 z-10 h-[2px] bg-white/5">
             <div
-              className="h-full bg-foreground/50 transition-[width] duration-700 ease-out"
+              className="h-full bg-gradient-to-r from-violet-500 to-blue-500 transition-[width] duration-700 ease-out"
               style={{ width: `${clampedProgress}%` }}
             />
           </div>
