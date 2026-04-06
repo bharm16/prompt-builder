@@ -217,7 +217,12 @@ export function CanvasSettingsRow({
 
   return (
     <div
-      className="mt-2.5 flex flex-wrap items-center gap-1 border-t border-tool-rail-border pt-2.5"
+      className="mx-auto mt-3 flex flex-wrap items-center gap-1 rounded-2xl border border-white/[0.08] px-3 py-2"
+      style={{
+        backgroundColor: "rgba(26, 26, 31, 0.75)",
+        backdropFilter: "blur(16px)",
+        WebkitBackdropFilter: "blur(16px)",
+      }}
       data-testid="canvas-settings-row"
     >
       <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1">
