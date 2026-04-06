@@ -54,6 +54,9 @@
     --tool-surface-prompt: #14141a;
     --tool-surface-prompt-compact: #131318;
     --tool-accent-selection: #c8c8d0;
+    /* Generate button — off-white with dark text */
+    --tool-btn-generate-bg: #e0e0e4;
+    --tool-btn-generate-text: #111116;
   }
 
   html,
@@ -254,6 +257,11 @@
   }
 }
 
+@keyframes outline-breathe {
+  0%, 100% { border-color: rgba(255,255,255,0.03); }
+  50% { border-color: rgba(255,255,255,0.06); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .motion-safe-transition,
   .motion-presence-panel,
@@ -283,6 +291,10 @@
   }
 
   .motion-aurora {
+    animation: none !important;
+  }
+
+  [style*="outline-breathe"] {
     animation: none !important;
   }
 }

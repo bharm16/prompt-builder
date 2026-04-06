@@ -402,7 +402,7 @@ export function CanvasSettingsRow({
         <button
           type="button"
           data-testid="canvas-generate-button"
-          className="inline-flex h-10 w-10 items-center justify-center rounded-full border-none bg-muted text-tool-surface-deep transition-opacity hover:opacity-[0.9] disabled:cursor-not-allowed disabled:opacity-60"
+          className="inline-flex h-10 w-10 items-center justify-center rounded-full border-none bg-tool-btn-generate-bg text-tool-btn-generate-text transition-opacity hover:opacity-[0.9] disabled:cursor-not-allowed disabled:opacity-60"
           onClick={handleGenerate}
           disabled={generateDisabled}
           aria-label={

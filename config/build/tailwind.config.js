@@ -51,6 +51,8 @@ export default {
           "surface-prompt": "var(--tool-surface-prompt)",
           "surface-prompt-compact": "var(--tool-surface-prompt-compact)",
           "accent-selection": "var(--tool-accent-selection)",
+          "btn-generate-bg": "var(--tool-btn-generate-bg)",
+          "btn-generate-text": "var(--tool-btn-generate-text)",
         },
         "accent-runway": "var(--ps-accent-runway)",
       },
