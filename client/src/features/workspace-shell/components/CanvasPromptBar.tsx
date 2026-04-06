@@ -208,7 +208,7 @@ export function CanvasPromptBar({
         "relative transition-[width,max-width,padding,transform] duration-[240ms] [transition-timing-function:var(--motion-ease-emphasized)]",
         isEmptyLayout
           ? "w-full max-w-[640px]"
-          : "mx-auto w-[68%] flex-shrink-0 pb-4 pt-5",
+          : "mx-auto w-full max-w-[780px] flex-shrink-0 pb-4",
       )}
     >
       <div
