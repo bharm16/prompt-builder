@@ -74,13 +74,13 @@
   }
 
   :root {
-    --motion-ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+    --motion-ease-standard: cubic-bezier(0.22, 1, 0.36, 1);
     --motion-ease-emphasized: cubic-bezier(0.22, 1, 0.36, 1);
-    --motion-dur-press: 120ms;
-    --motion-dur-focus: 160ms;
-    --motion-dur-panel: 200ms;
-    --motion-dur-media: 240ms;
-    --motion-dur-emphasis: 320ms;
+    --motion-dur-press: 150ms;
+    --motion-dur-focus: 200ms;
+    --motion-dur-panel: 250ms;
+    --motion-dur-media: 300ms;
+    --motion-dur-emphasis: 400ms;
   }
 
   #root {
@@ -90,6 +90,25 @@
 
 @layer utilities {
   /* App-specific utilities only - things that don't belong in the design system */
+
+  .glow-violet {
+    box-shadow:
+      0 0 20px rgba(124, 58, 237, 0.3),
+      0 4px 12px rgba(0, 0, 0, 0.3);
+  }
+
+  .glow-violet:hover {
+    box-shadow:
+      0 0 28px rgba(124, 58, 237, 0.4),
+      0 6px 16px rgba(0, 0, 0, 0.35);
+  }
+
+  .glass {
+    background: rgba(26, 26, 31, 0.75);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
 
   /* Contenteditable placeholder */
   [contenteditable][data-placeholder]:empty:before {

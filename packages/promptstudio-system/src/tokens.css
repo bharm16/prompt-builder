@@ -139,15 +139,15 @@
     /* =========================
        Motion (Runway reference)
        ========================= */
-    --ps-dur-1: 75ms;
-    --ps-dur-2: 150ms; /* Updated: Runway standard transition */
-    --ps-dur-3: 200ms; /* Updated: Runway slow transition */
-    --ps-dur-4: 280ms;
+    --ps-dur-1: 100ms;
+    --ps-dur-2: 200ms;
+    --ps-dur-3: 300ms;
+    --ps-dur-4: 400ms;
     /* Semantic motion aliases */
-    --ps-motion-fast: 120ms;
-    --ps-motion-base: 150ms; /* Updated: Runway standard */
-    --ps-motion-slow: 200ms; /* Updated: Runway slow */
-    --ps-ease-out: cubic-bezier(0.4, 0, 0.2, 1); /* Updated: Runway easing */
+    --ps-motion-fast: 150ms;
+    --ps-motion-base: 200ms;
+    --ps-motion-slow: 300ms;
+    --ps-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
     --ps-ease-in: cubic-bezier(0.7, 0, 0.84, 0);
     --ps-ease-inout: cubic-bezier(0.65, 0, 0.35, 1);
     --ps-ease-linear: linear;
@@ -357,7 +357,10 @@
     --ps-btn-outline-hover-color: #ffffff;
 
     /* Primary button (Runway) */
-    --ps-btn-primary-bg: #2c22fa;
+    --ps-btn-primary-bg: #7c3aed;
+    --ps-btn-primary-hover: #6d28d9;
+    --ps-btn-primary-text: #ffffff;
+    --ps-btn-primary-shadow: 0 0 20px rgba(124, 58, 237, 0.3), 0 4px 12px rgba(0, 0, 0, 0.3);
     --ps-btn-primary-border: none;
     --ps-btn-primary-radius: 8px;
     --ps-btn-primary-color: #ffffff;
