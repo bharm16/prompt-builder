@@ -5,6 +5,7 @@
  */
 
 import { useCallback, useEffect, useRef } from "react";
+import debounce from "lodash/debounce";
 import { v4 as uuidv4 } from "uuid";
 import { logger } from "../../../services/LoggingService";
 import {
@@ -282,6 +283,24 @@ export function useHistoryPersistence({
     [],
   );
 
+  // Debounced full snapshot: only flushes after 5 seconds of inactivity.
+  // Individual entry updates happen immediately via updateEntry/addEntry;
+  // the full localStorage snapshot is deferred to reduce write frequency.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const debouncedSyncHistoryToLocalStorage = useCallback(
+    debounce((entries: PromptHistoryEntry[]): void => {
+      syncHistoryToLocalStorage(entries);
+    }, 5_000),
+    [syncHistoryToLocalStorage],
+  );
+
+  // Flush debounced snapshot on unmount to prevent data loss.
+  useEffect(() => {
+    return () => {
+      debouncedSyncHistoryToLocalStorage.flush();
+    };
+  }, [debouncedSyncHistoryToLocalStorage]);
+
   const persistLocalDraftEntry = useCallback(
     (entry: PromptHistoryEntry): void => {
       const existedBefore = historyRef.current.some(
@@ -289,14 +308,16 @@ export function useHistoryPersistence({
       );
       const nextHistory = upsertEntry(historyRef.current, entry);
       historyRef.current = nextHistory;
+      // Incremental: update in-memory state immediately
       if (existedBefore && typeof entry.uuid === "string") {
         updateEntry(entry.uuid, entry);
       } else {
         addEntry(entry);
       }
-      syncHistoryToLocalStorage(nextHistory);
+      // Full snapshot: deferred to reduce localStorage write frequency
+      debouncedSyncHistoryToLocalStorage(nextHistory);
     },
-    [addEntry, syncHistoryToLocalStorage, updateEntry],
+    [addEntry, debouncedSyncHistoryToLocalStorage, updateEntry],
   );
 
   // Flush any pending debounced version write on unmount

@@ -1,11 +1,22 @@
 import React, {
+  lazy,
+  Suspense,
   type ReactElement,
   useCallback,
   useEffect,
   useRef,
 } from "react";
-import { CameraMotionModal } from "@/components/modals/CameraMotionModal";
-import { FaceSwapPreviewModal } from "@/components/modals/FaceSwapPreviewModal";
+
+const CameraMotionModal = lazy(() =>
+  import("@/components/modals/CameraMotionModal").then((m) => ({
+    default: m.CameraMotionModal,
+  })),
+);
+const FaceSwapPreviewModal = lazy(() =>
+  import("@/components/modals/FaceSwapPreviewModal").then((m) => ({
+    default: m.FaceSwapPreviewModal,
+  })),
+);
 import { InsufficientCreditsModal } from "@/components/modals/InsufficientCreditsModal";
 import { trackModelRecommendationEvent } from "@/features/model-intelligence/api";
 import {
@@ -457,41 +468,45 @@ export function GenerationControlsPanel(
       )}
 
       {showMotionControls && startFrame && (
-        <CameraMotionModal
-          isOpen={state.showCameraMotionModal}
-          onClose={actions.handleCloseCameraMotionModal}
-          imageUrl={startFrame.url}
-          imageStoragePath={startFrame.storagePath ?? null}
-          imageAssetId={startFrame.assetId ?? null}
-          onSelect={actions.handleSelectCameraMotion}
-          initialSelection={cameraMotion}
-        />
+        <Suspense fallback={null}>
+          <CameraMotionModal
+            isOpen={state.showCameraMotionModal}
+            onClose={actions.handleCloseCameraMotionModal}
+            imageUrl={startFrame.url}
+            imageStoragePath={startFrame.storagePath ?? null}
+            imageAssetId={startFrame.assetId ?? null}
+            onSelect={actions.handleSelectCameraMotion}
+            initialSelection={cameraMotion}
+          />
+        </Suspense>
       )}
 
-      <FaceSwapPreviewModal
-        isOpen={faceSwap.isModalOpen}
-        isLoading={faceSwap.isLoading}
-        imageUrl={faceSwap.previewUrl}
-        error={faceSwap.error}
-        faceSwapCredits={faceSwap.faceSwapCredits}
-        videoCredits={faceSwap.videoCredits}
-        totalCredits={faceSwap.totalCredits}
-        onClose={actions.handleCloseFaceSwapModal}
-        onTryDifferent={actions.handleFaceSwapTryDifferent}
-        onProceed={() => {
-          if (!faceSwap.previewUrl) return;
-          actions.handleCloseFaceSwapModal();
-          handleGenerate({
-            startImage: {
-              url: faceSwap.previewUrl,
-              source: "face-swap",
-            },
-            characterAssetId: faceSwap.selectedCharacterId || null,
-            faceSwapAlreadyApplied: true,
-            faceSwapUrl: faceSwap.previewUrl,
-          });
-        }}
-      />
+      <Suspense fallback={null}>
+        <FaceSwapPreviewModal
+          isOpen={faceSwap.isModalOpen}
+          isLoading={faceSwap.isLoading}
+          imageUrl={faceSwap.previewUrl}
+          error={faceSwap.error}
+          faceSwapCredits={faceSwap.faceSwapCredits}
+          videoCredits={faceSwap.videoCredits}
+          totalCredits={faceSwap.totalCredits}
+          onClose={actions.handleCloseFaceSwapModal}
+          onTryDifferent={actions.handleFaceSwapTryDifferent}
+          onProceed={() => {
+            if (!faceSwap.previewUrl) return;
+            actions.handleCloseFaceSwapModal();
+            handleGenerate({
+              startImage: {
+                url: faceSwap.previewUrl,
+                source: "face-swap",
+              },
+              characterAssetId: faceSwap.selectedCharacterId || null,
+              faceSwapAlreadyApplied: true,
+              faceSwapUrl: faceSwap.previewUrl,
+            });
+          }}
+        />
+      </Suspense>
       <InsufficientCreditsModal
         open={insufficientCreditsModal !== null}
         onClose={dismissModal}

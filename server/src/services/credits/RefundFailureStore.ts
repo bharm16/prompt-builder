@@ -105,88 +105,67 @@ export class RefundFailureStore {
 
   async claimNextPending(
     maxAttempts: number,
-    scanLimit: number,
+    _scanLimit?: number,
   ): Promise<CreditRefundFailureRecord | null> {
     try {
-      const snapshot = await this.firestoreCircuitExecutor.executeRead(
-        "credits.refundFailure.claim.queryPending",
+      const query = this.collection
+        .where("status", "==", "pending")
+        .orderBy("updatedAtMs", "asc")
+        .limit(1);
+
+      return await this.firestoreCircuitExecutor.executeWrite(
+        "credits.refundFailure.claim.transaction",
         async () =>
-          await this.collection
-            .where("status", "==", "pending")
-            .limit(scanLimit)
-            .get(),
-      );
-      if (snapshot.empty) {
-        return null;
-      }
+          await this.db.runTransaction(async (transaction) => {
+            const snapshot = await transaction.get(query);
+            if (snapshot.empty) {
+              return null;
+            }
 
-      const docs = snapshot.docs
-        .map((doc) => ({ id: doc.id, data: doc.data() }))
-        .sort((a, b) => {
-          const aTs = Number(a.data.updatedAtMs ?? 0);
-          const bTs = Number(b.data.updatedAtMs ?? 0);
-          return aTs - bTs;
-        });
+            const doc = snapshot.docs[0];
+            if (!doc) {
+              return null;
+            }
+            const data = doc.data();
+            if (!data || data.status !== "pending") {
+              return null;
+            }
 
-      for (const doc of docs) {
-        const claimed = await this.firestoreCircuitExecutor.executeWrite(
-          "credits.refundFailure.claim.transaction",
-          async () =>
-            await this.db.runTransaction(async (transaction) => {
-              const docRef = this.collection.doc(doc.id);
-              const fresh = await transaction.get(docRef);
-              if (!fresh.exists) {
-                return null;
-              }
-
-              const data = fresh.data();
-              if (!data || data.status !== "pending") {
-                return null;
-              }
-
-              const attempts =
-                typeof data.attempts === "number" ? data.attempts : 0;
-              if (attempts >= maxAttempts) {
-                transaction.update(docRef, {
-                  status: "escalated" as CreditRefundFailureStatus,
-                  escalatedAtMs: Date.now(),
-                  updatedAtMs: Date.now(),
-                  updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-                });
-                return null;
-              }
-
-              const now = Date.now();
-              transaction.update(docRef, {
-                status: "processing" as CreditRefundFailureStatus,
-                processingStartedAtMs: now,
-                updatedAtMs: now,
+            const attempts =
+              typeof data.attempts === "number" ? data.attempts : 0;
+            if (attempts >= maxAttempts) {
+              transaction.update(doc.ref, {
+                status: "escalated" as CreditRefundFailureStatus,
+                escalatedAtMs: Date.now(),
+                updatedAtMs: Date.now(),
                 updatedAt: admin.firestore.FieldValue.serverTimestamp(),
               });
+              return null;
+            }
 
-              return this.toRecord({
-                ...data,
-                refundKey: doc.id,
-                status: "processing",
-                processingStartedAtMs: now,
-                updatedAtMs: now,
-              });
-            }),
-        );
+            const now = Date.now();
+            transaction.update(doc.ref, {
+              status: "processing" as CreditRefundFailureStatus,
+              processingStartedAtMs: now,
+              updatedAtMs: now,
+              updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
 
-        if (claimed) {
-          return claimed;
-        }
-      }
-
-      return null;
+            return this.toRecord({
+              ...data,
+              refundKey: doc.id,
+              status: "processing",
+              processingStartedAtMs: now,
+              updatedAtMs: now,
+            });
+          }),
+      );
     } catch (error) {
       logger.error(
         "Failed to claim pending credit refund failure",
         error as Error,
         {
           maxAttempts,
-          scanLimit,
         },
       );
       return null;

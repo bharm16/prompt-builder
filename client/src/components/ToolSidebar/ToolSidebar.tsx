@@ -1,4 +1,6 @@
 import {
+  lazy,
+  Suspense,
   useCallback,
   useEffect,
   useMemo,
@@ -11,9 +13,23 @@ import type { PromptHistoryEntry } from "@features/prompt-optimizer";
 import { ToolRail } from "./components/ToolRail";
 import { ToolPanel } from "./components/ToolPanel";
 import { SessionsPanel } from "./components/panels/SessionsPanel";
-import { GenerationControlsPanel } from "./components/panels/GenerationControlsPanel";
-import { CharactersPanel } from "./components/panels/CharactersPanel";
-import { StylesPanel } from "./components/panels/StylesPanel";
+import { LoadingDots } from "@/components/LoadingDots";
+
+const GenerationControlsPanel = lazy(() =>
+  import("./components/panels/GenerationControlsPanel").then((m) => ({
+    default: m.GenerationControlsPanel,
+  })),
+);
+const CharactersPanel = lazy(() =>
+  import("./components/panels/CharactersPanel").then((m) => ({
+    default: m.CharactersPanel,
+  })),
+);
+const StylesPanel = lazy(() =>
+  import("./components/panels/StylesPanel").then((m) => ({
+    default: m.StylesPanel,
+  })),
+);
 import { useToolSidebarState } from "./hooks/useToolSidebarState";
 import type { ToolPanelType, ToolSidebarProps } from "./types";
 import { useSidebarSessionsDomain, useSidebarWorkspaceDomain } from "./context";
@@ -100,15 +116,27 @@ export function ToolSidebar(props: ToolSidebarProps): ReactElement {
     }
 
     if (panel === "studio") {
-      return <GenerationControlsPanel onBack={handleStudioBack} />;
+      return (
+        <Suspense fallback={<LoadingDots />}>
+          <GenerationControlsPanel onBack={handleStudioBack} />
+        </Suspense>
+      );
     }
 
     if (panel === "characters") {
-      return <CharactersPanel />;
+      return (
+        <Suspense fallback={<LoadingDots />}>
+          <CharactersPanel />
+        </Suspense>
+      );
     }
 
     if (panel === "styles") {
-      return <StylesPanel />;
+      return (
+        <Suspense fallback={<LoadingDots />}>
+          <StylesPanel />
+        </Suspense>
+      );
     }
 
     return null;

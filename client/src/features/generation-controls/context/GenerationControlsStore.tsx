@@ -1,10 +1,13 @@
 import React, {
   createContext,
   useContext,
+  useCallback,
   useEffect,
   useMemo,
   useReducer,
+  useRef,
 } from "react";
+import debounce from "lodash/debounce";
 import type { CapabilityValues } from "@shared/capabilities";
 import type { CameraPath } from "@/features/convergence/types";
 import type { KeyframeTile, VideoTier } from "../types";
@@ -499,9 +502,34 @@ export function GenerationControlsStoreProvider({
     (seed) => (initialState ? seed : loadGenerationControlsStoreState()),
   );
 
+  // Throttled persistence: only write to localStorage after 2s of inactivity.
+  // The reference check skips writes when the reducer returns the same object
+  // (no-op dispatches); for real state changes the debounce is the main optimization.
+  const lastPersistedRef = useRef<GenerationControlsState | null>(null);
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const debouncedPersist = useCallback(
+    debounce((next: GenerationControlsState) => {
+      const prev = lastPersistedRef.current;
+      if (prev !== null && prev.domain === next.domain && prev.ui === next.ui) {
+        return;
+      }
+      lastPersistedRef.current = next;
+      persistGenerationControlsStoreState(next);
+    }, 2_000),
+    [],
+  );
+
   useEffect(() => {
-    persistGenerationControlsStoreState(state);
-  }, [state]);
+    debouncedPersist(state);
+  }, [state, debouncedPersist]);
+
+  // Flush on unmount to prevent data loss
+  useEffect(() => {
+    return () => {
+      debouncedPersist.flush();
+    };
+  }, [debouncedPersist]);
 
   const actions = useMemo<GenerationControlsActions>(
     () => ({

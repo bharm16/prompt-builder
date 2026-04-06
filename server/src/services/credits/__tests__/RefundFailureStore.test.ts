@@ -4,9 +4,15 @@ type StoreRecord = Record<string, unknown>;
 
 type MockDocRef = {
   id: string;
+  ref: { id: string; update: (data: StoreRecord) => Promise<void> };
   get: () => Promise<{ exists: boolean; data: () => StoreRecord | undefined }>;
   update: (data: StoreRecord) => Promise<void>;
   set: (data: StoreRecord, options?: { merge?: boolean }) => Promise<void>;
+};
+
+type MockQuery = {
+  _type: "query";
+  _statusFilter: unknown;
 };
 
 const mocks = vi.hoisted(() => ({
@@ -19,37 +25,81 @@ const mocks = vi.hoisted(() => ({
 
 const clone = (value: StoreRecord): StoreRecord => ({ ...value });
 
-const createDocRef = (id: string): MockDocRef => ({
-  id,
-  get: async () => {
-    const record = mocks.records.get(id);
-    return {
-      exists: Boolean(record),
-      data: () => (record ? clone(record) : undefined),
-    };
-  },
-  update: async (data: StoreRecord) => {
-    const current = mocks.records.get(id);
-    if (!current) {
-      throw new Error(`Missing doc: ${id}`);
-    }
-    mocks.records.set(id, {
-      ...current,
-      ...data,
+const createDocRef = (id: string): MockDocRef => {
+  const ref: MockDocRef = {
+    id,
+    ref: {
+      id,
+      update: async (data: StoreRecord) => {
+        const current = mocks.records.get(id);
+        if (!current) {
+          throw new Error(`Missing doc: ${id}`);
+        }
+        mocks.records.set(id, { ...current, ...data });
+      },
+    },
+    get: async () => {
+      const record = mocks.records.get(id);
+      return {
+        exists: Boolean(record),
+        data: () => (record ? clone(record) : undefined),
+      };
+    },
+    update: async (data: StoreRecord) => {
+      const current = mocks.records.get(id);
+      if (!current) {
+        throw new Error(`Missing doc: ${id}`);
+      }
+      mocks.records.set(id, { ...current, ...data });
+    },
+    set: async (data: StoreRecord, options?: { merge?: boolean }) => {
+      const current = mocks.records.get(id);
+      if (options?.merge && current) {
+        mocks.records.set(id, { ...current, ...data });
+        return;
+      }
+      mocks.records.set(id, clone(data));
+    },
+  };
+  ref.ref.update = ref.update;
+  return ref;
+};
+
+function resolveQuerySnapshot(statusFilter: unknown): {
+  empty: boolean;
+  docs: Array<{
+    id: string;
+    ref: MockDocRef["ref"];
+    data: () => StoreRecord;
+  }>;
+} {
+  const docs = Array.from(mocks.records.entries())
+    .filter(([, record]) => record.status === statusFilter)
+    .sort((a, b) => {
+      const aTs = Number(a[1].updatedAtMs ?? 0);
+      const bTs = Number(b[1].updatedAtMs ?? 0);
+      return aTs - bTs;
+    })
+    .slice(0, 1)
+    .map(([id, record]) => {
+      const docRef = createDocRef(id);
+      return {
+        id,
+        ref: docRef.ref,
+        data: () => clone(record),
+      };
     });
-  },
-  set: async (data: StoreRecord, options?: { merge?: boolean }) => {
-    const current = mocks.records.get(id);
-    if (options?.merge && current) {
-      mocks.records.set(id, {
-        ...current,
-        ...data,
-      });
-      return;
-    }
-    mocks.records.set(id, clone(data));
-  },
-});
+
+  return { empty: docs.length === 0, docs };
+}
+
+vi.mock("@services/firestore/FirestoreCircuitExecutor", () => ({
+  getFirestoreCircuitExecutor: () => ({
+    executeRead: (_label: string, fn: () => Promise<unknown>) => fn(),
+    executeWrite: (_label: string, fn: () => Promise<unknown>) => fn(),
+  }),
+  FirestoreCircuitExecutor: vi.fn(),
+}));
 
 vi.mock("@infrastructure/Logger", () => ({
   logger: {
@@ -76,6 +126,12 @@ vi.mock("@infrastructure/firebaseAdmin", () => ({
     collection: () => ({
       doc: (id: string) => createDocRef(id),
       where: (_field: string, _operator: string, value: unknown) => ({
+        orderBy: () => ({
+          limit: () => ({
+            _type: "query" as const,
+            _statusFilter: value,
+          }),
+        }),
         limit: (scanLimit: number) => ({
           get: () => mocks.queryGet(value, scanLimit),
         }),
@@ -112,9 +168,22 @@ describe("RefundFailureStore", () => {
     mocks.runTransaction.mockImplementation(
       async (fn: (tx: unknown) => Promise<unknown>) => {
         const tx = {
-          get: (docRef: MockDocRef) => docRef.get(),
-          update: (docRef: MockDocRef, data: StoreRecord) =>
-            docRef.update(data),
+          get: (target: MockDocRef | MockQuery) => {
+            if ("_type" in target && target._type === "query") {
+              return Promise.resolve(
+                resolveQuerySnapshot(target._statusFilter),
+              );
+            }
+            return (target as MockDocRef).get();
+          },
+          update: (
+            ref: MockDocRef | MockDocRef["ref"],
+            data: StoreRecord,
+          ): void => {
+            if ("update" in ref && typeof ref.update === "function") {
+              void ref.update(data);
+            }
+          },
           set: (
             docRef: MockDocRef,
             data: StoreRecord,
@@ -279,7 +348,7 @@ describe("RefundFailureStore", () => {
 
     it("returns null when pending query fails", async () => {
       const store = new RefundFailureStore();
-      mocks.queryGet.mockRejectedValueOnce(new Error("query failed"));
+      mocks.runTransaction.mockRejectedValueOnce(new Error("query failed"));
 
       const claimed = await store.claimNextPending(5, 10);
 

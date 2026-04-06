@@ -129,6 +129,43 @@ export function registerHealthRoutes(
     if (provider) workers[name] = provider;
   }
 
+  // Cached Firestore probe — runs on a 15s interval so /health/ready does zero inline I/O.
+  const PROBE_INTERVAL_MS = 15_000;
+  const PROBE_STALE_THRESHOLD_MS = 45_000;
+  let firestoreProbeHealthy = false;
+  let firestoreProbeLastSuccessAt: number | null = null;
+  let firestoreProbeLastError: string | null = null;
+
+  const runFirestoreProbe = async (): Promise<void> => {
+    try {
+      await firestoreCircuitExecutor.executeRead(
+        "health.ready.firestoreProbe",
+        async () => {
+          const firestore = getFirestore();
+          // Lightweight connectivity check — the collection name is arbitrary and
+          // need not exist. Firestore returns an empty snapshot for nonexistent
+          // collections, so this verifies connectivity without side effects.
+          await firestore.collection("_health_probe").limit(1).get();
+        },
+      );
+      firestoreProbeHealthy = true;
+      firestoreProbeLastSuccessAt = Date.now();
+      firestoreProbeLastError = null;
+    } catch (error) {
+      firestoreProbeHealthy = false;
+      firestoreProbeLastError =
+        error instanceof Error ? error.message : String(error);
+      logger.warn("Firestore readiness probe failed", {
+        error: firestoreProbeLastError,
+      });
+    }
+  };
+
+  // Run the probe once immediately, then on interval
+  void runFirestoreProbe();
+  const probeInterval = setInterval(() => void runFirestoreProbe(), PROBE_INTERVAL_MS);
+  probeInterval.unref(); // Don't keep the process alive for the probe
+
   const healthRoutes = createHealthRoutes({
     openAIClient: container.resolve("openAIClient"),
     groqClient: container.resolve("groqClient"),
@@ -137,12 +174,18 @@ export function registerHealthRoutes(
     metricsService: container.resolve("metricsService"),
     firestoreCircuitExecutor,
     checkFirestore: async () => {
-      await firestoreCircuitExecutor.executeRead(
-        "health.ready.firestoreProbe",
-        async () => {
-          await getFirestore().listCollections();
-        },
-      );
+      // Read cached probe result — zero inline I/O
+      const isStale =
+        firestoreProbeLastSuccessAt === null ||
+        Date.now() - firestoreProbeLastSuccessAt > PROBE_STALE_THRESHOLD_MS;
+      if (!firestoreProbeHealthy || isStale) {
+        throw new Error(
+          firestoreProbeLastError ??
+            (isStale
+              ? "Firestore probe stale (no successful check within threshold)"
+              : "Firestore probe unhealthy"),
+        );
+      }
     },
     ...(checkVideoExecutionPath ? { checkVideoExecutionPath } : {}),
     workers,

@@ -103,28 +103,28 @@ async function initializeCommon(container: DIContainer): Promise<void> {
     process.env.VITEST_WORKER_ID;
   const runtimeFlags = getRuntimeFlags();
 
-  // Infrastructure startup checks (skip in test)
+  // Infrastructure startup checks (skip in test) — run in parallel
   if (!isTestEnv) {
     try {
-      await withTimeout("firebase-auth", async () => {
-        const auth = getAuth();
-        await auth.listUsers(1);
-      });
-
-      await withTimeout("firestore", async () => {
-        const firestore = getFirestore();
-        await firestore.listCollections();
-      });
-
-      await withTimeout("gcs-bucket", async () => {
-        const bucket = container.resolve<Bucket>("gcsBucket");
-        const [exists] = await bucket.exists();
-        if (!exists) {
-          throw new Error(
-            `Configured GCS bucket does not exist: ${bucket.name}`,
-          );
-        }
-      });
+      await Promise.all([
+        withTimeout("firebase-auth", async () => {
+          const auth = getAuth();
+          await auth.listUsers(1);
+        }),
+        withTimeout("firestore", async () => {
+          const firestore = getFirestore();
+          await firestore.listCollections();
+        }),
+        withTimeout("gcs-bucket", async () => {
+          const bucket = container.resolve<Bucket>("gcsBucket");
+          const [exists] = await bucket.exists();
+          if (!exists) {
+            throw new Error(
+              `Configured GCS bucket does not exist: ${bucket.name}`,
+            );
+          }
+        }),
+      ]);
 
       logger.info("✅ Infrastructure startup checks passed", {
         checks: ["firebase-auth", "firestore", "gcs-bucket"],
@@ -139,66 +139,79 @@ async function initializeCommon(container: DIContainer): Promise<void> {
     }
   }
 
-  // Validate LLM clients
+  // Validate LLM clients — run in parallel
   const openAIClient = container.resolve<LLMClient | null>("openAIClient");
+  const groqClient = container.resolve<LLMClient | null>("groqClient");
+  const qwenClient = container.resolve<LLMClient | null>("qwenClient");
+  const geminiClient = container.resolve<LLMClient | null>("geminiClient");
+
+  const llmValidations: Promise<void>[] = [];
+
   if (openAIClient) {
     logger.info("Validating OpenAI API key...");
-    await validateLLMClient(container, {
-      client: openAIClient,
-      serviceName: "openAIClient",
-      successMessage: "✅ OpenAI API key validated successfully",
-      unhealthyMessage:
-        "⚠️  OpenAI API key validation failed - OpenAI adapter disabled",
-      failureMessage:
-        "⚠️  Failed to validate OpenAI API key - OpenAI adapter disabled",
-    });
+    llmValidations.push(
+      validateLLMClient(container, {
+        client: openAIClient,
+        serviceName: "openAIClient",
+        successMessage: "✅ OpenAI API key validated successfully",
+        unhealthyMessage:
+          "⚠️  OpenAI API key validation failed - OpenAI adapter disabled",
+        failureMessage:
+          "⚠️  Failed to validate OpenAI API key - OpenAI adapter disabled",
+      }),
+    );
   } else {
     logger.warn("OpenAI client not configured; relying on other providers");
   }
 
-  const groqClient = container.resolve<LLMClient | null>("groqClient");
   if (groqClient) {
     logger.info("Groq client initialized for adapter-based routing");
-    await validateLLMClient(container, {
-      client: groqClient,
-      serviceName: "groqClient",
-      successMessage: "✅ Groq API key validated successfully",
-      unhealthyMessage:
-        "⚠️  Groq API key validation failed - Groq adapter disabled",
-      failureMessage:
-        "⚠️  Failed to validate Groq API key - Groq adapter disabled",
-    });
+    llmValidations.push(
+      validateLLMClient(container, {
+        client: groqClient,
+        serviceName: "groqClient",
+        successMessage: "✅ Groq API key validated successfully",
+        unhealthyMessage:
+          "⚠️  Groq API key validation failed - Groq adapter disabled",
+        failureMessage:
+          "⚠️  Failed to validate Groq API key - Groq adapter disabled",
+      }),
+    );
   }
 
-  const qwenClient = container.resolve<LLMClient | null>("qwenClient");
   if (qwenClient) {
     logger.info("Qwen client initialized for adapter-based routing");
-    await validateLLMClient(container, {
-      client: qwenClient,
-      serviceName: "qwenClient",
-      successMessage: "✅ Qwen API key validated successfully",
-      unhealthyMessage: "⚠️  Qwen API key validation failed - adapter disabled",
-      failureMessage: "⚠️  Failed to validate Qwen API key - adapter disabled",
-    });
+    llmValidations.push(
+      validateLLMClient(container, {
+        client: qwenClient,
+        serviceName: "qwenClient",
+        successMessage: "✅ Qwen API key validated successfully",
+        unhealthyMessage: "⚠️  Qwen API key validation failed - adapter disabled",
+        failureMessage: "⚠️  Failed to validate Qwen API key - adapter disabled",
+      }),
+    );
   }
 
-  const geminiClient = container.resolve<LLMClient | null>("geminiClient");
   if (geminiClient) {
     logger.info("Gemini client initialized for adapter-based routing");
     const allowUnhealthyGemini = runtimeFlags.allowUnhealthyGemini;
-    await validateLLMClient(container, {
-      client: geminiClient,
-      serviceName: "geminiClient",
-      successMessage: "✅ Gemini API key validated successfully",
-      unhealthyMessage: "⚠️  Gemini API key validation failed",
-      failureMessage: "⚠️  Failed to validate Gemini API key",
-      allowUnhealthy: allowUnhealthyGemini,
-      disableUnhealthyMessage:
-        "⚠️  Gemini adapter disabled (health check failed)",
-      keepUnhealthyMessage:
-        "Keeping Gemini adapter enabled despite failed health check",
-    });
+    llmValidations.push(
+      validateLLMClient(container, {
+        client: geminiClient,
+        serviceName: "geminiClient",
+        successMessage: "✅ Gemini API key validated successfully",
+        unhealthyMessage: "⚠️  Gemini API key validation failed",
+        failureMessage: "⚠️  Failed to validate Gemini API key",
+        allowUnhealthy: allowUnhealthyGemini,
+        disableUnhealthyMessage:
+          "⚠️  Gemini adapter disabled (health check failed)",
+        keepUnhealthyMessage:
+          "Keeping Gemini adapter enabled despite failed health check",
+      }),
+    );
   }
+
+  await Promise.all(llmValidations);
 
   // Pre-resolve critical services to catch configuration errors early
   const serviceNames = [
