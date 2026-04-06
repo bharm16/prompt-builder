@@ -213,15 +213,10 @@ export function CanvasPromptBar({
     >
       <div
         className={cn(
-          "motion-safe-transition rounded-[24px] border transition-[border-color,background-color,box-shadow,transform]",
+          "motion-safe-transition transition-[transform]",
           isEmptyLayout
-            ? "bg-tool-surface-prompt px-5 pb-3 pt-5"
-            : "bg-tool-surface-prompt-compact px-4 py-3",
-          isFocused
-            ? "border-tool-accent-selection/25 shadow-[0_0_0_1px_rgba(108,92,231,0.12),0_16px_48px_rgba(0,0,0,0.34)] -translate-y-px"
-            : isEmptyLayout
-              ? "border-tool-nav-active shadow-[0_4px_24px_rgba(0,0,0,0.25)]"
-              : "border-tool-nav-active shadow-none",
+            ? "px-5 pb-3 pt-5"
+            : "px-4 py-3",
         )}
         onClick={() => {
           editorRef.current?.focus();
@@ -234,7 +229,7 @@ export function CanvasPromptBar({
             className={cn(
               "ps-scrollbar-hide max-h-[180px] overflow-y-auto outline-none [&:empty]:min-h-[56px]",
               isEmptyLayout
-                ? "min-h-[56px] text-[15px] leading-[1.7] text-foreground caret-tool-accent-selection"
+                ? "min-h-[56px] text-[15px] leading-[1.7] text-foreground caret-foreground"
                 : "min-h-[56px] text-[15px] leading-[1.75] text-tool-text-dim",
             )}
             placeholder="Describe a video and click generate..."
@@ -357,7 +352,7 @@ export function CanvasPromptBar({
                         }
                       }}
                       placeholder="Add a specific change (e.g. football field)"
-                      className="min-h-9 flex-1 resize-none rounded-lg border border-tool-nav-active bg-tool-surface-prompt-compact px-3 py-2 text-xs text-foreground placeholder:text-tool-text-subdued focus-visible:ring-2 focus-visible:ring-tool-accent-selection/25 focus-visible:ring-offset-0"
+                      className="min-h-9 flex-1 resize-none rounded-lg border border-tool-nav-active bg-tool-surface-prompt-compact px-3 py-2 text-xs text-foreground placeholder:text-tool-text-subdued focus-visible:ring-2 focus-visible:ring-white/10 focus-visible:ring-offset-0"
                       maxLength={MAX_REQUEST_LENGTH}
                       rows={1}
                       aria-label="Custom suggestion request"
