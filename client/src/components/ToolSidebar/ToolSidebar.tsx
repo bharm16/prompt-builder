@@ -158,10 +158,10 @@ export function ToolSidebar(props: ToolSidebarProps): ReactElement {
       {isCanvasFirstLayout ? (
         overlayPanelContent ? (
           <div
-            className="absolute left-full top-0 z-20 h-full w-[400px] border-r border-tool-rail-border bg-[linear-gradient(180deg,#11131A_0%,#0D0F16_100%)] text-white shadow-[24px_0_80px_rgba(0,0,0,0.45)]"
+            className="absolute left-full top-0 z-20 h-full w-[400px] border-r border-tool-rail-border bg-tool-panel-bg text-white shadow-[24px_0_80px_rgba(0,0,0,0.45)]"
             data-testid="tool-sidebar-overlay-panel"
           >
-            <div className="flex h-full flex-col bg-[rgba(15,18,26,0.7)]">
+            <div className="flex h-full flex-col bg-tool-panel-inner/90">
               <div
                 key={activePanel}
                 className="motion-presence-panel h-full ps-animate-fade-in"

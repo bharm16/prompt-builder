@@ -33,6 +33,9 @@ export function ToolRail({
     return tier.charAt(0).toUpperCase() + tier.slice(1);
   }, [user, status, isLoadingStatus]);
 
+  // Keep planLabel referenced to avoid lint unused-variable error
+  void planLabel;
+
   const handlePanelChange = (panelId: typeof activePanel): void => {
     if (panelId === "sessions") {
       // Toggle sessions — if already viewing sessions, go back to studio
@@ -44,23 +47,21 @@ export function ToolRail({
 
   return (
     <aside
-      className="flex h-full w-60 flex-none flex-col items-stretch border-r border-tool-rail-border bg-black px-2.5 py-2.5"
+      className="flex h-full w-[52px] flex-none flex-col items-center border-r border-tool-rail-border bg-tool-rail-bg px-1.5 py-3"
       aria-label="Tool navigation"
     >
-      <div className="px-3.5 py-3">
-        <span className="text-[19px] font-bold tracking-tight text-foreground">
-          Vidra
-        </span>
+      <div className="flex h-8 w-8 items-center justify-center">
+        <span className="text-[15px] font-bold text-foreground">V</span>
       </div>
 
       <div
-        className="mx-1 my-1.5 h-px bg-tool-rail-border"
+        className="my-1.5 h-px w-6 bg-tool-rail-border"
         aria-hidden="true"
       />
 
       {/* ── Nav items: Tool, Apps, Chars, Styles ── */}
       <nav
-        className="flex flex-col items-stretch gap-0.5"
+        className="flex flex-col items-center gap-0.5"
         aria-label="Tool panels"
       >
         {navItems.map((item) => (
@@ -82,7 +83,7 @@ export function ToolRail({
           }}
         />
         <div
-          className="mx-1 my-1.5 h-px bg-tool-rail-border"
+          className="my-1.5 h-px w-6 bg-tool-rail-border"
           aria-hidden="true"
         />
         {sessionsItem ? (
@@ -99,51 +100,42 @@ export function ToolRail({
       <div className="flex-1" />
 
       {/* ── Bottom: Home + Profile ── */}
-      <div className="flex w-full flex-col items-stretch gap-0.5 pb-2.5">
+      <div className="flex flex-col items-center gap-1 pb-2">
         <Link
           to="/home"
-          className="flex w-full items-center gap-3 rounded-lg px-3.5 py-3 text-left text-foreground transition-colors hover:bg-tool-nav-hover hover:text-foreground"
+          className="flex h-10 w-10 items-center justify-center rounded-xl text-tool-text-muted transition-colors hover:bg-tool-nav-hover hover:text-tool-text-primary"
           aria-label="Home"
+          title="Home"
         >
-          <Home className="h-5 w-5 shrink-0" weight="bold" />
-          <span className="text-body-sm font-semibold leading-none tracking-[0.02em]">
-            Home
-          </span>
+          <Home size={20} weight="regular" />
         </Link>
 
         <div
-          className="mx-1 my-1 h-px bg-tool-rail-border"
+          className="my-1.5 h-px w-6 bg-tool-rail-border"
           aria-hidden="true"
         />
 
-        {/* ── Profile row ── */}
+        {/* ── Profile avatar ── */}
         <Link
           to={userActionLink}
-          className="flex w-full items-center gap-3 rounded-lg px-3.5 py-2.5 text-left transition-colors hover:bg-tool-nav-hover"
+          className="flex h-8 w-8 items-center justify-center"
           aria-label={userActionLabel}
+          title={displayName || email || "Account"}
         >
           {photoURL ? (
             <img
               src={photoURL}
               alt=""
-              className="h-8 w-8 flex-none rounded-lg object-cover"
+              className="h-8 w-8 rounded-lg object-cover"
               referrerPolicy="no-referrer"
             />
           ) : (
-            <div className="flex h-8 w-8 flex-none items-center justify-center rounded-lg bg-surface-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-surface-2">
               <span className="text-body-sm font-bold text-white">
                 {initial}
               </span>
             </div>
           )}
-          <div className="flex min-w-0 flex-col gap-0.5">
-            <span className="truncate text-body-sm font-medium leading-none text-foreground">
-              {displayName || email || "Account"}
-            </span>
-            <span className="text-[11px] leading-none text-tool-text-subdued">
-              {planLabel}
-            </span>
-          </div>
         </Link>
       </div>
     </aside>
