@@ -153,28 +153,28 @@
     --ps-ease-linear: linear;
 
     /* =========================
-       Color (dark-first, Runway/Midjourney reference)
+       Color (warm charcoal + violet accent)
        ========================= */
-    --ps-bg: #16181d; /* Updated: Midjourney panel bg */
-    --ps-surface-1: #1b1e23; /* Updated: Runway panel */
-    --ps-surface-2: #2c3037; /* Updated */
-    --ps-surface-3: #242a38;
-    --ps-border: #434651; /* Updated */
-    --ps-border-strong: #5a5e6c; /* Updated */
-    --ps-text: #ebecef; /* Updated: Midjourney text */
-    --ps-text-muted: #c6c9d2; /* Updated: Midjourney secondary */
-    --ps-text-faint: #aaaebb; /* Updated: Midjourney tertiary */
-    --ps-text-ghost: #a1afc5; /* Updated: Runway muted */
+    --ps-bg: #131316;            /* Warm charcoal base */
+    --ps-surface-1: #1a1a1f;     /* Card/panel surface */
+    --ps-surface-2: #222228;     /* Elevated surface */
+    --ps-surface-3: #2a2a32;     /* Tertiary surface */
+    --ps-border: rgba(255, 255, 255, 0.08);   /* Subtle separation */
+    --ps-border-strong: rgba(255, 255, 255, 0.14); /* Emphasized border */
+    --ps-text: #f0f0f3;          /* Primary text */
+    --ps-text-muted: #b0b0be;    /* Secondary text */
+    --ps-text-faint: #8b8b9e;    /* Tertiary text */
+    --ps-text-ghost: #6b6b7e;    /* Ghost/placeholder text */
     --ps-text-warm: rgba(255, 255, 255, 0.95);
-    --ps-accent: #ffffff;
-    --ps-accent-2: #b3affd; /* Updated: Version indicator accent */
-    --ps-accent-runway: #2c22fa; /* New: Runway primary blue */
-    --ps-accent-mj: #f2330d; /* New: Midjourney orange */
+    --ps-accent: #7c3aed;        /* Violet accent */
+    --ps-accent-2: #a78bfa;      /* Violet light variant */
+    --ps-accent-runway: #7c3aed; /* Map runway accent to violet */
+    --ps-accent-mj: #f2330d;     /* Keep MJ orange */
     --ps-success: #4ec7a2;
     --ps-warning: #f5c05c;
     --ps-danger: #fa6e7c;
     --ps-info: var(--ps-accent);
-    --ps-overlay: rgba(5, 8, 12, 0.68);
+    --ps-overlay: rgba(10, 10, 14, 0.72);
 
     /* Brand palette (light UI) */
     --ps-brand-primary-50: #fafafa;
