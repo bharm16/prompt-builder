@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { WarningCircle } from "@promptstudio/system/components/ui";
 import { useResolvedMediaUrl } from "@/hooks/useResolvedMediaUrl";
 import { extractStorageObjectPath } from "@/utils/storageUrl";
 import {
@@ -28,21 +27,6 @@ const normalizeUrl = (value: string | null | undefined): string | null => {
   return trimmed.length > 0 ? trimmed : null;
 };
 
-const formatElapsed = (createdAt: number): string => {
-  const elapsedMs = Date.now() - createdAt;
-  const seconds = Math.floor(elapsedMs / 1000);
-  if (seconds < 60) return `${seconds}s`;
-  const minutes = Math.floor(seconds / 60);
-  const remainingSeconds = seconds % 60;
-  return `${minutes}:${String(remainingSeconds).padStart(2, "0")}`;
-};
-
-const resolveProgressLabel = (generation: Generation): string => {
-  if (generation.serverJobStatus === "queued") return "Queued";
-  if (generation.status === "pending") return "Starting";
-  return "Rendering";
-};
-
 const resolveAspectRatio = (generation: Generation | null): string => {
   if (!generation?.aspectRatio) return "16 / 9";
   const [left, right] = generation.aspectRatio.split(":");
@@ -61,7 +45,6 @@ const resolveAspectRatio = (generation: Generation | null): string => {
 
 export function CanvasHeroViewer({
   generation,
-  onCancel,
 }: CanvasHeroViewerProps): React.ReactElement | null {
   const rawPrimaryMediaUrl = useMemo(
     () => normalizeUrl(generation?.mediaUrls[0] ?? null),
@@ -131,7 +114,7 @@ export function CanvasHeroViewer({
     generation?.status === "pending" || generation?.status === "generating";
   const isFailed = generation?.status === "failed";
 
-  // Tick every second while generating so elapsed time updates
+  // Tick every second while generating so progress updates
   const [, setTick] = useState(0);
   useEffect(() => {
     if (!isGenerating) return;
@@ -148,165 +131,80 @@ export function CanvasHeroViewer({
       getGenerationProgressPercent(generation, Date.now()) ??
       (generation.status === "pending" ? 5 : 10);
     const clampedProgress = Math.max(0, Math.min(100, progress));
-    const modelConfig = getModelConfig(generation.model);
-    const modelLabel = modelConfig?.label ?? generation.model;
-    const eta = modelConfig?.eta ?? null;
-    const stageLabel = resolveProgressLabel(generation);
-    const elapsed = formatElapsed(generation.createdAt);
 
     return (
-      <div className="relative overflow-hidden rounded-2xl bg-tool-surface-deep">
+      <div
+        key={generation.id}
+        className="relative mx-auto flex w-full max-w-[780px] flex-col items-center justify-center"
+        style={{
+          aspectRatio,
+          border: '1px solid rgba(255,255,255,0.04)',
+          borderRadius: '14px',
+          animation: 'outline-breathe 3s ease-in-out infinite',
+        }}
+      >
+        {/* Fill gradient rising from bottom based on progress */}
         <div
-          key={generation.id}
-          className="relative mx-auto flex w-full max-w-[780px] flex-col items-center justify-center bg-gradient-to-br from-tool-rail-border to-tool-surface-deep"
-          style={{ aspectRatio }}
-        >
-          {/* Atmospheric aurora background */}
-          <div
-            className="pointer-events-none absolute inset-0 overflow-hidden rounded-2xl"
-            aria-hidden="true"
-          >
-            <div
-              className="motion-aurora absolute inset-[-50%] h-[200%] w-[200%]"
-              style={{
-                background:
-                  "conic-gradient(from 0deg, rgba(255,255,255,0.03), rgba(200,200,210,0.03), rgba(255,255,255,0.02), rgba(200,200,210,0.03))",
-                animation: "aurora-rotate 12s linear infinite",
-                filter: "blur(60px)",
-              }}
-            />
-          </div>
-
-          {/* Cancel button */}
-          {onCancel ? (
-            <button
-              type="button"
-              aria-label="Cancel render"
-              className="absolute right-4 top-4 z-10 rounded-full border border-white/10 bg-black/40 px-3 py-1.5 text-[11px] font-medium text-white/70 backdrop-blur-sm transition-colors hover:bg-black/60 hover:text-white"
-              onClick={() => {
-                if (generation) {
-                  onCancel(generation);
-                }
-              }}
-            >
-              Cancel
-            </button>
-          ) : null}
-
-          {/* Progress content (center) */}
-          <div className="relative z-10 flex flex-col items-center gap-5 px-6 text-center">
-            <span className="text-2xl font-semibold tabular-nums text-foreground/90">
-              {clampedProgress}%
-            </span>
-
-            <div className="space-y-1.5">
-              <p className="text-sm font-medium tracking-wide text-foreground/80">
-                {stageLabel}
-              </p>
-              <p className="text-xs tabular-nums text-tool-text-subdued">
-                {modelLabel} &middot; {elapsed}
-                {eta ? ` \u00B7 est. ${eta}` : ""}
-              </p>
-            </div>
-          </div>
-
-          {/* Bottom progress bar */}
-          <div className="absolute inset-x-0 bottom-0 z-10 h-[2px] bg-white/5">
-            <div
-              className="h-full bg-gradient-to-r from-white/20 to-white/5 transition-[width] duration-700 ease-out"
-              style={{ width: `${clampedProgress}%` }}
-            />
-          </div>
-        </div>
+          className="pointer-events-none absolute bottom-0 left-0 right-0 transition-[height] duration-[2000ms] ease-out"
+          style={{
+            height: `${clampedProgress}%`,
+            background: 'linear-gradient(to top, rgba(255,255,255,0.02) 0%, rgba(255,255,255,0.005) 100%)',
+            borderRadius: '0 0 13px 13px',
+          }}
+          aria-hidden="true"
+        />
       </div>
     );
   }
 
   if (isFailed) {
     return (
-      <div className="relative overflow-hidden rounded-2xl bg-tool-surface-deep">
-        <div
-          key={generation.id}
-          className="relative mx-auto flex w-full max-w-[780px] items-center justify-center bg-tool-surface-deep px-6"
-          style={{ aspectRatio }}
-        >
-          <div className="flex max-w-[360px] flex-col items-center gap-3 text-center">
-            <WarningCircle
-              size={28}
-              className="text-danger/80"
-              aria-hidden="true"
-            />
-            <div className="space-y-1">
-              <p className="text-sm font-semibold text-foreground">
-                Generation failed
-              </p>
-              <p className="text-xs text-tool-text-subdued">
-                {generation.error ?? "Unable to load this generation."}
-              </p>
-            </div>
-          </div>
-        </div>
+      <div className="mx-auto flex max-w-[780px] items-center justify-center py-16">
+        <p className="text-sm text-tool-text-disabled">
+          Generation failed{generation.error ? ` \u00B7 ${generation.error}` : ''}
+        </p>
       </div>
     );
   }
 
   if (!previewUrl) {
     return (
-      <div className="relative overflow-hidden rounded-2xl bg-tool-surface-deep">
-        <div
-          key={generation.id}
-          className="relative mx-auto flex w-full max-w-[780px] items-center justify-center bg-gradient-to-br from-tool-rail-border to-tool-surface-deep px-6"
-          style={{ aspectRatio }}
-        >
-          <div className="flex max-w-[360px] flex-col items-center gap-3 text-center">
-            <WarningCircle
-              size={28}
-              className="text-tool-text-dim"
-              aria-hidden="true"
-            />
-            <div className="space-y-1">
-              <p className="text-sm font-semibold text-foreground">
-                Generation unavailable
-              </p>
-              <p className="text-xs text-tool-text-subdued">
-                No media is available for this generation.
-              </p>
-            </div>
-          </div>
-        </div>
+      <div className="mx-auto flex max-w-[780px] items-center justify-center py-16">
+        <p className="text-sm text-tool-text-disabled">
+          Generation unavailable
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="relative overflow-hidden rounded-2xl bg-tool-surface-deep">
-      <div
-        key={generation.id}
-        className="relative mx-auto w-full max-w-[780px]"
-        style={{ aspectRatio }}
-      >
-        {isVideo ? (
-          <video
-            src={previewUrl}
-            className="h-full w-full object-cover ps-animate-fade-in"
-            autoPlay
-            loop
-            muted
-            playsInline
-          />
-        ) : (
-          <img
-            src={previewUrl}
-            alt=""
-            className="h-full w-full object-cover ps-animate-fade-in"
-          />
-        )}
-        {metadata ? (
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-4 pb-3 pt-10">
-            <p className="text-[12px] text-tool-text-dim">{metadata}</p>
-          </div>
-        ) : null}
-      </div>
+    <div
+      key={generation.id}
+      className="relative mx-auto w-full max-w-[780px]"
+      style={{ aspectRatio }}
+    >
+      {isVideo ? (
+        <video
+          src={previewUrl}
+          className="h-full w-full rounded-[14px] object-cover ps-animate-fade-in"
+          autoPlay
+          loop
+          muted
+          playsInline
+        />
+      ) : (
+        <img
+          src={previewUrl}
+          alt=""
+          className="h-full w-full rounded-[14px] object-cover ps-animate-fade-in"
+          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+        />
+      )}
+      {metadata ? (
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 rounded-b-[14px] bg-gradient-to-t from-black/70 to-transparent px-4 pb-3 pt-10">
+          <p className="text-[12px] text-tool-text-dim">{metadata}</p>
+        </div>
+      ) : null}
     </div>
   );
 }
