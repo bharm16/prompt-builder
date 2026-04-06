@@ -28,7 +28,6 @@ import { GenerationPopover } from "@/features/prompt-optimizer/components/Genera
 import { useAnimatedPresence } from "@/hooks/useAnimatedPresence";
 import { cn } from "@/utils/cn";
 import { buildGalleryGenerationEntries } from "./utils/galleryGeneration";
-import { CanvasTopBar } from "./components/CanvasTopBar";
 import { CanvasPromptBar } from "./components/CanvasPromptBar";
 import { ModelCornerSelector } from "./components/ModelCornerSelector";
 import { CanvasHeroViewer } from "./components/CanvasHeroViewer";
@@ -444,9 +443,7 @@ export function CanvasWorkspace({
   };
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-tool-surface-deep">
-      <CanvasTopBar />
-
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-app">
       <div className="flex min-h-0 flex-1 overflow-hidden px-3">
         <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden px-8 pb-0">
           {shouldRenderEmptyChrome ? (
@@ -480,7 +477,7 @@ export function CanvasWorkspace({
           >
             {shouldRenderHero ? (
               <div
-                className="motion-presence-panel mb-5"
+                className="motion-presence-panel mb-3"
                 data-motion-state={heroPhase}
               >
                 <CanvasHeroViewer

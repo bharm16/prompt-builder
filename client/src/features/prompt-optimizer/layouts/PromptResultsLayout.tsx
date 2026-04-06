@@ -254,7 +254,7 @@ export const PromptResultsLayout = (): React.ReactElement => {
       )}
 
       <PromptResultsSection />
-      <div className="bg-tool-surface-deep px-3 py-2">
+      <div className="bg-app px-3 py-2">
         <PipelineStatus shot={currentShot} isGenerating={isGeneratingShot} />
       </div>
     </main>
