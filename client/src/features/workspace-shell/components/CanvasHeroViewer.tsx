@@ -170,7 +170,7 @@ export function CanvasHeroViewer({
               className="motion-aurora absolute inset-[-50%] h-[200%] w-[200%]"
               style={{
                 background:
-                  "conic-gradient(from 0deg, rgba(124,58,237,0.13), rgba(59,130,246,0.13), rgba(6,182,212,0.13), rgba(124,58,237,0.13))",
+                  "conic-gradient(from 0deg, rgba(255,255,255,0.03), rgba(200,200,210,0.03), rgba(255,255,255,0.02), rgba(200,200,210,0.03))",
                 animation: "aurora-rotate 12s linear infinite",
                 filter: "blur(60px)",
               }}
@@ -213,7 +213,7 @@ export function CanvasHeroViewer({
           {/* Bottom progress bar */}
           <div className="absolute inset-x-0 bottom-0 z-10 h-[2px] bg-white/5">
             <div
-              className="h-full bg-gradient-to-r from-violet-500 to-blue-500 transition-[width] duration-700 ease-out"
+              className="h-full bg-gradient-to-r from-white/20 to-white/5 transition-[width] duration-700 ease-out"
               style={{ width: `${clampedProgress}%` }}
             />
           </div>

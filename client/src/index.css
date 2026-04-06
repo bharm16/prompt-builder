@@ -28,7 +28,7 @@
     --tool-panel-bg: #131316;
     --tool-panel-inner-bg: #111114;
     --tool-rail-border: rgba(255, 255, 255, 0.06);
-    --tool-nav-active-bg: rgba(124, 58, 237, 0.12);
+    --tool-nav-active-bg: rgba(255, 255, 255, 0.05);
     --tool-tab-active-bg: #222228;
     --tool-border-primary: rgba(255, 255, 255, 0.08);
     --tool-border-dark: rgba(255, 255, 255, 0.05);
@@ -37,10 +37,10 @@
     --tool-text-secondary: #b0b0be;
     --tool-text-muted: #8b8b9e;
     --tool-text-placeholder: #6b6b7e;
-    --tool-accent-purple: #a78bfa;
+    --tool-accent-purple: #c8c8d0;
 
-    /* Nav active indicator (violet accent) */
-    --tool-nav-indicator: #7c3aed;
+    /* Nav active indicator (neutral accent) */
+    --tool-nav-indicator: #c8c8d0;
     --tool-nav-hover-bg: rgba(255, 255, 255, 0.04);
     --tool-text-subdued: #4a4a5e;
     --tool-surface-inset: #0e0e12;
@@ -53,7 +53,7 @@
     --tool-surface-card: #16161a;
     --tool-surface-prompt: #14141a;
     --tool-surface-prompt-compact: #131318;
-    --tool-accent-selection: #7c3aed;
+    --tool-accent-selection: #c8c8d0;
   }
 
   html,
@@ -92,15 +92,11 @@
   /* App-specific utilities only - things that don't belong in the design system */
 
   .glow-violet {
-    box-shadow:
-      0 0 20px rgba(124, 58, 237, 0.3),
-      0 4px 12px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
   }
 
   .glow-violet:hover {
-    box-shadow:
-      0 0 28px rgba(124, 58, 237, 0.4),
-      0 6px 16px rgba(0, 0, 0, 0.35);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
   }
 
   .glass {
