@@ -3,6 +3,8 @@ import type { Request, RequestHandler, Response } from "express";
 import { logger } from "@infrastructure/Logger";
 
 const DEFAULT_COALESCING_WINDOW_MS = 100;
+const DEFAULT_MAX_PENDING = 1000;
+const DEFAULT_HOUSEKEEP_INTERVAL_MS = 5000;
 
 const HOP_BY_HOP_HEADERS = new Set([
   "connection",
@@ -222,12 +224,22 @@ function isStreamingRequest(req: Request): boolean {
   );
 }
 
+export interface RequestCoalescingMiddlewareOptions {
+  /** Hard cap on pending entries. Oldest is evicted (FIFO) on overflow. */
+  maxPending?: number;
+  /** Interval (ms) for the independent housekeeper sweep of expired entries. */
+  housekeepIntervalMs?: number;
+}
+
 export class RequestCoalescingMiddleware {
   private pendingRequests: Map<string, PendingEntry>;
   private stats: { coalesced: number; unique: number; totalSaved: number };
   private cleanupTimer: ReturnType<typeof setTimeout> | null;
+  private housekeepTimer: ReturnType<typeof setInterval> | null;
+  private readonly maxPending: number;
+  private readonly housekeepIntervalMs: number;
 
-  constructor() {
+  constructor(options: RequestCoalescingMiddlewareOptions = {}) {
     this.pendingRequests = new Map();
     this.stats = {
       coalesced: 0,
@@ -235,6 +247,70 @@ export class RequestCoalescingMiddleware {
       totalSaved: 0,
     };
     this.cleanupTimer = null;
+    this.housekeepTimer = null;
+    this.maxPending = Math.max(1, options.maxPending ?? DEFAULT_MAX_PENDING);
+    this.housekeepIntervalMs = Math.max(
+      1,
+      options.housekeepIntervalMs ?? DEFAULT_HOUSEKEEP_INTERVAL_MS,
+    );
+    this.startHousekeeper();
+  }
+
+  /**
+   * Start the independent housekeeper interval that sweeps expired entries.
+   * Idempotent: a no-op if the timer is already running.
+   */
+  startHousekeeper(): void {
+    if (this.housekeepTimer) {
+      return;
+    }
+    const handle = setInterval(() => {
+      this._cleanupCompletedRequests();
+    }, this.housekeepIntervalMs);
+    if (typeof handle.unref === "function") {
+      handle.unref();
+    }
+    this.housekeepTimer = handle;
+  }
+
+  /**
+   * Stop the independent housekeeper interval. Idempotent: safe to call when
+   * not running. Terminal for the housekeeper; prefer `dispose()` for full
+   * shutdown of the middleware instance.
+   */
+  stopHousekeeper(): void {
+    if (!this.housekeepTimer) {
+      return;
+    }
+    clearInterval(this.housekeepTimer);
+    this.housekeepTimer = null;
+  }
+
+  /**
+   * Snapshot of current pending-map occupancy and the configured hard cap.
+   */
+  capacityStats(): { pending: number; maxPending: number } {
+    return {
+      pending: this.pendingRequests.size,
+      maxPending: this.maxPending,
+    };
+  }
+
+  // Relies on Map insertion-order stability: Map.set() on an existing key
+  // preserves the original position, so we get FIFO eviction, not LRU.
+  private evictOldestIfAtCapacity(): void {
+    if (this.pendingRequests.size < this.maxPending) {
+      return;
+    }
+    const oldestKey = this.pendingRequests.keys().next().value;
+    if (oldestKey === undefined) {
+      return;
+    }
+    this.pendingRequests.delete(oldestKey);
+    logger.warn("Request coalescing pending map at capacity; evicted oldest", {
+      maxPending: this.maxPending,
+      evictedKey: oldestKey,
+    });
   }
 
   generateKey(req: Request, options: RequestCoalescingOptions): string {
@@ -295,6 +371,7 @@ export class RequestCoalescingMiddleware {
         },
       );
 
+      this.evictOldestIfAtCapacity();
       this.pendingRequests.set(requestKey, {
         promise: requestPromise,
         completedAt: null,
@@ -471,6 +548,11 @@ export class RequestCoalescingMiddleware {
     };
   }
 
+  /**
+   * Runtime-safe reset. Clears pending entries and cancels any short-term
+   * cleanup timer, but leaves the independent housekeeper running so the
+   * middleware continues to function. Use `dispose()` for terminal shutdown.
+   */
   clear(): void {
     this.pendingRequests.clear();
     if (this.cleanupTimer) {
@@ -478,6 +560,23 @@ export class RequestCoalescingMiddleware {
       this.cleanupTimer = null;
     }
   }
+
+  /**
+   * Terminal shutdown. Clears pending state and stops the housekeeper. After
+   * `dispose()` the instance should not be reused without first calling
+   * `startHousekeeper()` again. Intended for process shutdown and test teardown.
+   */
+  dispose(): void {
+    this.clear();
+    this.stopHousekeeper();
+  }
 }
 
+/**
+ * Default singleton used by production routes. Instantiation auto-starts the
+ * 5-second housekeeper interval at import time. Tests that need fake timers
+ * for this module should instantiate a fresh `RequestCoalescingMiddleware`
+ * instance rather than relying on this singleton, to avoid a real timer
+ * leaking into the fake-timer clock.
+ */
 export const requestCoalescing = new RequestCoalescingMiddleware();
