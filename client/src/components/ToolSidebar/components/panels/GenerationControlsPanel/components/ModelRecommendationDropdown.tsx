@@ -300,7 +300,7 @@ function ModelCard({
       className={cn(
         "flex flex-col overflow-hidden rounded-xl text-left transition-shadow",
         selected
-          ? "ring-2 ring-tool-accent-selection ring-offset-2 ring-offset-tool-surface-card"
+          ? "ring-2 ring-tool-accent-neutral ring-offset-2 ring-offset-tool-surface-card"
           : "ring-1 ring-tool-nav-active hover:ring-tool-text-disabled",
       )}
     >
@@ -551,7 +551,7 @@ export function ModelRecommendationDropdown({
           className={cn(
             "flex h-9 items-center gap-1.5 rounded-lg border border-tool-nav-active bg-tool-surface-card px-3 text-xs font-semibold text-foreground transition-[border-color,transform,background-color]",
             "duration-[160ms] [transition-timing-function:var(--motion-ease-standard)] hover:-translate-y-px hover:border-tool-text-disabled",
-            mode !== "closed" && "border-tool-accent-selection",
+            mode !== "closed" && "border-tool-accent-neutral",
             triggerClassName,
           )}
           aria-haspopup="listbox"

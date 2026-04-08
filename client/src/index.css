@@ -23,7 +23,7 @@
     --tool-header-height: 48px;
     --tool-footer-height: 72px;
 
-    /* ToolSidebar Colors — warm charcoal + violet */
+    /* ToolSidebar Colors — warm charcoal, neutral accents */
     --tool-rail-bg: #111114;
     --tool-panel-bg: #131316;
     --tool-panel-inner-bg: #111114;
@@ -37,7 +37,7 @@
     --tool-text-secondary: #b0b0be;
     --tool-text-muted: #8b8b9e;
     --tool-text-placeholder: #6b6b7e;
-    --tool-accent-purple: #c8c8d0;
+    --tool-accent-soft: #c8c8d0;
 
     /* Nav active indicator (neutral accent) */
     --tool-nav-indicator: #c8c8d0;
@@ -53,7 +53,7 @@
     --tool-surface-card: #16161a;
     --tool-surface-prompt: #14141a;
     --tool-surface-prompt-compact: #131318;
-    --tool-accent-selection: #c8c8d0;
+    --tool-accent-neutral: #c8c8d0;
     /* Generate button — off-white with dark text */
     --tool-btn-generate-bg: #e0e0e4;
     --tool-btn-generate-text: #111116;
@@ -94,11 +94,11 @@
 @layer utilities {
   /* App-specific utilities only - things that don't belong in the design system */
 
-  .glow-violet {
+  .glow-soft {
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
   }
 
-  .glow-violet:hover {
+  .glow-soft:hover {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
   }
 
@@ -107,6 +107,37 @@
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
     border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  /* Borderless rendering-state outline — breathing 16:9 frame */
+  .render-outline {
+    position: relative;
+    margin-left: auto;
+    margin-right: auto;
+    display: flex;
+    width: 100%;
+    max-width: 780px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    border-radius: 14px;
+    animation: outline-breathe 3s ease-in-out infinite;
+  }
+
+  .render-outline-fill {
+    pointer-events: none;
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(
+      to top,
+      rgba(255, 255, 255, 0.02) 0%,
+      rgba(255, 255, 255, 0.005) 100%
+    );
+    border-radius: 0 0 13px 13px;
+    transition: height 2000ms ease-out;
   }
 
   /* Contenteditable placeholder */
@@ -220,17 +251,17 @@
 @keyframes motion-pulse-once {
   0% {
     transform: scale(1);
-    box-shadow: 0 0 0 0 rgba(108, 92, 231, 0.24);
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.18);
   }
 
   45% {
     transform: scale(1.02);
-    box-shadow: 0 0 0 10px rgba(108, 92, 231, 0);
+    box-shadow: 0 0 0 10px rgba(255, 255, 255, 0);
   }
 
   100% {
     transform: scale(1);
-    box-shadow: 0 0 0 0 rgba(108, 92, 231, 0);
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
   }
 }
 
@@ -294,7 +325,11 @@
     animation: none !important;
   }
 
-  [style*="outline-breathe"] {
+  .render-outline {
     animation: none !important;
+  }
+
+  .render-outline-fill {
+    transition: none !important;
   }
 }

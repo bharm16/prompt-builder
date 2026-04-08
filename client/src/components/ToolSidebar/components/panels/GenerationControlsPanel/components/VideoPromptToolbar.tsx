@@ -82,7 +82,7 @@ export function VideoPromptToolbar({
           >
             <rect x="3" y="3" width="8" height="8" rx="1.5" />
           </svg>
-          <div className="absolute bottom-[1px] left-1/2 -translate-x-1/2 w-[3px] h-[3px] rounded-full bg-tool-accent-selection" />
+          <div className="absolute bottom-[1px] left-1/2 -translate-x-1/2 w-[3px] h-[3px] rounded-full bg-tool-accent-neutral" />
         </button>
         <div className="w-px h-[14px] self-center bg-tool-nav-active" />
         <button
@@ -117,7 +117,7 @@ export function VideoPromptToolbar({
       <button
         type="button"
         aria-label="AI Enhance"
-        className="h-[26px] px-2.5 rounded-md border border-tool-accent-selection/25 bg-tool-accent-selection/5 text-tool-accent-selection text-[11px] font-semibold inline-flex items-center gap-1 hover:bg-tool-accent-selection/13 hover:border-tool-accent-selection/50 transition-colors"
+        className="h-[26px] px-2.5 rounded-md border border-tool-accent-neutral/25 bg-tool-accent-neutral/5 text-tool-accent-neutral text-[11px] font-semibold inline-flex items-center gap-1 hover:bg-tool-accent-neutral/13 hover:border-tool-accent-neutral/50 transition-colors"
       >
         <Wand2 className="w-[13px] h-[13px]" />
         AI Enhance

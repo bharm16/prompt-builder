@@ -84,7 +84,7 @@ function PopoverRailThumbnail({
       onClick={onClick}
       className={`relative h-[70px] w-full flex-shrink-0 overflow-hidden rounded-[14px] border-[2.5px] transition-opacity ${
         isSelected
-          ? "border-tool-accent-selection opacity-100"
+          ? "border-tool-accent-neutral opacity-100"
           : "border-transparent opacity-50 hover:opacity-80"
       }`}
       aria-label="Change active generation"

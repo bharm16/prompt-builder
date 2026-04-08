@@ -360,7 +360,7 @@ export function CanvasPromptBar({
                     <button
                       type="submit"
                       className={cn(
-                        "h-9 rounded-lg border border-tool-accent-selection/25 bg-tool-accent-selection px-3 text-xs font-semibold text-tool-surface-deep transition-opacity hover:opacity-90",
+                        "h-9 rounded-lg border border-tool-accent-neutral/25 bg-tool-accent-neutral px-3 text-xs font-semibold text-tool-surface-deep transition-opacity hover:opacity-90",
                         isCustomRequestDisabled && "opacity-50",
                       )}
                       disabled={isCustomRequestDisabled}
@@ -418,7 +418,7 @@ export function CanvasPromptBar({
                         className={cn(
                           "flex-shrink-0 rounded-lg border px-3 py-1.5 text-xs transition-[transform,border-color,color,background-color] duration-[160ms] [transition-timing-function:var(--motion-ease-standard)]",
                           activeSuggestionIndex === index
-                            ? "border-tool-accent-selection/50 bg-tool-accent-selection/10 text-foreground -translate-y-px"
+                            ? "border-tool-accent-neutral/50 bg-tool-accent-neutral/10 text-foreground -translate-y-px"
                             : "border-tool-nav-active bg-tool-surface-prompt-compact text-tool-text-dim hover:-translate-y-px hover:border-tool-text-label hover:text-foreground",
                         )}
                         onMouseDown={(event) => event.preventDefault()}
@@ -433,7 +433,7 @@ export function CanvasPromptBar({
                       >
                         {suggestion.text}
                         {index === 0 ? (
-                          <span className="ml-1.5 text-[9px] font-semibold text-tool-accent-selection">
+                          <span className="ml-1.5 text-[9px] font-semibold text-tool-accent-neutral">
                             Best
                           </span>
                         ) : suggestion.meta ? (
@@ -466,7 +466,7 @@ export function CanvasPromptBar({
                   <button
                     type="button"
                     className={cn(
-                      "h-8 rounded-lg border border-tool-accent-selection/25 bg-tool-accent-selection px-3 text-xs font-semibold text-tool-surface-deep transition-opacity hover:opacity-90",
+                      "h-8 rounded-lg border border-tool-accent-neutral/25 bg-tool-accent-neutral px-3 text-xs font-semibold text-tool-surface-deep transition-opacity hover:opacity-90",
                       suggestionCount === 0 && "opacity-50",
                     )}
                     onClick={(event) => {

@@ -74,10 +74,6 @@ vi.mock(
   }),
 );
 
-vi.mock("../components/CanvasTopBar", () => ({
-  CanvasTopBar: () => <div data-testid="canvas-top-bar" />,
-}));
-
 vi.mock("../components/NewSessionView", () => ({
   NewSessionView: () => <div data-testid="new-session-view" />,
 }));

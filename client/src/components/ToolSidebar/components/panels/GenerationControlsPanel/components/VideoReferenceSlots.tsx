@@ -84,7 +84,7 @@ export function VideoReferenceSlots({
                 !canUpload && isEmpty && "opacity-60 cursor-not-allowed",
                 draggingSlot === index &&
                   canUpload &&
-                  "border-tool-accent-selection",
+                  "border-tool-accent-neutral",
               )}
               onClick={() => {
                 if (!canUpload) return;

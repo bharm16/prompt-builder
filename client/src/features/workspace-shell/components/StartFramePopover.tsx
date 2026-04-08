@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useRef, useState } from "react";
-import { X, Image, Plus } from "@promptstudio/system/components/ui";
+import { X, Image } from "@promptstudio/system/components/ui";
 import type { CameraPath } from "@/features/convergence/types";
 import type { KeyframeTile } from "@features/generation-controls";
 import { cn } from "@/utils/cn";
@@ -89,8 +89,8 @@ export function StartFramePopover({
         type="button"
         data-testid="start-frame-trigger"
         className={cn(
-          "inline-flex h-[30px] items-center gap-[5px] rounded-full border border-surface-2 px-2.5 text-xs font-semibold transition-colors",
-          "bg-tool-nav-hover text-foreground hover:bg-tool-nav-active hover:text-foreground",
+          "inline-flex h-[28px] items-center gap-[5px] rounded-md px-2 text-xs transition-colors",
+          "text-tool-text-muted hover:text-foreground",
           disabled && "cursor-not-allowed opacity-60",
         )}
         onClick={() => {
@@ -104,27 +104,18 @@ export function StartFramePopover({
         {previewUrl ? (
           <>
             <div
-              className="h-[14px] w-5 flex-shrink-0 rounded-[3px] border border-tool-nav-active bg-cover bg-center"
+              className="h-[14px] w-5 flex-shrink-0 rounded-[3px] bg-cover bg-center"
               style={{ backgroundImage: `url(${previewUrl})` }}
             />
-            <span className="text-xs text-foreground">Start frame</span>
+            <span>Start frame</span>
             {cameraMotion?.label ? (
-              <span className="rounded bg-tool-accent-selection/5 px-[5px] py-px text-[10px] font-semibold text-tool-accent-selection">
-                {cameraMotion.label}
+              <span className="text-[10px] text-tool-text-dim">
+                · {cameraMotion.label}
               </span>
             ) : null}
           </>
         ) : (
-          <>
-            <span className="relative flex h-[13px] w-[13px]">
-              <Image size={13} />
-              <Plus
-                size={8}
-                className="absolute -bottom-1 -right-1 rounded-full bg-tool-surface-prompt-compact p-[1px]"
-              />
-            </span>
-            Start frame
-          </>
+          <span>Start frame</span>
         )}
       </button>
 
@@ -178,7 +169,7 @@ export function StartFramePopover({
                   className={cn(
                     "h-[26px] rounded-md border px-2 text-[11px] transition-colors",
                     cameraMotion
-                      ? "border-tool-accent-selection/40 bg-tool-accent-selection/8 text-tool-accent-selection"
+                      ? "border-tool-accent-neutral/40 bg-tool-accent-neutral/8 text-tool-accent-neutral"
                       : "border-tool-nav-active text-tool-text-dim hover:border-tool-text-disabled",
                   )}
                   onClick={onOpenMotion}

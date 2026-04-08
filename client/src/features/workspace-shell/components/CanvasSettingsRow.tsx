@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo } from "react";
-import { Eye, MagicWand, Images, X } from "@promptstudio/system/components/ui";
+import { Eye, MagicWand, X } from "@promptstudio/system/components/ui";
 import type { SidebarUploadedImage } from "@features/generation-controls";
 import {
   VIDEO_DRAFT_MODELS,
@@ -56,17 +56,15 @@ const parseDuration = (generationParams: Record<string, unknown>): number => {
   return getDefaultGenerationDurationSeconds();
 };
 
-/* Ghost button used across the settings row — matches mockup BarBtn exactly */
+/* Ghost button used across the settings row — flat, borderless, text-only */
 function BarBtn({
   children,
-  active,
   accent,
   onClick,
   className,
   ...buttonProps
 }: {
   children: React.ReactNode;
-  active?: boolean;
   accent?: boolean;
   onClick?: (e: React.MouseEvent) => void;
   className?: string;
@@ -76,12 +74,8 @@ function BarBtn({
       type="button"
       onClick={onClick}
       {...buttonProps}
-      className={`inline-flex h-[30px] items-center gap-[5px] whitespace-nowrap rounded-full border border-surface-2 px-2.5 text-xs transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
-        accent
-          ? "bg-tool-nav-hover font-semibold text-foreground hover:bg-tool-nav-active"
-          : active
-            ? "bg-tool-nav-hover font-semibold text-foreground"
-            : "bg-tool-nav-hover font-semibold text-foreground hover:bg-tool-nav-active hover:text-foreground"
+      className={`inline-flex h-[28px] items-center gap-[5px] whitespace-nowrap rounded-md px-2 text-xs transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60 ${
+        accent ? "text-foreground" : "text-tool-text-muted"
       } ${className ?? ""}`}
     >
       {children}
@@ -288,9 +282,6 @@ export function CanvasSettingsRow({
 
         {/* Assets */}
         <BarBtn onClick={(e) => e.stopPropagation()}>
-          <span className="flex">
-            <Images size={13} weight="fill" />
-          </span>
           Assets
         </BarBtn>
 
@@ -299,20 +290,6 @@ export function CanvasSettingsRow({
           value={aspectRatio}
           options={aspectRatioOptions}
           onChange={handleAspectRatioChange}
-          icon={
-            <svg
-              width="11"
-              height="11"
-              viewBox="0 0 11 11"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <rect x="1" y="2" width="9" height="7" rx="1.5" />
-            </svg>
-          }
         />
 
         {/* Duration dropdown */}
@@ -321,20 +298,6 @@ export function CanvasSettingsRow({
           options={durationOptions}
           onChange={handleDurationChange}
           formatLabel={formatDurationLabel}
-          icon={
-            <svg
-              width="11"
-              height="11"
-              viewBox="0 0 11 11"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.2"
-              strokeLinecap="round"
-            >
-              <circle cx="5.5" cy="5.5" r="4.5" />
-              <path d="M5.5 3v3l2 1" />
-            </svg>
-          }
         />
 
         {/* AI Enhance */}
@@ -378,12 +341,18 @@ export function CanvasSettingsRow({
         </BarBtn>
       </div>
 
+      {/* Vertical divider between text controls and action buttons */}
+      <div
+        className="mx-1 h-5 w-px bg-white/[0.08]"
+        aria-hidden="true"
+      />
+
       <div className="flex flex-wrap items-center justify-end gap-1">
         {/* Preview button (secondary) */}
         <button
           type="button"
           data-testid="canvas-preview-button"
-          className="inline-flex h-[30px] w-[68px] items-center justify-center rounded-full border border-surface-2 bg-tool-nav-hover text-foreground transition-colors hover:bg-tool-nav-active hover:text-foreground disabled:cursor-not-allowed disabled:text-tool-text-label"
+          className="inline-flex h-[28px] w-[28px] items-center justify-center rounded-md text-tool-text-muted transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:text-tool-text-label"
           onClick={() => controls?.onStoryboard?.()}
           disabled={previewDisabled}
           aria-label={
@@ -402,7 +371,7 @@ export function CanvasSettingsRow({
         <button
           type="button"
           data-testid="canvas-generate-button"
-          className="inline-flex h-10 w-10 items-center justify-center rounded-full border-none bg-tool-btn-generate-bg text-tool-btn-generate-text transition-opacity hover:opacity-[0.9] disabled:cursor-not-allowed disabled:opacity-60"
+          className="inline-flex h-9 w-9 items-center justify-center rounded-xl border-none bg-tool-btn-generate-bg text-tool-btn-generate-text transition-opacity hover:opacity-[0.9] disabled:cursor-not-allowed disabled:opacity-60"
           onClick={handleGenerate}
           disabled={generateDisabled}
           aria-label={

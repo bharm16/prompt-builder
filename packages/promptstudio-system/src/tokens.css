@@ -567,7 +567,7 @@
     --accent: var(--ps-accent);
     --accent-2: var(--ps-accent-2);
     --accent-cyan: var(--ps-accent);
-    --accent-purple: var(--ps-accent-2);
+    --accent-purple: var(--ps-accent-2); /* legacy alias — value is now neutral, name retained for backward compat */
     --accent-orange: var(--ps-accent-mj); /* Updated: Midjourney orange */
     --accent-runway: var(--ps-accent-runway); /* New: Runway blue */
     --accent-mj: var(--ps-accent-mj); /* New: Midjourney orange */

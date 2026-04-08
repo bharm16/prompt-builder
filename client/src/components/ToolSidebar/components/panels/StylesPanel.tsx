@@ -61,7 +61,7 @@ export function StylesPanel(props: StylesPanelProps): ReactElement {
 
       {isLoading ? (
         <div className="flex flex-1 items-center justify-center">
-          <div className="h-6 w-6 animate-spin rounded-full border-2 border-tool-accent-purple border-t-transparent" />
+          <div className="h-6 w-6 animate-spin rounded-full border-2 border-tool-accent-soft border-t-transparent" />
         </div>
       ) : items.length === 0 ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 text-center">
