@@ -217,7 +217,7 @@ export function CanvasSettingsRow({
 
   return (
     <div
-      className="mx-auto mt-3 flex flex-wrap items-center gap-1 rounded-2xl border border-white/[0.08] px-3 py-2"
+      className="mx-auto mt-3 flex w-fit flex-wrap items-center gap-1 rounded-2xl border border-white/[0.08] px-3 py-2"
       style={{
         backgroundColor: "rgba(26, 26, 31, 0.75)",
         backdropFilter: "blur(16px)",
@@ -225,7 +225,7 @@ export function CanvasSettingsRow({
       }}
       data-testid="canvas-settings-row"
     >
-      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1">
+      <div className="flex flex-wrap items-center gap-1">
         {/* Start frame (with popover) */}
         <StartFramePopover
           startFrame={domain.startFrame}
@@ -378,7 +378,7 @@ export function CanvasSettingsRow({
         </BarBtn>
       </div>
 
-      <div className="ml-auto flex w-full flex-wrap items-center justify-end gap-1 sm:w-auto sm:flex-nowrap">
+      <div className="flex flex-wrap items-center justify-end gap-1">
         {/* Preview button (secondary) */}
         <button
           type="button"
