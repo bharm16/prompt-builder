@@ -40,10 +40,12 @@ function createMockRequest(
 function createMockResponse(): Response & {
   statusCode?: number;
   responseBody?: unknown;
+  headers: Record<string, string>;
 } {
   const res = {
     statusCode: undefined as number | undefined,
     responseBody: undefined as unknown,
+    headers: {} as Record<string, string>,
     status: vi.fn().mockImplementation(function (this: Response, code: number) {
       (this as Response & { statusCode: number }).statusCode = code;
       return this;
@@ -52,10 +54,19 @@ function createMockResponse(): Response & {
       (this as Response & { responseBody: unknown }).responseBody = data;
       return this;
     }),
+    setHeader: vi.fn().mockImplementation(function (
+      this: Response & { headers: Record<string, string> },
+      name: string,
+      value: string,
+    ) {
+      this.headers[name] = value;
+      return this;
+    }),
   };
   return res as unknown as Response & {
     statusCode?: number;
     responseBody?: unknown;
+    headers: Record<string, string>;
   };
 }
 
@@ -262,6 +273,106 @@ describe("errorHandler", () => {
         code: "VIDEO_PROVIDER_TIMEOUT",
         requestId: "video-req",
       });
+    });
+  });
+
+  describe("ConcurrencyLimiter backpressure mapping", () => {
+    it("maps QUEUE_FULL to 503 with Retry-After from error.retryAfter", () => {
+      const req = createMockRequest({ id: "qf-1" });
+      const res = createMockResponse();
+      const error = Object.assign(new Error("Queue full"), {
+        code: "QUEUE_FULL",
+        retryAfter: 7,
+      });
+
+      errorHandler(error, req, res, mockNext);
+
+      expect(res.statusCode).toBe(503);
+      expect(res.headers["Retry-After"]).toBe("7");
+      expect(res.responseBody).toMatchObject({
+        success: false,
+        error: {
+          code: "QUEUE_FULL",
+          retryAfter: 7,
+        },
+        requestId: "qf-1",
+      });
+    });
+
+    it("maps QUEUE_FULL to 503 with default Retry-After when retryAfter missing", () => {
+      const req = createMockRequest();
+      const res = createMockResponse();
+      const error = Object.assign(new Error("busy"), { code: "QUEUE_FULL" });
+
+      errorHandler(error, req, res, mockNext);
+
+      expect(res.statusCode).toBe(503);
+      expect(res.headers["Retry-After"]).toBe("5");
+      expect(res.responseBody).toMatchObject({
+        success: false,
+        error: { code: "QUEUE_FULL", retryAfter: 5 },
+      });
+    });
+
+    it("maps QUEUE_TIMEOUT to 503 with default Retry-After of 5s", () => {
+      const req = createMockRequest({ id: "qt-1" });
+      const res = createMockResponse();
+      const error = Object.assign(new Error("Queued request timed out"), {
+        code: "QUEUE_TIMEOUT",
+      });
+
+      errorHandler(error, req, res, mockNext);
+
+      expect(res.statusCode).toBe(503);
+      expect(res.headers["Retry-After"]).toBe("5");
+      expect(res.responseBody).toMatchObject({
+        success: false,
+        error: {
+          code: "QUEUE_TIMEOUT",
+          retryAfter: 5,
+        },
+        requestId: "qt-1",
+      });
+    });
+
+    it.each([
+      ["Infinity", Number.POSITIVE_INFINITY],
+      ["NaN", Number.NaN],
+      ["negative", -3],
+      ["zero", 0],
+      ["string", "7" as unknown as number],
+    ])(
+      "falls back to default Retry-After when retryAfter is %s",
+      (_label, value) => {
+        const req = createMockRequest();
+        const res = createMockResponse();
+        const error = Object.assign(new Error("busy"), {
+          code: "QUEUE_FULL",
+          retryAfter: value,
+        });
+
+        errorHandler(error, req, res, mockNext);
+
+        expect(res.statusCode).toBe(503);
+        expect(res.headers["Retry-After"]).toBe("5");
+        expect(res.responseBody).toMatchObject({
+          success: false,
+          error: { code: "QUEUE_FULL", retryAfter: 5 },
+        });
+      },
+    );
+
+    it("does not match unrelated error codes", () => {
+      const req = createMockRequest();
+      const res = createMockResponse();
+      const error = Object.assign(new Error("nope"), {
+        code: "SOMETHING_ELSE",
+      });
+
+      errorHandler(error, req, res, mockNext);
+
+      expect(res.statusCode).toBe(500);
+      expect(res.headers["Retry-After"]).toBeUndefined();
     });
   });
 

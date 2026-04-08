@@ -123,6 +123,51 @@ export function errorHandler(
     }
   }
 
+  // Handle backpressure from ConcurrencyLimiter (QUEUE_FULL/QUEUE_TIMEOUT).
+  // These propagate from LLMClient with `code` and (for QUEUE_FULL) `retryAfter`.
+  // Map to HTTP 503 with Retry-After so well-behaved clients honor backpressure
+  // instead of hammering us with instant retries.
+  if (typeof err === "object" && err !== null && "code" in err) {
+    const queueErr = err as {
+      code?: unknown;
+      retryAfter?: unknown;
+      message?: unknown;
+    };
+    if (queueErr.code === "QUEUE_FULL" || queueErr.code === "QUEUE_TIMEOUT") {
+      const retryAfter =
+        typeof queueErr.retryAfter === "number" &&
+        Number.isFinite(queueErr.retryAfter) &&
+        queueErr.retryAfter > 0
+          ? queueErr.retryAfter
+          : 5;
+      const code = queueErr.code;
+      const message =
+        typeof queueErr.message === "string" && queueErr.message.length > 0
+          ? queueErr.message
+          : code === "QUEUE_FULL"
+            ? "Service is busy. Please retry shortly."
+            : "Request timed out waiting in queue. Please retry shortly.";
+
+      logger.warn("Concurrency backpressure", {
+        ...meta,
+        errorCode: code,
+        retryAfter,
+      });
+
+      res.setHeader("Retry-After", String(retryAfter));
+      res.status(503).json({
+        success: false,
+        error: {
+          code,
+          message,
+          retryAfter,
+        },
+        ...(req.id ? { requestId: req.id } : {}),
+      });
+      return;
+    }
+  }
+
   // Handle any DomainError subclass (ConvergenceError, VideoProviderError, etc.)
   if (isDomainError(err)) {
     const statusCode = err.getHttpStatus();
