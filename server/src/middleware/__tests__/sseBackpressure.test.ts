@@ -172,6 +172,68 @@ describe("sseBackpressure / createSseWriter", () => {
     expect(res.writtenChunks).toEqual(["one\n", "two\n", "three\n"]);
   });
 
+  it("trips overflow when pending[] queue would exceed threshold (pending bytes counted)", async () => {
+    // Stream stays paused forever (no drain). Without pendingBytes tracking,
+    // chunks pile up in the in-JS queue while writableLength stays small —
+    // the original bug this task fixes.
+    const res = createMockResponse({ pauseAfterBytes: 1 });
+    const destroySpy = vi.spyOn(res, "destroy");
+    const endSpy = vi.spyOn(res, "end");
+    const writer = createSseWriter(
+      res as unknown as import("http").ServerResponse,
+      { maxBufferedBytes: 20 },
+    );
+
+    // First write: accepts synchronously (4 bytes <= threshold), triggers pause.
+    const first = await writer.write("aaaa");
+    expect(first).toEqual({ ok: true });
+
+    // Next writes queue into pending[]. Second chunk (8 bytes) still fits:
+    // writableLength=4, pendingBytes=0, projected=4+0+8=12 <= 20.
+    const secondPromise = writer.write("bbbbbbbb");
+    // Third chunk (12 bytes) would push total to 4+8+12=24 > 20 → overflow.
+    const third = await writer.write("cccccccccccc");
+
+    expect(third.ok).toBe(false);
+    if (!third.ok) {
+      expect(third.reason).toBe("overflow");
+    }
+    expect(endSpy).toHaveBeenCalled();
+    expect(destroySpy).toHaveBeenCalled();
+
+    // The queued second write should have been failed with overflow when the
+    // kill switch fired (failPending called on overflow).
+    const secondResult = await secondPromise;
+    expect(secondResult).toEqual({ ok: false, reason: "overflow" });
+  });
+
+  it("resolves queued writes with reason:closed when writer.close() is called mid-queue", async () => {
+    const res = createMockResponse({ pauseAfterBytes: 1 });
+    const writer = createSseWriter(
+      res as unknown as import("http").ServerResponse,
+    );
+
+    // Trigger pause
+    const first = await writer.write("hello");
+    expect(first).toEqual({ ok: true });
+
+    // Queue a write
+    const queuedPromise = writer.write("queued");
+    let settled = false;
+    void queuedPromise.then(() => {
+      settled = true;
+    });
+    await new Promise((r) => setImmediate(r));
+    expect(settled).toBe(false);
+
+    // Close before drain fires
+    writer.close();
+    const result = await queuedPromise;
+    expect(result).toEqual({ ok: false, reason: "closed" });
+    // The queued chunk must NOT have been written to the socket after close.
+    expect(res.writtenChunks).toEqual(["hello"]);
+  });
+
   it("stops writing after an overflow kill switch fires", async () => {
     const res = createMockResponse({ forcedBufferedBytes: 100 });
     const writer = createSseWriter(

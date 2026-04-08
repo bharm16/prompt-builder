@@ -46,6 +46,7 @@ interface WritableResponseLike {
   end(): void;
   destroy(error?: Error): void;
   once(event: "drain", listener: () => void): unknown;
+  removeListener?(event: "drain", listener: () => void): unknown;
   writableLength?: number;
   writableEnded?: boolean;
   destroyed?: boolean;
@@ -73,10 +74,15 @@ export function createSseWriter(
   let closed = false;
   let paused = false;
   // Pending writes queued while the stream is paused (awaiting 'drain').
+  // Tracked bytes MUST be counted against the overflow threshold alongside
+  // the underlying stream's writableLength — otherwise a fast producer can
+  // OOM the process via this in-JS queue while writableLength stays low.
   const pending: Array<{
     chunk: string | Buffer;
+    bytes: number;
     resolve: (value: SseWriteResult) => void;
   }> = [];
+  let pendingBytes = 0;
 
   const isResponseClosed = (): boolean =>
     closed || target.writableEnded === true || target.destroyed === true;
@@ -86,6 +92,7 @@ export function createSseWriter(
       operation: "sseBackpressure.overflow",
       label,
       bytesBuffered,
+      pendingBytes,
       bytesWritten,
       threshold,
     });
@@ -105,6 +112,15 @@ export function createSseWriter(
     }
     closed = true;
   };
+
+  /**
+   * Returns the number of bytes currently buffered by the underlying stream.
+   * Real Node ServerResponse always provides `writableLength`; the 0 fallback
+   * is only hit by test mocks that don't model it, and silently disables the
+   * kernel-buffer portion of the overflow check for those callers.
+   */
+  const getBuffered = (): number =>
+    typeof target.writableLength === "number" ? target.writableLength : 0;
 
   /**
    * Synchronously hand `chunk` to the underlying stream and evaluate
@@ -128,12 +144,13 @@ export function createSseWriter(
 
     bytesWritten += Buffer.byteLength(chunk);
 
-    // Overflow check — writableLength reflects bytes currently buffered in
-    // the stream that the kernel has not yet accepted.
-    const buffered =
-      typeof target.writableLength === "number" ? target.writableLength : 0;
-    if (buffered > threshold) {
-      killForOverflow(buffered);
+    // Overflow check — total server-held bytes = kernel/stream buffer
+    // (writableLength) + anything still sitting in our pending[] queue.
+    // Both must fit under the threshold, otherwise the refactor would just
+    // shift the OOM risk from one buffer to another.
+    const totalBuffered = getBuffered() + pendingBytes;
+    if (totalBuffered > threshold) {
+      killForOverflow(totalBuffered);
       return { ok: false, reason: "overflow" };
     }
 
@@ -144,20 +161,41 @@ export function createSseWriter(
   const failPending = (reason: "closed" | "overflow"): void => {
     while (pending.length > 0) {
       const entry = pending.shift();
-      if (entry) entry.resolve({ ok: false, reason });
+      if (entry) {
+        pendingBytes -= entry.bytes;
+        entry.resolve({ ok: false, reason });
+      }
     }
+    // Defensive reset — guard against any rounding drift.
+    pendingBytes = 0;
   };
 
-  const onDrain = (): void => {
+  let drainListener: (() => void) | null = null;
+
+  const attachDrain = (): void => {
+    drainListener = onDrain;
+    target.once("drain", drainListener);
+  };
+
+  const detachDrain = (): void => {
+    if (drainListener && typeof target.removeListener === "function") {
+      target.removeListener("drain", drainListener);
+    }
+    drainListener = null;
+  };
+
+  function onDrain(): void {
+    drainListener = null;
     paused = false;
     // Flush queued writes until we hit backpressure again or drain the queue.
     while (pending.length > 0 && !paused && !isResponseClosed()) {
       const entry = pending.shift();
       if (!entry) break;
+      pendingBytes -= entry.bytes;
       const result = writeSync(entry.chunk);
       if (result === "paused") {
         paused = true;
-        target.once("drain", onDrain);
+        attachDrain();
         entry.resolve({ ok: true });
         return;
       }
@@ -170,7 +208,7 @@ export function createSseWriter(
     if (isResponseClosed()) {
       failPending("closed");
     }
-  };
+  }
 
   const write = (chunk: string | Buffer): Promise<SseWriteResult> => {
     if (isResponseClosed()) {
@@ -179,15 +217,27 @@ export function createSseWriter(
 
     // If paused, queue behind prior pending writes to preserve order.
     if (paused || pending.length > 0) {
+      const chunkBytes = Buffer.byteLength(chunk);
+      // Pre-enqueue overflow check: count this chunk against the threshold
+      // BEFORE holding its memory. Without this, a fast producer piling into
+      // pending[] while drain never fires would OOM the process through the
+      // in-JS queue (the `writableLength`-only check would miss it entirely).
+      const projected = getBuffered() + pendingBytes + chunkBytes;
+      if (projected > threshold) {
+        killForOverflow(projected);
+        failPending("overflow");
+        return Promise.resolve({ ok: false, reason: "overflow" });
+      }
       return new Promise((resolve) => {
-        pending.push({ chunk, resolve });
+        pending.push({ chunk, bytes: chunkBytes, resolve });
+        pendingBytes += chunkBytes;
       });
     }
 
     const result = writeSync(chunk);
     if (result === "paused") {
       paused = true;
-      target.once("drain", onDrain);
+      attachDrain();
       return Promise.resolve({ ok: true });
     }
     return Promise.resolve(result);
@@ -195,6 +245,7 @@ export function createSseWriter(
 
   const close = (): void => {
     closed = true;
+    detachDrain();
     failPending("closed");
   };
 

@@ -55,6 +55,11 @@ export const createSseChannel = (
       if (!internalAbortController.signal.aborted) {
         internalAbortController.abort();
       }
+      // Auto-close the channel so the heartbeat interval and idle timer are
+      // cleared immediately. Without this, a consumer that forgets to wire the
+      // abort signal to close() would keep firing heartbeats every 15s against
+      // a dead socket forever.
+      close();
     }
   };
 
@@ -67,6 +72,7 @@ export const createSseChannel = (
   req.on("aborted", onClientDisconnect);
 
   let idleTimer: NodeJS.Timeout | null = null;
+  let channelClosed = false;
 
   const resetIdleTimer = (): void => {
     if (idleTimer) {
@@ -112,6 +118,10 @@ export const createSseChannel = (
   };
 
   const close = (): void => {
+    if (channelClosed) {
+      return;
+    }
+    channelClosed = true;
     if (heartbeatTimer) {
       clearInterval(heartbeatTimer);
     }
