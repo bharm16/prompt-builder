@@ -26,6 +26,10 @@ import type Redis from "ioredis";
 import compression from "compression";
 
 import { requestIdMiddleware } from "@middleware/requestId";
+import {
+  createFailClosedLlmRateLimit,
+  setRedisRateLimitHealth,
+} from "@middleware/rateLimitHealth";
 import { logger } from "@infrastructure/Logger";
 import type { ILogger } from "@interfaces/ILogger";
 import type { IMetricsCollector } from "@interfaces/IMetricsCollector";
@@ -311,6 +315,26 @@ export function applyRateLimitingMiddleware(
 
   if (storeFactory) {
     logger.info("Rate limiting using Redis store (distributed)");
+    // Seed the health flag — Redis is ready now. Subscribe to client events
+    // to flip the flag on connection loss / recovery. LLM routes fail closed
+    // when unhealthy; non-LLM routes are allowed to degrade to in-memory.
+    setRedisRateLimitHealth(true);
+    if (redisClient) {
+      redisClient.on("error", () => {
+        setRedisRateLimitHealth(false);
+        metricsService?.recordAlert("rate_limit_redis_fallback");
+      });
+      redisClient.on("end", () => {
+        setRedisRateLimitHealth(false);
+        metricsService?.recordAlert("rate_limit_redis_fallback");
+      });
+      redisClient.on("close", () => {
+        setRedisRateLimitHealth(false);
+      });
+      redisClient.on("ready", () => {
+        setRedisRateLimitHealth(true);
+      });
+    }
   } else {
     logger.warn(
       "Rate limiting using in-memory store (single-instance) — limits reduced",
@@ -319,6 +343,21 @@ export function applyRateLimitingMiddleware(
       },
     );
     metricsService?.recordAlert("rate_limit_redis_fallback");
+    // In production we fail closed on LLM routes when Redis was configured
+    // but is down. When Redis was NEVER configured (no client at all),
+    // honor the legacy in-memory fallback so dev and single-instance
+    // deployments keep working — but only outside production.
+    if (redisClient || process.env.NODE_ENV === "production") {
+      setRedisRateLimitHealth(false);
+      // Subscribe to recovery events so the health flag flips back if the
+      // client reconnects later.
+      if (redisClient) {
+        redisClient.on("ready", () => setRedisRateLimitHealth(true));
+        redisClient.on("error", () => setRedisRateLimitHealth(false));
+        redisClient.on("end", () => setRedisRateLimitHealth(false));
+        redisClient.on("close", () => setRedisRateLimitHealth(false));
+      }
+    }
   }
 
   const isDevEnv = process.env.NODE_ENV !== "production" && !isTestEnv;
@@ -455,6 +494,13 @@ export function applyRateLimitingMiddleware(
       ...(storeFactory ? { store: storeFactory("asset-view") } : {}),
     }),
   );
+
+  // LLM endpoints: fail-closed when Redis store is unhealthy.
+  // Unlike general/api/asset-view routes (safe to degrade to per-instance
+  // in-memory limits under the 4x divisor), LLM routes are expensive enough
+  // that unlimited traffic is a cost/abuse risk — so we return 503 instead
+  // of silently allowing N × (limit/4) per-instance through an autoscaler.
+  app.use("/llm/", createFailClosedLlmRateLimit());
 
   // LLM endpoints limiter (higher limits for span labeling)
   app.use(

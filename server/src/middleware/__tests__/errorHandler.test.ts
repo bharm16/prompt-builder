@@ -376,6 +376,79 @@ describe("errorHandler", () => {
     });
   });
 
+  describe("RATE_LIMIT_UNAVAILABLE fail-closed mapping", () => {
+    it("maps RATE_LIMIT_UNAVAILABLE to 503 with Retry-After from error.retryAfter", () => {
+      const req = createMockRequest({ id: "rlu-1" });
+      const res = createMockResponse();
+      const error = Object.assign(new Error("limiter down"), {
+        code: "RATE_LIMIT_UNAVAILABLE",
+        retryAfter: 5,
+      });
+
+      errorHandler(error, req, res, mockNext);
+
+      expect(res.statusCode).toBe(503);
+      expect(res.headers["Retry-After"]).toBe("5");
+      expect(res.responseBody).toMatchObject({
+        success: false,
+        error: {
+          code: "RATE_LIMIT_UNAVAILABLE",
+          message: "limiter down",
+          retryAfter: 5,
+        },
+        requestId: "rlu-1",
+      });
+    });
+
+    it("maps RATE_LIMIT_UNAVAILABLE with default Retry-After when retryAfter missing", () => {
+      const req = createMockRequest();
+      const res = createMockResponse();
+      const error = Object.assign(new Error(""), {
+        code: "RATE_LIMIT_UNAVAILABLE",
+      });
+
+      errorHandler(error, req, res, mockNext);
+
+      expect(res.statusCode).toBe(503);
+      expect(res.headers["Retry-After"]).toBe("5");
+      expect(res.responseBody).toMatchObject({
+        success: false,
+        error: {
+          code: "RATE_LIMIT_UNAVAILABLE",
+          message: "Rate limiter temporarily unavailable, please retry.",
+          retryAfter: 5,
+        },
+      });
+    });
+
+    it.each([
+      ["Infinity", Number.POSITIVE_INFINITY],
+      ["NaN", Number.NaN],
+      ["negative", -3],
+      ["zero", 0],
+      ["string", "7" as unknown as number],
+    ])(
+      "falls back to default Retry-After when retryAfter is %s",
+      (_label, value) => {
+        const req = createMockRequest();
+        const res = createMockResponse();
+        const error = Object.assign(new Error("down"), {
+          code: "RATE_LIMIT_UNAVAILABLE",
+          retryAfter: value,
+        });
+
+        errorHandler(error, req, res, mockNext);
+
+        expect(res.statusCode).toBe(503);
+        expect(res.headers["Retry-After"]).toBe("5");
+        expect(res.responseBody).toMatchObject({
+          success: false,
+          error: { code: "RATE_LIMIT_UNAVAILABLE", retryAfter: 5 },
+        });
+      },
+    );
+  });
+
   describe("sensitive data redaction", () => {
     it("redacts email addresses in body preview", () => {
       const req = createMockRequest({

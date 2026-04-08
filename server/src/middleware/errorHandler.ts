@@ -166,6 +166,40 @@ export function errorHandler(
       });
       return;
     }
+
+    // Fail-closed rate limiter: when the Redis-backed store is unhealthy,
+    // LLM routes reject rather than silently degrade to per-instance limits.
+    // Same 503 + Retry-After shape as the backpressure branch above.
+    if (queueErr.code === "RATE_LIMIT_UNAVAILABLE") {
+      const retryAfter =
+        typeof queueErr.retryAfter === "number" &&
+        Number.isFinite(queueErr.retryAfter) &&
+        queueErr.retryAfter > 0
+          ? queueErr.retryAfter
+          : 5;
+      const message =
+        typeof queueErr.message === "string" && queueErr.message.length > 0
+          ? queueErr.message
+          : "Rate limiter temporarily unavailable, please retry.";
+
+      logger.warn("Rate limiter unavailable", {
+        ...meta,
+        errorCode: "RATE_LIMIT_UNAVAILABLE",
+        retryAfter,
+      });
+
+      res.setHeader("Retry-After", String(retryAfter));
+      res.status(503).json({
+        success: false,
+        error: {
+          code: "RATE_LIMIT_UNAVAILABLE",
+          message,
+          retryAfter,
+        },
+        ...(req.id ? { requestId: req.id } : {}),
+      });
+      return;
+    }
   }
 
   // Handle any DomainError subclass (ConvergenceError, VideoProviderError, etc.)
