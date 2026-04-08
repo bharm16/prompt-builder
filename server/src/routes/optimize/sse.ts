@@ -1,4 +1,5 @@
 import type { Request, Response } from "express";
+import { createSseWriter } from "@middleware/sseBackpressure";
 
 interface SseChannel {
   signal: AbortSignal;
@@ -10,6 +11,8 @@ interface SseChannel {
 export interface SseChannelOptions {
   heartbeatIntervalMs?: number;
   idleTimeoutMs?: number;
+  /** Override the buffered-bytes kill-switch threshold. */
+  maxBufferedBytes?: number;
 }
 
 export const createSseChannel = (
@@ -17,7 +20,11 @@ export const createSseChannel = (
   res: Response,
   options: SseChannelOptions = {},
 ): SseChannel => {
-  const { heartbeatIntervalMs = 15_000, idleTimeoutMs = 20_000 } = options;
+  const {
+    heartbeatIntervalMs = 15_000,
+    idleTimeoutMs = 20_000,
+    maxBufferedBytes,
+  } = options;
   const internalAbortController = new AbortController();
   let clientConnected = true;
   let processingStarted = false;
@@ -34,7 +41,24 @@ export const createSseChannel = (
   res.setHeader("Connection", "keep-alive");
   res.setHeader("X-Accel-Buffering", "no");
 
-  res.write(": connected\n\n");
+  const writer = createSseWriter(res, {
+    ...(maxBufferedBytes !== undefined ? { maxBufferedBytes } : {}),
+    label: "optimize.sse",
+  });
+
+  const handleWriteResult = (result: {
+    ok: boolean;
+    reason?: string;
+  }): void => {
+    if (!result.ok) {
+      clientConnected = false;
+      if (!internalAbortController.signal.aborted) {
+        internalAbortController.abort();
+      }
+    }
+  };
+
+  void writer.write(": connected\n\n").then(handleWriteResult);
   if (typeof res.flushHeaders === "function") {
     res.flushHeaders();
   }
@@ -67,12 +91,8 @@ export const createSseChannel = (
             !res.writableEnded &&
             clientConnected
           ) {
-            try {
-              resetIdleTimer();
-              res.write(": heartbeat\n\n");
-            } catch {
-              // Ignore write errors on dead connections.
-            }
+            resetIdleTimer();
+            void writer.write(": heartbeat\n\n").then(handleWriteResult);
           }
         }, heartbeatIntervalMs)
       : null;
@@ -86,15 +106,9 @@ export const createSseChannel = (
       return;
     }
     resetIdleTimer();
-    try {
-      res.write(`event: ${eventType}\n`);
-      res.write(`data: ${JSON.stringify(data)}\n\n`);
-    } catch (error) {
-      if (!clientConnected) {
-        return;
-      }
-      throw error;
-    }
+    void writer
+      .write(`event: ${eventType}\ndata: ${JSON.stringify(data)}\n\n`)
+      .then(handleWriteResult);
   };
 
   const close = (): void => {
@@ -104,6 +118,7 @@ export const createSseChannel = (
     if (idleTimer) {
       clearTimeout(idleTimer);
     }
+    writer.close();
     res.removeListener("close", onClientDisconnect);
     req.removeListener("aborted", onClientDisconnect);
     if (!res.writableEnded) {

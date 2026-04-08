@@ -1,5 +1,6 @@
 import type { Response } from "express";
 import { logger } from "@infrastructure/Logger";
+import { createSseWriter } from "@middleware/sseBackpressure";
 import { labelSpansStream } from "@llm/span-labeling/SpanLabelingService";
 import { getCurrentSpanProvider } from "@llm/span-labeling/services/LlmClientFactory";
 import type { AIModelService } from "@services/ai-model/AIModelService";
@@ -52,6 +53,8 @@ export async function handleLabelSpansStreamRequest({
   res.setHeader("Connection", "keep-alive");
   res.flushHeaders?.();
 
+  const writer = createSseWriter(res, { label: "labelSpans.stream" });
+
   // Collect spans for cache backfill when stream completes successfully.
   const collectedSpans: SpanLike[] = [];
   let streamCompleted = false;
@@ -63,7 +66,13 @@ export async function handleLabelSpansStreamRequest({
         break;
       }
       collectedSpans.push(span);
-      res.write(JSON.stringify(toPublicSpan(span)) + "\n");
+      const writeResult = await writer.write(
+        JSON.stringify(toPublicSpan(span)) + "\n",
+      );
+      if (!writeResult.ok) {
+        clientClosed = true;
+        break;
+      }
     }
 
     // Stream exhausted normally — mark as completed for cache backfill.
@@ -96,7 +105,7 @@ export async function handleLabelSpansStreamRequest({
       return;
     }
     try {
-      res.write(JSON.stringify(errorPayload) + "\n");
+      await writer.write(JSON.stringify(errorPayload) + "\n");
     } finally {
       if (!res.writableEnded && !res.destroyed) {
         res.end();
