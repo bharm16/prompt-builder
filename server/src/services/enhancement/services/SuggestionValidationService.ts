@@ -394,7 +394,9 @@ export class SuggestionValidationService {
       return suggestions;
     }
 
-    const targetWords = this.videoPromptService.countWords(context.highlightedText);
+    const targetWords = this.videoPromptService.countWords(
+      context.highlightedText,
+    );
     if (targetWords <= 0) {
       return suggestions;
     }

@@ -214,9 +214,7 @@ export function CanvasPromptBar({
       <div
         className={cn(
           "motion-safe-transition transition-[transform]",
-          isEmptyLayout
-            ? "px-5 pb-3 pt-5"
-            : "px-4 py-3",
+          isEmptyLayout ? "px-5 pb-3 pt-5" : "px-4 py-3",
         )}
         onClick={() => {
           editorRef.current?.focus();

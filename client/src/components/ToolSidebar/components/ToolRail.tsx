@@ -54,10 +54,7 @@ export function ToolRail({
         <span className="text-[15px] font-bold text-foreground">V</span>
       </div>
 
-      <div
-        className="my-1.5 h-px w-6 bg-tool-rail-border"
-        aria-hidden="true"
-      />
+      <div className="my-1.5 h-px w-6 bg-tool-rail-border" aria-hidden="true" />
 
       {/* ── Nav items: Tool, Apps, Chars, Styles ── */}
       <nav

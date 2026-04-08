@@ -254,8 +254,7 @@ const syncCreditBalanceFromResponse = (
 
 const resolveAcceptedGenerationStatus = (
   status?: string | null,
-): Generation["status"] =>
-  status === "processing" ? "generating" : "pending";
+): Generation["status"] => (status === "processing" ? "generating" : "pending");
 
 export function useGenerationActions(
   dispatch: React.Dispatch<GenerationsAction>,

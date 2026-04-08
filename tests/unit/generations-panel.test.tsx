@@ -72,15 +72,11 @@ vi.mock("@features/prompt-optimizer/context/PromptStateContext", () => ({
   }),
 }));
 
-vi.mock(
-  "@features/generation-controls",
-  () => ({
-    useGenerationControlsStoreState: () =>
-      mockUseGenerationControlsStoreState(),
-    useGenerationControlsStoreActions: () =>
-      mockUseGenerationControlsStoreActions(),
-  }),
-);
+vi.mock("@features/generation-controls", () => ({
+  useGenerationControlsStoreState: () => mockUseGenerationControlsStoreState(),
+  useGenerationControlsStoreActions: () =>
+    mockUseGenerationControlsStoreActions(),
+}));
 
 vi.mock("@features/generations/components/GenerationCard", () => ({
   GenerationCard: (props: {

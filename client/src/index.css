@@ -289,8 +289,13 @@
 }
 
 @keyframes outline-breathe {
-  0%, 100% { border-color: rgba(255,255,255,0.03); }
-  50% { border-color: rgba(255,255,255,0.06); }
+  0%,
+  100% {
+    border-color: rgba(255, 255, 255, 0.03);
+  }
+  50% {
+    border-color: rgba(255, 255, 255, 0.06);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

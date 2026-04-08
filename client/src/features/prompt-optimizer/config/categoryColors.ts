@@ -27,19 +27,19 @@ const build = (hex: string): CategoryHighlightColor => ({
  */
 export const categoryColors = {
   // Cool — technical
-  shot: build("#3b82f6"),        // Steel blue — framing is technical
-  camera: build("#0ea5e9"),      // Sky blue — optics, precision
-  lighting: build("#06b6d4"),    // Cyan/teal — light = cool spectrum
+  shot: build("#3b82f6"), // Steel blue — framing is technical
+  camera: build("#0ea5e9"), // Sky blue — optics, precision
+  lighting: build("#06b6d4"), // Cyan/teal — light = cool spectrum
 
   // Warm — human/creative
-  subject: build("#f59e0b"),     // Amber/gold — human element, warm
-  action: build("#f97316"),      // Orange/coral — energy, movement
-  style: build("#ec4899"),       // Pink/rose — aesthetic, emotional
+  subject: build("#f59e0b"), // Amber/gold — human element, warm
+  action: build("#f97316"), // Orange/coral — energy, movement
+  style: build("#ec4899"), // Pink/rose — aesthetic, emotional
 
   // Neutral — contextual
   environment: build("#6b8a6b"), // Sage/olive — earth tones, grounding
-  technical: build("#8b8baa"),   // Muted lavender — technical metadata
-  audio: build("#a78bfa"),       // Soft violet — atmospheric, ambient
+  technical: build("#8b8baa"), // Muted lavender — technical metadata
+  audio: build("#a78bfa"), // Soft violet — atmospheric, ambient
 } as const;
 
 export const DEFAULT_CATEGORY_COLOR = build("#94a3b8");

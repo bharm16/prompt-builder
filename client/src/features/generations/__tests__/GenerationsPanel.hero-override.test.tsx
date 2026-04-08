@@ -69,23 +69,20 @@ vi.mock("@features/prompt-optimizer/context/GenerationControlsContext", () => ({
   }),
 }));
 
-vi.mock(
-  "@features/generation-controls",
-  () => ({
-    useGenerationControlsStoreState: () => ({
-      domain: {
-        keyframes: [],
-        startFrame: null,
-        cameraMotion: null,
-        subjectMotion: "",
-      },
-    }),
-    useGenerationControlsStoreActions: () => ({
-      setStartFrame: vi.fn(),
-      clearStartFrame: vi.fn(),
-    }),
+vi.mock("@features/generation-controls", () => ({
+  useGenerationControlsStoreState: () => ({
+    domain: {
+      keyframes: [],
+      startFrame: null,
+      cameraMotion: null,
+      subjectMotion: "",
+    },
   }),
-);
+  useGenerationControlsStoreActions: () => ({
+    setStartFrame: vi.fn(),
+    clearStartFrame: vi.fn(),
+  }),
+}));
 
 vi.mock("@features/prompt-optimizer/context/PromptStateContext", () => ({
   usePromptNavigation: () => ({ navigate: vi.fn(), sessionId: "session-1" }),

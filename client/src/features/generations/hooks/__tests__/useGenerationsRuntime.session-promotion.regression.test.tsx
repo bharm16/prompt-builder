@@ -117,29 +117,26 @@ vi.mock(
   }),
 );
 
-vi.mock(
-  "@features/generation-controls",
-  () => ({
-    useGenerationControlsStoreState: () => ({
-      domain: {
-        selectedModel: "wan-2.2",
-        keyframes: [],
-        startFrame: null,
-        endFrame: null,
-        videoReferenceImages: [],
-        extendVideo: null,
-        cameraMotion: null,
-        subjectMotion: "",
-      },
-    }),
-    useGenerationControlsStoreActions: () => ({
-      setStartFrame: vi.fn(),
-      clearStartFrame: vi.fn(),
-      setExtendVideo: vi.fn(),
-      clearExtendVideo: vi.fn(),
-    }),
+vi.mock("@features/generation-controls", () => ({
+  useGenerationControlsStoreState: () => ({
+    domain: {
+      selectedModel: "wan-2.2",
+      keyframes: [],
+      startFrame: null,
+      endFrame: null,
+      videoReferenceImages: [],
+      extendVideo: null,
+      cameraMotion: null,
+      subjectMotion: "",
+    },
   }),
-);
+  useGenerationControlsStoreActions: () => ({
+    setStartFrame: vi.fn(),
+    clearStartFrame: vi.fn(),
+    setExtendVideo: vi.fn(),
+    clearExtendVideo: vi.fn(),
+  }),
+}));
 
 vi.mock("@/features/prompt-optimizer/hooks/useCapabilities", () => ({
   useCapabilities: () => ({

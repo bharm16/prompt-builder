@@ -163,7 +163,10 @@ export function registerHealthRoutes(
 
   // Run the probe once immediately, then on interval
   void runFirestoreProbe();
-  const probeInterval = setInterval(() => void runFirestoreProbe(), PROBE_INTERVAL_MS);
+  const probeInterval = setInterval(
+    () => void runFirestoreProbe(),
+    PROBE_INTERVAL_MS,
+  );
   probeInterval.unref(); // Don't keep the process alive for the probe
 
   const healthRoutes = createHealthRoutes({

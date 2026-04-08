@@ -12,22 +12,23 @@
 
 ## File Map
 
-| File | Action | Responsibility |
-|------|--------|---------------|
-| `client/index.html` | Modify | Add Google Fonts preconnect + stylesheet links |
-| `packages/promptstudio-system/src/tokens.css` | Modify | Update color, font-family, radius, motion tokens |
-| `client/src/index.css` | Modify | Update tool-* color tokens, body font-family, add glassmorphism utilities |
-| `client/src/features/prompt-optimizer/config/categoryColors.ts` | Modify | Warm/cool semantic color mapping |
-| `client/src/components/ToolSidebar/components/ToolRail.tsx` | Modify | Convert from labeled sidebar to thin icon rail |
-| `client/src/components/ToolSidebar/ToolSidebar.tsx` | Modify | Adjust rail width, panel overlay behavior |
-| `client/src/features/workspace-shell/components/CanvasHeroViewer.tsx` | Modify | Ambient atmospheric progress indicator |
-| `config/build/tailwind.config.js` | Modify | Add glassmorphism + glow utilities |
+| File                                                                  | Action | Responsibility                                                             |
+| --------------------------------------------------------------------- | ------ | -------------------------------------------------------------------------- |
+| `client/index.html`                                                   | Modify | Add Google Fonts preconnect + stylesheet links                             |
+| `packages/promptstudio-system/src/tokens.css`                         | Modify | Update color, font-family, radius, motion tokens                           |
+| `client/src/index.css`                                                | Modify | Update tool-\* color tokens, body font-family, add glassmorphism utilities |
+| `client/src/features/prompt-optimizer/config/categoryColors.ts`       | Modify | Warm/cool semantic color mapping                                           |
+| `client/src/components/ToolSidebar/components/ToolRail.tsx`           | Modify | Convert from labeled sidebar to thin icon rail                             |
+| `client/src/components/ToolSidebar/ToolSidebar.tsx`                   | Modify | Adjust rail width, panel overlay behavior                                  |
+| `client/src/features/workspace-shell/components/CanvasHeroViewer.tsx` | Modify | Ambient atmospheric progress indicator                                     |
+| `config/build/tailwind.config.js`                                     | Modify | Add glassmorphism + glow utilities                                         |
 
 ---
 
 ### Task 1: Install Fonts (Plus Jakarta Sans + Geist Sans)
 
 **Files:**
+
 - Modify: `client/index.html`
 - Modify: `packages/promptstudio-system/src/tokens.css` (lines 7-12)
 - Modify: `client/src/index.css` (lines 78-86)
@@ -61,8 +62,8 @@ In `packages/promptstudio-system/src/tokens.css`, replace lines 7-12:
   "Geist", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
   "SF Pro Text", "Segoe UI", sans-serif;
 --ps-font-display:
-  "Plus Jakarta Sans", "Geist", ui-sans-serif, -apple-system, BlinkMacSystemFont,
-  "SF Pro Display", system-ui, sans-serif;
+  "Plus Jakarta Sans", "Geist", ui-sans-serif, -apple-system,
+  BlinkMacSystemFont, "SF Pro Display", system-ui, sans-serif;
 ```
 
 The `--ps-font-sans` becomes Geist-first (UI chrome). The `--ps-font-display` becomes Plus Jakarta Sans-first (prompt text, headings).
@@ -89,6 +90,7 @@ body {
 Run: `npm run dev`
 
 Open browser DevTools → Network tab → filter by "font". Verify:
+
 - Plus Jakarta Sans woff2 files load (200 status)
 - Geist woff2 files load (200 status)
 
@@ -106,6 +108,7 @@ git commit -m "style: add Plus Jakarta Sans and Geist Sans fonts"
 ### Task 2: Update Color Tokens (Warm Charcoal + Violet Accent)
 
 **Files:**
+
 - Modify: `packages/promptstudio-system/src/tokens.css` (lines 155-177)
 - Modify: `client/src/index.css` (lines 27-68, 99)
 
@@ -117,21 +120,21 @@ In `packages/promptstudio-system/src/tokens.css`, replace the color section (lin
 /* =========================
    Color (warm charcoal + violet accent)
    ========================= */
---ps-bg: #131316;            /* Warm charcoal base */
---ps-surface-1: #1a1a1f;     /* Card/panel surface */
---ps-surface-2: #222228;     /* Elevated surface */
---ps-surface-3: #2a2a32;     /* Tertiary surface */
---ps-border: rgba(255, 255, 255, 0.08);   /* Subtle separation */
+--ps-bg: #131316; /* Warm charcoal base */
+--ps-surface-1: #1a1a1f; /* Card/panel surface */
+--ps-surface-2: #222228; /* Elevated surface */
+--ps-surface-3: #2a2a32; /* Tertiary surface */
+--ps-border: rgba(255, 255, 255, 0.08); /* Subtle separation */
 --ps-border-strong: rgba(255, 255, 255, 0.14); /* Emphasized border */
---ps-text: #f0f0f3;          /* Primary text */
---ps-text-muted: #b0b0be;    /* Secondary text */
---ps-text-faint: #8b8b9e;    /* Tertiary text */
---ps-text-ghost: #6b6b7e;    /* Ghost/placeholder text */
+--ps-text: #f0f0f3; /* Primary text */
+--ps-text-muted: #b0b0be; /* Secondary text */
+--ps-text-faint: #8b8b9e; /* Tertiary text */
+--ps-text-ghost: #6b6b7e; /* Ghost/placeholder text */
 --ps-text-warm: rgba(255, 255, 255, 0.95);
---ps-accent: #7c3aed;        /* Violet accent */
---ps-accent-2: #a78bfa;      /* Violet light variant */
+--ps-accent: #7c3aed; /* Violet accent */
+--ps-accent-2: #a78bfa; /* Violet light variant */
 --ps-accent-runway: #7c3aed; /* Map runway accent to violet */
---ps-accent-mj: #f2330d;     /* Keep MJ orange */
+--ps-accent-mj: #f2330d; /* Keep MJ orange */
 --ps-success: #4ec7a2;
 --ps-warning: #f5c05c;
 --ps-danger: #fa6e7c;
@@ -207,6 +210,7 @@ git commit -m "style: update color palette to warm charcoal with violet accent"
 ### Task 3: Update Span Label Colors (Warm/Cool Semantic Mapping)
 
 **Files:**
+
 - Modify: `client/src/features/prompt-optimizer/config/categoryColors.ts`
 
 - [ ] **Step 1: Write a verification test for the new color mapping**
@@ -318,19 +322,19 @@ const build = (hex: string): CategoryHighlightColor => ({
  */
 export const categoryColors = {
   // Cool — technical
-  shot: build("#3b82f6"),        // Steel blue — framing is technical
-  camera: build("#0ea5e9"),      // Sky blue — optics, precision
-  lighting: build("#06b6d4"),    // Cyan/teal — light = cool spectrum
+  shot: build("#3b82f6"), // Steel blue — framing is technical
+  camera: build("#0ea5e9"), // Sky blue — optics, precision
+  lighting: build("#06b6d4"), // Cyan/teal — light = cool spectrum
 
   // Warm — human/creative
-  subject: build("#f59e0b"),     // Amber/gold — human element, warm
-  action: build("#f97316"),      // Orange/coral — energy, movement
-  style: build("#ec4899"),       // Pink/rose — aesthetic, emotional
+  subject: build("#f59e0b"), // Amber/gold — human element, warm
+  action: build("#f97316"), // Orange/coral — energy, movement
+  style: build("#ec4899"), // Pink/rose — aesthetic, emotional
 
   // Neutral — contextual
   environment: build("#6b8a6b"), // Sage/olive — earth tones, grounding
-  technical: build("#8b8baa"),   // Muted lavender — technical metadata
-  audio: build("#a78bfa"),       // Soft violet — atmospheric, ambient
+  technical: build("#8b8baa"), // Muted lavender — technical metadata
+  audio: build("#a78bfa"), // Soft violet — atmospheric, ambient
 } as const;
 
 export const DEFAULT_CATEGORY_COLOR = build("#94a3b8");
@@ -359,6 +363,7 @@ git commit -m "style: update span label colors to warm/cool semantic mapping"
 ### Task 4: Convert Sidebar to Thin Icon Rail
 
 **Files:**
+
 - Modify: `client/src/components/ToolSidebar/components/ToolRail.tsx`
 - Modify: `client/src/components/ToolSidebar/ToolSidebar.tsx`
 - Modify: `client/src/index.css` (line 18, `--tool-rail-width`)
@@ -378,15 +383,19 @@ In `client/src/index.css`, change line 18:
 In `client/src/components/ToolSidebar/components/ToolRail.tsx`, make these changes:
 
 1. Change the root `<aside>` className from:
+
 ```
 flex h-full w-60 flex-none flex-col items-stretch border-r border-tool-rail-border bg-black px-2.5 py-2.5
 ```
+
 To:
+
 ```
 flex h-full w-[52px] flex-none flex-col items-center border-r border-tool-rail-border bg-tool-rail-bg px-1.5 py-3
 ```
 
 2. Change the Vidra logo from full text to initial:
+
 ```tsx
 <div className="flex h-8 w-8 items-center justify-center">
   <span className="text-[15px] font-bold text-foreground">V</span>
@@ -394,15 +403,16 @@ flex h-full w-[52px] flex-none flex-col items-center border-r border-tool-rail-b
 ```
 
 3. Change nav item rendering. Each `ToolNavButton` should become icon-only with a tooltip. Remove the text label `<span>` elements. The button should be:
+
 ```tsx
 <button
   className={cn(
     "flex h-10 w-10 items-center justify-center rounded-xl transition-colors duration-200",
     isActive
       ? "bg-tool-nav-active-bg text-white"
-      : "text-tool-text-muted hover:bg-tool-nav-hover-bg hover:text-tool-text-primary"
+      : "text-tool-text-muted hover:bg-tool-nav-hover-bg hover:text-tool-text-primary",
   )}
-  title={label}  /* Native tooltip as minimal approach */
+  title={label} /* Native tooltip as minimal approach */
   onClick={onClick}
 >
   <Icon size={20} weight={isActive ? "fill" : "regular"} />
@@ -410,6 +420,7 @@ flex h-full w-[52px] flex-none flex-col items-center border-r border-tool-rail-b
 ```
 
 4. Change the footer section. Profile should be avatar-only:
+
 ```tsx
 <div className="flex flex-col items-center gap-1 pb-2">
   <Link
@@ -446,6 +457,7 @@ The root div should remain `relative flex h-full overflow-visible` — the panel
 Run: `npm run dev`
 
 Visual check:
+
 - Sidebar should be ~52px wide with icon-only navigation
 - "V" logo at top
 - Icons should use Phosphor `regular` weight (inactive) and `fill` weight (active)
@@ -471,9 +483,11 @@ git commit -m "style: convert sidebar to thin 52px icon rail"
 ### Task 5: Adaptive Prompt-Centered Layout
 
 **Files:**
+
 - Modify: `client/src/features/workspace-shell/CanvasWorkspace.tsx`
 
 **Context:** Currently the prompt bar sits at the bottom with a large preview void above it. The new behavior:
+
 - **Idle (no generation):** Prompt editor centered vertically and horizontally. No preview void.
 - **Generating/Complete:** Prompt animates downward. Preview expands above.
 
@@ -488,13 +502,18 @@ The key change is in the section that renders `CanvasHeroViewer` and `CanvasProm
 Change the layout to be conditional:
 
 ```tsx
-{/* Adaptive layout: centered when idle, split when generating */}
+{
+  /* Adaptive layout: centered when idle, split when generating */
+}
 <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
   {shouldRenderHero ? (
     <>
       {/* Preview takes top portion */}
       <div className="flex min-h-0 flex-1 items-center justify-center transition-all duration-[400ms] ease-[cubic-bezier(0.22,1,0.36,1)]">
-        <CanvasHeroViewer generation={activeGeneration} onCancel={handleCancel} />
+        <CanvasHeroViewer
+          generation={activeGeneration}
+          onCancel={handleCancel}
+        />
       </div>
       {/* Prompt bar at bottom */}
       <div className="flex-none">
@@ -509,7 +528,7 @@ Change the layout to be conditional:
       </div>
     </div>
   )}
-</div>
+</div>;
 ```
 
 - [ ] **Step 3: Visual verification of both states**
@@ -537,6 +556,7 @@ git commit -m "style: adaptive prompt-centered layout (centered idle, split on g
 ### Task 6: Atmospheric Progress Indicator
 
 **Files:**
+
 - Modify: `client/src/features/workspace-shell/components/CanvasHeroViewer.tsx`
 - Modify: `client/src/index.css` (add aurora keyframe animation)
 
@@ -587,7 +607,9 @@ In `client/src/features/workspace-shell/components/CanvasHeroViewer.tsx`, replac
 Replace the inner content of the aspect-ratio container:
 
 ```tsx
-{/* Atmospheric aurora background */}
+{
+  /* Atmospheric aurora background */
+}
 <div
   className="pointer-events-none absolute inset-0 overflow-hidden rounded-2xl"
   aria-hidden="true"
@@ -601,19 +623,25 @@ Replace the inner content of the aspect-ratio container:
       filter: "blur(60px)",
     }}
   />
-</div>
+</div>;
 
-{/* Cancel button */}
-{onCancel && (
-  <button
-    className="absolute right-4 top-4 z-10 rounded-full border border-white/10 bg-black/40 px-3 py-1.5 text-xs font-medium text-white/80 backdrop-blur-sm transition-colors hover:bg-black/60 hover:text-white"
-    onClick={() => onCancel(generation)}
-  >
-    Cancel
-  </button>
-)}
+{
+  /* Cancel button */
+}
+{
+  onCancel && (
+    <button
+      className="absolute right-4 top-4 z-10 rounded-full border border-white/10 bg-black/40 px-3 py-1.5 text-xs font-medium text-white/80 backdrop-blur-sm transition-colors hover:bg-black/60 hover:text-white"
+      onClick={() => onCancel(generation)}
+    >
+      Cancel
+    </button>
+  );
+}
 
-{/* Progress content (center) */}
+{
+  /* Progress content (center) */
+}
 <div className="relative z-10 flex flex-col items-center gap-5">
   {/* Progress percentage — large, clean */}
   <span className="text-2xl font-semibold tabular-nums text-foreground/90">
@@ -630,18 +658,21 @@ Replace the inner content of the aspect-ratio container:
       {eta ? ` \u00B7 est. ${eta}` : ""}
     </p>
   </div>
-</div>
+</div>;
 
-{/* Bottom progress bar */}
+{
+  /* Bottom progress bar */
+}
 <div className="absolute inset-x-0 bottom-0 z-10 h-[2px] bg-white/5">
   <div
     className="h-full bg-gradient-to-r from-violet-500 to-blue-500 transition-[width] duration-700 ease-out"
     style={{ width: `${clampedProgress}%` }}
   />
-</div>
+</div>;
 ```
 
 This replaces the SVG circle with:
+
 - A rotating conic gradient aurora background (violet → blue → cyan → violet)
 - Blurred 60px to create soft atmospheric glow
 - Clean percentage text as the focal point
@@ -652,6 +683,7 @@ This replaces the SVG circle with:
 Run: `npm run dev`
 
 Trigger a generation. Verify:
+
 - Soft rotating aurora gradient visible behind the progress area
 - Percentage text is legible
 - Progress bar at bottom fills with violet-to-blue gradient
@@ -670,6 +702,7 @@ git commit -m "style: atmospheric aurora progress indicator for generation"
 ### Task 7: Floating Toolbar with Glassmorphism
 
 **Files:**
+
 - Modify: `config/build/tailwind.config.js` (add glassmorphism utility)
 - Modify: The component that renders the bottom toolbar controls (Start frame, Assets, 16:9, duration, scissors)
 
@@ -701,6 +734,7 @@ Wrap the settings controls in a floating container:
 ```
 
 Key visual properties:
+
 - `rounded-2xl` (16px) — pill shape
 - `border border-white/[0.08]` — subtle glass edge
 - Semi-transparent background with backdrop blur
@@ -711,6 +745,7 @@ Key visual properties:
 Run: `npm run dev`
 
 Verify:
+
 - Toolbar floats as a pill below the prompt
 - Backdrop blur visible (content behind shows through slightly)
 - Subtle border visible
@@ -728,6 +763,7 @@ git commit -m "style: floating glassmorphism toolbar pill"
 ### Task 8: Button Styling + Component Polish
 
 **Files:**
+
 - Modify: `packages/promptstudio-system/src/tokens.css` (button tokens, radius)
 - Modify: `client/src/index.css` (add glow utility)
 
@@ -741,7 +777,8 @@ Find the button/component token section in `tokens.css` and update:
 --ps-btn-primary-bg: #7c3aed;
 --ps-btn-primary-hover: #6d28d9;
 --ps-btn-primary-text: #ffffff;
---ps-btn-primary-shadow: 0 0 20px rgba(124, 58, 237, 0.3), 0 4px 12px rgba(0, 0, 0, 0.3);
+--ps-btn-primary-shadow:
+  0 0 20px rgba(124, 58, 237, 0.3), 0 4px 12px rgba(0, 0, 0, 0.3);
 ```
 
 - [ ] **Step 2: Add glow utility to index.css**
@@ -774,8 +811,10 @@ In `client/src/index.css`, add to the `@layer utilities` block:
 Find the Generate button component (likely in `GenerationFooter.tsx`). Update its classes to use the violet accent with glow:
 
 Replace the existing gradient styling with:
+
 ```tsx
-className="... bg-[#7c3aed] hover:bg-[#6d28d9] glow-violet transition-all duration-200 ..."
+className =
+  "... bg-[#7c3aed] hover:bg-[#6d28d9] glow-violet transition-all duration-200 ...";
 ```
 
 Remove any existing `linear-gradient` or `background-image` inline styles on the Generate button and replace with the solid violet + glow approach.
@@ -783,12 +822,13 @@ Remove any existing `linear-gradient` or `background-image` inline styles on the
 - [ ] **Step 4: Update radius tokens**
 
 In `tokens.css`, verify the radius values match the spec:
+
 ```css
 --ps-r-xs: 2px;
 --ps-r-sm: 4px;
 --ps-r-md: 6px;
---ps-r-lg: 8px;   /* Buttons, chips */
---ps-r-xl: 12px;  /* Cards, containers */
+--ps-r-lg: 8px; /* Buttons, chips */
+--ps-r-xl: 12px; /* Cards, containers */
 --ps-r-2xl: 14px;
 --ps-r-3xl: 16px; /* Floating toolbar */
 --ps-r-pill: 9999px;
@@ -801,6 +841,7 @@ These already match the target values (confirmed from reading tokens.css). No ch
 Run: `npm run dev`
 
 Verify:
+
 - Generate button is violet with a soft outer glow
 - Glow intensifies on hover
 - Corner radius feels consistent (8px on buttons, 12px on cards)
@@ -827,6 +868,7 @@ git commit -m "style: violet glow buttons, glassmorphism utilities, component po
 ### Task 9: Motion Timing Updates
 
 **Files:**
+
 - Modify: `packages/promptstudio-system/src/tokens.css` (motion section)
 - Modify: `client/src/index.css` (motion variables)
 
@@ -838,13 +880,13 @@ In `packages/promptstudio-system/src/tokens.css`, update the motion section (lin
 
 ```css
 --ps-dur-1: 100ms;
---ps-dur-2: 200ms;   /* Standard transition */
---ps-dur-3: 300ms;   /* Emphasized transition */
---ps-dur-4: 400ms;   /* Layout shifts */
+--ps-dur-2: 200ms; /* Standard transition */
+--ps-dur-3: 300ms; /* Emphasized transition */
+--ps-dur-4: 400ms; /* Layout shifts */
 --ps-motion-fast: 150ms;
---ps-motion-base: 200ms;  /* Default */
---ps-motion-slow: 300ms;  /* Emphasized */
---ps-ease-out: cubic-bezier(0.22, 1, 0.36, 1);  /* Smooth cinematic ease-out */
+--ps-motion-base: 200ms; /* Default */
+--ps-motion-slow: 300ms; /* Emphasized */
+--ps-ease-out: cubic-bezier(0.22, 1, 0.36, 1); /* Smooth cinematic ease-out */
 --ps-ease-in: cubic-bezier(0.7, 0, 0.84, 0);
 --ps-ease-inout: cubic-bezier(0.65, 0, 0.35, 1);
 --ps-ease-linear: linear;
@@ -893,6 +935,7 @@ All must pass with 0 errors.
 Run: `npm run dev`
 
 Walk through these states:
+
 1. **New session (empty):** Prompt should be centered, warm charcoal background, violet accents
 2. **Type a prompt:** Span labels should use warm/cool semantic colors
 3. **Start generation:** Atmospheric aurora progress, prompt shifts down
@@ -909,16 +952,16 @@ If visual issues are found, fix and commit individually.
 
 ## Summary of Changes
 
-| Area | Before | After |
-|------|--------|-------|
-| **Theme** | Cold gray (#16181d) | Warm charcoal (#131316) |
-| **Accent** | Blue (#2c22fa) / White | Violet (#7c3aed) with glow |
-| **Fonts** | Inter (system) | Geist Sans (UI) + Plus Jakarta Sans (prompt) |
-| **Sidebar** | 240px with labels | 52px icon rail |
-| **Layout** | Fixed split (void + prompt) | Adaptive (centered idle, split on generate) |
-| **Toolbar** | Inline flat bar | Floating glassmorphism pill |
-| **Progress** | SVG circle + percentage | Atmospheric aurora + percentage |
-| **Spans** | Random colors | Warm/cool semantic mapping |
-| **Borders** | Solid hex colors | Subtle rgba(255,255,255,0.08) |
-| **Motion** | 75-200ms | 150-400ms cinematic ease-out |
-| **Radius** | Already 2-16px scale | No change needed |
+| Area         | Before                      | After                                        |
+| ------------ | --------------------------- | -------------------------------------------- |
+| **Theme**    | Cold gray (#16181d)         | Warm charcoal (#131316)                      |
+| **Accent**   | Blue (#2c22fa) / White      | Violet (#7c3aed) with glow                   |
+| **Fonts**    | Inter (system)              | Geist Sans (UI) + Plus Jakarta Sans (prompt) |
+| **Sidebar**  | 240px with labels           | 52px icon rail                               |
+| **Layout**   | Fixed split (void + prompt) | Adaptive (centered idle, split on generate)  |
+| **Toolbar**  | Inline flat bar             | Floating glassmorphism pill                  |
+| **Progress** | SVG circle + percentage     | Atmospheric aurora + percentage              |
+| **Spans**    | Random colors               | Warm/cool semantic mapping                   |
+| **Borders**  | Solid hex colors            | Subtle rgba(255,255,255,0.08)                |
+| **Motion**   | 75-200ms                    | 150-400ms cinematic ease-out                 |
+| **Radius**   | Already 2-16px scale        | No change needed                             |

@@ -8,25 +8,22 @@ import type {
 } from "@features/generations/types";
 import { CanvasWorkspace } from "../CanvasWorkspace";
 
-vi.mock(
-  "@features/generation-controls",
-  () => ({
-    useGenerationControlsStoreActions: () => ({
-      setSelectedModel: vi.fn(),
-      setVideoTier: vi.fn(),
-      setCameraMotion: vi.fn(),
-    }),
-    useGenerationControlsStoreState: () => ({
-      domain: {
-        generationParams: { duration_s: 5 },
-        startFrame: null,
-        selectedModel: "sora-2",
-        videoTier: "render",
-        cameraMotion: null,
-      },
-    }),
+vi.mock("@features/generation-controls", () => ({
+  useGenerationControlsStoreActions: () => ({
+    setSelectedModel: vi.fn(),
+    setVideoTier: vi.fn(),
+    setCameraMotion: vi.fn(),
   }),
-);
+  useGenerationControlsStoreState: () => ({
+    domain: {
+      generationParams: { duration_s: 5 },
+      startFrame: null,
+      selectedModel: "sora-2",
+      videoTier: "render",
+      cameraMotion: null,
+    },
+  }),
+}));
 
 vi.mock("@/features/prompt-optimizer/context/PromptStateContext", () => ({
   useOptionalPromptHighlights: () => null,

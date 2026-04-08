@@ -43,7 +43,9 @@ export class VideoContextDetectionService {
   detectVideoContext(
     params: VideoContextDetectionParams,
   ): VideoContextDetectionResult {
-    const isVideoPrompt = this.videoPromptService.isVideoPrompt(params.fullPrompt);
+    const isVideoPrompt = this.videoPromptService.isVideoPrompt(
+      params.fullPrompt,
+    );
     const highlightWordCount = this.videoPromptService.countWords(
       params.highlightedText,
     );
@@ -71,7 +73,9 @@ export class VideoContextDetectionService {
 
     if (isVideoPrompt) {
       const modelStart = Date.now();
-      modelTarget = this.videoPromptService.detectTargetModel(params.fullPrompt);
+      modelTarget = this.videoPromptService.detectTargetModel(
+        params.fullPrompt,
+      );
       params.metrics.modelDetection = Date.now() - modelStart;
 
       const sectionStart = Date.now();

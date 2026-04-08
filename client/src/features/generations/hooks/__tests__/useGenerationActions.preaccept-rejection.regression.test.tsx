@@ -72,8 +72,9 @@ describe("regression: pre-accept generation failures", () => {
 
   it("suppresses duplicate submit attempts while the request is still being accepted", async () => {
     const dispatch = vi.fn();
-    let resolveRequest: ((value: { success: boolean; videoUrl: string }) => void) | null =
-      null;
+    let resolveRequest:
+      | ((value: { success: boolean; videoUrl: string }) => void)
+      | null = null;
     generateVideoPreviewMock.mockImplementation(
       () =>
         new Promise<{ success: boolean; videoUrl: string }>((resolve) => {

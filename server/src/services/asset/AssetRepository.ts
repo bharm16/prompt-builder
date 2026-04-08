@@ -269,9 +269,7 @@ export class AssetRepository {
 
     const batchResults = await Promise.all(
       batches.map((batch) =>
-        this.getAssetsCollection(userId)
-          .where("trigger", "in", batch)
-          .get(),
+        this.getAssetsCollection(userId).where("trigger", "in", batch).get(),
       ),
     );
 

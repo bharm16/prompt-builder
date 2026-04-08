@@ -281,9 +281,7 @@ export function CanvasSettingsRow({
         ) : null}
 
         {/* Assets */}
-        <BarBtn onClick={(e) => e.stopPropagation()}>
-          Assets
-        </BarBtn>
+        <BarBtn onClick={(e) => e.stopPropagation()}>Assets</BarBtn>
 
         {/* Aspect ratio dropdown */}
         <MiniDropdown
@@ -342,10 +340,7 @@ export function CanvasSettingsRow({
       </div>
 
       {/* Vertical divider between text controls and action buttons */}
-      <div
-        className="mx-1 h-5 w-px bg-white/[0.08]"
-        aria-hidden="true"
-      />
+      <div className="mx-1 h-5 w-px bg-white/[0.08]" aria-hidden="true" />
 
       <div className="flex flex-wrap items-center justify-end gap-1">
         {/* Preview button (secondary) */}

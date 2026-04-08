@@ -487,10 +487,12 @@ export function CanvasWorkspace({
               </div>
             ) : null}
 
-            <div className={cn(
-              "relative z-10 flex w-full justify-center",
-              !displayHeroGeneration && "mx-auto max-w-[720px]",
-            )}>
+            <div
+              className={cn(
+                "relative z-10 flex w-full justify-center",
+                !displayHeroGeneration && "mx-auto max-w-[720px]",
+              )}
+            >
               <CanvasPromptBar
                 {...promptBarProps}
                 layoutMode={isEmptySession ? "empty" : "active"}

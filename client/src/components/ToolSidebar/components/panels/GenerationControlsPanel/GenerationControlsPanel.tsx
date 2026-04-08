@@ -288,10 +288,10 @@ export function GenerationControlsPanel(
         controls?.isSubmitting
           ? "Starting..."
           : isFaceSwapFlow
-          ? faceSwap.previewUrl
-            ? "Proceed to Video"
-            : "Preview Face Swap"
-          : "Generate"
+            ? faceSwap.previewUrl
+              ? "Proceed to Video"
+              : "Preview Face Swap"
+            : "Generate"
       }
       creditBalance={balance}
       duration={duration}

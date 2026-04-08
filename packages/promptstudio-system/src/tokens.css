@@ -8,8 +8,8 @@
       "Geist", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
       "SF Pro Text", "Segoe UI", sans-serif;
     --ps-font-display:
-      "Plus Jakarta Sans", "Geist", ui-sans-serif, -apple-system, BlinkMacSystemFont,
-      "SF Pro Display", system-ui, sans-serif;
+      "Plus Jakarta Sans", "Geist", ui-sans-serif, -apple-system,
+      BlinkMacSystemFont, "SF Pro Display", system-ui, sans-serif;
     --ps-font-mono:
       ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
       "Courier New", monospace;
@@ -155,21 +155,21 @@
     /* =========================
        Color (warm charcoal + violet accent)
        ========================= */
-    --ps-bg: #131316;            /* Warm charcoal base */
-    --ps-surface-1: #1a1a1f;     /* Card/panel surface */
-    --ps-surface-2: #222228;     /* Elevated surface */
-    --ps-surface-3: #2a2a32;     /* Tertiary surface */
-    --ps-border: rgba(255, 255, 255, 0.08);   /* Subtle separation */
+    --ps-bg: #131316; /* Warm charcoal base */
+    --ps-surface-1: #1a1a1f; /* Card/panel surface */
+    --ps-surface-2: #222228; /* Elevated surface */
+    --ps-surface-3: #2a2a32; /* Tertiary surface */
+    --ps-border: rgba(255, 255, 255, 0.08); /* Subtle separation */
     --ps-border-strong: rgba(255, 255, 255, 0.14); /* Emphasized border */
-    --ps-text: #f0f0f3;          /* Primary text */
-    --ps-text-muted: #b0b0be;    /* Secondary text */
-    --ps-text-faint: #8b8b9e;    /* Tertiary text */
-    --ps-text-ghost: #6b6b7e;    /* Ghost/placeholder text */
+    --ps-text: #f0f0f3; /* Primary text */
+    --ps-text-muted: #b0b0be; /* Secondary text */
+    --ps-text-faint: #8b8b9e; /* Tertiary text */
+    --ps-text-ghost: #6b6b7e; /* Ghost/placeholder text */
     --ps-text-warm: rgba(255, 255, 255, 0.95);
-    --ps-accent: #e0e0e4;        /* Neutral accent */
-    --ps-accent-2: #c8c8d0;      /* Neutral light variant */
+    --ps-accent: #e0e0e4; /* Neutral accent */
+    --ps-accent-2: #c8c8d0; /* Neutral light variant */
     --ps-accent-runway: #e0e0e4; /* Map runway accent to neutral */
-    --ps-accent-mj: #f2330d;     /* Keep MJ orange */
+    --ps-accent-mj: #f2330d; /* Keep MJ orange */
     --ps-success: #4ec7a2;
     --ps-warning: #f5c05c;
     --ps-danger: #fa6e7c;
@@ -567,7 +567,9 @@
     --accent: var(--ps-accent);
     --accent-2: var(--ps-accent-2);
     --accent-cyan: var(--ps-accent);
-    --accent-purple: var(--ps-accent-2); /* legacy alias — value is now neutral, name retained for backward compat */
+    --accent-purple: var(
+      --ps-accent-2
+    ); /* legacy alias — value is now neutral, name retained for backward compat */
     --accent-orange: var(--ps-accent-mj); /* Updated: Midjourney orange */
     --accent-runway: var(--ps-accent-runway); /* New: Runway blue */
     --accent-mj: var(--ps-accent-mj); /* New: Midjourney orange */

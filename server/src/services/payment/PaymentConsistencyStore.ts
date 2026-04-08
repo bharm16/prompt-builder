@@ -292,9 +292,7 @@ export class PaymentConsistencyStore {
             if (!doc) {
               return null;
             }
-            const data = doc.data() as
-              | BillingProfileRepairRecord
-              | undefined;
+            const data = doc.data() as BillingProfileRepairRecord | undefined;
             if (!data || data.status !== "pending") {
               return null;
             }

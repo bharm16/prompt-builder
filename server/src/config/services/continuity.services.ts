@@ -157,7 +157,11 @@ export function registerContinuityServices(container: DIContainer): void {
         frameBridgeService,
         depthEstimationFactory,
       ),
-    ["storageService", "frameBridgeService", "continuityDepthEstimationFactory"],
+    [
+      "storageService",
+      "frameBridgeService",
+      "continuityDepthEstimationFactory",
+    ],
     { singleton: true },
   );
 

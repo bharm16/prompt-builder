@@ -596,10 +596,8 @@ export const useGenerationControlsPanel = (
   const isVideoGenerateDisabled =
     activeTab === "video" && !hasPrompt && !startFrame;
   const isStoryboardDisabled = !hasPrompt && !startFrame;
-  const isDraftDisabled =
-    !hasPrompt || !isGenerationReady || isGenerationBusy;
-  const isRenderDisabled =
-    !hasPrompt || !isGenerationReady || isGenerationBusy;
+  const isDraftDisabled = !hasPrompt || !isGenerationReady || isGenerationBusy;
+  const isRenderDisabled = !hasPrompt || !isGenerationReady || isGenerationBusy;
   const isGenerateDisabled =
     (tier === "draft" ? isDraftDisabled : isRenderDisabled) ||
     isImageGenerateDisabled ||

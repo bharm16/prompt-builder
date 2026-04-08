@@ -157,7 +157,10 @@ export function createReferenceImagesRoutes(
 
       const imageId = requireRouteParam(req, res, "id");
       if (!imageId) return;
-      const deleted = await referenceImageRepository.deleteImage(userId, imageId);
+      const deleted = await referenceImageRepository.deleteImage(
+        userId,
+        imageId,
+      );
       if (!deleted) {
         res.status(404).json({ error: "Reference image not found" });
         return;

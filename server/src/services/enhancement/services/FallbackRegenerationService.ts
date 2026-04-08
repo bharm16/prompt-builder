@@ -193,11 +193,12 @@ export class FallbackRegenerationService {
     }
 
     let currentConstraints = videoConstraints;
-    let fallbackConstraints = this.videoPromptService.getVideoFallbackConstraints(
-      currentConstraints,
-      regenerationDetails,
-      attemptedModes,
-    );
+    let fallbackConstraints =
+      this.videoPromptService.getVideoFallbackConstraints(
+        currentConstraints,
+        regenerationDetails,
+        attemptedModes,
+      );
     fallbackConstraints = fallbackConstraints
       ? this._adaptConstraintsForReasons(
           fallbackConstraints,

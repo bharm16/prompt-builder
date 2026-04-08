@@ -186,8 +186,10 @@ async function initializeCommon(container: DIContainer): Promise<void> {
         client: qwenClient,
         serviceName: "qwenClient",
         successMessage: "✅ Qwen API key validated successfully",
-        unhealthyMessage: "⚠️  Qwen API key validation failed - adapter disabled",
-        failureMessage: "⚠️  Failed to validate Qwen API key - adapter disabled",
+        unhealthyMessage:
+          "⚠️  Qwen API key validation failed - adapter disabled",
+        failureMessage:
+          "⚠️  Failed to validate Qwen API key - adapter disabled",
       }),
     );
   }

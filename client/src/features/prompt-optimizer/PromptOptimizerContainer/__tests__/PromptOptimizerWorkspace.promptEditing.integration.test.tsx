@@ -67,7 +67,12 @@ vi.mock("../../context/PromptStateContext", () => ({
     generationParams: {},
     setGenerationParams: vi.fn(),
     modes: [],
-    currentMode: { id: "video", name: "Video Prompt", icon: () => null, description: "" },
+    currentMode: {
+      id: "video",
+      name: "Video Prompt",
+      icon: () => null,
+      description: "",
+    },
     videoTier: "standard",
     setVideoTier: vi.fn(),
   }),
@@ -150,27 +155,24 @@ vi.mock("../../context/PromptStateContext", () => ({
   }),
 }));
 
-vi.mock(
-  "@features/generation-controls",
-  () => ({
-    useGenerationControlsStoreState: () => ({
-      domain: {
-        keyframes: [],
-        startFrame: null,
-        cameraMotion: null,
-        subjectMotion: "",
-      },
-    }),
-    useGenerationControlsStoreActions: () => ({
-      setKeyframes: vi.fn(),
-      addKeyframe: vi.fn(),
-      setStartFrame: vi.fn(),
-      clearStartFrame: vi.fn(),
-      setCameraMotion: vi.fn(),
-      setSubjectMotion: vi.fn(),
-    }),
+vi.mock("@features/generation-controls", () => ({
+  useGenerationControlsStoreState: () => ({
+    domain: {
+      keyframes: [],
+      startFrame: null,
+      cameraMotion: null,
+      subjectMotion: "",
+    },
   }),
-);
+  useGenerationControlsStoreActions: () => ({
+    setKeyframes: vi.fn(),
+    addKeyframe: vi.fn(),
+    setStartFrame: vi.fn(),
+    clearStartFrame: vi.fn(),
+    setCameraMotion: vi.fn(),
+    setSubjectMotion: vi.fn(),
+  }),
+}));
 
 vi.mock("../../context/WorkspaceSessionContext", () => ({
   WorkspaceSessionProvider: ({ children }: { children: ReactNode }) => (

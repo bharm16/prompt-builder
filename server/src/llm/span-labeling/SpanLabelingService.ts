@@ -135,12 +135,12 @@ async function labelSpansSingle(
 
     // Fall back to LLM-based extraction with repair loop.
     // Resolve model from operation config so provider selection tracks configured span labeling defaults.
-  let modelName: string | undefined;
-  try {
-    const config = aiService.getOperationConfig?.("span_labeling");
-    modelName = config?.model;
-  } catch {
-    modelName = undefined;
+    let modelName: string | undefined;
+    try {
+      const config = aiService.getOperationConfig?.("span_labeling");
+      modelName = config?.model;
+    } catch {
+      modelName = undefined;
     }
     const llmClient = createLlmClient({
       operation: "span_labeling",

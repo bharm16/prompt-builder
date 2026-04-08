@@ -170,7 +170,9 @@ describe("FallbackRegenerationService regression", () => {
         expect.stringContaining("exact grammatical slot"),
       ]),
     );
-    expect(videoPromptService.getVideoFallbackConstraints).not.toHaveBeenCalled();
+    expect(
+      videoPromptService.getVideoFallbackConstraints,
+    ).not.toHaveBeenCalled();
   });
 
   it("uses short-span in-category retries so empty blocking location spans can recover without falling back to micro", async () => {

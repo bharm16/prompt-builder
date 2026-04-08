@@ -159,7 +159,9 @@ export class EnhancementService {
       styleTransfer: new StyleTransferService(aiService),
       contrastiveDiversity,
       metricsLogger: new EnhancementMetricsService(metricsService),
-      videoContextDetection: new VideoContextDetectionService(videoPromptService),
+      videoContextDetection: new VideoContextDetectionService(
+        videoPromptService,
+      ),
       suggestionGeneration: new SuggestionGenerationService(
         aiService,
         contrastiveDiversity,
@@ -718,7 +720,8 @@ export class EnhancementService {
     }
 
     // Detect video prompt
-    const isVideoPrompt = this.core.videoPromptService.isVideoPrompt(fullPrompt);
+    const isVideoPrompt =
+      this.core.videoPromptService.isVideoPrompt(fullPrompt);
 
     // Build prompt
     const customPromptParams = {

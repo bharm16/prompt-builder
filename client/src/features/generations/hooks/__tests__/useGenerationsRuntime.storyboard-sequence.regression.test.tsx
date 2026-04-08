@@ -135,29 +135,26 @@ vi.mock(
   }),
 );
 
-vi.mock(
-  "@features/generation-controls",
-  () => ({
-    useGenerationControlsStoreState: () => ({
-      domain: {
-        selectedModel: mockSelectedModel,
-        keyframes: [],
-        startFrame: null,
-        endFrame: null,
-        videoReferenceImages: [],
-        extendVideo: mockExtendVideo,
-        cameraMotion: null,
-        subjectMotion: "",
-      },
-    }),
-    useGenerationControlsStoreActions: () => ({
-      setStartFrame: vi.fn(),
-      clearStartFrame: vi.fn(),
-      setExtendVideo: vi.fn(),
-      clearExtendVideo: clearExtendVideoMock,
-    }),
+vi.mock("@features/generation-controls", () => ({
+  useGenerationControlsStoreState: () => ({
+    domain: {
+      selectedModel: mockSelectedModel,
+      keyframes: [],
+      startFrame: null,
+      endFrame: null,
+      videoReferenceImages: [],
+      extendVideo: mockExtendVideo,
+      cameraMotion: null,
+      subjectMotion: "",
+    },
   }),
-);
+  useGenerationControlsStoreActions: () => ({
+    setStartFrame: vi.fn(),
+    clearStartFrame: vi.fn(),
+    setExtendVideo: vi.fn(),
+    clearExtendVideo: clearExtendVideoMock,
+  }),
+}));
 
 vi.mock("@/features/prompt-optimizer/hooks/useCapabilities", () => ({
   useCapabilities: () => ({

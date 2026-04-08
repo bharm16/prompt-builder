@@ -4,7 +4,4 @@ export {
   dispatchPromptFocusIntent,
   addPromptFocusIntentListener,
 } from "./events";
-export type {
-  PromptFocusIntentDetail,
-  PromptFocusIntentEvent,
-} from "./events";
+export type { PromptFocusIntentDetail, PromptFocusIntentEvent } from "./events";

@@ -176,7 +176,8 @@ export function CanvasHeroViewer({
     return (
       <div className="mx-auto flex max-w-[780px] items-center justify-center py-16">
         <p className="text-sm text-tool-text-disabled">
-          Generation failed{generation.error ? ` \u00B7 ${generation.error}` : ''}
+          Generation failed
+          {generation.error ? ` \u00B7 ${generation.error}` : ""}
         </p>
       </div>
     );
@@ -195,9 +196,7 @@ export function CanvasHeroViewer({
   if (mediaLoadFailed) {
     return (
       <div className="mx-auto flex max-w-[780px] items-center justify-center py-16">
-        <p className="text-sm text-tool-text-disabled">
-          Preview unavailable
-        </p>
+        <p className="text-sm text-tool-text-disabled">Preview unavailable</p>
       </div>
     );
   }

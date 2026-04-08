@@ -23,6 +23,7 @@
 ### Task 1: Remove All Purple — Neutralize Accent Color
 
 **Files:**
+
 - Modify: `packages/promptstudio-system/src/tokens.css`
 - Modify: `client/src/index.css`
 
@@ -31,6 +32,7 @@ Replace all violet/purple accent tokens with neutral white/gray equivalents.
 - [ ] **Step 1: Update accent tokens in tokens.css**
 
 Find and replace these values:
+
 ```
 --ps-accent: #7c3aed → --ps-accent: #e0e0e4
 --ps-accent-2: #a78bfa → --ps-accent-2: #c8c8d0
@@ -39,6 +41,7 @@ Find and replace these values:
 ```
 
 Update button tokens:
+
 ```
 --ps-btn-primary-bg: #7c3aed → --ps-btn-primary-bg: #e0e0e4
 --ps-btn-primary-hover: #6d28d9 → --ps-btn-primary-hover: #ffffff
@@ -58,6 +61,7 @@ Update button tokens:
 - [ ] **Step 3: Update glow utility in index.css**
 
 Replace `.glow-violet` with a neutral glow:
+
 ```css
 .glow-violet {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
@@ -80,6 +84,7 @@ git commit -m "style(v2): remove all purple — neutralize accent to white"
 ### Task 2: Span Labels — Colored Text Only
 
 **Files:**
+
 - Modify: `client/src/features/span-highlighting/config/highlightStyles.ts`
 
 Currently span highlights apply background color, border, and ring via CSS custom properties. Change the rendering to apply ONLY text color — no background, no border, no ring.
@@ -93,6 +98,7 @@ Read the file fully. Find the `applyHighlightStyles` function and `getHighlightC
 Remove the border, background, and pill-related classes. The highlight should only have the value-word class and category class for text coloring:
 
 Remove these classes from the returned string:
+
 - `border`
 - `border-[var(--highlight-border)]`
 - `bg-[var(--highlight-bg)]`
@@ -100,6 +106,7 @@ Remove these classes from the returned string:
 - `rounded-md`
 
 Keep:
+
 - `value-word`
 - `relative`
 - `value-word-${category}`
@@ -109,8 +116,11 @@ Keep:
 Instead of setting `--highlight-bg`, `--highlight-border`, `--highlight-ring`, set the text color directly. Use the border color (which is the most saturated) as the text color:
 
 ```typescript
-export function applyHighlightStyles(element: HTMLElement, color: HighlightColor): void {
-  element.style.color = color.border.replace(/,\s*[\d.]+\)$/, ', 0.9)');
+export function applyHighlightStyles(
+  element: HTMLElement,
+  color: HighlightColor,
+): void {
+  element.style.color = color.border.replace(/,\s*[\d.]+\)$/, ", 0.9)");
 }
 ```
 
@@ -134,6 +144,7 @@ git commit -m "style(v2): span labels as colored text only — remove pill styli
 ### Task 3: Remove Container Wrappers — Borderless Canvas
 
 **Files:**
+
 - Modify: `client/src/features/workspace-shell/components/CanvasHeroViewer.tsx`
 - Modify: `client/src/features/workspace-shell/CanvasWorkspace.tsx`
 
@@ -142,9 +153,14 @@ Remove the outer `<div className="relative overflow-hidden rounded-2xl bg-tool-s
 - [ ] **Step 1: Remove container wrappers from CanvasHeroViewer**
 
 For EACH state (generating, failed, no-media, completed), the current pattern is:
+
 ```tsx
 <div className="relative overflow-hidden rounded-2xl bg-tool-surface-deep">
-  <div key={generation.id} className="... bg-gradient-to-br from-tool-rail-border to-tool-surface-deep" style={{ aspectRatio }}>
+  <div
+    key={generation.id}
+    className="... bg-gradient-to-br from-tool-rail-border to-tool-surface-deep"
+    style={{ aspectRatio }}
+  >
     {/* content */}
   </div>
 </div>
@@ -153,19 +169,25 @@ For EACH state (generating, failed, no-media, completed), the current pattern is
 Remove the outer wrapper. The inner div becomes the root element for each state. Remove `bg-gradient-to-br from-tool-rail-border to-tool-surface-deep` background — let the canvas background show through. Keep `rounded-2xl` on the completed video state (rounded corners on the video itself).
 
 For the **generating** state specifically: Replace the aurora gradient with the outline-that-fills approach:
+
 ```tsx
 <div
   key={generation.id}
   className="relative mx-auto flex w-full max-w-[780px] flex-col items-center justify-center"
-  style={{ aspectRatio, border: '1px solid rgba(255,255,255,0.04)', borderRadius: '14px' }}
+  style={{
+    aspectRatio,
+    border: "1px solid rgba(255,255,255,0.04)",
+    borderRadius: "14px",
+  }}
 >
   {/* Fill gradient from bottom */}
   <div
     className="pointer-events-none absolute bottom-0 left-0 right-0 transition-[height] duration-1000 ease-out"
     style={{
       height: `${clampedProgress}%`,
-      background: 'linear-gradient(to top, rgba(255,255,255,0.02) 0%, rgba(255,255,255,0.005) 100%)',
-      borderRadius: '0 0 13px 13px',
+      background:
+        "linear-gradient(to top, rgba(255,255,255,0.02) 0%, rgba(255,255,255,0.005) 100%)",
+      borderRadius: "0 0 13px 13px",
     }}
     aria-hidden="true"
   />
@@ -174,17 +196,23 @@ For the **generating** state specifically: Replace the aurora gradient with the 
 ```
 
 For the **failed** state: Replace with dim inline text, no icon:
+
 ```tsx
 <div className="mx-auto flex max-w-[780px] items-center justify-center py-16">
   <p className="text-sm text-[#2a2a36]">
-    Generation failed{generation.error ? ` · ${generation.error}` : ''}
+    Generation failed{generation.error ? ` · ${generation.error}` : ""}
   </p>
 </div>
 ```
 
 For the **completed** state: Keep the video but remove container wrapper:
+
 ```tsx
-<div key={generation.id} className="relative mx-auto w-full max-w-[780px] overflow-hidden rounded-[14px]" style={{ aspectRatio }}>
+<div
+  key={generation.id}
+  className="relative mx-auto w-full max-w-[780px] overflow-hidden rounded-[14px]"
+  style={{ aspectRatio }}
+>
   {/* video/image + metadata overlay — unchanged */}
 </div>
 ```
@@ -210,6 +238,7 @@ git commit -m "style(v2): remove container wrappers — borderless canvas"
 ### Task 4: Generate Button — White/Light
 
 **Files:**
+
 - Modify: `client/src/features/workspace-shell/components/CanvasSettingsRow.tsx`
 
 - [ ] **Step 1: Update generate button styling**
@@ -234,6 +263,7 @@ git commit -m "style(v2): white generate button"
 ### Task 5: Gallery Thumbnails — Scale on Hover
 
 **Files:**
+
 - Modify: `client/src/features/prompt-optimizer/components/GalleryPanel/GalleryThumbnail.tsx` (or wherever thumbnail hover styles are defined)
 
 - [ ] **Step 1: Find the gallery thumbnail component**
@@ -257,6 +287,7 @@ git commit -m "style(v2): gallery thumbnail scale on hover"
 ### Task 6: Prompt Font Size + Sessions Panel Restyle
 
 **Files:**
+
 - Modify: `packages/promptstudio-system/src/tokens.css` (reduce prompt display font size)
 - Modify: `client/src/components/ToolSidebar/ToolSidebar.tsx` (sessions panel overlay styling)
 
@@ -269,6 +300,7 @@ If it's controlled by a class like `text-body` or `text-lg`, check what that map
 - [ ] **Step 2: Restyle sessions panel overlay**
 
 In `ToolSidebar.tsx`, the overlay panel div currently has:
+
 ```
 bg-tool-panel-bg ... shadow-[24px_0_80px_rgba(0,0,0,0.45)]
 ```
@@ -276,7 +308,8 @@ bg-tool-panel-bg ... shadow-[24px_0_80px_rgba(0,0,0,0.45)]
 Remove the gradient background. Use a flat dark bg matching the canvas. Reduce the shadow. Remove inner bg wrapper if it has one:
 
 ```tsx
-className="absolute left-full top-0 z-20 h-full w-[400px] border-r border-tool-rail-border bg-[#0a0a0e]"
+className =
+  "absolute left-full top-0 z-20 h-full w-[400px] border-r border-tool-rail-border bg-[#0a0a0e]";
 ```
 
 - [ ] **Step 3: Run tsc, commit**

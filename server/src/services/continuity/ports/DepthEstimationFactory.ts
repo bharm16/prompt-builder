@@ -3,6 +3,4 @@ export interface DepthEstimationService {
   estimateDepth(input: string): Promise<string>;
 }
 
-export type DepthEstimationFactory = (
-  userId: string,
-) => DepthEstimationService;
+export type DepthEstimationFactory = (userId: string) => DepthEstimationService;

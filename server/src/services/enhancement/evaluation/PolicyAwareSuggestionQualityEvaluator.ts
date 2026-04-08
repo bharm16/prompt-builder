@@ -65,7 +65,9 @@ export class PolicyAwareSuggestionQualityEvaluator {
         typeof suggestion?.text === "string" && suggestion.text.trim(),
     );
     const texts = validSuggestions.map((suggestion) => suggestion.text.trim());
-    const isVideoPrompt = this.videoPromptService.isVideoPrompt(testCase.prompt);
+    const isVideoPrompt = this.videoPromptService.isVideoPrompt(
+      testCase.prompt,
+    );
     const policy = this.registry.resolve(testCase.span.category);
     const evaluations = this.scorer.scoreCandidates(
       validSuggestions,
@@ -81,7 +83,9 @@ export class PolicyAwareSuggestionQualityEvaluator {
         isPlaceholder: false,
         isVideoPrompt,
         phraseRole: testCase.span.category,
-        highlightWordCount: this.videoPromptService.countWords(testCase.span.text),
+        highlightWordCount: this.videoPromptService.countWords(
+          testCase.span.text,
+        ),
         videoConstraints: null,
         modelTarget: null,
         promptSection: null,

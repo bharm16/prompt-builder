@@ -16,7 +16,7 @@ const MEDIA_REFRESH_RETRY_COOLDOWN_MS = 15_000;
 const VISIBILITY_WAKE_THRESHOLD_MS = 60_000;
 
 const buildSignature = (g: Generation): string =>
-  `${g.id}:${g.status}:${g.mediaUrls?.length ?? 0}:${g.thumbnailUrl ?? ''}`;
+  `${g.id}:${g.status}:${g.mediaUrls?.length ?? 0}:${g.thumbnailUrl ?? ""}`;
 
 const getErrorStatus = (error: unknown): number | null => {
   if (!error || typeof error !== "object") return null;
