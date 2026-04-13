@@ -438,6 +438,7 @@ export function registerGenerationServices(container: DIContainer): void {
             ? { perProviderMaxConcurrent: wc.perProviderMaxConcurrent }
             : {}),
           metrics: metricsService,
+          providerIds: ["replicate", "openai", "luma", "kling", "gemini"],
         },
       );
     },

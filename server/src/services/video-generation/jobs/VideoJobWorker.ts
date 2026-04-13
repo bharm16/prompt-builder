@@ -22,6 +22,7 @@ interface VideoJobWorkerOptions {
   heartbeatIntervalMs?: number;
   providerCircuitManager?: ProviderCircuitManager;
   perProviderMaxConcurrent?: number;
+  providerIds?: string[];
   workerHeartbeatStore?: {
     reportHeartbeat: (
       workerId: string,
@@ -64,6 +65,7 @@ export class VideoJobWorker {
   private readonly heartbeatIntervalMs: number;
   private readonly providerCircuitManager: ProviderCircuitManager | undefined;
   private readonly perProviderMaxConcurrent: number;
+  private readonly providerIds: string[];
   private readonly workerHeartbeatStore: VideoJobWorkerOptions["workerHeartbeatStore"];
   private readonly metrics?: VideoJobWorkerOptions["metrics"];
   private readonly log: ReturnType<typeof logger.child>;
@@ -113,6 +115,13 @@ export class VideoJobWorker {
     this.perProviderMaxConcurrent =
       options.perProviderMaxConcurrent ??
       Math.max(1, Math.ceil(this.maxConcurrent / 2));
+    this.providerIds = options.providerIds ?? [
+      "replicate",
+      "openai",
+      "luma",
+      "kling",
+      "gemini",
+    ];
     this.workerHeartbeatStore = options.workerHeartbeatStore;
     this.metrics = options.metrics;
 
@@ -380,10 +389,9 @@ export class VideoJobWorker {
   }
 
   private buildDispatchableProviders(): string[] {
-    const allProviders = ["replicate", "openai", "luma", "kling", "gemini"];
     const dispatchable: string[] = [];
 
-    for (const provider of allProviders) {
+    for (const provider of this.providerIds) {
       if (this.providerCircuitManager!.canDispatch(provider)) {
         dispatchable.push(provider);
       } else {
