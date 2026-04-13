@@ -6,3 +6,6 @@ export type {
   ProcessVideoJobDeps,
 } from "./processVideoJob";
 export type { VideoJobRecord, VideoJobStatus, VideoJobRequest } from "./types";
+export { DeadLetterStore } from "./DeadLetterStore";
+export { parseVideoJobRecord } from "./parseVideoJobRecord";
+export { computeDlqBackoff } from "./dlqBackoff";
