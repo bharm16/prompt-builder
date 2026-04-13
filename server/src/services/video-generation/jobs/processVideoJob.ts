@@ -103,6 +103,11 @@ export interface ProcessVideoJobDeps {
   refundReason?: string | undefined;
   /** Log prefix for distinguishing inline vs worker in log messages. */
   logPrefix?: string | undefined;
+  /** Injectable heartbeat strategy. When provided, overrides the default internal timer. */
+  heartbeat?: {
+    start(): void;
+    stop(): void;
+  };
 }
 
 // ────────────────────────────────────────────────────────────────
@@ -146,39 +151,43 @@ export async function processVideoJob(
     maxAttempts: job.maxAttempts,
   });
 
-  let heartbeatTimer: NodeJS.Timeout | null = null;
-
-  const startHeartbeat = (): void => {
-    heartbeatTimer = setInterval(() => {
-      void jobStore
-        .renewLease(job.id, workerId, leaseMs)
-        .then((renewed) => {
-          if (!renewed) {
-            log.warn(`${logPrefix} heartbeat skipped (lease lost)`, {
-              jobId: job.id,
-              workerId,
+  const defaultHeartbeat = (() => {
+    let heartbeatTimer: NodeJS.Timeout | null = null;
+    return {
+      start(): void {
+        heartbeatTimer = setInterval(() => {
+          void jobStore
+            .renewLease(job.id, workerId, leaseMs)
+            .then((renewed) => {
+              if (!renewed) {
+                log.warn(`${logPrefix} heartbeat skipped (lease lost)`, {
+                  jobId: job.id,
+                  workerId,
+                });
+              }
+            })
+            .catch((err) => {
+              log.warn(`${logPrefix} heartbeat failed`, {
+                jobId: job.id,
+                workerId,
+                error: err instanceof Error ? err.message : String(err),
+              });
             });
-          }
-        })
-        .catch((err) => {
-          log.warn(`${logPrefix} heartbeat failed`, {
-            jobId: job.id,
-            workerId,
-            error: err instanceof Error ? err.message : String(err),
-          });
-        });
-    }, heartbeatIntervalMs);
-  };
+        }, heartbeatIntervalMs);
+      },
+      stop(): void {
+        if (heartbeatTimer) {
+          clearInterval(heartbeatTimer);
+          heartbeatTimer = null;
+        }
+      },
+    };
+  })();
 
-  const stopHeartbeat = (): void => {
-    if (heartbeatTimer) {
-      clearInterval(heartbeatTimer);
-      heartbeatTimer = null;
-    }
-  };
+  const heartbeat = deps.heartbeat ?? defaultHeartbeat;
 
   try {
-    startHeartbeat();
+    heartbeat.start();
 
     // ── Generate ────────────────────────────────────────────────
     if (!storageService) {
@@ -441,6 +450,6 @@ export async function processVideoJob(
       });
     }
   } finally {
-    stopHeartbeat();
+    heartbeat.stop();
   }
 }
