@@ -1,5 +1,4 @@
 import { z } from "zod";
-import CircuitBreaker from "opossum";
 import type {
   KlingAspectRatio,
   KlingModelId,
@@ -150,9 +149,6 @@ async function _rawKlingFetch(
   }
 
   if (!response.ok) {
-    // If it's a client error (4xx), we generally don't want to trip the breaker,
-    // but throwing here will trip it by default unless we filter it in the breaker options.
-    // For now, we allow it to bubble.
     throw new Error(
       `HTTP ${response.status}: ${JSON.stringify(json).slice(0, 800)}`,
     );
@@ -161,29 +157,13 @@ async function _rawKlingFetch(
   return json;
 }
 
-const breaker = new CircuitBreaker(_rawKlingFetch, {
-  timeout: 30000, // 30 seconds
-  errorThresholdPercentage: 50,
-  resetTimeout: 10000,
-  name: "KlingAPI",
-});
-
-// Don't trip on 4xx errors
-breaker.fallback((error) => {
-  // Re-throw if it's just the breaker mechanism
-  if (error && error.message === "Breaker is open") {
-    throw new Error("Kling API Circuit Breaker Open");
-  }
-  throw error;
-});
-
 async function klingFetch(
   baseUrl: string,
   apiKey: string,
   path: string,
   init: RequestInit,
 ): Promise<unknown> {
-  return breaker.fire(baseUrl, apiKey, path, init);
+  return _rawKlingFetch(baseUrl, apiKey, path, init);
 }
 
 function parseKlingResponse<T>(
@@ -249,72 +229,11 @@ async function createKlingImageToVideoTask(
   return parsed.data.task_id;
 }
 
-async function getKlingTask(
-  baseUrl: string,
-  apiKey: string,
-  taskIdOrExternalId: string,
-) {
-  const json = await klingFetch(
-    baseUrl,
-    apiKey,
-    `/v1/videos/text2video/${encodeURIComponent(taskIdOrExternalId)}`,
-    {
-      method: "GET",
-    },
-  );
-  const parsed = parseKlingResponse(
-    KLING_TASK_RESULT_RESPONSE_SCHEMA,
-    json,
-    "text2video/status",
-  );
-
-  if (parsed.code !== 0) {
-    throw new Error(
-      `Kling error code=${parsed.code}: ${parsed.message ?? "unknown error"}`,
-    );
-  }
-
-  return parsed.data;
-}
-
-async function waitForKlingVideo(
+async function waitForKlingTask(
   baseUrl: string,
   apiKey: string,
   taskId: string,
-): Promise<string> {
-  const timeoutMs = getProviderPollTimeoutMs();
-  const start = Date.now();
-
-  while (true) {
-    const task = await getKlingTask(baseUrl, apiKey, taskId);
-
-    if (task.task_status === "succeed") {
-      const url = task.task_result?.videos?.[0]?.url;
-      if (!url) {
-        throw new Error("Kling task succeeded but no video URL was returned.");
-      }
-      return url;
-    }
-
-    if (task.task_status === "failed") {
-      throw new Error(
-        `Kling task failed: ${task.task_status_msg ?? "no reason provided"}`,
-      );
-    }
-
-    const elapsed = Date.now() - start;
-    if (elapsed > timeoutMs) {
-      throw new Error(`Timed out waiting for Kling task ${taskId}`);
-    }
-
-    await sleep(pollingDelay(KLING_STATUS_POLL_INTERVAL_MS, elapsed));
-  }
-}
-
-async function waitForKlingImageToVideo(
-  baseUrl: string,
-  apiKey: string,
-  taskId: string,
+  endpoint: "text2video" | "image2video",
 ): Promise<string> {
   const timeoutMs = getProviderPollTimeoutMs();
   const start = Date.now();
@@ -323,13 +242,13 @@ async function waitForKlingImageToVideo(
     const json = await klingFetch(
       baseUrl,
       apiKey,
-      `/v1/videos/image2video/${encodeURIComponent(taskId)}`,
+      `/v1/videos/${endpoint}/${encodeURIComponent(taskId)}`,
       { method: "GET" },
     );
     const parsed = parseKlingResponse(
       KLING_TASK_RESULT_RESPONSE_SCHEMA,
       json,
-      "image2video/status",
+      `${endpoint}/status`,
     );
 
     if (parsed.code !== 0) {
@@ -344,7 +263,7 @@ async function waitForKlingImageToVideo(
       const url = task.task_result?.videos?.[0]?.url;
       if (!url) {
         throw new Error(
-          "Kling i2v task succeeded but no video URL was returned.",
+          `Kling ${endpoint} task succeeded but no video URL was returned.`,
         );
       }
       return url;
@@ -352,13 +271,13 @@ async function waitForKlingImageToVideo(
 
     if (task.task_status === "failed") {
       throw new Error(
-        `Kling i2v task failed: ${task.task_status_msg ?? "no reason provided"}`,
+        `Kling ${endpoint} task failed: ${task.task_status_msg ?? "no reason provided"}`,
       );
     }
 
     const elapsed = Date.now() - start;
     if (elapsed > timeoutMs) {
-      throw new Error(`Timed out waiting for Kling i2v task ${taskId}`);
+      throw new Error(`Timed out waiting for Kling ${endpoint} task ${taskId}`);
     }
 
     await sleep(pollingDelay(KLING_STATUS_POLL_INTERVAL_MS, elapsed));
@@ -397,7 +316,7 @@ export async function generateKlingVideo(
   const taskId = await createKlingTask(baseUrl, apiKey, input);
   log.info("Kling t2v generation started", { modelId, taskId });
 
-  const url = await waitForKlingVideo(baseUrl, apiKey, taskId);
+  const url = await waitForKlingTask(baseUrl, apiKey, taskId, "text2video");
   return { url, ...(aspectRatio ? { resolvedAspectRatio: aspectRatio } : {}) };
 }
 
@@ -431,6 +350,6 @@ async function generateKlingImageToVideo(
     hasEndImage: Boolean(options.endImage),
   });
 
-  const url = await waitForKlingImageToVideo(baseUrl, apiKey, taskId);
+  const url = await waitForKlingTask(baseUrl, apiKey, taskId, "image2video");
   return { url, ...(aspectRatio ? { resolvedAspectRatio: aspectRatio } : {}) };
 }
