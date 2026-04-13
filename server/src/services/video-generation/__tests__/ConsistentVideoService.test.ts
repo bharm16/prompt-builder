@@ -75,10 +75,24 @@ const createAssetService = (): AssetService =>
   }) as unknown as AssetService;
 
 describe("ConsistentVideoService", () => {
+  it("throws when KeyframeGenerationService is not provided", () => {
+    expect(
+      () =>
+        new ConsistentVideoService({
+          videoGenerationService: createVideoGenerationService(),
+          assetService: createAssetService(),
+        }),
+    ).toThrow("KeyframeGenerationService is required");
+  });
+
   it("throws when VideoGenerationService is not provided", () => {
-    expect(() => new ConsistentVideoService()).toThrow(
-      "VideoGenerationService is required",
-    );
+    expect(
+      () =>
+        new ConsistentVideoService({
+          keyframeService: createKeyframeService(),
+          assetService: createAssetService(),
+        }),
+    ).toThrow("VideoGenerationService is required");
   });
 
   it("generates video directly when prompt does not require keyframe", async () => {

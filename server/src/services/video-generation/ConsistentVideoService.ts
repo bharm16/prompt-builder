@@ -4,9 +4,8 @@ import type {
 } from "@services/video-generation/types";
 import { VideoGenerationService } from "@services/video-generation/VideoGenerationService";
 import type { ResolvedPrompt } from "@shared/types/asset";
-import KeyframeGenerationService, {
-  type KeyframeResult,
-} from "./KeyframeGenerationService";
+import type KeyframeGenerationService from "./KeyframeGenerationService";
+import type { KeyframeResult } from "./KeyframeGenerationService";
 import AssetService from "@services/asset/AssetService";
 import { logger } from "@infrastructure/Logger";
 
@@ -32,14 +31,16 @@ export class ConsistentVideoService {
       videoGenerationService?: VideoGenerationService;
     } = {},
   ) {
-    this.keyframeService =
-      options.keyframeService || new KeyframeGenerationService();
+    if (!options.keyframeService) {
+      throw new Error("KeyframeGenerationService is required");
+    }
     if (!options.videoGenerationService) {
       throw new Error("VideoGenerationService is required");
     }
     if (!options.assetService) {
       throw new Error("AssetService is required");
     }
+    this.keyframeService = options.keyframeService;
     this.assetService = options.assetService;
     this.videoGenerationService = options.videoGenerationService;
   }
