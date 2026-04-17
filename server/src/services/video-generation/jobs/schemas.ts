@@ -76,6 +76,7 @@ export const VideoJobErrorSchema = z.object({
 export const VideoJobRecordSchema = z.object({
   status: z.enum(VIDEO_JOB_STATUSES),
   userId: z.string(),
+  sessionId: z.string().optional(),
   requestId: z.string().optional(),
   request: VideoJobRequestSchema,
   creditsReserved: z.number().nonnegative(),
@@ -92,4 +93,5 @@ export const VideoJobRecordSchema = z.object({
   lastHeartbeatAtMs: z.number().optional(),
   releasedAtMs: z.number().optional(),
   releaseReason: z.string().optional(),
+  nextRetryAtMs: z.number().optional(),
 });

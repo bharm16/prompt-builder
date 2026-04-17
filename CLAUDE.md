@@ -53,14 +53,18 @@ These terms have specific meanings in this codebase. Do not conflate them.
 
 Services are registered via domain-scoped files in `server/src/config/services/`:
 
-| Registration File            | Registers                                                               |
-| ---------------------------- | ----------------------------------------------------------------------- |
-| `infrastructure.services.ts` | cache, metrics, Firebase clients, storage, assets, credits              |
-| `llm.services.ts`            | aiService, claudeClient, groqClient, geminiClient                       |
-| `enhancement.services.ts`    | enhancementService, sceneDetection, coherence, videoPromptAnalysis      |
-| `generation.services.ts`     | imageGeneration, videoGeneration, storyboardPreview, keyframe, faceSwap |
-| `continuity.services.ts`     | continuitySessionService (gated — see Feature Flags below)              |
-| `session.services.ts`        | sessionService, modelIntelligence                                       |
+| Registration File         | Registers                                                               |
+| ------------------------- | ----------------------------------------------------------------------- |
+| `core.services.ts`        | metrics, Firebase clients, face embedding, core infrastructure          |
+| `cache.services.ts`       | cacheService, spanLabelingCache                                         |
+| `credit.services.ts`      | userCreditService, creditReconciliation                                 |
+| `storage.services.ts`     | storageService, videoContentAccess, videoAssetRetention                 |
+| `llm.services.ts`         | aiModelService, concurrency                                             |
+| `enhancement.services.ts` | enhancementService, videoService, sceneDetection                        |
+| `generation.services.ts`  | imageGeneration, videoGeneration, storyboardPreview, keyframe, faceSwap |
+| `continuity.services.ts`  | continuitySessionService (gated — see Feature Flags below)              |
+| `session.services.ts`     | sessionService, assetResolver, referenceImageProcessing                 |
+| `video-jobs.services.ts`  | requestIdempotency, video job processing                                |
 
 The container is created in `server/src/config/services.config.ts` and initialized in `services.initialize.ts`. Routes consume services via factory functions in `server/src/config/routes.config.ts`.
 
@@ -168,7 +172,7 @@ PORT=0 npx vitest run tests/integration/bootstrap.integration.test.ts tests/inte
 
 1. Read relevant scope docs and impacted modules first (`client/`, `server/`, `shared/`).
 2. Implement using established patterns:
-   - Frontend: `client/src/components/VideoConceptBuilder/` style (orchestrator + hooks + api + components).
+   - Frontend: `client/src/features/preview/` style (orchestrator + hooks + api + components).
    - Backend: `server/src/services/prompt-optimization/` style (thin orchestrator + specialized services).
 3. Add/update tests close to changed behavior.
 4. Run targeted verification first, then full checks before handoff.

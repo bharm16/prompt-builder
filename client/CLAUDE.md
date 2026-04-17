@@ -12,6 +12,15 @@ Root `AGENTS.md` rules apply here — especially the non-negotiable rules and co
 - TypeScript/JavaScript mix (migration in progress)
 - Lucide React for icons
 
+## Commands
+
+```bash
+npm run dev         # Vite dev server (port 5173, proxies /api to 3001)
+npm run build       # Production build
+npm run lint        # ESLint
+npm run test:unit   # Vitest unit tests
+```
+
 ## Structure
 
 ```
@@ -25,6 +34,9 @@ client/src/
 ├── services/              # Client-side services
 ├── repositories/          # Data access layer
 ├── schemas/               # Zod validation schemas
+├── contexts/              # React context providers
+├── config/                # Client configuration
+├── lib/                   # Third-party library wrappers
 ├── types/                 # TypeScript type definitions
 ├── utils/                 # Pure utility functions
 └── styles/                # Global styles
@@ -32,7 +44,7 @@ client/src/
 
 ## Architecture Pattern
 
-Follow the **VideoConceptBuilder** pattern in `client/src/components/VideoConceptBuilder/`:
+Follow the **preview** feature pattern in `client/src/features/preview/`:
 
 ```
 FeatureName/

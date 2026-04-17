@@ -471,6 +471,7 @@ export interface VideoJobStatusResponse {
   startImageUrl?: string;
   resolvedAspectRatio?: string;
   serverTimeoutMs?: number;
+  suggestedPollIntervalMs?: number;
   creditsReserved?: number;
   creditsDeducted?: number;
   error?: string;

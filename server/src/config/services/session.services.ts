@@ -17,6 +17,7 @@ import { ReferenceImageRepository } from "@services/asset/reference-images/Refer
 import { SessionService } from "@services/sessions/SessionService";
 import { SessionStore } from "@services/sessions/SessionStore";
 import type { UserCreditService } from "@services/credits/UserCreditService";
+import type { VideoJobStore } from "@services/video-generation/jobs/VideoJobStore";
 import type { MetricsService } from "@infrastructure/MetricsService";
 import type { ServiceConfig } from "./service-config.types.ts";
 
@@ -119,8 +120,12 @@ export function registerSessionServices(container: DIContainer): void {
 
   container.register(
     "sessionService",
-    (sessionStore: SessionStore) => new SessionService(sessionStore),
-    ["sessionStore"],
+    (sessionStore: SessionStore, videoJobStore: VideoJobStore) =>
+      new SessionService(sessionStore, {
+        cancelJobsForSession: (sessionId) =>
+          videoJobStore.cancelJobsForSession(sessionId),
+      }),
+    ["sessionStore", "videoJobStore"],
     { singleton: true },
   );
 

@@ -111,6 +111,7 @@ export interface ServiceConfig {
     };
     access: {
       tokenSecret: string | undefined;
+      previousTokenSecrets?: readonly string[];
       tokenTtlSeconds: number;
     };
     reconciler: {

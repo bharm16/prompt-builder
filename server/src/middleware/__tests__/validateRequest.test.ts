@@ -36,25 +36,15 @@ function createMockResponse(): Response & {
   return res as unknown as Response & { statusCode?: number; body?: unknown };
 }
 
-// Mock Zod-like schema
+// Mock Zod-like schema (Zod v4 uses `issues`, not `errors`)
 function createZodSchema(
   validateFn: (value: unknown) => {
     success: boolean;
-    error?: { errors: Array<{ message: string }> };
+    error?: { issues: Array<{ message: string }> };
     data: unknown;
   },
 ) {
   return { safeParse: validateFn };
-}
-
-// Mock Joi-like schema
-function createJoiSchema(
-  validateFn: (
-    value: unknown,
-    options?: unknown,
-  ) => { error?: { details: Array<{ message: string }> }; value: unknown },
-) {
-  return { validate: validateFn };
 }
 
 describe("validateRequest", () => {
@@ -101,13 +91,28 @@ describe("validateRequest", () => {
 
       expect(res.statusCode).toBe(500);
     });
+
+    it("returns 500 for schema lacking safeParse (no Joi fallback)", () => {
+      // Confirms that Joi-style schemas (only `validate` method) are no longer accepted.
+      const joiLike = { validate: vi.fn() };
+      const middleware = validateRequest(joiLike as never);
+      const req = createMockRequest({});
+      const res = createMockResponse();
+      const next = vi.fn();
+
+      middleware(req, res, next);
+
+      expect(res.statusCode).toBe(500);
+      expect(joiLike.validate).not.toHaveBeenCalled();
+      expect(next).not.toHaveBeenCalled();
+    });
   });
 
   describe("Zod schema validation", () => {
     it("returns 400 when Zod validation fails", () => {
       const zodSchema = createZodSchema(() => ({
         success: false,
-        error: { errors: [{ message: "Invalid email format" }] },
+        error: { issues: [{ message: "Invalid email format" }] },
         data: undefined,
       }));
       const middleware = validateRequest(zodSchema as never);
@@ -129,7 +134,7 @@ describe("validateRequest", () => {
     it("returns 400 with fallback message when Zod error has no details", () => {
       const zodSchema = createZodSchema(() => ({
         success: false,
-        error: { errors: [] },
+        error: { issues: [] },
         data: undefined,
       }));
       const middleware = validateRequest(zodSchema as never);
@@ -162,67 +167,11 @@ describe("validateRequest", () => {
     });
   });
 
-  describe("Joi schema validation", () => {
-    it("returns 400 when Joi validation fails", () => {
-      const joiSchema = createJoiSchema(() => ({
-        error: { details: [{ message: '"name" is required' }] },
-        value: undefined,
-      }));
-      const middleware = validateRequest(joiSchema as never);
-      const req = createMockRequest({}, "req-456");
-      const res = createMockResponse();
-      const next = vi.fn();
-
-      middleware(req, res, next);
-
-      expect(res.statusCode).toBe(400);
-      expect(res.body).toMatchObject({
-        error: "Validation failed",
-        details: '"name" is required',
-        requestId: "req-456",
-      });
-      expect(next).not.toHaveBeenCalled();
-    });
-
-    it("returns 400 with fallback message when Joi error has no details", () => {
-      const joiSchema = createJoiSchema(() => ({
-        error: { details: [] },
-        value: undefined,
-      }));
-      const middleware = validateRequest(joiSchema as never);
-      const req = createMockRequest({});
-      const res = createMockResponse();
-      const next = vi.fn();
-
-      middleware(req, res, next);
-
-      expect(res.body).toMatchObject({
-        details: "Invalid request data",
-      });
-    });
-
-    it("calls next and replaces body with validated value on success", () => {
-      const validatedValue = { name: "Test", trimmed: true };
-      const joiSchema = createJoiSchema(() => ({
-        value: validatedValue,
-      }));
-      const middleware = validateRequest(joiSchema as never);
-      const req = createMockRequest({ name: "  Test  " });
-      const res = createMockResponse();
-      const next = vi.fn();
-
-      middleware(req, res, next);
-
-      expect(req.body).toEqual(validatedValue);
-      expect(next).toHaveBeenCalledTimes(1);
-    });
-  });
-
   describe("edge cases", () => {
     it("includes requestId in error response when available", () => {
       const zodSchema = createZodSchema(() => ({
         success: false,
-        error: { errors: [{ message: "error" }] },
+        error: { issues: [{ message: "error" }] },
         data: undefined,
       }));
       const middleware = validateRequest(zodSchema as never);
@@ -240,7 +189,7 @@ describe("validateRequest", () => {
     it("handles missing requestId gracefully", () => {
       const zodSchema = createZodSchema(() => ({
         success: false,
-        error: { errors: [{ message: "error" }] },
+        error: { issues: [{ message: "error" }] },
         data: undefined,
       }));
       const middleware = validateRequest(zodSchema as never);
@@ -253,27 +202,6 @@ describe("validateRequest", () => {
       expect(res.body).toMatchObject({
         requestId: undefined,
       });
-    });
-  });
-
-  describe("core behavior", () => {
-    it("prefers Zod schema over Joi when both methods exist", () => {
-      const schema = {
-        safeParse: vi
-          .fn()
-          .mockReturnValue({ success: true, data: { zod: true } }),
-        validate: vi.fn().mockReturnValue({ value: { joi: true } }),
-      };
-      const middleware = validateRequest(schema as never);
-      const req = createMockRequest({});
-      const res = createMockResponse();
-      const next = vi.fn();
-
-      middleware(req, res, next);
-
-      expect(schema.safeParse).toHaveBeenCalled();
-      expect(schema.validate).not.toHaveBeenCalled();
-      expect(req.body).toEqual({ zod: true });
     });
   });
 });

@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { logger } from "@infrastructure/Logger";
+import { sleep } from "@utils/sleep";
 import type { UserCreditService } from "./UserCreditService";
 import type { RefundFailureStore } from "./RefundFailureStore";
 import { getRefundFailureStore } from "./RefundFailureStore";
@@ -27,12 +28,6 @@ export function buildRefundKey(
     .map((part) => String(part))
     .join("|");
   return createHash("sha256").update(raw).digest("hex");
-}
-
-async function sleep(delayMs: number): Promise<void> {
-  await new Promise((resolve) => {
-    setTimeout(resolve, delayMs);
-  });
 }
 
 export async function refundWithGuard(

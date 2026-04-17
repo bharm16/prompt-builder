@@ -2,6 +2,7 @@ import { admin, getFirestore } from "@infrastructure/firebaseAdmin";
 import { logger } from "@infrastructure/Logger";
 import type { FirestoreCircuitExecutor } from "@services/firestore/FirestoreCircuitExecutor";
 import { computeDlqBackoff } from "./dlqBackoff";
+import { toVideoJobError } from "./normalizeError";
 import type {
   DlqEntry,
   VideoJobError,
@@ -68,17 +69,7 @@ export class DeadLetterStore {
     options?: { creditsRefunded?: boolean },
   ): Promise<void> {
     const now = Date.now();
-    const normalizedError: VideoJobError = {
-      message: error.message,
-      ...(error.code ? { code: error.code } : {}),
-      ...(error.category ? { category: error.category } : {}),
-      ...(typeof error.retryable === "boolean"
-        ? { retryable: error.retryable }
-        : {}),
-      ...(error.stage ? { stage: error.stage } : {}),
-      ...(error.provider ? { provider: error.provider } : {}),
-      ...(typeof error.attempt === "number" ? { attempt: error.attempt } : {}),
-    };
+    const normalizedError = toVideoJobError(error);
     const isRetryable = normalizedError.retryable !== false;
     const initialBackoffMs = 30_000;
     const maxDlqAttempts = 3;

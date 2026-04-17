@@ -3,6 +3,7 @@ import { logger } from "@infrastructure/Logger";
 
 const DEFAULT_TOKEN_TTL_SECONDS = 60 * 60;
 const CONTENT_PATH_PREFIX = "/api/preview/video/content";
+const CURRENT_TOKEN_VERSION = 1;
 
 export interface VideoContentTokenPayload {
   assetId: string;
@@ -12,6 +13,11 @@ export interface VideoContentTokenPayload {
 
 interface VideoContentAccessOptions {
   secret: string;
+  /**
+   * Optional previous secret(s). Tokens signed with these are still accepted
+   * during a rotation grace period. New tokens are always signed with `secret`.
+   */
+  previousSecrets?: readonly string[];
   ttlMs: number;
 }
 
@@ -23,10 +29,14 @@ interface IssueTokenParams {
 
 export class VideoContentAccessService {
   private readonly secret: string;
+  private readonly previousSecrets: readonly string[];
   private readonly ttlMs: number;
 
   constructor(options: VideoContentAccessOptions) {
     this.secret = options.secret;
+    this.previousSecrets = (options.previousSecrets ?? []).filter(
+      (s) => typeof s === "string" && s.length > 0,
+    );
     this.ttlMs = options.ttlMs;
   }
 
@@ -35,10 +45,10 @@ export class VideoContentAccessService {
       assetId,
       userId,
       expiresAtMs: Date.now() + (ttlMs ?? this.ttlMs),
-      version: 1,
+      version: CURRENT_TOKEN_VERSION,
     };
     const encoded = Buffer.from(JSON.stringify(payload)).toString("base64url");
-    const signature = this.sign(encoded);
+    const signature = this.signWith(this.secret, encoded);
     return `${encoded}.${signature}`;
   }
 
@@ -52,8 +62,8 @@ export class VideoContentAccessService {
     if (!encoded || !signature) {
       return null;
     }
-    const expected = this.sign(encoded);
-    if (!this.timingSafeEqual(signature, expected)) {
+
+    if (!this.signatureMatchesAnyKey(encoded, signature)) {
       return null;
     }
 
@@ -112,11 +122,25 @@ export class VideoContentAccessService {
     return url.startsWith(CONTENT_PATH_PREFIX);
   }
 
-  private sign(value: string): string {
-    return crypto
-      .createHmac("sha256", this.secret)
-      .update(value)
-      .digest("base64url");
+  /**
+   * Try the current secret first; if it fails, fall back to previous secrets.
+   * This supports zero-downtime rotation: deploy the new secret as `secret`
+   * and keep the old one in `previousSecrets` for the grace period.
+   */
+  private signatureMatchesAnyKey(encoded: string, signature: string): boolean {
+    if (this.timingSafeEqual(signature, this.signWith(this.secret, encoded))) {
+      return true;
+    }
+    for (const prev of this.previousSecrets) {
+      if (this.timingSafeEqual(signature, this.signWith(prev, encoded))) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private signWith(key: string, value: string): string {
+    return crypto.createHmac("sha256", key).update(value).digest("base64url");
   }
 
   private timingSafeEqual(a: string, b: string): boolean {
@@ -131,6 +155,11 @@ export class VideoContentAccessService {
 
 interface AccessConfig {
   tokenSecret: string | undefined;
+  /**
+   * Comma-separated list of retired token secrets still accepted during a
+   * rotation grace period. Read from VIDEO_CONTENT_TOKEN_SECRET_PREVIOUS.
+   */
+  previousTokenSecrets?: readonly string[];
   tokenTtlSeconds: number;
 }
 
@@ -138,9 +167,16 @@ export function createVideoContentAccessService(
   config: AccessConfig,
 ): VideoContentAccessService | null {
   const ttlMs = config.tokenTtlSeconds * 1000;
+  const previousSecrets = (config.previousTokenSecrets ?? []).filter(
+    (s): s is string => typeof s === "string" && s.trim().length > 0,
+  );
 
   if (config.tokenSecret && config.tokenSecret.trim().length > 0) {
-    return new VideoContentAccessService({ secret: config.tokenSecret, ttlMs });
+    return new VideoContentAccessService({
+      secret: config.tokenSecret,
+      ttlMs,
+      ...(previousSecrets.length > 0 ? { previousSecrets } : {}),
+    });
   }
 
   if (process.env.NODE_ENV === "production") {

@@ -6,6 +6,7 @@ import {
   withStage,
   type StageAwareError,
 } from "./classifyError";
+import { HeartbeatManager } from "./HeartbeatManager";
 import { RetryPolicy } from "@server/utils/RetryPolicy";
 import type { VideoJobError, VideoJobRecord } from "./types";
 import type { VideoGenerationResult } from "../types";
@@ -151,40 +152,17 @@ export async function processVideoJob(
     maxAttempts: job.maxAttempts,
   });
 
-  const defaultHeartbeat = (() => {
-    let heartbeatTimer: NodeJS.Timeout | null = null;
-    return {
-      start(): void {
-        heartbeatTimer = setInterval(() => {
-          void jobStore
-            .renewLease(job.id, workerId, leaseMs)
-            .then((renewed) => {
-              if (!renewed) {
-                log.warn(`${logPrefix} heartbeat skipped (lease lost)`, {
-                  jobId: job.id,
-                  workerId,
-                });
-              }
-            })
-            .catch((err) => {
-              log.warn(`${logPrefix} heartbeat failed`, {
-                jobId: job.id,
-                workerId,
-                error: err instanceof Error ? err.message : String(err),
-              });
-            });
-        }, heartbeatIntervalMs);
-      },
-      stop(): void {
-        if (heartbeatTimer) {
-          clearInterval(heartbeatTimer);
-          heartbeatTimer = null;
-        }
-      },
-    };
-  })();
-
-  const heartbeat = deps.heartbeat ?? defaultHeartbeat;
+  const heartbeat =
+    deps.heartbeat ??
+    new HeartbeatManager({
+      jobId: job.id,
+      workerId,
+      leaseMs,
+      intervalMs: heartbeatIntervalMs,
+      renewLease: (id, wid, lease) => jobStore.renewLease(id, wid, lease),
+      logger: log,
+      logPrefix: `${logPrefix} heartbeat`,
+    });
 
   try {
     heartbeat.start();

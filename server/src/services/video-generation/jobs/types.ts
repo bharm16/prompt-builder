@@ -47,6 +47,11 @@ export interface VideoJobRecord {
   id: string;
   status: VideoJobStatus;
   userId: string;
+  /**
+   * Optional session this job belongs to. Used by SessionService to cascade
+   * cancellation on session delete, preventing orphan in-flight jobs.
+   */
+  sessionId?: string;
   requestId?: string;
   request: VideoJobRequest;
   creditsReserved: number;
@@ -63,6 +68,11 @@ export interface VideoJobRecord {
   lastHeartbeatAtMs?: number;
   releasedAtMs?: number;
   releaseReason?: string;
+  /**
+   * When set on a queued job, the worker will skip claiming it until `now >= nextRetryAtMs`.
+   * Populated by `requeueForRetry` after a transient failure to implement backoff.
+   */
+  nextRetryAtMs?: number;
 }
 
 export const DLQ_STATUSES = [

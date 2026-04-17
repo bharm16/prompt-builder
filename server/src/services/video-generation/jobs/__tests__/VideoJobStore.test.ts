@@ -421,6 +421,46 @@ describe("VideoJobStore", () => {
     expect(record).not.toHaveProperty("leaseExpiresAtMs");
   });
 
+  it("claimNextJob skips a queued job whose nextRetryAtMs is in the future (backoff)", async () => {
+    const now = Date.now();
+    mocks.records.set("job-waiting", {
+      status: "queued",
+      userId: "user-1",
+      request: { prompt: "prompt", options: { model: "sora-2" } },
+      creditsReserved: 2,
+      createdAtMs: now - 5_000,
+      updatedAtMs: now - 5_000,
+      nextRetryAtMs: now + 60_000, // 60s in the future
+    });
+    const store = new VideoJobStore();
+
+    const claimed = await store.claimNextJob("worker-1", 3_000);
+
+    expect(claimed).toBeNull();
+    expect(mocks.records.get("job-waiting")?.status).toBe("queued");
+  });
+
+  it("claimNextJob claims a queued job whose nextRetryAtMs has elapsed", async () => {
+    const now = Date.now();
+    mocks.records.set("job-ready", {
+      status: "queued",
+      userId: "user-1",
+      request: { prompt: "prompt", options: { model: "sora-2" } },
+      creditsReserved: 2,
+      createdAtMs: now - 120_000,
+      updatedAtMs: now - 120_000,
+      nextRetryAtMs: now - 5_000, // 5s in the past
+    });
+    const store = new VideoJobStore();
+
+    const claimed = await store.claimNextJob("worker-1", 3_000);
+
+    expect(claimed?.id).toBe("job-ready");
+    expect(claimed?.status).toBe("processing");
+    // nextRetryAtMs should be cleared when the job is claimed
+    expect(mocks.records.get("job-ready")).not.toHaveProperty("nextRetryAtMs");
+  });
+
   it("markFailed sets failure state but does not override completed jobs", async () => {
     mocks.records.set("job-processing", {
       status: "processing",
@@ -563,6 +603,8 @@ describe("VideoJobStore", () => {
       category: "timeout",
       retryable: true,
     });
+    expect(typeof job?.nextRetryAtMs).toBe("number");
+    expect((job?.nextRetryAtMs ?? 0) > Date.now()).toBe(true);
 
     await expect(
       store.enqueueDeadLetter(
@@ -600,5 +642,231 @@ describe("VideoJobStore", () => {
     ).resolves.toBe(false);
     await expect(store.markFailed("missing", "error")).resolves.toBe(false);
     expect(mocks.loggerError).toHaveBeenCalled();
+  });
+
+  describe("createJobWithReservation (atomic credit reserve + job create)", () => {
+    it("reserves credits AND creates job in a single transaction on success", async () => {
+      const store = new VideoJobStore();
+      const creditCalls: Array<{ userId: string; cost: number }> = [];
+      const creditService = {
+        checkAndReserveInTransaction: vi
+          .fn()
+          .mockImplementation(
+            async (
+              _tx: unknown,
+              userId: string,
+              cost: number,
+            ): Promise<{ ok: true }> => {
+              creditCalls.push({ userId, cost });
+              return { ok: true };
+            },
+          ),
+      };
+
+      const result = await store.createJobWithReservation(
+        {
+          userId: "user-1",
+          request: { prompt: "p", options: { model: "sora-2" } },
+          creditsReserved: 10,
+        },
+        { creditService, cost: 10 },
+      );
+
+      expect(result.reserved).toBe(true);
+      if (!result.reserved) return;
+      expect(result.job.id).toBe("job-1");
+      expect(result.job.status).toBe("queued");
+      expect(creditCalls).toEqual([{ userId: "user-1", cost: 10 }]);
+      expect(mocks.records.get("job-1")).toMatchObject({
+        status: "queued",
+        userId: "user-1",
+        creditsReserved: 10,
+      });
+    });
+
+    it("returns insufficient_credits and does NOT create the job", async () => {
+      const store = new VideoJobStore();
+      const creditService = {
+        checkAndReserveInTransaction: vi.fn().mockResolvedValue({
+          ok: false,
+          reason: "insufficient_credits",
+        }),
+      };
+
+      const result = await store.createJobWithReservation(
+        {
+          userId: "user-broke",
+          request: { prompt: "p", options: { model: "sora-2" } },
+          creditsReserved: 10,
+        },
+        { creditService, cost: 10 },
+      );
+
+      expect(result.reserved).toBe(false);
+      if (result.reserved) return;
+      expect(result.reason).toBe("insufficient_credits");
+      expect(mocks.records.size).toBe(0);
+    });
+
+    it("returns user_not_found and does NOT create the job", async () => {
+      const store = new VideoJobStore();
+      const creditService = {
+        checkAndReserveInTransaction: vi
+          .fn()
+          .mockResolvedValue({ ok: false, reason: "user_not_found" }),
+      };
+
+      const result = await store.createJobWithReservation(
+        {
+          userId: "ghost",
+          request: { prompt: "p", options: { model: "sora-2" } },
+          creditsReserved: 5,
+        },
+        { creditService, cost: 5 },
+      );
+
+      expect(result.reserved).toBe(false);
+      if (result.reserved) return;
+      expect(result.reason).toBe("user_not_found");
+      expect(mocks.records.size).toBe(0);
+    });
+
+    it("propagates errors from the atomic transaction without creating partial state", async () => {
+      const store = new VideoJobStore();
+      mocks.runTransactionError = new Error("Firestore unavailable");
+      const creditService = {
+        checkAndReserveInTransaction: vi.fn().mockResolvedValue({ ok: true }),
+      };
+
+      await expect(
+        store.createJobWithReservation(
+          {
+            userId: "user-1",
+            request: { prompt: "p", options: { model: "sora-2" } },
+            creditsReserved: 10,
+          },
+          { creditService, cost: 10 },
+        ),
+      ).rejects.toThrow("Firestore unavailable");
+      expect(mocks.records.size).toBe(0);
+    });
+
+    it("persists sessionId when provided and parses it back on read", async () => {
+      const store = new VideoJobStore();
+      const creditService = {
+        checkAndReserveInTransaction: vi.fn().mockResolvedValue({ ok: true }),
+      };
+
+      const result = await store.createJobWithReservation(
+        {
+          userId: "user-1",
+          sessionId: "session-42",
+          request: { prompt: "p", options: { model: "sora-2" } },
+          creditsReserved: 5,
+        },
+        { creditService, cost: 5 },
+      );
+
+      expect(result.reserved).toBe(true);
+      if (!result.reserved) return;
+      expect(result.job.sessionId).toBe("session-42");
+      expect(mocks.records.get("job-1")).toMatchObject({
+        sessionId: "session-42",
+      });
+    });
+  });
+
+  describe("session cascade", () => {
+    it("findJobsBySessionId returns only jobs with the matching sessionId", async () => {
+      mocks.records.set("job-a", {
+        status: "queued",
+        userId: "user-1",
+        sessionId: "session-1",
+        request: { prompt: "p", options: { model: "sora-2" } },
+        creditsReserved: 1,
+        createdAtMs: Date.now(),
+        updatedAtMs: Date.now(),
+      });
+      mocks.records.set("job-b", {
+        status: "processing",
+        userId: "user-1",
+        sessionId: "session-1",
+        request: { prompt: "p", options: { model: "sora-2" } },
+        creditsReserved: 1,
+        createdAtMs: Date.now(),
+        updatedAtMs: Date.now(),
+      });
+      mocks.records.set("job-c", {
+        status: "queued",
+        userId: "user-1",
+        sessionId: "different-session",
+        request: { prompt: "p", options: { model: "sora-2" } },
+        creditsReserved: 1,
+        createdAtMs: Date.now(),
+        updatedAtMs: Date.now(),
+      });
+      mocks.records.set("job-d", {
+        status: "queued",
+        userId: "user-1",
+        request: { prompt: "p", options: { model: "sora-2" } },
+        creditsReserved: 1,
+        createdAtMs: Date.now(),
+        updatedAtMs: Date.now(),
+      });
+      const store = new VideoJobStore();
+
+      const jobs = await store.findJobsBySessionId("session-1");
+
+      expect(jobs.map((j) => j.id).sort()).toEqual(["job-a", "job-b"]);
+    });
+
+    it("cancelJobsForSession marks queued/processing jobs as failed and leaves terminal jobs alone", async () => {
+      mocks.records.set("job-q", {
+        status: "queued",
+        userId: "user-1",
+        sessionId: "session-cancel",
+        request: { prompt: "p", options: { model: "sora-2" } },
+        creditsReserved: 1,
+        createdAtMs: Date.now(),
+        updatedAtMs: Date.now(),
+      });
+      mocks.records.set("job-p", {
+        status: "processing",
+        userId: "user-1",
+        sessionId: "session-cancel",
+        request: { prompt: "p", options: { model: "sora-2" } },
+        creditsReserved: 1,
+        workerId: "worker-1",
+        leaseExpiresAtMs: Date.now() + 60_000,
+        createdAtMs: Date.now(),
+        updatedAtMs: Date.now(),
+      });
+      mocks.records.set("job-done", {
+        status: "completed",
+        userId: "user-1",
+        sessionId: "session-cancel",
+        request: { prompt: "p", options: { model: "sora-2" } },
+        creditsReserved: 1,
+        createdAtMs: Date.now(),
+        updatedAtMs: Date.now(),
+        result: {
+          assetId: "asset-1",
+          videoUrl: "https://example.com/v.mp4",
+          contentType: "video/mp4",
+        },
+      });
+      const store = new VideoJobStore();
+
+      const cancelled = await store.cancelJobsForSession("session-cancel");
+
+      expect(cancelled).toBe(2);
+      expect(mocks.records.get("job-q")?.status).toBe("failed");
+      expect(mocks.records.get("job-p")?.status).toBe("failed");
+      expect(mocks.records.get("job-done")?.status).toBe("completed");
+      expect(
+        (mocks.records.get("job-q") as { error?: { code?: string } })?.error
+          ?.code,
+      ).toBe("SESSION_DELETED");
+    });
   });
 });

@@ -92,11 +92,15 @@ export async function pollJobStatus(
       throw new Error("Timed out waiting for video generation");
     }
 
-    // Two-tier poll strategy: fast during active phase, slow after
+    // Prefer server-suggested cadence (provider-aware). Fall back to the
+    // hardcoded two-tier strategy when the server does not supply one.
     const interval =
-      elapsedMs > ACTIVE_PHASE_MS
-        ? POLL_INTERVAL_EXTENDED_MS
-        : POLL_INTERVAL_ACTIVE_MS;
+      typeof status.suggestedPollIntervalMs === "number" &&
+      status.suggestedPollIntervalMs >= 500
+        ? status.suggestedPollIntervalMs
+        : elapsedMs > ACTIVE_PHASE_MS
+          ? POLL_INTERVAL_EXTENDED_MS
+          : POLL_INTERVAL_ACTIVE_MS;
 
     await new Promise<void>((resolve) => {
       const timer = setTimeout(resolve, interval);

@@ -167,20 +167,47 @@ export function isVeoModelId(modelId: VideoModelId): modelId is VeoModelId {
   return modelId === VIDEO_MODELS.VEO_3;
 }
 
+export type VideoProviderName =
+  | "openai"
+  | "luma"
+  | "kling"
+  | "gemini"
+  | "replicate";
+
+/**
+ * Single source of truth mapping every known video model ID to its provider.
+ *
+ * Declaring this as `Record<VideoModelId, VideoProviderName>` forces the
+ * compiler to require an entry for every value in `VIDEO_MODELS`. When a new
+ * model is added to the config, TypeScript will refuse to build until the
+ * author assigns a provider here — catching the "silently falls through to
+ * replicate" class of bug at build time rather than at runtime.
+ */
+export const VIDEO_MODEL_PROVIDERS: Record<VideoModelId, VideoProviderName> = {
+  "sora-2": "openai",
+  "sora-2-pro": "openai",
+  "kling-v2-1-master": "kling",
+  "luma-ray3": "luma",
+  "google/veo-3": "gemini",
+  "wan-video/wan-2.2-t2v-fast": "replicate",
+  "wan-video/wan-2.2-i2v-fast": "replicate",
+  "wan-video/wan-2.5-i2v": "replicate",
+  "wan-video/wan-2.5-i2v-fast": "replicate",
+  "genmo/mochi-1-final": "replicate",
+  "minimax/video-02": "replicate",
+};
+
 export function resolveProviderForGenerationModel(
   modelId: VideoModelId,
-): "openai" | "luma" | "kling" | "gemini" | "replicate" {
-  if (isOpenAISoraModelId(modelId)) {
-    return "openai";
-  }
-  if (isLumaModelId(modelId)) {
-    return "luma";
-  }
-  if (isKlingModelId(modelId)) {
-    return "kling";
-  }
-  if (isVeoModelId(modelId)) {
-    return "gemini";
-  }
+): VideoProviderName {
+  // Data-first lookup — preferred path. Type guards below stay for callers
+  // that need the type-narrowing behavior (e.g., `isOpenAISoraModelId`).
+  const mapped = VIDEO_MODEL_PROVIDERS[modelId];
+  if (mapped) return mapped;
+
+  if (isOpenAISoraModelId(modelId)) return "openai";
+  if (isLumaModelId(modelId)) return "luma";
+  if (isKlingModelId(modelId)) return "kling";
+  if (isVeoModelId(modelId)) return "gemini";
   return "replicate";
 }

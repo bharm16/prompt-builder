@@ -160,6 +160,7 @@ export const VideoJobStatusResponseSchema = z
     startImageUrl: z.string().optional(),
     resolvedAspectRatio: z.string().optional(),
     serverTimeoutMs: z.number().optional(),
+    suggestedPollIntervalMs: z.number().optional(),
     creditsReserved: z.number().optional(),
     creditsDeducted: z.number().optional(),
     error: z.string().optional(),

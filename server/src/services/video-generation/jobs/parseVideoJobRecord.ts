@@ -1,44 +1,7 @@
 import type { DocumentData } from "firebase-admin/firestore";
 import { VideoJobRecordSchema } from "./schemas";
-import type { VideoJobError, VideoJobRecord, VideoJobRequest } from "./types";
-
-type VideoJobErrorInput =
-  | string
-  | {
-      message: string;
-      code?: string | undefined;
-      category?: VideoJobError["category"] | undefined;
-      retryable?: boolean | undefined;
-      stage?: VideoJobError["stage"] | undefined;
-      provider?: string | undefined;
-      attempt?: number | undefined;
-    };
-
-function resolvePositiveInt(
-  value: number | undefined,
-  fallback: number,
-): number {
-  return Number.isFinite(value) && (value as number) > 0
-    ? Number.parseInt(String(value), 10)
-    : fallback;
-}
-
-function toVideoJobError(error: VideoJobErrorInput): VideoJobError {
-  if (typeof error === "string") {
-    return { message: error };
-  }
-  return {
-    message: error.message,
-    ...(error.code ? { code: error.code } : {}),
-    ...(error.category ? { category: error.category } : {}),
-    ...(typeof error.retryable === "boolean"
-      ? { retryable: error.retryable }
-      : {}),
-    ...(error.stage ? { stage: error.stage } : {}),
-    ...(error.provider ? { provider: error.provider } : {}),
-    ...(typeof error.attempt === "number" ? { attempt: error.attempt } : {}),
-  };
-}
+import type { VideoJobRecord, VideoJobRequest } from "./types";
+import { resolvePositiveInt, toVideoJobError } from "./normalizeError";
 
 export function parseVideoJobRecord(
   id: string,
@@ -81,6 +44,9 @@ export function parseVideoJobRecord(
     id,
     status: parsed.status,
     userId: parsed.userId,
+    ...(typeof parsed.sessionId === "string"
+      ? { sessionId: parsed.sessionId }
+      : {}),
     request: {
       ...parsed.request,
       options: normalizedOptions,
@@ -121,6 +87,9 @@ export function parseVideoJobRecord(
   }
   if (typeof parsed.releaseReason === "string") {
     base.releaseReason = parsed.releaseReason;
+  }
+  if (typeof parsed.nextRetryAtMs === "number") {
+    base.nextRetryAtMs = parsed.nextRetryAtMs;
   }
 
   return base;

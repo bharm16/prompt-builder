@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef } from "react";
+import debounce from "lodash/debounce";
 import type {
   ContinuityShot,
   UpdateShotInput,
 } from "@/features/continuity/types";
-import { debounce } from "@/features/prompt-optimizer/utils/debounce";
 import { logger } from "@/services/LoggingService";
 
 const log = logger.child("useEditorShotPromptBinding");

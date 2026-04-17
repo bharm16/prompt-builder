@@ -466,27 +466,6 @@ export const createVideoGenerateHandler =
       });
     }
 
-    const hasCredits = await userCreditService.reserveCredits(
-      userId,
-      plan.videoCost,
-    );
-    if (!hasCredits) {
-      await refunds.refundKeyframeCredits(
-        "video credits insufficient after keyframe reservation",
-      );
-      await refunds.refundFaceSwapCredits(
-        "video credits insufficient after face-swap reservation",
-      );
-      const preprocessingCost =
-        refunds.ledger.keyframeCost + refunds.ledger.faceSwapCost;
-      return await respondWithError(402, {
-        error: "Insufficient credits",
-        code: GENERATION_ERROR_CODES.INSUFFICIENT_CREDITS,
-        details: `This generation requires ${plan.videoCost} credits${preprocessingCost > 0 ? ` (plus ${preprocessingCost} already reserved for preprocessing)` : ""}.`,
-      });
-    }
-    refunds.setVideoCost(plan.videoCost);
-
     log.debug("Queueing operation.", {
       operation,
       requestId,
@@ -515,15 +494,44 @@ export const createVideoGenerateHandler =
     });
 
     try {
-      const job = await videoJobStore.createJob({
-        userId,
-        ...(requestId ? { requestId } : {}),
-        request: {
-          prompt: plan.promptWithMotion,
-          options: plan.options,
+      const reservationResult = await videoJobStore.createJobWithReservation(
+        {
+          userId,
+          ...(requestId ? { requestId } : {}),
+          request: {
+            prompt: plan.promptWithMotion,
+            options: plan.options,
+          },
+          creditsReserved: plan.videoCost,
         },
-        creditsReserved: refunds.ledger.videoCost,
-      });
+        { creditService: userCreditService, cost: plan.videoCost },
+      );
+
+      if (!reservationResult.reserved) {
+        const userFacingReason =
+          reservationResult.reason === "user_not_found"
+            ? "user not found"
+            : "insufficient";
+        await refunds.refundKeyframeCredits(
+          `video credits ${userFacingReason} after keyframe reservation`,
+        );
+        await refunds.refundFaceSwapCredits(
+          `video credits ${userFacingReason} after face-swap reservation`,
+        );
+        const preprocessingCost =
+          refunds.ledger.keyframeCost + refunds.ledger.faceSwapCost;
+        return await respondWithError(402, {
+          error:
+            reservationResult.reason === "user_not_found"
+              ? "User not found"
+              : "Insufficient credits",
+          code: GENERATION_ERROR_CODES.INSUFFICIENT_CREDITS,
+          details: `This generation requires ${plan.videoCost} credits${preprocessingCost > 0 ? ` (plus ${preprocessingCost} already reserved for preprocessing)` : ""}.`,
+        });
+      }
+
+      refunds.setVideoCost(plan.videoCost);
+      const job = reservationResult.job;
 
       log.info("Operation queued.", {
         operation,

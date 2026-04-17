@@ -323,4 +323,41 @@ describe("SessionService", () => {
       "2026-01-01T00:00:05.000Z",
     );
   });
+
+  describe("video job cascade on delete", () => {
+    it("invokes cancelJobsForSession before deleting the session record", async () => {
+      sessionStore.get.mockResolvedValue(buildRecord());
+      const cancelJobsForSession = vi.fn().mockResolvedValue(2);
+      const cascade = { cancelJobsForSession };
+      const service = new SessionService(sessionStore as never, cascade);
+
+      await service.deleteSessionForUser("user-1", "session-1");
+
+      expect(cancelJobsForSession).toHaveBeenCalledWith("session-1");
+      expect(sessionStore.delete).toHaveBeenCalledWith("session-1");
+    });
+
+    it("proceeds with session delete even when cascade throws (non-fatal)", async () => {
+      sessionStore.get.mockResolvedValue(buildRecord());
+      const cancelJobsForSession = vi
+        .fn()
+        .mockRejectedValue(new Error("firestore unavailable"));
+      const cascade = { cancelJobsForSession };
+      const service = new SessionService(sessionStore as never, cascade);
+
+      await expect(
+        service.deleteSessionForUser("user-1", "session-1"),
+      ).resolves.toBeUndefined();
+      expect(sessionStore.delete).toHaveBeenCalledWith("session-1");
+    });
+
+    it("is a no-op when no cascade dependency is injected (backward-compat)", async () => {
+      sessionStore.get.mockResolvedValue(buildRecord());
+      const service = new SessionService(sessionStore as never);
+
+      await service.deleteSessionForUser("user-1", "session-1");
+
+      expect(sessionStore.delete).toHaveBeenCalledWith("session-1");
+    });
+  });
 });

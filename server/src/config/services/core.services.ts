@@ -290,6 +290,12 @@ export function registerCoreServices(container: DIContainer): void {
       },
       access: {
         tokenSecret: process.env.VIDEO_CONTENT_TOKEN_SECRET,
+        previousTokenSecrets: (
+          process.env.VIDEO_CONTENT_TOKEN_SECRET_PREVIOUS ?? ""
+        )
+          .split(",")
+          .map((s) => s.trim())
+          .filter((s) => s.length > 0),
         tokenTtlSeconds: resolvePositiveNumber(
           process.env.VIDEO_CONTENT_TOKEN_TTL_SECONDS,
           3600,

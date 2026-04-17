@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from "uuid";
 import { logger } from "@infrastructure/Logger";
+import { sleep } from "@utils/sleep";
 import type { VideoGenerationService } from "../VideoGenerationService";
 import type { UserCreditService } from "@services/credits/UserCreditService";
 import type { StorageService } from "@services/storage/StorageService";
@@ -7,7 +8,7 @@ import type { WorkerStatus } from "@services/credits/CreditRefundSweeper";
 import type { VideoJobRecord } from "./types";
 import { VideoJobStore } from "./VideoJobStore";
 import type { ProviderCircuitManager } from "./ProviderCircuitManager";
-import { normalizeErrorMessage } from "./classifyError";
+import { HeartbeatManager } from "./HeartbeatManager";
 import { processVideoJob } from "./processVideoJob";
 
 interface VideoJobWorkerOptions {
@@ -43,12 +44,6 @@ interface ActiveJobContext {
   startedAtMs: number;
 }
 
-function sleep(delayMs: number): Promise<void> {
-  return new Promise((resolve) => {
-    setTimeout(resolve, delayMs);
-  });
-}
-
 export class VideoJobWorker {
   private readonly jobStore: VideoJobStore;
   private readonly videoGenerationService: VideoGenerationService;
@@ -79,8 +74,6 @@ export class VideoJobWorker {
   private readonly activeJobs = new Map<string, ActiveJobContext>();
   private lastRunAt: Date | null = null;
   private consecutiveFailures = 0;
-  /** Consecutive heartbeat failures per job — used to detect zombie lease conditions. */
-  private readonly heartbeatFailures = new Map<string, number>();
   /** Max consecutive heartbeat failures before aborting a job to prevent zombie state. */
   private static readonly MAX_HEARTBEAT_FAILURES = 3;
 
@@ -461,96 +454,24 @@ export class VideoJobWorker {
     /** AbortController used to cancel in-flight generation when heartbeats detect a zombie lease. */
     const heartbeatAbort = new AbortController();
 
-    this.heartbeatFailures.set(job.id, 0);
-    let workerHeartbeatTimer: NodeJS.Timeout | null = null;
-
-    const workerHeartbeat = {
-      start: (): void => {
-        workerHeartbeatTimer = setInterval(() => {
-          void this.jobStore
-            .renewLease(job.id, this.workerId, this.leaseMs)
-            .then((renewed) => {
-              if (renewed) {
-                this.heartbeatFailures.set(job.id, 0);
-              } else {
-                const consecutiveHbFails =
-                  (this.heartbeatFailures.get(job.id) ?? 0) + 1;
-                this.heartbeatFailures.set(job.id, consecutiveHbFails);
-                this.log.warn(
-                  "Video job lease heartbeat skipped (lease may have been reclaimed)",
-                  {
-                    jobId: job.id,
-                    workerId: this.workerId,
-                    consecutiveFailures: consecutiveHbFails,
-                  },
-                );
-                if (
-                  consecutiveHbFails >= VideoJobWorker.MAX_HEARTBEAT_FAILURES
-                ) {
-                  this.log.error(
-                    "Aborting job due to repeated heartbeat failures — lease likely expired",
-                    undefined,
-                    {
-                      jobId: job.id,
-                      workerId: this.workerId,
-                      consecutiveFailures: consecutiveHbFails,
-                    },
-                  );
-                  this.metrics?.recordAlert("video_job_heartbeat_abort", {
-                    jobId: job.id,
-                    workerId: this.workerId,
-                    consecutiveFailures: consecutiveHbFails,
-                  });
-                  heartbeatAbort.abort(
-                    new Error(
-                      "Lease heartbeat lost — aborting to prevent zombie job",
-                    ),
-                  );
-                }
-              }
-            })
-            .catch((error) => {
-              const consecutiveHbFails =
-                (this.heartbeatFailures.get(job.id) ?? 0) + 1;
-              this.heartbeatFailures.set(job.id, consecutiveHbFails);
-              this.log.warn("Video job heartbeat failed", {
-                jobId: job.id,
-                workerId: this.workerId,
-                error: normalizeErrorMessage(error),
-                consecutiveFailures: consecutiveHbFails,
-              });
-              if (consecutiveHbFails >= VideoJobWorker.MAX_HEARTBEAT_FAILURES) {
-                this.log.error(
-                  "Aborting job due to repeated heartbeat errors — lease likely expired",
-                  undefined,
-                  {
-                    jobId: job.id,
-                    workerId: this.workerId,
-                    consecutiveFailures: consecutiveHbFails,
-                  },
-                );
-                this.metrics?.recordAlert("video_job_heartbeat_abort", {
-                  jobId: job.id,
-                  workerId: this.workerId,
-                  consecutiveFailures: consecutiveHbFails,
-                });
-                heartbeatAbort.abort(
-                  new Error(
-                    "Lease heartbeat lost — aborting to prevent zombie job",
-                  ),
-                );
-              }
-            });
-        }, this.heartbeatIntervalMs);
+    const workerHeartbeat = new HeartbeatManager({
+      jobId: job.id,
+      workerId: this.workerId,
+      leaseMs: this.leaseMs,
+      intervalMs: this.heartbeatIntervalMs,
+      renewLease: (id, wid, lease) => this.jobStore.renewLease(id, wid, lease),
+      maxConsecutiveFailures: VideoJobWorker.MAX_HEARTBEAT_FAILURES,
+      logger: this.log,
+      logPrefix: "Video job lease heartbeat",
+      onAbort: (reason) => {
+        this.metrics?.recordAlert("video_job_heartbeat_abort", {
+          jobId: job.id,
+          workerId: this.workerId,
+          consecutiveFailures: VideoJobWorker.MAX_HEARTBEAT_FAILURES,
+        });
+        heartbeatAbort.abort(reason);
       },
-      stop: (): void => {
-        if (workerHeartbeatTimer) {
-          clearInterval(workerHeartbeatTimer);
-          workerHeartbeatTimer = null;
-        }
-        this.heartbeatFailures.delete(job.id);
-      },
-    };
+    });
 
     try {
       await processVideoJob(job, {

@@ -10,6 +10,7 @@ import {
   resolveGenerationModelSelection,
   resolvePromptModelId,
   resolveProviderForGenerationModel,
+  VIDEO_MODEL_PROVIDERS,
 } from "../ModelRegistry";
 
 describe("ModelRegistry", () => {
@@ -126,5 +127,24 @@ describe("ModelRegistry", () => {
     expect(resolveProviderForGenerationModel(VIDEO_MODELS.PRO)).toBe(
       "replicate",
     );
+  });
+
+  describe("VIDEO_MODEL_PROVIDERS", () => {
+    it("has an explicit provider for every VIDEO_MODELS entry (no silent default)", () => {
+      const modelIds = Object.values(VIDEO_MODELS) as string[];
+      const missing = modelIds.filter((id) => !(id in VIDEO_MODEL_PROVIDERS));
+      expect(missing).toEqual([]);
+    });
+
+    it("agrees with the type-guard fallback for every known model", () => {
+      for (const modelId of Object.keys(VIDEO_MODEL_PROVIDERS)) {
+        const viaMap =
+          VIDEO_MODEL_PROVIDERS[modelId as keyof typeof VIDEO_MODEL_PROVIDERS];
+        const viaResolver = resolveProviderForGenerationModel(
+          modelId as typeof modelId,
+        );
+        expect(viaResolver).toBe(viaMap);
+      }
+    });
   });
 });
