@@ -325,7 +325,7 @@ The Vite client (`npm run dev`) runs independently and renders the full UI. API 
 
 - `PROMPT_OUTPUT_ONLY=true` in `.env` disables video generation routes and skips GLiNER model download requirement.
 - Redis is optional; comment out `REDIS_URL` to use in-memory cache fallback.
-- The `.env` file is created from `.env.example` with placeholder Firebase values.
+- The `.env` file is created manually; required-var list lives in `server/src/config/env.ts` (Zod schema) and is validated at startup.
 
 ### Commands Reference
 

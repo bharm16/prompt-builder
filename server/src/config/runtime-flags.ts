@@ -1,3 +1,14 @@
+/**
+ * Runtime flags derived from the feature-flag registry.
+ *
+ * This module is a narrow facade over `feature-flags.ts` that preserves the
+ * legacy `RuntimeFlags` shape consumed by route registrations, bootstrap code,
+ * and ~12 other call sites. New code should prefer `resolveAllFlags()` from
+ * `feature-flags.ts` directly.
+ */
+
+import { resolveAllFlags } from "./feature-flags.ts";
+
 export interface RuntimeFlags {
   processRole: "api" | "worker";
   promptOutputOnly: boolean;
@@ -7,10 +18,6 @@ export interface RuntimeFlags {
   videoWorkerShutdownDrainSeconds: number;
   allowUnhealthyGemini: boolean;
   unhandledRejectionMode: "classified" | "strict";
-}
-
-function isTrue(value: string | undefined): boolean {
-  return value === "true";
 }
 
 function resolveProcessRole(env: NodeJS.ProcessEnv): "api" | "worker" {
@@ -32,32 +39,36 @@ function resolvePositiveInt(
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
-function resolveUnhandledRejectionMode(
-  value: string | undefined,
-): "classified" | "strict" {
-  return value === "strict" ? "strict" : "classified";
-}
-
 export function getRuntimeFlags(
   env: NodeJS.ProcessEnv = process.env,
 ): RuntimeFlags {
   const processRole = resolveProcessRole(env);
+  const { flags } = resolveAllFlags(env);
 
   return {
     processRole,
-    promptOutputOnly: isTrue(env.PROMPT_OUTPUT_ONLY),
-    enableConvergence: env.ENABLE_CONVERGENCE !== "false",
+    promptOutputOnly: flags.promptOutputOnly,
+    enableConvergence: flags.convergence,
     videoWorkerDisabled:
-      processRole !== "worker" || isTrue(env.VIDEO_JOB_WORKER_DISABLED),
-    videoJobInlineEnabled: env.VIDEO_JOB_INLINE_ENABLED !== "false",
+      processRole !== "worker" || flags.videoJobWorkerDisabled,
+    videoJobInlineEnabled: flags.videoJobInlineEnabled,
     videoWorkerShutdownDrainSeconds: resolvePositiveInt(
       env.VIDEO_WORKER_SHUTDOWN_DRAIN_SECONDS,
       45,
     ),
-    allowUnhealthyGemini:
-      isTrue(env.ALLOW_UNHEALTHY_GEMINI) || isTrue(env.GEMINI_ALLOW_UNHEALTHY),
-    unhandledRejectionMode: resolveUnhandledRejectionMode(
-      env.UNHANDLED_REJECTION_MODE,
-    ),
+    allowUnhealthyGemini: flags.allowUnhealthyGemini,
+    unhandledRejectionMode: flags.unhandledRejectionMode,
   };
+}
+
+/**
+ * Resolve runtime flags AND surface any deprecation notices for legacy env
+ * var names. Bootstrap code should call this once at startup and log the
+ * notices, rather than letting them repeat on every `getRuntimeFlags` call.
+ */
+export function getRuntimeFlagsWithNotices(
+  env: NodeJS.ProcessEnv = process.env,
+): { runtime: RuntimeFlags; deprecations: string[] } {
+  const { deprecations } = resolveAllFlags(env);
+  return { runtime: getRuntimeFlags(env), deprecations };
 }

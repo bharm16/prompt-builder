@@ -23,6 +23,17 @@ const coerceBooleanString = (fallback: boolean) =>
     .default(String(fallback))
     .transform((v) => v === "true");
 
+/**
+ * Strict boolean env var: requires exactly "true" or "false". Fails validation
+ * on other values (e.g. "yes", "1", "garbage"). Use for canonical flag names
+ * where typos should surface at boot rather than silently falling to `false`.
+ */
+const strictBooleanString = (fallback: boolean) =>
+  z
+    .enum(["true", "false"])
+    .default(String(fallback) as "true" | "false")
+    .transform((v) => v === "true");
+
 // ─── Domain schemas ────────────────────────────────────────────
 
 const serverSchema = z.object({
@@ -47,6 +58,37 @@ const featureFlagSchema = z.object({
   UNHANDLED_REJECTION_MODE: z
     .enum(["classified", "strict"])
     .default("classified"),
+  // Canonical kill-switch names use STRICT parsing: non-"true"/"false" values
+  // fail boot validation instead of silently coercing to `false`. Legacy
+  // `*_DISABLED` forms below remain lenient for back-compat with existing
+  // deploy configs.
+  WEBHOOK_RECONCILIATION_ENABLED: strictBooleanString(true),
+  BILLING_PROFILE_REPAIR_ENABLED: strictBooleanString(true),
+  CREDIT_REFUND_SWEEPER_ENABLED: strictBooleanString(true),
+  CREDIT_RECONCILIATION_ENABLED: strictBooleanString(true),
+  VIDEO_JOB_SWEEPER_ENABLED: strictBooleanString(true),
+  VIDEO_DLQ_REPROCESSOR_ENABLED: strictBooleanString(true),
+  VIDEO_ASSET_RETENTION_ENABLED: strictBooleanString(true),
+  VIDEO_ASSET_RECONCILER_ENABLED: strictBooleanString(false),
+  CONTINUITY_CLIP_ENABLED: strictBooleanString(true),
+  // Legacy `*_DISABLED` names — still read by feature-flags.ts via alias
+  // resolution. Declared here so `X_DISABLED=garbage` fails validation.
+  WEBHOOK_RECONCILIATION_DISABLED: coerceBooleanString(false),
+  BILLING_PROFILE_REPAIR_DISABLED: coerceBooleanString(false),
+  CREDIT_REFUND_SWEEPER_DISABLED: coerceBooleanString(false),
+  CREDIT_RECONCILIATION_DISABLED: coerceBooleanString(false),
+  VIDEO_JOB_SWEEPER_DISABLED: coerceBooleanString(false),
+  VIDEO_ASSET_RETENTION_DISABLED: coerceBooleanString(false),
+  VIDEO_ASSET_RECONCILER_DISABLED: coerceBooleanString(false),
+  DISABLE_CONTINUITY_CLIP: coerceBooleanString(false),
+  // Registry-level experimental flags (feature-flags.ts, not routed through
+  // runtime-flags). Declared here so typos fail boot validation.
+  PROMPT_PIPELINE_V2: z
+    .string()
+    .default("true")
+    .transform((v) => v !== "false"),
+  ENHANCEMENT_ENABLE_V1: coerceBooleanString(false),
+  ENABLE_FACE_EMBEDDING: coerceBooleanString(false),
 });
 
 const openaiSchema = z.object({
@@ -93,6 +135,11 @@ const firebaseSchema = z.object({
   VITE_FIREBASE_APP_ID: optionalString(),
   VITE_FIREBASE_MEASUREMENT_ID: optionalString(),
   GOOGLE_APPLICATION_CREDENTIALS: optionalString(),
+  // Firebase Admin auth: either a service-account JSON file (PATH) or the
+  // JSON blob inline (JSON). Both are read by infrastructure/firebaseAdmin.ts
+  // with fallback to Application Default Credentials.
+  FIREBASE_SERVICE_ACCOUNT_PATH: optionalString(),
+  FIREBASE_SERVICE_ACCOUNT_JSON: optionalString(),
 });
 
 const storageSchema = z.object({
@@ -129,8 +176,15 @@ const videoJobSchema = z.object({
   VIDEO_JOB_LEASE_SECONDS: coercePositiveInt(60),
   VIDEO_JOB_HEARTBEAT_INTERVAL_MS: coercePositiveInt(20000),
   VIDEO_JOB_STALE_QUEUE_SECONDS: coercePositiveInt(300),
+  VIDEO_JOB_STALE_QUEUE_MINUTES: z.coerce.number().int().positive().optional(),
   VIDEO_JOB_STALE_PROCESSING_SECONDS: coercePositiveInt(90),
+  VIDEO_JOB_STALE_PROCESSING_MINUTES: z.coerce
+    .number()
+    .int()
+    .positive()
+    .optional(),
   VIDEO_JOB_SWEEP_INTERVAL_SECONDS: coercePositiveInt(15),
+  VIDEO_JOB_SWEEP_MAX: coercePositiveInt(25),
   VIDEO_PROVIDER_POLL_TIMEOUT_MS: coercePositiveInt(270000),
   VIDEO_WORKFLOW_TIMEOUT_MS: coercePositiveInt(300000),
   VIDEO_JOB_POLL_INTERVAL_MS: coercePositiveInt(2000),
@@ -150,6 +204,23 @@ const videoJobSchema = z.object({
   VIDEO_GENERATE_IDEMPOTENCY_PENDING_TTL_MS: coercePositiveInt(360000),
   VIDEO_GENERATE_IDEMPOTENCY_REPLAY_TTL_MS: coercePositiveInt(86400000),
   VIDEO_WORKER_SHUTDOWN_DRAIN_SECONDS: coercePositiveInt(45),
+  VIDEO_WORKER_HEARTBEAT_MAX_AGE_MS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .optional(),
+  VIDEO_CONTENT_TOKEN_SECRET: optionalString(),
+  VIDEO_CONTENT_TOKEN_SECRET_PREVIOUS: optionalString(),
+  VIDEO_CONTENT_TOKEN_TTL_SECONDS: coercePositiveInt(3600),
+});
+
+const videoAssetsSchema = z.object({
+  VIDEO_ASSET_RETENTION_HOURS: coercePositiveInt(24),
+  VIDEO_ASSET_CLEANUP_INTERVAL_MINUTES: coercePositiveInt(15),
+  VIDEO_ASSET_CLEANUP_BATCH_SIZE: coercePositiveInt(100),
+  VIDEO_ASSET_RECONCILER_ORPHAN_THRESHOLD_MS: coercePositiveInt(3_600_000),
+  VIDEO_ASSET_RECONCILER_INTERVAL_MS: coercePositiveInt(300_000),
+  VIDEO_ASSET_RECONCILER_MAX_PER_RUN: coercePositiveInt(50),
 });
 
 const firestoreCircuitSchema = z.object({
@@ -167,6 +238,13 @@ const firestoreCircuitSchema = z.object({
 const creditSchema = z.object({
   CREDIT_RECONCILIATION_INCREMENTAL_SCAN_LIMIT: coercePositiveInt(500),
   CREDIT_RECONCILIATION_FULL_PAGE_SIZE: coercePositiveInt(200),
+  CREDIT_RECONCILIATION_INCREMENTAL_INTERVAL_SECONDS: coercePositiveInt(3600),
+  CREDIT_RECONCILIATION_FULL_INTERVAL_HOURS: coercePositiveInt(24),
+  CREDIT_RECONCILIATION_MAX_INTERVAL_SECONDS: coercePositiveInt(21600),
+  CREDIT_RECONCILIATION_BACKOFF_FACTOR: coerceNonNegativeNumber(2),
+  CREDIT_REFUND_SWEEP_INTERVAL_SECONDS: coercePositiveInt(60),
+  CREDIT_REFUND_SWEEP_MAX: coercePositiveInt(25),
+  CREDIT_REFUND_MAX_ATTEMPTS: coercePositiveInt(20),
   FREE_TIER_STARTER_CREDITS: z.coerce.number().int().min(0).default(25),
 });
 
@@ -174,6 +252,11 @@ const billingSchema = z.object({
   STRIPE_SECRET_KEY: optionalApiKey(),
   STRIPE_WEBHOOK_SECRET: optionalApiKey(),
   STRIPE_PRICE_CREDITS: optionalString(),
+  WEBHOOK_RECONCILIATION_INTERVAL_SECONDS: coercePositiveInt(300),
+  WEBHOOK_RECONCILIATION_LOOKBACK_HOURS: coercePositiveInt(72),
+  BILLING_PROFILE_REPAIR_INTERVAL_SECONDS: coercePositiveInt(60),
+  BILLING_PROFILE_REPAIR_MAX_PER_RUN: coercePositiveInt(25),
+  BILLING_PROFILE_REPAIR_MAX_ATTEMPTS: coercePositiveInt(20),
 });
 
 const redisSchema = z.object({
@@ -198,6 +281,17 @@ const observabilitySchema = z.object({
   SENTRY_DSN: optionalString(),
   SENTRY_DEBUG: coerceBooleanString(false),
   APP_VERSION: optionalString(),
+  // Structured logging stack-trace controls — consumed by infrastructure/Logger.ts
+  LOG_STACK: coerceBooleanString(false),
+  LOG_STACK_LEVELS: z.string().default("warn,error"),
+  LOG_STACK_DEPTH: coercePositiveInt(6),
+  LOG_STACK_LIMIT: z.coerce.number().int().positive().optional(),
+  LOG_CALLER: coerceBooleanString(false),
+  // OpenTelemetry tracing (production distributed tracing)
+  ENABLE_TRACING: coerceBooleanString(false),
+  OTEL_EXPORTER_OTLP_ENDPOINT: optionalString(),
+  OTEL_EXPORTER_OTLP_HEADERS: optionalString(),
+  OTEL_EXPORTER_OTLP_TIMEOUT: z.coerce.number().int().positive().optional(),
 });
 
 const startupSchema = z.object({
@@ -211,6 +305,62 @@ const startupSchema = z.object({
     .optional(),
 });
 
+const capabilitiesSchema = z.object({
+  CAPABILITIES_PROBE_URL: optionalString(),
+  CAPABILITIES_PROBE_PATH: optionalString(),
+  CAPABILITIES_PROBE_REFRESH_MS: coercePositiveInt(6 * 60 * 60 * 1000),
+});
+
+const convergenceSchema = z.object({
+  DEPTH_ESTIMATION_WARMUP_RETRY_TIMEOUT_MS: coercePositiveInt(20_000),
+  DEPTH_WARMUP_ON_STARTUP: coerceBooleanString(true),
+  DEPTH_WARMUP_TIMEOUT_MS: coercePositiveInt(60_000),
+  // FAL_DEPTH_WARMUP_ENABLED default is NODE_ENV-dependent (see core.services.ts);
+  // declared here as optional for pass-through validation only.
+  FAL_DEPTH_WARMUP_ENABLED: optionalString(),
+  FAL_DEPTH_WARMUP_IMAGE_URL: optionalString(),
+  FAL_DEPTH_WARMUP_INTERVAL_MS: coercePositiveInt(120_000),
+  CONVERGENCE_STORAGE_SIGNED_URL_TTL_SECONDS: coercePositiveInt(86_400),
+  IP_ADAPTER_MODEL: optionalString(),
+});
+
+const enhancementSchema = z.object({
+  ENHANCEMENT_ENGINE_DEFAULT: z.enum(["v1", "v2"]).optional(),
+  ENHANCEMENT_POLICY_VERSION: z.string().default("2026-03-v2a"),
+  SHOT_PLAN_CACHE_TTL_MS: coercePositiveInt(300_000),
+  SHOT_PLAN_CACHE_MAX: coercePositiveInt(200),
+});
+
+const spanLabelingSchema = z.object({
+  // Provider/model for span-labeling LLM calls. Independent of main LLM config
+  // so span labeling can run on a cheaper/faster model than primary prompts.
+  SPAN_PROVIDER: optionalString(),
+  SPAN_MODEL: optionalString(),
+  SPAN_LABELING_PROVIDER: optionalString(),
+});
+
+const devSchema = z.object({
+  ALLOW_DEV_CROSS_USER_SESSIONS: coerceBooleanString(false),
+  RUN_FAL_INTEGRATION: coerceBooleanString(false),
+});
+
+// ─── Eval / test-script overrides ──────────────────────────────────
+// The following env vars are intentionally NOT validated here. They're
+// read by scripts/test-models-comparison.ts, evaluation harnesses, and
+// per-LLM-call overrides that should be *absent* in normal runtime.
+// Validating them here would force callers to set them. See scripts/README.md.
+//
+// Eval overrides: CATEGORIZE_MODEL, CATEGORIZE_PROVIDER, ENHANCE_MODEL,
+//   ENHANCE_PROVIDER, JUDGE_MODEL, JUDGE_PROVIDER, JUDGE_GENERAL_MODEL,
+//   JUDGE_GENERAL_PROVIDER, OPTIMIZE_MODEL, OPTIMIZE_PROVIDER,
+//   QUESTION_MODEL, QUESTION_PROVIDER, ROLE_MODEL, ROLE_PROVIDER,
+//   I2V_PARSE_MODEL, I2V_PARSE_PROVIDER, IMAGE_OBSERVATION_MODEL,
+//   IMAGE_OBSERVATION_PROVIDER, VIDEO_PROMPT_IR_MODEL,
+//   VIDEO_PROMPT_REWRITE_MODEL, VIDEO_MODEL, VIDEO_PROVIDER,
+//   DRAFT_I2V_MODEL, WAN_2_5_I2V_MODEL, PROVIDER, CUSTOM_PROVIDER,
+//   MODEL_TIER_REQUIREMENTS, FACE_SWAP_TEST_FACE_URL, FACE_SWAP_TEST_TARGET_URL.
+// Test-runner vars set by Vitest/Codex: VITEST, VITEST_WORKER_ID, CODEX_SANDBOX.
+
 // ─── Composite schema ──────────────────────────────────────────
 
 const envSchema = serverSchema
@@ -223,6 +373,7 @@ const envSchema = serverSchema
   .merge(storageSchema)
   .merge(videoGenerationSchema)
   .merge(videoJobSchema)
+  .merge(videoAssetsSchema)
   .merge(firestoreCircuitSchema)
   .merge(creditSchema)
   .merge(billingSchema)
@@ -230,6 +381,11 @@ const envSchema = serverSchema
   .merge(securitySchema)
   .merge(observabilitySchema)
   .merge(startupSchema)
+  .merge(capabilitiesSchema)
+  .merge(convergenceSchema)
+  .merge(enhancementSchema)
+  .merge(spanLabelingSchema)
+  .merge(devSchema)
   .passthrough();
 
 // ─── Production refinements ────────────────────────────────────
@@ -283,7 +439,7 @@ export function parseEnv(env: NodeJS.ProcessEnv = process.env): ValidatedEnv {
       .map((issue) => `  - ${issue.path.join(".")}: ${issue.message}`)
       .join("\n");
     throw new Error(
-      `Environment validation failed:\n${formatted}\n\nCheck .env.example for required variables.`,
+      `Environment validation failed:\n${formatted}\n\nThe Zod schema in server/src/config/env.ts is the authoritative list of required/optional vars. Feature-flag toggles live in server/src/config/feature-flags.ts (see CLAUDE.md "Feature Flags").`,
     );
   }
 
@@ -350,9 +506,8 @@ export function emitEnvWarnings(env: ValidatedEnv): void {
   }
 
   // Warn when inline video processing is explicitly disabled in a non-production
-  // environment. This usually means a stale .env copied from .env.example before
-  // the default was flipped to true. Video jobs will queue but never be processed
-  // unless a separate PROCESS_ROLE=worker process is running.
+  // environment. Video jobs will queue but never be processed unless a separate
+  // PROCESS_ROLE=worker process is running.
   if (
     env.NODE_ENV !== "production" &&
     !env.VIDEO_JOB_INLINE_ENABLED &&
@@ -360,7 +515,7 @@ export function emitEnvWarnings(env: ValidatedEnv): void {
   ) {
     log.warn(
       "VIDEO_JOB_INLINE_ENABLED is false — video jobs will be queued but not processed without a separate worker. " +
-        "Remove VIDEO_JOB_INLINE_ENABLED=false from .env to use the default (enabled).",
+        "Unset VIDEO_JOB_INLINE_ENABLED (or set to true) to use the default (enabled).",
       {
         operation: "validateEnv",
         processRole: env.PROCESS_ROLE ?? "api",

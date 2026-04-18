@@ -158,7 +158,7 @@ Before marking any task complete, verify:
 
 ```bash
 npm install
-cp .env.example .env # Then fill in required keys
+touch .env # Populate from team secrets manager; server/src/config/env.ts lists required vars
 ```
 
 ### Daily Development

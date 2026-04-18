@@ -1,6 +1,7 @@
 import { logger } from "@infrastructure/Logger";
 import type { ILogger } from "@interfaces/ILogger";
 import OptimizationConfig from "@config/OptimizationConfig";
+import { resolveAllFlags } from "@config/feature-flags";
 
 import { VideoStrategy } from "./strategies/VideoStrategy";
 import { ShotInterpreterService } from "./services/ShotInterpreterService";
@@ -80,7 +81,7 @@ export class PromptOptimizationService {
           }
         : undefined,
     );
-    this.pipelineV2Enabled = process.env.PROMPT_PIPELINE_V2 !== "false";
+    this.pipelineV2Enabled = resolveAllFlags().flags.promptPipelineV2;
 
     this.templateVersions = OptimizationConfig.templateVersions;
 

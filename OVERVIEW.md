@@ -299,9 +299,12 @@ git clone https://github.com/yourusername/prompt-builder.git
 cd prompt-builder
 npm install
 
-# Configure (requires OpenAI API key)
-cp .env.example .env
-# Edit .env with your keys
+# Configure — create a local `.env` file. The server fails fast at startup
+# with a precise list of any missing required vars. See
+# server/src/config/env.ts (Zod schema) for the authoritative list, and
+# CLAUDE.md for feature flags.
+touch .env
+# Populate with your OpenAI / Firebase / etc. keys
 
 # Run
 npm start

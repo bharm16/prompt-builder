@@ -109,8 +109,10 @@ API calls never go directly in React components. Use `client/src/api/` for thin 
 
 ## Environment
 
-- Copy .env.example to .env.
-- Required for local dev: VITE*FIREBASE*\* and at least one LLM key (ex: OPENAI_API_KEY).
+- Create a local `.env` file; obtain values from the team's secrets manager.
+- The authoritative required-var list is the Zod schema in `server/src/config/env.ts` — the server fails fast at startup with a complete missing-var list.
+- Required for local dev: `VITE_FIREBASE_*` and at least one LLM key (e.g. `OPENAI_API_KEY`).
+- Feature-flag toggles live in `server/src/config/feature-flags.ts`; see the table in `CLAUDE.md`.
 
 ## Common commands
 

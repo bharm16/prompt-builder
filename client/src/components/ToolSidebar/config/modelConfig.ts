@@ -23,15 +23,7 @@ const DRAFT_MODEL_OPTIONS: Record<
   },
 };
 
-const resolveDraftModelId = (): DraftVideoModel => {
-  const envValue = import.meta.env?.VITE_DRAFT_VIDEO_MODEL?.trim();
-  if (envValue && envValue in DRAFT_MODEL_OPTIONS) {
-    return envValue as DraftVideoModel;
-  }
-  return "wan-2.5";
-};
-
-export const VIDEO_DRAFT_MODEL = DRAFT_MODEL_OPTIONS[resolveDraftModelId()];
+export const VIDEO_DRAFT_MODEL = DRAFT_MODEL_OPTIONS["wan-2.5"];
 export const VIDEO_DRAFT_MODELS = Object.values(DRAFT_MODEL_OPTIONS);
 
 /**

@@ -13,11 +13,15 @@ import {
   resolvePositiveNumber,
   resolveSignedUrlTtlMs,
 } from "./env-utils.ts";
+import { resolveAllFlags } from "../feature-flags.ts";
 import type { ServiceConfig } from "./service-config.types.ts";
 
 export function registerCoreServices(container: DIContainer): void {
-  const enhancementLegacyV1Enabled =
-    process.env.ENHANCEMENT_ENABLE_V1 === "true";
+  // Single-source-of-truth flag resolution. The `flags` object is typed; legacy
+  // env var names (*_DISABLED, GEMINI_ALLOW_UNHEALTHY, DISABLE_CONTINUITY_CLIP)
+  // are still honored as deprecated aliases — see feature-flags.ts.
+  const { flags } = resolveAllFlags(process.env);
+  const enhancementLegacyV1Enabled = flags.enhancementLegacyV1Enabled;
 
   container.registerValue("logger", logger);
   container.register("metricsService", () => new MetricsService(), [], {
@@ -69,7 +73,7 @@ export function registerCoreServices(container: DIContainer): void {
       webhookSecret: process.env.STRIPE_WEBHOOK_SECRET,
       priceCreditsJson: process.env.STRIPE_PRICE_CREDITS,
       webhookReconciliation: {
-        disabled: process.env.WEBHOOK_RECONCILIATION_DISABLED === "true",
+        disabled: !flags.webhookReconciliationEnabled,
         intervalSeconds: resolvePositiveNumber(
           process.env.WEBHOOK_RECONCILIATION_INTERVAL_SECONDS,
           300,
@@ -82,7 +86,7 @@ export function registerCoreServices(container: DIContainer): void {
         ),
       },
       profileRepair: {
-        disabled: process.env.BILLING_PROFILE_REPAIR_DISABLED === "true",
+        disabled: !flags.billingProfileRepairEnabled,
         intervalSeconds: resolvePositiveNumber(
           process.env.BILLING_PROFILE_REPAIR_INTERVAL_SECONDS,
           60,
@@ -102,7 +106,7 @@ export function registerCoreServices(container: DIContainer): void {
     },
     credits: {
       refundSweeper: {
-        disabled: process.env.CREDIT_REFUND_SWEEPER_DISABLED === "true",
+        disabled: !flags.creditRefundSweeperEnabled,
         intervalSeconds: resolvePositiveNumber(
           process.env.CREDIT_REFUND_SWEEP_INTERVAL_SECONDS,
           60,
@@ -120,7 +124,7 @@ export function registerCoreServices(container: DIContainer): void {
         ),
       },
       reconciliation: {
-        disabled: process.env.CREDIT_RECONCILIATION_DISABLED === "true",
+        disabled: !flags.creditReconciliationEnabled,
         incrementalIntervalSeconds: resolvePositiveNumber(
           process.env.CREDIT_RECONCILIATION_INCREMENTAL_INTERVAL_SECONDS,
           3600,
@@ -161,7 +165,7 @@ export function registerCoreServices(container: DIContainer): void {
       ),
       hostname: process.env.HOSTNAME,
       sweeper: {
-        disabled: process.env.VIDEO_JOB_SWEEPER_DISABLED === "true",
+        disabled: !flags.videoJobSweeperEnabled,
         staleQueueSeconds: (() => {
           const s = Number.parseInt(
             process.env.VIDEO_JOB_STALE_QUEUE_SECONDS || "",
@@ -225,7 +229,7 @@ export function registerCoreServices(container: DIContainer): void {
         })(),
       },
       dlqReprocessor: {
-        disabled: process.env.VIDEO_DLQ_REPROCESSOR_DISABLED === "true",
+        disabled: !flags.videoDlqReprocessorEnabled,
         pollIntervalMs: resolvePositiveNumber(
           process.env.VIDEO_DLQ_POLL_INTERVAL_MS,
           30_000,
@@ -262,7 +266,7 @@ export function registerCoreServices(container: DIContainer): void {
     },
     videoAssets: {
       retention: {
-        disabled: process.env.VIDEO_ASSET_RETENTION_DISABLED === "true",
+        disabled: !flags.videoAssetRetentionEnabled,
         retentionHours: resolvePositiveNumber(
           process.env.VIDEO_ASSET_RETENTION_HOURS,
           24,
@@ -303,7 +307,7 @@ export function registerCoreServices(container: DIContainer): void {
         ),
       },
       reconciler: {
-        disabled: process.env.VIDEO_ASSET_RECONCILER_DISABLED !== "false",
+        disabled: !flags.videoAssetReconcilerEnabled,
         orphanThresholdMs: resolvePositiveNumber(
           process.env.VIDEO_ASSET_RECONCILER_ORPHAN_THRESHOLD_MS,
           3_600_000,
@@ -380,10 +384,7 @@ export function registerCoreServices(container: DIContainer): void {
         falWarmupImageUrl:
           process.env.FAL_DEPTH_WARMUP_IMAGE_URL ||
           "https://storage.googleapis.com/generativeai-downloads/images/cat.jpg",
-        warmupOnStartup: resolveBoolFlag(
-          process.env.DEPTH_WARMUP_ON_STARTUP,
-          true,
-        ),
+        warmupOnStartup: flags.depthWarmupOnStartup,
         warmupTimeoutMs: resolvePositiveNumber(
           process.env.DEPTH_WARMUP_TIMEOUT_MS,
           60_000,
@@ -402,7 +403,7 @@ export function registerCoreServices(container: DIContainer): void {
       ipAdapterModel:
         process.env.IP_ADAPTER_MODEL ||
         "lucataco/ip-adapter-sdxl:cbe488c8df305a99d155b038abdf003a0bba4e82352e561fbaab2c8c9b70a96e",
-      disableClip: process.env.DISABLE_CONTINUITY_CLIP === "true",
+      disableClip: !flags.continuityClipEnabled,
     },
     capabilities: {
       probeUrl: process.env.CAPABILITIES_PROBE_URL,
@@ -435,8 +436,8 @@ export function registerCoreServices(container: DIContainer): void {
       policyVersion: process.env.ENHANCEMENT_POLICY_VERSION || "2026-03-v2a",
     },
     features: {
-      faceEmbedding: process.env.ENABLE_FACE_EMBEDDING === "true",
-      promptOutputOnly: process.env.PROMPT_OUTPUT_ONLY === "true",
+      faceEmbedding: flags.faceEmbeddingEnabled,
+      promptOutputOnly: flags.promptOutputOnly,
     },
     firestore: {
       circuit: {

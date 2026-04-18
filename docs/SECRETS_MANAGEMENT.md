@@ -9,7 +9,8 @@ This project uses a multi-layered approach to secrets management to ensure secur
 ### Local Development
 
 - Use `.env` files (NOT committed to Git)
-- Copy `.env.example` to `.env` and populate with development values
+- Create `.env` manually; obtain dev values from the team's secrets manager (1Password, Doppler, etc.)
+- The server fails fast at startup with a complete list of any missing required vars — the Zod schema in `server/src/config/env.ts` is the source of truth for what's required
 - Use non-production API keys
 
 ### CI/CD (GitHub Actions)

@@ -6,6 +6,7 @@ import type { LLMClient } from "@clients/LLMClient";
 import type { ServiceConfig } from "./services/service-config.types.ts";
 import type { CapabilitiesProbeService } from "@services/capabilities/CapabilitiesProbeService";
 import { getRuntimeFlags } from "./runtime-flags";
+import { resolveAllFlags } from "./feature-flags.ts";
 
 // ────────────────────────────────────────────────────────────────
 // Shared helpers
@@ -529,6 +530,14 @@ export async function initializeServices(
 ): Promise<DIContainer> {
   logger.info("Initializing services...");
   const runtimeFlags = getRuntimeFlags();
+
+  // Surface any deprecated env var names once at startup so operators know to
+  // update their deploy configs. Legacy names still work — this is a heads-up.
+  const { deprecations } = resolveAllFlags(process.env);
+  for (const notice of deprecations) {
+    logger.warn(notice, { operation: "featureFlags.deprecation" });
+  }
+
   const isTestEnv =
     process.env.NODE_ENV === "test" ||
     process.env.VITEST ||
