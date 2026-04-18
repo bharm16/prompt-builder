@@ -25,7 +25,7 @@
     "dompurify": "^3.3.0",
     "dotenv": "^16.6.1",
     "express": "^4.21.2",
-    "express-rate-limit": "^8.1.0",
+    "express-rate-limit": "^8.3.2",
     "file-type": "^21.3.0",
     "firebase": "^12.4.0",
     "firebase-admin": "^13.5.0",
@@ -93,6 +93,7 @@
     "@types/react-dom": "^19.2.3",
     "@types/stripe": "^8.0.0",
     "@types/supertest": "^6.0.3",
+    "@types/three": "^0.182.0",
     "@typescript-eslint/eslint-plugin": "^8.54.0",
     "@typescript-eslint/parser": "^8.54.0",
     "@vitejs/plugin-react": "^5.0.4",
@@ -120,8 +121,7 @@
     "tailwindcss": "^3.3.6",
     "typescript": "^5.9.3",
     "vite": "^7.1.9",
-    "vitest": "^3.2.4",
-    "@types/three": "^0.182.0"
+    "vitest": "^3.2.4"
   },
   "scripts": {
     "dev": "vite --config config/build/vite.config.ts",
