@@ -26,6 +26,7 @@ const NULL_METRICS: CacheMetricsCollector = {
 
 interface CacheConfig {
   defaultTTL?: number;
+  maxKeys?: number;
   promptOptimization?: { ttl: number; namespace: string };
   questionGeneration?: { ttl: number; namespace: string };
   enhancement?: { ttl: number; namespace: string };
@@ -33,6 +34,8 @@ interface CacheConfig {
   creative?: { ttl: number; namespace: string };
   [key: string]: unknown;
 }
+
+const DEFAULT_MAX_KEYS = 50_000;
 
 interface CacheOptions {
   ttl?: number;
@@ -86,6 +89,7 @@ export class CacheService {
       stdTTL: config.defaultTTL || 3600, // Default 1 hour
       checkperiod: 600, // Check for expired keys every 10 minutes
       useClones: false, // Don't clone data (better performance)
+      maxKeys: config.maxKeys ?? DEFAULT_MAX_KEYS,
     });
 
     this.stats = {

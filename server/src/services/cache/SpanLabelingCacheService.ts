@@ -57,6 +57,7 @@ export class SpanLabelingCacheService {
     sets: number;
     errors: number;
   };
+  private readonly inflight = new Map<string, Promise<unknown>>();
   private cleanupInterval: NodeJS.Timeout | null = null;
 
   constructor(
@@ -201,6 +202,56 @@ export class SpanLabelingCacheService {
       this.stats.errors++;
       logger.error("Cache set error", error as Error, { cacheKey });
       return false;
+    }
+  }
+
+  /**
+   * Get from cache or compute + store with single-flight coalescing.
+   *
+   * When N concurrent callers miss the same key, `compute` is invoked exactly
+   * once and all callers await the same result. Prevents thundering-herd
+   * LLM calls for identical inputs.
+   */
+  async getOrCompute<T>(
+    text: string,
+    policy: SpanLabelingPolicy | null,
+    templateVersion: string | null,
+    compute: () => Promise<T>,
+    options: { ttl?: number; provider?: string | null } = {},
+  ): Promise<T> {
+    const provider = options.provider ?? null;
+    const cached = (await this.get(
+      text,
+      policy,
+      templateVersion,
+      provider,
+    )) as T | null;
+    if (cached !== null) {
+      return cached;
+    }
+
+    const inflightKey = generateCacheKey(
+      text,
+      policy,
+      templateVersion,
+      provider,
+    );
+    const existing = this.inflight.get(inflightKey) as Promise<T> | undefined;
+    if (existing) {
+      return existing;
+    }
+
+    const promise = (async (): Promise<T> => {
+      const computed = await compute();
+      await this.set(text, policy, templateVersion, computed, options);
+      return computed;
+    })();
+
+    this.inflight.set(inflightKey, promise as Promise<unknown>);
+    try {
+      return await promise;
+    } finally {
+      this.inflight.delete(inflightKey);
     }
   }
 
