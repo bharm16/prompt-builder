@@ -20,6 +20,7 @@ import type {
   ShotGenerationEvent,
   ShotGenerationObserver,
 } from "./ShotGenerationProgress";
+import { DEFAULT_QUALITY_THRESHOLDS } from "./constants";
 
 const DEFAULT_FACE_STRENGTH = 0.8;
 const ASPECT_RATIOS = ["16:9", "9:16", "1:1", "4:3", "3:4"] as const;
@@ -340,9 +341,11 @@ export class ContinuityShotGenerator {
           shot.qualityScore = quality.passed ? 1 : 0;
 
           const styleThreshold =
-            session.defaultSettings.qualityThresholds?.style ?? 0.75;
+            session.defaultSettings.qualityThresholds?.style ??
+            DEFAULT_QUALITY_THRESHOLDS.styleSimilarity;
           const identityThreshold =
-            session.defaultSettings.qualityThresholds?.identity ?? 0.6;
+            session.defaultSettings.qualityThresholds?.identity ??
+            DEFAULT_QUALITY_THRESHOLDS.identitySimilarity;
 
           if (
             !quality.passed &&

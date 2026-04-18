@@ -847,7 +847,7 @@ describe("ContinuitySessionService", () => {
     const updated = await service.updateSessionSettings(session.id, {
       defaultStyleStrength: 0.92,
       maxRetries: 3,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       unknownSetting: "ignored" as any,
     } as any);
 

@@ -8,6 +8,7 @@ import { FaceEmbeddingService } from "@services/asset/FaceEmbeddingService";
 import type { StorageService } from "@services/storage/StorageService";
 import { STORAGE_TYPES } from "@services/storage/config/storageConfig";
 import type { QualityGateResult } from "./types";
+import { DEFAULT_QUALITY_THRESHOLDS } from "./constants";
 
 interface QualityGateOptions {
   userId: string;
@@ -78,8 +79,11 @@ export class QualityGateService {
       }
     }
 
-    const styleThreshold = options.styleThreshold ?? 0.75;
-    const identityThreshold = options.identityThreshold ?? 0.6;
+    const styleThreshold =
+      options.styleThreshold ?? DEFAULT_QUALITY_THRESHOLDS.styleSimilarity;
+    const identityThreshold =
+      options.identityThreshold ??
+      DEFAULT_QUALITY_THRESHOLDS.identitySimilarity;
 
     const passedStyle =
       styleScore !== undefined ? styleScore >= styleThreshold : true;

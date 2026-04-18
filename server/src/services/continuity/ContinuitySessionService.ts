@@ -15,6 +15,7 @@ import { ContinuityProviderService } from "./ContinuityProviderService";
 import { ContinuityMediaService } from "./ContinuityMediaService";
 import { ContinuityPostProcessingService } from "./ContinuityPostProcessingService";
 import { ContinuityShotGenerator } from "./ContinuityShotGenerator";
+import { DEFAULT_QUALITY_THRESHOLDS } from "./constants";
 import { enforceImmutableVersions } from "@services/sessions/utils/immutableMedia";
 import type { ShotGenerationObserver } from "./ShotGenerationProgress";
 
@@ -390,7 +391,6 @@ export class ContinuitySessionService {
     const sanitized: Partial<ContinuitySessionSettings> = {};
     for (const key of allowedKeys) {
       if (settings[key] !== undefined) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic key iteration requires widening
         (sanitized as Record<string, any>)[key] = settings[key];
       }
     }
@@ -493,7 +493,10 @@ export class ContinuitySessionService {
       useSceneProxy: false,
       autoRetryOnFailure: true,
       maxRetries: 1,
-      qualityThresholds: { style: 0.75, identity: 0.6 },
+      qualityThresholds: {
+        style: DEFAULT_QUALITY_THRESHOLDS.styleSimilarity,
+        identity: DEFAULT_QUALITY_THRESHOLDS.identitySimilarity,
+      },
     };
   }
 
