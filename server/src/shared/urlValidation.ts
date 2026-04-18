@@ -25,16 +25,14 @@ const PRIVATE_IP_PATTERNS = [
   /^fd[0-9a-f]{2}:/i,
 ];
 
-// Matches IPv4-mapped IPv6 hostnames (e.g. ::ffff:127.0.0.1 or ::ffff:7f00:1).
-// Node's URL normalizes the hostname to bracketed form without the leading "::ffff:"
-// text in some cases; we detect the bracketed shape and the dotted embedded form.
-const IPV4_MAPPED_IPV6_PATTERNS = [
-  /^\[?::ffff:/i,
-  /^\[?::ffff:[0-9a-f]{1,4}:[0-9a-f]{1,4}\]?$/i,
-];
+// Matches IPv4-mapped IPv6 hostnames (e.g. ::ffff:127.0.0.1 or the
+// hex-normalized [::ffff:7f00:1] that Node's URL parser produces). The
+// bracket is optional because Node returns hostnames bracketed for IPv6
+// literals but the raw dotted form appears in pre-parsed inputs.
+const IPV4_MAPPED_IPV6_PATTERN = /^\[?::ffff:/i;
 
 function isIpv4Mapped(hostname: string): boolean {
-  return IPV4_MAPPED_IPV6_PATTERNS.some((p) => p.test(hostname));
+  return IPV4_MAPPED_IPV6_PATTERN.test(hostname);
 }
 
 export function isUrlSafe(urlString: string): boolean {

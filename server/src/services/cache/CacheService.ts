@@ -35,6 +35,9 @@ interface CacheConfig {
   [key: string]: unknown;
 }
 
+// Bounds in-memory cache growth. At ~2 KB per entry (typical for span-labeling
+// and optimization results), 50k keys ≈ 100 MB RSS ceiling — well below the
+// 512 MB container budget. Override via CacheConfig.maxKeys for larger pods.
 const DEFAULT_MAX_KEYS = 50_000;
 
 interface CacheOptions {
@@ -207,7 +210,22 @@ export class CacheService {
     const startTime = performance.now();
     const operation = "set";
     const ttl = options.ttl || this.cache.options.stdTTL || 3600;
-    const success = this.cache.set(key, value, ttl);
+
+    // NodeCache throws "Cache max keys amount exceeded" when maxKeys is bounded
+    // and the cache is full. Callers (OptimizationCacheService, EnhancementService,
+    // etc.) treat .set() as best-effort and await without try/catch — swallow the
+    // throw here and return false so the set() contract stays {boolean}.
+    let success = false;
+    try {
+      success = this.cache.set(key, value, ttl);
+    } catch (error) {
+      this.log.warn("Cache set rejected (likely full)", {
+        operation,
+        key,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return false;
+    }
 
     const duration = Math.round(performance.now() - startTime);
     if (success) {
