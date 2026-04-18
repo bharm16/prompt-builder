@@ -19,9 +19,23 @@ const PRIVATE_IP_PATTERNS = [
   /^10\./,
   /^172\.(1[6-9]|2\d|3[01])\./,
   /^192\.168\./,
+  /^127\./,
+  /^169\.254\./,
   /^fc00:/i,
   /^fd[0-9a-f]{2}:/i,
 ];
+
+// Matches IPv4-mapped IPv6 hostnames (e.g. ::ffff:127.0.0.1 or ::ffff:7f00:1).
+// Node's URL normalizes the hostname to bracketed form without the leading "::ffff:"
+// text in some cases; we detect the bracketed shape and the dotted embedded form.
+const IPV4_MAPPED_IPV6_PATTERNS = [
+  /^\[?::ffff:/i,
+  /^\[?::ffff:[0-9a-f]{1,4}:[0-9a-f]{1,4}\]?$/i,
+];
+
+function isIpv4Mapped(hostname: string): boolean {
+  return IPV4_MAPPED_IPV6_PATTERNS.some((p) => p.test(hostname));
+}
 
 export function isUrlSafe(urlString: string): boolean {
   try {
@@ -31,12 +45,22 @@ export function isUrlSafe(urlString: string): boolean {
       return false;
     }
 
-    const hostname = url.hostname.toLowerCase();
-    if (BLOCKED_HOSTNAMES.has(hostname)) {
+    const rawHostname = url.hostname.toLowerCase();
+    if (BLOCKED_HOSTNAMES.has(rawHostname)) {
       return false;
     }
 
-    if (PRIVATE_IP_PATTERNS.some((pattern) => pattern.test(hostname))) {
+    // Reject IPv4-mapped IPv6 entirely. Legitimate CDN/storage URLs never use
+    // this notation; it only appears in SSRF bypass attempts that route mapped
+    // addresses past IPv4-only hostname/pattern checks.
+    if (isIpv4Mapped(rawHostname)) {
+      return false;
+    }
+
+    // Node normalizes IPv6 literals as bracketed (e.g. "[fc00::1]"). Strip
+    // brackets before applying private-range regex so IPv6 patterns match.
+    const unbracketed = rawHostname.replace(/^\[|\]$/g, "");
+    if (PRIVATE_IP_PATTERNS.some((pattern) => pattern.test(unbracketed))) {
       return false;
     }
 

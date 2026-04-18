@@ -6,6 +6,7 @@ import { logger } from "@infrastructure/Logger";
 import { StorageService } from "@services/storage/StorageService";
 import { STORAGE_TYPES } from "@services/storage/config/storageConfig";
 import type { VideoAssetStore } from "@services/video-generation/storage";
+import { assertUrlSafe } from "@server/shared/urlValidation";
 
 export class GradingService {
   private readonly log = logger.child({ service: "GradingService" });
@@ -21,6 +22,8 @@ export class GradingService {
     assetId: string,
     referenceImageUrl: string,
   ): Promise<{ applied: boolean; assetId?: string; videoUrl?: string }> {
+    assertUrlSafe(referenceImageUrl, "referenceImageUrl");
+
     const videoUrl = await this.assetStore.getPublicUrl(assetId);
     if (!videoUrl) {
       return { applied: false };
@@ -95,6 +98,9 @@ export class GradingService {
     sourceImageUrl: string,
     referenceImageUrl: string,
   ): Promise<{ applied: boolean; imageUrl?: string }> {
+    assertUrlSafe(sourceImageUrl, "sourceImageUrl");
+    assertUrlSafe(referenceImageUrl, "referenceImageUrl");
+
     if (!this.storage) {
       return { applied: false };
     }

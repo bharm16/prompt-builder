@@ -1,4 +1,5 @@
 import { logger } from "@infrastructure/Logger";
+import { assertUrlSafe } from "@server/shared/urlValidation";
 
 const DEFAULT_TIMEOUT_MS = 10_000;
 const DEFAULT_MAX_BYTES = 10 * 1024 * 1024; // 10 MB
@@ -13,6 +14,8 @@ export async function fetchImageAsDataUrl(
   imageUrl: string,
   options?: { timeoutMs?: number; maxBytes?: number },
 ): Promise<string> {
+  assertUrlSafe(imageUrl, "imageUrl");
+
   const log = logger.child({ service: "fetchImageAsDataUrl" });
   const timeoutMs = options?.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const maxBytes = options?.maxBytes ?? DEFAULT_MAX_BYTES;
