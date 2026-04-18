@@ -69,7 +69,10 @@ export class VideoJobSweeper {
     }
     this.started = true;
     this.currentSweepIntervalMs = this.baseSweepIntervalMs;
-    this.scheduleNext(0);
+    // Jitter the first sweep so K replica pods restarting simultaneously
+    // (rolling deploy) don't all query Firestore at t=0 — avoids thundering herd.
+    const initialDelayMs = Math.floor(Math.random() * this.baseSweepIntervalMs);
+    this.scheduleNext(initialDelayMs);
   }
 
   private scheduleNext(delayMs: number): void {

@@ -160,7 +160,11 @@ export class VideoJobWorker {
       }, this.heartbeatIntervalMs);
       this.workerHeartbeatTimer.unref?.();
     }
-    this.scheduleNextTick(0);
+    // Jitter the first tick so K replica pods restarting simultaneously
+    // (rolling deploy) don't all hit Firestore at t=0 — avoids thundering herd.
+    // Subsequent ticks use their adaptive polling logic.
+    const initialDelayMs = Math.floor(Math.random() * this.basePollIntervalMs);
+    this.scheduleNextTick(initialDelayMs);
   }
 
   stop(): void {
@@ -424,24 +428,17 @@ export class VideoJobWorker {
     this.activeJobs.set(job.id, {
       startedAtMs: Date.now(),
       release: async () => {
+        // Shutdown-release is a requeue, not a terminal failure. Previously this
+        // path also called enqueueDeadLetter, causing a double-publish: the next
+        // worker pod could claim the requeued record while the DLQ reprocessor
+        // also re-ran the DLQ entry. If the job fails terminally on the next
+        // claim, processVideoJob handles DLQ enqueuing via dlqSource="worker-terminal".
         const released = await this.jobStore.releaseClaim(
           job.id,
           this.workerId,
           "worker shutdown before completion",
         );
         if (released) {
-          await this.jobStore.enqueueDeadLetter(
-            { ...job, status: "queued" },
-            {
-              message: "Job released during worker shutdown",
-              code: "VIDEO_JOB_RELEASED_ON_SHUTDOWN",
-              category: "infrastructure",
-              retryable: true,
-              stage: "shutdown",
-              attempt: job.attempts,
-            },
-            "shutdown-release",
-          );
           this.metrics?.recordAlert("video_job_shutdown_release", {
             jobId: job.id,
             attempt: job.attempts,
