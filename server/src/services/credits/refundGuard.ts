@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { sha256Hex } from "@utils/hash";
 import { logger } from "@infrastructure/Logger";
 import { sleep } from "@utils/sleep";
 import type { UserCreditService } from "./UserCreditService";
@@ -27,7 +27,7 @@ export function buildRefundKey(
     .filter((part) => part !== null && part !== undefined)
     .map((part) => String(part))
     .join("|");
-  return createHash("sha256").update(raw).digest("hex");
+  return sha256Hex(raw);
 }
 
 export async function refundWithGuard(

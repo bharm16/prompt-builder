@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { sha256Hex } from "@utils/hash";
 import { admin, getFirestore } from "@infrastructure/firebaseAdmin";
 import { logger } from "@infrastructure/Logger";
 import type { FirestoreCircuitExecutor } from "@services/firestore/FirestoreCircuitExecutor";
@@ -69,7 +69,7 @@ function stableStringify(value: unknown): string {
 }
 
 function hashSha256(input: string): string {
-  return createHash("sha256").update(input).digest("hex");
+  return sha256Hex(input);
 }
 
 function toRecordId(userId: string, route: string, key: string): string {

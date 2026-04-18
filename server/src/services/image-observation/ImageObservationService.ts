@@ -6,7 +6,7 @@
  */
 
 import { logger } from "@infrastructure/Logger";
-import { createHash } from "crypto";
+import { sha256Hex } from "@utils/hash";
 import { promises as fs } from "fs";
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";
@@ -17,7 +17,7 @@ import {
   LIGHTING_QUALITIES,
   SUBJECT_POSITIONS,
 } from "@shared/cinematography";
-import type { AIService } from "@services/prompt-optimization/types";
+import type { AIExecutionPort as AIService } from "@services/ai-model/ports/AIExecutionPort";
 import { z } from "zod";
 import type { CacheService } from "@services/cache/CacheService";
 import {
@@ -228,7 +228,7 @@ export class ImageObservationService {
   }
 
   private hashImage(image: string): string {
-    return createHash("sha256").update(image).digest("hex");
+    return sha256Hex(image);
   }
 
   /**
