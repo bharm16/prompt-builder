@@ -2,7 +2,7 @@ import { logger } from "@infrastructure/Logger";
 import { StructuredOutputEnforcer } from "@utils/StructuredOutputEnforcer";
 import type { StructuredOutputSchema } from "@utils/structured-output/types";
 import { detectDescriptorCategory } from "@services/video-concept/config/descriptorCategories";
-import type { AIService } from "@services/prompt-optimization/types";
+import type { AIExecutionPort as AIService } from "@services/ai-model/ports/AIExecutionPort";
 
 const SUBJECT_DESCRIPTOR_KEYS = [
   "subjectDescriptor1",
