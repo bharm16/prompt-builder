@@ -533,7 +533,8 @@ export async function initializeServices(
 
   // Surface any deprecated env var names once at startup so operators know to
   // update their deploy configs. Legacy names still work — this is a heads-up.
-  const { deprecations } = resolveAllFlags(process.env);
+  const { flags, deprecations } = resolveAllFlags(process.env);
+  logger.info("Feature flags resolved", { flags });
   for (const notice of deprecations) {
     logger.warn(notice, { operation: "featureFlags.deprecation" });
   }

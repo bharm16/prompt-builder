@@ -22,6 +22,10 @@ import type { CreditReconciliationWorker } from "./services/credits/CreditReconc
 import type { VideoJobWorker } from "./services/video-generation/jobs/VideoJobWorker.ts";
 import type { VideoJobSweeper } from "./services/video-generation/jobs/VideoJobSweeper.ts";
 import type { VideoAssetRetentionService } from "./services/video-generation/storage/VideoAssetRetentionService.ts";
+import type { WebhookReconciliationWorker } from "./services/payment/WebhookReconciliationWorker.ts";
+import type { BillingProfileRepairWorker } from "./services/payment/BillingProfileRepairWorker.ts";
+import type { DlqReprocessorWorker } from "./services/video-generation/jobs/DlqReprocessorWorker.ts";
+import type { VideoJobReconciler } from "./services/video-generation/jobs/VideoJobReconciler.ts";
 import { getRuntimeFlags } from "./config/runtime-flags.ts";
 
 const OPERATIONAL_REJECTION_CODES = new Set([
@@ -146,6 +150,74 @@ export async function startServer(
 }
 
 /**
+ * Stop every registered periodic worker/loop during graceful shutdown.
+ *
+ * Exported for isolated testing — callers outside `setupGracefulShutdown`
+ * should not invoke this directly. Any worker that exposes a `.stop()` method
+ * and is registered in the DI container must be called here, otherwise its
+ * interval timers keep the process alive past the drain budget.
+ */
+export function stopAllPeriodicWorkers(container: DIContainer): void {
+  const resolveOptional = <T>(serviceName: string): T | null => {
+    try {
+      return container.resolve<T>(serviceName);
+    } catch {
+      return null;
+    }
+  };
+
+  // Stop periodic loops first to prevent new claims/retries during shutdown
+  const videoJobSweeper = resolveOptional<VideoJobSweeper | null>(
+    "videoJobSweeper",
+  );
+  videoJobSweeper?.stop();
+
+  const creditRefundSweeper = resolveOptional<CreditRefundSweeper | null>(
+    "creditRefundSweeper",
+  );
+  creditRefundSweeper?.stop();
+
+  const creditReconciliationWorker =
+    resolveOptional<CreditReconciliationWorker | null>(
+      "creditReconciliationWorker",
+    );
+  creditReconciliationWorker?.stop();
+
+  const videoAssetRetentionService =
+    resolveOptional<VideoAssetRetentionService | null>(
+      "videoAssetRetentionService",
+    );
+  videoAssetRetentionService?.stop();
+
+  const webhookReconciliationWorker =
+    resolveOptional<WebhookReconciliationWorker | null>(
+      "webhookReconciliationWorker",
+    );
+  webhookReconciliationWorker?.stop();
+
+  const billingProfileRepairWorker =
+    resolveOptional<BillingProfileRepairWorker | null>(
+      "billingProfileRepairWorker",
+    );
+  billingProfileRepairWorker?.stop();
+
+  const dlqReprocessorWorker = resolveOptional<DlqReprocessorWorker | null>(
+    "dlqReprocessorWorker",
+  );
+  dlqReprocessorWorker?.stop();
+
+  const videoJobReconciler = resolveOptional<VideoJobReconciler | null>(
+    "videoJobReconciler",
+  );
+  videoJobReconciler?.stop();
+
+  const capabilitiesProbe = resolveOptional<CapabilitiesProbeService | null>(
+    "capabilitiesProbeService",
+  );
+  capabilitiesProbe?.stop();
+}
+
+/**
  * Setup graceful shutdown handlers
  *
  * @param {http.Server} server - HTTP server instance
@@ -177,34 +249,7 @@ export function setupGracefulShutdown(
       logger.info("HTTP server closed");
 
       try {
-        // Stop periodic loops first to prevent new claims/retries during shutdown
-        const videoJobSweeper = resolveOptional<VideoJobSweeper | null>(
-          "videoJobSweeper",
-        );
-        videoJobSweeper?.stop();
-
-        const creditRefundSweeper = resolveOptional<CreditRefundSweeper | null>(
-          "creditRefundSweeper",
-        );
-        creditRefundSweeper?.stop();
-
-        const creditReconciliationWorker =
-          resolveOptional<CreditReconciliationWorker | null>(
-            "creditReconciliationWorker",
-          );
-        creditReconciliationWorker?.stop();
-
-        const videoAssetRetentionService =
-          resolveOptional<VideoAssetRetentionService | null>(
-            "videoAssetRetentionService",
-          );
-        videoAssetRetentionService?.stop();
-
-        const capabilitiesProbe =
-          resolveOptional<CapabilitiesProbeService | null>(
-            "capabilitiesProbeService",
-          );
-        capabilitiesProbe?.stop();
+        stopAllPeriodicWorkers(container);
 
         // Drain active worker jobs with a deadline, then release claims for fast reclaim.
         const videoJobWorker = resolveOptional<VideoJobWorker | null>(

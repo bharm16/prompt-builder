@@ -340,10 +340,23 @@ export class AssetRepository {
     );
   }
 
-  async getByType(userId: string, type: AssetType): Promise<Asset[]> {
+  /**
+   * Fetch all assets of a given type for a user.
+   *
+   * The `limit` cap exists to bound memory usage and Firestore read cost:
+   * without it, a user with a large asset library could trigger unbounded
+   * document reads on every call. Defaults to 200, which covers typical
+   * libraries while preventing pathological cases.
+   */
+  async getByType(
+    userId: string,
+    type: AssetType,
+    limit: number = 200,
+  ): Promise<Asset[]> {
     const snapshot = await this.getAssetsCollection(userId)
       .where("type", "==", type)
       .orderBy("updatedAt", "desc")
+      .limit(limit)
       .get();
     return snapshot.docs.map((doc) =>
       refreshAssetUrls(doc.data() as Asset, this.bucketName),
