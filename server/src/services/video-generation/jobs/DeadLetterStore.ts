@@ -1,6 +1,7 @@
 import { admin, getFirestore } from "@infrastructure/firebaseAdmin";
 import { logger } from "@infrastructure/Logger";
 import type { FirestoreCircuitExecutor } from "@services/firestore/FirestoreCircuitExecutor";
+import { z } from "zod";
 import { computeDlqBackoff } from "./dlqBackoff";
 import { toVideoJobError } from "./normalizeError";
 import type {
@@ -9,6 +10,46 @@ import type {
   VideoJobRecord,
   VideoJobRequest,
 } from "./types";
+
+/**
+ * Forward-compatibility check for DLQ records. Today only `schemaVersion: 1`
+ * (or `undefined` for legacy records) is valid. Any other value indicates a
+ * record written by a newer version of the code — fail loudly so old pods do
+ * not silently mis-parse a future shape.
+ */
+export const DlqEntrySchemaVersionSchema = z.literal(1).optional();
+
+/**
+ * Parse a raw DLQ document into a DlqEntry. Throws (Zod error) when the
+ * `schemaVersion` field is present but not the supported literal `1`,
+ * preventing silent mis-parsing of records written by future schema versions.
+ *
+ * Exported so tests and other readers can validate the same forward-compat
+ * contract without going through a Firestore transaction.
+ */
+export function parseDlqEntry(
+  id: string,
+  data: Record<string, unknown>,
+): DlqEntry {
+  const schemaVersion = DlqEntrySchemaVersionSchema.parse(data.schemaVersion);
+
+  return {
+    id,
+    ...(schemaVersion !== undefined ? { schemaVersion } : {}),
+    jobId: data.jobId as string,
+    userId: data.userId as string,
+    request: data.request as VideoJobRequest,
+    creditsReserved:
+      typeof data.creditsReserved === "number" ? data.creditsReserved : 0,
+    creditsRefunded: data.creditsRefunded === true,
+    provider: typeof data.provider === "string" ? data.provider : "unknown",
+    error: data.error as VideoJobError,
+    source: data.source as string,
+    dlqAttempt: typeof data.dlqAttempt === "number" ? data.dlqAttempt : 0,
+    maxDlqAttempts:
+      typeof data.maxDlqAttempts === "number" ? data.maxDlqAttempts : 3,
+  };
+}
 
 const SLOW_FIRESTORE_OPERATION_MS = 1_000;
 
@@ -77,6 +118,7 @@ export class DeadLetterStore {
     await this.withTiming("enqueueDeadLetter", "write", async () => {
       await this.collection.doc(job.id).set(
         {
+          schemaVersion: 1 as const,
           jobId: job.id,
           userId: job.userId,
           status: job.status,
@@ -131,33 +173,20 @@ export class DeadLetterStore {
             }
 
             const now = Date.now();
+            // parseDlqEntry validates schemaVersion: rejects unknown future versions
+            // so an older pod cannot silently mis-parse a record written by a newer pod.
+            const entry = parseDlqEntry(
+              doc.id,
+              data as Record<string, unknown>,
+            );
+
             transaction.update(doc.ref, {
               dlqStatus: "processing",
               updatedAtMs: now,
               updatedAt: admin.firestore.FieldValue.serverTimestamp(),
             });
 
-            return {
-              id: doc.id,
-              jobId: data.jobId as string,
-              userId: data.userId as string,
-              request: data.request as VideoJobRequest,
-              creditsReserved:
-                typeof data.creditsReserved === "number"
-                  ? data.creditsReserved
-                  : 0,
-              creditsRefunded: data.creditsRefunded === true,
-              provider:
-                typeof data.provider === "string" ? data.provider : "unknown",
-              error: data.error as VideoJobError,
-              source: data.source as DeadLetterSource,
-              dlqAttempt:
-                typeof data.dlqAttempt === "number" ? data.dlqAttempt : 0,
-              maxDlqAttempts:
-                typeof data.maxDlqAttempts === "number"
-                  ? data.maxDlqAttempts
-                  : 3,
-            } satisfies DlqEntry;
+            return entry;
           }),
       );
     } catch (error) {

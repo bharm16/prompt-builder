@@ -107,6 +107,7 @@ export class VideoJobStore {
     const provider = resolveProviderFromRequest(input.request);
 
     const record = {
+      schemaVersion: 1 as const,
       status: "queued",
       userId: input.userId,
       ...(input.sessionId ? { sessionId: input.sessionId } : {}),
@@ -166,6 +167,7 @@ export class VideoJobStore {
     const provider = resolveProviderFromRequest(input.request);
 
     const record = {
+      schemaVersion: 1 as const,
       status: "queued",
       userId: input.userId,
       ...(input.sessionId ? { sessionId: input.sessionId } : {}),

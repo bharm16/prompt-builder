@@ -42,6 +42,9 @@ export function parseVideoJobRecord(
 
   const base: VideoJobRecord = {
     id,
+    ...(parsed.schemaVersion !== undefined
+      ? { schemaVersion: parsed.schemaVersion }
+      : {}),
     status: parsed.status,
     userId: parsed.userId,
     ...(typeof parsed.sessionId === "string"

@@ -74,6 +74,12 @@ export const VideoJobErrorSchema = z.object({
 });
 
 export const VideoJobRecordSchema = z.object({
+  /**
+   * Forward-compatibility marker. Optional today (legacy records lack it),
+   * accepts only the literal `1`. Unknown future values throw a Zod error so
+   * old pods fail loudly rather than silently mis-parsing a newer shape.
+   */
+  schemaVersion: z.literal(1).optional(),
   status: z.enum(VIDEO_JOB_STATUSES),
   userId: z.string(),
   sessionId: z.string().optional(),

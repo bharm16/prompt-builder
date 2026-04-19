@@ -45,6 +45,12 @@ export interface VideoJobError {
 
 export interface VideoJobRecord {
   id: string;
+  /**
+   * Forward-compatibility marker. Optional today (legacy records lack it),
+   * but every NEW write sets `schemaVersion: 1`. Future migrations should
+   * bump this literal so readers can gate behavior explicitly.
+   */
+  schemaVersion?: 1;
   status: VideoJobStatus;
   userId: string;
   /**
@@ -85,6 +91,12 @@ export type DlqStatus = (typeof DLQ_STATUSES)[number];
 
 export interface DlqEntry {
   id: string;
+  /**
+   * Forward-compatibility marker. Optional today (legacy records lack it),
+   * but every NEW write sets `schemaVersion: 1`. Future migrations should
+   * bump this literal so readers can gate behavior explicitly.
+   */
+  schemaVersion?: 1;
   jobId: string;
   userId: string;
   request: VideoJobRequest;
