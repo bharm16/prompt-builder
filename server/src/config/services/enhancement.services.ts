@@ -18,7 +18,6 @@ import { SceneChangeDetectionService } from "@services/video-concept/services/de
 import type { CacheService } from "@services/cache/CacheService";
 import { VideoPromptService } from "@services/video-prompt-analysis/index";
 import { AIServiceVideoPromptLlmGateway } from "@services/video-prompt-analysis/services/llm/VideoPromptLlmGateway";
-import { MultimodalAssetManager } from "@services/video-prompt-analysis/services/MultimodalAssetManager";
 import { VideoConceptService } from "@services/video-concept/VideoConceptService";
 import type { ServiceConfig } from "./service-config.types.ts";
 
@@ -41,11 +40,6 @@ export function registerEnhancementServices(container: DIContainer): void {
         promptOutputOnly: config.features.promptOutputOnly,
       }),
     ["videoPromptLlmGateway", "config"],
-  );
-  container.register(
-    "multimodalAssetManager",
-    () => new MultimodalAssetManager(),
-    [],
   );
   container.register(
     "brainstormBuilder",
