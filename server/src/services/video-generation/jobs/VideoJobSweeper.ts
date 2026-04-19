@@ -1,14 +1,12 @@
-import { logger } from "@infrastructure/Logger";
 import type { UserCreditService } from "@services/credits/UserCreditService";
 import { buildRefundKey, refundWithGuard } from "@services/credits/refundGuard";
 import type { VideoJobRecord } from "./types";
 import { VideoJobStore } from "./VideoJobStore";
 import type { ProviderCircuitManager } from "./ProviderCircuitManager";
-
-const DEFAULT_QUEUE_TIMEOUT_SECONDS = 300;
-const DEFAULT_PROCESSING_GRACE_SECONDS = 90;
-const DEFAULT_SWEEP_INTERVAL_SECONDS = 15;
-const DEFAULT_MAX_JOBS_PER_RUN = 25;
+import {
+  PollingWorkerBase,
+  type PollingWorkerMetrics,
+} from "@services/polling/PollingWorkerBase";
 
 interface VideoJobSweeperOptions {
   queueTimeoutMs: number;
@@ -18,29 +16,17 @@ interface VideoJobSweeperOptions {
   backoffFactor?: number;
   maxJobsPerRun: number;
   providerCircuitManager?: ProviderCircuitManager;
-  metrics?: {
-    recordAlert: (
-      alertName: string,
-      metadata?: Record<string, unknown>,
-    ) => void;
-  };
+  metrics?: PollingWorkerMetrics;
 }
 
-export class VideoJobSweeper {
+export class VideoJobSweeper extends PollingWorkerBase {
   private readonly jobStore: VideoJobStore;
   private readonly userCreditService: UserCreditService;
   private readonly queueTimeoutMs: number;
   private readonly processingGraceMs: number;
-  private readonly baseSweepIntervalMs: number;
-  private readonly maxSweepIntervalMs: number;
-  private readonly backoffFactor: number;
   private readonly maxJobsPerRun: number;
   private readonly providerCircuitManager: ProviderCircuitManager | undefined;
-  private readonly metrics?: VideoJobSweeperOptions["metrics"];
-  private readonly log = logger.child({ service: "VideoJobSweeper" });
-  private timer: NodeJS.Timeout | null = null;
-  private currentSweepIntervalMs = 0;
-  private started = false;
+  private readonly sweeperMetrics: PollingWorkerMetrics | undefined;
   private running = false;
 
   constructor(
@@ -48,67 +34,30 @@ export class VideoJobSweeper {
     userCreditService: UserCreditService,
     options: VideoJobSweeperOptions,
   ) {
+    super({
+      workerId: "VideoJobSweeper",
+      basePollIntervalMs: options.sweepIntervalMs,
+      maxPollIntervalMs:
+        options.maxSweepIntervalMs ??
+        Math.max(options.sweepIntervalMs * 8, 120_000),
+      ...(options.backoffFactor !== undefined
+        ? { backoffFactor: options.backoffFactor }
+        : {}),
+      // Jitter the first sweep so K replica pods restarting simultaneously
+      // (rolling deploy) don't all query Firestore at t=0 — avoids thundering herd.
+      initialJitter: true,
+      ...(options.metrics ? { metrics: options.metrics } : {}),
+    });
     this.jobStore = jobStore;
     this.userCreditService = userCreditService;
     this.queueTimeoutMs = options.queueTimeoutMs;
     this.processingGraceMs = options.processingGraceMs;
-    this.baseSweepIntervalMs = options.sweepIntervalMs;
-    this.maxSweepIntervalMs =
-      options.maxSweepIntervalMs ??
-      Math.max(this.baseSweepIntervalMs * 8, 120_000);
-    this.backoffFactor = options.backoffFactor ?? 2;
     this.maxJobsPerRun = options.maxJobsPerRun;
     this.providerCircuitManager = options.providerCircuitManager;
-    this.metrics = options.metrics;
-    this.currentSweepIntervalMs = this.baseSweepIntervalMs;
+    this.sweeperMetrics = options.metrics;
   }
 
-  start(): void {
-    if (this.started) {
-      return;
-    }
-    this.started = true;
-    this.currentSweepIntervalMs = this.baseSweepIntervalMs;
-    // Jitter the first sweep so K replica pods restarting simultaneously
-    // (rolling deploy) don't all query Firestore at t=0 — avoids thundering herd.
-    const initialDelayMs = Math.floor(Math.random() * this.baseSweepIntervalMs);
-    this.scheduleNext(initialDelayMs);
-  }
-
-  private scheduleNext(delayMs: number): void {
-    if (!this.started) {
-      return;
-    }
-    this.timer = setTimeout(() => {
-      void this.runLoop();
-    }, delayMs);
-  }
-
-  private async runLoop(): Promise<void> {
-    if (!this.started) {
-      return;
-    }
-    const success = await this.runOnce();
-    if (success) {
-      this.currentSweepIntervalMs = this.baseSweepIntervalMs;
-    } else {
-      this.currentSweepIntervalMs = Math.min(
-        this.maxSweepIntervalMs,
-        Math.round(this.currentSweepIntervalMs * this.backoffFactor),
-      );
-    }
-    this.scheduleNext(this.currentSweepIntervalMs);
-  }
-
-  stop(): void {
-    this.started = false;
-    if (this.timer) {
-      clearTimeout(this.timer);
-      this.timer = null;
-    }
-  }
-
-  private async runOnce(): Promise<boolean> {
+  protected async runOnce(): Promise<boolean> {
     if (this.running) {
       return true;
     }
@@ -131,12 +80,14 @@ export class VideoJobSweeper {
 
       if (processed > 0) {
         this.log.info("Stale video jobs cleaned up", { processed });
-        this.metrics?.recordAlert("video_job_sweeper_stale_reclaimed", {
+        this.sweeperMetrics?.recordAlert("video_job_sweeper_stale_reclaimed", {
           processed,
         });
       }
+      this.markRunSuccess();
       return true;
     } catch (error) {
+      this.markRunFailure();
       const errorMessage =
         error instanceof Error ? error.message : String(error);
       this.log.warn("Failed to sweep stale video jobs", {
@@ -229,14 +180,7 @@ interface SweeperConfig {
 export function createVideoJobSweeper(
   jobStore: VideoJobStore,
   userCreditService: UserCreditService,
-  metrics:
-    | {
-        recordAlert: (
-          alertName: string,
-          metadata?: Record<string, unknown>,
-        ) => void;
-      }
-    | undefined,
+  metrics: PollingWorkerMetrics | undefined,
   config: SweeperConfig,
 ): VideoJobSweeper | null {
   if (config.disabled) {
