@@ -60,6 +60,7 @@ Services are registered via domain-scoped files in `server/src/config/services/`
 | `credit.services.ts`      | userCreditService, creditReconciliation                                 |
 | `storage.services.ts`     | storageService, videoContentAccess, videoAssetRetention                 |
 | `llm.services.ts`         | aiModelService, concurrency                                             |
+| `observation.services.ts` | imageObservationService, llmJudgeService (quality-feedback)             |
 | `enhancement.services.ts` | enhancementService, videoService, sceneDetection                        |
 | `generation.services.ts`  | imageGeneration, videoGeneration, storyboardPreview, keyframe, faceSwap |
 | `continuity.services.ts`  | continuitySessionService (gated — see Feature Flags below)              |

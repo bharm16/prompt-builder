@@ -11,10 +11,9 @@ import { CleanPromptBuilder } from "@services/enhancement/services/CleanPromptBu
 import { PromptCoherenceService } from "@services/enhancement/services/PromptCoherenceService";
 import { SuggestionDiversityEnforcer } from "@services/enhancement/services/SuggestionDeduplicator";
 import { SuggestionValidationService } from "@services/enhancement/services/SuggestionValidationService";
-import { ImageObservationService } from "@services/image-observation";
+import type { ImageObservationService } from "@services/image-observation";
 import { PromptOptimizationService } from "@services/prompt-optimization/PromptOptimizationService";
 import { TemplateService } from "@services/prompt-optimization/services/TemplateService";
-import { LLMJudgeService } from "@services/quality-feedback/services/LLMJudgeService";
 import { SceneChangeDetectionService } from "@services/video-concept/services/detection/SceneChangeDetectionService";
 import type { CacheService } from "@services/cache/CacheService";
 import { VideoPromptService } from "@services/video-prompt-analysis/index";
@@ -107,13 +106,6 @@ export function registerEnhancementServices(container: DIContainer): void {
   );
 
   container.register(
-    "imageObservationService",
-    (aiService: AIModelService, cacheService: CacheService) =>
-      new ImageObservationService(aiService, cacheService),
-    ["aiService", "cacheService"],
-  );
-
-  container.register(
     "enhancementService",
     (
       aiService: AIModelService,
@@ -171,12 +163,5 @@ export function registerEnhancementServices(container: DIContainer): void {
     (aiService: AIModelService, cacheService: CacheService) =>
       new VideoConceptService(aiService, cacheService),
     ["aiService", "cacheService"],
-  );
-
-  container.register(
-    "llmJudgeService",
-    (aiService: AIModelService) => new LLMJudgeService(aiService),
-    ["aiService"],
-    { singleton: true },
   );
 }
