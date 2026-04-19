@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, renderHook } from "@testing-library/react";
 import type { ReactNode } from "react";
 import type { KeyframeTile } from "../../types";
@@ -360,7 +360,8 @@ describe("GenerationControlsStore", () => {
     expect(result.current.state).toBe(previousState);
   });
 
-  it("hydrates from storage and persists updates", () => {
+  it("hydrates from storage and persists updates", async () => {
+    vi.useFakeTimers();
     const hydratedState = buildInitialState({
       domain: {
         selectedModel: "model-x",
@@ -391,10 +392,16 @@ describe("GenerationControlsStore", () => {
       result.current.actions.setSelectedModel("model-y");
     });
 
+    // Persistence is debounced (2s) to avoid localStorage thrash on rapid edits.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2_000);
+    });
+
     const persisted = JSON.parse(
       localStorage.getItem("prompt-optimizer:generationControlsStore") ?? "{}",
     ) as GenerationControlsState;
     expect(persisted.domain.selectedModel).toBe("model-y");
+    vi.useRealTimers();
   });
 
   it("hydrates start frame from keyframes[0] when persisted state is missing startFrame", () => {
