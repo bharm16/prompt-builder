@@ -132,7 +132,7 @@ describe("useGenerationActions insufficient credits handling", () => {
     expect(onInsufficientCredits).toHaveBeenCalledWith(48, "Sora render");
   });
 
-  it("keeps normal error flow for non-402 failures", async () => {
+  it("surfaces non-402 failures via a failed ADD_GENERATION and does not treat them as insufficient credits", async () => {
     const dispatch = vi.fn();
     const onInsufficientCredits = vi.fn();
     generateVideoPreviewMock.mockRejectedValue(new Error("Network down"));
@@ -145,8 +145,14 @@ describe("useGenerationActions insufficient credits handling", () => {
       await result.current.generateRender("sora-2", "Render prompt", {});
     });
 
-    expect(getAction(dispatch, "ADD_GENERATION")).toBeUndefined();
-    expect(getAction(dispatch, "UPDATE_GENERATION")).toBeUndefined();
+    // Generic failures now surface as a failed ADD_GENERATION so the user
+    // sees the error, not as silence. The 402-only branch must still be
+    // reserved for insufficient-credits handling.
+    const added = getAction(dispatch, "ADD_GENERATION") as
+      | { payload: { status: string; error: string } }
+      | undefined;
+    expect(added?.payload.status).toBe("failed");
+    expect(added?.payload.error).toBe("Network down");
     expect(onInsufficientCredits).not.toHaveBeenCalled();
     expect(result.current.isSubmitting).toBe(false);
   });
