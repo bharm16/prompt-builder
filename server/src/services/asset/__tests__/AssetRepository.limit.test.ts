@@ -46,7 +46,7 @@ function buildRepository(chain: QueryChain): AssetRepository {
 }
 
 describe("AssetRepository.getByType limit", () => {
-  it("applies .limit() to the Firestore query (default cap = 200)", async () => {
+  it("applies .limit() to the Firestore query (default cap = 200, probes one extra)", async () => {
     const chain = buildQueryChain();
     const repository = buildRepository(chain);
 
@@ -55,17 +55,18 @@ describe("AssetRepository.getByType limit", () => {
     expect(chain.where).toHaveBeenCalledWith("type", "==", "character");
     expect(chain.orderBy).toHaveBeenCalledWith("updatedAt", "desc");
     // Invariant: the query chain must include a .limit() call.
+    // We fetch limit+1 to detect whether more results exist beyond the cap.
     expect(chain.limit).toHaveBeenCalledTimes(1);
-    expect(chain.limit).toHaveBeenCalledWith(200);
+    expect(chain.limit).toHaveBeenCalledWith(201);
   });
 
-  it("forwards a caller-provided limit to the Firestore query", async () => {
+  it("forwards a caller-provided limit to the Firestore query (plus one for probe)", async () => {
     const chain = buildQueryChain();
     const repository = buildRepository(chain);
 
     await repository.getByType("user-1", "character", 50);
 
     expect(chain.limit).toHaveBeenCalledTimes(1);
-    expect(chain.limit).toHaveBeenCalledWith(50);
+    expect(chain.limit).toHaveBeenCalledWith(51);
   });
 });

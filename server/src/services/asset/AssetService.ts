@@ -12,7 +12,12 @@ import ReferenceImageService from "./ReferenceImageService";
 import AssetResolverService from "./AssetResolverService";
 import TriggerValidationService from "./TriggerValidationService";
 import type FaceEmbeddingService from "./FaceEmbeddingService";
-import { AssetCrudService } from "./services/AssetCrudService";
+import {
+  AssetCrudService,
+  type ListAssetsByTypeResult,
+} from "./services/AssetCrudService";
+
+export type { ListAssetsByTypeResult } from "./services/AssetCrudService";
 import { AssetReferenceImageService } from "./services/AssetReferenceImageService";
 import { AssetPromptService } from "./services/AssetPromptService";
 import { AssetEmbeddingService } from "./services/AssetEmbeddingService";
@@ -65,7 +70,10 @@ export class AssetService {
     return this.crud.listAssets(userId, options);
   }
 
-  async listAssetsByType(userId: string, type: AssetType): Promise<Asset[]> {
+  async listAssetsByType(
+    userId: string,
+    type: AssetType,
+  ): Promise<ListAssetsByTypeResult> {
     return this.crud.listAssetsByType(userId, type);
   }
 

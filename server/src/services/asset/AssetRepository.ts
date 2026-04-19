@@ -32,6 +32,11 @@ export interface ProcessedImageInput {
   format?: string;
 }
 
+export interface GetByTypeResult {
+  items: Asset[];
+  hasMore: boolean;
+}
+
 const MAX_IN_QUERY = 10;
 const MAX_BATCH_WRITES = 500;
 
@@ -347,20 +352,27 @@ export class AssetRepository {
    * without it, a user with a large asset library could trigger unbounded
    * document reads on every call. Defaults to 200, which covers typical
    * libraries while preventing pathological cases.
+   *
+   * Returns a structured result so callers can detect when results were
+   * truncated. Internally fetches `limit + 1` rows as a probe — if the probe
+   * row exists, `hasMore` is true and the excess row is sliced off.
    */
   async getByType(
     userId: string,
     type: AssetType,
     limit: number = 200,
-  ): Promise<Asset[]> {
+  ): Promise<GetByTypeResult> {
     const snapshot = await this.getAssetsCollection(userId)
       .where("type", "==", type)
       .orderBy("updatedAt", "desc")
-      .limit(limit)
+      .limit(limit + 1)
       .get();
-    return snapshot.docs.map((doc) =>
+    const allItems = snapshot.docs.map((doc) =>
       refreshAssetUrls(doc.data() as Asset, this.bucketName),
     );
+    const hasMore = allItems.length > limit;
+    const items = hasMore ? allItems.slice(0, limit) : allItems;
+    return { items, hasMore };
   }
 
   async update(
