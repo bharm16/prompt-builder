@@ -136,6 +136,8 @@
     "verify-keys": "tsx scripts/verify-api-keys.ts",
     "sync:capabilities": "tsx --tsconfig server/tsconfig.json scripts/sync-capabilities.ts",
     "openapi:generate": "tsx --tsconfig server/tsconfig.json scripts/generate-openapi.ts",
+    "routemap:generate": "tsx --tsconfig server/tsconfig.json scripts/generate-route-map.ts --write",
+    "routemap:check": "tsx --tsconfig server/tsconfig.json scripts/generate-route-map.ts --check",
     "test:optimize-pipeline": "tsx --tsconfig server/tsconfig.json scripts/test-prompt-optimizer-pipeline.ts",
     "test:enhancement-compare": "tsx --tsconfig server/tsconfig.json scripts/test-enhancement-v1-v2.ts",
     "test:flash": "node scripts/test-gemini-flash-spans.js",
