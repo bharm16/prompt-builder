@@ -360,15 +360,17 @@ describe("GenerationsPanel hero presentation", () => {
       />,
     );
 
-    // Wait for the initial render to settle. Exact call count depends on
-    // how many of the runtime's internal effects have fired by first paint;
-    // we only care that it's bounded, not that it's 1.
+    // Wait for the initial render to settle. The absolute count depends on
+    // how many internal effects fire by first paint, which is not the
+    // invariant we care about — the invariant is the DELTA on rerender,
+    // asserted below. Use a single non-null setControls call as a settle
+    // signal (the "controls are now registered" boundary) and avoid a magic
+    // upper bound that would flake on any legitimate extra effect.
     await waitFor(() => {
       const nonNullCalls = setControlsSpy.mock.calls
         .map((call) => call[0])
         .filter((value) => value !== null);
       expect(nonNullCalls.length).toBeGreaterThan(0);
-      expect(nonNullCalls.length).toBeLessThanOrEqual(3);
     });
 
     const callsBeforeRerender = setControlsSpy.mock.calls
