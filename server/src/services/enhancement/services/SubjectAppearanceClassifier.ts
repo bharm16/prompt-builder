@@ -34,6 +34,35 @@ export function detectSubjectAppearanceSubRole(
   return null;
 }
 
+type NonNullSubRole = Exclude<SubjectAppearanceSubRole, null>;
+
+const subRoleDriftCheckers: Record<
+  NonNullSubRole,
+  (lowerText: string) => boolean
+> = {
+  face_detail: (lowerText) =>
+    !patterns.faceCueTerms.test(lowerText) ||
+    patterns.handCueTerms.test(lowerText) ||
+    patterns.hairCueTerms.test(lowerText) ||
+    patterns.feetCueTerms.test(lowerText) ||
+    patterns.propCueTerms.test(lowerText) ||
+    /\b(gripping|reaching|playing|resting|touching|catching)\b/i.test(
+      lowerText,
+    ),
+  hand_detail: (lowerText) =>
+    !patterns.handCueTerms.test(lowerText) ||
+    patterns.faceCueTerms.test(lowerText) ||
+    patterns.hairCueTerms.test(lowerText) ||
+    patterns.feetCueTerms.test(lowerText) ||
+    /\b(sock|toy|stroller)\b/i.test(lowerText),
+  hair_detail: (lowerText) => !patterns.hairCueTerms.test(lowerText),
+  feet_detail: (lowerText) => !patterns.feetCueTerms.test(lowerText),
+  prop_detail: (lowerText) =>
+    !patterns.propCueTerms.test(lowerText) ||
+    patterns.faceCueTerms.test(lowerText) ||
+    patterns.handCueTerms.test(lowerText),
+};
+
 export function hasBodyPartSubRoleDrift(
   text: string,
   context: SubjectAppearanceContext,
@@ -42,46 +71,5 @@ export function hasBodyPartSubRoleDrift(
   if (!subRole) {
     return false;
   }
-
-  const lowerText = text.toLowerCase();
-  if (subRole === "face_detail") {
-    return (
-      !patterns.faceCueTerms.test(lowerText) ||
-      patterns.handCueTerms.test(lowerText) ||
-      patterns.hairCueTerms.test(lowerText) ||
-      patterns.feetCueTerms.test(lowerText) ||
-      patterns.propCueTerms.test(lowerText) ||
-      /\b(gripping|reaching|playing|resting|touching|catching)\b/i.test(
-        lowerText,
-      )
-    );
-  }
-
-  if (subRole === "hand_detail") {
-    return (
-      !patterns.handCueTerms.test(lowerText) ||
-      patterns.faceCueTerms.test(lowerText) ||
-      patterns.hairCueTerms.test(lowerText) ||
-      patterns.feetCueTerms.test(lowerText) ||
-      /\b(sock|toy|stroller)\b/i.test(lowerText)
-    );
-  }
-
-  if (subRole === "hair_detail") {
-    return !patterns.hairCueTerms.test(lowerText);
-  }
-
-  if (subRole === "feet_detail") {
-    return !patterns.feetCueTerms.test(lowerText);
-  }
-
-  if (subRole === "prop_detail") {
-    return (
-      !patterns.propCueTerms.test(lowerText) ||
-      patterns.faceCueTerms.test(lowerText) ||
-      patterns.handCueTerms.test(lowerText)
-    );
-  }
-
-  return false;
+  return subRoleDriftCheckers[subRole](text.toLowerCase());
 }
