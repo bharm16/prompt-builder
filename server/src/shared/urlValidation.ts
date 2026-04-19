@@ -13,6 +13,7 @@ const BLOCKED_HOSTNAMES = new Set([
   "169.254.170.2", // ECS metadata
   "metadata.google.internal", // GCP metadata
   "[::1]",
+  "[::]", // IPv6 unspecified — routes to loopback on Linux
 ]);
 
 const PRIVATE_IP_PATTERNS = [
@@ -23,6 +24,12 @@ const PRIVATE_IP_PATTERNS = [
   /^169\.254\./,
   /^fc00:/i,
   /^fd[0-9a-f]{2}:/i,
+  // fe80::/10 link-local — first 10 bits 1111 1110 10, so second byte is 80-bf.
+  // That makes the 4-char prefix fe80 through febf.
+  /^fe[89ab][0-9a-f]:/i,
+  // RFC6052 NAT64 well-known prefix 64:ff9b::/96. A translator on this prefix
+  // would forward to embedded IPv4, which may include private ranges.
+  /^64:ff9b:/i,
 ];
 
 // Matches IPv4-mapped IPv6 hostnames (e.g. ::ffff:127.0.0.1 or the

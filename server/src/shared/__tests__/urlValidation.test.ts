@@ -124,6 +124,35 @@ describe("urlValidation", () => {
     });
   });
 
+  describe("IPv6 link-local, unspecified, and NAT64 (regression)", () => {
+    // fe80::/10 link-local — previously passed through urlValidation because
+    // the fc00:/fd-prefix regex did not cover fe-prefixed addresses. An
+    // attacker-submitted http://[fe80::1]/ could reach link-local services.
+    it("rejects fe80::/10 link-local (all fe80-febf prefixes)", () => {
+      expect(isUrlSafe("http://[fe80::1]/")).toBe(false);
+      expect(isUrlSafe("http://[fe80::200:5eff:fe00:5213]/")).toBe(false);
+      expect(isUrlSafe("http://[febf::1]/")).toBe(false);
+      expect(isUrlSafe("http://[fea0::1]/")).toBe(false);
+    });
+
+    it("does not overreach past fe80::/10 (fe00-fe7f, fec0-feff stay permissive)", () => {
+      // fe00 is not link-local and is outside ULA; the /10 pattern must not
+      // accidentally match fe70:: or similar.
+      expect(isUrlSafe("http://[fe00::1]/")).toBe(true);
+      expect(isUrlSafe("http://[fe70::1]/")).toBe(true);
+    });
+
+    it("rejects [::] (IPv6 unspecified, routes to loopback on Linux)", () => {
+      expect(isUrlSafe("http://[::]/")).toBe(false);
+    });
+
+    it("rejects 64:ff9b::/96 NAT64 well-known prefix", () => {
+      // 64:ff9b::7f00:1 translates to 127.0.0.1 via a NAT64 translator.
+      expect(isUrlSafe("http://[64:ff9b::7f00:1]/")).toBe(false);
+      expect(isUrlSafe("http://[64:ff9b::a9fe:a9fe]/")).toBe(false);
+    });
+  });
+
   describe("assertUrlSafe", () => {
     it("throws when URL is unsafe", () => {
       expect(() => assertUrlSafe("http://127.0.0.1/", "imageUrl")).toThrow(
