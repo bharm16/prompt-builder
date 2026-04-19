@@ -1,4 +1,5 @@
 import { logger } from "@infrastructure/Logger";
+import { assertUrlSafe } from "@server/shared/urlValidation";
 import type { AssetService } from "@services/asset/AssetService";
 import type KeyframeGenerationService from "@services/video-generation/KeyframeGenerationService";
 import { StorageService } from "@services/storage/StorageService";
@@ -42,6 +43,7 @@ export class CharacterKeyframeService {
       faceStrength,
     });
 
+    assertUrlSafe(keyframe.imageUrl, "characterKeyframeImageUrl");
     const response = await fetch(keyframe.imageUrl);
     if (!response.ok) {
       throw new Error(`Failed to download keyframe (${response.status})`);

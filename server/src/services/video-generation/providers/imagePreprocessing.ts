@@ -1,4 +1,5 @@
 import { Blob as NodeBlob } from "node:buffer";
+import { assertUrlSafe } from "@server/shared/urlValidation";
 
 type LogSink = {
   info: (message: string, meta?: Record<string, unknown>) => void;
@@ -93,6 +94,7 @@ export async function resolveImageInput(
     hasExtension: Boolean(extension),
   });
 
+  assertUrlSafe(imageUrl, fieldName);
   const response = await fetch(imageUrl, { redirect: "follow" });
   if (!response.ok) {
     throw new Error(`Failed to fetch ${fieldName} (${response.status})`);

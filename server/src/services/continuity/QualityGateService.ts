@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import sharp from "sharp";
 import { logger } from "@infrastructure/Logger";
+import { assertUrlSafe } from "@server/shared/urlValidation";
 import { FaceEmbeddingService } from "@services/asset/FaceEmbeddingService";
 import type { StorageService } from "@services/storage/StorageService";
 import { STORAGE_TYPES } from "@services/storage/config/storageConfig";
@@ -281,6 +282,7 @@ export class QualityGateService {
   }
 
   private async downloadImage(url: string): Promise<Buffer> {
+    assertUrlSafe(url, "qualityGateImageUrl");
     const response = await fetch(url);
     if (!response.ok) {
       throw new Error(`Failed to download image (${response.status})`);

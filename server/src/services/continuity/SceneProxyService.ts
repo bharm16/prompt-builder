@@ -1,4 +1,5 @@
 import { logger } from "@infrastructure/Logger";
+import { assertUrlSafe } from "@server/shared/urlValidation";
 import { generateId } from "@utils/uid";
 import { StorageService } from "@services/storage/StorageService";
 import { STORAGE_TYPES } from "@services/storage/config/storageConfig";
@@ -342,6 +343,7 @@ export class SceneProxyService {
   }
 
   private async downloadImage(url: string): Promise<Buffer> {
+    assertUrlSafe(url, "sceneProxyImageUrl");
     const response = await fetch(url);
     if (!response.ok) {
       throw new Error(`Failed to download image (${response.status})`);

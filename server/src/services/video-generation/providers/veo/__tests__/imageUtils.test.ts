@@ -77,6 +77,22 @@ describe("fetchAsVeoInline", () => {
     ).rejects.toThrow("HTTP 404");
   });
 
+  it("regression: rejects private/SSRF URLs before any fetch is issued", async () => {
+    // Defense-in-depth: even though veo provider inputs are usually GCS
+    // signed URLs, a compromised upstream could supply a private address.
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      fetchAsVeoInline("http://169.254.169.254/latest/meta-data/", "image"),
+    ).rejects.toThrow(/veoInlineMediaUrl/);
+    await expect(
+      fetchAsVeoInline("http://[fe80::1]/secret", "image"),
+    ).rejects.toThrow(/veoInlineMediaUrl/);
+
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it("throws when image payload exceeds max size", async () => {
     const oversized = new Uint8Array(MAX_IMAGE_BYTES + 1);
     const fetchMock = vi.fn().mockResolvedValue({

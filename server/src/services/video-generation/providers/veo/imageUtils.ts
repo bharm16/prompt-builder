@@ -1,3 +1,5 @@
+import { assertUrlSafe } from "@server/shared/urlValidation";
+
 export interface VeoInlineData {
   inlineData: {
     mimeType: string;
@@ -20,6 +22,7 @@ export async function fetchAsVeoInline(
   url: string,
   kind: "image" | "video" = "image",
 ): Promise<VeoInlineData> {
+  assertUrlSafe(url, "veoInlineMediaUrl");
   const response = await fetch(url);
   if (!response.ok) {
     throw new Error(

@@ -6,6 +6,7 @@
  */
 
 import { logger } from "@infrastructure/Logger";
+import { assertUrlSafe } from "@server/shared/urlValidation";
 import { sha256Hex } from "@utils/hash";
 import { promises as fs } from "fs";
 import { dirname, join } from "path";
@@ -283,6 +284,7 @@ export class ImageObservationService {
 
     // Convert URL to base64 data URI to avoid GCS signed URL expiration issues
     this.log.debug("Fetching image for base64 conversion", { imageHash });
+    assertUrlSafe(image, "imageObservationUrl");
     const imageResponse = await fetch(image);
     if (!imageResponse.ok) {
       throw new Error(
