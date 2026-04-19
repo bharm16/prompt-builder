@@ -1,6 +1,5 @@
 import { logger } from "@infrastructure/Logger";
 import { StructuredOutputEnforcer } from "@utils/StructuredOutputEnforcer";
-import type { SuggestionRejectReason } from "./SuggestionValidationService.js";
 import type {
   Suggestion,
   VideoService,
@@ -8,6 +7,7 @@ import type {
   FallbackRegenerationParams,
   FallbackRegenerationResult,
   PromptBuildParams,
+  SuggestionRejectReason,
   VideoConstraints,
   OutputSchema,
 } from "./types.js";

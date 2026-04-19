@@ -63,6 +63,15 @@ export interface SanitizationContext {
   lockedSpanCategories?: string[];
 }
 
+export type SuggestionRejectReason =
+  | "length_only"
+  | "slot_form"
+  | "category_drift"
+  | "body_part_drift"
+  | "object_overlap"
+  | "coherence_conflict"
+  | "metaphor_or_abstract";
+
 /**
  * Video prompt constraints
  */
