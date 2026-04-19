@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getServerEnv } from "../../scripts/dev/start";
+import { getServerEnv } from "@scripts/dev/start";
 
 describe("regression: local api dev runs process queued video jobs", () => {
   it("enables inline video processing when the dev orchestrator starts the backend without an explicit override", () => {
