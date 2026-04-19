@@ -12,6 +12,13 @@ import type {
 import * as patterns from "./ValidationPatterns.js";
 import { hasBodyPartSubRoleDrift } from "./SubjectAppearanceClassifier.js";
 import { getCategoryDriftRejectReason } from "./CategoryDriftValidator.js";
+import {
+  hasObjectOverlap,
+  hasActorDrift,
+  hasSubjectClassDrift,
+  isMetaphoricalOrAbstract,
+  violatesArticleAgreement,
+} from "./DriftDetectors.js";
 
 type ExtendedSanitizationContext = SanitizationContext & {
   contextBefore?: string;
@@ -444,7 +451,7 @@ export class SuggestionValidationService {
     text: string,
     context: ExtendedSanitizationContext,
   ): SuggestionRejectReason | null {
-    if (this._violatesArticleAgreement(text, context)) {
+    if (violatesArticleAgreement(text, context)) {
       return "slot_form";
     }
 
@@ -461,19 +468,19 @@ export class SuggestionValidationService {
       return "body_part_drift";
     }
 
-    if (this._hasObjectOverlap(text, context)) {
+    if (hasObjectOverlap(text, context)) {
       return "object_overlap";
     }
 
-    if (this._hasActorDrift(text, context)) {
+    if (hasActorDrift(text, context)) {
       return "coherence_conflict";
     }
 
-    if (this._hasSubjectClassDrift(text, context)) {
+    if (hasSubjectClassDrift(text, context)) {
       return "category_drift";
     }
 
-    if (this._isMetaphoricalOrAbstract(text, context)) {
+    if (isMetaphoricalOrAbstract(text, context)) {
       return "metaphor_or_abstract";
     }
 
@@ -614,104 +621,6 @@ export class SuggestionValidationService {
     return null;
   }
 
-  private _hasObjectOverlap(
-    text: string,
-    context: ExtendedSanitizationContext,
-  ): boolean {
-    const category = this._normalizeCategoryKey(
-      context.highlightedCategory || "",
-    );
-    if (!category.startsWith("action")) {
-      return false;
-    }
-
-    const after = (context.contextAfter || "").toLowerCase();
-    const lowerText = text.toLowerCase();
-    const overlappingObjectTerms = [
-      "steering wheel",
-      "wheel",
-      "dashboard",
-      "window",
-      "glass",
-      "door",
-      "toy",
-    ];
-
-    if (
-      overlappingObjectTerms.some(
-        (term) => after.includes(term) && lowerText.includes(term),
-      )
-    ) {
-      return true;
-    }
-
-    const localContext = [
-      context.highlightedText || "",
-      context.contextBefore || "",
-      context.contextAfter || "",
-      context.spanAnchors || "",
-      context.nearbySpanHints || "",
-    ]
-      .join(" ")
-      .toLowerCase();
-
-    const handBoundAction =
-      patterns.handCueTerms.test(localContext) &&
-      overlappingObjectTerms.some((term) => localContext.includes(term));
-    if (!handBoundAction) {
-      return false;
-    }
-
-    if (patterns.fullBodyActionTerms.test(lowerText)) {
-      return true;
-    }
-
-    return !patterns.handInteractionTerms.test(lowerText);
-  }
-
-  private _isMetaphoricalOrAbstract(
-    text: string,
-    context: ExtendedSanitizationContext,
-  ): boolean {
-    const category = this._normalizeCategoryKey(
-      context.highlightedCategory || "",
-    );
-    if (category === "lighting.timeofday") {
-      return patterns.abstractVisualTerms.test(text.toLowerCase());
-    }
-    return false;
-  }
-
-  private _hasActorDrift(
-    text: string,
-    context: ExtendedSanitizationContext,
-  ): boolean {
-    const category = this._normalizeCategoryKey(
-      context.highlightedCategory || "",
-    );
-    if (!category.startsWith("action")) {
-      return false;
-    }
-
-    const localContext = [
-      context.contextBefore || "",
-      context.contextAfter || "",
-      context.spanAnchors || "",
-      context.nearbySpanHints || "",
-    ]
-      .join(" ")
-      .toLowerCase();
-
-    if (!patterns.environmentMotionSubjectTerms.test(localContext)) {
-      return false;
-    }
-
-    return (
-      patterns.humanBodyActionTerms.test(text.toLowerCase()) ||
-      patterns.humanSubjectTerms.test(text.toLowerCase())
-    );
-  }
-
   /**
    * Strip trailing tokens from a suggestion that overlap with the start of contextAfter.
    * Only applies to action-category spans where the LLM may absorb the trailing object.
@@ -753,81 +662,6 @@ export class SuggestionValidationService {
     }
 
     return text;
-  }
-
-  private _hasSubjectClassDrift(
-    text: string,
-    context: ExtendedSanitizationContext,
-  ): boolean {
-    const category = this._normalizeCategoryKey(
-      context.highlightedCategory || "",
-    );
-    if (!category.startsWith("subject.")) {
-      return false;
-    }
-
-    const localContext = [
-      context.highlightedText || "",
-      context.contextBefore || "",
-      context.contextAfter || "",
-      context.spanAnchors || "",
-      context.nearbySpanHints || "",
-    ]
-      .join(" ")
-      .toLowerCase();
-
-    const hasHumanIdentityContext =
-      patterns.humanSubjectTerms.test(localContext);
-    if (!hasHumanIdentityContext) {
-      return false;
-    }
-
-    const lowerText = text.toLowerCase();
-    return (
-      patterns.nonHumanIdentityTerms.test(lowerText) ||
-      patterns.fantasyOrRoleShiftTerms.test(lowerText)
-    );
-  }
-
-  private _violatesArticleAgreement(
-    text: string,
-    context: ExtendedSanitizationContext,
-  ): boolean {
-    const prefix = (context.contextBefore || "").trimEnd();
-    const articleMatch = prefix.match(/\b(a|an)\s*$/i);
-    if (!articleMatch) {
-      return false;
-    }
-
-    const lowerText = text.toLowerCase();
-    if (
-      /^[a-z]+['’]s\b/i.test(text) ||
-      /^(his|her|their|its)\b/i.test(lowerText)
-    ) {
-      return true;
-    }
-
-    const firstWord = lowerText.match(/^[a-z]+/)?.[0];
-    if (!firstWord) {
-      return false;
-    }
-
-    const article = articleMatch[1]!.toLowerCase();
-    const vowelSound =
-      /^[aeiou]/.test(firstWord) || /^(honest|hour|heir|honor)/.test(firstWord);
-    const consonantSound =
-      /^[^aeiou]/.test(firstWord) ||
-      /^(uni([^n]|$)|use|euro|one|ubiq)/.test(firstWord);
-
-    if (article === "a" && vowelSound) {
-      return true;
-    }
-
-    if (article === "an" && consonantSound) {
-      return true;
-    }
-
-    return false;
   }
 
   private _normalizeCategoryKey(category: string): string {
