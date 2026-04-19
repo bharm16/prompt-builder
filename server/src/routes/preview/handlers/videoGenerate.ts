@@ -8,7 +8,7 @@ import { GENERATION_ERROR_CODES } from "@routes/generationErrorCodes";
 import type { ApiErrorCode } from "@server/types/apiError";
 import { getRuntimeFlags } from "@config/runtime-flags";
 import { resolveVideoGenerateIdempotencyMode } from "@services/idempotency/RequestIdempotencyService";
-import type { VideoModelId } from "@services/video-generation/types";
+import type { VideoModelId } from "@shared/videoModels";
 import { resolveModelId as resolveCapabilityModelId } from "@services/capabilities/modelProviders";
 import { assertUrlSafe } from "@server/shared/urlValidation";
 import { scheduleInlineVideoPreviewProcessing } from "../inlineProcessor";

@@ -9,7 +9,7 @@ interface ModelIntelligenceMetrics {
 }
 import { getVideoCost } from "@config/modelCosts";
 import { VIDEO_MODELS } from "@config/modelConfig";
-import type { VideoModelId } from "@services/video-generation/types";
+import type { VideoModelId } from "@shared/videoModels";
 import { ModelCapabilityRegistry } from "./services/ModelCapabilityRegistry";
 import { ModelScoringService } from "./services/ModelScoringService";
 import { PromptRequirementsService } from "./services/PromptRequirementsService";

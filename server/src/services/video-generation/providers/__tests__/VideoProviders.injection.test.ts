@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { createVideoProviders } from "../VideoProviders";
 import type { VideoProviderSdks } from "@clients/videoProviderClients";
-import type { VideoModelId } from "@services/video-generation/types";
+import type { VideoModelId } from "@shared/videoModels";
 import type { VideoAssetStore } from "@services/video-generation/storage";
 
 const noopAssetStore = {} as unknown as VideoAssetStore;

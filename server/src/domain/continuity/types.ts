@@ -18,7 +18,7 @@ import type {
   SessionStatus,
   SessionStyleReference,
 } from "@shared/types/session";
-import type { VideoModelId } from "@services/video-generation/types";
+import type { VideoModelId } from "@shared/videoModels";
 
 export type GenerationMode = SessionGenerationMode;
 export type ContinuityMode = SessionContinuityMode;

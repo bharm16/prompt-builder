@@ -1,6 +1,6 @@
 import type { ContinuitySession, ContinuityShot } from "./types";
 import type { ProviderStyleAdapter } from "./ProviderStyleAdapter";
-import type { VideoModelId } from "@services/video-generation/types";
+import type { VideoModelId } from "@shared/videoModels";
 
 export class AnchorService {
   constructor(private providerAdapter: ProviderStyleAdapter) {}

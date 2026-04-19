@@ -2,7 +2,7 @@ import type { Request, Response } from "express";
 import type { PreviewRoutesServices } from "@routes/types";
 import { emptyAvailability } from "../availability";
 import { VIDEO_MODELS } from "@config/modelConfig";
-import type { VideoModelId } from "@services/video-generation/types";
+import type { VideoModelId } from "@shared/videoModels";
 import { resolveModelId as resolveCapabilityModelId } from "@services/capabilities/modelProviders";
 
 type VideoAvailabilityServices = Pick<

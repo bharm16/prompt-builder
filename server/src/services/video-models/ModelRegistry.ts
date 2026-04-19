@@ -9,8 +9,12 @@ import type {
   SoraModelId,
   VeoModelId,
   VideoModelId,
-  VideoModelKey,
-} from "@services/video-generation/types";
+} from "@shared/videoModels";
+
+// Derive `VideoModelKey` locally from the runtime config to avoid a circular
+// type edge with `@services/video-generation`. This is the same type exported
+// as `VideoModelKey` from `@services/video-generation/types`.
+type VideoModelKey = keyof typeof VIDEO_MODELS;
 
 type LogSink = {
   warn: (message: string, meta?: Record<string, unknown>) => void;
