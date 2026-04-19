@@ -308,7 +308,7 @@ describe("scheduleInlineVideoPreviewProcessing", () => {
     await flushMicrotasks();
 
     expect(mocks.loggerWarn).toHaveBeenCalledWith(
-      "Inline preview job heartbeat skipped (lease lost)",
+      "Inline preview job heartbeat skipped (lease may have been reclaimed)",
       expect.objectContaining({ jobId: "job-1" }),
     );
 
