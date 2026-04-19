@@ -1,5 +1,5 @@
 import NodeCache from "node-cache";
-import crypto from "crypto";
+import { sha256Hex } from "@utils/hash";
 import { logger } from "@infrastructure/Logger";
 import type { ILogger } from "@interfaces/ILogger";
 import { SemanticCacheEnhancer } from "./SemanticCacheService.js";
@@ -157,11 +157,7 @@ export class CacheService {
     }
 
     // Fallback to standard hashing
-    const hash = crypto
-      .createHash("sha256")
-      .update(JSON.stringify(data))
-      .digest("hex")
-      .substring(0, 16);
+    const hash = sha256Hex(JSON.stringify(data), 16);
 
     return `${namespace}:${hash}`;
   }

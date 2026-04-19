@@ -1,6 +1,6 @@
-import crypto from "crypto";
 import type { Request, RequestHandler, Response } from "express";
 import { logger } from "@infrastructure/Logger";
+import { sha256Hex } from "@utils/hash";
 
 const DEFAULT_COALESCING_WINDOW_MS = 100;
 const DEFAULT_MAX_PENDING = 1000;
@@ -46,11 +46,7 @@ type RequestWithPrincipal = Request & {
 };
 
 function hashFingerprint(input: string): string {
-  return crypto
-    .createHash("sha256")
-    .update(input)
-    .digest("hex")
-    .substring(0, 32);
+  return sha256Hex(input, 32);
 }
 
 function parseMaybeJson(raw: string): unknown {
