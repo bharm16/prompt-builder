@@ -36,7 +36,6 @@ client/src/
 ├── schemas/               # Zod validation schemas
 ├── contexts/              # React context providers
 ├── config/                # Client configuration
-├── lib/                   # Third-party library wrappers
 ├── types/                 # TypeScript type definitions
 ├── utils/                 # Pure utility functions
 └── styles/                # Global styles
