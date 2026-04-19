@@ -19,7 +19,7 @@ import type {
   FrameBridge,
   SeedInfo,
   SceneProxy,
-} from "@services/continuity/types";
+} from "@server/domain/continuity/types";
 import type {
   SessionCreateRequest,
   SessionRecord,
@@ -34,7 +34,7 @@ import { SessionStore } from "./SessionStore";
 import {
   enforceImmutableKeyframes,
   enforceImmutableVersions,
-} from "./utils/immutableMedia";
+} from "@utils/immutableMedia";
 
 /**
  * Minimal interface for the session → video-job cascade. Kept narrow so the

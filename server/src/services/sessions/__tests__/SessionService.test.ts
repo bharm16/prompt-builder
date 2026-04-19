@@ -3,7 +3,7 @@ import type { SessionRecord } from "../types";
 import type {
   ContinuitySession,
   ContinuityShot,
-} from "@services/continuity/types";
+} from "@server/domain/continuity/types";
 import {
   SessionAccessDeniedError,
   SessionNotFoundError,

@@ -1,12 +1,12 @@
 import { admin, getFirestore } from "@infrastructure/firebaseAdmin";
-import type { ContinuitySession } from "./types";
+import type { ContinuitySession } from "@server/domain/continuity/types";
 import {
   deserializeContinuitySession,
   serializeContinuitySession,
   type StoredContinuitySession,
-} from "./continuitySerialization";
-import { SessionStore } from "@services/sessions/SessionStore";
-import type { SessionRecord } from "@services/sessions/types";
+} from "@server/domain/continuity/serialization";
+import type { SessionRecord } from "@server/domain/session/types";
+import type { SessionStorePort } from "./ports/SessionStorePort";
 import { DomainError } from "@server/errors/DomainError";
 
 export class ContinuitySessionVersionMismatchError extends DomainError {
@@ -37,7 +37,7 @@ export class ContinuitySessionStore {
   private readonly db = getFirestore();
   private readonly legacyCollection = this.db.collection("continuity_sessions");
 
-  constructor(private readonly sessionStore: SessionStore) {}
+  constructor(private readonly sessionStore: SessionStorePort) {}
 
   async save(session: ContinuitySession): Promise<void> {
     await this.saveInternal(session);

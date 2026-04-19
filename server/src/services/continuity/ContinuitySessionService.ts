@@ -16,7 +16,7 @@ import { ContinuityMediaService } from "./ContinuityMediaService";
 import { ContinuityPostProcessingService } from "./ContinuityPostProcessingService";
 import { ContinuityShotGenerator } from "./ContinuityShotGenerator";
 import { DEFAULT_QUALITY_THRESHOLDS } from "./constants";
-import { enforceImmutableVersions } from "@services/sessions/utils/immutableMedia";
+import { enforceImmutableVersions } from "@utils/immutableMedia";
 import type { ShotGenerationObserver } from "./ShotGenerationProgress";
 
 export class ContinuitySessionService {

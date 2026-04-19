@@ -29,11 +29,12 @@ import type { ServiceConfig } from "./service-config.types.ts";
 import { createDepthEstimationServiceForUser } from "@services/convergence/depth";
 import type { StorageService as ConvergenceStorageService } from "@services/convergence/storage";
 import type { DepthEstimationFactory } from "@services/continuity/ports/DepthEstimationFactory";
+import type { SessionStorePort } from "@services/continuity/ports/SessionStorePort";
 
 export function registerContinuityServices(container: DIContainer): void {
   container.register(
     "continuitySessionStore",
-    (sessionStore: import("@services/sessions/SessionStore").SessionStore) =>
+    (sessionStore: SessionStorePort) =>
       new ContinuitySessionStore(sessionStore),
     ["sessionStore"],
     { singleton: true },

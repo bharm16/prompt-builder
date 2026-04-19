@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { ContinuitySession } from "../types";
-import { serializeContinuitySession } from "../continuitySerialization";
+import type { ContinuitySession } from "@server/domain/continuity/types";
+import { serializeContinuitySession } from "@server/domain/continuity/serialization";
+import type { SessionStorePort } from "../ports/SessionStorePort";
 
 type StoreRecord = Record<string, unknown>;
 
@@ -68,10 +69,6 @@ const createLegacyDocRef = (id: string) => ({
   },
 });
 
-vi.mock("@services/sessions/SessionStore", () => ({
-  SessionStore: vi.fn().mockImplementation(() => mocks.sessionStore),
-}));
-
 vi.mock("@infrastructure/firebaseAdmin", () => ({
   admin: {
     firestore: {
@@ -124,9 +121,9 @@ import {
   ContinuitySessionStore,
   ContinuitySessionVersionMismatchError,
 } from "../ContinuitySessionStore";
-import { SessionStore } from "@services/sessions/SessionStore";
 
-const createStore = () => new ContinuitySessionStore(new SessionStore());
+const createStore = () =>
+  new ContinuitySessionStore(mocks.sessionStore as unknown as SessionStorePort);
 
 const buildSession = (
   overrides: Partial<ContinuitySession> = {},
