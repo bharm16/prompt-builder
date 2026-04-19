@@ -33,6 +33,7 @@ interface KlingImageToVideoInput {
 export const DEFAULT_KLING_BASE_URL = "https://api.klingai.com";
 
 const KLING_STATUS_POLL_INTERVAL_MS = 2000;
+const KLING_FETCH_TIMEOUT_MS = 30_000;
 
 const KLING_TASK_STATUS_SCHEMA = z.enum([
   "submitted",
@@ -129,14 +130,34 @@ async function _rawKlingFetch(
   path: string,
   init: RequestInit,
 ): Promise<unknown> {
-  const response = await fetch(`${baseUrl}${path}`, {
-    ...init,
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-      ...(init.headers ?? {}),
-    },
-  });
+  const timeoutSignal = AbortSignal.timeout(KLING_FETCH_TIMEOUT_MS);
+  const signal = init.signal
+    ? AbortSignal.any([init.signal, timeoutSignal])
+    : timeoutSignal;
+
+  let response: Response;
+  try {
+    response = await fetch(`${baseUrl}${path}`, {
+      ...init,
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+        ...(init.headers ?? {}),
+      },
+      signal,
+    });
+  } catch (error) {
+    const caughtByTimeout =
+      timeoutSignal.aborted && !(init.signal?.aborted ?? false);
+    const isTimeoutError =
+      error instanceof Error && error.name === "TimeoutError";
+    if (caughtByTimeout || isTimeoutError) {
+      throw new Error(
+        `Kling request timed out after ${KLING_FETCH_TIMEOUT_MS}ms: ${path}`,
+      );
+    }
+    throw error;
+  }
 
   const text = await response.text();
   let json: unknown;

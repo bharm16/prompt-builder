@@ -234,6 +234,69 @@ describe("generateKlingVideo", () => {
     expect(log.warn).not.toHaveBeenCalled();
   });
 
+  // ── Fetch Timeout (regression for opossum removal) ──────────────
+
+  it("regression: passes an AbortSignal to fetch so hung requests time out", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        makeJsonResponse({
+          code: 0,
+          data: { task_id: "task-timeout-1", task_status: "submitted" },
+        }),
+      )
+      .mockResolvedValueOnce(
+        makeJsonResponse({
+          code: 0,
+          data: {
+            task_id: "task-timeout-1",
+            task_status: "succeed",
+            task_result: {
+              videos: [{ id: "v", url: "https://example.com/v.mp4" }],
+            },
+          },
+        }),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const log = { info: vi.fn(), warn: vi.fn() };
+    await generateKlingVideo(
+      "api-key",
+      "https://api.klingai.com",
+      "prompt",
+      "kling-v2-1-master",
+      {},
+      log,
+    );
+
+    const firstInit = fetchMock.mock.calls[0]?.[1] as {
+      signal?: AbortSignal;
+    };
+    expect(firstInit.signal).toBeInstanceOf(AbortSignal);
+    expect(firstInit.signal?.aborted).toBe(false);
+  });
+
+  it("regression: surfaces fetch TimeoutError as a descriptive Kling timeout", async () => {
+    const timeoutError = new DOMException(
+      "The operation timed out.",
+      "TimeoutError",
+    );
+    const fetchMock = vi.fn().mockRejectedValueOnce(timeoutError);
+    vi.stubGlobal("fetch", fetchMock);
+
+    const log = { info: vi.fn(), warn: vi.fn() };
+    await expect(
+      generateKlingVideo(
+        "api-key",
+        "https://api.klingai.com",
+        "prompt",
+        "kling-v2-1-master",
+        {},
+        log,
+      ),
+    ).rejects.toThrow(/timed out/i);
+  });
+
   it("omits resolvedAspectRatio when no aspect ratio is requested", async () => {
     const fetchMock = vi
       .fn()
