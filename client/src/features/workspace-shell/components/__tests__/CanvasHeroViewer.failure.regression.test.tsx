@@ -34,18 +34,19 @@ describe("regression: canvas hero viewer keeps failure states honest", () => {
       />,
     );
 
-    expect(screen.getByText("Generation failed")).toBeInTheDocument();
-    expect(screen.getByText("Not allowed by CORS")).toBeInTheDocument();
+    // Failed state renders "Generation failed · <error>" in a single <p>, so
+    // use regex matchers — the text nodes are concatenated.
+    expect(screen.getByText(/Generation failed/)).toBeInTheDocument();
+    expect(screen.getByText(/Not allowed by CORS/)).toBeInTheDocument();
     expect(screen.queryByText(/final/i)).not.toBeInTheDocument();
   });
 
   it("shows an unavailable state for completed generations without any usable media", () => {
     render(<CanvasHeroViewer generation={createGeneration()} />);
 
+    // The empty-media state collapsed to a single line in the hero redesign
+    // (descriptive sub-line was dropped).
     expect(screen.getByText("Generation unavailable")).toBeInTheDocument();
-    expect(
-      screen.getByText("No media is available for this generation."),
-    ).toBeInTheDocument();
   });
 
   it("keeps cancel available while a render is still generating", () => {
