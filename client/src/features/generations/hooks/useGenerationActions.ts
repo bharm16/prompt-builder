@@ -902,6 +902,11 @@ export function useGenerationActions(
             serverJobStatus: "failed",
           });
         } else {
+          acceptGeneration(generation, {
+            status: "failed",
+            completedAt: Date.now(),
+            error: errObj.message,
+          });
           inFlightRef.current.delete(generation.id);
           setSubmissionPending(false);
         }
@@ -1041,6 +1046,11 @@ export function useGenerationActions(
             error: errObj.message,
           });
         } else {
+          acceptGeneration(generation, {
+            status: "failed",
+            completedAt: Date.now(),
+            error: errObj.message,
+          });
           inFlightRef.current.delete(generation.id);
           setSubmissionPending(false);
         }
@@ -1389,6 +1399,11 @@ export function useGenerationActions(
             serverJobStatus: "failed",
           });
         } else {
+          acceptGeneration(generation, {
+            status: "failed",
+            completedAt: Date.now(),
+            error: errObj.message,
+          });
           inFlightRef.current.delete(generation.id);
           setSubmissionPending(false);
         }
