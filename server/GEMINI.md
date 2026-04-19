@@ -45,14 +45,19 @@ See also: `docs/architecture/SERVICE_BOUNDARIES.md`.
 
 Services are registered via domain-scoped files in `src/config/services/`:
 
-| Registration File            | Registers                                                               |
-| ---------------------------- | ----------------------------------------------------------------------- |
-| `infrastructure.services.ts` | cache, metrics, Firebase clients, storage, assets, credits              |
-| `llm.services.ts`            | aiService, claudeClient, groqClient, geminiClient                       |
-| `enhancement.services.ts`    | enhancementService, sceneDetection, coherence, videoPromptAnalysis      |
-| `generation.services.ts`     | imageGeneration, videoGeneration, storyboardPreview, keyframe, faceSwap |
-| `continuity.services.ts`     | continuitySessionService (gated — see Feature Flags)                    |
-| `session.services.ts`        | sessionService, modelIntelligence                                       |
+| Registration File         | Registers                                                               |
+| ------------------------- | ----------------------------------------------------------------------- |
+| `core.services.ts`        | metrics, Firebase clients, face embedding, core infrastructure          |
+| `cache.services.ts`       | cacheService, spanLabelingCache                                         |
+| `credit.services.ts`      | userCreditService, creditReconciliation                                 |
+| `storage.services.ts`     | storageService, videoContentAccess, videoAssetRetention                 |
+| `llm.services.ts`         | aiModelService, concurrency                                             |
+| `observation.services.ts` | imageObservationService, llmJudgeService (quality-feedback)             |
+| `enhancement.services.ts` | enhancementService, videoService, sceneDetection                        |
+| `generation.services.ts`  | imageGeneration, videoGeneration, storyboardPreview, keyframe, faceSwap |
+| `continuity.services.ts`  | continuitySessionService (gated — see Feature Flags)                    |
+| `session.services.ts`     | sessionService, assetResolver, referenceImageProcessing                 |
+| `video-jobs.services.ts`  | requestIdempotency, video job processing                                |
 
 Container: `src/config/services.config.ts`. Initialization: `services.initialize.ts`. Routes consume via factories in `src/config/routes.config.ts`.
 
@@ -64,12 +69,14 @@ Dependency rules:
 
 ## Feature Flags
 
+Canonical registry: `src/config/feature-flags.ts` (Zod schema, ~25 flags grouped by Mode / Worker / Killswitch / Provider / Experimental / Debug). Full table with defaults lives in root `CLAUDE.md`. Two load-bearing flags for day-to-day work:
+
 | Flag                       | Default | Effect                                                                  |
 | -------------------------- | ------- | ----------------------------------------------------------------------- |
 | `PROMPT_OUTPUT_ONLY=true`  | `false` | Disables ALL preview, video generation, motion, and convergence routes. |
 | `ENABLE_CONVERGENCE=false` | `true`  | `continuitySessionService` resolves to **`null`**. Must null-check.     |
 
-When adding new routes, check `routes.config.ts` for the `promptOutputOnly` guard. Generation routes must be inside that block.
+When adding new routes, check `routes.config.ts` for the `promptOutputOnly` guard. Generation routes must be inside that block. Legacy `*_DISABLED` env var names still work but emit a deprecation warning at startup — migrate to the canonical `*_ENABLED` form.
 
 ## Route → Client API Map
 

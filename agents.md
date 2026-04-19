@@ -105,7 +105,7 @@ Server DTO → feature/api/schemas.ts (Zod) → feature/api/*.ts (transform) →
 
 1. Read relevant scope docs and impacted modules first (`client/`, `server/`, `shared/`).
 2. Implement using established patterns:
-   - Frontend: `client/src/components/VideoConceptBuilder/` style (orchestrator + hooks + api + components).
+   - Frontend: `client/src/features/preview/` style (orchestrator + hooks + api + components).
    - Backend: `server/src/services/prompt-optimization/` style (thin orchestrator + specialized services).
 3. Add/update tests close to changed behavior.
 4. Run targeted verification first, then full checks before handoff.
