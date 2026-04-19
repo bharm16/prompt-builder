@@ -8,16 +8,14 @@ import type { SuggestionRejectReason } from "./types.js";
 
 export type CategoryDriftContext = SlotGrammarContext;
 
-function normalizeCategoryKey(category: string): string {
-  return category.toLowerCase().replace(/[_-]/g, "");
-}
-
 export function getCategoryDriftRejectReason(
   text: string,
   context: CategoryDriftContext,
   countWords: (text: string) => number,
 ): SuggestionRejectReason | null {
-  const category = normalizeCategoryKey(context.highlightedCategory || "");
+  const category = patterns.normalizeCategoryKey(
+    context.highlightedCategory || "",
+  );
   const lowerText = text.toLowerCase();
   const slotProfile = classifySlotGrammarProfile(context);
 

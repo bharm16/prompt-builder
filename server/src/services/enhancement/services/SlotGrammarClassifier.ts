@@ -15,14 +15,12 @@ export interface SlotGrammarContext {
   contextAfter?: string;
 }
 
-function normalizeCategoryKey(category: string): string {
-  return category.toLowerCase().replace(/[_-]/g, "");
-}
-
 export function classifySlotGrammarProfile(
   context: SlotGrammarContext,
 ): SlotGrammarProfile {
-  const category = normalizeCategoryKey(context.highlightedCategory || "");
+  const category = patterns.normalizeCategoryKey(
+    context.highlightedCategory || "",
+  );
   const before = (context.contextBefore || "").trimEnd().toLowerCase();
   const after = (context.contextAfter || "").trimStart().toLowerCase();
   const highlighted = (context.highlightedText || "").trim().toLowerCase();

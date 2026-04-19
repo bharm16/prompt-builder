@@ -90,6 +90,15 @@ export const weatherDisruptiveTerms =
 export const technicalVerbLeadTerms =
   /\b(streams?|pours?|falls?|glows?|shines?|filters?|casts?|renders?)\s*$/i;
 
+// ── Normalization helpers ────────────────────────────────
+// Category keys arrive in a mix of shapes across the enhancement pipeline
+// (lowercase, snake_case, kebab-case, mixed). Normalize to one canonical
+// lowercase-alphanumeric form so the 4 classifier/validator modules agree
+// on equality without each re-declaring the rule.
+export function normalizeCategoryKey(category: string): string {
+  return category.toLowerCase().replace(/[_-]/g, "");
+}
+
 // ── Locked category patterns ────────────────────────────
 export const lockedCategoryPatterns: Record<string, RegExp> = {
   camera:

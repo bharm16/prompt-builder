@@ -13,14 +13,12 @@ export interface SubjectAppearanceContext {
   highlightedCategory?: string | null;
 }
 
-function normalizeCategoryKey(category: string): string {
-  return category.toLowerCase().replace(/[_-]/g, "");
-}
-
 export function detectSubjectAppearanceSubRole(
   context: SubjectAppearanceContext,
 ): SubjectAppearanceSubRole {
-  const category = normalizeCategoryKey(context.highlightedCategory || "");
+  const category = patterns.normalizeCategoryKey(
+    context.highlightedCategory || "",
+  );
   if (!category.startsWith("subject.")) {
     return null;
   }

@@ -9,10 +9,6 @@ export interface DriftContext {
   nearbySpanHints?: string;
 }
 
-function normalizeCategoryKey(category: string): string {
-  return category.toLowerCase().replace(/[_-]/g, "");
-}
-
 const overlappingObjectTerms = [
   "steering wheel",
   "wheel",
@@ -24,7 +20,9 @@ const overlappingObjectTerms = [
 ];
 
 export function hasObjectOverlap(text: string, context: DriftContext): boolean {
-  const category = normalizeCategoryKey(context.highlightedCategory || "");
+  const category = patterns.normalizeCategoryKey(
+    context.highlightedCategory || "",
+  );
   if (!category.startsWith("action")) {
     return false;
   }
@@ -65,7 +63,9 @@ export function hasObjectOverlap(text: string, context: DriftContext): boolean {
 }
 
 export function hasActorDrift(text: string, context: DriftContext): boolean {
-  const category = normalizeCategoryKey(context.highlightedCategory || "");
+  const category = patterns.normalizeCategoryKey(
+    context.highlightedCategory || "",
+  );
   if (!category.startsWith("action")) {
     return false;
   }
@@ -93,7 +93,9 @@ export function hasSubjectClassDrift(
   text: string,
   context: DriftContext,
 ): boolean {
-  const category = normalizeCategoryKey(context.highlightedCategory || "");
+  const category = patterns.normalizeCategoryKey(
+    context.highlightedCategory || "",
+  );
   if (!category.startsWith("subject.")) {
     return false;
   }
@@ -124,7 +126,9 @@ export function isMetaphoricalOrAbstract(
   text: string,
   context: DriftContext,
 ): boolean {
-  const category = normalizeCategoryKey(context.highlightedCategory || "");
+  const category = patterns.normalizeCategoryKey(
+    context.highlightedCategory || "",
+  );
   if (category === "lighting.timeofday") {
     return patterns.abstractVisualTerms.test(text.toLowerCase());
   }
