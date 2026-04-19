@@ -218,7 +218,7 @@ export class SpanLabelingCacheService {
     templateVersion: string | null,
     compute: () => Promise<T>,
     options: { ttl?: number; provider?: string | null } = {},
-  ): Promise<T> {
+  ): Promise<{ value: T; source: "cache" | "computed" | "coalesced" }> {
     const provider = options.provider ?? null;
     const cached = (await this.get(
       text,
@@ -227,7 +227,7 @@ export class SpanLabelingCacheService {
       provider,
     )) as T | null;
     if (cached !== null) {
-      return cached;
+      return { value: cached, source: "cache" };
     }
 
     const inflightKey = generateCacheKey(
@@ -238,7 +238,8 @@ export class SpanLabelingCacheService {
     );
     const existing = this.inflight.get(inflightKey) as Promise<T> | undefined;
     if (existing) {
-      return existing;
+      const value = await existing;
+      return { value, source: "coalesced" };
     }
 
     const promise = (async (): Promise<T> => {
@@ -249,7 +250,8 @@ export class SpanLabelingCacheService {
 
     this.inflight.set(inflightKey, promise as Promise<unknown>);
     try {
-      return await promise;
+      const value = await promise;
+      return { value, source: "computed" };
     } finally {
       this.inflight.delete(inflightKey);
     }

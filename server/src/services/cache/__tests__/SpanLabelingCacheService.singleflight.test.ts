@@ -42,8 +42,13 @@ describe("SpanLabelingCacheService single-flight", () => {
     // All callers receive the same result
     expect(results).toHaveLength(concurrency);
     for (const r of results) {
-      expect(r).toEqual({ spans: ["subject"] });
+      expect(r.value).toEqual({ spans: ["subject"] });
     }
+    // Exactly one caller is the "computed" source, the rest are "coalesced"
+    const computed = results.filter((r) => r.source === "computed");
+    const coalesced = results.filter((r) => r.source === "coalesced");
+    expect(computed).toHaveLength(1);
+    expect(coalesced).toHaveLength(concurrency - 1);
   });
 
   it("runs compute a second time after the first flight completes and cache expires", async () => {
@@ -55,10 +60,12 @@ describe("SpanLabelingCacheService single-flight", () => {
       return { value: callCount };
     };
 
-    await service.getOrCompute("k", null, "v1", compute);
+    const first = await service.getOrCompute("k", null, "v1", compute);
+    expect(first.source).toBe("computed");
     // Invalidate to simulate fresh miss
     await service.invalidate("k", null, "v1");
-    await service.getOrCompute("k", null, "v1", compute);
+    const second = await service.getOrCompute("k", null, "v1", compute);
+    expect(second.source).toBe("computed");
 
     expect(callCount).toBe(2);
   });
@@ -81,7 +88,8 @@ describe("SpanLabelingCacheService single-flight", () => {
 
     // Second attempt should run compute again (not a stale rejected promise)
     const result = await service.getOrCompute("flaky-key", null, "v1", flaky);
-    expect(result).toBe("ok");
+    expect(result.value).toBe("ok");
+    expect(result.source).toBe("computed");
     expect(attempts).toBe(2);
   });
 });

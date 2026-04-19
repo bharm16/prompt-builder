@@ -110,6 +110,7 @@ const {
   spanLabelingCacheMock: {
     get: vi.fn(),
     set: vi.fn(),
+    getOrCompute: vi.fn(),
   },
 }));
 
@@ -382,7 +383,10 @@ describe("labelSpans coordinator", () => {
       ],
       meta: { source: "cache" },
     };
-    spanLabelingCacheMock.get.mockResolvedValueOnce(cachedResult);
+    spanLabelingCacheMock.getOrCompute.mockResolvedValueOnce({
+      value: cachedResult,
+      source: "cache",
+    });
 
     const coordinator = createLabelSpansCoordinator(
       {} as never,
@@ -405,11 +409,12 @@ describe("labelSpans coordinator", () => {
       }),
     );
     expect(labelSpansMock).not.toHaveBeenCalled();
-    expect(spanLabelingCacheMock.get).toHaveBeenCalledWith(
+    expect(spanLabelingCacheMock.getOrCompute).toHaveBeenCalledWith(
       "hero runs",
       null,
       null,
-      "groq",
+      expect.any(Function),
+      { ttl: 3600, provider: "groq" },
     );
   });
 
@@ -427,6 +432,16 @@ describe("labelSpans coordinator", () => {
       meta: { source: "llm" },
     };
     labelSpansMock.mockResolvedValueOnce(computedResult);
+    // getOrCompute owns the cache-aside pattern (get → inflight-check →
+    // compute → set). Simulate its miss path by invoking the compute arg.
+    spanLabelingCacheMock.getOrCompute.mockImplementationOnce(
+      async (
+        _text: string,
+        _policy: unknown,
+        _tpl: string | null,
+        compute: () => Promise<unknown>,
+      ) => ({ value: await compute(), source: "computed" }),
+    );
 
     const coordinator = createLabelSpansCoordinator(
       {} as never,
@@ -449,11 +464,11 @@ describe("labelSpans coordinator", () => {
       }),
     );
     expect(labelSpansMock).toHaveBeenCalledWith({ text: "hero runs" }, {});
-    expect(spanLabelingCacheMock.set).toHaveBeenCalledWith(
+    expect(spanLabelingCacheMock.getOrCompute).toHaveBeenCalledWith(
       "hero runs",
       { allowOverlap: false },
       "v1",
-      computedResult,
+      expect.any(Function),
       { ttl: 3600, provider: "groq" },
     );
   });
@@ -472,11 +487,11 @@ describe("labelSpans coordinator", () => {
       meta: { version: "1", notes: "ok", source: "llm" },
     };
 
-    let resolveFirst!: (value: typeof sharedResult) => void;
-    const firstPromise = new Promise<typeof sharedResult>((resolve) => {
-      resolveFirst = (value) => resolve(value);
-    });
-    labelSpansMock.mockReturnValueOnce(firstPromise);
+    // Single-flight lives in the cache layer. The first caller trips compute,
+    // the second caller is routed to "coalesced" (awaiting the same promise).
+    spanLabelingCacheMock.getOrCompute
+      .mockResolvedValueOnce({ value: sharedResult, source: "computed" })
+      .mockResolvedValueOnce({ value: sharedResult, source: "coalesced" });
 
     const coordinator = createLabelSpansCoordinator(
       {} as never,
@@ -492,21 +507,14 @@ describe("labelSpans coordinator", () => {
       startTimeMs: performance.now(),
     };
 
-    const firstCall = coordinator.resolve(input);
-    await Promise.resolve();
-    const secondCall = coordinator.resolve({
+    const firstResponse = await coordinator.resolve(input);
+    const secondResponse = await coordinator.resolve({
       ...input,
       requestId: "req-coord-4",
     });
 
-    resolveFirst(sharedResult);
-    const [firstResponse, secondResponse] = await Promise.all([
-      firstCall,
-      secondCall,
-    ]);
-
-    expect(labelSpansMock).toHaveBeenCalledTimes(1);
     expect(firstResponse.result).toEqual(sharedResult);
+    expect(firstResponse.headers["X-Cache"]).toBe("MISS");
     expect(secondResponse.result).toEqual(sharedResult);
     expect(secondResponse.headers).toEqual(
       expect.objectContaining({
