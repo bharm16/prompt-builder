@@ -40,7 +40,7 @@ export function registerRoutes(app: Application, container: DIContainer): void {
   );
 
   // 1. Health routes (no auth)
-  registerHealthRoutes(app, container, runtimeFlags);
+  registerHealthRoutes(app, container);
 
   // 2. Firestore write gate: fail-closed for all mutating /api routes
   app.use("/api", createFirestoreWriteGateMiddleware(firestoreCircuitExecutor));

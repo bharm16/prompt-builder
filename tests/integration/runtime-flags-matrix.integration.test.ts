@@ -11,7 +11,6 @@ const ENV_KEYS = [
   "PROMPT_OUTPUT_ONLY",
   "ENABLE_CONVERGENCE",
   "PROCESS_ROLE",
-  "VIDEO_JOB_INLINE_ENABLED",
   "ALLOWED_API_KEYS",
   "PORT",
   "NODE_ENV",
@@ -139,7 +138,6 @@ describe("Runtime flag matrix contracts (integration)", () => {
     await withApp(
       {
         PROCESS_ROLE: "api",
-        VIDEO_JOB_INLINE_ENABLED: "false",
       },
       async (app) => {
         const health = await request(app).get("/health");
@@ -151,7 +149,6 @@ describe("Runtime flag matrix contracts (integration)", () => {
     await withApp(
       {
         PROCESS_ROLE: "worker",
-        VIDEO_JOB_INLINE_ENABLED: "false",
       },
       async (app) => {
         const health = await request(app).get("/health");

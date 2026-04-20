@@ -29,8 +29,6 @@ spec:
           env:
             - name: PROCESS_ROLE
               value: "api"
-            - name: VIDEO_JOB_INLINE_ENABLED
-              value: "false"
           envFrom:
             - configMapRef:
                 name: prompt-builder-config

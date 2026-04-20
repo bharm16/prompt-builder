@@ -6,7 +6,6 @@ import { VIDEO_MODELS } from "@config/modelConfig";
 import { sendApiError } from "@middleware/apiErrorResponse";
 import { GENERATION_ERROR_CODES } from "@routes/generationErrorCodes";
 import type { ApiErrorCode } from "@server/types/apiError";
-import { getRuntimeFlags } from "@config/runtime-flags";
 import { resolveVideoGenerateIdempotencyMode } from "@services/idempotency/RequestIdempotencyService";
 import type { VideoModelId } from "@shared/videoModels";
 import { resolveModelId as resolveCapabilityModelId } from "@services/capabilities/modelProviders";
@@ -552,16 +551,14 @@ export const createVideoGenerateHandler =
         motionGuidanceAppended: plan.motionGuidanceAppended,
       });
 
-      if (getRuntimeFlags().videoJobInlineEnabled) {
-        scheduleInlineVideoPreviewProcessing({
-          jobId: job.id,
-          requestId,
-          videoJobStore,
-          videoGenerationService,
-          userCreditService,
-          storageService: storageService ?? null,
-        });
-      }
+      scheduleInlineVideoPreviewProcessing({
+        jobId: job.id,
+        requestId,
+        videoJobStore,
+        videoGenerationService,
+        userCreditService,
+        storageService: storageService ?? null,
+      });
 
       let remainingCredits: number | null = null;
       if (typeof userCreditService.getBalance === "function") {

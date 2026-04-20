@@ -14,7 +14,6 @@ export interface RuntimeFlags {
   promptOutputOnly: boolean;
   enableConvergence: boolean;
   videoWorkerDisabled: boolean;
-  videoJobInlineEnabled: boolean;
   videoWorkerShutdownDrainSeconds: number;
   allowUnhealthyGemini: boolean;
   unhandledRejectionMode: "classified" | "strict";
@@ -51,7 +50,6 @@ export function getRuntimeFlags(
     enableConvergence: flags.convergence,
     videoWorkerDisabled:
       processRole !== "worker" || flags.videoJobWorkerDisabled,
-    videoJobInlineEnabled: flags.videoJobInlineEnabled,
     videoWorkerShutdownDrainSeconds: resolvePositiveInt(
       env.VIDEO_WORKER_SHUTDOWN_DRAIN_SECONDS,
       45,

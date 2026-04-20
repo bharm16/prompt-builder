@@ -6,7 +6,6 @@ describe("resolveAllFlags", () => {
     const { flags, deprecations } = resolveAllFlags({} as NodeJS.ProcessEnv);
     expect(flags.promptOutputOnly).toBe(false);
     expect(flags.convergence).toBe(true);
-    expect(flags.videoJobInlineEnabled).toBe(true);
     expect(flags.webhookReconciliationEnabled).toBe(true);
     // VIDEO_ASSET_RECONCILER_DISABLED !== "false" was disabled-by-default
     // historically; canonical form preserves that via default: false.

@@ -11,13 +11,6 @@ interface WorkerStatusProvider {
   getStatus(): WorkerStatus;
 }
 
-interface VideoExecutionCheckResult {
-  healthy: boolean;
-  message?: string;
-  activeWorkerCount?: number;
-  heartbeatMaxAgeMs?: number;
-}
-
 interface HealthDependencies {
   openAIClient?: { getStats: () => { state: string } } | null;
   groqClient?: { getStats: () => { state: string } } | null;
@@ -36,8 +29,6 @@ interface HealthDependencies {
   firestoreCircuitExecutor?: FirestoreCircuitExecutor;
   /** Optional background worker status providers for health reporting. */
   workers?: Record<string, WorkerStatusProvider | null>;
-  /** Optional readiness gate for video execution path health. */
-  checkVideoExecutionPath?: () => Promise<VideoExecutionCheckResult>;
   /** Optional Redis status provider for health reporting. */
   getRedisStatus?: () => RedisStatus;
 }
@@ -59,7 +50,6 @@ export function createHealthRoutes(dependencies: HealthDependencies): Router {
     checkFirestore,
     firestoreCircuitExecutor,
     workers,
-    checkVideoExecutionPath,
     getRedisStatus: getRedisStatusFn,
   } = dependencies;
 
@@ -135,38 +125,6 @@ export function createHealthRoutes(dependencies: HealthDependencies): Router {
         }
       }
 
-      let videoExecutionCheck:
-        | {
-            healthy: boolean;
-            enabled: boolean;
-            message?: string;
-            activeWorkerCount?: number;
-            heartbeatMaxAgeMs?: number;
-          }
-        | undefined;
-      if (checkVideoExecutionPath) {
-        try {
-          const result = await checkVideoExecutionPath();
-          videoExecutionCheck = {
-            healthy: result.healthy,
-            enabled: true,
-            ...(result.message ? { message: result.message } : {}),
-            ...(typeof result.activeWorkerCount === "number"
-              ? { activeWorkerCount: result.activeWorkerCount }
-              : {}),
-            ...(typeof result.heartbeatMaxAgeMs === "number"
-              ? { heartbeatMaxAgeMs: result.heartbeatMaxAgeMs }
-              : {}),
-          };
-        } catch (error) {
-          videoExecutionCheck = {
-            healthy: false,
-            enabled: true,
-            message: error instanceof Error ? error.message : "unknown error",
-          };
-        }
-      }
-
       const redisStatus = getRedisStatusFn?.();
       const checks = {
         cache: { healthy: cacheHealth },
@@ -237,7 +195,6 @@ export function createHealthRoutes(dependencies: HealthDependencies): Router {
               enabled: false,
               message: "Gemini API not configured",
             },
-        ...(videoExecutionCheck ? { videoExecution: videoExecutionCheck } : {}),
       };
 
       // Collect background worker statuses (informational — does not gate readiness)

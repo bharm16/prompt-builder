@@ -103,7 +103,7 @@ Both uses are properly ESLint-disabled with documented justification. This is ac
 
 #### L3. Feature flag surface area underdocumented
 
-The root CLAUDE.md documents `PROMPT_OUTPUT_ONLY` and `ENABLE_CONVERGENCE`, but `services.initialize.ts` also checks `runtimeFlags.processRole`, `runtimeFlags.videoWorkerDisabled`, `runtimeFlags.allowUnhealthyGemini`, and `runtimeFlags.videoJobInlineEnabled`. These flags affect runtime behavior significantly but aren't in the feature flag table.
+The root CLAUDE.md documents `PROMPT_OUTPUT_ONLY` and `ENABLE_CONVERGENCE`, but `services.initialize.ts` also checks `runtimeFlags.processRole`, `runtimeFlags.videoWorkerDisabled`, and `runtimeFlags.allowUnhealthyGemini`. These flags affect runtime behavior significantly but aren't in the feature flag table.
 
 **Recommendation:** Add a complete flag reference to `runtime-flags.ts` with JSDoc, and update the root CLAUDE.md table to include all flags that change service behavior.
 

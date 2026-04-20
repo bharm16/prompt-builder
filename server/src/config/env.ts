@@ -51,7 +51,6 @@ const featureFlagSchema = z.object({
     .string()
     .default("true")
     .transform((v) => v !== "false"),
-  VIDEO_JOB_INLINE_ENABLED: coerceBooleanString(true),
   VIDEO_JOB_WORKER_DISABLED: coerceBooleanString(false),
   ALLOW_UNHEALTHY_GEMINI: coerceBooleanString(false),
   GEMINI_ALLOW_UNHEALTHY: coerceBooleanString(false),
@@ -503,25 +502,6 @@ export function emitEnvWarnings(env: ValidatedEnv): void {
         },
       );
     }
-  }
-
-  // Warn when inline video processing is explicitly disabled in a non-production
-  // environment. Video jobs will queue but never be processed unless a separate
-  // PROCESS_ROLE=worker process is running.
-  if (
-    env.NODE_ENV !== "production" &&
-    !env.VIDEO_JOB_INLINE_ENABLED &&
-    (env.PROCESS_ROLE === "api" || env.PROCESS_ROLE === undefined)
-  ) {
-    log.warn(
-      "VIDEO_JOB_INLINE_ENABLED is false — video jobs will be queued but not processed without a separate worker. " +
-        "Unset VIDEO_JOB_INLINE_ENABLED (or set to true) to use the default (enabled).",
-      {
-        operation: "validateEnv",
-        processRole: env.PROCESS_ROLE ?? "api",
-        videoJobInlineEnabled: false,
-      },
-    );
   }
 
   log.info("Environment variables validated successfully", {

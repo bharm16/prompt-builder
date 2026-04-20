@@ -87,14 +87,6 @@ const MODE_FLAGS = {
 } as const satisfies Record<string, FlagDef>;
 
 const WORKER_FLAGS = {
-  videoJobInlineEnabled: {
-    kind: "bool",
-    envName: "VIDEO_JOB_INLINE_ENABLED",
-    default: true,
-    description:
-      "API process claims and runs queued video jobs inline. Set false in production when running dedicated PROCESS_ROLE=worker pods.",
-    category: "worker",
-  },
   videoJobWorkerDisabled: {
     kind: "bool",
     envName: "VIDEO_JOB_WORKER_DISABLED",

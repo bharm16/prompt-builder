@@ -113,10 +113,9 @@ Server flags are declared in [`server/src/config/feature-flags.ts`](server/src/c
 
 #### Worker
 
-| Env Var                     | Default | Legacy Aliases | Description                                                                                                                    |
-| --------------------------- | ------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| `VIDEO_JOB_INLINE_ENABLED`  | `true`  | —              | API process claims and runs queued video jobs inline. Set false in production when running dedicated PROCESS_ROLE=worker pods. |
-| `VIDEO_JOB_WORKER_DISABLED` | `false` | —              | Forces video worker loops off even when PROCESS_ROLE=worker. Used for emergency drain.                                         |
+| Env Var                     | Default | Legacy Aliases | Description                                                                            |
+| --------------------------- | ------- | -------------- | -------------------------------------------------------------------------------------- |
+| `VIDEO_JOB_WORKER_DISABLED` | `false` | —              | Forces video worker loops off even when PROCESS_ROLE=worker. Used for emergency drain. |
 
 #### Killswitch
 
