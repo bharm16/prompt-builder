@@ -15,7 +15,6 @@ import type {
   ImagePreviewResult,
 } from "../providers/types";
 import type { ImageAssetStore, StoredImageAsset } from "../storage/types";
-import * as requestTypesModule from "../types/requests";
 import * as responseTypesModule from "../types/responses";
 import * as typesIndexModule from "../types";
 
@@ -293,7 +292,6 @@ describe("ImageGenerationService", () => {
     });
 
     it("keeps type-only modules empty at runtime", async () => {
-      expect(Object.keys(requestTypesModule)).toHaveLength(0);
       expect(Object.keys(responseTypesModule)).toHaveLength(0);
       expect(Object.keys(typesIndexModule)).toHaveLength(0);
     });

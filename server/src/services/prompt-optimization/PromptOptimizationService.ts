@@ -40,7 +40,6 @@ export class PromptOptimizationService {
   private readonly compilationService: VideoPromptCompilationService | null;
   private readonly imageObservation: ImageObservationService;
   private readonly i2vStrategy: I2VMotionStrategy;
-  private readonly templateVersions: typeof OptimizationConfig.templateVersions;
   private readonly intentLock: IntentLockService;
   private readonly promptLint: PromptLintGateService;
   private readonly pipelineV2Enabled: boolean;
@@ -82,8 +81,6 @@ export class PromptOptimizationService {
         : undefined,
     );
     this.pipelineV2Enabled = resolveAllFlags().flags.promptPipelineV2;
-
-    this.templateVersions = OptimizationConfig.templateVersions;
 
     this.log.info(
       "PromptOptimizationService initialized with refactored architecture",
