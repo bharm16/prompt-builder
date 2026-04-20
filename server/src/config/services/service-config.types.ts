@@ -170,8 +170,6 @@ export interface ServiceConfig {
     shotPlanCacheMax: number;
   };
   enhancement: {
-    defaultEngine: "v1" | "v2";
-    legacyV1Enabled: boolean;
     policyVersion: string;
   };
   features: {

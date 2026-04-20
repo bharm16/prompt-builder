@@ -21,7 +21,6 @@ export function registerCoreServices(container: DIContainer): void {
   // env var names (*_DISABLED, GEMINI_ALLOW_UNHEALTHY, DISABLE_CONTINUITY_CLIP)
   // are still honored as deprecated aliases — see feature-flags.ts.
   const { flags } = resolveAllFlags(process.env);
-  const enhancementLegacyV1Enabled = flags.enhancementLegacyV1Enabled;
 
   container.registerValue("logger", logger);
   container.register("metricsService", () => new MetricsService(), [], {
@@ -427,12 +426,6 @@ export function registerCoreServices(container: DIContainer): void {
       ),
     },
     enhancement: {
-      defaultEngine:
-        enhancementLegacyV1Enabled &&
-        process.env.ENHANCEMENT_ENGINE_DEFAULT === "v1"
-          ? "v1"
-          : "v2",
-      legacyV1Enabled: enhancementLegacyV1Enabled,
       policyVersion: process.env.ENHANCEMENT_POLICY_VERSION || "2026-03-v2a",
     },
     features: {

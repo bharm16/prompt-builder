@@ -138,13 +138,11 @@ Server flags are declared in [`server/src/config/feature-flags.ts`](server/src/c
 
 #### Experimental
 
-| Env Var                   | Default | Legacy Aliases            | Description                                                                                                                       |
-| ------------------------- | ------- | ------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| `PROMPT_PIPELINE_V2`      | `true`  | —                         | Enables the v2 prompt optimization pipeline. Set false to fall back to v1.                                                        |
-| `ENHANCEMENT_ENABLE_V1`   | `false` | —                         | Makes the legacy v1 enhancement engine selectable. When true and ENHANCEMENT_ENGINE_DEFAULT=v1, the v1 engine is used by default. |
-| `ENABLE_FACE_EMBEDDING`   | `false` | —                         | Enables face embedding service for continuity quality gates. Requires Replicate API token.                                        |
-| `CONTINUITY_CLIP_ENABLED` | `true`  | `DISABLE_CONTINUITY_CLIP` | Enables CLIP embedding in continuity quality gate checks.                                                                         |
-| `DEPTH_WARMUP_ON_STARTUP` | `true`  | —                         | Controls depth estimation service warmup during server boot.                                                                      |
+| Env Var                   | Default | Legacy Aliases            | Description                                                                                |
+| ------------------------- | ------- | ------------------------- | ------------------------------------------------------------------------------------------ |
+| `ENABLE_FACE_EMBEDDING`   | `false` | —                         | Enables face embedding service for continuity quality gates. Requires Replicate API token. |
+| `CONTINUITY_CLIP_ENABLED` | `true`  | `DISABLE_CONTINUITY_CLIP` | Enables CLIP embedding in continuity quality gate checks.                                  |
+| `DEPTH_WARMUP_ON_STARTUP` | `true`  | —                         | Controls depth estimation service warmup during server boot.                               |
 
 #### Debug
 

@@ -5,7 +5,6 @@ import { validateRequest } from "@middleware/validateRequest";
 import { PerformanceMonitor } from "@middleware/performanceMonitor";
 import { suggestionSchema } from "@utils/validation";
 import { countSuggestions } from "./utils";
-import type { EnhancementEngineVersion } from "@services/enhancement/services/types";
 
 interface EnhancementSuggestionsResult {
   suggestions?: unknown[];
@@ -55,12 +54,6 @@ export function registerEnhancementSuggestionsRoute(
         ? debugHeader.includes("true")
         : debugHeader === "true";
       const debug = debugRequested && process.env.NODE_ENV !== "production";
-      const engineHeader = req.headers["x-enhancement-engine"];
-      const requestedEngineVersion: EnhancementEngineVersion | null =
-        process.env.NODE_ENV !== "production" &&
-        (engineHeader === "v1" || engineHeader === "v2")
-          ? engineHeader
-          : null;
 
       logger.info("Enhancement suggestions request received", {
         operation,
@@ -92,7 +85,6 @@ export function registerEnhancementSuggestionsRoute(
           nearbySpans,
           editHistory,
           i2vContext,
-          requestedEngineVersion,
           debug,
         });
 

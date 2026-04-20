@@ -23,8 +23,6 @@ vi.mock("@utils/StructuredOutputEnforcer", () => ({
 
 function createService(options?: {
   enhancementConfig?: {
-    defaultEngine: "v1" | "v2";
-    legacyV1Enabled: boolean;
     policyVersion: string;
   };
 }) {
@@ -153,8 +151,6 @@ function createService(options?: {
     metricsService: null,
     cacheService,
     enhancementConfig: options?.enhancementConfig ?? {
-      defaultEngine: "v1",
-      legacyV1Enabled: true,
       policyVersion: "2026-03-v2a",
     },
   });
@@ -180,158 +176,9 @@ describe("EnhancementService", () => {
     ]);
   });
 
-  it("keeps suggestions in highlighted taxonomy category and removes original + duplicates", async () => {
-    const { service, categoryAligner } = createService();
-
-    const result = await service.getEnhancementSuggestions({
-      highlightedText: "tracking shot",
-      contextBefore: "A cinematic runner in rain, ",
-      contextAfter: ", at night.",
-      fullPrompt: "A cinematic runner in rain, tracking shot, at night.",
-      originalUserPrompt: "runner in rain",
-      highlightedCategory: "camera.movement",
-      highlightedCategoryConfidence: 0.92,
-      allLabeledSpans: [],
-      nearbySpans: [],
-      editHistory: [],
-    });
-
-    expect(categoryAligner.enforceCategoryAlignment).toHaveBeenCalledWith(
-      expect.any(Array),
-      expect.objectContaining({
-        highlightedCategory: "camera.movement",
-      }),
-    );
-
-    const flatSuggestions = result.suggestions as Suggestion[];
-    const suggestionTexts = flatSuggestions.map((item) => item.text);
-    expect(suggestionTexts).not.toContain("tracking shot");
-    expect(new Set(suggestionTexts).size).toBe(suggestionTexts.length);
-    expect(suggestionTexts.length).toBeGreaterThan(1);
-    for (const suggestion of flatSuggestions) {
-      expect(suggestion.category).toBe("camera.movement");
-    }
-  });
-
-  it("propagates span-context inputs to rewrite prompt generation", async () => {
-    const { service, promptBuilder, validationService } = createService();
-
-    await service.getEnhancementSuggestions({
-      highlightedText: "tracking shot",
-      contextBefore: "A cinematic runner in rain, ",
-      contextAfter: ", at night.",
-      fullPrompt: "A cinematic runner in rain, tracking shot, at night.",
-      originalUserPrompt: "runner in rain",
-      highlightedCategory: "camera.movement",
-      highlightedCategoryConfidence: 0.95,
-      allLabeledSpans: [
-        {
-          text: "runner",
-          role: "subject",
-          category: "subject.identity",
-          confidence: 0.9,
-        },
-        {
-          text: "neon rain",
-          role: "lighting",
-          category: "lighting.quality",
-          confidence: 0.88,
-        },
-      ],
-      nearbySpans: [
-        {
-          text: "midnight street",
-          role: "location",
-          category: "location.setting",
-          distance: 8,
-          position: "after",
-          confidence: 0.7,
-        },
-      ],
-      editHistory: [
-        {
-          original: "wide shot",
-          replacement: "tracking shot",
-          category: "camera.movement",
-          timestamp: 1739300000,
-        },
-      ],
-    });
-
-    expect(promptBuilder.buildRewritePrompt).toHaveBeenCalledWith(
-      expect.objectContaining({
-        spanAnchors: expect.stringContaining("subject"),
-        nearbySpanHints: expect.stringContaining("location"),
-        focusGuidance: expect.arrayContaining(["Preserve subject continuity"]),
-      }),
-    );
-
-    expect(validationService.sanitizeSuggestions).toHaveBeenCalledWith(
-      expect.any(Array),
-      expect.objectContaining({
-        highlightedText: "tracking shot",
-        highlightedCategory: "camera.movement",
-        isVideoPrompt: true,
-      }),
-    );
-  });
-
-  it("fails closed and regenerates when category-invalid suggestions are fully sanitized away", async () => {
-    const { service, validationService } = createService();
-
-    mockEnforceJSON
-      .mockResolvedValueOnce([
-        {
-          text: "amber backlight casting soft halos",
-          category: "lighting.timeOfDay",
-        },
-        { text: "warm backlight with flare", category: "lighting.timeOfDay" },
-      ])
-      .mockResolvedValueOnce([
-        { text: "misty blue hour", category: "lighting.timeOfDay" },
-        { text: "late afternoon haze", category: "lighting.timeOfDay" },
-        { text: "cool dusk glow", category: "lighting.timeOfDay" },
-      ]);
-
-    validationService.sanitizeSuggestions = vi.fn(
-      (
-        suggestions: Suggestion[] | string[],
-        context: { highlightedCategory?: string | null },
-      ) => {
-        const items = suggestions as Suggestion[];
-        if (context.highlightedCategory === "lighting.timeOfDay") {
-          return items.filter((item) =>
-            /\b(blue hour|afternoon|dusk)\b/i.test(item.text),
-          );
-        }
-        return items;
-      },
-    );
-
-    const result = await service.getEnhancementSuggestions({
-      highlightedText: "golden hour sunlight",
-      contextBefore: "Warm, ",
-      contextAfter: " streams through the car windows.",
-      fullPrompt: "Warm, golden hour sunlight streams through the car windows.",
-      originalUserPrompt: "golden hour toddler in car",
-      highlightedCategory: "lighting.timeOfDay",
-      highlightedCategoryConfidence: 0.95,
-      allLabeledSpans: [],
-      nearbySpans: [],
-      editHistory: [],
-    });
-
-    expect(mockEnforceJSON.mock.calls.length).toBeGreaterThanOrEqual(2);
-    expect(
-      (result.suggestions as Suggestion[]).map((item) => item.text),
-    ).toEqual(["misty blue hour", "late afternoon haze", "cool dusk glow"]);
-  });
-
   it("applies i2v pre-blocking before running the V2 engine", async () => {
     const { service } = createService({
       enhancementConfig: {
-        defaultEngine: "v2",
-        legacyV1Enabled: false,
         policyVersion: "2026-03-v2a",
       },
     });
@@ -344,7 +191,6 @@ describe("EnhancementService", () => {
       originalUserPrompt: "runner through smoke",
       highlightedCategory: "camera.movement",
       highlightedCategoryConfidence: 0.95,
-      requestedEngineVersion: "v2",
       i2vContext: {
         lockMap: {
           "camera.movement": "hard",
@@ -368,8 +214,6 @@ describe("EnhancementService", () => {
   it("applies the shared i2v post-filter after V2 generation", async () => {
     const { service } = createService({
       enhancementConfig: {
-        defaultEngine: "v2",
-        legacyV1Enabled: false,
         policyVersion: "2026-03-v2a",
       },
     });
@@ -382,7 +226,6 @@ describe("EnhancementService", () => {
       originalUserPrompt: "runner through smoke",
       highlightedCategory: "camera.movement",
       highlightedCategoryConfidence: 0.95,
-      requestedEngineVersion: "v2",
       debug: true,
       i2vContext: {
         lockMap: {} as never,
@@ -403,34 +246,6 @@ describe("EnhancementService", () => {
     expect(flatSuggestions.some((item) => /\bpan\b/i.test(item.text))).toBe(
       false,
     );
-    expect(result._debug?.engineVersion).toBe("v2");
-  });
-
-  it("defaults to V2 and ignores requested V1 when legacy mode is disabled", async () => {
-    const { service, promptBuilder } = createService({
-      enhancementConfig: {
-        defaultEngine: "v2",
-        legacyV1Enabled: false,
-        policyVersion: "2026-03-v2a",
-      },
-    });
-
-    const result = await service.getEnhancementSuggestions({
-      highlightedText: "tracking",
-      contextBefore: "A runner moves through smoke, ",
-      contextAfter: ", under neon lights.",
-      fullPrompt: "A runner moves through smoke, tracking, under neon lights.",
-      originalUserPrompt: "runner through smoke",
-      highlightedCategory: "camera.movement",
-      highlightedCategoryConfidence: 0.95,
-      requestedEngineVersion: "v1",
-      debug: true,
-      allLabeledSpans: [],
-      nearbySpans: [],
-      editHistory: [],
-    });
-
-    expect(promptBuilder.buildRewritePrompt).not.toHaveBeenCalled();
     expect(result._debug?.engineVersion).toBe("v2");
   });
 });

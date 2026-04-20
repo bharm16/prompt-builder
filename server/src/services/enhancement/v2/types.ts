@@ -2,7 +2,6 @@ import type {
   AIService,
   BrainstormContext,
   DiversityEnforcer,
-  EnhancementEngineVersion,
   EnhancementResult,
   Suggestion,
   VideoConstraints,
@@ -106,8 +105,6 @@ export interface SlotPolicy {
 }
 
 export interface EnhancementV2Config {
-  defaultEngine: EnhancementEngineVersion;
-  legacyV1Enabled: boolean;
   policyVersion: string;
 }
 

@@ -82,11 +82,6 @@ const featureFlagSchema = z.object({
   DISABLE_CONTINUITY_CLIP: coerceBooleanString(false),
   // Registry-level experimental flags (feature-flags.ts, not routed through
   // runtime-flags). Declared here so typos fail boot validation.
-  PROMPT_PIPELINE_V2: z
-    .string()
-    .default("true")
-    .transform((v) => v !== "false"),
-  ENHANCEMENT_ENABLE_V1: coerceBooleanString(false),
   ENABLE_FACE_EMBEDDING: coerceBooleanString(false),
 });
 
@@ -324,7 +319,6 @@ const convergenceSchema = z.object({
 });
 
 const enhancementSchema = z.object({
-  ENHANCEMENT_ENGINE_DEFAULT: z.enum(["v1", "v2"]).optional(),
   ENHANCEMENT_POLICY_VERSION: z.string().default("2026-03-v2a"),
   SHOT_PLAN_CACHE_TTL_MS: coercePositiveInt(300_000),
   SHOT_PLAN_CACHE_MAX: coercePositiveInt(200),

@@ -142,7 +142,6 @@
     "routemap:generate": "tsx --tsconfig server/tsconfig.json scripts/generate-route-map.ts --write",
     "routemap:check": "tsx --tsconfig server/tsconfig.json scripts/generate-route-map.ts --check",
     "test:optimize-pipeline": "tsx --tsconfig server/tsconfig.json scripts/test-prompt-optimizer-pipeline.ts",
-    "test:enhancement-compare": "tsx --tsconfig server/tsconfig.json scripts/test-enhancement-v1-v2.ts",
     "test:flash": "node scripts/test-gemini-flash-spans.js",
     "highlight-stats": "tsx scripts/get-highlight-stats.ts",
     "highlight-stats:watch": "tsx scripts/get-highlight-stats.ts --watch",

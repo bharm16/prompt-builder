@@ -1,12 +1,9 @@
 import { logger } from "@infrastructure/Logger";
 import type { ILogger } from "@interfaces/ILogger";
 import type { CacheService } from "@services/cache/CacheService";
-import { StructuredOutputEnforcer } from "@utils/StructuredOutputEnforcer";
 import { TemperatureOptimizer } from "@utils/TemperatureOptimizer";
-import {
-  getEnhancementSchema,
-  getCustomSuggestionSchema,
-} from "./config/schemas";
+import { StructuredOutputEnforcer } from "@utils/StructuredOutputEnforcer";
+import { getCustomSuggestionSchema } from "./config/schemas";
 import { FallbackRegenerationService } from "./services/FallbackRegenerationService";
 import { StyleTransferService } from "./services/StyleTransferService";
 import { ContrastiveDiversityEnforcer } from "./services/ContrastiveDiversityEnforcer";
@@ -31,14 +28,11 @@ import type {
   MetricsService,
   EnhancementRequestParams,
   CustomSuggestionRequestParams,
-  EnhancementEngineVersion,
   EnhancementResult,
   EnhancementMetrics,
   Suggestion,
   VideoConstraints,
-  PromptBuildParams,
   GroupedSuggestions,
-  OutputSchema,
   LabeledSpan,
   NearbySpan,
 } from "./services/types";
@@ -113,8 +107,6 @@ export class EnhancementService {
       metricsService = null,
       cacheService,
       enhancementConfig = {
-        defaultEngine: "v2",
-        legacyV1Enabled: false,
         policyVersion: "2026-03-v2a",
       },
     } = dependencies;
@@ -195,7 +187,6 @@ export class EnhancementService {
     nearbySpans = [],
     editHistory = [],
     i2vContext = null,
-    requestedEngineVersion = null,
     debug = false,
   }: EnhancementRequestParams): Promise<EnhancementResult> {
     const metrics: EnhancementMetrics = {
@@ -248,7 +239,6 @@ export class EnhancementService {
       const highlightWordCount = videoContext.highlightWordCount;
       const phraseRole = videoContext.phraseRole;
       const videoConstraints = videoContext.videoConstraints;
-      const engineVersion = this._resolveEngineVersion(requestedEngineVersion);
       const spanContext = this.pipeline.spanContextBuilder.buildSpanContext({
         allLabeledSpans,
         nearbySpans,
@@ -301,9 +291,9 @@ export class EnhancementService {
 
       const cacheStart = Date.now();
       const cacheKey = CacheKeyFactory.generateKey(
-        this._getCacheNamespace(engineVersion),
+        `${this.cacheConfig.namespace}:v2`,
         {
-          engineVersion,
+          engineVersion: "v2",
           highlightedText,
           contextBefore,
           contextAfter,
@@ -318,10 +308,7 @@ export class EnhancementService {
           editHistory,
           modelTarget,
           promptSection,
-          policyVersion:
-            engineVersion === "v2"
-              ? this.enhancementConfig.policyVersion
-              : null,
+          policyVersion: this.enhancementConfig.policyVersion,
           spanFingerprint: spanContext.spanFingerprint,
         },
         this.cacheService,
@@ -384,172 +371,43 @@ export class EnhancementService {
 
       const postStart = Date.now();
 
-      if (engineVersion === "v2") {
-        const execution = await this._executeEnhancementV2({
-          highlightedText,
-          contextBefore,
-          contextAfter,
-          fullPrompt,
-          originalUserPrompt,
-          brainstormContext: brainstormContext ?? null,
-          highlightedCategory: highlightedCategory ?? null,
-          highlightedCategoryConfidence: highlightedCategoryConfidence ?? null,
-          isPlaceholder,
-          isVideoPrompt,
-          phraseRole,
-          highlightWordCount,
-          videoConstraints,
-          modelTarget,
-          promptSection,
-          spanAnchors: spanContext.spanAnchors,
-          nearbySpanHints: spanContext.nearbySpanHints,
-          lockedSpanCategories: spanContext.lockedSpanCategories,
-          ...(focusGuidance !== undefined ? { focusGuidance } : {}),
-          debug,
-        });
+      const execution = await this._executeEnhancementV2({
+        highlightedText,
+        contextBefore,
+        contextAfter,
+        fullPrompt,
+        originalUserPrompt,
+        brainstormContext: brainstormContext ?? null,
+        highlightedCategory: highlightedCategory ?? null,
+        highlightedCategoryConfidence: highlightedCategoryConfidence ?? null,
+        isPlaceholder,
+        isVideoPrompt,
+        phraseRole,
+        highlightWordCount,
+        videoConstraints,
+        modelTarget,
+        promptSection,
+        spanAnchors: spanContext.spanAnchors,
+        nearbySpanHints: spanContext.nearbySpanHints,
+        lockedSpanCategories: spanContext.lockedSpanCategories,
+        ...(focusGuidance !== undefined ? { focusGuidance } : {}),
+        debug,
+      });
 
-        result = execution.result;
-        rawSuggestionsSnapshot = execution.rawSuggestions.map((suggestion) => ({
-          ...suggestion,
-        }));
-        finalSuggestionsSnapshot = execution.finalSuggestions.map(
-          (suggestion) => ({ ...suggestion }),
-        );
-        systemPromptSent = execution.debug.systemPromptSent || "";
-        stageCounts = execution.debug.stageCounts;
-        rejectionSummary = execution.debug.rejectionSummary;
-        modelCallCount = execution.debug.modelCallCount;
-        processingNotes.diversityEnforced =
-          execution.finalSuggestions.length !== execution.rawSuggestions.length;
-        processingNotes.usedFallback = execution.debug.modelCallCount > 1;
-      } else {
-        const promptBuildStart = Date.now();
-        const promptBuilderInput: PromptBuildParams = {
-          highlightedText,
-          contextBefore,
-          contextAfter,
-          fullPrompt,
-          brainstormContext: brainstormContext ?? null,
-          editHistory,
-          modelTarget,
-          isVideoPrompt,
-          phraseRole,
-          highlightedCategory: highlightedCategory ?? null,
-          promptSection,
-          videoConstraints,
-          highlightWordCount,
-          isPlaceholder,
-          ...(spanContext.spanAnchors
-            ? { spanAnchors: spanContext.spanAnchors }
-            : {}),
-          ...(spanContext.nearbySpanHints
-            ? { nearbySpanHints: spanContext.nearbySpanHints }
-            : {}),
-          ...(focusGuidance !== undefined ? { focusGuidance } : {}),
-        };
-        if (
-          highlightedCategoryConfidence !== null &&
-          highlightedCategoryConfidence !== undefined
-        ) {
-          promptBuilderInput.highlightedCategoryConfidence =
-            highlightedCategoryConfidence;
-        }
-        const promptResult = isPlaceholder
-          ? this.core.promptBuilder.buildPlaceholderPrompt(promptBuilderInput)
-          : this.core.promptBuilder.buildRewritePrompt(promptBuilderInput);
-        metrics.promptBuild = Date.now() - promptBuildStart;
-        systemPromptSent =
-          typeof promptResult === "string"
-            ? promptResult
-            : ((promptResult as { systemPrompt?: string }).systemPrompt ?? "");
-
-        const schema = getEnhancementSchema(isPlaceholder);
-        const generationResult =
-          await this.pipeline.suggestionGeneration.generateSuggestionsV2({
-            promptResult,
-            schema: schema as OutputSchema,
-            isVideoPrompt,
-            isPlaceholder,
-            highlightedText,
-            temperature,
-            metrics,
-          });
-
-        const suggestions = generationResult.suggestions;
-        rawSuggestionsSnapshot = Array.isArray(suggestions)
-          ? suggestions.map((suggestion) => ({ ...suggestion }))
-          : [];
-        metrics.groqCall = generationResult.groqCallTime;
-        metrics.usedContrastiveDecoding =
-          generationResult.usedContrastiveDecoding;
-
-        const suggestionProcessingParams = {
-          suggestions: suggestions ?? [],
-          highlightedCategory: highlightedCategory ?? null,
-          highlightedText,
-          highlightedCategoryConfidence: highlightedCategoryConfidence ?? null,
-          isPlaceholder,
-          isVideoPrompt,
-          videoConstraints,
-          phraseRole,
-          highlightWordCount,
-          schema: schema as OutputSchema,
-          temperature,
-          contextBefore,
-          contextAfter,
-          fullPrompt,
-          originalUserPrompt,
-          brainstormContext: brainstormContext ?? null,
-          editHistory,
-          modelTarget,
-          promptSection,
-          ...(spanContext.spanAnchors
-            ? { spanAnchors: spanContext.spanAnchors }
-            : {}),
-          ...(spanContext.nearbySpanHints
-            ? { nearbySpanHints: spanContext.nearbySpanHints }
-            : {}),
-          ...(focusGuidance !== undefined ? { focusGuidance } : {}),
-          ...(spanContext.lockedSpanCategories.length > 0
-            ? { lockedSpanCategories: spanContext.lockedSpanCategories }
-            : {}),
-          skipDiversityCheck: generationResult.usedContrastiveDecoding,
-        };
-        const processingResult =
-          await this.pipeline.suggestionProcessing.processSuggestions(
-            suggestionProcessingParams,
-          );
-
-        result = this._buildEnhancementResult({
-          suggestionsToUse: processingResult.suggestionsToUse,
-          activeConstraints: processingResult.activeConstraints,
-          alignmentFallbackApplied: processingResult.alignmentFallbackApplied,
-          usedFallback: processingResult.usedFallback,
-          isPlaceholder,
-          phraseRole,
-        });
-        finalSuggestionsSnapshot = processingResult.suggestionsToUse.map(
-          (suggestion) => ({ ...suggestion }),
-        );
-        processingNotes = {
-          contrastiveDecoding: generationResult.usedContrastiveDecoding,
-          diversityEnforced:
-            processingResult.suggestionsToUse.length !==
-            rawSuggestionsSnapshot.length,
-          alignmentFallback: processingResult.alignmentFallbackApplied,
-          usedFallback: processingResult.usedFallback,
-          fallbackSourceCount: processingResult.fallbackSourceCount,
-        };
-
-        // Note: sanitizedSuggestions not available here after extraction, using suggestionsToUse instead
-        this.pipeline.suggestionProcessing.logResult(
-          result,
-          processingResult.suggestionsToUse,
-          processingResult.usedFallback,
-          processingResult.fallbackSourceCount,
-          suggestions ?? [],
-        );
-      }
+      result = execution.result;
+      rawSuggestionsSnapshot = execution.rawSuggestions.map((suggestion) => ({
+        ...suggestion,
+      }));
+      finalSuggestionsSnapshot = execution.finalSuggestions.map(
+        (suggestion) => ({ ...suggestion }),
+      );
+      systemPromptSent = execution.debug.systemPromptSent || "";
+      stageCounts = execution.debug.stageCounts;
+      rejectionSummary = execution.debug.rejectionSummary;
+      modelCallCount = execution.debug.modelCallCount;
+      processingNotes.diversityEnforced =
+        execution.finalSuggestions.length !== execution.rawSuggestions.length;
+      processingNotes.usedFallback = execution.debug.modelCallCount > 1;
 
       if (i2vContext && highlightedCategory) {
         const hasGroupedSuggestions =
@@ -611,11 +469,8 @@ export class EnhancementService {
 
       if (debug && process.env.NODE_ENV !== "production") {
         result._debug = {
-          engineVersion,
-          policyVersion:
-            engineVersion === "v2"
-              ? this.enhancementConfig.policyVersion
-              : null,
+          engineVersion: "v2",
+          policyVersion: this.enhancementConfig.policyVersion,
           fullPrompt,
           selectedSpan: highlightedText,
           category: highlightedCategory ?? null,
@@ -785,88 +640,10 @@ export class EnhancementService {
     return this.pipeline.styleTransfer.transferStyle(text, targetStyle);
   }
 
-  private _resolveEngineVersion(
-    requestedEngineVersion: EnhancementEngineVersion | null | undefined,
-  ): EnhancementEngineVersion {
-    if (process.env.NODE_ENV !== "production") {
-      if (requestedEngineVersion === "v2") {
-        return "v2";
-      }
-
-      if (requestedEngineVersion === "v1") {
-        if (this.enhancementConfig.legacyV1Enabled) {
-          return "v1";
-        }
-
-        this.log.warn(
-          "Ignoring requested V1 enhancement engine because legacy V1 is disabled.",
-          {
-            requestedEngineVersion,
-            defaultEngine: this.enhancementConfig.defaultEngine,
-          },
-        );
-      }
-    }
-
-    return this.enhancementConfig.defaultEngine;
-  }
-
-  private _getCacheNamespace(engineVersion: EnhancementEngineVersion): string {
-    return `${this.cacheConfig.namespace}:${engineVersion}`;
-  }
-
   private async _executeEnhancementV2(
     context: EnhancementV2RequestContext,
   ): Promise<EnhancementV2Execution> {
     return this.pipeline.enhancementV2.execute(context);
-  }
-
-  /**
-   * Build final enhancement result from processed suggestions
-   * @private
-   */
-  private _buildEnhancementResult(params: {
-    suggestionsToUse: Suggestion[];
-    activeConstraints: VideoConstraints | undefined;
-    alignmentFallbackApplied: boolean;
-    usedFallback: boolean;
-    isPlaceholder: boolean;
-    phraseRole: string | null;
-  }): EnhancementResult {
-    const groupedSuggestions =
-      this.pipeline.suggestionProcessing.groupSuggestions(
-        params.suggestionsToUse,
-        params.isPlaceholder,
-      );
-
-    const buildResultParams: {
-      groupedSuggestions: Suggestion[] | GroupedSuggestions[];
-      isPlaceholder: boolean;
-      phraseRole?: string | null;
-      activeConstraints?: { mode?: string } | null;
-      alignmentFallbackApplied?: boolean;
-      usedFallback?: boolean;
-      hasNoSuggestions?: boolean;
-    } = {
-      groupedSuggestions,
-      isPlaceholder: params.isPlaceholder,
-    };
-    if (params.phraseRole !== null)
-      buildResultParams.phraseRole = params.phraseRole;
-    if (params.activeConstraints && params.activeConstraints.mode) {
-      buildResultParams.activeConstraints = {
-        mode: params.activeConstraints.mode,
-      };
-    } else if (params.activeConstraints) {
-      buildResultParams.activeConstraints = null;
-    }
-    if (params.alignmentFallbackApplied)
-      buildResultParams.alignmentFallbackApplied = true;
-    if (params.usedFallback) buildResultParams.usedFallback = true;
-    if (params.suggestionsToUse.length === 0)
-      buildResultParams.hasNoSuggestions = true;
-
-    return this.pipeline.suggestionProcessing.buildResult(buildResultParams);
   }
 
   private _countSuggestions(

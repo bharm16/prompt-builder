@@ -11,8 +11,6 @@ import type {
   LockMap,
 } from "@services/prompt-optimization/types/i2v";
 
-export type EnhancementEngineVersion = "v1" | "v2";
-
 /**
  * Suggestion object structure
  */
@@ -332,7 +330,7 @@ export interface GroupedSuggestions {
 }
 
 export interface EnhancementDebugContext {
-  engineVersion?: EnhancementEngineVersion;
+  engineVersion?: "v2";
   policyVersion?: string | null;
   fullPrompt: string;
   selectedSpan: string;
@@ -513,7 +511,6 @@ export interface EnhancementRequestParams {
     lockMap: LockMap;
     constraintMode?: I2VConstraintMode;
   } | null;
-  requestedEngineVersion?: EnhancementEngineVersion | null;
   debug?: boolean;
 }
 

@@ -193,22 +193,6 @@ const PROVIDER_FLAGS = {
 } as const satisfies Record<string, FlagDef>;
 
 const EXPERIMENTAL_FLAGS = {
-  promptPipelineV2: {
-    kind: "bool",
-    envName: "PROMPT_PIPELINE_V2",
-    default: true,
-    description:
-      "Enables the v2 prompt optimization pipeline. Set false to fall back to v1.",
-    category: "experimental",
-  },
-  enhancementLegacyV1Enabled: {
-    kind: "bool",
-    envName: "ENHANCEMENT_ENABLE_V1",
-    default: false,
-    description:
-      "Makes the legacy v1 enhancement engine selectable. When true and ENHANCEMENT_ENGINE_DEFAULT=v1, the v1 engine is used by default.",
-    category: "experimental",
-  },
   faceEmbeddingEnabled: {
     kind: "bool",
     envName: "ENABLE_FACE_EMBEDDING",
