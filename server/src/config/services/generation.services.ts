@@ -32,6 +32,7 @@ import type { FirestoreCircuitExecutor } from "@services/firestore/FirestoreCirc
 import { VideoGenerationService } from "@services/video-generation/VideoGenerationService";
 import { VideoJobStore } from "@services/video-generation/jobs/VideoJobStore";
 import { VideoWorkerHeartbeatStore } from "@services/video-generation/jobs/VideoWorkerHeartbeatStore";
+import { VideoJobHandler } from "@services/video-generation/jobs/VideoJobHandler";
 import { VideoJobWorker } from "@services/video-generation/jobs/VideoJobWorker";
 import { createVideoJobSweeper } from "@services/video-generation/jobs/VideoJobSweeper";
 import { createVideoJobReconciler } from "@services/video-generation/jobs/VideoJobReconciler";
@@ -402,7 +403,7 @@ export function registerGenerationServices(container: DIContainer): void {
   );
 
   container.register(
-    "videoJobWorker",
+    "videoJobHandler",
     (
       videoJobStore: VideoJobStore,
       videoGenerationService: VideoGenerationService | null,
@@ -410,35 +411,18 @@ export function registerGenerationServices(container: DIContainer): void {
       storageService: StorageService,
       metricsService: MetricsService,
       providerCircuitManager: ProviderCircuitManager,
-      videoWorkerHeartbeatStore: VideoWorkerHeartbeatStore,
-      config: ServiceConfig,
     ) => {
       if (!videoGenerationService) {
         return null;
       }
-
-      const wc = config.videoJobs.worker;
-      return new VideoJobWorker(
+      return new VideoJobHandler(
         videoJobStore,
         videoGenerationService,
         creditService,
         storageService,
         {
-          pollIntervalMs: wc.pollIntervalMs,
-          leaseMs: wc.leaseSeconds * 1000,
-          maxConcurrent: wc.maxConcurrent,
-          heartbeatIntervalMs: wc.heartbeatIntervalMs,
-          processRole: "worker",
-          ...(config.videoJobs.hostname
-            ? { hostname: config.videoJobs.hostname }
-            : {}),
           providerCircuitManager,
-          workerHeartbeatStore: videoWorkerHeartbeatStore,
-          ...(wc.perProviderMaxConcurrent !== undefined
-            ? { perProviderMaxConcurrent: wc.perProviderMaxConcurrent }
-            : {}),
           metrics: metricsService,
-          providerIds: ["replicate", "openai", "luma", "kling", "gemini"],
         },
       );
     },
@@ -447,6 +431,47 @@ export function registerGenerationServices(container: DIContainer): void {
       "videoGenerationService",
       "userCreditService",
       "storageService",
+      "metricsService",
+      "providerCircuitManager",
+    ],
+  );
+
+  container.register(
+    "videoJobWorker",
+    (
+      videoJobStore: VideoJobStore,
+      videoJobHandler: VideoJobHandler | null,
+      metricsService: MetricsService,
+      providerCircuitManager: ProviderCircuitManager,
+      videoWorkerHeartbeatStore: VideoWorkerHeartbeatStore,
+      config: ServiceConfig,
+    ) => {
+      if (!videoJobHandler) {
+        return null;
+      }
+
+      const wc = config.videoJobs.worker;
+      return new VideoJobWorker(videoJobStore, videoJobHandler, {
+        pollIntervalMs: wc.pollIntervalMs,
+        leaseMs: wc.leaseSeconds * 1000,
+        maxConcurrent: wc.maxConcurrent,
+        heartbeatIntervalMs: wc.heartbeatIntervalMs,
+        processRole: "worker",
+        ...(config.videoJobs.hostname
+          ? { hostname: config.videoJobs.hostname }
+          : {}),
+        providerCircuitManager,
+        workerHeartbeatStore: videoWorkerHeartbeatStore,
+        ...(wc.perProviderMaxConcurrent !== undefined
+          ? { perProviderMaxConcurrent: wc.perProviderMaxConcurrent }
+          : {}),
+        metrics: metricsService,
+        providerIds: ["replicate", "openai", "luma", "kling", "gemini"],
+      });
+    },
+    [
+      "videoJobStore",
+      "videoJobHandler",
       "metricsService",
       "providerCircuitManager",
       "videoWorkerHeartbeatStore",

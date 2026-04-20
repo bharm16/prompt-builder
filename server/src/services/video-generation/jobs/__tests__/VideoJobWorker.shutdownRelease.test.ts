@@ -91,24 +91,18 @@ describe("VideoJobWorker shutdown release (double-publish regression)", () => {
       renewLease: vi.fn().mockResolvedValue(true),
     };
 
-    // never-resolving generation so processJob stays mid-flight while we inspect activeJobs
-    const generateVideo = vi
-      .fn()
-      .mockImplementation(() => new Promise(() => undefined));
+    // never-resolving handler so processJob stays mid-flight while we inspect activeJobs
+    const handler = {
+      process: vi.fn().mockImplementation(() => new Promise(() => undefined)),
+    };
 
-    const worker = new VideoJobWorker(
-      jobStore as never,
-      { generateVideo } as never,
-      { refundCredits: vi.fn() } as never,
-      { saveFromUrl: vi.fn() } as never,
-      {
-        workerId: "worker-drain",
-        pollIntervalMs: 1_000,
-        leaseMs: 60_000,
-        maxConcurrent: 1,
-        heartbeatIntervalMs: 10_000,
-      },
-    );
+    const worker = new VideoJobWorker(jobStore as never, handler, {
+      workerId: "worker-drain",
+      pollIntervalMs: 1_000,
+      leaseMs: 60_000,
+      maxConcurrent: 1,
+      heartbeatIntervalMs: 10_000,
+    });
 
     const job = createJob();
     // Kick off processJob without awaiting (it will never resolve in this test)
@@ -144,23 +138,17 @@ describe("VideoJobWorker shutdown release (double-publish regression)", () => {
       renewLease: vi.fn().mockResolvedValue(true),
     };
 
-    const generateVideo = vi
-      .fn()
-      .mockImplementation(() => new Promise(() => undefined));
+    const handler = {
+      process: vi.fn().mockImplementation(() => new Promise(() => undefined)),
+    };
 
-    const worker = new VideoJobWorker(
-      jobStore as never,
-      { generateVideo } as never,
-      { refundCredits: vi.fn() } as never,
-      { saveFromUrl: vi.fn() } as never,
-      {
-        workerId: "worker-drain-2",
-        pollIntervalMs: 1_000,
-        leaseMs: 60_000,
-        maxConcurrent: 1,
-        heartbeatIntervalMs: 10_000,
-      },
-    );
+    const worker = new VideoJobWorker(jobStore as never, handler, {
+      workerId: "worker-drain-2",
+      pollIntervalMs: 1_000,
+      leaseMs: 60_000,
+      maxConcurrent: 1,
+      heartbeatIntervalMs: 10_000,
+    });
 
     const job = createJob({ id: "job-drain-2" });
     void (

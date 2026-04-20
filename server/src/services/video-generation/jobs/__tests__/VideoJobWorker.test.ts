@@ -79,13 +79,13 @@ const createJob = (overrides?: Partial<VideoJobRecord>): VideoJobRecord => ({
 
 const createWorker = (
   jobStore: MinimalJobStore,
-  generateVideo: ReturnType<typeof vi.fn>,
+  handlerProcess: ReturnType<typeof vi.fn> = vi
+    .fn()
+    .mockResolvedValue(undefined),
 ) =>
   new VideoJobWorker(
     jobStore as never,
-    { generateVideo } as never,
-    { refundCredits: vi.fn() } as never,
-    { saveFromUrl: mocks.saveFromUrl } as never,
+    { process: handlerProcess },
     {
       workerId: "worker-a",
       pollIntervalMs: 1_000,
@@ -125,9 +125,7 @@ describe("VideoJobWorker", () => {
 
     const worker = new VideoJobWorker(
       jobStore as never,
-      { generateVideo: vi.fn() } as never,
-      { refundCredits: vi.fn() } as never,
-      { saveFromUrl: mocks.saveFromUrl } as never,
+      { process: vi.fn().mockResolvedValue(undefined) },
       {
         workerId: "worker-a",
         pollIntervalMs: 1_000,

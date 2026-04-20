@@ -35,9 +35,7 @@ const buildJobStore = (): MinimalJobStore => ({
 const createWorker = (pollIntervalMs: number): VideoJobWorker =>
   new VideoJobWorker(
     buildJobStore() as never,
-    { generateVideo: vi.fn() } as never,
-    { refundCredits: vi.fn() } as never,
-    { saveFromUrl: vi.fn() } as never,
+    { process: vi.fn().mockResolvedValue(undefined) },
     {
       workerId: "worker-jitter",
       pollIntervalMs,

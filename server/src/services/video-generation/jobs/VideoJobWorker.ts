@@ -1,15 +1,12 @@
 import { v4 as uuidv4 } from "uuid";
 import { logger } from "@infrastructure/Logger";
 import { sleep } from "@utils/sleep";
-import type { VideoGenerationService } from "../VideoGenerationService";
-import type { UserCreditService } from "@services/credits/UserCreditService";
-import type { StorageService } from "@services/storage/StorageService";
+import type { JobHandler } from "@services/jobs/JobHandler";
 import type { WorkerStatus } from "@services/credits/CreditRefundSweeper";
 import type { VideoJobRecord } from "./types";
 import { VideoJobStore } from "./VideoJobStore";
 import type { ProviderCircuitManager } from "./ProviderCircuitManager";
 import { HeartbeatManager } from "./HeartbeatManager";
-import { processVideoJob } from "./processVideoJob";
 
 interface VideoJobWorkerOptions {
   workerId?: string;
@@ -46,9 +43,7 @@ interface ActiveJobContext {
 
 export class VideoJobWorker {
   private readonly jobStore: VideoJobStore;
-  private readonly videoGenerationService: VideoGenerationService;
-  private readonly userCreditService: UserCreditService;
-  private readonly storageService: StorageService;
+  private readonly handler: JobHandler<VideoJobRecord>;
   private readonly basePollIntervalMs: number;
   private readonly maxPollIntervalMs: number;
   private readonly pollBackoffFactor: number;
@@ -79,15 +74,11 @@ export class VideoJobWorker {
 
   constructor(
     jobStore: VideoJobStore,
-    videoGenerationService: VideoGenerationService,
-    userCreditService: UserCreditService,
-    storageService: StorageService,
+    handler: JobHandler<VideoJobRecord>,
     options: VideoJobWorkerOptions,
   ) {
     this.jobStore = jobStore;
-    this.videoGenerationService = videoGenerationService;
-    this.userCreditService = userCreditService;
-    this.storageService = storageService;
+    this.handler = handler;
     this.basePollIntervalMs = options.pollIntervalMs;
     this.maxPollIntervalMs =
       options.maxPollIntervalMs ?? Math.max(this.basePollIntervalMs * 5, 10000);
@@ -471,24 +462,10 @@ export class VideoJobWorker {
     });
 
     try {
-      await processVideoJob(job, {
-        jobStore: this.jobStore,
-        videoGenerationService: this.videoGenerationService as never,
-        storageService: this.storageService,
-        userCreditService: this.userCreditService,
+      await this.handler.process(job, {
         workerId: this.workerId,
         leaseMs: this.leaseMs,
         signal: heartbeatAbort.signal,
-        onProviderSuccess: this.providerCircuitManager
-          ? (provider) => this.providerCircuitManager!.recordSuccess(provider)
-          : undefined,
-        onProviderFailure: this.providerCircuitManager
-          ? (provider) => this.providerCircuitManager!.recordFailure(provider)
-          : undefined,
-        metrics: this.metrics,
-        dlqSource: "worker-terminal",
-        refundReason: "video job worker failed",
-        logPrefix: "Video job",
         heartbeat: workerHeartbeat,
       });
     } finally {
