@@ -273,7 +273,7 @@ export function SessionsPanel(props: SessionsPanelProps): ReactElement {
       const meta = dateLabel;
 
       const disambiguator =
-        extractDisambiguator(entry.input) ??
+        extractDisambiguator(entry.input, baseTitle) ??
         (() => {
           const model =
             formatModelLabel(

@@ -456,7 +456,13 @@ export function usePromptVersioning({
   const syncVersionGenerations = useCallback(
     (generations: Generation[]): void => {
       if (!currentPromptUuid) return;
-      if (!currentPromptEntryRef.current) return;
+      // Previously bailed here when the history entry hadn't hydrated yet
+      // (common during draft→persisted transition): saveToHistory returns
+      // the new uuid before the local history array has refreshed, so
+      // currentPromptEntry is briefly null and this sync was silently
+      // dropped. The result: accepted generations never reached the cloud,
+      // users were charged for storyboards that never displayed. We now
+      // proceed with an empty versions array and seed from the generation.
 
       let versions = currentVersionsRef.current;
       if (!versions.length) {
