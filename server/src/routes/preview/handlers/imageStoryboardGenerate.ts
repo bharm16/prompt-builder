@@ -3,7 +3,7 @@ import type { Request, Response } from "express";
 import { logger } from "@infrastructure/Logger";
 import { sendApiError } from "@middleware/apiErrorResponse";
 import { GENERATION_ERROR_CODES } from "@routes/generationErrorCodes";
-import type { ApiErrorCode } from "@server/types/apiError";
+import type { ApiErrorCode } from "@shared/types/api";
 import type { PreviewRoutesServices } from "@routes/types";
 import { buildRefundKey, refundWithGuard } from "@services/credits/refundGuard";
 import type { ResolvedPrompt } from "@shared/types/asset";

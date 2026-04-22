@@ -17,7 +17,7 @@ import {
   getStartupWarmupPromise,
 } from "@services/convergence/depth";
 import type { GCSStorageService } from "@services/convergence/storage";
-import { safeUrlHost } from "@utils/url";
+import { safeUrlHost } from "@shared/utils/url";
 
 const log = logger.child({ routes: "motion" });
 const OPERATION = "estimateDepth";

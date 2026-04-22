@@ -18,7 +18,19 @@ import { SceneChangeDetectionService } from "@services/video-concept/services/de
 import type { CacheService } from "@services/cache/CacheService";
 import { VideoPromptService } from "@services/video-prompt-analysis/index";
 import { AIServiceVideoPromptLlmGateway } from "@services/video-prompt-analysis/services/llm/VideoPromptLlmGateway";
-import { VideoConceptService } from "@services/video-concept/VideoConceptService";
+import {
+  SuggestionGeneratorService,
+  CompatibilityService,
+  PreferenceRepository,
+  SceneCompletionService,
+  SceneVariationService,
+  ConceptParsingService,
+  RefinementService,
+  TechnicalParameterService,
+  PromptValidationService,
+  ConflictDetectionService,
+  VideoTemplateRepository,
+} from "@services/video-concept/index";
 import type { ServiceConfig } from "./service-config.types.ts";
 
 export function registerEnhancementServices(container: DIContainer): void {
@@ -152,10 +164,89 @@ export function registerEnhancementServices(container: DIContainer): void {
     ["aiService"],
   );
 
+  // Video concept sub-services — registered individually so DI lifecycle is
+  // real (prior to Phase 3γ these were self-instantiated inside a façade's
+  // constructor, making them unmockable in route tests).
   container.register(
-    "videoConceptService",
+    "videoPreferenceRepository",
+    () => new PreferenceRepository(),
+    [],
+  );
+
+  container.register(
+    "videoTemplateRepository",
+    () => new VideoTemplateRepository(),
+    [],
+  );
+
+  container.register(
+    "videoCompatibilityService",
     (aiService: AIModelService, cacheService: CacheService) =>
-      new VideoConceptService(aiService, cacheService),
+      new CompatibilityService(aiService, cacheService),
     ["aiService", "cacheService"],
+  );
+
+  container.register(
+    "videoSuggestionGeneratorService",
+    (
+      aiService: AIModelService,
+      cacheService: CacheService,
+      preferenceRepository: PreferenceRepository,
+      compatibilityService: CompatibilityService,
+    ) =>
+      new SuggestionGeneratorService(
+        aiService,
+        cacheService,
+        preferenceRepository,
+        compatibilityService,
+      ),
+    [
+      "aiService",
+      "cacheService",
+      "videoPreferenceRepository",
+      "videoCompatibilityService",
+    ],
+  );
+
+  container.register(
+    "videoSceneCompletionService",
+    (aiService: AIModelService) => new SceneCompletionService(aiService),
+    ["aiService"],
+  );
+
+  container.register(
+    "videoSceneVariationService",
+    (aiService: AIModelService) => new SceneVariationService(aiService),
+    ["aiService"],
+  );
+
+  container.register(
+    "videoConceptParsingService",
+    (aiService: AIModelService) => new ConceptParsingService(aiService),
+    ["aiService"],
+  );
+
+  container.register(
+    "videoRefinementService",
+    (aiService: AIModelService) => new RefinementService(aiService),
+    ["aiService"],
+  );
+
+  container.register(
+    "videoTechnicalParameterService",
+    (aiService: AIModelService) => new TechnicalParameterService(aiService),
+    ["aiService"],
+  );
+
+  container.register(
+    "videoPromptValidationService",
+    (aiService: AIModelService) => new PromptValidationService(aiService),
+    ["aiService"],
+  );
+
+  container.register(
+    "videoConflictDetectionService",
+    (aiService: AIModelService) => new ConflictDetectionService(aiService),
+    ["aiService"],
   );
 }

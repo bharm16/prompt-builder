@@ -1,5 +1,8 @@
 import type { Request, Response } from "express";
-import type { ApiError, ApiErrorCode } from "@server/types/apiError";
+import type {
+  ApiErrorResponse as ApiError,
+  ApiErrorCode,
+} from "@shared/types/api";
 
 interface SendApiErrorPayload {
   error: string;

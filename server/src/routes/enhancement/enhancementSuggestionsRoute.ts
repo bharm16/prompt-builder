@@ -3,7 +3,7 @@ import { logger } from "@infrastructure/Logger";
 import { asyncHandler } from "@middleware/asyncHandler";
 import { validateRequest } from "@middleware/validateRequest";
 import { PerformanceMonitor } from "@middleware/performanceMonitor";
-import { suggestionSchema } from "@utils/validation";
+import { suggestionSchema } from "@config/schemas";
 import { countSuggestions } from "./utils";
 
 interface EnhancementSuggestionsResult {

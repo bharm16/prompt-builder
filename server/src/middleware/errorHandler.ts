@@ -1,7 +1,10 @@
 import { logger } from "@infrastructure/Logger";
 import type { NextFunction, Request, Response } from "express";
 import { isDomainError } from "@server/errors/DomainError";
-import type { ApiError, ApiErrorCode } from "@server/types/apiError";
+import type {
+  ApiErrorResponse as ApiError,
+  ApiErrorCode,
+} from "@shared/types/api";
 
 const EMAIL_RE = /[\w.-]+@[\w.-]+\.\w+/g;
 const SSN_RE = /\b\d{3}-\d{2}-\d{4}\b/g;

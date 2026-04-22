@@ -3,7 +3,7 @@ import { logger } from "@infrastructure/Logger";
 import { asyncHandler } from "@middleware/asyncHandler";
 import { validateRequest } from "@middleware/validateRequest";
 import { PerformanceMonitor } from "@middleware/performanceMonitor";
-import { coherenceCheckSchema } from "@utils/validation";
+import { coherenceCheckSchema } from "@config/schemas";
 
 interface CoherenceCheckResult {
   conflicts?: unknown[];

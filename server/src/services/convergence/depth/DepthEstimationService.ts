@@ -15,7 +15,7 @@
 import { fal } from "@fal-ai/client";
 import { logger } from "@infrastructure/Logger";
 import { isFalKeyPlaceholder, resolveFalApiKey } from "@utils/falApiKey";
-import { safeUrlHost } from "@utils/url";
+import { safeUrlHost } from "@shared/utils/url";
 import { withRetry } from "../helpers";
 import type { StorageService } from "../storage";
 import type { DepthEstimationProvider, FalDepthResponse } from "./types";

@@ -5,7 +5,7 @@ import { parseVideoPreviewRequest } from "@routes/preview/videoRequest";
 import { VIDEO_MODELS } from "@config/modelConfig";
 import { sendApiError } from "@middleware/apiErrorResponse";
 import { GENERATION_ERROR_CODES } from "@routes/generationErrorCodes";
-import type { ApiErrorCode } from "@server/types/apiError";
+import type { ApiErrorCode } from "@shared/types/api";
 import { resolveVideoGenerateIdempotencyMode } from "@services/idempotency/RequestIdempotencyService";
 import type { VideoModelId } from "@shared/videoModels";
 import { resolveModelId as resolveCapabilityModelId } from "@services/capabilities/modelProviders";
