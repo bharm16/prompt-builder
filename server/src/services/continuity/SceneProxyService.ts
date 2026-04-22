@@ -125,15 +125,31 @@ export class SceneProxyService {
     proxy: SceneProxy,
     shotId: string,
     cameraPose?: {
-      yaw?: number;
-      pitch?: number;
-      roll?: number;
-      dolly?: number;
+      yaw?: number | undefined;
+      pitch?: number | undefined;
+      roll?: number | undefined;
+      dolly?: number | undefined;
     },
   ): Promise<SceneProxyRender> {
     if (!proxy.referenceFrameUrl || !proxy.depthMapUrl) {
       throw new Error("Scene proxy is missing reference assets");
     }
+
+    // Normalize at the boundary: strip undefined-valued fields so downstream
+    // code (with exactOptionalPropertyTypes) can treat optional keys as absent
+    // rather than `undefined`. Previously lived in ContinuityPostProcessingService.
+    const normalizedCameraPose = cameraPose
+      ? {
+          ...(cameraPose.yaw !== undefined ? { yaw: cameraPose.yaw } : {}),
+          ...(cameraPose.pitch !== undefined
+            ? { pitch: cameraPose.pitch }
+            : {}),
+          ...(cameraPose.roll !== undefined ? { roll: cameraPose.roll } : {}),
+          ...(cameraPose.dolly !== undefined
+            ? { dolly: cameraPose.dolly }
+            : {}),
+        }
+      : undefined;
 
     const [imageBuffer, depthBuffer] = await Promise.all([
       this.downloadImage(proxy.referenceFrameUrl),
@@ -143,7 +159,7 @@ export class SceneProxyService {
     const rendered = await this.renderParallax(
       imageBuffer,
       depthBuffer,
-      cameraPose,
+      normalizedCameraPose,
     );
 
     const stored = await this.storage.saveFromBuffer(
@@ -154,13 +170,15 @@ export class SceneProxyService {
       { source: "scene-proxy-render" },
     );
 
-    const pose = cameraPose
+    const pose = normalizedCameraPose
       ? {
-          yaw: cameraPose.yaw ?? 0,
-          pitch: cameraPose.pitch ?? 0,
-          ...(cameraPose.roll !== undefined ? { roll: cameraPose.roll } : {}),
-          ...(cameraPose.dolly !== undefined
-            ? { dolly: cameraPose.dolly }
+          yaw: normalizedCameraPose.yaw ?? 0,
+          pitch: normalizedCameraPose.pitch ?? 0,
+          ...(normalizedCameraPose.roll !== undefined
+            ? { roll: normalizedCameraPose.roll }
+            : {}),
+          ...(normalizedCameraPose.dolly !== undefined
+            ? { dolly: normalizedCameraPose.dolly }
             : {}),
         }
       : undefined;

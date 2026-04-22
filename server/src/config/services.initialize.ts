@@ -222,7 +222,6 @@ async function initializeCommon(container: DIContainer): Promise<void> {
     "enhancementService",
     "sceneDetectionService",
     "promptCoherenceService",
-    "videoConceptService",
     "spanLabelingCacheService",
   ];
 

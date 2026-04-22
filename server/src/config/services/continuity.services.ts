@@ -11,8 +11,6 @@ import {
   AnchorService,
   CharacterKeyframeService,
   ContinuityMediaService,
-  ContinuityPostProcessingService,
-  ContinuityProviderService,
   ContinuitySessionService,
   ContinuitySessionStore,
   ContinuityShotGenerator,
@@ -198,11 +196,6 @@ export function registerContinuityServices(container: DIContainer): void {
         );
       }
 
-      const providerService = new ContinuityProviderService(
-        anchorService,
-        providerStyleAdapter,
-        seedPersistenceService,
-      );
       const mediaService = new ContinuityMediaService(
         frameBridgeService,
         styleReferenceService,
@@ -211,23 +204,22 @@ export function registerContinuityServices(container: DIContainer): void {
         assetService,
         storageService,
       );
-      const postProcessingService = new ContinuityPostProcessingService(
+      const shotGenerator = new ContinuityShotGenerator(
+        providerStyleAdapter,
+        anchorService,
+        seedPersistenceService,
+        mediaService,
         gradingService,
         qualityGateService,
         sceneProxyService,
-      );
-      const shotGenerator = new ContinuityShotGenerator(
-        providerService,
-        mediaService,
-        postProcessingService,
         characterKeyframeService,
         continuitySessionStore,
       );
 
       return new ContinuitySessionService(
-        providerService,
+        providerStyleAdapter,
         mediaService,
-        postProcessingService,
+        sceneProxyService,
         shotGenerator,
         continuitySessionStore,
       );

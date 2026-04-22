@@ -11,9 +11,9 @@ import type {
   StyleReference,
 } from "./types";
 import { ContinuitySessionStore } from "./ContinuitySessionStore";
-import { ContinuityProviderService } from "./ContinuityProviderService";
+import { ProviderStyleAdapter } from "./ProviderStyleAdapter";
 import { ContinuityMediaService } from "./ContinuityMediaService";
-import { ContinuityPostProcessingService } from "./ContinuityPostProcessingService";
+import { SceneProxyService } from "./SceneProxyService";
 import { ContinuityShotGenerator } from "./ContinuityShotGenerator";
 import { DEFAULT_QUALITY_THRESHOLDS } from "./constants";
 import { enforceImmutableVersions } from "@utils/immutableMedia";
@@ -23,9 +23,9 @@ export class ContinuitySessionService {
   private readonly log = logger.child({ service: "ContinuitySessionService" });
 
   constructor(
-    private providerService: ContinuityProviderService,
+    private providerAdapter: ProviderStyleAdapter,
     private mediaService: ContinuityMediaService,
-    private postProcessingService: ContinuityPostProcessingService,
+    private sceneProxy: SceneProxyService,
     private shotGenerator: ContinuityShotGenerator,
     private sessionStore: ContinuitySessionStore,
   ) {}
@@ -149,8 +149,8 @@ export class ContinuitySessionService {
     const modelId = request.modelId || session.defaultSettings.defaultModel;
 
     if (generationMode === "continuity") {
-      const provider = this.providerService.getProviderFromModel(modelId);
-      const caps = this.providerService.getCapabilities(provider, modelId);
+      const provider = this.providerAdapter.getProviderFromModel(modelId);
+      const caps = this.providerAdapter.getCapabilities(provider, modelId);
       if (!caps.supportsStartImage && !caps.supportsNativeStyleReference) {
         throw new Error(
           `Model ${modelId} does not support continuity (no image input or style reference). Switch to an eligible model.`,
@@ -435,7 +435,7 @@ export class ContinuitySessionService {
     if (!videoId || !videoUrl)
       throw new Error("Source video not found for proxy");
 
-    const proxy = await this.postProcessingService.createSceneProxyFromVideo(
+    const proxy = await this.sceneProxy.createProxyFromVideo(
       session.userId,
       videoId,
       videoUrl,
@@ -464,7 +464,7 @@ export class ContinuitySessionService {
     const shot = session.shots.find((candidate) => candidate.id === shotId);
     if (!shot) throw new Error(`Shot not found: ${shotId}`);
 
-    const render = await this.postProcessingService.renderSceneProxy(
+    const render = await this.sceneProxy.renderFromProxy(
       session.userId,
       session.sceneProxy,
       shot.id,
