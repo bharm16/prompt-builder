@@ -9,7 +9,13 @@ interface NewSessionViewProps {
 export function NewSessionView({
   className,
 }: NewSessionViewProps): React.ReactElement {
-  const { balance } = useCreditBalance();
+  const { balance, isLoading } = useCreditBalance();
+  const balanceLabel =
+    typeof balance === "number"
+      ? `${balance} ${balance === 1 ? "credit" : "credits"}`
+      : isLoading
+        ? "Loading credits…"
+        : "Credits unavailable";
 
   return (
     <div
@@ -45,9 +51,19 @@ export function NewSessionView({
 
       <div className="flex flex-shrink-0 items-center justify-end px-5 pb-4">
         <div className="flex items-center gap-1.5">
-          <span className="h-[6px] w-[6px] rounded-full bg-emerald-400" />
-          <span className="text-[11px] font-medium text-tool-text-subdued">
-            {typeof balance === "number" ? `${balance} cr` : "— cr"}
+          <span
+            className={cn(
+              "h-[6px] w-[6px] rounded-full",
+              typeof balance === "number"
+                ? "bg-emerald-400"
+                : "bg-tool-text-subdued",
+            )}
+          />
+          <span
+            className="text-[11px] font-medium text-tool-text-subdued"
+            aria-live="polite"
+          >
+            {balanceLabel}
           </span>
         </div>
       </div>

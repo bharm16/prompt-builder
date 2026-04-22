@@ -379,9 +379,10 @@ export function useHistoryPersistence({
           toast.error("Browser storage full. Please clear browser data.");
         }
       } catch (error) {
-        log.error("Error loading history", error as Error, { userId });
+        // Repo layer already logged this error with full context (historyRepository).
+        // Falling back silently to localStorage to avoid duplicate error noise.
+        void error;
 
-        // Fallback to localStorage
         try {
           const localEntries = await loadFromLocalStorage();
           setHistory(localEntries);
@@ -407,7 +408,8 @@ export function useHistoryPersistence({
       // Mark load complete for non-authenticated users
       initialLoadCompleteRef.current = true;
     } catch (error) {
-      log.error("Error loading history from localStorage", error as Error);
+      // Repo layer already logged with full context — suppress duplicate.
+      void error;
     }
   }, [setHistory]);
 
@@ -483,10 +485,9 @@ export function useHistoryPersistence({
         }
         return result;
       } catch (error) {
-        log.error("Error saving to history", error as Error, {
-          userId: user?.uid,
-          mode: selectedMode,
-        });
+        // Repo layer already logged with full context — surface user-facing
+        // toast here without duplicating the log line.
+        void error;
         toast.error(
           user ? "Failed to save to cloud" : "Failed to save to history",
         );

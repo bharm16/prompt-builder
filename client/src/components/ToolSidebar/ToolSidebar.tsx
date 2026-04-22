@@ -68,6 +68,17 @@ export function ToolSidebar(props: ToolSidebarProps): ReactElement {
   const handlePanelChange = useCallback(
     (panel: ToolPanelType): void => {
       const previousPanel = activePanelRef.current;
+      // In canvas-first layout, re-clicking the active overlay panel collapses
+      // it by returning to "studio" (which hides the overlay). Users expect the
+      // same button to toggle the panel open/closed.
+      if (
+        isCanvasFirstLayout &&
+        previousPanel === panel &&
+        panel !== "studio"
+      ) {
+        setActivePanel("studio");
+        return;
+      }
       setActivePanel(panel);
 
       if (

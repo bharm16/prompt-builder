@@ -623,6 +623,14 @@ export function useGenerationsRuntime({
         executeDraftAction(model, overrides);
         return;
       }
+      if (!hasActiveContinuityShot) {
+        const modelConfig = getModelConfig(model);
+        const requiredCredits = getModelCreditCost(model, duration);
+        const operationLabel = `${modelConfig?.label ?? "Video"} preview`;
+        if (!hasCreditsFor(requiredCredits, operationLabel)) {
+          return;
+        }
+      }
       const currentSessionKey = currentPromptDocId ?? currentSessionId ?? null;
       if (!authUidRef.current || isRemoteSessionId(currentSessionKey)) {
         executeDraftAction(model, overrides);
@@ -640,11 +648,13 @@ export function useGenerationsRuntime({
       });
     },
     [
+      duration,
       ensurePersistedSessionFromDraft,
       executeDraftAction,
       currentPromptDocId,
       currentSessionId,
       hasActiveContinuityShot,
+      hasCreditsFor,
       isSubmitting,
       prompt,
     ],
@@ -740,6 +750,12 @@ export function useGenerationsRuntime({
         executeRenderAction(model, overrides);
         return;
       }
+      const modelConfig = getModelConfig(model);
+      const requiredCredits = getModelCreditCost(model, duration);
+      const operationLabel = `${modelConfig?.label ?? "Video"} render`;
+      if (!hasCreditsFor(requiredCredits, operationLabel)) {
+        return;
+      }
       const currentSessionKey = currentPromptDocId ?? currentSessionId ?? null;
       if (!authUidRef.current || isRemoteSessionId(currentSessionKey)) {
         executeRenderAction(model, overrides);
@@ -757,11 +773,13 @@ export function useGenerationsRuntime({
       });
     },
     [
+      duration,
       ensurePersistedSessionFromDraft,
       executeRenderAction,
       currentPromptDocId,
       currentSessionId,
       hasActiveContinuityShot,
+      hasCreditsFor,
       isSubmitting,
       prompt,
     ],
@@ -856,7 +874,10 @@ export function useGenerationsRuntime({
     if (pendingIntent.sessionId !== currentSessionId) {
       return;
     }
-    if (prompt.trim() !== pendingIntent.prompt.trim()) {
+    // Wait for the editor to have loaded the new session's prompt (any non-empty
+    // value is fine — the prompt may be rewritten by the optimizer between save
+    // and resume, so strict equality with pendingIntent.prompt is too fragile).
+    if (prompt.trim().length === 0) {
       return;
     }
 

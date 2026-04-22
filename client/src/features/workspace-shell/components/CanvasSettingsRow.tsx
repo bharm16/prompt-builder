@@ -369,30 +369,52 @@ export function CanvasSettingsRow({
           className="inline-flex h-9 w-9 items-center justify-center rounded-xl border-none bg-tool-btn-generate-bg text-tool-btn-generate-text transition-opacity hover:opacity-[0.9] disabled:cursor-not-allowed disabled:opacity-60"
           onClick={handleGenerate}
           disabled={generateDisabled}
+          aria-busy={isGenerationBusy}
           aria-label={
-            isSubmitting
+            isGenerationBusy
               ? "Starting generation"
               : `${isDraftModelSelected ? "Draft" : "Generate"} ${creditCost} credits`
           }
           title={
-            isSubmitting
+            isGenerationBusy
               ? "Starting..."
               : `${isDraftModelSelected ? "Draft" : "Generate"} · ${creditCost} cr`
           }
         >
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 16 16"
-            fill="none"
-            aria-hidden="true"
-          >
-            <path
-              d="M8 1.25C8.35 1.25 8.66 1.48 8.76 1.82L10.04 6.02L14.2 7.28C14.55 7.39 14.78 7.7 14.78 8.05C14.78 8.4 14.55 8.71 14.2 8.82L10.04 10.08L8.76 14.28C8.66 14.62 8.35 14.85 8 14.85C7.65 14.85 7.34 14.62 7.24 14.28L5.96 10.08L1.8 8.82C1.45 8.71 1.22 8.4 1.22 8.05C1.22 7.7 1.45 7.39 1.8 7.28L5.96 6.02L7.24 1.82C7.34 1.48 7.65 1.25 8 1.25Z"
-              fill="currentColor"
-            />
-            <circle cx="12.7" cy="3.2" r="1.05" fill="currentColor" />
-          </svg>
+          {isGenerationBusy ? (
+            <svg
+              className="animate-spin"
+              width={16}
+              height={16}
+              viewBox="0 0 16 16"
+              fill="none"
+              aria-hidden="true"
+            >
+              <circle
+                cx="8"
+                cy="8"
+                r="6"
+                stroke="currentColor"
+                strokeWidth="1.75"
+                strokeLinecap="round"
+                strokeDasharray="28 12"
+              />
+            </svg>
+          ) : (
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 16 16"
+              fill="none"
+              aria-hidden="true"
+            >
+              <path
+                d="M8 1.25C8.35 1.25 8.66 1.48 8.76 1.82L10.04 6.02L14.2 7.28C14.55 7.39 14.78 7.7 14.78 8.05C14.78 8.4 14.55 8.71 14.2 8.82L10.04 10.08L8.76 14.28C8.66 14.62 8.35 14.85 8 14.85C7.65 14.85 7.34 14.62 7.24 14.28L5.96 10.08L1.8 8.82C1.45 8.71 1.22 8.4 1.22 8.05C1.22 7.7 1.45 7.39 1.8 7.28L5.96 6.02L7.24 1.82C7.34 1.48 7.65 1.25 8 1.25Z"
+                fill="currentColor"
+              />
+              <circle cx="12.7" cy="3.2" r="1.05" fill="currentColor" />
+            </svg>
+          )}
         </button>
       </div>
     </div>
