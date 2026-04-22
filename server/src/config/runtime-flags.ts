@@ -11,7 +11,6 @@ import { resolveAllFlags } from "./feature-flags.ts";
 
 export interface RuntimeFlags {
   processRole: "api" | "worker";
-  promptOutputOnly: boolean;
   enableConvergence: boolean;
   videoWorkerDisabled: boolean;
   videoWorkerShutdownDrainSeconds: number;
@@ -46,7 +45,6 @@ export function getRuntimeFlags(
 
   return {
     processRole,
-    promptOutputOnly: flags.promptOutputOnly,
     enableConvergence: flags.convergence,
     videoWorkerDisabled:
       processRole !== "worker" || flags.videoJobWorkerDisabled,

@@ -43,15 +43,11 @@ export function registerEnhancementServices(container: DIContainer): void {
 
   container.register(
     "videoPromptService",
-    (
-      videoPromptLlmGateway: AIServiceVideoPromptLlmGateway,
-      config: ServiceConfig,
-    ) =>
+    (videoPromptLlmGateway: AIServiceVideoPromptLlmGateway) =>
       new VideoPromptService({
         videoPromptLlmGateway,
-        promptOutputOnly: config.features.promptOutputOnly,
       }),
-    ["videoPromptLlmGateway", "config"],
+    ["videoPromptLlmGateway"],
   );
   container.register(
     "brainstormBuilder",

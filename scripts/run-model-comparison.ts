@@ -23,8 +23,7 @@ const MODELS = {
 
 const ENV_FILE = join(__dirname, "../.env");
 const RESULTS_DIR = join(__dirname, "../test-results");
-const PROMPT_OUTPUT_ONLY = "true";
-const BASE_ENV = { ...process.env, PROMPT_OUTPUT_ONLY };
+const BASE_ENV = { ...process.env };
 
 // Ensure results directory exists
 try {

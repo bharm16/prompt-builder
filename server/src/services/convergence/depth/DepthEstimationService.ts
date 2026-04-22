@@ -40,7 +40,6 @@ export interface DepthModuleConfig {
   falWarmupImageUrl: string;
   warmupOnStartup: boolean;
   warmupTimeoutMs: number;
-  promptOutputOnly: boolean;
 }
 
 const DEFAULT_WARMUP_IMAGE_URL =
@@ -53,7 +52,6 @@ let depthModuleConfig: DepthModuleConfig = {
   falWarmupImageUrl: DEFAULT_WARMUP_IMAGE_URL,
   warmupOnStartup: false,
   warmupTimeoutMs: 60_000,
-  promptOutputOnly: false,
 };
 
 export function setDepthEstimationModuleConfig(
@@ -276,10 +274,6 @@ export function warmupDepthEstimationOnStartup(): Promise<DepthWarmupResult> {
     const startupWarmupConfig = getDepthStartupWarmupConfig();
     if (!startupWarmupConfig.enabled) {
       return { success: false, skipped: true, message: "disabled" };
-    }
-
-    if (depthModuleConfig.promptOutputOnly) {
-      return { success: false, skipped: true, message: "PROMPT_OUTPUT_ONLY" };
     }
 
     const falApiKey = resolveFalApiKey();

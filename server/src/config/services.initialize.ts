@@ -291,8 +291,6 @@ async function initializeApiServices(container: DIContainer): Promise<void> {
     process.env.NODE_ENV === "test" ||
     process.env.VITEST ||
     process.env.VITEST_WORKER_ID;
-  const runtimeFlags = getRuntimeFlags();
-  const { promptOutputOnly } = runtimeFlags;
 
   // GLiNER warmup (API role only)
   const { warmupGliner } = await import(
@@ -302,7 +300,6 @@ async function initializeApiServices(container: DIContainer): Promise<void> {
     "@llm/span-labeling/config/SpanLabelingConfig"
   );
   const shouldWarmGliner =
-    !promptOutputOnly &&
     NEURO_SYMBOLIC.ENABLED &&
     NEURO_SYMBOLIC.GLINER?.ENABLED &&
     NEURO_SYMBOLIC.GLINER.PREWARM_ON_STARTUP;
@@ -323,10 +320,9 @@ async function initializeApiServices(container: DIContainer): Promise<void> {
       logger.warn("⚠️ GLiNER warmup failed", { error: errorMessage });
     }
   } else {
-    const reason = promptOutputOnly
-      ? "PROMPT_OUTPUT_ONLY"
-      : "prewarm disabled or GLiNER disabled";
-    logger.info("ℹ️ GLiNER warmup skipped", { reason });
+    logger.info("ℹ️ GLiNER warmup skipped", {
+      reason: "prewarm disabled or GLiNER disabled",
+    });
   }
 
   // Depth estimation warmup (API role only, non-blocking)
@@ -343,10 +339,9 @@ async function initializeApiServices(container: DIContainer): Promise<void> {
       "https://storage.googleapis.com/generativeai-downloads/images/cat.jpg",
     warmupOnStartup: depthConfig.warmupOnStartup,
     warmupTimeoutMs: depthConfig.warmupTimeoutMs,
-    promptOutputOnly: config.features.promptOutputOnly,
   });
 
-  if (!isTestEnv && !promptOutputOnly) {
+  if (!isTestEnv) {
     warmupDepthEstimationOnStartup()
       .then((depthWarmup) => {
         if (depthWarmup.success) {
@@ -371,8 +366,7 @@ async function initializeApiServices(container: DIContainer): Promise<void> {
         logger.warn("⚠️ Depth warmup failed", { error: errorMessage });
       });
   } else {
-    const reason = promptOutputOnly ? "PROMPT_OUTPUT_ONLY" : "test environment";
-    logger.info("ℹ️ Depth warmup skipped", { reason });
+    logger.info("ℹ️ Depth warmup skipped", { reason: "test environment" });
   }
 }
 
@@ -382,7 +376,6 @@ async function initializeApiServices(container: DIContainer): Promise<void> {
 
 async function initializeWorkerServices(container: DIContainer): Promise<void> {
   const runtimeFlags = getRuntimeFlags();
-  const { promptOutputOnly } = runtimeFlags;
 
   // Depth estimation module config is needed by worker role too
   const { setDepthEstimationModuleConfig } = await import(
@@ -399,13 +392,7 @@ async function initializeWorkerServices(container: DIContainer): Promise<void> {
       "https://storage.googleapis.com/generativeai-downloads/images/cat.jpg",
     warmupOnStartup: depthConfig.warmupOnStartup,
     warmupTimeoutMs: depthConfig.warmupTimeoutMs,
-    promptOutputOnly: config.features.promptOutputOnly,
   });
-
-  if (promptOutputOnly) {
-    logger.info("ℹ️ Video background services skipped (PROMPT_OUTPUT_ONLY)");
-    return;
-  }
 
   // Dynamic imports to keep worker-specific types lazy
   const { CreditRefundSweeper } = await import(
@@ -569,7 +556,6 @@ export async function initializeServices(
         "https://storage.googleapis.com/generativeai-downloads/images/cat.jpg",
       warmupOnStartup: depthConfig.warmupOnStartup,
       warmupTimeoutMs: depthConfig.warmupTimeoutMs,
-      promptOutputOnly: config.features.promptOutputOnly,
     });
   }
 

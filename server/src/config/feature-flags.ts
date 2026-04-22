@@ -68,14 +68,6 @@ export interface FlagResolution<T> {
 // ─── Flag registry ─────────────────────────────────────────────────
 
 const MODE_FLAGS = {
-  promptOutputOnly: {
-    kind: "bool",
-    envName: "PROMPT_OUTPUT_ONLY",
-    default: false,
-    description:
-      "Disables all preview, video generation, motion, and convergence routes. Server becomes prompt-only.",
-    category: "mode",
-  },
   convergence: {
     kind: "bool",
     envName: "ENABLE_CONVERGENCE",

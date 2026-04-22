@@ -71,7 +71,7 @@ export interface ServiceRegistry {
   promptOptimizationService: PromptOptimizationService;
   llmJudgeService: LLMJudgeService;
 
-  // Generation (nullable — gated by PROMPT_OUTPUT_ONLY or missing creds)
+  // Generation (nullable — resolves to null when provider creds are absent)
   imageGenerationService: ImageGenerationService | null;
   videoGenerationService: VideoGenerationService | null;
   continuitySessionService: ContinuitySessionService | null;

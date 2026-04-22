@@ -106,10 +106,9 @@ Server flags are declared in [`server/src/config/feature-flags.ts`](server/src/c
 
 #### Mode
 
-| Env Var              | Default | Legacy Aliases | Description                                                                                         |
-| -------------------- | ------- | -------------- | --------------------------------------------------------------------------------------------------- |
-| `PROMPT_OUTPUT_ONLY` | `false` | —              | Disables all preview, video generation, motion, and convergence routes. Server becomes prompt-only. |
-| `ENABLE_CONVERGENCE` | `true`  | —              | Enables continuity/convergence services. When false, continuitySessionService resolves to null.     |
+| Env Var              | Default | Legacy Aliases | Description                                                                                     |
+| -------------------- | ------- | -------------- | ----------------------------------------------------------------------------------------------- |
+| `ENABLE_CONVERGENCE` | `true`  | —              | Enables continuity/convergence services. When false, continuitySessionService resolves to null. |
 
 #### Worker
 
@@ -153,8 +152,6 @@ Server flags are declared in [`server/src/config/feature-flags.ts`](server/src/c
 <!-- END: feature-flag-table -->
 
 **Rule:** Code consuming `continuitySessionService` must always null-check — the service is legitimately `null` when `ENABLE_CONVERGENCE=false`.
-
-**Rule:** Generation-related routes must be inside the `if (!promptOutputOnly)` block in `routes.config.ts`.
 
 **Rule:** Legacy `*_DISABLED` env var names still work but emit a deprecation warning at startup. Migrate deploy configs to the canonical `*_ENABLED` form.
 

@@ -430,7 +430,6 @@ export function registerCoreServices(container: DIContainer): void {
     },
     features: {
       faceEmbedding: flags.faceEmbeddingEnabled,
-      promptOutputOnly: flags.promptOutputOnly,
     },
     firestore: {
       circuit: {

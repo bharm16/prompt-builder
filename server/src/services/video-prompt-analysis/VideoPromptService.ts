@@ -42,7 +42,6 @@ export interface VideoPromptServiceDeps {
   taxonomyValidator?: TaxonomyValidationService;
   strategyRegistry?: StrategyRegistry;
   videoPromptLlmGateway?: VideoPromptLlmGateway | null;
-  promptOutputOnly?: boolean;
 }
 
 /**
@@ -89,9 +88,6 @@ export class VideoPromptService {
       deps.strategyRegistry ??
       createDefaultStrategyRegistry({
         videoPromptLlmGateway: deps.videoPromptLlmGateway ?? null,
-        ...(deps.promptOutputOnly != null
-          ? { promptOutputOnly: deps.promptOutputOnly }
-          : {}),
       });
   }
 

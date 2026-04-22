@@ -15,7 +15,7 @@ export interface AppDependencies {
 export function resolveAppDependencies(
   container: DIContainer,
 ): AppDependencies {
-  const { promptOutputOnly, processRole } = getRuntimeFlags();
+  const { processRole } = getRuntimeFlags();
 
   return {
     routeContainer: container,
@@ -50,7 +50,7 @@ export function resolveAppDependencies(
       metricsService: container.resolve("metricsService"),
       redisClient: container.resolve("redisClient"),
     },
-    ...(!promptOutputOnly && processRole === "api"
+    ...(processRole === "api"
       ? { prewarmDepthEstimator: initializeDepthWarmer }
       : {}),
   };

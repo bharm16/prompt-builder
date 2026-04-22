@@ -174,7 +174,6 @@ export interface ServiceConfig {
   };
   features: {
     faceEmbedding: boolean;
-    promptOutputOnly: boolean;
   };
   firestore: {
     circuit: {

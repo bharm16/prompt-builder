@@ -69,7 +69,6 @@ describe("Depth warmup status", () => {
         "https://storage.googleapis.com/generativeai-downloads/images/cat.jpg",
       warmupOnStartup: true,
       warmupTimeoutMs: 60_000,
-      promptOutputOnly: false,
     });
 
     expect(getDepthWarmupStatus().lastWarmupAt).toBe(0);

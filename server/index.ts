@@ -33,13 +33,11 @@ const toError = (error: unknown): Error =>
   error instanceof Error ? error : new Error(String(error));
 
 function assertSpanLabelingModelsPresent(): void {
-  const promptOutputOnly = process.env.PROMPT_OUTPUT_ONLY === "true";
   const inTestMode =
     process.env.NODE_ENV === "test" ||
     process.env.VITEST ||
     process.env.VITEST_WORKER_ID;
   const shouldCheck =
-    !promptOutputOnly &&
     !inTestMode &&
     NEURO_SYMBOLIC.ENABLED &&
     Boolean(NEURO_SYMBOLIC.GLINER?.ENABLED);

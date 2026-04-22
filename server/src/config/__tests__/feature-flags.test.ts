@@ -4,7 +4,6 @@ import { resolveAllFlags, getFlagEnvNames } from "../feature-flags";
 describe("resolveAllFlags", () => {
   it("returns all declared flags at their defaults when env is empty", () => {
     const { flags, deprecations } = resolveAllFlags({} as NodeJS.ProcessEnv);
-    expect(flags.promptOutputOnly).toBe(false);
     expect(flags.convergence).toBe(true);
     expect(flags.webhookReconciliationEnabled).toBe(true);
     // VIDEO_ASSET_RECONCILER_DISABLED !== "false" was disabled-by-default
@@ -86,9 +85,9 @@ describe("resolveAllFlags", () => {
 
   it("ignores non-boolean values and falls back to default", () => {
     const { flags } = resolveAllFlags({
-      PROMPT_OUTPUT_ONLY: "yes",
+      ENABLE_CONVERGENCE: "yes",
     } as NodeJS.ProcessEnv);
-    expect(flags.promptOutputOnly).toBe(false);
+    expect(flags.convergence).toBe(true);
   });
 });
 

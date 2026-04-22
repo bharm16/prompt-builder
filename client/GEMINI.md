@@ -51,10 +51,9 @@ Know this when debugging API responses or adding new client→server integration
 
 ## Feature Flags
 
-| Flag                       | Default | Client Impact                                                                                              |
-| -------------------------- | ------- | ---------------------------------------------------------------------------------------------------------- |
-| `PROMPT_OUTPUT_ONLY=true`  | `false` | Preview, video generation, motion, and convergence routes are not mounted. Client calls to these will 404. |
-| `ENABLE_CONVERGENCE=false` | `true`  | Continuity endpoints return errors. Continuity UI should degrade gracefully.                               |
+| Flag                       | Default | Client Impact                                                                |
+| -------------------------- | ------- | ---------------------------------------------------------------------------- |
+| `ENABLE_CONVERGENCE=false` | `true`  | Continuity endpoints return errors. Continuity UI should degrade gracefully. |
 
 ## Route → Client API Map
 

@@ -24,23 +24,18 @@ import type { ConsistentVideoService } from "@services/video-generation/Consiste
 import type { UserCreditService } from "@services/credits/UserCreditService";
 import { STORAGE_CONFIG } from "@services/storage/config/storageConfig";
 import { resolveOptionalService } from "./resolve-utils.ts";
-import type { RuntimeFlags } from "../runtime-flags";
 
 export function registerApiRoutes(
   app: Application,
   container: DIContainer,
-  runtimeFlags: RuntimeFlags,
 ): void {
-  const { promptOutputOnly } = runtimeFlags;
   const userCreditService = container.resolve("userCreditService");
 
-  const videoGenerationService = promptOutputOnly
-    ? null
-    : resolveOptionalService<unknown>(
-        container,
-        "videoGenerationService",
-        "preview",
-      );
+  const videoGenerationService = resolveOptionalService<unknown>(
+    container,
+    "videoGenerationService",
+    "preview",
+  );
 
   const continuitySessionService =
     resolveOptionalService<ContinuitySessionService | null>(
@@ -55,7 +50,7 @@ export function registerApiRoutes(
       "model-intelligence",
     );
   const consistentVideoService: ConsistentVideoService | null =
-    promptOutputOnly || !videoGenerationService
+    !videoGenerationService
       ? null
       : resolveOptionalService<ConsistentVideoService | null>(
           container,
@@ -63,13 +58,11 @@ export function registerApiRoutes(
           "consistent-generation",
         );
   const videoConceptService: VideoConceptServiceContract | null =
-    promptOutputOnly
-      ? null
-      : resolveOptionalService<VideoConceptServiceContract | null>(
-          container,
-          "videoConceptService",
-          "video-concept",
-        );
+    resolveOptionalService<VideoConceptServiceContract | null>(
+      container,
+      "videoConceptService",
+      "video-concept",
+    );
 
   // Media proxy — no auth required (signed URL is the authorization).
   // Must be registered before the auth middleware on /api.

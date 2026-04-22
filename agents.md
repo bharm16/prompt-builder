@@ -92,12 +92,9 @@ Server DTO → feature/api/schemas.ts (Zod) → feature/api/*.ts (transform) →
 
 ## Feature Flags
 
-| Flag                       | Default | Effect When Set                                                                                                                                   |
-| -------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `PROMPT_OUTPUT_ONLY=true`  | `false` | Disables ALL preview, video generation, motion, and convergence routes. Video-related DI registrations still happen but routes are never mounted. |
-| `ENABLE_CONVERGENCE=false` | `true`  | Disables continuity service registration. `continuitySessionService` resolves to **`null`** from the DI container.                                |
-
-**Rule:** Generation-related routes must be inside the `if (!promptOutputOnly)` block in `routes.config.ts`.
+| Flag                       | Default | Effect When Set                                                                                                    |
+| -------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------ |
+| `ENABLE_CONVERGENCE=false` | `true`  | Disables continuity service registration. `continuitySessionService` resolves to **`null`** from the DI container. |
 
 ## Primary Workflows
 
@@ -323,7 +320,6 @@ The Vite client (`npm run dev`) runs independently and renders the full UI. API 
 
 ### Key Environment Config
 
-- `PROMPT_OUTPUT_ONLY=true` in `.env` disables video generation routes and skips GLiNER model download requirement.
 - Redis is optional; comment out `REDIS_URL` to use in-memory cache fallback.
 - The `.env` file is created manually; required-var list lives in `server/src/config/env.ts` (Zod schema) and is validated at startup.
 

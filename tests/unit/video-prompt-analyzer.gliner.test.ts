@@ -29,7 +29,6 @@ describe("VideoPromptAnalyzer GLiNER gating", () => {
       originalNeuroSymbolicEnabled;
     (SpanLabelingConfig.NEURO_SYMBOLIC.GLINER as { ENABLED: boolean }).ENABLED =
       originalGlinerEnabled;
-    delete process.env.PROMPT_OUTPUT_ONLY;
   });
 
   it("keeps GLiNER off when neuro-symbolic mode is disabled", async () => {

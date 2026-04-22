@@ -69,14 +69,13 @@ Dependency rules:
 
 ## Feature Flags
 
-Canonical registry: `src/config/feature-flags.ts` (Zod schema, ~25 flags grouped by Mode / Worker / Killswitch / Provider / Experimental / Debug). Full table with defaults lives in root `CLAUDE.md`. Two load-bearing flags for day-to-day work:
+Canonical registry: `src/config/feature-flags.ts` (Zod schema, ~25 flags grouped by Mode / Worker / Killswitch / Provider / Experimental / Debug). Full table with defaults lives in root `CLAUDE.md`. The load-bearing flag for day-to-day work:
 
-| Flag                       | Default | Effect                                                                  |
-| -------------------------- | ------- | ----------------------------------------------------------------------- |
-| `PROMPT_OUTPUT_ONLY=true`  | `false` | Disables ALL preview, video generation, motion, and convergence routes. |
-| `ENABLE_CONVERGENCE=false` | `true`  | `continuitySessionService` resolves to **`null`**. Must null-check.     |
+| Flag                       | Default | Effect                                                              |
+| -------------------------- | ------- | ------------------------------------------------------------------- |
+| `ENABLE_CONVERGENCE=false` | `true`  | `continuitySessionService` resolves to **`null`**. Must null-check. |
 
-When adding new routes, check `routes.config.ts` for the `promptOutputOnly` guard. Generation routes must be inside that block. Legacy `*_DISABLED` env var names still work but emit a deprecation warning at startup — migrate to the canonical `*_ENABLED` form.
+Legacy `*_DISABLED` env var names still work but emit a deprecation warning at startup — migrate to the canonical `*_ENABLED` form.
 
 ## Route → Client API Map
 
