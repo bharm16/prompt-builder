@@ -46,6 +46,20 @@ interface UnavailableEntry {
   reason: string;
 }
 
+const REASON_LABELS: Record<string, string> = {
+  insufficient_credits: "Need more credits",
+  missing_credentials: "Not configured",
+  unsupported_model: "Unsupported",
+  image_input_unsupported: "No image input",
+  not_entitled: "Not entitled",
+  video_generation_unavailable: "Unavailable",
+  unavailable: "Unavailable",
+  unknown_availability: "Checking…",
+};
+
+const formatReasonLabel = (reason: string): string =>
+  REASON_LABELS[reason] ?? "Unavailable";
+
 export interface ModelRecommendationDropdownProps {
   renderModelOptions: Array<{ id: string; label: string }>;
   renderModelId: string;
@@ -122,8 +136,11 @@ function buildRecMap(
     }
   }
   if (filtered?.length) {
+    const seenIds = new Set<string>();
     for (const e of filtered) {
       const nId = normalizeModelIdForSelection(e.modelId);
+      if (seenIds.has(nId)) continue;
+      seenIds.add(nId);
       unavail.push({
         id: nId,
         label: models.find((m) => m.id === nId)?.label ?? nId,
@@ -624,7 +641,7 @@ export function ModelRecommendationDropdown({
                     </span>
                     <div className="flex-1" />
                     <span className="text-[10px] italic text-tool-text-label">
-                      {e.reason}
+                      {formatReasonLabel(e.reason)}
                     </span>
                   </div>
                 ))}
@@ -727,7 +744,7 @@ export function ModelRecommendationDropdown({
                                 {e.label}
                               </div>
                               <div className="text-[11px] italic text-tool-text-label">
-                                {e.reason}
+                                {formatReasonLabel(e.reason)}
                               </div>
                             </div>
                           </div>
