@@ -9,6 +9,7 @@ import {
 } from "@/components/ToolSidebar/config/modelConfig";
 import { getDefaultGenerationDurationSeconds } from "@shared/generationPricing";
 import { useGenerationControlsContext } from "@/features/prompt-optimizer/context/GenerationControlsContext";
+import { useCreditBalance } from "@/contexts/CreditBalanceContext";
 import {
   useGenerationControlsStoreActions,
   useGenerationControlsStoreState,
@@ -96,7 +97,8 @@ export function CanvasSettingsRow({
   onEnhance,
   isEnhancing = false,
 }: CanvasSettingsRowProps): React.ReactElement {
-  const { controls } = useGenerationControlsContext();
+  const { controls, onInsufficientCredits } = useGenerationControlsContext();
+  const { balance: creditBalance } = useCreditBalance();
   const { domain } = useGenerationControlsStoreState();
   const storeActions = useGenerationControlsStoreActions();
 
@@ -151,13 +153,32 @@ export function CanvasSettingsRow({
   );
   const isDraftModelSelected = selectedDraftModel !== null;
 
+  const creditCost = getVideoCost(
+    selectedDraftModel?.id ?? renderModelId,
+    duration,
+  );
+  const hasInsufficientCredits =
+    typeof creditBalance === "number" && creditBalance < creditCost;
+  const hasInsufficientPreviewCredits =
+    typeof creditBalance === "number" && creditBalance < STORYBOARD_COST;
+  const operationLabel = isDraftModelSelected
+    ? `${selectedDraftModel?.label ?? "Draft"} preview`
+    : "Video render";
+
   const previewDisabled =
     !controls?.onStoryboard ||
     isGenerationBusy ||
-    (!hasPrompt && !hasStartFrame);
+    (!hasPrompt && !hasStartFrame) ||
+    hasInsufficientPreviewCredits;
   const generateDisabled = isDraftModelSelected
-    ? !controls?.onDraft || isGenerationBusy || !hasPrompt
-    : !controls?.onRender || isGenerationBusy || !hasPrompt;
+    ? !controls?.onDraft ||
+      isGenerationBusy ||
+      !hasPrompt ||
+      hasInsufficientCredits
+    : !controls?.onRender ||
+      isGenerationBusy ||
+      !hasPrompt ||
+      hasInsufficientCredits;
 
   const trackGenerationStart = useCallback(
     (selectedModelId: string) => {
@@ -193,6 +214,10 @@ export function CanvasSettingsRow({
   );
 
   const handleGenerate = useCallback(() => {
+    if (hasInsufficientCredits) {
+      onInsufficientCredits?.(creditCost, operationLabel);
+      return;
+    }
     if (selectedDraftModel) {
       trackGenerationStart(selectedDraftModel.id);
       controls?.onDraft?.(selectedDraftModel.id);
@@ -200,14 +225,18 @@ export function CanvasSettingsRow({
       trackGenerationStart(renderModelId);
       controls?.onRender?.(renderModelId);
     }
-  }, [controls, renderModelId, selectedDraftModel, trackGenerationStart]);
+  }, [
+    controls,
+    creditCost,
+    hasInsufficientCredits,
+    onInsufficientCredits,
+    operationLabel,
+    renderModelId,
+    selectedDraftModel,
+    trackGenerationStart,
+  ]);
 
   const formatDurationLabel = useCallback((v: number) => `${v}s`, []);
-
-  const creditCost = getVideoCost(
-    selectedDraftModel?.id ?? renderModelId,
-    duration,
-  );
 
   return (
     <div
@@ -348,15 +377,27 @@ export function CanvasSettingsRow({
           type="button"
           data-testid="canvas-preview-button"
           className="inline-flex h-[28px] w-[28px] items-center justify-center rounded-md text-tool-text-muted transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:text-tool-text-label"
-          onClick={() => controls?.onStoryboard?.()}
+          onClick={() => {
+            if (hasInsufficientPreviewCredits) {
+              onInsufficientCredits?.(STORYBOARD_COST, "Storyboard preview");
+              return;
+            }
+            controls?.onStoryboard?.();
+          }}
           disabled={previewDisabled}
           aria-label={
             isSubmitting
               ? "Starting storyboard generation"
-              : `Preview storyboard ${STORYBOARD_COST} credits`
+              : hasInsufficientPreviewCredits
+                ? `Need ${STORYBOARD_COST} credits for preview — top up in billing`
+                : `Preview storyboard ${STORYBOARD_COST} credits`
           }
           title={
-            isSubmitting ? "Starting..." : `Preview · ${STORYBOARD_COST} cr`
+            isSubmitting
+              ? "Starting..."
+              : hasInsufficientPreviewCredits
+                ? `Need ${STORYBOARD_COST} credits`
+                : `Preview · ${STORYBOARD_COST} cr`
           }
         >
           <Eye size={14} />
@@ -373,12 +414,16 @@ export function CanvasSettingsRow({
           aria-label={
             isGenerationBusy
               ? "Starting generation"
-              : `${isDraftModelSelected ? "Draft" : "Generate"} ${creditCost} credits`
+              : hasInsufficientCredits
+                ? `Need ${creditCost} credits — top up in billing`
+                : `${isDraftModelSelected ? "Draft" : "Generate"} ${creditCost} credits`
           }
           title={
             isGenerationBusy
               ? "Starting..."
-              : `${isDraftModelSelected ? "Draft" : "Generate"} · ${creditCost} cr`
+              : hasInsufficientCredits
+                ? `Need ${creditCost} credits`
+                : `${isDraftModelSelected ? "Draft" : "Generate"} · ${creditCost} cr`
           }
         >
           {isGenerationBusy ? (

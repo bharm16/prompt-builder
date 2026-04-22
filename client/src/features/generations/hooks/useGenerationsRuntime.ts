@@ -547,8 +547,18 @@ export function useGenerationsRuntime({
   );
 
   const executeDraftAction = useCallback(
-    (model: DraftModel, overrides?: GenerationOverrides) => {
-      if (!prompt.trim()) return;
+    (
+      model: DraftModel,
+      overrides?: GenerationOverrides,
+      promptOverride?: string,
+    ) => {
+      // Prefer the live outer prompt when it's present (it may have been
+      // rewritten by the optimizer during session load); fall back to the
+      // intent's captured prompt when the editor is transiently empty
+      // between navigate-to-session and loader-rehydration.
+      const effectivePrompt =
+        prompt.trim().length > 0 ? prompt : (promptOverride ?? prompt);
+      if (!effectivePrompt.trim()) return;
       if (hasActiveContinuityShot) {
         onCreateVersionIfNeeded();
         void generateSequenceShot(model);
@@ -569,7 +579,7 @@ export function useGenerationsRuntime({
         resolvedOverrides?.characterAssetId ??
         (!resolvedStartImage ? detectedCharacter?.id : undefined);
 
-      generateDraft(model, prompt, {
+      generateDraft(model, effectivePrompt, {
         promptVersionId: versionId,
         ...(resolvedStartImage ? { startImage: resolvedStartImage } : {}),
         ...(resolvedOverrides?.endImage
@@ -711,7 +721,11 @@ export function useGenerationsRuntime({
   }, [clearSelectedFrameInWorkflow]);
 
   const executeRenderAction = useCallback(
-    (model: string, overrides?: GenerationOverrides) => {
+    (
+      model: string,
+      overrides?: GenerationOverrides,
+      _promptOverride?: string,
+    ) => {
       if (hasActiveContinuityShot) {
         onCreateVersionIfNeeded();
         void generateSequenceShot(model);
@@ -785,34 +799,43 @@ export function useGenerationsRuntime({
     ],
   );
 
-  const executeStoryboardAction = useCallback(() => {
-    if (hasActiveContinuityShot) {
-      onCreateVersionIfNeeded();
-      void generateSequenceShot(VIDEO_DRAFT_MODEL.id);
-      return;
-    }
-    const storyboardConfig = getModelConfig("flux-kontext");
-    const requiredCredits = storyboardConfig?.credits ?? 4;
-    if (!hasCreditsFor(requiredCredits, "Storyboard")) {
-      return;
-    }
-    const resolvedPrompt =
-      prompt.trim() || "Generate a storyboard based on the reference image.";
-    const versionId = onCreateVersionIfNeeded();
-    const seedImageUrl = startFrame?.url ?? null;
-    generateStoryboard(resolvedPrompt, {
-      promptVersionId: versionId,
-      seedImageUrl,
-    });
-  }, [
-    generateStoryboard,
-    generateSequenceShot,
-    hasActiveContinuityShot,
-    hasCreditsFor,
-    onCreateVersionIfNeeded,
-    prompt,
-    startFrame?.url,
-  ]);
+  const executeStoryboardAction = useCallback(
+    (promptOverride?: string) => {
+      if (hasActiveContinuityShot) {
+        onCreateVersionIfNeeded();
+        void generateSequenceShot(VIDEO_DRAFT_MODEL.id);
+        return;
+      }
+      const storyboardConfig = getModelConfig("flux-kontext");
+      const requiredCredits = storyboardConfig?.credits ?? 4;
+      if (!hasCreditsFor(requiredCredits, "Storyboard")) {
+        return;
+      }
+      // Prefer the live outer prompt when present (optimizer may have
+      // rewritten it during session load). Fall back to the intent's
+      // captured prompt when the editor is transiently empty during
+      // draft→persisted navigation.
+      const resolvedPrompt =
+        prompt.trim() ||
+        promptOverride?.trim() ||
+        "Generate a storyboard based on the reference image.";
+      const versionId = onCreateVersionIfNeeded();
+      const seedImageUrl = startFrame?.url ?? null;
+      generateStoryboard(resolvedPrompt, {
+        promptVersionId: versionId,
+        seedImageUrl,
+      });
+    },
+    [
+      generateStoryboard,
+      generateSequenceShot,
+      hasActiveContinuityShot,
+      hasCreditsFor,
+      onCreateVersionIfNeeded,
+      prompt,
+      startFrame?.url,
+    ],
+  );
 
   const handleStoryboard = useCallback(() => {
     if (isPreparingGenerationRef.current || isSubmitting) {
@@ -874,10 +897,10 @@ export function useGenerationsRuntime({
     if (pendingIntent.sessionId !== currentSessionId) {
       return;
     }
-    // Wait for the editor to have loaded the new session's prompt (any non-empty
-    // value is fine — the prompt may be rewritten by the optimizer between save
-    // and resume, so strict equality with pendingIntent.prompt is too fragile).
-    if (prompt.trim().length === 0) {
+    // Gate on the INTENT's captured prompt, not the outer `prompt` prop. The
+    // editor is transiently empty between navigate-to-session and loader
+    // rehydration; reading the intent keeps the resume deterministic.
+    if (pendingIntent.prompt.trim().length === 0) {
       return;
     }
 
@@ -891,7 +914,11 @@ export function useGenerationsRuntime({
       typeof nextIntent.model === "string" &&
       nextIntent.prompt.trim()
     ) {
-      executeDraftActionRef.current(nextIntent.model, nextIntent.overrides);
+      executeDraftActionRef.current(
+        nextIntent.model,
+        nextIntent.overrides,
+        nextIntent.prompt,
+      );
       return;
     }
 
@@ -900,11 +927,15 @@ export function useGenerationsRuntime({
       typeof nextIntent.model === "string" &&
       nextIntent.prompt.trim()
     ) {
-      executeRenderActionRef.current(nextIntent.model, nextIntent.overrides);
+      executeRenderActionRef.current(
+        nextIntent.model,
+        nextIntent.overrides,
+        nextIntent.prompt,
+      );
       return;
     }
 
-    executeStoryboardActionRef.current();
+    executeStoryboardActionRef.current(nextIntent.prompt);
   }, [currentSessionId, isSubmitting, prompt, setPreparingGenerationPending]);
 
   const handleDraftForControls = useCallback(
