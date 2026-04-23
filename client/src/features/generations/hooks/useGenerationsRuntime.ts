@@ -323,6 +323,23 @@ export function useGenerationsRuntime({
     selectedModelSupportsExtend,
   ]);
 
+  const loadHistoryFromFirestore = promptHistory.loadHistoryFromFirestore;
+  const refreshHistoryFromServer = useCallback((): void => {
+    const uid = authUser?.uid;
+    if (!uid) return;
+    // Fire-and-forget — the gallery re-renders on its own when history state
+    // hydrates. Any error is logged by useHistoryPersistence internally.
+    void loadHistoryFromFirestore(uid);
+  }, [authUser?.uid, loadHistoryFromFirestore]);
+
+  const handleServerGenerationPersisted = useCallback((): void => {
+    // ISSUE-12 UX polish: after the server confirms attachment, refresh
+    // history so the session's version.generations flows into
+    // initialGenerations → useGenerationsState → GalleryPanel without the
+    // user needing to reload.
+    refreshHistoryFromServer();
+  }, [refreshHistoryFromServer]);
+
   const generationActionsOptions = useMemo(
     () => ({
       aspectRatio,
@@ -339,6 +356,7 @@ export function useGenerationsRuntime({
       sessionId: isRemoteSessionId(currentSessionId) ? currentSessionId : null,
       generations,
       onInsufficientCredits: notifyInsufficientCredits,
+      onServerGenerationPersisted: handleServerGenerationPersisted,
     }),
     [
       aspectRatio,
@@ -346,6 +364,7 @@ export function useGenerationsRuntime({
       duration,
       fps,
       generations,
+      handleServerGenerationPersisted,
       mergedGenerationParams,
       notifyInsufficientCredits,
       promptVersionId,

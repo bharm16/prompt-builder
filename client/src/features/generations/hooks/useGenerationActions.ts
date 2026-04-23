@@ -53,6 +53,15 @@ interface UseGenerationActionsOptions {
   onInsufficientCredits?:
     | ((required: number, operation: string) => void)
     | undefined;
+  /**
+   * Invoked when a preview POST returns a server-persisted generationId.
+   * Callers use this signal to re-fetch the session so the gallery can
+   * hydrate from authoritative server state instead of waiting for a
+   * page reload.
+   */
+  onServerGenerationPersisted?:
+    | ((info: { sessionId: string; generationId: string }) => void)
+    | undefined;
 }
 
 interface StoryboardParams extends GenerationParams {
@@ -1067,6 +1076,20 @@ export function useGenerationActions(
             thumbnailUrl: response.data.baseImageUrl || urls[0] || null,
           },
         );
+
+        // ISSUE-12 UX polish: tell the caller the server has persisted the
+        // generation so it can re-fetch the session and hydrate the gallery
+        // without requiring a page reload. Only fire when the server
+        // actually attached (generationId present) AND we have a session
+        // to refetch.
+        const sessionIdForCallback =
+          sessionParams.sessionId ?? optionsRef.current.sessionId;
+        if (serverGenerationId && sessionIdForCallback) {
+          optionsRef.current.onServerGenerationPersisted?.({
+            sessionId: sessionIdForCallback,
+            generationId: serverGenerationId,
+          });
+        }
         inFlightRef.current.delete(generation.id);
         setSubmissionPending(false);
       } catch (error) {
