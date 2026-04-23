@@ -18,13 +18,14 @@ export function CreditOnboardingBanner({
 }: CreditOnboardingBannerProps): React.ReactElement | null {
   const [dismissed, setDismissed] = React.useState(false);
 
-  // Auto-dismiss once the user has spent any of their starter grant — the
-  // onboarding copy ("You started with N credits.") is stale after that and
-  // misleads users about their current balance.
+  // Auto-dismiss once the live balance diverges from the starter grant —
+  // either direction. The onboarding copy ("You started with N credits.")
+  // is stale as soon as the user has spent anything OR topped up; leaving
+  // it up after a top-up misleads users about their actual balance.
   const shouldAutoDismiss =
     typeof currentBalance === "number" &&
     typeof starterGrantCredits === "number" &&
-    currentBalance < starterGrantCredits;
+    currentBalance !== starterGrantCredits;
 
   React.useEffect(() => {
     if (!userId) {
