@@ -68,3 +68,74 @@ export function parseVideoPromptStructuredResponse(
   }
   return validated.data as VideoPromptStructuredResponse;
 }
+
+/**
+ * Canonical shot-framing enum used by video prompt optimization. Duplicated in
+ * `server/src/utils/provider/schemas/videoOptimization.ts` because the schema
+ * file is under `@utils/provider/schemas` (cross-cutting) and importing back
+ * into strategies would invert the dependency. If this list changes, update
+ * both.
+ */
+export const KNOWN_SHOT_FRAMINGS = [
+  "Extreme Close-Up",
+  "Close-Up",
+  "Medium Close-Up",
+  "Medium Shot",
+  "Medium Long Shot",
+  "Cowboy Shot",
+  "Full Shot",
+  "Wide Shot",
+  "Extreme Wide Shot",
+  "Establishing Shot",
+  "Master Shot",
+  "Two-Shot",
+  "Insert Shot",
+  "Cutaway",
+] as const;
+
+export type ShotFraming = (typeof KNOWN_SHOT_FRAMINGS)[number];
+
+export const DEFAULT_SHOT_FRAMING: ShotFraming = "Wide Shot";
+
+// Longest-first so "Extreme Wide Shot" wins over "Wide Shot" when both
+// appear in the same input. Precomputed at module load — sort order is
+// static. Pattern bounds the match with non-alphanumeric context on both
+// sides so "wide-ish" doesn't match "Wide Shot".
+const FRAMING_MATCHERS: ReadonlyArray<{
+  readonly framing: ShotFraming;
+  readonly pattern: RegExp;
+}> = [...KNOWN_SHOT_FRAMINGS]
+  .sort((a, b) => b.length - a.length)
+  .map((framing) => ({
+    framing,
+    pattern: new RegExp(
+      `(?:^|\\s|[.,;:!?()-])${framing.replace(
+        /[.*+?^${}()|[\]\\]/g,
+        "\\$&",
+      )}(?=$|[\\s.,;:!?()-])`,
+      "i",
+    ),
+  }));
+
+/**
+ * Defensively normalizes an LLM-provided shot_framing value to a known enum
+ * label. Fallback paths (Groq non-strict, StructuredOutputEnforcer loose
+ * schema) do not enforce the enum server-side, so the model can echo
+ * multi-sentence prose into this slot. Prefers the longest enum match found
+ * anywhere in the input; falls back to the default framing when nothing
+ * matches.
+ */
+export function normalizeShotFraming(
+  raw: string | null | undefined,
+): ShotFraming {
+  if (typeof raw !== "string") return DEFAULT_SHOT_FRAMING;
+  const trimmed = raw.trim();
+  if (trimmed.length === 0) return DEFAULT_SHOT_FRAMING;
+
+  for (const { framing, pattern } of FRAMING_MATCHERS) {
+    if (pattern.test(trimmed)) {
+      return framing;
+    }
+  }
+  return DEFAULT_SHOT_FRAMING;
+}

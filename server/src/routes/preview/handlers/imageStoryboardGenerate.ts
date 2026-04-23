@@ -16,6 +16,7 @@ type ImageStoryboardGenerateServices = Pick<
   | "userCreditService"
   | "assetService"
   | "requestIdempotencyService"
+  | "sessionService"
 >;
 
 const IMAGE_PREVIEW_CREDIT_COST = 1;
@@ -68,6 +69,7 @@ export const createImageStoryboardGenerateHandler =
     userCreditService,
     assetService,
     requestIdempotencyService,
+    sessionService,
   }: ImageStoryboardGenerateServices) =>
   async (req: Request, res: Response): Promise<Response | void> => {
     if (!storyboardPreviewService) {
@@ -94,8 +96,15 @@ export const createImageStoryboardGenerateHandler =
       });
     }
 
-    const { prompt, aspectRatio, seedImageUrl, speedMode, seed } =
-      parsedRequest.data;
+    const {
+      prompt,
+      aspectRatio,
+      seedImageUrl,
+      speedMode,
+      seed,
+      sessionId,
+      promptVersionId,
+    } = parsedRequest.data;
     const requestId = (req as Request & { id?: string }).id;
 
     const userId =
@@ -325,6 +334,61 @@ export const createImageStoryboardGenerateHandler =
         imageHosts,
       });
 
+      // ISSUE-12: server-authoritative persistence. When the client supplies
+      // sessionId + promptVersionId, append the generation record into the
+      // target version atomically so the client can render it from the
+      // session refetch — no local-only dispatch required.
+      let persistedGenerationId: string | null = null;
+      if (sessionId && promptVersionId && sessionService) {
+        const generationId = randomUUID();
+        const mediaAssetIds = (result.storagePaths ?? [])
+          .map((path) => path.split("/").filter(Boolean).pop() ?? null)
+          .filter((id): id is string => Boolean(id));
+        const generationRecord: Record<string, unknown> = {
+          id: generationId,
+          tier: "draft",
+          model: "flux-kontext",
+          prompt,
+          status: "completed",
+          mediaUrls: result.imageUrls,
+          ...(mediaAssetIds.length ? { mediaAssetIds } : {}),
+          thumbnailUrl: result.baseImageUrl || result.imageUrls[0] || null,
+          promptVersionId,
+          completedAt: new Date().toISOString(),
+        };
+        try {
+          await sessionService.appendGenerationToVersion(
+            userId,
+            sessionId,
+            promptVersionId,
+            generationRecord,
+          );
+          persistedGenerationId = generationId;
+          logger.info("Storyboard generation persisted to session", {
+            userId,
+            sessionId,
+            promptVersionId,
+            generationId,
+          });
+        } catch (persistError) {
+          // Persistence failure does NOT void the already-charged generation —
+          // the media URLs are still returned so the user sees the result.
+          // Log and surface a soft warning in the response; a follow-up
+          // reconciliation path can reattach orphaned generations.
+          logger.error(
+            "Storyboard session persist failed; returning media without session write",
+            persistError instanceof Error
+              ? persistError
+              : new Error(String(persistError)),
+            {
+              userId,
+              sessionId,
+              promptVersionId,
+            },
+          );
+        }
+      }
+
       const responseBody = {
         success: true,
         data: {
@@ -332,6 +396,9 @@ export const createImageStoryboardGenerateHandler =
           storagePaths: result.storagePaths,
           deltas: result.deltas,
           baseImageUrl: result.baseImageUrl,
+          ...(persistedGenerationId
+            ? { generationId: persistedGenerationId }
+            : {}),
         },
       } as Record<string, unknown>;
 

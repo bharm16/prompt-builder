@@ -45,6 +45,10 @@ interface UseGenerationActionsOptions {
   fps?: number | undefined;
   generationParams?: Record<string, unknown> | undefined;
   promptVersionId?: string | null | undefined;
+  // ISSUE-12: when present, preview POSTs include sessionId so the server can
+  // atomically append the generation to the named session version. Absence
+  // falls through to the legacy client-authoritative dispatch path.
+  sessionId?: string | null | undefined;
   generations?: Generation[] | undefined;
   onInsufficientCredits?:
     | ((required: number, operation: string) => void)
@@ -57,6 +61,22 @@ interface StoryboardParams extends GenerationParams {
 
 const log = logger.child("useGenerationActions");
 const TRIGGER_REGEX = /@([a-zA-Z][a-zA-Z0-9_-]*)/g;
+
+/**
+ * Normalize the session-persistence context from hook options. Returns
+ * `undefined` for either field when absent/blank so the spread at the call
+ * site omits the key entirely and the server takes its legacy path.
+ */
+const readSessionParams = (
+  options: UseGenerationActionsOptions,
+): { sessionId?: string; promptVersionId?: string } => {
+  const sessionId = options.sessionId?.trim();
+  const promptVersionId = options.promptVersionId?.trim();
+  return {
+    ...(sessionId ? { sessionId } : {}),
+    ...(promptVersionId ? { promptVersionId } : {}),
+  };
+};
 
 const normalizeMotionString = (value: unknown): string | null => {
   if (typeof value !== "string") {
@@ -361,14 +381,19 @@ export function useGenerationActions(
     [dispatch],
   );
 
+  // ISSUE-12 follow-up: ADD_GENERATION was retired in favour of
+  // SET_GENERATIONS over a known-good set. The helper keeps its name
+  // because every call site already reads as "accept this generation into
+  // the state" — the underlying dispatch is now a state-replace that
+  // appends to the current set, which forces the caller's mental model
+  // to stay consistent with the server-authoritative view.
   const acceptGeneration = useCallback(
     (generation: Generation, updates: Partial<Generation> = {}) => {
+      const merged: Generation = { ...generation, ...updates };
+      const current = optionsRef.current.generations ?? [];
       dispatch({
-        type: "ADD_GENERATION",
-        payload: {
-          ...generation,
-          ...updates,
-        },
+        type: "SET_GENERATIONS",
+        payload: [...current, merged],
       });
     },
     [dispatch],
@@ -522,6 +547,7 @@ export function useGenerationActions(
             ...(resolved.aspectRatio
               ? { aspectRatio: resolved.aspectRatio }
               : {}),
+            ...readSessionParams(optionsRef.current),
           });
           if (controller.signal.aborted) {
             clearSubmissionPendingIfNeeded(generationAccepted);
@@ -544,24 +570,34 @@ export function useGenerationActions(
           }
           const urls = response.data.imageUrls;
           const storagePaths = response.data.storagePaths;
+          const serverGenerationId = response.data.generationId;
           const durationMs = Date.now() - startedAt;
 
           log.info("Storyboard draft generation succeeded", {
             generationId: generation.id,
             durationMs,
             framesCount: urls.length,
+            serverPersisted: Boolean(serverGenerationId),
             ...motionMeta,
           });
           generationAccepted = true;
-          acceptGeneration(generation, {
-            status: "completed",
-            completedAt: Date.now(),
-            mediaUrls: urls,
-            ...(storagePaths?.length
-              ? { mediaAssetIds: toAssetIds(storagePaths) }
-              : {}),
-            thumbnailUrl: response.data.baseImageUrl || urls[0] || null,
-          });
+          // When the server persisted, adopt the server-assigned id so a
+          // subsequent session refetch is an id-matched no-op rather than
+          // a clobbering duplicate.
+          acceptGeneration(
+            serverGenerationId
+              ? { ...generation, id: serverGenerationId }
+              : generation,
+            {
+              status: "completed",
+              completedAt: Date.now(),
+              mediaUrls: urls,
+              ...(storagePaths?.length
+                ? { mediaAssetIds: toAssetIds(storagePaths) }
+                : {}),
+              thumbnailUrl: response.data.baseImageUrl || urls[0] || null,
+            },
+          );
           inFlightRef.current.delete(generation.id);
           setSubmissionPending(false);
           return;
@@ -726,6 +762,7 @@ export function useGenerationActions(
             ...(resolved.faceSwapAlreadyApplied
               ? { faceSwapAlreadyApplied: true }
               : {}),
+            ...readSessionParams(optionsRef.current),
           },
         );
         if (controller.signal.aborted) {
@@ -964,6 +1001,7 @@ export function useGenerationActions(
           ...(resolvedSeedImageUrl
             ? { seedImageUrl: resolvedSeedImageUrl }
             : {}),
+          ...readSessionParams(optionsRef.current),
         });
         if (controller.signal.aborted) {
           clearSubmissionPendingIfNeeded(generationAccepted);
@@ -988,23 +1026,36 @@ export function useGenerationActions(
         }
         const urls = response.data.imageUrls;
         const storagePaths = response.data.storagePaths;
+        const serverGenerationId = response.data.generationId;
         const durationMs = Date.now() - startedAt;
         log.info("Storyboard generation succeeded", {
           generationId: generation.id,
           durationMs,
           framesCount: urls.length,
+          serverPersisted: Boolean(serverGenerationId),
           ...motionMeta,
         });
+
         generationAccepted = true;
-        acceptGeneration(generation, {
-          status: "completed" as const,
-          completedAt: Date.now(),
-          mediaUrls: urls,
-          ...(storagePaths?.length
-            ? { mediaAssetIds: toAssetIds(storagePaths) }
-            : {}),
-          thumbnailUrl: response.data.baseImageUrl || urls[0] || null,
-        });
+        // When the server persisted, adopt the server-assigned id so a
+        // subsequent session refetch is an id-matched no-op rather than a
+        // clobbering duplicate. When the server didn't persist (legacy or
+        // soft-fail path), keep the client-minted id; syncVersionGenerations
+        // mirrors it upward eventually.
+        acceptGeneration(
+          serverGenerationId
+            ? { ...generation, id: serverGenerationId }
+            : generation,
+          {
+            status: "completed",
+            completedAt: Date.now(),
+            mediaUrls: urls,
+            ...(storagePaths?.length
+              ? { mediaAssetIds: toAssetIds(storagePaths) }
+              : {}),
+            thumbnailUrl: response.data.baseImageUrl || urls[0] || null,
+          },
+        );
         inFlightRef.current.delete(generation.id);
         setSubmissionPending(false);
       } catch (error) {
@@ -1224,6 +1275,7 @@ export function useGenerationActions(
             ...(resolved.faceSwapAlreadyApplied
               ? { faceSwapAlreadyApplied: true }
               : {}),
+            ...readSessionParams(optionsRef.current),
           },
         );
         if (controller.signal.aborted) {

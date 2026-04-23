@@ -131,14 +131,19 @@ describe("useGenerationActions", () => {
         });
       });
 
+      // ISSUE-12 follow-up: ADD_GENERATION retired; state growth now flows
+      // through SET_GENERATIONS with the full array. The failed generation
+      // appears as the last element of the payload.
       expect(dispatch).toHaveBeenCalledWith(
         expect.objectContaining({
-          type: "ADD_GENERATION",
-          payload: expect.objectContaining({
-            id: "gen-1",
-            status: "failed",
-            error: "No frames",
-          }),
+          type: "SET_GENERATIONS",
+          payload: expect.arrayContaining([
+            expect.objectContaining({
+              id: "gen-1",
+              status: "failed",
+              error: "No frames",
+            }),
+          ]),
         }),
       );
     });
@@ -162,12 +167,14 @@ describe("useGenerationActions", () => {
 
       expect(dispatch).toHaveBeenCalledWith(
         expect.objectContaining({
-          type: "ADD_GENERATION",
-          payload: expect.objectContaining({
-            id: "gen-1",
-            status: "failed",
-            error: "No credits",
-          }),
+          type: "SET_GENERATIONS",
+          payload: expect.arrayContaining([
+            expect.objectContaining({
+              id: "gen-1",
+              status: "failed",
+              error: "No credits",
+            }),
+          ]),
         }),
       );
     });
@@ -342,14 +349,16 @@ describe("useGenerationActions", () => {
 
       expect(dispatch).toHaveBeenCalledWith(
         expect.objectContaining({
-          type: "ADD_GENERATION",
-          payload: expect.objectContaining({
-            id: "gen-1",
-            status: "completed",
-            mediaUrls: ["https://cdn/frame1.png", "https://cdn/frame2.png"],
-            thumbnailUrl: "https://cdn/base.png",
-            mediaAssetIds: ["path1", "path2"],
-          }),
+          type: "SET_GENERATIONS",
+          payload: expect.arrayContaining([
+            expect.objectContaining({
+              id: "gen-1",
+              status: "completed",
+              mediaUrls: ["https://cdn/frame1.png", "https://cdn/frame2.png"],
+              thumbnailUrl: "https://cdn/base.png",
+              mediaAssetIds: ["path1", "path2"],
+            }),
+          ]),
         }),
       );
     });
@@ -375,13 +384,15 @@ describe("useGenerationActions", () => {
 
       expect(dispatch).toHaveBeenCalledWith(
         expect.objectContaining({
-          type: "ADD_GENERATION",
-          payload: expect.objectContaining({
-            id: "gen-1",
-            status: "completed",
-            mediaUrls: ["https://cdn/video.mp4"],
-            mediaAssetIds: ["video-asset-1"],
-          }),
+          type: "SET_GENERATIONS",
+          payload: expect.arrayContaining([
+            expect.objectContaining({
+              id: "gen-1",
+              status: "completed",
+              mediaUrls: ["https://cdn/video.mp4"],
+              mediaAssetIds: ["video-asset-1"],
+            }),
+          ]),
         }),
       );
     });

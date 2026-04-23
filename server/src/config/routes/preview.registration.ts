@@ -34,6 +34,7 @@ export function registerPreviewRoutes(
     faceSwapService: container.resolve("faceSwapService"),
     assetService: container.resolve("assetService"),
     requestIdempotencyService: container.resolve("requestIdempotencyService"),
+    sessionService: container.resolve("sessionService"),
   });
 
   const starterCreditsMiddleware =

@@ -360,4 +360,176 @@ describe("SessionService", () => {
       expect(sessionStore.delete).toHaveBeenCalledWith("session-1");
     });
   });
+
+  describe("appendGenerationToVersion (ISSUE-12: server-authoritative persistence)", () => {
+    const gen = (
+      overrides: Record<string, unknown> = {},
+    ): Record<string, unknown> => ({
+      id: "gen-1",
+      tier: "draft",
+      model: "flux-kontext",
+      prompt: "astronaut on mars",
+      status: "completed",
+      mediaUrls: ["https://example.com/frame-1.png"],
+      ...overrides,
+    });
+
+    it("appends a generation to an existing version's generations array", async () => {
+      const existing = buildRecord({
+        prompt: {
+          input: "raw prompt",
+          output: "optimized prompt",
+          versions: [
+            {
+              versionId: "v-1",
+              signature: "sig",
+              prompt: "optimized prompt",
+              timestamp: "2026-04-22T00:00:00.000Z",
+              generations: [],
+            },
+          ],
+        },
+      });
+      sessionStore.get.mockResolvedValue(existing);
+
+      const service = new SessionService(sessionStore as never);
+      await service.appendGenerationToVersion(
+        "user-1",
+        "session-1",
+        "v-1",
+        gen(),
+      );
+
+      expect(sessionStore.save).toHaveBeenCalledTimes(1);
+      const saved = sessionStore.save.mock.calls[0]![0] as SessionRecord;
+      expect(saved.prompt?.versions).toHaveLength(1);
+      expect(saved.prompt?.versions?.[0]?.generations).toHaveLength(1);
+      expect(saved.prompt?.versions?.[0]?.generations?.[0]).toMatchObject({
+        id: "gen-1",
+        status: "completed",
+      });
+    });
+
+    it("preserves existing generations when appending (no clobbering prior media)", async () => {
+      const priorGen = gen({ id: "gen-0", mediaUrls: ["https://prior.png"] });
+      const existing = buildRecord({
+        prompt: {
+          input: "raw",
+          output: "optimized",
+          versions: [
+            {
+              versionId: "v-1",
+              signature: "sig",
+              prompt: "optimized",
+              timestamp: "2026-04-22T00:00:00.000Z",
+              generations: [priorGen],
+            },
+          ],
+        },
+      });
+      sessionStore.get.mockResolvedValue(existing);
+
+      const service = new SessionService(sessionStore as never);
+      await service.appendGenerationToVersion(
+        "user-1",
+        "session-1",
+        "v-1",
+        gen({ id: "gen-new" }),
+      );
+
+      const saved = sessionStore.save.mock.calls[0]![0] as SessionRecord;
+      const generations = saved.prompt?.versions?.[0]?.generations ?? [];
+      expect(generations).toHaveLength(2);
+      expect((generations[0] as { id: string }).id).toBe("gen-0");
+      expect((generations[1] as { id: string }).id).toBe("gen-new");
+    });
+
+    it("creates the target version in place when it does not yet exist (draft transition)", async () => {
+      const existing = buildRecord({
+        prompt: {
+          input: "raw",
+          output: "optimized",
+          versions: [],
+        },
+      });
+      sessionStore.get.mockResolvedValue(existing);
+
+      const service = new SessionService(sessionStore as never);
+      await service.appendGenerationToVersion(
+        "user-1",
+        "session-1",
+        "v-new",
+        gen(),
+      );
+
+      const saved = sessionStore.save.mock.calls[0]![0] as SessionRecord;
+      expect(saved.prompt?.versions).toHaveLength(1);
+      expect(saved.prompt?.versions?.[0]?.versionId).toBe("v-new");
+      expect(saved.prompt?.versions?.[0]?.generations).toHaveLength(1);
+    });
+
+    it("blocks the append when session is owned by a different user", async () => {
+      const existing = buildRecord({
+        userId: "other-user",
+        prompt: { input: "", output: "", versions: [] },
+      });
+      sessionStore.get.mockResolvedValue(existing);
+
+      const service = new SessionService(sessionStore as never);
+      await expect(
+        service.appendGenerationToVersion("user-1", "session-1", "v-1", gen()),
+      ).rejects.toBeInstanceOf(SessionAccessDeniedError);
+      expect(sessionStore.save).not.toHaveBeenCalled();
+    });
+
+    it("rejects with SessionNotFoundError when session does not exist", async () => {
+      sessionStore.get.mockResolvedValue(null);
+
+      const service = new SessionService(sessionStore as never);
+      await expect(
+        service.appendGenerationToVersion(
+          "user-1",
+          "missing-session",
+          "v-1",
+          gen(),
+        ),
+      ).rejects.toBeInstanceOf(SessionNotFoundError);
+      expect(sessionStore.save).not.toHaveBeenCalled();
+    });
+
+    it("is idempotent by generation id — a retry for the same job upserts rather than duplicates", async () => {
+      const existing = buildRecord({
+        prompt: {
+          input: "raw",
+          output: "optimized",
+          versions: [
+            {
+              versionId: "v-1",
+              signature: "sig",
+              prompt: "optimized",
+              timestamp: "2026-04-22T00:00:00.000Z",
+              generations: [gen({ id: "job-7", status: "completed" })],
+            },
+          ],
+        },
+      });
+      sessionStore.get.mockResolvedValue(existing);
+
+      const service = new SessionService(sessionStore as never);
+      await service.appendGenerationToVersion(
+        "user-1",
+        "session-1",
+        "v-1",
+        gen({ id: "job-7", mediaUrls: ["https://new.png"] }),
+      );
+
+      const saved = sessionStore.save.mock.calls[0]![0] as SessionRecord;
+      const generations = saved.prompt?.versions?.[0]?.generations ?? [];
+      expect(generations).toHaveLength(1);
+      expect((generations[0] as { id: string }).id).toBe("job-7");
+      expect((generations[0] as { mediaUrls: string[] }).mediaUrls).toEqual([
+        "https://new.png",
+      ]);
+    });
+  });
 });

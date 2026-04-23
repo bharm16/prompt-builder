@@ -33,6 +33,7 @@ import { VideoGenerationService } from "@services/video-generation/VideoGenerati
 import { VideoJobStore } from "@services/video-generation/jobs/VideoJobStore";
 import { VideoWorkerHeartbeatStore } from "@services/video-generation/jobs/VideoWorkerHeartbeatStore";
 import { VideoJobHandler } from "@services/video-generation/jobs/VideoJobHandler";
+import type { SessionService } from "@services/sessions/SessionService";
 import { VideoJobWorker } from "@services/video-generation/jobs/VideoJobWorker";
 import { createVideoJobSweeper } from "@services/video-generation/jobs/VideoJobSweeper";
 import { createVideoJobReconciler } from "@services/video-generation/jobs/VideoJobReconciler";
@@ -411,6 +412,7 @@ export function registerGenerationServices(container: DIContainer): void {
       storageService: StorageService,
       metricsService: MetricsService,
       providerCircuitManager: ProviderCircuitManager,
+      sessionService: SessionService,
     ) => {
       if (!videoGenerationService) {
         return null;
@@ -423,6 +425,10 @@ export function registerGenerationServices(container: DIContainer): void {
         {
           providerCircuitManager,
           metrics: metricsService,
+          // SessionService structurally satisfies JobSessionAppendPort; the
+          // worker pipeline calls appendGenerationToVersion on successful
+          // job completion so video generations are durable server-side.
+          sessionService,
         },
       );
     },
@@ -433,6 +439,7 @@ export function registerGenerationServices(container: DIContainer): void {
       "storageService",
       "metricsService",
       "providerCircuitManager",
+      "sessionService",
     ],
   );
 

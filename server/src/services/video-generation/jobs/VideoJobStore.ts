@@ -29,6 +29,12 @@ const SLOW_FIRESTORE_OPERATION_MS = 1_000;
 interface CreateJobInput {
   userId: string;
   sessionId?: string;
+  /**
+   * ISSUE-12: when both sessionId and promptVersionId are set, the worker
+   * pipeline appends the completed generation to the named session version
+   * after successful markCompleted.
+   */
+  promptVersionId?: string;
   requestId?: string;
   request: VideoJobRequest;
   creditsReserved: number;
@@ -111,6 +117,9 @@ export class VideoJobStore {
       status: "queued",
       userId: input.userId,
       ...(input.sessionId ? { sessionId: input.sessionId } : {}),
+      ...(input.promptVersionId
+        ? { promptVersionId: input.promptVersionId }
+        : {}),
       ...(input.requestId ? { requestId: input.requestId } : {}),
       request: input.request,
       creditsReserved: input.creditsReserved,
@@ -171,6 +180,9 @@ export class VideoJobStore {
       status: "queued",
       userId: input.userId,
       ...(input.sessionId ? { sessionId: input.sessionId } : {}),
+      ...(input.promptVersionId
+        ? { promptVersionId: input.promptVersionId }
+        : {}),
       ...(input.requestId ? { requestId: input.requestId } : {}),
       request: input.request,
       creditsReserved: input.creditsReserved,

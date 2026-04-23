@@ -158,6 +158,11 @@ export interface GenerateStoryboardPreviewRequest {
   seedImageUrl?: string;
   speedMode?: PreviewSpeedMode;
   seed?: number;
+  // ISSUE-12: when both provided, the server appends the generation to the
+  // named session version so the client can render it from a session refetch
+  // instead of an optimistic local dispatch.
+  sessionId?: string;
+  promptVersionId?: string;
 }
 
 export interface GenerateStoryboardPreviewResponse {
@@ -167,6 +172,9 @@ export interface GenerateStoryboardPreviewResponse {
     storagePaths?: string[];
     deltas: string[];
     baseImageUrl: string;
+    // Returned when the server successfully persisted the generation into the
+    // session — signals the client that a session refetch is worthwhile.
+    generationId?: string;
   };
   error?: string;
   message?: string;
@@ -268,6 +276,10 @@ export async function generateStoryboardPreview(
       ...(seedImageUrl ? { seedImageUrl } : {}),
       ...(options?.speedMode ? { speedMode: options.speedMode } : {}),
       ...(options?.seed !== undefined ? { seed: options.seed } : {}),
+      ...(options?.sessionId ? { sessionId: options.sessionId } : {}),
+      ...(options?.promptVersionId
+        ? { promptVersionId: options.promptVersionId }
+        : {}),
     },
     {
       timeout: API_CONFIG.timeout.storyboard,
@@ -489,6 +501,11 @@ export interface GenerateVideoPreviewOptions {
   autoKeyframe?: boolean | undefined;
   faceSwapAlreadyApplied?: boolean | undefined;
   idempotencyKey?: string | undefined;
+  // ISSUE-12: when both provided, the worker's processVideoJob pipeline
+  // appends the completed generation to the named session version after
+  // markCompleted — makes video generation server-authoritative.
+  sessionId?: string | undefined;
+  promptVersionId?: string | undefined;
 }
 
 /**
@@ -536,6 +553,10 @@ export async function generateVideoPreview(
       : {}),
     ...(options?.faceSwapAlreadyApplied
       ? { faceSwapAlreadyApplied: true }
+      : {}),
+    ...(options?.sessionId ? { sessionId: options.sessionId } : {}),
+    ...(options?.promptVersionId
+      ? { promptVersionId: options.promptVersionId }
       : {}),
   };
   const idempotencyKey =

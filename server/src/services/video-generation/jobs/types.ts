@@ -58,6 +58,13 @@ export interface VideoJobRecord {
    * cancellation on session delete, preventing orphan in-flight jobs.
    */
   sessionId?: string;
+  /**
+   * ISSUE-12: when both sessionId and promptVersionId are set, the worker's
+   * processVideoJob pipeline appends the completed generation to the named
+   * session version after successful markCompleted. This is the async
+   * analogue of the synchronous storyboard persist path.
+   */
+  promptVersionId?: string;
   requestId?: string;
   request: VideoJobRequest;
   creditsReserved: number;

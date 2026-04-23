@@ -79,6 +79,8 @@ export const createVideoGenerateHandler =
       characterAssetId: requestedCharacterAssetId,
       autoKeyframe = true,
       faceSwapAlreadyApplied = false,
+      sessionId: requestedSessionId,
+      promptVersionId: requestedPromptVersionId,
     } = parsed.payload;
     let characterAssetId = requestedCharacterAssetId;
 
@@ -497,6 +499,10 @@ export const createVideoGenerateHandler =
         {
           userId,
           ...(requestId ? { requestId } : {}),
+          ...(requestedSessionId ? { sessionId: requestedSessionId } : {}),
+          ...(requestedPromptVersionId
+            ? { promptVersionId: requestedPromptVersionId }
+            : {}),
           request: {
             prompt: plan.promptWithMotion,
             options: plan.options,

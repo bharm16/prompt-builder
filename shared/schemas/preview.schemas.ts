@@ -59,6 +59,9 @@ export const GenerateStoryboardPreviewResponseSchema = z
         storagePaths: z.array(z.string()).optional(),
         deltas: z.array(z.string()),
         baseImageUrl: z.string(),
+        // ISSUE-12: present when the server persisted the generation into the
+        // named session version. Absent for legacy (no-session) POSTs.
+        generationId: z.string().optional(),
       })
       .optional(),
     error: z.string().optional(),

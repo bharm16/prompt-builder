@@ -8,7 +8,7 @@ import type { VideoGenerationService } from "../VideoGenerationService";
 import type { ProviderCircuitManager } from "./ProviderCircuitManager";
 import type { VideoJobStore } from "./VideoJobStore";
 import type { VideoJobRecord } from "./types";
-import { processVideoJob } from "./processVideoJob";
+import { processVideoJob, type JobSessionAppendPort } from "./processVideoJob";
 
 interface VideoJobHandlerOptions {
   providerCircuitManager?: ProviderCircuitManager;
@@ -18,6 +18,12 @@ interface VideoJobHandlerOptions {
       metadata?: Record<string, unknown>,
     ) => void;
   };
+  /**
+   * ISSUE-12: when provided, processVideoJob calls
+   * sessionService.appendGenerationToVersion after markCompleted succeeds,
+   * making video generations server-authoritative.
+   */
+  sessionService?: JobSessionAppendPort | null;
 }
 
 /**
@@ -49,7 +55,7 @@ export class VideoJobHandler implements JobHandler<VideoJobRecord> {
   }
 
   async process(job: VideoJobRecord, ctx: JobExecutionContext): Promise<void> {
-    const { providerCircuitManager, metrics } = this.options;
+    const { providerCircuitManager, metrics, sessionService } = this.options;
     await processVideoJob(job, {
       jobStore: this.jobStore,
       videoGenerationService: this.videoGenerationService as never,
@@ -71,6 +77,7 @@ export class VideoJobHandler implements JobHandler<VideoJobRecord> {
           }
         : {}),
       ...(metrics ? { metrics } : {}),
+      ...(sessionService ? { sessionService } : {}),
     });
   }
 }

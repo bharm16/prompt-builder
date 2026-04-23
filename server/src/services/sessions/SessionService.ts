@@ -369,6 +369,85 @@ export class SessionService {
     return this.updateVersions(sessionId, updates);
   }
 
+  /**
+   * Atomically append a generation record to a specific prompt version's
+   * generations array. This is the single-writer path for
+   * "server-authoritative generation persistence" — preview handlers call this
+   * after successfully generating media so the generation is durable before
+   * the client re-fetches the session.
+   *
+   * If the target version does not exist yet, it is created in place with the
+   * provided promptVersionId so the append is still durable. This handles the
+   * draft-to-persisted transition where the client may POST with a version id
+   * that only just materialized.
+   *
+   * NOTE: read-modify-write is not transactionally atomic across concurrent
+   * calls in the current store. For human-paced UI flows the race window is
+   * negligible; migrating to a transaction when Firestore backs the store is
+   * a follow-up.
+   */
+  async appendGenerationToVersion(
+    userId: string,
+    sessionId: string,
+    promptVersionId: string,
+    generation: Record<string, unknown>,
+  ): Promise<SessionRecord> {
+    const current = await this.requireOwnedSession(userId, sessionId);
+    const prompt = current.prompt ?? { input: "", output: "" };
+    const versions = Array.isArray(prompt.versions) ? [...prompt.versions] : [];
+
+    // Idempotent by generation id — a worker retry after a flaky
+    // markCompleted could call us twice for the same job. Upsert by id
+    // rather than appending blindly so we don't leave duplicates in the
+    // session's generations array.
+    const incomingId = typeof generation.id === "string" ? generation.id : null;
+
+    const upsertGenerations = (
+      existing: Array<Record<string, unknown>> | undefined,
+    ): Array<Record<string, unknown>> => {
+      const current = Array.isArray(existing) ? existing : [];
+      if (!incomingId) return [...current, generation];
+      const existingIdx = current.findIndex(
+        (g) => typeof g.id === "string" && g.id === incomingId,
+      );
+      if (existingIdx >= 0) {
+        const next = [...current];
+        next[existingIdx] = { ...current[existingIdx], ...generation };
+        return next;
+      }
+      return [...current, generation];
+    };
+
+    const idx = versions.findIndex((v) => v.versionId === promptVersionId);
+    if (idx >= 0) {
+      const existing = versions[idx]!;
+      versions[idx] = {
+        ...existing,
+        generations: upsertGenerations(existing.generations),
+      };
+    } else {
+      const basePromptText =
+        (typeof prompt.output === "string" && prompt.output.trim().length > 0
+          ? prompt.output
+          : prompt.input) || "";
+      versions.push({
+        versionId: promptVersionId,
+        signature: "server-append",
+        prompt: basePromptText,
+        timestamp: new Date().toISOString(),
+        generations: upsertGenerations(undefined),
+      });
+    }
+
+    const next: SessionRecord = {
+      ...current,
+      prompt: { ...prompt, versions },
+      updatedAt: new Date(),
+    };
+    await this.sessionStore.save(next);
+    return next;
+  }
+
   async deleteSession(sessionId: string): Promise<void> {
     await this.cascadeVideoJobs(sessionId);
     await this.sessionStore.delete(sessionId);

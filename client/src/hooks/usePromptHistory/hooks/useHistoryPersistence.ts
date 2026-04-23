@@ -818,7 +818,7 @@ export function useHistoryPersistence({
       updateEntry(uuid, { versions: nextVersions });
 
       // Bug 17 fix: debounce the Firestore write. Rapid successive calls
-      // (e.g., ADD_GENERATION → UPDATE_GENERATION → media refresh) each trigger
+      // (e.g., SET_GENERATIONS → UPDATE_GENERATION → media refresh) each trigger
       // syncVersionGenerations → persistVersions → updateEntryVersions. Without
       // debouncing, multiple concurrent Firestore writes race each other and an
       // earlier write with stale data can land after a later write with complete data.

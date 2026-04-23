@@ -330,11 +330,19 @@ export function useGenerationsRuntime({
       fps,
       generationParams: mergedGenerationParams,
       promptVersionId,
+      // ISSUE-12: thread current sessionId so preview POSTs can include it and
+      // the server can persist the generation atomically to the session
+      // version. Only remote (persisted) session ids are forwarded; draft-
+      // prefixed ids are client-only and have no server-side record yet, so
+      // the server would 404 on them. Null here → legacy client-authoritative
+      // path in useGenerationActions.
+      sessionId: isRemoteSessionId(currentSessionId) ? currentSessionId : null,
       generations,
       onInsufficientCredits: notifyInsufficientCredits,
     }),
     [
       aspectRatio,
+      currentSessionId,
       duration,
       fps,
       generations,

@@ -72,6 +72,20 @@ export interface JobStorageService {
   }>;
 }
 
+/**
+ * ISSUE-12: narrow port for the session append primitive. Avoids importing
+ * the full SessionService class here so this module stays testable with a
+ * plain stub.
+ */
+export interface JobSessionAppendPort {
+  appendGenerationToVersion(
+    userId: string,
+    sessionId: string,
+    promptVersionId: string,
+    generation: Record<string, unknown>,
+  ): Promise<unknown>;
+}
+
 export interface ProcessVideoJobDeps {
   jobStore: JobProcessingStore;
   videoGenerationService: JobGenerationService;
@@ -109,6 +123,14 @@ export interface ProcessVideoJobDeps {
     start(): void;
     stop(): void;
   };
+  /**
+   * ISSUE-12: optional session-append port. When set and the job carries
+   * sessionId + promptVersionId, the pipeline appends the completed
+   * generation to the session version after markCompleted succeeds —
+   * making the video generation server-authoritative without the client
+   * having to re-fetch the session.
+   */
+  sessionService?: JobSessionAppendPort | null | undefined;
 }
 
 // ────────────────────────────────────────────────────────────────
@@ -138,6 +160,7 @@ export async function processVideoJob(
     dlqSource = "worker-terminal",
     refundReason = "video job failed",
     logPrefix = "Video job",
+    sessionService,
   } = deps;
 
   const heartbeatIntervalMs =
@@ -310,6 +333,57 @@ export async function processVideoJob(
       userId: job.userId,
       assetId: result.assetId,
     });
+
+    // ISSUE-12: server-authoritative generation record. When the job carries
+    // sessionId + promptVersionId (threaded through from the preview handler)
+    // and the session service is available, append the completed generation
+    // to the session's named version. Soft-fails — the job is already
+    // markCompleted, credits are accounted for, media is in GCS, so a
+    // persist failure here is logged but not retried or refunded. Subsequent
+    // session refetches will surface the missing record via the existing
+    // reconciliation paths.
+    if (job.sessionId && job.promptVersionId && sessionService) {
+      try {
+        await sessionService.appendGenerationToVersion(
+          job.userId,
+          job.sessionId,
+          job.promptVersionId,
+          {
+            id: job.id,
+            tier: "draft",
+            model: job.request.options?.model ?? null,
+            prompt: job.request.prompt,
+            status: "completed",
+            mediaUrls: [result.videoUrl],
+            ...(result.assetId ? { mediaAssetIds: [result.assetId] } : {}),
+            ...(resultWithStorage.storagePath
+              ? { storagePath: resultWithStorage.storagePath }
+              : {}),
+            promptVersionId: job.promptVersionId,
+            completedAt: new Date().toISOString(),
+          },
+        );
+        log.info(`${logPrefix} generation persisted to session`, {
+          jobId: job.id,
+          userId: job.userId,
+          sessionId: job.sessionId,
+          promptVersionId: job.promptVersionId,
+        });
+      } catch (persistError) {
+        log.error(
+          `${logPrefix} session persist failed; video is durable but generation record missing`,
+          persistError instanceof Error
+            ? persistError
+            : new Error(String(persistError)),
+          {
+            jobId: job.id,
+            userId: job.userId,
+            sessionId: job.sessionId,
+            promptVersionId: job.promptVersionId,
+          },
+        );
+      }
+    }
 
     if (onProviderSuccess && job.provider && job.provider !== "unknown") {
       onProviderSuccess(job.provider);

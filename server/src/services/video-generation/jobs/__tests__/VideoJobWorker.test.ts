@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { VideoGenerationResult } from "@services/video-generation/types";
 import type { VideoJobRecord } from "../types";
 import { VideoJobWorker } from "../VideoJobWorker";
+import { processVideoJob } from "../processVideoJob";
 
 const mocks = vi.hoisted(() => ({
   loggerInfo: vi.fn(),
@@ -102,6 +103,34 @@ const runProcessJob = (worker: VideoJobWorker, job: VideoJobRecord) =>
     }
   ).processJob(job);
 
+/**
+ * Exercise the shared processVideoJob pipeline directly. The worker now
+ * delegates to `handler.process(job, ctx)` → `VideoJobHandler.process` →
+ * `processVideoJob(job, deps)` — so the pipeline behaviour (markCompleted,
+ * refunds, DLQ, requeue, classifyError) lives in processVideoJob, not in the
+ * worker itself. Tests that used to simulate the worker calling these store
+ * methods call processVideoJob here with the mocked store + generation
+ * service.
+ */
+const runPipeline = (
+  jobStore: MinimalJobStore,
+  generateVideo: ReturnType<typeof vi.fn>,
+  job: VideoJobRecord = createJob(),
+) =>
+  processVideoJob(job, {
+    jobStore: jobStore as never,
+    videoGenerationService: { generateVideo } as never,
+    storageService: { saveFromUrl: mocks.saveFromUrl } as never,
+    userCreditService: {
+      getBalance: vi.fn().mockResolvedValue(100),
+    } as never,
+    workerId: "worker-a",
+    leaseMs: 60_000,
+    dlqSource: "worker-terminal",
+    refundReason: "video job worker failed",
+    logPrefix: "Video job",
+  });
+
 describe("VideoJobWorker", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -173,8 +202,7 @@ describe("VideoJobWorker", () => {
       createdAt: "2026-02-11T00:00:00.000Z",
     });
 
-    const worker = createWorker(jobStore, generateVideo);
-    await runProcessJob(worker, createJob());
+    await runPipeline(jobStore, generateVideo);
 
     expect(jobStore.markCompleted).toHaveBeenCalledWith("job-1", {
       assetId: "asset-1",
@@ -205,8 +233,11 @@ describe("VideoJobWorker", () => {
       renewLease: vi.fn().mockResolvedValue(true),
     };
 
-    const worker = createWorker(jobStore, generateVideo);
-    await runProcessJob(worker, createJob({ attempts: 1, maxAttempts: 3 }));
+    await runPipeline(
+      jobStore,
+      generateVideo,
+      createJob({ attempts: 1, maxAttempts: 3 }),
+    );
 
     expect(jobStore.requeueForRetry).toHaveBeenCalledWith(
       "job-1",
@@ -235,7 +266,6 @@ describe("VideoJobWorker", () => {
       releaseClaim: vi.fn().mockResolvedValue(true),
       renewLease: vi.fn().mockResolvedValue(true),
     };
-    const worker = createWorker(jobStore, generateVideo);
     const job = createJob({
       id: "job-fail",
       attempts: 3,
@@ -243,7 +273,7 @@ describe("VideoJobWorker", () => {
       creditsReserved: 4,
     });
 
-    await runProcessJob(worker, job);
+    await runPipeline(jobStore, generateVideo, job);
 
     expect(jobStore.markFailed).toHaveBeenCalledWith(
       "job-fail",
@@ -285,8 +315,11 @@ describe("VideoJobWorker", () => {
       renewLease: vi.fn().mockResolvedValue(true),
     };
 
-    const worker = createWorker(jobStore, generateVideo);
-    await runProcessJob(worker, createJob({ attempts: 1, maxAttempts: 3 }));
+    await runPipeline(
+      jobStore,
+      generateVideo,
+      createJob({ attempts: 1, maxAttempts: 3 }),
+    );
 
     expect(jobStore.requeueForRetry).not.toHaveBeenCalled();
     expect(jobStore.markFailed).toHaveBeenCalledWith(
@@ -320,8 +353,7 @@ describe("VideoJobWorker", () => {
       job?: VideoJobRecord,
     ): Promise<void> {
       mocks.saveFromUrl.mockResolvedValue(storagePayload);
-      const worker = createWorker(jobStore, generateVideo);
-      await runProcessJob(worker, job ?? createJob());
+      await runPipeline(jobStore, generateVideo, job ?? createJob());
     }
 
     it("regression: markCompleted failure refunds credits", async () => {
