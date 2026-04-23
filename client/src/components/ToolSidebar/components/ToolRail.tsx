@@ -2,6 +2,7 @@ import { useMemo, type ReactElement } from "react";
 import { GridFour, Home } from "@promptstudio/system/components/ui";
 import { Link, useLocation } from "react-router-dom";
 import { useBillingStatus } from "@/features/billing/hooks/useBillingStatus";
+import { BalancePill } from "@/components/navigation/AppShell/shared/BalancePill";
 import { ToolNavButton } from "./ToolNavButton";
 import { toolNavItems } from "../config/toolNavConfig";
 import type { ToolRailProps } from "../types";
@@ -96,8 +97,11 @@ export function ToolRail({
 
       <div className="flex-1" />
 
-      {/* ── Bottom: Home + Profile ── */}
+      {/* ── Bottom: Balance + Home + Profile ── */}
       <div className="flex flex-col items-center gap-1 pb-2">
+        {/* Persistent credit balance — visible on every route, not just
+            the NewSessionView home. Only show when signed in. */}
+        {user ? <BalancePill /> : null}
         <Link
           to="/home"
           className="flex h-10 w-10 items-center justify-center rounded-xl text-tool-text-muted transition-colors hover:bg-tool-nav-hover hover:text-tool-text-primary"
