@@ -994,6 +994,14 @@ export function useGenerationActions(
         const resolvedSeedImageUrl = await resolveSeedImageUrl(
           seedImageUrl ?? null,
         );
+        // Prefer the freshly-created promptVersionId passed in params over
+        // the stale options snapshot. `onCreateVersionIfNeeded()` in
+        // executeStoryboardAction builds a new version ID and sets React
+        // state, but optionsRef.current still holds the previous render's
+        // value until the next React commit — so without this override the
+        // server sees an empty promptVersionId and skips attaching the
+        // generation to the session.
+        const sessionParams = readSessionParams(optionsRef.current);
         const response = await generateStoryboardPreview(prompt, {
           ...(resolved.aspectRatio
             ? { aspectRatio: resolved.aspectRatio }
@@ -1001,7 +1009,10 @@ export function useGenerationActions(
           ...(resolvedSeedImageUrl
             ? { seedImageUrl: resolvedSeedImageUrl }
             : {}),
-          ...readSessionParams(optionsRef.current),
+          ...sessionParams,
+          ...(params.promptVersionId
+            ? { promptVersionId: params.promptVersionId }
+            : {}),
         });
         if (controller.signal.aborted) {
           clearSubmissionPendingIfNeeded(generationAccepted);
