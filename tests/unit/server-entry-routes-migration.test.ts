@@ -58,7 +58,6 @@ vi.mock("@services/quality-feedback/services/LLMJudgeService", () => ({
 
 import * as middlewareConfig from "@config/middleware.config";
 import * as routesConfig from "@config/routes.config";
-import { resolveAppDependencies } from "@config/app.dependencies";
 import { createApp } from "@server/app";
 import { startServer } from "@server/server";
 import { createHealthRoutes } from "@routes/health.routes";
@@ -125,7 +124,7 @@ describe("createApp", () => {
       }),
     };
 
-    const app = createApp(resolveAppDependencies(container as never));
+    const app = createApp(container as never);
 
     expect(app.get("trust proxy")).toBe(1);
     expect(configureMiddleware).toHaveBeenCalledWith(app, {

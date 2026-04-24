@@ -9,7 +9,6 @@ import {
   it,
   vi,
 } from "vitest";
-import { resolveAppDependencies } from "@config/app.dependencies";
 import { configureServices, initializeServices } from "@config/services.config";
 import { createApp } from "@server/app";
 
@@ -109,7 +108,7 @@ describe("Payment Routes (full-stack integration)", () => {
 
     const container = await configureServices();
     await initializeServices(container);
-    app = createApp(resolveAppDependencies(container));
+    app = createApp(container);
   }, 30_000);
 
   afterAll(() => {

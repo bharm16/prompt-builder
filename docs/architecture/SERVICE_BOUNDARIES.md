@@ -50,7 +50,7 @@ services it should (and should not) be paired with.
 - Root-level compatibility shims are retired. Do not add or reintroduce
   `server/src/services/EnhancementService.ts` or `server/src/services/VideoConceptService.ts`.
 - Runtime feature-flag decisions belong at composition boundaries:
-  `server/src/config/runtime-flags.ts` and `server/src/config/routes.config.ts`.
+  `server/src/config/feature-flags.ts` and `server/src/config/routes.config.ts`.
 - Route handlers and middleware should consume DI-injected services, not singleton imports.
 
 ## Decision guide

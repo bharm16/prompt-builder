@@ -16,7 +16,7 @@ import { registerEnhancementServices } from "./services/enhancement.services.ts"
 import { registerGenerationServices } from "./services/generation.services.ts";
 import { registerContinuityServices } from "./services/continuity.services.ts";
 import { registerSessionServices } from "./services/session.services.ts";
-import { getRuntimeFlags } from "./runtime-flags.ts";
+import { getRuntimeFlags } from "./feature-flags.ts";
 
 export type { ServiceConfig } from "./services/service-config.types.ts";
 

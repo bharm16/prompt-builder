@@ -390,3 +390,43 @@ export function getFlagEnvNames(): Array<{
     }),
   );
 }
+
+// ─── Runtime flags ─────────────────────────────────────────────────
+// Composite view used by bootstrap, route registration, and DI config.
+// `processRole` is not in the flag registry because it's a process-mode
+// selector, not a toggle.
+
+export interface RuntimeFlags {
+  processRole: "api" | "worker";
+  enableConvergence: boolean;
+  videoWorkerDisabled: boolean;
+  videoWorkerShutdownDrainSeconds: number;
+  allowUnhealthyGemini: boolean;
+  unhandledRejectionMode: "classified" | "strict";
+}
+
+function resolveProcessRole(env: NodeJS.ProcessEnv): "api" | "worker" {
+  return env.PROCESS_ROLE === "worker" ? "worker" : "api";
+}
+
+export function getRuntimeFlags(
+  env: NodeJS.ProcessEnv = process.env,
+): RuntimeFlags {
+  const processRole = resolveProcessRole(env);
+  const { flags } = resolveAllFlags(env);
+  const drainParsed = Number.parseInt(
+    env.VIDEO_WORKER_SHUTDOWN_DRAIN_SECONDS ?? "",
+    10,
+  );
+
+  return {
+    processRole,
+    enableConvergence: flags.convergence,
+    videoWorkerDisabled:
+      processRole !== "worker" || flags.videoJobWorkerDisabled,
+    videoWorkerShutdownDrainSeconds:
+      Number.isFinite(drainParsed) && drainParsed > 0 ? drainParsed : 45,
+    allowUnhealthyGemini: flags.allowUnhealthyGemini,
+    unhandledRejectionMode: flags.unhandledRejectionMode,
+  };
+}

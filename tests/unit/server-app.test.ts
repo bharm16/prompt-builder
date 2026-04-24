@@ -8,6 +8,8 @@ const {
   configureMiddlewareMock,
   configureRoutesMock,
   createWebhookRoutesMock,
+  initializeDepthWarmerMock,
+  getRuntimeFlagsMock,
 } = vi.hoisted(() => {
   const useMock = vi.fn();
   const setMock = vi.fn();
@@ -24,6 +26,8 @@ const {
     configureMiddlewareMock: vi.fn(),
     configureRoutesMock: vi.fn(),
     createWebhookRoutesMock: vi.fn(() => ({ id: "webhook" })),
+    initializeDepthWarmerMock: vi.fn(),
+    getRuntimeFlagsMock: vi.fn(() => ({ processRole: "api" })),
   };
 });
 
@@ -43,43 +47,55 @@ vi.mock("@server/routes/payment.routes.ts", () => ({
   createWebhookRoutes: createWebhookRoutesMock,
 }));
 
+vi.mock("@services/convergence/depth", () => ({
+  initializeDepthWarmer: initializeDepthWarmerMock,
+}));
+
+vi.mock("@server/config/feature-flags.ts", () => ({
+  getRuntimeFlags: getRuntimeFlagsMock,
+}));
+
 import { createApp } from "@server/app";
-import { resolveAppDependencies } from "@server/config/app.dependencies.ts";
+
+const PAYMENT_TOKENS = new Set([
+  "paymentService",
+  "stripeWebhookEventStore",
+  "billingProfileStore",
+  "userCreditService",
+  "paymentConsistencyStore",
+  "metricsService",
+  "firestoreCircuitExecutor",
+]);
+
+function buildContainer(): { resolve: ReturnType<typeof vi.fn> } {
+  return {
+    resolve: vi.fn((token: string) => ({ token })),
+  };
+}
 
 describe("createApp", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    getRuntimeFlagsMock.mockReturnValue({ processRole: "api" });
   });
 
   describe("dependency resolution", () => {
-    it("throws when app dependency resolution fails", () => {
+    it("propagates errors when the container fails to resolve a token", () => {
       const container = {
         resolve: vi.fn(() => {
           throw new Error("resolve failed");
         }),
       };
 
-      expect(() => resolveAppDependencies(container as never)).toThrow(
-        "resolve failed",
-      );
+      expect(() => createApp(container as never)).toThrow("resolve failed");
     });
   });
 
   describe("edge cases", () => {
     it("registers webhook routes before middleware", () => {
-      const dependencies = {
-        routeContainer: { resolve: vi.fn() },
-        paymentRouteServices: {
-          paymentService: { id: "paymentService" },
-        },
-        middlewareServices: {
-          logger: { id: "logger" },
-          metricsService: { id: "metrics" },
-          redisClient: { id: "redis" },
-        },
-      };
+      const container = buildContainer();
 
-      createApp(dependencies as never);
+      createApp(container as never);
 
       expect(useMock).toHaveBeenCalledWith("/api/payment", { id: "webhook" });
       const useCallOrder = useMock.mock.invocationCallOrder[0];
@@ -89,26 +105,22 @@ describe("createApp", () => {
       expect(middlewareCallOrder).toBeDefined();
       expect(useCallOrder ?? 0).toBeLessThan(middlewareCallOrder ?? 0);
     });
+
+    it("skips depth warmup when role is worker", () => {
+      getRuntimeFlagsMock.mockReturnValue({ processRole: "worker" });
+      const container = buildContainer();
+
+      createApp(container as never);
+
+      expect(initializeDepthWarmerMock).not.toHaveBeenCalled();
+    });
   });
 
   describe("core behavior", () => {
-    it("sets trust proxy and wires routes with explicit dependencies", () => {
-      const routeContainer = {
-        resolve: vi.fn((token: string) => ({ token })),
-      };
-      const dependencies = {
-        routeContainer,
-        paymentRouteServices: {
-          paymentService: { token: "paymentService" },
-        },
-        middlewareServices: {
-          logger: { token: "logger" },
-          metricsService: { token: "metricsService" },
-          redisClient: { token: "redisClient" },
-        },
-      };
+    it("sets trust proxy and wires routes with services resolved from the container", () => {
+      const container = buildContainer();
 
-      const app = createApp(dependencies as never);
+      const app = createApp(container as never);
 
       expect(app).toBe(appInstance);
       expect(setMock).toHaveBeenCalledWith("trust proxy", 1);
@@ -117,10 +129,15 @@ describe("createApp", () => {
         metricsService: { token: "metricsService" },
         redisClient: { token: "redisClient" },
       });
-      expect(configureRoutesMock).toHaveBeenCalledWith(
-        appInstance,
-        routeContainer,
+      expect(configureRoutesMock).toHaveBeenCalledWith(appInstance, container);
+      expect(initializeDepthWarmerMock).toHaveBeenCalledTimes(1);
+
+      const resolvedTokens = container.resolve.mock.calls.map(
+        ([token]) => token,
       );
+      for (const token of PAYMENT_TOKENS) {
+        expect(resolvedTokens).toContain(token);
+      }
     });
   });
 });

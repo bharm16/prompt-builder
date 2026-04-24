@@ -26,7 +26,7 @@ import type { WebhookReconciliationWorker } from "./services/payment/WebhookReco
 import type { BillingProfileRepairWorker } from "./services/payment/BillingProfileRepairWorker.ts";
 import type { DlqReprocessorWorker } from "./services/video-generation/jobs/DlqReprocessorWorker.ts";
 import type { VideoJobReconciler } from "./services/video-generation/jobs/VideoJobReconciler.ts";
-import { getRuntimeFlags } from "./config/runtime-flags.ts";
+import { getRuntimeFlags } from "./config/feature-flags.ts";
 
 const OPERATIONAL_REJECTION_CODES = new Set([
   "aborted",

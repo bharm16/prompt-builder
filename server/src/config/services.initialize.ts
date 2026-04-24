@@ -5,8 +5,7 @@ import type { Bucket } from "@google-cloud/storage";
 import type { LLMClient } from "@clients/LLMClient";
 import type { ServiceConfig } from "./services/service-config.types.ts";
 import type { CapabilitiesProbeService } from "@services/capabilities/CapabilitiesProbeService";
-import { getRuntimeFlags } from "./runtime-flags";
-import { resolveAllFlags } from "./feature-flags.ts";
+import { getRuntimeFlags, resolveAllFlags } from "./feature-flags.ts";
 
 // ────────────────────────────────────────────────────────────────
 // Shared helpers

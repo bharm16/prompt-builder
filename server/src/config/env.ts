@@ -45,21 +45,20 @@ const serverSchema = z.object({
   LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).optional(),
 });
 
+// Only flags with real boot-time validation live here:
+// - ENABLE_CONVERGENCE: safety-first default (anything-not-"false" → true).
+// - UNHANDLED_REJECTION_MODE: strict enum.
+// - *_ENABLED: strict "true"/"false" — typos fail boot.
+// Lenient aliases (*_DISABLED, ALLOW_UNHEALTHY_GEMINI, etc.) are fully
+// resolved by feature-flags.ts; duplicating them here bought nothing.
 const featureFlagSchema = z.object({
   ENABLE_CONVERGENCE: z
     .string()
     .default("true")
     .transform((v) => v !== "false"),
-  VIDEO_JOB_WORKER_DISABLED: coerceBooleanString(false),
-  ALLOW_UNHEALTHY_GEMINI: coerceBooleanString(false),
-  GEMINI_ALLOW_UNHEALTHY: coerceBooleanString(false),
   UNHANDLED_REJECTION_MODE: z
     .enum(["classified", "strict"])
     .default("classified"),
-  // Canonical kill-switch names use STRICT parsing: non-"true"/"false" values
-  // fail boot validation instead of silently coercing to `false`. Legacy
-  // `*_DISABLED` forms below remain lenient for back-compat with existing
-  // deploy configs.
   WEBHOOK_RECONCILIATION_ENABLED: strictBooleanString(true),
   BILLING_PROFILE_REPAIR_ENABLED: strictBooleanString(true),
   CREDIT_REFUND_SWEEPER_ENABLED: strictBooleanString(true),
@@ -69,19 +68,6 @@ const featureFlagSchema = z.object({
   VIDEO_ASSET_RETENTION_ENABLED: strictBooleanString(true),
   VIDEO_ASSET_RECONCILER_ENABLED: strictBooleanString(false),
   CONTINUITY_CLIP_ENABLED: strictBooleanString(true),
-  // Legacy `*_DISABLED` names — still read by feature-flags.ts via alias
-  // resolution. Declared here so `X_DISABLED=garbage` fails validation.
-  WEBHOOK_RECONCILIATION_DISABLED: coerceBooleanString(false),
-  BILLING_PROFILE_REPAIR_DISABLED: coerceBooleanString(false),
-  CREDIT_REFUND_SWEEPER_DISABLED: coerceBooleanString(false),
-  CREDIT_RECONCILIATION_DISABLED: coerceBooleanString(false),
-  VIDEO_JOB_SWEEPER_DISABLED: coerceBooleanString(false),
-  VIDEO_ASSET_RETENTION_DISABLED: coerceBooleanString(false),
-  VIDEO_ASSET_RECONCILER_DISABLED: coerceBooleanString(false),
-  DISABLE_CONTINUITY_CLIP: coerceBooleanString(false),
-  // Registry-level experimental flags (feature-flags.ts, not routed through
-  // runtime-flags). Declared here so typos fail boot validation.
-  ENABLE_FACE_EMBEDDING: coerceBooleanString(false),
 });
 
 const openaiSchema = z.object({
@@ -191,7 +177,6 @@ const videoJobSchema = z.object({
   VIDEO_PROVIDER_CIRCUIT_MIN_VOLUME: coercePositiveInt(20),
   VIDEO_PROVIDER_CIRCUIT_COOLDOWN_MS: coercePositiveInt(60000),
   VIDEO_PROVIDER_CIRCUIT_MAX_SAMPLES: coercePositiveInt(50),
-  VIDEO_DLQ_REPROCESSOR_DISABLED: coerceBooleanString(false),
   VIDEO_DLQ_POLL_INTERVAL_MS: coercePositiveInt(30000),
   VIDEO_DLQ_MAX_ENTRIES_PER_RUN: coercePositiveInt(5),
   VIDEO_GENERATE_IDEMPOTENCY_PENDING_TTL_MS: coercePositiveInt(360000),

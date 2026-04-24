@@ -18,7 +18,7 @@ vi.mock("../config/redis.ts", () => ({
   closeRedisClient: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock("../config/runtime-flags.ts", () => ({
+vi.mock("../config/feature-flags.ts", () => ({
   getRuntimeFlags: vi.fn(() => ({
     unhandledRejectionMode: "classified",
     videoWorkerShutdownDrainSeconds: 5,

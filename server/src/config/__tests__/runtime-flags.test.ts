@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getRuntimeFlags } from "../runtime-flags";
+import { getRuntimeFlags } from "../feature-flags";
 
 describe("getRuntimeFlags", () => {
   it("defaults to api role when PROCESS_ROLE is not set", () => {

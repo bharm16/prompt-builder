@@ -17,7 +17,6 @@ import "./instrument.mjs";
 
 import { existsSync, readdirSync } from "node:fs";
 import dotenv from "dotenv";
-import { resolveAppDependencies } from "@config/app.dependencies";
 import { parseEnv, emitEnvWarnings } from "@config/env";
 import { logger } from "@infrastructure/Logger";
 import { configureServices, initializeServices } from "@config/services.config";
@@ -92,7 +91,7 @@ async function bootstrap() {
     // 4. Create Express Application
     // ========================================================================
     logger.info("Creating Express application...");
-    const app = createApp(resolveAppDependencies(container));
+    const app = createApp(container);
     logger.info("✅ Express app created with middleware and routes");
 
     // ========================================================================
@@ -141,7 +140,7 @@ if (isTestEnv) {
     logger.info("Initializing application in test mode...");
     containerInstance = await configureServices();
     await initializeServices(containerInstance);
-    appInstance = createApp(resolveAppDependencies(containerInstance));
+    appInstance = createApp(containerInstance);
     logger.info("Application initialized successfully for testing");
   } catch (error) {
     const caughtError = toError(error);
