@@ -6,6 +6,10 @@ import {
   setFirestoreCircuitExecutor,
 } from "@services/firestore/FirestoreCircuitExecutor";
 import { FaceEmbeddingService } from "@services/asset/FaceEmbeddingService";
+import { AIModelService } from "@services/ai-model/index";
+import type { CacheService } from "@services/cache/CacheService";
+import { ImageObservationService } from "@services/image-observation";
+import { LLMJudgeService } from "@services/quality-feedback/services/LLMJudgeService";
 import { resolveFalApiKey } from "@utils/falApiKey";
 import { SIGNED_URL_TTL_MS } from "@config/signedUrlPolicy";
 import {
@@ -534,6 +538,22 @@ export function registerCoreServices(container: DIContainer): void {
       return new FaceEmbeddingService(undefined, token);
     },
     ["config"],
+    { singleton: true },
+  );
+
+  // Observation services — thin AI-backed facades with no domain cohesion
+  // of their own; live here alongside other infrastructure-level services.
+  container.register(
+    "imageObservationService",
+    (aiService: AIModelService, cacheService: CacheService) =>
+      new ImageObservationService(aiService, cacheService),
+    ["aiService", "cacheService"],
+  );
+
+  container.register(
+    "llmJudgeService",
+    (aiService: AIModelService) => new LLMJudgeService(aiService),
+    ["aiService"],
     { singleton: true },
   );
 }

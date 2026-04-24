@@ -18,56 +18,35 @@ export function registerLLMServices(container: DIContainer): void {
   // Register concurrency limiters with metrics injection
   const defaultMaxConcurrent = process.env.NODE_ENV === "production" ? 10 : 5;
 
-  container.register(
-    "openAILimiter",
-    (metricsService: MetricsService) =>
-      new ConcurrencyLimiter({
-        maxConcurrent: parseEnvInt(
-          process.env.OPENAI_MAX_CONCURRENT,
-          defaultMaxConcurrent,
-        ),
-        queueTimeout: parseEnvInt(process.env.OPENAI_QUEUE_TIMEOUT_MS, 30000),
-        enableCancellation: true,
-        metricsService,
-      }),
-    ["metricsService"],
-  );
+  const registerLimiter = (token: string, envPrefix: string): void => {
+    container.register(
+      token,
+      (metricsService: MetricsService) =>
+        new ConcurrencyLimiter({
+          maxConcurrent: parseEnvInt(
+            process.env[`${envPrefix}_MAX_CONCURRENT`],
+            defaultMaxConcurrent,
+          ),
+          queueTimeout: parseEnvInt(
+            process.env[`${envPrefix}_QUEUE_TIMEOUT_MS`],
+            30000,
+          ),
+          enableCancellation: true,
+          metricsService,
+        }),
+      ["metricsService"],
+    );
+  };
 
-  container.register(
-    "groqLimiter",
-    (metricsService: MetricsService) =>
-      new ConcurrencyLimiter({
-        maxConcurrent: parseEnvInt(
-          process.env.GROQ_MAX_CONCURRENT,
-          defaultMaxConcurrent,
-        ),
-        queueTimeout: parseEnvInt(process.env.GROQ_QUEUE_TIMEOUT_MS, 30000),
-        enableCancellation: true,
-        metricsService,
-      }),
-    ["metricsService"],
-  );
+  registerLimiter("openAILimiter", "OPENAI");
+  registerLimiter("groqLimiter", "GROQ");
+  registerLimiter("geminiLimiter", "GEMINI");
 
-  // Qwen shares the Groq API key; use the same limiter to respect shared limits.
+  // Qwen shares the Groq API key; reuse the same limiter to respect shared limits.
   container.register(
     "qwenLimiter",
     (groqLimiter: ConcurrencyLimiter) => groqLimiter,
     ["groqLimiter"],
-  );
-
-  container.register(
-    "geminiLimiter",
-    (metricsService: MetricsService) =>
-      new ConcurrencyLimiter({
-        maxConcurrent: parseEnvInt(
-          process.env.GEMINI_MAX_CONCURRENT,
-          defaultMaxConcurrent,
-        ),
-        queueTimeout: parseEnvInt(process.env.GEMINI_QUEUE_TIMEOUT_MS, 30000),
-        enableCancellation: true,
-        metricsService,
-      }),
-    ["metricsService"],
   );
 
   container.register(

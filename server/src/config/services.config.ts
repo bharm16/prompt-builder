@@ -12,7 +12,6 @@ import { registerStorageServices } from "./services/storage.services.ts";
 import { registerCreditServices } from "./services/credit.services.ts";
 import { registerVideoJobServices } from "./services/video-jobs.services.ts";
 import { registerLLMServices } from "./services/llm.services.ts";
-import { registerObservationServices } from "./services/observation.services.ts";
 import { registerEnhancementServices } from "./services/enhancement.services.ts";
 import { registerGenerationServices } from "./services/generation.services.ts";
 import { registerContinuityServices } from "./services/continuity.services.ts";
@@ -39,9 +38,9 @@ export async function configureServices(): Promise<DIContainer> {
   registerCreditServices(container);
   registerVideoJobServices(container);
 
-  // Business logic: LLM, observation, enhancement, generation
+  // Business logic: LLM, enhancement, generation
+  // (observation services are registered by registerCoreServices)
   registerLLMServices(container);
-  registerObservationServices(container);
   registerEnhancementServices(container);
   registerGenerationServices(container);
 
