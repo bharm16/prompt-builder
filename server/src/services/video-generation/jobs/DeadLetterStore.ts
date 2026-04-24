@@ -2,7 +2,7 @@ import { admin, getFirestore } from "@infrastructure/firebaseAdmin";
 import { logger } from "@infrastructure/Logger";
 import type { FirestoreCircuitExecutor } from "@services/firestore/FirestoreCircuitExecutor";
 import { z } from "zod";
-import { computeDlqBackoff } from "./dlqBackoff";
+import { computeBackoffMs, DLQ_JITTER_RATIO } from "./computeBackoff";
 import { toVideoJobError } from "./normalizeError";
 import type {
   DlqEntry,
@@ -214,7 +214,9 @@ export class DeadLetterStore {
   ): Promise<boolean> {
     const now = Date.now();
     const escalate = attempt + 1 >= maxAttempts;
-    const backoffMs = computeDlqBackoff(attempt);
+    const backoffMs = computeBackoffMs(attempt, {
+      jitterRatio: DLQ_JITTER_RATIO,
+    });
 
     await this.withTiming("markDlqFailed", "write", async () => {
       await this.collection.doc(dlqId).update({

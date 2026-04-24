@@ -20,7 +20,7 @@ import {
   toVideoJobError,
   type VideoJobErrorInput,
 } from "./normalizeError";
-import { computeRetryBackoffMs } from "./retryBackoff";
+import { computeBackoffMs, RETRY_JITTER_RATIO } from "./computeBackoff";
 
 const DEFAULT_MAX_ATTEMPTS = 3;
 const DEFAULT_PROVIDER = "unknown";
@@ -592,7 +592,12 @@ export class VideoJobStore {
               Number.isFinite(data.attempts)
                 ? data.attempts
                 : 0;
-            const nextRetryAtMs = now + computeRetryBackoffMs(attempts, now);
+            const nextRetryAtMs =
+              now +
+              computeBackoffMs(attempts, {
+                jitterRatio: RETRY_JITTER_RATIO,
+                now,
+              });
             transaction.update(docRef, {
               status: "queued",
               error: normalizedError,

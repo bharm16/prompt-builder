@@ -8,4 +8,8 @@ export type {
 export type { VideoJobRecord, VideoJobStatus, VideoJobRequest } from "./types";
 export { DeadLetterStore } from "./DeadLetterStore";
 export { parseVideoJobRecord } from "./parseVideoJobRecord";
-export { computeDlqBackoff } from "./dlqBackoff";
+export {
+  computeBackoffMs,
+  DLQ_JITTER_RATIO,
+  RETRY_JITTER_RATIO,
+} from "./computeBackoff";
