@@ -4,12 +4,7 @@ import { asyncHandler } from "@middleware/asyncHandler";
 import { validateRequest } from "@middleware/validateRequest";
 import { PerformanceMonitor } from "@middleware/performanceMonitor";
 import { coherenceCheckSchema } from "@config/schemas";
-
-interface CoherenceCheckResult {
-  conflicts?: unknown[];
-  harmonizations?: unknown[];
-  [key: string]: unknown;
-}
+import type { CoherenceCheckResult } from "@shared/types/coherence";
 
 interface CoherenceCheckDeps {
   promptCoherenceService: {
