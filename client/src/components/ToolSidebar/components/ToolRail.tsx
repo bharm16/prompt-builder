@@ -57,7 +57,7 @@ export function ToolRail({
 
       <div className="my-1.5 h-px w-6 bg-tool-rail-border" aria-hidden="true" />
 
-      {/* ── Nav items: Tool, Apps, Chars, Styles ── */}
+      {/* ── Nav items: Tool, Chars, Styles, Gallery ── */}
       <nav
         className="flex flex-col items-center gap-0.5"
         aria-label="Tool panels"

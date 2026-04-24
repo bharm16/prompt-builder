@@ -93,12 +93,11 @@ export function AccountPage(): React.ReactElement {
               type="button"
               onClick={handleSignOut}
               variant="link"
-              className="h-auto p-0 text-white hover:underline"
+              className="h-auto p-0 align-baseline text-white hover:underline"
               disabled={isBusy}
             >
-              Sign out
+              Sign out.
             </Button>
-            {"."}
           </>
         ) : (
           <>
