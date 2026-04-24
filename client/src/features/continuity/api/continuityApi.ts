@@ -1,6 +1,7 @@
 import { API_CONFIG } from "@/config/api.config";
 import { buildFirebaseAuthHeaders } from "@/services/http/firebaseAuth";
 import type {
+  ContinuityShot,
   ContinuitySession,
   CreateSessionInput,
   CreateShotInput,
@@ -95,7 +96,11 @@ function sessionToContinuity(session: SessionDtoPayload): ContinuitySession {
     ...(session.description ? { description: session.description } : {}),
     primaryStyleReference: session.continuity.primaryStyleReference ?? null,
     sceneProxy: session.continuity.sceneProxy ?? null,
-    shots: session.continuity.shots,
+    // Zod-inferred optional fields surface as `T | undefined`, but the
+    // `SessionContinuityShot` interface uses `?:` (no explicit undefined)
+    // under exactOptionalPropertyTypes. The runtime shape has been validated
+    // by Zod parsing, so we bridge the inference gap here with a cast.
+    shots: session.continuity.shots as unknown as ContinuityShot[],
     defaultSettings: session.continuity.settings,
     status: session.status,
     createdAt: session.createdAt,
