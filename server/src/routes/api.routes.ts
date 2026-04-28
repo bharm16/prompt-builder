@@ -45,7 +45,7 @@ import type { SessionService } from "@services/sessions/SessionService";
 
 interface ApiServices extends OptimizeServices, EnhancementServices {
   storageService: StorageRoutesService;
-  videoConceptService?: VideoServices["videoConceptService"] | null;
+  videoConceptService: VideoServices["videoConceptService"];
   assetService?: AssetService;
   consistentVideoService?: ConsistentVideoService;
   userCreditService?: UserCreditService;
@@ -88,9 +88,7 @@ export function createAPIRoutes(services: ApiServices): Router {
   router.use("/", createOptimizeRoutes({ promptOptimizationService }));
 
   // Mount video routes under /video (creates /api/video/* paths)
-  if (videoConceptService) {
-    router.use("/video", createVideoRoutes({ videoConceptService }));
-  }
+  router.use("/video", createVideoRoutes({ videoConceptService }));
 
   // Mount enhancement routes at root level (preserves existing paths)
   router.use(

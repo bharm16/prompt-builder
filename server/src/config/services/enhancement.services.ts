@@ -31,6 +31,7 @@ import {
   ConflictDetectionService,
   VideoTemplateRepository,
 } from "@services/video-concept/index";
+import { VideoConceptService } from "@services/video-concept/VideoConceptService";
 import type { ServiceConfig } from "./service-config.types.ts";
 
 export function registerEnhancementServices(container: DIContainer): void {
@@ -244,5 +245,15 @@ export function registerEnhancementServices(container: DIContainer): void {
     "videoConflictDetectionService",
     (aiService: AIModelService) => new ConflictDetectionService(aiService),
     ["aiService"],
+  );
+
+  // Aggregator façade consumed by /api/video/* route registration.
+  // Without this, api.routes.ts silently drops the entire video namespace
+  // because of the `if (videoConceptService)` mount guard.
+  container.register(
+    "videoConceptService",
+    (aiService: AIModelService, cacheService: CacheService) =>
+      new VideoConceptService(aiService, cacheService),
+    ["aiService", "cacheService"],
   );
 }

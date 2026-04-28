@@ -24,6 +24,7 @@ import type { CreditReconciliationWorker } from "@services/credits/CreditReconci
 import type { PromptOptimizationService } from "@services/prompt-optimization/PromptOptimizationService";
 import type { ImageGenerationService } from "@services/image-generation/ImageGenerationService";
 import type { VideoGenerationService } from "@services/video-generation/VideoGenerationService";
+import type { VideoConceptService } from "@services/video-concept/VideoConceptService";
 import type { ContinuitySessionService } from "@services/continuity/ContinuitySessionService";
 import type { ModelIntelligenceService } from "@services/model-intelligence/ModelIntelligenceService";
 import type { VideoJobWorker } from "@services/video-generation/jobs/VideoJobWorker";
@@ -70,6 +71,7 @@ export interface ServiceRegistry {
   // Prompt
   promptOptimizationService: PromptOptimizationService;
   llmJudgeService: LLMJudgeService;
+  videoConceptService: VideoConceptService;
 
   // Generation (nullable — resolves to null when provider creds are absent)
   imageGenerationService: ImageGenerationService | null;

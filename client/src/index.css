@@ -111,6 +111,7 @@
 
   /* Borderless rendering-state outline — breathing 16:9 frame */
   .render-outline {
+    --render-outline-radius: 14px;
     position: relative;
     margin-left: auto;
     margin-right: auto;
@@ -121,7 +122,7 @@
     align-items: center;
     justify-content: center;
     border: 1px solid rgba(255, 255, 255, 0.04);
-    border-radius: 14px;
+    border-radius: var(--render-outline-radius);
     animation: outline-breathe 3s ease-in-out infinite;
   }
 

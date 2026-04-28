@@ -128,6 +128,8 @@ export function SignInPage(): React.ReactElement {
 
   const emailFocus = useFocusStyle();
   const passwordFocus = useFocusStyle();
+  const emailId = React.useId();
+  const passwordId = React.useId();
 
   React.useEffect(() => {
     if (!user) return;
@@ -255,6 +257,7 @@ export function SignInPage(): React.ReactElement {
         <form onSubmit={handleEmailSignIn} className="flex flex-col gap-3.5">
           <div>
             <label
+              htmlFor={emailId}
               className={AUTH_LABEL_CLASS}
               style={{ color: AUTH_COLORS.textLabel }}
             >
@@ -267,6 +270,7 @@ export function SignInPage(): React.ReactElement {
                 aria-hidden="true"
               />
               <Input
+                id={emailId}
                 className={`${AUTH_INPUT_CLASS} pl-10`}
                 style={emailFocus.style}
                 onFocus={emailFocus.onFocus}
@@ -283,6 +287,7 @@ export function SignInPage(): React.ReactElement {
 
           <div>
             <label
+              htmlFor={passwordId}
               className={AUTH_LABEL_CLASS}
               style={{ color: AUTH_COLORS.textLabel }}
             >
@@ -290,6 +295,7 @@ export function SignInPage(): React.ReactElement {
             </label>
             <div className="relative">
               <Input
+                id={passwordId}
                 className={`${AUTH_INPUT_CLASS} pr-10`}
                 style={passwordFocus.style}
                 onFocus={passwordFocus.onFocus}

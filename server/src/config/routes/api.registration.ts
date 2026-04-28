@@ -57,12 +57,12 @@ export function registerApiRoutes(
           "consistentVideoService",
           "consistent-generation",
         );
-  const videoConceptService: VideoConceptServiceContract | null =
-    resolveOptionalService<VideoConceptServiceContract | null>(
-      container,
-      "videoConceptService",
-      "video-concept",
-    );
+  // Required: VideoConceptService is registered in enhancement.services.ts
+  // and listed in ServiceRegistry. A missing registration must fail boot
+  // (loud) rather than silently 404 the entire /api/video/* namespace.
+  const videoConceptService = container.resolve<VideoConceptServiceContract>(
+    "videoConceptService",
+  );
 
   // Media proxy — no auth required (signed URL is the authorization).
   // Must be registered before the auth middleware on /api.
