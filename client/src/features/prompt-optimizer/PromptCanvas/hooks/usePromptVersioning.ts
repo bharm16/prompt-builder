@@ -15,6 +15,38 @@ import {
 } from "@/utils/storageUrl";
 import type { HighlightSnapshot } from "../types";
 
+// Per-span content equality for the idempotency guard in
+// `syncVersionHighlights`. Accepts `unknown` because the persisted version
+// entry stores highlights as `Record<string, unknown>` (the on-disk shape is
+// laxer than the runtime HighlightSnapshot) — the helper validates the shape
+// at runtime as it walks. We deliberately ignore `confidence` because LLM
+// labelers produce numerically noisy scores across runs even when nothing
+// semantically changed; gating persistence on confidence would cause the
+// "browsing is read-only" rule (ISSUE-31) to leak again. The user-visible
+// highlight rendering is determined by start/end/category — those are what
+// must match for the snapshot to be a true round-trip echo.
+const haveIdenticalSpanContent = (a: unknown, b: unknown): boolean => {
+  if (!Array.isArray(a) || !Array.isArray(b)) return false;
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    const left = a[i] as
+      | { start?: unknown; end?: unknown; category?: unknown }
+      | undefined;
+    const right = b[i] as
+      | { start?: unknown; end?: unknown; category?: unknown }
+      | undefined;
+    if (!left || !right) return false;
+    if (
+      left.start !== right.start ||
+      left.end !== right.end ||
+      left.category !== right.category
+    ) {
+      return false;
+    }
+  }
+  return true;
+};
+
 interface UsePromptVersioningOptions {
   promptHistory: PromptVersionStore;
   currentPromptUuid: string | null;
@@ -440,6 +472,29 @@ export function usePromptVersioning({
         return;
       }
       if (lastVersion.signature !== snapshot.signature) {
+        return;
+      }
+
+      // Idempotency guard (ISSUE-31): hydrating the labeling pipeline on
+      // session load re-emits a snapshot with a freshly stamped `updatedAt`
+      // but otherwise identical content. Persisting that round-trip would
+      // bump the session's updatedAt every time the user just *navigates* to
+      // a session, breaking the "browsing is read-only" UX rule.
+      //
+      // We compare on the content-bearing tuple of every span (start, end,
+      // category) plus signature/cacheId. A length-only check is NOT enough:
+      // a fresh re-label can yield the same number of spans with different
+      // categorizations (LLM labelers are non-deterministic across runs), and
+      // dropping that legitimate update would silently reintroduce stale
+      // highlight data. The per-span structural compare is the cheapest
+      // correct predicate.
+      const existingHighlights = lastVersion.highlights;
+      if (
+        existingHighlights &&
+        existingHighlights.signature === snapshot.signature &&
+        existingHighlights.cacheId === snapshot.cacheId &&
+        haveIdenticalSpanContent(existingHighlights.spans, snapshot.spans)
+      ) {
         return;
       }
 
