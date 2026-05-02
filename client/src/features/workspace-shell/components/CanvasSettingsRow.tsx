@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from "react";
+import React, { useCallback, useMemo, useRef } from "react";
 import { Eye, MagicWand, X } from "@promptstudio/system/components/ui";
 import type { SidebarUploadedImage } from "@features/generation-controls";
 import {
@@ -56,6 +56,11 @@ const parseDuration = (generationParams: Record<string, unknown>): number => {
   }
   return getDefaultGenerationDurationSeconds();
 };
+
+// C8 cooldown window: how long after a Preview-storyboard click we drop
+// repeat clicks. Sized to outlast the multi-step prelude (optimize →
+// session-create) that gates the upstream isSubmittingRef flip.
+const PREVIEW_CLICK_COOLDOWN_MS = 2000;
 
 /* Ghost button used across the settings row — flat, borderless, text-only */
 function BarBtn({
@@ -116,6 +121,16 @@ export function CanvasSettingsRow({
   const isGenerating = controls?.isGenerating ?? false;
   const isSubmitting = controls?.isSubmitting ?? false;
   const isGenerationBusy = isGenerating || isSubmitting;
+
+  // C8 guard: rapid Preview-storyboard double-clicks fire `onStoryboard`
+  // multiple times because the upstream isSubmittingRef inside
+  // useGenerationActions only flips AFTER the workspace-level prelude
+  // (optimize -> session-create) completes. During that prelude, the button
+  // looks enabled and a second click would silently re-charge credits.
+  // Hold a short cooldown ref so each Preview click fires the handler at
+  // most once per ~2s window. The ref is intentionally NOT in disabled
+  // state to keep the button visually unchanged; the click is just dropped.
+  const previewClickCooldownRef = useRef(false);
 
   const handleAspectRatioChange = useCallback(
     (value: string) => {
@@ -382,7 +397,14 @@ export function CanvasSettingsRow({
               onInsufficientCredits?.(STORYBOARD_COST, "Storyboard preview");
               return;
             }
+            if (previewClickCooldownRef.current) {
+              return;
+            }
+            previewClickCooldownRef.current = true;
             controls?.onStoryboard?.();
+            window.setTimeout(() => {
+              previewClickCooldownRef.current = false;
+            }, PREVIEW_CLICK_COOLDOWN_MS);
           }}
           disabled={previewDisabled}
           aria-label={

@@ -176,6 +176,10 @@ export interface GenerateStoryboardPreviewResponse {
     // session — signals the client that a session refetch is worthwhile.
     generationId?: string;
   };
+  // Server-authoritative remaining balance after the generation was billed.
+  // Used by the client to refresh the credit-balance badge so it doesn't go
+  // stale after a successful storyboard preview (C7).
+  remainingCredits?: number;
   error?: string;
   message?: string;
 }

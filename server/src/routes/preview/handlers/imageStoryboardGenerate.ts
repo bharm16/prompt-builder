@@ -348,6 +348,7 @@ export const createImageStoryboardGenerateHandler =
           id: generationId,
           tier: "draft",
           model: "flux-kontext",
+          mediaType: "image-sequence",
           prompt,
           status: "completed",
           mediaUrls: result.imageUrls,
@@ -389,6 +390,27 @@ export const createImageStoryboardGenerateHandler =
         }
       }
 
+      // C7 server-side parity: surface the post-billing balance so the client
+      // can refresh its credit pill in one round-trip instead of falling back
+      // to a separate /api/credits fetch. Mirrors the videoGenerate handler.
+      let remainingCredits: number | null = null;
+      if (typeof userCreditService.getBalance === "function") {
+        try {
+          remainingCredits = await userCreditService.getBalance(userId);
+        } catch (balanceError) {
+          logger.warn(
+            "Failed to resolve remaining credits after storyboard reservation",
+            {
+              userId,
+              error:
+                balanceError instanceof Error
+                  ? balanceError.message
+                  : String(balanceError),
+            },
+          );
+        }
+      }
+
       const responseBody = {
         success: true,
         data: {
@@ -400,6 +422,7 @@ export const createImageStoryboardGenerateHandler =
             ? { generationId: persistedGenerationId }
             : {}),
         },
+        ...(typeof remainingCredits === "number" ? { remainingCredits } : {}),
       } as Record<string, unknown>;
 
       if (idempotencyRecordId && requestIdempotencyService) {

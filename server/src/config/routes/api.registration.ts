@@ -6,6 +6,7 @@
  */
 
 import type { Application } from "express";
+import type { Bucket } from "@google-cloud/storage";
 import type { DIContainer } from "@infrastructure/DIContainer";
 import { apiAuthMiddleware } from "@middleware/apiAuth";
 import { createBatchMiddleware } from "@middleware/requestBatching";
@@ -66,7 +67,16 @@ export function registerApiRoutes(
 
   // Media proxy — no auth required (signed URL is the authorization).
   // Must be registered before the auth middleware on /api.
-  const mediaProxyRoutes = createMediaProxyRoutes(STORAGE_CONFIG.bucketName);
+  // C3 fix: pass the bucket so the proxy can fall back to streaming
+  // directly from GCS when a client-side signed URL has expired. The
+  // bucket is unconditionally registered in storage.services.ts and
+  // listed in REQUIRED_TOKENS — a missing registration must fail boot
+  // (loud) rather than silently lose the expired-URL recovery path.
+  const gcsBucket = container.resolve<Bucket>("gcsBucket");
+  const mediaProxyRoutes = createMediaProxyRoutes(
+    STORAGE_CONFIG.bucketName,
+    gcsBucket,
+  );
   app.use("/api/storage", mediaProxyRoutes);
 
   // Main API routes

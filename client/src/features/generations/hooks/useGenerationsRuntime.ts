@@ -20,6 +20,7 @@ import {
   useGenerationControlsStoreState,
 } from "@features/generation-controls";
 import { resolvePrimaryVideoSource } from "../utils/videoSource";
+import { selectHeroGeneration } from "../utils/selectHeroGeneration";
 import { getModelConfig, getModelCreditCost } from "../config/generationConfig";
 import { useGenerationsState } from "./useGenerationsState";
 import { useGenerationActions } from "./useGenerationActions";
@@ -1237,26 +1238,15 @@ export function useGenerationsRuntime({
     return generations[generations.length - 1] ?? null;
   }, [activeGenerationId, generations]);
 
-  const heroGeneration = useMemo(() => {
-    const overrideId = heroOverrideGenerationId ?? null;
-    if (overrideId) {
-      const overrideMatch = generations.find(
-        (generation) => generation.id === overrideId,
-      );
-      if (overrideMatch && overrideMatch.mediaType !== "image-sequence") {
-        return overrideMatch;
-      }
-    }
-    if (activeGeneration && activeGeneration.mediaType !== "image-sequence") {
-      return activeGeneration;
-    }
-    const nonStoryboardGenerations = generations.filter(
-      (generation) => generation.mediaType !== "image-sequence",
-    );
-    return (
-      nonStoryboardGenerations[nonStoryboardGenerations.length - 1] ?? null
-    );
-  }, [activeGeneration, generations, heroOverrideGenerationId]);
+  const heroGeneration = useMemo(
+    () =>
+      selectHeroGeneration({
+        generations,
+        activeGenerationId: activeGeneration?.id ?? null,
+        heroOverrideGenerationId: heroOverrideGenerationId ?? null,
+      }),
+    [activeGeneration, generations, heroOverrideGenerationId],
+  );
 
   const onStateSnapshotRef = useRef(onStateSnapshot);
   onStateSnapshotRef.current = onStateSnapshot;

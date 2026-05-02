@@ -28,6 +28,7 @@ const REQUIRED_TOKENS = [
   "userCreditService",
   "sessionService",
   "storageService",
+  "gcsBucket",
   "metricsService",
   "imageObservationService",
   "assetService",

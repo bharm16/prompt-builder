@@ -607,6 +607,11 @@ export function useGenerationActions(
               thumbnailUrl: response.data.baseImageUrl || urls[0] || null,
             },
           );
+          // C7 fix: storyboard previews charge credits server-side, so the
+          // client must refresh the balance badge or it stays stale until
+          // the next bigger transaction. Mirrors the same call on the
+          // draft-render and full-render success paths.
+          syncCreditBalanceFromResponse(response.remainingCredits);
           inFlightRef.current.delete(generation.id);
           setSubmissionPending(false);
           return;
@@ -1090,6 +1095,11 @@ export function useGenerationActions(
             generationId: serverGenerationId,
           });
         }
+        // C7 fix: storyboard previews charge credits server-side, so the
+        // client must refresh the balance badge or it stays stale until
+        // the next bigger transaction. Mirrors the same call on the
+        // draft-render and full-render success paths.
+        syncCreditBalanceFromResponse(response.remainingCredits);
         inFlightRef.current.delete(generation.id);
         setSubmissionPending(false);
       } catch (error) {
