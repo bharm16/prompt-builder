@@ -10,7 +10,7 @@ import { setProviderSettings } from "@services/ai-model/routing/ExecutionPlan";
 import {
   ConcurrencyLimiter,
   parseEnvInt,
-} from "@services/concurrency/ConcurrencyService";
+} from "@infrastructure/ConcurrencyLimiter";
 import type { MetricsService } from "@infrastructure/MetricsService";
 import type { ServiceConfig } from "./service-config.types.ts";
 

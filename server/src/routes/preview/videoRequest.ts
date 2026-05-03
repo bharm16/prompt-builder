@@ -1,6 +1,6 @@
 import { pipeline } from "node:stream/promises";
 import type { Response } from "express";
-import { isKnownGenerationModelInput } from "@services/video-models/ModelRegistry";
+import { isKnownGenerationModelInput } from "@config/videoModelRegistry";
 
 export type VideoAspectRatio = "16:9" | "9:16" | "21:9" | "1:1";
 

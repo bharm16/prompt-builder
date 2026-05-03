@@ -27,27 +27,23 @@ export function registerSessionServices(container: DIContainer): void {
     (firestoreCircuitExecutor: FirestoreCircuitExecutor) =>
       new BillingProfileStore(firestoreCircuitExecutor),
     ["firestoreCircuitExecutor"],
-    { singleton: true },
   );
   container.register(
     "paymentService",
     (config: ServiceConfig) => new PaymentService(config.stripe),
     ["config"],
-    { singleton: true },
   );
   container.register(
     "stripeWebhookEventStore",
     (firestoreCircuitExecutor: FirestoreCircuitExecutor) =>
       new StripeWebhookEventStore(undefined, firestoreCircuitExecutor),
     ["firestoreCircuitExecutor"],
-    { singleton: true },
   );
   container.register(
     "paymentConsistencyStore",
     (firestoreCircuitExecutor: FirestoreCircuitExecutor) =>
       new PaymentConsistencyStore(firestoreCircuitExecutor),
     ["firestoreCircuitExecutor"],
-    { singleton: true },
   );
   container.register(
     "webhookReconciliationWorker",
@@ -90,7 +86,6 @@ export function registerSessionServices(container: DIContainer): void {
       "metricsService",
       "config",
     ],
-    { singleton: true },
   );
   container.register(
     "billingProfileRepairWorker",
@@ -112,11 +107,8 @@ export function registerSessionServices(container: DIContainer): void {
       "metricsService",
       "config",
     ],
-    { singleton: true },
   );
-  container.register("sessionStore", () => new SessionStore(), [], {
-    singleton: true,
-  });
+  container.register("sessionStore", () => new SessionStore(), []);
 
   container.register(
     "sessionService",
@@ -126,7 +118,6 @@ export function registerSessionServices(container: DIContainer): void {
           videoJobStore.cancelJobsForSession(sessionId),
       }),
     ["sessionStore", "videoJobStore"],
-    { singleton: true },
   );
 
   container.register(
@@ -162,7 +153,6 @@ export function registerSessionServices(container: DIContainer): void {
       }
     },
     ["gcsBucket", "gcsBucketName", "faceEmbeddingService", "config"],
-    { singleton: true },
   );
 
   container.register(
@@ -183,6 +173,5 @@ export function registerSessionServices(container: DIContainer): void {
       }
     },
     ["gcsBucket", "gcsBucketName"],
-    { singleton: true },
   );
 }

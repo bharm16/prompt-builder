@@ -27,9 +27,7 @@ export function registerCoreServices(container: DIContainer): void {
   const { flags } = resolveAllFlags(process.env);
 
   container.registerValue("logger", logger);
-  container.register("metricsService", () => new MetricsService(), [], {
-    singleton: true,
-  });
+  container.register("metricsService", () => new MetricsService(), []);
 
   // ── Centralized config: all env-var parsing happens here ──────────────
   container.registerValue("config", {
@@ -522,7 +520,6 @@ export function registerCoreServices(container: DIContainer): void {
       return executor;
     },
     ["metricsService", "config"],
-    { singleton: true },
   );
 
   container.register(
@@ -538,7 +535,6 @@ export function registerCoreServices(container: DIContainer): void {
       return new FaceEmbeddingService(undefined, token);
     },
     ["config"],
-    { singleton: true },
   );
 
   // Observation services — thin AI-backed facades with no domain cohesion
@@ -554,6 +550,5 @@ export function registerCoreServices(container: DIContainer): void {
     "llmJudgeService",
     (aiService: AIModelService) => new LLMJudgeService(aiService),
     ["aiService"],
-    { singleton: true },
   );
 }

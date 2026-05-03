@@ -63,7 +63,6 @@ export function registerGenerationServices(container: DIContainer): void {
       }
       return new VideoToImagePromptTransformer({
         llmClient: geminiClient,
-        timeoutMs: 5000,
       });
     },
     ["geminiClient"],
@@ -86,8 +85,6 @@ export function registerGenerationServices(container: DIContainer): void {
       return new StoryboardFramePlanner({
         llmClient: geminiClient,
         visionLlmClient: openAIClient,
-        timeoutMs: 8000,
-        visionTimeoutMs: 15000,
       });
     },
     ["geminiClient", "openAIClient"],
@@ -259,7 +256,6 @@ export function registerGenerationServices(container: DIContainer): void {
       },
     }),
     ["aiService"],
-    { singleton: true },
   );
 
   container.register(
@@ -275,7 +271,6 @@ export function registerGenerationServices(container: DIContainer): void {
         billingProfileStore,
       ),
     ["videoGenerationService", "userCreditService", "billingProfileStore"],
-    { singleton: true },
   );
 
   container.register(
@@ -295,7 +290,6 @@ export function registerGenerationServices(container: DIContainer): void {
       "modelIntelligenceAvailabilityGate",
       "metricsService",
     ],
-    { singleton: true },
   );
 
   container.register(
@@ -316,7 +310,6 @@ export function registerGenerationServices(container: DIContainer): void {
       });
     },
     ["config"],
-    { singleton: true },
   );
 
   container.register(
@@ -337,7 +330,6 @@ export function registerGenerationServices(container: DIContainer): void {
       return new FaceSwapService({ faceSwapProvider });
     },
     ["config"],
-    { singleton: true },
   );
 
   container.register(
@@ -376,7 +368,6 @@ export function registerGenerationServices(container: DIContainer): void {
     (config: ServiceConfig) =>
       new CapabilitiesProbeService(config.capabilities),
     ["config"],
-    { singleton: true },
   );
 
   container.register(
@@ -392,7 +383,6 @@ export function registerGenerationServices(container: DIContainer): void {
       });
     },
     ["metricsService", "config"],
-    { singleton: true },
   );
 
   container.register(
@@ -400,7 +390,6 @@ export function registerGenerationServices(container: DIContainer): void {
     (firestoreCircuitExecutor: FirestoreCircuitExecutor) =>
       new VideoWorkerHeartbeatStore(firestoreCircuitExecutor),
     ["firestoreCircuitExecutor"],
-    { singleton: true },
   );
 
   container.register(
@@ -501,7 +490,6 @@ export function registerGenerationServices(container: DIContainer): void {
         config.videoJobs.sweeper,
       ),
     ["videoJobStore", "userCreditService", "metricsService", "config"],
-    { singleton: true },
   );
 
   container.register(
@@ -525,7 +513,6 @@ export function registerGenerationServices(container: DIContainer): void {
       });
     },
     ["videoJobStore", "providerCircuitManager", "metricsService", "config"],
-    { singleton: true },
   );
 
   container.register(
@@ -544,6 +531,5 @@ export function registerGenerationServices(container: DIContainer): void {
         config.videoAssets.reconciler,
       ),
     ["gcsBucket", "videoJobStore", "metricsService", "config"],
-    { singleton: true },
   );
 }

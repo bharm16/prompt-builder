@@ -36,19 +36,12 @@ import type { ServiceConfig } from "./service-config.types.ts";
 
 export function registerEnhancementServices(container: DIContainer): void {
   container.register(
-    "videoPromptLlmGateway",
-    (aiService: AIModelService) =>
-      new AIServiceVideoPromptLlmGateway(aiService),
-    ["aiService"],
-  );
-
-  container.register(
     "videoPromptService",
-    (videoPromptLlmGateway: AIServiceVideoPromptLlmGateway) =>
+    (aiService: AIModelService) =>
       new VideoPromptService({
-        videoPromptLlmGateway,
+        videoPromptLlmGateway: new AIServiceVideoPromptLlmGateway(aiService),
       }),
-    ["videoPromptLlmGateway"],
+    ["aiService"],
   );
   container.register(
     "brainstormBuilder",

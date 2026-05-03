@@ -6,9 +6,9 @@ import { FallbackStrategyService } from "./services/guidance/FallbackStrategySer
 import { CategoryGuidanceService } from "./services/guidance/CategoryGuidanceService";
 import { ModelDetectionService } from "./services/detection/ModelDetectionService";
 import { SectionDetectionService } from "./services/detection/SectionDetectionService";
-import { TaxonomyValidationService } from "@services/taxonomy-validation/TaxonomyValidationService";
+import { TaxonomyValidationService } from "@services/video-prompt-analysis/services/taxonomy-validation/TaxonomyValidationService";
 import { countWords } from "./utils/textHelpers";
-import { resolvePromptModelId } from "@services/video-models/ModelRegistry";
+import { resolvePromptModelId } from "@config/videoModelRegistry";
 import { createDefaultStrategyRegistry, StrategyRegistry } from "./strategies";
 import type {
   ConstraintConfig,
@@ -21,7 +21,7 @@ import type {
   ValidationOptions,
   ValidationResult,
   ValidationStats,
-} from "@services/taxonomy-validation/types";
+} from "@services/video-prompt-analysis/services/taxonomy-validation/types";
 import type { ModelCapabilities } from "./services/detection/ModelDetectionService";
 import type { SectionConstraints } from "./services/detection/SectionDetectionService";
 import type { VideoPromptLlmGateway } from "./services/llm/VideoPromptLlmGateway";

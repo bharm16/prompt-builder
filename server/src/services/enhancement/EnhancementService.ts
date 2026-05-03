@@ -5,7 +5,6 @@ import { TemperatureOptimizer } from "@utils/TemperatureOptimizer";
 import { StructuredOutputEnforcer } from "@utils/StructuredOutputEnforcer";
 import { getCustomSuggestionSchema } from "./config/schemas";
 import { FallbackRegenerationService } from "./services/FallbackRegenerationService";
-import { StyleTransferService } from "./services/StyleTransferService";
 import { ContrastiveDiversityEnforcer } from "./services/ContrastiveDiversityEnforcer";
 import { EnhancementMetricsService } from "./services/EnhancementMetricsService";
 import { VideoContextDetectionService } from "./services/VideoContextDetectionService";
@@ -68,7 +67,6 @@ interface EnhancementCoreServices {
 
 interface EnhancementPipelineServices {
   fallbackRegeneration: FallbackRegenerationService;
-  styleTransfer: StyleTransferService;
   contrastiveDiversity: ContrastiveDiversityEnforcer;
   metricsLogger: EnhancementMetricsService;
   videoContextDetection: VideoContextDetectionService;
@@ -148,7 +146,6 @@ export class EnhancementService {
 
     this.pipeline = {
       fallbackRegeneration,
-      styleTransfer: new StyleTransferService(aiService),
       contrastiveDiversity,
       metricsLogger: new EnhancementMetricsService(metricsService),
       videoContextDetection: new VideoContextDetectionService(
@@ -631,13 +628,6 @@ export class EnhancementService {
     });
 
     return result;
-  }
-
-  /**
-   * Transfer text from one style to another
-   */
-  async transferStyle(text: string, targetStyle: string): Promise<string> {
-    return this.pipeline.styleTransfer.transferStyle(text, targetStyle);
   }
 
   private async _executeEnhancementV2(

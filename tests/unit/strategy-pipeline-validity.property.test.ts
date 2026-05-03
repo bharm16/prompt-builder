@@ -13,7 +13,7 @@
 
 import { describe, it, expect } from "vitest";
 import * as fc from "fast-check";
-import { resolvePromptModelId } from "@services/video-models/ModelRegistry";
+import { resolvePromptModelId } from "@config/videoModelRegistry";
 
 import {
   StrategyRegistry,

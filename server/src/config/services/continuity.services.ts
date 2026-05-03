@@ -35,7 +35,6 @@ export function registerContinuityServices(container: DIContainer): void {
     (sessionStore: SessionStorePort) =>
       new ContinuitySessionStore(sessionStore),
     ["sessionStore"],
-    { singleton: true },
   );
 
   container.register(
@@ -43,7 +42,6 @@ export function registerContinuityServices(container: DIContainer): void {
     (storageService: AppStorageService) =>
       new FrameBridgeService(storageService),
     ["storageService"],
-    { singleton: true },
   );
 
   container.register(
@@ -55,7 +53,6 @@ export function registerContinuityServices(container: DIContainer): void {
         config.continuity.ipAdapterModel,
       ),
     ["storageService", "config"],
-    { singleton: true },
   );
 
   container.register(
@@ -79,27 +76,23 @@ export function registerContinuityServices(container: DIContainer): void {
       );
     },
     ["keyframeGenerationService", "assetService", "storageService"],
-    { singleton: true },
   );
 
   container.register(
     "providerStyleAdapter",
     () => new ProviderStyleAdapter(),
     [],
-    { singleton: true },
   );
   container.register(
     "seedPersistenceService",
     () => new SeedPersistenceService(),
     [],
-    { singleton: true },
   );
 
   container.register(
     "styleAnalysisService",
     (aiService: AIModelService) => new StyleAnalysisService(aiService),
     ["aiService"],
-    { singleton: true },
   );
 
   container.register(
@@ -107,7 +100,6 @@ export function registerContinuityServices(container: DIContainer): void {
     (providerStyleAdapter: ProviderStyleAdapter) =>
       new AnchorService(providerStyleAdapter),
     ["providerStyleAdapter"],
-    { singleton: true },
   );
 
   container.register(
@@ -115,7 +107,6 @@ export function registerContinuityServices(container: DIContainer): void {
     (videoAssetStore: VideoAssetStore, storageService: AppStorageService) =>
       new GradingService(videoAssetStore, storageService),
     ["videoAssetStore", "storageService"],
-    { singleton: true },
   );
 
   container.register(
@@ -129,7 +120,6 @@ export function registerContinuityServices(container: DIContainer): void {
         disableClip: config.continuity.disableClip,
       }),
     ["faceEmbeddingService", "storageService", "config"],
-    { singleton: true },
   );
 
   container.register(
@@ -141,7 +131,6 @@ export function registerContinuityServices(container: DIContainer): void {
           userId,
         ),
     ["storageService"],
-    { singleton: true },
   );
 
   container.register(
@@ -161,7 +150,6 @@ export function registerContinuityServices(container: DIContainer): void {
       "frameBridgeService",
       "continuityDepthEstimationFactory",
     ],
-    { singleton: true },
   );
 
   container.register(

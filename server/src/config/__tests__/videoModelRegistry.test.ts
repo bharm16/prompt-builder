@@ -11,9 +11,9 @@ import {
   resolvePromptModelId,
   resolveProviderForGenerationModel,
   VIDEO_MODEL_PROVIDERS,
-} from "../ModelRegistry";
+} from "../videoModelRegistry";
 
-describe("ModelRegistry", () => {
+describe("videoModelRegistry", () => {
   it("resolves default generation model when selection is empty/auto", () => {
     expect(resolveGenerationModelSelection(undefined)).toEqual({
       modelId: VIDEO_MODELS.PRO,

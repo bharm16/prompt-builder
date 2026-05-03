@@ -9,12 +9,12 @@ import type {
 } from "../types";
 import { z } from "zod";
 import {
-  ContinuityApiResponseSchema,
-  ContinuitySessionSettingsSchema,
-  ContinuityShotSchema,
-  SceneProxySchema,
-  StyleReferenceSchema,
-} from "./schemas";
+  SessionContinuityShotSchema,
+  SessionContinuitySettingsSchema,
+  SessionSceneProxySchema,
+  SessionStyleReferenceSchema,
+} from "@shared/schemas/session.schemas";
+import { ContinuityApiResponseSchema } from "./schemas";
 
 interface CreateSceneProxyInput {
   sourceShotId?: string;
@@ -43,10 +43,11 @@ const SessionDtoSchema = z
     updatedAt: z.string(),
     continuity: z
       .object({
-        shots: z.array(ContinuityShotSchema).default([]),
-        primaryStyleReference: StyleReferenceSchema.nullable().optional(),
-        sceneProxy: SceneProxySchema.nullable().optional(),
-        settings: ContinuitySessionSettingsSchema,
+        shots: z.array(SessionContinuityShotSchema).default([]),
+        primaryStyleReference:
+          SessionStyleReferenceSchema.nullable().optional(),
+        sceneProxy: SessionSceneProxySchema.nullable().optional(),
+        settings: SessionContinuitySettingsSchema,
       })
       .optional(),
   })
@@ -138,15 +139,19 @@ export const continuityApi = {
   },
 
   addShot: (sessionId: string, input: CreateShotInput) =>
-    fetchWithAuth(`/v2/sessions/${sessionId}/shots`, ContinuityShotSchema, {
-      method: "POST",
-      body: JSON.stringify(input),
-    }),
+    fetchWithAuth(
+      `/v2/sessions/${sessionId}/shots`,
+      SessionContinuityShotSchema,
+      {
+        method: "POST",
+        body: JSON.stringify(input),
+      },
+    ),
 
   updateShot: (sessionId: string, shotId: string, updates: UpdateShotInput) =>
     fetchWithAuth(
       `/v2/sessions/${sessionId}/shots/${shotId}`,
-      ContinuityShotSchema,
+      SessionContinuityShotSchema,
       {
         method: "PATCH",
         body: JSON.stringify(updates),
@@ -156,7 +161,7 @@ export const continuityApi = {
   generateShot: (sessionId: string, shotId: string) =>
     fetchWithAuth(
       `/v2/sessions/${sessionId}/shots/${shotId}/generate`,
-      ContinuityShotSchema,
+      SessionContinuityShotSchema,
       {
         method: "POST",
       },
@@ -169,7 +174,7 @@ export const continuityApi = {
   ) =>
     fetchWithAuth(
       `/v2/sessions/${sessionId}/shots/${shotId}/style-reference`,
-      ContinuityShotSchema,
+      SessionContinuityShotSchema,
       {
         method: "PUT",
         body: JSON.stringify({ styleReferenceId }),
@@ -225,7 +230,7 @@ export const continuityApi = {
   ) =>
     fetchWithAuth(
       `/v2/sessions/${sessionId}/shots/${shotId}/scene-proxy-preview`,
-      ContinuityShotSchema,
+      SessionContinuityShotSchema,
       {
         method: "POST",
         body: JSON.stringify(input ?? {}),

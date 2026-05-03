@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ConcurrencyLimiter } from "../ConcurrencyService";
+import { ConcurrencyLimiter } from "../ConcurrencyLimiter";
 
 vi.mock("@infrastructure/Logger", () => ({
   logger: {

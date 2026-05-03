@@ -13,7 +13,7 @@ import type { VideoContentAccessService } from "@services/video-generation/acces
 import type KeyframeGenerationService from "@services/video-generation/KeyframeGenerationService";
 import type { FaceSwapService } from "@services/video-generation/FaceSwapService";
 import type { AssetService } from "@services/asset/AssetService";
-import type { RequestIdempotencyService } from "@services/idempotency/RequestIdempotencyService";
+import type { RequestIdempotencyService } from "@services/video-generation/jobs/RequestIdempotencyService";
 import type { SessionService } from "@services/sessions/SessionService";
 
 export interface PreviewStorageService {

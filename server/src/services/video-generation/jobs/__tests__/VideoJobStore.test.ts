@@ -171,7 +171,7 @@ vi.mock("@services/firestore/FirestoreCircuitExecutor", () => {
   };
 });
 
-vi.mock("@services/video-models/ModelRegistry", () => ({
+vi.mock("@config/videoModelRegistry", () => ({
   resolveGenerationModelSelection: vi.fn(() => ({
     modelId: "wan-video/wan-2.2-t2v-fast",
     source: "default",

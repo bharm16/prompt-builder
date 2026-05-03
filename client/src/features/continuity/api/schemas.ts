@@ -2,19 +2,10 @@ import { z } from "zod";
 import {
   SessionContinuityShotSchema,
   SessionContinuitySettingsSchema,
-  SessionFrameBridgeSchema,
   SessionSceneProxySchema,
-  SessionSeedInfoSchema,
   SessionStatusSchema,
   SessionStyleReferenceSchema,
 } from "@shared/schemas/session.schemas";
-
-export const ContinuityShotSchema = SessionContinuityShotSchema;
-export const ContinuitySessionSettingsSchema = SessionContinuitySettingsSchema;
-export const FrameBridgeSchema = SessionFrameBridgeSchema;
-export const SceneProxySchema = SessionSceneProxySchema;
-export const SeedInfoSchema = SessionSeedInfoSchema;
-export const StyleReferenceSchema = SessionStyleReferenceSchema;
 
 // The client's ContinuitySession is a flattened view: session metadata
 // merged with its continuity block. The server models session + continuity
@@ -26,10 +17,10 @@ export const ContinuitySessionSchema = z
     userId: z.string(),
     name: z.string(),
     description: z.string().optional(),
-    primaryStyleReference: StyleReferenceSchema.nullable().optional(),
-    sceneProxy: SceneProxySchema.nullable().optional(),
-    shots: z.array(ContinuityShotSchema),
-    defaultSettings: ContinuitySessionSettingsSchema,
+    primaryStyleReference: SessionStyleReferenceSchema.nullable().optional(),
+    sceneProxy: SessionSceneProxySchema.nullable().optional(),
+    shots: z.array(SessionContinuityShotSchema),
+    defaultSettings: SessionContinuitySettingsSchema,
     status: SessionStatusSchema,
     createdAt: z.string(),
     updatedAt: z.string(),

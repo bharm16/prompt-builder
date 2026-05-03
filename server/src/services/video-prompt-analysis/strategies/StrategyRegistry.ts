@@ -11,7 +11,7 @@
  * leak entity IDs across users, and accumulate unbounded session state.
  */
 
-import { resolvePromptModelId } from "@services/video-models/ModelRegistry";
+import { resolvePromptModelId } from "@config/videoModelRegistry";
 import { getPromptModelConstraints } from "@shared/videoModels";
 import type { ModelConstraints, PromptOptimizationStrategy } from "./types";
 
