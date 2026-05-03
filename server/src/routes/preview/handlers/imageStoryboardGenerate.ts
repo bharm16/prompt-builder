@@ -393,22 +393,24 @@ export const createImageStoryboardGenerateHandler =
       // C7 server-side parity: surface the post-billing balance so the client
       // can refresh its credit pill in one round-trip instead of falling back
       // to a separate /api/credits fetch. Mirrors the videoGenerate handler.
+      // No `typeof === "function"` guard: `userCreditService` is a
+      // `UserCreditService` class instance (DI-resolved via routes.config),
+      // and the null-check at line 198 already gates this branch — so
+      // `getBalance` is statically guaranteed to exist.
       let remainingCredits: number | null = null;
-      if (typeof userCreditService.getBalance === "function") {
-        try {
-          remainingCredits = await userCreditService.getBalance(userId);
-        } catch (balanceError) {
-          logger.warn(
-            "Failed to resolve remaining credits after storyboard reservation",
-            {
-              userId,
-              error:
-                balanceError instanceof Error
-                  ? balanceError.message
-                  : String(balanceError),
-            },
-          );
-        }
+      try {
+        remainingCredits = await userCreditService.getBalance(userId);
+      } catch (balanceError) {
+        logger.warn(
+          "Failed to resolve remaining credits after storyboard reservation",
+          {
+            userId,
+            error:
+              balanceError instanceof Error
+                ? balanceError.message
+                : String(balanceError),
+          },
+        );
       }
 
       const responseBody = {

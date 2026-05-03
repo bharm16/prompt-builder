@@ -457,6 +457,27 @@ export function usePromptVersioning({
       if (versions.length === 0) {
         const fallbackPrompt = promptText.trim();
         if (!fallbackPrompt) return;
+        // Diagnostic warn (per pre-launch code review): this branch is the
+        // only labeling-sync path that creates a fresh v1, and it fires both
+        // legitimately (brand-new session, first ML pass after typing) and
+        // suspiciously (hydrated session whose versions array is empty —
+        // legacy data, partial writes, or a sync race). The latter case
+        // bumps `updatedAt` on what should be a read-only browse,
+        // violating the "browsing is read-only" UX rule.
+        //
+        // We can't reliably distinguish the two cases here, so we don't
+        // gate the create — but we surface the event so production logs
+        // can quantify how often it fires on hydrated sessions.
+        if (typeof console !== "undefined" && console.warn) {
+          console.warn(
+            "[usePromptVersioning] syncVersionHighlights creating v1 on empty-versions entry",
+            {
+              promptUuid: currentPromptUuid,
+              signature: snapshot.signature,
+              editsSinceLoad: versionEditCountRef.current,
+            },
+          );
+        }
         const initialVersion = createVersionEntry({
           signature: snapshot.signature,
           prompt: fallbackPrompt,
@@ -504,7 +525,13 @@ export function usePromptVersioning({
       };
       persistVersions([...versions.slice(0, -1), updatedLast]);
     },
-    [createVersionEntry, currentPromptUuid, persistVersions, resetVersionEdits],
+    [
+      createVersionEntry,
+      currentPromptUuid,
+      persistVersions,
+      resetVersionEdits,
+      versionEditCountRef,
+    ],
   );
 
   // Bug 12 fix: read currentVersions/currentPromptEntry from refs to avoid stale closures

@@ -28,11 +28,28 @@ const isSocketPermissionError = (error: unknown): boolean => {
 const runSupertestOrSkip = async <T>(
   execute: () => Promise<T>,
 ): Promise<T | null> => {
-  if (process.env.CODEX_SANDBOX === "seatbelt") return null;
+  if (process.env.CODEX_SANDBOX === "seatbelt") {
+    // Visible skip notice so a green run in a socket-blocked sandbox doesn't
+    // masquerade as a passing assertion: the regression check below
+    // short-circuits when this returns null. Without the warn, CI would
+    // silently report "passing" with zero assertions executed.
+    console.warn(
+      "[mediaType.regression] Skipping supertest run: CODEX_SANDBOX=seatbelt blocks socket binds",
+    );
+    return null;
+  }
   try {
     return await execute();
   } catch (error) {
-    if (isSocketPermissionError(error)) return null;
+    if (isSocketPermissionError(error)) {
+      console.warn(
+        "[mediaType.regression] Skipping supertest run: socket bind permission denied",
+        {
+          error: error instanceof Error ? error.message : String(error),
+        },
+      );
+      return null;
+    }
     throw error;
   }
 };

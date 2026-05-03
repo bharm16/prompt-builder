@@ -70,8 +70,15 @@ export function selectHeroGeneration({
   // We match against an explicit allowlist (RENDER_LIKE_TIERS) so legacy
   // persisted records carrying the deprecated `"final"` tier still win, but
   // unknown / future tier values do NOT silently slip in.
+  //
+  // `String(g.tier)` (rather than `g.tier as string`) makes the runtime
+  // widening explicit: `GenerationTier` is declared as `"draft" | "render"`,
+  // but `shared/schemas/session.schemas.ts` parses generations as
+  // `z.record(z.string(), z.unknown())` — so legacy `"final"` values flow
+  // through Zod unchanged. The coercion documents the gap rather than
+  // hiding it behind an unsafe cast.
   const renders = nonStoryboard.filter((g) =>
-    RENDER_LIKE_TIERS.has(g.tier as string),
+    RENDER_LIKE_TIERS.has(String(g.tier)),
   );
   if (renders.length > 0) {
     return renders[renders.length - 1] ?? null;

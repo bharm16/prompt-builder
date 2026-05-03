@@ -28,6 +28,7 @@ import { GenerationPopover } from "@/features/prompt-optimizer/components/Genera
 import { useAnimatedPresence } from "@/hooks/useAnimatedPresence";
 import { cn } from "@/utils/cn";
 import { buildGalleryGenerationEntries } from "./utils/galleryGeneration";
+import { computeIsEmptySession } from "./utils/computeIsEmptySession";
 import { CanvasPromptBar } from "./components/CanvasPromptBar";
 import { ModelCornerSelector } from "./components/ModelCornerSelector";
 import { CanvasHeroViewer } from "./components/CanvasHeroViewer";
@@ -322,20 +323,25 @@ export function CanvasWorkspace({
     setViewingId(null);
   }, [generationLookup, viewingId]);
 
-  const isEmptySession = useMemo(() => {
-    const hasGenerations =
-      galleryEntries.length > 0 || displayHeroGeneration !== null;
-    const hasStartFrame = Boolean(domain.startFrame);
-    const hasHydratedSessionPrompt =
-      enableMLHighlighting && prompt.trim().length > 0;
-    return !hasGenerations && !hasStartFrame && !hasHydratedSessionPrompt;
-  }, [
-    enableMLHighlighting,
-    galleryEntries.length,
-    displayHeroGeneration,
-    domain.startFrame,
-    prompt,
-  ]);
+  const isEmptySession = useMemo(
+    () =>
+      computeIsEmptySession({
+        galleryEntriesCount: galleryEntries.length,
+        hasHeroGeneration: displayHeroGeneration !== null,
+        hasStartFrame: Boolean(domain.startFrame),
+        prompt,
+        enableMLHighlighting,
+        versions: generationsPanelProps.versions ?? [],
+      }),
+    [
+      enableMLHighlighting,
+      galleryEntries.length,
+      displayHeroGeneration,
+      domain.startFrame,
+      prompt,
+      generationsPanelProps.versions,
+    ],
+  );
 
   const galleryOpen = true;
   const { shouldRender: shouldRenderEmptyChrome, phase: emptyChromePhase } =

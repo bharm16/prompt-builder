@@ -566,21 +566,23 @@ export const createVideoGenerateHandler =
         storageService: storageService ?? null,
       });
 
+      // No `typeof === "function"` guard: `userCreditService` is a
+      // `UserCreditService` class instance (DI-resolved), and earlier
+      // null-checks gate this branch — so `getBalance` is statically
+      // guaranteed to exist.
       let remainingCredits: number | null = null;
-      if (typeof userCreditService.getBalance === "function") {
-        try {
-          remainingCredits = await userCreditService.getBalance(userId);
-        } catch (error) {
-          log.warn(
-            "Failed to resolve remaining credits after video reservation.",
-            {
-              operation,
-              requestId,
-              userId,
-              error: error instanceof Error ? error.message : String(error),
-            },
-          );
-        }
+      try {
+        remainingCredits = await userCreditService.getBalance(userId);
+      } catch (error) {
+        log.warn(
+          "Failed to resolve remaining credits after video reservation.",
+          {
+            operation,
+            requestId,
+            userId,
+            error: error instanceof Error ? error.message : String(error),
+          },
+        );
       }
 
       const responsePayload = {

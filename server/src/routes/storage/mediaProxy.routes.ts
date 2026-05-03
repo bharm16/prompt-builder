@@ -210,7 +210,14 @@ export function createMediaProxyRoutes(
             isHead,
           );
           if (recovered) {
-            log.info("Recovered expired signed URL via bucket fallback", {
+            // Emit at warn level so the recovery path is visible by default in
+            // ops dashboards. The structured `metric` field gives observability
+            // a stable aggregation key — production runbook calls for alerting
+            // if this fires on >1% of /api/storage/proxy calls, since that
+            // signals a structural signed-URL TTL problem upstream rather
+            // than a benign reload of a stale cached URL.
+            log.warn("Recovered expired signed URL via bucket fallback", {
+              metric: "media_proxy.signed_url_expired_recovery",
               objectPath,
             });
             return res;

@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef } from "react";
+import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import { Eye, MagicWand, X } from "@promptstudio/system/components/ui";
 import type { SidebarUploadedImage } from "@features/generation-controls";
 import {
@@ -131,6 +131,20 @@ export function CanvasSettingsRow({
   // most once per ~2s window. The ref is intentionally NOT in disabled
   // state to keep the button visually unchanged; the click is just dropped.
   const previewClickCooldownRef = useRef(false);
+  // Track the cooldown timer so unmount during the window cleans it up
+  // rather than leaving a pending callback against a destroyed ref. Defensive
+  // for future changes — if the timer body ever sets React state, the leak
+  // would surface as a "set state on unmounted component" warning.
+  const previewCooldownTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (previewCooldownTimerRef.current !== null) {
+        window.clearTimeout(previewCooldownTimerRef.current);
+        previewCooldownTimerRef.current = null;
+      }
+    };
+  }, []);
 
   const handleAspectRatioChange = useCallback(
     (value: string) => {
@@ -402,8 +416,9 @@ export function CanvasSettingsRow({
             }
             previewClickCooldownRef.current = true;
             controls?.onStoryboard?.();
-            window.setTimeout(() => {
+            previewCooldownTimerRef.current = window.setTimeout(() => {
               previewClickCooldownRef.current = false;
+              previewCooldownTimerRef.current = null;
             }, PREVIEW_CLICK_COOLDOWN_MS);
           }}
           disabled={previewDisabled}

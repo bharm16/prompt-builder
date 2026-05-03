@@ -28,12 +28,27 @@ vi.mock("@/hooks/useUserCreditBalance", () => ({
   requestCreditBalanceRefresh: requestCreditBalanceRefreshMock,
 }));
 
+// Tightened from bare `vi.fn()` so that an accidental call to a mocked-but-
+// unused API from the storyboard path (e.g. a future refactor that unifies
+// code paths) fails loudly instead of resolving to undefined and slipping
+// through the regression assertions. `vi.hoisted` runs the factory in the
+// same pre-import pass that hoists `vi.mock`, so the function is available
+// when the mock factory below is evaluated.
+const failIfCalled = vi.hoisted(
+  () => (label: string) =>
+    vi.fn(() => {
+      throw new Error(
+        `Storyboard credit-refresh regression test should not call ${label}`,
+      );
+    }),
+);
+
 vi.mock("../../api", () => ({
-  compileWanPrompt: vi.fn(),
-  generateVideoPreview: vi.fn(),
+  compileWanPrompt: failIfCalled("compileWanPrompt"),
+  generateVideoPreview: failIfCalled("generateVideoPreview"),
   generateStoryboardPreview: (...args: unknown[]) =>
     generateStoryboardPreviewMock(...args),
-  waitForVideoJob: vi.fn(),
+  waitForVideoJob: failIfCalled("waitForVideoJob"),
 }));
 
 const buildSuccessResponse = (extras: { remainingCredits?: number } = {}) => ({

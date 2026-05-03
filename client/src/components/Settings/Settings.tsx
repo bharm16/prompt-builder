@@ -64,7 +64,7 @@ export default function Settings({
     >
       <DialogContent className="w-full max-w-3xl gap-0 rounded-xl border border-border bg-surface-1 p-0 shadow-lg [&>button]:hidden">
         <Card className="border-none bg-transparent shadow-none">
-          <CardHeader className="flex items-center justify-between bg-gradient-to-r from-primary-50 to-secondary-50">
+          <CardHeader className="flex items-center justify-between">
             <DialogTitle
               id="settings-title"
               className="text-heading-20 text-foreground"
@@ -89,7 +89,7 @@ export default function Settings({
               </h3>
 
               {/* Dark Mode Toggle */}
-              <div className="flex items-center justify-between p-4 rounded-lg border-2 border-neutral-200 bg-neutral-50 transition-colors duration-200">
+              <div className="flex items-center justify-between p-4 rounded-lg border border-border bg-surface-2 transition-colors duration-200">
                 <div className="flex items-center gap-3">
                   {settings.darkMode ? (
                     <Moon
@@ -121,17 +121,14 @@ export default function Settings({
                     updateSetting("darkMode", checked)
                   }
                   aria-label="Toggle dark mode"
-                  className="data-[state=checked]:bg-primary-600 data-[state=unchecked]:bg-neutral-300"
+                  className="data-[state=checked]:bg-primary-600"
                 />
               </div>
 
               {/* Font Size */}
-              <div className="mt-4 p-4 rounded-lg border-2 border-neutral-200 bg-neutral-50">
+              <div className="mt-4 p-4 rounded-lg border border-border bg-surface-2">
                 <div className="flex items-center gap-3 mb-3">
-                  <Type
-                    className="h-5 w-5 text-neutral-600"
-                    aria-hidden="true"
-                  />
+                  <Type className="h-5 w-5 text-muted" aria-hidden="true" />
                   <label className="text-label-16 text-foreground">
                     Font Size
                   </label>
@@ -147,7 +144,7 @@ export default function Settings({
                       ${
                         settings.fontSize === size
                           ? "bg-primary-600 text-white shadow-md scale-105"
-                          : "bg-white text-neutral-700 hover:bg-neutral-100 border-2 border-neutral-200"
+                          : "bg-surface-1 text-foreground hover:bg-surface-3 border border-border"
                       }
                     `}
                       aria-pressed={settings.fontSize === size}
@@ -161,12 +158,12 @@ export default function Settings({
 
             {/* Behavior Section */}
             <section>
-              <h3 className="text-lg font-semibold text-neutral-900 mb-4">
+              <h3 className="text-lg font-semibold text-foreground mb-4">
                 Behavior
               </h3>
 
               {/* Auto-save Toggle */}
-              <div className="flex items-center justify-between p-4 rounded-lg border-2 border-neutral-200 bg-neutral-50">
+              <div className="flex items-center justify-between p-4 rounded-lg border border-border bg-surface-2">
                 <div className="flex items-center gap-3">
                   <Save
                     className="h-5 w-5 text-success-600"
@@ -175,11 +172,11 @@ export default function Settings({
                   <div>
                     <label
                       htmlFor="auto-save-toggle"
-                      className="font-medium text-neutral-900"
+                      className="font-medium text-foreground"
                     >
                       Auto-save
                     </label>
-                    <p className="text-sm text-neutral-600">
+                    <p className="text-sm text-muted">
                       Automatically save prompts to history
                     </p>
                   </div>
@@ -191,23 +188,20 @@ export default function Settings({
                     updateSetting("autoSave", checked)
                   }
                   aria-label="Toggle auto-save"
-                  className="data-[state=checked]:bg-success-600 data-[state=unchecked]:bg-neutral-300"
+                  className="data-[state=checked]:bg-success-600"
                 />
               </div>
             </section>
 
             {/* Export Section */}
             <section>
-              <h3 className="text-lg font-semibold text-neutral-900 mb-4">
+              <h3 className="text-lg font-semibold text-foreground mb-4">
                 Export Preferences
               </h3>
 
-              <div className="p-4 rounded-lg border-2 border-neutral-200 bg-neutral-50">
+              <div className="p-4 rounded-lg border border-border bg-surface-2">
                 <div className="flex items-center gap-3 mb-3">
-                  <Download
-                    className="h-5 w-5 text-neutral-600"
-                    aria-hidden="true"
-                  />
+                  <Download className="h-5 w-5 text-muted" aria-hidden="true" />
                   <label className="text-label-16 text-foreground">
                     Default Export Format
                   </label>
@@ -229,7 +223,7 @@ export default function Settings({
                       ${
                         settings.exportFormat === format.value
                           ? "bg-primary-600 text-white shadow-md scale-105"
-                          : "bg-white text-neutral-700 hover:bg-neutral-100 border-2 border-neutral-200"
+                          : "bg-surface-1 text-foreground hover:bg-surface-3 border border-border"
                       }
                     `}
                       aria-pressed={settings.exportFormat === format.value}
@@ -326,7 +320,7 @@ export default function Settings({
           </CardContent>
 
           <CardFooter className="flex items-center justify-between">
-            <p className="text-xs text-neutral-600">
+            <p className="text-xs text-muted">
               Settings are saved automatically
             </p>
             <Button onClick={onClose} variant="default">
