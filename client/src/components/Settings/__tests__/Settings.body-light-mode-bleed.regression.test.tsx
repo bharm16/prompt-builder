@@ -19,7 +19,6 @@ import type { AppSettings } from "../types";
 // inconsistency violated the visual hierarchy of the rest of the app.
 
 const buildSettings = (overrides: Partial<AppSettings> = {}): AppSettings => ({
-  darkMode: false,
   fontSize: "medium",
   autoSave: true,
   exportFormat: "markdown",

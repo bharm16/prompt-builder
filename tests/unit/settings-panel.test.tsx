@@ -51,7 +51,6 @@ vi.mock("@promptstudio/system/components/ui/switch", () => ({
 }));
 
 const baseSettings: AppSettings = {
-  darkMode: false,
   fontSize: "medium",
   autoSave: true,
   exportFormat: "markdown",
@@ -118,9 +117,8 @@ describe("Settings", () => {
         />,
       );
 
-      await user.click(screen.getByLabelText("Toggle dark mode"));
-      expect(updateSetting).toHaveBeenCalledWith("darkMode", true);
-
+      // Dark Mode toggle was removed in ISSUE-36 (the toggle persisted a
+      // setting nothing read; the app forces a single dark theme).
       await user.click(screen.getByText("Large"));
       expect(updateSetting).toHaveBeenCalledWith("fontSize", "large");
     });

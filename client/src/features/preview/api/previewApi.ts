@@ -4,6 +4,7 @@
  * API client for image preview generation
  */
 
+import { z } from "zod";
 import { apiClient } from "@/services/ApiClient";
 import { API_CONFIG } from "@/config/api.config";
 import { buildFirebaseAuthHeaders } from "@/services/http/firebaseAuth";
@@ -165,24 +166,12 @@ export interface GenerateStoryboardPreviewRequest {
   promptVersionId?: string;
 }
 
-export interface GenerateStoryboardPreviewResponse {
-  success: boolean;
-  data?: {
-    imageUrls: string[];
-    storagePaths?: string[];
-    deltas: string[];
-    baseImageUrl: string;
-    // Returned when the server successfully persisted the generation into the
-    // session — signals the client that a session refetch is worthwhile.
-    generationId?: string;
-  };
-  // Server-authoritative remaining balance after the generation was billed.
-  // Used by the client to refresh the credit-balance badge so it doesn't go
-  // stale after a successful storyboard preview (C7).
-  remainingCredits?: number;
-  error?: string;
-  message?: string;
-}
+// ISSUE-37: derive from the canonical Zod schema so the inferred TS type
+// cannot drift from runtime parsing. Field-level docs (generationId,
+// remainingCredits, …) live in shared/schemas/preview.schemas.ts.
+export type GenerateStoryboardPreviewResponse = z.infer<
+  typeof GenerateStoryboardPreviewResponseSchema
+>;
 
 export interface MediaViewUrlResponse {
   success: boolean;
@@ -293,9 +282,7 @@ export async function generateStoryboardPreview(
     },
   )) as unknown;
 
-  return GenerateStoryboardPreviewResponseSchema.parse(
-    payload,
-  ) as GenerateStoryboardPreviewResponse;
+  return GenerateStoryboardPreviewResponseSchema.parse(payload);
 }
 
 export async function faceSwapPreview(options: {

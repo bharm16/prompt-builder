@@ -17,7 +17,6 @@ import type { AppSettings } from "../types";
 // invisible — the H2 sat on a light cream-to-teal gradient.
 
 const buildSettings = (overrides: Partial<AppSettings> = {}): AppSettings => ({
-  darkMode: false,
   fontSize: "medium",
   autoSave: true,
   exportFormat: "markdown",

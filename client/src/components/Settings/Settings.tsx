@@ -1,8 +1,6 @@
 import React, { useState } from "react";
 import {
   X,
-  Moon,
-  Sun,
   Type,
   Save,
   Trash2,
@@ -88,45 +86,8 @@ export default function Settings({
                 Appearance
               </h3>
 
-              {/* Dark Mode Toggle */}
-              <div className="flex items-center justify-between p-4 rounded-lg border border-border bg-surface-2 transition-colors duration-200">
-                <div className="flex items-center gap-3">
-                  {settings.darkMode ? (
-                    <Moon
-                      className="h-5 w-5 text-primary-600"
-                      aria-hidden="true"
-                    />
-                  ) : (
-                    <Sun
-                      className="h-5 w-5 text-warning-600"
-                      aria-hidden="true"
-                    />
-                  )}
-                  <div>
-                    <label
-                      htmlFor="dark-mode-toggle"
-                      className="text-label-16 text-foreground"
-                    >
-                      Dark Mode
-                    </label>
-                    <p className="text-copy-14 text-muted">
-                      Use dark theme across the app
-                    </p>
-                  </div>
-                </div>
-                <Switch
-                  id="dark-mode-toggle"
-                  checked={settings.darkMode}
-                  onCheckedChange={(checked) =>
-                    updateSetting("darkMode", checked)
-                  }
-                  aria-label="Toggle dark mode"
-                  className="data-[state=checked]:bg-primary-600"
-                />
-              </div>
-
               {/* Font Size */}
-              <div className="mt-4 p-4 rounded-lg border border-border bg-surface-2">
+              <div className="p-4 rounded-lg border border-border bg-surface-2">
                 <div className="flex items-center gap-3 mb-3">
                   <Type className="h-5 w-5 text-muted" aria-hidden="true" />
                   <label className="text-label-16 text-foreground">

@@ -64,6 +64,11 @@ export const GenerateStoryboardPreviewResponseSchema = z
         generationId: z.string().optional(),
       })
       .optional(),
+    // Server-authoritative post-billing balance. The client uses this to
+    // refresh its credit pill in one round-trip after a successful
+    // storyboard preview, falling back to a /payment/credits/balance fetch
+    // when the field is absent. Mirrors GenerateVideoResponseSchema (ISSUE-37).
+    remainingCredits: z.number().optional(),
     error: z.string().optional(),
     message: z.string().optional(),
   })

@@ -362,8 +362,12 @@ export function CanvasSettingsRow({
           className="w-[68px] justify-center px-0"
           aria-label={isEnhancing ? "Enhancing prompt…" : "Enhance prompt"}
           title={isEnhancing ? "Enhancing…" : "Enhance"}
-          disabled={isEnhancing || !onEnhance}
-          {...(onEnhance && !isEnhancing
+          // ISSUE-39: also gate on `hasPrompt`. The handler in
+          // PromptCanvas.handleEnhance silently returns when the prompt is
+          // empty, which would otherwise leave the user clicking a
+          // visibly-active button with zero feedback.
+          disabled={isEnhancing || !onEnhance || !hasPrompt}
+          {...(onEnhance && !isEnhancing && hasPrompt
             ? {
                 onClick: (event: React.MouseEvent) => {
                   event.stopPropagation();

@@ -10,11 +10,8 @@ import type { AppSettings } from "@components/Settings/types";
 
 describe("useSettingsDomSync", () => {
   describe("edge cases", () => {
-    it("removes dark mode class and sets font size attribute", async () => {
-      document.documentElement.classList.add("dark");
-
+    it("sets font size attribute on the document element", async () => {
       const settings: AppSettings = {
-        darkMode: false,
         fontSize: "large",
         autoSave: true,
         exportFormat: "markdown",
@@ -23,7 +20,6 @@ describe("useSettingsDomSync", () => {
       renderHook(() => useSettingsDomSync(settings));
 
       await waitFor(() => {
-        expect(document.documentElement.classList.contains("dark")).toBe(false);
         expect(document.documentElement.getAttribute("data-font-size")).toBe(
           "large",
         );
@@ -34,7 +30,6 @@ describe("useSettingsDomSync", () => {
   describe("core behavior", () => {
     it("updates font size attribute when setting changes", async () => {
       const initialSettings: AppSettings = {
-        darkMode: false,
         fontSize: "medium",
         autoSave: true,
         exportFormat: "markdown",

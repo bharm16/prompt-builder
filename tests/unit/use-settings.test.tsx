@@ -22,7 +22,6 @@ const mockUseSettingsStorage = vi.mocked(useSettingsStorage);
 const mockUseSettingsDomSync = vi.mocked(useSettingsDomSync);
 
 const baseSettings: AppSettings = {
-  darkMode: false,
   fontSize: "medium",
   autoSave: true,
   exportFormat: "markdown",
