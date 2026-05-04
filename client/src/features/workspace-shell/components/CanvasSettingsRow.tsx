@@ -137,11 +137,25 @@ export function CanvasSettingsRow({
   // would surface as a "set state on unmounted component" warning.
   const previewCooldownTimerRef = useRef<number | null>(null);
 
+  // ISSUE-42: rapid Enhance double-clicks fire `onEnhance` (and therefore
+  // POST /api/optimize) multiple times because the upstream `isOptimizing`
+  // guard in PromptCanvas.handleEnhance doesn't flip until React commits a
+  // `startTransition`-wrapped state update inside `usePromptOptimizer.optimize`.
+  // By the time the user's second click lands, the button is still visibly
+  // enabled and another request goes out. Mirrors the Preview button's
+  // cooldown ref above — same UI-layer guard, same shape.
+  const enhanceClickCooldownRef = useRef(false);
+  const enhanceCooldownTimerRef = useRef<number | null>(null);
+
   useEffect(() => {
     return () => {
       if (previewCooldownTimerRef.current !== null) {
         window.clearTimeout(previewCooldownTimerRef.current);
         previewCooldownTimerRef.current = null;
+      }
+      if (enhanceCooldownTimerRef.current !== null) {
+        window.clearTimeout(enhanceCooldownTimerRef.current);
+        enhanceCooldownTimerRef.current = null;
       }
     };
   }, []);
@@ -371,7 +385,19 @@ export function CanvasSettingsRow({
             ? {
                 onClick: (event: React.MouseEvent) => {
                   event.stopPropagation();
+                  // ISSUE-42: drop rapid double/triple clicks within a 2s
+                  // window so the Enhance handler can't fire concurrent
+                  // /api/optimize requests before `isOptimizing` flips.
+                  if (enhanceClickCooldownRef.current) return;
+                  enhanceClickCooldownRef.current = true;
                   onEnhance();
+                  if (enhanceCooldownTimerRef.current !== null) {
+                    window.clearTimeout(enhanceCooldownTimerRef.current);
+                  }
+                  enhanceCooldownTimerRef.current = window.setTimeout(() => {
+                    enhanceClickCooldownRef.current = false;
+                    enhanceCooldownTimerRef.current = null;
+                  }, 2000);
                 },
               }
             : {})}
