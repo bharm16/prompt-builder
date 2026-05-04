@@ -6,6 +6,7 @@ import {
   MapPin,
   Box,
   Layers,
+  type IconType,
 } from "@promptstudio/system/components/ui";
 import type {
   Asset,
@@ -19,10 +20,7 @@ import AssetGrid from "./components/AssetGrid";
 import AssetEditor from "./components/AssetEditor";
 import { ASSET_TYPE_LIST } from "./config/assetConfig";
 
-const ASSET_TYPE_ICONS: Record<
-  string,
-  React.ComponentType<{ className?: string }>
-> = {
+const ASSET_TYPE_ICONS: Record<string, IconType> = {
   character: User,
   style: Palette,
   location: MapPin,

@@ -73,7 +73,7 @@ Moved to `docs/QUICKSTART.md`.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│  SPAN BENTO        INTERACTIVE EDITOR                  SUGGESTIONS     │
+│  CATEGORIES        INTERACTIVE EDITOR                  SUGGESTIONS     │
 │  ───────────       ──────────────────                  ───────────     │
 │                                                                         │
 │  Subject (3)       "A [woman in her 30s] walks        "woman in her    │
@@ -249,7 +249,7 @@ prompt-builder/
 │       │   └── prompt-optimizer/
 │       │       ├── PromptCanvas/         # Canvas orchestration + view sections
 │       │       ├── PromptOptimizerContainer/  # Workspace orchestration
-│       │       └── SpanBentoGrid/        # Element overview
+│       │       └── SpanCategoryAccordion/ # Category accordion overview
 │       └── components/
 │           ├── SuggestionsPanel/         # AI suggestions
 │           └── VideoConceptBuilder/      # Guided wizard

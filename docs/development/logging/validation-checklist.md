@@ -144,7 +144,7 @@ Frontend: 20 console statements found (acceptable/documented)
 - client/src/PromptImprovementForm.tsx (2) - Legacy component
 - client/src/config/sentry.ts (3) - Sentry initialization/fallback
 - client/src/config/firebase.ts (9) - Firebase initialization/errors
-- client/src/features/prompt-optimizer/SpanBentoGrid/ (3) - Debug warnings
+- client/src/features/prompt-optimizer/SpanCategoryAccordion/ (3) - Debug warnings
 
 Assessment: No console statements in core business logic. All remaining
 statements are in configuration/initialization code or documented legacy

@@ -10,7 +10,6 @@
   :root {
     --layout-sidebar-width-expanded: 280px;
     --layout-sidebar-width-collapsed: 60px;
-    --layout-bento-rail-width: 44px;
     --sidebar-width: var(--layout-sidebar-width-collapsed);
     --global-top-nav-height: 64px;
 

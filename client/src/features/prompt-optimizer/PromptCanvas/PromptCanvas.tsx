@@ -35,7 +35,7 @@ import { useCanvasEditorState } from "./hooks/useCanvasEditorState";
 import { useCanvasGenerations } from "./hooks/useCanvasGenerations";
 import { useCanvasI2V } from "./hooks/useCanvasI2V";
 import { useCanvasCoherence } from "./hooks/useCanvasCoherence";
-import { scrollToSpan } from "../SpanBentoGrid/utils/spanFormatting";
+import { scrollToSpan } from "../SpanCategoryAccordion/utils/spanFormatting";
 import { PromptCanvasView } from "./components/PromptCanvasView";
 import { postEnhancementSuggestions } from "@/api/enhancementSuggestionsApi";
 import { buildSuggestionContext } from "@features/prompt-optimizer/utils/enhancementSuggestionContext";
@@ -342,7 +342,7 @@ export function PromptCanvas({
     [setState],
   );
 
-  // Span bento overlay (state machine, dismissal, hover brightness)
+  // Span outline overlay (state machine, dismissal, hover brightness)
   const { outlineOverlayState, outlineOverlayActive, openOutlineOverlay } =
     useOutlineOverlay({
       outlineOverlayRef,
@@ -355,7 +355,7 @@ export function PromptCanvas({
 
   // --- Span Labeling Pipeline ---
   // Composes: data conversion → labeling → signature gate → parse → highlight rendering
-  const { parseResult, bentoSpans, highlightFingerprint, formattedHTML } =
+  const { parseResult, categorySpans, highlightFingerprint, formattedHTML } =
     useSpanLabelingPipeline({
       displayedPrompt,
       promptUuid,
@@ -665,7 +665,7 @@ export function PromptCanvas({
           idempotencyKey: span.idempotencyKey,
           span: span,
         },
-        trigger: "bento-grid",
+        trigger: "category-accordion",
         allLabeledSpans: parseResult.spans,
       });
     },
@@ -906,9 +906,9 @@ export function PromptCanvas({
       outlineOverlayActive={outlineOverlayActive}
       outlineOverlayState={outlineOverlayState}
       outlineOverlayRef={outlineOverlayRef}
-      bentoSpans={bentoSpans}
+      categorySpans={categorySpans}
       editorRef={editorRef}
-      onBentoSpanHoverChange={setHoveredSpanId}
+      onCategorySpanHoverChange={setHoveredSpanId}
       showLegend={showLegend}
       onCloseLegend={() => setShowLegend(false)}
       promptContext={promptContext}

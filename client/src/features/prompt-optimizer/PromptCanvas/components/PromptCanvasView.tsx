@@ -5,7 +5,7 @@ import { cn } from "@/utils/cn";
 import { CategoryLegend } from "@features/prompt-optimizer/components/CategoryLegend";
 import { VersionsPanel } from "@features/prompt-optimizer/components/VersionsPanel";
 import { GenerationsPanel } from "@features/generations";
-import { SpanBentoGrid } from "@features/prompt-optimizer/SpanBentoGrid/SpanBentoGrid";
+import { SpanCategoryAccordion } from "@features/prompt-optimizer/SpanCategoryAccordion/SpanCategoryAccordion";
 import { HighlightingErrorBoundary } from "@features/span-highlighting/components/HighlightingErrorBoundary";
 import { CoherencePanel } from "@features/prompt-optimizer/components/coherence/CoherencePanel";
 import { CanvasWorkspace } from "@features/workspace-shell";
@@ -19,9 +19,9 @@ export function PromptCanvasView({
   outlineOverlayActive,
   outlineOverlayState,
   outlineOverlayRef,
-  bentoSpans,
+  categorySpans,
   editorRef,
-  onBentoSpanHoverChange,
+  onCategorySpanHoverChange,
   showLegend,
   onCloseLegend,
   promptContext,
@@ -226,10 +226,10 @@ export function PromptCanvasView({
           </div>
           <div className="flex-1 overflow-auto p-4">
             <HighlightingErrorBoundary>
-              <SpanBentoGrid
-                spans={bentoSpans}
+              <SpanCategoryAccordion
+                spans={categorySpans}
                 editorRef={editorRef as React.RefObject<HTMLElement>}
-                onSpanHoverChange={onBentoSpanHoverChange}
+                onSpanHoverChange={onCategorySpanHoverChange}
               />
             </HighlightingErrorBoundary>
           </div>

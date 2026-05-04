@@ -7,6 +7,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import type { ButtonHTMLAttributes } from "react";
 
 import { PanelHeader } from "@components/SuggestionsPanel/components/PanelHeader";
+import type { PanelIcon } from "@components/SuggestionsPanel/components/types";
 
 vi.mock("@promptstudio/system/components/ui/button", () => ({
   Button: ({ children, ...props }: ButtonHTMLAttributes<HTMLButtonElement>) => (
@@ -14,7 +15,7 @@ vi.mock("@promptstudio/system/components/ui/button", () => ({
   ),
 }));
 
-const DummyIcon = () => <svg data-testid="icon" />;
+const DummyIcon = (() => <svg data-testid="icon" />) as unknown as PanelIcon;
 
 describe("PanelHeader", () => {
   describe("edge cases", () => {
