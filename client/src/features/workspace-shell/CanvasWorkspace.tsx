@@ -73,7 +73,6 @@ interface CanvasWorkspaceProps {
   onAutocompleteSelect: (asset: AssetSuggestion) => void;
   onAutocompleteClose: () => void;
   onAutocompleteIndexChange: (index: number) => void;
-  enableMLHighlighting: boolean;
   selectedSpanId: string | null;
   suggestionCount: number;
   suggestionsListRef: React.RefObject<HTMLDivElement>;

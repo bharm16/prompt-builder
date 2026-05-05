@@ -9,8 +9,8 @@
  *    returns balance=null when userId is null, which naturally falls to
  *    the placeholder path)
  *
- * Motivation: the balance pill previously only lived in NewSessionView
- * (the workspace home), so navigating to /session/<id> hid it. Users
+ * Motivation: the balance pill previously only lived on the workspace
+ * home, so navigating to /session/<id> hid it. Users
  * need to see their live balance while editing — especially when deciding
  * whether to click Generate.
  */

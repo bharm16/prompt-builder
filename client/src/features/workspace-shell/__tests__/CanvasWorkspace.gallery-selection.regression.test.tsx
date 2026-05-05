@@ -170,7 +170,6 @@ const buildProps = (): React.ComponentProps<typeof CanvasWorkspace> => ({
   onCustomRequestSubmit: vi.fn(),
   isCustomRequestDisabled: true,
   isCustomLoading: false,
-  enableMLHighlighting: false,
   showI2VLockIndicator: false,
   resolvedI2VReason: null,
   i2vMotionAlternatives: [],

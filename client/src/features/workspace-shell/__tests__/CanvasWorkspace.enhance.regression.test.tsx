@@ -153,7 +153,6 @@ const buildProps = (): React.ComponentProps<typeof CanvasWorkspace> => ({
   onCustomRequestSubmit: vi.fn(),
   isCustomRequestDisabled: true,
   isCustomLoading: false,
-  enableMLHighlighting: false,
   showI2VLockIndicator: false,
   resolvedI2VReason: null,
   i2vMotionAlternatives: [],
@@ -212,7 +211,6 @@ describe("regression: canvas enhance / empty-session shell wiring", () => {
     render(
       <CanvasWorkspace
         {...props}
-        enableMLHighlighting
         generationsPanelProps={{
           ...(props.generationsPanelProps as GenerationsPanelProps),
           prompt: "The camera tracks a subject through warm golden light.",

@@ -88,17 +88,6 @@ vi.mock("../components/CanvasSettingsRow", () => ({
   CanvasSettingsRow: () => <div data-testid="canvas-settings-row" />,
 }));
 
-vi.mock("../components/CanvasHeroViewer", () => ({
-  CanvasHeroViewer: ({ generation }: { generation: Generation | null }) =>
-    generation ? (
-      <div data-testid="canvas-hero-viewer">{generation.id}</div>
-    ) : null,
-}));
-
-vi.mock("@/features/prompt-optimizer/components/GalleryPanel", () => ({
-  GalleryPanel: () => null,
-}));
-
 vi.mock("@/features/prompt-optimizer/components/GenerationPopover", () => ({
   GenerationPopover: () => null,
 }));
@@ -166,7 +155,6 @@ const buildProps = (
   onCustomRequestSubmit: vi.fn(),
   isCustomRequestDisabled: true,
   isCustomLoading: false,
-  enableMLHighlighting: false,
   showI2VLockIndicator: false,
   resolvedI2VReason: null,
   i2vMotionAlternatives: [],

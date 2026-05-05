@@ -100,7 +100,7 @@ export function ToolRail({
       {/* ── Bottom: Balance + Home + Profile ── */}
       <div className="flex flex-col items-center gap-1 pb-2">
         {/* Persistent credit balance — visible on every route, not just
-            the NewSessionView home. Only show when signed in. */}
+            the workspace home. Only show when signed in. */}
         {user ? <BalancePill /> : null}
         <Link
           to="/home"
