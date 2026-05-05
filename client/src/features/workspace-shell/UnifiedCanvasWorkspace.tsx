@@ -3,7 +3,6 @@ import { CameraMotionModal } from "@/components/modals/CameraMotionModal";
 import { VIDEO_DRAFT_MODEL } from "@/components/ToolSidebar/config/modelConfig";
 import type { AssetSuggestion } from "@/features/assets/hooks/useTriggerAutocomplete";
 import type { CameraPath } from "@/features/convergence/types";
-import { sanitizeText } from "@/features/span-highlighting";
 import {
   useGenerationControlsStoreActions,
   useGenerationControlsStoreState,
@@ -23,7 +22,6 @@ import type {
 import { trackModelRecommendationEvent } from "@/features/model-intelligence/api";
 import { useModelSelectionRecommendation } from "@/components/ToolSidebar/components/panels/GenerationControlsPanel/hooks/useModelSelectionRecommendation";
 import { useSidebarGenerationDomain } from "@/components/ToolSidebar/context";
-import { GalleryPanel } from "@/features/prompt-optimizer/components/GalleryPanel";
 import { GenerationPopover } from "@/features/prompt-optimizer/components/GenerationPopover";
 import { cn } from "@/utils/cn";
 import { buildGalleryGenerationEntries } from "./utils/galleryGeneration";
@@ -31,8 +29,11 @@ import {
   computeWorkspaceMoment,
   workspaceMomentClass,
 } from "./utils/computeWorkspaceMoment";
+import { groupShots } from "./utils/groupShots";
+import { useFeaturedTile } from "./hooks/useFeaturedTile";
+import { ShotRow } from "./components/ShotRow";
+import { ShotDivider } from "./components/ShotDivider";
 import { ModelCornerSelector } from "./components/ModelCornerSelector";
-import { CanvasHeroViewer } from "./components/CanvasHeroViewer";
 import { WorkspaceTopBar } from "./components/WorkspaceTopBar";
 import { UnifiedCanvasPromptBar } from "./components/UnifiedCanvasPromptBar";
 import type { PromptEditorSurfaceProps } from "./components/PromptEditorSurface";
@@ -114,10 +115,6 @@ const parseDurationSeconds = (
   }
   return 5;
 };
-
-const normalizePromptForComparison = (
-  value: string | null | undefined,
-): string => sanitizeText(typeof value === "string" ? value : "").trim();
 
 export function UnifiedCanvasWorkspace({
   generationsPanelProps,
@@ -274,17 +271,6 @@ export function UnifiedCanvasWorkspace({
   }, [generationsPanelProps.promptVersionId]);
 
   const heroGeneration = generationsRuntime.heroGeneration;
-  const displayHeroGeneration = useMemo(() => {
-    if (heroGeneration?.status !== "failed") {
-      return heroGeneration;
-    }
-
-    const currentPrompt = normalizePromptForComparison(
-      generationsPanelProps.prompt,
-    );
-    const failedPrompt = normalizePromptForComparison(heroGeneration.prompt);
-    return currentPrompt === failedPrompt ? heroGeneration : null;
-  }, [generationsPanelProps.prompt, heroGeneration]);
 
   const galleryEntries = useMemo(() => {
     // When runtimeGenerations is empty (e.g., after po:workspace-reset), skip
@@ -313,6 +299,20 @@ export function UnifiedCanvasWorkspace({
     return lookup;
   }, [galleryEntries]);
 
+  const shotInputGenerations = useMemo(
+    () => galleryEntries.map((entry) => entry.generation),
+    [galleryEntries],
+  );
+  const shots = useMemo(
+    () => groupShots(shotInputGenerations),
+    [shotInputGenerations],
+  );
+  const featuredTile = useFeaturedTile({
+    shots,
+    heroGeneration: heroGeneration ?? null,
+    currentPrompt: prompt,
+  });
+
   useEffect(() => {
     if (!viewingId) return;
     if (generationLookup.has(viewingId)) return;
@@ -321,10 +321,6 @@ export function UnifiedCanvasWorkspace({
 
   const handleSelectGeneration = useCallback((generationId: string): void => {
     setViewingId(generationId);
-  }, []);
-
-  const handleCloseGallery = useCallback((): void => {
-    // Gallery rail is intentionally persistent in canvas mode.
   }, []);
 
   const handleReuse = useCallback(
@@ -344,15 +340,10 @@ export function UnifiedCanvasWorkspace({
     [storeActions],
   );
 
-  // Phase 1: "active shot" is approximated as the most recent up-to-4 entries.
-  // Phase 2 will replace this with `groupShots(...)[0].tiles`.
   const promptIsEmpty = prompt.trim().length === 0;
   const activeShotStatuses = useMemo<ReadonlyArray<Generation["status"]>>(
-    () =>
-      galleryEntries.length > 0
-        ? galleryEntries.slice(0, 4).map((entry) => entry.generation.status)
-        : [],
-    [galleryEntries],
+    () => shots[0]?.tiles.map((tile) => tile.status) ?? [],
+    [shots],
   );
   const moment = computeWorkspaceMoment({
     galleryEntriesCount: galleryEntries.length,
@@ -444,25 +435,42 @@ export function UnifiedCanvasWorkspace({
           {moment === "empty" ? (
             <EmptyHero />
           ) : (
-            <>
-              {displayHeroGeneration ? (
-                <div className="mb-3">
-                  <CanvasHeroViewer
-                    generation={displayHeroGeneration}
-                    onCancel={generationsRuntime.handleCancel}
+            <div className="mx-auto flex max-w-[1280px] flex-col gap-6">
+              {shots.map((shot, idx) => (
+                <React.Fragment key={shot.id}>
+                  <ShotRow
+                    shot={shot}
+                    layout={idx === 0 ? "featured" : "compact"}
+                    featuredTileId={
+                      idx === 0 ? (featuredTile?.id ?? null) : null
+                    }
+                    onSelectTile={handleSelectGeneration}
+                    onRetryTile={(generationId) => {
+                      const target = shot.tiles.find(
+                        (tile) => tile.id === generationId,
+                      );
+                      if (target) generationsRuntime.handleRetry(target);
+                    }}
                   />
-                </div>
-              ) : null}
-              <GalleryPanel
-                generations={galleryGenerations}
-                activeGenerationId={viewingId}
-                onSelectGeneration={handleSelectGeneration}
-                onClose={handleCloseGallery}
-              />
-            </>
+                  {idx < shots.length - 1 && <ShotDivider />}
+                </React.Fragment>
+              ))}
+            </div>
           )}
 
-          <UnifiedCanvasPromptBar moment={moment} surfaceProps={surfaceProps} />
+          <UnifiedCanvasPromptBar
+            moment={moment}
+            surfaceProps={surfaceProps}
+            onContinueScene={(fromGenerationId) => {
+              // Phase 2 baseline: log + acknowledge the event. Real
+              // StartFramePopover seeding (last-frame extraction from video
+              // metadata) is Phase 2.5.
+              void fromGenerationId;
+              // TODO Phase 2.5: resolve fromGenerationId → tile, extract
+              // last-frame URL, call storeActions.setStartFrame(...) with
+              // the resolved asset.
+            }}
+          />
         </div>
       </div>
 

@@ -1,12 +1,15 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { cn } from "@/utils/cn";
 import { PromptEditorSurface } from "./PromptEditorSurface";
 import type { PromptEditorSurfaceProps } from "./PromptEditorSurface";
 import type { WorkspaceMoment } from "../utils/computeWorkspaceMoment";
+import { addContinueSceneListener } from "../events";
 
 export interface UnifiedCanvasPromptBarProps {
   moment: WorkspaceMoment;
   surfaceProps: PromptEditorSurfaceProps;
+  /** Called when a featured tile dispatches CONTINUE_SCENE. */
+  onContinueScene?: (fromGenerationId: string) => void;
   /** Phase 3 will mount the TuneDrawer above the editor; Phase 1 leaves this null. */
   tuneSlot?: React.ReactNode;
   /** Phase 3 will add a CostPreview + Make-it submit row; Phase 1 leaves this null. */
@@ -24,9 +27,17 @@ export interface UnifiedCanvasPromptBarProps {
 export function UnifiedCanvasPromptBar({
   moment,
   surfaceProps,
+  onContinueScene,
   tuneSlot = null,
   chromeSlot = null,
 }: UnifiedCanvasPromptBarProps): React.ReactElement {
+  useEffect(() => {
+    if (!onContinueScene) return;
+    return addContinueSceneListener((event) => {
+      onContinueScene(event.detail.fromGenerationId);
+    });
+  }, [onContinueScene]);
+
   // moment is plumbed in for future use (e.g. dimming the Make-it CTA while
   // rendering); Phase 1 does not need to branch on it.
   void moment;
