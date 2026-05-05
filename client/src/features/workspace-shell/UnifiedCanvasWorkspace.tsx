@@ -1,0 +1,526 @@
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { CameraMotionModal } from "@/components/modals/CameraMotionModal";
+import { VIDEO_DRAFT_MODEL } from "@/components/ToolSidebar/config/modelConfig";
+import type { AssetSuggestion } from "@/features/assets/hooks/useTriggerAutocomplete";
+import type { CameraPath } from "@/features/convergence/types";
+import { sanitizeText } from "@/features/span-highlighting";
+import {
+  useGenerationControlsStoreActions,
+  useGenerationControlsStoreState,
+} from "@features/generation-controls";
+import { useOptionalPromptHighlights } from "@/features/prompt-optimizer/context/PromptStateContext";
+import { useWorkspaceSession } from "@/features/prompt-optimizer/context/WorkspaceSessionContext";
+import { useGenerationsRuntime } from "@features/generations";
+import type {
+  Generation,
+  GenerationsPanelProps,
+  GenerationsPanelStateSnapshot,
+} from "@features/generations/types";
+import type {
+  InlineSuggestion,
+  SuggestionItem,
+} from "@/features/prompt-optimizer/PromptCanvas/types";
+import { trackModelRecommendationEvent } from "@/features/model-intelligence/api";
+import { useModelSelectionRecommendation } from "@/components/ToolSidebar/components/panels/GenerationControlsPanel/hooks/useModelSelectionRecommendation";
+import { useSidebarGenerationDomain } from "@/components/ToolSidebar/context";
+import { GalleryPanel } from "@/features/prompt-optimizer/components/GalleryPanel";
+import { GenerationPopover } from "@/features/prompt-optimizer/components/GenerationPopover";
+import { cn } from "@/utils/cn";
+import { buildGalleryGenerationEntries } from "./utils/galleryGeneration";
+import {
+  computeWorkspaceMoment,
+  workspaceMomentClass,
+} from "./utils/computeWorkspaceMoment";
+import { ModelCornerSelector } from "./components/ModelCornerSelector";
+import { CanvasHeroViewer } from "./components/CanvasHeroViewer";
+import { WorkspaceTopBar } from "./components/WorkspaceTopBar";
+import { UnifiedCanvasPromptBar } from "./components/UnifiedCanvasPromptBar";
+import type { PromptEditorSurfaceProps } from "./components/PromptEditorSurface";
+
+interface CanvasWorkspaceProps {
+  generationsPanelProps: GenerationsPanelProps;
+  copied: boolean;
+  canUndo: boolean;
+  canRedo: boolean;
+  onCopy: () => void;
+  onShare: () => void;
+  onUndo: () => void;
+  onRedo: () => void;
+  editorRef: React.RefObject<HTMLDivElement>;
+  onTextSelection: (event: React.MouseEvent<HTMLDivElement>) => void;
+  onHighlightClick: (event: React.MouseEvent<HTMLDivElement>) => void;
+  onHighlightMouseDown: (event: React.MouseEvent<HTMLDivElement>) => void;
+  onHighlightMouseEnter: (event: React.MouseEvent<HTMLDivElement>) => void;
+  onHighlightMouseLeave: (event: React.MouseEvent<HTMLDivElement>) => void;
+  onCopyEvent: (event: React.ClipboardEvent<HTMLDivElement>) => void;
+  onInput: (event: React.FormEvent<HTMLDivElement>) => void;
+  onEditorKeyDown: (event: React.KeyboardEvent<HTMLDivElement>) => void;
+  onEditorBlur: (event: React.FocusEvent<HTMLDivElement>) => void;
+  autocompleteOpen: boolean;
+  autocompleteSuggestions: AssetSuggestion[];
+  autocompleteSelectedIndex: number;
+  autocompletePosition: { top: number; left: number };
+  autocompleteLoading: boolean;
+  onAutocompleteSelect: (asset: AssetSuggestion) => void;
+  onAutocompleteClose: () => void;
+  onAutocompleteIndexChange: (index: number) => void;
+  enableMLHighlighting: boolean;
+  selectedSpanId: string | null;
+  suggestionCount: number;
+  suggestionsListRef: React.RefObject<HTMLDivElement>;
+  inlineSuggestions: InlineSuggestion[];
+  activeSuggestionIndex: number;
+  onActiveSuggestionChange: (index: number) => void;
+  interactionSourceRef: React.MutableRefObject<"keyboard" | "mouse" | "auto">;
+  onSuggestionClick: (suggestion: SuggestionItem | string) => void;
+  onCloseInlinePopover: () => void;
+  selectionLabel: string;
+  onApplyActiveSuggestion: () => void;
+  isInlineLoading: boolean;
+  isInlineError: boolean;
+  inlineErrorMessage: string;
+  isInlineEmpty: boolean;
+  customRequest: string;
+  onCustomRequestChange: (value: string) => void;
+  customRequestError: string;
+  onCustomRequestErrorChange: (value: string) => void;
+  onCustomRequestSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
+  isCustomRequestDisabled: boolean;
+  isCustomLoading: boolean;
+  responseMetadata?: Record<string, unknown> | null;
+  onCopyAllDebug?: () => void;
+  isBulkCopyLoading?: boolean;
+  showI2VLockIndicator: boolean;
+  resolvedI2VReason: string | null;
+  i2vMotionAlternatives: SuggestionItem[];
+  onLockedAlternativeClick: (suggestion: SuggestionItem) => void;
+  onReuseGeneration: (generation: Generation) => void;
+  onToggleGenerationFavorite: (
+    generationId: string,
+    isFavorite: boolean,
+  ) => void;
+  onEnhance?: () => void;
+  isEnhancing?: boolean;
+}
+
+const parseDurationSeconds = (
+  generationParams: Record<string, unknown>,
+): number => {
+  const value = generationParams.duration_s;
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string") {
+    const parsed = Number.parseFloat(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return 5;
+};
+
+const normalizePromptForComparison = (
+  value: string | null | undefined,
+): string => sanitizeText(typeof value === "string" ? value : "").trim();
+
+export function UnifiedCanvasWorkspace({
+  generationsPanelProps,
+  editorRef,
+  onTextSelection,
+  onHighlightClick,
+  onHighlightMouseDown,
+  onHighlightMouseEnter,
+  onHighlightMouseLeave,
+  onCopyEvent,
+  onInput,
+  onEditorKeyDown,
+  onEditorBlur,
+  autocompleteOpen,
+  autocompleteSuggestions,
+  autocompleteSelectedIndex,
+  autocompletePosition,
+  autocompleteLoading,
+  onAutocompleteSelect,
+  onAutocompleteClose,
+  onAutocompleteIndexChange,
+  selectedSpanId,
+  suggestionCount,
+  suggestionsListRef,
+  inlineSuggestions,
+  activeSuggestionIndex,
+  onActiveSuggestionChange,
+  interactionSourceRef,
+  onSuggestionClick,
+  onCloseInlinePopover,
+  selectionLabel,
+  onApplyActiveSuggestion,
+  isInlineLoading,
+  isInlineError,
+  inlineErrorMessage,
+  isInlineEmpty,
+  customRequest,
+  onCustomRequestChange,
+  customRequestError,
+  onCustomRequestErrorChange,
+  onCustomRequestSubmit,
+  isCustomRequestDisabled,
+  isCustomLoading,
+  responseMetadata = null,
+  onCopyAllDebug,
+  isBulkCopyLoading = false,
+  showI2VLockIndicator,
+  resolvedI2VReason,
+  i2vMotionAlternatives,
+  onLockedAlternativeClick,
+  onReuseGeneration,
+  onToggleGenerationFavorite,
+}: CanvasWorkspaceProps): React.ReactElement {
+  const storeActions = useGenerationControlsStoreActions();
+  const { domain } = useGenerationControlsStoreState();
+  const promptHighlights = useOptionalPromptHighlights();
+  const { hasActiveContinuityShot, currentShot, updateShot } =
+    useWorkspaceSession();
+  // Generation domain hook is consumed here for parity with the legacy
+  // orchestrator (it pulls the upload handlers needed for the future
+  // settings row); Phase 1 ignores its return value.
+  void useSidebarGenerationDomain();
+  const [showCameraMotionModal, setShowCameraMotionModal] = useState(false);
+  const [viewingId, setViewingId] = useState<string | null>(null);
+
+  const prompt = generationsPanelProps.prompt;
+  const durationSeconds = parseDurationSeconds(
+    domain.generationParams as Record<string, unknown>,
+  );
+
+  const {
+    recommendationMode,
+    modelRecommendation,
+    recommendedModelId,
+    efficientModelId,
+    renderModelOptions,
+    renderModelId,
+    recommendationAgeMs,
+  } = useModelSelectionRecommendation({
+    prompt,
+    activeTab: "video",
+    keyframesCount: domain.startFrame ? 1 : 0,
+    durationSeconds,
+    selectedModel: domain.selectedModel,
+    videoTier: domain.videoTier,
+    promptHighlights: promptHighlights?.initialHighlights ?? null,
+  });
+
+  const handleModelChange = useCallback(
+    (modelId: string): void => {
+      const nextTier = modelId === VIDEO_DRAFT_MODEL.id ? "draft" : "render";
+      if (modelId === domain.selectedModel) return;
+
+      void trackModelRecommendationEvent({
+        event: "model_selected",
+        recommendationId: modelRecommendation?.promptId,
+        promptId: modelRecommendation?.promptId,
+        recommendedModelId,
+        selectedModelId: modelId,
+        mode: recommendationMode,
+        durationSeconds,
+        ...(typeof recommendationAgeMs === "number"
+          ? {
+              timeSinceRecommendationMs: Math.max(
+                0,
+                Math.round(recommendationAgeMs),
+              ),
+            }
+          : {}),
+      });
+
+      storeActions.setSelectedModel(modelId);
+      if (nextTier !== domain.videoTier) storeActions.setVideoTier(nextTier);
+
+      if (
+        hasActiveContinuityShot &&
+        currentShot &&
+        currentShot.modelId !== modelId
+      ) {
+        void updateShot(currentShot.id, { modelId });
+      }
+    },
+    [
+      currentShot,
+      domain.selectedModel,
+      domain.videoTier,
+      durationSeconds,
+      hasActiveContinuityShot,
+      modelRecommendation?.promptId,
+      recommendationAgeMs,
+      recommendationMode,
+      recommendedModelId,
+      storeActions,
+      updateShot,
+    ],
+  );
+
+  const onStateSnapshotProp = generationsPanelProps.onStateSnapshot;
+  const handleSnapshot = useCallback(
+    (nextSnapshot: GenerationsPanelStateSnapshot) => {
+      onStateSnapshotProp?.(nextSnapshot);
+    },
+    [onStateSnapshotProp],
+  );
+
+  const generationsRuntime = useGenerationsRuntime({
+    ...generationsPanelProps,
+    presentation: "hero",
+    onStateSnapshot: handleSnapshot,
+  });
+
+  useEffect(() => {
+    setViewingId(null);
+  }, [generationsPanelProps.promptVersionId]);
+
+  const heroGeneration = generationsRuntime.heroGeneration;
+  const displayHeroGeneration = useMemo(() => {
+    if (heroGeneration?.status !== "failed") {
+      return heroGeneration;
+    }
+
+    const currentPrompt = normalizePromptForComparison(
+      generationsPanelProps.prompt,
+    );
+    const failedPrompt = normalizePromptForComparison(heroGeneration.prompt);
+    return currentPrompt === failedPrompt ? heroGeneration : null;
+  }, [generationsPanelProps.prompt, heroGeneration]);
+
+  const galleryEntries = useMemo(() => {
+    // When runtimeGenerations is empty (e.g., after po:workspace-reset), skip
+    // version-based entries to prevent stale gallery items from a prior session
+    // remaining visible during the transition to a new draft.
+    const versions =
+      generationsRuntime.generations.length === 0
+        ? []
+        : generationsPanelProps.versions;
+    return buildGalleryGenerationEntries({
+      versions,
+      runtimeGenerations: generationsRuntime.generations,
+    });
+  }, [generationsPanelProps.versions, generationsRuntime.generations]);
+
+  const galleryGenerations = useMemo(
+    () => galleryEntries.map((entry) => entry.gallery),
+    [galleryEntries],
+  );
+
+  const generationLookup = useMemo(() => {
+    const lookup = new Map<string, Generation>();
+    for (const entry of galleryEntries) {
+      lookup.set(entry.generation.id, entry.generation);
+    }
+    return lookup;
+  }, [galleryEntries]);
+
+  useEffect(() => {
+    if (!viewingId) return;
+    if (generationLookup.has(viewingId)) return;
+    setViewingId(null);
+  }, [generationLookup, viewingId]);
+
+  const handleSelectGeneration = useCallback((generationId: string): void => {
+    setViewingId(generationId);
+  }, []);
+
+  const handleCloseGallery = useCallback((): void => {
+    // Gallery rail is intentionally persistent in canvas mode.
+  }, []);
+
+  const handleReuse = useCallback(
+    (generationId: string): void => {
+      const generation = generationLookup.get(generationId);
+      if (!generation) return;
+      onReuseGeneration(generation);
+      setViewingId(null);
+    },
+    [generationLookup, onReuseGeneration],
+  );
+  const handleCameraMotionSelect = useCallback(
+    (cameraPath: CameraPath): void => {
+      storeActions.setCameraMotion(cameraPath);
+      setShowCameraMotionModal(false);
+    },
+    [storeActions],
+  );
+
+  // Phase 1: "active shot" is approximated as the most recent up-to-4 entries.
+  // Phase 2 will replace this with `groupShots(...)[0].tiles`.
+  const promptIsEmpty = prompt.trim().length === 0;
+  const activeShotStatuses = useMemo<ReadonlyArray<Generation["status"]>>(
+    () =>
+      galleryEntries.length > 0
+        ? galleryEntries.slice(0, 4).map((entry) => entry.generation.status)
+        : [],
+    [galleryEntries],
+  );
+  const moment = computeWorkspaceMoment({
+    galleryEntriesCount: galleryEntries.length,
+    activeShotStatuses,
+    promptIsEmpty,
+    tuneOpen: false, // Phase 3 wires this
+    promptFocused: false, // Phase 3 wires this
+  });
+
+  const surfaceProps: PromptEditorSurfaceProps = {
+    editorRef,
+    prompt,
+    onTextSelection,
+    onHighlightClick,
+    onHighlightMouseDown,
+    onHighlightMouseEnter,
+    onHighlightMouseLeave,
+    onCopyEvent,
+    onInput,
+    onEditorKeyDown,
+    onEditorBlur,
+    autocompleteOpen,
+    autocompleteSuggestions,
+    autocompleteSelectedIndex,
+    autocompletePosition,
+    autocompleteLoading,
+    onAutocompleteSelect,
+    onAutocompleteClose,
+    onAutocompleteIndexChange,
+    selectedSpanId,
+    suggestionCount,
+    suggestionsListRef,
+    inlineSuggestions,
+    activeSuggestionIndex,
+    onActiveSuggestionChange,
+    interactionSourceRef,
+    onSuggestionClick,
+    onCloseInlinePopover,
+    selectionLabel,
+    onApplyActiveSuggestion,
+    isInlineLoading,
+    isInlineError,
+    inlineErrorMessage,
+    isInlineEmpty,
+    customRequest,
+    onCustomRequestChange,
+    customRequestError,
+    onCustomRequestErrorChange,
+    onCustomRequestSubmit,
+    isCustomRequestDisabled,
+    isCustomLoading,
+    responseMetadata: responseMetadata ?? null,
+    ...(onCopyAllDebug ? { onCopyAllDebug } : {}),
+    ...(typeof isBulkCopyLoading === "boolean" ? { isBulkCopyLoading } : {}),
+    showI2VLockIndicator,
+    resolvedI2VReason,
+    i2vMotionAlternatives,
+    onLockedAlternativeClick,
+  };
+
+  return (
+    <div
+      className={cn(
+        "grid h-full grid-rows-[var(--workspace-topbar-h)_1fr] bg-tool-surface-deep text-foreground overflow-hidden",
+        workspaceMomentClass(moment),
+      )}
+    >
+      <WorkspaceTopBar />
+      <div className="grid min-h-0 grid-cols-[var(--tool-rail-width)_1fr]">
+        {/*
+          ToolSidebar already mounts elsewhere in the app shell. The legacy
+          CanvasWorkspace did NOT render the rail itself. Leave this column
+          empty in Phase 1; the rail keeps mounting at its existing parent
+          and visually overlaps the empty column. After flag removal in
+          Task 24 the rail mount can be moved into this column if desired.
+        */}
+        <div aria-hidden="true" />
+        <div className="relative min-h-0 overflow-y-auto px-7 pb-[140px] scroll-smooth">
+          <ModelCornerSelector
+            renderModelOptions={renderModelOptions}
+            renderModelId={renderModelId}
+            modelRecommendation={modelRecommendation}
+            recommendedModelId={recommendedModelId}
+            efficientModelId={efficientModelId}
+            onModelChange={handleModelChange}
+            className="absolute right-5 top-3"
+          />
+
+          {moment === "empty" ? (
+            <EmptyHero />
+          ) : (
+            <>
+              {displayHeroGeneration ? (
+                <div className="mb-3">
+                  <CanvasHeroViewer
+                    generation={displayHeroGeneration}
+                    onCancel={generationsRuntime.handleCancel}
+                  />
+                </div>
+              ) : null}
+              <GalleryPanel
+                generations={galleryGenerations}
+                activeGenerationId={viewingId}
+                onSelectGeneration={handleSelectGeneration}
+                onClose={handleCloseGallery}
+              />
+            </>
+          )}
+
+          <UnifiedCanvasPromptBar moment={moment} surfaceProps={surfaceProps} />
+        </div>
+      </div>
+
+      {viewingId ? (
+        <GenerationPopover
+          generations={galleryGenerations}
+          activeId={viewingId}
+          onChange={setViewingId}
+          onClose={() => setViewingId(null)}
+          onReuse={handleReuse}
+          onToggleFavorite={onToggleGenerationFavorite}
+        />
+      ) : null}
+
+      {domain.startFrame ? (
+        <CameraMotionModal
+          isOpen={showCameraMotionModal}
+          onClose={() => setShowCameraMotionModal(false)}
+          imageUrl={domain.startFrame.url}
+          imageStoragePath={domain.startFrame.storagePath ?? null}
+          imageAssetId={domain.startFrame.assetId ?? null}
+          initialSelection={domain.cameraMotion}
+          onSelect={handleCameraMotionSelect}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+const STARTER_CHIPS = [
+  "A neon-lit cyberpunk alley at night",
+  "Slow-motion ink drop in clear water",
+  "Drone shot over autumn forest at sunrise",
+  "A dancer mid-leap in a sunlit studio",
+] as const;
+
+function EmptyHero(): React.ReactElement {
+  // Phase 1: chips are visual stubs - clicking does nothing yet. Future
+  // phases will wire chip clicks into the prompt setter.
+  return (
+    <div className="mx-auto flex min-h-[calc(100vh-var(--workspace-topbar-h)-240px)] max-w-[640px] flex-col items-center justify-center gap-[18px] text-center">
+      <h1 className="text-[28px] font-medium tracking-[-0.01em]">
+        What are you making?
+      </h1>
+      <p className="m-0 max-w-[460px] text-tool-text-subdued">
+        Describe a shot. Pick a model. We&apos;ll render four variants.
+      </p>
+      <div className="mt-3 flex flex-wrap justify-center gap-2">
+        {STARTER_CHIPS.map((chip) => (
+          <button
+            key={chip}
+            type="button"
+            className="rounded-full border border-tool-rail-border bg-tool-surface-card px-3 py-1 text-xs text-tool-text-dim hover:text-foreground"
+          >
+            {chip}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
