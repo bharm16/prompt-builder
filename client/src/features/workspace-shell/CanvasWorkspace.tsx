@@ -190,16 +190,21 @@ export function CanvasWorkspace({
   const [showCameraMotionModal, setShowCameraMotionModal] = useState(false);
   const [viewingId, setViewingId] = useState<string | null>(null);
   const [tuneOpen, setTuneOpen] = useState<boolean>(false);
-  // Phase 3 baseline: selected chips are tracked in state but not yet
-  // appended to the prompt at submit time. Wiring the suffix into the
-  // submit flow requires lifting the submit handler out of CanvasSettingsRow
-  // (currently unchanged from legacy). Tracked as a Phase 3.5 follow-up.
   const [selectedChipIds, setSelectedChipIds] = useState<
     ReadonlyArray<TuneChipId>
   >([]);
-  void applyTuneChips;
 
   const prompt = generationsPanelProps.prompt;
+  // Effective prompt = raw prompt + selected Tune chip suffixes. The editor
+  // surface still shows the raw prompt (the user's text + chip badges remain
+  // truthful), but generations use the suffixed form so picks like "Handheld"
+  // / "Soft" actually reach the model. Enhance (re-optimize) deliberately
+  // continues to use the raw editor text — chips are a render-time taste
+  // signal, not input the optimizer should rewrite.
+  const effectivePrompt = useMemo(
+    () => applyTuneChips(prompt, selectedChipIds),
+    [prompt, selectedChipIds],
+  );
   const durationSeconds = parseDurationSeconds(
     domain.generationParams as Record<string, unknown>,
   );
@@ -281,6 +286,12 @@ export function CanvasWorkspace({
 
   const generationsRuntime = useGenerationsRuntime({
     ...generationsPanelProps,
+    // Override the prompt with the chip-suffixed form so handleDraft /
+    // handleRenderWithFaceSwap / handleStoryboard close over the prompt the
+    // user actually wants rendered. This is the single interception point —
+    // the runtime's prompt closure flows into generateDraft/generateRender
+    // and the storyboard prompt resolution.
+    prompt: effectivePrompt,
     presentation: "hero",
     onStateSnapshot: handleSnapshot,
   });
@@ -551,13 +562,28 @@ export function CanvasWorkspace({
             tuneSlot={tuneSlot}
             chromeSlot={chromeSlot}
             onContinueScene={(fromGenerationId) => {
-              // Phase 2 baseline: log + acknowledge the event. Real
-              // StartFramePopover seeding (last-frame extraction from video
-              // metadata) is Phase 2.5.
-              void fromGenerationId;
-              // TODO Phase 2.5: resolve fromGenerationId → tile, extract
-              // last-frame URL, call storeActions.setStartFrame(...) with
-              // the resolved asset.
+              // Resolve the source generation and seed the next render's
+              // start frame from its visible poster. We use thumbnailUrl
+              // (the video's preview/poster image set by galleryGeneration)
+              // as a last-frame approximation — there's no server-side
+              // last-frame extraction helper today. Falls back to the first
+              // mediaUrl for image-tier generations whose thumbnailUrl
+              // resolved to null.
+              const allTiles = shots.flatMap((shot) => shot.tiles);
+              const target = allTiles.find(
+                (tile) => tile.id === fromGenerationId,
+              );
+              if (!target) return;
+              const frameUrl = target.thumbnailUrl ?? target.mediaUrls[0];
+              if (!frameUrl) return;
+              storeActions.setStartFrame({
+                id: `continue-scene-${target.id}`,
+                url: frameUrl,
+                source: "generation",
+                ...(target.prompt.trim()
+                  ? { sourcePrompt: target.prompt.trim() }
+                  : {}),
+              });
             }}
           />
         </div>
