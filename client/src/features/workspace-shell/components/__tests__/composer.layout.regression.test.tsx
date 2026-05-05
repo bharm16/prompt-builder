@@ -1,7 +1,7 @@
 import { createRef } from "react";
 import { render } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { UnifiedCanvasPromptBar } from "../UnifiedCanvasPromptBar";
+import { CanvasPromptBar } from "../CanvasPromptBar";
 import type { PromptEditorSurfaceProps } from "../PromptEditorSurface";
 import type { WorkspaceMoment } from "../../utils/computeWorkspaceMoment";
 
@@ -63,10 +63,7 @@ describe("composer layout regression — no reflow between WorkspaceMoments", ()
   it("the wrapper class list is identical across all 4 moments", () => {
     const classes = MOMENTS.map((moment) => {
       const { container, unmount } = render(
-        <UnifiedCanvasPromptBar
-          moment={moment}
-          surfaceProps={makeSurfaceProps()}
-        />,
+        <CanvasPromptBar moment={moment} surfaceProps={makeSurfaceProps()} />,
       );
       const cls = (container.firstChild as HTMLElement).className;
       unmount();
@@ -79,10 +76,7 @@ describe("composer layout regression — no reflow between WorkspaceMoments", ()
   it("the wrapper has position:absolute styling regardless of moment", () => {
     for (const moment of MOMENTS) {
       const { container, unmount } = render(
-        <UnifiedCanvasPromptBar
-          moment={moment}
-          surfaceProps={makeSurfaceProps()}
-        />,
+        <CanvasPromptBar moment={moment} surfaceProps={makeSurfaceProps()} />,
       );
       expect((container.firstChild as HTMLElement).className).toMatch(
         /absolute/,

@@ -100,11 +100,11 @@ vi.mock("@/components/modals/CameraMotionModal", () => ({
   CameraMotionModal: () => null,
 }));
 
-import { UnifiedCanvasWorkspace } from "../UnifiedCanvasWorkspace";
+import { CanvasWorkspace } from "../CanvasWorkspace";
 
 const buildProps = (
   prompt: string,
-): React.ComponentProps<typeof UnifiedCanvasWorkspace> => ({
+): React.ComponentProps<typeof CanvasWorkspace> => ({
   generationsPanelProps: {
     prompt,
     versions: [],
@@ -168,18 +168,16 @@ const buildProps = (
   onToggleGenerationFavorite: vi.fn(),
 });
 
-describe("UnifiedCanvasWorkspace layout", () => {
+describe("CanvasWorkspace layout", () => {
   it("renders the workspace topbar landmark", () => {
-    render(<UnifiedCanvasWorkspace {...buildProps("")} />);
+    render(<CanvasWorkspace {...buildProps("")} />);
     expect(screen.getByRole("banner")).toBeInTheDocument();
   });
 
   it("mounts the floating composer with absolute positioning", () => {
-    const { container } = render(
-      <UnifiedCanvasWorkspace {...buildProps("")} />,
-    );
-    // The UnifiedCanvasPromptBar wrapper is the floating glass dock; it must
-    // be absolutely positioned so it does not reflow between WorkspaceMoments.
+    const { container } = render(<CanvasWorkspace {...buildProps("")} />);
+    // The CanvasPromptBar wrapper is the floating glass dock; it must be
+    // absolutely positioned so it does not reflow between WorkspaceMoments.
     const composer = container.querySelector(".absolute.left-1\\/2");
     expect(composer).not.toBeNull();
   });

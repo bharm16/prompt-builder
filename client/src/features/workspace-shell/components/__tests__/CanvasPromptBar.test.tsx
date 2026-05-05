@@ -1,7 +1,7 @@
 import { createRef } from "react";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { UnifiedCanvasPromptBar } from "../UnifiedCanvasPromptBar";
+import { CanvasPromptBar } from "../CanvasPromptBar";
 import type { PromptEditorSurfaceProps } from "../PromptEditorSurface";
 
 const noop = () => {};
@@ -56,13 +56,10 @@ function makeSurfaceProps(): PromptEditorSurfaceProps {
   };
 }
 
-describe("UnifiedCanvasPromptBar", () => {
+describe("CanvasPromptBar", () => {
   it("renders as a floating dock with absolute positioning", () => {
     const { container } = render(
-      <UnifiedCanvasPromptBar
-        moment="empty"
-        surfaceProps={makeSurfaceProps()}
-      />,
+      <CanvasPromptBar moment="empty" surfaceProps={makeSurfaceProps()} />,
     );
     const root = container.firstChild as HTMLElement;
     expect(root.className).toMatch(/absolute/);
@@ -70,10 +67,7 @@ describe("UnifiedCanvasPromptBar", () => {
 
   it("renders the editor surface", () => {
     const { container } = render(
-      <UnifiedCanvasPromptBar
-        moment="empty"
-        surfaceProps={makeSurfaceProps()}
-      />,
+      <CanvasPromptBar moment="empty" surfaceProps={makeSurfaceProps()} />,
     );
     // PromptEditor uses a contenteditable div with data-placeholder, not a real
     // <input placeholder>. Confirm via the data attribute.
@@ -84,17 +78,11 @@ describe("UnifiedCanvasPromptBar", () => {
 
   it("does NOT change wrapper class list between moments (no reflow fork)", () => {
     const { container, rerender } = render(
-      <UnifiedCanvasPromptBar
-        moment="empty"
-        surfaceProps={makeSurfaceProps()}
-      />,
+      <CanvasPromptBar moment="empty" surfaceProps={makeSurfaceProps()} />,
     );
     const initial = (container.firstChild as HTMLElement).className;
     rerender(
-      <UnifiedCanvasPromptBar
-        moment="rendering"
-        surfaceProps={makeSurfaceProps()}
-      />,
+      <CanvasPromptBar moment="rendering" surfaceProps={makeSurfaceProps()} />,
     );
     const rerendered = (container.firstChild as HTMLElement).className;
     expect(initial).toBe(rerendered);

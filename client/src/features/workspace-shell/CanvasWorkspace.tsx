@@ -3,7 +3,6 @@ import { CameraMotionModal } from "@/components/modals/CameraMotionModal";
 import { VIDEO_DRAFT_MODEL } from "@/components/ToolSidebar/config/modelConfig";
 import type { AssetSuggestion } from "@/features/assets/hooks/useTriggerAutocomplete";
 import type { CameraPath } from "@/features/convergence/types";
-import { sanitizeText } from "@/features/span-highlighting";
 import {
   useGenerationControlsStoreActions,
   useGenerationControlsStoreState,
@@ -23,16 +22,28 @@ import type {
 import { trackModelRecommendationEvent } from "@/features/model-intelligence/api";
 import { useModelSelectionRecommendation } from "@/components/ToolSidebar/components/panels/GenerationControlsPanel/hooks/useModelSelectionRecommendation";
 import { useSidebarGenerationDomain } from "@/components/ToolSidebar/context";
-import { GalleryPanel } from "@/features/prompt-optimizer/components/GalleryPanel";
 import { GenerationPopover } from "@/features/prompt-optimizer/components/GenerationPopover";
-import { useAnimatedPresence } from "@/hooks/useAnimatedPresence";
 import { cn } from "@/utils/cn";
 import { buildGalleryGenerationEntries } from "./utils/galleryGeneration";
-import { computeIsEmptySession } from "./utils/computeIsEmptySession";
-import { CanvasPromptBar } from "./components/CanvasPromptBar";
+import {
+  computeWorkspaceMoment,
+  workspaceMomentClass,
+} from "./utils/computeWorkspaceMoment";
+import { groupShots } from "./utils/groupShots";
+import { useFeaturedTile } from "./hooks/useFeaturedTile";
+import { useWorkspaceKeyboardShortcuts } from "./hooks/useWorkspaceKeyboardShortcuts";
+import { ShotRow } from "./components/ShotRow";
+import { ShotDivider } from "./components/ShotDivider";
 import { ModelCornerSelector } from "./components/ModelCornerSelector";
-import { CanvasHeroViewer } from "./components/CanvasHeroViewer";
-import { NewSessionView } from "./components/NewSessionView";
+import { TileStateAnnouncer } from "./components/TileStateAnnouncer";
+import { WorkspaceTopBar } from "./components/WorkspaceTopBar";
+import { CanvasPromptBar } from "./components/CanvasPromptBar";
+import type { PromptEditorSurfaceProps } from "./components/PromptEditorSurface";
+import { TuneDrawer } from "./components/TuneDrawer";
+import { CostPreview } from "./components/CostPreview";
+import type { TuneChipId } from "./utils/tuneChips";
+import { applyTuneChips } from "./utils/tuneChips";
+import { estimateShotCost } from "./utils/estimateShotCost";
 
 interface CanvasWorkspaceProps {
   generationsPanelProps: GenerationsPanelProps;
@@ -112,19 +123,8 @@ const parseDurationSeconds = (
   return 5;
 };
 
-const normalizePromptForComparison = (
-  value: string | null | undefined,
-): string => sanitizeText(typeof value === "string" ? value : "").trim();
-
 export function CanvasWorkspace({
   generationsPanelProps,
-  copied,
-  canUndo,
-  canRedo,
-  onCopy,
-  onShare,
-  onUndo,
-  onRedo,
   editorRef,
   onTextSelection,
   onHighlightClick,
@@ -143,7 +143,6 @@ export function CanvasWorkspace({
   onAutocompleteSelect,
   onAutocompleteClose,
   onAutocompleteIndexChange,
-  enableMLHighlighting,
   selectedSpanId,
   suggestionCount,
   suggestionsListRef,
@@ -175,17 +174,28 @@ export function CanvasWorkspace({
   onLockedAlternativeClick,
   onReuseGeneration,
   onToggleGenerationFavorite,
-  onEnhance,
-  isEnhancing = false,
 }: CanvasWorkspaceProps): React.ReactElement {
   const storeActions = useGenerationControlsStoreActions();
   const { domain } = useGenerationControlsStoreState();
   const promptHighlights = useOptionalPromptHighlights();
   const { hasActiveContinuityShot, currentShot, updateShot } =
     useWorkspaceSession();
-  const generationDomain = useSidebarGenerationDomain();
+  // Generation domain hook is consumed here for parity with the legacy
+  // orchestrator (it pulls the upload handlers needed for the future
+  // settings row); Phase 1 ignores its return value.
+  void useSidebarGenerationDomain();
+  useWorkspaceKeyboardShortcuts();
   const [showCameraMotionModal, setShowCameraMotionModal] = useState(false);
   const [viewingId, setViewingId] = useState<string | null>(null);
+  const [tuneOpen, setTuneOpen] = useState<boolean>(false);
+  // Phase 3 baseline: selected chips are tracked in state but not yet
+  // appended to the prompt at submit time. Wiring the suffix into the
+  // submit flow requires lifting the submit handler out of CanvasSettingsRow
+  // (currently unchanged from legacy). Tracked as a Phase 3.5 follow-up.
+  const [selectedChipIds, setSelectedChipIds] = useState<
+    ReadonlyArray<TuneChipId>
+  >([]);
+  void applyTuneChips;
 
   const prompt = generationsPanelProps.prompt;
   const durationSeconds = parseDurationSeconds(
@@ -278,17 +288,6 @@ export function CanvasWorkspace({
   }, [generationsPanelProps.promptVersionId]);
 
   const heroGeneration = generationsRuntime.heroGeneration;
-  const displayHeroGeneration = useMemo(() => {
-    if (heroGeneration?.status !== "failed") {
-      return heroGeneration;
-    }
-
-    const currentPrompt = normalizePromptForComparison(
-      generationsPanelProps.prompt,
-    );
-    const failedPrompt = normalizePromptForComparison(heroGeneration.prompt);
-    return currentPrompt === failedPrompt ? heroGeneration : null;
-  }, [generationsPanelProps.prompt, heroGeneration]);
 
   const galleryEntries = useMemo(() => {
     // When runtimeGenerations is empty (e.g., after po:workspace-reset), skip
@@ -317,48 +316,28 @@ export function CanvasWorkspace({
     return lookup;
   }, [galleryEntries]);
 
+  const shotInputGenerations = useMemo(
+    () => galleryEntries.map((entry) => entry.generation),
+    [galleryEntries],
+  );
+  const shots = useMemo(
+    () => groupShots(shotInputGenerations),
+    [shotInputGenerations],
+  );
+  const featuredTile = useFeaturedTile({
+    shots,
+    heroGeneration: heroGeneration ?? null,
+    currentPrompt: prompt,
+  });
+
   useEffect(() => {
     if (!viewingId) return;
     if (generationLookup.has(viewingId)) return;
     setViewingId(null);
   }, [generationLookup, viewingId]);
 
-  const isEmptySession = useMemo(
-    () =>
-      computeIsEmptySession({
-        galleryEntriesCount: galleryEntries.length,
-        hasHeroGeneration: displayHeroGeneration !== null,
-        hasStartFrame: Boolean(domain.startFrame),
-        prompt,
-        enableMLHighlighting,
-        versions: generationsPanelProps.versions ?? [],
-      }),
-    [
-      enableMLHighlighting,
-      galleryEntries.length,
-      displayHeroGeneration,
-      domain.startFrame,
-      prompt,
-      generationsPanelProps.versions,
-    ],
-  );
-
-  const galleryOpen = true;
-  const { shouldRender: shouldRenderEmptyChrome, phase: emptyChromePhase } =
-    useAnimatedPresence(isEmptySession, { exitMs: 220 });
-  const { shouldRender: shouldRenderGallery, phase: galleryPhase } =
-    useAnimatedPresence(!isEmptySession && galleryOpen, { exitMs: 220 });
-  const { shouldRender: shouldRenderHero, phase: heroPhase } =
-    useAnimatedPresence(!isEmptySession && Boolean(displayHeroGeneration), {
-      exitMs: 240,
-    });
-
   const handleSelectGeneration = useCallback((generationId: string): void => {
     setViewingId(generationId);
-  }, []);
-
-  const handleCloseGallery = useCallback((): void => {
-    // Gallery rail is intentionally persistent in canvas mode.
   }, []);
 
   const handleReuse = useCallback(
@@ -370,10 +349,6 @@ export function CanvasWorkspace({
     },
     [generationLookup, onReuseGeneration],
   );
-  const handleOpenMotion = useCallback((): void => {
-    if (!domain.startFrame) return;
-    setShowCameraMotionModal(true);
-  }, [domain.startFrame]);
   const handleCameraMotionSelect = useCallback(
     (cameraPath: CameraPath): void => {
       storeActions.setCameraMotion(cameraPath);
@@ -381,7 +356,21 @@ export function CanvasWorkspace({
     },
     [storeActions],
   );
-  const promptBarProps = {
+
+  const promptIsEmpty = prompt.trim().length === 0;
+  const activeShotStatuses = useMemo<ReadonlyArray<Generation["status"]>>(
+    () => shots[0]?.tiles.map((tile) => tile.status) ?? [],
+    [shots],
+  );
+  const moment = computeWorkspaceMoment({
+    galleryEntriesCount: galleryEntries.length,
+    activeShotStatuses,
+    promptIsEmpty,
+    tuneOpen,
+    promptFocused: false, // Phase 3 wires this
+  });
+
+  const surfaceProps: PromptEditorSurfaceProps = {
     editorRef,
     prompt,
     onTextSelection,
@@ -425,42 +414,68 @@ export function CanvasWorkspace({
     isCustomLoading,
     responseMetadata: responseMetadata ?? null,
     ...(onCopyAllDebug ? { onCopyAllDebug } : {}),
-    ...(isBulkCopyLoading ? { isBulkCopyLoading } : {}),
+    ...(typeof isBulkCopyLoading === "boolean" ? { isBulkCopyLoading } : {}),
     showI2VLockIndicator,
     resolvedI2VReason,
     i2vMotionAlternatives,
     onLockedAlternativeClick,
-    renderModelId,
-    ...(recommendedModelId ? { recommendedModelId } : {}),
-    ...(modelRecommendation?.promptId
-      ? { recommendationPromptId: modelRecommendation.promptId }
-      : {}),
-    ...(recommendationMode ? { recommendationMode } : {}),
-    ...(typeof recommendationAgeMs === "number" ? { recommendationAgeMs } : {}),
-    onOpenMotion: handleOpenMotion,
-    ...(generationDomain?.onStartFrameUpload
-      ? { onStartFrameUpload: generationDomain.onStartFrameUpload }
-      : {}),
-    ...(generationDomain?.onUploadSidebarImage
-      ? { onUploadSidebarImage: generationDomain.onUploadSidebarImage }
-      : {}),
-    ...(onEnhance ? { onEnhance } : {}),
-    isEnhancing,
   };
 
-  return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-app">
-      <div className="flex min-h-0 flex-1 overflow-hidden">
-        <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden px-10 pb-0">
-          {shouldRenderEmptyChrome ? (
-            <div
-              className="motion-presence-panel absolute inset-0"
-              data-motion-state={emptyChromePhase}
-            >
-              <NewSessionView />
-            </div>
-          ) : null}
+  const estimatedCost = useMemo(
+    () =>
+      estimateShotCost({
+        modelId: domain.selectedModel,
+        durationSeconds,
+        variantCount: 4, // Phase 3 baseline; spec says "render four variants" by default
+      }),
+    [domain.selectedModel, durationSeconds],
+  );
 
+  const tuneSlot = tuneOpen ? (
+    <TuneDrawer
+      selectedChipIds={selectedChipIds}
+      onToggleChip={(id) =>
+        setSelectedChipIds((prev) =>
+          prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id],
+        )
+      }
+      onClose={() => setTuneOpen(false)}
+    />
+  ) : null;
+
+  const chromeSlot = (
+    <div className="flex items-center justify-end gap-3 border-t border-tool-rail-border px-4 py-2">
+      <button
+        type="button"
+        aria-pressed={tuneOpen}
+        className="rounded-md border border-tool-rail-border px-2 py-1 text-[11px] font-medium text-tool-text-dim hover:text-foreground"
+        onClick={() => setTuneOpen((open) => !open)}
+      >
+        Tune{selectedChipIds.length > 0 ? ` · ${selectedChipIds.length}` : ""}
+      </button>
+      <CostPreview cost={estimatedCost} />
+    </div>
+  );
+
+  return (
+    <div
+      className={cn(
+        "grid h-full grid-rows-[var(--workspace-topbar-h)_1fr] [background:var(--tool-canvas-bg)] text-foreground overflow-hidden",
+        workspaceMomentClass(moment),
+      )}
+    >
+      <WorkspaceTopBar />
+      <div className="grid min-h-0 grid-cols-[var(--tool-rail-width)_1fr]">
+        {/*
+          ToolSidebar already mounts elsewhere in the app shell. The
+          workspace shell does NOT render the rail itself. Leave this column
+          empty for now; the rail keeps mounting at its existing parent and
+          visually overlaps the empty column. The rail mount can be moved
+          into this column in a future polish pass if desired.
+        */}
+        <div aria-hidden="true" />
+        <div className="relative min-h-0 overflow-y-auto px-7 pb-[140px] scroll-smooth">
+          <TileStateAnnouncer shots={shots} />
           <ModelCornerSelector
             renderModelOptions={renderModelOptions}
             renderModelId={renderModelId}
@@ -468,58 +483,51 @@ export function CanvasWorkspace({
             recommendedModelId={recommendedModelId}
             efficientModelId={efficientModelId}
             onModelChange={handleModelChange}
-            className={cn(
-              "left-5 transition-[bottom,transform] duration-[220ms] [transition-timing-function:var(--motion-ease-emphasized)]",
-              isEmptySession ? "bottom-4" : "bottom-0",
-            )}
+            className="absolute right-5 top-3"
           />
 
-          <div
-            className={cn(
-              "relative flex min-h-0 flex-1 flex-col overflow-hidden transition-[padding] duration-[400ms] [transition-timing-function:var(--motion-ease-emphasized)]",
-              isEmptySession ? "justify-center" : "pt-8",
-              !isEmptySession && !displayHeroGeneration ? "justify-center" : "",
-            )}
-          >
-            {shouldRenderHero ? (
-              <div
-                className="motion-presence-panel mb-3"
-                data-motion-state={heroPhase}
-              >
-                <CanvasHeroViewer
-                  generation={displayHeroGeneration}
-                  onCancel={generationsRuntime.handleCancel}
-                />
-              </div>
-            ) : null}
-
-            <div
-              className={cn(
-                "relative z-10 flex w-full justify-center",
-                !displayHeroGeneration && "mx-auto max-w-[720px]",
-              )}
-            >
-              <CanvasPromptBar
-                {...promptBarProps}
-                layoutMode={isEmptySession ? "empty" : "active"}
-              />
+          {moment === "empty" ? (
+            <EmptyHero />
+          ) : (
+            <div className="mx-auto flex max-w-[1280px] flex-col gap-6">
+              {shots.map((shot, idx) => (
+                <React.Fragment key={shot.id}>
+                  <ShotRow
+                    shot={shot}
+                    layout={idx === 0 ? "featured" : "compact"}
+                    featuredTileId={
+                      idx === 0 ? (featuredTile?.id ?? null) : null
+                    }
+                    onSelectTile={handleSelectGeneration}
+                    onRetryTile={(generationId) => {
+                      const target = shot.tiles.find(
+                        (tile) => tile.id === generationId,
+                      );
+                      if (target) generationsRuntime.handleRetry(target);
+                    }}
+                  />
+                  {idx < shots.length - 1 && <ShotDivider />}
+                </React.Fragment>
+              ))}
             </div>
-          </div>
-        </div>
+          )}
 
-        {shouldRenderGallery ? (
-          <div
-            className="motion-presence-panel"
-            data-motion-state={galleryPhase}
-          >
-            <GalleryPanel
-              generations={galleryGenerations}
-              activeGenerationId={viewingId}
-              onSelectGeneration={handleSelectGeneration}
-              onClose={handleCloseGallery}
-            />
-          </div>
-        ) : null}
+          <CanvasPromptBar
+            moment={moment}
+            surfaceProps={surfaceProps}
+            tuneSlot={tuneSlot}
+            chromeSlot={chromeSlot}
+            onContinueScene={(fromGenerationId) => {
+              // Phase 2 baseline: log + acknowledge the event. Real
+              // StartFramePopover seeding (last-frame extraction from video
+              // metadata) is Phase 2.5.
+              void fromGenerationId;
+              // TODO Phase 2.5: resolve fromGenerationId → tile, extract
+              // last-frame URL, call storeActions.setStartFrame(...) with
+              // the resolved asset.
+            }}
+          />
+        </div>
       </div>
 
       {viewingId ? (
@@ -544,6 +552,39 @@ export function CanvasWorkspace({
           onSelect={handleCameraMotionSelect}
         />
       ) : null}
+    </div>
+  );
+}
+
+const STARTER_CHIPS = [
+  "A neon-lit cyberpunk alley at night",
+  "Slow-motion ink drop in clear water",
+  "Drone shot over autumn forest at sunrise",
+  "A dancer mid-leap in a sunlit studio",
+] as const;
+
+function EmptyHero(): React.ReactElement {
+  // Phase 1: chips are visual stubs - clicking does nothing yet. Future
+  // phases will wire chip clicks into the prompt setter.
+  return (
+    <div className="mx-auto flex min-h-[calc(100vh-var(--workspace-topbar-h)-240px)] max-w-[640px] flex-col items-center justify-center gap-[18px] text-center">
+      <h1 className="text-[28px] font-medium tracking-[-0.01em]">
+        What are you making?
+      </h1>
+      <p className="m-0 max-w-[460px] text-tool-text-subdued">
+        Describe a shot. Pick a model. We&apos;ll render four variants.
+      </p>
+      <div className="mt-3 flex flex-wrap justify-center gap-2">
+        {STARTER_CHIPS.map((chip) => (
+          <button
+            key={chip}
+            type="button"
+            className="rounded-full border border-tool-rail-border bg-tool-surface-card px-3 py-1 text-xs text-tool-text-dim hover:text-foreground"
+          >
+            {chip}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

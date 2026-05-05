@@ -23,13 +23,6 @@ const FLAG_DEFS = {
       "Renders the canvas-first workspace. Set to 'false' to fall back to the legacy sidebar layout.",
     migrationFlag: true,
   } satisfies ClientFlagDef<boolean>,
-  UNIFIED_WORKSPACE: {
-    envName: "VITE_FEATURE_UNIFIED_WORKSPACE",
-    default: false,
-    description:
-      "Renders the unified workspace (one persistent canvas with floating composer and shot grouping). Set to 'true' to opt in. The legacy four-state CanvasWorkspace remains the default until this flag flips on by default.",
-    migrationFlag: true,
-  } satisfies ClientFlagDef<boolean>,
 } as const;
 
 function resolveBoolFlag(envName: string, fallback: boolean): boolean {
@@ -49,10 +42,6 @@ export const FEATURES = {
   CANVAS_FIRST_LAYOUT: resolveBoolFlag(
     FLAG_DEFS.CANVAS_FIRST_LAYOUT.envName,
     FLAG_DEFS.CANVAS_FIRST_LAYOUT.default,
-  ),
-  UNIFIED_WORKSPACE: resolveBoolFlag(
-    FLAG_DEFS.UNIFIED_WORKSPACE.envName,
-    FLAG_DEFS.UNIFIED_WORKSPACE.default,
   ),
 } as const;
 
