@@ -31,9 +31,11 @@ import {
 } from "./utils/computeWorkspaceMoment";
 import { groupShots } from "./utils/groupShots";
 import { useFeaturedTile } from "./hooks/useFeaturedTile";
+import { useWorkspaceKeyboardShortcuts } from "./hooks/useWorkspaceKeyboardShortcuts";
 import { ShotRow } from "./components/ShotRow";
 import { ShotDivider } from "./components/ShotDivider";
 import { ModelCornerSelector } from "./components/ModelCornerSelector";
+import { TileStateAnnouncer } from "./components/TileStateAnnouncer";
 import { WorkspaceTopBar } from "./components/WorkspaceTopBar";
 import { UnifiedCanvasPromptBar } from "./components/UnifiedCanvasPromptBar";
 import type { PromptEditorSurfaceProps } from "./components/PromptEditorSurface";
@@ -182,6 +184,7 @@ export function UnifiedCanvasWorkspace({
   // orchestrator (it pulls the upload handlers needed for the future
   // settings row); Phase 1 ignores its return value.
   void useSidebarGenerationDomain();
+  useWorkspaceKeyboardShortcuts();
   const [showCameraMotionModal, setShowCameraMotionModal] = useState(false);
   const [viewingId, setViewingId] = useState<string | null>(null);
   const [tuneOpen, setTuneOpen] = useState<boolean>(false);
@@ -472,6 +475,7 @@ export function UnifiedCanvasWorkspace({
         */}
         <div aria-hidden="true" />
         <div className="relative min-h-0 overflow-y-auto px-7 pb-[140px] scroll-smooth">
+          <TileStateAnnouncer shots={shots} />
           <ModelCornerSelector
             renderModelOptions={renderModelOptions}
             renderModelId={renderModelId}
