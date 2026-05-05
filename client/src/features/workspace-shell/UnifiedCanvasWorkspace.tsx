@@ -37,6 +37,11 @@ import { ModelCornerSelector } from "./components/ModelCornerSelector";
 import { WorkspaceTopBar } from "./components/WorkspaceTopBar";
 import { UnifiedCanvasPromptBar } from "./components/UnifiedCanvasPromptBar";
 import type { PromptEditorSurfaceProps } from "./components/PromptEditorSurface";
+import { TuneDrawer } from "./components/TuneDrawer";
+import { CostPreview } from "./components/CostPreview";
+import type { TuneChipId } from "./utils/tuneChips";
+import { applyTuneChips } from "./utils/tuneChips";
+import { estimateShotCost } from "./utils/estimateShotCost";
 
 interface CanvasWorkspaceProps {
   generationsPanelProps: GenerationsPanelProps;
@@ -179,6 +184,15 @@ export function UnifiedCanvasWorkspace({
   void useSidebarGenerationDomain();
   const [showCameraMotionModal, setShowCameraMotionModal] = useState(false);
   const [viewingId, setViewingId] = useState<string | null>(null);
+  const [tuneOpen, setTuneOpen] = useState<boolean>(false);
+  // Phase 3 baseline: selected chips are tracked in state but not yet
+  // appended to the prompt at submit time. Wiring the suffix into the
+  // submit flow requires lifting the submit handler out of CanvasSettingsRow
+  // (currently unchanged from legacy). Tracked as a Phase 3.5 follow-up.
+  const [selectedChipIds, setSelectedChipIds] = useState<
+    ReadonlyArray<TuneChipId>
+  >([]);
+  void applyTuneChips;
 
   const prompt = generationsPanelProps.prompt;
   const durationSeconds = parseDurationSeconds(
@@ -349,7 +363,7 @@ export function UnifiedCanvasWorkspace({
     galleryEntriesCount: galleryEntries.length,
     activeShotStatuses,
     promptIsEmpty,
-    tuneOpen: false, // Phase 3 wires this
+    tuneOpen,
     promptFocused: false, // Phase 3 wires this
   });
 
@@ -403,6 +417,42 @@ export function UnifiedCanvasWorkspace({
     i2vMotionAlternatives,
     onLockedAlternativeClick,
   };
+
+  const estimatedCost = useMemo(
+    () =>
+      estimateShotCost({
+        modelId: domain.selectedModel,
+        durationSeconds,
+        variantCount: 4, // Phase 3 baseline; spec says "render four variants" by default
+      }),
+    [domain.selectedModel, durationSeconds],
+  );
+
+  const tuneSlot = tuneOpen ? (
+    <TuneDrawer
+      selectedChipIds={selectedChipIds}
+      onToggleChip={(id) =>
+        setSelectedChipIds((prev) =>
+          prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id],
+        )
+      }
+      onClose={() => setTuneOpen(false)}
+    />
+  ) : null;
+
+  const chromeSlot = (
+    <div className="flex items-center justify-end gap-3 border-t border-tool-rail-border px-4 py-2">
+      <button
+        type="button"
+        aria-pressed={tuneOpen}
+        className="rounded-md border border-tool-rail-border px-2 py-1 text-[11px] font-medium text-tool-text-dim hover:text-foreground"
+        onClick={() => setTuneOpen((open) => !open)}
+      >
+        Tune{selectedChipIds.length > 0 ? ` · ${selectedChipIds.length}` : ""}
+      </button>
+      <CostPreview cost={estimatedCost} />
+    </div>
+  );
 
   return (
     <div
@@ -461,6 +511,8 @@ export function UnifiedCanvasWorkspace({
           <UnifiedCanvasPromptBar
             moment={moment}
             surfaceProps={surfaceProps}
+            tuneSlot={tuneSlot}
+            chromeSlot={chromeSlot}
             onContinueScene={(fromGenerationId) => {
               // Phase 2 baseline: log + acknowledge the event. Real
               // StartFramePopover seeding (last-frame extraction from video
