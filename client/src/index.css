@@ -14,13 +14,18 @@
     --global-top-nav-height: 64px;
 
     /* ToolSidebar Sizing */
-    --tool-rail-width: 52px;
+    --tool-rail-width: 56px; /* was 52px — Phase 1 hit-area bump */
     --tool-panel-width: 400px;
     --tool-panel-min-width: 400px;
     --tool-rail-padding: 10px;
     --tool-panel-padding: 16px;
     --tool-header-height: 48px;
     --tool-footer-height: 72px;
+
+    /* Workspace shell layout (Phase 1 unified workspace) */
+    --workspace-topbar-h: 44px;
+    --workspace-composer-max-w: 720px;
+    --workspace-composer-bottom: 20px;
 
     /* ToolSidebar Colors — warm charcoal, neutral accents */
     --tool-rail-bg: #111114;
