@@ -1,4 +1,4 @@
-export { CanvasWorkspace } from "./CanvasWorkspace";
+export { CanvasWorkspace } from "./CanvasWorkspaceDispatcher";
 export {
   PROMPT_FOCUS_INTENT,
   dispatchPromptFocusIntent,
