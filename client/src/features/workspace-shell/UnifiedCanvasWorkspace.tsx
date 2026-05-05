@@ -407,7 +407,7 @@ export function UnifiedCanvasWorkspace({
   return (
     <div
       className={cn(
-        "grid h-full grid-rows-[var(--workspace-topbar-h)_1fr] bg-tool-surface-deep text-foreground overflow-hidden",
+        "grid h-full grid-rows-[var(--workspace-topbar-h)_1fr] [background:var(--tool-canvas-bg)] text-foreground overflow-hidden",
         workspaceMomentClass(moment),
       )}
     >

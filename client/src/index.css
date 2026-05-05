@@ -27,6 +27,16 @@
     --workspace-composer-max-w: 720px;
     --workspace-composer-bottom: 20px;
 
+    /* Workspace status hues + canvas backdrop (Phase 3) */
+    --tool-status-rendering: #d4b486;
+    --tool-status-ready: #9ec4a8;
+    --tool-canvas-bg: radial-gradient(
+      1600px 900px at 50% -10%,
+      #15151d,
+      #0a0a0e 50%,
+      #050507
+    );
+
     /* ToolSidebar Colors — warm charcoal, neutral accents */
     --tool-rail-bg: #111114;
     --tool-panel-bg: #131316;
@@ -55,7 +65,7 @@
     --tool-text-label: #3a3a4a;
     --tool-text-disabled: #2e2e3a;
     --tool-surface-card: #16161a;
-    --tool-surface-prompt: #14141a;
+    --tool-surface-prompt: rgba(22, 22, 28, 0.72);
     --tool-surface-prompt-compact: #131318;
     --tool-accent-neutral: #c8c8d0;
     /* Generate button — off-white with dark text */
