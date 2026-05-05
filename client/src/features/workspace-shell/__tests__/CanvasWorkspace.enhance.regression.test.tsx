@@ -1,6 +1,6 @@
 import React from "react";
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import type {
   Generation,
   GenerationsPanelProps,
@@ -27,6 +27,24 @@ vi.mock("@features/generation-controls", () => ({
 vi.mock("@/features/prompt-optimizer/context/PromptStateContext", () => ({
   useOptionalPromptHighlights: () => null,
 }));
+
+// CanvasSettingsRow consumes GenerationControlsContext for its Preview /
+// Generate / Enhance gating; the regression doesn't exercise those branches,
+// but the hook throws when no provider is mounted, so stub it inline.
+vi.mock(
+  "@/features/prompt-optimizer/context/GenerationControlsContext",
+  () => ({
+    useGenerationControlsContext: () => ({
+      controls: null,
+      setControls: vi.fn(),
+      onStoryboard: null,
+      onInsufficientCredits: null,
+      setOnInsufficientCredits: vi.fn(),
+      faceSwapPreview: null,
+      setFaceSwapPreview: vi.fn(),
+    }),
+  }),
+);
 
 vi.mock("@/features/prompt-optimizer/context/WorkspaceSessionContext", () => ({
   useWorkspaceSession: () => ({
@@ -145,13 +163,20 @@ const buildProps = (): React.ComponentProps<typeof CanvasWorkspace> => ({
 });
 
 describe("regression: canvas enhance / empty-session shell wiring", () => {
-  // The unified workspace does not yet expose an Enhance button (the legacy
-  // CanvasSettingsRow that hosted Enhance is no longer mounted; chromeSlot
-  // currently contains only Tune + CostPreview). The enhance-callback wire
-  // is a deferred follow-up — restore this test once the unified path wires
-  // an Enhance button into chromeSlot.
-  it.skip("clicking enhance invokes the provided callback (deferred — no enhance button in unified path)", () => {
-    expect(true).toBe(true);
+  // CanvasSettingsRow (mounted inside CanvasPromptBar's chromeSlot) hosts the
+  // Enhance button. The button is gated on a non-empty prompt and a provided
+  // onEnhance callback; clicking it must invoke the orchestrator's onEnhance
+  // exactly once. Regression for the gap left by the unified-workspace flag
+  // removal — the Enhance button was previously unmounted.
+  it("clicking enhance invokes the provided callback", () => {
+    const onEnhance = vi.fn();
+    const props = buildProps();
+    render(<CanvasWorkspace {...props} onEnhance={onEnhance} />);
+
+    const enhanceButton = screen.getByRole("button", { name: /enhance/i });
+    fireEvent.click(enhanceButton);
+
+    expect(onEnhance).toHaveBeenCalledTimes(1);
   });
 
   it("keeps a single prompt textbox and a model corner selector in the empty-session shell", () => {

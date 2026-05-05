@@ -38,6 +38,7 @@ import { ModelCornerSelector } from "./components/ModelCornerSelector";
 import { TileStateAnnouncer } from "./components/TileStateAnnouncer";
 import { WorkspaceTopBar } from "./components/WorkspaceTopBar";
 import { CanvasPromptBar } from "./components/CanvasPromptBar";
+import { CanvasSettingsRow } from "./components/CanvasSettingsRow";
 import type { PromptEditorSurfaceProps } from "./components/PromptEditorSurface";
 import { TuneDrawer } from "./components/TuneDrawer";
 import { CostPreview } from "./components/CostPreview";
@@ -174,16 +175,18 @@ export function CanvasWorkspace({
   onLockedAlternativeClick,
   onReuseGeneration,
   onToggleGenerationFavorite,
+  onEnhance,
+  isEnhancing = false,
 }: CanvasWorkspaceProps): React.ReactElement {
   const storeActions = useGenerationControlsStoreActions();
   const { domain } = useGenerationControlsStoreState();
   const promptHighlights = useOptionalPromptHighlights();
   const { hasActiveContinuityShot, currentShot, updateShot } =
     useWorkspaceSession();
-  // Generation domain hook is consumed here for parity with the legacy
-  // orchestrator (it pulls the upload handlers needed for the future
-  // settings row); Phase 1 ignores its return value.
-  void useSidebarGenerationDomain();
+  // Generation domain provides the upload handlers wired through to
+  // CanvasSettingsRow's start-frame / video-reference popovers. Null when
+  // SidebarDataContextProvider isn't mounted (tests, isolated stories).
+  const generationDomain = useSidebarGenerationDomain();
   useWorkspaceKeyboardShortcuts();
   const [showCameraMotionModal, setShowCameraMotionModal] = useState(false);
   const [viewingId, setViewingId] = useState<string | null>(null);
@@ -357,6 +360,14 @@ export function CanvasWorkspace({
     [storeActions],
   );
 
+  // Opens the camera-motion modal from the start-frame popover. Guarded on
+  // domain.startFrame so the modal mount (which dereferences startFrame.url)
+  // never sees a null start frame.
+  const handleOpenMotion = useCallback((): void => {
+    if (!domain.startFrame) return;
+    setShowCameraMotionModal(true);
+  }, [domain.startFrame]);
+
   const promptIsEmpty = prompt.trim().length === 0;
   const activeShotStatuses = useMemo<ReadonlyArray<Generation["status"]>>(
     () => shots[0]?.tiles.map((tile) => tile.status) ?? [],
@@ -444,16 +455,39 @@ export function CanvasWorkspace({
   ) : null;
 
   const chromeSlot = (
-    <div className="flex items-center justify-end gap-3 border-t border-tool-rail-border px-4 py-2">
-      <button
-        type="button"
-        aria-pressed={tuneOpen}
-        className="rounded-md border border-tool-rail-border px-2 py-1 text-[11px] font-medium text-tool-text-dim hover:text-foreground"
-        onClick={() => setTuneOpen((open) => !open)}
-      >
-        Tune{selectedChipIds.length > 0 ? ` · ${selectedChipIds.length}` : ""}
-      </button>
-      <CostPreview cost={estimatedCost} />
+    <div className="border-t border-tool-rail-border">
+      <CanvasSettingsRow
+        prompt={prompt}
+        renderModelId={renderModelId}
+        {...(recommendedModelId ? { recommendedModelId } : {})}
+        {...(modelRecommendation?.promptId
+          ? { recommendationPromptId: modelRecommendation.promptId }
+          : {})}
+        {...(recommendationMode ? { recommendationMode } : {})}
+        {...(typeof recommendationAgeMs === "number"
+          ? { recommendationAgeMs }
+          : {})}
+        onOpenMotion={handleOpenMotion}
+        {...(generationDomain?.onStartFrameUpload
+          ? { onStartFrameUpload: generationDomain.onStartFrameUpload }
+          : {})}
+        {...(generationDomain?.onUploadSidebarImage
+          ? { onUploadSidebarImage: generationDomain.onUploadSidebarImage }
+          : {})}
+        {...(onEnhance ? { onEnhance } : {})}
+        isEnhancing={isEnhancing}
+      />
+      <div className="flex items-center justify-end gap-3 px-4 py-2">
+        <button
+          type="button"
+          aria-pressed={tuneOpen}
+          className="rounded-md border border-tool-rail-border px-2 py-1 text-[11px] font-medium text-tool-text-dim hover:text-foreground"
+          onClick={() => setTuneOpen((open) => !open)}
+        >
+          Tune{selectedChipIds.length > 0 ? ` · ${selectedChipIds.length}` : ""}
+        </button>
+        <CostPreview cost={estimatedCost} />
+      </div>
     </div>
   );
 

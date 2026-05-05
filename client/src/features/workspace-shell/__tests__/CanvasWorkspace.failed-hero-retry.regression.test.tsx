@@ -80,6 +80,12 @@ vi.mock("../components/ModelCornerSelector", () => ({
   ModelCornerSelector: () => <div data-testid="model-corner-selector" />,
 }));
 
+// CanvasSettingsRow depends on GenerationControlsContext + CreditBalanceContext
+// which this hero-retry regression doesn't provide; stub it.
+vi.mock("../components/CanvasSettingsRow", () => ({
+  CanvasSettingsRow: () => <div data-testid="canvas-settings-row" />,
+}));
+
 vi.mock("@/features/prompt-optimizer/components/GenerationPopover", () => ({
   GenerationPopover: () => null,
 }));
