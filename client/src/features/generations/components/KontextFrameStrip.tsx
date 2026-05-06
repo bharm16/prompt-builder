@@ -140,9 +140,9 @@ export function KontextFrameStrip({
             className={cn(
               "group overflow-hidden rounded-md border bg-tool-surface-card text-left",
               isSelected
-                ? "border-tool-accent-selection ring-2 ring-tool-accent-selection"
+                ? "border-tool-accent-neutral ring-2 ring-tool-accent-neutral"
                 : "border-tool-nav-active transition hover:border-tool-text-disabled",
-              "focus:outline-none focus-visible:ring-2 focus-visible:ring-tool-accent-selection/50",
+              "focus:outline-none focus-visible:ring-2 focus-visible:ring-tool-accent-neutral/50",
             )}
             onClick={() => {
               if (!frame || hasFailed) return;
@@ -194,7 +194,7 @@ export function KontextFrameStrip({
                 </div>
               )}
               {isSelected && (
-                <div className="absolute right-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-tool-accent-selection text-white">
+                <div className="absolute right-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-tool-accent-neutral text-white">
                   <Check size={12} weight="bold" aria-hidden="true" />
                 </div>
               )}

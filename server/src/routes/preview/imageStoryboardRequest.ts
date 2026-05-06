@@ -33,6 +33,19 @@ const ImageStoryboardGenerateRequestSchema = z.object({
     .optional(),
   speedMode: SpeedModeSchema.optional(),
   seed: z.number().finite("seed must be a finite number").optional(),
+  // ISSUE-12: server-authoritative generation persistence. When both are
+  // provided, the handler appends the resulting generation to the named
+  // version of the user's session — this is the single-writer path.
+  sessionId: z
+    .string()
+    .trim()
+    .min(1, "sessionId must be a non-empty string")
+    .optional(),
+  promptVersionId: z
+    .string()
+    .trim()
+    .min(1, "promptVersionId must be a non-empty string")
+    .optional(),
 });
 
 export type ImageStoryboardGenerateRequest = z.infer<

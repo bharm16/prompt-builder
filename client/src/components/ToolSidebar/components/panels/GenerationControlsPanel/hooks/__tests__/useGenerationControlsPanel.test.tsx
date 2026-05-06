@@ -4,12 +4,12 @@ import type { ReactNode } from "react";
 import type { CapabilitiesSchema } from "@shared/capabilities";
 import type { GenerationControlsPanelProps } from "@components/ToolSidebar/components/panels/GenerationControlsPanel/types";
 import { useGenerationControlsPanel } from "../useGenerationControlsPanel";
-import { GenerationControlsStoreProvider } from "@features/generation-controls/context/GenerationControlsStore";
+import { GenerationControlsStoreProvider } from "@features/generation-controls";
 import { GenerationControlsProvider } from "@/features/prompt-optimizer/context/GenerationControlsContext";
 import {
   DEFAULT_GENERATION_CONTROLS_STATE,
   type GenerationControlsState,
-} from "@features/generation-controls/context/generationControlsStoreTypes";
+} from "@features/generation-controls";
 
 let mockSchema: CapabilitiesSchema | null = null;
 

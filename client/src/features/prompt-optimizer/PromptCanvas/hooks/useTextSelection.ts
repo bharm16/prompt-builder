@@ -40,7 +40,7 @@ export interface UseTextSelectionReturn {
   handleTextSelection: () => void;
   handleHighlightClick: (e: React.MouseEvent) => void;
   handleHighlightMouseDown: (e: React.MouseEvent) => void;
-  handleSpanClickFromBento: (span: SpanClickPayload) => void;
+  handleSpanClickFromCategory: (span: SpanClickPayload) => void;
 }
 
 export function useTextSelection({
@@ -213,7 +213,7 @@ export function useTextSelection({
     [selectedMode, editorRef],
   );
 
-  const handleSpanClickFromBento = useCallback(
+  const handleSpanClickFromCategory = useCallback(
     (span: SpanClickPayload): void => {
       if (!onFetchSuggestions || selectedMode !== "video") {
         return;
@@ -238,7 +238,7 @@ export function useTextSelection({
         highlightedText: span.quote,
         originalText: span.quote,
         displayedPrompt: displayedPrompt ?? "",
-        range: null, // Not needed for bento clicks
+        range: null, // Not needed for category clicks
         offsets: { start: span.start, end: span.end },
         metadata: {
           category: span.category,
@@ -256,7 +256,7 @@ export function useTextSelection({
           idempotencyKey: span.idempotencyKey,
           span: span, // Full span object
         },
-        trigger: "bento-grid",
+        trigger: "category-accordion",
         allLabeledSpans: spanContextSpans,
       });
     },
@@ -275,6 +275,6 @@ export function useTextSelection({
     handleTextSelection,
     handleHighlightClick,
     handleHighlightMouseDown,
-    handleSpanClickFromBento,
+    handleSpanClickFromCategory,
   };
 }

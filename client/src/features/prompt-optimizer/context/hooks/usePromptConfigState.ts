@@ -1,11 +1,11 @@
 import { useState } from "react";
 import type { CapabilityValues } from "@shared/capabilities";
-import type { VideoTier } from "@components/ToolSidebar/types";
+import type { VideoTier } from "@features/generation-controls";
 import { loadSelectedMode } from "../promptStateStorage";
 import {
   useGenerationControlsStoreActions,
   useGenerationControlsStoreState,
-} from "@features/generation-controls/context/GenerationControlsStore";
+} from "@features/generation-controls";
 
 export function usePromptConfigState(): {
   selectedMode: string;

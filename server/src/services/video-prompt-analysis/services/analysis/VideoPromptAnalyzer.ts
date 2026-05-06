@@ -1,6 +1,6 @@
 import { extractSemanticSpans } from "../../../../llm/span-labeling/nlp/NlpSpanService";
 import SpanLabelingConfig from "../../../../llm/span-labeling/config/SpanLabelingConfig";
-import type { VideoPromptStructuredResponse } from "@services/prompt-optimization/strategies/videoPromptTypes";
+import type { VideoPromptStructuredResponse } from "@server/contracts/prompt-analysis/structuredPrompt";
 import type { VideoPromptIR } from "../../types";
 import { createEmptyIR } from "./IrFactory";
 import { LlmIrExtractor } from "./LlmIrExtractor";
@@ -11,7 +11,6 @@ import { enrichFromTechnicalSpecs, enrichIR } from "./IrEnricher";
 
 interface VideoPromptAnalyzerDeps {
   llmExtractor?: LlmIrExtractor;
-  promptOutputOnly?: boolean;
 }
 
 /**
@@ -22,11 +21,9 @@ interface VideoPromptAnalyzerDeps {
  */
 export class VideoPromptAnalyzer {
   private readonly llmExtractor: LlmIrExtractor;
-  private readonly promptOutputOnly: boolean;
 
   constructor(deps: VideoPromptAnalyzerDeps = {}) {
     this.llmExtractor = deps.llmExtractor ?? new LlmIrExtractor();
-    this.promptOutputOnly = deps.promptOutputOnly ?? false;
   }
 
   /**
@@ -36,14 +33,10 @@ export class VideoPromptAnalyzer {
    * @returns Structured VideoPromptIR
    */
   async analyze(text: string): Promise<VideoPromptIR> {
-    const promptOutputOnly = this.promptOutputOnly;
     const useGliner =
-      !promptOutputOnly &&
       (SpanLabelingConfig.NEURO_SYMBOLIC?.ENABLED ?? false) &&
       (SpanLabelingConfig.NEURO_SYMBOLIC?.GLINER?.ENABLED ?? false);
-    const llmParsed = promptOutputOnly
-      ? null
-      : await this.llmExtractor.tryAnalyze(text);
+    const llmParsed = await this.llmExtractor.tryAnalyze(text);
 
     if (llmParsed) {
       const cleanNarrative = this.cleanText(llmParsed.raw);

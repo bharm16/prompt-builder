@@ -7,9 +7,9 @@
  * Registration order:
  * 1. Health (no auth)
  * 2. Firestore write gate (middleware)
- * 3. Motion / convergence media (gated by PROMPT_OUTPUT_ONLY)
+ * 3. Motion / convergence media
  * 4. Core API, LLM, role classify, suggestions (auth required)
- * 5. Preview / generation (gated by PROMPT_OUTPUT_ONLY)
+ * 5. Preview / generation
  * 6. Payment (auth required)
  * 7. 404 fallthrough
  * 8. Error handlers
@@ -19,7 +19,6 @@ import type { Application, Request, Response } from "express";
 import type { DIContainer } from "@infrastructure/DIContainer";
 import { errorHandler } from "@middleware/errorHandler";
 import { createFirestoreWriteGateMiddleware } from "@middleware/firestoreWriteGate";
-import { getRuntimeFlags } from "./runtime-flags";
 import { registerHealthRoutes } from "./routes/health.registration.ts";
 import { registerApiRoutes } from "./routes/api.registration.ts";
 import { registerMotionRoutes } from "./routes/motion.registration.ts";
@@ -34,25 +33,24 @@ type RequestWithId = Request & {
  * Register all application routes
  */
 export function registerRoutes(app: Application, container: DIContainer): void {
-  const runtimeFlags = getRuntimeFlags();
   const firestoreCircuitExecutor = container.resolve(
     "firestoreCircuitExecutor",
   );
 
   // 1. Health routes (no auth)
-  registerHealthRoutes(app, container, runtimeFlags);
+  registerHealthRoutes(app, container);
 
   // 2. Firestore write gate: fail-closed for all mutating /api routes
   app.use("/api", createFirestoreWriteGateMiddleware(firestoreCircuitExecutor));
 
-  // 3. Motion / convergence media (gated)
-  registerMotionRoutes(app, container, runtimeFlags);
+  // 3. Motion / convergence media
+  registerMotionRoutes(app, container);
 
   // 4. Core API, LLM endpoints, suggestions
-  registerApiRoutes(app, container, runtimeFlags);
+  registerApiRoutes(app, container);
 
-  // 5. Preview / generation (gated)
-  registerPreviewRoutes(app, container, runtimeFlags);
+  // 5. Preview / generation
+  registerPreviewRoutes(app, container);
 
   // 6. Payment
   registerPaymentRoutes(app, container);

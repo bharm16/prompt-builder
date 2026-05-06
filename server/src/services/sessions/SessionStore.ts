@@ -5,7 +5,7 @@ import {
   deserializeContinuitySession,
   serializeContinuitySession,
   type StoredContinuitySession,
-} from "@services/continuity/continuitySerialization";
+} from "@server/domain/continuity/serialization";
 
 interface StoredSession {
   userId: string;

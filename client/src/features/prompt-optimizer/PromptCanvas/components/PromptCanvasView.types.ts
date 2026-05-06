@@ -8,7 +8,7 @@ import type {
   Generation,
   GenerationsPanelProps,
 } from "@features/generations/types";
-import type { Span } from "@features/prompt-optimizer/SpanBentoGrid/components/types";
+import type { Span } from "@features/prompt-optimizer/SpanCategoryAccordion/components/types";
 import type { CoherenceIssue } from "@features/prompt-optimizer/components/coherence/useCoherenceAnnotations";
 import type { CoherenceRecommendation } from "@features/prompt-optimizer/types/coherence";
 import type { I2VContext } from "@features/prompt-optimizer/types/i2v";
@@ -33,9 +33,9 @@ export interface PromptCanvasViewProps {
   outlineOverlayActive: boolean;
   outlineOverlayState: "closed" | "opening" | "open" | "closing";
   outlineOverlayRef: React.RefObject<HTMLDivElement>;
-  bentoSpans: Span[];
+  categorySpans: Span[];
   editorRef: React.RefObject<HTMLDivElement>;
-  onBentoSpanHoverChange: (spanId: string | null) => void;
+  onCategorySpanHoverChange: (spanId: string | null) => void;
   showLegend: boolean;
   onCloseLegend: () => void;
   promptContext: PromptContext | null;

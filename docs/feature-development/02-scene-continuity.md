@@ -1,10 +1,34 @@
-# Feature 2: Scene-to-Scene Continuity
+# Feature 2: Scene-to-Scene Continuity (Revised)
 
-> **"Shots that cut together."** — Maintain visual consistency across a sequence of video generations.
+> **"Shots that cut together."** — Maintain visual consistency across a sequence of video generations using pixel-based style transfer.
 
 **Effort:** 3-4 weeks  
 **Priority:** 2 (Build Second)  
-**Dependencies:** VLM integration (GPT-4o Vision or Gemini), existing video generation system
+**Dependencies:** Replicate API (IP-Adapter for style), fal.ai (PuLID for identity), existing video generation system
+
+**Continuity Mode (Mandatory Behavior):** When Continuity Mode is enabled, every shot must be conditioned on a visual anchor (frame bridge, keyframe, or 3D proxy). Providers that cannot accept image inputs or reference images are blocked for continuity sessions. When Continuity Mode is off, standard generation options (including t2v) remain available.
+
+---
+
+## Continuity Mechanisms (Priority Order)
+
+| Priority | Mechanism                           | When Used                                      | Fidelity                  |
+| -------- | ----------------------------------- | ---------------------------------------------- | ------------------------- |
+| 1        | **Provider-Native Style Reference** | Provider supports it                           | Highest                   |
+| 2        | **Frame Bridge**                    | Direct continuation, same angle                | High                      |
+| 3        | **PuLID Identity Keyframe**         | New angle with character continuity            | High                      |
+| 4        | **IP-Adapter Style Keyframe**       | New angle without character, no native support | High                      |
+| 5        | **Seed Persistence**                | All generations                                | Medium (stabilizes noise) |
+
+The system attempts mechanisms in priority order, using the highest-fidelity option available for each provider/scenario.
+
+### Mandatory Continuity (Provider Gating)
+
+Continuity is a product guarantee, not a best-effort hint. **Only enforced when Continuity Mode is enabled.** For any continuity session:
+
+- **Hard requirement:** Every shot must have a visual anchor (frame bridge, keyframe, or 3D proxy render).
+- **Provider gating:** If a provider cannot accept image inputs (start image or reference images), it is **ineligible** for continuity generation.
+- **Failure mode:** The system returns a clear error and prompts the user to switch to an eligible provider.
 
 ---
 
@@ -22,79 +46,136 @@ They re-run the prompt. They get:
 
 **The clips don't cut together.** They look like different films.
 
-### Why It's Hard
+### Why Text-Based Approaches Fail
 
-Video models have no memory. Each generation is completely stateless. The "Tokyo at night" in generation 1 is a completely different "Tokyo at night" in generation 2.
+The naive solution is to extract a text description of the style ("neon pink, cyan accents, wet streets, low-key lighting") and inject it into the next prompt.
 
-**Current workarounds (all inadequate):**
+**This doesn't work because:**
 
-- **Seed locking** — Helps slightly, but models interpret prompts differently each time
-- **Style keywords** — "cyberpunk, neon pink and blue" — too loose, inconsistent
-- **Manual iteration** — Generate 20 times, hope 2 happen to match
+- VLMs describe style in words; video models interpret words differently
+- "Neon pink" has millions of variations in latent space
+- Text is a lossy compression of visual information
+- You're playing telephone: `Pixels → Text → Different Pixels`
+
+### The Correct Approach: Pass Pixels, Not Text
+
+Instead of translating style to text, pass the **visual signal** directly using:
+
+1. **Frame Bridge** — Use last frame of Shot 1 as start image for Shot 2
+2. **PuLID Keyframe** — When angles change and identity must be preserved
+3. **IP-Adapter** — When angles change and no native style reference exists
+4. **Seed Persistence** — Lock generation seeds where APIs support it
+5. **Post-Grade (Histogram/LUT)** — Match color palette to reduce drift after generation
 
 ---
 
 ## Solution Overview
 
-Extract visual style from generation 1, inject it into generation 2+.
+```
+┌─────────────┐     ┌──────────────────┐     ┌─────────────┐
+│   Shot 1    │ ──▶ │  Extract Frame   │ ──▶ │   Shot 2    │
+│  (Source)   │     │  (Style Signal)  │     │  (Matched)  │
+└─────────────┘     └──────────────────┘     └─────────────┘
+                            │
+              ┌─────────────┴─────────────┐
+              ▼                           ▼
+     ┌────────────────┐         ┌─────────────────┐
+     │  Frame Bridge  │         │ PuLID / IP-Adapter│
+     │ (Direct i2v)   │         │ (Keyframe)        │
+     └────────────────┘         └─────────────────┘
+           │                            │
+           │    Same angle/continuous   │  Different angle/composition
+           ▼                            ▼
+     ┌────────────────┐         ┌─────────────────┐
+     │  startImage =  │         │ Generate anchored│
+     │   last frame   │         │ keyframe, then   │
+     │                │         │ use as start    │
+     └────────────────┘         └─────────────────┘
+                             │
+                             ▼
+                    ┌──────────────────┐
+                    │  Post-Grade      │
+                    │ (Palette Match)  │
+                    └──────────────────┘
+```
+
+### Decision Logic
 
 ```
-┌─────────────┐     ┌──────────────┐     ┌─────────────┐
-│ Generation 1 │ ──▶ │    Style     │ ──▶ │ Generation 2 │
-│   (Source)   │     │  Extraction  │     │  (Matched)   │
-└─────────────┘     └──────────────┘     └─────────────┘
-                           │
-                           ▼
-                    ┌──────────────┐
-                    │  Extracted   │
-                    │    Style     │
-                    │   Tokens     │
-                    └──────────────┘
+Is this shot a direct continuation (same framing)?
+    │
+    ├─ YES → Use last frame directly as startImage (Frame Bridge)
+    │
+    └─ NO (different angle/composition) →
+           │
+           ├─ Character continuity required → Generate PuLID keyframe
+           │     (optionally style-transfer), then use as startImage
+           │
+           └─ No character continuity → Generate style keyframe via IP-Adapter
+                 then use as startImage
 ```
 
-### User Experience
+---
+
+## User Experience
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
 │ 🎬 Scene: Tokyo Night Chase                              [+ Add Shot]   │
+│ Mode:  ● Continuity   ○ Standard (t2v allowed)                         │
 ├─────────────────────────────────────────────────────────────────────────┤
 │                                                                         │
 │  Shot Timeline                                                          │
 │  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐                 │
-│  │   Shot 1    │ ─▶ │   Shot 2    │ ─▶ │   Shot 3    │                 │
+│  │   Shot 1    │───▶│   Shot 2    │───▶│   Shot 3    │                 │
 │  │  [Preview]  │    │  [Preview]  │    │ [Generating]│                 │
 │  │             │    │             │    │    ████░░   │                 │
 │  │  Wide shot  │    │   Medium    │    │   Close-up  │                 │
 │  │   ✓ Done    │    │   ✓ Done    │    │  In progress│                 │
 │  └─────────────┘    └─────────────┘    └─────────────┘                 │
-│        │                  │                  │                          │
-│        ▼                  ▼                  ▼                          │
-│   [Style Base]      [Inherited]        [Inherited]                      │
+│        │                                     │                          │
+│   [Style Source]                      [Style from Shot 1]               │
 │                                                                         │
 ├─────────────────────────────────────────────────────────────────────────┤
-│ 🎨 Scene Style (extracted from Shot 1)                                  │
+│ 🎨 Style Reference                                                      │
+│  ┌──────────────────┐                                                   │
+│  │   [Frame from    │  This frame anchors the visual style for all     │
+│  │    Shot 1]       │  subsequent shots. Click to change reference.    │
+│  │                  │                                                   │
+│  └──────────────────┘                                                   │
 │                                                                         │
-│  Colors: ████ Neon Pink  ████ Cyan  ████ Deep Blue                     │
-│  Lighting: Low-key rim lighting from left                               │
-│  Atmosphere: Wet streets, light rain, neon reflections                  │
-│  Style: Cinematic, high contrast, anamorphic                           │
+│  Continuity Mode (only when enabled):                                   │
+│  ◉ Frame Bridge (same angle) — Use last frame directly                 │
+│  ○ Style Match (new angle) — Generate style-matched keyframe           │
 │                                                                         │
-│  [Edit Style] [Reset to Shot 1] [Apply to All]                         │
 ├─────────────────────────────────────────────────────────────────────────┤
 │ 📝 Shot 3 Prompt                                                        │
 │  ┌────────────────────────────────────────────────────────────────┐    │
-│  │ Close-up of her face, rain droplets on skin, neon reflections │    │
-│  │ in her eyes, she looks up at something off-screen             │    │
+│  │ Close-up of her face, rain droplets on skin, she looks up     │    │
 │  └────────────────────────────────────────────────────────────────┘    │
 │                                                                         │
-│  ☑ Use frame bridge (last frame of Shot 2 as start image)             │
-│  ☑ Inject scene style automatically                                    │
+│  ☑ Maintain scene style (IP-Adapter strength: 0.6)                     │
+│  ☑ Use character reference (if available)                              │
 │                                                                         │
 │  [Generate Shot 3]                                                      │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
+
+### Mode Behavior (UI/UX)
+
+**Continuity Mode (default):**
+
+- Requires a visual anchor for every shot.
+- Shows continuity controls (style reference, strength slider, frame bridge vs style match).
+- Blocks models that cannot accept image inputs or style references.
+
+**Standard Mode:**
+
+- No continuity requirements; t2v allowed.
+- Hides continuity controls by default.
+- Optional: “Use previous shot as reference” checkbox (best-effort i2v, not guaranteed).
 
 ## Technical Architecture
 
@@ -105,18 +186,21 @@ server/src/services/continuity/
 ├── index.ts                           # Public exports
 ├── types.ts                           # All type definitions
 ├── ContinuityService.ts               # Main orchestrator (< 300 lines)
-├── StyleExtractionService.ts          # VLM-based style analysis (< 250 lines)
-├── StyleInjectionService.ts           # Prompt augmentation (< 150 lines)
+├── AnchorService.ts                   # Continuity decision engine (< 150 lines)
 ├── FrameBridgeService.ts              # Frame extraction for i2v (< 150 lines)
-├── ContinuitySessionService.ts        # Session management (< 200 lines)
-├── templates/
-│   ├── style-extraction.md            # VLM prompt for extraction
-│   └── style-comparison.md            # VLM prompt for consistency check
+├── StyleReferenceService.ts           # IP-Adapter style matching (< 200 lines)
+├── CharacterKeyframeService.ts        # PuLID identity keyframe (< 200 lines)
+├── ProviderStyleAdapter.ts            # Provider-native style reference routing (< 200 lines)
+├── SeedPersistenceService.ts          # Seed extraction and injection (< 100 lines)
+├── ContinuitySessionService.ts        # Session management (< 250 lines)
+├── StyleAnalysisService.ts            # Optional: VLM analysis for UI/debugging (< 150 lines)
+├── GradingService.ts                  # Histogram/LUT palette match (< 150 lines)
+├── QualityGateService.ts              # Similarity scoring + auto-retry (< 150 lines)
+├── SceneProxyService.ts               # Phase 2: 3D proxy (NeRF/Splat)
 └── __tests__/
-    ├── StyleExtractionService.test.ts
-    ├── StyleInjectionService.test.ts
+    ├── FrameBridgeService.test.ts
+    ├── StyleReferenceService.test.ts
     └── fixtures/
-        └── sampleFrames.ts
 
 client/src/features/continuity/
 ├── index.ts
@@ -125,7 +209,7 @@ client/src/features/continuity/
 │   └── ContinuitySessionContext.tsx   # Session state management
 ├── hooks/
 │   ├── useContinuitySession.ts        # Main session hook (< 100 lines)
-│   ├── useStyleExtraction.ts          # Style extraction hook (< 80 lines)
+│   ├── useStyleReference.ts           # Style reference hook (< 80 lines)
 │   └── useFrameBridge.ts              # Frame bridge hook (< 60 lines)
 ├── components/
 │   ├── ContinuitySession/
@@ -133,14 +217,13 @@ client/src/features/continuity/
 │   │   ├── SessionTimeline.tsx        # Shot sequence view (< 120 lines)
 │   │   ├── ShotCard.tsx               # Individual shot (< 100 lines)
 │   │   └── index.ts
-│   ├── StylePanel/
-│   │   ├── StylePanel.tsx             # Style display/edit (< 150 lines)
-│   │   ├── ColorPalette.tsx           # Color swatches (< 60 lines)
-│   │   ├── StyleAttribute.tsx         # Single attribute (< 40 lines)
+│   ├── StyleReferencePanel/
+│   │   ├── StyleReferencePanel.tsx    # Reference frame display (< 100 lines)
+│   │   ├── StrengthSlider.tsx         # IP-Adapter strength (< 40 lines)
 │   │   └── index.ts
 │   ├── ShotEditor/
 │   │   ├── ShotEditor.tsx             # New shot prompt editor (< 120 lines)
-│   │   ├── FrameBridgeToggle.tsx      # i2v toggle (< 40 lines)
+│   │   ├── ContinuityModeToggle.tsx   # Frame bridge vs style match (< 60 lines)
 │   │   └── index.ts
 │   └── ContinueSceneButton/
 │       └── ContinueSceneButton.tsx    # Trigger from generation (< 60 lines)
@@ -160,87 +243,139 @@ client/src/features/continuity/
 import { VideoModelId } from "@/types/video";
 
 /**
- * Extracted visual style from a video/frame
+ * A frame extracted from a video for style reference or i2v input
  */
-export interface ExtractedStyle {
+export interface StyleReference {
   id: string;
   sourceVideoId: string;
-  sourceFrameIndex: number; // Which frame was analyzed
-  extractedAt: Date;
+  sourceFrameIndex: number;
 
-  // Color characteristics
-  color: {
-    palette: ColorPalette;
-    temperature: "warm" | "neutral" | "cool";
-    saturation: "muted" | "natural" | "vibrant";
-    contrast: "low" | "medium" | "high";
-  };
-
-  // Lighting characteristics
-  lighting: {
-    style: string; // "low-key with strong rim lighting"
-    direction: string; // "from left, slightly behind"
-    quality: string; // "hard shadows, neon bounce fill"
-    keyLight: string; // "neon signage"
-    fillLight?: string; // "ambient city glow"
-    intensity: "dim" | "moderate" | "bright";
-  };
-
-  // Atmospheric elements
-  atmosphere: {
-    elements: string[]; // ["wet streets", "light rain", "reflections"]
-    timeOfDay: string; // "night", "golden hour", etc.
-    weather: string; // "rainy", "clear", "foggy"
-    mood: string; // "melancholic", "tense", "peaceful"
-  };
-
-  // Technical style
-  technical: {
-    filmStock: string; // "cinematic, high contrast"
-    lensCharacteristics: string; // "anamorphic, lens flares"
-    grainLevel: "none" | "light" | "moderate" | "heavy";
-    depthOfField: "deep" | "moderate" | "shallow";
-    motionBlur: "none" | "subtle" | "noticeable";
-  };
-
-  // Pre-composed prompt fragment
-  stylePromptFragment: string;
-
-  // Confidence in extraction
-  confidence: number; // 0-1
-
-  // Raw VLM response for debugging
-  rawAnalysis?: string;
-}
-
-export interface ColorPalette {
-  primary: HexColor;
-  secondary: HexColor;
-  accent: HexColor;
-  shadows: HexColor;
-  highlights: HexColor;
-  dominant: HexColor[]; // Top 3-5 colors by area
-}
-
-export type HexColor = `#${string}`;
-
-/**
- * Frame extracted for i2v continuity
- */
-export interface FrameBridge {
-  id: string;
-  sourceVideoId: string;
-  framePosition: "first" | "last" | number;
+  // The actual visual signal
   frameUrl: string; // URL to stored frame image
   frameTimestamp: number; // Seconds into video
-  extractedAt: Date;
 
   // Frame metadata
   resolution: {
     width: number;
     height: number;
   };
-  aspectRatio: string; // "16:9", "9:16", etc.
+  aspectRatio: string;
+
+  // Optional: pre-computed for faster IP-Adapter calls
+  clipEmbedding?: string; // Base64 encoded embedding
+
+  // Optional: text description for UI/debugging only (NOT for generation)
+  analysisMetadata?: StyleAnalysisMetadata;
+
+  extractedAt: Date;
+}
+
+/**
+ * Optional metadata from VLM analysis — for UI display only, not generation
+ */
+export interface StyleAnalysisMetadata {
+  dominantColors: string[]; // For color swatches in UI
+  lightingDescription: string; // Human-readable
+  moodDescription: string; // Human-readable
+  confidence: number;
+}
+
+/**
+ * Provider-specific continuity capabilities
+ */
+export interface ProviderContinuityCapabilities {
+  supportsNativeStyleReference: boolean; // e.g., Runway --sref
+  supportsNativeCharacterReference: boolean; // e.g., Kling face lock
+  supportsStartImage: boolean; // i2v capability
+  supportsSeedPersistence: boolean; // Seed can be extracted and reused
+  supportsExtendVideo: boolean; // Native video extension
+
+  // Provider-specific config
+  styleReferenceParam?: string; // API parameter name
+  maxStyleReferenceImages?: number; // Some support multiple refs
+}
+
+/**
+ * Known provider capabilities
+ */
+export const PROVIDER_CAPABILITIES: Record<
+  string,
+  ProviderContinuityCapabilities
+> = {
+  runway: {
+    supportsNativeStyleReference: true,
+    supportsNativeCharacterReference: true,
+    supportsStartImage: true,
+    supportsSeedPersistence: true,
+    supportsExtendVideo: true,
+    styleReferenceParam: "style_reference",
+  },
+  kling: {
+    supportsNativeStyleReference: false,
+    supportsNativeCharacterReference: true, // IP mode with face
+    supportsStartImage: true,
+    supportsSeedPersistence: false,
+    supportsExtendVideo: false,
+  },
+  luma: {
+    supportsNativeStyleReference: false,
+    supportsNativeCharacterReference: false,
+    supportsStartImage: true, // keyframes.frame0
+    supportsSeedPersistence: false,
+    supportsExtendVideo: true, // extend_video endpoint
+  },
+  veo: {
+    supportsNativeStyleReference: false,
+    supportsNativeCharacterReference: false,
+    supportsStartImage: true,
+    supportsSeedPersistence: false,
+    supportsExtendVideo: false,
+  },
+  sora: {
+    supportsNativeStyleReference: false,
+    supportsNativeCharacterReference: false,
+    supportsStartImage: true,
+    supportsSeedPersistence: false,
+    supportsExtendVideo: false,
+  },
+  replicate: {
+    supportsNativeStyleReference: false, // But we use IP-Adapter
+    supportsNativeCharacterReference: false,
+    supportsStartImage: true,
+    supportsSeedPersistence: true,
+    supportsExtendVideo: false,
+  },
+};
+
+/**
+ * Seed information for reproducibility
+ */
+export interface SeedInfo {
+  seed: number;
+  provider: string;
+  modelId: string;
+  extractedAt: Date;
+}
+
+/**
+ * Frame bridge for direct i2v continuation
+ */
+export interface FrameBridge {
+  id: string;
+  sourceVideoId: string;
+  sourceShotId: string;
+
+  frameUrl: string;
+  framePosition: "first" | "last";
+  frameTimestamp: number;
+
+  resolution: {
+    width: number;
+    height: number;
+  };
+  aspectRatio: string;
+
+  extractedAt: Date;
 }
 
 /**
@@ -249,29 +384,56 @@ export interface FrameBridge {
 export interface ContinuityShot {
   id: string;
   sessionId: string;
-  sequenceIndex: number; // 0, 1, 2, ...
+  sequenceIndex: number;
 
   // User input
-  userPrompt: string; // What user typed
+  userPrompt: string;
+  generationMode?: "continuity" | "standard";
 
-  // Processed
-  injectedPrompt: string; // With style tokens added
+  // Continuity settings for this shot
+  continuityMode: "frame-bridge" | "style-match" | "native" | "none";
+  styleStrength: number; // 0.0-1.0, IP-Adapter scale
+
+  // Style linkage — which shot provides the style reference
+  styleReferenceId: string | null; // Shot ID to inherit from (null = this is source)
+  styleReference?: StyleReference; // Resolved reference
+
+  // Frame bridge (for direct continuation)
+  frameBridge?: FrameBridge;
+
+  // Character reference (optional, from existing asset system)
+  characterAssetId?: string;
 
   // Generation details
   modelId: VideoModelId;
+
+  // Seed persistence
+  seedInfo?: SeedInfo; // Seed from this generation
+  inheritedSeed?: number; // Seed to use (from previous shot)
+
   videoAssetId?: string;
   previewAssetId?: string;
 
-  // Continuity linkage
-  styleSource: "base" | "inherited" | "custom";
-  appliedStyle?: ExtractedStyle;
-  bridgeFrame?: FrameBridge; // Last frame from previous shot
+  // Generated keyframe (if style-match mode)
+  generatedKeyframeUrl?: string;
+
+  // Which continuity mechanism was actually used
+  continuityMechanismUsed?:
+    | "native-style-ref"
+    | "frame-bridge"
+    | "ip-adapter"
+    | "seed-only"
+    | "none";
 
   // State
-  status: "draft" | "pending" | "generating" | "completed" | "failed";
+  status:
+    | "draft"
+    | "generating-keyframe"
+    | "generating-video"
+    | "completed"
+    | "failed";
   error?: string;
 
-  // Timestamps
   createdAt: Date;
   generatedAt?: Date;
 }
@@ -284,62 +446,44 @@ export interface ContinuitySession {
   userId: string;
 
   // Metadata
-  name: string; // User-defined scene name
+  name: string;
   description?: string;
 
-  // Style baseline
-  baseStyle: ExtractedStyle;
-  styleSource: "extracted" | "user-defined" | "template";
+  // The source of truth for visual style
+  primaryStyleReference: StyleReference;
 
   // Shots in sequence
   shots: ContinuityShot[];
 
-  // Settings
-  settings: ContinuitySettings;
+  // Default settings for new shots
+  defaultSettings: ContinuitySessionSettings;
 
   // State
   status: "active" | "completed" | "archived";
 
-  // Timestamps
   createdAt: Date;
   updatedAt: Date;
 }
 
-export interface ContinuitySettings {
-  // Automatic behavior
-  autoExtractStyle: boolean; // Extract style after each generation
-  autoFrameBridge: boolean; // Use last frame for next shot
-
-  // Style injection
-  styleInjectionStrength: "light" | "medium" | "strong";
-  styleInjectionPosition: "prefix" | "suffix" | "smart";
-
-  // What to inherit
-  inheritColor: boolean;
-  inheritLighting: boolean;
-  inheritAtmosphere: boolean;
-  inheritTechnical: boolean;
-
-  // Generation
+export interface ContinuitySessionSettings {
+  // Product-level mode
+  generationMode: "continuity" | "standard";
+  defaultContinuityMode: "frame-bridge" | "style-match";
+  defaultStyleStrength: number; // 0.0-1.0
   defaultModel: VideoModelId;
-  usePreviewFirst: boolean; // Generate Wan preview before final
+  autoExtractFrameBridge: boolean; // Auto-extract last frame after generation
+  useCharacterConsistency: boolean; // Use character assets if available
 }
 
 /**
- * Style injection options
+ * IP-Adapter generation options
  */
-export interface StyleInjectionOptions {
-  strength: "light" | "medium" | "strong";
-  position: "prefix" | "suffix" | "smart";
-
-  // Selective injection
-  includeColor: boolean;
-  includeLighting: boolean;
-  includeAtmosphere: boolean;
-  includeTechnical: boolean;
-
-  // Conflict resolution
-  skipConflicting: boolean; // Don't override user-specified elements
+export interface StyleMatchOptions {
+  prompt: string;
+  styleReferenceUrl: string;
+  strength: number; // 0.0-1.0, maps to ip_adapter_scale
+  aspectRatio?: "16:9" | "9:16" | "1:1";
+  negativePrompt?: string;
 }
 
 /**
@@ -348,9 +492,16 @@ export interface StyleInjectionOptions {
 export interface CreateShotRequest {
   sessionId: string;
   prompt: string;
-  modelId?: VideoModelId; // Override default
-  useFrameBridge?: boolean; // Override setting
-  styleOverrides?: Partial<ExtractedStyle>;
+
+  // Continuity options
+  continuityMode?: "frame-bridge" | "style-match" | "none";
+  generationMode?: "continuity" | "standard"; // Overrides session setting
+  styleReferenceId?: string; // Which shot to match (defaults to previous)
+  styleStrength?: number; // Override default
+
+  // Generation options
+  modelId?: VideoModelId;
+  characterAssetId?: string;
 }
 
 /**
@@ -360,12 +511,13 @@ export interface CreateSessionRequest {
   name: string;
   description?: string;
 
-  // Initial shot (optional)
-  initialPrompt?: string;
-  initialVideoId?: string; // Create from existing video
+  // Must provide one of these to establish style reference
+  sourceVideoId?: string; // Create from existing video
+  sourceImageUrl?: string; // Create from reference image
+  initialPrompt?: string; // Will generate first shot
 
   // Settings
-  settings?: Partial<ContinuitySettings>;
+  settings?: Partial<ContinuitySessionSettings>;
 }
 ```
 
@@ -373,754 +525,185 @@ export interface CreateSessionRequest {
 
 ## Implementation Details
 
-### 1. StyleExtractionService
+### 1. FrameBridgeService
 
-Uses VLM to analyze video frames and extract visual style.
-
-```typescript
-// server/src/services/continuity/StyleExtractionService.ts
-
-import { VLMService } from "@/services/vlm/VLMService";
-import { AssetService } from "@/services/asset/AssetService";
-import { ExtractedStyle, ColorPalette, HexColor } from "./types";
-import { loadTemplate } from "@/utils/templates";
-
-export class StyleExtractionService {
-  private extractionPrompt: string;
-
-  constructor(
-    private vlm: VLMService,
-    private assetService: AssetService,
-  ) {
-    this.extractionPrompt = loadTemplate("continuity/style-extraction.md");
-  }
-
-  /**
-   * Extract style from a video asset
-   */
-  async extractFromVideo(
-    videoId: string,
-    framePosition: "first" | "middle" | "last" | number = "middle",
-  ): Promise<ExtractedStyle> {
-    // Extract frame from video
-    const frame = await this.assetService.extractFrame(videoId, framePosition);
-
-    // Analyze frame with VLM
-    const analysis = await this.analyzeFrame(frame.url);
-
-    // Parse and structure the response
-    const style = this.parseAnalysis(analysis, videoId, frame.index);
-
-    return style;
-  }
-
-  /**
-   * Extract style from an image
-   */
-  async extractFromImage(imageUrl: string): Promise<ExtractedStyle> {
-    const analysis = await this.analyzeFrame(imageUrl);
-    return this.parseAnalysis(analysis, "image", 0);
-  }
-
-  /**
-   * Analyze a single frame
-   */
-  private async analyzeFrame(frameUrl: string): Promise<VLMAnalysisResponse> {
-    const response = await this.vlm.analyzeImage({
-      imageUrl: frameUrl,
-      prompt: this.extractionPrompt,
-      responseFormat: "json",
-      maxTokens: 2000,
-    });
-
-    return JSON.parse(response.content);
-  }
-
-  /**
-   * Parse VLM response into ExtractedStyle
-   */
-  private parseAnalysis(
-    analysis: VLMAnalysisResponse,
-    sourceId: string,
-    frameIndex: number,
-  ): ExtractedStyle {
-    // Extract color palette
-    const palette = this.parseColorPalette(analysis.colors);
-
-    // Build style prompt fragment
-    const styleFragment = this.buildStyleFragment(analysis);
-
-    return {
-      id: this.generateStyleId(),
-      sourceVideoId: sourceId,
-      sourceFrameIndex: frameIndex,
-      extractedAt: new Date(),
-
-      color: {
-        palette,
-        temperature: analysis.colorTemperature || "neutral",
-        saturation: analysis.saturation || "natural",
-        contrast: analysis.contrast || "medium",
-      },
-
-      lighting: {
-        style: analysis.lightingStyle || "natural lighting",
-        direction: analysis.lightingDirection || "frontal",
-        quality: analysis.lightingQuality || "soft",
-        keyLight: analysis.keyLight || "natural",
-        fillLight: analysis.fillLight,
-        intensity: analysis.lightingIntensity || "moderate",
-      },
-
-      atmosphere: {
-        elements: analysis.atmosphericElements || [],
-        timeOfDay: analysis.timeOfDay || "day",
-        weather: analysis.weather || "clear",
-        mood: analysis.mood || "neutral",
-      },
-
-      technical: {
-        filmStock: analysis.filmStock || "digital",
-        lensCharacteristics: analysis.lensCharacteristics || "standard",
-        grainLevel: analysis.grain || "none",
-        depthOfField: analysis.depthOfField || "moderate",
-        motionBlur: analysis.motionBlur || "none",
-      },
-
-      stylePromptFragment: styleFragment,
-      confidence: analysis.confidence || 0.8,
-      rawAnalysis: JSON.stringify(analysis),
-    };
-  }
-
-  /**
-   * Parse colors from VLM response
-   */
-  private parseColorPalette(colors: VLMColorResponse): ColorPalette {
-    const toHex = (color: string): HexColor => {
-      // Handle various formats: "neon pink", "#FF1493", "rgb(255, 20, 147)"
-      if (color.startsWith("#")) return color as HexColor;
-
-      // Color name to hex mapping
-      const colorMap: Record<string, HexColor> = {
-        "neon pink": "#FF1493",
-        cyan: "#00FFFF",
-        "deep blue": "#0A0A2E",
-        "warm orange": "#FF8C00",
-        golden: "#FFD700",
-        // Add more as needed
-      };
-
-      const normalized = color.toLowerCase().trim();
-      return colorMap[normalized] || "#808080";
-    };
-
-    return {
-      primary: toHex(colors.primary || "#808080"),
-      secondary: toHex(colors.secondary || "#606060"),
-      accent: toHex(colors.accent || "#404040"),
-      shadows: toHex(colors.shadows || "#1a1a1a"),
-      highlights: toHex(colors.highlights || "#ffffff"),
-      dominant: (colors.dominant || []).map(toHex),
-    };
-  }
-
-  /**
-   * Build a prompt fragment from extracted style
-   */
-  private buildStyleFragment(analysis: VLMAnalysisResponse): string {
-    const parts: string[] = [];
-
-    // Color description
-    if (analysis.colorDescription) {
-      parts.push(analysis.colorDescription);
-    }
-
-    // Lighting
-    if (analysis.lightingStyle) {
-      let lighting = analysis.lightingStyle;
-      if (analysis.lightingDirection) {
-        lighting += `, light ${analysis.lightingDirection}`;
-      }
-      parts.push(lighting);
-    }
-
-    // Atmosphere
-    if (analysis.atmosphericElements?.length > 0) {
-      parts.push(analysis.atmosphericElements.join(", "));
-    }
-
-    // Technical style
-    if (analysis.filmStock && analysis.filmStock !== "digital") {
-      parts.push(analysis.filmStock);
-    }
-    if (
-      analysis.lensCharacteristics &&
-      analysis.lensCharacteristics !== "standard"
-    ) {
-      parts.push(analysis.lensCharacteristics);
-    }
-
-    return parts.join(". ") + ".";
-  }
-
-  /**
-   * Compare two styles for consistency
-   */
-  async compareStyles(
-    style1: ExtractedStyle,
-    style2: ExtractedStyle,
-  ): Promise<StyleComparison> {
-    // Calculate similarity scores for each aspect
-    const colorSimilarity = this.compareColors(style1.color, style2.color);
-    const lightingSimilarity = this.compareLighting(
-      style1.lighting,
-      style2.lighting,
-    );
-    const atmosphereSimilarity = this.compareAtmosphere(
-      style1.atmosphere,
-      style2.atmosphere,
-    );
-
-    const overall =
-      (colorSimilarity + lightingSimilarity + atmosphereSimilarity) / 3;
-
-    return {
-      overall,
-      color: colorSimilarity,
-      lighting: lightingSimilarity,
-      atmosphere: atmosphereSimilarity,
-      issues: this.identifyIssues(style1, style2),
-    };
-  }
-
-  private compareColors(
-    c1: ExtractedStyle["color"],
-    c2: ExtractedStyle["color"],
-  ): number {
-    // Simple comparison - could be enhanced with color distance algorithms
-    let score = 0;
-    if (c1.temperature === c2.temperature) score += 0.3;
-    if (c1.saturation === c2.saturation) score += 0.3;
-    if (c1.contrast === c2.contrast) score += 0.4;
-    return score;
-  }
-
-  private compareLighting(
-    l1: ExtractedStyle["lighting"],
-    l2: ExtractedStyle["lighting"],
-  ): number {
-    let score = 0;
-    if (l1.style === l2.style) score += 0.4;
-    if (l1.direction === l2.direction) score += 0.3;
-    if (l1.intensity === l2.intensity) score += 0.3;
-    return score;
-  }
-
-  private compareAtmosphere(
-    a1: ExtractedStyle["atmosphere"],
-    a2: ExtractedStyle["atmosphere"],
-  ): number {
-    let score = 0;
-    if (a1.timeOfDay === a2.timeOfDay) score += 0.4;
-    if (a1.weather === a2.weather) score += 0.3;
-
-    // Compare elements overlap
-    const overlap = a1.elements.filter((e) => a2.elements.includes(e));
-    score +=
-      0.3 *
-      (overlap.length / Math.max(a1.elements.length, a2.elements.length, 1));
-
-    return score;
-  }
-
-  private identifyIssues(s1: ExtractedStyle, s2: ExtractedStyle): string[] {
-    const issues: string[] = [];
-
-    if (s1.color.temperature !== s2.color.temperature) {
-      issues.push(
-        `Color temperature mismatch: ${s1.color.temperature} vs ${s2.color.temperature}`,
-      );
-    }
-    if (s1.lighting.direction !== s2.lighting.direction) {
-      issues.push(
-        `Lighting direction mismatch: ${s1.lighting.direction} vs ${s2.lighting.direction}`,
-      );
-    }
-    if (s1.atmosphere.timeOfDay !== s2.atmosphere.timeOfDay) {
-      issues.push(
-        `Time of day mismatch: ${s1.atmosphere.timeOfDay} vs ${s2.atmosphere.timeOfDay}`,
-      );
-    }
-
-    return issues;
-  }
-
-  private generateStyleId(): string {
-    return `style_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-  }
-}
-
-// VLM response types
-interface VLMAnalysisResponse {
-  colors: VLMColorResponse;
-  colorTemperature: "warm" | "neutral" | "cool";
-  colorDescription: string;
-  saturation: "muted" | "natural" | "vibrant";
-  contrast: "low" | "medium" | "high";
-
-  lightingStyle: string;
-  lightingDirection: string;
-  lightingQuality: string;
-  keyLight: string;
-  fillLight?: string;
-  lightingIntensity: "dim" | "moderate" | "bright";
-
-  atmosphericElements: string[];
-  timeOfDay: string;
-  weather: string;
-  mood: string;
-
-  filmStock: string;
-  lensCharacteristics: string;
-  grain: "none" | "light" | "moderate" | "heavy";
-  depthOfField: "deep" | "moderate" | "shallow";
-  motionBlur: "none" | "subtle" | "noticeable";
-
-  confidence: number;
-}
-
-interface VLMColorResponse {
-  primary: string;
-  secondary: string;
-  accent: string;
-  shadows: string;
-  highlights: string;
-  dominant: string[];
-}
-
-interface StyleComparison {
-  overall: number;
-  color: number;
-  lighting: number;
-  atmosphere: number;
-  issues: string[];
-}
-```
-
-### VLM Prompt Template
-
-````markdown
-<!-- server/src/services/continuity/templates/style-extraction.md -->
-
-Analyze this video frame and extract detailed visual style characteristics.
-Focus on elements that would need to be consistent across multiple shots in the same scene.
-
-Return a JSON object with the following structure:
-
-```json
-{
-  "colors": {
-    "primary": "main color (hex or descriptive name)",
-    "secondary": "second most prominent color",
-    "accent": "accent/highlight color",
-    "shadows": "shadow tone color",
-    "highlights": "highlight color",
-    "dominant": ["top 3-5 colors by screen area"]
-  },
-  "colorTemperature": "warm | neutral | cool",
-  "colorDescription": "One sentence describing the color palette",
-  "saturation": "muted | natural | vibrant",
-  "contrast": "low | medium | high",
-
-  "lightingStyle": "Detailed description of lighting approach (e.g., 'low-key with strong rim lighting')",
-  "lightingDirection": "Where light comes from (e.g., 'from left, slightly behind')",
-  "lightingQuality": "Hard/soft shadows, quality description",
-  "keyLight": "Main light source",
-  "fillLight": "Secondary light source if visible",
-  "lightingIntensity": "dim | moderate | bright",
-
-  "atmosphericElements": ["List visible atmospheric elements like: wet streets, rain, fog, dust, etc."],
-  "timeOfDay": "night | dawn | day | dusk | golden hour | blue hour",
-  "weather": "clear | cloudy | rainy | foggy | snowy",
-  "mood": "One word mood descriptor",
-
-  "filmStock": "Visual style description (e.g., 'cinematic, high contrast' or 'vintage film')",
-  "lensCharacteristics": "Lens effects (e.g., 'anamorphic, lens flares' or 'standard')",
-  "grain": "none | light | moderate | heavy",
-  "depthOfField": "deep | moderate | shallow",
-  "motionBlur": "none | subtle | noticeable",
-
-  "confidence": 0.0 to 1.0
-}
-```
-````
-
-Be specific and use cinematography terminology.
-Extract what you actually see, not what you assume.
-If uncertain about an element, provide your best estimate but lower the confidence score.
-
-````
-
-### 2. StyleInjectionService
-
-Augments user prompts with extracted style tokens.
-
-```typescript
-// server/src/services/continuity/StyleInjectionService.ts
-
-import { ExtractedStyle, StyleInjectionOptions } from './types';
-import { LabeledSpan } from '@/llm/span-labeling/types';
-
-export class StyleInjectionService {
-  /**
-   * Inject style into a user prompt
-   */
-  injectStyle(
-    userPrompt: string,
-    style: ExtractedStyle,
-    options: StyleInjectionOptions = this.defaultOptions()
-  ): string {
-    // Build style prefix from selected components
-    const styleTokens = this.buildStyleTokens(style, options);
-
-    // Clean user prompt of conflicting elements
-    const cleanedPrompt = options.skipConflicting
-      ? this.removeConflictingElements(userPrompt, style)
-      : userPrompt;
-
-    // Combine based on position preference
-    return this.combinePrompts(styleTokens, cleanedPrompt, options.position);
-  }
-
-  /**
-   * Build style tokens from extracted style
-   */
-  private buildStyleTokens(
-    style: ExtractedStyle,
-    options: StyleInjectionOptions
-  ): string {
-    const parts: string[] = [];
-
-    // Color tokens
-    if (options.includeColor) {
-      const colorTokens = this.buildColorTokens(style, options.strength);
-      if (colorTokens) parts.push(colorTokens);
-    }
-
-    // Lighting tokens
-    if (options.includeLighting) {
-      const lightingTokens = this.buildLightingTokens(style, options.strength);
-      if (lightingTokens) parts.push(lightingTokens);
-    }
-
-    // Atmosphere tokens
-    if (options.includeAtmosphere) {
-      const atmosphereTokens = this.buildAtmosphereTokens(style, options.strength);
-      if (atmosphereTokens) parts.push(atmosphereTokens);
-    }
-
-    // Technical tokens
-    if (options.includeTechnical) {
-      const technicalTokens = this.buildTechnicalTokens(style, options.strength);
-      if (technicalTokens) parts.push(technicalTokens);
-    }
-
-    return parts.join(' ');
-  }
-
-  /**
-   * Build color description tokens
-   */
-  private buildColorTokens(
-    style: ExtractedStyle,
-    strength: 'light' | 'medium' | 'strong'
-  ): string {
-    const { palette, temperature, saturation, contrast } = style.color;
-
-    if (strength === 'light') {
-      // Just temperature and mood
-      return `${temperature} color tones`;
-    }
-
-    if (strength === 'medium') {
-      // Add key colors
-      return `Color palette: ${palette.primary}, ${palette.secondary}, ${palette.accent}. ${temperature} tones, ${saturation} saturation.`;
-    }
-
-    // Strong: full detail
-    return `Color palette: ${palette.primary} (primary), ${palette.secondary} (secondary), ${palette.accent} (accent). ${temperature} color temperature, ${saturation} saturation, ${contrast} contrast.`;
-  }
-
-  /**
-   * Build lighting description tokens
-   */
-  private buildLightingTokens(
-    style: ExtractedStyle,
-    strength: 'light' | 'medium' | 'strong'
-  ): string {
-    const { style: lightStyle, direction, quality, intensity } = style.lighting;
-
-    if (strength === 'light') {
-      return lightStyle;
-    }
-
-    if (strength === 'medium') {
-      return `${lightStyle}, light ${direction}`;
-    }
-
-    return `${lightStyle}, light coming ${direction}, ${quality}, ${intensity} intensity`;
-  }
-
-  /**
-   * Build atmosphere description tokens
-   */
-  private buildAtmosphereTokens(
-    style: ExtractedStyle,
-    strength: 'light' | 'medium' | 'strong'
-  ): string {
-    const { elements, timeOfDay, weather, mood } = style.atmosphere;
-
-    if (strength === 'light') {
-      return `${timeOfDay}, ${mood} mood`;
-    }
-
-    if (strength === 'medium') {
-      const elementStr = elements.slice(0, 3).join(', ');
-      return `${timeOfDay}, ${weather}, ${elementStr}`;
-    }
-
-    const elementStr = elements.join(', ');
-    return `${timeOfDay}, ${weather} weather, ${elementStr}, ${mood} atmosphere`;
-  }
-
-  /**
-   * Build technical style tokens
-   */
-  private buildTechnicalTokens(
-    style: ExtractedStyle,
-    strength: 'light' | 'medium' | 'strong'
-  ): string {
-    const { filmStock, lensCharacteristics, grainLevel } = style.technical;
-
-    if (strength === 'light') {
-      return filmStock;
-    }
-
-    if (strength === 'medium') {
-      return `${filmStock}, ${lensCharacteristics}`;
-    }
-
-    const grain = grainLevel !== 'none' ? `, ${grainLevel} film grain` : '';
-    return `${filmStock}, ${lensCharacteristics}${grain}`;
-  }
-
-  /**
-   * Remove elements from user prompt that conflict with style
-   */
-  private removeConflictingElements(
-    prompt: string,
-    style: ExtractedStyle
-  ): string {
-    // Define conflicting keywords by category
-    const colorConflicts = ['warm', 'cool', 'cold', 'vibrant', 'muted', 'saturated'];
-    const lightingConflicts = ['bright', 'dim', 'dark', 'shadowy', 'backlit', 'frontlit'];
-    const timeConflicts = ['day', 'night', 'sunset', 'sunrise', 'dawn', 'dusk'];
-
-    let cleaned = prompt;
-
-    // Remove standalone conflicting words (not part of larger descriptions)
-    const allConflicts = [...colorConflicts, ...lightingConflicts, ...timeConflicts];
-
-    for (const word of allConflicts) {
-      // Only remove if it's a standalone word, not part of something else
-      const regex = new RegExp(`\\b${word}\\b(?!\\s+(?:sky|scene|shot))`, 'gi');
-      cleaned = cleaned.replace(regex, '');
-    }
-
-    // Clean up double spaces
-    cleaned = cleaned.replace(/\s+/g, ' ').trim();
-
-    return cleaned;
-  }
-
-  /**
-   * Combine style tokens with user prompt
-   */
-  private combinePrompts(
-    styleTokens: string,
-    userPrompt: string,
-    position: 'prefix' | 'suffix' | 'smart'
-  ): string {
-    if (!styleTokens) return userPrompt;
-
-    if (position === 'prefix') {
-      return `${styleTokens} ${userPrompt}`;
-    }
-
-    if (position === 'suffix') {
-      return `${userPrompt}. ${styleTokens}`;
-    }
-
-    // Smart: inject after scene setup, before action
-    return this.smartInject(styleTokens, userPrompt);
-  }
-
-  /**
-   * Intelligently inject style tokens
-   */
-  private smartInject(styleTokens: string, userPrompt: string): string {
-    // Look for natural break points
-    const breakPoints = [
-      /\.\s+(?=[A-Z])/,           // After period before capital
-      /,\s+(?=she|he|they|it)/i,  // Before pronouns
-      /:\s+/,                      // After colon
-    ];
-
-    for (const pattern of breakPoints) {
-      const match = userPrompt.match(pattern);
-      if (match && match.index !== undefined) {
-        const position = match.index + match[0].length;
-        return (
-          userPrompt.slice(0, position) +
-          styleTokens + '. ' +
-          userPrompt.slice(position)
-        );
-      }
-    }
-
-    // Fallback to prefix
-    return `${styleTokens}. ${userPrompt}`;
-  }
-
-  private defaultOptions(): StyleInjectionOptions {
-    return {
-      strength: 'medium',
-      position: 'prefix',
-      includeColor: true,
-      includeLighting: true,
-      includeAtmosphere: true,
-      includeTechnical: true,
-      skipConflicting: true,
-    };
-  }
-}
-````
-
-### 3. FrameBridgeService
-
-Extracts frames from videos for i2v continuity.
+Extracts frames from videos for direct i2v continuation.
 
 ```typescript
 // server/src/services/continuity/FrameBridgeService.ts
 
-import { AssetService } from "@/services/asset/AssetService";
 import { StorageService } from "@/services/storage/StorageService";
 import { FrameBridge } from "./types";
+import ffmpeg from "fluent-ffmpeg";
+import { logger } from "@/infrastructure/Logger";
 
 export class FrameBridgeService {
-  constructor(
-    private assetService: AssetService,
-    private storage: StorageService,
-  ) {}
+  private readonly log = logger.child({ service: "FrameBridgeService" });
+
+  constructor(private storage: StorageService) {}
 
   /**
    * Extract a frame from a video for use as i2v input
    */
   async extractBridgeFrame(
     videoId: string,
-    position: "first" | "last" | number = "last",
+    videoUrl: string,
+    shotId: string,
+    position: "first" | "last" = "last",
   ): Promise<FrameBridge> {
+    this.log.info("Extracting bridge frame", { videoId, position });
+
     // Get video metadata
-    const video = await this.assetService.getVideoAsset(videoId);
+    const metadata = await this.getVideoMetadata(videoUrl);
 
-    if (!video) {
-      throw new Error(`Video not found: ${videoId}`);
-    }
-
-    // Calculate frame position
-    const frameIndex = this.calculateFrameIndex(
-      position,
-      video.frameCount,
-      video.duration,
-    );
+    // Calculate timestamp
+    const timestamp =
+      position === "first" ? 0 : Math.max(0, metadata.duration - 0.1); // Slightly before end to avoid black frame
 
     // Extract frame
-    const frameBuffer = await this.assetService.extractFrameBuffer(
-      videoId,
-      frameIndex,
-    );
+    const frameBuffer = await this.extractFrameAt(videoUrl, timestamp);
 
-    // Store frame for use in generation
-    const frameUrl = await this.storage.uploadImage(
-      frameBuffer,
-      `bridge-frames/${videoId}/${frameIndex}.png`,
-      {
-        contentType: "image/png",
-        metadata: {
-          sourceVideo: videoId,
-          frameIndex: frameIndex.toString(),
-          extractedFor: "continuity-bridge",
-        },
+    // Store frame
+    const framePath = `continuity/frames/${videoId}/${position}.png`;
+    const frameUrl = await this.storage.uploadImage(frameBuffer, framePath, {
+      contentType: "image/png",
+      metadata: {
+        sourceVideo: videoId,
+        position,
+        timestamp: timestamp.toString(),
       },
-    );
+    });
 
     return {
-      id: this.generateFrameId(),
+      id: this.generateId(),
       sourceVideoId: videoId,
-      framePosition: position,
+      sourceShotId: shotId,
       frameUrl,
-      frameTimestamp: this.frameToTimestamp(frameIndex, video.fps),
-      extractedAt: new Date(),
+      framePosition: position,
+      frameTimestamp: timestamp,
       resolution: {
-        width: video.width,
-        height: video.height,
+        width: metadata.width,
+        height: metadata.height,
       },
-      aspectRatio: this.calculateAspectRatio(video.width, video.height),
+      aspectRatio: this.calculateAspectRatio(metadata.width, metadata.height),
+      extractedAt: new Date(),
     };
   }
 
   /**
-   * Get the last frame of a video
+   * Extract the most representative frame (clearest, best-lit)
+   * Uses simple heuristics — could be enhanced with VLM scoring
    */
-  async getLastFrame(videoId: string): Promise<FrameBridge> {
-    return this.extractBridgeFrame(videoId, "last");
-  }
+  async extractRepresentativeFrame(
+    videoId: string,
+    videoUrl: string,
+    shotId: string,
+  ): Promise<FrameBridge> {
+    const metadata = await this.getVideoMetadata(videoUrl);
 
-  /**
-   * Get the first frame of a video
-   */
-  async getFirstFrame(videoId: string): Promise<FrameBridge> {
-    return this.extractBridgeFrame(videoId, "first");
-  }
+    // Sample frames at 25%, 50%, 75% and pick based on sharpness
+    const candidates = [0.25, 0.5, 0.75].map((pct) => pct * metadata.duration);
 
-  /**
-   * Pre-warm frame extraction (call after generation completes)
-   */
-  async prewarmBridgeFrame(videoId: string): Promise<void> {
-    // Extract and cache the last frame for quick access
-    await this.extractBridgeFrame(videoId, "last");
-  }
+    let bestFrame: Buffer | null = null;
+    let bestTimestamp = candidates[1]; // Default to middle
+    let bestScore = 0;
 
-  private calculateFrameIndex(
-    position: "first" | "last" | number,
-    frameCount: number,
-    duration: number,
-  ): number {
-    if (position === "first") return 0;
-    if (position === "last") return Math.max(0, frameCount - 1);
+    for (const timestamp of candidates) {
+      const frame = await this.extractFrameAt(videoUrl, timestamp);
+      const score = await this.scoreFrameQuality(frame);
 
-    // Position as seconds
-    if (typeof position === "number") {
-      const fps = frameCount / duration;
-      return Math.min(Math.floor(position * fps), frameCount - 1);
+      if (score > bestScore) {
+        bestScore = score;
+        bestFrame = frame;
+        bestTimestamp = timestamp;
+      }
     }
 
-    return frameCount - 1;
+    const framePath = `continuity/frames/${videoId}/representative.png`;
+    const frameUrl = await this.storage.uploadImage(bestFrame!, framePath, {
+      contentType: "image/png",
+    });
+
+    return {
+      id: this.generateId(),
+      sourceVideoId: videoId,
+      sourceShotId: shotId,
+      frameUrl,
+      framePosition: (bestTimestamp / metadata.duration) as any, // Store as ratio
+      frameTimestamp: bestTimestamp,
+      resolution: {
+        width: metadata.width,
+        height: metadata.height,
+      },
+      aspectRatio: this.calculateAspectRatio(metadata.width, metadata.height),
+      extractedAt: new Date(),
+    };
   }
 
-  private frameToTimestamp(frameIndex: number, fps: number): number {
-    return frameIndex / fps;
+  private async getVideoMetadata(videoUrl: string): Promise<{
+    duration: number;
+    width: number;
+    height: number;
+    fps: number;
+  }> {
+    return new Promise((resolve, reject) => {
+      ffmpeg.ffprobe(videoUrl, (err, metadata) => {
+        if (err) return reject(err);
+
+        const video = metadata.streams.find((s) => s.codec_type === "video");
+        if (!video) return reject(new Error("No video stream found"));
+
+        resolve({
+          duration: metadata.format.duration || 0,
+          width: video.width || 1920,
+          height: video.height || 1080,
+          fps: eval(video.r_frame_rate || "24") || 24,
+        });
+      });
+    });
+  }
+
+  private async extractFrameAt(
+    videoUrl: string,
+    timestamp: number,
+  ): Promise<Buffer> {
+    return new Promise((resolve, reject) => {
+      const chunks: Buffer[] = [];
+
+      ffmpeg(videoUrl)
+        .seekInput(timestamp)
+        .frames(1)
+        .format("image2pipe")
+        .outputOptions("-vcodec png")
+        .on("error", reject)
+        .pipe()
+        .on("data", (chunk: Buffer) => chunks.push(chunk))
+        .on("end", () => resolve(Buffer.concat(chunks)));
+    });
+  }
+
+  private async scoreFrameQuality(frame: Buffer): Promise<number> {
+    // Simple Laplacian variance for sharpness estimation
+    // Higher variance = sharper image
+    // In production, could use sharp library for better analysis
+    const sharp = await import("sharp");
+    const { data, info } = await sharp
+      .default(frame)
+      .greyscale()
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+
+    // Calculate variance of Laplacian (approximation)
+    let sum = 0;
+    let sumSq = 0;
+    for (let i = 0; i < data.length; i++) {
+      sum += data[i];
+      sumSq += data[i] * data[i];
+    }
+    const mean = sum / data.length;
+    const variance = sumSq / data.length - mean * mean;
+
+    return variance;
   }
 
   private calculateAspectRatio(width: number, height: number): string {
@@ -1129,15 +712,528 @@ export class FrameBridgeService {
     return `${width / divisor}:${height / divisor}`;
   }
 
-  private generateFrameId(): string {
+  private generateId(): string {
     return `frame_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }
 }
 ```
 
-### 4. ContinuitySessionService
+### 2. StyleReferenceService
 
-Manages multi-shot sessions.
+Uses IP-Adapter to generate style-matched keyframes (style only).
+
+```typescript
+// server/src/services/continuity/StyleReferenceService.ts
+
+import Replicate from "replicate";
+import { StyleReference, StyleMatchOptions, FrameBridge } from "./types";
+import { StorageService } from "@/services/storage/StorageService";
+import { logger } from "@/infrastructure/Logger";
+
+const IP_ADAPTER_MODEL =
+  "lucataco/ip-adapter-sdxl:cbe488c8df305a99d155b038abdf003a0bba4e82352e561fbaab2c8c9b70a96e";
+
+// Strength presets for different use cases
+export const STYLE_STRENGTH_PRESETS = {
+  loose: 0.4, // Color palette and mood only
+  balanced: 0.6, // Good balance of style matching and prompt flexibility
+  strict: 0.8, // Strong style adherence
+  exact: 0.95, // Near-identical style (reduces prompt influence)
+} as const;
+
+export class StyleReferenceService {
+  private readonly replicate: Replicate;
+  private readonly log = logger.child({ service: "StyleReferenceService" });
+
+  constructor(
+    private storage: StorageService,
+    replicateApiToken?: string,
+  ) {
+    this.replicate = new Replicate({
+      auth: replicateApiToken || process.env.REPLICATE_API_TOKEN,
+    });
+  }
+
+  /**
+   * Create a style reference from a video
+   */
+  async createFromVideo(
+    videoId: string,
+    frame: FrameBridge,
+  ): Promise<StyleReference> {
+    return {
+      id: this.generateId(),
+      sourceVideoId: videoId,
+      sourceFrameIndex: 0, // From frame bridge
+      frameUrl: frame.frameUrl,
+      frameTimestamp: frame.frameTimestamp,
+      resolution: frame.resolution,
+      aspectRatio: frame.aspectRatio,
+      extractedAt: new Date(),
+    };
+  }
+
+  /**
+   * Create a style reference from an uploaded image
+   */
+  async createFromImage(
+    imageUrl: string,
+    resolution: { width: number; height: number },
+  ): Promise<StyleReference> {
+    return {
+      id: this.generateId(),
+      sourceVideoId: "image-upload",
+      sourceFrameIndex: 0,
+      frameUrl: imageUrl,
+      frameTimestamp: 0,
+      resolution,
+      aspectRatio: this.calculateAspectRatio(
+        resolution.width,
+        resolution.height,
+      ),
+      extractedAt: new Date(),
+    };
+  }
+
+  /**
+   * Generate a style-matched keyframe using IP-Adapter
+   * This is the core of the style continuity system
+   */
+  async generateStyledKeyframe(options: StyleMatchOptions): Promise<string> {
+    this.log.info("Generating style-matched keyframe", {
+      strength: options.strength,
+      hasNegativePrompt: !!options.negativePrompt,
+    });
+
+    const startTime = Date.now();
+
+    try {
+      const output = (await this.replicate.run(IP_ADAPTER_MODEL, {
+        input: {
+          prompt: options.prompt,
+          ip_adapter_image: options.styleReferenceUrl,
+          ip_adapter_scale: options.strength,
+          negative_prompt:
+            options.negativePrompt || "blurry, low quality, distorted",
+          num_inference_steps: 30,
+          guidance_scale: 7.5,
+          width: this.getWidthForAspectRatio(options.aspectRatio),
+          height: this.getHeightForAspectRatio(options.aspectRatio),
+        },
+      })) as string[];
+
+      if (!output || !output[0]) {
+        throw new Error("IP-Adapter returned no output");
+      }
+
+      // Store the generated keyframe
+      const keyframeUrl = output[0];
+      const storedUrl = await this.storeKeyframe(keyframeUrl, options);
+
+      this.log.info("Style-matched keyframe generated", {
+        durationMs: Date.now() - startTime,
+      });
+
+      return storedUrl;
+    } catch (error) {
+      this.log.error("Failed to generate styled keyframe", {
+        error: (error as Error).message,
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Generate keyframe with character consistency
+   */
+  async generateStyledKeyframeWithCharacter(
+    options: StyleMatchOptions,
+    characterReferenceUrl: string,
+  ): Promise<string> {
+    // Deprecated: IP-Adapter FaceID is replaced by PuLID for identity.
+    // Keep this method only if needed for legacy fallback.
+    return this.generateStyledKeyframe(options);
+  }
+
+  private async storeKeyframe(
+    sourceUrl: string,
+    options: StyleMatchOptions,
+  ): Promise<string> {
+    // Download and re-upload to our storage for permanence
+    const response = await fetch(sourceUrl);
+    const buffer = Buffer.from(await response.arrayBuffer());
+
+    const path = `continuity/keyframes/${Date.now()}.png`;
+    return this.storage.uploadImage(buffer, path, {
+      contentType: "image/png",
+      metadata: {
+        prompt: options.prompt.slice(0, 200),
+        strength: options.strength.toString(),
+      },
+    });
+  }
+
+  private getWidthForAspectRatio(ratio?: string): number {
+    switch (ratio) {
+      case "9:16":
+        return 768;
+      case "1:1":
+        return 1024;
+      case "16:9":
+      default:
+        return 1024;
+    }
+  }
+
+  private getHeightForAspectRatio(ratio?: string): number {
+    switch (ratio) {
+      case "9:16":
+        return 1344;
+      case "1:1":
+        return 1024;
+      case "16:9":
+      default:
+        return 576;
+    }
+  }
+
+  private calculateAspectRatio(width: number, height: number): string {
+    const gcd = (a: number, b: number): number => (b === 0 ? a : gcd(b, a % b));
+    const divisor = gcd(width, height);
+    return `${width / divisor}:${height / divisor}`;
+  }
+
+  private generateId(): string {
+    return `styleref_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  }
+}
+```
+
+### 3. ProviderStyleAdapter
+
+Routes style reference requests to provider-native APIs when available, falling back to IP-Adapter.
+
+```typescript
+// server/src/services/continuity/ProviderStyleAdapter.ts
+
+import {
+  PROVIDER_CAPABILITIES,
+  ProviderContinuityCapabilities,
+  StyleReference,
+  StyleMatchOptions,
+  SeedInfo,
+} from "./types";
+import { StyleReferenceService } from "./StyleReferenceService";
+import { logger } from "@/infrastructure/Logger";
+
+/**
+ * Routes style continuity to the most effective mechanism per provider
+ */
+export class ProviderStyleAdapter {
+  private readonly log = logger.child({ service: "ProviderStyleAdapter" });
+
+  constructor(private styleRefService: StyleReferenceService) {}
+
+  /**
+   * Get the best continuity strategy for a provider
+   */
+  getContinuityStrategy(
+    provider: string,
+    mode: "frame-bridge" | "style-match" | "native" | "none",
+  ): ContinuityStrategy {
+    const caps = this.getCapabilities(provider);
+
+    // If native style reference is supported AND requested, use it
+    if (mode === "native" && caps.supportsNativeStyleReference) {
+      return { type: "native-style-ref", provider };
+    }
+
+    // Frame bridge is preferred for direct continuation
+    if (mode === "frame-bridge" && caps.supportsStartImage) {
+      return { type: "frame-bridge" };
+    }
+
+    // Style match via IP-Adapter (our fallback for providers without native support)
+    if (mode === "style-match") {
+      if (caps.supportsNativeStyleReference) {
+        return { type: "native-style-ref", provider };
+      }
+      return { type: "ip-adapter" };
+    }
+
+    return { type: "none" };
+  }
+
+  /**
+   * Build provider-specific generation options with style reference
+   */
+  async buildGenerationOptions(
+    provider: string,
+    baseOptions: Record<string, unknown>,
+    styleRef: StyleReference,
+    strength: number,
+  ): Promise<{
+    options: Record<string, unknown>;
+    requiresKeyframe: boolean;
+    keyframeUrl?: string;
+  }> {
+    const caps = this.getCapabilities(provider);
+
+    // Provider has native style reference — use it directly
+    if (caps.supportsNativeStyleReference && caps.styleReferenceParam) {
+      this.log.info("Using native style reference", { provider });
+      return {
+        options: {
+          ...baseOptions,
+          [caps.styleReferenceParam]: styleRef.frameUrl,
+          style_reference_weight: strength,
+        },
+        requiresKeyframe: false,
+      };
+    }
+
+    // No native support — generate keyframe via IP-Adapter
+    this.log.info("Generating IP-Adapter keyframe", { provider });
+    const keyframeUrl = await this.styleRefService.generateStyledKeyframe({
+      prompt: baseOptions.prompt as string,
+      styleReferenceUrl: styleRef.frameUrl,
+      strength,
+      aspectRatio: styleRef.aspectRatio as any,
+    });
+
+    return {
+      options: {
+        ...baseOptions,
+        startImage: keyframeUrl,
+      },
+      requiresKeyframe: true,
+      keyframeUrl,
+    };
+  }
+
+  /**
+   * Extract provider from model ID
+   */
+  getProviderFromModel(modelId: string): string {
+    if (modelId.includes("runway")) return "runway";
+    if (modelId.includes("kling")) return "kling";
+    if (modelId.includes("luma") || modelId.includes("ray")) return "luma";
+    if (modelId.includes("veo")) return "veo";
+    if (modelId.includes("sora")) return "sora";
+    return "replicate"; // Default fallback
+  }
+
+  getCapabilities(provider: string): ProviderContinuityCapabilities {
+    return (
+      PROVIDER_CAPABILITIES[provider] || PROVIDER_CAPABILITIES["replicate"]
+    );
+  }
+}
+
+interface ContinuityStrategy {
+  type: "native-style-ref" | "frame-bridge" | "ip-adapter" | "none";
+  provider?: string;
+}
+```
+
+### 4. SeedPersistenceService
+
+Extracts and injects seeds for generation reproducibility.
+
+```typescript
+// server/src/services/continuity/SeedPersistenceService.ts
+
+import { SeedInfo, PROVIDER_CAPABILITIES } from "./types";
+import { logger } from "@/infrastructure/Logger";
+
+/**
+ * Manages seed extraction and injection for generation consistency
+ *
+ * Seeds stabilize latent noise patterns. While not guaranteeing identical results
+ * across different prompts, they help maintain compositional consistency.
+ */
+export class SeedPersistenceService {
+  private readonly log = logger.child({ service: "SeedPersistenceService" });
+
+  /**
+   * Extract seed from generation result if provider supports it
+   */
+  extractSeed(
+    provider: string,
+    modelId: string,
+    generationResult: Record<string, unknown>,
+  ): SeedInfo | null {
+    const caps = PROVIDER_CAPABILITIES[provider];
+
+    if (!caps?.supportsSeedPersistence) {
+      this.log.debug("Provider does not support seed persistence", {
+        provider,
+      });
+      return null;
+    }
+
+    // Different providers return seeds differently
+    const seed = this.extractSeedFromResult(provider, generationResult);
+
+    if (seed === null) {
+      this.log.debug("No seed found in generation result", { provider });
+      return null;
+    }
+
+    this.log.info("Extracted seed from generation", { provider, seed });
+
+    return {
+      seed,
+      provider,
+      modelId,
+      extractedAt: new Date(),
+    };
+  }
+
+  /**
+   * Build seed parameter for generation request
+   */
+  buildSeedParam(provider: string, seed?: number): Record<string, unknown> {
+    if (!seed) return {};
+
+    const caps = PROVIDER_CAPABILITIES[provider];
+    if (!caps?.supportsSeedPersistence) {
+      this.log.debug("Provider does not support seed injection", { provider });
+      return {};
+    }
+
+    // Provider-specific seed parameter names
+    const seedParams = this.getSeedParamName(provider);
+
+    this.log.info("Injecting seed into generation", { provider, seed });
+
+    return { [seedParams]: seed };
+  }
+
+  /**
+   * Get seed from previous shot in sequence
+   */
+  getInheritedSeed(
+    previousShotSeedInfo: SeedInfo | undefined,
+    currentProvider: string,
+  ): number | undefined {
+    if (!previousShotSeedInfo) return undefined;
+
+    // Seeds are only useful within the same provider
+    if (previousShotSeedInfo.provider !== currentProvider) {
+      this.log.debug("Cannot inherit seed across providers", {
+        from: previousShotSeedInfo.provider,
+        to: currentProvider,
+      });
+      return undefined;
+    }
+
+    return previousShotSeedInfo.seed;
+  }
+
+  private extractSeedFromResult(
+    provider: string,
+    result: Record<string, unknown>,
+  ): number | null {
+    switch (provider) {
+      case "replicate":
+        // Replicate returns seed in metrics or output
+        return (result.seed as number) || (result.metrics as any)?.seed || null;
+
+      case "runway":
+        // Runway returns seed in generation metadata
+        return (result.generation as any)?.seed || null;
+
+      default:
+        // Try common field names
+        return (result.seed as number) || null;
+    }
+  }
+
+  private getSeedParamName(provider: string): string {
+    switch (provider) {
+      case "replicate":
+        return "seed";
+      case "runway":
+        return "seed";
+      default:
+        return "seed";
+    }
+  }
+}
+```
+
+### 5. StyleAnalysisService (Optional — UI/Debugging Only)
+
+```typescript
+// server/src/services/continuity/StyleAnalysisService.ts
+
+/**
+ * IMPORTANT: This service is for UI display and debugging ONLY.
+ * It does NOT participate in the generation pipeline.
+ * Style continuity is achieved via pixel-based methods (FrameBridge, IP-Adapter).
+ */
+
+import { StyleAnalysisMetadata } from "./types";
+import type { AIService } from "@/services/prompt-optimization/types";
+import { logger } from "@/infrastructure/Logger";
+
+export class StyleAnalysisService {
+  private readonly log = logger.child({ service: "StyleAnalysisService" });
+
+  constructor(private ai: AIService) {}
+
+  /**
+   * Analyze a frame for UI display purposes only
+   * Returns human-readable descriptions for the style panel
+   */
+  async analyzeForDisplay(imageUrl: string): Promise<StyleAnalysisMetadata> {
+    try {
+      const response = await this.ai.completeWithVision({
+        prompt: ANALYSIS_PROMPT,
+        imageUrl,
+        responseFormat: "json",
+        maxTokens: 500,
+      });
+
+      const parsed = JSON.parse(response.content);
+
+      return {
+        dominantColors: parsed.colors || [],
+        lightingDescription: parsed.lighting || "Unknown",
+        moodDescription: parsed.mood || "Unknown",
+        confidence: parsed.confidence || 0.5,
+      };
+    } catch (error) {
+      this.log.warn("Style analysis failed, returning defaults", {
+        error: (error as Error).message,
+      });
+
+      return {
+        dominantColors: [],
+        lightingDescription: "Unable to analyze",
+        moodDescription: "Unable to analyze",
+        confidence: 0,
+      };
+    }
+  }
+}
+
+const ANALYSIS_PROMPT = `Analyze this image and provide a brief description for a UI display.
+Return JSON with:
+{
+  "colors": ["color1", "color2", "color3"],  // 3 dominant colors as simple names
+  "lighting": "Brief lighting description",   // e.g., "Warm golden hour light from left"
+  "mood": "One word mood",                    // e.g., "Melancholic", "Energetic"
+  "confidence": 0.0-1.0
+}
+
+Be concise. This is for display only, not generation.`;
+```
+
+### 6. ContinuitySessionService
+
+Orchestrates the full continuity workflow.
 
 ```typescript
 // server/src/services/continuity/ContinuitySessionService.ts
@@ -1147,21 +1243,39 @@ import {
   ContinuityShot,
   CreateSessionRequest,
   CreateShotRequest,
-  ContinuitySettings,
-  ExtractedStyle,
+  ContinuitySessionSettings,
+  StyleReference,
 } from "./types";
-import { StyleExtractionService } from "./StyleExtractionService";
-import { StyleInjectionService } from "./StyleInjectionService";
+import { AnchorService } from "./AnchorService";
 import { FrameBridgeService } from "./FrameBridgeService";
+import {
+  StyleReferenceService,
+  STYLE_STRENGTH_PRESETS,
+} from "./StyleReferenceService";
+import { CharacterKeyframeService } from "./CharacterKeyframeService";
+import { ProviderStyleAdapter } from "./ProviderStyleAdapter";
+import { SeedPersistenceService } from "./SeedPersistenceService";
+import { StyleAnalysisService } from "./StyleAnalysisService";
+import { GradingService } from "./GradingService";
+import { QualityGateService } from "./QualityGateService";
 import { VideoGenerationService } from "@/services/video-generation/VideoGenerationService";
+import { logger } from "@/infrastructure/Logger";
 
 export class ContinuitySessionService {
+  private readonly log = logger.child({ service: "ContinuitySessionService" });
+
   constructor(
-    private styleExtractor: StyleExtractionService,
-    private styleInjector: StyleInjectionService,
+    private anchorService: AnchorService,
     private frameBridge: FrameBridgeService,
+    private styleReference: StyleReferenceService,
+    private characterKeyframes: CharacterKeyframeService,
+    private providerAdapter: ProviderStyleAdapter,
+    private seedService: SeedPersistenceService,
+    private styleAnalysis: StyleAnalysisService,
+    private grading: GradingService,
+    private qualityGate: QualityGateService,
     private videoGenerator: VideoGenerationService,
-    private sessionStore: SessionStore, // Your persistence layer
+    private sessionStore: SessionStore,
   ) {}
 
   /**
@@ -1171,42 +1285,60 @@ export class ContinuitySessionService {
     userId: string,
     request: CreateSessionRequest,
   ): Promise<ContinuitySession> {
-    let baseStyle: ExtractedStyle;
+    this.log.info("Creating continuity session", {
+      userId,
+      name: request.name,
+    });
 
-    // Extract style from existing video or use defaults
-    if (request.initialVideoId) {
-      baseStyle = await this.styleExtractor.extractFromVideo(
-        request.initialVideoId,
+    // Establish the primary style reference
+    let primaryStyleReference: StyleReference;
+
+    if (request.sourceVideoId) {
+      // Create from existing video — extract representative frame
+      const videoUrl = await this.videoGenerator.getVideoUrl(
+        request.sourceVideoId,
+      );
+      const frame = await this.frameBridge.extractRepresentativeFrame(
+        request.sourceVideoId,
+        videoUrl,
+        "initial",
+      );
+      primaryStyleReference = await this.styleReference.createFromVideo(
+        request.sourceVideoId,
+        frame,
+      );
+    } else if (request.sourceImageUrl) {
+      // Create from reference image
+      primaryStyleReference = await this.styleReference.createFromImage(
+        request.sourceImageUrl,
+        { width: 1920, height: 1080 }, // Default, could extract from image
       );
     } else {
-      baseStyle = this.createDefaultStyle();
+      throw new Error("Must provide sourceVideoId or sourceImageUrl");
     }
+
+    // Optionally analyze for UI display
+    primaryStyleReference.analysisMetadata =
+      await this.styleAnalysis.analyzeForDisplay(
+        primaryStyleReference.frameUrl,
+      );
 
     const session: ContinuitySession = {
       id: this.generateSessionId(),
       userId,
       name: request.name,
       description: request.description,
-      baseStyle,
-      styleSource: request.initialVideoId ? "extracted" : "user-defined",
+      primaryStyleReference,
       shots: [],
-      settings: { ...this.defaultSettings(), ...request.settings },
+      defaultSettings: { ...this.defaultSettings(), ...request.settings },
       status: "active",
       createdAt: new Date(),
       updatedAt: new Date(),
     };
 
-    // Create initial shot if prompt provided
-    if (request.initialPrompt) {
-      const initialShot = this.createDraftShot(
-        session,
-        request.initialPrompt,
-        0,
-      );
-      session.shots.push(initialShot);
-    }
-
     await this.sessionStore.save(session);
+
+    this.log.info("Session created", { sessionId: session.id });
     return session;
   }
 
@@ -1215,7 +1347,6 @@ export class ContinuitySessionService {
    */
   async addShot(request: CreateShotRequest): Promise<ContinuityShot> {
     const session = await this.sessionStore.get(request.sessionId);
-
     if (!session) {
       throw new Error(`Session not found: ${request.sessionId}`);
     }
@@ -1223,43 +1354,42 @@ export class ContinuitySessionService {
     const sequenceIndex = session.shots.length;
     const previousShot = session.shots[sequenceIndex - 1];
 
-    // Get frame bridge from previous shot if enabled
-    let bridgeFrame;
-    if (request.useFrameBridge ?? session.settings.autoFrameBridge) {
-      if (previousShot?.videoAssetId) {
-        bridgeFrame = await this.frameBridge.getLastFrame(
-          previousShot.videoAssetId,
-        );
-      }
-    }
+    // Determine which shot to use as style reference
+    const styleReferenceId =
+      request.styleReferenceId || previousShot?.id || null; // null means use primary reference
 
-    // Inject style into prompt
-    const injectedPrompt = this.styleInjector.injectStyle(
-      request.prompt,
-      request.styleOverrides
-        ? this.mergeStyles(session.baseStyle, request.styleOverrides)
-        : session.baseStyle,
-      {
-        strength: session.settings.styleInjectionStrength,
-        position: session.settings.styleInjectionPosition,
-        includeColor: session.settings.inheritColor,
-        includeLighting: session.settings.inheritLighting,
-        includeAtmosphere: session.settings.inheritAtmosphere,
-        includeTechnical: session.settings.inheritTechnical,
-        skipConflicting: true,
-      },
-    );
+    // Resolve continuity mode
+    const continuityMode =
+      request.continuityMode || session.defaultSettings.defaultContinuityMode;
+
+    // Get frame bridge if using frame-bridge mode and there's a previous shot
+    let frameBridge;
+    if (continuityMode === "frame-bridge" && previousShot?.videoAssetId) {
+      const videoUrl = await this.videoGenerator.getVideoUrl(
+        previousShot.videoAssetId,
+      );
+      frameBridge = await this.frameBridge.extractBridgeFrame(
+        previousShot.videoAssetId,
+        videoUrl,
+        previousShot.id,
+        "last",
+      );
+    }
 
     const shot: ContinuityShot = {
       id: this.generateShotId(),
       sessionId: session.id,
       sequenceIndex,
       userPrompt: request.prompt,
-      injectedPrompt,
-      modelId: request.modelId || session.settings.defaultModel,
-      styleSource: "inherited",
-      appliedStyle: session.baseStyle,
-      bridgeFrame,
+      continuityMode,
+      generationMode:
+        request.generationMode || session.defaultSettings.generationMode,
+      styleStrength:
+        request.styleStrength ?? session.defaultSettings.defaultStyleStrength,
+      styleReferenceId,
+      frameBridge,
+      characterAssetId: request.characterAssetId,
+      modelId: request.modelId || session.defaultSettings.defaultModel,
       status: "draft",
       createdAt: new Date(),
     };
@@ -1272,7 +1402,7 @@ export class ContinuitySessionService {
   }
 
   /**
-   * Generate a shot
+   * Generate a shot — the core continuity workflow
    */
   async generateShot(
     sessionId: string,
@@ -1280,49 +1410,159 @@ export class ContinuitySessionService {
   ): Promise<ContinuityShot> {
     const session = await this.sessionStore.get(sessionId);
     const shot = session?.shots.find((s) => s.id === shotId);
-
     if (!session || !shot) {
       throw new Error(`Shot not found: ${shotId}`);
     }
 
-    // Update status
-    shot.status = "generating";
-    await this.sessionStore.save(session);
+    const provider = this.providerAdapter.getProviderFromModel(shot.modelId);
+    const previousShot = session.shots.find(
+      (s) => s.sequenceIndex === shot.sequenceIndex - 1,
+    );
+
+    this.log.info("Generating shot", {
+      sessionId,
+      shotId,
+      mode: shot.continuityMode,
+      strength: shot.styleStrength,
+      provider,
+    });
 
     try {
-      // Generate video
-      const result = await this.videoGenerator.generate({
-        prompt: shot.injectedPrompt,
-        modelId: shot.modelId,
-        startImage: shot.bridgeFrame?.frameUrl,
-        // ... other generation options
-      });
+      let startImageUrl: string | undefined;
+      let continuityMechanismUsed: ContinuityShot["continuityMechanismUsed"] =
+        "none";
+
+      // Get inherited seed from previous shot (if same provider supports it)
+      const inheritedSeed = this.seedService.getInheritedSeed(
+        previousShot?.seedInfo,
+        provider,
+      );
+      shot.inheritedSeed = inheritedSeed;
+
+      // STEP 0: Enforce continuity gating only when continuity mode is enabled
+      const generationMode =
+        shot.generationMode || session.defaultSettings.generationMode;
+      if (generationMode === "continuity") {
+        this.anchorService.assertProviderSupportsContinuity(provider);
+      } else {
+        // Standard mode: allow t2v, skip continuity enforcement entirely
+        shot.continuityMode = "none";
+      }
+
+      // STEP 1: Determine continuity mechanism based on mode + provider capabilities
+      const strategy = this.providerAdapter.getContinuityStrategy(
+        provider,
+        shot.continuityMode,
+      );
+
+      if (strategy.type === "native-style-ref") {
+        // Provider has native style reference — best case
+        this.log.info("Using native style reference", { provider });
+        continuityMechanismUsed = "native-style-ref";
+        // Style ref will be injected via buildGenerationOptions below
+      } else if (strategy.type === "frame-bridge" && shot.frameBridge) {
+        // Direct continuation — use last frame as-is
+        startImageUrl = shot.frameBridge.frameUrl;
+        continuityMechanismUsed = "frame-bridge";
+        this.log.info("Using frame bridge for direct continuation");
+      } else if (strategy.type === "ip-adapter") {
+        // Different angle, no native support — generate keyframe via IP-Adapter (style only)
+        shot.status = "generating-keyframe";
+        await this.sessionStore.save(session);
+
+        const styleRef = this.resolveStyleReference(session, shot);
+
+        startImageUrl = await this.styleReference.generateStyledKeyframe({
+          prompt: shot.userPrompt,
+          styleReferenceUrl: styleRef.frameUrl,
+          strength: shot.styleStrength,
+          aspectRatio: styleRef.aspectRatio as any,
+        });
+
+        shot.generatedKeyframeUrl = startImageUrl;
+        continuityMechanismUsed = "ip-adapter";
+        this.log.info("Generated style-matched keyframe via IP-Adapter");
+      } else if (inheritedSeed) {
+        // No visual continuity, but we can at least use seed
+        continuityMechanismUsed = "seed-only";
+        this.log.info("Using seed-only continuity");
+      }
+
+      // STEP 2: Build generation options (handles native style ref injection)
+      let generationOptions: Record<string, unknown> = {
+        prompt: shot.userPrompt,
+        model: shot.modelId,
+        startImage: startImageUrl,
+        characterAssetId: shot.characterAssetId,
+      };
+
+      // Inject seed if available
+      const seedParams = this.seedService.buildSeedParam(
+        provider,
+        inheritedSeed,
+      );
+      generationOptions = { ...generationOptions, ...seedParams };
+
+      // Handle native style reference
+      if (strategy.type === "native-style-ref") {
+        const styleRef = this.resolveStyleReference(session, shot);
+        const { options } = await this.providerAdapter.buildGenerationOptions(
+          provider,
+          generationOptions,
+          styleRef,
+          shot.styleStrength,
+        );
+        generationOptions = options;
+      }
+
+      // STEP 3: Generate video
+      shot.status = "generating-video";
+      await this.sessionStore.save(session);
+
+      const result = await this.videoGenerator.generate(generationOptions);
+
+      // STEP 4: Extract seed from result
+      const seedInfo = this.seedService.extractSeed(
+        provider,
+        shot.modelId,
+        result,
+      );
+      shot.seedInfo = seedInfo || undefined;
+
+      // STEP 5: Post-grade (palette match) + quality gate
+      await this.grading.matchPalette(
+        result.assetId,
+        this.resolveStyleReference(session, shot).frameUrl,
+      );
+      await this.qualityGate.assertContinuity(result.assetId, shot);
+
+      // STEP 6: Extract frame bridge for next shot
+      if (session.defaultSettings.autoExtractFrameBridge) {
+        const videoUrl = await this.videoGenerator.getVideoUrl(result.assetId);
+        await this.frameBridge.extractBridgeFrame(
+          result.assetId,
+          videoUrl,
+          shot.id,
+          "last",
+        );
+      }
 
       // Update shot with result
-      shot.videoAssetId = result.videoId;
+      shot.videoAssetId = result.assetId;
+      shot.continuityMechanismUsed = continuityMechanismUsed;
       shot.status = "completed";
       shot.generatedAt = new Date();
 
-      // Extract style for future shots if enabled
-      if (session.settings.autoExtractStyle) {
-        shot.appliedStyle = await this.styleExtractor.extractFromVideo(
-          result.videoId,
-        );
-
-        // Update base style if this is the first shot
-        if (shot.sequenceIndex === 0) {
-          session.baseStyle = shot.appliedStyle;
-          session.styleSource = "extracted";
-        }
-      }
-
-      // Pre-warm frame bridge for next shot
-      if (session.settings.autoFrameBridge) {
-        await this.frameBridge.prewarmBridgeFrame(result.videoId);
-      }
+      this.log.info("Shot generation completed", {
+        shotId,
+        assetId: result.assetId,
+        continuityMechanism: continuityMechanismUsed,
+        seedPersisted: !!seedInfo,
+      });
     } catch (error) {
       shot.status = "failed";
       shot.error = error instanceof Error ? error.message : "Generation failed";
+      this.log.error("Shot generation failed", { shotId, error: shot.error });
     }
 
     session.updatedAt = new Date();
@@ -1332,171 +1572,105 @@ export class ContinuitySessionService {
   }
 
   /**
-   * Update session style
+   * Resolve which style reference to use for a shot
    */
-  async updateSessionStyle(
-    sessionId: string,
-    styleUpdates: Partial<ExtractedStyle>,
-  ): Promise<ContinuitySession> {
-    const session = await this.sessionStore.get(sessionId);
-
-    if (!session) {
-      throw new Error(`Session not found: ${sessionId}`);
+  private resolveStyleReference(
+    session: ContinuitySession,
+    shot: ContinuityShot,
+  ): StyleReference {
+    if (!shot.styleReferenceId) {
+      // Use primary session reference
+      return session.primaryStyleReference;
     }
 
-    session.baseStyle = this.mergeStyles(session.baseStyle, styleUpdates);
-    session.styleSource = "user-defined";
-    session.updatedAt = new Date();
+    // Find the referenced shot
+    const refShot = session.shots.find((s) => s.id === shot.styleReferenceId);
+    if (!refShot?.styleReference) {
+      // Fallback to primary
+      return session.primaryStyleReference;
+    }
 
-    await this.sessionStore.save(session);
-    return session;
+    return refShot.styleReference;
   }
 
   /**
-   * Regenerate a shot
+   * Update style reference for a shot (non-linear inheritance)
    */
-  async regenerateShot(
+  async updateShotStyleReference(
     sessionId: string,
     shotId: string,
-    newPrompt?: string,
+    styleReferenceId: string,
   ): Promise<ContinuityShot> {
     const session = await this.sessionStore.get(sessionId);
     const shot = session?.shots.find((s) => s.id === shotId);
-
     if (!session || !shot) {
       throw new Error(`Shot not found: ${shotId}`);
     }
 
-    if (newPrompt) {
-      shot.userPrompt = newPrompt;
-      shot.injectedPrompt = this.styleInjector.injectStyle(
-        newPrompt,
-        session.baseStyle,
-        this.buildInjectionOptions(session.settings),
+    shot.styleReferenceId = styleReferenceId;
+    session.updatedAt = new Date();
+    await this.sessionStore.save(session);
+
+    return shot;
+  }
+
+  /**
+   * Update session's primary style reference
+   */
+  async updatePrimaryStyleReference(
+    sessionId: string,
+    sourceVideoId?: string,
+    sourceImageUrl?: string,
+  ): Promise<ContinuitySession> {
+    const session = await this.sessionStore.get(sessionId);
+    if (!session) {
+      throw new Error(`Session not found: ${sessionId}`);
+    }
+
+    if (sourceVideoId) {
+      const videoUrl = await this.videoGenerator.getVideoUrl(sourceVideoId);
+      const frame = await this.frameBridge.extractRepresentativeFrame(
+        sourceVideoId,
+        videoUrl,
+        "updated",
+      );
+      session.primaryStyleReference = await this.styleReference.createFromVideo(
+        sourceVideoId,
+        frame,
+      );
+    } else if (sourceImageUrl) {
+      session.primaryStyleReference = await this.styleReference.createFromImage(
+        sourceImageUrl,
+        { width: 1920, height: 1080 },
       );
     }
 
-    shot.status = "pending";
-    shot.error = undefined;
+    // Re-analyze for UI
+    session.primaryStyleReference.analysisMetadata =
+      await this.styleAnalysis.analyzeForDisplay(
+        session.primaryStyleReference.frameUrl,
+      );
 
+    session.updatedAt = new Date();
     await this.sessionStore.save(session);
-    return this.generateShot(sessionId, shotId);
+
+    return session;
   }
 
-  /**
-   * Get all sessions for a user
-   */
-  async getUserSessions(userId: string): Promise<ContinuitySession[]> {
-    return this.sessionStore.findByUser(userId);
+  private async getCharacterReferenceUrl(assetId: string): Promise<string> {
+    // TODO: Integrate with existing AssetService
+    // For now, placeholder
+    throw new Error("Character reference not implemented");
   }
 
-  /**
-   * Get a single session
-   */
-  async getSession(sessionId: string): Promise<ContinuitySession | null> {
-    return this.sessionStore.get(sessionId);
-  }
-
-  private createDraftShot(
-    session: ContinuitySession,
-    prompt: string,
-    index: number,
-  ): ContinuityShot {
+  private defaultSettings(): ContinuitySessionSettings {
     return {
-      id: this.generateShotId(),
-      sessionId: session.id,
-      sequenceIndex: index,
-      userPrompt: prompt,
-      injectedPrompt: prompt, // Will be injected on generate
-      modelId: session.settings.defaultModel,
-      styleSource: "base",
-      status: "draft",
-      createdAt: new Date(),
-    };
-  }
-
-  private mergeStyles(
-    base: ExtractedStyle,
-    overrides: Partial<ExtractedStyle>,
-  ): ExtractedStyle {
-    return {
-      ...base,
-      ...overrides,
-      color: { ...base.color, ...overrides.color },
-      lighting: { ...base.lighting, ...overrides.lighting },
-      atmosphere: { ...base.atmosphere, ...overrides.atmosphere },
-      technical: { ...base.technical, ...overrides.technical },
-    };
-  }
-
-  private buildInjectionOptions(settings: ContinuitySettings) {
-    return {
-      strength: settings.styleInjectionStrength,
-      position: settings.styleInjectionPosition,
-      includeColor: settings.inheritColor,
-      includeLighting: settings.inheritLighting,
-      includeAtmosphere: settings.inheritAtmosphere,
-      includeTechnical: settings.inheritTechnical,
-      skipConflicting: true,
-    };
-  }
-
-  private createDefaultStyle(): ExtractedStyle {
-    return {
-      id: "default",
-      sourceVideoId: "none",
-      sourceFrameIndex: 0,
-      extractedAt: new Date(),
-      color: {
-        palette: {
-          primary: "#808080",
-          secondary: "#606060",
-          accent: "#a0a0a0",
-          shadows: "#1a1a1a",
-          highlights: "#ffffff",
-          dominant: [],
-        },
-        temperature: "neutral",
-        saturation: "natural",
-        contrast: "medium",
-      },
-      lighting: {
-        style: "natural lighting",
-        direction: "frontal",
-        quality: "soft",
-        keyLight: "natural",
-        intensity: "moderate",
-      },
-      atmosphere: {
-        elements: [],
-        timeOfDay: "day",
-        weather: "clear",
-        mood: "neutral",
-      },
-      technical: {
-        filmStock: "digital",
-        lensCharacteristics: "standard",
-        grainLevel: "none",
-        depthOfField: "moderate",
-        motionBlur: "none",
-      },
-      stylePromptFragment: "",
-      confidence: 1.0,
-    };
-  }
-
-  private defaultSettings(): ContinuitySettings {
-    return {
-      autoExtractStyle: true,
-      autoFrameBridge: true,
-      styleInjectionStrength: "medium",
-      styleInjectionPosition: "prefix",
-      inheritColor: true,
-      inheritLighting: true,
-      inheritAtmosphere: true,
-      inheritTechnical: true,
+      generationMode: "continuity",
+      defaultContinuityMode: "frame-bridge",
+      defaultStyleStrength: STYLE_STRENGTH_PRESETS.balanced,
       defaultModel: "veo-3",
-      usePreviewFirst: true,
+      autoExtractFrameBridge: true,
+      useCharacterConsistency: false,
     };
   }
 
@@ -1509,7 +1683,7 @@ export class ContinuitySessionService {
   }
 }
 
-// Session store interface (implement with your persistence layer)
+// Session store interface
 interface SessionStore {
   save(session: ContinuitySession): Promise<void>;
   get(sessionId: string): Promise<ContinuitySession | null>;
@@ -1529,8 +1703,6 @@ import { Router } from "express";
 import { authenticateUser } from "@/middleware/auth";
 
 const router = Router();
-
-// All routes require authentication
 router.use(authenticateUser);
 
 /**
@@ -1538,16 +1710,23 @@ router.use(authenticateUser);
  * Create a new continuity session
  */
 router.post("/sessions", async (req, res) => {
-  const { name, description, initialPrompt, initialVideoId, settings } =
+  const { name, description, sourceVideoId, sourceImageUrl, settings } =
     req.body;
+  // settings.generationMode can be 'continuity' (default) or 'standard'
+
+  if (!sourceVideoId && !sourceImageUrl) {
+    return res.status(400).json({
+      error: "Must provide sourceVideoId or sourceImageUrl",
+    });
+  }
 
   try {
     const service = req.app.get("continuitySessionService");
     const session = await service.createSession(req.user.id, {
       name,
       description,
-      initialPrompt,
-      initialVideoId,
+      sourceVideoId,
+      sourceImageUrl,
       settings,
     });
 
@@ -1559,7 +1738,6 @@ router.post("/sessions", async (req, res) => {
 
 /**
  * GET /api/continuity/sessions
- * Get all sessions for current user
  */
 router.get("/sessions", async (req, res) => {
   const service = req.app.get("continuitySessionService");
@@ -1569,7 +1747,6 @@ router.get("/sessions", async (req, res) => {
 
 /**
  * GET /api/continuity/sessions/:sessionId
- * Get a single session
  */
 router.get("/sessions/:sessionId", async (req, res) => {
   const service = req.app.get("continuitySessionService");
@@ -1584,19 +1761,30 @@ router.get("/sessions/:sessionId", async (req, res) => {
 
 /**
  * POST /api/continuity/sessions/:sessionId/shots
- * Add a new shot to a session
+ * Add a new shot
  */
 router.post("/sessions/:sessionId/shots", async (req, res) => {
-  const { prompt, modelId, useFrameBridge, styleOverrides } = req.body;
+  const {
+    prompt,
+    continuityMode,
+    generationMode,
+    styleReferenceId,
+    styleStrength,
+    modelId,
+    characterAssetId,
+  } = req.body;
 
   try {
     const service = req.app.get("continuitySessionService");
     const shot = await service.addShot({
       sessionId: req.params.sessionId,
       prompt,
+      continuityMode,
+      generationMode,
+      styleReferenceId,
+      styleStrength,
       modelId,
-      useFrameBridge,
-      styleOverrides,
+      characterAssetId,
     });
 
     res.json({ success: true, data: shot });
@@ -1624,37 +1812,47 @@ router.post("/sessions/:sessionId/shots/:shotId/generate", async (req, res) => {
 });
 
 /**
- * PUT /api/continuity/sessions/:sessionId/style
- * Update session style
+ * PUT /api/continuity/sessions/:sessionId/shots/:shotId/style-reference
+ * Update which shot a shot inherits style from (non-linear inheritance)
  */
-router.put("/sessions/:sessionId/style", async (req, res) => {
+router.put(
+  "/sessions/:sessionId/shots/:shotId/style-reference",
+  async (req, res) => {
+    const { styleReferenceId } = req.body;
+
+    try {
+      const service = req.app.get("continuitySessionService");
+      const shot = await service.updateShotStyleReference(
+        req.params.sessionId,
+        req.params.shotId,
+        styleReferenceId,
+      );
+
+      res.json({ success: true, data: shot });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update style reference" });
+    }
+  },
+);
+
+/**
+ * PUT /api/continuity/sessions/:sessionId/style-reference
+ * Update session's primary style reference
+ */
+router.put("/sessions/:sessionId/style-reference", async (req, res) => {
+  const { sourceVideoId, sourceImageUrl } = req.body;
+
   try {
     const service = req.app.get("continuitySessionService");
-    const session = await service.updateSessionStyle(
+    const session = await service.updatePrimaryStyleReference(
       req.params.sessionId,
-      req.body.style,
+      sourceVideoId,
+      sourceImageUrl,
     );
 
     res.json({ success: true, data: session });
   } catch (error) {
-    res.status(500).json({ error: "Failed to update style" });
-  }
-});
-
-/**
- * POST /api/continuity/extract-style
- * Extract style from a video (standalone)
- */
-router.post("/extract-style", async (req, res) => {
-  const { videoId, framePosition } = req.body;
-
-  try {
-    const extractor = req.app.get("styleExtractionService");
-    const style = await extractor.extractFromVideo(videoId, framePosition);
-
-    res.json({ success: true, data: style });
-  } catch (error) {
-    res.status(500).json({ error: "Failed to extract style" });
+    res.status(500).json({ error: "Failed to update style reference" });
   }
 });
 
@@ -1663,431 +1861,254 @@ export default router;
 
 ---
 
-## Client Implementation
+## Workflow Diagrams
 
-### Context Provider
+### Direct Continuation (Frame Bridge)
 
-```typescript
-// client/src/features/continuity/context/ContinuitySessionContext.tsx
-
-import React, { createContext, useContext, useReducer, useCallback } from 'react';
-import { continuityApi } from '../api/continuityApi';
-import type { ContinuitySession, ContinuityShot, ExtractedStyle } from '../types';
-
-interface ContinuityState {
-  session: ContinuitySession | null;
-  isLoading: boolean;
-  error: string | null;
-  activeShot: ContinuityShot | null;
-}
-
-type ContinuityAction =
-  | { type: 'SET_SESSION'; session: ContinuitySession }
-  | { type: 'SET_LOADING'; isLoading: boolean }
-  | { type: 'SET_ERROR'; error: string | null }
-  | { type: 'SET_ACTIVE_SHOT'; shot: ContinuityShot | null }
-  | { type: 'UPDATE_SHOT'; shot: ContinuityShot }
-  | { type: 'ADD_SHOT'; shot: ContinuityShot }
-  | { type: 'UPDATE_STYLE'; style: ExtractedStyle };
-
-const reducer = (state: ContinuityState, action: ContinuityAction): ContinuityState => {
-  switch (action.type) {
-    case 'SET_SESSION':
-      return { ...state, session: action.session, isLoading: false };
-    case 'SET_LOADING':
-      return { ...state, isLoading: action.isLoading };
-    case 'SET_ERROR':
-      return { ...state, error: action.error, isLoading: false };
-    case 'SET_ACTIVE_SHOT':
-      return { ...state, activeShot: action.shot };
-    case 'UPDATE_SHOT':
-      if (!state.session) return state;
-      return {
-        ...state,
-        session: {
-          ...state.session,
-          shots: state.session.shots.map(s =>
-            s.id === action.shot.id ? action.shot : s
-          ),
-        },
-      };
-    case 'ADD_SHOT':
-      if (!state.session) return state;
-      return {
-        ...state,
-        session: {
-          ...state.session,
-          shots: [...state.session.shots, action.shot],
-        },
-      };
-    case 'UPDATE_STYLE':
-      if (!state.session) return state;
-      return {
-        ...state,
-        session: {
-          ...state.session,
-          baseStyle: action.style,
-        },
-      };
-    default:
-      return state;
-  }
-};
-
-interface ContinuityContextValue extends ContinuityState {
-  createSession: (name: string, initialVideoId?: string) => Promise<void>;
-  loadSession: (sessionId: string) => Promise<void>;
-  addShot: (prompt: string, options?: { modelId?: string; useFrameBridge?: boolean }) => Promise<ContinuityShot>;
-  generateShot: (shotId: string) => Promise<void>;
-  updateStyle: (updates: Partial<ExtractedStyle>) => Promise<void>;
-  setActiveShot: (shot: ContinuityShot | null) => void;
-}
-
-const ContinuityContext = createContext<ContinuityContextValue | null>(null);
-
-export function ContinuitySessionProvider({ children }: { children: React.ReactNode }) {
-  const [state, dispatch] = useReducer(reducer, {
-    session: null,
-    isLoading: false,
-    error: null,
-    activeShot: null,
-  });
-
-  const createSession = useCallback(async (name: string, initialVideoId?: string) => {
-    dispatch({ type: 'SET_LOADING', isLoading: true });
-    try {
-      const session = await continuityApi.createSession({ name, initialVideoId });
-      dispatch({ type: 'SET_SESSION', session });
-    } catch (error) {
-      dispatch({ type: 'SET_ERROR', error: 'Failed to create session' });
-    }
-  }, []);
-
-  const loadSession = useCallback(async (sessionId: string) => {
-    dispatch({ type: 'SET_LOADING', isLoading: true });
-    try {
-      const session = await continuityApi.getSession(sessionId);
-      dispatch({ type: 'SET_SESSION', session });
-    } catch (error) {
-      dispatch({ type: 'SET_ERROR', error: 'Failed to load session' });
-    }
-  }, []);
-
-  const addShot = useCallback(async (
-    prompt: string,
-    options?: { modelId?: string; useFrameBridge?: boolean }
-  ) => {
-    if (!state.session) throw new Error('No active session');
-
-    const shot = await continuityApi.addShot(state.session.id, {
-      prompt,
-      ...options,
-    });
-    dispatch({ type: 'ADD_SHOT', shot });
-    return shot;
-  }, [state.session]);
-
-  const generateShot = useCallback(async (shotId: string) => {
-    if (!state.session) return;
-
-    // Update to generating status
-    const shot = state.session.shots.find(s => s.id === shotId);
-    if (shot) {
-      dispatch({ type: 'UPDATE_SHOT', shot: { ...shot, status: 'generating' } });
-    }
-
-    try {
-      const updatedShot = await continuityApi.generateShot(state.session.id, shotId);
-      dispatch({ type: 'UPDATE_SHOT', shot: updatedShot });
-    } catch (error) {
-      if (shot) {
-        dispatch({ type: 'UPDATE_SHOT', shot: { ...shot, status: 'failed', error: 'Generation failed' } });
-      }
-    }
-  }, [state.session]);
-
-  const updateStyle = useCallback(async (updates: Partial<ExtractedStyle>) => {
-    if (!state.session) return;
-
-    const session = await continuityApi.updateStyle(state.session.id, updates);
-    dispatch({ type: 'UPDATE_STYLE', style: session.baseStyle });
-  }, [state.session]);
-
-  const setActiveShot = useCallback((shot: ContinuityShot | null) => {
-    dispatch({ type: 'SET_ACTIVE_SHOT', shot });
-  }, []);
-
-  return (
-    <ContinuityContext.Provider
-      value={{
-        ...state,
-        createSession,
-        loadSession,
-        addShot,
-        generateShot,
-        updateStyle,
-        setActiveShot,
-      }}
-    >
-      {children}
-    </ContinuityContext.Provider>
-  );
-}
-
-export function useContinuitySession() {
-  const context = useContext(ContinuityContext);
-  if (!context) {
-    throw new Error('useContinuitySession must be used within ContinuitySessionProvider');
-  }
-  return context;
-}
+```
+Shot 1 Completed
+       │
+       ▼
+┌──────────────────┐
+│ Extract last     │
+│ frame            │
+└────────┬─────────┘
+         │
+         ▼
+┌──────────────────┐
+│ Use as startImage│
+│ for Shot 2       │
+└────────┬─────────┘
+         │
+         ▼
+┌──────────────────┐
+│ Generate Shot 2  │
+│ (same angle,     │
+│  continues)      │
+└──────────────────┘
 ```
 
-### Main Component
+### Style Match (Different Angle)
 
-```typescript
-// client/src/features/continuity/components/ContinuitySession/ContinuitySession.tsx
+```
+Shot 1 Completed
+       │
+       ▼
+┌──────────────────┐
+│ Extract          │
+│ representative   │
+│ frame            │
+└────────┬─────────┘
+         │
+         ▼
+┌──────────────────┐
+│ IP-Adapter       │
+│ (frame + prompt  │
+│  → keyframe)     │
+└────────┬─────────┘
+         │
+         ▼
+┌──────────────────┐
+│ Use keyframe as  │
+│ startImage       │
+└────────┬─────────┘
+         │
+         ▼
+┌──────────────────┐
+│ Generate Shot 2  │
+│ (new angle,      │
+│  matched style)  │
+└──────────────────┘
+```
 
-import React from 'react';
-import { useContinuitySession } from '../../context/ContinuitySessionContext';
-import { SessionTimeline } from './SessionTimeline';
-import { StylePanel } from '../StylePanel';
-import { ShotEditor } from '../ShotEditor';
+### Non-Linear Inheritance
 
-interface ContinuitySessionProps {
-  className?: string;
-}
+```
+Shot 1 ──────────────────────┐
+   │                         │
+   ▼                         │
+Shot 2 (Flashback,           │
+        different style)     │
+   │                         │
+   ▼                         │
+Shot 3 ◄─────────────────────┘
+        (References Shot 1,
+         not Shot 2)
+```
 
-export function ContinuitySession({ className = '' }: ContinuitySessionProps) {
-  const { session, isLoading, error, activeShot } = useContinuitySession();
+### Provider-Aware Continuity Selection
 
-  if (isLoading) {
-    return (
-      <div className={`continuity-session ${className}`}>
-        <div className="animate-pulse">
-          <div className="h-8 bg-zinc-700 rounded w-1/3 mb-4"></div>
-          <div className="h-40 bg-zinc-800 rounded"></div>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className={`continuity-session ${className}`}>
-        <div className="text-red-400 p-4 bg-red-500/10 rounded">
-          {error}
-        </div>
-      </div>
-    );
-  }
-
-  if (!session) {
-    return (
-      <div className={`continuity-session ${className}`}>
-        <CreateSessionPrompt />
-      </div>
-    );
-  }
-
-  return (
-    <div className={`continuity-session ${className}`}>
-      {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <h2 className="text-xl font-semibold text-white">
-            🎬 {session.name}
-          </h2>
-          <p className="text-sm text-zinc-400">
-            {session.shots.length} shots
-          </p>
-        </div>
-        <button className="btn-primary">
-          + Add Shot
-        </button>
-      </div>
-
-      {/* Timeline */}
-      <SessionTimeline shots={session.shots} />
-
-      {/* Style Panel */}
-      <StylePanel style={session.baseStyle} />
-
-      {/* Active Shot Editor */}
-      {activeShot && (
-        <ShotEditor shot={activeShot} />
-      )}
-    </div>
-  );
-}
-
-function CreateSessionPrompt() {
-  const { createSession } = useContinuitySession();
-  const [name, setName] = React.useState('');
-
-  const handleCreate = () => {
-    if (name.trim()) {
-      createSession(name.trim());
-    }
-  };
-
-  return (
-    <div className="text-center py-12">
-      <h3 className="text-lg font-medium text-white mb-4">
-        Create a New Scene
-      </h3>
-      <input
-        type="text"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        placeholder="Scene name..."
-        className="input-field w-64 mb-4"
-      />
-      <button
-        onClick={handleCreate}
-        disabled={!name.trim()}
-        className="btn-primary"
-      >
-        Create Scene
-      </button>
-    </div>
-  );
-}
+```
+                     ┌─────────────────────────────┐
+                     │   Continuity Request        │
+                     │   (shot + mode + provider)  │
+                     └─────────────┬───────────────┘
+                                   │
+                     ┌─────────────▼───────────────┐
+                     │  Check Provider Capabilities │
+                     └─────────────┬───────────────┘
+                                   │
+              ┌────────────────────┼────────────────────┐
+              │                    │                    │
+              ▼                    ▼                    ▼
+    ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐
+    │ Native Style Ref│  │  Frame Bridge   │  │   IP-Adapter    │
+    │  (Runway, etc.) │  │   (all i2v)     │  │   (fallback)    │
+    └────────┬────────┘  └────────┬────────┘  └────────┬────────┘
+             │                    │                    │
+             │  Pass reference    │  Pass last frame   │  Generate
+             │  directly to API   │  as startImage     │  keyframe first
+             │                    │                    │
+             └────────────────────┼────────────────────┘
+                                  │
+                     ┌────────────▼────────────┐
+                     │   Inject Seed (if       │
+                     │   provider supports)    │
+                     └────────────┬────────────┘
+                                  │
+                     ┌────────────▼────────────┐
+                     │   Generate Video        │
+                     └────────────┬────────────┘
+                                  │
+                     ┌────────────▼────────────┐
+                     │   Extract + Persist     │
+                     │   Seed from Result      │
+                     └─────────────────────────┘
 ```
 
 ---
 
-## Integration: "Continue Scene" Button
+## Implementation Priority
 
-Add to existing generation completion flow:
+| Priority    | Task                               | Effort          | Rationale                                       |
+| ----------- | ---------------------------------- | --------------- | ----------------------------------------------- |
+| **1**       | Provider gating + AnchorService    | 2 days          | Enforce mandatory continuity and select anchors |
+| **2**       | FrameBridgeService                 | 2 days          | Foundation — extracts frames for all modes      |
+| **3**       | CharacterKeyframeService (PuLID)   | 2 days          | Identity-locked keyframes for new angles        |
+| **4**       | StyleReferenceService (IP-Adapter) | 3 days          | Style-only keyframes when no native refs        |
+| **5**       | ProviderStyleAdapter               | 2 days          | Routes to native APIs when available            |
+| **6**       | SeedPersistenceService             | 1 day           | Low-effort, moderate value                      |
+| **7**       | GradingService (Post-Grade)        | 1 day           | Palette matching to reduce drift                |
+| **8**       | QualityGateService                 | 2 days          | Similarity scoring + auto-retry                 |
+| **9**       | ContinuitySessionService           | 3 days          | Orchestrates workflow                           |
+| **10**      | API endpoints                      | 1 day           | Wire up services                                |
+| **11**      | Client: Context + hooks            | 2 days          | State management                                |
+| **12**      | Client: Session timeline           | 2 days          | Core UI                                         |
+| **13**      | Client: Style panel                | 1 day           | Display reference + strength slider             |
+| **14**      | StyleAnalysisService               | 1 day           | Optional — UI polish only                       |
+| **15**      | Integration + testing              | 3 days          | End-to-end                                      |
+|             | **Total (Phase 1)**                | **~25-28 days** |                                                 |
+| **Phase 2** | SceneProxyService (NeRF/Splat)     | 2-3 weeks       | Optional "endgame" continuity                   |
 
-```typescript
-// client/src/features/prompt-optimizer/components/GenerationComplete.tsx
+---
 
-import { ContinueSceneButton } from '@/features/continuity/components/ContinueSceneButton';
+## What's Removed vs Original Plan
 
-export function GenerationComplete({ generation }) {
-  return (
-    <div className="generation-complete">
-      {/* ... existing completion UI ... */}
+| Original                             | Status                                                 | Reason                                                                   |
+| ------------------------------------ | ------------------------------------------------------ | ------------------------------------------------------------------------ |
+| StyleExtractionService (VLM → JSON)  | **Demoted** to optional UI-only `StyleAnalysisService` | Text descriptions don't preserve visual fidelity                         |
+| StyleInjectionService (text merging) | **Deleted**                                            | Regex-based conflict removal is fragile; IP-Adapter makes it unnecessary |
+| Complex token building               | **Deleted**                                            | Not needed when passing pixels                                           |
+| VLM prompt template                  | **Simplified**                                         | Only used for UI display, not generation                                 |
 
-      {/* Add Continue Scene option */}
-      <div className="mt-4 pt-4 border-t border-zinc-700">
-        <ContinueSceneButton
-          videoId={generation.videoId}
-          prompt={generation.prompt}
-        />
-      </div>
-    </div>
-  );
-}
-```
+## What's Added
 
-```typescript
-// client/src/features/continuity/components/ContinueSceneButton/ContinueSceneButton.tsx
-
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import { continuityApi } from '../../api/continuityApi';
-
-interface ContinueSceneButtonProps {
-  videoId: string;
-  prompt: string;
-}
-
-export function ContinueSceneButton({ videoId, prompt }: ContinueSceneButtonProps) {
-  const navigate = useNavigate();
-  const [isCreating, setIsCreating] = React.useState(false);
-
-  const handleClick = async () => {
-    setIsCreating(true);
-    try {
-      // Create session from this video
-      const session = await continuityApi.createSession({
-        name: `Scene from ${new Date().toLocaleDateString()}`,
-        initialVideoId: videoId,
-        initialPrompt: prompt,
-      });
-
-      // Navigate to continuity view
-      navigate(`/continuity/${session.id}`);
-    } catch (error) {
-      console.error('Failed to create continuity session:', error);
-    } finally {
-      setIsCreating(false);
-    }
-  };
-
-  return (
-    <button
-      onClick={handleClick}
-      disabled={isCreating}
-      className="flex items-center gap-2 text-sm text-zinc-400 hover:text-white transition-colors"
-    >
-      <span>🎬</span>
-      {isCreating ? 'Creating scene...' : 'Continue this scene →'}
-    </button>
-  );
-}
-```
+| New                             | Purpose                                                            |
+| ------------------------------- | ------------------------------------------------------------------ |
+| StyleReferenceService           | IP-Adapter integration for pixel-based style transfer (style only) |
+| `styleReferenceId` on shots     | Non-linear inheritance (flashbacks, cutaways)                      |
+| Strength presets                | User-friendly controls (loose/balanced/strict/exact)               |
+| Representative frame extraction | Better style reference than arbitrary first/last frame             |
+| Character consistency           | PuLID keyframe pipeline for identity                               |
+| Post-grade                      | Histogram/LUT palette match after generation                       |
+| Provider gating                 | Hard block for providers without image inputs                      |
+| Quality gate                    | CLIP/face similarity scoring with auto-retry                       |
+| Scene proxy (Phase 2)           | 3D proxy (NeRF/Splat) for alternate angles                         |
 
 ---
 
 ## Success Metrics
 
-| Metric                      | Target         | How to Measure                             |
-| --------------------------- | -------------- | ------------------------------------------ |
-| Continuity session creation | > 20% of users | Track session creates                      |
-| Shots per session           | > 2.5 average  | Avg shots in active sessions               |
-| Style consistency score     | > 0.75         | VLM comparison of consecutive shots        |
-| Re-generation rate          | < 30%          | Shots needing re-gen due to style mismatch |
-| Frame bridge usage          | > 60% of shots | Track i2v usage in sessions                |
+| Metric                      | Target            | Measurement                                |
+| --------------------------- | ----------------- | ------------------------------------------ |
+| Style consistency score     | > 0.85            | CLIP similarity between consecutive shots  |
+| User re-generation rate     | < 20%             | Shots needing re-gen for style mismatch    |
+| Avg shots per session       | > 3               | Indicates users find value in continuity   |
+| Frame bridge usage          | > 70%             | Primary mode for direct continuation       |
+| IP-Adapter keyframe quality | > 4/5 user rating | Spot-check user feedback                   |
+| Seed persistence rate       | > 80%             | Seeds extracted and reused where supported |
 
 ---
 
-## Effort Breakdown
+## Mode Switch & Edge-Case Policy
 
-| Task                                     | Estimate       | Dependencies               |
-| ---------------------------------------- | -------------- | -------------------------- |
-| StyleExtractionService + VLM integration | 3 days         | VLM access (GPT-4o Vision) |
-| StyleInjectionService                    | 2 days         | Extraction service         |
-| FrameBridgeService                       | 2 days         | Asset service              |
-| ContinuitySessionService                 | 3 days         | All above                  |
-| API endpoints                            | 1 day          | Services                   |
-| Client: Context + hooks                  | 2 days         | API                        |
-| Client: Session timeline UI              | 3 days         | Context                    |
-| Client: Style panel                      | 2 days         | Context                    |
-| Client: Shot editor                      | 2 days         | Context                    |
-| Integration with existing generation     | 1 day          | All above                  |
-| Testing                                  | 3 days         | All above                  |
-| **Total**                                | **~3.5 weeks** |                            |
+- **Session default mode:** `generationMode` is set at session creation (default: `continuity`).
+- **Per‑shot overrides:** A shot can override the session mode via `generationMode`.
+- **Switching to Continuity:** Requires a valid anchor source (primary style reference or a previous shot with a usable frame). If missing, block with a clear error and prompt the user to set a reference.
+- **Switching to Standard:** Continuity controls are hidden; `continuityMode` is forced to `none`.
+- **Provider gating:** Only enforced when mode is `continuity`. Standard mode may use any provider, including t2v‑only models.
+- **Legacy shots:** If a session contains earlier shots without anchors, continuity mode can still proceed by using the session’s primary style reference as the anchor.
 
 ---
 
-## Open Questions
+## What's Removed vs Original Plan
 
-1. **VLM cost**: How much will style extraction cost per shot? Should we cache aggressively?
+| Original                             | Status                                                 | Reason                                                                   |
+| ------------------------------------ | ------------------------------------------------------ | ------------------------------------------------------------------------ |
+| StyleExtractionService (VLM → JSON)  | **Demoted** to optional UI-only `StyleAnalysisService` | Text descriptions don't preserve visual fidelity                         |
+| StyleInjectionService (text merging) | **Deleted**                                            | Regex-based conflict removal is fragile; IP-Adapter makes it unnecessary |
+| Complex token building               | **Deleted**                                            | Not needed when passing pixels                                           |
+| VLM prompt template for generation   | **Deleted**                                            | Only used for UI display, not generation                                 |
 
-2. **Style drift**: Over many shots, will injected style drift from original? Need periodic re-anchoring?
+## What's Added
 
-3. **User override UX**: How do users override inherited style for specific shots?
-
-4. **Model compatibility**: Does style injection work equally well for all models?
-
-5. **Preview generation**: Should we generate a preview with style injection before final, to validate?
+| New                                | Purpose                                                            |
+| ---------------------------------- | ------------------------------------------------------------------ |
+| `StyleReferenceService`            | IP-Adapter integration for pixel-based style transfer (style only) |
+| `ProviderStyleAdapter`             | Routes to native style reference APIs when available               |
+| `SeedPersistenceService`           | Extracts and injects seeds for generation reproducibility          |
+| `styleReferenceId` on shots        | Non-linear inheritance (flashbacks, cutaways)                      |
+| `PROVIDER_CAPABILITIES` config     | Documents which providers support which continuity mechanisms      |
+| `continuityMechanismUsed` tracking | Records which mechanism was actually used per shot                 |
+| Strength presets                   | User-friendly controls (loose/balanced/strict/exact)               |
+| Representative frame extraction    | Better style reference than arbitrary first/last frame             |
+| Character consistency              | PuLID keyframe pipeline for identity                               |
+| Post-grade                         | Histogram/LUT palette match after generation                       |
+| Provider gating                    | Hard block for providers without image inputs                      |
+| Quality gate                       | CLIP/face similarity scoring with auto-retry                       |
+| Scene proxy (Phase 2)              | 3D proxy (NeRF/Splat) for alternate angles                         |
 
 ---
 
-## Next Steps
+## Open Questions (Resolved Decisions)
 
-1. [ ] Set up VLM integration (GPT-4o Vision or Gemini)
-2. [ ] Implement StyleExtractionService with prompt template
-3. [ ] Build StyleInjectionService with strength levels
-4. [ ] Implement FrameBridgeService
-5. [ ] Create ContinuitySessionService with persistence
-6. [ ] Build API endpoints
-7. [ ] Create React context and hooks
-8. [ ] Build timeline UI components
-9. [ ] Add "Continue Scene" button to generation flow
-10. [ ] Test with real generations
-11. [ ] Monitor style consistency metrics
+1. **IP‑Adapter model choice**: Benchmark 3–5 models on a fixed suite. Pick the model with the highest style similarity subject to identity similarity staying above threshold. IP‑Adapter is **style‑only**; identity always comes from PuLID.
+
+2. **Strength defaults**: Default to **0.6**, but make it **adaptive** per shot via QualityGate:
+   - If style similarity is low → increase strength.
+   - If identity similarity drops → decrease strength or re‑run PuLID.
+
+3. **Cost**: Add explicit **continuity overhead**:
+   - `identity_keyframe_cost` (PuLID)
+   - `style_keyframe_cost` (IP‑Adapter)
+     Bundle in UI and refund on failure.
+
+4. **Fallback behavior**:
+   - If native style refs exist → use them first.
+   - If IP‑Adapter is down:
+     - With character continuity → proceed with PuLID anchor only, mark as **Style Degraded**.
+     - Without character continuity → block and prompt to retry or switch provider.
+   - Never silently fall back to text‑only.
+
+5. **Provider capability updates**: Source capability gating from a single registry and keep it current via scheduled capability probes. `PROVIDER_CAPABILITIES` becomes a derived view, not a manual list.
+
+6. **3D proxy viability (Phase 2)**: Only enable 3D proxy when a **Scene Scan** shot exists and parallax is sufficient. Otherwise use direct anchors (frame bridge / keyframes).
+
+---
+
+## Implementation Notes (Post-Implementation)
+
+- **Runway native support still missing**: The capability registry includes Runway (`runway-gen45`) with native style refs, but there is no Runway video-generation provider wired in the server pipeline. Continuity sessions will error if that model is selected until a provider is added.
+- **Native style refs are passthrough-only**: The continuity service now forwards `style_reference` + `style_reference_weight` into generation options, but only providers that already accept those fields will use them. As of now, only the Replicate input builder explicitly passes them through.
+- **Scene proxy is depth‑parallax (not NeRF/Splat)**: The current `SceneProxyService` is a depth-map parallax renderer. NeRF/Splat proxies described in Phase 2 are still unimplemented.
+- **Continuity gating relies on capabilities**: The continuity UI uses the capabilities registry to filter eligible models. If the registry is unavailable, gating falls back to server‑side enforcement only.

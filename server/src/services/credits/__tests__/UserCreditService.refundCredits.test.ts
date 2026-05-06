@@ -461,4 +461,113 @@ describe("UserCreditService", () => {
       starterGrantGrantedAtMs: 1700000000000,
     });
   });
+
+  describe("checkAndReserveInTransaction", () => {
+    const runInTx = async <T>(
+      fn: (tx: {
+        get: (docRef: MockDocRef) => Promise<{
+          exists: boolean;
+          data: () => Record<string, unknown> | undefined;
+        }>;
+        update: (
+          docRef: MockDocRef,
+          updates: Record<string, unknown>,
+        ) => Promise<void>;
+        set: (
+          docRef: MockDocRef,
+          data: Record<string, unknown>,
+        ) => Promise<void>;
+      }) => Promise<T>,
+    ): Promise<T> => {
+      const transaction = {
+        get: async (docRef: MockDocRef) => docRef.get(),
+        update: async (
+          docRef: MockDocRef,
+          updates: Record<string, unknown>,
+        ) => {
+          await docRef.update(updates);
+        },
+        set: async (docRef: MockDocRef, data: Record<string, unknown>) => {
+          await docRef.set(data);
+        },
+      };
+      return fn(transaction);
+    };
+
+    it("returns ok and queues debit + reserve transaction writes", async () => {
+      const service = new UserCreditService();
+      mocks.users.set("user-1", { credits: 100 });
+
+      const result = await runInTx((tx) =>
+        service.checkAndReserveInTransaction(
+          tx as unknown as FirebaseFirestore.Transaction,
+          "user-1",
+          20,
+          { referenceId: "req-1" },
+        ),
+      );
+
+      expect(result).toEqual({ ok: true });
+      expect(mocks.users.get("user-1")?.credits).toBe(80);
+      const transactions = mocks.transactionsByUser.get("user-1") ?? [];
+      expect(transactions).toHaveLength(1);
+      expect(transactions[0]?.data).toEqual(
+        expect.objectContaining({
+          type: "reserve",
+          amount: -20,
+          source: "generation",
+          referenceId: "req-1",
+        }),
+      );
+    });
+
+    it("returns insufficient_credits without debiting or writing transactions", async () => {
+      const service = new UserCreditService();
+      mocks.users.set("user-low", { credits: 3 });
+
+      const result = await runInTx((tx) =>
+        service.checkAndReserveInTransaction(
+          tx as unknown as FirebaseFirestore.Transaction,
+          "user-low",
+          10,
+        ),
+      );
+
+      expect(result).toEqual({ ok: false, reason: "insufficient_credits" });
+      expect(mocks.users.get("user-low")?.credits).toBe(3);
+      expect(mocks.transactionsByUser.get("user-low")).toBeUndefined();
+    });
+
+    it("returns user_not_found when the user document does not exist", async () => {
+      const service = new UserCreditService();
+
+      const result = await runInTx((tx) =>
+        service.checkAndReserveInTransaction(
+          tx as unknown as FirebaseFirestore.Transaction,
+          "ghost",
+          5,
+        ),
+      );
+
+      expect(result).toEqual({ ok: false, reason: "user_not_found" });
+      expect(mocks.users.size).toBe(0);
+    });
+
+    it("is a no-op write when cost is zero (still returns ok)", async () => {
+      const service = new UserCreditService();
+      mocks.users.set("user-free", { credits: 1 });
+
+      const result = await runInTx((tx) =>
+        service.checkAndReserveInTransaction(
+          tx as unknown as FirebaseFirestore.Transaction,
+          "user-free",
+          0,
+        ),
+      );
+
+      expect(result).toEqual({ ok: true });
+      expect(mocks.users.get("user-free")?.credits).toBe(1);
+      expect(mocks.transactionsByUser.get("user-free")).toBeUndefined();
+    });
+  });
 });

@@ -14,7 +14,7 @@ import type {
   LLMSpan,
   LLMMeta,
 } from "../../types";
-import type { AIService as BaseAIService } from "@services/enhancement/services/types";
+import type { AIExecutionPort } from "@services/ai-model/ports/AIExecutionPort";
 import type { SubstringPositionCache } from "../../cache/SubstringPositionCache";
 import {
   callModel,
@@ -54,7 +54,7 @@ export async function attemptRepair({
   text: string;
   policy: ValidationPolicy;
   options: ProcessingOptions;
-  aiService: BaseAIService;
+  aiService: AIExecutionPort;
   cache: SubstringPositionCache;
   estimatedMaxTokens: number;
   providerOptions: ProviderRequestOptions;

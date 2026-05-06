@@ -11,7 +11,7 @@ import { VideoCamera } from "@promptstudio/system/components/ui";
 import { usePromptOptimizer } from "@hooks/usePromptOptimizer";
 import { usePromptHistory } from "@hooks/usePromptHistory";
 import { useDebugLogger } from "@hooks/useDebugLogger";
-import { useGenerationControlsStoreState } from "@features/generation-controls/context/GenerationControlsStore";
+import { useGenerationControlsStoreState } from "@features/generation-controls";
 import type {
   PromptActionsState,
   PromptConfigState,
@@ -34,7 +34,6 @@ import { useHighlightState } from "./hooks/useHighlightState";
 import { useVersionEditTracking } from "./hooks/useVersionEditTracking";
 import { useHistoryActionRefs } from "./hooks/useHistoryActionRefs";
 
-const PromptStateContext = createContext<PromptStateContextValue | null>(null);
 const PromptConfigContext = createContext<PromptConfigState | null>(null);
 const PromptUIContext = createContext<PromptUIState | null>(null);
 const PromptSessionContext = createContext<PromptSessionState | null>(null);
@@ -46,14 +45,32 @@ const PromptNavigationContext = createContext<PromptNavigationState | null>(
 );
 
 /**
- * Hook to use prompt state
+ * @deprecated Use the specific narrow hooks instead:
+ * - `usePromptConfig()` for mode/model/generation config
+ * - `usePromptUIStateContext()` for UI visibility flags
+ * - `usePromptSession()` for prompt UUIDs, suggestions, context
+ * - `usePromptHighlights()` for highlight state and refs
+ * - `usePromptServices()` for promptOptimizer and promptHistory
+ * - `usePromptActions()` for action callbacks
+ * - `usePromptNavigation()` for navigate and sessionId
  */
 export function usePromptState(): PromptStateContextValue {
-  const context = useContext(PromptStateContext);
-  if (!context) {
-    throw new Error("usePromptState must be used within PromptStateProvider");
-  }
-  return context;
+  const config = usePromptConfig();
+  const ui = usePromptUIStateContext();
+  const session = usePromptSession();
+  const highlights = usePromptHighlights();
+  const services = usePromptServices();
+  const actions = usePromptActions();
+  const navigation = usePromptNavigation();
+  return {
+    ...config,
+    ...ui,
+    ...session,
+    ...highlights,
+    ...services,
+    ...actions,
+    ...navigation,
+  };
 }
 
 export function usePromptConfig(): PromptConfigState {
@@ -442,27 +459,6 @@ export function PromptStateProvider({
     [navigate, sessionId],
   );
 
-  const combinedValue = useMemo<PromptStateContextValue>(
-    () => ({
-      ...configValue,
-      ...uiValue,
-      ...sessionValue,
-      ...highlightValue,
-      ...servicesValue,
-      ...actionsValue,
-      ...navigationValue,
-    }),
-    [
-      configValue,
-      uiValue,
-      sessionValue,
-      highlightValue,
-      servicesValue,
-      actionsValue,
-      navigationValue,
-    ],
-  );
-
   usePromptStatePersistence({ selectedMode });
   useDraftHistorySync({
     currentPromptUuid,
@@ -474,22 +470,20 @@ export function PromptStateProvider({
   });
 
   return (
-    <PromptStateContext.Provider value={combinedValue}>
-      <PromptConfigContext.Provider value={configValue}>
-        <PromptUIContext.Provider value={uiValue}>
-          <PromptSessionContext.Provider value={sessionValue}>
-            <PromptHighlightContext.Provider value={highlightValue}>
-              <PromptServicesContext.Provider value={servicesValue}>
-                <PromptActionsContext.Provider value={actionsValue}>
-                  <PromptNavigationContext.Provider value={navigationValue}>
-                    {children}
-                  </PromptNavigationContext.Provider>
-                </PromptActionsContext.Provider>
-              </PromptServicesContext.Provider>
-            </PromptHighlightContext.Provider>
-          </PromptSessionContext.Provider>
-        </PromptUIContext.Provider>
-      </PromptConfigContext.Provider>
-    </PromptStateContext.Provider>
+    <PromptConfigContext.Provider value={configValue}>
+      <PromptUIContext.Provider value={uiValue}>
+        <PromptSessionContext.Provider value={sessionValue}>
+          <PromptHighlightContext.Provider value={highlightValue}>
+            <PromptServicesContext.Provider value={servicesValue}>
+              <PromptActionsContext.Provider value={actionsValue}>
+                <PromptNavigationContext.Provider value={navigationValue}>
+                  {children}
+                </PromptNavigationContext.Provider>
+              </PromptActionsContext.Provider>
+            </PromptServicesContext.Provider>
+          </PromptHighlightContext.Provider>
+        </PromptSessionContext.Provider>
+      </PromptUIContext.Provider>
+    </PromptConfigContext.Provider>
   );
 }

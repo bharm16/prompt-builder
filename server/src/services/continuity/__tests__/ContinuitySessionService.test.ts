@@ -1,8 +1,6 @@
 import { beforeAll, beforeEach, describe, it, expect, vi } from "vitest";
 import type { ContinuitySessionService as ContinuitySessionServiceType } from "../ContinuitySessionService";
-import type { ContinuityProviderService as ContinuityProviderServiceType } from "../ContinuityProviderService";
 import type { ContinuityMediaService as ContinuityMediaServiceType } from "../ContinuityMediaService";
-import type { ContinuityPostProcessingService as ContinuityPostProcessingServiceType } from "../ContinuityPostProcessingService";
 import type { ContinuityShotGenerator as ContinuityShotGeneratorType } from "../ContinuityShotGenerator";
 import type {
   ContinuitySession,
@@ -11,9 +9,7 @@ import type {
 } from "../types";
 
 let ContinuitySessionService: typeof ContinuitySessionServiceType;
-let ContinuityProviderService: typeof ContinuityProviderServiceType;
 let ContinuityMediaService: typeof ContinuityMediaServiceType;
-let ContinuityPostProcessingService: typeof ContinuityPostProcessingServiceType;
 let ContinuityShotGenerator: typeof ContinuityShotGeneratorType;
 const mockStorageGetViewUrl = vi.hoisted(() => vi.fn());
 
@@ -27,9 +23,7 @@ beforeAll(async () => {
   process.env.GCS_BUCKET_NAME = process.env.GCS_BUCKET_NAME || "test-bucket";
   ({
     ContinuitySessionService,
-    ContinuityProviderService,
     ContinuityMediaService,
-    ContinuityPostProcessingService,
     ContinuityShotGenerator,
   } = await import("../"));
 });
@@ -188,11 +182,6 @@ const buildService = (
     ...(overrides.sessionStore ?? {}),
   };
 
-  const providerService = new ContinuityProviderService(
-    anchorService as any,
-    providerAdapter as any,
-    seedService as any,
-  );
   const mediaService = new ContinuityMediaService(
     frameBridge as any,
     styleReference as any,
@@ -201,24 +190,23 @@ const buildService = (
     assetService as any,
     { getViewUrl: mockStorageGetViewUrl } as any,
   );
-  const postProcessingService = new ContinuityPostProcessingService(
+  const shotGenerator = new ContinuityShotGenerator(
+    providerAdapter as any,
+    anchorService as any,
+    seedService as any,
+    mediaService,
     grading as any,
     qualityGate as any,
     sceneProxy as any,
-  );
-  const shotGenerator = new ContinuityShotGenerator(
-    providerService,
-    mediaService,
-    postProcessingService,
     characterKeyframes as any,
     sessionStore as any,
   );
 
   return {
     service: new ContinuitySessionService(
-      providerService,
+      providerAdapter as any,
       mediaService,
-      postProcessingService,
+      sceneProxy as any,
       shotGenerator,
       sessionStore as any,
     ),
@@ -847,7 +835,7 @@ describe("ContinuitySessionService", () => {
     const updated = await service.updateSessionSettings(session.id, {
       defaultStyleStrength: 0.92,
       maxRetries: 3,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       unknownSetting: "ignored" as any,
     } as any);
 

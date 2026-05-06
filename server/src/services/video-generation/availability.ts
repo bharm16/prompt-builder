@@ -1,10 +1,4 @@
-import {
-  resolveModelSelection,
-  isKlingModel,
-  isLumaModel,
-  isOpenAISoraModel,
-  isVeoModel,
-} from "./modelResolver";
+import { resolveModelSelection } from "./modelResolver";
 import type {
   VideoAvailabilityReport,
   VideoAvailabilitySnapshot,
@@ -13,7 +7,10 @@ import type {
   VideoProviderAvailability,
 } from "./types";
 import { VIDEO_MODELS } from "@config/modelConfig";
-import { resolveAutoModelId } from "./providers/ProviderRegistry";
+import {
+  resolveAutoModelId,
+  resolveProviderForModel,
+} from "./providers/ProviderRegistry";
 import { MANUAL_CAPABILITIES_REGISTRY } from "@services/capabilities/manualRegistry";
 import { getDynamicCapabilitiesRegistry } from "@services/capabilities/dynamicRegistry";
 import { resolveModelId as resolveCapabilityModelId } from "@services/capabilities/modelProviders";
@@ -33,6 +30,26 @@ const withCapabilityModelId = (
   capabilityModelId: string | null,
 ): { capabilityModelId?: string } =>
   capabilityModelId ? { capabilityModelId } : {};
+
+const PROVIDER_REQUIRED_KEYS: Record<keyof VideoProviderAvailability, string> =
+  {
+    openai: "OPENAI_API_KEY",
+    luma: "LUMA_API_KEY",
+    kling: "KLING_API_KEY",
+    gemini: "GEMINI_API_KEY",
+    replicate: "REPLICATE_API_TOKEN",
+  };
+
+const PROVIDER_MISSING_MESSAGES: Record<
+  keyof VideoProviderAvailability,
+  string
+> = {
+  openai: "Sora video generation requires OPENAI_API_KEY.",
+  luma: "Luma video generation requires LUMA_API_KEY or LUMAAI_API_KEY.",
+  kling: "Kling video generation requires KLING_API_KEY.",
+  gemini: "Veo video generation requires GEMINI_API_KEY.",
+  replicate: "Replicate API token is required for the selected video model.",
+};
 
 export function getModelCapabilities(modelId: string): {
   supportsImageInput: boolean;
@@ -139,157 +156,34 @@ export function getModelAvailability(
     };
   }
 
-  if (isOpenAISoraModel(resolvedId)) {
-    if (!providers.openai) {
-      return {
-        id: model || resolvedId,
-        requestedId,
-        available: false,
-        reason: "missing_credentials",
-        requiredKey: "OPENAI_API_KEY",
-        resolvedModelId: resolvedId,
-        ...withCapabilityModelId(capabilityInfo.capabilityModelId),
-        statusCode: 424,
-        message: "Sora video generation requires OPENAI_API_KEY.",
-        supportsImageInput: capabilityInfo.supportsImageInput,
-        supportsI2V: capabilityInfo.supportsImageInput,
-        entitled: false,
-        planTier: "unknown",
-      };
-    }
-    return {
-      id: model || resolvedId,
-      requestedId,
-      available: true,
-      resolvedModelId: resolvedId,
-      ...withCapabilityModelId(capabilityInfo.capabilityModelId),
-      supportsImageInput: capabilityInfo.supportsImageInput,
-      supportsI2V: capabilityInfo.supportsImageInput,
-      entitled: true,
-      planTier: "unknown",
-    };
-  }
+  const providerKey = resolveProviderForModel(resolvedId);
+  const isAvailable = providers[providerKey];
 
-  if (isLumaModel(resolvedId)) {
-    if (!providers.luma) {
-      return {
-        id: model || resolvedId,
-        requestedId,
-        available: false,
-        reason: "missing_credentials",
-        requiredKey: "LUMA_API_KEY",
-        resolvedModelId: resolvedId,
-        ...withCapabilityModelId(capabilityInfo.capabilityModelId),
-        statusCode: 424,
-        message:
-          "Luma video generation requires LUMA_API_KEY or LUMAAI_API_KEY.",
-        supportsImageInput: capabilityInfo.supportsImageInput,
-        supportsI2V: capabilityInfo.supportsImageInput,
-        entitled: false,
-        planTier: "unknown",
-      };
-    }
-    return {
-      id: model || resolvedId,
-      requestedId,
-      available: true,
-      resolvedModelId: resolvedId,
-      ...withCapabilityModelId(capabilityInfo.capabilityModelId),
-      supportsImageInput: capabilityInfo.supportsImageInput,
-      supportsI2V: capabilityInfo.supportsImageInput,
-      entitled: true,
-      planTier: "unknown",
-    };
-  }
+  const base = {
+    id: model || resolvedId,
+    requestedId,
+    resolvedModelId: resolvedId,
+    ...withCapabilityModelId(capabilityInfo.capabilityModelId),
+    supportsImageInput: capabilityInfo.supportsImageInput,
+    supportsI2V: capabilityInfo.supportsImageInput,
+  };
 
-  if (isKlingModel(resolvedId)) {
-    if (!providers.kling) {
-      return {
-        id: model || resolvedId,
-        requestedId,
-        available: false,
-        reason: "missing_credentials",
-        requiredKey: "KLING_API_KEY",
-        resolvedModelId: resolvedId,
-        ...withCapabilityModelId(capabilityInfo.capabilityModelId),
-        statusCode: 424,
-        message: "Kling video generation requires KLING_API_KEY.",
-        supportsImageInput: capabilityInfo.supportsImageInput,
-        supportsI2V: capabilityInfo.supportsImageInput,
-        entitled: false,
-        planTier: "unknown",
-      };
-    }
+  if (!isAvailable) {
     return {
-      id: model || resolvedId,
-      requestedId,
-      available: true,
-      resolvedModelId: resolvedId,
-      ...withCapabilityModelId(capabilityInfo.capabilityModelId),
-      supportsImageInput: capabilityInfo.supportsImageInput,
-      supportsI2V: capabilityInfo.supportsImageInput,
-      entitled: true,
-      planTier: "unknown",
-    };
-  }
-
-  if (isVeoModel(resolvedId)) {
-    if (!providers.gemini) {
-      return {
-        id: model || resolvedId,
-        requestedId,
-        available: false,
-        reason: "missing_credentials",
-        requiredKey: "GEMINI_API_KEY",
-        resolvedModelId: resolvedId,
-        ...withCapabilityModelId(capabilityInfo.capabilityModelId),
-        statusCode: 424,
-        message: "Veo video generation requires GEMINI_API_KEY.",
-        supportsImageInput: capabilityInfo.supportsImageInput,
-        supportsI2V: capabilityInfo.supportsImageInput,
-        entitled: false,
-        planTier: "unknown",
-      };
-    }
-    return {
-      id: model || resolvedId,
-      requestedId,
-      available: true,
-      resolvedModelId: resolvedId,
-      ...withCapabilityModelId(capabilityInfo.capabilityModelId),
-      supportsImageInput: capabilityInfo.supportsImageInput,
-      supportsI2V: capabilityInfo.supportsImageInput,
-      entitled: true,
-      planTier: "unknown",
-    };
-  }
-
-  if (!providers.replicate) {
-    return {
-      id: model || resolvedId,
-      requestedId,
+      ...base,
       available: false,
       reason: "missing_credentials",
-      requiredKey: "REPLICATE_API_TOKEN",
-      resolvedModelId: resolvedId,
-      ...withCapabilityModelId(capabilityInfo.capabilityModelId),
+      requiredKey: PROVIDER_REQUIRED_KEYS[providerKey],
       statusCode: 424,
-      message: "Replicate API token is required for the selected video model.",
-      supportsImageInput: capabilityInfo.supportsImageInput,
-      supportsI2V: capabilityInfo.supportsImageInput,
+      message: PROVIDER_MISSING_MESSAGES[providerKey],
       entitled: false,
       planTier: "unknown",
     };
   }
 
   return {
-    id: model || resolvedId,
-    requestedId,
+    ...base,
     available: true,
-    resolvedModelId: resolvedId,
-    ...withCapabilityModelId(capabilityInfo.capabilityModelId),
-    supportsImageInput: capabilityInfo.supportsImageInput,
-    supportsI2V: capabilityInfo.supportsImageInput,
     entitled: true,
     planTier: "unknown",
   };

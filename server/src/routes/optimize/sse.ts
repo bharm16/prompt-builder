@@ -1,4 +1,5 @@
 import type { Request, Response } from "express";
+import { createSseWriter } from "@middleware/sseBackpressure";
 
 interface SseChannel {
   signal: AbortSignal;
@@ -10,6 +11,8 @@ interface SseChannel {
 export interface SseChannelOptions {
   heartbeatIntervalMs?: number;
   idleTimeoutMs?: number;
+  /** Override the buffered-bytes kill-switch threshold. */
+  maxBufferedBytes?: number;
 }
 
 export const createSseChannel = (
@@ -17,7 +20,11 @@ export const createSseChannel = (
   res: Response,
   options: SseChannelOptions = {},
 ): SseChannel => {
-  const { heartbeatIntervalMs = 15_000, idleTimeoutMs = 20_000 } = options;
+  const {
+    heartbeatIntervalMs = 15_000,
+    idleTimeoutMs = 20_000,
+    maxBufferedBytes,
+  } = options;
   const internalAbortController = new AbortController();
   let clientConnected = true;
   let processingStarted = false;
@@ -34,7 +41,29 @@ export const createSseChannel = (
   res.setHeader("Connection", "keep-alive");
   res.setHeader("X-Accel-Buffering", "no");
 
-  res.write(": connected\n\n");
+  const writer = createSseWriter(res, {
+    ...(maxBufferedBytes !== undefined ? { maxBufferedBytes } : {}),
+    label: "optimize.sse",
+  });
+
+  const handleWriteResult = (result: {
+    ok: boolean;
+    reason?: string;
+  }): void => {
+    if (!result.ok) {
+      clientConnected = false;
+      if (!internalAbortController.signal.aborted) {
+        internalAbortController.abort();
+      }
+      // Auto-close the channel so the heartbeat interval and idle timer are
+      // cleared immediately. Without this, a consumer that forgets to wire the
+      // abort signal to close() would keep firing heartbeats every 15s against
+      // a dead socket forever.
+      close();
+    }
+  };
+
+  void writer.write(": connected\n\n").then(handleWriteResult);
   if (typeof res.flushHeaders === "function") {
     res.flushHeaders();
   }
@@ -43,6 +72,7 @@ export const createSseChannel = (
   req.on("aborted", onClientDisconnect);
 
   let idleTimer: NodeJS.Timeout | null = null;
+  let channelClosed = false;
 
   const resetIdleTimer = (): void => {
     if (idleTimer) {
@@ -67,12 +97,8 @@ export const createSseChannel = (
             !res.writableEnded &&
             clientConnected
           ) {
-            try {
-              resetIdleTimer();
-              res.write(": heartbeat\n\n");
-            } catch {
-              // Ignore write errors on dead connections.
-            }
+            resetIdleTimer();
+            void writer.write(": heartbeat\n\n").then(handleWriteResult);
           }
         }, heartbeatIntervalMs)
       : null;
@@ -86,24 +112,23 @@ export const createSseChannel = (
       return;
     }
     resetIdleTimer();
-    try {
-      res.write(`event: ${eventType}\n`);
-      res.write(`data: ${JSON.stringify(data)}\n\n`);
-    } catch (error) {
-      if (!clientConnected) {
-        return;
-      }
-      throw error;
-    }
+    void writer
+      .write(`event: ${eventType}\ndata: ${JSON.stringify(data)}\n\n`)
+      .then(handleWriteResult);
   };
 
   const close = (): void => {
+    if (channelClosed) {
+      return;
+    }
+    channelClosed = true;
     if (heartbeatTimer) {
       clearInterval(heartbeatTimer);
     }
     if (idleTimer) {
       clearTimeout(idleTimer);
     }
+    writer.close();
     res.removeListener("close", onClientDisconnect);
     req.removeListener("aborted", onClientDisconnect);
     if (!res.writableEnded) {

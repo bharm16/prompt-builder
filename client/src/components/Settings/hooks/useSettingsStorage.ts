@@ -13,17 +13,18 @@ const STORAGE_KEY = "app-settings";
 const FONT_SIZES = ["small", "medium", "large"] as const;
 const EXPORT_FORMATS = ["text", "markdown", "json"] as const;
 
+// Legacy storage shape may still carry `darkMode` from before the toggle was
+// removed (see ISSUE-36). `.partial()` accepts entries missing newer fields,
+// and Zod's default `.strip()` behavior discards the now-unknown `darkMode`
+// key cleanly — so old payloads round-trip through this hook without warning
+// or data loss.
 const SettingsSchema = z.object({
-  darkMode: z.boolean(),
   fontSize: z.enum(FONT_SIZES),
   autoSave: z.boolean(),
   exportFormat: z.enum(EXPORT_FORMATS),
 });
 
-const PartialSettingsSchema = SettingsSchema.partial();
-
 const DEFAULT_SETTINGS: AppSettings = {
-  darkMode: false,
   fontSize: "medium",
   autoSave: true,
   exportFormat: "markdown",
@@ -38,7 +39,7 @@ const loadSettings = (): AppSettings => {
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (!raw) return DEFAULT_SETTINGS;
-    const parsed = PartialSettingsSchema.safeParse(JSON.parse(raw));
+    const parsed = SettingsSchema.partial().safeParse(JSON.parse(raw));
     if (!parsed.success) return DEFAULT_SETTINGS;
     const cleaned = Object.fromEntries(
       Object.entries(parsed.data).filter(([, value]) => value !== undefined),

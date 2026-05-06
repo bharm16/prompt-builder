@@ -3,7 +3,7 @@ import type { Request, Response } from "express";
 import { logger } from "@infrastructure/Logger";
 import { sendApiError } from "@middleware/apiErrorResponse";
 import { GENERATION_ERROR_CODES } from "@routes/generationErrorCodes";
-import type { ApiErrorCode } from "@server/types/apiError";
+import type { ApiErrorCode } from "@shared/types/api";
 import type { PreviewRoutesServices } from "@routes/types";
 import { buildRefundKey, refundWithGuard } from "@services/credits/refundGuard";
 import type { ResolvedPrompt } from "@shared/types/asset";
@@ -16,6 +16,7 @@ type ImageStoryboardGenerateServices = Pick<
   | "userCreditService"
   | "assetService"
   | "requestIdempotencyService"
+  | "sessionService"
 >;
 
 const IMAGE_PREVIEW_CREDIT_COST = 1;
@@ -68,6 +69,7 @@ export const createImageStoryboardGenerateHandler =
     userCreditService,
     assetService,
     requestIdempotencyService,
+    sessionService,
   }: ImageStoryboardGenerateServices) =>
   async (req: Request, res: Response): Promise<Response | void> => {
     if (!storyboardPreviewService) {
@@ -94,8 +96,15 @@ export const createImageStoryboardGenerateHandler =
       });
     }
 
-    const { prompt, aspectRatio, seedImageUrl, speedMode, seed } =
-      parsedRequest.data;
+    const {
+      prompt,
+      aspectRatio,
+      seedImageUrl,
+      speedMode,
+      seed,
+      sessionId,
+      promptVersionId,
+    } = parsedRequest.data;
     const requestId = (req as Request & { id?: string }).id;
 
     const userId =
@@ -325,6 +334,85 @@ export const createImageStoryboardGenerateHandler =
         imageHosts,
       });
 
+      // ISSUE-12: server-authoritative persistence. When the client supplies
+      // sessionId + promptVersionId, append the generation record into the
+      // target version atomically so the client can render it from the
+      // session refetch — no local-only dispatch required.
+      let persistedGenerationId: string | null = null;
+      if (sessionId && promptVersionId && sessionService) {
+        const generationId = randomUUID();
+        const mediaAssetIds = (result.storagePaths ?? [])
+          .map((path) => path.split("/").filter(Boolean).pop() ?? null)
+          .filter((id): id is string => Boolean(id));
+        const generationRecord: Record<string, unknown> = {
+          id: generationId,
+          tier: "draft",
+          model: "flux-kontext",
+          mediaType: "image-sequence",
+          prompt,
+          status: "completed",
+          mediaUrls: result.imageUrls,
+          ...(mediaAssetIds.length ? { mediaAssetIds } : {}),
+          thumbnailUrl: result.baseImageUrl || result.imageUrls[0] || null,
+          promptVersionId,
+          completedAt: new Date().toISOString(),
+        };
+        try {
+          await sessionService.appendGenerationToVersion(
+            userId,
+            sessionId,
+            promptVersionId,
+            generationRecord,
+          );
+          persistedGenerationId = generationId;
+          logger.info("Storyboard generation persisted to session", {
+            userId,
+            sessionId,
+            promptVersionId,
+            generationId,
+          });
+        } catch (persistError) {
+          // Persistence failure does NOT void the already-charged generation —
+          // the media URLs are still returned so the user sees the result.
+          // Log and surface a soft warning in the response; a follow-up
+          // reconciliation path can reattach orphaned generations.
+          logger.error(
+            "Storyboard session persist failed; returning media without session write",
+            persistError instanceof Error
+              ? persistError
+              : new Error(String(persistError)),
+            {
+              userId,
+              sessionId,
+              promptVersionId,
+            },
+          );
+        }
+      }
+
+      // C7 server-side parity: surface the post-billing balance so the client
+      // can refresh its credit pill in one round-trip instead of falling back
+      // to a separate /api/credits fetch. Mirrors the videoGenerate handler.
+      // No `typeof === "function"` guard: `userCreditService` is a
+      // `UserCreditService` class instance (DI-resolved via routes.config),
+      // and the null-check at line 198 already gates this branch — so
+      // `getBalance` is statically guaranteed to exist.
+      let remainingCredits: number | null = null;
+      try {
+        remainingCredits = await userCreditService.getBalance(userId);
+      } catch (balanceError) {
+        logger.warn(
+          "Failed to resolve remaining credits after storyboard reservation",
+          {
+            userId,
+            error:
+              balanceError instanceof Error
+                ? balanceError.message
+                : String(balanceError),
+          },
+        );
+      }
+
       const responseBody = {
         success: true,
         data: {
@@ -332,7 +420,11 @@ export const createImageStoryboardGenerateHandler =
           storagePaths: result.storagePaths,
           deltas: result.deltas,
           baseImageUrl: result.baseImageUrl,
+          ...(persistedGenerationId
+            ? { generationId: persistedGenerationId }
+            : {}),
         },
+        ...(typeof remainingCredits === "number" ? { remainingCredits } : {}),
       } as Record<string, unknown>;
 
       if (idempotencyRecordId && requestIdempotencyService) {

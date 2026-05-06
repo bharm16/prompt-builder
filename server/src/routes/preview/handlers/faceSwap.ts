@@ -5,7 +5,7 @@ import type { PreviewRoutesServices } from "@routes/types";
 import { assertUrlSafe } from "@server/shared/urlValidation";
 import { sendApiError } from "@middleware/apiErrorResponse";
 import { GENERATION_ERROR_CODES } from "@routes/generationErrorCodes";
-import type { ApiErrorCode } from "@server/types/apiError";
+import type { ApiErrorCode } from "@shared/types/api";
 import { buildRefundKey, refundWithGuard } from "@services/credits/refundGuard";
 
 const FACE_SWAP_CREDIT_COST = 2;

@@ -2,7 +2,6 @@ export type FontSize = "small" | "medium" | "large";
 export type ExportFormat = "text" | "markdown" | "json";
 
 export interface AppSettings {
-  darkMode: boolean;
   fontSize: FontSize;
   autoSave: boolean;
   exportFormat: ExportFormat;

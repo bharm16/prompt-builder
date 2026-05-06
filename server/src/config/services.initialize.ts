@@ -5,7 +5,7 @@ import type { Bucket } from "@google-cloud/storage";
 import type { LLMClient } from "@clients/LLMClient";
 import type { ServiceConfig } from "./services/service-config.types.ts";
 import type { CapabilitiesProbeService } from "@services/capabilities/CapabilitiesProbeService";
-import { getRuntimeFlags } from "./runtime-flags";
+import { getRuntimeFlags, resolveAllFlags } from "./feature-flags.ts";
 
 // ────────────────────────────────────────────────────────────────
 // Shared helpers
@@ -103,28 +103,28 @@ async function initializeCommon(container: DIContainer): Promise<void> {
     process.env.VITEST_WORKER_ID;
   const runtimeFlags = getRuntimeFlags();
 
-  // Infrastructure startup checks (skip in test)
+  // Infrastructure startup checks (skip in test) — run in parallel
   if (!isTestEnv) {
     try {
-      await withTimeout("firebase-auth", async () => {
-        const auth = getAuth();
-        await auth.listUsers(1);
-      });
-
-      await withTimeout("firestore", async () => {
-        const firestore = getFirestore();
-        await firestore.listCollections();
-      });
-
-      await withTimeout("gcs-bucket", async () => {
-        const bucket = container.resolve<Bucket>("gcsBucket");
-        const [exists] = await bucket.exists();
-        if (!exists) {
-          throw new Error(
-            `Configured GCS bucket does not exist: ${bucket.name}`,
-          );
-        }
-      });
+      await Promise.all([
+        withTimeout("firebase-auth", async () => {
+          const auth = getAuth();
+          await auth.listUsers(1);
+        }),
+        withTimeout("firestore", async () => {
+          const firestore = getFirestore();
+          await firestore.listCollections();
+        }),
+        withTimeout("gcs-bucket", async () => {
+          const bucket = container.resolve<Bucket>("gcsBucket");
+          const [exists] = await bucket.exists();
+          if (!exists) {
+            throw new Error(
+              `Configured GCS bucket does not exist: ${bucket.name}`,
+            );
+          }
+        }),
+      ]);
 
       logger.info("✅ Infrastructure startup checks passed", {
         checks: ["firebase-auth", "firestore", "gcs-bucket"],
@@ -139,66 +139,81 @@ async function initializeCommon(container: DIContainer): Promise<void> {
     }
   }
 
-  // Validate LLM clients
-  const claudeClient = container.resolve<LLMClient | null>("claudeClient");
-  if (claudeClient) {
+  // Validate LLM clients — run in parallel
+  const openAIClient = container.resolve<LLMClient | null>("openAIClient");
+  const groqClient = container.resolve<LLMClient | null>("groqClient");
+  const qwenClient = container.resolve<LLMClient | null>("qwenClient");
+  const geminiClient = container.resolve<LLMClient | null>("geminiClient");
+
+  const llmValidations: Promise<void>[] = [];
+
+  if (openAIClient) {
     logger.info("Validating OpenAI API key...");
-    await validateLLMClient(container, {
-      client: claudeClient,
-      serviceName: "claudeClient",
-      successMessage: "✅ OpenAI API key validated successfully",
-      unhealthyMessage:
-        "⚠️  OpenAI API key validation failed - OpenAI adapter disabled",
-      failureMessage:
-        "⚠️  Failed to validate OpenAI API key - OpenAI adapter disabled",
-    });
+    llmValidations.push(
+      validateLLMClient(container, {
+        client: openAIClient,
+        serviceName: "openAIClient",
+        successMessage: "✅ OpenAI API key validated successfully",
+        unhealthyMessage:
+          "⚠️  OpenAI API key validation failed - OpenAI adapter disabled",
+        failureMessage:
+          "⚠️  Failed to validate OpenAI API key - OpenAI adapter disabled",
+      }),
+    );
   } else {
     logger.warn("OpenAI client not configured; relying on other providers");
   }
 
-  const groqClient = container.resolve<LLMClient | null>("groqClient");
   if (groqClient) {
     logger.info("Groq client initialized for adapter-based routing");
-    await validateLLMClient(container, {
-      client: groqClient,
-      serviceName: "groqClient",
-      successMessage: "✅ Groq API key validated successfully",
-      unhealthyMessage:
-        "⚠️  Groq API key validation failed - Groq adapter disabled",
-      failureMessage:
-        "⚠️  Failed to validate Groq API key - Groq adapter disabled",
-    });
+    llmValidations.push(
+      validateLLMClient(container, {
+        client: groqClient,
+        serviceName: "groqClient",
+        successMessage: "✅ Groq API key validated successfully",
+        unhealthyMessage:
+          "⚠️  Groq API key validation failed - Groq adapter disabled",
+        failureMessage:
+          "⚠️  Failed to validate Groq API key - Groq adapter disabled",
+      }),
+    );
   }
 
-  const qwenClient = container.resolve<LLMClient | null>("qwenClient");
   if (qwenClient) {
     logger.info("Qwen client initialized for adapter-based routing");
-    await validateLLMClient(container, {
-      client: qwenClient,
-      serviceName: "qwenClient",
-      successMessage: "✅ Qwen API key validated successfully",
-      unhealthyMessage: "⚠️  Qwen API key validation failed - adapter disabled",
-      failureMessage: "⚠️  Failed to validate Qwen API key - adapter disabled",
-    });
+    llmValidations.push(
+      validateLLMClient(container, {
+        client: qwenClient,
+        serviceName: "qwenClient",
+        successMessage: "✅ Qwen API key validated successfully",
+        unhealthyMessage:
+          "⚠️  Qwen API key validation failed - adapter disabled",
+        failureMessage:
+          "⚠️  Failed to validate Qwen API key - adapter disabled",
+      }),
+    );
   }
 
-  const geminiClient = container.resolve<LLMClient | null>("geminiClient");
   if (geminiClient) {
     logger.info("Gemini client initialized for adapter-based routing");
     const allowUnhealthyGemini = runtimeFlags.allowUnhealthyGemini;
-    await validateLLMClient(container, {
-      client: geminiClient,
-      serviceName: "geminiClient",
-      successMessage: "✅ Gemini API key validated successfully",
-      unhealthyMessage: "⚠️  Gemini API key validation failed",
-      failureMessage: "⚠️  Failed to validate Gemini API key",
-      allowUnhealthy: allowUnhealthyGemini,
-      disableUnhealthyMessage:
-        "⚠️  Gemini adapter disabled (health check failed)",
-      keepUnhealthyMessage:
-        "Keeping Gemini adapter enabled despite failed health check",
-    });
+    llmValidations.push(
+      validateLLMClient(container, {
+        client: geminiClient,
+        serviceName: "geminiClient",
+        successMessage: "✅ Gemini API key validated successfully",
+        unhealthyMessage: "⚠️  Gemini API key validation failed",
+        failureMessage: "⚠️  Failed to validate Gemini API key",
+        allowUnhealthy: allowUnhealthyGemini,
+        disableUnhealthyMessage:
+          "⚠️  Gemini adapter disabled (health check failed)",
+        keepUnhealthyMessage:
+          "Keeping Gemini adapter enabled despite failed health check",
+      }),
+    );
   }
+
+  await Promise.all(llmValidations);
 
   // Pre-resolve critical services to catch configuration errors early
   const serviceNames = [
@@ -206,7 +221,6 @@ async function initializeCommon(container: DIContainer): Promise<void> {
     "enhancementService",
     "sceneDetectionService",
     "promptCoherenceService",
-    "videoConceptService",
     "spanLabelingCacheService",
   ];
 
@@ -230,7 +244,7 @@ async function initializeCommon(container: DIContainer): Promise<void> {
 
   // Pre-warm LLM provider connections in the background (non-blocking)
   const llmClientsToWarm = [
-    claudeClient,
+    openAIClient,
     groqClient,
     qwenClient,
     geminiClient,
@@ -276,8 +290,6 @@ async function initializeApiServices(container: DIContainer): Promise<void> {
     process.env.NODE_ENV === "test" ||
     process.env.VITEST ||
     process.env.VITEST_WORKER_ID;
-  const runtimeFlags = getRuntimeFlags();
-  const { promptOutputOnly } = runtimeFlags;
 
   // GLiNER warmup (API role only)
   const { warmupGliner } = await import(
@@ -287,7 +299,6 @@ async function initializeApiServices(container: DIContainer): Promise<void> {
     "@llm/span-labeling/config/SpanLabelingConfig"
   );
   const shouldWarmGliner =
-    !promptOutputOnly &&
     NEURO_SYMBOLIC.ENABLED &&
     NEURO_SYMBOLIC.GLINER?.ENABLED &&
     NEURO_SYMBOLIC.GLINER.PREWARM_ON_STARTUP;
@@ -308,10 +319,9 @@ async function initializeApiServices(container: DIContainer): Promise<void> {
       logger.warn("⚠️ GLiNER warmup failed", { error: errorMessage });
     }
   } else {
-    const reason = promptOutputOnly
-      ? "PROMPT_OUTPUT_ONLY"
-      : "prewarm disabled or GLiNER disabled";
-    logger.info("ℹ️ GLiNER warmup skipped", { reason });
+    logger.info("ℹ️ GLiNER warmup skipped", {
+      reason: "prewarm disabled or GLiNER disabled",
+    });
   }
 
   // Depth estimation warmup (API role only, non-blocking)
@@ -328,10 +338,9 @@ async function initializeApiServices(container: DIContainer): Promise<void> {
       "https://storage.googleapis.com/generativeai-downloads/images/cat.jpg",
     warmupOnStartup: depthConfig.warmupOnStartup,
     warmupTimeoutMs: depthConfig.warmupTimeoutMs,
-    promptOutputOnly: config.features.promptOutputOnly,
   });
 
-  if (!isTestEnv && !promptOutputOnly) {
+  if (!isTestEnv) {
     warmupDepthEstimationOnStartup()
       .then((depthWarmup) => {
         if (depthWarmup.success) {
@@ -356,8 +365,7 @@ async function initializeApiServices(container: DIContainer): Promise<void> {
         logger.warn("⚠️ Depth warmup failed", { error: errorMessage });
       });
   } else {
-    const reason = promptOutputOnly ? "PROMPT_OUTPUT_ONLY" : "test environment";
-    logger.info("ℹ️ Depth warmup skipped", { reason });
+    logger.info("ℹ️ Depth warmup skipped", { reason: "test environment" });
   }
 }
 
@@ -367,7 +375,6 @@ async function initializeApiServices(container: DIContainer): Promise<void> {
 
 async function initializeWorkerServices(container: DIContainer): Promise<void> {
   const runtimeFlags = getRuntimeFlags();
-  const { promptOutputOnly } = runtimeFlags;
 
   // Depth estimation module config is needed by worker role too
   const { setDepthEstimationModuleConfig } = await import(
@@ -384,13 +391,7 @@ async function initializeWorkerServices(container: DIContainer): Promise<void> {
       "https://storage.googleapis.com/generativeai-downloads/images/cat.jpg",
     warmupOnStartup: depthConfig.warmupOnStartup,
     warmupTimeoutMs: depthConfig.warmupTimeoutMs,
-    promptOutputOnly: config.features.promptOutputOnly,
   });
-
-  if (promptOutputOnly) {
-    logger.info("ℹ️ Video background services skipped (PROMPT_OUTPUT_ONLY)");
-    return;
-  }
 
   // Dynamic imports to keep worker-specific types lazy
   const { CreditRefundSweeper } = await import(
@@ -514,6 +515,15 @@ export async function initializeServices(
 ): Promise<DIContainer> {
   logger.info("Initializing services...");
   const runtimeFlags = getRuntimeFlags();
+
+  // Surface any deprecated env var names once at startup so operators know to
+  // update their deploy configs. Legacy names still work — this is a heads-up.
+  const { flags, deprecations } = resolveAllFlags(process.env);
+  logger.info("Feature flags resolved", { flags });
+  for (const notice of deprecations) {
+    logger.warn(notice, { operation: "featureFlags.deprecation" });
+  }
+
   const isTestEnv =
     process.env.NODE_ENV === "test" ||
     process.env.VITEST ||
@@ -545,7 +555,6 @@ export async function initializeServices(
         "https://storage.googleapis.com/generativeai-downloads/images/cat.jpg",
       warmupOnStartup: depthConfig.warmupOnStartup,
       warmupTimeoutMs: depthConfig.warmupTimeoutMs,
-      promptOutputOnly: config.features.promptOutputOnly,
     });
   }
 

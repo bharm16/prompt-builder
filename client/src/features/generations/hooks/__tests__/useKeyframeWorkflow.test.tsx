@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { act, renderHook } from "@testing-library/react";
-import type { KeyframeTile } from "@components/ToolSidebar/types";
+import type { KeyframeTile } from "@features/generation-controls";
 import { useKeyframeWorkflow } from "../useKeyframeWorkflow";
 
 const buildStartFrame = (

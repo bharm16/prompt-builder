@@ -183,17 +183,6 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
   },
 
   /**
-   * Style transfer for enhancement suggestions
-   */
-  enhance_style_transfer: {
-    client: "openai",
-    model: "gpt-4o-mini-2024-07-18",
-    temperature: 0.7,
-    maxTokens: 2048,
-    timeout: 30000,
-  },
-
-  /**
    * Suggestion deduplication (diversity enforcement)
    */
   enhance_diversity: {

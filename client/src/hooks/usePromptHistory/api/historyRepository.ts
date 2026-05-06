@@ -85,7 +85,7 @@ export async function loadFromFirestore(
     return normalized;
   } catch (error) {
     logger.endTimer("loadFromFirestore");
-    log.error("Failed to load from Firestore", error as Error, { userId });
+    // PromptRepository logs this with full context — rethrow without re-logging.
     throw error;
   }
 }
@@ -101,7 +101,7 @@ export async function loadFromLocalStorage(): Promise<PromptHistoryEntry[]> {
     const prompts = await repository.getUserPrompts("", 100);
     return normalizeEntries(prompts);
   } catch (error) {
-    log.error("Failed to load from localStorage", error as Error);
+    // LocalStoragePromptRepository already logged — rethrow cleanly.
     throw error;
   }
 }
@@ -156,7 +156,7 @@ export async function saveEntry(
     return { uuid: result.uuid, id: result.id };
   } catch (error) {
     logger.endTimer("saveEntry");
-    log.error("Failed to save entry", error as Error);
+    // PromptRepository logs this with full context — rethrow without re-logging.
     throw error;
   }
 }

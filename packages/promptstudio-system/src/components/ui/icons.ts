@@ -160,3 +160,8 @@ export { Package as Box } from "@phosphor-icons/react";
 
 // Types
 export type { IconProps, IconWeight } from "@phosphor-icons/react";
+
+// Phosphor's runtime Icon type, re-exported so consumers can type icon
+// references without round-tripping through `ComponentType<{className?: string}>`
+// (which is incompatible under React 18 + exactOptionalPropertyTypes).
+export type { Icon as IconType } from "@phosphor-icons/react";

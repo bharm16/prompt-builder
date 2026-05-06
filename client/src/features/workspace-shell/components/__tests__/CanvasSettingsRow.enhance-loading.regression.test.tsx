@@ -29,36 +29,33 @@ vi.mock(
   }),
 );
 
-vi.mock(
-  "@features/generation-controls/context/GenerationControlsStore",
-  () => ({
-    useGenerationControlsStoreActions: () => ({
-      mergeGenerationParams: vi.fn(),
-      setVideoTier: vi.fn(),
-      setStartFrame: vi.fn(),
-      clearStartFrame: vi.fn(),
-      setEndFrame: vi.fn(),
-      clearEndFrame: vi.fn(),
-      addVideoReference: vi.fn(),
-      removeVideoReference: vi.fn(),
-      updateVideoReferenceType: vi.fn(),
-      clearExtendVideo: vi.fn(),
-      setCameraMotion: vi.fn(),
-    }),
-    useGenerationControlsStoreState: () => ({
-      domain: {
-        generationParams: { aspect_ratio: "16:9", duration_s: 5 },
-        selectedModel: "test-model",
-        videoTier: "standard",
-        startFrame: null,
-        endFrame: null,
-        cameraMotion: null,
-        videoReferenceImages: [],
-        extendVideo: null,
-      },
-    }),
+vi.mock("@features/generation-controls", () => ({
+  useGenerationControlsStoreActions: () => ({
+    mergeGenerationParams: vi.fn(),
+    setVideoTier: vi.fn(),
+    setStartFrame: vi.fn(),
+    clearStartFrame: vi.fn(),
+    setEndFrame: vi.fn(),
+    clearEndFrame: vi.fn(),
+    addVideoReference: vi.fn(),
+    removeVideoReference: vi.fn(),
+    updateVideoReferenceType: vi.fn(),
+    clearExtendVideo: vi.fn(),
+    setCameraMotion: vi.fn(),
   }),
-);
+  useGenerationControlsStoreState: () => ({
+    domain: {
+      generationParams: { aspect_ratio: "16:9", duration_s: 5 },
+      selectedModel: "test-model",
+      videoTier: "standard",
+      startFrame: null,
+      endFrame: null,
+      cameraMotion: null,
+      videoReferenceImages: [],
+      extendVideo: null,
+    },
+  }),
+}));
 
 vi.mock(
   "@/components/ToolSidebar/components/panels/GenerationControlsPanel/hooks/useCapabilitiesClamping",

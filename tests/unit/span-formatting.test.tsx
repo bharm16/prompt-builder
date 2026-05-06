@@ -1,7 +1,7 @@
 import type React from "react";
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
-import { scrollToSpan } from "@features/prompt-optimizer/SpanBentoGrid/utils/spanFormatting";
+import { scrollToSpan } from "@features/prompt-optimizer/SpanCategoryAccordion/utils/spanFormatting";
 
 const { warnSpy } = vi.hoisted(() => ({
   warnSpy: vi.fn(),

@@ -142,6 +142,11 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
     }
   }, [generateRequestId, handleGenerate, isVisible]);
 
+  // Surfaces signed-URL expiry and load failures that the <video> element would otherwise swallow.
+  const handleVideoError = React.useCallback(() => {
+    onErrorChange?.("Video failed to load. Please regenerate.");
+  }, [onErrorChange]);
+
   if (!isVisible) return null;
 
   if (!displayVideoUrl) return null;
@@ -153,6 +158,7 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
       muted
       loop
       playsInline
+      onError={handleVideoError}
       className="h-full w-full object-cover pointer-events-none"
     />
   );

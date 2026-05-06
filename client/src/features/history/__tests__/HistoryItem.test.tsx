@@ -3,7 +3,7 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { HistoryItem } from "../components/HistoryItem";
-import type { PromptHistoryEntry } from "@features/prompt-optimizer/types/domain/prompt-session";
+import type { PromptHistoryEntry } from "@features/prompt-optimizer";
 import type { PromptRowStage } from "../types";
 
 const createEntry = (

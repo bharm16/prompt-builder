@@ -21,7 +21,7 @@ export class EnhancementV2Engine {
 
   constructor(private readonly dependencies: EnhancementV2Dependencies) {
     this.registry = new SlotPolicyRegistry(dependencies.policyVersion);
-    this.scorer = new V2CandidateScorer(dependencies.videoService);
+    this.scorer = new V2CandidateScorer(dependencies.videoPromptService);
   }
 
   async execute(
@@ -228,7 +228,7 @@ export class EnhancementV2Engine {
     context: EnhancementV2RequestContext,
     policy: SlotPolicy,
   ): Promise<Suggestion[]> {
-    const operationConfig = this.dependencies.aiService.getOperationConfig(
+    const operationConfig = this.dependencies.aiService.getOperationConfig?.(
       "enhance_suggestions",
     );
     const temperature =

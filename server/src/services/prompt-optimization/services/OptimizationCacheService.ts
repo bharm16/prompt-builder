@@ -6,7 +6,7 @@ import type {
   StructuredOptimizationArtifact,
 } from "../types";
 import { OptimizationMode, InferredContext } from "../types";
-import crypto from "crypto";
+import { sha256Hex } from "@utils/hash";
 import { logger } from "@infrastructure/Logger";
 
 export class OptimizationCacheService {
@@ -71,11 +71,12 @@ export class OptimizationCacheService {
     const lockedSpanSignature = this.buildLockedSpanSignature(lockedSpans);
     const generationSignature =
       this.buildGenerationParamsSignature(generationParams);
+    const promptHash = sha256Hex(prompt, 16);
     const parts = [
       "prompt-opt-v4",
       mode,
       targetModel || "generic",
-      prompt.substring(0, 100),
+      promptHash,
       context ? JSON.stringify(context) : "",
       brainstormContext ? JSON.stringify(brainstormContext) : "",
       generationSignature,
@@ -109,11 +110,7 @@ export class OptimizationCacheService {
       generationParams: this.normalizeGenerationParams(params.generationParams),
       lockedSpans: this.normalizeLockedSpans(params.lockedSpans),
     };
-    const promptHash = crypto
-      .createHash("sha256")
-      .update(JSON.stringify(normalizedPayload))
-      .digest("hex")
-      .substring(0, 24);
+    const promptHash = sha256Hex(JSON.stringify(normalizedPayload), 24);
 
     return ["prompt-opt-v5", "structured-artifact", promptHash].join("::");
   }
@@ -137,11 +134,7 @@ export class OptimizationCacheService {
       leftCtx: span.leftCtx ?? null,
       rightCtx: span.rightCtx ?? null,
     }));
-    return crypto
-      .createHash("sha256")
-      .update(JSON.stringify(payload))
-      .digest("hex")
-      .substring(0, 16);
+    return sha256Hex(JSON.stringify(payload), 16);
   }
 
   private buildGenerationParamsSignature(

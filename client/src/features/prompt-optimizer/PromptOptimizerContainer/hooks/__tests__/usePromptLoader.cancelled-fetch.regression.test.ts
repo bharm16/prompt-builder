@@ -72,15 +72,16 @@ describe("regression: prompt hydration completes even when effect dependencies c
       keyframes: [],
     });
 
-    const params = buildParams();
-    // Use a fresh function reference for upsertHistoryEntry so we can change it
-    const upsertV1 = vi.fn();
-    const paramsV1 = { ...params, upsertHistoryEntry: upsertV1 };
+    // The effect depends on user?.uid — a user identity change mid-fetch is
+    // a realistic cancellation trigger (auth re-resolve, account switch).
+    // upsertHistoryEntry is intentionally accessed via a ref so it does
+    // NOT re-run the effect; use a dep that is actually in the list.
+    const params = buildParams({ user: { uid: "user-1" } });
 
     const { rerender } = renderHook(
       ({ hookParams }: { hookParams: LoaderParams }) =>
         usePromptLoader(hookParams),
-      { initialProps: { hookParams: paramsV1 } },
+      { initialProps: { hookParams: params } },
     );
 
     // The first effect should have started the fetch
@@ -88,10 +89,9 @@ describe("regression: prompt hydration completes even when effect dependencies c
       expect(mockGetById).toHaveBeenCalledTimes(1);
     });
 
-    // Simulate a dependency change (e.g. history loaded, causing upsertHistoryEntry to recreate).
-    // This will cancel the in-flight effect and re-run usePromptLoader.
-    const upsertV2 = vi.fn();
-    const paramsV2 = { ...params, upsertHistoryEntry: upsertV2 };
+    // Simulate a dependency change (user identity) while the fetch is in-flight.
+    // The cleanup should clear the dedup guard so the re-run fetches again.
+    const paramsV2 = { ...params, user: { uid: "user-2" } };
     rerender({ hookParams: paramsV2 });
 
     // Now resolve the first fetch — but it was cancelled, so its data won't be applied

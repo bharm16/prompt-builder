@@ -18,7 +18,7 @@ describe("FallbackRegenerationService regression", () => {
   it("attempts fallback regeneration even when isVideoPrompt is false if sanitized output is empty", async () => {
     mockEnforceJSON.mockResolvedValue([{ text: "gentle handheld drift" }]);
 
-    const videoService = {
+    const videoPromptService = {
       getVideoFallbackConstraints: vi
         .fn()
         .mockReturnValueOnce({
@@ -45,7 +45,7 @@ describe("FallbackRegenerationService regression", () => {
     };
 
     const service = new FallbackRegenerationService(
-      videoService,
+      videoPromptService,
       promptBuilder,
       validationService,
       diversityEnforcer,
@@ -86,7 +86,7 @@ describe("FallbackRegenerationService regression", () => {
       .mockResolvedValueOnce([{ text: "soft background blur" }])
       .mockResolvedValueOnce([{ text: "low f-number" }]);
 
-    const videoService = {
+    const videoPromptService = {
       getVideoFallbackConstraints: vi.fn().mockReturnValue(null),
     } as unknown as VideoService;
 
@@ -117,7 +117,7 @@ describe("FallbackRegenerationService regression", () => {
     };
 
     const service = new FallbackRegenerationService(
-      videoService,
+      videoPromptService,
       promptBuilder,
       validationService,
       diversityEnforcer,
@@ -170,7 +170,9 @@ describe("FallbackRegenerationService regression", () => {
         expect.stringContaining("exact grammatical slot"),
       ]),
     );
-    expect(videoService.getVideoFallbackConstraints).not.toHaveBeenCalled();
+    expect(
+      videoPromptService.getVideoFallbackConstraints,
+    ).not.toHaveBeenCalled();
   });
 
   it("uses short-span in-category retries so empty blocking location spans can recover without falling back to micro", async () => {
@@ -178,7 +180,7 @@ describe("FallbackRegenerationService regression", () => {
       .mockResolvedValueOnce([{ text: "sun-dappled autumn meadow" }])
       .mockResolvedValueOnce([{ text: "sunlit autumn meadow" }]);
 
-    const videoService = {
+    const videoPromptService = {
       getVideoFallbackConstraints: vi.fn().mockReturnValue(null),
     } as unknown as VideoService;
 
@@ -211,7 +213,7 @@ describe("FallbackRegenerationService regression", () => {
     };
 
     const service = new FallbackRegenerationService(
-      videoService,
+      videoPromptService,
       promptBuilder,
       validationService,
       diversityEnforcer,

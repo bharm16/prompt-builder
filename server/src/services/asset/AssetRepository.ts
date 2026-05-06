@@ -32,7 +32,13 @@ export interface ProcessedImageInput {
   format?: string;
 }
 
+export interface GetByTypeResult {
+  items: Asset[];
+  hasMore: boolean;
+}
+
 const MAX_IN_QUERY = 10;
+const MAX_BATCH_WRITES = 500;
 
 function buildDownloadUrl(
   bucketName: string,
@@ -266,11 +272,14 @@ export class AssetRepository {
       batches.push(normalizedTriggers.slice(i, i + MAX_IN_QUERY));
     }
 
+    const batchResults = await Promise.all(
+      batches.map((batch) =>
+        this.getAssetsCollection(userId).where("trigger", "in", batch).get(),
+      ),
+    );
+
     const results: Asset[] = [];
-    for (const batch of batches) {
-      const snapshot = await this.getAssetsCollection(userId)
-        .where("trigger", "in", batch)
-        .get();
+    for (const snapshot of batchResults) {
       results.push(
         ...snapshot.docs.map((doc) =>
           refreshAssetUrls(doc.data() as Asset, this.bucketName),
@@ -279,6 +288,30 @@ export class AssetRepository {
     }
 
     return results;
+  }
+
+  /**
+   * Find assets whose trigger starts with the given prefix.
+   * Expects a pre-normalized prefix (lowercase, no leading '@').
+   */
+  async getByTriggerPrefix(
+    userId: string,
+    prefix: string,
+    limit: number,
+  ): Promise<Asset[]> {
+    if (!prefix) return [];
+
+    const cappedLimit = Math.min(limit, 50);
+
+    const snapshot = await this.getAssetsCollection(userId)
+      .where("trigger", ">=", prefix)
+      .where("trigger", "<", prefix + "\uf8ff")
+      .limit(cappedLimit)
+      .get();
+
+    return snapshot.docs.map((doc) =>
+      refreshAssetUrls(doc.data() as Asset, this.bucketName),
+    );
   }
 
   async getAll(
@@ -312,14 +345,34 @@ export class AssetRepository {
     );
   }
 
-  async getByType(userId: string, type: AssetType): Promise<Asset[]> {
+  /**
+   * Fetch all assets of a given type for a user.
+   *
+   * The `limit` cap exists to bound memory usage and Firestore read cost:
+   * without it, a user with a large asset library could trigger unbounded
+   * document reads on every call. Defaults to 200, which covers typical
+   * libraries while preventing pathological cases.
+   *
+   * Returns a structured result so callers can detect when results were
+   * truncated. Internally fetches `limit + 1` rows as a probe — if the probe
+   * row exists, `hasMore` is true and the excess row is sliced off.
+   */
+  async getByType(
+    userId: string,
+    type: AssetType,
+    limit: number = 200,
+  ): Promise<GetByTypeResult> {
     const snapshot = await this.getAssetsCollection(userId)
       .where("type", "==", type)
       .orderBy("updatedAt", "desc")
+      .limit(limit + 1)
       .get();
-    return snapshot.docs.map((doc) =>
+    const allItems = snapshot.docs.map((doc) =>
       refreshAssetUrls(doc.data() as Asset, this.bucketName),
     );
+    const hasMore = allItems.length > limit;
+    const items = hasMore ? allItems.slice(0, limit) : allItems;
+    return { items, hasMore };
   }
 
   async update(
@@ -727,6 +780,73 @@ export class AssetRepository {
         operation,
         userId,
         assetId: input.assetId,
+        duration: Math.round(performance.now() - startTime),
+      });
+      throw error;
+    }
+  }
+
+  async recordBulkUsage(
+    userId: string,
+    records: Array<{
+      assetId: string;
+      assetType: AssetType;
+      promptHash: string;
+      promptLength: number;
+      expandedHash: string;
+      expandedLength: number;
+    }>,
+  ): Promise<void> {
+    if (!records.length) return;
+
+    const operation = "recordBulkUsage";
+    const startTime = performance.now();
+    this.log.debug("Starting operation.", {
+      operation,
+      userId,
+      recordCount: records.length,
+    });
+
+    try {
+      const now = new Date().toISOString();
+      const usageCollection = this.getUsageCollection(userId);
+
+      const chunks: Array<typeof records> = [];
+      for (let i = 0; i < records.length; i += MAX_BATCH_WRITES) {
+        chunks.push(records.slice(i, i + MAX_BATCH_WRITES));
+      }
+
+      for (const chunk of chunks) {
+        const batch = this.db.batch();
+        for (const record of chunk) {
+          const usageId = `usage_${uuidv4().replace(/-/g, "").slice(0, 12)}`;
+          const docRef = usageCollection.doc(usageId);
+          batch.set(docRef, {
+            id: usageId,
+            assetId: record.assetId,
+            assetType: record.assetType,
+            promptHash: record.promptHash,
+            promptLength: record.promptLength,
+            expandedHash: record.expandedHash,
+            expandedLength: record.expandedLength,
+            createdAt: now,
+          });
+        }
+        await batch.commit();
+      }
+      this.log.debug("Operation completed.", {
+        operation,
+        userId,
+        recordCount: records.length,
+        duration: Math.round(performance.now() - startTime),
+      });
+    } catch (error) {
+      const errorObj =
+        error instanceof Error ? error : new Error(String(error));
+      this.log.error("Operation failed.", errorObj, {
+        operation,
+        userId,
+        recordCount: records.length,
         duration: Math.round(performance.now() - startTime),
       });
       throw error;

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef } from "react";
+import debounce from "lodash/debounce";
 import type { CapabilityValues } from "@shared/capabilities";
 import type { PromptHistory, PromptOptimizer } from "../types";
-import { debounce } from "../../utils/debounce";
 
 interface UseDraftHistorySyncOptions {
   currentPromptUuid: string | null;

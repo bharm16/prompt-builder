@@ -10,6 +10,9 @@ let snapshotCallback:
   | null = null;
 let errorCallback: ((err: Error) => void) | null = null;
 const mockUnsubscribe = vi.fn();
+const { fetchCreditBalanceMock } = vi.hoisted(() => ({
+  fetchCreditBalanceMock: vi.fn(async () => 42),
+}));
 
 vi.mock("firebase/firestore", () => ({
   doc: vi.fn(),
@@ -22,6 +25,10 @@ vi.mock("firebase/firestore", () => ({
 
 vi.mock("@/config/firebase", () => ({
   db: {},
+}));
+
+vi.mock("@/features/billing/api/billingApi", () => ({
+  fetchCreditBalance: fetchCreditBalanceMock,
 }));
 
 import { useUserCreditBalance } from "@hooks/useUserCreditBalance";
@@ -59,24 +66,32 @@ describe("useUserCreditBalance", () => {
   });
 
   describe("edge cases - normalizeBalance behavior", () => {
-    it("returns 0 for undefined credits field", () => {
+    it("falls back to API fetch (balance stays null) for undefined credits field", () => {
+      // When Firestore doesn't have a credits field yet, the hook deliberately
+      // does NOT settle on 0 — it triggers refreshBalanceFromApi() and keeps
+      // the previous balance (null in first snapshot). Preventing a 0-flash
+      // when the REST API has a fresher number.
       const { result } = renderHook(() => useUserCreditBalance("user-1"));
 
       act(() => {
         snapshotCallback?.({ data: () => ({}) });
       });
 
-      expect(result.current.balance).toBe(0);
+      expect(result.current.balance).toBeNull();
+      // The whole point of staying null is that the REST fallback is doing
+      // the real work — if that call silently stopped firing, balance would
+      // stay null forever and this test would still pass. Assert it directly.
+      expect(fetchCreditBalanceMock).toHaveBeenCalled();
     });
 
-    it("returns 0 for null credits field", () => {
+    it("falls back to API fetch (balance stays null) for null credits field", () => {
       const { result } = renderHook(() => useUserCreditBalance("user-1"));
 
       act(() => {
         snapshotCallback?.({ data: () => ({ credits: null }) });
       });
 
-      expect(result.current.balance).toBe(0);
+      expect(result.current.balance).toBeNull();
     });
 
     it("returns 0 for string credits", () => {
@@ -129,14 +144,14 @@ describe("useUserCreditBalance", () => {
       expect(result.current.balance).toBe(99);
     });
 
-    it("returns 0 when snapshot data is undefined", () => {
+    it("falls back to API fetch (balance stays null) when snapshot data is undefined", () => {
       const { result } = renderHook(() => useUserCreditBalance("user-1"));
 
       act(() => {
         snapshotCallback?.({ data: () => undefined });
       });
 
-      expect(result.current.balance).toBe(0);
+      expect(result.current.balance).toBeNull();
     });
   });
 

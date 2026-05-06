@@ -1,4 +1,4 @@
-# Vidra (PromptCanvas) - Competitive Positioning & Business Value
+# Vidra - Competitive Positioning & Business Value
 
 ## Executive Summary
 

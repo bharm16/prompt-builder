@@ -11,10 +11,20 @@ import type {
   LabelSpansPayload,
   LabelSpansResponse,
 } from "./spanLabelingTypes";
-import { buildLabelSpansBody } from "./spanLabelingRequest";
 import { buildRequestError } from "./spanLabelingErrors";
 import { parseLabelSpansResponse } from "./spanLabelingResponse";
 import { readSpanLabelStream } from "./spanLabelingStream";
+
+function buildLabelSpansBody(payload: LabelSpansPayload): string {
+  return JSON.stringify({
+    text: payload.text,
+    maxSpans: payload.maxSpans,
+    minConfidence: payload.minConfidence,
+    policy: payload.policy,
+    templateVersion: payload.templateVersion,
+    isI2VMode: payload.isI2VMode,
+  });
+}
 
 /**
  * Span Labeling API

@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { VIDEO_DRAFT_MODEL } from "@/components/ToolSidebar/config/modelConfig";
 import { useGenerationsRuntime } from "../useGenerationsRuntime";
 import type { CapabilitiesSchema } from "@shared/capabilities";
-import type { ExtendVideoSource } from "@features/generation-controls/context/generationControlsStoreTypes";
+import type { ExtendVideoSource } from "@features/generation-controls";
 
 const setControlsMock = vi.fn();
 const updateShotMock = vi.fn().mockResolvedValue(undefined);
@@ -135,29 +135,26 @@ vi.mock(
   }),
 );
 
-vi.mock(
-  "@features/generation-controls/context/GenerationControlsStore",
-  () => ({
-    useGenerationControlsStoreState: () => ({
-      domain: {
-        selectedModel: mockSelectedModel,
-        keyframes: [],
-        startFrame: null,
-        endFrame: null,
-        videoReferenceImages: [],
-        extendVideo: mockExtendVideo,
-        cameraMotion: null,
-        subjectMotion: "",
-      },
-    }),
-    useGenerationControlsStoreActions: () => ({
-      setStartFrame: vi.fn(),
-      clearStartFrame: vi.fn(),
-      setExtendVideo: vi.fn(),
-      clearExtendVideo: clearExtendVideoMock,
-    }),
+vi.mock("@features/generation-controls", () => ({
+  useGenerationControlsStoreState: () => ({
+    domain: {
+      selectedModel: mockSelectedModel,
+      keyframes: [],
+      startFrame: null,
+      endFrame: null,
+      videoReferenceImages: [],
+      extendVideo: mockExtendVideo,
+      cameraMotion: null,
+      subjectMotion: "",
+    },
   }),
-);
+  useGenerationControlsStoreActions: () => ({
+    setStartFrame: vi.fn(),
+    clearStartFrame: vi.fn(),
+    setExtendVideo: vi.fn(),
+    clearExtendVideo: clearExtendVideoMock,
+  }),
+}));
 
 vi.mock("@/features/prompt-optimizer/hooks/useCapabilities", () => ({
   useCapabilities: () => ({

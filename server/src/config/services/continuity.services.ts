@@ -11,8 +11,6 @@ import {
   AnchorService,
   CharacterKeyframeService,
   ContinuityMediaService,
-  ContinuityPostProcessingService,
-  ContinuityProviderService,
   ContinuitySessionService,
   ContinuitySessionStore,
   ContinuityShotGenerator,
@@ -26,13 +24,17 @@ import {
   StyleReferenceService,
 } from "@services/continuity";
 import type { ServiceConfig } from "./service-config.types.ts";
+import { createDepthEstimationServiceForUser } from "@services/convergence/depth";
+import type { StorageService as ConvergenceStorageService } from "@services/convergence/storage";
+import type { DepthEstimationFactory } from "@services/continuity/ports/DepthEstimationFactory";
+import type { SessionStorePort } from "@services/continuity/ports/SessionStorePort";
 
 export function registerContinuityServices(container: DIContainer): void {
   container.register(
     "continuitySessionStore",
-    () => new ContinuitySessionStore(),
-    [],
-    { singleton: true },
+    (sessionStore: SessionStorePort) =>
+      new ContinuitySessionStore(sessionStore),
+    ["sessionStore"],
   );
 
   container.register(
@@ -40,7 +42,6 @@ export function registerContinuityServices(container: DIContainer): void {
     (storageService: AppStorageService) =>
       new FrameBridgeService(storageService),
     ["storageService"],
-    { singleton: true },
   );
 
   container.register(
@@ -52,7 +53,6 @@ export function registerContinuityServices(container: DIContainer): void {
         config.continuity.ipAdapterModel,
       ),
     ["storageService", "config"],
-    { singleton: true },
   );
 
   container.register(
@@ -76,27 +76,23 @@ export function registerContinuityServices(container: DIContainer): void {
       );
     },
     ["keyframeGenerationService", "assetService", "storageService"],
-    { singleton: true },
   );
 
   container.register(
     "providerStyleAdapter",
     () => new ProviderStyleAdapter(),
     [],
-    { singleton: true },
   );
   container.register(
     "seedPersistenceService",
     () => new SeedPersistenceService(),
     [],
-    { singleton: true },
   );
 
   container.register(
     "styleAnalysisService",
     (aiService: AIModelService) => new StyleAnalysisService(aiService),
     ["aiService"],
-    { singleton: true },
   );
 
   container.register(
@@ -104,7 +100,6 @@ export function registerContinuityServices(container: DIContainer): void {
     (providerStyleAdapter: ProviderStyleAdapter) =>
       new AnchorService(providerStyleAdapter),
     ["providerStyleAdapter"],
-    { singleton: true },
   );
 
   container.register(
@@ -112,7 +107,6 @@ export function registerContinuityServices(container: DIContainer): void {
     (videoAssetStore: VideoAssetStore, storageService: AppStorageService) =>
       new GradingService(videoAssetStore, storageService),
     ["videoAssetStore", "storageService"],
-    { singleton: true },
   );
 
   container.register(
@@ -126,7 +120,17 @@ export function registerContinuityServices(container: DIContainer): void {
         disableClip: config.continuity.disableClip,
       }),
     ["faceEmbeddingService", "storageService", "config"],
-    { singleton: true },
+  );
+
+  container.register(
+    "continuityDepthEstimationFactory",
+    (storageService: AppStorageService): DepthEstimationFactory =>
+      (userId: string) =>
+        createDepthEstimationServiceForUser(
+          storageService as unknown as ConvergenceStorageService,
+          userId,
+        ),
+    ["storageService"],
   );
 
   container.register(
@@ -134,9 +138,18 @@ export function registerContinuityServices(container: DIContainer): void {
     (
       storageService: AppStorageService,
       frameBridgeService: FrameBridgeService,
-    ) => new SceneProxyService(storageService, frameBridgeService),
-    ["storageService", "frameBridgeService"],
-    { singleton: true },
+      depthEstimationFactory: DepthEstimationFactory,
+    ) =>
+      new SceneProxyService(
+        storageService,
+        frameBridgeService,
+        depthEstimationFactory,
+      ),
+    [
+      "storageService",
+      "frameBridgeService",
+      "continuityDepthEstimationFactory",
+    ],
   );
 
   container.register(
@@ -171,11 +184,6 @@ export function registerContinuityServices(container: DIContainer): void {
         );
       }
 
-      const providerService = new ContinuityProviderService(
-        anchorService,
-        providerStyleAdapter,
-        seedPersistenceService,
-      );
       const mediaService = new ContinuityMediaService(
         frameBridgeService,
         styleReferenceService,
@@ -184,23 +192,22 @@ export function registerContinuityServices(container: DIContainer): void {
         assetService,
         storageService,
       );
-      const postProcessingService = new ContinuityPostProcessingService(
+      const shotGenerator = new ContinuityShotGenerator(
+        providerStyleAdapter,
+        anchorService,
+        seedPersistenceService,
+        mediaService,
         gradingService,
         qualityGateService,
         sceneProxyService,
-      );
-      const shotGenerator = new ContinuityShotGenerator(
-        providerService,
-        mediaService,
-        postProcessingService,
         characterKeyframeService,
         continuitySessionStore,
       );
 
       return new ContinuitySessionService(
-        providerService,
+        providerStyleAdapter,
         mediaService,
-        postProcessingService,
+        sceneProxyService,
         shotGenerator,
         continuitySessionStore,
       );

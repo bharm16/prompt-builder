@@ -1,4 +1,4 @@
-import type { PromptHistoryEntry } from "@features/prompt-optimizer/types/domain/prompt-session";
+import type { PromptHistoryEntry } from "@features/prompt-optimizer";
 
 export function normalizeTitle(value: string): string {
   return value.trim().replace(/\s+/g, " ");
@@ -11,8 +11,12 @@ export function resolveEntryTitle(entry: PromptHistoryEntry): string {
   return deriveBaseTitle(entry.input);
 }
 
-export function extractDisambiguator(input: string): string | null {
+export function extractDisambiguator(
+  input: string,
+  excludeTokens?: string,
+): string | null {
   const lower = input.toLowerCase();
+  const excludedLower = (excludeTokens ?? "").toLowerCase();
   const priorities = [
     { key: "night", label: "night" },
     { key: "day", label: "day" },
@@ -25,8 +29,13 @@ export function extractDisambiguator(input: string): string | null {
     { key: "noir", label: "noir" },
   ] as const;
 
+  // Skip candidates that are already present in the base title — otherwise
+  // a disambiguator like "aerial" becomes a useless echo: "Cinematic Aerial
+  // - aerial" instead of meaningfully distinguishing two similar sessions.
   for (const p of priorities) {
-    if (lower.includes(p.key)) return p.label;
+    if (lower.includes(p.key) && !excludedLower.includes(p.key)) {
+      return p.label;
+    }
   }
   return null;
 }
@@ -38,11 +47,19 @@ const toTitleToken = (token: string): string => {
   return token.charAt(0).toUpperCase() + token.slice(1).toLowerCase();
 };
 
+const MAX_TITLE_CHARS = 40;
+const MAX_TITLE_TOKENS = 6;
+
 const deriveBaseTitle = (input: string): string => {
   const normalized = input.trim().replace(/\s+/g, " ");
   if (!normalized) return "Untitled";
 
-  const rawTokens = normalized.split(" ");
+  // Take the first sentence — sentence boundaries are natural title breaks
+  // and avoid running into later prompt clauses like "..., dramatic golden
+  // hour rim light" that dilute the scene.
+  const firstSentence = normalized.split(/[.!?]\s+/)[0]?.trim() || normalized;
+
+  const rawTokens = firstSentence.split(" ");
   const stop = new Set([
     "a",
     "an",
@@ -69,28 +86,18 @@ const deriveBaseTitle = (input: string): string => {
   const tokens = rawTokens.slice(start);
   if (tokens.length === 0) return "Untitled";
 
-  const first = tokens[0] ?? "";
-  const second = tokens[1] ?? "";
-  const third = tokens[2] ?? "";
-  const secondLower = second.toLowerCase();
-
-  const nounFollowers = new Set([
-    "chase",
-    "battle",
-    "portrait",
-    "scene",
-    "shot",
-    "sequence",
-    "close-up",
-    "closeup",
-  ]);
-  const takeThird = secondLower.endsWith("ing") && third;
-  const takeTwo = nounFollowers.has(secondLower) || Boolean(second);
-
+  // Accumulate tokens up to MAX_TITLE_TOKENS or MAX_TITLE_CHARS, whichever
+  // comes first. The previous implementation forced exactly 2 tokens,
+  // producing awkward cuts like "Astronaut On" from "astronaut on mars…".
   const chosen: string[] = [];
-  chosen.push(first);
-  if (takeTwo) chosen.push(second);
-  if (takeThird) chosen.push(third);
+  let charCount = 0;
+  for (const token of tokens) {
+    if (chosen.length >= MAX_TITLE_TOKENS) break;
+    const nextLen = charCount + (chosen.length > 0 ? 1 : 0) + token.length;
+    if (chosen.length > 0 && nextLen > MAX_TITLE_CHARS) break;
+    chosen.push(token);
+    charCount = nextLen;
+  }
 
   return chosen
     .filter(Boolean)

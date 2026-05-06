@@ -22,7 +22,7 @@ import type {
   SuggestionsData,
 } from "../PromptCanvas/types";
 import type { LockedSpan, OptimizationOptions } from "../types";
-import type { VideoTier } from "@components/ToolSidebar/types";
+import type { VideoTier } from "@features/generation-controls";
 
 export type { PromptHistoryEntry, PromptKeyframe, PromptVersionEntry, User };
 export type HighlightSnapshot = CanvasHighlightSnapshot;

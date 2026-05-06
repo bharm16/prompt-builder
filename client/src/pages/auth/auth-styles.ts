@@ -33,8 +33,8 @@ export const AUTH_COLORS = {
   textPlaceholder: "#7C839C",
   /** Faint label text — matches tool-text-label */
   textLabel: "#555B6E",
-  /** Accent purple — matches tool-accent-purple */
-  accent: "#B3AFFD",
+  /** Soft neutral accent — matches tool-accent-soft */
+  accent: "#C8C8D0",
   /** Success — matches --ps-success */
   success: "#4ec7a2",
   /** Danger — matches --ps-danger */

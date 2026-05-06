@@ -13,6 +13,14 @@ export {
 } from "./context/GenerationControlsStore";
 
 export type { GenerationControlsActions } from "./context/GenerationControlsStore";
+export type {
+  DraftModel,
+  GenerationOverrides,
+  KeyframeTile,
+  SidebarUploadedImage,
+  StartImage,
+  VideoTier,
+} from "./types";
 
 export type {
   GenerationControlsTab,

@@ -1,6 +1,6 @@
 import type { VideoModelId, VideoProviderAvailability } from "../types";
 import { resolveModelSelection } from "../modelResolver";
-import { resolveProviderForGenerationModel } from "@services/video-models/ModelRegistry";
+import { resolveProviderForGenerationModel } from "@config/videoModelRegistry";
 import type { VideoProviderMap } from "./VideoProviders";
 
 export function getProviderAvailability(

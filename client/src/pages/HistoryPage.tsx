@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { Search, X } from "@promptstudio/system/components/ui";
 import { useAuthUser } from "@hooks/useAuthUser";
 import { usePromptHistory } from "@hooks/usePromptHistory";
-import type { PromptHistoryEntry } from "@features/prompt-optimizer/types/domain/prompt-session";
+import type { PromptHistoryEntry } from "@features/prompt-optimizer";
 import { Button } from "@promptstudio/system/components/ui/button";
 import { Input } from "@promptstudio/system/components/ui/input";
 import { AUTH_COLORS } from "./auth/auth-styles";

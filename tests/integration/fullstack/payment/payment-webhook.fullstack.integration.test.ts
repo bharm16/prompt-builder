@@ -91,14 +91,11 @@ describe("Payment Webhook Route (full-stack integration)", () => {
   let app: Application;
 
   let previousPort: string | undefined;
-  let previousPromptOutputOnly: string | undefined;
 
   beforeAll(async () => {
     previousPort = process.env.PORT;
-    previousPromptOutputOnly = process.env.PROMPT_OUTPUT_ONLY;
 
     process.env.PORT = "0";
-    process.env.PROMPT_OUTPUT_ONLY = "true";
 
     const container = await configureServices();
     await initializeServices(container);
@@ -110,12 +107,6 @@ describe("Payment Webhook Route (full-stack integration)", () => {
       delete process.env.PORT;
     } else {
       process.env.PORT = previousPort;
-    }
-
-    if (previousPromptOutputOnly === undefined) {
-      delete process.env.PROMPT_OUTPUT_ONLY;
-    } else {
-      process.env.PROMPT_OUTPUT_ONLY = previousPromptOutputOnly;
     }
   });
 

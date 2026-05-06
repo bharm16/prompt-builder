@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getRuntimeFlags } from "../runtime-flags";
+import { getRuntimeFlags } from "../feature-flags";
 
 describe("getRuntimeFlags", () => {
   it("defaults to api role when PROCESS_ROLE is not set", () => {
@@ -7,8 +7,6 @@ describe("getRuntimeFlags", () => {
     expect(flags.processRole).toBe("api");
     // Workers are disabled when running as api role
     expect(flags.videoWorkerDisabled).toBe(true);
-    // Inline processing defaults to enabled (opt-out via VIDEO_JOB_INLINE_ENABLED=false)
-    expect(flags.videoJobInlineEnabled).toBe(true);
     expect(flags.videoWorkerShutdownDrainSeconds).toBe(45);
   });
 
@@ -16,12 +14,10 @@ describe("getRuntimeFlags", () => {
     const flags = getRuntimeFlags({
       PROCESS_ROLE: "worker",
       VIDEO_JOB_WORKER_DISABLED: "true",
-      VIDEO_JOB_INLINE_ENABLED: "true",
       VIDEO_WORKER_SHUTDOWN_DRAIN_SECONDS: "60",
     } as NodeJS.ProcessEnv);
     expect(flags.processRole).toBe("worker");
     expect(flags.videoWorkerDisabled).toBe(true);
-    expect(flags.videoJobInlineEnabled).toBe(true);
     expect(flags.videoWorkerShutdownDrainSeconds).toBe(60);
   });
 

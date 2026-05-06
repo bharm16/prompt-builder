@@ -11,7 +11,7 @@ import {
   isVeoModel,
 } from "@services/video-generation/modelResolver";
 import { getModelCapabilities } from "@services/video-generation/availability";
-import type { VideoModelId } from "@services/video-generation/types";
+import type { VideoModelId } from "@shared/videoModels";
 
 const PROVIDER_DEFAULTS: Record<string, ProviderContinuityCapabilities> = {
   runway: {

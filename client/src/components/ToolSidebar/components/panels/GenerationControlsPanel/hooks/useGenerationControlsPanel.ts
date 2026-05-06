@@ -21,12 +21,12 @@ import type { ModelRecommendation } from "@/features/model-intelligence/types";
 import type {
   ExtendVideoSource,
   VideoReferenceImage,
-} from "@features/generation-controls/context/generationControlsStoreTypes";
+} from "@features/generation-controls";
 import { useGenerationControlsContext } from "@/features/prompt-optimizer/context/GenerationControlsContext";
 import {
   useGenerationControlsStoreActions,
   useGenerationControlsStoreState,
-} from "@features/generation-controls/context/GenerationControlsStore";
+} from "@features/generation-controls";
 import { useWorkspaceSession } from "@/features/prompt-optimizer/context/WorkspaceSessionContext";
 import {
   useOptionalPromptHighlights,
@@ -596,10 +596,8 @@ export const useGenerationControlsPanel = (
   const isVideoGenerateDisabled =
     activeTab === "video" && !hasPrompt && !startFrame;
   const isStoryboardDisabled = !hasPrompt && !startFrame;
-  const isDraftDisabled =
-    !hasPrompt || !isGenerationReady || isGenerationBusy;
-  const isRenderDisabled =
-    !hasPrompt || !isGenerationReady || isGenerationBusy;
+  const isDraftDisabled = !hasPrompt || !isGenerationReady || isGenerationBusy;
+  const isRenderDisabled = !hasPrompt || !isGenerationReady || isGenerationBusy;
   const isGenerateDisabled =
     (tier === "draft" ? isDraftDisabled : isRenderDisabled) ||
     isImageGenerateDisabled ||

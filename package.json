@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
   "workspaces": [
     "packages/*"
   ],
@@ -22,10 +25,10 @@
     "compression": "^1.8.1",
     "compromise": "^14.14.5",
     "cors": "^2.8.5",
-    "dompurify": "^3.3.0",
+    "dompurify": "^3.4.2",
     "dotenv": "^16.6.1",
     "express": "^4.21.2",
-    "express-rate-limit": "^8.1.0",
+    "express-rate-limit": "^8.3.2",
     "file-type": "^21.3.0",
     "firebase": "^12.4.0",
     "firebase-admin": "^13.5.0",
@@ -57,9 +60,7 @@
     "zod": "^4.1.13"
   },
   "overrides": {
-    "_comment_onnxruntime": "Pin to 1.19.2: later versions introduce breaking native binary changes that crash GLiNER model loading at startup. Test before bumping.",
     "onnxruntime-node": "1.19.2",
-    "_comment_transformers": "Force onnxruntime-node 1.19.2 and sharp 0.34.5 inside transformer libs to avoid duplicate native binaries and peer dep conflicts.",
     "@xenova/transformers": {
       "onnxruntime-node": "1.19.2",
       "sharp": "0.34.5"
@@ -68,7 +69,6 @@
       "onnxruntime-node": "1.19.2",
       "sharp": "0.34.5"
     },
-    "_comment_baseline": "Pin to 2.9.18: later versions cause resolution failures in the Vite build pipeline.",
     "baseline-browser-mapping": "2.9.18"
   },
   "devDependencies": {
@@ -92,10 +92,11 @@
     "@types/multer": "^1.4.12",
     "@types/node": "^24.10.1",
     "@types/opossum": "^8.1.9",
-    "@types/react": "^19.2.13",
-    "@types/react-dom": "^19.2.3",
+    "@types/react": "^18.3.28",
+    "@types/react-dom": "^18.3.7",
     "@types/stripe": "^8.0.0",
     "@types/supertest": "^6.0.3",
+    "@types/three": "^0.182.0",
     "@typescript-eslint/eslint-plugin": "^8.54.0",
     "@typescript-eslint/parser": "^8.54.0",
     "@vitejs/plugin-react": "^5.0.4",
@@ -123,8 +124,7 @@
     "tailwindcss": "^3.3.6",
     "typescript": "^5.9.3",
     "vite": "^7.1.9",
-    "vitest": "^3.2.4",
-    "@types/three": "^0.182.0"
+    "vitest": "^3.2.4"
   },
   "scripts": {
     "dev": "vite --config config/build/vite.config.ts",
@@ -139,8 +139,9 @@
     "verify-keys": "tsx scripts/verify-api-keys.ts",
     "sync:capabilities": "tsx --tsconfig server/tsconfig.json scripts/sync-capabilities.ts",
     "openapi:generate": "tsx --tsconfig server/tsconfig.json scripts/generate-openapi.ts",
+    "routemap:generate": "tsx --tsconfig server/tsconfig.json scripts/generate-route-map.ts --write",
+    "routemap:check": "tsx --tsconfig server/tsconfig.json scripts/generate-route-map.ts --check",
     "test:optimize-pipeline": "tsx --tsconfig server/tsconfig.json scripts/test-prompt-optimizer-pipeline.ts",
-    "test:enhancement-compare": "tsx --tsconfig server/tsconfig.json scripts/test-enhancement-v1-v2.ts",
     "test:flash": "node scripts/test-gemini-flash-spans.js",
     "highlight-stats": "tsx scripts/get-highlight-stats.ts",
     "highlight-stats:watch": "tsx scripts/get-highlight-stats.ts --watch",

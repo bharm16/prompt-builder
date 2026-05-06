@@ -14,9 +14,11 @@ test.describe("marketing pages render correctly", () => {
   test("docs page displays documentation sections", async ({ page }) => {
     await page.goto("/docs");
     await expect(
-      page.getByRole("heading", { name: /documentation/i, level: 1 }),
+      page.getByRole("heading", { name: /how vidra works/i, level: 1 }),
     ).toBeVisible();
-    await expect(page.getByText("Getting Started")).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: /^getting started$/i, level: 2 }),
+    ).toBeVisible();
   });
 
   test("privacy policy page renders legal variant", async ({ page }) => {

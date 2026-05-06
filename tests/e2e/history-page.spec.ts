@@ -35,9 +35,15 @@ test.describe("history page (unauthenticated, localStorage)", () => {
     // Page heading
     await expect(page.getByRole("heading", { name: /history/i })).toBeVisible();
 
-    // Both prompt output texts should be visible
-    await expect(page.getByText("A breathtaking golden sunset")).toBeVisible();
-    await expect(page.getByText("A playful golden retriever")).toBeVisible();
+    // Each entry's prompt text appears in both the heading and body. Use
+    // the heading role to disambiguate (avoids strict-mode locator
+    // resolving to multiple elements).
+    await expect(
+      page.getByRole("heading", { name: /a breathtaking golden sunset/i }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: /a playful golden retriever/i }),
+    ).toBeVisible();
 
     // The count indicator should show "2 prompts"
     await expect(page.getByText("2 prompts")).toBeVisible();
@@ -88,9 +94,11 @@ test.describe("history page (unauthenticated, localStorage)", () => {
 
     // Only the sunset entry should remain
     await expect(page.getByText("1 results")).toBeVisible();
-    await expect(page.getByText("A breathtaking golden sunset")).toBeVisible();
     await expect(
-      page.getByText("A playful golden retriever"),
+      page.getByRole("heading", { name: /a breathtaking golden sunset/i }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: /a playful golden retriever/i }),
     ).not.toBeVisible();
   });
 });

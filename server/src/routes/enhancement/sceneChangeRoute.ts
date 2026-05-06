@@ -2,7 +2,7 @@ import type { Router } from "express";
 import { logger } from "@infrastructure/Logger";
 import { asyncHandler } from "@middleware/asyncHandler";
 import { validateRequest } from "@middleware/validateRequest";
-import { sceneChangeSchema } from "@utils/validation";
+import { sceneChangeSchema } from "@config/schemas";
 
 interface SceneChangeResult {
   isSceneChange?: boolean;

@@ -34,6 +34,10 @@ test.describe("video generation (authenticated)", () => {
     });
 
     await page.route("**/api/preview/generate/storyboard", async (route) => {
+      // The "Preview storyboard" button triggers this endpoint; the image
+      // preview flag flips here too because storyboard is the canonical
+      // preview surface in the current UI.
+      imagePreviewCalled = true;
       await route.fulfill(
         jsonResponse({
           success: true,
@@ -46,8 +50,9 @@ test.describe("video generation (authenticated)", () => {
       );
     });
 
+    // Generic preview route — kept as a fallback stub in case the UI ever
+    // routes to it, but the test asserts via the storyboard handler above.
     await page.route("**/api/preview/generate", async (route) => {
-      imagePreviewCalled = true;
       await route.fulfill(
         jsonResponse({
           success: true,
@@ -94,7 +99,7 @@ test.describe("video generation (authenticated)", () => {
     await page.goto("/");
 
     // Type a prompt and optimize
-    const promptInput = page.getByLabel("Text Prompt Input");
+    const promptInput = page.getByLabel("Optimized prompt");
     await expect(promptInput).toBeVisible();
     await promptInput.fill(
       "Wide shot of a cyclist crossing a rainy bridge at dusk.",
@@ -105,16 +110,16 @@ test.describe("video generation (authenticated)", () => {
     await promptInput.press(optimizeShortcut);
     await expect.poll(() => optimizeCalled).toBe(true);
 
-    // Generate image preview (button text includes credit cost)
-    const generateButton = page.getByLabel(/generate.*preview/i);
-    await expect(generateButton).toBeVisible({ timeout: 10000 });
-    await generateButton.click();
+    // Generate image preview (button label is "Preview storyboard N credits")
+    const previewButton = page.getByLabel(/preview storyboard \d+ credits?/i);
+    await expect(previewButton).toBeVisible({ timeout: 10000 });
+    await previewButton.click();
     await expect.poll(() => imagePreviewCalled).toBe(true);
 
-    // Generate video (look for video-related button)
-    const videoButton = page.getByRole("button", { name: /video/i });
-    if (await videoButton.isVisible({ timeout: 5000 }).catch(() => false)) {
-      await videoButton.click();
+    // Generate final video — button label is "Generate N credits"
+    const generateButton = page.getByLabel(/^generate \d+ credits?$/i);
+    if (await generateButton.isVisible({ timeout: 5000 }).catch(() => false)) {
+      await generateButton.click();
       await expect.poll(() => videoGenerateCalled).toBe(true);
     }
   });

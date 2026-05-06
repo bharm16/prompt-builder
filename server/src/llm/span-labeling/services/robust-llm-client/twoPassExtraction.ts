@@ -1,6 +1,6 @@
 import { detectAndGetCapabilities } from "@utils/provider/ProviderDetector";
 import { logger } from "@infrastructure/Logger";
-import type { AIService as BaseAIService } from "@services/enhancement/services/types";
+import type { AIExecutionPort } from "@services/ai-model/ports/AIExecutionPort";
 import {
   callModel,
   type ModelResponse,
@@ -20,7 +20,7 @@ export async function twoPassExtraction({
 }: {
   systemPrompt: string;
   userPayload: string;
-  aiService: BaseAIService;
+  aiService: AIExecutionPort;
   maxTokens: number;
   providerOptions: ProviderRequestOptions;
   schema?: Record<string, unknown>;

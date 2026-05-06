@@ -12,67 +12,15 @@ import { getFirestore } from "@infrastructure/firebaseAdmin";
 import { getRedisStatus } from "@config/redis";
 import { createHealthRoutes } from "@routes/health.routes";
 import { createOpenApiDevRoute } from "../../openapi/devRoute.ts";
-import type { VideoWorkerHeartbeatStore } from "@services/video-generation/jobs/VideoWorkerHeartbeatStore";
-import type { FirestoreCircuitExecutor } from "@services/firestore/FirestoreCircuitExecutor";
 import { resolveOptionalService } from "./resolve-utils.ts";
-import type { RuntimeFlags } from "../runtime-flags";
 
 export function registerHealthRoutes(
   app: Application,
   container: DIContainer,
-  runtimeFlags: RuntimeFlags,
 ): void {
-  const { promptOutputOnly } = runtimeFlags;
   const firestoreCircuitExecutor = container.resolve(
     "firestoreCircuitExecutor",
   );
-
-  // Resolve video worker heartbeat for health checks
-  const videoWorkerHeartbeatStore = promptOutputOnly
-    ? null
-    : resolveOptionalService<VideoWorkerHeartbeatStore | null>(
-        container,
-        "videoWorkerHeartbeatStore",
-        "health-video-workers",
-      );
-  const videoWorkerHeartbeatMaxAgeMs = Number.parseInt(
-    process.env.VIDEO_WORKER_HEARTBEAT_MAX_AGE_MS || "",
-    10,
-  );
-  const resolvedVideoWorkerHeartbeatMaxAgeMs =
-    Number.isFinite(videoWorkerHeartbeatMaxAgeMs) &&
-    videoWorkerHeartbeatMaxAgeMs > 0
-      ? videoWorkerHeartbeatMaxAgeMs
-      : 90_000;
-  const checkVideoExecutionPath =
-    !promptOutputOnly && !runtimeFlags.videoJobInlineEnabled
-      ? async () => {
-          if (!videoWorkerHeartbeatStore) {
-            return {
-              healthy: false,
-              message: "Video worker heartbeat store is unavailable",
-            };
-          }
-          const summary =
-            await videoWorkerHeartbeatStore.getActiveWorkerSummary(
-              resolvedVideoWorkerHeartbeatMaxAgeMs,
-            );
-          if (summary.activeWorkerCount === 0) {
-            return {
-              healthy: false,
-              message:
-                "No active video worker heartbeats detected while inline processing is disabled",
-              activeWorkerCount: 0,
-              heartbeatMaxAgeMs: resolvedVideoWorkerHeartbeatMaxAgeMs,
-            };
-          }
-          return {
-            healthy: true,
-            activeWorkerCount: summary.activeWorkerCount,
-            heartbeatMaxAgeMs: resolvedVideoWorkerHeartbeatMaxAgeMs,
-          };
-        }
-      : null;
 
   // Resolve worker instances for health status reporting
   type StatusProvider = {
@@ -129,22 +77,67 @@ export function registerHealthRoutes(
     if (provider) workers[name] = provider;
   }
 
+  // Cached Firestore probe — runs on a 15s interval so /health/ready does zero inline I/O.
+  const PROBE_INTERVAL_MS = 15_000;
+  const PROBE_STALE_THRESHOLD_MS = 45_000;
+  let firestoreProbeHealthy = false;
+  let firestoreProbeLastSuccessAt: number | null = null;
+  let firestoreProbeLastError: string | null = null;
+
+  const runFirestoreProbe = async (): Promise<void> => {
+    try {
+      await firestoreCircuitExecutor.executeRead(
+        "health.ready.firestoreProbe",
+        async () => {
+          const firestore = getFirestore();
+          // Lightweight connectivity check — the collection name is arbitrary and
+          // need not exist. Firestore returns an empty snapshot for nonexistent
+          // collections, so this verifies connectivity without side effects.
+          await firestore.collection("_health_probe").limit(1).get();
+        },
+      );
+      firestoreProbeHealthy = true;
+      firestoreProbeLastSuccessAt = Date.now();
+      firestoreProbeLastError = null;
+    } catch (error) {
+      firestoreProbeHealthy = false;
+      firestoreProbeLastError =
+        error instanceof Error ? error.message : String(error);
+      logger.warn("Firestore readiness probe failed", {
+        error: firestoreProbeLastError,
+      });
+    }
+  };
+
+  // Run the probe once immediately, then on interval
+  void runFirestoreProbe();
+  const probeInterval = setInterval(
+    () => void runFirestoreProbe(),
+    PROBE_INTERVAL_MS,
+  );
+  probeInterval.unref(); // Don't keep the process alive for the probe
+
   const healthRoutes = createHealthRoutes({
-    claudeClient: container.resolve("claudeClient"),
+    openAIClient: container.resolve("openAIClient"),
     groqClient: container.resolve("groqClient"),
     geminiClient: container.resolve("geminiClient"),
     cacheService: container.resolve("cacheService"),
     metricsService: container.resolve("metricsService"),
     firestoreCircuitExecutor,
     checkFirestore: async () => {
-      await firestoreCircuitExecutor.executeRead(
-        "health.ready.firestoreProbe",
-        async () => {
-          await getFirestore().listCollections();
-        },
-      );
+      // Read cached probe result — zero inline I/O
+      const isStale =
+        firestoreProbeLastSuccessAt === null ||
+        Date.now() - firestoreProbeLastSuccessAt > PROBE_STALE_THRESHOLD_MS;
+      if (!firestoreProbeHealthy || isStale) {
+        throw new Error(
+          firestoreProbeLastError ??
+            (isStale
+              ? "Firestore probe stale (no successful check within threshold)"
+              : "Firestore probe unhealthy"),
+        );
+      }
     },
-    ...(checkVideoExecutionPath ? { checkVideoExecutionPath } : {}),
     workers,
     getRedisStatus,
   });

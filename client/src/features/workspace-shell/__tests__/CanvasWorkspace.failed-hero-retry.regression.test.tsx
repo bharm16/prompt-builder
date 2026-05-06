@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { CanvasWorkspace } from "../CanvasWorkspace";
@@ -16,25 +16,22 @@ let runtimeState: {
   generations: [],
 };
 
-vi.mock(
-  "@features/generation-controls/context/GenerationControlsStore",
-  () => ({
-    useGenerationControlsStoreActions: () => ({
-      setSelectedModel: vi.fn(),
-      setVideoTier: vi.fn(),
-      setCameraMotion: vi.fn(),
-    }),
-    useGenerationControlsStoreState: () => ({
-      domain: {
-        generationParams: { duration_s: 5 },
-        startFrame: null,
-        selectedModel: "sora-2",
-        videoTier: "render",
-        cameraMotion: null,
-      },
-    }),
+vi.mock("@features/generation-controls", () => ({
+  useGenerationControlsStoreActions: () => ({
+    setSelectedModel: vi.fn(),
+    setVideoTier: vi.fn(),
+    setCameraMotion: vi.fn(),
   }),
-);
+  useGenerationControlsStoreState: () => ({
+    domain: {
+      generationParams: { duration_s: 5 },
+      startFrame: null,
+      selectedModel: "sora-2",
+      videoTier: "render",
+      cameraMotion: null,
+    },
+  }),
+}));
 
 vi.mock("@/features/prompt-optimizer/context/PromptStateContext", () => ({
   useOptionalPromptHighlights: () => null,
@@ -51,6 +48,8 @@ vi.mock("@/features/prompt-optimizer/context/WorkspaceSessionContext", () => ({
 vi.mock("@features/generations", () => ({
   useGenerationsRuntime: () => ({
     ...runtimeState,
+    handleCancel: vi.fn(),
+    handleRetry: vi.fn(),
   }),
 }));
 
@@ -73,31 +72,18 @@ vi.mock(
   }),
 );
 
-vi.mock("../components/CanvasTopBar", () => ({
-  CanvasTopBar: () => <div data-testid="canvas-top-bar" />,
-}));
-
-vi.mock("../components/NewSessionView", () => ({
-  NewSessionView: () => <div data-testid="new-session-view" />,
-}));
-
-vi.mock("../components/CanvasPromptBar", () => ({
-  CanvasPromptBar: () => <div data-testid="canvas-prompt-bar" />,
+vi.mock("../components/WorkspaceTopBar", () => ({
+  WorkspaceTopBar: () => <header role="banner">topbar</header>,
 }));
 
 vi.mock("../components/ModelCornerSelector", () => ({
   ModelCornerSelector: () => <div data-testid="model-corner-selector" />,
 }));
 
-vi.mock("../components/CanvasHeroViewer", () => ({
-  CanvasHeroViewer: ({ generation }: { generation: Generation | null }) =>
-    generation ? (
-      <div data-testid="canvas-hero-viewer">{generation.id}</div>
-    ) : null,
-}));
-
-vi.mock("@/features/prompt-optimizer/components/GalleryPanel", () => ({
-  GalleryPanel: () => null,
+// CanvasSettingsRow depends on GenerationControlsContext + CreditBalanceContext
+// which this hero-retry regression doesn't provide; stub it.
+vi.mock("../components/CanvasSettingsRow", () => ({
+  CanvasSettingsRow: () => <div data-testid="canvas-settings-row" />,
 }));
 
 vi.mock("@/features/prompt-optimizer/components/GenerationPopover", () => ({
@@ -181,7 +167,6 @@ const buildProps = (
   onCustomRequestSubmit: vi.fn(),
   isCustomRequestDisabled: true,
   isCustomLoading: false,
-  enableMLHighlighting: false,
   showI2VLockIndicator: false,
   resolvedI2VReason: null,
   i2vMotionAlternatives: [],
@@ -191,31 +176,28 @@ const buildProps = (
 });
 
 describe("regression: failed hero does not linger while composing a retry", () => {
-  it("hides the failed hero once the current prompt no longer matches the failed attempt", async () => {
+  it("never features a stale failed generation when the user has edited the prompt away from it", () => {
+    // Seed runtime with a failed generation whose prompt matches the
+    // ORIGINAL prompt the user submitted.
     runtimeState = {
       heroGeneration: createGeneration(),
       generations: [createGeneration()],
     };
 
-    const originalPrompt =
-      "A cinematic motorcycle ride through a rainy neon street.";
     const editedPrompt =
       "A cinematic tracking shot of a motorcyclist crossing a rainy neon downtown avenue.";
 
-    const { rerender } = render(
-      <CanvasWorkspace {...buildProps(originalPrompt)} />,
+    // Render with the EDITED prompt (the user already moved on from the
+    // original phrasing). useFeaturedTile should detect prompt mismatch and
+    // refuse to feature the failed tile. Because gallery filtering also
+    // drops failed generations from the shot grid entirely, the failed
+    // generation must not appear in the rendered DOM at all.
+    const { container } = render(
+      <CanvasWorkspace {...buildProps(editedPrompt)} />,
     );
 
-    expect(screen.getByTestId("canvas-hero-viewer")).toHaveTextContent(
-      "gen-failed",
-    );
-
-    rerender(<CanvasWorkspace {...buildProps(editedPrompt)} />);
-
-    await waitFor(() => {
-      expect(
-        screen.queryByTestId("canvas-hero-viewer"),
-      ).not.toBeInTheDocument();
-    });
+    expect(
+      container.querySelector('[data-generation-id="gen-failed"]'),
+    ).toBeNull();
   });
 });

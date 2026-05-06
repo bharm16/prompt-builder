@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { ContinuitySession } from "../types";
-import { serializeContinuitySession } from "../continuitySerialization";
+import type { ContinuitySession } from "@server/domain/continuity/types";
+import { serializeContinuitySession } from "@server/domain/continuity/serialization";
+import type { SessionStorePort } from "../ports/SessionStorePort";
 
 type StoreRecord = Record<string, unknown>;
 
@@ -68,10 +69,6 @@ const createLegacyDocRef = (id: string) => ({
   },
 });
 
-vi.mock("@services/sessions/SessionStore", () => ({
-  SessionStore: vi.fn().mockImplementation(() => mocks.sessionStore),
-}));
-
 vi.mock("@infrastructure/firebaseAdmin", () => ({
   admin: {
     firestore: {
@@ -125,6 +122,9 @@ import {
   ContinuitySessionVersionMismatchError,
 } from "../ContinuitySessionStore";
 
+const createStore = () =>
+  new ContinuitySessionStore(mocks.sessionStore as unknown as SessionStorePort);
+
 const buildSession = (
   overrides: Partial<ContinuitySession> = {},
 ): ContinuitySession => ({
@@ -172,7 +172,7 @@ describe("ContinuitySessionStore", () => {
   });
 
   it("saves new sessions to unified and legacy stores in a single transaction", async () => {
-    const store = new ContinuitySessionStore();
+    const store = createStore();
     const session = buildSession();
 
     await store.save(session);
@@ -193,7 +193,7 @@ describe("ContinuitySessionStore", () => {
   });
 
   it("increments legacy version when saving existing sessions", async () => {
-    const store = new ContinuitySessionStore();
+    const store = createStore();
     const session = buildSession();
     mocks.legacyRecords.set(session.id, {
       ...serializeContinuitySession(session),
@@ -209,7 +209,7 @@ describe("ContinuitySessionStore", () => {
   });
 
   it("supports optimistic versioned save and rejects mismatches", async () => {
-    const store = new ContinuitySessionStore();
+    const store = createStore();
     const session = buildSession();
 
     mocks.legacyRecords.set(session.id, {
@@ -227,7 +227,7 @@ describe("ContinuitySessionStore", () => {
   });
 
   it("does not commit unified write when versioned save fails", async () => {
-    const store = new ContinuitySessionStore();
+    const store = createStore();
     const session = buildSession();
 
     mocks.legacyRecords.set(session.id, {
@@ -253,7 +253,7 @@ describe("ContinuitySessionStore", () => {
   });
 
   it("returns unified continuity session when available", async () => {
-    const store = new ContinuitySessionStore();
+    const store = createStore();
     const session = buildSession();
     mocks.sessionStore.get.mockResolvedValueOnce({
       id: session.id,
@@ -271,7 +271,7 @@ describe("ContinuitySessionStore", () => {
   });
 
   it("falls back to legacy get and backfills unified store", async () => {
-    const store = new ContinuitySessionStore();
+    const store = createStore();
     const session = buildSession();
 
     mocks.legacyRecords.set(session.id, {
@@ -291,7 +291,7 @@ describe("ContinuitySessionStore", () => {
   });
 
   it("uses unified findByUser first and falls back to legacy with backfill", async () => {
-    const store = new ContinuitySessionStore();
+    const store = createStore();
     const session = buildSession();
 
     mocks.sessionStore.findContinuityByUser.mockResolvedValueOnce([
@@ -326,7 +326,7 @@ describe("ContinuitySessionStore", () => {
   });
 
   it("deletes from legacy and unified stores", async () => {
-    const store = new ContinuitySessionStore();
+    const store = createStore();
     const session = buildSession();
     mocks.legacyRecords.set(session.id, {
       ...serializeContinuitySession(session),

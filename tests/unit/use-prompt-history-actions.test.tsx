@@ -20,6 +20,8 @@ const buildOptions = (
       navigate,
       promptOptimizer: {
         setDisplayedPrompt: vi.fn(),
+        setInputPrompt: vi.fn(),
+        setOptimizedPrompt: vi.fn(),
         inputPrompt: "",
         optimizedPrompt: "",
         displayedPrompt: "",
@@ -78,6 +80,8 @@ describe("usePromptHistoryActions", () => {
     const { options, mocks } = buildOptions({
       promptOptimizer: {
         setDisplayedPrompt: vi.fn(),
+        setInputPrompt: vi.fn(),
+        setOptimizedPrompt: vi.fn(),
         inputPrompt: "A cinematic alley at dawn",
         optimizedPrompt: "",
         displayedPrompt: "",

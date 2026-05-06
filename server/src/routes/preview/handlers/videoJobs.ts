@@ -3,6 +3,7 @@ import { isIP } from "node:net";
 import type { PreviewRoutesServices } from "@routes/types";
 import { buildVideoContentUrl } from "../content";
 import { getWorkflowWatchdogTimeoutMs } from "@services/video-generation/providers/timeoutPolicy";
+import { getSuggestedPollIntervalMs } from "@services/video-generation/providers/pollIntervalPolicy";
 
 type VideoJobsServices = Pick<
   PreviewRoutesServices,
@@ -172,6 +173,12 @@ export const createVideoJobsHandler =
     response.attempts = job.attempts;
     response.maxAttempts = job.maxAttempts;
     response.serverTimeoutMs = getWorkflowWatchdogTimeoutMs();
+    // Provider-aware poll cadence for the client. Avoids burning Firestore
+    // reads on long-running jobs when the client would otherwise default to 2s.
+    response.suggestedPollIntervalMs = getSuggestedPollIntervalMs(
+      job.provider,
+      Date.now() - job.createdAtMs,
+    );
     if (typeof job.lastHeartbeatAtMs === "number") {
       response.lastHeartbeatAtMs = job.lastHeartbeatAtMs;
     }

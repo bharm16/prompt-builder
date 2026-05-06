@@ -33,10 +33,18 @@ describe("useGenerationsState clearGenerations", () => {
   it("clearGenerations empties the generations array and resets derived state", () => {
     const { result } = renderHook(() => useGenerationsState());
 
-    // Populate with active generations
+    // ISSUE-12 follow-up: seed state via SET_GENERATIONS with the full
+    // authoritative set rather than two addGeneration calls. Under the
+    // post-ADD_GENERATION architecture, "state grows" is a state-replace
+    // from a known-good set — test setup should mirror that.
     act(() => {
-      result.current.addGeneration(buildGeneration("g1", "pending"));
-      result.current.addGeneration(buildGeneration("g2", "generating"));
+      result.current.dispatch({
+        type: "SET_GENERATIONS",
+        payload: [
+          buildGeneration("g1", "pending"),
+          buildGeneration("g2", "generating"),
+        ],
+      });
     });
 
     expect(result.current.generations).toHaveLength(2);

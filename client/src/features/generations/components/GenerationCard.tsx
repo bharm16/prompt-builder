@@ -191,7 +191,7 @@ export const GenerationCard = memo(function GenerationCard({
           <Check
             size={14}
             weight="bold"
-            className="text-tool-accent-selection"
+            className="text-tool-accent-neutral"
             aria-hidden="true"
           />
           <span className="flex-1 text-xs font-medium text-tool-text-dim">

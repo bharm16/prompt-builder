@@ -2,7 +2,7 @@
  * Motion Route Registration
  *
  * Registers convergence media and motion routes.
- * Gated by PROMPT_OUTPUT_ONLY flag. Auth required.
+ * Auth required.
  */
 
 import type { Application } from "express";
@@ -19,15 +19,11 @@ import {
 } from "@services/convergence/depth";
 import type { GCSStorageService } from "@services/convergence/storage";
 import { resolveOptionalService } from "./resolve-utils.ts";
-import type { RuntimeFlags } from "../runtime-flags";
 
 export function registerMotionRoutes(
   app: Application,
   container: DIContainer,
-  runtimeFlags: RuntimeFlags,
 ): void {
-  if (runtimeFlags.promptOutputOnly) return;
-
   const convergenceStorageService =
     resolveOptionalService<GCSStorageService | null>(
       container,

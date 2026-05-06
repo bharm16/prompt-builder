@@ -8,7 +8,7 @@ import type {
   PromptVersionPreview,
   PromptVersionVideo,
   User,
-} from "@features/prompt-optimizer/types/domain/prompt-session";
+} from "@features/prompt-optimizer";
 
 export interface Span {
   text: string;

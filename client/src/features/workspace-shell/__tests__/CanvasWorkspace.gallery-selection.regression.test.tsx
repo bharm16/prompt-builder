@@ -17,25 +17,22 @@ let runtimeState: {
   generations: [],
 };
 
-vi.mock(
-  "@features/generation-controls/context/GenerationControlsStore",
-  () => ({
-    useGenerationControlsStoreActions: () => ({
-      setSelectedModel: vi.fn(),
-      setVideoTier: vi.fn(),
-      setCameraMotion: vi.fn(),
-    }),
-    useGenerationControlsStoreState: () => ({
-      domain: {
-        generationParams: { duration_s: 5 },
-        startFrame: null,
-        selectedModel: "sora-2",
-        videoTier: "render",
-        cameraMotion: null,
-      },
-    }),
+vi.mock("@features/generation-controls", () => ({
+  useGenerationControlsStoreActions: () => ({
+    setSelectedModel: vi.fn(),
+    setVideoTier: vi.fn(),
+    setCameraMotion: vi.fn(),
   }),
-);
+  useGenerationControlsStoreState: () => ({
+    domain: {
+      generationParams: { duration_s: 5 },
+      startFrame: null,
+      selectedModel: "sora-2",
+      videoTier: "render",
+      cameraMotion: null,
+    },
+  }),
+}));
 
 vi.mock("@/features/prompt-optimizer/context/PromptStateContext", () => ({
   useOptionalPromptHighlights: () => null,
@@ -52,6 +49,8 @@ vi.mock("@/features/prompt-optimizer/context/WorkspaceSessionContext", () => ({
 vi.mock("@features/generations", () => ({
   useGenerationsRuntime: () => ({
     ...runtimeState,
+    handleCancel: vi.fn(),
+    handleRetry: vi.fn(),
   }),
 }));
 
@@ -74,47 +73,20 @@ vi.mock(
   }),
 );
 
-vi.mock("../components/CanvasTopBar", () => ({
-  CanvasTopBar: () => <div data-testid="canvas-top-bar" />,
-}));
-
-vi.mock("../components/NewSessionView", () => ({
-  NewSessionView: () => <div data-testid="new-session-view" />,
-}));
-
-vi.mock("../components/CanvasPromptBar", () => ({
-  CanvasPromptBar: () => <div data-testid="canvas-prompt-bar" />,
+// WorkspaceTopBar pulls credit/auth contexts that the regression doesn't
+// exercise — replace with a minimal landmark.
+vi.mock("../components/WorkspaceTopBar", () => ({
+  WorkspaceTopBar: () => <header role="banner">topbar</header>,
 }));
 
 vi.mock("../components/ModelCornerSelector", () => ({
   ModelCornerSelector: () => <div data-testid="model-corner-selector" />,
 }));
 
-vi.mock("../components/CanvasHeroViewer", () => ({
-  CanvasHeroViewer: () => <div data-testid="canvas-hero-viewer" />,
-}));
-
-vi.mock("@/features/prompt-optimizer/components/GalleryPanel", () => ({
-  GalleryPanel: ({
-    generations,
-    onSelectGeneration,
-  }: {
-    generations: Array<{ id: string }>;
-    onSelectGeneration: (generationId: string) => void;
-  }) => (
-    <div data-testid="gallery-panel">
-      {generations.map((generation) => (
-        <button
-          key={generation.id}
-          type="button"
-          data-testid={`gallery-select-${generation.id}`}
-          onClick={() => onSelectGeneration(generation.id)}
-        >
-          {generation.id}
-        </button>
-      ))}
-    </div>
-  ),
+// CanvasSettingsRow depends on GenerationControlsContext + CreditBalanceContext
+// which this gallery-selection regression doesn't provide; stub it.
+vi.mock("../components/CanvasSettingsRow", () => ({
+  CanvasSettingsRow: () => <div data-testid="canvas-settings-row" />,
 }));
 
 vi.mock("@/features/prompt-optimizer/components/GenerationPopover", () => ({
@@ -198,7 +170,6 @@ const buildProps = (): React.ComponentProps<typeof CanvasWorkspace> => ({
   onCustomRequestSubmit: vi.fn(),
   isCustomRequestDisabled: true,
   isCustomLoading: false,
-  enableMLHighlighting: false,
   showI2VLockIndicator: false,
   resolvedI2VReason: null,
   i2vMotionAlternatives: [],
@@ -224,11 +195,22 @@ describe("regression: canvas closes stale generation popovers when gallery items
 
     const user = userEvent.setup();
     const props = buildProps();
-    const { rerender } = render(<CanvasWorkspace {...props} />);
+    const { container, rerender } = render(<CanvasWorkspace {...props} />);
 
-    await user.click(screen.getByTestId("gallery-select-gen-1"));
+    // The unified workspace renders gallery entries as <article
+    // data-generation-id={id}> tiles inside ShotRow. Clicking a completed
+    // tile sets viewingId, which mounts GenerationPopover. (This preserves
+    // the legacy GalleryPanel.onSelectGeneration behavior contract.)
+    const tile = container.querySelector(
+      '[data-generation-id="gen-1"]',
+    ) as HTMLElement | null;
+    expect(tile).not.toBeNull();
+    await user.click(tile!);
     expect(screen.getByTestId("generation-popover")).toHaveTextContent("gen-1");
 
+    // Mutate the generation to "failed" + drop media. galleryGeneration
+    // filtering removes it from the gallery → generationLookup no longer
+    // contains gen-1 → effect clears viewingId → popover unmounts.
     runtimeState = {
       heroGeneration: {
         ...generation,

@@ -64,19 +64,3 @@ export async function mockSessionRoutes(page: Page): Promise<void> {
     await route.fulfill(jsonResponse({ success: true }));
   });
 }
-
-/** Mock the capabilities endpoint. */
-export async function mockCapabilitiesRoute(page: Page): Promise<void> {
-  await page.route("**/api/capabilities", async (route) => {
-    await route.fulfill(
-      jsonResponse({
-        models: [],
-        features: {
-          imagePreview: true,
-          videoGeneration: true,
-          convergence: true,
-        },
-      }),
-    );
-  });
-}

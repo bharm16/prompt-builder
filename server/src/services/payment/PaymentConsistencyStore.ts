@@ -271,93 +271,67 @@ export class PaymentConsistencyStore {
 
   async claimNextBillingProfileRepair(
     maxAttempts: number,
-    scanLimit: number,
+    _scanLimit?: number,
   ): Promise<BillingProfileRepairTask | null> {
     try {
-      const snapshot = await this.firestoreCircuitExecutor.executeRead(
-        "payment.consistency.claimBillingProfileRepair.queryPending",
+      const query = this.billingProfileRepairCollection
+        .where("status", "==", "pending")
+        .orderBy("updatedAtMs", "asc")
+        .limit(1);
+
+      return await this.firestoreCircuitExecutor.executeWrite(
+        "payment.consistency.claimBillingProfileRepair.transaction",
         async () =>
-          await this.billingProfileRepairCollection
-            .where("status", "==", "pending")
-            .limit(scanLimit)
-            .get(),
-      );
-      if (snapshot.empty) {
-        return null;
-      }
+          await this.db.runTransaction(async (transaction) => {
+            const snapshot = await transaction.get(query);
+            if (snapshot.empty) {
+              return null;
+            }
 
-      const docs = snapshot.docs
-        .map((doc) => ({
-          id: doc.id,
-          data: doc.data() as BillingProfileRepairRecord,
-        }))
-        .sort((a, b) => {
-          const aTs = Number(a.data.updatedAtMs ?? 0);
-          const bTs = Number(b.data.updatedAtMs ?? 0);
-          return aTs - bTs;
-        });
+            const doc = snapshot.docs[0];
+            if (!doc) {
+              return null;
+            }
+            const data = doc.data() as BillingProfileRepairRecord | undefined;
+            if (!data || data.status !== "pending") {
+              return null;
+            }
 
-      for (const doc of docs) {
-        const claimed = await this.firestoreCircuitExecutor.executeWrite(
-          "payment.consistency.claimBillingProfileRepair.transaction",
-          async () =>
-            await this.db.runTransaction(async (transaction) => {
-              const docRef = this.billingProfileRepairCollection.doc(doc.id);
-              const fresh = await transaction.get(docRef);
-              if (!fresh.exists) {
-                return null;
-              }
-
-              const data = fresh.data() as
-                | BillingProfileRepairRecord
-                | undefined;
-              if (!data || data.status !== "pending") {
-                return null;
-              }
-
-              const attempts =
-                typeof data.attempts === "number" ? data.attempts : 0;
-              if (attempts >= maxAttempts) {
-                const now = Date.now();
-                transaction.update(docRef, {
-                  status: "escalated" as BillingProfileRepairStatus,
-                  escalatedAtMs: now,
-                  updatedAtMs: now,
-                  updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-                });
-                return null;
-              }
-
+            const attempts =
+              typeof data.attempts === "number" ? data.attempts : 0;
+            if (attempts >= maxAttempts) {
               const now = Date.now();
-              transaction.update(docRef, {
-                status: "processing" as BillingProfileRepairStatus,
-                processingStartedAtMs: now,
+              transaction.update(doc.ref, {
+                status: "escalated" as BillingProfileRepairStatus,
+                escalatedAtMs: now,
                 updatedAtMs: now,
                 updatedAt: admin.firestore.FieldValue.serverTimestamp(),
               });
+              return null;
+            }
 
-              return this.toBillingProfileRepairTask(doc.id, {
-                ...data,
-                status: "processing",
-                processingStartedAtMs: now,
-                updatedAtMs: now,
-              });
-            }),
-        );
+            const now = Date.now();
+            transaction.update(doc.ref, {
+              status: "processing" as BillingProfileRepairStatus,
+              processingStartedAtMs: now,
+              updatedAtMs: now,
+              updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
 
-        if (claimed) {
-          return claimed;
-        }
-      }
-
-      return null;
+            return this.toBillingProfileRepairTask(doc.id, {
+              ...data,
+              status: "processing",
+              processingStartedAtMs: now,
+              updatedAtMs: now,
+            });
+          }),
+      );
     } catch (error) {
       logger.error(
         "Failed to claim billing profile repair task",
         error as Error,
         {
           maxAttempts,
-          scanLimit,
         },
       );
       return null;

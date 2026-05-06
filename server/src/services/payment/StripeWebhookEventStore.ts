@@ -4,12 +4,19 @@ import {
   FirestoreCircuitExecutor,
   getFirestoreCircuitExecutor,
 } from "@services/firestore/FirestoreCircuitExecutor";
+import { z } from "zod";
 
 const DEFAULT_PROCESSING_TTL_MS = 10 * 60 * 1000;
 
 type StripeWebhookStatus = "processing" | "processed" | "failed";
 
-interface StripeWebhookEventRecord {
+export interface StripeWebhookEventRecord {
+  /**
+   * Forward-compatibility marker. Optional today (legacy records lack it),
+   * but every NEW write sets `schemaVersion: 1`. Unknown future values throw
+   * via the parser so old pods fail loudly rather than silently mis-parsing.
+   */
+  schemaVersion?: 1;
   status: StripeWebhookStatus;
   type: string;
   livemode: boolean;
@@ -17,6 +24,23 @@ interface StripeWebhookEventRecord {
   createdAtMs: number;
   updatedAtMs: number;
   lastError?: string;
+}
+
+/**
+ * Forward-compatibility check for Stripe webhook event records. Today only
+ * `schemaVersion: 1` (or `undefined` for legacy records) is valid. Throws on
+ * any other value so old pods do not silently mis-parse a future shape.
+ */
+export const StripeWebhookEventSchemaVersionSchema = z.literal(1).optional();
+
+/**
+ * Validate that a raw record's `schemaVersion` is supported. Throws (Zod
+ * error) on unknown future versions. Returns the parsed value.
+ */
+export function parseStripeWebhookEventSchemaVersion(
+  value: unknown,
+): 1 | undefined {
+  return StripeWebhookEventSchemaVersionSchema.parse(value);
 }
 
 export interface StripeWebhookUnprocessedSummary {
@@ -60,6 +84,7 @@ export class StripeWebhookEventStore {
 
           if (!snapshot.exists) {
             transaction.set(docRef, {
+              schemaVersion: 1 as const,
               status: "processing",
               type: metadata.type,
               livemode: metadata.livemode,
@@ -75,6 +100,9 @@ export class StripeWebhookEventStore {
           const existing = snapshot.data() as
             | StripeWebhookEventRecord
             | undefined;
+          // Validate forward-compat: reject records written by future versions
+          // so an older pod does not silently mis-parse a newer shape.
+          parseStripeWebhookEventSchemaVersion(existing?.schemaVersion);
           if (existing?.status === "processed") {
             return { state: "processed" };
           }
@@ -89,6 +117,7 @@ export class StripeWebhookEventStore {
           }
 
           transaction.update(docRef, {
+            schemaVersion: 1 as const,
             status: "processing",
             updatedAtMs: now,
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),

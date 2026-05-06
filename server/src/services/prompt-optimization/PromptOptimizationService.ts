@@ -39,10 +39,8 @@ export class PromptOptimizationService {
   private readonly compilationService: VideoPromptCompilationService | null;
   private readonly imageObservation: ImageObservationService;
   private readonly i2vStrategy: I2VMotionStrategy;
-  private readonly templateVersions: typeof OptimizationConfig.templateVersions;
   private readonly intentLock: IntentLockService;
   private readonly promptLint: PromptLintGateService;
-  private readonly pipelineV2Enabled: boolean;
   private readonly log: ILogger;
 
   constructor(
@@ -80,9 +78,6 @@ export class PromptOptimizationService {
           }
         : undefined,
     );
-    this.pipelineV2Enabled = process.env.PROMPT_PIPELINE_V2 !== "false";
-
-    this.templateVersions = OptimizationConfig.templateVersions;
 
     this.log.info(
       "PromptOptimizationService initialized with refactored architecture",
@@ -90,7 +85,6 @@ export class PromptOptimizationService {
         operation: "constructor",
         availableClients: this.ai.getAvailableClients?.(),
         strategy: this.videoStrategy.name,
-        pipelineV2Enabled: this.pipelineV2Enabled,
       },
     );
   }
@@ -127,38 +121,8 @@ export class PromptOptimizationService {
         this.applyConstitutionalAI(nextPrompt, mode, signal),
       logOptimizationMetrics: (originalPrompt, optimizedPrompt, mode) =>
         this.logOptimizationMetrics(originalPrompt, optimizedPrompt, mode),
-      intentLock: this.pipelineV2Enabled
-        ? this.intentLock
-        : {
-            enforceIntentLock: ({
-              optimizedPrompt,
-              originalPrompt,
-              shotPlan,
-            }) => {
-              void originalPrompt;
-              void shotPlan;
-              return {
-                prompt: optimizedPrompt,
-                passed: true,
-                repaired: false,
-                required: { subject: null, action: null },
-              };
-            },
-          },
-      promptLint: this.pipelineV2Enabled
-        ? this.promptLint
-        : {
-            enforce: ({ prompt }) => ({
-              prompt,
-              lint: {
-                ok: true,
-                errors: [],
-                warnings: [],
-                wordCount: prompt.split(/\s+/).length,
-              },
-              repaired: false,
-            }),
-          },
+      intentLock: this.intentLock,
+      promptLint: this.promptLint,
     });
   }
 
@@ -211,40 +175,38 @@ export class PromptOptimizationService {
     let metadata = compilation.metadata;
     let compilationState = compilation.compilation;
 
-    if (this.pipelineV2Enabled) {
-      const originalPrompt = this.resolveOriginalPromptForCompile(
-        context,
-        normalizedPrompt,
-      );
-      const intent = applyIntentLockPolicy({
-        intentLock: this.intentLock,
-        originalPrompt,
-        optimizedPrompt: compiledPrompt,
-        shotPlan: null,
-        compilation: compilationState,
-      });
-      compiledPrompt = intent.prompt;
-      compilationState = {
-        ...compilationState,
-        ...(intent.compilationIntentLock
-          ? { intentLock: intent.compilationIntentLock }
-          : {}),
-      };
+    const originalPrompt = this.resolveOriginalPromptForCompile(
+      context,
+      normalizedPrompt,
+    );
+    const intent = applyIntentLockPolicy({
+      intentLock: this.intentLock,
+      originalPrompt,
+      optimizedPrompt: compiledPrompt,
+      shotPlan: null,
+      compilation: compilationState,
+    });
+    compiledPrompt = intent.prompt;
+    compilationState = {
+      ...compilationState,
+      ...(intent.compilationIntentLock
+        ? { intentLock: intent.compilationIntentLock }
+        : {}),
+    };
 
-      const lint = this.promptLint.enforce({
-        prompt: compiledPrompt,
-        modelId: compilationState.compiledFor ?? targetModel,
-      });
-      compiledPrompt = lint.prompt;
+    const lint = this.promptLint.enforce({
+      prompt: compiledPrompt,
+      modelId: compilationState.compiledFor ?? targetModel,
+    });
+    compiledPrompt = lint.prompt;
 
-      metadata = {
-        ...(metadata || {}),
-        ...intent.legacyMetadata,
-        promptLint: lint.lint,
-        promptLintRepaired: lint.repaired,
-        compilation: compilationState,
-      };
-    }
+    metadata = {
+      ...(metadata || {}),
+      ...intent.legacyMetadata,
+      promptLint: lint.lint,
+      promptLintRepaired: lint.repaired,
+      compilation: compilationState,
+    };
 
     return {
       compiledPrompt,

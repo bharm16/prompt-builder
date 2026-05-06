@@ -41,6 +41,9 @@ test-results/
 coverage/
 .nyc_output/
 *.lcov
+output/
+# Stray screenshots / debug captures at repo root
+/*.png
 
 # Evaluation snapshots (generated during test runs)
 scripts/evaluation/snapshots/snapshot-*.json

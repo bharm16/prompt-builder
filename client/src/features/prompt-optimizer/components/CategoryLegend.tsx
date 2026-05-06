@@ -5,7 +5,7 @@ import { Button } from "@promptstudio/system/components/ui/button";
 import {
   CATEGORY_CONFIG,
   CATEGORY_ORDER,
-} from "../SpanBentoGrid/config/bentoConfig";
+} from "../SpanCategoryAccordion/config/categoryConfig";
 import type { CategoryLegendProps } from "../types";
 import { cn } from "@/utils/cn";
 
@@ -32,7 +32,7 @@ function getCategoryExample(category: CategoryKey): string {
 /**
  * Category Legend Component
  * Displays a legend of all highlight categories with examples
- * Now dynamically generated from bentoConfig for consistency
+ * Now dynamically generated from categoryConfig for consistency
  */
 export const CategoryLegend = memo<CategoryLegendProps>(
   ({

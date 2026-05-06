@@ -4,18 +4,16 @@
  * @see ARCHITECTURE_STANDARD.md Section 1 - Frontend Component Structure
  */
 
-import type { ComponentType, ReactNode } from "react";
-import type { User } from "@features/prompt-optimizer/types/domain/prompt-session";
+import type { ReactNode } from "react";
+import type { IconType } from "@promptstudio/system/components/ui";
+import type { User } from "@features/prompt-optimizer";
 
 // -----------------------------------------------------------------------------
 // Navigation Item Types
 // -----------------------------------------------------------------------------
 
-/** Icon component type for nav items */
-export type IconComponent = ComponentType<{
-  className?: string;
-  size?: number;
-}>;
+/** Icon component type for nav items. Aliased so consumers don't depend on Phosphor. */
+export type IconComponent = IconType;
 
 /** Single navigation item configuration */
 export interface NavItem {

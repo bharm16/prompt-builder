@@ -15,7 +15,7 @@ import type {
   LLMSpan,
   LLMMeta,
 } from "../types";
-import type { AIService as BaseAIService } from "@services/enhancement/services/types";
+import type { AIExecutionPort } from "@services/ai-model/ports/AIExecutionPort";
 import type { LlmSpanParams, ILlmClient } from "./ILlmClient";
 import { attemptRepair } from "./robust-llm-client/repair";
 import { injectDefensiveMeta } from "./robust-llm-client/defensiveMeta";
@@ -435,7 +435,7 @@ export class RobustLlmClient implements ILlmClient {
    * Get model config for an operation
    */
   protected _getModelConfig(
-    aiService: BaseAIService,
+    aiService: AIExecutionPort,
     operation: string,
   ): { model?: string } | null {
     const envModel = process.env.SPAN_MODEL;

@@ -199,4 +199,23 @@ describe("apiAuthMiddleware", () => {
     expect(res.status).toHaveBeenCalledWith(403);
     expect(next).not.toHaveBeenCalled();
   });
+
+  // Regression: DEV_FALLBACK_KEY was removed — even without env-configured keys
+  // and outside production, the literal "dev-key-12345" must not authenticate.
+  it("rejects the legacy dev-key-12345 when no API keys are configured", async () => {
+    // Neither ALLOWED_API_KEYS nor API_KEY set; NODE_ENV is "development"
+    process.env.NODE_ENV = "development";
+    const req = createRequest({
+      headers: { "x-api-key": "dev-key-12345" } as Request["headers"],
+    });
+    const res = createResponse();
+    const next = vi.fn() as NextFunction;
+
+    await apiAuthMiddleware(req, res, next);
+
+    expect([401, 403]).toContain(
+      (res.status as unknown as ReturnType<typeof vi.fn>).mock.calls[0]?.[0],
+    );
+    expect(next).not.toHaveBeenCalled();
+  });
 });

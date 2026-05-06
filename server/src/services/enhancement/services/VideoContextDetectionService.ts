@@ -35,7 +35,7 @@ export interface VideoContextDetectionResult {
  * Service for detecting video context and extracting video-specific information
  */
 export class VideoContextDetectionService {
-  constructor(private readonly videoService: VideoService) {}
+  constructor(private readonly videoPromptService: VideoService) {}
 
   /**
    * Detect video context and extract video-specific information
@@ -43,12 +43,14 @@ export class VideoContextDetectionService {
   detectVideoContext(
     params: VideoContextDetectionParams,
   ): VideoContextDetectionResult {
-    const isVideoPrompt = this.videoService.isVideoPrompt(params.fullPrompt);
-    const highlightWordCount = this.videoService.countWords(
+    const isVideoPrompt = this.videoPromptService.isVideoPrompt(
+      params.fullPrompt,
+    );
+    const highlightWordCount = this.videoPromptService.countWords(
       params.highlightedText,
     );
     const phraseRole = isVideoPrompt
-      ? this.videoService.detectVideoPhraseRole(
+      ? this.videoPromptService.detectVideoPhraseRole(
           params.highlightedText,
           params.contextBefore,
           params.contextAfter,
@@ -56,7 +58,7 @@ export class VideoContextDetectionService {
         )
       : null;
     const videoConstraints = isVideoPrompt
-      ? this.videoService.getVideoReplacementConstraints({
+      ? this.videoPromptService.getVideoReplacementConstraints({
           highlightWordCount,
           phraseRole,
           highlightedText: params.highlightedText,
@@ -71,11 +73,13 @@ export class VideoContextDetectionService {
 
     if (isVideoPrompt) {
       const modelStart = Date.now();
-      modelTarget = this.videoService.detectTargetModel(params.fullPrompt);
+      modelTarget = this.videoPromptService.detectTargetModel(
+        params.fullPrompt,
+      );
       params.metrics.modelDetection = Date.now() - modelStart;
 
       const sectionStart = Date.now();
-      promptSection = this.videoService.detectPromptSection(
+      promptSection = this.videoPromptService.detectPromptSection(
         params.highlightedText,
         params.fullPrompt,
         params.contextBefore,

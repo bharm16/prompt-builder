@@ -60,8 +60,10 @@ describe("regression: pre-accept generation failures", () => {
       await result.current.generateDraft("wan-2.2", "A cinematic fox", {});
     });
 
+    // ISSUE-12 follow-up: ADD_GENERATION retired; state growth now flows
+    // through SET_GENERATIONS. A 402 rejection must not grow the set.
     expect(dispatch).not.toHaveBeenCalledWith(
-      expect.objectContaining({ type: "ADD_GENERATION" }),
+      expect.objectContaining({ type: "SET_GENERATIONS" }),
     );
     expect(dispatch).not.toHaveBeenCalledWith(
       expect.objectContaining({ type: "UPDATE_GENERATION" }),
@@ -72,8 +74,9 @@ describe("regression: pre-accept generation failures", () => {
 
   it("suppresses duplicate submit attempts while the request is still being accepted", async () => {
     const dispatch = vi.fn();
-    let resolveRequest: ((value: { success: boolean; videoUrl: string }) => void) | null =
-      null;
+    let resolveRequest:
+      | ((value: { success: boolean; videoUrl: string }) => void)
+      | null = null;
     generateVideoPreviewMock.mockImplementation(
       () =>
         new Promise<{ success: boolean; videoUrl: string }>((resolve) => {
@@ -90,8 +93,9 @@ describe("regression: pre-accept generation failures", () => {
 
     expect(generateVideoPreviewMock).toHaveBeenCalledTimes(1);
     expect(result.current.isSubmitting).toBe(true);
+    // In-flight: nothing has been accepted yet, so no state growth.
     expect(dispatch).not.toHaveBeenCalledWith(
-      expect.objectContaining({ type: "ADD_GENERATION" }),
+      expect.objectContaining({ type: "SET_GENERATIONS" }),
     );
 
     await act(async () => {
@@ -104,8 +108,10 @@ describe("regression: pre-accept generation failures", () => {
     await waitFor(() => {
       expect(result.current.isSubmitting).toBe(false);
     });
+    // On success the reducer grows via SET_GENERATIONS (state-replace from
+    // [...current, newGen]).
     expect(dispatch).toHaveBeenCalledWith(
-      expect.objectContaining({ type: "ADD_GENERATION" }),
+      expect.objectContaining({ type: "SET_GENERATIONS" }),
     );
   });
 });

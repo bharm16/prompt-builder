@@ -17,7 +17,7 @@ import {
 import { ToastProvider } from "./components/Toast";
 import { AppShellProvider } from "./contexts/AppShellContext";
 import { LoadingDots } from "./components/LoadingDots";
-import { GenerationControlsStoreProvider } from "@features/generation-controls/context/GenerationControlsStore";
+import { GenerationControlsStoreProvider } from "@features/generation-controls";
 import { apiClient } from "./services/ApiClient";
 import { trackPageView } from "./services/analytics";
 
@@ -153,9 +153,11 @@ function MarketingShell(): React.ReactElement {
 
 function WorkspaceRoute(): React.ReactElement {
   return (
-    <FeatureErrorBoundary featureName="Main Workspace">
-      <MainWorkspace />
-    </FeatureErrorBoundary>
+    <GenerationControlsStoreProvider>
+      <FeatureErrorBoundary featureName="Main Workspace">
+        <MainWorkspace />
+      </FeatureErrorBoundary>
+    </GenerationControlsStoreProvider>
   );
 }
 
@@ -300,16 +302,14 @@ function App(): React.ReactElement {
       message="The application encountered an unexpected error. Please refresh the page to continue."
     >
       <ToastProvider>
-        <GenerationControlsStoreProvider>
-          <AppShellProvider>
-            <Router>
-              <RouteTracker />
-              <Suspense fallback={<RouteFallback />}>
-                <AppRoutes />
-              </Suspense>
-            </Router>
-          </AppShellProvider>
-        </GenerationControlsStoreProvider>
+        <AppShellProvider>
+          <Router>
+            <RouteTracker />
+            <Suspense fallback={<RouteFallback />}>
+              <AppRoutes />
+            </Suspense>
+          </Router>
+        </AppShellProvider>
       </ToastProvider>
     </ErrorBoundary>
   );

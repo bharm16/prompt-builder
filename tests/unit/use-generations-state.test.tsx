@@ -57,12 +57,21 @@ describe("useGenerationsState", () => {
   });
 
   describe("edge cases", () => {
+    // ISSUE-12 follow-up: ADD_GENERATION retired; `addGeneration` is the
+    // hook's convenience but is not safe to call twice in the same React
+    // tick (each call reads a stale generationsRef snapshot). Test setup
+    // that wants multiple entries should seed state via SET_GENERATIONS.
     it("updates active generation when the active one is removed", () => {
       const { result } = renderHook(() => useGenerationsState());
 
       act(() => {
-        result.current.addGeneration(createGeneration({ id: "gen-1" }));
-        result.current.addGeneration(createGeneration({ id: "gen-2" }));
+        result.current.dispatch({
+          type: "SET_GENERATIONS",
+          payload: [
+            createGeneration({ id: "gen-1" }),
+            createGeneration({ id: "gen-2" }),
+          ],
+        });
       });
 
       expect(result.current.activeGenerationId).toBe("gen-2");
@@ -78,8 +87,13 @@ describe("useGenerationsState", () => {
       const { result } = renderHook(() => useGenerationsState());
 
       act(() => {
-        result.current.addGeneration(createGeneration({ id: "gen-1" }));
-        result.current.addGeneration(createGeneration({ id: "gen-2" }));
+        result.current.dispatch({
+          type: "SET_GENERATIONS",
+          payload: [
+            createGeneration({ id: "gen-1" }),
+            createGeneration({ id: "gen-2" }),
+          ],
+        });
         result.current.setActiveGeneration("gen-1");
       });
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { safeUrlHost } from "../url";
+import { safeUrlHost } from "@shared/utils/url";
 
 describe("safeUrlHost", () => {
   it("returns hostname for valid URL strings", () => {

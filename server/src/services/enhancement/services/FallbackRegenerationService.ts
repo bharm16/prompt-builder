@@ -1,6 +1,5 @@
 import { logger } from "@infrastructure/Logger";
 import { StructuredOutputEnforcer } from "@utils/StructuredOutputEnforcer";
-import type { SuggestionRejectReason } from "./SuggestionValidationService.js";
 import type {
   Suggestion,
   VideoService,
@@ -8,6 +7,7 @@ import type {
   FallbackRegenerationParams,
   FallbackRegenerationResult,
   PromptBuildParams,
+  SuggestionRejectReason,
   VideoConstraints,
   OutputSchema,
 } from "./types.js";
@@ -78,7 +78,7 @@ type InternalFallbackResult = FallbackRegenerationResult & {
  */
 export class FallbackRegenerationService {
   constructor(
-    private readonly videoService: VideoService,
+    private readonly videoPromptService: VideoService,
     private readonly promptBuilder: PromptBuilder,
     private readonly validationService: ValidationService,
     private readonly diversityEnforcer: DiversityEnforcer,
@@ -193,11 +193,12 @@ export class FallbackRegenerationService {
     }
 
     let currentConstraints = videoConstraints;
-    let fallbackConstraints = this.videoService.getVideoFallbackConstraints(
-      currentConstraints,
-      regenerationDetails,
-      attemptedModes,
-    );
+    let fallbackConstraints =
+      this.videoPromptService.getVideoFallbackConstraints(
+        currentConstraints,
+        regenerationDetails,
+        attemptedModes,
+      );
     fallbackConstraints = fallbackConstraints
       ? this._adaptConstraintsForReasons(
           fallbackConstraints,
@@ -247,7 +248,7 @@ export class FallbackRegenerationService {
       // Move to next fallback
       attemptedModes.add(fallbackConstraints.mode || "");
       currentConstraints = fallbackConstraints;
-      fallbackConstraints = this.videoService.getVideoFallbackConstraints(
+      fallbackConstraints = this.videoPromptService.getVideoFallbackConstraints(
         currentConstraints,
         regenerationDetails,
         attemptedModes,

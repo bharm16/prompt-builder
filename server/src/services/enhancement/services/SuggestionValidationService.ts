@@ -7,8 +7,18 @@ import type {
   SanitizationContext,
   GroupedSuggestions,
   VideoService,
+  SuggestionRejectReason,
 } from "./types.js";
 import * as patterns from "./ValidationPatterns.js";
+import { hasBodyPartSubRoleDrift } from "./SubjectAppearanceClassifier.js";
+import { getCategoryDriftRejectReason } from "./CategoryDriftValidator.js";
+import {
+  hasObjectOverlap,
+  hasActorDrift,
+  hasSubjectClassDrift,
+  isMetaphoricalOrAbstract,
+  violatesArticleAgreement,
+} from "./DriftDetectors.js";
 
 type ExtendedSanitizationContext = SanitizationContext & {
   contextBefore?: string;
@@ -16,31 +26,6 @@ type ExtendedSanitizationContext = SanitizationContext & {
   spanAnchors?: string;
   nearbySpanHints?: string;
 };
-
-type SlotGrammarProfile =
-  | "adjective_modifier"
-  | "adverb_modifier"
-  | "noun_phrase_after_article"
-  | "noun_phrase_before_object"
-  | "verb_phrase_before_object"
-  | "bare_technical_phrase";
-
-type SubjectAppearanceSubRole =
-  | "face_detail"
-  | "hand_detail"
-  | "hair_detail"
-  | "feet_detail"
-  | "prop_detail"
-  | null;
-
-export type SuggestionRejectReason =
-  | "length_only"
-  | "slot_form"
-  | "category_drift"
-  | "body_part_drift"
-  | "object_overlap"
-  | "coherence_conflict"
-  | "metaphor_or_abstract";
 
 interface SuggestionAnalysis {
   primary: Suggestion[];
@@ -68,7 +53,7 @@ export class SuggestionValidationService {
   private readonly deprioritizedMarker = "__deprioritized";
   private readonly lockedCategoryPatterns = patterns.lockedCategoryPatterns;
 
-  constructor(private readonly videoService: VideoService) {}
+  constructor(private readonly videoPromptService: VideoService) {}
 
   /**
    * Sanitize suggestions to ensure they are valid drop-in replacements
@@ -363,11 +348,11 @@ export class SuggestionValidationService {
     highlightedText: string | undefined,
   ): ReturnType<VideoService["getVideoReplacementConstraints"]> | undefined {
     const highlightWordCount = highlightedText
-      ? this.videoService.countWords(highlightedText)
+      ? this.videoPromptService.countWords(highlightedText)
       : undefined;
 
     try {
-      return this.videoService.getVideoReplacementConstraints({
+      return this.videoPromptService.getVideoReplacementConstraints({
         ...(highlightWordCount !== undefined ? { highlightWordCount } : {}),
         ...(highlightedText ? { highlightedText } : {}),
       });
@@ -394,7 +379,9 @@ export class SuggestionValidationService {
       return suggestions;
     }
 
-    const targetWords = this.videoService.countWords(context.highlightedText);
+    const targetWords = this.videoPromptService.countWords(
+      context.highlightedText,
+    );
     if (targetWords <= 0) {
       return suggestions;
     }
@@ -404,7 +391,7 @@ export class SuggestionValidationService {
 
     const ranked = suggestions
       .map((suggestion, index) => {
-        const suggestionWordCount = this.videoService.countWords(
+        const suggestionWordCount = this.videoPromptService.countWords(
           suggestion.text,
         );
         const distance =
@@ -464,32 +451,36 @@ export class SuggestionValidationService {
     text: string,
     context: ExtendedSanitizationContext,
   ): SuggestionRejectReason | null {
-    if (this._violatesArticleAgreement(text, context)) {
+    if (violatesArticleAgreement(text, context)) {
       return "slot_form";
     }
 
-    const slotFitRejectReason = this._getSlotFitRejectReason(text, context);
+    const slotFitRejectReason = getCategoryDriftRejectReason(
+      text,
+      context,
+      (input) => this.videoPromptService.countWords(input),
+    );
     if (slotFitRejectReason) {
       return slotFitRejectReason;
     }
 
-    if (this._hasBodyPartSubRoleDrift(text, context)) {
+    if (hasBodyPartSubRoleDrift(text, context)) {
       return "body_part_drift";
     }
 
-    if (this._hasObjectOverlap(text, context)) {
+    if (hasObjectOverlap(text, context)) {
       return "object_overlap";
     }
 
-    if (this._hasActorDrift(text, context)) {
+    if (hasActorDrift(text, context)) {
       return "coherence_conflict";
     }
 
-    if (this._hasSubjectClassDrift(text, context)) {
+    if (hasSubjectClassDrift(text, context)) {
       return "category_drift";
     }
 
-    if (this._isMetaphoricalOrAbstract(text, context)) {
+    if (isMetaphoricalOrAbstract(text, context)) {
       return "metaphor_or_abstract";
     }
 
@@ -516,7 +507,7 @@ export class SuggestionValidationService {
       category === "lighting.quality" &&
       /ly$/i.test((context.highlightedText || "").trim().toLowerCase());
     const lowerText = text.toLowerCase();
-    const wordCount = this.videoService.countWords(text);
+    const wordCount = this.videoPromptService.countWords(text);
 
     if (context.isPlaceholder) {
       const fallbackVideoConstraints =
@@ -630,525 +621,6 @@ export class SuggestionValidationService {
     return null;
   }
 
-  private _classifySlotGrammarProfile(
-    context: ExtendedSanitizationContext,
-  ): SlotGrammarProfile {
-    const category = this._normalizeCategoryKey(
-      context.highlightedCategory || "",
-    );
-    const before = (context.contextBefore || "").trimEnd().toLowerCase();
-    const after = (context.contextAfter || "").trimStart().toLowerCase();
-    const highlighted = (context.highlightedText || "").trim().toLowerCase();
-
-    if (/\b(a|an|the)\s*$/.test(before)) {
-      return "noun_phrase_after_article";
-    }
-
-    if (category.startsWith("action")) {
-      return "verb_phrase_before_object";
-    }
-
-    if (
-      highlighted.endsWith("ly") ||
-      (highlighted.split(/\s+/).filter(Boolean).length === 1 &&
-        patterns.technicalVerbLeadTerms.test(before) &&
-        /^(through|across|into|over|around|beneath|onto|inside|outside)\b/.test(
-          after,
-        ))
-    ) {
-      return "adverb_modifier";
-    }
-
-    if (
-      category === "lighting.quality" ||
-      /^[,.;:!?-]/.test(after) ||
-      (!before && !!after)
-    ) {
-      return "adjective_modifier";
-    }
-
-    if (
-      (category.startsWith("subject.") || category === "environment.context") &&
-      /^(gripping|holding|resting|visible|pressed|touching|framed|curled|wrapped)\b/.test(
-        after,
-      )
-    ) {
-      return "noun_phrase_before_object";
-    }
-
-    return "bare_technical_phrase";
-  }
-
-  private _getGrammarProfileRejectReason(
-    text: string,
-    category: string,
-    slotProfile: SlotGrammarProfile,
-  ): SuggestionRejectReason | null {
-    if (slotProfile === "adverb_modifier") {
-      return this._looksLikeAdverb(text) ? null : "slot_form";
-    }
-
-    if (slotProfile === "adjective_modifier") {
-      if (!this._looksLikeAdjectiveLikePhrase(text, category)) {
-        return "slot_form";
-      }
-      return null;
-    }
-
-    if (
-      slotProfile === "noun_phrase_after_article" ||
-      slotProfile === "noun_phrase_before_object"
-    ) {
-      return this._looksLikeNounPhrase(text) ? null : "slot_form";
-    }
-
-    if (slotProfile === "verb_phrase_before_object") {
-      return this._looksLikeVerbPhrase(text) ? null : "slot_form";
-    }
-
-    return null;
-  }
-
-  private _looksLikeAdverb(text: string): boolean {
-    const normalized = text.toLowerCase().trim();
-    if (!normalized) return false;
-    if (normalized.split(/\s+/).length > 3) return false;
-    return (
-      /\bly\b/.test(normalized) ||
-      /^(soft|gentle|bright|warm|dim|faint|bare|even)\w*ly\b/.test(normalized)
-    );
-  }
-
-  private _looksLikeAdjectiveLikePhrase(
-    text: string,
-    category: string,
-  ): boolean {
-    const normalized = text.toLowerCase().trim();
-    if (!normalized) return false;
-    if (/^(a|an|the|his|her|their|its)\b/.test(normalized)) return false;
-    if (/\b(of|with|while|because|that)\b/.test(normalized)) return false;
-    if (
-      category === "style.aesthetic" &&
-      patterns.styleNounCueTerms.test(normalized)
-    ) {
-      return false;
-    }
-    if (/\b(is|are|was|were|be|being|been|am)\b/.test(normalized)) return false;
-    return true;
-  }
-
-  private _looksLikeNounPhrase(text: string): boolean {
-    const normalized = text.toLowerCase().trim();
-    if (!normalized) return false;
-    if (/\b(is|are|was|were|be|being|been|am)\b/.test(normalized)) return false;
-    if (
-      /^(gripping|holding|resting|turning|leaning|looking|reaching|pressing|curling|squeezing)\b/.test(
-        normalized,
-      )
-    ) {
-      return false;
-    }
-    return true;
-  }
-
-  private _looksLikeVerbPhrase(text: string): boolean {
-    const normalized = text.toLowerCase().trim();
-    if (!normalized) return false;
-    if (/^(a|an|the|his|her|their|its)\b/.test(normalized)) return false;
-    return /^(grip(?:ping)?|grasp(?:ing)?|hold(?:ing)?|press(?:ing)?|rest(?:ing)?|steady(?:ing)?|turn(?:ing)?|curl(?:ing)?|clench(?:ing)?|squeez(?:ing)?|tap(?:ping)?|balance(?:ing)?|lean(?:ing)?|reach(?:ing)?|look(?:ing)?|gaze(?:ing)?|track(?:ing)?|tilt(?:ing)?|dolly|pan(?:ning)?|sway(?:ing)?|drift(?:ing)?|rustl(?:e|ing)|(?:branches?|trees?|leaves?|grass|waves?|water|clouds?)\s+\w+ing)\b/.test(
-      normalized,
-    );
-  }
-
-  private _detectSubjectAppearanceSubRole(
-    context: ExtendedSanitizationContext,
-  ): SubjectAppearanceSubRole {
-    const category = this._normalizeCategoryKey(
-      context.highlightedCategory || "",
-    );
-    if (!category.startsWith("subject.")) {
-      return null;
-    }
-
-    const highlighted = (context.highlightedText || "").toLowerCase();
-    if (patterns.faceCueTerms.test(highlighted)) return "face_detail";
-    if (patterns.handCueTerms.test(highlighted)) return "hand_detail";
-    if (patterns.hairCueTerms.test(highlighted)) return "hair_detail";
-    if (patterns.feetCueTerms.test(highlighted)) return "feet_detail";
-    if (patterns.propCueTerms.test(highlighted)) return "prop_detail";
-    return null;
-  }
-
-  private _hasBodyPartSubRoleDrift(
-    text: string,
-    context: ExtendedSanitizationContext,
-  ): boolean {
-    const subRole = this._detectSubjectAppearanceSubRole(context);
-    if (!subRole) {
-      return false;
-    }
-
-    const lowerText = text.toLowerCase();
-    if (subRole === "face_detail") {
-      return (
-        !patterns.faceCueTerms.test(lowerText) ||
-        patterns.handCueTerms.test(lowerText) ||
-        patterns.hairCueTerms.test(lowerText) ||
-        patterns.feetCueTerms.test(lowerText) ||
-        patterns.propCueTerms.test(lowerText) ||
-        /\b(gripping|reaching|playing|resting|touching|catching)\b/i.test(
-          lowerText,
-        )
-      );
-    }
-
-    if (subRole === "hand_detail") {
-      return (
-        !patterns.handCueTerms.test(lowerText) ||
-        patterns.faceCueTerms.test(lowerText) ||
-        patterns.hairCueTerms.test(lowerText) ||
-        patterns.feetCueTerms.test(lowerText) ||
-        /\b(sock|toy|stroller)\b/i.test(lowerText)
-      );
-    }
-
-    if (subRole === "hair_detail") {
-      return !patterns.hairCueTerms.test(lowerText);
-    }
-
-    if (subRole === "feet_detail") {
-      return !patterns.feetCueTerms.test(lowerText);
-    }
-
-    if (subRole === "prop_detail") {
-      return (
-        !patterns.propCueTerms.test(lowerText) ||
-        patterns.faceCueTerms.test(lowerText) ||
-        patterns.handCueTerms.test(lowerText)
-      );
-    }
-
-    return false;
-  }
-
-  private _hasObjectOverlap(
-    text: string,
-    context: ExtendedSanitizationContext,
-  ): boolean {
-    const category = this._normalizeCategoryKey(
-      context.highlightedCategory || "",
-    );
-    if (!category.startsWith("action")) {
-      return false;
-    }
-
-    const after = (context.contextAfter || "").toLowerCase();
-    const lowerText = text.toLowerCase();
-    const overlappingObjectTerms = [
-      "steering wheel",
-      "wheel",
-      "dashboard",
-      "window",
-      "glass",
-      "door",
-      "toy",
-    ];
-
-    if (
-      overlappingObjectTerms.some(
-        (term) => after.includes(term) && lowerText.includes(term),
-      )
-    ) {
-      return true;
-    }
-
-    const localContext = [
-      context.highlightedText || "",
-      context.contextBefore || "",
-      context.contextAfter || "",
-      context.spanAnchors || "",
-      context.nearbySpanHints || "",
-    ]
-      .join(" ")
-      .toLowerCase();
-
-    const handBoundAction =
-      patterns.handCueTerms.test(localContext) &&
-      overlappingObjectTerms.some((term) => localContext.includes(term));
-    if (!handBoundAction) {
-      return false;
-    }
-
-    if (patterns.fullBodyActionTerms.test(lowerText)) {
-      return true;
-    }
-
-    return !patterns.handInteractionTerms.test(lowerText);
-  }
-
-  private _isMetaphoricalOrAbstract(
-    text: string,
-    context: ExtendedSanitizationContext,
-  ): boolean {
-    const category = this._normalizeCategoryKey(
-      context.highlightedCategory || "",
-    );
-    if (category === "lighting.timeofday") {
-      return patterns.abstractVisualTerms.test(text.toLowerCase());
-    }
-    return false;
-  }
-
-  private _getSlotFitRejectReason(
-    text: string,
-    context: ExtendedSanitizationContext,
-  ): SuggestionRejectReason | null {
-    const category = this._normalizeCategoryKey(
-      context.highlightedCategory || "",
-    );
-    const lowerText = text.toLowerCase();
-    const slotProfile = this._classifySlotGrammarProfile(context);
-
-    const slotFormReject = this._getGrammarProfileRejectReason(
-      text,
-      category,
-      slotProfile,
-    );
-    if (slotFormReject) {
-      return slotFormReject;
-    }
-
-    if (category === "lighting.quality" && slotProfile === "adverb_modifier") {
-      if (
-        patterns.cameraTechniqueTerms.test(text) ||
-        patterns.cameraFocusTerms.test(text)
-      ) {
-        return "category_drift";
-      }
-      const looksLikeSourceClause =
-        patterns.lightSourceClauseTerms.test(text) &&
-        (this.videoService.countWords(text) >= 4 ||
-          patterns.lightingClauseVerbTerms.test(text));
-      if (looksLikeSourceClause) {
-        return "slot_form";
-      }
-      return null;
-    }
-
-    if (category === "camera.angle") {
-      if (
-        patterns.cameraMovementTerms.test(text) ||
-        patterns.lensApertureTerms.test(text) ||
-        patterns.cameraFocusTerms.test(text)
-      ) {
-        return "category_drift";
-      }
-      return patterns.cameraAngleTerms.test(text) ? null : "category_drift";
-    }
-
-    if (category === "camera.movement") {
-      if (
-        patterns.lensApertureTerms.test(text) ||
-        patterns.cameraFocusTerms.test(text) ||
-        patterns.shotFramingTerms.test(text)
-      ) {
-        return "category_drift";
-      }
-      return patterns.cameraMovementTerms.test(text) ? null : "category_drift";
-    }
-
-    if (category === "camera.focus") {
-      if (
-        patterns.cameraMovementTerms.test(text) ||
-        patterns.lensApertureTerms.test(text) ||
-        patterns.shotFramingTerms.test(text)
-      ) {
-        return "category_drift";
-      }
-      return patterns.cameraFocusTerms.test(text) ? null : "category_drift";
-    }
-
-    if (category === "camera.lens") {
-      if (
-        patterns.cameraMovementTerms.test(text) ||
-        patterns.cameraFocusTerms.test(text) ||
-        patterns.shotFramingTerms.test(text)
-      ) {
-        return "category_drift";
-      }
-      return patterns.lensApertureTerms.test(text) ? null : "category_drift";
-    }
-
-    if (category === "shot.type") {
-      const hasShotFraming = patterns.shotFramingTerms.test(text);
-      const hasMovementLanguage = patterns.cameraMovementTerms.test(text);
-      if (/\b(of|featuring|showing|looking|emphasizing)\b/i.test(text)) {
-        return "slot_form";
-      }
-      if (!hasShotFraming) {
-        return "category_drift";
-      }
-      return hasMovementLanguage ||
-        patterns.lensApertureTerms.test(text) ||
-        patterns.cameraFocusTerms.test(text)
-        ? "category_drift"
-        : null;
-    }
-
-    const highlightedWordCount = this.videoService.countWords(
-      context.highlightedText || "",
-    );
-    const suggestionWordCount = this.videoService.countWords(text);
-    const isAdjectiveLikeLightingSlot =
-      category === "lighting.quality" ||
-      (category.startsWith("lighting.") &&
-        highlightedWordCount <= 2 &&
-        typeof context.contextAfter === "string" &&
-        context.contextAfter.trim().startsWith(","));
-
-    if (isAdjectiveLikeLightingSlot && slotProfile !== "adverb_modifier") {
-      if (
-        patterns.cameraTechniqueTerms.test(text) ||
-        patterns.cameraFocusTerms.test(text)
-      ) {
-        return "category_drift";
-      }
-      const looksLikeSourceClause =
-        patterns.lightSourceClauseTerms.test(text) &&
-        (suggestionWordCount >= 4 ||
-          patterns.lightingClauseVerbTerms.test(text));
-      if (looksLikeSourceClause) {
-        return "slot_form";
-      }
-      if (!patterns.lightingQualityCueTerms.test(text)) {
-        return "category_drift";
-      }
-      if (
-        patterns.shadowCueTerms.test(context.highlightedText || "") &&
-        !patterns.shadowCueTerms.test(text)
-      ) {
-        return "coherence_conflict";
-      }
-    }
-
-    if (category === "lighting.timeofday") {
-      if (
-        patterns.cameraTechniqueTerms.test(text) ||
-        patterns.cameraFocusTerms.test(text) ||
-        patterns.lightSourceClauseTerms.test(text) ||
-        patterns.lightingClauseVerbTerms.test(text) ||
-        patterns.lightingDirectionTerms.test(text)
-      ) {
-        return "category_drift";
-      }
-      if (!patterns.timeOfDayTerms.test(text)) {
-        return "category_drift";
-      }
-      if (
-        !patterns.canonicalTimeTokens.test(lowerText) ||
-        patterns.abstractVisualTerms.test(lowerText)
-      ) {
-        return "metaphor_or_abstract";
-      }
-      return null;
-    }
-
-    if (category === "lighting.source") {
-      if (
-        patterns.cameraTechniqueTerms.test(text) ||
-        patterns.cameraFocusTerms.test(text)
-      ) {
-        return "category_drift";
-      }
-      if (!patterns.lightingQualityCueTerms.test(text)) {
-        return "category_drift";
-      }
-      const hasSourceOrDirection =
-        patterns.lightSourceClauseTerms.test(text) ||
-        patterns.lightingDirectionTerms.test(text);
-      if (!hasSourceOrDirection) {
-        return "category_drift";
-      }
-    }
-
-    if (category === "style.aesthetic") {
-      if (
-        patterns.cameraTechniqueTerms.test(text) ||
-        patterns.cameraMovementTerms.test(text) ||
-        patterns.lightSourceClauseTerms.test(text) ||
-        patterns.lightingDirectionTerms.test(text)
-      ) {
-        return "category_drift";
-      }
-      if (!patterns.styleStrongCueTerms.test(text)) {
-        return "category_drift";
-      }
-    }
-
-    if (category === "environment.location") {
-      if (
-        patterns.environmentContextTerms.test(text) ||
-        patterns.vehicleInteriorTerms.test(text)
-      ) {
-        return "category_drift";
-      }
-      return patterns.externalLocationTerms.test(text)
-        ? null
-        : "category_drift";
-    }
-
-    if (category === "environment.context") {
-      if (patterns.externalLocationTerms.test(text)) {
-        return "category_drift";
-      }
-      return patterns.environmentContextTerms.test(text)
-        ? null
-        : "category_drift";
-    }
-
-    if (category === "environment.weather") {
-      const highlighted = (context.highlightedText || "").toLowerCase();
-      if (
-        patterns.weatherGentleAirTerms.test(highlighted) &&
-        patterns.weatherDisruptiveTerms.test(lowerText)
-      ) {
-        return "coherence_conflict";
-      }
-    }
-
-    return null;
-  }
-
-  private _hasActorDrift(
-    text: string,
-    context: ExtendedSanitizationContext,
-  ): boolean {
-    const category = this._normalizeCategoryKey(
-      context.highlightedCategory || "",
-    );
-    if (!category.startsWith("action")) {
-      return false;
-    }
-
-    const localContext = [
-      context.contextBefore || "",
-      context.contextAfter || "",
-      context.spanAnchors || "",
-      context.nearbySpanHints || "",
-    ]
-      .join(" ")
-      .toLowerCase();
-
-    if (!patterns.environmentMotionSubjectTerms.test(localContext)) {
-      return false;
-    }
-
-    return (
-      patterns.humanBodyActionTerms.test(text.toLowerCase()) ||
-      patterns.humanSubjectTerms.test(text.toLowerCase())
-    );
-  }
-
   /**
    * Strip trailing tokens from a suggestion that overlap with the start of contextAfter.
    * Only applies to action-category spans where the LLM may absorb the trailing object.
@@ -1190,81 +662,6 @@ export class SuggestionValidationService {
     }
 
     return text;
-  }
-
-  private _hasSubjectClassDrift(
-    text: string,
-    context: ExtendedSanitizationContext,
-  ): boolean {
-    const category = this._normalizeCategoryKey(
-      context.highlightedCategory || "",
-    );
-    if (!category.startsWith("subject.")) {
-      return false;
-    }
-
-    const localContext = [
-      context.highlightedText || "",
-      context.contextBefore || "",
-      context.contextAfter || "",
-      context.spanAnchors || "",
-      context.nearbySpanHints || "",
-    ]
-      .join(" ")
-      .toLowerCase();
-
-    const hasHumanIdentityContext =
-      patterns.humanSubjectTerms.test(localContext);
-    if (!hasHumanIdentityContext) {
-      return false;
-    }
-
-    const lowerText = text.toLowerCase();
-    return (
-      patterns.nonHumanIdentityTerms.test(lowerText) ||
-      patterns.fantasyOrRoleShiftTerms.test(lowerText)
-    );
-  }
-
-  private _violatesArticleAgreement(
-    text: string,
-    context: ExtendedSanitizationContext,
-  ): boolean {
-    const prefix = (context.contextBefore || "").trimEnd();
-    const articleMatch = prefix.match(/\b(a|an)\s*$/i);
-    if (!articleMatch) {
-      return false;
-    }
-
-    const lowerText = text.toLowerCase();
-    if (
-      /^[a-z]+['’]s\b/i.test(text) ||
-      /^(his|her|their|its)\b/i.test(lowerText)
-    ) {
-      return true;
-    }
-
-    const firstWord = lowerText.match(/^[a-z]+/)?.[0];
-    if (!firstWord) {
-      return false;
-    }
-
-    const article = articleMatch[1]!.toLowerCase();
-    const vowelSound =
-      /^[aeiou]/.test(firstWord) || /^(honest|hour|heir|honor)/.test(firstWord);
-    const consonantSound =
-      /^[^aeiou]/.test(firstWord) ||
-      /^(uni([^n]|$)|use|euro|one|ubiq)/.test(firstWord);
-
-    if (article === "a" && vowelSound) {
-      return true;
-    }
-
-    if (article === "an" && consonantSound) {
-      return true;
-    }
-
-    return false;
   }
 
   private _normalizeCategoryKey(category: string): string {

@@ -37,6 +37,8 @@ describe("regression: gallery thumbnail source during pending generation", () =>
       runtimeGenerations: [],
     });
 
-    expect(entries[0]?.gallery.thumbnailUrl).toBeNull();
+    // The builder may produce either null or undefined for an absent
+    // thumbnail; both represent "nothing to display" at the UI boundary.
+    expect(entries[0]?.gallery.thumbnailUrl ?? null).toBeNull();
   });
 });

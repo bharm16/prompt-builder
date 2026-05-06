@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Asset } from "@shared/types/asset";
-import type { KeyframeTile } from "@components/ToolSidebar/types";
+import type { KeyframeTile } from "@features/generation-controls";
 import type { GenerationParams } from "../types";
-import type { GenerationOverrides } from "@components/ToolSidebar/types";
+import type { GenerationOverrides } from "@features/generation-controls";
 
 interface KeyframeStepState {
   isActive: boolean;

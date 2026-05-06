@@ -2,8 +2,8 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import { SpanItem } from "@features/prompt-optimizer/SpanBentoGrid/components/SpanItem";
-import type { Span } from "@features/prompt-optimizer/SpanBentoGrid/components/types";
+import { SpanItem } from "@features/prompt-optimizer/SpanCategoryAccordion/components/SpanItem";
+import type { Span } from "@features/prompt-optimizer/SpanCategoryAccordion/components/types";
 
 const span: Span = {
   id: "span-1",

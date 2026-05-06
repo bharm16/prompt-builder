@@ -13,7 +13,8 @@ import { getAuthRepository } from "@repositories/index";
 import { useToast } from "@components/Toast";
 import { Button } from "@promptstudio/system/components/ui/button";
 import { useAuthUser } from "@hooks/useAuthUser";
-import type { User } from "@features/prompt-optimizer/types/domain/prompt-session";
+import { useCreditBalance } from "@/contexts/CreditBalanceContext";
+import type { User } from "@features/prompt-optimizer";
 import { AuthShell } from "./auth/AuthShell";
 import {
   AUTH_COLORS,
@@ -41,6 +42,8 @@ export function AccountPage(): React.ReactElement {
   const navigate = useNavigate();
   const [isBusy, setIsBusy] = React.useState(false);
   const user = useAuthUser();
+  const { balance: creditBalance, isLoading: isLoadingBalance } =
+    useCreditBalance();
 
   const handleSignOut = async (): Promise<void> => {
     setIsBusy(true);
@@ -90,12 +93,11 @@ export function AccountPage(): React.ReactElement {
               type="button"
               onClick={handleSignOut}
               variant="link"
-              className="h-auto p-0 text-white hover:underline"
+              className="h-auto p-0 align-baseline text-white hover:underline"
               disabled={isBusy}
             >
-              Sign out
+              Sign out.
             </Button>
-            .
           </>
         ) : (
           <>
@@ -103,7 +105,7 @@ export function AccountPage(): React.ReactElement {
             <Link to="/signup" className="text-white hover:underline">
               Create one
             </Link>
-            .
+            {"."}
           </>
         )
       }
@@ -134,6 +136,32 @@ export function AccountPage(): React.ReactElement {
               >
                 {label?.subtitle}
               </p>
+            </div>
+          </div>
+
+          <div className="px-3.5 py-3" style={AUTH_CARD_STYLE}>
+            <div className="flex items-center gap-2.5">
+              <CreditCard
+                className="h-4 w-4 shrink-0"
+                style={{ color: AUTH_COLORS.textDim }}
+                aria-hidden="true"
+              />
+              <div className="flex min-w-0 flex-1 items-center justify-between gap-2">
+                <p className="text-[13px] font-semibold text-white">
+                  Credit balance
+                </p>
+                <p
+                  className="text-[13px] font-semibold tabular-nums"
+                  style={{ color: AUTH_COLORS.textSecondary }}
+                  data-testid="account-credit-balance"
+                >
+                  {isLoadingBalance
+                    ? "…"
+                    : typeof creditBalance === "number"
+                      ? `${creditBalance} credits`
+                      : "—"}
+                </p>
+              </div>
             </div>
           </div>
 

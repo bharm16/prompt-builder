@@ -83,7 +83,9 @@ describe("useGenerationActions insufficient credits handling", () => {
       await result.current.generateDraft("wan-2.2", "A test prompt", {});
     });
 
-    expect(getAction(dispatch, "ADD_GENERATION")).toBeUndefined();
+    // ISSUE-12 follow-up: ADD_GENERATION retired; state growth flows through
+    // SET_GENERATIONS. A 402 rejection must not grow the set.
+    expect(getAction(dispatch, "SET_GENERATIONS")).toBeUndefined();
     expect(getAction(dispatch, "UPDATE_GENERATION")).toBeUndefined();
     expect(onInsufficientCredits).toHaveBeenCalledWith(28, "WAN 2.2 preview");
   });
@@ -105,7 +107,7 @@ describe("useGenerationActions insufficient credits handling", () => {
       await result.current.generateStoryboard("Storyboard prompt", {});
     });
 
-    expect(getAction(dispatch, "ADD_GENERATION")).toBeUndefined();
+    expect(getAction(dispatch, "SET_GENERATIONS")).toBeUndefined();
     expect(getAction(dispatch, "UPDATE_GENERATION")).toBeUndefined();
     expect(onInsufficientCredits).toHaveBeenCalledWith(4, "Storyboard");
   });
@@ -127,12 +129,12 @@ describe("useGenerationActions insufficient credits handling", () => {
       await result.current.generateRender("sora-2", "Render prompt", {});
     });
 
-    expect(getAction(dispatch, "ADD_GENERATION")).toBeUndefined();
+    expect(getAction(dispatch, "SET_GENERATIONS")).toBeUndefined();
     expect(getAction(dispatch, "UPDATE_GENERATION")).toBeUndefined();
     expect(onInsufficientCredits).toHaveBeenCalledWith(48, "Sora render");
   });
 
-  it("keeps normal error flow for non-402 failures", async () => {
+  it("surfaces non-402 failures as a failed generation via SET_GENERATIONS and does not treat them as insufficient credits", async () => {
     const dispatch = vi.fn();
     const onInsufficientCredits = vi.fn();
     generateVideoPreviewMock.mockRejectedValue(new Error("Network down"));
@@ -145,8 +147,16 @@ describe("useGenerationActions insufficient credits handling", () => {
       await result.current.generateRender("sora-2", "Render prompt", {});
     });
 
-    expect(getAction(dispatch, "ADD_GENERATION")).toBeUndefined();
-    expect(getAction(dispatch, "UPDATE_GENERATION")).toBeUndefined();
+    // Generic failures surface as a failed generation via SET_GENERATIONS
+    // (state-replace with the failed record appended) so the user sees the
+    // error rather than silence. The 402-only branch remains reserved for
+    // insufficient-credits handling.
+    const setAction = getAction(dispatch, "SET_GENERATIONS") as
+      | { payload: Array<{ status: string; error: string }> }
+      | undefined;
+    const failed = setAction?.payload?.[setAction.payload.length - 1];
+    expect(failed?.status).toBe("failed");
+    expect(failed?.error).toBe("Network down");
     expect(onInsufficientCredits).not.toHaveBeenCalled();
     expect(result.current.isSubmitting).toBe(false);
   });
@@ -240,13 +250,15 @@ describe("useGenerationActions cancellation behavior", () => {
     });
 
     await waitFor(() => {
-      expect(getAction(dispatch, "ADD_GENERATION")).toBeDefined();
+      expect(getAction(dispatch, "SET_GENERATIONS")).toBeDefined();
     });
-    const addAction = getAction(dispatch, "ADD_GENERATION") as
-      | { payload: { id: string } }
+    // ISSUE-12 follow-up: SET_GENERATIONS payload is the whole array; the
+    // just-added generation is the last element.
+    const setAction = getAction(dispatch, "SET_GENERATIONS") as
+      | { payload: Array<{ id: string }> }
       | undefined;
 
-    const generationId = addAction?.payload.id;
+    const generationId = setAction?.payload?.[setAction.payload.length - 1]?.id;
     if (!generationId) {
       throw new Error("Expected generation id to be present");
     }

@@ -117,29 +117,26 @@ vi.mock(
   }),
 );
 
-vi.mock(
-  "@features/generation-controls/context/GenerationControlsStore",
-  () => ({
-    useGenerationControlsStoreState: () => ({
-      domain: {
-        selectedModel: "wan-2.2",
-        keyframes: [],
-        startFrame: null,
-        endFrame: null,
-        videoReferenceImages: [],
-        extendVideo: null,
-        cameraMotion: null,
-        subjectMotion: "",
-      },
-    }),
-    useGenerationControlsStoreActions: () => ({
-      setStartFrame: vi.fn(),
-      clearStartFrame: vi.fn(),
-      setExtendVideo: vi.fn(),
-      clearExtendVideo: vi.fn(),
-    }),
+vi.mock("@features/generation-controls", () => ({
+  useGenerationControlsStoreState: () => ({
+    domain: {
+      selectedModel: "wan-2.2",
+      keyframes: [],
+      startFrame: null,
+      endFrame: null,
+      videoReferenceImages: [],
+      extendVideo: null,
+      cameraMotion: null,
+      subjectMotion: "",
+    },
   }),
-);
+  useGenerationControlsStoreActions: () => ({
+    setStartFrame: vi.fn(),
+    clearStartFrame: vi.fn(),
+    setExtendVideo: vi.fn(),
+    clearExtendVideo: vi.fn(),
+  }),
+}));
 
 vi.mock("@/features/prompt-optimizer/hooks/useCapabilities", () => ({
   useCapabilities: () => ({
@@ -284,5 +281,68 @@ describe("regression: signed-in generation session promotion", () => {
       }),
     );
     expect(saveToHistoryMock).toHaveBeenCalledTimes(1);
+  });
+
+  // Regression: the resume effect used to require exact prompt equality
+  // between the editor and the pending intent. The optimize pipeline rewrites
+  // the prompt during session load, so that check could never hold once
+  // rewriting was enabled — leaving the draft silently dropped. The resume
+  // must now fire on session-id match as long as the editor has ANY prompt.
+  it("resumes the pending draft after session load even when the prompt was rewritten mid-flight", async () => {
+    const initialPrompt = "cinematic dragon flight";
+    const rewrittenPrompt =
+      "cinematic dragon flight — extended cinematic sequence with neon lighting";
+    mockPrompt = initialPrompt;
+
+    const { rerender } = renderHook(
+      ({ prompt }) =>
+        useGenerationsRuntime({
+          prompt,
+          promptVersionId: "version-1",
+          aspectRatio: "16:9",
+          duration: 8,
+          versions: [],
+          onCreateVersionIfNeeded: () => "version-1",
+          presentation: "hero",
+        }),
+      { initialProps: { prompt: initialPrompt } },
+    );
+
+    await waitFor(() => {
+      expect(setControlsMock).toHaveBeenCalled();
+    });
+
+    const controlsPayload = setControlsMock.mock.calls.at(-1)?.[0] as
+      | { onDraft?: (model: "wan-2.2") => void }
+      | undefined;
+
+    act(() => {
+      controlsPayload?.onDraft?.("wan-2.2");
+    });
+
+    await waitFor(() => {
+      expect(saveToHistoryMock).toHaveBeenCalledTimes(1);
+      expect(navigateMock).toHaveBeenCalledWith("/session/session-remote", {
+        replace: true,
+      });
+    });
+
+    expect(generateDraftMock).not.toHaveBeenCalled();
+
+    // Simulate the optimizer rewriting the prompt during session load —
+    // the editor now shows a different, longer prompt than the intent stored.
+    rerender({ prompt: rewrittenPrompt });
+
+    await waitFor(() => {
+      expect(generateDraftMock).toHaveBeenCalledTimes(1);
+    });
+
+    expect(generateDraftMock).toHaveBeenCalledWith(
+      "wan-2.2",
+      rewrittenPrompt,
+      expect.objectContaining({
+        promptVersionId: "version-1",
+      }),
+    );
   });
 });

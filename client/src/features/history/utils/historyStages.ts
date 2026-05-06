@@ -1,4 +1,4 @@
-import type { PromptHistoryEntry } from "@features/prompt-optimizer/types/domain/prompt-session";
+import type { PromptHistoryEntry } from "@features/prompt-optimizer";
 import type { PromptRowStage } from "../types";
 
 export function resolveEntryStage(entry: PromptHistoryEntry): PromptRowStage {

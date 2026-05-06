@@ -75,7 +75,11 @@ export async function parseEnhancementSuggestionsResponse<TSuggestion = string>(
   response: Response,
 ): Promise<EnhancementSuggestionsResponse<TSuggestion>> {
   const data = await response.json();
-  const parsed = EnhancementSuggestionsResponseSchema.parse(data);
+  const result = EnhancementSuggestionsResponseSchema.safeParse(data);
+  if (!result.success) {
+    return { suggestions: [], isPlaceholder: false };
+  }
+  const parsed = result.data;
 
   return {
     suggestions: parsed.suggestions as TSuggestion[],

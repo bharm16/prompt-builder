@@ -310,7 +310,7 @@ export function VideoThumbnail({
               "rounded bg-black/40 px-1.5 py-0.5 text-[10px] font-semibold backdrop-blur-md",
               tier === "draft"
                 ? "text-success-400/80"
-                : "text-tool-accent-selection/80",
+                : "text-tool-accent-neutral/80",
             )}
           >
             {tier === "draft" ? "Draft" : "Render"}

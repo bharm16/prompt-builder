@@ -3,6 +3,7 @@ import { useToast } from "@components/Toast";
 import { useAuthUser } from "@/hooks/useAuthUser";
 import { useBillingStatus } from "@/features/billing/hooks/useBillingStatus";
 import { CreditOnboardingBanner } from "@/features/billing/components/CreditOnboardingBanner";
+import { useCreditBalance } from "@/contexts/CreditBalanceContext";
 import type { ContinuityShot } from "@/features/continuity/types";
 import { PromptResultsSection } from "../components/PromptResultsSection";
 import { useWorkspaceSession } from "../context/WorkspaceSessionContext";
@@ -25,6 +26,7 @@ export const PromptResultsLayout = (): React.ReactElement => {
   const toast = useToast();
   const user = useAuthUser();
   const { status } = useBillingStatus();
+  const { balance: currentCreditBalance } = useCreditBalance();
   const {
     session,
     isSequenceMode,
@@ -211,6 +213,7 @@ export const PromptResultsLayout = (): React.ReactElement => {
       <CreditOnboardingBanner
         userId={user?.uid ?? null}
         starterGrantCredits={status?.starterGrantCredits ?? null}
+        currentBalance={currentCreditBalance}
       />
 
       {isSequenceMode && orderedShots.length > 1 && (
@@ -254,7 +257,7 @@ export const PromptResultsLayout = (): React.ReactElement => {
       )}
 
       <PromptResultsSection />
-      <div className="bg-tool-surface-deep px-3 py-2">
+      <div className="bg-app px-3 py-2">
         <PipelineStatus shot={currentShot} isGenerating={isGeneratingShot} />
       </div>
     </main>

@@ -1,9 +1,15 @@
 import { expect, test } from "@playwright/test";
 import { jsonResponse } from "./helpers/responses";
+import { injectAuthUser } from "./helpers/auth";
 
 test("workspace smoke: optimize, preview, and session persistence flow", async ({
   page,
 }) => {
+  // Auth injection must happen before navigation. The Optimized prompt
+  // contenteditable is auth-gated; unauthenticated users only see a static
+  // placeholder and can't interact with the editor.
+  await injectAuthUser(page);
+
   let optimizeCalls = 0;
   let previewCalls = 0;
   let sessionMutationCalls = 0;
@@ -123,7 +129,7 @@ test("workspace smoke: optimize, preview, and session persistence flow", async (
 
   await page.goto("/");
 
-  const promptInput = page.getByLabel("Text Prompt Input");
+  const promptInput = page.getByLabel("Optimized prompt");
   await expect(promptInput).toBeVisible();
   await promptInput.fill(
     "Wide shot of a cyclist crossing a rainy bridge at dusk.",
@@ -134,18 +140,18 @@ test("workspace smoke: optimize, preview, and session persistence flow", async (
   await promptInput.press(optimizeShortcut);
   await expect.poll(() => optimizeCalls).toBeGreaterThan(0);
 
-  await page.getByLabel("Generate 1 preview · 1 cr").click();
+  await page.getByLabel(/preview storyboard \d+ credits?/i).click();
   await expect.poll(() => previewCalls).toBeGreaterThan(0);
 
-  const sessionSelector = page.getByLabel("Session selector");
-  const openSessions = page.getByLabel("Open sessions");
+  // The sessions panel toggle now uses aria-label "Sessions" (rail icon).
+  // The previous "Session selector" / "Open sessions" labels were removed
+  // when the workspace got the rail-based navigation.
+  const sessionsButton = page.getByRole("button", { name: /^sessions$/i });
   await expect
     .poll(async () => {
-      if (sessionMutationCalls > 0) {
-        return true;
-      }
-      return sessionSelector.or(openSessions).isVisible();
+      if (sessionMutationCalls > 0) return true;
+      return sessionsButton.isVisible();
     })
     .toBe(true);
-  await expect(sessionSelector.or(openSessions)).toBeVisible();
+  await expect(sessionsButton).toBeVisible();
 });

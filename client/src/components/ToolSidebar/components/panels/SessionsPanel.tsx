@@ -26,7 +26,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@promptstudio/system/components/ui/tooltip";
-import type { PromptHistoryEntry } from "@features/prompt-optimizer/types/domain/prompt-session";
+import type { PromptHistoryEntry } from "@features/prompt-optimizer";
 import { cn } from "@utils/cn";
 import { HistoryItem } from "@features/history/components/HistoryItem";
 import { useSidebarSessionsDomain } from "@/components/ToolSidebar/context";
@@ -273,7 +273,7 @@ export function SessionsPanel(props: SessionsPanelProps): ReactElement {
       const meta = dateLabel;
 
       const disambiguator =
-        extractDisambiguator(entry.input) ??
+        extractDisambiguator(entry.input, baseTitle) ??
         (() => {
           const model =
             formatModelLabel(

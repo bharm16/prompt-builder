@@ -157,20 +157,17 @@ vi.mock("@components/Toast", () => ({
   }),
 }));
 
-vi.mock(
-  "@features/generation-controls/context/GenerationControlsStore",
-  () => ({
-    useGenerationControlsStoreState: () => ({
-      domain: generationDomain,
-    }),
-    useGenerationControlsStoreActions: () => ({
-      setSelectedModel: vi.fn(),
-      setVideoTier: vi.fn(),
-      mergeGenerationParams: vi.fn(),
-      setCameraMotion: setCameraMotionMock,
-    }),
+vi.mock("@features/generation-controls", () => ({
+  useGenerationControlsStoreState: () => ({
+    domain: generationDomain,
   }),
-);
+  useGenerationControlsStoreActions: () => ({
+    setSelectedModel: vi.fn(),
+    setVideoTier: vi.fn(),
+    mergeGenerationParams: vi.fn(),
+    setCameraMotion: setCameraMotionMock,
+  }),
+}));
 
 vi.mock("@/features/prompt-optimizer/hooks/useClipboard", () => ({
   useClipboard: () => ({

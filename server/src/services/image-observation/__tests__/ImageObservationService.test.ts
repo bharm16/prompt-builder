@@ -1,7 +1,7 @@
 import { promises as fs } from "fs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ImageObservationService } from "../ImageObservationService";
-import type { AIService } from "@services/prompt-optimization/types";
+import type { AIExecutionPort as AIService } from "@services/ai-model/ports/AIExecutionPort";
 import type { AIResponse } from "@interfaces/IAIClient";
 
 const createAiResponse = (text: string): AIResponse => ({

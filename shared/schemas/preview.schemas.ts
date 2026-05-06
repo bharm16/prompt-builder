@@ -59,8 +59,16 @@ export const GenerateStoryboardPreviewResponseSchema = z
         storagePaths: z.array(z.string()).optional(),
         deltas: z.array(z.string()),
         baseImageUrl: z.string(),
+        // ISSUE-12: present when the server persisted the generation into the
+        // named session version. Absent for legacy (no-session) POSTs.
+        generationId: z.string().optional(),
       })
       .optional(),
+    // Server-authoritative post-billing balance. The client uses this to
+    // refresh its credit pill in one round-trip after a successful
+    // storyboard preview, falling back to a /payment/credits/balance fetch
+    // when the field is absent. Mirrors GenerateVideoResponseSchema (ISSUE-37).
+    remainingCredits: z.number().optional(),
     error: z.string().optional(),
     message: z.string().optional(),
   })
@@ -160,6 +168,7 @@ export const VideoJobStatusResponseSchema = z
     startImageUrl: z.string().optional(),
     resolvedAspectRatio: z.string().optional(),
     serverTimeoutMs: z.number().optional(),
+    suggestedPollIntervalMs: z.number().optional(),
     creditsReserved: z.number().optional(),
     creditsDeducted: z.number().optional(),
     error: z.string().optional(),

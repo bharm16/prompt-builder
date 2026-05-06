@@ -179,6 +179,9 @@ describe("VideoJobSweeper", () => {
 
   it("start schedules immediate and interval sweeps and stop cancels scheduling", async () => {
     vi.useFakeTimers();
+    // Pin jitter to 0 so the first scheduled tick fires immediately — makes
+    // the timing assertions deterministic. Jitter behavior is covered below.
+    const randomSpy = vi.spyOn(Math, "random").mockReturnValue(0);
     const jobStore: MinimalJobStore = {
       failNextQueuedStaleJob: vi.fn().mockResolvedValue(null),
       failNextProcessingStaleJob: vi.fn().mockResolvedValue(null),
@@ -210,6 +213,7 @@ describe("VideoJobSweeper", () => {
     sweeper.stop();
     await vi.advanceTimersByTimeAsync(2_000);
     expect(runOnceSpy).toHaveBeenCalledTimes(3);
+    randomSpy.mockRestore();
   });
 
   it("factory returns null when disabled or invalid config and returns instance for valid config", () => {

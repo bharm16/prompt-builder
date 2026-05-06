@@ -81,7 +81,7 @@ export function EndFrameControl({
             : "border-dashed border-tool-nav-active",
           isUploadDisabled && "cursor-not-allowed opacity-60",
           !isUploadDisabled && "cursor-pointer",
-          isDragging && !isUploadDisabled && "border-tool-accent-selection",
+          isDragging && !isUploadDisabled && "border-tool-accent-neutral",
         )}
         onClick={() => {
           if (isUploadDisabled) return;

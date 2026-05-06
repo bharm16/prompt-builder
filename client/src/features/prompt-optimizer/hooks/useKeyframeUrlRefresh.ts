@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from "react";
-import type { KeyframeTile } from "@components/ToolSidebar/types";
+import type { KeyframeTile } from "@features/generation-controls";
 import { logger } from "@/services/LoggingService";
 import { resolveMediaUrl } from "@/services/media/MediaUrlResolver";
 import {
@@ -10,7 +10,7 @@ import {
 import {
   useGenerationControlsStoreActions,
   useGenerationControlsStoreState,
-} from "@features/generation-controls/context/GenerationControlsStore";
+} from "@features/generation-controls";
 
 const log = logger.child("useKeyframeUrlRefresh");
 const KEYFRAME_REFRESH_INTERVAL_MS = 60 * 1000;

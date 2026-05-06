@@ -7,6 +7,7 @@ import { AIModelService } from "@services/ai-model/index";
 import AssetService from "@services/asset/AssetService";
 import { CapabilitiesProbeService } from "@services/capabilities/CapabilitiesProbeService";
 import type { UserCreditService } from "@services/credits/UserCreditService";
+import { labelSpans } from "@llm/span-labeling/SpanLabelingService";
 import ConsistentVideoService from "@services/video-generation/ConsistentVideoService";
 import FaceSwapService from "@services/video-generation/FaceSwapService";
 import KeyframeGenerationService from "@services/video-generation/KeyframeGenerationService";
@@ -24,11 +25,15 @@ import {
 import { StoryboardFramePlanner } from "@services/image-generation/storyboard/StoryboardFramePlanner";
 import { StoryboardPreviewService } from "@services/image-generation/storyboard/StoryboardPreviewService";
 import { ModelIntelligenceService } from "@services/model-intelligence/ModelIntelligenceService";
+import { AvailabilityGateService } from "@services/model-intelligence/services/AvailabilityGateService";
+import type { PromptSpanProvider } from "@services/model-intelligence/ports/PromptSpanProvider";
 import { BillingProfileStore } from "@services/payment/BillingProfileStore";
 import type { FirestoreCircuitExecutor } from "@services/firestore/FirestoreCircuitExecutor";
 import { VideoGenerationService } from "@services/video-generation/VideoGenerationService";
 import { VideoJobStore } from "@services/video-generation/jobs/VideoJobStore";
 import { VideoWorkerHeartbeatStore } from "@services/video-generation/jobs/VideoWorkerHeartbeatStore";
+import { VideoJobHandler } from "@services/video-generation/jobs/VideoJobHandler";
+import type { SessionService } from "@services/sessions/SessionService";
 import { VideoJobWorker } from "@services/video-generation/jobs/VideoJobWorker";
 import { createVideoJobSweeper } from "@services/video-generation/jobs/VideoJobSweeper";
 import { createVideoJobReconciler } from "@services/video-generation/jobs/VideoJobReconciler";
@@ -58,7 +63,6 @@ export function registerGenerationServices(container: DIContainer): void {
       }
       return new VideoToImagePromptTransformer({
         llmClient: geminiClient,
-        timeoutMs: 5000,
       });
     },
     ["geminiClient"],
@@ -66,26 +70,24 @@ export function registerGenerationServices(container: DIContainer): void {
 
   container.register(
     "storyboardFramePlanner",
-    (geminiClient: LLMClient | null, claudeClient: LLMClient | null) => {
+    (geminiClient: LLMClient | null, openAIClient: LLMClient | null) => {
       if (!geminiClient) {
         logger.warn(
           "Gemini client not available, storyboard frame planner disabled",
         );
         return null;
       }
-      if (!claudeClient) {
+      if (!openAIClient) {
         logger.warn(
           "OpenAI client not available, vision-based storyboard planning disabled (text-only fallback)",
         );
       }
       return new StoryboardFramePlanner({
         llmClient: geminiClient,
-        visionLlmClient: claudeClient,
-        timeoutMs: 8000,
-        visionTimeoutMs: 15000,
+        visionLlmClient: openAIClient,
       });
     },
-    ["geminiClient", "claudeClient"],
+    ["geminiClient", "openAIClient"],
   );
 
   container.register(
@@ -246,29 +248,48 @@ export function registerGenerationServices(container: DIContainer): void {
   );
 
   container.register(
-    "modelIntelligenceService",
+    "modelIntelligencePromptSpanProvider",
+    (aiService: AIModelService): PromptSpanProvider => ({
+      label: async (prompt: string) => {
+        const result = await labelSpans({ text: prompt }, aiService);
+        return Array.isArray(result.spans) ? result.spans : [];
+      },
+    }),
+    ["aiService"],
+  );
+
+  container.register(
+    "modelIntelligenceAvailabilityGate",
     (
-      aiService: AIModelService,
       videoGenerationService: VideoGenerationService | null,
       creditService: UserCreditService,
       billingProfileStore: BillingProfileStore,
+    ) =>
+      new AvailabilityGateService(
+        videoGenerationService,
+        creditService,
+        billingProfileStore,
+      ),
+    ["videoGenerationService", "userCreditService", "billingProfileStore"],
+  );
+
+  container.register(
+    "modelIntelligenceService",
+    (
+      promptSpanProvider: PromptSpanProvider,
+      availabilityGate: AvailabilityGateService,
       metricsService: MetricsService,
     ) =>
       new ModelIntelligenceService({
-        aiService,
-        videoGenerationService,
-        userCreditService: creditService,
-        billingProfileStore,
+        promptSpanProvider,
+        availabilityGate,
         metricsService,
       }),
     [
-      "aiService",
-      "videoGenerationService",
-      "userCreditService",
-      "billingProfileStore",
+      "modelIntelligencePromptSpanProvider",
+      "modelIntelligenceAvailabilityGate",
       "metricsService",
     ],
-    { singleton: true },
   );
 
   container.register(
@@ -289,7 +310,6 @@ export function registerGenerationServices(container: DIContainer): void {
       });
     },
     ["config"],
-    { singleton: true },
   );
 
   container.register(
@@ -310,7 +330,6 @@ export function registerGenerationServices(container: DIContainer): void {
       return new FaceSwapService({ faceSwapProvider });
     },
     ["config"],
-    { singleton: true },
   );
 
   container.register(
@@ -349,7 +368,6 @@ export function registerGenerationServices(container: DIContainer): void {
     (config: ServiceConfig) =>
       new CapabilitiesProbeService(config.capabilities),
     ["config"],
-    { singleton: true },
   );
 
   container.register(
@@ -365,7 +383,6 @@ export function registerGenerationServices(container: DIContainer): void {
       });
     },
     ["metricsService", "config"],
-    { singleton: true },
   );
 
   container.register(
@@ -373,11 +390,10 @@ export function registerGenerationServices(container: DIContainer): void {
     (firestoreCircuitExecutor: FirestoreCircuitExecutor) =>
       new VideoWorkerHeartbeatStore(firestoreCircuitExecutor),
     ["firestoreCircuitExecutor"],
-    { singleton: true },
   );
 
   container.register(
-    "videoJobWorker",
+    "videoJobHandler",
     (
       videoJobStore: VideoJobStore,
       videoGenerationService: VideoGenerationService | null,
@@ -385,34 +401,23 @@ export function registerGenerationServices(container: DIContainer): void {
       storageService: StorageService,
       metricsService: MetricsService,
       providerCircuitManager: ProviderCircuitManager,
-      videoWorkerHeartbeatStore: VideoWorkerHeartbeatStore,
-      config: ServiceConfig,
+      sessionService: SessionService,
     ) => {
       if (!videoGenerationService) {
         return null;
       }
-
-      const wc = config.videoJobs.worker;
-      return new VideoJobWorker(
+      return new VideoJobHandler(
         videoJobStore,
         videoGenerationService,
         creditService,
         storageService,
         {
-          pollIntervalMs: wc.pollIntervalMs,
-          leaseMs: wc.leaseSeconds * 1000,
-          maxConcurrent: wc.maxConcurrent,
-          heartbeatIntervalMs: wc.heartbeatIntervalMs,
-          processRole: "worker",
-          ...(config.videoJobs.hostname
-            ? { hostname: config.videoJobs.hostname }
-            : {}),
           providerCircuitManager,
-          workerHeartbeatStore: videoWorkerHeartbeatStore,
-          ...(wc.perProviderMaxConcurrent !== undefined
-            ? { perProviderMaxConcurrent: wc.perProviderMaxConcurrent }
-            : {}),
           metrics: metricsService,
+          // SessionService structurally satisfies JobSessionAppendPort; the
+          // worker pipeline calls appendGenerationToVersion on successful
+          // job completion so video generations are durable server-side.
+          sessionService,
         },
       );
     },
@@ -421,6 +426,48 @@ export function registerGenerationServices(container: DIContainer): void {
       "videoGenerationService",
       "userCreditService",
       "storageService",
+      "metricsService",
+      "providerCircuitManager",
+      "sessionService",
+    ],
+  );
+
+  container.register(
+    "videoJobWorker",
+    (
+      videoJobStore: VideoJobStore,
+      videoJobHandler: VideoJobHandler | null,
+      metricsService: MetricsService,
+      providerCircuitManager: ProviderCircuitManager,
+      videoWorkerHeartbeatStore: VideoWorkerHeartbeatStore,
+      config: ServiceConfig,
+    ) => {
+      if (!videoJobHandler) {
+        return null;
+      }
+
+      const wc = config.videoJobs.worker;
+      return new VideoJobWorker(videoJobStore, videoJobHandler, {
+        pollIntervalMs: wc.pollIntervalMs,
+        leaseMs: wc.leaseSeconds * 1000,
+        maxConcurrent: wc.maxConcurrent,
+        heartbeatIntervalMs: wc.heartbeatIntervalMs,
+        processRole: "worker",
+        ...(config.videoJobs.hostname
+          ? { hostname: config.videoJobs.hostname }
+          : {}),
+        providerCircuitManager,
+        workerHeartbeatStore: videoWorkerHeartbeatStore,
+        ...(wc.perProviderMaxConcurrent !== undefined
+          ? { perProviderMaxConcurrent: wc.perProviderMaxConcurrent }
+          : {}),
+        metrics: metricsService,
+        providerIds: ["replicate", "openai", "luma", "kling", "gemini"],
+      });
+    },
+    [
+      "videoJobStore",
+      "videoJobHandler",
       "metricsService",
       "providerCircuitManager",
       "videoWorkerHeartbeatStore",
@@ -443,7 +490,6 @@ export function registerGenerationServices(container: DIContainer): void {
         config.videoJobs.sweeper,
       ),
     ["videoJobStore", "userCreditService", "metricsService", "config"],
-    { singleton: true },
   );
 
   container.register(
@@ -467,7 +513,6 @@ export function registerGenerationServices(container: DIContainer): void {
       });
     },
     ["videoJobStore", "providerCircuitManager", "metricsService", "config"],
-    { singleton: true },
   );
 
   container.register(
@@ -486,6 +531,5 @@ export function registerGenerationServices(container: DIContainer): void {
         config.videoAssets.reconciler,
       ),
     ["gcsBucket", "videoJobStore", "metricsService", "config"],
-    { singleton: true },
   );
 }

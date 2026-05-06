@@ -3,7 +3,7 @@ import {
   buildReplicateInput,
   generateReplicateVideo,
 } from "../replicateProvider";
-import type { VideoModelId } from "@services/video-generation/types";
+import type { VideoModelId } from "@shared/videoModels";
 
 describe("buildReplicateInput", () => {
   it("includes a rounded seed when provided", () => {

@@ -15,7 +15,7 @@ import {
   ConflictDetectionService,
   VideoTemplateRepository,
 } from "@services/video-concept/index.ts";
-import type { AIService } from "@services/prompt-optimization/types";
+import type { AIExecutionPort as AIService } from "@services/ai-model/ports/AIExecutionPort";
 import type {
   VideoTemplate,
   StorageAdapter,

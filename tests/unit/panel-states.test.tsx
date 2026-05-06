@@ -13,6 +13,7 @@ import {
   InactiveState,
 } from "@components/SuggestionsPanel/components/PanelStates";
 import { getLoadingSkeletonCount } from "@components/SuggestionsPanel/utils/suggestionHelpers";
+import type { PanelIcon } from "@components/SuggestionsPanel/components/types";
 
 vi.mock("@promptstudio/system/components/ui/button", () => ({
   Button: ({ children, ...props }: ButtonHTMLAttributes<HTMLButtonElement>) => (
@@ -20,7 +21,7 @@ vi.mock("@promptstudio/system/components/ui/button", () => ({
   ),
 }));
 
-const DummyIcon = () => <svg data-testid="icon" />;
+const DummyIcon = (() => <svg data-testid="icon" />) as unknown as PanelIcon;
 
 describe("PanelStates", () => {
   describe("LoadingState", () => {

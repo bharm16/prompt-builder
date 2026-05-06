@@ -4,7 +4,7 @@ import type { KeyframeTile } from "@components/ToolSidebar/types";
 import type {
   ExtendVideoSource,
   VideoReferenceImage,
-} from "@features/generation-controls/context/generationControlsStoreTypes";
+} from "@features/generation-controls";
 import { StartFrameControl } from "@components/ToolSidebar/components/panels/StartFrameControl";
 import { EndFrameControl } from "@components/ToolSidebar/components/panels/EndFrameControl";
 import { VideoPromptToolbar } from "./VideoPromptToolbar";
@@ -108,7 +108,7 @@ export function VideoTabContent({
 
   return (
     <div className="flex-1 min-h-0 overflow-y-auto px-[14px] py-3 flex flex-col gap-2.5">
-      <div className="rounded-xl border border-tool-nav-active bg-tool-surface-card overflow-hidden transition-colors focus-within:border-tool-accent-selection">
+      <div className="rounded-xl border border-tool-nav-active bg-tool-surface-card overflow-hidden transition-colors focus-within:border-tool-accent-neutral">
         <div className="px-3 py-3">
           <div className="flex gap-2">
             {showStartFrame && (

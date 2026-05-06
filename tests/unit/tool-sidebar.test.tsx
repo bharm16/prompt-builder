@@ -151,7 +151,7 @@ describe("ToolSidebar", () => {
     expect(screen.queryByTestId("generation-panel")).not.toBeInTheDocument();
   });
 
-  it("opens sessions, characters, and styles as inline overlay panels in canvas-first mode", () => {
+  it("opens sessions, characters, and styles as inline overlay panels in canvas-first mode", async () => {
     const hero = createAsset({ id: "asset-hero" });
     const assetsByType = createAssetsByType([hero]);
 
@@ -175,7 +175,8 @@ describe("ToolSidebar", () => {
         <ToolSidebar user={null} />
       </SidebarDataContextProvider>,
     );
-    expect(screen.getByTestId("sessions-panel")).toBeInTheDocument();
+    // SessionsPanel is a static import, characters/styles are lazy().
+    expect(await screen.findByTestId("sessions-panel")).toBeInTheDocument();
 
     sidebarState.activePanel = "characters";
     rerender(
@@ -197,7 +198,7 @@ describe("ToolSidebar", () => {
         <ToolSidebar user={null} />
       </SidebarDataContextProvider>,
     );
-    expect(screen.getByTestId("characters-panel")).toBeInTheDocument();
+    expect(await screen.findByTestId("characters-panel")).toBeInTheDocument();
     const charactersDomain = panelProps.characters as {
       assetsByType: Record<AssetType, Asset[]>;
     } | null;
@@ -223,7 +224,7 @@ describe("ToolSidebar", () => {
         <ToolSidebar user={null} />
       </SidebarDataContextProvider>,
     );
-    expect(screen.getByTestId("styles-panel")).toBeInTheDocument();
+    expect(await screen.findByTestId("styles-panel")).toBeInTheDocument();
   });
 
   it("dispatches prompt focus intent when studio is selected from the rail in canvas-first mode", () => {
@@ -251,14 +252,15 @@ describe("ToolSidebar", () => {
     expect(sidebarState.setActivePanel).not.toHaveBeenCalled();
   });
 
-  it("keeps legacy inline panel path when canvas-first layout is disabled", () => {
+  it("keeps legacy inline panel path when canvas-first layout is disabled", async () => {
     mockFeatures.CANVAS_FIRST_LAYOUT = false;
     sidebarState.activePanel = "studio";
 
     render(<ToolSidebar user={null} />);
 
     expect(screen.getByTestId("tool-panel")).toBeInTheDocument();
-    expect(screen.getByTestId("generation-panel")).toBeInTheDocument();
+    // GenerationControlsPanel is lazy-loaded; await Suspense resolution.
+    expect(await screen.findByTestId("generation-panel")).toBeInTheDocument();
   });
 
   it("resolves sessions domain from SidebarDataContext", () => {

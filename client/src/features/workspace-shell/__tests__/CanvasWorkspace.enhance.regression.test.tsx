@@ -1,36 +1,50 @@
 import React from "react";
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import { fireEvent, render, screen } from "@testing-library/react";
 import type {
   Generation,
   GenerationsPanelProps,
 } from "@features/generations/types";
 import { CanvasWorkspace } from "../CanvasWorkspace";
 
-vi.mock(
-  "@features/generation-controls/context/GenerationControlsStore",
-  () => ({
-    useGenerationControlsStoreActions: () => ({
-      setSelectedModel: vi.fn(),
-      setVideoTier: vi.fn(),
-      setCameraMotion: vi.fn(),
-    }),
-    useGenerationControlsStoreState: () => ({
-      domain: {
-        generationParams: { duration_s: 5 },
-        startFrame: null,
-        selectedModel: "sora-2",
-        videoTier: "render",
-        cameraMotion: null,
-      },
-    }),
+vi.mock("@features/generation-controls", () => ({
+  useGenerationControlsStoreActions: () => ({
+    setSelectedModel: vi.fn(),
+    setVideoTier: vi.fn(),
+    setCameraMotion: vi.fn(),
   }),
-);
+  useGenerationControlsStoreState: () => ({
+    domain: {
+      generationParams: { duration_s: 5 },
+      startFrame: null,
+      selectedModel: "sora-2",
+      videoTier: "render",
+      cameraMotion: null,
+    },
+  }),
+}));
 
 vi.mock("@/features/prompt-optimizer/context/PromptStateContext", () => ({
   useOptionalPromptHighlights: () => null,
 }));
+
+// CanvasSettingsRow consumes GenerationControlsContext for its Preview /
+// Generate / Enhance gating; the regression doesn't exercise those branches,
+// but the hook throws when no provider is mounted, so stub it inline.
+vi.mock(
+  "@/features/prompt-optimizer/context/GenerationControlsContext",
+  () => ({
+    useGenerationControlsContext: () => ({
+      controls: null,
+      setControls: vi.fn(),
+      onStoryboard: null,
+      onInsufficientCredits: null,
+      setOnInsufficientCredits: vi.fn(),
+      faceSwapPreview: null,
+      setFaceSwapPreview: vi.fn(),
+    }),
+  }),
+);
 
 vi.mock("@/features/prompt-optimizer/context/WorkspaceSessionContext", () => ({
   useWorkspaceSession: () => ({
@@ -44,6 +58,8 @@ vi.mock("@features/generations", () => ({
   useGenerationsRuntime: () => ({
     heroGeneration: null,
     generations: [],
+    handleCancel: vi.fn(),
+    handleRetry: vi.fn(),
   }),
 }));
 
@@ -66,45 +82,12 @@ vi.mock(
   }),
 );
 
-vi.mock("../components/CanvasTopBar", () => ({
-  CanvasTopBar: () => <div data-testid="canvas-top-bar" />,
-}));
-
-vi.mock("../components/NewSessionView", () => ({
-  NewSessionView: () => <div data-testid="new-session-view" />,
-}));
-
-vi.mock("../components/CanvasPromptBar", () => ({
-  CanvasPromptBar: ({
-    onEnhance,
-    layoutMode,
-  }: {
-    onEnhance?: () => void;
-    layoutMode?: "empty" | "active";
-  }) => (
-    <div data-testid="canvas-prompt-bar" data-layout-mode={layoutMode}>
-      <button
-        type="button"
-        data-testid="canvas-prompt-bar-enhance"
-        onClick={() => onEnhance?.()}
-      >
-        Enhance
-      </button>
-      <div role="textbox" aria-label="Optimized prompt" />
-    </div>
-  ),
+vi.mock("../components/WorkspaceTopBar", () => ({
+  WorkspaceTopBar: () => <header role="banner">topbar</header>,
 }));
 
 vi.mock("../components/ModelCornerSelector", () => ({
   ModelCornerSelector: () => <div data-testid="model-corner-selector" />,
-}));
-
-vi.mock("../components/CanvasHeroViewer", () => ({
-  CanvasHeroViewer: () => null,
-}));
-
-vi.mock("@/features/prompt-optimizer/components/GalleryPanel", () => ({
-  GalleryPanel: () => null,
 }));
 
 vi.mock("@/features/prompt-optimizer/components/GenerationPopover", () => ({
@@ -170,7 +153,6 @@ const buildProps = (): React.ComponentProps<typeof CanvasWorkspace> => ({
   onCustomRequestSubmit: vi.fn(),
   isCustomRequestDisabled: true,
   isCustomLoading: false,
-  enableMLHighlighting: false,
   showI2VLockIndicator: false,
   resolvedI2VReason: null,
   i2vMotionAlternatives: [],
@@ -179,37 +161,56 @@ const buildProps = (): React.ComponentProps<typeof CanvasWorkspace> => ({
   onToggleGenerationFavorite: vi.fn(),
 });
 
-describe("regression: canvas enhance callback wiring", () => {
-  it("clicking enhance in empty-session view invokes provided callback", async () => {
+describe("regression: canvas enhance / empty-session shell wiring", () => {
+  // CanvasSettingsRow (mounted inside CanvasPromptBar's chromeSlot) hosts the
+  // Enhance button. The button is gated on a non-empty prompt and a provided
+  // onEnhance callback; clicking it must invoke the orchestrator's onEnhance
+  // exactly once. Regression for the gap left by the unified-workspace flag
+  // removal — the Enhance button was previously unmounted.
+  it("clicking enhance invokes the provided callback", () => {
     const onEnhance = vi.fn();
-    const user = userEvent.setup();
-    render(<CanvasWorkspace {...buildProps()} onEnhance={onEnhance} />);
+    const props = buildProps();
+    render(<CanvasWorkspace {...props} onEnhance={onEnhance} />);
 
-    await user.click(screen.getByTestId("canvas-prompt-bar-enhance"));
+    const enhanceButton = screen.getByRole("button", { name: /enhance/i });
+    fireEvent.click(enhanceButton);
 
     expect(onEnhance).toHaveBeenCalledTimes(1);
   });
 
-  it("keeps a single prompt textbox and model selector in the empty-session shell", () => {
-    render(<CanvasWorkspace {...buildProps()} />);
-
-    expect(screen.getByTestId("new-session-view")).toBeInTheDocument();
-    expect(
-      screen.getAllByRole("textbox", { name: "Optimized prompt" }),
-    ).toHaveLength(1);
-    expect(screen.getAllByTestId("model-corner-selector")).toHaveLength(1);
-    expect(screen.getByTestId("canvas-prompt-bar")).toHaveAttribute(
-      "data-layout-mode",
-      "empty",
-    );
-  });
-
-  it("renders interactive canvas when hydrated output is present even without prompt version id", () => {
+  it("keeps a single prompt textbox and a model corner selector in the empty-session shell", () => {
+    // Empty session = no prompt, no shots. Under the unified path the
+    // floating composer always mounts; the prompt textbox lives there.
+    // The model corner selector mounts at the top-right of the canvas.
     const props = buildProps();
     render(
       <CanvasWorkspace
         {...props}
-        enableMLHighlighting
+        generationsPanelProps={{
+          ...(props.generationsPanelProps as GenerationsPanelProps),
+          prompt: "",
+        }}
+      />,
+    );
+
+    expect(
+      screen.getAllByRole("textbox", { name: "Optimized prompt" }),
+    ).toHaveLength(1);
+    expect(screen.getAllByTestId("model-corner-selector")).toHaveLength(1);
+  });
+
+  it("does not lock the user into empty state when prompt content exists, even without a prompt version id", () => {
+    // The legacy implementation could erroneously remain in empty-state
+    // chrome when promptVersionId was missing despite a hydrated prompt.
+    // The unified workspace derives the moment from the prompt text +
+    // shot grid alone; an empty version id does not force empty-state.
+    // We assert this by confirming the prompt textbox is rendered and the
+    // empty-hero headline ("What are you making?") is gone once the prompt
+    // has content.
+    const props = buildProps();
+    render(
+      <CanvasWorkspace
+        {...props}
         generationsPanelProps={{
           ...(props.generationsPanelProps as GenerationsPanelProps),
           prompt: "The camera tracks a subject through warm golden light.",
@@ -218,7 +219,9 @@ describe("regression: canvas enhance callback wiring", () => {
       />,
     );
 
-    expect(screen.queryByTestId("new-session-enhance")).not.toBeInTheDocument();
-    expect(screen.getByTestId("canvas-prompt-bar")).toBeInTheDocument();
+    expect(screen.queryByText("What are you making?")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("textbox", { name: "Optimized prompt" }),
+    ).toBeInTheDocument();
   });
 });

@@ -72,10 +72,13 @@ export function createAssetRoutes(assetService: AssetService): Router {
       }
 
       if (type) {
-        const assets = await assetService.listAssetsByType(userId, type);
+        const { items, hasMore } = await assetService.listAssetsByType(
+          userId,
+          type,
+        );
         const byType = { character: 0, style: 0, location: 0, object: 0 };
-        byType[type] = assets.length;
-        res.json({ assets, total: assets.length, byType });
+        byType[type] = items.length;
+        res.json({ assets: items, total: items.length, byType, hasMore });
         return;
       }
 

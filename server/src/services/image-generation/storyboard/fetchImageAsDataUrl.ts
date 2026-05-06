@@ -1,4 +1,5 @@
 import { logger } from "@infrastructure/Logger";
+import { assertUrlSafe } from "@server/shared/urlValidation";
 
 const DEFAULT_TIMEOUT_MS = 10_000;
 const DEFAULT_MAX_BYTES = 10 * 1024 * 1024; // 10 MB
@@ -13,6 +14,8 @@ export async function fetchImageAsDataUrl(
   imageUrl: string,
   options?: { timeoutMs?: number; maxBytes?: number },
 ): Promise<string> {
+  assertUrlSafe(imageUrl, "imageUrl");
+
   const log = logger.child({ service: "fetchImageAsDataUrl" });
   const timeoutMs = options?.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const maxBytes = options?.maxBytes ?? DEFAULT_MAX_BYTES;
@@ -26,6 +29,19 @@ export async function fetchImageAsDataUrl(
       throw new Error(
         `Image fetch failed: ${response.status} ${response.statusText}`,
       );
+    }
+
+    // Check Content-Length BEFORE draining the body. Without this, a server
+    // could force a multi-hundred-MB allocation via arrayBuffer() even when
+    // the limit is small — the post-hoc byteLength check is already too late.
+    const contentLengthHeader = response.headers.get("content-length");
+    if (contentLengthHeader) {
+      const declared = Number(contentLengthHeader);
+      if (Number.isFinite(declared) && declared > maxBytes) {
+        throw new Error(
+          `Image too large: Content-Length ${declared} bytes exceeds ${maxBytes} byte limit`,
+        );
+      }
     }
 
     const contentType = response.headers.get("content-type") ?? "image/png";

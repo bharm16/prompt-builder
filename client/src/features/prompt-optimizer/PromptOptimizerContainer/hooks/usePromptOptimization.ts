@@ -9,7 +9,7 @@ import type {
 import type { PromptContext } from "@utils/PromptContext/PromptContext";
 import type { OptimizationOptions } from "../../types";
 import type { CapabilityValues } from "@shared/capabilities";
-import type { KeyframeTile } from "@components/ToolSidebar/types";
+import type { KeyframeTile } from "@features/generation-controls";
 import { resolveMediaUrl } from "@/services/media/MediaUrlResolver";
 import { applyOptimizationResult } from "../utils/persistOptimizationResult";
 import {

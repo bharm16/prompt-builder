@@ -40,6 +40,31 @@ const createApp = (
   return app;
 };
 
+// Adapter: delegates the atomic method to the existing createJob + reserveCredits mocks
+// so tests written against the legacy 2-step API keep their assertions intact.
+const buildAtomicReservation = (
+  createJob: ReturnType<typeof vi.fn>,
+): ((
+  input: Record<string, unknown>,
+  deps: {
+    creditService: {
+      reserveCredits: (uid: string, cost: number) => Promise<boolean>;
+    };
+    cost: number;
+  },
+) => Promise<
+  { reserved: true; job: unknown } | { reserved: false; reason: string }
+>) => {
+  return async (input, { creditService, cost }) => {
+    const ok = await creditService.reserveCredits(input.userId as string, cost);
+    if (!ok) {
+      return { reserved: false, reason: "insufficient_credits" };
+    }
+    const job = await createJob(input);
+    return { reserved: true, job };
+  };
+};
+
 describe("videoGenerate face swap preprocessing", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -66,6 +91,7 @@ describe("videoGenerate face swap preprocessing", () => {
       } as never,
       videoJobStore: {
         createJob: createJobMock,
+        createJobWithReservation: buildAtomicReservation(createJobMock),
       } as never,
       userCreditService: {
         reserveCredits: reserveCreditsMock,
@@ -178,6 +204,7 @@ describe("videoGenerate face swap preprocessing", () => {
       } as never,
       videoJobStore: {
         createJob: createJobMock,
+        createJobWithReservation: buildAtomicReservation(createJobMock),
       } as never,
       userCreditService: {
         reserveCredits: reserveCreditsMock,
@@ -262,6 +289,7 @@ describe("videoGenerate face swap preprocessing", () => {
       } as never,
       videoJobStore: {
         createJob: createJobMock,
+        createJobWithReservation: buildAtomicReservation(createJobMock),
       } as never,
       userCreditService: {
         reserveCredits: vi.fn(async () => true),
@@ -333,6 +361,7 @@ describe("videoGenerate face swap preprocessing", () => {
       } as never,
       videoJobStore: {
         createJob: createJobMock,
+        createJobWithReservation: buildAtomicReservation(createJobMock),
       } as never,
       userCreditService: {
         reserveCredits: vi.fn(async () => true),
@@ -493,8 +522,11 @@ describe("videoGenerate face swap preprocessing", () => {
     );
   });
 
-  it("refunds video and face-swap credits when queueing fails after face-swap preprocessing", async () => {
+  it("refunds face-swap credits (but not video credits — atomic tx rolls back) when queueing fails", async () => {
     const refundCreditsMock = vi.fn(async () => true);
+    const queueFailingCreateJob = vi.fn(async () => {
+      throw new Error("queue unavailable");
+    });
 
     const handler = createVideoGenerateHandler({
       videoGenerationService: {
@@ -504,9 +536,10 @@ describe("videoGenerate face swap preprocessing", () => {
         }),
       } as never,
       videoJobStore: {
-        createJob: vi.fn(async () => {
+        createJob: queueFailingCreateJob,
+        createJobWithReservation: async () => {
           throw new Error("queue unavailable");
-        }),
+        },
       } as never,
       userCreditService: {
         reserveCredits: vi.fn(async () => true),
@@ -546,12 +579,6 @@ describe("videoGenerate face swap preprocessing", () => {
       "user-123",
       "faceSwap",
     ]);
-    const expectedVideoRefundKey = buildRefundKey([
-      "preview-video",
-      "req-queue-fs-1",
-      "user-123",
-      "video",
-    ]);
     const expectedVideoCost = getVideoCost("sora-2", 8);
 
     expect(response.status).toBe(500);
@@ -561,14 +588,8 @@ describe("videoGenerate face swap preprocessing", () => {
       requestId: "req-queue-fs-1",
     });
 
-    expect(refundCreditsMock).toHaveBeenCalledWith(
-      "user-123",
-      expectedVideoCost,
-      expect.objectContaining({
-        refundKey: expectedVideoRefundKey,
-        reason: "video queueing failed",
-      }),
-    );
+    // Preprocessing (face-swap) credits ARE refunded — they were reserved in a
+    // separate transaction that committed before queueing.
     expect(refundCreditsMock).toHaveBeenCalledWith(
       "user-123",
       2,
@@ -577,9 +598,16 @@ describe("videoGenerate face swap preprocessing", () => {
         reason: "video queueing failed after face-swap reservation",
       }),
     );
+    // Video credits are NOT refunded — the atomic reserve+create transaction
+    // rolled back, so no debit occurred in the first place.
+    expect(refundCreditsMock).not.toHaveBeenCalledWith(
+      "user-123",
+      expectedVideoCost,
+      expect.anything(),
+    );
   });
 
-  it("refunds video and keyframe credits when queueing fails after keyframe preprocessing", async () => {
+  it("refunds keyframe credits (but not video credits — atomic tx rolls back) when queueing fails", async () => {
     const refundCreditsMock = vi.fn(async () => true);
 
     const handler = createVideoGenerateHandler({
@@ -593,6 +621,9 @@ describe("videoGenerate face swap preprocessing", () => {
         createJob: vi.fn(async () => {
           throw new Error("queue unavailable");
         }),
+        createJobWithReservation: async () => {
+          throw new Error("queue unavailable");
+        },
       } as never,
       userCreditService: {
         reserveCredits: vi.fn(async () => true),
@@ -631,12 +662,6 @@ describe("videoGenerate face swap preprocessing", () => {
       "user-123",
       "keyframe",
     ]);
-    const expectedVideoRefundKey = buildRefundKey([
-      "preview-video",
-      "req-queue-kf-1",
-      "user-123",
-      "video",
-    ]);
     const expectedVideoCost = getVideoCost("sora-2", 8);
 
     expect(response.status).toBe(500);
@@ -646,14 +671,7 @@ describe("videoGenerate face swap preprocessing", () => {
       requestId: "req-queue-kf-1",
     });
 
-    expect(refundCreditsMock).toHaveBeenCalledWith(
-      "user-123",
-      expectedVideoCost,
-      expect.objectContaining({
-        refundKey: expectedVideoRefundKey,
-        reason: "video queueing failed",
-      }),
-    );
+    // Preprocessing (keyframe) credits ARE refunded.
     expect(refundCreditsMock).toHaveBeenCalledWith(
       "user-123",
       2,
@@ -661,6 +679,12 @@ describe("videoGenerate face swap preprocessing", () => {
         refundKey: expectedKeyframeRefundKey,
         reason: "video queueing failed after keyframe reservation",
       }),
+    );
+    // Video credits are NOT refunded — atomic reserve+create transaction rolled back.
+    expect(refundCreditsMock).not.toHaveBeenCalledWith(
+      "user-123",
+      expectedVideoCost,
+      expect.anything(),
     );
   });
 });

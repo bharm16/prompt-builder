@@ -6,16 +6,14 @@ import {
   Palette,
   Plus,
   User,
+  type IconType,
 } from "@promptstudio/system/components/ui";
 import type { Asset, AssetType } from "@shared/types/asset";
 import { cn } from "@/utils/cn";
 import { getAssetTypeConfig } from "@/features/assets/config/assetConfig";
 import { AssetThumbnail } from "./AssetThumbnail";
 
-const TYPE_ICONS: Record<
-  AssetType,
-  React.ComponentType<{ className?: string }>
-> = {
+const TYPE_ICONS: Record<AssetType, IconType> = {
   character: User,
   style: Palette,
   location: MapPin,

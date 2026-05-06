@@ -3,7 +3,7 @@ import { StructuredOutputEnforcer } from "@utils/StructuredOutputEnforcer";
 import { TemperatureOptimizer } from "@utils/TemperatureOptimizer";
 import { PromptBuilderService } from "./SystemPromptBuilder.ts";
 import { TAXONOMY } from "#shared/taxonomy.ts";
-import type { AIService } from "@services/prompt-optimization/types";
+import type { AIExecutionPort as AIService } from "@services/ai-model/ports/AIExecutionPort";
 import type { PreferenceRepository } from "@services/video-concept/repositories/PreferenceRepository";
 import type { CacheService } from "@services/cache/CacheService";
 import type { ILogger } from "@interfaces/ILogger";

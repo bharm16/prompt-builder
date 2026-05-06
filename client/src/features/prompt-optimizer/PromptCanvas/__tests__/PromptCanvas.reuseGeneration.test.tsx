@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { VideoTier } from "@components/ToolSidebar/types";
+import type { VideoTier } from "@features/generation-controls";
 import type { Generation } from "@features/generations/types";
 import { applyGenerationReuse } from "@features/prompt-optimizer/PromptCanvas/utils/reuseGeneration";
 

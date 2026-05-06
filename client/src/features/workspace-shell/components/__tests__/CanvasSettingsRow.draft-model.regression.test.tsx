@@ -7,9 +7,9 @@ import {
   useGenerationControlsContext,
   type GenerationControlsHandlers,
 } from "@/features/prompt-optimizer/context/GenerationControlsContext";
-import { GenerationControlsStoreProvider } from "@features/generation-controls/context/GenerationControlsStore";
-import type { GenerationControlsState } from "@features/generation-controls/context/generationControlsStoreTypes";
-import { DEFAULT_GENERATION_CONTROLS_STATE } from "@features/generation-controls/context/generationControlsStoreTypes";
+import { GenerationControlsStoreProvider } from "@features/generation-controls";
+import type { GenerationControlsState } from "@features/generation-controls";
+import { DEFAULT_GENERATION_CONTROLS_STATE } from "@features/generation-controls";
 
 vi.mock("../StartFramePopover", () => ({
   StartFramePopover: () => <div data-testid="start-frame-popover" />,

@@ -1,4 +1,4 @@
-import type { PromptHistoryEntry } from "@features/prompt-optimizer/types/domain/prompt-session";
+import type { PromptHistoryEntry } from "@features/prompt-optimizer";
 
 export interface HistoryThumbnailRef {
   url: string | null;

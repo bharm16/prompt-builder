@@ -16,7 +16,10 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
   reporter: [
-    ["html", { outputFolder: "playwright-report" }],
+    // open: "never" — stops Playwright from running `open --wait-apps`
+    // on the report URL, which blocks the parent shell on macOS until
+    // someone closes the browser tab. We always have the JSON report.
+    ["html", { outputFolder: "playwright-report", open: "never" }],
     ["json", { outputFile: "playwright-report/results.json" }],
     ["junit", { outputFile: "playwright-report/results.xml" }],
     ["list"],

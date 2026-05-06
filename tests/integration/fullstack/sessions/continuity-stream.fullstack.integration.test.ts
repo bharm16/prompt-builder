@@ -128,7 +128,6 @@ describe("Continuity stream routes (full-stack integration)", () => {
   let app: Application;
   let previousAllowedApiKeys: string | undefined;
   let previousPort: string | undefined;
-  let previousPromptOutputOnly: string | undefined;
 
   let sessionStoreState: Map<string, ContinuitySession>;
 
@@ -177,11 +176,9 @@ describe("Continuity stream routes (full-stack integration)", () => {
   beforeAll(async () => {
     previousAllowedApiKeys = process.env.ALLOWED_API_KEYS;
     previousPort = process.env.PORT;
-    previousPromptOutputOnly = process.env.PROMPT_OUTPUT_ONLY;
 
     process.env.ALLOWED_API_KEYS = TEST_API_KEY;
     process.env.PORT = "0";
-    process.env.PROMPT_OUTPUT_ONLY = "true";
 
     const container = await configureServices();
     container.registerValue(
@@ -293,12 +290,6 @@ describe("Continuity stream routes (full-stack integration)", () => {
       delete process.env.PORT;
     } else {
       process.env.PORT = previousPort;
-    }
-
-    if (previousPromptOutputOnly === undefined) {
-      delete process.env.PROMPT_OUTPUT_ONLY;
-    } else {
-      process.env.PROMPT_OUTPUT_ONLY = previousPromptOutputOnly;
     }
   });
 

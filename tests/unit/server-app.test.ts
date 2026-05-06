@@ -8,6 +8,8 @@ const {
   configureMiddlewareMock,
   configureRoutesMock,
   createWebhookRoutesMock,
+  initializeDepthWarmerMock,
+  getRuntimeFlagsMock,
 } = vi.hoisted(() => {
   const useMock = vi.fn();
   const setMock = vi.fn();
@@ -24,6 +26,8 @@ const {
     configureMiddlewareMock: vi.fn(),
     configureRoutesMock: vi.fn(),
     createWebhookRoutesMock: vi.fn(() => ({ id: "webhook" })),
+    initializeDepthWarmerMock: vi.fn(),
+    getRuntimeFlagsMock: vi.fn(() => ({ processRole: "api" })),
   };
 });
 
@@ -43,15 +47,40 @@ vi.mock("@server/routes/payment.routes.ts", () => ({
   createWebhookRoutes: createWebhookRoutesMock,
 }));
 
+vi.mock("@services/convergence/depth", () => ({
+  initializeDepthWarmer: initializeDepthWarmerMock,
+}));
+
+vi.mock("@server/config/feature-flags.ts", () => ({
+  getRuntimeFlags: getRuntimeFlagsMock,
+}));
+
 import { createApp } from "@server/app";
+
+const PAYMENT_TOKENS = new Set([
+  "paymentService",
+  "stripeWebhookEventStore",
+  "billingProfileStore",
+  "userCreditService",
+  "paymentConsistencyStore",
+  "metricsService",
+  "firestoreCircuitExecutor",
+]);
+
+function buildContainer(): { resolve: ReturnType<typeof vi.fn> } {
+  return {
+    resolve: vi.fn((token: string) => ({ token })),
+  };
+}
 
 describe("createApp", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    getRuntimeFlagsMock.mockReturnValue({ processRole: "api" });
   });
 
-  describe("error handling", () => {
-    it("throws when dependency resolution fails", () => {
+  describe("dependency resolution", () => {
+    it("propagates errors when the container fails to resolve a token", () => {
       const container = {
         resolve: vi.fn(() => {
           throw new Error("resolve failed");
@@ -64,7 +93,7 @@ describe("createApp", () => {
 
   describe("edge cases", () => {
     it("registers webhook routes before middleware", () => {
-      const container = { resolve: vi.fn(() => ({ id: "dep" })) };
+      const container = buildContainer();
 
       createApp(container as never);
 
@@ -76,13 +105,20 @@ describe("createApp", () => {
       expect(middlewareCallOrder).toBeDefined();
       expect(useCallOrder ?? 0).toBeLessThan(middlewareCallOrder ?? 0);
     });
+
+    it("skips depth warmup when role is worker", () => {
+      getRuntimeFlagsMock.mockReturnValue({ processRole: "worker" });
+      const container = buildContainer();
+
+      createApp(container as never);
+
+      expect(initializeDepthWarmerMock).not.toHaveBeenCalled();
+    });
   });
 
   describe("core behavior", () => {
-    it("sets trust proxy and wires routes with resolved dependencies", () => {
-      const container = {
-        resolve: vi.fn((token: string) => ({ token })),
-      };
+    it("sets trust proxy and wires routes with services resolved from the container", () => {
+      const container = buildContainer();
 
       const app = createApp(container as never);
 
@@ -94,6 +130,14 @@ describe("createApp", () => {
         redisClient: { token: "redisClient" },
       });
       expect(configureRoutesMock).toHaveBeenCalledWith(appInstance, container);
+      expect(initializeDepthWarmerMock).toHaveBeenCalledTimes(1);
+
+      const resolvedTokens = container.resolve.mock.calls.map(
+        ([token]) => token,
+      );
+      for (const token of PAYMENT_TOKENS) {
+        expect(resolvedTokens).toContain(token);
+      }
     });
   });
 });

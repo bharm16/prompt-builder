@@ -10,12 +10,11 @@
   :root {
     --layout-sidebar-width-expanded: 280px;
     --layout-sidebar-width-collapsed: 60px;
-    --layout-bento-rail-width: 44px;
     --sidebar-width: var(--layout-sidebar-width-collapsed);
     --global-top-nav-height: 64px;
 
     /* ToolSidebar Sizing */
-    --tool-rail-width: 60px;
+    --tool-rail-width: 56px; /* was 52px — Phase 1 hit-area bump */
     --tool-panel-width: 400px;
     --tool-panel-min-width: 400px;
     --tool-rail-padding: 10px;
@@ -23,48 +22,55 @@
     --tool-header-height: 48px;
     --tool-footer-height: 72px;
 
-    /* ToolSidebar Colors */
-    --tool-rail-bg: #131416;
-    --tool-panel-bg: #131416;
-    --tool-panel-inner-bg: #12131a;
-    --tool-rail-border: #1b1e23;
-    --tool-nav-active-bg: #22252c;
-    --tool-tab-active-bg: #2f3237;
-    --tool-border-primary: #2c3037;
-    --tool-border-dark: #29292d;
-    --tool-border-dashed: #2f3237;
-    --tool-text-primary: #ffffff;
-    --tool-text-secondary: #a1afc5;
-    --tool-text-muted: #a0aec0;
-    --tool-text-placeholder: #7c839c;
-    --tool-accent-purple: #b3affd;
+    /* Workspace shell layout (Phase 1 unified workspace) */
+    --workspace-topbar-h: 44px;
+    --workspace-composer-max-w: 720px;
+    --workspace-composer-bottom: 20px;
 
-    /* Nav active indicator pill (blue-500 accent) */
-    --tool-nav-indicator: #3b82f6;
-    /* Nav hover state (between panel-inner and nav-active) */
-    --tool-nav-hover-bg: #1c1e26;
-    /* Subdued text for labels like plan tier */
-    --tool-text-subdued: #555b6e;
-    /* Deep inset surface for nested containers */
-    --tool-surface-inset: #0f1118;
-    /* Deepest background for modal/card insets */
-    --tool-surface-deep: #0d0e12;
+    /* Workspace status hues + canvas backdrop (Phase 3) */
+    --tool-status-rendering: #d4b486;
+    --tool-status-ready: #9ec4a8;
+    --tool-canvas-bg: radial-gradient(
+      1600px 900px at 50% -10%,
+      #15151d,
+      #0a0a0e 50%,
+      #050507
+    );
 
-    /* ── Phase-0 additions (exact-match tokens for high-frequency hex values) ── */
-    /* Dim text — between ghost (#A1AFC5) and faint (#aaaebb) */
-    --tool-text-dim: #8b92a5;
-    /* Very faint label text (PREVIEW, GENERATING, etc.) */
-    --tool-text-label: #3a3e4c;
-    /* Disabled / inactive text */
-    --tool-text-disabled: #3a3d46;
-    /* Card / container background (lighter variant) */
-    --tool-surface-card: #16181e;
-    /* Prompt bar bg (empty layout) */
-    --tool-surface-prompt: #15161b;
-    /* Prompt bar bg (compact layout) */
-    --tool-surface-prompt-compact: #141519;
-    /* Selection accent purple (storyboard frames, badges) */
-    --tool-accent-selection: #6c5ce7;
+    /* ToolSidebar Colors — warm charcoal, neutral accents */
+    --tool-rail-bg: #111114;
+    --tool-panel-bg: #131316;
+    --tool-panel-inner-bg: #111114;
+    --tool-rail-border: rgba(255, 255, 255, 0.06);
+    --tool-nav-active-bg: rgba(255, 255, 255, 0.05);
+    --tool-tab-active-bg: #222228;
+    --tool-border-primary: rgba(255, 255, 255, 0.08);
+    --tool-border-dark: rgba(255, 255, 255, 0.05);
+    --tool-border-dashed: rgba(255, 255, 255, 0.1);
+    --tool-text-primary: #f0f0f3;
+    --tool-text-secondary: #b0b0be;
+    --tool-text-muted: #8b8b9e;
+    --tool-text-placeholder: #6b6b7e;
+    --tool-accent-soft: #c8c8d0;
+
+    /* Nav active indicator (neutral accent) */
+    --tool-nav-indicator: #c8c8d0;
+    --tool-nav-hover-bg: rgba(255, 255, 255, 0.04);
+    --tool-text-subdued: #4a4a5e;
+    --tool-surface-inset: #0e0e12;
+    --tool-surface-deep: #0c0c10;
+
+    /* Phase-0 tokens (updated for warm charcoal) */
+    --tool-text-dim: #6b6b7e;
+    --tool-text-label: #3a3a4a;
+    --tool-text-disabled: #2e2e3a;
+    --tool-surface-card: #16161a;
+    --tool-surface-prompt: rgba(22, 22, 28, 0.72);
+    --tool-surface-prompt-compact: #131318;
+    --tool-accent-neutral: #c8c8d0;
+    /* Generate button — off-white with dark text */
+    --tool-btn-generate-bg: #e0e0e4;
+    --tool-btn-generate-text: #111116;
   }
 
   html,
@@ -74,10 +80,9 @@
   }
 
   body {
-    background-color: #131416;
+    background-color: #131316;
     font-family:
-      "Normal",
-      Inter,
+      "Geist",
       ui-sans-serif,
       system-ui,
       -apple-system,
@@ -86,22 +91,69 @@
   }
 
   :root {
-    --motion-ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+    --motion-ease-standard: cubic-bezier(0.22, 1, 0.36, 1);
     --motion-ease-emphasized: cubic-bezier(0.22, 1, 0.36, 1);
-    --motion-dur-press: 120ms;
-    --motion-dur-focus: 160ms;
-    --motion-dur-panel: 200ms;
-    --motion-dur-media: 240ms;
-    --motion-dur-emphasis: 320ms;
+    --motion-dur-press: 150ms;
+    --motion-dur-focus: 200ms;
+    --motion-dur-panel: 250ms;
+    --motion-dur-media: 300ms;
+    --motion-dur-emphasis: 400ms;
   }
 
   #root {
-    background-color: #131416;
+    background-color: #131316;
   }
 }
 
 @layer utilities {
   /* App-specific utilities only - things that don't belong in the design system */
+
+  .glow-soft {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  }
+
+  .glow-soft:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  }
+
+  .glass {
+    background: rgba(26, 26, 31, 0.75);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  /* Borderless rendering-state outline — breathing 16:9 frame */
+  .render-outline {
+    --render-outline-radius: 14px;
+    position: relative;
+    margin-left: auto;
+    margin-right: auto;
+    display: flex;
+    width: 100%;
+    max-width: 780px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    border-radius: var(--render-outline-radius);
+    animation: outline-breathe 3s ease-in-out infinite;
+  }
+
+  .render-outline-fill {
+    pointer-events: none;
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(
+      to top,
+      rgba(255, 255, 255, 0.02) 0%,
+      rgba(255, 255, 255, 0.005) 100%
+    );
+    border-radius: 0 0 13px 13px;
+    transition: height 2000ms ease-out;
+  }
 
   /* Contenteditable placeholder */
   [contenteditable][data-placeholder]:empty:before {
@@ -214,17 +266,17 @@
 @keyframes motion-pulse-once {
   0% {
     transform: scale(1);
-    box-shadow: 0 0 0 0 rgba(108, 92, 231, 0.24);
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.18);
   }
 
   45% {
     transform: scale(1.02);
-    box-shadow: 0 0 0 10px rgba(108, 92, 231, 0);
+    box-shadow: 0 0 0 10px rgba(255, 255, 255, 0);
   }
 
   100% {
     transform: scale(1);
-    box-shadow: 0 0 0 0 rgba(108, 92, 231, 0);
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
   }
 }
 
@@ -239,6 +291,25 @@
 
   100% {
     transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes aurora-rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes outline-breathe {
+  0%,
+  100% {
+    border-color: rgba(255, 255, 255, 0.03);
+  }
+  50% {
+    border-color: rgba(255, 255, 255, 0.06);
   }
 }
 
@@ -268,5 +339,17 @@
   .motion-pulse-once,
   .motion-shake-x {
     animation: none !important;
+  }
+
+  .motion-aurora {
+    animation: none !important;
+  }
+
+  .render-outline {
+    animation: none !important;
+  }
+
+  .render-outline-fill {
+    transition: none !important;
   }
 }

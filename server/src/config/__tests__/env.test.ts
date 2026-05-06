@@ -29,7 +29,6 @@ describe("parseEnv", () => {
     expect(result.OPENAI_MODEL).toBe("gpt-4o-mini");
     expect(result.GROQ_MODEL).toBe("llama-3.1-8b-instant");
     expect(result.GEMINI_MODEL).toBe("gemini-2.5-flash");
-    expect(result.PROMPT_OUTPUT_ONLY).toBe(false);
     expect(result.ENABLE_CONVERGENCE).toBe(true);
     expect(result.VIDEO_STORAGE_BASE_PATH).toBe("video-previews");
     expect(result.IMAGE_STORAGE_BASE_PATH).toBe("image-previews");
@@ -53,13 +52,11 @@ describe("parseEnv", () => {
   it("coerces boolean strings correctly", () => {
     const result = parseEnv(
       minimalEnv({
-        PROMPT_OUTPUT_ONLY: "true",
         ENABLE_CONVERGENCE: "false",
         SENTRY_DEBUG: "true",
       }),
     );
 
-    expect(result.PROMPT_OUTPUT_ONLY).toBe(true);
     expect(result.ENABLE_CONVERGENCE).toBe(false);
     expect(result.SENTRY_DEBUG).toBe(true);
   });

@@ -46,14 +46,18 @@ See also: `docs/architecture/SERVICE_BOUNDARIES.md`.
 
 Services are registered via domain-scoped files in `server/src/config/services/`:
 
-| Registration File            | Registers                                                               |
-| ---------------------------- | ----------------------------------------------------------------------- |
-| `infrastructure.services.ts` | cache, metrics, Firebase clients, storage, assets, credits              |
-| `llm.services.ts`            | aiService, claudeClient, groqClient, geminiClient                       |
-| `enhancement.services.ts`    | enhancementService, sceneDetection, coherence, videoPromptAnalysis      |
-| `generation.services.ts`     | imageGeneration, videoGeneration, storyboardPreview, keyframe, faceSwap |
-| `continuity.services.ts`     | continuitySessionService (gated — see Feature Flags)                    |
-| `session.services.ts`        | sessionService, modelIntelligence                                       |
+| Registration File         | Registers                                                               |
+| ------------------------- | ----------------------------------------------------------------------- |
+| `core.services.ts`        | metrics, Firebase clients, face embedding, imageObservation, llmJudge   |
+| `cache.services.ts`       | cacheService, spanLabelingCache                                         |
+| `credit.services.ts`      | userCreditService, creditReconciliation                                 |
+| `storage.services.ts`     | storageService, videoContentAccess, videoAssetRetention                 |
+| `llm.services.ts`         | aiModelService, concurrency                                             |
+| `enhancement.services.ts` | enhancementService, videoService, sceneDetection                        |
+| `generation.services.ts`  | imageGeneration, videoGeneration, storyboardPreview, keyframe, faceSwap |
+| `continuity.services.ts`  | continuitySessionService (gated — see Feature Flags)                    |
+| `session.services.ts`     | sessionService, assetResolver, referenceImageProcessing                 |
+| `video-jobs.services.ts`  | requestIdempotency, video job processing                                |
 
 Container created in `server/src/config/services.config.ts`, initialized in `services.initialize.ts`. Routes consume services via factories in `server/src/config/routes.config.ts`.
 
@@ -65,12 +69,13 @@ Dependency rules:
 
 ## Feature Flags
 
-| Flag                       | Default | Effect                                                                  |
-| -------------------------- | ------- | ----------------------------------------------------------------------- |
-| `PROMPT_OUTPUT_ONLY=true`  | `false` | Disables ALL preview, video generation, motion, and convergence routes. |
-| `ENABLE_CONVERGENCE=false` | `true`  | `continuitySessionService` resolves to **`null`**. Must null-check.     |
+Canonical registry: `server/src/config/feature-flags.ts` (Zod schema, ~25 flags grouped by Mode / Worker / Killswitch / Provider / Experimental / Debug). Full table with defaults lives in root `CLAUDE.md`. The load-bearing flag for day-to-day work:
 
-When adding new routes, check `routes.config.ts` for the `promptOutputOnly` guard. Generation routes must be inside that block.
+| Flag                       | Default | Effect                                                              |
+| -------------------------- | ------- | ------------------------------------------------------------------- |
+| `ENABLE_CONVERGENCE=false` | `true`  | `continuitySessionService` resolves to **`null`**. Must null-check. |
+
+Legacy `*_DISABLED` env var names still work but emit a deprecation warning at startup — migrate to the canonical `*_ENABLED` form.
 
 ## Route → Service → Client API Map
 
@@ -96,9 +101,9 @@ API calls never go directly in React components. Use `client/src/api/` for thin 
 
 ## Architecture rules
 
-- Frontend: follow VideoConceptBuilder pattern in client/src/components/VideoConceptBuilder/.
+- Frontend: follow preview feature pattern in client/src/features/preview/.
   - Orchestrator component + hooks/useReducer + api/ + components/.
-- Backend: follow PromptOptimizationService pattern in server/src/services/prompt-optimization/PromptOptimizationService.js.
+- Backend: follow PromptOptimizationService pattern in server/src/services/prompt-optimization/PromptOptimizationService.ts.
   - Thin orchestrator + specialized services + templates/ (.md).
 - API calls live in client/src/api (not inline in components).
 - Backend business logic lives in server/src/services.
@@ -109,8 +114,10 @@ API calls never go directly in React components. Use `client/src/api/` for thin 
 
 ## Environment
 
-- Copy .env.example to .env.
-- Required for local dev: VITE*FIREBASE*\* and at least one LLM key (ex: OPENAI_API_KEY).
+- Create a local `.env` file; obtain values from the team's secrets manager.
+- The authoritative required-var list is the Zod schema in `server/src/config/env.ts` — the server fails fast at startup with a complete missing-var list.
+- Required for local dev: `VITE_FIREBASE_*` and at least one LLM key (e.g. `OPENAI_API_KEY`).
+- Feature-flag toggles live in `server/src/config/feature-flags.ts`; see the table in `CLAUDE.md`.
 
 ## Common commands
 

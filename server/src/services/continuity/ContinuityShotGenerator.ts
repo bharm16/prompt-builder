@@ -13,13 +13,18 @@ import {
   ContinuitySessionStore,
   ContinuitySessionVersionMismatchError,
 } from "./ContinuitySessionStore";
-import { ContinuityProviderService } from "./ContinuityProviderService";
+import { ProviderStyleAdapter } from "./ProviderStyleAdapter";
+import { AnchorService } from "./AnchorService";
+import { SeedPersistenceService } from "./SeedPersistenceService";
 import { ContinuityMediaService } from "./ContinuityMediaService";
-import { ContinuityPostProcessingService } from "./ContinuityPostProcessingService";
+import { GradingService } from "./GradingService";
+import { QualityGateService } from "./QualityGateService";
+import { SceneProxyService } from "./SceneProxyService";
 import type {
   ShotGenerationEvent,
   ShotGenerationObserver,
 } from "./ShotGenerationProgress";
+import { DEFAULT_QUALITY_THRESHOLDS } from "./constants";
 
 const DEFAULT_FACE_STRENGTH = 0.8;
 const ASPECT_RATIOS = ["16:9", "9:16", "1:1", "4:3", "3:4"] as const;
@@ -49,9 +54,13 @@ export class ContinuityShotGenerator {
   private readonly log = logger.child({ service: "ContinuityShotGenerator" });
 
   constructor(
-    private providerService: ContinuityProviderService,
+    private providerAdapter: ProviderStyleAdapter,
+    private anchorService: AnchorService,
+    private seedService: SeedPersistenceService,
     private mediaService: ContinuityMediaService,
-    private postProcessingService: ContinuityPostProcessingService,
+    private gradingService: GradingService,
+    private qualityGate: QualityGateService,
+    private sceneProxy: SceneProxyService,
     private characterKeyframes: CharacterKeyframeService | null,
     private sessionStore: ContinuitySessionStore,
   ) {}
@@ -66,11 +75,11 @@ export class ContinuityShotGenerator {
     const shot = session.shots.find((s) => s.id === shotId);
     if (!shot) throw new Error(`Shot not found: ${shotId}`);
 
-    const provider = this.providerService.getProviderFromModel(shot.modelId);
+    const provider = this.providerAdapter.getProviderFromModel(shot.modelId);
     const previousShot = session.shots.find(
       (s) => s.sequenceIndex === shot.sequenceIndex - 1,
     );
-    const providerCaps = this.providerService.getCapabilities(
+    const providerCaps = this.providerAdapter.getCapabilities(
       provider,
       shot.modelId,
     );
@@ -85,7 +94,7 @@ export class ContinuityShotGenerator {
         : "none";
 
     if (isContinuity) {
-      this.providerService.assertProviderSupportsContinuity(
+      this.anchorService.assertProviderSupportsContinuity(
         provider,
         shot.modelId,
       );
@@ -153,10 +162,7 @@ export class ContinuityShotGenerator {
 
         const supportsSeedPersistence = providerCaps.supportsSeedPersistence;
         const inheritedSeed = supportsSeedPersistence
-          ? this.providerService.getInheritedSeed(
-              previousShot?.seedInfo,
-              provider,
-            )
+          ? this.seedService.getInheritedSeed(previousShot?.seedInfo, provider)
           : undefined;
         if (inheritedSeed !== undefined) {
           shot.inheritedSeed = inheritedSeed;
@@ -169,7 +175,7 @@ export class ContinuityShotGenerator {
         const modeForStrategy = isContinuity
           ? resolvedContinuityMode
           : effectiveContinuityMode;
-        const strategy = this.providerService.getContinuityStrategy(
+        const strategy = this.providerAdapter.getContinuityStrategy(
           provider,
           modeForStrategy,
           shot.modelId,
@@ -225,14 +231,14 @@ export class ContinuityShotGenerator {
         }
 
         const seedParams = supportsSeedPersistence
-          ? this.providerService.buildSeedParam(provider, inheritedSeed)
+          ? this.seedService.buildSeedParam(provider, inheritedSeed)
           : {};
         generationOptions = { ...generationOptions, ...seedParams };
 
         if (strategy.type === "native-style-ref") {
           const styleRef = this.resolveStyleReference(session, shot);
           shot.styleReference = styleRef;
-          const { options } = await this.providerService.buildGenerationOptions(
+          const { options } = await this.providerAdapter.buildGenerationOptions(
             provider,
             generationOptions,
             styleRef,
@@ -268,7 +274,7 @@ export class ContinuityShotGenerator {
         );
 
         if (supportsSeedPersistence) {
-          const seedInfo = this.providerService.extractSeed(
+          const seedInfo = this.seedService.extractSeed(
             provider,
             shot.modelId,
             result as unknown as Record<string, unknown>,
@@ -282,7 +288,7 @@ export class ContinuityShotGenerator {
         if (generationMode === "continuity") {
           const styleRef = this.resolveStyleReference(session, shot);
           shot.styleReference = styleRef;
-          const graded = await this.postProcessingService.matchPalette(
+          const graded = await this.gradingService.matchPalette(
             result.assetId,
             styleRef.frameUrl,
           );
@@ -304,7 +310,7 @@ export class ContinuityShotGenerator {
                 : {}),
             },
           });
-          const quality = await this.postProcessingService.evaluateQuality({
+          const quality = await this.qualityGate.evaluate({
             userId: session.userId,
             referenceImageUrl: styleRef.frameUrl,
             generatedVideoUrl: graded.videoUrl || result.videoUrl,
@@ -340,9 +346,11 @@ export class ContinuityShotGenerator {
           shot.qualityScore = quality.passed ? 1 : 0;
 
           const styleThreshold =
-            session.defaultSettings.qualityThresholds?.style ?? 0.75;
+            session.defaultSettings.qualityThresholds?.style ??
+            DEFAULT_QUALITY_THRESHOLDS.styleSimilarity;
           const identityThreshold =
-            session.defaultSettings.qualityThresholds?.identity ?? 0.6;
+            session.defaultSettings.qualityThresholds?.identity ??
+            DEFAULT_QUALITY_THRESHOLDS.identitySimilarity;
 
           if (
             !quality.passed &&
@@ -615,7 +623,7 @@ export class ContinuityShotGenerator {
     if (!context.isContinuity) return null;
     if (!context.session.sceneProxy) return null;
     if (
-      !this.providerService.shouldUseSceneProxy(
+      !this.anchorService.shouldUseSceneProxy(
         context.session,
         context.shot,
         context.modeForStrategy,
@@ -624,7 +632,7 @@ export class ContinuityShotGenerator {
       return null;
     }
 
-    const render = await this.postProcessingService.renderSceneProxy(
+    const render = await this.sceneProxy.renderFromProxy(
       context.session.userId,
       context.session.sceneProxy,
       context.shot.id,
@@ -738,7 +746,7 @@ export class ContinuityShotGenerator {
       continuityMechanismUsed = "pulid-keyframe";
 
       if (context.modeForStrategy === "style-match") {
-        const transfer = await this.postProcessingService.matchImagePalette(
+        const transfer = await this.gradingService.matchImagePalette(
           context.session.userId,
           startImageUrl,
           styleRef.frameUrl,

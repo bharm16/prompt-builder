@@ -3,7 +3,7 @@ import { X, Image } from "@promptstudio/system/components/ui";
 import type {
   KeyframeTile,
   SidebarUploadedImage,
-} from "@components/ToolSidebar/types";
+} from "@features/generation-controls";
 import { cn } from "@/utils/cn";
 import { useResolvedMediaUrl } from "@/hooks/useResolvedMediaUrl";
 import { hasGcsSignedUrlParams } from "@/utils/storageUrl";

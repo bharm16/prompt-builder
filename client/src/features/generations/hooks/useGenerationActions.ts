@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { Generation, GenerationParams } from "../types";
-import type { DraftModel } from "@components/ToolSidebar/types";
+import type { DraftModel } from "@features/generation-controls";
 import type { GenerationsAction } from "./useGenerationsState";
 import {
   compileWanPrompt,
@@ -45,9 +45,22 @@ interface UseGenerationActionsOptions {
   fps?: number | undefined;
   generationParams?: Record<string, unknown> | undefined;
   promptVersionId?: string | null | undefined;
+  // ISSUE-12: when present, preview POSTs include sessionId so the server can
+  // atomically append the generation to the named session version. Absence
+  // falls through to the legacy client-authoritative dispatch path.
+  sessionId?: string | null | undefined;
   generations?: Generation[] | undefined;
   onInsufficientCredits?:
     | ((required: number, operation: string) => void)
+    | undefined;
+  /**
+   * Invoked when a preview POST returns a server-persisted generationId.
+   * Callers use this signal to re-fetch the session so the gallery can
+   * hydrate from authoritative server state instead of waiting for a
+   * page reload.
+   */
+  onServerGenerationPersisted?:
+    | ((info: { sessionId: string; generationId: string }) => void)
     | undefined;
 }
 
@@ -57,6 +70,22 @@ interface StoryboardParams extends GenerationParams {
 
 const log = logger.child("useGenerationActions");
 const TRIGGER_REGEX = /@([a-zA-Z][a-zA-Z0-9_-]*)/g;
+
+/**
+ * Normalize the session-persistence context from hook options. Returns
+ * `undefined` for either field when absent/blank so the spread at the call
+ * site omits the key entirely and the server takes its legacy path.
+ */
+const readSessionParams = (
+  options: UseGenerationActionsOptions,
+): { sessionId?: string; promptVersionId?: string } => {
+  const sessionId = options.sessionId?.trim();
+  const promptVersionId = options.promptVersionId?.trim();
+  return {
+    ...(sessionId ? { sessionId } : {}),
+    ...(promptVersionId ? { promptVersionId } : {}),
+  };
+};
 
 const normalizeMotionString = (value: unknown): string | null => {
   if (typeof value !== "string") {
@@ -254,8 +283,7 @@ const syncCreditBalanceFromResponse = (
 
 const resolveAcceptedGenerationStatus = (
   status?: string | null,
-): Generation["status"] =>
-  status === "processing" ? "generating" : "pending";
+): Generation["status"] => (status === "processing" ? "generating" : "pending");
 
 export function useGenerationActions(
   dispatch: React.Dispatch<GenerationsAction>,
@@ -362,14 +390,19 @@ export function useGenerationActions(
     [dispatch],
   );
 
+  // ISSUE-12 follow-up: ADD_GENERATION was retired in favour of
+  // SET_GENERATIONS over a known-good set. The helper keeps its name
+  // because every call site already reads as "accept this generation into
+  // the state" — the underlying dispatch is now a state-replace that
+  // appends to the current set, which forces the caller's mental model
+  // to stay consistent with the server-authoritative view.
   const acceptGeneration = useCallback(
     (generation: Generation, updates: Partial<Generation> = {}) => {
+      const merged: Generation = { ...generation, ...updates };
+      const current = optionsRef.current.generations ?? [];
       dispatch({
-        type: "ADD_GENERATION",
-        payload: {
-          ...generation,
-          ...updates,
-        },
+        type: "SET_GENERATIONS",
+        payload: [...current, merged],
       });
     },
     [dispatch],
@@ -523,6 +556,7 @@ export function useGenerationActions(
             ...(resolved.aspectRatio
               ? { aspectRatio: resolved.aspectRatio }
               : {}),
+            ...readSessionParams(optionsRef.current),
           });
           if (controller.signal.aborted) {
             clearSubmissionPendingIfNeeded(generationAccepted);
@@ -545,24 +579,39 @@ export function useGenerationActions(
           }
           const urls = response.data.imageUrls;
           const storagePaths = response.data.storagePaths;
+          const serverGenerationId = response.data.generationId;
           const durationMs = Date.now() - startedAt;
 
           log.info("Storyboard draft generation succeeded", {
             generationId: generation.id,
             durationMs,
             framesCount: urls.length,
+            serverPersisted: Boolean(serverGenerationId),
             ...motionMeta,
           });
           generationAccepted = true;
-          acceptGeneration(generation, {
-            status: "completed",
-            completedAt: Date.now(),
-            mediaUrls: urls,
-            ...(storagePaths?.length
-              ? { mediaAssetIds: toAssetIds(storagePaths) }
-              : {}),
-            thumbnailUrl: response.data.baseImageUrl || urls[0] || null,
-          });
+          // When the server persisted, adopt the server-assigned id so a
+          // subsequent session refetch is an id-matched no-op rather than
+          // a clobbering duplicate.
+          acceptGeneration(
+            serverGenerationId
+              ? { ...generation, id: serverGenerationId }
+              : generation,
+            {
+              status: "completed",
+              completedAt: Date.now(),
+              mediaUrls: urls,
+              ...(storagePaths?.length
+                ? { mediaAssetIds: toAssetIds(storagePaths) }
+                : {}),
+              thumbnailUrl: response.data.baseImageUrl || urls[0] || null,
+            },
+          );
+          // C7 fix: storyboard previews charge credits server-side, so the
+          // client must refresh the balance badge or it stays stale until
+          // the next bigger transaction. Mirrors the same call on the
+          // draft-render and full-render success paths.
+          syncCreditBalanceFromResponse(response.remainingCredits);
           inFlightRef.current.delete(generation.id);
           setSubmissionPending(false);
           return;
@@ -727,6 +776,7 @@ export function useGenerationActions(
             ...(resolved.faceSwapAlreadyApplied
               ? { faceSwapAlreadyApplied: true }
               : {}),
+            ...readSessionParams(optionsRef.current),
           },
         );
         if (controller.signal.aborted) {
@@ -903,6 +953,11 @@ export function useGenerationActions(
             serverJobStatus: "failed",
           });
         } else {
+          acceptGeneration(generation, {
+            status: "failed",
+            completedAt: Date.now(),
+            error: errObj.message,
+          });
           inFlightRef.current.delete(generation.id);
           setSubmissionPending(false);
         }
@@ -953,12 +1008,24 @@ export function useGenerationActions(
         const resolvedSeedImageUrl = await resolveSeedImageUrl(
           seedImageUrl ?? null,
         );
+        // Prefer the freshly-created promptVersionId passed in params over
+        // the stale options snapshot. `onCreateVersionIfNeeded()` in
+        // executeStoryboardAction builds a new version ID and sets React
+        // state, but optionsRef.current still holds the previous render's
+        // value until the next React commit — so without this override the
+        // server sees an empty promptVersionId and skips attaching the
+        // generation to the session.
+        const sessionParams = readSessionParams(optionsRef.current);
         const response = await generateStoryboardPreview(prompt, {
           ...(resolved.aspectRatio
             ? { aspectRatio: resolved.aspectRatio }
             : {}),
           ...(resolvedSeedImageUrl
             ? { seedImageUrl: resolvedSeedImageUrl }
+            : {}),
+          ...sessionParams,
+          ...(params.promptVersionId
+            ? { promptVersionId: params.promptVersionId }
             : {}),
         });
         if (controller.signal.aborted) {
@@ -984,23 +1051,55 @@ export function useGenerationActions(
         }
         const urls = response.data.imageUrls;
         const storagePaths = response.data.storagePaths;
+        const serverGenerationId = response.data.generationId;
         const durationMs = Date.now() - startedAt;
         log.info("Storyboard generation succeeded", {
           generationId: generation.id,
           durationMs,
           framesCount: urls.length,
+          serverPersisted: Boolean(serverGenerationId),
           ...motionMeta,
         });
+
         generationAccepted = true;
-        acceptGeneration(generation, {
-          status: "completed" as const,
-          completedAt: Date.now(),
-          mediaUrls: urls,
-          ...(storagePaths?.length
-            ? { mediaAssetIds: toAssetIds(storagePaths) }
-            : {}),
-          thumbnailUrl: response.data.baseImageUrl || urls[0] || null,
-        });
+        // When the server persisted, adopt the server-assigned id so a
+        // subsequent session refetch is an id-matched no-op rather than a
+        // clobbering duplicate. When the server didn't persist (legacy or
+        // soft-fail path), keep the client-minted id; syncVersionGenerations
+        // mirrors it upward eventually.
+        acceptGeneration(
+          serverGenerationId
+            ? { ...generation, id: serverGenerationId }
+            : generation,
+          {
+            status: "completed",
+            completedAt: Date.now(),
+            mediaUrls: urls,
+            ...(storagePaths?.length
+              ? { mediaAssetIds: toAssetIds(storagePaths) }
+              : {}),
+            thumbnailUrl: response.data.baseImageUrl || urls[0] || null,
+          },
+        );
+
+        // ISSUE-12 UX polish: tell the caller the server has persisted the
+        // generation so it can re-fetch the session and hydrate the gallery
+        // without requiring a page reload. Only fire when the server
+        // actually attached (generationId present) AND we have a session
+        // to refetch.
+        const sessionIdForCallback =
+          sessionParams.sessionId ?? optionsRef.current.sessionId;
+        if (serverGenerationId && sessionIdForCallback) {
+          optionsRef.current.onServerGenerationPersisted?.({
+            sessionId: sessionIdForCallback,
+            generationId: serverGenerationId,
+          });
+        }
+        // C7 fix: storyboard previews charge credits server-side, so the
+        // client must refresh the balance badge or it stays stale until
+        // the next bigger transaction. Mirrors the same call on the
+        // draft-render and full-render success paths.
+        syncCreditBalanceFromResponse(response.remainingCredits);
         inFlightRef.current.delete(generation.id);
         setSubmissionPending(false);
       } catch (error) {
@@ -1042,6 +1141,11 @@ export function useGenerationActions(
             error: errObj.message,
           });
         } else {
+          acceptGeneration(generation, {
+            status: "failed",
+            completedAt: Date.now(),
+            error: errObj.message,
+          });
           inFlightRef.current.delete(generation.id);
           setSubmissionPending(false);
         }
@@ -1215,6 +1319,7 @@ export function useGenerationActions(
             ...(resolved.faceSwapAlreadyApplied
               ? { faceSwapAlreadyApplied: true }
               : {}),
+            ...readSessionParams(optionsRef.current),
           },
         );
         if (controller.signal.aborted) {
@@ -1390,6 +1495,11 @@ export function useGenerationActions(
             serverJobStatus: "failed",
           });
         } else {
+          acceptGeneration(generation, {
+            status: "failed",
+            completedAt: Date.now(),
+            error: errObj.message,
+          });
           inFlightRef.current.delete(generation.id);
           setSubmissionPending(false);
         }

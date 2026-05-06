@@ -3,10 +3,14 @@ import { expect, test } from "@playwright/test";
 test.describe("auth pages", () => {
   test("sign-in page renders email and password fields", async ({ page }) => {
     await page.goto("/signin");
-    await expect(page.getByText("Welcome back")).toBeVisible();
-    await expect(page.getByPlaceholder("you@company.com")).toBeVisible();
-    await expect(page.getByPlaceholder("••••••••")).toBeVisible();
-    await expect(page.getByRole("button", { name: /sign in/i })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { level: 1, name: /^sign in$/i }),
+    ).toBeVisible();
+    await expect(page.getByLabel(/email/i)).toBeVisible();
+    await expect(page.getByLabel(/^password$/i)).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: /^sign in$/i }),
+    ).toBeVisible();
     await expect(
       page.getByRole("button", { name: /continue with google/i }),
     ).toBeVisible();
@@ -16,11 +20,13 @@ test.describe("auth pages", () => {
     page,
   }) => {
     await page.goto("/signup");
-    await expect(page.getByText("Get started")).toBeVisible();
-    await expect(page.getByPlaceholder("Your name")).toBeVisible();
-    await expect(page.getByPlaceholder("you@company.com")).toBeVisible();
-    await expect(page.getByPlaceholder("At least 6 characters")).toBeVisible();
-    await expect(page.getByPlaceholder("Repeat your password")).toBeVisible();
+    await expect(
+      page.getByRole("heading", { level: 1, name: /create account/i }),
+    ).toBeVisible();
+    await expect(page.getByLabel(/name/i)).toBeVisible();
+    await expect(page.getByLabel(/email/i)).toBeVisible();
+    await expect(page.getByLabel(/^password$/i)).toBeVisible();
+    await expect(page.getByLabel(/confirm/i)).toBeVisible();
     await expect(
       page.getByRole("button", { name: /create account/i }),
     ).toBeVisible();
