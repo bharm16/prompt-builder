@@ -353,6 +353,21 @@ export function CanvasWorkspace({
     setViewingId(generationId);
   }, []);
 
+  const handleRetryTile = useCallback(
+    (generationId: string): void => {
+      const target = shots
+        .flatMap((shot) => shot.tiles)
+        .find((tile) => tile.id === generationId);
+      if (target) generationsRuntime.handleRetry(target);
+    },
+    [shots, generationsRuntime],
+  );
+
+  // Pinned per render — stable enough for relative-time labels in this view
+  // (timestamps update on the next orchestrator render, which happens on any
+  // shot/tile change). Lifted here so ShotRow + formatRelative can be pure.
+  const renderedAt = Date.now();
+
   const handleReuse = useCallback(
     (generationId: string): void => {
       const generation = generationLookup.get(generationId);
@@ -452,53 +467,99 @@ export function CanvasWorkspace({
     [domain.selectedModel, durationSeconds],
   );
 
-  const tuneSlot = tuneOpen ? (
-    <TuneDrawer
-      selectedChipIds={selectedChipIds}
-      onToggleChip={(id) =>
-        setSelectedChipIds((prev) =>
-          prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id],
-        )
-      }
-      onClose={() => setTuneOpen(false)}
-    />
-  ) : null;
+  const handleToggleChip = useCallback((id: TuneChipId) => {
+    setSelectedChipIds((prev) =>
+      prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id],
+    );
+  }, []);
+  const handleCloseTune = useCallback(() => setTuneOpen(false), []);
+  const handleToggleTune = useCallback(() => setTuneOpen((open) => !open), []);
 
-  const chromeSlot = (
-    <div className="border-t border-tool-rail-border">
-      <CanvasSettingsRow
-        prompt={prompt}
-        renderModelId={renderModelId}
-        {...(recommendedModelId ? { recommendedModelId } : {})}
-        {...(modelRecommendation?.promptId
-          ? { recommendationPromptId: modelRecommendation.promptId }
-          : {})}
-        {...(recommendationMode ? { recommendationMode } : {})}
-        {...(typeof recommendationAgeMs === "number"
-          ? { recommendationAgeMs }
-          : {})}
-        onOpenMotion={handleOpenMotion}
-        {...(generationDomain?.onStartFrameUpload
-          ? { onStartFrameUpload: generationDomain.onStartFrameUpload }
-          : {})}
-        {...(generationDomain?.onUploadSidebarImage
-          ? { onUploadSidebarImage: generationDomain.onUploadSidebarImage }
-          : {})}
-        {...(onEnhance ? { onEnhance } : {})}
-        isEnhancing={isEnhancing}
-      />
-      <div className="flex items-center justify-end gap-3 px-4 py-2">
-        <button
-          type="button"
-          aria-pressed={tuneOpen}
-          className="rounded-md border border-tool-rail-border px-2 py-1 text-[11px] font-medium text-tool-text-dim hover:text-foreground"
-          onClick={() => setTuneOpen((open) => !open)}
-        >
-          Tune{selectedChipIds.length > 0 ? ` · ${selectedChipIds.length}` : ""}
-        </button>
-        <CostPreview cost={estimatedCost} />
+  const tuneSlot = useMemo(
+    () =>
+      tuneOpen ? (
+        <TuneDrawer
+          selectedChipIds={selectedChipIds}
+          onToggleChip={handleToggleChip}
+          onClose={handleCloseTune}
+        />
+      ) : null,
+    [tuneOpen, selectedChipIds, handleToggleChip, handleCloseTune],
+  );
+
+  const selectedChipCount = selectedChipIds.length;
+  const onStartFrameUpload = generationDomain?.onStartFrameUpload;
+  const onUploadSidebarImage = generationDomain?.onUploadSidebarImage;
+  const recommendationPromptId = modelRecommendation?.promptId;
+
+  const chromeSlot = useMemo(
+    () => (
+      <div className="border-t border-tool-rail-border">
+        <CanvasSettingsRow
+          prompt={prompt}
+          renderModelId={renderModelId}
+          {...(recommendedModelId ? { recommendedModelId } : {})}
+          {...(recommendationPromptId ? { recommendationPromptId } : {})}
+          {...(recommendationMode ? { recommendationMode } : {})}
+          {...(typeof recommendationAgeMs === "number"
+            ? { recommendationAgeMs }
+            : {})}
+          onOpenMotion={handleOpenMotion}
+          {...(onStartFrameUpload ? { onStartFrameUpload } : {})}
+          {...(onUploadSidebarImage ? { onUploadSidebarImage } : {})}
+          {...(onEnhance ? { onEnhance } : {})}
+          isEnhancing={isEnhancing}
+        />
+        <div className="flex items-center justify-end gap-3 px-4 py-2">
+          <button
+            type="button"
+            aria-pressed={tuneOpen}
+            className="rounded-md border border-tool-rail-border px-2 py-1 text-[11px] font-medium text-tool-text-dim hover:text-foreground"
+            onClick={handleToggleTune}
+          >
+            Tune{selectedChipCount > 0 ? ` · ${selectedChipCount}` : ""}
+          </button>
+          <CostPreview cost={estimatedCost} />
+        </div>
       </div>
-    </div>
+    ),
+    [
+      prompt,
+      renderModelId,
+      recommendedModelId,
+      recommendationPromptId,
+      recommendationMode,
+      recommendationAgeMs,
+      handleOpenMotion,
+      onStartFrameUpload,
+      onUploadSidebarImage,
+      onEnhance,
+      isEnhancing,
+      tuneOpen,
+      selectedChipCount,
+      handleToggleTune,
+      estimatedCost,
+    ],
+  );
+
+  // Continue Scene seeds the next render's start frame from the visible
+  // poster of the source generation. Memoized so CanvasPromptBar's
+  // listener-effect dep doesn't fire on every parent rerender.
+  const handleContinueScene = useCallback(
+    (fromGenerationId: string) => {
+      const allTiles = shots.flatMap((shot) => shot.tiles);
+      const target = allTiles.find((tile) => tile.id === fromGenerationId);
+      if (!target) return;
+      const frameUrl = target.thumbnailUrl ?? target.mediaUrls[0];
+      if (!frameUrl) return;
+      storeActions.setStartFrame({
+        id: `continue-scene-${target.id}`,
+        url: frameUrl,
+        source: "generation",
+        ...(target.prompt.trim() ? { sourcePrompt: target.prompt.trim() } : {}),
+      });
+    },
+    [shots, storeActions],
   );
 
   return (
@@ -538,17 +599,13 @@ export function CanvasWorkspace({
                 <React.Fragment key={shot.id}>
                   <ShotRow
                     shot={shot}
+                    now={renderedAt}
                     layout={idx === 0 ? "featured" : "compact"}
                     featuredTileId={
                       idx === 0 ? (featuredTile?.id ?? null) : null
                     }
                     onSelectTile={handleSelectGeneration}
-                    onRetryTile={(generationId) => {
-                      const target = shot.tiles.find(
-                        (tile) => tile.id === generationId,
-                      );
-                      if (target) generationsRuntime.handleRetry(target);
-                    }}
+                    onRetryTile={handleRetryTile}
                   />
                   {idx < shots.length - 1 && <ShotDivider />}
                 </React.Fragment>
@@ -557,34 +614,10 @@ export function CanvasWorkspace({
           )}
 
           <CanvasPromptBar
-            moment={moment}
             surfaceProps={surfaceProps}
             tuneSlot={tuneSlot}
             chromeSlot={chromeSlot}
-            onContinueScene={(fromGenerationId) => {
-              // Resolve the source generation and seed the next render's
-              // start frame from its visible poster. We use thumbnailUrl
-              // (the video's preview/poster image set by galleryGeneration)
-              // as a last-frame approximation — there's no server-side
-              // last-frame extraction helper today. Falls back to the first
-              // mediaUrl for image-tier generations whose thumbnailUrl
-              // resolved to null.
-              const allTiles = shots.flatMap((shot) => shot.tiles);
-              const target = allTiles.find(
-                (tile) => tile.id === fromGenerationId,
-              );
-              if (!target) return;
-              const frameUrl = target.thumbnailUrl ?? target.mediaUrls[0];
-              if (!frameUrl) return;
-              storeActions.setStartFrame({
-                id: `continue-scene-${target.id}`,
-                url: frameUrl,
-                source: "generation",
-                ...(target.prompt.trim()
-                  ? { sourcePrompt: target.prompt.trim() }
-                  : {}),
-              });
-            }}
+            onContinueScene={handleContinueScene}
           />
         </div>
       </div>
@@ -623,8 +656,11 @@ const STARTER_CHIPS = [
 ] as const;
 
 function EmptyHero(): React.ReactElement {
-  // Phase 1: chips are visual stubs - clicking does nothing yet. Future
-  // phases will wire chip clicks into the prompt setter.
+  // Chips are non-interactive idea-prompts — they suggest the kind of phrase
+  // the composer accepts. They rendered as <button> previously but the click
+  // handler was never wired, so we ship them as <span> until the prompt
+  // setter is exposed to consumers (a button that does nothing violates the
+  // project's "browsing is read-only, editing is explicit" UX rule).
   return (
     <div className="mx-auto flex min-h-[calc(100vh-var(--workspace-topbar-h)-240px)] max-w-[640px] flex-col items-center justify-center gap-[18px] text-center">
       <h1 className="text-[28px] font-medium tracking-[-0.01em]">
@@ -633,15 +669,17 @@ function EmptyHero(): React.ReactElement {
       <p className="m-0 max-w-[460px] text-tool-text-subdued">
         Describe a shot. Pick a model. We&apos;ll render four variants.
       </p>
-      <div className="mt-3 flex flex-wrap justify-center gap-2">
+      <div
+        className="mt-3 flex flex-wrap justify-center gap-2"
+        aria-label="Example prompts"
+      >
         {STARTER_CHIPS.map((chip) => (
-          <button
+          <span
             key={chip}
-            type="button"
-            className="rounded-full border border-tool-rail-border bg-tool-surface-card px-3 py-1 text-xs text-tool-text-dim hover:text-foreground"
+            className="rounded-full border border-tool-rail-border bg-tool-surface-card px-3 py-1 text-xs text-tool-text-dim"
           >
             {chip}
-          </button>
+          </span>
         ))}
       </div>
     </div>

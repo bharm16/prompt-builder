@@ -24,8 +24,18 @@ function gen(id: string, status: Generation["status"]): Generation {
   } as Generation;
 }
 
-describe("GenTile perf — at most one <video> element actively renders per shot", () => {
-  it("renders 8 completed tiles with poster <img> only (no <video>)", () => {
+/**
+ * GenTile poster-only baseline lock.
+ *
+ * The current implementation always renders an <img> poster, never a <video>
+ * — this is the simplest path that satisfies spec §10's "only featured tile
+ * preloads video" mitigation (zero videos is ≤ 1, so we trivially pass the
+ * spec's perf budget). When the featured-tile video swap lands later, this
+ * test should relax to `videos.length <= 1` rather than be deleted — the
+ * cap is the actual contract; "zero videos" is just the current floor.
+ */
+describe("GenTile — poster-only baseline (no <video> elements rendered)", () => {
+  it("renders 8 completed tiles with poster <img> only and no <video>", () => {
     const tiles = Array.from({ length: 8 }, (_, i) =>
       gen(`g${i}`, "completed"),
     );
@@ -40,6 +50,7 @@ describe("GenTile perf — at most one <video> element actively renders per shot
     const { container } = render(
       <ShotRow
         shot={shot}
+        now={1_000}
         layout="featured"
         featuredTileId="g0"
         onSelectTile={vi.fn()}
@@ -47,7 +58,12 @@ describe("GenTile perf — at most one <video> element actively renders per shot
       />,
     );
     const videos = container.querySelectorAll("video");
-    expect(videos.length).toBe(0);
+    // Hard cap: at most 1 active <video> per shot. Today the implementation
+    // chooses 0 (poster-only); this assertion will keep holding when the
+    // featured-tile video swap is wired and a single <video> appears for the
+    // featured slot.
+    expect(videos.length).toBeLessThanOrEqual(1);
+    expect(videos.length).toBe(0); // current floor — remove when video swap lands
     const imgs = container.querySelectorAll("img");
     expect(imgs.length).toBe(8);
   });

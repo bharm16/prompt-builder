@@ -1,6 +1,7 @@
 import React from "react";
 import { cn } from "@/utils/cn";
 import type { Shot } from "../utils/groupShots";
+import { formatRelative } from "../utils/formatRelative";
 import { GenTile } from "./GenTile";
 
 export interface ShotRowProps {
@@ -8,6 +9,11 @@ export interface ShotRowProps {
   layout: "featured" | "compact";
   /** id of the featured tile within this shot, or null. */
   featuredTileId: string | null;
+  /**
+   * Wall-clock timestamp used to format the relative "5m ago" label.
+   * Owned by the caller so the row stays presentational + storybook-stable.
+   */
+  now: number;
   onSelectTile: (generationId: string) => void;
   onRetryTile: (generationId: string) => void;
 }
@@ -24,6 +30,7 @@ export function ShotRow({
   shot,
   layout,
   featuredTileId,
+  now,
   onSelectTile,
   onRetryTile,
 }: ShotRowProps): React.ReactElement {
@@ -49,7 +56,7 @@ export function ShotRow({
           {shot.status}
         </span>
         <time className="font-mono text-[10px] text-tool-text-subdued">
-          {formatRelative(shot.createdAt)}
+          {formatRelative(shot.createdAt, now)}
         </time>
       </header>
       <div
@@ -72,14 +79,4 @@ export function ShotRow({
       </div>
     </section>
   );
-}
-
-function formatRelative(epoch: number): string {
-  const delta = Date.now() - epoch;
-  const m = Math.floor(delta / 60_000);
-  if (m < 1) return "just now";
-  if (m < 60) return `${m}m ago`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
-  return `${Math.floor(h / 24)}d ago`;
 }

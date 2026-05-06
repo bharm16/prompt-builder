@@ -1,4 +1,5 @@
 import React from "react";
+import { X } from "@promptstudio/system/components/ui";
 import { cn } from "@/utils/cn";
 import { TUNE_CHIPS, type TuneChip, type TuneChipId } from "../utils/tuneChips";
 
@@ -33,10 +34,10 @@ export function TuneDrawer({
         <button
           type="button"
           aria-label="Close"
-          className="rounded-md px-2 py-0.5 text-xs text-tool-text-subdued hover:bg-tool-rail-border"
+          className="inline-flex items-center justify-center rounded-md p-1 text-tool-text-subdued hover:bg-tool-rail-border hover:text-foreground"
           onClick={onClose}
         >
-          ×
+          <X size={12} weight="bold" aria-hidden="true" />
         </button>
       </div>
       <div className="flex flex-col gap-2">

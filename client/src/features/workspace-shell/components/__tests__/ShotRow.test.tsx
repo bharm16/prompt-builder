@@ -44,6 +44,7 @@ describe("ShotRow", () => {
         shot={shot}
         layout="featured"
         featuredTileId="a"
+        now={Date.now()}
         onSelectTile={vi.fn()}
         onRetryTile={vi.fn()}
       />,
@@ -57,6 +58,7 @@ describe("ShotRow", () => {
         shot={shot}
         layout="featured"
         featuredTileId="a"
+        now={Date.now()}
         onSelectTile={vi.fn()}
         onRetryTile={vi.fn()}
       />,
@@ -70,6 +72,7 @@ describe("ShotRow", () => {
         shot={shot}
         layout="featured"
         featuredTileId="b"
+        now={Date.now()}
         onSelectTile={vi.fn()}
         onRetryTile={vi.fn()}
       />,
@@ -84,6 +87,7 @@ describe("ShotRow", () => {
         shot={shot}
         layout="compact"
         featuredTileId={null}
+        now={Date.now()}
         onSelectTile={vi.fn()}
         onRetryTile={vi.fn()}
       />,

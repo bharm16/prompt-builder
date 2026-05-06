@@ -59,7 +59,7 @@ function makeSurfaceProps(): PromptEditorSurfaceProps {
 describe("CanvasPromptBar", () => {
   it("renders as a floating dock with absolute positioning", () => {
     const { container } = render(
-      <CanvasPromptBar moment="empty" surfaceProps={makeSurfaceProps()} />,
+      <CanvasPromptBar surfaceProps={makeSurfaceProps()} />,
     );
     const root = container.firstChild as HTMLElement;
     expect(root.className).toMatch(/absolute/);
@@ -67,7 +67,7 @@ describe("CanvasPromptBar", () => {
 
   it("renders the editor surface", () => {
     const { container } = render(
-      <CanvasPromptBar moment="empty" surfaceProps={makeSurfaceProps()} />,
+      <CanvasPromptBar surfaceProps={makeSurfaceProps()} />,
     );
     // PromptEditor uses a contenteditable div with data-placeholder, not a real
     // <input placeholder>. Confirm via the data attribute.
@@ -76,14 +76,24 @@ describe("CanvasPromptBar", () => {
     ).toBeInTheDocument();
   });
 
-  it("does NOT change wrapper class list between moments (no reflow fork)", () => {
+  it("does NOT change wrapper class list across surface state changes (no reflow fork)", () => {
+    // The composer must stay structurally identical even as the editor's
+    // internal state evolves (prompt fills, suggestions arrive, autocomplete
+    // opens). A divergent className would cause layout reflow on every
+    // keystroke. Verify by re-rendering with materially different surface
+    // props and asserting the wrapper class is byte-identical.
+    const empty = makeSurfaceProps();
+    const filled: PromptEditorSurfaceProps = {
+      ...makeSurfaceProps(),
+      prompt: "a dancer in a sunlit studio",
+      autocompleteOpen: true,
+      isInlineLoading: true,
+    };
     const { container, rerender } = render(
-      <CanvasPromptBar moment="empty" surfaceProps={makeSurfaceProps()} />,
+      <CanvasPromptBar surfaceProps={empty} />,
     );
     const initial = (container.firstChild as HTMLElement).className;
-    rerender(
-      <CanvasPromptBar moment="rendering" surfaceProps={makeSurfaceProps()} />,
-    );
+    rerender(<CanvasPromptBar surfaceProps={filled} />);
     const rerendered = (container.firstChild as HTMLElement).className;
     expect(initial).toBe(rerendered);
   });

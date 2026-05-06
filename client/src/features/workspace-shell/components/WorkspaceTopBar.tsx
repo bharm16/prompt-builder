@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import { cn } from "@/utils/cn";
 import { useWorkspaceProject } from "../hooks/useWorkspaceProject";
 import { useWorkspaceCredits } from "../hooks/useWorkspaceCredits";
@@ -19,7 +19,15 @@ export function WorkspaceTopBar(): React.ReactElement {
       className="flex h-[var(--workspace-topbar-h)] items-center gap-4 border-b border-tool-rail-border bg-tool-surface-deep px-4"
       role="banner"
     >
-      <InlineRename value={project.name} onCommit={project.rename} />
+      {/*
+        Static label until a real project store + persistence land. A clickable
+        rename was previously wired to component-state-only, which silently
+        dropped the new name on remount — see UX rule "browsing is read-only,
+        editing is explicit". We re-add the affordance when rename can survive.
+      */}
+      <span className="px-2 py-1 text-sm font-medium text-foreground">
+        {project.name}
+      </span>
       <nav
         role="tablist"
         aria-label="Output mode"
@@ -31,14 +39,14 @@ export function WorkspaceTopBar(): React.ReactElement {
             role="tab"
             aria-selected={mode.active}
             aria-disabled={!mode.active}
-            disabled={!mode.active}
+            tabIndex={mode.active ? 0 : -1}
             type="button"
             title={mode.active ? undefined : "Coming soon"}
             className={cn(
               "rounded-md px-3 py-1 text-xs font-medium transition-colors",
               mode.active
                 ? "bg-tool-nav-active text-foreground"
-                : "text-tool-text-subdued hover:text-tool-text-dim disabled:cursor-not-allowed disabled:opacity-50",
+                : "cursor-not-allowed text-tool-text-subdued opacity-50 hover:text-tool-text-dim",
             )}
           >
             {mode.label}
@@ -62,51 +70,5 @@ export function WorkspaceTopBar(): React.ReactElement {
         <div className="h-7 w-7 rounded-full border border-tool-rail-border bg-tool-surface-card" />
       )}
     </header>
-  );
-}
-
-function InlineRename({
-  value,
-  onCommit,
-}: {
-  value: string;
-  onCommit: (next: string) => void;
-}): React.ReactElement {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(value);
-
-  if (!editing) {
-    return (
-      <button
-        type="button"
-        className="rounded-md px-2 py-1 text-sm font-medium text-foreground hover:bg-tool-rail-border"
-        onClick={() => {
-          setDraft(value);
-          setEditing(true);
-        }}
-      >
-        {value}
-      </button>
-    );
-  }
-
-  return (
-    <input
-      autoFocus
-      className="rounded-md border border-tool-nav-active bg-tool-surface-prompt-compact px-2 py-1 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-white/10"
-      value={draft}
-      onChange={(e) => setDraft(e.target.value)}
-      onBlur={() => {
-        setEditing(false);
-        if (draft.trim() && draft !== value) onCommit(draft.trim());
-      }}
-      onKeyDown={(e) => {
-        if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-        if (e.key === "Escape") {
-          setDraft(value);
-          setEditing(false);
-        }
-      }}
-    />
   );
 }

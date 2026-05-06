@@ -2,17 +2,15 @@ import React, { useEffect } from "react";
 import { cn } from "@/utils/cn";
 import { PromptEditorSurface } from "./PromptEditorSurface";
 import type { PromptEditorSurfaceProps } from "./PromptEditorSurface";
-import type { WorkspaceMoment } from "../utils/computeWorkspaceMoment";
 import { addContinueSceneListener } from "../events";
 
 export interface CanvasPromptBarProps {
-  moment: WorkspaceMoment;
   surfaceProps: PromptEditorSurfaceProps;
   /** Called when a featured tile dispatches CONTINUE_SCENE. */
   onContinueScene?: (fromGenerationId: string) => void;
-  /** Phase 3 will mount the TuneDrawer above the editor; Phase 1 leaves this null. */
+  /** TuneDrawer slot — renders above the editor when open. */
   tuneSlot?: React.ReactNode;
-  /** Phase 3 will add a CostPreview + Make-it submit row; Phase 1 leaves this null. */
+  /** CostPreview + settings row below the editor. */
   chromeSlot?: React.ReactNode;
 }
 
@@ -20,12 +18,11 @@ export interface CanvasPromptBarProps {
  * Floating glass composer for the unified workspace.
  *
  * Always docked at bottom-center; never reflows between WorkspaceMoments.
- * The Tune drawer (Phase 3) renders above the editor surface; the surface
- * grows upward while the bottom edge stays pinned at
- * --workspace-composer-bottom from the canvas bottom.
+ * The Tune drawer renders above the editor surface; the surface grows
+ * upward while the bottom edge stays pinned at --workspace-composer-bottom
+ * from the canvas bottom.
  */
 export function CanvasPromptBar({
-  moment,
   surfaceProps,
   onContinueScene,
   tuneSlot = null,
@@ -37,10 +34,6 @@ export function CanvasPromptBar({
       onContinueScene(event.detail.fromGenerationId);
     });
   }, [onContinueScene]);
-
-  // moment is plumbed in for future use (e.g. dimming the Make-it CTA while
-  // rendering); Phase 1 does not need to branch on it.
-  void moment;
 
   return (
     <div
