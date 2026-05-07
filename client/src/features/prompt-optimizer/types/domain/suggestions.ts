@@ -7,7 +7,7 @@ export interface SuggestionPayload {
   range?: Range | null;
   offsets?: { start?: number; end?: number } | null;
   metadata?: Record<string, unknown> | null;
-  trigger?: "selection" | "highlight" | "bento-grid";
+  trigger?: "selection" | "highlight" | "category-accordion";
   allLabeledSpans?: HighlightSpan[];
 }
 

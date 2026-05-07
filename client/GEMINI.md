@@ -33,23 +33,26 @@ These terms have specific meanings in this codebase. Do not conflate them.
 
 Server DI registration files in `server/src/config/services/`:
 
-| Registration File            | Registers                                                               |
-| ---------------------------- | ----------------------------------------------------------------------- |
-| `infrastructure.services.ts` | cache, metrics, Firebase clients, storage, assets, credits              |
-| `llm.services.ts`            | aiService, claudeClient, groqClient, geminiClient                       |
-| `enhancement.services.ts`    | enhancementService, sceneDetection, coherence, videoPromptAnalysis      |
-| `generation.services.ts`     | imageGeneration, videoGeneration, storyboardPreview, keyframe, faceSwap |
-| `continuity.services.ts`     | continuitySessionService (gated — may be `null`)                        |
-| `session.services.ts`        | sessionService, modelIntelligence                                       |
+| Registration File         | Registers                                                               |
+| ------------------------- | ----------------------------------------------------------------------- |
+| `core.services.ts`        | metrics, Firebase clients, face embedding, core infrastructure          |
+| `cache.services.ts`       | cacheService, spanLabelingCache                                         |
+| `credit.services.ts`      | userCreditService, creditReconciliation                                 |
+| `storage.services.ts`     | storageService, videoContentAccess, videoAssetRetention                 |
+| `llm.services.ts`         | aiModelService, concurrency                                             |
+| `enhancement.services.ts` | enhancementService, videoService, sceneDetection                        |
+| `generation.services.ts`  | imageGeneration, videoGeneration, storyboardPreview, keyframe, faceSwap |
+| `continuity.services.ts`  | continuitySessionService (gated — may be `null`)                        |
+| `session.services.ts`     | sessionService, assetResolver, referenceImageProcessing                 |
+| `video-jobs.services.ts`  | requestIdempotency, video job processing                                |
 
 Know this when debugging API responses or adding new client→server integrations.
 
 ## Feature Flags
 
-| Flag                       | Default | Client Impact                                                                                              |
-| -------------------------- | ------- | ---------------------------------------------------------------------------------------------------------- |
-| `PROMPT_OUTPUT_ONLY=true`  | `false` | Preview, video generation, motion, and convergence routes are not mounted. Client calls to these will 404. |
-| `ENABLE_CONVERGENCE=false` | `true`  | Continuity endpoints return errors. Continuity UI should degrade gracefully.                               |
+| Flag                       | Default | Client Impact                                                                |
+| -------------------------- | ------- | ---------------------------------------------------------------------------- |
+| `ENABLE_CONVERGENCE=false` | `true`  | Continuity endpoints return errors. Continuity UI should degrade gracefully. |
 
 ## Route → Client API Map
 
@@ -81,7 +84,7 @@ API placement rules:
 
 ## Architecture pattern
 
-- Follow VideoConceptBuilder pattern in client/src/components/VideoConceptBuilder/.
+- Follow preview feature pattern in client/src/features/preview/.
   - Orchestrator component (max ~500 lines, heuristic)
   - hooks/ using useReducer for state
   - api/ for fetch calls

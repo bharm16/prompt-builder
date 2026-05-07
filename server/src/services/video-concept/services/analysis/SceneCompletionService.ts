@@ -1,6 +1,6 @@
 import { logger } from "@infrastructure/Logger";
 import { StructuredOutputEnforcer } from "@utils/StructuredOutputEnforcer";
-import type { AIService } from "@services/prompt-optimization/types";
+import type { AIExecutionPort as AIService } from "@services/ai-model/ports/AIExecutionPort";
 
 /**
  * Service responsible for completing video scenes by filling empty elements.

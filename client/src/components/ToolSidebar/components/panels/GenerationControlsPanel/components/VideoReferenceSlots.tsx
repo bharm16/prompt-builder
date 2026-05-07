@@ -1,7 +1,7 @@
 import React, { useMemo, useState, type ReactElement } from "react";
 import { Plus } from "@promptstudio/system/components/ui";
 import { cn } from "@/utils/cn";
-import type { VideoReferenceImage } from "@features/generation-controls/context/generationControlsStoreTypes";
+import type { VideoReferenceImage } from "@features/generation-controls";
 import { useResolvedMediaUrl } from "@/hooks/useResolvedMediaUrl";
 import { hasGcsSignedUrlParams } from "@/utils/storageUrl";
 
@@ -84,7 +84,7 @@ export function VideoReferenceSlots({
                 !canUpload && isEmpty && "opacity-60 cursor-not-allowed",
                 draggingSlot === index &&
                   canUpload &&
-                  "border-tool-accent-selection",
+                  "border-tool-accent-neutral",
               )}
               onClick={() => {
                 if (!canUpload) return;

@@ -35,10 +35,9 @@ describe("ConstitutionalAI", () => {
   describe("getPrinciplesForDomain", () => {
     describe("error handling and edge cases", () => {
       it("returns default principles for unknown domain", () => {
-        const invalidDomain =
-          "unknown-domain" as unknown as Parameters<
-            typeof ConstitutionalAI.getPrinciplesForDomain
-          >[0];
+        const invalidDomain = "unknown-domain" as unknown as Parameters<
+          typeof ConstitutionalAI.getPrinciplesForDomain
+        >[0];
         const result = ConstitutionalAI.getPrinciplesForDomain(invalidDomain);
         expect(result).toEqual(ConstitutionalAI.getDefaultPrinciples());
       });

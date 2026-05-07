@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { AppShell } from "../AppShell";
 import { useCreditBalance } from "@/contexts/CreditBalanceContext";
-import type { NavItemsByVariant } from "../types";
+import type { IconComponent, NavItemsByVariant } from "../types";
 
 const unsubscribeMock = vi.fn();
 const onAuthStateChangedMock = vi.fn(() => unsubscribeMock);
@@ -44,7 +44,7 @@ describe("AppShell", () => {
       {
         to: "/pricing",
         label: "Pricing",
-        icon: () => null,
+        icon: (() => null) as unknown as IconComponent,
         showInTopNav: true,
         showInSidebar: true,
       },
@@ -53,7 +53,7 @@ describe("AppShell", () => {
       {
         to: "/assets",
         label: "Assets",
-        icon: () => null,
+        icon: (() => null) as unknown as IconComponent,
         showInTopNav: false,
         showInSidebar: true,
       },

@@ -20,17 +20,9 @@ export function getHighlightClassName(
     "value-word",
     "relative",
     "cursor-pointer",
-    "rounded-md",
-    "ps-highlight-pill",
-    "border",
-    "border-[var(--highlight-border)]",
-    "bg-[var(--highlight-bg)]",
-    "transition-all",
+    "transition-colors",
     "duration-150",
     "ease-out",
-    "hover:brightness-95",
-    "hover:shadow-sm",
-    "box-decoration-clone",
     "break-words",
     "select-text",
   ];
@@ -53,7 +45,13 @@ export function applyHighlightStyles(
     ring: "rgba(104,134,255,0.18)",
   };
   const resolved = color ?? fallback;
-  element.style.setProperty("--highlight-bg", resolved.bg);
-  element.style.setProperty("--highlight-border", resolved.border);
-  element.style.setProperty("--highlight-ring", resolved.ring);
+  // Extract RGB from border color and apply as text color at 0.9 opacity
+  const rgbMatch = resolved.border.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+  if (rgbMatch) {
+    element.style.color = `rgba(${rgbMatch[1]}, ${rgbMatch[2]}, ${rgbMatch[3]}, 0.9)`;
+  }
+  // Clear any previously set highlight vars (in case of re-render)
+  element.style.removeProperty("--highlight-bg");
+  element.style.removeProperty("--highlight-border");
+  element.style.removeProperty("--highlight-ring");
 }

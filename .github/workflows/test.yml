@@ -105,6 +105,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Type-check (tsc --noEmit)
+        # Mirrors the local pre-commit gate documented in CLAUDE.md so
+        # `git commit --no-verify` cannot smuggle type errors past CI.
+        run: npx tsc --noEmit
+
       - name: Run ESLint
         run: npm run lint
 

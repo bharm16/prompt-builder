@@ -22,15 +22,6 @@ type HealthCheckOptions = {
   isServerAlive: () => boolean;
 };
 
-export function getServerEnv(
-  baseEnv: NodeJS.ProcessEnv = process.env,
-): NodeJS.ProcessEnv {
-  return {
-    ...baseEnv,
-    VIDEO_JOB_INLINE_ENABLED: baseEnv.VIDEO_JOB_INLINE_ENABLED ?? "true",
-  };
-}
-
 function spawnNpm(
   args: string[],
   name: string,
@@ -100,11 +91,7 @@ function killProcess(child: ChildProcess | null | undefined): void {
 
 async function main() {
   console.log("[dev:start] Starting backend (watch mode)…");
-  const server = spawnNpm(
-    ["run", "server:dev"],
-    "server",
-    getServerEnv(process.env),
-  );
+  const server = spawnNpm(["run", "server:dev"], "server", process.env);
 
   let serverExited = false;
   server.on("exit", () => {

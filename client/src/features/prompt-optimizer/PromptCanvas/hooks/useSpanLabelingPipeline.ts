@@ -163,8 +163,8 @@ export function useSpanLabelingPipeline({
     displayedPrompt: normalizedDisplayedPrompt,
   });
 
-  // Bento-grid span transformation
-  const bentoSpans = useMemo(
+  // Category-accordion span transformation
+  const categorySpans = useMemo(
     () =>
       parseResult.spans.map((span) => {
         const { confidence, category, ...rest } = span;
@@ -210,7 +210,7 @@ export function useSpanLabelingPipeline({
   return {
     normalizedDisplayedPrompt,
     parseResult,
-    bentoSpans,
+    categorySpans,
     highlightFingerprint,
     formattedHTML,
     enableMLHighlighting,

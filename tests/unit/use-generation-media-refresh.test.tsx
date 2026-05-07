@@ -3,7 +3,11 @@ import { renderHook, waitFor } from "@testing-library/react";
 
 import { useGenerationMediaRefresh } from "@features/generations/hooks/useGenerationMediaRefresh";
 import type { Generation } from "@features/generations/types";
-import { resolveMediaUrl } from "@/services/media/MediaUrlResolver";
+import {
+  isMediaCircuitOpen,
+  resolveImageAssetBatch,
+  resolveMediaUrl,
+} from "@/services/media/MediaUrlResolver";
 import { extractStorageObjectPath } from "@/utils/storageUrl";
 
 const loggerChild = vi.hoisted(() => ({
@@ -14,6 +18,8 @@ const loggerChild = vi.hoisted(() => ({
 
 vi.mock("@/services/media/MediaUrlResolver", () => ({
   resolveMediaUrl: vi.fn(),
+  resolveImageAssetBatch: vi.fn().mockResolvedValue(new Map()),
+  isMediaCircuitOpen: vi.fn().mockReturnValue(false),
 }));
 
 vi.mock("@/utils/storageUrl", () => ({
@@ -25,6 +31,8 @@ vi.mock("@/services/LoggingService", () => ({
 }));
 
 const mockResolveMediaUrl = vi.mocked(resolveMediaUrl);
+const mockResolveImageAssetBatch = vi.mocked(resolveImageAssetBatch);
+const mockIsMediaCircuitOpen = vi.mocked(isMediaCircuitOpen);
 const mockExtractStorageObjectPath = vi.mocked(extractStorageObjectPath);
 
 describe("useGenerationMediaRefresh", () => {
@@ -34,6 +42,8 @@ describe("useGenerationMediaRefresh", () => {
       url: null,
       source: "unknown",
     } as any);
+    mockResolveImageAssetBatch.mockResolvedValue(new Map());
+    mockIsMediaCircuitOpen.mockReturnValue(false);
     mockExtractStorageObjectPath.mockReturnValue(null);
   });
 

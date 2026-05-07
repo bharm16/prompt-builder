@@ -8,7 +8,7 @@
  * @module MultimodalAssetManager
  */
 
-import * as crypto from "crypto";
+import { sha256Hex } from "@utils/hash";
 import { sleep } from "@utils/sleep";
 import { generateId } from "@utils/uid";
 
@@ -435,7 +435,7 @@ export class MultimodalAssetManager {
       data = Date.now().toString();
     }
 
-    return crypto.createHash("sha256").update(data).digest("hex");
+    return sha256Hex(data);
   }
 
   /**

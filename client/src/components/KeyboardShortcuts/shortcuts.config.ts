@@ -22,6 +22,11 @@ export const SHORTCUTS: ShortcutCategory[] = [
         description: "Open keyboard shortcuts",
         id: "shortcuts",
       },
+      {
+        keys: ["?"],
+        description: "Open keyboard shortcuts",
+        id: "shortcuts-help",
+      },
       { keys: ["Cmd", ","], description: "Open settings", id: "settings" },
       { keys: ["Cmd", "N"], description: "Create new prompt", id: "new" },
       { keys: ["Esc"], description: "Close modal or panel", id: "escape" },

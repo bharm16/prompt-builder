@@ -46,7 +46,7 @@ describe("promptCanvas constants", () => {
       expect(SUGGESTION_TRIGGERS).toEqual([
         "selection",
         "highlight",
-        "bento-grid",
+        "category-accordion",
       ]);
     });
   });

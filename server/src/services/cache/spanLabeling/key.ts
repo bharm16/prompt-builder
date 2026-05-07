@@ -1,4 +1,4 @@
-import { createHash } from "crypto";
+import { sha256Hex } from "@utils/hash";
 import type { SpanLabelingPolicy } from "../types";
 
 // Bump this to invalidate old cached span results when the NLP/LLM pipeline changes.
@@ -20,10 +20,7 @@ export function generateCacheKey(
     provider: provider || "unknown",
   });
 
-  const policyHash = createHash("sha256")
-    .update(policyString)
-    .digest("hex")
-    .substring(0, 8);
+  const policyHash = sha256Hex(policyString, 8);
 
   return `span:${textHash}:${policyHash}`;
 }
@@ -37,5 +34,5 @@ export function buildTextPrefix(text: string): string {
 }
 
 function buildTextHash(text: string): string {
-  return createHash("sha256").update(text).digest("hex").substring(0, 16);
+  return sha256Hex(text, 16);
 }

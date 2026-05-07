@@ -50,7 +50,7 @@ function normalizeOptionalString(value: unknown): string | undefined {
 }
 
 export function createReferenceImagesRoutes(
-  referenceImageService: ReferenceImageRepository,
+  referenceImageRepository: ReferenceImageRepository,
 ): Router {
   const router = express.Router();
 
@@ -67,7 +67,7 @@ export function createReferenceImagesRoutes(
       const limit = Number.isFinite(limitValue) ? limitValue : undefined;
       const listOptions = limit !== undefined ? { limit } : {};
 
-      const images = await referenceImageService.listImages(
+      const images = await referenceImageRepository.listImages(
         userId,
         listOptions,
       );
@@ -103,7 +103,7 @@ export function createReferenceImagesRoutes(
       try {
         const buffer = await readUploadBuffer(file);
         await validateImageBuffer(buffer, "file");
-        const image = await referenceImageService.createFromBuffer(
+        const image = await referenceImageRepository.createFromBuffer(
           userId,
           buffer,
           createInput,
@@ -139,7 +139,7 @@ export function createReferenceImagesRoutes(
         ...(normalizedLabel !== undefined ? { label: normalizedLabel } : {}),
         ...(normalizedSource !== undefined ? { source: normalizedSource } : {}),
       };
-      const image = await referenceImageService.createFromUrl(
+      const image = await referenceImageRepository.createFromUrl(
         userId,
         sourceUrl.trim(),
         createInput,
@@ -157,7 +157,10 @@ export function createReferenceImagesRoutes(
 
       const imageId = requireRouteParam(req, res, "id");
       if (!imageId) return;
-      const deleted = await referenceImageService.deleteImage(userId, imageId);
+      const deleted = await referenceImageRepository.deleteImage(
+        userId,
+        imageId,
+      );
       if (!deleted) {
         res.status(404).json({ error: "Reference image not found" });
         return;

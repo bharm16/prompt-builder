@@ -2,7 +2,7 @@ import { Storage } from "@google-cloud/storage";
 import { SignedUrlService } from "./services/SignedUrlService";
 import { UploadService } from "./services/UploadService";
 import { RetentionService } from "./services/RetentionService";
-import { safeUrlHost } from "@utils/url";
+import { safeUrlHost } from "@shared/utils/url";
 import { logger } from "@infrastructure/Logger";
 import {
   STORAGE_CONFIG,

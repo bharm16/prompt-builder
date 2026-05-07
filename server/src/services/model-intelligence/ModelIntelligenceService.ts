@@ -9,17 +9,13 @@ interface ModelIntelligenceMetrics {
 }
 import { getVideoCost } from "@config/modelCosts";
 import { VIDEO_MODELS } from "@config/modelConfig";
-import { labelSpans } from "@llm/span-labeling/SpanLabelingService";
-import type { AIModelService } from "@services/ai-model/AIModelService";
-import type { VideoGenerationService } from "@services/video-generation/VideoGenerationService";
-import type { UserCreditService } from "@services/credits/UserCreditService";
-import type { VideoModelId } from "@services/video-generation/types";
-import type { BillingProfileStore } from "@services/payment/BillingProfileStore";
+import type { VideoModelId } from "@shared/videoModels";
 import { ModelCapabilityRegistry } from "./services/ModelCapabilityRegistry";
 import { ModelScoringService } from "./services/ModelScoringService";
 import { PromptRequirementsService } from "./services/PromptRequirementsService";
 import { RecommendationExplainerService } from "./services/RecommendationExplainerService";
-import { AvailabilityGateService } from "./services/AvailabilityGateService";
+import type { AvailabilityGateService } from "./services/AvailabilityGateService";
+import type { PromptSpanProvider } from "./ports/PromptSpanProvider";
 import type {
   ModelRecommendation,
   PromptRequirements,
@@ -28,16 +24,13 @@ import type {
 } from "./types";
 
 interface ModelIntelligenceDependencies {
-  aiService: AIModelService;
-  videoGenerationService: VideoGenerationService | null;
-  userCreditService: UserCreditService | null;
-  billingProfileStore?: BillingProfileStore | null;
+  promptSpanProvider: PromptSpanProvider;
+  availabilityGate: AvailabilityGateService;
   metricsService?: ModelIntelligenceMetrics;
   requirementsService?: PromptRequirementsService;
   registry?: ModelCapabilityRegistry;
   scoringService?: ModelScoringService;
   explainerService?: RecommendationExplainerService;
-  availabilityGate?: AvailabilityGateService;
 }
 
 interface RecommendationOptions {
@@ -65,13 +58,7 @@ export class ModelIntelligenceService {
     this.scoringService = deps.scoringService ?? new ModelScoringService();
     this.explainerService =
       deps.explainerService ?? new RecommendationExplainerService();
-    this.availabilityGate =
-      deps.availabilityGate ??
-      new AvailabilityGateService(
-        deps.videoGenerationService,
-        deps.userCreditService,
-        deps.billingProfileStore,
-      );
+    this.availabilityGate = deps.availabilityGate;
   }
 
   async getRecommendation(
@@ -86,8 +73,7 @@ export class ModelIntelligenceService {
 
     if (!spans.length) {
       try {
-        const result = await labelSpans({ text: prompt }, this.deps.aiService);
-        spans = Array.isArray(result.spans) ? result.spans : [];
+        spans = await this.deps.promptSpanProvider.label(prompt);
       } catch (error) {
         log.warn("Span labeling failed for model recommendation", {
           error: error instanceof Error ? error.message : String(error),

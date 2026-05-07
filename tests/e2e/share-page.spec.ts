@@ -32,11 +32,15 @@ test.describe("share page", () => {
 
     await page.goto(`/share/${testUuid}`);
 
-    await expect(page.getByText("Shared Prompt")).toBeVisible({
-      timeout: 10000,
-    });
-    await expect(page.getByText("Original Input")).toBeVisible();
-    await expect(page.getByText("Optimized Output")).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: /shared prompt/i }),
+    ).toBeVisible({ timeout: 10000 });
+    await expect(
+      page.getByRole("heading", { name: /original input/i }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: /optimized output/i }),
+    ).toBeVisible();
     await expect(
       page.getByText("Original user prompt about a sunset."),
     ).toBeVisible();

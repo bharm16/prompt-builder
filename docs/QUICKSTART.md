@@ -17,9 +17,10 @@ cd prompt-builder
 # Install
 npm install
 
-# Configure
-cp .env.example .env
-# Add required keys to .env
+# Configure — create a local `.env` file. Obtain values from your team's
+# secrets manager (1Password, Doppler, etc.) or generate your own dev keys.
+# The server fails fast at boot with a complete list of any missing required vars.
+touch .env
 
 # Run
 npm start
@@ -38,4 +39,4 @@ Open `http://localhost:5173`.
   - `REPLICATE_API_TOKEN` (preview generation + some fallbacks)
   - `FAL_KEY` / `FAL_API_KEY` (PuLID face-consistent keyframes)
 
-For the full list, see `.env.example`.
+The authoritative list lives in [`server/src/config/env.ts`](../server/src/config/env.ts) (Zod schema). Feature flag toggles live in [`server/src/config/feature-flags.ts`](../server/src/config/feature-flags.ts) — see the table in [`CLAUDE.md`](../CLAUDE.md#feature-flags).

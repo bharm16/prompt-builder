@@ -1,6 +1,6 @@
 import type { CapabilityValues } from "@shared/capabilities";
 import type { CameraPath } from "@/features/convergence/types";
-import type { KeyframeTile, VideoTier } from "@components/ToolSidebar/types";
+import type { KeyframeTile, VideoTier } from "../types";
 
 export type GenerationControlsTab = "video" | "image";
 export type ImageSubTab = "references" | "styles";

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { VIDEO_MODELS } from "./modelConfig";
-import type { VideoModelId } from "@services/video-generation/types";
+import type { VideoModelId } from "@shared/videoModels";
 
 export type PlanTier = "free" | "explorer" | "creator" | "agency" | "unknown";
 
@@ -99,7 +99,11 @@ export const CANONICAL_PLAN_TIER_LABELS: Record<PlanTier, string> = {
   unknown: "Unknown",
 };
 
-export const CANONICAL_MODEL_TIER_LABELS: Record<VideoModelId, string> = {
+// Keys are derived from `VIDEO_MODELS` values at runtime — that record is
+// not declared `as const`, so each property is widened to `string`. We cannot
+// assert a strict `Record<VideoModelId, string>` because the literal known-id
+// union isn't satisfied by widened-string keys.
+export const CANONICAL_MODEL_TIER_LABELS: Record<string, string> = {
   [VIDEO_MODELS.DRAFT]: "draft",
   [VIDEO_MODELS.DRAFT_I2V]: "draft",
   [VIDEO_MODELS.DRAFT_I2V_LEGACY]: "draft",

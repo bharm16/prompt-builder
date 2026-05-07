@@ -2,7 +2,10 @@ import express from "express";
 import request from "supertest";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { applyRateLimitingMiddleware } from "../middleware.config";
+import {
+  applyRateLimitingMiddleware,
+  FALLBACK_LIMIT_DIVISOR,
+} from "../middleware.config";
 
 describe("regression: api rate-limit responses keep the JSON error contract", () => {
   const originalNodeEnv = process.env.NODE_ENV;
@@ -40,12 +43,18 @@ describe("regression: api rate-limit responses keep the JSON error contract", ()
       res.status(200).json({ ok: true });
     });
 
-    // Exhaust the API-specific limiter (dev: 300 per minute).
-    await Promise.all(
-      Array.from({ length: 300 }, async () => {
-        await request(app).get("/api/test");
-      }),
+    // Without Redis, the API limiter is reduced by FALLBACK_LIMIT_DIVISOR.
+    // Send requests sequentially to avoid 300-way supertest contention that
+    // was timing out the test under full-suite parallel load.
+    const apiDevLimit = 300;
+    const effectiveLimit = Math.max(
+      1,
+      Math.floor(apiDevLimit / FALLBACK_LIMIT_DIVISOR),
     );
+    const exhaustRequests = effectiveLimit + 5;
+    for (let i = 0; i < exhaustRequests; i += 1) {
+      await request(app).get("/api/test");
+    }
 
     const response = await request(app).get("/api/test");
 

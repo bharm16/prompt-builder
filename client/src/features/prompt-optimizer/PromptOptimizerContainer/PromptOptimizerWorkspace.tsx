@@ -28,13 +28,19 @@ import type {
 } from "@features/prompt-optimizer/types/domain/prompt-session";
 import { useAssetsSidebar } from "../components/AssetsSidebar";
 import {
-  usePromptState,
+  usePromptConfig,
+  usePromptUIStateContext,
+  usePromptSession,
+  usePromptHighlights,
+  usePromptServices,
+  usePromptActions,
+  usePromptNavigation,
   PromptStateProvider,
 } from "../context/PromptStateContext";
 import {
   useGenerationControlsStoreActions,
   useGenerationControlsStoreState,
-} from "@features/generation-controls/context/GenerationControlsStore";
+} from "@features/generation-controls";
 import { scrollToSpanById } from "../utils/scrollToSpanById";
 import {
   uploadPreviewImage,
@@ -146,14 +152,18 @@ function PromptOptimizerContent({
   const handoffAppliedRef = React.useRef<string | null>(null);
 
   const toast = useToast();
+  // Config
   const {
-    // State
     selectedMode,
     selectedModel,
     setSelectedMode,
     setSelectedModel,
     generationParams,
     setGenerationParams,
+  } = usePromptConfig();
+
+  // UI
+  const {
     showResults,
     showSettings,
     setShowSettings,
@@ -165,6 +175,13 @@ function PromptOptimizerContent({
     setShowImprover,
     showBrainstorm,
     setShowBrainstorm,
+    setShowResults,
+    setOutputSaveState,
+    setOutputLastSavedAt,
+  } = usePromptUIStateContext();
+
+  // Session
+  const {
     suggestionsData,
     setSuggestionsData,
     setConceptElements,
@@ -174,36 +191,35 @@ function PromptOptimizerContent({
     currentPromptDocId,
     setCurrentPromptUuid,
     setCurrentPromptDocId,
-    setShowResults,
-    setCanUndo,
-    setCanRedo,
+  } = usePromptSession();
 
-    // Refs
+  // Highlights & Refs
+  const {
     latestHighlightRef,
     persistedSignatureRef,
-    registerPromptEdit,
-    resetVersionEdits,
     undoStackRef,
     redoStackRef,
     isApplyingHistoryRef,
     skipLoadFromUrlRef,
+    setCanUndo,
+    setCanRedo,
+  } = usePromptHighlights();
 
-    // Hooks
-    promptOptimizer,
-    promptHistory,
+  // Services
+  const { promptOptimizer, promptHistory } = usePromptServices();
 
-    // Functions
+  // Actions
+  const {
     applyInitialHighlightSnapshot,
     resetEditStacks,
+    registerPromptEdit,
+    resetVersionEdits,
     setDisplayedPromptSilently,
     handleCreateNew,
-    setOutputSaveState,
-    setOutputLastSavedAt,
+  } = usePromptActions();
 
-    // Navigation
-    navigate,
-    sessionId,
-  } = usePromptState();
+  // Navigation
+  const { navigate, sessionId } = usePromptNavigation();
   const assetsSidebar = useAssetsSidebar();
   const {
     assetEditorState,

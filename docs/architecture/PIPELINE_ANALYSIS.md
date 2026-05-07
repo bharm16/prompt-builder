@@ -7,7 +7,6 @@ This document traces the current text-to-video prompt optimization pipeline acro
 Unless noted otherwise, the call-count analysis assumes a cold `/api/optimize` request with:
 
 - `targetModel=sora-2`
-- `PROMPT_OUTPUT_ONLY=false`
 - no optimization-cache hit
 - no precomputed `shotPlan`
 - no i2v path (`startImage` absent)
@@ -97,7 +96,7 @@ On the cold happy path, `/api/optimize?targetModel=sora-2` makes 4 LLM calls.
    - Output: `VideoPromptStructuredResponse` JSON, parsed by `parseVideoPromptStructuredResponse()` (`server/src/services/prompt-optimization/strategies/VideoStrategy.ts:173-179`, `server/src/services/prompt-optimization/strategies/videoPromptTypes.ts:76-85`).
 
 3. Stage 2 IR extraction
-   - `VideoPromptAnalyzer.analyze()` calls `llmExtractor.tryAnalyze(text)` unless `PROMPT_OUTPUT_ONLY` disables it (`server/src/services/video-prompt-analysis/services/analysis/VideoPromptAnalyzer.ts:37-43`).
+   - `VideoPromptAnalyzer.analyze()` calls `llmExtractor.tryAnalyze(text)` (`server/src/services/video-prompt-analysis/services/analysis/VideoPromptAnalyzer.ts:38-43`).
    - `LlmIrExtractor.tryAnalyze()` calls `gateway.extractIr(buildLlmPrompt(text), schema)` (`server/src/services/video-prompt-analysis/services/analysis/LlmIrExtractor.ts:21-28`, `server/src/services/video-prompt-analysis/services/analysis/LlmIrExtractor.ts:133-208`).
    - Output: a new `VideoPromptIR`.
 

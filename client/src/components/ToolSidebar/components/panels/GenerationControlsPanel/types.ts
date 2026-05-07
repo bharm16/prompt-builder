@@ -1,12 +1,15 @@
 import type { Asset } from "@shared/types/asset";
 import type {
   DraftModel,
+  GenerationControlsTab,
   GenerationOverrides,
-} from "@components/ToolSidebar/types";
+  ImageSubTab,
+} from "@features/generation-controls";
+
 export type {
   GenerationControlsTab,
   ImageSubTab,
-} from "@features/generation-controls/context/generationControlsStoreTypes";
+} from "@features/generation-controls";
 
 export interface GenerationControlsPanelProps {
   isProcessing?: boolean;

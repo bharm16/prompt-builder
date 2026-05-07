@@ -1,6 +1,6 @@
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import { initializeFirestore, memoryLocalCache } from "firebase/firestore";
 import type { Analytics } from "firebase/analytics";
 import { logger } from "@/services/LoggingService";
 import { sanitizeError } from "@/utils/logging";
@@ -19,7 +19,15 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
-const db = getFirestore(app);
+// Use memory-only local cache. Default IndexedDB persistence triggers a
+// known Firestore 12.4.0 bug (`INTERNAL ASSERTION FAILED: Unexpected state
+// (ID: ca9) CONTEXT: {ve:-1}`) on watch-stream resumes — it spams the
+// console 30+ times per sign-in and makes debugging impossible. Memory
+// cache is fine for this app: we use REST polling for stateful data
+// (credits, sessions) and only use Firestore for live listeners.
+const db = initializeFirestore(app, {
+  localCache: memoryLocalCache(),
+});
 
 let analytics: Analytics | null = null;
 if (typeof window !== "undefined") {

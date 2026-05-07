@@ -1,3 +1,18 @@
+// Fail fast with a clear message if a stale Node (pre-17) is on PATH. ESLint
+// 9 and @eslint/config-array rely on `structuredClone` (global in Node 17+);
+// without this check, an external pre-push hook that resolves to an old
+// /usr/local/bin/node hits a cryptic "structuredClone is not defined" deep
+// inside the config merger instead of a pointer to the real problem.
+const [nodeMajor] = process.versions.node.split('.').map(Number);
+if (nodeMajor < 20) {
+  throw new Error(
+    `ESLint config requires Node >=20; found ${process.versions.node} at ` +
+      `${process.execPath}. Check which node resolves in your shell — an old ` +
+      `/usr/local/bin/node (Intel Homebrew) may be ahead of /opt/homebrew/bin ` +
+      `on PATH. See .nvmrc.`
+  );
+}
+
 import js from '@eslint/js';
 import globals from 'globals';
 import react from 'eslint-plugin-react';

@@ -17,6 +17,7 @@ import { ReferenceImageRepository } from "@services/asset/reference-images/Refer
 import { SessionService } from "@services/sessions/SessionService";
 import { SessionStore } from "@services/sessions/SessionStore";
 import type { UserCreditService } from "@services/credits/UserCreditService";
+import type { VideoJobStore } from "@services/video-generation/jobs/VideoJobStore";
 import type { MetricsService } from "@infrastructure/MetricsService";
 import type { ServiceConfig } from "./service-config.types.ts";
 
@@ -26,27 +27,23 @@ export function registerSessionServices(container: DIContainer): void {
     (firestoreCircuitExecutor: FirestoreCircuitExecutor) =>
       new BillingProfileStore(firestoreCircuitExecutor),
     ["firestoreCircuitExecutor"],
-    { singleton: true },
   );
   container.register(
     "paymentService",
     (config: ServiceConfig) => new PaymentService(config.stripe),
     ["config"],
-    { singleton: true },
   );
   container.register(
     "stripeWebhookEventStore",
     (firestoreCircuitExecutor: FirestoreCircuitExecutor) =>
       new StripeWebhookEventStore(undefined, firestoreCircuitExecutor),
     ["firestoreCircuitExecutor"],
-    { singleton: true },
   );
   container.register(
     "paymentConsistencyStore",
     (firestoreCircuitExecutor: FirestoreCircuitExecutor) =>
       new PaymentConsistencyStore(firestoreCircuitExecutor),
     ["firestoreCircuitExecutor"],
-    { singleton: true },
   );
   container.register(
     "webhookReconciliationWorker",
@@ -89,7 +86,6 @@ export function registerSessionServices(container: DIContainer): void {
       "metricsService",
       "config",
     ],
-    { singleton: true },
   );
   container.register(
     "billingProfileRepairWorker",
@@ -111,17 +107,17 @@ export function registerSessionServices(container: DIContainer): void {
       "metricsService",
       "config",
     ],
-    { singleton: true },
   );
-  container.register("sessionStore", () => new SessionStore(), [], {
-    singleton: true,
-  });
+  container.register("sessionStore", () => new SessionStore(), []);
 
   container.register(
     "sessionService",
-    (sessionStore: SessionStore) => new SessionService(sessionStore),
-    ["sessionStore"],
-    { singleton: true },
+    (sessionStore: SessionStore, videoJobStore: VideoJobStore) =>
+      new SessionService(sessionStore, {
+        cancelJobsForSession: (sessionId) =>
+          videoJobStore.cancelJobsForSession(sessionId),
+      }),
+    ["sessionStore", "videoJobStore"],
   );
 
   container.register(
@@ -157,11 +153,10 @@ export function registerSessionServices(container: DIContainer): void {
       }
     },
     ["gcsBucket", "gcsBucketName", "faceEmbeddingService", "config"],
-    { singleton: true },
   );
 
   container.register(
-    "referenceImageService",
+    "referenceImageRepository",
     (gcsBucket: Bucket, gcsBucketName: string) => {
       try {
         return new ReferenceImageRepository({
@@ -178,6 +173,5 @@ export function registerSessionServices(container: DIContainer): void {
       }
     },
     ["gcsBucket", "gcsBucketName"],
-    { singleton: true },
   );
 }

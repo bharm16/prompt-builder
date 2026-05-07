@@ -227,14 +227,14 @@ This document tracks the progress of migrating the Prompt Builder codebase from 
 
 - PromptCanvas.jsx (large component ~550 lines)
 - PromptOptimizerContainer/PromptOptimizerContainer.jsx
-- SpanBentoGrid components (SpanBentoGrid.jsx, BentoBox.jsx, SpanItem.jsx)
+- SpanCategoryAccordion components (SpanCategoryAccordion.tsx, CategorySection.tsx, SpanItem.tsx)
 - context/PromptStateContext.jsx (context provider ~250 lines)
 
 ## Next Priorities
 
 1. Migrate remaining prompt-optimizer components (PromptCanvas, PromptEditor, etc.)
 2. Migrate PromptStateContext
-3. Migrate SpanBentoGrid components
+3. Migrate SpanCategoryAccordion components
 4. Migrate remaining feature hooks (if any)
 5. Migrate remaining utils (if any)
 

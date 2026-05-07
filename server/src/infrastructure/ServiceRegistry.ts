@@ -24,6 +24,7 @@ import type { CreditReconciliationWorker } from "@services/credits/CreditReconci
 import type { PromptOptimizationService } from "@services/prompt-optimization/PromptOptimizationService";
 import type { ImageGenerationService } from "@services/image-generation/ImageGenerationService";
 import type { VideoGenerationService } from "@services/video-generation/VideoGenerationService";
+import type { VideoConceptService } from "@services/video-concept/VideoConceptService";
 import type { ContinuitySessionService } from "@services/continuity/ContinuitySessionService";
 import type { ModelIntelligenceService } from "@services/model-intelligence/ModelIntelligenceService";
 import type { VideoJobWorker } from "@services/video-generation/jobs/VideoJobWorker";
@@ -60,7 +61,7 @@ export interface ServiceRegistry {
   gcsBucket: Bucket;
 
   // LLM clients (nullable — credentials may be absent)
-  claudeClient: LLMClient | null;
+  openAIClient: LLMClient | null;
   groqClient: LLMClient | null;
   qwenClient: LLMClient | null;
   geminiClient: LLMClient | null;
@@ -70,8 +71,9 @@ export interface ServiceRegistry {
   // Prompt
   promptOptimizationService: PromptOptimizationService;
   llmJudgeService: LLMJudgeService;
+  videoConceptService: VideoConceptService;
 
-  // Generation (nullable — gated by PROMPT_OUTPUT_ONLY or missing creds)
+  // Generation (nullable — resolves to null when provider creds are absent)
   imageGenerationService: ImageGenerationService | null;
   videoGenerationService: VideoGenerationService | null;
   continuitySessionService: ContinuitySessionService | null;

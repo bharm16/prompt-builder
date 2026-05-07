@@ -20,6 +20,15 @@ export function initSentry(): void {
     return;
   }
 
+  // Skip init entirely in dev unless the debug flag is set. The existing
+  // beforeSend filter drops error events in dev, but Sentry.init itself
+  // still emits session/performance envelopes — which pollute the Sentry
+  // project quota and add noise to dev network traces.
+  // String compare against "true" — VITE_SENTRY_DEBUG="false" must NOT enable.
+  if (import.meta.env.DEV && import.meta.env.VITE_SENTRY_DEBUG !== "true") {
+    return;
+  }
+
   Sentry.init({
     dsn: SENTRY_DSN,
     environment: ENVIRONMENT,
@@ -57,8 +66,12 @@ export function initSentry(): void {
 
     // Filter out local development errors
     beforeSend(event, hint) {
-      // Don't send events in development unless explicitly enabled
-      if (ENVIRONMENT === "development" && !import.meta.env.VITE_SENTRY_DEBUG) {
+      // Don't send events in development unless explicitly enabled.
+      // String compare against "true" — VITE_SENTRY_DEBUG="false" must NOT enable.
+      if (
+        ENVIRONMENT === "development" &&
+        import.meta.env.VITE_SENTRY_DEBUG !== "true"
+      ) {
         return null;
       }
 

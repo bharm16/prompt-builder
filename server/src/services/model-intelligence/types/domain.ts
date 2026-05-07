@@ -1,4 +1,4 @@
-import type { VideoModelId } from "@services/video-generation/types";
+import type { VideoModelId } from "@shared/videoModels";
 
 export const COMPLEXITY_LEVELS = [
   "none",

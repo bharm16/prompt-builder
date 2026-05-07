@@ -16,16 +16,13 @@ import {
 import type { ServiceConfig } from "./service-config.types.ts";
 
 export function registerStorageServices(container: DIContainer): void {
-  container.register("gcsStorage", () => new Storage(), [], {
-    singleton: true,
-  });
+  container.register("gcsStorage", () => new Storage(), []);
   container.registerValue("gcsBucketName", resolveBucketName());
   container.register(
     "gcsBucket",
     (gcsStorage: Storage, gcsBucketName: string) =>
       gcsStorage.bucket(gcsBucketName),
     ["gcsStorage", "gcsBucketName"],
-    { singleton: true },
   );
 
   container.register(
@@ -36,7 +33,6 @@ export function registerStorageServices(container: DIContainer): void {
         bucketName: gcsBucketName,
       }),
     ["gcsStorage", "gcsBucketName"],
-    { singleton: true },
   );
 
   container.register(
@@ -49,7 +45,6 @@ export function registerStorageServices(container: DIContainer): void {
         cacheControl: config.videoAssets.storage.cacheControl,
       }),
     ["gcsBucket", "config"],
-    { singleton: true },
   );
   container.register(
     "imageAssetStore",
@@ -61,7 +56,6 @@ export function registerStorageServices(container: DIContainer): void {
         cacheControl: config.imageAssets.storage.cacheControl,
       }),
     ["gcsBucket", "config"],
-    { singleton: true },
   );
   container.register(
     "convergenceStorageService",
@@ -72,7 +66,6 @@ export function registerStorageServices(container: DIContainer): void {
       return createGCSStorageService(gcsBucket);
     },
     ["gcsBucket", "config"],
-    { singleton: true },
   );
 
   container.register(
@@ -83,7 +76,6 @@ export function registerStorageServices(container: DIContainer): void {
         config.videoAssets.retention,
       ),
     ["videoAssetStore", "config"],
-    { singleton: true },
   );
 
   container.register(
@@ -91,6 +83,5 @@ export function registerStorageServices(container: DIContainer): void {
     (config: ServiceConfig) =>
       createVideoContentAccessService(config.videoAssets.access),
     ["config"],
-    { singleton: true },
   );
 }

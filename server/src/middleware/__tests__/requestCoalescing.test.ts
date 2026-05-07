@@ -5,6 +5,9 @@ import { RequestCoalescingMiddleware } from "../requestCoalescing";
 vi.mock("@infrastructure/Logger", () => ({
   logger: {
     debug: vi.fn(),
+    warn: vi.fn(),
+    info: vi.fn(),
+    error: vi.fn(),
   },
 }));
 
@@ -87,7 +90,7 @@ describe("RequestCoalescingMiddleware", () => {
   });
 
   afterEach(() => {
-    service.clear();
+    service.dispose();
     vi.useRealTimers();
     vi.clearAllMocks();
   });
@@ -277,5 +280,188 @@ describe("RequestCoalescingMiddleware", () => {
     expect(keyA).not.toBe(keyC);
     expect(keyA).toMatch(/^POST:\/api\/optimize:[a-f0-9]{32}:[a-f0-9]{32}$/);
     expect(keyA).not.toContain("secret-token-abcdef");
+  });
+
+  describe("capacity cap and housekeeper", () => {
+    async function startUnique(
+      svc: RequestCoalescingMiddleware,
+      body: unknown,
+    ): Promise<void> {
+      const middleware = svc.middleware({ keyScope: "/api/optimize" });
+      const req = createRequest({ body });
+      const res = createResponse();
+      const next = vi.fn() as NextFunction;
+      await middleware(req, res, next);
+    }
+
+    it("evicts oldest entry when hard cap is reached", async () => {
+      const svc = new RequestCoalescingMiddleware({ maxPending: 3 });
+      await startUnique(svc, { prompt: "a" });
+      await startUnique(svc, { prompt: "b" });
+      await startUnique(svc, { prompt: "c" });
+      await startUnique(svc, { prompt: "d" });
+
+      expect(svc.capacityStats().pending).toBe(3);
+      svc.dispose();
+    });
+
+    it("evicts in insertion order (oldest first)", async () => {
+      const svc = new RequestCoalescingMiddleware({ maxPending: 3 });
+      const mw = svc.middleware({ keyScope: "/api/optimize" });
+      const reqA = createRequest({ body: { prompt: "A" } });
+      const reqB = createRequest({ body: { prompt: "B" } });
+      const reqC = createRequest({ body: { prompt: "C" } });
+      const reqD = createRequest({ body: { prompt: "D" } });
+      const keyA = svc.generateKey(reqA, { keyScope: "/api/optimize" });
+      const keyB = svc.generateKey(reqB, { keyScope: "/api/optimize" });
+      const keyC = svc.generateKey(reqC, { keyScope: "/api/optimize" });
+      const keyD = svc.generateKey(reqD, { keyScope: "/api/optimize" });
+
+      await mw(reqA, createResponse(), vi.fn() as NextFunction);
+      await mw(reqB, createResponse(), vi.fn() as NextFunction);
+      await mw(reqC, createResponse(), vi.fn() as NextFunction);
+      await mw(reqD, createResponse(), vi.fn() as NextFunction);
+
+      // Access private via cast to inspect presence
+      const map = (svc as unknown as { pendingRequests: Map<string, unknown> })
+        .pendingRequests;
+      expect(map.has(keyA)).toBe(false);
+      expect(map.has(keyB)).toBe(true);
+      expect(map.has(keyC)).toBe(true);
+      expect(map.has(keyD)).toBe(true);
+      svc.dispose();
+    });
+
+    it("stopHousekeeper is idempotent", () => {
+      const svc = new RequestCoalescingMiddleware();
+      expect(() => {
+        svc.stopHousekeeper();
+        svc.stopHousekeeper();
+      }).not.toThrow();
+      svc.dispose();
+    });
+
+    it("startHousekeeper is idempotent (no duplicate handle)", () => {
+      const svc = new RequestCoalescingMiddleware();
+      const firstHandle = (
+        svc as unknown as {
+          housekeepTimer: ReturnType<typeof setInterval> | null;
+        }
+      ).housekeepTimer;
+      svc.startHousekeeper();
+      const secondHandle = (
+        svc as unknown as {
+          housekeepTimer: ReturnType<typeof setInterval> | null;
+        }
+      ).housekeepTimer;
+      expect(secondHandle).toBe(firstHandle);
+      svc.stopHousekeeper();
+      expect(
+        (svc as unknown as { housekeepTimer: unknown }).housekeepTimer,
+      ).toBeNull();
+    });
+
+    it("capacityStats returns pending count and maxPending", async () => {
+      const svc = new RequestCoalescingMiddleware({ maxPending: 10 });
+      await startUnique(svc, { prompt: "x" });
+      await startUnique(svc, { prompt: "y" });
+
+      expect(svc.capacityStats()).toEqual({ pending: 2, maxPending: 10 });
+      svc.dispose();
+    });
+
+    it("clear() preserves the housekeeper (runtime-safe reset)", () => {
+      const svc = new RequestCoalescingMiddleware();
+      const before = (
+        svc as unknown as {
+          housekeepTimer: ReturnType<typeof setInterval> | null;
+        }
+      ).housekeepTimer;
+      expect(before).not.toBeNull();
+      svc.clear();
+      const after = (
+        svc as unknown as {
+          housekeepTimer: ReturnType<typeof setInterval> | null;
+        }
+      ).housekeepTimer;
+      expect(after).toBe(before);
+      svc.dispose();
+    });
+
+    describe("with fake timers", () => {
+      beforeEach(() => {
+        vi.useFakeTimers();
+      });
+
+      afterEach(() => {
+        vi.useRealTimers();
+      });
+
+      it("independent housekeeper sweeps expired entries", async () => {
+        const svc = new RequestCoalescingMiddleware({
+          housekeepIntervalMs: 100,
+        });
+        // Seed an already-expired entry via the internal map
+        const map = (
+          svc as unknown as {
+            pendingRequests: Map<
+              string,
+              {
+                promise: Promise<unknown>;
+                completedAt: number;
+                expiresAt: number;
+              }
+            >;
+          }
+        ).pendingRequests;
+        map.set("stale-key", {
+          promise: Promise.resolve(),
+          completedAt: Date.now() - 1000,
+          expiresAt: Date.now() - 500,
+        });
+        expect(svc.capacityStats().pending).toBe(1);
+
+        await vi.advanceTimersByTimeAsync(150);
+
+        expect(svc.capacityStats().pending).toBe(0);
+        svc.dispose();
+      });
+
+      it("housekeeper preserves in-flight (expiresAt === null) entries", async () => {
+        const svc = new RequestCoalescingMiddleware({
+          housekeepIntervalMs: 100,
+        });
+        const map = (
+          svc as unknown as {
+            pendingRequests: Map<
+              string,
+              {
+                promise: Promise<unknown>;
+                completedAt: number | null;
+                expiresAt: number | null;
+              }
+            >;
+          }
+        ).pendingRequests;
+        map.set("in-flight", {
+          promise: Promise.resolve(),
+          completedAt: null,
+          expiresAt: null,
+        });
+        map.set("expired", {
+          promise: Promise.resolve(),
+          completedAt: Date.now() - 1000,
+          expiresAt: Date.now() - 500,
+        });
+        expect(svc.capacityStats().pending).toBe(2);
+
+        await vi.advanceTimersByTimeAsync(150);
+
+        expect(map.has("in-flight")).toBe(true);
+        expect(map.has("expired")).toBe(false);
+        expect(svc.capacityStats().pending).toBe(1);
+        svc.dispose();
+      });
+    });
   });
 });

@@ -5,7 +5,7 @@ import type { VideoService } from "../types";
 function createService(
   videoOverrides: Partial<VideoService> = {},
 ): SuggestionValidationService {
-  const videoService = {
+  const videoPromptService = {
     countWords: (text: string) =>
       text.trim().split(/\s+/).filter(Boolean).length,
     getVideoReplacementConstraints: vi.fn(() => ({
@@ -16,7 +16,7 @@ function createService(
     ...videoOverrides,
   } as unknown as VideoService;
 
-  return new SuggestionValidationService(videoService);
+  return new SuggestionValidationService(videoPromptService);
 }
 
 describe("SuggestionValidationService regression", () => {
@@ -712,5 +712,68 @@ describe("SuggestionValidationService regression", () => {
     });
 
     expect(result.map((item) => item.text)).toEqual(["low-angle view"]);
+  });
+
+  it("rejects hair-detail sub-role drift when highlight anchors on hair", () => {
+    const service = createService();
+
+    const result = service.sanitizeSuggestions(
+      [
+        { text: "soft curls falling across the brow" },
+        { text: "tiny fingers tapping the dashboard" },
+      ],
+      {
+        highlightedText: "messy braids",
+        highlightedCategory: "subject.appearance",
+        isVideoPrompt: true,
+        isPlaceholder: false,
+      },
+    );
+
+    expect(result.map((item) => item.text)).toEqual([
+      "soft curls falling across the brow",
+    ]);
+  });
+
+  it("rejects feet-detail sub-role drift when highlight anchors on feet", () => {
+    const service = createService();
+
+    const result = service.sanitizeSuggestions(
+      [
+        { text: "chubby toes in bright yellow socks" },
+        { text: "bright eyes and flushed cheeks" },
+      ],
+      {
+        highlightedText: "tiny bare feet",
+        highlightedCategory: "subject.appearance",
+        isVideoPrompt: true,
+        isPlaceholder: false,
+      },
+    );
+
+    expect(result.map((item) => item.text)).toEqual([
+      "chubby toes in bright yellow socks",
+    ]);
+  });
+
+  it("rejects prop-detail sub-role drift when suggestion shifts to body parts", () => {
+    const service = createService();
+
+    const result = service.sanitizeSuggestions(
+      [
+        { text: "worn leather steering wheel with chrome trim" },
+        { text: "flushed cheeks pressed to the window" },
+      ],
+      {
+        highlightedText: "steering wheel",
+        highlightedCategory: "subject.appearance",
+        isVideoPrompt: true,
+        isPlaceholder: false,
+      },
+    );
+
+    expect(result.map((item) => item.text)).toEqual([
+      "worn leather steering wheel with chrome trim",
+    ]);
   });
 });

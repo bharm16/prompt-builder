@@ -128,7 +128,10 @@ describe("ToolRail", () => {
       expect(onPanelChange).toHaveBeenCalledWith("studio");
     });
 
-    it("shows plan tier when billing status is subscribed", () => {
+    it("renders account link for a subscribed user", () => {
+      // The visible plan-tier text was removed in the 52px icon rail redesign
+      // (planLabel is still computed but intentionally not rendered). Assert
+      // the authenticated user still gets the account affordance.
       useBillingStatusMock.mockReturnValue({
         status: {
           isSubscribed: true,
@@ -151,10 +154,11 @@ describe("ToolRail", () => {
         onPanelChange: vi.fn(),
       });
 
-      expect(screen.getByText("Explorer")).toBeInTheDocument();
+      const accountLink = screen.getByRole("link", { name: "Account" });
+      expect(accountLink.getAttribute("href")).toBe("/account");
     });
 
-    it("shows free plan label when not subscribed", () => {
+    it("renders account link for an unsubscribed user", () => {
       renderToolRail({
         activePanel: "studio",
         user: {
@@ -165,7 +169,8 @@ describe("ToolRail", () => {
         onPanelChange: vi.fn(),
       });
 
-      expect(screen.getByText("Free")).toBeInTheDocument();
+      const accountLink = screen.getByRole("link", { name: "Account" });
+      expect(accountLink.getAttribute("href")).toBe("/account");
     });
   });
 });

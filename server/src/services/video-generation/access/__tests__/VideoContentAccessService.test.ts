@@ -110,4 +110,76 @@ describe("VideoContentAccessService", () => {
       process.env.NODE_ENV = originalEnv;
     }
   });
+
+  describe("key rotation via previousSecrets", () => {
+    it("accepts tokens signed with a previous secret during grace period", () => {
+      const oldService = new VideoContentAccessService({
+        secret: "old-secret",
+        ttlMs: 5_000,
+      });
+      const tokenSignedWithOld = oldService.issueToken({
+        assetId: "asset-1",
+        userId: "user-1",
+      });
+
+      const rotatedService = new VideoContentAccessService({
+        secret: "new-secret",
+        previousSecrets: ["old-secret"],
+        ttlMs: 5_000,
+      });
+
+      const payload = rotatedService.verifyToken(tokenSignedWithOld, "asset-1");
+      expect(payload).toMatchObject({ assetId: "asset-1", userId: "user-1" });
+    });
+
+    it("rejects tokens signed with a retired secret after grace period ends", () => {
+      const oldService = new VideoContentAccessService({
+        secret: "old-secret",
+        ttlMs: 5_000,
+      });
+      const tokenSignedWithOld = oldService.issueToken({
+        assetId: "asset-1",
+      });
+
+      const postRotation = new VideoContentAccessService({
+        secret: "new-secret",
+        ttlMs: 5_000,
+      });
+
+      expect(
+        postRotation.verifyToken(tokenSignedWithOld, "asset-1"),
+      ).toBeNull();
+    });
+
+    it("new tokens are signed with the current secret, not a previous one", () => {
+      const service = new VideoContentAccessService({
+        secret: "new-secret",
+        previousSecrets: ["old-secret"],
+        ttlMs: 5_000,
+      });
+      const token = service.issueToken({ assetId: "asset-1" });
+
+      const onlyOld = new VideoContentAccessService({
+        secret: "old-secret",
+        ttlMs: 5_000,
+      });
+      expect(onlyOld.verifyToken(token, "asset-1")).toBeNull();
+    });
+
+    it("factory wires previousTokenSecrets from config", () => {
+      const oldService = new VideoContentAccessService({
+        secret: "retired-key",
+        ttlMs: 5_000,
+      });
+      const token = oldService.issueToken({ assetId: "asset-1" });
+
+      const service = createVideoContentAccessService({
+        tokenSecret: "current-key",
+        previousTokenSecrets: ["retired-key"],
+        tokenTtlSeconds: 60,
+      });
+      expect(service).not.toBeNull();
+      expect(service?.verifyToken(token, "asset-1")).not.toBeNull();
+    });
+  });
 });

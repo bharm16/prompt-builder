@@ -1,6 +1,6 @@
 import type { DIContainer } from "@infrastructure/DIContainer";
 import { VideoJobStore } from "@services/video-generation/jobs/VideoJobStore";
-import { RequestIdempotencyService } from "@services/idempotency/RequestIdempotencyService";
+import { RequestIdempotencyService } from "@services/video-generation/jobs/RequestIdempotencyService";
 import type { FirestoreCircuitExecutor } from "@services/firestore/FirestoreCircuitExecutor";
 import type { ServiceConfig } from "./service-config.types.ts";
 
@@ -13,7 +13,6 @@ export function registerVideoJobServices(container: DIContainer): void {
     ) =>
       new VideoJobStore(firestoreCircuitExecutor, config.videoJobs.maxAttempts),
     ["firestoreCircuitExecutor", "config"],
-    { singleton: true },
   );
 
   container.register(
@@ -27,6 +26,5 @@ export function registerVideoJobServices(container: DIContainer): void {
         replayTtlMs: config.idempotency.replayTtlMs,
       }),
     ["firestoreCircuitExecutor", "config"],
-    { singleton: true },
   );
 }

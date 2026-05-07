@@ -266,6 +266,10 @@ const testExclude = [
   "tests/integration/**",
   "docs/**",
   "**/.{idea,git,cache,output,temp}/**",
+  // Stale agent working copies under .claude/worktrees/agent-*/ have
+  // root-relative path aliases that don't resolve from their subdirectories,
+  // causing spurious test-file load failures. Exclude them from all runs.
+  "**/.claude/worktrees/**",
   "**/{karma,rollup,webpack,vite,vitest,jest,ava,babel,nyc,cypress,tsup,build}.config.*",
 ];
 
@@ -287,6 +291,7 @@ const coverageExclude = [
   "e2e/**",
   "scripts/**",
   "playwright.config.js",
+  ".claude/worktrees/**",
 ];
 
 export default defineConfig({

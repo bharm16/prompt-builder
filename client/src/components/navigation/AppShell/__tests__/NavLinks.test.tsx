@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { NavLinks } from "../shared/NavLinks";
-import type { NavItem } from "../types";
+import type { IconComponent, NavItem } from "../types";
 
 vi.mock("@promptstudio/system/components/ui/tooltip", () => ({
   TooltipProvider: ({ children }: { children: React.ReactNode }) => (
@@ -19,9 +19,9 @@ vi.mock("@promptstudio/system/components/ui/tooltip", () => ({
   ),
 }));
 
-const DummyIcon = (props: { className?: string; size?: number }) => (
+const DummyIcon = ((props: { className?: string; size?: number }) => (
   <svg data-testid="icon" {...props} />
-);
+)) as unknown as IconComponent;
 
 const items: NavItem[] = [
   {

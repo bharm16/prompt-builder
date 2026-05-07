@@ -11,8 +11,8 @@ import { resolveOverlaps } from "./processing/OverlapResolver";
 import { validateSpans } from "./validation/SpanValidator";
 import { detectInjectionPatterns } from "@utils/SecurityPrompts";
 import { logger } from "@infrastructure/Logger";
+import type { AIExecutionPort } from "@services/ai-model/ports/AIExecutionPort";
 import type { LabelSpansParams, LabelSpansResult, SpanLike } from "./types";
-import type { AIService as BaseAIService } from "@services/enhancement/services/types";
 
 /**
  * Span Labeling Service - Refactored Architecture
@@ -36,7 +36,7 @@ import type { AIService as BaseAIService } from "@services/enhancement/services/
  */
 export async function labelSpans(
   params: LabelSpansParams,
-  aiService: BaseAIService,
+  aiService: AIExecutionPort,
 ): Promise<LabelSpansResult> {
   if (!params || typeof params.text !== "string" || !params.text.trim()) {
     throw new Error("text is required");
@@ -98,7 +98,7 @@ export async function labelSpans(
  */
 async function labelSpansSingle(
   params: LabelSpansParams,
-  aiService: BaseAIService,
+  aiService: AIExecutionPort,
 ): Promise<LabelSpansResult> {
   if (!params || typeof params.text !== "string" || !params.text.trim()) {
     throw new Error("text is required");
@@ -137,7 +137,7 @@ async function labelSpansSingle(
     // Resolve model from operation config so provider selection tracks configured span labeling defaults.
     let modelName: string | undefined;
     try {
-      const config = aiService.getOperationConfig("span_labeling");
+      const config = aiService.getOperationConfig?.("span_labeling");
       modelName = config?.model;
     } catch {
       modelName = undefined;
@@ -218,7 +218,7 @@ function applyI2VFilterIfNeeded(
  */
 async function labelSpansChunked(
   params: LabelSpansParams,
-  aiService: BaseAIService,
+  aiService: AIExecutionPort,
 ): Promise<LabelSpansResult> {
   const chunker = new TextChunker(
     SpanLabelingConfig.CHUNKING.MAX_WORDS_PER_CHUNK,
@@ -379,7 +379,7 @@ async function labelSpansChunked(
  */
 export async function* labelSpansStream(
   params: LabelSpansParams,
-  aiService: BaseAIService,
+  aiService: AIExecutionPort,
 ): AsyncGenerator<SpanLike, void, unknown> {
   if (!params || typeof params.text !== "string" || !params.text.trim()) {
     throw new Error("text is required");
@@ -402,7 +402,7 @@ export async function* labelSpansStream(
   // Resolve model from AI Service config to ensure correct provider detection
   let modelName: string | undefined;
   try {
-    const config = aiService.getOperationConfig("span_labeling");
+    const config = aiService.getOperationConfig?.("span_labeling");
     modelName = config?.model;
   } catch (e) {
     // Ignore config lookup errors

@@ -50,7 +50,6 @@ const mockUsePromptServices = vi.mocked(usePromptServices);
 const mockUseSettings = vi.mocked(useSettings);
 
 const baseSettings: AppSettings = {
-  darkMode: false,
   fontSize: "medium",
   autoSave: true,
   exportFormat: "text",

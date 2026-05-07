@@ -5,7 +5,6 @@ import {
   FirestoreCircuitExecutor,
   getFirestoreCircuitExecutor,
 } from "@services/firestore/FirestoreCircuitExecutor";
-import { VideoJobRecordSchema } from "./schemas";
 import type {
   DlqEntry,
   VideoJobError,
@@ -14,6 +13,14 @@ import type {
 } from "./types";
 import { resolveProviderForModel } from "../providers/ProviderRegistry";
 import type { VideoModelId } from "../types";
+import { DeadLetterStore } from "./DeadLetterStore";
+import { parseVideoJobRecord } from "./parseVideoJobRecord";
+import {
+  resolvePositiveInt,
+  toVideoJobError,
+  type VideoJobErrorInput,
+} from "./normalizeError";
+import { computeBackoffMs, RETRY_JITTER_RATIO } from "./computeBackoff";
 
 const DEFAULT_MAX_ATTEMPTS = 3;
 const DEFAULT_PROVIDER = "unknown";
@@ -21,55 +28,17 @@ const SLOW_FIRESTORE_OPERATION_MS = 1_000;
 
 interface CreateJobInput {
   userId: string;
+  sessionId?: string;
+  /**
+   * ISSUE-12: when both sessionId and promptVersionId are set, the worker
+   * pipeline appends the completed generation to the named session version
+   * after successful markCompleted.
+   */
+  promptVersionId?: string;
   requestId?: string;
   request: VideoJobRequest;
   creditsReserved: number;
   maxAttempts?: number;
-}
-
-type DeadLetterSource =
-  | "worker-terminal"
-  | "sweeper-stale"
-  | "shutdown-release"
-  | "manual-release"
-  | "inline-terminal";
-
-type VideoJobErrorInput =
-  | string
-  | {
-      message: string;
-      code?: string | undefined;
-      category?: VideoJobError["category"] | undefined;
-      retryable?: boolean | undefined;
-      stage?: VideoJobError["stage"] | undefined;
-      provider?: string | undefined;
-      attempt?: number | undefined;
-    };
-
-function toVideoJobError(error: VideoJobErrorInput): VideoJobError {
-  if (typeof error === "string") {
-    return { message: error };
-  }
-  return {
-    message: error.message,
-    ...(error.code ? { code: error.code } : {}),
-    ...(error.category ? { category: error.category } : {}),
-    ...(typeof error.retryable === "boolean"
-      ? { retryable: error.retryable }
-      : {}),
-    ...(error.stage ? { stage: error.stage } : {}),
-    ...(error.provider ? { provider: error.provider } : {}),
-    ...(typeof error.attempt === "number" ? { attempt: error.attempt } : {}),
-  };
-}
-
-function resolvePositiveInt(
-  value: number | undefined,
-  fallback: number,
-): number {
-  return Number.isFinite(value) && (value as number) > 0
-    ? Number.parseInt(String(value), 10)
-    : fallback;
 }
 
 function resolveProviderFromRequest(request: VideoJobRequest): string {
@@ -87,10 +56,10 @@ function resolveProviderFromRequest(request: VideoJobRequest): string {
 export class VideoJobStore {
   private readonly db = getFirestore();
   private readonly collection = this.db.collection("video_jobs");
-  private readonly deadLetterCollection = this.db.collection("video_job_dlq");
   private readonly log = logger.child({ service: "VideoJobStore" });
   private readonly firestoreCircuitExecutor: FirestoreCircuitExecutor;
   private readonly defaultMaxAttempts: number;
+  private readonly dlq: DeadLetterStore;
 
   constructor(
     firestoreCircuitExecutor: FirestoreCircuitExecutor = getFirestoreCircuitExecutor(),
@@ -98,6 +67,7 @@ export class VideoJobStore {
   ) {
     this.firestoreCircuitExecutor = firestoreCircuitExecutor;
     this.defaultMaxAttempts = defaultMaxAttempts;
+    this.dlq = new DeadLetterStore(firestoreCircuitExecutor);
   }
 
   private async withTiming<T>(
@@ -143,8 +113,13 @@ export class VideoJobStore {
     const provider = resolveProviderFromRequest(input.request);
 
     const record = {
+      schemaVersion: 1 as const,
       status: "queued",
       userId: input.userId,
+      ...(input.sessionId ? { sessionId: input.sessionId } : {}),
+      ...(input.promptVersionId
+        ? { promptVersionId: input.promptVersionId }
+        : {}),
       ...(input.requestId ? { requestId: input.requestId } : {}),
       request: input.request,
       creditsReserved: input.creditsReserved,
@@ -166,6 +141,95 @@ export class VideoJobStore {
     return this.parseJob(docRef.id, record);
   }
 
+  /**
+   * Atomically reserve credits AND create the job record in one Firestore transaction.
+   * Closes the Seam-A/Seam-B window where a crash between reserveCredits() and createJob()
+   * could leave credits debited with no job record to drive completion (or, on client retry,
+   * double-charge the user).
+   */
+  async createJobWithReservation(
+    input: CreateJobInput,
+    deps: {
+      creditService: {
+        checkAndReserveInTransaction: (
+          tx: FirebaseFirestore.Transaction,
+          userId: string,
+          cost: number,
+          options?: { source?: string; reason?: string; referenceId?: string },
+        ) => Promise<
+          | { ok: true }
+          | { ok: false; reason: "user_not_found" | "insufficient_credits" }
+        >;
+      };
+      cost: number;
+    },
+  ): Promise<
+    | { reserved: true; job: VideoJobRecord }
+    | { reserved: false; reason: "user_not_found" | "insufficient_credits" }
+  > {
+    const now = Date.now();
+    const docRef = this.collection.doc();
+    const maxAttempts = resolvePositiveInt(
+      input.maxAttempts,
+      this.defaultMaxAttempts,
+    );
+    const provider = resolveProviderFromRequest(input.request);
+
+    const record = {
+      schemaVersion: 1 as const,
+      status: "queued",
+      userId: input.userId,
+      ...(input.sessionId ? { sessionId: input.sessionId } : {}),
+      ...(input.promptVersionId
+        ? { promptVersionId: input.promptVersionId }
+        : {}),
+      ...(input.requestId ? { requestId: input.requestId } : {}),
+      request: input.request,
+      creditsReserved: input.creditsReserved,
+      provider,
+      attempts: 0,
+      maxAttempts,
+      createdAtMs: now,
+      updatedAtMs: now,
+    };
+
+    const outcome = await this.withTiming(
+      "createJobWithReservation",
+      "write",
+      async () =>
+        await this.db.runTransaction(async (transaction) => {
+          const reservation =
+            await deps.creditService.checkAndReserveInTransaction(
+              transaction,
+              input.userId,
+              deps.cost,
+              {
+                source: "generation",
+                ...(input.requestId ? { referenceId: input.requestId } : {}),
+              },
+            );
+
+          if (!reservation.ok) {
+            return { reserved: false as const, reason: reservation.reason };
+          }
+
+          transaction.set(docRef, {
+            ...record,
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+
+          return { reserved: true as const };
+        }),
+    );
+
+    if (!outcome.reserved) {
+      return outcome;
+    }
+
+    return { reserved: true, job: this.parseJob(docRef.id, record) };
+  }
+
   async getJob(jobId: string): Promise<VideoJobRecord | null> {
     const snapshot = await this.withTiming(
       "getJob",
@@ -176,6 +240,65 @@ export class VideoJobStore {
       return null;
     }
     return this.parseJob(snapshot.id, snapshot.data());
+  }
+
+  /**
+   * Returns jobs (across all statuses) associated with the given session.
+   * Used by SessionService to cascade cancellation when a session is deleted.
+   */
+  async findJobsBySessionId(sessionId: string): Promise<VideoJobRecord[]> {
+    const snapshot = await this.withTiming(
+      "findJobsBySessionId",
+      "read",
+      async () =>
+        await this.collection.where("sessionId", "==", sessionId).get(),
+    );
+
+    if (snapshot.empty) {
+      return [];
+    }
+
+    return snapshot.docs
+      .map((doc) => {
+        try {
+          return this.parseJob(doc.id, doc.data());
+        } catch (error) {
+          this.log.warn("Skipping unparsable job record in session lookup", {
+            jobId: doc.id,
+            sessionId,
+            error: error instanceof Error ? error.message : String(error),
+          });
+          return null;
+        }
+      })
+      .filter((job): job is VideoJobRecord => job !== null);
+  }
+
+  /**
+   * Marks queued/processing jobs for the given session as failed with a
+   * session-deleted reason. Completed or already-failed jobs are left alone
+   * (their assets are handled by the retention/reconciler path).
+   *
+   * Returns the count of jobs successfully cancelled.
+   */
+  async cancelJobsForSession(sessionId: string): Promise<number> {
+    const jobs = await this.findJobsBySessionId(sessionId);
+    const cancellable = jobs.filter(
+      (job) => job.status === "queued" || job.status === "processing",
+    );
+
+    let cancelled = 0;
+    for (const job of cancellable) {
+      const ok = await this.markFailed(job.id, {
+        message: "Session deleted — job cancelled",
+        code: "SESSION_DELETED",
+        category: "validation",
+        retryable: false,
+        stage: "queue",
+      });
+      if (ok) cancelled += 1;
+    }
+    return cancelled;
   }
 
   async findJobByAssetId(assetId: string): Promise<VideoJobRecord | null> {
@@ -264,6 +387,11 @@ export class VideoJobStore {
     return await this.claimFromQuery(expiredQuery, workerId, leaseMs);
   }
 
+  /**
+   * Direct claim by id — used by the inline processor right after job creation
+   * and by admin/test flows. Deliberately bypasses the retry-backoff gate:
+   * callers that want backoff semantics should go through `claimNextJob`.
+   */
   async claimJob(
     jobId: string,
     workerId: string,
@@ -459,11 +587,23 @@ export class VideoJobStore {
             }
 
             const now = Date.now();
+            const attempts =
+              typeof data.attempts === "number" &&
+              Number.isFinite(data.attempts)
+                ? data.attempts
+                : 0;
+            const nextRetryAtMs =
+              now +
+              computeBackoffMs(attempts, {
+                jitterRatio: RETRY_JITTER_RATIO,
+                now,
+              });
             transaction.update(docRef, {
               status: "queued",
               error: normalizedError,
               releasedAtMs: now,
               releaseReason: "retry",
+              nextRetryAtMs,
               updatedAtMs: now,
               updatedAt: admin.firestore.FieldValue.serverTimestamp(),
               workerId: admin.firestore.FieldValue.delete(),
@@ -633,116 +773,18 @@ export class VideoJobStore {
   async enqueueDeadLetter(
     job: VideoJobRecord,
     error: VideoJobError,
-    source: DeadLetterSource,
+    source: string,
     options?: { creditsRefunded?: boolean },
   ): Promise<void> {
-    const now = Date.now();
-    const normalizedError = toVideoJobError(error);
-    const isRetryable = normalizedError.retryable !== false;
-    const initialBackoffMs = 30_000;
-    const maxDlqAttempts = 3;
-
-    await this.withTiming("enqueueDeadLetter", "write", async () => {
-      await this.deadLetterCollection.doc(job.id).set(
-        {
-          jobId: job.id,
-          userId: job.userId,
-          status: job.status,
-          attempts: job.attempts,
-          maxAttempts: job.maxAttempts,
-          request: job.request,
-          creditsReserved: job.creditsReserved,
-          creditsRefunded: options?.creditsRefunded ?? false,
-          provider: job.provider ?? "unknown",
-          error: normalizedError,
-          source,
-          dlqStatus: isRetryable ? "pending" : "escalated",
-          dlqAttempt: 0,
-          maxDlqAttempts,
-          nextRetryAtMs: isRetryable ? now + initialBackoffMs : 0,
-          lastDlqError: null,
-          createdAtMs: now,
-          updatedAtMs: now,
-          createdAt: admin.firestore.FieldValue.serverTimestamp(),
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        },
-        { merge: true },
-      );
-    });
+    return this.dlq.enqueueDeadLetter(job, error, source, options);
   }
 
   async claimNextDlqEntry(nowMs: number): Promise<DlqEntry | null> {
-    const query = this.deadLetterCollection
-      .where("dlqStatus", "==", "pending")
-      .where("nextRetryAtMs", "<=", nowMs)
-      .orderBy("nextRetryAtMs", "asc")
-      .limit(1);
-
-    try {
-      return await this.withTiming(
-        "claimNextDlqEntry",
-        "write",
-        async () =>
-          await this.db.runTransaction(async (transaction) => {
-            const snapshot = await transaction.get(query);
-            if (snapshot.empty) {
-              return null;
-            }
-
-            const doc = snapshot.docs[0];
-            if (!doc) {
-              return null;
-            }
-            const data = doc.data();
-            if (!data || data.dlqStatus !== "pending") {
-              return null;
-            }
-
-            const now = Date.now();
-            transaction.update(doc.ref, {
-              dlqStatus: "processing",
-              updatedAtMs: now,
-              updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-            });
-
-            return {
-              id: doc.id,
-              jobId: data.jobId as string,
-              userId: data.userId as string,
-              request: data.request as VideoJobRequest,
-              creditsReserved:
-                typeof data.creditsReserved === "number"
-                  ? data.creditsReserved
-                  : 0,
-              creditsRefunded: data.creditsRefunded === true,
-              provider:
-                typeof data.provider === "string" ? data.provider : "unknown",
-              error: data.error as VideoJobError,
-              source: data.source as DeadLetterSource,
-              dlqAttempt:
-                typeof data.dlqAttempt === "number" ? data.dlqAttempt : 0,
-              maxDlqAttempts:
-                typeof data.maxDlqAttempts === "number"
-                  ? data.maxDlqAttempts
-                  : 3,
-            } satisfies DlqEntry;
-          }),
-      );
-    } catch (error) {
-      this.log.error("Failed to claim DLQ entry", error as Error);
-      return null;
-    }
+    return this.dlq.claimNextDlqEntry(nowMs);
   }
 
   async markDlqReprocessed(dlqId: string): Promise<void> {
-    const now = Date.now();
-    await this.withTiming("markDlqReprocessed", "write", async () => {
-      await this.deadLetterCollection.doc(dlqId).update({
-        dlqStatus: "reprocessed",
-        updatedAtMs: now,
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
-    });
+    return this.dlq.markDlqReprocessed(dlqId);
   }
 
   async markDlqFailed(
@@ -751,48 +793,11 @@ export class VideoJobStore {
     maxAttempts: number,
     errorMessage: string,
   ): Promise<boolean> {
-    const now = Date.now();
-    const escalate = attempt + 1 >= maxAttempts;
-    const backoffMs = Math.min(300_000, 30_000 * Math.pow(2, attempt));
-
-    await this.withTiming("markDlqFailed", "write", async () => {
-      await this.deadLetterCollection.doc(dlqId).update({
-        dlqStatus: escalate ? "escalated" : "pending",
-        dlqAttempt: attempt + 1,
-        nextRetryAtMs: escalate ? 0 : now + backoffMs,
-        lastDlqError: errorMessage,
-        updatedAtMs: now,
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
-    });
-
-    if (escalate) {
-      this.log.error(
-        "DLQ entry escalated — all retry attempts exhausted. Manual intervention required.",
-        undefined,
-        {
-          dlqId,
-          attempt: attempt + 1,
-          maxAttempts,
-          lastError: errorMessage,
-        },
-      );
-    }
-
-    return escalate;
+    return this.dlq.markDlqFailed(dlqId, attempt, maxAttempts, errorMessage);
   }
 
   async getDlqBacklogCount(): Promise<number> {
-    const snapshot = await this.withTiming(
-      "getDlqBacklogCount",
-      "read",
-      async () =>
-        await this.deadLetterCollection
-          .where("dlqStatus", "==", "pending")
-          .count()
-          .get(),
-    );
-    return snapshot.data().count;
+    return this.dlq.getDlqBacklogCount();
   }
 
   private async claimFromQuery(
@@ -821,6 +826,16 @@ export class VideoJobStore {
             }
 
             const now = Date.now();
+
+            // Respect retry backoff: skip this job if it's waiting to retry.
+            // The next poll cycle will reconsider it once the clock catches up.
+            if (
+              typeof data.nextRetryAtMs === "number" &&
+              data.nextRetryAtMs > now
+            ) {
+              return null;
+            }
+
             const leaseExpiresAtMs = now + leaseMs;
             const attempts =
               typeof data.attempts === "number" &&
@@ -845,6 +860,7 @@ export class VideoJobStore {
               updatedAt: admin.firestore.FieldValue.serverTimestamp(),
               releasedAtMs: admin.firestore.FieldValue.delete(),
               releaseReason: admin.firestore.FieldValue.delete(),
+              nextRetryAtMs: admin.firestore.FieldValue.delete(),
             });
 
             return this.parseJob(doc.id, {
@@ -866,85 +882,7 @@ export class VideoJobStore {
   }
 
   private parseJob(id: string, data: DocumentData | undefined): VideoJobRecord {
-    const parsed = VideoJobRecordSchema.parse(data || {});
-    const normalizedOptions = Object.fromEntries(
-      Object.entries(parsed.request.options ?? {}).filter(
-        ([, value]) => value !== undefined,
-      ),
-    ) as VideoJobRequest["options"];
-    const normalizedResult = parsed.result
-      ? {
-          assetId: parsed.result.assetId,
-          videoUrl: parsed.result.videoUrl,
-          contentType: parsed.result.contentType,
-          ...(parsed.result.inputMode !== undefined
-            ? { inputMode: parsed.result.inputMode }
-            : {}),
-          ...(parsed.result.startImageUrl !== undefined
-            ? { startImageUrl: parsed.result.startImageUrl }
-            : {}),
-          ...(parsed.result.storagePath !== undefined
-            ? { storagePath: parsed.result.storagePath }
-            : {}),
-          ...(parsed.result.viewUrl !== undefined
-            ? { viewUrl: parsed.result.viewUrl }
-            : {}),
-          ...(parsed.result.viewUrlExpiresAt !== undefined
-            ? { viewUrlExpiresAt: parsed.result.viewUrlExpiresAt }
-            : {}),
-          ...(parsed.result.sizeBytes !== undefined
-            ? { sizeBytes: parsed.result.sizeBytes }
-            : {}),
-        }
-      : undefined;
-
-    const base: VideoJobRecord = {
-      id,
-      status: parsed.status,
-      userId: parsed.userId,
-      request: {
-        ...parsed.request,
-        options: normalizedOptions,
-      },
-      creditsReserved: parsed.creditsReserved,
-      ...(typeof parsed.provider === "string"
-        ? { provider: parsed.provider }
-        : {}),
-      attempts: typeof parsed.attempts === "number" ? parsed.attempts : 0,
-      maxAttempts: resolvePositiveInt(
-        typeof parsed.maxAttempts === "number" ? parsed.maxAttempts : undefined,
-        this.defaultMaxAttempts,
-      ),
-      createdAtMs: parsed.createdAtMs,
-      updatedAtMs: parsed.updatedAtMs,
-    };
-
-    if (typeof parsed.completedAtMs === "number") {
-      base.completedAtMs = parsed.completedAtMs;
-    }
-    if (normalizedResult) {
-      base.result = normalizedResult;
-    }
-    if (parsed.error) {
-      base.error = toVideoJobError(parsed.error);
-    }
-    if (typeof parsed.workerId === "string") {
-      base.workerId = parsed.workerId;
-    }
-    if (typeof parsed.leaseExpiresAtMs === "number") {
-      base.leaseExpiresAtMs = parsed.leaseExpiresAtMs;
-    }
-    if (typeof parsed.lastHeartbeatAtMs === "number") {
-      base.lastHeartbeatAtMs = parsed.lastHeartbeatAtMs;
-    }
-    if (typeof parsed.releasedAtMs === "number") {
-      base.releasedAtMs = parsed.releasedAtMs;
-    }
-    if (typeof parsed.releaseReason === "string") {
-      base.releaseReason = parsed.releaseReason;
-    }
-
-    return base;
+    return parseVideoJobRecord(id, data, this.defaultMaxAttempts);
   }
 
   private async failFromQuery(

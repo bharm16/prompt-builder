@@ -8,7 +8,7 @@ import React, {
 import type {
   DraftModel,
   GenerationOverrides,
-} from "@components/ToolSidebar/types";
+} from "@features/generation-controls";
 import { useKeyframeUrlRefresh } from "../hooks/useKeyframeUrlRefresh";
 
 export interface FaceSwapPreviewState {

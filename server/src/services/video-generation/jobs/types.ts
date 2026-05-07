@@ -45,8 +45,26 @@ export interface VideoJobError {
 
 export interface VideoJobRecord {
   id: string;
+  /**
+   * Forward-compatibility marker. Optional today (legacy records lack it),
+   * but every NEW write sets `schemaVersion: 1`. Future migrations should
+   * bump this literal so readers can gate behavior explicitly.
+   */
+  schemaVersion?: 1;
   status: VideoJobStatus;
   userId: string;
+  /**
+   * Optional session this job belongs to. Used by SessionService to cascade
+   * cancellation on session delete, preventing orphan in-flight jobs.
+   */
+  sessionId?: string;
+  /**
+   * ISSUE-12: when both sessionId and promptVersionId are set, the worker's
+   * processVideoJob pipeline appends the completed generation to the named
+   * session version after successful markCompleted. This is the async
+   * analogue of the synchronous storyboard persist path.
+   */
+  promptVersionId?: string;
   requestId?: string;
   request: VideoJobRequest;
   creditsReserved: number;
@@ -63,6 +81,11 @@ export interface VideoJobRecord {
   lastHeartbeatAtMs?: number;
   releasedAtMs?: number;
   releaseReason?: string;
+  /**
+   * When set on a queued job, the worker will skip claiming it until `now >= nextRetryAtMs`.
+   * Populated by `requeueForRetry` after a transient failure to implement backoff.
+   */
+  nextRetryAtMs?: number;
 }
 
 export const DLQ_STATUSES = [
@@ -75,6 +98,12 @@ export type DlqStatus = (typeof DLQ_STATUSES)[number];
 
 export interface DlqEntry {
   id: string;
+  /**
+   * Forward-compatibility marker. Optional today (legacy records lack it),
+   * but every NEW write sets `schemaVersion: 1`. Future migrations should
+   * bump this literal so readers can gate behavior explicitly.
+   */
+  schemaVersion?: 1;
   jobId: string;
   userId: string;
   request: VideoJobRequest;

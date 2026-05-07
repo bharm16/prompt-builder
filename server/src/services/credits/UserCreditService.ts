@@ -107,6 +107,64 @@ export class UserCreditService {
   }
 
   /**
+   * Check-and-reserve credits inside an externally-provided Firestore transaction.
+   * The caller opens the transaction; this method queues the balance read plus the
+   * decrement/ledger writes, enabling atomic composition with other writes (e.g.
+   * creating a job record in the same transaction).
+   *
+   * Must be called before any non-read operations on the passed transaction
+   * (Firestore requires all reads to precede all writes).
+   */
+  async checkAndReserveInTransaction(
+    transaction: FirebaseFirestore.Transaction,
+    userId: string,
+    cost: number,
+    options?: {
+      source?: string;
+      reason?: string;
+      referenceId?: string;
+    },
+  ): Promise<
+    | { ok: true }
+    | { ok: false; reason: "user_not_found" | "insufficient_credits" }
+  > {
+    const userRef = this.collection.doc(userId);
+    const normalizedCost = Math.max(0, Math.trunc(cost));
+
+    const snapshot = await transaction.get(userRef);
+    if (!snapshot.exists) {
+      return { ok: false, reason: "user_not_found" };
+    }
+
+    const data = snapshot.data();
+    const currentCredits = typeof data?.credits === "number" ? data.credits : 0;
+    if (currentCredits < normalizedCost) {
+      return { ok: false, reason: "insufficient_credits" };
+    }
+
+    if (normalizedCost > 0) {
+      transaction.update(userRef, {
+        credits: admin.firestore.FieldValue.increment(-normalizedCost),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      this.writeTransaction(
+        transaction,
+        userRef,
+        this.buildTransactionPayload({
+          type: "reserve",
+          amount: -normalizedCost,
+          source: options?.source ?? "generation",
+          reason: options?.reason,
+          referenceId: options?.referenceId,
+        }),
+      );
+    }
+
+    return { ok: true };
+  }
+
+  /**
    * Checks if a user has enough credits and reserves them in a transaction.
    * Deducts immediately to prevent double-spending during long-running generations.
    */

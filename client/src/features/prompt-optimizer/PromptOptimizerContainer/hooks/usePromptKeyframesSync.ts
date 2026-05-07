@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import type { KeyframeTile } from "@components/ToolSidebar/types";
+import type { KeyframeTile } from "@features/generation-controls";
 import type { PromptKeyframe } from "@features/prompt-optimizer/types/domain/prompt-session";
 import type { PromptHistory } from "../../context/types";
 import {

@@ -1,4 +1,5 @@
 import { logger } from "@infrastructure/Logger";
+import { createVideoProviderSdks } from "@clients/videoProviderClients";
 import type { VideoAssetStore, VideoAssetStream } from "./storage";
 import type {
   VideoAvailabilityReport,
@@ -31,7 +32,19 @@ export class VideoGenerationService {
   private readonly assetStore: VideoAssetStore;
 
   constructor(options: VideoGenerationServiceOptions) {
-    this.providers = createVideoProviders(options, this.log);
+    const sdks = createVideoProviderSdks(
+      {
+        replicateApiToken: options.apiToken,
+        openAIKey: options.openAIKey,
+        lumaApiKey: options.lumaApiKey,
+        klingApiKey: options.klingApiKey,
+        klingBaseUrl: options.klingBaseUrl,
+        geminiApiKey: options.geminiApiKey,
+        geminiBaseUrl: options.geminiBaseUrl,
+      },
+      this.log,
+    );
+    this.providers = createVideoProviders(sdks);
     if (!options.assetStore) {
       throw new Error(
         "VideoGenerationService requires an injected video asset store",

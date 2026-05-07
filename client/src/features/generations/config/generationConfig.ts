@@ -53,7 +53,7 @@ export const DRAFT_MODELS: Record<string, ModelConfig> = {
  */
 export const RENDER_MODELS: Record<string, ModelConfig> = {
   "sora-2": {
-    label: "Sora",
+    label: "Sora 2",
     creditsPerSecond: getGenerationCreditsPerSecond("sora-2") ?? 6,
     credits: getGenerationCreditCost("sora-2", DEFAULT_VIDEO_DURATION_SECONDS),
     eta: "2-4m",

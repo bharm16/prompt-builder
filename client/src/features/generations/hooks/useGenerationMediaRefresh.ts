@@ -15,8 +15,8 @@ const MEDIA_REFRESH_RETRY_COOLDOWN_MS = 15_000;
 /** Minimum hidden duration (ms) before a visibility wake triggers re-resolution. */
 const VISIBILITY_WAKE_THRESHOLD_MS = 60_000;
 
-const buildSignature = (generation: Generation): string =>
-  JSON.stringify([generation.mediaUrls, generation.thumbnailUrl ?? ""]);
+const buildSignature = (g: Generation): string =>
+  `${g.id}:${g.status}:${g.mediaUrls?.length ?? 0}:${g.thumbnailUrl ?? ""}`;
 
 const getErrorStatus = (error: unknown): number | null => {
   if (!error || typeof error !== "object") return null;
@@ -110,11 +110,9 @@ const resolveGenerationMedia = async (
     updates.thumbnailUrl = resolvedThumbnail ?? null;
   }
 
-  // Bug 16 fix: use JSON for consistent signature format
-  const signature = JSON.stringify([
-    updates.mediaUrls ?? generation.mediaUrls,
-    updates.thumbnailUrl ?? generation.thumbnailUrl ?? "",
-  ]);
+  const resolvedMediaUrls_ = updates.mediaUrls ?? generation.mediaUrls;
+  const resolvedThumb = updates.thumbnailUrl ?? generation.thumbnailUrl ?? "";
+  const signature = `${generation.id}:${generation.status}:${resolvedMediaUrls_.length}:${resolvedThumb}`;
 
   return { updates, signature };
 };
@@ -127,6 +125,8 @@ export function useGenerationMediaRefresh(
   const processedRef = useRef<Map<string, string>>(new Map());
   const retryAfterRef = useRef<Map<string, number>>(new Map());
   const retryTimersRef = useRef<Map<string, number>>(new Map());
+  const prevSignaturesRef = useRef<Map<string, string>>(new Map());
+  const lastRetryTokenRef = useRef(0);
   const [retryToken, setRetryToken] = useState(0);
 
   useEffect(() => {
@@ -176,6 +176,29 @@ export function useGenerationMediaRefresh(
 
   useEffect(() => {
     let isActive = true;
+
+    // Stale-item targeting: compute signatures for all completed generations
+    // and skip the entire refresh if nothing has changed since last run.
+    const nextSignatures = new Map<string, string>();
+    for (const g of generations) {
+      nextSignatures.set(g.id, buildSignature(g));
+    }
+    const hasStaleItems = (() => {
+      if (nextSignatures.size !== prevSignaturesRef.current.size) return true;
+      for (const [id, sig] of nextSignatures) {
+        if (prevSignaturesRef.current.get(id) !== sig) return true;
+      }
+      return false;
+    })();
+    const retryTokenChanged = retryToken !== lastRetryTokenRef.current;
+    lastRetryTokenRef.current = retryToken;
+    prevSignaturesRef.current = nextSignatures;
+
+    // Stale-item targeting: skip entirely if no generation signatures changed
+    // and this run wasn't triggered by a retry timer or visibility wake.
+    if (!hasStaleItems && !retryTokenChanged) {
+      return;
+    }
 
     // Bug 10 fix: prune processedRef entries for generations that were removed
     const currentIds = new Set(generations.map((g) => g.id));

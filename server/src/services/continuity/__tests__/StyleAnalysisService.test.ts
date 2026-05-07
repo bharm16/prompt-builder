@@ -126,14 +126,13 @@ describe("StyleAnalysisService", () => {
 
     const calls = (ai.execute as ReturnType<typeof vi.fn>).mock.calls;
     expect(calls.length).toBeGreaterThan(0);
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+
     const callArgs = calls[0]![1];
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+
     const userMessage = callArgs.messages[0];
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+
     expect(userMessage.role).toBe("user");
 
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
     const imageContent = userMessage.content.find(
       (c: { type: string }) => c.type === "image_url",
     ) as { image_url: { url: string } } | undefined;

@@ -7,9 +7,9 @@ import {
   useGenerationControlsContext,
   type GenerationControlsHandlers,
 } from "@/features/prompt-optimizer/context/GenerationControlsContext";
-import { GenerationControlsStoreProvider } from "@features/generation-controls/context/GenerationControlsStore";
-import type { GenerationControlsState } from "@features/generation-controls/context/generationControlsStoreTypes";
-import { DEFAULT_GENERATION_CONTROLS_STATE } from "@features/generation-controls/context/generationControlsStoreTypes";
+import { GenerationControlsStoreProvider } from "@features/generation-controls";
+import type { GenerationControlsState } from "@features/generation-controls";
+import { DEFAULT_GENERATION_CONTROLS_STATE } from "@features/generation-controls";
 import { VIDEO_DRAFT_MODEL } from "@/components/ToolSidebar/config/modelConfig";
 
 vi.mock("../StartFramePopover", () => ({
@@ -98,6 +98,11 @@ function renderRow(options: {
         <CanvasSettingsRow
           prompt={prompt}
           renderModelId="sora-2"
+          renderModelOptions={[{ id: "sora-2", label: "Sora 2" }]}
+          onModelChange={vi.fn()}
+          tuneOpen={false}
+          selectedChipCount={0}
+          onToggleTune={vi.fn()}
           onOpenMotion={vi.fn()}
         />
       </GenerationControlsProvider>

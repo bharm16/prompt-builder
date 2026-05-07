@@ -24,6 +24,8 @@ interface TriggerDetection {
   endIndex?: number | undefined;
 }
 
+const DEFAULT_AUTOCOMPLETE_DEBOUNCE_MS = 300;
+
 interface TriggerAutocompleteOptions {
   debounceMs?: number;
 }
@@ -31,7 +33,7 @@ interface TriggerAutocompleteOptions {
 export function useTriggerAutocomplete(
   options: TriggerAutocompleteOptions = {},
 ) {
-  const { debounceMs = 150 } = options;
+  const { debounceMs = DEFAULT_AUTOCOMPLETE_DEBOUNCE_MS } = options;
 
   const [isOpen, setIsOpen] = useState(false);
   const [suggestions, setSuggestions] = useState<AssetSuggestion[]>([]);

@@ -46,6 +46,20 @@ interface UnavailableEntry {
   reason: string;
 }
 
+const REASON_LABELS: Record<string, string> = {
+  insufficient_credits: "Need more credits",
+  missing_credentials: "Not configured",
+  unsupported_model: "Unsupported",
+  image_input_unsupported: "No image input",
+  not_entitled: "Not entitled",
+  video_generation_unavailable: "Unavailable",
+  unavailable: "Unavailable",
+  unknown_availability: "Checking…",
+};
+
+const formatReasonLabel = (reason: string): string =>
+  REASON_LABELS[reason] ?? "Unavailable";
+
 export interface ModelRecommendationDropdownProps {
   renderModelOptions: Array<{ id: string; label: string }>;
   renderModelId: string;
@@ -56,6 +70,10 @@ export interface ModelRecommendationDropdownProps {
   filteredOut?: Array<{ modelId: string; reason: string }> | undefined;
   triggerClassName?: string | undefined;
   triggerPrefixLabel?: string | undefined;
+  /** Optional icon node rendered before the label (e.g. the bullseye/Target
+   *  icon used by the canvas composer chip). The component receives it as a
+   *  React node so the caller controls icon size and weight. */
+  triggerPrefixIcon?: React.ReactNode;
   triggerAriaLabel?: string | undefined;
 }
 
@@ -122,8 +140,11 @@ function buildRecMap(
     }
   }
   if (filtered?.length) {
+    const seenIds = new Set<string>();
     for (const e of filtered) {
       const nId = normalizeModelIdForSelection(e.modelId);
+      if (seenIds.has(nId)) continue;
+      seenIds.add(nId);
       unavail.push({
         id: nId,
         label: models.find((m) => m.id === nId)?.label ?? nId,
@@ -300,7 +321,7 @@ function ModelCard({
       className={cn(
         "flex flex-col overflow-hidden rounded-xl text-left transition-shadow",
         selected
-          ? "ring-2 ring-tool-accent-selection ring-offset-2 ring-offset-tool-surface-card"
+          ? "ring-2 ring-tool-accent-neutral ring-offset-2 ring-offset-tool-surface-card"
           : "ring-1 ring-tool-nav-active hover:ring-tool-text-disabled",
       )}
     >
@@ -357,6 +378,7 @@ export function ModelRecommendationDropdown({
   filteredOut,
   triggerClassName,
   triggerPrefixLabel,
+  triggerPrefixIcon,
   triggerAriaLabel,
 }: ModelRecommendationDropdownProps): React.ReactElement {
   const [mode, setMode] = useState<ViewMode>("closed");
@@ -551,13 +573,18 @@ export function ModelRecommendationDropdown({
           className={cn(
             "flex h-9 items-center gap-1.5 rounded-lg border border-tool-nav-active bg-tool-surface-card px-3 text-xs font-semibold text-foreground transition-[border-color,transform,background-color]",
             "duration-[160ms] [transition-timing-function:var(--motion-ease-standard)] hover:-translate-y-px hover:border-tool-text-disabled",
-            mode !== "closed" && "border-tool-accent-selection",
+            mode !== "closed" && "border-tool-accent-neutral",
             triggerClassName,
           )}
           aria-haspopup="listbox"
           aria-expanded={mode !== "closed"}
           aria-label={triggerAriaLabel ?? "Video model"}
         >
+          {triggerPrefixIcon ? (
+            <span className="inline-flex items-center" aria-hidden="true">
+              {triggerPrefixIcon}
+            </span>
+          ) : null}
           {triggerPrefixLabel && (
             <span className="text-[11px] font-medium text-tool-text-subdued">
               {triggerPrefixLabel}
@@ -624,7 +651,7 @@ export function ModelRecommendationDropdown({
                     </span>
                     <div className="flex-1" />
                     <span className="text-[10px] italic text-tool-text-label">
-                      {e.reason}
+                      {formatReasonLabel(e.reason)}
                     </span>
                   </div>
                 ))}
@@ -727,7 +754,7 @@ export function ModelRecommendationDropdown({
                                 {e.label}
                               </div>
                               <div className="text-[11px] italic text-tool-text-label">
-                                {e.reason}
+                                {formatReasonLabel(e.reason)}
                               </div>
                             </div>
                           </div>

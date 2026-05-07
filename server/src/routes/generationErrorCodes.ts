@@ -1,4 +1,4 @@
-import type { ApiErrorCode } from "@server/types/apiError";
+import type { ApiErrorCode } from "@shared/types/api";
 
 export const GENERATION_ERROR_CODES = {
   AUTH_REQUIRED: "AUTH_REQUIRED",

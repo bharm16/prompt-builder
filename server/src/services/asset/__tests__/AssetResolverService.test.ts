@@ -62,6 +62,7 @@ describe("AssetResolverService", () => {
       getByTriggers: vi.fn().mockResolvedValue(assets),
       incrementUsage: vi.fn().mockResolvedValue(undefined),
       createUsageRecord: vi.fn().mockResolvedValue(undefined),
+      recordBulkUsage: vi.fn().mockResolvedValue(undefined),
       getAll: vi.fn().mockResolvedValue(assets),
     };
 

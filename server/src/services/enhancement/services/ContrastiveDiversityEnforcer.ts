@@ -310,10 +310,13 @@ export class ContrastiveDiversityEnforcer {
   }
 
   private _getEnhancementRouting(): { provider: ProviderType; model?: string } {
-    const config = this.ai.getOperationConfig("enhance_suggestions");
+    const config = this.ai.getOperationConfig?.("enhance_suggestions");
     return {
-      provider: detectProvider({ client: config.client, model: config.model }),
-      model: config.model,
+      provider: detectProvider({
+        client: config?.client,
+        model: config?.model,
+      }),
+      ...(config?.model ? { model: config.model } : {}),
     };
   }
 

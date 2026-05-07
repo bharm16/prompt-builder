@@ -1,3 +1,49 @@
+// ============================================================================
+// Generation-side model IDs (provider-scoped identifiers)
+//
+// These are the literal string IDs that downstream provider adapters (OpenAI,
+// Luma, Kling, Gemini, Replicate) accept. Kept pure so both client and server
+// can import without pulling in any runtime/Node modules.
+//
+// NOTE: `VideoModelId` intentionally widens to `string` via `(string & {})`.
+// The server's `VIDEO_MODELS` record derives values from env vars (e.g.
+// `WAN_2_5_I2V_MODEL`, `DRAFT_I2V_MODEL`) that can legitimately be arbitrary
+// strings at runtime. The known-id union preserves autocomplete and enables
+// type guards like `isKlingModelId` to narrow correctly.
+// ============================================================================
+
+export type SoraModelId = "sora-2" | "sora-2-pro";
+export type LumaModelId = "luma-ray3";
+export type KlingModelId = "kling-v2-1-master";
+export type VeoModelId = "google/veo-3";
+export type KlingAspectRatio = "16:9" | "9:16" | "1:1";
+
+/**
+ * Canonical generation-side video model IDs currently wired in `VIDEO_MODELS`.
+ * Used for type-guard narrowing and Record-keyed provider maps.
+ */
+export type KnownVideoModelId =
+  | SoraModelId
+  | LumaModelId
+  | KlingModelId
+  | VeoModelId
+  | "wan-video/wan-2.2-t2v-fast"
+  | "wan-video/wan-2.2-i2v-fast"
+  | "wan-video/wan-2.5-i2v"
+  | "wan-video/wan-2.5-i2v-fast"
+  | "genmo/mochi-1-final"
+  | "minimax/video-02";
+
+/**
+ * Generation-side video model identifier.
+ *
+ * Accepts any known literal ID with autocomplete, plus any string for
+ * env-configurable model overrides (see NOTE above). This mirrors the
+ * previous `(typeof VIDEO_MODELS)[VideoModelKey]` type, which widened to
+ * `string` because `VIDEO_MODELS` is not declared `as const`.
+ */
+export type VideoModelId = KnownVideoModelId | (string & {});
+
 export const CANONICAL_PROMPT_MODEL_IDS = [
   "runway-gen45",
   "luma-ray3",

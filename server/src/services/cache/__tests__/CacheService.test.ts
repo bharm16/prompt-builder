@@ -55,7 +55,7 @@ describe("CacheService", () => {
   describe("error handling", () => {
     it("returns null when cache returns undefined", async () => {
       const service = new CacheService();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       const internalCache = (service as any).cache;
       internalCache.get.mockReturnValue(undefined);
 
@@ -66,7 +66,7 @@ describe("CacheService", () => {
 
     it("returns false when cache set fails", async () => {
       const service = new CacheService();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       const internalCache = (service as any).cache;
       internalCache.set.mockReturnValue(false);
 
@@ -77,7 +77,7 @@ describe("CacheService", () => {
 
     it("handles health check failure gracefully", () => {
       const service = new CacheService();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       const internalCache = (service as any).cache;
       internalCache.set.mockImplementation(() => {
         throw new Error("Cache error");
@@ -127,7 +127,7 @@ describe("CacheService", () => {
     it("records cache hit and updates metrics", async () => {
       const mockMetrics = createMockMetrics();
       const service = new CacheService({}, mockMetrics);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       const internalCache = (service as any).cache;
       internalCache.get.mockReturnValue({ data: "cached" });
 
@@ -141,7 +141,7 @@ describe("CacheService", () => {
     it("records cache miss and updates metrics", async () => {
       const mockMetrics = createMockMetrics();
       const service = new CacheService({}, mockMetrics);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       const internalCache = (service as any).cache;
       internalCache.get.mockReturnValue(undefined);
 
@@ -153,7 +153,7 @@ describe("CacheService", () => {
 
     it("sets value with custom TTL", async () => {
       const service = new CacheService();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       const internalCache = (service as any).cache;
 
       await service.set("key", "value", { ttl: 1800 });
@@ -171,7 +171,7 @@ describe("CacheService", () => {
 
     it("flushes all cache entries", async () => {
       const service = new CacheService();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       const internalCache = (service as any).cache;
 
       await service.flush();
@@ -215,7 +215,7 @@ describe("CacheService", () => {
   describe("statistics", () => {
     it("tracks hits and misses", async () => {
       const service = new CacheService();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       const internalCache = (service as any).cache;
 
       // Simulate hits
@@ -257,7 +257,7 @@ describe("CacheService", () => {
   describe("health check", () => {
     it("returns healthy status when cache works", () => {
       const service = new CacheService();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       const internalCache = (service as any).cache;
       internalCache.get.mockReturnValue("ok");
 
@@ -269,7 +269,7 @@ describe("CacheService", () => {
 
     it("returns unhealthy status when cache fails", () => {
       const service = new CacheService();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       const internalCache = (service as any).cache;
       internalCache.get.mockReturnValue("not-ok");
 

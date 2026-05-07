@@ -3,7 +3,7 @@ import type {
   InferredContext,
   LockedSpan,
 } from "@services/prompt-optimization/types";
-import { resolvePromptModelId } from "@services/video-models/ModelRegistry";
+import { resolvePromptModelId } from "@config/videoModelRegistry";
 
 const BACKGROUND_LEVELS: ReadonlySet<InferredContext["backgroundLevel"]> =
   new Set(["beginner", "intermediate", "advanced"]);

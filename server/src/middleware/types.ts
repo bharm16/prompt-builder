@@ -6,23 +6,9 @@ import type { Request, Response, NextFunction } from "express";
 import type { ZodSchema } from "zod";
 
 /**
- * Joi schema interface (for backward compatibility)
+ * Validation schema (Zod)
  */
-export interface JoiSchema {
-  validate: (
-    value: unknown,
-    options?: {
-      stripUnknown?: boolean;
-      allowUnknown?: boolean;
-      abortEarly?: boolean;
-    },
-  ) => { error?: { details: Array<{ message: string }> }; value: unknown };
-}
-
-/**
- * Validation schema (Zod or Joi)
- */
-export type ValidationSchema = ZodSchema | JoiSchema;
+export type ValidationSchema = ZodSchema;
 
 /**
  * Express middleware function

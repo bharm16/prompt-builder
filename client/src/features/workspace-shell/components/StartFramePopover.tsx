@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo, useRef, useState } from "react";
-import { X, Image, Plus } from "@promptstudio/system/components/ui";
+import { X, Image } from "@promptstudio/system/components/ui";
 import type { CameraPath } from "@/features/convergence/types";
-import type { KeyframeTile } from "@components/ToolSidebar/types";
+import type { KeyframeTile } from "@features/generation-controls";
 import { cn } from "@/utils/cn";
 import { useResolvedMediaUrl } from "@/hooks/useResolvedMediaUrl";
 import { hasGcsSignedUrlParams } from "@/utils/storageUrl";
@@ -84,13 +84,24 @@ export function StartFramePopover({
 
   return (
     <div className="relative" data-testid="start-frame-popover-root">
-      {/* Trigger button — matches mockup BarBtn style */}
+      {/*
+        Trigger — icon-only when no frame is selected (matches the screenshot's
+        leftmost image-icon chip), thumbnail when one is. Camera-motion label
+        moves to the popover; the chip stays compact.
+        aria-label keeps "Start frame" available to assistive tech / tooltip.
+      */}
       <button
         type="button"
         data-testid="start-frame-trigger"
+        aria-label={
+          previewUrl && cameraMotion?.label
+            ? `Start frame — ${cameraMotion.label}`
+            : "Start frame"
+        }
+        title="Start frame"
         className={cn(
-          "inline-flex h-[30px] items-center gap-[5px] rounded-full border border-surface-2 px-2.5 text-xs font-semibold transition-colors",
-          "bg-tool-nav-hover text-foreground hover:bg-tool-nav-active hover:text-foreground",
+          "inline-flex h-[28px] items-center justify-center gap-[5px] rounded-md px-2 text-xs transition-colors",
+          "text-tool-text-muted hover:text-foreground",
           disabled && "cursor-not-allowed opacity-60",
         )}
         onClick={() => {
@@ -102,29 +113,13 @@ export function StartFramePopover({
         disabled={disabled}
       >
         {previewUrl ? (
-          <>
-            <div
-              className="h-[14px] w-5 flex-shrink-0 rounded-[3px] border border-tool-nav-active bg-cover bg-center"
-              style={{ backgroundImage: `url(${previewUrl})` }}
-            />
-            <span className="text-xs text-foreground">Start frame</span>
-            {cameraMotion?.label ? (
-              <span className="rounded bg-tool-accent-selection/5 px-[5px] py-px text-[10px] font-semibold text-tool-accent-selection">
-                {cameraMotion.label}
-              </span>
-            ) : null}
-          </>
+          <div
+            className="h-[18px] w-6 flex-shrink-0 rounded-[3px] bg-cover bg-center"
+            style={{ backgroundImage: `url(${previewUrl})` }}
+            aria-hidden="true"
+          />
         ) : (
-          <>
-            <span className="relative flex h-[13px] w-[13px]">
-              <Image size={13} />
-              <Plus
-                size={8}
-                className="absolute -bottom-1 -right-1 rounded-full bg-tool-surface-prompt-compact p-[1px]"
-              />
-            </span>
-            Start frame
-          </>
+          <Image size={14} aria-hidden="true" />
         )}
       </button>
 
@@ -178,7 +173,7 @@ export function StartFramePopover({
                   className={cn(
                     "h-[26px] rounded-md border px-2 text-[11px] transition-colors",
                     cameraMotion
-                      ? "border-tool-accent-selection/40 bg-tool-accent-selection/8 text-tool-accent-selection"
+                      ? "border-tool-accent-neutral/40 bg-tool-accent-neutral/8 text-tool-accent-neutral"
                       : "border-tool-nav-active text-tool-text-dim hover:border-tool-text-disabled",
                   )}
                   onClick={onOpenMotion}

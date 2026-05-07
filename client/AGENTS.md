@@ -13,7 +13,7 @@ Root `AGENTS.md` rules apply here — especially the non-negotiable rules and co
 
 ## Architecture Pattern
 
-Follow the **VideoConceptBuilder** pattern in `client/src/components/VideoConceptBuilder/`:
+Follow the **preview feature** pattern in `client/src/features/preview/`:
 
 ```
 FeatureName/

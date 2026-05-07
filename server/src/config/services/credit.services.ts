@@ -17,7 +17,6 @@ export function registerCreditServices(container: DIContainer): void {
     (firestoreCircuitExecutor: FirestoreCircuitExecutor) =>
       new UserCreditService(firestoreCircuitExecutor),
     ["firestoreCircuitExecutor"],
-    { singleton: true },
   );
   container.register(
     "creditReconciliationService",
@@ -43,7 +42,6 @@ export function registerCreditServices(container: DIContainer): void {
       "metricsService",
       "config",
     ],
-    { singleton: true },
   );
   container.register(
     "creditReconciliationWorker",
@@ -59,7 +57,6 @@ export function registerCreditServices(container: DIContainer): void {
         config.credits.reconciliation,
       ),
     ["creditReconciliationService", "metricsService", "config"],
-    { singleton: true },
   );
   container.register(
     "refundFailureStore",
@@ -69,7 +66,6 @@ export function registerCreditServices(container: DIContainer): void {
       return store;
     },
     ["firestoreCircuitExecutor"],
-    { singleton: true },
   );
 
   container.register(
@@ -88,6 +84,5 @@ export function registerCreditServices(container: DIContainer): void {
         config.credits.refundSweeper,
       ),
     ["refundFailureStore", "userCreditService", "metricsService", "config"],
-    { singleton: true },
   );
 }

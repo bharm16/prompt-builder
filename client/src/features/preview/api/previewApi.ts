@@ -4,6 +4,7 @@
  * API client for image preview generation
  */
 
+import { z } from "zod";
 import { apiClient } from "@/services/ApiClient";
 import { API_CONFIG } from "@/config/api.config";
 import { buildFirebaseAuthHeaders } from "@/services/http/firebaseAuth";
@@ -158,19 +159,19 @@ export interface GenerateStoryboardPreviewRequest {
   seedImageUrl?: string;
   speedMode?: PreviewSpeedMode;
   seed?: number;
+  // ISSUE-12: when both provided, the server appends the generation to the
+  // named session version so the client can render it from a session refetch
+  // instead of an optimistic local dispatch.
+  sessionId?: string;
+  promptVersionId?: string;
 }
 
-export interface GenerateStoryboardPreviewResponse {
-  success: boolean;
-  data?: {
-    imageUrls: string[];
-    storagePaths?: string[];
-    deltas: string[];
-    baseImageUrl: string;
-  };
-  error?: string;
-  message?: string;
-}
+// ISSUE-37: derive from the canonical Zod schema so the inferred TS type
+// cannot drift from runtime parsing. Field-level docs (generationId,
+// remainingCredits, …) live in shared/schemas/preview.schemas.ts.
+export type GenerateStoryboardPreviewResponse = z.infer<
+  typeof GenerateStoryboardPreviewResponseSchema
+>;
 
 export interface MediaViewUrlResponse {
   success: boolean;
@@ -268,6 +269,10 @@ export async function generateStoryboardPreview(
       ...(seedImageUrl ? { seedImageUrl } : {}),
       ...(options?.speedMode ? { speedMode: options.speedMode } : {}),
       ...(options?.seed !== undefined ? { seed: options.seed } : {}),
+      ...(options?.sessionId ? { sessionId: options.sessionId } : {}),
+      ...(options?.promptVersionId
+        ? { promptVersionId: options.promptVersionId }
+        : {}),
     },
     {
       timeout: API_CONFIG.timeout.storyboard,
@@ -277,9 +282,7 @@ export async function generateStoryboardPreview(
     },
   )) as unknown;
 
-  return GenerateStoryboardPreviewResponseSchema.parse(
-    payload,
-  ) as GenerateStoryboardPreviewResponse;
+  return GenerateStoryboardPreviewResponseSchema.parse(payload);
 }
 
 export async function faceSwapPreview(options: {
@@ -471,6 +474,7 @@ export interface VideoJobStatusResponse {
   startImageUrl?: string;
   resolvedAspectRatio?: string;
   serverTimeoutMs?: number;
+  suggestedPollIntervalMs?: number;
   creditsReserved?: number;
   creditsDeducted?: number;
   error?: string;
@@ -488,6 +492,11 @@ export interface GenerateVideoPreviewOptions {
   autoKeyframe?: boolean | undefined;
   faceSwapAlreadyApplied?: boolean | undefined;
   idempotencyKey?: string | undefined;
+  // ISSUE-12: when both provided, the worker's processVideoJob pipeline
+  // appends the completed generation to the named session version after
+  // markCompleted — makes video generation server-authoritative.
+  sessionId?: string | undefined;
+  promptVersionId?: string | undefined;
 }
 
 /**
@@ -535,6 +544,10 @@ export async function generateVideoPreview(
       : {}),
     ...(options?.faceSwapAlreadyApplied
       ? { faceSwapAlreadyApplied: true }
+      : {}),
+    ...(options?.sessionId ? { sessionId: options.sessionId } : {}),
+    ...(options?.promptVersionId
+      ? { promptVersionId: options.promptVersionId }
       : {}),
   };
   const idempotencyKey =

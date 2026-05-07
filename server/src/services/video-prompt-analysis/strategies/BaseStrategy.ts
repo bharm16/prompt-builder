@@ -270,9 +270,12 @@ export abstract class BaseStrategy implements PromptOptimizationStrategy {
     }
 
     // 2.5. Post-IR TechStripper (model-aware placebo removal on LLM output)
+    // Skip when fallback was used — ir.raw is user input, not LLM output, and
+    // stripping it would desync downstream heuristics (e.g. VeoStrategy uses
+    // identity with ir.raw to detect whether the LLM produced a real rewrite).
     let postRewritePrompt = rewrittenPrompt as string | Record<string, unknown>;
     const postStripChanges: string[] = [];
-    if (typeof rewrittenPrompt === "string") {
+    if (!rewriteFallbackUsed && typeof rewrittenPrompt === "string") {
       const stripperResult = this.techStripper.strip(
         rewrittenPrompt,
         this.modelId,

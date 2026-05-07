@@ -174,10 +174,16 @@ function reducer(
       log.debug("Starting optimization", {
         action: "START_OPTIMIZATION",
       });
+      // Clear the previous run's outputs so the UI doesn't render the old
+      // result while the new one is in flight. Preserve input and locked
+      // spans (the user's intent), and the rollback snapshot.
       return {
         ...state,
         isProcessing: true,
         skipAnimation: false,
+        optimizedPrompt: "",
+        displayedPrompt: "",
+        qualityScore: null,
       };
     case "RESET":
       log.debug("Resetting state to initial", {

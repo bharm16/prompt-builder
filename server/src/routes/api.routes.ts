@@ -45,11 +45,11 @@ import type { SessionService } from "@services/sessions/SessionService";
 
 interface ApiServices extends OptimizeServices, EnhancementServices {
   storageService: StorageRoutesService;
-  videoConceptService?: VideoServices["videoConceptService"] | null;
+  videoConceptService: VideoServices["videoConceptService"];
   assetService?: AssetService;
   consistentVideoService?: ConsistentVideoService;
   userCreditService?: UserCreditService;
-  referenceImageService?: ReferenceImageRepository | null;
+  referenceImageRepository?: ReferenceImageRepository | null;
   imageObservationService?: ImageObservationService | null;
   continuitySessionService?: ContinuitySessionService | null;
   modelIntelligenceService?: ModelIntelligenceService | null;
@@ -75,7 +75,7 @@ export function createAPIRoutes(services: ApiServices): Router {
     assetService,
     consistentVideoService,
     userCreditService,
-    referenceImageService,
+    referenceImageRepository,
     imageObservationService,
     continuitySessionService,
     modelIntelligenceService,
@@ -88,9 +88,7 @@ export function createAPIRoutes(services: ApiServices): Router {
   router.use("/", createOptimizeRoutes({ promptOptimizationService }));
 
   // Mount video routes under /video (creates /api/video/* paths)
-  if (videoConceptService) {
-    router.use("/video", createVideoRoutes({ videoConceptService }));
-  }
+  router.use("/video", createVideoRoutes({ videoConceptService }));
 
   // Mount enhancement routes at root level (preserves existing paths)
   router.use(
@@ -110,10 +108,10 @@ export function createAPIRoutes(services: ApiServices): Router {
     router.use("/assets", createAssetRoutes(assetService));
   }
 
-  if (referenceImageService) {
+  if (referenceImageRepository) {
     router.use(
       "/reference-images",
-      createReferenceImagesRoutes(referenceImageService),
+      createReferenceImagesRoutes(referenceImageRepository),
     );
   }
 

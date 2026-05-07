@@ -27,14 +27,16 @@ describe("domManipulation", () => {
     };
 
     const wrapper = createHighlightWrapper(root, span, 1, 4, () => ({
-      bg: "red",
-      border: "blue",
-      ring: "cyan",
+      bg: "rgba(255, 0, 0, 0.12)",
+      border: "rgba(255, 0, 0, 0.35)",
+      ring: "rgba(255, 0, 0, 0.18)",
     }));
 
     expect(wrapper.className).toContain("value-word");
     expect(wrapper.dataset[DATASET_KEYS.SPAN_ID]).toBe("span-1");
-    expect(wrapper.style.getPropertyValue("--highlight-bg")).toBe("red");
+    // applyHighlightStyles now derives text color from the border's RGB channel
+    // rather than writing --highlight-bg/border/ring CSS variables.
+    expect(wrapper.style.color).toBe("rgba(255, 0, 0, 0.9)");
   });
 
   it("enhances wrapper metadata", () => {

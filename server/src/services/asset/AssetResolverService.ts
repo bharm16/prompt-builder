@@ -2,6 +2,23 @@ import { logger } from "@infrastructure/Logger";
 import type { Asset, AssetType, ResolvedPrompt } from "@shared/types/asset";
 import AssetRepository from "./AssetRepository";
 
+/**
+ * Create a compact fingerprint of a string for usage tracking records.
+ *
+ * Replaces full prompt text storage to reduce Firestore document size.
+ * Collision tolerance: acceptable for analytics/tracking purposes — not
+ * used for deduplication or content-addressable lookups.
+ */
+function simpleHash(str: string): string {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = (hash << 5) - hash + char;
+    hash |= 0;
+  }
+  return (hash >>> 0).toString(36);
+}
+
 export class AssetResolverService {
   private readonly repository: AssetRepository;
   private readonly log = logger.child({ service: "AssetResolverService" });
@@ -90,20 +107,14 @@ export class AssetResolverService {
           Boolean(character.referenceImages?.length),
       );
 
-      await Promise.allSettled(
-        assets.map(async (asset) => {
+      await Promise.allSettled([
+        ...assets.map(async (asset) => {
           try {
             await this.repository.incrementUsage(userId, asset.id);
-            await this.repository.createUsageRecord(userId, {
-              assetId: asset.id,
-              assetType: asset.type,
-              promptText: rawPrompt,
-              expandedText,
-            });
           } catch (error) {
             const errorMessage =
               error instanceof Error ? error.message : String(error);
-            this.log.warn("Failed to record asset usage", {
+            this.log.warn("Failed to increment asset usage", {
               operation,
               userId,
               assetId: asset.id,
@@ -111,7 +122,28 @@ export class AssetResolverService {
             });
           }
         }),
-      );
+        this.repository
+          .recordBulkUsage(
+            userId,
+            assets.map((asset) => ({
+              assetId: asset.id,
+              assetType: asset.type,
+              promptHash: simpleHash(rawPrompt),
+              promptLength: rawPrompt.length,
+              expandedHash: simpleHash(expandedText),
+              expandedLength: expandedText.length,
+            })),
+          )
+          .catch((error: unknown) => {
+            const errorMessage =
+              error instanceof Error ? error.message : String(error);
+            this.log.warn("Failed to record bulk asset usage", {
+              operation,
+              userId,
+              error: errorMessage,
+            });
+          }),
+      ]);
 
       const result = {
         originalText: rawPrompt,
@@ -216,25 +248,22 @@ export class AssetResolverService {
     });
 
     try {
-      const allAssets = await this.repository.getAll(userId, { limit: 100 });
       const normalized = partialTrigger.toLowerCase().replace("@", "");
+      const assets = await this.repository.getByTriggerPrefix(
+        userId,
+        normalized,
+        limit,
+      );
 
-      const results = allAssets
-        .filter(
-          (asset) =>
-            asset.trigger.toLowerCase().includes(normalized) ||
-            asset.name.toLowerCase().includes(normalized),
-        )
-        .slice(0, limit)
-        .map((asset) => ({
-          id: asset.id,
-          type: asset.type,
-          trigger: asset.trigger,
-          name: asset.name,
-          ...(asset.referenceImages?.[0]?.thumbnailUrl
-            ? { thumbnailUrl: asset.referenceImages[0]!.thumbnailUrl }
-            : {}),
-        }));
+      const results = assets.map((asset) => ({
+        id: asset.id,
+        type: asset.type,
+        trigger: asset.trigger,
+        name: asset.name,
+        ...(asset.referenceImages?.[0]?.thumbnailUrl
+          ? { thumbnailUrl: asset.referenceImages[0]!.thumbnailUrl }
+          : {}),
+      }));
 
       this.log.info("Operation completed.", {
         operation,

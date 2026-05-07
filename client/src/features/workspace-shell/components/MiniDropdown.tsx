@@ -5,7 +5,6 @@ interface MiniDropdownProps<T extends string | number> {
   value: T;
   options: T[];
   onChange: (value: T) => void;
-  icon?: React.ReactNode;
   formatLabel?: (value: T) => string;
 }
 
@@ -13,7 +12,6 @@ export function MiniDropdown<T extends string | number>({
   value,
   options,
   onChange,
-  icon,
   formatLabel,
 }: MiniDropdownProps<T>): React.ReactElement {
   const [open, setOpen] = useState(false);
@@ -51,13 +49,12 @@ export function MiniDropdown<T extends string | number>({
         type="button"
         onClick={handleToggle}
         className={cn(
-          "inline-flex h-[30px] items-center gap-[6px] whitespace-nowrap rounded-full border border-surface-2 px-2.5 text-xs font-semibold transition-colors",
+          "inline-flex h-[28px] items-center gap-[5px] whitespace-nowrap rounded-md px-2 text-xs transition-colors",
           open
-            ? "bg-tool-nav-active text-foreground"
-            : "bg-tool-nav-hover text-foreground hover:bg-tool-nav-active hover:text-foreground",
+            ? "text-foreground"
+            : "text-tool-text-muted hover:text-foreground",
         )}
       >
-        {icon}
         {label}
         <svg
           width="8"

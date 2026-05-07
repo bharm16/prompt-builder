@@ -2,8 +2,7 @@
  * Types for enhancement services
  * Shared type definitions used across enhancement service modules
  */
-
-import type { AIModelService } from "@services/ai-model/AIModelService";
+import type { AIExecutionPort } from "@services/ai-model/ports/AIExecutionPort";
 import type { VideoPromptService } from "@services/video-prompt-analysis/index";
 import type { PromptMode } from "../constants.js";
 import type { ImageObservation } from "@services/image-observation/types";
@@ -11,8 +10,6 @@ import type {
   I2VConstraintMode,
   LockMap,
 } from "@services/prompt-optimization/types/i2v";
-
-export type EnhancementEngineVersion = "v1" | "v2";
 
 /**
  * Suggestion object structure
@@ -63,6 +60,15 @@ export interface SanitizationContext {
   highlightedCategory?: string | null;
   lockedSpanCategories?: string[];
 }
+
+export type SuggestionRejectReason =
+  | "length_only"
+  | "slot_form"
+  | "category_drift"
+  | "body_part_drift"
+  | "object_overlap"
+  | "coherence_conflict"
+  | "metaphor_or_abstract";
 
 /**
  * Video prompt constraints
@@ -291,7 +297,7 @@ export interface FallbackRegenerationParams {
     highlightedCategoryConfidence?: number;
   };
   requestParams: PromptBuildParams;
-  aiService: AIModelService;
+  aiService: AIExecutionPort;
   schema: OutputSchema;
   temperature: number;
 }
@@ -324,7 +330,7 @@ export interface GroupedSuggestions {
 }
 
 export interface EnhancementDebugContext {
-  engineVersion?: EnhancementEngineVersion;
+  engineVersion?: "v2";
   policyVersion?: string | null;
   fullPrompt: string;
   selectedSpan: string;
@@ -420,7 +426,8 @@ export interface VideoService {
   ): VideoConstraints | null;
 }
 
-export type AIService = AIModelService;
+/** @deprecated Use AIExecutionPort from @services/ai-model/ports/AIExecutionPort */
+export type AIService = AIExecutionPort;
 
 /**
  * Brainstorm builder interface
@@ -504,7 +511,6 @@ export interface EnhancementRequestParams {
     lockMap: LockMap;
     constraintMode?: I2VConstraintMode;
   } | null;
-  requestedEngineVersion?: EnhancementEngineVersion | null;
   debug?: boolean;
 }
 

@@ -5,6 +5,7 @@ import { X } from "@promptstudio/system/components/ui";
 interface CreditOnboardingBannerProps {
   userId: string | null;
   starterGrantCredits: number | null;
+  currentBalance?: number | null;
 }
 
 const dismissedKey = (userId: string): string =>
@@ -13,11 +14,30 @@ const dismissedKey = (userId: string): string =>
 export function CreditOnboardingBanner({
   userId,
   starterGrantCredits,
+  currentBalance,
 }: CreditOnboardingBannerProps): React.ReactElement | null {
   const [dismissed, setDismissed] = React.useState(false);
 
+  // Auto-dismiss once the live balance diverges from the starter grant —
+  // either direction. The onboarding copy ("You started with N credits.")
+  // is stale as soon as the user has spent anything OR topped up; leaving
+  // it up after a top-up misleads users about their actual balance.
+  const shouldAutoDismiss =
+    typeof currentBalance === "number" &&
+    typeof starterGrantCredits === "number" &&
+    currentBalance !== starterGrantCredits;
+
   React.useEffect(() => {
     if (!userId) {
+      setDismissed(true);
+      return;
+    }
+    if (shouldAutoDismiss) {
+      try {
+        localStorage.setItem(dismissedKey(userId), "1");
+      } catch {
+        // Ignore storage failures.
+      }
       setDismissed(true);
       return;
     }
@@ -26,7 +46,7 @@ export function CreditOnboardingBanner({
     } catch {
       setDismissed(true);
     }
-  }, [userId]);
+  }, [userId, shouldAutoDismiss]);
 
   const handleDismiss = React.useCallback((): void => {
     if (!userId) return;

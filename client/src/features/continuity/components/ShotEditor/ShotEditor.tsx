@@ -4,7 +4,6 @@ import React, {
   useMemo,
   useReducer,
   useRef,
-  useState,
 } from "react";
 import type {
   ContinuitySession,
@@ -19,8 +18,8 @@ import {
 import { StrengthSlider } from "../StyleReferencePanel/StrengthSlider";
 import { ContinuityModeToggle } from "./ContinuityModeToggle";
 import type { CapabilitiesSchema } from "@shared/capabilities";
-import { capabilitiesApi } from "@/services";
 import { useModelRegistry } from "@/hooks/useModelRegistry";
+import { useCapabilityRegistry } from "@/hooks/useCapabilityRegistry";
 import { toCanonicalModelId, toCapabilityModelId } from "../../utils/modelIds";
 
 interface ShotEditorProps {
@@ -195,11 +194,11 @@ export function ShotEditor({
   );
   const { models: registryModels, isLoading: modelsLoading } =
     useModelRegistry();
-  const [capabilityRegistry, setCapabilityRegistry] = useState<Record<
-    string,
-    Record<string, CapabilitiesSchema>
-  > | null>(null);
-  const [registryError, setRegistryError] = useState<string | null>(null);
+  const {
+    capabilityMap,
+    hasRegistry,
+    error: registryError,
+  } = useCapabilityRegistry();
   const lastSessionIdRef = useRef(session.id);
 
   const {
@@ -232,26 +231,6 @@ export function ShotEditor({
     });
   }, [session.id, session.shots, session.shots.length]);
 
-  useEffect(() => {
-    let active = true;
-    capabilitiesApi
-      .getRegistry()
-      .then((registry) => {
-        if (!active) return;
-        setCapabilityRegistry(registry);
-        setRegistryError(null);
-      })
-      .catch((error) => {
-        if (!active) return;
-        setRegistryError(
-          error instanceof Error ? error.message : String(error),
-        );
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
-
   const styleReferenceOptions = useMemo(() => {
     const options: Array<{ label: string; value: string | null }> = [
       { label: "Primary reference", value: null },
@@ -267,18 +246,6 @@ export function ShotEditor({
   const requiresCharacterConsistency =
     useCharacter || session.defaultSettings.useCharacterConsistency;
 
-  const capabilityMap = useMemo(() => {
-    if (!capabilityRegistry) return {};
-    const entries: Record<string, CapabilitiesSchema> = {};
-    for (const models of Object.values(capabilityRegistry)) {
-      for (const [id, schema] of Object.entries(models)) {
-        entries[id] = schema;
-      }
-    }
-    return entries;
-  }, [capabilityRegistry]);
-
-  const hasRegistry = Boolean(capabilityRegistry);
   const isContinuityCapable = useCallback(
     (capabilityId: string): boolean => {
       if (!hasRegistry) return true;

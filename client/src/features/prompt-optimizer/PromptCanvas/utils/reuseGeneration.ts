@@ -1,5 +1,5 @@
 import type { CapabilityValues } from "@shared/capabilities";
-import type { VideoTier } from "@components/ToolSidebar/types";
+import type { VideoTier } from "@features/generation-controls";
 import { sanitizeText } from "@/features/span-highlighting";
 import type { Generation } from "@features/generations/types";
 

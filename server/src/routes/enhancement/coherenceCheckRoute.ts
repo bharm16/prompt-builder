@@ -3,13 +3,8 @@ import { logger } from "@infrastructure/Logger";
 import { asyncHandler } from "@middleware/asyncHandler";
 import { validateRequest } from "@middleware/validateRequest";
 import { PerformanceMonitor } from "@middleware/performanceMonitor";
-import { coherenceCheckSchema } from "@utils/validation";
-
-interface CoherenceCheckResult {
-  conflicts?: unknown[];
-  harmonizations?: unknown[];
-  [key: string]: unknown;
-}
+import { coherenceCheckSchema } from "@config/schemas";
+import type { CoherenceCheckResult } from "@shared/types/coherence";
 
 interface CoherenceCheckDeps {
   promptCoherenceService: {

@@ -3,7 +3,7 @@ import { SuggestionValidationService } from "../SuggestionValidationService";
 import type { VideoService } from "../types";
 
 function createService(): SuggestionValidationService {
-  const videoService: VideoService = {
+  const videoPromptService: VideoService = {
     isVideoPrompt: vi.fn(() => true),
     countWords: vi.fn(
       (text: string) => text.split(/\s+/).filter(Boolean).length,
@@ -20,7 +20,7 @@ function createService(): SuggestionValidationService {
     getVideoFallbackConstraints: vi.fn(() => null),
   };
 
-  return new SuggestionValidationService(videoService);
+  return new SuggestionValidationService(videoPromptService);
 }
 
 describe("SuggestionValidationService context overlap stripping regression", () => {

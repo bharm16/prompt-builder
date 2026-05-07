@@ -9,6 +9,13 @@ import type AssetRepository from "../AssetRepository";
 import type TriggerValidationService from "../TriggerValidationService";
 import { logger } from "@infrastructure/Logger";
 
+const LIST_BY_TYPE_DEFAULT_LIMIT = 200;
+
+export interface ListAssetsByTypeResult {
+  items: Asset[];
+  hasMore: boolean;
+}
+
 export class AssetCrudService {
   private readonly repository: AssetRepository;
   private readonly triggerValidation: TriggerValidationService;
@@ -202,21 +209,37 @@ export class AssetCrudService {
     }
   }
 
-  async listAssetsByType(userId: string, type: AssetType): Promise<Asset[]> {
+  async listAssetsByType(
+    userId: string,
+    type: AssetType,
+  ): Promise<ListAssetsByTypeResult> {
     const operation = "listAssetsByType";
     const startTime = performance.now();
     this.log.debug("Starting operation.", { operation, userId, type });
 
     try {
-      const assets = await this.repository.getByType(userId, type);
+      const result = await this.repository.getByType(
+        userId,
+        type,
+        LIST_BY_TYPE_DEFAULT_LIMIT,
+      );
+      if (result.hasMore) {
+        this.log.warn("Asset list truncated", {
+          userId,
+          type,
+          limit: LIST_BY_TYPE_DEFAULT_LIMIT,
+          returned: result.items.length,
+        });
+      }
       this.log.info("Operation completed.", {
         operation,
         userId,
         type,
-        count: assets.length,
+        count: result.items.length,
+        hasMore: result.hasMore,
         duration: Math.round(performance.now() - startTime),
       });
-      return assets;
+      return result;
     } catch (error) {
       const errorObj =
         error instanceof Error ? error : new Error(String(error));

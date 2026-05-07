@@ -5,7 +5,7 @@ import {
   AssetListResponseSchema,
   ResolvedPromptSchema,
   TriggerValidationSchema,
-} from "@features/assets/api/schemas";
+} from "#shared/schemas/asset.schemas";
 
 describe("Asset contract", () => {
   const minimalAsset = {

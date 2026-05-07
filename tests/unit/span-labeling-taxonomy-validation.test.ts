@@ -1,11 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { TAXONOMY } from "#shared/taxonomy";
-import { TaxonomyValidationService } from "@services/taxonomy-validation/TaxonomyValidationService.js";
-import { HierarchyValidator } from "@services/taxonomy-validation/services/HierarchyValidator.js";
-import { OrphanDetector } from "@services/taxonomy-validation/services/OrphanDetector.js";
-import { ValidationReporter } from "@services/taxonomy-validation/services/ValidationReporter.js";
-import type { Span } from "@services/taxonomy-validation/types";
+import { TaxonomyValidationService } from "@services/video-prompt-analysis/services/taxonomy-validation/TaxonomyValidationService.js";
+import { HierarchyValidator } from "@services/video-prompt-analysis/services/taxonomy-validation/services/HierarchyValidator.js";
+import { OrphanDetector } from "@services/video-prompt-analysis/services/taxonomy-validation/services/OrphanDetector.js";
+import { ValidationReporter } from "@services/video-prompt-analysis/services/taxonomy-validation/services/ValidationReporter.js";
+import type { Span } from "@services/video-prompt-analysis/services/taxonomy-validation/types";
 
 vi.mock("@infrastructure/Logger", () => ({
   logger: {

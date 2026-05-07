@@ -6,7 +6,6 @@ metadata:
     app: prompt-builder
 data:
   # Application configuration
-  MAX_PROMPT_LENGTH: "10000"
   CLAUDE_TIMEOUT_MS: "60000"
 
   # CORS Configuration

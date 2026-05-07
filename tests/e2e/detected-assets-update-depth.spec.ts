@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { jsonResponse, ONE_PIXEL_PNG } from "./helpers/responses";
+import { injectAuthUser } from "./helpers/auth";
 
 const MAX_DEPTH_ERROR = "Maximum update depth exceeded";
 
@@ -47,6 +48,8 @@ const characterAsset: TestAsset = {
 test("regression: detected assets prompt churn does not hit max update depth", async ({
   page,
 }) => {
+  await injectAuthUser(page);
+
   const maxDepthConsoleErrors: string[] = [];
   const maxDepthPageErrors: string[] = [];
   const assets: TestAsset[] = [];
@@ -194,8 +197,8 @@ test("regression: detected assets prompt churn does not hit max update depth", a
 
   await page.goto("/");
 
-  const promptInput = page.getByLabel("Text Prompt Input");
-  await expect(promptInput).toBeVisible();
+  const promptInput = page.getByLabel("Optimized prompt");
+  await expect(promptInput).toBeVisible({ timeout: 15000 });
 
   await promptInput.fill("@hero");
 

@@ -115,14 +115,14 @@ function createEvaluator() {
     sanitizeSuggestions,
     validateSuggestions,
   };
-  const videoService = {
+  const videoPromptService = {
     isVideoPrompt: vi.fn(() => true),
   };
 
   return {
     evaluator: new SuggestionQualityEvaluator(
       validationService as never,
-      videoService as never,
+      videoPromptService as never,
     ),
   };
 }

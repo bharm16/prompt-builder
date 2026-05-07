@@ -11,42 +11,37 @@ import { CleanPromptBuilder } from "@services/enhancement/services/CleanPromptBu
 import { PromptCoherenceService } from "@services/enhancement/services/PromptCoherenceService";
 import { SuggestionDiversityEnforcer } from "@services/enhancement/services/SuggestionDeduplicator";
 import { SuggestionValidationService } from "@services/enhancement/services/SuggestionValidationService";
-import { ImageObservationService } from "@services/image-observation";
+import type { ImageObservationService } from "@services/image-observation";
 import { PromptOptimizationService } from "@services/prompt-optimization/PromptOptimizationService";
 import { TemplateService } from "@services/prompt-optimization/services/TemplateService";
-import { LLMJudgeService } from "@services/quality-feedback/services/LLMJudgeService";
 import { SceneChangeDetectionService } from "@services/video-concept/services/detection/SceneChangeDetectionService";
 import type { CacheService } from "@services/cache/CacheService";
 import { VideoPromptService } from "@services/video-prompt-analysis/index";
 import { AIServiceVideoPromptLlmGateway } from "@services/video-prompt-analysis/services/llm/VideoPromptLlmGateway";
-import { MultimodalAssetManager } from "@services/video-prompt-analysis/services/MultimodalAssetManager";
+import {
+  SuggestionGeneratorService,
+  CompatibilityService,
+  PreferenceRepository,
+  SceneCompletionService,
+  SceneVariationService,
+  ConceptParsingService,
+  RefinementService,
+  TechnicalParameterService,
+  PromptValidationService,
+  ConflictDetectionService,
+  VideoTemplateRepository,
+} from "@services/video-concept/index";
 import { VideoConceptService } from "@services/video-concept/VideoConceptService";
 import type { ServiceConfig } from "./service-config.types.ts";
 
 export function registerEnhancementServices(container: DIContainer): void {
   container.register(
-    "videoPromptLlmGateway",
+    "videoPromptService",
     (aiService: AIModelService) =>
-      new AIServiceVideoPromptLlmGateway(aiService),
-    ["aiService"],
-  );
-
-  container.register(
-    "videoService",
-    (
-      videoPromptLlmGateway: AIServiceVideoPromptLlmGateway,
-      config: ServiceConfig,
-    ) =>
       new VideoPromptService({
-        videoPromptLlmGateway,
-        promptOutputOnly: config.features.promptOutputOnly,
+        videoPromptLlmGateway: new AIServiceVideoPromptLlmGateway(aiService),
       }),
-    ["videoPromptLlmGateway", "config"],
-  );
-  container.register(
-    "multimodalAssetManager",
-    () => new MultimodalAssetManager(),
-    [],
+    ["aiService"],
   );
   container.register(
     "brainstormBuilder",
@@ -58,9 +53,9 @@ export function registerEnhancementServices(container: DIContainer): void {
 
   container.register(
     "validationService",
-    (videoService: VideoService) =>
-      new SuggestionValidationService(videoService),
-    ["videoService"],
+    (videoPromptService: VideoService) =>
+      new SuggestionValidationService(videoPromptService),
+    ["videoPromptService"],
   );
 
   container.register(
@@ -81,7 +76,7 @@ export function registerEnhancementServices(container: DIContainer): void {
     (
       aiService: AIModelService,
       cacheService: CacheService,
-      videoService: VideoPromptService,
+      videoPromptService: VideoPromptService,
       imageObservationService: ImageObservationService,
       templateService: TemplateService,
       config: ServiceConfig,
@@ -90,7 +85,7 @@ export function registerEnhancementServices(container: DIContainer): void {
       return new PromptOptimizationService(
         aiService,
         cacheService,
-        videoService,
+        videoPromptService,
         imageObservationService,
         templateService,
         { cacheTtlMs: po.shotPlanCacheTtlMs, cacheMax: po.shotPlanCacheMax },
@@ -99,7 +94,7 @@ export function registerEnhancementServices(container: DIContainer): void {
     [
       "aiService",
       "cacheService",
-      "videoService",
+      "videoPromptService",
       "imageObservationService",
       "templateService",
       "config",
@@ -107,17 +102,10 @@ export function registerEnhancementServices(container: DIContainer): void {
   );
 
   container.register(
-    "imageObservationService",
-    (aiService: AIModelService, cacheService: CacheService) =>
-      new ImageObservationService(aiService, cacheService),
-    ["aiService", "cacheService"],
-  );
-
-  container.register(
     "enhancementService",
     (
       aiService: AIModelService,
-      videoService: VideoService,
+      videoPromptService: VideoService,
       brainstormBuilder: BrainstormContextBuilder,
       promptBuilder: CleanPromptBuilder,
       validationService: SuggestionValidationService,
@@ -129,7 +117,7 @@ export function registerEnhancementServices(container: DIContainer): void {
     ) =>
       new EnhancementService({
         aiService,
-        videoService,
+        videoPromptService,
         brainstormBuilder,
         promptBuilder,
         validationService,
@@ -141,7 +129,7 @@ export function registerEnhancementServices(container: DIContainer): void {
       }),
     [
       "aiService",
-      "videoService",
+      "videoPromptService",
       "brainstormBuilder",
       "promptBuilder",
       "validationService",
@@ -166,17 +154,99 @@ export function registerEnhancementServices(container: DIContainer): void {
     ["aiService"],
   );
 
+  // Video concept sub-services — registered individually so DI lifecycle is
+  // real (prior to Phase 3γ these were self-instantiated inside a façade's
+  // constructor, making them unmockable in route tests).
+  container.register(
+    "videoPreferenceRepository",
+    () => new PreferenceRepository(),
+    [],
+  );
+
+  container.register(
+    "videoTemplateRepository",
+    () => new VideoTemplateRepository(),
+    [],
+  );
+
+  container.register(
+    "videoCompatibilityService",
+    (aiService: AIModelService, cacheService: CacheService) =>
+      new CompatibilityService(aiService, cacheService),
+    ["aiService", "cacheService"],
+  );
+
+  container.register(
+    "videoSuggestionGeneratorService",
+    (
+      aiService: AIModelService,
+      cacheService: CacheService,
+      preferenceRepository: PreferenceRepository,
+      compatibilityService: CompatibilityService,
+    ) =>
+      new SuggestionGeneratorService(
+        aiService,
+        cacheService,
+        preferenceRepository,
+        compatibilityService,
+      ),
+    [
+      "aiService",
+      "cacheService",
+      "videoPreferenceRepository",
+      "videoCompatibilityService",
+    ],
+  );
+
+  container.register(
+    "videoSceneCompletionService",
+    (aiService: AIModelService) => new SceneCompletionService(aiService),
+    ["aiService"],
+  );
+
+  container.register(
+    "videoSceneVariationService",
+    (aiService: AIModelService) => new SceneVariationService(aiService),
+    ["aiService"],
+  );
+
+  container.register(
+    "videoConceptParsingService",
+    (aiService: AIModelService) => new ConceptParsingService(aiService),
+    ["aiService"],
+  );
+
+  container.register(
+    "videoRefinementService",
+    (aiService: AIModelService) => new RefinementService(aiService),
+    ["aiService"],
+  );
+
+  container.register(
+    "videoTechnicalParameterService",
+    (aiService: AIModelService) => new TechnicalParameterService(aiService),
+    ["aiService"],
+  );
+
+  container.register(
+    "videoPromptValidationService",
+    (aiService: AIModelService) => new PromptValidationService(aiService),
+    ["aiService"],
+  );
+
+  container.register(
+    "videoConflictDetectionService",
+    (aiService: AIModelService) => new ConflictDetectionService(aiService),
+    ["aiService"],
+  );
+
+  // Aggregator façade consumed by /api/video/* route registration.
+  // Without this, api.routes.ts silently drops the entire video namespace
+  // because of the `if (videoConceptService)` mount guard.
   container.register(
     "videoConceptService",
     (aiService: AIModelService, cacheService: CacheService) =>
       new VideoConceptService(aiService, cacheService),
     ["aiService", "cacheService"],
-  );
-
-  container.register(
-    "llmJudgeService",
-    (aiService: AIModelService) => new LLMJudgeService(aiService),
-    ["aiService"],
-    { singleton: true },
   );
 }

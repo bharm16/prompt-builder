@@ -5,16 +5,14 @@ import {
   MapPin,
   Box,
   Loader2,
+  type IconType,
 } from "@promptstudio/system/components/ui";
 import { rewriteGcsUrlToProxy } from "@/services/media/MediaUrlResolver";
 import { getAssetTypeConfig } from "../config/assetConfig";
 import type { AssetSuggestion } from "../hooks/useTriggerAutocomplete";
 import type { AnimatedPresencePhase } from "@/hooks/useAnimatedPresence";
 
-const TYPE_ICONS: Record<
-  string,
-  React.ComponentType<{ className?: string }>
-> = {
+const TYPE_ICONS: Record<string, IconType> = {
   character: User,
   style: Palette,
   location: MapPin,

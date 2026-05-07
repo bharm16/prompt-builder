@@ -1,60 +1,25 @@
 import type { ReactNode } from "react";
-import type {
-  User,
-  PromptHistoryEntry,
-} from "@features/prompt-optimizer/types/domain/prompt-session";
+import type { User, PromptHistoryEntry } from "@features/prompt-optimizer";
 import type { Asset, AssetType } from "@shared/types/asset";
 import type { AppIcon } from "@/types";
+import type {
+  DraftModel,
+  GenerationOverrides,
+  KeyframeTile,
+  SidebarUploadedImage,
+  StartImage,
+  VideoTier,
+} from "@features/generation-controls";
 
 export type ToolPanelType = "sessions" | "studio" | "characters" | "styles";
-
-export type DraftModel = "flux-kontext" | "wan-2.2" | "wan-2.5";
-
-export type VideoTier = "draft" | "render";
-
-export interface KeyframeTile {
-  id: string;
-  url: string;
-  source: "upload" | "library" | "generation" | "asset";
-  assetId?: string;
-  sourcePrompt?: string;
-  storagePath?: string;
-  viewUrlExpiresAt?: string;
-}
-
-export interface StartImage {
-  url: string;
-  source: string;
-  assetId?: string;
-  storagePath?: string;
-  viewUrlExpiresAt?: string;
-}
-
-export interface SidebarUploadedImage {
-  url: string;
-  storagePath?: string;
-  viewUrlExpiresAt?: string;
-}
-
-export interface GenerationOverrides {
-  startImage?: StartImage | null;
-  endImage?: {
-    url: string;
-    storagePath?: string;
-    viewUrlExpiresAt?: string;
-  } | null;
-  referenceImages?: Array<{
-    url: string;
-    type: "asset" | "style";
-    storagePath?: string;
-    viewUrlExpiresAt?: string;
-  }>;
-  extendVideoUrl?: string | null;
-  generationParams?: Record<string, unknown>;
-  characterAssetId?: string | null;
-  faceSwapAlreadyApplied?: boolean;
-  faceSwapUrl?: string | null;
-}
+export type {
+  DraftModel,
+  GenerationOverrides,
+  KeyframeTile,
+  SidebarUploadedImage,
+  StartImage,
+  VideoTier,
+} from "@features/generation-controls";
 
 export interface ToolSidebarSessionsDomain {
   history: PromptHistoryEntry[];

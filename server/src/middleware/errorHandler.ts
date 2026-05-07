@@ -1,7 +1,10 @@
 import { logger } from "@infrastructure/Logger";
 import type { NextFunction, Request, Response } from "express";
 import { isDomainError } from "@server/errors/DomainError";
-import type { ApiError, ApiErrorCode } from "@server/types/apiError";
+import type {
+  ApiErrorResponse as ApiError,
+  ApiErrorCode,
+} from "@shared/types/api";
 
 const EMAIL_RE = /[\w.-]+@[\w.-]+\.\w+/g;
 const SSN_RE = /\b\d{3}-\d{2}-\d{4}\b/g;
@@ -120,6 +123,85 @@ export function errorHandler(
       meta.bodyLength = JSON.stringify(req.body).length;
     } catch {
       // ignore serialization errors
+    }
+  }
+
+  // Handle backpressure from ConcurrencyLimiter (QUEUE_FULL/QUEUE_TIMEOUT).
+  // These propagate from LLMClient with `code` and (for QUEUE_FULL) `retryAfter`.
+  // Map to HTTP 503 with Retry-After so well-behaved clients honor backpressure
+  // instead of hammering us with instant retries.
+  if (typeof err === "object" && err !== null && "code" in err) {
+    const queueErr = err as {
+      code?: unknown;
+      retryAfter?: unknown;
+      message?: unknown;
+    };
+    if (queueErr.code === "QUEUE_FULL" || queueErr.code === "QUEUE_TIMEOUT") {
+      const retryAfter =
+        typeof queueErr.retryAfter === "number" &&
+        Number.isFinite(queueErr.retryAfter) &&
+        queueErr.retryAfter > 0
+          ? queueErr.retryAfter
+          : 5;
+      const code = queueErr.code;
+      const message =
+        typeof queueErr.message === "string" && queueErr.message.length > 0
+          ? queueErr.message
+          : code === "QUEUE_FULL"
+            ? "Service is busy. Please retry shortly."
+            : "Request timed out waiting in queue. Please retry shortly.";
+
+      logger.warn("Concurrency backpressure", {
+        ...meta,
+        errorCode: code,
+        retryAfter,
+      });
+
+      res.setHeader("Retry-After", String(retryAfter));
+      res.status(503).json({
+        success: false,
+        error: {
+          code,
+          message,
+          retryAfter,
+        },
+        ...(req.id ? { requestId: req.id } : {}),
+      });
+      return;
+    }
+
+    // Fail-closed rate limiter: when the Redis-backed store is unhealthy,
+    // LLM routes reject rather than silently degrade to per-instance limits.
+    // Same 503 + Retry-After shape as the backpressure branch above.
+    if (queueErr.code === "RATE_LIMIT_UNAVAILABLE") {
+      const retryAfter =
+        typeof queueErr.retryAfter === "number" &&
+        Number.isFinite(queueErr.retryAfter) &&
+        queueErr.retryAfter > 0
+          ? queueErr.retryAfter
+          : 5;
+      const message =
+        typeof queueErr.message === "string" && queueErr.message.length > 0
+          ? queueErr.message
+          : "Rate limiter temporarily unavailable, please retry.";
+
+      logger.warn("Rate limiter unavailable", {
+        ...meta,
+        errorCode: "RATE_LIMIT_UNAVAILABLE",
+        retryAfter,
+      });
+
+      res.setHeader("Retry-After", String(retryAfter));
+      res.status(503).json({
+        success: false,
+        error: {
+          code: "RATE_LIMIT_UNAVAILABLE",
+          message,
+          retryAfter,
+        },
+        ...(req.id ? { requestId: req.id } : {}),
+      });
+      return;
     }
   }
 

@@ -51,6 +51,31 @@ const createApp = ({
   return app;
 };
 
+// Adapter: delegates the atomic method to the existing createJob + reserveCredits mocks
+// so tests written against the legacy 2-step API keep their assertions intact.
+const buildAtomicReservation = (
+  createJob: ReturnType<typeof vi.fn>,
+): ((
+  input: Record<string, unknown>,
+  deps: {
+    creditService: {
+      reserveCredits: (uid: string, cost: number) => Promise<boolean>;
+    };
+    cost: number;
+  },
+) => Promise<
+  { reserved: true; job: unknown } | { reserved: false; reason: string }
+>) => {
+  return async (input, { creditService, cost }) => {
+    const ok = await creditService.reserveCredits(input.userId as string, cost);
+    if (!ok) {
+      return { reserved: false, reason: "insufficient_credits" };
+    }
+    const job = await createJob(input);
+    return { reserved: true, job };
+  };
+};
+
 describe("videoGenerate contract", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -304,6 +329,7 @@ describe("videoGenerate contract", () => {
       } as never,
       videoJobStore: {
         createJob: vi.fn(),
+        createJobWithReservation: buildAtomicReservation(vi.fn()),
       } as never,
       userCreditService: {
         reserveCredits: reserveCreditsMock,
@@ -375,6 +401,7 @@ describe("videoGenerate contract", () => {
       } as never,
       videoJobStore: {
         createJob: createJobMock,
+        createJobWithReservation: buildAtomicReservation(createJobMock),
       } as never,
       userCreditService: {
         reserveCredits: vi.fn(async () => true),

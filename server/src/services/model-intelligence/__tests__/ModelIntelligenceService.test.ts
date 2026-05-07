@@ -1,6 +1,5 @@
 import { describe, expect, it, vi, type MockedFunction } from "vitest";
 import { ModelIntelligenceService } from "../ModelIntelligenceService";
-import type { AIModelService } from "@services/ai-model/AIModelService";
 import type { ModelCapabilities, PromptSpan } from "../types";
 import { VIDEO_MODELS } from "@config/modelConfig";
 import type { ModelCapabilityRegistry } from "../services/ModelCapabilityRegistry";
@@ -8,6 +7,7 @@ import type { ModelScoringService } from "../services/ModelScoringService";
 import type { PromptRequirementsService } from "../services/PromptRequirementsService";
 import type { RecommendationExplainerService } from "../services/RecommendationExplainerService";
 import type { AvailabilityGateService } from "../services/AvailabilityGateService";
+import type { PromptSpanProvider } from "../ports/PromptSpanProvider";
 
 type MockScoringService = {
   scoreModel: MockedFunction<ModelScoringService["scoreModel"]>;
@@ -125,17 +125,15 @@ describe("ModelIntelligenceService", () => {
           }),
       };
 
-      const aiService = {
-        execute: vi.fn<AIModelService["execute"]>(),
-      } as unknown as AIModelService;
       const spans: PromptSpan[] = [
         { text: "dramatic lighting", role: "lighting.cinematic" },
       ];
+      const promptSpanProvider = {
+        label: vi.fn<PromptSpanProvider["label"]>().mockResolvedValue(spans),
+      };
 
       const service = new ModelIntelligenceService({
-        aiService,
-        videoGenerationService: null,
-        userCreditService: null,
+        promptSpanProvider,
         registry,
         scoringService: scoringService as unknown as ModelScoringService,
         requirementsService,

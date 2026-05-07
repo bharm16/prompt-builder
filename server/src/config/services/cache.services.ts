@@ -11,7 +11,6 @@ export function registerCacheServices(container: DIContainer): void {
     "cacheService",
     (metricsService: MetricsService) => new CacheService({}, metricsService),
     ["metricsService"],
-    { singleton: true },
   );
 
   container.register(

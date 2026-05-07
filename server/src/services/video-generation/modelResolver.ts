@@ -8,7 +8,7 @@ import {
   resolveGenerationModelSelection,
   type ModelResolution,
   type ModelResolutionSource,
-} from "@services/video-models/ModelRegistry";
+} from "@config/videoModelRegistry";
 
 type LogSink = {
   warn: (message: string, meta?: Record<string, unknown>) => void;

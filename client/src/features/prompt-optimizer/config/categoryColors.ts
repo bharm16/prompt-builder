@@ -14,21 +14,32 @@ const hexToRgba = (hex: string, alpha: number): string => {
 };
 
 const build = (hex: string): CategoryHighlightColor => ({
-  bg: hexToRgba(hex, 0.12),
+  bg: hexToRgba(hex, 0.15),
   border: hexToRgba(hex, 0.35),
   ring: hexToRgba(hex, 0.18),
 });
 
+/**
+ * Semantic warm/cool color mapping:
+ * - WARM tones (amber, coral, rose) → human/creative categories
+ * - COOL tones (steel blue, teal, indigo) → technical categories
+ * - NEUTRAL tones (sage, lavender) → contextual categories
+ */
 export const categoryColors = {
-  shot: build("#0891b2"),
-  subject: build("#ea580c"),
-  action: build("#e11d48"),
-  environment: build("#059669"),
-  lighting: build("#ca8a04"),
-  camera: build("#0284c7"),
-  style: build("#7c3aed"),
-  technical: build("#475569"),
-  audio: build("#c026d3"),
+  // Cool — technical
+  shot: build("#3b82f6"), // Steel blue — framing is technical
+  camera: build("#0ea5e9"), // Sky blue — optics, precision
+  lighting: build("#06b6d4"), // Cyan/teal — light = cool spectrum
+
+  // Warm — human/creative
+  subject: build("#f59e0b"), // Amber/gold — human element, warm
+  action: build("#f97316"), // Orange/coral — energy, movement
+  style: build("#ec4899"), // Pink/rose — aesthetic, emotional
+
+  // Neutral — contextual
+  environment: build("#6b8a6b"), // Sage/olive — earth tones, grounding
+  technical: build("#8b8baa"), // Muted lavender — technical metadata
+  audio: build("#a78bfa"), // Soft violet — atmospheric, ambient
 } as const;
 
 export const DEFAULT_CATEGORY_COLOR = build("#94a3b8");

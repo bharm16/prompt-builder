@@ -11,9 +11,12 @@ const shouldGenerateSourcemaps =
   Boolean(process.env.SENTRY_AUTH_TOKEN) ||
   process.env.GENERATE_SOURCEMAP === "true";
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   root: path.resolve(__dirname, "../../client"),
   envDir: path.resolve(__dirname, "../../"),
+  define: {
+    "process.env.NODE_ENV": JSON.stringify(mode),
+  },
   build: {
     outDir: path.resolve(__dirname, "../../dist"),
     sourcemap: shouldGenerateSourcemaps,
@@ -38,6 +41,7 @@ export default defineConfig({
             "firebase/analytics",
           ],
           "vendor-icons": ["@phosphor-icons/react"],
+          "vendor-three": ["three"],
         },
       },
     },
@@ -69,7 +73,7 @@ export default defineConfig({
   },
   plugins: [
     react(),
-    process.env.NODE_ENV === "production" && process.env.SENTRY_AUTH_TOKEN
+    mode === "production" && process.env.SENTRY_AUTH_TOKEN
       ? sentryVitePlugin({
           org: process.env.SENTRY_ORG,
           project: process.env.SENTRY_PROJECT,
@@ -122,4 +126,4 @@ export default defineConfig({
     },
   },
   publicDir: path.resolve(__dirname, "../../client/public"),
-});
+}));

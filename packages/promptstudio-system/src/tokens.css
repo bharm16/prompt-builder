@@ -5,11 +5,11 @@
        Reference: Runway/Midjourney style guide
        ========================= */
     --ps-font-sans:
-      "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+      "Geist", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
       "SF Pro Text", "Segoe UI", sans-serif;
     --ps-font-display:
-      "Inter", ui-sans-serif, -apple-system, BlinkMacSystemFont,
-      "SF Pro Display", system-ui, sans-serif;
+      "Plus Jakarta Sans", "Geist", ui-sans-serif, -apple-system,
+      BlinkMacSystemFont, "SF Pro Display", system-ui, sans-serif;
     --ps-font-mono:
       ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
       "Courier New", monospace;
@@ -139,42 +139,42 @@
     /* =========================
        Motion (Runway reference)
        ========================= */
-    --ps-dur-1: 75ms;
-    --ps-dur-2: 150ms; /* Updated: Runway standard transition */
-    --ps-dur-3: 200ms; /* Updated: Runway slow transition */
-    --ps-dur-4: 280ms;
+    --ps-dur-1: 100ms;
+    --ps-dur-2: 200ms;
+    --ps-dur-3: 300ms;
+    --ps-dur-4: 400ms;
     /* Semantic motion aliases */
-    --ps-motion-fast: 120ms;
-    --ps-motion-base: 150ms; /* Updated: Runway standard */
-    --ps-motion-slow: 200ms; /* Updated: Runway slow */
-    --ps-ease-out: cubic-bezier(0.4, 0, 0.2, 1); /* Updated: Runway easing */
+    --ps-motion-fast: 150ms;
+    --ps-motion-base: 200ms;
+    --ps-motion-slow: 300ms;
+    --ps-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
     --ps-ease-in: cubic-bezier(0.7, 0, 0.84, 0);
     --ps-ease-inout: cubic-bezier(0.65, 0, 0.35, 1);
     --ps-ease-linear: linear;
 
     /* =========================
-       Color (dark-first, Runway/Midjourney reference)
+       Color (warm charcoal + violet accent)
        ========================= */
-    --ps-bg: #16181d; /* Updated: Midjourney panel bg */
-    --ps-surface-1: #1b1e23; /* Updated: Runway panel */
-    --ps-surface-2: #2c3037; /* Updated */
-    --ps-surface-3: #242a38;
-    --ps-border: #434651; /* Updated */
-    --ps-border-strong: #5a5e6c; /* Updated */
-    --ps-text: #ebecef; /* Updated: Midjourney text */
-    --ps-text-muted: #c6c9d2; /* Updated: Midjourney secondary */
-    --ps-text-faint: #aaaebb; /* Updated: Midjourney tertiary */
-    --ps-text-ghost: #a1afc5; /* Updated: Runway muted */
+    --ps-bg: #131316; /* Warm charcoal base */
+    --ps-surface-1: #1a1a1f; /* Card/panel surface */
+    --ps-surface-2: #222228; /* Elevated surface */
+    --ps-surface-3: #2a2a32; /* Tertiary surface */
+    --ps-border: rgba(255, 255, 255, 0.08); /* Subtle separation */
+    --ps-border-strong: rgba(255, 255, 255, 0.14); /* Emphasized border */
+    --ps-text: #f0f0f3; /* Primary text */
+    --ps-text-muted: #b0b0be; /* Secondary text */
+    --ps-text-faint: #8b8b9e; /* Tertiary text */
+    --ps-text-ghost: #6b6b7e; /* Ghost/placeholder text */
     --ps-text-warm: rgba(255, 255, 255, 0.95);
-    --ps-accent: #ffffff;
-    --ps-accent-2: #b3affd; /* Updated: Version indicator accent */
-    --ps-accent-runway: #2c22fa; /* New: Runway primary blue */
-    --ps-accent-mj: #f2330d; /* New: Midjourney orange */
+    --ps-accent: #e0e0e4; /* Neutral accent */
+    --ps-accent-2: #c8c8d0; /* Neutral light variant */
+    --ps-accent-runway: #e0e0e4; /* Map runway accent to neutral */
+    --ps-accent-mj: #f2330d; /* Keep MJ orange */
     --ps-success: #4ec7a2;
     --ps-warning: #f5c05c;
     --ps-danger: #fa6e7c;
     --ps-info: var(--ps-accent);
-    --ps-overlay: rgba(5, 8, 12, 0.68);
+    --ps-overlay: rgba(10, 10, 14, 0.72);
 
     /* Brand palette (light UI) */
     --ps-brand-primary-50: #fafafa;
@@ -357,7 +357,10 @@
     --ps-btn-outline-hover-color: #ffffff;
 
     /* Primary button (Runway) */
-    --ps-btn-primary-bg: #2c22fa;
+    --ps-btn-primary-bg: #e0e0e4;
+    --ps-btn-primary-hover: #ffffff;
+    --ps-btn-primary-text: #111116;
+    --ps-btn-primary-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
     --ps-btn-primary-border: none;
     --ps-btn-primary-radius: 8px;
     --ps-btn-primary-color: #ffffff;
@@ -564,7 +567,9 @@
     --accent: var(--ps-accent);
     --accent-2: var(--ps-accent-2);
     --accent-cyan: var(--ps-accent);
-    --accent-purple: var(--ps-accent-2);
+    --accent-purple: var(
+      --ps-accent-2
+    ); /* legacy alias — value is now neutral, name retained for backward compat */
     --accent-orange: var(--ps-accent-mj); /* Updated: Midjourney orange */
     --accent-runway: var(--ps-accent-runway); /* New: Runway blue */
     --accent-mj: var(--ps-accent-mj); /* New: Midjourney orange */

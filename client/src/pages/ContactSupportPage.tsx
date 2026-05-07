@@ -11,7 +11,7 @@ import { Input } from "@promptstudio/system/components/ui/input";
 import { Textarea } from "@promptstudio/system/components/ui/textarea";
 import { AUTH_COLORS } from "./auth/auth-styles";
 
-const DEFAULT_SUPPORT_EMAIL = "support@yourdomain.com";
+const DEFAULT_SUPPORT_EMAIL = "support@vidra.app";
 
 function buildMailto(params: {
   to: string;

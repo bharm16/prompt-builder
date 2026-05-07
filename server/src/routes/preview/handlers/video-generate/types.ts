@@ -1,7 +1,7 @@
 import type { ILogger } from "@interfaces/ILogger";
 import type { PreviewRoutesServices } from "@routes/types";
 import type { VideoGenerationOptions } from "@services/video-generation/types";
-import type { ApiErrorCode } from "@server/types/apiError";
+import type { ApiErrorCode } from "@shared/types/api";
 import type { MotionContext } from "./motion";
 
 export type VideoGenerateServices = Pick<

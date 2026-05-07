@@ -5,6 +5,7 @@
  */
 
 import { useCallback, useEffect, useRef } from "react";
+import debounce from "lodash/debounce";
 import { v4 as uuidv4 } from "uuid";
 import { logger } from "../../../services/LoggingService";
 import {
@@ -282,6 +283,24 @@ export function useHistoryPersistence({
     [],
   );
 
+  // Debounced full snapshot: only flushes after 5 seconds of inactivity.
+  // Individual entry updates happen immediately via updateEntry/addEntry;
+  // the full localStorage snapshot is deferred to reduce write frequency.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const debouncedSyncHistoryToLocalStorage = useCallback(
+    debounce((entries: PromptHistoryEntry[]): void => {
+      syncHistoryToLocalStorage(entries);
+    }, 5_000),
+    [syncHistoryToLocalStorage],
+  );
+
+  // Flush debounced snapshot on unmount to prevent data loss.
+  useEffect(() => {
+    return () => {
+      debouncedSyncHistoryToLocalStorage.flush();
+    };
+  }, [debouncedSyncHistoryToLocalStorage]);
+
   const persistLocalDraftEntry = useCallback(
     (entry: PromptHistoryEntry): void => {
       const existedBefore = historyRef.current.some(
@@ -289,14 +308,16 @@ export function useHistoryPersistence({
       );
       const nextHistory = upsertEntry(historyRef.current, entry);
       historyRef.current = nextHistory;
+      // Incremental: update in-memory state immediately
       if (existedBefore && typeof entry.uuid === "string") {
         updateEntry(entry.uuid, entry);
       } else {
         addEntry(entry);
       }
-      syncHistoryToLocalStorage(nextHistory);
+      // Full snapshot: deferred to reduce localStorage write frequency
+      debouncedSyncHistoryToLocalStorage(nextHistory);
     },
-    [addEntry, syncHistoryToLocalStorage, updateEntry],
+    [addEntry, debouncedSyncHistoryToLocalStorage, updateEntry],
   );
 
   // Flush any pending debounced version write on unmount
@@ -358,9 +379,10 @@ export function useHistoryPersistence({
           toast.error("Browser storage full. Please clear browser data.");
         }
       } catch (error) {
-        log.error("Error loading history", error as Error, { userId });
+        // Repo layer already logged this error with full context (historyRepository).
+        // Falling back silently to localStorage to avoid duplicate error noise.
+        void error;
 
-        // Fallback to localStorage
         try {
           const localEntries = await loadFromLocalStorage();
           setHistory(localEntries);
@@ -386,7 +408,8 @@ export function useHistoryPersistence({
       // Mark load complete for non-authenticated users
       initialLoadCompleteRef.current = true;
     } catch (error) {
-      log.error("Error loading history from localStorage", error as Error);
+      // Repo layer already logged with full context — suppress duplicate.
+      void error;
     }
   }, [setHistory]);
 
@@ -462,10 +485,9 @@ export function useHistoryPersistence({
         }
         return result;
       } catch (error) {
-        log.error("Error saving to history", error as Error, {
-          userId: user?.uid,
-          mode: selectedMode,
-        });
+        // Repo layer already logged with full context — surface user-facing
+        // toast here without duplicating the log line.
+        void error;
         toast.error(
           user ? "Failed to save to cloud" : "Failed to save to history",
         );
@@ -796,7 +818,7 @@ export function useHistoryPersistence({
       updateEntry(uuid, { versions: nextVersions });
 
       // Bug 17 fix: debounce the Firestore write. Rapid successive calls
-      // (e.g., ADD_GENERATION → UPDATE_GENERATION → media refresh) each trigger
+      // (e.g., SET_GENERATIONS → UPDATE_GENERATION → media refresh) each trigger
       // syncVersionGenerations → persistVersions → updateEntryVersions. Without
       // debouncing, multiple concurrent Firestore writes race each other and an
       // earlier write with stale data can land after a later write with complete data.

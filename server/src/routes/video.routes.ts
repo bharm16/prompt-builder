@@ -7,7 +7,7 @@ import {
   variationsSchema,
   parseConceptSchema,
   videoValidationSchema,
-} from "@utils/validation";
+} from "@config/schemas";
 import type { VideoServices } from "./video/types";
 import { createVideoSuggestionsHandler } from "./video/handlers/suggestions";
 import { createVideoValidateHandler } from "./video/handlers/validate";

@@ -1,4 +1,4 @@
-import crypto from "crypto";
+import { sha256Hex } from "@utils/hash";
 import { logger } from "@infrastructure/Logger";
 import type { GenerateKeyOptions, Logger } from "./types.js";
 
@@ -116,11 +116,7 @@ export class SemanticCacheEnhancer {
     });
 
     // Generate hash from normalized data
-    const hash = crypto
-      .createHash("sha256")
-      .update(JSON.stringify(normalized))
-      .digest("hex")
-      .substring(0, 16);
+    const hash = sha256Hex(JSON.stringify(normalized), 16);
 
     const key = `${namespace}:semantic:${hash}`;
 

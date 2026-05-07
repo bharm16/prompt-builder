@@ -1,6 +1,19 @@
 import { useEffect } from "react";
 import { isMac } from "../shortcuts.config";
 
+// `closest()` walks up the parent chain, so this catches both direct hits
+// (input/textarea/select) and nested editor hosts (rich-text editors that
+// dispatch from a leaf node inside a contenteditable wrapper). The
+// attribute-value enumeration is required because a bare `[contenteditable]`
+// selector also matches `contenteditable="false"`, which is NOT editable.
+const EDITABLE_SELECTOR =
+  'input, textarea, select, [contenteditable=""], [contenteditable="true"], [contenteditable="plaintext-only"]';
+
+const isEditableTarget = (target: EventTarget | null): boolean => {
+  if (!(target instanceof Element)) return false;
+  return target.closest(EDITABLE_SELECTOR) !== null;
+};
+
 export interface KeyboardShortcutsCallbacks {
   openShortcuts?: () => void;
   openSettings?: () => void;
@@ -29,6 +42,25 @@ export function useKeyboardShortcuts(
 
       // Cmd/Ctrl + K - Open shortcuts
       if (isMod && e.key === "k") {
+        e.preventDefault();
+        callbacks.openShortcuts?.();
+      }
+
+      // ? - Open shortcuts (discoverable convention). Skip when focus is in
+      // an editable element so users can still type a literal `?` into the
+      // prompt editor / inputs / textareas. Modifier guard: only the bare
+      // `?` keystroke should fire — Cmd/Ctrl/Alt+? are reserved for future
+      // bindings and must pass through. We check `metaKey` and `ctrlKey`
+      // explicitly (rather than the platform-aware `isMod`) because the
+      // intent is "no modifier at all," and a Mac user pressing `Ctrl+?`
+      // (or a Linux user pressing `Cmd+?`) should still bypass this branch.
+      if (
+        e.key === "?" &&
+        !e.metaKey &&
+        !e.ctrlKey &&
+        !e.altKey &&
+        !isEditableTarget(e.target)
+      ) {
         e.preventDefault();
         callbacks.openShortcuts?.();
       }

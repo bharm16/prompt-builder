@@ -19,7 +19,7 @@ import type {
   FrameBridge,
   SeedInfo,
   SceneProxy,
-} from "@services/continuity/types";
+} from "@server/domain/continuity/types";
 import type {
   SessionCreateRequest,
   SessionRecord,
@@ -34,11 +34,22 @@ import { SessionStore } from "./SessionStore";
 import {
   enforceImmutableKeyframes,
   enforceImmutableVersions,
-} from "./utils/immutableMedia";
+} from "@utils/immutableMedia";
+
+/**
+ * Minimal interface for the session → video-job cascade. Kept narrow so the
+ * session domain doesn't pull in the full VideoJobStore at import time.
+ */
+export interface VideoJobCascade {
+  cancelJobsForSession(sessionId: string): Promise<number>;
+}
 
 export class SessionService {
   private readonly log = logger.child({ service: "SessionService" });
-  constructor(private sessionStore: SessionStore) {}
+  constructor(
+    private sessionStore: SessionStore,
+    private videoJobCascade?: VideoJobCascade,
+  ) {}
 
   private async requireOwnedSession(
     userId: string,
@@ -358,13 +369,115 @@ export class SessionService {
     return this.updateVersions(sessionId, updates);
   }
 
+  /**
+   * Atomically append a generation record to a specific prompt version's
+   * generations array. This is the single-writer path for
+   * "server-authoritative generation persistence" — preview handlers call this
+   * after successfully generating media so the generation is durable before
+   * the client re-fetches the session.
+   *
+   * If the target version does not exist yet, it is created in place with the
+   * provided promptVersionId so the append is still durable. This handles the
+   * draft-to-persisted transition where the client may POST with a version id
+   * that only just materialized.
+   *
+   * NOTE: read-modify-write is not transactionally atomic across concurrent
+   * calls in the current store. For human-paced UI flows the race window is
+   * negligible; migrating to a transaction when Firestore backs the store is
+   * a follow-up.
+   */
+  async appendGenerationToVersion(
+    userId: string,
+    sessionId: string,
+    promptVersionId: string,
+    generation: Record<string, unknown>,
+  ): Promise<SessionRecord> {
+    const current = await this.requireOwnedSession(userId, sessionId);
+    const prompt = current.prompt ?? { input: "", output: "" };
+    const versions = Array.isArray(prompt.versions) ? [...prompt.versions] : [];
+
+    // Idempotent by generation id — a worker retry after a flaky
+    // markCompleted could call us twice for the same job. Upsert by id
+    // rather than appending blindly so we don't leave duplicates in the
+    // session's generations array.
+    const incomingId = typeof generation.id === "string" ? generation.id : null;
+
+    const upsertGenerations = (
+      existing: Array<Record<string, unknown>> | undefined,
+    ): Array<Record<string, unknown>> => {
+      const current = Array.isArray(existing) ? existing : [];
+      if (!incomingId) return [...current, generation];
+      const existingIdx = current.findIndex(
+        (g) => typeof g.id === "string" && g.id === incomingId,
+      );
+      if (existingIdx >= 0) {
+        const next = [...current];
+        next[existingIdx] = { ...current[existingIdx], ...generation };
+        return next;
+      }
+      return [...current, generation];
+    };
+
+    const idx = versions.findIndex((v) => v.versionId === promptVersionId);
+    if (idx >= 0) {
+      const existing = versions[idx]!;
+      versions[idx] = {
+        ...existing,
+        generations: upsertGenerations(existing.generations),
+      };
+    } else {
+      const basePromptText =
+        (typeof prompt.output === "string" && prompt.output.trim().length > 0
+          ? prompt.output
+          : prompt.input) || "";
+      versions.push({
+        versionId: promptVersionId,
+        signature: "server-append",
+        prompt: basePromptText,
+        timestamp: new Date().toISOString(),
+        generations: upsertGenerations(undefined),
+      });
+    }
+
+    const next: SessionRecord = {
+      ...current,
+      prompt: { ...prompt, versions },
+      updatedAt: new Date(),
+    };
+    await this.sessionStore.save(next);
+    return next;
+  }
+
   async deleteSession(sessionId: string): Promise<void> {
+    await this.cascadeVideoJobs(sessionId);
     await this.sessionStore.delete(sessionId);
   }
 
   async deleteSessionForUser(userId: string, sessionId: string): Promise<void> {
     await this.requireOwnedSession(userId, sessionId);
+    await this.cascadeVideoJobs(sessionId);
     await this.sessionStore.delete(sessionId);
+  }
+
+  private async cascadeVideoJobs(sessionId: string): Promise<void> {
+    if (!this.videoJobCascade) return;
+    try {
+      const cancelled =
+        await this.videoJobCascade.cancelJobsForSession(sessionId);
+      if (cancelled > 0) {
+        this.log.info("Cascaded video job cancellation on session delete", {
+          sessionId,
+          cancelled,
+        });
+      }
+    } catch (error) {
+      // Non-fatal: we prefer to complete the session delete even if cascade
+      // fails. The reconciler will catch orphaned in-flight jobs.
+      this.log.warn("Video job cascade failed during session delete", {
+        sessionId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
   }
 
   toDto(session: SessionRecord): SessionDto {

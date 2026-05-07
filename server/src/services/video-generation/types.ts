@@ -1,5 +1,20 @@
 import { VIDEO_MODELS } from "@config/modelConfig";
+import type { VideoModelId } from "@shared/videoModels";
 import type { VideoAssetStore } from "./storage";
+
+// Pure type family lives in `shared/videoModels.ts`. Re-exported here for
+// backward compatibility with existing importers under
+// `@services/video-generation/types`. Prefer importing from `@shared/videoModels`
+// directly in new code.
+export type {
+  KlingAspectRatio,
+  KlingModelId,
+  KnownVideoModelId,
+  LumaModelId,
+  SoraModelId,
+  VeoModelId,
+  VideoModelId,
+} from "@shared/videoModels";
 
 export interface ReplicateOptions {
   apiToken?: string;
@@ -15,14 +30,10 @@ export interface VideoGenerationServiceOptions extends ReplicateOptions {
   assetStore?: VideoAssetStore;
 }
 
+// `VideoModelKey` stays here — it is `keyof typeof VIDEO_MODELS`, which
+// depends on the server-local runtime config. It cannot be moved to `shared/`
+// without also exporting `VIDEO_MODELS` (a Node-scoped value) from shared.
 export type VideoModelKey = keyof typeof VIDEO_MODELS;
-export type VideoModelId = (typeof VIDEO_MODELS)[VideoModelKey];
-
-export type SoraModelId = "sora-2" | "sora-2-pro";
-export type LumaModelId = "luma-ray3";
-export type KlingModelId = "kling-v2-1-master";
-export type VeoModelId = "google/veo-3";
-export type KlingAspectRatio = "16:9" | "9:16" | "1:1";
 
 export interface VideoGenerationOptions {
   model?: VideoModelKey | VideoModelId;

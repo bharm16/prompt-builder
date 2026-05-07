@@ -4,7 +4,7 @@ import { enforceVideoMode } from "@middleware/enforceVideoMode";
 import { normalizeOptimizationRequest } from "@middleware/normalizeOptimizationRequest";
 import { requestCoalescing } from "@middleware/requestCoalescing";
 import { validateRequest } from "@middleware/validateRequest";
-import { promptSchema, compileSchema } from "@utils/validation";
+import { promptSchema, compileSchema } from "@config/schemas";
 import type { OptimizeServices } from "./optimize/types";
 import { createOptimizeHandler } from "./optimize/handlers/optimize";
 import { createOptimizeCompileHandler } from "./optimize/handlers/optimizeCompile";

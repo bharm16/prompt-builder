@@ -77,7 +77,7 @@ After registration, add a route factory in `server/src/config/routes.config.ts`.
 ### Route Wiring
 
 - Create `server/src/routes/<feature>.routes.ts`
-- Register in `routes.config.ts` — check the `promptOutputOnly` guard if the feature involves generation
+- Register in `routes.config.ts`
 - Add the Route → Service → Client API mapping to the root `CLAUDE.md` table
 
 ### Verification

@@ -1,9 +1,9 @@
-import type { PromptVersionEntry } from "@features/prompt-optimizer/types/domain/prompt-session";
+import type { PromptVersionEntry } from "@features/prompt-optimizer";
 import type {
   DraftModel,
   GenerationOverrides,
   VideoTier,
-} from "@components/ToolSidebar/types";
+} from "@features/generation-controls";
 import type { Asset } from "@shared/types/asset";
 import type { TimelineItem } from "@features/prompt-optimizer/types/domain/timeline";
 import type {

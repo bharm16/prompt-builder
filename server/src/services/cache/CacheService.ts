@@ -1,5 +1,5 @@
 import NodeCache from "node-cache";
-import crypto from "crypto";
+import { sha256Hex } from "@utils/hash";
 import { logger } from "@infrastructure/Logger";
 import type { ILogger } from "@interfaces/ILogger";
 import { SemanticCacheEnhancer } from "./SemanticCacheService.js";
@@ -26,6 +26,7 @@ const NULL_METRICS: CacheMetricsCollector = {
 
 interface CacheConfig {
   defaultTTL?: number;
+  maxKeys?: number;
   promptOptimization?: { ttl: number; namespace: string };
   questionGeneration?: { ttl: number; namespace: string };
   enhancement?: { ttl: number; namespace: string };
@@ -33,6 +34,11 @@ interface CacheConfig {
   creative?: { ttl: number; namespace: string };
   [key: string]: unknown;
 }
+
+// Bounds in-memory cache growth. At ~2 KB per entry (typical for span-labeling
+// and optimization results), 50k keys ≈ 100 MB RSS ceiling — well below the
+// 512 MB container budget. Override via CacheConfig.maxKeys for larger pods.
+const DEFAULT_MAX_KEYS = 50_000;
 
 interface CacheOptions {
   ttl?: number;
@@ -86,6 +92,7 @@ export class CacheService {
       stdTTL: config.defaultTTL || 3600, // Default 1 hour
       checkperiod: 600, // Check for expired keys every 10 minutes
       useClones: false, // Don't clone data (better performance)
+      maxKeys: config.maxKeys ?? DEFAULT_MAX_KEYS,
     });
 
     this.stats = {
@@ -150,11 +157,7 @@ export class CacheService {
     }
 
     // Fallback to standard hashing
-    const hash = crypto
-      .createHash("sha256")
-      .update(JSON.stringify(data))
-      .digest("hex")
-      .substring(0, 16);
+    const hash = sha256Hex(JSON.stringify(data), 16);
 
     return `${namespace}:${hash}`;
   }
@@ -203,7 +206,22 @@ export class CacheService {
     const startTime = performance.now();
     const operation = "set";
     const ttl = options.ttl || this.cache.options.stdTTL || 3600;
-    const success = this.cache.set(key, value, ttl);
+
+    // NodeCache throws "Cache max keys amount exceeded" when maxKeys is bounded
+    // and the cache is full. Callers (OptimizationCacheService, EnhancementService,
+    // etc.) treat .set() as best-effort and await without try/catch — swallow the
+    // throw here and return false so the set() contract stays {boolean}.
+    let success = false;
+    try {
+      success = this.cache.set(key, value, ttl);
+    } catch (error) {
+      this.log.warn("Cache set rejected (likely full)", {
+        operation,
+        key,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return false;
+    }
 
     const duration = Math.round(performance.now() - startTime);
     if (success) {

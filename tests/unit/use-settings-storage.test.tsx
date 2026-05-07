@@ -11,7 +11,6 @@ import type { AppSettings } from "@components/Settings/types";
 const STORAGE_KEY = "app-settings";
 
 const DEFAULT_SETTINGS: AppSettings = {
-  darkMode: false,
   fontSize: "medium",
   autoSave: true,
   exportFormat: "markdown",
@@ -53,6 +52,28 @@ describe("useSettingsStorage", () => {
     it("normalizes stored settings from persisted values", () => {
       localStorage.getItem = vi.fn(() =>
         JSON.stringify({
+          fontSize: "large",
+          autoSave: false,
+          exportFormat: "json",
+        }),
+      );
+
+      const { result } = renderHook(() => useSettingsStorage());
+
+      expect(result.current.settings).toEqual({
+        fontSize: "large",
+        autoSave: false,
+        exportFormat: "json",
+      });
+    });
+
+    it("strips legacy 'darkMode' field from persisted values without losing the rest", () => {
+      // Migration safety for ISSUE-36: users with pre-existing localStorage
+      // entries that include `darkMode` must continue to load cleanly. Zod's
+      // .partial().strip() (the default) drops the unknown field; the rest
+      // of the settings should hydrate normally.
+      localStorage.getItem = vi.fn(() =>
+        JSON.stringify({
           darkMode: true,
           fontSize: "large",
           autoSave: false,
@@ -63,11 +84,11 @@ describe("useSettingsStorage", () => {
       const { result } = renderHook(() => useSettingsStorage());
 
       expect(result.current.settings).toEqual({
-        darkMode: true,
         fontSize: "large",
         autoSave: false,
         exportFormat: "json",
       });
+      expect(result.current.settings).not.toHaveProperty("darkMode");
     });
   });
 
@@ -86,7 +107,6 @@ describe("useSettingsStorage", () => {
         expect(localStorage.setItem).toHaveBeenCalledWith(
           STORAGE_KEY,
           JSON.stringify({
-            darkMode: false,
             fontSize: "small",
             autoSave: true,
             exportFormat: "markdown",

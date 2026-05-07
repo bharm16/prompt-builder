@@ -23,13 +23,17 @@ const buildGeneration = (
 });
 
 describe("useGenerationsState", () => {
-  it("handles add/update/remove/set-active transitions and isGenerating derivation", () => {
+  it("handles set/update/remove/set-active transitions and isGenerating derivation", () => {
     const { result } = renderHook(() => useGenerationsState());
 
+    // ISSUE-12 follow-up: ADD_GENERATION retired; "a new generation exists"
+    // is now SET_GENERATIONS over the current state with the new entry
+    // appended. Active-generation tracking + isGenerating derivation still
+    // honour the same "last generation" semantics.
     act(() => {
       result.current.dispatch({
-        type: "ADD_GENERATION",
-        payload: buildGeneration("g1", "pending"),
+        type: "SET_GENERATIONS",
+        payload: [buildGeneration("g1", "pending")],
       });
     });
 
@@ -50,8 +54,11 @@ describe("useGenerationsState", () => {
 
     act(() => {
       result.current.dispatch({
-        type: "ADD_GENERATION",
-        payload: buildGeneration("g2", "generating"),
+        type: "SET_GENERATIONS",
+        payload: [
+          ...result.current.generations,
+          buildGeneration("g2", "generating"),
+        ],
       });
       result.current.dispatch({ type: "SET_ACTIVE", payload: "g1" });
       result.current.dispatch({

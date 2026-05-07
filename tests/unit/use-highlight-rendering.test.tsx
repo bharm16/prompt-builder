@@ -67,13 +67,13 @@ describe("useHighlightRendering", () => {
       );
 
       await waitFor(() => {
-        expect(result.current.current.spanMap.size).toBe(1);
+        expect(result.current.current!.spanMap.size).toBe(1);
       });
 
       rerender({ enabled: false });
 
       await waitFor(() => {
-        expect(result.current.current.spanMap.size).toBe(0);
+        expect(result.current.current!.spanMap.size).toBe(0);
       });
 
       expect(root.querySelectorAll("span")).toHaveLength(0);
@@ -100,13 +100,13 @@ describe("useHighlightRendering", () => {
       );
 
       await waitFor(() => {
-        expect(result.current.current.spanMap.size).toBe(1);
+        expect(result.current.current!.spanMap.size).toBe(1);
       });
 
       rerender({ spans: [] });
 
       await waitFor(() => {
-        expect(result.current.current.spanMap.size).toBe(0);
+        expect(result.current.current!.spanMap.size).toBe(0);
       });
       expect(root.querySelectorAll("span")).toHaveLength(0);
     });
@@ -130,7 +130,7 @@ describe("useHighlightRendering", () => {
       );
 
       await waitFor(() => {
-        expect(result.current.current.spanMap.size).toBe(1);
+        expect(result.current.current!.spanMap.size).toBe(1);
       });
 
       const wrapper = root.querySelector("span");

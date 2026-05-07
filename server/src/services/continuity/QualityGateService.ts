@@ -4,10 +4,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import sharp from "sharp";
 import { logger } from "@infrastructure/Logger";
+import { assertUrlSafe } from "@server/shared/urlValidation";
 import { FaceEmbeddingService } from "@services/asset/FaceEmbeddingService";
 import type { StorageService } from "@services/storage/StorageService";
 import { STORAGE_TYPES } from "@services/storage/config/storageConfig";
 import type { QualityGateResult } from "./types";
+import { DEFAULT_QUALITY_THRESHOLDS } from "./constants";
 
 interface QualityGateOptions {
   userId: string;
@@ -78,8 +80,11 @@ export class QualityGateService {
       }
     }
 
-    const styleThreshold = options.styleThreshold ?? 0.75;
-    const identityThreshold = options.identityThreshold ?? 0.6;
+    const styleThreshold =
+      options.styleThreshold ?? DEFAULT_QUALITY_THRESHOLDS.styleSimilarity;
+    const identityThreshold =
+      options.identityThreshold ??
+      DEFAULT_QUALITY_THRESHOLDS.identitySimilarity;
 
     const passedStyle =
       styleScore !== undefined ? styleScore >= styleThreshold : true;
@@ -277,6 +282,7 @@ export class QualityGateService {
   }
 
   private async downloadImage(url: string): Promise<Buffer> {
+    assertUrlSafe(url, "qualityGateImageUrl");
     const response = await fetch(url);
     if (!response.ok) {
       throw new Error(`Failed to download image (${response.status})`);

@@ -55,8 +55,6 @@ spec:
               value: "info"
             - name: PROCESS_ROLE
               value: "worker"
-            - name: VIDEO_JOB_INLINE_ENABLED
-              value: "false"
 
           envFrom:
             - configMapRef:

@@ -3,7 +3,8 @@
  * Defines interfaces for the 3-phase optimization pipeline (Normalize → Transform → Augment)
  */
 
-import type { VideoPromptStructuredResponse } from "@services/prompt-optimization/strategies/videoPromptTypes";
+import type { ModelConstraints as PromptModelConstraints } from "@server/contracts/prompt-analysis/modelConstraints";
+import type { VideoPromptStructuredResponse } from "@server/contracts/prompt-analysis/structuredPrompt";
 import type {
   ConstraintConfig,
   EditHistoryEntry,
@@ -45,10 +46,7 @@ export interface PromptOptimizationResult {
   metadata: OptimizationMetadata;
 }
 
-export interface ModelConstraints {
-  wordLimits: { min: number; max: number };
-  triggerBudgetWords: number;
-}
+export type ModelConstraints = PromptModelConstraints;
 
 /**
  * Reference to an asset (image, video, or cameo identity)

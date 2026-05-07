@@ -148,6 +148,10 @@ export function SignUpPage(): React.ReactElement {
   const emailFocus = useFocusStyle();
   const passwordFocus = useFocusStyle();
   const confirmFocus = useFocusStyle();
+  const nameId = React.useId();
+  const emailId = React.useId();
+  const passwordId = React.useId();
+  const confirmId = React.useId();
 
   React.useEffect(() => {
     if (!user) return;
@@ -290,6 +294,7 @@ export function SignUpPage(): React.ReactElement {
         <form onSubmit={handleEmailSignUp} className="flex flex-col gap-3.5">
           <div>
             <label
+              htmlFor={nameId}
               className={AUTH_LABEL_CLASS}
               style={{ color: AUTH_COLORS.textLabel }}
             >
@@ -305,6 +310,7 @@ export function SignUpPage(): React.ReactElement {
                 aria-hidden="true"
               />
               <Input
+                id={nameId}
                 className={`${AUTH_INPUT_CLASS} pl-10`}
                 style={nameFocus.style}
                 onFocus={nameFocus.onFocus}
@@ -320,6 +326,7 @@ export function SignUpPage(): React.ReactElement {
 
           <div>
             <label
+              htmlFor={emailId}
               className={AUTH_LABEL_CLASS}
               style={{ color: AUTH_COLORS.textLabel }}
             >
@@ -332,6 +339,7 @@ export function SignUpPage(): React.ReactElement {
                 aria-hidden="true"
               />
               <Input
+                id={emailId}
                 className={`${AUTH_INPUT_CLASS} pl-10`}
                 style={emailFocus.style}
                 onFocus={emailFocus.onFocus}
@@ -348,6 +356,7 @@ export function SignUpPage(): React.ReactElement {
 
           <div>
             <label
+              htmlFor={passwordId}
               className={AUTH_LABEL_CLASS}
               style={{ color: AUTH_COLORS.textLabel }}
             >
@@ -355,6 +364,7 @@ export function SignUpPage(): React.ReactElement {
             </label>
             <div className="relative">
               <Input
+                id={passwordId}
                 className={`${AUTH_INPUT_CLASS} pr-10`}
                 style={passwordFocus.style}
                 onFocus={passwordFocus.onFocus}
@@ -386,12 +396,14 @@ export function SignUpPage(): React.ReactElement {
 
           <div>
             <label
+              htmlFor={confirmId}
               className={AUTH_LABEL_CLASS}
               style={{ color: AUTH_COLORS.textLabel }}
             >
               CONFIRM PASSWORD
             </label>
             <Input
+              id={confirmId}
               className={AUTH_INPUT_CLASS}
               style={confirmFocus.style}
               onFocus={confirmFocus.onFocus}

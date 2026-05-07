@@ -469,7 +469,8 @@ describe("useHistoryPersistence", () => {
     });
   });
 
-  it("persists draft prompt updates locally without calling the remote repository", () => {
+  it("persists draft prompt updates locally without calling the remote repository", async () => {
+    vi.useFakeTimers();
     const updateEntry = vi.fn();
 
     const { result } = renderHook(() =>
@@ -488,6 +489,11 @@ describe("useHistoryPersistence", () => {
         title: "Changed title",
         targetModel: "model-z",
       });
+    });
+
+    // Local-storage snapshot is debounced; advance past the 5s window.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5_000);
     });
 
     expect(mockUpdatePrompt).not.toHaveBeenCalled();
@@ -565,6 +571,7 @@ describe("useHistoryPersistence", () => {
   });
 
   it("persists draft version updates locally without remote promotion", async () => {
+    vi.useFakeTimers();
     const updateEntry = vi.fn();
     const versions: PromptVersionEntry[] = [
       {
@@ -587,6 +594,11 @@ describe("useHistoryPersistence", () => {
 
     act(() => {
       result.current.updateEntryVersions("uuid-1", "draft-1", versions);
+    });
+
+    // Local-storage snapshot is debounced; advance past the 5s window.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5_000);
     });
 
     expect(mockUpdateVersions).not.toHaveBeenCalled();

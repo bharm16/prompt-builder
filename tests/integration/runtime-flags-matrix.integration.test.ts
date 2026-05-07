@@ -7,10 +7,8 @@ import { createApp } from "@server/app";
 const TEST_API_KEY = "runtime-flags-test-key";
 
 const ENV_KEYS = [
-  "PROMPT_OUTPUT_ONLY",
   "ENABLE_CONVERGENCE",
   "PROCESS_ROLE",
-  "VIDEO_JOB_INLINE_ENABLED",
   "ALLOWED_API_KEYS",
   "PORT",
   "NODE_ENV",
@@ -56,32 +54,6 @@ async function withApp(
 }
 
 describe("Runtime flag matrix contracts (integration)", () => {
-  it("hides preview, motion, and video concept routes when PROMPT_OUTPUT_ONLY=true", async () => {
-    await withApp({ PROMPT_OUTPUT_ONLY: "true" }, async (app) => {
-      const previewRoute = await request(app)
-        .get("/api/preview/video/availability")
-        .set("x-api-key", TEST_API_KEY);
-      expect(previewRoute.status).toBe(404);
-
-      const videoConceptRoute = await request(app)
-        .post("/api/video/suggestions")
-        .set("x-api-key", TEST_API_KEY)
-        .send({});
-      expect(videoConceptRoute.status).toBe(404);
-
-      const motionRoute = await request(app)
-        .get("/api/motion/media/health")
-        .set("x-api-key", TEST_API_KEY);
-      expect(motionRoute.status).toBe(404);
-
-      const optimizeRoute = await request(app)
-        .post("/api/optimize")
-        .set("x-api-key", TEST_API_KEY)
-        .send({});
-      expect(optimizeRoute.status).toBe(400);
-    });
-  });
-
   it("keeps health and optimization stable while disabling continuity when ENABLE_CONVERGENCE=false", async () => {
     await withApp({ ENABLE_CONVERGENCE: "false" }, async (app) => {
       const health = await request(app).get("/health");
@@ -114,31 +86,10 @@ describe("Runtime flag matrix contracts (integration)", () => {
     });
   });
 
-  it("keeps /health and optimization routes stable with combined PROMPT_OUTPUT_ONLY + ENABLE_CONVERGENCE flags", async () => {
-    await withApp(
-      {
-        PROMPT_OUTPUT_ONLY: "true",
-        ENABLE_CONVERGENCE: "false",
-      },
-      async (app) => {
-        const health = await request(app).get("/health");
-        expect(health.status).toBe(200);
-        expect(health.body.status).toBe("healthy");
-
-        const optimizeRoute = await request(app)
-          .post("/api/optimize")
-          .set("x-api-key", TEST_API_KEY)
-          .send({});
-        expect(optimizeRoute.status).toBe(400);
-      },
-    );
-  });
-
   it("keeps health stable across PROCESS_ROLE api/worker runtime modes", async () => {
     await withApp(
       {
         PROCESS_ROLE: "api",
-        VIDEO_JOB_INLINE_ENABLED: "false",
       },
       async (app) => {
         const health = await request(app).get("/health");
@@ -150,7 +101,6 @@ describe("Runtime flag matrix contracts (integration)", () => {
     await withApp(
       {
         PROCESS_ROLE: "worker",
-        VIDEO_JOB_INLINE_ENABLED: "false",
       },
       async (app) => {
         const health = await request(app).get("/health");

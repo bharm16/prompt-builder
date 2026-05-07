@@ -1,6 +1,6 @@
 import { logger } from "@infrastructure/Logger";
 import type { ILogger } from "@interfaces/ILogger";
-import { resolvePromptModelId } from "@services/video-models/ModelRegistry";
+import { resolvePromptModelId } from "@config/videoModelRegistry";
 import type {
   CompilationState,
   CompileContext,

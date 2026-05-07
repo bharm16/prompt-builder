@@ -3,7 +3,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { CategoryLegend } from "@features/prompt-optimizer/components/CategoryLegend";
-import { CATEGORY_ORDER } from "@features/prompt-optimizer/SpanBentoGrid/config/bentoConfig";
+import { CATEGORY_ORDER } from "@features/prompt-optimizer/SpanCategoryAccordion/config/categoryConfig";
 
 describe("CategoryLegend", () => {
   describe("error handling", () => {

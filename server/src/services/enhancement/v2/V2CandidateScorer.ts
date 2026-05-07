@@ -53,7 +53,7 @@ const STOP_WORDS = new Set([
 ]);
 
 export class V2CandidateScorer {
-  constructor(private readonly videoService: VideoService) {}
+  constructor(private readonly videoPromptService: VideoService) {}
 
   scoreCandidates(
     suggestions: Suggestion[],
@@ -139,7 +139,7 @@ export class V2CandidateScorer {
       reasons.push("multiline");
     }
 
-    const wordCount = this.videoService.countWords(text);
+    const wordCount = this.videoPromptService.countWords(text);
     if (
       wordCount < policy.grammar.minWords ||
       wordCount > policy.grammar.maxWords

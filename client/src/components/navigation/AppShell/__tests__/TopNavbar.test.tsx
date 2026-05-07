@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { TopNavbar } from "../variants/TopNavbar";
-import type { NavItem } from "../types";
+import type { IconComponent, NavItem } from "../types";
 
 vi.mock("../shared/BrandLogo", () => ({
   BrandLogo: () => <div data-testid="brand-logo" />,
@@ -22,7 +22,7 @@ describe("TopNavbar", () => {
     {
       to: "/pricing",
       label: "Pricing",
-      icon: () => null,
+      icon: (() => null) as unknown as IconComponent,
       showInTopNav: true,
       showInSidebar: false,
     },

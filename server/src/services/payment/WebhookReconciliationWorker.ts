@@ -1,5 +1,3 @@
-import { logger } from "@infrastructure/Logger";
-import type { WorkerStatus } from "@services/credits/CreditRefundSweeper";
 import type { PaymentService } from "./PaymentService";
 import type { StripeWebhookEventStore } from "./StripeWebhookEventStore";
 import {
@@ -9,6 +7,10 @@ import {
 import type { BillingProfileStore } from "./BillingProfileStore";
 import type { UserCreditService } from "@services/credits/UserCreditService";
 import type { PaymentConsistencyStore } from "./PaymentConsistencyStore";
+import {
+  PollingWorkerBase,
+  type PollingWorkerMetrics,
+} from "@services/polling/PollingWorkerBase";
 
 const DEFAULT_LOOKBACK_HOURS = 72;
 
@@ -17,34 +19,17 @@ interface WebhookReconciliationWorkerOptions {
   maxPollIntervalMs?: number;
   backoffFactor?: number;
   lookbackHours?: number;
-  metrics?: {
-    recordAlert: (
-      alertName: string,
-      metadata?: Record<string, unknown>,
-    ) => void;
-  };
+  metrics?: PollingWorkerMetrics;
 }
 
-export class WebhookReconciliationWorker {
-  private readonly log = logger.child({
-    service: "WebhookReconciliationWorker",
-  });
+export class WebhookReconciliationWorker extends PollingWorkerBase {
   private readonly paymentService: PaymentService;
   private readonly webhookEventStore: StripeWebhookEventStore;
   private readonly paymentConsistencyStore: PaymentConsistencyStore;
   private readonly handlers: WebhookEventHandlers;
-  private readonly basePollIntervalMs: number;
-  private readonly maxPollIntervalMs: number;
-  private readonly backoffFactor: number;
   private readonly lookbackHours: number;
-  private readonly metrics?: WebhookReconciliationWorkerOptions["metrics"];
-  private timer: NodeJS.Timeout | null = null;
-  private currentPollIntervalMs: number;
-  private started = false;
+  private readonly reconcilerMetrics: PollingWorkerMetrics | undefined;
   private running = false;
-  private lastRunAt: Date | null = null;
-  private lastSuccessfulRunAt: Date | null = null;
-  private consecutiveFailures = 0;
 
   constructor(
     paymentService: PaymentService,
@@ -54,92 +39,44 @@ export class WebhookReconciliationWorker {
     paymentConsistencyStore: PaymentConsistencyStore,
     options: WebhookReconciliationWorkerOptions,
   ) {
+    super({
+      workerId: "WebhookReconciliationWorker",
+      basePollIntervalMs: options.pollIntervalMs,
+      maxPollIntervalMs:
+        options.maxPollIntervalMs ??
+        Math.max(options.pollIntervalMs * 4, 600_000),
+      ...(options.backoffFactor !== undefined
+        ? { backoffFactor: options.backoffFactor }
+        : {}),
+      ...(options.metrics ? { metrics: options.metrics } : {}),
+    });
     this.paymentService = paymentService;
     this.webhookEventStore = webhookEventStore;
     this.paymentConsistencyStore = paymentConsistencyStore;
-    this.basePollIntervalMs = options.pollIntervalMs;
-    this.maxPollIntervalMs =
-      options.maxPollIntervalMs ??
-      Math.max(this.basePollIntervalMs * 4, 600_000);
-    this.backoffFactor = options.backoffFactor ?? 2;
     this.lookbackHours = options.lookbackHours ?? DEFAULT_LOOKBACK_HOURS;
-    this.metrics = options.metrics;
+    this.reconcilerMetrics = options.metrics;
 
     this.handlers = createWebhookEventHandlers({
       paymentService,
       billingProfileStore,
       userCreditService,
       paymentConsistencyStore,
-      ...(this.metrics ? { metricsService: this.metrics } : {}),
+      ...(this.reconcilerMetrics
+        ? { metricsService: this.reconcilerMetrics }
+        : {}),
     });
-
-    this.currentPollIntervalMs = this.basePollIntervalMs;
   }
 
-  start(): void {
-    if (this.started) return;
-    this.started = true;
-    this.currentPollIntervalMs = this.basePollIntervalMs;
+  override start(): void {
+    if (this.isStarted()) return;
+    super.start();
     this.log.info("Webhook reconciliation worker started", {
       pollIntervalMs: this.basePollIntervalMs,
       lookbackHours: this.lookbackHours,
     });
-    this.scheduleNext(this.basePollIntervalMs);
   }
 
-  stop(): void {
-    this.started = false;
-    if (this.timer) {
-      clearTimeout(this.timer);
-      this.timer = null;
-    }
-  }
-
-  getStatus(): WorkerStatus {
-    return {
-      running: this.started,
-      lastRunAt: this.lastRunAt,
-      lastSuccessfulRunAt: this.lastSuccessfulRunAt,
-      consecutiveFailures: this.consecutiveFailures,
-    };
-  }
-
-  private scheduleNext(delayMs: number): void {
-    if (!this.started) return;
-    this.timer = setTimeout(() => {
-      void this.runLoop();
-    }, delayMs);
-  }
-
-  private async runLoop(): Promise<void> {
-    if (!this.started) return;
-    try {
-      const success = await this.runOnce();
-      if (success) {
-        this.currentPollIntervalMs = this.basePollIntervalMs;
-      } else {
-        this.currentPollIntervalMs = Math.min(
-          this.maxPollIntervalMs,
-          Math.round(this.currentPollIntervalMs * this.backoffFactor),
-        );
-      }
-    } catch (error) {
-      this.consecutiveFailures += 1;
-      this.log.error("Worker loop failed unexpectedly", error as Error);
-      this.metrics?.recordAlert("worker_loop_crash", {
-        worker: "WebhookReconciliationWorker",
-      });
-      this.currentPollIntervalMs = Math.min(
-        this.maxPollIntervalMs,
-        Math.round(this.currentPollIntervalMs * this.backoffFactor),
-      );
-    }
-    if (this.started) {
-      this.scheduleNext(this.currentPollIntervalMs);
-    }
-  }
-
-  private async runOnce(): Promise<boolean> {
+  protected async runOnce(): Promise<boolean> {
     if (this.running) return true;
     this.running = true;
 
@@ -257,9 +194,12 @@ export class WebhookReconciliationWorker {
       }
 
       if (reconciled > 0) {
-        this.metrics?.recordAlert("webhook_reconciliation_recovered_total", {
-          count: reconciled,
-        });
+        this.reconcilerMetrics?.recordAlert(
+          "webhook_reconciliation_recovered_total",
+          {
+            count: reconciled,
+          },
+        );
       }
 
       // Edge-of-window alerting: warn if unprocessed events are near the lookback boundary
@@ -279,7 +219,7 @@ export class WebhookReconciliationWorker {
           oldestEventAgeSec,
           lookbackHours: this.lookbackHours,
         });
-        this.metrics?.recordAlert("webhook_lookback_edge_warning", {
+        this.reconcilerMetrics?.recordAlert("webhook_lookback_edge_warning", {
           count: nearEdgeUnprocessed.length,
           oldestEventAgeSec,
           lookbackHours: this.lookbackHours,
@@ -302,7 +242,7 @@ export class WebhookReconciliationWorker {
           failedCount: webhookBacklog.failedCount,
           oldestUnprocessedAgeSec,
         });
-        this.metrics?.recordAlert("stripe_webhook_backlog_warning", {
+        this.reconcilerMetrics?.recordAlert("stripe_webhook_backlog_warning", {
           totalUnprocessed: webhookBacklog.totalUnprocessed,
           processingCount: webhookBacklog.processingCount,
           failedCount: webhookBacklog.failedCount,
@@ -321,22 +261,21 @@ export class WebhookReconciliationWorker {
           openCount: unresolvedSummary.openCount,
           oldestUnresolvedAgeSec,
         });
-        this.metrics?.recordAlert("payment_unresolved_events_warning", {
-          openCount: unresolvedSummary.openCount,
-          ...(oldestUnresolvedAgeSec !== null
-            ? { oldestUnresolvedAgeSec }
-            : {}),
-        });
+        this.reconcilerMetrics?.recordAlert(
+          "payment_unresolved_events_warning",
+          {
+            openCount: unresolvedSummary.openCount,
+            ...(oldestUnresolvedAgeSec !== null
+              ? { oldestUnresolvedAgeSec }
+              : {}),
+          },
+        );
       }
 
-      const now = new Date();
-      this.lastRunAt = now;
-      this.lastSuccessfulRunAt = now;
-      this.consecutiveFailures = 0;
+      this.markRunSuccess();
       return true;
     } catch (error) {
-      this.lastRunAt = new Date();
-      this.consecutiveFailures += 1;
+      this.markRunFailure();
       const errorMessage =
         error instanceof Error ? error.message : String(error);
       this.log.warn("Webhook reconciliation run failed", {

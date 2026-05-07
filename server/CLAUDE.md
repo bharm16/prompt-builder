@@ -20,6 +20,9 @@ Root `AGENTS.md` rules apply here — especially the non-negotiable rules and co
 ```bash
 npm run server      # Start dev server (port 3001)
 npm run server:e2e  # Start server in test mode
+
+# Integration test gate (run when modifying DI config, app.ts, server.ts, or server/index.ts):
+PORT=0 npx vitest run tests/integration/bootstrap.integration.test.ts tests/integration/di-container.integration.test.ts --config config/test/vitest.integration.config.js
 ```
 
 ## Structure

@@ -85,13 +85,13 @@ function getOpenAIVideoOptimizationSchema(): JSONSchema {
       shot_framing: {
         type: "string",
         description:
-          'Framing shot type (NOT camera angle). Start the prose with this (e.g., "A Wide Shot...").',
+          "Categorical framing label. Must be exactly one of the enum values — do not add prefixes, suffixes, or prose.",
         enum: [...SHOT_FRAMINGS],
       },
       camera_angle: {
         type: "string",
         description:
-          'Camera angle/viewpoint (separate from framing). Mention this after framing (e.g., "from a low angle").',
+          "Categorical camera-angle label. Must be exactly one of the enum values — do not add prefixes, suffixes, or prose.",
         enum: [...CAMERA_ANGLES],
       },
       camera_move: {

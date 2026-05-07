@@ -211,7 +211,11 @@ const normalizeCapabilitiesSchema = (
   };
 };
 
+type RegistryResponse = Record<string, Record<string, CapabilitiesSchema>>;
+
 export class CapabilitiesApi {
+  private registryInFlight: Promise<RegistryResponse> | null = null;
+
   constructor(private readonly client: ApiClient) {}
 
   async getCapabilities(
@@ -242,23 +246,35 @@ export class CapabilitiesApi {
     );
   }
 
-  async getRegistry(): Promise<
-    Record<string, Record<string, CapabilitiesSchema>>
-  > {
-    const parsed = CapabilitiesRegistrySchema.parse(
-      await this.client.get("/registry"),
-    );
-    return Object.fromEntries(
-      Object.entries(parsed).map(([provider, models]) => [
-        provider,
-        Object.fromEntries(
-          Object.entries(models).map(([modelId, capability]) => [
-            modelId,
-            normalizeCapabilitiesSchema(capability),
-          ]),
-        ),
-      ]),
-    );
+  // Coalesces concurrent callers (useModelRegistry + useCapabilityRegistry mount
+  // simultaneously in ShotEditor) onto a single network request. The promise is
+  // cleared after settle so a subsequent mount refetches.
+  async getRegistry(): Promise<RegistryResponse> {
+    if (this.registryInFlight) {
+      return this.registryInFlight;
+    }
+    const request = (async (): Promise<RegistryResponse> => {
+      const parsed = CapabilitiesRegistrySchema.parse(
+        await this.client.get("/registry"),
+      );
+      return Object.fromEntries(
+        Object.entries(parsed).map(([provider, models]) => [
+          provider,
+          Object.fromEntries(
+            Object.entries(models).map(([modelId, capability]) => [
+              modelId,
+              normalizeCapabilitiesSchema(capability),
+            ]),
+          ),
+        ]),
+      );
+    })();
+    this.registryInFlight = request;
+    try {
+      return await request;
+    } finally {
+      this.registryInFlight = null;
+    }
   }
 
   async getVideoAvailability(): Promise<VideoAvailabilityResponse> {

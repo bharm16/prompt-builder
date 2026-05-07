@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { SessionRecord } from "../types";
-import type { ContinuitySession } from "@services/continuity/types";
+import type { ContinuitySession } from "@server/domain/continuity/types";
 
 type StoreRecord = Record<string, unknown>;
 type QueryFilter = { field: string; operator: "=="; value: unknown };

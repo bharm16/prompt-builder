@@ -6,6 +6,7 @@
  */
 
 import type { Application } from "express";
+import type { Bucket } from "@google-cloud/storage";
 import type { DIContainer } from "@infrastructure/DIContainer";
 import { apiAuthMiddleware } from "@middleware/apiAuth";
 import { createBatchMiddleware } from "@middleware/requestBatching";
@@ -24,23 +25,18 @@ import type { ConsistentVideoService } from "@services/video-generation/Consiste
 import type { UserCreditService } from "@services/credits/UserCreditService";
 import { STORAGE_CONFIG } from "@services/storage/config/storageConfig";
 import { resolveOptionalService } from "./resolve-utils.ts";
-import type { RuntimeFlags } from "../runtime-flags";
 
 export function registerApiRoutes(
   app: Application,
   container: DIContainer,
-  runtimeFlags: RuntimeFlags,
 ): void {
-  const { promptOutputOnly } = runtimeFlags;
   const userCreditService = container.resolve("userCreditService");
 
-  const videoGenerationService = promptOutputOnly
-    ? null
-    : resolveOptionalService<unknown>(
-        container,
-        "videoGenerationService",
-        "preview",
-      );
+  const videoGenerationService = resolveOptionalService<unknown>(
+    container,
+    "videoGenerationService",
+    "preview",
+  );
 
   const continuitySessionService =
     resolveOptionalService<ContinuitySessionService | null>(
@@ -55,25 +51,32 @@ export function registerApiRoutes(
       "model-intelligence",
     );
   const consistentVideoService: ConsistentVideoService | null =
-    promptOutputOnly || !videoGenerationService
+    !videoGenerationService
       ? null
       : resolveOptionalService<ConsistentVideoService | null>(
           container,
           "consistentVideoService",
           "consistent-generation",
         );
-  const videoConceptService: VideoConceptServiceContract | null =
-    promptOutputOnly
-      ? null
-      : resolveOptionalService<VideoConceptServiceContract | null>(
-          container,
-          "videoConceptService",
-          "video-concept",
-        );
+  // Required: VideoConceptService is registered in enhancement.services.ts
+  // and listed in ServiceRegistry. A missing registration must fail boot
+  // (loud) rather than silently 404 the entire /api/video/* namespace.
+  const videoConceptService = container.resolve<VideoConceptServiceContract>(
+    "videoConceptService",
+  );
 
   // Media proxy — no auth required (signed URL is the authorization).
   // Must be registered before the auth middleware on /api.
-  const mediaProxyRoutes = createMediaProxyRoutes(STORAGE_CONFIG.bucketName);
+  // C3 fix: pass the bucket so the proxy can fall back to streaming
+  // directly from GCS when a client-side signed URL has expired. The
+  // bucket is unconditionally registered in storage.services.ts and
+  // listed in REQUIRED_TOKENS — a missing registration must fail boot
+  // (loud) rather than silently lose the expired-URL recovery path.
+  const gcsBucket = container.resolve<Bucket>("gcsBucket");
+  const mediaProxyRoutes = createMediaProxyRoutes(
+    STORAGE_CONFIG.bucketName,
+    gcsBucket,
+  );
   app.use("/api/storage", mediaProxyRoutes);
 
   // Main API routes
@@ -88,7 +91,7 @@ export function registerApiRoutes(
     ...(consistentVideoService ? { consistentVideoService } : {}),
     userCreditService:
       container.resolve<UserCreditService>("userCreditService"),
-    referenceImageService: container.resolve("referenceImageService"),
+    referenceImageRepository: container.resolve("referenceImageRepository"),
     imageObservationService: container.resolve("imageObservationService"),
     continuitySessionService,
     sessionService: container.resolve("sessionService"),

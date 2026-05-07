@@ -1,5 +1,5 @@
 import { logger } from "@infrastructure/Logger";
-import type { AIService } from "@services/prompt-optimization/types";
+import type { AIExecutionPort as AIService } from "@services/ai-model/ports/AIExecutionPort";
 import type { StyleAnalysisMetadata } from "./types";
 import { z } from "zod";
 

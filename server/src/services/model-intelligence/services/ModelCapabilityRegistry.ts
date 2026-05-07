@@ -1,6 +1,6 @@
 import { VIDEO_MODELS } from "@config/modelConfig";
 import type { ModelCapabilities } from "../types";
-import type { VideoModelId } from "@services/video-generation/types";
+import type { VideoModelId } from "@shared/videoModels";
 
 export class ModelCapabilityRegistry {
   private readonly capabilities: Map<VideoModelId, ModelCapabilities> =

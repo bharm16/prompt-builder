@@ -1,10 +1,10 @@
 import { logger } from "@infrastructure/Logger";
+import { assertUrlSafe } from "@server/shared/urlValidation";
 import { generateId } from "@utils/uid";
 import { StorageService } from "@services/storage/StorageService";
 import { STORAGE_TYPES } from "@services/storage/config/storageConfig";
-import { createDepthEstimationServiceForUser } from "@services/convergence/depth";
-import type { StorageService as ConvergenceStorageService } from "@services/convergence/storage";
 import sharp from "sharp";
+import type { DepthEstimationFactory } from "./ports/DepthEstimationFactory";
 import type { FrameBridgeService } from "./FrameBridgeService";
 import type { SceneProxy, SceneProxyRender } from "./types";
 
@@ -23,6 +23,7 @@ export class SceneProxyService {
   constructor(
     private storage: StorageService,
     private frameBridge: FrameBridgeService,
+    private createDepthEstimationService: DepthEstimationFactory,
   ) {}
 
   async createProxyFromVideo(
@@ -41,10 +42,7 @@ export class SceneProxyService {
       let depthMapUrl: string | undefined;
       let depthBuffer: Buffer | undefined;
 
-      const depthService = createDepthEstimationServiceForUser(
-        this.storage as unknown as ConvergenceStorageService,
-        userId,
-      );
+      const depthService = this.createDepthEstimationService(userId);
 
       if (depthService.isAvailable()) {
         try {
@@ -127,15 +125,31 @@ export class SceneProxyService {
     proxy: SceneProxy,
     shotId: string,
     cameraPose?: {
-      yaw?: number;
-      pitch?: number;
-      roll?: number;
-      dolly?: number;
+      yaw?: number | undefined;
+      pitch?: number | undefined;
+      roll?: number | undefined;
+      dolly?: number | undefined;
     },
   ): Promise<SceneProxyRender> {
     if (!proxy.referenceFrameUrl || !proxy.depthMapUrl) {
       throw new Error("Scene proxy is missing reference assets");
     }
+
+    // Normalize at the boundary: strip undefined-valued fields so downstream
+    // code (with exactOptionalPropertyTypes) can treat optional keys as absent
+    // rather than `undefined`. Previously lived in ContinuityPostProcessingService.
+    const normalizedCameraPose = cameraPose
+      ? {
+          ...(cameraPose.yaw !== undefined ? { yaw: cameraPose.yaw } : {}),
+          ...(cameraPose.pitch !== undefined
+            ? { pitch: cameraPose.pitch }
+            : {}),
+          ...(cameraPose.roll !== undefined ? { roll: cameraPose.roll } : {}),
+          ...(cameraPose.dolly !== undefined
+            ? { dolly: cameraPose.dolly }
+            : {}),
+        }
+      : undefined;
 
     const [imageBuffer, depthBuffer] = await Promise.all([
       this.downloadImage(proxy.referenceFrameUrl),
@@ -145,7 +159,7 @@ export class SceneProxyService {
     const rendered = await this.renderParallax(
       imageBuffer,
       depthBuffer,
-      cameraPose,
+      normalizedCameraPose,
     );
 
     const stored = await this.storage.saveFromBuffer(
@@ -156,13 +170,15 @@ export class SceneProxyService {
       { source: "scene-proxy-render" },
     );
 
-    const pose = cameraPose
+    const pose = normalizedCameraPose
       ? {
-          yaw: cameraPose.yaw ?? 0,
-          pitch: cameraPose.pitch ?? 0,
-          ...(cameraPose.roll !== undefined ? { roll: cameraPose.roll } : {}),
-          ...(cameraPose.dolly !== undefined
-            ? { dolly: cameraPose.dolly }
+          yaw: normalizedCameraPose.yaw ?? 0,
+          pitch: normalizedCameraPose.pitch ?? 0,
+          ...(normalizedCameraPose.roll !== undefined
+            ? { roll: normalizedCameraPose.roll }
+            : {}),
+          ...(normalizedCameraPose.dolly !== undefined
+            ? { dolly: normalizedCameraPose.dolly }
             : {}),
         }
       : undefined;
@@ -345,6 +361,7 @@ export class SceneProxyService {
   }
 
   private async downloadImage(url: string): Promise<Buffer> {
+    assertUrlSafe(url, "sceneProxyImageUrl");
     const response = await fetch(url);
     if (!response.ok) {
       throw new Error(`Failed to download image (${response.status})`);

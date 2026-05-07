@@ -153,14 +153,20 @@ export function useDebugLogger(
     [componentName, log],
   );
 
-  return {
-    logState,
-    logEffect,
-    logAction,
-    logError,
-    startTimer,
-    endTimer,
-  };
+  // Memoize the returned object so consumers can include `debug` in
+  // useEffect deps without re-triggering on every render. Each inner
+  // callback is already useCallback'd; this just stabilizes the wrapper.
+  return useMemo(
+    () => ({
+      logState,
+      logEffect,
+      logAction,
+      logError,
+      startTimer,
+      endTimer,
+    }),
+    [logState, logEffect, logAction, logError, startTimer, endTimer],
+  );
 }
 
 /**

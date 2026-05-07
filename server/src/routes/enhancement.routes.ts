@@ -1,5 +1,6 @@
 import express, { type Router } from "express";
 import { PerformanceMonitor } from "@middleware/performanceMonitor";
+import type { CoherenceCheckResult } from "@shared/types/coherence";
 import { registerEnhancementSuggestionsRoute } from "./enhancement/enhancementSuggestionsRoute";
 import { registerCustomSuggestionsRoute } from "./enhancement/customSuggestionsRoute";
 import { registerSceneChangeRoute } from "./enhancement/sceneChangeRoute";
@@ -23,7 +24,7 @@ export interface EnhancementServices {
   promptCoherenceService: {
     checkCoherence: (
       payload: Record<string, unknown>,
-    ) => Promise<Record<string, unknown>>;
+    ) => Promise<CoherenceCheckResult>;
   };
   metricsService?:
     | {

@@ -2,7 +2,7 @@ import type { Router } from "express";
 import { logger } from "@infrastructure/Logger";
 import { asyncHandler } from "@middleware/asyncHandler";
 import { validateRequest } from "@middleware/validateRequest";
-import { customSuggestionSchema } from "@utils/validation";
+import { customSuggestionSchema } from "@config/schemas";
 
 interface CustomSuggestionsResult {
   suggestions?: unknown[];

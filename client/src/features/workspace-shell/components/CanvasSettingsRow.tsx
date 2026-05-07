@@ -1,21 +1,31 @@
-import React, { useCallback, useMemo } from "react";
-import { Eye, MagicWand, Images, X } from "@promptstudio/system/components/ui";
-import type { SidebarUploadedImage } from "@components/ToolSidebar/types";
+import React, { useCallback, useEffect, useMemo, useRef } from "react";
+import {
+  CaretDown,
+  Eye,
+  MagicWand,
+  Microphone,
+  Target,
+  X,
+} from "@promptstudio/system/components/ui";
+import type { SidebarUploadedImage } from "@features/generation-controls";
 import {
   VIDEO_DRAFT_MODELS,
-  VIDEO_RENDER_MODELS,
   STORYBOARD_COST,
   getVideoCost,
 } from "@/components/ToolSidebar/config/modelConfig";
 import { getDefaultGenerationDurationSeconds } from "@shared/generationPricing";
 import { useGenerationControlsContext } from "@/features/prompt-optimizer/context/GenerationControlsContext";
+import { useCreditBalance } from "@/contexts/CreditBalanceContext";
 import {
   useGenerationControlsStoreActions,
   useGenerationControlsStoreState,
-} from "@features/generation-controls/context/GenerationControlsStore";
+} from "@features/generation-controls";
 import { useCapabilitiesClamping } from "@/components/ToolSidebar/components/panels/GenerationControlsPanel/hooks/useCapabilitiesClamping";
 import { useVideoInputCapabilities } from "@/components/ToolSidebar/components/panels/GenerationControlsPanel/hooks/useVideoInputCapabilities";
+import { ModelRecommendationDropdown } from "@/components/ToolSidebar/components/panels/GenerationControlsPanel/components/ModelRecommendationDropdown";
+import type { ModelRecommendation } from "@/features/model-intelligence/types";
 import { trackModelRecommendationEvent } from "@/features/model-intelligence/api";
+import { cn } from "@/utils/cn";
 import { StartFramePopover } from "./StartFramePopover";
 import { EndFramePopover } from "./EndFramePopover";
 import { VideoReferencesPopover } from "./VideoReferencesPopover";
@@ -24,17 +34,32 @@ import { MiniDropdown } from "./MiniDropdown";
 interface CanvasSettingsRowProps {
   prompt: string;
   renderModelId: string;
+  /** Model picker options + recommendation metadata. The picker chip lives
+   *  in the chip row now (replaces the floating ModelCornerSelector). The
+   *  inner dropdown wants a mutable array, so the type matches its contract
+   *  rather than over-tightening to readonly here. */
+  renderModelOptions: Array<{ id: string; label: string }>;
+  modelRecommendation?: ModelRecommendation | null | undefined;
   recommendedModelId?: string | undefined;
+  efficientModelId?: string | undefined;
   recommendationPromptId?: string | undefined;
   recommendationMode?: "t2v" | "i2v" | undefined;
   recommendationAgeMs?: number | null | undefined;
+  onModelChange: (modelId: string) => void;
+  /** Tune drawer state — lifted from parent so Tune is a chip in the row,
+   *  not a separate row above. The drawer itself still renders in the
+   *  parent above the editor. */
+  tuneOpen: boolean;
+  selectedChipCount: number;
+  onToggleTune: () => void;
   onOpenMotion: () => void;
   onStartFrameUpload?: ((file: File) => void | Promise<void>) | undefined;
   onUploadSidebarImage?:
     | ((file: File) => Promise<SidebarUploadedImage | null>)
     | undefined;
-  onEnhance?: () => void;
-  isEnhancing?: boolean;
+  /** Whether to show the storyboard-preview eye button. Hidden in the empty
+   *  moment so the chip row matches the screenshot's clean 5-chip layout. */
+  showPreviewButton?: boolean;
 }
 
 const parseAspectRatio = (
@@ -56,53 +81,32 @@ const parseDuration = (generationParams: Record<string, unknown>): number => {
   return getDefaultGenerationDurationSeconds();
 };
 
-/* Ghost button used across the settings row — matches mockup BarBtn exactly */
-function BarBtn({
-  children,
-  active,
-  accent,
-  onClick,
-  className,
-  ...buttonProps
-}: {
-  children: React.ReactNode;
-  active?: boolean;
-  accent?: boolean;
-  onClick?: (e: React.MouseEvent) => void;
-  className?: string;
-} & React.ButtonHTMLAttributes<HTMLButtonElement>): React.ReactElement {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      {...buttonProps}
-      className={`inline-flex h-[30px] items-center gap-[5px] whitespace-nowrap rounded-full border border-surface-2 px-2.5 text-xs transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
-        accent
-          ? "bg-tool-nav-hover font-semibold text-foreground hover:bg-tool-nav-active"
-          : active
-            ? "bg-tool-nav-hover font-semibold text-foreground"
-            : "bg-tool-nav-hover font-semibold text-foreground hover:bg-tool-nav-active hover:text-foreground"
-      } ${className ?? ""}`}
-    >
-      {children}
-    </button>
-  );
-}
+// C8 cooldown window: how long after a Preview-storyboard click we drop
+// repeat clicks. Sized to outlast the multi-step prelude (optimize →
+// session-create) that gates the upstream isSubmittingRef flip.
+const PREVIEW_CLICK_COOLDOWN_MS = 2000;
 
 export function CanvasSettingsRow({
   prompt,
   renderModelId,
+  renderModelOptions,
+  modelRecommendation,
   recommendedModelId,
+  efficientModelId,
   recommendationPromptId,
   recommendationMode,
   recommendationAgeMs,
+  onModelChange,
+  tuneOpen,
+  selectedChipCount,
+  onToggleTune,
   onOpenMotion,
   onStartFrameUpload,
   onUploadSidebarImage,
-  onEnhance,
-  isEnhancing = false,
+  showPreviewButton = true,
 }: CanvasSettingsRowProps): React.ReactElement {
-  const { controls } = useGenerationControlsContext();
+  const { controls, onInsufficientCredits } = useGenerationControlsContext();
+  const { balance: creditBalance } = useCreditBalance();
   const { domain } = useGenerationControlsStoreState();
   const storeActions = useGenerationControlsStoreActions();
 
@@ -120,6 +124,25 @@ export function CanvasSettingsRow({
   const isGenerating = controls?.isGenerating ?? false;
   const isSubmitting = controls?.isSubmitting ?? false;
   const isGenerationBusy = isGenerating || isSubmitting;
+
+  // C8 guard: rapid Preview-storyboard double-clicks fire `onStoryboard`
+  // multiple times because the upstream isSubmittingRef inside
+  // useGenerationActions only flips AFTER the workspace-level prelude
+  // (optimize -> session-create) completes. During that prelude, the button
+  // looks enabled and a second click would silently re-charge credits.
+  // Hold a short cooldown ref so each Preview click fires the handler at
+  // most once per ~2s window.
+  const previewClickCooldownRef = useRef(false);
+  const previewCooldownTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (previewCooldownTimerRef.current !== null) {
+        window.clearTimeout(previewCooldownTimerRef.current);
+        previewCooldownTimerRef.current = null;
+      }
+    };
+  }, []);
 
   const handleAspectRatioChange = useCallback(
     (value: string) => {
@@ -157,13 +180,32 @@ export function CanvasSettingsRow({
   );
   const isDraftModelSelected = selectedDraftModel !== null;
 
+  const creditCost = getVideoCost(
+    selectedDraftModel?.id ?? renderModelId,
+    duration,
+  );
+  const hasInsufficientCredits =
+    typeof creditBalance === "number" && creditBalance < creditCost;
+  const hasInsufficientPreviewCredits =
+    typeof creditBalance === "number" && creditBalance < STORYBOARD_COST;
+  const operationLabel = isDraftModelSelected
+    ? `${selectedDraftModel?.label ?? "Draft"} preview`
+    : "Video render";
+
   const previewDisabled =
     !controls?.onStoryboard ||
     isGenerationBusy ||
-    (!hasPrompt && !hasStartFrame);
+    (!hasPrompt && !hasStartFrame) ||
+    hasInsufficientPreviewCredits;
   const generateDisabled = isDraftModelSelected
-    ? !controls?.onDraft || isGenerationBusy || !hasPrompt
-    : !controls?.onRender || isGenerationBusy || !hasPrompt;
+    ? !controls?.onDraft ||
+      isGenerationBusy ||
+      !hasPrompt ||
+      hasInsufficientCredits
+    : !controls?.onRender ||
+      isGenerationBusy ||
+      !hasPrompt ||
+      hasInsufficientCredits;
 
   const trackGenerationStart = useCallback(
     (selectedModelId: string) => {
@@ -199,6 +241,10 @@ export function CanvasSettingsRow({
   );
 
   const handleGenerate = useCallback(() => {
+    if (hasInsufficientCredits) {
+      onInsufficientCredits?.(creditCost, operationLabel);
+      return;
+    }
     if (selectedDraftModel) {
       trackGenerationStart(selectedDraftModel.id);
       controls?.onDraft?.(selectedDraftModel.id);
@@ -206,22 +252,27 @@ export function CanvasSettingsRow({
       trackGenerationStart(renderModelId);
       controls?.onRender?.(renderModelId);
     }
-  }, [controls, renderModelId, selectedDraftModel, trackGenerationStart]);
+  }, [
+    controls,
+    creditCost,
+    hasInsufficientCredits,
+    onInsufficientCredits,
+    operationLabel,
+    renderModelId,
+    selectedDraftModel,
+    trackGenerationStart,
+  ]);
 
   const formatDurationLabel = useCallback((v: number) => `${v}s`, []);
 
-  const creditCost = getVideoCost(
-    selectedDraftModel?.id ?? renderModelId,
-    duration,
-  );
-
   return (
     <div
-      className="mt-2.5 flex flex-wrap items-center gap-1 border-t border-tool-rail-border pt-2.5"
+      className="flex flex-wrap items-center gap-1 px-3 py-2"
       data-testid="canvas-settings-row"
     >
-      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1">
-        {/* Start frame (with popover) */}
+      <div className="flex flex-wrap items-center gap-1">
+        {/* Start frame (with popover) — leftmost chip, the "image upload"
+            affordance from the screenshot. */}
         <StartFramePopover
           startFrame={domain.startFrame}
           cameraMotion={domain.cameraMotion}
@@ -254,8 +305,24 @@ export function CanvasSettingsRow({
           />
         ) : null}
 
+        {/*
+          Mic chip — placeholder for voice input. Rendered disabled so the
+          button is visibly an inert affordance (matches the screenshot's chip
+          row count). Once voice input ships, swap the disabled prop and wire
+          onClick — the visual treatment stays the same.
+        */}
+        <button
+          type="button"
+          disabled
+          aria-label="Voice input — coming soon"
+          title="Voice input — coming soon"
+          className="inline-flex h-[28px] w-[28px] items-center justify-center rounded-md text-tool-text-muted opacity-60 cursor-not-allowed"
+        >
+          <Microphone size={14} aria-hidden="true" />
+        </button>
+
         {domain.extendVideo ? (
-          <div className="inline-flex h-[30px] items-center gap-1 rounded-full border border-surface-2 bg-tool-nav-hover pl-2.5 pr-1 text-xs font-semibold text-foreground">
+          <div className="inline-flex h-[28px] items-center gap-1 rounded-full border border-surface-2 bg-tool-nav-hover pl-2.5 pr-1 text-xs font-semibold text-foreground">
             <svg
               width="11"
               height="11"
@@ -281,33 +348,32 @@ export function CanvasSettingsRow({
           </div>
         ) : null}
 
-        {/* Assets */}
-        <BarBtn onClick={(e) => e.stopPropagation()}>
-          <span className="flex">
-            <Images size={13} weight="fill" />
-          </span>
-          Assets
-        </BarBtn>
+        {/* Tune chip — opens the drawer above the editor. The visible text
+            ("Tune" or "Tune · N") IS the chip's accessible name; aria-pressed
+            reflects open/closed state. The format matches the regression
+            test that pins `Tune · 2` after two chips toggled. */}
+        <button
+          type="button"
+          data-testid="canvas-tune-chip"
+          aria-pressed={tuneOpen}
+          onClick={onToggleTune}
+          className={cn(
+            "inline-flex h-[28px] items-center gap-1.5 rounded-full border px-2.5 text-xs transition-colors",
+            tuneOpen
+              ? "border-tool-accent-neutral/50 bg-tool-accent-neutral/10 text-foreground"
+              : "border-tool-rail-border bg-transparent text-tool-text-dim hover:border-tool-text-label hover:text-foreground",
+          )}
+        >
+          <MagicWand size={12} aria-hidden="true" />
+          Tune{selectedChipCount > 0 ? ` · ${selectedChipCount}` : ""}
+          <CaretDown size={10} aria-hidden="true" />
+        </button>
 
         {/* Aspect ratio dropdown */}
         <MiniDropdown
           value={aspectRatio}
           options={aspectRatioOptions}
           onChange={handleAspectRatioChange}
-          icon={
-            <svg
-              width="11"
-              height="11"
-              viewBox="0 0 11 11"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <rect x="1" y="2" width="9" height="7" rx="1.5" />
-            </svg>
-          }
         />
 
         {/* Duration dropdown */}
@@ -316,114 +382,128 @@ export function CanvasSettingsRow({
           options={durationOptions}
           onChange={handleDurationChange}
           formatLabel={formatDurationLabel}
-          icon={
-            <svg
-              width="11"
-              height="11"
-              viewBox="0 0 11 11"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.2"
-              strokeLinecap="round"
-            >
-              <circle cx="5.5" cy="5.5" r="4.5" />
-              <path d="M5.5 3v3l2 1" />
-            </svg>
-          }
         />
 
-        {/* AI Enhance */}
-        <BarBtn
-          accent
-          className="w-[68px] justify-center px-0"
-          aria-label={isEnhancing ? "Enhancing prompt…" : "Enhance prompt"}
-          title={isEnhancing ? "Enhancing…" : "Enhance"}
-          disabled={isEnhancing || !onEnhance}
-          {...(onEnhance && !isEnhancing
-            ? {
-                onClick: (event: React.MouseEvent) => {
-                  event.stopPropagation();
-                  onEnhance();
-                },
-              }
-            : {})}
-        >
-          {isEnhancing ? (
-            <svg
-              className="animate-spin"
-              width={14}
-              height={14}
-              viewBox="0 0 14 14"
-              fill="none"
-              aria-hidden="true"
-            >
-              <circle
-                cx="7"
-                cy="7"
-                r="5.5"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeDasharray="24 10"
-              />
-            </svg>
-          ) : (
-            <MagicWand size={14} />
-          )}
-        </BarBtn>
+        {/* Model picker — replaces the floating ModelCornerSelector. The
+            bullseye icon prefix mirrors the screenshot's model chip glyph. */}
+        <ModelRecommendationDropdown
+          renderModelOptions={renderModelOptions}
+          renderModelId={renderModelId}
+          onModelChange={onModelChange}
+          modelRecommendation={modelRecommendation ?? null}
+          {...(recommendedModelId ? { recommendedModelId } : {})}
+          {...(efficientModelId ? { efficientModelId } : {})}
+          triggerAriaLabel="Video model"
+          triggerPrefixIcon={<Target size={12} aria-hidden="true" />}
+          triggerClassName="inline-flex h-[28px] items-center gap-1.5 rounded-full border border-tool-rail-border bg-transparent px-2.5 text-xs font-normal text-tool-text-dim transition-colors hover:border-tool-text-label hover:text-foreground"
+        />
       </div>
 
-      <div className="ml-auto flex w-full flex-wrap items-center justify-end gap-1 sm:w-auto sm:flex-nowrap">
-        {/* Preview button (secondary) */}
-        <button
-          type="button"
-          data-testid="canvas-preview-button"
-          className="inline-flex h-[30px] w-[68px] items-center justify-center rounded-full border border-surface-2 bg-tool-nav-hover text-foreground transition-colors hover:bg-tool-nav-active hover:text-foreground disabled:cursor-not-allowed disabled:text-tool-text-label"
-          onClick={() => controls?.onStoryboard?.()}
-          disabled={previewDisabled}
-          aria-label={
-            isSubmitting
-              ? "Starting storyboard generation"
-              : `Preview storyboard ${STORYBOARD_COST} credits`
-          }
-          title={
-            isSubmitting ? "Starting..." : `Preview · ${STORYBOARD_COST} cr`
-          }
-        >
-          <Eye size={14} />
-        </button>
+      <div className="ml-auto flex flex-wrap items-center justify-end gap-1">
+        {/* Preview button — hidden in the empty moment per the screenshot's
+            clean chip-row layout. Surfaced once there's content to compare
+            against (parent passes showPreviewButton=true). */}
+        {showPreviewButton ? (
+          <button
+            type="button"
+            data-testid="canvas-preview-button"
+            className="inline-flex h-[28px] w-[28px] items-center justify-center rounded-full text-tool-text-muted transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:text-tool-text-label"
+            onClick={() => {
+              if (hasInsufficientPreviewCredits) {
+                onInsufficientCredits?.(STORYBOARD_COST, "Storyboard preview");
+                return;
+              }
+              if (previewClickCooldownRef.current) {
+                return;
+              }
+              previewClickCooldownRef.current = true;
+              controls?.onStoryboard?.();
+              previewCooldownTimerRef.current = window.setTimeout(() => {
+                previewClickCooldownRef.current = false;
+                previewCooldownTimerRef.current = null;
+              }, PREVIEW_CLICK_COOLDOWN_MS);
+            }}
+            disabled={previewDisabled}
+            aria-label={
+              isSubmitting
+                ? "Starting storyboard generation"
+                : hasInsufficientPreviewCredits
+                  ? `Need ${STORYBOARD_COST} credits for preview — top up in billing`
+                  : `Preview storyboard ${STORYBOARD_COST} credits`
+            }
+            title={
+              isSubmitting
+                ? "Starting..."
+                : hasInsufficientPreviewCredits
+                  ? `Need ${STORYBOARD_COST} credits`
+                  : `Preview · ${STORYBOARD_COST} cr`
+            }
+          >
+            <Eye size={14} />
+          </button>
+        ) : null}
 
-        {/* Generate button (primary) */}
+        {/* Make it pill — primary submit. Replaces the small + icon button.
+            The ⌘↵ badge mirrors the screenshot's keyboard hint. */}
         <button
           type="button"
           data-testid="canvas-generate-button"
-          className="inline-flex h-10 w-10 items-center justify-center rounded-full border-none bg-muted text-tool-surface-deep transition-opacity hover:opacity-[0.9] disabled:cursor-not-allowed disabled:opacity-60"
           onClick={handleGenerate}
           disabled={generateDisabled}
+          aria-busy={isGenerationBusy}
           aria-label={
-            isSubmitting
+            isGenerationBusy
               ? "Starting generation"
-              : `${isDraftModelSelected ? "Draft" : "Generate"} ${creditCost} credits`
+              : hasInsufficientCredits
+                ? `Need ${creditCost} credits — top up in billing`
+                : `${isDraftModelSelected ? "Draft" : "Generate"} ${creditCost} credits`
           }
           title={
-            isSubmitting
+            isGenerationBusy
               ? "Starting..."
-              : `${isDraftModelSelected ? "Draft" : "Generate"} · ${creditCost} cr`
+              : hasInsufficientCredits
+                ? `Need ${creditCost} credits`
+                : `${isDraftModelSelected ? "Draft" : "Generate"} · ${creditCost} cr`
           }
+          className={cn(
+            "inline-flex h-9 items-center gap-2 rounded-full px-4 text-sm font-medium transition-opacity",
+            "bg-foreground text-tool-surface-deep",
+            "hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60",
+          )}
         >
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 16 16"
-            fill="none"
-            aria-hidden="true"
-          >
-            <path
-              d="M8 1.25C8.35 1.25 8.66 1.48 8.76 1.82L10.04 6.02L14.2 7.28C14.55 7.39 14.78 7.7 14.78 8.05C14.78 8.4 14.55 8.71 14.2 8.82L10.04 10.08L8.76 14.28C8.66 14.62 8.35 14.85 8 14.85C7.65 14.85 7.34 14.62 7.24 14.28L5.96 10.08L1.8 8.82C1.45 8.71 1.22 8.4 1.22 8.05C1.22 7.7 1.45 7.39 1.8 7.28L5.96 6.02L7.24 1.82C7.34 1.48 7.65 1.25 8 1.25Z"
-              fill="currentColor"
-            />
-            <circle cx="12.7" cy="3.2" r="1.05" fill="currentColor" />
-          </svg>
+          {isGenerationBusy ? (
+            <>
+              <svg
+                className="animate-spin"
+                width={14}
+                height={14}
+                viewBox="0 0 14 14"
+                fill="none"
+                aria-hidden="true"
+              >
+                <circle
+                  cx="7"
+                  cy="7"
+                  r="5"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeDasharray="22 10"
+                />
+              </svg>
+              Rendering…
+            </>
+          ) : (
+            <>
+              Make it
+              <kbd
+                aria-hidden="true"
+                className="ml-1 inline-flex items-center gap-0.5 rounded bg-tool-surface-deep/15 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-tool-surface-deep/70"
+              >
+                ⌘↵
+              </kbd>
+            </>
+          )}
         </button>
       </div>
     </div>

@@ -12,6 +12,7 @@
 import express, { type Request, type Response, type Router } from "express";
 import { Readable } from "node:stream";
 import type { ReadableStream as NodeReadableStream } from "node:stream/web";
+import type { Bucket } from "@google-cloud/storage";
 import { asyncHandler } from "@middleware/asyncHandler";
 import { logger } from "@infrastructure/Logger";
 
@@ -72,7 +73,73 @@ const extractObjectPath = (url: URL, bucketName: string): string | null => {
   return null;
 };
 
-export function createMediaProxyRoutes(bucketName: string): Router {
+/**
+ * Stream an object directly from the bucket reference. Used as a fallback
+ * when the upstream signed-URL fetch returns 400 (signature expired) — the
+ * server has its own GCS credentials and can read the file via the bucket
+ * regardless of any expired client-side signed URL.
+ */
+async function streamFromBucket(
+  bucket: Bucket,
+  objectPath: string,
+  res: Response,
+  isHead: boolean,
+): Promise<boolean> {
+  try {
+    const file = bucket.file(objectPath);
+    const [metadata] = await file.getMetadata();
+    const contentType =
+      typeof metadata.contentType === "string" ? metadata.contentType : null;
+    if (
+      contentType &&
+      !ALLOWED_CONTENT_TYPES.has(contentType.split(";")[0]!.trim())
+    ) {
+      return false;
+    }
+
+    res.status(200);
+    if (contentType) {
+      res.setHeader("Content-Type", contentType);
+    }
+    if (
+      typeof metadata.size === "string" ||
+      typeof metadata.size === "number"
+    ) {
+      res.setHeader("Content-Length", String(metadata.size));
+    }
+    res.setHeader("Cache-Control", "public, max-age=300, immutable");
+
+    if (isHead) {
+      res.end();
+      return true;
+    }
+
+    const stream = file.createReadStream();
+    stream.on("error", (error) => {
+      log.warn("Bucket fallback stream error", {
+        error: error instanceof Error ? error.message : String(error),
+        objectPath,
+      });
+      if (!res.headersSent) {
+        res.status(502);
+      }
+      res.end();
+    });
+    stream.pipe(res);
+    return true;
+  } catch (error) {
+    log.warn("Bucket fallback fetch failed", {
+      error: error instanceof Error ? error.message : String(error),
+      objectPath,
+    });
+    return false;
+  }
+}
+
+export function createMediaProxyRoutes(
+  bucketName: string,
+  bucket?: Bucket,
+): Router {
   const router = express.Router();
 
   router.get(
@@ -129,6 +196,34 @@ export function createMediaProxyRoutes(bucketName: string): Router {
           status: upstream.status,
           objectPath,
         });
+
+        // C3 fix: signed URLs expire after 1 hour. When upstream returns 400
+        // (e.g., expired X-Goog-Signature), fall back to streaming directly
+        // from the bucket reference using the server's own GCS credentials.
+        // This rescues users who reload the app with cached signed URLs.
+        if (upstream.status === 400 && bucket) {
+          const isHead = req.method === "HEAD";
+          const recovered = await streamFromBucket(
+            bucket,
+            objectPath,
+            res,
+            isHead,
+          );
+          if (recovered) {
+            // Emit at warn level so the recovery path is visible by default in
+            // ops dashboards. The structured `metric` field gives observability
+            // a stable aggregation key — production runbook calls for alerting
+            // if this fires on >1% of /api/storage/proxy calls, since that
+            // signals a structural signed-URL TTL problem upstream rather
+            // than a benign reload of a stale cached URL.
+            log.warn("Recovered expired signed URL via bucket fallback", {
+              metric: "media_proxy.signed_url_expired_recovery",
+              objectPath,
+            });
+            return res;
+          }
+        }
+
         return res.status(upstream.status).json({
           success: false,
           error: "UPSTREAM_ERROR",

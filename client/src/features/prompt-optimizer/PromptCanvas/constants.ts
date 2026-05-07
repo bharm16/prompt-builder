@@ -16,6 +16,6 @@ export const EXPORT_FORMAT_MAP = {
 export const SUGGESTION_TRIGGERS = [
   "selection",
   "highlight",
-  "bento-grid",
+  "category-accordion",
 ] as const;
 export type SuggestionTrigger = (typeof SUGGESTION_TRIGGERS)[number];

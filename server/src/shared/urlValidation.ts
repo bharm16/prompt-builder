@@ -13,15 +13,34 @@ const BLOCKED_HOSTNAMES = new Set([
   "169.254.170.2", // ECS metadata
   "metadata.google.internal", // GCP metadata
   "[::1]",
+  "[::]", // IPv6 unspecified — routes to loopback on Linux
 ]);
 
 const PRIVATE_IP_PATTERNS = [
   /^10\./,
   /^172\.(1[6-9]|2\d|3[01])\./,
   /^192\.168\./,
+  /^127\./,
+  /^169\.254\./,
   /^fc00:/i,
   /^fd[0-9a-f]{2}:/i,
+  // fe80::/10 link-local — first 10 bits 1111 1110 10, so second byte is 80-bf.
+  // That makes the 4-char prefix fe80 through febf.
+  /^fe[89ab][0-9a-f]:/i,
+  // RFC6052 NAT64 well-known prefix 64:ff9b::/96. A translator on this prefix
+  // would forward to embedded IPv4, which may include private ranges.
+  /^64:ff9b:/i,
 ];
+
+// Matches IPv4-mapped IPv6 hostnames (e.g. ::ffff:127.0.0.1 or the
+// hex-normalized [::ffff:7f00:1] that Node's URL parser produces). The
+// bracket is optional because Node returns hostnames bracketed for IPv6
+// literals but the raw dotted form appears in pre-parsed inputs.
+const IPV4_MAPPED_IPV6_PATTERN = /^\[?::ffff:/i;
+
+function isIpv4Mapped(hostname: string): boolean {
+  return IPV4_MAPPED_IPV6_PATTERN.test(hostname);
+}
 
 export function isUrlSafe(urlString: string): boolean {
   try {
@@ -31,12 +50,22 @@ export function isUrlSafe(urlString: string): boolean {
       return false;
     }
 
-    const hostname = url.hostname.toLowerCase();
-    if (BLOCKED_HOSTNAMES.has(hostname)) {
+    const rawHostname = url.hostname.toLowerCase();
+    if (BLOCKED_HOSTNAMES.has(rawHostname)) {
       return false;
     }
 
-    if (PRIVATE_IP_PATTERNS.some((pattern) => pattern.test(hostname))) {
+    // Reject IPv4-mapped IPv6 entirely. Legitimate CDN/storage URLs never use
+    // this notation; it only appears in SSRF bypass attempts that route mapped
+    // addresses past IPv4-only hostname/pattern checks.
+    if (isIpv4Mapped(rawHostname)) {
+      return false;
+    }
+
+    // Node normalizes IPv6 literals as bracketed (e.g. "[fc00::1]"). Strip
+    // brackets before applying private-range regex so IPv6 patterns match.
+    const unbracketed = rawHostname.replace(/^\[|\]$/g, "");
+    if (PRIVATE_IP_PATTERNS.some((pattern) => pattern.test(unbracketed))) {
       return false;
     }
 

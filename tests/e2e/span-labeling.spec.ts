@@ -1,9 +1,11 @@
 import { expect, test } from "@playwright/test";
 import { jsonResponse } from "./helpers/responses";
 import { mockSessionRoutes } from "./helpers/mockRoutes";
+import { injectAuthUser } from "./helpers/auth";
 
 test.describe("span labeling and suggestions", () => {
   test("span labels render after prompt optimization", async ({ page }) => {
+    await injectAuthUser(page);
     await mockSessionRoutes(page);
 
     await page.route("**/api/optimize", async (route) => {
@@ -38,8 +40,8 @@ test.describe("span labeling and suggestions", () => {
     });
 
     await page.goto("/");
-    const promptInput = page.getByLabel("Text Prompt Input");
-    await expect(promptInput).toBeVisible();
+    const promptInput = page.getByLabel("Optimized prompt");
+    await expect(promptInput).toBeVisible({ timeout: 15000 });
     await promptInput.fill("Wide shot of a cyclist crossing a bridge at dusk.");
 
     const optimizeShortcut =
@@ -60,6 +62,7 @@ test.describe("span labeling and suggestions", () => {
   test("clicking a labeled span shows suggestions popover", async ({
     page,
   }) => {
+    await injectAuthUser(page);
     await mockSessionRoutes(page);
 
     await page.route("**/api/optimize", async (route) => {
@@ -93,7 +96,7 @@ test.describe("span labeling and suggestions", () => {
     });
 
     let suggestionsCalled = false;
-    await page.route("**/api/suggestions", async (route) => {
+    await page.route("**/api/get-enhancement-suggestions", async (route) => {
       suggestionsCalled = true;
       await route.fulfill(
         jsonResponse({
@@ -107,8 +110,8 @@ test.describe("span labeling and suggestions", () => {
     });
 
     await page.goto("/");
-    const promptInput = page.getByLabel("Text Prompt Input");
-    await expect(promptInput).toBeVisible();
+    const promptInput = page.getByLabel("Optimized prompt");
+    await expect(promptInput).toBeVisible({ timeout: 15000 });
     await promptInput.fill("Drone shot of mountains.");
 
     const optimizeShortcut =

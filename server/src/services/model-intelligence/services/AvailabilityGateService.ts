@@ -8,7 +8,7 @@ import {
 import type { VideoGenerationService } from "@services/video-generation/VideoGenerationService";
 import type { VideoAvailabilitySnapshot } from "@services/video-generation/types";
 import type { UserCreditService } from "@services/credits/UserCreditService";
-import type { VideoModelId } from "@services/video-generation/types";
+import type { VideoModelId } from "@shared/videoModels";
 import type { BillingProfileStore } from "@services/payment/BillingProfileStore";
 import type { PlanTier } from "@config/subscriptionTiers";
 

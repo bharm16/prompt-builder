@@ -52,7 +52,7 @@ describe("NodeCacheAdapter", () => {
       const adapter = new NodeCacheAdapter({ keyGenerator, logger });
 
       // Access internal cache to mock set failure
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       const internalCache = (adapter as any).cache;
       internalCache.set.mockReturnValue(false);
 
@@ -69,7 +69,6 @@ describe("NodeCacheAdapter", () => {
       const logger = createMockLogger();
       const adapter = new NodeCacheAdapter({ keyGenerator, logger });
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const internalCache = (adapter as any).cache;
       internalCache.set.mockImplementation(() => {
         throw new Error("Cache error");
@@ -102,7 +101,6 @@ describe("NodeCacheAdapter", () => {
       const logger = createMockLogger();
       const adapter = new NodeCacheAdapter({ keyGenerator, logger });
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const internalCache = (adapter as any).cache;
 
       await adapter.set("key", "value", { ttl: 120 });
@@ -114,7 +112,6 @@ describe("NodeCacheAdapter", () => {
       const keyGenerator = createMockKeyGenerator();
       const adapter = new NodeCacheAdapter({ keyGenerator });
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const internalCache = (adapter as any).cache;
 
       await adapter.set("key", "value");
@@ -127,7 +124,6 @@ describe("NodeCacheAdapter", () => {
       const logger = createMockLogger();
       const adapter = new NodeCacheAdapter({ keyGenerator, logger });
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const internalCache = (adapter as any).cache;
       internalCache.del.mockReturnValue(0);
 
@@ -147,7 +143,6 @@ describe("NodeCacheAdapter", () => {
       const logger = createMockLogger();
       const adapter = new NodeCacheAdapter({ keyGenerator, logger });
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const internalCache = (adapter as any).cache;
       internalCache.get.mockReturnValue({ data: "cached" });
 
@@ -162,7 +157,6 @@ describe("NodeCacheAdapter", () => {
       const logger = createMockLogger();
       const adapter = new NodeCacheAdapter({ keyGenerator, logger });
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const internalCache = (adapter as any).cache;
       internalCache.get.mockReturnValue(undefined);
 
@@ -204,7 +198,6 @@ describe("NodeCacheAdapter", () => {
       const logger = createMockLogger();
       const adapter = new NodeCacheAdapter({ keyGenerator, logger });
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const internalCache = (adapter as any).cache;
 
       await adapter.flush();
@@ -229,7 +222,6 @@ describe("NodeCacheAdapter", () => {
       const keyGenerator = createMockKeyGenerator();
       const adapter = new NodeCacheAdapter({ keyGenerator });
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const internalCache = (adapter as any).cache;
       internalCache.get.mockReturnValue("ok");
 

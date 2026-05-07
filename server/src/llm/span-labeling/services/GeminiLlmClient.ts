@@ -60,6 +60,10 @@ export class GeminiLlmClient extends RobustLlmClient {
     // Start streaming in background
     // Use explicit 'span_labeling_gemini' operation to ensure we use Gemini client
     // regardless of what the generic 'span_labeling' is configured to.
+    if (!aiService.stream) {
+      throw new Error("AI service does not support streaming");
+    }
+
     aiService
       .stream("span_labeling_gemini", {
         systemPrompt,

@@ -14,7 +14,6 @@
       "@config/*": ["src/config/*"],
       "@services/*": ["src/services/*"],
       "@styles/*": ["src/styles/*"],
-      "@lib/*": ["src/lib/*"],
       "@schemas/*": ["src/schemas/*"],
       "@repositories/*": ["src/repositories/*"],
       "@shared/*": ["../shared/*"],

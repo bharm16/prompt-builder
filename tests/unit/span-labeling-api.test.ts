@@ -2,17 +2,12 @@ import { describe, expect, it, beforeEach, vi } from "vitest";
 
 import { SpanLabelingApi } from "@features/span-highlighting/api/spanLabelingApi";
 import { buildFirebaseAuthHeaders } from "@/services/http/firebaseAuth";
-import { buildLabelSpansBody } from "@features/span-highlighting/api/spanLabelingRequest";
 import { buildRequestError } from "@features/span-highlighting/api/spanLabelingErrors";
 import { parseLabelSpansResponse } from "@features/span-highlighting/api/spanLabelingResponse";
 import { readSpanLabelStream } from "@features/span-highlighting/api/spanLabelingStream";
 
 vi.mock("@/services/http/firebaseAuth", () => ({
   buildFirebaseAuthHeaders: vi.fn(),
-}));
-
-vi.mock("@features/span-highlighting/api/spanLabelingRequest", () => ({
-  buildLabelSpansBody: vi.fn(),
 }));
 
 vi.mock("@features/span-highlighting/api/spanLabelingErrors", () => ({
@@ -39,19 +34,25 @@ vi.mock("@/services/LoggingService", () => ({
 }));
 
 const mockBuildFirebaseAuthHeaders = vi.mocked(buildFirebaseAuthHeaders);
-const mockBuildLabelSpansBody = vi.mocked(buildLabelSpansBody);
 const mockBuildRequestError = vi.mocked(buildRequestError);
 const mockParseLabelSpansResponse = vi.mocked(parseLabelSpansResponse);
 const mockReadSpanLabelStream = vi.mocked(readSpanLabelStream);
 
 const payload = { text: "hello", maxSpans: 5 };
+const expectedBody = JSON.stringify({
+  text: payload.text,
+  maxSpans: payload.maxSpans,
+  minConfidence: undefined,
+  policy: undefined,
+  templateVersion: undefined,
+  isI2VMode: undefined,
+});
 const originalFetch = global.fetch;
 
 describe("SpanLabelingApi", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockBuildFirebaseAuthHeaders.mockResolvedValue({ "X-Test": "token" });
-    mockBuildLabelSpansBody.mockReturnValue("body");
   });
 
   afterEach(() => {
@@ -78,7 +79,7 @@ describe("SpanLabelingApi", () => {
           "Content-Type": "application/json",
           "X-Test": "token",
         }),
-        body: "body",
+        body: expectedBody,
       }),
     );
     expect(result).toEqual({ spans: [], meta: null });

@@ -7,9 +7,9 @@ import {
   useGenerationControlsContext,
   type GenerationControlsHandlers,
 } from "@/features/prompt-optimizer/context/GenerationControlsContext";
-import { GenerationControlsStoreProvider } from "@features/generation-controls/context/GenerationControlsStore";
-import type { GenerationControlsState } from "@features/generation-controls/context/generationControlsStoreTypes";
-import { DEFAULT_GENERATION_CONTROLS_STATE } from "@features/generation-controls/context/generationControlsStoreTypes";
+import { GenerationControlsStoreProvider } from "@features/generation-controls";
+import type { GenerationControlsState } from "@features/generation-controls";
+import { DEFAULT_GENERATION_CONTROLS_STATE } from "@features/generation-controls";
 
 vi.mock("../StartFramePopover", () => ({
   StartFramePopover: () => <div data-testid="start-frame-popover" />,
@@ -88,6 +88,11 @@ describe("regression: draft model selections stay on the draft action path", () 
           <CanvasSettingsRow
             prompt="A cinematic shot of a train crossing a snowy bridge."
             renderModelId="wan-2.5"
+            renderModelOptions={[{ id: "wan-2.5", label: "Wan 2.5" }]}
+            onModelChange={vi.fn()}
+            tuneOpen={false}
+            selectedChipCount={0}
+            onToggleTune={vi.fn()}
             onOpenMotion={vi.fn()}
           />
         </GenerationControlsProvider>

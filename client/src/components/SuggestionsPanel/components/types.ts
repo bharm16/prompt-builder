@@ -2,9 +2,9 @@
  * Type definitions for SuggestionsPanel components
  */
 
-import type React from "react";
+import type { IconType } from "@promptstudio/system/components/ui";
 
-export type PanelIcon = React.ComponentType<{ className?: string }>;
+export type PanelIcon = IconType;
 
 export interface EmptyStateConfig {
   icon: PanelIcon;

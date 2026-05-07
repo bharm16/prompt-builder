@@ -11,8 +11,14 @@ export type GenerationsState = {
   isGenerating: boolean;
 };
 
+// ISSUE-12 follow-up: ADD_GENERATION was retired. Under the server-
+// authoritative model, "a new generation exists" is expressed as
+// SET_GENERATIONS([...current, newGen]) so the dispatch call site carries
+// the full authoritative set — same discipline as a session refetch.
+// UPDATE_GENERATION is kept because targeted field patches (job status
+// tick, signed-URL refresh, failure stamp) would require every caller to
+// reconstruct the full array, which is awkward and error-prone.
 export type GenerationsAction =
-  | { type: "ADD_GENERATION"; payload: Generation }
   | {
       type: "UPDATE_GENERATION";
       payload: { id: string; updates: Partial<Generation> };
@@ -43,15 +49,6 @@ function generationsReducer(
   action: GenerationsAction,
 ): GenerationsState {
   switch (action.type) {
-    case "ADD_GENERATION": {
-      const next = { ...action.payload };
-      const generations = [...state.generations, next];
-      return {
-        generations,
-        activeGenerationId: next.id,
-        isGenerating: deriveIsGenerating(generations),
-      };
-    }
     case "UPDATE_GENERATION": {
       const updates = action.payload.updates;
       const generations = state.generations.map((gen) =>
@@ -166,9 +163,23 @@ export function useGenerationsState({
     onGenerationsChangeRef.current?.(state.generations);
   }, [state.generations]);
 
+  // ISSUE-12 follow-up: public `addGeneration` kept as a convenience —
+  // internally dispatches SET_GENERATIONS over the current ref snapshot so
+  // the reducer has a single "state grows" entry point.
+  //
+  // CAVEAT: do NOT call this twice in the same React tick. Each call reads
+  // `generationsRef.current`, which only updates after re-render; two
+  // sync calls will each compute `[...stale, gen]` and the second
+  // clobbers the first. In production this is fine because the hook's
+  // only caller (acceptGeneration in useGenerationActions) fires once per
+  // async POST completion. If you need to batch multiple entries in a
+  // single tick, dispatch SET_GENERATIONS directly with the full array.
   const addGeneration = useCallback(
     (generation: Generation) =>
-      dispatch({ type: "ADD_GENERATION", payload: generation }),
+      dispatch({
+        type: "SET_GENERATIONS",
+        payload: [...generationsRef.current, generation],
+      }),
     [],
   );
 

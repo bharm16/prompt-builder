@@ -1,12 +1,15 @@
 import React from "react";
-import { User, Palette, MapPin, Box } from "@promptstudio/system/components/ui";
+import {
+  User,
+  Palette,
+  MapPin,
+  Box,
+  type IconType,
+} from "@promptstudio/system/components/ui";
 import type { AssetType } from "@shared/types/asset";
 import { ASSET_TYPE_LIST } from "../config/assetConfig";
 
-const TYPE_ICONS: Record<
-  string,
-  React.ComponentType<{ className?: string }>
-> = {
+const TYPE_ICONS: Record<string, IconType> = {
   character: User,
   style: Palette,
   location: MapPin,

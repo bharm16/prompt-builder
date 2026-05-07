@@ -6,36 +6,24 @@
  * - Route registration
  * - Error handling
  *
- * This module is stateless and testable - it takes dependencies as parameters
- * and returns a configured Express app.
+ * This module is stateless and testable - it takes the DI container and
+ * returns a configured Express app.
  */
 
 import express, { type Application } from "express";
-import { configureMiddleware } from "./config/middleware.config.ts";
-import { configureRoutes } from "./config/routes.config.ts";
-import { getRuntimeFlags } from "./config/runtime-flags.ts";
-import { createWebhookRoutes } from "./routes/payment.routes.ts";
 import type { DIContainer } from "@infrastructure/DIContainer";
 import type { PaymentRouteServices } from "@routes/payment/types";
-import { initializeDepthWarmer } from "@services/convergence/depth";
 import type { PaymentConsistencyStore } from "@services/payment/PaymentConsistencyStore";
+import { initializeDepthWarmer } from "@services/convergence/depth";
+import { configureMiddleware } from "./config/middleware.config.ts";
+import { configureRoutes } from "./config/routes.config.ts";
+import { getRuntimeFlags } from "./config/feature-flags.ts";
+import { createWebhookRoutes } from "./routes/payment.routes.ts";
 
-/**
- * Create and configure the Express application
- *
- * @param {DIContainer} container - Dependency injection container with all services
- * @returns {express.Application} Configured Express app
- */
-export function createApp(container: DIContainer): Application {
-  const app = express();
-  const { promptOutputOnly, processRole } = getRuntimeFlags();
-
-  // Trust proxy for correct client IPs behind Cloud Run/ALB/Ingress
-  // Ensures rate limiting, logging, and security middleware see real IPs
-  app.set("trust proxy", 1);
-
-  // Payment webhooks must run before global JSON parsing
-  const paymentRouteServices: PaymentRouteServices = {
+function resolvePaymentRouteServices(
+  container: DIContainer,
+): PaymentRouteServices {
+  return {
     paymentService:
       container.resolve<PaymentRouteServices["paymentService"]>(
         "paymentService",
@@ -61,7 +49,22 @@ export function createApp(container: DIContainer): Application {
       NonNullable<PaymentRouteServices["firestoreCircuitExecutor"]>
     >("firestoreCircuitExecutor"),
   };
-  app.use("/api/payment", createWebhookRoutes(paymentRouteServices));
+}
+
+/**
+ * Create and configure the Express application
+ */
+export function createApp(container: DIContainer): Application {
+  const app = express();
+
+  // Trust proxy for correct client IPs behind Cloud Run/ALB/Ingress
+  app.set("trust proxy", 1);
+
+  // Payment webhooks must run before global JSON parsing
+  app.use(
+    "/api/payment",
+    createWebhookRoutes(resolvePaymentRouteServices(container)),
+  );
 
   // Configure middleware stack
   // Order matters: security, compression, rate limiting, CORS, parsing, logging, metrics
@@ -72,7 +75,8 @@ export function createApp(container: DIContainer): Application {
   });
 
   // Pre-warm fal.ai depth estimation to reduce cold starts in Create mode.
-  if (!promptOutputOnly && processRole === "api") {
+  // Workers skip this — the depth model only matters for the API role.
+  if (getRuntimeFlags().processRole === "api") {
     initializeDepthWarmer();
   }
 

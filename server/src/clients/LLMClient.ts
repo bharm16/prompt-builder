@@ -335,8 +335,11 @@ export class LLMClient implements IAIClient {
           duration,
           provider: this.providerName,
         });
-        throw new TimeoutError(
-          `${this.providerName} API request timed out in queue - system overloaded`,
+        throw Object.assign(
+          new TimeoutError(
+            `${this.providerName} API request timed out in queue - system overloaded`,
+          ),
+          { code: "QUEUE_TIMEOUT" as const, retryAfter: 5 },
         );
       }
 
@@ -413,8 +416,11 @@ export class LLMClient implements IAIClient {
 
       // Handle concurrency limiter errors
       if (errorObj.code === "QUEUE_TIMEOUT") {
-        throw new TimeoutError(
-          `${this.providerName} streaming request timed out in queue - system overloaded`,
+        throw Object.assign(
+          new TimeoutError(
+            `${this.providerName} streaming request timed out in queue - system overloaded`,
+          ),
+          { code: "QUEUE_TIMEOUT" as const, retryAfter: 5 },
         );
       }
 

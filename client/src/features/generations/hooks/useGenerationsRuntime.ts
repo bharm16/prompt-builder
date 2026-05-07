@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
   DraftModel,
   GenerationOverrides,
-} from "@components/ToolSidebar/types";
+} from "@features/generation-controls";
 import { useCreditBalance } from "@/contexts/CreditBalanceContext";
 import { useAuthUser } from "@hooks/useAuthUser";
 import { useToast } from "@components/Toast";
@@ -18,8 +18,9 @@ import { useGenerationControlsContext } from "@features/prompt-optimizer/context
 import {
   useGenerationControlsStoreActions,
   useGenerationControlsStoreState,
-} from "@features/generation-controls/context/GenerationControlsStore";
+} from "@features/generation-controls";
 import { resolvePrimaryVideoSource } from "../utils/videoSource";
+import { selectHeroGeneration } from "../utils/selectHeroGeneration";
 import { getModelConfig, getModelCreditCost } from "../config/generationConfig";
 import { useGenerationsState } from "./useGenerationsState";
 import { useGenerationActions } from "./useGenerationActions";
@@ -323,6 +324,23 @@ export function useGenerationsRuntime({
     selectedModelSupportsExtend,
   ]);
 
+  const loadHistoryFromFirestore = promptHistory.loadHistoryFromFirestore;
+  const refreshHistoryFromServer = useCallback((): void => {
+    const uid = authUser?.uid;
+    if (!uid) return;
+    // Fire-and-forget — the gallery re-renders on its own when history state
+    // hydrates. Any error is logged by useHistoryPersistence internally.
+    void loadHistoryFromFirestore(uid);
+  }, [authUser?.uid, loadHistoryFromFirestore]);
+
+  const handleServerGenerationPersisted = useCallback((): void => {
+    // ISSUE-12 UX polish: after the server confirms attachment, refresh
+    // history so the session's version.generations flows into
+    // initialGenerations → useGenerationsState → GalleryPanel without the
+    // user needing to reload.
+    refreshHistoryFromServer();
+  }, [refreshHistoryFromServer]);
+
   const generationActionsOptions = useMemo(
     () => ({
       aspectRatio,
@@ -330,14 +348,24 @@ export function useGenerationsRuntime({
       fps,
       generationParams: mergedGenerationParams,
       promptVersionId,
+      // ISSUE-12: thread current sessionId so preview POSTs can include it and
+      // the server can persist the generation atomically to the session
+      // version. Only remote (persisted) session ids are forwarded; draft-
+      // prefixed ids are client-only and have no server-side record yet, so
+      // the server would 404 on them. Null here → legacy client-authoritative
+      // path in useGenerationActions.
+      sessionId: isRemoteSessionId(currentSessionId) ? currentSessionId : null,
       generations,
       onInsufficientCredits: notifyInsufficientCredits,
+      onServerGenerationPersisted: handleServerGenerationPersisted,
     }),
     [
       aspectRatio,
+      currentSessionId,
       duration,
       fps,
       generations,
+      handleServerGenerationPersisted,
       mergedGenerationParams,
       notifyInsufficientCredits,
       promptVersionId,
@@ -547,8 +575,18 @@ export function useGenerationsRuntime({
   );
 
   const executeDraftAction = useCallback(
-    (model: DraftModel, overrides?: GenerationOverrides) => {
-      if (!prompt.trim()) return;
+    (
+      model: DraftModel,
+      overrides?: GenerationOverrides,
+      promptOverride?: string,
+    ) => {
+      // Prefer the live outer prompt when it's present (it may have been
+      // rewritten by the optimizer during session load); fall back to the
+      // intent's captured prompt when the editor is transiently empty
+      // between navigate-to-session and loader-rehydration.
+      const effectivePrompt =
+        prompt.trim().length > 0 ? prompt : (promptOverride ?? prompt);
+      if (!effectivePrompt.trim()) return;
       if (hasActiveContinuityShot) {
         onCreateVersionIfNeeded();
         void generateSequenceShot(model);
@@ -569,7 +607,7 @@ export function useGenerationsRuntime({
         resolvedOverrides?.characterAssetId ??
         (!resolvedStartImage ? detectedCharacter?.id : undefined);
 
-      generateDraft(model, prompt, {
+      generateDraft(model, effectivePrompt, {
         promptVersionId: versionId,
         ...(resolvedStartImage ? { startImage: resolvedStartImage } : {}),
         ...(resolvedOverrides?.endImage
@@ -623,6 +661,14 @@ export function useGenerationsRuntime({
         executeDraftAction(model, overrides);
         return;
       }
+      if (!hasActiveContinuityShot) {
+        const modelConfig = getModelConfig(model);
+        const requiredCredits = getModelCreditCost(model, duration);
+        const operationLabel = `${modelConfig?.label ?? "Video"} preview`;
+        if (!hasCreditsFor(requiredCredits, operationLabel)) {
+          return;
+        }
+      }
       const currentSessionKey = currentPromptDocId ?? currentSessionId ?? null;
       if (!authUidRef.current || isRemoteSessionId(currentSessionKey)) {
         executeDraftAction(model, overrides);
@@ -640,11 +686,13 @@ export function useGenerationsRuntime({
       });
     },
     [
+      duration,
       ensurePersistedSessionFromDraft,
       executeDraftAction,
       currentPromptDocId,
       currentSessionId,
       hasActiveContinuityShot,
+      hasCreditsFor,
       isSubmitting,
       prompt,
     ],
@@ -701,7 +749,11 @@ export function useGenerationsRuntime({
   }, [clearSelectedFrameInWorkflow]);
 
   const executeRenderAction = useCallback(
-    (model: string, overrides?: GenerationOverrides) => {
+    (
+      model: string,
+      overrides?: GenerationOverrides,
+      _promptOverride?: string,
+    ) => {
       if (hasActiveContinuityShot) {
         onCreateVersionIfNeeded();
         void generateSequenceShot(model);
@@ -740,6 +792,12 @@ export function useGenerationsRuntime({
         executeRenderAction(model, overrides);
         return;
       }
+      const modelConfig = getModelConfig(model);
+      const requiredCredits = getModelCreditCost(model, duration);
+      const operationLabel = `${modelConfig?.label ?? "Video"} render`;
+      if (!hasCreditsFor(requiredCredits, operationLabel)) {
+        return;
+      }
       const currentSessionKey = currentPromptDocId ?? currentSessionId ?? null;
       if (!authUidRef.current || isRemoteSessionId(currentSessionKey)) {
         executeRenderAction(model, overrides);
@@ -757,44 +815,55 @@ export function useGenerationsRuntime({
       });
     },
     [
+      duration,
       ensurePersistedSessionFromDraft,
       executeRenderAction,
       currentPromptDocId,
       currentSessionId,
       hasActiveContinuityShot,
+      hasCreditsFor,
       isSubmitting,
       prompt,
     ],
   );
 
-  const executeStoryboardAction = useCallback(() => {
-    if (hasActiveContinuityShot) {
-      onCreateVersionIfNeeded();
-      void generateSequenceShot(VIDEO_DRAFT_MODEL.id);
-      return;
-    }
-    const storyboardConfig = getModelConfig("flux-kontext");
-    const requiredCredits = storyboardConfig?.credits ?? 4;
-    if (!hasCreditsFor(requiredCredits, "Storyboard")) {
-      return;
-    }
-    const resolvedPrompt =
-      prompt.trim() || "Generate a storyboard based on the reference image.";
-    const versionId = onCreateVersionIfNeeded();
-    const seedImageUrl = startFrame?.url ?? null;
-    generateStoryboard(resolvedPrompt, {
-      promptVersionId: versionId,
-      seedImageUrl,
-    });
-  }, [
-    generateStoryboard,
-    generateSequenceShot,
-    hasActiveContinuityShot,
-    hasCreditsFor,
-    onCreateVersionIfNeeded,
-    prompt,
-    startFrame?.url,
-  ]);
+  const executeStoryboardAction = useCallback(
+    (promptOverride?: string) => {
+      if (hasActiveContinuityShot) {
+        onCreateVersionIfNeeded();
+        void generateSequenceShot(VIDEO_DRAFT_MODEL.id);
+        return;
+      }
+      const storyboardConfig = getModelConfig("flux-kontext");
+      const requiredCredits = storyboardConfig?.credits ?? 4;
+      if (!hasCreditsFor(requiredCredits, "Storyboard")) {
+        return;
+      }
+      // Prefer the live outer prompt when present (optimizer may have
+      // rewritten it during session load). Fall back to the intent's
+      // captured prompt when the editor is transiently empty during
+      // draft→persisted navigation.
+      const resolvedPrompt =
+        prompt.trim() ||
+        promptOverride?.trim() ||
+        "Generate a storyboard based on the reference image.";
+      const versionId = onCreateVersionIfNeeded();
+      const seedImageUrl = startFrame?.url ?? null;
+      generateStoryboard(resolvedPrompt, {
+        promptVersionId: versionId,
+        seedImageUrl,
+      });
+    },
+    [
+      generateStoryboard,
+      generateSequenceShot,
+      hasActiveContinuityShot,
+      hasCreditsFor,
+      onCreateVersionIfNeeded,
+      prompt,
+      startFrame?.url,
+    ],
+  );
 
   const handleStoryboard = useCallback(() => {
     if (isPreparingGenerationRef.current || isSubmitting) {
@@ -856,7 +925,10 @@ export function useGenerationsRuntime({
     if (pendingIntent.sessionId !== currentSessionId) {
       return;
     }
-    if (prompt.trim() !== pendingIntent.prompt.trim()) {
+    // Gate on the INTENT's captured prompt, not the outer `prompt` prop. The
+    // editor is transiently empty between navigate-to-session and loader
+    // rehydration; reading the intent keeps the resume deterministic.
+    if (pendingIntent.prompt.trim().length === 0) {
       return;
     }
 
@@ -870,7 +942,11 @@ export function useGenerationsRuntime({
       typeof nextIntent.model === "string" &&
       nextIntent.prompt.trim()
     ) {
-      executeDraftActionRef.current(nextIntent.model, nextIntent.overrides);
+      executeDraftActionRef.current(
+        nextIntent.model,
+        nextIntent.overrides,
+        nextIntent.prompt,
+      );
       return;
     }
 
@@ -879,11 +955,15 @@ export function useGenerationsRuntime({
       typeof nextIntent.model === "string" &&
       nextIntent.prompt.trim()
     ) {
-      executeRenderActionRef.current(nextIntent.model, nextIntent.overrides);
+      executeRenderActionRef.current(
+        nextIntent.model,
+        nextIntent.overrides,
+        nextIntent.prompt,
+      );
       return;
     }
 
-    executeStoryboardActionRef.current();
+    executeStoryboardActionRef.current(nextIntent.prompt);
   }, [currentSessionId, isSubmitting, prompt, setPreparingGenerationPending]);
 
   const handleDraftForControls = useCallback(
@@ -1158,26 +1238,15 @@ export function useGenerationsRuntime({
     return generations[generations.length - 1] ?? null;
   }, [activeGenerationId, generations]);
 
-  const heroGeneration = useMemo(() => {
-    const overrideId = heroOverrideGenerationId ?? null;
-    if (overrideId) {
-      const overrideMatch = generations.find(
-        (generation) => generation.id === overrideId,
-      );
-      if (overrideMatch && overrideMatch.mediaType !== "image-sequence") {
-        return overrideMatch;
-      }
-    }
-    if (activeGeneration && activeGeneration.mediaType !== "image-sequence") {
-      return activeGeneration;
-    }
-    const nonStoryboardGenerations = generations.filter(
-      (generation) => generation.mediaType !== "image-sequence",
-    );
-    return (
-      nonStoryboardGenerations[nonStoryboardGenerations.length - 1] ?? null
-    );
-  }, [activeGeneration, generations, heroOverrideGenerationId]);
+  const heroGeneration = useMemo(
+    () =>
+      selectHeroGeneration({
+        generations,
+        activeGenerationId: activeGeneration?.id ?? null,
+        heroOverrideGenerationId: heroOverrideGenerationId ?? null,
+      }),
+    [activeGeneration, generations, heroOverrideGenerationId],
+  );
 
   const onStateSnapshotRef = useRef(onStateSnapshot);
   onStateSnapshotRef.current = onStateSnapshot;

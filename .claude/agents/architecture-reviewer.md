@@ -39,9 +39,9 @@ Before flagging a file, ask yourself:
 
 A 600-line state machine with one responsibility is fine. A 100-line file with three responsibilities is not.
 
-### 2. Frontend Pattern: VideoConceptBuilder
+### 2. Frontend Pattern: Preview Feature
 
-Reference implementation: `client/src/components/VideoConceptBuilder/`
+Reference implementation: `client/src/features/preview/`
 
 Verify feature modules follow:
 

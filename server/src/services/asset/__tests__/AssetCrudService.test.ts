@@ -39,7 +39,9 @@ function createMockRepository() {
     create: vi.fn().mockResolvedValue(createMockAsset()),
     getById: vi.fn().mockResolvedValue(createMockAsset()),
     getAll: vi.fn().mockResolvedValue([createMockAsset()]),
-    getByType: vi.fn().mockResolvedValue([createMockAsset()]),
+    getByType: vi
+      .fn()
+      .mockResolvedValue({ items: [createMockAsset()], hasMore: false }),
     update: vi.fn().mockResolvedValue(createMockAsset()),
     delete: vi.fn().mockResolvedValue(true),
     triggerExists: vi.fn().mockResolvedValue(false),
@@ -225,11 +227,16 @@ describe("AssetCrudService", () => {
   });
 
   describe("listAssetsByType", () => {
-    it("delegates to repository getByType", async () => {
-      const assets = await service.listAssetsByType("user-1", "character");
+    it("delegates to repository getByType and returns structured result", async () => {
+      const result = await service.listAssetsByType("user-1", "character");
 
-      expect(repository.getByType).toHaveBeenCalledWith("user-1", "character");
-      expect(assets).toHaveLength(1);
+      expect(repository.getByType).toHaveBeenCalledWith(
+        "user-1",
+        "character",
+        200,
+      );
+      expect(result.items).toHaveLength(1);
+      expect(result.hasMore).toBe(false);
     });
   });
 

@@ -7,15 +7,13 @@ import {
   Palette,
   MapPin,
   Box,
+  type IconType,
 } from "@promptstudio/system/components/ui";
 import type { Asset } from "@shared/types/asset";
 import { getAssetTypeConfig } from "../config/assetConfig";
 import { useResolvedMediaUrl } from "@/hooks/useResolvedMediaUrl";
 
-const TYPE_ICONS: Record<
-  string,
-  React.ComponentType<{ className?: string }>
-> = {
+const TYPE_ICONS: Record<string, IconType> = {
   character: User,
   style: Palette,
   location: MapPin,

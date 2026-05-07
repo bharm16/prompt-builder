@@ -11,7 +11,7 @@ import type {
   LabelSpansParams,
   LabelSpansResult,
 } from "@llm/span-labeling/types";
-import type { AIService as BaseAIService } from "@services/enhancement/services/types";
+import type { AIExecutionPort } from "@services/ai-model/ports/AIExecutionPort";
 import {
   toPublicLabelSpansResult,
   type PublicLabelSpansResult,
@@ -126,7 +126,7 @@ export class RequestBatchingService {
    *   { spans: [...], meta: {...} }
    * ]
    */
-  middleware(aiService: BaseAIService): RequestHandler {
+  middleware(aiService: AIExecutionPort): RequestHandler {
     return async (req, res, next): Promise<void> => {
       try {
         const requests = req.body;
@@ -203,7 +203,7 @@ export class RequestBatchingService {
    */
   async processBatch(
     requests: LabelSpansParams[],
-    aiService: BaseAIService,
+    aiService: AIExecutionPort,
   ): Promise<
     Array<PublicLabelSpansResult | { error: { message: string; code: string } }>
   > {
@@ -359,7 +359,7 @@ export class RequestBatchingService {
  * Accepts metricsService for recording batch-level histograms/counters.
  */
 export function createBatchMiddleware(
-  aiService: BaseAIService,
+  aiService: AIExecutionPort,
   metricsService?: BatchMetrics,
 ): RequestHandler {
   const service = new RequestBatchingService({

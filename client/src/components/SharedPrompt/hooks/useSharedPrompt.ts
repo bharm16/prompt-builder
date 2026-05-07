@@ -104,7 +104,7 @@ export function useSharedPrompt({
     };
 
     fetchPrompt();
-  }, [uuid, toast, debug]);
+  }, [uuid, debug, toast]);
 
   const formattedOutput = useMemo<{ html: string }>(() => {
     if (!prompt?.output) {

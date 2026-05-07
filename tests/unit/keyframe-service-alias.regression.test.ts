@@ -39,7 +39,7 @@ describe("keyframeGenerationService singleton regression", () => {
       fal: { apiKey: process.env.FAL_KEY },
       redis: { defaultTTL: 3600, shortTTL: 300, maxMemoryCacheSize: 1000 },
       server: { port: "3001", environment: "test" },
-      features: { faceEmbedding: false, promptOutputOnly: false },
+      features: { faceEmbedding: false },
     } as ServiceConfig;
 
     container.registerValue("config", config);

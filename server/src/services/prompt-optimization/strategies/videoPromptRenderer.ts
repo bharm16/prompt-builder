@@ -1,4 +1,5 @@
 import type { VideoPromptSlots } from "./videoPromptTypes.js";
+import { normalizeShotFraming } from "./videoPromptTypes.js";
 
 function clean(text: string | null | undefined): string | null {
   if (!text || typeof text !== "string") return null;
@@ -199,7 +200,7 @@ function compactToWordLimit(text: string, maxWords: number): string {
 }
 
 export function renderMainVideoPrompt(slots: VideoPromptSlots): string {
-  const shotFraming = clean(slots.shot_framing) ?? "Wide Shot";
+  const shotFraming = normalizeShotFraming(clean(slots.shot_framing));
   const anglePhrase = angleToPhrase(slots.camera_angle);
   const cameraMove = clean(slots.camera_move);
   const subjectPhrase = formatSubject(slots.subject, slots.subject_details);

@@ -1,6 +1,6 @@
 import { pipeline } from "node:stream/promises";
 import type { Response } from "express";
-import { isKnownGenerationModelInput } from "@services/video-models/ModelRegistry";
+import { isKnownGenerationModelInput } from "@config/videoModelRegistry";
 
 export type VideoAspectRatio = "16:9" | "9:16" | "21:9" | "1:1";
 
@@ -17,6 +17,11 @@ export interface VideoPreviewPayload {
   characterAssetId?: string;
   autoKeyframe?: boolean;
   faceSwapAlreadyApplied?: boolean;
+  // ISSUE-12: when both provided, the worker's processVideoJob pipeline
+  // appends the completed generation to the named session version after
+  // successful markCompleted. Matches the storyboard handler behaviour.
+  sessionId?: string;
+  promptVersionId?: string;
 }
 
 interface VideoPreviewParseSuccess {
@@ -57,6 +62,8 @@ export const parseVideoPreviewRequest = (
     characterAssetId,
     autoKeyframe,
     faceSwapAlreadyApplied,
+    sessionId,
+    promptVersionId,
   } = (body || {}) as {
     prompt?: unknown;
     aspectRatio?: unknown;
@@ -70,6 +77,8 @@ export const parseVideoPreviewRequest = (
     characterAssetId?: unknown;
     autoKeyframe?: unknown;
     faceSwapAlreadyApplied?: unknown;
+    sessionId?: unknown;
+    promptVersionId?: unknown;
   };
 
   if (!prompt || typeof prompt !== "string" || prompt.trim().length === 0) {
@@ -217,6 +226,26 @@ export const parseVideoPreviewRequest = (
   const resolvedAutoKeyframe = autoKeyframe !== false;
   const resolvedFaceSwapAlreadyApplied = faceSwapAlreadyApplied === true;
 
+  if (sessionId !== undefined && typeof sessionId !== "string") {
+    return { ok: false, status: 400, error: "sessionId must be a string" };
+  }
+  const resolvedSessionId =
+    typeof sessionId === "string" && sessionId.trim().length > 0
+      ? sessionId.trim()
+      : undefined;
+
+  if (promptVersionId !== undefined && typeof promptVersionId !== "string") {
+    return {
+      ok: false,
+      status: 400,
+      error: "promptVersionId must be a string",
+    };
+  }
+  const resolvedPromptVersionId =
+    typeof promptVersionId === "string" && promptVersionId.trim().length > 0
+      ? promptVersionId.trim()
+      : undefined;
+
   return {
     ok: true,
     payload: {
@@ -235,6 +264,10 @@ export const parseVideoPreviewRequest = (
       autoKeyframe: resolvedAutoKeyframe,
       ...(resolvedFaceSwapAlreadyApplied
         ? { faceSwapAlreadyApplied: true }
+        : {}),
+      ...(resolvedSessionId ? { sessionId: resolvedSessionId } : {}),
+      ...(resolvedPromptVersionId
+        ? { promptVersionId: resolvedPromptVersionId }
         : {}),
     },
   };

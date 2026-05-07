@@ -1,4 +1,4 @@
-import { createHash } from "crypto";
+import { sha256Hex } from "@utils/hash";
 import { ROLE_SET } from "../config/roles.js";
 import { TAXONOMY } from "#shared/taxonomy.ts";
 import { clamp01 } from "../utils/textUtils.js";
@@ -36,11 +36,10 @@ export interface NormalizedSpan {
  * @returns {string} Stable span ID
  */
 function generateSpanId(span: SpanInput, sourceText: string): string {
-  // Hash the source text to create a deterministic prefix
-  const textHash = createHash("sha256")
-    .update(sourceText)
-    .digest("hex")
-    .substring(0, 8); // Use first 8 chars for brevity
+  // Hash the source text to create a deterministic prefix. 8 hex chars is
+  // enough for uniqueness within a prompt since span coordinates also
+  // participate in the final id.
+  const textHash = sha256Hex(sourceText, 8);
 
   // Combine hash with span coordinates and role for uniqueness
   return `${textHash}-${span.start}-${span.end}-${span.role}`;

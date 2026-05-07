@@ -45,7 +45,7 @@ export function PrivacyPolicyPage(): React.ReactElement {
   const supportEmail =
     (
       import.meta as { env?: { VITE_SUPPORT_EMAIL?: string } }
-    ).env?.VITE_SUPPORT_EMAIL?.trim() || "support@yourdomain.com";
+    ).env?.VITE_SUPPORT_EMAIL?.trim() || "support@vidra.app";
   const companyName = "Vidra";
   const productName = "Vidra";
 

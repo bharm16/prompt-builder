@@ -205,7 +205,9 @@ describe("usePromptOptimization", () => {
     );
 
     expect(setters.setShowResults).toHaveBeenCalledWith(true);
-    expect(setters.setDisplayedPromptSilently).toHaveBeenCalledWith("");
+    // The clear-before-set pattern moved into the reducer
+    // (START_OPTIMIZATION now zeros displayedPrompt), so the setter is only
+    // called once with the final optimized value.
     expect(setters.setDisplayedPromptSilently).toHaveBeenCalledWith(
       "Optimized prompt",
     );

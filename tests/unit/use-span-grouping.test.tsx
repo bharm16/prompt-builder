@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { renderHook } from "@testing-library/react";
 
-import { useSpanGrouping } from "@features/prompt-optimizer/SpanBentoGrid/hooks/useSpanGrouping";
-import type { Span } from "@features/prompt-optimizer/SpanBentoGrid/components/types";
+import { useSpanGrouping } from "@features/prompt-optimizer/SpanCategoryAccordion/hooks/useSpanGrouping";
+import type { Span } from "@features/prompt-optimizer/SpanCategoryAccordion/components/types";
 import { TAXONOMY } from "@shared/taxonomy";
 
 const { warnSpy } = vi.hoisted(() => ({

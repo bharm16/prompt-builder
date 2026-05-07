@@ -56,6 +56,7 @@ export function useVideoPreview({
 
   const abortControllerRef = useRef<AbortController | null>(null);
   const lastPromptRef = useRef<string>("");
+  const requestIdRef = useRef(0);
 
   useEffect(() => {
     setVideoUrl(null);
@@ -92,6 +93,8 @@ export function useVideoPreview({
       setLoading(true);
       setError(null);
       lastPromptRef.current = cleanedPrompt;
+      requestIdRef.current += 1;
+      const requestId = requestIdRef.current;
 
       // Create new abort controller for this request
       const abortController = new AbortController();
@@ -160,7 +163,10 @@ export function useVideoPreview({
           }
         }
 
-        if (abortController.signal.aborted) {
+        if (
+          abortController.signal.aborted ||
+          requestId !== requestIdRef.current
+        ) {
           return;
         }
 
@@ -171,8 +177,11 @@ export function useVideoPreview({
           options,
         );
 
-        // Check if request was aborted
-        if (abortController.signal.aborted) {
+        // Check if request was aborted or superseded
+        if (
+          abortController.signal.aborted ||
+          requestId !== requestIdRef.current
+        ) {
           return;
         }
 
@@ -187,7 +196,11 @@ export function useVideoPreview({
             response.jobId,
             abortController.signal,
           );
-          if (!pollResult || abortController.signal.aborted) {
+          if (
+            !pollResult ||
+            abortController.signal.aborted ||
+            requestId !== requestIdRef.current
+          ) {
             return;
           }
           setVideoUrl(pollResult.videoUrl);
@@ -201,8 +214,11 @@ export function useVideoPreview({
             "Failed to generate video preview",
         );
       } catch (err) {
-        // Don't set error if request was aborted
-        if (abortController.signal.aborted) {
+        // Don't set error if request was aborted or superseded
+        if (
+          abortController.signal.aborted ||
+          requestId !== requestIdRef.current
+        ) {
           return;
         }
 
@@ -213,8 +229,11 @@ export function useVideoPreview({
         setError(errorMessage);
         setVideoUrl(null);
       } finally {
-        // Only update loading state if this request wasn't aborted
-        if (!abortController.signal.aborted) {
+        // Only update loading state if this request is still current
+        if (
+          !abortController.signal.aborted &&
+          requestId === requestIdRef.current
+        ) {
           setLoading(false);
         }
       }

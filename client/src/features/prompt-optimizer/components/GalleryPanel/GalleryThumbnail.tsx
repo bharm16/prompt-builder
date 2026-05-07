@@ -91,7 +91,7 @@ export function GalleryThumbnail({
       className={`group pointer-events-auto relative aspect-square h-[100px] w-[100px] flex-shrink-0 snap-start overflow-visible rounded-md bg-neutral-600 transition-[transform,box-shadow,opacity] duration-[180ms] [transition-timing-function:var(--motion-ease-emphasized)] ${
         isActive
           ? "scale-[1.03] opacity-100 shadow-[inset_0_0_0_2px_rgb(0,0,0),0_0_0_2px_rgb(255,255,255)]"
-          : "opacity-85 shadow-none hover:scale-[1.02] hover:opacity-100"
+          : "opacity-85 shadow-none hover:scale-[1.03] hover:opacity-100"
       }`}
       aria-label="Open generation details"
       data-testid={`gallery-thumbnail-${generation.id}`}

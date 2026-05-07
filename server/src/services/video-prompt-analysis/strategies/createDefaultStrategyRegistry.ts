@@ -12,7 +12,6 @@ import { WanStrategy } from "./WanStrategy";
 
 interface CreateDefaultStrategyRegistryOptions {
   videoPromptLlmGateway?: VideoPromptLlmGateway | null;
-  promptOutputOnly?: boolean;
 }
 
 export function createDefaultStrategyRegistry(
@@ -21,9 +20,6 @@ export function createDefaultStrategyRegistry(
   const createAnalyzer = (): VideoPromptAnalyzer =>
     new VideoPromptAnalyzer({
       llmExtractor: new LlmIrExtractor(options.videoPromptLlmGateway ?? null),
-      ...(options.promptOutputOnly != null
-        ? { promptOutputOnly: options.promptOutputOnly }
-        : {}),
     });
   const createRewriter = (): VideoPromptLLMRewriter =>
     new VideoPromptLLMRewriter(options.videoPromptLlmGateway ?? null);

@@ -34,16 +34,13 @@ describe("Optimize Routes (full-stack integration)", () => {
 
   let previousAllowedApiKeys: string | undefined;
   let previousPort: string | undefined;
-  let previousPromptOutputOnly: string | undefined;
 
   beforeAll(async () => {
     previousAllowedApiKeys = process.env.ALLOWED_API_KEYS;
     previousPort = process.env.PORT;
-    previousPromptOutputOnly = process.env.PROMPT_OUTPUT_ONLY;
 
     process.env.ALLOWED_API_KEYS = TEST_API_KEY;
     process.env.PORT = "0";
-    process.env.PROMPT_OUTPUT_ONLY = "true";
 
     const makeResponse = (text: string): MockAIResponse => ({
       text,
@@ -184,12 +181,6 @@ describe("Optimize Routes (full-stack integration)", () => {
       delete process.env.PORT;
     } else {
       process.env.PORT = previousPort;
-    }
-
-    if (previousPromptOutputOnly === undefined) {
-      delete process.env.PROMPT_OUTPUT_ONLY;
-    } else {
-      process.env.PROMPT_OUTPUT_ONLY = previousPromptOutputOnly;
     }
   });
 

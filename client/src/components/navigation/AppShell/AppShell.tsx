@@ -24,33 +24,40 @@ export const AppShell = memo(function AppShell(
   const { variant, navItems, currentPath } = useNavigationConfig();
   const user = useAuthUser();
 
+  // CreditBalanceProvider must wrap every variant so routes like /account
+  // (topnav) and any future auth-less routes can still display the live
+  // balance. Consumers null-check `balance` when the user is signed out.
+  const withCreditBalance = (content: ReactElement): ReactElement => (
+    <CreditBalanceProvider userId={user?.uid ?? null}>
+      {content}
+    </CreditBalanceProvider>
+  );
+
   if (variant === "none") {
-    return <>{children}</>;
+    return withCreditBalance(<>{children}</>);
   }
 
   if (variant === "topnav") {
-    return (
+    return withCreditBalance(
       <div className="flex min-h-full flex-col bg-app">
         <TopNavbar navItems={navItems.topNav} user={user} />
         <div className="min-h-0 flex-1 pt-[var(--global-top-nav-height)]">
           {children}
         </div>
-      </div>
+      </div>,
     );
   }
 
   // Non-session sidebar routes (e.g. /assets) should not restore persisted panel state
   const isNonSessionRoute = currentPath === "/assets";
 
-  return (
+  return withCreditBalance(
     <div className="flex h-full min-h-0 overflow-hidden bg-app">
-      <CreditBalanceProvider userId={user?.uid ?? null}>
-        <ToolSidebar user={user} forceDefaultPanel={isNonSessionRoute} />
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-black">
-          {children}
-        </div>
-      </CreditBalanceProvider>
-    </div>
+      <ToolSidebar user={user} forceDefaultPanel={isNonSessionRoute} />
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-black">
+        {children}
+      </div>
+    </div>,
   );
 });
 

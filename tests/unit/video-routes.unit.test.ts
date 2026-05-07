@@ -1,13 +1,15 @@
 import express from "express";
 import request from "supertest";
 import { z } from "zod";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   verifyIdToken: vi.fn(),
   loggerInfo: vi.fn(),
   loggerWarn: vi.fn(),
   loggerError: vi.fn(),
+  // Shared between test body and hoisted apiAuth mock so both stay in sync.
+  TEST_API_KEY: "unit-video-key",
 }));
 
 vi.mock("@infrastructure/firebaseAdmin", () => ({
@@ -69,6 +71,31 @@ vi.mock("@middleware/validateRequest", () => ({
     },
 }));
 
+// Decouple this test from process.env.ALLOWED_API_KEYS. Node worker threads
+// share process.env, so a sibling test file's afterEach that deletes the var
+// could race with our sequential requests and produce spurious 401s. Auth
+// semantics against the real env are covered in middleware/__tests__/apiAuth.
+vi.mock("@middleware/apiAuth", () => ({
+  apiAuthMiddleware: (
+    req: express.Request & { user?: { uid: string }; apiKey?: string },
+    res: express.Response,
+    next: express.NextFunction,
+  ): void => {
+    const header = req.headers["x-api-key"];
+    const apiKey = Array.isArray(header) ? header[0] : header;
+    if (typeof apiKey === "string" && apiKey === mocks.TEST_API_KEY) {
+      req.apiKey = apiKey;
+      req.user = { uid: `api-key:${apiKey}` };
+      next();
+      return;
+    }
+    res.status(401).json({
+      error: "Authentication required",
+      message: "Provide a Firebase token or API key to access this endpoint",
+    });
+  },
+}));
+
 vi.mock("@utils/validation", () => ({
   creativeSuggestionSchema: z.object({
     elementType: z.string().min(1),
@@ -99,7 +126,7 @@ import { apiAuthMiddleware } from "@middleware/apiAuth";
 import { createVideoRoutes } from "@routes/video.routes";
 import { runSupertestOrSkip } from "./test-helpers/supertestSafeRequest";
 
-const TEST_API_KEY = "unit-video-key";
+const TEST_API_KEY = mocks.TEST_API_KEY;
 
 type MockVideoConceptService = {
   getCreativeSuggestions: ReturnType<typeof vi.fn>;
@@ -153,20 +180,8 @@ const createApp = (service: MockVideoConceptService) => {
 };
 
 describe("video routes unit", () => {
-  let previousAllowedApiKeys: string | undefined;
-
   beforeEach(() => {
     vi.clearAllMocks();
-    previousAllowedApiKeys = process.env.ALLOWED_API_KEYS;
-    process.env.ALLOWED_API_KEYS = TEST_API_KEY;
-  });
-
-  afterEach(() => {
-    if (previousAllowedApiKeys === undefined) {
-      delete process.env.ALLOWED_API_KEYS;
-      return;
-    }
-    process.env.ALLOWED_API_KEYS = previousAllowedApiKeys;
   });
 
   it("rejects unauthenticated requests with 401", async () => {

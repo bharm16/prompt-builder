@@ -7,7 +7,7 @@ import { fileURLToPath } from "url";
 
 import type { PromptOptimizationService } from "../server/src/services/prompt-optimization/PromptOptimizationService.ts";
 import type { VideoPromptService } from "../server/src/services/video-prompt-analysis/VideoPromptService.ts";
-import { resolvePromptModelId } from "../server/src/services/video-models/ModelRegistry.ts";
+import { resolvePromptModelId } from "../server/src/config/videoModelRegistry.ts";
 
 interface CliOptions {
   prompts: string[];

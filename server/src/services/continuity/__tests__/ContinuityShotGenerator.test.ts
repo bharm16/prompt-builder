@@ -133,12 +133,13 @@ const createGenerator = (
       assetId: undefined,
       videoUrl: undefined,
     }),
-    evaluateQuality: vi.fn().mockResolvedValue({
+    evaluate: vi.fn().mockResolvedValue({
       passed: true,
       styleScore: 0.9,
       identityScore: 0.8,
     }),
-    renderSceneProxy: vi.fn(),
+    renderFromProxy: vi.fn(),
+    createProxyFromVideo: vi.fn(),
     matchImagePalette: vi.fn(),
     ...(overrides.postProcessingService as Record<string, unknown> | undefined),
   };
@@ -155,9 +156,16 @@ const createGenerator = (
     ...(overrides.characterKeyframes as Record<string, unknown> | undefined),
   };
 
+  // The composite `providerService` / `postProcessingService` mocks carry all
+  // methods from the former façades; pass them to each of the split slots
+  // (ducktyped as `never`, TS won't complain about extra methods).
   const generator = new ContinuityShotGenerator(
     providerService as never,
+    providerService as never,
+    providerService as never,
     mediaService as never,
+    postProcessingService as never,
+    postProcessingService as never,
     postProcessingService as never,
     characterKeyframes as never,
     sessionStore as never,
@@ -347,7 +355,7 @@ describe("ContinuityShotGenerator", () => {
       session,
       {
         postProcessingService: {
-          evaluateQuality: vi
+          evaluate: vi
             .fn()
             .mockResolvedValueOnce({ passed: false, styleScore: 0.4 })
             .mockResolvedValueOnce({ passed: true, styleScore: 0.88 }),
@@ -363,7 +371,7 @@ describe("ContinuityShotGenerator", () => {
     });
 
     expect(mediaService.generateVideo).toHaveBeenCalledTimes(2);
-    expect(postProcessingService.evaluateQuality).toHaveBeenCalledTimes(2);
+    expect(postProcessingService.evaluate).toHaveBeenCalledTimes(2);
     expect(result.status).toBe("completed");
     expect(result.retryCount).toBe(1);
     expect(result.styleStrength).toBeCloseTo(0.7, 5);

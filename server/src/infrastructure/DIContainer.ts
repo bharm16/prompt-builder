@@ -44,14 +44,14 @@ export class DIContainer {
    * Register a service with its dependencies
    *
    * @example
-   * container.register('claudeClient',
+   * container.register('openAIClient',
    *   () => new OpenAIAPIClient(process.env.OPENAI_API_KEY),
    *   []
    * );
    *
    * container.register('promptService',
-   *   (claudeClient) => new PromptOptimizationService(claudeClient),
-   *   ['claudeClient']
+   *   (openAIClient) => new PromptOptimizationService(openAIClient),
+   *   ['openAIClient']
    * );
    */
   register<TDependencies extends unknown[], TResult>(

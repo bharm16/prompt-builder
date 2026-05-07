@@ -207,7 +207,7 @@ describe("AssetService", () => {
     const repository = {
       getById: vi.fn().mockResolvedValue(baseCharacterAsset()),
     };
-    const referenceImageService = {
+    const referenceImageRepository = {
       validateForAssetType: vi.fn().mockResolvedValue({
         isValid: false,
         warnings: [],
@@ -219,7 +219,7 @@ describe("AssetService", () => {
 
     const service = new AssetService(
       repository as any,
-      referenceImageService as any,
+      referenceImageRepository as any,
       {} as any,
       new TriggerValidationService(),
       null,

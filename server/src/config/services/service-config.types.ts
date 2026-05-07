@@ -111,6 +111,7 @@ export interface ServiceConfig {
     };
     access: {
       tokenSecret: string | undefined;
+      previousTokenSecrets?: readonly string[];
       tokenTtlSeconds: number;
     };
     reconciler: {
@@ -169,13 +170,10 @@ export interface ServiceConfig {
     shotPlanCacheMax: number;
   };
   enhancement: {
-    defaultEngine: "v1" | "v2";
-    legacyV1Enabled: boolean;
     policyVersion: string;
   };
   features: {
     faceEmbedding: boolean;
-    promptOutputOnly: boolean;
   };
   firestore: {
     circuit: {

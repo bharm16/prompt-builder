@@ -63,4 +63,40 @@ describe("fetchImageAsDataUrl", () => {
     const result = await fetchImageAsDataUrl("https://example.com/image");
     expect(result).toMatch(/^data:image\/png;base64,/);
   });
+
+  describe("SSRF guard (regression)", () => {
+    const UNSAFE_URLS: readonly string[] = [
+      "http://127.0.0.1/",
+      "http://[::ffff:169.254.169.254]/",
+      "file:///etc/passwd",
+    ];
+
+    for (const unsafeUrl of UNSAFE_URLS) {
+      it(`throws before any fetch for unsafe URL: ${unsafeUrl}`, async () => {
+        const fetchMock = fetch as ReturnType<typeof vi.fn>;
+
+        await expect(fetchImageAsDataUrl(unsafeUrl)).rejects.toThrow(
+          /Invalid URL for imageUrl/,
+        );
+        expect(fetchMock).not.toHaveBeenCalled();
+      });
+    }
+
+    it("proceeds to fetch for a safe public URL", async () => {
+      const imageBytes = new Uint8Array([0x89, 0x50, 0x4e, 0x47]);
+      const mockResponse = {
+        ok: true,
+        headers: new Headers({ "content-type": "image/png" }),
+        arrayBuffer: () => Promise.resolve(imageBytes.buffer),
+      };
+      (fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce(mockResponse);
+
+      const result = await fetchImageAsDataUrl(
+        "https://cdn.example.com/image.png",
+      );
+
+      expect(result).toMatch(/^data:image\/png;base64,/);
+      expect(fetch).toHaveBeenCalledTimes(1);
+    });
+  });
 });

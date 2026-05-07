@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import type { PromptVersionEntry } from "@features/prompt-optimizer/types/domain/prompt-session";
+import type { PromptVersionEntry } from "@features/prompt-optimizer";
 import type {
   TimelineDivider,
   TimelineGeneration,

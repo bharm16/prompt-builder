@@ -1,4 +1,6 @@
 import {
+  lazy,
+  Suspense,
   useCallback,
   useEffect,
   useMemo,
@@ -6,14 +8,28 @@ import {
   type ReactElement,
 } from "react";
 import { FEATURES } from "@/config/features.config";
-import { dispatchPromptFocusIntent } from "@features/workspace-shell/events";
-import type { PromptHistoryEntry } from "@/features/prompt-optimizer/types/domain/prompt-session";
+import { dispatchPromptFocusIntent } from "@features/workspace-shell";
+import type { PromptHistoryEntry } from "@features/prompt-optimizer";
 import { ToolRail } from "./components/ToolRail";
 import { ToolPanel } from "./components/ToolPanel";
 import { SessionsPanel } from "./components/panels/SessionsPanel";
-import { GenerationControlsPanel } from "./components/panels/GenerationControlsPanel";
-import { CharactersPanel } from "./components/panels/CharactersPanel";
-import { StylesPanel } from "./components/panels/StylesPanel";
+import { LoadingDots } from "@/components/LoadingDots";
+
+const GenerationControlsPanel = lazy(() =>
+  import("./components/panels/GenerationControlsPanel").then((m) => ({
+    default: m.GenerationControlsPanel,
+  })),
+);
+const CharactersPanel = lazy(() =>
+  import("./components/panels/CharactersPanel").then((m) => ({
+    default: m.CharactersPanel,
+  })),
+);
+const StylesPanel = lazy(() =>
+  import("./components/panels/StylesPanel").then((m) => ({
+    default: m.StylesPanel,
+  })),
+);
 import { useToolSidebarState } from "./hooks/useToolSidebarState";
 import type { ToolPanelType, ToolSidebarProps } from "./types";
 import { useSidebarSessionsDomain, useSidebarWorkspaceDomain } from "./context";
@@ -52,6 +68,17 @@ export function ToolSidebar(props: ToolSidebarProps): ReactElement {
   const handlePanelChange = useCallback(
     (panel: ToolPanelType): void => {
       const previousPanel = activePanelRef.current;
+      // In canvas-first layout, re-clicking the active overlay panel collapses
+      // it by returning to "studio" (which hides the overlay). Users expect the
+      // same button to toggle the panel open/closed.
+      if (
+        isCanvasFirstLayout &&
+        previousPanel === panel &&
+        panel !== "studio"
+      ) {
+        setActivePanel("studio");
+        return;
+      }
       setActivePanel(panel);
 
       if (
@@ -100,15 +127,27 @@ export function ToolSidebar(props: ToolSidebarProps): ReactElement {
     }
 
     if (panel === "studio") {
-      return <GenerationControlsPanel onBack={handleStudioBack} />;
+      return (
+        <Suspense fallback={<LoadingDots />}>
+          <GenerationControlsPanel onBack={handleStudioBack} />
+        </Suspense>
+      );
     }
 
     if (panel === "characters") {
-      return <CharactersPanel />;
+      return (
+        <Suspense fallback={<LoadingDots />}>
+          <CharactersPanel />
+        </Suspense>
+      );
     }
 
     if (panel === "styles") {
-      return <StylesPanel />;
+      return (
+        <Suspense fallback={<LoadingDots />}>
+          <StylesPanel />
+        </Suspense>
+      );
     }
 
     return null;
@@ -130,10 +169,10 @@ export function ToolSidebar(props: ToolSidebarProps): ReactElement {
       {isCanvasFirstLayout ? (
         overlayPanelContent ? (
           <div
-            className="absolute left-full top-0 z-20 h-full w-[400px] border-r border-tool-rail-border bg-[linear-gradient(180deg,#11131A_0%,#0D0F16_100%)] text-white shadow-[24px_0_80px_rgba(0,0,0,0.45)]"
+            className="absolute left-full top-0 z-20 h-full w-[400px] border-r border-tool-rail-border bg-[var(--tool-surface-deep)] text-white shadow-[8px_0_24px_rgba(0,0,0,0.3)]"
             data-testid="tool-sidebar-overlay-panel"
           >
-            <div className="flex h-full flex-col bg-[rgba(15,18,26,0.7)]">
+            <div className="flex h-full flex-col">
               <div
                 key={activePanel}
                 className="motion-presence-panel h-full ps-animate-fade-in"

@@ -6,13 +6,12 @@ import { logger } from "@infrastructure/Logger";
  * API Key Authentication Middleware
  *
  * Validates API keys from either the X-API-Key header or Authorization: Bearer header.
- * Requires ALLOWED_API_KEYS (preferred) or API_KEY.
+ * Requires ALLOWED_API_KEYS (preferred) or API_KEY — no dev fallback; local dev must set one explicitly.
  *
  * @param req - Express request object
  * @param res - Express response object
  * @param next - Express next middleware function
  */
-const DEV_FALLBACK_KEY = "dev-key-12345";
 const BEARER_PREFIX = "Bearer ";
 
 type ApiAuthRequest = Request & {
@@ -105,13 +104,7 @@ export async function apiAuthMiddleware(
       ? [process.env.API_KEY.trim()]
       : [];
   const allowedKeys =
-    envKeys.length > 0
-      ? envKeys
-      : singleApiKey.length > 0
-        ? singleApiKey
-        : process.env.NODE_ENV !== "production"
-          ? [DEV_FALLBACK_KEY]
-          : [];
+    envKeys.length > 0 ? envKeys : singleApiKey.length > 0 ? singleApiKey : [];
 
   if (apiKeyCandidate && allowedKeys.includes(apiKeyCandidate)) {
     logger.info("API request authenticated via API key", {

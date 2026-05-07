@@ -13,7 +13,7 @@
 
 import { describe, it, expect } from "vitest";
 import * as fc from "fast-check";
-import { resolvePromptModelId } from "@services/video-models/ModelRegistry";
+import { resolvePromptModelId } from "@config/videoModelRegistry";
 
 import {
   StrategyRegistry,
@@ -656,29 +656,31 @@ describe("BaseStrategy Implementation Tests", () => {
    */
   describe("Metadata Tracking", () => {
     it("records stripped tokens in metadata", async () => {
-      const strategy = new TestBaseStrategy();
+      const strategy = new TestBaseStrategy(
+        undefined,
+        undefined,
+        new StubAnalyzer(),
+        new StubRewriter(),
+      );
 
       await fc.assert(
-        fc.asyncProperty(
-          fc.string({ minLength: 1, maxLength: 100 }),
-          async (baseInput) => {
-            const inputWithPlacebo = `${baseInput} 4k award winning`;
+        fc.asyncProperty(placeboSafeInputArb, async (baseInput) => {
+          const inputWithPlacebo = `${baseInput} 4k award winning`;
 
-            // Run full pipeline
-            await strategy.validate(inputWithPlacebo);
-            const normalized = strategy.normalize(inputWithPlacebo);
-            const transformed = await strategy.transform(normalized);
-            const result = strategy.augment(transformed);
+          // Run full pipeline
+          await strategy.validate(inputWithPlacebo);
+          const normalized = strategy.normalize(inputWithPlacebo);
+          const transformed = await strategy.transform(normalized);
+          const result = strategy.augment(transformed);
 
-            // Metadata should contain stripped tokens
-            expect(result.metadata.tokensStripped.length).toBeGreaterThan(0);
-            expect(
-              result.metadata.tokensStripped.some(
-                (t) => t.toLowerCase() === "4k",
-              ),
-            ).toBe(true);
-          },
-        ),
+          // Metadata should contain stripped tokens
+          expect(result.metadata.tokensStripped.length).toBeGreaterThan(0);
+          expect(
+            result.metadata.tokensStripped.some(
+              (t) => t.toLowerCase() === "4k",
+            ),
+          ).toBe(true);
+        }),
         { numRuns: 100 },
       );
     });

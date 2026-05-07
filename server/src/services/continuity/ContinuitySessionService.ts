@@ -11,20 +11,21 @@ import type {
   StyleReference,
 } from "./types";
 import { ContinuitySessionStore } from "./ContinuitySessionStore";
-import { ContinuityProviderService } from "./ContinuityProviderService";
+import { ProviderStyleAdapter } from "./ProviderStyleAdapter";
 import { ContinuityMediaService } from "./ContinuityMediaService";
-import { ContinuityPostProcessingService } from "./ContinuityPostProcessingService";
+import { SceneProxyService } from "./SceneProxyService";
 import { ContinuityShotGenerator } from "./ContinuityShotGenerator";
-import { enforceImmutableVersions } from "@services/sessions/utils/immutableMedia";
+import { DEFAULT_QUALITY_THRESHOLDS } from "./constants";
+import { enforceImmutableVersions } from "@utils/immutableMedia";
 import type { ShotGenerationObserver } from "./ShotGenerationProgress";
 
 export class ContinuitySessionService {
   private readonly log = logger.child({ service: "ContinuitySessionService" });
 
   constructor(
-    private providerService: ContinuityProviderService,
+    private providerAdapter: ProviderStyleAdapter,
     private mediaService: ContinuityMediaService,
-    private postProcessingService: ContinuityPostProcessingService,
+    private sceneProxy: SceneProxyService,
     private shotGenerator: ContinuityShotGenerator,
     private sessionStore: ContinuitySessionStore,
   ) {}
@@ -148,8 +149,8 @@ export class ContinuitySessionService {
     const modelId = request.modelId || session.defaultSettings.defaultModel;
 
     if (generationMode === "continuity") {
-      const provider = this.providerService.getProviderFromModel(modelId);
-      const caps = this.providerService.getCapabilities(provider, modelId);
+      const provider = this.providerAdapter.getProviderFromModel(modelId);
+      const caps = this.providerAdapter.getCapabilities(provider, modelId);
       if (!caps.supportsStartImage && !caps.supportsNativeStyleReference) {
         throw new Error(
           `Model ${modelId} does not support continuity (no image input or style reference). Switch to an eligible model.`,
@@ -390,7 +391,6 @@ export class ContinuitySessionService {
     const sanitized: Partial<ContinuitySessionSettings> = {};
     for (const key of allowedKeys) {
       if (settings[key] !== undefined) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic key iteration requires widening
         (sanitized as Record<string, any>)[key] = settings[key];
       }
     }
@@ -435,7 +435,7 @@ export class ContinuitySessionService {
     if (!videoId || !videoUrl)
       throw new Error("Source video not found for proxy");
 
-    const proxy = await this.postProcessingService.createSceneProxyFromVideo(
+    const proxy = await this.sceneProxy.createProxyFromVideo(
       session.userId,
       videoId,
       videoUrl,
@@ -464,7 +464,7 @@ export class ContinuitySessionService {
     const shot = session.shots.find((candidate) => candidate.id === shotId);
     if (!shot) throw new Error(`Shot not found: ${shotId}`);
 
-    const render = await this.postProcessingService.renderSceneProxy(
+    const render = await this.sceneProxy.renderFromProxy(
       session.userId,
       session.sceneProxy,
       shot.id,
@@ -493,7 +493,10 @@ export class ContinuitySessionService {
       useSceneProxy: false,
       autoRetryOnFailure: true,
       maxRetries: 1,
-      qualityThresholds: { style: 0.75, identity: 0.6 },
+      qualityThresholds: {
+        style: DEFAULT_QUALITY_THRESHOLDS.styleSimilarity,
+        identity: DEFAULT_QUALITY_THRESHOLDS.identitySimilarity,
+      },
     };
   }
 

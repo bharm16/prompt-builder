@@ -7,7 +7,6 @@ export { EnhancementService } from "./EnhancementService.js";
 
 // Export specialized services for advanced usage
 export { FallbackRegenerationService } from "./services/FallbackRegenerationService.js";
-export { StyleTransferService } from "./services/StyleTransferService.js";
 
 // Export moved services
 export { BrainstormContextBuilder } from "./services/BrainstormContextBuilder.js";
@@ -19,4 +18,3 @@ export { SuggestionValidationService } from "./services/SuggestionValidationServ
 
 // Export configuration
 export * from "./config/schemas.js";
-export * from "./config/styleDefinitions.js";
