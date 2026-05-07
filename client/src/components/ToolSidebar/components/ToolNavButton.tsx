@@ -17,9 +17,13 @@ interface ToolNavButtonProps {
 /**
  * Rail navigation button — compact 40px square icon button.
  *
- * - Active: violet-tinted bg, filled icon
- * - Inactive: muted text, regular icon weight
+ * Visual style mirrors the unified-workspace handoff:
+ * - Active: subtle bg tint, regular-weight outlined icon (no fill)
+ * - Inactive: muted text, light-weight outlined icon
  * - Label shown via native `title` tooltip
+ *
+ * The previous left-edge indicator pill was removed — the screenshot uses
+ * a bg-only active state so the rail reads quieter.
  */
 export function ToolNavButton({
   icon: IconComponent,
@@ -31,7 +35,7 @@ export function ToolNavButton({
     <button
       type="button"
       className={cn(
-        "relative flex h-10 w-10 items-center justify-center rounded-xl transition-colors duration-200",
+        "flex h-10 w-10 items-center justify-center rounded-xl transition-colors duration-200",
         isActive
           ? "bg-tool-nav-active text-foreground"
           : "text-tool-text-muted hover:bg-tool-nav-hover hover:text-foreground",
@@ -41,14 +45,7 @@ export function ToolNavButton({
       aria-pressed={isActive}
       title={label}
     >
-      <span
-        className={cn(
-          "motion-active-pill absolute inset-y-1.5 left-0 w-[3px] rounded-r-full bg-tool-nav-indicator",
-          isActive ? "opacity-100 scale-y-100" : "opacity-0 scale-y-50",
-        )}
-        aria-hidden="true"
-      />
-      <IconComponent size={20} weight={isActive ? "fill" : "regular"} />
+      <IconComponent size={20} weight={isActive ? "regular" : "light"} />
     </button>
   );
 }

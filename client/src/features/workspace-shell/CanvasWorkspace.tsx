@@ -34,17 +34,14 @@ import { useFeaturedTile } from "./hooks/useFeaturedTile";
 import { useWorkspaceKeyboardShortcuts } from "./hooks/useWorkspaceKeyboardShortcuts";
 import { ShotRow } from "./components/ShotRow";
 import { ShotDivider } from "./components/ShotDivider";
-import { ModelCornerSelector } from "./components/ModelCornerSelector";
 import { TileStateAnnouncer } from "./components/TileStateAnnouncer";
 import { WorkspaceTopBar } from "./components/WorkspaceTopBar";
 import { CanvasPromptBar } from "./components/CanvasPromptBar";
 import { CanvasSettingsRow } from "./components/CanvasSettingsRow";
 import type { PromptEditorSurfaceProps } from "./components/PromptEditorSurface";
 import { TuneDrawer } from "./components/TuneDrawer";
-import { CostPreview } from "./components/CostPreview";
 import type { TuneChipId } from "./utils/tuneChips";
 import { applyTuneChips } from "./utils/tuneChips";
-import { estimateShotCost } from "./utils/estimateShotCost";
 
 interface CanvasWorkspaceProps {
   generationsPanelProps: GenerationsPanelProps;
@@ -457,16 +454,6 @@ export function CanvasWorkspace({
     onLockedAlternativeClick,
   };
 
-  const estimatedCost = useMemo(
-    () =>
-      estimateShotCost({
-        modelId: domain.selectedModel,
-        durationSeconds,
-        variantCount: 4, // Phase 3 baseline; spec says "render four variants" by default
-      }),
-    [domain.selectedModel, durationSeconds],
-  );
-
   const handleToggleChip = useCallback((id: TuneChipId) => {
     setSelectedChipIds((prev) =>
       prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id],
@@ -475,6 +462,17 @@ export function CanvasWorkspace({
   const handleCloseTune = useCallback(() => setTuneOpen(false), []);
   const handleToggleTune = useCallback(() => setTuneOpen((open) => !open), []);
 
+  const selectedChipCount = selectedChipIds.length;
+  const onStartFrameUpload = generationDomain?.onStartFrameUpload;
+  const onUploadSidebarImage = generationDomain?.onUploadSidebarImage;
+  const recommendationPromptId = modelRecommendation?.promptId;
+  const hasGenerations = galleryEntries.length > 0;
+
+  // Enhance prompt is gated on a non-empty prompt — the upstream handler is
+  // a no-op for empty prompts (ISSUE-39). Disable the Tune-drawer Enhance
+  // button visually so users don't click into nothing.
+  const enhanceDrawerDisabled = !onEnhance || !prompt.trim();
+
   const tuneSlot = useMemo(
     () =>
       tuneOpen ? (
@@ -482,15 +480,21 @@ export function CanvasWorkspace({
           selectedChipIds={selectedChipIds}
           onToggleChip={handleToggleChip}
           onClose={handleCloseTune}
+          {...(onEnhance ? { onEnhance } : {})}
+          isEnhancing={isEnhancing}
+          enhanceDisabled={enhanceDrawerDisabled}
         />
       ) : null,
-    [tuneOpen, selectedChipIds, handleToggleChip, handleCloseTune],
+    [
+      tuneOpen,
+      selectedChipIds,
+      handleToggleChip,
+      handleCloseTune,
+      onEnhance,
+      isEnhancing,
+      enhanceDrawerDisabled,
+    ],
   );
-
-  const selectedChipCount = selectedChipIds.length;
-  const onStartFrameUpload = generationDomain?.onStartFrameUpload;
-  const onUploadSidebarImage = generationDomain?.onUploadSidebarImage;
-  const recommendationPromptId = modelRecommendation?.promptId;
 
   const chromeSlot = useMemo(
     () => (
@@ -498,47 +502,44 @@ export function CanvasWorkspace({
         <CanvasSettingsRow
           prompt={prompt}
           renderModelId={renderModelId}
+          renderModelOptions={renderModelOptions}
+          modelRecommendation={modelRecommendation}
           {...(recommendedModelId ? { recommendedModelId } : {})}
+          {...(efficientModelId ? { efficientModelId } : {})}
           {...(recommendationPromptId ? { recommendationPromptId } : {})}
           {...(recommendationMode ? { recommendationMode } : {})}
           {...(typeof recommendationAgeMs === "number"
             ? { recommendationAgeMs }
             : {})}
+          onModelChange={handleModelChange}
+          tuneOpen={tuneOpen}
+          selectedChipCount={selectedChipCount}
+          onToggleTune={handleToggleTune}
           onOpenMotion={handleOpenMotion}
           {...(onStartFrameUpload ? { onStartFrameUpload } : {})}
           {...(onUploadSidebarImage ? { onUploadSidebarImage } : {})}
-          {...(onEnhance ? { onEnhance } : {})}
-          isEnhancing={isEnhancing}
+          showPreviewButton={hasGenerations}
         />
-        <div className="flex items-center justify-end gap-3 px-4 py-2">
-          <button
-            type="button"
-            aria-pressed={tuneOpen}
-            className="rounded-md border border-tool-rail-border px-2 py-1 text-[11px] font-medium text-tool-text-dim hover:text-foreground"
-            onClick={handleToggleTune}
-          >
-            Tune{selectedChipCount > 0 ? ` · ${selectedChipCount}` : ""}
-          </button>
-          <CostPreview cost={estimatedCost} />
-        </div>
       </div>
     ),
     [
       prompt,
       renderModelId,
+      renderModelOptions,
+      modelRecommendation,
       recommendedModelId,
+      efficientModelId,
       recommendationPromptId,
       recommendationMode,
       recommendationAgeMs,
-      handleOpenMotion,
-      onStartFrameUpload,
-      onUploadSidebarImage,
-      onEnhance,
-      isEnhancing,
+      handleModelChange,
       tuneOpen,
       selectedChipCount,
       handleToggleTune,
-      estimatedCost,
+      handleOpenMotion,
+      onStartFrameUpload,
+      onUploadSidebarImage,
+      hasGenerations,
     ],
   );
 
@@ -581,15 +582,6 @@ export function CanvasWorkspace({
         <div aria-hidden="true" />
         <div className="relative min-h-0 overflow-y-auto px-7 pb-[140px] scroll-smooth">
           <TileStateAnnouncer shots={shots} />
-          <ModelCornerSelector
-            renderModelOptions={renderModelOptions}
-            renderModelId={renderModelId}
-            modelRecommendation={modelRecommendation}
-            recommendedModelId={recommendedModelId}
-            efficientModelId={efficientModelId}
-            onModelChange={handleModelChange}
-            className="absolute right-5 top-3"
-          />
 
           {moment === "empty" ? (
             <EmptyHero />
@@ -649,10 +641,10 @@ export function CanvasWorkspace({
 }
 
 const STARTER_CHIPS = [
-  "A neon-lit cyberpunk alley at night",
-  "Slow-motion ink drop in clear water",
-  "Drone shot over autumn forest at sunrise",
-  "A dancer mid-leap in a sunlit studio",
+  "A product hero shot",
+  "A character in a scene",
+  "An abstract loop",
+  "B-roll establishing",
 ] as const;
 
 function EmptyHero(): React.ReactElement {
@@ -663,11 +655,15 @@ function EmptyHero(): React.ReactElement {
   // project's "browsing is read-only, editing is explicit" UX rule).
   return (
     <div className="mx-auto flex min-h-[calc(100vh-var(--workspace-topbar-h)-240px)] max-w-[640px] flex-col items-center justify-center gap-[18px] text-center">
-      <h1 className="text-[28px] font-medium tracking-[-0.01em]">
+      <span className="text-[11px] font-medium uppercase tracking-[0.18em] text-tool-text-subdued">
+        Untitled project
+      </span>
+      <h1 className="text-[40px] font-semibold leading-[1.1] tracking-[-0.02em]">
         What are you making?
       </h1>
-      <p className="m-0 max-w-[460px] text-tool-text-subdued">
-        Describe a shot. Pick a model. We&apos;ll render four variants.
+      <p className="m-0 max-w-[520px] text-[15px] leading-[1.55] text-tool-text-subdued">
+        Describe a shot below. Each generation lands on this canvas — iterate,
+        refine, and build up a scene.
       </p>
       <div
         className="mt-3 flex flex-wrap justify-center gap-2"

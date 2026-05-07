@@ -86,10 +86,6 @@ vi.mock("../components/WorkspaceTopBar", () => ({
   WorkspaceTopBar: () => <header role="banner">topbar</header>,
 }));
 
-vi.mock("../components/ModelCornerSelector", () => ({
-  ModelCornerSelector: () => <div data-testid="model-corner-selector" />,
-}));
-
 vi.mock("@/features/prompt-optimizer/components/GenerationPopover", () => ({
   GenerationPopover: () => null,
 }));
@@ -162,26 +158,28 @@ const buildProps = (): React.ComponentProps<typeof CanvasWorkspace> => ({
 });
 
 describe("regression: canvas enhance / empty-session shell wiring", () => {
-  // CanvasSettingsRow (mounted inside CanvasPromptBar's chromeSlot) hosts the
-  // Enhance button. The button is gated on a non-empty prompt and a provided
-  // onEnhance callback; clicking it must invoke the orchestrator's onEnhance
-  // exactly once. Regression for the gap left by the unified-workspace flag
-  // removal — the Enhance button was previously unmounted.
+  // The Enhance button now lives inside the Tune drawer (chip-row redesign
+  // moved it out of the chip row to keep the visible chip set tight). The
+  // contract is unchanged: clicking it must invoke the orchestrator's
+  // onEnhance exactly once. The test opens the drawer first.
   it("clicking enhance invokes the provided callback", () => {
     const onEnhance = vi.fn();
     const props = buildProps();
     render(<CanvasWorkspace {...props} onEnhance={onEnhance} />);
 
-    const enhanceButton = screen.getByRole("button", { name: /enhance/i });
-    fireEvent.click(enhanceButton);
+    // Open the Tune drawer so the Enhance button mounts.
+    fireEvent.click(screen.getByTestId("canvas-tune-chip"));
+
+    fireEvent.click(screen.getByTestId("tune-drawer-enhance"));
 
     expect(onEnhance).toHaveBeenCalledTimes(1);
   });
 
-  it("keeps a single prompt textbox and a model corner selector in the empty-session shell", () => {
+  it("keeps a single prompt textbox and a model picker chip in the empty-session shell", () => {
     // Empty session = no prompt, no shots. Under the unified path the
     // floating composer always mounts; the prompt textbox lives there.
-    // The model corner selector mounts at the top-right of the canvas.
+    // The model picker is now a chip in the composer's chip row (it used
+    // to be a floating corner selector — moved to match the screenshot).
     const props = buildProps();
     render(
       <CanvasWorkspace
@@ -196,7 +194,9 @@ describe("regression: canvas enhance / empty-session shell wiring", () => {
     expect(
       screen.getAllByRole("textbox", { name: "Optimized prompt" }),
     ).toHaveLength(1);
-    expect(screen.getAllByTestId("model-corner-selector")).toHaveLength(1);
+    expect(
+      screen.getAllByRole("button", { name: /Video model/i }),
+    ).toHaveLength(1);
   });
 
   it("does not lock the user into empty state when prompt content exists, even without a prompt version id", () => {

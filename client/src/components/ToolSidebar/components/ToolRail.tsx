@@ -51,15 +51,13 @@ export function ToolRail({
       className="flex h-full w-[52px] flex-none flex-col items-center border-r border-tool-rail-border bg-tool-rail-bg px-1.5 py-3"
       aria-label="Tool navigation"
     >
-      <div className="flex h-8 w-8 items-center justify-center">
-        <span className="text-[15px] font-bold text-foreground">V</span>
-      </div>
-
-      <div className="my-1.5 h-px w-6 bg-tool-rail-border" aria-hidden="true" />
+      {/* The "V" text mark previously lived here — removed because the Vidra
+          wordmark now lives in WorkspaceTopBar, and the screenshot has no
+          top mark. Style-only change. */}
 
       {/* ── Nav items: Tool, Chars, Styles, Gallery ── */}
       <nav
-        className="flex flex-col items-center gap-0.5"
+        className="flex flex-col items-center gap-1"
         aria-label="Tool panels"
       >
         {navItems.map((item) => (

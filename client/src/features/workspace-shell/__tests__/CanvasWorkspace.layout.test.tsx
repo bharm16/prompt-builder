@@ -77,10 +77,6 @@ vi.mock("../components/WorkspaceTopBar", () => ({
   WorkspaceTopBar: () => <header role="banner">topbar</header>,
 }));
 
-vi.mock("../components/ModelCornerSelector", () => ({
-  ModelCornerSelector: () => <div data-testid="model-corner-selector" />,
-}));
-
 // CanvasSettingsRow depends on GenerationControlsContext + CreditBalanceContext
 // which this layout test doesn't provide; stub it to keep the test focused on
 // the outer composer geometry.

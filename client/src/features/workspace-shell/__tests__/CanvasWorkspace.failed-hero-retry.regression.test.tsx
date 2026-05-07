@@ -76,10 +76,6 @@ vi.mock("../components/WorkspaceTopBar", () => ({
   WorkspaceTopBar: () => <header role="banner">topbar</header>,
 }));
 
-vi.mock("../components/ModelCornerSelector", () => ({
-  ModelCornerSelector: () => <div data-testid="model-corner-selector" />,
-}));
-
 // CanvasSettingsRow depends on GenerationControlsContext + CreditBalanceContext
 // which this hero-retry regression doesn't provide; stub it.
 vi.mock("../components/CanvasSettingsRow", () => ({

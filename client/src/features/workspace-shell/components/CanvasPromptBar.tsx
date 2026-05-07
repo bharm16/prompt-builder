@@ -10,7 +10,7 @@ export interface CanvasPromptBarProps {
   onContinueScene?: (fromGenerationId: string) => void;
   /** TuneDrawer slot — renders above the editor when open. */
   tuneSlot?: React.ReactNode;
-  /** CostPreview + settings row below the editor. */
+  /** Settings row below the editor (chip set + Make-it pill). */
   chromeSlot?: React.ReactNode;
 }
 

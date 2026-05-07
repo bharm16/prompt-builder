@@ -97,10 +97,6 @@ vi.mock("../components/WorkspaceTopBar", () => ({
   WorkspaceTopBar: () => <header role="banner">topbar</header>,
 }));
 
-vi.mock("../components/ModelCornerSelector", () => ({
-  ModelCornerSelector: () => <div data-testid="model-corner-selector" />,
-}));
-
 vi.mock("@/features/prompt-optimizer/components/GenerationPopover", () => ({
   GenerationPopover: () => null,
 }));

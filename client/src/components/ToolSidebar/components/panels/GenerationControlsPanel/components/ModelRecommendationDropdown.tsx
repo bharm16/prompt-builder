@@ -70,6 +70,10 @@ export interface ModelRecommendationDropdownProps {
   filteredOut?: Array<{ modelId: string; reason: string }> | undefined;
   triggerClassName?: string | undefined;
   triggerPrefixLabel?: string | undefined;
+  /** Optional icon node rendered before the label (e.g. the bullseye/Target
+   *  icon used by the canvas composer chip). The component receives it as a
+   *  React node so the caller controls icon size and weight. */
+  triggerPrefixIcon?: React.ReactNode;
   triggerAriaLabel?: string | undefined;
 }
 
@@ -374,6 +378,7 @@ export function ModelRecommendationDropdown({
   filteredOut,
   triggerClassName,
   triggerPrefixLabel,
+  triggerPrefixIcon,
   triggerAriaLabel,
 }: ModelRecommendationDropdownProps): React.ReactElement {
   const [mode, setMode] = useState<ViewMode>("closed");
@@ -575,6 +580,11 @@ export function ModelRecommendationDropdown({
           aria-expanded={mode !== "closed"}
           aria-label={triggerAriaLabel ?? "Video model"}
         >
+          {triggerPrefixIcon ? (
+            <span className="inline-flex items-center" aria-hidden="true">
+              {triggerPrefixIcon}
+            </span>
+          ) : null}
           {triggerPrefixLabel && (
             <span className="text-[11px] font-medium text-tool-text-subdued">
               {triggerPrefixLabel}

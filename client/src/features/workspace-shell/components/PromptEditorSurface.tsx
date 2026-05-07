@@ -191,7 +191,7 @@ export function PromptEditorSurface({
               ? "min-h-[56px] text-[15px] leading-[1.7] text-foreground caret-foreground"
               : "min-h-[56px] text-[15px] leading-[1.75] text-tool-text-dim",
           )}
-          placeholder="Describe a video and click generate..."
+          placeholder="Describe your shot…"
           onTextSelection={onTextSelection}
           onHighlightClick={onHighlightClick}
           onHighlightMouseDown={onHighlightMouseDown}

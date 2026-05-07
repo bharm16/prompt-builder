@@ -1,12 +1,32 @@
-import React from "react";
-import { X } from "@promptstudio/system/components/ui";
+import React, { useEffect, useRef } from "react";
+import { MagicWand, X } from "@promptstudio/system/components/ui";
 import { cn } from "@/utils/cn";
 import { TUNE_CHIPS, type TuneChip, type TuneChipId } from "../utils/tuneChips";
+
+// ISSUE-42: rapid Enhance double-clicks fire `onEnhance` (and therefore
+// POST /api/optimize) multiple times because the upstream `isOptimizing`
+// guard in PromptCanvas.handleEnhance doesn't flip until React commits a
+// `startTransition`-wrapped state update inside `usePromptOptimizer.optimize`.
+// By the time the user's second click lands, the button is still visibly
+// enabled and another request goes out. The cooldown ref drops repeats
+// within ~2s so concurrent /api/optimize requests can't fire.
+const ENHANCE_CLICK_COOLDOWN_MS = 2000;
 
 export interface TuneDrawerProps {
   selectedChipIds: ReadonlyArray<TuneChipId>;
   onToggleChip: (id: TuneChipId) => void;
   onClose: () => void;
+  /** Optional Enhance action — surfaced inside the drawer rather than the
+   *  chip row. Omit to hide the row entirely (e.g. when the prompt is empty
+   *  or the parent has no enhance capability wired). */
+  onEnhance?: () => void;
+  /** Disables and spinner-ifies the Enhance button while a request is in
+   *  flight. Mirrors the legacy chip-row enhance button's loading state. */
+  isEnhancing?: boolean;
+  /** Disables the Enhance button when there is no prompt to enhance. The
+   *  upstream handler is a no-op for empty prompts; the visual disable here
+   *  is feedback so users don't click into nothing. */
+  enhanceDisabled?: boolean;
 }
 
 const SECTIONS: ReadonlyArray<{ id: TuneChip["section"]; label: string }> = [
@@ -19,8 +39,39 @@ export function TuneDrawer({
   selectedChipIds,
   onToggleChip,
   onClose,
+  onEnhance,
+  isEnhancing = false,
+  enhanceDisabled = false,
 }: TuneDrawerProps): React.ReactElement {
   const selected = new Set(selectedChipIds);
+  const showEnhance = Boolean(onEnhance);
+
+  const enhanceCooldownRef = useRef(false);
+  const enhanceCooldownTimerRef = useRef<number | null>(null);
+  useEffect(() => {
+    return () => {
+      if (enhanceCooldownTimerRef.current !== null) {
+        window.clearTimeout(enhanceCooldownTimerRef.current);
+        enhanceCooldownTimerRef.current = null;
+      }
+    };
+  }, []);
+
+  const handleEnhanceClick = (): void => {
+    if (!onEnhance) return;
+    if (isEnhancing || enhanceDisabled) return;
+    if (enhanceCooldownRef.current) return;
+    enhanceCooldownRef.current = true;
+    onEnhance();
+    if (enhanceCooldownTimerRef.current !== null) {
+      window.clearTimeout(enhanceCooldownTimerRef.current);
+    }
+    enhanceCooldownTimerRef.current = window.setTimeout(() => {
+      enhanceCooldownRef.current = false;
+      enhanceCooldownTimerRef.current = null;
+    }, ENHANCE_CLICK_COOLDOWN_MS);
+  };
+
   return (
     <div
       className="border-b border-tool-rail-border px-4 pb-3 pt-3"
@@ -78,6 +129,51 @@ export function TuneDrawer({
           );
         })}
       </div>
+      {showEnhance ? (
+        <div className="mt-3 flex items-center justify-between border-t border-tool-rail-border pt-3">
+          <span className="font-mono text-[10px] uppercase tracking-wider text-tool-text-subdued">
+            Prompt
+          </span>
+          <button
+            type="button"
+            data-testid="tune-drawer-enhance"
+            aria-label={isEnhancing ? "Enhancing prompt…" : "Enhance prompt"}
+            title={isEnhancing ? "Enhancing…" : "Enhance"}
+            disabled={isEnhancing || enhanceDisabled}
+            onClick={handleEnhanceClick}
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-full border border-tool-rail-border bg-transparent px-3 py-1 text-[11px] font-medium transition-colors",
+              "disabled:cursor-not-allowed disabled:opacity-50",
+              "hover:border-tool-text-label hover:text-foreground",
+              isEnhancing ? "text-foreground" : "text-tool-text-dim",
+            )}
+          >
+            {isEnhancing ? (
+              <svg
+                className="animate-spin"
+                width={12}
+                height={12}
+                viewBox="0 0 12 12"
+                fill="none"
+                aria-hidden="true"
+              >
+                <circle
+                  cx="6"
+                  cy="6"
+                  r="4.5"
+                  stroke="currentColor"
+                  strokeWidth="1.4"
+                  strokeLinecap="round"
+                  strokeDasharray="20 8"
+                />
+              </svg>
+            ) : (
+              <MagicWand size={12} aria-hidden="true" />
+            )}
+            {isEnhancing ? "Enhancing…" : "Enhance prompt"}
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }

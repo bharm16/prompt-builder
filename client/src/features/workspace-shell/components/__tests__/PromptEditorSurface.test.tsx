@@ -65,7 +65,7 @@ describe("PromptEditorSurface", () => {
     const editor = container.querySelector("[data-placeholder]");
     expect(editor).not.toBeNull();
     expect(editor?.getAttribute("data-placeholder") ?? "").toMatch(
-      /describe a video/i,
+      /describe your shot/i,
     );
   });
 

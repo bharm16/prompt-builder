@@ -146,6 +146,7 @@ export {
   Highlighter,
   Images,
   MapPin,
+  Microphone,
   Package,
   ShieldCheck,
   SkipForward,

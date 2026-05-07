@@ -84,12 +84,23 @@ export function StartFramePopover({
 
   return (
     <div className="relative" data-testid="start-frame-popover-root">
-      {/* Trigger button — matches mockup BarBtn style */}
+      {/*
+        Trigger — icon-only when no frame is selected (matches the screenshot's
+        leftmost image-icon chip), thumbnail when one is. Camera-motion label
+        moves to the popover; the chip stays compact.
+        aria-label keeps "Start frame" available to assistive tech / tooltip.
+      */}
       <button
         type="button"
         data-testid="start-frame-trigger"
+        aria-label={
+          previewUrl && cameraMotion?.label
+            ? `Start frame — ${cameraMotion.label}`
+            : "Start frame"
+        }
+        title="Start frame"
         className={cn(
-          "inline-flex h-[28px] items-center gap-[5px] rounded-md px-2 text-xs transition-colors",
+          "inline-flex h-[28px] items-center justify-center gap-[5px] rounded-md px-2 text-xs transition-colors",
           "text-tool-text-muted hover:text-foreground",
           disabled && "cursor-not-allowed opacity-60",
         )}
@@ -102,20 +113,13 @@ export function StartFramePopover({
         disabled={disabled}
       >
         {previewUrl ? (
-          <>
-            <div
-              className="h-[14px] w-5 flex-shrink-0 rounded-[3px] bg-cover bg-center"
-              style={{ backgroundImage: `url(${previewUrl})` }}
-            />
-            <span>Start frame</span>
-            {cameraMotion?.label ? (
-              <span className="text-[10px] text-tool-text-dim">
-                · {cameraMotion.label}
-              </span>
-            ) : null}
-          </>
+          <div
+            className="h-[18px] w-6 flex-shrink-0 rounded-[3px] bg-cover bg-center"
+            style={{ backgroundImage: `url(${previewUrl})` }}
+            aria-hidden="true"
+          />
         ) : (
-          <span>Start frame</span>
+          <Image size={14} aria-hidden="true" />
         )}
       </button>
 

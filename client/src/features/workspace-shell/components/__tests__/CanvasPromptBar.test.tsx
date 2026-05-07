@@ -72,7 +72,7 @@ describe("CanvasPromptBar", () => {
     // PromptEditor uses a contenteditable div with data-placeholder, not a real
     // <input placeholder>. Confirm via the data attribute.
     expect(
-      container.querySelector('[data-placeholder*="Describe a video"]'),
+      container.querySelector('[data-placeholder*="Describe your shot"]'),
     ).toBeInTheDocument();
   });
 

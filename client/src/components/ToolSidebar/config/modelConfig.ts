@@ -33,7 +33,7 @@ export const VIDEO_DRAFT_MODELS = Object.values(DRAFT_MODEL_OPTIONS);
 export const VIDEO_RENDER_MODELS = [
   {
     id: "sora-2",
-    label: "Sora",
+    label: "Sora 2",
     creditsPerSecond: getGenerationCreditsPerSecond("sora-2") ?? 6,
   },
   {
