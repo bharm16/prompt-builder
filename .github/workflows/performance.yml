@@ -172,6 +172,13 @@ jobs:
 
   bundle-analysis:
     runs-on: ubuntu-latest
+    permissions:
+      # The "Comment PR with bundle size" step uses github-script to post
+      # a PR comment; without explicit pull-requests: write, the default
+      # GITHUB_TOKEN can't comment and the step fails with "Resource not
+      # accessible by integration".
+      contents: read
+      pull-requests: write
 
     steps:
       - uses: actions/checkout@v4
