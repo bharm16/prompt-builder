@@ -88,6 +88,10 @@ Thumbs.db
 *.heapsnapshot
 *.cpuprofile
 
+# Performance/audit working notes (per-run reports from the multi-phase
+# audit plugin — not source of truth, regenerable on demand).
+.performance-optimization/
+
 # Misc
 .serverless/
 firebase-debug.log
