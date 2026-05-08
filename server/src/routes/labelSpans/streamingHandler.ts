@@ -51,6 +51,10 @@ export async function handleLabelSpansStreamRequest({
   res.setHeader("Content-Type", "application/x-ndjson");
   res.setHeader("Cache-Control", "no-cache");
   res.setHeader("Connection", "keep-alive");
+  // Disable nginx response buffering so each NDJSON span flushes to the
+  // client immediately. Without this, an upstream nginx will accumulate the
+  // stream and forward it as a single chunk, defeating the streaming UX.
+  res.setHeader("X-Accel-Buffering", "no");
   res.flushHeaders?.();
 
   const writer = createSseWriter(res, { label: "labelSpans.stream" });

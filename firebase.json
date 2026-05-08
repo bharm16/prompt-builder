@@ -7,7 +7,7 @@
     {
       "target": "production",
       "public": "dist",
-      "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+      "ignore": ["firebase.json", "**/.*", "**/node_modules/**", "**/*.map"],
       "headers": [
         {
           "source": "**/*.@(js|css|png|jpg|jpeg|gif|svg|woff|woff2)",
@@ -28,7 +28,7 @@
     {
       "target": "staging",
       "public": "dist",
-      "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+      "ignore": ["firebase.json", "**/.*", "**/node_modules/**", "**/*.map"],
       "rewrites": [{ "source": "**", "destination": "/index.html" }]
     }
   ]

@@ -13,8 +13,12 @@ metadata:
     nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
     nginx.ingress.kubernetes.io/ssl-protocols: "TLSv1.2 TLSv1.3"
     nginx.ingress.kubernetes.io/proxy-body-size: "10m"
-    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
-    nginx.ingress.kubernetes.io/proxy-send-timeout: "60"
+    # Bumped from 60s so SSE/NDJSON streams (label-spans, optimize) survive
+    # quiet stretches between events. The label-spans stream emits per-span,
+    # but the optimize compile stage can stall for >60s on cold provider
+    # warmups; a 60s proxy cutoff would terminate those mid-stream.
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "120"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "120"
 
     # Rate limiting
     nginx.ingress.kubernetes.io/limit-rps: "100"

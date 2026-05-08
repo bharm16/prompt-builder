@@ -110,7 +110,11 @@ export function createLabelSpansCoordinator(
         headers["X-Coalesced"] = "1";
         headers["X-Coalesced-Time"] = `${elapsed}ms`;
       } else {
-        logger.info("Operation completed.", {
+        // Cache-miss path runs on every uncached labeling request — log at
+        // DEBUG to keep INFO-level streams free for higher-signal events.
+        // Aggregate metrics live in MetricsService; this log is for ad-hoc
+        // request tracing only.
+        logger.debug("Span labeling cache miss", {
           operation,
           requestId,
           userId,
