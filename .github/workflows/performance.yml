@@ -267,7 +267,9 @@ jobs:
 
       - name: Serve application
         run: |
-          npx http-server dist -p 8080 &
+          # --gzip satisfies the Lighthouse uses-text-compression audit by
+          # enabling Content-Encoding: gzip on responses.
+          npx http-server dist -p 8080 --gzip &
           echo $! > server.pid
           # Wait for the static server to actually accept connections
           for i in {1..15}; do
