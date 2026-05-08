@@ -1,5 +1,11 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { CameraMotionModal } from "@/components/modals/CameraMotionModal";
+import React, {
+  Suspense,
+  lazy,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { VIDEO_DRAFT_MODEL } from "@/components/ToolSidebar/config/modelConfig";
 import type { AssetSuggestion } from "@/features/assets/hooks/useTriggerAutocomplete";
 import type { CameraPath } from "@/features/convergence/types";
@@ -39,6 +45,14 @@ import { WorkspaceTopBar } from "./components/WorkspaceTopBar";
 import { CanvasPromptBar } from "./components/CanvasPromptBar";
 import { CanvasSettingsRow } from "./components/CanvasSettingsRow";
 import type { PromptEditorSurfaceProps } from "./components/PromptEditorSurface";
+
+// Lazy-loaded so the Three.js bundle (~120 KB compressed, only used inside
+// CameraMotionModal's renderer) stays out of the workspace landing chunk.
+const CameraMotionModal = lazy(() =>
+  import("@/components/modals/CameraMotionModal").then((m) => ({
+    default: m.CameraMotionModal,
+  })),
+);
 import { TuneDrawer } from "./components/TuneDrawer";
 import type { TuneChipId } from "./utils/tuneChips";
 import { applyTuneChips } from "./utils/tuneChips";
@@ -498,7 +512,7 @@ export function CanvasWorkspace({
 
   const chromeSlot = useMemo(
     () => (
-      <div className="border-t border-tool-rail-border">
+      <div className="border-tool-rail-border border-t">
         <CanvasSettingsRow
           prompt={prompt}
           renderModelId={renderModelId}
@@ -566,7 +580,7 @@ export function CanvasWorkspace({
   return (
     <div
       className={cn(
-        "grid h-full grid-rows-[var(--workspace-topbar-h)_1fr] [background:var(--tool-canvas-bg)] text-foreground overflow-hidden",
+        "text-foreground grid h-full grid-rows-[var(--workspace-topbar-h)_1fr] overflow-hidden [background:var(--tool-canvas-bg)]",
         workspaceMomentClass(moment),
       )}
     >
@@ -580,7 +594,7 @@ export function CanvasWorkspace({
           into this column in a future polish pass if desired.
         */}
         <div aria-hidden="true" />
-        <div className="relative min-h-0 overflow-y-auto px-7 pb-[140px] scroll-smooth">
+        <div className="relative min-h-0 overflow-y-auto scroll-smooth px-7 pb-[140px]">
           <TileStateAnnouncer shots={shots} />
 
           {moment === "empty" ? (
@@ -626,15 +640,17 @@ export function CanvasWorkspace({
       ) : null}
 
       {domain.startFrame ? (
-        <CameraMotionModal
-          isOpen={showCameraMotionModal}
-          onClose={() => setShowCameraMotionModal(false)}
-          imageUrl={domain.startFrame.url}
-          imageStoragePath={domain.startFrame.storagePath ?? null}
-          imageAssetId={domain.startFrame.assetId ?? null}
-          initialSelection={domain.cameraMotion}
-          onSelect={handleCameraMotionSelect}
-        />
+        <Suspense fallback={null}>
+          <CameraMotionModal
+            isOpen={showCameraMotionModal}
+            onClose={() => setShowCameraMotionModal(false)}
+            imageUrl={domain.startFrame.url}
+            imageStoragePath={domain.startFrame.storagePath ?? null}
+            imageAssetId={domain.startFrame.assetId ?? null}
+            initialSelection={domain.cameraMotion}
+            onSelect={handleCameraMotionSelect}
+          />
+        </Suspense>
       ) : null}
     </div>
   );
@@ -655,13 +671,13 @@ function EmptyHero(): React.ReactElement {
   // project's "browsing is read-only, editing is explicit" UX rule).
   return (
     <div className="mx-auto flex min-h-[calc(100vh-var(--workspace-topbar-h)-240px)] max-w-[640px] flex-col items-center justify-center gap-[18px] text-center">
-      <span className="text-[11px] font-medium uppercase tracking-[0.18em] text-tool-text-subdued">
+      <span className="text-tool-text-subdued text-[11px] font-medium uppercase tracking-[0.18em]">
         Untitled project
       </span>
       <h1 className="text-[40px] font-semibold leading-[1.1] tracking-[-0.02em]">
         What are you making?
       </h1>
-      <p className="m-0 max-w-[520px] text-[15px] leading-[1.55] text-tool-text-subdued">
+      <p className="text-tool-text-subdued m-0 max-w-[520px] text-[15px] leading-[1.55]">
         Describe a shot below. Each generation lands on this canvas — iterate,
         refine, and build up a scene.
       </p>
@@ -672,7 +688,7 @@ function EmptyHero(): React.ReactElement {
         {STARTER_CHIPS.map((chip) => (
           <span
             key={chip}
-            className="rounded-full border border-tool-rail-border bg-tool-surface-card px-3 py-1 text-xs text-tool-text-dim"
+            className="border-tool-rail-border bg-tool-surface-card text-tool-text-dim rounded-full border px-3 py-1 text-xs"
           >
             {chip}
           </span>

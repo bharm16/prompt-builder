@@ -1,7 +1,6 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { Suspense, lazy, useCallback, useMemo, useState } from "react";
 import { Copy, Trash2, Wand2, X } from "@promptstudio/system/components/ui";
 import { VIDEO_DRAFT_MODEL } from "@components/ToolSidebar/config/modelConfig";
-import { CameraMotionModal } from "@components/modals/CameraMotionModal";
 import { useToast } from "@components/Toast";
 import { GenerationFooter } from "@components/ToolSidebar/components/panels/GenerationControlsPanel/components/GenerationFooter";
 import { VideoSettingsRow } from "@components/ToolSidebar/components/panels/GenerationControlsPanel/components/VideoSettingsRow";
@@ -27,6 +26,14 @@ import { ContinuityIntentPicker } from "./components/ContinuityIntentPicker";
 import { PipelineStatus } from "./components/PipelineStatus";
 import { PreviousShotContext } from "./components/PreviousShotContext";
 import { ShotVisualStrip } from "./components/ShotVisualStrip";
+
+// Lazy-loaded so the Three.js bundle (~120 KB compressed, only used inside
+// CameraMotionModal's renderer) stays out of the sequence-editor chunk.
+const CameraMotionModal = lazy(() =>
+  import("@components/modals/CameraMotionModal").then((m) => ({
+    default: m.CameraMotionModal,
+  })),
+);
 
 interface SequenceWorkspaceProps {
   promptText: string;
@@ -555,17 +562,17 @@ export function SequenceWorkspace({
   return (
     <main
       id="main-content"
-      className="flex h-full min-h-0 flex-col bg-tool-panel-inner"
+      className="bg-tool-panel-inner flex h-full min-h-0 flex-col"
     >
-      <header className="flex h-12 items-center border-b border-border px-3">
-        <span className="rounded-full border border-accent/40 bg-accent/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-accent">
+      <header className="border-border flex h-12 items-center border-b px-3">
+        <span className="border-accent/40 bg-accent/10 text-accent rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide">
           Sequence
         </span>
-        <span className="ml-2 flex-1 truncate text-sm text-foreground">
+        <span className="text-foreground ml-2 flex-1 truncate text-sm">
           {session?.name || "Untitled session"}
         </span>
         <span
-          className="mr-2 rounded-md border border-border px-2 py-1 text-[10px] font-medium uppercase tracking-wide text-muted"
+          className="border-border text-muted mr-2 rounded-md border px-2 py-1 text-[10px] font-medium uppercase tracking-wide"
           data-testid="scene-proxy-status"
         >
           {isSceneProxyReady ? "Scene proxy ready" : "Scene proxy off"}
@@ -574,7 +581,7 @@ export function SequenceWorkspace({
           type="button"
           onClick={() => void handleCreateSceneProxy()}
           disabled={!canCreateSceneProxy || isCreatingSceneProxy}
-          className="mr-2 inline-flex h-7 items-center gap-1 rounded-md border border-border px-2 text-[11px] font-medium text-muted transition-colors hover:bg-surface-1 hover:text-foreground disabled:opacity-50"
+          className="border-border text-muted hover:bg-surface-1 hover:text-foreground mr-2 inline-flex h-7 items-center gap-1 rounded-md border px-2 text-[11px] font-medium transition-colors disabled:opacity-50"
           aria-label="Create scene proxy"
         >
           {isCreatingSceneProxy
@@ -587,7 +594,7 @@ export function SequenceWorkspace({
           <button
             type="button"
             onClick={onExitSequence}
-            className="inline-flex h-7 items-center gap-1 rounded-md border border-border px-2 text-[11px] font-medium text-muted transition-colors hover:bg-surface-1 hover:text-foreground"
+            className="border-border text-muted hover:bg-surface-1 hover:text-foreground inline-flex h-7 items-center gap-1 rounded-md border px-2 text-[11px] font-medium transition-colors"
             aria-label="Exit sequence"
           >
             <X className="h-3.5 w-3.5" />
@@ -623,14 +630,14 @@ export function SequenceWorkspace({
 
           {shouldShowSceneProxyPreview && (
             <section
-              className="overflow-hidden rounded-lg border border-border bg-surface-2"
+              className="border-border bg-surface-2 overflow-hidden rounded-lg border"
               data-testid="scene-proxy-preview-panel"
             >
-              <header className="flex items-center justify-between border-b border-border bg-black/20 px-3 py-2">
-                <span className="text-[11px] font-semibold uppercase tracking-wide text-muted">
+              <header className="border-border flex items-center justify-between border-b bg-black/20 px-3 py-2">
+                <span className="text-muted text-[11px] font-semibold uppercase tracking-wide">
                   Scene proxy preview
                 </span>
-                <span className="text-[11px] text-muted">
+                <span className="text-muted text-[11px]">
                   {isSceneProxyReady ? "Ready" : "Build proxy first"}
                 </span>
               </header>
@@ -644,8 +651,8 @@ export function SequenceWorkspace({
                     onError={handlePreviewImageError}
                   />
                 ) : (
-                  <div className="flex h-full w-full items-center justify-center bg-tool-surface-card">
-                    <span className="text-xs text-muted">
+                  <div className="bg-tool-surface-card flex h-full w-full items-center justify-center">
+                    <span className="text-muted text-xs">
                       No proxy preview yet
                     </span>
                   </div>
@@ -655,14 +662,14 @@ export function SequenceWorkspace({
                   type="button"
                   onClick={() => void handlePreviewSceneProxy()}
                   disabled={!isSceneProxyReady || isPreviewingSceneProxy}
-                  className="absolute bottom-2 right-2 rounded border border-border bg-black/55 px-2 py-1 text-[10px] font-medium text-foreground backdrop-blur-sm disabled:opacity-50"
+                  className="border-border text-foreground absolute bottom-2 right-2 rounded border bg-black/55 px-2 py-1 text-[10px] font-medium backdrop-blur-sm disabled:opacity-50"
                   data-testid="preview-scene-proxy-button"
                 >
                   {isPreviewingSceneProxy ? "Rendering..." : "Preview angle"}
                 </button>
               </div>
 
-              <div className="grid grid-cols-4 gap-2 border-t border-border px-3 py-2 text-[11px] text-muted">
+              <div className="border-border text-muted grid grid-cols-4 gap-2 border-t px-3 py-2 text-[11px]">
                 <span>Yaw: {formatCameraValue(previewCamera?.yaw)}</span>
                 <span>Pitch: {formatCameraValue(previewCamera?.pitch)}</span>
                 <span>Roll: {formatCameraValue(previewCamera?.roll)}</span>
@@ -671,14 +678,14 @@ export function SequenceWorkspace({
             </section>
           )}
 
-          <section className="overflow-hidden rounded-xl border border-border bg-surface-2">
-            <div className="flex items-center justify-between border-b border-border px-3 py-2">
-              <span className="text-[11px] font-semibold uppercase tracking-wide text-muted">
+          <section className="border-border bg-surface-2 overflow-hidden rounded-xl border">
+            <div className="border-border flex items-center justify-between border-b px-3 py-2">
+              <span className="text-muted text-[11px] font-semibold uppercase tracking-wide">
                 {currentShotIndex >= 0
                   ? `Shot ${currentShotIndex + 1} prompt`
                   : "Shot prompt"}
               </span>
-              <span className="text-[10px] tabular-nums text-muted">
+              <span className="text-muted text-[10px] tabular-nums">
                 {promptText.length} chars
               </span>
             </div>
@@ -690,17 +697,17 @@ export function SequenceWorkspace({
                 readOnly={!onPromptChange}
                 placeholder="Describe your shot..."
                 rows={6}
-                className="min-h-[132px] w-full resize-none border-0 bg-transparent p-0 text-sm leading-relaxed text-foreground outline-none"
+                className="text-foreground min-h-[132px] w-full resize-none border-0 bg-transparent p-0 text-sm leading-relaxed outline-none"
                 aria-label="Shot prompt"
               />
             </div>
 
-            <div className="flex h-10 items-center gap-1 border-t border-border px-2">
+            <div className="border-border flex h-10 items-center gap-1 border-t px-2">
               <button
                 type="button"
                 onClick={() => void handleCopyPrompt()}
                 disabled={!promptText.trim()}
-                className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted transition-colors hover:bg-surface-1 hover:text-foreground disabled:opacity-50"
+                className="text-muted hover:bg-surface-1 hover:text-foreground inline-flex h-7 w-7 items-center justify-center rounded-md transition-colors disabled:opacity-50"
                 aria-label="Copy prompt"
               >
                 <Copy className="h-3.5 w-3.5" />
@@ -710,7 +717,7 @@ export function SequenceWorkspace({
                 type="button"
                 onClick={handleClearPrompt}
                 disabled={!onPromptChange || !promptText.length}
-                className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted transition-colors hover:bg-surface-1 hover:text-foreground disabled:opacity-50"
+                className="text-muted hover:bg-surface-1 hover:text-foreground inline-flex h-7 w-7 items-center justify-center rounded-md transition-colors disabled:opacity-50"
                 aria-label="Clear prompt"
               >
                 <Trash2 className="h-3.5 w-3.5" />
@@ -722,7 +729,7 @@ export function SequenceWorkspace({
                 type="button"
                 onClick={onAiEnhance}
                 disabled={isOptimizing || !promptText.trim()}
-                className="inline-flex h-7 items-center gap-1 rounded-md border border-accent/30 bg-accent/10 px-2 text-[11px] font-semibold text-accent transition-colors hover:bg-accent/20 disabled:opacity-50"
+                className="border-accent/30 bg-accent/10 text-accent hover:bg-accent/20 inline-flex h-7 items-center gap-1 rounded-md border px-2 text-[11px] font-semibold transition-colors disabled:opacity-50"
               >
                 <Wand2 className="h-3.5 w-3.5" />
                 AI Enhance
@@ -748,15 +755,17 @@ export function SequenceWorkspace({
       />
 
       {motionSource && (
-        <CameraMotionModal
-          isOpen={isCameraMotionModalOpen}
-          onClose={handleCloseCameraMotion}
-          imageUrl={motionSource.imageUrl}
-          imageStoragePath={motionSource.imageStoragePath}
-          imageAssetId={motionSource.imageAssetId}
-          onSelect={handleSelectCameraMotion}
-          initialSelection={domain.cameraMotion}
-        />
+        <Suspense fallback={null}>
+          <CameraMotionModal
+            isOpen={isCameraMotionModalOpen}
+            onClose={handleCloseCameraMotion}
+            imageUrl={motionSource.imageUrl}
+            imageStoragePath={motionSource.imageStoragePath}
+            imageAssetId={motionSource.imageAssetId}
+            onSelect={handleSelectCameraMotion}
+            initialSelection={domain.cameraMotion}
+          />
+        </Suspense>
       )}
 
       <GenerationFooter
