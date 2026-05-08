@@ -5,23 +5,17 @@ import { logger } from "@infrastructure/Logger";
 import { ReferenceImageProcessingService } from "@services/asset/ReferenceImageProcessingService";
 import { assertUrlSafe } from "@server/shared/urlValidation";
 import type {
-  ReferenceImage as ReferenceImageRecord,
-  ReferenceImageMetadata,
-} from "@shared/schemas/asset.schemas";
+  CreateReferenceImageInput,
+  ListReferenceImagesOptions,
+  ReferenceImageRecord,
+  ReferenceImageStorePort,
+} from "../ports/ReferenceImageStorePort";
 
-export type { ReferenceImageRecord, ReferenceImageMetadata };
-
-interface ReferenceImageRepositoryOptions {
+interface FirestoreReferenceImageStoreOptions {
   db?: FirebaseFirestore.Firestore;
   bucket: Bucket;
   bucketName?: string;
   processor?: ReferenceImageProcessingService;
-}
-
-interface CreateReferenceImageInput {
-  label?: string | null;
-  source?: string | null;
-  originalName?: string | null;
 }
 
 function buildDownloadUrl(
@@ -41,17 +35,28 @@ function getUrlHost(value: string): string | null {
   }
 }
 
-export class ReferenceImageRepository {
+/**
+ * Firestore + GCS implementation of `ReferenceImageStorePort`.
+ *
+ * Combines image processing (via injected `ReferenceImageProcessingService`),
+ * GCS upload, and Firestore document write into a single domain operation.
+ * The split between "processing" and "storage" is a known abstraction
+ * boundary that could be tightened in a follow-up — for now the port matches
+ * the public surface of the original `ReferenceImageRepository`.
+ */
+export class FirestoreReferenceImageStore implements ReferenceImageStorePort {
   private readonly db: FirebaseFirestore.Firestore;
   private readonly bucket: Bucket;
   private readonly bucketName: string;
   private readonly processor: ReferenceImageProcessingService;
-  private readonly log = logger.child({ service: "ReferenceImageRepository" });
+  private readonly log = logger.child({
+    service: "FirestoreReferenceImageStore",
+  });
 
-  constructor(options: ReferenceImageRepositoryOptions) {
+  constructor(options: FirestoreReferenceImageStoreOptions) {
     if (!options.bucket) {
       throw new Error(
-        "ReferenceImageRepository requires an injected storage bucket",
+        "FirestoreReferenceImageStore requires an injected storage bucket",
       );
     }
     this.db = options.db || getFirestore();
@@ -69,7 +74,7 @@ export class ReferenceImageRepository {
 
   async listImages(
     userId: string,
-    options: { limit?: number } = {},
+    options: ListReferenceImagesOptions = {},
   ): Promise<ReferenceImageRecord[]> {
     const limit =
       typeof options.limit === "number" && Number.isFinite(options.limit)
@@ -282,9 +287,3 @@ export class ReferenceImageRepository {
     return true;
   }
 }
-
-/**
- * @deprecated Use `ReferenceImageRepository` named export. Default kept for backward compatibility.
- */
-export { ReferenceImageRepository as ReferenceImageService };
-export default ReferenceImageRepository;

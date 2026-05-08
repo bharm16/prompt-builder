@@ -1,9 +1,13 @@
 import type { Request, Response } from "express";
 import { logger } from "@infrastructure/Logger";
-import type { VideoConceptServiceContract } from "../types";
+import type { PromptValidationService } from "@services/video-concept/services/validation/PromptValidationService";
+import type { SceneCompletionService } from "@services/video-concept/services/analysis/SceneCompletionService";
 
 export const createVideoCompleteHandler =
-  (videoConceptService: VideoConceptServiceContract) =>
+  (
+    sceneCompletion: SceneCompletionService,
+    promptValidation: PromptValidationService,
+  ) =>
   async (req: Request, res: Response): Promise<Response | void> => {
     const startTime = Date.now();
     const requestId = req.id || "unknown";
@@ -20,14 +24,14 @@ export const createVideoCompleteHandler =
     });
 
     try {
-      const completion = await videoConceptService.completeScene({
+      const completion = await sceneCompletion.completeScene({
         existingElements,
         concept,
       });
 
       let smartDefaults = null;
       if (smartDefaultsFor) {
-        smartDefaults = await videoConceptService.getSmartDefaults({
+        smartDefaults = await promptValidation.getSmartDefaults({
           elementType: smartDefaultsFor,
           existingElements: completion.suggestions,
         });

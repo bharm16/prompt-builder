@@ -14,10 +14,17 @@ if [[ -f "${MODEL_FILE}" ]]; then
 fi
 
 if [[ -z "${MODEL_SOURCE_URI}" ]]; then
-  echo "Missing SPAN_LABELING_MODELS_GCS_URI and no local model assets found."
-  echo "Set SPAN_LABELING_MODELS_GCS_URI (for example: gs://your-bucket/span-labeling/models/) and rerun:"
+  echo "Warning: SPAN_LABELING_MODELS_GCS_URI is not set and no local model assets were found."
+  echo "Skipping model download. The resulting image will be missing span-labeling"
+  echo "models; any runtime code path requiring them will fail with a clear error."
+  echo ""
+  echo "For production builds, set SPAN_LABELING_MODELS_GCS_URI as a build-arg or env"
+  echo "(for example: gs://your-bucket/span-labeling/models/) and rerun:"
   echo "  npm run download-models"
-  exit 1
+  echo ""
+  echo "For CI/dev/PR builds where models aren't required, this skip is intentional"
+  echo "and lets the build proceed."
+  exit 0
 fi
 
 if [[ "${MODEL_SOURCE_URI}" != gs://* ]]; then

@@ -117,13 +117,13 @@ vi.mock("@infrastructure/firebaseAdmin", () => ({
   }),
 }));
 
-import {
-  ContinuitySessionStore,
-  ContinuitySessionVersionMismatchError,
-} from "../ContinuitySessionStore";
+import { FirestoreContinuitySessionStore } from "../storage/FirestoreContinuitySessionStore";
+import { ContinuitySessionVersionMismatchError } from "../ports/ContinuitySessionStorePort";
 
 const createStore = () =>
-  new ContinuitySessionStore(mocks.sessionStore as unknown as SessionStorePort);
+  new FirestoreContinuitySessionStore(
+    mocks.sessionStore as unknown as SessionStorePort,
+  );
 
 const buildSession = (
   overrides: Partial<ContinuitySession> = {},
@@ -157,7 +157,7 @@ const buildSession = (
   ...overrides,
 });
 
-describe("ContinuitySessionStore", () => {
+describe("FirestoreContinuitySessionStore", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.legacyRecords.clear();

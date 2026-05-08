@@ -2,11 +2,11 @@ import type { DIContainer } from "@infrastructure/DIContainer";
 import { logger } from "@infrastructure/Logger";
 import type { Bucket } from "@google-cloud/storage";
 import AssetService from "@services/asset/AssetService";
-import AssetRepository from "@services/asset/AssetRepository";
+import { FirestoreAssetStore } from "@services/asset/storage/FirestoreAssetStore";
 import AssetResolverService from "@services/asset/AssetResolverService";
 import { ReferenceImageProcessingService } from "@services/asset/ReferenceImageProcessingService";
 import type { FaceEmbeddingService } from "@services/asset/FaceEmbeddingService";
-import { ReferenceImageRepository } from "@services/asset/reference-images/ReferenceImageRepository";
+import { FirestoreReferenceImageStore } from "@services/asset/reference-images/storage/FirestoreReferenceImageStore";
 import { SessionService } from "@services/sessions/SessionService";
 import { SessionStore } from "@services/sessions/SessionStore";
 import type { VideoJobStore } from "@services/video-generation/jobs/VideoJobStore";
@@ -40,7 +40,7 @@ export function registerSessionServices(container: DIContainer): void {
       config: ServiceConfig,
     ) => {
       try {
-        const repository = new AssetRepository({
+        const repository = new FirestoreAssetStore({
           bucket: gcsBucket,
           bucketName: gcsBucketName,
         });
@@ -70,7 +70,7 @@ export function registerSessionServices(container: DIContainer): void {
     "referenceImageRepository",
     (gcsBucket: Bucket, gcsBucketName: string) => {
       try {
-        return new ReferenceImageRepository({
+        return new FirestoreReferenceImageStore({
           bucket: gcsBucket,
           bucketName: gcsBucketName,
         });

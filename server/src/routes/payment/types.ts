@@ -1,7 +1,7 @@
 import type { BillingProfileStore } from "@services/payment/BillingProfileStore";
 import type { FirestoreCircuitExecutor } from "@services/firestore/FirestoreCircuitExecutor";
 import type { PaymentConsistencyStore } from "@services/payment/PaymentConsistencyStore";
-import type { PaymentService } from "@services/payment/PaymentService";
+import type { IPaymentGateway } from "@services/payment/IPaymentGateway";
 import type { StripeWebhookEventStore } from "@services/payment/StripeWebhookEventStore";
 
 interface StarterGrantInfo {
@@ -36,7 +36,7 @@ export interface PaymentUserCreditService {
 }
 
 export interface PaymentRouteServices {
-  paymentService: PaymentService;
+  paymentService: IPaymentGateway;
   billingProfileStore: BillingProfileStore;
   webhookEventStore: StripeWebhookEventStore;
   userCreditService: PaymentUserCreditService;
@@ -49,7 +49,7 @@ export interface PaymentRouteServices {
 }
 
 export interface PaymentRouteDeps {
-  paymentService: PaymentService;
+  paymentService: IPaymentGateway;
   billingProfileStore: BillingProfileStore;
   userCreditService: PaymentUserCreditService;
 }

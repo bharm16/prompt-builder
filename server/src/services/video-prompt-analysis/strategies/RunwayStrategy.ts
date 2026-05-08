@@ -20,6 +20,7 @@ import {
   type TransformResult,
   type AugmentResult,
 } from "./BaseStrategy";
+import { escapeRegex } from "@shared/utils/escapeRegex";
 import { getPromptModelConstraints } from "@shared/videoModels";
 import type {
   PromptOptimizationResult,
@@ -499,7 +500,7 @@ export class RunwayStrategy extends BaseStrategy {
   ): string | null {
     for (const term of candidates) {
       const pattern = new RegExp(
-        `\\b${this.escapeRegex(term)}\\b(?:\\s+(?:[a-z0-9'-]+)){0,4}`,
+        `\\b${escapeRegex(term)}\\b(?:\\s+(?:[a-z0-9'-]+)){0,4}`,
         "i",
       );
       const match = text.match(pattern);

@@ -2,8 +2,9 @@
  * Pure serialization helpers for the continuity session document shape.
  *
  * Lives in `domain/` (not `services/`) so both `services/sessions/SessionStore`
- * and `services/continuity/ContinuitySessionStore` can serialize the same
- * payload without one service domain importing from the other.
+ * and `services/continuity/storage/FirestoreContinuitySessionStore` can
+ * serialize the same payload without one service domain importing from the
+ * other.
  *
  * No I/O, no Firestore, no Node APIs — just deterministic transforms.
  */

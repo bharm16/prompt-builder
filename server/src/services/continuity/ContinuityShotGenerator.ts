@@ -10,9 +10,9 @@ import type {
 } from "./types";
 import type { CharacterKeyframeService } from "./CharacterKeyframeService";
 import {
-  ContinuitySessionStore,
   ContinuitySessionVersionMismatchError,
-} from "./ContinuitySessionStore";
+  type ContinuitySessionStorePort,
+} from "./ports/ContinuitySessionStorePort";
 import { ProviderStyleAdapter } from "./ProviderStyleAdapter";
 import { AnchorService } from "./AnchorService";
 import { SeedPersistenceService } from "./SeedPersistenceService";
@@ -62,7 +62,7 @@ export class ContinuityShotGenerator {
     private qualityGate: QualityGateService,
     private sceneProxy: SceneProxyService,
     private characterKeyframes: CharacterKeyframeService | null,
-    private sessionStore: ContinuitySessionStore,
+    private sessionStore: ContinuitySessionStorePort,
   ) {}
 
   async generateShot(

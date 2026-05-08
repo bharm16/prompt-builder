@@ -7,6 +7,8 @@
  * @module SafetySanitizer
  */
 
+import { escapeRegex } from "@shared/utils/escapeRegex";
+
 /**
  * Represents a replacement made during sanitization
  */
@@ -142,7 +144,7 @@ export class SafetySanitizer {
     // Pre-compile celebrity patterns for efficiency
     this.celebrityPatterns = new Map();
     for (const [name, replacement] of Object.entries(CELEBRITY_REPLACEMENTS)) {
-      const pattern = new RegExp(`\\b${this.escapeRegex(name)}\\b`, "gi");
+      const pattern = new RegExp(`\\b${escapeRegex(name)}\\b`, "gi");
       this.celebrityPatterns.set(pattern, replacement);
     }
   }
@@ -284,7 +286,7 @@ export class SafetySanitizer {
     const replacement = CATEGORY_REPLACEMENTS[category] ?? "[content removed]";
 
     for (const term of terms) {
-      const pattern = new RegExp(`\\b${this.escapeRegex(term)}\\b`, "gi");
+      const pattern = new RegExp(`\\b${escapeRegex(term)}\\b`, "gi");
       const matches = result.match(pattern);
 
       if (matches) {
@@ -306,15 +308,8 @@ export class SafetySanitizer {
    * Check if text contains a word (with word boundaries)
    */
   private containsWord(text: string, word: string): boolean {
-    const pattern = new RegExp(`\\b${this.escapeRegex(word)}\\b`, "i");
+    const pattern = new RegExp(`\\b${escapeRegex(word)}\\b`, "i");
     return pattern.test(text);
-  }
-
-  /**
-   * Escape special regex characters
-   */
-  private escapeRegex(str: string): string {
-    return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   }
 
   /**

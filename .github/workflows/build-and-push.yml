@@ -45,7 +45,7 @@ jobs:
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern={{major}}
-            type=sha,prefix={{branch}}-
+            type=sha,prefix=sha-
             type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Build and push Docker image
@@ -85,6 +85,12 @@ jobs:
             "${TAGS}@${DIGEST}"
 
       - name: Generate SBOM
+        # SBOM scans the registry image, which only exists when push: true
+        # (i.e. on push to main/develop or tag, not on PR builds). On PR
+        # the digest output is empty, so the syft scan target becomes
+        # "ghcr.io/.../...@" with no digest and Syft errors. Match the
+        # condition on the Sign and Attach SBOM steps below.
+        if: github.event_name != 'pull_request'
         uses: anchore/sbom-action@v0
         with:
           image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ steps.build-and-push.outputs.digest }}
@@ -92,6 +98,7 @@ jobs:
           output-file: sbom.spdx.json
 
       - name: Upload SBOM
+        if: github.event_name != 'pull_request'
         uses: actions/upload-artifact@v4
         with:
           name: sbom

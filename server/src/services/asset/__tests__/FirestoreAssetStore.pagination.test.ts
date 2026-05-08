@@ -1,9 +1,9 @@
 import { describe, it, expect, vi } from "vitest";
-import AssetRepository from "../AssetRepository";
+import FirestoreAssetStore from "../storage/FirestoreAssetStore";
 import type { Asset } from "@shared/types/asset";
 
 /**
- * Regression: AssetRepository.getByType returns a structured `{ items, hasMore }`
+ * Regression: FirestoreAssetStore.getByType returns a structured `{ items, hasMore }`
  * result so callers can detect when their result set was truncated by the
  * query cap. Implementation uses the "fetch one extra row" probe pattern:
  * query with `.limit(limit + 1)`, slice off the excess, and set
@@ -58,7 +58,7 @@ function buildQueryChain(docs: FakeDoc[]): QueryChain {
   return chain;
 }
 
-function buildRepository(chain: QueryChain): AssetRepository {
+function buildRepository(chain: QueryChain): FirestoreAssetStore {
   const assetsCollection = {
     ...chain,
     doc: vi.fn(() => ({ get: vi.fn() })),
@@ -69,14 +69,14 @@ function buildRepository(chain: QueryChain): AssetRepository {
     collection: vi.fn(() => usersCollection),
   } as unknown as FirebaseFirestore.Firestore;
 
-  return new AssetRepository({
+  return new FirestoreAssetStore({
     db,
     bucket: { name: "test-bucket", file: vi.fn() } as never,
     bucketName: "test-bucket",
   });
 }
 
-describe("AssetRepository.getByType pagination", () => {
+describe("FirestoreAssetStore.getByType pagination", () => {
   it("returns hasMore=false when fewer than limit rows are available", async () => {
     // Firestore returned 5 rows when we asked for limit+1=11 — there are no more.
     const limit = 10;

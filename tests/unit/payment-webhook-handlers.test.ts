@@ -1,4 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type {
+  PaymentCheckoutSession,
+  PaymentInvoice,
+  PaymentInvoiceLineItem,
+} from "@services/payment/types";
 
 const mocks = vi.hoisted(() => ({
   loggerInfo: vi.fn(),
@@ -15,6 +20,49 @@ vi.mock("@infrastructure/Logger", () => ({
 }));
 
 import { createWebhookEventHandlers } from "@routes/payment/webhook/handlers";
+
+const buildSession = (
+  overrides: Partial<PaymentCheckoutSession> = {},
+): PaymentCheckoutSession => ({
+  id: "cs_default",
+  mode: "payment",
+  livemode: false,
+  metadataUserId: null,
+  clientReferenceId: null,
+  customerId: null,
+  subscriptionId: null,
+  creditAmountMetadata: null,
+  ...overrides,
+});
+
+const buildInvoiceLine = (
+  overrides: Partial<PaymentInvoiceLineItem> = {},
+): PaymentInvoiceLineItem => ({
+  priceId: null,
+  quantity: null,
+  amount: null,
+  proration: false,
+  metadataUserId: null,
+  ...overrides,
+});
+
+const buildInvoice = (overrides: Partial<PaymentInvoice> = {}): PaymentInvoice => ({
+  id: "in_default",
+  number: null,
+  status: null,
+  created: null,
+  currency: null,
+  amountDue: null,
+  amountPaid: 0,
+  hostedInvoiceUrl: null,
+  invoicePdf: null,
+  livemode: false,
+  customerId: null,
+  subscriptionId: null,
+  subscriptionDetailsUserId: null,
+  lineItems: [],
+  ...overrides,
+});
 
 describe("createWebhookEventHandlers", () => {
   beforeEach(() => {
@@ -36,14 +84,14 @@ describe("createWebhookEventHandlers", () => {
       });
 
       await handlers.handleCheckoutSessionCompleted(
-        {
+        buildSession({
           id: "cs_1",
           mode: "subscription",
           livemode: false,
-          metadata: { userId: "user-1" },
-          customer: "cus_1",
-          subscription: "sub_1",
-        } as any,
+          metadataUserId: "user-1",
+          customerId: "cus_1",
+          subscriptionId: "sub_1",
+        }),
         "evt_sub_1",
       );
 
@@ -74,14 +122,14 @@ describe("createWebhookEventHandlers", () => {
       });
 
       await handlers.handleCheckoutSessionCompleted(
-        {
+        buildSession({
           id: "cs_1",
           mode: "subscription",
           livemode: false,
-          metadata: { userId: "user-1" },
-          customer: "cus_1",
-          subscription: "sub_1",
-        } as any,
+          metadataUserId: "user-1",
+          customerId: "cus_1",
+          subscriptionId: "sub_1",
+        }),
         "evt_sub_2",
       );
 
@@ -128,15 +176,12 @@ describe("createWebhookEventHandlers", () => {
       });
 
       await handlers.handleCheckoutSessionCompleted(
-        {
+        buildSession({
           id: "cs_2",
           mode: "payment",
-          metadata: {
-            userId: "user-2",
-            creditAmount: "120",
-          },
-          client_reference_id: null,
-        } as any,
+          metadataUserId: "user-2",
+          creditAmountMetadata: "120",
+        }),
         "evt_pay_1",
       );
 
@@ -163,15 +208,13 @@ describe("createWebhookEventHandlers", () => {
 
       await expect(
         handlers.handleCheckoutSessionCompleted(
-          {
+          buildSession({
             id: "cs_3",
             mode: "payment",
             livemode: false,
-            metadata: {
-              userId: "user-3",
-              creditAmount: "0",
-            },
-          } as any,
+            metadataUserId: "user-3",
+            creditAmountMetadata: "0",
+          }),
           "evt_pay_bad_1",
         ),
       ).rejects.toThrow("Checkout session missing credit metadata");
@@ -206,11 +249,10 @@ describe("createWebhookEventHandlers", () => {
 
       await expect(
         handlers.handleInvoicePaid(
-          {
+          buildInvoice({
             id: "in_1",
-            lines: { data: [] },
             livemode: false,
-          } as any,
+          }),
           "evt_1",
         ),
       ).rejects.toThrow("Invoice paid without user metadata");
@@ -250,12 +292,11 @@ describe("createWebhookEventHandlers", () => {
       });
 
       await handlers.handleInvoicePaid(
-        {
+        buildInvoice({
           id: "in_2",
-          amount_paid: 0,
-          lines: { data: [] },
+          amountPaid: 0,
           livemode: false,
-        } as any,
+        }),
         "evt_2",
       );
 
@@ -278,12 +319,11 @@ describe("createWebhookEventHandlers", () => {
 
       await expect(
         handlers.handleInvoicePaid(
-          {
+          buildInvoice({
             id: "in_3",
-            amount_paid: 1000,
-            lines: { data: [] },
+            amountPaid: 1000,
             livemode: false,
-          } as any,
+          }),
           "evt_3",
         ),
       ).rejects.toThrow("missing credit mapping");
@@ -304,12 +344,11 @@ describe("createWebhookEventHandlers", () => {
 
       await expect(
         handlers.handleInvoicePaid(
-          {
+          buildInvoice({
             id: "in_4",
-            amount_paid: 1000,
-            lines: { data: [] },
+            amountPaid: 1000,
             livemode: false,
-          } as any,
+          }),
           "evt_4",
         ),
       ).rejects.toThrow("paid but credits resolved to 0");
@@ -335,16 +374,14 @@ describe("createWebhookEventHandlers", () => {
       });
 
       await handlers.handleInvoicePaid(
-        {
+        buildInvoice({
           id: "in_5",
-          amount_paid: 1000,
-          customer: "cus_1",
-          subscription: "sub_1",
-          lines: {
-            data: [{ price: { id: "price_creator_monthly" } }],
-          },
+          amountPaid: 1000,
+          customerId: "cus_1",
+          subscriptionId: "sub_1",
+          lineItems: [buildInvoiceLine({ priceId: "price_creator_monthly" })],
           livemode: false,
-        } as any,
+        }),
         "evt_5",
       );
 
@@ -390,16 +427,14 @@ describe("createWebhookEventHandlers", () => {
       });
 
       await handlers.handleInvoicePaid(
-        {
+        buildInvoice({
           id: "in_6",
-          amount_paid: 1000,
-          customer: "cus_1",
-          subscription: "sub_1",
-          lines: {
-            data: [{ price: { id: "price_creator_monthly" } }],
-          },
+          amountPaid: 1000,
+          customerId: "cus_1",
+          subscriptionId: "sub_1",
+          lineItems: [buildInvoiceLine({ priceId: "price_creator_monthly" })],
           livemode: false,
-        } as any,
+        }),
         "evt_6",
       );
 

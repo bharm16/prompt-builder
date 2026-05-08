@@ -81,7 +81,16 @@ describe("WebhookReconciliationWorker", () => {
                 type: "checkout.session.completed",
                 created: nearEdgeTimestamp,
                 livemode: false,
-                data: { object: { id: "cs_test" } },
+                payload: {
+                  id: "cs_test",
+                  mode: "payment",
+                  livemode: false,
+                  metadataUserId: null,
+                  clientReferenceId: null,
+                  customerId: null,
+                  subscriptionId: null,
+                  creditAmountMetadata: null,
+                },
               },
             ];
           }
@@ -132,7 +141,16 @@ describe("WebhookReconciliationWorker", () => {
                 type: "checkout.session.completed",
                 created: nowSec - 3600, // 1 hour ago
                 livemode: false,
-                data: { object: { id: "cs_recent" } },
+                payload: {
+                  id: "cs_recent",
+                  mode: "payment",
+                  livemode: false,
+                  metadataUserId: null,
+                  clientReferenceId: null,
+                  customerId: null,
+                  subscriptionId: null,
+                  creditAmountMetadata: null,
+                },
               },
             ];
           }

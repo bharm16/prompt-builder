@@ -184,7 +184,7 @@ describe("Logger", () => {
     });
   });
 
-  describe("level guard", () => {
+  describe("level filtering", () => {
     // Pins the contract introduced when isLevelEnabled guards were added.
     // The guards should be invisible when the level is enabled (current
     // pino default) and should suppress meta enrichment + the underlying
