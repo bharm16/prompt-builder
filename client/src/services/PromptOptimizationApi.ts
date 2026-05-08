@@ -9,11 +9,13 @@ import {
   buildOfflineResult,
   shouldUseOfflineFallback,
 } from "./prompt-optimization/offlineFallback";
-import type {
-  CompileOptions,
-  CompileResult,
-  OptimizeOptions,
-  OptimizeResult,
+import {
+  CompileResponseSchema,
+  OptimizeResponseSchema,
+  type CompileOptions,
+  type CompileResult,
+  type OptimizeOptions,
+  type OptimizeResult,
 } from "./prompt-optimization/types";
 
 export class PromptOptimizationApi {
@@ -36,7 +38,7 @@ export class PromptOptimizationApi {
     try {
       const requestOptions = signal ? { signal } : {};
       trackPromptOptimize(mode);
-      return (await this.client.post(
+      const raw = await this.client.post(
         "/optimize",
         {
           prompt,
@@ -52,7 +54,13 @@ export class PromptOptimizationApi {
           ...(constraintMode ? { constraintMode } : {}),
         },
         requestOptions,
-      )) as OptimizeResult;
+      );
+      // OptimizeResult differs from the shared OptimizeResponse only in `i2v`,
+      // which is typed as the feature-local I2VOptimizationResult on the client
+      // (`features/prompt-optimizer/types/i2v`) but stays untyped/passthrough
+      // in the shared schema. The cast bridges that single field; the rest of
+      // the envelope is fully validated by OptimizeResponseSchema at runtime.
+      return OptimizeResponseSchema.parse(raw) as unknown as OptimizeResult;
     } catch (error) {
       if (shouldUseOfflineFallback(error)) {
         return buildOfflineResult(
@@ -73,7 +81,7 @@ export class PromptOptimizationApi {
     signal,
   }: CompileOptions): Promise<CompileResult> {
     const requestOptions = signal ? { signal } : {};
-    return (await this.client.post(
+    const raw = await this.client.post(
       "/optimize-compile",
       {
         ...(prompt ? { prompt } : {}),
@@ -82,7 +90,8 @@ export class PromptOptimizationApi {
         ...(context ? { context } : {}),
       },
       requestOptions,
-    )) as CompileResult;
+    );
+    return CompileResponseSchema.parse(raw) as CompileResult;
   }
 
   calculateQualityScore(inputPrompt: string, outputPrompt: string): number {
