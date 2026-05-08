@@ -10,7 +10,7 @@ import type {
   CreateShotRequest,
   StyleReference,
 } from "./types";
-import { ContinuitySessionStore } from "./ContinuitySessionStore";
+import type { ContinuitySessionStorePort } from "./ports/ContinuitySessionStorePort";
 import { ProviderStyleAdapter } from "./ProviderStyleAdapter";
 import { ContinuityMediaService } from "./ContinuityMediaService";
 import { SceneProxyService } from "./SceneProxyService";
@@ -27,7 +27,7 @@ export class ContinuitySessionService {
     private mediaService: ContinuityMediaService,
     private sceneProxy: SceneProxyService,
     private shotGenerator: ContinuityShotGenerator,
-    private sessionStore: ContinuitySessionStore,
+    private sessionStore: ContinuitySessionStorePort,
   ) {}
 
   async createSession(

@@ -1,9 +1,9 @@
 import type { Request, Response } from "express";
 import { logger } from "@infrastructure/Logger";
-import type { VideoConceptServiceContract } from "../types";
+import type { SuggestionGeneratorService } from "@services/video-concept/services/generation/SuggestionGeneratorService";
 
 export const createVideoSuggestionsHandler =
-  (videoConceptService: VideoConceptServiceContract) =>
+  (suggestionGenerator: SuggestionGeneratorService) =>
   async (req: Request, res: Response): Promise<Response | void> => {
     const startTime = Date.now();
     const requestId = req.id || "unknown";
@@ -21,7 +21,7 @@ export const createVideoSuggestionsHandler =
     });
 
     try {
-      const result = await videoConceptService.getCreativeSuggestions({
+      const result = await suggestionGenerator.getCreativeSuggestions({
         elementType,
         currentValue,
         context,

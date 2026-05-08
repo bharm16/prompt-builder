@@ -32,6 +32,7 @@ vi.mock("stripe", () => ({
 }));
 
 import { PaymentService } from "../PaymentService";
+import type { PaymentInvoice } from "../types";
 
 const getStripe = (): Record<string, any> => {
   const latest = mocks.stripeInstances.at(-1);
@@ -40,6 +41,26 @@ const getStripe = (): Record<string, any> => {
   }
   return latest;
 };
+
+const buildPaymentInvoice = (
+  overrides: Partial<PaymentInvoice> = {},
+): PaymentInvoice => ({
+  id: "inv_test",
+  number: null,
+  status: null,
+  created: null,
+  currency: null,
+  amountDue: null,
+  amountPaid: 0,
+  hostedInvoiceUrl: null,
+  invoicePdf: null,
+  livemode: false,
+  customerId: null,
+  subscriptionId: null,
+  subscriptionDetailsUserId: null,
+  lineItems: [],
+  ...overrides,
+});
 
 describe("PaymentService", () => {
   const baseConfig = {
@@ -110,40 +131,54 @@ describe("PaymentService", () => {
         priceCreditsJson: JSON.stringify({ price_a: 10, price_b: 5 }),
       });
 
-      const invoice = {
-        lines: {
-          data: [
-            {
-              price: { id: "price_a" },
-              quantity: 2,
-              amount: 1000,
-              proration: false,
-            },
-            { price: { id: "price_b" }, amount: 500, proration: false },
-            {
-              price: { id: "price_missing" },
-              quantity: 1,
-              amount: 100,
-              proration: false,
-            },
-            {
-              price: { id: "price_a" },
-              quantity: 1,
-              amount: 0,
-              proration: false,
-            },
-            {
-              price: { id: "price_a" },
-              quantity: 1,
-              amount: 100,
-              proration: true,
-            },
-            { price: null, quantity: 1, amount: 100, proration: false },
-          ],
-        },
-      };
+      const invoice = buildPaymentInvoice({
+        lineItems: [
+          {
+            priceId: "price_a",
+            quantity: 2,
+            amount: 1000,
+            proration: false,
+            metadataUserId: null,
+          },
+          {
+            priceId: "price_b",
+            quantity: null,
+            amount: 500,
+            proration: false,
+            metadataUserId: null,
+          },
+          {
+            priceId: "price_missing",
+            quantity: 1,
+            amount: 100,
+            proration: false,
+            metadataUserId: null,
+          },
+          {
+            priceId: "price_a",
+            quantity: 1,
+            amount: 0,
+            proration: false,
+            metadataUserId: null,
+          },
+          {
+            priceId: "price_a",
+            quantity: 1,
+            amount: 100,
+            proration: true,
+            metadataUserId: null,
+          },
+          {
+            priceId: null,
+            quantity: 1,
+            amount: 100,
+            proration: false,
+            metadataUserId: null,
+          },
+        ],
+      });
 
-      const resolved = service.calculateCreditsForInvoice(invoice as any);
+      const resolved = service.calculateCreditsForInvoice(invoice);
 
       expect(resolved.credits).toBe(25);
       expect(resolved.missingPriceIds).toEqual(["price_missing"]);
@@ -151,40 +186,48 @@ describe("PaymentService", () => {
   });
 
   describe("invoice user resolution", () => {
-    it("uses invoice.subscription_details metadata first", async () => {
+    it("uses subscription details user id first", async () => {
       const service = new PaymentService(baseConfig);
-      const resolved = await service.resolveUserIdForInvoice({
-        subscription_details: { metadata: { userId: "  user-subscription  " } },
-        lines: { data: [] },
-      } as any);
+      const resolved = await service.resolveUserIdForInvoice(
+        buildPaymentInvoice({
+          subscriptionDetailsUserId: "user-subscription",
+        }),
+      );
 
       expect(resolved).toBe("user-subscription");
     });
 
-    it("falls back to line metadata when subscription_details metadata is absent", async () => {
+    it("falls back to line metadata user id when subscription details user id is absent", async () => {
       const service = new PaymentService(baseConfig);
-      const resolved = await service.resolveUserIdForInvoice({
-        subscription_details: { metadata: {} },
-        lines: {
-          data: [{ metadata: { userId: "user-line" } }],
-        },
-      } as any);
+      const resolved = await service.resolveUserIdForInvoice(
+        buildPaymentInvoice({
+          lineItems: [
+            {
+              priceId: null,
+              quantity: null,
+              amount: null,
+              proration: false,
+              metadataUserId: "user-line",
+            },
+          ],
+        }),
+      );
 
       expect(resolved).toBe("user-line");
     });
 
-    it("fetches subscription metadata when invoice has subscription ID string", async () => {
+    it("fetches subscription metadata when only subscription id is set", async () => {
       const service = new PaymentService(baseConfig);
       const stripe = getStripe();
       stripe.subscriptions.retrieve.mockResolvedValue({
         metadata: { userId: "user-subscription-fetch" },
       });
 
-      const resolved = await service.resolveUserIdForInvoice({
-        subscription_details: { metadata: {} },
-        lines: { data: [] },
-        subscription: "sub_123",
-      } as any);
+      const resolved = await service.resolveUserIdForInvoice(
+        buildPaymentInvoice({
+          subscriptionId: "sub_123",
+        }),
+      );
 
       expect(stripe.subscriptions.retrieve).toHaveBeenCalledWith("sub_123");
       expect(resolved).toBe("user-subscription-fetch");
@@ -285,14 +328,35 @@ describe("PaymentService", () => {
       ).rejects.toThrow("Stripe session URL was not generated");
     });
 
-    it("creates billing portal session and lists invoices", async () => {
+    it("creates billing portal session and lists invoices in domain shape", async () => {
       const service = new PaymentService(baseConfig);
       const stripe = getStripe();
       stripe.billingPortal.sessions.create.mockResolvedValue({
         url: "https://portal.example.com",
       });
       stripe.invoices.list.mockResolvedValue({
-        data: [{ id: "inv_1" }, { id: "inv_2" }],
+        data: [
+          {
+            id: "inv_1",
+            number: "VIDRA-1",
+            status: "paid",
+            created: 1700000000,
+            currency: "usd",
+            amount_due: 1500,
+            amount_paid: 1500,
+            hosted_invoice_url: "https://stripe.com/inv_1",
+            invoice_pdf: "https://stripe.com/inv_1.pdf",
+            livemode: false,
+            customer: "cus_1",
+            subscription: "sub_1",
+            subscription_details: { metadata: { userId: "user-1" } },
+            lines: { data: [] },
+          },
+          {
+            id: "inv_2",
+            lines: { data: [] },
+          },
+        ],
       });
 
       await expect(
@@ -301,10 +365,27 @@ describe("PaymentService", () => {
           "https://app.example.com/settings/billing",
         ),
       ).resolves.toEqual({ url: "https://portal.example.com" });
-      await expect(service.listInvoices("cus_123", 2)).resolves.toEqual([
-        { id: "inv_1" },
-        { id: "inv_2" },
-      ]);
+
+      const invoices = await service.listInvoices("cus_123", 2);
+      expect(invoices).toHaveLength(2);
+      expect(invoices[0]).toMatchObject({
+        id: "inv_1",
+        number: "VIDRA-1",
+        status: "paid",
+        amountDue: 1500,
+        amountPaid: 1500,
+        hostedInvoiceUrl: "https://stripe.com/inv_1",
+        invoicePdf: "https://stripe.com/inv_1.pdf",
+        customerId: "cus_1",
+        subscriptionId: "sub_1",
+        subscriptionDetailsUserId: "user-1",
+      });
+      expect(invoices[1]).toMatchObject({
+        id: "inv_2",
+        number: null,
+        status: null,
+        amountPaid: 0,
+      });
     });
   });
 
@@ -320,20 +401,85 @@ describe("PaymentService", () => {
       );
     });
 
-    it("constructs event with configured webhook secret", () => {
+    it("converts checkout.session.completed event to domain payload", () => {
       const service = new PaymentService(baseConfig);
       const stripe = getStripe();
-      const event = { id: "evt_1", type: "invoice.paid" };
-      stripe.webhooks.constructEvent.mockReturnValue(event);
+      stripe.webhooks.constructEvent.mockReturnValue({
+        id: "evt_1",
+        type: "checkout.session.completed",
+        livemode: false,
+        created: 1700000000,
+        data: {
+          object: {
+            id: "cs_1",
+            mode: "subscription",
+            livemode: false,
+            metadata: { userId: "user-1", creditAmount: "500" },
+            client_reference_id: "user-1",
+            customer: "cus_1",
+            subscription: "sub_1",
+          },
+        },
+      });
 
-      const result = service.constructEvent("payload", "signature");
+      const event = service.constructEvent("payload", "signature");
 
       expect(stripe.webhooks.constructEvent).toHaveBeenCalledWith(
         "payload",
         "signature",
         "whsec_123",
       );
-      expect(result).toBe(event);
+      expect(event).toMatchObject({
+        id: "evt_1",
+        type: "checkout.session.completed",
+        livemode: false,
+        payload: {
+          id: "cs_1",
+          mode: "subscription",
+          metadataUserId: "user-1",
+          clientReferenceId: "user-1",
+          customerId: "cus_1",
+          subscriptionId: "sub_1",
+          creditAmountMetadata: "500",
+        },
+      });
+    });
+
+    it("converts invoice.paid event to domain payload", () => {
+      const service = new PaymentService(baseConfig);
+      const stripe = getStripe();
+      stripe.webhooks.constructEvent.mockReturnValue({
+        id: "evt_2",
+        type: "invoice.paid",
+        livemode: true,
+        created: 1700000001,
+        data: {
+          object: {
+            id: "inv_1",
+            amount_paid: 2000,
+            livemode: true,
+            customer: "cus_1",
+            subscription: "sub_1",
+            subscription_details: { metadata: { userId: "user-1" } },
+            lines: { data: [] },
+          },
+        },
+      });
+
+      const event = service.constructEvent("payload", "signature");
+
+      expect(event).toMatchObject({
+        id: "evt_2",
+        type: "invoice.paid",
+        livemode: true,
+        payload: {
+          id: "inv_1",
+          amountPaid: 2000,
+          customerId: "cus_1",
+          subscriptionId: "sub_1",
+          subscriptionDetailsUserId: "user-1",
+        },
+      });
     });
   });
 });

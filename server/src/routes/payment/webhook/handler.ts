@@ -1,7 +1,10 @@
 import type { Request, Response } from "express";
-import type Stripe from "stripe";
 import { logger } from "@infrastructure/Logger";
 import type { WebhookHandlerDeps } from "../types";
+import {
+  describePaymentEventType,
+  type PaymentEvent,
+} from "@services/payment/types";
 import { createWebhookEventHandlers } from "./handlers";
 
 export const createStripeWebhookHandler =
@@ -21,7 +24,7 @@ export const createStripeWebhookHandler =
       return res.status(400).send("Missing stripe-signature header");
     }
 
-    let event: Stripe.Event;
+    let event: PaymentEvent;
     try {
       event = paymentService.constructEvent(req.body, signature as string);
     } catch (err) {
@@ -36,7 +39,7 @@ export const createStripeWebhookHandler =
       const retryAfterSeconds = firestoreCircuitExecutor.getRetryAfterSeconds();
       logger.warn("Stripe webhook deferred due to Firestore write gate", {
         eventId: event.id,
-        eventType: event.type,
+        eventType: describePaymentEventType(event),
         retryAfterSeconds,
       });
       res.setHeader("Retry-After", String(retryAfterSeconds));
@@ -48,7 +51,7 @@ export const createStripeWebhookHandler =
     let claim;
     try {
       claim = await webhookEventStore.claimEvent(event.id, {
-        type: event.type,
+        type: describePaymentEventType(event),
         livemode: event.livemode,
       });
     } catch (error: unknown) {
@@ -56,7 +59,7 @@ export const createStripeWebhookHandler =
         error instanceof Error ? error : new Error(String(error));
       logger.error("Stripe webhook idempotency check failed", errorInstance, {
         eventId: event.id,
-        eventType: event.type,
+        eventType: describePaymentEventType(event),
       });
       return res.status(500).json({ error: "Webhook handling failed" });
     }
@@ -84,19 +87,17 @@ export const createStripeWebhookHandler =
     try {
       switch (event.type) {
         case "checkout.session.completed": {
-          const session = event.data.object as Stripe.Checkout.Session;
-          await handleCheckoutSessionCompleted(session, event.id);
+          await handleCheckoutSessionCompleted(event.payload, event.id);
           break;
         }
         case "invoice.paid": {
-          const invoice = event.data.object as Stripe.Invoice;
-          await handleInvoicePaid(invoice, event.id);
+          await handleInvoicePaid(event.payload, event.id);
           break;
         }
         default:
           logger.info("Unhandled Stripe webhook event", {
             eventId: event.id,
-            eventType: event.type,
+            eventType: describePaymentEventType(event),
           });
           break;
       }
@@ -109,7 +110,7 @@ export const createStripeWebhookHandler =
       await webhookEventStore.markFailed(event.id, errorInstance);
       logger.error("Stripe webhook handling failed", errorInstance, {
         eventId: event.id,
-        eventType: event.type,
+        eventType: describePaymentEventType(event),
       });
       return res.status(500).json({ error: "Webhook handling failed" });
     }

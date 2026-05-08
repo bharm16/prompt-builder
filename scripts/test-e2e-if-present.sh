@@ -24,15 +24,12 @@ while IFS= read -r _file; do
   has_specs=1
   break
 done < <(
-  cd "${ROOT_DIR}" && rg --files tests/e2e \
-    --glob '**/*.spec.ts' \
-    --glob '**/*.spec.tsx' \
-    --glob '**/*.spec.js' \
-    --glob '**/*.spec.jsx' \
-    --glob '**/*.test.ts' \
-    --glob '**/*.test.tsx' \
-    --glob '**/*.test.js' \
-    --glob '**/*.test.jsx'
+  find "${E2E_DIR}" -type f \
+    \( -name '*.spec.ts' -o -name '*.spec.tsx' \
+       -o -name '*.spec.js' -o -name '*.spec.jsx' \
+       -o -name '*.test.ts' -o -name '*.test.tsx' \
+       -o -name '*.test.js' -o -name '*.test.jsx' \) \
+    -print 2>/dev/null
 )
 
 if [ "${has_specs}" -eq 0 ]; then

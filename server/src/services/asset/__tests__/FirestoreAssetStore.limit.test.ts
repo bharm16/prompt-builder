@@ -1,8 +1,8 @@
 import { describe, it, expect, vi } from "vitest";
-import AssetRepository from "../AssetRepository";
+import FirestoreAssetStore from "../storage/FirestoreAssetStore";
 
 /**
- * Regression: AssetRepository.getByType must cap the Firestore query with
+ * Regression: FirestoreAssetStore.getByType must cap the Firestore query with
  * `.limit()` to bound memory usage and read cost. Without this, a user with
  * many assets of the same type could trigger unbounded document reads.
  */
@@ -27,7 +27,7 @@ function buildQueryChain(): QueryChain {
   return chain;
 }
 
-function buildRepository(chain: QueryChain): AssetRepository {
+function buildRepository(chain: QueryChain): FirestoreAssetStore {
   const assetsCollection = {
     ...chain,
     doc: vi.fn(() => ({ get: vi.fn() })),
@@ -38,14 +38,14 @@ function buildRepository(chain: QueryChain): AssetRepository {
     collection: vi.fn(() => usersCollection),
   } as unknown as FirebaseFirestore.Firestore;
 
-  return new AssetRepository({
+  return new FirestoreAssetStore({
     db,
     bucket: { name: "test-bucket", file: vi.fn() } as never,
     bucketName: "test-bucket",
   });
 }
 
-describe("AssetRepository.getByType limit", () => {
+describe("FirestoreAssetStore.getByType limit", () => {
   it("applies .limit() to the Firestore query (default cap = 200, probes one extra)", async () => {
     const chain = buildQueryChain();
     const repository = buildRepository(chain);

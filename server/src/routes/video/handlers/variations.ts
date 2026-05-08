@@ -1,9 +1,9 @@
 import type { Request, Response } from "express";
 import { logger } from "@infrastructure/Logger";
-import type { VideoConceptServiceContract } from "../types";
+import type { SceneVariationService } from "@services/video-concept/services/analysis/SceneVariationService";
 
 export const createVideoVariationsHandler =
-  (videoConceptService: VideoConceptServiceContract) =>
+  (sceneVariation: SceneVariationService) =>
   async (req: Request, res: Response): Promise<Response | void> => {
     const startTime = Date.now();
     const requestId = req.id || "unknown";
@@ -19,7 +19,7 @@ export const createVideoVariationsHandler =
     });
 
     try {
-      const variations = await videoConceptService.generateVariations({
+      const variations = await sceneVariation.generateVariations({
         elements,
         concept,
       });

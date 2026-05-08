@@ -10,6 +10,7 @@ const { mockPinoLogger, mockChildLogger, pinoFactory } = vi.hoisted(() => {
     error: vi.fn(),
     debug: vi.fn(),
     child: vi.fn(),
+    isLevelEnabled: vi.fn(() => true),
   };
   const mockChildLogger = {
     info: vi.fn(),
@@ -17,6 +18,7 @@ const { mockPinoLogger, mockChildLogger, pinoFactory } = vi.hoisted(() => {
     error: vi.fn(),
     debug: vi.fn(),
     child: vi.fn(),
+    isLevelEnabled: vi.fn(() => true),
   };
   mockPinoLogger.child = vi.fn(() => mockChildLogger);
   const pinoFactory = vi.fn(() => mockPinoLogger);

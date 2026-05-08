@@ -1,5 +1,4 @@
-const escapeRegExp = (value: string): string =>
-  value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+import { escapeRegex } from "@shared/utils/escapeRegex";
 
 export function applySceneChangeUpdates(
   prompt: string,
@@ -16,7 +15,7 @@ export function applySceneChangeUpdates(
     }
 
     const pattern = new RegExp(
-      `(- ${escapeRegExp(fieldName)}: \\[)${escapeRegExp(oldFieldValue)}(\\])`,
+      `(- ${escapeRegex(fieldName)}: \\[)${escapeRegex(oldFieldValue)}(\\])`,
       "g",
     );
 

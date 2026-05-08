@@ -6,7 +6,7 @@ import {
 } from "@utils/upload";
 import { validateImageBuffer } from "@utils/validateFileType";
 import { asyncHandler } from "@middleware/asyncHandler";
-import type { ReferenceImageRepository } from "@services/asset/reference-images/ReferenceImageRepository";
+import type { ReferenceImageStorePort } from "@services/asset/reference-images/ports/ReferenceImageStorePort";
 
 const upload = createDiskUpload({
   fileSizeBytes: 10 * 1024 * 1024,
@@ -50,7 +50,7 @@ function normalizeOptionalString(value: unknown): string | undefined {
 }
 
 export function createReferenceImagesRoutes(
-  referenceImageRepository: ReferenceImageRepository,
+  referenceImageRepository: ReferenceImageStorePort,
 ): Router {
   const router = express.Router();
 

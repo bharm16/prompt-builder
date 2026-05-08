@@ -68,10 +68,11 @@ export const runOptimizeFlow = async ({
   );
 
   if (!skipCache) {
-    const cached = await optimizationCache.getCachedResult(cacheKey);
+    const [cached, cachedMetadata] = await Promise.all([
+      optimizationCache.getCachedResult(cacheKey),
+      optimizationCache.getCachedMetadata(cacheKey),
+    ]);
     if (cached) {
-      const cachedMetadata =
-        await optimizationCache.getCachedMetadata(cacheKey);
       if (onMetadata && cachedMetadata) {
         onMetadata(cachedMetadata);
       }
@@ -306,11 +307,14 @@ export const runOptimizeFlow = async ({
       handleMetadata({ genericPrompt: optimizedPrompt });
     }
 
-    await optimizationCache.cacheResult(
-      cacheKey,
-      optimizedPrompt,
-      optimizationMetadata,
-    );
+    void optimizationCache
+      .cacheResult(cacheKey, optimizedPrompt, optimizationMetadata)
+      .catch((err) => {
+        log.warn("Failed to write optimization result to cache", {
+          operation,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      });
     logOptimizationMetrics(prompt, optimizedPrompt, mode);
 
     log.info("Operation completed.", {

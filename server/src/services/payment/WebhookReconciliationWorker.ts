@@ -1,4 +1,5 @@
-import type { PaymentService } from "./PaymentService";
+import type { IPaymentGateway } from "./IPaymentGateway";
+import { describePaymentEventType } from "./types";
 import type { StripeWebhookEventStore } from "./StripeWebhookEventStore";
 import {
   createWebhookEventHandlers,
@@ -23,7 +24,7 @@ interface WebhookReconciliationWorkerOptions {
 }
 
 export class WebhookReconciliationWorker extends PollingWorkerBase {
-  private readonly paymentService: PaymentService;
+  private readonly paymentService: IPaymentGateway;
   private readonly webhookEventStore: StripeWebhookEventStore;
   private readonly paymentConsistencyStore: PaymentConsistencyStore;
   private readonly handlers: WebhookEventHandlers;
@@ -32,7 +33,7 @@ export class WebhookReconciliationWorker extends PollingWorkerBase {
   private running = false;
 
   constructor(
-    paymentService: PaymentService,
+    paymentService: IPaymentGateway,
     webhookEventStore: StripeWebhookEventStore,
     billingProfileStore: BillingProfileStore,
     userCreditService: UserCreditService,
@@ -104,7 +105,7 @@ export class WebhookReconciliationWorker extends PollingWorkerBase {
 
         // Attempt to claim and process — claimEvent is idempotent
         const claim = await this.webhookEventStore.claimEvent(event.id, {
-          type: event.type,
+          type: describePaymentEventType(event),
           livemode: event.livemode,
         });
 
@@ -119,8 +120,14 @@ export class WebhookReconciliationWorker extends PollingWorkerBase {
         }
 
         try {
-          const session = event.data
-            .object as import("stripe").Stripe.Checkout.Session;
+          if (event.type !== "checkout.session.completed") {
+            this.log.warn("Skipping non-checkout event in checkout reconciler", {
+              eventId: event.id,
+              eventType: describePaymentEventType(event),
+            });
+            continue;
+          }
+          const session = event.payload;
           await this.handlers.handleCheckoutSessionCompleted(session, event.id);
           await this.webhookEventStore.markProcessed(event.id);
           reconciled += 1;
@@ -155,7 +162,7 @@ export class WebhookReconciliationWorker extends PollingWorkerBase {
         }
 
         const claim = await this.webhookEventStore.claimEvent(event.id, {
-          type: event.type,
+          type: describePaymentEventType(event),
           livemode: event.livemode,
         });
 
@@ -165,7 +172,14 @@ export class WebhookReconciliationWorker extends PollingWorkerBase {
         }
 
         try {
-          const invoice = event.data.object as import("stripe").Stripe.Invoice;
+          if (event.type !== "invoice.paid") {
+            this.log.warn("Skipping non-invoice event in invoice reconciler", {
+              eventId: event.id,
+              eventType: describePaymentEventType(event),
+            });
+            continue;
+          }
+          const invoice = event.payload;
           await this.handlers.handleInvoicePaid(invoice, event.id);
           await this.webhookEventStore.markProcessed(event.id);
           reconciled += 1;
