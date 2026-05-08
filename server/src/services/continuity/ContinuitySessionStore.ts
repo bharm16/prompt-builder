@@ -1,4 +1,5 @@
 import { admin, getFirestore } from "@infrastructure/firebaseAdmin";
+import { logger } from "@infrastructure/Logger";
 import type { ContinuitySession } from "@server/domain/continuity/types";
 import {
   deserializeContinuitySession,
@@ -196,18 +197,45 @@ export class ContinuitySessionStore {
         doc.data() as StoredContinuitySession,
       ),
     );
-    for (const legacy of legacySessions) {
-      await this.sessionStore.save({
-        id: legacy.id,
-        userId: legacy.userId,
-        name: legacy.name,
-        ...(legacy.description ? { description: legacy.description } : {}),
-        status: legacy.status,
-        createdAt: legacy.createdAt,
-        updatedAt: legacy.updatedAt,
-        continuity: legacy,
-        hasContinuity: true,
-      });
+    // Run legacy → unified migration writes in parallel. The prior serial
+    // loop paid N sequential Firestore round-trips on first list-fetch
+    // after the schema migration.
+    //
+    // We use allSettled (not all) so a single failing write doesn't abort
+    // the rest of the migration. Each rejection is logged with the offending
+    // session id; the migration will retry on the next list-fetch (this
+    // method runs every time the unified collection is empty for a user
+    // with legacy sessions, which is naturally idempotent — sessionStore.save
+    // is upsert-shaped). The original serial loop would have stopped at the
+    // first failure with no recovery, so allSettled is strictly better here.
+    const writes = await Promise.allSettled(
+      legacySessions.map((legacy) =>
+        this.sessionStore.save({
+          id: legacy.id,
+          userId: legacy.userId,
+          name: legacy.name,
+          ...(legacy.description ? { description: legacy.description } : {}),
+          status: legacy.status,
+          createdAt: legacy.createdAt,
+          updatedAt: legacy.updatedAt,
+          continuity: legacy,
+          hasContinuity: true,
+        }),
+      ),
+    );
+    for (let i = 0; i < writes.length; i += 1) {
+      const result = writes[i]!;
+      if (result.status === "rejected") {
+        const session = legacySessions[i]!;
+        logger.warn("Legacy continuity-session migration write failed", {
+          sessionId: session.id,
+          userId: session.userId,
+          error:
+            result.reason instanceof Error
+              ? result.reason.message
+              : String(result.reason),
+        });
+      }
     }
     return legacySessions;
   }
