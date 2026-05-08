@@ -1,6 +1,6 @@
 import { pipeline } from "node:stream/promises";
 import { v4 as uuidv4 } from "uuid";
-import type { Bucket, File, FileMetadata } from "@google-cloud/storage";
+import type { Bucket, File } from "@google-cloud/storage";
 import { logger } from "@infrastructure/Logger";
 import type {
   StoredVideoAsset,
@@ -15,11 +15,14 @@ interface GcsVideoAssetStoreOptions {
   cacheControl: string;
 }
 
-const isGcsNotFound = (error: unknown): boolean => {
-  if (!error || typeof error !== "object") return false;
-  const code = (error as { code?: unknown }).code;
-  return code === 404;
-};
+function isGcsNotFound(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code: unknown }).code === 404
+  );
+}
 
 export class GcsVideoAssetStore implements VideoAssetStore {
   private readonly bucket: Bucket;
@@ -108,29 +111,27 @@ export class GcsVideoAssetStore implements VideoAssetStore {
   async getStream(assetId: string): Promise<VideoAssetStream | null> {
     const file = this.bucket.file(this.objectPath(assetId));
 
-    let metadata: FileMetadata;
     try {
-      [metadata] = await file.getMetadata();
+      const [metadata] = await file.getMetadata();
+      const contentType =
+        typeof metadata.contentType === "string"
+          ? metadata.contentType
+          : "video/mp4";
+      const resolvedSize = Number(metadata.size || 0);
+      const sizeBytes =
+        Number.isFinite(resolvedSize) && resolvedSize > 0
+          ? resolvedSize
+          : undefined;
+
+      return {
+        stream: file.createReadStream(),
+        contentType,
+        ...(sizeBytes !== undefined ? { contentLength: sizeBytes } : {}),
+      };
     } catch (error) {
       if (isGcsNotFound(error)) return null;
       throw error;
     }
-
-    const contentType =
-      typeof metadata.contentType === "string"
-        ? metadata.contentType
-        : "video/mp4";
-    const resolvedSize = Number(metadata.size || 0);
-    const sizeBytes =
-      Number.isFinite(resolvedSize) && resolvedSize > 0
-        ? resolvedSize
-        : undefined;
-
-    return {
-      stream: file.createReadStream(),
-      contentType,
-      ...(sizeBytes !== undefined ? { contentLength: sizeBytes } : {}),
-    };
   }
 
   async getPublicUrl(assetId: string): Promise<string | null> {

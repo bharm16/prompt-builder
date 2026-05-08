@@ -20,6 +20,7 @@ import {
   type TransformResult,
   type AugmentResult,
 } from "./BaseStrategy";
+import { escapeRegex } from "@shared/utils/escapeRegex";
 import { getPromptModelConstraints } from "@shared/videoModels";
 import type {
   PromptOptimizationResult,
@@ -304,7 +305,7 @@ export class LumaStrategy extends BaseStrategy {
         if (expansion) {
           // Add the causal expansion after the static term
           const regex = new RegExp(
-            `(\\b${this.escapeRegex(indicator)}\\b)`,
+            `(\\b${escapeRegex(indicator)}\\b)`,
             "gi",
           );
           result = result.replace(regex, `$1, ${expansion}`);

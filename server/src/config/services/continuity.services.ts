@@ -12,8 +12,8 @@ import {
   CharacterKeyframeService,
   ContinuityMediaService,
   ContinuitySessionService,
-  ContinuitySessionStore,
   ContinuityShotGenerator,
+  FirestoreContinuitySessionStore,
   FrameBridgeService,
   GradingService,
   ProviderStyleAdapter,
@@ -22,6 +22,7 @@ import {
   SeedPersistenceService,
   StyleAnalysisService,
   StyleReferenceService,
+  type ContinuitySessionStorePort,
 } from "@services/continuity";
 import type { ServiceConfig } from "./service-config.types.ts";
 import { createDepthEstimationServiceForUser } from "@services/convergence/depth";
@@ -33,7 +34,7 @@ export function registerContinuityServices(container: DIContainer): void {
   container.register(
     "continuitySessionStore",
     (sessionStore: SessionStorePort) =>
-      new ContinuitySessionStore(sessionStore),
+      new FirestoreContinuitySessionStore(sessionStore),
     ["sessionStore"],
   );
 
@@ -167,7 +168,7 @@ export function registerContinuityServices(container: DIContainer): void {
       sceneProxyService: SceneProxyService,
       videoGenerationService: VideoGenerationService | null,
       assetService: AssetService | null,
-      continuitySessionStore: ContinuitySessionStore,
+      continuitySessionStore: ContinuitySessionStorePort,
       storageService: AppStorageService,
     ) => {
       if (!videoGenerationService || !assetService) {

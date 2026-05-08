@@ -1,13 +1,15 @@
 import type { Asset } from "@shared/types/asset";
-import type AssetRepository from "../AssetRepository";
-import type { ReferenceImageMetadataInput } from "../AssetRepository";
+import type {
+  AssetStorePort,
+  ReferenceImageMetadataInput,
+} from "../ports/AssetStorePort";
 import ReferenceImageService from "../ReferenceImageService";
 import { logger } from "@infrastructure/Logger";
 import type { AssetCrudService } from "./AssetCrudService";
 import type { AssetEmbeddingService } from "./AssetEmbeddingService";
 
 export class AssetReferenceImageService {
-  private readonly repository: AssetRepository;
+  private readonly repository: AssetStorePort;
   private readonly imageService: ReferenceImageService;
   private readonly assetCrud: AssetCrudService;
   private readonly embeddingService: AssetEmbeddingService | null;
@@ -16,7 +18,7 @@ export class AssetReferenceImageService {
   });
 
   constructor(
-    repository: AssetRepository,
+    repository: AssetStorePort,
     imageService: ReferenceImageService,
     assetCrud: AssetCrudService,
     embeddingService: AssetEmbeddingService | null,

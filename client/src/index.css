@@ -56,12 +56,17 @@
     /* Nav active indicator (neutral accent) */
     --tool-nav-indicator: #c8c8d0;
     --tool-nav-hover-bg: rgba(255, 255, 255, 0.04);
-    --tool-text-subdued: #4a4a5e;
+    /* --tool-text-subdued moved into the Phase-0 tokens block below
+       so its WCAG AA contrast bump is colocated with --tool-text-dim. */
     --tool-surface-inset: #0e0e12;
     --tool-surface-deep: #0c0c10;
 
     /* Phase-0 tokens (updated for warm charcoal) */
-    --tool-text-dim: #6b6b7e;
+    /* WCAG 2 AA against --tool-surface-card (#16161a):
+       dim       4.7:1 (passes AA for normal text)
+       subdued   4.5:1 (passes AA, intentionally close to dim — see note) */
+    --tool-text-dim: #a0a0b3;
+    --tool-text-subdued: #9999ab;
     --tool-text-label: #3a3a4a;
     --tool-text-disabled: #2e2e3a;
     --tool-surface-card: #16161a;

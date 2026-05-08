@@ -8,6 +8,7 @@
  * @module BaseStrategy
  */
 
+import { escapeRegex } from "@shared/utils/escapeRegex";
 import { TechStripper, techStripper } from "../utils/TechStripper";
 import { SafetySanitizer, safetySanitizer } from "../utils/SafetySanitizer";
 import { VideoPromptAnalyzer } from "../services/analysis/VideoPromptAnalyzer";
@@ -444,7 +445,7 @@ export abstract class BaseStrategy implements PromptOptimizationStrategy {
    * Check if text contains a word (case-insensitive, word boundary)
    */
   protected containsWord(text: string, word: string): boolean {
-    const pattern = new RegExp(`\\b${this.escapeRegex(word)}\\b`, "i");
+    const pattern = new RegExp(`\\b${escapeRegex(word)}\\b`, "i");
     return pattern.test(text);
   }
 
@@ -456,15 +457,8 @@ export abstract class BaseStrategy implements PromptOptimizationStrategy {
     word: string,
     replacement: string,
   ): string {
-    const pattern = new RegExp(`\\b${this.escapeRegex(word)}\\b`, "gi");
+    const pattern = new RegExp(`\\b${escapeRegex(word)}\\b`, "gi");
     return text.replace(pattern, replacement);
-  }
-
-  /**
-   * Escape special regex characters
-   */
-  protected escapeRegex(str: string): string {
-    return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   }
 
   /**
@@ -560,7 +554,7 @@ export abstract class BaseStrategy implements PromptOptimizationStrategy {
     }
 
     const suffixPattern = new RegExp(
-      `(?:,\\s*)?${trimmedTriggers.map((trigger) => this.escapeRegex(trigger)).join("\\s*,\\s*")}(?:[.!?]+)?\\s*$`,
+      `(?:,\\s*)?${trimmedTriggers.map((trigger) => escapeRegex(trigger)).join("\\s*,\\s*")}(?:[.!?]+)?\\s*$`,
       "i",
     );
     const body = cleanedPrompt

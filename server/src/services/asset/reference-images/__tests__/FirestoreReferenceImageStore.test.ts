@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { ReferenceImageRepository } from "../ReferenceImageRepository";
+import { FirestoreReferenceImageStore } from "../storage/FirestoreReferenceImageStore";
 
 // Mock logger
 vi.mock("@infrastructure/Logger", () => ({
@@ -88,34 +88,34 @@ function createMockBucket(name = "test-bucket") {
       delete: vi.fn().mockResolvedValue(undefined),
     }),
   } as unknown as ConstructorParameters<
-    typeof ReferenceImageRepository
+    typeof FirestoreReferenceImageStore
   >[0]["bucket"];
 }
 
-describe("ReferenceImageRepository", () => {
-  let service: ReferenceImageRepository;
+describe("FirestoreReferenceImageStore", () => {
+  let service: FirestoreReferenceImageStore;
   let mockBucket: ReturnType<typeof createMockBucket>;
 
   beforeEach(() => {
     vi.clearAllMocks();
     mockBucket = createMockBucket();
-    service = new ReferenceImageRepository({ bucket: mockBucket });
+    service = new FirestoreReferenceImageStore({ bucket: mockBucket });
   });
 
   describe("constructor", () => {
     it("throws when bucket is not provided", () => {
       expect(
         () =>
-          new ReferenceImageRepository({
+          new FirestoreReferenceImageStore({
             bucket: undefined as unknown as ConstructorParameters<
-              typeof ReferenceImageRepository
+              typeof FirestoreReferenceImageStore
             >[0]["bucket"],
           }),
-      ).toThrow("ReferenceImageRepository requires an injected storage bucket");
+      ).toThrow("FirestoreReferenceImageStore requires an injected storage bucket");
     });
 
     it("accepts custom bucket name", () => {
-      const svc = new ReferenceImageRepository({
+      const svc = new FirestoreReferenceImageStore({
         bucket: mockBucket,
         bucketName: "custom-bucket",
       });
@@ -205,7 +205,7 @@ describe("ReferenceImageRepository", () => {
         new Error("Invalid image format"),
       );
 
-      const svc = new ReferenceImageRepository({
+      const svc = new FirestoreReferenceImageStore({
         bucket: mockBucket,
         processor: mockInstance,
       });
@@ -289,7 +289,7 @@ describe("ReferenceImageRepository", () => {
         }),
       });
 
-      const svc = new ReferenceImageRepository({
+      const svc = new FirestoreReferenceImageStore({
         db: mockDb as unknown as FirebaseFirestore.Firestore,
         bucket: mockBucket,
       });
@@ -326,10 +326,10 @@ describe("ReferenceImageRepository", () => {
         name: "test-bucket",
         file: vi.fn().mockReturnValue({ delete: mockDelete }),
       } as unknown as ConstructorParameters<
-        typeof ReferenceImageRepository
+        typeof FirestoreReferenceImageStore
       >[0]["bucket"];
 
-      const svc = new ReferenceImageRepository({
+      const svc = new FirestoreReferenceImageStore({
         db: mockDb as unknown as FirebaseFirestore.Firestore,
         bucket,
       });
@@ -369,10 +369,10 @@ describe("ReferenceImageRepository", () => {
           delete: vi.fn().mockRejectedValue(new Error("Storage error")),
         }),
       } as unknown as ConstructorParameters<
-        typeof ReferenceImageRepository
+        typeof FirestoreReferenceImageStore
       >[0]["bucket"];
 
-      const svc = new ReferenceImageRepository({
+      const svc = new FirestoreReferenceImageStore({
         db: mockDb as unknown as FirebaseFirestore.Firestore,
         bucket,
       });

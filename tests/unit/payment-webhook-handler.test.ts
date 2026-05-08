@@ -220,7 +220,7 @@ describe("createStripeWebhookHandler", () => {
         id: "evt_1",
         type: "checkout.session.completed",
         livemode: false,
-        data: { object: { id: "cs_1" } },
+        payload: { id: "cs_1" },
       }),
     };
     const webhookEventStore = {
@@ -259,7 +259,7 @@ describe("createStripeWebhookHandler", () => {
         id: "evt_2",
         type: "invoice.paid",
         livemode: false,
-        data: { object: { id: "in_1" } },
+        payload: { id: "in_1" },
       }),
     };
     const webhookEventStore = {
@@ -294,9 +294,10 @@ describe("createStripeWebhookHandler", () => {
     const paymentService = {
       constructEvent: vi.fn().mockReturnValue({
         id: "evt_3",
-        type: "customer.created",
+        type: "__other__",
+        rawType: "customer.created",
         livemode: false,
-        data: { object: { id: "cus_1" } },
+        payload: { id: "cus_1" },
       }),
     };
     const webhookEventStore = {

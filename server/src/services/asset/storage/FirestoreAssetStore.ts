@@ -7,34 +7,21 @@ import type {
   AssetReferenceImage,
   AssetType,
 } from "@shared/types/asset";
+import type {
+  AssetStorePort,
+  BulkUsageRecord,
+  CreateAssetInput,
+  CreateUsageRecordInput,
+  GetAllAssetsOptions,
+  GetByTypeResult,
+  ProcessedImageInput,
+  ReferenceImageMetadataInput,
+} from "../ports/AssetStorePort";
 
-interface AssetRepositoryOptions {
+interface FirestoreAssetStoreOptions {
   db?: FirebaseFirestore.Firestore;
   bucket: Bucket;
   bucketName?: string;
-}
-
-export interface ReferenceImageMetadataInput {
-  angle?: AssetReferenceImage["metadata"]["angle"];
-  expression?: AssetReferenceImage["metadata"]["expression"];
-  styleType?: AssetReferenceImage["metadata"]["styleType"];
-  timeOfDay?: AssetReferenceImage["metadata"]["timeOfDay"];
-  lighting?: AssetReferenceImage["metadata"]["lighting"];
-  width?: number;
-  height?: number;
-}
-
-export interface ProcessedImageInput {
-  buffer: Buffer;
-  width: number;
-  height: number;
-  sizeBytes: number;
-  format?: string;
-}
-
-export interface GetByTypeResult {
-  items: Asset[];
-  hasMore: boolean;
 }
 
 const MAX_IN_QUERY = 10;
@@ -49,9 +36,6 @@ function buildDownloadUrl(
   return `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${encodedPath}?alt=media&token=${token}`;
 }
 
-/**
- * Extract the token from a Firebase Storage download URL
- */
 function extractTokenFromUrl(url: string): string | null {
   try {
     const parsed = new URL(url);
@@ -61,13 +45,8 @@ function extractTokenFromUrl(url: string): string | null {
   }
 }
 
-/**
- * Extract the bucket name from a Firebase Storage download URL
- * Returns null if URL doesn't match expected Firebase Storage format
- */
 function extractBucketFromUrl(url: string): string | null {
   try {
-    // Match Firebase Storage URL pattern: firebasestorage.googleapis.com/v0/b/{bucket}/o/
     const match = url.match(
       /firebasestorage\.googleapis\.com\/v0\/b\/([^/]+)\/o\//,
     );
@@ -77,45 +56,32 @@ function extractBucketFromUrl(url: string): string | null {
   }
 }
 
-/**
- * Check if a URL appears to be a valid Firebase Storage download URL
- */
 function isValidFirebaseStorageUrl(url: string): boolean {
   const bucket = extractBucketFromUrl(url);
   const token = extractTokenFromUrl(url);
-  // Valid if we can extract both bucket and token
   return bucket !== null && token !== null;
 }
 
-/**
- * Refresh a reference image's URLs only if they are malformed
- *
- * IMPORTANT: We preserve URLs that already point to valid buckets (even if different
- * from the current bucket), because files may be stored in different buckets
- * (e.g., Firebase Storage vs GCS bucket).
- */
 function refreshImageUrls(
   image: AssetReferenceImage,
   bucketName: string,
 ): AssetReferenceImage {
-  // If we don't have storage paths, we can't refresh
   if (!image.storagePath) {
     return image;
   }
 
-  // If the URL is already a valid Firebase Storage URL (regardless of which bucket),
-  // preserve it as-is. The files exist in their original bucket.
+  // Preserve URLs that already point to a valid Firebase Storage bucket
+  // (even a different bucket than the current one) — files may legitimately
+  // live in their original bucket.
   if (isValidFirebaseStorageUrl(image.url)) {
     return image;
   }
 
-  // Only refresh if URL is malformed or missing expected components
   const imageToken = extractTokenFromUrl(image.url);
   const thumbToken = image.thumbnailUrl
     ? extractTokenFromUrl(image.thumbnailUrl)
     : null;
 
-  // If we can't extract tokens, return as-is
   if (!imageToken) {
     return image;
   }
@@ -130,9 +96,6 @@ function refreshImageUrls(
   };
 }
 
-/**
- * Refresh all reference image URLs in an asset to use the current bucket
- */
 function refreshAssetUrls(asset: Asset, bucketName: string): Asset {
   if (!asset.referenceImages?.length) {
     return asset;
@@ -146,15 +109,22 @@ function refreshAssetUrls(asset: Asset, bucketName: string): Asset {
   };
 }
 
-export class AssetRepository {
+/**
+ * Firestore + GCS implementation of `AssetStorePort`.
+ *
+ * Single concrete adapter for asset persistence. Bundles three concerns
+ * (asset CRUD, reference-image-on-asset management, usage tracking) which
+ * could be split into segregated stores in a follow-up.
+ */
+export class FirestoreAssetStore implements AssetStorePort {
   private readonly db: FirebaseFirestore.Firestore;
   private readonly bucket: Bucket;
   private readonly bucketName: string;
-  private readonly log = logger.child({ service: "AssetRepository" });
+  private readonly log = logger.child({ service: "FirestoreAssetStore" });
 
-  constructor(options: AssetRepositoryOptions) {
+  constructor(options: FirestoreAssetStoreOptions) {
     if (!options.bucket) {
-      throw new Error("AssetRepository requires an injected storage bucket");
+      throw new Error("FirestoreAssetStore requires an injected storage bucket");
     }
     this.db = options.db || getFirestore();
     this.bucket = options.bucket;
@@ -180,16 +150,7 @@ export class AssetRepository {
     return this.db.collection("users").doc(userId).collection("assetUsage");
   }
 
-  async create(
-    userId: string,
-    assetData: {
-      type: AssetType;
-      trigger: string;
-      name: string;
-      textDefinition: string;
-      negativePrompt?: string;
-    },
-  ): Promise<Asset> {
+  async create(userId: string, assetData: CreateAssetInput): Promise<Asset> {
     const operation = "create";
     const startTime = performance.now();
     this.log.debug("Starting operation.", {
@@ -290,10 +251,6 @@ export class AssetRepository {
     return results;
   }
 
-  /**
-   * Find assets whose trigger starts with the given prefix.
-   * Expects a pre-normalized prefix (lowercase, no leading '@').
-   */
   async getByTriggerPrefix(
     userId: string,
     prefix: string,
@@ -316,11 +273,7 @@ export class AssetRepository {
 
   async getAll(
     userId: string,
-    options: {
-      limit?: number;
-      orderByField?: string;
-      type?: AssetType | null;
-    } = {},
+    options: GetAllAssetsOptions = {},
   ): Promise<Asset[]> {
     const {
       limit: maxResults = 100,
@@ -345,18 +298,6 @@ export class AssetRepository {
     );
   }
 
-  /**
-   * Fetch all assets of a given type for a user.
-   *
-   * The `limit` cap exists to bound memory usage and Firestore read cost:
-   * without it, a user with a large asset library could trigger unbounded
-   * document reads on every call. Defaults to 200, which covers typical
-   * libraries while preventing pathological cases.
-   *
-   * Returns a structured result so callers can detect when results were
-   * truncated. Internally fetches `limit + 1` rows as a probe — if the probe
-   * row exists, `hasMore` is true and the excess row is sliced off.
-   */
   async getByType(
     userId: string,
     type: AssetType,
@@ -744,13 +685,7 @@ export class AssetRepository {
 
   async createUsageRecord(
     userId: string,
-    input: {
-      assetId: string;
-      assetType: AssetType;
-      generationId?: string | null;
-      promptText?: string | null;
-      expandedText?: string | null;
-    },
+    input: CreateUsageRecordInput,
   ): Promise<void> {
     const operation = "createUsageRecord";
     const startTime = performance.now();
@@ -788,14 +723,7 @@ export class AssetRepository {
 
   async recordBulkUsage(
     userId: string,
-    records: Array<{
-      assetId: string;
-      assetType: AssetType;
-      promptHash: string;
-      promptLength: number;
-      expandedHash: string;
-      expandedLength: number;
-    }>,
+    records: BulkUsageRecord[],
   ): Promise<void> {
     if (!records.length) return;
 
@@ -854,4 +782,4 @@ export class AssetRepository {
   }
 }
 
-export default AssetRepository;
+export default FirestoreAssetStore;

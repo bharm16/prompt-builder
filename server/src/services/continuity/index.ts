@@ -12,4 +12,6 @@ export { SceneProxyService } from "./SceneProxyService";
 export { ContinuityMediaService } from "./ContinuityMediaService";
 export { ContinuityShotGenerator } from "./ContinuityShotGenerator";
 export { ContinuitySessionService } from "./ContinuitySessionService";
-export { ContinuitySessionStore } from "./ContinuitySessionStore";
+export type { ContinuitySessionStorePort } from "./ports/ContinuitySessionStorePort";
+export { ContinuitySessionVersionMismatchError } from "./ports/ContinuitySessionStorePort";
+export { FirestoreContinuitySessionStore } from "./storage/FirestoreContinuitySessionStore";

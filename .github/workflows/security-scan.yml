@@ -15,6 +15,8 @@ jobs:
     permissions:
       contents: read
       security-events: write
+    env:
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
     steps:
       - uses: actions/checkout@v4
@@ -33,16 +35,15 @@ jobs:
         continue-on-error: true
 
       - name: Run Snyk Security Scan
+        if: env.SNYK_TOKEN != ''
         uses: snyk/actions/node@master
         continue-on-error: true
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
           args: --severity-threshold=high --all-projects
 
       - name: Upload Snyk results to GitHub Code Scanning
         uses: github/codeql-action/upload-sarif@v3
-        if: always()
+        if: always() && hashFiles('snyk.sarif') != ''
         with:
           sarif_file: snyk.sarif
 
@@ -82,7 +83,7 @@ jobs:
 
       - name: Build Docker image for scanning
         run: |
-          docker build -t prompt-builder:scan .
+          docker build -f infrastructure/docker/Dockerfile -t prompt-builder:scan .
 
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
@@ -95,7 +96,7 @@ jobs:
 
       - name: Upload Trivy results to GitHub Security
         uses: github/codeql-action/upload-sarif@v3
-        if: always()
+        if: always() && hashFiles('trivy-results.sarif') != ''
         with:
           sarif_file: "trivy-results.sarif"
 
@@ -115,8 +116,13 @@ jobs:
           severity-cutoff: high
 
       - name: Upload Grype SARIF report
+        # Don't fail container-scan on a malformed/empty Grype SARIF; Trivy
+        # upload above already covers vuln coverage. Some PR builds have
+        # produced empty SARIF (Unexpected end of JSON input) which broke
+        # the whole job for an artifact-side issue.
         uses: github/codeql-action/upload-sarif@v3
-        if: always()
+        if: always() && steps.grype.outputs.sarif != ''
+        continue-on-error: true
         with:
           sarif_file: ${{ steps.grype.outputs.sarif }}
 
@@ -152,6 +158,8 @@ jobs:
 
   license-compliance:
     runs-on: ubuntu-latest
+    env:
+      FOSSA_API_KEY: ${{ secrets.FOSSA_API_KEY }}
     steps:
       - uses: actions/checkout@v4
 
@@ -164,7 +172,12 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Check licenses
+      - name: Check licenses (FOSSA)
+        if: env.FOSSA_API_KEY != ''
         uses: fossas/fossa-action@main
         with:
           api-key: ${{ secrets.FOSSA_API_KEY }}
+
+      - name: Skip FOSSA (no API key configured)
+        if: env.FOSSA_API_KEY == ''
+        run: echo "Skipping FOSSA license scan — FOSSA_API_KEY secret not set."

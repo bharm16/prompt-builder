@@ -48,7 +48,7 @@
 
 import { initializeFirebaseAdmin, admin } from "./firebase-admin-init.js";
 import { labelSpans } from "../../server/src/llm/span-labeling/SpanLabelingService.js";
-import crypto from "crypto";
+import { hashString } from "./hashString.js";
 
 // Parse command line arguments
 const args = process.argv.slice(2);
@@ -84,18 +84,6 @@ const stats = {
   startTime: null,
   totalProcessingTime: 0,
 };
-
-/**
- * Generate hash signature for text (matches client-side implementation)
- */
-function hashString(str) {
-  if (typeof str !== "string") return "";
-  return crypto
-    .createHash("sha256")
-    .update(str, "utf8")
-    .digest("hex")
-    .slice(0, 16);
-}
 
 /**
  * Generate new highlight cache for a prompt text

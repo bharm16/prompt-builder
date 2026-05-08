@@ -21,13 +21,27 @@ import { createVideoParseHandler } from "./video/handlers/parse";
  */
 export function createVideoRoutes(services: VideoServices): Router {
   const router = express.Router();
-  const { videoConceptService } = services;
+  const {
+    suggestionGenerator,
+    compatibility,
+    conflictDetection,
+    sceneCompletion,
+    promptValidation,
+    sceneVariation,
+    conceptParsing,
+  } = services;
 
-  const suggestionsHandler = createVideoSuggestionsHandler(videoConceptService);
-  const validateHandler = createVideoValidateHandler(videoConceptService);
-  const completeHandler = createVideoCompleteHandler(videoConceptService);
-  const variationsHandler = createVideoVariationsHandler(videoConceptService);
-  const parseHandler = createVideoParseHandler(videoConceptService);
+  const suggestionsHandler = createVideoSuggestionsHandler(suggestionGenerator);
+  const validateHandler = createVideoValidateHandler(
+    compatibility,
+    conflictDetection,
+  );
+  const completeHandler = createVideoCompleteHandler(
+    sceneCompletion,
+    promptValidation,
+  );
+  const variationsHandler = createVideoVariationsHandler(sceneVariation);
+  const parseHandler = createVideoParseHandler(conceptParsing);
 
   router.post(
     "/suggestions",

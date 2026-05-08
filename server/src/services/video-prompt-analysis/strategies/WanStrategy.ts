@@ -16,6 +16,7 @@ import {
   type TransformResult,
   type AugmentResult,
 } from "./BaseStrategy";
+import { escapeRegex } from "@shared/utils/escapeRegex";
 import { getPromptModelConstraints } from "@shared/videoModels";
 import type {
   PromptOptimizationResult,
@@ -275,7 +276,7 @@ export class WanStrategy extends BaseStrategy {
   ): string | null {
     for (const candidate of candidates) {
       const pattern = new RegExp(
-        `\\b${this.escapeRegex(candidate)}\\b(?:\\s+(?:[a-z0-9'-]+)){0,4}`,
+        `\\b${escapeRegex(candidate)}\\b(?:\\s+(?:[a-z0-9'-]+)){0,4}`,
         "i",
       );
       const match = text.match(pattern);

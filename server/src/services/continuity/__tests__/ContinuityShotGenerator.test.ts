@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { ContinuitySession, ContinuityShot } from "../types";
 import { ContinuityShotGenerator } from "../ContinuityShotGenerator";
-import { ContinuitySessionVersionMismatchError } from "../ContinuitySessionStore";
+import { ContinuitySessionVersionMismatchError } from "../ports/ContinuitySessionStorePort";
 import type { ShotGenerationStage } from "../ShotGenerationProgress";
 
 const buildShot = (

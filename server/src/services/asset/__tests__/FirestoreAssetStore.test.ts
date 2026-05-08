@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
-import AssetRepository from "../AssetRepository";
+import FirestoreAssetStore from "../storage/FirestoreAssetStore";
 
-describe("AssetRepository", () => {
+describe("FirestoreAssetStore", () => {
   it("normalizes trigger casing on create", async () => {
     const setMock = vi.fn();
     const assetDoc = { set: setMock };
@@ -11,7 +11,7 @@ describe("AssetRepository", () => {
     const db = { collection: vi.fn(() => usersCollection) } as any;
     const bucket = { name: "test-bucket", file: vi.fn() } as any;
 
-    const repository = new AssetRepository({
+    const repository = new FirestoreAssetStore({
       db,
       bucket,
       bucketName: "test-bucket",
@@ -119,7 +119,7 @@ describe("AssetRepository", () => {
       }),
     } as any;
 
-    const repository = new AssetRepository({
+    const repository = new FirestoreAssetStore({
       db,
       bucket,
       bucketName: "test-bucket",

@@ -1,5 +1,16 @@
 import Stripe from "stripe";
 import { logger } from "@infrastructure/Logger";
+import type { IPaymentGateway } from "./IPaymentGateway";
+import type {
+  BillingPortalLink,
+  CheckoutSessionLink,
+  InvoiceCreditCalculation,
+  PaymentCheckoutSession,
+  PaymentCustomer,
+  PaymentEvent,
+  PaymentInvoice,
+  PaymentInvoiceLineItem,
+} from "./types";
 
 interface PaymentServiceConfig {
   secretKey: string | undefined;
@@ -69,17 +80,113 @@ function parsePriceCredits(raw: string | undefined): PriceCredits {
   return mapping;
 }
 
-function resolveUserId(
-  metadata: Stripe.Metadata | null | undefined,
-): string | null {
-  const userId = metadata?.userId;
-  if (typeof userId === "string" && userId.trim().length > 0) {
-    return userId.trim();
+function trimmedMetadataString(value: unknown): string | null {
+  if (typeof value === "string" && value.trim().length > 0) {
+    return value.trim();
   }
   return null;
 }
 
-export class PaymentService {
+function resolveStripeReferenceId(
+  ref: string | { id?: string } | null | undefined,
+): string | null {
+  if (typeof ref === "string") {
+    return ref;
+  }
+  if (ref && typeof ref === "object" && typeof ref.id === "string") {
+    return ref.id;
+  }
+  return null;
+}
+
+function toPaymentInvoiceLineItem(
+  line: Stripe.InvoiceLineItem,
+): PaymentInvoiceLineItem {
+  return {
+    priceId: line.price?.id ?? null,
+    quantity: typeof line.quantity === "number" ? line.quantity : null,
+    amount: typeof line.amount === "number" ? line.amount : null,
+    proration: Boolean(line.proration),
+    metadataUserId: trimmedMetadataString(line.metadata?.userId),
+  };
+}
+
+function toPaymentInvoice(invoice: Stripe.Invoice): PaymentInvoice {
+  const lineItems = (invoice.lines?.data ?? []).map(toPaymentInvoiceLineItem);
+  return {
+    id: invoice.id,
+    number: invoice.number ?? null,
+    status: invoice.status ?? null,
+    created: typeof invoice.created === "number" ? invoice.created : null,
+    currency: invoice.currency ?? null,
+    amountDue:
+      typeof invoice.amount_due === "number" ? invoice.amount_due : null,
+    amountPaid:
+      typeof invoice.amount_paid === "number" ? invoice.amount_paid : 0,
+    hostedInvoiceUrl: invoice.hosted_invoice_url ?? null,
+    invoicePdf: invoice.invoice_pdf ?? null,
+    livemode: Boolean(invoice.livemode),
+    customerId: resolveStripeReferenceId(invoice.customer),
+    subscriptionId: resolveStripeReferenceId(invoice.subscription),
+    subscriptionDetailsUserId: trimmedMetadataString(
+      invoice.subscription_details?.metadata?.userId,
+    ),
+    lineItems,
+  };
+}
+
+function toPaymentCheckoutSession(
+  session: Stripe.Checkout.Session,
+): PaymentCheckoutSession {
+  return {
+    id: session.id,
+    mode: session.mode ?? "payment",
+    livemode: Boolean(session.livemode),
+    metadataUserId: trimmedMetadataString(session.metadata?.userId),
+    clientReferenceId: trimmedMetadataString(session.client_reference_id),
+    customerId: resolveStripeReferenceId(session.customer),
+    subscriptionId: resolveStripeReferenceId(session.subscription),
+    creditAmountMetadata:
+      typeof session.metadata?.creditAmount === "string"
+        ? session.metadata.creditAmount
+        : null,
+  };
+}
+
+function toPaymentEvent(event: Stripe.Event): PaymentEvent {
+  const base = {
+    id: event.id,
+    livemode: Boolean(event.livemode),
+    created: typeof event.created === "number" ? event.created : 0,
+  };
+
+  if (event.type === "checkout.session.completed") {
+    return {
+      ...base,
+      type: "checkout.session.completed",
+      payload: toPaymentCheckoutSession(
+        event.data.object as Stripe.Checkout.Session,
+      ),
+    };
+  }
+
+  if (event.type === "invoice.paid") {
+    return {
+      ...base,
+      type: "invoice.paid",
+      payload: toPaymentInvoice(event.data.object as Stripe.Invoice),
+    };
+  }
+
+  return {
+    ...base,
+    type: "__other__",
+    rawType: event.type,
+    payload: event.data.object,
+  };
+}
+
+export class PaymentService implements IPaymentGateway {
   private stripe: Stripe | null = null;
   private readonly priceCredits: PriceCredits;
   private readonly webhookSecret: string | undefined;
@@ -144,23 +251,19 @@ export class PaymentService {
     return credits;
   }
 
-  public calculateCreditsForInvoice(invoice: Stripe.Invoice): {
-    credits: number;
-    missingPriceIds: string[];
-  } {
+  public calculateCreditsForInvoice(
+    invoice: PaymentInvoice,
+  ): InvoiceCreditCalculation {
     const missingPriceIds = new Set<string>();
     let credits = 0;
 
-    for (const line of invoice.lines?.data ?? []) {
-      const priceId = line.price?.id;
+    for (const line of invoice.lineItems) {
+      const priceId = line.priceId;
       if (!priceId) {
         continue;
       }
 
-      if (
-        line.proration ||
-        (typeof line.amount === "number" && line.amount <= 0)
-      ) {
+      if (line.proration || (line.amount !== null && line.amount <= 0)) {
         continue;
       }
 
@@ -181,34 +284,25 @@ export class PaymentService {
   }
 
   public async resolveUserIdForInvoice(
-    invoice: Stripe.Invoice,
+    invoice: PaymentInvoice,
   ): Promise<string | null> {
-    const metadataUserId = resolveUserId(
-      invoice.subscription_details?.metadata,
-    );
-    if (metadataUserId) {
-      return metadataUserId;
+    if (invoice.subscriptionDetailsUserId) {
+      return invoice.subscriptionDetailsUserId;
     }
 
-    for (const line of invoice.lines?.data ?? []) {
-      const lineUserId = resolveUserId(line.metadata);
-      if (lineUserId) {
-        return lineUserId;
+    for (const line of invoice.lineItems) {
+      if (line.metadataUserId) {
+        return line.metadataUserId;
       }
     }
 
-    const subscription = invoice.subscription;
-    if (!subscription) {
+    if (!invoice.subscriptionId) {
       return null;
     }
 
-    if (typeof subscription !== "string") {
-      return resolveUserId(subscription.metadata);
-    }
-
     const stripe = this.getStripe();
-    const fetched = await stripe.subscriptions.retrieve(subscription);
-    return resolveUserId(fetched.metadata);
+    const fetched = await stripe.subscriptions.retrieve(invoice.subscriptionId);
+    return trimmedMetadataString(fetched.metadata?.userId);
   }
 
   async createCheckoutSession(
@@ -216,7 +310,7 @@ export class PaymentService {
     priceId: string,
     returnUrl: string,
     customerId?: string,
-  ): Promise<{ url: string }> {
+  ): Promise<CheckoutSessionLink> {
     try {
       const credits = this.getCreditsForPriceId(priceId);
       const stripe = this.getStripe();
@@ -261,9 +355,7 @@ export class PaymentService {
     }
   }
 
-  async createCustomer(
-    userId: string,
-  ): Promise<{ id: string; livemode: boolean }> {
+  async createCustomer(userId: string): Promise<PaymentCustomer> {
     const stripe = this.getStripe();
     const customer = await stripe.customers.create({
       metadata: {
@@ -277,7 +369,7 @@ export class PaymentService {
   async createBillingPortalSession(
     customerId: string,
     returnUrl: string,
-  ): Promise<{ url: string }> {
+  ): Promise<BillingPortalLink> {
     const stripe = this.getStripe();
     const session = await stripe.billingPortal.sessions.create({
       customer: customerId,
@@ -294,42 +386,44 @@ export class PaymentService {
   async listInvoices(
     customerId: string,
     limit = 20,
-  ): Promise<Stripe.Invoice[]> {
+  ): Promise<PaymentInvoice[]> {
     const stripe = this.getStripe();
     const invoices = await stripe.invoices.list({
       customer: customerId,
       limit,
     });
-    return invoices.data;
+    return invoices.data.map(toPaymentInvoice);
   }
 
   async listRecentEvents(
     type: string,
     createdAfterUnix: number,
-  ): Promise<Stripe.Event[]> {
+  ): Promise<PaymentEvent[]> {
     const stripe = this.getStripe();
-    const events: Stripe.Event[] = [];
+    const events: PaymentEvent[] = [];
     for await (const event of stripe.events.list({
       type,
       created: { gte: createdAfterUnix },
       limit: 100,
     })) {
-      events.push(event);
+      events.push(toPaymentEvent(event));
     }
     return events;
   }
 
-  constructEvent(payload: string | Buffer, signature: string): Stripe.Event {
+  constructEvent(payload: string | Buffer, signature: string): PaymentEvent {
     const stripe = this.getStripe();
 
     if (!this.webhookSecret) {
       throw new Error("STRIPE_WEBHOOK_SECRET is not configured");
     }
 
-    return stripe.webhooks.constructEvent(
+    const event = stripe.webhooks.constructEvent(
       payload,
       signature,
       this.webhookSecret,
     );
+
+    return toPaymentEvent(event);
   }
 }
