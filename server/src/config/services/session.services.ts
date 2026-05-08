@@ -6,108 +6,19 @@ import AssetRepository from "@services/asset/AssetRepository";
 import AssetResolverService from "@services/asset/AssetResolverService";
 import { ReferenceImageProcessingService } from "@services/asset/ReferenceImageProcessingService";
 import type { FaceEmbeddingService } from "@services/asset/FaceEmbeddingService";
-import type { FirestoreCircuitExecutor } from "@services/firestore/FirestoreCircuitExecutor";
-import { BillingProfileStore } from "@services/payment/BillingProfileStore";
-import { createBillingProfileRepairWorker } from "@services/payment/BillingProfileRepairWorker";
-import { PaymentConsistencyStore } from "@services/payment/PaymentConsistencyStore";
-import { PaymentService } from "@services/payment/PaymentService";
-import { StripeWebhookEventStore } from "@services/payment/StripeWebhookEventStore";
-import { WebhookReconciliationWorker } from "@services/payment/WebhookReconciliationWorker";
 import { ReferenceImageRepository } from "@services/asset/reference-images/ReferenceImageRepository";
 import { SessionService } from "@services/sessions/SessionService";
 import { SessionStore } from "@services/sessions/SessionStore";
-import type { UserCreditService } from "@services/credits/UserCreditService";
 import type { VideoJobStore } from "@services/video-generation/jobs/VideoJobStore";
-import type { MetricsService } from "@infrastructure/MetricsService";
 import type { ServiceConfig } from "./service-config.types.ts";
 
+/**
+ * Registers session, asset, and reference-image repositories.
+ *
+ * Stripe / billing registrations were split into `payment.services.ts` so
+ * the file name reflects what's inside.
+ */
 export function registerSessionServices(container: DIContainer): void {
-  container.register(
-    "billingProfileStore",
-    (firestoreCircuitExecutor: FirestoreCircuitExecutor) =>
-      new BillingProfileStore(firestoreCircuitExecutor),
-    ["firestoreCircuitExecutor"],
-  );
-  container.register(
-    "paymentService",
-    (config: ServiceConfig) => new PaymentService(config.stripe),
-    ["config"],
-  );
-  container.register(
-    "stripeWebhookEventStore",
-    (firestoreCircuitExecutor: FirestoreCircuitExecutor) =>
-      new StripeWebhookEventStore(undefined, firestoreCircuitExecutor),
-    ["firestoreCircuitExecutor"],
-  );
-  container.register(
-    "paymentConsistencyStore",
-    (firestoreCircuitExecutor: FirestoreCircuitExecutor) =>
-      new PaymentConsistencyStore(firestoreCircuitExecutor),
-    ["firestoreCircuitExecutor"],
-  );
-  container.register(
-    "webhookReconciliationWorker",
-    (
-      paymentService: PaymentService,
-      webhookEventStore: StripeWebhookEventStore,
-      billingProfileStore: BillingProfileStore,
-      userCreditService: UserCreditService,
-      paymentConsistencyStore: PaymentConsistencyStore,
-      metricsService: MetricsService,
-      config: ServiceConfig,
-    ) => {
-      const wrc = config.stripe.webhookReconciliation;
-      if (wrc.disabled) {
-        return null;
-      }
-
-      const pollIntervalMs = wrc.intervalSeconds * 1000;
-      if (pollIntervalMs <= 0) return null;
-
-      return new WebhookReconciliationWorker(
-        paymentService,
-        webhookEventStore,
-        billingProfileStore,
-        userCreditService,
-        paymentConsistencyStore,
-        {
-          pollIntervalMs,
-          lookbackHours: wrc.lookbackHours,
-          metrics: metricsService,
-        },
-      );
-    },
-    [
-      "paymentService",
-      "stripeWebhookEventStore",
-      "billingProfileStore",
-      "userCreditService",
-      "paymentConsistencyStore",
-      "metricsService",
-      "config",
-    ],
-  );
-  container.register(
-    "billingProfileRepairWorker",
-    (
-      paymentConsistencyStore: PaymentConsistencyStore,
-      billingProfileStore: BillingProfileStore,
-      metricsService: MetricsService,
-      config: ServiceConfig,
-    ) =>
-      createBillingProfileRepairWorker(
-        paymentConsistencyStore,
-        billingProfileStore,
-        metricsService,
-        config.stripe.profileRepair,
-      ),
-    [
-      "paymentConsistencyStore",
-      "billingProfileStore",
-      "metricsService",
-      "config",
-    ],
-  );
   container.register("sessionStore", () => new SessionStore(), []);
 
   container.register(

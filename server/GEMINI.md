@@ -55,7 +55,8 @@ Services are registered via domain-scoped files in `src/config/services/`:
 | `enhancement.services.ts` | enhancementService, videoService, sceneDetection                        |
 | `generation.services.ts`  | imageGeneration, videoGeneration, storyboardPreview, keyframe, faceSwap |
 | `continuity.services.ts`  | continuitySessionService (gated — see Feature Flags)                    |
-| `session.services.ts`     | sessionService, assetResolver, referenceImageProcessing                 |
+| `payment.services.ts`     | paymentService, billingProfileStore, webhook + repair workers           |
+| `session.services.ts`     | sessionService, assetService, referenceImageRepository                  |
 | `video-jobs.services.ts`  | requestIdempotency, video job processing                                |
 
 Container: `src/config/services.config.ts`. Initialization: `services.initialize.ts`. Routes consume via factories in `src/config/routes.config.ts`.

@@ -32,6 +32,14 @@ const REQUIRED_TOKENS = [
   "metricsService",
   "imageObservationService",
   "assetService",
+  // Conditionally-mounted in api.routes.ts:107-150 but expected to register
+  // non-null whenever GCS is configured (which test setup guarantees).
+  // Missing this silently 404s /api/reference-images.
+  // consistentVideoService and modelIntelligenceService are correctly
+  // *not* listed — they legitimately resolve to null when video provider
+  // credentials are absent (FAL/Replicate/Luma keys), like
+  // continuitySessionService under ENABLE_CONVERGENCE=false.
+  "referenceImageRepository",
 ] as const;
 
 describe("DI Container (integration)", () => {
