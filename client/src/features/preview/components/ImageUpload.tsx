@@ -137,6 +137,7 @@ export function ImageUpload({
         className="hidden"
         onChange={handleInputChange}
         disabled={disabled || isUploading}
+        aria-label="Upload keyframe image"
       />
       <div className="text-foreground font-semibold">
         {isUploading ? "Uploading image..." : "Upload a keyframe image"}

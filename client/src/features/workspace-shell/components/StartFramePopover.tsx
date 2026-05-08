@@ -133,6 +133,7 @@ export function StartFramePopover({
           if (file) void handleUpload(file);
           event.target.value = "";
         }}
+        aria-label="Upload start frame image"
       />
 
       {/* Popover — 220px wide, opens upward */}

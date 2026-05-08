@@ -159,6 +159,7 @@ export function VideoReferencesPopover({
           if (file) void handleUpload(file);
           event.target.value = "";
         }}
+        aria-label="Upload video reference image"
       />
 
       {isOpen ? (
