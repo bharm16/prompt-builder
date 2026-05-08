@@ -25,6 +25,12 @@ import { computeBackoffMs, RETRY_JITTER_RATIO } from "./computeBackoff";
 const DEFAULT_MAX_ATTEMPTS = 3;
 const DEFAULT_PROVIDER = "unknown";
 const SLOW_FIRESTORE_OPERATION_MS = 1_000;
+// Bounds the per-session cancellation fan-out. Sized well below any
+// realistic per-session job count; if a session legitimately exceeds this,
+// the warning logged from findJobsBySessionId is the trigger to raise it
+// (or to paginate). The +1 sentinel pattern in findJobsBySessionId requires
+// this to remain a finite cap — do not raise to Number.MAX_SAFE_INTEGER.
+const FIND_JOBS_BY_SESSION_CAP = 500;
 
 interface CreateJobInput {
   userId: string;
@@ -247,18 +253,47 @@ export class VideoJobStore {
    * Used by SessionService to cascade cancellation when a session is deleted.
    */
   async findJobsBySessionId(sessionId: string): Promise<VideoJobRecord[]> {
+    // Bound worst-case load on session delete: cancelJobsForSession dispatches
+    // one transaction per returned job in parallel, so a session with
+    // pathologically many jobs could fan out into a large concurrent
+    // transaction storm. The cap (FIND_JOBS_BY_SESSION_CAP) keeps the
+    // dispatch bounded.
+    //
+    // We query `limit + 1` (with deterministic ordering) so a returned size
+    // equal to limit + 1 unambiguously signals truncation — at which point
+    // we trim back to limit and log a warning so operators can paginate or
+    // raise the cap. Without orderBy, Firestore would return an arbitrary
+    // subset and the remaining jobs would silently keep processing after
+    // the session is deleted.
     const snapshot = await this.withTiming(
       "findJobsBySessionId",
       "read",
       async () =>
-        await this.collection.where("sessionId", "==", sessionId).get(),
+        await this.collection
+          .where("sessionId", "==", sessionId)
+          .orderBy("createdAtMs", "asc")
+          .limit(FIND_JOBS_BY_SESSION_CAP + 1)
+          .get(),
     );
 
     if (snapshot.empty) {
       return [];
     }
 
-    return snapshot.docs
+    let docs = snapshot.docs;
+    if (docs.length > FIND_JOBS_BY_SESSION_CAP) {
+      this.log.warn(
+        "Session has more jobs than the lookup cap; cancellation will be partial",
+        {
+          sessionId,
+          cap: FIND_JOBS_BY_SESSION_CAP,
+          observedAtLeast: docs.length,
+        },
+      );
+      docs = docs.slice(0, FIND_JOBS_BY_SESSION_CAP);
+    }
+
+    return docs
       .map((doc) => {
         try {
           return this.parseJob(doc.id, doc.data());
@@ -287,18 +322,22 @@ export class VideoJobStore {
       (job) => job.status === "queued" || job.status === "processing",
     );
 
-    let cancelled = 0;
-    for (const job of cancellable) {
-      const ok = await this.markFailed(job.id, {
-        message: "Session deleted — job cancelled",
-        code: "SESSION_DELETED",
-        category: "validation",
-        retryable: false,
-        stage: "queue",
-      });
-      if (ok) cancelled += 1;
-    }
-    return cancelled;
+    // Run cancellations in parallel. Each markFailed runs its own transaction
+    // (state-machine validation per doc) so they're safe to dispatch
+    // concurrently — different doc IDs, no cross-doc invariants. The serial
+    // loop here paid N round-trips on session delete.
+    const results = await Promise.all(
+      cancellable.map((job) =>
+        this.markFailed(job.id, {
+          message: "Session deleted — job cancelled",
+          code: "SESSION_DELETED",
+          category: "validation",
+          retryable: false,
+          stage: "queue",
+        }),
+      ),
+    );
+    return results.filter(Boolean).length;
   }
 
   async findJobByAssetId(assetId: string): Promise<VideoJobRecord | null> {

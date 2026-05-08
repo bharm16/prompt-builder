@@ -868,5 +868,95 @@ describe("VideoJobStore", () => {
           ?.code,
       ).toBe("SESSION_DELETED");
     });
+
+    /**
+     * Regression: findJobsBySessionId previously used `.limit(500)` without
+     * `.orderBy(...)`. Firestore returns an arbitrary subset under that
+     * configuration, so a session with >500 jobs would silently leave the
+     * remaining jobs uncancelled — they'd keep processing after the session
+     * was deleted, consuming credits and producing tombstoned outputs.
+     *
+     * Invariant under test:
+     *   1. The result is bounded (never larger than the cap).
+     *   2. The result is deterministically ordered by createdAtMs ascending.
+     *   3. Truncation logs a warning so operators can detect the case.
+     */
+    it("findJobsBySessionId: truncation is deterministic and observable (regression)", async () => {
+      // Insert (cap + 5) jobs, all for the same sessionId, with increasing
+      // createdAtMs so we can check ordering.
+      const cap = 500;
+      const totalJobs = cap + 5;
+      const baseMs = 1_700_000_000_000;
+      for (let i = 0; i < totalJobs; i += 1) {
+        // Pad job ids so lexical-sort would disagree with createdAtMs sort —
+        // this catches a regression where the impl accidentally relies on
+        // doc-id ordering rather than createdAtMs.
+        const jobId = `job-cap-${String(totalJobs - i).padStart(4, "0")}`;
+        mocks.records.set(jobId, {
+          status: "queued",
+          userId: "user-1",
+          sessionId: "session-cap",
+          request: { prompt: "p", options: { model: "sora-2" } },
+          creditsReserved: 1,
+          createdAtMs: baseMs + i, // strictly increasing
+          updatedAtMs: baseMs + i,
+        });
+      }
+      const store = new VideoJobStore();
+
+      const jobs = await store.findJobsBySessionId("session-cap");
+
+      // Bounded: cap respected
+      expect(jobs).toHaveLength(cap);
+
+      // Ordered: createdAtMs ascending (so the cap drops the LATEST jobs,
+      // not an arbitrary subset)
+      for (let i = 1; i < jobs.length; i += 1) {
+        const prev = jobs[i - 1]!.createdAtMs;
+        const curr = jobs[i]!.createdAtMs;
+        expect(curr).toBeGreaterThanOrEqual(prev);
+      }
+
+      // Deterministic: every returned createdAtMs is in the lower part of
+      // the range (the first `cap` records inserted), never one of the last 5.
+      const lastFiveStart = baseMs + cap;
+      for (const job of jobs) {
+        expect(job.createdAtMs).toBeLessThan(lastFiveStart);
+      }
+
+      // Observable: a warn log fired so operators can react to truncation.
+      expect(mocks.loggerWarn).toHaveBeenCalledWith(
+        expect.stringMatching(/more jobs than the lookup cap/),
+        expect.objectContaining({
+          sessionId: "session-cap",
+          cap,
+        }),
+      );
+    });
+
+    it("findJobsBySessionId: no warning when total jobs <= cap (regression)", async () => {
+      // Below the cap, the warn path must NOT fire — false positives would
+      // train operators to ignore the warning.
+      for (let i = 0; i < 5; i += 1) {
+        mocks.records.set(`job-small-${i}`, {
+          status: "queued",
+          userId: "user-1",
+          sessionId: "session-small",
+          request: { prompt: "p", options: { model: "sora-2" } },
+          creditsReserved: 1,
+          createdAtMs: Date.now() + i,
+          updatedAtMs: Date.now() + i,
+        });
+      }
+      const store = new VideoJobStore();
+
+      const jobs = await store.findJobsBySessionId("session-small");
+
+      expect(jobs).toHaveLength(5);
+      expect(mocks.loggerWarn).not.toHaveBeenCalledWith(
+        expect.stringMatching(/more jobs than the lookup cap/),
+        expect.anything(),
+      );
+    });
   });
 });
