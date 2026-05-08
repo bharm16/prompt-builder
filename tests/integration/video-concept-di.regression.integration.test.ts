@@ -1,40 +1,34 @@
 import { describe, expect, it } from "vitest";
 import { configureServices } from "@config/services.config";
-import { VideoConceptService } from "@services/video-concept/VideoConceptService";
 
 /**
- * Regression: the /api/video/* route family is conditionally mounted on
- * `if (videoConceptService) { ... }` in api.routes.ts. When DI does not
- * register the aggregator service, the entire /api/video/* namespace is
- * silently dropped and every request gets a 401 from auth middleware
- * that's indistinguishable from a typoed URL.
+ * Regression: the /api/video/* route family is wired in api.registration.ts
+ * by resolving each sub-service from DI. When a sub-service registration is
+ * missing, container.resolve throws at boot — preventing the silent 404
+ * trap (every /api/video/* request returning 401 from auth middleware,
+ * indistinguishable from a typoed URL).
  *
- * Invariant: for any properly-bootstrapped DI container, resolving
- * "videoConceptService" returns a real VideoConceptService instance
- * exposing the 7 methods declared in VideoConceptServiceContract.
+ * Invariant: for any properly-bootstrapped DI container, the seven video
+ * concept sub-service tokens consumed by api.registration.ts must resolve
+ * to truthy instances.
  */
-describe("regression: videoConceptService DI registration", () => {
-  it("resolves a real VideoConceptService that satisfies the route contract", async () => {
+describe("regression: video concept DI registration", () => {
+  it("resolves all seven video concept sub-services consumed by /api/video/*", async () => {
     const container = await configureServices();
 
-    const service = container.resolve<VideoConceptService>(
-      "videoConceptService",
-    );
+    const tokens = [
+      "videoSuggestionGeneratorService",
+      "videoCompatibilityService",
+      "videoConflictDetectionService",
+      "videoSceneCompletionService",
+      "videoPromptValidationService",
+      "videoSceneVariationService",
+      "videoConceptParsingService",
+    ] as const;
 
-    expect(service).toBeInstanceOf(VideoConceptService);
-
-    for (const method of [
-      "getCreativeSuggestions",
-      "checkCompatibility",
-      "detectConflicts",
-      "completeScene",
-      "getSmartDefaults",
-      "generateVariations",
-      "parseConcept",
-    ] as const) {
-      expect(
-        typeof (service as unknown as Record<string, unknown>)[method],
-      ).toBe("function");
+    for (const token of tokens) {
+      const service = container.resolve(token);
+      expect(service, `${token} must resolve to a truthy instance`).toBeTruthy();
     }
   }, 30_000);
 });

@@ -5,7 +5,7 @@ import type {
   CreateAssetRequest,
   UpdateAssetRequest,
 } from "@shared/types/asset";
-import type AssetRepository from "../AssetRepository";
+import type { AssetStorePort } from "../ports/AssetStorePort";
 import type TriggerValidationService from "../TriggerValidationService";
 import { logger } from "@infrastructure/Logger";
 
@@ -17,12 +17,12 @@ export interface ListAssetsByTypeResult {
 }
 
 export class AssetCrudService {
-  private readonly repository: AssetRepository;
+  private readonly repository: AssetStorePort;
   private readonly triggerValidation: TriggerValidationService;
   private readonly log = logger.child({ service: "AssetCrudService" });
 
   constructor(
-    repository: AssetRepository,
+    repository: AssetStorePort,
     triggerValidation: TriggerValidationService,
   ) {
     this.repository = repository;

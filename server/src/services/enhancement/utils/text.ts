@@ -1,3 +1,5 @@
+import { escapeRegex } from "@shared/utils/escapeRegex";
+
 export const normalizeText = (text: string): string =>
   text
     .toLowerCase()
@@ -40,8 +42,7 @@ export const replaceTerms = (
   if (!terms.length) return text;
   let result = text;
   for (const term of terms) {
-    const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const pattern = new RegExp(`\\b${escaped}\\b`, "gi");
+    const pattern = new RegExp(`\\b${escapeRegex(term)}\\b`, "gi");
     result = result.replace(pattern, replacement);
   }
   return cleanText(result);

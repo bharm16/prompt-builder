@@ -99,16 +99,14 @@ export const createPaymentHandlers = ({
     return res.json({
       invoices: invoices.map((invoice) => ({
         id: invoice.id,
-        number: invoice.number ?? null,
-        status: invoice.status ?? null,
-        created: typeof invoice.created === "number" ? invoice.created : null,
-        currency: invoice.currency ?? null,
-        amountDue:
-          typeof invoice.amount_due === "number" ? invoice.amount_due : null,
-        amountPaid:
-          typeof invoice.amount_paid === "number" ? invoice.amount_paid : null,
-        hostedInvoiceUrl: invoice.hosted_invoice_url ?? null,
-        invoicePdf: invoice.invoice_pdf ?? null,
+        number: invoice.number,
+        status: invoice.status,
+        created: invoice.created,
+        currency: invoice.currency,
+        amountDue: invoice.amountDue,
+        amountPaid: invoice.amountPaid,
+        hostedInvoiceUrl: invoice.hostedInvoiceUrl,
+        invoicePdf: invoice.invoicePdf,
       })),
     });
   },

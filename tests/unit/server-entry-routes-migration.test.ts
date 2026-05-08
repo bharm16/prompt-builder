@@ -100,13 +100,25 @@ const createApiServices = (
   promptCoherenceService: {
     checkCoherence: vi.fn(async () => ({ conflicts: [], harmonizations: [] })),
   },
-  videoConceptService: {
+  suggestionGenerator: {
     getCreativeSuggestions: vi.fn(async () => []),
+  } as never,
+  compatibility: {
     checkCompatibility: vi.fn(async () => ({})),
+  } as never,
+  conflictDetection: {
     detectConflicts: vi.fn(async () => []),
+  } as never,
+  sceneCompletion: {
     completeScene: vi.fn(async () => ({})),
+  } as never,
+  promptValidation: {
     getSmartDefaults: vi.fn(async () => ({})),
+  } as never,
+  sceneVariation: {
     generateVariations: vi.fn(async () => []),
+  } as never,
+  conceptParsing: {
     parseConcept: vi.fn(async () => ({})),
   } as never,
   metricsService: undefined,

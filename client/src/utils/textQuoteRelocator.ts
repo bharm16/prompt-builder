@@ -1,5 +1,7 @@
 // client/src/utils/textQuoteRelocator.ts
 
+import { escapeRegex } from "@shared/utils/escapeRegex";
+
 interface QuoteMatch {
   start: number;
   end: number;
@@ -95,15 +97,11 @@ function findCandidates(text: string, quote: string): QuoteMatch[] {
   // 2. If no exact matches, try Fuzzy/Normalized Match
   // This handles case where user typed extra space in the span
   if (candidates.length === 0) {
-    // Escape regex characters
-    const escapeRegExp = (string: string): string =>
-      string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-
     // Create a regex that allows variable whitespace between words
     // e.g. "hello world" -> "hello\s+world"
     const parts = quote.split(/\s+/).filter(Boolean);
     if (parts.length > 0) {
-      const pattern = parts.map(escapeRegExp).join("\\s+");
+      const pattern = parts.map(escapeRegex).join("\\s+");
       const regex = new RegExp(pattern, "g");
 
       let match: RegExpExecArray | null;

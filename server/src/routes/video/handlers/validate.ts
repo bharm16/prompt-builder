@@ -1,9 +1,13 @@
 import type { Request, Response } from "express";
 import { logger } from "@infrastructure/Logger";
-import type { VideoConceptServiceContract } from "../types";
+import type { CompatibilityService } from "@services/video-concept/services/validation/CompatibilityService";
+import type { ConflictDetectionService } from "@services/video-concept/services/detection/ConflictDetectionService";
 
 export const createVideoValidateHandler =
-  (videoConceptService: VideoConceptServiceContract) =>
+  (
+    compatibility: CompatibilityService,
+    conflictDetection: ConflictDetectionService,
+  ) =>
   async (req: Request, res: Response): Promise<Response | void> => {
     const startTime = Date.now();
     const requestId = req.id || "unknown";
@@ -22,28 +26,28 @@ export const createVideoValidateHandler =
     try {
       const compatibilityPromise =
         elementType && typeof value !== "undefined"
-          ? videoConceptService.checkCompatibility({
+          ? compatibility.checkCompatibility({
               elementType,
               value,
               existingElements: elements,
             })
           : Promise.resolve(null);
 
-      const [compatibility, conflictResult] = await Promise.all([
+      const [compatibilityResult, conflictResult] = await Promise.all([
         compatibilityPromise,
-        videoConceptService.detectConflicts({ elements }),
+        conflictDetection.detectConflicts({ elements }),
       ]);
 
       logger.info("Video validate request completed", {
         operation,
         requestId,
         duration: Date.now() - startTime,
-        hasCompatibility: !!compatibility,
+        hasCompatibility: !!compatibilityResult,
         conflictCount: conflictResult?.conflicts?.length || 0,
       });
 
       return res.json({
-        compatibility,
+        compatibility: compatibilityResult,
         conflicts: conflictResult?.conflicts || [],
       });
     } catch (error: unknown) {

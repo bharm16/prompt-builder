@@ -1,16 +1,16 @@
-import type AssetRepository from "../AssetRepository";
+import type { AssetStorePort } from "../ports/AssetStorePort";
 import FaceEmbeddingService from "../FaceEmbeddingService";
 import { logger } from "@infrastructure/Logger";
 import type { AssetCrudService } from "./AssetCrudService";
 
 export class AssetEmbeddingService {
-  private readonly repository: AssetRepository;
+  private readonly repository: AssetStorePort;
   private readonly embeddingService: FaceEmbeddingService;
   private readonly assetCrud: AssetCrudService;
   private readonly log = logger.child({ service: "AssetEmbeddingService" });
 
   constructor(
-    repository: AssetRepository,
+    repository: AssetStorePort,
     embeddingService: FaceEmbeddingService,
     assetCrud: AssetCrudService,
   ) {

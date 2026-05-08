@@ -7,34 +7,24 @@ import {
   type StoredContinuitySession,
 } from "@server/domain/continuity/serialization";
 import type { SessionRecord } from "@server/domain/session/types";
-import type { SessionStorePort } from "./ports/SessionStorePort";
-import { DomainError } from "@server/errors/DomainError";
+import type { SessionStorePort } from "../ports/SessionStorePort";
+import {
+  ContinuitySessionVersionMismatchError,
+  type ContinuitySessionStorePort,
+} from "../ports/ContinuitySessionStorePort";
 
-export class ContinuitySessionVersionMismatchError extends DomainError {
-  readonly code = "SESSION_VERSION_CONFLICT" as const;
-
-  constructor(
-    readonly sessionId: string,
-    readonly expectedVersion: number,
-    readonly actualVersion?: number,
-  ) {
-    super(
-      `Continuity session version mismatch for ${sessionId} (expected ${expectedVersion}, got ${actualVersion ?? "unknown"})`,
-      { sessionId, expectedVersion, actualVersion },
-    );
-    this.name = "ContinuitySessionVersionMismatchError";
-  }
-
-  getHttpStatus(): number {
-    return 409;
-  }
-
-  getUserMessage(): string {
-    return "Your changes conflicted with another edit. Please reload to see the latest version.";
-  }
-}
-
-export class ContinuitySessionStore {
+/**
+ * Firestore-backed implementation of `ContinuitySessionStorePort`.
+ *
+ * Coordinates writes across the legacy `continuity_sessions` collection and
+ * the unified session store via `SessionStorePort.saveInTransaction`. The
+ * cross-store transaction is a Firestore implementation detail and never
+ * leaks above this adapter — service-tier code calls only the methods
+ * declared on the port.
+ */
+export class FirestoreContinuitySessionStore
+  implements ContinuitySessionStorePort
+{
   private readonly db = getFirestore();
   private readonly legacyCollection = this.db.collection("continuity_sessions");
 

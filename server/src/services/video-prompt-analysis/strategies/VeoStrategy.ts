@@ -21,6 +21,7 @@ import {
   type TransformResult,
   type AugmentResult,
 } from "./BaseStrategy";
+import { escapeRegex } from "@shared/utils/escapeRegex";
 import { getPromptModelConstraints } from "@shared/videoModels";
 import type {
   PromptOptimizationResult,
@@ -278,7 +279,7 @@ export class VeoStrategy extends BaseStrategy {
 
     // Strip conversational filler phrases
     for (const filler of CONVERSATIONAL_FILLERS) {
-      const pattern = new RegExp(`\\b${this.escapeRegex(filler)}\\b`, "gi");
+      const pattern = new RegExp(`\\b${escapeRegex(filler)}\\b`, "gi");
       if (pattern.test(text)) {
         text = text.replace(pattern, "");
         changes.push(`Stripped conversational filler: "${filler}"`);
@@ -634,9 +635,7 @@ export class VeoStrategy extends BaseStrategy {
     for (const [keyword, value] of Object.entries(STYLE_PRESETS)) {
       // Use word boundary matching to prevent false positives from short keywords
       // (e.g., 'ad' matching inside 'shadows')
-      const pattern = new RegExp(
-        `\\b${keyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`,
-      );
+      const pattern = new RegExp(`\\b${escapeRegex(keyword)}\\b`);
       if (pattern.test(lowerInput)) {
         return value;
       }
@@ -788,7 +787,7 @@ export class VeoStrategy extends BaseStrategy {
   ): string | null {
     for (const candidate of candidates) {
       const pattern = new RegExp(
-        `\\b${this.escapeRegex(candidate)}\\b(?:\\s+(?:[a-z0-9'-]+)){0,4}`,
+        `\\b${escapeRegex(candidate)}\\b(?:\\s+(?:[a-z0-9'-]+)){0,4}`,
         "i",
       );
       const match = text.match(pattern);

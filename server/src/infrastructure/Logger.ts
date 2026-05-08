@@ -86,6 +86,7 @@ export class Logger implements ILogger {
   }
 
   info(message: string, meta: Record<string, unknown> = {}): void {
+    if (!this.logger.isLevelEnabled("info")) return;
     this.logger.info(this.enrichMeta("info", meta), message);
   }
 
@@ -94,6 +95,7 @@ export class Logger implements ILogger {
     error?: Error,
     meta: Record<string, unknown> = {},
   ): void {
+    if (!this.logger.isLevelEnabled("error")) return;
     const errorMeta = error
       ? {
           err: {
@@ -111,10 +113,12 @@ export class Logger implements ILogger {
   }
 
   warn(message: string, meta: Record<string, unknown> = {}): void {
+    if (!this.logger.isLevelEnabled("warn")) return;
     this.logger.warn(this.enrichMeta("warn", meta), message);
   }
 
   debug(message: string, meta: Record<string, unknown> = {}): void {
+    if (!this.logger.isLevelEnabled("debug")) return;
     this.logger.debug(this.enrichMeta("debug", meta), message);
   }
 

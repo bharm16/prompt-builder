@@ -22,6 +22,7 @@ import {
   type TransformResult,
   type AugmentResult,
 } from "./BaseStrategy";
+import { escapeRegex } from "@shared/utils/escapeRegex";
 import { getPromptModelConstraints } from "@shared/videoModels";
 import type {
   PromptOptimizationResult,
@@ -346,7 +347,7 @@ export class KlingStrategy extends BaseStrategy {
       if (!isPartOfCompound) {
         // Only strip standalone generic terms, not specific sound descriptions
         const standalonePattern = new RegExp(
-          `\\b${this.escapeRegex(term)}\\b(?!\\s+(?:of|effect|track|design))`,
+          `\\b${escapeRegex(term)}\\b(?!\\s+(?:of|effect|track|design))`,
           "gi",
         );
         if (standalonePattern.test(text)) {
@@ -764,7 +765,7 @@ export class KlingStrategy extends BaseStrategy {
       ...MUSIC_INDICATORS,
     ]) {
       const pattern = new RegExp(
-        `${this.escapeRegex(indicator)}[:\\s]*[^.!?,;]*[.!?,;]?`,
+        `${escapeRegex(indicator)}[:\\s]*[^.!?,;]*[.!?,;]?`,
         "gi",
       );
       visual = visual.replace(pattern, "");

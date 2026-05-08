@@ -5,9 +5,10 @@ import type {
   CreateAssetRequest,
   UpdateAssetRequest,
 } from "@shared/types/asset";
-import AssetRepository, {
-  type ReferenceImageMetadataInput,
-} from "./AssetRepository";
+import type {
+  AssetStorePort,
+  ReferenceImageMetadataInput,
+} from "./ports/AssetStorePort";
 import ReferenceImageService from "./ReferenceImageService";
 import AssetResolverService from "./AssetResolverService";
 import TriggerValidationService from "./TriggerValidationService";
@@ -29,7 +30,7 @@ export class AssetService {
   private readonly embeddings: AssetEmbeddingService | null;
 
   constructor(
-    assetRepository: AssetRepository,
+    assetRepository: AssetStorePort,
     referenceImageRepository: ReferenceImageService,
     resolverService = new AssetResolverService(assetRepository),
     triggerValidation = new TriggerValidationService(),

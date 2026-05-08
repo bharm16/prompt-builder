@@ -1,3 +1,5 @@
+import { escapeRegex } from "@shared/utils/escapeRegex";
+
 const TECHNICAL_HEADER_LABELS = [
   "technical specs",
   "technical specifications",
@@ -160,6 +162,3 @@ function parseTechnicalSpecs(specsText: string): Record<string, string> {
   return specs;
 }
 
-function escapeRegex(str: string): string {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}

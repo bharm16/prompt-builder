@@ -1,6 +1,9 @@
-import type Stripe from "stripe";
 import { logger } from "@infrastructure/Logger";
 import type { WebhookHandlerDeps } from "../types";
+import type {
+  PaymentCheckoutSession,
+  PaymentInvoice,
+} from "@services/payment/types";
 import { resolvePlanTierFromPriceIds } from "@config/subscriptionTiers";
 import { WebhookUnresolvedError } from "./errors";
 
@@ -15,11 +18,11 @@ type WebhookEventHandlerDeps = Pick<
 
 export interface WebhookEventHandlers {
   handleCheckoutSessionCompleted: (
-    session: Stripe.Checkout.Session,
+    session: PaymentCheckoutSession,
     eventId: string,
   ) => Promise<void>;
   handleInvoicePaid: (
-    invoice: Stripe.Invoice,
+    invoice: PaymentInvoice,
     eventId: string,
   ) => Promise<void>;
 }
@@ -50,24 +53,9 @@ export const createWebhookEventHandlers = ({
     };
 
     if (session.mode === "subscription") {
-      const userId =
-        session.metadata?.userId || session.client_reference_id || null;
-      const stripeCustomerId =
-        typeof session.customer === "string"
-          ? session.customer
-          : session.customer &&
-              typeof session.customer === "object" &&
-              "id" in session.customer
-            ? (session.customer.id as string)
-            : null;
-      const stripeSubscriptionId =
-        typeof session.subscription === "string"
-          ? session.subscription
-          : session.subscription &&
-              typeof session.subscription === "object" &&
-              "id" in session.subscription
-            ? (session.subscription.id as string)
-            : null;
+      const userId = session.metadataUserId || session.clientReferenceId;
+      const stripeCustomerId = session.customerId;
+      const stripeSubscriptionId = session.subscriptionId;
 
       if (userId && stripeCustomerId) {
         try {
@@ -129,15 +117,14 @@ export const createWebhookEventHandlers = ({
         "Subscription checkout completed; credits will be applied on invoice.paid",
         {
           sessionId: session.id,
-          subscriptionId: session.subscription,
+          subscriptionId: session.subscriptionId,
         },
       );
       return;
     }
 
-    const userId =
-      session.metadata?.userId || session.client_reference_id || null;
-    const credits = Number.parseInt(session.metadata?.creditAmount ?? "0", 10);
+    const userId = session.metadataUserId || session.clientReferenceId;
+    const credits = Number.parseInt(session.creditAmountMetadata ?? "0", 10);
 
     if (!userId) {
       logger.warn("Checkout session missing user identifier", {
@@ -151,7 +138,7 @@ export const createWebhookEventHandlers = ({
         stripeObjectId: session.id,
         metadata: {
           mode: session.mode,
-          hasClientReferenceId: Boolean(session.client_reference_id),
+          hasClientReferenceId: Boolean(session.clientReferenceId),
         },
       });
     }
@@ -168,7 +155,7 @@ export const createWebhookEventHandlers = ({
         stripeObjectId: session.id,
         userId,
         metadata: {
-          creditAmount: session.metadata?.creditAmount ?? null,
+          creditAmount: session.creditAmountMetadata ?? null,
         },
       });
     }
@@ -191,8 +178,8 @@ export const createWebhookEventHandlers = ({
       logger.warn("Invoice paid without user metadata", {
         invoiceId: invoice.id,
         eventId,
-        subscriptionId: invoice.subscription,
-        customerId: invoice.customer,
+        subscriptionId: invoice.subscriptionId,
+        customerId: invoice.customerId,
       });
       await paymentConsistencyStore?.recordUnresolvedEvent({
         eventId,
@@ -201,32 +188,18 @@ export const createWebhookEventHandlers = ({
         livemode: invoice.livemode,
         stripeObjectId: invoice.id,
         metadata: {
-          subscriptionId: invoice.subscription ?? null,
-          customerId: invoice.customer ?? null,
+          subscriptionId: invoice.subscriptionId,
+          customerId: invoice.customerId,
         },
       });
       throw new WebhookUnresolvedError("Invoice paid without user metadata");
     }
 
-    const stripeCustomerId =
-      typeof invoice.customer === "string"
-        ? invoice.customer
-        : invoice.customer &&
-            typeof invoice.customer === "object" &&
-            "id" in invoice.customer
-          ? (invoice.customer.id as string)
-          : null;
-    const stripeSubscriptionId =
-      typeof invoice.subscription === "string"
-        ? invoice.subscription
-        : invoice.subscription &&
-            typeof invoice.subscription === "object" &&
-            "id" in invoice.subscription
-          ? (invoice.subscription.id as string)
-          : null;
+    const stripeCustomerId = invoice.customerId;
+    const stripeSubscriptionId = invoice.subscriptionId;
 
-    const invoicePriceIds = (invoice.lines?.data ?? [])
-      .map((line) => line.price?.id)
+    const invoicePriceIds = invoice.lineItems
+      .map((line) => line.priceId)
       .filter(
         (id): id is string => typeof id === "string" && id.trim().length > 0,
       );
@@ -296,7 +269,7 @@ export const createWebhookEventHandlers = ({
 
     const { credits, missingPriceIds } =
       paymentService.calculateCreditsForInvoice(invoice);
-    if (invoice.amount_paid <= 0) {
+    if (invoice.amountPaid <= 0) {
       logger.info("Invoice paid with zero amount; skipping credit grant", {
         invoiceId: invoice.id,
         eventId,

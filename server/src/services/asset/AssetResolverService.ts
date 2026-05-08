@@ -1,6 +1,7 @@
 import { logger } from "@infrastructure/Logger";
 import type { Asset, AssetType, ResolvedPrompt } from "@shared/types/asset";
-import AssetRepository from "./AssetRepository";
+import { escapeRegex } from "@shared/utils/escapeRegex";
+import type { AssetStorePort } from "./ports/AssetStorePort";
 
 /**
  * Create a compact fingerprint of a string for usage tracking records.
@@ -20,10 +21,10 @@ function simpleHash(str: string): string {
 }
 
 export class AssetResolverService {
-  private readonly repository: AssetRepository;
+  private readonly repository: AssetStorePort;
   private readonly log = logger.child({ service: "AssetResolverService" });
 
-  constructor(assetRepository: AssetRepository) {
+  constructor(assetRepository: AssetStorePort) {
     this.repository = assetRepository;
   }
 
@@ -184,8 +185,7 @@ export class AssetResolverService {
     asset: Asset,
     expansionTracker: Map<string, boolean>,
   ): string {
-    const escapedTrigger = asset.trigger.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const triggerRegex = new RegExp(escapedTrigger, "gi");
+    const triggerRegex = new RegExp(escapeRegex(asset.trigger), "gi");
     const trackingKey = asset.trigger.toLowerCase();
 
     return text.replace(triggerRegex, () => {

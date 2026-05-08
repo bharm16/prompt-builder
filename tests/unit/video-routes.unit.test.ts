@@ -128,39 +128,53 @@ import { runSupertestOrSkip } from "./test-helpers/supertestSafeRequest";
 
 const TEST_API_KEY = mocks.TEST_API_KEY;
 
-type MockVideoConceptService = {
-  getCreativeSuggestions: ReturnType<typeof vi.fn>;
-  checkCompatibility: ReturnType<typeof vi.fn>;
-  detectConflicts: ReturnType<typeof vi.fn>;
-  completeScene: ReturnType<typeof vi.fn>;
-  getSmartDefaults: ReturnType<typeof vi.fn>;
-  generateVariations: ReturnType<typeof vi.fn>;
-  parseConcept: ReturnType<typeof vi.fn>;
+type MockVideoServices = {
+  suggestionGenerator: { getCreativeSuggestions: ReturnType<typeof vi.fn> };
+  compatibility: { checkCompatibility: ReturnType<typeof vi.fn> };
+  conflictDetection: { detectConflicts: ReturnType<typeof vi.fn> };
+  sceneCompletion: { completeScene: ReturnType<typeof vi.fn> };
+  promptValidation: { getSmartDefaults: ReturnType<typeof vi.fn> };
+  sceneVariation: { generateVariations: ReturnType<typeof vi.fn> };
+  conceptParsing: { parseConcept: ReturnType<typeof vi.fn> };
 };
 
-const createMockService = (): MockVideoConceptService => ({
-  getCreativeSuggestions: vi.fn(async () => ({ suggestions: ["add haze"] })),
-  checkCompatibility: vi.fn(async () => ({ compatible: true })),
-  detectConflicts: vi.fn(async () => ({ conflicts: [] })),
-  completeScene: vi.fn(async () => ({
-    suggestions: [{ elementType: "style", value: "noir" }],
-  })),
-  getSmartDefaults: vi.fn(async () => ({ frameRate: "24fps" })),
-  generateVariations: vi.fn(async () => ({
-    variations: [{ text: "variation-1" }],
-  })),
-  parseConcept: vi.fn(async () => ({
-    elements: [{ elementType: "subject", value: "runner" }],
-  })),
+const createMockService = (): MockVideoServices => ({
+  suggestionGenerator: {
+    getCreativeSuggestions: vi.fn(async () => ({ suggestions: ["add haze"] })),
+  },
+  compatibility: {
+    checkCompatibility: vi.fn(async () => ({ compatible: true })),
+  },
+  conflictDetection: {
+    detectConflicts: vi.fn(async () => ({ conflicts: [] })),
+  },
+  sceneCompletion: {
+    completeScene: vi.fn(async () => ({
+      suggestions: [{ elementType: "style", value: "noir" }],
+    })),
+  },
+  promptValidation: {
+    getSmartDefaults: vi.fn(async () => ({ frameRate: "24fps" })),
+  },
+  sceneVariation: {
+    generateVariations: vi.fn(async () => ({
+      variations: [{ text: "variation-1" }],
+    })),
+  },
+  conceptParsing: {
+    parseConcept: vi.fn(async () => ({
+      elements: [{ elementType: "subject", value: "runner" }],
+    })),
+  },
 });
 
-const createApp = (service: MockVideoConceptService) => {
+const createApp = (service: MockVideoServices) => {
   const app = express();
   app.use(express.json());
   app.use(
     "/api/video",
     apiAuthMiddleware,
-    createVideoRoutes({ videoConceptService: service } as never),
+    createVideoRoutes(service as never),
   );
   app.use(
     (
@@ -223,7 +237,9 @@ describe("video routes unit", () => {
     );
     if (!suggestions) return;
     expect(suggestions.status).toBe(200);
-    expect(service.getCreativeSuggestions).toHaveBeenCalledTimes(1);
+    expect(
+      service.suggestionGenerator.getCreativeSuggestions,
+    ).toHaveBeenCalledTimes(1);
 
     const validate = await runSupertestOrSkip(() =>
       request(app)
@@ -237,8 +253,8 @@ describe("video routes unit", () => {
     );
     if (!validate) return;
     expect(validate.status).toBe(200);
-    expect(service.checkCompatibility).toHaveBeenCalledTimes(1);
-    expect(service.detectConflicts).toHaveBeenCalledTimes(1);
+    expect(service.compatibility.checkCompatibility).toHaveBeenCalledTimes(1);
+    expect(service.conflictDetection.detectConflicts).toHaveBeenCalledTimes(1);
 
     const complete = await runSupertestOrSkip(() =>
       request(app)
@@ -252,8 +268,8 @@ describe("video routes unit", () => {
     );
     if (!complete) return;
     expect(complete.status).toBe(200);
-    expect(service.completeScene).toHaveBeenCalledTimes(1);
-    expect(service.getSmartDefaults).toHaveBeenCalledTimes(1);
+    expect(service.sceneCompletion.completeScene).toHaveBeenCalledTimes(1);
+    expect(service.promptValidation.getSmartDefaults).toHaveBeenCalledTimes(1);
 
     const variations = await runSupertestOrSkip(() =>
       request(app)
@@ -263,7 +279,7 @@ describe("video routes unit", () => {
     );
     if (!variations) return;
     expect(variations.status).toBe(200);
-    expect(service.generateVariations).toHaveBeenCalledTimes(1);
+    expect(service.sceneVariation.generateVariations).toHaveBeenCalledTimes(1);
 
     const parse = await runSupertestOrSkip(() =>
       request(app)
@@ -273,12 +289,14 @@ describe("video routes unit", () => {
     );
     if (!parse) return;
     expect(parse.status).toBe(200);
-    expect(service.parseConcept).toHaveBeenCalledTimes(1);
+    expect(service.conceptParsing.parseConcept).toHaveBeenCalledTimes(1);
   });
 
   it("returns 500 when service throws and asyncHandler forwards the error", async () => {
     const service = createMockService();
-    service.parseConcept.mockRejectedValueOnce(new Error("parse exploded"));
+    service.conceptParsing.parseConcept.mockRejectedValueOnce(
+      new Error("parse exploded"),
+    );
     const app = createApp(service);
 
     const response = await runSupertestOrSkip(() =>

@@ -34,7 +34,7 @@ import {
 } from "./model-intelligence.routes";
 import type { OptimizeServices } from "./optimize/types";
 import type { VideoServices } from "./video/types";
-import type { ReferenceImageRepository } from "@services/asset/reference-images/ReferenceImageRepository";
+import type { ReferenceImageStorePort } from "@services/asset/reference-images/ports/ReferenceImageStorePort";
 import type { AssetService } from "@services/asset/AssetService";
 import type { ConsistentVideoService } from "@services/video-generation/ConsistentVideoService";
 import type { UserCreditService } from "@services/credits/UserCreditService";
@@ -43,13 +43,12 @@ import type { ContinuitySessionService } from "@services/continuity/ContinuitySe
 import type { ModelIntelligenceService } from "@services/model-intelligence/ModelIntelligenceService";
 import type { SessionService } from "@services/sessions/SessionService";
 
-interface ApiServices extends OptimizeServices, EnhancementServices {
+interface ApiServices extends OptimizeServices, EnhancementServices, VideoServices {
   storageService: StorageRoutesService;
-  videoConceptService: VideoServices["videoConceptService"];
   assetService?: AssetService;
   consistentVideoService?: ConsistentVideoService;
   userCreditService?: UserCreditService;
-  referenceImageRepository?: ReferenceImageRepository | null;
+  referenceImageRepository?: ReferenceImageStorePort | null;
   imageObservationService?: ImageObservationService | null;
   continuitySessionService?: ContinuitySessionService | null;
   modelIntelligenceService?: ModelIntelligenceService | null;
@@ -70,7 +69,13 @@ export function createAPIRoutes(services: ApiServices): Router {
     enhancementService,
     sceneDetectionService,
     promptCoherenceService,
-    videoConceptService,
+    suggestionGenerator,
+    compatibility,
+    conflictDetection,
+    sceneCompletion,
+    promptValidation,
+    sceneVariation,
+    conceptParsing,
     metricsService,
     assetService,
     consistentVideoService,
@@ -88,7 +93,18 @@ export function createAPIRoutes(services: ApiServices): Router {
   router.use("/", createOptimizeRoutes({ promptOptimizationService }));
 
   // Mount video routes under /video (creates /api/video/* paths)
-  router.use("/video", createVideoRoutes({ videoConceptService }));
+  router.use(
+    "/video",
+    createVideoRoutes({
+      suggestionGenerator,
+      compatibility,
+      conflictDetection,
+      sceneCompletion,
+      promptValidation,
+      sceneVariation,
+      conceptParsing,
+    }),
+  );
 
   // Mount enhancement routes at root level (preserves existing paths)
   router.use(

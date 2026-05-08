@@ -1,5 +1,5 @@
 /**
- * Minimal session-store port consumed by `ContinuitySessionStore`.
+ * Minimal session-store port consumed by `FirestoreContinuitySessionStore`.
  *
  * Declared in the continuity domain so continuity depends on an abstraction
  * it owns, rather than on the concrete `SessionStore` class in

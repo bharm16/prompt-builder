@@ -15,6 +15,15 @@ interface GcsVideoAssetStoreOptions {
   cacheControl: string;
 }
 
+function isGcsNotFound(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code: unknown }).code === 404
+  );
+}
+
 export class GcsVideoAssetStore implements VideoAssetStore {
   private readonly bucket: Bucket;
   private readonly basePath: string;
@@ -45,8 +54,10 @@ export class GcsVideoAssetStore implements VideoAssetStore {
       preconditionOpts: { ifGenerationMatch: 0 },
     });
 
-    const [metadata] = await file.getMetadata();
-    const url = await this.getSignedUrl(file);
+    const [[metadata], url] = await Promise.all([
+      file.getMetadata(),
+      this.getSignedUrl(file),
+    ]);
     const resolvedSize = Number(metadata.size || 0);
     const sizeBytes =
       Number.isFinite(resolvedSize) && resolvedSize > 0
@@ -79,8 +90,10 @@ export class GcsVideoAssetStore implements VideoAssetStore {
       }),
     );
 
-    const [metadata] = await file.getMetadata();
-    const url = await this.getSignedUrl(file);
+    const [[metadata], url] = await Promise.all([
+      file.getMetadata(),
+      this.getSignedUrl(file),
+    ]);
     const resolvedSize = Number(metadata.size || 0);
     const sizeBytes =
       Number.isFinite(resolvedSize) && resolvedSize > 0
@@ -97,39 +110,39 @@ export class GcsVideoAssetStore implements VideoAssetStore {
 
   async getStream(assetId: string): Promise<VideoAssetStream | null> {
     const file = this.bucket.file(this.objectPath(assetId));
-    const [exists] = await file.exists();
-    if (!exists) {
-      return null;
+
+    try {
+      const [metadata] = await file.getMetadata();
+      const contentType =
+        typeof metadata.contentType === "string"
+          ? metadata.contentType
+          : "video/mp4";
+      const resolvedSize = Number(metadata.size || 0);
+      const sizeBytes =
+        Number.isFinite(resolvedSize) && resolvedSize > 0
+          ? resolvedSize
+          : undefined;
+
+      return {
+        stream: file.createReadStream(),
+        contentType,
+        ...(sizeBytes !== undefined ? { contentLength: sizeBytes } : {}),
+      };
+    } catch (error) {
+      if (isGcsNotFound(error)) return null;
+      throw error;
     }
-
-    const [metadata] = await file.getMetadata();
-    const contentType =
-      typeof metadata.contentType === "string"
-        ? metadata.contentType
-        : "video/mp4";
-    const resolvedSize = Number(metadata.size || 0);
-    const sizeBytes =
-      Number.isFinite(resolvedSize) && resolvedSize > 0
-        ? resolvedSize
-        : undefined;
-
-    return {
-      stream: file.createReadStream(),
-      contentType,
-      ...(sizeBytes !== undefined ? { contentLength: sizeBytes } : {}),
-    };
   }
 
   async getPublicUrl(assetId: string): Promise<string | null> {
     const file = this.bucket.file(this.objectPath(assetId));
     try {
-      const [exists] = await file.exists();
-      if (!exists) {
+      return await this.getSignedUrl(file);
+    } catch (error) {
+      if (isGcsNotFound(error)) {
         this.log.warn("Video asset missing in GCS", { assetId });
         return null;
       }
-      return await this.getSignedUrl(file);
-    } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
       this.log.warn("Failed to generate video signed URL", {

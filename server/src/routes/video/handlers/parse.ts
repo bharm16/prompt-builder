@@ -1,9 +1,9 @@
 import type { Request, Response } from "express";
 import { logger } from "@infrastructure/Logger";
-import type { VideoConceptServiceContract } from "../types";
+import type { ConceptParsingService } from "@services/video-concept/services/analysis/ConceptParsingService";
 
 export const createVideoParseHandler =
-  (videoConceptService: VideoConceptServiceContract) =>
+  (conceptParsing: ConceptParsingService) =>
   async (req: Request, res: Response): Promise<Response | void> => {
     const startTime = Date.now();
     const requestId = req.id || "unknown";
@@ -18,7 +18,7 @@ export const createVideoParseHandler =
     });
 
     try {
-      const parsed = await videoConceptService.parseConcept({ concept });
+      const parsed = await conceptParsing.parseConcept({ concept });
 
       logger.info("Video parse request completed", {
         operation,

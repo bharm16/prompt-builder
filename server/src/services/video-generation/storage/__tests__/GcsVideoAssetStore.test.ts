@@ -163,12 +163,12 @@ describe("GcsVideoAssetStore", () => {
   it("returns stream metadata when object exists and null when missing", async () => {
     const existingName = "video-previews/existing";
     const existing = createFile(existingName, {
-      exists: vi.fn().mockResolvedValue([true]),
       getMetadata: vi.fn().mockResolvedValue([{ size: "0" }]),
     });
     const missingName = "video-previews/missing";
+    const notFound = Object.assign(new Error("Not Found"), { code: 404 });
     const missing = createFile(missingName, {
-      exists: vi.fn().mockResolvedValue([false]),
+      getMetadata: vi.fn().mockRejectedValue(notFound),
     });
     mocks.files.set(existingName, existing);
     mocks.files.set(missingName, missing);
@@ -190,17 +190,18 @@ describe("GcsVideoAssetStore", () => {
 
   it("returns null and logs warning when public url lookup fails", async () => {
     const missingName = "video-previews/missing";
+    const notFound = Object.assign(new Error("Not Found"), { code: 404 });
     mocks.files.set(
       missingName,
       createFile(missingName, {
-        exists: vi.fn().mockResolvedValue([false]),
+        getSignedUrl: vi.fn().mockRejectedValue(notFound),
       }),
     );
     const errorName = "video-previews/erroring";
     mocks.files.set(
       errorName,
       createFile(errorName, {
-        exists: vi.fn().mockRejectedValue(new Error("gcs unavailable")),
+        getSignedUrl: vi.fn().mockRejectedValue(new Error("gcs unavailable")),
       }),
     );
 

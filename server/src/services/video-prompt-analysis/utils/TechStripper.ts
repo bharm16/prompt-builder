@@ -8,6 +8,8 @@
  * @module TechStripper
  */
 
+import { escapeRegex } from "@shared/utils/escapeRegex";
+
 /**
  * Placebo tokens that may degrade performance on certain models
  */
@@ -104,7 +106,7 @@ export class TechStripper {
     const shouldStrip = this.shouldStripTokens(modelId);
     if (shouldStrip) {
       for (const token of PLACEBO_TOKENS) {
-        const regex = new RegExp(`\\b${this.escapeRegex(token)}\\b`, "gi");
+        const regex = new RegExp(`\\b${escapeRegex(token)}\\b`, "gi");
         const matches = processedText.match(regex);
 
         if (matches) {
@@ -169,13 +171,6 @@ export class TechStripper {
    */
   getPlaceboTokens(): readonly string[] {
     return PLACEBO_TOKENS;
-  }
-
-  /**
-   * Escape special regex characters in a string
-   */
-  private escapeRegex(str: string): string {
-    return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   }
 
   /**
