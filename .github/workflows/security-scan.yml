@@ -116,8 +116,13 @@ jobs:
           severity-cutoff: high
 
       - name: Upload Grype SARIF report
+        # Don't fail container-scan on a malformed/empty Grype SARIF; Trivy
+        # upload above already covers vuln coverage. Some PR builds have
+        # produced empty SARIF (Unexpected end of JSON input) which broke
+        # the whole job for an artifact-side issue.
         uses: github/codeql-action/upload-sarif@v3
         if: always() && steps.grype.outputs.sarif != ''
+        continue-on-error: true
         with:
           sarif_file: ${{ steps.grype.outputs.sarif }}
 

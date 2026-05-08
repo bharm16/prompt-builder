@@ -172,6 +172,13 @@ jobs:
 
   bundle-analysis:
     runs-on: ubuntu-latest
+    permissions:
+      # The "Comment PR with bundle size" step uses github-script to post
+      # a PR comment; without explicit pull-requests: write, the default
+      # GITHUB_TOKEN can't comment and the step fails with "Resource not
+      # accessible by integration".
+      contents: read
+      pull-requests: write
 
     steps:
       - uses: actions/checkout@v4
@@ -267,7 +274,9 @@ jobs:
 
       - name: Serve application
         run: |
-          npx http-server dist -p 8080 &
+          # --gzip satisfies the Lighthouse uses-text-compression audit by
+          # enabling Content-Encoding: gzip on responses.
+          npx http-server dist -p 8080 --gzip &
           echo $! > server.pid
           # Wait for the static server to actually accept connections
           for i in {1..15}; do
