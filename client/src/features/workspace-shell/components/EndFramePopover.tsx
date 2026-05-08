@@ -142,6 +142,7 @@ export function EndFramePopover({
           if (file) void handleUpload(file);
           event.target.value = "";
         }}
+        aria-label="Upload end frame image"
       />
 
       {isOpen ? (

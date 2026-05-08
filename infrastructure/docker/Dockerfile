@@ -4,13 +4,20 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
+# bash is needed by scripts/download-models.sh (uses [[ ]], BASH_SOURCE,
+# set -o pipefail). node:20-alpine ships with sh only.
+RUN apk add --no-cache bash
+
 # Copy package files (root + workspace packages so `workspace:*`
 # references in package.json resolve during `npm ci`)
 COPY package*.json ./
 COPY packages ./packages
 
 # Install dependencies
-RUN npm ci --only=production && npm cache clean --force
+# --ignore-scripts: skip lifecycle hooks (e.g. `prepare` runs install-hooks.sh,
+# which depends on files not yet copied into this layer and is irrelevant in
+# a production container — there's no .git directory to install hooks into).
+RUN npm ci --only=production --ignore-scripts && npm cache clean --force
 
 # Download model assets during build (cached when inputs are unchanged)
 COPY scripts/download-models.sh ./scripts/download-models.sh
