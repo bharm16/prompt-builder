@@ -14,6 +14,12 @@ jobs:
   load-test:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # Load tests need real Firebase admin credentials to bring up the
+    # production server (the readiness probe in services.initialize.ts
+    # calls listUsers/listCollections). PR builds don't have access to
+    # the FIREBASE_SERVICE_ACCOUNT_JSON secret, so this job runs only
+    # on push to main and on the nightly schedule.
+    if: github.event_name != 'pull_request'
 
     services:
       redis:
@@ -37,8 +43,8 @@ jobs:
         run: |
           npm run server &
           echo $! > server.pid
-          # Wait up to 30s for /health to come up rather than a fixed sleep
-          for i in {1..30}; do
+          # Wait up to 60s for /health to come up rather than a fixed sleep
+          for i in {1..60}; do
             if curl -fs http://localhost:3001/health >/dev/null 2>&1; then
               echo "Server is up after ${i}s"
               break
@@ -48,11 +54,12 @@ jobs:
           curl -f http://localhost:3001/health
         env:
           VITE_ANTHROPIC_API_KEY: ${{ secrets.VITE_ANTHROPIC_API_KEY || 'sk-test-key' }}
-          NODE_ENV: test
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+          NODE_ENV: production
           PORT: 3001
           REDIS_URL: redis://localhost:6379
-          FIREBASE_STORAGE_BUCKET: test.appspot.com
-          GCS_BUCKET_NAME: test.appspot.com
+          FIREBASE_STORAGE_BUCKET: ${{ secrets.FIREBASE_STORAGE_BUCKET || 'test.appspot.com' }}
+          GCS_BUCKET_NAME: ${{ secrets.GCS_BUCKET_NAME || 'test.appspot.com' }}
 
       - name: Install k6
         run: |
@@ -180,23 +187,17 @@ jobs:
 
       - name: Build and analyze bundle
         env:
-          GENERATE_SOURCEMAP: "true"
-        run: |
-          npm run build
-
-          # Install bundle analyzer
-          npm install -g source-map-explorer
-
-          # Analyze only chunks that have an emitted .map (vendor pre-bundles
-          # may not). --only-mapped silences "Unable to find a source map"
-          # errors for unmapped files.
-          source-map-explorer 'dist/**/*.js' --only-mapped --json > bundle-analysis.json
+          # rollup-plugin-visualizer is already wired into vite.config.ts;
+          # ANALYZE_BUNDLE=true makes the build emit dist/bundle-stats.html
+          # (treemap of every chunk with gzip + brotli sizes).
+          ANALYZE_BUNDLE: "true"
+        run: npm run build
 
       - name: Upload bundle analysis
         uses: actions/upload-artifact@v4
         with:
           name: bundle-analysis
-          path: bundle-analysis.json
+          path: dist/bundle-stats.html
 
       - name: Check bundle size limits
         run: |
@@ -251,13 +252,28 @@ jobs:
         run: npm ci
 
       - name: Build application
+        # The SPA crashes on init without these VITE_* values; without a
+        # rendered DOM Lighthouse hits NO_FCP. Test placeholders are fine
+        # because we never make real Firebase calls in this job.
+        env:
+          VITE_ANTHROPIC_API_KEY: "sk-test-key"
+          VITE_FIREBASE_API_KEY: "test-key"
+          VITE_FIREBASE_PROJECT_ID: "test-project"
+          VITE_FIREBASE_AUTH_DOMAIN: "test.firebaseapp.com"
+          VITE_FIREBASE_STORAGE_BUCKET: "test.appspot.com"
+          VITE_FIREBASE_MESSAGING_SENDER_ID: "123456789"
+          VITE_FIREBASE_APP_ID: "test-app-id"
         run: npm run build
 
       - name: Serve application
         run: |
           npx http-server dist -p 8080 &
           echo $! > server.pid
-          sleep 3
+          # Wait for the static server to actually accept connections
+          for i in {1..15}; do
+            if curl -fs http://localhost:8080/ >/dev/null 2>&1; then break; fi
+            sleep 1
+          done
 
       - name: Run Lighthouse
         uses: treosh/lighthouse-ci-action@v10

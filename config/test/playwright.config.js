@@ -4,8 +4,10 @@ import { defineConfig, devices } from "@playwright/test";
  * Playwright E2E Testing Configuration
  * @see https://playwright.dev/docs/test-configuration
  */
-const localSingleBrowser =
-  !process.env.CI && process.env.E2E_ALL_BROWSERS !== "true";
+// Single-browser (chromium) is the default for fast feedback.
+// Cross-browser coverage is opted into via E2E_ALL_BROWSERS=true — set on
+// pushes to main/develop and on the nightly schedule, but not on PR runs.
+const singleBrowser = process.env.E2E_ALL_BROWSERS !== "true";
 
 export default defineConfig({
   testDir: "../../tests/e2e",
@@ -14,7 +16,10 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  // workers: 1 was leaving CPU on the table — multiple test files can run
+  // in parallel even when fullyParallel is on, since each worker still
+  // owns one browser context. 2 keeps memory predictable on the runner.
+  workers: process.env.CI ? 2 : undefined,
   reporter: [
     // open: "never" — stops Playwright from running `open --wait-apps`
     // on the report URL, which blocks the parent shell on macOS until
@@ -49,7 +54,7 @@ export default defineConfig({
   },
 
   // Test projects for different browsers
-  projects: localSingleBrowser
+  projects: singleBrowser
     ? [
         {
           name: "chromium",

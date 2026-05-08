@@ -4,8 +4,10 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Copy package files
+# Copy package files (root + workspace packages so `workspace:*`
+# references in package.json resolve during `npm ci`)
 COPY package*.json ./
+COPY packages ./packages
 
 # Install dependencies
 RUN npm ci --only=production && npm cache clean --force
