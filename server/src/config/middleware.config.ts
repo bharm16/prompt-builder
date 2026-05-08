@@ -377,8 +377,24 @@ export function applyRateLimitingMiddleware(
     isDevEnv ? RATE_LIMIT_CONFIG.llm.dev : RATE_LIMIT_CONFIG.llm.prod,
   );
 
-  // JSON handler for rate limit responses — conforms to ApiErrorResponse shape
-  const rateLimitJSONHandler = (
+  // Two handlers exist because the limiters run in different contexts:
+  //
+  // - `mountedLimiterJSONHandler` is used by limiters mounted at a specific
+  //   path prefix (`app.use("/api/", limiter)`, `/llm/`, burst limiters).
+  //   Express's route mount guarantees the request matches that prefix, so
+  //   the handler returns the ApiErrorResponse JSON shape unconditionally.
+  //
+  // - `globalLimiterHandler` is used by the application-wide general limiter
+  //   that runs on every request. It dispatches: /api/ and /llm/ requests
+  //   that slip through (because the dedicated limiter's `skip()` was
+  //   evaluated after the general one already ran) get the JSON shape so
+  //   the client can parse it; everything else (static pages, etc.) gets
+  //   plain text.
+  //
+  // The two handlers are not duplication — they encode the mounted-vs-global
+  // distinction. Do not collapse them into a single path-checking handler:
+  // for mounted limiters, the path check would be provably-always-true.
+  const mountedLimiterJSONHandler = (
     req: express.Request,
     res: express.Response,
     _next: express.NextFunction,
@@ -393,7 +409,7 @@ export function applyRateLimitingMiddleware(
     });
   };
 
-  const generalRateLimitHandler = (
+  const globalLimiterHandler = (
     req: express.Request,
     res: express.Response,
     next: express.NextFunction,
@@ -401,7 +417,7 @@ export function applyRateLimitingMiddleware(
   ): void => {
     const requestPath = req.originalUrl || req.path;
     if (requestPath.startsWith("/api/") || requestPath.startsWith("/llm/")) {
-      rateLimitJSONHandler(req, res, next, options);
+      mountedLimiterJSONHandler(req, res, next, options);
       return;
     }
 
@@ -430,7 +446,7 @@ export function applyRateLimitingMiddleware(
     message: "Too many requests from this IP",
     standardHeaders: true,
     legacyHeaders: false,
-    handler: generalRateLimitHandler,
+    handler: globalLimiterHandler,
     skip: isGeneralSkipped,
     ...(storeFactory ? { store: storeFactory("general") } : {}),
   });
@@ -471,7 +487,7 @@ export function applyRateLimitingMiddleware(
       message: "Global rate limit exceeded",
       standardHeaders: true,
       legacyHeaders: false,
-      handler: rateLimitJSONHandler,
+      handler: mountedLimiterJSONHandler,
       skip: (req: express.Request) =>
         isAssetViewRoute(req) || isSessionHydrationRoute(req),
       ...(storeFactory ? { store: storeFactory("api") } : {}),
@@ -489,7 +505,7 @@ export function applyRateLimitingMiddleware(
       message: "Asset view rate limit exceeded",
       standardHeaders: true,
       legacyHeaders: false,
-      handler: rateLimitJSONHandler,
+      handler: mountedLimiterJSONHandler,
       skip: (req: express.Request) => !isAssetViewRoute(req),
       ...(storeFactory ? { store: storeFactory("asset-view") } : {}),
     }),
@@ -511,7 +527,7 @@ export function applyRateLimitingMiddleware(
       message: "Too many LLM requests",
       standardHeaders: true,
       legacyHeaders: false,
-      handler: rateLimitJSONHandler,
+      handler: mountedLimiterJSONHandler,
       ...(storeFactory ? { store: storeFactory("llm") } : {}),
     }),
   );
@@ -529,7 +545,7 @@ export function applyRateLimitingMiddleware(
       message,
       standardHeaders: true,
       legacyHeaders: false,
-      handler: rateLimitJSONHandler,
+      handler: mountedLimiterJSONHandler,
       ...(storeFactory
         ? { store: storeFactory(`burst${burstLimiterIndex++}`) }
         : {}),
