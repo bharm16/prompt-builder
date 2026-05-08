@@ -122,10 +122,18 @@ jobs:
         run: |
           npx http-server dist -p 8080 &
           SERVER_PID=$!
-          sleep 3
+          # Wait for server to actually accept connections
+          for i in {1..15}; do
+            if curl -fs http://localhost:8080/ >/dev/null 2>&1; then break; fi
+            sleep 1
+          done
 
-          npx pa11y-ci --sitemap http://localhost:8080/sitemap.xml || \
-          npx pa11y http://localhost:8080
+          # The site has no /sitemap.xml; run pa11y on the root URL with
+          # Chrome flags that work on Ubuntu 24+ runners (sandboxing is
+          # disabled by AppArmor on hosted runners).
+          npx pa11y \
+            --config .pa11yci.json \
+            http://localhost:8080
 
           kill $SERVER_PID
 
@@ -136,3 +144,4 @@ jobs:
             http://localhost:8080
           uploadArtifacts: true
           temporaryPublicStorage: true
+          configPath: ".lighthouserc.json"

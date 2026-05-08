@@ -37,13 +37,22 @@ jobs:
         run: |
           npm run server &
           echo $! > server.pid
-          sleep 5
+          # Wait up to 30s for /health to come up rather than a fixed sleep
+          for i in {1..30}; do
+            if curl -fs http://localhost:3001/health >/dev/null 2>&1; then
+              echo "Server is up after ${i}s"
+              break
+            fi
+            sleep 1
+          done
           curl -f http://localhost:3001/health
         env:
           VITE_ANTHROPIC_API_KEY: ${{ secrets.VITE_ANTHROPIC_API_KEY || 'sk-test-key' }}
-          NODE_ENV: production
+          NODE_ENV: test
           PORT: 3001
           REDIS_URL: redis://localhost:6379
+          FIREBASE_STORAGE_BUCKET: test.appspot.com
+          GCS_BUCKET_NAME: test.appspot.com
 
       - name: Install k6
         run: |
@@ -170,14 +179,18 @@ jobs:
         run: npm ci
 
       - name: Build and analyze bundle
+        env:
+          GENERATE_SOURCEMAP: "true"
         run: |
           npm run build
 
           # Install bundle analyzer
           npm install -g source-map-explorer
 
-          # Analyze bundle
-          source-map-explorer 'dist/**/*.js' --json > bundle-analysis.json
+          # Analyze only chunks that have an emitted .map (vendor pre-bundles
+          # may not). --only-mapped silences "Unable to find a source map"
+          # errors for unmapped files.
+          source-map-explorer 'dist/**/*.js' --only-mapped --json > bundle-analysis.json
 
       - name: Upload bundle analysis
         uses: actions/upload-artifact@v4
@@ -253,7 +266,7 @@ jobs:
           uploadArtifacts: true
           temporaryPublicStorage: true
           runs: 3
-          budgetPath: ".lighthouserc.json"
+          configPath: ".lighthouserc.json"
 
       - name: Check performance budget
         run: |
