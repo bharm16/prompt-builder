@@ -64,7 +64,14 @@ export class SpanContextBuilder {
       );
 
     const clauses = this._findClauseBoundaries(fullPrompt);
-    const highlightRange = this._resolveSpanRange(fullPrompt, highlightedText);
+    const fullPromptLower = fullPrompt.toLowerCase();
+    const highlightRange = this._resolveSpanRange(
+      fullPrompt,
+      highlightedText,
+      undefined,
+      undefined,
+      fullPromptLower,
+    );
     const highlightClauseIndex = this._findClauseIndex(clauses, highlightRange);
 
     const sameClauseAnchors = new Map<
@@ -85,6 +92,7 @@ export class SpanContextBuilder {
         span.text,
         span.start,
         span.end,
+        fullPromptLower,
       );
       const spanClauseIndex = this._findClauseIndex(clauses, spanRange);
       const anchorPool =
@@ -227,6 +235,7 @@ export class SpanContextBuilder {
     spanText: string,
     start?: number,
     end?: number,
+    fullPromptLower?: string,
   ): { start: number; end: number } | null {
     if (
       Number.isFinite(start) &&
@@ -242,7 +251,8 @@ export class SpanContextBuilder {
 
     const normalizedText = spanText.trim().toLowerCase();
     if (!normalizedText) return null;
-    const index = fullPrompt.toLowerCase().indexOf(normalizedText);
+    const haystack = fullPromptLower ?? fullPrompt.toLowerCase();
+    const index = haystack.indexOf(normalizedText);
     if (index < 0) return null;
     return { start: index, end: index + normalizedText.length - 1 };
   }

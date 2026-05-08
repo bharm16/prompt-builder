@@ -20,20 +20,26 @@ export class OptimizationCacheService {
   }
 
   async getCachedResult(key: string): Promise<string | null> {
-    return this.cacheService.get<string>(key);
+    return this.cacheService.get<string>(key, "optimization");
   }
 
   async getCachedMetadata(
     key: string,
   ): Promise<Record<string, unknown> | null> {
     const metaKey = this.buildMetadataCacheKey(key);
-    return this.cacheService.get<Record<string, unknown>>(metaKey);
+    return this.cacheService.get<Record<string, unknown>>(
+      metaKey,
+      "optimization_metadata",
+    );
   }
 
   async getStructuredArtifact(
     key: string,
   ): Promise<StructuredOptimizationArtifact | null> {
-    return this.cacheService.get<StructuredOptimizationArtifact>(key);
+    return this.cacheService.get<StructuredOptimizationArtifact>(
+      key,
+      "optimization_artifact",
+    );
   }
 
   async cacheResult(
@@ -77,8 +83,10 @@ export class OptimizationCacheService {
       mode,
       targetModel || "generic",
       promptHash,
-      context ? JSON.stringify(context) : "",
-      brainstormContext ? JSON.stringify(brainstormContext) : "",
+      context ? OptimizationCacheService.stableStringify(context) : "",
+      brainstormContext
+        ? OptimizationCacheService.stableStringify(brainstormContext)
+        : "",
       generationSignature,
     ];
     if (lockedSpanSignature) {
@@ -110,13 +118,42 @@ export class OptimizationCacheService {
       generationParams: this.normalizeGenerationParams(params.generationParams),
       lockedSpans: this.normalizeLockedSpans(params.lockedSpans),
     };
-    const promptHash = sha256Hex(JSON.stringify(normalizedPayload), 24);
+    // stableStringify (sorted keys at every depth) is required here for the
+    // same reason as in buildOptimizationCacheKey: insertion-order differences
+    // in nested objects (per-shot details inside shotPlan, generationParams
+    // values, etc.) would otherwise hash to different keys for semantically
+    // identical inputs. normalizeShotPlan above only sorts the top level, so
+    // it would not cover nested cases on its own.
+    const promptHash = sha256Hex(
+      OptimizationCacheService.stableStringify(normalizedPayload),
+      24,
+    );
 
     return ["prompt-opt-v5", "structured-artifact", promptHash].join("::");
   }
 
   private buildMetadataCacheKey(baseKey: string): string {
     return `${baseKey}::meta`;
+  }
+
+  /**
+   * Deterministic JSON.stringify with sorted object keys at every depth.
+   * Two semantically equal objects with different insertion order produce the
+   * same string — required for cache keys, otherwise `{a:1,b:2}` and
+   * `{b:2,a:1}` collide-miss as different entries.
+   */
+  private static stableStringify(value: unknown): string {
+    return JSON.stringify(value, (_key, val) => {
+      if (val && typeof val === "object" && !Array.isArray(val)) {
+        const obj = val as Record<string, unknown>;
+        const sorted: Record<string, unknown> = {};
+        for (const k of Object.keys(obj).sort()) {
+          sorted[k] = obj[k];
+        }
+        return sorted;
+      }
+      return val;
+    });
   }
 
   private buildLockedSpanSignature(

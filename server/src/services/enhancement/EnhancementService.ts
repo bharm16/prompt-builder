@@ -1,6 +1,7 @@
 import { logger } from "@infrastructure/Logger";
 import type { ILogger } from "@interfaces/ILogger";
 import type { CacheService } from "@services/cache/CacheService";
+import { sha256Hex } from "@utils/hash";
 import { TemperatureOptimizer } from "@utils/TemperatureOptimizer";
 import { StructuredOutputEnforcer } from "@utils/StructuredOutputEnforcer";
 import { getCustomSuggestionSchema } from "./config/schemas";
@@ -392,12 +393,18 @@ export class EnhancementService {
       });
 
       result = execution.result;
-      rawSuggestionsSnapshot = execution.rawSuggestions.map((suggestion) => ({
-        ...suggestion,
-      }));
-      finalSuggestionsSnapshot = execution.finalSuggestions.map(
-        (suggestion) => ({ ...suggestion }),
-      );
+      // Snapshot clones feed the `_debug` payload below — only needed when
+      // a debug request is in flight (and only outside production). Skipping
+      // them on the hot path saves an O(n) shallow-copy per suggestion.
+      const wantDebugSnapshots = debug && process.env.NODE_ENV !== "production";
+      if (wantDebugSnapshots) {
+        rawSuggestionsSnapshot = execution.rawSuggestions.map((suggestion) => ({
+          ...suggestion,
+        }));
+        finalSuggestionsSnapshot = execution.finalSuggestions.map(
+          (suggestion) => ({ ...suggestion }),
+        );
+      }
       systemPromptSent = execution.debug.systemPromptSent || "";
       stageCounts = execution.debug.stageCounts;
       rejectionSummary = execution.debug.rejectionSummary;
@@ -545,13 +552,16 @@ export class EnhancementService {
       hasMetadata: Boolean(metadata && Object.keys(metadata).length > 0),
     });
 
-    // Check cache
+    // Check cache. Hash full inputs instead of substring-truncating — the
+    // previous truncation (fullPrompt to 500, contexts to 200) caused silent
+    // collisions for prompts that diverged past those positions and produced
+    // wrong cached suggestions.
     const cacheKey = this.cacheService.generateKey(this.cacheConfig.namespace, {
       highlightedText,
       customRequest,
-      fullPrompt: fullPrompt.substring(0, 500),
-      contextBefore: contextBefore?.substring(0, 200),
-      contextAfter: contextAfter?.substring(0, 200),
+      fullPromptHash: sha256Hex(fullPrompt, 16),
+      contextBeforeHash: contextBefore ? sha256Hex(contextBefore, 16) : null,
+      contextAfterHash: contextAfter ? sha256Hex(contextAfter, 16) : null,
       spanId:
         (metadata as { spanId?: string } | null)?.spanId ??
         (metadata as { span?: { id?: string } } | null)?.span?.id ??

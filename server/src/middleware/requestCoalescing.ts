@@ -132,15 +132,34 @@ function tryFastCanonicalizeBody(body: unknown): string | null {
   }
 
   const obj = body as Record<string, unknown>;
-  if (typeof obj.prompt !== "string") {
-    return null;
+
+  // Optimization-request fast path.
+  if (typeof obj.prompt === "string") {
+    const mode = typeof obj.mode === "string" ? obj.mode : "";
+    const targetModel =
+      typeof obj.targetModel === "string" ? obj.targetModel : "";
+    const skipCache = obj.skipCache === true ? "1" : "0";
+    return `fast:${obj.prompt}|${mode}|${targetModel}|${skipCache}`;
   }
 
-  const mode = typeof obj.mode === "string" ? obj.mode : "";
-  const targetModel =
-    typeof obj.targetModel === "string" ? obj.targetModel : "";
-  const skipCache = obj.skipCache === true ? "1" : "0";
-  return `fast:${obj.prompt}|${mode}|${targetModel}|${skipCache}`;
+  // Span-labeling fast path. Span-labeling requests use `text` instead of
+  // `prompt`, so without this branch they fall through to the deep
+  // stableStringify with WeakSet recursion guard on every concurrent request.
+  if (typeof obj.text === "string") {
+    const templateVersion =
+      typeof obj.templateVersion === "string" ? obj.templateVersion : "";
+    // Policy is a small object with a couple of bool/string fields; a tiny
+    // sorted-keys serialization is cheaper than the recursive traversal.
+    let policySig = "";
+    if (obj.policy && typeof obj.policy === "object") {
+      const p = obj.policy as Record<string, unknown>;
+      const keys = Object.keys(p).sort();
+      policySig = keys.map((k) => `${k}=${String(p[k])}`).join(",");
+    }
+    return `fast:span:${obj.text}|${templateVersion}|${policySig}`;
+  }
+
+  return null;
 }
 
 function canonicalizeBody(body: unknown): string {
@@ -227,6 +246,20 @@ export interface RequestCoalescingMiddlewareOptions {
   housekeepIntervalMs?: number;
 }
 
+/**
+ * Structural slice of {@link MetricsService} this middleware depends on.
+ *
+ * Source of truth: `recordCoalescedRequest` in
+ * `server/src/infrastructure/MetricsService.ts`. If that signature changes,
+ * update this interface to match. We use a structural type here (rather than
+ * importing MetricsService directly) to avoid pulling Prometheus client deps
+ * into the middleware module — the middleware is constructed at module load
+ * via the exported singleton, before DI is initialized.
+ */
+interface CoalescingMetricsCollector {
+  recordCoalescedRequest(type?: string): void;
+}
+
 export class RequestCoalescingMiddleware {
   private pendingRequests: Map<string, PendingEntry>;
   private stats: { coalesced: number; unique: number; totalSaved: number };
@@ -234,6 +267,9 @@ export class RequestCoalescingMiddleware {
   private housekeepTimer: ReturnType<typeof setInterval> | null;
   private readonly maxPending: number;
   private readonly housekeepIntervalMs: number;
+  // Optional Prometheus collector — wired from DI bootstrap so the existing
+  // singleton (imported directly by routes) doesn't need a constructor change.
+  private metricsCollector: CoalescingMetricsCollector | null = null;
 
   constructor(options: RequestCoalescingMiddlewareOptions = {}) {
     this.pendingRequests = new Map();
@@ -280,6 +316,14 @@ export class RequestCoalescingMiddleware {
     }
     clearInterval(this.housekeepTimer);
     this.housekeepTimer = null;
+  }
+
+  /**
+   * Wire a Prometheus counter so each coalesced request increments
+   * `coalesced_requests_total{type}`. Called once during DI bootstrap.
+   */
+  setMetricsCollector(collector: CoalescingMetricsCollector | null): void {
+    this.metricsCollector = collector;
   }
 
   /**
@@ -338,6 +382,7 @@ export class RequestCoalescingMiddleware {
       if (pendingEntry && pendingEntry.completedAt === null) {
         this.stats.coalesced++;
         this.stats.totalSaved++;
+        this.metricsCollector?.recordCoalescedRequest("middleware");
 
         logger.debug("Request coalesced", {
           requestId: req.id,
