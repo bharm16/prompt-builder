@@ -15,6 +15,7 @@ import {
 } from "../utils/generationUtils";
 import { logger } from "@/services/LoggingService";
 import { sanitizeError } from "@/utils/logging";
+import { extractMotionMeta } from "@/utils/motion";
 import { resolveMediaUrl } from "@/services/media/MediaUrlResolver";
 import { assetApi } from "@/features/assets/api/assetApi";
 import { safeUrlHost } from "@/utils/url";
@@ -85,35 +86,6 @@ const readSessionParams = (
     ...(sessionId ? { sessionId } : {}),
     ...(promptVersionId ? { promptVersionId } : {}),
   };
-};
-
-const normalizeMotionString = (value: unknown): string | null => {
-  if (typeof value !== "string") {
-    return null;
-  }
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : null;
-};
-
-const extractMotionMeta = (generationParams?: Record<string, unknown>) => {
-  const params = generationParams ?? {};
-  const generationParamKeys = Object.keys(params);
-  const cameraMotionId = normalizeMotionString(params.camera_motion_id);
-  const subjectMotion = normalizeMotionString(params.subject_motion);
-  const keyframesCount = Array.isArray(params.keyframes)
-    ? params.keyframes.length
-    : 0;
-
-  return {
-    hasGenerationParams: generationParamKeys.length > 0,
-    generationParamKeys,
-    hasCameraMotion: Boolean(cameraMotionId),
-    cameraMotionId,
-    hasSubjectMotion: Boolean(subjectMotion),
-    subjectMotionLength: subjectMotion?.length ?? 0,
-    hasKeyframes: keyframesCount > 0,
-    keyframesCount,
-  } as const;
 };
 
 const extractFaceSwapMeta = (params?: GenerationParams) => {
