@@ -9,6 +9,10 @@ import {
   buildOfflineResult,
   shouldUseOfflineFallback,
 } from "./prompt-optimization/offlineFallback";
+import {
+  CompileResponseSchema,
+  OptimizeResponseSchema,
+} from "./prompt-optimization/types";
 import type {
   CompileOptions,
   CompileResult,
@@ -36,7 +40,7 @@ export class PromptOptimizationApi {
     try {
       const requestOptions = signal ? { signal } : {};
       trackPromptOptimize(mode);
-      return (await this.client.post(
+      const raw = await this.client.post(
         "/optimize",
         {
           prompt,
@@ -52,7 +56,8 @@ export class PromptOptimizationApi {
           ...(constraintMode ? { constraintMode } : {}),
         },
         requestOptions,
-      )) as OptimizeResult;
+      );
+      return OptimizeResponseSchema.parse(raw) as OptimizeResult;
     } catch (error) {
       if (shouldUseOfflineFallback(error)) {
         return buildOfflineResult(
@@ -73,7 +78,7 @@ export class PromptOptimizationApi {
     signal,
   }: CompileOptions): Promise<CompileResult> {
     const requestOptions = signal ? { signal } : {};
-    return (await this.client.post(
+    const raw = await this.client.post(
       "/optimize-compile",
       {
         ...(prompt ? { prompt } : {}),
@@ -82,7 +87,8 @@ export class PromptOptimizationApi {
         ...(context ? { context } : {}),
       },
       requestOptions,
-    )) as CompileResult;
+    );
+    return CompileResponseSchema.parse(raw) as CompileResult;
   }
 
   calculateQualityScore(inputPrompt: string, outputPrompt: string): number {

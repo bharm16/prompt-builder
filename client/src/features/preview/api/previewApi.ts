@@ -21,6 +21,7 @@ import {
   UploadPreviewImageResponseSchema,
   VideoJobStatusResponseSchema,
 } from "./schemas";
+import { extractMotionMeta } from "@/features/generations/utils/motionMeta";
 
 const log = logger.child("previewApi");
 const VIDEO_OPERATION = "generateVideoPreview";
@@ -30,35 +31,6 @@ const PREVIEW_IMAGE_ALLOWED_TYPES = new Set([
   "image/webp",
 ]);
 const PREVIEW_IMAGE_MAX_BYTES = 10 * 1024 * 1024;
-
-const normalizeMotionString = (value: unknown): string | null => {
-  if (typeof value !== "string") {
-    return null;
-  }
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : null;
-};
-
-const extractMotionMeta = (generationParams?: Record<string, unknown>) => {
-  const params = generationParams ?? {};
-  const generationParamKeys = Object.keys(params);
-  const cameraMotionId = normalizeMotionString(params.camera_motion_id);
-  const subjectMotion = normalizeMotionString(params.subject_motion);
-  const keyframesCount = Array.isArray(params.keyframes)
-    ? params.keyframes.length
-    : 0;
-
-  return {
-    hasGenerationParams: generationParamKeys.length > 0,
-    generationParamKeys,
-    hasCameraMotion: Boolean(cameraMotionId),
-    cameraMotionId,
-    hasSubjectMotion: Boolean(subjectMotion),
-    subjectMotionLength: subjectMotion?.length ?? 0,
-    hasKeyframes: keyframesCount > 0,
-    keyframesCount,
-  } as const;
-};
 
 function requireNonEmptyString(
   value: unknown,

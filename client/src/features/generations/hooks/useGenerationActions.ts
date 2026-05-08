@@ -30,6 +30,7 @@ import {
 } from "@/hooks/useUserCreditBalance";
 import { getModelConfig, getModelCreditCost } from "../config/generationConfig";
 import { getVideoInputSupport } from "../utils/videoInputSupport";
+import { extractMotionMeta } from "../utils/motionMeta";
 
 /** Extract the asset ID (last path segment) from a storage path or return the value as-is. */
 const extractAssetId = (pathOrId: string): string => {
@@ -85,35 +86,6 @@ const readSessionParams = (
     ...(sessionId ? { sessionId } : {}),
     ...(promptVersionId ? { promptVersionId } : {}),
   };
-};
-
-const normalizeMotionString = (value: unknown): string | null => {
-  if (typeof value !== "string") {
-    return null;
-  }
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : null;
-};
-
-const extractMotionMeta = (generationParams?: Record<string, unknown>) => {
-  const params = generationParams ?? {};
-  const generationParamKeys = Object.keys(params);
-  const cameraMotionId = normalizeMotionString(params.camera_motion_id);
-  const subjectMotion = normalizeMotionString(params.subject_motion);
-  const keyframesCount = Array.isArray(params.keyframes)
-    ? params.keyframes.length
-    : 0;
-
-  return {
-    hasGenerationParams: generationParamKeys.length > 0,
-    generationParamKeys,
-    hasCameraMotion: Boolean(cameraMotionId),
-    cameraMotionId,
-    hasSubjectMotion: Boolean(subjectMotion),
-    subjectMotionLength: subjectMotion?.length ?? 0,
-    hasKeyframes: keyframesCount > 0,
-    keyframesCount,
-  } as const;
 };
 
 const extractFaceSwapMeta = (params?: GenerationParams) => {
