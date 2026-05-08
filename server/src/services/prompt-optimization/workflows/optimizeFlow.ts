@@ -310,7 +310,10 @@ export const runOptimizeFlow = async ({
     void optimizationCache
       .cacheResult(cacheKey, optimizedPrompt, optimizationMetadata)
       .catch((err) => {
+        // Stable event tag — alerting hooks off this so operators retain the
+        // back-pressure signal that the previous awaited write produced.
         log.warn("Failed to write optimization result to cache", {
+          event: "optimization_cache_write_failed",
           operation,
           error: err instanceof Error ? err.message : String(err),
         });

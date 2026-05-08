@@ -29,10 +29,7 @@ type RequestWithId = Request & {
   id?: string;
 };
 
-/**
- * Register all application routes
- */
-export function registerRoutes(app: Application, container: DIContainer): void {
+function registerRoutes(app: Application, container: DIContainer): void {
   const firestoreCircuitExecutor = container.resolve(
     "firestoreCircuitExecutor",
   );

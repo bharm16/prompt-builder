@@ -123,12 +123,13 @@ async function bootstrap() {
 // Application Initialization
 // ============================================================================
 
-// In test environment, initialize app synchronously without starting server
-// In production, start the full server
+// When running under vitest, initialize the app synchronously without
+// binding a port — unit tests import `appInstance` for in-process testing.
+// E2E (Playwright) sets NODE_ENV=test to skip the Firebase startup probe in
+// services.initialize.ts, but still needs the server to listen on its port,
+// so NODE_ENV alone must NOT short-circuit bootstrap here.
 const isTestEnv =
-  process.env.NODE_ENV === "test" ||
-  process.env.VITEST ||
-  process.env.VITEST_WORKER_ID;
+  Boolean(process.env.VITEST) || Boolean(process.env.VITEST_WORKER_ID);
 
 let appInstance = null;
 let containerInstance = null;
