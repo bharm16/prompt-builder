@@ -72,15 +72,36 @@ export const createHighlightSignature = (
 };
 
 /**
- * Deep compare memoization helper
- * Stabilizes object references by comparing JSON serialization
- * Used internally to prevent infinite loops from unstable callers
+ * Shallow structural equality. Sufficient for the SpanLabelingPolicy shape
+ * (flat object with primitive fields) and dramatically cheaper than the prior
+ * 2× JSON.stringify on every render of the keystroke-driven editor.
+ */
+function shallowEqual(a: unknown, b: unknown): boolean {
+  if (Object.is(a, b)) return true;
+  if (a === null || b === null) return false;
+  if (typeof a !== "object" || typeof b !== "object") return false;
+  const aKeys = Object.keys(a as object);
+  const bKeys = Object.keys(b as object);
+  if (aKeys.length !== bKeys.length) return false;
+  const aRec = a as Record<string, unknown>;
+  const bRec = b as Record<string, unknown>;
+  for (const k of aKeys) {
+    if (!Object.is(aRec[k], bRec[k])) return false;
+  }
+  return true;
+}
+
+/**
+ * Stabilizes object references by content-equality check. Used so callers that
+ * forget to wrap policy in useMemo still get a stable reference here. Was
+ * previously implemented with JSON.stringify; switched to a shallow compare
+ * because the keystroke critical path can't afford double-stringify per render.
  */
 function useDeepCompareMemoize<T>(value: T): T {
   const ref = useRef<T>(value);
   const signalRef = useRef<number>(0);
 
-  if (JSON.stringify(value) !== JSON.stringify(ref.current)) {
+  if (!shallowEqual(value, ref.current)) {
     ref.current = value;
     signalRef.current += 1;
   }

@@ -409,9 +409,16 @@ export class PredictiveCacheService {
   }
 }
 
-// Singleton instance
+// Singleton instance.
+// Off by default: pre-warming silently fires extra LLM stream requests after
+// every successful labeling, doubling-to-tripling LLM call volume with no
+// surfaced hit-rate metric. Set VITE_ENABLE_PREDICTIVE_CACHE=true to opt in
+// once a hit-rate metric exists to justify the cost.
+const PREDICTIVE_CACHE_ENABLED =
+  import.meta.env.VITE_ENABLE_PREDICTIVE_CACHE === "true";
+
 export const predictiveCacheService = new PredictiveCacheService({
-  enabled: true,
+  enabled: PREDICTIVE_CACHE_ENABLED,
   maxHistorySize: 50,
   minFrequency: 2,
   predictionWindow: 5,

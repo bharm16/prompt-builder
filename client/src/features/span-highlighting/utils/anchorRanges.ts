@@ -94,26 +94,43 @@ const resolveNodeForOffset = (
 
   const clamped = Math.max(0, index);
 
-  for (let i = 0; i < nodes.length; i += 1) {
-    const entry = nodes[i]!;
-    if (clamped > entry.end) continue;
-
-    if (clamped === entry.end) {
-      const next = nodes[i + 1];
-      if (next) {
-        return { node: next.node, localOffset: 0 };
-      }
-      return {
-        node: entry.node,
-        localOffset: entry.end - entry.start,
-      };
-    }
-
-    if (clamped >= entry.start && clamped < entry.end) {
-      return { node: entry.node, localOffset: clamped - entry.start };
+  // Binary search: nodes are sorted by `start` (and contiguous by `end`),
+  // so we can find the smallest i where nodes[i].end >= clamped in O(log n).
+  // Replaces an O(n) linear scan that ran k times per fingerprint change,
+  // making span-highlight rerendering on long prompts O(k·n) → O(k·log n).
+  let lo = 0;
+  let hi = nodes.length - 1;
+  while (lo < hi) {
+    const mid = (lo + hi) >>> 1;
+    if (nodes[mid]!.end < clamped) {
+      lo = mid + 1;
+    } else {
+      hi = mid;
     }
   }
 
+  const entry = nodes[lo]!;
+
+  // Past the last node entirely — clamp to the last position.
+  if (clamped > entry.end) {
+    const last = nodes[nodes.length - 1]!;
+    return { node: last.node, localOffset: last.end - last.start };
+  }
+
+  // Boundary: at the join between two nodes, prefer the start of the next.
+  if (clamped === entry.end) {
+    const next = nodes[lo + 1];
+    if (next) {
+      return { node: next.node, localOffset: 0 };
+    }
+    return { node: entry.node, localOffset: entry.end - entry.start };
+  }
+
+  if (clamped >= entry.start && clamped < entry.end) {
+    return { node: entry.node, localOffset: clamped - entry.start };
+  }
+
+  // Should be unreachable given monotone end values, but keep the safety net.
   const last = nodes[nodes.length - 1]!;
   return { node: last.node, localOffset: last.end - last.start };
 };
