@@ -10,6 +10,7 @@ const { mockPinoLogger, mockChildLogger, pinoFactory } = vi.hoisted(() => {
     error: vi.fn(),
     debug: vi.fn(),
     child: vi.fn(),
+    isLevelEnabled: vi.fn(() => true),
   };
   const mockChildLogger = {
     info: vi.fn(),
@@ -17,6 +18,7 @@ const { mockPinoLogger, mockChildLogger, pinoFactory } = vi.hoisted(() => {
     error: vi.fn(),
     debug: vi.fn(),
     child: vi.fn(),
+    isLevelEnabled: vi.fn(() => true),
   };
   mockPinoLogger.child = vi.fn(() => mockChildLogger);
   const pinoFactory = vi.fn(() => mockPinoLogger);
@@ -179,6 +181,56 @@ describe("Logger", () => {
       expect(mockPinoLogger.child).toHaveBeenCalledWith({ service: "child" });
       expect(mockChildLogger.info).toHaveBeenCalled();
       expect(mockPinoLogger.info).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("level guard", () => {
+    // Pins the contract introduced when isLevelEnabled guards were added.
+    // The guards should be invisible when the level is enabled (current
+    // pino default) and should suppress meta enrichment + the underlying
+    // pino call when the level is disabled.
+    it("calls underlying pino method when level is enabled", () => {
+      mockPinoLogger.isLevelEnabled.mockReturnValue(true);
+      const logger = new Logger({
+        includeLogStack: false,
+        includeLogCaller: false,
+      });
+
+      logger.info("hi");
+      logger.warn("warn");
+      logger.debug("dbg");
+      logger.error("err");
+
+      expect(mockPinoLogger.info).toHaveBeenCalledTimes(1);
+      expect(mockPinoLogger.warn).toHaveBeenCalledTimes(1);
+      expect(mockPinoLogger.debug).toHaveBeenCalledTimes(1);
+      expect(mockPinoLogger.error).toHaveBeenCalledTimes(1);
+    });
+
+    it("skips pino call and enrichMeta when level is disabled", () => {
+      mockPinoLogger.isLevelEnabled.mockReturnValue(false);
+      const logger = new Logger({
+        includeLogStack: true,
+        includeLogCaller: true,
+        logStackLevels: ["info", "warn", "debug", "error"],
+      });
+      const captureSpy = vi.spyOn(
+        logger as unknown as { captureLogStack: () => string[] },
+        "captureLogStack",
+      );
+
+      logger.info("hi");
+      logger.warn("warn");
+      logger.debug("dbg");
+      logger.error("err", new Error("boom"));
+
+      expect(mockPinoLogger.info).not.toHaveBeenCalled();
+      expect(mockPinoLogger.warn).not.toHaveBeenCalled();
+      expect(mockPinoLogger.debug).not.toHaveBeenCalled();
+      expect(mockPinoLogger.error).not.toHaveBeenCalled();
+      // The whole point of the guard: skip the stack-capture work entirely
+      // when the level is filtered out.
+      expect(captureSpy).not.toHaveBeenCalled();
     });
   });
 });
