@@ -30,7 +30,7 @@ These terms have specific meanings in this codebase. Do not conflate them.
 | ----------------------------- | ----------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- | ---------------------------------- |
 | **Span labeling**             | ML categorization of prompt phrases into taxonomy categories (subject, camera, lighting…) for UI highlights | `server/src/llm/span-labeling/`                                                  | `/llm/label-spans`                 |
 | **Enhancement / Suggestions** | AI-generated alternative phrases for a user-selected span (click-to-enhance)                                | `server/src/services/enhancement/`                                               | `/api/suggestions`, `/api/enhance` |
-| **Optimization**              | Two-stage prompt rewriting pipeline (Groq fast draft → OpenAI refinement)                                   | `server/src/services/prompt-optimization/`                                       | `/api/optimize-stream` (SSE)       |
+| **Optimization**              | Two-stage prompt rewriting pipeline (Groq fast draft → OpenAI refinement)                                   | `server/src/services/prompt-optimization/`                                       | `/api/optimize` (buffered)         |
 | **Continuity**                | Shot-to-shot visual consistency in multi-shot sequences (frame-bridge, style-match)                         | `server/src/services/continuity/`                                                | `/api/continuity`                  |
 | **Convergence**               | Motion and visual convergence pipeline (iterative refinement toward target)                                 | `server/src/services/convergence/`                                               | `/api/motion`                      |
 | **Video Concept**             | Guided wizard flow: subject → action → location → camera → lighting → style                                 | `server/src/services/video-concept/`                                             | via `/api` routes                  |
@@ -38,7 +38,7 @@ These terms have specific meanings in this codebase. Do not conflate them.
 | **Preview**                   | Image (Flux Schnell) and video (Wan 2.2) draft generation before final render                               | `server/src/services/image-generation/`, `server/src/services/video-generation/` | `/api/preview`                     |
 | **Generation**                | Final video render via Sora, Veo, Kling, Luma, Runway                                                       | `server/src/services/video-generation/`                                          | `/api/preview` (shared routes)     |
 
-**Critical distinction:** `EnhancementService.ts` and `VideoConceptService.ts` at the root of `server/src/services/` are **legacy files**. Import from the domain subdirectories (`enhancement/`, `video-concept/`).
+**Service imports:** Use canonical domain paths — `services/enhancement/EnhancementService.ts`, `services/video-concept/VideoConceptService.ts`. Domain directories are the only source.
 
 See also: `docs/architecture/SERVICE_BOUNDARIES.md`.
 
@@ -81,7 +81,7 @@ Legacy `*_DISABLED` env var names still work but emit a deprecation warning at s
 
 | Route                                   | Server Route File                         | Client API/Service                                  |
 | --------------------------------------- | ----------------------------------------- | --------------------------------------------------- |
-| `POST /api/optimize-stream`             | `optimize.routes.ts`                      | `services/PromptOptimizationApi.ts`                 |
+| `POST /api/optimize`                    | `optimize.routes.ts`                      | `services/PromptOptimizationApi.ts`                 |
 | `POST /api/enhance`, `/api/suggestions` | `enhancement.routes.ts`, `suggestions.ts` | `services/EnhancementApi.ts`                        |
 | `POST /llm/label-spans`                 | `labelSpansRoute.ts`                      | `features/span-highlighting/api/spanLabelingApi.ts` |
 | `/api/preview/*`                        | `preview.routes.ts`                       | `features/preview/api/`                             |

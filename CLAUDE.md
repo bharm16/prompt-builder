@@ -18,6 +18,12 @@ Interactive editing canvas for AI video prompts with semantic span labeling, cli
 - Firebase Admin requires `GOOGLE_APPLICATION_CREDENTIALS` env var at startup
 - Redis is optional — all caching falls back to in-memory when `REDIS_URL` is unset
 
+## Server Startup Requirement
+
+The Express server runs `admin.auth().listUsers()` and `firestore.listCollections()` on startup (`server/src/config/services.initialize.ts`). Without valid Firebase credentials, the server exits with `FATAL: Application failed to start`. Skipped only when `NODE_ENV=test`.
+
+Provide one of: `FIREBASE_SERVICE_ACCOUNT_JSON`, `FIREBASE_SERVICE_ACCOUNT_PATH`, or `GOOGLE_APPLICATION_CREDENTIALS`. The Vite client (`npm run dev`) runs without the server — UI development works fine, but `/api/*` calls will fail.
+
 ## Repository Structure
 
 ```
@@ -39,7 +45,7 @@ These terms have specific meanings in this codebase. Do not conflate them.
 | ----------------------------- | ----------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- | ---------------------------------- |
 | **Span labeling**             | ML categorization of prompt phrases into taxonomy categories (subject, camera, lighting…) for UI highlights | `server/src/llm/span-labeling/`                                                  | `/llm/label-spans`                 |
 | **Enhancement / Suggestions** | AI-generated alternative phrases for a user-selected span (click-to-enhance)                                | `server/src/services/enhancement/`                                               | `/api/suggestions`, `/api/enhance` |
-| **Optimization**              | Two-stage prompt rewriting pipeline (Groq fast draft → OpenAI refinement)                                   | `server/src/services/prompt-optimization/`                                       | `/api/optimize-stream` (SSE)       |
+| **Optimization**              | Two-stage prompt rewriting pipeline (Groq fast draft → OpenAI refinement)                                   | `server/src/services/prompt-optimization/`                                       | `/api/optimize` (buffered)         |
 | **Continuity**                | Shot-to-shot visual consistency in multi-shot sequences                                                     | `server/src/services/continuity/`                                                | `/api/continuity`                  |
 | **Convergence**               | Motion and visual convergence pipeline (iterative refinement toward target)                                 | `server/src/services/convergence/`                                               | `/api/motion`                      |
 | **Video Concept**             | Guided wizard flow: subject → action → location → camera → lighting → style                                 | `server/src/services/video-concept/`                                             | via `/api` routes                  |
@@ -158,7 +164,7 @@ Server flags are declared in [`server/src/config/feature-flags.ts`](server/src/c
 
 | Route                                        | Server Route File                         | Client API/Service                                  |
 | -------------------------------------------- | ----------------------------------------- | --------------------------------------------------- |
-| `POST /api/optimize-stream`                  | `optimize.routes.ts`                      | `services/PromptOptimizationApi.ts`                 |
+| `POST /api/optimize`                         | `optimize.routes.ts`                      | `services/PromptOptimizationApi.ts`                 |
 | `POST /api/enhance`, `POST /api/suggestions` | `enhancement.routes.ts`, `suggestions.ts` | `services/EnhancementApi.ts`                        |
 | `POST /llm/label-spans`                      | `labelSpansRoute.ts`                      | `features/span-highlighting/api/spanLabelingApi.ts` |
 | `/api/preview/*`                             | `preview.routes.ts`                       | `features/preview/api/`                             |
