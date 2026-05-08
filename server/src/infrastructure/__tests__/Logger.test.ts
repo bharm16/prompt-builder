@@ -183,4 +183,31 @@ describe("Logger", () => {
       expect(mockPinoLogger.info).not.toHaveBeenCalled();
     });
   });
+
+  describe("level filtering", () => {
+    it("does not invoke pino when isLevelEnabled returns false", () => {
+      // Consume four onces, one per logger.X() call below; subsequent tests
+      // fall back to the base impl (() => true) without leakage.
+      mockPinoLogger.isLevelEnabled
+        .mockReturnValueOnce(false)
+        .mockReturnValueOnce(false)
+        .mockReturnValueOnce(false)
+        .mockReturnValueOnce(false);
+
+      const logger = new Logger({
+        includeLogStack: false,
+        includeLogCaller: false,
+      });
+
+      logger.info("skipped");
+      logger.warn("skipped");
+      logger.error("skipped");
+      logger.debug("skipped");
+
+      expect(mockPinoLogger.info).not.toHaveBeenCalled();
+      expect(mockPinoLogger.warn).not.toHaveBeenCalled();
+      expect(mockPinoLogger.error).not.toHaveBeenCalled();
+      expect(mockPinoLogger.debug).not.toHaveBeenCalled();
+    });
+  });
 });
