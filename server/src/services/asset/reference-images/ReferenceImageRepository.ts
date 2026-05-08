@@ -4,34 +4,18 @@ import { getFirestore } from "@infrastructure/firebaseAdmin";
 import { logger } from "@infrastructure/Logger";
 import { ReferenceImageProcessingService } from "@services/asset/ReferenceImageProcessingService";
 import { assertUrlSafe } from "@server/shared/urlValidation";
+import type {
+  ReferenceImage as ReferenceImageRecord,
+  ReferenceImageMetadata,
+} from "@shared/schemas/asset.schemas";
+
+export type { ReferenceImageRecord, ReferenceImageMetadata };
 
 interface ReferenceImageRepositoryOptions {
   db?: FirebaseFirestore.Firestore;
   bucket: Bucket;
   bucketName?: string;
   processor?: ReferenceImageProcessingService;
-}
-
-export interface ReferenceImageMetadata {
-  width: number;
-  height: number;
-  sizeBytes: number;
-  contentType: string;
-  source?: string | null;
-  originalName?: string | null;
-}
-
-export interface ReferenceImageRecord {
-  id: string;
-  userId: string;
-  imageUrl: string;
-  thumbnailUrl: string;
-  storagePath: string;
-  thumbnailPath: string;
-  label?: string | null;
-  metadata: ReferenceImageMetadata;
-  createdAt: string;
-  updatedAt: string;
 }
 
 interface CreateReferenceImageInput {
