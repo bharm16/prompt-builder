@@ -4,6 +4,10 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
+# bash is needed by scripts/download-models.sh (uses [[ ]], BASH_SOURCE,
+# set -o pipefail). node:20-alpine ships with sh only.
+RUN apk add --no-cache bash
+
 # Copy package files (root + workspace packages so `workspace:*`
 # references in package.json resolve during `npm ci`)
 COPY package*.json ./
