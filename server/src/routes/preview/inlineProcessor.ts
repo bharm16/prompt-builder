@@ -14,13 +14,18 @@ interface InlinePreviewProcessorParams {
   storageService?: NonNullable<PreviewRoutesServices["storageService"]> | null;
 }
 
+// Default kept in sync with VIDEO_JOB_LEASE_SECONDS in server/src/config/env.ts
+// and core.services.ts. If any of those change, update all three.
+const DEFAULT_VIDEO_JOB_LEASE_SECONDS = 90;
+
 function getVideoJobLeaseMs(): number {
   const leaseSeconds = Number.parseInt(
-    process.env.VIDEO_JOB_LEASE_SECONDS || "60",
+    process.env.VIDEO_JOB_LEASE_SECONDS ||
+      String(DEFAULT_VIDEO_JOB_LEASE_SECONDS),
     10,
   );
   if (!Number.isFinite(leaseSeconds) || leaseSeconds <= 0) {
-    return 60000;
+    return DEFAULT_VIDEO_JOB_LEASE_SECONDS * 1000;
   }
   return leaseSeconds * 1000;
 }

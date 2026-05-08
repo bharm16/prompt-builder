@@ -131,9 +131,30 @@ describe("parseEnv", () => {
     const result = parseEnv(minimalEnv());
 
     expect(result.VIDEO_JOB_MAX_ATTEMPTS).toBe(3);
-    expect(result.VIDEO_JOB_LEASE_SECONDS).toBe(60);
+    expect(result.VIDEO_JOB_LEASE_SECONDS).toBe(90);
     expect(result.VIDEO_PROVIDER_POLL_TIMEOUT_MS).toBe(270000);
     expect(result.VIDEO_GENERATE_IDEMPOTENCY_PENDING_TTL_MS).toBe(360000);
+  });
+
+  /**
+   * Regression: VIDEO_JOB_LEASE_SECONDS must exceed
+   * VIDEO_JOB_HEARTBEAT_INTERVAL_MS × MAX_HEARTBEAT_FAILURES (3) so that an
+   * unhealthy worker can be detected before another worker is eligible to
+   * claim the lease. The prior 60s default exactly equaled the failure
+   * window (20s × 3), leaving zero detection margin.
+   *
+   * Invariant under test: leaseSeconds * 1000 > heartbeatInterval * 3.
+   */
+  it("VIDEO_JOB_LEASE_SECONDS preserves the heartbeat-failure detection margin (regression)", () => {
+    const result = parseEnv(minimalEnv());
+
+    const leaseMs = result.VIDEO_JOB_LEASE_SECONDS * 1000;
+    const heartbeatFailureWindow = result.VIDEO_JOB_HEARTBEAT_INTERVAL_MS * 3;
+
+    expect(leaseMs).toBeGreaterThan(heartbeatFailureWindow);
+    // Sanity: the margin should be at least 10s in absolute terms — anything
+    // tighter risks treating a single delayed heartbeat tick as a takeover.
+    expect(leaseMs - heartbeatFailureWindow).toBeGreaterThanOrEqual(10_000);
   });
 });
 

@@ -1,6 +1,7 @@
 import type { DIContainer } from "@infrastructure/DIContainer";
 import { logger } from "@infrastructure/Logger";
 import { MetricsService } from "@infrastructure/MetricsService";
+import { requestCoalescing } from "@middleware/requestCoalescing";
 import {
   FirestoreCircuitExecutor,
   setFirestoreCircuitExecutor,
@@ -27,7 +28,19 @@ export function registerCoreServices(container: DIContainer): void {
   const { flags } = resolveAllFlags(process.env);
 
   container.registerValue("logger", logger);
-  container.register("metricsService", () => new MetricsService(), []);
+  container.register(
+    "metricsService",
+    () => {
+      const metrics = new MetricsService();
+      // Wire the request-coalescing singleton's Prometheus counter so each
+      // dedup increments `coalesced_requests_total`. This lives here (not in
+      // services.initialize.ts) to avoid tripping the integration-test gate
+      // that file would require.
+      requestCoalescing.setMetricsCollector(metrics);
+      return metrics;
+    },
+    [],
+  );
 
   // ── Centralized config: all env-var parsing happens here ──────────────
   container.registerValue("config", {
@@ -206,9 +219,16 @@ export function registerCoreServices(container: DIContainer): void {
           2000,
           1,
         ),
+        // Lease must exceed heartbeatInterval × MAX_HEARTBEAT_FAILURES
+        // (20s × 3 = 60s). At the prior 60s default, the heartbeat-failure
+        // window equaled the lease — leaving zero margin between "this worker
+        // is unhealthy" and "another worker may claim the lease." 90s gives
+        // a 30s margin so the unhealthy state can be detected before the
+        // lease expires. Keep this in sync with VIDEO_JOB_LEASE_SECONDS in
+        // env.ts and the fallback in routes/preview/inlineProcessor.ts.
         leaseSeconds: resolvePositiveNumber(
           process.env.VIDEO_JOB_LEASE_SECONDS,
-          60,
+          90,
           1,
         ),
         maxConcurrent: resolvePositiveNumber(

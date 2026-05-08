@@ -152,7 +152,10 @@ const videoGenerationSchema = z.object({
 
 const videoJobSchema = z.object({
   VIDEO_JOB_MAX_ATTEMPTS: coercePositiveInt(3),
-  VIDEO_JOB_LEASE_SECONDS: coercePositiveInt(60),
+  // Must be > VIDEO_JOB_HEARTBEAT_INTERVAL_MS × MAX_HEARTBEAT_FAILURES
+  // (20s × 3 = 60s). 90s leaves a 30s safety margin so a 60s heartbeat-failure
+  // window doesn't exactly equal the lease (phantom-takeover risk).
+  VIDEO_JOB_LEASE_SECONDS: coercePositiveInt(90),
   VIDEO_JOB_HEARTBEAT_INTERVAL_MS: coercePositiveInt(20000),
   VIDEO_JOB_STALE_QUEUE_SECONDS: coercePositiveInt(300),
   VIDEO_JOB_STALE_QUEUE_MINUTES: z.coerce.number().int().positive().optional(),
