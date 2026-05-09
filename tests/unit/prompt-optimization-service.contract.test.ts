@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { deriveLockMap } from "@services/prompt-optimization/types/i2v";
 import type { AIService } from "@services/prompt-optimization/types";
 import { PromptOptimizationService } from "@services/prompt-optimization/PromptOptimizationService";
 
@@ -60,35 +59,19 @@ describe("PromptOptimizationService contract", () => {
 
     expect(result).toEqual({
       prompt: "cached optimized prompt",
-      inputMode: "t2v",
       metadata: { source: "cache", score: 0.9 },
     });
     expect(onMetadata).toHaveBeenCalledWith({ source: "cache", score: 0.9 });
   });
 
-  it("routes optimize requests with startImage through i2v and preserves inputMode", async () => {
+  it("ignores startImage on optimize and runs the T2V flow with a warning", async () => {
     const service = createService();
 
-    (service as unknown as { imageObservation: unknown }).imageObservation = {
-      observe: vi.fn(async () => ({
-        observation: { subject: "runner" },
-        cached: false,
-        usedFastPath: false,
-      })),
-    };
-
-    (service as unknown as { i2vStrategy: unknown }).i2vStrategy = {
-      optimize: vi.fn(async () => ({
-        prompt: "i2v optimized prompt",
-        conflicts: [],
-        appliedMode: "strict",
-        lockMap: deriveLockMap("strict"),
-        extractedMotion: {
-          subjectAction: null,
-          cameraMovement: null,
-          pacing: null,
-        },
-      })),
+    (service as unknown as { optimizationCache: unknown }).optimizationCache = {
+      buildCacheKey: vi.fn(() => "cache-key"),
+      getCachedResult: vi.fn(async () => "cached optimized prompt"),
+      getCachedMetadata: vi.fn(async () => null),
+      cacheResult: vi.fn(async () => {}),
     };
 
     const result = await service.optimize({
@@ -96,9 +79,11 @@ describe("PromptOptimizationService contract", () => {
       startImage: "https://images.example.com/start.webp",
     });
 
-    expect(result.inputMode).toBe("i2v");
-    expect(result.prompt).toBe("i2v optimized prompt");
-    expect(result.i2v?.appliedMode).toBe("strict");
+    // After the I2V pipeline removal, startImage is logged-and-ignored;
+    // the request runs through the standard T2V optimize flow.
+    expect(result.prompt).toBe("cached optimized prompt");
+    expect(result).not.toHaveProperty("inputMode");
+    expect(result).not.toHaveProperty("i2v");
   });
 
   it("throws when compilePrompt is called without a compilation service", async () => {
