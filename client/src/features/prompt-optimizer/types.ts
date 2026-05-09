@@ -47,7 +47,6 @@ export interface OptimizationOptions {
   createVersion?: boolean;
   startImage?: string;
   sourcePrompt?: string;
-  constraintMode?: "strict" | "flexible" | "transform";
   preserveSessionView?: boolean;
 }
 

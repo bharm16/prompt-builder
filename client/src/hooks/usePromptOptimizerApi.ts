@@ -27,7 +27,6 @@ export function usePromptOptimizerApi(
       lockedSpans,
       startImage,
       sourcePrompt,
-      constraintMode,
       signal,
     }: AnalyzeAndOptimizeOptions) => {
       log.debug("analyzeAndOptimize called", {
@@ -56,7 +55,6 @@ export function usePromptOptimizerApi(
           ...(lockedSpans && lockedSpans.length > 0 ? { lockedSpans } : {}),
           ...(startImage ? { startImage } : {}),
           ...(sourcePrompt ? { sourcePrompt } : {}),
-          ...(constraintMode ? { constraintMode } : {}),
           ...(signal ? { signal } : {}),
         });
 

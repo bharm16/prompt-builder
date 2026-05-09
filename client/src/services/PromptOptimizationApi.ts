@@ -34,7 +34,6 @@ export class PromptOptimizationApi {
     lockedSpans,
     startImage,
     sourcePrompt,
-    constraintMode,
     signal,
   }: OptimizeOptions): Promise<OptimizeResult> {
     try {
@@ -53,16 +52,10 @@ export class PromptOptimizationApi {
           ...(lockedSpans && lockedSpans.length > 0 ? { lockedSpans } : {}),
           ...(startImage ? { startImage } : {}),
           ...(sourcePrompt ? { sourcePrompt } : {}),
-          ...(constraintMode ? { constraintMode } : {}),
         },
         requestOptions,
       );
-      // OptimizeResult differs from the shared OptimizeResponse only in `i2v`,
-      // which is typed as the feature-local I2VOptimizationResult on the client
-      // (`features/prompt-optimizer/types/i2v`) but stays untyped/passthrough
-      // in the shared schema. The cast bridges that single field; the rest of
-      // the envelope is fully validated by OptimizeResponseSchema at runtime.
-      return OptimizeResponseSchema.parse(raw) as unknown as OptimizeResult;
+      return OptimizeResponseSchema.parse(raw) as OptimizeResult;
     } catch (error) {
       if (shouldUseOfflineFallback(error)) {
         return buildOfflineResult(

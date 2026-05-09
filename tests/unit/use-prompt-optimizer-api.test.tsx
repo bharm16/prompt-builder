@@ -69,7 +69,6 @@ describe("usePromptOptimizerApi", () => {
       ] as never,
       startImage: "https://example.com/image.png",
       sourcePrompt: "seed prompt",
-      constraintMode: "strict",
       signal,
     });
 
@@ -86,7 +85,6 @@ describe("usePromptOptimizerApi", () => {
       ],
       startImage: "https://example.com/image.png",
       sourcePrompt: "seed prompt",
-      constraintMode: "strict",
       signal,
     });
     expect(startTimer).toHaveBeenCalledWith("analyzeAndOptimize");

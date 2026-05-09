@@ -190,7 +190,6 @@ vi.mock("../../hooks/useI2VContext", () => ({
   useI2VContext: () => ({
     startImageUrl: null,
     startImageSourcePrompt: null,
-    constraintMode: "strict",
   }),
 }));
 

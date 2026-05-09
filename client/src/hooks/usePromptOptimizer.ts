@@ -50,7 +50,6 @@ interface OptimizationOptions {
   generationParams?: CapabilityValues;
   startImage?: string;
   sourcePrompt?: string;
-  constraintMode?: "strict" | "flexible" | "transform";
 }
 
 interface UsePromptOptimizerResult {
@@ -212,9 +211,6 @@ export const usePromptOptimizer = (
           ...(options?.startImage ? { startImage: options.startImage } : {}),
           ...(options?.sourcePrompt
             ? { sourcePrompt: options.sourcePrompt }
-            : {}),
-          ...(options?.constraintMode
-            ? { constraintMode: options.constraintMode }
             : {}),
           lockedSpans: state.lockedSpans,
           actions,

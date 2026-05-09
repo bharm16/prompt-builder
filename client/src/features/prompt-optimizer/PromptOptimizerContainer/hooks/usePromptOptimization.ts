@@ -133,7 +133,6 @@ export interface UsePromptOptimizationParams {
   startFrame?: KeyframeTile | null;
   startImageUrl?: string | null;
   sourcePrompt?: string | null;
-  constraintMode?: "strict" | "flexible" | "transform";
   currentPromptUuid: string | null;
   setCurrentPromptUuid: (uuid: string) => void;
   setCurrentPromptDocId: (id: string | null) => void;
@@ -176,7 +175,6 @@ export function usePromptOptimization({
   startFrame,
   startImageUrl,
   sourcePrompt,
-  constraintMode,
   currentPromptUuid,
   setCurrentPromptUuid,
   setCurrentPromptDocId,
@@ -216,6 +214,15 @@ export function usePromptOptimization({
           normalizedOptions = extractedOptions;
           normalizedContext = undefined;
         }
+      }
+
+      // I2V mode: there is no text-rewrite step. Image anchors visuals; user's prompt
+      // goes to the model verbatim. Bypass the optimize call entirely.
+      if (typeof startImageUrl === "string" && startImageUrl.length > 0) {
+        const directPrompt = (promptToOptimize ?? inputPrompt ?? "").trim();
+        setDisplayedPromptSilently(directPrompt);
+        setShowResults(true);
+        return;
       }
 
       const prompt = promptToOptimize || inputPrompt;
@@ -283,11 +290,6 @@ export function usePromptOptimization({
           ? {}
           : sourcePrompt
             ? { sourcePrompt }
-            : {}),
-        ...(normalizedOptions?.constraintMode
-          ? {}
-          : constraintMode
-            ? { constraintMode }
             : {}),
       };
 
@@ -416,7 +418,6 @@ export function usePromptOptimization({
       startFrame?.viewUrlExpiresAt,
       startImageUrl,
       sourcePrompt,
-      constraintMode,
       currentPromptUuid,
       setCurrentPromptUuid,
       setCurrentPromptDocId,

@@ -111,7 +111,7 @@ describe("runOptimization", () => {
     expect(result).toEqual({ optimized: "optimized prompt", score: 88 });
   });
 
-  it("shows a low-score warning and i2v conflict notice when needed", async () => {
+  it("shows a low-score warning when needed", async () => {
     const toast = createMockToast();
 
     await runOptimization({
@@ -125,19 +125,12 @@ describe("runOptimization", () => {
       log: createMockLog() as never,
       analyzeAndOptimize: vi.fn().mockResolvedValue({
         prompt: "optimized prompt",
-        i2v: {
-          conflicts: [{ field: "color", description: "mismatch" }],
-          appliedMode: "flexible",
-        },
       }),
       calculateQualityScore: vi.fn().mockReturnValue(45),
     });
 
     expect(toast.warning).toHaveBeenCalledWith(
       expect.stringContaining("Prompt could be improved. Score: 45%"),
-    );
-    expect(toast.warning).toHaveBeenCalledWith(
-      expect.stringContaining("1 visual conflict"),
     );
   });
 });

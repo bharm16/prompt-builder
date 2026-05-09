@@ -1,7 +1,6 @@
 import { logger } from "../../services/LoggingService";
 import type { Toast } from "../types";
 import type { LockedSpan } from "@/features/prompt-optimizer/types";
-import type { I2VOptimizationResult } from "@/features/prompt-optimizer/types/i2v";
 import type { CapabilityValues } from "@shared/capabilities";
 
 export interface PromptOptimizerActions {
@@ -30,15 +29,12 @@ type AnalyzeAndOptimize = (options: {
   lockedSpans?: LockedSpan[];
   startImage?: string;
   sourcePrompt?: string;
-  constraintMode?: "strict" | "flexible" | "transform";
   signal?: AbortSignal;
 }) => Promise<{
   prompt: string;
   optimizedPrompt?: string;
-  inputMode?: "t2v" | "i2v";
   artifactKey?: string;
   metadata?: Record<string, unknown>;
-  i2v?: I2VOptimizationResult;
 }>;
 
 export interface RunOptimizationOptions {
@@ -50,7 +46,6 @@ export interface RunOptimizationOptions {
   generationParams?: CapabilityValues;
   startImage?: string;
   sourcePrompt?: string;
-  constraintMode?: "strict" | "flexible" | "transform";
   abortController: AbortController;
   skipCache?: boolean;
   lockedSpans?: LockedSpan[];
@@ -70,7 +65,6 @@ export async function runOptimization({
   generationParams,
   startImage,
   sourcePrompt,
-  constraintMode,
   abortController,
   skipCache,
   lockedSpans,
@@ -97,7 +91,6 @@ export async function runOptimization({
     ...(lockedSpans && lockedSpans.length > 0 ? { lockedSpans } : {}),
     ...(startImage ? { startImage } : {}),
     ...(sourcePrompt ? { sourcePrompt } : {}),
-    ...(constraintMode ? { constraintMode } : {}),
   });
 
   const optimized = response.prompt || response.optimizedPrompt || "";
@@ -139,24 +132,6 @@ export async function runOptimization({
     toast.info(`Good prompt! Quality score: ${score}%`);
   } else {
     toast.warning(`Prompt could be improved. Score: ${score}%`);
-  }
-
-  if (
-    response.i2v &&
-    Array.isArray(response.i2v.conflicts) &&
-    response.i2v.conflicts.length > 0
-  ) {
-    const conflictCount = response.i2v.conflicts.length;
-    const mode = response.i2v.appliedMode;
-    if (mode === "flexible") {
-      toast.warning(
-        `${conflictCount} visual conflict${conflictCount === 1 ? "" : "s"} detected. Results may vary.`,
-      );
-    } else if (mode === "strict") {
-      toast.info(
-        `${conflictCount} conflicting visual description${conflictCount === 1 ? "" : "s"} removed.`,
-      );
-    }
   }
 
   const duration = logger.endTimer("optimize");
