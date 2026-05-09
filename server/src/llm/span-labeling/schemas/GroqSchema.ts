@@ -117,7 +117,8 @@ export const LLAMA3_CATEGORY_TABLE = `
 | mm lens values (24mm, 50mm, 85mm) | camera.lens | "24mm lens" |
 | f-stops (f/2.8, f/11) | camera.focus | "f/11" |
 | deep/shallow/rack focus | camera.focus | "deep focus" |
-| walks/runs/jumps/sits | action.movement | "dog runs" |
+| walks/runs/jumps/dances/turns | action.movement | "dog runs" |
+| sits/stands/leans/holds/kneels | action.state | "stands before a canvas" |
 | close-up/wide/medium + shot | shot.type | "wide shot" |
 | 35mm/16mm/Kodak/film | style.filmStock | "shot on 35mm" |
 | warm/cool/vibrant + colors/tones | style.colorGrade | "warm tones" |
@@ -151,9 +152,12 @@ export const LLAMA3_DISAMBIGUATION_RULES = `
    → YES: Use \`shot.type\`
    → NO: Continue to step 3
 
-3. Is subject performing action (-ing verb)?
-   → YES: Use \`action.movement\` (or \`action.state\`/\`action.gesture\`)
-   → NO: Continue to step 4
+3. Subject action verb? Pick the right action.* sub-category:
+   - Static poses (sits, stands, leans, holds, kneels) → \`action.state\`
+   - Ongoing motion (runs, walks, dances, turns, works) → \`action.movement\`
+   - Small deliberate motions (waves, points, nods, smiles, blinks) → \`action.gesture\`
+   - "stands before a canvas" → action.state, "running fast" → action.movement
+   → Continue to step 4
 
 4. Is it a technical spec (fps, resolution, ratio, duration)?
    → YES: Use appropriate \`technical.*\` attribute
@@ -167,14 +171,27 @@ export const LLAMA3_DISAMBIGUATION_RULES = `
    → YES: SKIP - not a visual control point
    → NO: Check other categories
 
+## Lighting & Weather Disambiguation
+- Quality adjectives (warm, soft, harsh, dappled, bokeh) → \`lighting.quality\`
+- Source nouns alone (candlelight, sun, lamp) → \`lighting.source\`
+- Phrases mixing both → "dominant descriptor wins": pick the role of the head word.
+  - "warm candlelight" → \`lighting.quality\` (quality adjective drives the meaning)
+  - "light from window" → \`lighting.source\` (source phrase drives the meaning)
+  - When in doubt between quality and source, prefer \`lighting.quality\`.
+- Weather is ALWAYS a separate span and OVERRIDES the compound-noun rule
+  below: "foggy forest" → split "foggy" (weather) + "forest" (location);
+  "foggy alley" → split "foggy" (weather) + "alley" (location).
+
 ## Split Patterns (Multiple Spans)
 - "[Person]'s [trait]" → Split: identity + appearance
 - "[Person] in [clothing]" → Split: identity + wardrobe
+- "[weather] [location]" → Split: environment.weather + environment.location
 
 ## Keep Together (Single Span)
 - Camera movements with modifiers: "camera slowly pans left"
 - Complete action phrases: "holding a vintage camera"
-- Compound nouns: "foggy alley", "forest floor"
+- Compound nouns: "forest floor", "kitchen counter" (NOT weather phrases —
+  see weather rule above)
 `.trim();
 
 /**

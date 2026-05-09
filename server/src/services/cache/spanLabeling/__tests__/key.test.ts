@@ -213,3 +213,48 @@ describe("buildTextPrefix", () => {
     });
   });
 });
+
+// Regression: a prior change rewrote LLM prompt instructions and bumped
+// `PROMPT_VERSIONS.SPAN_LABELING` (a logging tag) without bumping
+// `SpanLabelingConfig.DEFAULT_OPTIONS.templateVersion` (the field
+// `generateCacheKey` actually consumes). The bump had no effect on cache
+// invalidation: stale labels generated against the old, contradictory
+// prompt continued to be served from cache. These tests pin the contract
+// that `templateVersion` is part of the cache-key identity, so a future
+// bump cannot silently no-op the cache.
+describe("regression: templateVersion is part of cache-key identity", () => {
+  it("produces different keys for the same text under different templateVersions", () => {
+    const text = "A cinematic dolly shot through a foggy alley at dusk";
+    const policy = { enabledCategories: ["lighting", "environment"] };
+
+    const keyV22 = generateCacheKey(text, policy, "v2.2", "groq");
+    const keyV23 = generateCacheKey(text, policy, "v2.3", "groq");
+
+    expect(keyV22).not.toEqual(keyV23);
+  });
+
+  it("produces the same key when only templateVersion is held constant", () => {
+    const text = "A cinematic dolly shot through a foggy alley at dusk";
+    const policy = { enabledCategories: ["lighting", "environment"] };
+
+    const keyA = generateCacheKey(text, policy, "v2.3", "groq");
+    const keyB = generateCacheKey(text, policy, "v2.3", "groq");
+
+    expect(keyA).toEqual(keyB);
+  });
+
+  it("differentiates v2.2 from v2.3 even when the rest of the input is identical", () => {
+    // The "foggy alley" phrasing is intentional: this is the exact case
+    // that exposed the v2.2/v2.3 prompt contradiction. The cache MUST
+    // route requests for it to different namespaces under different
+    // template versions.
+    const text = "foggy alley at dusk";
+    const policy = null;
+
+    const keys = ["v2.2", "v2.3"].map((v) =>
+      generateCacheKey(text, policy, v, "groq"),
+    );
+
+    expect(new Set(keys).size).toBe(2);
+  });
+});

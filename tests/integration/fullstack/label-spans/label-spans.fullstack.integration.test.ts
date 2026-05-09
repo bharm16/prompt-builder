@@ -53,7 +53,7 @@ describe("Label Spans Routes (full-stack integration)", () => {
             },
           ],
           meta: {
-            version: "v2.2",
+            version: "v2.3",
             notes: "integration mock response",
           },
           isAdversarial: false,

@@ -28,7 +28,7 @@ const policy: ValidationPolicy = {
 const options: ProcessingOptions = {
   maxSpans: 60,
   minConfidence: 0,
-  templateVersion: "v2.2",
+  templateVersion: "v2.3",
 };
 
 const makeInputText = (raw: string): string => {

@@ -21,7 +21,11 @@ export const DEFAULT_POLICY = {
 export const DEFAULT_OPTIONS = {
   maxSpans: 60,
   minConfidence: 0.5,
-  templateVersion: "v1",
+  // Must match server `SpanLabelingConfig.DEFAULT_OPTIONS.templateVersion`.
+  // The server cache keys on this value; sending a stale identifier here
+  // would route requests to a cache namespace that disagrees with the
+  // active prompt rules.
+  templateVersion: "v2.3",
   debounceMs: 500, // Fallback if smart debounce is disabled
   useSmartDebounce: true, // Enable smart debouncing by default
 } as const;

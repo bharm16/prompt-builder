@@ -47,8 +47,12 @@ export const DEFAULT_OPTIONS = {
   // Minimum confidence threshold (0-1)
   minConfidence: 0.5,
 
-  // Template version identifier - v2.2: Relaxed word limit and fixed fuzzy matching window
-  templateVersion: "v2.2",
+  // Template version identifier — v2.3: Adds explicit weather-as-separate-span
+  // rule, lighting/source disambiguation table, and removes the "foggy alley"
+  // compound-noun exception that contradicted the weather rule. Bumping this
+  // value is what actually busts the SpanLabelingCacheService cache (the
+  // value is hashed into the cache key by `generateCacheKey`).
+  templateVersion: "v2.3",
 } as const;
 
 /**

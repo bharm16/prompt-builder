@@ -374,10 +374,18 @@ async function main(): Promise<number> {
         provider,
         commit: opts.commit ?? null,
         report,
+        // Full per-prompt records including predicted and ground-truth
+        // spans. Required for confusion-matrix and per-prompt diagnostics
+        // (`scripts/evaluation/diagnose-failures.ts`). The file is tracked
+        // in git (~110KB for 67 prompts) so cross-PR baseline drift shows
+        // up in `git diff` — accept the per-run timestamp churn as the
+        // cost of that observability.
         perPrompt: results.map((r) => ({
           promptId: r.promptId,
           predictedCount: r.predicted.length,
           groundTruthCount: r.groundTruth.length,
+          predicted: r.predicted,
+          groundTruth: r.groundTruth,
           error: r.error,
         })),
       },

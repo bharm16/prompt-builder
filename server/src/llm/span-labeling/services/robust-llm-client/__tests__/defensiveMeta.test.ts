@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { injectDefensiveMeta } from "../defensiveMeta";
 
-const baseOptions = { templateVersion: "v2.2" };
+const baseOptions = { templateVersion: "v2.3" };
 
 describe("injectDefensiveMeta", () => {
   describe("error handling", () => {
@@ -22,7 +22,7 @@ describe("injectDefensiveMeta", () => {
 
       expect(typeof value.analysis_trace).toBe("string");
       const meta = value.meta as Record<string, unknown>;
-      expect(meta.version).toBe("v2.2");
+      expect(meta.version).toBe("v2.3");
       expect(typeof meta.notes).toBe("string");
     });
   });
