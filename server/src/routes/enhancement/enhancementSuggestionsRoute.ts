@@ -47,7 +47,6 @@ export function registerEnhancementSuggestionsRoute(
         allLabeledSpans,
         nearbySpans,
         editHistory,
-        i2vContext,
       } = req.body;
       const debugHeader = req.headers["x-debug"];
       const debugRequested = Array.isArray(debugHeader)
@@ -84,7 +83,6 @@ export function registerEnhancementSuggestionsRoute(
           allLabeledSpans,
           nearbySpans,
           editHistory,
-          i2vContext,
           debug,
         });
 
