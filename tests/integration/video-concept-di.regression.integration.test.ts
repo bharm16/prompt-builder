@@ -28,7 +28,10 @@ describe("regression: video concept DI registration", () => {
 
     for (const token of tokens) {
       const service = container.resolve(token);
-      expect(service, `${token} must resolve to a truthy instance`).toBeTruthy();
+      expect(
+        service,
+        `${token} must resolve to a truthy instance`,
+      ).toBeTruthy();
     }
   }, 30_000);
 });

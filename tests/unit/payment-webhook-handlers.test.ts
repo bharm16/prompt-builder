@@ -46,7 +46,9 @@ const buildInvoiceLine = (
   ...overrides,
 });
 
-const buildInvoice = (overrides: Partial<PaymentInvoice> = {}): PaymentInvoice => ({
+const buildInvoice = (
+  overrides: Partial<PaymentInvoice> = {},
+): PaymentInvoice => ({
   id: "in_default",
   number: null,
   status: null,

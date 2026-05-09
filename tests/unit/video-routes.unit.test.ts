@@ -171,11 +171,7 @@ const createMockService = (): MockVideoServices => ({
 const createApp = (service: MockVideoServices) => {
   const app = express();
   app.use(express.json());
-  app.use(
-    "/api/video",
-    apiAuthMiddleware,
-    createVideoRoutes(service as never),
-  );
+  app.use("/api/video", apiAuthMiddleware, createVideoRoutes(service as never));
   app.use(
     (
       err: unknown,

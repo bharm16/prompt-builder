@@ -121,10 +121,13 @@ export class WebhookReconciliationWorker extends PollingWorkerBase {
 
         try {
           if (event.type !== "checkout.session.completed") {
-            this.log.warn("Skipping non-checkout event in checkout reconciler", {
-              eventId: event.id,
-              eventType: describePaymentEventType(event),
-            });
+            this.log.warn(
+              "Skipping non-checkout event in checkout reconciler",
+              {
+                eventId: event.id,
+                eventType: describePaymentEventType(event),
+              },
+            );
             continue;
           }
           const session = event.payload;

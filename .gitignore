@@ -92,6 +92,9 @@ Thumbs.db
 # audit plugin — not source of truth, regenerable on demand).
 .performance-optimization/
 
+# Claude Code worktrees (ephemeral parallel-agent workspaces)
+.claude/worktrees/
+
 # Misc
 .serverless/
 firebase-debug.log

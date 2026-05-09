@@ -111,7 +111,9 @@ describe("FirestoreReferenceImageStore", () => {
               typeof FirestoreReferenceImageStore
             >[0]["bucket"],
           }),
-      ).toThrow("FirestoreReferenceImageStore requires an injected storage bucket");
+      ).toThrow(
+        "FirestoreReferenceImageStore requires an injected storage bucket",
+      );
     });
 
     it("accepts custom bucket name", () => {

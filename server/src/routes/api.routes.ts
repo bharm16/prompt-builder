@@ -43,7 +43,10 @@ import type { ContinuitySessionService } from "@services/continuity/ContinuitySe
 import type { ModelIntelligenceService } from "@services/model-intelligence/ModelIntelligenceService";
 import type { SessionService } from "@services/sessions/SessionService";
 
-interface ApiServices extends OptimizeServices, EnhancementServices, VideoServices {
+interface ApiServices
+  extends OptimizeServices,
+    EnhancementServices,
+    VideoServices {
   storageService: StorageRoutesService;
   assetService?: AssetService;
   consistentVideoService?: ConsistentVideoService;

@@ -124,7 +124,9 @@ export class FirestoreAssetStore implements AssetStorePort {
 
   constructor(options: FirestoreAssetStoreOptions) {
     if (!options.bucket) {
-      throw new Error("FirestoreAssetStore requires an injected storage bucket");
+      throw new Error(
+        "FirestoreAssetStore requires an injected storage bucket",
+      );
     }
     this.db = options.db || getFirestore();
     this.bucket = options.bucket;

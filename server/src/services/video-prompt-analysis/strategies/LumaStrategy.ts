@@ -304,10 +304,7 @@ export class LumaStrategy extends BaseStrategy {
         const expansion = CAUSAL_EXPANSIONS[indicator];
         if (expansion) {
           // Add the causal expansion after the static term
-          const regex = new RegExp(
-            `(\\b${escapeRegex(indicator)}\\b)`,
-            "gi",
-          );
+          const regex = new RegExp(`(\\b${escapeRegex(indicator)}\\b)`, "gi");
           result = result.replace(regex, `$1, ${expansion}`);
         }
       }

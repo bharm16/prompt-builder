@@ -161,4 +161,3 @@ function parseTechnicalSpecs(specsText: string): Record<string, string> {
   }
   return specs;
 }
-

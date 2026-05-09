@@ -61,10 +61,7 @@ const buildFirestoreMock = (triggers: string[]) => {
     limit: () => buildQuery(clauses),
     get: vi.fn().mockImplementation(async () => {
       const docs = allDocs.filter((doc) =>
-        matchesClauses(
-          (doc.data() as { trigger: string }).trigger,
-          clauses,
-        ),
+        matchesClauses((doc.data() as { trigger: string }).trigger, clauses),
       );
       return { docs, empty: docs.length === 0 };
     }),

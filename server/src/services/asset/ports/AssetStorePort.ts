@@ -133,8 +133,5 @@ export interface AssetStorePort {
     input: CreateUsageRecordInput,
   ): Promise<void>;
 
-  recordBulkUsage(
-    userId: string,
-    records: BulkUsageRecord[],
-  ): Promise<void>;
+  recordBulkUsage(userId: string, records: BulkUsageRecord[]): Promise<void>;
 }
