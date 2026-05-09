@@ -5,11 +5,6 @@
 import type { AIExecutionPort } from "@services/ai-model/ports/AIExecutionPort";
 import type { VideoPromptService } from "@services/video-prompt-analysis/index";
 import type { PromptMode } from "../constants.js";
-import type { ImageObservation } from "@services/image-observation/types";
-import type {
-  I2VConstraintMode,
-  LockMap,
-} from "@services/prompt-optimization/types/i2v";
 
 /**
  * Suggestion object structure
@@ -506,11 +501,6 @@ export interface EnhancementRequestParams {
   allLabeledSpans?: LabeledSpan[];
   nearbySpans?: NearbySpan[];
   editHistory?: EditHistoryEntry[];
-  i2vContext?: {
-    observation: ImageObservation;
-    lockMap: LockMap;
-    constraintMode?: I2VConstraintMode;
-  } | null;
   debug?: boolean;
 }
 

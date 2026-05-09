@@ -5,7 +5,6 @@ import { sha256Hex } from "@utils/hash";
 import { TemperatureOptimizer } from "@utils/TemperatureOptimizer";
 import { EnhancementMetricsService } from "./services/EnhancementMetricsService";
 import { VideoContextDetectionService } from "./services/VideoContextDetectionService";
-import { I2VConstrainedSuggestions } from "./services/I2VConstrainedSuggestions";
 import { detectPlaceholder } from "./services/placeholderDetection";
 import { CacheKeyFactory } from "./utils/CacheKeyFactory";
 import { PROMPT_MODES } from "./constants";
@@ -80,7 +79,6 @@ export class EnhancementService {
   private readonly pipeline: EnhancementPipelineServices;
   private readonly cacheConfig: { ttl: number; namespace: string };
   private readonly log: ILogger;
-  private readonly i2vConstraints: I2VConstrainedSuggestions;
   private readonly cacheService: CacheService;
   private readonly enhancementConfig: EnhancementV2Config;
 
@@ -132,7 +130,6 @@ export class EnhancementService {
       }),
       spanContextBuilder: new SpanContextBuilder(),
     };
-    this.i2vConstraints = new I2VConstrainedSuggestions();
   }
 
   /**
@@ -151,7 +148,6 @@ export class EnhancementService {
     allLabeledSpans = [],
     nearbySpans = [],
     editHistory = [],
-    i2vContext = null,
     debug = false,
   }: EnhancementRequestParams): Promise<EnhancementResult> {
     const metrics: EnhancementMetrics = {
@@ -220,39 +216,6 @@ export class EnhancementService {
           spanContext.guidanceSpans,
           editHistory,
         ) || undefined;
-
-      if (i2vContext && highlightedCategory) {
-        const prefilter = this.i2vConstraints.filterSuggestions(
-          [],
-          highlightedCategory,
-          i2vContext.lockMap,
-          i2vContext.observation,
-        );
-
-        if (prefilter.blockedReason) {
-          const isPlaceholder = detectPlaceholder(
-            highlightedText,
-            contextBefore,
-            contextAfter,
-            fullPrompt,
-          );
-          return {
-            suggestions: [],
-            isPlaceholder,
-            hasCategories: true,
-            phraseRole: null,
-            appliedConstraintMode: null,
-            fallbackApplied: false,
-            metadata: {
-              i2v: {
-                locked: true,
-                reason: prefilter.blockedReason,
-                motionAlternatives: prefilter.motionAlternatives ?? [],
-              },
-            },
-          };
-        }
-      }
 
       const cacheStart = Date.now();
       const cacheKey = CacheKeyFactory.generateKey(
@@ -379,33 +342,6 @@ export class EnhancementService {
       processingNotes.diversityEnforced =
         execution.finalSuggestions.length !== execution.rawSuggestions.length;
       processingNotes.usedFallback = execution.debug.modelCallCount > 1;
-
-      if (i2vContext && highlightedCategory) {
-        const hasGroupedSuggestions =
-          Array.isArray(result.suggestions) &&
-          result.suggestions.length > 0 &&
-          "suggestions" in result.suggestions[0]!;
-        if (!hasGroupedSuggestions) {
-          const filtered = this.i2vConstraints.filterSuggestions(
-            result.suggestions as Suggestion[],
-            highlightedCategory,
-            i2vContext.lockMap,
-            i2vContext.observation,
-          );
-
-          result.suggestions = filtered.suggestions;
-          if (filtered.blockedReason || filtered.motionAlternatives) {
-            result.metadata = {
-              ...(result.metadata || {}),
-              i2v: {
-                locked: !!filtered.blockedReason,
-                reason: filtered.blockedReason,
-                motionAlternatives: filtered.motionAlternatives ?? [],
-              },
-            };
-          }
-        }
-      }
 
       metrics.postProcessing = Date.now() - postStart;
 
