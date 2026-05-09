@@ -7,7 +7,7 @@ import { logger } from "@/services/LoggingService";
 import type { CameraPath } from "@/features/convergence/types";
 import { sanitizeError } from "@/utils/logging";
 import { safeUrlHost } from "@/utils/url";
-import type { ApiResponse } from "#shared/types/api";
+import type { ApiResponse } from "@shared/types/api";
 
 const log = logger.child("motionApi");
 const OPERATION = "estimateDepth";

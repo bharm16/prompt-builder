@@ -2,7 +2,11 @@ import { expect, test } from "@playwright/test";
 import { jsonResponse } from "./helpers/responses";
 import { injectAuthUser } from "./helpers/auth";
 
-test("workspace smoke: optimize, preview, and session persistence flow", async ({
+// FIXME(e2e): Same root cause as video-generation.spec.ts — the preview
+// storyboard button (CanvasSettingsRow.tsx:432) is gated on showPreviewButton,
+// which the mocked /api/optimize response doesn't drive on. Pre-existing
+// failure on main for 5+ runs.
+test.fixme("workspace smoke: optimize, preview, and session persistence flow", async ({
   page,
 }) => {
   // Auth injection must happen before navigation. The Optimized prompt

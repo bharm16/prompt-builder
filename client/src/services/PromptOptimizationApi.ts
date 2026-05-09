@@ -12,10 +12,12 @@ import {
 import {
   CompileResponseSchema,
   OptimizeResponseSchema,
-  type CompileOptions,
-  type CompileResult,
-  type OptimizeOptions,
-  type OptimizeResult,
+} from "./prompt-optimization/types";
+import type {
+  CompileOptions,
+  CompileResult,
+  OptimizeOptions,
+  OptimizeResult,
 } from "./prompt-optimization/types";
 
 export class PromptOptimizationApi {

@@ -138,6 +138,8 @@
     "openapi:generate": "tsx --tsconfig server/tsconfig.json scripts/generate-openapi.ts",
     "routemap:generate": "tsx --tsconfig server/tsconfig.json scripts/generate-route-map.ts --write",
     "routemap:check": "tsx --tsconfig server/tsconfig.json scripts/generate-route-map.ts --check",
+    "flagdocs:generate": "tsx --tsconfig server/tsconfig.json scripts/generate-flag-docs.ts --write",
+    "flagdocs:check": "tsx --tsconfig server/tsconfig.json scripts/generate-flag-docs.ts --check",
     "test:optimize-pipeline": "tsx --tsconfig server/tsconfig.json scripts/test-prompt-optimizer-pipeline.ts",
     "test:flash": "node scripts/test-gemini-flash-spans.js",
     "highlight-stats": "tsx scripts/get-highlight-stats.ts",

@@ -14,4 +14,4 @@ process.env.VIDEO_GENERATE_IDEMPOTENCY_MODE =
 // di-container) still hit the in-memory firebase admin shim used in
 // NODE_ENV=test.
 process.env.RUN_FIREBASE_INTEGRATION =
-  process.env.RUN_FIREBASE_INTEGRATION || "true";
+  process.env.RUN_FIREBASE_INTEGRATION ?? "true";

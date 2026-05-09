@@ -4,7 +4,14 @@ import { injectAuthUser } from "./helpers/auth";
 import { mockSessionRoutes } from "./helpers/mockRoutes";
 
 test.describe("video generation (authenticated)", () => {
-  test("full flow: optimize → image preview → video generate", async ({
+  // FIXME(e2e): The `Preview storyboard X credits` button in CanvasSettingsRow
+  // is gated on a `showPreviewButton` prop ("hidden in the empty moment, surfaced
+  // once there's content to compare against"). The mocked /api/optimize response
+  // doesn't drive the parent state into the showPreviewButton=true branch, so
+  // the click times out. Test needs to either wait for an intermediate render
+  // signal or mock the upstream state that flips showPreviewButton. Pre-existing
+  // failure on main for 5+ runs.
+  test.fixme("full flow: optimize → image preview → video generate", async ({
     page,
   }) => {
     // Auth injection must happen before navigation

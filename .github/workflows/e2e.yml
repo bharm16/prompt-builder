@@ -142,6 +142,6 @@ jobs:
         with:
           urls: |
             http://localhost:8080
-          uploadArtifacts: true
+          uploadArtifacts: false
           temporaryPublicStorage: true
           configPath: ".lighthouserc.json"
