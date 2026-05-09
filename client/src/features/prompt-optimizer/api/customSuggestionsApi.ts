@@ -2,7 +2,6 @@
  * Custom Suggestions API
  *
  * Centralized API calls for fetching custom suggestions.
- * Following VideoConceptBuilder pattern: api/videoConceptApi.ts
  * Uses Zod schemas for runtime validation at API boundaries.
  *
  * Features:

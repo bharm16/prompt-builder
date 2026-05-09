@@ -4,7 +4,7 @@
  * Tracks user edits during the prompt optimization session to maintain
  * creative coherence and consistency across suggestions.
  *
- * Pattern: useReducer-based state management (like VideoConceptBuilder)
+ * Pattern: useReducer-based state management
  * Storage: Session-only (resets on page refresh)
  */
 

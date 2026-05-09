@@ -2,7 +2,6 @@
  * SuggestionsPanel Configuration
  *
  * Centralized configuration for default states, props, thresholds, and API endpoints.
- * Following VideoConceptBuilder pattern: config/constants.js
  */
 
 import {

@@ -2,7 +2,6 @@
  * CustomRequestForm Component
  *
  * Form for submitting custom suggestion requests.
- * Following VideoConceptBuilder pattern: Controlled form component
  */
 
 import type { FormEvent, ReactElement } from "react";
@@ -45,14 +44,14 @@ export function CustomRequestForm({
     const tokenEditorCtaLabel = ctaLabel || "Generate more";
 
     return (
-      <div className="flex w-full flex-col gap-2 -mt-0.5">
+      <div className="-mt-0.5 flex w-full flex-col gap-2">
         <form onSubmit={handleSubmit} className="flex flex-col gap-2.5">
           <Textarea
             id="custom-request"
             value={customRequest}
             onChange={(e) => onCustomRequestChange(e.target.value)}
             placeholder={tokenEditorPlaceholder}
-            className="min-h-12 w-full resize-y rounded-md border border-border bg-surface-1 px-3 py-2 text-label-12 text-foreground placeholder:text-faint focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/10 focus-visible:border-border-strong"
+            className="border-border bg-surface-1 text-label-12 text-foreground placeholder:text-faint focus-visible:ring-accent/10 focus-visible:border-border-strong min-h-12 w-full resize-y rounded-md border px-3 py-2 focus-visible:outline-none focus-visible:ring-2"
             maxLength={MAX_REQUEST_LENGTH}
           />
 
@@ -60,7 +59,7 @@ export function CustomRequestForm({
             type="submit"
             disabled={isLoading || !customRequest.trim()}
             variant="ghost"
-            className="h-8 w-full gap-1 rounded-md border border-white/10 bg-white/10 px-3 text-label-12 text-foreground transition-colors duration-150 hover:border-white/20 hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-60"
+            className="text-label-12 text-foreground h-8 w-full gap-1 rounded-md border border-white/10 bg-white/10 px-3 transition-colors duration-150 hover:border-white/20 hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-60"
             aria-busy={isLoading}
             aria-live="polite"
           >
@@ -82,7 +81,7 @@ export function CustomRequestForm({
   }
 
   return (
-    <div className="flex-shrink-0 px-3 py-2 border-b border-border bg-app space-y-2">
+    <div className="border-border bg-app flex-shrink-0 space-y-2 border-b px-3 py-2">
       <div className="space-y-1">
         <label
           htmlFor="custom-request"
@@ -99,7 +98,7 @@ export function CustomRequestForm({
           value={customRequest}
           onChange={(e) => onCustomRequestChange(e.target.value)}
           placeholder={placeholder ?? defaultPlaceholder}
-          className="w-full h-10 text-label-12 text-foreground bg-app border border-border rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-foreground/10 focus:border-border-strong"
+          className="text-label-12 text-foreground bg-app border-border focus:ring-foreground/10 focus:border-border-strong h-10 w-full rounded-md border px-2 py-1 focus:outline-none focus:ring-2"
           maxLength={MAX_REQUEST_LENGTH}
         />
 
@@ -107,10 +106,10 @@ export function CustomRequestForm({
           type="submit"
           disabled={isLoading || !customRequest.trim()}
           variant="ghost"
-          className={`w-full gap-1 px-3 py-1 text-label-12 rounded-md transition-colors duration-150 ${
+          className={`text-label-12 w-full gap-1 rounded-md px-3 py-1 transition-colors duration-150 ${
             isLoading || !customRequest.trim()
               ? "bg-surface-2 text-muted cursor-not-allowed"
-              : "bg-foreground text-white hover:bg-muted"
+              : "bg-foreground hover:bg-muted text-white"
           }`}
           aria-busy={isLoading}
           aria-live="polite"

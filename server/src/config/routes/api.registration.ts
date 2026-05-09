@@ -20,13 +20,6 @@ import type { StorageRoutesService } from "@routes/storage.routes";
 import type { LLMJudgeService } from "@services/quality-feedback/services/LLMJudgeService";
 import type { ContinuitySessionService } from "@services/continuity/ContinuitySessionService";
 import type { ModelIntelligenceService } from "@services/model-intelligence/ModelIntelligenceService";
-import type { CompatibilityService } from "@services/video-concept/services/validation/CompatibilityService";
-import type { ConceptParsingService } from "@services/video-concept/services/analysis/ConceptParsingService";
-import type { ConflictDetectionService } from "@services/video-concept/services/detection/ConflictDetectionService";
-import type { PromptValidationService } from "@services/video-concept/services/validation/PromptValidationService";
-import type { SceneCompletionService } from "@services/video-concept/services/analysis/SceneCompletionService";
-import type { SceneVariationService } from "@services/video-concept/services/analysis/SceneVariationService";
-import type { SuggestionGeneratorService } from "@services/video-concept/services/generation/SuggestionGeneratorService";
 import type { ConsistentVideoService } from "@services/video-generation/ConsistentVideoService";
 import type { UserCreditService } from "@services/credits/UserCreditService";
 import { STORAGE_CONFIG } from "@services/storage/config/storageConfig";
@@ -64,31 +57,6 @@ export function registerApiRoutes(
           "consistentVideoService",
           "consistent-generation",
         );
-  // Video concept sub-services — each handler depends on a specific one.
-  // Missing registrations must fail boot (loud) rather than silently 404
-  // the entire /api/video/* namespace. Tokens are registered in
-  // enhancement.services.ts.
-  const suggestionGenerator = container.resolve<SuggestionGeneratorService>(
-    "videoSuggestionGeneratorService",
-  );
-  const compatibility = container.resolve<CompatibilityService>(
-    "videoCompatibilityService",
-  );
-  const conflictDetection = container.resolve<ConflictDetectionService>(
-    "videoConflictDetectionService",
-  );
-  const sceneCompletion = container.resolve<SceneCompletionService>(
-    "videoSceneCompletionService",
-  );
-  const promptValidation = container.resolve<PromptValidationService>(
-    "videoPromptValidationService",
-  );
-  const sceneVariation = container.resolve<SceneVariationService>(
-    "videoSceneVariationService",
-  );
-  const conceptParsing = container.resolve<ConceptParsingService>(
-    "videoConceptParsingService",
-  );
 
   // Media proxy — no auth required (signed URL is the authorization).
   // Must be registered before the auth middleware on /api.
@@ -111,13 +79,6 @@ export function registerApiRoutes(
     sceneDetectionService: container.resolve("sceneDetectionService"),
     promptCoherenceService: container.resolve("promptCoherenceService"),
     storageService: container.resolve<StorageRoutesService>("storageService"),
-    suggestionGenerator,
-    compatibility,
-    conflictDetection,
-    sceneCompletion,
-    promptValidation,
-    sceneVariation,
-    conceptParsing,
     assetService: container.resolve("assetService"),
     ...(consistentVideoService ? { consistentVideoService } : {}),
     userCreditService:

@@ -15,7 +15,7 @@
  * - Custom hooks: hooks/*.ts (isolated concerns)
  * - UI components: components/*.tsx (reusable pieces)
  *
- * Following VideoConceptBuilder pattern: index.ts
+ * Follows the canonical feature pattern (see client/src/features/preview/).
  */
 
 export { default } from "./SuggestionsPanel";

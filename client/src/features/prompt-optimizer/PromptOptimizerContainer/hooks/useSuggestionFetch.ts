@@ -13,7 +13,6 @@
  *
  * Architecture: Custom React hook
  * Pattern: Single responsibility - suggestion fetching
- * Reference: VideoConceptBuilder hooks pattern
  */
 
 import { useCallback } from "react";

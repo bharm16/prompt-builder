@@ -2,7 +2,6 @@
  * useCustomRequest Hook
  *
  * Manages custom request input state and API interactions.
- * Following VideoConceptBuilder pattern: hooks/useElementSuggestions.ts
  *
  * Features:
  * - Request cancellation via SuggestionRequestManager

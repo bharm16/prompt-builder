@@ -3,7 +3,6 @@
  *
  * State management for SuggestionsPanel using useReducer pattern.
  * Handles category processing, filtering, and active category selection.
- * Following VideoConceptBuilder pattern: hooks/useVideoConceptState.ts
  */
 
 import { useReducer, useEffect, useMemo, type Dispatch } from "react";

@@ -2,7 +2,6 @@
  * PanelStates Components
  *
  * Loading, Empty, and Inactive state components for SuggestionsPanel.
- * Following VideoConceptBuilder pattern: components/ConflictsAlert.tsx
  */
 
 import { Info } from "@promptstudio/system/components/ui";
@@ -33,16 +32,16 @@ export function LoadingState({
   const skeletonCount = getLoadingSkeletonCount(textLength, isPlaceholder);
 
   return (
-    <div className="px-3 py-3 space-y-2" role="status" aria-live="polite">
+    <div className="space-y-2 px-3 py-3" role="status" aria-live="polite">
       {Array.from({ length: skeletonCount }).map((_, i) => (
         <div
           key={i}
-          className="relative overflow-hidden px-3 py-2 bg-surface-1 border border-border rounded-md animate-pulse"
+          className="bg-surface-1 border-border relative animate-pulse overflow-hidden rounded-md border px-3 py-2"
           style={{ animationDelay: `${i * 75}ms`, animationDuration: "1.5s" }}
         >
           <div className="space-y-1">
             <div
-              className={`h-3 bg-surface-2 rounded-md ${
+              className={`bg-surface-2 h-3 rounded-md ${
                 i % 4 === 0
                   ? "w-3/4"
                   : i % 4 === 1
@@ -55,20 +54,20 @@ export function LoadingState({
             {isPlaceholder ? (
               <>
                 <div
-                  className={`h-2.5 bg-surface-2 rounded-md ${i % 2 === 0 ? "w-full" : "w-11/12"}`}
+                  className={`bg-surface-2 h-2.5 rounded-md ${i % 2 === 0 ? "w-full" : "w-11/12"}`}
                 />
                 <div
-                  className={`h-2.5 bg-surface-2 rounded-md ${i % 3 === 0 ? "w-5/6" : "w-4/5"}`}
+                  className={`bg-surface-2 h-2.5 rounded-md ${i % 3 === 0 ? "w-5/6" : "w-4/5"}`}
                 />
               </>
             ) : (
               <>
                 <div
-                  className={`h-2.5 bg-surface-2 rounded-md ${i % 2 === 0 ? "w-full" : "w-11/12"}`}
+                  className={`bg-surface-2 h-2.5 rounded-md ${i % 2 === 0 ? "w-full" : "w-11/12"}`}
                 />
                 {i % 3 !== 2 && (
                   <div
-                    className={`h-2.5 bg-surface-2 rounded-md ${i % 2 === 0 ? "w-5/6" : "w-4/5"}`}
+                    className={`bg-surface-2 h-2.5 rounded-md ${i % 2 === 0 ? "w-5/6" : "w-4/5"}`}
                   />
                 )}
               </>
@@ -76,7 +75,7 @@ export function LoadingState({
           </div>
         </div>
       ))}
-      <p className="text-center text-label-12 text-muted mt-4">
+      <p className="text-label-12 text-muted mt-4 text-center">
         {isPlaceholder ? "Finding relevant values..." : "Analyzing context..."}
       </p>
     </div>
@@ -98,10 +97,10 @@ export function EmptyState({
 
   return (
     <div className="flex flex-1 items-center justify-center py-8">
-      <div className="px-3 text-center max-w-[200px]">
-        <div className="relative inline-flex mb-3">
-          <div className="relative p-2 bg-surface-1 border border-border rounded-md">
-            <EmptyIcon className="h-6 w-6 text-muted" aria-hidden="true" />
+      <div className="max-w-[200px] px-3 text-center">
+        <div className="relative mb-3 inline-flex">
+          <div className="bg-surface-1 border-border relative rounded-md border p-2">
+            <EmptyIcon className="text-muted h-6 w-6" aria-hidden="true" />
           </div>
         </div>
         <p className="text-label-12 text-foreground mb-1">{emptyState.title}</p>
@@ -131,10 +130,10 @@ export function ErrorState({
 
   return (
     <div className="flex flex-1 items-center justify-center py-8">
-      <div className="px-3 text-center max-w-[220px]">
-        <div className="relative inline-flex mb-3">
-          <div className="relative p-2 bg-surface-1 border border-border rounded-md">
-            <ErrorIcon className="h-6 w-6 text-muted" aria-hidden="true" />
+      <div className="max-w-[220px] px-3 text-center">
+        <div className="relative mb-3 inline-flex">
+          <div className="bg-surface-1 border-border relative rounded-md border p-2">
+            <ErrorIcon className="text-muted h-6 w-6" aria-hidden="true" />
           </div>
         </div>
         <p className="text-label-12 text-foreground mb-1">{errorState.title}</p>
@@ -143,7 +142,7 @@ export function ErrorState({
           <Button
             onClick={onRetry}
             variant="ghost"
-            className="mt-3 px-3 py-1 text-label-12 font-medium bg-surface-2 rounded-md transition-colors hover:bg-surface-3"
+            className="text-label-12 bg-surface-2 hover:bg-surface-3 mt-3 rounded-md px-3 py-1 font-medium transition-colors"
           >
             Retry
           </Button>
@@ -171,14 +170,14 @@ export function InactiveState({
     <div className="flex flex-1 items-start justify-start px-4 py-4">
       <div className="w-full max-w-[360px]">
         <div className="flex items-start gap-3">
-          <div className="relative p-2 bg-surface-1 border border-border rounded-md flex-shrink-0">
-            <InactiveIcon className="h-5 w-5 text-muted" aria-hidden="true" />
+          <div className="bg-surface-1 border-border relative flex-shrink-0 rounded-md border p-2">
+            <InactiveIcon className="text-muted h-5 w-5" aria-hidden="true" />
           </div>
           <div className="min-w-0">
-            <h4 className="text-sm font-medium text-foreground">
+            <h4 className="text-foreground text-sm font-medium">
               {inactiveState.title}
             </h4>
-            <p className="mt-1 text-label-12 text-muted">
+            <p className="text-label-12 text-muted mt-1">
               {inactiveState.description}
             </p>
           </div>
@@ -188,10 +187,10 @@ export function InactiveState({
           Array.isArray(example.to) &&
           example.to.length > 0 && (
             <div className="mt-4">
-              <div className="text-[11px] font-medium text-muted uppercase tracking-wide mb-2">
+              <div className="text-muted mb-2 text-[11px] font-medium uppercase tracking-wide">
                 Example
               </div>
-              <div className="px-3 py-2 bg-surface-1 border border-border rounded-md text-label-12 text-foreground font-mono">
+              <div className="bg-surface-1 border-border text-label-12 text-foreground rounded-md border px-3 py-2 font-mono">
                 {example.from} → {example.to.join(" | ")}
               </div>
             </div>
@@ -204,10 +203,10 @@ export function InactiveState({
               return (
                 <div
                   key={`${tip.text}-${index}`}
-                  className="flex items-start gap-2 px-2 py-1 bg-surface-1 border border-border rounded-md"
+                  className="bg-surface-1 border-border flex items-start gap-2 rounded-md border px-2 py-1"
                 >
                   <TipIcon
-                    className="h-3 w-3 text-muted flex-shrink-0 mt-0.5"
+                    className="text-muted mt-0.5 h-3 w-3 flex-shrink-0"
                     aria-hidden="true"
                   />
                   <span className="text-label-12 text-muted">{tip.text}</span>

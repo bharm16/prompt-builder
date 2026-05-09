@@ -7,12 +7,6 @@ import {
   customSuggestionSchema,
   sceneChangeSchema,
   coherenceCheckSchema,
-  coherenceCheckOutputSchema,
-  creativeSuggestionSchema,
-  videoValidationSchema,
-  parseConceptSchema,
-  completeSceneSchema,
-  variationsSchema,
 } from "@config/schemas";
 
 describe("prompt schemas contract", () => {
@@ -140,97 +134,5 @@ describe("suggestion schemas contract", () => {
         },
       }).success,
     ).toBe(true);
-  });
-});
-
-describe("video schemas contract", () => {
-  it("accepts valid video/creative payloads", () => {
-    expect(
-      creativeSuggestionSchema.safeParse({
-        elementType: "style",
-        context: { mood: "moody" },
-      }).success,
-    ).toBe(true);
-    expect(
-      videoValidationSchema.safeParse({
-        elements: { subject: "hero", location: "city" },
-      }).success,
-    ).toBe(true);
-    expect(
-      parseConceptSchema.safeParse({
-        concept: "A rainy cyberpunk chase scene.",
-      }).success,
-    ).toBe(true);
-    expect(
-      completeSceneSchema.safeParse({
-        existingElements: { subject: "hero" },
-      }).success,
-    ).toBe(true);
-    expect(
-      variationsSchema.safeParse({
-        elements: { subject: "hero" },
-      }).success,
-    ).toBe(true);
-  });
-
-  it("rejects invalid video payloads", () => {
-    expect(
-      parseConceptSchema.safeParse({
-        concept: "",
-      }).success,
-    ).toBe(false);
-    expect(
-      videoValidationSchema.safeParse({
-        elements: "not-an-object",
-      }).success,
-    ).toBe(false);
-  });
-});
-
-describe("output schemas contract", () => {
-  it("accepts valid coherence-check output and rejects invalid edit types", () => {
-    const valid = coherenceCheckOutputSchema.safeParse({
-      conflicts: [
-        {
-          severity: "medium",
-          message: "Action conflicts with prior span.",
-          reasoning: "The replacement changed tense.",
-          recommendations: [
-            {
-              title: "Keep tense consistent",
-              rationale: "Maintain continuity",
-              edits: [
-                {
-                  type: "replaceSpanText",
-                  spanId: "span-1",
-                  replacementText: "runs",
-                },
-              ],
-            },
-          ],
-        },
-      ],
-      harmonizations: [],
-    });
-
-    const invalid = coherenceCheckOutputSchema.safeParse({
-      conflicts: [
-        {
-          message: "bad",
-          reasoning: "bad",
-          recommendations: [
-            {
-              title: "bad",
-              rationale: "bad",
-              edits: [{ type: "unknown-edit" }],
-            },
-          ],
-        },
-      ],
-      harmonizations: [],
-    });
-
-    expect(valid.success).toBe(true);
-    expect(invalid.success).toBe(false);
   });
 });

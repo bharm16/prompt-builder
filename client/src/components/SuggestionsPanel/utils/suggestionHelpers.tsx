@@ -2,7 +2,6 @@
  * SuggestionsPanel Utility Functions
  *
  * Pure functions for compatibility rendering, keyboard hints, and data normalization.
- * Following VideoConceptBuilder pattern: utils/validation.ts
  */
 
 import { CheckCircle, AlertCircle } from "@promptstudio/system/components/ui";
@@ -63,7 +62,7 @@ export function renderCompatibilityBadge(
 
   return (
     <div
-      className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-label-12 ${tone}`}
+      className={`text-label-12 inline-flex items-center gap-1 rounded-full px-2 py-1 ${tone}`}
     >
       {IconComponent ? (
         <IconComponent className="h-3.5 w-3.5" aria-hidden="true" />

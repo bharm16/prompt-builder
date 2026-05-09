@@ -11,7 +11,7 @@
  * - Configuration: Extracted to config/
  * - UI components: Extracted to components/
  *
- * Following VideoConceptBuilder pattern: VideoConceptBuilder.tsx
+ * Follows the canonical feature pattern (see client/src/features/preview/).
  */
 
 import React, { useState, useEffect, memo } from "react";
@@ -272,7 +272,7 @@ const SuggestionsPanel = memo(function SuggestionsPanel({
                     type="button"
                     onClick={onRetry}
                     variant="ghost"
-                    className="px-3 py-1.5 text-label-12 rounded-md border border-border bg-app text-foreground transition-colors hover:bg-surface-1"
+                    className="text-label-12 border-border bg-app text-foreground hover:bg-surface-1 rounded-md border px-3 py-1.5 transition-colors"
                   >
                     Retry
                   </Button>
@@ -304,7 +304,7 @@ const SuggestionsPanel = memo(function SuggestionsPanel({
 
             {hasActiveSuggestions && enableCustomRequest && (
               <>
-                <div className="my-3 h-px bg-border" aria-hidden="true" />
+                <div className="bg-border my-3 h-px" aria-hidden="true" />
                 <CustomRequestForm
                   customRequest={customRequest}
                   onCustomRequestChange={setCustomRequest}
@@ -328,30 +328,30 @@ const SuggestionsPanel = memo(function SuggestionsPanel({
         role="complementary"
         aria-label="Refine suggestions"
       >
-        <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
           {showTokenEditorHeader ? (
-            <div className="px-4 pt-3 pb-2">
-              <div className="text-label-12 font-medium uppercase tracking-wider text-muted">
+            <div className="px-4 pb-2 pt-3">
+              <div className="text-label-12 text-muted font-medium uppercase tracking-wider">
                 Suggestions
               </div>
             </div>
           ) : null}
 
-          <div className="flex-1 min-h-0 overflow-hidden">
+          <div className="min-h-0 flex-1 overflow-hidden">
             {!hasActiveSuggestions ? (
-              <div className="px-4 pb-4 text-label-12 text-muted">
+              <div className="text-label-12 text-muted px-4 pb-4">
                 Select a token to load alternatives.
               </div>
             ) : isLoading ? (
               <div
-                className="px-4 pb-4 text-label-12 text-muted"
+                className="text-label-12 text-muted px-4 pb-4"
                 role="status"
                 aria-live="polite"
               >
                 Loading alternatives…
               </div>
             ) : isError ? (
-              <div className="px-4 pb-4 space-y-2">
+              <div className="space-y-2 px-4 pb-4">
                 <div className="text-label-12 text-muted">
                   {typeof errorMessage === "string" && errorMessage.trim()
                     ? errorMessage
@@ -362,7 +362,7 @@ const SuggestionsPanel = memo(function SuggestionsPanel({
                     type="button"
                     onClick={onRetry}
                     variant="ghost"
-                    className="px-3 py-1.5 text-label-12 rounded-md border border-border bg-app text-foreground transition-colors hover:bg-surface-1"
+                    className="text-label-12 border-border bg-app text-foreground hover:bg-surface-1 rounded-md border px-3 py-1.5 transition-colors"
                   >
                     Retry
                   </Button>
@@ -377,7 +377,7 @@ const SuggestionsPanel = memo(function SuggestionsPanel({
                 variant="tokenEditor"
               />
             ) : (
-              <div className="px-4 pb-4 text-label-12 text-muted">
+              <div className="text-label-12 text-muted px-4 pb-4">
                 No alternatives yet.
               </div>
             )}
@@ -445,7 +445,7 @@ const SuggestionsPanel = memo(function SuggestionsPanel({
         </>
       )}
 
-      <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         {hasActiveSuggestions ? (
           <>
             {isLoading && (

@@ -17,11 +17,10 @@ export interface SceneChangeResult {
 
 /**
  * Service for detecting scene changes in video prompts
- * Determines if field changes require updating related fields
+ * Determines if field changes require updating related fields.
  *
- * Moved from SceneDetectionService.js to video-concept folder for better
- * logical grouping with other scene-related services (SceneAnalysisService,
- * ConflictDetectionService).
+ * Consumed by the enhancement domain via /api/detect-scene-change
+ * (routes/enhancement/sceneChangeRoute.ts).
  */
 export class SceneChangeDetectionService {
   private readonly ai: AIService;

@@ -6,7 +6,6 @@
  *
  * Architecture: Orchestrator pattern
  * Pattern: Delegates to specialized hooks
- * Reference: VideoConceptBuilder hook composition pattern
  *
  * REFACTORED: Reduced from 289 lines to ~35 lines
  * - Validation logic → utils/spanValidation.js

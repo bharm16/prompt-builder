@@ -101,10 +101,7 @@ export default [
         {
           patterns: [
             {
-              group: [
-                '@services/EnhancementService',
-                '@services/VideoConceptService',
-              ],
+              group: ['@services/EnhancementService'],
               message:
                 'Use canonical domain imports instead of legacy root service shims.',
             },

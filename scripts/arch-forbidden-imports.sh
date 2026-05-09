@@ -6,7 +6,7 @@ cd "$ROOT_DIR"
 
 # ── Legacy service import restrictions ──────────────────────────────────────
 
-legacy_pattern='@services/(EnhancementService|VideoConceptService)'
+legacy_pattern='@services/EnhancementService\b'
 credits_singleton_pattern="import\\s*\\{[^}]*\\buserCreditService\\b[^}]*\\}\\s*from ['\\\"]@services/credits/UserCreditService['\\\"]"
 storage_singleton_pattern="import\\s*\\{[^}]*\\bgetStorageService\\b[^}]*\\}\\s*from ['\\\"]@services/storage/StorageService['\\\"]"
 

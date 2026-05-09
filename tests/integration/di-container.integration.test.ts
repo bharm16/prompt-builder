@@ -5,8 +5,7 @@ import type { StorageService } from "@services/storage/StorageService";
 /**
  * Tokens that MUST be registered in every environment (api or worker role,
  * convergence enabled or not). If a token in this list is missing from the
- * container, route registration silently 404s an entire namespace — the
- * exact bug class that hid videoConceptService for ~1 sprint.
+ * container, route registration silently 404s an entire namespace.
  *
  * Add a token here when its absence would cause a silent runtime regression
  * (typically: route registration uses container.resolve directly, or
@@ -23,7 +22,6 @@ const REQUIRED_TOKENS = [
   "enhancementService",
   "sceneDetectionService",
   "promptCoherenceService",
-  "videoConceptService",
   "llmJudgeService",
   "userCreditService",
   "sessionService",

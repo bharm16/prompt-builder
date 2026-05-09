@@ -48,7 +48,6 @@ These terms have specific meanings in this codebase. Do not conflate them.
 | **Optimization**              | Two-stage prompt rewriting pipeline (Groq fast draft → OpenAI refinement)                                   | `server/src/services/prompt-optimization/`                                       | `/api/optimize` (buffered)         |
 | **Continuity**                | Shot-to-shot visual consistency in multi-shot sequences                                                     | `server/src/services/continuity/`                                                | `/api/continuity`                  |
 | **Convergence**               | Motion and visual convergence pipeline (iterative refinement toward target)                                 | `server/src/services/convergence/`                                               | `/api/motion`                      |
-| **Video Concept**             | Guided wizard flow: subject → action → location → camera → lighting → style                                 | `server/src/services/video-concept/`                                             | via `/api` routes                  |
 | **Model Intelligence**        | AI-powered model recommendation based on prompt analysis                                                    | `server/src/services/model-intelligence/`                                        | `/api/model-intelligence`          |
 | **Preview**                   | Image (Flux Schnell) and video (Wan 2.2) draft generation before final render                               | `server/src/services/image-generation/`, `server/src/services/video-generation/` | `/api/preview`                     |
 | **Generation**                | Final video render via Sora, Veo, Kling, Luma, Runway                                                       | `server/src/services/video-generation/`                                          | `/api/preview` (shared routes)     |
@@ -176,7 +175,6 @@ Server flags are declared in [`server/src/config/feature-flags.ts`](server/src/c
 | `/api/continuity/*`                          | `continuity.routes.ts`                    | `features/continuity/api/`                          |
 | `/api/model-intelligence/*`                  | `model-intelligence.routes.ts`            | `features/model-intelligence/api/`                  |
 | `/api/sessions/*`                            | `sessions.routes.ts`                      | (no dedicated client — uses ApiClient directly)     |
-| `/api/video/*`                               | `video.routes.ts`                         | `services/VideoConceptApi.ts`                       |
 | `/api/assets/*`                              | `asset.routes.ts`                         | `features/assets/`                                  |
 | `/api/reference-images/*`                    | `reference-images.routes.ts`              | `features/reference-images/`                        |
 | `/health`                                    | `health.routes.ts`                        | (not called from client)                            |

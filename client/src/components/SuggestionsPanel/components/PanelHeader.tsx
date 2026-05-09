@@ -2,7 +2,6 @@
  * PanelHeader Component
  *
  * Header section for SuggestionsPanel including title, actions, and context display.
- * Following VideoConceptBuilder pattern: components/ProgressHeader.tsx
  */
 
 import { X, RefreshCw } from "@promptstudio/system/components/ui";
@@ -39,7 +38,7 @@ export function PanelHeader({
   isPlaceholder = false,
 }: PanelHeaderProps): React.ReactElement {
   return (
-    <header className="flex-shrink-0 px-3 py-3 bg-app border-b border-transparent">
+    <header className="bg-app flex-shrink-0 border-b border-transparent px-3 py-3">
       <div className="flex items-center justify-end gap-2">
         <div className="flex items-center gap-1">
           {onRefresh && (
@@ -47,7 +46,7 @@ export function PanelHeader({
               onClick={onRefresh}
               variant="ghost"
               size="icon"
-              className="h-6 w-6 rounded-md p-0 text-muted transition-colors duration-150 hover:bg-surface-1 hover:text-foreground"
+              className="text-muted hover:bg-surface-1 hover:text-foreground h-6 w-6 rounded-md p-0 transition-colors duration-150"
               title="Refresh suggestions"
               aria-label="Refresh suggestions"
             >
@@ -59,7 +58,7 @@ export function PanelHeader({
               onClick={onClose}
               variant="ghost"
               size="icon"
-              className="h-6 w-6 rounded-md p-0 text-muted transition-colors duration-150 hover:bg-surface-1 hover:text-foreground"
+              className="text-muted hover:bg-surface-1 hover:text-foreground h-6 w-6 rounded-md p-0 transition-colors duration-150"
               title="Close suggestions"
               aria-label="Close suggestions"
             >
@@ -73,7 +72,7 @@ export function PanelHeader({
         <div className="mt-2 flex flex-col gap-2">
           {showContextBadge && (
             <div className="flex items-center gap-2">
-              <span className="inline-flex items-center gap-1 px-2 py-1 text-label-12 rounded-md bg-surface-1 text-foreground border border-border">
+              <span className="text-label-12 bg-surface-1 text-foreground border-border inline-flex items-center gap-1 rounded-md border px-2 py-1">
                 {ContextBadgeIcon ? (
                   <ContextBadgeIcon className="h-3 w-3" aria-hidden="true" />
                 ) : null}
@@ -84,17 +83,17 @@ export function PanelHeader({
           <div className="flex flex-col gap-2">
             <div className="flex items-start gap-2">
               {ContextIcon ? (
-                <div className="p-1 bg-surface-1 rounded-md border border-border flex-shrink-0">
+                <div className="bg-surface-1 border-border flex-shrink-0 rounded-md border p-1">
                   <ContextIcon
-                    className="h-3 w-3 text-muted"
+                    className="text-muted h-3 w-3"
                     aria-hidden="true"
                   />
                 </div>
               ) : null}
-              <div className="flex-1 min-w-0">
+              <div className="min-w-0 flex-1">
                 <div className="flex flex-col gap-1">
                   <div className="flex items-center gap-2">
-                    <span className="text-label-12 font-medium text-muted uppercase tracking-wide">
+                    <span className="text-label-12 text-muted font-medium uppercase tracking-wide">
                       Editing:
                     </span>
                     <span className="text-label-12 text-foreground break-words font-medium">
@@ -103,7 +102,7 @@ export function PanelHeader({
                   </div>
                   {contextSecondaryValue && (
                     <div className="flex items-center gap-2">
-                      <span className="text-label-12 font-medium text-muted uppercase tracking-wide">
+                      <span className="text-label-12 text-muted font-medium uppercase tracking-wide">
                         Category:
                       </span>
                       <span className="text-label-12 text-foreground break-words capitalize">

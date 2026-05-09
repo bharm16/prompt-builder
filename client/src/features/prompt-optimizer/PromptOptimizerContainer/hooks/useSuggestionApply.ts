@@ -6,7 +6,6 @@
  *
  * Architecture: Custom React hook
  * Pattern: Single responsibility - suggestion application
- * Reference: VideoConceptBuilder hooks pattern
  * Line count: ~80 lines (within <150 limit for hooks)
  */
 
