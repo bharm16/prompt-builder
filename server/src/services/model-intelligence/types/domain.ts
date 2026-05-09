@@ -1,61 +1,68 @@
-import type { VideoModelId } from "@shared/videoModels";
+import type { CanonicalPromptModelId } from '@shared/videoModels';
+import {
+  COST_TIERS as SHARED_COST_TIERS,
+  QUALITY_TIERS as SHARED_QUALITY_TIERS,
+  SPEED_TIERS as SHARED_SPEED_TIERS,
+} from '@shared/modelCatalog';
+
+export type { ModelCapabilities } from '@shared/modelCatalog';
 
 export const COMPLEXITY_LEVELS = [
-  "none",
-  "simple",
-  "moderate",
-  "complex",
+  'none',
+  'simple',
+  'moderate',
+  'complex',
 ] as const;
 export type ComplexityLevel = (typeof COMPLEXITY_LEVELS)[number];
 
 export const EMOTIONAL_INTENSITY = [
-  "none",
-  "subtle",
-  "moderate",
-  "intense",
+  'none',
+  'subtle',
+  'moderate',
+  'intense',
 ] as const;
 export type EmotionalIntensity = (typeof EMOTIONAL_INTENSITY)[number];
 
 export const ENVIRONMENT_TYPES = [
-  "interior",
-  "exterior",
-  "abstract",
-  "mixed",
+  'interior',
+  'exterior',
+  'abstract',
+  'mixed',
 ] as const;
 export type EnvironmentType = (typeof ENVIRONMENT_TYPES)[number];
 
 export const LIGHTING_REQUIREMENTS = [
-  "natural",
-  "stylized",
-  "dramatic",
-  "mixed",
+  'natural',
+  'stylized',
+  'dramatic',
+  'mixed',
 ] as const;
 export type LightingRequirement = (typeof LIGHTING_REQUIREMENTS)[number];
 
 export const CAMERA_COMPLEXITY = [
-  "static",
-  "simple",
-  "moderate",
-  "complex",
+  'static',
+  'simple',
+  'moderate',
+  'complex',
 ] as const;
 export type CameraComplexity = (typeof CAMERA_COMPLEXITY)[number];
 
 export const SUBJECT_COMPLEXITY = [
-  "static",
-  "simple",
-  "moderate",
-  "complex",
+  'static',
+  'simple',
+  'moderate',
+  'complex',
 ] as const;
 export type SubjectComplexity = (typeof SUBJECT_COMPLEXITY)[number];
 
-export const SPEED_TIERS = ["fast", "medium", "slow"] as const;
-export type SpeedTier = (typeof SPEED_TIERS)[number];
+export const SPEED_TIERS = SHARED_SPEED_TIERS;
+export type SpeedTier = (typeof SHARED_SPEED_TIERS)[number];
 
-export const COST_TIERS = ["low", "medium", "high"] as const;
-export type CostTier = (typeof COST_TIERS)[number];
+export const COST_TIERS = SHARED_COST_TIERS;
+export type CostTier = (typeof SHARED_COST_TIERS)[number];
 
-export const QUALITY_TIERS = ["preview", "standard", "premium"] as const;
-export type QualityTier = (typeof QUALITY_TIERS)[number];
+export const QUALITY_TIERS = SHARED_QUALITY_TIERS;
+export type QualityTier = (typeof SHARED_QUALITY_TIERS)[number];
 
 export interface PromptSpan {
   text: string;
@@ -84,7 +91,7 @@ export interface PromptRequirements {
     emotionalIntensity: EmotionalIntensity;
   };
   environment: {
-    complexity: "simple" | "moderate" | "complex";
+    complexity: 'simple' | 'moderate' | 'complex';
     type: EnvironmentType;
     hasArchitecture: boolean;
     hasNature: boolean;
@@ -92,7 +99,7 @@ export interface PromptRequirements {
   };
   lighting: {
     requirements: LightingRequirement;
-    complexity: "simple" | "moderate" | "complex";
+    complexity: 'simple' | 'moderate' | 'complex';
     hasPracticalLights: boolean;
     requiresAtmospherics: boolean;
   };
@@ -113,30 +120,6 @@ export interface PromptRequirements {
   confidenceScore: number;
 }
 
-export interface ModelCapabilities {
-  physics: number;
-  particleSystems: number;
-  fluidDynamics: number;
-  facialPerformance: number;
-  bodyLanguage: number;
-  characterActing: number;
-  cinematicLighting: number;
-  atmospherics: number;
-  environmentDetail: number;
-  architecturalAccuracy: number;
-  motionComplexity: number;
-  cameraControl: number;
-  stylization: number;
-  photorealism: number;
-  morphing: number;
-  transitions: number;
-  i2vBoost?: number;
-  t2vBoost?: number;
-  speedTier: SpeedTier;
-  costTier: CostTier;
-  qualityTier: QualityTier;
-}
-
 export interface FactorScore {
   factor: string;
   label: string;
@@ -147,7 +130,7 @@ export interface FactorScore {
 }
 
 export interface ModelScore {
-  modelId: VideoModelId;
+  modelId: CanonicalPromptModelId;
   overallScore: number;
   factorScores: FactorScore[];
   strengths: string[];
@@ -161,16 +144,16 @@ export interface ModelRecommendation {
   requirements: PromptRequirements;
   recommendations: ModelScore[];
   recommended: {
-    modelId: VideoModelId;
-    confidence: "high" | "medium" | "low";
+    modelId: CanonicalPromptModelId;
+    confidence: 'high' | 'medium' | 'low';
     reasoning: string;
   };
   alsoConsider?: {
-    modelId: VideoModelId;
+    modelId: CanonicalPromptModelId;
     reasoning: string;
   };
   suggestComparison: boolean;
-  comparisonModels?: [VideoModelId, VideoModelId];
-  filteredOut?: Array<{ modelId: VideoModelId; reason: string }>;
+  comparisonModels?: [CanonicalPromptModelId, CanonicalPromptModelId];
+  filteredOut?: Array<{ modelId: CanonicalPromptModelId; reason: string }>;
   computedAt: Date;
 }
