@@ -4,52 +4,52 @@ import React, {
   useCallback,
   useEffect,
   useState,
-} from 'react';
-import { useDrawerState } from '@components/CollapsibleDrawer';
-import { useToast } from '@components/Toast';
-import { useDebugLogger } from '@hooks/useDebugLogger';
+} from "react";
+import { useDrawerState } from "@components/CollapsibleDrawer";
+import { useToast } from "@components/Toast";
+import { useDebugLogger } from "@hooks/useDebugLogger";
 // Performance config consumed internally by useSpanLabelingPipeline
-import { sanitizeText } from '@/features/span-highlighting';
-import { useTriggerAutocomplete } from '@features/assets/hooks/useTriggerAutocomplete';
-import { useOutlineOverlay } from './hooks/useOutlineOverlay';
-import { useEditorInput } from './hooks/useEditorInput';
+import { sanitizeText } from "@/features/span-highlighting";
+import { useTriggerAutocomplete } from "@features/assets/hooks/useTriggerAutocomplete";
+import { useOutlineOverlay } from "./hooks/useOutlineOverlay";
+import { useEditorInput } from "./hooks/useEditorInput";
 
-import type { PromptCanvasProps } from './types';
+import type { PromptCanvasProps } from "./types";
 
-import { useSpanLabelingPipeline } from './hooks/useSpanLabelingPipeline';
-import { useSuggestionDetection } from './hooks/useSuggestionDetection';
+import { useSpanLabelingPipeline } from "./hooks/useSpanLabelingPipeline";
+import { useSuggestionDetection } from "./hooks/useSuggestionDetection";
 // parseResult, highlight rendering consumed by useSpanLabelingPipeline
-import { usePromptCanvasState } from './hooks/usePromptCanvasState';
-import { usePromptStatus } from './hooks/usePromptStatus';
-import { useSpanSelectionEffects } from './hooks/useSpanSelectionEffects';
-import { useCoherenceSpanMarkers } from './hooks/useCoherenceSpanMarkers';
-import { useSuggestionSelection } from './hooks/useSuggestionSelection';
-import { useTextSelection } from './hooks/useTextSelection';
-import { useEditorContent } from './hooks/useEditorContent';
-import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
-import { usePromptExport } from './hooks/usePromptExport';
-import { useLockedSpanInteractions } from './hooks/useLockedSpanInteractions';
-import { useTriggerValidation } from './hooks/useTriggerValidation';
-import { useInlineSuggestionState } from './hooks/useInlineSuggestionState';
-import { useCanvasEditorState } from './hooks/useCanvasEditorState';
-import { useCanvasGenerations } from './hooks/useCanvasGenerations';
-import { useCanvasCoherence } from './hooks/useCanvasCoherence';
-import { scrollToSpan } from '../SpanCategoryAccordion/utils/spanFormatting';
-import { PromptCanvasView } from './components/PromptCanvasView';
-import { postEnhancementSuggestions } from '@/api/enhancementSuggestionsApi';
-import { buildSuggestionContext } from '@features/prompt-optimizer/utils/enhancementSuggestionContext';
-import { prepareSpanContext } from '@features/span-highlighting/utils/spanProcessing';
-import { useGenerationControlsStoreState } from '@features/generation-controls';
-import { useWorkspaceSession } from '../context/WorkspaceSessionContext';
-import { usePromptInsertionBus } from '../context/PromptInsertionBusContext';
+import { usePromptCanvasState } from "./hooks/usePromptCanvasState";
+import { usePromptStatus } from "./hooks/usePromptStatus";
+import { useSpanSelectionEffects } from "./hooks/useSpanSelectionEffects";
+import { useCoherenceSpanMarkers } from "./hooks/useCoherenceSpanMarkers";
+import { useSuggestionSelection } from "./hooks/useSuggestionSelection";
+import { useTextSelection } from "./hooks/useTextSelection";
+import { useEditorContent } from "./hooks/useEditorContent";
+import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
+import { usePromptExport } from "./hooks/usePromptExport";
+import { useLockedSpanInteractions } from "./hooks/useLockedSpanInteractions";
+import { useTriggerValidation } from "./hooks/useTriggerValidation";
+import { useInlineSuggestionState } from "./hooks/useInlineSuggestionState";
+import { useCanvasEditorState } from "./hooks/useCanvasEditorState";
+import { useCanvasGenerations } from "./hooks/useCanvasGenerations";
+import { useCanvasCoherence } from "./hooks/useCanvasCoherence";
+import { scrollToSpan } from "../SpanCategoryAccordion/utils/spanFormatting";
+import { PromptCanvasView } from "./components/PromptCanvasView";
+import { postEnhancementSuggestions } from "@/api/enhancementSuggestionsApi";
+import { buildSuggestionContext } from "@features/prompt-optimizer/utils/enhancementSuggestionContext";
+import { prepareSpanContext } from "@features/span-highlighting/utils/spanProcessing";
+import { useGenerationControlsStoreState } from "@features/generation-controls";
+import { useWorkspaceSession } from "../context/WorkspaceSessionContext";
+import { usePromptInsertionBus } from "../context/PromptInsertionBusContext";
 import {
   usePromptActions,
   usePromptConfig,
   usePromptHighlights,
   usePromptServices,
   usePromptSession,
-} from '../context/PromptStateContext';
-import { serializeKeyframes } from '../utils/keyframeTransforms';
+} from "../context/PromptStateContext";
+import { serializeKeyframes } from "../utils/keyframeTransforms";
 
 // Main PromptCanvas Component
 export function PromptCanvas({
@@ -93,7 +93,7 @@ export function PromptCanvas({
   const [isBulkCopyLoading, setIsCopyAllDebugLoading] = useState(false);
 
   // Debug logging
-  const debug = useDebugLogger('PromptCanvas', {
+  const debug = useDebugLogger("PromptCanvas", {
     mode: selectedMode,
     hasPrompt: !!displayedPrompt,
     hasHighlights: !!initialHighlights,
@@ -105,9 +105,9 @@ export function PromptCanvas({
   const toast = useToast();
   const versionsDrawer = useDrawerState({
     defaultOpen: true,
-    storageKey: 'prompt-optimizer:versions-drawer',
-    position: 'bottom',
-    desktopMode: 'push',
+    storageKey: "prompt-optimizer:versions-drawer",
+    position: "bottom",
+    desktopMode: "push",
   });
 
   // Get model + layout state from context
@@ -143,12 +143,12 @@ export function PromptCanvas({
   const { lockedSpans, addLockedSpan, removeLockedSpan } = promptOptimizer;
   const serializedKeyframes = useMemo(
     () => serializeKeyframes(keyframes),
-    [keyframes]
+    [keyframes],
   );
 
   const effectiveAspectRatio = useMemo(() => {
     const fromParams = generationParams?.aspect_ratio;
-    if (typeof fromParams === 'string' && fromParams.trim()) {
+    if (typeof fromParams === "string" && fromParams.trim()) {
       return fromParams.trim();
     }
     return previewAspectRatio;
@@ -156,10 +156,10 @@ export function PromptCanvas({
 
   const durationSeconds = useMemo(() => {
     const durationValue = generationParams?.duration_s;
-    if (typeof durationValue === 'number') {
+    if (typeof durationValue === "number") {
       return Number.isFinite(durationValue) ? durationValue : null;
     }
-    if (typeof durationValue === 'string') {
+    if (typeof durationValue === "string") {
       const parsed = Number.parseFloat(durationValue);
       return Number.isFinite(parsed) ? parsed : null;
     }
@@ -168,12 +168,12 @@ export function PromptCanvas({
 
   const fpsNumber = useMemo(() => {
     const fpsValue = generationParams?.fps;
-    return typeof fpsValue === 'number' && Number.isFinite(fpsValue)
+    return typeof fpsValue === "number" && Number.isFinite(fpsValue)
       ? fpsValue
       : null;
   }, [generationParams?.fps]);
 
-  const enableMLHighlighting = selectedMode === 'video' && showResults;
+  const enableMLHighlighting = selectedMode === "video" && showResults;
 
   const { state, setState } = usePromptCanvasState();
   const {
@@ -189,15 +189,15 @@ export function PromptCanvas({
   // Normalize to NFC so span offsets and rendered text stay aligned.
   const normalizedDisplayedPrompt = useMemo(
     () => (displayedPrompt == null ? null : sanitizeText(displayedPrompt)),
-    [displayedPrompt]
+    [displayedPrompt],
   );
   const normalizedInputPrompt = useMemo(
-    () => sanitizeText(inputPrompt ?? ''),
-    [inputPrompt]
+    () => sanitizeText(inputPrompt ?? ""),
+    [inputPrompt],
   );
 
   const editorDisplayText = showResults
-    ? (normalizedDisplayedPrompt ?? '')
+    ? (normalizedDisplayedPrompt ?? "")
     : normalizedInputPrompt;
   const isOptimizing = Boolean(isProcessing);
 
@@ -256,7 +256,7 @@ export function PromptCanvas({
 
   // Extract suggestions visibility state for contextual UI
   const isSuggestionsOpen = Boolean(
-    selectedSpanId || (suggestionsData && suggestionsData.show !== false)
+    selectedSpanId || (suggestionsData && suggestionsData.show !== false),
   );
   const {
     currentVersions,
@@ -312,15 +312,15 @@ export function PromptCanvas({
 
   const setShowLegend = useCallback(
     (value: boolean) => setState({ showLegend: value }),
-    [setState]
+    [setState],
   );
   const setRightPaneMode = useCallback(
-    (value: 'refine' | 'preview') => setState({ rightPaneMode: value }),
-    [setState]
+    (value: "refine" | "preview") => setState({ rightPaneMode: value }),
+    [setState],
   );
   const setSelectedSpanId = useCallback(
     (value: string | null) => setState({ selectedSpanId: value }),
-    [setState]
+    [setState],
   );
   const handleSpanSelect = useCallback(
     (spanId: string | null): void => {
@@ -334,11 +334,11 @@ export function PromptCanvas({
       }
       setSelectedSpanId(spanId);
     },
-    [selectedSpanId, setSelectedSpanId]
+    [selectedSpanId, setSelectedSpanId],
   );
   const setHoveredSpanId = useCallback(
     (value: string | null) => setState({ hoveredSpanId: value }),
-    [setState]
+    [setState],
   );
 
   // Span outline overlay (state machine, dismissal, hover brightness)
@@ -384,8 +384,8 @@ export function PromptCanvas({
       normalizedDisplayedPrompt.trim() &&
       enableMLHighlighting
     ) {
-      performance.mark('prompt-displayed-on-screen');
-      debug.logEffect('Prompt displayed on screen', {
+      performance.mark("prompt-displayed-on-screen");
+      debug.logEffect("Prompt displayed on screen", {
         promptLength: normalizedDisplayedPrompt.length,
         mlHighlighting: enableMLHighlighting,
       });
@@ -393,7 +393,7 @@ export function PromptCanvas({
   }, [normalizedDisplayedPrompt, enableMLHighlighting, debug]);
 
   const hasVisibleOutput =
-    typeof normalizedDisplayedPrompt === 'string' &&
+    typeof normalizedDisplayedPrompt === "string" &&
     normalizedDisplayedPrompt.length > 0;
   const isOutputLoading = Boolean(isProcessing && !hasVisibleOutput);
 
@@ -403,13 +403,13 @@ export function PromptCanvas({
     const root = editorRef.current;
     if (!root) return;
     const interval = window.setInterval(() => {
-      const nodes = root.querySelectorAll('span.value-word[data-span-id]');
+      const nodes = root.querySelectorAll("span.value-word[data-span-id]");
       if (!nodes.length) return;
       const node = nodes[
         Math.floor(Math.random() * nodes.length)
       ] as HTMLElement;
-      node.classList.add('opacity-80');
-      window.setTimeout(() => node.classList.remove('opacity-80'), 200);
+      node.classList.add("opacity-80");
+      window.setTimeout(() => node.classList.remove("opacity-80"), 200);
     }, 6000);
     return () => window.clearInterval(interval);
   }, [editorRef, showHighlights, normalizedDisplayedPrompt]);
@@ -427,7 +427,7 @@ export function PromptCanvas({
     selectedSpanId,
     onFetchSuggestions,
     onSpanSelect: handleSpanSelect,
-    onIntentRefine: () => setRightPaneMode('refine'),
+    onIntentRefine: () => setRightPaneMode("refine"),
   });
 
   const {
@@ -507,17 +507,17 @@ export function PromptCanvas({
       const target = event.target as HTMLElement | null;
       const isEditable =
         !!target &&
-        (target.tagName === 'INPUT' ||
-          target.tagName === 'TEXTAREA' ||
-          target.tagName === 'SELECT' ||
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.tagName === "SELECT" ||
           target.isContentEditable);
 
       if (isEditable) return;
 
-      const isMac = navigator.platform.toUpperCase().includes('MAC');
+      const isMac = navigator.platform.toUpperCase().includes("MAC");
       const isMod = isMac ? event.metaKey : event.ctrlKey;
 
-      if (!isMod || !['1', '2', '3'].includes(event.key)) return;
+      if (!isMod || !["1", "2", "3"].includes(event.key)) return;
 
       const index = Number.parseInt(event.key, 10) - 1;
       const version = orderedVersions[index];
@@ -527,8 +527,8 @@ export function PromptCanvas({
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleSelectVersion, orderedVersions]);
 
   const handleExport = usePromptExport({
@@ -576,10 +576,6 @@ export function PromptCanvas({
     isInlineError,
     inlineErrorMessage,
     isInlineEmpty,
-    showI2VLockIndicator,
-    resolvedI2VReason,
-    i2vMotionAlternatives,
-    handleLockedAlternativeClick,
     handleApplyActiveSuggestion,
   } = useInlineSuggestionState({
     suggestionsData,
@@ -587,7 +583,6 @@ export function PromptCanvas({
     setSelectedSpanId,
     parseResultSpans: parseResult.spans,
     normalizedDisplayedPrompt,
-    ...(i2vContext !== undefined ? { i2vContext } : {}),
     ...(onSuggestionClick ? { onSuggestionClick } : {}),
     setState,
   });
@@ -612,7 +607,7 @@ export function PromptCanvas({
       const span = Array.isArray(parseResult?.spans)
         ? parseResult.spans.find((candidate) => {
             const candidateId =
-              typeof candidate?.id === 'string' && candidate.id.length > 0
+              typeof candidate?.id === "string" && candidate.id.length > 0
                 ? candidate.id
                 : `span_${candidate.start}_${candidate.end}`;
             return candidateId === spanId;
@@ -628,16 +623,16 @@ export function PromptCanvas({
       }
 
       const quote =
-        typeof span.quote === 'string' && span.quote.trim().length > 0
+        typeof span.quote === "string" && span.quote.trim().length > 0
           ? span.quote
-          : typeof span.text === 'string'
+          : typeof span.text === "string"
             ? span.text
-            : '';
+            : "";
 
       onFetchSuggestions({
         highlightedText: quote,
         originalText: quote,
-        displayedPrompt: normalizedDisplayedPrompt ?? '',
+        displayedPrompt: normalizedDisplayedPrompt ?? "",
         range: null,
         offsets: { start: span.start, end: span.end },
         metadata: {
@@ -656,7 +651,7 @@ export function PromptCanvas({
           idempotencyKey: span.idempotencyKey,
           span: span,
         },
-        trigger: 'category-accordion',
+        trigger: "category-accordion",
         allLabeledSpans: parseResult.spans,
       });
     },
@@ -666,7 +661,7 @@ export function PromptCanvas({
       parseResult.spans,
       editorRef,
       setSelectedSpanId,
-    ]
+    ],
   );
 
   const handleEnhance = useCallback((): void => {
@@ -691,9 +686,9 @@ export function PromptCanvas({
       return;
     }
 
-    const promptText = (normalizedDisplayedPrompt ?? '').trim();
+    const promptText = (normalizedDisplayedPrompt ?? "").trim();
     if (!promptText) {
-      toast.error('No prompt available to export debug context.');
+      toast.error("No prompt available to export debug context.");
       return;
     }
 
@@ -701,14 +696,14 @@ export function PromptCanvas({
     const spanTargets = spans
       .map((span) => {
         const spanText =
-          typeof span.displayQuote === 'string' &&
+          typeof span.displayQuote === "string" &&
           span.displayQuote.trim().length > 0
             ? span.displayQuote.trim()
-            : typeof span.quote === 'string' && span.quote.trim().length > 0
+            : typeof span.quote === "string" && span.quote.trim().length > 0
               ? span.quote.trim()
-              : typeof span.text === 'string' && span.text.trim().length > 0
+              : typeof span.text === "string" && span.text.trim().length > 0
                 ? span.text.trim()
-                : '';
+                : "";
         if (!spanText) {
           return null;
         }
@@ -716,49 +711,49 @@ export function PromptCanvas({
           span,
           spanText,
           spanId:
-            typeof span.id === 'string' && span.id.length > 0
+            typeof span.id === "string" && span.id.length > 0
               ? span.id
               : `span_${span.start}_${span.end}`,
         };
       })
       .filter(
         (
-          item
+          item,
         ): item is {
           span: (typeof spans)[number];
           spanText: string;
           spanId: string;
-        } => item !== null
+        } => item !== null,
       );
 
     if (spanTargets.length === 0) {
-      toast.error('No labeled spans available for bulk debug export.');
+      toast.error("No labeled spans available for bulk debug export.");
       return;
     }
 
     const serializedContext =
       promptContext &&
-      typeof promptContext === 'object' &&
-      'toJSON' in promptContext &&
-      typeof (promptContext as { toJSON?: () => unknown }).toJSON === 'function'
+      typeof promptContext === "object" &&
+      "toJSON" in promptContext &&
+      typeof (promptContext as { toJSON?: () => unknown }).toJSON === "function"
         ? (promptContext as { toJSON: () => unknown }).toJSON()
         : promptContext;
 
-    const normalizedPrompt = promptText.normalize('NFC');
+    const normalizedPrompt = promptText.normalize("NFC");
 
     setIsCopyAllDebugLoading(true);
     try {
       const settled = await Promise.allSettled(
         spanTargets.map(async ({ span, spanText, spanId }) => {
           const preferIndex =
-            typeof span.start === 'number' && Number.isFinite(span.start)
+            typeof span.start === "number" && Number.isFinite(span.start)
               ? span.start
               : null;
           const context = buildSuggestionContext(
             normalizedPrompt,
-            spanText.normalize('NFC'),
+            spanText.normalize("NFC"),
             preferIndex,
-            1000
+            1000,
           );
           const metadata = {
             start: span.start,
@@ -770,7 +765,7 @@ export function PromptCanvas({
           const spanContext = prepareSpanContext(metadata, spans);
 
           const response = await postEnhancementSuggestions({
-            highlightedText: spanText.normalize('NFC'),
+            highlightedText: spanText.normalize("NFC"),
             contextBefore: context.contextBefore,
             contextAfter: context.contextAfter,
             fullPrompt: normalizedPrompt,
@@ -778,7 +773,7 @@ export function PromptCanvas({
             brainstormContext: serializedContext ?? null,
             highlightedCategory: span.category ?? null,
             highlightedCategoryConfidence:
-              typeof span.confidence === 'number' ? span.confidence : null,
+              typeof span.confidence === "number" ? span.confidence : null,
             highlightedPhrase: spanText,
             allLabeledSpans: spanContext.simplifiedSpans,
             nearbySpans: spanContext.nearbySpans,
@@ -790,7 +785,7 @@ export function PromptCanvas({
             text: spanText,
             category: span.category ?? null,
             confidence:
-              typeof span.confidence === 'number' ? span.confidence : null,
+              typeof span.confidence === "number" ? span.confidence : null,
             start: span.start,
             end: span.end,
             suggestionCount: Array.isArray(response.suggestions)
@@ -798,7 +793,7 @@ export function PromptCanvas({
               : 0,
             debug: response._debug ?? null,
           };
-        })
+        }),
       );
 
       const entries = settled.map((result, index) => {
@@ -806,14 +801,14 @@ export function PromptCanvas({
         if (!target) {
           return {
             spanId: `unknown_${index}`,
-            status: 'error',
-            error: 'Unknown span target',
+            status: "error",
+            error: "Unknown span target",
           };
         }
 
-        if (result.status === 'fulfilled') {
+        if (result.status === "fulfilled") {
           return {
-            status: 'ok',
+            status: "ok",
             ...result.value,
           };
         }
@@ -823,22 +818,22 @@ export function PromptCanvas({
           text: target.spanText,
           category: target.span.category ?? null,
           confidence:
-            typeof target.span.confidence === 'number'
+            typeof target.span.confidence === "number"
               ? target.span.confidence
               : null,
           start: target.span.start,
           end: target.span.end,
-          status: 'error',
+          status: "error",
           error:
             result.reason instanceof Error
               ? result.reason.message
-              : 'Failed to fetch debug data for span',
+              : "Failed to fetch debug data for span",
         };
       });
 
       const successCount = entries.filter((entry) => {
         return (
-          entry.status === 'ok' && 'debug' in entry && entry.debug !== null
+          entry.status === "ok" && "debug" in entry && entry.debug !== null
         );
       }).length;
       const payload = {
@@ -849,20 +844,20 @@ export function PromptCanvas({
         entries,
       };
 
-      if (typeof navigator === 'undefined' || !navigator.clipboard) {
-        toast.error('Clipboard is not available in this browser.');
+      if (typeof navigator === "undefined" || !navigator.clipboard) {
+        toast.error("Clipboard is not available in this browser.");
         return;
       }
 
       await navigator.clipboard.writeText(JSON.stringify(payload, null, 2));
       toast.success(
-        `Copied debug for ${successCount}/${entries.length} spans.`
+        `Copied debug for ${successCount}/${entries.length} spans.`,
       );
     } catch (error) {
       const message =
         error instanceof Error
           ? error.message
-          : 'Failed to copy all debug context';
+          : "Failed to copy all debug context";
       toast.error(message);
     } finally {
       setIsCopyAllDebugLoading(false);
@@ -946,10 +941,6 @@ export function PromptCanvas({
       isInlineError={isInlineError}
       inlineErrorMessage={inlineErrorMessage}
       isInlineEmpty={isInlineEmpty}
-      showI2VLockIndicator={showI2VLockIndicator}
-      resolvedI2VReason={resolvedI2VReason}
-      i2vMotionAlternatives={i2vMotionAlternatives}
-      onLockedAlternativeClick={handleLockedAlternativeClick}
       coherenceIssues={coherence.coherenceIssues}
       isCoherenceChecking={coherence.isCoherenceChecking}
       isCoherencePanelExpanded={coherence.isCoherencePanelExpanded}

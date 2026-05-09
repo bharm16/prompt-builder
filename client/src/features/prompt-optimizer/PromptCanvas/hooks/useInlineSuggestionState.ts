@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useCustomRequest } from "@components/SuggestionsPanel/hooks/useCustomRequest";
 import type { HighlightSpan } from "@features/span-highlighting/hooks/useHighlightRendering";
-import type { I2VContext } from "../../types/i2v";
 import type {
   InlineSuggestion,
   PromptCanvasState,
@@ -17,7 +16,6 @@ interface UseInlineSuggestionStateOptions {
   setSelectedSpanId: (value: string | null) => void;
   parseResultSpans: HighlightSpan[];
   normalizedDisplayedPrompt: string | null;
-  i2vContext?: I2VContext | null;
   onSuggestionClick?: (suggestion: SuggestionItem | string) => void;
   setState: (payload: Partial<PromptCanvasState>) => void;
 }
@@ -45,10 +43,6 @@ interface UseInlineSuggestionStateResult {
   isInlineError: boolean;
   inlineErrorMessage: string;
   isInlineEmpty: boolean;
-  showI2VLockIndicator: boolean;
-  resolvedI2VReason: string | null;
-  i2vMotionAlternatives: SuggestionItem[];
-  handleLockedAlternativeClick: (suggestion: SuggestionItem) => void;
   handleApplyActiveSuggestion: () => void;
 }
 
@@ -58,7 +52,6 @@ export function useInlineSuggestionState({
   setSelectedSpanId,
   parseResultSpans,
   normalizedDisplayedPrompt,
-  i2vContext,
   onSuggestionClick,
   setState,
 }: UseInlineSuggestionStateOptions): UseInlineSuggestionStateResult {
@@ -153,36 +146,6 @@ export function useInlineSuggestionState({
 
   const suggestionCount = inlineSuggestions.length;
 
-  const i2vResponseMeta = useMemo(() => {
-    const meta = suggestionsData?.responseMetadata;
-    if (!meta || typeof meta !== "object") {
-      return null;
-    }
-    const maybeI2v = (meta as { i2v?: unknown }).i2v;
-    if (!maybeI2v || typeof maybeI2v !== "object") {
-      return null;
-    }
-    return maybeI2v as {
-      locked?: boolean;
-      reason?: string;
-      motionAlternatives?: SuggestionItem[];
-    };
-  }, [suggestionsData?.responseMetadata]);
-
-  const i2vLockReason =
-    typeof i2vResponseMeta?.reason === "string" && i2vResponseMeta.reason.trim()
-      ? i2vResponseMeta.reason.trim()
-      : null;
-  const resolvedI2VReason =
-    i2vLockReason ||
-    (i2vResponseMeta?.locked ? "This category is locked by the image." : null);
-  const i2vMotionAlternatives = Array.isArray(
-    i2vResponseMeta?.motionAlternatives,
-  )
-    ? i2vResponseMeta?.motionAlternatives
-    : [];
-  const hasI2VLockNotice = Boolean(resolvedI2VReason);
-
   const selectionMatches = useMemo(() => {
     if (!selectedSpanText || !suggestionsData?.selectedText) {
       return true;
@@ -204,11 +167,7 @@ export function useInlineSuggestionState({
     selectedSpanId &&
       !isInlineLoading &&
       !isInlineError &&
-      suggestionCount === 0 &&
-      !hasI2VLockNotice,
-  );
-  const showI2VLockIndicator = Boolean(
-    i2vContext?.isI2VMode && hasI2VLockNotice,
+      suggestionCount === 0,
   );
 
   const selectionLabel =
@@ -324,14 +283,6 @@ export function useInlineSuggestionState({
     handleSuggestionClickWithFeedback,
   ]);
 
-  const handleLockedAlternativeClick = useCallback(
-    (suggestion: SuggestionItem): void => {
-      handleSuggestionClickWithFeedback(suggestion);
-      closeInlinePopover();
-    },
-    [closeInlinePopover, handleSuggestionClickWithFeedback],
-  );
-
   useEffect(() => {
     if (!selectedSpanId) return;
     const handleKeyDown = (event: KeyboardEvent): void => {
@@ -408,10 +359,6 @@ export function useInlineSuggestionState({
     isInlineError,
     inlineErrorMessage,
     isInlineEmpty,
-    showI2VLockIndicator,
-    resolvedI2VReason,
-    i2vMotionAlternatives,
-    handleLockedAlternativeClick,
     handleApplyActiveSuggestion,
   };
 }

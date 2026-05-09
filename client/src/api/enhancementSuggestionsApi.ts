@@ -15,11 +15,6 @@ export interface EnhancementSuggestionsRequest {
   allLabeledSpans?: unknown[];
   nearbySpans?: unknown[];
   editHistory?: unknown[];
-  i2vContext?: {
-    observation: Record<string, unknown>;
-    lockMap: Record<string, string>;
-    constraintMode?: "strict" | "flexible" | "transform";
-  } | null;
 }
 
 const EnhancementSuggestionsResponseSchema = z

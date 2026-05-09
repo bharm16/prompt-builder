@@ -11,7 +11,6 @@ import { MAX_REQUEST_LENGTH } from "@/components/SuggestionsPanel/config/panelCo
 import { TriggerAutocomplete } from "@/features/assets/components/TriggerAutocomplete";
 import type { AssetSuggestion } from "@/features/assets/hooks/useTriggerAutocomplete";
 import { PromptEditor } from "@/features/prompt-optimizer/components/PromptEditor";
-import { LockedSpanIndicator } from "@/features/prompt-optimizer/components/LockedSpanIndicator";
 import type {
   InlineSuggestion,
   SuggestionItem,
@@ -67,10 +66,6 @@ export interface PromptEditorSurfaceProps {
   responseMetadata?: Record<string, unknown> | null;
   onCopyAllDebug?: (() => void) | undefined;
   isBulkCopyLoading?: boolean | undefined;
-  showI2VLockIndicator: boolean;
-  resolvedI2VReason: string | null;
-  i2vMotionAlternatives: SuggestionItem[];
-  onLockedAlternativeClick: (suggestion: SuggestionItem) => void;
 }
 
 export function PromptEditorSurface({
@@ -121,10 +116,6 @@ export function PromptEditorSurface({
   responseMetadata = null,
   onCopyAllDebug,
   isBulkCopyLoading = false,
-  showI2VLockIndicator,
-  resolvedI2VReason,
-  i2vMotionAlternatives,
-  onLockedAlternativeClick,
 }: PromptEditorSurfaceProps): React.ReactElement {
   const isEmptyLayout = variant === "empty";
   const [, setIsFocused] = useState(false);
@@ -188,8 +179,8 @@ export function PromptEditorSurface({
           className={cn(
             "ps-scrollbar-hide max-h-[180px] overflow-y-auto outline-none [&:empty]:min-h-[56px]",
             isEmptyLayout
-              ? "min-h-[56px] text-[15px] leading-[1.7] text-foreground caret-foreground"
-              : "min-h-[56px] text-[15px] leading-[1.75] text-tool-text-dim",
+              ? "text-foreground caret-foreground min-h-[56px] text-[15px] leading-[1.7]"
+              : "text-tool-text-dim min-h-[56px] text-[15px] leading-[1.75]",
           )}
           placeholder="Describe your shot…"
           onTextSelection={onTextSelection}
@@ -223,27 +214,27 @@ export function PromptEditorSurface({
 
       {shouldRenderSuggestionTray ? (
         <div
-          className="motion-presence-panel mt-2.5 border-t border-tool-nav-active pt-2.5"
+          className="motion-presence-panel border-tool-nav-active mt-2.5 border-t pt-2.5"
           data-motion-state={suggestionTrayPhase}
           data-testid="canvas-suggestion-tray"
         >
           <div className="mb-2 flex items-center justify-between gap-2">
             <div className="flex min-w-0 items-center gap-2">
-              <span className="truncate text-[10px] font-semibold tracking-[0.05em] text-tool-text-dim">
+              <span className="text-tool-text-dim truncate text-[10px] font-semibold tracking-[0.05em]">
                 {selectionLabel
                   ? `Replace "${selectionLabel}"`
                   : "Replace selection"}
               </span>
               <span
                 key={suggestionCount}
-                className="motion-count-bump rounded-full bg-tool-rail-border px-2 py-0.5 text-[9px] font-semibold text-tool-text-subdued"
+                className="motion-count-bump bg-tool-rail-border text-tool-text-subdued rounded-full px-2 py-0.5 text-[9px] font-semibold"
               >
                 {suggestionCount}
               </span>
               {debugPayload ? (
                 <button
                   type="button"
-                  className="rounded-md px-2 py-1 text-[10px] font-medium text-tool-text-subdued transition-colors hover:bg-tool-rail-border hover:text-tool-text-dim"
+                  className="text-tool-text-subdued hover:bg-tool-rail-border hover:text-tool-text-dim rounded-md px-2 py-1 text-[10px] font-medium transition-colors"
                   onClick={(event) => {
                     event.stopPropagation();
                     handleCopyDebug();
@@ -255,7 +246,7 @@ export function PromptEditorSurface({
               {import.meta.env.DEV && onCopyAllDebug ? (
                 <button
                   type="button"
-                  className="rounded-md px-2 py-1 text-[10px] font-medium text-tool-text-subdued transition-colors hover:bg-tool-rail-border hover:text-tool-text-dim"
+                  className="text-tool-text-subdued hover:bg-tool-rail-border hover:text-tool-text-dim rounded-md px-2 py-1 text-[10px] font-medium transition-colors"
                   onClick={(event) => {
                     event.stopPropagation();
                     onCopyAllDebug();
@@ -269,7 +260,7 @@ export function PromptEditorSurface({
             <div className="flex items-center gap-1">
               <button
                 type="button"
-                className="rounded-md px-2 py-1 text-[10px] font-medium text-tool-text-subdued transition-colors hover:bg-tool-rail-border hover:text-tool-text-dim"
+                className="text-tool-text-subdued hover:bg-tool-rail-border hover:text-tool-text-dim rounded-md px-2 py-1 text-[10px] font-medium transition-colors"
                 onClick={(event) => {
                   event.stopPropagation();
                   setIsSuggestionTrayCollapsed((prev) => !prev);
@@ -279,7 +270,7 @@ export function PromptEditorSurface({
               </button>
               <button
                 type="button"
-                className="flex h-6 w-6 items-center justify-center rounded-md text-tool-text-label transition-colors hover:bg-tool-rail-border hover:text-tool-text-dim"
+                className="text-tool-text-label hover:bg-tool-rail-border hover:text-tool-text-dim flex h-6 w-6 items-center justify-center rounded-md transition-colors"
                 onClick={(event) => {
                   event.stopPropagation();
                   onCloseInlinePopover();
@@ -294,7 +285,7 @@ export function PromptEditorSurface({
           {!isSuggestionTrayCollapsed ? (
             <>
               <div
-                className="border-b border-tool-rail-border pb-2"
+                className="border-tool-rail-border border-b pb-2"
                 data-suggest-custom
               >
                 <form
@@ -311,7 +302,7 @@ export function PromptEditorSurface({
                       }
                     }}
                     placeholder="Add a specific change (e.g. football field)"
-                    className="min-h-9 flex-1 resize-none rounded-lg border border-tool-nav-active bg-tool-surface-prompt-compact px-3 py-2 text-xs text-foreground placeholder:text-tool-text-subdued focus-visible:ring-2 focus-visible:ring-white/10 focus-visible:ring-offset-0"
+                    className="border-tool-nav-active bg-tool-surface-prompt-compact text-foreground placeholder:text-tool-text-subdued min-h-9 flex-1 resize-none rounded-lg border px-3 py-2 text-xs focus-visible:ring-2 focus-visible:ring-white/10 focus-visible:ring-offset-0"
                     maxLength={MAX_REQUEST_LENGTH}
                     rows={1}
                     aria-label="Custom suggestion request"
@@ -319,7 +310,7 @@ export function PromptEditorSurface({
                   <button
                     type="submit"
                     className={cn(
-                      "h-9 rounded-lg border border-tool-accent-neutral/25 bg-tool-accent-neutral px-3 text-xs font-semibold text-tool-surface-deep transition-opacity hover:opacity-90",
+                      "border-tool-accent-neutral/25 bg-tool-accent-neutral text-tool-surface-deep h-9 rounded-lg border px-3 text-xs font-semibold transition-opacity hover:opacity-90",
                       isCustomRequestDisabled && "opacity-50",
                     )}
                     disabled={isCustomRequestDisabled}
@@ -347,20 +338,11 @@ export function PromptEditorSurface({
                 </div>
               ) : null}
 
-              {showI2VLockIndicator ? (
-                <LockedSpanIndicator
-                  reason={resolvedI2VReason}
-                  motionAlternatives={i2vMotionAlternatives}
-                  onSelectAlternative={onLockedAlternativeClick}
-                  className="mt-2 border-tool-nav-active bg-tool-surface-card"
-                />
-              ) : null}
-
               {isInlineLoading ? (
                 <div className="mt-2 flex gap-2">
-                  <div className="h-8 w-24 animate-pulse rounded-lg bg-tool-rail-border" />
-                  <div className="h-8 w-32 animate-pulse rounded-lg bg-tool-rail-border" />
-                  <div className="h-8 w-20 animate-pulse rounded-lg bg-tool-rail-border" />
+                  <div className="bg-tool-rail-border h-8 w-24 animate-pulse rounded-lg" />
+                  <div className="bg-tool-rail-border h-8 w-32 animate-pulse rounded-lg" />
+                  <div className="bg-tool-rail-border h-8 w-20 animate-pulse rounded-lg" />
                 </div>
               ) : null}
 
@@ -378,7 +360,7 @@ export function PromptEditorSurface({
                         "flex-shrink-0 rounded-lg border px-3 py-1.5 text-xs transition-[transform,border-color,color,background-color] duration-[160ms] [transition-timing-function:var(--motion-ease-standard)]",
                         activeSuggestionIndex === index
                           ? "border-tool-accent-neutral/50 bg-tool-accent-neutral/10 text-foreground -translate-y-px"
-                          : "border-tool-nav-active bg-tool-surface-prompt-compact text-tool-text-dim hover:-translate-y-px hover:border-tool-text-label hover:text-foreground",
+                          : "border-tool-nav-active bg-tool-surface-prompt-compact text-tool-text-dim hover:border-tool-text-label hover:text-foreground hover:-translate-y-px",
                       )}
                       onMouseDown={(event) => event.preventDefault()}
                       onMouseEnter={() => {
@@ -392,11 +374,11 @@ export function PromptEditorSurface({
                     >
                       {suggestion.text}
                       {index === 0 ? (
-                        <span className="ml-1.5 text-[9px] font-semibold text-tool-accent-neutral">
+                        <span className="text-tool-accent-neutral ml-1.5 text-[9px] font-semibold">
                           Best
                         </span>
                       ) : suggestion.meta ? (
-                        <span className="ml-1.5 text-[9px] text-tool-text-subdued">
+                        <span className="text-tool-text-subdued ml-1.5 text-[9px]">
                           {suggestion.meta}
                         </span>
                       ) : null}
@@ -406,15 +388,15 @@ export function PromptEditorSurface({
               ) : null}
 
               {isInlineEmpty ? (
-                <div className="mt-2 text-xs text-tool-text-subdued">
+                <div className="text-tool-text-subdued mt-2 text-xs">
                   No suggestions yet.
                 </div>
               ) : null}
 
-              <div className="mt-2 flex items-center gap-2 border-t border-tool-rail-border pt-2">
+              <div className="border-tool-rail-border mt-2 flex items-center gap-2 border-t pt-2">
                 <button
                   type="button"
-                  className="h-8 rounded-lg border border-tool-nav-active bg-transparent px-3 text-xs font-semibold text-tool-text-dim transition-colors hover:border-tool-text-label hover:text-foreground"
+                  className="border-tool-nav-active text-tool-text-dim hover:border-tool-text-label hover:text-foreground h-8 rounded-lg border bg-transparent px-3 text-xs font-semibold transition-colors"
                   onClick={(event) => {
                     event.stopPropagation();
                     onCloseInlinePopover();
@@ -425,7 +407,7 @@ export function PromptEditorSurface({
                 <button
                   type="button"
                   className={cn(
-                    "h-8 rounded-lg border border-tool-accent-neutral/25 bg-tool-accent-neutral px-3 text-xs font-semibold text-tool-surface-deep transition-opacity hover:opacity-90",
+                    "border-tool-accent-neutral/25 bg-tool-accent-neutral text-tool-surface-deep h-8 rounded-lg border px-3 text-xs font-semibold transition-opacity hover:opacity-90",
                     suggestionCount === 0 && "opacity-50",
                   )}
                   onClick={(event) => {

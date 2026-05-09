@@ -162,10 +162,6 @@ const buildProps = (
   onCustomRequestSubmit: vi.fn(),
   isCustomRequestDisabled: true,
   isCustomLoading: false,
-  showI2VLockIndicator: false,
-  resolvedI2VReason: null,
-  i2vMotionAlternatives: [],
-  onLockedAlternativeClick: vi.fn(),
   onReuseGeneration: vi.fn(),
   onToggleGenerationFavorite: vi.fn(),
 });

@@ -109,10 +109,6 @@ interface CanvasWorkspaceProps {
   responseMetadata?: Record<string, unknown> | null;
   onCopyAllDebug?: () => void;
   isBulkCopyLoading?: boolean;
-  showI2VLockIndicator: boolean;
-  resolvedI2VReason: string | null;
-  i2vMotionAlternatives: SuggestionItem[];
-  onLockedAlternativeClick: (suggestion: SuggestionItem) => void;
   onReuseGeneration: (generation: Generation) => void;
   onToggleGenerationFavorite: (
     generationId: string,
@@ -179,10 +175,6 @@ export function CanvasWorkspace({
   responseMetadata = null,
   onCopyAllDebug,
   isBulkCopyLoading = false,
-  showI2VLockIndicator,
-  resolvedI2VReason,
-  i2vMotionAlternatives,
-  onLockedAlternativeClick,
   onReuseGeneration,
   onToggleGenerationFavorite,
   onEnhance,
@@ -462,10 +454,6 @@ export function CanvasWorkspace({
     responseMetadata: responseMetadata ?? null,
     ...(onCopyAllDebug ? { onCopyAllDebug } : {}),
     ...(typeof isBulkCopyLoading === "boolean" ? { isBulkCopyLoading } : {}),
-    showI2VLockIndicator,
-    resolvedI2VReason,
-    i2vMotionAlternatives,
-    onLockedAlternativeClick,
   };
 
   const handleToggleChip = useCallback((id: TuneChipId) => {

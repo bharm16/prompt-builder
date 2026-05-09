@@ -49,10 +49,6 @@ function makeSurfaceProps(): PromptEditorSurfaceProps {
     onCustomRequestSubmit: vi.fn((e) => e.preventDefault()),
     isCustomRequestDisabled: false,
     isCustomLoading: false,
-    showI2VLockIndicator: false,
-    resolvedI2VReason: null,
-    i2vMotionAlternatives: [],
-    onLockedAlternativeClick: noop,
   };
 }
 

@@ -26,11 +26,6 @@ interface FetchEnhancementSuggestionsParams {
   fullPrompt: string;
   inputPrompt: string;
   brainstormContext?: unknown | null;
-  i2vContext?: {
-    observation: Record<string, unknown>;
-    lockMap: Record<string, string>;
-    constraintMode?: "strict" | "flexible" | "transform";
-  } | null;
   metadata?: {
     startIndex?: number;
     category?: string;
@@ -59,7 +54,6 @@ export async function fetchEnhancementSuggestions({
   fullPrompt,
   inputPrompt,
   brainstormContext = null,
-  i2vContext = null,
   metadata = null,
   allLabeledSpans = [],
   nearbySpans = [],
@@ -100,7 +94,6 @@ export async function fetchEnhancementSuggestions({
         allLabeledSpans,
         nearbySpans,
         editHistory,
-        ...(i2vContext ? { i2vContext } : {}),
       },
       { signal },
     );

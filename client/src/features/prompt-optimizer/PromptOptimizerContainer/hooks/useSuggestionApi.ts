@@ -8,12 +8,10 @@ import { useEditHistory } from "@features/prompt-optimizer/hooks/useEditHistory"
 import { SuggestionRequestManager } from "@features/prompt-optimizer/utils/SuggestionRequestManager";
 import { prepareSpanContext } from "@features/span-highlighting/utils/spanProcessing";
 import type { RawEnhancementSuggestionsResponse } from "./useSuggestionCache";
-import type { I2VContext } from "@features/prompt-optimizer/types/i2v";
 
 interface UseSuggestionApiParams {
   promptOptimizer: Pick<PromptOptimizer, "inputPrompt">;
   stablePromptContext: PromptContext | null;
-  i2vContext?: I2VContext | null | undefined;
 }
 
 interface FetchSuggestionsParams {
@@ -34,7 +32,6 @@ const REQUEST_CONFIG = {
 export function useSuggestionApi({
   promptOptimizer,
   stablePromptContext,
-  i2vContext,
 }: UseSuggestionApiParams): {
   fetchSuggestions: (
     params: FetchSuggestionsParams,
@@ -71,20 +68,6 @@ export function useSuggestionApi({
         const { simplifiedSpans, nearbySpans } = spanContext;
 
         const editHistory = getEditSummary(10);
-        const i2vPayload =
-          i2vContext?.isI2VMode && i2vContext.observation && i2vContext.lockMap
-            ? {
-                observation: i2vContext.observation as unknown as Record<
-                  string,
-                  unknown
-                >,
-                lockMap: i2vContext.lockMap as unknown as Record<
-                  string,
-                  string
-                >,
-                constraintMode: i2vContext.constraintMode,
-              }
-            : null;
 
         return fetchEnhancementSuggestions({
           highlightedText: normalizedHighlight,
@@ -93,7 +76,6 @@ export function useSuggestionApi({
           fullPrompt: normalizedPrompt,
           inputPrompt: promptOptimizer.inputPrompt,
           brainstormContext: stablePromptContext ?? null,
-          ...(i2vPayload ? { i2vContext: i2vPayload } : {}),
           metadata: metadata ?? null,
           allLabeledSpans: simplifiedSpans,
           nearbySpans,
@@ -101,12 +83,7 @@ export function useSuggestionApi({
           signal,
         });
       }),
-    [
-      getEditSummary,
-      i2vContext,
-      promptOptimizer.inputPrompt,
-      stablePromptContext,
-    ],
+    [getEditSummary, promptOptimizer.inputPrompt, stablePromptContext],
   );
 
   const cancelCurrentRequest = useCallback(() => {

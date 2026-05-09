@@ -2,7 +2,6 @@ import React, { useCallback, useMemo, useState } from "react";
 import { Textarea } from "@promptstudio/system/components/ui/textarea";
 import { MAX_REQUEST_LENGTH } from "@components/SuggestionsPanel/config/panelConfig";
 import { cn } from "@/utils/cn";
-import { LockedSpanIndicator } from "@features/prompt-optimizer/components/LockedSpanIndicator";
 import type { PromptCanvasViewProps } from "./PromptCanvasView.types";
 import { CanvasButton } from "./PromptCanvasView.shared";
 
@@ -33,10 +32,6 @@ type PromptCanvasSuggestionsPanelProps = Pick<
   | "isInlineError"
   | "inlineErrorMessage"
   | "isInlineEmpty"
-  | "showI2VLockIndicator"
-  | "resolvedI2VReason"
-  | "i2vMotionAlternatives"
-  | "onLockedAlternativeClick"
 >;
 
 export function PromptCanvasSuggestionsPanel({
@@ -65,10 +60,6 @@ export function PromptCanvasSuggestionsPanel({
   isInlineError,
   inlineErrorMessage,
   isInlineEmpty,
-  showI2VLockIndicator,
-  resolvedI2VReason,
-  i2vMotionAlternatives,
-  onLockedAlternativeClick,
 }: PromptCanvasSuggestionsPanelProps): React.ReactElement | null {
   const [isDebugCopied, setIsDebugCopied] = useState(false);
   const debugPayload = useMemo(() => {
@@ -105,7 +96,7 @@ export function PromptCanvasSuggestionsPanel({
 
   return (
     <aside
-      className="border-border bg-surface-2 absolute right-0 top-0 bottom-0 z-20 flex w-80 min-w-0 flex-col overflow-hidden rounded-lg border shadow-lg"
+      className="border-border bg-surface-2 absolute bottom-0 right-0 top-0 z-20 flex w-80 min-w-0 flex-col overflow-hidden rounded-lg border shadow-lg"
       aria-label="Suggestions"
     >
       <div className="border-border flex items-center justify-between gap-3 border-b px-3 py-2">
@@ -201,16 +192,6 @@ export function PromptCanvasSuggestionsPanel({
           role="alert"
         >
           {inlineErrorMessage}
-        </div>
-      )}
-
-      {showI2VLockIndicator && (
-        <div className="px-3 pt-2">
-          <LockedSpanIndicator
-            reason={resolvedI2VReason}
-            motionAlternatives={i2vMotionAlternatives}
-            onSelectAlternative={onLockedAlternativeClick}
-          />
         </div>
       )}
 
