@@ -13,7 +13,6 @@ import type { CameraPath } from "@/features/convergence/types";
 import type { KeyframeTile, VideoTier } from "../types";
 import {
   DEFAULT_GENERATION_CONTROLS_STATE,
-  type ConstraintMode,
   type ExtendVideoSource,
   type GenerationControlsState,
   type GenerationControlsTab,
@@ -54,7 +53,6 @@ type GenerationControlsAction =
   | { type: "setSubjectMotion"; value: string }
   | { type: "setActiveTab"; value: GenerationControlsTab }
   | { type: "setImageSubTab"; value: ImageSubTab }
-  | { type: "setConstraintMode"; value: ConstraintMode }
   | { type: "resetState"; value: GenerationControlsState };
 
 export interface GenerationControlsActions {
@@ -83,7 +81,6 @@ export interface GenerationControlsActions {
   setSubjectMotion: (motion: string) => void;
   setActiveTab: (tab: GenerationControlsTab) => void;
   setImageSubTab: (subTab: ImageSubTab) => void;
-  setConstraintMode: (mode: ConstraintMode) => void;
   resetState: (state: GenerationControlsState) => void;
 }
 
@@ -476,12 +473,6 @@ const reducer = (
         ...state,
         ui: { ...state.ui, imageSubTab: action.value },
       };
-    case "setConstraintMode":
-      if (state.ui.constraintMode === action.value) return state;
-      return {
-        ...state,
-        ui: { ...state.ui, constraintMode: action.value },
-      };
     case "resetState":
       return action.value;
     default:
@@ -565,8 +556,6 @@ export function GenerationControlsStoreProvider({
         dispatch({ type: "setSubjectMotion", value }),
       setActiveTab: (value) => dispatch({ type: "setActiveTab", value }),
       setImageSubTab: (value) => dispatch({ type: "setImageSubTab", value }),
-      setConstraintMode: (value) =>
-        dispatch({ type: "setConstraintMode", value }),
       resetState: (value) => dispatch({ type: "resetState", value }),
     }),
     [],

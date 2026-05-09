@@ -4,7 +4,6 @@ import type { KeyframeTile, VideoTier } from "../types";
 
 export type GenerationControlsTab = "video" | "image";
 export type ImageSubTab = "references" | "styles";
-export type ConstraintMode = "strict" | "flexible" | "transform";
 
 export interface VideoReferenceImage {
   id: string;
@@ -40,7 +39,6 @@ export interface GenerationControlsDomainState {
 export interface GenerationControlsUIState {
   activeTab: GenerationControlsTab;
   imageSubTab: ImageSubTab;
-  constraintMode: ConstraintMode;
 }
 
 export interface GenerationControlsState {
@@ -64,6 +62,5 @@ export const DEFAULT_GENERATION_CONTROLS_STATE: GenerationControlsState = {
   ui: {
     activeTab: "video",
     imageSubTab: "references",
-    constraintMode: "strict",
   },
 };

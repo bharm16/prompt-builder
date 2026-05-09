@@ -25,7 +25,6 @@ export type {
 export type {
   GenerationControlsTab,
   ImageSubTab,
-  ConstraintMode,
   VideoReferenceImage,
   ExtendVideoSource,
   GenerationControlsDomainState,
