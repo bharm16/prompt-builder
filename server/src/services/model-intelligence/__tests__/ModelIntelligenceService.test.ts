@@ -282,8 +282,12 @@ describe("ModelIntelligenceService", () => {
           }),
       };
 
-      const promptSpanProvider = {
+      const promptSpanProvider: PromptSpanProvider = {
         label: vi.fn<PromptSpanProvider["label"]>().mockResolvedValue([]),
+        labelFull: vi.fn<PromptSpanProvider["labelFull"]>().mockResolvedValue({
+          spans: [],
+          meta: { version: "v1", notes: "ok" },
+        }),
       };
 
       return new ModelIntelligenceService({

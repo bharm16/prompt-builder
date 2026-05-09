@@ -42,7 +42,7 @@ import { ModelScoringService } from "../../server/src/services/model-intelligenc
 import { PromptRequirementsService } from "../../server/src/services/model-intelligence/services/PromptRequirementsService.js";
 import { RecommendationExplainerService } from "../../server/src/services/model-intelligence/services/RecommendationExplainerService.js";
 import { AvailabilityGateService } from "../../server/src/services/model-intelligence/services/AvailabilityGateService.js";
-import type { PromptSpanProvider } from "../../server/src/services/model-intelligence/ports/PromptSpanProvider.js";
+import type { PromptSpanProvider } from "../../server/src/llm/span-labeling/ports/PromptSpanProvider.js";
 import type {
   ModelRecommendation,
   PromptSpan,
@@ -210,12 +210,30 @@ function buildSpanProvider(
   spansById: Map<string, PromptSpan[]>,
 ): PromptSpanProvider & { setActive(id: string): void } {
   let activeId = "";
+  // Mock spans are authored as PromptSpan[] (model-intelligence shape) in the
+  // JSON fixture but the port now contracts on LLMSpan[] (span-labeling shape)
+  // after the PromptSpanProvider was lifted to a shared abstraction. Cast at
+  // the boundary — fixtures populate role on every span so the cast is sound.
+  const getSpans = () =>
+    (spansById.get(activeId) ?? []) as unknown as ReturnType<
+      PromptSpanProvider["label"]
+    > extends Promise<infer T>
+      ? T
+      : never;
   return {
     setActive(id: string) {
       activeId = id;
     },
-    label(_prompt: string): Promise<PromptSpan[]> {
-      return Promise.resolve(spansById.get(activeId) ?? []);
+    async label(_prompt: string) {
+      return getSpans();
+    },
+    async labelFull(_prompt: string) {
+      return {
+        spans: getSpans(),
+        meta: { version: "v1", notes: "snapshot-eval mock" },
+        isAdversarial: false,
+        analysisTrace: undefined,
+      } as unknown as Awaited<ReturnType<PromptSpanProvider["labelFull"]>>;
     },
   };
 }
