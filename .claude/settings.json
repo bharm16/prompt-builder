@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "FILE=$(jq -r '.tool_input.file_path // empty'); if [[ \"$FILE\" =~ /\\.env(\\.[^/]+)?$ ]]; then echo 'Blocked: .env files must be edited manually (contains Firebase/Stripe/LLM secrets)' >&2; exit 2; fi; exit 0"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "FILE=$(jq -r '.tool_input.file_path // empty'); if [[ \"$FILE\" =~ \\.(ts|tsx|js|jsx|css|md|json)$ ]] && [[ -f \"$FILE\" ]]; then npx --no-install prettier --config config/lint/.prettierrc --write \"$FILE\" >/dev/null 2>&1 || true; fi; exit 0"
+          }
+        ]
+      }
+    ]
+  }
+}

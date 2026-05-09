@@ -201,6 +201,47 @@ npm run test:regression      # Run only regression tests
 npm run test:regression:list  # Audit all regression test files
 ```
 
+## Operating in a Worktree (Parallel Agents)
+
+When this checkout is a git worktree (e.g., a Conductor.build workspace) running alongside other agents, additional restrictions apply.
+
+**Detect worktree status:**
+
+```bash
+git rev-parse --git-common-dir
+# Output `.git` → main checkout. Anything else → worktree.
+```
+
+### Never start servers in a worktree
+
+Ports 3001 (server) and 5173 (Vite) are shared with the main checkout and other worktrees. Forbidden inside a worktree:
+
+- `npm start`, `npm run dev`, `npm run server`, `npm run restart` — port collisions
+- `npm run test:e2e`, any Playwright command (including targeted specs) — browser process conflicts; defer e2e to the main checkout or CI
+- Long-running watchers: `npm run test:watch`, `tsc --watch`, `vite --watch`
+
+Use these for verification — fast, deterministic, no port binding:
+
+```bash
+npx tsc --noEmit            # type check
+npm run lint                # ESLint
+npm run test:unit           # unit tests, no server boot
+npx vitest run <path>       # targeted tests
+```
+
+In a worktree, skip step 4 of "Validation Order Before Handoff" below — e2e runs in the main checkout or CI only.
+
+### Use `NODE_ENV=test` for any code path that boots the server
+
+Worktrees may not have valid Firebase credentials. The startup probe (`admin.auth().listUsers()` / `firestore.listCollections()`) hard-exits without them. If a verification step requires executing server boot code, set `NODE_ENV=test` to skip the probe — same gate the test suite uses. The Integration Test Gate command in the next section is already correct for worktrees.
+
+### Treat the worktree as ephemeral
+
+- `.env` and `gcs-service-account.json` are typically symlinked from the main checkout — do not move, copy, or rewrite them
+- `node_modules/` is local to this worktree — `npm install` is fine; do not symlink it from another checkout
+- The worktree is destroyed after merge — do not store work-critical state outside the repo (e.g., in `~/`)
+- If verification genuinely requires a running server, stop and flag it for the human reviewer rather than starting one
+
 ## Commit Protocol (MANDATORY)
 
 Before EVERY commit, run all three checks in order:
