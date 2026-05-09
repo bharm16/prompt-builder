@@ -1,3 +1,15 @@
+# Evaluation Scripts
+
+This directory hosts three independent evaluation harnesses. They have different goals, different cadences, and different failure modes — keep them separate.
+
+| Eval                                      | Script                        | Type                         | Gates against         |
+| ----------------------------------------- | ----------------------------- | ---------------------------- | --------------------- |
+| Span labeling — LLM-as-judge              | `span-labeling-evaluation.ts` | Quality (1-5 rubric, GPT-4o) | Baseline snapshot     |
+| Span labeling — Relaxed F1                | `golden-set-relaxed-f1.ts`    | Quality (per-category F1)    | Per-provider baseline |
+| Model intelligence recommender — Snapshot | `recommendation-eval.ts`      | Behavioral snapshot (no LLM) | Per-name baseline     |
+
+The Span Labeling evals follow below; the Recommendation snapshot eval is documented at the end.
+
 # Span Labeling Evaluation
 
 Scripts for evaluating span labeling quality using LLM-as-Judge approach with real production data.
@@ -251,3 +263,78 @@ Required:
 - `GROQ_API_KEY` - For span labeling (or OpenAI as fallback)
 
 The judge always uses GPT-4o. Span labeling uses Groq if available, otherwise falls back to OpenAI.
+
+---
+
+# Model Intelligence Recommendation Eval
+
+Snapshot regression gate for `ModelIntelligenceService.getRecommendation()`. Captures the recommender's current per-prompt output across a fixed set and fails on any drift.
+
+## What this is (and what it isn't)
+
+This is a **snapshot eval, not a quality eval.** The baseline records "what the recommender does today," not "what the right answer is." Its only job is to catch unintended behavior changes when the scoring weights, model capability registry, or pipeline glue evolve.
+
+Because there's no ground truth for "the correct model" per prompt, we don't measure recommendation quality here — that requires real-world A/B telemetry, not a script. The recommender's quality lives or dies by `ModelScoringService` weights and `ModelCapabilityRegistry` numbers, both of which are intentional design choices, not optimization targets.
+
+## Why offline / mocked spans
+
+The recommender depends on `PromptSpanProvider` (an LLM-backed span labeler). Calling live LLMs from this eval would:
+
+- Make runs slow, flaky, and budget-sensitive
+- Conflate two failure modes — recommender drift vs span-labeling drift
+- Defeat the gate's value (you'd never know which subsystem changed)
+
+So each prompt in `recommendation-prompts.json` ships with a hand-authored `mockSpans` fixture that the eval feeds directly to the recommender. All other dependencies (`PromptRequirementsService`, `ModelScoringService`, `ModelCapabilityRegistry`, `AvailabilityGateService`) run as production code with a synthetic "all models available" snapshot.
+
+## Workflow
+
+```bash
+# 1. Establish a baseline (only after intentional, reviewed recommender changes)
+npm run eval:recommendation:bless
+
+# 2. Subsequent runs gate against it
+npm run eval:recommendation
+# Exit 0 = passed | Exit 1 = drift detected | Exit 2 = setup error
+
+# Use a different baseline name (e.g. for a feature branch experiment)
+npx tsx scripts/evaluation/recommendation-eval.ts --baseline experiment-v2
+npx tsx scripts/evaluation/recommendation-eval.ts --baseline experiment-v2 --bless
+```
+
+## What gets compared
+
+Per prompt, the snapshot captures:
+
+- `recommendedModelId` and `recommendedConfidence`
+- Top 3 entries of `recommendations[]` with `modelId` and `overallScore` (exact match)
+- `alsoConsider.modelId` (if present)
+- `suggestComparison` flag and `comparisonModels` tuple
+- `filteredOut.length`
+- A flat projection of `requirements` (physics flags, character flags, env type, lighting, style, motion)
+
+Volatile fields (`computedAt`, `promptId`, factor-score explanations) are deliberately excluded — they would be noise without signal.
+
+The gate is exact-match: any field difference between baseline and current is a failure. This is intentional. Snapshot evals should be tight; a "tolerance" turns the gate into a quality eval, which it isn't.
+
+## When to re-bless
+
+Re-bless after **intentional, reviewed** changes:
+
+- `ModelScoringService` weight tweaks
+- `ModelCapabilityRegistry` capability number updates
+- New model added or removed
+- `PromptRequirementsService` regex/heuristic changes
+- New prompts added to `recommendation-prompts.json` (gate will warn about new prompts but not fail)
+
+Do **not** re-bless to silence drift you don't understand. Read the diff first — the field names in the failure point right at what changed.
+
+## Files
+
+```
+scripts/evaluation/
+├── recommendation-eval.ts                # Runner (gate + bless)
+├── recommendation-prompts.json           # 30 prompts with mock-span fixtures
+├── recommendation-baselines/
+│   └── default.json                      # Blessed snapshot
+└── recommendation-results-latest.json    # Last run output (gitignored or artifact)
+```
