@@ -1,11 +1,11 @@
 {
-  "blessedAt": "2026-05-09T02:11:23.522Z",
+  "blessedAt": "2026-05-09T04:37:41.873Z",
   "provider": "openai",
   "summary": {
-    "relaxedF1": 0.45731707317073167,
-    "precision": 0.49019607843137253,
-    "recall": 0.42857142857142855,
-    "taxonomyAccuracy": 0.6666666666666666
+    "relaxedF1": 0.5098634294385432,
+    "precision": 0.5436893203883495,
+    "recall": 0.48,
+    "taxonomyAccuracy": 0.6942148760330579
   },
   "byCategory": {
     "camera.movement": {
@@ -15,16 +15,16 @@
       "support": 22
     },
     "subject.identity": {
-      "f1": 0.8043478260869564,
-      "precision": 1,
-      "recall": 0.6727272727272727,
+      "f1": 0.8085106382978723,
+      "precision": 0.9743589743589743,
+      "recall": 0.6909090909090909,
       "support": 55
     },
     "action.movement": {
-      "f1": 0.15730337078651688,
-      "precision": 0.0958904109589041,
-      "recall": 0.4375,
-      "support": 16
+      "f1": 0.36363636363636365,
+      "precision": 0.25,
+      "recall": 0.6666666666666666,
+      "support": 27
     },
     "style.aesthetic": {
       "f1": 0,
@@ -33,9 +33,9 @@
       "support": 2
     },
     "lighting.quality": {
-      "f1": 0.42105263157894735,
-      "precision": 0.5454545454545454,
-      "recall": 0.34285714285714286,
+      "f1": 0.45161290322580644,
+      "precision": 0.5185185185185185,
+      "recall": 0.4,
       "support": 35
     },
     "lighting.timeOfDay": {
@@ -45,14 +45,14 @@
       "support": 11
     },
     "shot.type": {
-      "f1": 0.6060606060606061,
-      "precision": 0.47619047619047616,
-      "recall": 0.8333333333333334,
-      "support": 12
+      "f1": 0.7567567567567568,
+      "precision": 0.6363636363636364,
+      "recall": 0.9333333333333333,
+      "support": 15
     },
     "subject.appearance": {
-      "f1": 0.8764044943820224,
-      "precision": 0.8478260869565217,
+      "f1": 0.8666666666666666,
+      "precision": 0.8297872340425532,
       "recall": 0.9069767441860465,
       "support": 43
     },
@@ -63,26 +63,20 @@
       "support": 15
     },
     "environment.location": {
-      "f1": 0.4912280701754386,
-      "precision": 0.9333333333333333,
-      "recall": 0.3333333333333333,
+      "f1": 0.45614035087719296,
+      "precision": 0.8666666666666667,
+      "recall": 0.30952380952380953,
       "support": 42
     },
     "lighting.source": {
-      "f1": 0.47826086956521735,
-      "precision": 0.5789473684210527,
+      "f1": 0.5,
+      "precision": 0.6470588235294118,
       "recall": 0.4074074074074074,
       "support": 27
     },
-    "action.gesture": {
-      "f1": 0,
-      "precision": 0,
-      "recall": 0,
-      "support": 11
-    },
     "environment.context": {
-      "f1": 0.14634146341463414,
-      "precision": 0.09090909090909091,
+      "f1": 0.15384615384615383,
+      "precision": 0.0967741935483871,
       "recall": 0.375,
       "support": 8
     },
@@ -93,9 +87,9 @@
       "support": 8
     },
     "subject.emotion": {
-      "f1": 0.5,
-      "precision": 0.5,
-      "recall": 0.5,
+      "f1": 0.8,
+      "precision": 0.6666666666666666,
+      "recall": 1,
       "support": 2
     },
     "environment.weather": {
@@ -104,12 +98,6 @@
       "recall": 0.2,
       "support": 5
     },
-    "camera.angle": {
-      "f1": 0,
-      "precision": 0,
-      "recall": 0,
-      "support": 3
-    },
     "subject.wardrobe": {
       "f1": 0.4444444444444445,
       "precision": 1,
@@ -117,21 +105,21 @@
       "support": 7
     },
     "technical.duration": {
-      "f1": 0,
-      "precision": 0,
-      "recall": 0,
+      "f1": 0.6666666666666666,
+      "precision": 1,
+      "recall": 0.5,
       "support": 2
     },
     "technical.aspectRatio": {
-      "f1": 0,
-      "precision": 0,
-      "recall": 0,
-      "support": 3
-    },
-    "technical.frameRate": {
       "f1": 0.3333333333333333,
       "precision": 0.3333333333333333,
       "recall": 0.3333333333333333,
+      "support": 3
+    },
+    "technical.frameRate": {
+      "f1": 0.6666666666666666,
+      "precision": 0.6666666666666666,
+      "recall": 0.6666666666666666,
       "support": 3
     },
     "audio.score": {
