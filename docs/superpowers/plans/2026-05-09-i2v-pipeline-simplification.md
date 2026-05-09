@@ -28,7 +28,7 @@
 
 - [ ] **Step 1: Verify the test guard exists**
 
-Run: `npx vitest run server/src/services/prompt-optimization --config config/test/vitest.config.js`
+Run: `npx vitest run server/src/services/prompt-optimization --config config/test/vitest.unit.config.js`
 Expected: existing tests pass (this gives us a baseline before deletion).
 
 - [ ] **Step 2: Remove I2V branching from `optimize` and delete `optimizeI2V` method**
@@ -127,7 +127,7 @@ Expected: errors only at sites that consumed deleted types — `routes/optimize/
 
 - [ ] **Step 6: Run unit tests for the optimization service**
 
-Run: `npx vitest run server/src/services/prompt-optimization --config config/test/vitest.config.js`
+Run: `npx vitest run server/src/services/prompt-optimization --config config/test/vitest.unit.config.js`
 Expected: any previously passing test that asserted on `inputMode === "i2v"` or `result.i2v` will now fail. Don't fix yet — the tests themselves are getting deleted in Task 1.5.
 
 - [ ] **Step 7: Commit**
@@ -430,7 +430,7 @@ Expected: clean.
 
 - [ ] **Step 4: Run unit tests for the AI service**
 
-Run: `npx vitest run server/src/services/ai-model --config config/test/vitest.config.js`
+Run: `npx vitest run server/src/services/ai-model --config config/test/vitest.unit.config.js`
 Expected: clean (no test references `parse_i2v_prompt`).
 
 - [ ] **Step 5: Commit**
@@ -1688,7 +1688,7 @@ describe("MotionIdeaService", () => {
 
 - [ ] **Step 2: Run the test (it should fail)**
 
-Run: `npx vitest run server/src/services/i2v-motion-ideas/__tests__/MotionIdeaService.test.ts --config config/test/vitest.config.js`
+Run: `npx vitest run server/src/services/i2v-motion-ideas/__tests__/MotionIdeaService.test.ts --config config/test/vitest.unit.config.js`
 Expected: FAIL — "Cannot find module '../MotionIdeaService'".
 
 - [ ] **Step 3: Commit (test only)**
@@ -1862,7 +1862,7 @@ export class MotionIdeaService {
 
 - [ ] **Step 2: Run the test (it should pass)**
 
-Run: `npx vitest run server/src/services/i2v-motion-ideas/__tests__/MotionIdeaService.test.ts --config config/test/vitest.config.js`
+Run: `npx vitest run server/src/services/i2v-motion-ideas/__tests__/MotionIdeaService.test.ts --config config/test/vitest.unit.config.js`
 Expected: PASS for all five test cases.
 
 - [ ] **Step 3: Type-check + lint**
@@ -1906,7 +1906,7 @@ i2v_motion_ideas: {
 
 - [ ] **Step 3: Type-check + run the unit tests**
 
-Run: `npx tsc --noEmit && npx vitest run server/src/services/ai-model server/src/services/i2v-motion-ideas --config config/test/vitest.config.js`
+Run: `npx tsc --noEmit && npx vitest run server/src/services/ai-model server/src/services/i2v-motion-ideas --config config/test/vitest.unit.config.js`
 Expected: PASS.
 
 - [ ] **Step 4: Commit**
