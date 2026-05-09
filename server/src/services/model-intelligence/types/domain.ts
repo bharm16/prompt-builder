@@ -1,57 +1,57 @@
-import type { CanonicalPromptModelId } from '@shared/videoModels';
+import type { CanonicalPromptModelId } from "@shared/videoModels";
 import {
   COST_TIERS as SHARED_COST_TIERS,
   QUALITY_TIERS as SHARED_QUALITY_TIERS,
   SPEED_TIERS as SHARED_SPEED_TIERS,
-} from '@shared/modelCatalog';
+} from "@shared/modelCatalog";
 
-export type { ModelCapabilities } from '@shared/modelCatalog';
+export type { ModelCapabilities } from "@shared/modelCatalog";
 
 export const COMPLEXITY_LEVELS = [
-  'none',
-  'simple',
-  'moderate',
-  'complex',
+  "none",
+  "simple",
+  "moderate",
+  "complex",
 ] as const;
 export type ComplexityLevel = (typeof COMPLEXITY_LEVELS)[number];
 
 export const EMOTIONAL_INTENSITY = [
-  'none',
-  'subtle',
-  'moderate',
-  'intense',
+  "none",
+  "subtle",
+  "moderate",
+  "intense",
 ] as const;
 export type EmotionalIntensity = (typeof EMOTIONAL_INTENSITY)[number];
 
 export const ENVIRONMENT_TYPES = [
-  'interior',
-  'exterior',
-  'abstract',
-  'mixed',
+  "interior",
+  "exterior",
+  "abstract",
+  "mixed",
 ] as const;
 export type EnvironmentType = (typeof ENVIRONMENT_TYPES)[number];
 
 export const LIGHTING_REQUIREMENTS = [
-  'natural',
-  'stylized',
-  'dramatic',
-  'mixed',
+  "natural",
+  "stylized",
+  "dramatic",
+  "mixed",
 ] as const;
 export type LightingRequirement = (typeof LIGHTING_REQUIREMENTS)[number];
 
 export const CAMERA_COMPLEXITY = [
-  'static',
-  'simple',
-  'moderate',
-  'complex',
+  "static",
+  "simple",
+  "moderate",
+  "complex",
 ] as const;
 export type CameraComplexity = (typeof CAMERA_COMPLEXITY)[number];
 
 export const SUBJECT_COMPLEXITY = [
-  'static',
-  'simple',
-  'moderate',
-  'complex',
+  "static",
+  "simple",
+  "moderate",
+  "complex",
 ] as const;
 export type SubjectComplexity = (typeof SUBJECT_COMPLEXITY)[number];
 
@@ -91,7 +91,7 @@ export interface PromptRequirements {
     emotionalIntensity: EmotionalIntensity;
   };
   environment: {
-    complexity: 'simple' | 'moderate' | 'complex';
+    complexity: "simple" | "moderate" | "complex";
     type: EnvironmentType;
     hasArchitecture: boolean;
     hasNature: boolean;
@@ -99,7 +99,7 @@ export interface PromptRequirements {
   };
   lighting: {
     requirements: LightingRequirement;
-    complexity: 'simple' | 'moderate' | 'complex';
+    complexity: "simple" | "moderate" | "complex";
     hasPracticalLights: boolean;
     requiresAtmospherics: boolean;
   };
@@ -145,7 +145,7 @@ export interface ModelRecommendation {
   recommendations: ModelScore[];
   recommended: {
     modelId: CanonicalPromptModelId;
-    confidence: 'high' | 'medium' | 'low';
+    confidence: "high" | "medium" | "low";
     reasoning: string;
   };
   alsoConsider?: {

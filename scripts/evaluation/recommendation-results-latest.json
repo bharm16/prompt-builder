@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-05-09T06:27:01.419Z",
+  "timestamp": "2026-05-09T06:46:53.626Z",
   "baselineName": "default",
   "promptSetVersion": "1.0.0",
   "commit": null,
@@ -65,10 +65,7 @@
       ],
       "alsoConsiderModelId": null,
       "suggestComparison": true,
-      "comparisonModels": [
-        "kling-2.1",
-        "veo-3"
-      ],
+      "comparisonModels": ["kling-2.1", "veo-3"],
       "filteredOutCount": 1,
       "requirements": {
         "physicsComplexity": "none",
@@ -150,10 +147,7 @@
       ],
       "alsoConsiderModelId": null,
       "suggestComparison": true,
-      "comparisonModels": [
-        "sora-2",
-        "veo-3"
-      ],
+      "comparisonModels": ["sora-2", "veo-3"],
       "filteredOutCount": 1,
       "requirements": {
         "physicsComplexity": "moderate",
@@ -317,10 +311,7 @@
       ],
       "alsoConsiderModelId": null,
       "suggestComparison": true,
-      "comparisonModels": [
-        "sora-2",
-        "veo-3"
-      ],
+      "comparisonModels": ["sora-2", "veo-3"],
       "filteredOutCount": 1,
       "requirements": {
         "physicsComplexity": "none",
@@ -402,10 +393,7 @@
       ],
       "alsoConsiderModelId": null,
       "suggestComparison": true,
-      "comparisonModels": [
-        "sora-2",
-        "veo-3"
-      ],
+      "comparisonModels": ["sora-2", "veo-3"],
       "filteredOutCount": 1,
       "requirements": {
         "physicsComplexity": "simple",
@@ -446,10 +434,7 @@
       ],
       "alsoConsiderModelId": null,
       "suggestComparison": true,
-      "comparisonModels": [
-        "sora-2",
-        "veo-3"
-      ],
+      "comparisonModels": ["sora-2", "veo-3"],
       "filteredOutCount": 1,
       "requirements": {
         "physicsComplexity": "none",
@@ -490,10 +475,7 @@
       ],
       "alsoConsiderModelId": null,
       "suggestComparison": true,
-      "comparisonModels": [
-        "sora-2",
-        "veo-3"
-      ],
+      "comparisonModels": ["sora-2", "veo-3"],
       "filteredOutCount": 1,
       "requirements": {
         "physicsComplexity": "none",
@@ -534,10 +516,7 @@
       ],
       "alsoConsiderModelId": null,
       "suggestComparison": true,
-      "comparisonModels": [
-        "sora-2",
-        "veo-3"
-      ],
+      "comparisonModels": ["sora-2", "veo-3"],
       "filteredOutCount": 1,
       "requirements": {
         "physicsComplexity": "none",
@@ -578,10 +557,7 @@
       ],
       "alsoConsiderModelId": null,
       "suggestComparison": true,
-      "comparisonModels": [
-        "sora-2",
-        "veo-3"
-      ],
+      "comparisonModels": ["sora-2", "veo-3"],
       "filteredOutCount": 1,
       "requirements": {
         "physicsComplexity": "none",
@@ -663,10 +639,7 @@
       ],
       "alsoConsiderModelId": null,
       "suggestComparison": true,
-      "comparisonModels": [
-        "kling-2.1",
-        "veo-3"
-      ],
+      "comparisonModels": ["kling-2.1", "veo-3"],
       "filteredOutCount": 1,
       "requirements": {
         "physicsComplexity": "none",
@@ -707,10 +680,7 @@
       ],
       "alsoConsiderModelId": null,
       "suggestComparison": true,
-      "comparisonModels": [
-        "sora-2",
-        "veo-3"
-      ],
+      "comparisonModels": ["sora-2", "veo-3"],
       "filteredOutCount": 1,
       "requirements": {
         "physicsComplexity": "simple",
@@ -792,10 +762,7 @@
       ],
       "alsoConsiderModelId": null,
       "suggestComparison": true,
-      "comparisonModels": [
-        "sora-2",
-        "veo-3"
-      ],
+      "comparisonModels": ["sora-2", "veo-3"],
       "filteredOutCount": 1,
       "requirements": {
         "physicsComplexity": "none",
@@ -959,10 +926,7 @@
       ],
       "alsoConsiderModelId": null,
       "suggestComparison": true,
-      "comparisonModels": [
-        "sora-2",
-        "luma-ray3"
-      ],
+      "comparisonModels": ["sora-2", "luma-ray3"],
       "filteredOutCount": 1,
       "requirements": {
         "physicsComplexity": "none",
@@ -1044,10 +1008,7 @@
       ],
       "alsoConsiderModelId": null,
       "suggestComparison": true,
-      "comparisonModels": [
-        "sora-2",
-        "veo-3"
-      ],
+      "comparisonModels": ["sora-2", "veo-3"],
       "filteredOutCount": 1,
       "requirements": {
         "physicsComplexity": "simple",
@@ -1088,10 +1049,7 @@
       ],
       "alsoConsiderModelId": null,
       "suggestComparison": true,
-      "comparisonModels": [
-        "sora-2",
-        "veo-3"
-      ],
+      "comparisonModels": ["sora-2", "veo-3"],
       "filteredOutCount": 1,
       "requirements": {
         "physicsComplexity": "none",
@@ -1132,10 +1090,7 @@
       ],
       "alsoConsiderModelId": null,
       "suggestComparison": true,
-      "comparisonModels": [
-        "sora-2",
-        "veo-3"
-      ],
+      "comparisonModels": ["sora-2", "veo-3"],
       "filteredOutCount": 1,
       "requirements": {
         "physicsComplexity": "none",
@@ -1176,10 +1131,7 @@
       ],
       "alsoConsiderModelId": null,
       "suggestComparison": true,
-      "comparisonModels": [
-        "sora-2",
-        "veo-3"
-      ],
+      "comparisonModels": ["sora-2", "veo-3"],
       "filteredOutCount": 1,
       "requirements": {
         "physicsComplexity": "none",
@@ -1220,10 +1172,7 @@
       ],
       "alsoConsiderModelId": null,
       "suggestComparison": true,
-      "comparisonModels": [
-        "sora-2",
-        "veo-3"
-      ],
+      "comparisonModels": ["sora-2", "veo-3"],
       "filteredOutCount": 1,
       "requirements": {
         "physicsComplexity": "none",

@@ -1,14 +1,14 @@
-import { normalizeText } from '@services/video-prompt-analysis/utils/textHelpers';
+import { normalizeText } from "@services/video-prompt-analysis/utils/textHelpers";
 import {
   MODEL_CATALOG,
   type ModelOptimalParams,
   type ModelStrengths,
-} from '@shared/modelCatalog';
+} from "@shared/modelCatalog";
 import {
   CANONICAL_PROMPT_MODEL_IDS,
   type CanonicalPromptModelId,
   resolveCanonicalPromptModelId,
-} from '@shared/videoModels';
+} from "@shared/videoModels";
 
 /**
  * Detects the target AI video model from prompt text.
@@ -26,7 +26,7 @@ import {
 
 /** Compatibility re-export — older callers import this name. */
 export type ModelCapabilities = ModelStrengths;
-export type { ModelOptimalParams } from '@shared/modelCatalog';
+export type { ModelOptimalParams } from "@shared/modelCatalog";
 
 /** Minimum total pattern score required before we commit to a detection. */
 const MIN_DETECTION_SCORE = 2;
@@ -37,9 +37,9 @@ export class ModelDetectionService {
    * Returns `null` when no model crosses the confidence threshold.
    */
   detectTargetModel(
-    fullPrompt: string | null | undefined
+    fullPrompt: string | null | undefined,
   ): CanonicalPromptModelId | null {
-    if (typeof fullPrompt !== 'string' || fullPrompt.trim().length === 0) {
+    if (typeof fullPrompt !== "string" || fullPrompt.trim().length === 0) {
       return null;
     }
 
@@ -61,7 +61,7 @@ export class ModelDetectionService {
 
   private scoreModel(
     normalizedText: string,
-    patterns: (typeof MODEL_CATALOG)[CanonicalPromptModelId]['detectionPatterns']
+    patterns: (typeof MODEL_CATALOG)[CanonicalPromptModelId]["detectionPatterns"],
   ): number {
     let score = 0;
 
@@ -92,7 +92,7 @@ export class ModelDetectionService {
    * Accepts canonical ids and legacy aliases via PROMPT_MODEL_ALIASES.
    */
   getModelCapabilities(
-    model: string | null | undefined
+    model: string | null | undefined,
   ): ModelCapabilities | null {
     const canonical = resolveCanonicalPromptModelId(model ?? null);
     if (!canonical) return null;
@@ -104,7 +104,7 @@ export class ModelDetectionService {
    * no `optimalParams` defined (or the model is unknown).
    */
   getModelOptimalParams(
-    model: string | null | undefined
+    model: string | null | undefined,
   ): ModelOptimalParams | null {
     const canonical = resolveCanonicalPromptModelId(model ?? null);
     if (!canonical) return null;
@@ -118,7 +118,7 @@ export class ModelDetectionService {
    */
   getModelSpecificGuidance(
     model: string | null | undefined,
-    category: string | null | undefined
+    category: string | null | undefined,
   ): string[] {
     if (!model || !category) return [];
 
@@ -128,72 +128,72 @@ export class ModelDetectionService {
     const normalizedCategory = category.toLowerCase();
     const guidance: string[] = [];
 
-    if (canonical === 'sora-2') {
+    if (canonical === "sora-2") {
       if (
-        normalizedCategory.includes('motion') ||
-        normalizedCategory.includes('action')
+        normalizedCategory.includes("motion") ||
+        normalizedCategory.includes("action")
       ) {
         guidance.push(
-          'Describe continuous, realistic motion with physical accuracy'
+          "Describe continuous, realistic motion with physical accuracy",
         );
         guidance.push(
-          'Mention how objects interact with environment and physics'
+          "Mention how objects interact with environment and physics",
         );
         guidance.push(
-          'Specify natural movement patterns (walking, flowing, falling)'
+          "Specify natural movement patterns (walking, flowing, falling)",
         );
       }
-      if (normalizedCategory.includes('camera')) {
+      if (normalizedCategory.includes("camera")) {
         guidance.push(
-          'Use smooth, realistic camera movements (dolly, crane, pan)'
+          "Use smooth, realistic camera movements (dolly, crane, pan)",
         );
-        guidance.push('Avoid rapid cuts or jarring transitions');
+        guidance.push("Avoid rapid cuts or jarring transitions");
       }
     }
 
-    if (canonical === 'veo-3') {
-      if (normalizedCategory.includes('lighting')) {
-        guidance.push('Emphasize atmospheric and cinematic lighting quality');
-        guidance.push('Specify light direction, quality, and mood impact');
+    if (canonical === "veo-3") {
+      if (normalizedCategory.includes("lighting")) {
+        guidance.push("Emphasize atmospheric and cinematic lighting quality");
+        guidance.push("Specify light direction, quality, and mood impact");
         guidance.push(
-          'Use technical terms: key light, rim light, 3-point setup'
+          "Use technical terms: key light, rim light, 3-point setup",
         );
       }
       if (
-        normalizedCategory.includes('mood') ||
-        normalizedCategory.includes('atmosphere')
+        normalizedCategory.includes("mood") ||
+        normalizedCategory.includes("atmosphere")
       ) {
         guidance.push("Leverage Veo's strength in atmospheric effects");
-        guidance.push('Describe environmental mood and feeling');
+        guidance.push("Describe environmental mood and feeling");
       }
     }
 
-    if (canonical === 'runway-gen45') {
-      if (normalizedCategory.includes('style')) {
-        guidance.push('Embrace stylized, artistic approaches');
-        guidance.push('Reference art styles, filters, or visual treatments');
-        guidance.push('Consider non-realistic color grading and effects');
+    if (canonical === "runway-gen45") {
+      if (normalizedCategory.includes("style")) {
+        guidance.push("Embrace stylized, artistic approaches");
+        guidance.push("Reference art styles, filters, or visual treatments");
+        guidance.push("Consider non-realistic color grading and effects");
       }
     }
 
-    if (canonical === 'kling-2.1') {
+    if (canonical === "kling-2.1") {
       if (
-        normalizedCategory.includes('subject') ||
-        normalizedCategory.includes('character')
+        normalizedCategory.includes("subject") ||
+        normalizedCategory.includes("character")
       ) {
-        guidance.push('Focus on facial expressions and character emotion');
-        guidance.push('Describe specific facial features and expressions');
-        guidance.push('Mention eye contact, subtle gestures, reactions');
+        guidance.push("Focus on facial expressions and character emotion");
+        guidance.push("Describe specific facial features and expressions");
+        guidance.push("Mention eye contact, subtle gestures, reactions");
       }
     }
 
-    if (canonical === 'luma-ray3') {
+    if (canonical === "luma-ray3") {
       if (
-        normalizedCategory.includes('style') ||
-        normalizedCategory.includes('visual')
+        normalizedCategory.includes("style") ||
+        normalizedCategory.includes("visual")
       ) {
-        guidance.push('Embrace surreal and abstract concepts');
-        guidance.push('Use dreamlike, morphing, or fluid descriptions');
+        guidance.push("Embrace surreal and abstract concepts");
+        guidance.push("Use dreamlike, morphing, or fluid descriptions");
         guidance.push("Don't worry about physical realism");
       }
     }
@@ -205,21 +205,21 @@ export class ModelDetectionService {
    * Format model context for prompt inclusion.
    */
   formatModelContext(model: string | null | undefined): string {
-    if (!model) return '';
+    if (!model) return "";
 
     const canonical = resolveCanonicalPromptModelId(model);
-    if (!canonical) return '';
+    if (!canonical) return "";
 
     const entry = MODEL_CATALOG[canonical].detectionPatterns;
     const params = entry.optimalParams;
     const capabilities = entry.strengths;
-    if (!params) return '';
+    if (!params) return "";
 
     const modelName = canonical;
     let context = `\n**TARGET MODEL: ${modelName}**\n`;
-    context += `Primary Strengths: ${capabilities.primary.join(', ')}\n`;
+    context += `Primary Strengths: ${capabilities.primary.join(", ")}\n`;
     context += `Optimize for: ${params.motion}, ${params.camera}, ${params.lighting}\n`;
-    context += `Weakness to avoid: ${capabilities.weaknesses.join(', ')}\n`;
+    context += `Weakness to avoid: ${capabilities.weaknesses.join(", ")}\n`;
 
     return context;
   }

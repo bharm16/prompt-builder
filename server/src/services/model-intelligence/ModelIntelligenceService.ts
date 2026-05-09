@@ -1,26 +1,26 @@
-import { logger } from '@infrastructure/Logger';
-import { generateId } from '@utils/uid';
+import { logger } from "@infrastructure/Logger";
+import { generateId } from "@utils/uid";
 /** Narrow metrics interface — avoids importing the concrete MetricsService class. */
 interface ModelIntelligenceMetrics {
   recordModelRecommendationRequest(
     mode: string,
-    availabilityState: string
+    availabilityState: string,
   ): void;
 }
-import { getVideoCost } from '@config/modelCosts';
-import type { CanonicalPromptModelId } from '@shared/videoModels';
-import { ModelCapabilityRegistry } from './services/ModelCapabilityRegistry';
-import { ModelScoringService } from './services/ModelScoringService';
-import { PromptRequirementsService } from './services/PromptRequirementsService';
-import { RecommendationExplainerService } from './services/RecommendationExplainerService';
-import type { AvailabilityGateService } from './services/AvailabilityGateService';
-import type { PromptSpanProvider } from '@llm/span-labeling/ports/PromptSpanProvider';
+import { getVideoCost } from "@config/modelCosts";
+import type { CanonicalPromptModelId } from "@shared/videoModels";
+import { ModelCapabilityRegistry } from "./services/ModelCapabilityRegistry";
+import { ModelScoringService } from "./services/ModelScoringService";
+import { PromptRequirementsService } from "./services/PromptRequirementsService";
+import { RecommendationExplainerService } from "./services/RecommendationExplainerService";
+import type { AvailabilityGateService } from "./services/AvailabilityGateService";
+import type { PromptSpanProvider } from "@llm/span-labeling/ports/PromptSpanProvider";
 import type {
   ModelRecommendation,
   PromptRequirements,
   ModelScore,
   PromptSpan,
-} from './types';
+} from "./types";
 
 interface ModelIntelligenceDependencies {
   promptSpanProvider: PromptSpanProvider;
@@ -33,13 +33,13 @@ interface ModelIntelligenceDependencies {
 }
 
 interface RecommendationOptions {
-  mode?: 't2v' | 'i2v';
+  mode?: "t2v" | "i2v";
   spans?: PromptSpan[];
   durationSeconds?: number;
   userId?: string | null;
 }
 
-const log = logger.child({ service: 'ModelIntelligenceService' });
+const log = logger.child({ service: "ModelIntelligenceService" });
 
 export class ModelIntelligenceService {
   private readonly requirementsService: PromptRequirementsService;
@@ -62,10 +62,10 @@ export class ModelIntelligenceService {
 
   async getRecommendation(
     prompt: string,
-    options: RecommendationOptions = {}
+    options: RecommendationOptions = {},
   ): Promise<ModelRecommendation> {
     const startedAt = Date.now();
-    const mode = options.mode ?? 't2v';
+    const mode = options.mode ?? "t2v";
     const durationSeconds = options.durationSeconds ?? 8;
 
     let spans: PromptSpan[] = Array.isArray(options.spans) ? options.spans : [];
@@ -74,7 +74,7 @@ export class ModelIntelligenceService {
       try {
         spans = await this.deps.promptSpanProvider.label(prompt);
       } catch (error) {
-        log.warn('Span labeling failed for model recommendation', {
+        log.warn("Span labeling failed for model recommendation", {
           error: error instanceof Error ? error.message : String(error),
         });
       }
@@ -82,7 +82,7 @@ export class ModelIntelligenceService {
 
     const requirements = this.requirementsService.extractRequirements(
       prompt,
-      spans
+      spans,
     );
     const modelIds = this.registry.getAllModels();
 
@@ -93,15 +93,15 @@ export class ModelIntelligenceService {
     };
     const availability = await this.availabilityGate.filterModels(
       modelIds,
-      availabilityOptions
+      availabilityOptions,
     );
 
     const availabilityState =
       availability.availableModelIds.length > 0
-        ? 'available'
+        ? "available"
         : availability.unknownModelIds.length > 0
-          ? 'unknown'
-          : 'unavailable';
+          ? "unknown"
+          : "unavailable";
 
     this.metrics?.recordModelRecommendationRequest(mode, availabilityState);
 
@@ -115,23 +115,23 @@ export class ModelIntelligenceService {
     const recommended = this.determineRecommendation(
       recommendations,
       requirements,
-      availabilityState
+      availabilityState,
     );
     const alsoConsider = this.determineEfficientOption(
       recommendations,
       recommendedScore,
-      durationSeconds
+      durationSeconds,
     );
     const comparison = this.shouldSuggestComparison(recommendations);
 
     if (!recommendedScore) {
-      log.warn('No model scores available for recommendation', {
+      log.warn("No model scores available for recommendation", {
         promptLength: prompt.length,
         mode,
       });
     }
 
-    log.info('Model recommendation computed', {
+    log.info("Model recommendation computed", {
       durationMs: Date.now() - startedAt,
       promptLength: prompt.length,
       mode,
@@ -159,7 +159,7 @@ export class ModelIntelligenceService {
   private scoreModels(
     modelIds: CanonicalPromptModelId[],
     requirements: PromptRequirements,
-    mode: 't2v' | 'i2v'
+    mode: "t2v" | "i2v",
   ): ModelScore[] {
     return modelIds
       .map((modelId) => {
@@ -169,7 +169,7 @@ export class ModelIntelligenceService {
           modelId,
           capabilities,
           requirements,
-          mode
+          mode,
         );
       })
       .filter((score): score is ModelScore => Boolean(score))
@@ -179,34 +179,34 @@ export class ModelIntelligenceService {
   private determineRecommendation(
     scores: ModelScore[],
     requirements: PromptRequirements,
-    availabilityState: 'available' | 'unknown' | 'unavailable'
-  ): ModelRecommendation['recommended'] {
+    availabilityState: "available" | "unknown" | "unavailable",
+  ): ModelRecommendation["recommended"] {
     const topScore = scores[0];
     const secondScore = scores[1];
 
     if (!topScore) {
       const fallbackModel: CanonicalPromptModelId =
-        this.registry.getAllModels()[0] ?? 'wan-2.2';
+        this.registry.getAllModels()[0] ?? "wan-2.2";
       const reasoning =
-        availabilityState === 'unavailable'
-          ? 'No available models based on current credentials or entitlements.'
-          : 'No scoring data available; defaulting to baseline model.';
+        availabilityState === "unavailable"
+          ? "No available models based on current credentials or entitlements."
+          : "No scoring data available; defaulting to baseline model.";
       return {
         modelId: fallbackModel,
-        confidence: 'low',
+        confidence: "low",
         reasoning,
       };
     }
 
     const scoreDiff = topScore.overallScore - (secondScore?.overallScore ?? 0);
-    let confidence: 'high' | 'medium' | 'low';
+    let confidence: "high" | "medium" | "low";
 
     if (scoreDiff >= 15 && topScore.overallScore >= 80) {
-      confidence = 'high';
+      confidence = "high";
     } else if (scoreDiff >= 8 || topScore.overallScore >= 70) {
-      confidence = 'medium';
+      confidence = "medium";
     } else {
-      confidence = 'low';
+      confidence = "low";
     }
 
     // Honesty cap: requirements.confidenceScore reflects how confident we are
@@ -215,13 +215,13 @@ export class ModelIntelligenceService {
     // confidence is a UX lie — the score arithmetic can produce a clean
     // ranking even on guesses. Cap "high" → "medium"; "medium" and "low"
     // are already honest about uncertainty.
-    if (confidence === 'high' && requirements.confidenceScore < 0.4) {
-      confidence = 'medium';
+    if (confidence === "high" && requirements.confidenceScore < 0.4) {
+      confidence = "medium";
     }
 
     const reasoning = this.explainerService.explainRecommendation(
       topScore,
-      requirements
+      requirements,
     );
 
     return {
@@ -234,8 +234,8 @@ export class ModelIntelligenceService {
   private determineEfficientOption(
     scores: ModelScore[],
     recommendedScore: ModelScore | undefined,
-    durationSeconds: number
-  ): ModelRecommendation['alsoConsider'] | undefined {
+    durationSeconds: number,
+  ): ModelRecommendation["alsoConsider"] | undefined {
     if (!recommendedScore || scores.length < 2) return undefined;
 
     const highScoreCutoff = 90;
@@ -246,7 +246,7 @@ export class ModelIntelligenceService {
       (score) =>
         score.overallScore >= highScoreCutoff &&
         Math.abs(recommendedScore.overallScore - score.overallScore) <=
-          threshold
+          threshold,
     );
 
     if (candidates.length < 2) return undefined;
@@ -282,11 +282,11 @@ export class ModelIntelligenceService {
     if (!capability) return 0;
 
     switch (capability.speedTier) {
-      case 'fast':
+      case "fast":
         return 3;
-      case 'medium':
+      case "medium":
         return 2;
-      case 'slow':
+      case "slow":
         return 1;
       default:
         return 0;
@@ -311,6 +311,6 @@ export class ModelIntelligenceService {
   }
 
   private generatePromptId(): string {
-    return generateId('prompt');
+    return generateId("prompt");
   }
 }

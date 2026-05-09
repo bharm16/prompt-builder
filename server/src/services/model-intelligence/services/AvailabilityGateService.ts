@@ -1,20 +1,20 @@
-import { logger } from '@infrastructure/Logger';
-import { getVideoCost } from '@config/modelCosts';
-import { VIDEO_MODELS } from '@config/modelConfig';
+import { logger } from "@infrastructure/Logger";
+import { getVideoCost } from "@config/modelCosts";
+import { VIDEO_MODELS } from "@config/modelConfig";
 import {
   isPlanTierEligible,
   MODEL_TIER_REQUIREMENTS,
   resolveDefaultPlanTier,
-} from '@config/subscriptionTiers';
-import type { VideoGenerationService } from '@services/video-generation/VideoGenerationService';
-import type { VideoAvailabilitySnapshot } from '@services/video-generation/types';
-import type { UserCreditService } from '@services/credits/UserCreditService';
-import type { CanonicalPromptModelId, VideoModelId } from '@shared/videoModels';
-import type { BillingProfileStore } from '@services/payment/BillingProfileStore';
-import type { PlanTier } from '@config/subscriptionTiers';
+} from "@config/subscriptionTiers";
+import type { VideoGenerationService } from "@services/video-generation/VideoGenerationService";
+import type { VideoAvailabilitySnapshot } from "@services/video-generation/types";
+import type { UserCreditService } from "@services/credits/UserCreditService";
+import type { CanonicalPromptModelId, VideoModelId } from "@shared/videoModels";
+import type { BillingProfileStore } from "@services/payment/BillingProfileStore";
+import type { PlanTier } from "@config/subscriptionTiers";
 
 interface AvailabilityGateOptions {
-  mode: 't2v' | 'i2v';
+  mode: "t2v" | "i2v";
   durationSeconds: number;
   userId?: string | null;
 }
@@ -26,11 +26,11 @@ interface AvailabilityGateResult {
   snapshot: VideoAvailabilitySnapshot | null;
 }
 
-const log = logger.child({ service: 'AvailabilityGateService' });
+const log = logger.child({ service: "AvailabilityGateService" });
 const UNKNOWN_REASONS = new Set([
-  'unknown_availability',
-  'video_generation_unavailable',
-  'no_generation_provider',
+  "unknown_availability",
+  "video_generation_unavailable",
+  "no_generation_provider",
 ]);
 
 /**
@@ -45,19 +45,19 @@ const CANONICAL_TO_GENERATION_ID: Record<
   CanonicalPromptModelId,
   VideoModelId | null
 > = {
-  'runway-gen45': null,
-  'luma-ray3': VIDEO_MODELS.LUMA_RAY3,
-  'kling-2.1': VIDEO_MODELS.KLING_V2_1,
-  'sora-2': VIDEO_MODELS.SORA_2,
-  'veo-3': VIDEO_MODELS.VEO_3,
-  'wan-2.2': VIDEO_MODELS.DRAFT,
+  "runway-gen45": null,
+  "luma-ray3": VIDEO_MODELS.LUMA_RAY3,
+  "kling-2.1": VIDEO_MODELS.KLING_V2_1,
+  "sora-2": VIDEO_MODELS.SORA_2,
+  "veo-3": VIDEO_MODELS.VEO_3,
+  "wan-2.2": VIDEO_MODELS.DRAFT,
 };
 
 const isUserIdEligibleForCredits = (
-  userId: string | null | undefined
+  userId: string | null | undefined,
 ): boolean => {
   if (!userId) return false;
-  if (userId.startsWith('api-key:')) return false;
+  if (userId.startsWith("api-key:")) return false;
   return true;
 };
 
@@ -65,12 +65,12 @@ export class AvailabilityGateService {
   constructor(
     private readonly videoGenerationService: VideoGenerationService | null,
     private readonly userCreditService: UserCreditService | null,
-    private readonly billingProfileStore?: BillingProfileStore | null
+    private readonly billingProfileStore?: BillingProfileStore | null,
   ) {}
 
   async filterModels(
     modelIds: CanonicalPromptModelId[],
-    options: AvailabilityGateOptions
+    options: AvailabilityGateOptions,
   ): Promise<AvailabilityGateResult> {
     if (!this.videoGenerationService) {
       return {
@@ -78,7 +78,7 @@ export class AvailabilityGateService {
         unknownModelIds: [...modelIds],
         filteredOut: modelIds.map((modelId) => ({
           modelId,
-          reason: 'unknown_availability',
+          reason: "unknown_availability",
         })),
         snapshot: null,
       };
@@ -108,7 +108,7 @@ export class AvailabilityGateService {
         unknownModelIds.push(canonicalId);
         filteredOut.push({
           modelId: canonicalId,
-          reason: 'no_generation_provider',
+          reason: "no_generation_provider",
         });
         continue;
       }
@@ -120,7 +120,7 @@ export class AvailabilityGateService {
     const snapshot =
       this.videoGenerationService.getAvailabilitySnapshot(generationIds);
     const snapshotMap = new Map(
-      snapshot.models.map((model) => [model.id, model])
+      snapshot.models.map((model) => [model.id, model]),
     );
     const planTier = await this.resolvePlanTier(options.userId);
     const entitlementByModel = new Map<
@@ -132,10 +132,10 @@ export class AvailabilityGateService {
     if (this.userCreditService && isUserIdEligibleForCredits(options.userId)) {
       try {
         creditBalance = await this.userCreditService.getBalance(
-          options.userId as string
+          options.userId as string,
         );
       } catch (error) {
-        log.warn('Failed to resolve credit balance for availability gating', {
+        log.warn("Failed to resolve credit balance for availability gating", {
           error: error instanceof Error ? error.message : String(error),
           userId: options.userId,
         });
@@ -150,13 +150,13 @@ export class AvailabilityGateService {
         unknownModelIds.push(canonicalId);
         filteredOut.push({
           modelId: canonicalId,
-          reason: 'unknown_availability',
+          reason: "unknown_availability",
         });
         continue;
       }
 
       if (!availability.available) {
-        const reason = availability.reason ?? 'unknown_availability';
+        const reason = availability.reason ?? "unknown_availability";
         if (UNKNOWN_REASONS.has(reason)) {
           unknownModelIds.push(canonicalId);
         }
@@ -167,22 +167,22 @@ export class AvailabilityGateService {
       const entitlement = this.resolveEntitlement(planTier, generationId);
       entitlementByModel.set(generationId, entitlement);
       if (entitlement.entitled === false) {
-        filteredOut.push({ modelId: canonicalId, reason: 'not_entitled' });
+        filteredOut.push({ modelId: canonicalId, reason: "not_entitled" });
         continue;
       }
 
       if (availability.entitled === false) {
-        filteredOut.push({ modelId: canonicalId, reason: 'not_entitled' });
+        filteredOut.push({ modelId: canonicalId, reason: "not_entitled" });
         continue;
       }
 
-      if (options.mode === 'i2v') {
+      if (options.mode === "i2v") {
         const supportsI2V =
           availability.supportsI2V ?? availability.supportsImageInput;
         if (supportsI2V === false) {
           filteredOut.push({
             modelId: canonicalId,
-            reason: 'image_input_unsupported',
+            reason: "image_input_unsupported",
           });
           continue;
         }
@@ -191,12 +191,12 @@ export class AvailabilityGateService {
       if (creditBalance !== null) {
         const requiredCredits = getVideoCost(
           generationId,
-          options.durationSeconds
+          options.durationSeconds,
         );
         if (creditBalance < requiredCredits) {
           filteredOut.push({
             modelId: canonicalId,
-            reason: 'insufficient_credits',
+            reason: "insufficient_credits",
           });
           continue;
         }
@@ -227,30 +227,30 @@ export class AvailabilityGateService {
   }
 
   private async resolvePlanTier(userId?: string | null): Promise<PlanTier> {
-    if (!userId) return 'unknown';
-    if (!isUserIdEligibleForCredits(userId)) return 'unknown';
-    if (!this.billingProfileStore) return 'unknown';
+    if (!userId) return "unknown";
+    if (!isUserIdEligibleForCredits(userId)) return "unknown";
+    if (!this.billingProfileStore) return "unknown";
     try {
       const profile = await this.billingProfileStore.getProfile(userId);
-      return resolveDefaultPlanTier(profile?.planTier, 'unknown');
+      return resolveDefaultPlanTier(profile?.planTier, "unknown");
     } catch (error) {
-      log.warn('Failed to resolve plan tier for availability gating', {
+      log.warn("Failed to resolve plan tier for availability gating", {
         userId,
         error: error instanceof Error ? error.message : String(error),
       });
-      return 'unknown';
+      return "unknown";
     }
   }
 
   private resolveEntitlement(
     planTier: PlanTier,
-    modelId: VideoModelId
+    modelId: VideoModelId,
   ): { entitled: boolean | undefined } {
     const requiredTier = MODEL_TIER_REQUIREMENTS[modelId];
     if (!requiredTier) {
       return { entitled: true };
     }
-    if (planTier === 'unknown') {
+    if (planTier === "unknown") {
       return { entitled: true };
     }
     return { entitled: isPlanTierEligible(planTier, requiredTier) };

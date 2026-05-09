@@ -32,34 +32,34 @@
  *   2 = setup error (missing baseline, bad input file, runtime error)
  */
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
-import { ModelIntelligenceService } from '../../server/src/services/model-intelligence/ModelIntelligenceService.js';
-import { ModelCapabilityRegistry } from '../../server/src/services/model-intelligence/services/ModelCapabilityRegistry.js';
-import { ModelScoringService } from '../../server/src/services/model-intelligence/services/ModelScoringService.js';
-import { PromptRequirementsService } from '../../server/src/services/model-intelligence/services/PromptRequirementsService.js';
-import { RecommendationExplainerService } from '../../server/src/services/model-intelligence/services/RecommendationExplainerService.js';
-import { AvailabilityGateService } from '../../server/src/services/model-intelligence/services/AvailabilityGateService.js';
-import type { PromptSpanProvider } from '../../server/src/llm/span-labeling/ports/PromptSpanProvider.js';
+import { ModelIntelligenceService } from "../../server/src/services/model-intelligence/ModelIntelligenceService.js";
+import { ModelCapabilityRegistry } from "../../server/src/services/model-intelligence/services/ModelCapabilityRegistry.js";
+import { ModelScoringService } from "../../server/src/services/model-intelligence/services/ModelScoringService.js";
+import { PromptRequirementsService } from "../../server/src/services/model-intelligence/services/PromptRequirementsService.js";
+import { RecommendationExplainerService } from "../../server/src/services/model-intelligence/services/RecommendationExplainerService.js";
+import { AvailabilityGateService } from "../../server/src/services/model-intelligence/services/AvailabilityGateService.js";
+import type { PromptSpanProvider } from "../../server/src/llm/span-labeling/ports/PromptSpanProvider.js";
 import type {
   ModelRecommendation,
   PromptSpan,
-} from '../../server/src/services/model-intelligence/types/index.js';
-import type { VideoGenerationService } from '../../server/src/services/video-generation/VideoGenerationService.js';
+} from "../../server/src/services/model-intelligence/types/index.js";
+import type { VideoGenerationService } from "../../server/src/services/video-generation/VideoGenerationService.js";
 import type {
   VideoAvailabilitySnapshot,
   VideoAvailabilitySnapshotModel,
-} from '../../server/src/services/video-generation/types.js';
-import type { VideoModelId } from '../../shared/videoModels.js';
+} from "../../server/src/services/video-generation/types.js";
+import type { VideoModelId } from "../../shared/videoModels.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const PROMPTS_PATH = join(__dirname, 'recommendation-prompts.json');
-const BASELINES_DIR = join(__dirname, 'recommendation-baselines');
-const RESULTS_PATH = join(__dirname, 'recommendation-results-latest.json');
+const PROMPTS_PATH = join(__dirname, "recommendation-prompts.json");
+const BASELINES_DIR = join(__dirname, "recommendation-baselines");
+const RESULTS_PATH = join(__dirname, "recommendation-results-latest.json");
 
 // ---------------------------------------------------------------------------
 // Types
@@ -68,7 +68,7 @@ const RESULTS_PATH = join(__dirname, 'recommendation-results-latest.json');
 interface EvalPrompt {
   id: string;
   prompt: string;
-  mode: 't2v' | 'i2v';
+  mode: "t2v" | "i2v";
   durationSeconds: number;
   mockSpans: PromptSpan[];
 }
@@ -88,7 +88,7 @@ interface EvalPromptSet {
 interface PromptSnapshot {
   promptId: string;
   recommendedModelId: VideoModelId;
-  recommendedConfidence: 'high' | 'medium' | 'low';
+  recommendedConfidence: "high" | "medium" | "low";
   topRecommendations: Array<{
     modelId: VideoModelId;
     overallScore: number;
@@ -139,29 +139,29 @@ interface CliOptions {
 function parseArgs(argv: string[]): CliOptions {
   const opts: CliOptions = {
     bless: false,
-    baselineName: 'default',
+    baselineName: "default",
     promptsPath: PROMPTS_PATH,
     commit: process.env.GIT_COMMIT,
   };
 
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
-    if (arg === '--bless') {
+    if (arg === "--bless") {
       opts.bless = true;
-    } else if (arg === '--baseline') {
+    } else if (arg === "--baseline") {
       const value = argv[++i];
-      if (!value) throw new Error('--baseline requires a name');
+      if (!value) throw new Error("--baseline requires a name");
       opts.baselineName = value;
-    } else if (arg === '--prompts') {
+    } else if (arg === "--prompts") {
       const value = argv[++i];
-      if (!value) throw new Error('--prompts requires a path');
+      if (!value) throw new Error("--prompts requires a path");
       opts.promptsPath = value;
-    } else if (arg === '--commit') {
+    } else if (arg === "--commit") {
       opts.commit = argv[++i];
-    } else if (arg === '--help' || arg === '-h') {
+    } else if (arg === "--help" || arg === "-h") {
       // eslint-disable-next-line no-console
       console.log(
-        'Usage: recommendation-eval.ts [--bless] [--baseline NAME] [--prompts PATH]'
+        "Usage: recommendation-eval.ts [--bless] [--baseline NAME] [--prompts PATH]",
       );
       process.exit(0);
     } else {
@@ -194,7 +194,7 @@ function buildFakeVideoGenerationService(): VideoGenerationService {
         supportsI2V: true,
         supportsImageInput: true,
         entitled: true,
-        planTier: 'unknown',
+        planTier: "unknown",
       }));
       const snapshot: VideoAvailabilitySnapshot = {
         models,
@@ -207,16 +207,16 @@ function buildFakeVideoGenerationService(): VideoGenerationService {
 }
 
 function buildSpanProvider(
-  spansById: Map<string, PromptSpan[]>
+  spansById: Map<string, PromptSpan[]>,
 ): PromptSpanProvider & { setActive(id: string): void } {
-  let activeId = '';
+  let activeId = "";
   // Mock spans are authored as PromptSpan[] (model-intelligence shape) in the
   // JSON fixture but the port now contracts on LLMSpan[] (span-labeling shape)
   // after the PromptSpanProvider was lifted to a shared abstraction. Cast at
   // the boundary — fixtures populate role on every span so the cast is sound.
   const getSpans = () =>
     (spansById.get(activeId) ?? []) as unknown as ReturnType<
-      PromptSpanProvider['label']
+      PromptSpanProvider["label"]
     > extends Promise<infer T>
       ? T
       : never;
@@ -230,10 +230,10 @@ function buildSpanProvider(
     async labelFull(_prompt: string) {
       return {
         spans: getSpans(),
-        meta: { version: 'v1', notes: 'snapshot-eval mock' },
+        meta: { version: "v1", notes: "snapshot-eval mock" },
         isAdversarial: false,
         analysisTrace: undefined,
-      } as unknown as Awaited<ReturnType<PromptSpanProvider['labelFull']>>;
+      } as unknown as Awaited<ReturnType<PromptSpanProvider["labelFull"]>>;
     },
   };
 }
@@ -244,7 +244,7 @@ function buildSpanProvider(
 
 function extractSnapshot(
   promptId: string,
-  recommendation: ModelRecommendation
+  recommendation: ModelRecommendation,
 ): PromptSnapshot {
   return {
     promptId,
@@ -300,7 +300,7 @@ interface Drift {
 
 function compareSnapshots(
   current: Record<string, PromptSnapshot>,
-  baseline: Record<string, PromptSnapshot>
+  baseline: Record<string, PromptSnapshot>,
 ): { drifts: Drift[]; missingPrompts: string[]; newPrompts: string[] } {
   const drifts: Drift[] = [];
   const missingPrompts: string[] = [];
@@ -330,15 +330,15 @@ function diffSnapshot(
   promptId: string,
   baseline: PromptSnapshot,
   current: PromptSnapshot,
-  drifts: Drift[]
+  drifts: Drift[],
 ): void {
   // Top-level scalar fields
   const scalarFields: Array<keyof PromptSnapshot> = [
-    'recommendedModelId',
-    'recommendedConfidence',
-    'alsoConsiderModelId',
-    'suggestComparison',
-    'filteredOutCount',
+    "recommendedModelId",
+    "recommendedConfidence",
+    "alsoConsiderModelId",
+    "suggestComparison",
+    "filteredOutCount",
   ];
   for (const field of scalarFields) {
     if (!shallowEqual(baseline[field], current[field])) {
@@ -359,7 +359,7 @@ function diffSnapshot(
   ) {
     drifts.push({
       promptId,
-      field: 'comparisonModels',
+      field: "comparisonModels",
       baseline: baseline.comparisonModels,
       current: current.comparisonModels,
     });
@@ -372,7 +372,7 @@ function diffSnapshot(
   ) {
     drifts.push({
       promptId,
-      field: 'topRecommendations',
+      field: "topRecommendations",
       baseline: baseline.topRecommendations,
       current: current.topRecommendations,
     });
@@ -380,7 +380,7 @@ function diffSnapshot(
 
   // Requirements — drift here points at PromptRequirementsService changes
   for (const field of Object.keys(baseline.requirements) as Array<
-    keyof PromptSnapshot['requirements']
+    keyof PromptSnapshot["requirements"]
   >) {
     if (baseline.requirements[field] !== current.requirements[field]) {
       drifts.push({
@@ -408,7 +408,7 @@ function loadPrompts(path: string): EvalPromptSet {
   if (!existsSync(path)) {
     throw new Error(`Prompt set not found at ${path}`);
   }
-  const parsed = JSON.parse(readFileSync(path, 'utf8')) as EvalPromptSet;
+  const parsed = JSON.parse(readFileSync(path, "utf8")) as EvalPromptSet;
   if (!Array.isArray(parsed.prompts) || parsed.prompts.length === 0) {
     throw new Error(`Prompt set at ${path} has no prompts`);
   }
@@ -422,15 +422,15 @@ function baselinePath(name: string): string {
 function readBaseline(name: string): Baseline | null {
   const path = baselinePath(name);
   if (!existsSync(path)) return null;
-  return JSON.parse(readFileSync(path, 'utf8')) as Baseline;
+  return JSON.parse(readFileSync(path, "utf8")) as Baseline;
 }
 
 function writeBaseline(baseline: Baseline): void {
   if (!existsSync(BASELINES_DIR)) mkdirSync(BASELINES_DIR, { recursive: true });
   writeFileSync(
     baselinePath(baseline.baselineName),
-    JSON.stringify(baseline, null, 2) + '\n',
-    'utf8'
+    JSON.stringify(baseline, null, 2) + "\n",
+    "utf8",
   );
 }
 
@@ -484,9 +484,9 @@ async function main(): Promise<number> {
   const opts = parseArgs(process.argv.slice(2));
 
   // eslint-disable-next-line no-console
-  console.log('Model Intelligence Recommendation Eval');
+  console.log("Model Intelligence Recommendation Eval");
   // eslint-disable-next-line no-console
-  console.log(`  mode: ${opts.bless ? 'bless' : 'gate'}`);
+  console.log(`  mode: ${opts.bless ? "bless" : "gate"}`);
   // eslint-disable-next-line no-console
   console.log(`  baseline: ${opts.baselineName}`);
   // eslint-disable-next-line no-console
@@ -510,9 +510,9 @@ async function main(): Promise<number> {
         snapshots,
       },
       null,
-      2
-    ) + '\n',
-    'utf8'
+      2,
+    ) + "\n",
+    "utf8",
   );
   // eslint-disable-next-line no-console
   console.log(`  results: ${RESULTS_PATH}`);
@@ -535,50 +535,50 @@ async function main(): Promise<number> {
   if (!baseline) {
     // eslint-disable-next-line no-console
     console.error(
-      `\nNo baseline at ${baselinePath(opts.baselineName)}. Run with --bless first to establish one.`
+      `\nNo baseline at ${baselinePath(opts.baselineName)}. Run with --bless first to establish one.`,
     );
     return 2;
   }
 
   const { drifts, missingPrompts, newPrompts } = compareSnapshots(
     snapshots,
-    baseline.snapshots
+    baseline.snapshots,
   );
 
   if (drifts.length === 0 && missingPrompts.length === 0) {
     // eslint-disable-next-line no-console
-    console.log('\nRecommendation snapshot gate: PASSED');
+    console.log("\nRecommendation snapshot gate: PASSED");
     if (newPrompts.length > 0) {
       // eslint-disable-next-line no-console
       console.log(
-        `  Note: ${newPrompts.length} new prompt(s) not in baseline — re-bless to capture: ${newPrompts.join(', ')}`
+        `  Note: ${newPrompts.length} new prompt(s) not in baseline — re-bless to capture: ${newPrompts.join(", ")}`,
       );
     }
     return 0;
   }
 
   // eslint-disable-next-line no-console
-  console.error('\nRecommendation snapshot gate: FAILED');
+  console.error("\nRecommendation snapshot gate: FAILED");
   if (drifts.length > 0) {
     // eslint-disable-next-line no-console
     console.error(`\nDrifts (${drifts.length}):`);
     for (const drift of drifts) {
       // eslint-disable-next-line no-console
       console.error(
-        `  ${drift.promptId} ${drift.field}: ${JSON.stringify(drift.baseline)} -> ${JSON.stringify(drift.current)}`
+        `  ${drift.promptId} ${drift.field}: ${JSON.stringify(drift.baseline)} -> ${JSON.stringify(drift.current)}`,
       );
     }
   }
   if (missingPrompts.length > 0) {
     // eslint-disable-next-line no-console
     console.error(
-      `\nMissing prompts (in baseline, not in current run): ${missingPrompts.join(', ')}`
+      `\nMissing prompts (in baseline, not in current run): ${missingPrompts.join(", ")}`,
     );
   }
   if (newPrompts.length > 0) {
     // eslint-disable-next-line no-console
     console.error(
-      `\nNew prompts (not in baseline — bless required): ${newPrompts.join(', ')}`
+      `\nNew prompts (not in baseline — bless required): ${newPrompts.join(", ")}`,
     );
   }
   return 1;
@@ -594,7 +594,7 @@ if (isDirectInvocation) {
     .then((code) => process.exit(code))
     .catch((error) => {
       // eslint-disable-next-line no-console
-      console.error('\nFatal error:', error);
+      console.error("\nFatal error:", error);
       process.exit(2);
     });
 }

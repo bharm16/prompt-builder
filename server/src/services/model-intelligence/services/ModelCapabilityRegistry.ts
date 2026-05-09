@@ -1,9 +1,9 @@
-import { MODEL_CATALOG } from '@shared/modelCatalog';
+import { MODEL_CATALOG } from "@shared/modelCatalog";
 import {
   CANONICAL_PROMPT_MODEL_IDS,
   type CanonicalPromptModelId,
-} from '@shared/videoModels';
-import type { ModelCapabilities } from '../types';
+} from "@shared/videoModels";
+import type { ModelCapabilities } from "../types";
 
 /**
  * Registry of model capability profiles. Backed by the canonical
@@ -21,8 +21,8 @@ export class ModelCapabilityRegistry {
   constructor() {
     this.capabilities = new Map(
       CANONICAL_PROMPT_MODEL_IDS.map(
-        (id) => [id, MODEL_CATALOG[id].capabilities] as const
-      )
+        (id) => [id, MODEL_CATALOG[id].capabilities] as const,
+      ),
     );
   }
 
@@ -36,13 +36,13 @@ export class ModelCapabilityRegistry {
 
   getProductionModels(): CanonicalPromptModelId[] {
     return Array.from(this.capabilities.entries())
-      .filter(([, cap]) => cap.qualityTier !== 'preview')
+      .filter(([, cap]) => cap.qualityTier !== "preview")
       .map(([id]) => id);
   }
 
   updateCapability(
     modelId: CanonicalPromptModelId,
-    updates: Partial<ModelCapabilities>
+    updates: Partial<ModelCapabilities>,
   ): void {
     const existing = this.capabilities.get(modelId);
     if (!existing) return;

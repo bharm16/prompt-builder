@@ -11,19 +11,19 @@
 // Pure data + types: no Node, no I/O.
 // ============================================================================
 
-import type { CanonicalPromptModelId } from './videoModels';
+import type { CanonicalPromptModelId } from "./videoModels";
 
 // ----------------------------------------------------------------------------
 // Capability shape (numeric, used by ModelScoringService)
 // ----------------------------------------------------------------------------
 
-export const SPEED_TIERS = ['fast', 'medium', 'slow'] as const;
+export const SPEED_TIERS = ["fast", "medium", "slow"] as const;
 export type SpeedTier = (typeof SPEED_TIERS)[number];
 
-export const COST_TIERS = ['low', 'medium', 'high'] as const;
+export const COST_TIERS = ["low", "medium", "high"] as const;
 export type CostTier = (typeof COST_TIERS)[number];
 
-export const QUALITY_TIERS = ['preview', 'standard', 'premium'] as const;
+export const QUALITY_TIERS = ["preview", "standard", "premium"] as const;
 export type QualityTier = (typeof QUALITY_TIERS)[number];
 
 /**
@@ -111,7 +111,7 @@ export interface ModelCatalogEntry {
 
 export const MODEL_CATALOG: Record<CanonicalPromptModelId, ModelCatalogEntry> =
   {
-    'runway-gen45': {
+    "runway-gen45": {
       capabilities: {
         // Recommendation-only model. Numbers seeded from MODEL_STRENGTHS data
         // (artistic/stylized strengths, motion fluidity from A2D, weak on
@@ -134,60 +134,60 @@ export const MODEL_CATALOG: Record<CanonicalPromptModelId, ModelCatalogEntry> =
         transitions: 0.55,
         t2vBoost: 1,
         i2vBoost: 0.95,
-        speedTier: 'medium',
-        costTier: 'medium',
-        qualityTier: 'standard',
+        speedTier: "medium",
+        costTier: "medium",
+        qualityTier: "standard",
       },
       detectionPatterns: {
         keywords: [
-          'runway',
-          'runwayml',
-          'gen-4.5',
-          'gen4.5',
-          'gen 4.5',
-          'runway gen 4.5',
-          'whisper thunder',
+          "runway",
+          "runwayml",
+          "gen-4.5",
+          "gen4.5",
+          "gen 4.5",
+          "runway gen 4.5",
+          "whisper thunder",
         ],
         technicalMarkers: [
-          'csae',
-          'a2d',
-          'continuous shot',
-          'fluid motion',
-          'stylized',
-          'artistic',
+          "csae",
+          "a2d",
+          "continuous shot",
+          "fluid motion",
+          "stylized",
+          "artistic",
         ],
         indicators:
           /\b(gen[_\s-]?4\.?5|runway\s*gen\s*4\.?5|runway(?:ml)?|whisper\s*thunder)\b/i,
         strengths: {
           primary: [
-            'A2D architecture',
-            'CSAE protocol',
-            'Continuous shots',
-            'Fluid motion',
+            "A2D architecture",
+            "CSAE protocol",
+            "Continuous shots",
+            "Fluid motion",
           ],
           secondary: [
-            'Cinematographic triggers',
-            'Consistent geometry',
-            'Camera motion mapping',
+            "Cinematographic triggers",
+            "Consistent geometry",
+            "Camera motion mapping",
           ],
           weaknesses: [
-            'Emotional/abstract terms',
-            'Morphing effects',
-            'Blur effects',
+            "Emotional/abstract terms",
+            "Morphing effects",
+            "Blur effects",
           ],
         },
         optimalParams: {
-          duration: '5-20 seconds',
-          motion: 'Single continuous shot, fluid motion',
-          camera: 'CSAE protocol (Camera first)',
-          lighting: 'Cinematographic, shallow depth of field',
-          style: 'A2D optimized, consistent geometry',
+          duration: "5-20 seconds",
+          motion: "Single continuous shot, fluid motion",
+          camera: "CSAE protocol (Camera first)",
+          lighting: "Cinematographic, shallow depth of field",
+          style: "A2D optimized, consistent geometry",
         },
       },
-      aliases: ['runway', 'runway-gen45', 'gen-4.5'],
+      aliases: ["runway", "runway-gen45", "gen-4.5"],
     },
 
-    'luma-ray3': {
+    "luma-ray3": {
       capabilities: {
         physics: 0.6,
         particleSystems: 0.58,
@@ -207,57 +207,57 @@ export const MODEL_CATALOG: Record<CanonicalPromptModelId, ModelCatalogEntry> =
         transitions: 0.92,
         t2vBoost: 0.95,
         i2vBoost: 1.1,
-        speedTier: 'fast',
-        costTier: 'medium',
-        qualityTier: 'standard',
+        speedTier: "fast",
+        costTier: "medium",
+        qualityTier: "standard",
       },
       detectionPatterns: {
         keywords: [
-          'luma',
-          'luma dream',
-          'dream machine',
-          'ray-3',
-          'ray3',
-          'ray 3',
-          'luma ray',
-          'luma ray-3',
+          "luma",
+          "luma dream",
+          "dream machine",
+          "ray-3",
+          "ray3",
+          "ray 3",
+          "luma ray",
+          "luma ray-3",
         ],
         technicalMarkers: [
-          'causal chain',
-          'hdr',
-          'keyframes',
-          'surreal',
-          'abstract',
-          'morphing',
-          'dreamlike',
+          "causal chain",
+          "hdr",
+          "keyframes",
+          "surreal",
+          "abstract",
+          "morphing",
+          "dreamlike",
         ],
         indicators:
           /\b(ray[_\s-]?3|luma(?:\s*ray[_\s-]?3?)?|dream\s*machine)\b/i,
         strengths: {
           primary: [
-            'Causal chain expansion',
-            'HDR pipeline',
-            'Keyframe interpolation',
-            'Motion triggers',
+            "Causal chain expansion",
+            "HDR pipeline",
+            "Keyframe interpolation",
+            "Motion triggers",
           ],
-          secondary: ['16-bit color', 'ACES colorspace', 'Slow motion'],
+          secondary: ["16-bit color", "ACES colorspace", "Slow motion"],
           weaknesses: [
-            'Loop/seamless when API loop enabled',
-            'Redundant resolution tokens',
+            "Loop/seamless when API loop enabled",
+            "Redundant resolution tokens",
           ],
         },
         optimalParams: {
-          duration: '5-15 seconds',
-          motion: 'Causal chain, cause-effect sequences',
-          camera: 'Keyframe interpolation',
-          lighting: 'HDR, 16-bit color, ACES',
-          style: 'High dynamic range',
+          duration: "5-15 seconds",
+          motion: "Causal chain, cause-effect sequences",
+          camera: "Keyframe interpolation",
+          lighting: "HDR, 16-bit color, ACES",
+          style: "High dynamic range",
         },
       },
-      aliases: ['luma', 'luma-ray3'],
+      aliases: ["luma", "luma-ray3"],
     },
 
-    'kling-2.1': {
+    "kling-2.1": {
       capabilities: {
         physics: 0.65,
         particleSystems: 0.55,
@@ -277,55 +277,55 @@ export const MODEL_CATALOG: Record<CanonicalPromptModelId, ModelCatalogEntry> =
         transitions: 0.5,
         t2vBoost: 1,
         i2vBoost: 0.95,
-        speedTier: 'medium',
-        costTier: 'medium',
-        qualityTier: 'standard',
+        speedTier: "medium",
+        costTier: "medium",
+        qualityTier: "standard",
       },
       detectionPatterns: {
         keywords: [
-          'kling',
-          'kuaishou',
-          'kling 2.1',
-          'kling 2.6',
-          'kling2.1',
-          'kling2.6',
+          "kling",
+          "kuaishou",
+          "kling 2.1",
+          "kling 2.6",
+          "kling2.1",
+          "kling2.6",
         ],
         technicalMarkers: [
-          'character',
-          'facial',
-          'expression',
-          'animation',
-          'screenplay',
-          'dialogue',
-          'memflow',
-          'synced lips',
+          "character",
+          "facial",
+          "expression",
+          "animation",
+          "screenplay",
+          "dialogue",
+          "memflow",
+          "synced lips",
         ],
         indicators: /\b(kling(?:[_\s-]?(?:2\.?[16]|v?2[_\s-]?1))?|kuaishou)\b/i,
         strengths: {
           primary: [
-            'Audio-visual sync',
-            'Screenplay formatting',
-            'Dialogue scenes',
-            'MemFlow context',
+            "Audio-visual sync",
+            "Screenplay formatting",
+            "Dialogue scenes",
+            "MemFlow context",
           ],
-          secondary: ['Synced lips', 'Natural speech', 'High fidelity audio'],
+          secondary: ["Synced lips", "Natural speech", "High fidelity audio"],
           weaknesses: [
-            'Generic sound terms',
-            'Visual tokens in audio sections',
+            "Generic sound terms",
+            "Visual tokens in audio sections",
           ],
         },
         optimalParams: {
-          duration: '5-30 seconds',
-          motion: 'Character-focused, dialogue sync',
-          camera: 'Close to medium for dialogue',
-          lighting: 'Clear for lip-sync',
-          style: 'Screenplay format, audio-visual',
+          duration: "5-30 seconds",
+          motion: "Character-focused, dialogue sync",
+          camera: "Close to medium for dialogue",
+          lighting: "Clear for lip-sync",
+          style: "Screenplay format, audio-visual",
         },
       },
-      aliases: ['kling', 'kling-2.1', 'kling-26', 'kling-v2-1-master'],
+      aliases: ["kling", "kling-2.1", "kling-26", "kling-v2-1-master"],
     },
 
-    'sora-2': {
+    "sora-2": {
       capabilities: {
         physics: 0.95,
         particleSystems: 0.9,
@@ -345,58 +345,58 @@ export const MODEL_CATALOG: Record<CanonicalPromptModelId, ModelCatalogEntry> =
         transitions: 0.55,
         t2vBoost: 1,
         i2vBoost: 0.9,
-        speedTier: 'slow',
-        costTier: 'high',
-        qualityTier: 'premium',
+        speedTier: "slow",
+        costTier: "high",
+        qualityTier: "premium",
       },
       detectionPatterns: {
         keywords: [
-          'sora',
-          'sora 2',
-          'sora2',
-          'openai sora 2',
-          'openai video',
-          'openai gen',
+          "sora",
+          "sora 2",
+          "sora2",
+          "openai sora 2",
+          "openai video",
+          "openai gen",
         ],
         technicalMarkers: [
-          'realistic motion',
-          'physics simulation',
-          'long-form',
-          'newtonian physics',
-          'momentum conservation',
-          'temporal sequence',
+          "realistic motion",
+          "physics simulation",
+          "long-form",
+          "newtonian physics",
+          "momentum conservation",
+          "temporal sequence",
         ],
         indicators:
           /\b(sora(?:[_\s-]?2)?|openai\s*(?:sora|video)|continuous\s*action|realistic\s*physics)\b/i,
         strengths: {
           primary: [
-            'Physics grounding',
-            'Temporal segmentation',
-            'Newtonian physics',
-            'Momentum conservation',
+            "Physics grounding",
+            "Temporal segmentation",
+            "Newtonian physics",
+            "Momentum conservation",
           ],
           secondary: [
-            'Cameo identity tokens',
-            'Aspect ratio validation',
-            'JSON response format',
+            "Cameo identity tokens",
+            "Aspect ratio validation",
+            "JSON response format",
           ],
           weaknesses: [
-            'Public figure names',
-            'Unauthorized celebrity references',
+            "Public figure names",
+            "Unauthorized celebrity references",
           ],
         },
         optimalParams: {
-          duration: '10-60 seconds',
-          motion: 'Physics-grounded, Newtonian',
-          camera: 'Temporal sequences',
-          lighting: 'Physically accurate',
-          style: 'Physics simulation, momentum conservation',
+          duration: "10-60 seconds",
+          motion: "Physics-grounded, Newtonian",
+          camera: "Temporal sequences",
+          lighting: "Physically accurate",
+          style: "Physics simulation, momentum conservation",
         },
       },
-      aliases: ['sora', 'sora-2', 'sora-2-pro'],
+      aliases: ["sora", "sora-2", "sora-2-pro"],
     },
 
-    'veo-3': {
+    "veo-3": {
       capabilities: {
         physics: 0.7,
         particleSystems: 0.65,
@@ -416,58 +416,58 @@ export const MODEL_CATALOG: Record<CanonicalPromptModelId, ModelCatalogEntry> =
         transitions: 0.65,
         t2vBoost: 1,
         i2vBoost: 0.95,
-        speedTier: 'medium',
-        costTier: 'medium',
-        qualityTier: 'premium',
+        speedTier: "medium",
+        costTier: "medium",
+        qualityTier: "premium",
       },
       detectionPatterns: {
         keywords: [
-          'veo',
-          'veo3',
-          'veo 3',
-          'veo-3',
-          'veo 4',
-          'veo4',
-          'google veo',
-          'google veo 4',
-          'vertex',
+          "veo",
+          "veo3",
+          "veo 3",
+          "veo-3",
+          "veo 4",
+          "veo4",
+          "google veo",
+          "google veo 4",
+          "vertex",
         ],
         technicalMarkers: [
-          'atmospheric',
-          'cinematic lighting',
-          'mood',
-          'json schema',
-          'style_preset',
-          'flow editing',
+          "atmospheric",
+          "cinematic lighting",
+          "mood",
+          "json schema",
+          "style_preset",
+          "flow editing",
         ],
         indicators:
           /\b(veo[\s-]*[34](?:\.\d)?|google\s*veo|vertex\s*ai|atmospheric\s*lighting)\b/i,
         strengths: {
           primary: [
-            'JSON schema serialization',
-            'Gemini integration',
-            'Flow editing',
-            'Style presets',
+            "JSON schema serialization",
+            "Gemini integration",
+            "Flow editing",
+            "Style presets",
           ],
           secondary: [
-            'Brand context injection',
-            'Structured prompts',
-            'Edit mode support',
+            "Brand context injection",
+            "Structured prompts",
+            "Edit mode support",
           ],
-          weaknesses: ['Markdown formatting', 'Conversational filler'],
+          weaknesses: ["Markdown formatting", "Conversational filler"],
         },
         optimalParams: {
-          duration: '5-30 seconds',
-          motion: 'Structured JSON control',
-          camera: 'Schema-defined movements',
-          lighting: 'Environment-specified',
-          style: 'JSON schema, style presets',
+          duration: "5-30 seconds",
+          motion: "Structured JSON control",
+          camera: "Schema-defined movements",
+          lighting: "Environment-specified",
+          style: "JSON schema, style presets",
         },
       },
-      aliases: ['veo', 'veo-3', 'veo-4', 'google/veo-3'],
+      aliases: ["veo", "veo-3", "veo-4", "google/veo-3"],
     },
 
-    'wan-2.2': {
+    "wan-2.2": {
       capabilities: {
         physics: 0.55,
         particleSystems: 0.5,
@@ -487,55 +487,55 @@ export const MODEL_CATALOG: Record<CanonicalPromptModelId, ModelCatalogEntry> =
         transitions: 0.48,
         t2vBoost: 1,
         i2vBoost: 1,
-        speedTier: 'fast',
-        costTier: 'low',
-        qualityTier: 'preview',
+        speedTier: "fast",
+        costTier: "low",
+        qualityTier: "preview",
       },
       detectionPatterns: {
         keywords: [
-          'wan 2.1',
-          'wan 2.2',
-          'wan 2.5',
-          'wan2.1',
-          'wan2.2',
-          'wan2.5',
-          'wan t2v',
-          'alibaba wan',
+          "wan 2.1",
+          "wan 2.2",
+          "wan 2.5",
+          "wan2.1",
+          "wan2.2",
+          "wan2.5",
+          "wan t2v",
+          "alibaba wan",
         ],
         technicalMarkers: [
-          'moe',
-          'bilingual',
-          '1080p 30fps',
-          'mixture of experts',
+          "moe",
+          "bilingual",
+          "1080p 30fps",
+          "mixture of experts",
         ],
         indicators:
           /\b(wan[_\s-]?[2]\.?[125]|alibaba\s*wan|moe\s*architecture)\b/i,
         strengths: {
           primary: [
-            'Mixture-of-Experts (MoE) efficiency',
-            '1080p 30fps native',
-            'Bilingual prompt adherence',
-            'Variable aspect ratios',
+            "Mixture-of-Experts (MoE) efficiency",
+            "1080p 30fps native",
+            "Bilingual prompt adherence",
+            "Variable aspect ratios",
           ],
           secondary: [
-            'Cinematic motion',
-            'Complex scene understanding',
-            'Prompt-to-video alignment',
+            "Cinematic motion",
+            "Complex scene understanding",
+            "Prompt-to-video alignment",
           ],
           weaknesses: [
-            'English-only without translations',
-            'Low-resolution legacy triggers',
+            "English-only without translations",
+            "Low-resolution legacy triggers",
           ],
         },
         optimalParams: {
-          duration: '5-20 seconds',
-          motion: 'MoE-optimized cinematic motion',
-          camera: 'Variable aspect ratio support',
-          lighting: 'Highly detailed, 1080p native',
-          style: 'Bilingual narrative, high fidelity',
+          duration: "5-20 seconds",
+          motion: "MoE-optimized cinematic motion",
+          camera: "Variable aspect ratio support",
+          lighting: "Highly detailed, 1080p native",
+          style: "Bilingual narrative, high fidelity",
         },
       },
-      aliases: ['wan', 'wan-2.2', 'wan-2.5', 'draft', 'pro'],
+      aliases: ["wan", "wan-2.2", "wan-2.5", "draft", "pro"],
     },
   };
 
@@ -544,7 +544,7 @@ export const MODEL_CATALOG: Record<CanonicalPromptModelId, ModelCatalogEntry> =
  * model id. Returns `null` for unknown ids (callers should null-check).
  */
 export function getModelCapabilities(
-  modelId: CanonicalPromptModelId
+  modelId: CanonicalPromptModelId,
 ): ModelCapabilities | null {
   return MODEL_CATALOG[modelId]?.capabilities ?? null;
 }
@@ -554,7 +554,7 @@ export function getModelCapabilities(
  * model id, or `null` for unknown ids.
  */
 export function getModelDetectionPatterns(
-  modelId: CanonicalPromptModelId
+  modelId: CanonicalPromptModelId,
 ): ModelDetectionPatterns | null {
   return MODEL_CATALOG[modelId]?.detectionPatterns ?? null;
 }
