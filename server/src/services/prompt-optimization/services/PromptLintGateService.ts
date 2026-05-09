@@ -154,7 +154,16 @@ export class PromptLintGateService {
     }
 
     if (!lint.ok) {
-      throw new Error(`Prompt lint gate failed: ${lint.errors.join(" ")}`);
+      this.log.warn(
+        "Prompt lint gate detected non-length issues after sanitize; returning sanitized prompt to avoid post-spend failure.",
+        {
+          modelId: params.modelId
+            ? (resolvePromptModelId(params.modelId) ?? params.modelId)
+            : null,
+          wordCount: lint.wordCount,
+          errors: lint.errors,
+        },
+      );
     }
 
     return {

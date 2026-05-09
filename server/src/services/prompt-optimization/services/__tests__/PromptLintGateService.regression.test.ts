@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { PromptLintGateService } from "../PromptLintGateService";
 
-describe("regression: model-specific lint is non-fatal for length only", () => {
+describe("regression: lint enforcement is non-fatal (sanitize-then-warn)", () => {
   const createService = () =>
     new PromptLintGateService({
       getModelConstraints: (modelId) =>
@@ -31,14 +31,67 @@ describe("regression: model-specific lint is non-fatal for length only", () => {
     expect(logError).toHaveBeenCalledTimes(1);
   });
 
-  it("still fails when non-length prompt artifacts survive sanitation", () => {
+  // Inverted invariant (was "still fails ..."): sanitize-then-warn now applies
+  // to non-length errors too. A residual markdown heading after sanitize must
+  // NOT throw — that produces a post-spend 500 after a successful LLM call.
+  // The user gets a delivered prompt + structured warn log instead.
+  it("does NOT throw when a residual markdown heading survives sanitation", () => {
     const service = createService();
+    const logWarn = vi.fn();
+    (service as unknown as { log: { warn: typeof logWarn } }).log = {
+      warn: logWarn,
+    } as never;
 
-    expect(() =>
-      service.enforce({
-        prompt: "# Heading\nThis should still fail.",
+    let result;
+    expect(() => {
+      result = service.enforce({
+        prompt: "# Heading\nThis should not 500 the request.",
         modelId: "wan-2.2",
-      }),
-    ).toThrow("Prompt lint gate failed");
+      });
+    }).not.toThrow();
+
+    expect(result).toBeDefined();
+    expect(result!.lint.ok).toBe(false);
+    expect(result!.lint.errors).toContain("Contains markdown heading syntax.");
+    expect(result!.prompt.length).toBeGreaterThan(0);
+    expect(logWarn).toHaveBeenCalledTimes(1);
+  });
+
+  it("does NOT throw when a 'Variation N' artifact survives sanitation", () => {
+    const service = createService();
+    const logWarn = vi.fn();
+    (service as unknown as { log: { warn: typeof logWarn } }).log = {
+      warn: logWarn,
+    } as never;
+
+    const result = service.enforce({
+      prompt:
+        "A cinematic shot Variation 2 of the city at dusk, fog drifting low.",
+    });
+
+    expect(result.lint.ok).toBe(false);
+    expect(
+      result.lint.errors.some((e) =>
+        e.toLowerCase().includes("variation artifact"),
+      ),
+    ).toBe(true);
+    expect(logWarn).toHaveBeenCalledTimes(1);
+  });
+
+  it("does NOT call warn on a clean prompt", () => {
+    const service = createService();
+    const logWarn = vi.fn();
+    (service as unknown as { log: { warn: typeof logWarn } }).log = {
+      warn: logWarn,
+    } as never;
+
+    const result = service.enforce({
+      prompt:
+        "A cinematic dolly shot of a neon alley at dusk, fog rolling in from the harbor.",
+    });
+
+    expect(result.lint.ok).toBe(true);
+    expect(result.lint.errors).toEqual([]);
+    expect(logWarn).not.toHaveBeenCalled();
   });
 });
