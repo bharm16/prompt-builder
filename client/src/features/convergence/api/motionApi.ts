@@ -7,6 +7,7 @@ import { logger } from "@/services/LoggingService";
 import type { CameraPath } from "@/features/convergence/types";
 import { sanitizeError } from "@/utils/logging";
 import { safeUrlHost } from "@/utils/url";
+import type { ApiResponse } from "@shared/types/api";
 
 const log = logger.child("motionApi");
 const OPERATION = "estimateDepth";
@@ -15,13 +16,6 @@ export interface DepthEstimationResponse {
   depthMapUrl: string | null;
   cameraPaths: CameraPath[];
   fallbackMode: boolean;
-}
-
-interface ApiResponse<T> {
-  success: boolean;
-  data?: T;
-  error?: string;
-  details?: unknown;
 }
 
 export async function estimateDepth(
@@ -58,17 +52,24 @@ export async function estimateDepth(
         startedAt,
     );
 
-    if (!result.success || !result.data) {
+    if (!result.success) {
       log.warn("Depth estimation response indicated failure", {
         operation: OPERATION,
         depthRequestId,
         imageUrlHost,
         durationMs,
         success: result.success,
-        error: result.error ?? "Depth estimation failed",
+        error: result.error,
         hasDetails: Boolean(result.details),
       });
       throw new Error(result.error || "Depth estimation failed");
+    }
+
+    // The discriminated union narrows result.data to non-null, but a
+    // misbehaving server could still return { success: true } without data.
+    // Guard at the boundary so callers get a clear error, not a deep TypeError.
+    if (!result.data) {
+      throw new Error("Depth estimation response missing data");
     }
 
     log.info("Depth estimation request succeeded", {

@@ -137,6 +137,11 @@ export class GcsVideoAssetStore implements VideoAssetStore {
   async getPublicUrl(assetId: string): Promise<string | null> {
     const file = this.bucket.file(this.objectPath(assetId));
     try {
+      // V4 signed URLs are signed client-side without any GCS round-trip, so
+      // getSignedUrl alone cannot detect a missing object. Probe with
+      // getMetadata first; downstream (e.g. GradingService.matchPalette)
+      // relies on null-on-missing for clean short-circuit behavior.
+      await file.getMetadata();
       return await this.getSignedUrl(file);
     } catch (error) {
       if (isGcsNotFound(error)) {

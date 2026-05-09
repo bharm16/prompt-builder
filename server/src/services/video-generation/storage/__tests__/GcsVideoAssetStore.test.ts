@@ -166,7 +166,7 @@ describe("GcsVideoAssetStore", () => {
       getMetadata: vi.fn().mockResolvedValue([{ size: "0" }]),
     });
     const missingName = "video-previews/missing";
-    const notFound = Object.assign(new Error("Not Found"), { code: 404 });
+    const notFound = Object.assign(new Error("No such object"), { code: 404 });
     const missing = createFile(missingName, {
       getMetadata: vi.fn().mockRejectedValue(notFound),
     });
@@ -190,18 +190,18 @@ describe("GcsVideoAssetStore", () => {
 
   it("returns null and logs warning when public url lookup fails", async () => {
     const missingName = "video-previews/missing";
-    const notFound = Object.assign(new Error("Not Found"), { code: 404 });
+    const notFound = Object.assign(new Error("No such object"), { code: 404 });
     mocks.files.set(
       missingName,
       createFile(missingName, {
-        getSignedUrl: vi.fn().mockRejectedValue(notFound),
+        getMetadata: vi.fn().mockRejectedValue(notFound),
       }),
     );
     const errorName = "video-previews/erroring";
     mocks.files.set(
       errorName,
       createFile(errorName, {
-        getSignedUrl: vi.fn().mockRejectedValue(new Error("gcs unavailable")),
+        getMetadata: vi.fn().mockRejectedValue(new Error("gcs unavailable")),
       }),
     );
 
@@ -225,6 +225,38 @@ describe("GcsVideoAssetStore", () => {
       {
         assetId: "erroring",
         error: "gcs unavailable",
+      },
+    );
+  });
+
+  // Regression: V4 signed URLs are signed client-side and do not perform any
+  // GCS round-trip. A previous refactor removed the `exists()` precheck and
+  // relied on `getSignedUrl` throwing on missing objects — which it never
+  // does. `getPublicUrl` must return null for any assetId not present in GCS.
+  it("regression: getPublicUrl returns null when the asset is absent in GCS", async () => {
+    const objectName = "video-previews/absent";
+    const notFound = Object.assign(new Error("No such object"), { code: 404 });
+    const file = createFile(objectName, {
+      getMetadata: vi.fn().mockRejectedValue(notFound),
+      getSignedUrl: vi
+        .fn()
+        .mockResolvedValue(["https://signed.example.com/absent"]),
+    });
+    mocks.files.set(objectName, file);
+
+    const store = new GcsVideoAssetStore({
+      bucket: mocks.bucket as never,
+      basePath: "video-previews",
+      signedUrlTtlMs: 60_000,
+      cacheControl: "public, max-age=86400",
+    });
+
+    expect(await store.getPublicUrl("absent")).toBeNull();
+    expect(file.getSignedUrl).not.toHaveBeenCalled();
+    expect(mocks.loggerWarn).toHaveBeenCalledWith(
+      "Video asset missing in GCS",
+      {
+        assetId: "absent",
       },
     );
   });

@@ -1,26 +1,9 @@
 import { API_CONFIG } from "@/config/api.config";
 import { buildFirebaseAuthHeaders } from "@/services/http/firebaseAuth";
 import { ReferenceImageListSchema, ReferenceImageSchema } from "./schemas";
+import type { ReferenceImage } from "@shared/schemas/asset.schemas";
 
-export interface ReferenceImage {
-  id: string;
-  userId: string;
-  imageUrl: string;
-  thumbnailUrl: string;
-  storagePath: string;
-  thumbnailPath: string;
-  label?: string | null | undefined;
-  metadata: {
-    width: number;
-    height: number;
-    sizeBytes: number;
-    contentType: string;
-    source?: string | null | undefined;
-    originalName?: string | null | undefined;
-  };
-  createdAt: string;
-  updatedAt: string;
-}
+export type { ReferenceImage };
 
 async function fetchWithAuth(endpoint: string, options: RequestInit = {}) {
   const authHeaders = await buildFirebaseAuthHeaders();

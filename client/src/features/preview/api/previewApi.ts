@@ -10,14 +10,16 @@ import { API_CONFIG } from "@/config/api.config";
 import { buildFirebaseAuthHeaders } from "@/services/http/firebaseAuth";
 import { logger } from "@/services/LoggingService";
 import { sanitizeError } from "@/utils/logging";
+import { extractMotionMeta } from "@/utils/motion";
 import { safeUrlHost } from "@/utils/url";
 import {
   FaceSwapPreviewResponseSchema,
   GeneratePreviewResponseSchema,
   GenerateStoryboardPreviewResponseSchema,
   GenerateVideoResponseSchema,
-  MediaViewUrlResponseSchema,
+  MediaViewUrlBatchItemSchema,
   MediaViewUrlBatchResponseSchema,
+  MediaViewUrlResponseSchema,
   UploadPreviewImageResponseSchema,
   VideoJobStatusResponseSchema,
 } from "./schemas";
@@ -30,35 +32,6 @@ const PREVIEW_IMAGE_ALLOWED_TYPES = new Set([
   "image/webp",
 ]);
 const PREVIEW_IMAGE_MAX_BYTES = 10 * 1024 * 1024;
-
-const normalizeMotionString = (value: unknown): string | null => {
-  if (typeof value !== "string") {
-    return null;
-  }
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : null;
-};
-
-const extractMotionMeta = (generationParams?: Record<string, unknown>) => {
-  const params = generationParams ?? {};
-  const generationParamKeys = Object.keys(params);
-  const cameraMotionId = normalizeMotionString(params.camera_motion_id);
-  const subjectMotion = normalizeMotionString(params.subject_motion);
-  const keyframesCount = Array.isArray(params.keyframes)
-    ? params.keyframes.length
-    : 0;
-
-  return {
-    hasGenerationParams: generationParamKeys.length > 0,
-    generationParamKeys,
-    hasCameraMotion: Boolean(cameraMotionId),
-    cameraMotionId,
-    hasSubjectMotion: Boolean(subjectMotion),
-    subjectMotionLength: subjectMotion?.length ?? 0,
-    hasKeyframes: keyframesCount > 0,
-    keyframesCount,
-  } as const;
-};
 
 function requireNonEmptyString(
   value: unknown,
@@ -101,38 +74,16 @@ export interface GeneratePreviewRequest {
   outputQuality?: number;
 }
 
-export interface GeneratePreviewResponse {
-  success: boolean;
-  data?: {
-    imageUrl: string;
-    storagePath?: string;
-    viewUrl?: string;
-    viewUrlExpiresAt?: string;
-    sizeBytes?: number;
-    metadata: {
-      aspectRatio: string;
-      model: string;
-      duration: number;
-      generatedAt: string;
-    };
-  };
-  error?: string;
-  message?: string;
-}
+// Response types are derived from canonical Zod schemas so the inferred TS
+// type cannot drift from runtime parsing. Field-level docs live in
+// shared/schemas/preview.schemas.ts.
+export type GeneratePreviewResponse = z.infer<
+  typeof GeneratePreviewResponseSchema
+>;
 
-export interface UploadPreviewImageResponse {
-  success: boolean;
-  data?: {
-    imageUrl: string;
-    storagePath?: string;
-    viewUrl?: string;
-    viewUrlExpiresAt?: string;
-    sizeBytes?: number;
-    contentType?: string;
-  };
-  error?: string;
-  message?: string;
-}
+export type UploadPreviewImageResponse = z.infer<
+  typeof UploadPreviewImageResponseSchema
+>;
 
 export type PreviewImageValidationResult =
   | { valid: true }
@@ -173,28 +124,11 @@ export type GenerateStoryboardPreviewResponse = z.infer<
   typeof GenerateStoryboardPreviewResponseSchema
 >;
 
-export interface MediaViewUrlResponse {
-  success: boolean;
-  data?: {
-    viewUrl: string;
-    expiresAt?: string;
-    storagePath?: string;
-    assetId?: string;
-    source?: string;
-  };
-  error?: string;
-  message?: string;
-}
+export type MediaViewUrlResponse = z.infer<typeof MediaViewUrlResponseSchema>;
 
-export interface FaceSwapPreviewResponse {
-  success: boolean;
-  data?: {
-    faceSwapUrl: string;
-    creditsDeducted: number;
-  };
-  error?: string;
-  message?: string;
-}
+export type FaceSwapPreviewResponse = z.infer<
+  typeof FaceSwapPreviewResponseSchema
+>;
 
 /**
  * Generate a preview image from a prompt
@@ -245,9 +179,7 @@ export async function generatePreview(
     },
   )) as unknown;
 
-  return GeneratePreviewResponseSchema.parse(
-    payload,
-  ) as GeneratePreviewResponse;
+  return GeneratePreviewResponseSchema.parse(payload);
 }
 
 /**
@@ -307,9 +239,7 @@ export async function faceSwapPreview(options: {
     },
   )) as unknown;
 
-  const parsed = FaceSwapPreviewResponseSchema.parse(
-    payload,
-  ) as FaceSwapPreviewResponse;
+  const parsed = FaceSwapPreviewResponseSchema.parse(payload);
 
   log.info("Face-swap preview request completed", {
     hasFaceSwapUrl: Boolean(parsed.data?.faceSwapUrl),
@@ -331,7 +261,7 @@ export async function getImageAssetViewUrl(
   const payload = (await apiClient.get(
     `/preview/image/view?assetId=${encoded}`,
   )) as unknown;
-  return MediaViewUrlResponseSchema.parse(payload) as MediaViewUrlResponse;
+  return MediaViewUrlResponseSchema.parse(payload);
 }
 
 export async function getVideoAssetViewUrl(
@@ -343,20 +273,14 @@ export async function getVideoAssetViewUrl(
   const payload = (await apiClient.get(
     `/preview/video/view?assetId=${encoded}`,
   )) as unknown;
-  return MediaViewUrlResponseSchema.parse(payload) as MediaViewUrlResponse;
+  return MediaViewUrlResponseSchema.parse(payload);
 }
 
-export interface BatchViewUrlItem {
-  assetId: string;
-  viewUrl: string | null;
-  error?: string;
-}
+export type BatchViewUrlItem = z.infer<typeof MediaViewUrlBatchItemSchema>;
 
-export interface BatchViewUrlResponse {
-  success: boolean;
-  data?: { results: BatchViewUrlItem[] };
-  error?: string;
-}
+export type BatchViewUrlResponse = z.infer<
+  typeof MediaViewUrlBatchResponseSchema
+>;
 
 /**
  * Resolve multiple image asset IDs to signed view URLs in a single request.
@@ -372,7 +296,7 @@ export async function getImageAssetViewUrlBatch(
   const payload = (await apiClient.post("/preview/image/view-batch", {
     assetIds,
   })) as unknown;
-  return MediaViewUrlBatchResponseSchema.parse(payload) as BatchViewUrlResponse;
+  return MediaViewUrlBatchResponseSchema.parse(payload);
 }
 
 export async function uploadPreviewImage(
@@ -401,24 +325,30 @@ export async function uploadPreviewImage(
     body: formData,
   });
 
-  let payload: UploadPreviewImageResponse | null = null;
+  let payload: unknown = null;
   try {
-    payload = (await response.json()) as UploadPreviewImageResponse;
+    payload = await response.json();
   } catch {
     payload = null;
   }
 
   if (!response.ok) {
-    throw new Error(
-      payload?.error || payload?.message || "Failed to upload image",
-    );
+    const envelope =
+      typeof payload === "object" && payload !== null
+        ? (payload as { error?: unknown; message?: unknown })
+        : null;
+    const message =
+      (typeof envelope?.error === "string" ? envelope.error : null) ||
+      (typeof envelope?.message === "string" ? envelope.message : null) ||
+      "Failed to upload image";
+    throw new Error(message);
   }
 
   if (!payload) {
     return UploadPreviewImageResponseSchema.parse({
       success: false,
       error: "Failed to upload image",
-    }) as UploadPreviewImageResponse;
+    });
   }
 
   const parsed = UploadPreviewImageResponseSchema.safeParse(payload);
@@ -426,60 +356,21 @@ export async function uploadPreviewImage(
     return UploadPreviewImageResponseSchema.parse({
       success: false,
       error: "Failed to upload image",
-    }) as UploadPreviewImageResponse;
+    });
   }
 
-  return parsed.data as UploadPreviewImageResponse;
+  return parsed.data;
 }
 
-export interface GenerateVideoResponse {
-  success: boolean;
-  videoUrl?: string;
-  assetId?: string;
-  storagePath?: string;
-  viewUrl?: string;
-  viewUrlExpiresAt?: string;
-  sizeBytes?: number;
-  inputMode?: "t2v" | "i2v";
-  startImageUrl?: string;
-  jobId?: string;
-  status?: VideoJobStatus;
-  creditsReserved?: number;
-  creditsDeducted?: number;
-  remainingCredits?: number;
-  keyframeGenerated?: boolean;
-  keyframeUrl?: string | null;
-  faceSwapApplied?: boolean;
-  faceSwapUrl?: string | null;
-  error?: string;
-  message?: string;
-}
+export type GenerateVideoResponse = z.infer<
+  typeof GenerateVideoResponseSchema
+>;
 
 export type VideoJobStatus = "queued" | "processing" | "completed" | "failed";
 
-export interface VideoJobStatusResponse {
-  success: boolean;
-  jobId: string;
-  status: VideoJobStatus;
-  progress?: number | null;
-  createdAtMs?: number;
-  videoUrl?: string;
-  assetId?: string;
-  contentType?: string;
-  storagePath?: string;
-  viewUrl?: string;
-  viewUrlExpiresAt?: string;
-  sizeBytes?: number;
-  inputMode?: "t2v" | "i2v";
-  startImageUrl?: string;
-  resolvedAspectRatio?: string;
-  serverTimeoutMs?: number;
-  suggestedPollIntervalMs?: number;
-  creditsReserved?: number;
-  creditsDeducted?: number;
-  error?: string;
-  message?: string;
-}
+export type VideoJobStatusResponse = z.infer<
+  typeof VideoJobStatusResponseSchema
+>;
 
 export interface GenerateVideoPreviewOptions {
   startImage?: string | undefined;
@@ -587,9 +478,7 @@ export async function generateVideoPreview(
       },
     )) as unknown;
 
-    const response = GenerateVideoResponseSchema.parse(
-      responsePayload,
-    ) as GenerateVideoResponse;
+    const response = GenerateVideoResponseSchema.parse(responsePayload);
 
     const durationMs = Math.round(
       (typeof performance !== "undefined" ? performance.now() : Date.now()) -
@@ -655,5 +544,5 @@ export async function getVideoPreviewStatus(
     },
   })) as unknown;
 
-  return VideoJobStatusResponseSchema.parse(payload) as VideoJobStatusResponse;
+  return VideoJobStatusResponseSchema.parse(payload);
 }
