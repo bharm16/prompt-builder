@@ -210,6 +210,16 @@ export class ModelIntelligenceService {
       confidence = "low";
     }
 
+    // Honesty cap: requirements.confidenceScore reflects how confident we are
+    // in the *prompt-side feature extraction* (no spans / very weak signal
+    // produces ~0.3). When that signal is poor, claiming "high" model-fit
+    // confidence is a UX lie — the score arithmetic can produce a clean
+    // ranking even on guesses. Cap "high" → "medium"; "medium" and "low"
+    // are already honest about uncertainty.
+    if (confidence === "high" && requirements.confidenceScore < 0.4) {
+      confidence = "medium";
+    }
+
     const reasoning = this.explainerService.explainRecommendation(
       topScore,
       requirements,
