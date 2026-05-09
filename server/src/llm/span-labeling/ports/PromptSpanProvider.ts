@@ -1,4 +1,4 @@
-import type { LLMSpan, LabelSpansParams } from "../types";
+import type { LLMSpan, LabelSpansParams, LabelSpansResult } from "../types";
 
 /**
  * Shared port for prompt span labeling consumers.
@@ -10,14 +10,21 @@ import type { LLMSpan, LabelSpansParams } from "../types";
  */
 export interface PromptSpanProvider {
   /**
-   * Label spans for a given prompt.
-   *
-   * @param prompt The prompt text to label.
-   * @param options Optional labeling parameters (maxSpans, minConfidence, etc.).
-   *                The `text` field on LabelSpansParams is overridden by `prompt`.
+   * Label spans for a given prompt and return only the span array — the
+   * common case for consumers that don't care about meta/isAdversarial.
    */
   label(
     prompt: string,
     options?: Omit<LabelSpansParams, "text">,
   ): Promise<LLMSpan[]>;
+
+  /**
+   * Label spans and return the full `LabelSpansResult` (spans + meta +
+   * isAdversarial flag + analysisTrace). Used by the public
+   * /llm/label-spans-batch endpoint which needs the complete payload.
+   */
+  labelFull(
+    prompt: string,
+    options?: Omit<LabelSpansParams, "text">,
+  ): Promise<LabelSpansResult>;
 }

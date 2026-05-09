@@ -156,7 +156,7 @@ export function registerApiRoutes(
     "/llm/label-spans-batch",
     apiAuthMiddleware,
     createBatchMiddleware(
-      container.resolve("aiService"),
+      container.resolve("spanLabelingProvider"),
       container.resolve("metricsService"),
     ),
   );

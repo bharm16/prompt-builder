@@ -27,8 +27,12 @@ describe("ModelIntelligenceService (integration)", () => {
       ...span,
       role: span.role ?? "subject",
     }));
-    const promptSpanProvider = {
+    const promptSpanProvider: PromptSpanProvider = {
       label: vi.fn<PromptSpanProvider["label"]>().mockResolvedValue(spans),
+      labelFull: vi.fn<PromptSpanProvider["labelFull"]>().mockResolvedValue({
+        spans,
+        meta: { version: "v1", notes: "ok" },
+      }),
     };
 
     const registry = new ModelCapabilityRegistry();

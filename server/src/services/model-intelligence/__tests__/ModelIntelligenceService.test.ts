@@ -129,8 +129,12 @@ describe("ModelIntelligenceService", () => {
       const spans: LLMSpan[] = [
         { text: "dramatic lighting", role: "lighting.cinematic" },
       ];
-      const promptSpanProvider = {
+      const promptSpanProvider: PromptSpanProvider = {
         label: vi.fn<PromptSpanProvider["label"]>().mockResolvedValue(spans),
+        labelFull: vi.fn<PromptSpanProvider["labelFull"]>().mockResolvedValue({
+          spans,
+          meta: { version: "v1", notes: "ok" },
+        }),
       };
 
       const service = new ModelIntelligenceService({

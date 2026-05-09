@@ -3,11 +3,9 @@ import type { DIContainer } from "@infrastructure/DIContainer";
 import { logger } from "@infrastructure/Logger";
 import type { MetricsService } from "@infrastructure/MetricsService";
 import type { LLMClient } from "@clients/LLMClient";
-import { AIModelService } from "@services/ai-model/index";
 import AssetService from "@services/asset/AssetService";
 import { CapabilitiesProbeService } from "@services/capabilities/CapabilitiesProbeService";
 import type { UserCreditService } from "@services/credits/UserCreditService";
-import { labelSpans } from "@llm/span-labeling/SpanLabelingService";
 import ConsistentVideoService from "@services/video-generation/ConsistentVideoService";
 import FaceSwapService from "@services/video-generation/FaceSwapService";
 import KeyframeGenerationService from "@services/video-generation/KeyframeGenerationService";
@@ -248,17 +246,6 @@ export function registerGenerationServices(container: DIContainer): void {
   );
 
   container.register(
-    "modelIntelligencePromptSpanProvider",
-    (aiService: AIModelService): PromptSpanProvider => ({
-      label: async (prompt: string) => {
-        const result = await labelSpans({ text: prompt }, aiService);
-        return Array.isArray(result.spans) ? result.spans : [];
-      },
-    }),
-    ["aiService"],
-  );
-
-  container.register(
     "modelIntelligenceAvailabilityGate",
     (
       videoGenerationService: VideoGenerationService | null,
@@ -286,7 +273,7 @@ export function registerGenerationServices(container: DIContainer): void {
         metricsService,
       }),
     [
-      "modelIntelligencePromptSpanProvider",
+      "spanLabelingProvider",
       "modelIntelligenceAvailabilityGate",
       "metricsService",
     ],

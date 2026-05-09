@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { NextFunction, Request, Response } from "express";
 
-const { labelSpansMock, loggerMock } = vi.hoisted(() => ({
-  labelSpansMock: vi.fn(),
+const { labelFullMock, loggerMock } = vi.hoisted(() => ({
+  labelFullMock: vi.fn(),
   loggerMock: {
     info: vi.fn(),
     debug: vi.fn(),
@@ -10,15 +10,12 @@ const { labelSpansMock, loggerMock } = vi.hoisted(() => ({
   },
 }));
 
-vi.mock("@llm/span-labeling/SpanLabelingService", () => ({
-  labelSpans: labelSpansMock,
-}));
-
 vi.mock("@infrastructure/Logger", () => ({
   logger: loggerMock,
 }));
 
 import { RequestBatchingService } from "../requestBatching";
+import type { PromptSpanProvider } from "@llm/span-labeling/ports/PromptSpanProvider";
 
 function createResponse(): Response {
   return {
@@ -29,6 +26,13 @@ function createResponse(): Response {
 
 function createRequest(body: unknown): Request {
   return { body } as Request;
+}
+
+function createSpanProviderStub(): PromptSpanProvider {
+  return {
+    label: vi.fn(),
+    labelFull: labelFullMock,
+  };
 }
 
 describe("RequestBatchingService", () => {
@@ -42,7 +46,7 @@ describe("RequestBatchingService", () => {
     const res = createResponse();
     const next = vi.fn() as NextFunction;
 
-    await service.middleware({} as never)(req, res, next);
+    await service.middleware(createSpanProviderStub())(req, res, next);
 
     expect(res.status).toHaveBeenCalledWith(400);
     expect(res.json).toHaveBeenCalledWith(
@@ -58,7 +62,7 @@ describe("RequestBatchingService", () => {
     const res = createResponse();
     const next = vi.fn() as NextFunction;
 
-    await service.middleware({} as never)(req, res, next);
+    await service.middleware(createSpanProviderStub())(req, res, next);
 
     expect(res.status).toHaveBeenCalledWith(400);
     expect(res.json).toHaveBeenCalledWith(
@@ -74,7 +78,7 @@ describe("RequestBatchingService", () => {
     const res = createResponse();
     const next = vi.fn() as NextFunction;
 
-    await service.middleware({} as never)(req, res, next);
+    await service.middleware(createSpanProviderStub())(req, res, next);
 
     expect(res.json).toHaveBeenCalledWith([]);
   });
@@ -85,7 +89,7 @@ describe("RequestBatchingService", () => {
     const res = createResponse();
     const next = vi.fn() as NextFunction;
 
-    await service.middleware({} as never)(req, res, next);
+    await service.middleware(createSpanProviderStub())(req, res, next);
 
     expect(res.status).toHaveBeenCalledWith(400);
     expect(res.json).toHaveBeenCalledWith(
@@ -97,8 +101,8 @@ describe("RequestBatchingService", () => {
 
   it("processes batch results in original order with success/error mapping", async () => {
     const service = new RequestBatchingService({ maxConcurrency: 1 });
-    labelSpansMock.mockImplementation(async (request: { text: string }) => {
-      if (request.text === "fail") {
+    labelFullMock.mockImplementation(async (text: string) => {
+      if (text === "fail") {
         const error = new Error("boom") as Error & { code?: string };
         error.code = "SPAN_FAIL";
         throw error;
@@ -106,10 +110,10 @@ describe("RequestBatchingService", () => {
       return {
         spans: [
           {
-            text: request.text,
+            text,
             role: "subject",
             start: 0,
-            end: request.text.length,
+            end: text.length,
           },
         ],
         meta: { version: "v1", notes: "ok" },
@@ -118,7 +122,7 @@ describe("RequestBatchingService", () => {
 
     const result = await service.processBatch(
       [{ text: "ok-1" }, { text: "fail" }, { text: "ok-2" }],
-      {} as never,
+      createSpanProviderStub(),
     );
 
     expect(result).toEqual([

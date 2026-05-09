@@ -3,7 +3,7 @@ import { getCurrentSpanProvider } from "../services/LlmClientFactory";
 import type { AIExecutionPort } from "@services/ai-model/ports/AIExecutionPort";
 import type { SpanLabelingCacheService } from "@services/cache/SpanLabelingCacheService";
 import type { PromptSpanProvider } from "../ports/PromptSpanProvider";
-import type { LLMSpan, LabelSpansParams } from "../types";
+import type { LLMSpan, LabelSpansParams, LabelSpansResult } from "../types";
 
 /**
  * Production adapter for the PromptSpanProvider port.
@@ -22,11 +22,18 @@ export class CachedPromptSpanProvider implements PromptSpanProvider {
     prompt: string,
     options: Omit<LabelSpansParams, "text"> = {},
   ): Promise<LLMSpan[]> {
+    const result = await this.labelFull(prompt, options);
+    return Array.isArray(result.spans) ? result.spans : [];
+  }
+
+  async labelFull(
+    prompt: string,
+    options: Omit<LabelSpansParams, "text"> = {},
+  ): Promise<LabelSpansResult> {
     const params: LabelSpansParams = { text: prompt, ...options };
 
     if (!this.cache) {
-      const result = await labelSpans(params, this.aiService);
-      return Array.isArray(result.spans) ? result.spans : [];
+      return labelSpans(params, this.aiService);
     }
 
     const provider = getCurrentSpanProvider();
@@ -40,6 +47,6 @@ export class CachedPromptSpanProvider implements PromptSpanProvider {
       { ttl, provider },
     );
 
-    return Array.isArray(value.spans) ? value.spans : [];
+    return value as LabelSpansResult;
   }
 }

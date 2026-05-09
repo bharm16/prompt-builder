@@ -1,6 +1,6 @@
 import type { RequestHandler } from "express";
 import { logger } from "@infrastructure/Logger";
-import { labelSpans } from "@llm/span-labeling/SpanLabelingService";
+import type { PromptSpanProvider } from "@llm/span-labeling/ports/PromptSpanProvider";
 
 /** Narrow metrics interface — avoids importing the concrete MetricsService class. */
 interface BatchMetrics {
@@ -11,7 +11,6 @@ import type {
   LabelSpansParams,
   LabelSpansResult,
 } from "@llm/span-labeling/types";
-import type { AIExecutionPort } from "@services/ai-model/ports/AIExecutionPort";
 import {
   toPublicLabelSpansResult,
   type PublicLabelSpansResult,
@@ -126,7 +125,7 @@ export class RequestBatchingService {
    *   { spans: [...], meta: {...} }
    * ]
    */
-  middleware(aiService: AIExecutionPort): RequestHandler {
+  middleware(spanLabelingProvider: PromptSpanProvider): RequestHandler {
     return async (req, res, next): Promise<void> => {
       try {
         const requests = req.body;
@@ -159,7 +158,7 @@ export class RequestBatchingService {
         }
 
         // Process batch
-        const results = await this.processBatch(requests, aiService);
+        const results = await this.processBatch(requests, spanLabelingProvider);
 
         // Update metrics
         this.stats.totalRequests += requests.length;
@@ -198,12 +197,12 @@ export class RequestBatchingService {
    * Process a batch of span labeling requests with parallel execution
    *
    * @param requests - Array of span labeling request payloads
-   * @param aiService - AI service for span labeling
+   * @param spanLabelingProvider - Cached span labeling port for individual requests
    * @returns Array of results
    */
   async processBatch(
     requests: LabelSpansParams[],
-    aiService: AIExecutionPort,
+    spanLabelingProvider: PromptSpanProvider,
   ): Promise<
     Array<PublicLabelSpansResult | { error: { message: string; code: string } }>
   > {
@@ -219,8 +218,11 @@ export class RequestBatchingService {
       requests,
       async (request, index): Promise<BatchResult> => {
         try {
-          // Process individual request
-          const result = await labelSpans(request, aiService);
+          const { text, ...options } = request;
+          // Route through the shared port so this batch path benefits from
+          // cache hits + single-flight coalescing identical to the per-request
+          // /llm/label-spans path.
+          const result = await spanLabelingProvider.labelFull(text, options);
 
           logger.debug("Batch item completed", {
             index,
@@ -359,7 +361,7 @@ export class RequestBatchingService {
  * Accepts metricsService for recording batch-level histograms/counters.
  */
 export function createBatchMiddleware(
-  aiService: AIExecutionPort,
+  spanLabelingProvider: PromptSpanProvider,
   metricsService?: BatchMetrics,
 ): RequestHandler {
   const service = new RequestBatchingService({
@@ -368,5 +370,5 @@ export function createBatchMiddleware(
     maxConcurrency: 5,
     ...(metricsService ? { metricsService } : {}),
   });
-  return service.middleware(aiService);
+  return service.middleware(spanLabelingProvider);
 }

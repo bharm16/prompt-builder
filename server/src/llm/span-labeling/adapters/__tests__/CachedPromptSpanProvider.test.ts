@@ -117,4 +117,14 @@ describe("CachedPromptSpanProvider", () => {
       expect.objectContaining({ provider: "openai" }),
     );
   });
+
+  it("labelFull returns the full LabelSpansResult including meta", async () => {
+    const ai = createAiServiceStub();
+    const provider = new CachedPromptSpanProvider(ai, null);
+
+    const result = await provider.labelFull("a prompt");
+
+    expect(result).toEqual(SAMPLE_RESULT);
+    expect(labelSpansMock).toHaveBeenCalledTimes(1);
+  });
 });
