@@ -5,12 +5,8 @@ import { sha256Hex } from "@utils/hash";
 import { TemperatureOptimizer } from "@utils/TemperatureOptimizer";
 import { StructuredOutputEnforcer } from "@utils/StructuredOutputEnforcer";
 import { getCustomSuggestionSchema } from "./config/schemas";
-import { FallbackRegenerationService } from "./services/FallbackRegenerationService";
-import { ContrastiveDiversityEnforcer } from "./services/ContrastiveDiversityEnforcer";
 import { EnhancementMetricsService } from "./services/EnhancementMetricsService";
 import { VideoContextDetectionService } from "./services/VideoContextDetectionService";
-import { SuggestionGenerationService } from "./services/SuggestionGenerationService";
-import { SuggestionProcessingService } from "./services/SuggestionProcessingService";
 import { I2VConstrainedSuggestions } from "./services/I2VConstrainedSuggestions";
 import { detectPlaceholder } from "./services/placeholderDetection";
 import { CacheKeyFactory } from "./utils/CacheKeyFactory";
@@ -67,12 +63,8 @@ interface EnhancementCoreServices {
 }
 
 interface EnhancementPipelineServices {
-  fallbackRegeneration: FallbackRegenerationService;
-  contrastiveDiversity: ContrastiveDiversityEnforcer;
   metricsLogger: EnhancementMetricsService;
   videoContextDetection: VideoContextDetectionService;
-  suggestionGeneration: SuggestionGenerationService;
-  suggestionProcessing: SuggestionProcessingService;
   enhancementV2: EnhancementV2Engine;
   spanContextBuilder: SpanContextBuilder;
 }
@@ -129,34 +121,11 @@ export class EnhancementService {
       namespace: "enhancement",
     };
 
-    // Initialize specialized services
-    const contrastiveDiversity = new ContrastiveDiversityEnforcer(aiService);
-    const fallbackRegeneration = new FallbackRegenerationService(
-      videoPromptService,
-      promptBuilder,
-      validationService,
-      diversityEnforcer,
-    );
-    const suggestionProcessing = new SuggestionProcessingService(
-      diversityEnforcer,
-      validationService,
-      categoryAligner,
-      fallbackRegeneration,
-      aiService,
-    );
-
     this.pipeline = {
-      fallbackRegeneration,
-      contrastiveDiversity,
       metricsLogger: new EnhancementMetricsService(metricsService),
       videoContextDetection: new VideoContextDetectionService(
         videoPromptService,
       ),
-      suggestionGeneration: new SuggestionGenerationService(
-        aiService,
-        contrastiveDiversity,
-      ),
-      suggestionProcessing,
       enhancementV2: new EnhancementV2Engine({
         aiService,
         videoPromptService,

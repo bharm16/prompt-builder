@@ -7,7 +7,7 @@ import type {
 } from "../services/types.js";
 
 export interface EnhancementCacheParams {
-  engineVersion: "v1" | "v2";
+  engineVersion: "v2";
   highlightedText: string;
   contextBefore: string;
   contextAfter: string;

@@ -154,7 +154,7 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
    *
    * Diversity is achieved through:
    * - Prompt: "Generate 12 DIVERSE alternatives"
-   * - ContrastiveDiversityEnforcer post-processing
+   * - V2 slot-policy scoring + diversity enforcement post-processing
    */
   enhance_suggestions: {
     client: process.env.ENHANCE_PROVIDER || "qwen",

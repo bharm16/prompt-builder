@@ -5,9 +5,6 @@
 
 export { EnhancementService } from "./EnhancementService.js";
 
-// Export specialized services for advanced usage
-export { FallbackRegenerationService } from "./services/FallbackRegenerationService.js";
-
 // Export moved services
 export { BrainstormContextBuilder } from "./services/BrainstormContextBuilder.js";
 export { CategoryAlignmentService } from "./services/CategoryAlignmentService.js";
