@@ -1,7 +1,13 @@
 import { logger } from "@infrastructure/Logger";
 import { StructuredOutputEnforcer } from "@utils/StructuredOutputEnforcer";
-import { getEnhancementSchema } from "../config/schemas.js";
-import { SlotPolicyRegistry } from "./SlotPolicyRegistry.js";
+import {
+  getCustomSuggestionSchema,
+  getEnhancementSchema,
+} from "../config/schemas.js";
+import {
+  CUSTOM_POLICY_CATEGORY_ID,
+  SlotPolicyRegistry,
+} from "./SlotPolicyRegistry.js";
 import { EnhancementV2PromptBuilder } from "./EnhancementV2PromptBuilder.js";
 import { V2CandidateScorer } from "./V2CandidateScorer.js";
 import type { Suggestion } from "../services/types.js";
@@ -27,9 +33,11 @@ export class EnhancementV2Engine {
   async execute(
     context: EnhancementV2RequestContext,
   ): Promise<EnhancementV2Execution> {
-    const policy = this.registry.resolve(
-      context.highlightedCategory || context.phraseRole,
-    );
+    const policy = context.customRequest
+      ? this.registry.resolve(CUSTOM_POLICY_CATEGORY_ID)
+      : this.registry.resolve(
+          context.highlightedCategory || context.phraseRole,
+        );
     const stageCounts: Record<string, number> = {};
     let modelCallCount = 0;
 
@@ -228,23 +236,30 @@ export class EnhancementV2Engine {
     context: EnhancementV2RequestContext,
     policy: SlotPolicy,
   ): Promise<Suggestion[]> {
-    const operationConfig = this.dependencies.aiService.getOperationConfig?.(
-      "enhance_suggestions",
-    );
+    const schemaName = policy.suggestionSchemaName ?? "enhancement";
+    const operation =
+      schemaName === "custom" ? "custom_suggestions" : "enhance_suggestions";
+    const operationConfig =
+      this.dependencies.aiService.getOperationConfig?.(operation);
     const temperature =
       typeof operationConfig?.temperature === "number"
         ? operationConfig.temperature
         : 0.7;
-    const schema = operationConfig?.client
-      ? getEnhancementSchema(context.isPlaceholder, {
-          provider: operationConfig.client as "openai" | "groq" | "qwen",
-        })
-      : getEnhancementSchema(context.isPlaceholder);
+    const provider = operationConfig?.client as
+      | "openai"
+      | "groq"
+      | "qwen"
+      | undefined;
+    const schemaOptions = provider ? { provider } : {};
+    const schema =
+      schemaName === "custom"
+        ? getCustomSuggestionSchema(schemaOptions)
+        : getEnhancementSchema(context.isPlaceholder, schemaOptions);
 
     const suggestions = await StructuredOutputEnforcer.enforceJSON<
       Suggestion[]
     >(this.dependencies.aiService, prompt, {
-      operation: "enhance_suggestions",
+      operation,
       schema: schema as {
         type: "object" | "array";
         required?: string[];
@@ -253,11 +268,7 @@ export class EnhancementV2Engine {
       isArray: true,
       maxRetries: 1,
       temperature,
-      ...(operationConfig?.client === "openai" ||
-      operationConfig?.client === "groq" ||
-      operationConfig?.client === "qwen"
-        ? { provider: operationConfig.client }
-        : {}),
+      ...(provider ? { provider } : {}),
     });
 
     return Array.isArray(suggestions)

@@ -3,8 +3,6 @@ import type { ILogger } from "@interfaces/ILogger";
 import type { CacheService } from "@services/cache/CacheService";
 import { sha256Hex } from "@utils/hash";
 import { TemperatureOptimizer } from "@utils/TemperatureOptimizer";
-import { StructuredOutputEnforcer } from "@utils/StructuredOutputEnforcer";
-import { getCustomSuggestionSchema } from "./config/schemas";
 import { EnhancementMetricsService } from "./services/EnhancementMetricsService";
 import { VideoContextDetectionService } from "./services/VideoContextDetectionService";
 import { I2VConstrainedSuggestions } from "./services/I2VConstrainedSuggestions";
@@ -499,7 +497,14 @@ export class EnhancementService {
   }
 
   /**
-   * Get custom suggestions based on user request
+   * Get custom suggestions based on user request.
+   *
+   * Routes through the V2 slot-policy engine using the dedicated
+   * CustomPolicy. The user's free-form request is the steering signal
+   * (carried via `context.customRequest`), and V2's diversity / scoring
+   * post-processing applies the same way it does for category-driven
+   * enhancement, with one rescue call available when too few candidates
+   * survive scoring.
    */
   async getCustomSuggestions({
     highlightedText,
@@ -526,6 +531,9 @@ export class EnhancementService {
     // collisions for prompts that diverged past those positions and produced
     // wrong cached suggestions.
     const cacheKey = this.cacheService.generateKey(this.cacheConfig.namespace, {
+      engineVersion: "v2",
+      mode: "custom",
+      policyVersion: this.enhancementConfig.policyVersion,
       highlightedText,
       customRequest,
       fullPromptHash: sha256Hex(fullPrompt, 16),
@@ -550,51 +558,39 @@ export class EnhancementService {
       return cached;
     }
 
-    // Detect video prompt
     const isVideoPrompt =
       this.core.videoPromptService.isVideoPrompt(fullPrompt);
 
-    // Build prompt
-    const customPromptParams = {
+    const v2Context: EnhancementV2RequestContext = {
       highlightedText,
-      customRequest,
+      contextBefore: contextBefore ?? "",
+      contextAfter: contextAfter ?? "",
       fullPrompt,
+      originalUserPrompt: fullPrompt,
+      brainstormContext: null,
+      highlightedCategory: null,
+      highlightedCategoryConfidence: null,
+      isPlaceholder: false,
       isVideoPrompt,
-      ...(contextBefore !== undefined ? { contextBefore } : {}),
-      ...(contextAfter !== undefined ? { contextAfter } : {}),
-      ...(metadata !== undefined ? { metadata } : {}),
+      phraseRole: null,
+      highlightWordCount: highlightedText
+        ? highlightedText.split(/\s+/).filter(Boolean).length
+        : 0,
+      videoConstraints: null,
+      modelTarget: null,
+      promptSection: null,
+      spanAnchors: "",
+      nearbySpanHints: "",
+      lockedSpanCategories: [],
+      debug: false,
+      customRequest,
+      customMetadata: metadata ?? null,
     };
-    const systemPrompt =
-      this.core.promptBuilder.buildCustomPrompt(customPromptParams);
 
-    // Generate suggestions
-    const schema = getCustomSuggestionSchema({
-      operation: "custom_suggestions",
-    });
-    const temperature = this._getEnhancementTemperature();
+    const execution = await this.pipeline.enhancementV2.execute(v2Context);
+    const suggestions = execution.finalSuggestions;
+    const result = { suggestions };
 
-    const suggestions = await StructuredOutputEnforcer.enforceJSON<
-      Suggestion[]
-    >(this.core.ai, systemPrompt, {
-      operation: "custom_suggestions",
-      schema: schema as {
-        type: "object" | "array";
-        required?: string[];
-        items?: { required?: string[] };
-      } | null,
-      isArray: true,
-      maxTokens: 2048,
-      maxRetries: 2,
-      temperature,
-    });
-
-    // Process suggestions
-    const diverseSuggestions =
-      await this.core.diversityEnforcer.ensureDiverseSuggestions(suggestions);
-
-    const result = { suggestions: diverseSuggestions };
-
-    // Cache result
     await this.cacheService.set(cacheKey, result, {
       ttl: this.cacheConfig.ttl,
     });
@@ -602,8 +598,10 @@ export class EnhancementService {
     this.log.info("Operation completed.", {
       operation,
       duration: Math.round(performance.now() - startTime),
-      count: diverseSuggestions.length,
-      diversityEnforced: diverseSuggestions.length !== suggestions.length,
+      count: suggestions.length,
+      rawCount: execution.rawSuggestions.length,
+      modelCallCount: execution.debug.modelCallCount,
+      categoryId: execution.debug.categoryId,
     });
 
     return result;

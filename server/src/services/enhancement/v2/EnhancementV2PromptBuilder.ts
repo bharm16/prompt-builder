@@ -5,6 +5,10 @@ export class EnhancementV2PromptBuilder {
     context: EnhancementV2RequestContext,
     policy: SlotPolicy,
   ): string {
+    if (context.customRequest) {
+      return this.buildCustomPrompt(context, policy);
+    }
+
     const lines = [
       `Generate up to ${policy.targetCount + 2} replacement phrases for a highlighted prompt span.`,
       `Category: ${policy.categoryId}`,
@@ -55,17 +59,69 @@ export class EnhancementV2PromptBuilder {
     existingSuggestions: string[],
     missingCount: number,
   ): string {
+    const baseSection = context.customRequest
+      ? this.buildCustomPrompt(context, policy)
+      : this.buildPrompt(context, policy);
+
     const prompt = [
-      this.buildPrompt(context, policy),
+      baseSection,
       "",
       "RESCUE PASS:",
       `- The previous pass produced too few compliant suggestions. Generate ${Math.max(missingCount, policy.minAcceptableCount)} additional alternatives.`,
       existingSuggestions.length > 0
         ? `- Do not repeat these prior suggestions: ${existingSuggestions.join(" | ")}`
         : "",
-      "- Prioritize distinct wording and strict slot fit.",
+      context.customRequest
+        ? "- Prioritize distinct wording while still fulfilling the custom request."
+        : "- Prioritize distinct wording and strict slot fit.",
     ];
 
     return prompt.filter(Boolean).join("\n");
+  }
+
+  /**
+   * Custom-request prompt: the user supplied free-form steering, so we
+   * surface that as the primary instruction and only use slot policy
+   * details (grammar, word range) as soft guardrails. No category
+   * enforcement — the user's request defines acceptability.
+   */
+  private buildCustomPrompt(
+    context: EnhancementV2RequestContext,
+    policy: SlotPolicy,
+  ): string {
+    const customRequest = (context.customRequest ?? "").trim();
+    const metadataBlob =
+      context.customMetadata && Object.keys(context.customMetadata).length > 0
+        ? JSON.stringify(context.customMetadata)
+        : "";
+
+    const lines = [
+      `Generate up to ${policy.targetCount} replacement phrases for the highlighted prompt span that fulfill the user's custom request.`,
+      `Word range: ${policy.grammar.minWords}-${policy.grammar.maxWords}`,
+      "",
+      "CONTEXT:",
+      `<full_prompt>${context.fullPrompt}</full_prompt>`,
+      `<highlighted_text>${context.highlightedText}</highlighted_text>`,
+      `<context_before>${context.contextBefore}</context_before>`,
+      `<context_after>${context.contextAfter}</context_after>`,
+      `<custom_request>${customRequest}</custom_request>`,
+      metadataBlob ? `<span_metadata>${metadataBlob}</span_metadata>` : "",
+      "",
+      "RULES:",
+      "- The custom request is the primary steering signal — fulfill it literally.",
+      "- The replacement must remain grammatical when substituted in place of the highlighted text.",
+      "- Do not return advice, headings, or explanation text in the suggestion itself.",
+      "- Do not repeat the highlighted text exactly.",
+      context.isVideoPrompt
+        ? "- Keep the suggestion usable as a drop-in replacement for a video prompt."
+        : "",
+      "",
+      "Return a JSON array of suggestion objects with fields:",
+      "- text",
+      "- category",
+      "- explanation",
+    ];
+
+    return lines.filter(Boolean).join("\n");
   }
 }

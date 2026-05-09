@@ -89,6 +89,15 @@ export interface ScorerWeights {
   overlapPenalty: number;
 }
 
+/**
+ * Selects which output schema the V2 engine enforces for guided LLM calls.
+ * - "enhancement" (default): requires `text` + `explanation` per suggestion.
+ * - "custom": only requires `text`. Used by the custom-request flow where
+ *   the user supplied free-form steering and per-suggestion explanations
+ *   are not contractually expected.
+ */
+export type SuggestionSchemaName = "enhancement" | "custom";
+
 export interface SlotPolicy {
   categoryId: string;
   mode: GenerationMode;
@@ -102,6 +111,12 @@ export interface SlotPolicy {
   enumeratedOptions?: EnumeratedOption[];
   templated?: TemplatedPolicyConfig;
   scorerWeights?: ScorerWeights;
+  /**
+   * Which output schema to enforce for guided_llm calls. Defaults to
+   * "enhancement" when omitted. Custom-request flows set this to "custom"
+   * so the V2 engine doesn't reject suggestions for missing `explanation`.
+   */
+  suggestionSchemaName?: SuggestionSchemaName;
 }
 
 export interface EnhancementV2Config {
@@ -129,6 +144,18 @@ export interface EnhancementV2RequestContext {
   lockedSpanCategories: string[];
   focusGuidance?: string[];
   debug: boolean;
+  /**
+   * When set, the V2 engine enters custom-request mode: the prompt builder
+   * emits a free-form steering prompt instead of slot guidance, the engine
+   * resolves the dedicated CustomPolicy, and the custom-suggestion schema
+   * is enforced.
+   */
+  customRequest?: string | null;
+  /**
+   * Optional metadata blob forwarded to the custom-request prompt
+   * (span context, surrounding categories, etc).
+   */
+  customMetadata?: Record<string, unknown> | null;
 }
 
 export interface CandidateScoreBreakdown {
