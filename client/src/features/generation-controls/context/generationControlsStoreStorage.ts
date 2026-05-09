@@ -3,7 +3,6 @@ import { CAMERA_MOTION_CATEGORIES } from "@/features/convergence/types";
 import {
   loadActiveTab,
   loadCameraMotion,
-  loadConstraintMode,
   loadImageSubTab,
   loadKeyframes,
   loadSubjectMotion,
@@ -25,7 +24,6 @@ const CapabilityValuesSchema = z.record(z.string(), CapabilityValueSchema);
 
 const ActiveTabSchema = z.enum(["video", "image"]);
 const ImageSubTabSchema = z.enum(["references", "styles"]);
-const ConstraintModeSchema = z.enum(["strict", "flexible", "transform"]);
 const VideoTierSchema = z.enum(["draft", "render"]);
 
 const Position3DSchema = z.object({
@@ -105,7 +103,6 @@ const GenerationControlsStoreSchema = z.object({
   ui: z.object({
     activeTab: ActiveTabSchema,
     imageSubTab: ImageSubTabSchema,
-    constraintMode: ConstraintModeSchema,
   }),
 });
 
@@ -136,7 +133,6 @@ const buildLegacyState = (): GenerationControlsState => ({
   ui: {
     activeTab: loadActiveTab(),
     imageSubTab: loadImageSubTab(),
-    constraintMode: loadConstraintMode(),
   },
 });
 

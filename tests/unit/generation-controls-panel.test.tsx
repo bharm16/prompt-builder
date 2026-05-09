@@ -111,7 +111,6 @@ const createInitialStoreState = (
   ui: {
     activeTab: "video",
     imageSubTab: "references",
-    constraintMode: "strict",
   },
 });
 

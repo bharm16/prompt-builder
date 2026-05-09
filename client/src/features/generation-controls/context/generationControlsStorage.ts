@@ -8,13 +8,11 @@ const STORAGE_KEYS = {
   subjectMotion: "generation-controls:subjectMotion",
   activeTab: "generation-controls:activeTab",
   imageSubTab: "generation-controls:imageSubTab",
-  constraintMode: "generation-controls:constraintMode",
   keyframes: "generation-controls:keyframes",
 } as const;
 
 const ActiveTabSchema = z.enum(["video", "image"]);
 const ImageSubTabSchema = z.enum(["references", "styles"]);
-const ConstraintModeSchema = z.enum(["strict", "flexible", "transform"]);
 
 const Position3DSchema = z.object({
   x: z.number(),
@@ -144,29 +142,6 @@ export const persistImageSubTab = (value: "references" | "styles"): void => {
   if (typeof window === "undefined") return;
   try {
     window.localStorage.setItem(STORAGE_KEYS.imageSubTab, value);
-  } catch {
-    // ignore
-  }
-};
-
-export const loadConstraintMode = (): "strict" | "flexible" | "transform" => {
-  if (typeof window === "undefined") return "strict";
-  try {
-    const value = window.localStorage.getItem(STORAGE_KEYS.constraintMode);
-    if (!value) return "strict";
-    const parsed = ConstraintModeSchema.safeParse(value);
-    return parsed.success ? parsed.data : "strict";
-  } catch {
-    return "strict";
-  }
-};
-
-export const persistConstraintMode = (
-  value: "strict" | "flexible" | "transform",
-): void => {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem(STORAGE_KEYS.constraintMode, value);
   } catch {
     // ignore
   }

@@ -62,7 +62,6 @@ const SAMPLE_STATE: GenerationControlsState = {
   ui: {
     activeTab: "image",
     imageSubTab: "styles",
-    constraintMode: "flexible",
   },
 };
 
@@ -116,7 +115,6 @@ describe("generationControlsStoreStorage", () => {
     localStorage.setItem("generation-controls:subjectMotion", "Legacy motion");
     localStorage.setItem("generation-controls:activeTab", "video");
     localStorage.setItem("generation-controls:imageSubTab", "references");
-    localStorage.setItem("generation-controls:constraintMode", "strict");
 
     const loaded = loadGenerationControlsStoreState();
     expect(loaded.domain.selectedModel).toBe("legacy-model");
@@ -131,7 +129,6 @@ describe("generationControlsStoreStorage", () => {
     expect(loaded.domain.subjectMotion).toBe("Legacy motion");
     expect(loaded.ui.activeTab).toBe("video");
     expect(loaded.ui.imageSubTab).toBe("references");
-    expect(loaded.ui.constraintMode).toBe("strict");
   });
 
   it("falls back to legacy keys when new key is invalid", () => {
@@ -166,7 +163,6 @@ describe("generationControlsStoreStorage", () => {
         ui: {
           activeTab: "video",
           imageSubTab: "references",
-          constraintMode: "strict",
         },
       }),
     );
@@ -201,8 +197,5 @@ describe("generationControlsStoreStorage", () => {
     ).toBeNull();
     expect(localStorage.getItem("generation-controls:activeTab")).toBeNull();
     expect(localStorage.getItem("generation-controls:imageSubTab")).toBeNull();
-    expect(
-      localStorage.getItem("generation-controls:constraintMode"),
-    ).toBeNull();
   });
 });
