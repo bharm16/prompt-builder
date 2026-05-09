@@ -102,6 +102,60 @@ describe("video request parser regression", () => {
     );
   });
 
+  it("rejects empty prompt when no startImage is provided", () => {
+    const missing = parseVideoPreviewRequest({});
+    expect(missing).toEqual({
+      ok: false,
+      status: 400,
+      error: "Prompt must be a non-empty string when no startImage is provided",
+    });
+
+    const blank = parseVideoPreviewRequest({ prompt: "   " });
+    expect(blank).toEqual({
+      ok: false,
+      status: 400,
+      error: "Prompt must be a non-empty string when no startImage is provided",
+    });
+  });
+
+  it("accepts empty prompt when startImage is provided (i2v)", () => {
+    const withMissingPrompt = parseVideoPreviewRequest({
+      startImage: "https://images.example.com/start.png",
+    });
+    expect(withMissingPrompt.ok).toBe(true);
+    if (!withMissingPrompt.ok) {
+      throw new Error("Expected parse success when startImage is provided");
+    }
+    expect(withMissingPrompt.payload.prompt).toBe("");
+    expect(withMissingPrompt.payload.startImage).toBe(
+      "https://images.example.com/start.png",
+    );
+
+    const withBlankPrompt = parseVideoPreviewRequest({
+      prompt: "   ",
+      startImage: "https://images.example.com/start.png",
+    });
+    expect(withBlankPrompt.ok).toBe(true);
+    if (!withBlankPrompt.ok) {
+      throw new Error(
+        "Expected parse success for blank prompt with startImage",
+      );
+    }
+    expect(typeof withBlankPrompt.payload.prompt).toBe("string");
+  });
+
+  it("rejects non-string prompt regardless of startImage", () => {
+    const result = parseVideoPreviewRequest({
+      prompt: 123,
+      startImage: "https://images.example.com/start.png",
+    });
+    expect(result).toEqual({
+      ok: false,
+      status: 400,
+      error: "Prompt must be a string",
+    });
+  });
+
   it("rejects invalid referenceImages payloads", () => {
     const notArray = parseVideoPreviewRequest({
       prompt: "Cinematic prompt",
