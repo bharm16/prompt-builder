@@ -1,3 +1,23 @@
+/**
+ * Reserved feature: constitutional-AI second-pass review.
+ *
+ * Status: dormant. No production caller sets `useConstitutionalAI: true` —
+ * the optimize route handler does not forward the field, the client API
+ * does not send it, and no UI control exposes it. This workflow is
+ * reachable only from tests.
+ *
+ * To re-enable:
+ *  1. Set `useConstitutionalAI: true` on the OptimizationRequest (likely
+ *     from `routes/optimize/handlers/optimize.ts`).
+ *  2. Tune `OptimizationConfig.constitutionalAI.sampleRate` for partial
+ *     rollout (1 = 100%, lower for sampling).
+ *  3. Add observability counters around `applyConstitutionalAI` (reviewed,
+ *     revised, no-change).
+ *
+ * If this dormancy persists, consider deletion — the standalone
+ * `ConstitutionalAI` util at `server/src/utils/ConstitutionalAI.ts` has no
+ * other consumer.
+ */
 import { ConstitutionalAI } from "@utils/ConstitutionalAI";
 import OptimizationConfig from "@config/OptimizationConfig";
 import { throwIfAborted } from "./abort";

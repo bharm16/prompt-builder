@@ -119,7 +119,9 @@ export const OptimizationConfig = {
     templateVersion: "v1",
   } as SpanLabelingConfig,
 
-  // Constitutional AI sampling (1 = always, 0 = never)
+  // Constitutional AI sampling (1 = always, 0 = never).
+  // Dormant: no caller sets `useConstitutionalAI: true`.
+  // See server/src/services/prompt-optimization/workflows/constitutionalReview.ts for the re-enable steps.
   constitutionalAI: {
     sampleRate: 1,
   } as ConstitutionalAIConfig,
