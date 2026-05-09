@@ -46,7 +46,6 @@ export const promptSchema = z.object({
     .string()
     .max(10000, "sourcePrompt must not exceed 10,000 characters")
     .optional(),
-  constraintMode: z.enum(["strict", "flexible", "transform"]).optional(),
   skipCache: z.boolean().optional().default(false),
   lockedSpans: z
     .array(

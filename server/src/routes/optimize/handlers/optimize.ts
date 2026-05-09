@@ -49,7 +49,6 @@ export const createOptimizeHandler =
       skipCache,
       lockedSpans,
       startImage,
-      constraintMode,
       sourcePrompt,
     } = parsed.data;
     const normalizedTargetModel = normalizeTargetModel(targetModel);
@@ -97,7 +96,6 @@ export const createOptimizeHandler =
       skipCache: !!skipCache,
       lockedSpanCount: normalizedLockedSpans.length,
       hasStartImage: typeof startImage === "string" && startImage.length > 0,
-      constraintMode,
     });
 
     const requestAbortController = new AbortController();
@@ -127,7 +125,6 @@ export const createOptimizeHandler =
         ...(typeof startImage === "string" && startImage.length > 0
           ? { startImage }
           : {}),
-        ...(constraintMode !== undefined ? { constraintMode } : {}),
         ...(typeof sourcePrompt === "string" && sourcePrompt.length > 0
           ? { sourcePrompt }
           : {}),
