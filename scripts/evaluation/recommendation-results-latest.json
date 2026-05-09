@@ -1,20 +1,20 @@
 {
-  "timestamp": "2026-05-09T04:32:50.206Z",
+  "timestamp": "2026-05-09T06:27:01.419Z",
   "baselineName": "default",
   "promptSetVersion": "1.0.0",
   "commit": null,
   "snapshots": {
     "subject-human-portrait-natural-light": {
       "promptId": "subject-human-portrait-natural-light",
-      "recommendedModelId": "kling-v2-1-master",
+      "recommendedModelId": "kling-2.1",
       "recommendedConfidence": "high",
       "topRecommendations": [
         {
-          "modelId": "kling-v2-1-master",
+          "modelId": "kling-2.1",
           "overallScore": 92
         },
         {
-          "modelId": "google/veo-3",
+          "modelId": "veo-3",
           "overallScore": 75
         },
         {
@@ -25,7 +25,7 @@
       "alsoConsiderModelId": null,
       "suggestComparison": false,
       "comparisonModels": null,
-      "filteredOutCount": 0,
+      "filteredOutCount": 1,
       "requirements": {
         "physicsComplexity": "none",
         "hasParticleSystems": false,
@@ -47,15 +47,15 @@
     },
     "subject-human-emotion-intense": {
       "promptId": "subject-human-emotion-intense",
-      "recommendedModelId": "kling-v2-1-master",
+      "recommendedModelId": "kling-2.1",
       "recommendedConfidence": "medium",
       "topRecommendations": [
         {
-          "modelId": "kling-v2-1-master",
+          "modelId": "kling-2.1",
           "overallScore": 85
         },
         {
-          "modelId": "google/veo-3",
+          "modelId": "veo-3",
           "overallScore": 79
         },
         {
@@ -66,10 +66,10 @@
       "alsoConsiderModelId": null,
       "suggestComparison": true,
       "comparisonModels": [
-        "kling-v2-1-master",
-        "google/veo-3"
+        "kling-2.1",
+        "veo-3"
       ],
-      "filteredOutCount": 0,
+      "filteredOutCount": 1,
       "requirements": {
         "physicsComplexity": "none",
         "hasParticleSystems": false,
@@ -91,11 +91,11 @@
     },
     "subject-animal-running": {
       "promptId": "subject-animal-running",
-      "recommendedModelId": "kling-v2-1-master",
+      "recommendedModelId": "kling-2.1",
       "recommendedConfidence": "medium",
       "topRecommendations": [
         {
-          "modelId": "kling-v2-1-master",
+          "modelId": "kling-2.1",
           "overallScore": 88
         },
         {
@@ -103,14 +103,14 @@
           "overallScore": 75
         },
         {
-          "modelId": "google/veo-3",
+          "modelId": "veo-3",
           "overallScore": 72
         }
       ],
       "alsoConsiderModelId": null,
       "suggestComparison": false,
       "comparisonModels": null,
-      "filteredOutCount": 0,
+      "filteredOutCount": 1,
       "requirements": {
         "physicsComplexity": "none",
         "hasParticleSystems": false,
@@ -140,11 +140,11 @@
           "overallScore": 86
         },
         {
-          "modelId": "google/veo-3",
+          "modelId": "veo-3",
           "overallScore": 77
         },
         {
-          "modelId": "kling-v2-1-master",
+          "modelId": "kling-2.1",
           "overallScore": 67
         }
       ],
@@ -152,9 +152,9 @@
       "suggestComparison": true,
       "comparisonModels": [
         "sora-2",
-        "google/veo-3"
+        "veo-3"
       ],
-      "filteredOutCount": 0,
+      "filteredOutCount": 1,
       "requirements": {
         "physicsComplexity": "moderate",
         "hasParticleSystems": true,
@@ -184,18 +184,18 @@
           "overallScore": 93
         },
         {
-          "modelId": "google/veo-3",
+          "modelId": "veo-3",
           "overallScore": 68
         },
         {
-          "modelId": "kling-v2-1-master",
+          "modelId": "kling-2.1",
           "overallScore": 60
         }
       ],
       "alsoConsiderModelId": null,
       "suggestComparison": false,
       "comparisonModels": null,
-      "filteredOutCount": 0,
+      "filteredOutCount": 1,
       "requirements": {
         "physicsComplexity": "simple",
         "hasParticleSystems": true,
@@ -225,18 +225,18 @@
           "overallScore": 91
         },
         {
-          "modelId": "google/veo-3",
+          "modelId": "veo-3",
           "overallScore": 75
         },
         {
-          "modelId": "kling-v2-1-master",
+          "modelId": "kling-2.1",
           "overallScore": 62
         }
       ],
       "alsoConsiderModelId": null,
       "suggestComparison": false,
       "comparisonModels": null,
-      "filteredOutCount": 0,
+      "filteredOutCount": 1,
       "requirements": {
         "physicsComplexity": "moderate",
         "hasParticleSystems": true,
@@ -266,18 +266,18 @@
           "overallScore": 90
         },
         {
-          "modelId": "google/veo-3",
+          "modelId": "veo-3",
           "overallScore": 65
         },
         {
-          "modelId": "kling-v2-1-master",
+          "modelId": "luma-ray3",
           "overallScore": 55
         }
       ],
       "alsoConsiderModelId": null,
       "suggestComparison": false,
       "comparisonModels": null,
-      "filteredOutCount": 0,
+      "filteredOutCount": 1,
       "requirements": {
         "physicsComplexity": "simple",
         "hasParticleSystems": true,
@@ -307,11 +307,11 @@
           "overallScore": 87
         },
         {
-          "modelId": "google/veo-3",
+          "modelId": "veo-3",
           "overallScore": 80
         },
         {
-          "modelId": "kling-v2-1-master",
+          "modelId": "kling-2.1",
           "overallScore": 79
         }
       ],
@@ -319,9 +319,9 @@
       "suggestComparison": true,
       "comparisonModels": [
         "sora-2",
-        "google/veo-3"
+        "veo-3"
       ],
-      "filteredOutCount": 0,
+      "filteredOutCount": 1,
       "requirements": {
         "physicsComplexity": "none",
         "hasParticleSystems": false,
@@ -351,18 +351,18 @@
           "overallScore": 92
         },
         {
-          "modelId": "google/veo-3",
+          "modelId": "veo-3",
           "overallScore": 70
         },
         {
-          "modelId": "kling-v2-1-master",
+          "modelId": "kling-2.1",
           "overallScore": 61
         }
       ],
       "alsoConsiderModelId": null,
       "suggestComparison": false,
       "comparisonModels": null,
-      "filteredOutCount": 0,
+      "filteredOutCount": 1,
       "requirements": {
         "physicsComplexity": "moderate",
         "hasParticleSystems": true,
@@ -392,7 +392,7 @@
           "overallScore": 75
         },
         {
-          "modelId": "google/veo-3",
+          "modelId": "veo-3",
           "overallScore": 73
         },
         {
@@ -404,9 +404,9 @@
       "suggestComparison": true,
       "comparisonModels": [
         "sora-2",
-        "google/veo-3"
+        "veo-3"
       ],
-      "filteredOutCount": 0,
+      "filteredOutCount": 1,
       "requirements": {
         "physicsComplexity": "simple",
         "hasParticleSystems": true,
@@ -436,11 +436,11 @@
           "overallScore": 88
         },
         {
-          "modelId": "google/veo-3",
+          "modelId": "veo-3",
           "overallScore": 85
         },
         {
-          "modelId": "kling-v2-1-master",
+          "modelId": "kling-2.1",
           "overallScore": 78
         }
       ],
@@ -448,9 +448,9 @@
       "suggestComparison": true,
       "comparisonModels": [
         "sora-2",
-        "google/veo-3"
+        "veo-3"
       ],
-      "filteredOutCount": 0,
+      "filteredOutCount": 1,
       "requirements": {
         "physicsComplexity": "none",
         "hasParticleSystems": false,
@@ -480,11 +480,11 @@
           "overallScore": 82
         },
         {
-          "modelId": "google/veo-3",
+          "modelId": "veo-3",
           "overallScore": 78
         },
         {
-          "modelId": "kling-v2-1-master",
+          "modelId": "kling-2.1",
           "overallScore": 75
         }
       ],
@@ -492,9 +492,9 @@
       "suggestComparison": true,
       "comparisonModels": [
         "sora-2",
-        "google/veo-3"
+        "veo-3"
       ],
-      "filteredOutCount": 0,
+      "filteredOutCount": 1,
       "requirements": {
         "physicsComplexity": "none",
         "hasParticleSystems": false,
@@ -524,11 +524,11 @@
           "overallScore": 87
         },
         {
-          "modelId": "google/veo-3",
+          "modelId": "veo-3",
           "overallScore": 80
         },
         {
-          "modelId": "kling-v2-1-master",
+          "modelId": "kling-2.1",
           "overallScore": 79
         }
       ],
@@ -536,9 +536,9 @@
       "suggestComparison": true,
       "comparisonModels": [
         "sora-2",
-        "google/veo-3"
+        "veo-3"
       ],
-      "filteredOutCount": 0,
+      "filteredOutCount": 1,
       "requirements": {
         "physicsComplexity": "none",
         "hasParticleSystems": false,
@@ -568,11 +568,11 @@
           "overallScore": 87
         },
         {
-          "modelId": "google/veo-3",
+          "modelId": "veo-3",
           "overallScore": 80
         },
         {
-          "modelId": "kling-v2-1-master",
+          "modelId": "kling-2.1",
           "overallScore": 79
         }
       ],
@@ -580,9 +580,9 @@
       "suggestComparison": true,
       "comparisonModels": [
         "sora-2",
-        "google/veo-3"
+        "veo-3"
       ],
-      "filteredOutCount": 0,
+      "filteredOutCount": 1,
       "requirements": {
         "physicsComplexity": "none",
         "hasParticleSystems": false,
@@ -604,11 +604,11 @@
     },
     "morphing-transformation": {
       "promptId": "morphing-transformation",
-      "recommendedModelId": "kling-v2-1-master",
+      "recommendedModelId": "kling-2.1",
       "recommendedConfidence": "medium",
       "topRecommendations": [
         {
-          "modelId": "kling-v2-1-master",
+          "modelId": "kling-2.1",
           "overallScore": 88
         },
         {
@@ -616,14 +616,14 @@
           "overallScore": 75
         },
         {
-          "modelId": "google/veo-3",
+          "modelId": "veo-3",
           "overallScore": 72
         }
       ],
       "alsoConsiderModelId": null,
       "suggestComparison": false,
       "comparisonModels": null,
-      "filteredOutCount": 0,
+      "filteredOutCount": 1,
       "requirements": {
         "physicsComplexity": "none",
         "hasParticleSystems": false,
@@ -645,15 +645,15 @@
     },
     "abstract-shapes": {
       "promptId": "abstract-shapes",
-      "recommendedModelId": "google/veo-3",
+      "recommendedModelId": "kling-2.1",
       "recommendedConfidence": "medium",
       "topRecommendations": [
         {
-          "modelId": "google/veo-3",
+          "modelId": "kling-2.1",
           "overallScore": 76
         },
         {
-          "modelId": "kling-v2-1-master",
+          "modelId": "veo-3",
           "overallScore": 76
         },
         {
@@ -664,10 +664,10 @@
       "alsoConsiderModelId": null,
       "suggestComparison": true,
       "comparisonModels": [
-        "google/veo-3",
-        "kling-v2-1-master"
+        "kling-2.1",
+        "veo-3"
       ],
-      "filteredOutCount": 0,
+      "filteredOutCount": 1,
       "requirements": {
         "physicsComplexity": "none",
         "hasParticleSystems": false,
@@ -697,11 +697,11 @@
           "overallScore": 84
         },
         {
-          "modelId": "google/veo-3",
+          "modelId": "veo-3",
           "overallScore": 76
         },
         {
-          "modelId": "kling-v2-1-master",
+          "modelId": "kling-2.1",
           "overallScore": 69
         }
       ],
@@ -709,9 +709,9 @@
       "suggestComparison": true,
       "comparisonModels": [
         "sora-2",
-        "google/veo-3"
+        "veo-3"
       ],
-      "filteredOutCount": 0,
+      "filteredOutCount": 1,
       "requirements": {
         "physicsComplexity": "simple",
         "hasParticleSystems": true,
@@ -741,18 +741,18 @@
           "overallScore": 90
         },
         {
-          "modelId": "google/veo-3",
+          "modelId": "veo-3",
           "overallScore": 74
         },
         {
-          "modelId": "kling-v2-1-master",
+          "modelId": "kling-2.1",
           "overallScore": 62
         }
       ],
       "alsoConsiderModelId": null,
       "suggestComparison": false,
       "comparisonModels": null,
-      "filteredOutCount": 0,
+      "filteredOutCount": 1,
       "requirements": {
         "physicsComplexity": "moderate",
         "hasParticleSystems": true,
@@ -782,11 +782,11 @@
           "overallScore": 87
         },
         {
-          "modelId": "google/veo-3",
+          "modelId": "veo-3",
           "overallScore": 80
         },
         {
-          "modelId": "kling-v2-1-master",
+          "modelId": "kling-2.1",
           "overallScore": 79
         }
       ],
@@ -794,9 +794,9 @@
       "suggestComparison": true,
       "comparisonModels": [
         "sora-2",
-        "google/veo-3"
+        "veo-3"
       ],
-      "filteredOutCount": 0,
+      "filteredOutCount": 1,
       "requirements": {
         "physicsComplexity": "none",
         "hasParticleSystems": false,
@@ -818,11 +818,11 @@
     },
     "lipsync-talking": {
       "promptId": "lipsync-talking",
-      "recommendedModelId": "kling-v2-1-master",
+      "recommendedModelId": "kling-2.1",
       "recommendedConfidence": "medium",
       "topRecommendations": [
         {
-          "modelId": "kling-v2-1-master",
+          "modelId": "kling-2.1",
           "overallScore": 88
         },
         {
@@ -830,14 +830,14 @@
           "overallScore": 75
         },
         {
-          "modelId": "google/veo-3",
+          "modelId": "veo-3",
           "overallScore": 72
         }
       ],
       "alsoConsiderModelId": null,
       "suggestComparison": false,
       "comparisonModels": null,
-      "filteredOutCount": 0,
+      "filteredOutCount": 1,
       "requirements": {
         "physicsComplexity": "none",
         "hasParticleSystems": false,
@@ -859,26 +859,26 @@
     },
     "i2v-portrait-subtle-motion": {
       "promptId": "i2v-portrait-subtle-motion",
-      "recommendedModelId": "kling-v2-1-master",
+      "recommendedModelId": "kling-2.1",
       "recommendedConfidence": "high",
       "topRecommendations": [
         {
-          "modelId": "kling-v2-1-master",
+          "modelId": "kling-2.1",
           "overallScore": 86
         },
         {
-          "modelId": "google/veo-3",
+          "modelId": "luma-ray3",
           "overallScore": 70
         },
         {
-          "modelId": "luma-ray3",
+          "modelId": "veo-3",
           "overallScore": 70
         }
       ],
       "alsoConsiderModelId": null,
       "suggestComparison": false,
       "comparisonModels": null,
-      "filteredOutCount": 0,
+      "filteredOutCount": 1,
       "requirements": {
         "physicsComplexity": "none",
         "hasParticleSystems": false,
@@ -912,14 +912,14 @@
           "overallScore": 64
         },
         {
-          "modelId": "google/veo-3",
+          "modelId": "veo-3",
           "overallScore": 62
         }
       ],
       "alsoConsiderModelId": null,
       "suggestComparison": false,
       "comparisonModels": null,
-      "filteredOutCount": 0,
+      "filteredOutCount": 1,
       "requirements": {
         "physicsComplexity": "none",
         "hasParticleSystems": true,
@@ -949,11 +949,11 @@
           "overallScore": 78
         },
         {
-          "modelId": "google/veo-3",
+          "modelId": "luma-ray3",
           "overallScore": 76
         },
         {
-          "modelId": "luma-ray3",
+          "modelId": "veo-3",
           "overallScore": 76
         }
       ],
@@ -961,9 +961,9 @@
       "suggestComparison": true,
       "comparisonModels": [
         "sora-2",
-        "google/veo-3"
+        "luma-ray3"
       ],
-      "filteredOutCount": 0,
+      "filteredOutCount": 1,
       "requirements": {
         "physicsComplexity": "none",
         "hasParticleSystems": false,
@@ -993,18 +993,18 @@
           "overallScore": 84
         },
         {
-          "modelId": "google/veo-3",
+          "modelId": "kling-2.1",
           "overallScore": 72
         },
         {
-          "modelId": "kling-v2-1-master",
+          "modelId": "veo-3",
           "overallScore": 72
         }
       ],
       "alsoConsiderModelId": null,
       "suggestComparison": false,
       "comparisonModels": null,
-      "filteredOutCount": 0,
+      "filteredOutCount": 1,
       "requirements": {
         "physicsComplexity": "none",
         "hasParticleSystems": false,
@@ -1034,11 +1034,11 @@
           "overallScore": 83
         },
         {
-          "modelId": "google/veo-3",
+          "modelId": "veo-3",
           "overallScore": 81
         },
         {
-          "modelId": "kling-v2-1-master",
+          "modelId": "kling-2.1",
           "overallScore": 69
         }
       ],
@@ -1046,9 +1046,9 @@
       "suggestComparison": true,
       "comparisonModels": [
         "sora-2",
-        "google/veo-3"
+        "veo-3"
       ],
-      "filteredOutCount": 0,
+      "filteredOutCount": 1,
       "requirements": {
         "physicsComplexity": "simple",
         "hasParticleSystems": true,
@@ -1078,11 +1078,11 @@
           "overallScore": 87
         },
         {
-          "modelId": "google/veo-3",
+          "modelId": "veo-3",
           "overallScore": 80
         },
         {
-          "modelId": "kling-v2-1-master",
+          "modelId": "kling-2.1",
           "overallScore": 79
         }
       ],
@@ -1090,9 +1090,9 @@
       "suggestComparison": true,
       "comparisonModels": [
         "sora-2",
-        "google/veo-3"
+        "veo-3"
       ],
-      "filteredOutCount": 0,
+      "filteredOutCount": 1,
       "requirements": {
         "physicsComplexity": "none",
         "hasParticleSystems": false,
@@ -1122,11 +1122,11 @@
           "overallScore": 87
         },
         {
-          "modelId": "google/veo-3",
+          "modelId": "veo-3",
           "overallScore": 80
         },
         {
-          "modelId": "kling-v2-1-master",
+          "modelId": "kling-2.1",
           "overallScore": 79
         }
       ],
@@ -1134,9 +1134,9 @@
       "suggestComparison": true,
       "comparisonModels": [
         "sora-2",
-        "google/veo-3"
+        "veo-3"
       ],
-      "filteredOutCount": 0,
+      "filteredOutCount": 1,
       "requirements": {
         "physicsComplexity": "none",
         "hasParticleSystems": false,
@@ -1166,11 +1166,11 @@
           "overallScore": 87
         },
         {
-          "modelId": "google/veo-3",
+          "modelId": "veo-3",
           "overallScore": 80
         },
         {
-          "modelId": "kling-v2-1-master",
+          "modelId": "kling-2.1",
           "overallScore": 79
         }
       ],
@@ -1178,9 +1178,9 @@
       "suggestComparison": true,
       "comparisonModels": [
         "sora-2",
-        "google/veo-3"
+        "veo-3"
       ],
-      "filteredOutCount": 0,
+      "filteredOutCount": 1,
       "requirements": {
         "physicsComplexity": "none",
         "hasParticleSystems": false,
@@ -1210,11 +1210,11 @@
           "overallScore": 87
         },
         {
-          "modelId": "google/veo-3",
+          "modelId": "veo-3",
           "overallScore": 80
         },
         {
-          "modelId": "kling-v2-1-master",
+          "modelId": "kling-2.1",
           "overallScore": 79
         }
       ],
@@ -1222,9 +1222,9 @@
       "suggestComparison": true,
       "comparisonModels": [
         "sora-2",
-        "google/veo-3"
+        "veo-3"
       ],
-      "filteredOutCount": 0,
+      "filteredOutCount": 1,
       "requirements": {
         "physicsComplexity": "none",
         "hasParticleSystems": false,
@@ -1254,18 +1254,18 @@
           "overallScore": 89
         },
         {
-          "modelId": "google/veo-3",
+          "modelId": "veo-3",
           "overallScore": 70
         },
         {
-          "modelId": "kling-v2-1-master",
+          "modelId": "kling-2.1",
           "overallScore": 68
         }
       ],
       "alsoConsiderModelId": null,
       "suggestComparison": false,
       "comparisonModels": null,
-      "filteredOutCount": 0,
+      "filteredOutCount": 1,
       "requirements": {
         "physicsComplexity": "simple",
         "hasParticleSystems": false,
