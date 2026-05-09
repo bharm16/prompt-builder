@@ -42,6 +42,22 @@ export class OptimizationCacheService {
     );
   }
 
+  /**
+   * Fetch a cached optimization result, or run `compute` exactly once across
+   * concurrent callers and cache the produced value. Single-flight coalescing
+   * prevents duplicate LLM calls when multiple identical /api/optimize
+   * requests land in the same burst.
+   */
+  async getOrComputeResult(
+    key: string,
+    compute: () => Promise<string>,
+  ): Promise<{ value: string; source: "cache" | "computed" | "coalesced" }> {
+    return this.cacheService.getOrCompute<string>(key, compute, {
+      ttl: this.cacheConfig.ttl,
+      cacheType: "optimization",
+    });
+  }
+
   async cacheResult(
     key: string,
     result: string,

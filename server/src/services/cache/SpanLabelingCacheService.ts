@@ -22,6 +22,7 @@ import {
   recordCacheMiss,
   type SpanLabelingCacheMetrics,
 } from "./spanLabeling/metrics";
+import { runSingleFlight } from "./singleFlight";
 
 /**
  * SpanLabelingCacheService - Server-side caching for span labeling results
@@ -236,25 +237,12 @@ export class SpanLabelingCacheService {
       templateVersion,
       provider,
     );
-    const existing = this.inflight.get(inflightKey) as Promise<T> | undefined;
-    if (existing) {
-      const value = await existing;
-      return { value, source: "coalesced" };
-    }
 
-    const promise = (async (): Promise<T> => {
+    return runSingleFlight(this.inflight, inflightKey, async () => {
       const computed = await compute();
       await this.set(text, policy, templateVersion, computed, options);
       return computed;
-    })();
-
-    this.inflight.set(inflightKey, promise as Promise<unknown>);
-    try {
-      const value = await promise;
-      return { value, source: "computed" };
-    } finally {
-      this.inflight.delete(inflightKey);
-    }
+    });
   }
 
   /**

@@ -3,6 +3,7 @@ import { sha256Hex } from "@utils/hash";
 import { logger } from "@infrastructure/Logger";
 import type { ILogger } from "@interfaces/ILogger";
 import { SemanticCacheEnhancer } from "./SemanticCacheService.js";
+import { runSingleFlight } from "./singleFlight.js";
 
 /** Narrow metrics interface — avoids importing the concrete MetricsService class. */
 interface CacheMetricsCollector {
@@ -80,6 +81,7 @@ export class CacheService {
   private readonly config: CacheConfig;
   private readonly log: ILogger;
   private readonly metrics: CacheMetricsCollector;
+  private readonly inflight = new Map<string, Promise<unknown>>();
 
   constructor(
     config: CacheConfig = {},
@@ -241,6 +243,42 @@ export class CacheService {
     }
 
     return success;
+  }
+
+  /**
+   * Get from cache or compute + store, with single-flight coalescing.
+   *
+   * When N concurrent callers miss the same key, `compute` is invoked exactly
+   * once and all callers await the same result. Prevents thundering-herd
+   * external calls (LLM, HTTP, DB) for identical inputs.
+   *
+   * The `source` field tells the caller which path produced the value:
+   * - `cache`: returned directly from a hit
+   * - `computed`: this caller invoked `compute` and populated the cache
+   * - `coalesced`: another caller's in-flight compute satisfied this request
+   *
+   * Use `setOptions.cacheType` to attribute hits/misses to a metrics bucket.
+   */
+  async getOrCompute<T>(
+    key: string,
+    compute: () => Promise<T>,
+    setOptions: CacheOptions & { cacheType?: string } = {},
+  ): Promise<{ value: T; source: "cache" | "computed" | "coalesced" }> {
+    const cacheType = setOptions.cacheType ?? "default";
+    const cached = await this.get<T>(key, cacheType);
+    if (cached !== null) {
+      return { value: cached, source: "cache" };
+    }
+
+    return runSingleFlight(this.inflight, key, async () => {
+      const computed = await compute();
+      const writeOptions: CacheOptions = {};
+      if (setOptions.ttl !== undefined) {
+        writeOptions.ttl = setOptions.ttl;
+      }
+      await this.set(key, computed, writeOptions);
+      return computed;
+    });
   }
 
   /**
