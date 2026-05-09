@@ -98,6 +98,11 @@ export function hardenSystemPrompt(
  * Check if content contains potential prompt injection patterns
  * Used for logging/monitoring, not blocking (model handles security)
  *
+ * Patterns require imperative-injection context, not just word matches —
+ * this prevents false positives on creative content that uses words like
+ * "disregard" or "act as if" in non-injection grammatical contexts (as
+ * nouns, in dialogue, or in stage direction with non-AI subjects).
+ *
  * @param content - Content to check
  * @returns Object with detection results
  */
@@ -105,26 +110,72 @@ export function detectInjectionPatterns(content: string): {
   hasPatterns: boolean;
   patterns: string[];
 } {
-  const lowerContent = content.toLowerCase();
   const patterns: string[] = [];
 
-  const injectionPatterns = [
-    { pattern: "ignore previous", name: "instruction_override" },
-    { pattern: "ignore all", name: "instruction_override" },
-    { pattern: "disregard", name: "instruction_override" },
-    { pattern: "forget everything", name: "instruction_override" },
-    { pattern: "system prompt", name: "prompt_extraction" },
-    { pattern: "show me your", name: "prompt_extraction" },
-    { pattern: "output your instructions", name: "prompt_extraction" },
-    { pattern: "pretend you are", name: "roleplay_injection" },
-    { pattern: "you are now", name: "roleplay_injection" },
-    { pattern: "act as if", name: "roleplay_injection" },
-    { pattern: "jailbreak", name: "explicit_attack" },
-    { pattern: "dan mode", name: "explicit_attack" },
+  // Each pattern requires injection-shaped grammar around the trigger word.
+  // The /i flag handles case-insensitive matching, and \b enforces word
+  // boundaries so we don't match inside larger words.
+  const injectionPatterns: Array<{ pattern: RegExp; name: string }> = [
+    // Instruction override — requires a qualifier indicating *what* to
+    // ignore/disregard (instructions, prior context, etc.). Without that,
+    // bare "disregard" or "ignore" is too ambiguous to flag.
+    {
+      pattern:
+        /\bignore\s+(?:previous|all|prior|earlier|preceding|the\s+(?:above|previous|prior|preceding|prompt|instructions?|rules|directives|system))\b/i,
+      name: "instruction_override",
+    },
+    {
+      pattern:
+        /\bdisregard\s+(?:previous|all|prior|earlier|preceding|above|the\s+(?:above|previous|prior|preceding|prompt|instructions?|rules|directives|system))\b/i,
+      name: "instruction_override",
+    },
+    {
+      pattern: /\bforget\s+everything\b/i,
+      name: "instruction_override",
+    },
+
+    // Prompt extraction — references the system itself, not a generic noun
+    {
+      pattern: /\bsystem\s+prompt\b/i,
+      name: "prompt_extraction",
+    },
+    {
+      pattern:
+        /\bshow\s+me\s+your\s+(?:system|instructions?|prompt|rules|guidelines|directives|configuration|setup|training|original)\b/i,
+      name: "prompt_extraction",
+    },
+    {
+      pattern:
+        /\boutput\s+your\s+(?:instructions?|system\s+prompt|rules|directives|configuration)\b/i,
+      name: "prompt_extraction",
+    },
+
+    // Roleplay injection — requires roleplay framing addressed at "you"
+    // (the model). Stage direction with non-AI subjects ("two kids
+    // pretend you are...") is grammatically ambiguous; we require the
+    // canonical injection frames instead.
+    {
+      pattern:
+        /\bpretend\s+(?:that\s+)?you\s+are\s+(?:an?|the|in|no\s+longer)\b/i,
+      name: "roleplay_injection",
+    },
+    {
+      pattern:
+        /\byou\s+are\s+now\s+(?:an?\s+)?(?:unrestricted|jailbroken|jailbreaking|uncensored|operating|playing|acting|in\s+(?:a\s+different|jailbreak|developer|debug|test|admin)|free\s+(?:from|of)|able\s+to\s+(?:ignore|bypass|override))\b/i,
+      name: "roleplay_injection",
+    },
+    {
+      pattern: /\bact\s+as\s+if\s+you\s+(?:have|had|are|were|can|could)\b/i,
+      name: "roleplay_injection",
+    },
+
+    // Explicit attack names — these phrases have no realistic creative use
+    { pattern: /\bjailbreak\b/i, name: "explicit_attack" },
+    { pattern: /\bdan\s+mode\b/i, name: "explicit_attack" },
   ];
 
   for (const { pattern, name } of injectionPatterns) {
-    if (lowerContent.includes(pattern)) {
+    if (pattern.test(content)) {
       patterns.push(name);
     }
   }

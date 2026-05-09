@@ -200,7 +200,20 @@ npm run test:e2e    # Playwright e2e tests
 npm run test:coverage # Unit tests with coverage report
 npm run test:regression      # Run only regression tests
 npm run test:regression:list  # Audit all regression test files
+npm run eval:golden-set      # Relaxed F1 vs blessed baseline (gate mode)
+npm run eval:golden-set:bless # Bless a fresh baseline for the active provider
 ```
+
+## Span Labeling Evaluation
+
+Two distinct evals run against the span labeling subsystem — keep them separate.
+
+| Eval                         | Script                                                                                  | Metric                                                               | Cadence                                                |
+| ---------------------------- | --------------------------------------------------------------------------------------- | -------------------------------------------------------------------- | ------------------------------------------------------ |
+| **LLM-as-judge**             | `npm run eval:span` (legacy spawner) → `scripts/evaluation/span-labeling-evaluation.ts` | Coverage / Precision / Granularity / Taxonomy (1–5 via GPT-4o judge) | On-demand                                              |
+| **Relaxed F1 vs golden set** | `npm run eval:golden-set` → `scripts/evaluation/golden-set-relaxed-f1.ts`               | Per-category F1 vs blessed baseline; gate exit code                  | Nightly via `.github/workflows/span-labeling-eval.yml` |
+
+The Relaxed F1 gate is **deterministic** (hand-labeled ground truth) and uses [`scripts/evaluation/baseline-gate.ts`](scripts/evaluation/baseline-gate.ts) for per-category regression detection. Baselines live in `scripts/evaluation/golden-set-baselines/{provider}.json` — see the README there for the bless workflow.
 
 ## Operating in a Worktree (Parallel Agents)
 

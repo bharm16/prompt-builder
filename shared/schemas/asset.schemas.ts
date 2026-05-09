@@ -185,5 +185,7 @@ export const ReferenceImageListSchema = z.object({
   images: z.array(ReferenceImageSchema),
 });
 
-export type ReferenceImageMetadata = z.infer<typeof ReferenceImageMetadataSchema>;
+export type ReferenceImageMetadata = z.infer<
+  typeof ReferenceImageMetadataSchema
+>;
 export type ReferenceImage = z.infer<typeof ReferenceImageSchema>;

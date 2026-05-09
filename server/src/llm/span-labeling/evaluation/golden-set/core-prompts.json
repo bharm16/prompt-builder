@@ -154,7 +154,7 @@
             "text": "illuminated by warm candlelight",
             "start": 53,
             "end": 84,
-            "role": "lighting"
+            "role": "lighting.quality"
           },
           {
             "text": "candlelight",

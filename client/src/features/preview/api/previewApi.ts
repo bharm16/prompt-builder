@@ -362,9 +362,7 @@ export async function uploadPreviewImage(
   return parsed.data;
 }
 
-export type GenerateVideoResponse = z.infer<
-  typeof GenerateVideoResponseSchema
->;
+export type GenerateVideoResponse = z.infer<typeof GenerateVideoResponseSchema>;
 
 export type VideoJobStatus = "queued" | "processing" | "completed" | "failed";
 

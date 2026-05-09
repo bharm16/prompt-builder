@@ -103,7 +103,7 @@
             "text": "subject",
             "start": 45,
             "end": 52,
-            "role": "subject"
+            "role": "subject.identity"
           }
         ]
       },

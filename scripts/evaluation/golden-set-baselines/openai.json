@@ -1,0 +1,180 @@
+{
+  "blessedAt": "2026-05-09T02:11:23.522Z",
+  "provider": "openai",
+  "summary": {
+    "relaxedF1": 0.45731707317073167,
+    "precision": 0.49019607843137253,
+    "recall": 0.42857142857142855,
+    "taxonomyAccuracy": 0.6666666666666666
+  },
+  "byCategory": {
+    "camera.movement": {
+      "f1": 0.07692307692307693,
+      "precision": 0.25,
+      "recall": 0.045454545454545456,
+      "support": 22
+    },
+    "subject.identity": {
+      "f1": 0.8043478260869564,
+      "precision": 1,
+      "recall": 0.6727272727272727,
+      "support": 55
+    },
+    "action.movement": {
+      "f1": 0.15730337078651688,
+      "precision": 0.0958904109589041,
+      "recall": 0.4375,
+      "support": 16
+    },
+    "style.aesthetic": {
+      "f1": 0,
+      "precision": 0,
+      "recall": 0,
+      "support": 2
+    },
+    "lighting.quality": {
+      "f1": 0.42105263157894735,
+      "precision": 0.5454545454545454,
+      "recall": 0.34285714285714286,
+      "support": 35
+    },
+    "lighting.timeOfDay": {
+      "f1": 0.6666666666666665,
+      "precision": 0.8571428571428571,
+      "recall": 0.5454545454545454,
+      "support": 11
+    },
+    "shot.type": {
+      "f1": 0.6060606060606061,
+      "precision": 0.47619047619047616,
+      "recall": 0.8333333333333334,
+      "support": 12
+    },
+    "subject.appearance": {
+      "f1": 0.8764044943820224,
+      "precision": 0.8478260869565217,
+      "recall": 0.9069767441860465,
+      "support": 43
+    },
+    "action.state": {
+      "f1": 0,
+      "precision": 0,
+      "recall": 0,
+      "support": 15
+    },
+    "environment.location": {
+      "f1": 0.4912280701754386,
+      "precision": 0.9333333333333333,
+      "recall": 0.3333333333333333,
+      "support": 42
+    },
+    "lighting.source": {
+      "f1": 0.47826086956521735,
+      "precision": 0.5789473684210527,
+      "recall": 0.4074074074074074,
+      "support": 27
+    },
+    "action.gesture": {
+      "f1": 0,
+      "precision": 0,
+      "recall": 0,
+      "support": 11
+    },
+    "environment.context": {
+      "f1": 0.14634146341463414,
+      "precision": 0.09090909090909091,
+      "recall": 0.375,
+      "support": 8
+    },
+    "lighting.colorTemp": {
+      "f1": 0.5454545454545454,
+      "precision": 1,
+      "recall": 0.375,
+      "support": 8
+    },
+    "subject.emotion": {
+      "f1": 0.5,
+      "precision": 0.5,
+      "recall": 0.5,
+      "support": 2
+    },
+    "environment.weather": {
+      "f1": 0.28571428571428575,
+      "precision": 0.5,
+      "recall": 0.2,
+      "support": 5
+    },
+    "camera.angle": {
+      "f1": 0,
+      "precision": 0,
+      "recall": 0,
+      "support": 3
+    },
+    "subject.wardrobe": {
+      "f1": 0.4444444444444445,
+      "precision": 1,
+      "recall": 0.2857142857142857,
+      "support": 7
+    },
+    "technical.duration": {
+      "f1": 0,
+      "precision": 0,
+      "recall": 0,
+      "support": 2
+    },
+    "technical.aspectRatio": {
+      "f1": 0,
+      "precision": 0,
+      "recall": 0,
+      "support": 3
+    },
+    "technical.frameRate": {
+      "f1": 0.3333333333333333,
+      "precision": 0.3333333333333333,
+      "recall": 0.3333333333333333,
+      "support": 3
+    },
+    "audio.score": {
+      "f1": 0.6666666666666666,
+      "precision": 1,
+      "recall": 0.5,
+      "support": 4
+    },
+    "style.filmStock": {
+      "f1": 0,
+      "precision": 0,
+      "recall": 0,
+      "support": 3
+    },
+    "camera.lens": {
+      "f1": 0,
+      "precision": 0,
+      "recall": 0,
+      "support": 4
+    },
+    "style.colorGrade": {
+      "f1": 0,
+      "precision": 0,
+      "recall": 0,
+      "support": 2
+    },
+    "technical.resolution": {
+      "f1": 0,
+      "precision": 0,
+      "recall": 0,
+      "support": 1
+    },
+    "camera.focus": {
+      "f1": 0,
+      "precision": 0,
+      "recall": 0,
+      "support": 1
+    },
+    "audio.ambient": {
+      "f1": 0,
+      "precision": 0,
+      "recall": 0,
+      "support": 3
+    }
+  }
+}

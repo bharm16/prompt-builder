@@ -163,6 +163,8 @@
     "test:ui": "vitest --ui --config config/test/vitest.unit.config.js",
     "test:coverage": "vitest run --coverage --config config/test/vitest.unit.config.js",
     "eval:span": "tsx --tsconfig server/tsconfig.json scripts/evaluation/run-golden-set-evaluation.ts",
+    "eval:golden-set": "tsx --tsconfig server/tsconfig.json scripts/evaluation/golden-set-relaxed-f1.ts",
+    "eval:golden-set:bless": "tsx --tsconfig server/tsconfig.json scripts/evaluation/golden-set-relaxed-f1.ts --bless",
     "eval:suggestions": "tsx --tsconfig server/tsconfig.json tests/evaluation/suggestions/SuggestionBenchmark.ts",
     "eval:optimization": "tsx --tsconfig server/tsconfig.json tests/evaluation/optimization/OptimizationBenchmark.ts",
     "eval:regression": "tsx --tsconfig server/tsconfig.json tests/evaluation/regression/RegressionRunner.ts",
