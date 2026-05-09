@@ -1,18 +1,18 @@
-import React from "react";
-import { CollapsibleDrawer } from "@components/CollapsibleDrawer";
-import { FEATURES } from "@/config/features.config";
-import { cn } from "@/utils/cn";
-import { CategoryLegend } from "@features/prompt-optimizer/components/CategoryLegend";
-import { VersionsPanel } from "@features/prompt-optimizer/components/VersionsPanel";
-import { GenerationsPanel } from "@features/generations";
-import { SpanCategoryAccordion } from "@features/prompt-optimizer/SpanCategoryAccordion/SpanCategoryAccordion";
-import { HighlightingErrorBoundary } from "@features/span-highlighting/components/HighlightingErrorBoundary";
-import { CoherencePanel } from "@features/prompt-optimizer/components/coherence/CoherencePanel";
-import { CanvasWorkspace } from "@features/workspace-shell";
-import type { PromptCanvasViewProps } from "./PromptCanvasView.types";
-import { PromptCanvasEditorSection } from "./PromptCanvasEditorSection";
-import { PromptCanvasMobileGenerations } from "./PromptCanvasMobileGenerations";
-import { PromptCanvasDiffDialog } from "./PromptCanvasDiffDialog";
+import React from 'react';
+import { CollapsibleDrawer } from '@components/CollapsibleDrawer';
+import { FEATURES } from '@/config/features.config';
+import { cn } from '@/utils/cn';
+import { CategoryLegend } from '@features/prompt-optimizer/components/CategoryLegend';
+import { VersionsPanel } from '@features/prompt-optimizer/components/VersionsPanel';
+import { GenerationsPanel } from '@features/generations';
+import { SpanCategoryAccordion } from '@features/prompt-optimizer/SpanCategoryAccordion/SpanCategoryAccordion';
+import { HighlightingErrorBoundary } from '@features/span-highlighting/components/HighlightingErrorBoundary';
+import { CoherencePanel } from '@features/prompt-optimizer/components/coherence/CoherencePanel';
+import { CanvasWorkspace } from '@features/workspace-shell';
+import type { PromptCanvasViewProps } from './PromptCanvasView.types';
+import { PromptCanvasEditorSection } from './PromptCanvasEditorSection';
+import { PromptCanvasMobileGenerations } from './PromptCanvasMobileGenerations';
+import { PromptCanvasDiffDialog } from './PromptCanvasDiffDialog';
 
 export function PromptCanvasView({
   selectedMode,
@@ -85,7 +85,6 @@ export function PromptCanvasView({
   resolvedI2VReason,
   i2vMotionAlternatives,
   onLockedAlternativeClick,
-  i2vContext,
   coherenceIssues,
   isCoherenceChecking,
   isCoherencePanelExpanded,
@@ -193,9 +192,9 @@ export function PromptCanvasView({
 
   return (
     <div
-      className={cn("relative flex min-h-0 flex-1 flex-col pb-20 lg:pb-0")}
+      className={cn('relative flex min-h-0 flex-1 flex-col pb-20 lg:pb-0')}
       data-mode={selectedMode}
-      data-outline-open={outlineOverlayActive ? "true" : "false"}
+      data-outline-open={outlineOverlayActive ? 'true' : 'false'}
     >
       <CategoryLegend
         show={showLegend}
@@ -208,8 +207,8 @@ export function PromptCanvasView({
         <div
           ref={outlineOverlayRef}
           className={cn(
-            "z-modal border-border bg-surface-1 absolute bottom-6 left-6 top-6 flex w-96 flex-col overflow-hidden rounded-xl border shadow-lg",
-            "ps-animate-scale-in",
+            'z-modal border-border bg-surface-1 absolute bottom-6 left-6 top-6 flex w-96 flex-col overflow-hidden rounded-xl border shadow-lg',
+            'ps-animate-scale-in'
           )}
           data-state={outlineOverlayState}
           role="dialog"
@@ -240,8 +239,8 @@ export function PromptCanvasView({
 
       <div
         className={cn(
-          "gap-ps-3 p-ps-3 relative flex min-h-0 flex-1 flex-col bg-tool-panel-inner",
-          outlineOverlayActive && "pointer-events-none opacity-60",
+          'gap-ps-3 p-ps-3 bg-tool-panel-inner relative flex min-h-0 flex-1 flex-col',
+          outlineOverlayActive && 'pointer-events-none opacity-60'
         )}
       >
         {!hasCanvasContent ? (
@@ -256,14 +255,14 @@ export function PromptCanvasView({
               </p>
               <div className="pt-4">
                 <p className="text-label-sm text-faint">
-                  Tip: Press{" "}
-                  <kbd className="px-1.5 py-0.5 rounded bg-surface-3 text-muted font-mono text-xs">
+                  Tip: Press{' '}
+                  <kbd className="bg-surface-3 text-muted rounded px-1.5 py-0.5 font-mono text-xs">
                     ⌘
-                  </kbd>{" "}
-                  +{" "}
-                  <kbd className="px-1.5 py-0.5 rounded bg-surface-3 text-muted font-mono text-xs">
+                  </kbd>{' '}
+                  +{' '}
+                  <kbd className="bg-surface-3 text-muted rounded px-1.5 py-0.5 font-mono text-xs">
                     Enter
-                  </kbd>{" "}
+                  </kbd>{' '}
                   to optimize
                 </p>
               </div>
@@ -274,7 +273,7 @@ export function PromptCanvasView({
             <div className="gap-ps-3 flex min-h-0 min-w-0 flex-1 flex-col self-stretch lg:min-w-80 lg:flex-[9]">
               <div
                 ref={editorColumnRef}
-                className={cn("flex min-h-0 min-w-0 flex-1 flex-col")}
+                className={cn('flex min-h-0 min-w-0 flex-1 flex-col')}
               >
                 <div className="flex min-h-[200px] flex-auto flex-col overflow-y-auto lg:min-h-[300px]">
                   <div className="pb-ps-card flex h-full min-h-0 w-full flex-1 flex-col gap-0 overflow-hidden px-0">
@@ -284,7 +283,6 @@ export function PromptCanvasView({
                       modelFormatOptions={modelFormatOptions}
                       modelFormatDisabled={modelFormatDisabled}
                       onModelFormatChange={onModelFormatChange}
-                      i2vContext={i2vContext}
                       outlineOverlayActive={outlineOverlayActive}
                       openOutlineOverlay={openOutlineOverlay}
                       onCopy={onCopy}
@@ -398,7 +396,7 @@ export function PromptCanvasView({
         )}
 
         <div
-          className="hidden w-px self-stretch bg-tool-rail-border lg:block"
+          className="bg-tool-rail-border hidden w-px self-stretch lg:block"
           aria-hidden="true"
         />
 

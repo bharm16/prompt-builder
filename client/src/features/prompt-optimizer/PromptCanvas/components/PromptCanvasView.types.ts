@@ -1,17 +1,16 @@
-import type { DrawerDisplayMode } from "@components/CollapsibleDrawer";
-import type { AssetSuggestion } from "@features/assets/hooks/useTriggerAutocomplete";
-import type { PromptVersionEntry } from "@features/prompt-optimizer/types/domain/prompt-session";
-import type { PromptContext } from "@utils/PromptContext/PromptContext";
-import type { InlineSuggestion, SuggestionItem } from "../types";
-import type { ExportFormat } from "@features/prompt-optimizer/types";
+import type { DrawerDisplayMode } from '@components/CollapsibleDrawer';
+import type { AssetSuggestion } from '@features/assets/hooks/useTriggerAutocomplete';
+import type { PromptVersionEntry } from '@features/prompt-optimizer/types/domain/prompt-session';
+import type { PromptContext } from '@utils/PromptContext/PromptContext';
+import type { InlineSuggestion, SuggestionItem } from '../types';
+import type { ExportFormat } from '@features/prompt-optimizer/types';
 import type {
   Generation,
   GenerationsPanelProps,
-} from "@features/generations/types";
-import type { Span } from "@features/prompt-optimizer/SpanCategoryAccordion/components/types";
-import type { CoherenceIssue } from "@features/prompt-optimizer/components/coherence/useCoherenceAnnotations";
-import type { CoherenceRecommendation } from "@features/prompt-optimizer/types/coherence";
-import type { I2VContext } from "@features/prompt-optimizer/types/i2v";
+} from '@features/generations/types';
+import type { Span } from '@features/prompt-optimizer/SpanCategoryAccordion/components/types';
+import type { CoherenceIssue } from '@features/prompt-optimizer/components/coherence/useCoherenceAnnotations';
+import type { CoherenceRecommendation } from '@features/prompt-optimizer/types/coherence';
 
 export interface VersionsDrawerState {
   isOpen: boolean;
@@ -31,7 +30,7 @@ export interface VersionsPanelPropsBase {
 export interface PromptCanvasViewProps {
   selectedMode: string;
   outlineOverlayActive: boolean;
-  outlineOverlayState: "closed" | "opening" | "open" | "closing";
+  outlineOverlayState: 'closed' | 'opening' | 'open' | 'closing';
   outlineOverlayRef: React.RefObject<HTMLDivElement>;
   categorySpans: Span[];
   editorRef: React.RefObject<HTMLDivElement>;
@@ -76,7 +75,7 @@ export interface PromptCanvasViewProps {
   inlineSuggestions: InlineSuggestion[];
   activeSuggestionIndex: number;
   onActiveSuggestionChange: (index: number) => void;
-  interactionSourceRef: React.MutableRefObject<"keyboard" | "mouse" | "auto">;
+  interactionSourceRef: React.MutableRefObject<'keyboard' | 'mouse' | 'auto'>;
   onSuggestionClick: (suggestion: SuggestionItem | string) => void;
   onCloseInlinePopover: () => void;
   selectionLabel: string;
@@ -99,7 +98,6 @@ export interface PromptCanvasViewProps {
   resolvedI2VReason: string | null;
   i2vMotionAlternatives: SuggestionItem[];
   onLockedAlternativeClick: (suggestion: SuggestionItem) => void;
-  i2vContext?: I2VContext | null | undefined;
   coherenceIssues?: CoherenceIssue[] | undefined;
   isCoherenceChecking?: boolean | undefined;
   isCoherencePanelExpanded?: boolean | undefined;
@@ -116,7 +114,7 @@ export interface PromptCanvasViewProps {
   onReuseGeneration: (generation: Generation) => void;
   onToggleGenerationFavorite: (
     generationId: string,
-    isFavorite: boolean,
+    isFavorite: boolean
   ) => void;
   generationsSheetOpen: boolean;
   onGenerationsSheetOpenChange: (open: boolean) => void;

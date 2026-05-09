@@ -1,4 +1,4 @@
-import React from "react";
+import React from 'react';
 import {
   ArrowClockwise,
   ArrowCounterClockwise,
@@ -10,101 +10,100 @@ import {
   Lock,
   LockOpen,
   VideoCamera,
-} from "@promptstudio/system/components/ui";
+} from '@promptstudio/system/components/ui';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
-} from "@promptstudio/system/components/ui/select";
-import { LoadingDots } from "@components/LoadingDots";
-import { cn } from "@/utils/cn";
-import { TriggerAutocomplete } from "@features/assets/components/TriggerAutocomplete";
-import { PromptEditor } from "@features/prompt-optimizer/components/PromptEditor";
-import type { PromptCanvasViewProps } from "./PromptCanvasView.types";
-import { PromptCanvasSuggestionsPanel } from "./PromptCanvasSuggestionsPanel";
-import { CanvasButton } from "./PromptCanvasView.shared";
+} from '@promptstudio/system/components/ui/select';
+import { LoadingDots } from '@components/LoadingDots';
+import { cn } from '@/utils/cn';
+import { TriggerAutocomplete } from '@features/assets/components/TriggerAutocomplete';
+import { PromptEditor } from '@features/prompt-optimizer/components/PromptEditor';
+import type { PromptCanvasViewProps } from './PromptCanvasView.types';
+import { PromptCanvasSuggestionsPanel } from './PromptCanvasSuggestionsPanel';
+import { CanvasButton } from './PromptCanvasView.shared';
 
 type PromptCanvasEditorSectionProps = Pick<
   PromptCanvasViewProps,
-  | "modelFormatValue"
-  | "modelFormatLabel"
-  | "modelFormatOptions"
-  | "modelFormatDisabled"
-  | "onModelFormatChange"
-  | "i2vContext"
-  | "outlineOverlayActive"
-  | "openOutlineOverlay"
-  | "onCopy"
-  | "copied"
-  | "onUndo"
-  | "canUndo"
-  | "onRedo"
-  | "canRedo"
-  | "exportMenuRef"
-  | "showExportMenu"
-  | "onToggleExportMenu"
-  | "onShowDiffChange"
-  | "onExport"
-  | "onShare"
-  | "isOutputLoading"
-  | "editorWrapperRef"
-  | "editorRef"
-  | "onTextSelection"
-  | "onHighlightClick"
-  | "onHighlightMouseDown"
-  | "onHighlightMouseEnter"
-  | "onHighlightMouseLeave"
-  | "onCopyEvent"
-  | "onInput"
-  | "onEditorKeyDown"
-  | "onEditorBlur"
-  | "autocompleteOpen"
-  | "autocompleteSuggestions"
-  | "autocompleteSelectedIndex"
-  | "autocompletePosition"
-  | "autocompleteLoading"
-  | "onAutocompleteSelect"
-  | "onAutocompleteClose"
-  | "onAutocompleteIndexChange"
-  | "outputLocklineRef"
-  | "enableMLHighlighting"
-  | "hoveredSpanId"
-  | "lockButtonPosition"
-  | "lockButtonRef"
-  | "onToggleLock"
-  | "onCancelHideLockButton"
-  | "onLockButtonMouseLeave"
-  | "isHoveredLocked"
-  | "selectedSpanId"
-  | "suggestionCount"
-  | "suggestionsListRef"
-  | "inlineSuggestions"
-  | "activeSuggestionIndex"
-  | "onActiveSuggestionChange"
-  | "interactionSourceRef"
-  | "onSuggestionClick"
-  | "onCloseInlinePopover"
-  | "selectionLabel"
-  | "onApplyActiveSuggestion"
-  | "customRequest"
-  | "onCustomRequestChange"
-  | "customRequestError"
-  | "onCustomRequestErrorChange"
-  | "onCustomRequestSubmit"
-  | "isCustomRequestDisabled"
-  | "isCustomLoading"
-  | "responseMetadata"
-  | "onCopyAllDebug"
-  | "isBulkCopyLoading"
-  | "isInlineLoading"
-  | "isInlineError"
-  | "inlineErrorMessage"
-  | "isInlineEmpty"
-  | "showI2VLockIndicator"
-  | "resolvedI2VReason"
-  | "i2vMotionAlternatives"
-  | "onLockedAlternativeClick"
+  | 'modelFormatValue'
+  | 'modelFormatLabel'
+  | 'modelFormatOptions'
+  | 'modelFormatDisabled'
+  | 'onModelFormatChange'
+  | 'outlineOverlayActive'
+  | 'openOutlineOverlay'
+  | 'onCopy'
+  | 'copied'
+  | 'onUndo'
+  | 'canUndo'
+  | 'onRedo'
+  | 'canRedo'
+  | 'exportMenuRef'
+  | 'showExportMenu'
+  | 'onToggleExportMenu'
+  | 'onShowDiffChange'
+  | 'onExport'
+  | 'onShare'
+  | 'isOutputLoading'
+  | 'editorWrapperRef'
+  | 'editorRef'
+  | 'onTextSelection'
+  | 'onHighlightClick'
+  | 'onHighlightMouseDown'
+  | 'onHighlightMouseEnter'
+  | 'onHighlightMouseLeave'
+  | 'onCopyEvent'
+  | 'onInput'
+  | 'onEditorKeyDown'
+  | 'onEditorBlur'
+  | 'autocompleteOpen'
+  | 'autocompleteSuggestions'
+  | 'autocompleteSelectedIndex'
+  | 'autocompletePosition'
+  | 'autocompleteLoading'
+  | 'onAutocompleteSelect'
+  | 'onAutocompleteClose'
+  | 'onAutocompleteIndexChange'
+  | 'outputLocklineRef'
+  | 'enableMLHighlighting'
+  | 'hoveredSpanId'
+  | 'lockButtonPosition'
+  | 'lockButtonRef'
+  | 'onToggleLock'
+  | 'onCancelHideLockButton'
+  | 'onLockButtonMouseLeave'
+  | 'isHoveredLocked'
+  | 'selectedSpanId'
+  | 'suggestionCount'
+  | 'suggestionsListRef'
+  | 'inlineSuggestions'
+  | 'activeSuggestionIndex'
+  | 'onActiveSuggestionChange'
+  | 'interactionSourceRef'
+  | 'onSuggestionClick'
+  | 'onCloseInlinePopover'
+  | 'selectionLabel'
+  | 'onApplyActiveSuggestion'
+  | 'customRequest'
+  | 'onCustomRequestChange'
+  | 'customRequestError'
+  | 'onCustomRequestErrorChange'
+  | 'onCustomRequestSubmit'
+  | 'isCustomRequestDisabled'
+  | 'isCustomLoading'
+  | 'responseMetadata'
+  | 'onCopyAllDebug'
+  | 'isBulkCopyLoading'
+  | 'isInlineLoading'
+  | 'isInlineError'
+  | 'inlineErrorMessage'
+  | 'isInlineEmpty'
+  | 'showI2VLockIndicator'
+  | 'resolvedI2VReason'
+  | 'i2vMotionAlternatives'
+  | 'onLockedAlternativeClick'
 >;
 
 export function PromptCanvasEditorSection({
@@ -113,7 +112,6 @@ export function PromptCanvasEditorSection({
   modelFormatOptions,
   modelFormatDisabled,
   onModelFormatChange,
-  i2vContext,
   outlineOverlayActive,
   openOutlineOverlay,
   onCopy,
@@ -190,11 +188,11 @@ export function PromptCanvasEditorSection({
   return (
     <div
       className={cn(
-        "flex min-h-0 flex-1 flex-col transition-opacity",
-        isOutputLoading && "opacity-80",
+        'flex min-h-0 flex-1 flex-col transition-opacity',
+        isOutputLoading && 'opacity-80'
       )}
     >
-      <div className="flex h-11 items-center border-b border-tool-rail-border px-3">
+      <div className="border-tool-rail-border flex h-11 items-center border-b px-3">
         <Select
           value={modelFormatValue}
           onValueChange={onModelFormatChange}
@@ -203,7 +201,7 @@ export function PromptCanvasEditorSection({
           <SelectTrigger
             size="xs"
             variant="ghost"
-            className="h-7 min-w-24 max-w-40 justify-start rounded-md px-2 text-[11px] font-medium text-muted transition-colors hover:bg-surface-2 hover:text-foreground [&>span]:!flex [&>span]:overflow-visible"
+            className="text-muted hover:bg-surface-2 hover:text-foreground h-7 min-w-24 max-w-40 justify-start rounded-md px-2 text-[11px] font-medium transition-colors [&>span]:!flex [&>span]:overflow-visible"
             aria-label={`Model format: ${modelFormatLabel}`}
             title={`Model format: ${modelFormatLabel}`}
           >
@@ -227,19 +225,13 @@ export function PromptCanvasEditorSection({
           </SelectContent>
         </Select>
 
-        {i2vContext?.isI2VMode && (
-          <span className="ml-2 rounded bg-surface-2 px-1.5 py-0.5 text-[10px] font-medium text-faint">
-            I2V {i2vContext.constraintMode}
-          </span>
-        )}
-
         <div className="flex-1" />
 
         {!outlineOverlayActive && (
           <CanvasButton
             type="button"
             size="icon-sm"
-            className="h-7 w-7 shadow-none [&_svg]:size-[14px] focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0"
+            className="h-7 w-7 shadow-none focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 [&_svg]:size-[14px]"
             onClick={openOutlineOverlay}
             aria-label="Prompt structure"
             title="Prompt structure"
@@ -249,17 +241,17 @@ export function PromptCanvasEditorSection({
         )}
 
         <div
-          className="mx-1 h-3.5 w-px bg-tool-nav-active"
+          className="bg-tool-nav-active mx-1 h-3.5 w-px"
           aria-hidden="true"
         />
 
         <CanvasButton
           type="button"
           size="icon-sm"
-          className="h-7 w-7 shadow-none [&_svg]:size-[14px] focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0"
+          className="h-7 w-7 shadow-none focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 [&_svg]:size-[14px]"
           onClick={onCopy}
-          aria-label={copied ? "Copied to clipboard" : "Copy to clipboard"}
-          title={copied ? "Copied" : "Copy"}
+          aria-label={copied ? 'Copied to clipboard' : 'Copy to clipboard'}
+          title={copied ? 'Copied' : 'Copy'}
         >
           {copied ? (
             <Icon icon={Check} size="sm" weight="bold" aria-hidden="true" />
@@ -270,7 +262,7 @@ export function PromptCanvasEditorSection({
         <CanvasButton
           type="button"
           size="icon-sm"
-          className="h-7 w-7 shadow-none [&_svg]:size-[14px] focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0"
+          className="h-7 w-7 shadow-none focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 [&_svg]:size-[14px]"
           onClick={onUndo}
           disabled={!canUndo}
           aria-label="Undo"
@@ -285,7 +277,7 @@ export function PromptCanvasEditorSection({
         <CanvasButton
           type="button"
           size="icon-sm"
-          className="h-7 w-7 shadow-none [&_svg]:size-[14px] focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0"
+          className="h-7 w-7 shadow-none focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 [&_svg]:size-[14px]"
           onClick={onRedo}
           disabled={!canRedo}
           aria-label="Redo"
@@ -302,7 +294,7 @@ export function PromptCanvasEditorSection({
           <CanvasButton
             type="button"
             size="icon-sm"
-            className="h-7 w-7 shadow-none [&_svg]:size-[14px] focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0"
+            className="h-7 w-7 shadow-none focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 [&_svg]:size-[14px]"
             onClick={() => onToggleExportMenu(!showExportMenu)}
             aria-expanded={showExportMenu}
             aria-haspopup="menu"
@@ -314,51 +306,9 @@ export function PromptCanvasEditorSection({
 
           {showExportMenu && (
             <div
-              className="absolute right-0 top-full z-20 mt-1.5 w-52 rounded-lg border border-tool-nav-active bg-tool-surface-card p-1.5 shadow-[0_8px_24px_rgba(0,0,0,0.5)]"
+              className="border-tool-nav-active bg-tool-surface-card absolute right-0 top-full z-20 mt-1.5 w-52 rounded-lg border p-1.5 shadow-[0_8px_24px_rgba(0,0,0,0.5)]"
               role="menu"
             >
-              {i2vContext?.isI2VMode && (
-                <>
-                  <div className="px-2.5 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-faint">
-                    I2V Mode
-                  </div>
-                  {(["strict", "flexible", "transform"] as const).map(
-                    (mode) => (
-                      <CanvasButton
-                        key={mode}
-                        type="button"
-                        role="menuitem"
-                        className={cn(
-                          "w-full justify-start rounded-md px-2.5 py-1.5 text-[12px] transition-colors",
-                          i2vContext.constraintMode === mode
-                            ? "font-semibold text-foreground"
-                            : "font-normal text-muted hover:bg-surface-2 hover:text-foreground",
-                        )}
-                        onClick={() => {
-                          i2vContext.setConstraintMode(mode);
-                          onToggleExportMenu(false);
-                        }}
-                      >
-                        {mode.charAt(0).toUpperCase() + mode.slice(1)}
-                        {i2vContext.constraintMode === mode && (
-                          <Icon
-                            icon={Check}
-                            size="sm"
-                            weight="bold"
-                            className="ml-auto"
-                            aria-hidden="true"
-                          />
-                        )}
-                      </CanvasButton>
-                    ),
-                  )}
-                  <div
-                    className="my-1 h-px bg-tool-nav-active"
-                    aria-hidden="true"
-                  />
-                </>
-              )}
-
               <CanvasButton
                 type="button"
                 onClick={() => {
@@ -371,13 +321,13 @@ export function PromptCanvasEditorSection({
                 Compare versions
               </CanvasButton>
               <div
-                className="my-1 h-px bg-tool-nav-active"
+                className="bg-tool-nav-active my-1 h-px"
                 aria-hidden="true"
               />
               <CanvasButton
                 type="button"
                 onClick={() => {
-                  onExport("text");
+                  onExport('text');
                   onToggleExportMenu(false);
                 }}
                 role="menuitem"
@@ -388,7 +338,7 @@ export function PromptCanvasEditorSection({
               <CanvasButton
                 type="button"
                 onClick={() => {
-                  onExport("markdown");
+                  onExport('markdown');
                   onToggleExportMenu(false);
                 }}
                 role="menuitem"
@@ -399,7 +349,7 @@ export function PromptCanvasEditorSection({
               <CanvasButton
                 type="button"
                 onClick={() => {
-                  onExport("json");
+                  onExport('json');
                   onToggleExportMenu(false);
                 }}
                 role="menuitem"
@@ -408,7 +358,7 @@ export function PromptCanvasEditorSection({
                 Export .json
               </CanvasButton>
               <div
-                className="my-1 h-px bg-tool-nav-active"
+                className="bg-tool-nav-active my-1 h-px"
                 aria-hidden="true"
               />
               <CanvasButton
@@ -464,8 +414,8 @@ export function PromptCanvasEditorSection({
             <div
               ref={outputLocklineRef}
               className={cn(
-                "bg-border mt-4 h-px w-full origin-left scale-x-0 transition-transform duration-300",
-                isOutputLoading && "scale-x-100",
+                'bg-border mt-4 h-px w-full origin-left scale-x-0 transition-transform duration-300',
+                isOutputLoading && 'scale-x-100'
               )}
               aria-hidden="true"
             />
@@ -483,17 +433,17 @@ export function PromptCanvasEditorSection({
                   onMouseLeave={onLockButtonMouseLeave}
                   onMouseDown={(e) => e.preventDefault()}
                   className={cn(
-                    "border-border bg-surface-2 text-muted absolute z-10 -mt-1.5 inline-flex h-9 w-9 -translate-x-1/2 -translate-y-full items-center justify-center rounded-full border shadow-md transition-colors",
-                    "hover:border-border-strong hover:bg-surface-3 hover:text-foreground",
-                    isHoveredLocked && "border-accent text-foreground",
+                    'border-border bg-surface-2 text-muted absolute z-10 -mt-1.5 inline-flex h-9 w-9 -translate-x-1/2 -translate-y-full items-center justify-center rounded-full border shadow-md transition-colors',
+                    'hover:border-border-strong hover:bg-surface-3 hover:text-foreground',
+                    isHoveredLocked && 'border-accent text-foreground'
                   )}
                   style={{
                     top: `${lockButtonPosition.top}px`,
                     left: `${lockButtonPosition.left}px`,
                   }}
-                  data-locked={isHoveredLocked ? "true" : "false"}
-                  aria-label={isHoveredLocked ? "Unlock span" : "Lock span"}
-                  title={isHoveredLocked ? "Unlock span" : "Lock span"}
+                  data-locked={isHoveredLocked ? 'true' : 'false'}
+                  aria-label={isHoveredLocked ? 'Unlock span' : 'Lock span'}
+                  title={isHoveredLocked ? 'Unlock span' : 'Lock span'}
                   aria-pressed={isHoveredLocked}
                 >
                   {isHoveredLocked ? (
