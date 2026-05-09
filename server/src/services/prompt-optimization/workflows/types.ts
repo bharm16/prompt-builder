@@ -1,5 +1,4 @@
 import type { ILogger } from "@interfaces/ILogger";
-import type { CapabilityValues } from "@shared/capabilities";
 import type {
   AIService,
   CompilationState,
@@ -8,11 +7,9 @@ import type {
   InferredContext,
   OptimizationMode,
   OptimizationRequest,
-  OptimizationResponse,
   ShotPlan,
   StructuredOptimizationArtifact,
 } from "../types";
-import type { I2VConstraintMode, I2VOptimizationResult } from "../types/i2v";
 
 export type MetadataMap = Record<string, unknown>;
 
@@ -148,35 +145,6 @@ export interface OptimizeFlowArgs {
   ) => void;
   intentLock: IntentLockLike;
   promptLint: PromptLintLike;
-}
-
-export type ImageObservationLike = {
-  observe(params: {
-    image: string;
-    skipCache: boolean;
-    sourcePrompt?: string;
-  }): Promise<{
-    observation?: unknown;
-    cached: boolean;
-    usedFastPath: boolean;
-  }>;
-};
-
-export type I2VStrategyLike = {
-  optimize(params: unknown): Promise<I2VOptimizationResult>;
-};
-
-export interface I2VFlowArgs {
-  params: {
-    prompt: string;
-    startImage: string;
-    constraintMode?: I2VConstraintMode;
-    sourcePrompt?: string;
-    generationParams?: CapabilityValues | null;
-    skipCache?: boolean;
-  };
-  imageObservation: ImageObservationLike;
-  i2vStrategy: I2VStrategyLike;
 }
 
 export interface ConstitutionalReviewFlowArgs {

@@ -83,7 +83,6 @@ export const runOptimizeFlow = async ({
       });
       return {
         prompt: cached,
-        inputMode: "t2v" as const,
         ...(typeof cachedMetadata?.artifactKey === "string"
           ? { artifactKey: cachedMetadata.artifactKey }
           : {}),
@@ -331,7 +330,6 @@ export const runOptimizeFlow = async ({
 
     return {
       prompt: optimizedPrompt,
-      inputMode: "t2v" as const,
       ...(artifactKey ? { artifactKey } : {}),
       ...(compilationState ? { compilation: compilationState } : {}),
       ...(optimizationMetadata ? { metadata: optimizationMetadata } : {}),

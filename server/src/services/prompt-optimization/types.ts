@@ -5,7 +5,6 @@
 import type { VideoPromptStructuredResponse } from "@server/contracts/prompt-analysis/structuredPrompt";
 import type { AIExecutionPort } from "@services/ai-model/ports/AIExecutionPort";
 import type { CapabilityValues } from "@shared/capabilities";
-import type { I2VConstraintMode, I2VOptimizationResult } from "./types/i2v";
 
 /**
  * Optimization mode type
@@ -71,10 +70,9 @@ export interface OptimizationRequest {
   useConstitutionalAI?: boolean;
   onMetadata?: (metadata: Record<string, unknown>) => void;
   signal?: AbortSignal;
-  // I2V-specific
+  /** Present in legacy I2V calls; ignored after the I2V pipeline removal. */
   startImage?: string;
-  constraintMode?: I2VConstraintMode;
-  /** server-only fast path for platform-generated images */
+  /** Present in legacy I2V calls; ignored after the I2V pipeline removal. */
   sourcePrompt?: string;
 }
 
@@ -137,9 +135,7 @@ export interface CompilePromptResponse {
 
 export interface OptimizationResponse {
   prompt: string;
-  inputMode: "t2v" | "i2v";
   metadata?: Record<string, unknown>;
-  i2v?: I2VOptimizationResult;
   artifactKey?: string;
   compilation?: CompilationState;
 }

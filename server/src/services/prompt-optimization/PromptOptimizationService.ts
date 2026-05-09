@@ -10,10 +10,8 @@ import { TemplateService } from "./services/TemplateService";
 import { IntentLockService } from "./services/IntentLockService";
 import { PromptLintGateService } from "./services/PromptLintGateService";
 import { applyIntentLockPolicy } from "./services/intentLockPolicy";
-import { I2VMotionStrategy } from "./strategies/I2VMotionStrategy";
 import type { ImageObservationService } from "@services/image-observation";
 import type { VideoPromptService } from "../video-prompt-analysis/VideoPromptService";
-import type { CapabilityValues } from "@shared/capabilities";
 import type { CacheService } from "@services/cache/CacheService";
 import type {
   AIService,
@@ -23,8 +21,6 @@ import type {
   OptimizationRequest,
   OptimizationResponse,
 } from "./types";
-import type { I2VConstraintMode } from "./types/i2v";
-import { runI2vFlow } from "./workflows/i2vFlow";
 import { runOptimizeFlow } from "./workflows/optimizeFlow";
 import { runConstitutionalReviewFlow } from "./workflows/constitutionalReview";
 
@@ -38,7 +34,6 @@ export class PromptOptimizationService {
   private readonly optimizationCache: OptimizationCacheService;
   private readonly compilationService: VideoPromptCompilationService | null;
   private readonly imageObservation: ImageObservationService;
-  private readonly i2vStrategy: I2VMotionStrategy;
   private readonly intentLock: IntentLockService;
   private readonly promptLint: PromptLintGateService;
   private readonly log: ILogger;
@@ -68,7 +63,6 @@ export class PromptOptimizationService {
         )
       : null;
     this.imageObservation = imageObservationService;
-    this.i2vStrategy = new I2VMotionStrategy(aiService);
     this.intentLock = new IntentLockService();
     this.promptLint = new PromptLintGateService(
       videoPromptService
@@ -90,24 +84,11 @@ export class PromptOptimizationService {
   }
 
   async optimize(request: OptimizationRequest): Promise<OptimizationResponse> {
-    const {
-      prompt,
-      startImage,
-      generationParams = null,
-      skipCache = false,
-      constraintMode,
-      sourcePrompt,
-    } = request;
-
-    if (startImage) {
-      return this.optimizeI2V({
-        prompt,
-        startImage,
-        generationParams,
-        skipCache,
-        ...(constraintMode !== undefined ? { constraintMode } : {}),
-        ...(sourcePrompt !== undefined ? { sourcePrompt } : {}),
-      });
+    if (request.startImage) {
+      this.log.warn(
+        "Received startImage on /api/optimize; ignoring — I2V optimization is no longer supported",
+        { operation: "optimize.i2vIgnored" },
+      );
     }
 
     return runOptimizeFlow({
@@ -123,21 +104,6 @@ export class PromptOptimizationService {
         this.logOptimizationMetrics(originalPrompt, optimizedPrompt, mode),
       intentLock: this.intentLock,
       promptLint: this.promptLint,
-    });
-  }
-
-  private async optimizeI2V(params: {
-    prompt: string;
-    startImage: string;
-    constraintMode?: I2VConstraintMode;
-    sourcePrompt?: string;
-    generationParams?: CapabilityValues | null;
-    skipCache?: boolean;
-  }): Promise<OptimizationResponse> {
-    return runI2vFlow({
-      params,
-      imageObservation: this.imageObservation,
-      i2vStrategy: this.i2vStrategy,
     });
   }
 
