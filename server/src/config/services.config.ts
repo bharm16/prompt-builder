@@ -15,6 +15,7 @@ import { registerLLMServices } from "./services/llm.services.ts";
 import { registerEnhancementServices } from "./services/enhancement.services.ts";
 import { registerGenerationServices } from "./services/generation.services.ts";
 import { registerContinuityServices } from "./services/continuity.services.ts";
+import { registerPaymentServices } from "./services/payment.services.ts";
 import { registerSessionServices } from "./services/session.services.ts";
 import { getRuntimeFlags } from "./feature-flags.ts";
 
@@ -51,6 +52,7 @@ export async function configureServices(): Promise<DIContainer> {
     container.registerValue("continuitySessionService", null);
   }
 
+  registerPaymentServices(container);
   registerSessionServices(container);
 
   return container;

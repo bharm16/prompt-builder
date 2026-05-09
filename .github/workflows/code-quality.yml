@@ -27,7 +27,7 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --no-audit --prefer-offline
 
       - name: Verify route map is up to date
         run: npm run routemap:check

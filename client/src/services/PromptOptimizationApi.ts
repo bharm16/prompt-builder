@@ -57,7 +57,12 @@ export class PromptOptimizationApi {
         },
         requestOptions,
       );
-      return OptimizeResponseSchema.parse(raw) as OptimizeResult;
+      // OptimizeResult differs from the shared OptimizeResponse only in `i2v`,
+      // which is typed as the feature-local I2VOptimizationResult on the client
+      // (`features/prompt-optimizer/types/i2v`) but stays untyped/passthrough
+      // in the shared schema. The cast bridges that single field; the rest of
+      // the envelope is fully validated by OptimizeResponseSchema at runtime.
+      return OptimizeResponseSchema.parse(raw) as unknown as OptimizeResult;
     } catch (error) {
       if (shouldUseOfflineFallback(error)) {
         return buildOfflineResult(

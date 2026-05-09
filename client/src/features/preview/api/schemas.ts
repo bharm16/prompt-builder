@@ -9,6 +9,7 @@ export {
   UploadPreviewImageResponseSchema,
   GenerateStoryboardPreviewResponseSchema,
   MediaViewUrlResponseSchema,
+  MediaViewUrlBatchItemSchema,
   MediaViewUrlBatchResponseSchema,
   FaceSwapPreviewResponseSchema,
   GenerateVideoResponseSchema,

@@ -1,26 +1,13 @@
 import type { Buffer } from "node:buffer";
+import type {
+  ReferenceImage,
+  ReferenceImageMetadata,
+} from "@shared/schemas/asset.schemas";
 
-export interface ReferenceImageMetadata {
-  width: number;
-  height: number;
-  sizeBytes: number;
-  contentType: string;
-  source?: string | null;
-  originalName?: string | null;
-}
-
-export interface ReferenceImageRecord {
-  id: string;
-  userId: string;
-  imageUrl: string;
-  thumbnailUrl: string;
-  storagePath: string;
-  thumbnailPath: string;
-  label?: string | null;
-  metadata: ReferenceImageMetadata;
-  createdAt: string;
-  updatedAt: string;
-}
+// Server-local alias preserved for callers that already use the
+// `ReferenceImageRecord` name. Wire shape is owned by the shared schema.
+export type ReferenceImageRecord = ReferenceImage;
+export type { ReferenceImageMetadata };
 
 export interface CreateReferenceImageInput {
   label?: string | null;

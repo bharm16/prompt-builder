@@ -15,6 +15,7 @@ import {
 } from "../utils/generationUtils";
 import { logger } from "@/services/LoggingService";
 import { sanitizeError } from "@/utils/logging";
+import { extractMotionMeta } from "@/utils/motion";
 import { resolveMediaUrl } from "@/services/media/MediaUrlResolver";
 import { assetApi } from "@/features/assets/api/assetApi";
 import { safeUrlHost } from "@/utils/url";
@@ -30,7 +31,6 @@ import {
 } from "@/hooks/useUserCreditBalance";
 import { getModelConfig, getModelCreditCost } from "../config/generationConfig";
 import { getVideoInputSupport } from "../utils/videoInputSupport";
-import { extractMotionMeta } from "../utils/motionMeta";
 
 /** Extract the asset ID (last path segment) from a storage path or return the value as-is. */
 const extractAssetId = (pathOrId: string): string => {

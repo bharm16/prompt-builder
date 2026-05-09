@@ -166,7 +166,7 @@ describe("GcsVideoAssetStore", () => {
       getMetadata: vi.fn().mockResolvedValue([{ size: "0" }]),
     });
     const missingName = "video-previews/missing";
-    const notFound = Object.assign(new Error("Not Found"), { code: 404 });
+    const notFound = Object.assign(new Error("No such object"), { code: 404 });
     const missing = createFile(missingName, {
       getMetadata: vi.fn().mockRejectedValue(notFound),
     });
@@ -190,7 +190,7 @@ describe("GcsVideoAssetStore", () => {
 
   it("returns null and logs warning when public url lookup fails", async () => {
     const missingName = "video-previews/missing";
-    const notFound = Object.assign(new Error("Not Found"), { code: 404 });
+    const notFound = Object.assign(new Error("No such object"), { code: 404 });
     mocks.files.set(
       missingName,
       createFile(missingName, {

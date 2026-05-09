@@ -65,6 +65,13 @@ export async function estimateDepth(
       throw new Error(result.error || "Depth estimation failed");
     }
 
+    // The discriminated union narrows result.data to non-null, but a
+    // misbehaving server could still return { success: true } without data.
+    // Guard at the boundary so callers get a clear error, not a deep TypeError.
+    if (!result.data) {
+      throw new Error("Depth estimation response missing data");
+    }
+
     log.info("Depth estimation request succeeded", {
       operation: OPERATION,
       depthRequestId,

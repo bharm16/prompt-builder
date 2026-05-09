@@ -1,3 +1,8 @@
+/**
+ * Motion-meta utilities — shared between preview API logging and the
+ * generation actions hook. Keep both call sites in lockstep.
+ */
+
 export const normalizeMotionString = (value: unknown): string | null => {
   if (typeof value !== "string") {
     return null;
@@ -6,20 +11,9 @@ export const normalizeMotionString = (value: unknown): string | null => {
   return trimmed.length > 0 ? trimmed : null;
 };
 
-export interface MotionMeta {
-  hasGenerationParams: boolean;
-  generationParamKeys: string[];
-  hasCameraMotion: boolean;
-  cameraMotionId: string | null;
-  hasSubjectMotion: boolean;
-  subjectMotionLength: number;
-  hasKeyframes: boolean;
-  keyframesCount: number;
-}
-
 export const extractMotionMeta = (
   generationParams?: Record<string, unknown>,
-): MotionMeta => {
+) => {
   const params = generationParams ?? {};
   const generationParamKeys = Object.keys(params);
   const cameraMotionId = normalizeMotionString(params.camera_motion_id);
@@ -37,5 +31,5 @@ export const extractMotionMeta = (
     subjectMotionLength: subjectMotion?.length ?? 0,
     hasKeyframes: keyframesCount > 0,
     keyframesCount,
-  };
+  } as const;
 };

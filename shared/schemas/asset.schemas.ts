@@ -145,3 +145,45 @@ export const AssetForGenerationSchema = z
     faceEmbedding: z.string().nullable().optional(),
   })
   .passthrough();
+
+// ---------------------------------------------------------------------------
+// User reference images
+//
+// Top-level reference image domain — user uploads not attached to a
+// character/style/location asset. Distinct from `AssetReferenceImageSchema`
+// above (which models images embedded inside an asset). Both client and
+// server import these so the wire shape lives in one place.
+// ---------------------------------------------------------------------------
+
+export const ReferenceImageMetadataSchema = z
+  .object({
+    width: z.number(),
+    height: z.number(),
+    sizeBytes: z.number(),
+    contentType: z.string(),
+    source: z.string().nullable().optional(),
+    originalName: z.string().nullable().optional(),
+  })
+  .passthrough();
+
+export const ReferenceImageSchema = z
+  .object({
+    id: z.string(),
+    userId: z.string(),
+    imageUrl: z.string(),
+    thumbnailUrl: z.string(),
+    storagePath: z.string(),
+    thumbnailPath: z.string(),
+    label: z.string().nullable().optional(),
+    metadata: ReferenceImageMetadataSchema,
+    createdAt: z.string(),
+    updatedAt: z.string(),
+  })
+  .passthrough();
+
+export const ReferenceImageListSchema = z.object({
+  images: z.array(ReferenceImageSchema),
+});
+
+export type ReferenceImageMetadata = z.infer<typeof ReferenceImageMetadataSchema>;
+export type ReferenceImage = z.infer<typeof ReferenceImageSchema>;
