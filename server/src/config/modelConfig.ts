@@ -466,20 +466,6 @@ export const ModelConfig: Record<string, ModelConfigEntry> = {
   },
 
   /**
-   * Parse i2v prompts into motion vs visual components
-   */
-  parse_i2v_prompt: {
-    client: process.env.I2V_PARSE_PROVIDER || "openai",
-    model: process.env.I2V_PARSE_MODEL || "gpt-4o-mini-2024-07-18",
-    temperature: 0.1,
-    maxTokens: 800,
-    timeout: 20000,
-    responseFormat: "json_object",
-    useSeed: true,
-    useDeveloperMessage: true,
-  },
-
-  /**
    * Role classification for spans
    * Temperature 0.0 for deterministic classification
    */
