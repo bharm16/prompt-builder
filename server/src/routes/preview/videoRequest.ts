@@ -81,13 +81,28 @@ export const parseVideoPreviewRequest = (
     promptVersionId?: unknown;
   };
 
-  if (!prompt || typeof prompt !== "string" || prompt.trim().length === 0) {
+  if (prompt !== undefined && typeof prompt !== "string") {
     return {
       ok: false,
       status: 400,
-      error: "Prompt must be a non-empty string",
+      error: "Prompt must be a string",
     };
   }
+
+  const promptTrimmedLen =
+    typeof prompt === "string" ? prompt.trim().length : 0;
+  const startImageIsNonEmptyString =
+    typeof startImage === "string" && startImage.trim().length > 0;
+
+  if (promptTrimmedLen === 0 && !startImageIsNonEmptyString) {
+    return {
+      ok: false,
+      status: 400,
+      error: "Prompt must be a non-empty string when no startImage is provided",
+    };
+  }
+
+  const resolvedPrompt: string = typeof prompt === "string" ? prompt : "";
 
   let resolvedAspectRatio: VideoAspectRatio | undefined;
   if (aspectRatio !== undefined) {
@@ -249,7 +264,7 @@ export const parseVideoPreviewRequest = (
   return {
     ok: true,
     payload: {
-      prompt,
+      prompt: resolvedPrompt,
       ...(resolvedAspectRatio ? { aspectRatio: resolvedAspectRatio } : {}),
       ...(resolvedModel ? { model: resolvedModel } : {}),
       ...(startImage ? { startImage } : {}),
