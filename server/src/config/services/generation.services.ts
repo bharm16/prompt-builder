@@ -26,7 +26,7 @@ import { StoryboardFramePlanner } from "@services/image-generation/storyboard/St
 import { StoryboardPreviewService } from "@services/image-generation/storyboard/StoryboardPreviewService";
 import { ModelIntelligenceService } from "@services/model-intelligence/ModelIntelligenceService";
 import { AvailabilityGateService } from "@services/model-intelligence/services/AvailabilityGateService";
-import type { PromptSpanProvider } from "@services/model-intelligence/ports/PromptSpanProvider";
+import type { PromptSpanProvider } from "@llm/span-labeling/ports/PromptSpanProvider";
 import { BillingProfileStore } from "@services/payment/BillingProfileStore";
 import type { FirestoreCircuitExecutor } from "@services/firestore/FirestoreCircuitExecutor";
 import { VideoGenerationService } from "@services/video-generation/VideoGenerationService";

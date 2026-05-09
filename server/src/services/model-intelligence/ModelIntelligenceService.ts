@@ -15,7 +15,7 @@ import { ModelScoringService } from "./services/ModelScoringService";
 import { PromptRequirementsService } from "./services/PromptRequirementsService";
 import { RecommendationExplainerService } from "./services/RecommendationExplainerService";
 import type { AvailabilityGateService } from "./services/AvailabilityGateService";
-import type { PromptSpanProvider } from "./ports/PromptSpanProvider";
+import type { PromptSpanProvider } from "@llm/span-labeling/ports/PromptSpanProvider";
 import type {
   ModelRecommendation,
   PromptRequirements,

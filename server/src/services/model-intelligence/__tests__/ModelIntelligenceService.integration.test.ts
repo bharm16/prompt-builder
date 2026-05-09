@@ -12,7 +12,7 @@ import { ModelScoringService } from "../services/ModelScoringService";
 import { PromptRequirementsService } from "../services/PromptRequirementsService";
 import { RecommendationExplainerService } from "../services/RecommendationExplainerService";
 import { AvailabilityGateService } from "../services/AvailabilityGateService";
-import type { PromptSpanProvider } from "../ports/PromptSpanProvider";
+import type { PromptSpanProvider } from "@llm/span-labeling/ports/PromptSpanProvider";
 import { SAMPLE_PROMPT, SAMPLE_SPANS } from "./fixtures/testPrompts";
 import type { VideoGenerationService } from "@services/video-generation/VideoGenerationService";
 import type {
