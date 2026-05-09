@@ -23,67 +23,6 @@ export const CompileSourceKindSchema = z.enum([
   "prompt",
 ]);
 
-export const InputModeSchema = z.enum(["t2v", "i2v"]);
-
-export const I2VConstraintModeSchema = z.enum([
-  "strict",
-  "flexible",
-  "transform",
-]);
-
-export const LockStatusSchema = z.enum(["hard", "soft", "unlocked"]);
-
-export const LockableCategorySchema = z.enum([
-  "subject.identity",
-  "subject.appearance",
-  "shot.type",
-  "shot.angle",
-  "lighting",
-  "environment",
-  "color",
-  "camera.movement",
-]);
-
-export const LockMapSchema = z
-  .object({
-    "subject.identity": LockStatusSchema,
-    "subject.appearance": LockStatusSchema,
-    "shot.type": LockStatusSchema,
-    "shot.angle": LockStatusSchema,
-    lighting: LockStatusSchema,
-    environment: LockStatusSchema,
-    color: LockStatusSchema,
-    "camera.movement": LockStatusSchema,
-  })
-  .passthrough();
-
-export const ConflictWarningSchema = z
-  .object({
-    category: LockableCategorySchema,
-    userSaid: z.string(),
-    imageShows: z.string(),
-    severity: z.enum(["info", "warning", "blocked"]),
-  })
-  .passthrough();
-
-export const I2VOptimizationResultSchema = z
-  .object({
-    prompt: z.string(),
-    conflicts: z.array(ConflictWarningSchema),
-    appliedMode: I2VConstraintModeSchema,
-    lockMap: LockMapSchema,
-    extractedMotion: z
-      .object({
-        subjectAction: z.string().nullable(),
-        cameraMovement: z.string().nullable(),
-        pacing: z.string().nullable(),
-      })
-      .passthrough(),
-  })
-  .passthrough();
-
-export type I2VOptimizationResult = z.infer<typeof I2VOptimizationResultSchema>;
-
 // ---------------------------------------------------------------------------
 // Intent lock state (attached to compilation metadata)
 // ---------------------------------------------------------------------------
@@ -132,10 +71,8 @@ export const OptimizeResponseSchema = z
   .object({
     prompt: z.string(),
     optimizedPrompt: z.string().optional(),
-    inputMode: InputModeSchema.optional(),
     artifactKey: z.string().optional(),
     compilation: CompilationStateSchema.optional(),
-    i2v: I2VOptimizationResultSchema.optional(),
     metadata: z.record(z.string(), z.unknown()).optional(),
   })
   .passthrough();
