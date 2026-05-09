@@ -7,7 +7,7 @@
 
 export const PROMPT_VERSIONS = {
   /** Standard span labeling prompt (multi-provider) */
-  SPAN_LABELING: "span-v2.2",
+  SPAN_LABELING: "span-v2.3",
   /** Image-to-video span labeling (motion-only categories) */
   I2V_SPAN_LABELING: "i2v-v2",
   /** Gemini simple prompt variant */
