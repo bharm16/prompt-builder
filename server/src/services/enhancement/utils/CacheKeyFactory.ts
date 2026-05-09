@@ -1,10 +1,10 @@
 import type { CacheService } from "@services/cache/CacheService";
+import { sha256Hex } from "@utils/hash";
 import type {
   VideoConstraints,
   BrainstormSignature,
   EditHistoryEntry,
 } from "../services/types.js";
-import { PROMPT_PREVIEW_LIMIT } from "../constants.js";
 
 export interface EnhancementCacheParams {
   engineVersion: "v1" | "v2";
@@ -58,13 +58,22 @@ export class CacheKeyFactory {
         .join("|");
     }
 
+    // Hash the long-text fields rather than truncating them. Truncation
+    // produced collisions: two distinct prompts that shared the first
+    // PROMPT_PREVIEW_LIMIT (6000) chars of fullPrompt — or the first 500 of
+    // originalUserPrompt — yielded the same cache key, so users editing the
+    // tail of a long prompt could receive cached suggestions for an earlier
+    // version. getCustomSuggestions already hashes its full inputs (see
+    // EnhancementService.ts:562); this propagates that pattern.
     return cacheService.generateKey(namespace, {
       engineVersion: params.engineVersion,
       highlightedText: params.highlightedText,
       contextBefore: params.contextBefore,
       contextAfter: params.contextAfter,
-      fullPrompt: (params.fullPrompt || "").substring(0, PROMPT_PREVIEW_LIMIT),
-      originalUserPrompt: (params.originalUserPrompt || "").substring(0, 500),
+      fullPrompt: params.fullPrompt ? sha256Hex(params.fullPrompt, 16) : "",
+      originalUserPrompt: params.originalUserPrompt
+        ? sha256Hex(params.originalUserPrompt, 16)
+        : "",
       isVideoPrompt: params.isVideoPrompt,
       brainstormSignature: params.brainstormSignature,
       highlightedCategory: params.highlightedCategory || null,

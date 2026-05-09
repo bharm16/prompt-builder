@@ -256,22 +256,32 @@ describe("CacheKeyFactory", () => {
       expect(result).toContain("action:");
     });
 
-    it("handles very long fullPrompt by truncating", async () => {
+    // Inverted invariant: previously these tests asserted that long inputs
+    // were *truncated* into the cache key. Truncation caused real collisions:
+    // two distinct prompts that shared their first PROMPT_PREVIEW_LIMIT (6000)
+    // chars produced the SAME cache key, so users editing the tail of a long
+    // prompt could receive cached suggestions for an earlier version. Fixed
+    // by hashing the full input — matches the pattern already used in
+    // getCustomSuggestions (EnhancementService.ts:562 — sha256Hex(x, 16)).
+    it("hashes long fullPrompt instead of truncating (no plaintext leak)", () => {
       const params = createBaseParams();
-      params.fullPrompt = "x".repeat(10000);
+      const longPrompt = "x".repeat(10000);
+      params.fullPrompt = longPrompt;
 
       CacheKeyFactory.generateKey("test", params, mockCacheService as never);
 
-      // The mock captures the call - verify truncation happened
       const mockCalls = mockGenerateKey.mock.calls;
       const mockCall = mockCalls[mockCalls.length - 1]?.[1] as
         | { fullPrompt?: string }
         | undefined;
 
-      expect(mockCall?.fullPrompt?.length).toBeLessThan(10000);
+      // Hash output is fixed-length (16 hex chars), much smaller than 10000
+      expect(mockCall?.fullPrompt?.length).toBe(16);
+      // Plaintext must not appear in the cache key
+      expect(mockCall?.fullPrompt).not.toContain("xxxx");
     });
 
-    it("handles very long originalUserPrompt by truncating", async () => {
+    it("hashes long originalUserPrompt instead of truncating", () => {
       const params = createBaseParams();
       params.originalUserPrompt = "y".repeat(1000);
 
@@ -282,7 +292,58 @@ describe("CacheKeyFactory", () => {
         | { originalUserPrompt?: string }
         | undefined;
 
-      expect(mockCall?.originalUserPrompt?.length).toBeLessThanOrEqual(500);
+      expect(mockCall?.originalUserPrompt?.length).toBe(16);
+      expect(mockCall?.originalUserPrompt).not.toContain("yyyy");
+    });
+
+    // Regression: two distinct long prompts that share the first 6000 chars
+    // previously collided under PROMPT_PREVIEW_LIMIT truncation, producing
+    // the same cache key. They must now produce distinct keys.
+    it("produces distinct keys for prompts that differ only after the old truncation point", () => {
+      const sharedPrefix = "a".repeat(6500);
+      const promptA = sharedPrefix + " ending one";
+      const promptB = sharedPrefix + " ending two";
+
+      const paramsA = { ...createBaseParams(), fullPrompt: promptA };
+      const paramsB = { ...createBaseParams(), fullPrompt: promptB };
+
+      const keyA = CacheKeyFactory.generateKey(
+        "test",
+        paramsA,
+        mockCacheService as never,
+      );
+      const keyB = CacheKeyFactory.generateKey(
+        "test",
+        paramsB,
+        mockCacheService as never,
+      );
+
+      expect(keyA).not.toEqual(keyB);
+    });
+
+    it("produces distinct keys for originalUserPrompts that differ only after the old 500-char limit", () => {
+      const sharedPrefix = "z".repeat(600);
+      const paramsA = {
+        ...createBaseParams(),
+        originalUserPrompt: sharedPrefix + " A",
+      };
+      const paramsB = {
+        ...createBaseParams(),
+        originalUserPrompt: sharedPrefix + " B",
+      };
+
+      const keyA = CacheKeyFactory.generateKey(
+        "test",
+        paramsA,
+        mockCacheService as never,
+      );
+      const keyB = CacheKeyFactory.generateKey(
+        "test",
+        paramsB,
+        mockCacheService as never,
+      );
+
+      expect(keyA).not.toEqual(keyB);
     });
   });
 
