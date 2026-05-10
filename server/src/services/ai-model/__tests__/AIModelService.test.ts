@@ -244,4 +244,90 @@ describe("AIModelService", () => {
     expect(service.hasOperation("test_operation")).toBe(true);
     expect(service.getAvailableClients()).toEqual(["openai"]);
   });
+
+  it("emits llm.call.completed telemetry on successful execute", async () => {
+    const record = vi.fn();
+    const complete = vi.fn().mockResolvedValue({
+      text: "ok",
+      metadata: {
+        provider: "openai",
+        model: "gpt-4o-mini",
+        finishReason: "stop",
+        usage: {
+          prompt_tokens: 50,
+          completion_tokens: 80,
+          total_tokens: 130,
+        },
+      },
+    });
+    const service = new AIModelService({
+      clients: { openai: { complete } as never },
+      llmCallTelemetry: { record } as never,
+    });
+
+    await service.execute("test_operation", { systemPrompt: "prompt" });
+
+    expect(record).toHaveBeenCalledTimes(1);
+    expect(record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        executionType: "test_operation",
+        provider: "openai",
+        model: "gpt-4o-mini",
+        promptTokens: 50,
+        completionTokens: 80,
+        totalTokens: 130,
+        finishReason: "stop",
+        outcome: "success",
+      }),
+    );
+    expect(record.mock.calls[0]?.[0].durationMs).toEqual(expect.any(Number));
+  });
+
+  it("emits llm.call.completed with outcome=error when execute fails", async () => {
+    const record = vi.fn();
+    const complete = vi.fn().mockRejectedValue(new Error("boom"));
+    const service = new AIModelService({
+      clients: { openai: { complete } as never },
+      llmCallTelemetry: { record } as never,
+    });
+
+    await expect(
+      service.execute("test_operation", { systemPrompt: "prompt" }),
+    ).rejects.toThrow("boom");
+
+    expect(record).toHaveBeenCalledTimes(1);
+    expect(record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        executionType: "test_operation",
+        outcome: "error",
+        errorMessage: "boom",
+      }),
+    );
+  });
+
+  it("does not throw if llmCallTelemetry.record itself throws", async () => {
+    const record = vi.fn(() => {
+      throw new Error("posthog blew up");
+    });
+    const complete = vi.fn().mockResolvedValue({ text: "ok", metadata: {} });
+    const service = new AIModelService({
+      clients: { openai: { complete } as never },
+      llmCallTelemetry: { record } as never,
+    });
+
+    await expect(
+      service.execute("test_operation", { systemPrompt: "prompt" }),
+    ).resolves.toMatchObject({ text: "ok" });
+  });
+
+  it("works without an injected llmCallTelemetry (optional dep)", async () => {
+    const complete = vi.fn().mockResolvedValue({ text: "ok", metadata: {} });
+    const service = new AIModelService({
+      clients: { openai: { complete } as never },
+    });
+
+    await expect(
+      service.execute("test_operation", { systemPrompt: "prompt" }),
+    ).resolves.toMatchObject({ text: "ok" });
+  });
 });

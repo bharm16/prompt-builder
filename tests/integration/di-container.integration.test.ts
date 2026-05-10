@@ -27,7 +27,6 @@ const REQUIRED_TOKENS = [
   "sessionService",
   "storageService",
   "gcsBucket",
-  "metricsService",
   "imageObservationService",
   "assetService",
   // Conditionally-mounted in api.routes.ts:107-150 but expected to register

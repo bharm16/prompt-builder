@@ -3,6 +3,7 @@ import {
   createPostHogClient,
   type IPostHogClient,
 } from "@infrastructure/PostHogClient";
+import { LlmCallTelemetryService } from "@services/observability/LlmCallTelemetryService";
 import { OptimizeTelemetryService } from "@services/observability/OptimizeTelemetryService";
 
 export function registerObservabilityServices(container: DIContainer): void {
@@ -12,6 +13,13 @@ export function registerObservabilityServices(container: DIContainer): void {
     "optimizeTelemetryService",
     (postHogClient: IPostHogClient) =>
       new OptimizeTelemetryService(postHogClient),
+    ["postHogClient"],
+  );
+
+  container.register(
+    "llmCallTelemetryService",
+    (postHogClient: IPostHogClient) =>
+      new LlmCallTelemetryService(postHogClient),
     ["postHogClient"],
   );
 }

@@ -1,22 +1,22 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { runWithRequestContext } from '@infrastructure/requestContext';
-import { LlmCallTelemetryService } from '../LlmCallTelemetryService';
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { runWithRequestContext } from "@infrastructure/requestContext";
+import { LlmCallTelemetryService } from "../LlmCallTelemetryService";
 import type {
   CaptureArgs,
   IPostHogClient,
-} from '@infrastructure/PostHogClient';
-import type { LlmCallSummary } from '../types';
+} from "@infrastructure/PostHogClient";
+import type { LlmCallSummary } from "../types";
 
 const baseSummary: LlmCallSummary = {
-  executionType: 'image_observation',
+  executionType: "image_observation",
   durationMs: 420,
-  provider: 'openai',
-  model: 'gpt-4o-mini-2024-07-18',
+  provider: "openai",
+  model: "gpt-4o-mini-2024-07-18",
   promptTokens: 100,
   completionTokens: 200,
   totalTokens: 300,
-  finishReason: 'stop',
-  outcome: 'success',
+  finishReason: "stop",
+  outcome: "success",
 };
 
 const makeMockClient = () => {
@@ -30,42 +30,42 @@ const makeMockClient = () => {
   return { client, captures };
 };
 
-describe('LlmCallTelemetryService', () => {
+describe("LlmCallTelemetryService", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('emits one llm.call.completed event per record() call', () => {
+  it("emits one llm.call.completed event per record() call", () => {
     const { client, captures } = makeMockClient();
     const service = new LlmCallTelemetryService(client);
 
     service.record(baseSummary);
 
     expect(captures).toHaveLength(1);
-    expect(captures[0]?.event).toBe('llm.call.completed');
+    expect(captures[0]?.event).toBe("llm.call.completed");
   });
 
-  it('populates all token + provider fields in event properties', () => {
+  it("populates all token + provider fields in event properties", () => {
     const { client, captures } = makeMockClient();
     const service = new LlmCallTelemetryService(client);
 
     service.record(baseSummary);
 
     expect(captures[0]?.properties).toMatchObject({
-      executionType: 'image_observation',
-      provider: 'openai',
-      model: 'gpt-4o-mini-2024-07-18',
+      executionType: "image_observation",
+      provider: "openai",
+      model: "gpt-4o-mini-2024-07-18",
       durationMs: 420,
       promptTokens: 100,
       completionTokens: 200,
       totalTokens: 300,
-      finishReason: 'stop',
-      outcome: 'success',
+      finishReason: "stop",
+      outcome: "success",
       userId: null,
     });
   });
 
-  it('rounds durationMs to an integer', () => {
+  it("rounds durationMs to an integer", () => {
     const { client, captures } = makeMockClient();
     const service = new LlmCallTelemetryService(client);
 
@@ -74,14 +74,14 @@ describe('LlmCallTelemetryService', () => {
     expect(captures[0]?.properties?.durationMs).toBe(124);
   });
 
-  it('includes errorMessage and outcome=error on failed calls', () => {
+  it("includes errorMessage and outcome=error on failed calls", () => {
     const { client, captures } = makeMockClient();
     const service = new LlmCallTelemetryService(client);
 
     service.record({
       ...baseSummary,
-      outcome: 'error',
-      errorMessage: 'rate limit exceeded',
+      outcome: "error",
+      errorMessage: "rate limit exceeded",
       provider: null,
       model: null,
       promptTokens: null,
@@ -91,8 +91,8 @@ describe('LlmCallTelemetryService', () => {
     });
 
     expect(captures[0]?.properties).toMatchObject({
-      outcome: 'error',
-      errorMessage: 'rate limit exceeded',
+      outcome: "error",
+      errorMessage: "rate limit exceeded",
       provider: null,
       model: null,
       promptTokens: null,
@@ -102,14 +102,14 @@ describe('LlmCallTelemetryService', () => {
     });
   });
 
-  it('uses userId as distinctId when provided', () => {
+  it("uses userId as distinctId when provided", () => {
     const { client, captures } = makeMockClient();
     const service = new LlmCallTelemetryService(client);
 
-    service.record({ ...baseSummary, userId: 'user-42' });
+    service.record({ ...baseSummary, userId: "user-42" });
 
-    expect(captures[0]?.distinctId).toBe('user-42');
-    expect(captures[0]?.properties?.userId).toBe('user-42');
+    expect(captures[0]?.distinctId).toBe("user-42");
+    expect(captures[0]?.properties?.userId).toBe("user-42");
   });
 
   it("falls back to 'system' distinctId when no userId is provided", () => {
@@ -118,34 +118,34 @@ describe('LlmCallTelemetryService', () => {
 
     service.record(baseSummary);
 
-    expect(captures[0]?.distinctId).toBe('system');
+    expect(captures[0]?.distinctId).toBe("system");
     expect(captures[0]?.properties?.userId).toBeNull();
   });
 
-  it('reads requestId from the AsyncLocalStorage request context when present', () => {
+  it("reads requestId from the AsyncLocalStorage request context when present", () => {
     const { client, captures } = makeMockClient();
     const service = new LlmCallTelemetryService(client);
 
-    runWithRequestContext({ requestId: 'req-abc' }, () => {
+    runWithRequestContext({ requestId: "req-abc" }, () => {
       service.record(baseSummary);
     });
 
-    expect(captures[0]?.properties?.requestId).toBe('req-abc');
+    expect(captures[0]?.properties?.requestId).toBe("req-abc");
   });
 
-  it('omits requestId when no request context is active', () => {
+  it("omits requestId when no request context is active", () => {
     const { client, captures } = makeMockClient();
     const service = new LlmCallTelemetryService(client);
 
     service.record(baseSummary);
 
-    expect(captures[0]?.properties).not.toHaveProperty('requestId');
+    expect(captures[0]?.properties).not.toHaveProperty("requestId");
   });
 
-  it('does not throw when the underlying client.capture throws', () => {
+  it("does not throw when the underlying client.capture throws", () => {
     const client: IPostHogClient = {
       capture: vi.fn(() => {
-        throw new Error('posthog down');
+        throw new Error("posthog down");
       }),
       shutdown: vi.fn(async () => {}),
     };

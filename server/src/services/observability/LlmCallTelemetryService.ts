@@ -1,7 +1,7 @@
-import { logger } from '@infrastructure/Logger';
-import type { IPostHogClient } from '@infrastructure/PostHogClient';
-import { getRequestContext } from '@infrastructure/requestContext';
-import type { LlmCallEventProperties, LlmCallSummary } from './types';
+import { logger } from "@infrastructure/Logger";
+import type { IPostHogClient } from "@infrastructure/PostHogClient";
+import { getRequestContext } from "@infrastructure/requestContext";
+import type { LlmCallEventProperties, LlmCallSummary } from "./types";
 
 /**
  * Emits one `llm.call.completed` event per LLM call recorded.
@@ -20,10 +20,10 @@ export class LlmCallTelemetryService {
 
   record(summary: LlmCallSummary): void {
     const userId = summary.userId ?? null;
-    const distinctId = userId && userId.trim().length > 0 ? userId : 'system';
+    const distinctId = userId && userId.trim().length > 0 ? userId : "system";
     const ctx = getRequestContext();
     const requestId =
-      typeof ctx?.requestId === 'string' && ctx.requestId.length > 0
+      typeof ctx?.requestId === "string" && ctx.requestId.length > 0
         ? ctx.requestId
         : undefined;
 
@@ -45,11 +45,11 @@ export class LlmCallTelemetryService {
     try {
       this.client.capture({
         distinctId,
-        event: 'llm.call.completed',
+        event: "llm.call.completed",
         properties: { ...properties },
       });
     } catch (err) {
-      logger.debug('LLM call telemetry emission failed (non-fatal)', {
+      logger.debug("LLM call telemetry emission failed (non-fatal)", {
         error: err instanceof Error ? err.message : String(err),
         executionType: summary.executionType,
       });
