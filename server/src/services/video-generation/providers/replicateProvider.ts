@@ -15,6 +15,12 @@ type LogSink = {
 const DEFAULT_WAN_NEGATIVE_PROMPT =
   "morphing, distorted, disfigured, text, watermark, low quality, blurry, static, extra limbs, fused fingers";
 
+// Replicate-routed Runway-style models (e.g. genmo/mochi-1-final,
+// minimax/video-02, and the future runway-gen45 generation adapter once
+// wired) reject empty prompts. Wan models accept empty prompts natively, so
+// the substitution is scoped to the non-Wan branch only.
+const RUNWAY_EMPTY_PROMPT_SUBSTITUTE = "subtle ambient motion";
+
 const WAN_ASPECT_RATIO_SIZE_MAP: Record<string, string> = {
   "16:9": "1280*720",
   "9:16": "720*1280",
@@ -147,6 +153,9 @@ export function buildReplicateInput(
   const isWanModel = modelId.includes("wan");
 
   if (!isWanModel) {
+    if (!prompt || prompt.trim().length === 0) {
+      input.prompt = RUNWAY_EMPTY_PROMPT_SUBSTITUTE;
+    }
     input.aspect_ratio = options.aspectRatio || "16:9";
     if (options.negativePrompt) {
       input.negative_prompt = options.negativePrompt;
