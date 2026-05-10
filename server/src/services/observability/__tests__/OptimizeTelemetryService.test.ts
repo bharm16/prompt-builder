@@ -45,9 +45,9 @@ describe("OptimizeTelemetryService", () => {
     });
 
     expect(captures).toHaveLength(1);
-    expect(captures[0].event).toBe("optimize.completed");
-    expect(captures[0].distinctId).toBe("user-1");
-    expect(captures[0].properties).toMatchObject({
+    expect(captures[0]!.event).toBe("optimize.completed");
+    expect(captures[0]!.distinctId).toBe("user-1");
+    expect(captures[0]!.properties).toMatchObject({
       requestId: "req-1",
       userId: "user-1",
       outcome: "success",
@@ -83,8 +83,8 @@ describe("OptimizeTelemetryService", () => {
       useConstitutionalAI: false,
     });
 
-    expect(captures[0].distinctId).toMatch(/^anon-/);
-    expect(captures[0].properties).toMatchObject({ userId: null });
+    expect(captures[0]!.distinctId).toMatch(/^anon-/);
+    expect(captures[0]!.properties).toMatchObject({ userId: null });
   });
 
   it("populates errorStage and errorMessage on recordError", () => {
@@ -106,7 +106,7 @@ describe("OptimizeTelemetryService", () => {
       useConstitutionalAI: false,
     });
 
-    expect(captures[0].properties).toMatchObject({
+    expect(captures[0]!.properties).toMatchObject({
       outcome: "error",
       errorStage: "compilation",
       errorMessage: "boom",
@@ -132,7 +132,7 @@ describe("OptimizeTelemetryService", () => {
       useConstitutionalAI: false,
     });
 
-    expect(captures[0].properties).toMatchObject({
+    expect(captures[0]!.properties).toMatchObject({
       cacheHit: true,
       stages: {
         shotInterpreterMs: null,
@@ -165,7 +165,7 @@ describe("OptimizeTelemetryService", () => {
       useConstitutionalAI: false,
     });
 
-    expect(captures[0].properties?.durationMs).toBeGreaterThanOrEqual(10);
+    expect(captures[0]!.properties?.durationMs).toBeGreaterThanOrEqual(10);
   });
 
   it("does not throw if the underlying client.capture throws", () => {
