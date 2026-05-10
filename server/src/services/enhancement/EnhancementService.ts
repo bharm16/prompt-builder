@@ -1,15 +1,16 @@
-import { logger } from "@infrastructure/Logger";
-import type { ILogger } from "@interfaces/ILogger";
-import type { CacheService } from "@services/cache/CacheService";
-import { sha256Hex } from "@utils/hash";
-import { TemperatureOptimizer } from "@utils/TemperatureOptimizer";
-import { EnhancementMetricsService } from "./services/EnhancementMetricsService";
-import { VideoContextDetectionService } from "./services/VideoContextDetectionService";
-import { detectPlaceholder } from "./services/placeholderDetection";
-import { CacheKeyFactory } from "./utils/CacheKeyFactory";
-import { PROMPT_MODES } from "./constants";
-import { SpanContextBuilder } from "./services/SpanContextBuilder";
-import { EnhancementV2Engine } from "./v2/index.js";
+import { logger } from '@infrastructure/Logger';
+import type { ILogger } from '@interfaces/ILogger';
+import type { CacheService } from '@services/cache/CacheService';
+import { sha256Hex } from '@utils/hash';
+import { TemperatureOptimizer } from '@utils/TemperatureOptimizer';
+import { EnhancementMetricsService } from './services/EnhancementMetricsService';
+import { VideoContextDetectionService } from './services/VideoContextDetectionService';
+import { detectPlaceholder } from './services/placeholderDetection';
+import { CacheKeyFactory } from './utils/CacheKeyFactory';
+import { PROMPT_MODES } from './constants';
+import { SpanContextBuilder } from './services/SpanContextBuilder';
+import { EnhancementV2Engine } from './v2/index.js';
+import type { SuggestionsTrace } from '@services/observability/SuggestionsTelemetryService';
 import type {
   AIService,
   VideoService,
@@ -28,12 +29,20 @@ import type {
   GroupedSuggestions,
   LabeledSpan,
   NearbySpan,
-} from "./services/types";
+} from './services/types';
+
+const makeNoopSuggestionsTrace = (): SuggestionsTrace =>
+  ({
+    recordStage: () => {},
+    recordCacheHit: () => {},
+    recordError: () => {},
+    complete: () => {},
+  }) as unknown as SuggestionsTrace;
 import type {
   EnhancementV2Config,
   EnhancementV2Execution,
   EnhancementV2RequestContext,
-} from "./v2/types.js";
+} from './v2/types.js';
 
 interface EnhancementServiceDependencies {
   aiService: AIService;
@@ -94,7 +103,7 @@ export class EnhancementService {
       metricsService = null,
       cacheService,
       enhancementConfig = {
-        policyVersion: "2026-03-v2a",
+        policyVersion: '2026-03-v2a',
       },
     } = dependencies;
 
@@ -109,18 +118,18 @@ export class EnhancementService {
       metricsService,
     };
 
-    this.log = logger.child({ service: "EnhancementService" });
+    this.log = logger.child({ service: 'EnhancementService' });
     this.cacheService = cacheService;
     this.enhancementConfig = enhancementConfig;
-    this.cacheConfig = this.cacheService.getConfig("enhancement") || {
+    this.cacheConfig = this.cacheService.getConfig('enhancement') || {
       ttl: 3600,
-      namespace: "enhancement",
+      namespace: 'enhancement',
     };
 
     this.pipeline = {
       metricsLogger: new EnhancementMetricsService(metricsService),
       videoContextDetection: new VideoContextDetectionService(
-        videoPromptService,
+        videoPromptService
       ),
       enhancementV2: new EnhancementV2Engine({
         aiService,
@@ -149,7 +158,17 @@ export class EnhancementService {
     nearbySpans = [],
     editHistory = [],
     debug = false,
+    trace,
   }: EnhancementRequestParams): Promise<EnhancementResult> {
+    const t = trace ?? makeNoopSuggestionsTrace();
+    let currentStage:
+      | 'video_context'
+      | 'span_context'
+      | 'cache'
+      | 'v2_engine'
+      | 'post_processing' = 'video_context';
+    let v2Execution: EnhancementV2Execution | null = null;
+
     const metrics: EnhancementMetrics = {
       total: 0,
       cache: false,
@@ -166,11 +185,12 @@ export class EnhancementService {
     let isVideoPrompt = false;
     let modelTarget: string | null = null;
     let promptSection: string | null = null;
+    let phraseRoleForTelemetry: string | null = null;
 
-    const operation = "getEnhancementSuggestions";
+    const operation = 'getEnhancementSuggestions';
 
     try {
-      this.log.debug("Starting operation.", {
+      this.log.debug('Starting operation.', {
         operation,
         highlightedLength: highlightedText?.length,
         highlightedCategory: highlightedCategory || null,
@@ -179,6 +199,8 @@ export class EnhancementService {
         editHistoryLength: editHistory?.length || 0,
       });
 
+      currentStage = 'video_context';
+      const videoContextStart = performance.now();
       const videoContext =
         this.pipeline.videoContextDetection.detectVideoContext({
           fullPrompt,
@@ -189,17 +211,22 @@ export class EnhancementService {
           highlightedCategoryConfidence: highlightedCategoryConfidence ?? null,
           metrics,
         });
+      t.recordStage('video_context', performance.now() - videoContextStart);
 
       isVideoPrompt = videoContext.isVideoPrompt;
       modelTarget = videoContext.modelTarget;
       promptSection = videoContext.promptSection;
       const brainstormSignature =
         this.core.brainstormBuilder.buildBrainstormSignature(
-          brainstormContext ?? null,
+          brainstormContext ?? null
         );
       const highlightWordCount = videoContext.highlightWordCount;
       const phraseRole = videoContext.phraseRole;
+      phraseRoleForTelemetry = phraseRole;
       const videoConstraints = videoContext.videoConstraints;
+
+      currentStage = 'span_context';
+      const spanContextStart = performance.now();
       const spanContext = this.pipeline.spanContextBuilder.buildSpanContext({
         allLabeledSpans,
         nearbySpans,
@@ -208,20 +235,23 @@ export class EnhancementService {
         highlightedCategory: highlightedCategory ?? null,
         phraseRole,
       });
+      t.recordStage('span_context', performance.now() - spanContextStart);
+
       const focusGuidance =
         this.core.videoPromptService.getCategoryFocusGuidance(
           phraseRole,
           highlightedCategory ?? null,
           fullPrompt,
           spanContext.guidanceSpans,
-          editHistory,
+          editHistory
         ) || undefined;
 
+      currentStage = 'cache';
       const cacheStart = Date.now();
       const cacheKey = CacheKeyFactory.generateKey(
         `${this.cacheConfig.namespace}:v2`,
         {
-          engineVersion: "v2",
+          engineVersion: 'v2',
           highlightedText,
           contextBefore,
           contextAfter,
@@ -239,14 +269,15 @@ export class EnhancementService {
           policyVersion: this.enhancementConfig.policyVersion,
           spanFingerprint: spanContext.spanFingerprint,
         },
-        this.cacheService,
+        this.cacheService
       );
 
       const cached = await this.cacheService.get<EnhancementResult>(
         cacheKey,
-        "enhancement",
+        'enhancement'
       );
       metrics.cacheCheck = Date.now() - cacheStart;
+      t.recordStage('cache', metrics.cacheCheck);
 
       if (cached && !debug) {
         metrics.cache = true;
@@ -258,18 +289,36 @@ export class EnhancementService {
           modelTarget,
           promptSection,
         });
-        this.log.debug("Cache hit for enhancement suggestions", {
+        this.log.debug('Cache hit for enhancement suggestions', {
           operation,
           cacheCheckTime: metrics.cacheCheck,
           totalTime: metrics.total,
           promptMode: metrics.promptMode,
           suggestionCount: this._countSuggestions(cached.suggestions),
         });
+        t.recordCacheHit();
+        t.complete({
+          outcome: 'success',
+          promptLength: fullPrompt?.length ?? 0,
+          suggestionCount: this._countSuggestions(cached.suggestions),
+          highlightedCategory: highlightedCategory ?? null,
+          isVideoPrompt,
+          isPlaceholder: cached.isPlaceholder,
+          modelTarget,
+          promptSection,
+          phraseRole,
+          policyVersion: this.enhancementConfig.policyVersion,
+          categoryId: null,
+          engineMode: null,
+          modelCallCount: 0,
+          fallbackApplied: false,
+          debug,
+        });
         return cached;
       }
 
       if (cached && debug) {
-        this.log.debug("Bypassing cache for debug request.", {
+        this.log.debug('Bypassing cache for debug request.', {
           operation,
           cacheCheckTime: metrics.cacheCheck,
         });
@@ -279,13 +328,13 @@ export class EnhancementService {
         highlightedText,
         contextBefore,
         contextAfter,
-        fullPrompt,
+        fullPrompt
       );
       const temperature = this._getEnhancementTemperature();
       let result: EnhancementResult;
       let rawSuggestionsSnapshot: Suggestion[] = [];
       let finalSuggestionsSnapshot: Suggestion[] = [];
-      let systemPromptSent = "";
+      let systemPromptSent = '';
       let stageCounts: Record<string, number> | undefined;
       let rejectionSummary: Record<string, number> | undefined;
       let modelCallCount: number | undefined;
@@ -299,6 +348,8 @@ export class EnhancementService {
 
       const postStart = Date.now();
 
+      currentStage = 'v2_engine';
+      const v2EngineStart = performance.now();
       const execution = await this._executeEnhancementV2({
         highlightedText,
         contextBefore,
@@ -321,21 +372,26 @@ export class EnhancementService {
         ...(focusGuidance !== undefined ? { focusGuidance } : {}),
         debug,
       });
+      t.recordStage('v2_engine', performance.now() - v2EngineStart);
+      v2Execution = execution;
+
+      currentStage = 'post_processing';
+      const postProcessingStart = performance.now();
 
       result = execution.result;
       // Snapshot clones feed the `_debug` payload below — only needed when
       // a debug request is in flight (and only outside production). Skipping
       // them on the hot path saves an O(n) shallow-copy per suggestion.
-      const wantDebugSnapshots = debug && process.env.NODE_ENV !== "production";
+      const wantDebugSnapshots = debug && process.env.NODE_ENV !== 'production';
       if (wantDebugSnapshots) {
         rawSuggestionsSnapshot = execution.rawSuggestions.map((suggestion) => ({
           ...suggestion,
         }));
         finalSuggestionsSnapshot = execution.finalSuggestions.map(
-          (suggestion) => ({ ...suggestion }),
+          (suggestion) => ({ ...suggestion })
         );
       }
-      systemPromptSent = execution.debug.systemPromptSent || "";
+      systemPromptSent = execution.debug.systemPromptSent || '';
       stageCounts = execution.debug.stageCounts;
       rejectionSummary = execution.debug.rejectionSummary;
       modelCallCount = execution.debug.modelCallCount;
@@ -363,7 +419,7 @@ export class EnhancementService {
       });
       this.pipeline.metricsLogger.checkLatency(metrics);
 
-      this.log.info("Operation completed.", {
+      this.log.info('Operation completed.', {
         operation,
         duration: metrics.total,
         suggestionCount: this._countSuggestions(result.suggestions),
@@ -374,9 +430,9 @@ export class EnhancementService {
         promptSection,
       });
 
-      if (debug && process.env.NODE_ENV !== "production") {
+      if (debug && process.env.NODE_ENV !== 'production') {
         result._debug = {
-          engineVersion: "v2",
+          engineVersion: 'v2',
           policyVersion: this.enhancementConfig.policyVersion,
           fullPrompt,
           selectedSpan: highlightedText,
@@ -384,8 +440,8 @@ export class EnhancementService {
           categoryConfidence: highlightedCategoryConfidence ?? null,
           systemPromptSent,
           // Design/slot are currently resolved inside private prompt builder internals.
-          design: "",
-          slot: "",
+          design: '',
+          slot: '',
           isVideoPrompt,
           isPlaceholder,
           modelTarget,
@@ -395,8 +451,8 @@ export class EnhancementService {
           finalSuggestions: finalSuggestionsSnapshot,
           processingNotes,
           spanContext: {
-            spanAnchors: spanContext.spanAnchors ?? "",
-            nearbySpanHints: spanContext.nearbySpanHints ?? "",
+            spanAnchors: spanContext.spanAnchors ?? '',
+            nearbySpanHints: spanContext.nearbySpanHints ?? '',
           },
           videoConstraints: videoConstraints ?? null,
           temperature,
@@ -406,6 +462,25 @@ export class EnhancementService {
           metrics: { ...metrics },
         };
       }
+
+      t.recordStage('post_processing', performance.now() - postProcessingStart);
+      t.complete({
+        outcome: 'success',
+        promptLength: fullPrompt?.length ?? 0,
+        suggestionCount: this._countSuggestions(result.suggestions),
+        highlightedCategory: highlightedCategory ?? null,
+        isVideoPrompt,
+        isPlaceholder,
+        modelTarget,
+        promptSection,
+        phraseRole,
+        policyVersion: execution.debug.policyVersion,
+        categoryId: execution.debug.categoryId,
+        engineMode: execution.debug.mode,
+        modelCallCount: execution.debug.modelCallCount,
+        fallbackApplied: result.fallbackApplied,
+        debug,
+      });
 
       return result;
     } catch (error) {
@@ -419,10 +494,31 @@ export class EnhancementService {
           modelTarget,
           promptSection,
         },
-        error as Error,
+        error as Error
       );
 
-      this.log.error("Operation failed.", error as Error, {
+      t.recordError(currentStage, error);
+      t.complete({
+        outcome: 'error',
+        promptLength: fullPrompt?.length ?? 0,
+        suggestionCount: 0,
+        highlightedCategory: highlightedCategory ?? null,
+        isVideoPrompt,
+        isPlaceholder: false,
+        modelTarget,
+        promptSection,
+        phraseRole: phraseRoleForTelemetry,
+        policyVersion:
+          v2Execution?.debug.policyVersion ??
+          this.enhancementConfig.policyVersion,
+        categoryId: v2Execution?.debug.categoryId ?? null,
+        engineMode: v2Execution?.debug.mode ?? null,
+        modelCallCount: v2Execution?.debug.modelCallCount ?? 0,
+        fallbackApplied: v2Execution?.result.fallbackApplied ?? false,
+        debug,
+      });
+
+      this.log.error('Operation failed.', error as Error, {
         operation,
         duration: metrics.total,
         highlightedCategory: highlightedCategory ?? null,
@@ -451,9 +547,9 @@ export class EnhancementService {
     metadata,
   }: CustomSuggestionRequestParams): Promise<{ suggestions: Suggestion[] }> {
     const startTime = performance.now();
-    const operation = "getCustomSuggestions";
+    const operation = 'getCustomSuggestions';
 
-    this.log.debug("Starting operation.", {
+    this.log.debug('Starting operation.', {
       operation,
       customRequestLength: customRequest?.length || 0,
       highlightedLength: highlightedText?.length,
@@ -467,8 +563,8 @@ export class EnhancementService {
     // collisions for prompts that diverged past those positions and produced
     // wrong cached suggestions.
     const cacheKey = this.cacheService.generateKey(this.cacheConfig.namespace, {
-      engineVersion: "v2",
-      mode: "custom",
+      engineVersion: 'v2',
+      mode: 'custom',
       policyVersion: this.enhancementConfig.policyVersion,
       highlightedText,
       customRequest,
@@ -483,10 +579,10 @@ export class EnhancementService {
 
     const cached = await this.cacheService.get<{ suggestions: Suggestion[] }>(
       cacheKey,
-      "enhancement",
+      'enhancement'
     );
     if (cached) {
-      this.log.debug("Cache hit for custom suggestions", {
+      this.log.debug('Cache hit for custom suggestions', {
         operation,
         duration: Math.round(performance.now() - startTime),
         suggestionCount: cached.suggestions?.length || 0,
@@ -499,8 +595,8 @@ export class EnhancementService {
 
     const v2Context: EnhancementV2RequestContext = {
       highlightedText,
-      contextBefore: contextBefore ?? "",
-      contextAfter: contextAfter ?? "",
+      contextBefore: contextBefore ?? '',
+      contextAfter: contextAfter ?? '',
       fullPrompt,
       originalUserPrompt: fullPrompt,
       brainstormContext: null,
@@ -515,8 +611,8 @@ export class EnhancementService {
       videoConstraints: null,
       modelTarget: null,
       promptSection: null,
-      spanAnchors: "",
-      nearbySpanHints: "",
+      spanAnchors: '',
+      nearbySpanHints: '',
       lockedSpanCategories: [],
       debug: false,
       customRequest,
@@ -531,7 +627,7 @@ export class EnhancementService {
       ttl: this.cacheConfig.ttl,
     });
 
-    this.log.info("Operation completed.", {
+    this.log.info('Operation completed.', {
       operation,
       duration: Math.round(performance.now() - startTime),
       count: suggestions.length,
@@ -544,13 +640,13 @@ export class EnhancementService {
   }
 
   private async _executeEnhancementV2(
-    context: EnhancementV2RequestContext,
+    context: EnhancementV2RequestContext
   ): Promise<EnhancementV2Execution> {
     return this.pipeline.enhancementV2.execute(context);
   }
 
   private _countSuggestions(
-    suggestions: EnhancementResult["suggestions"] | undefined,
+    suggestions: EnhancementResult['suggestions'] | undefined
   ): number {
     if (!Array.isArray(suggestions)) return 0;
     const first = suggestions[0] as { suggestions?: unknown } | undefined;
@@ -567,13 +663,13 @@ export class EnhancementService {
   }
 
   private _getEnhancementTemperature(): number {
-    const config = this.core.ai.getOperationConfig?.("enhance_suggestions");
-    if (typeof config?.temperature === "number") {
+    const config = this.core.ai.getOperationConfig?.('enhance_suggestions');
+    if (typeof config?.temperature === 'number') {
       return config.temperature;
     }
-    return TemperatureOptimizer.getOptimalTemperature("enhancement", {
-      diversity: "high",
-      precision: "medium",
+    return TemperatureOptimizer.getOptimalTemperature('enhancement', {
+      diversity: 'high',
+      precision: 'medium',
     });
   }
 }
