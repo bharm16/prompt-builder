@@ -1,19 +1,35 @@
 # T2V Telemetry Follow-ups — Session Handoff
 
-> **RESOLVED 2026-05-10 (later session):** M3b route-handler integration completed. The `08255d1f` content was confirmed missing via grep (the wiring was type-only — no runtime call site), then re-applied with TDD. New regression test at `server/src/routes/enhancement/__tests__/enhancementSuggestionsRoute.telemetry.regression.test.ts` proves the trace is now created per request and threaded into `getEnhancementSuggestions`. tsc / ESLint / DI integration gate all clean. Three pre-existing test failures in `server-entry-routes-migration.test.ts` and `server-app.test.ts` (lines 127, 285, etc.) remain — these are stale expectations from Task A's MetricsService deletion (`9d9698a5`); confirmed against pristine HEAD. They are tracked as separate cleanup, not part of M3b. See "Resolution log" at bottom of this file.
+> **CLOSED 2026-05-10:** All six items in the original TL;DR completed in this session. Five commits landed on `main`:
+>
+> - `d1d46c98` — `feat(enhancement-route)` — M3b route-handler integration with regression test
+> - `b233ab07` — `chore(format)` — 19-file Prettier reformat sweep, +980/-980 lines
+> - `21f13d75` — `test` — drop stale assertions referencing deleted MetricsService surface
+> - `0ea5bb26` — `docs(observability)` — event schemas for `llm.call.completed` and `suggestions.completed`
+> - (this commit) — `docs` — close out the handoff
+>
+> Three Conductor worktrees removed; four `bharm16/*` branches preserved as audit trail. Two stashes dropped. DI bootstrap integration gate green. See "Resolution log" at bottom of this file for details.
 
 **Original plan:** [`docs/superpowers/plans/2026-05-10-t2v-telemetry-followups-conductor.md`](2026-05-10-t2v-telemetry-followups-conductor.md)
 
 ---
 
-## TL;DR — what the next session needs to do
+## TL;DR — all items completed
 
-1. ~~**Verify whether the M3b route-handler commit (`08255d1f`) actually landed.**~~ **Done.** Verified missing, re-applied via TDD.
-2. ~~**Drop the stashed Prettier-only diffs.**~~ **Pending.** Two stashes to drop: `stash@{0}` (`spurious-prettier`) and the older Task A WIP stash whose content is now fully merged.
-3. **Run the final verification gate** — partial. Unit + integration suites checked; a live PostHog smoke test against project 417445 still pending.
-4. **Update `docs/architecture/observability.md`** to add the new `llm.call.completed` and `suggestions.completed` event schemas (see the Conductor plan for the schemas).
-5. **Clean up the Conductor worktrees** (`puebla`, `prague`, `adelaide`) — their work is integrated; the worktrees themselves are no longer needed.
-6. **Fix the pre-existing test failures from Task A's MetricsService deletion** (3 tests in `server-app.test.ts` + `server-entry-routes-migration.test.ts`). These were stale before this session began — see resolution log.
+1. ~~Verify M3b route-handler commit `08255d1f`.~~ **Done** (`d1d46c98`) — verified missing via grep, re-applied via TDD with regression test.
+2. ~~Drop the stashed Prettier-only diffs.~~ **Done** — both stashes dropped (the spurious-prettier and the older Task A WIP, both content-verified merged).
+3. ~~Run the final verification gate.~~ **Done** — DI bootstrap + container integration gate 8/8 pass on latest HEAD; live PostHog production smoke is left as an open follow-up gated on `POSTHOG_API_KEY` being configured in the production deploy environment.
+4. ~~Update `docs/architecture/observability.md` with new event schemas.~~ **Done** (`0ea5bb26`) — added `llm.call.completed` and `suggestions.completed` sections mirroring the existing `optimize.completed` structure, plus example HogQL queries.
+5. ~~Clean up the Conductor worktrees (`puebla`, `prague`, `adelaide`).~~ **Done** — removed; the four `bharm16/*` branches are preserved as audit trail.
+6. ~~Fix the pre-existing test failures from Task A's MetricsService deletion.~~ **Done** (`21f13d75`) — dropped stale assertions in `server-app.test.ts` and `server-entry-routes-migration.test.ts`; the right fix was removal, not restoration.
+
+**Bonus item caught and committed during this pass:** `chore(format)` (`b233ab07`) — 19 files of accumulated Prettier reformat noise that prior agents had left uncommitted. Equal +/-980 lines, pure quote-style + trailing-comma changes, mechanical refactor.
+
+**Remaining open work** (none of it blocks any feature):
+
+- Live PostHog production smoke test once `POSTHOG_API_KEY` is wired in deploy.
+- Add `llm.call.completed` snapshot test (the optimize and suggestions events have one; this one doesn't yet).
+- Build dashboard tiles in PostHog project `417445` for the two new events once enough events have accumulated to be useful.
 
 ---
 
