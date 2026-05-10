@@ -1,10 +1,6 @@
 import { logger } from "@infrastructure/Logger";
 import type { NextFunction, Request, Response } from "express";
 
-interface MetricsService {
-  recordAlert?: (name: string, payload: Record<string, unknown>) => void;
-}
-
 interface PerfOperation {
   start?: number;
   duration: number | null;
@@ -33,23 +29,14 @@ type RequestWithPerf = Request & { perfMonitor?: RequestPerfMonitor };
 
 /**
  * Performance Monitor Middleware
- * Tracks request-level performance metrics for API endpoints
- *
- * Features:
- * - Attaches timing context to req.perfMonitor
- * - Tracks total request time
- * - Tracks individual operation times
- * - Logs to console in development
- * - Sends to metricsService in production
- * - Alerts if total time > 2000ms
- * - Adds X-Response-Time header to response
+ * Tracks request-level per-stage timings, exposes them via req.perfMonitor,
+ * sets the X-Response-Time header, and emits structured Pino logs.
+ * Production observability flows through PostHog (see SuggestionsTelemetryService).
  */
 export class PerformanceMonitor {
-  private metricsService: MetricsService | null;
   private isDev: boolean;
 
-  constructor(metricsService: MetricsService | null = null) {
-    this.metricsService = metricsService;
+  constructor() {
     this.isDev = process.env.NODE_ENV === "development";
   }
 
@@ -153,11 +140,6 @@ export class PerformanceMonitor {
       this._logDevelopmentMetrics(route, metrics);
     }
 
-    // Send to metrics service in production
-    if (this.metricsService && !this.isDev) {
-      this._recordProductionMetrics(route, metrics);
-    }
-
     // Alert if request exceeded threshold
     if (metrics.total > 2000) {
       this._alertSlowRequest(route, metrics);
@@ -188,16 +170,6 @@ export class PerformanceMonitor {
   }
 
   /**
-   * Record metrics to production service
-   * @private
-   */
-  _recordProductionMetrics(route: string, metrics: PerfMetrics): void {
-    // This could be extended to record specific metrics
-    // For now, we rely on the existing MetricsService middleware
-    // which tracks HTTP request duration
-  }
-
-  /**
    * Alert on slow requests
    * @private
    */
@@ -209,14 +181,5 @@ export class PerformanceMonitor {
       operations: metrics.operations,
       metadata: metrics.metadata,
     });
-
-    // Alert in production
-    if (process.env.NODE_ENV === "production" && this.metricsService) {
-      this.metricsService.recordAlert?.("request_latency_exceeded", {
-        route,
-        total: metrics.total,
-        threshold: 2000,
-      });
-    }
   }
 }

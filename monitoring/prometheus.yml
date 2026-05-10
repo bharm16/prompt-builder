@@ -26,12 +26,9 @@ rule_files:
 
 # Scrape configurations
 scrape_configs:
-  # Prompt Builder API metrics
-  - job_name: "prompt-builder-api"
-    static_configs:
-      - targets: ["localhost:3001"]
-    metrics_path: "/metrics"
-    scrape_interval: 10s # Scrape more frequently for API metrics
+  # Note: the API no longer exposes a Prometheus /metrics endpoint.
+  # Production observability is now emitted to PostHog via
+  # SuggestionsTelemetryService and LlmCallTelemetryService.
 
   # Node exporter (system metrics)
   - job_name: "node-exporter"

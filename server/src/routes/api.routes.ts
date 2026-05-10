@@ -71,7 +71,6 @@ export function createAPIRoutes(services: ApiServices): Router {
     sceneDetectionService,
     promptCoherenceService,
     suggestionsTelemetryService,
-    metricsService,
     assetService,
     consistentVideoService,
     userCreditService,
@@ -102,7 +101,6 @@ export function createAPIRoutes(services: ApiServices): Router {
       sceneDetectionService,
       promptCoherenceService,
       suggestionsTelemetryService,
-      metricsService,
     }),
   );
 

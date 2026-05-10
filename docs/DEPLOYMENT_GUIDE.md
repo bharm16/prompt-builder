@@ -377,13 +377,11 @@ kubectl apply -f k8s/security/network-policies.yaml
 
 ### Metrics
 
-**Application Metrics** (via `/metrics` endpoint):
+**Application Telemetry** (PostHog events — see [observability.md](architecture/observability.md)):
 
-- HTTP request rate
-- Response times (P50, P95, P99)
-- Error rates by endpoint
-- Cache hit/miss rates
-- Circuit breaker states
+- `optimize.completed` — T2V optimize success/failure with stage timings
+- `suggestions.completed` — enhancement-suggestion lifecycle per request
+- `llm.call.completed` — every provider call routed through aiService
 
 **Infrastructure Metrics** (via Prometheus):
 

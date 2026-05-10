@@ -197,33 +197,4 @@ describe("PerformanceMonitor", () => {
     expect(response.headers["x-response-time"]).toMatch(/\d+ms/);
     expect(mockedLogger.info).toHaveBeenCalled();
   });
-
-  it("alerts on slow requests in production", async () => {
-    process.env.NODE_ENV = "production";
-    const metricsService = { recordAlert: vi.fn() };
-    const monitor = new PerformanceMonitor(metricsService);
-    const app = express();
-
-    let now = 0;
-    vi.spyOn(Date, "now").mockImplementation(() => now);
-
-    app.use((req, res, next) => monitor.trackRequest(req, res, next));
-    app.get("/slow", (_req, res) => {
-      now = 2501;
-      res.json({ ok: true });
-    });
-
-    const response = await runSupertestOrSkip(() => request(app).get("/slow"));
-    if (!response) return;
-
-    expect(response.status).toBe(200);
-    expect(metricsService.recordAlert).toHaveBeenCalledWith(
-      "request_latency_exceeded",
-      {
-        route: "/slow",
-        total: 2501,
-        threshold: 2000,
-      },
-    );
-  });
 });

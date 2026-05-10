@@ -84,7 +84,6 @@ jobs:
           IMAGE_STORAGE_BUCKET=${{ secrets.IMAGE_STORAGE_BUCKET }},\
           VIDEO_STORAGE_BUCKET=${{ secrets.VIDEO_STORAGE_BUCKET }}" \
             --set-secrets "ALLOWED_API_KEYS=ALLOWED_API_KEYS:latest,\
-          METRICS_TOKEN=METRICS_TOKEN:latest,\
           OPENAI_API_KEY=OPENAI_API_KEY:latest,\
           GROQ_API_KEY=GROQ_API_KEY:latest"
           # Note: GOOGLE_APPLICATION_CREDENTIALS is not needed on Cloud Run.

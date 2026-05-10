@@ -100,7 +100,6 @@ function createService() {
     validationService,
     diversityEnforcer,
     categoryAligner,
-    metricsService: null,
     cacheService,
     enhancementConfig: { policyVersion: "2026-03-v2a" },
   });

@@ -235,7 +235,7 @@ k8s/
 - ✅ Alertmanager configured
 - ✅ Node Exporter configured
 - ✅ Pino structured logging
-- ✅ Metrics endpoint (/metrics)
+- ✅ PostHog telemetry (LLM calls, suggestions pipeline)
 
 **Application Monitoring:**
 

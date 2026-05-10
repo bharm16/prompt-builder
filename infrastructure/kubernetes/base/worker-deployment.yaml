@@ -22,10 +22,6 @@ spec:
         app: prompt-builder
         component: worker
         version: v1
-      annotations:
-        prometheus.io/scrape: "true"
-        prometheus.io/port: "3001"
-        prometheus.io/path: "/metrics"
     spec:
       securityContext:
         runAsNonRoot: true

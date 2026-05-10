@@ -254,7 +254,6 @@ const securitySchema = z.object({
   API_KEY: optionalApiKey(),
   ALLOWED_API_KEYS: optionalString(),
   ALLOWED_ORIGINS: optionalString(),
-  METRICS_TOKEN: optionalString(),
   FRONTEND_URL: optionalString(),
 });
 
@@ -377,13 +376,6 @@ const envSchemaWithRefinements = envSchema.superRefine((data, ctx) => {
         code: z.ZodIssueCode.custom,
         message: "ALLOWED_ORIGINS is required in production",
         path: ["ALLOWED_ORIGINS"],
-      });
-    }
-    if (!data.METRICS_TOKEN) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "METRICS_TOKEN is required in production",
-        path: ["METRICS_TOKEN"],
       });
     }
     if (!data.FRONTEND_URL) {

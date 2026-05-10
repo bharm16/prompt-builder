@@ -1236,38 +1236,6 @@ Liveness probe - checks if process is alive.
 
 ---
 
-### GET /metrics
-
-Prometheus metrics endpoint.
-
-**Endpoint:** `GET /metrics`
-
-**Response:** `200 OK` (Prometheus format)
-
-```
-# HELP http_requests_total Total HTTP requests
-# TYPE http_requests_total counter
-http_requests_total{method="POST",route="/api/optimize",status="200"} 1234
-
-# HELP http_request_duration_seconds HTTP request duration in seconds
-# TYPE http_request_duration_seconds histogram
-http_request_duration_seconds_bucket{le="0.1",route="/api/optimize"} 450
-http_request_duration_seconds_bucket{le="0.5",route="/api/optimize"} 980
-http_request_duration_seconds_bucket{le="1",route="/api/optimize"} 1200
-
-# HELP cache_hits_total Total cache hits
-# TYPE cache_hits_total counter
-cache_hits_total{cache="memory"} 5678
-cache_hits_total{cache="redis"} 1234
-
-# HELP llm_api_calls_total Total LLM API calls
-# TYPE llm_api_calls_total counter
-llm_api_calls_total{provider="openai",model="gpt-4o-mini"} 890
-llm_api_calls_total{provider="groq",model="llama-3.1-8b-instant"} 1234
-```
-
----
-
 ### GET /stats
 
 System statistics in JSON format.

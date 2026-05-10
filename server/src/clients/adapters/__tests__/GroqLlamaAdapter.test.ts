@@ -15,13 +15,6 @@ vi.mock("@infrastructure/Logger", () => ({
   },
 }));
 
-vi.mock("@infrastructure/MetricsService", () => ({
-  metricsService: {
-    recordClaudeAPICall: vi.fn(),
-    updateCircuitBreakerState: vi.fn(),
-  },
-}));
-
 vi.mock("@clients/utils/abortController", () => ({
   createAbortController: (timeout: number, signal?: AbortSignal) => {
     const controller = new AbortController();

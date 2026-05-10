@@ -79,7 +79,6 @@ jobs:
       - name: Run smoke tests
         run: |
           curl -f ${{ vars.STAGING_URL }}/health
-          curl -f ${{ vars.STAGING_URL }}/metrics
 
       - name: Notify Slack
         uses: 8398a7/action-slack@v3

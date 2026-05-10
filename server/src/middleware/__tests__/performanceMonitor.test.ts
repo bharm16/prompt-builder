@@ -332,45 +332,6 @@ describe("PerformanceMonitor", () => {
     });
   });
 
-  describe("metrics service integration", () => {
-    it("records alert to metrics service in production for slow requests", () => {
-      process.env.NODE_ENV = "production";
-      const mockMetricsService = { recordAlert: vi.fn() };
-      const prodMonitor = new PerformanceMonitor(mockMetricsService);
-      const req = createMockRequest({ path: "/slow" });
-      const res = createMockResponse();
-      const next = vi.fn();
-
-      prodMonitor.trackRequest(req, res, next);
-      vi.advanceTimersByTime(2500);
-      res.json({});
-
-      expect(mockMetricsService.recordAlert).toHaveBeenCalledWith(
-        "request_latency_exceeded",
-        expect.objectContaining({
-          route: "/slow",
-          total: 2500,
-          threshold: 2000,
-        }),
-      );
-    });
-
-    it("does not record alert in development mode", () => {
-      process.env.NODE_ENV = "development";
-      const mockMetricsService = { recordAlert: vi.fn() };
-      const devMonitor = new PerformanceMonitor(mockMetricsService);
-      const req = createMockRequest();
-      const res = createMockResponse();
-      const next = vi.fn();
-
-      devMonitor.trackRequest(req, res, next);
-      vi.advanceTimersByTime(2500);
-      res.json({});
-
-      expect(mockMetricsService.recordAlert).not.toHaveBeenCalled();
-    });
-  });
-
   describe("development logging", () => {
     it("logs debug metrics in development mode", () => {
       process.env.NODE_ENV = "development";

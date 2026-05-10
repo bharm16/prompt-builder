@@ -476,17 +476,6 @@ export interface CategoryAligner {
 }
 
 /**
- * Metrics service interface
- */
-export interface MetricsService {
-  recordEnhancementTiming(
-    metrics: Record<string, unknown>,
-    params: Record<string, unknown>,
-  ): void;
-  recordAlert(type: string, data: Record<string, unknown>): void;
-}
-
-/**
  * Enhancement request parameters
  */
 export interface EnhancementRequestParams {

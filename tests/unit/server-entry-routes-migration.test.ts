@@ -108,7 +108,6 @@ const createApiServices = (
       complete: vi.fn(),
     })),
   } as never,
-  metricsService: undefined,
 });
 
 describe("createApp", () => {
@@ -173,10 +172,6 @@ describe("health.routes", () => {
         isHealthy: () => true,
         getCacheStats: () => ({ hits: 1, misses: 0 }),
       },
-      metricsService: {
-        register: { contentType: "text/plain" },
-        getMetrics: async () => "metrics",
-      },
     };
 
     const app = express();
@@ -212,10 +207,6 @@ describe("health.routes", () => {
       cacheService: {
         isHealthy: () => true,
         getCacheStats: () => ({ hits: 1, misses: 0 }),
-      },
-      metricsService: {
-        register: { contentType: "text/plain" },
-        getMetrics: async () => "metrics",
       },
       firestoreCircuitExecutor: {
         getReadinessSnapshot: () => ({

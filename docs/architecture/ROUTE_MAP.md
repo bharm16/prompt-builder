@@ -192,7 +192,6 @@ Regenerate with `npm run routemap:generate`. CI enforces freshness via `npm run 
 | POST   | `/llm/label-spans`                                                      | `server/src/routes/labelSpansRoute.ts`                          |
 | POST   | `/llm/label-spans-batch`                                                | `server/src/config/routes/api.registration.ts`                  |
 | POST   | `/llm/label-spans/stream`                                               | `server/src/routes/labelSpansRoute.ts`                          |
-| GET    | `/metrics`                                                              | `server/src/routes/health.routes.ts`                            |
 | GET    | `/stats`                                                                | `server/src/routes/health.routes.ts`                            |
 
-_Generated route count: **187**. Each row reflects a real `router.<method>` call reachable from `app.use` at server boot; conditional registrations (feature-flagged routes) are included because they can be registered under some configuration._
+_Generated route count: **186**. Each row reflects a real `router.<method>` call reachable from `app.use` at server boot; conditional registrations (feature-flagged routes) are included because they can be registered under some configuration._

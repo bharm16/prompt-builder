@@ -90,7 +90,6 @@ describe("parseEnv", () => {
       minimalEnv({
         NODE_ENV: "production",
         ALLOWED_ORIGINS: "https://example.com",
-        METRICS_TOKEN: "token",
         FRONTEND_URL: "https://example.com",
         GCS_BUCKET_NAME: "bucket",
       }),

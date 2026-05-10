@@ -448,14 +448,14 @@ describe("Server Bootstrap", () => {
     expect(res.status).toBe(200);
   }, 30_000);
 
-  it("exposes metrics endpoint", async () => {
+  it("responds to readiness probes", async () => {
     const { bootstrap } = await import("../../server/index.ts");
     const result = await bootstrap();
     server = result.server;
 
     const address = server!.address();
     const port = typeof address === "object" ? address?.port : 3001;
-    const res = await fetch(`http://localhost:${port}/metrics`);
+    const res = await fetch(`http://localhost:${port}/health/ready`);
     expect(res.status).toBe(200);
   }, 30_000);
 });

@@ -422,10 +422,7 @@ export function applyRateLimitingMiddleware(
   const isGeneralSkipped = (req: express.Request): boolean => {
     const p = req.path;
     return (
-      p === "/metrics" ||
-      p.startsWith("/api/") ||
-      p.startsWith("/llm/") ||
-      p.startsWith("/health")
+      p.startsWith("/api/") || p.startsWith("/llm/") || p.startsWith("/health")
     );
   };
 

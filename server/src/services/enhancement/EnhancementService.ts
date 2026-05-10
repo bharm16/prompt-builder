@@ -12,6 +12,11 @@ import { SpanContextBuilder } from "./services/SpanContextBuilder";
 import { EnhancementV2Engine } from "./v2/index.js";
 import type { SuggestionsTrace } from "@services/observability/SuggestionsTelemetryService";
 import type {
+  EnhancementV2Config,
+  EnhancementV2Execution,
+  EnhancementV2RequestContext,
+} from "./v2/types.js";
+import type {
   AIService,
   VideoService,
   BrainstormBuilder,
@@ -19,7 +24,6 @@ import type {
   ValidationService,
   DiversityEnforcer,
   CategoryAligner,
-  MetricsService,
   EnhancementRequestParams,
   CustomSuggestionRequestParams,
   EnhancementResult,
@@ -38,11 +42,6 @@ const makeNoopSuggestionsTrace = (): SuggestionsTrace =>
     recordError: () => {},
     complete: () => {},
   }) as unknown as SuggestionsTrace;
-import type {
-  EnhancementV2Config,
-  EnhancementV2Execution,
-  EnhancementV2RequestContext,
-} from "./v2/types.js";
 
 interface EnhancementServiceDependencies {
   aiService: AIService;
@@ -52,7 +51,6 @@ interface EnhancementServiceDependencies {
   validationService: ValidationService;
   diversityEnforcer: DiversityEnforcer;
   categoryAligner: CategoryAligner;
-  metricsService?: MetricsService | null;
   cacheService: CacheService;
   enhancementConfig?: EnhancementV2Config;
 }
@@ -65,7 +63,6 @@ interface EnhancementCoreServices {
   validationService: ValidationService;
   diversityEnforcer: DiversityEnforcer;
   categoryAligner: CategoryAligner;
-  metricsService: MetricsService | null;
 }
 
 interface EnhancementPipelineServices {
@@ -100,7 +97,6 @@ export class EnhancementService {
       validationService,
       diversityEnforcer,
       categoryAligner,
-      metricsService = null,
       cacheService,
       enhancementConfig = {
         policyVersion: "2026-03-v2a",
@@ -115,7 +111,6 @@ export class EnhancementService {
       validationService,
       diversityEnforcer,
       categoryAligner,
-      metricsService,
     };
 
     this.log = logger.child({ service: "EnhancementService" });
@@ -127,7 +122,7 @@ export class EnhancementService {
     };
 
     this.pipeline = {
-      metricsLogger: new EnhancementMetricsService(metricsService),
+      metricsLogger: new EnhancementMetricsService(),
       videoContextDetection: new VideoContextDetectionService(
         videoPromptService,
       ),

@@ -7,10 +7,6 @@ const metricsServiceMock = vi.hoisted(() => ({
   recordModelRecommendationTimeToGeneration: vi.fn(),
 }));
 
-vi.mock("@infrastructure/MetricsService", () => ({
-  metricsService: metricsServiceMock,
-}));
-
 import { apiAuthMiddleware } from "@middleware/apiAuth";
 import { createModelIntelligenceRoutes } from "@routes/model-intelligence.routes";
 
@@ -31,7 +27,10 @@ function createApp() {
   app.use(
     "/api",
     apiAuthMiddleware,
-    createModelIntelligenceRoutes(modelIntelligenceService as never),
+    createModelIntelligenceRoutes(
+      modelIntelligenceService as never,
+      metricsServiceMock,
+    ),
   );
 
   return { app, modelIntelligenceService };

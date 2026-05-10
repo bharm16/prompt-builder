@@ -17,7 +17,6 @@ services:
       - CLAUDE_TIMEOUT_MS=30000
       - LOG_LEVEL=info
       - ALLOWED_API_KEYS=${ALLOWED_API_KEYS}
-      - METRICS_TOKEN=${METRICS_TOKEN}
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
       - FRONTEND_URL=${FRONTEND_URL}
     restart: unless-stopped

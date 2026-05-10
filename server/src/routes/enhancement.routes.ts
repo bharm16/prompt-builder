@@ -34,11 +34,6 @@ export interface EnhancementServices {
     SuggestionsTelemetryService,
     "startSuggestionsTrace"
   >;
-  metricsService?:
-    | {
-        recordAlert?: (name: string, payload: Record<string, unknown>) => void;
-      }
-    | undefined;
 }
 
 /**
@@ -52,10 +47,9 @@ export function createEnhancementRoutes(services: EnhancementServices): Router {
     sceneDetectionService,
     promptCoherenceService,
     suggestionsTelemetryService,
-    metricsService,
   } = services;
 
-  const perfMonitor = new PerformanceMonitor(metricsService);
+  const perfMonitor = new PerformanceMonitor();
 
   registerEnhancementSuggestionsRoute(router, {
     enhancementService,

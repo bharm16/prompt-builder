@@ -46,7 +46,6 @@ jobs:
         env:
           NODE_ENV: test
           ALLOWED_API_KEYS: dev-key-12345
-          METRICS_TOKEN: dev-metrics-token-12345
         run: npm run test:unit
 
       - name: Coverage (if configured)

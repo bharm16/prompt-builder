@@ -1,54 +1,12 @@
-apiVersion: monitoring.coreos.com/v1
-kind: ServiceMonitor
-metadata:
-  name: prompt-builder-api
-  labels:
-    app: prompt-builder
-    prometheus: kube-prometheus
-spec:
-  selector:
-    matchLabels:
-      app: prompt-builder
-      component: api
-  endpoints:
-    - port: http
-      path: /metrics
-      interval: 30s
-      scrapeTimeout: 10s
-      scheme: http
-      relabelings:
-        - sourceLabels: [__meta_kubernetes_pod_name]
-          targetLabel: pod
-        - sourceLabels: [__meta_kubernetes_namespace]
-          targetLabel: namespace
-        - sourceLabels: [__meta_kubernetes_pod_node_name]
-          targetLabel: node
----
-apiVersion: monitoring.coreos.com/v1
-kind: ServiceMonitor
-metadata:
-  name: prompt-builder-worker
-  labels:
-    app: prompt-builder
-    prometheus: kube-prometheus
-spec:
-  selector:
-    matchLabels:
-      app: prompt-builder
-      component: worker
-  endpoints:
-    - port: http
-      path: /metrics
-      interval: 30s
-      scrapeTimeout: 10s
-      scheme: http
-      relabelings:
-        - sourceLabels: [__meta_kubernetes_pod_name]
-          targetLabel: pod
-        - sourceLabels: [__meta_kubernetes_namespace]
-          targetLabel: namespace
-        - sourceLabels: [__meta_kubernetes_pod_node_name]
-          targetLabel: node
+# ServiceMonitor resources removed: the API no longer exposes a Prometheus
+# /metrics endpoint. Production observability now flows through PostHog via
+# SuggestionsTelemetryService and LlmCallTelemetryService.
+#
+# Several PrometheusRule alerts below still depend on prom-client HTTP/cache
+# metrics that are no longer emitted (HighErrorRate, HighLatency, APIDown,
+# LowSuccessRate, LowCacheHitRate). Cleanup of those specific alerts is a
+# separate concern; alerts based on kube-state-metrics (PodRestartingFrequently,
+# HighMemoryUsage, CPUThrottling, DeploymentRolloutStuck) remain valid.
 ---
 apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule

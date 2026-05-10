@@ -111,11 +111,8 @@ If highlighting is slower than expected:
 ## Related Commands
 
 ```bash
-# View application stats (requires METRICS_TOKEN)
+# View application stats
 npm run perf:stats
-
-# View Prometheus metrics
-npm run perf:metrics
 
 # Run performance E2E tests
 npm run test:e2e:latency
@@ -127,7 +124,6 @@ Ensure these are properly configured in your `.env` file:
 
 - `OPENAI_API_KEY`: Required for prompt optimization
 - `GROQ_API_KEY`: Optional but recommended for fast draft generation
-- `METRICS_TOKEN`: Required for accessing /stats and /metrics endpoints
 
 ## Questions or Issues?
 
