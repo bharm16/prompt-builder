@@ -46,6 +46,10 @@ interface PromptResultsActionsOnly {
     | ((issueId: string, recommendation: CoherenceRecommendation) => void)
     | undefined;
   onScrollToCoherenceSpan?: ((spanId: string) => void) | undefined;
+  /** I2V Motion Ideas — chip click inserts the phrase into the prompt. */
+  onMotionIdeaSelect?: ((idea: string) => void) | undefined;
+  /** I2V Motion Ideas — re-roll regenerates with higher temperature. */
+  onMotionIdeasReroll?: (() => void) | undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -60,6 +64,10 @@ interface PromptResultsDataOnly {
   isCoherenceChecking?: boolean | undefined;
   isCoherencePanelExpanded?: boolean | undefined;
   i2vContext?: I2VContext | null | undefined;
+  /** I2V Motion Ideas — current chip set (empty when not in I2V mode). */
+  motionIdeas?: readonly string[] | undefined;
+  /** I2V Motion Ideas — true while a fetch is in flight. */
+  isMotionIdeasLoading?: boolean | undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -135,6 +143,10 @@ export function PromptResultsActionsProvider({
   onApplyCoherenceFix,
   onScrollToCoherenceSpan,
   i2vContext,
+  motionIdeas,
+  isMotionIdeasLoading,
+  onMotionIdeaSelect,
+  onMotionIdeasReroll,
 }: PromptResultsActionsProviderProps): React.ReactElement {
   // Pause auto-save while a generation is in-flight to prevent prompt edits
   // from overwriting the session identity tied to the active render.
@@ -181,6 +193,8 @@ export function PromptResultsActionsProvider({
       onDismissAllCoherenceIssues,
       onApplyCoherenceFix,
       onScrollToCoherenceSpan,
+      onMotionIdeaSelect,
+      onMotionIdeasReroll,
     }),
     [
       user,
@@ -197,6 +211,8 @@ export function PromptResultsActionsProvider({
       onDismissAllCoherenceIssues,
       onApplyCoherenceFix,
       onScrollToCoherenceSpan,
+      onMotionIdeaSelect,
+      onMotionIdeasReroll,
     ],
   );
 
@@ -210,6 +226,8 @@ export function PromptResultsActionsProvider({
       isCoherenceChecking,
       isCoherencePanelExpanded,
       i2vContext,
+      motionIdeas,
+      isMotionIdeasLoading,
     }),
     [
       suggestionsData,
@@ -219,6 +237,8 @@ export function PromptResultsActionsProvider({
       isCoherenceChecking,
       isCoherencePanelExpanded,
       i2vContext,
+      motionIdeas,
+      isMotionIdeasLoading,
     ],
   );
 

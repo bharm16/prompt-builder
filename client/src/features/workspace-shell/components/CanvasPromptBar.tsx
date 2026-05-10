@@ -1,5 +1,10 @@
 import React, { useEffect } from "react";
 import { cn } from "@/utils/cn";
+import { MotionIdeasPanel } from "@/features/prompt-optimizer/components/MotionIdeasPanel";
+import {
+  usePromptResultsActions,
+  usePromptResultsData,
+} from "@/features/prompt-optimizer/context/PromptResultsActionsContext";
 import { PromptEditorSurface } from "./PromptEditorSurface";
 import type { PromptEditorSurfaceProps } from "./PromptEditorSurface";
 import { addContinueSceneListener } from "../events";
@@ -35,6 +40,14 @@ export function CanvasPromptBar({
     });
   }, [onContinueScene]);
 
+  const { motionIdeas, isMotionIdeasLoading, i2vContext } =
+    usePromptResultsData();
+  const { onMotionIdeaSelect, onMotionIdeasReroll } = usePromptResultsActions();
+  const showMotionIdeas =
+    Boolean(i2vContext?.isI2VMode) &&
+    Boolean(onMotionIdeaSelect) &&
+    Boolean(onMotionIdeasReroll);
+
   return (
     <div
       className={cn(
@@ -49,6 +62,16 @@ export function CanvasPromptBar({
     >
       {tuneSlot}
       <PromptEditorSurface {...surfaceProps} variant="active" />
+      {showMotionIdeas && onMotionIdeaSelect && onMotionIdeasReroll ? (
+        <div className="px-3 pb-2">
+          <MotionIdeasPanel
+            ideas={[...(motionIdeas ?? [])]}
+            isLoading={Boolean(isMotionIdeasLoading)}
+            onChipClick={onMotionIdeaSelect}
+            onReroll={onMotionIdeasReroll}
+          />
+        </div>
+      ) : null}
       {chromeSlot}
     </div>
   );
