@@ -21,6 +21,7 @@ import { LoadingDots } from "@components/LoadingDots";
 import { cn } from "@/utils/cn";
 import { TriggerAutocomplete } from "@features/assets/components/TriggerAutocomplete";
 import { PromptEditor } from "@features/prompt-optimizer/components/PromptEditor";
+import { useI2VContext } from "@features/prompt-optimizer/hooks/useI2VContext";
 import type { PromptCanvasViewProps } from "./PromptCanvasView.types";
 import { PromptCanvasSuggestionsPanel } from "./PromptCanvasSuggestionsPanel";
 import { CanvasButton } from "./PromptCanvasView.shared";
@@ -177,6 +178,7 @@ export function PromptCanvasEditorSection({
   inlineErrorMessage,
   isInlineEmpty,
 }: PromptCanvasEditorSectionProps): React.ReactElement {
+  const { isI2VMode } = useI2VContext();
   return (
     <div
       className={cn(
@@ -379,6 +381,12 @@ export function PromptCanvasEditorSection({
             <PromptEditor
               ref={editorRef as React.RefObject<HTMLDivElement>}
               className="px-ps-3 py-ps-4 text-body-xl text-foreground-warm min-h-0 min-h-44 w-full flex-1 overflow-y-auto whitespace-pre-wrap outline-none"
+              {...(isI2VMode
+                ? {
+                    placeholder:
+                      "Optional: add motion direction (or leave blank to animate the image)",
+                  }
+                : {})}
               onTextSelection={onTextSelection}
               onHighlightClick={onHighlightClick}
               onHighlightMouseDown={onHighlightMouseDown}

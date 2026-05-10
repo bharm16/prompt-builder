@@ -454,6 +454,7 @@ export function CanvasWorkspace({
     responseMetadata: responseMetadata ?? null,
     ...(onCopyAllDebug ? { onCopyAllDebug } : {}),
     ...(typeof isBulkCopyLoading === "boolean" ? { isBulkCopyLoading } : {}),
+    isI2VMode: Boolean(domain.startFrame?.url),
   };
 
   const handleToggleChip = useCallback((id: TuneChipId) => {

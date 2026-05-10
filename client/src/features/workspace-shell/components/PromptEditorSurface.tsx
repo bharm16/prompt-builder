@@ -66,6 +66,9 @@ export interface PromptEditorSurfaceProps {
   responseMetadata?: Record<string, unknown> | null;
   onCopyAllDebug?: (() => void) | undefined;
   isBulkCopyLoading?: boolean | undefined;
+  /** When true, the editor shows an I2V-aware placeholder explaining that
+   *  the prompt is optional once a start image is set. Defaults to false. */
+  isI2VMode?: boolean;
 }
 
 export function PromptEditorSurface({
@@ -116,8 +119,12 @@ export function PromptEditorSurface({
   responseMetadata = null,
   onCopyAllDebug,
   isBulkCopyLoading = false,
+  isI2VMode = false,
 }: PromptEditorSurfaceProps): React.ReactElement {
   const isEmptyLayout = variant === "empty";
+  const placeholderText = isI2VMode
+    ? "Optional: add motion direction (or leave blank to animate the image)"
+    : "Describe your shot…";
   const [, setIsFocused] = useState(false);
   const [isSuggestionTrayCollapsed, setIsSuggestionTrayCollapsed] =
     useState(false);
@@ -182,7 +189,7 @@ export function PromptEditorSurface({
               ? "text-foreground caret-foreground min-h-[56px] text-[15px] leading-[1.7]"
               : "text-tool-text-dim min-h-[56px] text-[15px] leading-[1.75]",
           )}
-          placeholder="Describe your shot…"
+          placeholder={placeholderText}
           onTextSelection={onTextSelection}
           onHighlightClick={onHighlightClick}
           onHighlightMouseDown={onHighlightMouseDown}
