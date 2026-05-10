@@ -591,13 +591,19 @@ export const useGenerationControlsPanel = (
 
   const trimmedPrompt = prompt.trim();
   const hasPrompt = Boolean(trimmedPrompt);
+  // In I2V mode (start image set), prompt is optional — the image alone is a
+  // valid input. Provider-side empty-prompt handling lives in Phase 6.
+  const isI2VMode = Boolean(startFrame);
+  const promptOrI2V = hasPrompt || isI2VMode;
   const isImageGenerateDisabled =
     activeTab === "image" && keyframes.length === 0;
   const isVideoGenerateDisabled =
     activeTab === "video" && !hasPrompt && !startFrame;
   const isStoryboardDisabled = !hasPrompt && !startFrame;
-  const isDraftDisabled = !hasPrompt || !isGenerationReady || isGenerationBusy;
-  const isRenderDisabled = !hasPrompt || !isGenerationReady || isGenerationBusy;
+  const isDraftDisabled =
+    !promptOrI2V || !isGenerationReady || isGenerationBusy;
+  const isRenderDisabled =
+    !promptOrI2V || !isGenerationReady || isGenerationBusy;
   const isGenerateDisabled =
     (tier === "draft" ? isDraftDisabled : isRenderDisabled) ||
     isImageGenerateDisabled ||
