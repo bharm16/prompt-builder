@@ -19,7 +19,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { runEval } from "../../scripts/evaluation/recommendation-eval";
+import { runEval } from "@scripts/evaluation/recommendation-eval";
 
 describe("recommendation-eval runner", () => {
   let tmpDir: string;

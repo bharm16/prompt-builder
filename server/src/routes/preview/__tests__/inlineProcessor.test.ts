@@ -180,7 +180,7 @@ describe("scheduleInlineVideoPreviewProcessing", () => {
     expect(jobStore.claimJob).toHaveBeenCalledWith(
       "job-1",
       "inline-preview-req-1",
-      60000,
+      90000,
     );
     expect(generateVideo).toHaveBeenCalledWith(
       "a cinematic sunset",
@@ -231,21 +231,21 @@ describe("scheduleInlineVideoPreviewProcessing", () => {
     vi.advanceTimersByTime(300);
     await flushMicrotasks();
 
-    // Heartbeat interval is leaseMs / 3 = 60000 / 3 = 20000ms
+    // Heartbeat interval is leaseMs / 3 = 90000 / 3 = 30000ms
     expect(jobStore.renewLease).not.toHaveBeenCalled();
 
-    // Advance 20s — first heartbeat fires
-    vi.advanceTimersByTime(20000);
+    // Advance 30s — first heartbeat fires
+    vi.advanceTimersByTime(30000);
     await flushMicrotasks();
     expect(jobStore.renewLease).toHaveBeenCalledTimes(1);
     expect(jobStore.renewLease).toHaveBeenCalledWith(
       "job-1",
       "inline-preview-req-1",
-      60000,
+      90000,
     );
 
-    // Advance another 20s — second heartbeat
-    vi.advanceTimersByTime(20000);
+    // Advance another 30s — second heartbeat
+    vi.advanceTimersByTime(30000);
     await flushMicrotasks();
     expect(jobStore.renewLease).toHaveBeenCalledTimes(2);
 
@@ -304,7 +304,7 @@ describe("scheduleInlineVideoPreviewProcessing", () => {
     await flushMicrotasks();
 
     // Fire heartbeat
-    vi.advanceTimersByTime(20000);
+    vi.advanceTimersByTime(30000);
     await flushMicrotasks();
 
     expect(mocks.loggerWarn).toHaveBeenCalledWith(

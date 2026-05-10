@@ -197,7 +197,7 @@ describe("Strategy Pipeline Validity Property Tests", () => {
             ).toBe(true);
           },
         ),
-        { numRuns: 100 },
+        { numRuns: 100, seed: 20260510 },
       );
     });
 
@@ -222,7 +222,7 @@ describe("Strategy Pipeline Validity Property Tests", () => {
             expect(Array.isArray(result.metadata.triggersInjected)).toBe(true);
           },
         ),
-        { numRuns: 100 },
+        { numRuns: 100, seed: 20260510 },
       );
     });
 
@@ -253,7 +253,7 @@ describe("Strategy Pipeline Validity Property Tests", () => {
             expect(transformIndex).toBeLessThan(augmentIndex);
           },
         ),
-        { numRuns: 100 },
+        { numRuns: 100, seed: 20260510 },
       );
     });
 
@@ -275,7 +275,7 @@ describe("Strategy Pipeline Validity Property Tests", () => {
             expect(result.metadata).toBeDefined();
           },
         ),
-        { numRuns: 100 },
+        { numRuns: 100, seed: 20260510 },
       );
     });
 
@@ -303,7 +303,7 @@ describe("Strategy Pipeline Validity Property Tests", () => {
             expect(result.metadata.modelId).toBe("mock-model");
           },
         ),
-        { numRuns: 100 },
+        { numRuns: 100, seed: 20260510 },
       );
     });
   });
@@ -337,7 +337,7 @@ describe("Strategy Pipeline Validity Property Tests", () => {
             }
           },
         ),
-        { numRuns: 100 },
+        { numRuns: 100, seed: 20260510 },
       );
     });
 
@@ -369,7 +369,7 @@ describe("Strategy Pipeline Validity Property Tests", () => {
             expect(registry.has(unregisteredId)).toBe(false);
           },
         ),
-        { numRuns: 100 },
+        { numRuns: 100, seed: 20260510 },
       );
     });
 
@@ -399,7 +399,7 @@ describe("Strategy Pipeline Validity Property Tests", () => {
             }
           },
         ),
-        { numRuns: 100 },
+        { numRuns: 100, seed: 20260510 },
       );
     });
 
@@ -416,7 +416,7 @@ describe("Strategy Pipeline Validity Property Tests", () => {
           // Second registration with same modelId should throw
           expect(() => registry.register(modelId, () => strategy2)).toThrow();
         }),
-        { numRuns: 100 },
+        { numRuns: 100, seed: 20260510 },
       );
     });
   });
@@ -593,7 +593,7 @@ describe("BaseStrategy Implementation Tests", () => {
           expect(normalizedOutput).not.toMatch(/\b4k\b/);
           expect(normalizedOutput).not.toContain("trending on artstation");
         }),
-        { numRuns: 100 },
+        { numRuns: 100, seed: 20260510 },
       );
     });
 
@@ -619,7 +619,7 @@ describe("BaseStrategy Implementation Tests", () => {
           expect(output.toLowerCase()).toContain("4k");
           expect(output.toLowerCase()).toContain("trending on artstation");
         }),
-        { numRuns: 100 },
+        { numRuns: 100, seed: 20260510 },
       );
     });
   });
@@ -681,7 +681,7 @@ describe("BaseStrategy Implementation Tests", () => {
             ),
           ).toBe(true);
         }),
-        { numRuns: 100 },
+        { numRuns: 100, seed: 20260510 },
       );
     });
 
@@ -706,7 +706,7 @@ describe("BaseStrategy Implementation Tests", () => {
             );
           },
         ),
-        { numRuns: 100 },
+        { numRuns: 100, seed: 20260510 },
       );
     });
 
@@ -738,7 +738,7 @@ describe("BaseStrategy Implementation Tests", () => {
             }
           },
         ),
-        { numRuns: 100 },
+        { numRuns: 100, seed: 20260510 },
       );
     });
 
@@ -761,7 +761,7 @@ describe("BaseStrategy Implementation Tests", () => {
             expect(result.metadata.pipelineVersion).toBe("2.0.0");
           },
         ),
-        { numRuns: 100 },
+        { numRuns: 100, seed: 20260510 },
       );
     });
   });
@@ -796,7 +796,7 @@ describe("BaseStrategy Implementation Tests", () => {
             await strategy.validate(input);
           },
         ),
-        { numRuns: 100 },
+        { numRuns: 100, seed: 20260510 },
       );
     });
   });
@@ -826,7 +826,7 @@ describe("BaseStrategy Implementation Tests", () => {
             expect(result.metadata.phases.length).toBe(3);
           },
         ),
-        { numRuns: 100 },
+        { numRuns: 100, seed: 20260510 },
       );
     });
   });

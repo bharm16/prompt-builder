@@ -131,7 +131,7 @@ describe("useGenerationActions insufficient credits handling", () => {
 
     expect(getAction(dispatch, "SET_GENERATIONS")).toBeUndefined();
     expect(getAction(dispatch, "UPDATE_GENERATION")).toBeUndefined();
-    expect(onInsufficientCredits).toHaveBeenCalledWith(48, "Sora render");
+    expect(onInsufficientCredits).toHaveBeenCalledWith(48, "Sora 2 render");
   });
 
   it("surfaces non-402 failures as a failed generation via SET_GENERATIONS and does not treat them as insufficient credits", async () => {

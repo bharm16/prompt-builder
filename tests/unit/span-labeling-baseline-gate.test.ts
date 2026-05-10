@@ -6,7 +6,7 @@ import {
   formatGateResult,
   type Baseline,
   type EvaluationReport,
-} from "../../scripts/evaluation/baseline-gate";
+} from "@scripts/evaluation/baseline-gate";
 
 function makeReport(
   overrides: Partial<EvaluationReport> = {},

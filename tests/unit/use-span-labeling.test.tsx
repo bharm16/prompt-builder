@@ -134,6 +134,7 @@ describe("useSpanLabeling", () => {
           onResult,
           useSmartDebounce: false,
           debounceMs: 0,
+          templateVersion: "v1",
         }),
       );
 
