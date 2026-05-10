@@ -13,6 +13,7 @@ import { applyIntentLockPolicy } from "./services/intentLockPolicy";
 import type { ImageObservationService } from "@services/image-observation";
 import type { VideoPromptService } from "../video-prompt-analysis/VideoPromptService";
 import type { CacheService } from "@services/cache/CacheService";
+import type { OptimizeTrace } from "@services/observability/OptimizeTelemetryService";
 import type {
   AIService,
   CompileContext,
@@ -23,6 +24,15 @@ import type {
 } from "./types";
 import { runOptimizeFlow } from "./workflows/optimizeFlow";
 import { runConstitutionalReviewFlow } from "./workflows/constitutionalReview";
+
+const makeNoopTrace = (): OptimizeTrace =>
+  ({
+    recordStage: () => {},
+    recordLlmCall: () => {},
+    recordCacheHit: () => {},
+    recordError: () => {},
+    complete: () => {},
+  }) as unknown as OptimizeTrace;
 
 /**
  * Refactored Prompt Optimization Service - Orchestrator Pattern
@@ -91,6 +101,8 @@ export class PromptOptimizationService {
       );
     }
 
+    const telemetry = request.trace ?? makeNoopTrace();
+
     return runOptimizeFlow({
       request,
       log: this.log,
@@ -104,6 +116,7 @@ export class PromptOptimizationService {
         this.logOptimizationMetrics(originalPrompt, optimizedPrompt, mode),
       intentLock: this.intentLock,
       promptLint: this.promptLint,
+      telemetry,
     });
   }
 

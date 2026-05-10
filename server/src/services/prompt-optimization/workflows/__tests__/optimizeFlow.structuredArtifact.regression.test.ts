@@ -112,6 +112,13 @@ describe("regression: targeted optimize reuses structured artifacts", () => {
           repaired: false,
         })),
       },
+      telemetry: {
+        recordStage: vi.fn(),
+        recordLlmCall: vi.fn(),
+        recordCacheHit: vi.fn(),
+        recordError: vi.fn(),
+        complete: vi.fn(),
+      } as never,
     });
 
     expect(optimizeStructured).toHaveBeenCalledTimes(1);

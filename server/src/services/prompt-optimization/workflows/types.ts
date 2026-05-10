@@ -1,4 +1,5 @@
 import type { ILogger } from "@interfaces/ILogger";
+import type { OptimizeTrace } from "@services/observability/OptimizeTelemetryService";
 import type {
   AIService,
   CompilationState,
@@ -145,6 +146,7 @@ export interface OptimizeFlowArgs {
   ) => void;
   intentLock: IntentLockLike;
   promptLint: PromptLintLike;
+  telemetry: OptimizeTrace;
 }
 
 export interface ConstitutionalReviewFlowArgs {

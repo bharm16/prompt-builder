@@ -4,6 +4,7 @@
  */
 import type { VideoPromptStructuredResponse } from "@server/contracts/prompt-analysis/structuredPrompt";
 import type { AIExecutionPort } from "@services/ai-model/ports/AIExecutionPort";
+import type { OptimizeTrace } from "@services/observability/OptimizeTelemetryService";
 import type { CapabilityValues } from "@shared/capabilities";
 
 /**
@@ -74,6 +75,11 @@ export interface OptimizationRequest {
   startImage?: string;
   /** Present in legacy I2V calls; ignored after the I2V pipeline removal. */
   sourcePrompt?: string;
+  /**
+   * Telemetry trace, created at the route layer. When omitted, optimization
+   * proceeds with no telemetry (test paths and direct service consumers).
+   */
+  trace?: OptimizeTrace;
 }
 
 export interface StructuredOptimizationArtifact {
