@@ -1,12 +1,12 @@
-import { randomUUID } from 'node:crypto';
-import { logger } from '@infrastructure/Logger';
-import type { IPostHogClient } from '@infrastructure/PostHogClient';
+import { randomUUID } from "node:crypto";
+import { logger } from "@infrastructure/Logger";
+import type { IPostHogClient } from "@infrastructure/PostHogClient";
 import type {
   SuggestionsEventProperties,
   SuggestionsEventStages,
   SuggestionsStageName,
   SuggestionsTraceCompleteSummary,
-} from './types';
+} from "./types";
 
 export class SuggestionsTrace {
   private readonly startedAt = performance.now();
@@ -26,7 +26,7 @@ export class SuggestionsTrace {
     private readonly client: IPostHogClient,
     private readonly distinctId: string,
     private readonly requestId: string,
-    private readonly userId: string | null
+    private readonly userId: string | null,
   ) {}
 
   recordStage(name: SuggestionsStageName, durationMs: number): void {
@@ -86,11 +86,11 @@ export class SuggestionsTrace {
     try {
       this.client.capture({
         distinctId: this.distinctId,
-        event: 'suggestions.completed',
+        event: "suggestions.completed",
         properties: { ...properties },
       });
     } catch (err) {
-      logger.debug('Telemetry emission failed (non-fatal)', {
+      logger.debug("Telemetry emission failed (non-fatal)", {
         error: err instanceof Error ? err.message : String(err),
         requestId: this.requestId,
       });
@@ -103,7 +103,7 @@ export class SuggestionsTelemetryService {
 
   startSuggestionsTrace(
     requestId: string,
-    userId: string | null
+    userId: string | null,
   ): SuggestionsTrace {
     const distinctId =
       userId && userId.trim().length > 0 ? userId : `anon-${randomUUID()}`;

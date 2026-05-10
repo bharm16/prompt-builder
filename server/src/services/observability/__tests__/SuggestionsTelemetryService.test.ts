@@ -1,9 +1,9 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { SuggestionsTelemetryService } from '../SuggestionsTelemetryService';
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { SuggestionsTelemetryService } from "../SuggestionsTelemetryService";
 import type {
   IPostHogClient,
   CaptureArgs,
-} from '@infrastructure/PostHogClient';
+} from "@infrastructure/PostHogClient";
 
 const makeMockClient = () => {
   const captures: CaptureArgs[] = [];
@@ -17,51 +17,51 @@ const makeMockClient = () => {
 };
 
 const baseSummary = {
-  outcome: 'success' as const,
+  outcome: "success" as const,
   promptLength: 50,
   suggestionCount: 5,
-  highlightedCategory: 'lighting',
+  highlightedCategory: "lighting",
   isVideoPrompt: true,
   isPlaceholder: false,
-  modelTarget: 'kling-2.5',
+  modelTarget: "kling-2.5",
   promptSection: null,
   phraseRole: null,
-  policyVersion: '2026-03-v2a',
-  categoryId: 'lighting',
-  engineMode: 'guided_llm',
+  policyVersion: "2026-03-v2a",
+  categoryId: "lighting",
+  engineMode: "guided_llm",
   modelCallCount: 1,
   fallbackApplied: false,
   debug: false,
 };
 
-describe('SuggestionsTelemetryService', () => {
+describe("SuggestionsTelemetryService", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('emits one suggestions.completed event on complete()', () => {
+  it("emits one suggestions.completed event on complete()", () => {
     const { client, captures } = makeMockClient();
     const service = new SuggestionsTelemetryService(client);
-    const trace = service.startSuggestionsTrace('req-1', 'user-1');
+    const trace = service.startSuggestionsTrace("req-1", "user-1");
 
-    trace.recordStage('video_context', 12);
-    trace.recordStage('span_context', 8);
-    trace.recordStage('v2_engine', 1500);
+    trace.recordStage("video_context", 12);
+    trace.recordStage("span_context", 8);
+    trace.recordStage("v2_engine", 1500);
 
     trace.complete(baseSummary);
 
     expect(captures).toHaveLength(1);
-    expect(captures[0]!.event).toBe('suggestions.completed');
-    expect(captures[0]!.distinctId).toBe('user-1');
+    expect(captures[0]!.event).toBe("suggestions.completed");
+    expect(captures[0]!.distinctId).toBe("user-1");
     expect(captures[0]!.properties).toMatchObject({
-      requestId: 'req-1',
-      userId: 'user-1',
-      outcome: 'success',
+      requestId: "req-1",
+      userId: "user-1",
+      outcome: "success",
       cacheHit: false,
       suggestionCount: 5,
-      highlightedCategory: 'lighting',
-      categoryId: 'lighting',
-      engineMode: 'guided_llm',
+      highlightedCategory: "lighting",
+      categoryId: "lighting",
+      engineMode: "guided_llm",
       modelCallCount: 1,
       stages: expect.objectContaining({
         videoContextMs: 12,
@@ -73,10 +73,10 @@ describe('SuggestionsTelemetryService', () => {
     });
   });
 
-  it('uses anon-<uuid> distinctId when userId is null', () => {
+  it("uses anon-<uuid> distinctId when userId is null", () => {
     const { client, captures } = makeMockClient();
     const service = new SuggestionsTelemetryService(client);
-    const trace = service.startSuggestionsTrace('req-1', null);
+    const trace = service.startSuggestionsTrace("req-1", null);
 
     trace.complete({
       ...baseSummary,
@@ -88,25 +88,25 @@ describe('SuggestionsTelemetryService', () => {
     expect(captures[0]!.properties).toMatchObject({ userId: null });
   });
 
-  it('populates errorStage and errorMessage on recordError', () => {
+  it("populates errorStage and errorMessage on recordError", () => {
     const { client, captures } = makeMockClient();
     const service = new SuggestionsTelemetryService(client);
-    const trace = service.startSuggestionsTrace('req-1', 'user-1');
+    const trace = service.startSuggestionsTrace("req-1", "user-1");
 
-    trace.recordError('v2_engine', new Error('scoring failed'));
-    trace.complete({ ...baseSummary, outcome: 'error', suggestionCount: 0 });
+    trace.recordError("v2_engine", new Error("scoring failed"));
+    trace.complete({ ...baseSummary, outcome: "error", suggestionCount: 0 });
 
     expect(captures[0]!.properties).toMatchObject({
-      outcome: 'error',
-      errorStage: 'v2_engine',
-      errorMessage: 'scoring failed',
+      outcome: "error",
+      errorStage: "v2_engine",
+      errorMessage: "scoring failed",
     });
   });
 
-  it('sets cacheHit=true and leaves stages null when recordCacheHit is called', () => {
+  it("sets cacheHit=true and leaves stages null when recordCacheHit is called", () => {
     const { client, captures } = makeMockClient();
     const service = new SuggestionsTelemetryService(client);
-    const trace = service.startSuggestionsTrace('req-1', 'user-1');
+    const trace = service.startSuggestionsTrace("req-1", "user-1");
 
     trace.recordCacheHit();
     trace.complete(baseSummary);
@@ -123,10 +123,10 @@ describe('SuggestionsTelemetryService', () => {
     });
   });
 
-  it('durationMs is computed from startedAt to complete()', async () => {
+  it("durationMs is computed from startedAt to complete()", async () => {
     const { client, captures } = makeMockClient();
     const service = new SuggestionsTelemetryService(client);
-    const trace = service.startSuggestionsTrace('req-1', 'user-1');
+    const trace = service.startSuggestionsTrace("req-1", "user-1");
 
     await new Promise((resolve) => setTimeout(resolve, 10));
 
@@ -135,15 +135,15 @@ describe('SuggestionsTelemetryService', () => {
     expect(captures[0]!.properties?.durationMs).toBeGreaterThanOrEqual(10);
   });
 
-  it('does not throw if the underlying client.capture throws', () => {
+  it("does not throw if the underlying client.capture throws", () => {
     const client: IPostHogClient = {
       capture: vi.fn(() => {
-        throw new Error('posthog down');
+        throw new Error("posthog down");
       }),
       shutdown: vi.fn(async () => {}),
     };
     const service = new SuggestionsTelemetryService(client);
-    const trace = service.startSuggestionsTrace('req-1', 'user-1');
+    const trace = service.startSuggestionsTrace("req-1", "user-1");
 
     expect(() => trace.complete(baseSummary)).not.toThrow();
   });

@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { FakeBreaker, breakerState, loggerMocks } = vi.hoisted(() => {
   class FakeBreaker {
@@ -7,13 +7,13 @@ const { FakeBreaker, breakerState, loggerMocks } = vi.hoisted(() => {
     public stats: Record<string, unknown> = {};
     public readonly options: Record<string, unknown>;
     private readonly action: (
-      operation: () => Promise<unknown>
+      operation: () => Promise<unknown>,
     ) => Promise<unknown>;
     private readonly handlers = new Map<string, () => void>();
 
     constructor(
       action: (operation: () => Promise<unknown>) => Promise<unknown>,
-      options: Record<string, unknown>
+      options: Record<string, unknown>,
     ) {
       this.action = action;
       this.options = options;
@@ -48,11 +48,11 @@ const { FakeBreaker, breakerState, loggerMocks } = vi.hoisted(() => {
   return { FakeBreaker, breakerState, loggerMocks };
 });
 
-vi.mock('opossum', () => ({
+vi.mock("opossum", () => ({
   default: FakeBreaker,
 }));
 
-vi.mock('@infrastructure/Logger', () => ({
+vi.mock("@infrastructure/Logger", () => ({
   logger: {
     child: vi.fn(() => loggerMocks),
   },
@@ -62,17 +62,17 @@ import {
   FirestoreCircuitExecutor,
   getFirestoreCircuitExecutor,
   setFirestoreCircuitExecutor,
-} from '../FirestoreCircuitExecutor';
+} from "../FirestoreCircuitExecutor";
 
 const getLatestBreaker = (): InstanceType<typeof FakeBreaker> => {
   const breaker = breakerState.instances.at(-1);
   if (!breaker) {
-    throw new Error('Expected a breaker instance');
+    throw new Error("Expected a breaker instance");
   }
   return breaker;
 };
 
-describe('FirestoreCircuitExecutor', () => {
+describe("FirestoreCircuitExecutor", () => {
   beforeEach(() => {
     breakerState.instances.length = 0;
     vi.clearAllMocks();
@@ -85,7 +85,7 @@ describe('FirestoreCircuitExecutor', () => {
     setFirestoreCircuitExecutor(new FirestoreCircuitExecutor());
   });
 
-  it('passes constructor configuration through to opossum', () => {
+  it("passes constructor configuration through to opossum", () => {
     new FirestoreCircuitExecutor({
       timeoutMs: 3210,
       errorThresholdPercentage: 70,
@@ -95,7 +95,7 @@ describe('FirestoreCircuitExecutor', () => {
 
     const breaker = getLatestBreaker();
     expect(breaker.options).toMatchObject({
-      name: 'firestore',
+      name: "firestore",
       timeout: 3210,
       errorThresholdPercentage: 70,
       resetTimeout: 1800,
@@ -105,27 +105,27 @@ describe('FirestoreCircuitExecutor', () => {
     });
   });
 
-  it('delegates executeRead and executeWrite with the correct operation kind', async () => {
+  it("delegates executeRead and executeWrite with the correct operation kind", async () => {
     const executor = new FirestoreCircuitExecutor();
-    const executeSpy = vi.spyOn(executor, 'execute');
-    const operation = vi.fn(async () => 'ok');
+    const executeSpy = vi.spyOn(executor, "execute");
+    const operation = vi.fn(async () => "ok");
 
-    await executor.executeRead('read-op', operation, { retries: 1 });
-    await executor.executeWrite('write-op', operation, { retries: 2 });
+    await executor.executeRead("read-op", operation, { retries: 1 });
+    await executor.executeWrite("write-op", operation, { retries: 2 });
 
-    expect(executeSpy).toHaveBeenNthCalledWith(1, 'read-op', operation, {
+    expect(executeSpy).toHaveBeenNthCalledWith(1, "read-op", operation, {
       retries: 1,
-      kind: 'read',
+      kind: "read",
     });
-    expect(executeSpy).toHaveBeenNthCalledWith(2, 'write-op', operation, {
+    expect(executeSpy).toHaveBeenNthCalledWith(2, "write-op", operation, {
       retries: 2,
-      kind: 'write',
+      kind: "write",
     });
   });
 
-  it('retries transient failures and eventually succeeds', async () => {
+  it("retries transient failures and eventually succeeds", async () => {
     vi.useFakeTimers();
-    vi.spyOn(Math, 'random').mockReturnValue(0);
+    vi.spyOn(Math, "random").mockReturnValue(0);
 
     const executor = new FirestoreCircuitExecutor({
       retryBaseDelayMs: 120,
@@ -136,34 +136,34 @@ describe('FirestoreCircuitExecutor', () => {
     const operation = vi
       .fn<() => Promise<string>>()
       .mockRejectedValueOnce(
-        Object.assign(new Error('service unavailable'), {
-          code: 'unavailable',
-        })
+        Object.assign(new Error("service unavailable"), {
+          code: "unavailable",
+        }),
       )
-      .mockResolvedValueOnce('ok');
+      .mockResolvedValueOnce("ok");
 
-    const resultPromise = executor.executeWrite('write-op', operation);
+    const resultPromise = executor.executeWrite("write-op", operation);
 
     expect(operation).toHaveBeenCalledTimes(1);
 
     await vi.advanceTimersByTimeAsync(120);
 
-    await expect(resultPromise).resolves.toBe('ok');
+    await expect(resultPromise).resolves.toBe("ok");
     expect(operation).toHaveBeenCalledTimes(2);
     expect(loggerMocks.warn).toHaveBeenCalledWith(
-      'Retrying Firestore operation after transient failure',
+      "Retrying Firestore operation after transient failure",
       expect.objectContaining({
-        operation: 'write-op',
-        kind: 'write',
+        operation: "write-op",
+        kind: "write",
         attempt: 1,
         maxAttempts: 3,
-      })
+      }),
     );
   });
 
-  it('stops retrying after the configured max attempts', async () => {
+  it("stops retrying after the configured max attempts", async () => {
     vi.useFakeTimers();
-    vi.spyOn(Math, 'random').mockReturnValue(0);
+    vi.spyOn(Math, "random").mockReturnValue(0);
 
     const executor = new FirestoreCircuitExecutor({
       retryBaseDelayMs: 100,
@@ -172,14 +172,14 @@ describe('FirestoreCircuitExecutor', () => {
     });
 
     const operation = vi.fn<() => Promise<never>>().mockRejectedValue(
-      Object.assign(new Error('temporarily unavailable'), {
-        code: 'unavailable',
-      })
+      Object.assign(new Error("temporarily unavailable"), {
+        code: "unavailable",
+      }),
     );
 
-    const resultPromise = executor.executeRead('read-op', operation);
+    const resultPromise = executor.executeRead("read-op", operation);
     const rejectionExpectation = expect(resultPromise).rejects.toThrow(
-      'temporarily unavailable'
+      "temporarily unavailable",
     );
 
     await vi.advanceTimersByTimeAsync(100);
@@ -188,45 +188,45 @@ describe('FirestoreCircuitExecutor', () => {
     expect(operation).toHaveBeenCalledTimes(2);
   });
 
-  it('propagates non-transient failures without retrying', async () => {
+  it("propagates non-transient failures without retrying", async () => {
     const executor = new FirestoreCircuitExecutor({
       maxRetries: 3,
     });
     const operation = vi.fn<() => Promise<never>>().mockRejectedValue(
-      Object.assign(new Error('permission denied'), {
-        code: 'permission-denied',
-      })
+      Object.assign(new Error("permission denied"), {
+        code: "permission-denied",
+      }),
     );
 
-    await expect(executor.executeRead('read-op', operation)).rejects.toThrow(
-      'permission denied'
+    await expect(executor.executeRead("read-op", operation)).rejects.toThrow(
+      "permission denied",
     );
     expect(operation).toHaveBeenCalledTimes(1);
     expect(loggerMocks.warn).toHaveBeenCalledWith(
-      'Firestore circuit execution failed',
+      "Firestore circuit execution failed",
       expect.objectContaining({
-        operation: 'read-op',
-        kind: 'read',
-        error: 'permission denied',
-        circuitState: 'closed',
-      })
+        operation: "read-op",
+        kind: "read",
+        error: "permission denied",
+        circuitState: "closed",
+      }),
     );
   });
 
   it.each([
     {
-      label: 'open circuit state',
+      label: "open circuit state",
       setup: (breaker: InstanceType<typeof FakeBreaker>) => {
         breaker.opened = true;
       },
       expected: {
-        state: 'open',
+        state: "open",
         degraded: true,
         open: true,
       },
     },
     {
-      label: 'excessive failure rate',
+      label: "excessive failure rate",
       setup: (breaker: InstanceType<typeof FakeBreaker>) => {
         breaker.stats = {
           fires: 10,
@@ -238,13 +238,13 @@ describe('FirestoreCircuitExecutor', () => {
         };
       },
       expected: {
-        state: 'closed',
+        state: "closed",
         degraded: true,
         open: false,
       },
     },
     {
-      label: 'excessive latency',
+      label: "excessive latency",
       setup: (breaker: InstanceType<typeof FakeBreaker>) => {
         breaker.stats = {
           fires: 10,
@@ -256,12 +256,12 @@ describe('FirestoreCircuitExecutor', () => {
         };
       },
       expected: {
-        state: 'closed',
+        state: "closed",
         degraded: true,
         open: false,
       },
     },
-  ])('marks readiness degraded for $label', ({ setup, expected }) => {
+  ])("marks readiness degraded for $label", ({ setup, expected }) => {
     const executor = new FirestoreCircuitExecutor();
     const breaker = getLatestBreaker();
 
@@ -270,7 +270,7 @@ describe('FirestoreCircuitExecutor', () => {
     const snapshot = executor.getReadinessSnapshot();
 
     expect(snapshot).toMatchObject(expected);
-    if (expected.state === 'closed') {
+    if (expected.state === "closed") {
       expect(snapshot.thresholds).toEqual({
         failureRate: 0.5,
         latencyMs: 1500,
@@ -278,25 +278,25 @@ describe('FirestoreCircuitExecutor', () => {
     }
   });
 
-  it('reports retry-after seconds and logs circuit state transitions', () => {
+  it("reports retry-after seconds and logs circuit state transitions", () => {
     const executor = new FirestoreCircuitExecutor({
       resetTimeoutMs: 1501,
     });
     const breaker = getLatestBreaker();
 
-    breaker.emit('open');
-    breaker.emit('halfOpen');
-    breaker.emit('close');
+    breaker.emit("open");
+    breaker.emit("halfOpen");
+    breaker.emit("close");
 
     expect(executor.getRetryAfterSeconds()).toBe(2);
-    expect(loggerMocks.error).toHaveBeenCalledWith('Firestore circuit opened');
+    expect(loggerMocks.error).toHaveBeenCalledWith("Firestore circuit opened");
     expect(loggerMocks.warn).toHaveBeenCalledWith(
-      'Firestore circuit half-open'
+      "Firestore circuit half-open",
     );
-    expect(loggerMocks.info).toHaveBeenCalledWith('Firestore circuit closed');
+    expect(loggerMocks.info).toHaveBeenCalledWith("Firestore circuit closed");
   });
 
-  it('preserves the singleton bridge across get and set', () => {
+  it("preserves the singleton bridge across get and set", () => {
     const original = getFirestoreCircuitExecutor();
     const custom = new FirestoreCircuitExecutor({ timeoutMs: 999 });
 

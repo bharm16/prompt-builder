@@ -1,7 +1,7 @@
-import CircuitBreaker from 'opossum';
-import { logger } from '@infrastructure/Logger';
-import { RetryPolicy } from '@utils/RetryPolicy';
-import { isTransientFirestoreError } from '@utils/transientErrors';
+import CircuitBreaker from "opossum";
+import { logger } from "@infrastructure/Logger";
+import { RetryPolicy } from "@utils/RetryPolicy";
+import { isTransientFirestoreError } from "@utils/transientErrors";
 
 const DEFAULT_TIMEOUT_MS = 3_000;
 const DEFAULT_ERROR_THRESHOLD_PERCENT = 50;
@@ -14,8 +14,8 @@ const DEFAULT_READINESS_MAX_FAILURE_RATE = 0.5;
 const DEFAULT_READINESS_MAX_LATENCY_MS = 1_500;
 
 type FirestoreOperation = () => Promise<unknown>;
-type FirestoreCircuitState = 'open' | 'half-open' | 'closed';
-type FirestoreOperationKind = 'read' | 'write';
+type FirestoreCircuitState = "open" | "half-open" | "closed";
+type FirestoreOperationKind = "read" | "write";
 
 interface CircuitStats {
   failures: number;
@@ -83,7 +83,7 @@ function normalizeCircuitStats(rawStats: unknown): CircuitStats {
   const stats = (rawStats ?? {}) as Record<string, unknown>;
 
   const asNumber = (value: unknown): number =>
-    typeof value === 'number' && Number.isFinite(value) ? value : 0;
+    typeof value === "number" && Number.isFinite(value) ? value : 0;
 
   return {
     failures: asNumber(stats.failures),
@@ -96,7 +96,7 @@ function normalizeCircuitStats(rawStats: unknown): CircuitStats {
 }
 
 export class FirestoreCircuitExecutor {
-  private readonly log = logger.child({ service: 'FirestoreCircuitExecutor' });
+  private readonly log = logger.child({ service: "FirestoreCircuitExecutor" });
   private readonly breaker: CircuitBreaker<[FirestoreOperation], unknown>;
   private readonly resetTimeoutMs: number;
   private readonly maxRetries: number;
@@ -123,63 +123,63 @@ export class FirestoreCircuitExecutor {
     this.breaker = new CircuitBreaker(
       async (operation: FirestoreOperation) => await operation(),
       {
-        name: 'firestore',
+        name: "firestore",
         timeout: timeoutMs,
         errorThresholdPercentage,
         resetTimeout: this.resetTimeoutMs,
         volumeThreshold,
         rollingCountTimeout: 10_000,
         rollingCountBuckets: 10,
-      }
+      },
     );
 
-    this.breaker.on('open', () => {
-      this.log.error('Firestore circuit opened');
+    this.breaker.on("open", () => {
+      this.log.error("Firestore circuit opened");
     });
 
-    this.breaker.on('halfOpen', () => {
-      this.log.warn('Firestore circuit half-open');
+    this.breaker.on("halfOpen", () => {
+      this.log.warn("Firestore circuit half-open");
     });
 
-    this.breaker.on('close', () => {
-      this.log.info('Firestore circuit closed');
+    this.breaker.on("close", () => {
+      this.log.info("Firestore circuit closed");
     });
   }
 
   async executeRead<T>(
     operationName: string,
     operation: () => Promise<T>,
-    options?: ExecuteOptions
+    options?: ExecuteOptions,
   ): Promise<T> {
     return await this.execute(operationName, operation, {
       ...options,
-      kind: 'read',
+      kind: "read",
     });
   }
 
   async executeWrite<T>(
     operationName: string,
     operation: () => Promise<T>,
-    options?: ExecuteOptions
+    options?: ExecuteOptions,
   ): Promise<T> {
     return await this.execute(operationName, operation, {
       ...options,
-      kind: 'write',
+      kind: "write",
     });
   }
 
   async execute<T>(
     operationName: string,
     operation: () => Promise<T>,
-    options: ExecuteOptions = {}
+    options: ExecuteOptions = {},
   ): Promise<T> {
     const retries =
-      typeof options.retries === 'number' &&
+      typeof options.retries === "number" &&
       Number.isFinite(options.retries) &&
       options.retries >= 0
         ? Math.trunc(options.retries)
         : this.maxRetries;
-    const operationKind = options.kind ?? 'read';
+    const operationKind = options.kind ?? "read";
 
     try {
       const result = await this.breaker.fire(async () => {
@@ -192,14 +192,14 @@ export class FirestoreCircuitExecutor {
           }),
           onRetry: (error, attempt) => {
             this.log.warn(
-              'Retrying Firestore operation after transient failure',
+              "Retrying Firestore operation after transient failure",
               {
                 operation: operationName,
                 kind: operationKind,
                 attempt,
                 maxAttempts: retries + 1,
                 error: error.message,
-              }
+              },
             );
           },
           logRetries: false, // We handle logging in onRetry above
@@ -208,7 +208,7 @@ export class FirestoreCircuitExecutor {
       return result as T;
     } catch (error) {
       const err = toError(error);
-      this.log.warn('Firestore circuit execution failed', {
+      this.log.warn("Firestore circuit execution failed", {
         operation: operationName,
         kind: operationKind,
         error: err.message,
@@ -232,12 +232,12 @@ export class FirestoreCircuitExecutor {
 
   getState(): FirestoreCircuitState {
     if (this.breaker.opened) {
-      return 'open';
+      return "open";
     }
     if (this.breaker.halfOpen) {
-      return 'half-open';
+      return "half-open";
     }
-    return 'closed';
+    return "closed";
   }
 
   getReadinessSnapshot(): FirestoreCircuitReadinessSnapshot {
@@ -246,13 +246,13 @@ export class FirestoreCircuitExecutor {
     const failureRate = computeFailureRate(stats);
     const latencyMeanMs = stats.latencyMean;
     const degraded =
-      state === 'open' ||
+      state === "open" ||
       failureRate >= this.readinessMaxFailureRate ||
       latencyMeanMs >= this.readinessMaxLatencyMs;
 
     return {
       state,
-      open: state === 'open',
+      open: state === "open",
       degraded,
       failureRate,
       latencyMeanMs,
@@ -282,7 +282,7 @@ export function getFirestoreCircuitExecutor(): FirestoreCircuitExecutor {
 }
 
 export function setFirestoreCircuitExecutor(
-  executor: FirestoreCircuitExecutor
+  executor: FirestoreCircuitExecutor,
 ): void {
   firestoreCircuitExecutorSingleton = executor;
 }

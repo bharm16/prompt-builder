@@ -5,21 +5,21 @@
  * No auth required.
  */
 
-import type { Application } from 'express';
-import type { DIContainer } from '@infrastructure/DIContainer';
-import { logger } from '@infrastructure/Logger';
-import { getFirestore } from '@infrastructure/firebaseAdmin';
-import { getRedisStatus } from '@config/redis';
-import { createHealthRoutes } from '@routes/health.routes';
-import { createOpenApiDevRoute } from '../../openapi/devRoute.ts';
-import { resolveOptionalService } from './resolve-utils.ts';
+import type { Application } from "express";
+import type { DIContainer } from "@infrastructure/DIContainer";
+import { logger } from "@infrastructure/Logger";
+import { getFirestore } from "@infrastructure/firebaseAdmin";
+import { getRedisStatus } from "@config/redis";
+import { createHealthRoutes } from "@routes/health.routes";
+import { createOpenApiDevRoute } from "../../openapi/devRoute.ts";
+import { resolveOptionalService } from "./resolve-utils.ts";
 
 export function registerHealthRoutes(
   app: Application,
-  container: DIContainer
+  container: DIContainer,
 ): void {
   const firestoreCircuitExecutor = container.resolve(
-    'firestoreCircuitExecutor'
+    "firestoreCircuitExecutor",
   );
 
   // Resolve worker instances for health status reporting
@@ -32,43 +32,43 @@ export function registerHealthRoutes(
   };
   const workerEntries: [string, StatusProvider | null][] = [
     [
-      'creditRefundSweeper',
+      "creditRefundSweeper",
       resolveOptionalService<StatusProvider | null>(
         container,
-        'creditRefundSweeper',
-        'health-workers'
+        "creditRefundSweeper",
+        "health-workers",
       ),
     ],
     [
-      'videoJobWorker',
+      "videoJobWorker",
       resolveOptionalService<StatusProvider | null>(
         container,
-        'videoJobWorker',
-        'health-workers'
+        "videoJobWorker",
+        "health-workers",
       ),
     ],
     [
-      'dlqReprocessorWorker',
+      "dlqReprocessorWorker",
       resolveOptionalService<StatusProvider | null>(
         container,
-        'dlqReprocessorWorker',
-        'health-workers'
+        "dlqReprocessorWorker",
+        "health-workers",
       ),
     ],
     [
-      'webhookReconciliationWorker',
+      "webhookReconciliationWorker",
       resolveOptionalService<StatusProvider | null>(
         container,
-        'webhookReconciliationWorker',
-        'health-workers'
+        "webhookReconciliationWorker",
+        "health-workers",
       ),
     ],
     [
-      'billingProfileRepairWorker',
+      "billingProfileRepairWorker",
       resolveOptionalService<StatusProvider | null>(
         container,
-        'billingProfileRepairWorker',
-        'health-workers'
+        "billingProfileRepairWorker",
+        "health-workers",
       ),
     ],
   ];
@@ -87,14 +87,14 @@ export function registerHealthRoutes(
   const runFirestoreProbe = async (): Promise<void> => {
     try {
       await firestoreCircuitExecutor.executeRead(
-        'health.ready.firestoreProbe',
+        "health.ready.firestoreProbe",
         async () => {
           const firestore = getFirestore();
           // Lightweight connectivity check — the collection name is arbitrary and
           // need not exist. Firestore returns an empty snapshot for nonexistent
           // collections, so this verifies connectivity without side effects.
-          await firestore.collection('_health_probe').limit(1).get();
-        }
+          await firestore.collection("_health_probe").limit(1).get();
+        },
       );
       firestoreProbeHealthy = true;
       firestoreProbeLastSuccessAt = Date.now();
@@ -103,7 +103,7 @@ export function registerHealthRoutes(
       firestoreProbeHealthy = false;
       firestoreProbeLastError =
         error instanceof Error ? error.message : String(error);
-      logger.warn('Firestore readiness probe failed', {
+      logger.warn("Firestore readiness probe failed", {
         error: firestoreProbeLastError,
       });
     }
@@ -113,15 +113,15 @@ export function registerHealthRoutes(
   void runFirestoreProbe();
   const probeInterval = setInterval(
     () => void runFirestoreProbe(),
-    PROBE_INTERVAL_MS
+    PROBE_INTERVAL_MS,
   );
   probeInterval.unref(); // Don't keep the process alive for the probe
 
   const healthRoutes = createHealthRoutes({
-    openAIClient: container.resolve('openAIClient'),
-    groqClient: container.resolve('groqClient'),
-    geminiClient: container.resolve('geminiClient'),
-    cacheService: container.resolve('cacheService'),
+    openAIClient: container.resolve("openAIClient"),
+    groqClient: container.resolve("groqClient"),
+    geminiClient: container.resolve("geminiClient"),
+    cacheService: container.resolve("cacheService"),
     firestoreCircuitExecutor,
     checkFirestore: async () => {
       // Read cached probe result — zero inline I/O
@@ -132,8 +132,8 @@ export function registerHealthRoutes(
         throw new Error(
           firestoreProbeLastError ??
             (isStale
-              ? 'Firestore probe stale (no successful check within threshold)'
-              : 'Firestore probe unhealthy')
+              ? "Firestore probe stale (no successful check within threshold)"
+              : "Firestore probe unhealthy"),
         );
       }
     },
@@ -141,13 +141,13 @@ export function registerHealthRoutes(
     getRedisStatus,
   });
 
-  app.use('/', healthRoutes);
+  app.use("/", healthRoutes);
 
   // OpenAPI spec (dev only — returns null in production, not mounted)
   const openApiRoute = createOpenApiDevRoute();
   if (openApiRoute) {
-    app.use('/api-docs', openApiRoute);
+    app.use("/api-docs", openApiRoute);
   }
 
-  logger.debug('Health routes registered');
+  logger.debug("Health routes registered");
 }

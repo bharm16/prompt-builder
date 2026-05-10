@@ -1,68 +1,68 @@
-import type { DIContainer } from '@infrastructure/DIContainer';
-import type { VideoService } from '@services/enhancement/services/types';
-import { AIModelService } from '@services/ai-model/index';
-import { EnhancementService } from '@services/enhancement/index';
-import { BrainstormContextBuilder } from '@services/enhancement/services/BrainstormContextBuilder';
-import { CategoryAlignmentService } from '@services/enhancement/services/CategoryAlignmentService';
-import { CleanPromptBuilder } from '@services/enhancement/services/CleanPromptBuilder';
-import { PromptCoherenceService } from '@services/enhancement/services/PromptCoherenceService';
-import { SuggestionDiversityEnforcer } from '@services/enhancement/services/SuggestionDeduplicator';
-import { SuggestionValidationService } from '@services/enhancement/services/SuggestionValidationService';
-import { SceneChangeDetectionService } from '@services/enhancement/services/SceneChangeDetectionService';
-import type { ImageObservationService } from '@services/image-observation';
-import { PromptOptimizationService } from '@services/prompt-optimization/PromptOptimizationService';
-import { TemplateService } from '@services/prompt-optimization/services/TemplateService';
-import type { CacheService } from '@services/cache/CacheService';
-import { VideoPromptService } from '@services/video-prompt-analysis/index';
-import { AIServiceVideoPromptLlmGateway } from '@services/video-prompt-analysis/services/llm/VideoPromptLlmGateway';
-import type { ServiceConfig } from './service-config.types.ts';
+import type { DIContainer } from "@infrastructure/DIContainer";
+import type { VideoService } from "@services/enhancement/services/types";
+import { AIModelService } from "@services/ai-model/index";
+import { EnhancementService } from "@services/enhancement/index";
+import { BrainstormContextBuilder } from "@services/enhancement/services/BrainstormContextBuilder";
+import { CategoryAlignmentService } from "@services/enhancement/services/CategoryAlignmentService";
+import { CleanPromptBuilder } from "@services/enhancement/services/CleanPromptBuilder";
+import { PromptCoherenceService } from "@services/enhancement/services/PromptCoherenceService";
+import { SuggestionDiversityEnforcer } from "@services/enhancement/services/SuggestionDeduplicator";
+import { SuggestionValidationService } from "@services/enhancement/services/SuggestionValidationService";
+import { SceneChangeDetectionService } from "@services/enhancement/services/SceneChangeDetectionService";
+import type { ImageObservationService } from "@services/image-observation";
+import { PromptOptimizationService } from "@services/prompt-optimization/PromptOptimizationService";
+import { TemplateService } from "@services/prompt-optimization/services/TemplateService";
+import type { CacheService } from "@services/cache/CacheService";
+import { VideoPromptService } from "@services/video-prompt-analysis/index";
+import { AIServiceVideoPromptLlmGateway } from "@services/video-prompt-analysis/services/llm/VideoPromptLlmGateway";
+import type { ServiceConfig } from "./service-config.types.ts";
 
 export function registerEnhancementServices(container: DIContainer): void {
   container.register(
-    'videoPromptService',
+    "videoPromptService",
     (aiService: AIModelService) =>
       new VideoPromptService({
         videoPromptLlmGateway: new AIServiceVideoPromptLlmGateway(aiService),
       }),
-    ['aiService']
+    ["aiService"],
   );
   container.register(
-    'brainstormBuilder',
+    "brainstormBuilder",
     () => new BrainstormContextBuilder(),
-    []
+    [],
   );
-  container.register('promptBuilder', () => new CleanPromptBuilder(), []);
-  container.register('templateService', () => new TemplateService(), []);
+  container.register("promptBuilder", () => new CleanPromptBuilder(), []);
+  container.register("templateService", () => new TemplateService(), []);
 
   container.register(
-    'validationService',
+    "validationService",
     (videoPromptService: VideoService) =>
       new SuggestionValidationService(videoPromptService),
-    ['videoPromptService']
+    ["videoPromptService"],
   );
 
   container.register(
-    'diversityEnforcer',
+    "diversityEnforcer",
     (aiService: AIModelService) => new SuggestionDiversityEnforcer(aiService),
-    ['aiService']
+    ["aiService"],
   );
 
   container.register(
-    'categoryAligner',
+    "categoryAligner",
     (validationService: SuggestionValidationService) =>
       new CategoryAlignmentService(validationService),
-    ['validationService']
+    ["validationService"],
   );
 
   container.register(
-    'promptOptimizationService',
+    "promptOptimizationService",
     (
       aiService: AIModelService,
       cacheService: CacheService,
       videoPromptService: VideoPromptService,
       imageObservationService: ImageObservationService,
       templateService: TemplateService,
-      config: ServiceConfig
+      config: ServiceConfig,
     ) => {
       const po = config.promptOptimization;
       return new PromptOptimizationService(
@@ -71,21 +71,21 @@ export function registerEnhancementServices(container: DIContainer): void {
         videoPromptService,
         imageObservationService,
         templateService,
-        { cacheTtlMs: po.shotPlanCacheTtlMs, cacheMax: po.shotPlanCacheMax }
+        { cacheTtlMs: po.shotPlanCacheTtlMs, cacheMax: po.shotPlanCacheMax },
       );
     },
     [
-      'aiService',
-      'cacheService',
-      'videoPromptService',
-      'imageObservationService',
-      'templateService',
-      'config',
-    ]
+      "aiService",
+      "cacheService",
+      "videoPromptService",
+      "imageObservationService",
+      "templateService",
+      "config",
+    ],
   );
 
   container.register(
-    'enhancementService',
+    "enhancementService",
     (
       aiService: AIModelService,
       videoPromptService: VideoService,
@@ -95,7 +95,7 @@ export function registerEnhancementServices(container: DIContainer): void {
       diversityEnforcer: SuggestionDiversityEnforcer,
       categoryAligner: CategoryAlignmentService,
       cacheService: CacheService,
-      config: ServiceConfig
+      config: ServiceConfig,
     ) =>
       new EnhancementService({
         aiService,
@@ -109,28 +109,28 @@ export function registerEnhancementServices(container: DIContainer): void {
         enhancementConfig: config.enhancement,
       }),
     [
-      'aiService',
-      'videoPromptService',
-      'brainstormBuilder',
-      'promptBuilder',
-      'validationService',
-      'diversityEnforcer',
-      'categoryAligner',
-      'cacheService',
-      'config',
-    ]
+      "aiService",
+      "videoPromptService",
+      "brainstormBuilder",
+      "promptBuilder",
+      "validationService",
+      "diversityEnforcer",
+      "categoryAligner",
+      "cacheService",
+      "config",
+    ],
   );
 
   container.register(
-    'sceneDetectionService',
+    "sceneDetectionService",
     (aiService: AIModelService, cacheService: CacheService) =>
       new SceneChangeDetectionService(aiService, cacheService),
-    ['aiService', 'cacheService']
+    ["aiService", "cacheService"],
   );
 
   container.register(
-    'promptCoherenceService',
+    "promptCoherenceService",
     (aiService: AIModelService) => new PromptCoherenceService(aiService),
-    ['aiService']
+    ["aiService"],
   );
 }

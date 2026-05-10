@@ -5,42 +5,42 @@
  * Auth + starter credits required.
  */
 
-import type { Application } from 'express';
-import type { DIContainer } from '@infrastructure/DIContainer';
-import { apiAuthMiddleware } from '@middleware/apiAuth';
-import { createStarterCreditsMiddleware } from '@middleware/starterCredits';
-import { createPaymentRoutes } from '@routes/payment.routes';
-import type { PaymentRouteServices } from '@routes/payment/types';
-import type { PaymentConsistencyStore } from '@services/payment/PaymentConsistencyStore';
-import { resolveOptionalService } from './resolve-utils.ts';
+import type { Application } from "express";
+import type { DIContainer } from "@infrastructure/DIContainer";
+import { apiAuthMiddleware } from "@middleware/apiAuth";
+import { createStarterCreditsMiddleware } from "@middleware/starterCredits";
+import { createPaymentRoutes } from "@routes/payment.routes";
+import type { PaymentRouteServices } from "@routes/payment/types";
+import type { PaymentConsistencyStore } from "@services/payment/PaymentConsistencyStore";
+import { resolveOptionalService } from "./resolve-utils.ts";
 
 export function registerPaymentRoutes(
   app: Application,
-  container: DIContainer
+  container: DIContainer,
 ): void {
-  const userCreditService = container.resolve('userCreditService');
+  const userCreditService = container.resolve("userCreditService");
 
   const paymentConsistencyStore =
     resolveOptionalService<PaymentConsistencyStore | null>(
       container,
-      'paymentConsistencyStore',
-      'payment'
+      "paymentConsistencyStore",
+      "payment",
     );
   const firestoreCircuitExecutor = container.resolve(
-    'firestoreCircuitExecutor'
+    "firestoreCircuitExecutor",
   );
 
   const paymentRouteServices: PaymentRouteServices = {
     paymentService:
-      container.resolve<PaymentRouteServices['paymentService']>(
-        'paymentService'
+      container.resolve<PaymentRouteServices["paymentService"]>(
+        "paymentService",
       ),
     webhookEventStore: container.resolve<
-      PaymentRouteServices['webhookEventStore']
-    >('stripeWebhookEventStore'),
+      PaymentRouteServices["webhookEventStore"]
+    >("stripeWebhookEventStore"),
     billingProfileStore: container.resolve<
-      PaymentRouteServices['billingProfileStore']
-    >('billingProfileStore'),
+      PaymentRouteServices["billingProfileStore"]
+    >("billingProfileStore"),
     userCreditService,
     ...(paymentConsistencyStore ? { paymentConsistencyStore } : {}),
     firestoreCircuitExecutor,
@@ -50,9 +50,9 @@ export function registerPaymentRoutes(
     createStarterCreditsMiddleware(userCreditService);
   const paymentRoutes = createPaymentRoutes(paymentRouteServices);
   app.use(
-    '/api/payment',
+    "/api/payment",
     apiAuthMiddleware,
     starterCreditsMiddleware,
-    paymentRoutes
+    paymentRoutes,
   );
 }

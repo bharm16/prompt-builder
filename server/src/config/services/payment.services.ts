@@ -1,13 +1,13 @@
-import type { DIContainer } from '@infrastructure/DIContainer';
-import type { FirestoreCircuitExecutor } from '@services/firestore/FirestoreCircuitExecutor';
-import { BillingProfileStore } from '@services/payment/BillingProfileStore';
-import { createBillingProfileRepairWorker } from '@services/payment/BillingProfileRepairWorker';
-import { PaymentConsistencyStore } from '@services/payment/PaymentConsistencyStore';
-import { PaymentService } from '@services/payment/PaymentService';
-import { StripeWebhookEventStore } from '@services/payment/StripeWebhookEventStore';
-import { WebhookReconciliationWorker } from '@services/payment/WebhookReconciliationWorker';
-import type { UserCreditService } from '@services/credits/UserCreditService';
-import type { ServiceConfig } from './service-config.types.ts';
+import type { DIContainer } from "@infrastructure/DIContainer";
+import type { FirestoreCircuitExecutor } from "@services/firestore/FirestoreCircuitExecutor";
+import { BillingProfileStore } from "@services/payment/BillingProfileStore";
+import { createBillingProfileRepairWorker } from "@services/payment/BillingProfileRepairWorker";
+import { PaymentConsistencyStore } from "@services/payment/PaymentConsistencyStore";
+import { PaymentService } from "@services/payment/PaymentService";
+import { StripeWebhookEventStore } from "@services/payment/StripeWebhookEventStore";
+import { WebhookReconciliationWorker } from "@services/payment/WebhookReconciliationWorker";
+import type { UserCreditService } from "@services/credits/UserCreditService";
+import type { ServiceConfig } from "./service-config.types.ts";
 
 /**
  * Registers the payment / billing / Stripe stack.
@@ -18,37 +18,37 @@ import type { ServiceConfig } from './service-config.types.ts';
  */
 export function registerPaymentServices(container: DIContainer): void {
   container.register(
-    'billingProfileStore',
+    "billingProfileStore",
     (firestoreCircuitExecutor: FirestoreCircuitExecutor) =>
       new BillingProfileStore(firestoreCircuitExecutor),
-    ['firestoreCircuitExecutor']
+    ["firestoreCircuitExecutor"],
   );
   container.register(
-    'paymentService',
+    "paymentService",
     (config: ServiceConfig) => new PaymentService(config.stripe),
-    ['config']
+    ["config"],
   );
   container.register(
-    'stripeWebhookEventStore',
+    "stripeWebhookEventStore",
     (firestoreCircuitExecutor: FirestoreCircuitExecutor) =>
       new StripeWebhookEventStore(undefined, firestoreCircuitExecutor),
-    ['firestoreCircuitExecutor']
+    ["firestoreCircuitExecutor"],
   );
   container.register(
-    'paymentConsistencyStore',
+    "paymentConsistencyStore",
     (firestoreCircuitExecutor: FirestoreCircuitExecutor) =>
       new PaymentConsistencyStore(firestoreCircuitExecutor),
-    ['firestoreCircuitExecutor']
+    ["firestoreCircuitExecutor"],
   );
   container.register(
-    'webhookReconciliationWorker',
+    "webhookReconciliationWorker",
     (
       paymentService: PaymentService,
       webhookEventStore: StripeWebhookEventStore,
       billingProfileStore: BillingProfileStore,
       userCreditService: UserCreditService,
       paymentConsistencyStore: PaymentConsistencyStore,
-      config: ServiceConfig
+      config: ServiceConfig,
     ) => {
       const wrc = config.stripe.webhookReconciliation;
       if (wrc.disabled) {
@@ -67,31 +67,31 @@ export function registerPaymentServices(container: DIContainer): void {
         {
           pollIntervalMs,
           lookbackHours: wrc.lookbackHours,
-        }
+        },
       );
     },
     [
-      'paymentService',
-      'stripeWebhookEventStore',
-      'billingProfileStore',
-      'userCreditService',
-      'paymentConsistencyStore',
-      'config',
-    ]
+      "paymentService",
+      "stripeWebhookEventStore",
+      "billingProfileStore",
+      "userCreditService",
+      "paymentConsistencyStore",
+      "config",
+    ],
   );
   container.register(
-    'billingProfileRepairWorker',
+    "billingProfileRepairWorker",
     (
       paymentConsistencyStore: PaymentConsistencyStore,
       billingProfileStore: BillingProfileStore,
-      config: ServiceConfig
+      config: ServiceConfig,
     ) =>
       createBillingProfileRepairWorker(
         paymentConsistencyStore,
         billingProfileStore,
         undefined,
-        config.stripe.profileRepair
+        config.stripe.profileRepair,
       ),
-    ['paymentConsistencyStore', 'billingProfileStore', 'config']
+    ["paymentConsistencyStore", "billingProfileStore", "config"],
   );
 }

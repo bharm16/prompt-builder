@@ -1,12 +1,12 @@
-import { describe, it, expect, vi } from 'vitest';
-import { SuggestionsTelemetryService } from '../SuggestionsTelemetryService';
+import { describe, it, expect, vi } from "vitest";
+import { SuggestionsTelemetryService } from "../SuggestionsTelemetryService";
 import type {
   IPostHogClient,
   CaptureArgs,
-} from '@infrastructure/PostHogClient';
+} from "@infrastructure/PostHogClient";
 
-describe('suggestions.completed event schema (contract)', () => {
-  it('emits a stable shape — change requires explicit review', () => {
+describe("suggestions.completed event schema (contract)", () => {
+  it("emits a stable shape — change requires explicit review", () => {
     const captures: CaptureArgs[] = [];
     const client: IPostHogClient = {
       capture: vi.fn((args: CaptureArgs) => {
@@ -15,27 +15,27 @@ describe('suggestions.completed event schema (contract)', () => {
       shutdown: vi.fn(async () => {}),
     };
     const service = new SuggestionsTelemetryService(client);
-    const trace = service.startSuggestionsTrace('req-fixture', 'user-fixture');
+    const trace = service.startSuggestionsTrace("req-fixture", "user-fixture");
 
-    trace.recordStage('video_context', 12);
-    trace.recordStage('span_context', 8);
-    trace.recordStage('cache', 3);
-    trace.recordStage('v2_engine', 1500);
-    trace.recordStage('post_processing', 5);
+    trace.recordStage("video_context", 12);
+    trace.recordStage("span_context", 8);
+    trace.recordStage("cache", 3);
+    trace.recordStage("v2_engine", 1500);
+    trace.recordStage("post_processing", 5);
 
     trace.complete({
-      outcome: 'success',
+      outcome: "success",
       promptLength: 120,
       suggestionCount: 5,
-      highlightedCategory: 'lighting',
+      highlightedCategory: "lighting",
       isVideoPrompt: true,
       isPlaceholder: false,
-      modelTarget: 'kling-2.5',
+      modelTarget: "kling-2.5",
       promptSection: null,
       phraseRole: null,
-      policyVersion: '2026-03-v2a',
-      categoryId: 'lighting',
-      engineMode: 'guided_llm',
+      policyVersion: "2026-03-v2a",
+      categoryId: "lighting",
+      engineMode: "guided_llm",
       modelCallCount: 1,
       fallbackApplied: false,
       debug: false,
@@ -49,7 +49,7 @@ describe('suggestions.completed event schema (contract)', () => {
       event: capture.event,
       propertyKeys: Object.keys(capture.properties || {}).sort(),
       stageKeys: Object.keys(
-        (capture.properties as { stages?: object })?.stages || {}
+        (capture.properties as { stages?: object })?.stages || {},
       ).sort(),
       sampleValues: {
         outcome: (capture.properties as { outcome?: string })?.outcome,
