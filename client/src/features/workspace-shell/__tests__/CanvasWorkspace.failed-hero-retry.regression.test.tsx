@@ -2,6 +2,29 @@ import React from "react";
 import { render } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
+vi.mock(
+  "@/features/prompt-optimizer/context/PromptResultsActionsContext",
+  () => ({
+    usePromptResultsData: () => ({
+      suggestionsData: null,
+      i2vContext: null,
+      motionIdeas: undefined,
+      isMotionIdeasLoading: false,
+    }),
+    usePromptResultsActions: () => ({
+      user: null,
+      onDisplayedPromptChange: () => {},
+      onReoptimize: async () => {},
+      onFetchSuggestions: () => {},
+      onSuggestionClick: () => {},
+      onHighlightsPersist: () => {},
+      onUndo: () => {},
+      onRedo: () => {},
+      stablePromptContext: null,
+    }),
+  }),
+);
+
 import { CanvasWorkspace } from "../CanvasWorkspace";
 import type {
   Generation,
