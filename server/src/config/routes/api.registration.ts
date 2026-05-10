@@ -85,6 +85,7 @@ export function registerApiRoutes(
       container.resolve<UserCreditService>("userCreditService"),
     referenceImageRepository: container.resolve("referenceImageRepository"),
     imageObservationService: container.resolve("imageObservationService"),
+    motionIdeaService: container.resolve("motionIdeaService"),
     continuitySessionService,
     sessionService: container.resolve("sessionService"),
     modelIntelligenceService,
