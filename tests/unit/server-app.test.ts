@@ -63,7 +63,6 @@ const PAYMENT_TOKENS = new Set([
   "billingProfileStore",
   "userCreditService",
   "paymentConsistencyStore",
-  "metricsService",
   "firestoreCircuitExecutor",
 ]);
 
@@ -126,7 +125,6 @@ describe("createApp", () => {
       expect(setMock).toHaveBeenCalledWith("trust proxy", 1);
       expect(configureMiddlewareMock).toHaveBeenCalledWith(appInstance, {
         logger: { token: "logger" },
-        metricsService: { token: "metricsService" },
         redisClient: { token: "redisClient" },
       });
       expect(configureRoutesMock).toHaveBeenCalledWith(appInstance, container);

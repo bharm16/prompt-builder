@@ -118,7 +118,6 @@ describe("createApp", () => {
     const container = {
       resolve: vi.fn((key: string) => {
         if (key === "logger") return { name: "logger" };
-        if (key === "metricsService") return { name: "metrics" };
         return null;
       }),
     };
@@ -128,7 +127,6 @@ describe("createApp", () => {
     expect(app.get("trust proxy")).toBe(1);
     expect(configureMiddleware).toHaveBeenCalledWith(app, {
       logger: { name: "logger" },
-      metricsService: { name: "metrics" },
       redisClient: null,
     });
     expect(configureRoutes).toHaveBeenCalledWith(app, container);
@@ -256,42 +254,6 @@ describe("health.routes", () => {
     expect(ready.body.status).toBe("not ready");
     expect(ready.body.checks.firestore.healthy).toBe(false);
     expect(ready.body.checks.firestore.circuitState).toBe("open");
-  });
-
-  it("protects metrics and stats endpoints with token", async () => {
-    process.env.METRICS_TOKEN = "secret-token";
-
-    const deps = {
-      openAIClient: { getStats: () => ({ state: "CLOSED" }) },
-      groqClient: null,
-      geminiClient: null,
-      cacheService: {
-        isHealthy: () => true,
-        getCacheStats: () => ({ hits: 1, misses: 0 }),
-      },
-      metricsService: {
-        register: { contentType: "text/plain" },
-        getMetrics: async () => "metrics-body",
-      },
-    };
-
-    const app = express();
-    app.use(createHealthRoutes(deps));
-
-    const metrics = await runSupertestOrSkip(() =>
-      request(app).get("/metrics").set("Authorization", "Bearer secret-token"),
-    );
-    if (!metrics) return;
-    expect(metrics.status).toBe(200);
-    expect(metrics.text).toBe("metrics-body");
-
-    const stats = await runSupertestOrSkip(() =>
-      request(app).get("/stats").set("Authorization", "Bearer secret-token"),
-    );
-    if (!stats) return;
-    expect(stats.status).toBe(200);
-    expect(stats.body.apis.openAI.state).toBe("CLOSED");
-    expect(stats.body.twoStageOptimization.enabled).toBe(false);
   });
 });
 
