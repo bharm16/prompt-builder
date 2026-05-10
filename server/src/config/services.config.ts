@@ -12,6 +12,7 @@ import { registerStorageServices } from "./services/storage.services.ts";
 import { registerCreditServices } from "./services/credit.services.ts";
 import { registerVideoJobServices } from "./services/video-jobs.services.ts";
 import { registerLLMServices } from "./services/llm.services.ts";
+import { registerI2VServices } from "./services/i2v.services.ts";
 import { registerSpanLabelingServices } from "./services/span-labeling.services.ts";
 import { registerEnhancementServices } from "./services/enhancement.services.ts";
 import { registerGenerationServices } from "./services/generation.services.ts";
@@ -43,6 +44,8 @@ export async function configureServices(): Promise<DIContainer> {
   // Business logic: LLM, enhancement, generation
   // (observation services are registered by registerCoreServices)
   registerLLMServices(container);
+  // I2V motion ideas — depends on aiService + imageObservationService
+  registerI2VServices(container);
   registerSpanLabelingServices(container);
   registerEnhancementServices(container);
   registerGenerationServices(container);
