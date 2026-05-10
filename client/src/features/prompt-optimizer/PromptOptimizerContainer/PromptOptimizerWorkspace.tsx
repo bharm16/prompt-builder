@@ -760,6 +760,7 @@ function PromptOptimizerContent({
     openSettings: () => setShowSettings(true),
     createNew: handleCreateNew,
     optimize: () =>
+      !i2vContext.isI2VMode &&
       !promptOptimizer.isProcessing &&
       showResults === false &&
       handleOptimize(),
