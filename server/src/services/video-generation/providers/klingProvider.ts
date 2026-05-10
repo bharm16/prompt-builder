@@ -32,6 +32,12 @@ interface KlingImageToVideoInput {
 
 export const DEFAULT_KLING_BASE_URL = "https://api.klingai.com";
 
+// Kling's API rejects empty/whitespace prompt strings (HTTP 400). When the
+// caller passes "" — which the i2v pipeline does intentionally for image-only
+// inputs — substitute a neutral placeholder so the request succeeds. Kept
+// adapter-local: the route layer still passes through whatever the client sent.
+const KLING_EMPTY_PROMPT_SUBSTITUTE = "natural motion";
+
 const KLING_STATUS_POLL_INTERVAL_MS = 2000;
 const KLING_FETCH_TIMEOUT_MS = 30_000;
 
@@ -313,11 +319,14 @@ export async function generateKlingVideo(
   options: VideoGenerationOptions,
   log: LogSink,
 ): Promise<{ url: string; resolvedAspectRatio?: string }> {
+  const effectivePrompt =
+    prompt && prompt.trim().length > 0 ? prompt : KLING_EMPTY_PROMPT_SUBSTITUTE;
+
   if (options.startImage) {
     return generateKlingImageToVideo(
       apiKey,
       baseUrl,
-      prompt,
+      effectivePrompt,
       modelId,
       options,
       log,
@@ -327,7 +336,7 @@ export async function generateKlingVideo(
   const aspectRatio = resolveKlingAspectRatio(options.aspectRatio, log);
   const input: KlingTextToVideoInput = {
     model_name: modelId,
-    prompt,
+    prompt: effectivePrompt,
     ...(options.negativePrompt
       ? { negative_prompt: options.negativePrompt }
       : {}),
