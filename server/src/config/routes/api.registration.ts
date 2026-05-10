@@ -5,58 +5,59 @@
  * and suggestions evaluation. All routes require auth.
  */
 
-import type { Application } from 'express';
-import type { Bucket } from '@google-cloud/storage';
-import type { DIContainer } from '@infrastructure/DIContainer';
-import { apiAuthMiddleware } from '@middleware/apiAuth';
-import { createBatchMiddleware } from '@middleware/requestBatching';
-import { createRouteTimeout } from '@middleware/routeTimeout';
-import { createAPIRoutes } from '@routes/api.routes';
-import { createRoleClassifyRoute } from '@routes/roleClassifyRoute';
-import { createLabelSpansRoute } from '@routes/labelSpansRoute';
-import { createSuggestionsRoute } from '@routes/suggestions';
-import { createMediaProxyRoutes } from '@routes/storage/mediaProxy.routes';
-import type { StorageRoutesService } from '@routes/storage.routes';
-import type { LLMJudgeService } from '@services/quality-feedback/services/LLMJudgeService';
-import type { ContinuitySessionService } from '@services/continuity/ContinuitySessionService';
-import type { ModelIntelligenceService } from '@services/model-intelligence/ModelIntelligenceService';
-import type { ConsistentVideoService } from '@services/video-generation/ConsistentVideoService';
-import type { UserCreditService } from '@services/credits/UserCreditService';
-import type { OptimizeTelemetryService } from '@services/observability/OptimizeTelemetryService';
-import { STORAGE_CONFIG } from '@services/storage/config/storageConfig';
-import { resolveOptionalService } from './resolve-utils.ts';
+import type { Application } from "express";
+import type { Bucket } from "@google-cloud/storage";
+import type { DIContainer } from "@infrastructure/DIContainer";
+import { apiAuthMiddleware } from "@middleware/apiAuth";
+import { createBatchMiddleware } from "@middleware/requestBatching";
+import { createRouteTimeout } from "@middleware/routeTimeout";
+import { createAPIRoutes } from "@routes/api.routes";
+import { createRoleClassifyRoute } from "@routes/roleClassifyRoute";
+import { createLabelSpansRoute } from "@routes/labelSpansRoute";
+import { createSuggestionsRoute } from "@routes/suggestions";
+import { createMediaProxyRoutes } from "@routes/storage/mediaProxy.routes";
+import type { StorageRoutesService } from "@routes/storage.routes";
+import type { LLMJudgeService } from "@services/quality-feedback/services/LLMJudgeService";
+import type { ContinuitySessionService } from "@services/continuity/ContinuitySessionService";
+import type { ModelIntelligenceService } from "@services/model-intelligence/ModelIntelligenceService";
+import type { ConsistentVideoService } from "@services/video-generation/ConsistentVideoService";
+import type { UserCreditService } from "@services/credits/UserCreditService";
+import type { OptimizeTelemetryService } from "@services/observability/OptimizeTelemetryService";
+import type { SuggestionsTelemetryService } from "@services/observability/SuggestionsTelemetryService";
+import { STORAGE_CONFIG } from "@services/storage/config/storageConfig";
+import { resolveOptionalService } from "./resolve-utils.ts";
 
 export function registerApiRoutes(
   app: Application,
-  container: DIContainer
+  container: DIContainer,
 ): void {
-  const userCreditService = container.resolve('userCreditService');
+  const userCreditService = container.resolve("userCreditService");
 
   const videoGenerationService = resolveOptionalService<unknown>(
     container,
-    'videoGenerationService',
-    'preview'
+    "videoGenerationService",
+    "preview",
   );
 
   const continuitySessionService =
     resolveOptionalService<ContinuitySessionService | null>(
       container,
-      'continuitySessionService',
-      'continuity'
+      "continuitySessionService",
+      "continuity",
     );
   const modelIntelligenceService =
     resolveOptionalService<ModelIntelligenceService | null>(
       container,
-      'modelIntelligenceService',
-      'model-intelligence'
+      "modelIntelligenceService",
+      "model-intelligence",
     );
   const consistentVideoService: ConsistentVideoService | null =
     !videoGenerationService
       ? null
       : resolveOptionalService<ConsistentVideoService | null>(
           container,
-          'consistentVideoService',
-          'consistent-generation'
+          "consistentVideoService",
+          "consistent-generation",
         );
 
   // Media proxy — no auth required (signed URL is the authorization).
@@ -66,72 +67,75 @@ export function registerApiRoutes(
   // bucket is unconditionally registered in storage.services.ts and
   // listed in REQUIRED_TOKENS — a missing registration must fail boot
   // (loud) rather than silently lose the expired-URL recovery path.
-  const gcsBucket = container.resolve<Bucket>('gcsBucket');
+  const gcsBucket = container.resolve<Bucket>("gcsBucket");
   const mediaProxyRoutes = createMediaProxyRoutes(
     STORAGE_CONFIG.bucketName,
-    gcsBucket
+    gcsBucket,
   );
-  app.use('/api/storage', mediaProxyRoutes);
+  app.use("/api/storage", mediaProxyRoutes);
 
   // Main API routes
   const apiRoutes = createAPIRoutes({
-    promptOptimizationService: container.resolve('promptOptimizationService'),
+    promptOptimizationService: container.resolve("promptOptimizationService"),
     optimizeTelemetryService: container.resolve<OptimizeTelemetryService>(
-      'optimizeTelemetryService'
+      "optimizeTelemetryService",
     ),
-    enhancementService: container.resolve('enhancementService'),
-    sceneDetectionService: container.resolve('sceneDetectionService'),
-    promptCoherenceService: container.resolve('promptCoherenceService'),
-    storageService: container.resolve<StorageRoutesService>('storageService'),
-    assetService: container.resolve('assetService'),
+    enhancementService: container.resolve("enhancementService"),
+    sceneDetectionService: container.resolve("sceneDetectionService"),
+    promptCoherenceService: container.resolve("promptCoherenceService"),
+    suggestionsTelemetryService: container.resolve<SuggestionsTelemetryService>(
+      "suggestionsTelemetryService",
+    ),
+    storageService: container.resolve<StorageRoutesService>("storageService"),
+    assetService: container.resolve("assetService"),
     ...(consistentVideoService ? { consistentVideoService } : {}),
     userCreditService:
-      container.resolve<UserCreditService>('userCreditService'),
-    referenceImageRepository: container.resolve('referenceImageRepository'),
-    imageObservationService: container.resolve('imageObservationService'),
-    motionIdeaService: container.resolve('motionIdeaService'),
+      container.resolve<UserCreditService>("userCreditService"),
+    referenceImageRepository: container.resolve("referenceImageRepository"),
+    imageObservationService: container.resolve("imageObservationService"),
+    motionIdeaService: container.resolve("motionIdeaService"),
     continuitySessionService,
-    sessionService: container.resolve('sessionService'),
+    sessionService: container.resolve("sessionService"),
     modelIntelligenceService,
   });
 
   app.use(
-    '/api',
+    "/api",
     apiAuthMiddleware,
     createRouteTimeout(30_000, {
       shouldApply: (req) => {
         const path = req.path;
         const isPreviewRoute =
-          path === '/preview' || path.startsWith('/preview/');
-        const isOptimizeRoute = path.startsWith('/optimize');
+          path === "/preview" || path.startsWith("/preview/");
+        const isOptimizeRoute = path.startsWith("/optimize");
         return !(isPreviewRoute || isOptimizeRoute);
       },
     }),
-    apiRoutes
+    apiRoutes,
   );
 
   // LLM endpoints
   const labelSpansRoute = createLabelSpansRoute(
-    container.resolve('aiService'),
-    container.resolve('spanLabelingCacheService')
+    container.resolve("aiService"),
+    container.resolve("spanLabelingCacheService"),
   );
-  app.use('/llm/label-spans', apiAuthMiddleware, labelSpansRoute);
+  app.use("/llm/label-spans", apiAuthMiddleware, labelSpansRoute);
 
   app.post(
-    '/llm/label-spans-batch',
+    "/llm/label-spans-batch",
     apiAuthMiddleware,
-    createBatchMiddleware(container.resolve('spanLabelingProvider'))
+    createBatchMiddleware(container.resolve("spanLabelingProvider")),
   );
 
   // Role classification
   const roleClassifyRoute = createRoleClassifyRoute(
-    container.resolve('aiService')
+    container.resolve("aiService"),
   );
-  app.use('/api/role-classify', apiAuthMiddleware, roleClassifyRoute);
+  app.use("/api/role-classify", apiAuthMiddleware, roleClassifyRoute);
 
   // Suggestions evaluation (LLM-as-a-Judge)
   const suggestionsRoute = createSuggestionsRoute({
-    llmJudgeService: container.resolve<LLMJudgeService>('llmJudgeService'),
+    llmJudgeService: container.resolve<LLMJudgeService>("llmJudgeService"),
   });
-  app.use('/api/suggestions', apiAuthMiddleware, suggestionsRoute);
+  app.use("/api/suggestions", apiAuthMiddleware, suggestionsRoute);
 }

@@ -82,6 +82,14 @@ describe("Enhancement Suggestions Flow (integration)", () => {
         enhancementService: enhancementService as never,
         sceneDetectionService: sceneDetectionService as never,
         promptCoherenceService: promptCoherenceService as never,
+        suggestionsTelemetryService: {
+          startSuggestionsTrace: vi.fn(() => ({
+            recordStage: vi.fn(),
+            recordCacheHit: vi.fn(),
+            recordError: vi.fn(),
+            complete: vi.fn(),
+          })),
+        } as never,
       }),
     );
 
@@ -164,6 +172,14 @@ describe("Enhancement Suggestions Flow (integration)", () => {
         enhancementService: enhancementService as never,
         sceneDetectionService: { detectSceneChange: vi.fn() } as never,
         promptCoherenceService: { checkCoherence: vi.fn() } as never,
+        suggestionsTelemetryService: {
+          startSuggestionsTrace: vi.fn(() => ({
+            recordStage: vi.fn(),
+            recordCacheHit: vi.fn(),
+            recordError: vi.fn(),
+            complete: vi.fn(),
+          })),
+        } as never,
       }),
     );
 

@@ -52,6 +52,15 @@ function createApp(overrides?: {
     ...overrides?.promptCoherenceService,
   };
 
+  const suggestionsTelemetryService = {
+    startSuggestionsTrace: vi.fn(() => ({
+      recordStage: vi.fn(),
+      recordCacheHit: vi.fn(),
+      recordError: vi.fn(),
+      complete: vi.fn(),
+    })),
+  };
+
   const app = express();
   app.use(express.json());
   app.use(
@@ -59,6 +68,7 @@ function createApp(overrides?: {
       enhancementService,
       sceneDetectionService,
       promptCoherenceService,
+      suggestionsTelemetryService: suggestionsTelemetryService as never,
     }),
   );
 

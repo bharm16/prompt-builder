@@ -4,7 +4,12 @@ import { asyncHandler } from "@middleware/asyncHandler";
 import { validateRequest } from "@middleware/validateRequest";
 import { PerformanceMonitor } from "@middleware/performanceMonitor";
 import { suggestionSchema } from "@config/schemas";
+import { extractUserId } from "@utils/requestHelpers";
 import { countSuggestions } from "./utils";
+import type {
+  SuggestionsTelemetryService,
+  SuggestionsTrace,
+} from "@services/observability/SuggestionsTelemetryService";
 
 interface EnhancementSuggestionsResult {
   suggestions?: unknown[];
@@ -15,15 +20,23 @@ interface EnhancementSuggestionsResult {
 interface EnhancementSuggestionsDeps {
   enhancementService: {
     getEnhancementSuggestions: (
-      payload: Record<string, unknown>,
+      payload: Record<string, unknown> & { trace?: SuggestionsTrace },
     ) => Promise<EnhancementSuggestionsResult>;
   };
   perfMonitor: PerformanceMonitor;
+  suggestionsTelemetryService: Pick<
+    SuggestionsTelemetryService,
+    "startSuggestionsTrace"
+  >;
 }
 
 export function registerEnhancementSuggestionsRoute(
   router: Router,
-  { enhancementService, perfMonitor }: EnhancementSuggestionsDeps,
+  {
+    enhancementService,
+    perfMonitor,
+    suggestionsTelemetryService,
+  }: EnhancementSuggestionsDeps,
 ): void {
   router.post(
     "/get-enhancement-suggestions",
@@ -69,6 +82,13 @@ export function registerEnhancementSuggestionsRoute(
         req.perfMonitor.start("service_call");
       }
 
+      const userIdRaw = extractUserId(req);
+      const userId = userIdRaw === "anonymous" ? null : userIdRaw;
+      const trace = suggestionsTelemetryService.startSuggestionsTrace(
+        requestId,
+        userId,
+      );
+
       try {
         const result = await enhancementService.getEnhancementSuggestions({
           highlightedText,
@@ -84,6 +104,7 @@ export function registerEnhancementSuggestionsRoute(
           nearbySpans,
           editHistory,
           debug,
+          trace,
         });
 
         const suggestionCount = countSuggestions(result.suggestions);

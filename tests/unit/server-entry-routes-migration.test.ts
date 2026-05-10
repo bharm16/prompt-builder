@@ -100,6 +100,14 @@ const createApiServices = (
   promptCoherenceService: {
     checkCoherence: vi.fn(async () => ({ conflicts: [], harmonizations: [] })),
   },
+  suggestionsTelemetryService: {
+    startSuggestionsTrace: vi.fn(() => ({
+      recordStage: vi.fn(),
+      recordCacheHit: vi.fn(),
+      recordError: vi.fn(),
+      complete: vi.fn(),
+    })),
+  } as never,
   metricsService: undefined,
 });
 

@@ -6,11 +6,15 @@ import { registerCustomSuggestionsRoute } from "./enhancement/customSuggestionsR
 import { registerSceneChangeRoute } from "./enhancement/sceneChangeRoute";
 import { registerNlpTestRoute } from "./enhancement/nlpTestRoute";
 import { registerCoherenceCheckRoute } from "./enhancement/coherenceCheckRoute";
+import type {
+  SuggestionsTelemetryService,
+  SuggestionsTrace,
+} from "@services/observability/SuggestionsTelemetryService";
 
 export interface EnhancementServices {
   enhancementService: {
     getEnhancementSuggestions: (
-      payload: Record<string, unknown>,
+      payload: Record<string, unknown> & { trace?: SuggestionsTrace },
     ) => Promise<Record<string, unknown>>;
     getCustomSuggestions: (
       payload: Record<string, unknown>,
@@ -26,6 +30,10 @@ export interface EnhancementServices {
       payload: Record<string, unknown>,
     ) => Promise<CoherenceCheckResult>;
   };
+  suggestionsTelemetryService: Pick<
+    SuggestionsTelemetryService,
+    "startSuggestionsTrace"
+  >;
   metricsService?:
     | {
         recordAlert?: (name: string, payload: Record<string, unknown>) => void;
@@ -43,6 +51,7 @@ export function createEnhancementRoutes(services: EnhancementServices): Router {
     enhancementService,
     sceneDetectionService,
     promptCoherenceService,
+    suggestionsTelemetryService,
     metricsService,
   } = services;
 
@@ -51,6 +60,7 @@ export function createEnhancementRoutes(services: EnhancementServices): Router {
   registerEnhancementSuggestionsRoute(router, {
     enhancementService,
     perfMonitor,
+    suggestionsTelemetryService,
   });
   registerCustomSuggestionsRoute(router, { enhancementService });
   registerSceneChangeRoute(router, { sceneDetectionService });
