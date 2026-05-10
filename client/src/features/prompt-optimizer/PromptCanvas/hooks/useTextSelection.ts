@@ -34,6 +34,12 @@ export interface UseTextSelectionOptions {
   onFetchSuggestions: ((payload: SuggestionPayload) => void) | undefined;
   onSpanSelect?: ((spanId: string | null) => void) | undefined;
   onIntentRefine?: (() => void) | undefined;
+  /**
+   * When true (I2V mode is active), span clicks and category-row clicks
+   * are no-ops — the suggestions popover is intentionally disabled because
+   * the start image dictates the constraints.
+   */
+  isI2VMode?: boolean;
 }
 
 export interface UseTextSelectionReturn {
@@ -52,6 +58,7 @@ export function useTextSelection({
   onFetchSuggestions,
   onSpanSelect,
   onIntentRefine,
+  isI2VMode = false,
 }: UseTextSelectionOptions): UseTextSelectionReturn {
   const spanContextSpans = useMemo(
     () => (Array.isArray(parseResult?.spans) ? parseResult.spans : []),
@@ -60,6 +67,9 @@ export function useTextSelection({
 
   const handleTextSelection = useCallback((): void => {
     if (selectedMode !== "video") {
+      return;
+    }
+    if (isI2VMode) {
       return;
     }
 
@@ -95,11 +105,15 @@ export function useTextSelection({
     displayedPrompt,
     spanContextSpans,
     onFetchSuggestions,
+    isI2VMode,
   ]);
 
   const triggerSuggestionsFromTarget = useCallback(
     (targetElement: EventTarget | null, e: React.MouseEvent | null): void => {
       if (selectedMode !== "video" || !editorRef.current) {
+        return;
+      }
+      if (isI2VMode) {
         return;
       }
 
@@ -185,6 +199,7 @@ export function useTextSelection({
       spanContextSpans,
       onSpanSelect,
       onIntentRefine,
+      isI2VMode,
     ],
   );
 
@@ -216,6 +231,9 @@ export function useTextSelection({
   const handleSpanClickFromCategory = useCallback(
     (span: SpanClickPayload): void => {
       if (!onFetchSuggestions || selectedMode !== "video") {
+        return;
+      }
+      if (isI2VMode) {
         return;
       }
 
@@ -268,6 +286,7 @@ export function useTextSelection({
       spanContextSpans,
       onSpanSelect,
       onIntentRefine,
+      isI2VMode,
     ],
   );
 
