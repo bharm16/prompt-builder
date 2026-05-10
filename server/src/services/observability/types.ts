@@ -52,6 +52,8 @@ export interface OptimizeEventProperties {
   stages: OptimizeEventStages;
 }
 
+// ----- LLM call telemetry -----
+
 export type LlmCallOutcome = "success" | "error";
 
 export interface LlmCallSummary {
@@ -81,4 +83,66 @@ export interface LlmCallEventProperties {
   errorMessage?: string;
   requestId?: string;
   userId: string | null;
+}
+
+// ----- Suggestions telemetry -----
+
+export type SuggestionsStageName =
+  | "video_context"
+  | "span_context"
+  | "cache"
+  | "v2_engine"
+  | "post_processing";
+
+export type SuggestionsOutcome = "success" | "error" | "aborted";
+
+export interface SuggestionsTraceCompleteSummary {
+  outcome: SuggestionsOutcome;
+  promptLength: number;
+  suggestionCount: number;
+  highlightedCategory: string | null;
+  isVideoPrompt: boolean;
+  isPlaceholder: boolean;
+  modelTarget: string | null;
+  promptSection: string | null;
+  phraseRole: string | null;
+  policyVersion: string | null;
+  categoryId: string | null;
+  engineMode: string | null;
+  modelCallCount: number;
+  fallbackApplied: boolean;
+  debug: boolean;
+}
+
+export interface SuggestionsEventStages {
+  videoContextMs: number | null;
+  spanContextMs: number | null;
+  cacheCheckMs: number | null;
+  v2EngineMs: number | null;
+  postProcessingMs: number | null;
+}
+
+export interface SuggestionsEventProperties {
+  requestId: string;
+  userId: string | null;
+  outcome: SuggestionsOutcome;
+  errorMessage?: string;
+  errorStage?: SuggestionsStageName;
+  durationMs: number;
+  cacheHit: boolean;
+  suggestionCount: number;
+  highlightedCategory: string | null;
+  promptLength: number;
+  isVideoPrompt: boolean;
+  isPlaceholder: boolean;
+  modelTarget: string | null;
+  promptSection: string | null;
+  phraseRole: string | null;
+  policyVersion: string | null;
+  categoryId: string | null;
+  engineMode: string | null;
+  modelCallCount: number;
+  fallbackApplied: boolean;
+  debug: boolean;
+  stages: SuggestionsEventStages;
 }
