@@ -66,6 +66,7 @@ export function createAPIRoutes(services: ApiServices): Router {
 
   const {
     promptOptimizationService,
+    optimizeTelemetryService,
     enhancementService,
     sceneDetectionService,
     promptCoherenceService,
@@ -84,7 +85,13 @@ export function createAPIRoutes(services: ApiServices): Router {
   } = services;
 
   // Mount optimization routes at root level (preserves /api/optimize paths)
-  router.use("/", createOptimizeRoutes({ promptOptimizationService }));
+  router.use(
+    "/",
+    createOptimizeRoutes({
+      promptOptimizationService,
+      ...(optimizeTelemetryService ? { optimizeTelemetryService } : {}),
+    }),
+  );
 
   // Mount enhancement routes at root level (preserves existing paths)
   router.use(

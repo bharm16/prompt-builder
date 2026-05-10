@@ -22,6 +22,7 @@ import type { ContinuitySessionService } from "@services/continuity/ContinuitySe
 import type { ModelIntelligenceService } from "@services/model-intelligence/ModelIntelligenceService";
 import type { ConsistentVideoService } from "@services/video-generation/ConsistentVideoService";
 import type { UserCreditService } from "@services/credits/UserCreditService";
+import type { OptimizeTelemetryService } from "@services/observability/OptimizeTelemetryService";
 import { STORAGE_CONFIG } from "@services/storage/config/storageConfig";
 import { resolveOptionalService } from "./resolve-utils.ts";
 
@@ -75,6 +76,9 @@ export function registerApiRoutes(
   // Main API routes
   const apiRoutes = createAPIRoutes({
     promptOptimizationService: container.resolve("promptOptimizationService"),
+    optimizeTelemetryService: container.resolve<OptimizeTelemetryService>(
+      "optimizeTelemetryService",
+    ),
     enhancementService: container.resolve("enhancementService"),
     sceneDetectionService: container.resolve("sceneDetectionService"),
     promptCoherenceService: container.resolve("promptCoherenceService"),

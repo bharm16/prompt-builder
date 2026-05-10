@@ -28,6 +28,17 @@ vi.mock("@infrastructure/Logger", () => ({
 
 import { createOptimizeHandler } from "@routes/optimize/handlers/optimize";
 import { createOptimizeCompileHandler } from "@routes/optimize/handlers/optimizeCompile";
+import type { OptimizeTelemetryService } from "@services/observability/OptimizeTelemetryService";
+
+const mockTelemetryService = {
+  startOptimizeTrace: vi.fn(() => ({
+    recordStage: vi.fn(),
+    recordLlmCall: vi.fn(),
+    recordCacheHit: vi.fn(),
+    recordError: vi.fn(),
+    complete: vi.fn(),
+  })),
+} as unknown as OptimizeTelemetryService;
 
 type MutableMockResponse = Response & {
   headersSent: boolean;
@@ -95,7 +106,10 @@ describe("optimize handlers response-state regression", () => {
       compilePrompt: vi.fn(),
     };
 
-    const handler = createOptimizeHandler(service as never);
+    const handler = createOptimizeHandler(
+      service as never,
+      mockTelemetryService,
+    );
     const req = createMockRequest(
       {
         prompt: "baby driving a car",
@@ -129,7 +143,10 @@ describe("optimize handlers response-state regression", () => {
     res.headersSent = true;
     res.writableEnded = true;
 
-    const handler = createOptimizeHandler(service as never);
+    const handler = createOptimizeHandler(
+      service as never,
+      mockTelemetryService,
+    );
     const req = createMockRequest(
       {
         prompt: "baby driving a car",

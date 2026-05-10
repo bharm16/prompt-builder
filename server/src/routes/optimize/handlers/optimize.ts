@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 import { logger } from "@infrastructure/Logger";
 import { extractUserId } from "@utils/requestHelpers";
 import { normalizeGenerationParams } from "@routes/optimize/normalizeGenerationParams";
+import type { OptimizeTelemetryService } from "@services/observability/OptimizeTelemetryService";
 import type { PromptOptimizationServiceContract } from "../types";
 import { promptSchema } from "@config/schemas/promptSchemas";
 // Response wire format defined in shared/schemas/optimization.schemas.ts —
@@ -13,12 +14,19 @@ import {
 } from "./requestNormalization";
 
 export const createOptimizeHandler =
-  (promptOptimizationService: PromptOptimizationServiceContract) =>
+  (
+    promptOptimizationService: PromptOptimizationServiceContract,
+    optimizeTelemetryService: OptimizeTelemetryService,
+  ) =>
   async (req: Request, res: Response): Promise<Response | void> => {
     const startTime = Date.now();
     const requestId = req.id || "unknown";
     const userId = extractUserId(req);
     const operation = "optimize";
+    const trace = optimizeTelemetryService.startOptimizeTrace(
+      requestId,
+      userId,
+    );
 
     const parsed = promptSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -129,6 +137,7 @@ export const createOptimizeHandler =
           ? { sourcePrompt }
           : {}),
         signal: requestAbortController.signal,
+        trace,
       };
       const result = await promptOptimizationService.optimize(optimizeRequest);
 
