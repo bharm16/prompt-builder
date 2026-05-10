@@ -15,6 +15,7 @@ import type { ServiceConfig } from "./config/services.config.ts";
 import { logger } from "./infrastructure/Logger.ts";
 import { closeRedisClient } from "./config/redis.ts";
 import type { DIContainer } from "./infrastructure/DIContainer.ts";
+import type { IPostHogClient } from "./infrastructure/PostHogClient.ts";
 import type { SpanLabelingCacheService } from "./services/cache/SpanLabelingCacheService.ts";
 import type { CapabilitiesProbeService } from "./services/capabilities/CapabilitiesProbeService.ts";
 import type { CreditRefundSweeper } from "./services/credits/CreditRefundSweeper.ts";
@@ -262,6 +263,18 @@ export function setupGracefulShutdown(
         // Close Redis connection
         const redisClient = container.resolve<Redis | null>("redisClient");
         await closeRedisClient(redisClient);
+
+        // Flush pending telemetry events before exiting.
+        const postHogClient = resolveOptional<IPostHogClient>("postHogClient");
+        if (postHogClient) {
+          try {
+            await postHogClient.shutdown();
+          } catch (err) {
+            logger.warn("PostHog shutdown failed (non-fatal)", {
+              error: err instanceof Error ? err.message : String(err),
+            });
+          }
+        }
 
         // Stop cache cleanup interval
         const spanLabelingCacheService =
