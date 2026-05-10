@@ -7,6 +7,7 @@
 
 import { createContainer, type DIContainer } from "@infrastructure/DIContainer";
 import { registerCoreServices } from "./services/core.services.ts";
+import { registerObservabilityServices } from "./services/observability.services.ts";
 import { registerCacheServices } from "./services/cache.services.ts";
 import { registerStorageServices } from "./services/storage.services.ts";
 import { registerCreditServices } from "./services/credit.services.ts";
@@ -34,6 +35,7 @@ export async function configureServices(): Promise<DIContainer> {
 
   // Foundation: logging, metrics, circuit breaker, config
   registerCoreServices(container);
+  registerObservabilityServices(container);
   registerCacheServices(container);
   registerStorageServices(container);
 
