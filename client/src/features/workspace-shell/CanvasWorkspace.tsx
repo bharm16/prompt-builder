@@ -475,6 +475,11 @@ export function CanvasWorkspace({
   // button visually so users don't click into nothing.
   const enhanceDrawerDisabled = !onEnhance || !prompt.trim();
 
+  // I2V mode (start image set) bypasses optimization — see Phase 4 of the
+  // i2v-pipeline-simplification spec. Hide the Enhance trigger entirely so
+  // the UX matches what the pipeline actually does.
+  const isI2VMode = Boolean(domain.startFrame?.url);
+
   const tuneSlot = useMemo(
     () =>
       tuneOpen ? (
@@ -485,6 +490,7 @@ export function CanvasWorkspace({
           {...(onEnhance ? { onEnhance } : {})}
           isEnhancing={isEnhancing}
           enhanceDisabled={enhanceDrawerDisabled}
+          isI2VMode={isI2VMode}
         />
       ) : null,
     [
@@ -495,6 +501,7 @@ export function CanvasWorkspace({
       onEnhance,
       isEnhancing,
       enhanceDrawerDisabled,
+      isI2VMode,
     ],
   );
 

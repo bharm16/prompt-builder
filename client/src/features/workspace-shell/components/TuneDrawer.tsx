@@ -27,6 +27,11 @@ export interface TuneDrawerProps {
    *  upstream handler is a no-op for empty prompts; the visual disable here
    *  is feedback so users don't click into nothing. */
   enhanceDisabled?: boolean;
+  /** When true, the Enhance row is hidden entirely. In I2V mode (start image
+   *  set) the optimizer pipeline early-exits anyway — see
+   *  docs/superpowers/specs/2026-05-09-i2v-pipeline-simplification-design.md.
+   *  Hiding the trigger keeps the UX honest about what's actually wired. */
+  isI2VMode?: boolean;
 }
 
 const SECTIONS: ReadonlyArray<{ id: TuneChip["section"]; label: string }> = [
@@ -42,9 +47,10 @@ export function TuneDrawer({
   onEnhance,
   isEnhancing = false,
   enhanceDisabled = false,
+  isI2VMode = false,
 }: TuneDrawerProps): React.ReactElement {
   const selected = new Set(selectedChipIds);
-  const showEnhance = Boolean(onEnhance);
+  const showEnhance = Boolean(onEnhance) && !isI2VMode;
 
   const enhanceCooldownRef = useRef(false);
   const enhanceCooldownTimerRef = useRef<number | null>(null);
@@ -74,18 +80,18 @@ export function TuneDrawer({
 
   return (
     <div
-      className="border-b border-tool-rail-border px-4 pb-3 pt-3"
+      className="border-tool-rail-border border-b px-4 pb-3 pt-3"
       role="region"
       aria-label="Tune render settings"
     >
       <div className="mb-2 flex items-center justify-between">
-        <h3 className="m-0 text-xs font-semibold uppercase tracking-wider text-tool-text-subdued">
+        <h3 className="text-tool-text-subdued m-0 text-xs font-semibold uppercase tracking-wider">
           Tune
         </h3>
         <button
           type="button"
           aria-label="Close"
-          className="inline-flex items-center justify-center rounded-md p-1 text-tool-text-subdued hover:bg-tool-rail-border hover:text-foreground"
+          className="text-tool-text-subdued hover:bg-tool-rail-border hover:text-foreground inline-flex items-center justify-center rounded-md p-1"
           onClick={onClose}
         >
           <X size={12} weight="bold" aria-hidden="true" />
@@ -102,7 +108,7 @@ export function TuneDrawer({
               className="m-0 flex items-center gap-2 border-0 p-0"
             >
               <legend className="contents">
-                <span className="mr-1 inline-block w-[44px] font-mono text-[10px] uppercase tracking-wider text-tool-text-subdued">
+                <span className="text-tool-text-subdued mr-1 inline-block w-[44px] font-mono text-[10px] uppercase tracking-wider">
                   {section.label}
                 </span>
               </legend>
@@ -118,7 +124,7 @@ export function TuneDrawer({
                       "rounded-full border px-2.5 py-0.5 text-[11px] font-medium transition-colors",
                       isPressed
                         ? "border-tool-accent-neutral/50 bg-tool-accent-neutral/10 text-foreground"
-                        : "border-tool-rail-border bg-transparent text-tool-text-dim hover:border-tool-text-label hover:text-foreground",
+                        : "border-tool-rail-border text-tool-text-dim hover:border-tool-text-label hover:text-foreground bg-transparent",
                     )}
                   >
                     {chip.label}
@@ -130,8 +136,8 @@ export function TuneDrawer({
         })}
       </div>
       {showEnhance ? (
-        <div className="mt-3 flex items-center justify-between border-t border-tool-rail-border pt-3">
-          <span className="font-mono text-[10px] uppercase tracking-wider text-tool-text-subdued">
+        <div className="border-tool-rail-border mt-3 flex items-center justify-between border-t pt-3">
+          <span className="text-tool-text-subdued font-mono text-[10px] uppercase tracking-wider">
             Prompt
           </span>
           <button
@@ -142,7 +148,7 @@ export function TuneDrawer({
             disabled={isEnhancing || enhanceDisabled}
             onClick={handleEnhanceClick}
             className={cn(
-              "inline-flex items-center gap-1.5 rounded-full border border-tool-rail-border bg-transparent px-3 py-1 text-[11px] font-medium transition-colors",
+              "border-tool-rail-border inline-flex items-center gap-1.5 rounded-full border bg-transparent px-3 py-1 text-[11px] font-medium transition-colors",
               "disabled:cursor-not-allowed disabled:opacity-50",
               "hover:border-tool-text-label hover:text-foreground",
               isEnhancing ? "text-foreground" : "text-tool-text-dim",
