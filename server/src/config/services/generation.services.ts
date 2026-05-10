@@ -1,61 +1,60 @@
-import type { Bucket } from "@google-cloud/storage";
-import type { DIContainer } from "@infrastructure/DIContainer";
-import { logger } from "@infrastructure/Logger";
-import type { MetricsService } from "@infrastructure/MetricsService";
-import type { LLMClient } from "@clients/LLMClient";
-import AssetService from "@services/asset/AssetService";
-import { CapabilitiesProbeService } from "@services/capabilities/CapabilitiesProbeService";
-import type { UserCreditService } from "@services/credits/UserCreditService";
-import ConsistentVideoService from "@services/video-generation/ConsistentVideoService";
-import FaceSwapService from "@services/video-generation/FaceSwapService";
-import KeyframeGenerationService from "@services/video-generation/KeyframeGenerationService";
-import { FalFaceSwapProvider } from "@services/video-generation/providers/FalFaceSwapProvider";
-import { ImageGenerationService } from "@services/image-generation/ImageGenerationService";
-import { ReplicateFluxKontextFastProvider } from "@services/image-generation/providers/ReplicateFluxKontextFastProvider";
-import { ReplicateFluxSchnellProvider } from "@services/image-generation/providers/ReplicateFluxSchnellProvider";
-import { VideoToImagePromptTransformer } from "@services/image-generation/providers/VideoToImagePromptTransformer";
-import type { ImagePreviewProvider } from "@services/image-generation/providers/types";
-import type { ImageAssetStore } from "@services/image-generation/storage";
+import type { Bucket } from '@google-cloud/storage';
+import type { DIContainer } from '@infrastructure/DIContainer';
+import { logger } from '@infrastructure/Logger';
+import type { LLMClient } from '@clients/LLMClient';
+import AssetService from '@services/asset/AssetService';
+import { CapabilitiesProbeService } from '@services/capabilities/CapabilitiesProbeService';
+import type { UserCreditService } from '@services/credits/UserCreditService';
+import ConsistentVideoService from '@services/video-generation/ConsistentVideoService';
+import FaceSwapService from '@services/video-generation/FaceSwapService';
+import KeyframeGenerationService from '@services/video-generation/KeyframeGenerationService';
+import { FalFaceSwapProvider } from '@services/video-generation/providers/FalFaceSwapProvider';
+import { ImageGenerationService } from '@services/image-generation/ImageGenerationService';
+import { ReplicateFluxKontextFastProvider } from '@services/image-generation/providers/ReplicateFluxKontextFastProvider';
+import { ReplicateFluxSchnellProvider } from '@services/image-generation/providers/ReplicateFluxSchnellProvider';
+import { VideoToImagePromptTransformer } from '@services/image-generation/providers/VideoToImagePromptTransformer';
+import type { ImagePreviewProvider } from '@services/image-generation/providers/types';
+import type { ImageAssetStore } from '@services/image-generation/storage';
 import {
   parseImagePreviewProviderOrder,
   resolveImagePreviewProviderSelection,
-} from "@services/image-generation/providers/registry";
-import { StoryboardFramePlanner } from "@services/image-generation/storyboard/StoryboardFramePlanner";
-import { StoryboardPreviewService } from "@services/image-generation/storyboard/StoryboardPreviewService";
-import { ModelIntelligenceService } from "@services/model-intelligence/ModelIntelligenceService";
-import { AvailabilityGateService } from "@services/model-intelligence/services/AvailabilityGateService";
-import type { PromptSpanProvider } from "@llm/span-labeling/ports/PromptSpanProvider";
-import { BillingProfileStore } from "@services/payment/BillingProfileStore";
-import type { FirestoreCircuitExecutor } from "@services/firestore/FirestoreCircuitExecutor";
-import { VideoGenerationService } from "@services/video-generation/VideoGenerationService";
-import { VideoJobStore } from "@services/video-generation/jobs/VideoJobStore";
-import { VideoWorkerHeartbeatStore } from "@services/video-generation/jobs/VideoWorkerHeartbeatStore";
-import { VideoJobHandler } from "@services/video-generation/jobs/VideoJobHandler";
-import type { SessionService } from "@services/sessions/SessionService";
-import { VideoJobWorker } from "@services/video-generation/jobs/VideoJobWorker";
-import { createVideoJobSweeper } from "@services/video-generation/jobs/VideoJobSweeper";
-import { createVideoJobReconciler } from "@services/video-generation/jobs/VideoJobReconciler";
-import { ProviderCircuitManager } from "@services/video-generation/jobs/ProviderCircuitManager";
-import { DlqReprocessorWorker } from "@services/video-generation/jobs/DlqReprocessorWorker";
-import type { VideoAssetStore } from "@services/video-generation/storage";
-import type { StorageService } from "@services/storage/StorageService";
-import { setTimeoutPolicyConfig } from "@services/video-generation/providers/timeoutPolicy";
-import { VideoPromptDetectionService } from "@services/video-prompt-analysis/services/detection/VideoPromptDetectionService";
-import type { ServiceConfig } from "./service-config.types.ts";
+} from '@services/image-generation/providers/registry';
+import { StoryboardFramePlanner } from '@services/image-generation/storyboard/StoryboardFramePlanner';
+import { StoryboardPreviewService } from '@services/image-generation/storyboard/StoryboardPreviewService';
+import { ModelIntelligenceService } from '@services/model-intelligence/ModelIntelligenceService';
+import { AvailabilityGateService } from '@services/model-intelligence/services/AvailabilityGateService';
+import type { PromptSpanProvider } from '@llm/span-labeling/ports/PromptSpanProvider';
+import { BillingProfileStore } from '@services/payment/BillingProfileStore';
+import type { FirestoreCircuitExecutor } from '@services/firestore/FirestoreCircuitExecutor';
+import { VideoGenerationService } from '@services/video-generation/VideoGenerationService';
+import { VideoJobStore } from '@services/video-generation/jobs/VideoJobStore';
+import { VideoWorkerHeartbeatStore } from '@services/video-generation/jobs/VideoWorkerHeartbeatStore';
+import { VideoJobHandler } from '@services/video-generation/jobs/VideoJobHandler';
+import type { SessionService } from '@services/sessions/SessionService';
+import { VideoJobWorker } from '@services/video-generation/jobs/VideoJobWorker';
+import { createVideoJobSweeper } from '@services/video-generation/jobs/VideoJobSweeper';
+import { createVideoJobReconciler } from '@services/video-generation/jobs/VideoJobReconciler';
+import { ProviderCircuitManager } from '@services/video-generation/jobs/ProviderCircuitManager';
+import { DlqReprocessorWorker } from '@services/video-generation/jobs/DlqReprocessorWorker';
+import type { VideoAssetStore } from '@services/video-generation/storage';
+import type { StorageService } from '@services/storage/StorageService';
+import { setTimeoutPolicyConfig } from '@services/video-generation/providers/timeoutPolicy';
+import { VideoPromptDetectionService } from '@services/video-prompt-analysis/services/detection/VideoPromptDetectionService';
+import type { ServiceConfig } from './service-config.types.ts';
 
 export function registerGenerationServices(container: DIContainer): void {
   container.register(
-    "videoPromptDetector",
+    'videoPromptDetector',
     () => new VideoPromptDetectionService(),
-    [],
+    []
   );
 
   container.register(
-    "videoToImageTransformer",
+    'videoToImageTransformer',
     (geminiClient: LLMClient | null) => {
       if (!geminiClient) {
         logger.warn(
-          "Gemini client not available, video-to-image transformation disabled",
+          'Gemini client not available, video-to-image transformation disabled'
         );
         return null;
       }
@@ -63,21 +62,21 @@ export function registerGenerationServices(container: DIContainer): void {
         llmClient: geminiClient,
       });
     },
-    ["geminiClient"],
+    ['geminiClient']
   );
 
   container.register(
-    "storyboardFramePlanner",
+    'storyboardFramePlanner',
     (geminiClient: LLMClient | null, openAIClient: LLMClient | null) => {
       if (!geminiClient) {
         logger.warn(
-          "Gemini client not available, storyboard frame planner disabled",
+          'Gemini client not available, storyboard frame planner disabled'
         );
         return null;
       }
       if (!openAIClient) {
         logger.warn(
-          "OpenAI client not available, vision-based storyboard planning disabled (text-only fallback)",
+          'OpenAI client not available, vision-based storyboard planning disabled (text-only fallback)'
         );
       }
       return new StoryboardFramePlanner({
@@ -85,20 +84,20 @@ export function registerGenerationServices(container: DIContainer): void {
         visionLlmClient: openAIClient,
       });
     },
-    ["geminiClient", "openAIClient"],
+    ['geminiClient', 'openAIClient']
   );
 
   container.register(
-    "replicateFluxSchnellProvider",
+    'replicateFluxSchnellProvider',
     (
       transformer: VideoToImagePromptTransformer | null,
       videoPromptDetector: VideoPromptDetectionService,
-      config: ServiceConfig,
+      config: ServiceConfig
     ) => {
       const apiToken = config.replicate.apiToken;
       if (!apiToken) {
         logger.warn(
-          "REPLICATE_API_TOKEN not provided, Replicate image provider disabled",
+          'REPLICATE_API_TOKEN not provided, Replicate image provider disabled'
         );
         return null;
       }
@@ -108,20 +107,20 @@ export function registerGenerationServices(container: DIContainer): void {
         videoPromptDetector,
       });
     },
-    ["videoToImageTransformer", "videoPromptDetector", "config"],
+    ['videoToImageTransformer', 'videoPromptDetector', 'config']
   );
 
   container.register(
-    "replicateFluxKontextFastProvider",
+    'replicateFluxKontextFastProvider',
     (
       transformer: VideoToImagePromptTransformer | null,
       videoPromptDetector: VideoPromptDetectionService,
-      config: ServiceConfig,
+      config: ServiceConfig
     ) => {
       const apiToken = config.replicate.apiToken;
       if (!apiToken) {
         logger.warn(
-          "REPLICATE_API_TOKEN not provided, Replicate image provider disabled",
+          'REPLICATE_API_TOKEN not provided, Replicate image provider disabled'
         );
         return null;
       }
@@ -131,70 +130,70 @@ export function registerGenerationServices(container: DIContainer): void {
         videoPromptDetector,
       });
     },
-    ["videoToImageTransformer", "videoPromptDetector", "config"],
+    ['videoToImageTransformer', 'videoPromptDetector', 'config']
   );
 
   container.register(
-    "imageGenerationService",
+    'imageGenerationService',
     (
       replicateProvider: ReplicateFluxSchnellProvider | null,
       kontextProvider: ReplicateFluxKontextFastProvider | null,
       imageAssetStore: ImageAssetStore,
-      config: ServiceConfig,
+      config: ServiceConfig
     ) => {
       const providers = [replicateProvider, kontextProvider].filter(
-        Boolean,
+        Boolean
       ) as ImagePreviewProvider[];
 
       if (providers.length === 0) {
-        logger.warn("No image preview providers configured");
+        logger.warn('No image preview providers configured');
         return null;
       }
 
       const vp = config.videoProviders;
       const selection = resolveImagePreviewProviderSelection(
-        vp.imagePreviewProvider,
+        vp.imagePreviewProvider
       );
       if (vp.imagePreviewProvider && !selection) {
-        logger.warn("Invalid IMAGE_PREVIEW_PROVIDER value", {
+        logger.warn('Invalid IMAGE_PREVIEW_PROVIDER value', {
           value: vp.imagePreviewProvider,
         });
       }
 
-      const rawOrder = vp.imagePreviewProviderOrder.join(",") || undefined;
+      const rawOrder = vp.imagePreviewProviderOrder.join(',') || undefined;
       const fallbackOrder = parseImagePreviewProviderOrder(rawOrder);
       if (
         vp.imagePreviewProviderOrder.length > 0 &&
         fallbackOrder.length === 0
       ) {
-        logger.warn("No valid IMAGE_PREVIEW_PROVIDER_ORDER entries found", {
-          value: vp.imagePreviewProviderOrder.join(","),
+        logger.warn('No valid IMAGE_PREVIEW_PROVIDER_ORDER entries found', {
+          value: vp.imagePreviewProviderOrder.join(','),
         });
       }
 
       return new ImageGenerationService({
         providers,
         assetStore: imageAssetStore,
-        defaultProvider: selection ?? "auto",
+        defaultProvider: selection ?? 'auto',
         fallbackOrder,
       });
     },
     [
-      "replicateFluxSchnellProvider",
-      "replicateFluxKontextFastProvider",
-      "imageAssetStore",
-      "config",
-    ],
+      'replicateFluxSchnellProvider',
+      'replicateFluxKontextFastProvider',
+      'imageAssetStore',
+      'config',
+    ]
   );
 
   container.register(
-    "storyboardPreviewService",
+    'storyboardPreviewService',
     (
       imageGenerationService: ImageGenerationService | null,
-      storyboardFramePlanner: StoryboardFramePlanner | null,
+      storyboardFramePlanner: StoryboardFramePlanner | null
     ) => {
       if (!imageGenerationService || !storyboardFramePlanner) {
-        logger.warn("Storyboard preview service disabled", {
+        logger.warn('Storyboard preview service disabled', {
           imageGenerationServiceAvailable: Boolean(imageGenerationService),
           storyboardFramePlannerAvailable: Boolean(storyboardFramePlanner),
         });
@@ -205,11 +204,11 @@ export function registerGenerationServices(container: DIContainer): void {
         storyboardFramePlanner,
       });
     },
-    ["imageGenerationService", "storyboardFramePlanner"],
+    ['imageGenerationService', 'storyboardFramePlanner']
   );
 
   container.register(
-    "videoGenerationService",
+    'videoGenerationService',
     (videoAssetStore: VideoAssetStore, config: ServiceConfig) => {
       setTimeoutPolicyConfig({
         pollTimeoutMs: config.videoProviders.pollTimeoutMs,
@@ -225,7 +224,7 @@ export function registerGenerationServices(container: DIContainer): void {
         !creds.geminiApiKey
       ) {
         logger.warn(
-          "No video generation credentials provided (REPLICATE_API_TOKEN, OPENAI_API_KEY, LUMA_API_KEY or LUMAAI_API_KEY, KLING_API_KEY, or GEMINI_API_KEY)",
+          'No video generation credentials provided (REPLICATE_API_TOKEN, OPENAI_API_KEY, LUMA_API_KEY or LUMAAI_API_KEY, KLING_API_KEY, or GEMINI_API_KEY)'
         );
         return null;
       }
@@ -242,50 +241,44 @@ export function registerGenerationServices(container: DIContainer): void {
         ...(creds.geminiBaseUrl ? { geminiBaseUrl: creds.geminiBaseUrl } : {}),
       });
     },
-    ["videoAssetStore", "config"],
+    ['videoAssetStore', 'config']
   );
 
   container.register(
-    "modelIntelligenceAvailabilityGate",
+    'modelIntelligenceAvailabilityGate',
     (
       videoGenerationService: VideoGenerationService | null,
       creditService: UserCreditService,
-      billingProfileStore: BillingProfileStore,
+      billingProfileStore: BillingProfileStore
     ) =>
       new AvailabilityGateService(
         videoGenerationService,
         creditService,
-        billingProfileStore,
+        billingProfileStore
       ),
-    ["videoGenerationService", "userCreditService", "billingProfileStore"],
+    ['videoGenerationService', 'userCreditService', 'billingProfileStore']
   );
 
   container.register(
-    "modelIntelligenceService",
+    'modelIntelligenceService',
     (
       promptSpanProvider: PromptSpanProvider,
-      availabilityGate: AvailabilityGateService,
-      metricsService: MetricsService,
+      availabilityGate: AvailabilityGateService
     ) =>
       new ModelIntelligenceService({
         promptSpanProvider,
         availabilityGate,
-        metricsService,
       }),
-    [
-      "spanLabelingProvider",
-      "modelIntelligenceAvailabilityGate",
-      "metricsService",
-    ],
+    ['spanLabelingProvider', 'modelIntelligenceAvailabilityGate']
   );
 
   container.register(
-    "keyframeGenerationService",
+    'keyframeGenerationService',
     (config: ServiceConfig) => {
       const falKey = config.fal.apiKey;
       if (!falKey) {
         logger.warn(
-          "KeyframeGenerationService: FAL_KEY/FAL_API_KEY not set, service will be unavailable",
+          'KeyframeGenerationService: FAL_KEY/FAL_API_KEY not set, service will be unavailable'
         );
         return null;
       }
@@ -296,46 +289,46 @@ export function registerGenerationServices(container: DIContainer): void {
         enableFaceEmbedding: config.features.faceEmbedding,
       });
     },
-    ["config"],
+    ['config']
   );
 
   container.register(
-    "faceSwapService",
+    'faceSwapService',
     (config: ServiceConfig) => {
       const falKey = config.fal.apiKey;
       if (!falKey) {
         logger.warn(
-          "FaceSwapService: FAL_KEY/FAL_API_KEY not set, service will be unavailable",
+          'FaceSwapService: FAL_KEY/FAL_API_KEY not set, service will be unavailable'
         );
         return null;
       }
       const faceSwapProvider = new FalFaceSwapProvider({ apiKey: falKey });
       if (!faceSwapProvider.isAvailable()) {
-        logger.warn("FaceSwapService: Fal face swap provider unavailable");
+        logger.warn('FaceSwapService: Fal face swap provider unavailable');
         return null;
       }
       return new FaceSwapService({ faceSwapProvider });
     },
-    ["config"],
+    ['config']
   );
 
   container.register(
-    "consistentVideoService",
+    'consistentVideoService',
     (
       videoGenerationService: VideoGenerationService | null,
       assetService: AssetService | null,
-      keyframeGenerationService: KeyframeGenerationService | null,
+      keyframeGenerationService: KeyframeGenerationService | null
     ) => {
       if (
         !videoGenerationService ||
         !assetService ||
         !keyframeGenerationService
       ) {
-        logger.warn("Consistent video service disabled", {
+        logger.warn('Consistent video service disabled', {
           videoGenerationServiceAvailable: Boolean(videoGenerationService),
           assetServiceAvailable: Boolean(assetService),
           keyframeGenerationServiceAvailable: Boolean(
-            keyframeGenerationService,
+            keyframeGenerationService
           ),
         });
         return null;
@@ -347,48 +340,46 @@ export function registerGenerationServices(container: DIContainer): void {
         keyframeService: keyframeGenerationService,
       });
     },
-    ["videoGenerationService", "assetService", "keyframeGenerationService"],
+    ['videoGenerationService', 'assetService', 'keyframeGenerationService']
   );
 
   container.register(
-    "capabilitiesProbeService",
+    'capabilitiesProbeService',
     (config: ServiceConfig) =>
       new CapabilitiesProbeService(config.capabilities),
-    ["config"],
+    ['config']
   );
 
   container.register(
-    "providerCircuitManager",
-    (metricsService: MetricsService, config: ServiceConfig) => {
+    'providerCircuitManager',
+    (config: ServiceConfig) => {
       const pc = config.videoJobs.providerCircuit;
       return new ProviderCircuitManager({
         failureRateThreshold: pc.failureRateThreshold,
         minVolume: pc.minVolume,
         cooldownMs: pc.cooldownMs,
         maxSamples: pc.maxSamples,
-        metrics: metricsService,
       });
     },
-    ["metricsService", "config"],
+    ['config']
   );
 
   container.register(
-    "videoWorkerHeartbeatStore",
+    'videoWorkerHeartbeatStore',
     (firestoreCircuitExecutor: FirestoreCircuitExecutor) =>
       new VideoWorkerHeartbeatStore(firestoreCircuitExecutor),
-    ["firestoreCircuitExecutor"],
+    ['firestoreCircuitExecutor']
   );
 
   container.register(
-    "videoJobHandler",
+    'videoJobHandler',
     (
       videoJobStore: VideoJobStore,
       videoGenerationService: VideoGenerationService | null,
       creditService: UserCreditService,
       storageService: StorageService,
-      metricsService: MetricsService,
       providerCircuitManager: ProviderCircuitManager,
-      sessionService: SessionService,
+      sessionService: SessionService
     ) => {
       if (!videoGenerationService) {
         return null;
@@ -400,34 +391,31 @@ export function registerGenerationServices(container: DIContainer): void {
         storageService,
         {
           providerCircuitManager,
-          metrics: metricsService,
           // SessionService structurally satisfies JobSessionAppendPort; the
           // worker pipeline calls appendGenerationToVersion on successful
           // job completion so video generations are durable server-side.
           sessionService,
-        },
+        }
       );
     },
     [
-      "videoJobStore",
-      "videoGenerationService",
-      "userCreditService",
-      "storageService",
-      "metricsService",
-      "providerCircuitManager",
-      "sessionService",
-    ],
+      'videoJobStore',
+      'videoGenerationService',
+      'userCreditService',
+      'storageService',
+      'providerCircuitManager',
+      'sessionService',
+    ]
   );
 
   container.register(
-    "videoJobWorker",
+    'videoJobWorker',
     (
       videoJobStore: VideoJobStore,
       videoJobHandler: VideoJobHandler | null,
-      metricsService: MetricsService,
       providerCircuitManager: ProviderCircuitManager,
       videoWorkerHeartbeatStore: VideoWorkerHeartbeatStore,
-      config: ServiceConfig,
+      config: ServiceConfig
     ) => {
       if (!videoJobHandler) {
         return null;
@@ -439,7 +427,7 @@ export function registerGenerationServices(container: DIContainer): void {
         leaseMs: wc.leaseSeconds * 1000,
         maxConcurrent: wc.maxConcurrent,
         heartbeatIntervalMs: wc.heartbeatIntervalMs,
-        processRole: "worker",
+        processRole: 'worker',
         ...(config.videoJobs.hostname
           ? { hostname: config.videoJobs.hostname }
           : {}),
@@ -448,44 +436,40 @@ export function registerGenerationServices(container: DIContainer): void {
         ...(wc.perProviderMaxConcurrent !== undefined
           ? { perProviderMaxConcurrent: wc.perProviderMaxConcurrent }
           : {}),
-        metrics: metricsService,
-        providerIds: ["replicate", "openai", "luma", "kling", "gemini"],
+        providerIds: ['replicate', 'openai', 'luma', 'kling', 'gemini'],
       });
     },
     [
-      "videoJobStore",
-      "videoJobHandler",
-      "metricsService",
-      "providerCircuitManager",
-      "videoWorkerHeartbeatStore",
-      "config",
-    ],
+      'videoJobStore',
+      'videoJobHandler',
+      'providerCircuitManager',
+      'videoWorkerHeartbeatStore',
+      'config',
+    ]
   );
 
   container.register(
-    "videoJobSweeper",
+    'videoJobSweeper',
     (
       videoJobStore: VideoJobStore,
       creditService: UserCreditService,
-      metricsService: MetricsService,
-      config: ServiceConfig,
+      config: ServiceConfig
     ) =>
       createVideoJobSweeper(
         videoJobStore,
         creditService,
-        metricsService,
-        config.videoJobs.sweeper,
+        undefined,
+        config.videoJobs.sweeper
       ),
-    ["videoJobStore", "userCreditService", "metricsService", "config"],
+    ['videoJobStore', 'userCreditService', 'config']
   );
 
   container.register(
-    "dlqReprocessorWorker",
+    'dlqReprocessorWorker',
     (
       videoJobStore: VideoJobStore,
       providerCircuitManager: ProviderCircuitManager,
-      metricsService: MetricsService,
-      config: ServiceConfig,
+      config: ServiceConfig
     ) => {
       const dlq = config.videoJobs.dlqReprocessor;
       if (dlq.disabled) {
@@ -496,27 +480,21 @@ export function registerGenerationServices(container: DIContainer): void {
         pollIntervalMs: dlq.pollIntervalMs,
         maxEntriesPerRun: dlq.maxEntriesPerRun,
         providerCircuitManager,
-        metrics: metricsService,
       });
     },
-    ["videoJobStore", "providerCircuitManager", "metricsService", "config"],
+    ['videoJobStore', 'providerCircuitManager', 'config']
   );
 
   container.register(
-    "videoJobReconciler",
-    (
-      gcsBucket: Bucket,
-      videoJobStore: VideoJobStore,
-      metricsService: MetricsService,
-      config: ServiceConfig,
-    ) =>
+    'videoJobReconciler',
+    (gcsBucket: Bucket, videoJobStore: VideoJobStore, config: ServiceConfig) =>
       createVideoJobReconciler(
         gcsBucket,
         config.videoAssets.storage.basePath,
         videoJobStore,
-        metricsService,
-        config.videoAssets.reconciler,
+        undefined,
+        config.videoAssets.reconciler
       ),
-    ["gcsBucket", "videoJobStore", "metricsService", "config"],
+    ['gcsBucket', 'videoJobStore', 'config']
   );
 }

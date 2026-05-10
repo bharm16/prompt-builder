@@ -1,96 +1,84 @@
-import type { DIContainer } from "@infrastructure/DIContainer";
-import { logger } from "@infrastructure/Logger";
-import { LLMClient } from "@clients/LLMClient";
-import { GeminiAdapter } from "@clients/adapters/GeminiAdapter";
-import { GroqLlamaAdapter } from "@clients/adapters/GroqLlamaAdapter";
-import { GroqQwenAdapter } from "@clients/adapters/GroqQwenAdapter";
-import { OpenAICompatibleAdapter } from "@clients/adapters/OpenAICompatibleAdapter";
-import { AIModelService } from "@services/ai-model/index";
-import { setProviderSettings } from "@services/ai-model/routing/ExecutionPlan";
+import type { DIContainer } from '@infrastructure/DIContainer';
+import { logger } from '@infrastructure/Logger';
+import { LLMClient } from '@clients/LLMClient';
+import { GeminiAdapter } from '@clients/adapters/GeminiAdapter';
+import { GroqLlamaAdapter } from '@clients/adapters/GroqLlamaAdapter';
+import { GroqQwenAdapter } from '@clients/adapters/GroqQwenAdapter';
+import { OpenAICompatibleAdapter } from '@clients/adapters/OpenAICompatibleAdapter';
+import { AIModelService } from '@services/ai-model/index';
+import { setProviderSettings } from '@services/ai-model/routing/ExecutionPlan';
 import {
   ConcurrencyLimiter,
   parseEnvInt,
-} from "@infrastructure/ConcurrencyLimiter";
-import type { MetricsService } from "@infrastructure/MetricsService";
-import type { ServiceConfig } from "./service-config.types.ts";
+} from '@infrastructure/ConcurrencyLimiter';
+import type { ServiceConfig } from './service-config.types.ts';
 
 export function registerLLMServices(container: DIContainer): void {
-  // Register concurrency limiters with metrics injection
-  const defaultMaxConcurrent = process.env.NODE_ENV === "production" ? 10 : 5;
+  const defaultMaxConcurrent = process.env.NODE_ENV === 'production' ? 10 : 5;
 
   const registerLimiter = (token: string, envPrefix: string): void => {
     container.register(
       token,
-      (metricsService: MetricsService) =>
+      () =>
         new ConcurrencyLimiter({
           maxConcurrent: parseEnvInt(
             process.env[`${envPrefix}_MAX_CONCURRENT`],
-            defaultMaxConcurrent,
+            defaultMaxConcurrent
           ),
           queueTimeout: parseEnvInt(
             process.env[`${envPrefix}_QUEUE_TIMEOUT_MS`],
-            30000,
+            30000
           ),
           enableCancellation: true,
-          metricsService,
         }),
-      ["metricsService"],
+      []
     );
   };
 
-  registerLimiter("openAILimiter", "OPENAI");
-  registerLimiter("groqLimiter", "GROQ");
-  registerLimiter("geminiLimiter", "GEMINI");
+  registerLimiter('openAILimiter', 'OPENAI');
+  registerLimiter('groqLimiter', 'GROQ');
+  registerLimiter('geminiLimiter', 'GEMINI');
 
   // Qwen shares the Groq API key; reuse the same limiter to respect shared limits.
   container.register(
-    "qwenLimiter",
+    'qwenLimiter',
     (groqLimiter: ConcurrencyLimiter) => groqLimiter,
-    ["groqLimiter"],
+    ['groqLimiter']
   );
 
   container.register(
-    "openAIClient",
-    (
-      config: ServiceConfig,
-      openAILimiter: ConcurrencyLimiter,
-      metricsService: MetricsService,
-    ) => {
+    'openAIClient',
+    (config: ServiceConfig, openAILimiter: ConcurrencyLimiter) => {
       if (!config.openai.apiKey) {
-        logger.warn("OPENAI_API_KEY not provided, OpenAI adapter disabled");
+        logger.warn('OPENAI_API_KEY not provided, OpenAI adapter disabled');
         return null;
       }
 
       return new LLMClient({
         adapter: new OpenAICompatibleAdapter({
           apiKey: config.openai.apiKey,
-          baseURL: "https://api.openai.com/v1",
+          baseURL: 'https://api.openai.com/v1',
           defaultModel: config.openai.model,
           defaultTimeout: config.openai.timeout,
-          providerName: "openai",
+          providerName: 'openai',
         }),
-        providerName: "openai",
+        providerName: 'openai',
         defaultTimeout: config.openai.timeout,
         circuitBreakerConfig: {
           errorThresholdPercentage: 50,
           resetTimeout: 30000,
         },
         concurrencyLimiter: openAILimiter,
-        metricsService,
       });
     },
-    ["config", "openAILimiter", "metricsService"],
+    ['config', 'openAILimiter']
   );
 
   container.register(
-    "groqClient",
-    (
-      config: ServiceConfig,
-      groqLimiter: ConcurrencyLimiter,
-      metricsService: MetricsService,
-    ) => {
+    'groqClient',
+    (config: ServiceConfig, groqLimiter: ConcurrencyLimiter) => {
       if (!config.groq.apiKey) {
-        logger.warn("GROQ_API_KEY not provided, Groq adapter disabled");
+        logger.warn('GROQ_API_KEY not provided, Groq adapter disabled');
         return null;
       }
       return new LLMClient({
@@ -99,28 +87,23 @@ export function registerLLMServices(container: DIContainer): void {
           defaultModel: config.groq.model,
           defaultTimeout: config.groq.timeout,
         }),
-        providerName: "groq",
+        providerName: 'groq',
         defaultTimeout: config.groq.timeout,
         circuitBreakerConfig: {
           errorThresholdPercentage: 60,
           resetTimeout: 15000,
         },
         concurrencyLimiter: groqLimiter,
-        metricsService,
       });
     },
-    ["config", "groqLimiter", "metricsService"],
+    ['config', 'groqLimiter']
   );
 
   container.register(
-    "qwenClient",
-    (
-      config: ServiceConfig,
-      qwenLimiter: ConcurrencyLimiter,
-      metricsService: MetricsService,
-    ) => {
+    'qwenClient',
+    (config: ServiceConfig, qwenLimiter: ConcurrencyLimiter) => {
       if (!config.qwen.apiKey) {
-        logger.warn("GROQ_API_KEY not provided, Qwen client disabled");
+        logger.warn('GROQ_API_KEY not provided, Qwen client disabled');
         return null;
       }
       return new LLMClient({
@@ -129,28 +112,23 @@ export function registerLLMServices(container: DIContainer): void {
           defaultModel: config.qwen.model,
           defaultTimeout: config.qwen.timeout,
         }),
-        providerName: "qwen",
+        providerName: 'qwen',
         defaultTimeout: config.qwen.timeout,
         circuitBreakerConfig: {
           errorThresholdPercentage: 60,
           resetTimeout: 15000,
         },
         concurrencyLimiter: qwenLimiter,
-        metricsService,
       });
     },
-    ["config", "qwenLimiter", "metricsService"],
+    ['config', 'qwenLimiter']
   );
 
   container.register(
-    "geminiClient",
-    (
-      config: ServiceConfig,
-      geminiLimiter: ConcurrencyLimiter,
-      metricsService: MetricsService,
-    ) => {
+    'geminiClient',
+    (config: ServiceConfig, geminiLimiter: ConcurrencyLimiter) => {
       if (!config.gemini.apiKey) {
-        logger.warn("GEMINI_API_KEY not provided, Gemini adapter disabled");
+        logger.warn('GEMINI_API_KEY not provided, Gemini adapter disabled');
         return null;
       }
 
@@ -160,30 +138,28 @@ export function registerLLMServices(container: DIContainer): void {
           baseURL: config.gemini.baseURL,
           defaultModel: config.gemini.model,
           defaultTimeout: config.gemini.timeout,
-          providerName: "gemini",
+          providerName: 'gemini',
         }),
-        providerName: "gemini",
+        providerName: 'gemini',
         defaultTimeout: config.gemini.timeout,
         circuitBreakerConfig: {
           errorThresholdPercentage: 55,
           resetTimeout: 20000,
         },
         concurrencyLimiter: geminiLimiter,
-        metricsService,
       });
     },
-    ["config", "geminiLimiter", "metricsService"],
+    ['config', 'geminiLimiter']
   );
 
   container.register(
-    "aiService",
+    'aiService',
     (
       openAIClient: LLMClient | null,
       groqClient: LLMClient | null,
       qwenClient: LLMClient | null,
       geminiClient: LLMClient | null,
-      config: ServiceConfig,
-      metricsService: MetricsService,
+      config: ServiceConfig
     ) => {
       setProviderSettings({
         openai: { model: config.openai.model, timeout: config.openai.timeout },
@@ -199,16 +175,8 @@ export function registerLLMServices(container: DIContainer): void {
           qwen: qwenClient,
           gemini: geminiClient,
         },
-        metrics: metricsService,
       });
     },
-    [
-      "openAIClient",
-      "groqClient",
-      "qwenClient",
-      "geminiClient",
-      "config",
-      "metricsService",
-    ],
+    ['openAIClient', 'groqClient', 'qwenClient', 'geminiClient', 'config']
   );
 }

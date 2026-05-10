@@ -10,44 +10,40 @@
  * returns a configured Express app.
  */
 
-import express, { type Application } from "express";
-import type { DIContainer } from "@infrastructure/DIContainer";
-import type { PaymentRouteServices } from "@routes/payment/types";
-import type { PaymentConsistencyStore } from "@services/payment/PaymentConsistencyStore";
-import { initializeDepthWarmer } from "@services/convergence/depth";
-import { configureMiddleware } from "./config/middleware.config.ts";
-import { configureRoutes } from "./config/routes.config.ts";
-import { getRuntimeFlags } from "./config/feature-flags.ts";
-import { createWebhookRoutes } from "./routes/payment.routes.ts";
+import express, { type Application } from 'express';
+import type { DIContainer } from '@infrastructure/DIContainer';
+import type { PaymentRouteServices } from '@routes/payment/types';
+import type { PaymentConsistencyStore } from '@services/payment/PaymentConsistencyStore';
+import { initializeDepthWarmer } from '@services/convergence/depth';
+import { configureMiddleware } from './config/middleware.config.ts';
+import { configureRoutes } from './config/routes.config.ts';
+import { getRuntimeFlags } from './config/feature-flags.ts';
+import { createWebhookRoutes } from './routes/payment.routes.ts';
 
 function resolvePaymentRouteServices(
-  container: DIContainer,
+  container: DIContainer
 ): PaymentRouteServices {
   return {
     paymentService:
-      container.resolve<PaymentRouteServices["paymentService"]>(
-        "paymentService",
+      container.resolve<PaymentRouteServices['paymentService']>(
+        'paymentService'
       ),
     webhookEventStore: container.resolve<
-      PaymentRouteServices["webhookEventStore"]
-    >("stripeWebhookEventStore"),
+      PaymentRouteServices['webhookEventStore']
+    >('stripeWebhookEventStore'),
     billingProfileStore: container.resolve<
-      PaymentRouteServices["billingProfileStore"]
-    >("billingProfileStore"),
+      PaymentRouteServices['billingProfileStore']
+    >('billingProfileStore'),
     userCreditService:
-      container.resolve<PaymentRouteServices["userCreditService"]>(
-        "userCreditService",
+      container.resolve<PaymentRouteServices['userCreditService']>(
+        'userCreditService'
       ),
     paymentConsistencyStore: container.resolve<PaymentConsistencyStore>(
-      "paymentConsistencyStore",
+      'paymentConsistencyStore'
     ),
-    metricsService:
-      container.resolve<NonNullable<PaymentRouteServices["metricsService"]>>(
-        "metricsService",
-      ),
     firestoreCircuitExecutor: container.resolve<
-      NonNullable<PaymentRouteServices["firestoreCircuitExecutor"]>
-    >("firestoreCircuitExecutor"),
+      NonNullable<PaymentRouteServices['firestoreCircuitExecutor']>
+    >('firestoreCircuitExecutor'),
   };
 }
 
@@ -58,25 +54,24 @@ export function createApp(container: DIContainer): Application {
   const app = express();
 
   // Trust proxy for correct client IPs behind Cloud Run/ALB/Ingress
-  app.set("trust proxy", 1);
+  app.set('trust proxy', 1);
 
   // Payment webhooks must run before global JSON parsing
   app.use(
-    "/api/payment",
-    createWebhookRoutes(resolvePaymentRouteServices(container)),
+    '/api/payment',
+    createWebhookRoutes(resolvePaymentRouteServices(container))
   );
 
   // Configure middleware stack
-  // Order matters: security, compression, rate limiting, CORS, parsing, logging, metrics
+  // Order matters: security, compression, rate limiting, CORS, parsing, logging
   configureMiddleware(app, {
-    logger: container.resolve("logger"),
-    metricsService: container.resolve("metricsService"),
-    redisClient: container.resolve("redisClient"),
+    logger: container.resolve('logger'),
+    redisClient: container.resolve('redisClient'),
   });
 
   // Pre-warm fal.ai depth estimation to reduce cold starts in Create mode.
   // Workers skip this — the depth model only matters for the API role.
-  if (getRuntimeFlags().processRole === "api") {
+  if (getRuntimeFlags().processRole === 'api') {
     initializeDepthWarmer();
   }
 
