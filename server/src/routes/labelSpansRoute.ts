@@ -5,6 +5,7 @@ import { extractUserId } from "@utils/requestHelpers";
 import { requestCoalescing } from "@middleware/requestCoalescing";
 import type { AIModelService } from "@services/ai-model/AIModelService";
 import type { SpanLabelingCacheService } from "@services/cache/SpanLabelingCacheService";
+import type { SpanLabelingTelemetryService } from "@services/observability/SpanLabelingTelemetryService";
 import { createLabelSpansCoordinator } from "./labelSpans/coordinator";
 import { parseLabelSpansRequest } from "./labelSpans/requestParser";
 import { handleLabelSpansStreamRequest } from "./labelSpans/streamingHandler";
@@ -16,6 +17,7 @@ import { toPublicLabelSpansResult } from "./labelSpans/transform";
 export function createLabelSpansRoute(
   aiService: AIModelService,
   spanLabelingCache: SpanLabelingCacheService | null = null,
+  telemetryService: SpanLabelingTelemetryService | null = null,
 ): Router {
   const router = ExpressRouter();
   const coordinator = createLabelSpansCoordinator(aiService, spanLabelingCache);
@@ -73,8 +75,10 @@ export function createLabelSpansRoute(
 
       const startTime = performance.now();
       const operation = "labelSpans";
-      const requestId = (req as Request & { id?: string }).id;
+      const requestId = (req as Request & { id?: string }).id ?? "unknown";
       const userId = extractUserId(req);
+
+      const trace = telemetryService?.startSpanLabelingTrace(requestId, userId);
 
       logger.debug("Starting operation.", {
         operation,
@@ -103,13 +107,46 @@ export function createLabelSpansRoute(
         });
 
         if (!result) {
+          trace?.recordError("post_processing", new Error("no result"));
+          trace?.complete({
+            outcome: "error",
+            promptLength: text.length,
+            spanCount: 0,
+            provider: null,
+            model: null,
+          });
           return res
             .status(502)
             .json({ error: "Span labeling failed to produce a result" });
         }
 
+        if (headers["X-Cache"] === "HIT") {
+          trace?.recordCacheHit();
+        }
+
+        trace?.complete({
+          outcome: "success",
+          promptLength: text.length,
+          spanCount: result.spans?.length ?? 0,
+          provider:
+            (result.meta?.["provider"] as "openai" | "groq" | undefined) ??
+            null,
+          model: (result.meta?.["model"] as string | undefined) ?? null,
+        });
+
         return res.json(toPublicLabelSpansResult(result));
       } catch (error) {
+        trace?.recordError(
+          "llm_call",
+          error instanceof Error ? error : new Error(String(error)),
+        );
+        trace?.complete({
+          outcome: "error",
+          promptLength: text.length,
+          spanCount: 0,
+          provider: null,
+          model: null,
+        });
         logger.error("Operation failed.", error as Error, {
           operation,
           requestId,

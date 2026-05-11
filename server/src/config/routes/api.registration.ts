@@ -24,6 +24,7 @@ import type { ConsistentVideoService } from "@services/video-generation/Consiste
 import type { UserCreditService } from "@services/credits/UserCreditService";
 import type { OptimizeTelemetryService } from "@services/observability/OptimizeTelemetryService";
 import type { SuggestionsTelemetryService } from "@services/observability/SuggestionsTelemetryService";
+import type { SpanLabelingTelemetryService } from "@services/observability/SpanLabelingTelemetryService";
 import { STORAGE_CONFIG } from "@services/storage/config/storageConfig";
 import { resolveOptionalService } from "./resolve-utils.ts";
 
@@ -118,6 +119,9 @@ export function registerApiRoutes(
   const labelSpansRoute = createLabelSpansRoute(
     container.resolve("aiService"),
     container.resolve("spanLabelingCacheService"),
+    container.resolve<SpanLabelingTelemetryService>(
+      "spanLabelingTelemetryService",
+    ),
   );
   app.use("/llm/label-spans", apiAuthMiddleware, labelSpansRoute);
 
