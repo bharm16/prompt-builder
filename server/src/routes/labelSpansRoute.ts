@@ -120,6 +120,9 @@ export function createLabelSpansRoute(
             .json({ error: "Span labeling failed to produce a result" });
         }
 
+        // Only TTL cache hits count toward cacheHit. Coordinator may also return
+        // X-Cache: COALESCED (request-coalescing single-flight) or MISS — those
+        // represent distinct mechanisms and intentionally don't count here.
         if (headers["X-Cache"] === "HIT") {
           trace?.recordCacheHit();
         }
@@ -128,9 +131,7 @@ export function createLabelSpansRoute(
           outcome: "success",
           promptLength: text.length,
           spanCount: result.spans?.length ?? 0,
-          provider:
-            (result.meta?.["provider"] as "openai" | "groq" | undefined) ??
-            null,
+          provider: (result.meta?.["provider"] as string | undefined) ?? null,
           model: (result.meta?.["model"] as string | undefined) ?? null,
         });
 

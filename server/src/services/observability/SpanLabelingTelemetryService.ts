@@ -12,7 +12,7 @@ export interface SpanLabelingCompleteSummary {
   outcome: "success" | "error";
   promptLength: number;
   spanCount: number;
-  provider: "openai" | "groq" | null;
+  provider: string | null;
   model: string | null;
 }
 
@@ -26,7 +26,7 @@ interface SpanLabelingEventProperties {
   promptLength: number;
   spanCount: number;
   cacheHit: boolean;
-  provider: "openai" | "groq" | null;
+  provider: string | null;
   model: string | null;
 }
 
