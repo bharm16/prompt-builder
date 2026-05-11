@@ -71,6 +71,7 @@ jobs:
           COMMIT_SHA: ${{ github.sha }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
           NODE_ENV: test
         run: |
           if [ "$BLESS_FLAG" = "true" ]; then
@@ -129,6 +130,7 @@ jobs:
           COMMIT_SHA: ${{ github.sha }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
           NODE_ENV: test
         run: npm run eval:golden-set -- --provider "$PROVIDER" --commit "$COMMIT_SHA"
 
@@ -178,6 +180,7 @@ jobs:
           COMMIT_SHA: ${{ github.sha }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
           NODE_ENV: test
         run: |
           # Validate FIXTURES content — only allow comma-separated alphanumerics
