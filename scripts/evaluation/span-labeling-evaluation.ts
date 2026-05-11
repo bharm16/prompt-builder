@@ -52,6 +52,10 @@ import {
   type EnhancedJudgeResult,
   type AnyJudgeResult,
 } from "./types.js";
+import { createEvalEmitter, resolveDistinctId } from "./posthog-emitter.js";
+import type { Outcome, SpanLabelingJudgeMetrics } from "./eval-event-types.js";
+
+const mainStartedAt = Date.now();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -2001,10 +2005,77 @@ async function main(): Promise<void> {
   // Print report to console
   printReport(snapshot);
 
+  // Emit eval.completed event before exit (best-effort)
+  try {
+    const emitter = createEvalEmitter();
+    const promptCount = snapshot.results.length;
+    const errCount = snapshot.summary.errorCount;
+    const outcome: Outcome =
+      errCount > promptCount * 0.2 ? "setup_error" : "passed";
+    const metrics: SpanLabelingJudgeMetrics = {
+      avgScore: snapshot.summary.avgScore,
+      maxScore: 25,
+      scoreDistribution: snapshot.summary
+        .scoreDistribution as SpanLabelingJudgeMetrics["scoreDistribution"],
+      judgeModel: snapshot.judgeModel ?? "unknown",
+      ...(snapshot.summary.latencyStats && {
+        latencyStats: snapshot.summary.latencyStats,
+      }),
+    };
+    emitter.emit({
+      distinctId: resolveDistinctId(),
+      evalType: "span_labeling_judge",
+      outcome,
+      ...(outcome === "setup_error" && {
+        errorMessage: `Error rate exceeded threshold (${errCount}/${promptCount})`,
+      }),
+      commit: process.env.GIT_COMMIT ?? "unknown",
+      runId: process.env.GITHUB_RUN_ID,
+      sourceFile: snapshot.sourceFile,
+      durationMs: Date.now() - mainStartedAt,
+      promptCount,
+      errorCount: errCount,
+      metrics,
+    });
+    await emitter.shutdown();
+  } catch {
+    // never fail the eval on telemetry hiccup
+  }
+
   process.exit(0);
 }
 
-main().catch((e) => {
+main().catch(async (e) => {
+  // Emit setup_error event for catastrophic failures (best-effort)
+  try {
+    const emitter = createEvalEmitter();
+    emitter.emit({
+      distinctId: resolveDistinctId(),
+      evalType: "span_labeling_judge",
+      outcome: "setup_error",
+      errorMessage: e instanceof Error ? e.message : String(e),
+      commit: process.env.GIT_COMMIT ?? "unknown",
+      runId: process.env.GITHUB_RUN_ID,
+      durationMs: Date.now() - mainStartedAt,
+      promptCount: 0,
+      errorCount: 0,
+      metrics: {
+        avgScore: 0,
+        maxScore: 25,
+        scoreDistribution: {
+          excellent: 0,
+          good: 0,
+          acceptable: 0,
+          poor: 0,
+          failing: 0,
+        },
+        judgeModel: "unknown",
+      },
+    });
+    await emitter.shutdown();
+  } catch {
+    // never let telemetry crash propagation
+  }
   console.error(e);
   process.exit(1);
 });
