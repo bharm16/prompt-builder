@@ -55,6 +55,9 @@ import type {
 import type { VideoModelId } from "../../shared/videoModels.js";
 import { createEvalEmitter, resolveDistinctId } from "./posthog-emitter.js";
 import type { Outcome, RecommendationMetrics } from "./eval-event-types.js";
+import { config as loadEnv } from "dotenv";
+
+loadEnv();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
