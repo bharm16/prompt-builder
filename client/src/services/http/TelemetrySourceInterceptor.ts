@@ -1,3 +1,4 @@
+import { TELEMETRY_SOURCE_HEADER } from "#shared/types/telemetry";
 import type { ApiClient } from "../ApiClient";
 
 interface BuiltRequest {
@@ -5,16 +6,18 @@ interface BuiltRequest {
   init: RequestInit;
 }
 
+/** Not covered by unit tests — `import.meta.env.MODE` is a Vite build-time
+ *  replacement and isn't reachable via `vi.stubEnv` (which only touches
+ *  `process.env`). Tests inject `mode` directly via the second parameter. */
 function getMode(): string | undefined {
   return (import.meta as { env?: { MODE?: string } }).env?.MODE;
 }
 
 /**
  * Pure helper — used by the interceptor below and exported for unit testing.
- * Adds X-Telemetry-Source: user when this build's MODE is "production".
- * Server-side middleware resolves to "dev" / "ci" / "unknown" otherwise.
- *
- * Accepts an optional `mode` override for test isolation.
+ * Adds the telemetry-source header (value: "user") when this build's MODE is
+ * "production". Server-side middleware resolves to "dev" / "ci" / "unknown"
+ * otherwise. Accepts an optional `mode` override for test isolation.
  */
 export function applyTelemetrySourceHeader(
   payload: BuiltRequest,
@@ -31,7 +34,7 @@ export function applyTelemetrySourceHeader(
       ...payload.init,
       headers: {
         ...existing,
-        "X-Telemetry-Source": "user",
+        [TELEMETRY_SOURCE_HEADER]: "user",
       },
     },
   };
