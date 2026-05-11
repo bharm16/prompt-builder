@@ -103,7 +103,7 @@ mcp__posthog__switch-project       417445                                 # Defa
 
 Emitted by `LlmCallTelemetryService.record` (see [`server/src/services/observability/LlmCallTelemetryService.ts`](../../server/src/services/observability/LlmCallTelemetryService.ts)). The wrapper that calls `record` is in `AIModelService.execute`, where stage timing is captured in a `try / finally` so even thrown errors emit a final event.
 
-The schema is **not** locked by a snapshot test (unlike `optimize.completed` and `suggestions.completed`). Adding one is recommended if PostHog consumers grow to depend on the property set — see [`server/src/services/observability/__tests__/optimize-event-schema.snapshot.test.ts`](../../server/src/services/observability/__tests__/optimize-event-schema.snapshot.test.ts) for the pattern.
+The schema is locked by a snapshot test at [`server/src/services/observability/__tests__/llm-call-event-schema.snapshot.test.ts`](../../server/src/services/observability/__tests__/llm-call-event-schema.snapshot.test.ts) — changes to the property set are visible in PR diffs (matches the `optimize.completed` and `suggestions.completed` pattern).
 
 Top-level event properties:
 
