@@ -228,7 +228,35 @@ ORDER BY n DESC
 
 **What it answers:** how often does each eval run, what does it produce, when does it regress. One event fires per `scripts/evaluation/*` run (passing, regressing, or setup-error). Three discriminator values today: `span_labeling_judge`, `span_labeling_f1`, `recommendation`.
 
-**Project / dashboard:** Same project as Optimize (`417445`). Dashboard "Eval Health" — id TBD (created after first nightly run produces data; see the open follow-up in `docs/superpowers/plans/2026-05-10-eval-visibility.md` task 10).
+**Project / dashboard:** Same project as Optimize (`417445`). Dashboard ["Eval Health" (id `1567504`)](https://us.posthog.com/project/417445/dashboard/1567504).
+
+### Tiles
+
+| Tile                                         | Insight ID | URL                                                             |
+| -------------------------------------------- | ---------- | --------------------------------------------------------------- |
+| Latest eval runs                             | `0ielZbLB` | [view](https://us.posthog.com/project/417445/insights/0ielZbLB) |
+| F1 outcome breakdown (span_labeling_f1)      | `Wd430XAy` | [view](https://us.posthog.com/project/417445/insights/Wd430XAy) |
+| Judge avg score trend (span_labeling_judge)  | `cFTTiOQg` | [view](https://us.posthog.com/project/417445/insights/cFTTiOQg) |
+| Judge score distribution by day              | `yYJvMSB6` | [view](https://us.posthog.com/project/417445/insights/yYJvMSB6) |
+| Recommendation drift events                  | `7BQcqEsc` | [view](https://us.posthog.com/project/417445/insights/7BQcqEsc) |
+| Per-category F1 over time (span_labeling_f1) | `RGAb2MH4` | [view](https://us.posthog.com/project/417445/insights/RGAb2MH4) |
+| Setup error count (24h)                      | `VJnURwpV` | [view](https://us.posthog.com/project/417445/insights/VJnURwpV) |
+| Gate failure count (24h)                     | `icjwJljU` | [view](https://us.posthog.com/project/417445/insights/icjwJljU) |
+
+Tiles are built as `DataVisualizationNode` over HogQL. Visualization type (table/line/bar/donut) is selectable per-tile in the UI; the query defines the data shape, the user picks the chart.
+
+### Alerts
+
+| Alert                                 | Insight (Trends version)                                              | Trigger                                               | Status   |
+| ------------------------------------- | --------------------------------------------------------------------- | ----------------------------------------------------- | -------- |
+| Eval setup error in last 24h          | [`zpHsNS5k`](https://us.posthog.com/project/417445/insights/zpHsNS5k) | `outcome = "setup_error"` count > 0 in 24h            | Active   |
+| Eval gate failure streak (> 2 in 24h) | [`oWlELANW`](https://us.posthog.com/project/417445/insights/oWlELANW) | `outcome = "regression"` count > 2 in 24h             | Active   |
+| F1 regression — any category          | TBD                                                                   | Any `perCategoryF1[*]` drops > 5% run-over-run        | Deferred |
+| Judge avg score regression            | TBD                                                                   | `metrics.avgScore` drops > 0.5 from rolling 7-day avg | Deferred |
+
+The two deferred alerts need anomaly-detection configuration (relative_decrease against historical data) and so make more sense to wire after sufficient real data accumulates. The two active alerts use threshold-based detection on absolute count and work from day one.
+
+PostHog's alert engine only supports `TrendsQuery` insights, not `DataVisualizationNode`/HogQL. The dashboard tiles (HogQL) and alert sources (TrendsQuery) are therefore separate insights even when measuring the same thing — see the `Setup error count (24h)` HogQL tile vs the `Setup error trend (alertable)` TrendsQuery insight that the alert points at.
 
 ### Event schema
 
@@ -284,7 +312,7 @@ ORDER BY day DESC
 
 ### Open follow-ups
 
-- **Eval Health dashboard tiles** — built after first nightly run produces data (plan task 10).
-- **PostHog alerts** — wired after dashboard exists (plan task 11).
+- **`POSTHOG_API_KEY` repo secret** — must be added in GitHub Settings → Secrets and variables → Actions before the nightly workflow can emit events. Same value as the server's production env (`phc_pmJDnB...`). Until this lands, the dashboard tiles for `span_labeling_judge` and `span_labeling_f1` will only have local-dev data.
+- **F1 / judge regression alerts** — two deferred alerts in the Alerts table above; meaningful only after sufficient `span_labeling_*` events accumulate to threshold against.
 - **Recommendation eval cron** — currently manual; add a workflow to run on schedule once dashboard signal is interesting.
-- **`POSTHOG_API_KEY` repo secret** — must be added in GitHub Settings → Secrets and variables → Actions before the nightly workflow can emit events. Same value as the server's production env (`phc_pmJDnB...`).
+- **CI smoke verification** — once the repo secret is set, trigger `gh workflow run "Span Labeling Golden-Set Eval" --ref main -f provider=groq` and confirm the resulting event has a `runId` matching the workflow's `GITHUB_RUN_ID`. This is plan task 9's CI-portion closure.
