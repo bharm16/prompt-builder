@@ -53,6 +53,8 @@ import type {
   VideoAvailabilitySnapshotModel,
 } from "../../server/src/services/video-generation/types.js";
 import type { VideoModelId } from "../../shared/videoModels.js";
+import { createEvalEmitter, resolveDistinctId } from "./posthog-emitter.js";
+import type { Outcome, RecommendationMetrics } from "./eval-event-types.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -482,106 +484,169 @@ export async function runEval(options: {
 
 async function main(): Promise<number> {
   const opts = parseArgs(process.argv.slice(2));
+  const emitter = createEvalEmitter();
+  const startedAt = Date.now();
+  let outcome: Outcome = "setup_error";
+  let metrics: RecommendationMetrics | undefined;
+  let errorMessage: string | undefined;
+  let promptCount = 0;
 
-  // eslint-disable-next-line no-console
-  console.log("Model Intelligence Recommendation Eval");
-  // eslint-disable-next-line no-console
-  console.log(`  mode: ${opts.bless ? "bless" : "gate"}`);
-  // eslint-disable-next-line no-console
-  console.log(`  baseline: ${opts.baselineName}`);
-  // eslint-disable-next-line no-console
-  console.log(`  prompts: ${opts.promptsPath}`);
+  try {
+    // eslint-disable-next-line no-console
+    console.log("Model Intelligence Recommendation Eval");
+    // eslint-disable-next-line no-console
+    console.log(`  mode: ${opts.bless ? "bless" : "gate"}`);
+    // eslint-disable-next-line no-console
+    console.log(`  baseline: ${opts.baselineName}`);
+    // eslint-disable-next-line no-console
+    console.log(`  prompts: ${opts.promptsPath}`);
 
-  const promptSet = loadPrompts(opts.promptsPath);
-  // eslint-disable-next-line no-console
-  console.log(`  loaded ${promptSet.prompts.length} prompts`);
+    const promptSet = loadPrompts(opts.promptsPath);
+    promptCount = promptSet.prompts.length;
+    // eslint-disable-next-line no-console
+    console.log(`  loaded ${promptSet.prompts.length} prompts`);
 
-  const snapshots = await runEval({ promptsPath: opts.promptsPath });
+    const snapshots = await runEval({ promptsPath: opts.promptsPath });
 
-  // Always write latest results JSON for debugging / artifact upload
-  writeFileSync(
-    RESULTS_PATH,
-    JSON.stringify(
-      {
-        timestamp: new Date().toISOString(),
+    // Always write latest results JSON for debugging / artifact upload
+    writeFileSync(
+      RESULTS_PATH,
+      JSON.stringify(
+        {
+          timestamp: new Date().toISOString(),
+          baselineName: opts.baselineName,
+          promptSetVersion: promptSet.version,
+          commit: opts.commit ?? null,
+          snapshots,
+        },
+        null,
+        2,
+      ) + "\n",
+      "utf8",
+    );
+    // eslint-disable-next-line no-console
+    console.log(`  results: ${RESULTS_PATH}`);
+
+    if (opts.bless) {
+      const baseline: Baseline = {
+        blessedAt: new Date().toISOString(),
         baselineName: opts.baselineName,
         promptSetVersion: promptSet.version,
-        commit: opts.commit ?? null,
+        ...(opts.commit !== undefined && { commit: opts.commit }),
         snapshots,
-      },
-      null,
-      2,
-    ) + "\n",
-    "utf8",
-  );
-  // eslint-disable-next-line no-console
-  console.log(`  results: ${RESULTS_PATH}`);
-
-  if (opts.bless) {
-    const baseline: Baseline = {
-      blessedAt: new Date().toISOString(),
-      baselineName: opts.baselineName,
-      promptSetVersion: promptSet.version,
-      ...(opts.commit !== undefined && { commit: opts.commit }),
-      snapshots,
-    };
-    writeBaseline(baseline);
-    // eslint-disable-next-line no-console
-    console.log(`\nBaseline blessed: ${baselinePath(opts.baselineName)}`);
-    return 0;
-  }
-
-  const baseline = readBaseline(opts.baselineName);
-  if (!baseline) {
-    // eslint-disable-next-line no-console
-    console.error(
-      `\nNo baseline at ${baselinePath(opts.baselineName)}. Run with --bless first to establish one.`,
-    );
-    return 2;
-  }
-
-  const { drifts, missingPrompts, newPrompts } = compareSnapshots(
-    snapshots,
-    baseline.snapshots,
-  );
-
-  if (drifts.length === 0 && missingPrompts.length === 0) {
-    // eslint-disable-next-line no-console
-    console.log("\nRecommendation snapshot gate: PASSED");
-    if (newPrompts.length > 0) {
+      };
+      writeBaseline(baseline);
       // eslint-disable-next-line no-console
-      console.log(
-        `  Note: ${newPrompts.length} new prompt(s) not in baseline — re-bless to capture: ${newPrompts.join(", ")}`,
-      );
+      console.log(`\nBaseline blessed: ${baselinePath(opts.baselineName)}`);
+      metrics = {
+        driftDetectedCount: 0,
+        totalPrompts: promptCount,
+        newPromptsCount: 0,
+        baselineName: opts.baselineName,
+      };
+      outcome = "passed";
+      return 0;
     }
-    return 0;
-  }
 
-  // eslint-disable-next-line no-console
-  console.error("\nRecommendation snapshot gate: FAILED");
-  if (drifts.length > 0) {
-    // eslint-disable-next-line no-console
-    console.error(`\nDrifts (${drifts.length}):`);
-    for (const drift of drifts) {
+    const baseline = readBaseline(opts.baselineName);
+    if (!baseline) {
       // eslint-disable-next-line no-console
       console.error(
-        `  ${drift.promptId} ${drift.field}: ${JSON.stringify(drift.baseline)} -> ${JSON.stringify(drift.current)}`,
+        `\nNo baseline at ${baselinePath(opts.baselineName)}. Run with --bless first to establish one.`,
+      );
+      outcome = "setup_error";
+      errorMessage = `No baseline at ${baselinePath(opts.baselineName)}`;
+      metrics = {
+        driftDetectedCount: 0,
+        totalPrompts: promptCount,
+        newPromptsCount: 0,
+        baselineName: opts.baselineName,
+      };
+      return 2;
+    }
+
+    const { drifts, missingPrompts, newPrompts } = compareSnapshots(
+      snapshots,
+      baseline.snapshots,
+    );
+
+    metrics = {
+      driftDetectedCount: drifts.length,
+      totalPrompts: promptCount,
+      newPromptsCount: newPrompts.length,
+      baselineName: opts.baselineName,
+    };
+
+    if (drifts.length === 0 && missingPrompts.length === 0) {
+      // eslint-disable-next-line no-console
+      console.log("\nRecommendation snapshot gate: PASSED");
+      if (newPrompts.length > 0) {
+        // eslint-disable-next-line no-console
+        console.log(
+          `  Note: ${newPrompts.length} new prompt(s) not in baseline — re-bless to capture: ${newPrompts.join(", ")}`,
+        );
+      }
+      outcome = "passed";
+      return 0;
+    }
+
+    // eslint-disable-next-line no-console
+    console.error("\nRecommendation snapshot gate: FAILED");
+    if (drifts.length > 0) {
+      // eslint-disable-next-line no-console
+      console.error(`\nDrifts (${drifts.length}):`);
+      for (const drift of drifts) {
+        // eslint-disable-next-line no-console
+        console.error(
+          `  ${drift.promptId} ${drift.field}: ${JSON.stringify(drift.baseline)} -> ${JSON.stringify(drift.current)}`,
+        );
+      }
+    }
+    if (missingPrompts.length > 0) {
+      // eslint-disable-next-line no-console
+      console.error(
+        `\nMissing prompts (in baseline, not in current run): ${missingPrompts.join(", ")}`,
       );
     }
+    if (newPrompts.length > 0) {
+      // eslint-disable-next-line no-console
+      console.error(
+        `\nNew prompts (not in baseline — bless required): ${newPrompts.join(", ")}`,
+      );
+    }
+    outcome = "regression";
+    errorMessage = `${drifts.length} drift(s), ${missingPrompts.length} missing prompt(s)`;
+    return 1;
+  } catch (err) {
+    errorMessage = err instanceof Error ? err.message : String(err);
+    outcome = "setup_error";
+    throw err;
+  } finally {
+    try {
+      emitter.emit({
+        distinctId: resolveDistinctId(),
+        evalType: "recommendation",
+        outcome,
+        ...(errorMessage !== undefined && { errorMessage }),
+        commit: opts.commit ?? "unknown",
+        ...(process.env.GITHUB_RUN_ID !== undefined && {
+          runId: process.env.GITHUB_RUN_ID,
+        }),
+        durationMs: Date.now() - startedAt,
+        promptCount,
+        errorCount: 0,
+        metrics: metrics ?? {
+          driftDetectedCount: 0,
+          totalPrompts: 0,
+          newPromptsCount: 0,
+          baselineName: opts.baselineName ?? "unknown",
+        },
+      });
+      await emitter.shutdown();
+    } catch {
+      // never fail the eval on telemetry hiccup
+    }
   }
-  if (missingPrompts.length > 0) {
-    // eslint-disable-next-line no-console
-    console.error(
-      `\nMissing prompts (in baseline, not in current run): ${missingPrompts.join(", ")}`,
-    );
-  }
-  if (newPrompts.length > 0) {
-    // eslint-disable-next-line no-console
-    console.error(
-      `\nNew prompts (not in baseline — bless required): ${newPrompts.join(", ")}`,
-    );
-  }
-  return 1;
 }
 
 // Only execute when invoked directly (not when imported by tests)
