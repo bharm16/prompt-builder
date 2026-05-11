@@ -115,7 +115,7 @@ mcp__posthog__switch-project       417445                                 # Defa
 
 **What it answers:** which provider/model is each LLM hop using, how long does it take, how many tokens does it consume, and which calls error out. One event fires per `aiService.execute` invocation — a single `/api/optimize` request typically generates 2–4 of these.
 
-**Project / dashboard:** Same project as Optimize (`417445`). No dedicated tiles yet — see "Open follow-ups" above.
+**Project / dashboard:** Same project as Optimize (`417445`). Surfaced on [LLM Calls Health (id `1571045`)](https://us.posthog.com/project/417445/dashboard/1571045) — per-`executionType` breakdown so each LLM hop is independently measurable. See that section below for the tile inventory.
 
 ### Event schema
 
@@ -179,7 +179,7 @@ LIMIT 100
 
 **What it answers:** how long does click-to-enhance take per request, what's the cache hit rate, how many suggestions come back, which engine mode ran, and which span category was selected. One event fires per `POST /api/get-enhancement-suggestions` request.
 
-**Project / dashboard:** Same project as Optimize (`417445`). No dedicated tiles yet.
+**Project / dashboard:** Same project as Optimize (`417445`). Surfaced on [Suggestions Health (id `1571039`)](https://us.posthog.com/project/417445/dashboard/1571039) — see that section below for the tile inventory.
 
 ### Event schema
 
