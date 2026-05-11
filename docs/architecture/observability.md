@@ -2,6 +2,24 @@
 
 This document tracks where production telemetry lives and how to query it.
 
+## Telemetry source discriminator
+
+Every operational event in PostHog carries a `source` property classifying the traffic origin:
+
+| Value       | Meaning                                                                                 |
+| ----------- | --------------------------------------------------------------------------------------- |
+| `user`      | Real frontend user (`X-Telemetry-Source: user` set by production client builds).        |
+| `synthetic` | Pre-launch traffic harness (`scripts/synthetic/`).                                      |
+| `ci`        | Continuous integration run (`CI=true` env or explicit `X-Telemetry-Source: ci` header). |
+| `dev`       | Local dev server (`NODE_ENV !== "production"` and no override).                         |
+| `unknown`   | Production fallback when no signal resolves — a bug signal worth alerting on.           |
+
+Source is resolved once per request by [`telemetrySourceMiddleware`](../../server/src/middleware/telemetrySource.ts) and stamped on every event automatically by `PostHogClient.capture()`. Telemetry services don't pass source explicitly — it's a cross-cutting concern, added at the infrastructure layer.
+
+Header precedence over inference. Inference order: `CI=true` env → `"ci"`; otherwise `NODE_ENV === "production"` → `"unknown"`, else `"dev"`. The shared `TelemetrySource` union and `TELEMETRY_SOURCE_HEADER` constant live in [`shared/types/telemetry.ts`](../../shared/types/telemetry.ts) and are imported by both the server middleware, the client interceptor, and the synthetic harness.
+
+`dogfood` is reserved for future use (team-member traffic distinguished from real-stranger traffic) and is **not active pre-launch** — Vidra has no real users yet. Adding `dogfood` later is roughly half a day (enum value + `DOGFOOD_UIDS` env var + middleware check) and isn't needed until real users arrive.
+
 ## T2V Optimize Health (PostHog)
 
 **Project:** [Default project (id `417445`)](https://us.posthog.com/project/417445) inside the **Vidra** organization (slug `vidra`). This project is dedicated to backend optimize-pipeline telemetry — separate from the NextReel org's `Default project` (id `399973`) which receives client-side product analytics.
@@ -316,3 +334,103 @@ ORDER BY day DESC
 - **F1 / judge regression alerts** — two deferred alerts in the Alerts table above; meaningful only after sufficient `span_labeling_*` events accumulate to threshold against.
 - **Recommendation eval cron** — currently manual; add a workflow to run on schedule once dashboard signal is interesting.
 - **CI smoke verification** — once the repo secret is set, trigger `gh workflow run "Span Labeling Golden-Set Eval" --ref main -f provider=groq` and confirm the resulting event has a `runId` matching the workflow's `GITHUB_RUN_ID`. This is plan task 9's CI-portion closure.
+
+---
+
+## Suggestions Health (PostHog)
+
+**Dashboard:** [Suggestions Health (id `1571039`)](https://us.posthog.com/project/417445/dashboard/1571039)
+
+**What it answers:** how long does click-to-enhance take per request, what's the cache hit rate, how many suggestions come back, which category is being enhanced, which `errorStage` is the biggest failure source. One tile per question.
+
+### Tiles
+
+| Tile                                | Insight ID | URL                                                             |
+| ----------------------------------- | ---------- | --------------------------------------------------------------- |
+| Duration over time (avg / p95)      | `ERU8lSYh` | [view](https://us.posthog.com/project/417445/insights/ERU8lSYh) |
+| Cache hit rate                      | `3tso7anm` | [view](https://us.posthog.com/project/417445/insights/3tso7anm) |
+| Outcome breakdown                   | `WvmLNOMP` | [view](https://us.posthog.com/project/417445/insights/WvmLNOMP) |
+| Errors by errorStage                | `ZQlKwBi8` | [view](https://us.posthog.com/project/417445/insights/ZQlKwBi8) |
+| Suggestions returned (distribution) | `hwChFlIs` | [view](https://us.posthog.com/project/417445/insights/hwChFlIs) |
+| Per-category breakdown              | `9eqWssAw` | [view](https://us.posthog.com/project/417445/insights/9eqWssAw) |
+| Recent 50 calls                     | `6kCPJnPv` | [view](https://us.posthog.com/project/417445/insights/6kCPJnPv) |
+
+All tiles are `DataVisualizationNode` over HogQL against `suggestions.completed` events.
+
+---
+
+## Span Labeling Health (PostHog)
+
+**Dashboard:** [Span Labeling Health (id `1571040`)](https://us.posthog.com/project/417445/dashboard/1571040)
+
+**What it answers:** how long does `/llm/label-spans` take per call, what's the cache hit rate, which provider handled it, how many spans were returned, error breakdown by stage.
+
+### Tiles
+
+| Tile                           | Insight ID | URL                                                             |
+| ------------------------------ | ---------- | --------------------------------------------------------------- |
+| Duration over time (avg / p95) | `pBWbfDIo` | [view](https://us.posthog.com/project/417445/insights/pBWbfDIo) |
+| Cache hit rate                 | `EAcRTM10` | [view](https://us.posthog.com/project/417445/insights/EAcRTM10) |
+| Outcome breakdown              | `z0WjrrCj` | [view](https://us.posthog.com/project/417445/insights/z0WjrrCj) |
+| Span count distribution        | `TBaljW3f` | [view](https://us.posthog.com/project/417445/insights/TBaljW3f) |
+| Provider breakdown             | `3lmYpFIR` | [view](https://us.posthog.com/project/417445/insights/3lmYpFIR) |
+| Errors by errorStage           | `ZjhgZ0Fz` | [view](https://us.posthog.com/project/417445/insights/ZjhgZ0Fz) |
+| Recent 50 calls                | `9qQIbiOm` | [view](https://us.posthog.com/project/417445/insights/9qQIbiOm) |
+
+### Event schema (`label-spans.completed`)
+
+Emitted once per `/llm/label-spans` request by [`SpanLabelingTelemetryService`](../../server/src/services/observability/SpanLabelingTelemetryService.ts). Schema locked by a snapshot test at [`label-spans-event-schema.snapshot.test.ts`](../../server/src/services/observability/__tests__/label-spans-event-schema.snapshot.test.ts).
+
+Top-level event properties:
+
+- `requestId` — `req.id`, correlation key
+- `userId` — Firebase UID, or `null` for anonymous (matched by `distinctId = "anon-<uuid>"`)
+- `source` — added automatically by the PostHogClient wrapper; one of `user`/`synthetic`/`ci`/`dev`/`unknown`
+- `outcome` — `"success" | "error"`
+- `errorMessage` / `errorStage` — present only when `outcome === "error"`; `errorStage` is one of `"validation" | "llm_call" | "cache" | "post_processing"`
+- `durationMs` — wall-clock end-to-end (integer ms)
+- `promptLength` — input character count
+- `spanCount` — labeled spans returned (0 on error)
+- `cacheHit` — boolean. Only TTL cache hits count; request-coalescing single-flight (`X-Cache: COALESCED`) does **not** set this flag.
+- `provider` — `string | null` (LLM provider name as reported by the underlying client; intentionally not narrowed)
+- `model` — concrete model id, or `null` on early failure
+
+---
+
+## LLM Calls Health (PostHog)
+
+**Dashboard:** [LLM Calls Health (id `1571045`)](https://us.posthog.com/project/417445/dashboard/1571045)
+
+**What it answers:** per-`executionType` health for every LLM hop in the system (image observation, strategy optimize, constitutional, suggestions engine, span labeling, etc.). Surfaces latency, error rate, and token cost independently per call type — so a single regression in (e.g.) the constitutional stage is visible without being averaged into a per-surface tile.
+
+### Tiles
+
+| Tile                             | Insight ID | URL                                                             |
+| -------------------------------- | ---------- | --------------------------------------------------------------- |
+| Calls by executionType over time | `BjpowD5I` | [view](https://us.posthog.com/project/417445/insights/BjpowD5I) |
+| p95 latency by executionType     | `iePOeLxo` | [view](https://us.posthog.com/project/417445/insights/iePOeLxo) |
+| Error rate by executionType      | `BTkvc18K` | [view](https://us.posthog.com/project/417445/insights/BTkvc18K) |
+| Total tokens by executionType    | `rzguuD0B` | [view](https://us.posthog.com/project/417445/insights/rzguuD0B) |
+| Token use by provider × model    | `KXkzJ894` | [view](https://us.posthog.com/project/417445/insights/KXkzJ894) |
+
+The underlying event is `llm.call.completed` (documented above); see that section for the full property schema. The dashboards use the `executionType` property as the per-tile breakdown dimension.
+
+---
+
+## Sub-project #1 alerts and follow-ups
+
+Sub-project #1 of the [Measurement Program](../superpowers/programs/measurement.md) ships **no live alerts**. Two alerts were specified in the design (`unknown`-in-production ratio and "synthetic harness silent"), and both are intentionally deferred for the same reason: Vidra has no deployed production environment yet, so production-traffic-based thresholds have nothing to compute against and the CI cron is committed-but-disabled.
+
+| Alert                          | Trigger                                                                                                                         | Status                                       |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
+| Source `unknown` in production | Among `optimize.completed` events with `distinctId NOT LIKE 'synthetic-%'`, share with `source = 'unknown'` exceeds 1% over 24h | Deferred — needs production traffic baseline |
+| Synthetic harness silent       | Count of events with `distinctId LIKE 'synthetic-%'` over 24h is zero                                                           | Deferred — needs the CI cron enabled         |
+
+Wire both when production deploys and the CI cron is uncommented in `.github/workflows/synthetic-harness.yml`.
+
+### Follow-ups
+
+- **T2V Optimize Health default-view filter** — when the harness starts producing data regularly, add a `properties.source != 'synthetic'` dashboard-level filter to dashboard `1565688` so synthetic runs don't dominate the average. Deferring until there's actual data to be polluted by.
+- **Sibling "T2V Optimize — Synthetic" dashboard** — when worth its weight, duplicate dashboard `1565688` with `properties.source = 'synthetic'` filter so harness performance can be tracked independently.
+- **Production deploy** — the prerequisite that unlocks the two deferred alerts and the CI cron in `synthetic-harness.yml`.
+- **End-to-end harness validation** — running `npm run synthetic` against a local server (with `POSTHOG_API_KEY` set in the server's env) is the day-one validation that the source-stamping pipeline works end-to-end. Plan task 19.
