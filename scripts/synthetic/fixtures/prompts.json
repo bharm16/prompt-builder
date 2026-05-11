@@ -1,0 +1,102 @@
+[
+  {
+    "id": "subject_01",
+    "text": "A young woman with red hair walks through a misty forest at dawn",
+    "tags": ["subject", "lighting", "setting"]
+  },
+  {
+    "id": "subject_02",
+    "text": "An elderly fisherman casts his line into a calm mountain lake",
+    "tags": ["subject", "setting", "action"]
+  },
+  {
+    "id": "camera_01",
+    "text": "Aerial drone shot pulling back from a city skyline at sunset",
+    "tags": ["camera.movement", "setting", "lighting"]
+  },
+  {
+    "id": "camera_02",
+    "text": "Macro close-up of dewdrops on a spider web, shallow depth of field",
+    "tags": ["camera.shot", "subject"]
+  },
+  {
+    "id": "lighting_01",
+    "text": "A dimly lit jazz club with a single spotlight on a saxophone player",
+    "tags": ["lighting", "subject", "setting"]
+  },
+  {
+    "id": "lighting_02",
+    "text": "Bright midday sun cuts through tropical palm leaves",
+    "tags": ["lighting", "setting"]
+  },
+  {
+    "id": "motion_01",
+    "text": "Slow motion shot of a hummingbird hovering near a hibiscus flower",
+    "tags": ["camera.speed", "subject", "action"]
+  },
+  {
+    "id": "motion_02",
+    "text": "Time-lapse of clouds racing over a desert mesa",
+    "tags": ["camera.speed", "setting"]
+  },
+  {
+    "id": "style_01",
+    "text": "Cinematic anamorphic shot, film grain, teal and orange color grade",
+    "tags": ["style", "color"]
+  },
+  {
+    "id": "style_02",
+    "text": "Wes Anderson symmetrical composition, pastel palette",
+    "tags": ["style", "composition"]
+  },
+  {
+    "id": "action_01",
+    "text": "A barista pours steamed milk creating a heart pattern in coffee",
+    "tags": ["action", "subject", "camera.shot"]
+  },
+  {
+    "id": "action_02",
+    "text": "Two children chase fireflies in a backyard at dusk",
+    "tags": ["action", "subject", "lighting"]
+  },
+  {
+    "id": "setting_01",
+    "text": "A bustling night market in Bangkok with neon signs reflected in puddles",
+    "tags": ["setting", "lighting"]
+  },
+  {
+    "id": "setting_02",
+    "text": "An abandoned 1950s diner overgrown with vines",
+    "tags": ["setting", "subject"]
+  },
+  {
+    "id": "compound_01",
+    "text": "Handheld camera follows a chef through a busy restaurant kitchen, warm tungsten lighting, shallow focus pulls between faces",
+    "tags": ["camera.movement", "subject", "setting", "lighting", "camera.shot"]
+  },
+  {
+    "id": "compound_02",
+    "text": "Wide angle establishing shot of a snowy village, dolly forward toward a single illuminated window",
+    "tags": ["camera.shot", "camera.movement", "setting", "lighting"]
+  },
+  {
+    "id": "compound_03",
+    "text": "Golden hour light catches dust motes in an antique library, slow vertical pan reveals towering bookshelves",
+    "tags": ["lighting", "camera.movement", "setting"]
+  },
+  {
+    "id": "minimal_01",
+    "text": "A red balloon floats up",
+    "tags": ["subject", "action"]
+  },
+  {
+    "id": "minimal_02",
+    "text": "Rain on a window",
+    "tags": ["subject", "setting"]
+  },
+  {
+    "id": "minimal_03",
+    "text": "A single candle flickers",
+    "tags": ["subject", "lighting"]
+  }
+]
