@@ -1,6 +1,9 @@
 import { PostHog } from "posthog-node";
 import { getRequestContext } from "./requestContext";
-import type { TelemetrySource } from "#shared/types/telemetry";
+import {
+  TELEMETRY_SOURCES,
+  type TelemetrySource,
+} from "#shared/types/telemetry";
 
 export interface CaptureArgs {
   distinctId: string;
@@ -28,10 +31,15 @@ class PostHogClientReal implements IPostHogClient {
   capture(args: CaptureArgs): void {
     try {
       const ctx = getRequestContext();
+      const rawSource = ctx?.source;
       const source: TelemetrySource =
-        (ctx?.source as TelemetrySource | undefined) ?? "unknown";
+        typeof rawSource === "string" &&
+        (TELEMETRY_SOURCES as readonly string[]).includes(rawSource)
+          ? (rawSource as TelemetrySource)
+          : "unknown";
       this.client.capture({
         ...args,
+        // Caller-supplied source takes precedence — allows override for synthetic/CI callers.
         properties: { source, ...(args.properties ?? {}) },
       });
     } catch {
