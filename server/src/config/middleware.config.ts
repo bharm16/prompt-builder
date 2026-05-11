@@ -652,6 +652,7 @@ export function applyCorsMiddleware(app: Application): void {
         "Authorization",
         "X-API-Key",
         "X-Firebase-Token",
+        "X-Telemetry-Source",
       ],
       exposedHeaders: ["X-Request-Id"],
       maxAge: 86400, // 24 hours
