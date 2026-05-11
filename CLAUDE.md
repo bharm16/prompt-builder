@@ -354,6 +354,12 @@ These are on-demand — loaded via skills when the task applies:
 - **Cross-layer changes:** `.claude/skills/cross-layer-change/SKILL.md`
 - **New feature scaffolding:** `.claude/skills/new-feature/SKILL.md`
 
+## Active Programs
+
+Cross-cutting initiatives in flight. Read the program doc before working on any of its sub-projects — it's where the end state and decomposition live.
+
+- **Measurement Program** — [`docs/superpowers/programs/measurement.md`](docs/superpowers/programs/measurement.md) — every surface emits operational + quality telemetry to PostHog with traffic-source discrimination. Sub-project #0 (source discriminator + synthetic-traffic harness) in design.
+
 ## Subsystem Guides
 
 - Frontend-specific: `client/CLAUDE.md`
