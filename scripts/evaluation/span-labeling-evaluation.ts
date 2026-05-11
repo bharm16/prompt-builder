@@ -2030,7 +2030,9 @@ async function main(): Promise<void> {
         errorMessage: `Error rate exceeded threshold (${errCount}/${promptCount})`,
       }),
       commit: process.env.GIT_COMMIT ?? "unknown",
-      runId: process.env.GITHUB_RUN_ID,
+      ...(process.env.GITHUB_RUN_ID !== undefined && {
+        runId: process.env.GITHUB_RUN_ID,
+      }),
       sourceFile: snapshot.sourceFile,
       durationMs: Date.now() - mainStartedAt,
       promptCount,
@@ -2055,7 +2057,9 @@ main().catch(async (e) => {
       outcome: "setup_error",
       errorMessage: e instanceof Error ? e.message : String(e),
       commit: process.env.GIT_COMMIT ?? "unknown",
-      runId: process.env.GITHUB_RUN_ID,
+      ...(process.env.GITHUB_RUN_ID !== undefined && {
+        runId: process.env.GITHUB_RUN_ID,
+      }),
       durationMs: Date.now() - mainStartedAt,
       promptCount: 0,
       errorCount: 0,
