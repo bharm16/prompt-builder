@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { TELEMETRY_SOURCE_HEADER } from "#shared/types/telemetry.js";
 import { driveOptimize } from "../drivers/optimize.driver";
 import { driveSuggestions } from "../drivers/suggestions.driver";
 import { driveSpanLabels } from "../drivers/span-labeling.driver";
@@ -24,7 +25,7 @@ afterEach(() => {
 });
 
 describe("synthetic harness drivers — smoke", () => {
-  it("driveOptimize fires N requests with X-Telemetry-Source: synthetic", async () => {
+  it("driveOptimize fires N requests tagged with the synthetic source header", async () => {
     const summary = await driveOptimize("http://localhost:3001", PROMPTS);
     expect(fetchSpy).toHaveBeenCalledTimes(PROMPTS.length);
     for (const call of fetchSpy.mock.calls) {
@@ -32,7 +33,7 @@ describe("synthetic harness drivers — smoke", () => {
       const init = call[1] as RequestInit;
       expect(url).toBe("http://localhost:3001/api/optimize");
       expect(
-        (init.headers as Record<string, string>)["X-Telemetry-Source"],
+        (init.headers as Record<string, string>)[TELEMETRY_SOURCE_HEADER],
       ).toBe("synthetic");
       expect(
         (init.headers as Record<string, string>)["Authorization"],
@@ -51,7 +52,7 @@ describe("synthetic harness drivers — smoke", () => {
       );
       const init = call[1] as RequestInit;
       expect(
-        (init.headers as Record<string, string>)["X-Telemetry-Source"],
+        (init.headers as Record<string, string>)[TELEMETRY_SOURCE_HEADER],
       ).toBe("synthetic");
     }
   });
@@ -63,7 +64,7 @@ describe("synthetic harness drivers — smoke", () => {
       expect(call[0]).toBe("http://localhost:3001/llm/label-spans");
       const init = call[1] as RequestInit;
       expect(
-        (init.headers as Record<string, string>)["X-Telemetry-Source"],
+        (init.headers as Record<string, string>)[TELEMETRY_SOURCE_HEADER],
       ).toBe("synthetic");
     }
   });
@@ -75,7 +76,7 @@ describe("synthetic harness drivers — smoke", () => {
     const sources = fetchSpy.mock.calls.map(
       (c) =>
         ((c[1] as RequestInit).headers as Record<string, string>)[
-          "X-Telemetry-Source"
+          TELEMETRY_SOURCE_HEADER
         ],
     );
     const non = sources.filter((s) => s !== "synthetic");

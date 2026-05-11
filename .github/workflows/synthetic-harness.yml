@@ -30,7 +30,9 @@ jobs:
     runs-on: ubuntu-latest
     env:
       NODE_ENV: production
-      POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
+      # POSTHOG_API_KEY is NOT set here — the harness fires plain HTTP requests
+      # against the Vidra API server; PostHog events are emitted server-side by
+      # the API process, which has its own POSTHOG_API_KEY in its deploy env.
       VIDRA_API_URL: ${{ inputs.target_url || vars.VIDRA_API_URL }}
     steps:
       - uses: actions/checkout@v4

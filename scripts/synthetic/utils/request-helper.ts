@@ -1,4 +1,13 @@
+import { readFile } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
+import { dirname, resolve } from "node:path";
+import {
+  TELEMETRY_SOURCE_HEADER,
+  type TelemetrySource,
+} from "#shared/types/telemetry.js";
+
 export interface HarnessRequestResult {
+  /** HTTP status code (200, 404, etc.) — or 0 if fetch itself threw (network error). */
   status: number;
   durationMs: number;
   ok: boolean;
@@ -6,20 +15,23 @@ export interface HarnessRequestResult {
 }
 
 /**
- * Fires an anonymous request with X-Telemetry-Source: synthetic.
- * No Authorization header — exercises the anonymous code path.
+ * Fires an anonymous request tagged as synthetic traffic. No Authorization
+ * header — exercises the anonymous code path. Network failures (status: 0)
+ * and HTTP errors (status: 4xx/5xx) both surface as `ok: false`; the harness
+ * summary doesn't need to distinguish them.
  */
 export async function sendSyntheticRequest(
   url: string,
   body: unknown,
 ): Promise<HarnessRequestResult> {
   const startedAt = Date.now();
+  const sourceValue: TelemetrySource = "synthetic";
   try {
     const response = await fetch(url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-Telemetry-Source": "synthetic",
+        [TELEMETRY_SOURCE_HEADER]: sourceValue,
       },
       body: JSON.stringify(body),
     });
@@ -46,9 +58,6 @@ export interface HarnessPrompt {
 }
 
 export async function loadPrompts(): Promise<HarnessPrompt[]> {
-  const { readFile } = await import("node:fs/promises");
-  const { fileURLToPath } = await import("node:url");
-  const { dirname, resolve } = await import("node:path");
   const here = dirname(fileURLToPath(import.meta.url));
   const path = resolve(here, "..", "fixtures", "prompts.json");
   const raw = await readFile(path, "utf8");

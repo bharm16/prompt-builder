@@ -14,6 +14,10 @@ function parseArgs(argv: string[]): CliConfig {
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === "--only") {
       only = argv[++i];
+      if (!only) {
+        console.error("--only requires a value (e.g., --only optimize)");
+        process.exit(2);
+      }
     }
   }
   if (only) {
