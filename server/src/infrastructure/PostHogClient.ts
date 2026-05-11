@@ -1,4 +1,6 @@
 import { PostHog } from "posthog-node";
+import { getRequestContext } from "./requestContext";
+import type { TelemetrySource } from "#shared/types/telemetry";
 
 export interface CaptureArgs {
   distinctId: string;
@@ -25,7 +27,13 @@ class PostHogClientReal implements IPostHogClient {
 
   capture(args: CaptureArgs): void {
     try {
-      this.client.capture(args);
+      const ctx = getRequestContext();
+      const source: TelemetrySource =
+        (ctx?.source as TelemetrySource | undefined) ?? "unknown";
+      this.client.capture({
+        ...args,
+        properties: { source, ...(args.properties ?? {}) },
+      });
     } catch {
       // Telemetry must never throw upstream. posthog-node queues internally
       // and retries network failures itself; this catch covers misuse / OOM.

@@ -26,6 +26,7 @@ import type Redis from "ioredis";
 import compression from "compression";
 
 import { requestIdMiddleware } from "@middleware/requestId";
+import { telemetrySourceMiddleware } from "@middleware/telemetrySource";
 import {
   createFailClosedLlmRateLimit,
   setRedisRateLimitHealth,
@@ -217,6 +218,7 @@ const COMPRESSION_CONFIG: compression.CompressionOptions = {
  */
 export function applyRequestIdMiddleware(app: Application): void {
   app.use(requestIdMiddleware);
+  app.use(telemetrySourceMiddleware);
 }
 
 /**
