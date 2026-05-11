@@ -221,3 +221,70 @@ WHERE event = 'suggestions.completed'
 GROUP BY category, outcome
 ORDER BY n DESC
 ```
+
+---
+
+## Eval telemetry (`eval.completed`)
+
+**What it answers:** how often does each eval run, what does it produce, when does it regress. One event fires per `scripts/evaluation/*` run (passing, regressing, or setup-error). Three discriminator values today: `span_labeling_judge`, `span_labeling_f1`, `recommendation`.
+
+**Project / dashboard:** Same project as Optimize (`417445`). Dashboard "Eval Health" — id TBD (created after first nightly run produces data; see the open follow-up in `docs/superpowers/plans/2026-05-10-eval-visibility.md` task 10).
+
+### Event schema
+
+Emitted by [`scripts/evaluation/posthog-emitter.ts`](../../scripts/evaluation/posthog-emitter.ts). The schema is locked by snapshot tests at [`scripts/evaluation/__tests__/eval-event-schema.snapshot.test.ts`](../../scripts/evaluation/__tests__/eval-event-schema.snapshot.test.ts) — one snapshot per `evalType`.
+
+Top-level event properties:
+
+- `evalType` — `"span_labeling_judge" | "span_labeling_f1" | "recommendation"` — discriminator for the polymorphic `metrics` shape
+- `outcome` — `"passed" | "regression" | "setup_error"`
+- `errorMessage` — present only when `outcome !== "passed"`
+- `commit` — Git SHA the eval ran against; `"unknown"` if not provided
+- `runId` — present only when run from GitHub Actions (matches `GITHUB_RUN_ID`)
+- `provider` — `"groq" | "openai" | null` for span-labeling evals; absent for recommendation
+- `sourceFile` — path to prompt fixture (optional)
+- `durationMs`, `promptCount`, `errorCount` — wall-clock + counts
+- `metrics` — polymorphic by `evalType`:
+  - `span_labeling_judge` → `{ avgScore, maxScore: 25, scoreDistribution, avgCategoryScores?, latencyStats?, judgeModel }`
+  - `span_labeling_f1` → `{ overallF1, overallPrecision, overallRecall, perCategoryF1, baselineCommit? }`
+  - `recommendation` → `{ driftDetectedCount, totalPrompts, newPromptsCount, baselineName }`
+
+`distinctId` convention: `ci-<GITHUB_RUN_ID>` in CI, `local-<username>` locally, `anon-<uuid>` fallback. Use `distinctId LIKE 'ci-%'` to filter CI-only runs in dashboards.
+
+### How to query
+
+Outcome breakdown last 7 days:
+
+```sql
+SELECT
+  properties.evalType AS evalType,
+  properties.outcome AS outcome,
+  count() AS n
+FROM events
+WHERE event = 'eval.completed'
+  AND timestamp > now() - INTERVAL 7 DAY
+GROUP BY evalType, outcome
+ORDER BY evalType, outcome
+```
+
+Overall F1 trend by day:
+
+```sql
+SELECT
+  toStartOfDay(timestamp) AS day,
+  avg(properties.metrics.overallF1) AS avg_f1,
+  count() AS runs
+FROM events
+WHERE event = 'eval.completed'
+  AND properties.evalType = 'span_labeling_f1'
+  AND timestamp > now() - INTERVAL 30 DAY
+GROUP BY day
+ORDER BY day DESC
+```
+
+### Open follow-ups
+
+- **Eval Health dashboard tiles** — built after first nightly run produces data (plan task 10).
+- **PostHog alerts** — wired after dashboard exists (plan task 11).
+- **Recommendation eval cron** — currently manual; add a workflow to run on schedule once dashboard signal is interesting.
+- **`POSTHOG_API_KEY` repo secret** — must be added in GitHub Settings → Secrets and variables → Actions before the nightly workflow can emit events. Same value as the server's production env (`phc_pmJDnB...`).
