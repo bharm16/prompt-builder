@@ -92,6 +92,36 @@ describe("posthog-query-client", () => {
     expect(events).toEqual([]);
   });
 
+  it("skips a row with malformed JSON properties, returns the valid rows", async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        results: [
+          [
+            "00000000-0000-0000-0000-000000000001",
+            "optimize.completed",
+            "{not-json",
+          ],
+          [
+            "00000000-0000-0000-0000-000000000002",
+            "optimize.completed",
+            { inputPrompt: "ok", source: "synthetic" },
+          ],
+        ],
+      }),
+    }) as unknown as typeof fetch;
+
+    const client = createPostHogQueryClient();
+    const events = await client.fetchEventsToScore("optimize.completed", 24, 1);
+    // Both rows are returned. The malformed row gets an empty properties object.
+    expect(events).toHaveLength(2);
+    expect(events[0].properties).toEqual({});
+    expect(events[1].properties).toEqual({
+      inputPrompt: "ok",
+      source: "synthetic",
+    });
+  });
+
   it("encodes per-source sampling: synth/dogfood always, user at userSampleRate", async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,

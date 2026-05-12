@@ -33,6 +33,24 @@ const NOOP_CLIENT: PostHogQueryClient = {
   },
 };
 
+function parseProperties(raw: unknown): Record<string, unknown> {
+  if (typeof raw === "string") {
+    try {
+      return JSON.parse(raw) as Record<string, unknown>;
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.warn(
+        `[quality-judge] PostHog row properties JSON parse failed: ${String(err)}`,
+      );
+      return {};
+    }
+  }
+  if (raw && typeof raw === "object") {
+    return raw as Record<string, unknown>;
+  }
+  return {};
+}
+
 class HttpClient implements PostHogQueryClient {
   constructor(
     private readonly host: string,
@@ -102,10 +120,7 @@ class HttpClient implements PostHogQueryClient {
     return rows.map((r) => ({
       uuid: String(r[0]),
       event: String(r[1]),
-      properties:
-        typeof r[2] === "string"
-          ? (JSON.parse(r[2]) as Record<string, unknown>)
-          : ((r[2] as Record<string, unknown>) ?? {}),
+      properties: parseProperties(r[2]),
     }));
   }
 
