@@ -19,6 +19,16 @@ If a sub-project discussion ever drifts toward "what are real users doing?" — 
 
 ---
 
+## Defer nothing (program-wide scope)
+
+Every endpoint, every background worker, every client-side action, every dollar of LLM/render spend, and every state change with money implications must be observable in PostHog. Not "the high-leverage subset." Not "the surfaces with users." Pre-launch full coverage is achievable because there's no traffic constraint and no migration cost — instrumenting now is cheaper than retrofitting after launch when surfaces have shipped without telemetry.
+
+This expands the original 5-sub-project decomposition (§ Decomposition). New sub-projects #5–#7 cover background workers, client-side analytics, and cost/revenue tracking — surfaces the original framing treated as out-of-scope or implicitly deferred. They are not.
+
+The "defer nothing" rule applies to scope (everything gets instrumented) AND to dimensions (every event has both **health** fields — latency, error rate, $ cost — and **quality** content fields — the inputs/outputs of the operation, scorable by human scroll-through today and LLM judge tomorrow).
+
+---
+
 ## Quality requires content, not counts (a hard-won principle)
 
 Operational telemetry that only counts things ("how many spans came back", "how long did it take", "how often did it error") cannot answer the question pre-launch quality validation actually needs to answer: **"is the output any good?"** A dashboard tile that shows "3 spans=5 calls, 4 spans=5 calls, 5 spans=4 calls" tells you nothing about whether the spans are correct.
@@ -46,7 +56,7 @@ When the program's ambition shifts (priorities reorder, surfaces added/removed, 
 
 ## End State
 
-Every user-facing endpoint and async pipeline in Vidra emits operational telemetry (per-stage latency, cost, errors) and quality telemetry (eval scores, judge-model ratings) to PostHog. Operational events carry a `source` discriminator distinguishing real users from `synthetic` / `ci` / `dev` / `unknown` traffic (and `dogfood` once real users exist and a team-member allowlist makes sense to add), so the dashboard stays valid pre-launch, during early-user phases, and at scale. Eval events use a distinct event name (`eval.completed`) and don't need the discriminator. One dashboard per surface (T2V, I2V, Preview, Generation, Eval) answers _"is this surface healthy?"_; PostHog alerts catch latency, cost, error-rate, and eval-score regressions before users notice. The question _"is the 4+ LLM-call cost per Optimize click justified?"_ — and its equivalents for every other surface — is answerable on demand.
+Every user-facing endpoint, every background worker, every client-side interaction, and every async pipeline in Vidra emits **health telemetry** (per-stage latency, $ cost, errors, state changes) AND **quality telemetry** (the input/output content of each operation, plus LLM-judge scores once #3 ships) to PostHog. Operational events carry a `source` discriminator distinguishing real users from `synthetic` / `ci` / `dev` / `unknown` traffic (and `dogfood` once real users exist and a team-member allowlist makes sense to add), so the dashboard stays valid pre-launch, during early-user phases, and at scale. Eval events use a distinct event name (`eval.completed`) and don't need the discriminator. One dashboard per surface (T2V, I2V, Preview, Generation, Eval, Background Workers, Cost/Revenue, Client) answers BOTH _"is this surface healthy?"_ AND _"is the output any good?"_ — every dashboard has both health tiles AND content-review tiles, with LLM-judge score trends layered on top once #3 ships. PostHog alerts catch latency, cost, error-rate, eval-score regressions, AND quality-score regressions before users notice. The question _"is the 4+ LLM-call cost per Optimize click justified?"_ — and its equivalents for every other surface — is answerable on demand, as is _"is the output worth the cost?"_
 
 ### "Tell when you're done" checklist
 
@@ -82,31 +92,48 @@ The T2V Optimize telemetry stack already exists and is the pattern subsequent su
 - "T2V Optimize Health" dashboard (PostHog project `417445`, dashboard id `1565688`)
 - Documented in [`docs/architecture/observability.md`](../../architecture/observability.md)
 
-#0 (Eval Visibility) adds a new event family (`eval.completed`) flowing from `scripts/evaluation/` into the same PostHog project. #1 retrofits the source discriminator onto the existing operational events. #2 replicates the operational pattern to more surfaces. #3 introduces quality scoring for live (non-eval) traffic. #4 builds cross-surface dashboards.
+#0 (Eval Visibility) adds a new event family (`eval.completed`) flowing from `scripts/evaluation/` into the same PostHog project. #1 retrofits the source discriminator onto the existing operational events. #2 replicates the operational pattern to ALL remaining server route surfaces (defer nothing). #3 introduces LLM-judge scoring for live (non-eval) traffic — runs against any event that carries content fields, so it can start on Optimize/Suggestions/Span Labeling before #2 finishes. #4 builds cross-surface dashboards. #5 instruments the 7 background workers — health cycles + state-change content arrays for verification. #6 wires `posthog-js` client-side analytics for dogfooding (now) + real users (post-launch). #7 adds $ cost tracking to every LLM/preview/render event and a Cost/Revenue dashboard.
+
+---
+
+## New sub-projects #5-#7 (added 2026-05-12 under "defer nothing")
+
+| #     | Sub-project                     | What it does                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | Status      | Spec | Plan |
+| ----- | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- | ---- | ---- |
+| **5** | **Background worker telemetry** | One `worker.cycle.completed` event per cycle for all 7 workers (`VideoJobWorker`, `VideoJobSweeper`, `VideoJobReconciler`, `DlqReprocessorWorker`, `WebhookReconciliationWorker`, `BillingProfileRepairWorker`, `CreditReconciliationWorker`, `CreditRefundSweeper`). Carries health (cycleDurationMs, itemsProcessed, outcome) AND state-change content arrays — e.g., `reconciledUsers[]: {userId, beforeBalance, afterBalance}` so money correctness is reviewable. Shared `WorkerTelemetryService`. "Background Workers Health" dashboard. Alert on "worker silent > 2× expected interval" — the highest unaddressed silent-failure risk in the codebase. | not started | TBD  | TBD  |
+| **6** | **Client-side analytics**       | Initialize `posthog-js` in the React client. Captures page views, button clicks via `posthog.capture`, unhandled errors, time-on-page, feature usage. Pre-launch this captures own-dogfooding sessions (today, only Bryce — useful for personal QA). Post-launch this surfaces real user behavior. Pairs with #1's `source` discriminator: client events default to `user` source; dogfood UIDs override to `dogfood` once allowlist activates.                                                                                                                                                                                                               | not started | TBD  | TBD  |
+| **7** | **Cost / revenue telemetry**    | Adds `costUsd` field (computed from a per-provider/per-model pricing table) to every `llm.call.completed`, every preview-generation event, every final-render event. Worker events from #5 surface Stripe revenue movement (refunds, charges, credit grants). New "Cost / Revenue Health" dashboard answers: monthly burn rate, cost-per-click by surface, $-per-quality-point once #3 ships. Critical pre-launch to know "are we shipping a profitable product?"                                                                                                                                                                                             | not started | TBD  | TBD  |
 
 ---
 
 ## Sequencing
 
-- **#0 first, alone.** Eval Visibility is the goal that motivates the program. The data already exists (eval scripts produce structured JSON daily, the workflow already runs); this is wiring, not invention. Shipping it first proves the program's worth before further investment. Includes the Eval Health dashboard in scope so we don't repeat the "events into the void" mistake.
-- **#1 and #2 in parallel after #0.** #1 is purely additive to existing operational events; #2 instruments new surfaces. They touch different code paths and can ship via separate Conductor worktrees. Each unblocks #4.
-- **#3 after #2.** Requires real outputs to score across surfaces. Also the most expensive: judge models, calibration runs, rubric design.
-- **#4 last overall.** Cross-surface dashboards need stable event streams from #1 + #2 + #3. Building tiles against empty event types is the trap that prompted this program in the first place — see Eval Visibility (#0) handling Eval Health locally rather than waiting for #4.
+**Updated 2026-05-12:** #0 and #1 are shipped. New sequencing for the remaining sub-projects under "defer nothing":
+
+- **#3 (LLM judge framework) next.** Sequenced ahead of #2 because Optimize, Suggestions, and Span Labeling already carry content fields — judges can run against them immediately, producing quality signal without waiting for additional surface instrumentation. Building the judge layer first ALSO sets the schema constraint that every #2 surface must satisfy: "what fields does the judge need to score this output?" Without that constraint, #2 ships content fields by guess.
+- **#2 (server route telemetry), #5 (workers), #6 (client), #7 (cost) in parallel after #3.** All four touch different code paths and can ship in independent worktrees. None blocks the others. The judge layer from #3 attaches to each as it lands. Each sub-project's dashboard tiles are built incrementally with the surface; dashboards stay current rather than getting built once-at-the-end.
+- **#4 (cross-surface dashboards + alerts) last.** This is the consolidating pass — by the time it starts, every individual surface dashboard already has health + content tiles. #4's value is roll-ups + alert calibration, not first-time tile-building. Alerts especially benefit from waiting until enough real data accumulates to set thresholds.
+
+**Historical note:** original sequencing had #3 after #2 (a "you can only judge after surfaces are instrumented" assumption). The 2026-05-12 content-fields work moved this — three surfaces are judgeable today, so the cost of waiting is higher than the cost of starting.
 
 ### Reordering log
 
 - **2026-05-10:** Original ordering had source discriminator at #0 because I treated user-traffic telemetry as the throughline. User reframed: the goal is _eval visibility_, not source tagging. Reordered so Eval Visibility is #0, source discriminator is #1 (deferred). The dependency `#0 → #1` is gone because eval events have a distinct event name (`eval.completed`) and don't share the source-discrimination concern with operational events.
 - **2026-05-12:** Two corrections after #1 shipped. (a) The synthetic harness fired HTTP requests against authenticated endpoints, 401'd, produced zero events. Rewrote to direct in-process emission through the same PostHogClient + telemetry services the server uses, wrapped in an ALS frame with `source: "synthetic"`. Verified end-to-end with 174 real events. (b) Dashboards were count-only ("3 spans=5 calls") — useless for quality review. Added **content fields** (`inputPrompt`/`outputPrompt`, `spans[]`, `suggestions[]`, `examples[]` for evals) to every event so dashboards can show what the model actually produced. New principle encoded in "Quality requires content, not counts" above. Affects all subsequent sub-projects: any new event in this program MUST carry content, not just metadata.
+- **2026-05-12 (later):** "Defer nothing" scope directive. Added sub-projects #5 (background worker telemetry), #6 (client-side analytics via `posthog-js`), #7 (cost/revenue tracking) — surfaces the original 5-sub-project decomposition treated as out-of-scope. Also resequenced: #3 (LLM judge framework) now ships BEFORE #2, because Optimize/Suggestions/Span Labeling are already judgeable from the content fields shipped on 2026-05-12, and the judge schema becomes the design constraint for every subsequent #2 surface.
 
 ---
 
 ## Sub-project specs
 
-- **#0** Eval Visibility — [`2026-05-10-eval-visibility-design.md`](../specs/2026-05-10-eval-visibility-design.md)
+- **#0** Eval Visibility — [`2026-05-10-eval-visibility-design.md`](../specs/2026-05-10-eval-visibility-design.md) (shipped)
 - **#1** Source discriminator + synthetic-traffic harness — [spec](../specs/2026-05-10-source-discriminator-and-harness-design.md) · [plan](../plans/2026-05-10-source-discriminator-and-harness.md) (shipped — see `observability.md` for dashboards + tile IDs)
-- **#2** Operational telemetry coverage — TBD
-- **#3** LLM-effectiveness eval framework — TBD
+- **#2** Server route telemetry coverage (defer nothing — every endpoint) — TBD
+- **#3** LLM-effectiveness eval framework (live judge) — TBD (**ships next** per resequence)
 - **#4** Cross-surface dashboards + alerts — TBD
+- **#5** Background worker telemetry — TBD
+- **#6** Client-side analytics (`posthog-js`) — TBD
+- **#7** Cost / revenue telemetry — TBD
 
 When a sub-project's spec lands, this row gains a link.
 
