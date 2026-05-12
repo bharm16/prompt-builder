@@ -63,6 +63,7 @@ export default mergeConfig(
               "tests/unit/**/*.{test,spec}.ts",
               "scripts/evaluation/__tests__/**/*.{test,spec}.{ts,js}",
               "scripts/synthetic/__tests__/**/*.{test,spec}.{ts,js}",
+              "scripts/quality-judge/__tests__/**/*.{test,spec}.{ts,js}",
             ],
             exclude: ["tests/unit/span-labeling-gliner-worker.test.ts"],
           },
