@@ -15,6 +15,7 @@ import {
 } from "./posthog-query-client.js";
 import { loadRubric, rubricVersionFor } from "./rubric-loader.js";
 import {
+  QUALITY_SCORED_SURFACES,
   scoredEventNameFor,
   sumDimensions,
   type QualityScoredSurface,
@@ -102,14 +103,24 @@ export async function runJudgeForSurface(
 }
 
 async function main(): Promise<void> {
-  const args = new Set(process.argv.slice(2));
-  const surfaces: QualityScoredSurface[] = args.has("--surface")
-    ? [
-        process.argv[
-          process.argv.indexOf("--surface") + 1
-        ] as QualityScoredSurface,
-      ]
-    : ["optimize", "suggestions", "span-labeling"];
+  const args = process.argv.slice(2);
+  let surfaces: QualityScoredSurface[];
+  const surfaceFlagIndex = args.indexOf("--surface");
+  if (surfaceFlagIndex !== -1) {
+    const value = args[surfaceFlagIndex + 1];
+    if (
+      !value ||
+      !QUALITY_SCORED_SURFACES.includes(value as QualityScoredSurface)
+    ) {
+      throw new Error(
+        `--surface requires one of: ${QUALITY_SCORED_SURFACES.join(", ")} (got: ${value ?? "<missing>"})`,
+      );
+    }
+    surfaces = [value as QualityScoredSurface];
+  } else {
+    surfaces = [...QUALITY_SCORED_SURFACES];
+  }
+
   const hoursBack = Number(process.env.QUALITY_JUDGE_HOURS_BACK ?? 24);
   // Default 0.1 per spec § 1 ("10% user initially"). synth/dogfood always 100%.
   const userSampleRate = Number(
@@ -119,7 +130,14 @@ async function main(): Promise<void> {
   for (const surface of surfaces) {
     // eslint-disable-next-line no-console
     console.log(`[quality-judge] running for ${surface}`);
-    await runJudgeForSurface(surface, { hoursBack, userSampleRate });
+    try {
+      await runJudgeForSurface(surface, { hoursBack, userSampleRate });
+    } catch (err) {
+      // Per-surface isolation: one surface's upstream failure (e.g. PostHog 500)
+      // must not skip the remaining surfaces in a nightly cron run.
+      // eslint-disable-next-line no-console
+      console.error(`[quality-judge] ${surface} aborted: ${String(err)}`);
+    }
   }
 }
 

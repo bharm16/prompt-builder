@@ -1,6 +1,12 @@
 import type { TelemetrySource } from "../../shared/types/telemetry.js";
 
-export type QualityScoredSurface = "optimize" | "suggestions" | "span-labeling";
+export const QUALITY_SCORED_SURFACES = [
+  "optimize",
+  "suggestions",
+  "span-labeling",
+] as const;
+
+export type QualityScoredSurface = (typeof QUALITY_SCORED_SURFACES)[number];
 
 export type ScoredEventName =
   | "optimize.completed"
