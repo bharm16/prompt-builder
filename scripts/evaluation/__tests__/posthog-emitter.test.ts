@@ -17,17 +17,20 @@ describe("createEvalEmitter", () => {
     expect(() =>
       emitter.emit({
         distinctId: "test",
-        evalType: "span_labeling_f1",
-        outcome: "passed",
-        commit: "abc",
-        durationMs: 1,
-        promptCount: 1,
-        errorCount: 0,
-        metrics: {
-          overallF1: 1,
-          overallPrecision: 1,
-          overallRecall: 1,
-          perCategoryF1: {},
+        event: "eval.completed",
+        properties: {
+          evalType: "span_labeling_f1",
+          outcome: "passed",
+          commit: "abc",
+          durationMs: 1,
+          promptCount: 1,
+          errorCount: 0,
+          metrics: {
+            overallF1: 1,
+            overallPrecision: 1,
+            overallRecall: 1,
+            perCategoryF1: {},
+          },
         },
       }),
     ).not.toThrow();

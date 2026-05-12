@@ -480,24 +480,27 @@ async function main(): Promise<number> {
     try {
       emitter.emit({
         distinctId: resolveDistinctId(),
-        evalType: "span_labeling_f1",
-        outcome,
-        ...(errorMessage !== undefined && { errorMessage }),
-        commit: opts.commit ?? "unknown",
-        provider: resolvedProviderForEmit ?? null,
-        ...(process.env.GITHUB_RUN_ID !== undefined && {
-          runId: process.env.GITHUB_RUN_ID,
-        }),
-        durationMs: Date.now() - startedAt,
-        promptCount,
-        errorCount,
-        metrics: metrics ?? {
-          overallF1: 0,
-          overallPrecision: 0,
-          overallRecall: 0,
-          perCategoryF1: {},
+        event: "eval.completed",
+        properties: {
+          evalType: "span_labeling_f1",
+          outcome,
+          ...(errorMessage !== undefined && { errorMessage }),
+          commit: opts.commit ?? "unknown",
+          provider: resolvedProviderForEmit ?? null,
+          ...(process.env.GITHUB_RUN_ID !== undefined && {
+            runId: process.env.GITHUB_RUN_ID,
+          }),
+          durationMs: Date.now() - startedAt,
+          promptCount,
+          errorCount,
+          metrics: metrics ?? {
+            overallF1: 0,
+            overallPrecision: 0,
+            overallRecall: 0,
+            perCategoryF1: {},
+          },
+          ...(evalExamples.length > 0 && { examples: evalExamples }),
         },
-        ...(evalExamples.length > 0 && { examples: evalExamples }),
       });
       await emitter.shutdown();
     } catch {

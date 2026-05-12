@@ -2,10 +2,10 @@ import { PostHog } from "posthog-node";
 import { randomUUID } from "node:crypto";
 import { userInfo } from "node:os";
 
-import type { EvalCompletedProperties } from "./eval-event-types.js";
-
-export interface EmitArgs extends EvalCompletedProperties {
+export interface EmitArgs {
   distinctId: string;
+  event: string;
+  properties: Record<string, unknown>;
 }
 
 export interface IEvalEmitter {
@@ -26,11 +26,10 @@ class EvalEmitterReal implements IEvalEmitter {
 
   emit(args: EmitArgs): void {
     try {
-      const { distinctId, ...properties } = args;
       this.client.capture({
-        distinctId,
-        event: "eval.completed",
-        properties,
+        distinctId: args.distinctId,
+        event: args.event,
+        properties: args.properties,
       });
     } catch {
       // never throw upstream

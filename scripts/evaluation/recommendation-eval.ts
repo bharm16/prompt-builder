@@ -640,23 +640,26 @@ async function main(): Promise<number> {
     try {
       emitter.emit({
         distinctId: resolveDistinctId(),
-        evalType: "recommendation",
-        outcome,
-        ...(errorMessage !== undefined && { errorMessage }),
-        commit: opts.commit ?? "unknown",
-        ...(process.env.GITHUB_RUN_ID !== undefined && {
-          runId: process.env.GITHUB_RUN_ID,
-        }),
-        durationMs: Date.now() - startedAt,
-        promptCount,
-        errorCount: 0,
-        metrics: metrics ?? {
-          driftDetectedCount: 0,
-          totalPrompts: 0,
-          newPromptsCount: 0,
-          baselineName: opts.baselineName ?? "unknown",
+        event: "eval.completed",
+        properties: {
+          evalType: "recommendation",
+          outcome,
+          ...(errorMessage !== undefined && { errorMessage }),
+          commit: opts.commit ?? "unknown",
+          ...(process.env.GITHUB_RUN_ID !== undefined && {
+            runId: process.env.GITHUB_RUN_ID,
+          }),
+          durationMs: Date.now() - startedAt,
+          promptCount,
+          errorCount: 0,
+          metrics: metrics ?? {
+            driftDetectedCount: 0,
+            totalPrompts: 0,
+            newPromptsCount: 0,
+            baselineName: opts.baselineName ?? "unknown",
+          },
+          ...(evalExamples.length > 0 && { examples: evalExamples }),
         },
-        ...(evalExamples.length > 0 && { examples: evalExamples }),
       });
       await emitter.shutdown();
     } catch {

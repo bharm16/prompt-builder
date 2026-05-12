@@ -2041,21 +2041,24 @@ async function main(): Promise<void> {
 
     emitter.emit({
       distinctId: resolveDistinctId(),
-      evalType: "span_labeling_judge",
-      outcome,
-      ...(outcome === "setup_error" && {
-        errorMessage: `Error rate exceeded threshold (${errCount}/${promptCount})`,
-      }),
-      commit: process.env.GIT_COMMIT ?? "unknown",
-      ...(process.env.GITHUB_RUN_ID !== undefined && {
-        runId: process.env.GITHUB_RUN_ID,
-      }),
-      sourceFile: snapshot.sourceFile,
-      durationMs: Date.now() - mainStartedAt,
-      promptCount,
-      errorCount: errCount,
-      metrics,
-      ...(examples.length > 0 && { examples }),
+      event: "eval.completed",
+      properties: {
+        evalType: "span_labeling_judge",
+        outcome,
+        ...(outcome === "setup_error" && {
+          errorMessage: `Error rate exceeded threshold (${errCount}/${promptCount})`,
+        }),
+        commit: process.env.GIT_COMMIT ?? "unknown",
+        ...(process.env.GITHUB_RUN_ID !== undefined && {
+          runId: process.env.GITHUB_RUN_ID,
+        }),
+        sourceFile: snapshot.sourceFile,
+        durationMs: Date.now() - mainStartedAt,
+        promptCount,
+        errorCount: errCount,
+        metrics,
+        ...(examples.length > 0 && { examples }),
+      },
     });
     await emitter.shutdown();
   } catch {
@@ -2071,27 +2074,30 @@ main().catch(async (e) => {
     const emitter = createEvalEmitter();
     emitter.emit({
       distinctId: resolveDistinctId(),
-      evalType: "span_labeling_judge",
-      outcome: "setup_error",
-      errorMessage: e instanceof Error ? e.message : String(e),
-      commit: process.env.GIT_COMMIT ?? "unknown",
-      ...(process.env.GITHUB_RUN_ID !== undefined && {
-        runId: process.env.GITHUB_RUN_ID,
-      }),
-      durationMs: Date.now() - mainStartedAt,
-      promptCount: 0,
-      errorCount: 0,
-      metrics: {
-        avgScore: 0,
-        maxScore: 25,
-        scoreDistribution: {
-          excellent: 0,
-          good: 0,
-          acceptable: 0,
-          poor: 0,
-          failing: 0,
+      event: "eval.completed",
+      properties: {
+        evalType: "span_labeling_judge",
+        outcome: "setup_error",
+        errorMessage: e instanceof Error ? e.message : String(e),
+        commit: process.env.GIT_COMMIT ?? "unknown",
+        ...(process.env.GITHUB_RUN_ID !== undefined && {
+          runId: process.env.GITHUB_RUN_ID,
+        }),
+        durationMs: Date.now() - mainStartedAt,
+        promptCount: 0,
+        errorCount: 0,
+        metrics: {
+          avgScore: 0,
+          maxScore: 25,
+          scoreDistribution: {
+            excellent: 0,
+            good: 0,
+            acceptable: 0,
+            poor: 0,
+            failing: 0,
+          },
+          judgeModel: "unknown",
         },
-        judgeModel: "unknown",
       },
     });
     await emitter.shutdown();
