@@ -39,6 +39,9 @@ describe("suggestions.completed event schema (contract)", () => {
       modelCallCount: 1,
       fallbackApplied: false,
       debug: false,
+      highlightedText: "dim lighting",
+      fullPrompt: "A dim lighting jazz club with a saxophone player",
+      suggestions: ["soft lighting", "warm tungsten", "moody candlelight"],
     });
 
     expect(captures).toHaveLength(1);
@@ -73,7 +76,9 @@ describe("suggestions.completed event schema (contract)", () => {
           "durationMs",
           "engineMode",
           "fallbackApplied",
+          "fullPrompt",
           "highlightedCategory",
+          "highlightedText",
           "isPlaceholder",
           "isVideoPrompt",
           "modelCallCount",
@@ -86,6 +91,7 @@ describe("suggestions.completed event schema (contract)", () => {
           "requestId",
           "stages",
           "suggestionCount",
+          "suggestions",
           "userId",
         ],
         "sampleValues": {

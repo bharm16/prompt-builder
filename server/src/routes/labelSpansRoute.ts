@@ -9,7 +9,7 @@ import type { SpanLabelingTelemetryService } from "@services/observability/SpanL
 import { createLabelSpansCoordinator } from "./labelSpans/coordinator";
 import { parseLabelSpansRequest } from "./labelSpans/requestParser";
 import { handleLabelSpansStreamRequest } from "./labelSpans/streamingHandler";
-import { toPublicLabelSpansResult } from "./labelSpans/transform";
+import { toPublicLabelSpansResult, toPublicSpan } from "./labelSpans/transform";
 
 /**
  * Create label spans route with dependency injection
@@ -114,6 +114,8 @@ export function createLabelSpansRoute(
             spanCount: 0,
             provider: null,
             model: null,
+            inputText: text,
+            spans: [],
           });
           return res
             .status(502)
@@ -127,12 +129,24 @@ export function createLabelSpansRoute(
           trace?.recordCacheHit();
         }
 
+        // Project each returned span to {text, category} for the telemetry
+        // payload. Reuses the public-span transform so the telemetry shape
+        // matches what the client sees (role → category mapping included).
+        // Confidence / start / end indices are not surfaced — keep the event
+        // content focused on what's needed for quality review.
+        const spanContent = (result.spans ?? []).map((s) => {
+          const pub = toPublicSpan(s);
+          return { text: pub.text, category: pub.category };
+        });
+
         trace?.complete({
           outcome: "success",
           promptLength: text.length,
           spanCount: result.spans?.length ?? 0,
           provider: (result.meta?.["provider"] as string | undefined) ?? null,
           model: (result.meta?.["model"] as string | undefined) ?? null,
+          inputText: text,
+          spans: spanContent,
         });
 
         return res.json(toPublicLabelSpansResult(result));
@@ -147,6 +161,8 @@ export function createLabelSpansRoute(
           spanCount: 0,
           provider: null,
           model: null,
+          inputText: text,
+          spans: [],
         });
         logger.error("Operation failed.", error as Error, {
           operation,

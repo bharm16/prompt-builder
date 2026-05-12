@@ -91,17 +91,20 @@ export async function driveOptimize(
         llmEvents++;
       }
 
+      const outputPrompt = synthesizeOptimizedOutput(prompt.text, prompt.tags);
       trace.complete({
         outcome: "success",
         targetModel: null,
         mode: "video",
         promptLength: prompt.text.length,
-        outputLength: prompt.text.length + jitter(180, i),
+        outputLength: outputPrompt.length,
         lockedSpanCount: 0,
         hasContext: false,
         hasBrainstormContext: false,
         hasShotPlan: false,
         useConstitutionalAI: true,
+        inputPrompt: prompt.text,
+        outputPrompt,
       });
       surfaceEvents++;
     });
@@ -115,4 +118,30 @@ export async function driveOptimize(
     surfaceEventsEmitted: surfaceEvents,
     llmEventsEmitted: llmEvents,
   };
+}
+
+/**
+ * Synthesizes a plausibly-optimized version of the input by appending a few
+ * cinematic descriptors keyed off the prompt's taxonomy tags. Deterministic
+ * per (prompt, tags) so dashboards see stable content across runs.
+ */
+function synthesizeOptimizedOutput(input: string, tags: string[]): string {
+  const flourishes: Record<string, string> = {
+    subject: ", framed with shallow depth of field",
+    "camera.movement": ", slow dolly forward",
+    "camera.shot": ", medium close-up",
+    "camera.speed": ", 24fps cinematic",
+    lighting: ", warm golden-hour light",
+    setting: ", rich atmospheric depth",
+    style: ", anamorphic film grain",
+    action: ", motion captured in slow detail",
+    color: ", teal-and-orange grade",
+    composition: ", symmetrical framing",
+  };
+  const additions = tags
+    .map((t) => flourishes[t])
+    .filter((f): f is string => typeof f === "string")
+    .slice(0, 3)
+    .join("");
+  return `${input}${additions}`;
 }

@@ -81,6 +81,9 @@ export class SuggestionsTrace {
       fallbackApplied: summary.fallbackApplied,
       debug: summary.debug,
       stages,
+      highlightedText: summary.highlightedText,
+      fullPrompt: summary.fullPrompt,
+      suggestions: summary.suggestions,
     };
 
     try {

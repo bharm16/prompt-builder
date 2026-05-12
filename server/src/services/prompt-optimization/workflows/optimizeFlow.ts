@@ -45,6 +45,7 @@ export const runOptimizeFlow = async ({
     hasBrainstormContext: !!brainstormContext,
     hasShotPlan: !!shotPlan,
     useConstitutionalAI: !!useConstitutionalAI,
+    inputPrompt: prompt,
   };
 
   const originalUserPrompt =
@@ -97,6 +98,7 @@ export const runOptimizeFlow = async ({
       t.complete({
         outcome: "success",
         outputLength: cached.length,
+        outputPrompt: cached,
         ...inputSummary,
       });
       return {
@@ -394,6 +396,7 @@ export const runOptimizeFlow = async ({
     t.complete({
       outcome: "success",
       outputLength: optimizedPrompt.length,
+      outputPrompt: optimizedPrompt,
       ...inputSummary,
     });
 
@@ -408,6 +411,7 @@ export const runOptimizeFlow = async ({
       t.complete({
         outcome: "aborted",
         outputLength: 0,
+        outputPrompt: null,
         ...inputSummary,
       });
       log.info("Operation aborted.", {
@@ -420,6 +424,7 @@ export const runOptimizeFlow = async ({
     t.complete({
       outcome: "error",
       outputLength: 0,
+      outputPrompt: null,
       ...inputSummary,
     });
     log.error("Operation failed.", error as Error, {

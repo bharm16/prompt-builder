@@ -60,10 +60,12 @@ export async function driveSuggestions(
       });
       llmEvents++;
 
+      const highlightedText = prompt.text.split(" ").slice(0, 2).join(" ");
+      const suggestions = synthesizeSuggestions(category, i);
       trace.complete({
         outcome: "success",
         promptLength: prompt.text.length,
-        suggestionCount: 4 + (i % 3),
+        suggestionCount: suggestions.length,
         highlightedCategory: category,
         isVideoPrompt: true,
         isPlaceholder: false,
@@ -76,6 +78,9 @@ export async function driveSuggestions(
         modelCallCount: 1,
         fallbackApplied: false,
         debug: false,
+        highlightedText,
+        fullPrompt: prompt.text,
+        suggestions,
       });
       surfaceEvents++;
     });
@@ -89,4 +94,56 @@ export async function driveSuggestions(
     surfaceEventsEmitted: surfaceEvents,
     llmEventsEmitted: llmEvents,
   };
+}
+
+/**
+ * Synthesizes plausible alternative phrases for a given taxonomy category.
+ * Deterministic per (category, index) so dashboards show stable content.
+ */
+function synthesizeSuggestions(category: string, index: number): string[] {
+  const pool: Record<string, string[]> = {
+    subject: ["young woman", "weathered fisherman", "lone traveler", "child"],
+    "camera.movement": [
+      "slow dolly forward",
+      "aerial pullback",
+      "smooth pan right",
+      "handheld follow",
+    ],
+    "camera.shot": [
+      "medium close-up",
+      "wide establishing",
+      "extreme close-up",
+      "over-the-shoulder",
+    ],
+    "camera.speed": ["slow motion", "time-lapse", "real-time", "ramped motion"],
+    lighting: [
+      "golden hour",
+      "soft tungsten",
+      "moody neon",
+      "harsh midday sun",
+    ],
+    setting: [
+      "misty forest",
+      "rain-slicked street",
+      "desert mesa",
+      "neon-lit alley",
+    ],
+    style: [
+      "anamorphic film",
+      "Wes Anderson pastel",
+      "vintage 16mm",
+      "high-contrast B&W",
+    ],
+    action: ["walks slowly", "leaps forward", "spins gracefully", "leans in"],
+  };
+  const options = pool[category] ?? pool.subject!;
+  // Rotate the start position by index so different prompts surface different
+  // suggestions while staying within the deterministic pool.
+  const start = index % options.length;
+  return [
+    options[start]!,
+    options[(start + 1) % options.length]!,
+    options[(start + 2) % options.length]!,
+    options[(start + 3) % options.length]!,
+  ];
 }

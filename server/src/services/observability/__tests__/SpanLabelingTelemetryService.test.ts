@@ -29,6 +29,11 @@ describe("SpanLabelingTelemetryService", () => {
       spanCount: 6,
       provider: "gemini",
       model: "gemini-2.5-flash",
+      inputText: "A young woman walks through a forest",
+      spans: [
+        { text: "young woman", category: "subject" },
+        { text: "forest", category: "setting" },
+      ],
     });
 
     expect(captures).toHaveLength(1);
@@ -58,6 +63,8 @@ describe("SpanLabelingTelemetryService", () => {
       spanCount: 0,
       provider: "openai",
       model: null,
+      inputText: "error fixture",
+      spans: [],
     });
 
     const p = captures[0]!.properties as Record<string, unknown>;
@@ -77,6 +84,8 @@ describe("SpanLabelingTelemetryService", () => {
       spanCount: 1,
       provider: "gemini",
       model: "gemini-2.5-flash",
+      inputText: "idempotency fixture",
+      spans: [{ text: "fixture", category: "subject" }],
     });
     trace.complete({
       outcome: "success",
@@ -84,6 +93,8 @@ describe("SpanLabelingTelemetryService", () => {
       spanCount: 1,
       provider: "gemini",
       model: "gemini-2.5-flash",
+      inputText: "idempotency fixture",
+      spans: [{ text: "fixture", category: "subject" }],
     });
     expect(captures).toHaveLength(1);
   });

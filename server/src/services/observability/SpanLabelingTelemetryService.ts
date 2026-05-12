@@ -8,12 +8,22 @@ export type SpanLabelingErrorStage =
   | "cache"
   | "post_processing";
 
+/** One labeled span — what the model returned for a slice of input text. */
+export interface SpanLabelSpan {
+  text: string;
+  category: string;
+}
+
 export interface SpanLabelingCompleteSummary {
   outcome: "success" | "error";
   promptLength: number;
   spanCount: number;
   provider: string | null;
   model: string | null;
+  /** The text the model was asked to label. */
+  inputText: string;
+  /** The labeled spans the model returned. Empty on error. */
+  spans: SpanLabelSpan[];
 }
 
 interface SpanLabelingEventProperties {
@@ -28,6 +38,8 @@ interface SpanLabelingEventProperties {
   cacheHit: boolean;
   provider: string | null;
   model: string | null;
+  inputText: string;
+  spans: SpanLabelSpan[];
 }
 
 export class SpanLabelingTrace {
@@ -71,6 +83,8 @@ export class SpanLabelingTrace {
       cacheHit: this.cacheHit,
       provider: summary.provider,
       model: summary.model,
+      inputText: summary.inputText,
+      spans: summary.spans,
     };
 
     try {

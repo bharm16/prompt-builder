@@ -26,6 +26,11 @@ describe("label-spans.completed event schema (contract)", () => {
       // per server/src/config/modelConfig.ts.
       provider: "gemini",
       model: "gemini-2.5-flash",
+      inputText: "fixture input text for snapshot",
+      spans: [
+        { text: "fixture", category: "subject" },
+        { text: "input text", category: "setting" },
+      ],
     });
 
     expect(captures).toHaveLength(1);
@@ -49,12 +54,14 @@ describe("label-spans.completed event schema (contract)", () => {
         "propertyKeys": [
           "cacheHit",
           "durationMs",
+          "inputText",
           "model",
           "outcome",
           "promptLength",
           "provider",
           "requestId",
           "spanCount",
+          "spans",
           "userId",
         ],
         "sampleValues": {

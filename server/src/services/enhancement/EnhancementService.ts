@@ -308,6 +308,9 @@ export class EnhancementService {
           modelCallCount: 0,
           fallbackApplied: false,
           debug,
+          highlightedText: highlightedText ?? "",
+          fullPrompt: fullPrompt ?? "",
+          suggestions: this._flattenSuggestionTexts(cached.suggestions),
         });
         return cached;
       }
@@ -475,6 +478,9 @@ export class EnhancementService {
         modelCallCount: execution.debug.modelCallCount,
         fallbackApplied: result.fallbackApplied,
         debug,
+        highlightedText: highlightedText ?? "",
+        fullPrompt: fullPrompt ?? "",
+        suggestions: this._flattenSuggestionTexts(result.suggestions),
       });
 
       return result;
@@ -511,6 +517,9 @@ export class EnhancementService {
         modelCallCount: v2Execution?.debug.modelCallCount ?? 0,
         fallbackApplied: v2Execution?.result.fallbackApplied ?? false,
         debug,
+        highlightedText: highlightedText ?? "",
+        fullPrompt: fullPrompt ?? "",
+        suggestions: [],
       });
 
       this.log.error("Operation failed.", error as Error, {
@@ -655,6 +664,35 @@ export class EnhancementService {
       }, 0);
     }
     return suggestions.length;
+  }
+
+  /**
+   * Flattens the polymorphic suggestion shape (flat array vs grouped array)
+   * to a plain string[] of suggestion texts, for the telemetry event content.
+   * Lets dashboards show the actual alternatives the model returned.
+   */
+  private _flattenSuggestionTexts(
+    suggestions: EnhancementResult["suggestions"] | undefined,
+  ): string[] {
+    if (!Array.isArray(suggestions)) return [];
+    const first = suggestions[0] as { suggestions?: unknown } | undefined;
+    if (first && Array.isArray(first.suggestions)) {
+      const out: string[] = [];
+      for (const group of suggestions) {
+        const groupSuggestions = (group as { suggestions?: unknown })
+          .suggestions;
+        if (Array.isArray(groupSuggestions)) {
+          for (const s of groupSuggestions) {
+            const text = (s as { text?: unknown })?.text;
+            if (typeof text === "string") out.push(text);
+          }
+        }
+      }
+      return out;
+    }
+    return suggestions
+      .map((s) => (s as { text?: unknown })?.text)
+      .filter((t): t is string => typeof t === "string");
   }
 
   private _getEnhancementTemperature(): number {

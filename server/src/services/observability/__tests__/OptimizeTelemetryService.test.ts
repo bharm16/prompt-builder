@@ -42,6 +42,8 @@ describe("OptimizeTelemetryService", () => {
       hasBrainstormContext: false,
       hasShotPlan: false,
       useConstitutionalAI: false,
+      inputPrompt: "test input prompt",
+      outputPrompt: "test output prompt",
     });
 
     expect(captures).toHaveLength(1);
@@ -81,6 +83,8 @@ describe("OptimizeTelemetryService", () => {
       hasBrainstormContext: false,
       hasShotPlan: false,
       useConstitutionalAI: false,
+      inputPrompt: "test input prompt",
+      outputPrompt: "test output prompt",
     });
 
     expect(captures[0]!.distinctId).toMatch(/^anon-/);
@@ -104,6 +108,8 @@ describe("OptimizeTelemetryService", () => {
       hasBrainstormContext: false,
       hasShotPlan: false,
       useConstitutionalAI: false,
+      inputPrompt: "test input prompt",
+      outputPrompt: "test output prompt",
     });
 
     expect(captures[0]!.properties).toMatchObject({
@@ -130,6 +136,8 @@ describe("OptimizeTelemetryService", () => {
       hasBrainstormContext: false,
       hasShotPlan: false,
       useConstitutionalAI: false,
+      inputPrompt: "test input prompt",
+      outputPrompt: "test output prompt",
     });
 
     expect(captures[0]!.properties).toMatchObject({
@@ -163,6 +171,8 @@ describe("OptimizeTelemetryService", () => {
       hasBrainstormContext: false,
       hasShotPlan: false,
       useConstitutionalAI: false,
+      inputPrompt: "test input prompt",
+      outputPrompt: "test output prompt",
     });
 
     expect(captures[0]!.properties?.durationMs).toBeGreaterThanOrEqual(10);
@@ -190,6 +200,8 @@ describe("OptimizeTelemetryService", () => {
         hasBrainstormContext: false,
         hasShotPlan: false,
         useConstitutionalAI: false,
+        inputPrompt: "test input prompt",
+        outputPrompt: "test output prompt",
       }),
     ).not.toThrow();
   });

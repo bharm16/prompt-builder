@@ -58,12 +58,15 @@ export async function driveSpanLabels(
         llmEvents++;
       }
 
+      const spans = synthesizeSpans(prompt.text, prompt.tags);
       trace.complete({
         outcome: "success",
         promptLength: prompt.text.length,
-        spanCount: Math.max(prompt.tags.length, 3) + (i % 4),
+        spanCount: spans.length,
         provider: cacheHit ? null : "gemini",
         model: cacheHit ? null : "gemini-2.5-flash",
+        inputText: prompt.text,
+        spans,
       });
       surfaceEvents++;
     });
@@ -83,4 +86,27 @@ export async function driveSpanLabels(
 
 function cacheHitFor(i: number): boolean {
   return i % 10 < 3;
+}
+
+/**
+ * Synthesizes plausibly-labeled spans by carving the prompt into ~3-word
+ * chunks and assigning each one of the prompt's taxonomy tags as its
+ * category. Deterministic per prompt so dashboards show stable content.
+ */
+function synthesizeSpans(
+  text: string,
+  tags: string[],
+): Array<{ text: string; category: string }> {
+  const words = text.split(/\s+/).filter((w) => w.length > 0);
+  if (words.length === 0 || tags.length === 0) {
+    return [];
+  }
+  const chunks: string[] = [];
+  for (let i = 0; i < words.length; i += 3) {
+    chunks.push(words.slice(i, i + 3).join(" "));
+  }
+  return chunks.map((chunk, idx) => ({
+    text: chunk,
+    category: tags[idx % tags.length]!,
+  }));
 }

@@ -37,6 +37,8 @@ describe("optimize.completed event schema (contract)", () => {
       hasBrainstormContext: false,
       hasShotPlan: false,
       useConstitutionalAI: false,
+      inputPrompt: "snapshot fixture input prompt",
+      outputPrompt: "snapshot fixture optimized output",
     });
 
     expect(captures).toHaveLength(1);
@@ -68,11 +70,13 @@ describe("optimize.completed event schema (contract)", () => {
           "hasBrainstormContext",
           "hasContext",
           "hasShotPlan",
+          "inputPrompt",
           "llmCallCount",
           "lockedSpanCount",
           "mode",
           "outcome",
           "outputLength",
+          "outputPrompt",
           "promptLength",
           "requestId",
           "stages",

@@ -32,6 +32,9 @@ const baseSummary = {
   modelCallCount: 1,
   fallbackApplied: false,
   debug: false,
+  highlightedText: "dim lighting",
+  fullPrompt: "A dim lighting jazz club with a saxophone player",
+  suggestions: ["soft lighting", "warm lighting", "moody lighting"],
 };
 
 describe("SuggestionsTelemetryService", () => {

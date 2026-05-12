@@ -87,6 +87,8 @@ export class OptimizeTrace {
       hasShotPlan: summary.hasShotPlan,
       useConstitutionalAI: summary.useConstitutionalAI,
       stages,
+      inputPrompt: summary.inputPrompt,
+      outputPrompt: summary.outputPrompt,
     };
 
     try {

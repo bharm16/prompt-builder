@@ -20,6 +20,10 @@ export interface OptimizeTraceCompleteSummary {
   hasBrainstormContext: boolean;
   hasShotPlan: boolean;
   useConstitutionalAI: boolean;
+  /** Input prompt the user submitted. Lets dashboards show the actual text being optimized. */
+  inputPrompt: string;
+  /** Final optimized output. Null on error/abort when no output was produced. */
+  outputPrompt: string | null;
 }
 
 export interface OptimizeEventStages {
@@ -50,6 +54,9 @@ export interface OptimizeEventProperties {
   hasShotPlan: boolean;
   useConstitutionalAI: boolean;
   stages: OptimizeEventStages;
+  /** Content fields — let dashboards show what was actually produced (vs counts only). */
+  inputPrompt: string;
+  outputPrompt: string | null;
 }
 
 // ----- LLM call telemetry -----
@@ -112,6 +119,12 @@ export interface SuggestionsTraceCompleteSummary {
   modelCallCount: number;
   fallbackApplied: boolean;
   debug: boolean;
+  /** The text the user selected (click-to-enhance target). */
+  highlightedText: string;
+  /** The full prompt the selection lives inside — context for quality review. */
+  fullPrompt: string;
+  /** The alternative phrases returned. Empty on error/abort. */
+  suggestions: string[];
 }
 
 export interface SuggestionsEventStages {
@@ -145,4 +158,8 @@ export interface SuggestionsEventProperties {
   fallbackApplied: boolean;
   debug: boolean;
   stages: SuggestionsEventStages;
+  /** Content fields — what was actually produced for quality review. */
+  highlightedText: string;
+  fullPrompt: string;
+  suggestions: string[];
 }
