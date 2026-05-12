@@ -47,6 +47,9 @@ export function spearmanCorrelation(xs: number[], ys: number[]): number {
       `spearmanCorrelation: length mismatch (${xs.length} vs ${ys.length})`,
     );
   }
+  if (xs.some(Number.isNaN) || ys.some(Number.isNaN)) {
+    throw new Error("spearmanCorrelation: NaN input is not permitted");
+  }
   if (xs.length === 0) return 0;
   return pearson(rankAverageTies(xs), rankAverageTies(ys));
 }
@@ -56,6 +59,9 @@ export function meanAbsoluteError(xs: number[], ys: number[]): number {
     throw new Error(
       `meanAbsoluteError: length mismatch (${xs.length} vs ${ys.length})`,
     );
+  }
+  if (xs.some(Number.isNaN) || ys.some(Number.isNaN)) {
+    throw new Error("meanAbsoluteError: NaN input is not permitted");
   }
   if (xs.length === 0) return 0;
   let sum = 0;
