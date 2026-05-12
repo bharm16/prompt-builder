@@ -24,12 +24,13 @@ Header precedence over inference. Inference order: `CI=true` env → `"ci"`; oth
 
 Every operational event now carries **content fields** alongside the operational metadata, so dashboards can show what the model actually produced — not just how often or how fast. Without these, "count distribution" tiles were the only quality signal, which isn't a quality signal at all.
 
-| Event                   | Content fields added                                      | What you can see                                                                      |
-| ----------------------- | --------------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| `optimize.completed`    | `inputPrompt`, `outputPrompt` (null on error/abort)       | Side-by-side: what the user wrote vs the final optimized output.                      |
-| `suggestions.completed` | `highlightedText`, `fullPrompt`, `suggestions` (string[]) | Selected text + category + the alternative phrases returned.                          |
-| `label-spans.completed` | `inputText`, `spans` (`Array<{text, category}>`)          | Each labeled span (text + category) the model returned, alongside the full input.     |
-| `eval.completed`        | `examples?` (per-prompt array, polymorphic by `evalType`) | Per-prompt predicted vs ground-truth spans (F1), or judge total + notes (judge eval). |
+| Event                   | Content fields added                                                       | What you can see                                                                      |
+| ----------------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| `optimize.completed`    | `inputPrompt`, `outputPrompt` (null on error/abort)                        | Side-by-side: what the user wrote vs the final optimized output.                      |
+| `suggestions.completed` | `highlightedText`, `fullPrompt`, `suggestions` (string[])                  | Selected text + category + the alternative phrases returned.                          |
+| `label-spans.completed` | `inputText`, `spans` (`Array<{text, category}>`)                           | Each labeled span (text + category) the model returned, alongside the full input.     |
+| `eval.completed`        | `examples?` (per-prompt array, polymorphic by `evalType`)                  | Per-prompt predicted vs ground-truth spans (F1), or judge total + notes (judge eval). |
+| `quality.scored`        | `reasoning`, `dimensions`, `totalScore`, `scoredEventId` (joins to source) | LLM judge output linked back to the source event so dashboards can sort by quality.   |
 
 **HogQL patterns for content tiles:**
 
@@ -356,6 +357,85 @@ ORDER BY day DESC
 - **F1 / judge regression alerts** — two deferred alerts in the Alerts table above; meaningful only after sufficient `span_labeling_*` events accumulate to threshold against.
 - **Recommendation eval cron** — currently manual; add a workflow to run on schedule once dashboard signal is interesting.
 - **CI smoke verification** — once the repo secret is set, trigger `gh workflow run "Span Labeling Golden-Set Eval" --ref main -f provider=groq` and confirm the resulting event has a `runId` matching the workflow's `GITHUB_RUN_ID`. This is plan task 9's CI-portion closure.
+
+---
+
+## Quality telemetry (`quality.scored`)
+
+An LLM judge (GPT-4o-2024-08-06) runs nightly via [`scripts/quality-judge/run-judge.ts`](../../scripts/quality-judge/run-judge.ts). For each recent `optimize.completed` / `suggestions.completed` / `label-spans.completed` event with `source IN ('synthetic','dogfood','user')`, it loads the surface's markdown rubric, scores 5 dimensions 0–5, and emits one `quality.scored` event linked back to the source via `scoredEventId`.
+
+Pre-launch (per the [Measurement Program](../superpowers/programs/measurement.md)) this is the primary quality signal: with zero real users, we judge the output ourselves.
+
+### Event schema
+
+[`scripts/quality-judge/judge-event-types.ts`](../../scripts/quality-judge/judge-event-types.ts) is the source of truth. Locked by [`judge-event-schema.snapshot.test.ts`](../../scripts/quality-judge/__tests__/judge-event-schema.snapshot.test.ts).
+
+| Property          | Meaning                                                                                                        |
+| ----------------- | -------------------------------------------------------------------------------------------------------------- |
+| `scoredEvent`     | The source event name (`optimize.completed`, `suggestions.completed`, `label-spans.completed`)                 |
+| `scoredEventId`   | PostHog `uuid` of the source event — join key                                                                  |
+| `surface`         | `optimize` / `suggestions` / `span-labeling`                                                                   |
+| `rubricVersion`   | 8-char sha256 prefix of the rubric markdown content; bumps on rubric change                                    |
+| `judgeModel`      | `gpt-4o-2024-08-06`                                                                                            |
+| `judgeDurationMs` | Wall-clock judge latency                                                                                       |
+| `judgeCostUsd`    | OpenAI cost from `tokensIn × $/1K + tokensOut × $/1K` ([`pricing.ts`](../../scripts/quality-judge/pricing.ts)) |
+| `totalScore`      | Sum of 5 dimensions, 0–25                                                                                      |
+| `dimensions`      | Per-surface keyed object, each value 0–5 integer                                                               |
+| `reasoning`       | Verbatim LLM judge explanation                                                                                 |
+| `source`          | Carried from the source event                                                                                  |
+
+### Dashboard tiles
+
+> **PENDING — Task 15.** Dashboard tile authoring is blocked on real `quality.scored` events existing in PostHog. After the calibration sets are hand-authored and the first nightly judge run lands events, fill in the tile IDs below via PostHog MCP. See plan Task 15 in `docs/superpowers/plans/2026-05-12-llm-judge-framework.md` for the tile specs.
+
+| Dashboard            | Tile A (trend) | Tile B (low scorers) | Tile C (quality vs cost) |
+| -------------------- | -------------- | -------------------- | ------------------------ |
+| T2V Optimize Health  | `<tile-id-A1>` | `<tile-id-B1>`       | `<tile-id-C1>`           |
+| Suggestions Health   | `<tile-id-A2>` | `<tile-id-B2>`       | `<tile-id-C2>`           |
+| Span Labeling Health | `<tile-id-A3>` | `<tile-id-B3>`       | `<tile-id-C3>`           |
+
+### Calibration
+
+The judge is gated by hand-scored calibration sets ([`scripts/quality-judge/calibration/<surface>.calibration.json`](../../scripts/quality-judge/calibration/)) — Spearman ρ ≥ 0.7 against human scores. Re-run weekly:
+
+```bash
+OPENAI_API_KEY=sk-... npm run judge:calibrate
+```
+
+Any PR touching `scripts/quality-judge/rubrics/**` or `**/calibration/**` runs this in CI (`quality-judge-calibration.yml`) and cannot merge below the threshold. If a weekly local run drops below ρ=0.6 for a surface, re-author calibration entries or revise the rubric.
+
+### How to query
+
+Per-surface 7-day average score trend:
+
+```sql
+SELECT
+  surface,
+  toDate(timestamp) AS day,
+  avg(toFloat(properties.totalScore)) AS avg_score
+FROM events
+WHERE event = 'quality.scored'
+  AND timestamp > now() - INTERVAL 7 DAY
+GROUP BY surface, day
+ORDER BY day ASC
+```
+
+Worst-scoring optimize outputs in the last 24h, joined back to source content:
+
+```sql
+SELECT
+  q.properties.totalScore,
+  q.properties.reasoning,
+  s.properties.inputPrompt,
+  s.properties.outputPrompt
+FROM events q
+JOIN events s ON s.uuid = q.properties.scoredEventId
+WHERE q.event = 'quality.scored'
+  AND q.properties.surface = 'optimize'
+  AND q.timestamp > now() - INTERVAL 24 HOUR
+ORDER BY toInt(q.properties.totalScore) ASC
+LIMIT 10
+```
 
 ---
 
