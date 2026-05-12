@@ -2,7 +2,7 @@
 
 Vidra's program to measure and evaluate every surface of the app — operational telemetry (latency, cost, errors) plus quality telemetry (eval scores, judge ratings) — into PostHog, with traffic-source discrimination so the data stays valid pre-launch, during early-user phases, and at scale.
 
-**Status:** active. Sub-project #0 (Eval Visibility) in design.
+**Status:** active. Sub-projects #0 (Eval Visibility) and #1 (Source Discriminator + Synthetic Harness) shipped. #2/#3/#4 not started.
 
 ---
 
@@ -16,6 +16,23 @@ Vidra's program to measure and evaluate every surface of the app — operational
 - **Quality eval frameworks (#0, #3)** answer "is the app producing good output?" without needing users to tell us.
 
 If a sub-project discussion ever drifts toward "what are real users doing?" — stop. There are no real users. The question is always **"what signal can we generate ourselves to know we're ready _for_ users?"**
+
+---
+
+## Quality requires content, not counts (a hard-won principle)
+
+Operational telemetry that only counts things ("how many spans came back", "how long did it take", "how often did it error") cannot answer the question pre-launch quality validation actually needs to answer: **"is the output any good?"** A dashboard tile that shows "3 spans=5 calls, 4 spans=5 calls, 5 spans=4 calls" tells you nothing about whether the spans are correct.
+
+Every operational and eval event in Vidra carries **content fields** alongside the metadata:
+
+- `optimize.completed` → `inputPrompt`, `outputPrompt` (the user's prompt and the optimized result, side-by-side)
+- `suggestions.completed` → `highlightedText`, `fullPrompt`, `suggestions` (what the user selected and the alternatives returned)
+- `label-spans.completed` → `inputText`, `spans` (text + category per labeled span)
+- `eval.completed` → `examples[]` (per-prompt arrays — predicted vs ground-truth for F1, spans + score + notes for judge, drifted flag for recommendation)
+
+Dashboards expose this via "exploded" HogQL tables (`ARRAY JOIN JSONExtractArrayRaw(assumeNotNull(...))`). The user can scroll through 100 examples and form a judgement — that's the only quality signal that matters before LLM judges (sub-project #3) can run live.
+
+**Rule:** any new telemetry event in this program MUST carry enough content for a human to evaluate quality without leaving PostHog. Count-only dashboards are by definition incomplete.
 
 ---
 
@@ -33,12 +50,13 @@ Every user-facing endpoint and async pipeline in Vidra emits operational telemet
 
 ### "Tell when you're done" checklist
 
-- [ ] Three eval scripts emit `eval.completed` events with per-category metrics; "Eval Health" dashboard exists with regression alerts
-- [ ] Every endpoint listed in the `CLAUDE.md` Route → Service → Client API Map emits at least one `<surface>.completed` event
-- [ ] Every endpoint emits per-stage `llm.call.completed` events tagged with `executionType`
-- [ ] Every operational event has a `source` property (snapshot-tested for each event type)
-- [ ] Each of {T2V, I2V, Preview, Generation} has a PostHog dashboard (Eval Health belongs to #0)
-- [ ] At least one PostHog alert per dashboard, exercised in test
+- [x] Three eval scripts emit `eval.completed` events with per-category metrics; "Eval Health" dashboard exists with regression alerts (#0 ✓)
+- [x] Every operational event has a `source` property — auto-stamped by the PostHogClient wrapper from request-context ALS (#1 ✓)
+- [x] Every operational + eval event carries **content fields** for quality review, not just counts (added 2026-05-12; see "Quality requires content, not counts")
+- [ ] Every endpoint listed in the `CLAUDE.md` Route → Service → Client API Map emits at least one `<surface>.completed` event _(3/13 done — Optimize, Suggestions, Span Labeling; #2 covers the rest)_
+- [ ] Every endpoint emits per-stage `llm.call.completed` events tagged with `executionType` _(falls out of #2 — telemetry services wrap `aiService.execute` automatically)_
+- [ ] Each of {T2V, I2V, Preview, Generation} has a PostHog dashboard with content-review tiles _(T2V ✓; rest pending #2 + #4)_
+- [ ] At least one PostHog alert per dashboard, exercised in test _(Eval Health ✓; rest pending)_
 
 ---
 
@@ -48,7 +66,7 @@ The work breaks into 5 sub-projects. Each is independently designed (own spec + 
 
 | #     | Sub-project                                          | What it does                                                                                                                                                                                                                                                                                                                                                                                                                                        | Status      | Spec                                                                                                                      | Plan                                                                                                        |
 | ----- | ---------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| **0** | **Eval Visibility**                                  | Pipe the three existing eval scripts (`span-labeling-evaluation.ts`, `golden-set-relaxed-f1.ts`, `recommendation-eval.ts`) into PostHog as `eval.completed` events with `evalType` discriminator. Build "Eval Health" dashboard. Add regression alerts.                                                                                                                                                                                             | in design   | [`2026-05-10-eval-visibility-design.md`](../specs/2026-05-10-eval-visibility-design.md)                                   | TBD                                                                                                         |
+| **0** | **Eval Visibility**                                  | Pipe the three existing eval scripts (`span-labeling-evaluation.ts`, `golden-set-relaxed-f1.ts`, `recommendation-eval.ts`) into PostHog as `eval.completed` events with `evalType` discriminator. Eval Health dashboard, regression alerts. Plus (added 2026-05-12) per-prompt `examples[]` so dashboards can drill from "F1 dropped" to "these specific prompts caused it."                                                                        | **shipped** | [`2026-05-10-eval-visibility-design.md`](../specs/2026-05-10-eval-visibility-design.md)                                   | TBD                                                                                                         |
 | **1** | **Source discriminator + synthetic-traffic harness** | Adds `source: "user" \| "synthetic" \| "ci" \| "dev" \| "unknown"` (5 values; `dogfood` deferred until real users exist) to every operational event payload, auto-stamped by the PostHogClient wrapper from the request-context ALS. New `label-spans.completed` surface event. New `scripts/synthetic/` harness driving Optimize / Suggestions / Span Labeling. Three new dashboards (Suggestions Health, Span Labeling Health, LLM Calls Health). | **shipped** | [`2026-05-10-source-discriminator-and-harness-design.md`](../specs/2026-05-10-source-discriminator-and-harness-design.md) | [`2026-05-10-source-discriminator-and-harness.md`](../plans/2026-05-10-source-discriminator-and-harness.md) |
 | **2** | **Operational telemetry coverage**                   | Extend the existing `*Trace` + `<surface>.completed` pattern to: I2V motion (`/api/motion`), preview (`/api/preview/*`), final generation, continuity (`/api/continuity`), span labeling (`/llm/label-spans`), model intelligence (`/api/model-intelligence`).                                                                                                                                                                                      | not started | TBD                                                                                                                       | TBD                                                                                                         |
 | **3** | **LLM-effectiveness eval framework**                 | Judge models, scoring rubrics for _non-eval_ surfaces — _"did this LLM call produce a quality output?"_ — for live optimize/suggestion output. Emits `quality.scored` events. Separate from #0 (which surfaces existing eval scripts); this is judge infrastructure for arbitrary live LLM calls.                                                                                                                                                   | not started | TBD                                                                                                                       | TBD                                                                                                         |
@@ -78,6 +96,7 @@ The T2V Optimize telemetry stack already exists and is the pattern subsequent su
 ### Reordering log
 
 - **2026-05-10:** Original ordering had source discriminator at #0 because I treated user-traffic telemetry as the throughline. User reframed: the goal is _eval visibility_, not source tagging. Reordered so Eval Visibility is #0, source discriminator is #1 (deferred). The dependency `#0 → #1` is gone because eval events have a distinct event name (`eval.completed`) and don't share the source-discrimination concern with operational events.
+- **2026-05-12:** Two corrections after #1 shipped. (a) The synthetic harness fired HTTP requests against authenticated endpoints, 401'd, produced zero events. Rewrote to direct in-process emission through the same PostHogClient + telemetry services the server uses, wrapped in an ALS frame with `source: "synthetic"`. Verified end-to-end with 174 real events. (b) Dashboards were count-only ("3 spans=5 calls") — useless for quality review. Added **content fields** (`inputPrompt`/`outputPrompt`, `spans[]`, `suggestions[]`, `examples[]` for evals) to every event so dashboards can show what the model actually produced. New principle encoded in "Quality requires content, not counts" above. Affects all subsequent sub-projects: any new event in this program MUST carry content, not just metadata.
 
 ---
 
