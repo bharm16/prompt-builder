@@ -116,6 +116,36 @@ describe("runJudge", () => {
     ).rejects.toThrow(/brevityDiscipline/);
   });
 
+  it("rejects output where a dimension value is not a number", async () => {
+    createMock.mockResolvedValue({
+      choices: [
+        {
+          message: {
+            content: JSON.stringify({
+              dimensions: {
+                fidelity: "high", // string instead of number
+                detailEnrichment: 4,
+                coherence: 4,
+                constraintCompliance: 5,
+                brevityDiscipline: 4,
+              },
+              reasoning: "x",
+            }),
+          },
+        },
+      ],
+      usage: { prompt_tokens: 100, completion_tokens: 10 },
+    });
+    await expect(
+      runJudge({
+        rubric: "r",
+        surface: "optimize",
+        inputContent: {},
+        outputContent: {},
+      }),
+    ).rejects.toThrow(/not a number/);
+  });
+
   it("clamps dimension values to integers 0–5", async () => {
     createMock.mockResolvedValue({
       choices: [

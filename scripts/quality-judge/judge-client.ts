@@ -40,7 +40,11 @@ function buildUserMessage(args: JudgeInput): string {
 }
 
 function clampInt0to5(v: unknown): number {
-  if (typeof v !== "number" || Number.isNaN(v)) return 0;
+  if (typeof v !== "number" || Number.isNaN(v)) {
+    throw new Error(
+      `Judge output: dimension value is not a number (got ${typeof v})`,
+    );
+  }
   const rounded = Math.round(v);
   if (rounded < 0) return 0;
   if (rounded > 5) return 5;
