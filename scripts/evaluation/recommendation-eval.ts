@@ -493,6 +493,10 @@ async function main(): Promise<number> {
   let metrics: RecommendationMetrics | undefined;
   let errorMessage: string | undefined;
   let promptCount = 0;
+  // Per-prompt examples for the Eval Health dashboard's quality-review tile.
+  // Populated after snapshots + drifts are computed; each row marks whether
+  // that prompt drifted from baseline.
+  let evalExamples: import("./eval-event-types.js").EvalExample[] = [];
 
   try {
     // eslint-disable-next-line no-console
@@ -580,6 +584,14 @@ async function main(): Promise<number> {
       baselineName: opts.baselineName,
     };
 
+    // One example per prompt with the drifted flag. The promptId set in
+    // `drifts` may contain duplicates (one entry per drifted field) — dedupe.
+    const driftedIds = new Set(drifts.map((d) => d.promptId));
+    evalExamples = Object.keys(snapshots).map((promptId) => ({
+      promptId,
+      drifted: driftedIds.has(promptId),
+    }));
+
     if (drifts.length === 0 && missingPrompts.length === 0) {
       // eslint-disable-next-line no-console
       console.log("\nRecommendation snapshot gate: PASSED");
@@ -644,6 +656,7 @@ async function main(): Promise<number> {
           newPromptsCount: 0,
           baselineName: opts.baselineName ?? "unknown",
         },
+        ...(evalExamples.length > 0 && { examples: evalExamples }),
       });
       await emitter.shutdown();
     } catch {

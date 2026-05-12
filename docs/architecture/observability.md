@@ -281,6 +281,7 @@ ORDER BY n DESC
 | Setup error count (24h)                      | `VJnURwpV` | [view](https://us.posthog.com/project/417445/insights/VJnURwpV) |
 | Gate failure count (24h)                     | `icjwJljU` | [view](https://us.posthog.com/project/417445/insights/icjwJljU) |
 | F1 examples — predicted vs ground-truth      | `yCPKQxN3` | [view](https://us.posthog.com/project/417445/insights/yCPKQxN3) |
+| Judge examples — prompts, spans, scores      | `hG3zqiHs` | [view](https://us.posthog.com/project/417445/insights/hG3zqiHs) |
 
 Tiles are built as `DataVisualizationNode` over HogQL. Visualization type (table/line/bar/donut) is selectable per-tile in the UI; the query defines the data shape, the user picks the chart.
 
@@ -395,7 +396,6 @@ All tiles are `DataVisualizationNode` over HogQL against `suggestions.completed`
 | Duration over time (avg / p95) | `pBWbfDIo` | [view](https://us.posthog.com/project/417445/insights/pBWbfDIo) |
 | Cache hit rate                 | `EAcRTM10` | [view](https://us.posthog.com/project/417445/insights/EAcRTM10) |
 | Outcome breakdown              | `z0WjrrCj` | [view](https://us.posthog.com/project/417445/insights/z0WjrrCj) |
-| Span count distribution        | `TBaljW3f` | [view](https://us.posthog.com/project/417445/insights/TBaljW3f) |
 | Provider breakdown             | `3lmYpFIR` | [view](https://us.posthog.com/project/417445/insights/3lmYpFIR) |
 | Errors by errorStage           | `ZjhgZ0Fz` | [view](https://us.posthog.com/project/417445/insights/ZjhgZ0Fz) |
 | Recent 50 calls                | `9qQIbiOm` | [view](https://us.posthog.com/project/417445/insights/9qQIbiOm) |

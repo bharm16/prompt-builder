@@ -2022,6 +2022,23 @@ async function main(): Promise<void> {
         latencyStats: snapshot.summary.latencyStats,
       }),
     };
+    // Per-prompt examples for the Eval Health dashboard's quality-review tile.
+    // Each row carries the input prompt, the spans the model returned, the
+    // judge's total score, and the judge's notes — enough to scroll and form
+    // a feel for "the model is solid" vs "category X gets confused with Y".
+    const examples = snapshot.results.map((r) => ({
+      promptId: r.promptId,
+      input: r.input,
+      spans: r.spans.map((s) => ({ text: s.text, role: s.role })),
+      ...(r.judgeResult
+        ? {
+            judgeTotalScore: r.judgeResult.totalScore,
+            ...(r.judgeResult.notes ? { judgeNotes: r.judgeResult.notes } : {}),
+          }
+        : {}),
+      ...(r.error ? { error: r.error } : {}),
+    }));
+
     emitter.emit({
       distinctId: resolveDistinctId(),
       evalType: "span_labeling_judge",
@@ -2038,6 +2055,7 @@ async function main(): Promise<void> {
       promptCount,
       errorCount: errCount,
       metrics,
+      ...(examples.length > 0 && { examples }),
     });
     await emitter.shutdown();
   } catch {
