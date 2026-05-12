@@ -21,12 +21,14 @@ describe("SpanLabelingTelemetryService", () => {
     const trace = service.startSpanLabelingTrace("req-1", "user-1");
 
     trace.recordCacheHit();
+    // Real production routing: span_labeling → gemini / gemini-2.5-flash
+    // per server/src/config/modelConfig.ts.
     trace.complete({
       outcome: "success",
       promptLength: 42,
       spanCount: 6,
-      provider: "groq",
-      model: "llama-3.1-70b-versatile",
+      provider: "gemini",
+      model: "gemini-2.5-flash",
     });
 
     expect(captures).toHaveLength(1);
@@ -39,8 +41,8 @@ describe("SpanLabelingTelemetryService", () => {
     expect(p.outcome).toBe("success");
     expect(p.cacheHit).toBe(true);
     expect(p.spanCount).toBe(6);
-    expect(p.provider).toBe("groq");
-    expect(p.model).toBe("llama-3.1-70b-versatile");
+    expect(p.provider).toBe("gemini");
+    expect(p.model).toBe("gemini-2.5-flash");
     expect(typeof p.durationMs).toBe("number");
   });
 
@@ -73,15 +75,15 @@ describe("SpanLabelingTelemetryService", () => {
       outcome: "success",
       promptLength: 10,
       spanCount: 1,
-      provider: "groq",
-      model: "m",
+      provider: "gemini",
+      model: "gemini-2.5-flash",
     });
     trace.complete({
       outcome: "success",
       promptLength: 10,
       spanCount: 1,
-      provider: "groq",
-      model: "m",
+      provider: "gemini",
+      model: "gemini-2.5-flash",
     });
     expect(captures).toHaveLength(1);
   });

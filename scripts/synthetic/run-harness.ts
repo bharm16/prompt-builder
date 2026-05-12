@@ -1,15 +1,46 @@
-import { loadPrompts } from "./utils/request-helper.js";
+/**
+ * Synthetic-traffic harness entry point.
+ *
+ * Emits operational telemetry events DIRECTLY through the same PostHogClient
+ * + telemetry services the server uses. No HTTP, no auth, no running server
+ * required. Each event is wrapped in an ALS frame with source="synthetic"
+ * so PR 1's PostHogClient wrapper auto-stamps the discriminator.
+ *
+ * Usage:
+ *   npm run synthetic                       # all 3 surfaces
+ *   npm run synthetic -- --only optimize    # subset
+ *   npm run synthetic -- --only optimize,suggestions
+ *
+ * Requires POSTHOG_API_KEY in env (loaded from .env automatically). When
+ * unset, the PostHogClient returns a no-op stub — runs cleanly but no events
+ * land. Useful for dry-runs in CI without a key.
+ */
+
+import { config as loadDotenv } from "dotenv";
+loadDotenv();
+
+import { OptimizeTelemetryService } from "../../server/src/services/observability/OptimizeTelemetryService.js";
+import { SuggestionsTelemetryService } from "../../server/src/services/observability/SuggestionsTelemetryService.js";
+import { SpanLabelingTelemetryService } from "../../server/src/services/observability/SpanLabelingTelemetryService.js";
+import { LlmCallTelemetryService } from "../../server/src/services/observability/LlmCallTelemetryService.js";
+
+import {
+  createSyntheticEmitter,
+  loadPrompts,
+  type DriverSummary,
+} from "./utils/request-helper.js";
 import { driveOptimize } from "./drivers/optimize.driver.js";
 import { driveSuggestions } from "./drivers/suggestions.driver.js";
 import { driveSpanLabels } from "./drivers/span-labeling.driver.js";
 
+type Surface = "optimize" | "suggestions" | "span-labels";
+
 interface CliConfig {
-  baseUrl: string;
-  surfaces: Set<"optimize" | "suggestions" | "span-labels">;
+  surfaces: Set<Surface>;
 }
 
 function parseArgs(argv: string[]): CliConfig {
-  const surfaces = new Set<"optimize" | "suggestions" | "span-labels">();
+  const surfaces = new Set<Surface>();
   let only: string | undefined;
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === "--only") {
@@ -39,55 +70,57 @@ function parseArgs(argv: string[]): CliConfig {
     surfaces.add("suggestions");
     surfaces.add("span-labels");
   }
-  const baseUrl = process.env.VIDRA_API_URL ?? "http://localhost:3001";
-  if (!process.env.VIDRA_API_URL) {
-    console.warn(
-      "VIDRA_API_URL not set — defaulting to http://localhost:3001 (local dev server).",
-    );
-  }
-  return { baseUrl, surfaces };
+  return { surfaces };
 }
 
 async function main(): Promise<void> {
   const config = parseArgs(process.argv.slice(2));
   const prompts = await loadPrompts();
-  console.log(
-    `Running synthetic harness against ${config.baseUrl} with ${prompts.length} prompts.`,
-  );
-  console.log(`Surfaces: ${[...config.surfaces].join(", ")}`);
 
-  const summaries = await Promise.all([
-    config.surfaces.has("optimize")
-      ? driveOptimize(config.baseUrl, prompts)
-      : Promise.resolve(null),
-    config.surfaces.has("suggestions")
-      ? driveSuggestions(config.baseUrl, prompts)
-      : Promise.resolve(null),
-    config.surfaces.has("span-labels")
-      ? driveSpanLabels(config.baseUrl, prompts)
-      : Promise.resolve(null),
-  ]);
-
-  let anyErrors = false;
-  console.log("\n=== Summary ===");
-  for (const s of summaries) {
-    if (!s) continue;
-    console.log(
-      `${s.surface}: ${s.successCount}/${s.totalCalls} ok, avg ${s.avgDurationMs}ms${s.errorCount > 0 ? `, ${s.errorCount} errors` : ""}`,
+  const client = createSyntheticEmitter();
+  if (!process.env.POSTHOG_API_KEY) {
+    console.warn(
+      "POSTHOG_API_KEY not set — running in no-op mode, no events will land in PostHog.",
     );
-    if (s.errorCount > 0) {
-      anyErrors = true;
-      for (const e of s.errors.slice(0, 5)) {
-        console.log(`  - ${e.promptId}: ${e.message}`);
-      }
-      if (s.errors.length > 5) {
-        console.log(`  ... and ${s.errors.length - 5} more`);
-      }
-    }
   }
 
-  if (anyErrors) {
-    process.exit(1);
+  const optimize = new OptimizeTelemetryService(client);
+  const suggestions = new SuggestionsTelemetryService(client);
+  const spanLabels = new SpanLabelingTelemetryService(client);
+  const llm = new LlmCallTelemetryService(client);
+
+  console.log(
+    `Running synthetic harness with ${prompts.length} prompts. Surfaces: ${[...config.surfaces].join(", ")}`,
+  );
+
+  try {
+    const summaries: DriverSummary[] = [];
+    if (config.surfaces.has("optimize")) {
+      summaries.push(await driveOptimize({ optimize, llm }, prompts));
+    }
+    if (config.surfaces.has("suggestions")) {
+      summaries.push(await driveSuggestions({ suggestions, llm }, prompts));
+    }
+    if (config.surfaces.has("span-labels")) {
+      summaries.push(await driveSpanLabels({ spanLabels, llm }, prompts));
+    }
+
+    console.log("\n=== Summary ===");
+    let totalSurface = 0;
+    let totalLlm = 0;
+    for (const s of summaries) {
+      console.log(
+        `${s.surface}: ${s.surfaceEventsEmitted} surface events, ${s.llmEventsEmitted} llm.call events (across ${s.promptCount} prompts)`,
+      );
+      totalSurface += s.surfaceEventsEmitted;
+      totalLlm += s.llmEventsEmitted;
+    }
+    console.log(
+      `TOTAL: ${totalSurface + totalLlm} events (${totalSurface} surface + ${totalLlm} llm)`,
+    );
+  } finally {
+    // Flush + close — events are queued in-process by posthog-node otherwise.
+    await client.shutdown();
   }
 }
 

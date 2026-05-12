@@ -1,39 +1,34 @@
 # .github/workflows/synthetic-harness.yml
 #
-# Synthetic traffic harness — fires anonymous requests against
-# Optimize / Suggestions / Span Labeling endpoints so dashboards
-# have pre-launch data flowing.
+# Synthetic traffic harness — emits operational telemetry events DIRECTLY
+# (no HTTP) using the same PostHogClient + telemetry services the server
+# uses, wrapped in an ALS frame with source="synthetic". Source-stamping
+# is handled by the PostHogClient wrapper.
 #
 # DISABLED CRON: Vidra has no deployed production environment as of
-# 2026-05-10. Uncomment the `schedule:` block once VIDRA_API_URL points
-# at a deployed environment.
+# 2026-05-10. The harness can run as a scheduled job today (it doesn't
+# need a server), but we keep cron commented out until we want pre-launch
+# baseline data flowing daily. Uncomment to enable.
 
 name: Synthetic Traffic Harness
 
 on:
   workflow_dispatch:
     inputs:
-      target_url:
-        description: "Target URL (overrides VIDRA_API_URL repo variable)"
-        required: false
-        type: string
       surfaces:
         description: "Comma-separated surfaces (default: all three)"
         required: false
         type: string
         default: "optimize,suggestions,span-labels"
   # schedule:
-  #   - cron: "0 8 * * *"  # 08:00 UTC daily — enable once VIDRA_API_URL is wired
+  #   - cron: "0 8 * * *"  # 08:00 UTC daily — uncomment when ready for nightly baselines
 
 jobs:
   run-harness:
     runs-on: ubuntu-latest
     env:
       NODE_ENV: production
-      # POSTHOG_API_KEY is NOT set here — the harness fires plain HTTP requests
-      # against the Vidra API server; PostHog events are emitted server-side by
-      # the API process, which has its own POSTHOG_API_KEY in its deploy env.
-      VIDRA_API_URL: ${{ inputs.target_url || vars.VIDRA_API_URL }}
+      POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -41,13 +36,6 @@ jobs:
           node-version: "20"
           cache: "npm"
       - run: npm ci
-      - name: Verify target URL is set
-        run: |
-          if [ -z "$VIDRA_API_URL" ]; then
-            echo "::error::VIDRA_API_URL is not set. Set the repo variable or pass target_url to workflow_dispatch."
-            exit 1
-          fi
-          echo "Target: $VIDRA_API_URL"
       - name: Run harness
         env:
           HARNESS_SURFACES: ${{ inputs.surfaces || 'optimize,suggestions,span-labels' }}

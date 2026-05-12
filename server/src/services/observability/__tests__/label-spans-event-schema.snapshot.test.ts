@@ -22,8 +22,10 @@ describe("label-spans.completed event schema (contract)", () => {
       outcome: "success",
       promptLength: 120,
       spanCount: 8,
-      provider: "groq",
-      model: "llama-3.1-70b-versatile",
+      // Real production routing: span_labeling → gemini / gemini-2.5-flash
+      // per server/src/config/modelConfig.ts.
+      provider: "gemini",
+      model: "gemini-2.5-flash",
     });
 
     expect(captures).toHaveLength(1);
@@ -58,7 +60,7 @@ describe("label-spans.completed event schema (contract)", () => {
         "sampleValues": {
           "cacheHit": true,
           "outcome": "success",
-          "provider": "groq",
+          "provider": "gemini",
           "spanCount": 8,
         },
       }
