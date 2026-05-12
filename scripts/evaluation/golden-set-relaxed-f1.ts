@@ -318,6 +318,9 @@ async function main(): Promise<number> {
   let promptCount = 0;
   let errorCount = 0;
   let resolvedProviderForEmit: "groq" | "openai" | undefined;
+  // Per-prompt examples surfaced in eval.completed for dashboard quality
+  // review. Populated after labeling runs; remains empty on setup_error.
+  let evalExamples: import("./eval-event-types.js").EvalExample[] = [];
 
   try {
     console.log("Golden Set Relaxed F1 Evaluation");
@@ -375,6 +378,15 @@ async function main(): Promise<number> {
 
     const evaluator = new RelaxedF1Evaluator();
     const report = toEvaluationReport(results, evaluator);
+
+    // Capture per-prompt content so PostHog dashboards can show predicted
+    // vs ground-truth spans for individual prompts — not just aggregate F1.
+    evalExamples = results.map((r) => ({
+      promptId: r.promptId,
+      predicted: r.predicted.map((s) => ({ text: s.text, role: s.role })),
+      groundTruth: r.groundTruth.map((s) => ({ text: s.text, role: s.role })),
+      ...(r.error ? { error: r.error } : {}),
+    }));
 
     console.log("\nReport:");
     console.log(`  overall F1:        ${report.summary.relaxedF1.toFixed(3)}`);
@@ -485,6 +497,7 @@ async function main(): Promise<number> {
           overallRecall: 0,
           perCategoryF1: {},
         },
+        ...(evalExamples.length > 0 && { examples: evalExamples }),
       });
       await emitter.shutdown();
     } catch {
