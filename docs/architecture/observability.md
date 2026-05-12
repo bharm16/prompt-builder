@@ -20,6 +20,25 @@ Header precedence over inference. Inference order: `CI=true` env → `"ci"`; oth
 
 `dogfood` is reserved for future use (team-member traffic distinguished from real-stranger traffic) and is **not active pre-launch** — Vidra has no real users yet. Adding `dogfood` later is roughly half a day (enum value + `DOGFOOD_UIDS` env var + middleware check) and isn't needed until real users arrive.
 
+## Content fields (quality review, not just counts)
+
+Every operational event now carries **content fields** alongside the operational metadata, so dashboards can show what the model actually produced — not just how often or how fast. Without these, "count distribution" tiles were the only quality signal, which isn't a quality signal at all.
+
+| Event                   | Content fields added                                      | What you can see                                                                      |
+| ----------------------- | --------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| `optimize.completed`    | `inputPrompt`, `outputPrompt` (null on error/abort)       | Side-by-side: what the user wrote vs the final optimized output.                      |
+| `suggestions.completed` | `highlightedText`, `fullPrompt`, `suggestions` (string[]) | Selected text + category + the alternative phrases returned.                          |
+| `label-spans.completed` | `inputText`, `spans` (`Array<{text, category}>`)          | Each labeled span (text + category) the model returned, alongside the full input.     |
+| `eval.completed`        | `examples?` (per-prompt array, polymorphic by `evalType`) | Per-prompt predicted vs ground-truth spans (F1), or judge total + notes (judge eval). |
+
+**HogQL patterns for content tiles:**
+
+- Non-exploded ("recent N calls with content"): `SELECT properties.spans FROM events WHERE event = 'label-spans.completed' LIMIT 30` — the array renders as JSON in the table cell.
+- Exploded ("one row per span/suggestion/example"): `ARRAY JOIN JSONExtractArrayRaw(assumeNotNull(toString(properties.spans))) AS span`, then `JSONExtractString(span, 'text')`. The `assumeNotNull` is required — PostHog wraps property access in `Nullable` and `ARRAY JOIN` rejects nullable arrays.
+- For plain-string arrays (like `suggestions`): `JSONExtractString(suggestion)` with **no JSONPath argument** strips the surrounding quotes from the raw JSON string element.
+
+**Privacy note:** content fields put prompt text + LLM output into PostHog. Pre-launch this is fine (only Bryce + harness traffic). When real users arrive, a redaction policy is needed — likely a `REDACT_CONTENT_FIELDS=true` env var that replaces content with hashes server-side before emit, or per-field allow-listing.
+
 ## T2V Optimize Health (PostHog)
 
 **Project:** [Default project (id `417445`)](https://us.posthog.com/project/417445) inside the **Vidra** organization (slug `vidra`). This project is dedicated to backend optimize-pipeline telemetry — separate from the NextReel org's `Default project` (id `399973`) which receives client-side product analytics.
@@ -39,6 +58,7 @@ Header precedence over inference. Inference order: `CI=true` env → `"ci"`; oth
 | Cache hit rate                    | `XoNJNWiQ` | [view](https://us.posthog.com/project/417445/insights/XoNJNWiQ) |
 | Avg duration by target model      | `rJ3JVWWL` | [view](https://us.posthog.com/project/417445/insights/rJ3JVWWL) |
 | Recent Optimize calls (last 50)   | `GetT3sOp` | [view](https://us.posthog.com/project/417445/insights/GetT3sOp) |
+| Recent input → output (quality)   | `bhJKbPOp` | [view](https://us.posthog.com/project/417445/insights/bhJKbPOp) |
 
 ### Event schema (`optimize.completed`)
 
@@ -260,6 +280,7 @@ ORDER BY n DESC
 | Per-category F1 over time (span_labeling_f1) | `RGAb2MH4` | [view](https://us.posthog.com/project/417445/insights/RGAb2MH4) |
 | Setup error count (24h)                      | `VJnURwpV` | [view](https://us.posthog.com/project/417445/insights/VJnURwpV) |
 | Gate failure count (24h)                     | `icjwJljU` | [view](https://us.posthog.com/project/417445/insights/icjwJljU) |
+| F1 examples — predicted vs ground-truth      | `yCPKQxN3` | [view](https://us.posthog.com/project/417445/insights/yCPKQxN3) |
 
 Tiles are built as `DataVisualizationNode` over HogQL. Visualization type (table/line/bar/donut) is selectable per-tile in the UI; the query defines the data shape, the user picks the chart.
 
@@ -354,6 +375,8 @@ ORDER BY day DESC
 | Suggestions returned (distribution) | `hwChFlIs` | [view](https://us.posthog.com/project/417445/insights/hwChFlIs) |
 | Per-category breakdown              | `9eqWssAw` | [view](https://us.posthog.com/project/417445/insights/9eqWssAw) |
 | Recent 50 calls                     | `6kCPJnPv` | [view](https://us.posthog.com/project/417445/insights/6kCPJnPv) |
+| Recent suggestions (quality)        | `JxAnTP5L` | [view](https://us.posthog.com/project/417445/insights/JxAnTP5L) |
+| Suggestions exploded (one per row)  | `hfthQdB3` | [view](https://us.posthog.com/project/417445/insights/hfthQdB3) |
 
 All tiles are `DataVisualizationNode` over HogQL against `suggestions.completed` events.
 
@@ -376,6 +399,8 @@ All tiles are `DataVisualizationNode` over HogQL against `suggestions.completed`
 | Provider breakdown             | `3lmYpFIR` | [view](https://us.posthog.com/project/417445/insights/3lmYpFIR) |
 | Errors by errorStage           | `ZjhgZ0Fz` | [view](https://us.posthog.com/project/417445/insights/ZjhgZ0Fz) |
 | Recent 50 calls                | `9qQIbiOm` | [view](https://us.posthog.com/project/417445/insights/9qQIbiOm) |
+| Recent outputs (quality)       | `QOYQG6mB` | [view](https://us.posthog.com/project/417445/insights/QOYQG6mB) |
+| Spans exploded by category     | `O6kY1HlU` | [view](https://us.posthog.com/project/417445/insights/O6kY1HlU) |
 
 ### Event schema (`label-spans.completed`)
 
