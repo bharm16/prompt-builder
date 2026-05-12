@@ -86,7 +86,7 @@ exports[`quality.scored event schema > matches the suggestions quality.scored sh
   "rubricVersion": "def67890",
   "scoredEvent": "suggestions.completed",
   "scoredEventId": "00000000-0000-0000-0000-000000000002",
-  "source": "dogfood",
+  "source": "synthetic",
   "surface": "suggestions",
   "totalScore": 19,
 }

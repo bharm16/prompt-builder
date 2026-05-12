@@ -63,7 +63,7 @@ describe("quality.scored event schema", () => {
       totalScore: 19,
       dimensions,
       reasoning: "Reasonable spread; one alternative weakly relevant.",
-      source: "dogfood",
+      source: "synthetic",
     };
     expect(event).toMatchSnapshot();
   });
