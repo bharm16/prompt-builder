@@ -172,6 +172,7 @@
     "eval:optimization": "tsx --tsconfig server/tsconfig.json tests/evaluation/optimization/OptimizationBenchmark.ts",
     "eval:regression": "tsx --tsconfig server/tsconfig.json tests/evaluation/regression/RegressionRunner.ts",
     "judge:run": "tsx --tsconfig server/tsconfig.json scripts/quality-judge/run-judge.ts",
+    "judge:calibrate": "tsx --tsconfig server/tsconfig.json scripts/quality-judge/calibration/run-calibration.ts",
     "golden:fix": "tsx --tsconfig server/tsconfig.json scripts/evaluation/fix-golden-set-indices.ts",
     "quality:gate": "tsx --tsconfig server/tsconfig.json tests/ci/quality-gate.ts",
     "test:e2e": "bash scripts/test-e2e-if-present.sh",
