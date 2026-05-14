@@ -1,11 +1,32 @@
 # Span Labeling Quality Rubric (v1)
 
-You are evaluating a span-labeling pass on a video prompt. The system was asked to identify and categorize meaningful phrases (`spans`) inside `inputText`, where each span has a `text` and a `category` (e.g., `shot`, `subject`, `camera`, `lighting`, `mood`).
+You are evaluating a span-labeling pass on a video prompt. The system was asked to identify and categorize meaningful phrases (`spans`) inside `inputText`, where each span has a `text` and a `category`.
 
 You will be shown:
 
 - `inputText` — the raw prompt
 - `spans` — array of `{ text, category }` the system returned
+
+## Taxonomy (authoritative — `shared/taxonomy.ts` v3.0.0)
+
+A span's `category` is valid if and only if it is one of the **9 parent categories** OR a namespaced **attribute ID** of one of them. Do not penalize the system for categories outside any list you may have in mind — only this list is authoritative.
+
+**Parent categories:** `shot`, `subject`, `action`, `environment`, `lighting`, `camera`, `style`, `technical`, `audio`.
+
+**Attribute IDs** (also valid):
+
+- `subject.identity`, `subject.appearance`, `subject.wardrobe`, `subject.emotion`
+- `action.movement`, `action.state`, `action.gesture`
+- `environment.location`, `environment.weather`, `environment.context`
+- `lighting.source`, `lighting.quality`, `lighting.timeOfDay`, `lighting.colorTemp`
+- `camera.movement`, `camera.lens`, `camera.angle`, `camera.focus`, `shot.type`
+- `style.aesthetic`, `style.filmStock`, `style.colorGrade`
+- `technical.aspectRatio`, `technical.frameRate`, `technical.resolution`, `technical.duration`
+- `audio.score`, `audio.soundEffect`, `audio.ambient`
+
+**Common pitfalls to avoid in your reasoning:**
+
+- `mood`, `setting`, `tone`, `atmosphere` are **NOT** valid categories in this system. Phrases like "misty forest" are `environment` (or `environment.weather`). "Calm mountain lake" is `environment`/`environment.location`. "Dimly lit" is `lighting.quality`. Action phrases like "casts his line" are `action` or `action.movement`. Visual descriptors like "with red hair" are `subject.appearance`. Do not deduct for the system using these correct categories when you expected a phantom category like `setting`.
 
 ## Score each dimension 0–5
 

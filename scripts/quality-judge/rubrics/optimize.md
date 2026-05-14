@@ -45,7 +45,9 @@ Whether the output reads as one coherent shot/scene description without contradi
 
 Does the output respect the target model's known constraints (length, formatting, prohibited terms, structural conventions)?
 
-- **5:** Fully respects target-model conventions — length, structure, formatting.
+**When `targetModel` is `null` or absent:** score this dimension by **general** model-agnostic prompt-shape constraints only — coherent single description, no embedded UI/code, plausible length for a video-prompt slot (one paragraph, ≤ ~80 words for the input scale shown). Do **NOT** default to 0/1 just because no target model was specified. A clean, well-shaped output with no target model deserves a 4 or 5 here.
+
+- **5:** Fully respects target-model conventions (or general prompt-shape if `targetModel` is null) — length, structure, formatting.
 - **3:** Mostly compliant; minor over-run on length or one stray formatting choice.
 - **1:** Violates a clear convention (e.g., grossly over-long for the target model, or wrong shape).
 - **0:** Violates multiple constraints; would be rejected by the target model.

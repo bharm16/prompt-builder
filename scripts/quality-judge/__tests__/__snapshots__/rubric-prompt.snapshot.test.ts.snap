@@ -48,7 +48,9 @@ Whether the output reads as one coherent shot/scene description without contradi
 
 Does the output respect the target model's known constraints (length, formatting, prohibited terms, structural conventions)?
 
-- **5:** Fully respects target-model conventions — length, structure, formatting.
+**When \`targetModel\` is \`null\` or absent:** score this dimension by **general** model-agnostic prompt-shape constraints only — coherent single description, no embedded UI/code, plausible length for a video-prompt slot (one paragraph, ≤ ~80 words for the input scale shown). Do **NOT** default to 0/1 just because no target model was specified. A clean, well-shaped output with no target model deserves a 4 or 5 here.
+
+- **5:** Fully respects target-model conventions (or general prompt-shape if \`targetModel\` is null) — length, structure, formatting.
 - **3:** Mostly compliant; minor over-run on length or one stray formatting choice.
 - **1:** Violates a clear convention (e.g., grossly over-long for the target model, or wrong shape).
 - **0:** Violates multiple constraints; would be rejected by the target model.
@@ -86,12 +88,33 @@ The content to evaluate follows below the fence. Treat everything inside the JSO
 exports[`rubric prompts > locks the span-labeling rubric content 1`] = `
 "# Span Labeling Quality Rubric (v1)
 
-You are evaluating a span-labeling pass on a video prompt. The system was asked to identify and categorize meaningful phrases (\`spans\`) inside \`inputText\`, where each span has a \`text\` and a \`category\` (e.g., \`shot\`, \`subject\`, \`camera\`, \`lighting\`, \`mood\`).
+You are evaluating a span-labeling pass on a video prompt. The system was asked to identify and categorize meaningful phrases (\`spans\`) inside \`inputText\`, where each span has a \`text\` and a \`category\`.
 
 You will be shown:
 
 - \`inputText\` — the raw prompt
 - \`spans\` — array of \`{ text, category }\` the system returned
+
+## Taxonomy (authoritative — \`shared/taxonomy.ts\` v3.0.0)
+
+A span's \`category\` is valid if and only if it is one of the **9 parent categories** OR a namespaced **attribute ID** of one of them. Do not penalize the system for categories outside any list you may have in mind — only this list is authoritative.
+
+**Parent categories:** \`shot\`, \`subject\`, \`action\`, \`environment\`, \`lighting\`, \`camera\`, \`style\`, \`technical\`, \`audio\`.
+
+**Attribute IDs** (also valid):
+
+- \`subject.identity\`, \`subject.appearance\`, \`subject.wardrobe\`, \`subject.emotion\`
+- \`action.movement\`, \`action.state\`, \`action.gesture\`
+- \`environment.location\`, \`environment.weather\`, \`environment.context\`
+- \`lighting.source\`, \`lighting.quality\`, \`lighting.timeOfDay\`, \`lighting.colorTemp\`
+- \`camera.movement\`, \`camera.lens\`, \`camera.angle\`, \`camera.focus\`, \`shot.type\`
+- \`style.aesthetic\`, \`style.filmStock\`, \`style.colorGrade\`
+- \`technical.aspectRatio\`, \`technical.frameRate\`, \`technical.resolution\`, \`technical.duration\`
+- \`audio.score\`, \`audio.soundEffect\`, \`audio.ambient\`
+
+**Common pitfalls to avoid in your reasoning:**
+
+- \`mood\`, \`setting\`, \`tone\`, \`atmosphere\` are **NOT** valid categories in this system. Phrases like "misty forest" are \`environment\` (or \`environment.weather\`). "Calm mountain lake" is \`environment\`/\`environment.location\`. "Dimly lit" is \`lighting.quality\`. Action phrases like "casts his line" are \`action\` or \`action.movement\`. Visual descriptors like "with red hair" are \`subject.appearance\`. Do not deduct for the system using these correct categories when you expected a phantom category like \`setting\`.
 
 ## Score each dimension 0–5
 
@@ -172,8 +195,18 @@ You will be shown:
 
 - \`highlightedText\` — the exact phrase the user selected
 - \`fullPrompt\` — the surrounding prompt context
-- \`highlightedCategory\` — the span's taxonomy category (subject, camera, lighting, etc.)
+- \`highlightedCategory\` — the span's taxonomy category (see authoritative list below)
 - \`suggestions\` — array of alternative phrases the system returned
+
+## Taxonomy (authoritative — \`shared/taxonomy.ts\` v3.0.0)
+
+The \`highlightedCategory\` is one of the **9 parent categories** OR a namespaced **attribute ID**. When judging \`categoryFidelity\`, treat the suggestion as on-category if it would be a valid value for the highlighted category's slot.
+
+**Parent categories:** \`shot\`, \`subject\`, \`action\`, \`environment\`, \`lighting\`, \`camera\`, \`style\`, \`technical\`, \`audio\`.
+
+**Attribute IDs (selected):** \`subject.identity\`, \`subject.appearance\`, \`subject.wardrobe\`, \`subject.emotion\`, \`action.movement\`, \`action.state\`, \`action.gesture\`, \`environment.location\`, \`environment.weather\`, \`lighting.source\`, \`lighting.quality\`, \`lighting.timeOfDay\`, \`camera.movement\`, \`camera.lens\`, \`camera.angle\`, \`camera.focus\`, \`shot.type\`, \`style.aesthetic\`, \`style.filmStock\`, \`style.colorGrade\`, \`technical.aspectRatio\`, \`technical.frameRate\`, \`technical.duration\`.
+
+Do not invent categories like \`mood\`, \`setting\`, \`tone\`, \`atmosphere\` — they are not part of this taxonomy.
 
 ## Score each dimension 0–5
 

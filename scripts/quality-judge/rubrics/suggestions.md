@@ -8,8 +8,18 @@ You will be shown:
 
 - `highlightedText` — the exact phrase the user selected
 - `fullPrompt` — the surrounding prompt context
-- `highlightedCategory` — the span's taxonomy category (subject, camera, lighting, etc.)
+- `highlightedCategory` — the span's taxonomy category (see authoritative list below)
 - `suggestions` — array of alternative phrases the system returned
+
+## Taxonomy (authoritative — `shared/taxonomy.ts` v3.0.0)
+
+The `highlightedCategory` is one of the **9 parent categories** OR a namespaced **attribute ID**. When judging `categoryFidelity`, treat the suggestion as on-category if it would be a valid value for the highlighted category's slot.
+
+**Parent categories:** `shot`, `subject`, `action`, `environment`, `lighting`, `camera`, `style`, `technical`, `audio`.
+
+**Attribute IDs (selected):** `subject.identity`, `subject.appearance`, `subject.wardrobe`, `subject.emotion`, `action.movement`, `action.state`, `action.gesture`, `environment.location`, `environment.weather`, `lighting.source`, `lighting.quality`, `lighting.timeOfDay`, `camera.movement`, `camera.lens`, `camera.angle`, `camera.focus`, `shot.type`, `style.aesthetic`, `style.filmStock`, `style.colorGrade`, `technical.aspectRatio`, `technical.frameRate`, `technical.duration`.
+
+Do not invent categories like `mood`, `setting`, `tone`, `atmosphere` — they are not part of this taxonomy.
 
 ## Score each dimension 0–5
 
