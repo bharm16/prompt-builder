@@ -131,7 +131,7 @@ ${categories.join("\n")}
 1.  **Extract EXACT text**: Do NOT paraphrase, summarize, or change a single character.
 2.  **No Labels**: Do NOT include field labels like "Duration:", "Aspect Ratio:", "Camera:", "Lighting:". Extract ONLY the value (e.g., "6s", "16:9").
 3.  **Handle Duplicates**: If a term appears in BOTH the narrative and the "TECHNICAL SPECS", create **TWO SEPARATE SPANS**. Do not merge them.
-4.  **Split Mixed Specs**: Split descriptive text from technical values. 
+4.  **Split Mixed Specs**: Split descriptive text from technical values.
     *   "shallow depth of field (f/1.8)" -> "shallow depth of field" (\`camera.lens\`) AND "f/1.8" (\`camera.focus\`).
 5.  **Lighting Context**: Do NOT label generic words like "side" or "screen" as lighting unless they include illumination terms (e.g., "light from the side").
 6.  **Semantic Categorization**: In "TECHNICAL SPECS" sections, categorize items by their *meaning*, not just their location.
@@ -139,6 +139,28 @@ ${categories.join("\n")}
     *   "Low-angle" -> \`camera.angle\` (NOT technical)
     *   "Natural daylight" -> \`lighting.source\` (NOT technical)
     *   "60fps" -> \`technical.frameRate\` (YES technical)
+
+**DISAMBIGUATION RULES (resolve common category confusions):**
+7.  **Action vs Environment**: Verbs and verb phrases describing what a subject DOES are \`action.movement\` / \`action.gesture\` / \`action.state\`, NEVER environment.
+    *   "casts his line" -> \`action.movement\` (NOT environment.location)
+    *   "stands at the edge" -> \`action.state\` (NOT environment.location)
+    *   "leaning against the wall" -> \`action.state\` (NOT environment.context)
+    *   "chasing fireflies" -> \`action.movement\`
+8.  **Subject Appearance vs Lighting**: Colors and physical descriptors attached to a person, animal, or object are \`subject.appearance\` (or \`subject.wardrobe\` for clothing), NOT \`lighting.*\`.
+    *   "with red hair" -> \`subject.appearance\` (NOT lighting.colorTemp)
+    *   "in a blue jersey" -> \`subject.wardrobe\` (NOT lighting.quality)
+    *   "the orange cat" -> "orange" is part of \`subject.appearance\` describing the cat (NOT lighting.colorTemp)
+    *   Lighting categories apply only to illumination itself (sources, quality of light, time of day, color temperature of light).
+9.  **Environment Phrases — Boundary Preservation**: Keep environment phrases intact; never include trailing prepositions or articles.
+    *   "misty forest" -> ONE \`environment.location\` span with clean boundary.
+    *   INCORRECT: "misty forest at" or "the misty forest" — strip trailing/leading function words.
+    *   "calm mountain lake" -> ONE \`environment.location\` span (compound locations stay together).
+    *   "abandoned 1950s diner" -> ONE \`environment.location\` span.
+10. **Compound Style/Color-Grade Phrases**: Color-grade descriptors with conjunctions stay together as one \`style.colorGrade\` span — do NOT split on "and".
+    *   "teal and orange color grade" -> ONE \`style.colorGrade\` span (NOT "teal and orange color" + "grade")
+    *   "warm amber tones" -> ONE \`style.colorGrade\` span
+    *   "film grain" -> \`style.aesthetic\` (a film-medium descriptor — MUST be labeled, do not omit)
+11. **Coverage — do not silently skip meaningful spans**: If \`inputText\` contains a labelable phrase that fits any taxonomy id, you MUST emit a span for it. Common omissions to avoid: aesthetic descriptors ("film grain", "moody"), compound locations ("calm mountain lake"), and stylistic medium references ("shot on 35mm").
 
 Output Format:
 You must return a valid JSON object matching this structure:

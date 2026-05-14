@@ -1,4 +1,26 @@
+import {
+  TAXONOMY,
+  getParentCategory,
+  type TaxonomyKey,
+} from "#shared/taxonomy.ts";
+
 import type { EnhancementV2RequestContext, SlotPolicy } from "./types.js";
+
+/**
+ * Resolve the human-readable label and description for a category id.
+ * Works for parent ids (e.g. "subject") and attribute ids (e.g. "subject.appearance").
+ * Returns null when the id is not in the taxonomy.
+ */
+function describeCategory(
+  categoryId: string,
+): { label: string; description: string } | null {
+  const parent = getParentCategory(categoryId);
+  if (!parent) return null;
+  const parentKey = parent.toUpperCase() as TaxonomyKey;
+  const config = TAXONOMY[parentKey];
+  if (!config) return null;
+  return { label: config.label, description: config.description };
+}
 
 export class EnhancementV2PromptBuilder {
   buildPrompt(
@@ -9,9 +31,14 @@ export class EnhancementV2PromptBuilder {
       return this.buildCustomPrompt(context, policy);
     }
 
+    const semantic = describeCategory(policy.categoryId);
+    const categoryHeader = semantic
+      ? `Category: ${policy.categoryId} — ${semantic.label}: ${semantic.description}`
+      : `Category: ${policy.categoryId}`;
+
     const lines = [
       `Generate up to ${policy.targetCount + 2} replacement phrases for a highlighted prompt span.`,
-      `Category: ${policy.categoryId}`,
+      categoryHeader,
       `Mode: ${policy.mode}`,
       `Grammar shape: ${policy.grammar.kind}`,
       `Word range: ${policy.grammar.minWords}-${policy.grammar.maxWords}`,
@@ -32,7 +59,9 @@ export class EnhancementV2PromptBuilder {
         : "",
       "",
       "RULES:",
-      `- Stay inside taxonomy category "${policy.categoryId}".`,
+      `- Stay inside taxonomy category "${policy.categoryId}". Each suggestion's "category" field MUST equal "${policy.categoryId}".`,
+      "- Drop-in test: replacing `highlighted_text` with your suggestion inside `full_prompt` must leave a grammatical, coherent prompt. If substitution breaks the scene's meaning, the suggestion is invalid.",
+      "- Scene-coherence: the suggestion must remain consistent with the rest of `full_prompt`. Do not break narrative, environment, or framing. Examples of invalid drift: suggesting outdoor lighting when full_prompt describes an indoor location; suggesting a person when full_prompt's focal entity is an object or weather phenomenon; suggesting an action when the slot is a subject.",
       `- ${policy.promptGuidance}`,
       "- Keep the replacement literal and camera-visible.",
       "- Do not return advice, headings, or explanation text in the suggestion itself.",

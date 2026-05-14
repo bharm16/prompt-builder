@@ -11,7 +11,7 @@ export const PROMPT_VERSIONS = {
   /** Image-to-video span labeling (motion-only categories) */
   I2V_SPAN_LABELING: "i2v-v2",
   /** Gemini simple prompt variant */
-  GEMINI_SIMPLE: "gemini-simple-v1",
+  GEMINI_SIMPLE: "gemini-simple-v2",
   /** Visual control points extraction */
   VISUAL_CONTROL_POINTS: "vcp-v1",
   /** Role classifier prompt */
