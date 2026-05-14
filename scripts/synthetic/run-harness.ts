@@ -29,6 +29,7 @@ import {
   loadPrompts,
   type DriverSummary,
 } from "./utils/request-helper.js";
+import { createSyntheticAIService } from "./utils/aiService.js";
 import { driveOptimize } from "./drivers/optimize.driver.js";
 import { driveSuggestions } from "./drivers/suggestions.driver.js";
 import { driveSpanLabels } from "./drivers/span-labeling.driver.js";
@@ -87,7 +88,19 @@ async function main(): Promise<void> {
   const optimize = new OptimizeTelemetryService(client);
   const suggestions = new SuggestionsTelemetryService(client);
   const spanLabels = new SpanLabelingTelemetryService(client);
+
+  // Drivers no longer call llm.record() manually; the real AIModelService
+  // emits llm.call.completed via the telemetry hook. Wrap the service's
+  // record() so the harness summary can report the actual event count
+  // instead of a hardcoded 0 per driver.
   const llm = new LlmCallTelemetryService(client);
+  let llmEventCount = 0;
+  const originalRecord = llm.record.bind(llm);
+  llm.record = (...args: Parameters<typeof llm.record>) => {
+    llmEventCount += 1;
+    return originalRecord(...args);
+  };
+  const aiService = createSyntheticAIService({ llmCallTelemetry: llm });
 
   console.log(
     `Running synthetic harness with ${prompts.length} prompts. Surfaces: ${[...config.surfaces].join(", ")}`,
@@ -96,27 +109,27 @@ async function main(): Promise<void> {
   try {
     const summaries: DriverSummary[] = [];
     if (config.surfaces.has("optimize")) {
-      summaries.push(await driveOptimize({ optimize, llm }, prompts));
+      summaries.push(await driveOptimize({ optimize, aiService }, prompts));
     }
     if (config.surfaces.has("suggestions")) {
-      summaries.push(await driveSuggestions({ suggestions, llm }, prompts));
+      summaries.push(
+        await driveSuggestions({ suggestions, aiService }, prompts),
+      );
     }
     if (config.surfaces.has("span-labels")) {
-      summaries.push(await driveSpanLabels({ spanLabels, llm }, prompts));
+      summaries.push(await driveSpanLabels({ spanLabels, aiService }, prompts));
     }
 
     console.log("\n=== Summary ===");
     let totalSurface = 0;
-    let totalLlm = 0;
     for (const s of summaries) {
       console.log(
-        `${s.surface}: ${s.surfaceEventsEmitted} surface events, ${s.llmEventsEmitted} llm.call events (across ${s.promptCount} prompts)`,
+        `${s.surface}: ${s.surfaceEventsEmitted} surface events (across ${s.promptCount} prompts)`,
       );
       totalSurface += s.surfaceEventsEmitted;
-      totalLlm += s.llmEventsEmitted;
     }
     console.log(
-      `TOTAL: ${totalSurface + totalLlm} events (${totalSurface} surface + ${totalLlm} llm)`,
+      `TOTAL: ${totalSurface + llmEventCount} events (${totalSurface} surface + ${llmEventCount} llm.call from AIModelService telemetry)`,
     );
   } finally {
     // Flush + close — events are queued in-process by posthog-node otherwise.

@@ -1,13 +1,17 @@
 /**
- * Emits one `label-spans.completed` event plus 1 underlying `llm.call.completed`
- * event per prompt. Provider/model mirrors server/src/config/modelConfig.ts:
- *   - span_labeling → gemini / gemini-2.5-flash (fallback: qwen/qwen3-32b)
+ * Emits one `label-spans.completed` event per prompt by invoking the live
+ * SpanLabelingService. Underlying `llm.call.completed` events are emitted
+ * automatically by the AIModelService when wired with llmCallTelemetry —
+ * we no longer fake those records here.
  */
 
-import { SpanLabelingTelemetryService } from "../../../server/src/services/observability/SpanLabelingTelemetryService.js";
-import { LlmCallTelemetryService } from "../../../server/src/services/observability/LlmCallTelemetryService.js";
+import { labelSpans } from "../../../server/src/llm/span-labeling/SpanLabelingService.js";
+import type { AIModelService } from "../../../server/src/services/ai-model/index.js";
+import type {
+  SpanLabelingTelemetryService,
+  SpanLabelSpan,
+} from "../../../server/src/services/observability/SpanLabelingTelemetryService.js";
 import {
-  jitter,
   runInSyntheticContext,
   syntheticDistinctId,
   type DriverSummary,
@@ -16,8 +20,14 @@ import {
 
 interface DriverDeps {
   spanLabels: SpanLabelingTelemetryService;
-  llm: LlmCallTelemetryService;
+  aiService: AIModelService;
 }
+
+const TEMPLATE_VERSION = "v3.0";
+const PROVIDER = "gemini";
+// Matches the SPAN_MODEL default in server/src/config/modelConfig.ts so synthetic
+// label-spans.completed events carry the same model dimension prod emits.
+const MODEL = process.env.GEMINI_MODEL ?? "gemini-2.5-flash";
 
 export async function driveSpanLabels(
   deps: DriverDeps,
@@ -25,88 +35,67 @@ export async function driveSpanLabels(
 ): Promise<DriverSummary> {
   const distinctId = syntheticDistinctId();
   let surfaceEvents = 0;
-  let llmEvents = 0;
 
   for (let i = 0; i < prompts.length; i++) {
     const prompt = prompts[i]!;
     const requestId = `synthetic-spanlabels-${prompt.id}`;
-    const llmMs = jitter(320, i);
 
-    runInSyntheticContext(requestId, () => {
+    await runInSyntheticContext(requestId, async () => {
       const trace = deps.spanLabels.startSpanLabelingTrace(
         requestId,
         distinctId,
       );
 
-      // ~30% cache-hit rate, deterministic per index.
-      const cacheHit = i % 10 < 3;
-      if (cacheHit) trace.recordCacheHit();
+      try {
+        const result = await labelSpans(
+          {
+            text: prompt.text,
+            maxSpans: 50,
+            minConfidence: 0.5,
+            templateVersion: TEMPLATE_VERSION,
+          },
+          deps.aiService,
+        );
 
-      if (!cacheHit) {
-        deps.llm.record({
-          executionType: "span_labeling",
-          provider: "gemini",
-          model: "gemini-2.5-flash",
-          durationMs: llmMs,
-          promptTokens: 80 + (i % 25),
-          completionTokens: 60 + (i % 20),
-          totalTokens: 140 + (i % 45),
-          finishReason: "stop",
+        const spans: SpanLabelSpan[] = result.spans.map((s) => ({
+          text: s.text,
+          category: s.role ?? s.category ?? "subject",
+        }));
+
+        trace.complete({
           outcome: "success",
-          userId: distinctId,
+          promptLength: prompt.text.length,
+          spanCount: spans.length,
+          provider: PROVIDER,
+          model: MODEL,
+          inputText: prompt.text,
+          spans,
         });
-        llmEvents++;
+        surfaceEvents++;
+        console.log(
+          `[span-labels] ${prompt.id} emitted (${spans.length} spans)`,
+        );
+      } catch (err) {
+        trace.complete({
+          outcome: "error",
+          promptLength: prompt.text.length,
+          spanCount: 0,
+          provider: PROVIDER,
+          model: MODEL,
+          inputText: prompt.text,
+          spans: [],
+        });
+        console.warn(
+          `[span-labels] ${prompt.id} errored: ${(err as Error).message}`,
+        );
       }
-
-      const spans = synthesizeSpans(prompt.text, prompt.tags);
-      trace.complete({
-        outcome: "success",
-        promptLength: prompt.text.length,
-        spanCount: spans.length,
-        provider: cacheHit ? null : "gemini",
-        model: cacheHit ? null : "gemini-2.5-flash",
-        inputText: prompt.text,
-        spans,
-      });
-      surfaceEvents++;
     });
-
-    console.log(
-      `[span-labels] ${prompt.id} emitted (1 surface${cacheHitFor(i) ? "" : " + 1 llm"})`,
-    );
   }
 
   return {
     surface: "span-labels",
     promptCount: prompts.length,
     surfaceEventsEmitted: surfaceEvents,
-    llmEventsEmitted: llmEvents,
+    llmEventsEmitted: 0,
   };
-}
-
-function cacheHitFor(i: number): boolean {
-  return i % 10 < 3;
-}
-
-/**
- * Synthesizes plausibly-labeled spans by carving the prompt into ~3-word
- * chunks and assigning each one of the prompt's taxonomy tags as its
- * category. Deterministic per prompt so dashboards show stable content.
- */
-function synthesizeSpans(
-  text: string,
-  tags: string[],
-): Array<{ text: string; category: string }> {
-  const words = text.split(/\s+/).filter((w) => w.length > 0);
-  if (words.length === 0 || tags.length === 0) {
-    return [];
-  }
-  const chunks: string[] = [];
-  for (let i = 0; i < words.length; i += 3) {
-    chunks.push(words.slice(i, i + 3).join(" "));
-  }
-  return chunks.map((chunk, idx) => ({
-    text: chunk,
-    category: tags[idx % tags.length]!,
-  }));
 }

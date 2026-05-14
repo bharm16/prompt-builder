@@ -1,17 +1,18 @@
 /**
- * Emits one `optimize.completed` event plus the 4 underlying `llm.call.completed`
- * events that a real `/api/optimize` request produces. Provider/model values
- * mirror server/src/config/modelConfig.ts as of this commit:
- *   - optimize_shot_interpreter   → openai / gpt-4o-mini-2024-07-18
- *   - optimize_standard           → openai / gpt-4o-2024-08-06
- *   - optimize_quality_assessment → openai / gpt-4o-mini
- *   - optimize_intent_check       → openai / gpt-4o-mini-2024-07-18
+ * Emits one `optimize.completed` event per prompt by invoking the live
+ * PromptOptimizationService. Underlying `llm.call.completed` events emit
+ * via the AIModelService telemetry hook — no fake records here.
  */
 
-import { OptimizeTelemetryService } from "../../../server/src/services/observability/OptimizeTelemetryService.js";
-import { LlmCallTelemetryService } from "../../../server/src/services/observability/LlmCallTelemetryService.js";
+import { CacheService } from "../../../server/src/services/cache/CacheService.js";
+import { ImageObservationService } from "../../../server/src/services/image-observation/ImageObservationService.js";
+import { TemplateService } from "../../../server/src/services/prompt-optimization/services/TemplateService.js";
+import { PromptOptimizationService } from "../../../server/src/services/prompt-optimization/PromptOptimizationService.js";
+import { VideoPromptService } from "../../../server/src/services/video-prompt-analysis/index.js";
+import { AIServiceVideoPromptLlmGateway } from "../../../server/src/services/video-prompt-analysis/services/llm/VideoPromptLlmGateway.js";
+import type { AIModelService } from "../../../server/src/services/ai-model/index.js";
+import type { OptimizeTelemetryService } from "../../../server/src/services/observability/OptimizeTelemetryService.js";
 import {
-  jitter,
   runInSyntheticContext,
   syntheticDistinctId,
   type DriverSummary,
@@ -20,42 +21,10 @@ import {
 
 interface DriverDeps {
   optimize: OptimizeTelemetryService;
-  llm: LlmCallTelemetryService;
+  aiService: AIModelService;
 }
 
-interface LlmStage {
-  executionType: string;
-  model: string;
-  stageName: "shot_interpreter" | "strategy" | "constitutional" | "intent_lock";
-  baseMs: number;
-}
-
-const STAGES: LlmStage[] = [
-  {
-    executionType: "optimize_shot_interpreter",
-    model: "gpt-4o-mini-2024-07-18",
-    stageName: "shot_interpreter",
-    baseMs: 280,
-  },
-  {
-    executionType: "optimize_standard",
-    model: "gpt-4o-2024-08-06",
-    stageName: "strategy",
-    baseMs: 2200,
-  },
-  {
-    executionType: "optimize_quality_assessment",
-    model: "gpt-4o-mini",
-    stageName: "constitutional",
-    baseMs: 350,
-  },
-  {
-    executionType: "optimize_intent_check",
-    model: "gpt-4o-mini-2024-07-18",
-    stageName: "intent_lock",
-    baseMs: 220,
-  },
-];
+const TARGET_MODELS = ["sora", "veo", "kling", "luma", "runway"] as const;
 
 export async function driveOptimize(
   deps: DriverDeps,
@@ -63,85 +32,85 @@ export async function driveOptimize(
 ): Promise<DriverSummary> {
   const distinctId = syntheticDistinctId();
   let surfaceEvents = 0;
-  let llmEvents = 0;
+
+  const cacheService = new CacheService({});
+  const videoPromptService = new VideoPromptService({
+    videoPromptLlmGateway: new AIServiceVideoPromptLlmGateway(deps.aiService),
+  });
+  const imageObservationService = new ImageObservationService(
+    deps.aiService,
+    cacheService,
+  );
+  const templateService = new TemplateService();
+  const optimizer = new PromptOptimizationService(
+    deps.aiService,
+    cacheService,
+    videoPromptService,
+    imageObservationService,
+    templateService,
+  );
 
   for (let i = 0; i < prompts.length; i++) {
     const prompt = prompts[i]!;
     const requestId = `synthetic-optimize-${prompt.id}`;
+    const targetModel = TARGET_MODELS[i % TARGET_MODELS.length]!;
 
-    runInSyntheticContext(requestId, () => {
+    await runInSyntheticContext(requestId, async () => {
       const trace = deps.optimize.startOptimizeTrace(requestId, distinctId);
 
-      for (const stage of STAGES) {
-        const durMs = jitter(stage.baseMs, i + stage.baseMs);
-        trace.recordLlmCall();
-        trace.recordStage(stage.stageName, durMs);
-        deps.llm.record({
-          executionType: stage.executionType,
-          provider: "openai",
-          model: stage.model,
-          durationMs: durMs,
-          promptTokens: 120 + (i % 30),
-          completionTokens: 80 + (i % 20),
-          totalTokens: 200 + (i % 50),
-          finishReason: "stop",
-          outcome: "success",
-          userId: distinctId,
+      try {
+        const response = await optimizer.optimize({
+          prompt: prompt.text,
+          mode: "video",
+          targetModel,
+          useConstitutionalAI: true,
         });
-        llmEvents++;
+
+        const outputPrompt = response.prompt;
+        trace.complete({
+          outcome: "success",
+          targetModel,
+          mode: "video",
+          promptLength: prompt.text.length,
+          outputLength: outputPrompt.length,
+          lockedSpanCount: 0,
+          hasContext: false,
+          hasBrainstormContext: false,
+          hasShotPlan: false,
+          useConstitutionalAI: true,
+          inputPrompt: prompt.text,
+          outputPrompt,
+        });
+        surfaceEvents++;
+        console.log(
+          `[optimize] ${prompt.id} (target=${targetModel}) emitted (${outputPrompt.length} chars)`,
+        );
+      } catch (err) {
+        trace.complete({
+          outcome: "error",
+          targetModel,
+          mode: "video",
+          promptLength: prompt.text.length,
+          outputLength: 0,
+          lockedSpanCount: 0,
+          hasContext: false,
+          hasBrainstormContext: false,
+          hasShotPlan: false,
+          useConstitutionalAI: true,
+          inputPrompt: prompt.text,
+          outputPrompt: "",
+        });
+        console.warn(
+          `[optimize] ${prompt.id} errored: ${(err as Error).message}`,
+        );
       }
-
-      const outputPrompt = synthesizeOptimizedOutput(prompt.text, prompt.tags);
-      trace.complete({
-        outcome: "success",
-        targetModel: null,
-        mode: "video",
-        promptLength: prompt.text.length,
-        outputLength: outputPrompt.length,
-        lockedSpanCount: 0,
-        hasContext: false,
-        hasBrainstormContext: false,
-        hasShotPlan: false,
-        useConstitutionalAI: true,
-        inputPrompt: prompt.text,
-        outputPrompt,
-      });
-      surfaceEvents++;
     });
-
-    console.log(`[optimize] ${prompt.id} emitted (1 surface + 4 llm)`);
   }
 
   return {
     surface: "optimize",
     promptCount: prompts.length,
     surfaceEventsEmitted: surfaceEvents,
-    llmEventsEmitted: llmEvents,
+    llmEventsEmitted: 0,
   };
-}
-
-/**
- * Synthesizes a plausibly-optimized version of the input by appending a few
- * cinematic descriptors keyed off the prompt's taxonomy tags. Deterministic
- * per (prompt, tags) so dashboards see stable content across runs.
- */
-function synthesizeOptimizedOutput(input: string, tags: string[]): string {
-  const flourishes: Record<string, string> = {
-    subject: ", framed with shallow depth of field",
-    "camera.movement": ", slow dolly forward",
-    "camera.shot": ", medium close-up",
-    "camera.speed": ", 24fps cinematic",
-    lighting: ", warm golden-hour light",
-    setting: ", rich atmospheric depth",
-    style: ", anamorphic film grain",
-    action: ", motion captured in slow detail",
-    color: ", teal-and-orange grade",
-    composition: ", symmetrical framing",
-  };
-  const additions = tags
-    .map((t) => flourishes[t])
-    .filter((f): f is string => typeof f === "string")
-    .slice(0, 3)
-    .join("");
-  return `${input}${additions}`;
 }
