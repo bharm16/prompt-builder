@@ -47,10 +47,15 @@ describe("PolicyAwareSuggestionQualityEvaluator", () => {
           sceneCoherence: { min: 4 },
         },
       },
+      // Truthful self-declared categories that don't fit a camera.movement
+      // slot: lens, lighting, and aesthetic. After the 2026-05-14 V2CandidateScorer
+      // refactor (regex classification → structural taxonomy lookups via
+      // candidate.category), the scorer trusts the LLM's self-classification.
+      // These categories trigger family_miss / forbidden_family gates structurally.
       [
-        { text: "50mm prime lens", category: "camera.movement" },
-        { text: "soft backlight from the left", category: "camera.movement" },
-        { text: "dreamlike memory haze", category: "camera.movement" },
+        { text: "50mm prime lens", category: "camera.lens" },
+        { text: "soft backlight from the left", category: "lighting.source" },
+        { text: "dreamlike memory haze", category: "style.aesthetic" },
       ],
     );
 

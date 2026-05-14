@@ -162,6 +162,8 @@ describe("EnhancementV2Engine", () => {
     expect(execution.debug.mode).toBe("guided_llm");
     expect(execution.debug.modelCallCount).toBe(2);
     expect(execution.finalSuggestions.length).toBeGreaterThanOrEqual(3);
-    expect(execution.debug.rejectionSummary.abstract).toBeGreaterThanOrEqual(1);
+    // Rescue triggers from candidate-count shortfall (primary returned 2,
+    // minAcceptableCount=3), not from rejection-driven shortfall — the
+    // V2CandidateScorer no longer carries an "abstract" wordlist gate.
   });
 });
