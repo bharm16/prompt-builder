@@ -39,9 +39,14 @@ function getOpenAIEnhancementSchema(isPlaceholder: boolean): JSONSchema {
     name: "enhancement_suggestions",
     strict: true,
     type: "object",
-    required: ["suggestions"],
+    required: ["scene_summary", "suggestions"],
     additionalProperties: false,
     properties: {
+      scene_summary: {
+        type: "string",
+        description:
+          "ONE sentence identifying the scene's setting, tone, and constraints visible in the full prompt (e.g., 'aerial drone shot over urban skyline at sunset — suggestions must be airborne; ground-based movements are invalid'). Emit BEFORE the suggestions array. The constraints stated here apply to every suggestion that follows.",
+      },
       suggestions: {
         type: "array",
         items: {
@@ -112,8 +117,9 @@ function getGroqEnhancementSchema(isPlaceholder: boolean): JSONSchema {
 
   return {
     type: "object",
-    required: ["suggestions"],
+    required: ["scene_summary", "suggestions"],
     properties: {
+      scene_summary: { type: "string" },
       suggestions: {
         type: "array",
         items: {
