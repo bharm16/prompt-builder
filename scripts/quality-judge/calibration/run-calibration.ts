@@ -46,28 +46,31 @@ async function runForSurface(surface: QualityScoredSurface): Promise<boolean> {
   }
 
   const rubric = await loadRubric(surface);
-  const results = await Promise.all(
-    entries.map(async (entry) => {
-      try {
-        const judged = await runJudge({
-          rubric,
-          surface,
-          inputContent: entry.inputContent,
-          outputContent: entry.outputContent,
-        });
-        return {
-          humanScore: entry.humanScore,
-          judgeScore: sumDimensions(judged.dimensions),
-        };
-      } catch (err) {
-        // eslint-disable-next-line no-console
-        console.warn(
-          `[calibration] ${surface}: skipped entry — ${String(err)}`,
-        );
-        return null;
-      }
-    }),
-  );
+  // Serial loop, not Promise.all: parallel judging of 20 entries pushes ~28k+
+  // tokens at once, exceeding GPT-4o's 30k TPM rate limit on standard accounts
+  // and producing a flood of 429s. Sequential keeps each call's token budget
+  // well within the limit at the cost of total runtime (~60 calls × ~2s each
+  // = ~2 minutes per surface vs ~10s parallel). The cost is paid in latency,
+  // not money; calibration runs once per rubric iteration.
+  const results: Array<{ humanScore: number; judgeScore: number } | null> = [];
+  for (const entry of entries) {
+    try {
+      const judged = await runJudge({
+        rubric,
+        surface,
+        inputContent: entry.inputContent,
+        outputContent: entry.outputContent,
+      });
+      results.push({
+        humanScore: entry.humanScore,
+        judgeScore: sumDimensions(judged.dimensions),
+      });
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.warn(`[calibration] ${surface}: skipped entry — ${String(err)}`);
+      results.push(null);
+    }
+  }
 
   const valid = results.filter(
     (r): r is { humanScore: number; judgeScore: number } => r !== null,
