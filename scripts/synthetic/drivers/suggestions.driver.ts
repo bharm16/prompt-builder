@@ -127,6 +127,7 @@ export async function driveSuggestions(
             highlightedText: highlight.text,
             fullPrompt: prompt.text,
             suggestions: suggestionTexts,
+            sceneSummary: execution.debug.sceneSummary ?? null,
           });
           surfaceEvents++;
           const dbg = execution.debug;
