@@ -59,9 +59,10 @@ export class EnhancementV2PromptBuilder {
         : "",
       "",
       "RULES:",
+      "- BEFORE the suggestions array, emit `scene_summary` (one sentence): identify the scene's setting, tone, and constraints visible in `full_prompt`. Name any modifiers that constrain the slot (e.g., aerial vs ground-level, handheld vs stabilized, dim vs bright, abandoned vs occupied). State what would make a suggestion fit — and what would make it fail.",
+      "- Every suggestion in `suggestions` must satisfy the constraints you named in `scene_summary`.",
       `- Stay inside taxonomy category "${policy.categoryId}". Each suggestion's "category" field MUST equal "${policy.categoryId}".`,
       "- Drop-in test: replacing `highlighted_text` with your suggestion inside `full_prompt` must leave a grammatical, coherent prompt. If substitution breaks the scene's meaning, the suggestion is invalid.",
-      "- Scene-coherence: the suggestion must remain consistent with the rest of `full_prompt`. Do not break narrative, environment, or framing. Examples of invalid drift: suggesting outdoor lighting when full_prompt describes an indoor location; suggesting a person when full_prompt's focal entity is an object or weather phenomenon; suggesting an action when the slot is a subject.",
       `- ${policy.promptGuidance}`,
       "- Keep the replacement literal and camera-visible.",
       "- Do not return advice, headings, or explanation text in the suggestion itself.",
@@ -73,10 +74,9 @@ export class EnhancementV2PromptBuilder {
         ? `- Avoid semantic drift into: ${policy.forbiddenFamilies.join(", ")}.`
         : "",
       "",
-      "Return a JSON array of suggestion objects with fields:",
-      "- text",
-      "- category",
-      "- explanation",
+      "Return a JSON object with these fields IN THIS ORDER:",
+      "1. `scene_summary` (string): the one-sentence scene constraint statement.",
+      "2. `suggestions` (array): each item is a suggestion object with `text`, `category`, `explanation`.",
     ];
 
     return lines.filter(Boolean).join("\n");
