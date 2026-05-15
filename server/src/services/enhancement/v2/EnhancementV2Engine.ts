@@ -15,6 +15,7 @@ import type {
   EnhancementV2Dependencies,
   EnhancementV2Execution,
   EnhancementV2RequestContext,
+  GuidedGenerationResult,
   SlotPolicy,
   TemplatedPolicyConfig,
 } from "./types.js";
@@ -47,14 +48,16 @@ export class EnhancementV2Engine {
       highlightedCategory: context.highlightedCategory,
     });
 
-    const primaryCandidates = await this._generatePrimaryCandidates(
-      policy,
-      context,
-    );
+    const primary = await this._generatePrimaryCandidates(policy, context);
+    const primaryCandidates = primary.suggestions;
     stageCounts.generatedPrimary = primaryCandidates.length;
     if (policy.mode === "guided_llm") {
       modelCallCount += 1;
     }
+
+    // sceneSummary comes from the primary guided call (rescue overrides
+    // only when it actually fires AND emits its own summary).
+    let sceneSummary = primary.sceneSummary;
 
     let evaluations = this.scorer.scoreCandidates(
       primaryCandidates,
@@ -71,14 +74,18 @@ export class EnhancementV2Engine {
     stageCounts.acceptedPrimary = finalSuggestions.length;
 
     if (this._shouldRescue(policy, finalSuggestions.length)) {
-      const rescueCandidates = await this._generateRescueCandidates(
+      const rescue = await this._generateRescueCandidates(
         policy,
         context,
         finalSuggestions,
       );
+      const rescueCandidates = rescue.suggestions;
       if (rescueCandidates.length > 0) {
         modelCallCount += 1;
         stageCounts.generatedRescue = rescueCandidates.length;
+        if (rescue.sceneSummary) {
+          sceneSummary = rescue.sceneSummary;
+        }
         const merged = this._dedupeByText([
           ...primaryCandidates,
           ...rescueCandidates,
@@ -127,6 +134,7 @@ export class EnhancementV2Engine {
         stageCounts,
         rejectionSummary,
         modelCallCount,
+        sceneSummary,
         ...(policy.mode === "guided_llm"
           ? {
               systemPromptSent: this.promptBuilder.buildPrompt(context, policy),
@@ -139,13 +147,19 @@ export class EnhancementV2Engine {
   private async _generatePrimaryCandidates(
     policy: SlotPolicy,
     context: EnhancementV2RequestContext,
-  ): Promise<Suggestion[]> {
+  ): Promise<GuidedGenerationResult> {
     if (policy.mode === "enumerated") {
-      return this._generateEnumeratedCandidates(policy, context);
+      return {
+        suggestions: this._generateEnumeratedCandidates(policy, context),
+        sceneSummary: null,
+      };
     }
 
     if (policy.mode === "templated") {
-      return this._generateTemplatedCandidates(policy, context);
+      return {
+        suggestions: this._generateTemplatedCandidates(policy, context),
+        sceneSummary: null,
+      };
     }
 
     return this._generateGuidedCandidates(
@@ -159,13 +173,13 @@ export class EnhancementV2Engine {
     policy: SlotPolicy,
     context: EnhancementV2RequestContext,
     existingSuggestions: Suggestion[],
-  ): Promise<Suggestion[]> {
+  ): Promise<GuidedGenerationResult> {
     if (!policy.rescueStrategy?.enabled || policy.rescueStrategy.maxCalls < 1) {
-      return [];
+      return { suggestions: [], sceneSummary: null };
     }
 
     if (policy.mode === "enumerated") {
-      return [];
+      return { suggestions: [], sceneSummary: null };
     }
 
     const missingCount = Math.max(
@@ -235,7 +249,7 @@ export class EnhancementV2Engine {
     prompt: string,
     context: EnhancementV2RequestContext,
     policy: SlotPolicy,
-  ): Promise<Suggestion[]> {
+  ): Promise<GuidedGenerationResult> {
     const schemaName = policy.suggestionSchemaName ?? "enhancement";
     const operation =
       schemaName === "custom" ? "custom_suggestions" : "enhance_suggestions";
@@ -256,27 +270,76 @@ export class EnhancementV2Engine {
         ? getCustomSuggestionSchema(schemaOptions)
         : getEnhancementSchema(context.isPlaceholder, schemaOptions);
 
-    const suggestions = await StructuredOutputEnforcer.enforceJSON<
-      Suggestion[]
-    >(this.dependencies.aiService, prompt, {
-      operation,
-      schema: schema as {
-        type: "object" | "array";
-        required?: string[];
-        items?: { required?: string[] };
-      } | null,
-      isArray: true,
-      maxRetries: 1,
-      temperature,
-      ...(provider ? { provider } : {}),
-    });
+    // Custom-request path doesn't carry scene_summary — preserve the old shape.
+    if (schemaName === "custom") {
+      const customSuggestions = await StructuredOutputEnforcer.enforceJSON<
+        Suggestion[]
+      >(this.dependencies.aiService, prompt, {
+        operation,
+        schema: schema as {
+          type: "object" | "array";
+          required?: string[];
+          items?: { required?: string[] };
+        } | null,
+        isArray: true,
+        maxRetries: 1,
+        temperature,
+        ...(provider ? { provider } : {}),
+      });
+      return {
+        suggestions: Array.isArray(customSuggestions)
+          ? customSuggestions.map((suggestion) => ({
+              ...suggestion,
+              category: suggestion.category || policy.categoryId,
+            }))
+          : [],
+        sceneSummary: null,
+      };
+    }
 
-    return Array.isArray(suggestions)
-      ? suggestions.map((suggestion) => ({
+    // Enhancement path: capture scene_summary alongside the unwrapped suggestions.
+    const captured = (await StructuredOutputEnforcer.enforceJSON<Suggestion[]>(
+      this.dependencies.aiService,
+      prompt,
+      {
+        operation,
+        schema: schema as {
+          type: "object" | "array";
+          required?: string[];
+          items?: { required?: string[] };
+        } | null,
+        isArray: true,
+        maxRetries: 1,
+        temperature,
+        captureSiblings: true,
+        ...(provider ? { provider } : {}),
+      },
+    )) as unknown as {
+      value: Suggestion[];
+      siblings: Record<string, unknown>;
+    };
+
+    const rawSceneSummary = captured.siblings?.scene_summary;
+    const sceneSummary =
+      typeof rawSceneSummary === "string" && rawSceneSummary.trim().length > 0
+        ? rawSceneSummary
+        : null;
+
+    if (sceneSummary === null) {
+      this.log.info(
+        "EnhancementV2 LLM omitted scene_summary — proceeding without telemetry",
+        { categoryId: policy.categoryId },
+      );
+    }
+
+    const suggestions = Array.isArray(captured.value)
+      ? captured.value.map((suggestion) => ({
           ...suggestion,
           category: suggestion.category || policy.categoryId,
         }))
       : [];
+
+    return { suggestions, sceneSummary };
   }
 
   private _rankAndFilter(

@@ -182,6 +182,13 @@ export interface EnhancementV2DebugPayload {
   rejectionSummary: Record<string, number>;
   modelCallCount: number;
   systemPromptSent?: string;
+  /**
+   * One-sentence scene constraint statement emitted by the LLM BEFORE
+   * the suggestions array. Captured for telemetry; downstream code
+   * does not validate or consume programmatically. Null when the
+   * LLM omitted it or when the engine ran a non-guided mode.
+   */
+  sceneSummary?: string | null;
 }
 
 export interface EnhancementV2Execution {
@@ -189,6 +196,16 @@ export interface EnhancementV2Execution {
   rawSuggestions: Suggestion[];
   finalSuggestions: Suggestion[];
   debug: EnhancementV2DebugPayload;
+}
+
+/**
+ * Internal result shape for the V2 engine's guided-LLM generation path.
+ * Carries the suggestion array (downstream consumers) plus the scene_summary
+ * the LLM emitted (telemetry-only metadata).
+ */
+export interface GuidedGenerationResult {
+  suggestions: Suggestion[];
+  sceneSummary: string | null;
 }
 
 export interface EnhancementV2Dependencies {

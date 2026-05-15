@@ -134,18 +134,31 @@ describe("EnhancementV2Engine", () => {
 
   it("uses a single rescue call for guided LLM policies when too few candidates survive scoring", async () => {
     const engine = createEngine();
+    // Engine now calls enforceJSON with captureSiblings:true on the
+    // enhancement path, so the mock returns { value, siblings } per
+    // the new contract (Sub-project B).
     mockEnforceJSON
-      .mockResolvedValueOnce([
-        { text: "poetic hush of rain", category: "environment.weather" },
-        { text: "gentle morning drizzle", category: "environment.weather" },
-      ])
-      .mockResolvedValueOnce([
-        {
-          text: "heavy snowfall under grey skies",
-          category: "environment.weather",
+      .mockResolvedValueOnce({
+        value: [
+          { text: "poetic hush of rain", category: "environment.weather" },
+          { text: "gentle morning drizzle", category: "environment.weather" },
+        ],
+        siblings: {
+          scene_summary: "weather scene — keep precipitation theme",
         },
-        { text: "wind-driven rain curtain", category: "environment.weather" },
-      ]);
+      })
+      .mockResolvedValueOnce({
+        value: [
+          {
+            text: "heavy snowfall under grey skies",
+            category: "environment.weather",
+          },
+          { text: "wind-driven rain curtain", category: "environment.weather" },
+        ],
+        siblings: {
+          scene_summary: "weather scene — keep precipitation theme",
+        },
+      });
 
     const execution = await engine.execute(
       createContext({
