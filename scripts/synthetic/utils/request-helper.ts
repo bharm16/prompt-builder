@@ -31,6 +31,7 @@ export interface HarnessPrompt {
   id: string;
   text: string;
   tags: string[];
+  highlights: { text: string; category: string }[];
 }
 
 export async function loadPrompts(): Promise<HarnessPrompt[]> {
