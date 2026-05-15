@@ -4,6 +4,7 @@ const {
   parseStructuredOutputMock,
   validateStructuredOutputMock,
   unwrapSuggestionsArrayMock,
+  unwrapSuggestionsArrayWithSiblingsMock,
   enhancePromptForJSONMock,
   enhancePromptWithErrorFeedbackMock,
 } = vi.hoisted(() => ({
@@ -12,6 +13,11 @@ const {
   unwrapSuggestionsArrayMock: vi.fn((value: unknown) => ({
     unwrapped: false,
     value,
+  })),
+  unwrapSuggestionsArrayWithSiblingsMock: vi.fn((value: unknown) => ({
+    unwrapped: false,
+    value,
+    siblings: {},
   })),
   enhancePromptForJSONMock: vi.fn((prompt: string) => `${prompt}\nJSON`),
   enhancePromptWithErrorFeedbackMock: vi.fn(
@@ -50,6 +56,7 @@ vi.mock("../validate", () => ({
 
 vi.mock("../unwrapper", () => ({
   unwrapSuggestionsArray: unwrapSuggestionsArrayMock,
+  unwrapSuggestionsArrayWithSiblings: unwrapSuggestionsArrayWithSiblingsMock,
 }));
 
 vi.mock("../promptEnhancers", () => ({
@@ -145,5 +152,69 @@ describe("StructuredOutputEnforcer", () => {
       systemPrompt?: string;
     };
     expect(retryCallOptions.systemPrompt).toContain("Previous attempt failed");
+  });
+
+  it("returns { value, siblings } when captureSiblings is true and response has siblings", async () => {
+    parseStructuredOutputMock.mockReturnValueOnce({
+      scene_summary: "aerial drone — must be airborne",
+      suggestions: [{ text: "drone glide", explanation: "stays aloft" }],
+    });
+    unwrapSuggestionsArrayWithSiblingsMock.mockReturnValueOnce({
+      unwrapped: true,
+      value: [{ text: "drone glide", explanation: "stays aloft" }],
+      siblings: { scene_summary: "aerial drone — must be airborne" },
+    });
+
+    const execute = vi.fn().mockResolvedValue({
+      text: JSON.stringify({
+        scene_summary: "aerial drone — must be airborne",
+        suggestions: [{ text: "drone glide", explanation: "stays aloft" }],
+      }),
+      metadata: {},
+    });
+
+    const result = await StructuredOutputEnforcer.enforceJSON<
+      Array<{ text: string; explanation: string }>
+    >({ execute }, "prompt", {
+      operation: "enhance_suggestions",
+      isArray: true,
+      maxRetries: 0,
+      captureSiblings: true,
+    });
+
+    expect(result).toMatchObject({
+      value: [{ text: "drone glide", explanation: "stays aloft" }],
+      siblings: { scene_summary: "aerial drone — must be airborne" },
+    });
+  });
+
+  it("returns { value, siblings: {} } when captureSiblings is true but response has no siblings", async () => {
+    parseStructuredOutputMock.mockReturnValueOnce({
+      suggestions: [{ text: "x" }],
+    });
+    unwrapSuggestionsArrayWithSiblingsMock.mockReturnValueOnce({
+      unwrapped: true,
+      value: [{ text: "x" }],
+      siblings: {},
+    });
+
+    const execute = vi.fn().mockResolvedValue({
+      text: '{"suggestions":[{"text":"x"}]}',
+      metadata: {},
+    });
+
+    const result = await StructuredOutputEnforcer.enforceJSON<
+      Array<{ text: string }>
+    >({ execute }, "prompt", {
+      operation: "enhance_suggestions",
+      isArray: true,
+      maxRetries: 0,
+      captureSiblings: true,
+    });
+
+    expect(result).toMatchObject({
+      value: [{ text: "x" }],
+      siblings: {},
+    });
   });
 });

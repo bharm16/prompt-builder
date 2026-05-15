@@ -13,7 +13,10 @@ import {
 } from "./promptEnhancers";
 import { parseStructuredOutput } from "./parse";
 import { validateStructuredOutput } from "./validate";
-import { unwrapSuggestionsArray } from "./unwrapper";
+import {
+  unwrapSuggestionsArray,
+  unwrapSuggestionsArrayWithSiblings,
+} from "./unwrapper";
 import type { StructuredOutputSchema } from "./types";
 
 interface EnforceJSONOptions {
@@ -25,6 +28,13 @@ interface EnforceJSONOptions {
   provider?: ProviderType;
   /** Model being used (helps with provider detection) */
   model?: string;
+  /**
+   * When true, enforceJSON returns `{ value, siblings }` where siblings
+   * are the parent object's non-`suggestions` fields. Used to capture
+   * LLM-emitted metadata alongside the unwrapped array. Default: false
+   * (existing callers receive T unchanged).
+   */
+  captureSiblings?: boolean;
   [key: string]: unknown;
 }
 
@@ -148,6 +158,27 @@ export class StructuredOutputEnforcer {
         // since the schema describes the wire format (e.g., {"suggestions": [...]} for Groq)
         if (schema) {
           validateStructuredOutput(parsedJSON, schema);
+        }
+
+        if (options.captureSiblings) {
+          const captured = unwrapSuggestionsArrayWithSiblings<T>(
+            parsedJSON,
+            isArray,
+          );
+          if (captured.unwrapped) {
+            logger.debug(
+              "Auto-unwrapping suggestions array from object wrapper",
+            );
+          }
+          logger.debug("Successfully extracted structured output", {
+            type: isArray ? "array" : "object",
+            provider,
+            siblingsCount: Object.keys(captured.siblings).length,
+          });
+          return {
+            value: captured.value,
+            siblings: captured.siblings,
+          } as unknown as T;
         }
 
         const unwrapped = unwrapSuggestionsArray(parsedJSON, isArray);
