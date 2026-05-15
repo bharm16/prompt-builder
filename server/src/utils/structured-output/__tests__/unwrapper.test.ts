@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { unwrapSuggestionsArray } from "../unwrapper";
+import {
+  unwrapSuggestionsArray,
+  unwrapSuggestionsArrayWithSiblings,
+} from "../unwrapper";
 
 describe("unwrapSuggestionsArray", () => {
   describe("error handling", () => {
@@ -141,5 +144,42 @@ describe("unwrapSuggestionsArray", () => {
 
       expect(result.unwrapped).toBe(true);
     });
+  });
+});
+
+describe("unwrapSuggestionsArrayWithSiblings", () => {
+  it("returns value plus siblings when parent is an object with suggestions", () => {
+    const parent = {
+      scene_summary: "aerial drone — must be airborne",
+      suggestions: [{ text: "drone glide" }],
+    };
+    const result = unwrapSuggestionsArrayWithSiblings<
+      typeof parent.suggestions
+    >(parent, true);
+    expect(result.unwrapped).toBe(true);
+    expect(result.value).toEqual([{ text: "drone glide" }]);
+    expect(result.siblings).toEqual({
+      scene_summary: "aerial drone — must be airborne",
+    });
+  });
+
+  it("returns empty siblings when parent has only the suggestions field", () => {
+    const parent = { suggestions: [{ text: "x" }] };
+    const result = unwrapSuggestionsArrayWithSiblings<
+      typeof parent.suggestions
+    >(parent, true);
+    expect(result.unwrapped).toBe(true);
+    expect(result.siblings).toEqual({});
+  });
+
+  it("returns empty siblings and unwrapped=false when parent is not an object", () => {
+    const parent = [{ text: "x" }];
+    const result = unwrapSuggestionsArrayWithSiblings<typeof parent>(
+      parent,
+      true,
+    );
+    expect(result.unwrapped).toBe(false);
+    expect(result.value).toEqual([{ text: "x" }]);
+    expect(result.siblings).toEqual({});
   });
 });
