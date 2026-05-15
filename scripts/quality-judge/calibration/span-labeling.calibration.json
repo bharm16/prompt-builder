@@ -1,1 +1,626 @@
-[]
+[
+  {
+    "scoredEvent": "label-spans.completed",
+    "scoredEventId": "019e23e7-3af6-708e-85aa-4388dd69b68b",
+    "inputContent": {
+      "inputText": "Cinematic anamorphic shot, film grain, teal and orange color grade"
+    },
+    "outputContent": {
+      "spans": [
+        {
+          "category": "style",
+          "text": "Cinematic anamorphic shot,"
+        },
+        {
+          "category": "color",
+          "text": "film grain, teal"
+        },
+        {
+          "category": "style",
+          "text": "and orange color"
+        },
+        {
+          "category": "color",
+          "text": "grade"
+        }
+      ]
+    },
+    "humanScore": 0,
+    "humanDimensions": {},
+    "humanNotes": "TODO: label me",
+    "authoredAt": "2026-05-15T05:28:50.248Z",
+    "authoredBy": "claude"
+  },
+  {
+    "scoredEvent": "label-spans.completed",
+    "scoredEventId": "019e23e7-3af6-708e-85aa-437401c03fc0",
+    "inputContent": {
+      "inputText": "Macro close-up of dewdrops on a spider web, shallow depth of field"
+    },
+    "outputContent": {
+      "spans": [
+        {
+          "category": "camera.shot",
+          "text": "Macro close-up of"
+        },
+        {
+          "category": "subject",
+          "text": "dewdrops on a"
+        },
+        {
+          "category": "camera.shot",
+          "text": "spider web, shallow"
+        },
+        {
+          "category": "subject",
+          "text": "depth of field"
+        }
+      ]
+    },
+    "humanScore": 0,
+    "humanDimensions": {},
+    "humanNotes": "TODO: label me",
+    "authoredAt": "2026-05-15T05:28:50.248Z",
+    "authoredBy": "claude"
+  },
+  {
+    "scoredEvent": "label-spans.completed",
+    "scoredEventId": "019e23e7-3af6-708e-85aa-4388dd69b68b",
+    "inputContent": {
+      "inputText": "Cinematic anamorphic shot, film grain, teal and orange color grade"
+    },
+    "outputContent": {
+      "spans": [
+        {
+          "category": "style",
+          "text": "Cinematic anamorphic shot,"
+        },
+        {
+          "category": "color",
+          "text": "film grain, teal"
+        },
+        {
+          "category": "style",
+          "text": "and orange color"
+        },
+        {
+          "category": "color",
+          "text": "grade"
+        }
+      ]
+    },
+    "humanScore": 0,
+    "humanDimensions": {},
+    "humanNotes": "TODO: label me",
+    "authoredAt": "2026-05-15T05:28:50.248Z",
+    "authoredBy": "claude"
+  },
+  {
+    "scoredEvent": "label-spans.completed",
+    "scoredEventId": "019e23e7-3af6-708e-85aa-438eb78ecaec",
+    "inputContent": {
+      "inputText": "A barista pours steamed milk creating a heart pattern in coffee"
+    },
+    "outputContent": {
+      "spans": [
+        {
+          "category": "action",
+          "text": "A barista pours"
+        },
+        {
+          "category": "subject",
+          "text": "steamed milk creating"
+        },
+        {
+          "category": "camera.shot",
+          "text": "a heart pattern"
+        },
+        {
+          "category": "action",
+          "text": "in coffee"
+        }
+      ]
+    },
+    "humanScore": 0,
+    "humanDimensions": {},
+    "humanNotes": "TODO: label me",
+    "authoredAt": "2026-05-15T05:28:50.248Z",
+    "authoredBy": "claude"
+  },
+  {
+    "scoredEvent": "label-spans.completed",
+    "scoredEventId": "019e23e7-3af6-708e-85aa-436cf8af0862",
+    "inputContent": {
+      "inputText": "A young woman with red hair walks through a misty forest at dawn"
+    },
+    "outputContent": {
+      "spans": [
+        {
+          "category": "subject",
+          "text": "A young woman"
+        },
+        {
+          "category": "lighting",
+          "text": "with red hair"
+        },
+        {
+          "category": "setting",
+          "text": "walks through a"
+        },
+        {
+          "category": "subject",
+          "text": "misty forest at"
+        },
+        {
+          "category": "lighting",
+          "text": "dawn"
+        }
+      ]
+    },
+    "humanScore": 0,
+    "humanDimensions": {},
+    "humanNotes": "TODO: label me",
+    "authoredAt": "2026-05-15T05:28:50.248Z",
+    "authoredBy": "claude"
+  },
+  {
+    "scoredEvent": "label-spans.completed",
+    "scoredEventId": "019e23e7-3af6-708e-85aa-4396c6fe87d1",
+    "inputContent": {
+      "inputText": "An abandoned 1950s diner overgrown with vines"
+    },
+    "outputContent": {
+      "spans": [
+        {
+          "category": "setting",
+          "text": "An abandoned 1950s"
+        },
+        {
+          "category": "subject",
+          "text": "diner overgrown with"
+        },
+        {
+          "category": "setting",
+          "text": "vines"
+        }
+      ]
+    },
+    "humanScore": 0,
+    "humanDimensions": {},
+    "humanNotes": "TODO: label me",
+    "authoredAt": "2026-05-15T05:28:50.248Z",
+    "authoredBy": "claude"
+  },
+  {
+    "scoredEvent": "label-spans.completed",
+    "scoredEventId": "019e23e7-3af6-708e-85aa-436ee6e040af",
+    "inputContent": {
+      "inputText": "An elderly fisherman casts his line into a calm mountain lake"
+    },
+    "outputContent": {
+      "spans": [
+        {
+          "category": "subject",
+          "text": "An elderly fisherman"
+        },
+        {
+          "category": "setting",
+          "text": "casts his line"
+        },
+        {
+          "category": "action",
+          "text": "into a calm"
+        },
+        {
+          "category": "subject",
+          "text": "mountain lake"
+        }
+      ]
+    },
+    "humanScore": 0,
+    "humanDimensions": {},
+    "humanNotes": "TODO: label me",
+    "authoredAt": "2026-05-15T05:28:50.248Z",
+    "authoredBy": "claude"
+  },
+  {
+    "scoredEvent": "label-spans.completed",
+    "scoredEventId": "019e27e9-0564-7159-9d95-e1f5e44d5e90",
+    "inputContent": {
+      "inputText": "Wes Anderson symmetrical composition, pastel palette"
+    },
+    "outputContent": {
+      "spans": [
+        {
+          "category": "style",
+          "text": "Wes Anderson symmetrical"
+        },
+        {
+          "category": "composition",
+          "text": "composition, pastel palette"
+        }
+      ]
+    },
+    "humanScore": 0,
+    "humanDimensions": {},
+    "humanNotes": "TODO: label me",
+    "authoredAt": "2026-05-15T05:28:50.248Z",
+    "authoredBy": "claude"
+  },
+  {
+    "scoredEvent": "label-spans.completed",
+    "scoredEventId": "019e27e9-0564-7159-9d95-e203319d1eb6",
+    "inputContent": {
+      "inputText": "Handheld camera follows a chef through a busy restaurant kitchen, warm tungsten lighting, shallow focus pulls between faces"
+    },
+    "outputContent": {
+      "spans": [
+        {
+          "category": "camera.movement",
+          "text": "Handheld camera follows"
+        },
+        {
+          "category": "subject",
+          "text": "a chef through"
+        },
+        {
+          "category": "setting",
+          "text": "a busy restaurant"
+        },
+        {
+          "category": "lighting",
+          "text": "kitchen, warm tungsten"
+        },
+        {
+          "category": "camera.shot",
+          "text": "lighting, shallow focus"
+        },
+        {
+          "category": "camera.movement",
+          "text": "pulls between faces"
+        }
+      ]
+    },
+    "humanScore": 0,
+    "humanDimensions": {},
+    "humanNotes": "TODO: label me",
+    "authoredAt": "2026-05-15T05:28:50.248Z",
+    "authoredBy": "claude"
+  },
+  {
+    "scoredEvent": "label-spans.completed",
+    "scoredEventId": "019e27e9-0564-7159-9d95-e1d539b42945",
+    "inputContent": {
+      "inputText": "A young woman with red hair walks through a misty forest at dawn"
+    },
+    "outputContent": {
+      "spans": [
+        {
+          "category": "subject",
+          "text": "A young woman"
+        },
+        {
+          "category": "lighting",
+          "text": "with red hair"
+        },
+        {
+          "category": "setting",
+          "text": "walks through a"
+        },
+        {
+          "category": "subject",
+          "text": "misty forest at"
+        },
+        {
+          "category": "lighting",
+          "text": "dawn"
+        }
+      ]
+    },
+    "humanScore": 0,
+    "humanDimensions": {},
+    "humanNotes": "TODO: label me",
+    "authoredAt": "2026-05-15T05:28:50.248Z",
+    "authoredBy": "claude"
+  },
+  {
+    "scoredEvent": "label-spans.completed",
+    "scoredEventId": "019e29af-9c3b-7ff8-bc77-87fbd4393246",
+    "inputContent": {
+      "inputText": "Slow motion shot of a hummingbird hovering near a hibiscus flower"
+    },
+    "outputContent": {
+      "spans": [
+        {
+          "category": "technical",
+          "text": "Slow motion"
+        },
+        {
+          "category": "subject.identity",
+          "text": "hummingbird"
+        },
+        {
+          "category": "action.movement",
+          "text": "hovering"
+        },
+        {
+          "category": "environment.context",
+          "text": "hibiscus flower"
+        }
+      ]
+    },
+    "humanScore": 0,
+    "humanDimensions": {},
+    "humanNotes": "TODO: label me",
+    "authoredAt": "2026-05-15T05:28:50.248Z",
+    "authoredBy": "claude"
+  },
+  {
+    "scoredEvent": "label-spans.completed",
+    "scoredEventId": "019e29b0-12bf-7670-b4ef-51f3c814acba",
+    "inputContent": {
+      "inputText": "Golden hour light catches dust motes in an antique library, slow vertical pan reveals towering bookshelves"
+    },
+    "outputContent": {
+      "spans": [
+        {
+          "category": "lighting.timeOfDay",
+          "text": "Golden hour light"
+        },
+        {
+          "category": "environment.context",
+          "text": "dust motes"
+        },
+        {
+          "category": "environment.location",
+          "text": "antique library"
+        },
+        {
+          "category": "camera.movement",
+          "text": "slow vertical pan"
+        },
+        {
+          "category": "environment.context",
+          "text": "towering bookshelves"
+        }
+      ]
+    },
+    "humanScore": 0,
+    "humanDimensions": {},
+    "humanNotes": "TODO: label me",
+    "authoredAt": "2026-05-15T05:28:50.248Z",
+    "authoredBy": "claude"
+  },
+  {
+    "scoredEvent": "label-spans.completed",
+    "scoredEventId": "019e29b0-2203-720c-ab94-aad19fb27d90",
+    "inputContent": {
+      "inputText": "Rain on a window"
+    },
+    "outputContent": {
+      "spans": [
+        {
+          "category": "environment.weather",
+          "text": "Rain"
+        },
+        {
+          "category": "environment.context",
+          "text": "window"
+        }
+      ]
+    },
+    "humanScore": 0,
+    "humanDimensions": {},
+    "humanNotes": "TODO: label me",
+    "authoredAt": "2026-05-15T05:28:50.248Z",
+    "authoredBy": "claude"
+  },
+  {
+    "scoredEvent": "label-spans.completed",
+    "scoredEventId": "019e27e9-0564-7159-9d95-e217829c88c3",
+    "inputContent": {
+      "inputText": "A single candle flickers"
+    },
+    "outputContent": {
+      "spans": [
+        {
+          "category": "subject",
+          "text": "A single candle"
+        },
+        {
+          "category": "lighting",
+          "text": "flickers"
+        }
+      ]
+    },
+    "humanScore": 0,
+    "humanDimensions": {},
+    "humanNotes": "TODO: label me",
+    "authoredAt": "2026-05-15T05:28:50.248Z",
+    "authoredBy": "claude"
+  },
+  {
+    "scoredEvent": "label-spans.completed",
+    "scoredEventId": "019e27f4-18a4-71ce-80cd-8b4e456be716",
+    "inputContent": {
+      "inputText": "Rain on a window"
+    },
+    "outputContent": {
+      "spans": [
+        {
+          "category": "environment.weather",
+          "text": "Rain"
+        },
+        {
+          "category": "environment.context",
+          "text": "window"
+        }
+      ]
+    },
+    "humanScore": 0,
+    "humanDimensions": {},
+    "humanNotes": "TODO: label me",
+    "authoredAt": "2026-05-15T05:28:50.248Z",
+    "authoredBy": "claude"
+  },
+  {
+    "scoredEvent": "label-spans.completed",
+    "scoredEventId": "019e27f3-a211-711e-a1bf-e74e2fa4c6d9",
+    "inputContent": {
+      "inputText": "Time-lapse of clouds racing over a desert mesa"
+    },
+    "outputContent": {
+      "spans": [
+        {
+          "category": "style.aesthetic",
+          "text": "Time-lapse"
+        },
+        {
+          "category": "subject.identity",
+          "text": "clouds"
+        },
+        {
+          "category": "action.movement",
+          "text": "racing"
+        },
+        {
+          "category": "environment.location",
+          "text": "desert mesa"
+        }
+      ]
+    },
+    "humanScore": 0,
+    "humanDimensions": {},
+    "humanNotes": "TODO: label me",
+    "authoredAt": "2026-05-15T05:28:50.248Z",
+    "authoredBy": "claude"
+  },
+  {
+    "scoredEvent": "label-spans.completed",
+    "scoredEventId": "019e27f3-c958-7b70-abbb-653e0c65946f",
+    "inputContent": {
+      "inputText": "Two children chase fireflies in a backyard at dusk"
+    },
+    "outputContent": {
+      "spans": [
+        {
+          "category": "subject.identity",
+          "text": "Two children"
+        },
+        {
+          "category": "action.movement",
+          "text": "chase fireflies"
+        },
+        {
+          "category": "environment.location",
+          "text": "backyard"
+        },
+        {
+          "category": "lighting.timeOfDay",
+          "text": "dusk"
+        }
+      ]
+    },
+    "humanScore": 0,
+    "humanDimensions": {},
+    "humanNotes": "TODO: label me",
+    "authoredAt": "2026-05-15T05:28:50.248Z",
+    "authoredBy": "claude"
+  },
+  {
+    "scoredEvent": "label-spans.completed",
+    "scoredEventId": "019e27f3-d3db-7846-a71d-1b8a43b8d03a",
+    "inputContent": {
+      "inputText": "A bustling night market in Bangkok with neon signs reflected in puddles"
+    },
+    "outputContent": {
+      "spans": [
+        {
+          "category": "environment.location",
+          "text": "bustling night market in Bangkok"
+        },
+        {
+          "category": "environment.context",
+          "text": "neon signs reflected in puddles"
+        }
+      ]
+    },
+    "humanScore": 0,
+    "humanDimensions": {},
+    "humanNotes": "TODO: label me",
+    "authoredAt": "2026-05-15T05:28:50.248Z",
+    "authoredBy": "claude"
+  },
+  {
+    "scoredEvent": "label-spans.completed",
+    "scoredEventId": "019e27f3-ec9d-789c-8326-a332f7ae0619",
+    "inputContent": {
+      "inputText": "Handheld camera follows a chef through a busy restaurant kitchen, warm tungsten lighting, shallow focus pulls between faces"
+    },
+    "outputContent": {
+      "spans": [
+        {
+          "category": "camera.movement",
+          "text": "Handheld camera follows"
+        },
+        {
+          "category": "subject.identity",
+          "text": "chef"
+        },
+        {
+          "category": "environment.location",
+          "text": "busy restaurant kitchen"
+        },
+        {
+          "category": "lighting.colorTemp",
+          "text": "warm tungsten lighting"
+        },
+        {
+          "category": "camera.focus",
+          "text": "shallow focus pulls between faces"
+        }
+      ]
+    },
+    "humanScore": 0,
+    "humanDimensions": {},
+    "humanNotes": "TODO: label me",
+    "authoredAt": "2026-05-15T05:28:50.248Z",
+    "authoredBy": "claude"
+  },
+  {
+    "scoredEvent": "label-spans.completed",
+    "scoredEventId": "019e27f4-09b1-7cad-b945-7ded9baa3749",
+    "inputContent": {
+      "inputText": "Golden hour light catches dust motes in an antique library, slow vertical pan reveals towering bookshelves"
+    },
+    "outputContent": {
+      "spans": [
+        {
+          "category": "lighting.timeOfDay",
+          "text": "Golden hour light"
+        },
+        {
+          "category": "environment.context",
+          "text": "dust motes"
+        },
+        {
+          "category": "environment.location",
+          "text": "antique library"
+        },
+        {
+          "category": "camera.movement",
+          "text": "slow vertical pan"
+        },
+        {
+          "category": "environment.context",
+          "text": "towering bookshelves"
+        }
+      ]
+    },
+    "humanScore": 0,
+    "humanDimensions": {},
+    "humanNotes": "TODO: label me",
+    "authoredAt": "2026-05-15T05:28:50.248Z",
+    "authoredBy": "claude"
+  }
+]

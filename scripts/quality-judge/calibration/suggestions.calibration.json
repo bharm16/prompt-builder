@@ -1,1 +1,470 @@
-[]
+[
+  {
+    "scoredEvent": "suggestions.completed",
+    "scoredEventId": "019e287b-2349-7581-88a5-4abe4bb318c0",
+    "inputContent": {
+      "highlightedText": "Wes Anderson",
+      "fullPrompt": "Wes Anderson symmetrical composition, pastel palette",
+      "highlightedCategory": "style"
+    },
+    "outputContent": {
+      "suggestions": [
+        "Pastel",
+        "Symmetrical",
+        "Quirky",
+        "Whimsical",
+        "Stylized",
+        "Artistic"
+      ]
+    },
+    "humanScore": 0,
+    "humanDimensions": {},
+    "humanNotes": "TODO: label me",
+    "authoredAt": "2026-05-15T05:28:48.451Z",
+    "authoredBy": "claude"
+  },
+  {
+    "scoredEvent": "suggestions.completed",
+    "scoredEventId": "019e2899-157c-7a64-8bff-d5fc449f57e2",
+    "inputContent": {
+      "highlightedText": "Two children",
+      "fullPrompt": "Two children chase fireflies in a backyard at dusk",
+      "highlightedCategory": "action"
+    },
+    "outputContent": {
+      "suggestions": [
+        "Two kids",
+        "Two siblings",
+        "Two little girls",
+        "Two boys",
+        "Two toddlers"
+      ]
+    },
+    "humanScore": 0,
+    "humanDimensions": {},
+    "humanNotes": "TODO: label me",
+    "authoredAt": "2026-05-15T05:28:48.451Z",
+    "authoredBy": "claude"
+  },
+  {
+    "scoredEvent": "suggestions.completed",
+    "scoredEventId": "019e29f3-bf71-7130-834c-102c2cd44541",
+    "inputContent": {
+      "highlightedText": "teal and orange color grade",
+      "fullPrompt": "Cinematic anamorphic shot, film grain, teal and orange color grade",
+      "highlightedCategory": "style.colorGrade"
+    },
+    "outputContent": {
+      "suggestions": [
+        "desaturated",
+        "warm amber",
+        "cool steel-blue",
+        "muted pastel",
+        "high contrast",
+        "desaturated grade"
+      ]
+    },
+    "humanScore": 0,
+    "humanDimensions": {},
+    "humanNotes": "TODO: label me",
+    "authoredAt": "2026-05-15T05:28:48.451Z",
+    "authoredBy": "claude"
+  },
+  {
+    "scoredEvent": "suggestions.completed",
+    "scoredEventId": "019e29af-2cf9-7a5a-b1bb-2859ca6a325f",
+    "inputContent": {
+      "highlightedText": "Slow motion",
+      "fullPrompt": "Slow motion shot of a hummingbird hovering near a hibiscus flower",
+      "highlightedCategory": "camera.focus"
+    },
+    "outputContent": {
+      "suggestions": [
+        "tight focus",
+        "tight rack focus",
+        "tight bokeh",
+        "shallow focus",
+        "shallow rack focus",
+        "shallow bokeh"
+      ]
+    },
+    "humanScore": 0,
+    "humanDimensions": {},
+    "humanNotes": "TODO: label me",
+    "authoredAt": "2026-05-15T05:28:48.451Z",
+    "authoredBy": "claude"
+  },
+  {
+    "scoredEvent": "suggestions.completed",
+    "scoredEventId": "019e2899-157c-7a64-8bff-d5fc449f57e2",
+    "inputContent": {
+      "highlightedText": "Two children",
+      "fullPrompt": "Two children chase fireflies in a backyard at dusk",
+      "highlightedCategory": "action"
+    },
+    "outputContent": {
+      "suggestions": [
+        "Two kids",
+        "Two siblings",
+        "Two little girls",
+        "Two boys",
+        "Two toddlers"
+      ]
+    },
+    "humanScore": 0,
+    "humanDimensions": {},
+    "humanNotes": "TODO: label me",
+    "authoredAt": "2026-05-15T05:28:48.451Z",
+    "authoredBy": "claude"
+  },
+  {
+    "scoredEvent": "suggestions.completed",
+    "scoredEventId": "019e2899-1ba4-7327-84ae-7018efd7088a",
+    "inputContent": {
+      "highlightedText": "An abandoned",
+      "fullPrompt": "An abandoned 1950s diner overgrown with vines",
+      "highlightedCategory": "environment.location"
+    },
+    "outputContent": {
+      "suggestions": [
+        "A derelict",
+        "A forgotten",
+        "A decaying",
+        "A neglected",
+        "A crumbling",
+        "A weathered"
+      ]
+    },
+    "humanScore": 0,
+    "humanDimensions": {},
+    "humanNotes": "TODO: label me",
+    "authoredAt": "2026-05-15T05:28:48.451Z",
+    "authoredBy": "claude"
+  },
+  {
+    "scoredEvent": "suggestions.completed",
+    "scoredEventId": "019e29f3-ad8f-7e96-b421-635500135e67",
+    "inputContent": {
+      "highlightedText": "Slow motion",
+      "fullPrompt": "Slow motion shot of a hummingbird hovering near a hibiscus flower",
+      "highlightedCategory": "technical.frameRate"
+    },
+    "outputContent": {
+      "suggestions": [
+        "24fps",
+        "30fps",
+        "48fps",
+        "60fps",
+        "120fps"
+      ]
+    },
+    "humanScore": 0,
+    "humanDimensions": {},
+    "humanNotes": "TODO: label me",
+    "authoredAt": "2026-05-15T05:28:48.451Z",
+    "authoredBy": "claude"
+  },
+  {
+    "scoredEvent": "suggestions.completed",
+    "scoredEventId": "019e29f3-b4f1-7854-ad24-955ea491f855",
+    "inputContent": {
+      "highlightedText": "hovering",
+      "fullPrompt": "Slow motion shot of a hummingbird hovering near a hibiscus flower",
+      "highlightedCategory": "action.movement"
+    },
+    "outputContent": {
+      "suggestions": [
+        "suspended near",
+        "suspended",
+        "suspended in place",
+        "balancing",
+        "suspended midair",
+        "stationary"
+      ]
+    },
+    "humanScore": 0,
+    "humanDimensions": {},
+    "humanNotes": "TODO: label me",
+    "authoredAt": "2026-05-15T05:28:48.451Z",
+    "authoredBy": "claude"
+  },
+  {
+    "scoredEvent": "suggestions.completed",
+    "scoredEventId": "019e29f3-cf17-753b-8088-6d93a858d135",
+    "inputContent": {
+      "highlightedText": "A barista",
+      "fullPrompt": "A barista pours steamed milk creating a heart pattern in coffee",
+      "highlightedCategory": "subject.identity"
+    },
+    "outputContent": {
+      "suggestions": [
+        "A coffee shop employee"
+      ]
+    },
+    "humanScore": 0,
+    "humanDimensions": {},
+    "humanNotes": "TODO: label me",
+    "authoredAt": "2026-05-15T05:28:48.451Z",
+    "authoredBy": "claude"
+  },
+  {
+    "scoredEvent": "suggestions.completed",
+    "scoredEventId": "019e29f3-f782-72ab-a2ed-af8b3544c78c",
+    "inputContent": {
+      "highlightedText": "establishing shot",
+      "fullPrompt": "Wide angle establishing shot of a snowy village, dolly forward toward a single illuminated window",
+      "highlightedCategory": "shot.type"
+    },
+    "outputContent": {
+      "suggestions": [
+        "wide shot",
+        "medium wide shot",
+        "extreme wide shot",
+        "extreme close-up",
+        "close-up",
+        "medium close-up"
+      ]
+    },
+    "humanScore": 0,
+    "humanDimensions": {},
+    "humanNotes": "TODO: label me",
+    "authoredAt": "2026-05-15T05:28:48.451Z",
+    "authoredBy": "claude"
+  },
+  {
+    "scoredEvent": "suggestions.completed",
+    "scoredEventId": "019e29f3-f782-72ab-a2ed-af8adb029c42",
+    "inputContent": {
+      "highlightedText": "Wide angle",
+      "fullPrompt": "Wide angle establishing shot of a snowy village, dolly forward toward a single illuminated window",
+      "highlightedCategory": "camera.lens"
+    },
+    "outputContent": {
+      "suggestions": [
+        "24mm lens",
+        "24mm prime lens",
+        "35mm lens",
+        "35mm prime lens",
+        "50mm lens",
+        "50mm prime lens"
+      ]
+    },
+    "humanScore": 0,
+    "humanDimensions": {},
+    "humanNotes": "TODO: label me",
+    "authoredAt": "2026-05-15T05:28:48.451Z",
+    "authoredBy": "claude"
+  },
+  {
+    "scoredEvent": "suggestions.completed",
+    "scoredEventId": "019e29f4-1e2d-743c-ba3a-b9fa2b096707",
+    "inputContent": {
+      "highlightedText": "flickers",
+      "fullPrompt": "A single candle flickers",
+      "highlightedCategory": "action.movement"
+    },
+    "outputContent": {
+      "suggestions": [
+        "sways",
+        "trembles",
+        "dances",
+        "wavers",
+        "shimmers",
+        "glows"
+      ]
+    },
+    "humanScore": 0,
+    "humanDimensions": {},
+    "humanNotes": "TODO: label me",
+    "authoredAt": "2026-05-15T05:28:48.451Z",
+    "authoredBy": "claude"
+  },
+  {
+    "scoredEvent": "suggestions.completed",
+    "scoredEventId": "019e29af-2cf8-7498-9a0c-b87cbd6eafcb",
+    "inputContent": {
+      "highlightedText": "A dimly",
+      "fullPrompt": "A dimly lit jazz club with a single spotlight on a saxophone player",
+      "highlightedCategory": "lighting.source"
+    },
+    "outputContent": {
+      "suggestions": [
+        "soft window light",
+        "soft sunlight",
+        "soft neon glow",
+        "soft candlelight",
+        "soft streetlamp spill",
+        "harsh window light"
+      ]
+    },
+    "humanScore": 0,
+    "humanDimensions": {},
+    "humanNotes": "TODO: label me",
+    "authoredAt": "2026-05-15T05:28:48.451Z",
+    "authoredBy": "claude"
+  },
+  {
+    "scoredEvent": "suggestions.completed",
+    "scoredEventId": "019e29af-4987-70d6-8ca2-01713e4e6f3f",
+    "inputContent": {
+      "highlightedText": "Rain on",
+      "fullPrompt": "Rain on a window",
+      "highlightedCategory": "subject"
+    },
+    "outputContent": {
+      "suggestions": [
+        "Raindrops on",
+        "Water on",
+        "Drops on"
+      ]
+    },
+    "humanScore": 0,
+    "humanDimensions": {},
+    "humanNotes": "TODO: label me",
+    "authoredAt": "2026-05-15T05:28:48.451Z",
+    "authoredBy": "claude"
+  },
+  {
+    "scoredEvent": "suggestions.completed",
+    "scoredEventId": "019e29af-4cd3-7dca-9a48-d8afd69e179f",
+    "inputContent": {
+      "highlightedText": "A single",
+      "fullPrompt": "A single candle flickers",
+      "highlightedCategory": "subject"
+    },
+    "outputContent": {
+      "suggestions": [
+        "One lone",
+        "A solitary",
+        "An only",
+        "One tiny",
+        "A lone",
+        "One small"
+      ]
+    },
+    "humanScore": 0,
+    "humanDimensions": {},
+    "humanNotes": "TODO: label me",
+    "authoredAt": "2026-05-15T05:28:48.451Z",
+    "authoredBy": "claude"
+  },
+  {
+    "scoredEvent": "suggestions.completed",
+    "scoredEventId": "019e29f3-a437-7c66-87f3-167fc123df62",
+    "inputContent": {
+      "highlightedText": "dewdrops",
+      "fullPrompt": "Macro close-up of dewdrops on a spider web, shallow depth of field",
+      "highlightedCategory": "subject.identity"
+    },
+    "outputContent": {
+      "suggestions": [
+        "water droplets",
+        "morning droplets",
+        "tiny pearls",
+        "glass-like beads",
+        "crystal drops",
+        "sparkling beads"
+      ]
+    },
+    "humanScore": 0,
+    "humanDimensions": {},
+    "humanNotes": "TODO: label me",
+    "authoredAt": "2026-05-15T05:28:48.451Z",
+    "authoredBy": "claude"
+  },
+  {
+    "scoredEvent": "suggestions.completed",
+    "scoredEventId": "019e29f3-e7e2-72ed-8ba5-9adbe46144fc",
+    "inputContent": {
+      "highlightedText": "An abandoned 1950s diner",
+      "fullPrompt": "An abandoned 1950s diner overgrown with vines",
+      "highlightedCategory": "environment.location"
+    },
+    "outputContent": {
+      "suggestions": [
+        "a derelict roadside gas station",
+        "a forgotten 1950s drive-in theater",
+        "a crumbling retro car wash",
+        "a weathered roadside snack bar",
+        "a neglected 1950s soda shop",
+        "a rusted motor court lodge"
+      ]
+    },
+    "humanScore": 0,
+    "humanDimensions": {},
+    "humanNotes": "TODO: label me",
+    "authoredAt": "2026-05-15T05:28:48.451Z",
+    "authoredBy": "claude"
+  },
+  {
+    "scoredEvent": "suggestions.completed",
+    "scoredEventId": "019e29f3-fcdc-7f51-88ee-0b5d3c23141b",
+    "inputContent": {
+      "highlightedText": "dolly forward",
+      "fullPrompt": "Wide angle establishing shot of a snowy village, dolly forward toward a single illuminated window",
+      "highlightedCategory": "camera.movement"
+    },
+    "outputContent": {
+      "suggestions": [
+        "slow dolly backward",
+        "slow dolly lateral",
+        "slow dolly upward",
+        "slow dolly downward",
+        "slow tracking forward"
+      ]
+    },
+    "humanScore": 0,
+    "humanDimensions": {},
+    "humanNotes": "TODO: label me",
+    "authoredAt": "2026-05-15T05:28:48.451Z",
+    "authoredBy": "claude"
+  },
+  {
+    "scoredEvent": "suggestions.completed",
+    "scoredEventId": "019e2899-07c7-7ed4-b557-28a861280533",
+    "inputContent": {
+      "highlightedText": "Macro close-up",
+      "fullPrompt": "Macro close-up of dewdrops on a spider web, shallow depth of field",
+      "highlightedCategory": "shot.type"
+    },
+    "outputContent": {
+      "suggestions": [
+        "extreme close-up",
+        "close-up",
+        "medium close-up",
+        "medium shot",
+        "medium wide shot",
+        "wide shot"
+      ]
+    },
+    "humanScore": 0,
+    "humanDimensions": {},
+    "humanNotes": "TODO: label me",
+    "authoredAt": "2026-05-15T05:28:48.451Z",
+    "authoredBy": "claude"
+  },
+  {
+    "scoredEvent": "suggestions.completed",
+    "scoredEventId": "019e2879-868f-768c-9b24-1b8aee12ea40",
+    "inputContent": {
+      "highlightedText": "Macro close-up",
+      "fullPrompt": "Macro close-up of dewdrops on a spider web, shallow depth of field",
+      "highlightedCategory": "shot.type"
+    },
+    "outputContent": {
+      "suggestions": [
+        "extreme close-up",
+        "close-up",
+        "medium close-up",
+        "medium shot",
+        "medium wide shot",
+        "wide shot"
+      ]
+    },
+    "humanScore": 0,
+    "humanDimensions": {},
+    "humanNotes": "TODO: label me",
+    "authoredAt": "2026-05-15T05:28:48.451Z",
+    "authoredBy": "claude"
+  }
+]
