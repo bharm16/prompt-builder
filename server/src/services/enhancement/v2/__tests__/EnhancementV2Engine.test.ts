@@ -179,4 +179,74 @@ describe("EnhancementV2Engine", () => {
     // minAcceptableCount=3), not from rejection-driven shortfall — the
     // V2CandidateScorer no longer carries an "abstract" wordlist gate.
   });
+
+  describe("scene_summary capture (Sub-project B)", () => {
+    it("puts scene_summary onto execution.debug.sceneSummary when the LLM emits it", async () => {
+      const engine = createEngine();
+      mockEnforceJSON.mockResolvedValueOnce({
+        value: [
+          {
+            text: "heavy snowfall under grey skies",
+            category: "environment.weather",
+          },
+          { text: "wind-driven rain curtain", category: "environment.weather" },
+          {
+            text: "torrential downpour at dawn",
+            category: "environment.weather",
+          },
+        ],
+        siblings: {
+          scene_summary: "outdoor weather scene — keep precipitation theme",
+        },
+      });
+
+      const execution = await engine.execute(
+        createContext({
+          highlightedText: "soft rain",
+          highlightedCategory: "environment.weather",
+          phraseRole: "environment.weather",
+          contextBefore: "A couple walks through ",
+          contextAfter: " beside the diner.",
+          fullPrompt: "A couple walks through soft rain beside the diner.",
+        }),
+      );
+
+      expect(execution.debug.sceneSummary).toBe(
+        "outdoor weather scene — keep precipitation theme",
+      );
+      expect(execution.finalSuggestions.length).toBeGreaterThan(0);
+    });
+
+    it("tolerates missing scene_summary in the LLM response (sceneSummary = null, no crash)", async () => {
+      const engine = createEngine();
+      mockEnforceJSON.mockResolvedValueOnce({
+        value: [
+          {
+            text: "heavy snowfall under grey skies",
+            category: "environment.weather",
+          },
+          { text: "wind-driven rain curtain", category: "environment.weather" },
+          {
+            text: "torrential downpour at dawn",
+            category: "environment.weather",
+          },
+        ],
+        siblings: {},
+      });
+
+      const execution = await engine.execute(
+        createContext({
+          highlightedText: "soft rain",
+          highlightedCategory: "environment.weather",
+          phraseRole: "environment.weather",
+          contextBefore: "A couple walks through ",
+          contextAfter: " beside the diner.",
+          fullPrompt: "A couple walks through soft rain beside the diner.",
+        }),
+      );
+
+      expect(execution.debug.sceneSummary).toBeNull();
+      expect(execution.finalSuggestions.length).toBeGreaterThan(0);
+    });
+  });
 });
