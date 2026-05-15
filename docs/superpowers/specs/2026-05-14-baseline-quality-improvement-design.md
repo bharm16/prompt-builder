@@ -143,9 +143,30 @@ Phase 2 gets its own brainstorm + spec once Phase 1 numbers are in.
 
 Both items are listed unchecked in the Measurement Program's "Tell when you're done" checklist as of 2026-05-14. They are independent of Phase 1 but become MORE valuable after Phase 1 clears the artifact noise — calibration anchored to noisy scores is wasted effort, which is why this sequence matters.
 
-### 4.1 Calibration JSON seeding
+### 4.1 Calibration JSON seeding (shipped via Sub-project A on 2026-05-15, partial pass)
 
-Seed 5-10 hand-labeled examples per surface in `scripts/quality-judge/calibration/*.calibration.json`. The PR calibration gate workflow currently passes vacuously because all three files are empty arrays. Hand-label by scoring sample events the same way the rubric does, then check `runCalibration()` produces Spearman ρ ≥ 0.7 against the judge.
+Sub-project A populated all three `scripts/quality-judge/calibration/*.calibration.json` files with 20 stratified, LLM-authored (Claude) labels each. The PR calibration gate workflow now evaluates a real Spearman ρ rather than passing vacuously.
+
+**Final calibration numbers (from `npm run judge:calibrate`, 2026-05-15):**
+
+| Surface       | ρ         | MAE  | n   | Pass?              |
+| ------------- | --------- | ---- | --- | ------------------ |
+| optimize      | **0.787** | 3.20 | 20  | ✅ above 0.7       |
+| suggestions   | **0.755** | 2.95 | 20  | ✅ above 0.7       |
+| span-labeling | **0.688** | 3.05 | 20  | ❌ 0.012 below 0.7 |
+
+**Sub-project A1 (this work) ships partial.** Optimize and suggestions are anchored — Sub-projects B and C can ship under the trust threshold. Span-labeling remains pending until Sub-project D's product fix lands, at which point the version-drift visible in the current sample (entries 0-9 emit window-fragment outputs, entries 10-19 emit clean semantic spans) goes away and the rubric likely scores more consistently against a uniform output distribution. Sub-project D's brainstorm should re-run calibration on span-labeling as a post-fix verification step; if ρ still misses, open Sub-project A2 for rubric iteration.
+
+**Semantic caveat:** labels were authored by Claude, not a human (per 2026-05-15 design decision). ρ here measures **cross-model agreement** between Claude and GPT-4o, not human-anchored trust. A future Sub-project A2 can replace these with human-authored labels to convert the cross-model check into a true trust anchor.
+
+**Sub-project A implementation surfaced two real bugs in the calibration runtime that ship as part of A's deliverables:**
+
+- `run-calibration.ts` missing `import "dotenv/config"` — script silently failed locally (CI unaffected because GH Actions injects env vars directly).
+- `run-calibration.ts` parallelizing 20 entries via `Promise.all` — exceeded GPT-4o's 30k TPM rate limit, dropping ~80% of entries to 429s. Now serialized.
+
+Both have regression tests in `scripts/quality-judge/calibration/__tests__/run-calibration.regression.test.ts`.
+
+See [`2026-05-15-quality-judge-calibration-seeding-design.md`](./2026-05-15-quality-judge-calibration-seeding-design.md) and [`../plans/2026-05-15-quality-judge-calibration-seeding.md`](../plans/2026-05-15-quality-judge-calibration-seeding.md) for the design and execution detail.
 
 ### 4.2 GitHub Actions secrets
 
