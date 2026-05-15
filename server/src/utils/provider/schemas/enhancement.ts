@@ -115,9 +115,15 @@ function getGroqEnhancementSchema(isPlaceholder: boolean): JSONSchema {
     required.push("category");
   }
 
+  // scene_summary is declared in `properties` (so the prompt's instruction
+  // is reinforced by schema-documented shape) but NOT in `required`: Groq's
+  // json_object mode does not honor required-arrays the way OpenAI strict
+  // mode does, and Qwen drops the field on ~30% of responses. Requiring it
+  // here rejects valid suggestion arrays. The prompt drives emission; the
+  // engine tolerates absence (sceneSummary=null).
   return {
     type: "object",
-    required: ["scene_summary", "suggestions"],
+    required: ["suggestions"],
     properties: {
       scene_summary: { type: "string" },
       suggestions: {
