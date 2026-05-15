@@ -125,6 +125,12 @@ export interface SuggestionsTraceCompleteSummary {
   fullPrompt: string;
   /** The alternative phrases returned. Empty on error/abort. */
   suggestions: string[];
+  /**
+   * One-sentence scene-constraint statement the LLM emitted before
+   * the suggestions array. Captured from EnhancementV2's debug payload.
+   * Null when the LLM omitted it or a non-guided engine mode ran.
+   */
+  sceneSummary?: string | null;
 }
 
 export interface SuggestionsEventStages {
@@ -162,4 +168,10 @@ export interface SuggestionsEventProperties {
   highlightedText: string;
   fullPrompt: string;
   suggestions: string[];
+  /**
+   * One-sentence scene-constraint statement the LLM emitted before the
+   * suggestions array. Sub-project B (2026-05-15) added this. Null when
+   * the LLM omitted it or a non-guided engine mode ran.
+   */
+  sceneSummary?: string | null;
 }

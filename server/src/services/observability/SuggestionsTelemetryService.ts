@@ -84,6 +84,7 @@ export class SuggestionsTrace {
       highlightedText: summary.highlightedText,
       fullPrompt: summary.fullPrompt,
       suggestions: summary.suggestions,
+      sceneSummary: summary.sceneSummary ?? null,
     };
 
     try {
