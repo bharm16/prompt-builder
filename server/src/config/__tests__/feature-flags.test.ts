@@ -109,3 +109,33 @@ describe("getFlagEnvNames", () => {
     expect(categories).toContain("killswitch");
   });
 });
+
+describe("feature-flags requiresEnv", () => {
+  it("face embedding flag declares Replicate token dependency", () => {
+    const flags = getFlagEnvNames();
+    const faceEmbedding = flags.find(
+      (f) => f.envName === "ENABLE_FACE_EMBEDDING",
+    );
+    expect(faceEmbedding?.requiresEnv).toEqual(["REPLICATE_API_TOKEN"]);
+  });
+
+  it("clip flag declares Replicate token dependency", () => {
+    const flags = getFlagEnvNames();
+    const clip = flags.find((f) => f.envName === "CONTINUITY_CLIP_ENABLED");
+    expect(clip?.requiresEnv).toEqual(["REPLICATE_API_TOKEN"]);
+  });
+
+  it("face embedding flag declares convergence dependency", () => {
+    const flags = getFlagEnvNames();
+    const faceEmbedding = flags.find(
+      (f) => f.envName === "ENABLE_FACE_EMBEDDING",
+    );
+    expect(faceEmbedding?.dependsOn).toEqual(["ENABLE_CONVERGENCE"]);
+  });
+
+  it("clip flag declares convergence dependency", () => {
+    const flags = getFlagEnvNames();
+    const clip = flags.find((f) => f.envName === "CONTINUITY_CLIP_ENABLED");
+    expect(clip?.dependsOn).toEqual(["ENABLE_CONVERGENCE"]);
+  });
+});

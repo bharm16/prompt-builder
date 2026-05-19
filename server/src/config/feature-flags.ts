@@ -33,6 +33,25 @@ interface BaseFlagDef {
   description: string;
   category: FlagCategory;
   aliases?: readonly FlagAlias[];
+  /**
+   * Declarative list of external env vars this flag depends on. Consumed by
+   * doc generation and readiness probes that surface dependency requirements;
+   * the registry itself does not enforce that the env vars are set. Each
+   * consuming service is responsible for checking the env at boot and degrading
+   * gracefully when its dependencies are missing.
+   *
+   * Example: ENABLE_FACE_EMBEDDING requiresEnv: ["REPLICATE_API_TOKEN"].
+   */
+  requiresEnv?: readonly string[];
+  /**
+   * Declarative list of other flag envNames that should resolve true for this
+   * flag to be meaningful. Consumed by doc generation and readiness probes;
+   * the registry does not currently enforce composition. Useful for surfacing
+   * flag relationships during operational audits and architecture-map output.
+   *
+   * Example: ENABLE_FACE_EMBEDDING dependsOn: ["ENABLE_CONVERGENCE"].
+   */
+  dependsOn?: readonly string[];
 }
 
 export interface BoolFlagDef extends BaseFlagDef {
@@ -192,6 +211,8 @@ const EXPERIMENTAL_FLAGS = {
     description:
       "Enables face embedding service for continuity quality gates. Requires Replicate API token.",
     category: "experimental",
+    requiresEnv: ["REPLICATE_API_TOKEN"],
+    dependsOn: ["ENABLE_CONVERGENCE"],
   },
   continuityClipEnabled: {
     kind: "bool",
@@ -200,6 +221,8 @@ const EXPERIMENTAL_FLAGS = {
     description: "Enables CLIP embedding in continuity quality gate checks.",
     category: "experimental",
     aliases: [{ envName: "DISABLE_CONTINUITY_CLIP", inverted: true }],
+    requiresEnv: ["REPLICATE_API_TOKEN"],
+    dependsOn: ["ENABLE_CONVERGENCE"],
   },
   // Note: FAL_DEPTH_WARMUP_ENABLED is intentionally NOT in this registry.
   // Its effective default depends on NODE_ENV (true in dev, false in prod),
@@ -378,6 +401,8 @@ export function getFlagEnvNames(): Array<{
   defaultValue: string;
   description: string;
   category: FlagCategory;
+  requiresEnv?: readonly string[];
+  dependsOn?: readonly string[];
 }> {
   return (Object.entries(FLAG_DEFINITIONS) as Array<[FlagName, FlagDef]>).map(
     ([name, def]) => ({
@@ -387,6 +412,8 @@ export function getFlagEnvNames(): Array<{
       defaultValue: String(def.default),
       description: def.description,
       category: def.category,
+      ...(def.requiresEnv !== undefined && { requiresEnv: def.requiresEnv }),
+      ...(def.dependsOn !== undefined && { dependsOn: def.dependsOn }),
     }),
   );
 }
