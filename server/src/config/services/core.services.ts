@@ -20,9 +20,7 @@ import { resolveAllFlags } from "../feature-flags.ts";
 import type { ServiceConfig } from "./service-config.types.ts";
 
 export function registerCoreServices(container: DIContainer): void {
-  // Single-source-of-truth flag resolution. The `flags` object is typed; legacy
-  // env var names (*_DISABLED, GEMINI_ALLOW_UNHEALTHY, DISABLE_CONTINUITY_CLIP)
-  // are still honored as deprecated aliases — see feature-flags.ts.
+  // Single-source-of-truth flag resolution. See feature-flags.ts for the canonical flag registry.
   const { flags } = resolveAllFlags(process.env);
 
   container.registerValue("logger", logger);

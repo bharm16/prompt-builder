@@ -123,30 +123,30 @@ Server flags are declared in [`server/src/config/feature-flags.ts`](server/src/c
 
 #### Killswitch
 
-| Env Var                          | Default | Legacy Aliases                    | Description                                                    |
-| -------------------------------- | ------- | --------------------------------- | -------------------------------------------------------------- |
-| `WEBHOOK_RECONCILIATION_ENABLED` | `true`  | `WEBHOOK_RECONCILIATION_DISABLED` | Stripe webhook reconciliation background service.              |
-| `BILLING_PROFILE_REPAIR_ENABLED` | `true`  | `BILLING_PROFILE_REPAIR_DISABLED` | Billing profile repair background worker.                      |
-| `CREDIT_REFUND_SWEEPER_ENABLED`  | `true`  | `CREDIT_REFUND_SWEEPER_DISABLED`  | Credit refund sweeper background service.                      |
-| `CREDIT_RECONCILIATION_ENABLED`  | `true`  | `CREDIT_RECONCILIATION_DISABLED`  | Credit reconciliation background service.                      |
-| `VIDEO_JOB_SWEEPER_ENABLED`      | `true`  | `VIDEO_JOB_SWEEPER_DISABLED`      | Video job stale-task sweeper.                                  |
-| `VIDEO_DLQ_REPROCESSOR_ENABLED`  | `true`  | `VIDEO_DLQ_REPROCESSOR_DISABLED`  | Dead-letter-queue reprocessor for failed video jobs.           |
-| `VIDEO_ASSET_RETENTION_ENABLED`  | `true`  | `VIDEO_ASSET_RETENTION_DISABLED`  | Video asset cleanup/retention service.                         |
-| `VIDEO_ASSET_RECONCILER_ENABLED` | `false` | `VIDEO_ASSET_RECONCILER_DISABLED` | Video asset orphan-detection reconciler. Opt-in (default off). |
+| Env Var                          | Default | Legacy Aliases | Description                                                    |
+| -------------------------------- | ------- | -------------- | -------------------------------------------------------------- |
+| `WEBHOOK_RECONCILIATION_ENABLED` | `true`  | —              | Stripe webhook reconciliation background service.              |
+| `BILLING_PROFILE_REPAIR_ENABLED` | `true`  | —              | Billing profile repair background worker.                      |
+| `CREDIT_REFUND_SWEEPER_ENABLED`  | `true`  | —              | Credit refund sweeper background service.                      |
+| `CREDIT_RECONCILIATION_ENABLED`  | `true`  | —              | Credit reconciliation background service.                      |
+| `VIDEO_JOB_SWEEPER_ENABLED`      | `true`  | —              | Video job stale-task sweeper.                                  |
+| `VIDEO_DLQ_REPROCESSOR_ENABLED`  | `true`  | —              | Dead-letter-queue reprocessor for failed video jobs.           |
+| `VIDEO_ASSET_RETENTION_ENABLED`  | `true`  | —              | Video asset cleanup/retention service.                         |
+| `VIDEO_ASSET_RECONCILER_ENABLED` | `false` | —              | Video asset orphan-detection reconciler. Opt-in (default off). |
 
 #### Provider
 
-| Env Var                  | Default | Legacy Aliases           | Description                                                                                                |
-| ------------------------ | ------- | ------------------------ | ---------------------------------------------------------------------------------------------------------- |
-| `ALLOW_UNHEALTHY_GEMINI` | `false` | `GEMINI_ALLOW_UNHEALTHY` | Use Gemini even when the provider health check fails. Useful for dev/debug; not recommended in production. |
+| Env Var                  | Default | Legacy Aliases | Description                                                                                                |
+| ------------------------ | ------- | -------------- | ---------------------------------------------------------------------------------------------------------- |
+| `ALLOW_UNHEALTHY_GEMINI` | `false` | —              | Use Gemini even when the provider health check fails. Useful for dev/debug; not recommended in production. |
 
 #### Experimental
 
-| Env Var                   | Default | Legacy Aliases            | Description                                                                                |
-| ------------------------- | ------- | ------------------------- | ------------------------------------------------------------------------------------------ |
-| `ENABLE_FACE_EMBEDDING`   | `false` | —                         | Enables face embedding service for continuity quality gates. Requires Replicate API token. |
-| `CONTINUITY_CLIP_ENABLED` | `true`  | `DISABLE_CONTINUITY_CLIP` | Enables CLIP embedding in continuity quality gate checks.                                  |
-| `DEPTH_WARMUP_ON_STARTUP` | `true`  | —                         | Controls depth estimation service warmup during server boot.                               |
+| Env Var                   | Default | Legacy Aliases | Description                                                                                |
+| ------------------------- | ------- | -------------- | ------------------------------------------------------------------------------------------ |
+| `ENABLE_FACE_EMBEDDING`   | `false` | —              | Enables face embedding service for continuity quality gates. Requires Replicate API token. |
+| `CONTINUITY_CLIP_ENABLED` | `true`  | —              | Enables CLIP embedding in continuity quality gate checks.                                  |
+| `DEPTH_WARMUP_ON_STARTUP` | `true`  | —              | Controls depth estimation service warmup during server boot.                               |
 
 #### Debug
 
@@ -157,8 +157,6 @@ Server flags are declared in [`server/src/config/feature-flags.ts`](server/src/c
 <!-- END: feature-flag-table -->
 
 **Rule:** Code consuming `continuitySessionService` must always null-check — the service is legitimately `null` when `ENABLE_CONVERGENCE=false`.
-
-**Rule:** Legacy `*_DISABLED` env var names still work but emit a deprecation warning at startup. Migrate deploy configs to the canonical `*_ENABLED` form.
 
 ## Route → Service → Client API Map
 

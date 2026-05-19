@@ -21,56 +21,6 @@ describe("resolveAllFlags", () => {
     expect(deprecations).toEqual([]);
   });
 
-  it("translates legacy *_DISABLED aliases with correct inversion", () => {
-    const { flags, deprecations } = resolveAllFlags({
-      BILLING_PROFILE_REPAIR_DISABLED: "true",
-    } as NodeJS.ProcessEnv);
-    expect(flags.billingProfileRepairEnabled).toBe(false);
-    expect(deprecations).toHaveLength(1);
-    expect(deprecations[0]).toContain("BILLING_PROFILE_REPAIR_DISABLED");
-    expect(deprecations[0]).toContain("BILLING_PROFILE_REPAIR_ENABLED");
-  });
-
-  it("prefers canonical env var over alias when both are set", () => {
-    const { flags, deprecations } = resolveAllFlags({
-      WEBHOOK_RECONCILIATION_ENABLED: "false",
-      WEBHOOK_RECONCILIATION_DISABLED: "false",
-    } as NodeJS.ProcessEnv);
-    expect(flags.webhookReconciliationEnabled).toBe(false);
-    expect(deprecations).toEqual([]);
-  });
-
-  it("treats GEMINI_ALLOW_UNHEALTHY as a non-inverted alias", () => {
-    const { flags, deprecations } = resolveAllFlags({
-      GEMINI_ALLOW_UNHEALTHY: "true",
-    } as NodeJS.ProcessEnv);
-    expect(flags.allowUnhealthyGemini).toBe(true);
-    expect(deprecations).toHaveLength(1);
-    expect(deprecations[0]).toContain("GEMINI_ALLOW_UNHEALTHY");
-  });
-
-  it("preserves historical OR-semantics for allowUnhealthyGemini when both names are set", () => {
-    // Old behavior: isTrue(ALLOW_UNHEALTHY_GEMINI) || isTrue(GEMINI_ALLOW_UNHEALTHY)
-    // Either set to "true" enables the flag, regardless of the other.
-    const { flags: aliasWins } = resolveAllFlags({
-      ALLOW_UNHEALTHY_GEMINI: "false",
-      GEMINI_ALLOW_UNHEALTHY: "true",
-    } as NodeJS.ProcessEnv);
-    expect(aliasWins.allowUnhealthyGemini).toBe(true);
-
-    const { flags: canonicalWins } = resolveAllFlags({
-      ALLOW_UNHEALTHY_GEMINI: "true",
-      GEMINI_ALLOW_UNHEALTHY: "false",
-    } as NodeJS.ProcessEnv);
-    expect(canonicalWins.allowUnhealthyGemini).toBe(true);
-
-    const { flags: bothFalse } = resolveAllFlags({
-      ALLOW_UNHEALTHY_GEMINI: "false",
-      GEMINI_ALLOW_UNHEALTHY: "false",
-    } as NodeJS.ProcessEnv);
-    expect(bothFalse.allowUnhealthyGemini).toBe(false);
-  });
-
   it("validates enum values against the declared set", () => {
     const { flags: strict } = resolveAllFlags({
       UNHANDLED_REJECTION_MODE: "strict",
@@ -92,14 +42,14 @@ describe("resolveAllFlags", () => {
 });
 
 describe("getFlagEnvNames", () => {
-  it("surfaces canonical and alias names for every registered flag", () => {
+  it("surfaces canonical env name for every registered flag", () => {
     const entries = getFlagEnvNames();
     const webhook = entries.find(
       (e) => e.name === "webhookReconciliationEnabled",
     );
     expect(webhook).toBeDefined();
     expect(webhook?.envName).toBe("WEBHOOK_RECONCILIATION_ENABLED");
-    expect(webhook?.aliases).toContain("WEBHOOK_RECONCILIATION_DISABLED");
+    expect(webhook?.aliases).toEqual([]);
   });
 
   it("categorizes flags so the doc generator can group them", () => {

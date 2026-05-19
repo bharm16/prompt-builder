@@ -49,8 +49,7 @@ const serverSchema = z.object({
 // - ENABLE_CONVERGENCE: safety-first default (anything-not-"false" → true).
 // - UNHANDLED_REJECTION_MODE: strict enum.
 // - *_ENABLED: strict "true"/"false" — typos fail boot.
-// Lenient aliases (*_DISABLED, ALLOW_UNHEALTHY_GEMINI, etc.) are fully
-// resolved by feature-flags.ts; duplicating them here bought nothing.
+// All other flag resolution (including alias handling) is owned by feature-flags.ts.
 const featureFlagSchema = z.object({
   ENABLE_CONVERGENCE: z
     .string()

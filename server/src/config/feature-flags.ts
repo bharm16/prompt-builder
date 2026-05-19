@@ -57,13 +57,6 @@ interface BaseFlagDef {
 export interface BoolFlagDef extends BaseFlagDef {
   kind: "bool";
   default: boolean;
-  /**
-   * When true, the flag is resolved as the logical OR of the canonical env
-   * AND every alias (instead of canonical-wins-over-alias). Used to preserve
-   * historical `isTrue(X) || isTrue(Y)` semantics for flags that accepted
-   * multiple equivalent env names before consolidation.
-   */
-  unionWithAliases?: boolean;
 }
 
 export interface EnumFlagDef<T extends string = string> extends BaseFlagDef {
@@ -110,8 +103,7 @@ const WORKER_FLAGS = {
 
 /**
  * Kill switches for background services. Canonical naming is `*_ENABLED`
- * (default `true`) — the legacy `*_DISABLED` env vars are accepted via
- * aliases with `inverted: true`.
+ * (default `true`).
  */
 const KILLSWITCH_FLAGS = {
   webhookReconciliationEnabled: {
@@ -120,7 +112,6 @@ const KILLSWITCH_FLAGS = {
     default: true,
     description: "Stripe webhook reconciliation background service.",
     category: "killswitch",
-    aliases: [{ envName: "WEBHOOK_RECONCILIATION_DISABLED", inverted: true }],
   },
   billingProfileRepairEnabled: {
     kind: "bool",
@@ -128,7 +119,6 @@ const KILLSWITCH_FLAGS = {
     default: true,
     description: "Billing profile repair background worker.",
     category: "killswitch",
-    aliases: [{ envName: "BILLING_PROFILE_REPAIR_DISABLED", inverted: true }],
   },
   creditRefundSweeperEnabled: {
     kind: "bool",
@@ -136,7 +126,6 @@ const KILLSWITCH_FLAGS = {
     default: true,
     description: "Credit refund sweeper background service.",
     category: "killswitch",
-    aliases: [{ envName: "CREDIT_REFUND_SWEEPER_DISABLED", inverted: true }],
   },
   creditReconciliationEnabled: {
     kind: "bool",
@@ -144,7 +133,6 @@ const KILLSWITCH_FLAGS = {
     default: true,
     description: "Credit reconciliation background service.",
     category: "killswitch",
-    aliases: [{ envName: "CREDIT_RECONCILIATION_DISABLED", inverted: true }],
   },
   videoJobSweeperEnabled: {
     kind: "bool",
@@ -152,7 +140,6 @@ const KILLSWITCH_FLAGS = {
     default: true,
     description: "Video job stale-task sweeper.",
     category: "killswitch",
-    aliases: [{ envName: "VIDEO_JOB_SWEEPER_DISABLED", inverted: true }],
   },
   videoDlqReprocessorEnabled: {
     kind: "bool",
@@ -160,7 +147,6 @@ const KILLSWITCH_FLAGS = {
     default: true,
     description: "Dead-letter-queue reprocessor for failed video jobs.",
     category: "killswitch",
-    aliases: [{ envName: "VIDEO_DLQ_REPROCESSOR_DISABLED", inverted: true }],
   },
   videoAssetRetentionEnabled: {
     kind: "bool",
@@ -168,13 +154,9 @@ const KILLSWITCH_FLAGS = {
     default: true,
     description: "Video asset cleanup/retention service.",
     category: "killswitch",
-    aliases: [{ envName: "VIDEO_ASSET_RETENTION_DISABLED", inverted: true }],
   },
   /**
-   * Orphan-detection reconciler. Legacy env var `VIDEO_ASSET_RECONCILER_DISABLED`
-   * used `!== "false"` — i.e. off-by-default with `_DISABLED=false` as the
-   * explicit opt-in. Canonical form flips to `_ENABLED=true` as opt-in while
-   * preserving the default-off behavior.
+   * Orphan-detection reconciler. Opt-in (default off).
    */
   videoAssetReconcilerEnabled: {
     kind: "bool",
@@ -183,7 +165,6 @@ const KILLSWITCH_FLAGS = {
     description:
       "Video asset orphan-detection reconciler. Opt-in (default off).",
     category: "killswitch",
-    aliases: [{ envName: "VIDEO_ASSET_RECONCILER_DISABLED", inverted: true }],
   },
 } as const satisfies Record<string, FlagDef>;
 
@@ -195,11 +176,6 @@ const PROVIDER_FLAGS = {
     description:
       "Use Gemini even when the provider health check fails. Useful for dev/debug; not recommended in production.",
     category: "provider",
-    // GEMINI_ALLOW_UNHEALTHY was an unintentional duplicate — keep it working
-    // as an alias. Historical behavior was `isTrue(X) || isTrue(Y)` — either
-    // name set to "true" enables. `unionWithAliases` preserves that exactly.
-    aliases: [{ envName: "GEMINI_ALLOW_UNHEALTHY" }],
-    unionWithAliases: true,
   },
 } as const satisfies Record<string, FlagDef>;
 
@@ -220,7 +196,6 @@ const EXPERIMENTAL_FLAGS = {
     default: true,
     description: "Enables CLIP embedding in continuity quality gate checks.",
     category: "experimental",
-    aliases: [{ envName: "DISABLE_CONTINUITY_CLIP", inverted: true }],
     requiresEnv: ["REPLICATE_API_TOKEN"],
     dependsOn: ["ENABLE_CONVERGENCE"],
   },
@@ -272,42 +247,6 @@ function resolveBoolFlag(
   def: BoolFlagDef,
   env: NodeJS.ProcessEnv,
 ): FlagResolution<boolean> {
-  // Union-mode: preserve historical `isTrue(X) || isTrue(Y)` semantics where
-  // any listed name set to "true" enables the flag. Used only by flags whose
-  // pre-consolidation behavior was OR-across-names (e.g. allowUnhealthyGemini).
-  if (def.unionWithAliases) {
-    let anyAliasSeen: string | undefined;
-    const canonicalParsed = parseBool(env[def.envName] ?? "");
-    if (canonicalParsed === true) {
-      return { value: true, source: "env", sourceName: def.envName };
-    }
-    for (const alias of def.aliases ?? []) {
-      const parsed = parseBool(env[alias.envName] ?? "");
-      if (parsed === true) {
-        return {
-          value: true,
-          source: "alias",
-          sourceName: alias.envName,
-          deprecationNotice: `Env var "${alias.envName}" is deprecated. Use "${def.envName}" instead.`,
-        };
-      }
-      if (env[alias.envName] !== undefined && anyAliasSeen === undefined) {
-        anyAliasSeen = alias.envName;
-      }
-    }
-    // Nothing evaluated to true — return default. Still surface a deprecation
-    // if only the legacy name was set (even to "false").
-    if (anyAliasSeen !== undefined && canonicalParsed === undefined) {
-      return {
-        value: def.default,
-        source: "alias",
-        sourceName: anyAliasSeen,
-        deprecationNotice: `Env var "${anyAliasSeen}" is deprecated. Use "${def.envName}" instead.`,
-      };
-    }
-    return { value: def.default, source: "default", sourceName: "" };
-  }
-
   const canonical = env[def.envName];
   if (canonical !== undefined) {
     const parsed = parseBool(canonical);
