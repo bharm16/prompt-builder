@@ -122,6 +122,7 @@ export function registerHealthRoutes(
     groqClient: container.resolve("groqClient"),
     geminiClient: container.resolve("geminiClient"),
     cacheService: container.resolve("cacheService"),
+    gcsBucket: container.resolve("gcsBucket"),
     firestoreCircuitExecutor,
     checkFirestore: async () => {
       // Read cached probe result — zero inline I/O

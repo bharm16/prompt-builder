@@ -102,19 +102,26 @@ function buildComponentSchemas(): Record<string, JsonSchema> {
 
     ReadinessResponse: {
       type: "object",
-      required: ["status", "timestamp", "checks"],
+      required: ["status", "timestamp", "dependencies"],
       properties: {
-        status: { type: "string", enum: ["ready", "not ready"] },
+        status: { type: "string", enum: ["ready", "unhealthy"] },
         timestamp: { type: "string", format: "date-time" },
-        checks: {
+        dependencies: {
           type: "object",
           description:
-            "Dependency health checks (cache, firestore, LLM providers).",
+            "Dependency health checks (firebase, gcs, cache, redis, LLM providers).",
           additionalProperties: {
             type: "object",
+            required: ["required", "healthy"],
             properties: {
+              required: { type: "boolean" },
               healthy: { type: "boolean" },
-              message: { type: "string" },
+              lastChecked: {
+                type: "string",
+                format: "date-time",
+                nullable: true,
+              },
+              error: { type: "string" },
             },
           },
         },

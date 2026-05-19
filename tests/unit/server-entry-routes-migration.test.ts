@@ -195,8 +195,8 @@ describe("health.routes", () => {
     if (!ready) return;
     expect(ready.status).toBe(200);
     expect(ready.body.status).toBe("ready");
-    expect(ready.body.checks.cache.healthy).toBe(true);
-    expect(ready.body.checks.openAI.healthy).toBe(true);
+    expect(ready.body.dependencies.cache.healthy).toBe(true);
+    expect(ready.body.dependencies.openAI.healthy).toBe(true);
   });
 
   it("reports not ready when Firestore circuit is open", async () => {
@@ -242,9 +242,11 @@ describe("health.routes", () => {
     );
     if (!ready) return;
     expect(ready.status).toBe(503);
-    expect(ready.body.status).toBe("not ready");
-    expect(ready.body.checks.firestore.healthy).toBe(false);
-    expect(ready.body.checks.firestore.circuitState).toBe("open");
+    expect(ready.body.status).toBe("unhealthy");
+    expect(ready.body.dependencies.firebase.healthy).toBe(false);
+    expect(ready.body.dependencies.firebase.error).toBe(
+      "Firestore circuit is open",
+    );
   });
 });
 

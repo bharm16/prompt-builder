@@ -10,6 +10,21 @@ interface WorkerStatusProvider {
   getStatus(): WorkerStatus;
 }
 
+/**
+ * A single entry in the explicit dependency contract returned by GET /health/ready.
+ *
+ * - `required`: true means an unhealthy state here will cause a 503 response.
+ * - `lastChecked`: ISO timestamp of the last probe, or null when the dependency
+ *   was not wired (absent = skipped, not failed — see per-dep comments).
+ * - `error`: present only when healthy === false, describing why.
+ */
+interface DependencyStatus {
+  required: boolean;
+  healthy: boolean;
+  lastChecked: string | null;
+  error?: string;
+}
+
 interface HealthDependencies {
   openAIClient?: { getStats: () => { state: string } } | null;
   groqClient?: { getStats: () => { state: string } } | null;
@@ -17,7 +32,8 @@ interface HealthDependencies {
   cacheService: {
     isHealthy: () => boolean;
   };
-  /** Optional Firestore connectivity check. Skipped when not provided (e.g. tests). */
+  /** Optional Firestore connectivity check. When absent, firebase is reported as
+   *  healthy: true with lastChecked: null — absence of a probe is not a failure. */
   checkFirestore?: () => Promise<void>;
   /** Optional Firestore circuit state for readiness gating. */
   firestoreCircuitExecutor?: FirestoreCircuitExecutor;
@@ -25,6 +41,12 @@ interface HealthDependencies {
   workers?: Record<string, WorkerStatusProvider | null>;
   /** Optional Redis status provider for health reporting. */
   getRedisStatus?: () => RedisStatus;
+  /**
+   * Optional GCS bucket. When provided, `bucket.exists()` is called to verify
+   * connectivity. When absent, gcs is reported as healthy: true with
+   * lastChecked: null — absence of a probe is not a failure.
+   */
+  gcsBucket?: { exists: () => Promise<[boolean]> };
 }
 
 /**
@@ -44,6 +66,7 @@ export function createHealthRoutes(dependencies: HealthDependencies): Router {
     firestoreCircuitExecutor,
     workers,
     getRedisStatus: getRedisStatusFn,
+    gcsBucket,
   } = dependencies;
 
   // GET /health - Basic health check
@@ -75,35 +98,42 @@ export function createHealthRoutes(dependencies: HealthDependencies): Router {
         requestId,
       });
 
-      // Use lightweight internal indicators where possible (cache, circuit breakers).
-      // Firestore is the exception: it has no local state, so a metadata-only call
-      // with a tight timeout verifies connectivity without reading documents.
-      const cacheHealth = cacheService.isHealthy();
-      const openAIStats = openAIClient?.getStats();
-      const groqStats = groqClient?.getStats();
-      const geminiStats = geminiClient?.getStats();
+      const now = new Date().toISOString();
+
+      // ---- firebase (required) -----------------------------------------------
+      // Uses the circuit-breaker snapshot first (cheap, no I/O), then the
+      // cached Firestore probe if wired. Absence of checkFirestore is not a
+      // failure: the entry is listed as healthy with lastChecked: null so that
+      // test environments without Firebase credentials still report truthfully.
+      let firebaseHealthy = true;
+      let firebaseError: string | undefined;
+      let firebaseLastChecked: string | null = null;
+
       const firestoreCircuitSnapshot =
         firestoreCircuitExecutor?.getReadinessSnapshot();
-
-      let firestoreHealthy = true;
-      let firestoreMessage: string | undefined;
-      if (firestoreCircuitSnapshot?.degraded) {
-        firestoreHealthy = false;
-        if (firestoreCircuitSnapshot.state === "open") {
-          firestoreMessage = "Firestore circuit is open";
-        } else if (
-          firestoreCircuitSnapshot.failureRate >=
-          firestoreCircuitSnapshot.thresholds.failureRate
-        ) {
-          firestoreMessage = `Firestore failure rate ${Math.round(firestoreCircuitSnapshot.failureRate * 100)}% exceeds threshold`;
-        } else if (
-          firestoreCircuitSnapshot.latencyMeanMs >=
-          firestoreCircuitSnapshot.thresholds.latencyMs
-        ) {
-          firestoreMessage = `Firestore mean latency ${Math.round(firestoreCircuitSnapshot.latencyMeanMs)}ms exceeds threshold`;
+      if (firestoreCircuitSnapshot) {
+        firebaseLastChecked = now;
+        if (firestoreCircuitSnapshot.degraded) {
+          firebaseHealthy = false;
+          if (firestoreCircuitSnapshot.state === "open") {
+            firebaseError = "Firestore circuit is open";
+          } else if (
+            firestoreCircuitSnapshot.failureRate >=
+            firestoreCircuitSnapshot.thresholds.failureRate
+          ) {
+            firebaseError = `Firestore failure rate ${Math.round(firestoreCircuitSnapshot.failureRate * 100)}% exceeds threshold`;
+          } else if (
+            firestoreCircuitSnapshot.latencyMeanMs >=
+            firestoreCircuitSnapshot.thresholds.latencyMs
+          ) {
+            firebaseError = `Firestore mean latency ${Math.round(firestoreCircuitSnapshot.latencyMeanMs)}ms exceeds threshold`;
+          } else {
+            firebaseError = `Firestore circuit degraded (state: ${firestoreCircuitSnapshot.state})`;
+          }
         }
       }
       if (checkFirestore) {
+        firebaseLastChecked = now;
         try {
           await Promise.race([
             checkFirestore(),
@@ -112,83 +142,130 @@ export function createHealthRoutes(dependencies: HealthDependencies): Router {
             ),
           ]);
         } catch (err) {
-          firestoreHealthy = false;
-          firestoreMessage =
-            err instanceof Error ? err.message : "unknown error";
+          firebaseHealthy = false;
+          firebaseError = err instanceof Error ? err.message : "unknown error";
         }
       }
 
+      // ---- gcs (required) ----------------------------------------------------
+      // Calls bucket.exists() to verify GCS connectivity. Absence of gcsBucket
+      // is treated the same as absence of checkFirestore: healthy, lastChecked null.
+      let gcsHealthy = true;
+      let gcsError: string | undefined;
+      let gcsLastChecked: string | null = null;
+
+      if (gcsBucket) {
+        gcsLastChecked = now;
+        try {
+          const [exists] = await gcsBucket.exists();
+          if (!exists) {
+            gcsHealthy = false;
+            gcsError = "GCS bucket does not exist";
+          }
+        } catch (err) {
+          gcsHealthy = false;
+          gcsError = err instanceof Error ? err.message : "unknown error";
+        }
+      }
+
+      // ---- cache (required) --------------------------------------------------
+      // Synchronous check against the in-process cache adapter.
+      const cacheHealthy = cacheService.isHealthy();
+
+      // ---- redis (not required — falls back to in-memory) --------------------
       const redisStatus = getRedisStatusFn?.();
-      const checks = {
-        cache: { healthy: cacheHealth },
-        redis: redisStatus
-          ? {
-              healthy: redisStatus === "connected",
-              status: redisStatus,
-              ...(redisStatus === "disconnected"
-                ? { message: "Redis disconnected — using in-memory fallback" }
-                : {}),
-              ...(redisStatus === "reconnecting"
-                ? { message: "Redis reconnecting" }
-                : {}),
-            }
-          : {
-              healthy: true,
-              enabled: false,
-              message: "Redis status not monitored",
-            },
-        firestore:
-          checkFirestore || firestoreCircuitSnapshot
-            ? {
-                healthy: firestoreHealthy,
-                ...(firestoreMessage ? { message: firestoreMessage } : {}),
-                ...(firestoreCircuitSnapshot
-                  ? {
-                      circuitState: firestoreCircuitSnapshot.state,
-                      failureRate: firestoreCircuitSnapshot.failureRate,
-                      latencyMeanMs: firestoreCircuitSnapshot.latencyMeanMs,
-                    }
-                  : {}),
-              }
-            : {
-                healthy: true,
-                enabled: false,
-                message: "Firestore check not configured",
-              },
-        openAI: openAIStats
-          ? {
-              healthy: openAIStats.state === "CLOSED",
-              circuitBreakerState: openAIStats.state,
-              enabled: true,
-            }
-          : {
-              healthy: true,
-              enabled: false,
-              message: "OpenAI API not configured",
-            },
-        groq: groqStats
-          ? {
-              healthy: groqStats.state === "CLOSED",
-              circuitBreakerState: groqStats.state,
-              enabled: true,
-            }
-          : {
-              healthy: true, // Not required, so consider it healthy
-              enabled: false,
-              message: "Groq API not configured",
-            },
-        gemini: geminiStats
-          ? {
-              healthy: geminiStats.state === "CLOSED",
-              circuitBreakerState: geminiStats.state,
-              enabled: true,
-            }
-          : {
-              healthy: true,
-              enabled: false,
-              message: "Gemini API not configured",
-            },
+      let redisHealthy = true;
+      let redisError: string | undefined;
+      if (redisStatus !== undefined) {
+        redisHealthy =
+          redisStatus === "connected" || redisStatus === "disabled";
+        if (!redisHealthy) {
+          redisError =
+            redisStatus === "disconnected"
+              ? "Redis disconnected — using in-memory fallback"
+              : "Redis reconnecting";
+        }
+      }
+
+      // ---- LLM circuit breakers (not required — informational) ---------------
+      const openAIStats = openAIClient?.getStats();
+      const groqStats = groqClient?.getStats();
+      const geminiStats = geminiClient?.getStats();
+
+      // Build the explicit dependency map with required flags and timestamps.
+      const dependencies: Record<string, DependencyStatus> = {
+        firebase: {
+          required: true,
+          healthy: firebaseHealthy,
+          lastChecked: firebaseLastChecked,
+          ...(firebaseError !== undefined ? { error: firebaseError } : {}),
+        },
+        gcs: {
+          required: true,
+          healthy: gcsHealthy,
+          lastChecked: gcsLastChecked,
+          ...(gcsError !== undefined ? { error: gcsError } : {}),
+        },
+        cache: {
+          required: true,
+          healthy: cacheHealthy,
+          lastChecked: now,
+          ...(!cacheHealthy
+            ? { error: "Cache service reports unhealthy" }
+            : {}),
+        },
       };
+
+      // Redis: only include when the status provider is wired.
+      if (getRedisStatusFn) {
+        dependencies.redis = {
+          required: false,
+          healthy: redisHealthy,
+          lastChecked: now,
+          ...(redisError !== undefined ? { error: redisError } : {}),
+        };
+      }
+
+      // LLM circuit breakers: only include when client is wired.
+      if (openAIStats) {
+        const openAIHealthy = openAIStats.state === "CLOSED";
+        dependencies.openAI = {
+          required: false,
+          healthy: openAIHealthy,
+          lastChecked: now,
+          ...(!openAIHealthy
+            ? { error: `Circuit breaker state: ${openAIStats.state}` }
+            : {}),
+        };
+      }
+      if (groqStats) {
+        const groqHealthy = groqStats.state === "CLOSED";
+        dependencies.groq = {
+          required: false,
+          healthy: groqHealthy,
+          lastChecked: now,
+          ...(!groqHealthy
+            ? { error: `Circuit breaker state: ${groqStats.state}` }
+            : {}),
+        };
+      }
+      if (geminiStats) {
+        const geminiHealthy = geminiStats.state === "CLOSED";
+        dependencies.gemini = {
+          required: false,
+          healthy: geminiHealthy,
+          lastChecked: now,
+          ...(!geminiHealthy
+            ? { error: `Circuit breaker state: ${geminiStats.state}` }
+            : {}),
+        };
+      }
+
+      // 503 fires only when a required dependency is unhealthy. Non-required
+      // deps (redis, LLM circuit breakers) are informational.
+      const isReady = Object.values(dependencies).every(
+        (d) => !d.required || d.healthy,
+      );
 
       // Collect background worker statuses (informational — does not gate readiness)
       const workerStatuses: Record<
@@ -212,22 +289,18 @@ export function createHealthRoutes(dependencies: HealthDependencies): Router {
         }
       }
 
-      const allHealthy = Object.values(checks).every(
-        (c) => c.healthy !== false,
-      );
-
       logger.info("Operation completed.", {
         operation,
         requestId,
         duration: Math.round(performance.now() - startTime),
-        status: allHealthy ? "ready" : "not ready",
-        checks,
+        status: isReady ? "ready" : "unhealthy",
+        dependencies,
       });
 
-      res.status(allHealthy ? 200 : 503).json({
-        status: allHealthy ? "ready" : "not ready",
+      res.status(isReady ? 200 : 503).json({
+        status: isReady ? "ready" : "unhealthy",
         timestamp: new Date().toISOString(),
-        checks,
+        dependencies,
         ...(Object.keys(workerStatuses).length > 0
           ? { workers: workerStatuses }
           : {}),
