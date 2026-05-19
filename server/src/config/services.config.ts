@@ -16,6 +16,7 @@ import { registerLLMServices } from "./services/llm.services.ts";
 import { registerI2VServices } from "./services/i2v.services.ts";
 import { registerSpanLabelingServices } from "./services/span-labeling.services.ts";
 import { registerEnhancementServices } from "./services/enhancement.services.ts";
+import { registerOptimizationServices } from "./services/optimization.services.ts";
 import { registerGenerationServices } from "./services/generation.services.ts";
 import { registerContinuityServices } from "./services/continuity.services.ts";
 import { registerPaymentServices } from "./services/payment.services.ts";
@@ -50,6 +51,7 @@ export async function configureServices(): Promise<DIContainer> {
   registerI2VServices(container);
   registerSpanLabelingServices(container);
   registerEnhancementServices(container);
+  registerOptimizationServices(container);
   registerGenerationServices(container);
 
   if (enableConvergence) {

@@ -9,9 +9,6 @@ import { PromptCoherenceService } from "@services/enhancement/services/PromptCoh
 import { SuggestionDiversityEnforcer } from "@services/enhancement/services/SuggestionDeduplicator";
 import { SuggestionValidationService } from "@services/enhancement/services/SuggestionValidationService";
 import { SceneChangeDetectionService } from "@services/enhancement/services/SceneChangeDetectionService";
-import type { ImageObservationService } from "@services/image-observation";
-import { PromptOptimizationService } from "@services/prompt-optimization/PromptOptimizationService";
-import { TemplateService } from "@services/prompt-optimization/services/TemplateService";
 import type { CacheService } from "@services/cache/CacheService";
 import { VideoPromptService } from "@services/video-prompt-analysis/index";
 import { AIServiceVideoPromptLlmGateway } from "@services/video-prompt-analysis/services/llm/VideoPromptLlmGateway";
@@ -32,7 +29,6 @@ export function registerEnhancementServices(container: DIContainer): void {
     [],
   );
   container.register("promptBuilder", () => new CleanPromptBuilder(), []);
-  container.register("templateService", () => new TemplateService(), []);
 
   container.register(
     "validationService",
@@ -52,36 +48,6 @@ export function registerEnhancementServices(container: DIContainer): void {
     (validationService: SuggestionValidationService) =>
       new CategoryAlignmentService(validationService),
     ["validationService"],
-  );
-
-  container.register(
-    "promptOptimizationService",
-    (
-      aiService: AIModelService,
-      cacheService: CacheService,
-      videoPromptService: VideoPromptService,
-      imageObservationService: ImageObservationService,
-      templateService: TemplateService,
-      config: ServiceConfig,
-    ) => {
-      const po = config.promptOptimization;
-      return new PromptOptimizationService(
-        aiService,
-        cacheService,
-        videoPromptService,
-        imageObservationService,
-        templateService,
-        { cacheTtlMs: po.shotPlanCacheTtlMs, cacheMax: po.shotPlanCacheMax },
-      );
-    },
-    [
-      "aiService",
-      "cacheService",
-      "videoPromptService",
-      "imageObservationService",
-      "templateService",
-      "config",
-    ],
   );
 
   container.register(
