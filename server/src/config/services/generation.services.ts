@@ -21,10 +21,6 @@ import {
 } from "@services/image-generation/providers/registry";
 import { StoryboardFramePlanner } from "@services/image-generation/storyboard/StoryboardFramePlanner";
 import { StoryboardPreviewService } from "@services/image-generation/storyboard/StoryboardPreviewService";
-import { ModelIntelligenceService } from "@services/model-intelligence/ModelIntelligenceService";
-import { AvailabilityGateService } from "@services/model-intelligence/services/AvailabilityGateService";
-import type { PromptSpanProvider } from "@llm/span-labeling/ports/PromptSpanProvider";
-import { BillingProfileStore } from "@services/payment/BillingProfileStore";
 import type { FirestoreCircuitExecutor } from "@services/firestore/FirestoreCircuitExecutor";
 import { VideoGenerationService } from "@services/video-generation/VideoGenerationService";
 import { VideoJobStore } from "@services/video-generation/jobs/VideoJobStore";
@@ -242,34 +238,6 @@ export function registerGenerationServices(container: DIContainer): void {
       });
     },
     ["videoAssetStore", "config"],
-  );
-
-  container.register(
-    "modelIntelligenceAvailabilityGate",
-    (
-      videoGenerationService: VideoGenerationService | null,
-      creditService: UserCreditService,
-      billingProfileStore: BillingProfileStore,
-    ) =>
-      new AvailabilityGateService(
-        videoGenerationService,
-        creditService,
-        billingProfileStore,
-      ),
-    ["videoGenerationService", "userCreditService", "billingProfileStore"],
-  );
-
-  container.register(
-    "modelIntelligenceService",
-    (
-      promptSpanProvider: PromptSpanProvider,
-      availabilityGate: AvailabilityGateService,
-    ) =>
-      new ModelIntelligenceService({
-        promptSpanProvider,
-        availabilityGate,
-      }),
-    ["spanLabelingProvider", "modelIntelligenceAvailabilityGate"],
   );
 
   container.register(

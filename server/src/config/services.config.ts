@@ -20,6 +20,7 @@ import { registerOptimizationServices } from "./services/optimization.services.t
 import { registerGenerationServices } from "./services/generation.services.ts";
 import { registerContinuityServices } from "./services/continuity.services.ts";
 import { registerPaymentServices } from "./services/payment.services.ts";
+import { registerModelIntelligenceServices } from "./services/model-intelligence.services.ts";
 import { registerSessionServices } from "./services/session.services.ts";
 import { getRuntimeFlags } from "./feature-flags.ts";
 
@@ -62,6 +63,7 @@ export async function configureServices(): Promise<DIContainer> {
   }
 
   registerPaymentServices(container);
+  registerModelIntelligenceServices(container);
   registerSessionServices(container);
 
   return container;
