@@ -52,4 +52,20 @@ describe("generate-architecture-map", () => {
       });
     }
   });
+
+  it("all route entries have concrete HTTP methods (no '*' wildcards)", () => {
+    const map = buildArchitectureMap();
+    const allowed = new Set([
+      "GET",
+      "POST",
+      "PUT",
+      "PATCH",
+      "DELETE",
+      "HEAD",
+      "OPTIONS",
+    ]);
+    for (const route of map.routes) {
+      expect(allowed.has(route.method)).toBe(true);
+    }
+  });
 });
