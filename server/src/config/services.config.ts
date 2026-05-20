@@ -17,7 +17,7 @@ import { registerI2VServices } from "./services/i2v.services.ts";
 import { registerSpanLabelingServices } from "./services/span-labeling.services.ts";
 import { registerEnhancementServices } from "./services/enhancement.services.ts";
 import { registerOptimizationServices } from "./services/optimization.services.ts";
-import { registerGenerationServices } from "./services/generation.services.ts";
+import { registerVideoGenerationServices } from "./services/video-generation.services.ts";
 import { registerImageGenerationServices } from "./services/image-generation.services.ts";
 import { registerContinuityServices } from "./services/continuity.services.ts";
 import { registerPaymentServices } from "./services/payment.services.ts";
@@ -46,7 +46,7 @@ export async function configureServices(): Promise<DIContainer> {
   registerCreditServices(container);
   registerVideoJobServices(container);
 
-  // Business logic: LLM, enhancement, generation
+  // Business logic: LLM, enhancement, video generation, image generation
   // (observation services are registered by registerCoreServices)
   registerLLMServices(container);
   // I2V motion ideas — depends on aiService + imageObservationService
@@ -54,7 +54,7 @@ export async function configureServices(): Promise<DIContainer> {
   registerSpanLabelingServices(container);
   registerEnhancementServices(container);
   registerOptimizationServices(container);
-  registerGenerationServices(container);
+  registerVideoGenerationServices(container);
   // Image-generation: depends on imageAssetStore (storage) and geminiClient/openAIClient (llm),
   // both registered above.
   registerImageGenerationServices(container);

@@ -45,19 +45,19 @@ See also: `docs/architecture/SERVICE_BOUNDARIES.md`.
 
 Services are registered via domain-scoped files in `src/config/services/`:
 
-| Registration File         | Registers                                                               |
-| ------------------------- | ----------------------------------------------------------------------- |
-| `core.services.ts`        | metrics, Firebase clients, face embedding, imageObservation, llmJudge   |
-| `cache.services.ts`       | cacheService, spanLabelingCache                                         |
-| `credit.services.ts`      | userCreditService, creditReconciliation                                 |
-| `storage.services.ts`     | storageService, videoContentAccess, videoAssetRetention                 |
-| `llm.services.ts`         | aiModelService, concurrency                                             |
-| `enhancement.services.ts` | enhancementService, videoService, sceneDetection                        |
-| `generation.services.ts`  | imageGeneration, videoGeneration, storyboardPreview, keyframe, faceSwap |
-| `continuity.services.ts`  | continuitySessionService (gated — see Feature Flags)                    |
-| `payment.services.ts`     | paymentService, billingProfileStore, webhook + repair workers           |
-| `session.services.ts`     | sessionService, assetService, referenceImageRepository                  |
-| `video-jobs.services.ts`  | requestIdempotency, video job processing                                |
+| Registration File              | Registers                                                                                                                                                                                                                                                           |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `core.services.ts`             | metrics, Firebase clients, face embedding, imageObservation, llmJudge                                                                                                                                                                                               |
+| `cache.services.ts`            | cacheService, spanLabelingCache                                                                                                                                                                                                                                     |
+| `credit.services.ts`           | userCreditService, creditReconciliation                                                                                                                                                                                                                             |
+| `storage.services.ts`          | storageService, videoContentAccess, videoAssetRetention                                                                                                                                                                                                             |
+| `llm.services.ts`              | aiModelService, concurrency                                                                                                                                                                                                                                         |
+| `enhancement.services.ts`      | enhancementService, videoService, sceneDetection                                                                                                                                                                                                                    |
+| `video-generation.services.ts` | videoGenerationService, keyframeGenerationService, faceSwapService, consistentVideoService, capabilitiesProbeService, providerCircuitManager, videoWorkerHeartbeatStore, videoJobHandler, videoJobWorker, videoJobSweeper, dlqReprocessorWorker, videoJobReconciler |
+| `continuity.services.ts`       | continuitySessionService (gated — see Feature Flags)                                                                                                                                                                                                                |
+| `payment.services.ts`          | paymentService, billingProfileStore, webhook + repair workers                                                                                                                                                                                                       |
+| `session.services.ts`          | sessionService, assetService, referenceImageRepository                                                                                                                                                                                                              |
+| `video-jobs.services.ts`       | requestIdempotency, video job processing                                                                                                                                                                                                                            |
 
 Container: `src/config/services.config.ts`. Initialization: `services.initialize.ts`. Routes consume via factories in `src/config/routes.config.ts`.
 

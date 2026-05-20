@@ -24,7 +24,7 @@ import { setTimeoutPolicyConfig } from "@services/video-generation/providers/tim
 import type { FirestoreCircuitExecutor } from "@services/firestore/FirestoreCircuitExecutor";
 import type { ServiceConfig } from "./service-config.types.ts";
 
-export function registerGenerationServices(container: DIContainer): void {
+export function registerVideoGenerationServices(container: DIContainer): void {
   container.register(
     "videoGenerationService",
     (videoAssetStore: VideoAssetStore, config: ServiceConfig) => {

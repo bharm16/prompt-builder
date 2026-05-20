@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeEach, afterEach } from "vitest";
 import { DIContainer } from "@infrastructure/DIContainer";
-import { registerGenerationServices } from "@config/services/generation.services";
+import { registerVideoGenerationServices } from "@config/services/video-generation.services";
 import type { ServiceConfig } from "@config/services/service-config.types";
 
 describe("keyframeGenerationService singleton regression", () => {
@@ -43,7 +43,7 @@ describe("keyframeGenerationService singleton regression", () => {
     } as ServiceConfig;
 
     container.registerValue("config", config);
-    registerGenerationServices(container);
+    registerVideoGenerationServices(container);
 
     const first = container.resolve("keyframeGenerationService");
     const second = container.resolve("keyframeGenerationService");
