@@ -63,15 +63,18 @@ Rules:
 
 Register the new service in the appropriate file under `server/src/config/services/`:
 
-| Domain                                   | Registration File                                     |
-| ---------------------------------------- | ----------------------------------------------------- |
-| Infrastructure (cache, metrics, storage) | `infrastructure.services.ts`                          |
-| LLM clients                              | `llm.services.ts`                                     |
-| Enhancement / analysis                   | `enhancement.services.ts`, `optimization.services.ts` |
-| Image generation                         | `image-generation.services.ts`                        |
-| Video generation                         | `video-generation.services.ts`                        |
-| Continuity                               | `continuity.services.ts`                              |
-| Sessions                                 | `session.services.ts`                                 |
+| Domain                             | Registration File                                     |
+| ---------------------------------- | ----------------------------------------------------- |
+| Infrastructure (metrics, Firebase) | `core.services.ts`                                    |
+| Infrastructure (cache)             | `cache.services.ts`                                   |
+| Infrastructure (observability)     | `observability.services.ts`                           |
+| Infrastructure (storage)           | `storage.services.ts`                                 |
+| LLM clients                        | `llm.services.ts`                                     |
+| Enhancement / analysis             | `enhancement.services.ts`, `optimization.services.ts` |
+| Image generation                   | `image-generation.services.ts`                        |
+| Video generation                   | `video-generation.services.ts`                        |
+| Continuity                         | `continuity.services.ts`                              |
+| Sessions                           | `session.services.ts`                                 |
 
 After registration, add a route factory in `server/src/config/routes.config.ts`.
 
