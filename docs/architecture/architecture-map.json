@@ -3,7 +3,6 @@
     "project": "Vidra",
     "tagline": "Interactive editing canvas for AI video prompts with semantic span labeling, click-to-enhance suggestions, and fast previews.",
     "stage": "pre-launch (zero users)",
-    "generatedAt": "2026-05-19",
     "sourceOfTruth": [
       "CLAUDE.md",
       "client/CLAUDE.md",
@@ -17,1005 +16,1054 @@
   "runtime": {
     "node": ">=20",
     "moduleSystem": "ESM",
-    "languages": ["TypeScript", "JavaScript (migration in progress)"],
+    "languages": [
+      "TypeScript",
+      "JavaScript (migration in progress)"
+    ],
     "monorepo": true,
-    "workspaces": ["packages/*"],
-    "ports": {
-      "vite": 5173,
-      "express": 3001
-    },
-    "proxy": "Vite dev server proxies /api → :3001",
-    "envRequired": [
-      "One of: FIREBASE_SERVICE_ACCOUNT_JSON, FIREBASE_SERVICE_ACCOUNT_PATH, GOOGLE_APPLICATION_CREDENTIALS"
-    ],
-    "envOptional": [
-      "REDIS_URL (falls back to in-memory cache)",
-      "STRIPE_SECRET_KEY",
-      "OPENAI_API_KEY",
-      "GROQ_API_KEY",
-      "GEMINI_API_KEY",
-      "REPLICATE_API_TOKEN",
-      "FAL_KEY",
-      "LUMAAI_API_KEY",
-      "SENTRY_DSN",
-      "POSTHOG_API_KEY"
-    ],
-    "startupProbe": "Express runs admin.auth().listUsers() and firestore.listCollections() at startup. Skipped only when NODE_ENV=test."
+    "workspaces": [
+      "packages/*"
+    ]
   },
-  "techStack": {
-    "client": {
-      "framework": "React 18 + Vite 5",
-      "language": "TypeScript / JavaScript (migration in progress)",
-      "styling": ["Tailwind CSS", "DaisyUI", "Radix UI primitives"],
-      "icons": "lucide-react",
-      "routing": "react-router-dom v7",
-      "validation": "Zod 4",
-      "testing": ["Vitest", "Playwright", "@testing-library/react"]
-    },
-    "server": {
-      "runtime": "Node.js 20",
-      "framework": "Express 4",
-      "executor": "tsx (TypeScript execution)",
-      "logging": "Pino + pino-pretty",
-      "validation": "Zod 4",
-      "errorTracking": "Sentry",
-      "observability": ["OpenTelemetry SDK", "PostHog"],
-      "auth": "Firebase Admin",
-      "payments": "Stripe",
-      "storage": "Google Cloud Storage",
-      "cache": "ioredis (optional, in-memory fallback)",
-      "circuit-breaker": "opossum",
-      "ai-runtime": [
-        "openai",
-        "@huggingface/transformers",
-        "onnxruntime-node",
-        "gliner",
-        "compromise"
-      ]
-    },
-    "shared": {
-      "purpose": "Pure contract layer — types, Zod schemas, constants, pure utility functions ONLY (no I/O, no React, no Node APIs)",
-      "import": "#shared/* (Node) or @shared/* (Vite alias)"
-    }
-  },
-  "externalSystems": [
-    {
-      "name": "Firebase (Admin)",
-      "purpose": "Auth + Firestore for sessions, billing profiles, telemetry sinks",
-      "required": true,
-      "startupProbed": true
-    },
-    {
-      "name": "Google Cloud Storage",
-      "purpose": "Asset storage (images, video, reference images)",
-      "required": true,
-      "startupProbed": false
-    },
-    {
-      "name": "Stripe",
-      "purpose": "Payments, billing portal, subscriptions, webhook reconciliation",
-      "required": false,
-      "startupProbed": false
-    },
-    {
-      "name": "Redis",
-      "purpose": "Cache + rate-limit store (falls back to in-memory when REDIS_URL unset)",
-      "required": false,
-      "startupProbed": false
-    },
-    {
-      "name": "OpenAI",
-      "purpose": "Refinement-stage LLM, image gen, embeddings",
-      "required": "for full pipeline",
-      "startupProbed": false
-    },
-    {
-      "name": "Groq",
-      "purpose": "Fast-draft LLM for two-stage optimization",
-      "required": "for full pipeline",
-      "startupProbed": false
-    },
-    {
-      "name": "Google Gemini",
-      "purpose": "Multimodal LLM for image observation",
-      "required": false,
-      "startupProbed": false
-    },
-    {
-      "name": "Replicate",
-      "purpose": "Face embedding, CLIP embedding, depth estimation",
-      "required": false,
-      "startupProbed": false
-    },
-    {
-      "name": "Fal",
-      "purpose": "Flux Schnell image preview, Wan 2.2 video preview",
-      "required": false,
-      "startupProbed": false
-    },
-    {
-      "name": "Luma AI",
-      "purpose": "Video generation (Luma Dream Machine)",
-      "required": false,
-      "startupProbed": false
-    },
-    {
-      "name": "Sentry",
-      "purpose": "Error tracking (Node + React + profiling)",
-      "required": false,
-      "startupProbed": false
-    },
-    {
-      "name": "PostHog",
-      "purpose": "Product analytics + telemetry events",
-      "required": false,
-      "startupProbed": false
-    }
-  ],
-  "repository": {
-    "tree": {
-      "client/": "React frontend (Vite). See client/CLAUDE.md",
-      "client/src/App.tsx": "Top-level router + auth gates",
-      "client/src/features/": "Vertical feature slices (orchestrator + hooks + api + components)",
-      "client/src/pages/": "Marketing + auth pages mounted under MarketingShell",
-      "client/src/api/": "Cross-feature thin fetch wrappers",
-      "client/src/services/": "Stateful client-side services (ApiClient, telemetry, prediction)",
-      "client/src/repositories/": "Data access layer",
-      "client/src/contexts/": "React context providers",
-      "client/src/schemas/": "Client-side Zod schemas",
-      "server/": "Express API + background workers. See server/CLAUDE.md",
-      "server/index.ts": "Entry point",
-      "server/src/app.ts": "Express app wiring",
-      "server/src/server.ts": "HTTP server + graceful shutdown",
-      "server/src/config/services/": "DI registration, domain-scoped",
-      "server/src/config/feature-flags.ts": "Source of truth for env-driven flags",
-      "server/src/routes/": "HTTP route handlers (thin)",
-      "server/src/services/": "Business logic (domain subdirectories)",
-      "server/src/llm/": "LLM orchestration: span labeling, role classifier",
-      "server/src/clients/": "External API adapters (LLM providers, video providers)",
-      "server/src/middleware/": "Express middleware (auth, validation, rate limit, telemetry)",
-      "server/src/schemas/": "Server-side Zod schemas",
-      "shared/": "Pure contract layer (types, Zod, constants, pure utils)",
-      "packages/": "Workspace packages (@promptstudio/system)",
-      "config/": "Build, lint, test config",
-      "scripts/": "Dev tools, migrations, eval suites",
-      "docs/": "Architecture docs",
-      "tests/": "E2E, load, eval suites"
-    }
-  },
-  "domains": [
-    {
-      "key": "span-labeling",
-      "name": "Span Labeling",
-      "description": "ML categorization of prompt phrases into taxonomy categories (subject, camera, lighting…) for UI highlights.",
-      "serverPath": "server/src/llm/span-labeling/",
-      "diFile": "span-labeling.services.ts",
-      "routes": ["POST /llm/label-spans", "POST /llm/label-spans/stream"],
-      "clientApi": "client/src/features/span-highlighting/api/spanLabelingApi.ts",
-      "providers": ["openai", "groq"]
-    },
-    {
-      "key": "enhancement",
-      "name": "Enhancement / Suggestions",
-      "description": "AI-generated alternative phrases for a user-selected span (click-to-enhance).",
-      "serverPath": "server/src/services/enhancement/",
-      "diFile": "enhancement.services.ts",
-      "routes": [
-        "POST /api/get-enhancement-suggestions",
-        "POST /api/get-custom-suggestions",
-        "POST /api/detect-scene-change",
-        "POST /api/test-nlp"
-      ],
-      "clientApi": "client/src/services/EnhancementApi.ts + client/src/api/enhancementSuggestionsApi.ts",
-      "providers": ["openai", "groq", "gemini"],
-      "registers": [
-        "enhancementService",
-        "sceneDetectionService",
-        "promptCoherenceService",
-        "suggestionsTelemetryService",
-        "videoService",
-        "promptBuilder",
-        "templateService"
-      ]
-    },
-    {
-      "key": "optimization",
-      "name": "Prompt Optimization",
-      "description": "Two-stage prompt rewriting pipeline (Groq fast draft → OpenAI refinement). Buffered streaming response.",
-      "serverPath": "server/src/services/prompt-optimization/",
-      "diFile": "enhancement.services.ts (alongside enhancement)",
-      "routes": ["POST /api/optimize", "POST /api/optimize/stream"],
-      "clientApi": "client/src/services/PromptOptimizationApi.ts",
-      "providers": ["groq (draft)", "openai (refine)"],
-      "registers": ["promptOptimizationService", "optimizeTelemetryService"]
-    },
-    {
-      "key": "continuity",
-      "name": "Continuity",
-      "description": "Shot-to-shot visual consistency in multi-shot sequences. Gated by ENABLE_CONVERGENCE flag.",
-      "serverPath": "server/src/services/continuity/",
-      "diFile": "continuity.services.ts",
-      "routes": [
-        "POST /api/continuity (create session)",
-        "GET /api/continuity (list)",
-        "GET /api/continuity/:id",
-        "PATCH /api/continuity/:id",
-        "POST /api/continuity/:id/shots",
-        "PUT /api/continuity/:id/shots/:shotId",
-        "POST /api/continuity/:id/generate"
-      ],
-      "clientApi": "client/src/features/continuity/api/",
-      "conditionalOn": "ENABLE_CONVERGENCE=true",
-      "registers": [
-        "continuitySessionService",
-        "continuityQualityGate",
-        "+10 sub-services"
-      ]
-    },
-    {
-      "key": "convergence",
-      "name": "Convergence",
-      "description": "Motion and visual convergence pipeline (iterative refinement toward target).",
-      "serverPath": "server/src/services/convergence/",
-      "diFile": "(shared with continuity / generation)",
-      "routes": ["POST /api/motion/*"],
-      "clientApi": "client/src/api/motionApi.ts",
-      "providers": ["openai", "fal"]
-    },
-    {
-      "key": "model-intelligence",
-      "name": "Model Intelligence",
-      "description": "AI-powered model recommendation based on prompt analysis. Scores candidate video models against prompt requirements.",
-      "serverPath": "server/src/services/model-intelligence/",
-      "diFile": "(registered conditionally in api.routes.ts wiring)",
-      "routes": [
-        "POST /api/model-intelligence/recommend",
-        "POST /api/model-intelligence/explain"
-      ],
-      "clientApi": "client/src/features/model-intelligence/api/",
-      "providers": ["openai (analysis)", "deterministic scoring"]
-    },
-    {
-      "key": "preview",
-      "name": "Preview (Image + Video Drafts)",
-      "description": "Image (Flux Schnell via Fal) and video (Wan 2.2 via Fal) draft generation before final render.",
-      "serverPath": "server/src/services/image-generation/, server/src/services/video-generation/",
-      "diFile": "video-generation.services.ts",
-      "routes": [
-        "POST /api/preview/generate (image)",
-        "POST /api/preview/video/generate",
-        "POST /api/preview/face-swap",
-        "GET /api/preview/video/jobs/:jobId",
-        "GET /api/preview/video/content/:contentId",
-        "GET /api/preview/image/content/:contentId",
-        "GET /api/preview/video/availability",
-        "GET /api/preview/image/view",
-        "POST /api/preview/image/view-batch",
-        "GET /api/preview/video/view"
-      ],
-      "clientApi": "client/src/features/preview/api/",
-      "providers": ["fal (flux-schnell, wan-2.2)", "replicate"]
-    },
-    {
-      "key": "generation",
-      "name": "Generation (Final Render)",
-      "description": "Final video render via Sora, Veo, Kling, Luma, Runway (recommendation-only). Shares routes with preview.",
-      "serverPath": "server/src/services/video-generation/",
-      "diFile": "video-generation.services.ts",
-      "routes": [
-        "POST /api/preview/video/generate (full render mode)",
-        "POST /api/generate/consistent (multi-shot)"
-      ],
-      "clientApi": "client/src/features/generations/, client/src/features/preview/api/",
-      "providers": ["openai (sora)", "luma", "fal", "replicate"]
-    },
-    {
-      "key": "sessions",
-      "name": "Sessions (v2)",
-      "description": "User session state — prompt edits, history, current model, settings. v2 namespace under /api/v2/sessions.",
-      "serverPath": "server/src/services/sessions/",
-      "diFile": "session.services.ts",
-      "routes": [
-        "POST /api/v2/sessions",
-        "GET /api/v2/sessions",
-        "GET /api/v2/sessions/:id",
-        "PATCH /api/v2/sessions/:id",
-        "POST /api/v2/sessions/:id/snapshots"
-      ],
-      "clientApi": "(uses ApiClient directly)"
-    },
-    {
-      "key": "assets",
-      "name": "Assets + Reference Images",
-      "description": "User-uploaded media (reference images, generated outputs). Backed by Google Cloud Storage.",
-      "serverPath": "server/src/services/asset/, server/src/services/storage/",
-      "diFile": "storage.services.ts, session.services.ts",
-      "routes": [
-        "GET/POST /api/assets/*",
-        "GET/POST/PATCH/DELETE /api/reference-images/*",
-        "POST /api/storage/upload",
-        "GET /api/storage/signed-url",
-        "GET /api/storage/download"
-      ],
-      "clientApi": "client/src/features/assets/, client/src/features/reference-images/, client/src/api/storageApi.ts"
-    },
-    {
-      "key": "payment",
-      "name": "Payment + Credits",
-      "description": "Stripe-backed billing, credit balance, invoices, portal sessions, webhook reconciliation.",
-      "serverPath": "server/src/services/payment/, server/src/services/credits/",
-      "diFile": "payment.services.ts, credit.services.ts",
-      "routes": [
-        "GET /api/payment/status",
-        "GET /api/payment/credits/balance",
-        "GET /api/payment/credits/history",
-        "GET /api/payment/invoices",
-        "POST /api/payment/portal",
-        "POST /api/payment/checkout",
-        "POST /api/payment/webhook (Stripe)"
-      ],
-      "clientApi": "client/src/api/billingApi.ts"
-    },
-    {
-      "key": "capabilities",
-      "name": "Capabilities Registry",
-      "description": "Schema-driven UI capabilities catalog (which models support what features, cost tiers, taxonomy).",
-      "serverPath": "(reads from shared/)",
-      "diFile": "(no DI — pure routes)",
-      "routes": [
-        "GET /api/capabilities",
-        "GET /api/capabilities/models",
-        "GET /api/capabilities/taxonomy",
-        "GET /api/capabilities/version"
-      ],
-      "clientApi": "client/src/services/CapabilitiesApi.ts"
-    },
-    {
-      "key": "health",
-      "name": "Health + Liveness",
-      "description": "Operational health probes for liveness/readiness checks and Sentry debug endpoint.",
-      "serverPath": "server/src/routes/health.routes.ts",
-      "diFile": "(no DI)",
-      "routes": [
-        "GET /health",
-        "GET /health/ready",
-        "GET /health/live",
-        "GET /debug-sentry (dev only)"
-      ],
-      "clientApi": "(not called from client)"
-    }
-  ],
-  "diRegistration": [
-    {
-      "file": "core.services.ts",
-      "purpose": "Foundation: logger, config, metrics, circuit breaker, Firebase clients, depth/face/image-observation services",
-      "registers": [
-        "logger",
-        "config",
-        "metrics",
-        "firebaseClients",
-        "depthEstimationService",
-        "faceEmbeddingService",
-        "imageObservationService",
-        "llmJudgeService"
-      ]
-    },
-    {
-      "file": "observability.services.ts",
-      "purpose": "Telemetry plumbing",
-      "registers": [
-        "postHogClient",
-        "openTelemetryTracer",
-        "structuredLogger",
-        "telemetryEmitter"
-      ]
-    },
-    {
-      "file": "cache.services.ts",
-      "purpose": "Cache layer (Redis + in-memory)",
-      "registers": ["cacheService", "redisClient", "spanLabelingCache"]
-    },
-    {
-      "file": "storage.services.ts",
-      "purpose": "GCS-backed object storage",
-      "registers": [
-        "gcsStorage",
-        "gcsBucketName",
-        "storageService",
-        "videoContentAccess",
-        "videoAssetRetention",
-        "+ supporting helpers"
-      ]
-    },
-    {
-      "file": "credit.services.ts",
-      "purpose": "User credit accounting + refunds + reconciliation",
-      "registers": [
-        "userCreditService",
-        "creditReconciliation",
-        "creditRefundSweeper",
-        "starterCredits",
-        "creditLedger"
-      ]
-    },
-    {
-      "file": "video-jobs.services.ts",
-      "purpose": "Video job queue, DLQ reprocessor, sweeper, idempotency",
-      "registers": ["requestIdempotency", "videoJobProcessor"]
-    },
-    {
-      "file": "llm.services.ts",
-      "purpose": "AI model routing layer — single point of LLM access",
-      "registers": [
-        "aiModelService",
-        "aiService",
-        "concurrencyController",
-        "providerHealth",
-        "circuitBreaker",
-        "promptCache",
-        "responseCache"
-      ]
-    },
-    {
-      "file": "i2v.services.ts",
-      "purpose": "Image-to-video motion idea generation",
-      "registers": ["motionIdeaService"]
-    },
-    {
-      "file": "span-labeling.services.ts",
-      "purpose": "Taxonomy classification for UI highlights",
-      "registers": ["spanLabelingService"]
-    },
-    {
-      "file": "enhancement.services.ts",
-      "purpose": "Click-to-enhance suggestions + prompt optimization + scene detection",
-      "registers": [
-        "enhancementService",
-        "videoService",
-        "sceneDetectionService",
-        "promptCoherenceService",
-        "suggestionsTelemetryService",
-        "promptBuilder",
-        "templateService",
-        "promptOptimizationService",
-        "optimizeTelemetryService",
-        "+ helpers"
-      ]
-    },
-    {
-      "file": "video-generation.services.ts",
-      "purpose": "Video generation (preview + final render)",
-      "registers": [
-        "videoGenerationService",
-        "keyframeGenerationService",
-        "faceSwapService",
-        "consistentVideoService",
-        "capabilitiesProbeService",
-        "providerCircuitManager",
-        "videoWorkerHeartbeatStore",
-        "videoJobHandler",
-        "videoJobWorker",
-        "videoJobSweeper",
-        "dlqReprocessorWorker",
-        "videoJobReconciler"
-      ]
-    },
-    {
-      "file": "continuity.services.ts",
-      "purpose": "Shot-to-shot continuity (gated on ENABLE_CONVERGENCE)",
-      "registers": [
-        "continuitySessionService",
-        "continuityQualityGate",
-        "+ 11 supporting services"
-      ],
-      "conditional": "ENABLE_CONVERGENCE=true; otherwise continuitySessionService = null"
-    },
-    {
-      "file": "payment.services.ts",
-      "purpose": "Stripe payments + webhooks + billing profile repair",
-      "registers": [
-        "paymentService",
-        "billingProfileStore",
-        "stripeWebhookWorker",
-        "billingProfileRepairWorker",
-        "webhookReconciliation",
-        "stripeClient"
-      ]
-    },
-    {
-      "file": "session.services.ts",
-      "purpose": "User session state + asset access + reference images",
-      "registers": [
-        "sessionStore",
-        "sessionService",
-        "assetService",
-        "referenceImageRepository"
-      ]
-    }
-  ],
   "routes": [
     {
-      "method": "POST",
-      "path": "/api/optimize",
-      "file": "optimize.routes.ts",
-      "domain": "optimization",
-      "auth": "user",
-      "conditional": false
-    },
-    {
-      "method": "POST",
-      "path": "/api/optimize/stream",
-      "file": "optimize.routes.ts",
-      "domain": "optimization",
-      "auth": "user",
-      "conditional": false
-    },
-    {
-      "method": "POST",
-      "path": "/api/get-enhancement-suggestions",
-      "file": "enhancement.routes.ts",
-      "domain": "enhancement",
-      "auth": "user",
-      "conditional": false
-    },
-    {
-      "method": "POST",
-      "path": "/api/get-custom-suggestions",
-      "file": "enhancement.routes.ts",
-      "domain": "enhancement",
-      "auth": "user",
-      "conditional": false
-    },
-    {
-      "method": "POST",
-      "path": "/api/detect-scene-change",
-      "file": "enhancement.routes.ts",
-      "domain": "enhancement",
-      "auth": "user",
-      "conditional": false
-    },
-    {
-      "method": "POST",
-      "path": "/api/test-nlp",
-      "file": "enhancement.routes.ts",
-      "domain": "enhancement",
-      "auth": "dev",
-      "conditional": false
-    },
-    {
-      "method": "POST",
-      "path": "/llm/label-spans/stream",
-      "file": "labelSpansRoute.ts",
-      "domain": "span-labeling",
-      "auth": "user",
-      "conditional": false
-    },
-    {
-      "method": "POST",
-      "path": "/llm/role-classify",
-      "file": "roleClassifyRoute.ts",
-      "domain": "span-labeling",
-      "auth": "user",
-      "conditional": false
-    },
-    {
-      "method": "*",
-      "path": "/api/preview/*",
-      "file": "preview.routes.ts",
-      "domain": "preview",
-      "auth": "user",
-      "conditional": false
-    },
-    {
-      "method": "*",
-      "path": "/api/storage/*",
-      "file": "storage.routes.ts",
-      "domain": "assets",
-      "auth": "user",
-      "conditional": false
-    },
-    {
-      "method": "*",
-      "path": "/api/assets/*",
-      "file": "asset.routes.ts",
-      "domain": "assets",
-      "auth": "user",
-      "conditional": "assetService"
-    },
-    {
-      "method": "*",
-      "path": "/api/reference-images/*",
-      "file": "reference-images.routes.ts",
-      "domain": "assets",
-      "auth": "user",
-      "conditional": "referenceImageRepository"
-    },
-    {
-      "method": "POST",
-      "path": "/api/generate/consistent/*",
-      "file": "consistentGeneration.routes.ts",
-      "domain": "generation",
-      "auth": "user",
-      "conditional": "consistentVideoService"
-    },
-    {
-      "method": "*",
-      "path": "/api/continuity/*",
-      "file": "continuity.routes.ts",
-      "domain": "continuity",
-      "auth": "user",
-      "conditional": "ENABLE_CONVERGENCE"
-    },
-    {
-      "method": "*",
-      "path": "/api/v2/sessions/*",
-      "file": "sessions.routes.ts",
-      "domain": "sessions",
-      "auth": "user",
-      "conditional": "sessionService"
-    },
-    {
-      "method": "POST",
-      "path": "/api/model-intelligence/*",
-      "file": "model-intelligence.routes.ts",
-      "domain": "model-intelligence",
-      "auth": "user",
-      "conditional": "modelIntelligenceService"
-    },
-    {
-      "method": "POST",
-      "path": "/api/motion/*",
-      "file": "motion.routes.ts",
-      "domain": "convergence",
-      "auth": "user",
-      "conditional": "motionIdeaService"
-    },
-    {
-      "method": "POST",
-      "path": "/api/observe-image",
-      "file": "image-observation.routes.ts",
-      "domain": "enhancement",
-      "auth": "user",
-      "conditional": "imageObservationService"
-    },
-    {
-      "method": "*",
-      "path": "/api/payment/*",
-      "file": "payment.routes.ts",
-      "domain": "payment",
-      "auth": "user / webhook signature",
-      "conditional": false
+      "method": "GET",
+      "fullPath": "/api",
+      "sourceFile": "server/src/routes/asset.routes.ts"
     },
     {
       "method": "GET",
-      "path": "/api/capabilities/*",
-      "file": "capabilities.routes.ts",
-      "domain": "capabilities",
-      "auth": "public",
-      "conditional": false
+      "fullPath": "/api",
+      "sourceFile": "server/src/routes/reference-images.routes.ts"
     },
     {
       "method": "GET",
-      "path": "/health",
-      "file": "health.routes.ts",
-      "domain": "health",
-      "auth": "public",
-      "conditional": false
+      "fullPath": "/api",
+      "sourceFile": "server/src/routes/sessions.routes.ts"
+    },
+    {
+      "method": "POST",
+      "fullPath": "/api",
+      "sourceFile": "server/src/routes/asset.routes.ts"
+    },
+    {
+      "method": "POST",
+      "fullPath": "/api",
+      "sourceFile": "server/src/routes/reference-images.routes.ts"
+    },
+    {
+      "method": "POST",
+      "fullPath": "/api",
+      "sourceFile": "server/src/routes/sessions.routes.ts"
     },
     {
       "method": "GET",
-      "path": "/health/ready",
-      "file": "health.routes.ts",
-      "domain": "health",
-      "auth": "public",
-      "conditional": false
+      "fullPath": "/api-docs",
+      "sourceFile": "server/src/openapi/devRoute.ts"
+    },
+    {
+      "method": "DELETE",
+      "fullPath": "/api/:id",
+      "sourceFile": "server/src/routes/asset.routes.ts"
+    },
+    {
+      "method": "DELETE",
+      "fullPath": "/api/:id",
+      "sourceFile": "server/src/routes/reference-images.routes.ts"
     },
     {
       "method": "GET",
-      "path": "/health/live",
-      "file": "health.routes.ts",
-      "domain": "health",
-      "auth": "public",
-      "conditional": false
+      "fullPath": "/api/:id",
+      "sourceFile": "server/src/routes/asset.routes.ts"
+    },
+    {
+      "method": "PATCH",
+      "fullPath": "/api/:id",
+      "sourceFile": "server/src/routes/asset.routes.ts"
+    },
+    {
+      "method": "GET",
+      "fullPath": "/api/:id/for-generation",
+      "sourceFile": "server/src/routes/asset.routes.ts"
+    },
+    {
+      "method": "POST",
+      "fullPath": "/api/:id/images",
+      "sourceFile": "server/src/routes/asset.routes.ts"
+    },
+    {
+      "method": "DELETE",
+      "fullPath": "/api/:id/images/:imageId",
+      "sourceFile": "server/src/routes/asset.routes.ts"
+    },
+    {
+      "method": "PATCH",
+      "fullPath": "/api/:id/images/:imageId/primary",
+      "sourceFile": "server/src/routes/asset.routes.ts"
+    },
+    {
+      "method": "DELETE",
+      "fullPath": "/api/:path(*)",
+      "sourceFile": "server/src/routes/storage.routes.ts"
+    },
+    {
+      "method": "DELETE",
+      "fullPath": "/api/:sessionId",
+      "sourceFile": "server/src/routes/sessions.routes.ts"
+    },
+    {
+      "method": "GET",
+      "fullPath": "/api/:sessionId",
+      "sourceFile": "server/src/routes/sessions.routes.ts"
+    },
+    {
+      "method": "PATCH",
+      "fullPath": "/api/:sessionId",
+      "sourceFile": "server/src/routes/sessions.routes.ts"
+    },
+    {
+      "method": "PATCH",
+      "fullPath": "/api/:sessionId/highlights",
+      "sourceFile": "server/src/routes/sessions.routes.ts"
+    },
+    {
+      "method": "PATCH",
+      "fullPath": "/api/:sessionId/output",
+      "sourceFile": "server/src/routes/sessions.routes.ts"
+    },
+    {
+      "method": "PATCH",
+      "fullPath": "/api/:sessionId/prompt",
+      "sourceFile": "server/src/routes/sessions.routes.ts"
+    },
+    {
+      "method": "POST",
+      "fullPath": "/api/:sessionId/scene-proxy",
+      "sourceFile": "server/src/routes/sessions.routes.ts"
+    },
+    {
+      "method": "PUT",
+      "fullPath": "/api/:sessionId/settings",
+      "sourceFile": "server/src/routes/sessions.routes.ts"
+    },
+    {
+      "method": "POST",
+      "fullPath": "/api/:sessionId/shots",
+      "sourceFile": "server/src/routes/sessions.routes.ts"
+    },
+    {
+      "method": "PATCH",
+      "fullPath": "/api/:sessionId/shots/:shotId",
+      "sourceFile": "server/src/routes/sessions.routes.ts"
+    },
+    {
+      "method": "POST",
+      "fullPath": "/api/:sessionId/shots/:shotId/generate",
+      "sourceFile": "server/src/routes/sessions.routes.ts"
+    },
+    {
+      "method": "POST",
+      "fullPath": "/api/:sessionId/shots/:shotId/generate-stream",
+      "sourceFile": "server/src/routes/sessions.routes.ts"
+    },
+    {
+      "method": "POST",
+      "fullPath": "/api/:sessionId/shots/:shotId/scene-proxy-preview",
+      "sourceFile": "server/src/routes/sessions.routes.ts"
+    },
+    {
+      "method": "GET",
+      "fullPath": "/api/:sessionId/shots/:shotId/status",
+      "sourceFile": "server/src/routes/sessions.routes.ts"
+    },
+    {
+      "method": "PUT",
+      "fullPath": "/api/:sessionId/shots/:shotId/style-reference",
+      "sourceFile": "server/src/routes/sessions.routes.ts"
+    },
+    {
+      "method": "PUT",
+      "fullPath": "/api/:sessionId/style-reference",
+      "sourceFile": "server/src/routes/sessions.routes.ts"
+    },
+    {
+      "method": "PATCH",
+      "fullPath": "/api/:sessionId/versions",
+      "sourceFile": "server/src/routes/sessions.routes.ts"
+    },
+    {
+      "method": "GET",
+      "fullPath": "/api/assets",
+      "sourceFile": "server/src/routes/asset.routes.ts"
+    },
+    {
+      "method": "POST",
+      "fullPath": "/api/assets",
+      "sourceFile": "server/src/routes/asset.routes.ts"
+    },
+    {
+      "method": "DELETE",
+      "fullPath": "/api/assets/:id",
+      "sourceFile": "server/src/routes/asset.routes.ts"
+    },
+    {
+      "method": "GET",
+      "fullPath": "/api/assets/:id",
+      "sourceFile": "server/src/routes/asset.routes.ts"
+    },
+    {
+      "method": "PATCH",
+      "fullPath": "/api/assets/:id",
+      "sourceFile": "server/src/routes/asset.routes.ts"
+    },
+    {
+      "method": "GET",
+      "fullPath": "/api/assets/:id/for-generation",
+      "sourceFile": "server/src/routes/asset.routes.ts"
+    },
+    {
+      "method": "POST",
+      "fullPath": "/api/assets/:id/images",
+      "sourceFile": "server/src/routes/asset.routes.ts"
+    },
+    {
+      "method": "DELETE",
+      "fullPath": "/api/assets/:id/images/:imageId",
+      "sourceFile": "server/src/routes/asset.routes.ts"
+    },
+    {
+      "method": "PATCH",
+      "fullPath": "/api/assets/:id/images/:imageId/primary",
+      "sourceFile": "server/src/routes/asset.routes.ts"
+    },
+    {
+      "method": "POST",
+      "fullPath": "/api/assets/resolve",
+      "sourceFile": "server/src/routes/asset.routes.ts"
+    },
+    {
+      "method": "GET",
+      "fullPath": "/api/assets/suggestions",
+      "sourceFile": "server/src/routes/asset.routes.ts"
+    },
+    {
+      "method": "POST",
+      "fullPath": "/api/assets/validate",
+      "sourceFile": "server/src/routes/asset.routes.ts"
+    },
+    {
+      "method": "GET",
+      "fullPath": "/api/by-prompt/:uuid",
+      "sourceFile": "server/src/routes/sessions.routes.ts"
+    },
+    {
+      "method": "GET",
+      "fullPath": "/api/capabilities",
+      "sourceFile": "server/src/routes/capabilities.routes.ts"
+    },
+    {
+      "method": "POST",
+      "fullPath": "/api/check-prompt-coherence",
+      "sourceFile": "server/src/routes/enhancement/coherenceCheckRoute.ts"
+    },
+    {
+      "method": "POST",
+      "fullPath": "/api/confirm-upload",
+      "sourceFile": "server/src/routes/storage.routes.ts"
+    },
+    {
+      "method": "POST",
+      "fullPath": "/api/continuity",
+      "sourceFile": "server/src/routes/sessions.routes.ts"
+    },
+    {
+      "method": "GET",
+      "fullPath": "/api/continuity/sessions",
+      "sourceFile": "server/src/routes/continuity.routes.ts"
+    },
+    {
+      "method": "POST",
+      "fullPath": "/api/continuity/sessions",
+      "sourceFile": "server/src/routes/continuity.routes.ts"
+    },
+    {
+      "method": "GET",
+      "fullPath": "/api/continuity/sessions/:sessionId",
+      "sourceFile": "server/src/routes/continuity.routes.ts"
+    },
+    {
+      "method": "POST",
+      "fullPath": "/api/continuity/sessions/:sessionId/scene-proxy",
+      "sourceFile": "server/src/routes/continuity.routes.ts"
+    },
+    {
+      "method": "PUT",
+      "fullPath": "/api/continuity/sessions/:sessionId/settings",
+      "sourceFile": "server/src/routes/continuity.routes.ts"
+    },
+    {
+      "method": "POST",
+      "fullPath": "/api/continuity/sessions/:sessionId/shots",
+      "sourceFile": "server/src/routes/continuity.routes.ts"
+    },
+    {
+      "method": "PATCH",
+      "fullPath": "/api/continuity/sessions/:sessionId/shots/:shotId",
+      "sourceFile": "server/src/routes/continuity.routes.ts"
+    },
+    {
+      "method": "POST",
+      "fullPath": "/api/continuity/sessions/:sessionId/shots/:shotId/generate",
+      "sourceFile": "server/src/routes/continuity.routes.ts"
+    },
+    {
+      "method": "POST",
+      "fullPath": "/api/continuity/sessions/:sessionId/shots/:shotId/scene-proxy-preview",
+      "sourceFile": "server/src/routes/continuity.routes.ts"
+    },
+    {
+      "method": "PUT",
+      "fullPath": "/api/continuity/sessions/:sessionId/shots/:shotId/style-reference",
+      "sourceFile": "server/src/routes/continuity.routes.ts"
+    },
+    {
+      "method": "PUT",
+      "fullPath": "/api/continuity/sessions/:sessionId/style-reference",
+      "sourceFile": "server/src/routes/continuity.routes.ts"
+    },
+    {
+      "method": "POST",
+      "fullPath": "/api/delete-batch",
+      "sourceFile": "server/src/routes/storage.routes.ts"
+    },
+    {
+      "method": "POST",
+      "fullPath": "/api/detect-scene-change",
+      "sourceFile": "server/src/routes/enhancement/sceneChangeRoute.ts"
+    },
+    {
+      "method": "GET",
+      "fullPath": "/api/download-url",
+      "sourceFile": "server/src/routes/storage.routes.ts"
+    },
+    {
+      "method": "POST",
+      "fullPath": "/api/from-keyframe",
+      "sourceFile": "server/src/routes/consistentGeneration.routes.ts"
+    },
+    {
+      "method": "POST",
+      "fullPath": "/api/from-url",
+      "sourceFile": "server/src/routes/reference-images.routes.ts"
+    },
+    {
+      "method": "POST",
+      "fullPath": "/api/generate/consistent/from-keyframe",
+      "sourceFile": "server/src/routes/consistentGeneration.routes.ts"
+    },
+    {
+      "method": "POST",
+      "fullPath": "/api/generate/consistent/keyframe",
+      "sourceFile": "server/src/routes/consistentGeneration.routes.ts"
+    },
+    {
+      "method": "POST",
+      "fullPath": "/api/generate/consistent/video",
+      "sourceFile": "server/src/routes/consistentGeneration.routes.ts"
+    },
+    {
+      "method": "POST",
+      "fullPath": "/api/get-custom-suggestions",
+      "sourceFile": "server/src/routes/enhancement/customSuggestionsRoute.ts"
+    },
+    {
+      "method": "POST",
+      "fullPath": "/api/get-enhancement-suggestions",
+      "sourceFile": "server/src/routes/enhancement/enhancementSuggestionsRoute.ts"
+    },
+    {
+      "method": "POST",
+      "fullPath": "/api/i2v/motion-ideas",
+      "sourceFile": "server/src/routes/i2v/motionIdeas.routes.ts"
+    },
+    {
+      "method": "POST",
+      "fullPath": "/api/image/observe",
+      "sourceFile": "server/src/routes/image-observation.routes.ts"
+    },
+    {
+      "method": "POST",
+      "fullPath": "/api/keyframe",
+      "sourceFile": "server/src/routes/consistentGeneration.routes.ts"
+    },
+    {
+      "method": "GET",
+      "fullPath": "/api/list",
+      "sourceFile": "server/src/routes/storage.routes.ts"
+    },
+    {
+      "method": "POST",
+      "fullPath": "/api/model-intelligence/recommend",
+      "sourceFile": "server/src/routes/model-intelligence.routes.ts"
+    },
+    {
+      "method": "POST",
+      "fullPath": "/api/model-intelligence/track",
+      "sourceFile": "server/src/routes/model-intelligence.routes.ts"
+    },
+    {
+      "method": "GET",
+      "fullPath": "/api/models",
+      "sourceFile": "server/src/routes/capabilities.routes.ts"
+    },
+    {
+      "method": "POST",
+      "fullPath": "/api/motion/depth",
+      "sourceFile": "server/src/routes/motion.routes.ts"
+    },
+    {
+      "method": "GET",
+      "fullPath": "/api/motion/media/cache-control",
+      "sourceFile": "server/src/routes/convergence/convergenceMedia.routes.ts"
+    },
+    {
+      "method": "GET",
+      "fullPath": "/api/motion/media/content-length",
+      "sourceFile": "server/src/routes/convergence/convergenceMedia.routes.ts"
+    },
+    {
+      "method": "GET",
+      "fullPath": "/api/motion/media/content-type",
+      "sourceFile": "server/src/routes/convergence/convergenceMedia.routes.ts"
+    },
+    {
+      "method": "GET",
+      "fullPath": "/api/motion/media/proxy",
+      "sourceFile": "server/src/routes/convergence/convergenceMedia.routes.ts"
+    },
+    {
+      "method": "POST",
+      "fullPath": "/api/motion/media/upload-image",
+      "sourceFile": "server/src/routes/convergence/convergenceMedia.routes.ts"
+    },
+    {
+      "method": "POST",
+      "fullPath": "/api/optimize",
+      "sourceFile": "server/src/routes/optimize.routes.ts"
+    },
+    {
+      "method": "POST",
+      "fullPath": "/api/optimize-compile",
+      "sourceFile": "server/src/routes/optimize.routes.ts"
+    },
+    {
+      "method": "POST",
+      "fullPath": "/api/payment/checkout",
+      "sourceFile": "server/src/routes/payment.routes.ts"
+    },
+    {
+      "method": "GET",
+      "fullPath": "/api/payment/credits/balance",
+      "sourceFile": "server/src/routes/payment.routes.ts"
+    },
+    {
+      "method": "GET",
+      "fullPath": "/api/payment/credits/history",
+      "sourceFile": "server/src/routes/payment.routes.ts"
+    },
+    {
+      "method": "GET",
+      "fullPath": "/api/payment/invoices",
+      "sourceFile": "server/src/routes/payment.routes.ts"
+    },
+    {
+      "method": "POST",
+      "fullPath": "/api/payment/portal",
+      "sourceFile": "server/src/routes/payment.routes.ts"
+    },
+    {
+      "method": "GET",
+      "fullPath": "/api/payment/status",
+      "sourceFile": "server/src/routes/payment.routes.ts"
+    },
+    {
+      "method": "POST",
+      "fullPath": "/api/payment/webhook",
+      "sourceFile": "server/src/routes/payment.routes.ts"
+    },
+    {
+      "method": "POST",
+      "fullPath": "/api/preview/face-swap",
+      "sourceFile": "server/src/routes/preview.routes.ts"
+    },
+    {
+      "method": "POST",
+      "fullPath": "/api/preview/generate",
+      "sourceFile": "server/src/routes/preview.routes.ts"
+    },
+    {
+      "method": "POST",
+      "fullPath": "/api/preview/generate/storyboard",
+      "sourceFile": "server/src/routes/preview.routes.ts"
+    },
+    {
+      "method": "GET",
+      "fullPath": "/api/preview/Idempotency-Key",
+      "sourceFile": "server/src/routes/preview/handlers/imageGenerate.ts"
+    },
+    {
+      "method": "GET",
+      "fullPath": "/api/preview/Idempotency-Key",
+      "sourceFile": "server/src/routes/preview/handlers/imageStoryboardGenerate.ts"
+    },
+    {
+      "method": "GET",
+      "fullPath": "/api/preview/Idempotency-Key",
+      "sourceFile": "server/src/routes/preview/handlers/videoGenerate.ts"
+    },
+    {
+      "method": "GET",
+      "fullPath": "/api/preview/Idempotency-Key",
+      "sourceFile": "server/src/routes/preview/handlers/faceSwap.ts"
+    },
+    {
+      "method": "GET",
+      "fullPath": "/api/preview/image/content/:contentId",
+      "sourceFile": "server/src/routes/preview.routes.ts"
+    },
+    {
+      "method": "GET",
+      "fullPath": "/api/preview/image/view",
+      "sourceFile": "server/src/routes/preview.routes.ts"
+    },
+    {
+      "method": "POST",
+      "fullPath": "/api/preview/image/view-batch",
+      "sourceFile": "server/src/routes/preview.routes.ts"
+    },
+    {
+      "method": "POST",
+      "fullPath": "/api/preview/upload",
+      "sourceFile": "server/src/routes/preview.routes.ts"
+    },
+    {
+      "method": "GET",
+      "fullPath": "/api/preview/video/availability",
+      "sourceFile": "server/src/routes/preview.routes.ts"
+    },
+    {
+      "method": "GET",
+      "fullPath": "/api/preview/video/content/:contentId",
+      "sourceFile": "server/src/routes/preview.routes.ts"
+    },
+    {
+      "method": "POST",
+      "fullPath": "/api/preview/video/generate",
+      "sourceFile": "server/src/routes/preview.routes.ts"
+    },
+    {
+      "method": "GET",
+      "fullPath": "/api/preview/video/jobs/:jobId",
+      "sourceFile": "server/src/routes/preview.routes.ts"
+    },
+    {
+      "method": "GET",
+      "fullPath": "/api/preview/video/view",
+      "sourceFile": "server/src/routes/preview.routes.ts"
+    },
+    {
+      "method": "GET",
+      "fullPath": "/api/providers",
+      "sourceFile": "server/src/routes/capabilities.routes.ts"
+    },
+    {
+      "method": "GET",
+      "fullPath": "/api/reference-images",
+      "sourceFile": "server/src/routes/reference-images.routes.ts"
+    },
+    {
+      "method": "POST",
+      "fullPath": "/api/reference-images",
+      "sourceFile": "server/src/routes/reference-images.routes.ts"
+    },
+    {
+      "method": "DELETE",
+      "fullPath": "/api/reference-images/:id",
+      "sourceFile": "server/src/routes/reference-images.routes.ts"
+    },
+    {
+      "method": "POST",
+      "fullPath": "/api/reference-images/from-url",
+      "sourceFile": "server/src/routes/reference-images.routes.ts"
+    },
+    {
+      "method": "GET",
+      "fullPath": "/api/registry",
+      "sourceFile": "server/src/routes/capabilities.routes.ts"
+    },
+    {
+      "method": "POST",
+      "fullPath": "/api/resolve",
+      "sourceFile": "server/src/routes/asset.routes.ts"
+    },
+    {
+      "method": "POST",
+      "fullPath": "/api/role-classify",
+      "sourceFile": "server/src/routes/roleClassifyRoute.ts"
+    },
+    {
+      "method": "POST",
+      "fullPath": "/api/save-from-url",
+      "sourceFile": "server/src/routes/storage.routes.ts"
+    },
+    {
+      "method": "GET",
+      "fullPath": "/api/sessions",
+      "sourceFile": "server/src/routes/continuity.routes.ts"
+    },
+    {
+      "method": "POST",
+      "fullPath": "/api/sessions",
+      "sourceFile": "server/src/routes/continuity.routes.ts"
+    },
+    {
+      "method": "GET",
+      "fullPath": "/api/sessions/:sessionId",
+      "sourceFile": "server/src/routes/continuity.routes.ts"
+    },
+    {
+      "method": "POST",
+      "fullPath": "/api/sessions/:sessionId/scene-proxy",
+      "sourceFile": "server/src/routes/continuity.routes.ts"
+    },
+    {
+      "method": "PUT",
+      "fullPath": "/api/sessions/:sessionId/settings",
+      "sourceFile": "server/src/routes/continuity.routes.ts"
+    },
+    {
+      "method": "POST",
+      "fullPath": "/api/sessions/:sessionId/shots",
+      "sourceFile": "server/src/routes/continuity.routes.ts"
+    },
+    {
+      "method": "PATCH",
+      "fullPath": "/api/sessions/:sessionId/shots/:shotId",
+      "sourceFile": "server/src/routes/continuity.routes.ts"
+    },
+    {
+      "method": "POST",
+      "fullPath": "/api/sessions/:sessionId/shots/:shotId/generate",
+      "sourceFile": "server/src/routes/continuity.routes.ts"
+    },
+    {
+      "method": "POST",
+      "fullPath": "/api/sessions/:sessionId/shots/:shotId/scene-proxy-preview",
+      "sourceFile": "server/src/routes/continuity.routes.ts"
+    },
+    {
+      "method": "PUT",
+      "fullPath": "/api/sessions/:sessionId/shots/:shotId/style-reference",
+      "sourceFile": "server/src/routes/continuity.routes.ts"
+    },
+    {
+      "method": "PUT",
+      "fullPath": "/api/sessions/:sessionId/style-reference",
+      "sourceFile": "server/src/routes/continuity.routes.ts"
+    },
+    {
+      "method": "DELETE",
+      "fullPath": "/api/storage/:path(*)",
+      "sourceFile": "server/src/routes/storage.routes.ts"
+    },
+    {
+      "method": "GET",
+      "fullPath": "/api/storage/cache-control",
+      "sourceFile": "server/src/routes/storage/mediaProxy.routes.ts"
+    },
+    {
+      "method": "POST",
+      "fullPath": "/api/storage/confirm-upload",
+      "sourceFile": "server/src/routes/storage.routes.ts"
+    },
+    {
+      "method": "GET",
+      "fullPath": "/api/storage/content-length",
+      "sourceFile": "server/src/routes/storage/mediaProxy.routes.ts"
+    },
+    {
+      "method": "GET",
+      "fullPath": "/api/storage/content-type",
+      "sourceFile": "server/src/routes/storage/mediaProxy.routes.ts"
+    },
+    {
+      "method": "POST",
+      "fullPath": "/api/storage/delete-batch",
+      "sourceFile": "server/src/routes/storage.routes.ts"
+    },
+    {
+      "method": "GET",
+      "fullPath": "/api/storage/download-url",
+      "sourceFile": "server/src/routes/storage.routes.ts"
+    },
+    {
+      "method": "GET",
+      "fullPath": "/api/storage/list",
+      "sourceFile": "server/src/routes/storage.routes.ts"
+    },
+    {
+      "method": "GET",
+      "fullPath": "/api/storage/proxy",
+      "sourceFile": "server/src/routes/storage/mediaProxy.routes.ts"
+    },
+    {
+      "method": "POST",
+      "fullPath": "/api/storage/save-from-url",
+      "sourceFile": "server/src/routes/storage.routes.ts"
+    },
+    {
+      "method": "POST",
+      "fullPath": "/api/storage/upload-url",
+      "sourceFile": "server/src/routes/storage.routes.ts"
+    },
+    {
+      "method": "GET",
+      "fullPath": "/api/storage/usage",
+      "sourceFile": "server/src/routes/storage.routes.ts"
+    },
+    {
+      "method": "GET",
+      "fullPath": "/api/storage/view-url",
+      "sourceFile": "server/src/routes/storage.routes.ts"
+    },
+    {
+      "method": "GET",
+      "fullPath": "/api/suggestions",
+      "sourceFile": "server/src/routes/asset.routes.ts"
+    },
+    {
+      "method": "POST",
+      "fullPath": "/api/suggestions/evaluate",
+      "sourceFile": "server/src/routes/suggestions/router.ts"
+    },
+    {
+      "method": "POST",
+      "fullPath": "/api/suggestions/evaluate/compare",
+      "sourceFile": "server/src/routes/suggestions/router.ts"
+    },
+    {
+      "method": "POST",
+      "fullPath": "/api/suggestions/evaluate/single",
+      "sourceFile": "server/src/routes/suggestions/router.ts"
+    },
+    {
+      "method": "GET",
+      "fullPath": "/api/suggestions/rubrics",
+      "sourceFile": "server/src/routes/suggestions/router.ts"
+    },
+    {
+      "method": "GET",
+      "fullPath": "/api/test-nlp",
+      "sourceFile": "server/src/routes/enhancement/nlpTestRoute.ts"
+    },
+    {
+      "method": "POST",
+      "fullPath": "/api/upload-url",
+      "sourceFile": "server/src/routes/storage.routes.ts"
+    },
+    {
+      "method": "GET",
+      "fullPath": "/api/usage",
+      "sourceFile": "server/src/routes/storage.routes.ts"
+    },
+    {
+      "method": "GET",
+      "fullPath": "/api/v2/sessions",
+      "sourceFile": "server/src/routes/sessions.routes.ts"
+    },
+    {
+      "method": "POST",
+      "fullPath": "/api/v2/sessions",
+      "sourceFile": "server/src/routes/sessions.routes.ts"
+    },
+    {
+      "method": "DELETE",
+      "fullPath": "/api/v2/sessions/:sessionId",
+      "sourceFile": "server/src/routes/sessions.routes.ts"
+    },
+    {
+      "method": "GET",
+      "fullPath": "/api/v2/sessions/:sessionId",
+      "sourceFile": "server/src/routes/sessions.routes.ts"
+    },
+    {
+      "method": "PATCH",
+      "fullPath": "/api/v2/sessions/:sessionId",
+      "sourceFile": "server/src/routes/sessions.routes.ts"
+    },
+    {
+      "method": "PATCH",
+      "fullPath": "/api/v2/sessions/:sessionId/highlights",
+      "sourceFile": "server/src/routes/sessions.routes.ts"
+    },
+    {
+      "method": "PATCH",
+      "fullPath": "/api/v2/sessions/:sessionId/output",
+      "sourceFile": "server/src/routes/sessions.routes.ts"
+    },
+    {
+      "method": "PATCH",
+      "fullPath": "/api/v2/sessions/:sessionId/prompt",
+      "sourceFile": "server/src/routes/sessions.routes.ts"
+    },
+    {
+      "method": "POST",
+      "fullPath": "/api/v2/sessions/:sessionId/scene-proxy",
+      "sourceFile": "server/src/routes/sessions.routes.ts"
+    },
+    {
+      "method": "PUT",
+      "fullPath": "/api/v2/sessions/:sessionId/settings",
+      "sourceFile": "server/src/routes/sessions.routes.ts"
+    },
+    {
+      "method": "POST",
+      "fullPath": "/api/v2/sessions/:sessionId/shots",
+      "sourceFile": "server/src/routes/sessions.routes.ts"
+    },
+    {
+      "method": "PATCH",
+      "fullPath": "/api/v2/sessions/:sessionId/shots/:shotId",
+      "sourceFile": "server/src/routes/sessions.routes.ts"
+    },
+    {
+      "method": "POST",
+      "fullPath": "/api/v2/sessions/:sessionId/shots/:shotId/generate",
+      "sourceFile": "server/src/routes/sessions.routes.ts"
+    },
+    {
+      "method": "POST",
+      "fullPath": "/api/v2/sessions/:sessionId/shots/:shotId/generate-stream",
+      "sourceFile": "server/src/routes/sessions.routes.ts"
+    },
+    {
+      "method": "POST",
+      "fullPath": "/api/v2/sessions/:sessionId/shots/:shotId/scene-proxy-preview",
+      "sourceFile": "server/src/routes/sessions.routes.ts"
+    },
+    {
+      "method": "GET",
+      "fullPath": "/api/v2/sessions/:sessionId/shots/:shotId/status",
+      "sourceFile": "server/src/routes/sessions.routes.ts"
+    },
+    {
+      "method": "PUT",
+      "fullPath": "/api/v2/sessions/:sessionId/shots/:shotId/style-reference",
+      "sourceFile": "server/src/routes/sessions.routes.ts"
+    },
+    {
+      "method": "PUT",
+      "fullPath": "/api/v2/sessions/:sessionId/style-reference",
+      "sourceFile": "server/src/routes/sessions.routes.ts"
+    },
+    {
+      "method": "PATCH",
+      "fullPath": "/api/v2/sessions/:sessionId/versions",
+      "sourceFile": "server/src/routes/sessions.routes.ts"
+    },
+    {
+      "method": "GET",
+      "fullPath": "/api/v2/sessions/by-prompt/:uuid",
+      "sourceFile": "server/src/routes/sessions.routes.ts"
+    },
+    {
+      "method": "POST",
+      "fullPath": "/api/v2/sessions/continuity",
+      "sourceFile": "server/src/routes/sessions.routes.ts"
+    },
+    {
+      "method": "POST",
+      "fullPath": "/api/validate",
+      "sourceFile": "server/src/routes/asset.routes.ts"
+    },
+    {
+      "method": "POST",
+      "fullPath": "/api/video",
+      "sourceFile": "server/src/routes/consistentGeneration.routes.ts"
+    },
+    {
+      "method": "GET",
+      "fullPath": "/api/view-url",
+      "sourceFile": "server/src/routes/storage.routes.ts"
+    },
+    {
+      "method": "GET",
+      "fullPath": "/debug-sentry",
+      "sourceFile": "server/src/routes/health.routes.ts"
+    },
+    {
+      "method": "GET",
+      "fullPath": "/health",
+      "sourceFile": "server/src/routes/health.routes.ts"
+    },
+    {
+      "method": "GET",
+      "fullPath": "/health/live",
+      "sourceFile": "server/src/routes/health.routes.ts"
+    },
+    {
+      "method": "GET",
+      "fullPath": "/health/ready",
+      "sourceFile": "server/src/routes/health.routes.ts"
+    },
+    {
+      "method": "POST",
+      "fullPath": "/llm/label-spans",
+      "sourceFile": "server/src/routes/labelSpansRoute.ts"
+    },
+    {
+      "method": "POST",
+      "fullPath": "/llm/label-spans-batch",
+      "sourceFile": "server/src/config/routes/api.registration.ts"
+    },
+    {
+      "method": "POST",
+      "fullPath": "/llm/label-spans/stream",
+      "sourceFile": "server/src/routes/labelSpansRoute.ts"
     }
-  ],
-  "clientFeatures": [
-    {
-      "name": "workspace-shell",
-      "purpose": "Top-level layout, panels, navigation",
-      "consumes": []
-    },
-    {
-      "name": "prompt-optimizer",
-      "purpose": "Two-stage prompt rewrite (Groq draft → OpenAI refine) with diff UI",
-      "consumes": ["/api/optimize"]
-    },
-    {
-      "name": "span-highlighting",
-      "purpose": "Click-to-enhance overlay with taxonomy-colored spans",
-      "consumes": ["/llm/label-spans/stream"]
-    },
-    {
-      "name": "preview",
-      "purpose": "Image + video draft generation, view, batch view",
-      "consumes": ["/api/preview/*"]
-    },
-    {
-      "name": "generations",
-      "purpose": "Final render history + browsing",
-      "consumes": ["/api/preview/video/*", "/api/v2/sessions/*"]
-    },
-    {
-      "name": "generation-controls",
-      "purpose": "Model selection, parameters, mode toggles",
-      "consumes": ["/api/capabilities/*", "/api/model-intelligence/*"]
-    },
-    {
-      "name": "continuity",
-      "purpose": "Multi-shot continuity authoring",
-      "consumes": ["/api/continuity/*"]
-    },
-    {
-      "name": "convergence",
-      "purpose": "Motion convergence pipeline UI",
-      "consumes": ["/api/motion/*"]
-    },
-    {
-      "name": "model-intelligence",
-      "purpose": "Recommendation explanation, model-fit visualization",
-      "consumes": ["/api/model-intelligence/*"]
-    },
-    {
-      "name": "reference-images",
-      "purpose": "Reference image upload, library, picker",
-      "consumes": ["/api/reference-images/*", "/api/storage/*"]
-    },
-    {
-      "name": "assets",
-      "purpose": "User asset library",
-      "consumes": ["/api/assets/*", "/api/storage/*"]
-    },
-    {
-      "name": "billing",
-      "purpose": "Credit balance, plan, portal, invoices",
-      "consumes": ["/api/payment/*"]
-    },
-    {
-      "name": "history",
-      "purpose": "Past prompts + sessions",
-      "consumes": ["/api/v2/sessions/*"]
-    },
-    {
-      "name": "sequence-editor",
-      "purpose": "Multi-shot sequence editor (shared with continuity)",
-      "consumes": ["/api/continuity/*"]
-    }
-  ],
-  "clientPages": [
-    { "path": "/", "page": "WorkspaceRoute", "shell": "WorkspaceShell" },
-    {
-      "path": "/session/:sessionId",
-      "page": "WorkspaceRoute",
-      "shell": "WorkspaceShell"
-    },
-    { "path": "/home", "page": "HomePage", "shell": "MarketingShell" },
-    { "path": "/products", "page": "ProductsPage", "shell": "MarketingShell" },
-    { "path": "/pricing", "page": "PricingPage", "shell": "MarketingShell" },
-    { "path": "/docs", "page": "DocsPage", "shell": "MarketingShell" },
-    { "path": "/history", "page": "HistoryPage", "shell": "MarketingShell" },
-    { "path": "/account", "page": "AccountPage", "shell": "MarketingShell" },
-    {
-      "path": "/settings/billing",
-      "page": "BillingPage",
-      "shell": "MarketingShell"
-    },
-    { "path": "/signin", "page": "SignInPage", "shell": "MarketingShell" },
-    { "path": "/signup", "page": "SignUpPage", "shell": "MarketingShell" },
-    {
-      "path": "/forgot-password",
-      "page": "ForgotPasswordPage",
-      "shell": "MarketingShell"
-    },
-    {
-      "path": "/email-verification",
-      "page": "EmailVerificationPage",
-      "shell": "MarketingShell"
-    },
-    {
-      "path": "/reset-password",
-      "page": "PasswordResetPage",
-      "shell": "MarketingShell"
-    },
-    {
-      "path": "/contact",
-      "page": "ContactSupportPage",
-      "shell": "MarketingShell"
-    },
-    {
-      "path": "/privacy-policy",
-      "page": "PrivacyPolicyPage",
-      "shell": "MarketingShell"
-    },
-    {
-      "path": "/terms-of-service",
-      "page": "TermsOfServicePage",
-      "shell": "MarketingShell"
-    },
-    {
-      "path": "/prompt/:uuid",
-      "page": "PromptRedirect",
-      "shell": "(redirect)"
-    },
-    { "path": "*", "page": "NotFoundPage", "shell": "MarketingShell" }
   ],
   "featureFlags": [
     {
       "name": "convergence",
       "envName": "ENABLE_CONVERGENCE",
-      "category": "mode",
-      "default": true,
       "aliases": [],
-      "description": "Enables continuity/convergence services. When false, continuitySessionService resolves to null."
+      "defaultValue": "true",
+      "description": "Enables continuity/convergence services. When false, continuitySessionService resolves to null.",
+      "category": "mode"
     },
     {
       "name": "videoJobWorkerDisabled",
       "envName": "VIDEO_JOB_WORKER_DISABLED",
-      "category": "worker",
-      "default": false,
       "aliases": [],
-      "description": "Forces video worker loops off even when PROCESS_ROLE=worker. Used for emergency drain."
+      "defaultValue": "false",
+      "description": "Forces video worker loops off even when PROCESS_ROLE=worker. Used for emergency drain.",
+      "category": "worker"
     },
     {
       "name": "webhookReconciliationEnabled",
       "envName": "WEBHOOK_RECONCILIATION_ENABLED",
-      "category": "killswitch",
-      "default": true,
-      "aliases": ["WEBHOOK_RECONCILIATION_DISABLED (inverted)"],
-      "description": "Stripe webhook reconciliation background service."
+      "aliases": [],
+      "defaultValue": "true",
+      "description": "Stripe webhook reconciliation background service.",
+      "category": "killswitch"
     },
     {
       "name": "billingProfileRepairEnabled",
       "envName": "BILLING_PROFILE_REPAIR_ENABLED",
-      "category": "killswitch",
-      "default": true,
-      "aliases": ["BILLING_PROFILE_REPAIR_DISABLED (inverted)"],
-      "description": "Billing profile repair background worker."
+      "aliases": [],
+      "defaultValue": "true",
+      "description": "Billing profile repair background worker.",
+      "category": "killswitch"
     },
     {
       "name": "creditRefundSweeperEnabled",
       "envName": "CREDIT_REFUND_SWEEPER_ENABLED",
-      "category": "killswitch",
-      "default": true,
-      "aliases": ["CREDIT_REFUND_SWEEPER_DISABLED (inverted)"],
-      "description": "Credit refund sweeper background service."
+      "aliases": [],
+      "defaultValue": "true",
+      "description": "Credit refund sweeper background service.",
+      "category": "killswitch"
     },
     {
       "name": "creditReconciliationEnabled",
       "envName": "CREDIT_RECONCILIATION_ENABLED",
-      "category": "killswitch",
-      "default": true,
-      "aliases": ["CREDIT_RECONCILIATION_DISABLED (inverted)"],
-      "description": "Credit reconciliation background service."
+      "aliases": [],
+      "defaultValue": "true",
+      "description": "Credit reconciliation background service.",
+      "category": "killswitch"
     },
     {
       "name": "videoJobSweeperEnabled",
       "envName": "VIDEO_JOB_SWEEPER_ENABLED",
-      "category": "killswitch",
-      "default": true,
-      "aliases": ["VIDEO_JOB_SWEEPER_DISABLED (inverted)"],
-      "description": "Video job stale-task sweeper."
+      "aliases": [],
+      "defaultValue": "true",
+      "description": "Video job stale-task sweeper.",
+      "category": "killswitch"
     },
     {
       "name": "videoDlqReprocessorEnabled",
       "envName": "VIDEO_DLQ_REPROCESSOR_ENABLED",
-      "category": "killswitch",
-      "default": true,
-      "aliases": ["VIDEO_DLQ_REPROCESSOR_DISABLED (inverted)"],
-      "description": "Dead-letter-queue reprocessor for failed video jobs."
+      "aliases": [],
+      "defaultValue": "true",
+      "description": "Dead-letter-queue reprocessor for failed video jobs.",
+      "category": "killswitch"
     },
     {
       "name": "videoAssetRetentionEnabled",
       "envName": "VIDEO_ASSET_RETENTION_ENABLED",
-      "category": "killswitch",
-      "default": true,
-      "aliases": ["VIDEO_ASSET_RETENTION_DISABLED (inverted)"],
-      "description": "Video asset cleanup/retention service."
+      "aliases": [],
+      "defaultValue": "true",
+      "description": "Video asset cleanup/retention service.",
+      "category": "killswitch"
     },
     {
       "name": "videoAssetReconcilerEnabled",
       "envName": "VIDEO_ASSET_RECONCILER_ENABLED",
-      "category": "killswitch",
-      "default": false,
-      "aliases": ["VIDEO_ASSET_RECONCILER_DISABLED (inverted)"],
-      "description": "Video asset orphan-detection reconciler. Opt-in (default off)."
+      "aliases": [],
+      "defaultValue": "false",
+      "description": "Video asset orphan-detection reconciler. Opt-in (default off).",
+      "category": "killswitch"
     },
     {
       "name": "allowUnhealthyGemini",
       "envName": "ALLOW_UNHEALTHY_GEMINI",
-      "category": "provider",
-      "default": false,
-      "aliases": ["GEMINI_ALLOW_UNHEALTHY"],
-      "description": "Use Gemini even when the provider health check fails. Dev/debug only."
+      "aliases": [],
+      "defaultValue": "false",
+      "description": "Use Gemini even when the provider health check fails. Useful for dev/debug; not recommended in production.",
+      "category": "provider"
     },
     {
       "name": "faceEmbeddingEnabled",
       "envName": "ENABLE_FACE_EMBEDDING",
-      "category": "experimental",
-      "default": false,
       "aliases": [],
-      "description": "Enables face embedding service for continuity quality gates. Requires Replicate API token."
+      "defaultValue": "false",
+      "description": "Enables face embedding service for continuity quality gates. Requires Replicate API token.",
+      "category": "experimental",
+      "requiresEnv": [
+        "REPLICATE_API_TOKEN"
+      ],
+      "dependsOn": [
+        "ENABLE_CONVERGENCE"
+      ]
     },
     {
       "name": "continuityClipEnabled",
       "envName": "CONTINUITY_CLIP_ENABLED",
+      "aliases": [],
+      "defaultValue": "true",
+      "description": "Enables CLIP embedding in continuity quality gate checks.",
       "category": "experimental",
-      "default": true,
-      "aliases": ["DISABLE_CONTINUITY_CLIP (inverted)"],
-      "description": "Enables CLIP embedding in continuity quality gate checks."
+      "requiresEnv": [
+        "REPLICATE_API_TOKEN"
+      ],
+      "dependsOn": [
+        "ENABLE_CONVERGENCE"
+      ]
     },
     {
       "name": "depthWarmupOnStartup",
       "envName": "DEPTH_WARMUP_ON_STARTUP",
-      "category": "experimental",
-      "default": true,
       "aliases": [],
-      "description": "Controls depth estimation service warmup during server boot."
+      "defaultValue": "true",
+      "description": "Controls depth estimation service warmup during server boot.",
+      "category": "experimental"
     },
     {
       "name": "unhandledRejectionMode",
       "envName": "UNHANDLED_REJECTION_MODE",
-      "category": "debug",
-      "default": "classified",
       "aliases": [],
-      "description": "How unhandled promise rejections are categorized. `strict` exits; `classified` logs and continues."
+      "defaultValue": "classified",
+      "description": "How unhandled promise rejections are categorized. `strict` exits the process; `classified` logs and continues.",
+      "category": "debug"
     }
-  ],
-  "boundaries": [
-    {
-      "name": "Client ↔ Server",
-      "rule": "Strictly decoupled — client/src never imports server/src and vice versa.",
-      "sharedCode": "shared/ (types, Zod, constants, pure utilities only)",
-      "antiCorruption": "Each client feature's api/ directory transforms server DTOs into client-friendly shapes."
-    },
-    {
-      "name": "Routes ↔ Services",
-      "rule": "Route handlers are thin — all business logic lives in services. Services receive deps via constructor injection.",
-      "rationale": "Prevents container.resolve() leakage outside DI config + route factories."
-    },
-    {
-      "name": "Business Service ↔ LLM Provider",
-      "rule": "aiService is the only LLM routing layer. No service may call openai/groq/gemini clients directly.",
-      "rationale": "Single point for retries, rate limits, caching, and circuit breaking."
-    },
-    {
-      "name": "shared/ Purity",
-      "rule": "shared/ code must be pure — no Node APIs, no React, no fetch, no I/O.",
-      "rationale": "Same code runs on both server and client — impure imports break one side."
-    }
-  ],
-  "operations": {
-    "commands": {
-      "dev": "npm start (orchestrator) or npm run dev (client only) + npm run server",
-      "test": "npm run test:unit / npm run test:e2e / npm run test:coverage / npm run test:regression",
-      "typecheck": "npx tsc --noEmit",
-      "lint": "npm run lint / npm run lint:fix / npm run lint:all",
-      "build": "npm run build",
-      "eval-golden": "npm run eval:golden-set / npm run eval:golden-set:bless",
-      "integration-gate": "PORT=0 npx vitest run tests/integration/bootstrap.integration.test.ts tests/integration/di-container.integration.test.ts --config config/test/vitest.integration.config.js"
-    },
-    "commitProtocol": [
-      "npx tsc --noEmit must exit 0",
-      "npx eslint --quiet must report 0 errors",
-      "npm run test:unit must pass",
-      "fix: commits must include a regression test (hook enforced)"
-    ],
-    "activePrograms": [
-      {
-        "name": "Measurement Program",
-        "doc": "docs/superpowers/programs/measurement.md",
-        "goal": "Every surface emits operational + quality telemetry to PostHog with traffic-source discrimination.",
-        "subProject0": "Source discriminator + synthetic-traffic harness (in design)"
-      }
-    ]
-  }
+  ]
 }

@@ -78,6 +78,7 @@ Regenerate with `npm run routemap:generate`. CI enforces freshness via `npm run 
 | POST   | `/api/generate/consistent/video`                                        | `server/src/routes/consistentGeneration.routes.ts`              |
 | POST   | `/api/get-custom-suggestions`                                           | `server/src/routes/enhancement/customSuggestionsRoute.ts`       |
 | POST   | `/api/get-enhancement-suggestions`                                      | `server/src/routes/enhancement/enhancementSuggestionsRoute.ts`  |
+| POST   | `/api/i2v/motion-ideas`                                                 | `server/src/routes/i2v/motionIdeas.routes.ts`                   |
 | POST   | `/api/image/observe`                                                    | `server/src/routes/image-observation.routes.ts`                 |
 | POST   | `/api/keyframe`                                                         | `server/src/routes/consistentGeneration.routes.ts`              |
 | GET    | `/api/list`                                                             | `server/src/routes/storage.routes.ts`                           |
@@ -179,11 +180,6 @@ Regenerate with `npm run routemap:generate`. CI enforces freshness via `npm run 
 | POST   | `/api/v2/sessions/continuity`                                           | `server/src/routes/sessions.routes.ts`                          |
 | POST   | `/api/validate`                                                         | `server/src/routes/asset.routes.ts`                             |
 | POST   | `/api/video`                                                            | `server/src/routes/consistentGeneration.routes.ts`              |
-| POST   | `/api/video/complete`                                                   | `server/src/routes/video.routes.ts`                             |
-| POST   | `/api/video/parse`                                                      | `server/src/routes/video.routes.ts`                             |
-| POST   | `/api/video/suggestions`                                                | `server/src/routes/video.routes.ts`                             |
-| POST   | `/api/video/validate`                                                   | `server/src/routes/video.routes.ts`                             |
-| POST   | `/api/video/variations`                                                 | `server/src/routes/video.routes.ts`                             |
 | GET    | `/api/view-url`                                                         | `server/src/routes/storage.routes.ts`                           |
 | GET    | `/debug-sentry`                                                         | `server/src/routes/health.routes.ts`                            |
 | GET    | `/health`                                                               | `server/src/routes/health.routes.ts`                            |
@@ -192,6 +188,5 @@ Regenerate with `npm run routemap:generate`. CI enforces freshness via `npm run 
 | POST   | `/llm/label-spans`                                                      | `server/src/routes/labelSpansRoute.ts`                          |
 | POST   | `/llm/label-spans-batch`                                                | `server/src/config/routes/api.registration.ts`                  |
 | POST   | `/llm/label-spans/stream`                                               | `server/src/routes/labelSpansRoute.ts`                          |
-| GET    | `/stats`                                                                | `server/src/routes/health.routes.ts`                            |
 
-_Generated route count: **186**. Each row reflects a real `router.<method>` call reachable from `app.use` at server boot; conditional registrations (feature-flagged routes) are included because they can be registered under some configuration._
+_Generated route count: **181**. Each row reflects a real `router.<method>` call reachable from `app.use` at server boot; conditional registrations (feature-flagged routes) are included because they can be registered under some configuration._

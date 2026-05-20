@@ -61,6 +61,7 @@ export default mergeConfig(
               "shared/**/*.{test,spec}.{ts,js}",
               "tests/ci/**/*.{test,spec}.ts",
               "tests/unit/**/*.{test,spec}.ts",
+              "scripts/__tests__/**/*.{test,spec}.{ts,js}",
               "scripts/evaluation/__tests__/**/*.{test,spec}.{ts,js}",
               "scripts/synthetic/__tests__/**/*.{test,spec}.{ts,js}",
               "scripts/quality-judge/__tests__/**/*.{test,spec}.{ts,js}",
