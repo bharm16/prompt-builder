@@ -1065,5 +1065,917 @@
       "description": "How unhandled promise rejections are categorized. `strict` exits the process; `classified` logs and continues.",
       "category": "debug"
     }
+  ],
+  "dependencies": [
+    {
+      "from": "aiService",
+      "to": "config",
+      "file": "llm.services.ts"
+    },
+    {
+      "from": "aiService",
+      "to": "geminiClient",
+      "file": "llm.services.ts"
+    },
+    {
+      "from": "aiService",
+      "to": "groqClient",
+      "file": "llm.services.ts"
+    },
+    {
+      "from": "aiService",
+      "to": "llmCallTelemetryService",
+      "file": "llm.services.ts"
+    },
+    {
+      "from": "aiService",
+      "to": "openAIClient",
+      "file": "llm.services.ts"
+    },
+    {
+      "from": "aiService",
+      "to": "qwenClient",
+      "file": "llm.services.ts"
+    },
+    {
+      "from": "anchorService",
+      "to": "providerStyleAdapter",
+      "file": "continuity.services.ts"
+    },
+    {
+      "from": "assetService",
+      "to": "config",
+      "file": "session.services.ts"
+    },
+    {
+      "from": "assetService",
+      "to": "faceEmbeddingService",
+      "file": "session.services.ts"
+    },
+    {
+      "from": "assetService",
+      "to": "gcsBucket",
+      "file": "session.services.ts"
+    },
+    {
+      "from": "assetService",
+      "to": "gcsBucketName",
+      "file": "session.services.ts"
+    },
+    {
+      "from": "billingProfileRepairWorker",
+      "to": "billingProfileStore",
+      "file": "payment.services.ts"
+    },
+    {
+      "from": "billingProfileRepairWorker",
+      "to": "config",
+      "file": "payment.services.ts"
+    },
+    {
+      "from": "billingProfileRepairWorker",
+      "to": "paymentConsistencyStore",
+      "file": "payment.services.ts"
+    },
+    {
+      "from": "billingProfileStore",
+      "to": "firestoreCircuitExecutor",
+      "file": "payment.services.ts"
+    },
+    {
+      "from": "capabilitiesProbeService",
+      "to": "config",
+      "file": "video-generation.services.ts"
+    },
+    {
+      "from": "categoryAligner",
+      "to": "validationService",
+      "file": "enhancement.services.ts"
+    },
+    {
+      "from": "characterKeyframeService",
+      "to": "assetService",
+      "file": "continuity.services.ts"
+    },
+    {
+      "from": "characterKeyframeService",
+      "to": "keyframeGenerationService",
+      "file": "continuity.services.ts"
+    },
+    {
+      "from": "characterKeyframeService",
+      "to": "storageService",
+      "file": "continuity.services.ts"
+    },
+    {
+      "from": "consistentVideoService",
+      "to": "assetService",
+      "file": "video-generation.services.ts"
+    },
+    {
+      "from": "consistentVideoService",
+      "to": "keyframeGenerationService",
+      "file": "video-generation.services.ts"
+    },
+    {
+      "from": "consistentVideoService",
+      "to": "videoGenerationService",
+      "file": "video-generation.services.ts"
+    },
+    {
+      "from": "continuityDepthEstimationFactory",
+      "to": "storageService",
+      "file": "continuity.services.ts"
+    },
+    {
+      "from": "continuitySessionService",
+      "to": "anchorService",
+      "file": "continuity.services.ts"
+    },
+    {
+      "from": "continuitySessionService",
+      "to": "assetService",
+      "file": "continuity.services.ts"
+    },
+    {
+      "from": "continuitySessionService",
+      "to": "characterKeyframeService",
+      "file": "continuity.services.ts"
+    },
+    {
+      "from": "continuitySessionService",
+      "to": "continuitySessionStore",
+      "file": "continuity.services.ts"
+    },
+    {
+      "from": "continuitySessionService",
+      "to": "frameBridgeService",
+      "file": "continuity.services.ts"
+    },
+    {
+      "from": "continuitySessionService",
+      "to": "gradingService",
+      "file": "continuity.services.ts"
+    },
+    {
+      "from": "continuitySessionService",
+      "to": "providerStyleAdapter",
+      "file": "continuity.services.ts"
+    },
+    {
+      "from": "continuitySessionService",
+      "to": "qualityGateService",
+      "file": "continuity.services.ts"
+    },
+    {
+      "from": "continuitySessionService",
+      "to": "sceneProxyService",
+      "file": "continuity.services.ts"
+    },
+    {
+      "from": "continuitySessionService",
+      "to": "seedPersistenceService",
+      "file": "continuity.services.ts"
+    },
+    {
+      "from": "continuitySessionService",
+      "to": "storageService",
+      "file": "continuity.services.ts"
+    },
+    {
+      "from": "continuitySessionService",
+      "to": "styleAnalysisService",
+      "file": "continuity.services.ts"
+    },
+    {
+      "from": "continuitySessionService",
+      "to": "styleReferenceService",
+      "file": "continuity.services.ts"
+    },
+    {
+      "from": "continuitySessionService",
+      "to": "videoGenerationService",
+      "file": "continuity.services.ts"
+    },
+    {
+      "from": "continuitySessionStore",
+      "to": "sessionStore",
+      "file": "continuity.services.ts"
+    },
+    {
+      "from": "convergenceStorageService",
+      "to": "config",
+      "file": "storage.services.ts"
+    },
+    {
+      "from": "convergenceStorageService",
+      "to": "gcsBucket",
+      "file": "storage.services.ts"
+    },
+    {
+      "from": "creditReconciliationService",
+      "to": "config",
+      "file": "credit.services.ts"
+    },
+    {
+      "from": "creditReconciliationService",
+      "to": "firestoreCircuitExecutor",
+      "file": "credit.services.ts"
+    },
+    {
+      "from": "creditReconciliationService",
+      "to": "userCreditService",
+      "file": "credit.services.ts"
+    },
+    {
+      "from": "creditReconciliationWorker",
+      "to": "config",
+      "file": "credit.services.ts"
+    },
+    {
+      "from": "creditReconciliationWorker",
+      "to": "creditReconciliationService",
+      "file": "credit.services.ts"
+    },
+    {
+      "from": "creditRefundSweeper",
+      "to": "config",
+      "file": "credit.services.ts"
+    },
+    {
+      "from": "creditRefundSweeper",
+      "to": "refundFailureStore",
+      "file": "credit.services.ts"
+    },
+    {
+      "from": "creditRefundSweeper",
+      "to": "userCreditService",
+      "file": "credit.services.ts"
+    },
+    {
+      "from": "diversityEnforcer",
+      "to": "aiService",
+      "file": "enhancement.services.ts"
+    },
+    {
+      "from": "dlqReprocessorWorker",
+      "to": "config",
+      "file": "video-generation.services.ts"
+    },
+    {
+      "from": "dlqReprocessorWorker",
+      "to": "providerCircuitManager",
+      "file": "video-generation.services.ts"
+    },
+    {
+      "from": "dlqReprocessorWorker",
+      "to": "videoJobStore",
+      "file": "video-generation.services.ts"
+    },
+    {
+      "from": "enhancementService",
+      "to": "aiService",
+      "file": "enhancement.services.ts"
+    },
+    {
+      "from": "enhancementService",
+      "to": "brainstormBuilder",
+      "file": "enhancement.services.ts"
+    },
+    {
+      "from": "enhancementService",
+      "to": "cacheService",
+      "file": "enhancement.services.ts"
+    },
+    {
+      "from": "enhancementService",
+      "to": "categoryAligner",
+      "file": "enhancement.services.ts"
+    },
+    {
+      "from": "enhancementService",
+      "to": "config",
+      "file": "enhancement.services.ts"
+    },
+    {
+      "from": "enhancementService",
+      "to": "diversityEnforcer",
+      "file": "enhancement.services.ts"
+    },
+    {
+      "from": "enhancementService",
+      "to": "promptBuilder",
+      "file": "enhancement.services.ts"
+    },
+    {
+      "from": "enhancementService",
+      "to": "validationService",
+      "file": "enhancement.services.ts"
+    },
+    {
+      "from": "enhancementService",
+      "to": "videoPromptService",
+      "file": "enhancement.services.ts"
+    },
+    {
+      "from": "faceEmbeddingService",
+      "to": "config",
+      "file": "core.services.ts"
+    },
+    {
+      "from": "faceSwapService",
+      "to": "config",
+      "file": "video-generation.services.ts"
+    },
+    {
+      "from": "firestoreCircuitExecutor",
+      "to": "config",
+      "file": "core.services.ts"
+    },
+    {
+      "from": "frameBridgeService",
+      "to": "storageService",
+      "file": "continuity.services.ts"
+    },
+    {
+      "from": "gcsBucket",
+      "to": "gcsBucketName",
+      "file": "storage.services.ts"
+    },
+    {
+      "from": "gcsBucket",
+      "to": "gcsStorage",
+      "file": "storage.services.ts"
+    },
+    {
+      "from": "geminiClient",
+      "to": "config",
+      "file": "llm.services.ts"
+    },
+    {
+      "from": "geminiClient",
+      "to": "geminiLimiter",
+      "file": "llm.services.ts"
+    },
+    {
+      "from": "gradingService",
+      "to": "storageService",
+      "file": "continuity.services.ts"
+    },
+    {
+      "from": "gradingService",
+      "to": "videoAssetStore",
+      "file": "continuity.services.ts"
+    },
+    {
+      "from": "groqClient",
+      "to": "config",
+      "file": "llm.services.ts"
+    },
+    {
+      "from": "groqClient",
+      "to": "groqLimiter",
+      "file": "llm.services.ts"
+    },
+    {
+      "from": "imageAssetStore",
+      "to": "config",
+      "file": "storage.services.ts"
+    },
+    {
+      "from": "imageAssetStore",
+      "to": "gcsBucket",
+      "file": "storage.services.ts"
+    },
+    {
+      "from": "imageGenerationService",
+      "to": "config",
+      "file": "image-generation.services.ts"
+    },
+    {
+      "from": "imageGenerationService",
+      "to": "imageAssetStore",
+      "file": "image-generation.services.ts"
+    },
+    {
+      "from": "imageGenerationService",
+      "to": "replicateFluxKontextFastProvider",
+      "file": "image-generation.services.ts"
+    },
+    {
+      "from": "imageGenerationService",
+      "to": "replicateFluxSchnellProvider",
+      "file": "image-generation.services.ts"
+    },
+    {
+      "from": "imageObservationService",
+      "to": "aiService",
+      "file": "core.services.ts"
+    },
+    {
+      "from": "imageObservationService",
+      "to": "cacheService",
+      "file": "core.services.ts"
+    },
+    {
+      "from": "keyframeGenerationService",
+      "to": "config",
+      "file": "video-generation.services.ts"
+    },
+    {
+      "from": "llmCallTelemetryService",
+      "to": "postHogClient",
+      "file": "observability.services.ts"
+    },
+    {
+      "from": "llmJudgeService",
+      "to": "aiService",
+      "file": "core.services.ts"
+    },
+    {
+      "from": "modelIntelligenceAvailabilityGate",
+      "to": "billingProfileStore",
+      "file": "model-intelligence.services.ts"
+    },
+    {
+      "from": "modelIntelligenceAvailabilityGate",
+      "to": "userCreditService",
+      "file": "model-intelligence.services.ts"
+    },
+    {
+      "from": "modelIntelligenceAvailabilityGate",
+      "to": "videoGenerationService",
+      "file": "model-intelligence.services.ts"
+    },
+    {
+      "from": "modelIntelligenceService",
+      "to": "modelIntelligenceAvailabilityGate",
+      "file": "model-intelligence.services.ts"
+    },
+    {
+      "from": "modelIntelligenceService",
+      "to": "spanLabelingProvider",
+      "file": "model-intelligence.services.ts"
+    },
+    {
+      "from": "motionIdeaService",
+      "to": "aiService",
+      "file": "i2v.services.ts"
+    },
+    {
+      "from": "motionIdeaService",
+      "to": "imageObservationService",
+      "file": "i2v.services.ts"
+    },
+    {
+      "from": "openAIClient",
+      "to": "config",
+      "file": "llm.services.ts"
+    },
+    {
+      "from": "openAIClient",
+      "to": "openAILimiter",
+      "file": "llm.services.ts"
+    },
+    {
+      "from": "optimizeTelemetryService",
+      "to": "postHogClient",
+      "file": "observability.services.ts"
+    },
+    {
+      "from": "paymentConsistencyStore",
+      "to": "firestoreCircuitExecutor",
+      "file": "payment.services.ts"
+    },
+    {
+      "from": "paymentService",
+      "to": "config",
+      "file": "payment.services.ts"
+    },
+    {
+      "from": "promptCoherenceService",
+      "to": "aiService",
+      "file": "enhancement.services.ts"
+    },
+    {
+      "from": "promptOptimizationService",
+      "to": "aiService",
+      "file": "optimization.services.ts"
+    },
+    {
+      "from": "promptOptimizationService",
+      "to": "cacheService",
+      "file": "optimization.services.ts"
+    },
+    {
+      "from": "promptOptimizationService",
+      "to": "config",
+      "file": "optimization.services.ts"
+    },
+    {
+      "from": "promptOptimizationService",
+      "to": "imageObservationService",
+      "file": "optimization.services.ts"
+    },
+    {
+      "from": "promptOptimizationService",
+      "to": "templateService",
+      "file": "optimization.services.ts"
+    },
+    {
+      "from": "promptOptimizationService",
+      "to": "videoPromptService",
+      "file": "optimization.services.ts"
+    },
+    {
+      "from": "providerCircuitManager",
+      "to": "config",
+      "file": "video-generation.services.ts"
+    },
+    {
+      "from": "qualityGateService",
+      "to": "config",
+      "file": "continuity.services.ts"
+    },
+    {
+      "from": "qualityGateService",
+      "to": "faceEmbeddingService",
+      "file": "continuity.services.ts"
+    },
+    {
+      "from": "qualityGateService",
+      "to": "storageService",
+      "file": "continuity.services.ts"
+    },
+    {
+      "from": "qwenClient",
+      "to": "config",
+      "file": "llm.services.ts"
+    },
+    {
+      "from": "qwenClient",
+      "to": "qwenLimiter",
+      "file": "llm.services.ts"
+    },
+    {
+      "from": "qwenLimiter",
+      "to": "groqLimiter",
+      "file": "llm.services.ts"
+    },
+    {
+      "from": "referenceImageRepository",
+      "to": "gcsBucket",
+      "file": "session.services.ts"
+    },
+    {
+      "from": "referenceImageRepository",
+      "to": "gcsBucketName",
+      "file": "session.services.ts"
+    },
+    {
+      "from": "refundFailureStore",
+      "to": "firestoreCircuitExecutor",
+      "file": "credit.services.ts"
+    },
+    {
+      "from": "replicateFluxKontextFastProvider",
+      "to": "config",
+      "file": "image-generation.services.ts"
+    },
+    {
+      "from": "replicateFluxKontextFastProvider",
+      "to": "videoPromptDetector",
+      "file": "image-generation.services.ts"
+    },
+    {
+      "from": "replicateFluxKontextFastProvider",
+      "to": "videoToImageTransformer",
+      "file": "image-generation.services.ts"
+    },
+    {
+      "from": "replicateFluxSchnellProvider",
+      "to": "config",
+      "file": "image-generation.services.ts"
+    },
+    {
+      "from": "replicateFluxSchnellProvider",
+      "to": "videoPromptDetector",
+      "file": "image-generation.services.ts"
+    },
+    {
+      "from": "replicateFluxSchnellProvider",
+      "to": "videoToImageTransformer",
+      "file": "image-generation.services.ts"
+    },
+    {
+      "from": "requestIdempotencyService",
+      "to": "config",
+      "file": "video-jobs.services.ts"
+    },
+    {
+      "from": "requestIdempotencyService",
+      "to": "firestoreCircuitExecutor",
+      "file": "video-jobs.services.ts"
+    },
+    {
+      "from": "sceneDetectionService",
+      "to": "aiService",
+      "file": "enhancement.services.ts"
+    },
+    {
+      "from": "sceneDetectionService",
+      "to": "cacheService",
+      "file": "enhancement.services.ts"
+    },
+    {
+      "from": "sceneProxyService",
+      "to": "continuityDepthEstimationFactory",
+      "file": "continuity.services.ts"
+    },
+    {
+      "from": "sceneProxyService",
+      "to": "frameBridgeService",
+      "file": "continuity.services.ts"
+    },
+    {
+      "from": "sceneProxyService",
+      "to": "storageService",
+      "file": "continuity.services.ts"
+    },
+    {
+      "from": "sessionService",
+      "to": "sessionStore",
+      "file": "session.services.ts"
+    },
+    {
+      "from": "sessionService",
+      "to": "videoJobStore",
+      "file": "session.services.ts"
+    },
+    {
+      "from": "spanLabelingCacheService",
+      "to": "config",
+      "file": "cache.services.ts"
+    },
+    {
+      "from": "spanLabelingCacheService",
+      "to": "redisClient",
+      "file": "cache.services.ts"
+    },
+    {
+      "from": "spanLabelingProvider",
+      "to": "aiService",
+      "file": "span-labeling.services.ts"
+    },
+    {
+      "from": "spanLabelingProvider",
+      "to": "spanLabelingCacheService",
+      "file": "span-labeling.services.ts"
+    },
+    {
+      "from": "spanLabelingTelemetryService",
+      "to": "postHogClient",
+      "file": "observability.services.ts"
+    },
+    {
+      "from": "storageService",
+      "to": "gcsBucketName",
+      "file": "storage.services.ts"
+    },
+    {
+      "from": "storageService",
+      "to": "gcsStorage",
+      "file": "storage.services.ts"
+    },
+    {
+      "from": "storyboardFramePlanner",
+      "to": "geminiClient",
+      "file": "image-generation.services.ts"
+    },
+    {
+      "from": "storyboardFramePlanner",
+      "to": "openAIClient",
+      "file": "image-generation.services.ts"
+    },
+    {
+      "from": "storyboardPreviewService",
+      "to": "imageGenerationService",
+      "file": "image-generation.services.ts"
+    },
+    {
+      "from": "storyboardPreviewService",
+      "to": "storyboardFramePlanner",
+      "file": "image-generation.services.ts"
+    },
+    {
+      "from": "stripeWebhookEventStore",
+      "to": "firestoreCircuitExecutor",
+      "file": "payment.services.ts"
+    },
+    {
+      "from": "styleAnalysisService",
+      "to": "aiService",
+      "file": "continuity.services.ts"
+    },
+    {
+      "from": "styleReferenceService",
+      "to": "config",
+      "file": "continuity.services.ts"
+    },
+    {
+      "from": "styleReferenceService",
+      "to": "storageService",
+      "file": "continuity.services.ts"
+    },
+    {
+      "from": "suggestionsTelemetryService",
+      "to": "postHogClient",
+      "file": "observability.services.ts"
+    },
+    {
+      "from": "userCreditService",
+      "to": "firestoreCircuitExecutor",
+      "file": "credit.services.ts"
+    },
+    {
+      "from": "validationService",
+      "to": "videoPromptService",
+      "file": "enhancement.services.ts"
+    },
+    {
+      "from": "videoAssetRetentionService",
+      "to": "config",
+      "file": "storage.services.ts"
+    },
+    {
+      "from": "videoAssetRetentionService",
+      "to": "videoAssetStore",
+      "file": "storage.services.ts"
+    },
+    {
+      "from": "videoAssetStore",
+      "to": "config",
+      "file": "storage.services.ts"
+    },
+    {
+      "from": "videoAssetStore",
+      "to": "gcsBucket",
+      "file": "storage.services.ts"
+    },
+    {
+      "from": "videoContentAccessService",
+      "to": "config",
+      "file": "storage.services.ts"
+    },
+    {
+      "from": "videoGenerationService",
+      "to": "config",
+      "file": "video-generation.services.ts"
+    },
+    {
+      "from": "videoGenerationService",
+      "to": "videoAssetStore",
+      "file": "video-generation.services.ts"
+    },
+    {
+      "from": "videoJobHandler",
+      "to": "providerCircuitManager",
+      "file": "video-generation.services.ts"
+    },
+    {
+      "from": "videoJobHandler",
+      "to": "sessionService",
+      "file": "video-generation.services.ts"
+    },
+    {
+      "from": "videoJobHandler",
+      "to": "storageService",
+      "file": "video-generation.services.ts"
+    },
+    {
+      "from": "videoJobHandler",
+      "to": "userCreditService",
+      "file": "video-generation.services.ts"
+    },
+    {
+      "from": "videoJobHandler",
+      "to": "videoGenerationService",
+      "file": "video-generation.services.ts"
+    },
+    {
+      "from": "videoJobHandler",
+      "to": "videoJobStore",
+      "file": "video-generation.services.ts"
+    },
+    {
+      "from": "videoJobReconciler",
+      "to": "config",
+      "file": "video-generation.services.ts"
+    },
+    {
+      "from": "videoJobReconciler",
+      "to": "gcsBucket",
+      "file": "video-generation.services.ts"
+    },
+    {
+      "from": "videoJobReconciler",
+      "to": "videoJobStore",
+      "file": "video-generation.services.ts"
+    },
+    {
+      "from": "videoJobStore",
+      "to": "config",
+      "file": "video-jobs.services.ts"
+    },
+    {
+      "from": "videoJobStore",
+      "to": "firestoreCircuitExecutor",
+      "file": "video-jobs.services.ts"
+    },
+    {
+      "from": "videoJobSweeper",
+      "to": "config",
+      "file": "video-generation.services.ts"
+    },
+    {
+      "from": "videoJobSweeper",
+      "to": "userCreditService",
+      "file": "video-generation.services.ts"
+    },
+    {
+      "from": "videoJobSweeper",
+      "to": "videoJobStore",
+      "file": "video-generation.services.ts"
+    },
+    {
+      "from": "videoJobWorker",
+      "to": "config",
+      "file": "video-generation.services.ts"
+    },
+    {
+      "from": "videoJobWorker",
+      "to": "providerCircuitManager",
+      "file": "video-generation.services.ts"
+    },
+    {
+      "from": "videoJobWorker",
+      "to": "videoJobHandler",
+      "file": "video-generation.services.ts"
+    },
+    {
+      "from": "videoJobWorker",
+      "to": "videoJobStore",
+      "file": "video-generation.services.ts"
+    },
+    {
+      "from": "videoJobWorker",
+      "to": "videoWorkerHeartbeatStore",
+      "file": "video-generation.services.ts"
+    },
+    {
+      "from": "videoPromptService",
+      "to": "aiService",
+      "file": "enhancement.services.ts"
+    },
+    {
+      "from": "videoToImageTransformer",
+      "to": "geminiClient",
+      "file": "image-generation.services.ts"
+    },
+    {
+      "from": "videoWorkerHeartbeatStore",
+      "to": "firestoreCircuitExecutor",
+      "file": "video-generation.services.ts"
+    },
+    {
+      "from": "webhookReconciliationWorker",
+      "to": "billingProfileStore",
+      "file": "payment.services.ts"
+    },
+    {
+      "from": "webhookReconciliationWorker",
+      "to": "config",
+      "file": "payment.services.ts"
+    },
+    {
+      "from": "webhookReconciliationWorker",
+      "to": "paymentConsistencyStore",
+      "file": "payment.services.ts"
+    },
+    {
+      "from": "webhookReconciliationWorker",
+      "to": "paymentService",
+      "file": "payment.services.ts"
+    },
+    {
+      "from": "webhookReconciliationWorker",
+      "to": "stripeWebhookEventStore",
+      "file": "payment.services.ts"
+    },
+    {
+      "from": "webhookReconciliationWorker",
+      "to": "userCreditService",
+      "file": "payment.services.ts"
+    }
   ]
 }

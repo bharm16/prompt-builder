@@ -12,13 +12,13 @@
  *   runtime      — Node version, module system, language mix
  *   routes       — every reachable HTTP endpoint (via TypeScript AST walker)
  *   featureFlags — every flag in the registry with requiresEnv / dependsOn edges
+ *   dependencies — DI dependency edges from container.register() calls (B2)
  *
- * Sections NOT emitted (hand-curated, out of scope until Phase B2/B3+):
+ * Sections NOT emitted (hand-curated, out of scope until Phase B3+):
  *   domains, diRegistration, clientFeatures, clientPages, boundaries,
  *   externalSystems, operations, techStack, repository
  *
  * Future expansion:
- *   Phase B2 — emit DI dependency edges
  *   Phase B3 — replace `*` method wildcards with concrete HTTP methods
  *   Phase B4 — wire CI drift gate
  */
@@ -29,6 +29,10 @@ import { fileURLToPath } from "node:url";
 
 import { getFlagEnvNames } from "../server/src/config/feature-flags.ts";
 import { extractRoutes, REPO_ROOT } from "./lib/route-map-walker.ts";
+import {
+  extractDependencies,
+  type DependencyEdge,
+} from "./lib/di-graph-walker.ts";
 
 const OUTPUT = path.join(
   REPO_ROOT,
@@ -47,6 +51,7 @@ interface ArchitectureMap {
   runtime: Record<string, unknown>;
   routes: ReturnType<typeof extractRoutes>;
   featureFlags: ReturnType<typeof getFlagEnvNames>;
+  dependencies: DependencyEdge[];
 }
 
 export function buildArchitectureMap(): ArchitectureMap {
@@ -79,6 +84,9 @@ export function buildArchitectureMap(): ArchitectureMap {
     },
     routes: extractRoutes(),
     featureFlags: getFlagEnvNames(),
+    dependencies: extractDependencies(
+      path.join(REPO_ROOT, "server", "src", "config", "services"),
+    ),
   };
 }
 

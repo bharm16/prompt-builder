@@ -26,4 +26,30 @@ describe("generate-architecture-map", () => {
     const map = buildArchitectureMap();
     expect(map.routes.length).toBeGreaterThan(10);
   });
+
+  it("emits DI dependency edges with from/to/file fields", async () => {
+    const map = buildArchitectureMap();
+    expect(map.dependencies).toBeDefined();
+    expect(Array.isArray(map.dependencies)).toBe(true);
+    expect(map.dependencies.length).toBeGreaterThan(10);
+
+    // Specific edge: promptOptimizationService depends on aiService
+    const edge = map.dependencies.find(
+      (e: { from: string; to: string }) =>
+        e.from === "promptOptimizationService" && e.to === "aiService",
+    );
+    expect(edge).toBeDefined();
+    expect(edge.file).toContain("optimization.services.ts");
+  });
+
+  it("each dependency edge has from, to, and file fields", () => {
+    const map = buildArchitectureMap();
+    for (const edge of map.dependencies) {
+      expect(edge).toMatchObject({
+        from: expect.any(String),
+        to: expect.any(String),
+        file: expect.any(String),
+      });
+    }
+  });
 });
