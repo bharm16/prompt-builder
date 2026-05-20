@@ -18,6 +18,7 @@ import { registerSpanLabelingServices } from "./services/span-labeling.services.
 import { registerEnhancementServices } from "./services/enhancement.services.ts";
 import { registerOptimizationServices } from "./services/optimization.services.ts";
 import { registerGenerationServices } from "./services/generation.services.ts";
+import { registerImageGenerationServices } from "./services/image-generation.services.ts";
 import { registerContinuityServices } from "./services/continuity.services.ts";
 import { registerPaymentServices } from "./services/payment.services.ts";
 import { registerModelIntelligenceServices } from "./services/model-intelligence.services.ts";
@@ -54,7 +55,11 @@ export async function configureServices(): Promise<DIContainer> {
   registerEnhancementServices(container);
   registerOptimizationServices(container);
   registerGenerationServices(container);
+  // Image-generation: depends on imageAssetStore (storage) and geminiClient/openAIClient (llm),
+  // both registered above.
+  registerImageGenerationServices(container);
 
+  // Continuity (gated on ENABLE_CONVERGENCE).
   if (enableConvergence) {
     registerContinuityServices(container);
   } else {
@@ -63,6 +68,8 @@ export async function configureServices(): Promise<DIContainer> {
   }
 
   registerPaymentServices(container);
+  // Model-intelligence: depends on billingProfileStore (payment) and
+  // videoGenerationService (generation) — must follow both.
   registerModelIntelligenceServices(container);
   registerSessionServices(container);
 

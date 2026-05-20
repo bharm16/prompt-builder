@@ -58,21 +58,22 @@ These terms have specific meanings in this codebase. Do not conflate them.
 
 Services are registered via domain-scoped files in `server/src/config/services/`:
 
-| Registration File                | Registers                                                                             |
-| -------------------------------- | ------------------------------------------------------------------------------------- |
-| `core.services.ts`               | metrics, Firebase clients, face embedding, imageObservation, llmJudge                 |
-| `cache.services.ts`              | cacheService, spanLabelingCache                                                       |
-| `credit.services.ts`             | userCreditService, creditReconciliation                                               |
-| `storage.services.ts`            | storageService, videoContentAccess, videoAssetRetention                               |
-| `llm.services.ts`                | aiModelService, concurrency                                                           |
-| `enhancement.services.ts`        | enhancementService, videoPromptService, sceneDetectionService, promptCoherenceService |
-| `optimization.services.ts`       | promptOptimizationService, templateService                                            |
-| `generation.services.ts`         | imageGeneration, videoGeneration, storyboardPreview, keyframe, faceSwap               |
-| `continuity.services.ts`         | continuitySessionService (gated — see Feature Flags below)                            |
-| `payment.services.ts`            | paymentService, billingProfileStore, webhook + repair workers                         |
-| `model-intelligence.services.ts` | modelIntelligenceService, modelIntelligenceAvailabilityGate                           |
-| `session.services.ts`            | sessionService, assetService, referenceImageRepository                                |
-| `video-jobs.services.ts`         | requestIdempotency, video job processing                                              |
+| Registration File                | Registers                                                                                                                                                                              |
+| -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `core.services.ts`               | metrics, Firebase clients, face embedding, imageObservation, llmJudge                                                                                                                  |
+| `cache.services.ts`              | cacheService, spanLabelingCache                                                                                                                                                        |
+| `credit.services.ts`             | userCreditService, creditReconciliation                                                                                                                                                |
+| `storage.services.ts`            | storageService, videoContentAccess, videoAssetRetention                                                                                                                                |
+| `llm.services.ts`                | aiModelService, concurrency                                                                                                                                                            |
+| `enhancement.services.ts`        | enhancementService, videoPromptService, sceneDetectionService, promptCoherenceService                                                                                                  |
+| `optimization.services.ts`       | promptOptimizationService, templateService                                                                                                                                             |
+| `image-generation.services.ts`   | videoPromptDetector, videoToImageTransformer, storyboardFramePlanner, replicateFluxSchnellProvider, replicateFluxKontextFastProvider, imageGenerationService, storyboardPreviewService |
+| `generation.services.ts`         | videoGeneration, keyframe, faceSwap, consistentVideo, capabilitiesProbe, providerCircuitManager, videoJobWorker + sweeper + reconciler                                                 |
+| `continuity.services.ts`         | continuitySessionService (gated — see Feature Flags below)                                                                                                                             |
+| `payment.services.ts`            | paymentService, billingProfileStore, webhook + repair workers                                                                                                                          |
+| `model-intelligence.services.ts` | modelIntelligenceService, modelIntelligenceAvailabilityGate                                                                                                                            |
+| `session.services.ts`            | sessionService, assetService, referenceImageRepository                                                                                                                                 |
+| `video-jobs.services.ts`         | requestIdempotency, video job processing                                                                                                                                               |
 
 The container is created in `server/src/config/services.config.ts` and initialized in `services.initialize.ts`. Routes consume services via factory functions in `server/src/config/routes.config.ts`.
 
