@@ -111,3 +111,9 @@ raw-prompts-2025_12_22_15_47_50.json
 scripts/fix-cursor.sh
 
 scripts/quick-fix-cursor.sh
+
+# Architecture map HTML viewer (self-contained local renderer with inline JSON).
+# Intentionally untracked — the embedded JSON drifts from the auto-generated
+# docs/architecture/architecture-map.json. Open the HTML locally after running
+# `npm run architecture:map:write` to regenerate it.
+docs/architecture/architecture-map.html

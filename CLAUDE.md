@@ -201,6 +201,9 @@ npm run test:regression      # Run only regression tests
 npm run test:regression:list  # Audit all regression test files
 npm run eval:golden-set      # Relaxed F1 vs blessed baseline (gate mode)
 npm run eval:golden-set:bless # Bless a fresh baseline for the active provider
+npm run architecture:map        # Print architecture map JSON to stdout
+npm run architecture:map:write  # Regenerate docs/architecture/architecture-map.json
+npm run architecture:map:check  # CI drift gate — fails when JSON is stale
 ```
 
 ## Span Labeling Evaluation
